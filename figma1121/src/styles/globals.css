@@ -1,0 +1,189 @@
+@import "tailwindcss";
+
+/* Dark mode color overrides */
+.dark {
+  color-scheme: dark;
+}
+
+/* Background colors */
+.dark .bg-white {
+  background-color: rgb(31 41 55) !important; /* gray-800 */
+}
+
+.dark .bg-gray-50 {
+  background-color: rgb(17 24 39) !important; /* gray-900 */
+}
+
+.dark .bg-gray-100 {
+  background-color: rgb(31 41 55) !important; /* gray-800 */
+}
+
+.dark .bg-gray-800 {
+  background-color: rgb(31 41 55) !important; /* gray-800 */
+}
+
+.dark .bg-gray-900 {
+  background-color: rgb(17 24 39) !important; /* gray-900 */
+}
+
+.dark .bg-yellow-100 {
+  background-color: rgb(113 63 18) !important; /* yellow-900 */
+}
+
+/* Text colors */
+.dark .text-gray-900 {
+  color: rgb(243 244 246) !important; /* gray-100 */
+}
+
+.dark .text-gray-800 {
+  color: rgb(229 231 235) !important; /* gray-200 */
+}
+
+.dark .text-gray-700 {
+  color: rgb(209 213 219) !important; /* gray-300 */
+}
+
+.dark .text-gray-600 {
+  color: rgb(156 163 175) !important; /* gray-400 */
+}
+
+.dark .text-gray-500 {
+  color: rgb(156 163 175) !important; /* gray-400 */
+}
+
+.dark .text-gray-400 {
+  color: rgb(156 163 175) !important; /* gray-400 */
+}
+
+.dark .text-white {
+  color: rgb(243 244 246) !important; /* Keep white as light gray */
+}
+
+/* Border colors */
+.dark .border-gray-200 {
+  border-color: rgb(55 65 81) !important; /* gray-700 */
+}
+
+.dark .border-gray-300 {
+  border-color: rgb(75 85 99) !important; /* gray-600 */
+}
+
+.dark .border-gray-700 {
+  border-color: rgb(55 65 81) !important; /* gray-700 */
+}
+
+/* Specific component colors */
+.dark .text-purple-600 {
+  color: rgb(192 132 252) !important; /* purple-400 */
+}
+
+.dark .text-purple-400 {
+  color: rgb(192 132 252) !important; /* purple-400 */
+}
+
+.dark .bg-purple-600 {
+  background-color: rgb(147 51 234) !important; /* Keep purple-600 */
+}
+
+.dark .hover\:bg-purple-700:hover {
+  background-color: rgb(126 34 206) !important; /* purple-700 */
+}
+
+/* Card and surface colors */
+.dark [class*="bg-white"] {
+  background-color: rgb(31 41 55) !important; /* gray-800 */
+}
+
+/* Shadcn UI specific overrides */
+.dark .bg-card {
+  background-color: rgb(31 41 55) !important; /* gray-800 */
+}
+
+.dark .text-card-foreground {
+  color: rgb(243 244 246) !important; /* gray-100 */
+}
+
+.dark .bg-popover {
+  background-color: rgb(31 41 55) !important; /* gray-800 */
+}
+
+.dark .text-popover-foreground {
+  color: rgb(243 244 246) !important; /* gray-100 */
+}
+
+.dark .bg-primary {
+  background-color: rgb(147 51 234) !important; /* purple-600 */
+}
+
+.dark .text-primary-foreground {
+  color: rgb(243 244 246) !important;
+}
+
+.dark .bg-secondary {
+  background-color: rgb(55 65 81) !important; /* gray-700 */
+}
+
+.dark .text-secondary-foreground {
+  color: rgb(243 244 246) !important;
+}
+
+.dark .bg-muted {
+  background-color: rgb(55 65 81) !important; /* gray-700 */
+}
+
+.dark .text-muted-foreground {
+  color: rgb(156 163 175) !important; /* gray-400 */
+}
+
+.dark .bg-accent {
+  background-color: rgb(55 65 81) !important; /* gray-700 */
+}
+
+.dark .text-accent-foreground {
+  color: rgb(243 244 246) !important;
+}
+
+.dark .border {
+  border-color: rgb(55 65 81) !important; /* gray-700 */
+}
+
+.dark .bg-input {
+  background-color: rgb(55 65 81) !important; /* gray-700 */
+}
+
+.dark .ring-offset-background {
+  --tw-ring-offset-color: rgb(17 24 39) !important; /* gray-900 */
+}
+
+/* Hover states */
+.dark .hover\:bg-gray-100:hover {
+  background-color: rgb(55 65 81) !important; /* gray-700 */
+}
+
+.dark .hover\:bg-gray-50:hover {
+  background-color: rgb(55 65 81) !important; /* gray-700 */
+}
+
+/* Focus and ring colors */
+.dark .focus\:ring-purple-500:focus {
+  --tw-ring-color: rgb(168 85 247) !important; /* purple-500 */
+}
+
+/* Placeholder text */
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: rgb(107 114 128) !important; /* gray-500 */
+}
+
+/* Scrollbar styling for dark mode */
+.dark ::-webkit-scrollbar-track {
+  background-color: rgb(31 41 55); /* gray-800 */
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background-color: rgb(75 85 99); /* gray-600 */
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(107 114 128); /* gray-500 */
+}

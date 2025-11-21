@@ -1,0 +1,162 @@
+{
+  "version": "1.0.0",
+  "timestamp": "2025-11-21T15:59:25+08:00",
+  "project": {
+    "name": "AnyKeep",
+    "description": "跨平台智能内容聚合工具",
+    "status": "planning",
+    "primaryLanguage": "TypeScript (规划中)",
+    "techStack": [
+      "Next.js 14+",
+      "Supabase",
+      "PostgreSQL + pgvector",
+      "Tailwind CSS",
+      "Shadcn UI",
+      "Capacitor"
+    ]
+  },
+  "rootClaudeMd": "CLAUDE.md",
+  "modules": [
+    {
+      "path": ".spec-workflow",
+      "claudeMd": ".spec-workflow/CLAUDE.md",
+      "description": "规范工作流模板系统",
+      "language": "Markdown",
+      "entryPoints": [],
+      "interfaces": [
+        "templates/requirements-template.md",
+        "templates/design-template.md",
+        "templates/tasks-template.md",
+        "templates/product-template.md",
+        "templates/tech-template.md",
+        "templates/structure-template.md"
+      ],
+      "tests": [],
+      "importantPaths": [
+        "templates/",
+        "user-templates/"
+      ],
+      "coverage": {
+        "scanned": true,
+        "filesScanned": 7,
+        "totalFiles": 7,
+        "percentage": 100
+      }
+    }
+  ],
+  "coverage": {
+    "totalFilesEstimated": 8,
+    "filesScanned": 8,
+    "percentage": 100,
+    "truncated": false,
+    "truncatedReason": null
+  },
+  "ignored": {
+    "patterns": [
+      "node_modules/**",
+      ".git/**",
+      ".github/**",
+      "dist/**",
+      "build/**",
+      ".next/**",
+      "__pycache__/**",
+      "*.lock",
+      "*.log",
+      "*.bin",
+      "*.pdf",
+      "*.png",
+      "*.jpg",
+      "*.jpeg",
+      "*.gif",
+      "*.mp4",
+      "*.zip",
+      "*.tar",
+      "*.gz"
+    ],
+    "skippedDirectories": [],
+    "skippedFiles": []
+  },
+  "gaps": {
+    "missingInterfaces": [],
+    "missingTests": [],
+    "missingDataModels": [],
+    "notes": "项目处于规划阶段，尚未开始编码。主要需求文档 anykeep1121.md 已包含完整的 API 设计和数据模型定义。"
+  },
+  "nextSteps": [
+    {
+      "priority": "P0",
+      "description": "初始化 Next.js 项目",
+      "command": "npx create-next-app@latest . --typescript --tailwind --eslint --app"
+    },
+    {
+      "priority": "P0",
+      "description": "配置 Supabase 项目",
+      "command": "supabase init"
+    },
+    {
+      "priority": "P0",
+      "description": "安装 Shadcn UI",
+      "command": "npx shadcn-ui@latest init"
+    },
+    {
+      "priority": "P1",
+      "description": "创建数据库表结构",
+      "reference": "anykeep1121.md - Section 3"
+    },
+    {
+      "priority": "P1",
+      "description": "实现用户认证",
+      "reference": "anykeep1121.md - Section 4.2"
+    }
+  ],
+  "files": {
+    "documentation": [
+      {
+        "path": "anykeep1121.md",
+        "lines": 1262,
+        "description": "完整产品需求文档（MVP版）"
+      },
+      {
+        "path": "CLAUDE.md",
+        "lines": 379,
+        "description": "AI 上下文文档"
+      },
+      {
+        "path": ".spec-workflow/CLAUDE.md",
+        "lines": 108,
+        "description": "spec-workflow 模块文档"
+      }
+    ],
+    "templates": [
+      {
+        "path": ".spec-workflow/templates/requirements-template.md",
+        "lines": 51
+      },
+      {
+        "path": ".spec-workflow/templates/design-template.md",
+        "lines": 97
+      },
+      {
+        "path": ".spec-workflow/templates/tasks-template.md",
+        "lines": 140
+      },
+      {
+        "path": ".spec-workflow/templates/product-template.md",
+        "lines": 52
+      },
+      {
+        "path": ".spec-workflow/templates/tech-template.md",
+        "lines": 100
+      },
+      {
+        "path": ".spec-workflow/templates/structure-template.md",
+        "lines": 146
+      },
+      {
+        "path": ".spec-workflow/user-templates/README.md",
+        "lines": 65
+      }
+    ],
+    "source": []
+  }
+}
