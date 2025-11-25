@@ -6,6 +6,8 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { AnalyticsPageClient } from '@/components/analytics/analytics-page-client'
 import type { Platform } from '@/types/supabase'
+import { getPlatformName, getPlatformHexColor } from '@/lib/constants/platforms'
+import { ANALYTICS } from '@/lib/constants/app'
 
 export default async function AnalyticsPage() {
   const supabase = await createClient()
@@ -41,14 +43,14 @@ export default async function AnalyticsPage() {
     return <AnalyticsPageClient data={{ trendData: [], platformData: [], tagData: [], typeData: [] }} />
   }
 
-  // 1. 收藏趋势数据（最近 30 天）
-  const thirtyDaysAgo = new Date()
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+  // 1. 收藏趋势数据
+  const trendDaysAgo = new Date()
+  trendDaysAgo.setDate(trendDaysAgo.getDate() - ANALYTICS.TREND_DAYS)
 
   const trendMap = new Map<string, number>()
   bookmarks.forEach((bookmark) => {
     const date = new Date(bookmark.created_at)
-    if (date >= thirtyDaysAgo) {
+    if (date >= trendDaysAgo) {
       const dateKey = date.toISOString().split('T')[0] // YYYY-MM-DD
       trendMap.set(dateKey, (trendMap.get(dateKey) || 0) + 1)
     }
@@ -56,7 +58,7 @@ export default async function AnalyticsPage() {
 
   // 填充缺失日期（确保连续）
   const trendData = []
-  for (let i = 29; i >= 0; i--) {
+  for (let i = ANALYTICS.TREND_DAYS - 1; i >= 0; i--) {
     const date = new Date()
     date.setDate(date.getDate() - i)
     const dateKey = date.toISOString().split('T')[0]
@@ -73,29 +75,13 @@ export default async function AnalyticsPage() {
     platformMap.set(platform, (platformMap.get(platform) || 0) + 1)
   })
 
-  const platformNames: Record<Platform, string> = {
-    WECHAT_OFFICIAL_ACCOUNT: '微信公众号',
-    BILIBILI: 'B站',
-    XIAOHONGSHU: '小红书',
-    ZHIHU: '知乎',
-    UNKNOWN: '其他',
-  }
-
-  const platformColors: Record<Platform, string> = {
-    WECHAT_OFFICIAL_ACCOUNT: '#07c160',
-    BILIBILI: '#00a1d6',
-    XIAOHONGSHU: '#ff2442',
-    ZHIHU: '#0084ff',
-    UNKNOWN: '#9ca3af',
-  }
-
   const platformData = Array.from(platformMap.entries()).map(([platform, count]) => ({
-    name: platformNames[platform],
+    name: getPlatformName(platform),
     value: count,
-    color: platformColors[platform],
+    color: getPlatformHexColor(platform),
   }))
 
-  // 3. 热门标签数据（TOP 10）
+  // 3. 热门标签数据
   const tagMap = new Map<string, number>()
   bookmarks.forEach((bookmark) => {
     bookmark.ai_tags?.forEach((tag: string) => {
@@ -105,7 +91,7 @@ export default async function AnalyticsPage() {
 
   const tagData = Array.from(tagMap.entries())
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 10)
+    .slice(0, ANALYTICS.TOP_TAGS_COUNT)
     .map(([tag, count]) => ({
       tag,
       count,

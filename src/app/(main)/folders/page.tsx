@@ -6,6 +6,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { FoldersPageClient } from '@/components/folders/folders-page-client'
+import { QUERY_LIMITS } from '@/lib/constants/app'
 
 export default async function FoldersPage() {
   const supabase = await createClient()
@@ -27,7 +28,7 @@ export default async function FoldersPage() {
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
 
-  // 获取最近添加的收藏（最近5条）
+  // 获取最近添加的收藏
   const { data: recentBookmarks, error: bookmarksError } = await supabase
     .from('bookmarks')
     .select(`
@@ -36,7 +37,7 @@ export default async function FoldersPage() {
     `)
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
-    .limit(5)
+    .limit(QUERY_LIMITS.RECENT_BOOKMARKS_COUNT)
 
   // 处理错误
   let error: string | undefined

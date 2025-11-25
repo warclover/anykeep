@@ -5,6 +5,7 @@
 
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Plus, MoreVertical, Folder } from 'lucide-react'
@@ -12,6 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ErrorMessage } from '@/components/ui/error-message'
+import { CreateFolderDialog } from '@/components/folders/create-folder-dialog'
 import type { Folder as FolderType, Bookmark } from '@/types/supabase'
 
 interface FoldersPageClientProps {
@@ -44,9 +46,14 @@ export function FoldersPageClient({
   error,
 }: FoldersPageClientProps) {
   const router = useRouter()
+  const [showCreateDialog, setShowCreateDialog] = useState(false)
 
   const handleRetry = () => {
     router.refresh()
+  }
+
+  const handleCreateClick = () => {
+    setShowCreateDialog(true)
   }
 
   return (
@@ -57,7 +64,7 @@ export function FoldersPageClient({
           <h2 className="text-gray-900 dark:text-white text-xl md:text-2xl font-semibold">
             收藏夹
           </h2>
-          <Button size="sm">
+          <Button size="sm" onClick={handleCreateClick}>
             <Plus className="size-4 mr-2" />
             <span className="hidden md:inline">新建文件夹</span>
             <span className="md:hidden">新建</span>
@@ -138,7 +145,7 @@ export function FoldersPageClient({
               <p className="text-gray-500 dark:text-gray-400 text-sm mb-4">
                 创建文件夹来整理你的收藏内容
               </p>
-              <Button>
+              <Button onClick={handleCreateClick}>
                 <Plus className="size-4 mr-2" />
                 创建第一个文件夹
               </Button>
@@ -200,6 +207,13 @@ export function FoldersPageClient({
           </>
         )}
       </div>
+
+      {/* 创建文件夹对话框 */}
+      <CreateFolderDialog
+        open={showCreateDialog}
+        onOpenChange={setShowCreateDialog}
+        folders={folders}
+      />
     </div>
   )
 }

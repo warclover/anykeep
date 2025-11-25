@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { AppHeader } from '@/components/layout/app-header'
 import { AppSidebar } from '@/components/layout/app-sidebar'
+import { MobileBottomNav } from '@/components/layout/mobile-bottom-nav'
 
 export default async function MainLayout({
   children,
@@ -33,14 +34,17 @@ export default async function MainLayout({
       <AppHeader user={user} profile={profile} />
 
       <div className="flex">
-        {/* 侧边栏 */}
+        {/* 侧边栏（桌面端） */}
         <AppSidebar />
 
         {/* 主内容区 */}
-        <main className="flex-1 p-6 lg:ml-64">
+        <main className="flex-1 p-4 md:p-6 lg:ml-64 pb-20 lg:pb-6">
           {children}
         </main>
       </div>
+
+      {/* 底部导航栏（移动端） */}
+      <MobileBottomNav />
     </div>
   )
 }

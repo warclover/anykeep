@@ -9,7 +9,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
 import { toast } from 'sonner'
-import { User } from '@supabase/supabase-js'
+import type { User } from '@supabase/supabase-js'
 import { Moon, Sun } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -21,6 +21,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { createClient } from '@/lib/supabase/client'
+import { MobileMenu } from '@/components/layout/mobile-menu'
 import type { Profile } from '@/types/supabase'
 
 interface AppHeaderProps {
@@ -61,20 +62,23 @@ export function AppHeader({ user, profile }: AppHeaderProps) {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-white dark:bg-gray-950 dark:border-gray-800">
-      <div className="flex h-14 items-center px-4 lg:px-6">
+      <div className="flex h-14 items-center px-4 lg:px-6 gap-2">
+        {/* 移动端汉堡菜单 */}
+        <MobileMenu />
+
         {/* Logo */}
         <Link href="/home" className="flex items-center space-x-2">
-          <span className="text-xl font-bold text-purple-600 dark:text-purple-400">AnyKeep</span>
+          <span className="text-lg md:text-xl font-bold text-purple-600 dark:text-purple-400">AnyKeep</span>
         </Link>
 
-        {/* 搜索框 */}
-        <div className="flex-1 mx-4 lg:mx-8">
+        {/* 搜索框 - 移动端优化 */}
+        <div className="flex-1 mx-2 md:mx-4 lg:mx-8">
           <Link href="/search">
             <div className="relative max-w-md mx-auto">
               <input
                 type="text"
-                placeholder="搜索收藏..."
-                className="w-full h-9 pl-10 pr-4 text-sm bg-gray-100 dark:bg-gray-800 border-0 rounded-full focus:ring-2 focus:ring-blue-500"
+                placeholder="搜索..."
+                className="w-full h-9 pl-9 pr-4 text-sm bg-gray-100 dark:bg-gray-800 border-0 rounded-full focus:ring-2 focus:ring-purple-500 placeholder:text-gray-400"
                 readOnly
               />
               <svg
@@ -94,27 +98,31 @@ export function AppHeader({ user, profile }: AppHeaderProps) {
           </Link>
         </div>
 
-        {/* 主题切换按钮 */}
+        {/* 主题切换按钮 - 中小屏幕隐藏 */}
         <Button
           variant="ghost"
-          size="sm"
+          size="icon"
           onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-          className="mr-2"
+          className="hidden sm:flex shrink-0"
+          aria-label="切换主题"
         >
           <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
           <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-          <span className="sr-only">切换主题</span>
         </Button>
 
         {/* 用户菜单 */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900">
+            <Button variant="ghost" className="relative h-9 gap-2 rounded-full px-2 hover:bg-gray-100 dark:hover:bg-gray-800">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900 flex-shrink-0">
                 <span className="text-sm font-medium text-purple-600 dark:text-purple-300">
                   {profile?.nickname?.[0] || user.email?.[0]?.toUpperCase() || 'U'}
                 </span>
               </div>
+              {/* 用户名 - 在中等及以上屏幕显示 */}
+              <span className="hidden md:inline-block text-sm font-medium text-gray-700 dark:text-gray-200 max-w-[120px] truncate">
+                {profile?.nickname || user.email?.split('@')[0] || '用户'}
+              </span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-56" align="end" forceMount>

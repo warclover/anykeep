@@ -6,6 +6,8 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { SearchPageClient } from '@/components/search/search-page-client'
 import { searchQuerySchema } from '@/lib/validation'
+import { QUERY_LIMITS, ANALYTICS } from '@/lib/constants/app'
+import { searchBookmarksFulltext, searchBookmarksIlike } from '@/lib/utils/fulltext-search'
 
 interface SearchPageProps {
   searchParams: Promise<{
@@ -29,7 +31,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   }
 
   // 如果有搜索关键词，验证并执行搜索
-  let searchResults = []
+  let searchResults: any[] = []
   let searchError: string | undefined
 
   if (params.q) {
@@ -37,41 +39,37 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
     const validationResult = searchQuerySchema.safeParse(params)
 
     if (!validationResult.success) {
-      searchError = validationResult.error.errors[0].message
+      searchError = validationResult.error.issues[0].message
     } else {
       const validatedQuery = validationResult.data.q
       const isAISearch = params.ai === 'true'
 
       try {
         if (isAISearch) {
-          // TODO: AI 语义搜索（后续实现）
-          // 暂时使用基础搜索
-          const { data, error } = await supabase
-            .from('bookmarks')
-            .select('*, folders(name)')
-            .eq('user_id', user.id)
-            .is('deleted_at', null)
-            .or(`title.ilike.%${validatedQuery}%,ai_summary.ilike.%${validatedQuery}%,author.ilike.%${validatedQuery}%`)
-            .order('created_at', { ascending: false })
-            .limit(50)
+          // TODO: AI 语义搜索（向量搜索 - 后续实现）
+          // 暂时使用全文搜索
+          const { data, error } = await searchBookmarksFulltext(
+            supabase,
+            user.id,
+            validatedQuery,
+            QUERY_LIMITS.SEARCH_RESULTS_PER_PAGE
+          )
 
           if (error) throw error
           searchResults = data || []
         } else {
-          // 基础文本搜索
-          const { data, error } = await supabase
-            .from('bookmarks')
-            .select('*, folders(name)')
-            .eq('user_id', user.id)
-            .is('deleted_at', null)
-            .or(`title.ilike.%${validatedQuery}%,ai_summary.ilike.%${validatedQuery}%,author.ilike.%${validatedQuery}%`)
-            .order('created_at', { ascending: false })
-            .limit(50)
+          // PostgreSQL 全文搜索（使用 ts_vector + GIN 索引）
+          const { data, error } = await searchBookmarksFulltext(
+            supabase,
+            user.id,
+            validatedQuery,
+            QUERY_LIMITS.SEARCH_RESULTS_PER_PAGE
+          )
 
           if (error) throw error
           searchResults = data || []
         }
-      } catch (error) {
+      } catch (_error) {
         searchError = '搜索时出错，请稍后重试'
       }
     }
@@ -93,10 +91,10 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
     })
   })
 
-  // 获取 TOP 10 热门标签
+  // 获取热门标签
   const hotTags = Object.entries(tagCounts)
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 10)
+    .slice(0, ANALYTICS.TOP_TAGS_COUNT)
     .map(([tag]) => tag)
 
   return (

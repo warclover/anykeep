@@ -19,6 +19,18 @@ export const metadata: Metadata = {
   description: "统一管理微信公众号、B站、小红书等平台的收藏内容，AI 智能标签与语义搜索",
 };
 
+// 移动端视口配置
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)', color: '#0a0a0a' }
+  ],
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{

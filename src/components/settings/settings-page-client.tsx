@@ -16,6 +16,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { ErrorMessage } from '@/components/ui/error-message'
 import type { User } from '@supabase/supabase-js'
+import { ALL_PLATFORMS } from '@/lib/constants/platforms'
 
 interface UserSettings {
   platforms: {
@@ -73,9 +74,11 @@ export function SettingsPageClient({ user, settings: initialSettings, error }: S
     try {
       // TODO: 保存到数据库
       await new Promise((resolve) => setTimeout(resolve, 1000))
-      console.log('Settings saved:', settings)
+      // 设置已保存
     } catch (error) {
-      console.error('Failed to save settings:', error)
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Failed to save settings:', error)
+      }
     } finally {
       setSaving(false)
     }
@@ -84,20 +87,17 @@ export function SettingsPageClient({ user, settings: initialSettings, error }: S
   // 平台授权
   const handlePlatformAuth = (platform: string) => {
     // TODO: 实现平台 OAuth 流程
-    console.log('Authorize platform:', platform)
   }
 
   // 导出数据
   const handleExportData = async () => {
     // TODO: 实现数据导出
-    console.log('Export data')
   }
 
   // 删除账号
   const handleDeleteAccount = async () => {
     if (confirm('确定要删除账号吗？此操作不可逆！')) {
       // TODO: 实现账号删除
-      console.log('Delete account')
     }
   }
 
@@ -174,15 +174,10 @@ export function SettingsPageClient({ user, settings: initialSettings, error }: S
               <CardDescription>连接你的社交媒体账号，自动同步收藏内容</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {[
-                { key: 'wechat', name: '微信公众号', color: 'bg-green-600', icon: '💬' },
-                { key: 'bilibili', name: 'B站', color: 'bg-blue-500', icon: '📺' },
-                { key: 'xiaohongshu', name: '小红书', color: 'bg-red-500', icon: '📕' },
-                { key: 'zhihu', name: '知乎', color: 'bg-blue-600', icon: '🤔' },
-              ].map((platform) => (
+              {ALL_PLATFORMS.map((platform) => (
                 <div key={platform.key} className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 ${platform.color} rounded-lg flex items-center justify-center text-white text-xl`}>
+                    <div className={`w-10 h-10 ${platform.bgColor} rounded-lg flex items-center justify-center text-white text-xl`}>
                       {platform.icon}
                     </div>
                     <div>

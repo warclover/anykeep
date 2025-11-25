@@ -4,6 +4,8 @@
  */
 
 import { z } from 'zod'
+import { VALIDATION as VALIDATION_LIMITS } from './constants/app'
+import { VALIDATION } from './constants/messages'
 
 /**
  * 搜索查询验证
@@ -12,8 +14,8 @@ export const searchQuerySchema = z.object({
   q: z
     .string()
     .trim()
-    .min(1, '搜索关键词不能为空')
-    .max(200, '搜索关键词不能超过 200 个字符')
+    .min(VALIDATION_LIMITS.SEARCH_QUERY_MIN_LENGTH, VALIDATION.REQUIRED('搜索关键词'))
+    .max(VALIDATION_LIMITS.SEARCH_QUERY_MAX_LENGTH, VALIDATION.TOO_LONG('搜索关键词', VALIDATION_LIMITS.SEARCH_QUERY_MAX_LENGTH))
     .refine(
       (val) => {
         // 防止 SQL 注入的基本检查
@@ -21,7 +23,7 @@ export const searchQuerySchema = z.object({
         return !dangerousPatterns.test(val)
       },
       {
-        message: '搜索关键词包含非法字符',
+        message: VALIDATION.INVALID_FORMAT('搜索关键词'),
       }
     ),
   ai: z
@@ -38,8 +40,8 @@ export type SearchQuery = z.infer<typeof searchQuerySchema>
 export const folderNameSchema = z
   .string()
   .trim()
-  .min(1, '文件夹名称不能为空')
-  .max(50, '文件夹名称不能超过 50 个字符')
+  .min(VALIDATION_LIMITS.FOLDER_NAME_MIN_LENGTH, VALIDATION.FOLDER_NAME_REQUIRED)
+  .max(VALIDATION_LIMITS.FOLDER_NAME_MAX_LENGTH, VALIDATION.FOLDER_NAME_TOO_LONG(VALIDATION_LIMITS.FOLDER_NAME_MAX_LENGTH))
   .refine(
     (val) => {
       // 不允许特殊字符
@@ -56,8 +58,8 @@ export const folderNameSchema = z
  */
 export const bookmarkUrlSchema = z
   .string()
-  .url('请输入有效的 URL 地址')
-  .max(2000, 'URL 长度不能超过 2000 个字符')
+  .url(VALIDATION.INVALID_URL)
+  .max(2000, VALIDATION.TOO_LONG('URL', 2000))
 
 /**
  * 标签验证
@@ -65,15 +67,15 @@ export const bookmarkUrlSchema = z
 export const tagSchema = z
   .string()
   .trim()
-  .min(1, '标签不能为空')
-  .max(30, '标签不能超过 30 个字符')
+  .min(1, VALIDATION.REQUIRED('标签'))
+  .max(30, VALIDATION.TOO_LONG('标签', 30))
 
 /**
  * 标签数组验证
  */
 export const tagsArraySchema = z
   .array(tagSchema)
-  .max(20, '标签数量不能超过 20 个')
+  .max(20, VALIDATION.TOO_LARGE('标签数量', 20))
 
 /**
  * 用户设置验证
@@ -110,14 +112,156 @@ export const paginationSchema = z.object({
   page: z.coerce
     .number()
     .int()
-    .min(1, '页码必须大于 0')
+    .min(1, VALIDATION.TOO_SMALL('页码', 1))
     .default(1),
   limit: z.coerce
     .number()
     .int()
-    .min(1, '每页数量必须大于 0')
-    .max(100, '每页数量不能超过 100')
+    .min(1, VALIDATION.TOO_SMALL('每页数量', 1))
+    .max(100, VALIDATION.TOO_LARGE('每页数量', 100))
     .default(20),
 })
 
 export type Pagination = z.infer<typeof paginationSchema>
+
+/**
+ * 创建收藏验证 Schema
+ */
+export const createBookmarkSchema = z.object({
+  url: bookmarkUrlSchema,
+  title: z
+    .string()
+    .trim()
+    .min(1, VALIDATION.BOOKMARK_TITLE_REQUIRED)
+    .max(VALIDATION_LIMITS.BOOKMARK_TITLE_MAX_LENGTH, VALIDATION.TOO_LONG('标题', VALIDATION_LIMITS.BOOKMARK_TITLE_MAX_LENGTH)),
+  description: z
+    .string()
+    .trim()
+    .max(VALIDATION_LIMITS.SUMMARY_MAX_LENGTH, VALIDATION.TOO_LONG('描述', VALIDATION_LIMITS.SUMMARY_MAX_LENGTH))
+    .optional(),
+  folderId: z.coerce.number().int().positive().optional(),
+  userTags: tagsArraySchema.optional(),
+  notes: z
+    .string()
+    .trim()
+    .max(VALIDATION_LIMITS.SUMMARY_MAX_LENGTH, VALIDATION.TOO_LONG('备注', VALIDATION_LIMITS.SUMMARY_MAX_LENGTH))
+    .optional(),
+  coverUrl: z
+    .string()
+    .trim()
+    .url(VALIDATION.INVALID_FORMAT('封面图 URL'))
+    .optional()
+    .or(z.literal('')),
+})
+
+export type CreateBookmark = z.infer<typeof createBookmarkSchema>
+
+/**
+ * 更新收藏验证 Schema
+ */
+export const updateBookmarkSchema = z.object({
+  title: z
+    .string()
+    .trim()
+    .min(1, VALIDATION.BOOKMARK_TITLE_REQUIRED)
+    .max(VALIDATION_LIMITS.BOOKMARK_TITLE_MAX_LENGTH, VALIDATION.TOO_LONG('标题', VALIDATION_LIMITS.BOOKMARK_TITLE_MAX_LENGTH))
+    .optional(),
+  description: z
+    .string()
+    .trim()
+    .max(VALIDATION_LIMITS.SUMMARY_MAX_LENGTH, VALIDATION.TOO_LONG('描述', VALIDATION_LIMITS.SUMMARY_MAX_LENGTH))
+    .optional(),
+  folderId: z.coerce.number().int().positive().nullable().optional(),
+  userTags: tagsArraySchema.optional(),
+  notes: z
+    .string()
+    .trim()
+    .max(VALIDATION_LIMITS.SUMMARY_MAX_LENGTH, VALIDATION.TOO_LONG('备注', VALIDATION_LIMITS.SUMMARY_MAX_LENGTH))
+    .optional(),
+})
+
+export type UpdateBookmark = z.infer<typeof updateBookmarkSchema>
+
+/**
+ * 获取收藏列表查询参数验证
+ */
+export const getBookmarksQuerySchema = z.object({
+  platform: z.enum(['WECHAT_OFFICIAL_ACCOUNT', 'BILIBILI', 'XIAOHONGSHU', 'UNKNOWN']).optional(),
+  folderId: z.coerce.number().int().positive().optional(),
+  keyword: z
+    .string()
+    .trim()
+    .max(VALIDATION_LIMITS.SEARCH_QUERY_MAX_LENGTH, VALIDATION.TOO_LONG('关键词', VALIDATION_LIMITS.SEARCH_QUERY_MAX_LENGTH))
+    .optional(),
+  cursor: z.coerce.number().int().positive().optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+})
+
+export type GetBookmarksQuery = z.infer<typeof getBookmarksQuerySchema>
+
+/**
+ * 创建文件夹验证 Schema
+ */
+export const createFolderSchema = z.object({
+  name: folderNameSchema,
+  parentId: z.coerce.number().int().positive().optional(),
+  color: z
+    .string()
+    .trim()
+    .regex(/^#[0-9A-Fa-f]{6}$/, VALIDATION.INVALID_FORMAT('颜色'))
+    .optional(),
+  icon: z
+    .string()
+    .trim()
+    .max(50, VALIDATION.TOO_LONG('图标名称', 50))
+    .optional(),
+})
+
+export type CreateFolder = z.infer<typeof createFolderSchema>
+
+/**
+ * 更新文件夹验证 Schema
+ */
+export const updateFolderSchema = z.object({
+  name: folderNameSchema.optional(),
+  parentId: z.coerce.number().int().positive().nullable().optional(),
+  color: z
+    .string()
+    .trim()
+    .regex(/^#[0-9A-Fa-f]{6}$/, VALIDATION.INVALID_FORMAT('颜色'))
+    .nullable()
+    .optional(),
+  icon: z
+    .string()
+    .trim()
+    .max(50, VALIDATION.TOO_LONG('图标名称', 50))
+    .nullable()
+    .optional(),
+})
+
+export type UpdateFolder = z.infer<typeof updateFolderSchema>
+
+/**
+ * 批量删除收藏验证 Schema
+ */
+export const batchDeleteBookmarksSchema = z.object({
+  ids: z
+    .array(z.number().int().positive())
+    .min(1, VALIDATION.BATCH_SELECT_REQUIRED)
+    .max(100, VALIDATION.BATCH_LIMIT_EXCEEDED(100)),
+})
+
+export type BatchDeleteBookmarks = z.infer<typeof batchDeleteBookmarksSchema>
+
+/**
+ * 批量移动收藏到文件夹验证 Schema
+ */
+export const batchMoveBookmarksSchema = z.object({
+  ids: z
+    .array(z.number().int().positive())
+    .min(1, VALIDATION.BATCH_SELECT_REQUIRED)
+    .max(100, VALIDATION.BATCH_LIMIT_EXCEEDED(100)),
+  folderId: z.coerce.number().int().positive().nullable(),
+})
+
+export type BatchMoveBookmarks = z.infer<typeof batchMoveBookmarksSchema>

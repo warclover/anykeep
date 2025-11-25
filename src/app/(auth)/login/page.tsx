@@ -10,7 +10,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
 import { toast } from 'sonner'
-import { Sparkles, Mail, Phone, CheckCircle2, Zap, Shield, Search, Moon, Sun } from 'lucide-react'
+import { Sparkles, Mail, Phone, CheckCircle2, Moon, Sun } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -70,35 +70,8 @@ export default function LoginPage() {
     }, 1500)
   }
 
-  const features = [
-    {
-      icon: Sparkles,
-      title: 'AI 智能标签',
-      description: '自动分析内容并生成精准标签',
-      color: 'text-purple-600 bg-purple-50 dark:bg-purple-900/30',
-    },
-    {
-      icon: Search,
-      title: '语义搜索',
-      description: '理解搜索意图,快速找到内容',
-      color: 'text-blue-600 bg-blue-50 dark:bg-blue-900/30',
-    },
-    {
-      icon: Zap,
-      title: '跨平台聚合',
-      description: '统一管理所有平台收藏',
-      color: 'text-orange-600 bg-orange-50 dark:bg-orange-900/30',
-    },
-    {
-      icon: Shield,
-      title: '隐私保护',
-      description: '仅存储元数据，安全可靠',
-      color: 'text-green-600 bg-green-50 dark:bg-green-900/30',
-    },
-  ]
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex flex-col lg:flex-row">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center">
       {/* 主题切换按钮 */}
       <Button
         variant="outline"
@@ -110,77 +83,8 @@ export default function LoginPage() {
         <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
       </Button>
 
-      {/* 左侧：品牌展示 & 特性 */}
-      <div className="flex-1 flex flex-col justify-center px-6 md:px-12 lg:px-16 py-12 lg:py-0">
-        <div className="max-w-xl">
-          {/* Logo & 标题 */}
-          <div className="mb-8 md:mb-12">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-blue-600 rounded-xl flex items-center justify-center">
-                <Sparkles className="size-6 text-white" />
-              </div>
-              <h1 className="text-gray-900 dark:text-white text-3xl md:text-4xl font-bold">
-                AnyKeep
-              </h1>
-            </div>
-            <h2 className="text-2xl md:text-3xl lg:text-4xl text-gray-900 dark:text-white mb-4 font-semibold">
-              智能收藏管理工具
-            </h2>
-            <p className="text-gray-600 dark:text-gray-400 text-lg">
-              跨平台聚合你的收藏内容，AI 赋能智能管理
-            </p>
-          </div>
-
-          {/* 特性卡片网格 */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-            {features.map((feature) => {
-              const Icon = feature.icon
-              return (
-                <div key={feature.title} className="flex gap-4">
-                  <div
-                    className={`w-12 h-12 rounded-lg ${feature.color} flex items-center justify-center flex-shrink-0`}
-                  >
-                    <Icon className="size-6" />
-                  </div>
-                  <div>
-                    <h3 className="text-gray-900 dark:text-white mb-1 font-medium">
-                      {feature.title}
-                    </h3>
-                    <p className="text-gray-600 dark:text-gray-400 text-sm">
-                      {feature.description}
-                    </p>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-
-          {/* 数据统计 */}
-          <div className="mt-12 pt-8 border-t border-gray-200 dark:border-gray-700 hidden lg:flex gap-12">
-            <div>
-              <p className="text-3xl text-gray-900 dark:text-white mb-1 font-bold">
-                10,000+
-              </p>
-              <p className="text-gray-600 dark:text-gray-400 text-sm">活跃用户</p>
-            </div>
-            <div>
-              <p className="text-3xl text-gray-900 dark:text-white mb-1 font-bold">
-                5
-              </p>
-              <p className="text-gray-600 dark:text-gray-400 text-sm">平台支持</p>
-            </div>
-            <div>
-              <p className="text-3xl text-gray-900 dark:text-white mb-1 font-bold">
-                94%
-              </p>
-              <p className="text-gray-600 dark:text-gray-400 text-sm">效率提升</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 右侧：登录表单 */}
-      <div className="flex-1 flex items-center justify-center px-6 md:px-12 lg:px-16 py-12">
+      {/* 登录表单 */}
+      <div className="w-full max-w-md px-6 py-12">
         <Card className="w-full max-w-md shadow-xl">
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl">欢迎回来</CardTitle>

@@ -1,0 +1,48 @@
+/**
+ * 瀑布流布局样式
+ * 使用 CSS column-count 实现 Pinterest/MyMind 风格布局
+ */
+
+.masonry-grid {
+  column-count: 1;
+  column-gap: 1rem;
+}
+
+/* 平板：2 列 */
+@media (min-width: 768px) {
+  .masonry-grid {
+    column-count: 2;
+    column-gap: 1.5rem;
+  }
+}
+
+/* 桌面：3 列 */
+@media (min-width: 1024px) {
+  .masonry-grid {
+    column-count: 3;
+    column-gap: 1.5rem;
+  }
+}
+
+/* 大屏幕：4 列 */
+@media (min-width: 1536px) {
+  .masonry-grid {
+    column-count: 4;
+    column-gap: 1.5rem;
+  }
+}
+
+/* 瀑布流卡片项 */
+.masonry-item {
+  break-inside: avoid;
+  margin-bottom: 1rem;
+  /* 防止列内部的卡片被截断 */
+  page-break-inside: avoid;
+  -webkit-column-break-inside: avoid;
+}
+
+@media (min-width: 768px) {
+  .masonry-item {
+    margin-bottom: 1.5rem;
+  }
+}
