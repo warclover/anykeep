@@ -5,7 +5,7 @@
 
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Loader2, Folder, FolderOpen, Check } from 'lucide-react'
 import { toast } from 'sonner'
@@ -49,13 +49,7 @@ export function BatchMoveDialog({
   const [expandedFolders, setExpandedFolders] = useState<Set<number>>(new Set())
 
   // 加载文件夹列表
-  useEffect(() => {
-    if (open) {
-      loadFolders()
-    }
-  }, [open])
-
-  const loadFolders = async () => {
+  const loadFolders = useCallback(async () => {
     setIsLoading(true)
     try {
       const res = await fetchWithAbort('/api/folders')
@@ -74,7 +68,13 @@ export function BatchMoveDialog({
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [fetchWithAbort])
+
+  useEffect(() => {
+    if (open) {
+      loadFolders()
+    }
+  }, [open, loadFolders])
 
   const handleSubmit = async () => {
     if (selectedIds.size === 0) return

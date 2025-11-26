@@ -30,6 +30,22 @@ interface AIGenerateRequest {
 }
 
 /**
+ * 根据原文字数计算摘要上限
+ * - < 1000 字：100 字摘要
+ * - 1000-5000 字：200 字摘要
+ * - > 5000 字：300 字摘要
+ */
+function getSummaryLimit(contentLength: number): { min: number; max: number } {
+  if (contentLength < 1000) {
+    return { min: 50, max: 100 }
+  } else if (contentLength <= 5000) {
+    return { min: 100, max: 200 }
+  } else {
+    return { min: 150, max: 300 }
+  }
+}
+
+/**
  * 调用 DeepSeek API 生成摘要和标签
  */
 async function callDeepSeekAPI(
@@ -103,9 +119,14 @@ async function callDeepSeekAPI(
 
 /**
  * 构建 AI 提示词
+ * 根据内容长度动态调整摘要上限
  */
 function buildPrompt(title: string, description?: string, content?: string): string {
-  let prompt = `请分析以下内容，生成一个简洁的摘要（50-100字）和3-5个相关标签。
+  // 计算总内容长度
+  const contentLength = (title?.length || 0) + (description?.length || 0) + (content?.length || 0)
+  const { min, max } = getSummaryLimit(contentLength)
+
+  let prompt = `请分析以下内容，生成一个简洁的摘要（${min}-${max}字）和3-5个相关标签。
 
 标题：${title}`
 
@@ -159,10 +180,10 @@ function parseAIResponse(content: string): AIGenerateResult {
     }
 
     // 确保标签是字符串数组
-    const tags = result.tags
-      .filter((tag: any) => typeof tag === 'string')
-      .map((tag: string) => tag.trim())
-      .filter((tag: string) => tag.length > 0)
+    const tags = (result.tags as unknown[])
+      .filter((tag): tag is string => typeof tag === 'string')
+      .map((tag) => tag.trim())
+      .filter((tag) => tag.length > 0)
 
     if (tags.length === 0) {
       throw new Error('No valid tags found')
@@ -187,13 +208,18 @@ function parseAIResponse(content: string): AIGenerateResult {
 
 /**
  * 生成基于规则的简单摘要和标签（回退方案）
+ * 根据内容长度动态调整摘要上限
  */
-function generateFallbackContent(title: string, description?: string): AIGenerateResult {
-  // 简单摘要：使用标题或描述的前100个字符
+function generateFallbackContent(title: string, description?: string, content?: string): AIGenerateResult {
+  // 计算总内容长度，确定摘要上限
+  const contentLength = (title?.length || 0) + (description?.length || 0) + (content?.length || 0)
+  const { max } = getSummaryLimit(contentLength)
+
+  // 简单摘要：使用标题或描述的前 max 个字符
   let summary = title
 
   if (description && description.length > title.length) {
-    summary = description.length > 100 ? description.substring(0, 100) + '...' : description
+    summary = description.length > max ? description.substring(0, max) + '...' : description
   }
 
   // 简单标签：从标题中提取关键词
@@ -212,7 +238,7 @@ function generateFallbackContent(title: string, description?: string): AIGenerat
   }
 
   return {
-    summary: summary.substring(0, 100),
+    summary: summary.substring(0, max),
     tags: tags.slice(0, 5),
   }
 }
@@ -258,7 +284,7 @@ export async function generateAIContent(request: AIGenerateRequest): Promise<AIG
       },
       'AI Generator: Failed, using fallback'
     )
-    const fallback = generateFallbackContent(title, description)
+    const fallback = generateFallbackContent(title, description, content)
     logger.info(
       {
         summary: fallback.summary,

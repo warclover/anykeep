@@ -51,7 +51,7 @@ export function AppHeader({ user, profile }: AppHeaderProps) {
       toast.success('已退出登录')
       router.push('/login')
       router.refresh()
-    } catch (error) {
+    } catch {
       toast.error('退出失败', {
         description: '请稍后重试',
       })
@@ -72,9 +72,9 @@ export function AppHeader({ user, profile }: AppHeaderProps) {
         </Link>
 
         {/* 搜索框 - 移动端优化 */}
-        <div className="flex-1 mx-2 md:mx-4 lg:mx-8">
+        <div className="flex-1 mx-1 sm:mx-2 md:mx-4 lg:mx-8">
           <Link href="/search">
-            <div className="relative max-w-md mx-auto">
+            <div className="relative max-w-full sm:max-w-md lg:max-w-lg mx-auto">
               <input
                 type="text"
                 placeholder="搜索..."

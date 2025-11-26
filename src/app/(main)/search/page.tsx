@@ -7,7 +7,15 @@ import { createClient } from '@/lib/supabase/server'
 import { SearchPageClient } from '@/components/search/search-page-client'
 import { searchQuerySchema } from '@/lib/validation'
 import { QUERY_LIMITS, ANALYTICS } from '@/lib/constants/app'
-import { searchBookmarksFulltext, searchBookmarksIlike } from '@/lib/utils/fulltext-search'
+import { searchBookmarksFulltext } from '@/lib/utils/fulltext-search'
+import { searchBookmarksHybrid } from '@/lib/utils/semantic-search'
+import type { Bookmark } from '@/types/supabase'
+
+// 搜索结果类型 - 兼容全文搜索和语义搜索
+type SearchResult = Bookmark & {
+  folders?: { name: string } | null
+  similarity?: number
+}
 
 interface SearchPageProps {
   searchParams: Promise<{
@@ -31,7 +39,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   }
 
   // 如果有搜索关键词，验证并执行搜索
-  let searchResults: any[] = []
+  let searchResults: SearchResult[] = []
   let searchError: string | undefined
 
   if (params.q) {
@@ -46,17 +54,19 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
 
       try {
         if (isAISearch) {
-          // TODO: AI 语义搜索（向量搜索 - 后续实现）
-          // 暂时使用全文搜索
-          const { data, error } = await searchBookmarksFulltext(
+          // AI 语义搜索（混合搜索：关键词 + 向量相似度）
+          const { data, error } = await searchBookmarksHybrid(
             supabase,
             user.id,
             validatedQuery,
-            QUERY_LIMITS.SEARCH_RESULTS_PER_PAGE
+            {
+              threshold: 0.5,
+              limit: QUERY_LIMITS.SEARCH_RESULTS_PER_PAGE,
+            }
           )
 
           if (error) throw error
-          searchResults = data || []
+          searchResults = (data as SearchResult[]) || []
         } else {
           // PostgreSQL 全文搜索（使用 ts_vector + GIN 索引）
           const { data, error } = await searchBookmarksFulltext(
@@ -67,9 +77,9 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
           )
 
           if (error) throw error
-          searchResults = data || []
+          searchResults = (data as SearchResult[]) || []
         }
-      } catch (_error) {
+      } catch {
         searchError = '搜索时出错，请稍后重试'
       }
     }

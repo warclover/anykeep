@@ -2,12 +2,13 @@
  * 单个收藏 API 路由
  * GET /api/bookmarks/[id] - 获取收藏详情
  * PUT /api/bookmarks/[id] - 更新收藏
+ * PATCH /api/bookmarks/[id] - 切换已读状态
  * DELETE /api/bookmarks/[id] - 删除收藏
  */
 
 import type { NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { updateBookmarkSchema } from '@/lib/validation'
+import { updateBookmarkSchema, toggleReadSchema } from '@/lib/validation'
 import {
   successResponse,
   handleValidationError,
@@ -166,6 +167,103 @@ export async function PUT(
         operation: 'update_bookmark',
       },
       'PUT /api/bookmarks/[id] error'
+    )
+    return internalError(BOOKMARK.UPDATE_ERROR)
+  }
+}
+
+/**
+ * PATCH /api/bookmarks/[id]
+ * 切换已读状态
+ */
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params
+    const bookmarkId = parseInt(id)
+
+    if (isNaN(bookmarkId)) {
+      return notFoundError(BOOKMARK.NOT_FOUND)
+    }
+
+    // 1. 验证用户身份
+    const supabase = await createClient()
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return unauthorizedError()
+    }
+
+    // 2. 解析并验证请求体
+    const body = await request.json()
+    const validation = toggleReadSchema.safeParse(body)
+
+    if (!validation.success) {
+      return handleValidationError(validation.error)
+    }
+
+    const { isRead } = validation.data
+
+    // 3. 检查收藏是否存在且属于当前用户
+    const { data: existingBookmark, error: checkError } = await supabase
+      .from('bookmarks')
+      .select('id, user_id')
+      .eq('id', bookmarkId)
+      .is('deleted_at', null)
+      .single()
+
+    if (checkError) {
+      if (checkError.code === 'PGRST116') {
+        return notFoundError(BOOKMARK.NOT_FOUND)
+      }
+      return databaseError(BOOKMARK.LOAD_ERROR, checkError)
+    }
+
+    if (existingBookmark.user_id !== user.id) {
+      return forbiddenError(AUTH.FORBIDDEN)
+    }
+
+    // 4. 更新已读状态
+    const updateData: BookmarkUpdate = {
+      is_read: isRead,
+      read_at: isRead ? new Date().toISOString() : null,
+    }
+
+    const { data: updatedBookmark, error: updateError } = await supabase
+      .from('bookmarks')
+      .update(updateData)
+      .eq('id', bookmarkId)
+      .select('*, folders(name)')
+      .single()
+
+    if (updateError) {
+      return databaseError(BOOKMARK.UPDATE_ERROR, updateError)
+    }
+
+    logger.info(
+      {
+        bookmarkId,
+        isRead,
+        action: 'toggle_read_status',
+      },
+      'PATCH: Read status updated'
+    )
+
+    // 5. 返回更新后的收藏
+    return successResponse(updatedBookmark)
+  } catch (error) {
+    logger.error(
+      {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        operation: 'toggle_read_status',
+      },
+      'PATCH /api/bookmarks/[id] error'
     )
     return internalError(BOOKMARK.UPDATE_ERROR)
   }

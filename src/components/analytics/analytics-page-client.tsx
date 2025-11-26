@@ -6,7 +6,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ErrorMessage } from '@/components/ui/error-message'
-import { LineChart, Line, PieChart, Pie, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts'
+import { LineChart, Line, PieChart, Pie, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { TrendingUp, Users, Bookmark, Calendar } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
@@ -46,6 +46,37 @@ interface PieTooltipProps {
   payload?: PieTooltipPayload[]
 }
 
+
+// 自定义 Tooltip 组件（移出主组件以避免每次渲染重新创建）
+function CustomTooltip({ active, payload, formatDate }: TooltipProps & { formatDate: (d: string) => string }) {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+        <p className="text-sm text-gray-600 dark:text-gray-400">{formatDate(payload[0].payload.date)}</p>
+        <p className="text-base font-semibold text-gray-900 dark:text-white">
+          {payload[0].value} 篇收藏
+        </p>
+      </div>
+    )
+  }
+  return null
+}
+
+function CustomPieTooltip({ active, payload, totalBookmarks }: PieTooltipProps & { totalBookmarks: number }) {
+  if (active && payload && payload.length) {
+    const percentage = ((payload[0].value / totalBookmarks) * 100).toFixed(1)
+    return (
+      <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+        <p className="text-sm font-medium text-gray-900 dark:text-white">{payload[0].name}</p>
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          {payload[0].value} 篇 ({percentage}%)
+        </p>
+      </div>
+    )
+  }
+  return null
+}
+
 export function AnalyticsPageClient({ data, error }: AnalyticsPageClientProps) {
   const router = useRouter()
   const { trendData, platformData, tagData, typeData } = data
@@ -66,35 +97,7 @@ export function AnalyticsPageClient({ data, error }: AnalyticsPageClientProps) {
     router.refresh()
   }
 
-  // 自定义 Tooltip
-  const CustomTooltip = ({ active, payload }: TooltipProps) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
-          <p className="text-sm text-gray-600 dark:text-gray-400">{formatDate(payload[0].payload.date)}</p>
-          <p className="text-base font-semibold text-gray-900 dark:text-white">
-            {payload[0].value} 篇收藏
-          </p>
-        </div>
-      )
-    }
-    return null
-  }
-
-  const CustomPieTooltip = ({ active, payload }: PieTooltipProps) => {
-    if (active && payload && payload.length) {
-      const percentage = ((payload[0].value / totalBookmarks) * 100).toFixed(1)
-      return (
-        <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
-          <p className="text-sm font-medium text-gray-900 dark:text-white">{payload[0].name}</p>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            {payload[0].value} 篇 ({percentage}%)
-          </p>
-        </div>
-      )
-    }
-    return null
-  }
+  
 
   const hasData = totalBookmarks > 0
 
@@ -120,58 +123,58 @@ export function AnalyticsPageClient({ data, error }: AnalyticsPageClientProps) {
         ) : hasData ? (
           <div className="space-y-6">
             {/* 统计卡片 */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
               <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
-                      <Bookmark className="size-6 text-purple-600 dark:text-purple-400" />
+                <CardContent className="p-4 sm:p-6">
+                  <div className="flex items-center gap-3 sm:gap-4">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
+                      <Bookmark className="size-5 sm:size-6 text-purple-600 dark:text-purple-400" />
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">总收藏</p>
-                      <p className="text-2xl font-bold text-gray-900 dark:text-white">{totalBookmarks}</p>
+                      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">总收藏</p>
+                      <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{totalBookmarks}</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
               <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
-                      <Calendar className="size-6 text-blue-600 dark:text-blue-400" />
+                <CardContent className="p-4 sm:p-6">
+                  <div className="flex items-center gap-3 sm:gap-4">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                      <Calendar className="size-5 sm:size-6 text-blue-600 dark:text-blue-400" />
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">今日新增</p>
-                      <p className="text-2xl font-bold text-gray-900 dark:text-white">{todayCount}</p>
+                      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">今日新增</p>
+                      <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{todayCount}</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
               <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
-                      <TrendingUp className="size-6 text-green-600 dark:text-green-400" />
+                <CardContent className="p-4 sm:p-6">
+                  <div className="flex items-center gap-3 sm:gap-4">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
+                      <TrendingUp className="size-5 sm:size-6 text-green-600 dark:text-green-400" />
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">本周新增</p>
-                      <p className="text-2xl font-bold text-gray-900 dark:text-white">{weekCount}</p>
+                      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">本周新增</p>
+                      <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{weekCount}</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
               <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center">
-                      <Users className="size-6 text-orange-600 dark:text-orange-400" />
+                <CardContent className="p-4 sm:p-6">
+                  <div className="flex items-center gap-3 sm:gap-4">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center">
+                      <Users className="size-5 sm:size-6 text-orange-600 dark:text-orange-400" />
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">本月新增</p>
-                      <p className="text-2xl font-bold text-gray-900 dark:text-white">{monthCount}</p>
+                      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">本月新增</p>
+                      <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{monthCount}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -196,7 +199,7 @@ export function AnalyticsPageClient({ data, error }: AnalyticsPageClientProps) {
                       className="text-xs text-gray-500 dark:text-gray-400"
                     />
                     <YAxis className="text-xs text-gray-500 dark:text-gray-400" />
-                    <Tooltip content={<CustomTooltip />} />
+                    <Tooltip content={<CustomTooltip formatDate={formatDate} />} />
                     <Line
                       type="monotone"
                       dataKey="count"
@@ -221,7 +224,7 @@ export function AnalyticsPageClient({ data, error }: AnalyticsPageClientProps) {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
+                  <ResponsiveContainer width="100%" height={250}>
                     <PieChart>
                       <Pie
                         data={platformData}
@@ -229,7 +232,7 @@ export function AnalyticsPageClient({ data, error }: AnalyticsPageClientProps) {
                         cy="50%"
                         labelLine={false}
                         label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
-                        outerRadius={100}
+                        outerRadius={80}
                         fill="#8884d8"
                         dataKey="value"
                       >
@@ -237,7 +240,7 @@ export function AnalyticsPageClient({ data, error }: AnalyticsPageClientProps) {
                           <Cell key={`cell-${index}`} fill={entry.color} />
                         ))}
                       </Pie>
-                      <Tooltip content={<CustomPieTooltip />} />
+                      <Tooltip content={<CustomPieTooltip totalBookmarks={totalBookmarks} />} />
                     </PieChart>
                   </ResponsiveContainer>
                 </CardContent>
@@ -253,15 +256,15 @@ export function AnalyticsPageClient({ data, error }: AnalyticsPageClientProps) {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <ResponsiveContainer width="100%" height={300}>
+                    <ResponsiveContainer width="100%" height={250}>
                       <PieChart>
                         <Pie
                           data={typeData}
                           cx="50%"
                           cy="50%"
                           labelLine={false}
-                          label={({ type, percent }) => `${type} ${(percent * 100).toFixed(0)}%`}
-                          outerRadius={100}
+                          label={({ payload, percent }: { payload?: { type: string }; percent?: number }) => `${payload?.type ?? ''} ${((percent ?? 0) * 100).toFixed(0)}%`}
+                          outerRadius={80}
                           fill="#8884d8"
                           dataKey="count"
                         >
@@ -289,15 +292,16 @@ export function AnalyticsPageClient({ data, error }: AnalyticsPageClientProps) {
                     热门标签 TOP 10
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={400}>
-                    <BarChart data={tagData} layout="vertical">
+                <CardContent className="px-2 sm:px-6">
+                  <ResponsiveContainer width="100%" height={350}>
+                    <BarChart data={tagData} layout="vertical" margin={{ left: 0, right: 10 }}>
                       <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-gray-700" />
                       <XAxis type="number" className="text-xs text-gray-500 dark:text-gray-400" />
                       <YAxis
                         dataKey="tag"
                         type="category"
-                        width={100}
+                        width={70}
+                        tick={{ fontSize: 11 }}
                         className="text-xs text-gray-500 dark:text-gray-400"
                       />
                       <Tooltip

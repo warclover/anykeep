@@ -67,11 +67,11 @@ export function BatchImportDialog({
     try {
       // 读取文件内容
       const fileContent = await selectedFile.text()
-      let bookmarks: any[]
+      let bookmarks: unknown[]
 
       try {
         bookmarks = JSON.parse(fileContent)
-      } catch (error) {
+      } catch {
         toast.error(BOOKMARK.BATCH_IMPORT_FILE_ERROR)
         return
       }

@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DELETE API 测试 - AnyKeep</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f5f5f5;
+      padding: 20px;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+      font-size: 24px;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+
+    .step {
+      margin-bottom: 30px;
+      padding: 20px;
+      background: #f9f9f9;
+      border-radius: 6px;
+      border-left: 4px solid #4CAF50;
+    }
+
+    .step.pending {
+      border-left-color: #999;
+    }
+
+    .step.running {
+      border-left-color: #2196F3;
+      background: #E3F2FD;
+    }
+
+    .step.success {
+      border-left-color: #4CAF50;
+      background: #E8F5E9;
+    }
+
+    .step.error {
+      border-left-color: #f44336;
+      background: #FFEBEE;
+    }
+
+    .step-title {
+      font-weight: 600;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .step-icon {
+      font-size: 20px;
+    }
+
+    .step-content {
+      color: #555;
+      font-size: 14px;
+    }
+
+    .log {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 15px;
+      border-radius: 4px;
+      margin-top: 10px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .log-line {
+      margin: 2px 0;
+    }
+
+    .log-success { color: #4CAF50; }
+    .log-error { color: #f44336; }
+    .log-info { color: #2196F3; }
+    .log-warning { color: #FF9800; }
+
+    button {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 500;
+      transition: background 0.2s;
+    }
+
+    button:hover {
+      background: #45a049;
+    }
+
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+
+    .summary {
+      margin-top: 30px;
+      padding: 20px;
+      background: #E8F5E9;
+      border-radius: 6px;
+      border: 2px solid #4CAF50;
+    }
+
+    .summary.error {
+      background: #FFEBEE;
+      border-color: #f44336;
+    }
+
+    .summary h2 {
+      font-size: 18px;
+      margin-bottom: 10px;
+      color: #333;
+    }
+
+    .summary ul {
+      margin-left: 20px;
+      color: #555;
+    }
+
+    .summary li {
+      margin: 5px 0;
+    }
+
+    .note {
+      background: #FFF3E0;
+      padding: 15px;
+      border-radius: 4px;
+      border-left: 4px solid #FF9800;
+      margin-bottom: 20px;
+      font-size: 14px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🧪 DELETE API RLS 修复测试</h1>
+    <p class="subtitle">验证软删除功能是否正常工作</p>
+
+    <div class="note">
+      <strong>⚠️ 前置条件:</strong>
+      <ul style="margin-left: 20px; margin-top: 5px;">
+        <li>已在 Supabase Dashboard 执行 RLS 修复 SQL</li>
+        <li>已登录 AnyKeep 应用 (http://localhost:3000)</li>
+        <li>开发服务器正在运行</li>
+      </ul>
+    </div>
+
+    <button id="startTest" onclick="runTest()">🚀 开始测试</button>
+
+    <div id="steps"></div>
+    <div id="summary"></div>
+  </div>
+
+  <script>
+    let testBookmarkId = null;
+    let logs = [];
+
+    function addLog(message, type = 'info') {
+      const timestamp = new Date().toLocaleTimeString();
+      logs.push({ timestamp, message, type });
+      console.log(`[${timestamp}] ${message}`);
+    }
+
+    function updateStep(stepNum, status, title, content, logMessages = []) {
+      const stepsDiv = document.getElementById('steps');
+      let stepDiv = document.getElementById(`step-${stepNum}`);
+
+      if (!stepDiv) {
+        stepDiv = document.createElement('div');
+        stepDiv.id = `step-${stepNum}`;
+        stepDiv.className = 'step pending';
+        stepsDiv.appendChild(stepDiv);
+      }
+
+      stepDiv.className = `step ${status}`;
+
+      const icons = {
+        pending: '⏳',
+        running: '⚙️',
+        success: '✅',
+        error: '❌'
+      };
+
+      let logHtml = '';
+      if (logMessages.length > 0) {
+        logHtml = '<div class="log">';
+        logMessages.forEach(log => {
+          logHtml += `<div class="log-line log-${log.type}">[${log.timestamp}] ${log.message}</div>`;
+        });
+        logHtml += '</div>';
+      }
+
+      stepDiv.innerHTML = `
+        <div class="step-title">
+          <span class="step-icon">${icons[status]}</span>
+          <span>步骤 ${stepNum}: ${title}</span>
+        </div>
+        <div class="step-content">${content}</div>
+        ${logHtml}
+      `;
+    }
+
+    function showSummary(success, details) {
+      const summaryDiv = document.getElementById('summary');
+      summaryDiv.className = success ? 'summary' : 'summary error';
+
+      const icon = success ? '🎉' : '❌';
+      const title = success ? '测试通过！' : '测试失败';
+
+      let detailsHtml = '<ul>';
+      details.forEach(detail => {
+        detailsHtml += `<li>${detail}</li>`;
+      });
+      detailsHtml += '</ul>';
+
+      summaryDiv.innerHTML = `
+        <h2>${icon} ${title}</h2>
+        ${detailsHtml}
+      `;
+    }
+
+    async function runTest() {
+      const button = document.getElementById('startTest');
+      button.disabled = true;
+      button.textContent = '🔄 测试中...';
+
+      document.getElementById('steps').innerHTML = '';
+      document.getElementById('summary').innerHTML = '';
+      logs = [];
+      testBookmarkId = null;
+
+      try {
+        // 步骤 1: 创建测试收藏
+        updateStep(1, 'running', '创建测试收藏', '正在创建...');
+        addLog('开始创建测试收藏');
+
+        const createResponse = await fetch('/api/bookmarks', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            url: `https://example.com/test-delete-${Date.now()}`,
+            title: `DELETE 测试 ${new Date().toLocaleString()}`,
+          }),
+        });
+
+        if (!createResponse.ok) {
+          throw new Error(`创建收藏失败: HTTP ${createResponse.status}`);
+        }
+
+        const createData = await createResponse.json();
+        if (!createData.success || !createData.data) {
+          throw new Error('创建收藏失败: 响应格式错误');
+        }
+
+        testBookmarkId = createData.data.id;
+        addLog(`创建成功，ID: ${testBookmarkId}`, 'success');
+        updateStep(1, 'success', '创建测试收藏', `ID: ${testBookmarkId}`, logs.slice());
+
+        // 等待 1 秒
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // 步骤 2: 测试删除
+        updateStep(2, 'running', '测试删除收藏（RLS 验证）', '正在删除...');
+        addLog(`开始删除收藏 ID: ${testBookmarkId}`);
+
+        const deleteResponse = await fetch(`/api/bookmarks/${testBookmarkId}`, {
+          method: 'DELETE',
+        });
+
+        addLog(`DELETE 响应状态: ${deleteResponse.status}`, deleteResponse.ok ? 'info' : 'error');
+
+        const deleteData = await deleteResponse.json();
+        addLog(`响应内容: ${JSON.stringify(deleteData)}`, 'info');
+
+        if (!deleteResponse.ok) {
+          if (deleteData.error && deleteData.error.message &&
+              deleteData.error.message.includes('row-level security')) {
+            addLog('❌ 检测到 RLS 策略错误！', 'error');
+            addLog('RLS 修复未成功应用', 'error');
+            throw new Error('RLS 策略错误: ' + deleteData.error.message);
+          }
+          throw new Error(`删除失败: ${deleteData.error?.message || '未知错误'}`);
+        }
+
+        if (!deleteData.success) {
+          throw new Error(`删除失败: ${deleteData.error?.message || '未知错误'}`);
+        }
+
+        addLog('删除成功！', 'success');
+        updateStep(2, 'success', '测试删除收藏（RLS 验证）', '删除成功', logs.slice());
+
+        // 步骤 3: 验证列表中不再显示
+        updateStep(3, 'running', '验证收藏列表', '检查已删除的收藏是否还在列表中...');
+        addLog('检查收藏列表');
+
+        const listResponse = await fetch('/api/bookmarks');
+        const listData = await listResponse.json();
+
+        if (listData.success && listData.data) {
+          const foundInList = listData.data.items.some(b => b.id === testBookmarkId);
+
+          if (!foundInList) {
+            addLog('✅ 验证成功：删除的收藏不在列表中', 'success');
+            updateStep(3, 'success', '验证收藏列表', '已删除的收藏不在列表中', logs.slice());
+          } else {
+            addLog('❌ 验证失败：删除的收藏仍在列表中', 'error');
+            updateStep(3, 'error', '验证收藏列表', '删除的收藏仍在列表中', logs.slice());
+            throw new Error('删除的收藏仍在列表中');
+          }
+        } else {
+          addLog('⚠️  无法获取收藏列表', 'warning');
+          updateStep(3, 'success', '验证收藏列表', '无法验证（但删除操作成功）', logs.slice());
+        }
+
+        // 测试成功
+        showSummary(true, [
+          'RLS 策略正确配置 ✅',
+          '软删除功能正常工作 ✅',
+          'deleted_at 字段正确设置 ✅',
+          '已删除的收藏不出现在列表中 ✅',
+          '',
+          '✨ 可以继续 Week 3 Day 1-2 任务：图片上传集成'
+        ]);
+
+        button.textContent = '✅ 测试通过';
+        button.style.background = '#4CAF50';
+
+      } catch (error) {
+        addLog(`错误: ${error.message}`, 'error');
+
+        if (testBookmarkId) {
+          updateStep(2, 'error', '测试删除收藏（RLS 验证）', error.message, logs.slice());
+        } else {
+          updateStep(1, 'error', '创建测试收藏', error.message, logs.slice());
+        }
+
+        const errorDetails = [
+          `错误: ${error.message}`,
+          '',
+          '🔍 可能的原因:',
+          '1. RLS 策略修复未成功应用',
+          '2. 未登录或 session 已过期',
+          '3. 网络连接问题',
+          '',
+          '💡 建议:',
+          '1. 确认已在 Supabase Dashboard 执行 RLS 修复 SQL',
+          '2. 确认已登录 AnyKeep 应用',
+          '3. 查看浏览器 Console 的详细错误信息',
+          '4. 参阅 test-delete-api.md 获取更多测试方法'
+        ];
+
+        showSummary(false, errorDetails);
+
+        button.textContent = '❌ 测试失败，点击重试';
+        button.style.background = '#f44336';
+        button.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>

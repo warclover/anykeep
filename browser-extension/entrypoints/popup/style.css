@@ -1,0 +1,140 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Popup 固定宽度 */
+html, body, #root {
+  width: 360px;
+  min-height: 480px;
+  margin: 0;
+  padding: 0;
+}
+
+/* 自定义滚动条 */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
+}
+
+/* 平台品牌色 */
+.bg-wechat { background-color: #07C160; }
+.bg-bilibili { background-color: #FB7299; }
+.bg-xiaohongshu { background-color: #FF2442; }
+
+/* 成功动画 */
+@keyframes success-bounce {
+  0%, 100% { transform: scale(1); }
+  30% { transform: scale(1.05); }
+  60% { transform: scale(0.98); }
+}
+
+@keyframes success-check {
+  0% { stroke-dashoffset: 100; }
+  100% { stroke-dashoffset: 0; }
+}
+
+@keyframes success-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
+  70% { box-shadow: 0 0 0 12px rgba(34, 197, 94, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+}
+
+@keyframes success-fade-in {
+  0% { opacity: 0; transform: translateY(10px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes confetti-fall {
+  0% { transform: translateY(-10px) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(30px) rotate(360deg); opacity: 0; }
+}
+
+@keyframes success-icon-pop {
+  0% { transform: scale(0) rotate(-45deg); opacity: 0; }
+  50% { transform: scale(1.2) rotate(10deg); }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+.animate-success-bounce {
+  animation: success-bounce 0.6s ease-in-out, success-pulse 1.2s ease-out;
+}
+
+.animate-success-check {
+  stroke-dasharray: 100;
+  animation: success-check 0.5s ease-out forwards;
+}
+
+.animate-success-fade {
+  animation: success-fade-in 0.4s ease-out;
+}
+
+.animate-success-icon {
+  animation: success-icon-pop 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+/* 纸屑效果容器 */
+.confetti-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+  overflow: hidden;
+  height: 100%;
+}
+
+.confetti {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  animation: confetti-fall 1.5s ease-out forwards;
+}
+
+.confetti:nth-child(1) { left: 10%; background: #FF6B6B; animation-delay: 0s; }
+.confetti:nth-child(2) { left: 25%; background: #4ECDC4; animation-delay: 0.1s; }
+.confetti:nth-child(3) { left: 40%; background: #45B7D1; animation-delay: 0.2s; }
+.confetti:nth-child(4) { left: 55%; background: #96CEB4; animation-delay: 0.1s; }
+.confetti:nth-child(5) { left: 70%; background: #FFEAA7; animation-delay: 0.15s; }
+.confetti:nth-child(6) { left: 85%; background: #DDA0DD; animation-delay: 0.05s; }
+
+/* 成功状态增强样式 */
+.success-card {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.success-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.1) 50%,
+    transparent 70%
+  );
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%) rotate(45deg); }
+  100% { transform: translateX(100%) rotate(45deg); }
+}

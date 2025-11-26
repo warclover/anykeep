@@ -11,6 +11,8 @@ export interface CrawlResult {
   coverUrl?: string
   description?: string
   platform: 'WECHAT_OFFICIAL_ACCOUNT' | 'BILIBILI' | 'XIAOHONGSHU' | 'UNKNOWN'
+  wordCount?: number
+  imageCount?: number
 }
 
 /**
@@ -37,6 +39,31 @@ function detectPlatform(url: string): CrawlResult['platform'] {
 }
 
 /**
+ * HTML 实体解码
+ * 将 &#x2F; -> / 等 HTML 实体转换为实际字符
+ */
+function decodeHtmlEntities(text: string): string {
+  if (!text) return text
+
+  return text
+    // 十六进制数字实体 &#x2F; -> /
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+    // 十进制数字实体 &#47; -> /
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)))
+    // 命名实体
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&mdash;/g, '—')
+    .replace(/&ndash;/g, '–')
+    .replace(/&hellip;/g, '…')
+}
+
+/**
  * 从 HTML 中提取 meta 标签内容
  */
 function extractMetaTag(html: string, name: string): string | undefined {
@@ -51,7 +78,8 @@ function extractMetaTag(html: string, name: string): string | undefined {
   )
 
   const match = html.match(propertyRegex) || html.match(nameRegex)
-  return match ? match[1] : undefined
+  // 解码 HTML 实体
+  return match ? decodeHtmlEntities(match[1]) : undefined
 }
 
 /**
@@ -59,7 +87,80 @@ function extractMetaTag(html: string, name: string): string | undefined {
  */
 function extractTitle(html: string): string | undefined {
   const match = html.match(/<title[^>]*>([^<]+)<\/title>/i)
-  return match ? match[1].trim() : undefined
+  // 解码 HTML 实体
+  return match ? decodeHtmlEntities(match[1].trim()) : undefined
+}
+
+/**
+ * 提取正文字数
+ */
+function extractWordCount(html: string): number {
+  // 移除 script 和 style 标签
+  let text = html
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<noscript[^>]*>[\s\S]*?<\/noscript>/gi, '')
+
+  // 尝试提取正文区域
+  const wechatContent = text.match(/<div[^>]*id="js_content"[^>]*>([\s\S]*?)<\/div>/i)
+  if (wechatContent) {
+    text = wechatContent[1]
+  } else {
+    const articleContent = text.match(/<article[^>]*>([\s\S]*?)<\/article>/i)
+    const mainContent = text.match(/<main[^>]*>([\s\S]*?)<\/main>/i)
+    if (articleContent) {
+      text = articleContent[1]
+    } else if (mainContent) {
+      text = mainContent[1]
+    }
+  }
+
+  // 移除 HTML 标签并解码实体
+  text = text.replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, '')
+
+  return text.length
+}
+
+/**
+ * 提取图片数量
+ */
+function extractImageCount(html: string): number {
+  // 尝试提取正文区域
+  let contentHtml = html
+  const wechatContent = html.match(/<div[^>]*id="js_content"[^>]*>([\s\S]*?)<\/div>/i)
+  if (wechatContent) {
+    contentHtml = wechatContent[1]
+  } else {
+    const articleContent = html.match(/<article[^>]*>([\s\S]*?)<\/article>/i)
+    const mainContent = html.match(/<main[^>]*>([\s\S]*?)<\/main>/i)
+    if (articleContent) {
+      contentHtml = articleContent[1]
+    } else if (mainContent) {
+      contentHtml = mainContent[1]
+    }
+  }
+
+  // 统计有效 img 标签
+  const imgMatches = contentHtml.match(/<img[^>]+>/gi) || []
+  const validImages = imgMatches.filter((img) => {
+    if (/class=["'][^"']*(?:emoji|icon|avatar|logo|qr)[^"']*["']/i.test(img)) {
+      return false
+    }
+    const widthMatch = img.match(/width=["']?(\d+)/i)
+    const heightMatch = img.match(/height=["']?(\d+)/i)
+    if (widthMatch && parseInt(widthMatch[1]) < 50) return false
+    if (heightMatch && parseInt(heightMatch[1]) < 50) return false
+    return true
+  })
+
+  return validImages.length
 }
 
 /**
@@ -117,11 +218,17 @@ async function crawlWechat(url: string): Promise<Partial<CrawlResult>> {
   const description =
     extractMetaTag(html, 'og:description') || extractMetaTag(html, 'description')
 
+  // 提取字数和图片数
+  const wordCount = extractWordCount(html)
+  const imageCount = extractImageCount(html)
+
   return {
     title,
     author,
     coverUrl,
     description,
+    wordCount,
+    imageCount,
   }
 }
 
@@ -148,11 +255,17 @@ async function crawlBilibili(url: string): Promise<Partial<CrawlResult>> {
   const description =
     extractMetaTag(html, 'og:description') || extractMetaTag(html, 'description')
 
+  // 提取字数和图片数
+  const wordCount = extractWordCount(html)
+  const imageCount = extractImageCount(html)
+
   return {
     title,
     author,
     coverUrl,
     description,
+    wordCount,
+    imageCount,
   }
 }
 
@@ -176,11 +289,17 @@ async function crawlXiaohongshu(url: string): Promise<Partial<CrawlResult>> {
   const description =
     extractMetaTag(html, 'og:description') || extractMetaTag(html, 'description')
 
+  // 提取字数和图片数
+  const wordCount = extractWordCount(html)
+  const imageCount = extractImageCount(html)
+
   return {
     title,
     author,
     coverUrl,
     description,
+    wordCount,
+    imageCount,
   }
 }
 
@@ -202,11 +321,17 @@ async function crawlGeneric(url: string): Promise<Partial<CrawlResult>> {
   const description =
     extractMetaTag(html, 'og:description') || extractMetaTag(html, 'description')
 
+  // 提取字数和图片数
+  const wordCount = extractWordCount(html)
+  const imageCount = extractImageCount(html)
+
   return {
     title,
     author,
     coverUrl,
     description,
+    wordCount,
+    imageCount,
   }
 }
 
@@ -272,5 +397,7 @@ export async function crawlContent(url: string): Promise<CrawlResult> {
     author: result.author,
     coverUrl: result.coverUrl,
     description: result.description,
+    wordCount: result.wordCount,
+    imageCount: result.imageCount,
   }
 }

@@ -33,11 +33,13 @@ export function useAbortableFetch() {
    * 组件卸载时取消所有请求
    */
   useEffect(() => {
+    // 复制 ref 到本地变量，避免 cleanup 时 ref 已变化
+    const controllers = abortControllersRef.current
     return () => {
-      abortControllersRef.current.forEach((controller) => {
+      controllers.forEach((controller) => {
         controller.abort()
       })
-      abortControllersRef.current.clear()
+      controllers.clear()
     }
   }, [])
 
@@ -73,6 +75,7 @@ export function useAbortableFetch() {
         if (error instanceof Error && error.name === 'AbortError') {
           // 开发环境下记录取消日志
           if (process.env.NODE_ENV === 'development') {
+            // eslint-disable-next-line no-console
             console.log('Request cancelled:', input)
           }
           // 抛出取消错误，让调用者决定如何处理
@@ -127,7 +130,7 @@ export function useAbortableFetch() {
  */
 export function useDebouncedAbortableFetch(delay: number = 300) {
   const { fetchWithAbort, abortAll } = useAbortableFetch()
-  const timeoutRef = useRef<NodeJS.Timeout>()
+  const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
 
   /**
    * 防抖 fetch

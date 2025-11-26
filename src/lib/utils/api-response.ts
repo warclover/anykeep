@@ -81,12 +81,12 @@ export function errorResponse(
  * 处理 Zod 验证错误
  */
 export function handleValidationError(error: ZodError): NextResponse<ApiResponse> {
-  const firstError = error.errors[0]
+  const firstError = error.issues[0]
   return errorResponse(
     API_ERROR_CODES.VALIDATION_ERROR,
     firstError.message,
     400,
-    error.errors
+    error.issues
   )
 }
 
@@ -121,7 +121,7 @@ export function badRequestError(message = '请求参数错误'): NextResponse<Ap
 /**
  * 处理配额超限错误
  */
-export function quotaExceededError(message = STORAGE.QUOTA_EXCEEDED): NextResponse<ApiResponse> {
+export function quotaExceededError(message: string = STORAGE.QUOTA_EXCEEDED): NextResponse<ApiResponse> {
   return errorResponse(API_ERROR_CODES.QUOTA_EXCEEDED, message, 429)
 }
 

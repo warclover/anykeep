@@ -6,7 +6,7 @@
 'use client'
 
 import type { ChangeEvent, DragEvent } from 'react';
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Upload, X, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { uploadFile, compressImage, validateImageFile } from '@/lib/utils/file-upload'
@@ -40,6 +40,16 @@ export function ImageUpload({
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   /**
+   * 监听 defaultImageUrl 变化，自动更新预览
+   * 用于爬虫抓取封面后自动显示
+   */
+  useEffect(() => {
+    if (!uploading) {
+      setPreview(defaultImageUrl || null)
+    }
+  }, [defaultImageUrl, uploading])
+
+  /**
    * 处理文件选择
    */
   const handleFileSelect = async (file: File) => {
@@ -65,6 +75,7 @@ export function ImageUpload({
           fileToUpload = await compressImage(file, maxWidth, maxHeight, 0.8)
           // 前端日志保持简化，仅开发环境输出
           if (process.env.NODE_ENV === 'development') {
+            // eslint-disable-next-line no-console
             console.log('[Image Upload] Compressed:', {
               original: file.size,
               compressed: fileToUpload.size,
@@ -94,6 +105,7 @@ export function ImageUpload({
       onUploadSuccess(result.url)
 
       if (process.env.NODE_ENV === 'development') {
+        // eslint-disable-next-line no-console
         console.log('[Image Upload] Success:', result)
       }
     } catch (error) {
@@ -201,7 +213,8 @@ export function ImageUpload({
       {preview ? (
         // 预览模式
         <div className="relative group">
-          <div className="relative aspect-video w-full overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+          <div className="relative h-32 w-full overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={preview}
               alt="预览"
@@ -240,7 +253,7 @@ export function ImageUpload({
           onDragOver={handleDragOver}
           onDrop={handleDrop}
           className={`
-            relative aspect-video w-full rounded-lg border-2 border-dashed
+            relative h-32 w-full rounded-lg border-2 border-dashed
             flex flex-col items-center justify-center
             cursor-pointer transition-colors
             ${
@@ -253,19 +266,19 @@ export function ImageUpload({
         >
           {uploading ? (
             <>
-              <Loader2 className="size-12 text-gray-400 animate-spin mb-3" />
+              <Loader2 className="size-8 text-gray-400 animate-spin mb-2" />
               <p className="text-gray-600 dark:text-gray-400 text-sm font-medium">
                 上传中 {progress}%
               </p>
             </>
           ) : (
             <>
-              <Upload className="size-12 text-gray-400 mb-3" />
-              <p className="text-gray-600 dark:text-gray-300 text-sm font-medium mb-1">
-                点击或拖拽图片到此处上传
+              <Upload className="size-8 text-gray-400 mb-2" />
+              <p className="text-gray-600 dark:text-gray-300 text-sm font-medium">
+                点击或拖拽上传封面
               </p>
               <p className="text-gray-500 dark:text-gray-400 text-xs">
-                支持 JPG、PNG、WebP、GIF，最大 5MB
+                JPG/PNG/WebP/GIF，最大 5MB
               </p>
             </>
           )}

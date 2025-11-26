@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
-import { Settings, Shield, Sparkles, Bell, Link as LinkIcon, User, Download, Trash2, LogOut } from 'lucide-react'
+import { Settings, Shield, Sparkles, Bell, Link as LinkIcon, User as UserIcon, Download, Trash2, LogOut } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { ErrorMessage } from '@/components/ui/error-message'
@@ -85,7 +85,7 @@ export function SettingsPageClient({ user, settings: initialSettings, error }: S
   }
 
   // 平台授权
-  const handlePlatformAuth = (platform: string) => {
+  const handlePlatformAuth = (_platform: string) => {
     // TODO: 实现平台 OAuth 流程
   }
 
@@ -139,7 +139,7 @@ export function SettingsPageClient({ user, settings: initialSettings, error }: S
             <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <User className="size-5 text-purple-600 dark:text-purple-400" />
+                <UserIcon className="size-5 text-purple-600 dark:text-purple-400" />
                 账号信息
               </CardTitle>
               <CardDescription>管理你的个人信息</CardDescription>

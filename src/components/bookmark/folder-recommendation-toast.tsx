@@ -30,7 +30,7 @@ interface FolderRecommendationToastProps {
 
 export function FolderRecommendationToast({
   recommendation,
-  bookmarkId,
+  bookmarkId: _bookmarkId,
   onApply,
   onDismiss,
   onCustomize,

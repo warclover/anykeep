@@ -152,6 +152,9 @@ export const createBookmarkSchema = z.object({
     .url(VALIDATION.INVALID_FORMAT('封面图 URL'))
     .optional()
     .or(z.literal('')),
+  // 内容统计（从元数据自动获取）
+  wordCount: z.coerce.number().int().nonnegative().optional(),
+  imageCount: z.coerce.number().int().nonnegative().optional(),
 })
 
 export type CreateBookmark = z.infer<typeof createBookmarkSchema>
@@ -265,3 +268,14 @@ export const batchMoveBookmarksSchema = z.object({
 })
 
 export type BatchMoveBookmarks = z.infer<typeof batchMoveBookmarksSchema>
+
+/**
+ * 切换已读状态验证 Schema
+ */
+export const toggleReadSchema = z.object({
+  isRead: z.boolean({
+    message: 'isRead 必须是布尔值',
+  }),
+})
+
+export type ToggleRead = z.infer<typeof toggleReadSchema>

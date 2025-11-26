@@ -1,12 +1,28 @@
 /**
  * AI 文件夹推荐 Hook
  * 管理文件夹推荐状态和操作
+ *
+ * V4.2 更新：集成置信度分层自动分类
+ * - ≥80% 置信度：自动归类（不显示 toast）
+ * - 60-79% 置信度：显示推荐 toast
+ * - <60% 置信度：自动放入"待整理"（不显示 toast）
  */
 
 import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import type { FolderRecommendation } from '@/components/bookmark/folder-recommendation-toast'
+
+/**
+ * 自动分类 API 响应类型
+ */
+interface AutoClassifyResponse {
+  action: 'auto' | 'recommend' | 'inbox'
+  folderId?: number | null
+  folderName?: string
+  message?: string
+  recommendation?: FolderRecommendation
+}
 
 interface UseFolderRecommendationReturn {
   recommendation: FolderRecommendation | null
@@ -24,7 +40,7 @@ export function useFolderRecommendation(): UseFolderRecommendationReturn {
   const [isLoading, setIsLoading] = useState(false)
 
   /**
-   * 获取文件夹推荐
+   * 获取文件夹推荐并自动处理置信度分层
    */
   const fetchRecommendation = useCallback(async (
     id: number,
@@ -36,7 +52,8 @@ export function useFolderRecommendation(): UseFolderRecommendationReturn {
     setBookmarkId(id)
 
     try {
-      const response = await fetch('/api/ai/recommend-folder', {
+      // 1. 获取 AI 推荐
+      const recommendResponse = await fetch('/api/ai/recommend-folder', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -48,19 +65,81 @@ export function useFolderRecommendation(): UseFolderRecommendationReturn {
         }),
       })
 
-      if (!response.ok) {
-        throw new Error('获取推荐失败')
+      let recommendData: FolderRecommendation | null = null
+
+      if (recommendResponse.ok) {
+        const result = await recommendResponse.json()
+        recommendData = result.data
       }
 
-      const data = await response.json()
-      setRecommendation(data.data)
+      // 2. 调用自动分类 API 处理置信度分层
+      const classifyResponse = await fetch('/api/bookmarks/auto-classify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          bookmarkId: id,
+          recommendation: recommendData,
+        }),
+      })
+
+      if (!classifyResponse.ok) {
+        throw new Error('自动分类失败')
+      }
+
+      const classifyResult = await classifyResponse.json()
+      const classifyData: AutoClassifyResponse = classifyResult.data
+
+      // 3. 根据分类结果处理 UI
+      switch (classifyData.action) {
+        case 'auto':
+          // 高置信度自动归类：显示成功 toast，不显示推荐卡片
+          toast.success(classifyData.message || `已自动归类到「${classifyData.folderName}」`, {
+            icon: '✨',
+            description: 'AI 智能分类',
+          })
+          setRecommendation(null)
+          setBookmarkId(null)
+          router.refresh()
+          break
+
+        case 'inbox':
+          // 低置信度放入待整理：显示信息 toast，不显示推荐卡片
+          toast.info(classifyData.message || '已移动到"待整理"文件夹', {
+            icon: '📥',
+            description: '稍后可手动整理',
+          })
+          setRecommendation(null)
+          setBookmarkId(null)
+          router.refresh()
+          break
+
+        case 'recommend':
+          // 中等置信度：显示推荐卡片让用户确认
+          if (classifyData.recommendation) {
+            setRecommendation(classifyData.recommendation)
+          } else if (recommendData) {
+            setRecommendation(recommendData)
+          }
+          break
+
+        default:
+          // 未知情况，静默处理
+          setRecommendation(null)
+          setBookmarkId(null)
+      }
     } catch (error) {
       // 推荐失败不影响用户体验，静默失败
-      console.error('Folder recommendation failed:', error)
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Folder recommendation failed:', error)
+      }
+      setRecommendation(null)
+      setBookmarkId(null)
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [router])
 
   /**
    * 应用推荐（移动到文件夹或创建新文件夹）

@@ -1,9 +1,18 @@
 # AnyKeep MVP 产品需求文档（AI开发版 - Supabase技术栈）
 
-**版本**: V1.0-AI-Supabase
-**日期**: 2025-01-XX
+**版本**: V4.2-AI-Supabase
+**日期**: 2025-11-25
 **状态**: 开发中
 **目标**: 为AI辅助开发提供清晰、可执行的产品需求（设计师转全栈专用版）
+
+---
+
+## 📝 版本更新记录
+
+| 版本 | 日期 | 更新内容 |
+|------|------|----------|
+| V1.0 | 2025-01-XX | 初始版本 |
+| V4.2 | 2025-11-25 | 新增智能分类系统需求（临时文件夹、自动归类、智能更新、思维导图索引） |
 
 ---
 
@@ -100,6 +109,10 @@
 | | 语义搜索（pgvector） | P1 | ⏳ |
 | | 筛选功能 | P0 | ⏳ |
 | **同步功能** | 跨设备同步（Supabase Realtime） | P0 | ⏳ |
+| **智能分类** | 默认临时文件夹（待整理） | P0 | ⏳ |
+| | 自动归类（置信度分层） | P0 | ⏳ |
+| | 智能更新分类（定时/定量触发） | P1 | 🔜 |
+| | 思维导图式索引可视化 | P2 | 🔜 |
 
 ---
 
@@ -238,6 +251,8 @@ CREATE TABLE public.folders (
     name VARCHAR(100) NOT NULL,
     parent_id BIGINT REFERENCES folders(id) ON DELETE CASCADE,
     sort_order INT DEFAULT 0,
+    is_system BOOLEAN DEFAULT FALSE,  -- V4.2新增：系统文件夹标识（如"待整理"）
+    system_type VARCHAR(50),          -- V4.2新增：系统文件夹类型（INBOX等）
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     deleted_at TIMESTAMP WITH TIME ZONE
@@ -252,7 +267,13 @@ CREATE POLICY "Users can manage own folders" ON public.folders
 
 -- 索引
 CREATE INDEX idx_folders_user_id ON public.folders(user_id) WHERE deleted_at IS NULL;
+CREATE INDEX idx_folders_system ON public.folders(user_id, is_system) WHERE deleted_at IS NULL;
 ```
+
+**V4.2 新增字段说明**：
+- `is_system`: 系统文件夹标识，系统文件夹不可删除、不可重命名
+- `system_type`: 系统文件夹类型
+  - `INBOX`: 待整理文件夹（默认临时文件夹）
 
 ---
 
@@ -1216,6 +1237,192 @@ vercel
 ---
 
 **文档结束**
+
+---
+
+## 11. 智能分类系统需求（V4.2 新增）
+
+### 11.1 需求概述
+
+智能分类系统旨在帮助用户自动整理收藏内容，减少手动分类的工作量，提升收藏管理效率。
+
+### 11.2 功能模块
+
+#### 11.2.1 默认临时文件夹（P0）
+
+**需求描述**：
+- 每个用户自动拥有一个名为「待整理」的系统文件夹
+- 新收藏或 AI 置信度较低的内容自动放入此文件夹
+- 系统文件夹不可删除、不可重命名
+
+**触发条件**：
+- 用户创建收藏时未指定文件夹
+- AI 文件夹推荐置信度 < 60%
+- 用户首次创建收藏时自动创建「待整理」文件夹
+
+**技术实现**：
+```typescript
+// 获取或创建用户的待整理文件夹
+async function getOrCreateInboxFolder(userId: string): Promise<Folder> {
+  // 1. 查找现有待整理文件夹
+  const existing = await supabase
+    .from('folders')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('is_system', true)
+    .eq('system_type', 'INBOX')
+    .single()
+
+  if (existing.data) return existing.data
+
+  // 2. 不存在则创建
+  const { data } = await supabase
+    .from('folders')
+    .insert({
+      user_id: userId,
+      name: '待整理',
+      is_system: true,
+      system_type: 'INBOX',
+      sort_order: -1,  // 排在最前面
+    })
+    .select()
+    .single()
+
+  return data
+}
+```
+
+---
+
+#### 11.2.2 自动归类（置信度分层）（P0）
+
+**需求描述**：
+根据 AI 推荐置信度自动决定归类行为：
+
+| 置信度范围 | 行为 | 用户感知 |
+|-----------|------|---------|
+| ≥ 80% | 自动归类到推荐文件夹 | 静默执行，显示轻量通知 |
+| 60-79% | 显示推荐 Toast | 用户可确认/拒绝/自定义 |
+| < 60% | 放入「待整理」 | 无打扰 |
+
+**技术实现**：
+```typescript
+// 自动归类逻辑
+async function autoClassifyBookmark(
+  bookmarkId: number,
+  recommendation: FolderRecommendation,
+  userId: string
+): Promise<void> {
+  const { confidence, folderId, suggestNew, folderName } = recommendation
+
+  if (confidence >= 80) {
+    // 高置信度：自动归类
+    let targetFolderId = folderId
+
+    if (suggestNew && folderName) {
+      // 自动创建新文件夹
+      const { data: newFolder } = await supabase
+        .from('folders')
+        .insert({ user_id: userId, name: folderName })
+        .select()
+        .single()
+      targetFolderId = newFolder.id
+    }
+
+    // 更新书签文件夹
+    await supabase
+      .from('bookmarks')
+      .update({ folder_id: targetFolderId })
+      .eq('id', bookmarkId)
+
+    // 记录自动归类日志（支持撤销）
+    await logAutoClassification(bookmarkId, targetFolderId, confidence)
+
+  } else if (confidence < 60) {
+    // 低置信度：放入待整理
+    const inboxFolder = await getOrCreateInboxFolder(userId)
+    await supabase
+      .from('bookmarks')
+      .update({ folder_id: inboxFolder.id })
+      .eq('id', bookmarkId)
+  }
+  // 60-79%：不自动处理，由前端 Toast 处理
+}
+```
+
+---
+
+#### 11.2.3 智能更新分类（P1 - 暂缓）
+
+**需求描述**：
+- 定期分析「待整理」文件夹中的内容
+- 基于标签聚类提供分类建议
+- 支持批量确认/拒绝建议
+
+**触发机制**：
+- 时间维度：每周一次
+- 数量维度：「待整理」达到 N 条时触发
+
+**数据模型**：
+```sql
+-- 分类建议表（P1实现时添加）
+CREATE TABLE classification_suggestions (
+  id BIGSERIAL PRIMARY KEY,
+  user_id UUID REFERENCES auth.users,
+  bookmark_id BIGINT REFERENCES bookmarks,
+  suggested_folder_id BIGINT REFERENCES folders,
+  suggested_folder_name VARCHAR(100),
+  confidence DECIMAL(5,2),
+  status VARCHAR(20) DEFAULT 'pending', -- pending/accepted/rejected
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+---
+
+#### 11.2.4 思维导图式索引（P2 - 暂缓）
+
+**需求描述**：
+- 以思维导图形式展示文件夹、标签、书签的关系
+- 支持缩放、拖拽、点击跳转
+- 可视化展示收藏结构
+
+**技术选型**：
+- ReactFlow（推荐）
+- D3.js（备选）
+
+---
+
+### 11.3 用户故事
+
+**US-11.1 默认临时文件夹**
+> 作为用户，我希望新收藏自动放入「待整理」文件夹，这样我可以稍后统一整理，而不必在收藏时做决定。
+
+**验收标准**：
+- [ ] 用户首次创建收藏时自动创建「待整理」文件夹
+- [ ] 未指定文件夹的收藏自动放入「待整理」
+- [ ] 「待整理」文件夹显示在文件夹列表最前面
+- [ ] 「待整理」文件夹不可删除、不可重命名
+
+**US-11.2 自动归类**
+> 作为用户，我希望系统能够智能判断收藏内容的分类，高置信度时自动归类，减少我的操作负担。
+
+**验收标准**：
+- [ ] 置信度≥80%时自动归类，显示轻量通知
+- [ ] 置信度60-79%时显示推荐Toast
+- [ ] 置信度<60%时静默放入「待整理」
+- [ ] 自动归类记录可查看和撤销
+
+---
+
+### 11.4 实施计划
+
+| 阶段 | 内容 | 预计工期 | 状态 |
+|------|------|---------|------|
+| Phase 1 | 默认临时文件夹 | 0.5天 | 🔄 进行中 |
+| Phase 1 | 自动归类（置信度分层） | 1天 | ⏳ 待开始 |
+| Phase 2 | 智能更新分类 | 2-3天 | 🔜 暂缓 |
+| Phase 3 | 思维导图式索引 | 3-5天 | 🔜 暂缓 |
 
 ---
 

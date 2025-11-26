@@ -7,7 +7,7 @@
 
 import { useState, useTransition, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { LayoutGrid, List, Plus, Loader2, ArrowUpDown, CheckSquare, Trash2, FolderInput, Upload, Download, AlignJustify } from 'lucide-react'
+import { LayoutGrid, List, Plus, Loader2, ArrowUpDown, CheckSquare, Trash2, FolderInput, Upload, Download, AlignJustify, MoreHorizontal } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAbortableFetch } from '@/hooks/use-abortable-fetch'
 import { Button } from '@/components/ui/button'
@@ -24,9 +24,17 @@ import { BatchImportDialog } from '@/components/bookmark/batch-import-dialog'
 import { BatchMoveDialog } from '@/components/bookmark/batch-move-dialog'
 import { ExportDialog } from '@/components/bookmark/export-dialog'
 import { FolderRecommendationToast } from '@/components/bookmark/folder-recommendation-toast'
+import { ReclassifyBanner } from '@/components/bookmark/reclassify-banner'
 import { EmptyState } from '@/components/bookmark/empty-state'
 import { useFolderRecommendation } from '@/hooks/use-folder-recommendation'
 import { ErrorMessage } from '@/components/ui/error-message'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 import type { Bookmark } from '@/types/supabase'
 
@@ -95,7 +103,7 @@ export function HomePageClient({ bookmarks: initialBookmarks, error }: HomePageC
   }, [initialBookmarks])
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [hasMore, setHasMore] = useState(initialBookmarks.length === 50)
-  const [isPending, startTransition] = useTransition()
+  const [_isPending, startTransition] = useTransition()
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [showImportDialog, setShowImportDialog] = useState(false)
   const [showExportDialog, setShowExportDialog] = useState(false)
@@ -166,6 +174,9 @@ export function HomePageClient({ bookmarks: initialBookmarks, error }: HomePageC
   }
 
   const handleDelete = async (id: number) => {
+    // 保存当前快照用于回滚
+    const snapshot = [...bookmarks]
+
     try {
       // 乐观更新 UI
       setBookmarks((prev) => prev.filter((b) => b.id !== id))
@@ -192,9 +203,50 @@ export function HomePageClient({ bookmarks: initialBookmarks, error }: HomePageC
         return
       }
 
-      // 失败时恢复 UI
-      setBookmarks(initialBookmarks)
+      // 失败时恢复到快照状态
+      setBookmarks(snapshot)
       toast.error(error instanceof Error ? error.message : '删除失败')
+    }
+  }
+
+  const handleToggleRead = async (id: number, isRead: boolean) => {
+    // 保存当前快照用于回滚
+    const snapshot = [...bookmarks]
+
+    try {
+      // 乐观更新 UI
+      setBookmarks((prev) =>
+        prev.map((b) =>
+          b.id === id
+            ? { ...b, is_read: isRead, read_at: isRead ? new Date().toISOString() : null }
+            : b
+        )
+      )
+
+      // 调用 PATCH API 更新已读状态
+      const res = await fetchWithAbort(`/api/bookmarks/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ isRead }),
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error?.message || '更新失败')
+      }
+
+      toast.success(isRead ? '已标记为已读' : '已标记为未读')
+    } catch (error) {
+      // 如果是取消错误，不显示错误提示
+      if (error instanceof Error && error.name === 'AbortError') {
+        return
+      }
+
+      // 失败时恢复到快照状态
+      setBookmarks(snapshot)
+      toast.error(error instanceof Error ? error.message : '更新失败')
     }
   }
 
@@ -330,46 +382,77 @@ export function HomePageClient({ bookmarks: initialBookmarks, error }: HomePageC
             </p>
           </div>
 
-          {/* 排序和视图切换 */}
-          <div className="flex items-center gap-3">
-            {/* 批量导入按钮 */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowImportDialog(true)}
-            >
-              <Upload className="size-4 mr-1.5" />
-              批量导入
-            </Button>
+          {/* 排序和视图切换 - 响应式设计 */}
+          <div className="flex items-center gap-1 sm:gap-2 md:gap-3">
+            {/* 移动端：更多操作菜单 */}
+            <div className="flex md:hidden">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-8 px-2">
+                    <MoreHorizontal className="size-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-40">
+                  <DropdownMenuItem onClick={() => setShowImportDialog(true)}>
+                    <Upload className="size-4 mr-2" />
+                    批量导入
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setShowExportDialog(true)}>
+                    <Download className="size-4 mr-2" />
+                    导出
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={toggleSelectionMode}>
+                    <CheckSquare className="size-4 mr-2" />
+                    {isSelectionMode ? '取消选择' : '批量选择'}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
 
-            {/* 导出按钮 */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowExportDialog(true)}
-            >
-              <Download className="size-4 mr-1.5" />
-              导出
-            </Button>
+            {/* 桌面端：完整按钮 */}
+            <div className="hidden md:flex items-center gap-3">
+              {/* 批量导入按钮 */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowImportDialog(true)}
+              >
+                <Upload className="size-4 mr-1.5" />
+                批量导入
+              </Button>
 
-            {/* 批量选择按钮 */}
-            <Button
-              variant={isSelectionMode ? 'default' : 'outline'}
-              size="sm"
-              onClick={toggleSelectionMode}
-              className={cn(
-                isSelectionMode && 'bg-blue-500 hover:bg-blue-600 text-white dark:bg-blue-600 dark:hover:bg-blue-700'
-              )}
-            >
-              <CheckSquare className="size-4 mr-1.5" />
-              {isSelectionMode ? '取消选择' : '批量选择'}
-            </Button>
+              {/* 导出按钮 */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowExportDialog(true)}
+              >
+                <Download className="size-4 mr-1.5" />
+                导出
+              </Button>
 
-            {/* 排序选择器 */}
+              {/* 批量选择按钮 */}
+              <Button
+                variant={isSelectionMode ? 'default' : 'outline'}
+                size="sm"
+                onClick={toggleSelectionMode}
+                className={cn(
+                  isSelectionMode && 'bg-blue-500 hover:bg-blue-600 text-white dark:bg-blue-600 dark:hover:bg-blue-700'
+                )}
+              >
+                <CheckSquare className="size-4 mr-1.5" />
+                {isSelectionMode ? '取消选择' : '批量选择'}
+              </Button>
+            </div>
+
+            {/* 排序选择器 - 移动端紧凑 */}
             <Select value={currentSort} onValueChange={handleSortChange}>
-              <SelectTrigger className="w-[140px]">
-                <ArrowUpDown className="size-4 mr-2" />
-                <SelectValue />
+              <SelectTrigger className="w-10 md:w-[140px] h-8">
+                <ArrowUpDown className="size-4 md:mr-2" />
+                <span className="hidden md:inline">
+                  <SelectValue />
+                </span>
               </SelectTrigger>
               <SelectContent>
                 {sortOptions.map((option) => (
@@ -381,18 +464,18 @@ export function HomePageClient({ bookmarks: initialBookmarks, error }: HomePageC
             </Select>
 
             {/* 视图切换按钮 */}
-            <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+            <div className="flex items-center gap-0.5 sm:gap-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-0.5 sm:p-1">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => handleViewModeChange('card')}
                 title="瀑布流视图"
                 className={cn(
-                  "h-8 w-8 p-0",
+                  "h-7 w-7 sm:h-8 sm:w-8 p-0",
                   viewMode === 'card' && 'bg-white dark:bg-gray-600 shadow-sm'
                 )}
               >
-                <LayoutGrid className="size-4" />
+                <LayoutGrid className="size-3.5 sm:size-4" />
               </Button>
               <Button
                 variant="ghost"
@@ -400,11 +483,11 @@ export function HomePageClient({ bookmarks: initialBookmarks, error }: HomePageC
                 onClick={() => handleViewModeChange('list')}
                 title="列表视图"
                 className={cn(
-                  "h-8 w-8 p-0",
+                  "h-7 w-7 sm:h-8 sm:w-8 p-0",
                   viewMode === 'list' && 'bg-white dark:bg-gray-600 shadow-sm'
                 )}
               >
-                <List className="size-4" />
+                <List className="size-3.5 sm:size-4" />
               </Button>
               <Button
                 variant="ghost"
@@ -412,11 +495,11 @@ export function HomePageClient({ bookmarks: initialBookmarks, error }: HomePageC
                 onClick={() => handleViewModeChange('compact')}
                 title="紧凑视图"
                 className={cn(
-                  "h-8 w-8 p-0",
+                  "h-7 w-7 sm:h-8 sm:w-8 p-0",
                   viewMode === 'compact' && 'bg-white dark:bg-gray-600 shadow-sm'
                 )}
               >
-                <AlignJustify className="size-4" />
+                <AlignJustify className="size-3.5 sm:size-4" />
               </Button>
             </div>
           </div>
@@ -502,6 +585,9 @@ export function HomePageClient({ bookmarks: initialBookmarks, error }: HomePageC
 
       {/* 内容区域 */}
       <div className="flex-1 overflow-auto px-4 md:px-8 py-4 md:py-6">
+        {/* V4.2 智能分类横幅 */}
+        <ReclassifyBanner className="mb-4" />
+
         {error ? (
           <ErrorMessage
             message={error}
@@ -518,6 +604,7 @@ export function HomePageClient({ bookmarks: initialBookmarks, error }: HomePageC
                       bookmark={bookmark}
                       onEdit={handleEdit}
                       onDelete={handleDelete}
+                      onToggleRead={handleToggleRead}
                       isSelectionMode={isSelectionMode}
                       isSelected={selectedIds.has(bookmark.id)}
                       onToggleSelect={toggleSelect}
@@ -537,6 +624,7 @@ export function HomePageClient({ bookmarks: initialBookmarks, error }: HomePageC
                     bookmark={bookmark}
                     onEdit={handleEdit}
                     onDelete={handleDelete}
+                    onToggleRead={handleToggleRead}
                     isSelectionMode={isSelectionMode}
                     isSelected={selectedIds.has(bookmark.id)}
                     onToggleSelect={toggleSelect}
@@ -555,6 +643,7 @@ export function HomePageClient({ bookmarks: initialBookmarks, error }: HomePageC
                     bookmark={bookmark}
                     onEdit={handleEdit}
                     onDelete={handleDelete}
+                    onToggleRead={handleToggleRead}
                     isSelectionMode={isSelectionMode}
                     isSelected={selectedIds.has(bookmark.id)}
                     onToggleSelect={toggleSelect}

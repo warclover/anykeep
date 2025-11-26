@@ -79,7 +79,7 @@ export function CreateFolderDialog({
 
       if (!validation.success) {
         const fieldErrors: Record<string, string> = {}
-        validation.error.errors.forEach((err) => {
+        validation.error.issues.forEach((err) => {
           const field = err.path[0] as string
           fieldErrors[field] = err.message
         })

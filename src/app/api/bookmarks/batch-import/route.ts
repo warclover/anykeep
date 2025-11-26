@@ -15,7 +15,7 @@ import {
 } from '@/lib/utils/api-response'
 import { logger } from '@/lib/logger'
 import type { BookmarkInsert } from '@/types/supabase'
-import { BOOKMARK, STORAGE } from '@/lib/constants/messages'
+import { BOOKMARK } from '@/lib/constants/messages'
 
 interface ImportBookmark {
   url: string
@@ -182,7 +182,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    return successResponse(result, BOOKMARK.BATCH_IMPORT_SUCCESS)
+    return successResponse({ ...result, message: BOOKMARK.BATCH_IMPORT_SUCCESS })
   } catch (error) {
     logger.error(
       {

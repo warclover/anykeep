@@ -89,7 +89,7 @@ export function BookmarkDetailClient({ bookmark }: BookmarkDetailClientProps) {
       try {
         await navigator.clipboard.writeText(bookmark.url)
         toast.success('链接已复制到剪贴板')
-      } catch (error) {
+      } catch {
         toast.error('复制失败，请手动复制')
       }
     }
@@ -271,6 +271,7 @@ export function BookmarkDetailClient({ bookmark }: BookmarkDetailClientProps) {
             className="relative aspect-video overflow-hidden rounded-lg shadow-lg cursor-pointer group"
             onClick={() => setShowImageLightbox(true)}
           >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={coverImage}
               alt={bookmark.title}
@@ -514,6 +515,7 @@ export function BookmarkDetailClient({ bookmark }: BookmarkDetailClientProps) {
       <Dialog open={showImageLightbox} onOpenChange={setShowImageLightbox}>
         <DialogContent className="max-w-7xl w-[95vw] h-[95vh] p-0 overflow-hidden bg-black/95">
           <div className="relative w-full h-full flex items-center justify-center p-4">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={coverImage}
               alt={bookmark.title}

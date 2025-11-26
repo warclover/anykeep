@@ -19,7 +19,7 @@ import {
   badRequestError,
 } from '@/lib/utils/api-response'
 import { logger } from '@/lib/logger'
-import type { FolderUpdate } from '@/types/supabase'
+import type { FolderUpdate, Database } from '@/types/supabase'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { FOLDER, AUTH } from '@/lib/constants/messages'
 
@@ -138,12 +138,12 @@ export async function PUT(
       return handleValidationError(validation.error)
     }
 
-    const { name, parentId, color, icon } = validation.data
+    const { name, parentId, color: _color, icon: _icon } = validation.data
 
     // 3. 检查文件夹是否存在且属于当前用户
     const { data: existingFolder, error: checkError } = await supabase
       .from('folders')
-      .select('id, user_id, parent_id')
+      .select('id, user_id, parent_id, is_system, system_type')
       .eq('id', folderId)
       .is('deleted_at', null)
       .single()
@@ -157,6 +157,11 @@ export async function PUT(
 
     if (existingFolder.user_id !== user.id) {
       return forbiddenError(AUTH.FORBIDDEN)
+    }
+
+    // 3.5 V4.2新增：系统文件夹不可重命名
+    if (existingFolder.is_system && name !== undefined) {
+      return badRequestError('系统文件夹不可重命名')
     }
 
     // 4. 检查是否存在循环引用（如果更改了 parent_id）
@@ -236,7 +241,7 @@ export async function DELETE(
     // 2. 检查文件夹是否存在且属于当前用户
     const { data: existingFolder, error: checkError } = await supabase
       .from('folders')
-      .select('id, user_id')
+      .select('id, user_id, is_system, system_type')
       .eq('id', folderId)
       .is('deleted_at', null)
       .single()
@@ -250,6 +255,11 @@ export async function DELETE(
 
     if (existingFolder.user_id !== user.id) {
       return forbiddenError(AUTH.FORBIDDEN)
+    }
+
+    // 2.5 V4.2新增：系统文件夹不可删除
+    if (existingFolder.is_system) {
+      return badRequestError('系统文件夹不可删除')
     }
 
     // 3. 检查文件夹下是否有收藏
@@ -298,7 +308,7 @@ export async function DELETE(
  * 递归检查 targetParentId 是否是 folderId 的后代
  */
 async function checkCircularReference(
-  supabase: SupabaseClient<any>,
+  supabase: SupabaseClient<Database>,
   folderId: number,
   targetParentId: number,
   userId: string

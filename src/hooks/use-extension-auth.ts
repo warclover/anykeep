@@ -8,6 +8,11 @@
 
 import { useCallback, useEffect, useState } from 'react'
 
+// 开发环境调试日志
+const DEBUG = process.env.NODE_ENV === 'development'
+// eslint-disable-next-line no-console, @typescript-eslint/no-empty-function
+const debugLog = DEBUG ? console.info.bind(console, '[Extension]') : () => {}
+
 // 扩展 ID（开发时自动生成，发布后固定）
 // 开发环境下需要从扩展的 chrome://extensions 页面获取
 const EXTENSION_IDS = [
@@ -47,17 +52,17 @@ async function sendMessageToExtension(
     try {
       chrome.runtime.sendMessage(extensionId, message, (response) => {
         if (chrome.runtime.lastError) {
-          console.debug('[Extension] 通信失败:', chrome.runtime.lastError.message)
+          debugLog('通信失败:', chrome.runtime.lastError.message)
           resolve(false)
         } else if (response?.success) {
-          console.debug('[Extension] 消息发送成功')
+          debugLog('消息发送成功')
           resolve(true)
         } else {
           resolve(false)
         }
       })
     } catch (error) {
-      console.debug('[Extension] 发送消息异常:', error)
+      debugLog('发送消息异常:', error)
       resolve(false)
     }
   })
@@ -111,12 +116,12 @@ export function useExtensionAuth(): ExtensionAuthHook {
         })
 
         if (success) {
-          console.log('[Extension] 认证信息已同步到扩展')
+          debugLog('认证信息已同步到扩展')
           return true
         }
       }
 
-      console.debug('[Extension] 无法同步认证信息（扩展可能未安装）')
+      debugLog('无法同步认证信息（扩展可能未安装）')
       return false
     },
     []
@@ -134,7 +139,7 @@ export function useExtensionAuth(): ExtensionAuthHook {
       })
 
       if (success) {
-        console.log('[Extension] 已通知扩展用户登出')
+        debugLog('已通知扩展用户登出')
         return true
       }
     }

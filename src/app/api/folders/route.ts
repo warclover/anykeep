@@ -22,7 +22,7 @@ import { FOLDER } from '@/lib/constants/messages'
  * GET /api/folders
  * 获取当前用户的所有文件夹（树形结构）
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     // 1. 验证用户身份
     const supabase = await createClient()
@@ -36,11 +36,13 @@ export async function GET(request: NextRequest) {
     }
 
     // 2. 查询用户的所有文件夹
+    // V4.2更新：按 sort_order 升序排列（系统文件夹 sort_order=-1 会排在最前面）
     const { data: folders, error: queryError } = await supabase
       .from('folders')
       .select('*')
       .eq('user_id', user.id)
       .is('deleted_at', null)
+      .order('sort_order', { ascending: true })
       .order('created_at', { ascending: true })
 
     if (queryError) {

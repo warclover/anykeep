@@ -4,8 +4,8 @@
 
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Search, Sparkles, Clock, X } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -15,7 +15,7 @@ import { Label } from '@/components/ui/label'
 import { BookmarkCard } from '@/components/bookmark/bookmark-card'
 import { ErrorMessage } from '@/components/ui/error-message'
 import type { Bookmark } from '@/types/supabase'
-import { cn } from '@/lib/utils'
+// cn import removed - unused
 
 interface SearchPageClientProps {
   initialQuery: string
@@ -36,25 +36,26 @@ export function SearchPageClient({
   error,
 }: SearchPageClientProps) {
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const [query, setQuery] = useState(initialQuery)
+    const [query, setQuery] = useState(initialQuery)
   const [aiMode, setAIMode] = useState(initialAIMode)
-  const [searchHistory, setSearchHistory] = useState<string[]>([])
+  const [searchHistory, setSearchHistory] = useState<string[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const history = localStorage.getItem(SEARCH_HISTORY_KEY)
+        return history ? JSON.parse(history) : []
+      } catch {
+        return []
+      }
+    }
+    return []
+  })
   const [showHistory, setShowHistory] = useState(false)
 
   const handleRetry = () => {
     router.refresh()
   }
 
-  // 加载搜索历史
-  useEffect(() => {
-    const history = localStorage.getItem(SEARCH_HISTORY_KEY)
-    if (history) {
-      setSearchHistory(JSON.parse(history))
-    }
-  }, [])
-
-  // 保存搜索历史
+    // 保存搜索历史
   const saveToHistory = (searchQuery: string) => {
     if (!searchQuery.trim()) return
 

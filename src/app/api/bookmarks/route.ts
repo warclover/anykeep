@@ -21,9 +21,71 @@ import {
 } from '@/lib/utils/api-response'
 import { crawlContent } from '@/lib/utils/crawler'
 import { generateAIContent } from '@/lib/utils/ai-generator'
+import {
+  generateEmbedding,
+  buildEmbeddingText,
+} from '@/lib/utils/embedding-generator'
 import { logger } from '@/lib/logger'
 import type { BookmarkInsert } from '@/types/supabase'
 import { BOOKMARK, STORAGE } from '@/lib/constants/messages'
+
+/**
+ * 异步生成书签向量嵌入（不阻塞主流程）
+ * @param bookmarkId - 书签ID
+ * @param title - 标题
+ * @param summary - AI摘要
+ * @param tags - AI标签
+ * @param userId - 用户ID
+ */
+async function generateBookmarkEmbedding(
+  bookmarkId: number,
+  title: string,
+  summary: string | null,
+  tags: string[] | null,
+  userId: string
+): Promise<void> {
+  try {
+    const text = buildEmbeddingText(title, summary, tags)
+    if (!text || text.trim().length < 5) {
+      logger.warn(
+        { bookmarkId, action: 'embedding_skip' },
+        'Embedding: Text too short, skipping'
+      )
+      return
+    }
+
+    const embedding = await generateEmbedding(text)
+
+    // 动态导入 supabase client（避免循环依赖）
+    const { createClient } = await import('@/lib/supabase/server')
+    const supabase = await createClient()
+
+    const { error } = await supabase
+      .from('bookmarks')
+      .update({ embedding })
+      .eq('id', bookmarkId)
+      .eq('user_id', userId)
+
+    if (error) {
+      throw error
+    }
+
+    logger.info(
+      { bookmarkId, action: 'embedding_success' },
+      'Embedding: Generated successfully'
+    )
+  } catch (error) {
+    // 向量生成失败不影响书签创建
+    logger.error(
+      {
+        bookmarkId,
+        error: error instanceof Error ? error.message : String(error),
+        action: 'embedding_failed',
+      },
+      'Embedding: Generation failed'
+    )
+  }
+}
 
 /**
  * POST /api/bookmarks
@@ -50,8 +112,17 @@ export async function POST(request: NextRequest) {
       return handleValidationError(validation.error)
     }
 
-    const { url, title, description, folderId, userTags, notes, coverUrl: userCoverUrl } =
-      validation.data
+    const {
+      url,
+      title,
+      description,
+      folderId,
+      userTags,
+      notes,
+      coverUrl: userCoverUrl,
+      wordCount: userWordCount,
+      imageCount: userImageCount,
+    } = validation.data
 
     // 3. 检查存储配额
     const { data: profile, error: profileError } = await supabase
@@ -76,6 +147,9 @@ export async function POST(request: NextRequest) {
     let finalDescription: string | null | undefined = description
     let author: string | undefined
     let coverUrl: string | undefined
+    // 优先使用前端传来的统计数据（来自 metadata API）
+    let wordCount: number | undefined = userWordCount
+    let imageCount: number | undefined = userImageCount
 
     if (!title || !description) {
       try {
@@ -93,6 +167,9 @@ export async function POST(request: NextRequest) {
         finalDescription = description || crawlResult.description || null
         author = crawlResult.author
         coverUrl = crawlResult.coverUrl
+        // 只在前端没有提供统计数据时才使用爬取的值
+        wordCount = wordCount ?? crawlResult.wordCount
+        imageCount = imageCount ?? crawlResult.imageCount
 
         logger.info(
           {
@@ -100,6 +177,8 @@ export async function POST(request: NextRequest) {
             platform: crawlResult.platform,
             hasAuthor: !!author,
             hasCover: !!coverUrl,
+            wordCount,
+            imageCount,
             action: 'crawl_success',
           },
           'Crawler: Success'
@@ -178,6 +257,8 @@ export async function POST(request: NextRequest) {
       notes: notes || null,
       ai_summary: aiSummary,
       ai_tags: aiTags,
+      word_count: wordCount || null,
+      image_count: imageCount || null,
       status: 'COMPLETED', // 标记为完成（Week 2 已包含爬虫和 AI）
     }
 
@@ -209,7 +290,23 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 10. 返回创建的收藏对象
+    // 10. 异步生成向量嵌入（不阻塞响应）
+    // 使用 Promise 但不 await，让向量生成在后台执行
+    generateBookmarkEmbedding(
+      bookmark.id,
+      finalTitle,
+      aiSummary,
+      aiTags,
+      user.id
+    ).catch((err) => {
+      // 捕获任何未处理的错误，避免影响响应
+      logger.error(
+        { error: err, bookmarkId: bookmark.id },
+        'Background embedding generation failed'
+      )
+    })
+
+    // 11. 返回创建的收藏对象
     return successResponse(bookmark, 201)
   } catch (error) {
     logger.error(

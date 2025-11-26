@@ -16,8 +16,13 @@ import { ErrorMessage } from '@/components/ui/error-message'
 import { CreateFolderDialog } from '@/components/folders/create-folder-dialog'
 import type { Folder as FolderType, Bookmark } from '@/types/supabase'
 
+// 扩展 Folder 类型，包含计算字段
+type FolderWithCount = FolderType & {
+  bookmark_count?: number
+}
+
 interface FoldersPageClientProps {
-  folders: FolderType[]
+  folders: FolderWithCount[]
   recentBookmarks: (Bookmark & {
     folders?: { name: string } | null
   })[]
@@ -166,6 +171,7 @@ export function FoldersPageClient({
                     <CardContent className="p-3 md:p-4">
                       <div className="flex items-center gap-3 md:gap-4">
                         {bookmark.cover_url ? (
+                          /* eslint-disable-next-line @next/next/no-img-element */
                           <img
                             src={bookmark.cover_url}
                             alt={bookmark.title}
