@@ -1,9 +1,9 @@
-import { Metadata } from 'next'
+import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: '隐私政策 - AnyKeep',
-  description: 'AnyKeep 智能收藏助手隐私政策',
-}
+  title: "隐私政策 - AnyKeep",
+  description: "AnyKeep 智能收藏助手隐私政策",
+};
 
 export default function PrivacyPolicyPage() {
   return (
@@ -16,8 +16,8 @@ export default function PrivacyPolicyPage() {
           <section>
             <h2 className="text-xl font-semibold mb-3">概述</h2>
             <p className="text-muted-foreground">
-              AnyKeep（以下简称"我们"）非常重视用户隐私。本隐私政策说明了我们在您使用 AnyKeep
-              网页应用和浏览器扩展时如何收集、使用和保护您的信息。
+              AnyKeep（以下简称「我们」）非常重视用户隐私。本隐私政策说明了我们在您使用
+              AnyKeep 网页应用和浏览器扩展时如何收集、使用和保护您的信息。
             </p>
           </section>
 
@@ -38,8 +38,8 @@ export default function PrivacyPolicyPage() {
 
             <h3 className="text-lg font-medium mb-2 mt-4">浏览器扩展</h3>
             <p className="text-muted-foreground">
-              我们的浏览器扩展仅在您主动点击保存时才会读取当前页面的 URL 和标题。
-              我们不会跟踪或记录您的浏览历史。
+              我们的浏览器扩展仅在您主动点击保存时才会读取当前页面的 URL
+              和标题。 我们不会跟踪或记录您的浏览历史。
             </p>
           </section>
 
@@ -56,7 +56,8 @@ export default function PrivacyPolicyPage() {
           <section>
             <h2 className="text-xl font-semibold mb-3">信息存储与安全</h2>
             <p className="text-muted-foreground">
-              您的数据存储在 Supabase 提供的安全数据库中，采用行级安全策略（RLS）确保
+              您的数据存储在 Supabase
+              提供的安全数据库中，采用行级安全策略（RLS）确保
               用户只能访问自己的数据。我们使用 HTTPS 加密传输所有数据。
             </p>
           </section>
@@ -86,8 +87,8 @@ export default function PrivacyPolicyPage() {
           <section>
             <h2 className="text-xl font-semibold mb-3">Cookie 使用</h2>
             <p className="text-muted-foreground">
-              我们使用必要的 Cookie 来维持您的登录状态和偏好设置。
-              这些 Cookie 对于服务的正常运行是必需的。
+              我们使用必要的 Cookie 来维持您的登录状态和偏好设置。 这些 Cookie
+              对于服务的正常运行是必需的。
             </p>
           </section>
 
@@ -95,7 +96,7 @@ export default function PrivacyPolicyPage() {
             <h2 className="text-xl font-semibold mb-3">政策变更</h2>
             <p className="text-muted-foreground">
               我们可能会不时更新本隐私政策。任何变更都会在此页面上发布，
-              并更新"最后更新日期"。建议您定期查看本政策。
+              并更新「最后更新日期」。建议您定期查看本政策。
             </p>
           </section>
 
@@ -105,7 +106,13 @@ export default function PrivacyPolicyPage() {
               如果您对本隐私政策有任何疑问，请通过以下方式联系我们：
             </p>
             <p className="text-muted-foreground mt-2">
-              GitHub: <a href="https://github.com/anykeep/anykeep" className="text-primary hover:underline">https://github.com/anykeep/anykeep</a>
+              GitHub:{" "}
+              <a
+                href="https://github.com/anykeep/anykeep"
+                className="text-primary hover:underline"
+              >
+                https://github.com/anykeep/anykeep
+              </a>
             </p>
           </section>
         </div>
@@ -117,5 +124,5 @@ export default function PrivacyPolicyPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }
