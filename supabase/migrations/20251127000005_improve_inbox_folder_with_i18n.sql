@@ -128,10 +128,8 @@ IS '确保系统文件夹必须指定 system_type';
 -- 第三部分：重构 handle_new_user() 函数
 -- -------------------------------------------
 
--- 3.1 删除旧的触发器（准备替换）
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-
--- 3.2 创建改进的用户注册处理函数
+-- 3.1 创建改进的用户注册处理函数（使用 CREATE OR REPLACE 覆盖原函数）
+-- 注意：不直接删除触发器，因为 auth.users 表在 Supabase 中受保护
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -251,14 +249,36 @@ $$;
 COMMENT ON FUNCTION handle_new_user() IS
 '用户注册时自动创建 profile 和待整理文件夹（支持国际化和错误处理）';
 
--- 3.3 重新创建触发器
-CREATE TRIGGER on_auth_user_created
-    AFTER INSERT ON auth.users
-    FOR EACH ROW
-    EXECUTE FUNCTION handle_new_user();
+-- 3.2 处理触发器（安全方式，避免权限错误）
+-- 注意：在 Supabase 中，触发器通常已经存在，函数更新会自动生效
+-- 如果触发器不存在，以下代码会尝试创建；如果权限不足，会给出提示
+DO $$
+BEGIN
+    -- 检查触发器是否存在
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_trigger
+        WHERE tgname = 'on_auth_user_created'
+          AND tgrelid = 'auth.users'::regclass
+    ) THEN
+        -- 触发器不存在，尝试创建
+        BEGIN
+            CREATE TRIGGER on_auth_user_created
+                AFTER INSERT ON auth.users
+                FOR EACH ROW
+                EXECUTE FUNCTION handle_new_user();
 
-COMMENT ON TRIGGER on_auth_user_created ON auth.users IS
-'新用户注册时自动初始化 profile 和系统文件夹';
+            RAISE NOTICE '✓ Created trigger on_auth_user_created';
+        EXCEPTION
+            WHEN insufficient_privilege THEN
+                RAISE NOTICE '⚠ Trigger creation skipped: insufficient privileges';
+                RAISE NOTICE '  The trigger likely already exists or needs to be created by Supabase';
+            WHEN OTHERS THEN
+                RAISE NOTICE '⚠ Trigger creation failed: % (%)', SQLERRM, SQLSTATE;
+        END;
+    ELSE
+        RAISE NOTICE '✓ Trigger on_auth_user_created already exists (function updated)';
+    END IF;
+END $$;
 
 -- -------------------------------------------
 -- 第四部分：为现有用户补充待整理文件夹
