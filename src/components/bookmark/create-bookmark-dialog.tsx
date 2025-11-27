@@ -92,6 +92,11 @@ export function CreateBookmarkDialog({
   const [wordCount, setWordCount] = useState<number | null>(null);
   const [imageCount, setImageCount] = useState<number | null>(null);
 
+  // AI 标签相关状态
+  const [aiTags, setAiTags] = useState<string[]>([]);
+  const [isGeneratingTags, setIsGeneratingTags] = useState(false);
+  const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
+
   // 元数据获取状态
   const [fetchStatus, setFetchStatus] = useState<FetchStatus>("idle");
   const [fetchError, setFetchError] = useState<string>("");
@@ -101,6 +106,9 @@ export function CreateBookmarkDialog({
 
   // 用于跟踪用户是否手动修改过字段
   const userModifiedFieldsRef = useRef<Set<string>>(new Set());
+
+  // AI 标签生成的 AbortController
+  const tagGenerationAbortControllerRef = useRef<AbortController | null>(null);
 
   // 表单错误
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -120,6 +128,15 @@ export function CreateBookmarkDialog({
     setFetchError("");
     setAutoFilledFields(new Set());
     userModifiedFieldsRef.current = new Set();
+    // 重置 AI 标签
+    setAiTags([]);
+    setSelectedTags(new Set());
+    setIsGeneratingTags(false);
+    // 取消AI标签生成请求
+    if (tagGenerationAbortControllerRef.current) {
+      tagGenerationAbortControllerRef.current.abort();
+      tagGenerationAbortControllerRef.current = null;
+    }
   };
 
   /**
@@ -250,17 +267,136 @@ export function CreateBookmarkDialog({
     }
   };
 
+  /**
+   * 实时生成 AI 标签
+   */
+  const generateAITags = useCallback(async () => {
+    if (!title || title.length < 3) {
+      return;
+    }
+
+    // 取消之前的AI标签生成请求
+    if (tagGenerationAbortControllerRef.current) {
+      tagGenerationAbortControllerRef.current.abort();
+    }
+
+    // 创建新的AbortController
+    const abortController = new AbortController();
+    tagGenerationAbortControllerRef.current = abortController;
+
+    setIsGeneratingTags(true);
+
+    try {
+      const response = await fetch("/api/bookmarks/generate-tags", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title,
+          description: description || undefined,
+        }),
+        signal: abortController.signal,
+      });
+
+      if (!response.ok) {
+        throw new Error("生成标签失败");
+      }
+
+      const data = await response.json();
+      const generatedTags = data.data.tags || [];
+
+      setAiTags(generatedTags);
+
+      // 默认选中所有 AI 标签
+      setSelectedTags(new Set(generatedTags));
+
+      toast.success("✨ AI 已生成标签建议");
+    } catch (error) {
+      // 忽略取消错误
+      if (error instanceof Error && error.name === "AbortError") {
+        return;
+      }
+      console.error("Generate tags error:", error);
+      // 静默失败，不干扰用户体验
+    } finally {
+      setIsGeneratingTags(false);
+      // 清理AbortController引用
+      if (tagGenerationAbortControllerRef.current === abortController) {
+        tagGenerationAbortControllerRef.current = null;
+      }
+    }
+  }, [title, description]);
+
+  /**
+   * 切换标签选中状态
+   */
+  const toggleTag = (tag: string) => {
+    setSelectedTags((prev) => {
+      const next = new Set(prev);
+      if (next.has(tag)) {
+        next.delete(tag);
+      } else {
+        next.add(tag);
+      }
+      return next;
+    });
+  };
+
+  /**
+   * 添加自定义标签
+   */
+  const addCustomTag = (tag: string) => {
+    const trimmed = tag.trim();
+    if (trimmed && !aiTags.includes(trimmed)) {
+      setAiTags((prev) => [...prev, trimmed]);
+      setSelectedTags((prev) => new Set([...prev, trimmed]));
+    }
+  };
+
+  /**
+   * 标题/描述变化时自动生成 AI 标签
+   */
+  useEffect(() => {
+    // 标题至少3个字符才触发
+    if (title && title.length >= 3) {
+      const timer = setTimeout(() => {
+        generateAITags();
+      }, 1500); // 延迟1.5秒，避免频繁请求
+
+      return () => clearTimeout(timer);
+    } else {
+      // 标题太短或为空时清空标签
+      setAiTags([]);
+      setSelectedTags(new Set());
+    }
+  }, [title, description, generateAITags]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     setErrors({});
 
+    // 取消所有正在进行的请求
+    abortAll();
+
+    // 取消AI标签生成请求
+    if (tagGenerationAbortControllerRef.current) {
+      tagGenerationAbortControllerRef.current.abort();
+      tagGenerationAbortControllerRef.current = null;
+    }
+
     try {
-      // 解析标签字符串
-      const userTags = tags
+      // 合并用户选中的 AI 标签和手动输入的标签
+      const manualTags = tags
         .split(/[,，\s]+/)
         .map((t) => t.trim())
         .filter(Boolean);
+
+      // 最终标签 = 选中的 AI 标签 + 手动输入的标签（去重）
+      const finalTags = Array.from(
+        new Set([...Array.from(selectedTags), ...manualTags]),
+      );
+
+      const userTags = finalTags.length > 0 ? finalTags : undefined;
 
       // 验证输入
       const validation = createBookmarkSchema.safeParse({
@@ -268,7 +404,7 @@ export function CreateBookmarkDialog({
         title,
         description: description || undefined,
         folderId: folderId ? parseInt(folderId) : undefined,
-        userTags: userTags.length > 0 ? userTags : undefined,
+        userTags,
         notes: notes || undefined,
         coverUrl: coverUrl || undefined,
         wordCount: wordCount || undefined,
@@ -541,22 +677,76 @@ export function CreateBookmarkDialog({
             </div>
           )}
 
-          {/* 标签输入 */}
-          <div className="space-y-2">
-            <Label htmlFor="tags">标签</Label>
-            <Input
-              id="tags"
-              placeholder="技术, 前端, React（逗号或空格分隔）"
-              value={tags}
-              onChange={(e) => setTags(e.target.value)}
-              className={errors.userTags ? "border-red-500" : ""}
-            />
-            {errors.userTags && (
-              <p className="text-xs text-red-500">{errors.userTags}</p>
+          {/* 标签选择区域 */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="tags">标签</Label>
+              {isGeneratingTags && (
+                <span className="text-xs text-blue-600 flex items-center gap-1">
+                  <Loader2 className="size-3 animate-spin" />
+                  AI 生成中（可随时提交）
+                </span>
+              )}
+            </div>
+
+            {/* AI 生成的标签（可选择） */}
+            {aiTags.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs text-gray-600 flex items-center gap-1">
+                  <Sparkles className="size-3" />
+                  AI 建议标签（点击选择/取消）
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {aiTags.map((tag) => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => toggleTag(tag)}
+                      className={`
+                        px-3 py-1.5 rounded-full text-sm transition-all
+                        ${
+                          selectedTags.has(tag)
+                            ? "bg-blue-100 text-blue-700 border-2 border-blue-300"
+                            : "bg-gray-100 text-gray-700 border border-gray-300 hover:border-gray-400"
+                        }
+                      `}
+                    >
+                      {selectedTags.has(tag) && (
+                        <Check className="size-3 inline mr-1" />
+                      )}
+                      {tag}
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
-            <p className="text-xs text-gray-500">
-              最多 20 个标签，每个标签不超过 30 个字符
-            </p>
+
+            {/* 手动添加标签 */}
+            <div>
+              <Input
+                id="tags"
+                placeholder="输入自定义标签，按回车添加"
+                value={tags}
+                onChange={(e) => setTags(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    const input = e.currentTarget;
+                    if (input.value.trim()) {
+                      addCustomTag(input.value.trim());
+                      setTags("");
+                    }
+                  }
+                }}
+                className={errors.userTags ? "border-red-500" : ""}
+              />
+              {errors.userTags && (
+                <p className="text-xs text-red-500">{errors.userTags}</p>
+              )}
+              <p className="text-xs text-gray-500 mt-1">
+                已选中 {selectedTags.size} 个标签
+              </p>
+            </div>
           </div>
 
           {/* 备注输入 */}

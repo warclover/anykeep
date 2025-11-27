@@ -199,7 +199,17 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 6. 生成 AI 摘要和标签
+    // 6. 获取用户文件夹（用于 AI 标签参考和后续文件夹推荐）
+    const { data: userFolders } = await supabase
+      .from("folders")
+      .select("id, name")
+      .eq("user_id", user.id)
+      .eq("is_system", false)
+      .is("deleted_at", null);
+
+    const folderNames = userFolders?.map((f) => f.name) || [];
+
+    // 7. 生成 AI 摘要和标签
     let aiSummary: string | null = null;
     let aiTags: string[] | null = null;
 
@@ -207,6 +217,7 @@ export async function POST(request: NextRequest) {
       logger.info(
         {
           title: finalTitle,
+          folderCount: folderNames.length,
           action: "ai_generate_start",
         },
         "AI: Generating summary and tags",
@@ -214,6 +225,7 @@ export async function POST(request: NextRequest) {
       const aiResult = await generateAIContent({
         title: finalTitle,
         description: finalDescription || undefined,
+        existingFolderNames: folderNames, // 传递文件夹名称用于标签参考
       });
 
       aiSummary = aiResult.summary;
@@ -241,38 +253,18 @@ export async function POST(request: NextRequest) {
       aiTags = null;
     }
 
-    // 7. AI 文件夹推荐与置信度分层自动归类
+    // 8. AI 文件夹推荐与置信度分层自动归类
     let finalFolderId = folderId;
     let aiRecommendation: Awaited<ReturnType<typeof recommendFolder>> | null =
       null;
 
-    if (!finalFolderId && aiSummary && aiTags) {
+    if (!finalFolderId && aiSummary && aiTags && userFolders) {
       try {
-        // 7.1 获取用户所有文件夹（非系统、未删除）
-        const { data: userFolders, error: foldersError } = await supabase
-          .from("folders")
-          .select("id, name")
-          .eq("user_id", user.id)
-          .eq("is_system", false)
-          .is("deleted_at", null);
-
-        if (foldersError) {
-          logger.error(
-            {
-              error: foldersError,
-              userId: user.id,
-              operation: "fetch_user_folders",
-            },
-            "Failed to fetch user folders for recommendation",
-          );
-          throw foldersError;
-        }
-
-        // 7.2 调用 AI 推荐文件夹
+        // 8.1 调用 AI 推荐文件夹（userFolders 已在步骤6获取）
         logger.info(
           {
             title: finalTitle,
-            folderCount: userFolders?.length || 0,
+            folderCount: userFolders.length,
             action: "ai_recommend_start",
           },
           "AI Classification: Recommending folder",
@@ -282,7 +274,7 @@ export async function POST(request: NextRequest) {
           finalTitle,
           aiSummary,
           aiTags,
-          userFolders || [],
+          userFolders,
         );
 
         logger.info(
@@ -296,7 +288,7 @@ export async function POST(request: NextRequest) {
           "AI Classification: Recommendation received",
         );
 
-        // 7.3 根据置信度分层处理
+        // 8.2 根据置信度分层处理
         if (aiRecommendation.confidence >= 80) {
           // 高置信度（≥80%）：自动归类
           if (aiRecommendation.suggestNew) {
@@ -350,7 +342,7 @@ export async function POST(request: NextRequest) {
         }
         // else: 低置信度（<60%）：使用待整理文件夹（默认行为）
 
-        // 7.4 如果仍未分配文件夹，使用待整理文件夹
+        // 8.3 如果仍未分配文件夹，使用待整理文件夹
         if (!finalFolderId) {
           const { data: inboxFolderId, error: inboxError } = await supabase.rpc(
             "get_or_create_inbox_folder",

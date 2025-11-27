@@ -32,7 +32,12 @@ export async function PATCH(
 ) {
   try {
     // 0. 解析动态路由参数（Next.js 15+ 需要 await）
-    const { id: folderId } = await params;
+    const { id: folderIdStr } = await params;
+    const folderId = parseInt(folderIdStr, 10);
+
+    if (isNaN(folderId)) {
+      return badRequestError("Invalid folder ID");
+    }
 
     // 1. 验证用户身份
     const supabase = await createClient();

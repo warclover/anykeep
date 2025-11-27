@@ -66,8 +66,6 @@ interface FoldersPageClientProps {
 }
 
 // ==================== 文件夹分组配置 ====================
-// 分组类型
-type FolderGroup = "work" | "study" | "life" | "entertainment" | "other";
 
 // 分组配置
 const FOLDER_GROUPS: Record<
