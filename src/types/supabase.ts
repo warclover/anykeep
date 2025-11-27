@@ -75,6 +75,7 @@ export type Database = {
           is_system: boolean; // V4.2新增：系统文件夹标识
           system_type: SystemFolderType | null; // V4.2新增：系统文件夹类型
           is_archived: boolean; // V4.3新增：是否已停用
+          folder_group: FolderGroup | null; // V4.4新增：文件夹分组
           created_at: string;
           updated_at: string;
           deleted_at: string | null;
@@ -88,6 +89,7 @@ export type Database = {
           is_system?: boolean;
           system_type?: SystemFolderType | null;
           is_archived?: boolean;
+          folder_group?: FolderGroup | null;
           created_at?: string;
           updated_at?: string;
           deleted_at?: string | null;
@@ -101,6 +103,7 @@ export type Database = {
           is_system?: boolean;
           system_type?: SystemFolderType | null;
           is_archived?: boolean;
+          folder_group?: FolderGroup | null;
           created_at?: string;
           updated_at?: string;
           deleted_at?: string | null;
@@ -473,6 +476,9 @@ export type SystemFolderType = "INBOX"; // INBOX: 待整理文件夹
 
 // V4.2新增：分类建议状态
 export type SuggestionStatus = "pending" | "accepted" | "rejected" | "expired";
+
+// V4.4新增：文件夹分组类型
+export type FolderGroup = "work" | "study" | "life" | "entertainment" | "other";
 
 // V4.2新增：分类建议类型别名
 export type ClassificationSuggestion =
