@@ -121,6 +121,8 @@ export async function POST(request: NextRequest) {
       userTags,
       notes,
       coverUrl: userCoverUrl,
+      sourceName: userSourceName, // 前端传来的来源名称
+      author: userAuthor, // 前端传来的作者
       wordCount: userWordCount,
       imageCount: userImageCount,
     } = validation.data;
@@ -146,9 +148,10 @@ export async function POST(request: NextRequest) {
     // 5. 如果缺少标题或描述，尝试自动爬取
     let finalTitle = title;
     let finalDescription: string | null | undefined = description;
-    let author: string | undefined;
+    // 优先使用前端传来的数据（来自 metadata API）
+    let sourceName: string | undefined = userSourceName || undefined;
+    let author: string | undefined = userAuthor || undefined;
     let coverUrl: string | undefined;
-    // 优先使用前端传来的统计数据（来自 metadata API）
     let wordCount: number | undefined = userWordCount;
     let imageCount: number | undefined = userImageCount;
 
@@ -163,10 +166,11 @@ export async function POST(request: NextRequest) {
         );
         const crawlResult = await crawlContent(url);
 
-        // 使用爬取的数据填充缺失字段
+        // 使用爬取的数据填充缺失字段（优先使用前端提供的值）
         finalTitle = title || crawlResult.title;
         finalDescription = description || crawlResult.description || null;
-        author = crawlResult.author;
+        sourceName = sourceName || crawlResult.sourceName; // 来源名称
+        author = author || crawlResult.author; // 文章作者
         coverUrl = crawlResult.coverUrl;
         // 只在前端没有提供统计数据时才使用爬取的值
         wordCount = wordCount ?? crawlResult.wordCount;
@@ -176,6 +180,7 @@ export async function POST(request: NextRequest) {
           {
             title: finalTitle,
             platform: crawlResult.platform,
+            hasSourceName: !!sourceName,
             hasAuthor: !!author,
             hasCover: !!coverUrl,
             wordCount,
@@ -422,7 +427,8 @@ export async function POST(request: NextRequest) {
       url,
       title: finalTitle,
       description: finalDescription,
-      author: author || null,
+      source_name: sourceName || null, // 来源名称（公众号名称等）
+      author: author || null, // 文章作者
       cover_url: finalCoverUrl,
       platform,
       folder_id: finalFolderId || null,

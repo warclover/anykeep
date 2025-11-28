@@ -2,42 +2,61 @@
  * 收藏卡片组件
  */
 
-'use client'
+"use client";
 
-import { useState } from 'react'
-import Link from 'next/link'
-import { MoreVertical, Edit, Trash2, ExternalLink, Check, FileText, Image as ImageIcon, Folder, Tag, Circle, CheckCircle2, Calendar } from 'lucide-react'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
+import { useState } from "react";
+import Link from "next/link";
+import {
+  MoreVertical,
+  Edit,
+  Trash2,
+  ExternalLink,
+  Check,
+  FileText,
+  Image as ImageIcon,
+  Folder,
+  Tag,
+  Circle,
+  CheckCircle2,
+  Calendar,
+} from "lucide-react";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import type { Bookmark } from '@/types/supabase'
-import { cn } from '@/lib/utils'
-import { formatRelativeTime } from '@/lib/utils/date-utils'
-import { generatePlaceholderImage } from '@/lib/utils/placeholder-image'
-import { getProxiedImageUrl } from '@/lib/utils/image-proxy'
-import { PlatformBadge } from '@/components/ui/platform-badge'
+} from "@/components/ui/dropdown-menu";
+import type { Bookmark } from "@/types/supabase";
+import { cn } from "@/lib/utils";
+import { formatRelativeTime } from "@/lib/utils/date-utils";
+import { generatePlaceholderImage } from "@/lib/utils/placeholder-image";
+import { getProxiedImageUrl } from "@/lib/utils/image-proxy";
+import { PlatformBadge } from "@/components/ui/platform-badge";
 
-type ViewVariant = 'card' | 'list' | 'compact'
+type ViewVariant = "card" | "list" | "compact";
 
 interface BookmarkCardProps {
   bookmark: Bookmark & {
-    folders?: { name: string } | null
-  }
-  onEdit?: (id: number) => void
-  onDelete?: (id: number) => void
-  onToggleRead?: (id: number, isRead: boolean) => void
+    folders?: { name: string } | null;
+  };
+  onEdit?: (id: number) => void;
+  onDelete?: (id: number) => void;
+  onToggleRead?: (id: number, isRead: boolean) => void;
   // 批量选择模式
-  isSelectionMode?: boolean
-  isSelected?: boolean
-  onToggleSelect?: (id: number) => void
+  isSelectionMode?: boolean;
+  isSelected?: boolean;
+  onToggleSelect?: (id: number) => void;
   // 视图模式
-  variant?: ViewVariant
+  variant?: ViewVariant;
 }
 
 export function BookmarkCard({
@@ -48,55 +67,63 @@ export function BookmarkCard({
   isSelectionMode = false,
   isSelected = false,
   onToggleSelect,
-  variant = 'card'
+  variant = "card",
 }: BookmarkCardProps) {
-  const [isDeleting, setIsDeleting] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // 生成封面图（真实封面或占位符，微信图片使用代理）
-  const coverImage = getProxiedImageUrl(bookmark.cover_url) || generatePlaceholderImage(bookmark.title, bookmark.platform)
+  const coverImage =
+    getProxiedImageUrl(bookmark.cover_url) ||
+    generatePlaceholderImage(bookmark.title, bookmark.platform);
 
   const handleEdit = (e: React.MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    onEdit?.(bookmark.id)
-  }
+    e.preventDefault();
+    e.stopPropagation();
+    onEdit?.(bookmark.id);
+  };
 
   const handleDelete = async (e: React.MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    if (isDeleting) return
-    setIsDeleting(true)
+    e.preventDefault();
+    e.stopPropagation();
+    if (isDeleting) return;
+    setIsDeleting(true);
     try {
-      await onDelete?.(bookmark.id)
+      await onDelete?.(bookmark.id);
     } finally {
-      setIsDeleting(false)
+      setIsDeleting(false);
     }
-  }
+  };
 
   const handleOpenOriginal = (e: React.MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    window.open(bookmark.url, '_blank', 'noopener,noreferrer')
+    e.preventDefault();
+    e.stopPropagation();
+    window.open(bookmark.url, "_blank", "noopener,noreferrer");
     // 自动标记为已读（如果当前是未读状态）
     if (!bookmark.is_read && onToggleRead) {
-      onToggleRead(bookmark.id, true)
+      onToggleRead(bookmark.id, true);
     }
-  }
+  };
 
   const handleToggleSelect = (e: React.MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    onToggleSelect?.(bookmark.id)
-  }
+    e.preventDefault();
+    e.stopPropagation();
+    onToggleSelect?.(bookmark.id);
+  };
 
   const handleToggleRead = (e: React.MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    onToggleRead?.(bookmark.id, !bookmark.is_read)
-  }
+    e.preventDefault();
+    e.stopPropagation();
+    onToggleRead?.(bookmark.id, !bookmark.is_read);
+  };
 
   // 操作菜单组件（复用）
-  const ActionMenu = ({ className = '', variant: menuVariant = 'default' }: { className?: string, variant?: 'default' | 'mobile' }) => (
+  const ActionMenu = ({
+    className = "",
+    variant: menuVariant = "default",
+  }: {
+    className?: string;
+    variant?: "default" | "mobile";
+  }) => (
     <DropdownMenu>
       <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
         <Button
@@ -104,8 +131,8 @@ export function BookmarkCard({
           size="icon"
           className={cn(
             "h-8 w-8 bg-white/95 hover:bg-white dark:bg-gray-800/95 dark:hover:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-600",
-            menuVariant === 'mobile' && "h-9 w-9",
-            className
+            menuVariant === "mobile" && "h-9 w-9",
+            className,
           )}
         >
           <MoreVertical className="h-4 w-4 text-gray-600 dark:text-gray-300" />
@@ -138,39 +165,47 @@ export function BookmarkCard({
           </DropdownMenuItem>
         )}
         {onDelete && (
-          <DropdownMenuItem onClick={handleDelete} className="text-red-600 dark:text-red-400">
+          <DropdownMenuItem
+            onClick={handleDelete}
+            className="text-red-600 dark:text-red-400"
+          >
             <Trash2 className="mr-2 h-4 w-4" />
-            {isDeleting ? '删除中...' : '删除'}
+            {isDeleting ? "删除中..." : "删除"}
           </DropdownMenuItem>
         )}
       </DropdownMenuContent>
     </DropdownMenu>
-  )
+  );
 
   // 选择复选框组件（复用）
-  const SelectionCheckbox = ({ className = '' }: { className?: string }) => (
+  const SelectionCheckbox = ({ className = "" }: { className?: string }) => (
     <div
       className={cn(
         "w-6 h-6 rounded border-2 flex items-center justify-center transition-colors",
         isSelected
           ? "bg-blue-500 border-blue-500"
           : "bg-white/90 border-gray-300 dark:bg-gray-800/90 dark:border-gray-600",
-        className
+        className,
       )}
     >
       {isSelected && <Check className="w-4 h-4 text-white" />}
     </div>
-  )
+  );
 
   // 紧凑列表视图（compact）
-  if (variant === 'compact') {
+  if (variant === "compact") {
     return (
-      <Link href={isSelectionMode ? '#' : `/bookmark/${bookmark.id}`} onClick={isSelectionMode ? handleToggleSelect : undefined}>
-        <div className={cn(
-          "flex items-center gap-2 sm:gap-4 p-2 sm:p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-sm transition-shadow cursor-pointer group",
-          isDeleting && "opacity-50 pointer-events-none",
-          isSelected && "ring-2 ring-blue-500 dark:ring-blue-400"
-        )}>
+      <Link
+        href={isSelectionMode ? "#" : `/bookmark/${bookmark.id}`}
+        onClick={isSelectionMode ? handleToggleSelect : undefined}
+      >
+        <div
+          className={cn(
+            "flex items-center gap-2 sm:gap-4 p-2 sm:p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-sm transition-shadow cursor-pointer group",
+            isDeleting && "opacity-50 pointer-events-none",
+            isSelected && "ring-2 ring-blue-500 dark:ring-blue-400",
+          )}
+        >
           {/* 选择复选框 */}
           {isSelectionMode && <SelectionCheckbox />}
 
@@ -183,9 +218,14 @@ export function BookmarkCard({
               {bookmark.title}
             </h3>
             <div className="flex items-center gap-1.5 sm:gap-2 text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-              <span className="truncate max-w-[80px] sm:max-w-none">{bookmark.author || '未知作者'}</span>
+              {/* compact 视图：简洁显示来源/作者 */}
+              <span className="truncate max-w-[80px] sm:max-w-none">
+                {bookmark.source_name || bookmark.author || "未知作者"}
+              </span>
               <span>·</span>
-              <span className="flex-shrink-0">{formatRelativeTime(bookmark.created_at)}</span>
+              <span className="flex-shrink-0">
+                {formatRelativeTime(bookmark.created_at)}
+              </span>
               {bookmark.folders && (
                 <span className="hidden sm:contents">
                   <span>·</span>
@@ -203,18 +243,23 @@ export function BookmarkCard({
           )}
         </div>
       </Link>
-    )
+    );
   }
 
   // 列表视图（list）- 移动端垂直布局，桌面端水平布局
-  if (variant === 'list') {
+  if (variant === "list") {
     return (
-      <Link href={isSelectionMode ? '#' : `/bookmark/${bookmark.id}`} onClick={isSelectionMode ? handleToggleSelect : undefined}>
-        <Card className={cn(
-          "flex flex-col sm:flex-row hover:shadow-md transition-shadow cursor-pointer group overflow-hidden",
-          isDeleting && "opacity-50 pointer-events-none",
-          isSelected && "ring-2 ring-blue-500 dark:ring-blue-400"
-        )}>
+      <Link
+        href={isSelectionMode ? "#" : `/bookmark/${bookmark.id}`}
+        onClick={isSelectionMode ? handleToggleSelect : undefined}
+      >
+        <Card
+          className={cn(
+            "flex flex-col sm:flex-row hover:shadow-md transition-shadow cursor-pointer group overflow-hidden",
+            isDeleting && "opacity-50 pointer-events-none",
+            isSelected && "ring-2 ring-blue-500 dark:ring-blue-400",
+          )}
+        >
           {/* 移动端：顶部区域（封面 + 选择框 + 操作按钮） */}
           <div className="relative sm:hidden">
             {/* 封面图 - 移动端全宽 */}
@@ -284,11 +329,18 @@ export function BookmarkCard({
               <div className="flex items-center gap-1.5 flex-wrap">
                 {bookmark.ai_tags && bookmark.ai_tags.length > 0 && (
                   <>
-                    <Badge variant="outline" className="bg-pink-100 dark:bg-pink-900/30 border-pink-200 dark:border-pink-700 text-pink-700 dark:text-pink-300 text-xs">
+                    <Badge
+                      variant="outline"
+                      className="bg-pink-100 dark:bg-pink-900/30 border-pink-200 dark:border-pink-700 text-pink-700 dark:text-pink-300 text-xs"
+                    >
                       AI
                     </Badge>
                     {bookmark.ai_tags.slice(0, 1).map((tag) => (
-                      <Badge key={`ai-${tag}`} variant="secondary" className="text-xs hidden sm:inline-flex">
+                      <Badge
+                        key={`ai-${tag}`}
+                        variant="secondary"
+                        className="text-xs hidden sm:inline-flex"
+                      >
                         {tag}
                       </Badge>
                     ))}
@@ -298,7 +350,10 @@ export function BookmarkCard({
 
               {/* 元信息 */}
               <div className="flex items-center gap-1.5 sm:gap-2 text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
-                <span className="truncate max-w-[80px] sm:max-w-none">{bookmark.author || '未知'}</span>
+                {/* list 视图：简洁显示来源/作者 */}
+                <span className="truncate max-w-[80px] sm:max-w-none">
+                  {bookmark.source_name || bookmark.author || "未知"}
+                </span>
                 <span>·</span>
                 <span>{formatRelativeTime(bookmark.created_at)}</span>
               </div>
@@ -313,17 +368,22 @@ export function BookmarkCard({
           )}
         </Card>
       </Link>
-    )
+    );
   }
 
   // 卡片视图（card，默认 - 瀑布流样式）
   return (
-    <Link href={isSelectionMode ? '#' : `/bookmark/${bookmark.id}`} onClick={isSelectionMode ? handleToggleSelect : undefined}>
-      <Card className={cn(
-        "h-full hover:shadow-md transition-shadow cursor-pointer flex flex-col group relative",
-        isDeleting && "opacity-50 pointer-events-none",
-        isSelected && "ring-2 ring-blue-500 dark:ring-blue-400"
-      )}>
+    <Link
+      href={isSelectionMode ? "#" : `/bookmark/${bookmark.id}`}
+      onClick={isSelectionMode ? handleToggleSelect : undefined}
+    >
+      <Card
+        className={cn(
+          "h-full hover:shadow-md transition-shadow cursor-pointer flex flex-col group relative",
+          isDeleting && "opacity-50 pointer-events-none",
+          isSelected && "ring-2 ring-blue-500 dark:ring-blue-400",
+        )}
+      >
         {/* 封面图 - 16:9 比例（总是显示，使用真实图片或占位符） */}
         <div className="relative aspect-video overflow-hidden rounded-t-lg">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -334,11 +394,7 @@ export function BookmarkCard({
           />
           {/* 平台标识 - PRD v4.1: Source Memory 强化 */}
           <div className="absolute top-2 left-2">
-            <PlatformBadge
-              platform={bookmark.platform}
-              size="md"
-              showName
-            />
+            <PlatformBadge platform={bookmark.platform} size="md" showName />
           </div>
 
           {/* 批量选择模式：复选框 */}
@@ -362,10 +418,12 @@ export function BookmarkCard({
             {!bookmark.is_read && (
               <Circle className="size-2 mt-2 flex-shrink-0 fill-blue-500 text-blue-500" />
             )}
-            <CardTitle className={cn(
-              "line-clamp-2 text-base min-h-[3rem] leading-6",
-              bookmark.is_read && "text-gray-500 dark:text-gray-400"
-            )}>
+            <CardTitle
+              className={cn(
+                "line-clamp-2 text-base min-h-[3rem] leading-6",
+                bookmark.is_read && "text-gray-500 dark:text-gray-400",
+              )}
+            >
               {bookmark.title}
             </CardTitle>
           </div>
@@ -378,7 +436,8 @@ export function BookmarkCard({
 
         <CardContent className="pt-0">
           {/* 标签区域 */}
-          {((bookmark.ai_tags && bookmark.ai_tags.length > 0) || (bookmark.user_tags && bookmark.user_tags.length > 0)) && (
+          {((bookmark.ai_tags && bookmark.ai_tags.length > 0) ||
+            (bookmark.user_tags && bookmark.user_tags.length > 0)) && (
             <div className="flex flex-wrap gap-1 mb-3">
               {/* AI 标签 */}
               {bookmark.ai_tags && bookmark.ai_tags.length > 0 && (
@@ -390,7 +449,11 @@ export function BookmarkCard({
                     AI
                   </Badge>
                   {bookmark.ai_tags.slice(0, 2).map((tag) => (
-                    <Badge key={`ai-${tag}`} variant="secondary" className="text-xs">
+                    <Badge
+                      key={`ai-${tag}`}
+                      variant="secondary"
+                      className="text-xs"
+                    >
                       {tag}
                     </Badge>
                   ))}
@@ -400,7 +463,11 @@ export function BookmarkCard({
               {bookmark.user_tags && bookmark.user_tags.length > 0 && (
                 <>
                   {bookmark.user_tags.slice(0, 2).map((tag) => (
-                    <Badge key={`user-${tag}`} variant="outline" className="bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300 text-xs">
+                    <Badge
+                      key={`user-${tag}`}
+                      variant="outline"
+                      className="bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300 text-xs"
+                    >
                       <Tag className="size-2.5 mr-0.5" />
                       {tag}
                     </Badge>
@@ -408,9 +475,14 @@ export function BookmarkCard({
                 </>
               )}
               {/* 溢出计数 */}
-              {((bookmark.ai_tags?.length || 0) + (bookmark.user_tags?.length || 0)) > 4 && (
+              {(bookmark.ai_tags?.length || 0) +
+                (bookmark.user_tags?.length || 0) >
+                4 && (
                 <Badge variant="outline" className="text-xs">
-                  +{(bookmark.ai_tags?.length || 0) + (bookmark.user_tags?.length || 0) - 4}
+                  +
+                  {(bookmark.ai_tags?.length || 0) +
+                    (bookmark.user_tags?.length || 0) -
+                    4}
                 </Badge>
               )}
             </div>
@@ -419,7 +491,24 @@ export function BookmarkCard({
           {/* 元信息 */}
           <div className="flex items-center justify-between text-xs text-gray-500">
             <div className="flex items-center gap-1.5 min-w-0">
-              <span className="truncate">{bookmark.author || '未知作者'}</span>
+              {/* 来源名称和作者显示逻辑 */}
+              {bookmark.source_name &&
+              bookmark.author &&
+              bookmark.source_name !== bookmark.author ? (
+                // 两者都有且不同：显示 "来源 · 作者"
+                <span className="truncate">
+                  <span className="text-gray-600 dark:text-gray-300">
+                    {bookmark.source_name}
+                  </span>
+                  <span className="mx-1">·</span>
+                  <span>{bookmark.author}</span>
+                </span>
+              ) : (
+                // 只显示一个（优先 author）
+                <span className="truncate">
+                  {bookmark.author || bookmark.source_name || "未知作者"}
+                </span>
+              )}
               {bookmark.folders && (
                 <>
                   <span>·</span>
@@ -463,19 +552,17 @@ export function BookmarkCard({
           )}
 
           {/* 处理状态 */}
-          {bookmark.status === 'PROCESSING' && (
+          {bookmark.status === "PROCESSING" && (
             <div className="mt-2 flex items-center gap-1 text-xs text-blue-600">
               <span className="animate-pulse">●</span>
               处理中...
             </div>
           )}
-          {bookmark.status === 'FAILED' && (
-            <div className="mt-2 text-xs text-red-500">
-              处理失败
-            </div>
+          {bookmark.status === "FAILED" && (
+            <div className="mt-2 text-xs text-red-500">处理失败</div>
           )}
         </CardContent>
       </Card>
     </Link>
-  )
+  );
 }

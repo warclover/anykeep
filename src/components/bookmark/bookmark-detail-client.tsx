@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -48,6 +48,40 @@ export function BookmarkDetailClient({ bookmark }: BookmarkDetailClientProps) {
   const platformConfig = getPlatformConfig(bookmark.platform);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
+
+  // 防止重复调用标记已读 API
+  const hasMarkedAsRead = useRef(false);
+
+  // 访问详情页时自动标记已读
+  useEffect(() => {
+    const markAsRead = async () => {
+      // 如果已读或已经调用过，则跳过
+      if (bookmark.is_read || hasMarkedAsRead.current) {
+        return;
+      }
+
+      hasMarkedAsRead.current = true;
+
+      try {
+        const res = await fetch(`/api/bookmarks/${bookmark.id}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ isRead: true }),
+        });
+
+        if (res.ok) {
+          // 静默成功，不显示 toast（避免干扰用户阅读）
+          router.refresh();
+        }
+      } catch {
+        // 静默失败，不阻塞用户体验
+      }
+    };
+
+    markAsRead();
+  }, [bookmark.id, bookmark.is_read, router]);
 
   // 标签内联编辑状态
   const [isEditingTags, setIsEditingTags] = useState(false);

@@ -3,9 +3,9 @@
  * 使用 Zod 进行输入验证
  */
 
-import { z } from 'zod'
-import { VALIDATION as VALIDATION_LIMITS } from './constants/app'
-import { VALIDATION } from './constants/messages'
+import { z } from "zod";
+import { VALIDATION as VALIDATION_LIMITS } from "./constants/app";
+import { VALIDATION } from "./constants/messages";
 
 /**
  * 搜索查询验证
@@ -14,25 +14,34 @@ export const searchQuerySchema = z.object({
   q: z
     .string()
     .trim()
-    .min(VALIDATION_LIMITS.SEARCH_QUERY_MIN_LENGTH, VALIDATION.REQUIRED('搜索关键词'))
-    .max(VALIDATION_LIMITS.SEARCH_QUERY_MAX_LENGTH, VALIDATION.TOO_LONG('搜索关键词', VALIDATION_LIMITS.SEARCH_QUERY_MAX_LENGTH))
+    .min(
+      VALIDATION_LIMITS.SEARCH_QUERY_MIN_LENGTH,
+      VALIDATION.REQUIRED("搜索关键词"),
+    )
+    .max(
+      VALIDATION_LIMITS.SEARCH_QUERY_MAX_LENGTH,
+      VALIDATION.TOO_LONG(
+        "搜索关键词",
+        VALIDATION_LIMITS.SEARCH_QUERY_MAX_LENGTH,
+      ),
+    )
     .refine(
       (val) => {
         // 防止 SQL 注入的基本检查
-        const dangerousPatterns = /['";\\]/g
-        return !dangerousPatterns.test(val)
+        const dangerousPatterns = /['";\\]/g;
+        return !dangerousPatterns.test(val);
       },
       {
-        message: VALIDATION.INVALID_FORMAT('搜索关键词'),
-      }
+        message: VALIDATION.INVALID_FORMAT("搜索关键词"),
+      },
     ),
   ai: z
     .string()
     .optional()
-    .transform((val) => val === 'true'),
-})
+    .transform((val) => val === "true"),
+});
 
-export type SearchQuery = z.infer<typeof searchQuerySchema>
+export type SearchQuery = z.infer<typeof searchQuerySchema>;
 
 /**
  * 文件夹名称验证
@@ -40,18 +49,24 @@ export type SearchQuery = z.infer<typeof searchQuerySchema>
 export const folderNameSchema = z
   .string()
   .trim()
-  .min(VALIDATION_LIMITS.FOLDER_NAME_MIN_LENGTH, VALIDATION.FOLDER_NAME_REQUIRED)
-  .max(VALIDATION_LIMITS.FOLDER_NAME_MAX_LENGTH, VALIDATION.FOLDER_NAME_TOO_LONG(VALIDATION_LIMITS.FOLDER_NAME_MAX_LENGTH))
+  .min(
+    VALIDATION_LIMITS.FOLDER_NAME_MIN_LENGTH,
+    VALIDATION.FOLDER_NAME_REQUIRED,
+  )
+  .max(
+    VALIDATION_LIMITS.FOLDER_NAME_MAX_LENGTH,
+    VALIDATION.FOLDER_NAME_TOO_LONG(VALIDATION_LIMITS.FOLDER_NAME_MAX_LENGTH),
+  )
   .refine(
     (val) => {
       // 不允许特殊字符
-      const invalidChars = /[<>:"/\\|?*]/
-      return !invalidChars.test(val)
+      const invalidChars = /[<>:"/\\|?*]/;
+      return !invalidChars.test(val);
     },
     {
       message: '文件夹名称不能包含特殊字符 < > : " / \\ | ? *',
-    }
-  )
+    },
+  );
 
 /**
  * 书签 URL 验证
@@ -59,7 +74,7 @@ export const folderNameSchema = z
 export const bookmarkUrlSchema = z
   .string()
   .url(VALIDATION.INVALID_URL)
-  .max(2000, VALIDATION.TOO_LONG('URL', 2000))
+  .max(2000, VALIDATION.TOO_LONG("URL", 2000));
 
 /**
  * 标签验证
@@ -67,15 +82,15 @@ export const bookmarkUrlSchema = z
 export const tagSchema = z
   .string()
   .trim()
-  .min(1, VALIDATION.REQUIRED('标签'))
-  .max(30, VALIDATION.TOO_LONG('标签', 30))
+  .min(1, VALIDATION.REQUIRED("标签"))
+  .max(30, VALIDATION.TOO_LONG("标签", 30));
 
 /**
  * 标签数组验证
  */
 export const tagsArraySchema = z
   .array(tagSchema)
-  .max(20, VALIDATION.TOO_LARGE('标签数量', 20))
+  .max(20, VALIDATION.TOO_LARGE("标签数量", 20));
 
 /**
  * 用户设置验证
@@ -101,9 +116,9 @@ export const userSettingsSchema = z.object({
     inApp: z.boolean(),
     weeklyDigest: z.boolean(),
   }),
-})
+});
 
-export type UserSettings = z.infer<typeof userSettingsSchema>
+export type UserSettings = z.infer<typeof userSettingsSchema>;
 
 /**
  * 分页参数验证
@@ -112,17 +127,17 @@ export const paginationSchema = z.object({
   page: z.coerce
     .number()
     .int()
-    .min(1, VALIDATION.TOO_SMALL('页码', 1))
+    .min(1, VALIDATION.TOO_SMALL("页码", 1))
     .default(1),
   limit: z.coerce
     .number()
     .int()
-    .min(1, VALIDATION.TOO_SMALL('每页数量', 1))
-    .max(100, VALIDATION.TOO_LARGE('每页数量', 100))
+    .min(1, VALIDATION.TOO_SMALL("每页数量", 1))
+    .max(100, VALIDATION.TOO_LARGE("每页数量", 100))
     .default(20),
-})
+});
 
-export type Pagination = z.infer<typeof paginationSchema>
+export type Pagination = z.infer<typeof paginationSchema>;
 
 /**
  * 创建收藏验证 Schema
@@ -133,31 +148,53 @@ export const createBookmarkSchema = z.object({
     .string()
     .trim()
     .min(1, VALIDATION.BOOKMARK_TITLE_REQUIRED)
-    .max(VALIDATION_LIMITS.BOOKMARK_TITLE_MAX_LENGTH, VALIDATION.TOO_LONG('标题', VALIDATION_LIMITS.BOOKMARK_TITLE_MAX_LENGTH)),
+    .max(
+      VALIDATION_LIMITS.BOOKMARK_TITLE_MAX_LENGTH,
+      VALIDATION.TOO_LONG("标题", VALIDATION_LIMITS.BOOKMARK_TITLE_MAX_LENGTH),
+    ),
   description: z
     .string()
     .trim()
-    .max(VALIDATION_LIMITS.SUMMARY_MAX_LENGTH, VALIDATION.TOO_LONG('描述', VALIDATION_LIMITS.SUMMARY_MAX_LENGTH))
+    .max(
+      VALIDATION_LIMITS.SUMMARY_MAX_LENGTH,
+      VALIDATION.TOO_LONG("描述", VALIDATION_LIMITS.SUMMARY_MAX_LENGTH),
+    )
     .optional(),
   folderId: z.coerce.number().int().positive().optional(),
   userTags: tagsArraySchema.optional(),
   notes: z
     .string()
     .trim()
-    .max(VALIDATION_LIMITS.SUMMARY_MAX_LENGTH, VALIDATION.TOO_LONG('备注', VALIDATION_LIMITS.SUMMARY_MAX_LENGTH))
+    .max(
+      VALIDATION_LIMITS.SUMMARY_MAX_LENGTH,
+      VALIDATION.TOO_LONG("备注", VALIDATION_LIMITS.SUMMARY_MAX_LENGTH),
+    )
     .optional(),
   coverUrl: z
     .string()
     .trim()
-    .url(VALIDATION.INVALID_FORMAT('封面图 URL'))
+    .url(VALIDATION.INVALID_FORMAT("封面图 URL"))
     .optional()
-    .or(z.literal('')),
+    .or(z.literal("")),
+  // 来源和作者信息（从元数据自动获取）
+  sourceName: z
+    .string()
+    .trim()
+    .max(200, VALIDATION.TOO_LONG("来源名称", 200))
+    .optional()
+    .or(z.literal("")),
+  author: z
+    .string()
+    .trim()
+    .max(200, VALIDATION.TOO_LONG("作者", 200))
+    .optional()
+    .or(z.literal("")),
   // 内容统计（从元数据自动获取）
   wordCount: z.coerce.number().int().nonnegative().optional(),
   imageCount: z.coerce.number().int().nonnegative().optional(),
-})
+});
 
-export type CreateBookmark = z.infer<typeof createBookmarkSchema>
+export type CreateBookmark = z.infer<typeof createBookmarkSchema>;
 
 /**
  * 更新收藏验证 Schema
@@ -167,40 +204,54 @@ export const updateBookmarkSchema = z.object({
     .string()
     .trim()
     .min(1, VALIDATION.BOOKMARK_TITLE_REQUIRED)
-    .max(VALIDATION_LIMITS.BOOKMARK_TITLE_MAX_LENGTH, VALIDATION.TOO_LONG('标题', VALIDATION_LIMITS.BOOKMARK_TITLE_MAX_LENGTH))
+    .max(
+      VALIDATION_LIMITS.BOOKMARK_TITLE_MAX_LENGTH,
+      VALIDATION.TOO_LONG("标题", VALIDATION_LIMITS.BOOKMARK_TITLE_MAX_LENGTH),
+    )
     .optional(),
   description: z
     .string()
     .trim()
-    .max(VALIDATION_LIMITS.SUMMARY_MAX_LENGTH, VALIDATION.TOO_LONG('描述', VALIDATION_LIMITS.SUMMARY_MAX_LENGTH))
+    .max(
+      VALIDATION_LIMITS.SUMMARY_MAX_LENGTH,
+      VALIDATION.TOO_LONG("描述", VALIDATION_LIMITS.SUMMARY_MAX_LENGTH),
+    )
     .optional(),
   folderId: z.coerce.number().int().positive().nullable().optional(),
   userTags: tagsArraySchema.optional(),
   notes: z
     .string()
     .trim()
-    .max(VALIDATION_LIMITS.SUMMARY_MAX_LENGTH, VALIDATION.TOO_LONG('备注', VALIDATION_LIMITS.SUMMARY_MAX_LENGTH))
+    .max(
+      VALIDATION_LIMITS.SUMMARY_MAX_LENGTH,
+      VALIDATION.TOO_LONG("备注", VALIDATION_LIMITS.SUMMARY_MAX_LENGTH),
+    )
     .optional(),
-})
+});
 
-export type UpdateBookmark = z.infer<typeof updateBookmarkSchema>
+export type UpdateBookmark = z.infer<typeof updateBookmarkSchema>;
 
 /**
  * 获取收藏列表查询参数验证
  */
 export const getBookmarksQuerySchema = z.object({
-  platform: z.enum(['WECHAT_OFFICIAL_ACCOUNT', 'BILIBILI', 'XIAOHONGSHU', 'UNKNOWN']).optional(),
+  platform: z
+    .enum(["WECHAT_OFFICIAL_ACCOUNT", "BILIBILI", "XIAOHONGSHU", "UNKNOWN"])
+    .optional(),
   folderId: z.coerce.number().int().positive().optional(),
   keyword: z
     .string()
     .trim()
-    .max(VALIDATION_LIMITS.SEARCH_QUERY_MAX_LENGTH, VALIDATION.TOO_LONG('关键词', VALIDATION_LIMITS.SEARCH_QUERY_MAX_LENGTH))
+    .max(
+      VALIDATION_LIMITS.SEARCH_QUERY_MAX_LENGTH,
+      VALIDATION.TOO_LONG("关键词", VALIDATION_LIMITS.SEARCH_QUERY_MAX_LENGTH),
+    )
     .optional(),
   cursor: z.coerce.number().int().positive().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(50),
-})
+});
 
-export type GetBookmarksQuery = z.infer<typeof getBookmarksQuerySchema>
+export type GetBookmarksQuery = z.infer<typeof getBookmarksQuerySchema>;
 
 /**
  * 创建文件夹验证 Schema
@@ -211,16 +262,16 @@ export const createFolderSchema = z.object({
   color: z
     .string()
     .trim()
-    .regex(/^#[0-9A-Fa-f]{6}$/, VALIDATION.INVALID_FORMAT('颜色'))
+    .regex(/^#[0-9A-Fa-f]{6}$/, VALIDATION.INVALID_FORMAT("颜色"))
     .optional(),
   icon: z
     .string()
     .trim()
-    .max(50, VALIDATION.TOO_LONG('图标名称', 50))
+    .max(50, VALIDATION.TOO_LONG("图标名称", 50))
     .optional(),
-})
+});
 
-export type CreateFolder = z.infer<typeof createFolderSchema>
+export type CreateFolder = z.infer<typeof createFolderSchema>;
 
 /**
  * 更新文件夹验证 Schema
@@ -231,18 +282,18 @@ export const updateFolderSchema = z.object({
   color: z
     .string()
     .trim()
-    .regex(/^#[0-9A-Fa-f]{6}$/, VALIDATION.INVALID_FORMAT('颜色'))
+    .regex(/^#[0-9A-Fa-f]{6}$/, VALIDATION.INVALID_FORMAT("颜色"))
     .nullable()
     .optional(),
   icon: z
     .string()
     .trim()
-    .max(50, VALIDATION.TOO_LONG('图标名称', 50))
+    .max(50, VALIDATION.TOO_LONG("图标名称", 50))
     .nullable()
     .optional(),
-})
+});
 
-export type UpdateFolder = z.infer<typeof updateFolderSchema>
+export type UpdateFolder = z.infer<typeof updateFolderSchema>;
 
 /**
  * 批量删除收藏验证 Schema
@@ -252,9 +303,9 @@ export const batchDeleteBookmarksSchema = z.object({
     .array(z.number().int().positive())
     .min(1, VALIDATION.BATCH_SELECT_REQUIRED)
     .max(100, VALIDATION.BATCH_LIMIT_EXCEEDED(100)),
-})
+});
 
-export type BatchDeleteBookmarks = z.infer<typeof batchDeleteBookmarksSchema>
+export type BatchDeleteBookmarks = z.infer<typeof batchDeleteBookmarksSchema>;
 
 /**
  * 批量移动收藏到文件夹验证 Schema
@@ -265,17 +316,17 @@ export const batchMoveBookmarksSchema = z.object({
     .min(1, VALIDATION.BATCH_SELECT_REQUIRED)
     .max(100, VALIDATION.BATCH_LIMIT_EXCEEDED(100)),
   folderId: z.coerce.number().int().positive().nullable(),
-})
+});
 
-export type BatchMoveBookmarks = z.infer<typeof batchMoveBookmarksSchema>
+export type BatchMoveBookmarks = z.infer<typeof batchMoveBookmarksSchema>;
 
 /**
  * 切换已读状态验证 Schema
  */
 export const toggleReadSchema = z.object({
   isRead: z.boolean({
-    message: 'isRead 必须是布尔值',
+    message: "isRead 必须是布尔值",
   }),
-})
+});
 
-export type ToggleRead = z.infer<typeof toggleReadSchema>
+export type ToggleRead = z.infer<typeof toggleReadSchema>;

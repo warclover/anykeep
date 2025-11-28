@@ -212,6 +212,7 @@ export type Database = {
           folder_id: number | null;
           user_tags: string[] | null;
           notes: string | null;
+          source_name: string | null;
           author: string | null;
           publish_time: string | null;
           content_type: "ARTICLE" | "VIDEO" | "IMAGE" | "UNKNOWN" | null;
@@ -243,6 +244,7 @@ export type Database = {
           folder_id?: number | null;
           user_tags?: string[] | null;
           notes?: string | null;
+          source_name?: string | null;
           author?: string | null;
           publish_time?: string | null;
           content_type?: "ARTICLE" | "VIDEO" | "IMAGE" | "UNKNOWN" | null;
@@ -274,6 +276,7 @@ export type Database = {
           folder_id?: number | null;
           user_tags?: string[] | null;
           notes?: string | null;
+          source_name?: string | null;
           author?: string | null;
           publish_time?: string | null;
           content_type?: "ARTICLE" | "VIDEO" | "IMAGE" | "UNKNOWN" | null;
