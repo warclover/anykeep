@@ -89,3 +89,38 @@ export type { PlatformStats } from "./platform-utils";
 // 合并去重工具导出
 export { mergeBookmarkFiles, generateMergeSummary } from "./merge-utils";
 export type { MergeResult } from "./merge-utils";
+
+// 导入缓存导出
+export {
+  createImportSession,
+  getImportSession,
+  updateImportSession,
+  deleteImportSession,
+  getPendingSession,
+  hasPendingSession,
+  createImportBatches,
+  getSessionBatches,
+  getPendingBatches,
+  updateBatchStatus,
+  getSessionStats,
+  cleanupExpiredSessions,
+  clearAllImportCache,
+} from "./import-cache";
+export type {
+  ImportSession,
+  ImportBatch as CachedImportBatch,
+  ImportSessionStatus,
+  ImportBatchStatus,
+} from "./import-cache";
+
+// 会话管理器导出
+export {
+  ImportSessionManager,
+  createImportSessionManager,
+} from "./import-session-manager";
+export type {
+  ImportDataItem,
+  SessionManagerConfig,
+  BatchResult,
+  SessionResult,
+} from "./import-session-manager";

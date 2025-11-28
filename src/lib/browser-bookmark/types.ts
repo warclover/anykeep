@@ -4,6 +4,9 @@
 
 import type { Platform } from "@/types/supabase";
 
+// 重新导出 Platform 类型
+export type { Platform };
+
 /**
  * 解析后的书签节点
  */

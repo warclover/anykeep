@@ -1,6 +1,13 @@
 "use client";
 
-import { Loader2, CheckCircle, XCircle, SkipForward } from "lucide-react";
+import {
+  Loader2,
+  CheckCircle,
+  XCircle,
+  SkipForward,
+  Pause,
+  Play,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import type { ImportProgress as ImportProgressType } from "@/lib/browser-bookmark";
@@ -8,9 +15,21 @@ import type { ImportProgress as ImportProgressType } from "@/lib/browser-bookmar
 interface ImportProgressProps {
   progress: ImportProgressType;
   onCancel?: () => void;
+  /** 暂停回调 */
+  onPause?: () => void;
+  /** 继续回调 */
+  onResume?: () => void;
+  /** 是否已暂停 */
+  isPaused?: boolean;
 }
 
-export function ImportProgress({ progress, onCancel }: ImportProgressProps) {
+export function ImportProgress({
+  progress,
+  onCancel,
+  onPause,
+  onResume,
+  isPaused = false,
+}: ImportProgressProps) {
   const {
     totalBookmarks,
     totalBatches,
@@ -42,14 +61,16 @@ export function ImportProgress({ progress, onCancel }: ImportProgressProps) {
     <div className="space-y-6">
       {/* 状态标题 */}
       <div className="flex items-center gap-3">
-        {(isImporting || isParsing) && (
+        {(isImporting || isParsing) && !isPaused && (
           <Loader2 className="h-5 w-5 animate-spin text-primary" />
         )}
+        {isPaused && <Pause className="h-5 w-5 text-amber-500" />}
         {isCompleted && <CheckCircle className="h-5 w-5 text-green-500" />}
         {isError && <XCircle className="h-5 w-5 text-destructive" />}
         <span className="text-lg font-medium">
           {isParsing && "正在解析书签文件..."}
-          {isImporting && "正在导入书签..."}
+          {isImporting && !isPaused && "正在导入书签..."}
+          {isImporting && isPaused && "导入已暂停"}
           {isCompleted && "导入完成"}
           {isError && "导入出错"}
         </span>
@@ -100,12 +121,28 @@ export function ImportProgress({ progress, onCancel }: ImportProgressProps) {
         </div>
       )}
 
-      {/* 取消按钮 */}
-      {isImporting && onCancel && (
-        <div className="flex justify-end">
-          <Button variant="outline" onClick={onCancel}>
-            取消导入
-          </Button>
+      {/* 操作按钮 */}
+      {isImporting && (
+        <div className="flex justify-end gap-2">
+          {/* 暂停/继续按钮 */}
+          {!isPaused && onPause && (
+            <Button variant="outline" onClick={onPause}>
+              <Pause className="h-4 w-4 mr-1" />
+              暂停
+            </Button>
+          )}
+          {isPaused && onResume && (
+            <Button variant="outline" onClick={onResume}>
+              <Play className="h-4 w-4 mr-1" />
+              继续
+            </Button>
+          )}
+          {/* 取消按钮 */}
+          {onCancel && (
+            <Button variant="outline" onClick={onCancel}>
+              取消导入
+            </Button>
+          )}
         </div>
       )}
     </div>
