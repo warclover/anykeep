@@ -20,10 +20,7 @@ import {
   Folder,
   Inbox,
   Clock,
-  BookmarkPlus,
-  FolderOpen,
   TrendingUp,
-  Sparkles,
   Globe,
   ChevronDown,
   ChevronRight,
@@ -182,86 +179,86 @@ function groupFolders(folders: FolderWithStats[]): GroupedFolders {
 }
 
 // ==================== 渐变色调色板 ====================
-// 渐变小清新色调调色板 - 增强版
+// 柔和渐变色调色板 - 参考现代 UI 设计
 const GRADIENT_COLORS = [
   {
-    from: "from-pink-200",
-    to: "to-rose-100",
-    accent: "text-pink-600",
-    bg: "bg-pink-500/10",
-    shadow: "shadow-pink-200/50",
-    glow: "pink",
-  },
-  {
-    from: "from-purple-200",
-    to: "to-violet-100",
-    accent: "text-purple-600",
-    bg: "bg-purple-500/10",
-    shadow: "shadow-purple-200/50",
-    glow: "purple",
-  },
-  {
-    from: "from-blue-200",
-    to: "to-sky-100",
-    accent: "text-blue-600",
-    bg: "bg-blue-500/10",
-    shadow: "shadow-blue-200/50",
-    glow: "blue",
-  },
-  {
-    from: "from-cyan-200",
-    to: "to-teal-100",
-    accent: "text-cyan-600",
-    bg: "bg-cyan-500/10",
-    shadow: "shadow-cyan-200/50",
-    glow: "cyan",
-  },
-  {
-    from: "from-green-200",
+    // 黄-青绿渐变
+    from: "from-amber-100",
     to: "to-emerald-100",
-    accent: "text-green-600",
-    bg: "bg-green-500/10",
-    shadow: "shadow-green-200/50",
-    glow: "green",
-  },
-  {
-    from: "from-lime-200",
-    to: "to-green-100",
-    accent: "text-lime-600",
-    bg: "bg-lime-500/10",
-    shadow: "shadow-lime-200/50",
-    glow: "lime",
-  },
-  {
-    from: "from-amber-200",
-    to: "to-yellow-100",
-    accent: "text-amber-600",
-    bg: "bg-amber-500/10",
-    shadow: "shadow-amber-200/50",
+    accent: "text-emerald-600",
+    iconBg: "from-amber-300 to-yellow-200",
     glow: "amber",
   },
   {
-    from: "from-orange-200",
-    to: "to-amber-100",
-    accent: "text-orange-600",
-    bg: "bg-orange-500/10",
-    shadow: "shadow-orange-200/50",
+    // 青绿-蓝绿渐变
+    from: "from-emerald-100",
+    to: "to-cyan-100",
+    accent: "text-teal-600",
+    iconBg: "from-teal-400 to-emerald-300",
+    glow: "green",
+  },
+  {
+    // 粉红-玫瑰渐变
+    from: "from-pink-100",
+    to: "to-rose-100",
+    accent: "text-rose-500",
+    iconBg: "from-rose-300 to-pink-200",
+    glow: "pink",
+  },
+  {
+    // 天蓝-紫渐变
+    from: "from-sky-100",
+    to: "to-violet-100",
+    accent: "text-violet-600",
+    iconBg: "from-violet-400 to-indigo-300",
+    glow: "purple",
+  },
+  {
+    // 青-绿渐变
+    from: "from-cyan-100",
+    to: "to-teal-100",
+    accent: "text-cyan-600",
+    iconBg: "from-cyan-400 to-teal-300",
+    glow: "cyan",
+  },
+  {
+    // 橙-粉渐变
+    from: "from-orange-100",
+    to: "to-pink-100",
+    accent: "text-orange-500",
+    iconBg: "from-orange-300 to-rose-200",
     glow: "orange",
   },
   {
-    from: "from-red-200",
-    to: "to-rose-100",
-    accent: "text-red-500",
-    bg: "bg-red-400/10",
-    shadow: "shadow-red-200/50",
-    glow: "red",
+    // 蓝-青渐变
+    from: "from-blue-100",
+    to: "to-cyan-100",
+    accent: "text-blue-600",
+    iconBg: "from-blue-400 to-sky-300",
+    glow: "blue",
   },
   {
-    from: "from-indigo-200",
+    // 紫-粉渐变
+    from: "from-purple-100",
+    to: "to-pink-100",
+    accent: "text-purple-600",
+    iconBg: "from-purple-400 to-fuchsia-300",
+    glow: "purple",
+  },
+  {
+    // 黄-橙渐变
+    from: "from-yellow-100",
+    to: "to-orange-100",
+    accent: "text-amber-600",
+    iconBg: "from-amber-400 to-yellow-300",
+    glow: "amber",
+  },
+  {
+    // 靛蓝-蓝渐变
+    from: "from-indigo-100",
     to: "to-blue-100",
     accent: "text-indigo-600",
-    bg: "bg-indigo-500/10",
-    shadow: "shadow-indigo-200/50",
+    iconBg: "from-indigo-400 to-blue-300",
     glow: "indigo",
   },
 ];
@@ -345,164 +342,102 @@ export function FoldersPageClient({
     const gradient = getFolderGradient(folder.id);
     const isInbox = folder.is_system && folder.system_type === "INBOX";
 
-    const coloredShadow =
-      {
-        pink: "hover:shadow-[0_8px_30px_rgb(236,72,153,0.3),0_4px_15px_rgb(236,72,153,0.2)]",
-        purple:
-          "hover:shadow-[0_8px_30px_rgb(168,85,247,0.3),0_4px_15px_rgb(168,85,247,0.2)]",
-        blue: "hover:shadow-[0_8px_30px_rgb(59,130,246,0.3),0_4px_15px_rgb(59,130,246,0.2)]",
-        cyan: "hover:shadow-[0_8px_30px_rgb(6,182,212,0.3),0_4px_15px_rgb(6,182,212,0.2)]",
-        green:
-          "hover:shadow-[0_8px_30px_rgb(34,197,94,0.3),0_4px_15px_rgb(34,197,94,0.2)]",
-        lime: "hover:shadow-[0_8px_30px_rgb(132,204,22,0.3),0_4px_15px_rgb(132,204,22,0.2)]",
-        amber:
-          "hover:shadow-[0_8px_30px_rgb(245,158,11,0.3),0_4px_15px_rgb(245,158,11,0.2)]",
-        orange:
-          "hover:shadow-[0_8px_30px_rgb(249,115,22,0.3),0_4px_15px_rgb(249,115,22,0.2)]",
-        red: "hover:shadow-[0_8px_30px_rgb(239,68,68,0.3),0_4px_15px_rgb(239,68,68,0.2)]",
-        indigo:
-          "hover:shadow-[0_8px_30px_rgb(99,102,241,0.3),0_4px_15px_rgb(99,102,241,0.2)]",
-      }[gradient.glow] || "";
-
     return (
       <Link key={folder.id} href={`/home?folder=${folder.id}`}>
         <div
-          className={`group relative rounded-xl p-[2px] transition-all duration-300
-            bg-gradient-to-br ${gradient.from} ${gradient.to}
-            ${isInbox ? "!bg-gradient-to-br !from-primary/40 !to-primary/20" : ""}
+          className={`group relative rounded-2xl transition-all duration-300 aspect-video
             ${folder.is_archived ? "opacity-60" : ""}
-            hover:p-[2px] hover:scale-[1.02]
-            ${coloredShadow}
+            hover:scale-[1.02] hover:shadow-lg
           `}
         >
+          {/* 卡片主体 - 水平渐变背景 */}
           <div
-            className={`absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-xl -z-10
-              bg-gradient-to-br ${gradient.from} ${gradient.to}
-              ${isInbox ? "!bg-gradient-to-br !from-primary/30 !to-primary/10" : ""}
+            className={`absolute inset-0 rounded-2xl bg-gradient-to-r ${gradient.from} ${gradient.to}
+              ${isInbox ? "!bg-gradient-to-r !from-slate-200 !to-blue-100" : ""}
             `}
           />
-          <Card
-            className={`relative overflow-hidden rounded-[10px] border-0
-              backdrop-blur-md bg-white/80 dark:bg-gray-900/80
-              ${folder.is_archived ? "border-dashed" : ""}
-            `}
-          >
-            <div className="absolute top-0 left-0 right-0 h-16 bg-gradient-to-b from-white/40 to-transparent pointer-events-none" />
-            <CardContent className="relative p-4 md:p-5">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`text-2xl md:text-3xl transition-transform group-hover:scale-110 ${
-                      folder.is_archived ? "grayscale" : ""
-                    }`}
-                  >
-                    {isInbox ? (
-                      <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center shadow-sm">
-                        <Inbox className="size-5 md:size-6 text-primary" />
-                      </div>
-                    ) : (
-                      <div
-                        className={`w-10 h-10 md:w-12 md:h-12 rounded-xl bg-gradient-to-br ${gradient.from} ${gradient.to} flex items-center justify-center shadow-sm`}
-                      >
-                        <span className="text-xl md:text-2xl">
-                          {getFolderEmoji(folder.name)}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-gray-900 dark:text-white text-sm md:text-base font-semibold">
-                        {folder.name}
-                      </h3>
-                      {folder.is_system && (
-                        <Badge
-                          variant="default"
-                          className="text-xs px-1.5 py-0 bg-primary/80"
-                        >
-                          系统
-                        </Badge>
-                      )}
-                      {folder.is_archived && (
-                        <Badge
-                          variant="secondary"
-                          className="text-xs px-1.5 py-0"
-                        >
-                          已停用
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                <div onClick={(e) => e.preventDefault()}>
-                  <FolderActionMenu
-                    folder={folder}
-                    allFolders={localFolders}
-                    onActionComplete={() => router.refresh()}
-                  />
-                </div>
-              </div>
-              <div
-                className={`rounded-xl p-4 bg-gradient-to-br ${gradient.from} ${gradient.to} ${
-                  isInbox
-                    ? "!bg-gradient-to-br !from-primary/10 !to-primary/5"
-                    : ""
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex-1 text-center">
-                    <div
-                      className={`text-2xl md:text-3xl font-bold ${isInbox ? "text-primary" : gradient.accent}`}
-                    >
-                      {folder.bookmark_count || 0}
-                    </div>
-                    <div className="text-gray-500 dark:text-gray-400 text-xs mt-1 flex items-center justify-center gap-1">
-                      <Folder className="size-3" />
-                      总收藏
-                    </div>
-                  </div>
-                  <div className="w-px h-12 bg-gray-200 dark:bg-gray-700 mx-4" />
-                  <div className="flex-1 text-center">
-                    <div className="flex items-center justify-center gap-1">
-                      <span
-                        className={`text-2xl md:text-3xl font-bold ${
-                          folder.today_count > 0
-                            ? "text-green-500"
-                            : "text-gray-400 dark:text-gray-500"
-                        }`}
-                      >
-                        {folder.today_count > 0
-                          ? `+${folder.today_count}`
-                          : "0"}
-                      </span>
-                      {folder.today_count > 0 && (
-                        <TrendingUp className="size-4 text-green-500" />
-                      )}
-                    </div>
-                    <div className="text-gray-500 dark:text-gray-400 text-xs mt-1 flex items-center justify-center gap-1">
-                      <Sparkles className="size-3" />
-                      今日新增
-                    </div>
-                  </div>
-                </div>
-              </div>
-              {folder.bookmark_count === 0 && (
-                <div className="mt-3 flex items-center justify-center gap-2 text-gray-400 dark:text-gray-500 text-xs">
+          {/* 内容区域 */}
+          <div className="relative h-full p-4 flex flex-col">
+            {/* 顶部：图标 + 标题 + 操作菜单 */}
+            <div className="flex items-start justify-between flex-shrink-0">
+              <div className="flex items-center gap-3">
+                {/* 图标 - 带阴影的圆角矩形 */}
+                <div
+                  className={`flex-shrink-0 w-12 h-12 rounded-xl shadow-lg transition-transform group-hover:scale-105 flex items-center justify-center
+                    ${isInbox ? "bg-gradient-to-br from-slate-300 to-blue-200" : `bg-gradient-to-br ${gradient.iconBg}`}
+                    ${folder.is_archived ? "grayscale" : ""}
+                  `}
+                >
                   {isInbox ? (
-                    <>
-                      <BookmarkPlus className="size-3" />
-                      <span>新收藏将自动归入这里</span>
-                    </>
+                    <Inbox className="size-6 text-slate-700" />
                   ) : (
-                    <>
-                      <FolderOpen className="size-3" />
-                      <span>还没有收藏内容</span>
-                    </>
+                    <span className="text-2xl drop-shadow-sm">
+                      {getFolderEmoji(folder.name)}
+                    </span>
                   )}
                 </div>
+                {/* 标题区域 */}
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <h3 className="text-gray-800 dark:text-gray-900 text-base font-semibold truncate max-w-[120px]">
+                      {folder.name}
+                    </h3>
+                    {folder.is_system && (
+                      <Badge
+                        variant="secondary"
+                        className="text-[10px] px-1.5 py-0 bg-gray-800/80 text-white flex-shrink-0"
+                      >
+                        默认
+                      </Badge>
+                    )}
+                    {folder.is_archived && (
+                      <Badge
+                        variant="secondary"
+                        className="text-[10px] px-1.5 py-0 flex-shrink-0"
+                      >
+                        已停用
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-gray-500 text-xs mt-0.5">
+                    {folder.bookmark_count || 0} 个文件
+                  </p>
+                </div>
+              </div>
+              {/* 操作菜单 */}
+              <div
+                onClick={(e) => e.preventDefault()}
+                className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <FolderActionMenu
+                  folder={folder}
+                  allFolders={localFolders}
+                  onActionComplete={() => router.refresh()}
+                />
+              </div>
+            </div>
+
+            {/* 底部：收藏统计 */}
+            <div className="mt-auto pt-3">
+              <div className="flex items-center gap-1.5 text-gray-600">
+                <Folder className="size-4" />
+                <span className={`text-sm font-medium ${gradient.accent}`}>
+                  {folder.bookmark_count || 0}
+                </span>
+                <span className="text-gray-500 text-sm">已收藏</span>
+                {folder.today_count > 0 && (
+                  <span className="ml-2 text-green-500 text-xs flex items-center gap-0.5">
+                    <TrendingUp className="size-3" />+{folder.today_count} 今日
+                  </span>
+                )}
+              </div>
+              {folder.bookmark_count === 0 && (
+                <p className="text-gray-400 text-xs mt-1">
+                  {isInbox ? "新收藏将自动归入这里" : "还没有收藏内容"}
+                </p>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
       </Link>
     );
