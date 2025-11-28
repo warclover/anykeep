@@ -192,6 +192,20 @@ export const createBookmarkSchema = z.object({
   // 内容统计（从元数据自动获取）
   wordCount: z.coerce.number().int().nonnegative().optional(),
   imageCount: z.coerce.number().int().nonnegative().optional(),
+  // 发布时间（从元数据自动获取，ISO 8601 格式）
+  publishTime: z
+    .string()
+    .trim()
+    .refine(
+      (val) => {
+        if (!val) return true; // 允许空值
+        const date = new Date(val);
+        return !isNaN(date.getTime());
+      },
+      { message: "发布时间格式无效" },
+    )
+    .optional()
+    .or(z.literal("")),
 });
 
 export type CreateBookmark = z.infer<typeof createBookmarkSchema>;

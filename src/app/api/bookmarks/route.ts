@@ -125,6 +125,7 @@ export async function POST(request: NextRequest) {
       author: userAuthor, // 前端传来的作者
       wordCount: userWordCount,
       imageCount: userImageCount,
+      publishTime: userPublishTime, // 前端传来的发布时间
     } = validation.data;
 
     // 3. 检查存储配额
@@ -154,6 +155,7 @@ export async function POST(request: NextRequest) {
     let coverUrl: string | undefined;
     let wordCount: number | undefined = userWordCount;
     let imageCount: number | undefined = userImageCount;
+    let publishTime: string | undefined = userPublishTime || undefined;
 
     if (!title || !description) {
       try {
@@ -175,6 +177,7 @@ export async function POST(request: NextRequest) {
         // 只在前端没有提供统计数据时才使用爬取的值
         wordCount = wordCount ?? crawlResult.wordCount;
         imageCount = imageCount ?? crawlResult.imageCount;
+        publishTime = publishTime || crawlResult.publishTime; // 发布时间
 
         logger.info(
           {
@@ -429,6 +432,7 @@ export async function POST(request: NextRequest) {
       description: finalDescription,
       source_name: sourceName || null, // 来源名称（公众号名称等）
       author: author || null, // 文章作者
+      publish_time: publishTime || null, // 原文发布时间
       cover_url: finalCoverUrl,
       platform,
       folder_id: finalFolderId || null,

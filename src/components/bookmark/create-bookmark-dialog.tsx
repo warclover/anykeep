@@ -63,6 +63,7 @@ interface WebMetadata {
   coverUrl: string;
   sourceName: string; // 来源名称（公众号名称等）
   author: string; // 文章作者
+  publishTime: string; // 原文发布时间
   platform: string;
   siteName: string;
   wordCount: number;
@@ -92,6 +93,7 @@ export function CreateBookmarkDialog({
   const [coverUrl, setCoverUrl] = useState<string>("");
   const [sourceName, setSourceName] = useState<string>(""); // 来源名称
   const [author, setAuthor] = useState<string>(""); // 文章作者
+  const [publishTime, setPublishTime] = useState<string>(""); // 发布时间
   const [wordCount, setWordCount] = useState<number | null>(null);
   const [imageCount, setImageCount] = useState<number | null>(null);
 
@@ -126,6 +128,7 @@ export function CreateBookmarkDialog({
     setCoverUrl("");
     setSourceName("");
     setAuthor("");
+    setPublishTime("");
     setWordCount(null);
     setImageCount(null);
     setErrors({});
@@ -205,12 +208,15 @@ export function CreateBookmarkDialog({
           newAutoFilled.add("coverUrl");
         }
 
-        // 保存来源名称和作者（这些不需要用户修改追踪）
+        // 保存来源名称、作者和发布时间（这些不需要用户修改追踪）
         if (metadata.sourceName) {
           setSourceName(metadata.sourceName);
         }
         if (metadata.author) {
           setAuthor(metadata.author);
+        }
+        if (metadata.publishTime) {
+          setPublishTime(metadata.publishTime);
         }
 
         // 保存字数和图片数（这些不需要用户修改追踪）
@@ -422,6 +428,7 @@ export function CreateBookmarkDialog({
         coverUrl: coverUrl || undefined,
         sourceName: sourceName || undefined, // 来源名称
         author: author || undefined, // 文章作者
+        publishTime: publishTime || undefined, // 发布时间
         wordCount: wordCount || undefined,
         imageCount: imageCount || undefined,
       });

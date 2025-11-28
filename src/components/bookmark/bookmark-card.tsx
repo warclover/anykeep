@@ -224,7 +224,9 @@ export function BookmarkCard({
               </span>
               <span>·</span>
               <span className="flex-shrink-0">
-                {formatRelativeTime(bookmark.created_at)}
+                {formatRelativeTime(
+                  bookmark.publish_time || bookmark.created_at,
+                )}
               </span>
               {bookmark.folders && (
                 <span className="hidden sm:contents">
@@ -355,7 +357,11 @@ export function BookmarkCard({
                   {bookmark.source_name || bookmark.author || "未知"}
                 </span>
                 <span>·</span>
-                <span>{formatRelativeTime(bookmark.created_at)}</span>
+                <span>
+                  {formatRelativeTime(
+                    bookmark.publish_time || bookmark.created_at,
+                  )}
+                </span>
               </div>
             </div>
           </div>

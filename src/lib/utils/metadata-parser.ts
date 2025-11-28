@@ -12,6 +12,7 @@ export interface WebMetadata {
   coverUrl: string;
   sourceName: string; // 来源名称（公众号名称、UP主频道名等）
   author: string; // 内容作者（文章撰写者、视频创作者等）
+  publishTime: string; // 原文发布时间（ISO 8601 格式）
   platform: string;
   siteName: string;
   wordCount: number;
@@ -29,6 +30,7 @@ export function parseHTMLMetadata(html: string, url: string): WebMetadata {
   const description = extractDescription(html);
   const coverUrl = extractCoverImage(html, url);
   const { sourceName, author } = extractSourceAndAuthor(html, platform);
+  const publishTime = extractPublishTime(html, platform);
   const siteName = extractSiteName(html);
   const wordCount = extractWordCount(html);
   const imageCount = extractImageCount(html);
@@ -39,6 +41,7 @@ export function parseHTMLMetadata(html: string, url: string): WebMetadata {
     coverUrl,
     sourceName,
     author,
+    publishTime,
     platform,
     siteName,
     wordCount,
@@ -142,6 +145,151 @@ function extractSourceAndAuthor(
 function extractSiteName(html: string): string {
   const ogSiteName = extractMetaContent(html, "og:site_name", "property");
   if (ogSiteName) return cleanText(ogSiteName);
+
+  return "";
+}
+
+/**
+ * 提取发布时间
+ * 根据不同平台有不同的提取策略
+ * 返回 ISO 8601 格式的时间字符串
+ */
+function extractPublishTime(html: string, platform: string): string {
+  // 1. 微信公众号：专门的提取逻辑
+  if (platform === "wechat" || platform === "WECHAT_OFFICIAL_ACCOUNT") {
+    return extractWechatPublishTime(html);
+  }
+
+  // 2. 通用提取：article:published_time
+  const articlePublishedTime = extractMetaContent(
+    html,
+    "article:published_time",
+    "property",
+  );
+  if (articlePublishedTime) {
+    const date = new Date(articlePublishedTime);
+    if (!isNaN(date.getTime())) {
+      return date.toISOString();
+    }
+  }
+
+  // 3. 通用提取：datePublished (Schema.org)
+  const datePublishedMatch = html.match(/"datePublished"\s*:\s*"([^"]+)"/);
+  if (datePublishedMatch) {
+    const date = new Date(datePublishedMatch[1]);
+    if (!isNaN(date.getTime())) {
+      return date.toISOString();
+    }
+  }
+
+  return "";
+}
+
+/**
+ * 微信公众号：提取文章发布时间
+ * 支持多种时间格式：Unix 时间戳、中文日期、ISO 8601
+ */
+function extractWechatPublishTime(html: string): string {
+  // 方法1: var publish_time = "1699123456" (Unix 时间戳，秒)
+  const publishTimeMatch = html.match(
+    /var\s+publish_time\s*=\s*["'](\d{10})["']/,
+  );
+  if (publishTimeMatch) {
+    const timestamp = parseInt(publishTimeMatch[1], 10);
+    return new Date(timestamp * 1000).toISOString();
+  }
+
+  // 方法2: var ct = "1699123456" (备用时间戳变量)
+  const ctMatch = html.match(/var\s+ct\s*=\s*["'](\d{10})["']/);
+  if (ctMatch) {
+    const timestamp = parseInt(ctMatch[1], 10);
+    return new Date(timestamp * 1000).toISOString();
+  }
+
+  // 方法3: var create_time = "1699123456" (另一个备用变量)
+  const createTimeMatch = html.match(
+    /var\s+create_time\s*=\s*["'](\d{10})["']/,
+  );
+  if (createTimeMatch) {
+    const timestamp = parseInt(createTimeMatch[1], 10);
+    return new Date(timestamp * 1000).toISOString();
+  }
+
+  // 方法4: <em id="publish_time" ...>2024年1月1日 12:00</em>
+  const publishTimeElementMatch = html.match(
+    /<em[^>]*id=["']publish_time["'][^>]*>([^<]+)<\/em>/i,
+  );
+  if (publishTimeElementMatch) {
+    const dateStr = cleanText(publishTimeElementMatch[1]);
+    const parsed = parseChineseDateString(dateStr);
+    if (parsed) return parsed;
+  }
+
+  // 方法5: <meta property="article:published_time" content="..." />
+  const articlePublishedTime = extractMetaContent(
+    html,
+    "article:published_time",
+    "property",
+  );
+  if (articlePublishedTime) {
+    const date = new Date(articlePublishedTime);
+    if (!isNaN(date.getTime())) {
+      return date.toISOString();
+    }
+  }
+
+  // 方法6: 从 rich_media_meta 中查找时间信息
+  const metaTimeMatches = html.matchAll(
+    /<span[^>]*class=["'][^"']*rich_media_meta[^"']*["'][^>]*>([^<]+)<\/span>/gi,
+  );
+  for (const match of metaTimeMatches) {
+    const text = cleanText(match[1]);
+    // 匹配日期格式：2024-01-01 或 2024年1月1日
+    if (/^\d{4}[-年]\d{1,2}[-月]\d{1,2}/.test(text)) {
+      const parsed = parseChineseDateString(text);
+      if (parsed) return parsed;
+    }
+  }
+
+  return "";
+}
+
+/**
+ * 解析中文日期字符串为 ISO 8601 格式
+ * 支持格式：
+ * - 2024年1月1日 12:00
+ * - 2024年1月1日
+ * - 2024-01-01 12:00:00
+ * - 2024-01-01
+ */
+function parseChineseDateString(dateStr: string): string {
+  if (!dateStr) return "";
+
+  // 尝试解析 "2024年1月1日 12:00" 格式
+  const chineseMatch = dateStr.match(
+    /(\d{4})年(\d{1,2})月(\d{1,2})日(?:\s*(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/,
+  );
+  if (chineseMatch) {
+    const [, year, month, day, hour = "0", minute = "0", second = "0"] =
+      chineseMatch;
+    const date = new Date(
+      parseInt(year),
+      parseInt(month) - 1,
+      parseInt(day),
+      parseInt(hour),
+      parseInt(minute),
+      parseInt(second),
+    );
+    if (!isNaN(date.getTime())) {
+      return date.toISOString();
+    }
+  }
+
+  // 尝试直接解析（标准格式）
+  const date = new Date(dateStr);
+  if (!isNaN(date.getTime())) {
+    return date.toISOString();
+  }
 
   return "";
 }

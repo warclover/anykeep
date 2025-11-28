@@ -14,6 +14,7 @@ export interface CrawlResult {
   platform: "WECHAT_OFFICIAL_ACCOUNT" | "BILIBILI" | "XIAOHONGSHU" | "UNKNOWN";
   wordCount?: number;
   imageCount?: number;
+  publishTime?: string; // 原文发布时间（ISO 8601 格式）
 }
 
 /**
@@ -225,6 +226,9 @@ async function crawlWechat(url: string): Promise<Partial<CrawlResult>> {
   // 分别提取公众号名称和文章作者
   const { sourceName, author } = extractWechatSourceAndAuthor(html);
 
+  // 提取发布时间
+  const publishTime = extractWechatPublishTime(html);
+
   // 提取封面
   const coverUrl =
     extractMetaTag(html, "og:image") || extractMetaTag(html, "twitter:image");
@@ -242,6 +246,7 @@ async function crawlWechat(url: string): Promise<Partial<CrawlResult>> {
     title,
     sourceName,
     author,
+    publishTime,
     coverUrl,
     description,
     wordCount,
@@ -343,6 +348,121 @@ function extractWechatSourceAndAuthor(html: string): {
   }
 
   return { sourceName, author };
+}
+
+/**
+ * 微信公众号：提取文章发布时间
+ * 支持多种时间格式：Unix 时间戳、中文日期、ISO 8601
+ */
+function extractWechatPublishTime(html: string): string | undefined {
+  let publishTime: string | undefined;
+
+  // 方法1: var publish_time = "1699123456" (Unix 时间戳，秒)
+  const publishTimeMatch = html.match(
+    /var\s+publish_time\s*=\s*["'](\d{10})["']/,
+  );
+  if (publishTimeMatch) {
+    const timestamp = parseInt(publishTimeMatch[1], 10);
+    publishTime = new Date(timestamp * 1000).toISOString();
+    return publishTime;
+  }
+
+  // 方法2: var ct = "1699123456" (备用时间戳变量)
+  const ctMatch = html.match(/var\s+ct\s*=\s*["'](\d{10})["']/);
+  if (ctMatch) {
+    const timestamp = parseInt(ctMatch[1], 10);
+    publishTime = new Date(timestamp * 1000).toISOString();
+    return publishTime;
+  }
+
+  // 方法3: var create_time = "1699123456" (另一个备用变量)
+  const createTimeMatch = html.match(
+    /var\s+create_time\s*=\s*["'](\d{10})["']/,
+  );
+  if (createTimeMatch) {
+    const timestamp = parseInt(createTimeMatch[1], 10);
+    publishTime = new Date(timestamp * 1000).toISOString();
+    return publishTime;
+  }
+
+  // 方法4: <em id="publish_time" ...>2024年1月1日 12:00</em>
+  const publishTimeElementMatch = html.match(
+    /<em[^>]*id=["']publish_time["'][^>]*>([^<]+)<\/em>/i,
+  );
+  if (publishTimeElementMatch) {
+    const dateStr = decodeHtmlEntities(publishTimeElementMatch[1]).trim();
+    const parsed = parseChineseDateString(dateStr);
+    if (parsed) {
+      return parsed;
+    }
+  }
+
+  // 方法5: <meta property="article:published_time" content="..." />
+  const articlePublishedTime = extractMetaTag(html, "article:published_time");
+  if (articlePublishedTime) {
+    // 已经是 ISO 格式或可解析格式
+    const date = new Date(articlePublishedTime);
+    if (!isNaN(date.getTime())) {
+      return date.toISOString();
+    }
+  }
+
+  // 方法6: 从 rich_media_meta 中查找时间信息
+  const metaTimeMatches = html.matchAll(
+    /<span[^>]*class=["'][^"']*rich_media_meta[^"']*["'][^>]*>([^<]+)<\/span>/gi,
+  );
+  for (const match of metaTimeMatches) {
+    const text = decodeHtmlEntities(match[1]).trim();
+    // 匹配日期格式：2024-01-01 或 2024年1月1日
+    if (/^\d{4}[-年]\d{1,2}[-月]\d{1,2}/.test(text)) {
+      const parsed = parseChineseDateString(text);
+      if (parsed) {
+        return parsed;
+      }
+    }
+  }
+
+  return undefined;
+}
+
+/**
+ * 解析中文日期字符串为 ISO 8601 格式
+ * 支持格式：
+ * - 2024年1月1日 12:00
+ * - 2024年1月1日
+ * - 2024-01-01 12:00:00
+ * - 2024-01-01
+ */
+function parseChineseDateString(dateStr: string): string | undefined {
+  if (!dateStr) return undefined;
+
+  // 尝试解析 "2024年1月1日 12:00" 格式
+  const chineseMatch = dateStr.match(
+    /(\d{4})年(\d{1,2})月(\d{1,2})日(?:\s*(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/,
+  );
+  if (chineseMatch) {
+    const [, year, month, day, hour = "0", minute = "0", second = "0"] =
+      chineseMatch;
+    const date = new Date(
+      parseInt(year),
+      parseInt(month) - 1,
+      parseInt(day),
+      parseInt(hour),
+      parseInt(minute),
+      parseInt(second),
+    );
+    if (!isNaN(date.getTime())) {
+      return date.toISOString();
+    }
+  }
+
+  // 尝试直接解析（标准格式）
+  const date = new Date(dateStr);
+  if (!isNaN(date.getTime())) {
+    return date.toISOString();
+  }
+
+  return undefined;
 }
 
 /**
@@ -512,6 +632,7 @@ export async function crawlContent(url: string): Promise<CrawlResult> {
     title: result.title || "未知标题",
     sourceName: result.sourceName, // 来源名称（公众号名称等）
     author: result.author, // 文章作者
+    publishTime: result.publishTime, // 原文发布时间
     coverUrl: result.coverUrl,
     description: result.description,
     wordCount: result.wordCount,

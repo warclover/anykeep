@@ -64,6 +64,7 @@ export async function GET(request: NextRequest) {
       coverUrl: metadata.coverUrl,
       sourceName: metadata.sourceName, // 来源名称（公众号名称等）
       author: metadata.author, // 文章作者
+      publishTime: metadata.publishTime, // 原文发布时间
       platform: metadata.platform,
       siteName: metadata.siteName,
       wordCount: metadata.wordCount,

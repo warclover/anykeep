@@ -373,22 +373,46 @@ export function BookmarkDetailClient({ bookmark }: BookmarkDetailClientProps) {
               </h1>
 
               {/* 元信息 */}
-              <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
-                {bookmark.author && (
-                  <div className="flex items-center gap-1">
-                    <User className="size-4" />
-                    <span>{bookmark.author}</span>
-                  </div>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-gray-500 dark:text-gray-400">
+                {bookmark.source_name && (
+                  <span className="font-medium text-gray-700 dark:text-gray-200">
+                    {bookmark.source_name}
+                  </span>
                 )}
-                <div className="flex items-center gap-1">
+                {bookmark.author &&
+                  bookmark.author !== bookmark.source_name && (
+                    <>
+                      <span className="text-gray-300 dark:text-gray-600">
+                        |
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <User className="size-4" />
+                        <span>{bookmark.author}</span>
+                      </div>
+                    </>
+                  )}
+                {bookmark.publish_time && (
+                  <>
+                    <span className="text-gray-300 dark:text-gray-600">|</span>
+                    <div className="flex items-center gap-1">
+                      <Calendar className="size-4" />
+                      <span>{formatFriendlyDate(bookmark.publish_time)}</span>
+                    </div>
+                  </>
+                )}
+                <span className="text-gray-300 dark:text-gray-600">|</span>
+                <div className="flex items-center gap-1 text-gray-400">
                   <Calendar className="size-4" />
-                  <span>收藏于 {formatFriendlyDate(bookmark.created_at)}</span>
+                  <span>收藏 {formatFriendlyDate(bookmark.created_at)}</span>
                 </div>
                 {bookmark.folders && (
-                  <div className="flex items-center gap-1">
-                    <Folder className="size-4" />
-                    <span>{bookmark.folders.name}</span>
-                  </div>
+                  <>
+                    <span className="text-gray-300 dark:text-gray-600">|</span>
+                    <div className="flex items-center gap-1 text-blue-600 dark:text-blue-400">
+                      <Folder className="size-4" />
+                      <span>{bookmark.folders.name}</span>
+                    </div>
+                  </>
                 )}
               </div>
             </CardHeader>
