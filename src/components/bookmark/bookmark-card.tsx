@@ -37,7 +37,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { Bookmark } from "@/types/supabase";
 import { cn } from "@/lib/utils";
-import { formatRelativeTime } from "@/lib/utils/date-utils";
+import { formatRelativeTime, formatFriendlyDate } from "@/lib/utils/date-utils";
 import { generatePlaceholderImage } from "@/lib/utils/placeholder-image";
 import { getProxiedImageUrl } from "@/lib/utils/image-proxy";
 import { PlatformBadge } from "@/components/ui/platform-badge";
@@ -494,46 +494,48 @@ export function BookmarkCard({
             </div>
           )}
 
-          {/* 元信息 */}
-          <div className="flex items-center justify-between text-xs text-gray-500">
-            <div className="flex items-center gap-1.5 min-w-0">
-              {/* 来源名称和作者显示逻辑 */}
-              {bookmark.source_name &&
-              bookmark.author &&
-              bookmark.source_name !== bookmark.author ? (
-                // 两者都有且不同：显示 "来源 · 作者"
-                <span className="truncate">
-                  <span className="text-gray-600 dark:text-gray-300">
-                    {bookmark.source_name}
-                  </span>
-                  <span className="mx-1">·</span>
-                  <span>{bookmark.author}</span>
+          {/* 元信息 - 第一行：来源/作者/文件夹 */}
+          <div className="flex items-center gap-1.5 text-xs text-gray-500 min-w-0">
+            {/* 来源名称和作者显示逻辑 */}
+            {bookmark.source_name &&
+            bookmark.author &&
+            bookmark.source_name !== bookmark.author ? (
+              // 两者都有且不同：显示 "来源 · 作者"
+              <span className="truncate">
+                <span className="text-gray-600 dark:text-gray-300">
+                  {bookmark.source_name}
                 </span>
-              ) : (
-                // 只显示一个（优先 author）
-                <span className="truncate">
-                  {bookmark.author || bookmark.source_name || "未知作者"}
+                <span className="mx-1">·</span>
+                <span>{bookmark.author}</span>
+              </span>
+            ) : (
+              // 只显示一个（优先 author）
+              <span className="truncate">
+                {bookmark.author || bookmark.source_name || "未知作者"}
+              </span>
+            )}
+            {bookmark.folders && (
+              <>
+                <span>·</span>
+                <span className="flex items-center gap-0.5 text-blue-600 dark:text-blue-400 truncate">
+                  <Folder className="size-3 flex-shrink-0" />
+                  <span className="truncate">{bookmark.folders.name}</span>
                 </span>
-              )}
-              {bookmark.folders && (
-                <>
-                  <span>·</span>
-                  <span className="flex items-center gap-0.5 text-blue-600 dark:text-blue-400 truncate">
-                    <Folder className="size-3 flex-shrink-0" />
-                    <span className="truncate">{bookmark.folders.name}</span>
-                  </span>
-                </>
-              )}
-            </div>
-            <span className="flex items-center gap-1 flex-shrink-0">
-              {bookmark.publish_time ? (
-                <>
-                  <Calendar className="size-3" />
-                  {formatRelativeTime(bookmark.publish_time)}
-                </>
-              ) : (
-                formatRelativeTime(bookmark.created_at)
-              )}
+              </>
+            )}
+          </div>
+
+          {/* 元信息 - 第二行：发布时间/收藏时间 */}
+          <div className="flex items-center gap-2 text-xs text-gray-400 mt-1">
+            {bookmark.publish_time && (
+              <span className="flex items-center gap-1">
+                <Calendar className="size-3" />
+                <span>发布 {formatFriendlyDate(bookmark.publish_time)}</span>
+              </span>
+            )}
+            <span className="flex items-center gap-1">
+              <Calendar className="size-3" />
+              <span>收藏 {formatFriendlyDate(bookmark.created_at)}</span>
             </span>
           </div>
 
