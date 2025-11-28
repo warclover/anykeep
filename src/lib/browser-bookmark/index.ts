@@ -165,3 +165,18 @@ export type {
   GetImportHistoryParams,
   ImportHistoryResult,
 } from "./import-history";
+
+// 元数据抓取导出
+export {
+  fetchMetadata,
+  batchFetchMetadata,
+  validateMetadata,
+  mergeMetadata,
+  extractSummary,
+} from "./metadata-fetcher";
+export type {
+  PageMetadata,
+  FetchMetadataResult,
+  BatchFetchResult,
+  FetchConfig,
+} from "./metadata-fetcher";
