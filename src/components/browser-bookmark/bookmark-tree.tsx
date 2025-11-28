@@ -75,7 +75,6 @@ function TreeNode({
         {/* 复选框 */}
         <Checkbox
           checked={checkState === "checked"}
-          // @ts-expect-error - indeterminate is supported
           data-state={
             checkState === "indeterminate" ? "indeterminate" : undefined
           }

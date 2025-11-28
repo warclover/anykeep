@@ -7,6 +7,9 @@ import {
   SkipForward,
   ChevronDown,
   ChevronRight,
+  Clock,
+  FolderPlus,
+  Calendar,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -37,8 +40,19 @@ export function ImportResult({
 }: ImportResultProps) {
   void _source; // suppress unused variable warning
   const [showErrors, setShowErrors] = useState(false);
-  const { success, failed, skipped, errors, platformBreakdown } = result;
+  const { success, failed, skipped, errors, platformBreakdown, extendedStats } =
+    result;
   const hasErrors = errors.length > 0;
+
+  // 格式化耗时
+  const formatDuration = (ms: number) => {
+    if (ms < 1000) return `${ms}ms`;
+    const seconds = ms / 1000;
+    if (seconds < 60) return `${seconds.toFixed(1)}秒`;
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = Math.round(seconds % 60);
+    return `${minutes}分${remainingSeconds}秒`;
+  };
 
   return (
     <div className="space-y-6">
@@ -130,17 +144,64 @@ export function ImportResult({
         )}
       </div>
 
+      {/* 扩展统计 */}
+      {extendedStats && (
+        <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+          <div className="flex items-center gap-1.5">
+            <Clock className="h-4 w-4" />
+            <span>耗时 {formatDuration(extendedStats.durationMs)}</span>
+          </div>
+          {extendedStats.foldersCreated > 0 && (
+            <div className="flex items-center gap-1.5">
+              <FolderPlus className="h-4 w-4" />
+              <span>创建 {extendedStats.foldersCreated} 个文件夹</span>
+            </div>
+          )}
+          {extendedStats.withOriginalDate > 0 && (
+            <div className="flex items-center gap-1.5">
+              <Calendar className="h-4 w-4" />
+              <span>{extendedStats.withOriginalDate} 条保留原始时间</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* AI 分类提示 */}
+      {extendedStats?.aiClassifyEnabled && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/50 p-4 space-y-3">
+          <h4 className="font-medium flex items-center gap-2 text-amber-700 dark:text-amber-300">
+            🤖 AI 分类已准备就绪
+          </h4>
+          <p className="text-sm text-amber-600 dark:text-amber-400">
+            书签已导入到「待整理」文件夹。现在可以运行 AI 分类来自动整理它们。
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-amber-500 text-amber-700 hover:bg-amber-100 dark:text-amber-300 dark:hover:bg-amber-900"
+            onClick={() => {
+              // 跳转到首页并打开重分类
+              window.location.href = "/home?reclassify=true";
+            }}
+          >
+            🚀 运行 AI 分类
+          </Button>
+        </div>
+      )}
+
       {/* 下一步建议 */}
-      <div className="rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/50 p-4 space-y-2">
-        <h4 className="font-medium flex items-center gap-2 text-blue-700 dark:text-blue-300">
-          💡 下一步建议
-        </h4>
-        <ul className="text-sm text-blue-600 dark:text-blue-400 space-y-1">
-          <li>• 使用平台筛选查看导入的书签</li>
-          <li>• 运行 AI 智能分类，自动整理书签</li>
-          <li>• 检查「待整理」文件夹中的新书签</li>
-        </ul>
-      </div>
+      {!extendedStats?.aiClassifyEnabled && (
+        <div className="rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/50 p-4 space-y-2">
+          <h4 className="font-medium flex items-center gap-2 text-blue-700 dark:text-blue-300">
+            💡 下一步建议
+          </h4>
+          <ul className="text-sm text-blue-600 dark:text-blue-400 space-y-1">
+            <li>• 使用平台筛选查看导入的书签</li>
+            <li>• 运行 AI 智能分类，自动整理书签</li>
+            <li>• 检查「待整理」文件夹中的新书签</li>
+          </ul>
+        </div>
+      )}
 
       {/* 操作按钮 */}
       <div className="flex justify-end gap-3">

@@ -11,6 +11,7 @@ export type {
   ImportProgress,
   ImportProgressStatus,
   ImportResult,
+  ImportExtendedStats,
   ImportError,
   DepthWarning,
   ImportBatch,
@@ -59,3 +60,32 @@ export {
   getBrowserSourceName,
   getSupportedBrowserSources,
 } from "./detector";
+
+// 文件夹映射导出
+export {
+  extractFolderPaths,
+  extractRequiredFolderPaths,
+  extractRequiredFolderPathsFromTree,
+  buildFolderMapping,
+  updateMappingWithCreatedFolders,
+  getFolderIdForBookmark,
+  generateFolderSummary,
+} from "./folder-mapper";
+
+export type {
+  FolderMapping,
+  FolderCreateRequest,
+  FolderMappingResult,
+} from "./folder-mapper";
+
+// 平台筛选工具导出
+export {
+  extractPlatformStats,
+  getBookmarkIdsByPlatform,
+  getBookmarkIdsByPlatforms,
+} from "./platform-utils";
+export type { PlatformStats } from "./platform-utils";
+
+// 合并去重工具导出
+export { mergeBookmarkFiles, generateMergeSummary } from "./merge-utils";
+export type { MergeResult } from "./merge-utils";

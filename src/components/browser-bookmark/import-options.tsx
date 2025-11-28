@@ -104,53 +104,75 @@ export function ImportOptions({
           />
         </div>
 
-        {/* 自动创建文件夹 - Phase 2 */}
-        <div className="flex items-center justify-between opacity-50">
+        {/* 自动创建文件夹 */}
+        <div className="flex items-center justify-between">
           <div className="space-y-0.5">
-            <Label htmlFor="auto-create" className="flex items-center gap-2">
-              自动创建文件夹
-              <span className="text-xs bg-muted px-1.5 py-0.5 rounded">
-                即将推出
-              </span>
-            </Label>
+            <Label htmlFor="auto-create">自动创建文件夹</Label>
             <p className="text-xs text-muted-foreground">
               根据浏览器书签结构自动创建 AnyKeep 文件夹
             </p>
           </div>
-          <Switch id="auto-create" checked={false} disabled={true} />
+          <Switch
+            id="auto-create"
+            checked={options.autoCreateFolders}
+            onCheckedChange={(checked) =>
+              updateOption("autoCreateFolders", checked)
+            }
+            disabled={disabled}
+          />
         </div>
 
-        {/* 保留原始时间 - Phase 2 */}
-        <div className="flex items-center justify-between opacity-50">
+        {/* 保留原始时间 */}
+        <div className="flex items-center justify-between">
           <div className="space-y-0.5">
-            <Label htmlFor="preserve-date" className="flex items-center gap-2">
-              保留原始添加时间
-              <span className="text-xs bg-muted px-1.5 py-0.5 rounded">
-                即将推出
-              </span>
-            </Label>
+            <Label htmlFor="preserve-date">保留原始添加时间</Label>
             <p className="text-xs text-muted-foreground">
               保留浏览器书签的原始添加日期
             </p>
           </div>
-          <Switch id="preserve-date" checked={false} disabled={true} />
+          <Switch
+            id="preserve-date"
+            checked={options.preserveAddDate}
+            onCheckedChange={(checked) =>
+              updateOption("preserveAddDate", checked)
+            }
+            disabled={disabled}
+          />
         </div>
 
-        {/* AI 分类 - Phase 2 */}
-        <div className="flex items-center justify-between opacity-50">
+        {/* AI 分类 */}
+        <div className="flex items-center justify-between">
           <div className="space-y-0.5">
             <Label htmlFor="ai-classify" className="flex items-center gap-2">
               启用 AI 智能分类
-              <span className="text-xs bg-muted px-1.5 py-0.5 rounded">
-                即将推出
+              <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">
+                Beta
               </span>
             </Label>
             <p className="text-xs text-muted-foreground">
               导入后使用 AI 自动分类到合适的文件夹
             </p>
           </div>
-          <Switch id="ai-classify" checked={false} disabled={true} />
+          <Switch
+            id="ai-classify"
+            checked={options.enableAiClassify}
+            onCheckedChange={(checked) =>
+              updateOption("enableAiClassify", checked)
+            }
+            disabled={disabled}
+          />
         </div>
+
+        {/* AI 分类提示 */}
+        {options.enableAiClassify && (
+          <div className="rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/50 p-3 text-sm text-blue-700 dark:text-blue-300">
+            <p className="font-medium">💡 AI 分类模式</p>
+            <p className="mt-1 text-xs">
+              书签将先导入到「待整理」文件夹，导入完成后可运行 AI
+              分类来自动整理。
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

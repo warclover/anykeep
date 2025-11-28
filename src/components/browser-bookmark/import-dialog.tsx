@@ -17,6 +17,13 @@ import { BookmarkTree } from "./bookmark-tree";
 import { ImportOptions } from "./import-options";
 import { ImportProgress } from "./import-progress";
 import { ImportResult } from "./import-result";
+import { DepthWarning } from "./depth-warning";
+import {
+  PlatformFilter,
+  extractPlatformStats,
+  getBookmarkIdsByPlatforms,
+} from "./platform-filter";
+import type { Platform } from "@/types/supabase";
 import {
   parseBookmarkHtml,
   filterSelectedBookmarks,
@@ -28,14 +35,22 @@ import {
   BROWSER_SOURCE_TO_PLATFORM,
   BATCH_SIZE,
   BATCH_DELAY_MS,
+  MAX_FOLDER_DEPTH,
+  extractRequiredFolderPaths,
+  buildFolderMapping,
+  updateMappingWithCreatedFolders,
+  getFolderIdForBookmark,
+  getFoldersExceedingDepth,
 } from "@/lib/browser-bookmark";
 import type {
   ParsedBookmarkFile,
+  ParsedBookmarkNode,
   BrowserSource,
   BrowserBookmarkImportOptions,
   ImportProgress as ImportProgressType,
   ImportResult as ImportResultType,
   ImportDialogStep,
+  FolderMappingResult,
 } from "@/lib/browser-bookmark";
 
 interface ImportDialogProps {
@@ -110,9 +125,9 @@ export function BrowserBookmarkImportDialog({
   const [options, setOptions] = useState<BrowserBookmarkImportOptions>(
     DEFAULT_IMPORT_OPTIONS,
   );
-  const [folders, setFolders] = useState<Array<{ id: number; name: string }>>(
-    [],
-  );
+  const [folders, setFolders] = useState<
+    Array<{ id: number; name: string; parent_id: number | null }>
+  >([]);
 
   // 导入状态
   const [progress, setProgress] = useState<ImportProgressType>(
@@ -121,6 +136,18 @@ export function BrowserBookmarkImportDialog({
   const [result, setResult] = useState<ImportResultType | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const cancelRef = useRef(false); // 取消标志
+
+  // 深度警告状态
+  const [foldersExceedingDepth, setFoldersExceedingDepth] = useState<
+    Array<{ path: string[]; depth: number }>
+  >([]);
+  const [depthWarningConfirmed, setDepthWarningConfirmed] = useState(false);
+
+  // 平台筛选状态
+  const [selectedPlatforms, setSelectedPlatforms] = useState<Set<Platform>>(
+    new Set(),
+  );
+  const [platformFilterEnabled, setPlatformFilterEnabled] = useState(false);
 
   // 重置状态
   const resetState = useCallback(() => {
@@ -133,6 +160,10 @@ export function BrowserBookmarkImportDialog({
     setProgress(DEFAULT_IMPORT_PROGRESS);
     setResult(null);
     setIsImporting(false);
+    setFoldersExceedingDepth([]);
+    setDepthWarningConfirmed(false);
+    setSelectedPlatforms(new Set());
+    setPlatformFilterEnabled(false);
   }, []);
 
   // 关闭对话框时重置状态
@@ -155,8 +186,45 @@ export function BrowserBookmarkImportDialog({
     try {
       const response = await fetch("/api/folders");
       if (response.ok) {
-        const data = await response.json();
-        setFolders(data.folders || []);
+        const result = await response.json();
+        // API 返回 { success, data: FolderTreeNode[] }
+        // 需要扁平化树形结构
+        const folderTree = result.data || [];
+        const flatFolders: Array<{
+          id: number;
+          name: string;
+          parent_id: number | null;
+        }> = [];
+
+        function flattenTree(
+          nodes: Array<{
+            id: number;
+            name: string;
+            parent_id: number | null;
+            children?: Array<unknown>;
+          }>,
+        ) {
+          for (const node of nodes) {
+            flatFolders.push({
+              id: node.id,
+              name: node.name,
+              parent_id: node.parent_id,
+            });
+            if (node.children && Array.isArray(node.children)) {
+              flattenTree(
+                node.children as Array<{
+                  id: number;
+                  name: string;
+                  parent_id: number | null;
+                  children?: Array<unknown>;
+                }>,
+              );
+            }
+          }
+        }
+
+        flattenTree(folderTree);
+        setFolders(flatFolders);
       }
     } catch (error) {
       console.error("Failed to fetch folders:", error);
@@ -191,6 +259,20 @@ export function BrowserBookmarkImportDialog({
         collectIds(parsed.roots);
         setSelectedIds(allIds);
 
+        // 检测超过深度限制的文件夹
+        const exceeding = getFoldersExceedingDepth(
+          parsed.roots,
+          MAX_FOLDER_DEPTH,
+        );
+        setFoldersExceedingDepth(exceeding);
+        setDepthWarningConfirmed(exceeding.length === 0); // 无警告则自动确认
+
+        // 初始化平台筛选（默认全选所有检测到的平台）
+        const platformStats = extractPlatformStats(parsed.roots);
+        const allPlatforms = new Set(platformStats.map((s) => s.platform));
+        setSelectedPlatforms(allPlatforms);
+        setPlatformFilterEnabled(platformStats.length > 1); // 多于一个平台时启用
+
         // 进入预览步骤
         setStep(IMPORT_DIALOG_STEPS.PREVIEW);
 
@@ -202,12 +284,73 @@ export function BrowserBookmarkImportDialog({
     [],
   );
 
+  // 处理平台筛选变化
+  const handlePlatformFilterChange = useCallback(
+    (platforms: Set<Platform>) => {
+      setSelectedPlatforms(platforms);
+
+      // 如果有解析的文件，更新选中的书签
+      if (parsedFile) {
+        // 获取所有选中平台的书签 ID
+        const platformBookmarkIds = getBookmarkIdsByPlatforms(
+          parsedFile.roots,
+          platforms,
+        );
+
+        // 还需要包含文件夹，以便它们可以正确展示
+        const newSelectedIds = new Set<string>();
+
+        function collectIdsRecursive(
+          nodes: ParsedBookmarkNode[],
+          _parentIncluded: boolean,
+        ): boolean {
+          let hasSelectedChild = false;
+
+          for (const node of nodes) {
+            if (node.type === "bookmark") {
+              // 书签：检查是否在平台筛选中
+              if (platformBookmarkIds.has(node.id)) {
+                newSelectedIds.add(node.id);
+                hasSelectedChild = true;
+              }
+            } else if (node.type === "folder" && node.children) {
+              // 文件夹：递归检查子节点
+              const childHasSelected = collectIdsRecursive(
+                node.children,
+                false,
+              );
+              if (childHasSelected) {
+                newSelectedIds.add(node.id);
+                hasSelectedChild = true;
+              }
+            }
+          }
+
+          return hasSelectedChild;
+        }
+
+        collectIdsRecursive(parsedFile.roots, false);
+        setSelectedIds(newSelectedIds);
+      }
+    },
+    [parsedFile],
+  );
+
   // 处理导入（支持分批）
   const handleImport = useCallback(async () => {
     if (!parsedFile) return;
 
     cancelRef.current = false;
     setIsImporting(true);
+
+    // 开始计时
+    const startTime = Date.now();
+
+    // 扩展统计跟踪
+    let foldersCreatedCount = 0;
+
+    // 生成导入批次 ID
+    const importBatchId = crypto.randomUUID();
 
     try {
       // 获取选中的书签（只导入有 URL 的书签，排除文件夹）
@@ -221,14 +364,116 @@ export function BrowserBookmarkImportDialog({
         throw new Error("没有可导入的书签（选中项都是文件夹或无效链接）");
       }
 
+      // AI 分类模式：获取或创建待整理文件夹
+      let aiInboxFolderId: number | null = null;
+      if (options.enableAiClassify) {
+        try {
+          const inboxResponse = await fetch("/api/folders/inbox", {
+            method: "POST",
+          });
+          if (inboxResponse.ok) {
+            const inboxData = await inboxResponse.json();
+            aiInboxFolderId = inboxData.data?.id || inboxData.id;
+          }
+        } catch (error) {
+          console.warn("Failed to get inbox folder for AI classify:", error);
+          // 继续使用默认目标文件夹
+        }
+      }
+
+      // 文件夹映射结果（当启用自动创建文件夹时使用）
+      let folderMapping: FolderMappingResult | null = null;
+
+      // 如果启用了自动创建文件夹（且未启用 AI 分类）
+      if (options.autoCreateFolders && !options.enableAiClassify) {
+        // 1. 提取需要的文件夹路径
+        const requiredPaths = extractRequiredFolderPaths(bookmarksToImport);
+
+        // 2. 构建文件夹映射
+        folderMapping = buildFolderMapping(
+          requiredPaths,
+          folders,
+          options.targetFolderId,
+        );
+
+        // 3. 如果有需要创建的文件夹，调用批量创建 API
+        if (folderMapping.foldersToCreate.length > 0) {
+          const createResponse = await fetch("/api/folders/batch-create", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              folders: folderMapping.foldersToCreate,
+              baseParentId: options.targetFolderId,
+            }),
+          });
+
+          if (!createResponse.ok) {
+            const errorData = await createResponse.json();
+            throw new Error(errorData.error || "创建文件夹失败");
+          }
+
+          const createResult = await createResponse.json();
+          // 更新映射（将临时 ID 替换为真实 ID）
+          // API 返回 { data: { folders: [...] } }
+          const createdFolders =
+            createResult.data?.folders || createResult.folders || [];
+          folderMapping = updateMappingWithCreatedFolders(
+            folderMapping,
+            createdFolders,
+          );
+          // 记录创建的文件夹数量
+          foldersCreatedCount = createdFolders.length;
+        }
+      }
+
       // 准备导入数据
-      const allImportData = bookmarksToImport.map((bookmark) => ({
-        url: bookmark.url!,
-        title: bookmark.title,
-        description: bookmark.description,
-        platform,
-        folderId: options.targetFolderId,
-      }));
+      const allImportData = bookmarksToImport.map((bookmark) => {
+        // 确定目标文件夹 ID
+        let folderId = options.targetFolderId;
+
+        // AI 分类模式：所有书签都放入待整理文件夹
+        if (options.enableAiClassify && aiInboxFolderId !== null) {
+          folderId = aiInboxFolderId;
+        } else if (options.autoCreateFolders && folderMapping) {
+          // 使用文件夹映射获取目标文件夹
+          folderId = getFolderIdForBookmark(bookmark, folderMapping);
+        }
+
+        // 构建导入数据
+        const importData: {
+          url: string;
+          title: string;
+          description?: string;
+          platform: typeof platform;
+          folderId: number | null;
+          originalAddDate?: string;
+          importSource: string;
+          importBatchId: string;
+        } = {
+          url: bookmark.url!,
+          title: bookmark.title,
+          description: bookmark.description,
+          platform,
+          folderId,
+          importSource: `browser_${selectedSource}`, // e.g., browser_chrome
+          importBatchId,
+        };
+
+        // 如果启用保留原始时间且书签有 addDate
+        if (options.preserveAddDate && bookmark.addDate) {
+          // 将 Unix 时间戳（秒）转换为 ISO 字符串
+          importData.originalAddDate = new Date(
+            bookmark.addDate * 1000,
+          ).toISOString();
+        }
+
+        return importData;
+      });
+
+      // 统计有原始时间的书签数量
+      const withOriginalDateCount = allImportData.filter(
+        (d) => d.originalAddDate,
+      ).length;
 
       // 计算批次
       const totalBatches = Math.ceil(allImportData.length / BATCH_SIZE);
@@ -328,6 +573,9 @@ export function BrowserBookmarkImportDialog({
         }
       }
 
+      // 计算耗时
+      const durationMs = Date.now() - startTime;
+
       // 设置最终结果
       const importResult: ImportResultType = {
         success: totalSuccess,
@@ -335,6 +583,14 @@ export function BrowserBookmarkImportDialog({
         skipped: totalSkipped,
         errors: allErrors,
         platformBreakdown: { [platform]: totalSuccess },
+        extendedStats: {
+          durationMs,
+          foldersCreated: foldersCreatedCount,
+          withOriginalDate: withOriginalDateCount,
+          browserSource: selectedSource,
+          totalSelected: bookmarksToImport.length,
+          aiClassifyEnabled: options.enableAiClassify,
+        },
       };
 
       setResult(importResult);
@@ -362,7 +618,7 @@ export function BrowserBookmarkImportDialog({
     } finally {
       setIsImporting(false);
     }
-  }, [parsedFile, selectedIds, selectedSource, options, onSuccess]);
+  }, [parsedFile, selectedIds, selectedSource, options, folders, onSuccess]);
 
   // 取消导入
   const handleCancelImport = useCallback(() => {
@@ -401,6 +657,16 @@ export function BrowserBookmarkImportDialog({
       case IMPORT_DIALOG_STEPS.PREVIEW:
         return parsedFile ? (
           <div className="space-y-4">
+            {/* 深度警告 */}
+            {foldersExceedingDepth.length > 0 && (
+              <DepthWarning
+                foldersExceeding={foldersExceedingDepth}
+                maxDepth={MAX_FOLDER_DEPTH}
+                confirmed={depthWarningConfirmed}
+                onConfirm={() => setDepthWarningConfirmed(true)}
+              />
+            )}
+
             <div className="flex items-center justify-between">
               <SourceSelector
                 detectedSource={parsedFile.source}
@@ -412,11 +678,30 @@ export function BrowserBookmarkImportDialog({
                 个文件夹
               </div>
             </div>
+
+            {/* 平台筛选器 */}
+            {platformFilterEnabled && (
+              <PlatformFilter
+                nodes={parsedFile.roots}
+                selectedPlatforms={selectedPlatforms}
+                onPlatformChange={handlePlatformFilterChange}
+                compact
+              />
+            )}
+
             <BookmarkTree
               nodes={parsedFile.roots}
               selectedIds={selectedIds}
               onSelectionChange={setSelectedIds}
-              maxHeight="350px"
+              maxHeight={
+                foldersExceedingDepth.length > 0
+                  ? platformFilterEnabled
+                    ? "200px"
+                    : "280px"
+                  : platformFilterEnabled
+                    ? "280px"
+                    : "350px"
+              }
             />
           </div>
         ) : null;
@@ -457,7 +742,8 @@ export function BrowserBookmarkImportDialog({
         case IMPORT_DIALOG_STEPS.UPLOAD:
           return false; // 上传步骤通过文件选择自动进入下一步
         case IMPORT_DIALOG_STEPS.PREVIEW:
-          return selectedIds.size > 0;
+          // 需要选中书签且确认深度警告（如果有的话）
+          return selectedIds.size > 0 && depthWarningConfirmed;
         case IMPORT_DIALOG_STEPS.OPTIONS:
           return true;
         default:

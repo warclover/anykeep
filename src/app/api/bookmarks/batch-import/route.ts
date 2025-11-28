@@ -25,6 +25,9 @@ interface ImportBookmark {
   userTags?: string[];
   notes?: string;
   platform?: string; // 可选：显式指定平台（如 BROWSER_CHROME）
+  originalAddDate?: string; // 可选：原始添加时间（ISO 格式）
+  importSource?: string; // 可选：导入来源（如 browser_chrome）
+  importBatchId?: string; // 可选：导入批次 ID
 }
 
 interface ImportResult {
@@ -130,7 +133,8 @@ export async function POST(request: NextRequest) {
             ? bookmark.title.slice(0, 497) + "..."
             : bookmark.title;
 
-        bookmarkInserts.push({
+        // 构建插入数据
+        const insertData: BookmarkInsert = {
           user_id: user.id,
           url: bookmark.url,
           title: truncatedTitle,
@@ -144,7 +148,22 @@ export async function POST(request: NextRequest) {
           ai_tags: null,
           cover_url: null,
           author: null,
-        });
+        };
+
+        // 如果提供了原始添加时间，使用它作为 created_at
+        if (bookmark.originalAddDate) {
+          insertData.created_at = bookmark.originalAddDate;
+        }
+
+        // 添加导入元数据
+        if (bookmark.importSource) {
+          insertData.import_source = bookmark.importSource;
+        }
+        if (bookmark.importBatchId) {
+          insertData.import_batch_id = bookmark.importBatchId;
+        }
+
+        bookmarkInserts.push(insertData);
       } catch (error) {
         logger.error(
           {

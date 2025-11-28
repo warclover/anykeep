@@ -188,6 +188,26 @@ export interface ImportResult {
   errors: ImportError[];
   /** 按平台分类的导入数量 */
   platformBreakdown: Partial<Record<Platform, number>>;
+  /** 扩展统计（Phase 2） */
+  extendedStats?: ImportExtendedStats;
+}
+
+/**
+ * 扩展导入统计
+ */
+export interface ImportExtendedStats {
+  /** 处理总时长（毫秒） */
+  durationMs: number;
+  /** 创建的文件夹数量 */
+  foldersCreated: number;
+  /** 保留原始时间的书签数量 */
+  withOriginalDate: number;
+  /** 来源浏览器 */
+  browserSource: string;
+  /** 总书签数（导入前） */
+  totalSelected: number;
+  /** 是否启用了 AI 分类 */
+  aiClassifyEnabled?: boolean;
 }
 
 /**

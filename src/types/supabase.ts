@@ -218,6 +218,8 @@ export type Database = {
           image_count: number | null;
           is_read: boolean;
           read_at: string | null;
+          import_source: string | null; // V1.2新增：导入来源
+          import_batch_id: string | null; // V1.2新增：导入批次ID
           created_at: string;
           updated_at: string;
           deleted_at: string | null;
@@ -246,6 +248,8 @@ export type Database = {
           image_count?: number | null;
           is_read?: boolean;
           read_at?: string | null;
+          import_source?: string | null;
+          import_batch_id?: string | null;
           created_at?: string;
           updated_at?: string;
           deleted_at?: string | null;
@@ -274,6 +278,8 @@ export type Database = {
           image_count?: number | null;
           is_read?: boolean;
           read_at?: string | null;
+          import_source?: string | null;
+          import_batch_id?: string | null;
           created_at?: string;
           updated_at?: string;
           deleted_at?: string | null;
