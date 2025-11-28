@@ -201,11 +201,7 @@ export type Database = {
           url: string;
           description: string | null;
           cover_url: string | null;
-          platform:
-            | "WECHAT_OFFICIAL_ACCOUNT"
-            | "BILIBILI"
-            | "XIAOHONGSHU"
-            | "UNKNOWN";
+          platform: Platform;
           platform_content_id: string | null;
           ai_summary: string | null;
           ai_tags: string[] | null;
@@ -233,11 +229,7 @@ export type Database = {
           url: string;
           description?: string | null;
           cover_url?: string | null;
-          platform:
-            | "WECHAT_OFFICIAL_ACCOUNT"
-            | "BILIBILI"
-            | "XIAOHONGSHU"
-            | "UNKNOWN";
+          platform: Platform;
           platform_content_id?: string | null;
           ai_summary?: string | null;
           ai_tags?: string[] | null;
@@ -265,11 +257,7 @@ export type Database = {
           url?: string;
           description?: string | null;
           cover_url?: string | null;
-          platform?:
-            | "WECHAT_OFFICIAL_ACCOUNT"
-            | "BILIBILI"
-            | "XIAOHONGSHU"
-            | "UNKNOWN";
+          platform?: Platform;
           platform_content_id?: string | null;
           ai_summary?: string | null;
           ai_tags?: string[] | null;
@@ -467,6 +455,10 @@ export type Platform =
   | "WECHAT_OFFICIAL_ACCOUNT"
   | "BILIBILI"
   | "XIAOHONGSHU"
+  | "BROWSER_CHROME" // V1.2 新增：Chrome 书签
+  | "BROWSER_EDGE" // V1.2 新增：Edge 书签
+  | "BROWSER_FIREFOX" // 预留：Firefox 书签
+  | "BROWSER_SAFARI" // 预留：Safari 书签
   | "UNKNOWN";
 export type AuthPlatform = "WECHAT" | "BILIBILI" | "XIAOHONGSHU";
 export type ContentType = "ARTICLE" | "VIDEO" | "IMAGE" | "UNKNOWN";

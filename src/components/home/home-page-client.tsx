@@ -23,6 +23,7 @@ import {
   Rows3,
   Columns3,
   Sparkles,
+  Globe,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAbortableFetch } from "@/hooks/use-abortable-fetch";
@@ -39,6 +40,7 @@ import { CreateBookmarkDialog } from "@/components/bookmark/create-bookmark-dial
 import { BatchImportDialog } from "@/components/bookmark/batch-import-dialog";
 import { BatchMoveDialog } from "@/components/bookmark/batch-move-dialog";
 import { ExportDialog } from "@/components/bookmark/export-dialog";
+import { BrowserBookmarkImportDialog } from "@/components/browser-bookmark";
 import { FolderRecommendationToast } from "@/components/bookmark/folder-recommendation-toast";
 import { ReclassifyBanner } from "@/components/bookmark/reclassify-banner";
 import { EmptyState } from "@/components/bookmark/empty-state";
@@ -61,12 +63,14 @@ interface HomePageClientProps {
   error?: string;
 }
 
-// 平台配置
+// 平台配置（内容平台 + 浏览器平台）
 const platforms = [
   { id: "all", name: "全部", value: "" },
   { id: "wechat", name: "微信", value: "WECHAT_OFFICIAL_ACCOUNT" },
   { id: "xiaohongshu", name: "小红书", value: "XIAOHONGSHU" },
   { id: "bilibili", name: "B站", value: "BILIBILI" },
+  { id: "chrome", name: "Chrome", value: "BROWSER_CHROME" },
+  { id: "edge", name: "Edge", value: "BROWSER_EDGE" },
 ];
 
 // 排序选项
@@ -169,6 +173,7 @@ export function HomePageClient({
   const [_isPending, startTransition] = useTransition();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showImportDialog, setShowImportDialog] = useState(false);
+  const [showBrowserImportDialog, setShowBrowserImportDialog] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [showMoveDialog, setShowMoveDialog] = useState(false);
 
@@ -463,10 +468,16 @@ export function HomePageClient({
                     <MoreHorizontal className="size-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-40">
+                <DropdownMenuContent align="end" className="w-48">
                   <DropdownMenuItem onClick={() => setShowImportDialog(true)}>
                     <Upload className="size-4 mr-2" />
                     批量导入
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setShowBrowserImportDialog(true)}
+                  >
+                    <Globe className="size-4 mr-2" />
+                    从浏览器书签导入
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setShowExportDialog(true)}>
                     <Download className="size-4 mr-2" />
@@ -483,15 +494,27 @@ export function HomePageClient({
 
             {/* 桌面端：完整按钮 */}
             <div className="hidden md:flex items-center gap-3">
-              {/* 批量导入按钮 */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowImportDialog(true)}
-              >
-                <Upload className="size-4 mr-1.5" />
-                批量导入
-              </Button>
+              {/* 导入下拉菜单 */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Upload className="size-4 mr-1.5" />
+                    导入
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setShowImportDialog(true)}>
+                    <Upload className="size-4 mr-2" />
+                    批量导入 URL
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setShowBrowserImportDialog(true)}
+                  >
+                    <Globe className="size-4 mr-2" />
+                    从浏览器书签导入
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
               {/* 导出按钮 */}
               <Button
@@ -794,10 +817,21 @@ export function HomePageClient({
         </Button>
       </div>
 
-      {/* 批量导入对话框 */}
+      {/* 批量导入对话框（URL导入） */}
       <BatchImportDialog
         open={showImportDialog}
         onOpenChange={setShowImportDialog}
+      />
+
+      {/* 浏览器书签导入对话框 */}
+      <BrowserBookmarkImportDialog
+        open={showBrowserImportDialog}
+        onOpenChange={setShowBrowserImportDialog}
+        onSuccess={() => {
+          startTransition(() => {
+            router.refresh();
+          });
+        }}
       />
 
       {/* 导出对话框 */}

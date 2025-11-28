@@ -3,33 +3,35 @@
  * POST /api/bookmarks/batch-import - 批量创建收藏
  */
 
-import type { NextRequest } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { detectPlatformFromUrl } from '@/lib/constants/platforms'
+import type { NextRequest } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import { detectPlatformFromUrl } from "@/lib/constants/platforms";
 import {
   successResponse,
   unauthorizedError,
   quotaExceededError,
   databaseError,
   badRequestError,
-} from '@/lib/utils/api-response'
-import { logger } from '@/lib/logger'
-import type { BookmarkInsert } from '@/types/supabase'
-import { BOOKMARK } from '@/lib/constants/messages'
+} from "@/lib/utils/api-response";
+import { logger } from "@/lib/logger";
+import type { BookmarkInsert, Platform } from "@/types/supabase";
+import { BOOKMARK } from "@/lib/constants/messages";
 
 interface ImportBookmark {
-  url: string
-  title: string
-  description?: string
-  folderId?: number
-  userTags?: string[]
-  notes?: string
+  url: string;
+  title: string;
+  description?: string;
+  folderId?: number;
+  userTags?: string[];
+  notes?: string;
+  platform?: string; // 可选：显式指定平台（如 BROWSER_CHROME）
 }
 
 interface ImportResult {
-  success: number
-  failed: number
-  errors: Array<{ url: string; error: string }>
+  success: number;
+  failed: number;
+  skipped: number; // 重复跳过的数量
+  errors: Array<{ url: string; title?: string; reason: string }>;
 }
 
 /**
@@ -39,138 +41,156 @@ interface ImportResult {
 export async function POST(request: NextRequest) {
   try {
     // 1. 验证用户身份
-    const supabase = await createClient()
+    const supabase = await createClient();
     const {
       data: { user },
       error: authError,
-    } = await supabase.auth.getUser()
+    } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return unauthorizedError()
+      return unauthorizedError();
     }
 
     // 2. 解析请求体
-    const body = await request.json()
-    const bookmarks: ImportBookmark[] = body.bookmarks
+    const body = await request.json();
+    const bookmarks: ImportBookmark[] = body.bookmarks;
 
     if (!Array.isArray(bookmarks) || bookmarks.length === 0) {
-      return badRequestError('bookmarks 必须是非空数组')
+      return badRequestError("bookmarks 必须是非空数组");
     }
 
     if (bookmarks.length > 100) {
-      return badRequestError('单次最多导入 100 条书签')
+      return badRequestError("单次最多导入 100 条书签");
     }
 
     // 3. 检查存储配额
     const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('storage_quota, storage_used')
-      .eq('id', user.id)
-      .single()
+      .from("profiles")
+      .select("storage_quota, storage_used")
+      .eq("id", user.id)
+      .single();
 
     if (profileError) {
-      return databaseError(BOOKMARK.LOAD_ERROR, profileError)
+      return databaseError(BOOKMARK.LOAD_ERROR, profileError);
     }
 
-    const remainingQuota = profile.storage_quota - profile.storage_used
+    const remainingQuota = profile.storage_quota - profile.storage_used;
     if (remainingQuota < bookmarks.length) {
       return quotaExceededError(
-        `存储配额不足，剩余 ${remainingQuota} 条，需要 ${bookmarks.length} 条`
-      )
+        `存储配额不足，剩余 ${remainingQuota} 条，需要 ${bookmarks.length} 条`,
+      );
     }
 
     // 4. 批量创建收藏
     const result: ImportResult = {
       success: 0,
       failed: 0,
+      skipped: 0,
       errors: [],
-    }
+    };
 
-    const bookmarkInserts: BookmarkInsert[] = []
+    const bookmarkInserts: BookmarkInsert[] = [];
 
     for (const bookmark of bookmarks) {
       try {
         // 验证必填字段
         if (!bookmark.url || !bookmark.title) {
-          result.failed++
+          result.failed++;
           result.errors.push({
-            url: bookmark.url || '未知',
-            error: 'URL 和标题是必填项',
-          })
-          continue
+            url: bookmark.url || "未知",
+            title: bookmark.title,
+            reason: "URL 和标题是必填项",
+          });
+          continue;
         }
 
         // 检查 URL 是否已存在
         const { data: existing } = await supabase
-          .from('bookmarks')
-          .select('id')
-          .eq('user_id', user.id)
-          .eq('url', bookmark.url)
-          .is('deleted_at', null)
-          .single()
+          .from("bookmarks")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("url", bookmark.url)
+          .is("deleted_at", null)
+          .single();
 
         if (existing) {
-          result.failed++
-          result.errors.push({
-            url: bookmark.url,
-            error: '该 URL 已存在',
-          })
-          continue
+          // 重复的 URL 记为跳过而非失败
+          result.skipped++;
+          continue;
         }
 
-        // 准备插入数据
-        const platform = detectPlatformFromUrl(bookmark.url)
+        // 准备插入数据：优先使用传入的 platform，否则从 URL 检测
+        const platform =
+          (bookmark.platform as Platform) ||
+          detectPlatformFromUrl(bookmark.url);
+
+        // 截断过长的字段，避免数据库约束错误
+        const truncatedTitle =
+          bookmark.title.length > 500
+            ? bookmark.title.slice(0, 497) + "..."
+            : bookmark.title;
 
         bookmarkInserts.push({
           user_id: user.id,
           url: bookmark.url,
-          title: bookmark.title,
+          title: truncatedTitle,
           description: bookmark.description || null,
           platform,
           folder_id: bookmark.folderId || null,
           user_tags: bookmark.userTags || null,
           notes: bookmark.notes || null,
-          status: 'COMPLETED', // 批量导入时跳过 AI 处理
+          status: "COMPLETED", // 批量导入时跳过 AI 处理
           ai_summary: null,
           ai_tags: null,
           cover_url: null,
           author: null,
-        })
+        });
       } catch (error) {
         logger.error(
           {
             error: error instanceof Error ? error.message : String(error),
             url: bookmark.url,
           },
-          'Batch import: Failed to prepare bookmark'
-        )
-        result.failed++
+          "Batch import: Failed to prepare bookmark",
+        );
+        result.failed++;
         result.errors.push({
           url: bookmark.url,
-          error: '处理失败',
-        })
+          title: bookmark.title,
+          reason: "处理失败",
+        });
       }
     }
 
     // 5. 批量插入数据库
     if (bookmarkInserts.length > 0) {
       const { data: inserted, error: insertError } = await supabase
-        .from('bookmarks')
+        .from("bookmarks")
         .insert(bookmarkInserts)
-        .select()
+        .select();
 
       if (insertError) {
+        // 提取详细错误信息
+        const errorDetail =
+          insertError.message || insertError.code || String(insertError);
         logger.error(
           {
             error: insertError,
+            errorMessage: errorDetail,
             count: bookmarkInserts.length,
+            // 记录第一条数据的 platform 用于调试
+            samplePlatform: bookmarkInserts[0]?.platform,
           },
-          'Batch import: Database insert failed'
-        )
-        return databaseError(BOOKMARK.CREATE_ERROR, insertError)
+          "Batch import: Database insert failed",
+        );
+        // 返回详细错误信息帮助调试
+        return databaseError(
+          `${BOOKMARK.CREATE_ERROR}: ${errorDetail}`,
+          insertError,
+        );
       }
 
-      result.success = inserted.length
+      result.success = inserted.length;
 
       logger.info(
         {
@@ -178,18 +198,21 @@ export async function POST(request: NextRequest) {
           failed: result.failed,
           total: bookmarks.length,
         },
-        'Batch import: Completed'
-      )
+        "Batch import: Completed",
+      );
     }
 
-    return successResponse({ ...result, message: BOOKMARK.BATCH_IMPORT_SUCCESS })
+    return successResponse({
+      ...result,
+      message: BOOKMARK.BATCH_IMPORT_SUCCESS,
+    });
   } catch (error) {
     logger.error(
       {
         error: error instanceof Error ? error.message : String(error),
       },
-      'Batch import: Unexpected error'
-    )
-    return badRequestError('批量导入失败')
+      "Batch import: Unexpected error",
+    );
+    return badRequestError("批量导入失败");
   }
 }
