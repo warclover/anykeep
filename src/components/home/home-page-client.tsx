@@ -3,116 +3,179 @@
  * 实现平台筛选、加载更多、编辑删除等交互功能
  */
 
-'use client'
+"use client";
 
-import { useState, useTransition, useEffect } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { LayoutGrid, List, Plus, Loader2, ArrowUpDown, CheckSquare, Trash2, FolderInput, Upload, Download, AlignJustify, MoreHorizontal } from 'lucide-react'
-import { toast } from 'sonner'
-import { useAbortableFetch } from '@/hooks/use-abortable-fetch'
-import { Button } from '@/components/ui/button'
+import { useState, useTransition, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import {
+  LayoutGrid,
+  List,
+  Plus,
+  Loader2,
+  ArrowUpDown,
+  CheckSquare,
+  Trash2,
+  FolderInput,
+  Upload,
+  Download,
+  AlignJustify,
+  MoreHorizontal,
+  Rows3,
+  Columns3,
+  Sparkles,
+} from "lucide-react";
+import { toast } from "sonner";
+import { useAbortableFetch } from "@/hooks/use-abortable-fetch";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
-import { BookmarkCard } from '@/components/bookmark/bookmark-card'
-import { CreateBookmarkDialog } from '@/components/bookmark/create-bookmark-dialog'
-import { BatchImportDialog } from '@/components/bookmark/batch-import-dialog'
-import { BatchMoveDialog } from '@/components/bookmark/batch-move-dialog'
-import { ExportDialog } from '@/components/bookmark/export-dialog'
-import { FolderRecommendationToast } from '@/components/bookmark/folder-recommendation-toast'
-import { ReclassifyBanner } from '@/components/bookmark/reclassify-banner'
-import { EmptyState } from '@/components/bookmark/empty-state'
-import { useFolderRecommendation } from '@/hooks/use-folder-recommendation'
-import { ErrorMessage } from '@/components/ui/error-message'
+} from "@/components/ui/select";
+import { BookmarkCard } from "@/components/bookmark/bookmark-card";
+import { CreateBookmarkDialog } from "@/components/bookmark/create-bookmark-dialog";
+import { BatchImportDialog } from "@/components/bookmark/batch-import-dialog";
+import { BatchMoveDialog } from "@/components/bookmark/batch-move-dialog";
+import { ExportDialog } from "@/components/bookmark/export-dialog";
+import { FolderRecommendationToast } from "@/components/bookmark/folder-recommendation-toast";
+import { ReclassifyBanner } from "@/components/bookmark/reclassify-banner";
+import { EmptyState } from "@/components/bookmark/empty-state";
+import { useFolderRecommendation } from "@/hooks/use-folder-recommendation";
+import { ErrorMessage } from "@/components/ui/error-message";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { cn } from '@/lib/utils'
-import type { Bookmark } from '@/types/supabase'
+} from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
+import type { Bookmark } from "@/types/supabase";
 
 interface HomePageClientProps {
   bookmarks: (Bookmark & {
-    folders?: { name: string } | null
-  })[]
-  error?: string
+    folders?: { name: string } | null;
+  })[];
+  error?: string;
 }
 
 // 平台配置
 const platforms = [
-  { id: 'all', name: '全部', value: '' },
-  { id: 'wechat', name: '微信', value: 'WECHAT_OFFICIAL_ACCOUNT' },
-  { id: 'xiaohongshu', name: '小红书', value: 'XIAOHONGSHU' },
-  { id: 'bilibili', name: 'B站', value: 'BILIBILI' },
-]
+  { id: "all", name: "全部", value: "" },
+  { id: "wechat", name: "微信", value: "WECHAT_OFFICIAL_ACCOUNT" },
+  { id: "xiaohongshu", name: "小红书", value: "XIAOHONGSHU" },
+  { id: "bilibili", name: "B站", value: "BILIBILI" },
+];
 
 // 排序选项
 const sortOptions = [
-  { value: 'created_desc', label: '最新收藏' },
-  { value: 'created_asc', label: '最早收藏' },
-  { value: 'title_asc', label: '标题 A-Z' },
-  { value: 'title_desc', label: '标题 Z-A' },
-]
+  { value: "created_desc", label: "最新收藏" },
+  { value: "created_asc", label: "最早收藏" },
+  { value: "title_asc", label: "标题 A-Z" },
+  { value: "title_desc", label: "标题 Z-A" },
+];
 
 // 视图模式类型
-type ViewMode = 'card' | 'list' | 'compact'
+type ViewMode = "card" | "list" | "compact";
+
+// 布局模式类型（仅用于卡片视图）
+type LayoutMode = "auto" | "row" | "column";
 
 // 本地存储 key
-const VIEW_MODE_STORAGE_KEY = 'anykeep-view-mode'
+const VIEW_MODE_STORAGE_KEY = "anykeep-view-mode";
+const LAYOUT_MODE_STORAGE_KEY = "anykeep-layout-mode";
 
-export function HomePageClient({ bookmarks: initialBookmarks, error }: HomePageClientProps) {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const currentPlatform = searchParams.get('platform') || ''
-  const currentSort = searchParams.get('sort') || 'created_desc'
+// 布局模式选项
+const layoutOptions = [
+  {
+    value: "auto",
+    label: "自动",
+    icon: Sparkles,
+    description: "根据设备自适应",
+  },
+  { value: "row", label: "横向优先", icon: Rows3, description: "按行排列" },
+  { value: "column", label: "纵向优先", icon: Columns3, description: "瀑布流" },
+] as const;
+
+export function HomePageClient({
+  bookmarks: initialBookmarks,
+  error,
+}: HomePageClientProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const currentPlatform = searchParams.get("platform") || "";
+  const currentSort = searchParams.get("sort") || "created_desc";
 
   // 可取消请求 Hook
-  const { fetchWithAbort } = useAbortableFetch()
+  const { fetchWithAbort } = useAbortableFetch();
 
   // 视图模式（从 localStorage 读取默认值）
-  const [viewMode, setViewMode] = useState<ViewMode>('card')
+  const [viewMode, setViewMode] = useState<ViewMode>("card");
 
-  // 初始化视图模式（从 localStorage 读取）
+  // 布局模式（仅用于卡片视图）
+  const [layoutMode, setLayoutMode] = useState<LayoutMode>("auto");
+
+  // 初始化视图模式和布局模式（从 localStorage 读取）
   useEffect(() => {
-    const savedMode = localStorage.getItem(VIEW_MODE_STORAGE_KEY) as ViewMode | null
-    if (savedMode && ['card', 'list', 'compact'].includes(savedMode)) {
-      setViewMode(savedMode)
+    const savedViewMode = localStorage.getItem(
+      VIEW_MODE_STORAGE_KEY,
+    ) as ViewMode | null;
+    if (savedViewMode && ["card", "list", "compact"].includes(savedViewMode)) {
+      setViewMode(savedViewMode);
     }
-  }, [])
+
+    const savedLayoutMode = localStorage.getItem(
+      LAYOUT_MODE_STORAGE_KEY,
+    ) as LayoutMode | null;
+    if (
+      savedLayoutMode &&
+      ["auto", "row", "column"].includes(savedLayoutMode)
+    ) {
+      setLayoutMode(savedLayoutMode);
+    }
+  }, []);
 
   // 切换视图模式并保存到 localStorage
   const handleViewModeChange = (mode: ViewMode) => {
-    setViewMode(mode)
-    localStorage.setItem(VIEW_MODE_STORAGE_KEY, mode)
-  }
-  const [bookmarks, setBookmarks] = useState(initialBookmarks)
+    setViewMode(mode);
+    localStorage.setItem(VIEW_MODE_STORAGE_KEY, mode);
+  };
+
+  // 切换布局模式并保存到 localStorage
+  const handleLayoutModeChange = (mode: LayoutMode) => {
+    setLayoutMode(mode);
+    localStorage.setItem(LAYOUT_MODE_STORAGE_KEY, mode);
+  };
+
+  // 计算网格容器的 CSS 类名
+  const gridClassName = cn(
+    "masonry-grid",
+    layoutMode === "row" && "layout-row",
+    layoutMode === "column" && "layout-column",
+  );
+  const [bookmarks, setBookmarks] = useState(initialBookmarks);
 
   // 同步 props 和 state：当 initialBookmarks 更新时同步到 bookmarks state
   // 这是必需的，因为 router.refresh() 会更新 props，但 useState 不会自动同步
   useEffect(() => {
-    setBookmarks(initialBookmarks)
+    setBookmarks(initialBookmarks);
     // 同时更新 hasMore 状态
-    setHasMore(initialBookmarks.length === 50)
-  }, [initialBookmarks])
-  const [isLoadingMore, setIsLoadingMore] = useState(false)
-  const [hasMore, setHasMore] = useState(initialBookmarks.length === 50)
-  const [_isPending, startTransition] = useTransition()
-  const [showCreateDialog, setShowCreateDialog] = useState(false)
-  const [showImportDialog, setShowImportDialog] = useState(false)
-  const [showExportDialog, setShowExportDialog] = useState(false)
-  const [showMoveDialog, setShowMoveDialog] = useState(false)
+    setHasMore(initialBookmarks.length === 50);
+  }, [initialBookmarks]);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(initialBookmarks.length === 50);
+  const [_isPending, startTransition] = useTransition();
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showImportDialog, setShowImportDialog] = useState(false);
+  const [showExportDialog, setShowExportDialog] = useState(false);
+  const [showMoveDialog, setShowMoveDialog] = useState(false);
 
   // 批量选择模式
-  const [isSelectionMode, setIsSelectionMode] = useState(false)
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
-  const [isBatchDeleting, setIsBatchDeleting] = useState(false)
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [isBatchDeleting, setIsBatchDeleting] = useState(false);
 
   // AI 文件夹推荐
   const {
@@ -121,251 +184,259 @@ export function HomePageClient({ bookmarks: initialBookmarks, error }: HomePageC
     fetchRecommendation,
     applyRecommendation,
     dismissRecommendation,
-  } = useFolderRecommendation()
+  } = useFolderRecommendation();
 
   // 新建收藏成功后触发文件夹推荐
   const handleBookmarkCreated = (bookmark: {
-    id: number
-    title: string
-    ai_summary?: string | null
-    ai_tags?: string[] | null
+    id: number;
+    title: string;
+    ai_summary?: string | null;
+    ai_tags?: string[] | null;
   }) => {
     // 如果收藏没有指定文件夹，则获取 AI 推荐
     fetchRecommendation(
       bookmark.id,
       bookmark.title,
-      bookmark.ai_summary || '',
-      bookmark.ai_tags || []
-    )
-  }
+      bookmark.ai_summary || "",
+      bookmark.ai_tags || [],
+    );
+  };
 
   // 打开移动对话框（用于自定义选择）
   const handleCustomizeFolder = () => {
     if (recommendationBookmarkId) {
-      setSelectedIds(new Set([recommendationBookmarkId]))
-      setShowMoveDialog(true)
-      dismissRecommendation()
+      setSelectedIds(new Set([recommendationBookmarkId]));
+      setShowMoveDialog(true);
+      dismissRecommendation();
     }
-  }
+  };
 
   const handlePlatformChange = (platformValue: string) => {
-    const params = new URLSearchParams(searchParams)
+    const params = new URLSearchParams(searchParams);
     if (platformValue) {
-      params.set('platform', platformValue)
+      params.set("platform", platformValue);
     } else {
-      params.delete('platform')
+      params.delete("platform");
     }
-    router.push(`/home?${params.toString()}`)
-  }
+    router.push(`/home?${params.toString()}`);
+  };
 
   const handleSortChange = (sortValue: string) => {
-    const params = new URLSearchParams(searchParams)
-    params.set('sort', sortValue)
-    router.push(`/home?${params.toString()}`)
-  }
+    const params = new URLSearchParams(searchParams);
+    params.set("sort", sortValue);
+    router.push(`/home?${params.toString()}`);
+  };
 
   const handleRetry = () => {
-    router.refresh()
-  }
+    router.refresh();
+  };
 
   const handleEdit = (id: number) => {
     // TODO: 打开编辑对话框（Week 1 暂时跳转到详情页）
-    router.push(`/bookmark/${id}`)
-  }
+    router.push(`/bookmark/${id}`);
+  };
 
   const handleDelete = async (id: number) => {
     // 保存当前快照用于回滚
-    const snapshot = [...bookmarks]
+    const snapshot = [...bookmarks];
 
     try {
       // 乐观更新 UI
-      setBookmarks((prev) => prev.filter((b) => b.id !== id))
+      setBookmarks((prev) => prev.filter((b) => b.id !== id));
 
       // 调用删除 API（可取消）
       const res = await fetchWithAbort(`/api/bookmarks/${id}`, {
-        method: 'DELETE',
-      })
+        method: "DELETE",
+      });
 
       if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error?.message || '删除失败')
+        const data = await res.json();
+        throw new Error(data.error?.message || "删除失败");
       }
 
-      toast.success('删除成功')
+      toast.success("删除成功");
 
       // 刷新数据
       startTransition(() => {
-        router.refresh()
-      })
+        router.refresh();
+      });
     } catch (error) {
       // 如果是取消错误，不显示错误提示
-      if (error instanceof Error && error.name === 'AbortError') {
-        return
+      if (error instanceof Error && error.name === "AbortError") {
+        return;
       }
 
       // 失败时恢复到快照状态
-      setBookmarks(snapshot)
-      toast.error(error instanceof Error ? error.message : '删除失败')
+      setBookmarks(snapshot);
+      toast.error(error instanceof Error ? error.message : "删除失败");
     }
-  }
+  };
 
   const handleToggleRead = async (id: number, isRead: boolean) => {
     // 保存当前快照用于回滚
-    const snapshot = [...bookmarks]
+    const snapshot = [...bookmarks];
 
     try {
       // 乐观更新 UI
       setBookmarks((prev) =>
         prev.map((b) =>
           b.id === id
-            ? { ...b, is_read: isRead, read_at: isRead ? new Date().toISOString() : null }
-            : b
-        )
-      )
+            ? {
+                ...b,
+                is_read: isRead,
+                read_at: isRead ? new Date().toISOString() : null,
+              }
+            : b,
+        ),
+      );
 
       // 调用 PATCH API 更新已读状态
       const res = await fetchWithAbort(`/api/bookmarks/${id}`, {
-        method: 'PATCH',
+        method: "PATCH",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ isRead }),
-      })
+      });
 
       if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error?.message || '更新失败')
+        const data = await res.json();
+        throw new Error(data.error?.message || "更新失败");
       }
 
-      toast.success(isRead ? '已标记为已读' : '已标记为未读')
+      toast.success(isRead ? "已标记为已读" : "已标记为未读");
     } catch (error) {
       // 如果是取消错误，不显示错误提示
-      if (error instanceof Error && error.name === 'AbortError') {
-        return
+      if (error instanceof Error && error.name === "AbortError") {
+        return;
       }
 
       // 失败时恢复到快照状态
-      setBookmarks(snapshot)
-      toast.error(error instanceof Error ? error.message : '更新失败')
+      setBookmarks(snapshot);
+      toast.error(error instanceof Error ? error.message : "更新失败");
     }
-  }
+  };
 
   const handleLoadMore = async () => {
-    if (isLoadingMore || !hasMore) return
+    if (isLoadingMore || !hasMore) return;
 
-    setIsLoadingMore(true)
+    setIsLoadingMore(true);
     try {
-      const lastBookmark = bookmarks[bookmarks.length - 1]
+      const lastBookmark = bookmarks[bookmarks.length - 1];
       const params = new URLSearchParams({
         cursor: lastBookmark.id.toString(),
-        limit: '50',
-      })
+        limit: "50",
+      });
 
       if (currentPlatform) {
-        params.append('platform', currentPlatform)
+        params.append("platform", currentPlatform);
       }
 
-      const res = await fetchWithAbort(`/api/bookmarks?${params}`)
+      const res = await fetchWithAbort(`/api/bookmarks?${params}`);
 
       if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error?.message || '加载失败')
+        const data = await res.json();
+        throw new Error(data.error?.message || "加载失败");
       }
 
-      const data = await res.json()
-      const newBookmarks = data.data.bookmarks
+      const data = await res.json();
+      const newBookmarks = data.data.bookmarks;
 
-      setBookmarks((prev) => [...prev, ...newBookmarks])
-      setHasMore(data.data.pagination.hasMore)
+      setBookmarks((prev) => [...prev, ...newBookmarks]);
+      setHasMore(data.data.pagination.hasMore);
     } catch (error) {
       // 如果是取消错误，不显示错误提示
-      if (error instanceof Error && error.name === 'AbortError') {
-        return
+      if (error instanceof Error && error.name === "AbortError") {
+        return;
       }
-      toast.error(error instanceof Error ? error.message : '加载失败')
+      toast.error(error instanceof Error ? error.message : "加载失败");
     } finally {
-      setIsLoadingMore(false)
+      setIsLoadingMore(false);
     }
-  }
+  };
 
   const toggleSelectionMode = () => {
-    setIsSelectionMode(!isSelectionMode)
-    setSelectedIds(new Set())
-  }
+    setIsSelectionMode(!isSelectionMode);
+    setSelectedIds(new Set());
+  };
 
   const toggleSelect = (id: number) => {
     setSelectedIds((prev) => {
-      const newSet = new Set(prev)
+      const newSet = new Set(prev);
       if (newSet.has(id)) {
-        newSet.delete(id)
+        newSet.delete(id);
       } else {
-        newSet.add(id)
+        newSet.add(id);
       }
-      return newSet
-    })
-  }
+      return newSet;
+    });
+  };
 
   const selectAll = () => {
-    setSelectedIds(new Set(bookmarks.map((b) => b.id)))
-  }
+    setSelectedIds(new Set(bookmarks.map((b) => b.id)));
+  };
 
   const deselectAll = () => {
-    setSelectedIds(new Set())
-  }
+    setSelectedIds(new Set());
+  };
 
   const handleBatchDelete = async () => {
-    if (selectedIds.size === 0) return
+    if (selectedIds.size === 0) return;
 
-    if (!confirm(`确定要删除选中的 ${selectedIds.size} 条收藏吗？删除后无法恢复。`)) {
-      return
+    if (
+      !confirm(
+        `确定要删除选中的 ${selectedIds.size} 条收藏吗？删除后无法恢复。`,
+      )
+    ) {
+      return;
     }
 
-    setIsBatchDeleting(true)
+    setIsBatchDeleting(true);
     try {
       // 使用批量删除 API（单次请求）
-      const response = await fetchWithAbort('/api/bookmarks/batch-delete', {
-        method: 'POST',
+      const response = await fetchWithAbort("/api/bookmarks/batch-delete", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           ids: Array.from(selectedIds),
         }),
-      })
+      });
 
-      const result = await response.json()
+      const result = await response.json();
 
       if (!response.ok) {
-        toast.error(result.error?.message || '批量删除失败')
-        return
+        toast.error(result.error?.message || "批量删除失败");
+        return;
       }
 
-      const deletedCount = result.data?.deletedCount || 0
-      toast.success(`成功删除 ${deletedCount} 条收藏`)
+      const deletedCount = result.data?.deletedCount || 0;
+      toast.success(`成功删除 ${deletedCount} 条收藏`);
 
       // 更新 UI（乐观更新）
-      setBookmarks((prev) => prev.filter((b) => !selectedIds.has(b.id)))
-      setSelectedIds(new Set())
-      setIsSelectionMode(false)
+      setBookmarks((prev) => prev.filter((b) => !selectedIds.has(b.id)));
+      setSelectedIds(new Set());
+      setIsSelectionMode(false);
 
       // 刷新数据
       startTransition(() => {
-        router.refresh()
-      })
+        router.refresh();
+      });
     } catch (error) {
       // 如果是取消错误，不显示错误提示
-      if (error instanceof Error && error.name === 'AbortError') {
-        return
+      if (error instanceof Error && error.name === "AbortError") {
+        return;
       }
       // 前端错误仅在开发环境使用 console
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Batch delete error:', error)
+      if (process.env.NODE_ENV === "development") {
+        console.error("Batch delete error:", error);
       }
-      toast.error('批量删除失败')
+      toast.error("批量删除失败");
     } finally {
-      setIsBatchDeleting(false)
+      setIsBatchDeleting(false);
     }
-  }
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -404,7 +475,7 @@ export function HomePageClient({ bookmarks: initialBookmarks, error }: HomePageC
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={toggleSelectionMode}>
                     <CheckSquare className="size-4 mr-2" />
-                    {isSelectionMode ? '取消选择' : '批量选择'}
+                    {isSelectionMode ? "取消选择" : "批量选择"}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -434,15 +505,16 @@ export function HomePageClient({ bookmarks: initialBookmarks, error }: HomePageC
 
               {/* 批量选择按钮 */}
               <Button
-                variant={isSelectionMode ? 'default' : 'outline'}
+                variant={isSelectionMode ? "default" : "outline"}
                 size="sm"
                 onClick={toggleSelectionMode}
                 className={cn(
-                  isSelectionMode && 'bg-blue-500 hover:bg-blue-600 text-white dark:bg-blue-600 dark:hover:bg-blue-700'
+                  isSelectionMode &&
+                    "bg-blue-500 hover:bg-blue-600 text-white dark:bg-blue-600 dark:hover:bg-blue-700",
                 )}
               >
                 <CheckSquare className="size-4 mr-1.5" />
-                {isSelectionMode ? '取消选择' : '批量选择'}
+                {isSelectionMode ? "取消选择" : "批量选择"}
               </Button>
             </div>
 
@@ -463,16 +535,50 @@ export function HomePageClient({ bookmarks: initialBookmarks, error }: HomePageC
               </SelectContent>
             </Select>
 
+            {/* 布局模式选择器（仅卡片视图显示） */}
+            {viewMode === "card" && (
+              <Select
+                value={layoutMode}
+                onValueChange={(v) => handleLayoutModeChange(v as LayoutMode)}
+              >
+                <SelectTrigger className="w-10 md:w-[130px] h-8">
+                  {layoutMode === "auto" && (
+                    <Sparkles className="size-4 md:mr-2" />
+                  )}
+                  {layoutMode === "row" && <Rows3 className="size-4 md:mr-2" />}
+                  {layoutMode === "column" && (
+                    <Columns3 className="size-4 md:mr-2" />
+                  )}
+                  <span className="hidden md:inline">
+                    <SelectValue />
+                  </span>
+                </SelectTrigger>
+                <SelectContent>
+                  {layoutOptions.map((option) => {
+                    const Icon = option.icon;
+                    return (
+                      <SelectItem key={option.value} value={option.value}>
+                        <div className="flex items-center gap-2">
+                          <Icon className="size-4" />
+                          <span>{option.label}</span>
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            )}
+
             {/* 视图切换按钮 */}
             <div className="flex items-center gap-0.5 sm:gap-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-0.5 sm:p-1">
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => handleViewModeChange('card')}
+                onClick={() => handleViewModeChange("card")}
                 title="瀑布流视图"
                 className={cn(
                   "h-7 w-7 sm:h-8 sm:w-8 p-0",
-                  viewMode === 'card' && 'bg-white dark:bg-gray-600 shadow-sm'
+                  viewMode === "card" && "bg-white dark:bg-gray-600 shadow-sm",
                 )}
               >
                 <LayoutGrid className="size-3.5 sm:size-4" />
@@ -480,11 +586,11 @@ export function HomePageClient({ bookmarks: initialBookmarks, error }: HomePageC
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => handleViewModeChange('list')}
+                onClick={() => handleViewModeChange("list")}
                 title="列表视图"
                 className={cn(
                   "h-7 w-7 sm:h-8 sm:w-8 p-0",
-                  viewMode === 'list' && 'bg-white dark:bg-gray-600 shadow-sm'
+                  viewMode === "list" && "bg-white dark:bg-gray-600 shadow-sm",
                 )}
               >
                 <List className="size-3.5 sm:size-4" />
@@ -492,11 +598,12 @@ export function HomePageClient({ bookmarks: initialBookmarks, error }: HomePageC
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => handleViewModeChange('compact')}
+                onClick={() => handleViewModeChange("compact")}
                 title="紧凑视图"
                 className={cn(
                   "h-7 w-7 sm:h-8 sm:w-8 p-0",
-                  viewMode === 'compact' && 'bg-white dark:bg-gray-600 shadow-sm'
+                  viewMode === "compact" &&
+                    "bg-white dark:bg-gray-600 shadow-sm",
                 )}
               >
                 <AlignJustify className="size-3.5 sm:size-4" />
@@ -508,21 +615,21 @@ export function HomePageClient({ bookmarks: initialBookmarks, error }: HomePageC
         {/* 平台筛选标签 */}
         <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
           {platforms.map((platform) => {
-            const isActive = currentPlatform === platform.value
+            const isActive = currentPlatform === platform.value;
             return (
               <button
                 key={platform.id}
                 onClick={() => handlePlatformChange(platform.value)}
                 className={cn(
-                  'px-4 py-1.5 text-sm font-medium rounded-full transition-colors whitespace-nowrap',
+                  "px-4 py-1.5 text-sm font-medium rounded-full transition-colors whitespace-nowrap",
                   isActive
-                    ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                    ? "bg-gray-900 text-white dark:bg-white dark:text-gray-900"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600",
                 )}
               >
                 {platform.name}
               </button>
-            )
+            );
           })}
         </div>
 
@@ -589,15 +696,12 @@ export function HomePageClient({ bookmarks: initialBookmarks, error }: HomePageC
         <ReclassifyBanner className="mb-4" />
 
         {error ? (
-          <ErrorMessage
-            message={error}
-            retry={handleRetry}
-          />
+          <ErrorMessage message={error} retry={handleRetry} />
         ) : bookmarks && bookmarks.length > 0 ? (
           <>
-            {/* 瀑布流视图（card） */}
-            {viewMode === 'card' && (
-              <div className="masonry-grid">
+            {/* 卡片视图（支持行优先/列优先布局） */}
+            {viewMode === "card" && (
+              <div className={gridClassName}>
                 {bookmarks.map((bookmark) => (
                   <div key={bookmark.id} className="masonry-item">
                     <BookmarkCard
@@ -616,7 +720,7 @@ export function HomePageClient({ bookmarks: initialBookmarks, error }: HomePageC
             )}
 
             {/* 列表视图（list） */}
-            {viewMode === 'list' && (
+            {viewMode === "list" && (
               <div className="space-y-4">
                 {bookmarks.map((bookmark) => (
                   <BookmarkCard
@@ -635,7 +739,7 @@ export function HomePageClient({ bookmarks: initialBookmarks, error }: HomePageC
             )}
 
             {/* 紧凑视图（compact） */}
-            {viewMode === 'compact' && (
+            {viewMode === "compact" && (
               <div className="space-y-2">
                 {bookmarks.map((bookmark) => (
                   <BookmarkCard
@@ -667,7 +771,7 @@ export function HomePageClient({ bookmarks: initialBookmarks, error }: HomePageC
                       加载中...
                     </>
                   ) : (
-                    '加载更多'
+                    "加载更多"
                   )}
                 </Button>
               </div>
@@ -710,8 +814,8 @@ export function HomePageClient({ bookmarks: initialBookmarks, error }: HomePageC
         onOpenChange={setShowMoveDialog}
         selectedIds={selectedIds}
         onSuccess={() => {
-          setSelectedIds(new Set())
-          setIsSelectionMode(false)
+          setSelectedIds(new Set());
+          setIsSelectionMode(false);
         }}
       />
 
@@ -731,5 +835,5 @@ export function HomePageClient({ bookmarks: initialBookmarks, error }: HomePageC
         onCustomize={handleCustomizeFolder}
       />
     </div>
-  )
+  );
 }

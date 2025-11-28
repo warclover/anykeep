@@ -1,48 +1,142 @@
 /**
- * 瀑布流布局样式
- * 使用 CSS column-count 实现 Pinterest/MyMind 风格布局
+ * 自适应网格布局样式
+ * 支持三种模式：auto（自动）、row（行优先）、column（列优先）
+ *
+ * auto 模式：移动端列优先瀑布流，桌面端行优先网格
+ * row 模式：强制行优先（CSS Grid）
+ * column 模式：强制列优先（CSS column-count 瀑布流）
  */
 
+/* ==================== 默认 auto 模式 ==================== */
+
+/* 移动端：列优先瀑布流（单列） */
 .masonry-grid {
   column-count: 1;
   column-gap: 1rem;
 }
 
-/* 平板：2 列 */
+/* 平板及以上：行优先网格 */
 @media (min-width: 768px) {
   .masonry-grid {
+    column-count: unset;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+  }
+}
+
+/* 桌面：3 列网格 */
+@media (min-width: 1024px) {
+  .masonry-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* 大屏幕：4 列网格 */
+@media (min-width: 1536px) {
+  .masonry-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* ==================== 强制行优先模式 (.layout-row) ==================== */
+
+.masonry-grid.layout-row {
+  column-count: unset !important;
+  display: grid !important;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .masonry-grid.layout-row {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .masonry-grid.layout-row {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 1536px) {
+  .masonry-grid.layout-row {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* ==================== 强制列优先模式 (.layout-column) ==================== */
+
+.masonry-grid.layout-column {
+  display: block !important;
+  column-count: 1;
+  column-gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .masonry-grid.layout-column {
     column-count: 2;
     column-gap: 1.5rem;
   }
 }
 
-/* 桌面：3 列 */
 @media (min-width: 1024px) {
-  .masonry-grid {
+  .masonry-grid.layout-column {
     column-count: 3;
-    column-gap: 1.5rem;
   }
 }
 
-/* 大屏幕：4 列 */
 @media (min-width: 1536px) {
-  .masonry-grid {
+  .masonry-grid.layout-column {
     column-count: 4;
-    column-gap: 1.5rem;
   }
 }
 
-/* 瀑布流卡片项 */
+/* ==================== 卡片项样式 ==================== */
+
+/* 瀑布流卡片项（列优先模式需要） */
 .masonry-item {
   break-inside: avoid;
+  page-break-inside: avoid;
+  -webkit-column-break-inside: avoid;
   margin-bottom: 1rem;
-  /* 防止列内部的卡片被截断 */
+}
+
+@media (min-width: 768px) {
+  .masonry-item {
+    margin-bottom: 1.5rem;
+  }
+}
+
+/* 行优先模式下，移除瀑布流特有属性 */
+.masonry-grid.layout-row .masonry-item {
+  break-inside: unset;
+  page-break-inside: unset;
+  -webkit-column-break-inside: unset;
+  margin-bottom: 0;
+}
+
+/* auto 模式下，桌面端也使用行优先，需要移除瀑布流属性 */
+@media (min-width: 768px) {
+  .masonry-grid:not(.layout-column) .masonry-item {
+    break-inside: unset;
+    page-break-inside: unset;
+    -webkit-column-break-inside: unset;
+    margin-bottom: 0;
+  }
+}
+
+/* 列优先模式下，保持瀑布流属性 */
+.masonry-grid.layout-column .masonry-item {
+  break-inside: avoid;
   page-break-inside: avoid;
   -webkit-column-break-inside: avoid;
 }
 
 @media (min-width: 768px) {
-  .masonry-item {
+  .masonry-grid.layout-column .masonry-item {
     margin-bottom: 1.5rem;
   }
 }
