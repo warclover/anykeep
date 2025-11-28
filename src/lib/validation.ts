@@ -206,6 +206,16 @@ export const createBookmarkSchema = z.object({
     )
     .optional()
     .or(z.literal("")),
+  // AI 预生成内容（前端 generate-tags API 返回，避免后端重复生成）
+  aiSummary: z
+    .string()
+    .trim()
+    .max(
+      VALIDATION_LIMITS.SUMMARY_MAX_LENGTH,
+      VALIDATION.TOO_LONG("AI 摘要", VALIDATION_LIMITS.SUMMARY_MAX_LENGTH),
+    )
+    .optional(),
+  aiTags: tagsArraySchema.optional(),
 });
 
 export type CreateBookmark = z.infer<typeof createBookmarkSchema>;

@@ -3,24 +3,30 @@
  * 支持拖拽上传、预览、压缩
  */
 
-'use client'
+"use client";
 
-import type { ChangeEvent, DragEvent } from 'react';
-import { useState, useRef, useEffect } from 'react'
-import { Upload, X, Loader2 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { uploadFile, compressImage, validateImageFile } from '@/lib/utils/file-upload'
-import type { UploadOptions } from '@/lib/utils/file-upload'
+import type { ChangeEvent, DragEvent } from "react";
+import { useState, useRef, useEffect } from "react";
+import { Upload, X, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  uploadFile,
+  compressImage,
+  validateImageFile,
+} from "@/lib/utils/file-upload";
+import type { UploadOptions } from "@/lib/utils/file-upload";
 
 interface ImageUploadProps {
-  bucket: 'covers' | 'avatars'
-  onUploadSuccess: (url: string) => void
-  onUploadError?: (error: string) => void
-  defaultImageUrl?: string
-  maxWidth?: number
-  maxHeight?: number
-  compress?: boolean
-  className?: string
+  bucket: "covers" | "avatars";
+  onUploadSuccess: (url: string) => void;
+  onUploadError?: (error: string) => void;
+  defaultImageUrl?: string;
+  maxWidth?: number;
+  maxHeight?: number;
+  compress?: boolean;
+  className?: string;
+  /** 紧凑模式：减小高度和图标尺寸 */
+  compact?: boolean;
 }
 
 export function ImageUpload({
@@ -31,13 +37,16 @@ export function ImageUpload({
   maxWidth = 1200,
   maxHeight = 1200,
   compress = true,
-  className = '',
+  className = "",
+  compact = false,
 }: ImageUploadProps) {
-  const [preview, setPreview] = useState<string | null>(defaultImageUrl || null)
-  const [uploading, setUploading] = useState(false)
-  const [progress, setProgress] = useState(0)
-  const [isDragging, setIsDragging] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [preview, setPreview] = useState<string | null>(
+    defaultImageUrl || null,
+  );
+  const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   /**
    * 监听 defaultImageUrl 变化，自动更新预览
@@ -45,46 +54,50 @@ export function ImageUpload({
    */
   useEffect(() => {
     if (!uploading) {
-      setPreview(defaultImageUrl || null)
+      setPreview(defaultImageUrl || null);
     }
-  }, [defaultImageUrl, uploading])
+  }, [defaultImageUrl, uploading]);
 
   /**
    * 处理文件选择
    */
   const handleFileSelect = async (file: File) => {
     // 验证文件
-    const validation = validateImageFile(file)
+    const validation = validateImageFile(file);
     if (!validation.valid) {
-      onUploadError?.(validation.error || '文件验证失败')
-      return
+      onUploadError?.(validation.error || "文件验证失败");
+      return;
     }
 
     // 创建预览
-    const previewUrl = URL.createObjectURL(file)
-    setPreview(previewUrl)
+    const previewUrl = URL.createObjectURL(file);
+    setPreview(previewUrl);
 
     try {
-      setUploading(true)
-      setProgress(0)
+      setUploading(true);
+      setProgress(0);
 
       // 压缩图片（可选）
-      let fileToUpload = file
+      let fileToUpload = file;
       if (compress) {
         try {
-          fileToUpload = await compressImage(file, maxWidth, maxHeight, 0.8)
+          fileToUpload = await compressImage(file, maxWidth, maxHeight, 0.8);
           // 前端日志保持简化，仅开发环境输出
-          if (process.env.NODE_ENV === 'development') {
+          if (process.env.NODE_ENV === "development") {
             // eslint-disable-next-line no-console
-            console.log('[Image Upload] Compressed:', {
+            console.log("[Image Upload] Compressed:", {
               original: file.size,
               compressed: fileToUpload.size,
-              ratio: ((1 - fileToUpload.size / file.size) * 100).toFixed(2) + '%',
-            })
+              ratio:
+                ((1 - fileToUpload.size / file.size) * 100).toFixed(2) + "%",
+            });
           }
         } catch (error) {
-          if (process.env.NODE_ENV === 'development') {
-            console.warn('[Image Upload] Compression failed, using original:', error)
+          if (process.env.NODE_ENV === "development") {
+            console.warn(
+              "[Image Upload] Compression failed, using original:",
+              error,
+            );
           }
         }
       }
@@ -93,110 +106,110 @@ export function ImageUpload({
       const options: UploadOptions = {
         bucket,
         onProgress: setProgress,
-      }
+      };
 
-      const result = await uploadFile(fileToUpload, options)
+      const result = await uploadFile(fileToUpload, options);
 
       // 释放预览 URL
-      URL.revokeObjectURL(previewUrl)
+      URL.revokeObjectURL(previewUrl);
 
       // 设置上传后的 URL
-      setPreview(result.url)
-      onUploadSuccess(result.url)
+      setPreview(result.url);
+      onUploadSuccess(result.url);
 
-      if (process.env.NODE_ENV === 'development') {
+      if (process.env.NODE_ENV === "development") {
         // eslint-disable-next-line no-console
-        console.log('[Image Upload] Success:', result)
+        console.log("[Image Upload] Success:", result);
       }
     } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('[Image Upload] Failed:', error)
+      if (process.env.NODE_ENV === "development") {
+        console.error("[Image Upload] Failed:", error);
       }
 
       // 恢复默认图片
-      URL.revokeObjectURL(previewUrl)
-      setPreview(defaultImageUrl || null)
+      URL.revokeObjectURL(previewUrl);
+      setPreview(defaultImageUrl || null);
 
-      const errorMessage = error instanceof Error ? error.message : '上传失败'
-      onUploadError?.(errorMessage)
+      const errorMessage = error instanceof Error ? error.message : "上传失败";
+      onUploadError?.(errorMessage);
     } finally {
-      setUploading(false)
-      setProgress(0)
+      setUploading(false);
+      setProgress(0);
     }
-  }
+  };
 
   /**
    * 处理输入框文件选择
    */
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
+    const file = e.target.files?.[0];
     if (file) {
-      handleFileSelect(file)
+      handleFileSelect(file);
     }
-  }
+  };
 
   /**
    * 处理拖拽开始
    */
   const handleDragEnter = (e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setIsDragging(true)
-  }
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
 
   /**
    * 处理拖拽离开
    */
   const handleDragLeave = (e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setIsDragging(false)
-  }
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
 
   /**
    * 处理拖拽悬停
    */
   const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault()
-    e.stopPropagation()
-  }
+    e.preventDefault();
+    e.stopPropagation();
+  };
 
   /**
    * 处理文件拖放
    */
   const handleDrop = (e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setIsDragging(false)
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
 
-    const file = e.dataTransfer.files?.[0]
+    const file = e.dataTransfer.files?.[0];
     if (file) {
-      handleFileSelect(file)
+      handleFileSelect(file);
     }
-  }
+  };
 
   /**
    * 移除图片
    */
   const handleRemove = () => {
     if (preview) {
-      URL.revokeObjectURL(preview)
+      URL.revokeObjectURL(preview);
     }
-    setPreview(null)
-    onUploadSuccess('')
+    setPreview(null);
+    onUploadSuccess("");
 
     // 重置文件输入
     if (fileInputRef.current) {
-      fileInputRef.current.value = ''
+      fileInputRef.current.value = "";
     }
-  }
+  };
 
   /**
    * 打开文件选择器
    */
   const handleClick = () => {
-    fileInputRef.current?.click()
-  }
+    fileInputRef.current?.click();
+  };
 
   return (
     <div className={className}>
@@ -213,7 +226,9 @@ export function ImageUpload({
       {preview ? (
         // 预览模式
         <div className="relative group">
-          <div className="relative h-32 w-full overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+          <div
+            className={`relative w-full overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 ${compact ? "h-full" : "h-32"}`}
+          >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={preview}
@@ -224,8 +239,12 @@ export function ImageUpload({
             {/* 上传进度遮罩 */}
             {uploading && (
               <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center">
-                <Loader2 className="size-8 text-white animate-spin mb-2" />
-                <div className="text-white text-sm font-medium">
+                <Loader2
+                  className={`text-white animate-spin ${compact ? "size-5 mb-1" : "size-8 mb-2"}`}
+                />
+                <div
+                  className={`text-white font-medium ${compact ? "text-xs" : "text-sm"}`}
+                >
                   上传中 {progress}%
                 </div>
               </div>
@@ -236,10 +255,10 @@ export function ImageUpload({
               <Button
                 variant="destructive"
                 size="icon"
-                className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                className={`absolute opacity-0 group-hover:opacity-100 transition-opacity ${compact ? "top-1 right-1 size-6" : "top-2 right-2"}`}
                 onClick={handleRemove}
               >
-                <X className="size-4" />
+                <X className={compact ? "size-3" : "size-4"} />
               </Button>
             )}
           </div>
@@ -253,37 +272,48 @@ export function ImageUpload({
           onDragOver={handleDragOver}
           onDrop={handleDrop}
           className={`
-            relative h-32 w-full rounded-lg border-2 border-dashed
+            relative w-full rounded-lg border-2 border-dashed
             flex flex-col items-center justify-center
             cursor-pointer transition-colors
+            ${compact ? "h-full" : "h-32"}
             ${
               isDragging
-                ? 'border-blue-500 bg-blue-50 dark:bg-blue-950'
-                : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
+                ? "border-blue-500 bg-blue-50 dark:bg-blue-950"
+                : "border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500"
             }
-            ${uploading ? 'opacity-50 cursor-not-allowed' : ''}
+            ${uploading ? "opacity-50 cursor-not-allowed" : ""}
           `}
         >
           {uploading ? (
             <>
-              <Loader2 className="size-8 text-gray-400 animate-spin mb-2" />
-              <p className="text-gray-600 dark:text-gray-400 text-sm font-medium">
+              <Loader2
+                className={`text-gray-400 animate-spin ${compact ? "size-5 mb-1" : "size-8 mb-2"}`}
+              />
+              <p
+                className={`text-gray-600 dark:text-gray-400 font-medium ${compact ? "text-xs" : "text-sm"}`}
+              >
                 上传中 {progress}%
               </p>
             </>
           ) : (
             <>
-              <Upload className="size-8 text-gray-400 mb-2" />
-              <p className="text-gray-600 dark:text-gray-300 text-sm font-medium">
-                点击或拖拽上传封面
+              <Upload
+                className={`text-gray-400 ${compact ? "size-5 mb-1" : "size-8 mb-2"}`}
+              />
+              <p
+                className={`text-gray-600 dark:text-gray-300 font-medium ${compact ? "text-xs" : "text-sm"}`}
+              >
+                {compact ? "点击上传" : "点击或拖拽上传封面"}
               </p>
-              <p className="text-gray-500 dark:text-gray-400 text-xs">
-                JPG/PNG/WebP/GIF，最大 5MB
-              </p>
+              {!compact && (
+                <p className="text-gray-500 dark:text-gray-400 text-xs">
+                  JPG/PNG/WebP/GIF，最大 5MB
+                </p>
+              )}
             </>
           )}
         </div>
       )}
     </div>
-  )
+  );
 }

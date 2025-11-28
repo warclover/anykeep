@@ -89,6 +89,267 @@ async function generateBookmarkEmbedding(
 }
 
 /**
+ * 异步生成书签 AI 内容（摘要、标签）并触发后续任务
+ * 完全不阻塞主流程，用户可以手动添加标签
+ * @param bookmarkId - 书签ID
+ * @param title - 标题
+ * @param description - 描述
+ * @param folderNames - 用户现有文件夹名称（用于标签参考）
+ * @param userId - 用户ID
+ * @param userSpecifiedFolderId - 用户是否指定了文件夹
+ */
+async function generateBookmarkAIContent(
+  bookmarkId: number,
+  title: string,
+  description: string | null,
+  folderNames: string[],
+  userId: string,
+  userSpecifiedFolderId: boolean,
+): Promise<void> {
+  try {
+    logger.info(
+      {
+        bookmarkId,
+        title: title.substring(0, 30),
+        action: "async_ai_start",
+      },
+      "AI Content (async): Starting generation",
+    );
+
+    // 1. 生成 AI 摘要和标签
+    const aiResult = await generateAIContent({
+      title,
+      description: description || undefined,
+      existingFolderNames: folderNames,
+    });
+
+    const { createClient } = await import("@/lib/supabase/server");
+    const supabase = await createClient();
+
+    // 2. 更新书签记录
+    const { error: updateError } = await supabase
+      .from("bookmarks")
+      .update({
+        ai_summary: aiResult.summary,
+        ai_tags: aiResult.tags,
+      })
+      .eq("id", bookmarkId)
+      .eq("user_id", userId);
+
+    if (updateError) {
+      throw updateError;
+    }
+
+    logger.info(
+      {
+        bookmarkId,
+        summary: aiResult.summary.substring(0, 50) + "...",
+        tagCount: aiResult.tags.length,
+        action: "async_ai_success",
+      },
+      "AI Content (async): Generated and saved",
+    );
+
+    // 3. 生成向量嵌入
+    generateBookmarkEmbedding(
+      bookmarkId,
+      title,
+      aiResult.summary,
+      aiResult.tags,
+      userId,
+    ).catch((err) => {
+      logger.error(
+        { error: err, bookmarkId },
+        "AI Content (async): Embedding generation failed",
+      );
+    });
+
+    // 4. AI 文件夹推荐（仅当用户未指定文件夹时）
+    if (
+      !userSpecifiedFolderId &&
+      aiResult.summary &&
+      aiResult.tags.length > 0
+    ) {
+      processAIFolderRecommendation(
+        bookmarkId,
+        title,
+        aiResult.summary,
+        aiResult.tags,
+        userId,
+      ).catch((err) => {
+        logger.error(
+          { error: err, bookmarkId },
+          "AI Content (async): Folder recommendation failed",
+        );
+      });
+    }
+  } catch (error) {
+    logger.error(
+      {
+        bookmarkId,
+        error: error instanceof Error ? error.message : String(error),
+        action: "async_ai_failed",
+      },
+      "AI Content (async): Generation failed",
+    );
+  }
+}
+
+/**
+ * 异步处理 AI 文件夹推荐（不阻塞主流程）
+ * 根据置信度自动归类或保存建议
+ */
+async function processAIFolderRecommendation(
+  bookmarkId: number,
+  title: string,
+  summary: string,
+  tags: string[],
+  userId: string,
+): Promise<void> {
+  try {
+    const { createClient } = await import("@/lib/supabase/server");
+    const supabase = await createClient();
+
+    // 获取用户文件夹
+    const { data: userFolders } = await supabase
+      .from("folders")
+      .select("id, name")
+      .eq("user_id", userId)
+      .eq("is_system", false)
+      .is("deleted_at", null);
+
+    if (!userFolders || userFolders.length === 0) {
+      logger.info(
+        { bookmarkId, action: "async_recommend_skip" },
+        "AI Classification (async): No user folders, skipping",
+      );
+      return;
+    }
+
+    logger.info(
+      {
+        bookmarkId,
+        title: title.substring(0, 30),
+        folderCount: userFolders.length,
+        action: "async_recommend_start",
+      },
+      "AI Classification (async): Starting folder recommendation",
+    );
+
+    // 调用 AI 推荐
+    const aiRecommendation = await recommendFolder(
+      title,
+      summary,
+      tags,
+      userFolders,
+    );
+
+    logger.info(
+      {
+        bookmarkId,
+        folderId: aiRecommendation.folderId,
+        folderName: aiRecommendation.folderName,
+        confidence: aiRecommendation.confidence,
+        suggestNew: aiRecommendation.suggestNew,
+        action: "async_recommend_result",
+      },
+      "AI Classification (async): Recommendation received",
+    );
+
+    // 根据置信度处理
+    if (aiRecommendation.confidence >= 80) {
+      // 高置信度：自动归类
+      let targetFolderId = aiRecommendation.folderId;
+
+      if (aiRecommendation.suggestNew) {
+        // 创建新文件夹
+        const { data: newFolder, error: createError } = await supabase
+          .from("folders")
+          .insert({
+            user_id: userId,
+            name: aiRecommendation.folderName,
+            sort_order: 0,
+          })
+          .select("id")
+          .single();
+
+        if (!createError && newFolder) {
+          targetFolderId = newFolder.id;
+          logger.info(
+            {
+              bookmarkId,
+              folderId: newFolder.id,
+              folderName: aiRecommendation.folderName,
+              action: "async_create_folder",
+            },
+            "AI Classification (async): Created new folder",
+          );
+        }
+      }
+
+      if (targetFolderId) {
+        // 移动收藏到推荐文件夹
+        const { error: moveError } = await supabase
+          .from("bookmarks")
+          .update({ folder_id: targetFolderId })
+          .eq("id", bookmarkId)
+          .eq("user_id", userId);
+
+        if (!moveError) {
+          logger.info(
+            {
+              bookmarkId,
+              folderId: targetFolderId,
+              folderName: aiRecommendation.folderName,
+              confidence: aiRecommendation.confidence,
+              action: "async_auto_classify",
+            },
+            "AI Classification (async): Auto-classified (high confidence)",
+          );
+        }
+      }
+    } else if (aiRecommendation.confidence >= 60) {
+      // 中置信度：保存建议
+      const { error: suggestionError } = await supabase
+        .from("classification_suggestions")
+        .insert({
+          user_id: userId,
+          bookmark_id: bookmarkId,
+          suggested_folder_id: aiRecommendation.folderId,
+          suggested_folder_name: aiRecommendation.folderName,
+          suggest_new_folder: aiRecommendation.suggestNew,
+          confidence: aiRecommendation.confidence,
+          reason: aiRecommendation.reason,
+          status: "pending",
+          batch_id: crypto.randomUUID(),
+        });
+
+      if (!suggestionError) {
+        logger.info(
+          {
+            bookmarkId,
+            confidence: aiRecommendation.confidence,
+            folderName: aiRecommendation.folderName,
+            action: "async_save_suggestion",
+          },
+          "AI Classification (async): Saved suggestion (medium confidence)",
+        );
+      }
+    }
+    // 低置信度：不做任何操作，保持在待整理文件夹
+  } catch (error) {
+    logger.error(
+      {
+        bookmarkId,
+        error: error instanceof Error ? error.message : String(error),
+        action: "async_recommend_failed",
+      },
+      "AI Classification (async): Failed",
+    );
+  }
+}
+
+/**
  * POST /api/bookmarks
  * 创建新收藏
  */
@@ -126,6 +387,7 @@ export async function POST(request: NextRequest) {
       wordCount: userWordCount,
       imageCount: userImageCount,
       publishTime: userPublishTime, // 前端传来的发布时间
+      // 注意：aiSummary/aiTags 已弃用（AI 改为完全异步生成）
     } = validation.data;
 
     // 3. 检查存储配额
@@ -217,182 +479,23 @@ export async function POST(request: NextRequest) {
 
     const folderNames = userFolders?.map((f) => f.name) || [];
 
-    // 7. 生成 AI 摘要和标签
-    let aiSummary: string | null = null;
-    let aiTags: string[] | null = null;
-
-    try {
-      logger.info(
-        {
-          title: finalTitle,
-          folderCount: folderNames.length,
-          action: "ai_generate_start",
-        },
-        "AI: Generating summary and tags",
-      );
-      const aiResult = await generateAIContent({
+    // 7. AI 内容生成改为完全异步（不阻塞创建响应）
+    // 用户可以手动添加标签，AI 标签和摘要将在后台生成
+    logger.info(
+      {
         title: finalTitle,
-        description: finalDescription || undefined,
-        existingFolderNames: folderNames, // 传递文件夹名称用于标签参考
-      });
+        folderCount: folderNames.length,
+        action: "ai_deferred",
+      },
+      "AI: Content generation will be processed asynchronously",
+    );
 
-      aiSummary = aiResult.summary;
-      aiTags = aiResult.tags;
-
-      logger.info(
-        {
-          summary: aiSummary.substring(0, 50) + "...",
-          tagCount: aiTags.length,
-          action: "ai_generate_success",
-        },
-        "AI: Success",
-      );
-    } catch (error) {
-      // AI 生成失败不影响创建收藏
-      logger.error(
-        {
-          error: error instanceof Error ? error.message : String(error),
-          title: finalTitle,
-          action: "ai_generate_failed",
-        },
-        "AI: Failed",
-      );
-      aiSummary = null;
-      aiTags = null;
-    }
-
-    // 8. AI 文件夹推荐与置信度分层自动归类
+    // 8. 获取文件夹（用户指定或默认待整理）
+    // 注意：AI 文件夹推荐改为异步执行，不阻塞创建响应
     let finalFolderId = folderId;
-    let aiRecommendation: Awaited<ReturnType<typeof recommendFolder>> | null =
-      null;
 
-    if (!finalFolderId && aiSummary && aiTags && userFolders) {
-      try {
-        // 8.1 调用 AI 推荐文件夹（userFolders 已在步骤6获取）
-        logger.info(
-          {
-            title: finalTitle,
-            folderCount: userFolders.length,
-            action: "ai_recommend_start",
-          },
-          "AI Classification: Recommending folder",
-        );
-
-        aiRecommendation = await recommendFolder(
-          finalTitle,
-          aiSummary,
-          aiTags,
-          userFolders,
-        );
-
-        logger.info(
-          {
-            folderId: aiRecommendation.folderId,
-            folderName: aiRecommendation.folderName,
-            confidence: aiRecommendation.confidence,
-            suggestNew: aiRecommendation.suggestNew,
-            action: "ai_recommend_success",
-          },
-          "AI Classification: Recommendation received",
-        );
-
-        // 8.2 根据置信度分层处理
-        if (aiRecommendation.confidence >= 80) {
-          // 高置信度（≥80%）：自动归类
-          if (aiRecommendation.suggestNew) {
-            // 建议新建文件夹
-            const { data: newFolder, error: createFolderError } = await supabase
-              .from("folders")
-              .insert({
-                user_id: user.id,
-                name: aiRecommendation.folderName,
-                sort_order: 0,
-              })
-              .select("id")
-              .single();
-
-            if (!createFolderError && newFolder) {
-              finalFolderId = newFolder.id;
-              logger.info(
-                {
-                  folderId: newFolder.id,
-                  folderName: aiRecommendation.folderName,
-                  confidence: aiRecommendation.confidence,
-                  action: "auto_create_folder",
-                },
-                "AI Classification: Auto-created new folder (high confidence)",
-              );
-            }
-          } else if (aiRecommendation.folderId) {
-            // 推荐已有文件夹
-            finalFolderId = aiRecommendation.folderId;
-            logger.info(
-              {
-                folderId: aiRecommendation.folderId,
-                folderName: aiRecommendation.folderName,
-                confidence: aiRecommendation.confidence,
-                action: "auto_classify",
-              },
-              "AI Classification: Auto-classified (high confidence)",
-            );
-          }
-        } else if (aiRecommendation.confidence >= 60) {
-          // 中置信度（60-79%）：保存建议，稍后让用户确认
-          // 注意：此时书签还未创建，需要在书签创建后再保存建议
-          // aiRecommendation 已保存，稍后使用
-          logger.info(
-            {
-              confidence: aiRecommendation.confidence,
-              action: "pending_suggestion",
-            },
-            "AI Classification: Medium confidence, will save suggestion after bookmark creation",
-          );
-        }
-        // else: 低置信度（<60%）：使用待整理文件夹（默认行为）
-
-        // 8.3 如果仍未分配文件夹，使用待整理文件夹
-        if (!finalFolderId) {
-          const { data: inboxFolderId, error: inboxError } = await supabase.rpc(
-            "get_or_create_inbox_folder",
-            { p_user_id: user.id },
-          );
-
-          if (!inboxError && inboxFolderId) {
-            finalFolderId = inboxFolderId;
-            logger.info(
-              {
-                folderId: inboxFolderId,
-                confidence: aiRecommendation.confidence,
-                action: "inbox_fallback",
-              },
-              "AI Classification: Assigned to inbox folder",
-            );
-          }
-        }
-      } catch (error) {
-        // AI 推荐失败，降级到待整理文件夹
-        logger.error(
-          {
-            error: error instanceof Error ? error.message : String(error),
-            title: finalTitle,
-            operation: "ai_folder_recommendation",
-          },
-          "AI Classification: Recommendation failed, using inbox",
-        );
-
-        // 获取待整理文件夹
-        const { data: inboxFolderId, error: inboxError } = await supabase.rpc(
-          "get_or_create_inbox_folder",
-          { p_user_id: user.id },
-        );
-
-        if (!inboxError && inboxFolderId) {
-          finalFolderId = inboxFolderId;
-        }
-      }
-    } else if (!finalFolderId) {
-      // 没有 AI 摘要/标签，或者用户手动指定了文件夹
-      // 使用待整理文件夹
+    if (!finalFolderId) {
+      // 用户未指定文件夹，使用待整理文件夹
       try {
         const { data: inboxFolderId, error: inboxError } = await supabase.rpc(
           "get_or_create_inbox_folder",
@@ -404,9 +507,9 @@ export async function POST(request: NextRequest) {
           logger.info(
             {
               folderId: inboxFolderId,
-              action: "inbox_default",
+              action: "inbox_assigned",
             },
-            "Bookmark assigned to inbox folder (no AI recommendation)",
+            "Bookmark assigned to inbox folder (AI recommendation will run async)",
           );
         }
       } catch (error) {
@@ -421,7 +524,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 8. 构建收藏记录
+    // 9. 构建收藏记录
     // 封面优先级：用户上传 > 爬取获取
     const finalCoverUrl = userCoverUrl || coverUrl || null;
 
@@ -438,14 +541,14 @@ export async function POST(request: NextRequest) {
       folder_id: finalFolderId || null,
       user_tags: userTags || null,
       notes: notes || null,
-      ai_summary: aiSummary,
-      ai_tags: aiTags,
+      ai_summary: null, // AI 内容将异步生成
+      ai_tags: null, // AI 标签将异步生成
       word_count: wordCount || null,
       image_count: imageCount || null,
-      status: "COMPLETED", // 标记为完成（Week 2 已包含爬虫和 AI）
+      status: "PROCESSING", // 标记为处理中（AI 内容异步生成中）
     };
 
-    // 9. 插入收藏记录
+    // 10. 插入收藏记录
     const { data: bookmark, error: insertError } = await supabase
       .from("bookmarks")
       .insert(bookmarkData)
@@ -456,7 +559,7 @@ export async function POST(request: NextRequest) {
       return databaseError(BOOKMARK.CREATE_ERROR, insertError);
     }
 
-    // 10. 增加用户存储计数
+    // 11. 增加用户存储计数
     const { error: incrementError } = await supabase.rpc(
       "increment_storage_used",
       {
@@ -476,101 +579,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 10.5. 保存中置信度分类建议（60-79%）
-    let savedSuggestion: { id: number } | null = null;
-
-    if (
-      aiRecommendation &&
-      aiRecommendation.confidence >= 60 &&
-      aiRecommendation.confidence < 80
-    ) {
-      try {
-        const { data: suggestion, error: suggestionError } = await supabase
-          .from("classification_suggestions")
-          .insert({
-            user_id: user.id,
-            bookmark_id: bookmark.id,
-            suggested_folder_id: aiRecommendation.folderId,
-            suggested_folder_name: aiRecommendation.folderName,
-            suggest_new_folder: aiRecommendation.suggestNew,
-            confidence: aiRecommendation.confidence,
-            reason: aiRecommendation.reason,
-            status: "pending",
-            batch_id: crypto.randomUUID(), // 单个建议也用 batch_id 标识
-          })
-          .select("id")
-          .single();
-
-        if (!suggestionError && suggestion) {
-          savedSuggestion = suggestion;
-          logger.info(
-            {
-              suggestionId: suggestion.id,
-              bookmarkId: bookmark.id,
-              confidence: aiRecommendation.confidence,
-              folderName: aiRecommendation.folderName,
-              action: "suggestion_saved",
-            },
-            "AI Classification: Medium confidence suggestion saved",
-          );
-        } else if (suggestionError) {
-          logger.error(
-            {
-              error: suggestionError,
-              bookmarkId: bookmark.id,
-              operation: "save_classification_suggestion",
-            },
-            "Failed to save classification suggestion",
-          );
-        }
-      } catch (error) {
-        // 建议保存失败不影响收藏创建
-        logger.error(
-          {
-            error: error instanceof Error ? error.message : String(error),
-            bookmarkId: bookmark.id,
-            operation: "save_classification_suggestion",
-          },
-          "Exception while saving classification suggestion",
-        );
-      }
-    }
-
-    // 11. 异步生成向量嵌入（不阻塞响应）
-    // 使用 Promise 但不 await，让向量生成在后台执行
-    generateBookmarkEmbedding(
+    // 12. 异步后台任务（不阻塞响应）
+    // 异步生成 AI 内容（摘要、标签）及后续任务（向量嵌入、文件夹推荐）
+    generateBookmarkAIContent(
       bookmark.id,
       finalTitle,
-      aiSummary,
-      aiTags,
+      finalDescription ?? null, // 确保类型为 string | null
+      folderNames,
       user.id,
+      !!folderId, // 用户是否指定了文件夹
     ).catch((err) => {
-      // 捕获任何未处理的错误，避免影响响应
       logger.error(
         { error: err, bookmarkId: bookmark.id },
-        "Background embedding generation failed",
+        "Background AI content generation failed",
       );
     });
 
-    // 12. 返回创建的收藏对象，包含分类信息
-    const responseData = {
-      ...bookmark,
-      classification: {
-        auto_classified: aiRecommendation && aiRecommendation.confidence >= 80,
-        confidence: aiRecommendation?.confidence || null,
-        folder_name: aiRecommendation?.folderName || null,
-        suggestion: savedSuggestion
-          ? {
-              id: savedSuggestion.id,
-              folder_name: aiRecommendation!.folderName,
-              confidence: aiRecommendation!.confidence,
-              reason: aiRecommendation!.reason,
-            }
-          : null,
-      },
-    };
-
-    return successResponse(responseData, 201);
+    // 13. 返回创建的收藏对象
+    // 注意：分类信息现在是异步处理，前端可通过轮询或 WebSocket 获取更新
+    return successResponse(bookmark, 201);
   } catch (error) {
     logger.error(
       {
