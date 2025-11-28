@@ -15,6 +15,16 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[];
 
+// V5.0新增：导入来源类型（定义在 Database 之前以便引用）
+export type ImportSource =
+  | "browser_chrome"
+  | "browser_edge"
+  | "browser_firefox"
+  | "browser_safari"
+  | "api"
+  | "share_sheet"
+  | "manual";
+
 export type Database = {
   public: {
     Tables: {
@@ -345,6 +355,63 @@ export type Database = {
           },
         ];
       };
+      // V5.0新增：导入历史记录表
+      import_history: {
+        Row: {
+          id: number;
+          user_id: string;
+          import_source: ImportSource;
+          import_batch_id: string;
+          total_count: number;
+          success_count: number;
+          failed_count: number;
+          skipped_count: number;
+          folders_created: number;
+          duration_ms: number | null;
+          error_details: Json | null;
+          options: Json | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: number;
+          user_id: string;
+          import_source: ImportSource;
+          import_batch_id: string;
+          total_count: number;
+          success_count: number;
+          failed_count: number;
+          skipped_count: number;
+          folders_created?: number;
+          duration_ms?: number | null;
+          error_details?: Json | null;
+          options?: Json | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: number;
+          user_id?: string;
+          import_source?: ImportSource;
+          import_batch_id?: string;
+          total_count?: number;
+          success_count?: number;
+          failed_count?: number;
+          skipped_count?: number;
+          folders_created?: number;
+          duration_ms?: number | null;
+          error_details?: Json | null;
+          options?: Json | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "import_history_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -494,4 +561,48 @@ export interface ReclassifySettings {
   last_run_at: string | null;
   inbox_threshold: number;
   auto_run_weekly: boolean;
+}
+
+// V5.0新增：导入历史记录表类型
+export interface ImportHistory {
+  id: number;
+  user_id: string;
+  import_source: ImportSource;
+  import_batch_id: string;
+  total_count: number;
+  success_count: number;
+  failed_count: number;
+  skipped_count: number;
+  folders_created: number;
+  duration_ms: number | null;
+  error_details: ImportErrorDetail[] | null;
+  options: ImportHistoryOptions | null;
+  created_at: string;
+}
+
+export interface ImportHistoryInsert {
+  user_id: string;
+  import_source: ImportSource;
+  import_batch_id: string;
+  total_count: number;
+  success_count: number;
+  failed_count: number;
+  skipped_count: number;
+  folders_created?: number;
+  duration_ms?: number | null;
+  error_details?: ImportErrorDetail[] | null;
+  options?: ImportHistoryOptions | null;
+}
+
+export interface ImportErrorDetail {
+  url: string;
+  title?: string;
+  reason: string;
+}
+
+export interface ImportHistoryOptions {
+  skipDuplicates?: boolean;
+  preserveFolderStructure?: boolean;
+  targetFolderId?: number | null;
+  [key: string]: unknown;
 }

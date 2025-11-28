@@ -124,3 +124,44 @@ export type {
   BatchResult,
   SessionResult,
 } from "./import-session-manager";
+
+// 链接验证导出
+export {
+  validateUrl,
+  validateUrls,
+  filterInvalidLinks,
+  getValidationSummary,
+} from "./link-validator";
+export type {
+  LinkStatus,
+  LinkValidationResult,
+  BatchValidationResult,
+  ValidationConfig,
+} from "./link-validator";
+
+// 导出器导出
+export {
+  generateBookmarkHtml,
+  generateExportFilename,
+  createDownloadBlob,
+  triggerDownload,
+  exportAndDownload,
+} from "./exporter";
+export type { ExportBookmark, ExportConfig } from "./exporter";
+
+// 导入历史导出
+export {
+  createImportHistory,
+  getImportHistory,
+  deleteImportHistory,
+  browserSourceToImportSource,
+  getImportSourceDisplayName,
+  calculateSuccessRate,
+  formatDuration,
+  summarizeHistory,
+} from "./import-history";
+export type {
+  CreateImportHistoryParams,
+  GetImportHistoryParams,
+  ImportHistoryResult,
+} from "./import-history";

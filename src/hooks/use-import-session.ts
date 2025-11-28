@@ -13,6 +13,8 @@ import {
   createImportBatches,
   getSessionBatches,
   updateBatchStatus,
+  createImportHistory,
+  browserSourceToImportSource,
   type ImportSession,
 } from "@/lib/browser-bookmark";
 import type {
@@ -431,6 +433,31 @@ export function useImportSession(
         totalSkipped,
         status: "completed",
       });
+
+      // 记录导入历史
+      try {
+        await createImportHistory({
+          importSource: browserSourceToImportSource(session.browserSource),
+          importBatchId: session.importBatchId,
+          totalCount: session.progress.totalBookmarks,
+          successCount: totalSuccess,
+          failedCount: totalFailed,
+          skippedCount: totalSkipped,
+          foldersCreated: 0, // TODO: 从 session 获取实际创建的文件夹数
+          durationMs,
+          errorDetails: allErrors.length > 0 ? allErrors : undefined,
+          options: session.options
+            ? {
+                skipDuplicates: !session.options.overwriteExisting,
+                preserveFolderStructure: session.options.keepFolderStructure,
+                targetFolderId: session.options.targetFolderId,
+              }
+            : undefined,
+        });
+      } catch (historyError) {
+        // 历史记录失败不影响主流程
+        console.error("记录导入历史失败:", historyError);
+      }
 
       setIsImporting(false);
       currentSessionRef.current = null;
