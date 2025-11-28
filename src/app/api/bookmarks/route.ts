@@ -126,12 +126,13 @@ async function generateBookmarkAIContent(
     const { createClient } = await import("@/lib/supabase/server");
     const supabase = await createClient();
 
-    // 2. 更新书签记录
+    // 2. 更新书签记录（包括状态更新为 ACTIVE）
     const { error: updateError } = await supabase
       .from("bookmarks")
       .update({
         ai_summary: aiResult.summary,
         ai_tags: aiResult.tags,
+        status: "COMPLETED", // AI 内容生成完成
       })
       .eq("id", bookmarkId)
       .eq("user_id", userId);

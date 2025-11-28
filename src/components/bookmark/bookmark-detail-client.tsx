@@ -578,15 +578,17 @@ export function BookmarkDetailClient({ bookmark }: BookmarkDetailClientProps) {
                 </>
               ) : null}
 
-              {/* 处理状态 */}
-              {bookmark.status === "PROCESSING" && (
-                <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
-                  <span className="animate-pulse text-lg">●</span>
-                  <span className="text-sm">
-                    AI 处理中，稍后将自动生成摘要和标签...
-                  </span>
-                </div>
-              )}
+              {/* 处理状态：仅当状态为 PROCESSING 且 AI 内容尚未生成时显示 */}
+              {bookmark.status === "PROCESSING" &&
+                !bookmark.ai_tags?.length &&
+                !bookmark.ai_summary && (
+                  <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+                    <span className="animate-pulse text-lg">●</span>
+                    <span className="text-sm">
+                      AI 处理中，稍后将自动生成摘要和标签...
+                    </span>
+                  </div>
+                )}
               {bookmark.status === "FAILED" && (
                 <div className="text-sm text-red-500 dark:text-red-400">
                   AI 处理失败，部分信息可能不完整
