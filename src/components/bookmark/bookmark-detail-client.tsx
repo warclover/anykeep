@@ -380,15 +380,16 @@ export function BookmarkDetailClient({ bookmark }: BookmarkDetailClientProps) {
             <CardHeader>
               {/* 浏览器书签平台徽章 */}
               {isBrowserPlatform && (
-                <div className="mb-3">
+                <div className="mb-4">
                   <span
-                    className={cn(
-                      "inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-white rounded-md",
-                      platformConfig.bgColor,
-                    )}
+                    style={{
+                      backgroundColor: platformConfig.brandColor,
+                      color: "#FFFFFF",
+                    }}
+                    className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-semibold rounded-lg shadow-md border-2 border-white/20"
                   >
-                    <Globe className="size-3.5" />
-                    {platformConfig.name}
+                    <Globe className="size-4 flex-shrink-0" />
+                    <span>{platformConfig.name}</span>
                   </span>
                 </div>
               )}
