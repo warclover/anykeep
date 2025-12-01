@@ -21,9 +21,11 @@ let uuidCounter = 0;
 
 // Setup crypto mock
 if (typeof global.crypto === "undefined") {
-  (global as typeof global & { crypto: Crypto }).crypto = {};
+  (global as typeof global & { crypto: Crypto }).crypto = {} as Crypto;
 }
-global.crypto.randomUUID = jest.fn(() => `${mockUUID}-${uuidCounter++}`);
+global.crypto.randomUUID = jest.fn(
+  () => `${mockUUID}-${uuidCounter++}`,
+) as () => `${string}-${string}-${string}-${string}-${string}`;
 
 // 测试用的简单书签 HTML
 const SIMPLE_BOOKMARK_HTML = `

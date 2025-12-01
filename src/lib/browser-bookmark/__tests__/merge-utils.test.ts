@@ -61,7 +61,7 @@ function createBookmarkFile(
   return {
     fileName,
     source: "chrome",
-    platform: "chrome",
+    platform: "BROWSER_CHROME",
     roots,
     totalBookmarks,
     totalFolders,

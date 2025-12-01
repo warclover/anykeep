@@ -18,8 +18,11 @@ const eslintConfig = defineConfig([
     "*.mjs",  // 脚本文件（如 apply-rls-fix-direct.mjs）
     "supabase/**",  // Supabase 相关文件
     "*.md",  // Markdown 文件
+    "browser-extension/.wxt/**",  // WXT 自动生成文件
     "browser-extension/.output/**",  // 浏览器扩展编译输出
     "browser-extension/node_modules/**",  // 浏览器扩展依赖
+    "coverage/**",  // 测试覆盖率报告
+    "public/sw.js",  // Service Worker（自动生成）
   ]),
   // Custom rules for code quality
   {
