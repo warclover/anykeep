@@ -18,6 +18,7 @@ import {
   Share2,
   Check,
   X,
+  Globe,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAbortableFetch } from "@/hooks/use-abortable-fetch";
@@ -48,6 +49,14 @@ export function BookmarkDetailClient({ bookmark }: BookmarkDetailClientProps) {
   const platformConfig = getPlatformConfig(bookmark.platform);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
+
+  // 判断是否为浏览器书签
+  const isBrowserPlatform = [
+    "BROWSER_CHROME",
+    "BROWSER_EDGE",
+    "BROWSER_FIREFOX",
+    "BROWSER_SAFARI",
+  ].includes(bookmark.platform);
 
   // 防止重复调用标记已读 API
   const hasMarkedAsRead = useRef(false);
@@ -336,37 +345,54 @@ export function BookmarkDetailClient({ bookmark }: BookmarkDetailClientProps) {
       {/* 内容区域 */}
       <div className="flex-1 overflow-auto px-4 md:px-8 py-6">
         <div className="max-w-4xl mx-auto space-y-6">
-          {/* 封面图 */}
-          <div
-            className="relative aspect-video overflow-hidden rounded-lg shadow-lg cursor-pointer group"
-            onClick={() => setShowImageLightbox(true)}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={coverImage}
-              alt={bookmark.title}
-              className="w-full h-full object-cover transition-transform group-hover:scale-105"
-            />
-            {/* 平台标识 */}
+          {/* 封面图（浏览器书签隐藏） */}
+          {!isBrowserPlatform && (
             <div
-              className={cn(
-                "absolute top-4 left-4 px-3 py-1.5 text-sm font-medium text-white rounded",
-                platformConfig.bgColor,
-              )}
+              className="relative aspect-video overflow-hidden rounded-lg shadow-lg cursor-pointer group"
+              onClick={() => setShowImageLightbox(true)}
             >
-              {platformConfig.name}
-            </div>
-            {/* 放大提示 */}
-            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-              <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 px-4 py-2 rounded-full text-white text-sm">
-                点击查看大图
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={coverImage}
+                alt={bookmark.title}
+                className="w-full h-full object-cover transition-transform group-hover:scale-105"
+              />
+              {/* 平台标识 */}
+              <div
+                className={cn(
+                  "absolute top-4 left-4 px-3 py-1.5 text-sm font-medium text-white rounded",
+                  platformConfig.bgColor,
+                )}
+              >
+                {platformConfig.name}
+              </div>
+              {/* 放大提示 */}
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 px-4 py-2 rounded-full text-white text-sm">
+                  点击查看大图
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* 主要信息卡片 */}
           <Card>
             <CardHeader>
+              {/* 浏览器书签平台徽章 */}
+              {isBrowserPlatform && (
+                <div className="mb-3">
+                  <span
+                    className={cn(
+                      "inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-white rounded-md",
+                      platformConfig.bgColor,
+                    )}
+                  >
+                    <Globe className="size-3.5" />
+                    {platformConfig.name}
+                  </span>
+                </div>
+              )}
+
               {/* 标题 */}
               <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-4">
                 {bookmark.title}
@@ -618,27 +644,29 @@ export function BookmarkDetailClient({ bookmark }: BookmarkDetailClientProps) {
         bookmark={bookmark}
       />
 
-      {/* 图片预览 Lightbox */}
-      <Dialog open={showImageLightbox} onOpenChange={setShowImageLightbox}>
-        <DialogContent className="max-w-7xl w-[95vw] h-[95vh] p-0 overflow-hidden bg-black/95">
-          <div className="relative w-full h-full flex items-center justify-center p-4">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={coverImage}
-              alt={bookmark.title}
-              className="max-w-full max-h-full object-contain"
-            />
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute top-4 right-4 text-white hover:bg-white/20"
-              onClick={() => setShowImageLightbox(false)}
-            >
-              <X className="size-6" />
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* 图片预览 Lightbox（浏览器书签不显示） */}
+      {!isBrowserPlatform && (
+        <Dialog open={showImageLightbox} onOpenChange={setShowImageLightbox}>
+          <DialogContent className="max-w-7xl w-[95vw] h-[95vh] p-0 overflow-hidden bg-black/95">
+            <div className="relative w-full h-full flex items-center justify-center p-4">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={coverImage}
+                alt={bookmark.title}
+                className="max-w-full max-h-full object-contain"
+              />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute top-4 right-4 text-white hover:bg-white/20"
+                onClick={() => setShowImageLightbox(false)}
+              >
+                <X className="size-6" />
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
