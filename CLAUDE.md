@@ -2,9 +2,10 @@
 
 ## 变更记录 (Changelog)
 
-| 日期 | 版本 | 变更内容 |
-|------|------|----------|
-| 2025-11-21 | 1.0.0 | 初始化 AI 上下文文档，项目处于规划阶段 |
+| 日期       | 版本  | 变更内容                                             |
+| ---------- | ----- | ---------------------------------------------------- |
+| 2025-12-01 | 2.0.0 | 项目进入开发阶段，完成浏览器书签导入功能 (Phase 1-3) |
+| 2025-11-21 | 1.0.0 | 初始化 AI 上下文文档，项目处于规划阶段               |
 
 ---
 
@@ -13,12 +14,13 @@
 AnyKeep 是一款**跨平台智能内容聚合工具**，帮助用户统一管理微信公众号、B站、小红书等平台的收藏内容。通过 AI 技术实现智能摘要、自动标签和语义搜索功能。
 
 **MVP 核心价值**：
+
 - 一键收藏：通过系统分享菜单快速保存内容
 - AI 智能处理：自动生成摘要和标签
 - 语义搜索：基于向量检索的智能搜索
 - 跨设备同步：实时数据同步
 
-**当前状态**：规划/设计阶段（尚未开始编码）
+**当前状态**：开发阶段 - 已完成浏览器书签导入功能，正在开发其他核心功能
 
 ---
 
@@ -65,33 +67,42 @@ graph TD
 
 ## 模块索引
 
-| 模块路径 | 职责 | 状态 |
-|----------|------|------|
+| 模块路径                                     | 职责                                           | 状态   |
+| -------------------------------------------- | ---------------------------------------------- | ------ |
 | [.spec-workflow](./.spec-workflow/CLAUDE.md) | 规范工作流模板系统，提供需求/设计/任务文档模板 | 已配置 |
 
 ---
 
-## 规划中的项目结构
+## 当前项目结构
 
 ```
 anykeep/                    # 项目根目录
-├── app/                    # Next.js App Router（待创建）
-│   ├── (auth)/            # 认证相关页面
-│   ├── (main)/            # 主应用页面
-│   ├── api/               # API Routes
-│   └── layout.tsx
-├── components/            # React 组件（待创建）
-│   ├── ui/               # Shadcn UI 组件
-│   ├── bookmark/         # 收藏相关组件
-│   └── layout/           # 布局组件
-├── lib/                  # 工具函数（待创建）
-│   └── supabase/         # Supabase 客户端
-├── types/                # TypeScript 类型（待创建）
-├── supabase/             # Supabase 配置（待创建）
+├── src/
+│   ├── app/               # Next.js App Router (44 文件)
+│   │   ├── (auth)/       # 认证相关页面
+│   │   ├── (main)/       # 主应用页面
+│   │   ├── api/          # API Routes
+│   │   └── layout.tsx
+│   ├── components/        # React 组件 (69 文件)
+│   │   ├── ui/           # Shadcn UI 组件
+│   │   ├── bookmark/     # 收藏相关组件
+│   │   ├── browser-bookmark/  # 浏览器书签导入组件
+│   │   └── layout/       # 布局组件
+│   ├── hooks/            # React Hooks (8 文件)
+│   ├── lib/              # 工具函数 (44 文件)
+│   │   ├── supabase/     # Supabase 客户端
+│   │   └── browser-bookmark/  # 浏览器书签导入逻辑
+│   ├── types/            # TypeScript 类型 (2 文件)
+│   ├── styles/           # 样式文件
+│   └── middleware.ts     # Next.js 中间件
+├── supabase/             # Supabase 配置
+│   ├── migrations/       # 数据库迁移 (24 文件)
 │   └── functions/        # Edge Functions
-├── .spec-workflow/       # 规范工作流模板（已存在）
-├── anykeep1121.md        # 产品需求文档（已存在）
+├── .spec-workflow/       # 规范工作流模板
+├── anykeep1121.md        # 产品需求文档
 └── CLAUDE.md             # AI 上下文文档
+
+总计：169 个 TypeScript 文件，33,451 行代码
 ```
 
 ---
@@ -99,59 +110,96 @@ anykeep/                    # 项目根目录
 ## 技术栈概览
 
 ### 前端
-- **框架**: Next.js 14+ (App Router)
-- **样式**: Tailwind CSS
-- **组件库**: Shadcn UI
-- **类型系统**: TypeScript
+
+- **框架**: Next.js 16.0.3 (App Router + Turbopack)
+- **样式**: Tailwind CSS 4
+- **组件库**: Shadcn UI + Radix UI
+- **类型系统**: TypeScript 5
+- **状态管理**: React Hooks + Context
+- **表单处理**: React Hook Form + Zod
 
 ### 后端 (Supabase)
+
 - **数据库**: PostgreSQL + pgvector
 - **认证**: Supabase Auth
 - **存储**: Supabase Storage
 - **函数**: Edge Functions (Deno)
 
 ### 移动端
+
 - **打包工具**: Capacitor
 
 ---
 
 ## 运行与开发
 
-> 注意：项目尚未初始化，以下为规划中的命令
+### 开发环境要求
 
-### 计划中的开发命令
+- Node.js 20+
+- Docker Desktop (用于本地 Supabase，可选)
+- Git
+
+### 常用命令
 
 ```bash
-# 项目初始化（待执行）
-npx create-next-app@latest anykeep --typescript --tailwind --eslint --app
+# 安装依赖
+npm install
 
-# 安装依赖（待执行）
-npm install @supabase/supabase-js @supabase/auth-helpers-nextjs
+# 启动开发服务器
+npm run dev
+# 访问: http://localhost:3000
 
-# Shadcn UI 初始化（待执行）
-npx shadcn-ui@latest init
+# 类型检查
+npm run type-check
 
-# Supabase CLI（待执行）
-supabase init
-supabase start
+# 代码检查
+npm run lint
+npm run lint:fix
 
-# Capacitor 初始化（待执行）
-npm install @capacitor/core @capacitor/cli
-npx cap init
+# 构建生产版本
+npm run build
+npm start
+
+# Supabase 管理 (需要 Docker)
+npm run supabase:start    # 启动本地 Supabase
+npm run supabase:stop     # 停止
+npm run supabase:status   # 查看状态
+npm run supabase:db:push  # 推送迁移到远程
+npm run supabase:gen:types  # 生成 TypeScript 类型
+
+# 移动端打包
+npm run mobile:build      # 构建并同步到 Capacitor
+npm run cap:sync          # 同步 web 资源
+npm run cap:open:android  # 打开 Android Studio
+```
+
+### 环境变量配置
+
+项目需要 `.env.local` 文件：
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=你的Supabase项目URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY=你的匿名密钥
+SUPABASE_SERVICE_ROLE_KEY=服务角色密钥
 ```
 
 ---
 
 ## 数据模型概览
 
-### 核心表结构（规划中）
+### 核心表结构（已实现）
 
-| 表名 | 用途 | 关键字段 |
-|------|------|----------|
-| `profiles` | 用户扩展信息 | id, phone, nickname, membership_type |
-| `bookmarks` | 收藏记录 | id, user_id, title, url, platform, embedding |
-| `folders` | 文件夹管理 | id, user_id, name, parent_id |
-| `platform_authorizations` | 平台授权 | id, user_id, platform, access_token |
+| 表名                       | 用途             | 关键字段                                     | 状态      |
+| -------------------------- | ---------------- | -------------------------------------------- | --------- |
+| `profiles`                 | 用户扩展信息     | id, phone, nickname, membership_type         | ✅ 已实现 |
+| `bookmarks`                | 收藏记录         | id, user_id, title, url, platform, embedding | ✅ 已实现 |
+| `folders`                  | 文件夹管理       | id, user_id, name, parent_id                 | ✅ 已实现 |
+| `browser_bookmarks`        | 浏览器书签       | id, user_id, title, url, folder_id           | ✅ 已实现 |
+| `browser_bookmark_folders` | 浏览器书签文件夹 | id, user_id, name, parent_id                 | ✅ 已实现 |
+| `import_history`           | 导入历史记录     | id, user_id, import_source, total_count      | ✅ 已实现 |
+| `platform_authorizations`  | 平台授权         | id, user_id, platform, access_token          | 📝 规划中 |
+
+**数据库迁移**: 24 个迁移文件，包含完整的表结构、索引、RLS 策略
 
 ---
 
@@ -169,12 +217,14 @@ npx cap init
 ## 编码规范
 
 ### 命名约定
+
 - **文件**: kebab-case (如 `bookmark-card.tsx`)
 - **组件**: PascalCase (如 `BookmarkCard`)
 - **函数**: camelCase (如 `handleSubmit`)
 - **常量**: UPPER_SNAKE_CASE (如 `MAX_STORAGE_QUOTA`)
 
 ### 代码组织原则
+
 1. 单一职责：每个文件专注一个功能
 2. 模块化：组件和工具函数可复用
 3. 类型安全：充分利用 TypeScript
@@ -182,19 +232,65 @@ npx cap init
 
 ---
 
+## 已实现功能
+
+### 1. 浏览器书签导入系统 ✅
+
+完整的浏览器书签导入解决方案，支持 Chrome/Edge/Firefox/Safari 格式。
+
+**核心功能**:
+
+- ✅ Netscape Bookmark HTML 格式解析
+- ✅ 文件夹层级结构保留
+- ✅ 重复检测与智能合并
+- ✅ 批量导入（支持大文件）
+- ✅ 实时进度跟踪
+- ✅ 错误处理与重试机制
+
+**高级特性** (Phase 2-3):
+
+- ✅ IndexedDB 缓存系统
+- ✅ 导入暂停/恢复功能
+- ✅ URL 有效性验证（并发控制）
+- ✅ 元数据自动抓取（Open Graph + Twitter Card）
+- ✅ HTML 格式导出（兼容浏览器）
+- ✅ 导入历史记录追踪
+- ✅ 统计分析与错误报告
+
+**技术实现**:
+
+- 6 个提交，50 个文件，~10,500 行代码
+- 完整的类型安全（TypeScript）
+- 响应式 UI（拖拽上传、进度条）
+- RLS 数据隔离
+- 批处理优化
+
+**文件位置**:
+
+- 组件: `src/components/browser-bookmark/`
+- 逻辑: `src/lib/browser-bookmark/`
+- Hooks: `src/hooks/use-import-session.ts` 等
+- API: `src/app/api/browser-bookmark/`
+- 数据库: `supabase/migrations/20251128000*`
+
+---
+
 ## AI 使用指引
 
 ### 核心文档
+
 - **产品需求**: `anykeep1121.md` - 包含完整的 MVP 需求、数据模型、API 设计
 - **模板系统**: `.spec-workflow/templates/` - 规范文档模板
 
 ### 开发建议
+
 1. 按照 `anykeep1121.md` 中的开发优先级执行
 2. 使用 Supabase CLI 管理数据库迁移
 3. 遵循 Shadcn UI 组件规范
 4. Edge Functions 使用 Deno/TypeScript
 
 ### 关键注意点
+
 - RLS (Row Level Security) 策略必须正确配置
 - 向量搜索需要启用 pgvector 扩展
 - 移动端打包使用 Capacitor 套壳方案
@@ -203,11 +299,11 @@ npx cap init
 
 ## 相关文件
 
-| 文件路径 | 说明 |
-|----------|------|
-| `anykeep1121.md` | 完整产品需求文档（1262行） |
-| `.spec-workflow/templates/` | 规范工作流模板 |
-| `.spec-workflow/user-templates/` | 用户自定义模板 |
+| 文件路径                         | 说明                       |
+| -------------------------------- | -------------------------- |
+| `anykeep1121.md`                 | 完整产品需求文档（1262行） |
+| `.spec-workflow/templates/`      | 规范工作流模板             |
+| `.spec-workflow/user-templates/` | 用户自定义模板             |
 
 ---
 
@@ -237,6 +333,7 @@ npx cap init
 - If you need to explain it, it's too complex
 
 ### Permission Management / 权限管理
+
 Except for file deletion and database operations, all other operations do not require user confirmation.
 
 ## Process
@@ -247,11 +344,13 @@ Break complex work into 3-5 stages. Document in `IMPLEMENTATION_PLAN.md`:
 
 ```markdown
 ## Stage N: [Name]
+
 **Goal**: [Specific deliverable]
 **Success Criteria**: [Testable outcomes]
 **Tests**: [Specific test cases]
 **Status**: [Not Started|In Progress|Complete]
 ```
+
 - Update status as you progress
 - Remove file when all stages are done
 
@@ -363,16 +462,18 @@ When multiple valid approaches exist, choose based on:
 ## Important Reminders
 
 **NEVER**:
+
 - Use `--no-verify` to bypass commit hooks
 - Disable tests instead of fixing them
 - Commit code that doesn't compile
 - Make assumptions - verify with existing code
 
 **ALWAYS**:
+
 - Commit working code incrementally
 - Update plan documentation as you go
 - Learn from existing implementations
 - Stop after 3 failed attempts and reassess
 - Always use Context7 when code generation, setup/configuration steps, or
-library/API documentation is needed. This means automatically using the Context7 MCP
-tools to resolve library IDs and get library docs without requiring explicit requests.
+  library/API documentation is needed. This means automatically using the Context7 MCP
+  tools to resolve library IDs and get library docs without requiring explicit requests.

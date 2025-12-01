@@ -1,3 +1,6 @@
+// 标记为动态路由
+export const dynamic = "force-dynamic";
+
 /**
  * 标签浏览页面 - 服务端组件
  * 展示所有标签及其使用统计

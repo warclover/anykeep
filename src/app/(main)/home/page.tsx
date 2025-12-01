@@ -1,3 +1,6 @@
+// 标记为动态路由
+export const dynamic = "force-dynamic";
+
 /**
  * 首页 - 收藏列表
  */

@@ -1,22 +1,25 @@
+// 标记为动态路由
+export const dynamic = "force-dynamic";
+
 /**
  * 设置页面 - 服务端组件
  */
 
-import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
-import { SettingsPageClient } from '@/components/settings/settings-page-client'
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { SettingsPageClient } from "@/components/settings/settings-page-client";
 
 export default async function SettingsPage() {
-  const supabase = await createClient()
+  const supabase = await createClient();
 
   // 获取当前用户
   const {
     data: { user },
     error: userError,
-  } = await supabase.auth.getUser()
+  } = await supabase.auth.getUser();
 
   if (userError || !user) {
-    redirect('/login')
+    redirect("/login");
   }
 
   // TODO: 从数据库获取用户设置
@@ -46,12 +49,7 @@ export default async function SettingsPage() {
       inApp: true,
       weeklyDigest: false,
     },
-  }
+  };
 
-  return (
-    <SettingsPageClient
-      user={user}
-      settings={userSettings}
-    />
-  )
+  return <SettingsPageClient user={user} settings={userSettings} />;
 }
