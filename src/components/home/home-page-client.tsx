@@ -36,6 +36,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { BookmarkCard } from "@/components/bookmark/bookmark-card";
+import { BrowserBookmarkVirtualList } from "@/components/bookmark/browser-bookmark-virtual-list";
+import { BrowserBookmarkEmptyState } from "@/components/bookmark/browser-bookmark-empty-state";
 import { CreateBookmarkDialog } from "@/components/bookmark/create-bookmark-dialog";
 import { BatchImportDialog } from "@/components/bookmark/batch-import-dialog";
 import { BatchMoveDialog } from "@/components/bookmark/batch-move-dialog";
@@ -63,14 +65,13 @@ interface HomePageClientProps {
   error?: string;
 }
 
-// 平台配置（内容平台 + 浏览器平台）
+// 平台配置（内容平台 + 浏览器书签统一入口）
 const platforms = [
   { id: "all", name: "全部", value: "" },
   { id: "wechat", name: "微信", value: "WECHAT_OFFICIAL_ACCOUNT" },
   { id: "xiaohongshu", name: "小红书", value: "XIAOHONGSHU" },
   { id: "bilibili", name: "B站", value: "BILIBILI" },
-  { id: "chrome", name: "Chrome", value: "BROWSER_CHROME" },
-  { id: "edge", name: "Edge", value: "BROWSER_EDGE" },
+  { id: "browser", name: "浏览器书签", value: "browser" }, // 统一浏览器平台入口
 ];
 
 // 排序选项
@@ -111,6 +112,9 @@ export function HomePageClient({
   const searchParams = useSearchParams();
   const currentPlatform = searchParams.get("platform") || "";
   const currentSort = searchParams.get("sort") || "created_desc";
+
+  // 检测是否为浏览器书签平台
+  const isBrowserPlatform = currentPlatform === "browser";
 
   // 可取消请求 Hook
   const { fetchWithAbort } = useAbortableFetch();
@@ -592,46 +596,50 @@ export function HomePageClient({
               </Select>
             )}
 
-            {/* 视图切换按钮 */}
-            <div className="flex items-center gap-0.5 sm:gap-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-0.5 sm:p-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleViewModeChange("card")}
-                title="瀑布流视图"
-                className={cn(
-                  "h-7 w-7 sm:h-8 sm:w-8 p-0",
-                  viewMode === "card" && "bg-white dark:bg-gray-600 shadow-sm",
-                )}
-              >
-                <LayoutGrid className="size-3.5 sm:size-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleViewModeChange("list")}
-                title="列表视图"
-                className={cn(
-                  "h-7 w-7 sm:h-8 sm:w-8 p-0",
-                  viewMode === "list" && "bg-white dark:bg-gray-600 shadow-sm",
-                )}
-              >
-                <List className="size-3.5 sm:size-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleViewModeChange("compact")}
-                title="紧凑视图"
-                className={cn(
-                  "h-7 w-7 sm:h-8 sm:w-8 p-0",
-                  viewMode === "compact" &&
-                    "bg-white dark:bg-gray-600 shadow-sm",
-                )}
-              >
-                <AlignJustify className="size-3.5 sm:size-4" />
-              </Button>
-            </div>
+            {/* 视图切换按钮（浏览器平台隐藏，固定为列表视图） */}
+            {!isBrowserPlatform && (
+              <div className="flex items-center gap-0.5 sm:gap-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-0.5 sm:p-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleViewModeChange("card")}
+                  title="瀑布流视图"
+                  className={cn(
+                    "h-7 w-7 sm:h-8 sm:w-8 p-0",
+                    viewMode === "card" &&
+                      "bg-white dark:bg-gray-600 shadow-sm",
+                  )}
+                >
+                  <LayoutGrid className="size-3.5 sm:size-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleViewModeChange("list")}
+                  title="列表视图"
+                  className={cn(
+                    "h-7 w-7 sm:h-8 sm:w-8 p-0",
+                    viewMode === "list" &&
+                      "bg-white dark:bg-gray-600 shadow-sm",
+                  )}
+                >
+                  <List className="size-3.5 sm:size-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleViewModeChange("compact")}
+                  title="紧凑视图"
+                  className={cn(
+                    "h-7 w-7 sm:h-8 sm:w-8 p-0",
+                    viewMode === "compact" &&
+                      "bg-white dark:bg-gray-600 shadow-sm",
+                  )}
+                >
+                  <AlignJustify className="size-3.5 sm:size-4" />
+                </Button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -722,62 +730,76 @@ export function HomePageClient({
           <ErrorMessage message={error} retry={handleRetry} />
         ) : bookmarks && bookmarks.length > 0 ? (
           <>
-            {/* 卡片视图（支持行优先/列优先布局） */}
-            {viewMode === "card" && (
-              <div className={gridClassName}>
-                {bookmarks.map((bookmark) => (
-                  <div key={bookmark.id} className="masonry-item">
-                    <BookmarkCard
-                      bookmark={bookmark}
-                      onEdit={handleEdit}
-                      onDelete={handleDelete}
-                      onToggleRead={handleToggleRead}
-                      isSelectionMode={isSelectionMode}
-                      isSelected={selectedIds.has(bookmark.id)}
-                      onToggleSelect={toggleSelect}
-                      variant="card"
-                    />
+            {/* 浏览器书签专用列表视图（虚拟滚动） */}
+            {isBrowserPlatform ? (
+              <BrowserBookmarkVirtualList
+                bookmarks={bookmarks}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                isSelectionMode={isSelectionMode}
+                selectedIds={selectedIds}
+                onToggleSelect={toggleSelect}
+              />
+            ) : (
+              <>
+                {/* 卡片视图（支持行优先/列优先布局） */}
+                {viewMode === "card" && (
+                  <div className={gridClassName}>
+                    {bookmarks.map((bookmark) => (
+                      <div key={bookmark.id} className="masonry-item">
+                        <BookmarkCard
+                          bookmark={bookmark}
+                          onEdit={handleEdit}
+                          onDelete={handleDelete}
+                          onToggleRead={handleToggleRead}
+                          isSelectionMode={isSelectionMode}
+                          isSelected={selectedIds.has(bookmark.id)}
+                          onToggleSelect={toggleSelect}
+                          variant="card"
+                        />
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            )}
+                )}
 
-            {/* 列表视图（list） */}
-            {viewMode === "list" && (
-              <div className="space-y-4">
-                {bookmarks.map((bookmark) => (
-                  <BookmarkCard
-                    key={bookmark.id}
-                    bookmark={bookmark}
-                    onEdit={handleEdit}
-                    onDelete={handleDelete}
-                    onToggleRead={handleToggleRead}
-                    isSelectionMode={isSelectionMode}
-                    isSelected={selectedIds.has(bookmark.id)}
-                    onToggleSelect={toggleSelect}
-                    variant="list"
-                  />
-                ))}
-              </div>
-            )}
+                {/* 列表视图（list） */}
+                {viewMode === "list" && (
+                  <div className="space-y-4">
+                    {bookmarks.map((bookmark) => (
+                      <BookmarkCard
+                        key={bookmark.id}
+                        bookmark={bookmark}
+                        onEdit={handleEdit}
+                        onDelete={handleDelete}
+                        onToggleRead={handleToggleRead}
+                        isSelectionMode={isSelectionMode}
+                        isSelected={selectedIds.has(bookmark.id)}
+                        onToggleSelect={toggleSelect}
+                        variant="list"
+                      />
+                    ))}
+                  </div>
+                )}
 
-            {/* 紧凑视图（compact） */}
-            {viewMode === "compact" && (
-              <div className="space-y-2">
-                {bookmarks.map((bookmark) => (
-                  <BookmarkCard
-                    key={bookmark.id}
-                    bookmark={bookmark}
-                    onEdit={handleEdit}
-                    onDelete={handleDelete}
-                    onToggleRead={handleToggleRead}
-                    isSelectionMode={isSelectionMode}
-                    isSelected={selectedIds.has(bookmark.id)}
-                    onToggleSelect={toggleSelect}
-                    variant="compact"
-                  />
-                ))}
-              </div>
+                {/* 紧凑视图（compact） */}
+                {viewMode === "compact" && (
+                  <div className="space-y-2">
+                    {bookmarks.map((bookmark) => (
+                      <BookmarkCard
+                        key={bookmark.id}
+                        bookmark={bookmark}
+                        onEdit={handleEdit}
+                        onDelete={handleDelete}
+                        onToggleRead={handleToggleRead}
+                        isSelectionMode={isSelectionMode}
+                        isSelected={selectedIds.has(bookmark.id)}
+                        onToggleSelect={toggleSelect}
+                        variant="compact"
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
             )}
 
             {/* 加载更多按钮 */}
@@ -800,6 +822,10 @@ export function HomePageClient({
               </div>
             )}
           </>
+        ) : isBrowserPlatform ? (
+          <BrowserBookmarkEmptyState
+            onImport={() => setShowBrowserImportDialog(true)}
+          />
         ) : (
           <EmptyState />
         )}

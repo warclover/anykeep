@@ -59,11 +59,26 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     .limit(QUERY_LIMITS.HOME_BOOKMARKS_PER_PAGE);
 
   // 平台筛选（验证平台值有效性）
-  if (
+  if (params.platform === "browser") {
+    // 「浏览器书签」筛选：查询所有浏览器平台
+    query = query.in("platform", [
+      "BROWSER_CHROME",
+      "BROWSER_EDGE",
+      "BROWSER_FIREFOX",
+      "BROWSER_SAFARI",
+    ]);
+  } else if (
     params.platform &&
     VALID_PLATFORMS.includes(params.platform as Platform)
   ) {
     query = query.eq("platform", params.platform as Platform);
+  } else {
+    // 默认「全部」：排除浏览器平台
+    query = query.not(
+      "platform",
+      "in",
+      '("BROWSER_CHROME","BROWSER_EDGE","BROWSER_FIREFOX","BROWSER_SAFARI")',
+    );
   }
 
   // 文件夹筛选
