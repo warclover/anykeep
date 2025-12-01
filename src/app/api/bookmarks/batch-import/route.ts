@@ -15,6 +15,7 @@ import {
 } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
 import type { BookmarkInsert, Platform } from "@/types/supabase";
+import type { ImportError } from "@/lib/browser-bookmark/types";
 import { BOOKMARK } from "@/lib/constants/messages";
 
 interface ImportBookmark {
@@ -30,11 +31,11 @@ interface ImportBookmark {
   importBatchId?: string; // 可选：导入批次 ID
 }
 
-interface ImportResult {
+interface BatchImportResult {
   success: number;
   failed: number;
   skipped: number; // 重复跳过的数量
-  errors: Array<{ url: string; title?: string; reason: string }>;
+  errors: ImportError[];
 }
 
 /**
@@ -85,7 +86,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. 批量创建收藏
-    const result: ImportResult = {
+    const result: BatchImportResult = {
       success: 0,
       failed: 0,
       skipped: 0,
@@ -94,6 +95,18 @@ export async function POST(request: NextRequest) {
 
     const bookmarkInserts: BookmarkInsert[] = [];
 
+    // ✅ 性能优化：批量查询所有 URL 是否已存在（避免 N+1 查询）
+    const urls = bookmarks.map((b) => b.url).filter(Boolean);
+    const { data: existingBookmarks } = await supabase
+      .from("bookmarks")
+      .select("url")
+      .eq("user_id", user.id)
+      .in("url", urls)
+      .is("deleted_at", null);
+
+    // 构建 URL 去重 Set（O(1) 查找复杂度）
+    const existingUrls = new Set(existingBookmarks?.map((b) => b.url) || []);
+
     for (const bookmark of bookmarks) {
       try {
         // 验证必填字段
@@ -101,22 +114,14 @@ export async function POST(request: NextRequest) {
           result.failed++;
           result.errors.push({
             url: bookmark.url || "未知",
-            title: bookmark.title,
+            title: bookmark.title || "未知",
             reason: "URL 和标题是必填项",
           });
           continue;
         }
 
-        // 检查 URL 是否已存在
-        const { data: existing } = await supabase
-          .from("bookmarks")
-          .select("id")
-          .eq("user_id", user.id)
-          .eq("url", bookmark.url)
-          .is("deleted_at", null)
-          .single();
-
-        if (existing) {
+        // ✅ 检查 URL 是否已存在（从 Set 中查找，O(1) 复杂度）
+        if (existingUrls.has(bookmark.url)) {
           // 重复的 URL 记为跳过而非失败
           result.skipped++;
           continue;
@@ -174,8 +179,8 @@ export async function POST(request: NextRequest) {
         );
         result.failed++;
         result.errors.push({
-          url: bookmark.url,
-          title: bookmark.title,
+          url: bookmark.url || "未知",
+          title: bookmark.title || "未知",
           reason: "处理失败",
         });
       }

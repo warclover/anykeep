@@ -47,6 +47,8 @@ import { FolderRecommendationToast } from "@/components/bookmark/folder-recommen
 import { ReclassifyBanner } from "@/components/bookmark/reclassify-banner";
 import { EmptyState } from "@/components/bookmark/empty-state";
 import { useFolderRecommendation } from "@/hooks/use-folder-recommendation";
+import { useDialogs } from "@/hooks/use-dialogs";
+import { useSelectionMode } from "@/hooks/use-selection-mode";
 import { ErrorMessage } from "@/components/ui/error-message";
 import {
   DropdownMenu,
@@ -175,16 +177,42 @@ export function HomePageClient({
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(initialBookmarks.length === 50);
   const [_isPending, startTransition] = useTransition();
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [showImportDialog, setShowImportDialog] = useState(false);
-  const [showBrowserImportDialog, setShowBrowserImportDialog] = useState(false);
-  const [showExportDialog, setShowExportDialog] = useState(false);
-  const [showMoveDialog, setShowMoveDialog] = useState(false);
+
+  // 对话框和下拉菜单状态管理
+  const {
+    showCreateDialog,
+    showImportDialog,
+    showBrowserImportDialog,
+    showExportDialog,
+    showMoveDialog,
+    isDesktopImportMenuOpen,
+    isMobileMoreMenuOpen,
+    openCreateDialog,
+    setShowCreateDialog,
+    openImportDialog,
+    setShowImportDialog,
+    openBrowserImportDialog,
+    setShowBrowserImportDialog,
+    openExportDialog,
+    setShowExportDialog,
+    openMoveDialog,
+    setShowMoveDialog,
+    setIsDesktopImportMenuOpen,
+    setIsMobileMoreMenuOpen,
+  } = useDialogs();
 
   // 批量选择模式
-  const [isSelectionMode, setIsSelectionMode] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
-  const [isBatchDeleting, setIsBatchDeleting] = useState(false);
+  const {
+    isSelectionMode,
+    selectedIds,
+    isBatchDeleting,
+    toggleSelectionMode,
+    toggleSelect,
+    selectAll,
+    deselectAll,
+    setIsBatchDeleting,
+    exitSelectionMode,
+  } = useSelectionMode();
 
   // AI 文件夹推荐
   const {
@@ -214,8 +242,8 @@ export function HomePageClient({
   // 打开移动对话框（用于自定义选择）
   const handleCustomizeFolder = () => {
     if (recommendationBookmarkId) {
-      setSelectedIds(new Set([recommendationBookmarkId]));
-      setShowMoveDialog(true);
+      selectAll([recommendationBookmarkId]);
+      openMoveDialog();
       dismissRecommendation();
     }
   };
@@ -241,7 +269,7 @@ export function HomePageClient({
   };
 
   const handleEdit = (id: number) => {
-    // TODO: 打开编辑对话框（Week 1 暂时跳转到详情页）
+    // 跳转到详情页进行编辑（未来计划：实现内联编辑对话框）
     router.push(`/bookmark/${id}`);
   };
 
@@ -364,30 +392,7 @@ export function HomePageClient({
     }
   };
 
-  const toggleSelectionMode = () => {
-    setIsSelectionMode(!isSelectionMode);
-    setSelectedIds(new Set());
-  };
-
-  const toggleSelect = (id: number) => {
-    setSelectedIds((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(id)) {
-        newSet.delete(id);
-      } else {
-        newSet.add(id);
-      }
-      return newSet;
-    });
-  };
-
-  const selectAll = () => {
-    setSelectedIds(new Set(bookmarks.map((b) => b.id)));
-  };
-
-  const deselectAll = () => {
-    setSelectedIds(new Set());
-  };
+  // 选择模式操作函数已从 useSelectionMode Hook 中获取
 
   const handleBatchDelete = async () => {
     if (selectedIds.size === 0) return;
@@ -425,8 +430,7 @@ export function HomePageClient({
 
       // 更新 UI（乐观更新）
       setBookmarks((prev) => prev.filter((b) => !selectedIds.has(b.id)));
-      setSelectedIds(new Set());
-      setIsSelectionMode(false);
+      exitSelectionMode();
 
       // 刷新数据
       startTransition(() => {
@@ -466,29 +470,50 @@ export function HomePageClient({
           <div className="flex items-center gap-1 sm:gap-2 md:gap-3">
             {/* 移动端：更多操作菜单 */}
             <div className="flex md:hidden">
-              <DropdownMenu>
+              <DropdownMenu
+                open={isMobileMoreMenuOpen}
+                onOpenChange={setIsMobileMoreMenuOpen}
+              >
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm" className="h-8 px-2">
                     <MoreHorizontal className="size-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem onClick={() => setShowImportDialog(true)}>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      openImportDialog();
+                      setIsMobileMoreMenuOpen(false);
+                    }}
+                  >
                     <Upload className="size-4 mr-2" />
                     批量导入
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onClick={() => setShowBrowserImportDialog(true)}
+                    onClick={() => {
+                      openBrowserImportDialog();
+                      setIsMobileMoreMenuOpen(false);
+                    }}
                   >
                     <Globe className="size-4 mr-2" />
                     从浏览器书签导入
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setShowExportDialog(true)}>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      openExportDialog();
+                      setIsMobileMoreMenuOpen(false);
+                    }}
+                  >
                     <Download className="size-4 mr-2" />
                     导出
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={toggleSelectionMode}>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      toggleSelectionMode();
+                      setIsMobileMoreMenuOpen(false);
+                    }}
+                  >
                     <CheckSquare className="size-4 mr-2" />
                     {isSelectionMode ? "取消选择" : "批量选择"}
                   </DropdownMenuItem>
@@ -499,7 +524,10 @@ export function HomePageClient({
             {/* 桌面端：完整按钮 */}
             <div className="hidden md:flex items-center gap-3">
               {/* 导入下拉菜单 */}
-              <DropdownMenu>
+              <DropdownMenu
+                open={isDesktopImportMenuOpen}
+                onOpenChange={setIsDesktopImportMenuOpen}
+              >
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm">
                     <Upload className="size-4 mr-1.5" />
@@ -507,12 +535,20 @@ export function HomePageClient({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => setShowImportDialog(true)}>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      openImportDialog();
+                      setIsDesktopImportMenuOpen(false);
+                    }}
+                  >
                     <Upload className="size-4 mr-2" />
                     批量导入 URL
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onClick={() => setShowBrowserImportDialog(true)}
+                    onClick={() => {
+                      openBrowserImportDialog();
+                      setIsDesktopImportMenuOpen(false);
+                    }}
                   >
                     <Globe className="size-4 mr-2" />
                     从浏览器书签导入
@@ -521,11 +557,7 @@ export function HomePageClient({
               </DropdownMenu>
 
               {/* 导出按钮 */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowExportDialog(true)}
-              >
+              <Button variant="outline" size="sm" onClick={openExportDialog}>
                 <Download className="size-4 mr-1.5" />
                 导出
               </Button>
@@ -674,7 +706,7 @@ export function HomePageClient({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={selectAll}
+                onClick={() => selectAll(bookmarks.map((b) => b.id))}
                 className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
               >
                 全选
@@ -708,11 +740,7 @@ export function HomePageClient({
                   </>
                 )}
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowMoveDialog(true)}
-              >
+              <Button variant="outline" size="sm" onClick={openMoveDialog}>
                 <FolderInput className="size-4 mr-1.5" />
                 移动到文件夹
               </Button>
@@ -823,9 +851,7 @@ export function HomePageClient({
             )}
           </>
         ) : isBrowserPlatform ? (
-          <BrowserBookmarkEmptyState
-            onImport={() => setShowBrowserImportDialog(true)}
-          />
+          <BrowserBookmarkEmptyState onImport={openBrowserImportDialog} />
         ) : (
           <EmptyState />
         )}
@@ -836,7 +862,7 @@ export function HomePageClient({
         <Button
           className="w-full bg-gray-900 hover:bg-gray-800 text-white dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
           size="lg"
-          onClick={() => setShowCreateDialog(true)}
+          onClick={openCreateDialog}
         >
           <Plus className="size-5 mr-2" />
           添加收藏
@@ -873,10 +899,7 @@ export function HomePageClient({
         open={showMoveDialog}
         onOpenChange={setShowMoveDialog}
         selectedIds={selectedIds}
-        onSuccess={() => {
-          setSelectedIds(new Set());
-          setIsSelectionMode(false);
-        }}
+        onSuccess={exitSelectionMode}
       />
 
       {/* 创建收藏对话框 */}

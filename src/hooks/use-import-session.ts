@@ -443,7 +443,7 @@ export function useImportSession(
           successCount: totalSuccess,
           failedCount: totalFailed,
           skippedCount: totalSkipped,
-          foldersCreated: 0, // TODO: 从 session 获取实际创建的文件夹数
+          foldersCreated: 0, // 已知限制：暂不统计创建的文件夹数量
           durationMs,
           errorDetails: allErrors.length > 0 ? allErrors : undefined,
           options: session.options

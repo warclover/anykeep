@@ -8,6 +8,7 @@ export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { HomePageClient } from "@/components/home/home-page-client";
+import { ErrorBoundary } from "@/components/ui/error-boundary";
 import type { Platform } from "@/types/supabase";
 import { QUERY_LIMITS } from "@/lib/constants/app";
 
@@ -97,9 +98,15 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
   if (error) {
     return (
-      <HomePageClient bookmarks={[]} error="加载收藏列表时出错，请稍后重试" />
+      <ErrorBoundary>
+        <HomePageClient bookmarks={[]} error="加载收藏列表时出错，请稍后重试" />
+      </ErrorBoundary>
     );
   }
 
-  return <HomePageClient bookmarks={bookmarks || []} />;
+  return (
+    <ErrorBoundary>
+      <HomePageClient bookmarks={bookmarks || []} />
+    </ErrorBoundary>
+  );
 }
