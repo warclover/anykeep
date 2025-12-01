@@ -3,12 +3,12 @@ const nextConfig = {
   /* config options here */
 
   // P0 修复：渐进式启用类型检查和 ESLint
-  // 阶段 1: 先启用类型检查，ESLint 保持禁用
+  // 阶段 2: 类型检查已通过，现在启用 ESLint
   eslint: {
-    ignoreDuringBuilds: true, // 暂时保持禁用，待类型错误修复后再启用
+    ignoreDuringBuilds: false, // ✅ 启用 ESLint 检查
   },
   typescript: {
-    ignoreBuildErrors: false, // ✅ 启用类型检查
+    ignoreBuildErrors: false, // ✅ 保持启用类型检查
   },
 
   // 允许外部图片域名
