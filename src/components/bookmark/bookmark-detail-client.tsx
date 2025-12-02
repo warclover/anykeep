@@ -510,8 +510,86 @@ export function BookmarkDetailClient({
                     onMarkerToggle={handleMarkerToggle}
                   />
                 </div>
+
+                {/* 操作按钮区域 */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 pt-4">
+                  {/* 左侧：主要操作按钮 */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleOpenOriginal}
+                      className="flex items-center gap-2"
+                    >
+                      <ExternalLink className="size-4" />
+                      <span>打开原文</span>
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleShare}
+                      className="flex items-center gap-2"
+                    >
+                      <Share2 className="size-4" />
+                      <span>分享</span>
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleEdit}
+                      className="flex items-center gap-2"
+                    >
+                      <Edit className="size-4" />
+                      <span>编辑</span>
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowMoveDialog(true)}
+                      className="flex items-center gap-2"
+                    >
+                      <FolderInput className="size-4" />
+                      <span>移动到</span>
+                    </Button>
+
+                    {/* V6.0新增：独立删除按钮（执行真正的删除） */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleDelete}
+                      disabled={isDeleting || isLocked}
+                      className={cn(
+                        "flex items-center gap-2",
+                        isLocked
+                          ? "opacity-50 cursor-not-allowed"
+                          : "text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20",
+                      )}
+                    >
+                      <Trash2 className="size-4" />
+                      <span>{isDeleting ? "删除中..." : "删除"}</span>
+                    </Button>
+                  </div>
+
+                  {/* 右侧：返回按钮 */}
+                  <div className="flex justify-end sm:justify-start">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleBack}
+                      className="flex items-center gap-2"
+                    >
+                      <ArrowLeft className="size-4" />
+                      <span>返回</span>
+                    </Button>
+                  </div>
+                </div>
               </div>
             </CardHeader>
+
+            <Separator />
 
             <CardContent className="space-y-6">
               {/* AI 摘要 */}
@@ -663,83 +741,6 @@ export function BookmarkDetailClient({
                   AI 处理失败，部分信息可能不完整
                 </div>
               )}
-
-              {/* V6.0优化：操作按钮区域（移除独立删除按钮，评级UI已包含） */}
-              <Separator className="my-6" />
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pb-2">
-                {/* 左侧：主要操作按钮 */}
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleOpenOriginal}
-                    className="flex items-center gap-2"
-                  >
-                    <ExternalLink className="size-4" />
-                    <span>打开原文</span>
-                  </Button>
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleShare}
-                    className="flex items-center gap-2"
-                  >
-                    <Share2 className="size-4" />
-                    <span>分享</span>
-                  </Button>
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleEdit}
-                    className="flex items-center gap-2"
-                  >
-                    <Edit className="size-4" />
-                    <span>编辑</span>
-                  </Button>
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowMoveDialog(true)}
-                    className="flex items-center gap-2"
-                  >
-                    <FolderInput className="size-4" />
-                    <span>移动到</span>
-                  </Button>
-
-                  {/* V6.0新增：独立删除按钮（执行真正的删除） */}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleDelete}
-                    disabled={isDeleting || isLocked}
-                    className={cn(
-                      "flex items-center gap-2",
-                      isLocked
-                        ? "opacity-50 cursor-not-allowed"
-                        : "text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20",
-                    )}
-                  >
-                    <Trash2 className="size-4" />
-                    <span>{isDeleting ? "删除中..." : "删除"}</span>
-                  </Button>
-                </div>
-
-                {/* 右侧：返回按钮 */}
-                <div className="flex justify-end sm:justify-start">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleBack}
-                    className="flex items-center gap-2"
-                  >
-                    <ArrowLeft className="size-4" />
-                    <span>返回</span>
-                  </Button>
-                </div>
-              </div>
             </CardContent>
           </Card>
         </div>

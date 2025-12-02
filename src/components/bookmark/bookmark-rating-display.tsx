@@ -40,7 +40,7 @@ export function BookmarkRatingDisplay({
               className={cn(
                 starSize,
                 index < rating
-                  ? "fill-yellow-400 text-yellow-400"
+                  ? "fill-orange-500 text-orange-500"
                   : "text-gray-300 dark:text-gray-600",
               )}
             />

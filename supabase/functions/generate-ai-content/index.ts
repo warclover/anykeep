@@ -100,17 +100,17 @@ async function generateAIContent(
 
 /**
  * 根据原文字数计算摘要上限
- * - < 1000 字：100 字摘要
- * - 1000-5000 字：200 字摘要
- * - > 5000 字：300 字摘要
+ * - < 1000 字：100-200 字摘要
+ * - 1000-5000 字：300-500 字摘要
+ * - > 5000 字：500-800 字摘要
  */
 function getSummaryLimit(contentLength: number): { min: number; max: number } {
   if (contentLength < 1000) {
-    return { min: 50, max: 100 };
-  } else if (contentLength <= 5000) {
     return { min: 100, max: 200 };
+  } else if (contentLength <= 5000) {
+    return { min: 300, max: 500 };
   } else {
-    return { min: 150, max: 300 };
+    return { min: 500, max: 800 };
   }
 }
 

@@ -74,13 +74,13 @@ export function BookmarkRating({
               onClick={() => handleStarClick(starIndex)}
               onMouseEnter={() => setHoveredRating(starIndex)}
               onMouseLeave={() => setHoveredRating(0)}
-              className="transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 rounded"
+              className="transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 rounded"
             >
               <Star
                 className={cn(
                   "h-4 w-4 md:h-5 md:w-5 transition-colors",
                   isFilled
-                    ? "fill-yellow-400 text-yellow-400"
+                    ? "fill-orange-500 text-orange-500"
                     : "text-gray-300 dark:text-gray-600",
                 )}
               />
