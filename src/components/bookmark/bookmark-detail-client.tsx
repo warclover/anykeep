@@ -30,6 +30,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { EditBookmarkDialog } from "@/components/bookmark/edit-bookmark-dialog";
+import { SummaryRenderer } from "@/components/bookmark/summary-renderer";
 import type { Bookmark } from "@/types/supabase";
 import { cn } from "@/lib/utils";
 import { getPlatformConfig } from "@/lib/platform-utils";
@@ -283,121 +284,88 @@ export function BookmarkDetailClient({ bookmark }: BookmarkDetailClientProps) {
 
   return (
     <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-900">
-      {/* 顶部操作栏 */}
-      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 md:px-8 py-3 md:py-4">
-        <div className="flex items-center justify-between gap-2">
-          {/* 返回按钮 */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleBack}
-            className="shrink-0"
-          >
-            <ArrowLeft className="size-4 md:mr-2" />
-            <span className="hidden md:inline">返回</span>
-          </Button>
-
-          {/* 操作按钮组 - 移动端紧凑布局 */}
-          <div className="flex items-center gap-1 md:gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleOpenOriginal}
-              className="px-2 md:px-3"
-            >
-              <ExternalLink className="size-4 md:mr-2" />
-              <span className="hidden md:inline">打开原文</span>
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleShare}
-              className="px-2 md:px-3"
-            >
-              <Share2 className="size-4 md:mr-2" />
-              <span className="hidden md:inline">分享</span>
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleEdit}
-              className="px-2 md:px-3"
-            >
-              <Edit className="size-4 md:mr-2" />
-              <span className="hidden md:inline">编辑</span>
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleDelete}
-              disabled={isDeleting}
-              className="px-2 md:px-3 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
-            >
-              <Trash2 className="size-4 md:mr-2" />
-              <span className="hidden md:inline">
-                {isDeleting ? "删除中..." : "删除"}
-              </span>
-            </Button>
-          </div>
-        </div>
-      </header>
-
       {/* 内容区域 */}
-      <div className="flex-1 overflow-auto px-4 md:px-8 py-6">
-        <div className="max-w-4xl mx-auto space-y-6">
-          {/* 封面图（浏览器书签隐藏） */}
-          {!isBrowserPlatform && (
-            <div
-              className="relative aspect-video overflow-hidden rounded-lg shadow-lg cursor-pointer group"
-              onClick={() => setShowImageLightbox(true)}
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={coverImage}
-                alt={bookmark.title}
-                className="w-full h-full object-cover transition-transform group-hover:scale-105"
-              />
-              {/* 平台标识 */}
-              <div
-                className={cn(
-                  "absolute top-4 left-4 px-3 py-1.5 text-sm font-medium text-white rounded",
-                  platformConfig.bgColor,
-                )}
-              >
-                {platformConfig.name}
-              </div>
-              {/* 放大提示 */}
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 px-4 py-2 rounded-full text-white text-sm">
-                  点击查看大图
-                </div>
-              </div>
-            </div>
-          )}
-
+      <div className="flex-1 overflow-auto px-4 md:px-8 pt-2 pb-6">
+        <div className="max-w-4xl mx-auto">
           {/* 主要信息卡片 */}
-          <Card>
-            <CardHeader>
-              {/* 浏览器书签平台徽章 */}
-              {isBrowserPlatform && (
-                <div className="mb-4">
-                  <span
-                    style={{
-                      backgroundColor: platformConfig.brandColor,
-                      color: "#FFFFFF",
-                    }}
-                    className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-semibold rounded-lg shadow-md border-2 border-white/20"
-                  >
-                    <Globe className="size-4 flex-shrink-0" />
-                    <span>{platformConfig.name}</span>
-                  </span>
-                </div>
-              )}
+          <Card className="relative">
+            {/* 平台标识（右上角） */}
+            <div className="absolute top-4 right-4 md:top-6 md:right-6 z-10">
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold rounded-lg shadow-md",
+                  isBrowserPlatform
+                    ? "border-2 border-white/20"
+                    : platformConfig.bgColor,
+                )}
+                style={
+                  isBrowserPlatform
+                    ? {
+                        backgroundColor: platformConfig.brandColor,
+                        color: "#FFFFFF",
+                      }
+                    : undefined
+                }
+              >
+                {isBrowserPlatform ? (
+                  <Globe className="size-4 flex-shrink-0" />
+                ) : null}
+                <span>{platformConfig.name}</span>
+              </span>
+            </div>
 
-              {/* 标题 */}
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-4">
-                {bookmark.title}
-              </h1>
+            <CardHeader>
+              {/* 缩略图 + 标题区域 */}
+              <div className="flex gap-4 md:gap-6 items-start">
+                {/* 缩略图（浏览器书签隐藏） */}
+                {!isBrowserPlatform && (
+                  <div
+                    className="relative size-16 md:size-20 flex-shrink-0 overflow-hidden rounded-lg shadow-md cursor-pointer group ring-2 ring-gray-200 dark:ring-gray-700 hover:ring-blue-500 dark:hover:ring-blue-400 transition-all"
+                    onClick={() => setShowImageLightbox(true)}
+                    title="点击查看大图"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={coverImage}
+                      alt={bookmark.title}
+                      className="w-full h-full object-cover transition-transform group-hover:scale-110"
+                    />
+                    {/* 悬停提示图标 */}
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+                      <ExternalLink className="size-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                  </div>
+                )}
+
+                {/* 标题和标签 */}
+                <div className="flex-1 min-w-0 pr-12 md:pr-20">
+                  {/* 标题 */}
+                  <h1 className="text-xl md:text-3xl font-bold text-gray-900 dark:text-white mb-3 md:mb-4">
+                    {bookmark.title}
+                  </h1>
+
+                  {/* AI 标签（内联样式，竖线分隔） */}
+                  {bookmark.ai_tags && bookmark.ai_tags.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm md:text-base">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-pink-50 dark:bg-pink-900/30 border border-pink-200 dark:border-pink-700 text-pink-600 dark:text-pink-300 font-medium text-xs md:text-sm">
+                        AI
+                      </span>
+                      {bookmark.ai_tags.map((tag, index) => (
+                        <span key={tag} className="flex items-center gap-2">
+                          {index > 0 && (
+                            <span className="text-gray-300 dark:text-gray-600">
+                              |
+                            </span>
+                          )}
+                          <span className="text-gray-700 dark:text-gray-300">
+                            {tag}
+                          </span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
 
               {/* 元信息 */}
               <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-gray-500 dark:text-gray-400">
@@ -452,34 +420,7 @@ export function BookmarkDetailClient({ bookmark }: BookmarkDetailClientProps) {
                     <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       AI 摘要
                     </h3>
-                    <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
-                      {bookmark.ai_summary}
-                    </p>
-                  </div>
-                  <Separator />
-                </>
-              )}
-
-              {/* AI 标签 */}
-              {bookmark.ai_tags && bookmark.ai_tags.length > 0 && (
-                <>
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                      AI 标签
-                    </h3>
-                    <div className="flex flex-wrap gap-2">
-                      <Badge
-                        variant="outline"
-                        className="bg-pink-50 dark:bg-pink-900/30 border-pink-200 dark:border-pink-700 text-pink-600 dark:text-pink-300"
-                      >
-                        AI
-                      </Badge>
-                      {bookmark.ai_tags.map((tag) => (
-                        <Badge key={tag} variant="secondary">
-                          {tag}
-                        </Badge>
-                      ))}
-                    </div>
+                    <SummaryRenderer summary={bookmark.ai_summary} />
                   </div>
                   <Separator />
                 </>
@@ -622,16 +563,65 @@ export function BookmarkDetailClient({ bookmark }: BookmarkDetailClientProps) {
                 </div>
               )}
 
-              {/* 原文链接 */}
-              <div className="pt-4">
-                <Button
-                  variant="outline"
-                  onClick={handleOpenOriginal}
-                  className="w-full md:w-auto"
-                >
-                  <ExternalLink className="size-4 mr-2" />
-                  查看原文
-                </Button>
+              {/* 操作按钮区域（底部） */}
+              <Separator className="my-6" />
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pb-2">
+                {/* 左侧：主要操作按钮 */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleOpenOriginal}
+                    className="flex items-center gap-2"
+                  >
+                    <ExternalLink className="size-4" />
+                    <span>打开原文</span>
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleShare}
+                    className="flex items-center gap-2"
+                  >
+                    <Share2 className="size-4" />
+                    <span>分享</span>
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleEdit}
+                    className="flex items-center gap-2"
+                  >
+                    <Edit className="size-4" />
+                    <span>编辑</span>
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleDelete}
+                    disabled={isDeleting}
+                    className="flex items-center gap-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                  >
+                    <Trash2 className="size-4" />
+                    <span>{isDeleting ? "删除中..." : "删除"}</span>
+                  </Button>
+                </div>
+
+                {/* 右侧：返回按钮 */}
+                <div className="flex justify-end sm:justify-start">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleBack}
+                    className="flex items-center gap-2"
+                  >
+                    <ArrowLeft className="size-4" />
+                    <span>返回</span>
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
