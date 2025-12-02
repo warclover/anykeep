@@ -345,47 +345,47 @@ export function FoldersPageClient({
     return (
       <Link key={folder.id} href={`/home?folder=${folder.id}`}>
         <div
-          className={`group relative rounded-2xl transition-all duration-300 aspect-video
+          className={`group relative rounded-xl transition-all duration-300 h-24 w-44
             ${folder.is_archived ? "opacity-60" : ""}
             hover:scale-[1.02] hover:shadow-lg
           `}
         >
           {/* 卡片主体 - 水平渐变背景 */}
           <div
-            className={`absolute inset-0 rounded-2xl bg-gradient-to-r ${gradient.from} ${gradient.to}
+            className={`absolute inset-0 rounded-xl bg-gradient-to-r ${gradient.from} ${gradient.to}
               ${isInbox ? "!bg-gradient-to-r !from-slate-200 !to-blue-100" : ""}
             `}
           />
           {/* 内容区域 */}
-          <div className="relative h-full p-4 flex flex-col">
+          <div className="relative h-full p-3 flex flex-col">
             {/* 顶部：图标 + 标题 + 操作菜单 */}
             <div className="flex items-start justify-between flex-shrink-0">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 {/* 图标 - 带阴影的圆角矩形 */}
                 <div
-                  className={`flex-shrink-0 w-12 h-12 rounded-xl shadow-lg transition-transform group-hover:scale-105 flex items-center justify-center
+                  className={`flex-shrink-0 w-7 h-7 rounded-lg shadow-md transition-transform group-hover:scale-105 flex items-center justify-center
                     ${isInbox ? "bg-gradient-to-br from-slate-300 to-blue-200" : `bg-gradient-to-br ${gradient.iconBg}`}
                     ${folder.is_archived ? "grayscale" : ""}
                   `}
                 >
                   {isInbox ? (
-                    <Inbox className="size-6 text-slate-700" />
+                    <Inbox className="size-4 text-slate-700" />
                   ) : (
-                    <span className="text-2xl drop-shadow-sm">
+                    <span className="text-lg drop-shadow-sm">
                       {getFolderEmoji(folder.name)}
                     </span>
                   )}
                 </div>
                 {/* 标题区域 */}
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <h3 className="text-gray-800 dark:text-gray-900 text-base font-semibold truncate max-w-[120px]">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1 flex-wrap">
+                    <h3 className="text-gray-800 dark:text-gray-900 text-sm font-semibold truncate max-w-[90px]">
                       {folder.name}
                     </h3>
                     {folder.is_system && (
                       <Badge
                         variant="secondary"
-                        className="text-[10px] px-1.5 py-0 bg-gray-800/80 text-white flex-shrink-0"
+                        className="text-[9px] px-1.5 py-0 bg-gray-800/80 text-white flex-shrink-0"
                       >
                         默认
                       </Badge>
@@ -393,15 +393,12 @@ export function FoldersPageClient({
                     {folder.is_archived && (
                       <Badge
                         variant="secondary"
-                        className="text-[10px] px-1.5 py-0 flex-shrink-0"
+                        className="text-[9px] px-1.5 py-0 flex-shrink-0"
                       >
                         已停用
                       </Badge>
                     )}
                   </div>
-                  <p className="text-gray-500 text-xs mt-0.5">
-                    {folder.bookmark_count || 0} 个文件
-                  </p>
                 </div>
               </div>
               {/* 操作菜单 */}
@@ -418,21 +415,21 @@ export function FoldersPageClient({
             </div>
 
             {/* 底部：收藏统计 */}
-            <div className="mt-auto pt-3">
+            <div className="mt-auto pt-1.5">
               <div className="flex items-center gap-1.5 text-gray-600">
-                <Folder className="size-4" />
+                <Folder className="size-3" />
                 <span className={`text-sm font-medium ${gradient.accent}`}>
                   {folder.bookmark_count || 0}
                 </span>
-                <span className="text-gray-500 text-sm">已收藏</span>
+                <span className="text-gray-500 text-xs">已收藏</span>
                 {folder.today_count > 0 && (
-                  <span className="ml-2 text-green-500 text-xs flex items-center gap-0.5">
-                    <TrendingUp className="size-3" />+{folder.today_count} 今日
+                  <span className="ml-1 text-green-500 text-xs flex items-center gap-0.5">
+                    <TrendingUp className="size-2.5" />+{folder.today_count}
                   </span>
                 )}
               </div>
               {folder.bookmark_count === 0 && (
-                <p className="text-gray-400 text-xs mt-1">
+                <p className="text-gray-400 text-xs mt-0.5">
                   {isInbox ? "新收藏将自动归入这里" : "还没有收藏内容"}
                 </p>
               )}
@@ -506,7 +503,7 @@ export function FoldersPageClient({
                         {groupedFolders.system.length}
                       </Badge>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                       {groupedFolders.system.map((folder) =>
                         renderFolderCard(folder),
                       )}
@@ -571,7 +568,7 @@ export function FoldersPageClient({
                         {/* 分组内容 */}
                         <CollapsibleContent>
                           <div className="p-4 pt-2 bg-white dark:bg-gray-900">
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                               {groupFolders.map((folder) =>
                                 renderFolderCard(folder),
                               )}
