@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import { Loader2, AlertTriangle, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAbortableFetch } from "@/hooks/use-abortable-fetch";
+import { logger } from "@/lib/logger";
 import {
   Dialog,
   DialogContent,
@@ -65,11 +66,16 @@ export function DeleteFolderDialog({
     e.preventDefault();
     setError(null);
 
-    console.log("[DeleteFolderDialog] ========= SUBMIT CLICKED =========");
-    console.log("[DeleteFolderDialog] folder.id:", folder.id);
-    console.log("[DeleteFolderDialog] hasBookmarks:", hasBookmarks);
-    console.log("[DeleteFolderDialog] deleteOption:", deleteOption);
-    console.log("[DeleteFolderDialog] targetFolderId:", targetFolderId);
+    logger.debug(
+      {
+        folderId: folder.id,
+        hasBookmarks,
+        deleteOption,
+        targetFolderId,
+        action: "delete_folder_submit",
+      },
+      "[DeleteFolderDialog] Submit clicked",
+    );
 
     // 如果有收藏且选择移动，需要验证目标文件夹
     if (hasBookmarks && deleteOption === "move" && !targetFolderId) {
@@ -141,19 +147,23 @@ export function DeleteFolderDialog({
         }
       } else {
         // 空文件夹直接删除
-        console.log(
-          "[DeleteFolderDialog] Deleting empty folder, calling DELETE /api/folders/" +
-            folder.id,
+        logger.debug(
+          { folderId: folder.id, action: "delete_empty_folder" },
+          "[DeleteFolderDialog] Deleting empty folder",
         );
         const res = await fetchWithAbort(`/api/folders/${folder.id}`, {
           method: "DELETE",
         });
-        console.log("[DeleteFolderDialog] DELETE response status:", res.status);
 
         const data = await res.json();
-        console.log(
-          "[DeleteFolderDialog] DELETE response data:",
-          JSON.stringify(data, null, 2),
+        logger.debug(
+          {
+            folderId: folder.id,
+            status: res.status,
+            response: data,
+            action: "delete_empty_folder_response",
+          },
+          "[DeleteFolderDialog] DELETE response",
         );
 
         if (!res.ok) {
@@ -168,14 +178,22 @@ export function DeleteFolderDialog({
       onSuccess?.();
       router.refresh();
     } catch (err) {
-      console.error("[DeleteFolderDialog] ========= ERROR =========");
-      console.error("[DeleteFolderDialog] Error:", err);
       if (err instanceof Error && err.name === "AbortError") {
-        console.log("[DeleteFolderDialog] Request was aborted");
+        logger.debug(
+          { folderId: folder.id, action: "delete_folder_aborted" },
+          "[DeleteFolderDialog] Request was aborted",
+        );
         return;
       }
       const message = err instanceof Error ? err.message : "删除失败";
-      console.error("[DeleteFolderDialog] Error message:", message);
+      logger.error(
+        {
+          folderId: folder.id,
+          error: err instanceof Error ? err.message : String(err),
+          action: "delete_folder_error",
+        },
+        "[DeleteFolderDialog] Error occurred",
+      );
       setError(message);
       toast.error(message);
     } finally {

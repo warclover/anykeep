@@ -155,6 +155,240 @@ export function useImportSession(
     [onProgressUpdate],
   );
 
+  // 执行导入逻辑
+  const executeImport = useCallback(
+    async (sessionId: string, wasResumed: boolean) => {
+      const startTime = Date.now();
+
+      try {
+        const session = await getImportSession(sessionId);
+        if (!session) {
+          throw new Error("会话不存在");
+        }
+
+        // 更新会话状态
+        await updateImportSession(sessionId, {
+          status: "processing",
+          startedAt: session.startedAt ?? Date.now(),
+        });
+
+        // 获取批次
+        const batches = await getSessionBatches(sessionId);
+        const pendingBatches = batches.filter((b) => b.status === "pending");
+
+        // 计算已完成的统计
+        let totalSuccess = session.progress.totalSuccess;
+        let totalFailed = session.progress.totalFailed;
+        let totalSkipped = session.progress.totalSkipped;
+        const allErrors: Array<{ url: string; title: string; reason: string }> =
+          [];
+
+        // 初始化进度
+        updateProgress({
+          totalBookmarks: session.progress.totalBookmarks,
+          totalBatches: batches.length,
+          currentBatch: batches.length - pendingBatches.length,
+          batchProgress: { total: 0, processed: 0 },
+          totalSuccess,
+          totalFailed,
+          totalSkipped,
+          status: "importing",
+        });
+
+        // 处理每个批次
+        for (const batch of pendingBatches) {
+          // 检查暂停
+          if (pauseRef.current) {
+            await updateImportSession(sessionId, {
+              status: "paused",
+              progress: {
+                ...session.progress,
+                totalSuccess,
+                totalFailed,
+                totalSkipped,
+              },
+            });
+            setIsPaused(true);
+            await refreshPendingSession();
+            return;
+          }
+
+          // 检查取消
+          if (cancelRef.current) {
+            await deleteImportSession(sessionId);
+            updateProgress({ ...DEFAULT_PROGRESS, status: "idle" });
+            setIsImporting(false);
+            await refreshPendingSession();
+            return;
+          }
+
+          // 更新批次状态
+          await updateBatchStatus(batch.id, "processing");
+
+          // 更新进度
+          updateProgress({
+            totalBookmarks: session.progress.totalBookmarks,
+            totalBatches: batches.length,
+            currentBatch: batch.batchNumber + 1,
+            batchProgress: { total: batch.bookmarks.length, processed: 0 },
+            totalSuccess,
+            totalFailed,
+            totalSkipped,
+            currentItem: batch.bookmarks[0]?.title,
+            status: "importing",
+          });
+
+          try {
+            // 调用 API
+            const response = await fetch("/api/bookmarks/batch-import", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                bookmarks: batch.bookmarks.map((b) => ({
+                  url: b.url,
+                  title: b.title,
+                  platform: b.platform,
+                  folderId: b.folderId,
+                  originalAddDate: b.addedAt,
+                  importSource: session.browserSource,
+                  importBatchId: session.importBatchId,
+                })),
+              }),
+            });
+
+            const responseData = await response.json();
+
+            if (!response.ok) {
+              throw new Error(responseData.error?.message || "批次导入失败");
+            }
+
+            const batchResult = responseData.data || responseData;
+
+            // 更新统计
+            totalSuccess += batchResult.success || 0;
+            totalFailed += batchResult.failed || 0;
+            totalSkipped += batchResult.skipped || 0;
+            if (batchResult.errors) {
+              allErrors.push(...batchResult.errors);
+            }
+
+            // 更新批次状态
+            await updateBatchStatus(batch.id, "completed", {
+              success: batchResult.success || 0,
+              failed: batchResult.failed || 0,
+              skipped: batchResult.skipped || 0,
+            });
+
+            // 更新会话进度
+            await updateImportSession(sessionId, {
+              completedBatches: session.completedBatches + 1,
+              progress: {
+                ...session.progress,
+                totalSuccess,
+                totalFailed,
+                totalSkipped,
+              },
+            });
+
+            // 更新进度
+            updateProgress({
+              totalBookmarks: session.progress.totalBookmarks,
+              totalBatches: batches.length,
+              currentBatch: batch.batchNumber + 1,
+              batchProgress: {
+                total: batch.bookmarks.length,
+                processed: batch.bookmarks.length,
+              },
+              totalSuccess,
+              totalFailed,
+              totalSkipped,
+              status: "importing",
+            });
+          } catch (error) {
+            const errorMsg =
+              error instanceof Error ? error.message : "批次导入失败";
+            await updateBatchStatus(batch.id, "failed", undefined, errorMsg);
+            totalFailed += batch.bookmarks.length;
+            allErrors.push({
+              url: `批次 ${batch.batchNumber + 1}`,
+              title: `批次 ${batch.batchNumber + 1}`,
+              reason: errorMsg,
+            });
+          }
+
+          // 批次间延迟
+          if (!pauseRef.current && !cancelRef.current) {
+            await new Promise((resolve) => setTimeout(resolve, BATCH_DELAY_MS));
+          }
+        }
+
+        // 完成
+        const durationMs = Date.now() - startTime;
+
+        await updateImportSession(sessionId, {
+          status: "completed",
+          completedAt: Date.now(),
+        });
+
+        updateProgress({
+          totalBookmarks: session.progress.totalBookmarks,
+          totalBatches: batches.length,
+          currentBatch: batches.length,
+          batchProgress: { total: 0, processed: 0 },
+          totalSuccess,
+          totalFailed,
+          totalSkipped,
+          status: "completed",
+        });
+
+        // 记录导入历史
+        try {
+          await createImportHistory({
+            importSource: browserSourceToImportSource(session.browserSource),
+            importBatchId: session.importBatchId,
+            totalCount: session.progress.totalBookmarks,
+            successCount: totalSuccess,
+            failedCount: totalFailed,
+            skippedCount: totalSkipped,
+            foldersCreated: 0, // 已知限制：暂不统计创建的文件夹数量
+            durationMs,
+            errorDetails: allErrors.length > 0 ? allErrors : undefined,
+            options: session.options
+              ? {
+                  skipDuplicates: !session.options.overwriteExisting,
+                  preserveFolderStructure: session.options.keepFolderStructure,
+                  targetFolderId: session.options.targetFolderId,
+                }
+              : undefined,
+          });
+        } catch (historyError) {
+          // 历史记录失败不影响主流程
+          console.error("记录导入历史失败:", historyError);
+        }
+
+        setIsImporting(false);
+        currentSessionRef.current = null;
+
+        onComplete?.({
+          success: totalSuccess,
+          failed: totalFailed,
+          skipped: totalSkipped,
+          errors: allErrors,
+          durationMs,
+          wasResumed,
+        });
+
+        await refreshPendingSession();
+      } catch (error) {
+        const errorMsg =
+          error instanceof Error ? error.message : "导入执行失败";
+        onError?.(errorMsg);
+        setIsImporting(false);
+      }
+    },
+    [updateProgress, refreshPendingSession, onComplete, onError],
+  );
+
   // 开始新导入
   const startImport = useCallback(
     async (
@@ -230,7 +464,7 @@ export function useImportSession(
         setIsImporting(false);
       }
     },
-    [userId, isImporting, onError],
+    [userId, isImporting, onError, executeImport],
   );
 
   // 恢复导入
@@ -246,238 +480,8 @@ export function useImportSession(
       currentSessionRef.current = sessionId;
       await executeImport(sessionId, true);
     },
-    [isImporting],
+    [isImporting, executeImport],
   );
-
-  // 执行导入逻辑
-  const executeImport = async (sessionId: string, wasResumed: boolean) => {
-    const startTime = Date.now();
-
-    try {
-      const session = await getImportSession(sessionId);
-      if (!session) {
-        throw new Error("会话不存在");
-      }
-
-      // 更新会话状态
-      await updateImportSession(sessionId, {
-        status: "processing",
-        startedAt: session.startedAt ?? Date.now(),
-      });
-
-      // 获取批次
-      const batches = await getSessionBatches(sessionId);
-      const pendingBatches = batches.filter((b) => b.status === "pending");
-
-      // 计算已完成的统计
-      let totalSuccess = session.progress.totalSuccess;
-      let totalFailed = session.progress.totalFailed;
-      let totalSkipped = session.progress.totalSkipped;
-      const allErrors: Array<{ url: string; title: string; reason: string }> =
-        [];
-
-      // 初始化进度
-      updateProgress({
-        totalBookmarks: session.progress.totalBookmarks,
-        totalBatches: batches.length,
-        currentBatch: batches.length - pendingBatches.length,
-        batchProgress: { total: 0, processed: 0 },
-        totalSuccess,
-        totalFailed,
-        totalSkipped,
-        status: "importing",
-      });
-
-      // 处理每个批次
-      for (const batch of pendingBatches) {
-        // 检查暂停
-        if (pauseRef.current) {
-          await updateImportSession(sessionId, {
-            status: "paused",
-            progress: {
-              ...session.progress,
-              totalSuccess,
-              totalFailed,
-              totalSkipped,
-            },
-          });
-          setIsPaused(true);
-          await refreshPendingSession();
-          return;
-        }
-
-        // 检查取消
-        if (cancelRef.current) {
-          await deleteImportSession(sessionId);
-          updateProgress({ ...DEFAULT_PROGRESS, status: "idle" });
-          setIsImporting(false);
-          await refreshPendingSession();
-          return;
-        }
-
-        // 更新批次状态
-        await updateBatchStatus(batch.id, "processing");
-
-        // 更新进度
-        updateProgress({
-          totalBookmarks: session.progress.totalBookmarks,
-          totalBatches: batches.length,
-          currentBatch: batch.batchNumber + 1,
-          batchProgress: { total: batch.bookmarks.length, processed: 0 },
-          totalSuccess,
-          totalFailed,
-          totalSkipped,
-          currentItem: batch.bookmarks[0]?.title,
-          status: "importing",
-        });
-
-        try {
-          // 调用 API
-          const response = await fetch("/api/bookmarks/batch-import", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              bookmarks: batch.bookmarks.map((b) => ({
-                url: b.url,
-                title: b.title,
-                platform: b.platform,
-                folderId: b.folderId,
-                originalAddDate: b.addedAt,
-                importSource: session.browserSource,
-                importBatchId: session.importBatchId,
-              })),
-            }),
-          });
-
-          const responseData = await response.json();
-
-          if (!response.ok) {
-            throw new Error(responseData.error?.message || "批次导入失败");
-          }
-
-          const batchResult = responseData.data || responseData;
-
-          // 更新统计
-          totalSuccess += batchResult.success || 0;
-          totalFailed += batchResult.failed || 0;
-          totalSkipped += batchResult.skipped || 0;
-          if (batchResult.errors) {
-            allErrors.push(...batchResult.errors);
-          }
-
-          // 更新批次状态
-          await updateBatchStatus(batch.id, "completed", {
-            success: batchResult.success || 0,
-            failed: batchResult.failed || 0,
-            skipped: batchResult.skipped || 0,
-          });
-
-          // 更新会话进度
-          await updateImportSession(sessionId, {
-            completedBatches: session.completedBatches + 1,
-            progress: {
-              ...session.progress,
-              totalSuccess,
-              totalFailed,
-              totalSkipped,
-            },
-          });
-
-          // 更新进度
-          updateProgress({
-            totalBookmarks: session.progress.totalBookmarks,
-            totalBatches: batches.length,
-            currentBatch: batch.batchNumber + 1,
-            batchProgress: {
-              total: batch.bookmarks.length,
-              processed: batch.bookmarks.length,
-            },
-            totalSuccess,
-            totalFailed,
-            totalSkipped,
-            status: "importing",
-          });
-        } catch (error) {
-          const errorMsg =
-            error instanceof Error ? error.message : "批次导入失败";
-          await updateBatchStatus(batch.id, "failed", undefined, errorMsg);
-          totalFailed += batch.bookmarks.length;
-          allErrors.push({
-            url: `批次 ${batch.batchNumber + 1}`,
-            title: `批次 ${batch.batchNumber + 1}`,
-            reason: errorMsg,
-          });
-        }
-
-        // 批次间延迟
-        if (!pauseRef.current && !cancelRef.current) {
-          await new Promise((resolve) => setTimeout(resolve, BATCH_DELAY_MS));
-        }
-      }
-
-      // 完成
-      const durationMs = Date.now() - startTime;
-
-      await updateImportSession(sessionId, {
-        status: "completed",
-        completedAt: Date.now(),
-      });
-
-      updateProgress({
-        totalBookmarks: session.progress.totalBookmarks,
-        totalBatches: batches.length,
-        currentBatch: batches.length,
-        batchProgress: { total: 0, processed: 0 },
-        totalSuccess,
-        totalFailed,
-        totalSkipped,
-        status: "completed",
-      });
-
-      // 记录导入历史
-      try {
-        await createImportHistory({
-          importSource: browserSourceToImportSource(session.browserSource),
-          importBatchId: session.importBatchId,
-          totalCount: session.progress.totalBookmarks,
-          successCount: totalSuccess,
-          failedCount: totalFailed,
-          skippedCount: totalSkipped,
-          foldersCreated: 0, // 已知限制：暂不统计创建的文件夹数量
-          durationMs,
-          errorDetails: allErrors.length > 0 ? allErrors : undefined,
-          options: session.options
-            ? {
-                skipDuplicates: !session.options.overwriteExisting,
-                preserveFolderStructure: session.options.keepFolderStructure,
-                targetFolderId: session.options.targetFolderId,
-              }
-            : undefined,
-        });
-      } catch (historyError) {
-        // 历史记录失败不影响主流程
-        console.error("记录导入历史失败:", historyError);
-      }
-
-      setIsImporting(false);
-      currentSessionRef.current = null;
-
-      onComplete?.({
-        success: totalSuccess,
-        failed: totalFailed,
-        skipped: totalSkipped,
-        errors: allErrors,
-        durationMs,
-        wasResumed,
-      });
-
-      await refreshPendingSession();
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : "导入执行失败";
-      onError?.(errorMsg);
-      setIsImporting(false);
-    }
-  };
 
   // 暂停
   const pauseImport = useCallback(() => {
@@ -491,7 +495,7 @@ export function useImportSession(
     pauseRef.current = false;
     setIsPaused(false);
     executeImport(currentSessionRef.current, true);
-  }, [isPaused]);
+  }, [isPaused, executeImport]);
 
   // 取消
   const cancelImport = useCallback(() => {
