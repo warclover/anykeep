@@ -401,7 +401,7 @@ export function HomePageClient({
       }
 
       // 清除选择
-      clearSelection();
+      deselectAll();
 
       toast.success(`已恢复 ${ids.length} 个收藏`);
 
