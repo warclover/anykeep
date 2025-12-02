@@ -33,6 +33,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { EditBookmarkDialog } from "@/components/bookmark/edit-bookmark-dialog";
 import { MoveToFolderDialog } from "@/components/bookmark/move-to-folder-dialog";
 import { SummaryRenderer } from "@/components/bookmark/summary-renderer";
+import { BookmarkRating } from "@/components/bookmark/bookmark-rating";
 import type { Bookmark } from "@/types/supabase";
 import { cn } from "@/lib/utils";
 import { getPlatformConfig } from "@/lib/platform-utils";
@@ -53,6 +54,12 @@ export function BookmarkDetailClient({ bookmark }: BookmarkDetailClientProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showMoveDialog, setShowMoveDialog] = useState(false);
+  // V6.0新增：评级和锁定状态
+  const [rating, setRating] = useState(bookmark.rating || 0);
+  const [isLocked, setIsLocked] = useState(bookmark.is_locked || false);
+  const [isMarkedForDeletion, setIsMarkedForDeletion] = useState(
+    bookmark.is_marked_for_deletion || false,
+  );
 
   // 判断是否为浏览器书签
   const isBrowserPlatform = [
@@ -155,8 +162,97 @@ export function BookmarkDetailClient({ bookmark }: BookmarkDetailClientProps) {
     }
   };
 
+  // V6.0新增：处理评级变更
+  const handleRatingChange = async (newRating: number) => {
+    try {
+      const res = await fetchWithAbort(`/api/bookmarks/${bookmark.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ rating: newRating }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error?.message || "评级更新失败");
+      }
+
+      setRating(newRating);
+      toast.success(newRating === 0 ? "已取消评级" : `已评${newRating}星`);
+      router.refresh();
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        return;
+      }
+      toast.error(error instanceof Error ? error.message : "评级更新失败");
+    }
+  };
+
+  // V6.0新增：处理锁定切换
+  const handleLockToggle = async () => {
+    try {
+      const newLockState = !isLocked;
+      const res = await fetchWithAbort(`/api/bookmarks/${bookmark.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ isLocked: newLockState }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error?.message || "操作失败");
+      }
+
+      setIsLocked(newLockState);
+      toast.success(newLockState ? "已锁定" : "已解锁");
+      router.refresh();
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        return;
+      }
+      toast.error(error instanceof Error ? error.message : "操作失败");
+    }
+  };
+
+  // V6.0新增：处理删除标记切换
+  const handleMarkerToggle = async () => {
+    try {
+      const newMarkerState = !isMarkedForDeletion;
+      const res = await fetchWithAbort(`/api/bookmarks/${bookmark.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ isMarkedForDeletion: newMarkerState }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error?.message || "操作失败");
+      }
+
+      setIsMarkedForDeletion(newMarkerState);
+      toast.success(newMarkerState ? "已标记为待删除" : "已取消删除标记");
+      router.refresh();
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        return;
+      }
+      toast.error(error instanceof Error ? error.message : "操作失败");
+    }
+  };
+
   const handleDelete = async () => {
     if (isDeleting) return;
+
+    // V6.0新增：锁定检查
+    if (isLocked) {
+      toast.error("此收藏已锁定，无法删除");
+      return;
+    }
 
     // 二次确认
     if (!confirm("确定要删除这条收藏吗？删除后无法恢复。")) {
@@ -318,12 +414,12 @@ export function BookmarkDetailClient({ bookmark }: BookmarkDetailClientProps) {
             </div>
 
             <CardHeader>
-              {/* 缩略图 + 标题区域 */}
+              {/* V6.0重构：新布局 - 缩略图自适应高度 + 右侧四行 */}
               <div className="flex gap-4 md:gap-6 items-start">
-                {/* 缩略图（浏览器书签隐藏） */}
+                {/* 缩略图 - 自适应高度对齐右侧四行 */}
                 {!isBrowserPlatform && (
                   <div
-                    className="relative size-16 md:size-20 flex-shrink-0 overflow-hidden rounded-lg shadow-md cursor-pointer group ring-2 ring-gray-200 dark:ring-gray-700 hover:ring-blue-500 dark:hover:ring-blue-400 transition-all"
+                    className="relative w-20 md:w-32 flex-shrink-0 self-stretch overflow-hidden rounded-lg shadow-md cursor-pointer group ring-2 ring-gray-200 dark:ring-gray-700 hover:ring-blue-500 dark:hover:ring-blue-400 transition-all"
                     onClick={() => setShowImageLightbox(true)}
                     title="点击查看大图"
                   >
@@ -340,14 +436,14 @@ export function BookmarkDetailClient({ bookmark }: BookmarkDetailClientProps) {
                   </div>
                 )}
 
-                {/* 标题和标签 */}
-                <div className="flex-1 min-w-0 pr-12 md:pr-20">
-                  {/* 标题 */}
-                  <h1 className="text-xl md:text-3xl font-bold text-gray-900 dark:text-white mb-3 md:mb-4">
+                {/* 右侧四行内容 */}
+                <div className="flex-1 min-w-0 pr-12 md:pr-20 flex flex-col gap-2 md:gap-3">
+                  {/* 第1行：标题 */}
+                  <h1 className="text-xl md:text-3xl font-bold text-gray-900 dark:text-white">
                     {bookmark.title}
                   </h1>
 
-                  {/* AI 标签（内联样式，竖线分隔） */}
+                  {/* 第2行：AI 标签 */}
                   {bookmark.ai_tags && bookmark.ai_tags.length > 0 && (
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm md:text-base">
                       <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-pink-50 dark:bg-pink-900/30 border border-pink-200 dark:border-pink-700 text-pink-600 dark:text-pink-300 font-medium text-xs md:text-sm">
@@ -367,51 +463,71 @@ export function BookmarkDetailClient({ bookmark }: BookmarkDetailClientProps) {
                       ))}
                     </div>
                   )}
-                </div>
-              </div>
 
-              {/* 元信息 */}
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-gray-500 dark:text-gray-400">
-                {bookmark.source_name && (
-                  <span className="font-medium text-gray-700 dark:text-gray-200">
-                    {bookmark.source_name}
-                  </span>
-                )}
-                {bookmark.author &&
-                  bookmark.author !== bookmark.source_name && (
-                    <>
-                      <span className="text-gray-300 dark:text-gray-600">
-                        |
+                  {/* 第3行：元信息（来源、作者、时间） */}
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-gray-500 dark:text-gray-400">
+                    {bookmark.source_name && (
+                      <span className="font-medium text-gray-700 dark:text-gray-200">
+                        {bookmark.source_name}
                       </span>
-                      <div className="flex items-center gap-1">
-                        <User className="size-4" />
-                        <span>{bookmark.author}</span>
-                      </div>
-                    </>
-                  )}
-                {bookmark.publish_time && (
-                  <>
+                    )}
+                    {bookmark.author &&
+                      bookmark.author !== bookmark.source_name && (
+                        <>
+                          <span className="text-gray-300 dark:text-gray-600">
+                            |
+                          </span>
+                          <div className="flex items-center gap-1">
+                            <User className="size-4" />
+                            <span>{bookmark.author}</span>
+                          </div>
+                        </>
+                      )}
+                    {bookmark.publish_time && (
+                      <>
+                        <span className="text-gray-300 dark:text-gray-600">
+                          |
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <Calendar className="size-4" />
+                          <span>
+                            发表 {formatFriendlyDate(bookmark.publish_time)}
+                          </span>
+                        </div>
+                      </>
+                    )}
                     <span className="text-gray-300 dark:text-gray-600">|</span>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 text-gray-400">
                       <Calendar className="size-4" />
-                      <span>{formatFriendlyDate(bookmark.publish_time)}</span>
+                      <span>
+                        收藏 {formatFriendlyDate(bookmark.created_at)}
+                      </span>
                     </div>
-                  </>
-                )}
-                <span className="text-gray-300 dark:text-gray-600">|</span>
-                <div className="flex items-center gap-1 text-gray-400">
-                  <Calendar className="size-4" />
-                  <span>收藏 {formatFriendlyDate(bookmark.created_at)}</span>
+                  </div>
+
+                  {/* 第4行：文件夹 + 评级UI */}
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4">
+                    {/* 左侧：文件夹 */}
+                    {bookmark.folders ? (
+                      <div className="flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400">
+                        <Folder className="size-4" />
+                        <span>{bookmark.folders.name}</span>
+                      </div>
+                    ) : (
+                      <div className="hidden sm:block" />
+                    )}
+
+                    {/* 右侧：评级UI */}
+                    <BookmarkRating
+                      rating={rating}
+                      isLocked={isLocked}
+                      isMarkedForDeletion={isMarkedForDeletion}
+                      onRatingChange={handleRatingChange}
+                      onLockToggle={handleLockToggle}
+                      onMarkerToggle={handleMarkerToggle}
+                    />
+                  </div>
                 </div>
-                {bookmark.folders && (
-                  <>
-                    <span className="text-gray-300 dark:text-gray-600">|</span>
-                    <div className="flex items-center gap-1 text-blue-600 dark:text-blue-400">
-                      <Folder className="size-4" />
-                      <span>{bookmark.folders.name}</span>
-                    </div>
-                  </>
-                )}
               </div>
             </CardHeader>
 
@@ -566,7 +682,7 @@ export function BookmarkDetailClient({ bookmark }: BookmarkDetailClientProps) {
                 </div>
               )}
 
-              {/* 操作按钮区域（底部） */}
+              {/* V6.0优化：操作按钮区域（移除独立删除按钮，评级UI已包含） */}
               <Separator className="my-6" />
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pb-2">
                 {/* 左侧：主要操作按钮 */}
@@ -611,12 +727,18 @@ export function BookmarkDetailClient({ bookmark }: BookmarkDetailClientProps) {
                     <span>移动到</span>
                   </Button>
 
+                  {/* V6.0新增：独立删除按钮（执行真正的删除） */}
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={handleDelete}
-                    disabled={isDeleting}
-                    className="flex items-center gap-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                    disabled={isDeleting || isLocked}
+                    className={cn(
+                      "flex items-center gap-2",
+                      isLocked
+                        ? "opacity-50 cursor-not-allowed"
+                        : "text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20",
+                    )}
                   >
                     <Trash2 className="size-4" />
                     <span>{isDeleting ? "删除中..." : "删除"}</span>

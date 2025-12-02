@@ -19,6 +19,7 @@ import {
   Circle,
   CheckCircle2,
   Calendar,
+  Lock,
 } from "lucide-react";
 import {
   Card,
@@ -41,6 +42,7 @@ import { formatRelativeTime, formatFriendlyDate } from "@/lib/utils/date-utils";
 import { generatePlaceholderImage } from "@/lib/utils/placeholder-image";
 import { getProxiedImageUrl } from "@/lib/utils/image-proxy";
 import { PlatformBadge } from "@/components/ui/platform-badge";
+import { BookmarkRatingDisplay } from "@/components/bookmark/bookmark-rating-display";
 
 type ViewVariant = "card" | "list" | "compact";
 
@@ -214,9 +216,18 @@ export function BookmarkCard({
 
           {/* 标题和元信息 */}
           <div className="flex-1 min-w-0">
-            <h3 className="font-medium text-gray-900 dark:text-white truncate text-sm sm:text-base">
-              {bookmark.title}
-            </h3>
+            <div className="flex items-center gap-2 mb-0.5">
+              <h3 className="font-medium text-gray-900 dark:text-white truncate text-sm sm:text-base flex-1">
+                {bookmark.title}
+              </h3>
+              {/* V6.0新增：评级显示（Compact视图） */}
+              <BookmarkRatingDisplay
+                rating={bookmark.rating}
+                isLocked={bookmark.is_locked}
+                variant="compact"
+                className="flex-shrink-0"
+              />
+            </div>
             <div className="flex items-center gap-1.5 sm:gap-2 text-xs text-gray-500 dark:text-gray-400 mt-0.5">
               {/* compact 视图：简洁显示来源/作者 */}
               <span className="truncate max-w-[80px] sm:max-w-none">
@@ -327,30 +338,40 @@ export function BookmarkCard({
             </div>
 
             <div className="flex items-center justify-between gap-2 mt-2">
-              {/* 标签 - 移动端也显示少量 */}
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {bookmark.ai_tags && bookmark.ai_tags.length > 0 && (
-                  <>
-                    <Badge
-                      variant="outline"
-                      className="bg-pink-100 dark:bg-pink-900/30 border-pink-200 dark:border-pink-700 text-pink-700 dark:text-pink-300 text-xs"
-                    >
-                      AI
-                    </Badge>
-                    {bookmark.ai_tags.slice(0, 1).map((tag) => (
+              {/* 左侧：标签和评级 */}
+              <div className="flex items-center gap-2 flex-wrap min-w-0">
+                {/* V6.0新增：评级显示（List视图） */}
+                <BookmarkRatingDisplay
+                  rating={bookmark.rating}
+                  isLocked={bookmark.is_locked}
+                  variant="compact"
+                  className="flex-shrink-0"
+                />
+                {/* 标签 - 移动端也显示少量 */}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {bookmark.ai_tags && bookmark.ai_tags.length > 0 && (
+                    <>
                       <Badge
-                        key={`ai-${tag}`}
-                        variant="secondary"
-                        className="text-xs hidden sm:inline-flex"
+                        variant="outline"
+                        className="bg-pink-100 dark:bg-pink-900/30 border-pink-200 dark:border-pink-700 text-pink-700 dark:text-pink-300 text-xs"
                       >
-                        {tag}
+                        AI
                       </Badge>
-                    ))}
-                  </>
-                )}
+                      {bookmark.ai_tags.slice(0, 1).map((tag) => (
+                        <Badge
+                          key={`ai-${tag}`}
+                          variant="secondary"
+                          className="text-xs hidden sm:inline-flex"
+                        >
+                          {tag}
+                        </Badge>
+                      ))}
+                    </>
+                  )}
+                </div>
               </div>
 
-              {/* 元信息 */}
+              {/* 右侧：元信息 */}
               <div className="flex items-center gap-1.5 sm:gap-2 text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
                 {/* list 视图：简洁显示来源/作者 */}
                 <span className="truncate max-w-[80px] sm:max-w-none">
@@ -403,6 +424,15 @@ export function BookmarkCard({
             <PlatformBadge platform={bookmark.platform} size="md" showName />
           </div>
 
+          {/* V6.0新增：锁定图标 - 右上角（优先级高于选择和操作按钮） */}
+          {bookmark.is_locked && !isSelectionMode && (
+            <div className="absolute top-2 right-2">
+              <div className="bg-yellow-500/90 text-white p-1.5 rounded-md shadow-md">
+                <Lock className="size-4" />
+              </div>
+            </div>
+          )}
+
           {/* 批量选择模式：复选框 */}
           {isSelectionMode && (
             <div className="absolute top-2 right-2">
@@ -411,7 +441,7 @@ export function BookmarkCard({
           )}
 
           {/* 正常模式：操作按钮 - 移动端始终显示，桌面端悬停显示 */}
-          {!isSelectionMode && (
+          {!isSelectionMode && !bookmark.is_locked && (
             <div className="absolute top-2 right-2 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
               <ActionMenu variant="mobile" />
             </div>
@@ -441,6 +471,14 @@ export function BookmarkCard({
         </CardHeader>
 
         <CardContent className="pt-0">
+          {/* V6.0新增：评级显示 */}
+          <BookmarkRatingDisplay
+            rating={bookmark.rating}
+            isLocked={bookmark.is_locked}
+            variant="default"
+            className="mb-3"
+          />
+
           {/* 标签区域 */}
           {((bookmark.ai_tags && bookmark.ai_tags.length > 0) ||
             (bookmark.user_tags && bookmark.user_tags.length > 0)) && (

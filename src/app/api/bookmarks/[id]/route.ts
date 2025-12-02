@@ -115,7 +115,16 @@ export async function PUT(
       return handleValidationError(validation.error);
     }
 
-    const { title, description, folderId, userTags, notes } = validation.data;
+    const {
+      title,
+      description,
+      folderId,
+      userTags,
+      notes,
+      rating,
+      isLocked,
+      isMarkedForDeletion,
+    } = validation.data;
 
     // 3. 检查收藏是否存在且属于当前用户
     const { data: existingBookmark, error: checkError } = await supabase
@@ -144,6 +153,11 @@ export async function PUT(
     if (folderId !== undefined) updateData.folder_id = folderId;
     if (userTags !== undefined) updateData.user_tags = userTags;
     if (notes !== undefined) updateData.notes = notes || null;
+    // V6.0新增：评级和锁定功能
+    if (rating !== undefined) updateData.rating = rating;
+    if (isLocked !== undefined) updateData.is_locked = isLocked;
+    if (isMarkedForDeletion !== undefined)
+      updateData.is_marked_for_deletion = isMarkedForDeletion;
 
     // 5. 更新收藏
     const { data: updatedBookmark, error: updateError } = await supabase
@@ -315,7 +329,7 @@ export async function DELETE(
     // 2. 检查收藏是否存在且属于当前用户
     const { data: existingBookmark, error: checkError } = await supabase
       .from("bookmarks")
-      .select("id, user_id")
+      .select("id, user_id, is_locked")
       .eq("id", bookmarkId)
       .is("deleted_at", null)
       .single();
@@ -338,6 +352,11 @@ export async function DELETE(
 
     if (existingBookmark.user_id !== user.id) {
       return forbiddenError(AUTH.FORBIDDEN);
+    }
+
+    // V6.0新增：检查是否已锁定
+    if (existingBookmark.is_locked) {
+      return forbiddenError(BOOKMARK.LOCKED_CANNOT_DELETE);
     }
 
     // 3. 使用 Service Client 执行软删除（绕过 RLS，因为已验证权限）

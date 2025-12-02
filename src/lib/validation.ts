@@ -251,6 +251,15 @@ export const updateBookmarkSchema = z.object({
       VALIDATION.TOO_LONG("备注", VALIDATION_LIMITS.SUMMARY_MAX_LENGTH),
     )
     .optional(),
+  // V6.0新增：评级和锁定功能
+  rating: z
+    .number()
+    .int()
+    .min(0, "评级不能小于0")
+    .max(5, "评级不能大于5")
+    .optional(),
+  isLocked: z.boolean().optional(),
+  isMarkedForDeletion: z.boolean().optional(), // V6.0新增：标记为待删除
 });
 
 export type UpdateBookmark = z.infer<typeof updateBookmarkSchema>;

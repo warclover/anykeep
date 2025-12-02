@@ -230,6 +230,9 @@ export type Database = {
           read_at: string | null;
           import_source: string | null; // V1.2新增：导入来源
           import_batch_id: string | null; // V1.2新增：导入批次ID
+          rating: number; // V6.0新增：评级（0-5星，0表示未评级）
+          is_locked: boolean; // V6.0新增：锁定状态（防止误删）
+          is_marked_for_deletion: boolean; // V6.0新增：标记为待删除（仅UI标识）
           created_at: string;
           updated_at: string;
           deleted_at: string | null;
@@ -260,6 +263,9 @@ export type Database = {
           read_at?: string | null;
           import_source?: string | null;
           import_batch_id?: string | null;
+          rating?: number; // V6.0新增
+          is_locked?: boolean; // V6.0新增
+          is_marked_for_deletion?: boolean; // V6.0新增
           created_at?: string;
           updated_at?: string;
           deleted_at?: string | null;
@@ -290,6 +296,9 @@ export type Database = {
           read_at?: string | null;
           import_source?: string | null;
           import_batch_id?: string | null;
+          rating?: number; // V6.0新增
+          is_locked?: boolean; // V6.0新增
+          is_marked_for_deletion?: boolean; // V6.0新增
           created_at?: string;
           updated_at?: string;
           deleted_at?: string | null;
