@@ -495,7 +495,7 @@ export function useImportSession(
     pauseRef.current = false;
     setIsPaused(false);
     executeImport(currentSessionRef.current, true);
-  }, [isPaused]);
+  }, [isPaused, executeImport]);
 
   // 取消
   const cancelImport = useCallback(() => {
