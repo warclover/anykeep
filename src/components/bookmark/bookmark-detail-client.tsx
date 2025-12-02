@@ -13,6 +13,7 @@ import {
   Edit,
   Trash2,
   Folder,
+  FolderInput,
   Calendar,
   User,
   Share2,
@@ -30,6 +31,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { EditBookmarkDialog } from "@/components/bookmark/edit-bookmark-dialog";
+import { MoveToFolderDialog } from "@/components/bookmark/move-to-folder-dialog";
 import { SummaryRenderer } from "@/components/bookmark/summary-renderer";
 import type { Bookmark } from "@/types/supabase";
 import { cn } from "@/lib/utils";
@@ -50,6 +52,7 @@ export function BookmarkDetailClient({ bookmark }: BookmarkDetailClientProps) {
   const platformConfig = getPlatformConfig(bookmark.platform);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showMoveDialog, setShowMoveDialog] = useState(false);
 
   // 判断是否为浏览器书签
   const isBrowserPlatform = [
@@ -601,6 +604,16 @@ export function BookmarkDetailClient({ bookmark }: BookmarkDetailClientProps) {
                   <Button
                     variant="outline"
                     size="sm"
+                    onClick={() => setShowMoveDialog(true)}
+                    className="flex items-center gap-2"
+                  >
+                    <FolderInput className="size-4" />
+                    <span>移动到</span>
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={handleDelete}
                     disabled={isDeleting}
                     className="flex items-center gap-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
@@ -632,6 +645,13 @@ export function BookmarkDetailClient({ bookmark }: BookmarkDetailClientProps) {
       <EditBookmarkDialog
         open={showEditDialog}
         onOpenChange={setShowEditDialog}
+        bookmark={bookmark}
+      />
+
+      {/* 移动到文件夹对话框 */}
+      <MoveToFolderDialog
+        open={showMoveDialog}
+        onOpenChange={setShowMoveDialog}
         bookmark={bookmark}
       />
 
