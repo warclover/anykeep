@@ -56,8 +56,29 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     .from("bookmarks")
     .select("*, folders(name)")
     .eq("user_id", user.id)
-    .is("deleted_at", null)
-    .limit(QUERY_LIMITS.HOME_BOOKMARKS_PER_PAGE);
+    .is("deleted_at", null);
+
+  // 虚拟文件夹筛选（优先级最高）
+  if (params.folder === "trash") {
+    // 垃圾箱：只显示垃圾箱中的收藏
+    query = query.eq("is_in_trash", true);
+  } else if (params.folder === "invalid") {
+    // 已失效：只显示失效且不在垃圾箱的收藏
+    query = query.eq("is_invalid", true).eq("is_in_trash", false);
+  } else if (params.folder === "high-value") {
+    // 高价值：只显示5星评级且不在垃圾箱的收藏
+    query = query.eq("rating", 5).eq("is_in_trash", false);
+  } else {
+    // 正常收藏：排除垃圾箱
+    query = query.eq("is_in_trash", false);
+
+    // 物理文件夹筛选（仅对非虚拟文件夹生效）
+    if (params.folder && !isNaN(parseInt(params.folder))) {
+      query = query.eq("folder_id", parseInt(params.folder));
+    }
+  }
+
+  query = query.limit(QUERY_LIMITS.HOME_BOOKMARKS_PER_PAGE);
 
   // 平台筛选（验证平台值有效性）
   if (params.platform === "browser") {
@@ -73,18 +94,13 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     VALID_PLATFORMS.includes(params.platform as Platform)
   ) {
     query = query.eq("platform", params.platform as Platform);
-  } else {
-    // 默认「全部」：排除浏览器平台
+  } else if (!params.folder) {
+    // 默认「全部」：排除浏览器平台（仅当不是虚拟文件夹时）
     query = query.not(
       "platform",
       "in",
       '("BROWSER_CHROME","BROWSER_EDGE","BROWSER_FIREFOX","BROWSER_SAFARI")',
     );
-  }
-
-  // 文件夹筛选
-  if (params.folder) {
-    query = query.eq("folder_id", parseInt(params.folder));
   }
 
   // 应用排序

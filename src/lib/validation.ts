@@ -272,6 +272,7 @@ export const getBookmarksQuerySchema = z.object({
     .enum(["WECHAT_OFFICIAL_ACCOUNT", "BILIBILI", "XIAOHONGSHU", "UNKNOWN"])
     .optional(),
   folderId: z.coerce.number().int().positive().optional(),
+  folder: z.enum(["trash", "invalid", "high-value"]).optional(), // 虚拟文件夹
   keyword: z
     .string()
     .trim()

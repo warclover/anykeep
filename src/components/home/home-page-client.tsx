@@ -36,8 +36,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { BookmarkCard } from "@/components/bookmark/bookmark-card";
+import { TrashBookmarkCard } from "@/components/bookmark/trash-bookmark-card";
 import { BrowserBookmarkVirtualList } from "@/components/bookmark/browser-bookmark-virtual-list";
 import { BrowserBookmarkEmptyState } from "@/components/bookmark/browser-bookmark-empty-state";
+import { TrashToolbar } from "@/components/trash/trash-toolbar";
 import { CreateBookmarkDialog } from "@/components/bookmark/create-bookmark-dialog";
 import { BatchImportDialog } from "@/components/bookmark/batch-import-dialog";
 import { BatchMoveDialog } from "@/components/bookmark/batch-move-dialog";
@@ -114,9 +116,15 @@ export function HomePageClient({
   const searchParams = useSearchParams();
   const currentPlatform = searchParams.get("platform") || "";
   const currentSort = searchParams.get("sort") || "created_desc";
+  const currentFolder = searchParams.get("folder") || "";
 
   // 检测是否为浏览器书签平台
   const isBrowserPlatform = currentPlatform === "browser";
+
+  // 检测是否为虚拟文件夹
+  const isTrashFolder = currentFolder === "trash";
+  const _isInvalidFolder = currentFolder === "invalid";
+  const _isHighValueFolder = currentFolder === "high-value";
 
   // 可取消请求 Hook
   const { fetchWithAbort } = useAbortableFetch();
@@ -306,6 +314,136 @@ export function HomePageClient({
       // 失败时恢复到快照状态
       setBookmarks(snapshot);
       toast.error(error instanceof Error ? error.message : "删除失败");
+    }
+  };
+
+  // 垃圾箱相关操作
+  const handleRestore = async (id: number) => {
+    const snapshot = [...bookmarks];
+
+    try {
+      // 乐观更新 UI
+      setBookmarks((prev) => prev.filter((b) => b.id !== id));
+
+      // 调用恢复 API
+      const res = await fetchWithAbort(`/api/bookmarks/${id}/restore`, {
+        method: "POST",
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error?.message || "恢复失败");
+      }
+
+      toast.success("已恢复收藏");
+
+      // 刷新数据
+      startTransition(() => {
+        router.refresh();
+      });
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        return;
+      }
+
+      setBookmarks(snapshot);
+      toast.error(error instanceof Error ? error.message : "恢复失败");
+    }
+  };
+
+  const handlePermanentDelete = async (id: number) => {
+    const snapshot = [...bookmarks];
+
+    try {
+      // 乐观更新 UI
+      setBookmarks((prev) => prev.filter((b) => b.id !== id));
+
+      // 调用永久删除 API
+      const res = await fetchWithAbort(`/api/bookmarks/${id}/permanent`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error?.message || "永久删除失败");
+      }
+
+      toast.success("已永久删除");
+
+      // 刷新数据
+      startTransition(() => {
+        router.refresh();
+      });
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        return;
+      }
+
+      setBookmarks(snapshot);
+      toast.error(error instanceof Error ? error.message : "永久删除失败");
+    }
+  };
+
+  const handleBatchRestore = async () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+
+    try {
+      const res = await fetchWithAbort("/api/bookmarks/batch-restore", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bookmarkIds: ids }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error?.message || "批量恢复失败");
+      }
+
+      // 清除选择
+      clearSelection();
+
+      toast.success(`已恢复 ${ids.length} 个收藏`);
+
+      // 刷新数据
+      startTransition(() => {
+        router.refresh();
+      });
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        return;
+      }
+
+      toast.error(error instanceof Error ? error.message : "批量恢复失败");
+    }
+  };
+
+  const handleEmptyTrash = async () => {
+    try {
+      const res = await fetchWithAbort("/api/trash/empty", {
+        method: "POST",
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error?.message || "清空垃圾箱失败");
+      }
+
+      // 清除所有书签
+      setBookmarks([]);
+
+      toast.success("垃圾箱已清空");
+
+      // 刷新数据
+      startTransition(() => {
+        router.refresh();
+      });
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        return;
+      }
+
+      toast.error(error instanceof Error ? error.message : "清空垃圾箱失败");
     }
   };
 
@@ -696,8 +834,20 @@ export function HomePageClient({
           })}
         </div>
 
+        {/* 垃圾箱工具栏 */}
+        {isTrashFolder && (
+          <div className="mt-4">
+            <TrashToolbar
+              selectedCount={selectedIds.size}
+              onBatchRestore={handleBatchRestore}
+              onEmptyTrash={handleEmptyTrash}
+              totalCount={bookmarks.length}
+            />
+          </div>
+        )}
+
         {/* 批量操作工具栏 */}
-        {isSelectionMode && selectedIds.size > 0 && (
+        {isSelectionMode && selectedIds.size > 0 && !isTrashFolder && (
           <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg flex items-center justify-between">
             <div className="flex items-center gap-3">
               <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
@@ -768,6 +918,24 @@ export function HomePageClient({
                 selectedIds={selectedIds}
                 onToggleSelect={toggleSelect}
               />
+            ) : isTrashFolder ? (
+              <>
+                {/* 垃圾箱卡片视图 */}
+                <div className={gridClassName}>
+                  {bookmarks.map((bookmark) => (
+                    <div key={bookmark.id} className="masonry-item">
+                      <TrashBookmarkCard
+                        bookmark={bookmark}
+                        onRestore={handleRestore}
+                        onPermanentDelete={handlePermanentDelete}
+                        isSelectionMode={isSelectionMode}
+                        isSelected={selectedIds.has(bookmark.id)}
+                        onToggleSelect={toggleSelect}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </>
             ) : (
               <>
                 {/* 卡片视图（支持行优先/列优先布局） */}

@@ -285,7 +285,7 @@ export async function PATCH(
 
 /**
  * DELETE /api/bookmarks/[id]
- * 删除收藏（软删除）
+ * 删除收藏（移入垃圾箱，30天后永久删除）
  */
 export async function DELETE(
   request: NextRequest,
@@ -329,7 +329,7 @@ export async function DELETE(
     // 2. 检查收藏是否存在且属于当前用户
     const { data: existingBookmark, error: checkError } = await supabase
       .from("bookmarks")
-      .select("id, user_id, is_locked")
+      .select("id, user_id, is_locked, is_in_trash")
       .eq("id", bookmarkId)
       .is("deleted_at", null)
       .single();
@@ -354,67 +354,50 @@ export async function DELETE(
       return forbiddenError(AUTH.FORBIDDEN);
     }
 
-    // V6.0新增：检查是否已锁定
+    // V6.0：检查是否已锁定
     if (existingBookmark.is_locked) {
       return forbiddenError(BOOKMARK.LOCKED_CANNOT_DELETE);
     }
 
-    // 3. 使用 Service Client 执行软删除（绕过 RLS，因为已验证权限）
+    // 3. 移入垃圾箱（而非永久删除）
     const serviceClient = await createServiceClient();
-    const { error: deleteError } = await serviceClient
+    const { error: moveToTrashError } = await serviceClient
       .from("bookmarks")
-      .update({ deleted_at: new Date().toISOString() })
+      .update({
+        is_in_trash: true,
+        trashed_at: new Date().toISOString(),
+      })
       .eq("id", bookmarkId);
 
     logger.debug(
       {
-        deleteError: deleteError?.message,
-        action: "soft_delete",
+        moveToTrashError: moveToTrashError?.message,
+        action: "move_to_trash",
       },
-      "DELETE: Delete operation",
+      "DELETE: Move to trash operation",
     );
 
-    if (deleteError) {
-      return databaseError(BOOKMARK.DELETE_ERROR(1), deleteError);
+    if (moveToTrashError) {
+      return databaseError(BOOKMARK.DELETE_ERROR(1), moveToTrashError);
     }
 
-    // 4. 减少用户存储计数
-    const { error: decrementError } = await serviceClient.rpc(
-      "decrement_storage_used",
-      {
-        target_user_id: user.id,
-      },
-    );
+    // 注意：不减少存储计数，因为收藏还在垃圾箱中
+    // 只有永久删除时才减少存储计数
 
-    logger.debug(
-      {
-        decrementError: decrementError?.message,
-        action: "decrement_storage",
-      },
-      "DELETE: Decrement storage",
-    );
-
-    if (decrementError) {
-      // 存储计数更新失败，但收藏已删除，记录错误但不影响返回
-      logger.error(
-        {
-          error: decrementError,
-          userId: user.id,
-          operation: "decrement_storage",
-        },
-        "Failed to decrement storage count",
-      );
-    }
-
-    // 5. 返回成功响应
+    // 4. 返回成功响应
     logger.info(
       {
         bookmarkId,
-        action: "delete_success",
+        action: "moved_to_trash",
       },
-      "DELETE: Success",
+      "DELETE: Moved to trash successfully",
     );
-    return successResponse({ id: bookmarkId, deleted: true });
+    return successResponse({
+      id: bookmarkId,
+      deleted: false, // 未永久删除
+      movedToTrash: true,
+      message: "已移入垃圾箱，30天后自动永久删除",
+    });
   } catch (error) {
     logger.error(
       {

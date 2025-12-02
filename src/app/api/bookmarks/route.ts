@@ -634,6 +634,7 @@ export async function GET(request: NextRequest) {
     const queryParams = {
       platform: searchParams.get("platform"),
       folderId: searchParams.get("folderId"),
+      folder: searchParams.get("folder"), // 虚拟文件夹
       keyword: searchParams.get("keyword"),
       cursor: searchParams.get("cursor"),
       limit: searchParams.get("limit"),
@@ -645,23 +646,40 @@ export async function GET(request: NextRequest) {
       return handleValidationError(validation.error);
     }
 
-    const { platform, folderId, keyword, cursor, limit } = validation.data;
+    const { platform, folderId, folder, keyword, cursor, limit } =
+      validation.data;
 
     // 3. 构建查询
     let query = supabase
       .from("bookmarks")
       .select("*, folders(name)", { count: "exact" })
       .eq("user_id", user.id)
-      .is("deleted_at", null)
-      .order("created_at", { ascending: false });
+      .is("deleted_at", null);
+
+    // 虚拟文件夹筛选（优先级最高）
+    if (folder === "trash") {
+      // 垃圾箱：只显示垃圾箱中的收藏
+      query = query.eq("is_in_trash", true);
+    } else if (folder === "invalid") {
+      // 已失效：只显示失效且不在垃圾箱的收藏
+      query = query.eq("is_invalid", true).eq("is_in_trash", false);
+    } else if (folder === "high-value") {
+      // 高价值：只显示5星评级且不在垃圾箱的收藏
+      query = query.eq("rating", 5).eq("is_in_trash", false);
+    } else {
+      // 正常收藏：排除垃圾箱
+      query = query.eq("is_in_trash", false);
+    }
+
+    query = query.order("created_at", { ascending: false });
 
     // 平台筛选
     if (platform) {
       query = query.eq("platform", platform);
     }
 
-    // 文件夹筛选
-    if (folderId) {
+    // 文件夹筛选（仅对非虚拟文件夹生效）
+    if (folderId && !folder) {
       query = query.eq("folder_id", folderId);
     }
 

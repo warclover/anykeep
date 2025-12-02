@@ -19,7 +19,6 @@ function detectPlatform(url: string): string {
     ZHIHU: [/zhihu\.com/, /zhuanlan\.zhihu\.com/],
     DOUYIN: [/douyin\.com/, /v\.douyin\.com/],
     WEIBO: [/weibo\.com/, /weibo\.cn/],
-    TOUTIAO: [/toutiao\.com/],
     JUEJIN: [/juejin\.cn/],
     JIANSHU: [/jianshu\.com/],
     CSDN: [/csdn\.net/, /blog\.csdn\.net/],
@@ -28,33 +27,40 @@ function detectPlatform(url: string): string {
     TWITTER: [/twitter\.com/, /x\.com/],
     MEDIUM: [/medium\.com/],
     NOTION: [/notion\.so/],
-  }
+  };
 
   for (const [platform, patterns] of Object.entries(platformPatterns)) {
     if (patterns.some((pattern) => pattern.test(url))) {
-      return platform
+      return platform;
     }
   }
 
-  return 'OTHER'
+  return "OTHER";
 }
 
 // 保存页面到 AnyKeep
-async function saveToAnyKeep(url: string, title: string): Promise<{ success: boolean; message: string }> {
+async function saveToAnyKeep(
+  url: string,
+  title: string,
+): Promise<{ success: boolean; message: string }> {
   try {
-    const storage = await browser.storage.local.get(['authToken', 'userId', 'apiUrl'])
+    const storage = await browser.storage.local.get([
+      "authToken",
+      "userId",
+      "apiUrl",
+    ]);
 
     if (!storage.authToken || !storage.userId) {
-      return { success: false, message: '请先登录 AnyKeep' }
+      return { success: false, message: "请先登录 AnyKeep" };
     }
 
-    const apiUrl = storage.apiUrl || 'https://anykeep.vercel.app'
-    const platform = detectPlatform(url)
+    const apiUrl = storage.apiUrl || "https://anykeep.vercel.app";
+    const platform = detectPlatform(url);
 
     const response = await fetch(`${apiUrl}/api/bookmarks`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         Authorization: `Bearer ${storage.authToken}`,
       },
       body: JSON.stringify({
@@ -63,182 +69,194 @@ async function saveToAnyKeep(url: string, title: string): Promise<{ success: boo
         platform,
         user_id: storage.userId,
       }),
-    })
+    });
 
     if (!response.ok) {
-      const error = await response.json()
-      return { success: false, message: error.message || '保存失败' }
+      const error = await response.json();
+      return { success: false, message: error.message || "保存失败" };
     }
 
-    return { success: true, message: '保存成功！' }
+    return { success: true, message: "保存成功！" };
   } catch (error) {
-    console.error('Save error:', error)
-    return { success: false, message: '网络错误，请稍后重试' }
+    console.error("Save error:", error);
+    return { success: false, message: "网络错误，请稍后重试" };
   }
 }
 
 // 显示通知
 function showNotification(title: string, message: string, isSuccess: boolean) {
   browser.notifications.create({
-    type: 'basic',
-    iconUrl: browser.runtime.getURL('/icon/128.png'),
+    type: "basic",
+    iconUrl: browser.runtime.getURL("/icon/128.png"),
     title,
     message,
     priority: isSuccess ? 0 : 2,
-  })
+  });
 }
 
 export default defineBackground(() => {
-  console.log('AnyKeep Extension: Background script loaded')
+  console.log("AnyKeep Extension: Background script loaded");
 
   // ==================== 右键菜单 ====================
   // 创建右键菜单
   browser.contextMenus.create({
-    id: 'save-page-to-anykeep',
-    title: '保存此页面到 AnyKeep',
-    contexts: ['page'],
-  })
+    id: "save-page-to-anykeep",
+    title: "保存此页面到 AnyKeep",
+    contexts: ["page"],
+  });
 
   browser.contextMenus.create({
-    id: 'save-link-to-anykeep',
-    title: '保存此链接到 AnyKeep',
-    contexts: ['link'],
-  })
+    id: "save-link-to-anykeep",
+    title: "保存此链接到 AnyKeep",
+    contexts: ["link"],
+  });
 
   // 右键菜单点击处理
   browser.contextMenus.onClicked.addListener(async (info, tab) => {
-    let url: string
-    let title: string
+    let url: string;
+    let title: string;
 
-    if (info.menuItemId === 'save-page-to-anykeep' && tab) {
-      url = info.pageUrl || tab.url || ''
-      title = tab.title || url
-    } else if (info.menuItemId === 'save-link-to-anykeep') {
-      url = info.linkUrl || ''
-      title = info.linkText || url
+    if (info.menuItemId === "save-page-to-anykeep" && tab) {
+      url = info.pageUrl || tab.url || "";
+      title = tab.title || url;
+    } else if (info.menuItemId === "save-link-to-anykeep") {
+      url = info.linkUrl || "";
+      title = info.linkText || url;
     } else {
-      return
+      return;
     }
 
     if (!url) {
-      showNotification('AnyKeep', '无法获取页面 URL', false)
-      return
+      showNotification("AnyKeep", "无法获取页面 URL", false);
+      return;
     }
 
-    const result = await saveToAnyKeep(url, title)
+    const result = await saveToAnyKeep(url, title);
     showNotification(
-      result.success ? '✓ 收藏成功' : '✗ 收藏失败',
+      result.success ? "✓ 收藏成功" : "✗ 收藏失败",
       result.message,
-      result.success
-    )
-  })
+      result.success,
+    );
+  });
 
   // ==================== 快捷键 ====================
   browser.commands.onCommand.addListener(async (command) => {
-    if (command === 'save-current-page') {
+    if (command === "save-current-page") {
       // 获取当前活动标签页
-      const [tab] = await browser.tabs.query({ active: true, currentWindow: true })
+      const [tab] = await browser.tabs.query({
+        active: true,
+        currentWindow: true,
+      });
 
       if (!tab || !tab.url) {
-        showNotification('AnyKeep', '无法获取当前页面', false)
-        return
+        showNotification("AnyKeep", "无法获取当前页面", false);
+        return;
       }
 
       // 过滤浏览器内部页面
-      if (tab.url.startsWith('chrome://') || tab.url.startsWith('edge://') || tab.url.startsWith('about:')) {
-        showNotification('AnyKeep', '不支持保存浏览器内部页面', false)
-        return
+      if (
+        tab.url.startsWith("chrome://") ||
+        tab.url.startsWith("edge://") ||
+        tab.url.startsWith("about:")
+      ) {
+        showNotification("AnyKeep", "不支持保存浏览器内部页面", false);
+        return;
       }
 
-      const result = await saveToAnyKeep(tab.url, tab.title || tab.url)
+      const result = await saveToAnyKeep(tab.url, tab.title || tab.url);
       showNotification(
-        result.success ? '✓ 收藏成功' : '✗ 收藏失败',
+        result.success ? "✓ 收藏成功" : "✗ 收藏失败",
         result.message,
-        result.success
-      )
+        result.success,
+      );
     }
-  })
+  });
 
   // ==================== 消息监听 ====================
   // 监听来自网页的消息（用于登录认证）
   browser.runtime.onMessageExternal.addListener(
     async (message, sender, sendResponse) => {
-      console.log('Received external message:', message)
+      console.log("Received external message:", message);
 
       // 健康检查
-      if (message.type === 'PING') {
-        sendResponse({ success: true, version: '1.0.0' })
-        return true
+      if (message.type === "PING") {
+        sendResponse({ success: true, version: "1.0.0" });
+        return true;
       }
 
-      if (message.type === 'ANYKEEP_AUTH') {
+      if (message.type === "ANYKEEP_AUTH") {
         // 存储认证信息
         await browser.storage.local.set({
           authToken: message.token,
           userId: message.userId,
-          apiUrl: message.apiUrl || 'http://localhost:3000',
-        })
+          apiUrl: message.apiUrl || "http://localhost:3000",
+        });
 
-        sendResponse({ success: true })
-        return true
+        sendResponse({ success: true });
+        return true;
       }
 
-      if (message.type === 'ANYKEEP_LOGOUT') {
+      if (message.type === "ANYKEEP_LOGOUT") {
         // 清除认证信息
-        await browser.storage.local.remove(['authToken', 'userId'])
-        sendResponse({ success: true })
-        return true
+        await browser.storage.local.remove(["authToken", "userId"]);
+        sendResponse({ success: true });
+        return true;
       }
 
-      return false
-    }
-  )
+      return false;
+    },
+  );
 
   // 监听来自 popup 的消息
-  browser.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
-    console.log('Received message:', message)
+  browser.runtime.onMessage.addListener(
+    async (message, sender, sendResponse) => {
+      console.log("Received message:", message);
 
-    if (message.type === 'GET_AUTH_STATUS') {
-      const storage = await browser.storage.local.get(['authToken', 'userId'])
-      sendResponse({
-        isLoggedIn: !!(storage.authToken && storage.userId),
-        userId: storage.userId,
-      })
-      return true
-    }
+      if (message.type === "GET_AUTH_STATUS") {
+        const storage = await browser.storage.local.get([
+          "authToken",
+          "userId",
+        ]);
+        sendResponse({
+          isLoggedIn: !!(storage.authToken && storage.userId),
+          userId: storage.userId,
+        });
+        return true;
+      }
 
-    if (message.type === 'CLEAR_AUTH') {
-      await browser.storage.local.remove(['authToken', 'userId'])
-      sendResponse({ success: true })
-      return true
-    }
+      if (message.type === "CLEAR_AUTH") {
+        await browser.storage.local.remove(["authToken", "userId"]);
+        sendResponse({ success: true });
+        return true;
+      }
 
-    if (message.type === 'SAVE_BOOKMARK') {
-      const result = await saveToAnyKeep(message.url, message.title)
-      sendResponse(result)
-      return true
-    }
+      if (message.type === "SAVE_BOOKMARK") {
+        const result = await saveToAnyKeep(message.url, message.title);
+        sendResponse(result);
+        return true;
+      }
 
-    return false
-  })
+      return false;
+    },
+  );
 
   // ==================== 初始化 ====================
   // 扩展安装/更新时的初始化
   browser.runtime.onInstalled.addListener(async (details) => {
-    console.log('Extension installed/updated:', details.reason)
+    console.log("Extension installed/updated:", details.reason);
 
-    if (details.reason === 'install') {
+    if (details.reason === "install") {
       // 首次安装，设置默认值（生产环境 URL）
       await browser.storage.local.set({
-        apiUrl: 'https://anykeep.vercel.app',
-      })
+        apiUrl: "https://anykeep.vercel.app",
+      });
 
       // 显示欢迎通知
       showNotification(
-        '欢迎使用 AnyKeep',
-        '使用 Ctrl+Shift+S 快速保存当前页面',
-        true
-      )
+        "欢迎使用 AnyKeep",
+        "使用 Ctrl+Shift+S 快速保存当前页面",
+        true,
+      );
     }
-  })
-})
+  });
+});
