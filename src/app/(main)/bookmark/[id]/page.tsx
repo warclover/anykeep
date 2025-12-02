@@ -42,7 +42,7 @@ export default async function BookmarkDetailPage({
   // 获取收藏详情
   const { data: bookmark, error } = await supabase
     .from("bookmarks")
-    .select("*, folders(id, name)")
+    .select("*, folders(id, name, parent_id)")
     .eq("id", bookmarkId)
     .eq("user_id", user.id)
     .is("deleted_at", null)
@@ -52,5 +52,33 @@ export default async function BookmarkDetailPage({
     notFound();
   }
 
-  return <BookmarkDetailClient bookmark={bookmark} />;
+  // 如果有文件夹，递归获取父文件夹链
+  let folderPath: Array<{ id: number; name: string }> = [];
+  if (bookmark.folders) {
+    const buildFolderPath = async (
+      folderId: number,
+    ): Promise<Array<{ id: number; name: string }>> => {
+      const { data: folder } = await supabase
+        .from("folders")
+        .select("id, name, parent_id")
+        .eq("id", folderId)
+        .single();
+
+      if (!folder) return [];
+
+      const path = [{ id: folder.id, name: folder.name }];
+
+      // 如果有父文件夹，递归获取
+      if (folder.parent_id) {
+        const parentPath = await buildFolderPath(folder.parent_id);
+        return [...parentPath, ...path];
+      }
+
+      return path;
+    };
+
+    folderPath = await buildFolderPath(bookmark.folders.id);
+  }
+
+  return <BookmarkDetailClient bookmark={bookmark} folderPath={folderPath} />;
 }

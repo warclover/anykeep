@@ -29,7 +29,6 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { EditBookmarkDialog } from "@/components/bookmark/edit-bookmark-dialog";
 import { MoveToFolderDialog } from "@/components/bookmark/move-to-folder-dialog";
 import { SummaryRenderer } from "@/components/bookmark/summary-renderer";
@@ -38,16 +37,18 @@ import type { Bookmark } from "@/types/supabase";
 import { cn } from "@/lib/utils";
 import { getPlatformConfig } from "@/lib/platform-utils";
 import { formatFriendlyDate } from "@/lib/utils/date-utils";
-import { generatePlaceholderImage } from "@/lib/utils/placeholder-image";
-import { getProxiedImageUrl } from "@/lib/utils/image-proxy";
 
 interface BookmarkDetailClientProps {
   bookmark: Bookmark & {
     folders?: { id: number; name: string } | null;
   };
+  folderPath?: Array<{ id: number; name: string }>;
 }
 
-export function BookmarkDetailClient({ bookmark }: BookmarkDetailClientProps) {
+export function BookmarkDetailClient({
+  bookmark,
+  folderPath = [],
+}: BookmarkDetailClientProps) {
   const router = useRouter();
   const { fetchWithAbort } = useAbortableFetch();
   const platformConfig = getPlatformConfig(bookmark.platform);
@@ -112,14 +113,6 @@ export function BookmarkDetailClient({ bookmark }: BookmarkDetailClientProps) {
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [editedNotes, setEditedNotes] = useState("");
   const [isSavingNotes, setIsSavingNotes] = useState(false);
-
-  // 图片预览状态
-  const [showImageLightbox, setShowImageLightbox] = useState(false);
-
-  // 生成封面图（真实封面或占位符，微信图片使用代理）
-  const coverImage =
-    getProxiedImageUrl(bookmark.cover_url) ||
-    generatePlaceholderImage(bookmark.title, bookmark.platform);
 
   const handleBack = () => {
     router.push("/home");
@@ -384,8 +377,8 @@ export function BookmarkDetailClient({ bookmark }: BookmarkDetailClientProps) {
   return (
     <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-900">
       {/* 内容区域 */}
-      <div className="flex-1 overflow-auto px-4 md:px-8 pt-2 pb-6">
-        <div className="max-w-4xl mx-auto">
+      <div className="flex-1 overflow-auto px-1 md:px-2 pt-1 pb-4">
+        <div className="max-w-5xl mx-auto">
           {/* 主要信息卡片 */}
           <Card className="relative">
             {/* 平台标识（右上角） */}
@@ -414,119 +407,108 @@ export function BookmarkDetailClient({ bookmark }: BookmarkDetailClientProps) {
             </div>
 
             <CardHeader>
-              {/* V6.0重构：新布局 - 缩略图自适应高度 + 右侧四行 */}
-              <div className="flex gap-4 md:gap-6 items-start">
-                {/* 缩略图 - 自适应高度对齐右侧四行 */}
-                {!isBrowserPlatform && (
-                  <div
-                    className="relative w-20 md:w-32 flex-shrink-0 self-stretch overflow-hidden rounded-lg shadow-md cursor-pointer group ring-2 ring-gray-200 dark:ring-gray-700 hover:ring-blue-500 dark:hover:ring-blue-400 transition-all"
-                    onClick={() => setShowImageLightbox(true)}
-                    title="点击查看大图"
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={coverImage}
-                      alt={bookmark.title}
-                      className="w-full h-full object-cover transition-transform group-hover:scale-110"
-                    />
-                    {/* 悬停提示图标 */}
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
-                      <ExternalLink className="size-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </div>
-                  </div>
-                )}
+              {/* 内容布局 */}
+              <div className="pr-12 md:pr-20 flex flex-col gap-2 md:gap-3">
+                {/* 第1行：标题 */}
+                <h1 className="text-lg md:text-2xl font-bold text-gray-900 dark:text-white">
+                  {bookmark.title}
+                </h1>
 
-                {/* 右侧四行内容 */}
-                <div className="flex-1 min-w-0 pr-12 md:pr-20 flex flex-col gap-2 md:gap-3">
-                  {/* 第1行：标题 */}
-                  <h1 className="text-xl md:text-3xl font-bold text-gray-900 dark:text-white">
-                    {bookmark.title}
-                  </h1>
-
-                  {/* 第2行：AI 标签 */}
-                  {bookmark.ai_tags && bookmark.ai_tags.length > 0 && (
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm md:text-base">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-pink-50 dark:bg-pink-900/30 border border-pink-200 dark:border-pink-700 text-pink-600 dark:text-pink-300 font-medium text-xs md:text-sm">
-                        AI
-                      </span>
-                      {bookmark.ai_tags.map((tag, index) => (
-                        <span key={tag} className="flex items-center gap-2">
-                          {index > 0 && (
-                            <span className="text-gray-300 dark:text-gray-600">
-                              |
-                            </span>
-                          )}
-                          <span className="text-gray-700 dark:text-gray-300">
-                            {tag}
-                          </span>
-                        </span>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* 第3行：元信息（来源、作者、时间） */}
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-gray-500 dark:text-gray-400">
-                    {bookmark.source_name && (
-                      <span className="font-medium text-gray-700 dark:text-gray-200">
-                        {bookmark.source_name}
-                      </span>
-                    )}
-                    {bookmark.author &&
-                      bookmark.author !== bookmark.source_name && (
-                        <>
+                {/* 第2行：AI 标签 */}
+                {bookmark.ai_tags && bookmark.ai_tags.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm md:text-base">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-pink-50 dark:bg-pink-900/30 border border-pink-200 dark:border-pink-700 text-pink-600 dark:text-pink-300 font-medium text-xs md:text-sm">
+                      AI
+                    </span>
+                    {bookmark.ai_tags.map((tag, index) => (
+                      <span key={tag} className="flex items-center gap-2">
+                        {index > 0 && (
                           <span className="text-gray-300 dark:text-gray-600">
                             |
                           </span>
-                          <div className="flex items-center gap-1">
-                            <User className="size-4" />
-                            <span>{bookmark.author}</span>
-                          </div>
-                        </>
-                      )}
-                    {bookmark.publish_time && (
+                        )}
+                        <span className="text-gray-700 dark:text-gray-300">
+                          {tag}
+                        </span>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* 第3行：元信息（来源、作者、时间） */}
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-gray-500 dark:text-gray-400">
+                  {bookmark.source_name && (
+                    <span className="font-bold text-gray-700 dark:text-gray-200">
+                      {bookmark.source_name}
+                    </span>
+                  )}
+                  {bookmark.author &&
+                    bookmark.author !== bookmark.source_name && (
                       <>
                         <span className="text-gray-300 dark:text-gray-600">
                           |
                         </span>
                         <div className="flex items-center gap-1">
-                          <Calendar className="size-4" />
-                          <span>
-                            发表 {formatFriendlyDate(bookmark.publish_time)}
-                          </span>
+                          <User className="size-4" />
+                          <span>{bookmark.author}</span>
                         </div>
                       </>
                     )}
-                    <span className="text-gray-300 dark:text-gray-600">|</span>
-                    <div className="flex items-center gap-1 text-gray-400">
-                      <Calendar className="size-4" />
-                      <span>
-                        收藏 {formatFriendlyDate(bookmark.created_at)}
+                  {bookmark.publish_time && (
+                    <>
+                      <span className="text-gray-300 dark:text-gray-600">
+                        |
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <Calendar className="size-4" />
+                        <span>
+                          发表 {formatFriendlyDate(bookmark.publish_time)}
+                        </span>
+                      </div>
+                    </>
+                  )}
+                  <span className="text-gray-300 dark:text-gray-600">|</span>
+                  <div className="flex items-center gap-1 text-gray-400">
+                    <Calendar className="size-4" />
+                    <span>收藏 {formatFriendlyDate(bookmark.created_at)}</span>
+                  </div>
+                </div>
+
+                {/* 第4行：文件夹 + 评级UI */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4">
+                  {/* 左侧：文件夹路径 */}
+                  {bookmark.folders && folderPath.length > 0 ? (
+                    <div className="flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400">
+                      <Folder className="size-4 flex-shrink-0" />
+                      <span className="flex items-center gap-1.5 flex-wrap">
+                        {folderPath.map((folder, index) => (
+                          <span
+                            key={folder.id}
+                            className="flex items-center gap-1.5"
+                          >
+                            {index > 0 && (
+                              <span className="text-gray-400 dark:text-gray-500">
+                                |
+                              </span>
+                            )}
+                            <span>{folder.name}</span>
+                          </span>
+                        ))}
                       </span>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="hidden sm:block" />
+                  )}
 
-                  {/* 第4行：文件夹 + 评级UI */}
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4">
-                    {/* 左侧：文件夹 */}
-                    {bookmark.folders ? (
-                      <div className="flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400">
-                        <Folder className="size-4" />
-                        <span>{bookmark.folders.name}</span>
-                      </div>
-                    ) : (
-                      <div className="hidden sm:block" />
-                    )}
-
-                    {/* 右侧：评级UI */}
-                    <BookmarkRating
-                      rating={rating}
-                      isLocked={isLocked}
-                      isMarkedForDeletion={isMarkedForDeletion}
-                      onRatingChange={handleRatingChange}
-                      onLockToggle={handleLockToggle}
-                      onMarkerToggle={handleMarkerToggle}
-                    />
-                  </div>
+                  {/* 右侧：评级UI */}
+                  <BookmarkRating
+                    rating={rating}
+                    isLocked={isLocked}
+                    isMarkedForDeletion={isMarkedForDeletion}
+                    onRatingChange={handleRatingChange}
+                    onLockToggle={handleLockToggle}
+                    onMarkerToggle={handleMarkerToggle}
+                  />
                 </div>
               </div>
             </CardHeader>
@@ -776,30 +758,6 @@ export function BookmarkDetailClient({ bookmark }: BookmarkDetailClientProps) {
         onOpenChange={setShowMoveDialog}
         bookmark={bookmark}
       />
-
-      {/* 图片预览 Lightbox（浏览器书签不显示） */}
-      {!isBrowserPlatform && (
-        <Dialog open={showImageLightbox} onOpenChange={setShowImageLightbox}>
-          <DialogContent className="max-w-7xl w-[95vw] h-[95vh] p-0 overflow-hidden bg-black/95">
-            <div className="relative w-full h-full flex items-center justify-center p-4">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={coverImage}
-                alt={bookmark.title}
-                className="max-w-full max-h-full object-contain"
-              />
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute top-4 right-4 text-white hover:bg-white/20"
-                onClick={() => setShowImageLightbox(false)}
-              >
-                <X className="size-6" />
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
     </div>
   );
 }
