@@ -1,11 +1,23 @@
 /**
  * 首页客户端组件
  * 实现平台筛选、加载更多、编辑删除等交互功能
+ *
+ * 性能优化：
+ * - 支持客户端数据获取模式（无服务端阻塞）
+ * - 初始加载时显示 skeleton
+ * - 平台数据缓存减少重复请求
  */
 
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
+import {
+  useState,
+  useTransition,
+  useEffect,
+  useCallback,
+  lazy,
+  Suspense,
+} from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   LayoutGrid,
@@ -43,11 +55,18 @@ import { BatchMoveDialog } from "@/components/bookmark/batch-move-dialog";
 import { ExportDialog } from "@/components/bookmark/export-dialog";
 import { BrowserBookmarkImportDialog } from "@/components/browser-bookmark";
 import { FolderRecommendationToast } from "@/components/bookmark/folder-recommendation-toast";
-import { ReclassifyBanner } from "@/components/bookmark/reclassify-banner";
 import { EmptyState } from "@/components/bookmark/empty-state";
+
+// 懒加载 ReclassifyBanner（非首屏关键组件）
+const ReclassifyBanner = lazy(() =>
+  import("@/components/bookmark/reclassify-banner").then((mod) => ({
+    default: mod.ReclassifyBanner,
+  })),
+);
 import { useFolderRecommendation } from "@/hooks/use-folder-recommendation";
 import { useDialogs } from "@/hooks/use-dialogs";
 import { useSelectionMode } from "@/hooks/use-selection-mode";
+import { usePlatformCache } from "@/hooks/use-platform-cache";
 import { ErrorMessage } from "@/components/ui/error-message";
 import {
   DropdownMenu,
@@ -58,12 +77,17 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { Bookmark } from "@/types/supabase";
 
+// 扩展的书签类型（包含文件夹信息）
+type BookmarkWithFolder = Bookmark & {
+  folders?: { name: string } | null;
+};
+
 interface HomePageClientProps {
-  bookmarks: (Bookmark & {
-    folders?: { name: string } | null;
-  })[];
+  // 服务端传递的初始数据（可选，用于 SSR 场景）
+  initialBookmarks?: BookmarkWithFolder[];
   error?: string;
 }
 
@@ -108,9 +132,9 @@ const _layoutOptions = [
 ] as const;
 
 export function HomePageClient({
-  bookmarks: initialBookmarks,
+  initialBookmarks,
   error,
-}: HomePageClientProps) {
+}: HomePageClientProps = {}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const currentPlatform = searchParams.get("platform") || "";
@@ -127,6 +151,9 @@ export function HomePageClient({
 
   // 可取消请求 Hook
   const { fetchWithAbort } = useAbortableFetch();
+
+  // 初始加载状态（当没有服务端数据时显示 skeleton）
+  const [isInitialLoading, _setIsInitialLoading] = useState(false);
 
   // 视图模式（从 localStorage 读取默认值）
   const [viewMode, setViewMode] = useState<ViewMode>("card");
@@ -273,17 +300,15 @@ export function HomePageClient({
     layoutMode === "row" && "layout-row",
     layoutMode === "column" && "layout-column",
   );
-  const [bookmarks, setBookmarks] = useState(initialBookmarks);
 
-  // 同步 props 和 state：当 initialBookmarks 更新时同步到 bookmarks state
-  // 这是必需的，因为 router.refresh() 会更新 props，但 useState 不会自动同步
-  useEffect(() => {
-    setBookmarks(initialBookmarks);
-    // 同时更新 hasMore 状态
-    setHasMore(initialBookmarks.length === 50);
-  }, [initialBookmarks]);
+  // ===== 状态声明 =====
+  const [bookmarks, setBookmarks] = useState<BookmarkWithFolder[]>(
+    initialBookmarks || [],
+  );
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(initialBookmarks.length === 50);
+  const [hasMore, setHasMore] = useState(
+    (initialBookmarks?.length || 0) === 50,
+  );
   const [_isPending, startTransition] = useTransition();
 
   // 对话框和下拉菜单状态管理
@@ -322,6 +347,91 @@ export function HomePageClient({
     exitSelectionMode,
   } = useSelectionMode();
 
+  // 平台数据缓存（性能优化）
+  const {
+    getCache,
+    setCache,
+    updateCacheItem,
+    removeCacheItem,
+    appendToCache,
+  } = usePlatformCache();
+
+  /**
+   * 获取书签数据（客户端）- 保留供未来重构使用
+   */
+  const _fetchBookmarks = useCallback(
+    async (platform: string, sort: string, folder: string) => {
+      try {
+        const apiParams = new URLSearchParams();
+        if (platform === "browser") {
+          apiParams.set("platform", "browser");
+        } else if (platform) {
+          apiParams.set("platform", platform);
+        } else {
+          // "全部" 时排除浏览器平台
+          apiParams.set("excludeBrowser", "true");
+        }
+        apiParams.set("sort", sort);
+        apiParams.set("limit", "50");
+        if (folder) {
+          apiParams.set("folder", folder);
+        }
+
+        const res = await fetchWithAbort(
+          `/api/bookmarks?${apiParams.toString()}`,
+          {
+            credentials: "include", // 确保发送认证 cookie
+          },
+        );
+        if (!res.ok) {
+          throw new Error("加载失败");
+        }
+
+        const data = await res.json();
+        return {
+          bookmarks: data.data.bookmarks as BookmarkWithFolder[],
+          hasMore: data.data.pagination.hasMore as boolean,
+        };
+      } catch (error) {
+        if (error instanceof Error && error.name === "AbortError") {
+          return null; // 请求被取消
+        }
+        throw error;
+      }
+    },
+    [fetchWithAbort],
+  );
+
+  // ===== 初始数据同步 =====
+  // 当有服务端数据时，更新缓存以供后续切换使用
+  useEffect(() => {
+    if (initialBookmarks && initialBookmarks.length > 0) {
+      setCache(
+        { platform: currentPlatform, sort: currentSort, folder: currentFolder },
+        initialBookmarks,
+        initialBookmarks.length === 50,
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // 只在首次挂载时执行
+
+  // ===== useEffect 数据同步 =====
+  // 同步 props 和 state：当 initialBookmarks 更新时同步到 bookmarks state
+  // 这仅在 SSR 模式下需要（有 initialBookmarks 时）
+  useEffect(() => {
+    if (!initialBookmarks) return;
+    setBookmarks(initialBookmarks);
+    // 同时更新 hasMore 状态
+    const newHasMore = initialBookmarks.length === 50;
+    setHasMore(newHasMore);
+    // 更新缓存
+    setCache(
+      { platform: currentPlatform, sort: currentSort, folder: currentFolder },
+      initialBookmarks,
+      newHasMore,
+    );
+  }, [initialBookmarks, currentPlatform, currentSort, currentFolder, setCache]);
+
   // AI 文件夹推荐
   const {
     recommendation,
@@ -356,20 +466,171 @@ export function HomePageClient({
     }
   };
 
-  const handlePlatformChange = (platformValue: string) => {
-    const params = new URLSearchParams(searchParams);
-    if (platformValue) {
-      params.set("platform", platformValue);
-    } else {
-      params.delete("platform");
-    }
-    router.push(`/home?${params.toString()}`);
-  };
+  /**
+   * 纯客户端平台切换（性能优化核心）
+   * 1. 优先使用缓存 → 即时响应
+   * 2. API 获取最新数据 → 后台更新
+   * 3. replaceState 更新 URL → 不触发服务端渲染
+   */
+  const handlePlatformChange = useCallback(
+    async (platformValue: string) => {
+      // 1. 优先使用缓存数据，提供即时反馈
+      const cached = getCache({
+        platform: platformValue,
+        sort: currentSort,
+        folder: currentFolder,
+      });
 
-  const handleSortChange = (sortValue: string) => {
+      if (cached) {
+        setBookmarks(cached.data);
+        setHasMore(cached.hasMore);
+      }
+
+      // 2. 更新 URL（不触发导航）
+      const params = new URLSearchParams(searchParams);
+      if (platformValue) {
+        params.set("platform", platformValue);
+      } else {
+        params.delete("platform");
+      }
+      const newUrl = `/home?${params.toString()}`;
+      window.history.replaceState(
+        { ...window.history.state, as: newUrl, url: newUrl },
+        "",
+        newUrl,
+      );
+
+      // 3. 调用 API 获取最新数据（后台更新）
+      try {
+        const apiParams = new URLSearchParams();
+        if (platformValue === "browser") {
+          apiParams.set("platform", "browser");
+        } else if (platformValue) {
+          apiParams.set("platform", platformValue);
+        } else {
+          // "全部" 时排除浏览器平台
+          apiParams.set("excludeBrowser", "true");
+        }
+        apiParams.set("sort", currentSort);
+        apiParams.set("limit", "50");
+        if (currentFolder) {
+          apiParams.set("folder", currentFolder);
+        }
+
+        const res = await fetchWithAbort(
+          `/api/bookmarks?${apiParams.toString()}`,
+          {
+            credentials: "include", // 确保发送认证 cookie
+          },
+        );
+        if (!res.ok) {
+          throw new Error("加载失败");
+        }
+
+        const data = await res.json();
+        const newBookmarks = data.data.bookmarks;
+        const newHasMore = data.data.pagination.hasMore;
+
+        // 更新状态和缓存
+        setBookmarks(newBookmarks);
+        setHasMore(newHasMore);
+        setCache(
+          { platform: platformValue, sort: currentSort, folder: currentFolder },
+          newBookmarks,
+          newHasMore,
+        );
+      } catch (error) {
+        // 如果是取消错误，静默处理（用户快速切换时会取消之前的请求）
+        if (error instanceof Error && error.name === "AbortError") {
+          return;
+        }
+        // 如果缓存命中，API 失败不影响用户体验
+        if (!cached) {
+          toast.error("加载失败，请重试");
+        }
+      }
+    },
+    [
+      currentSort,
+      currentFolder,
+      searchParams,
+      getCache,
+      setCache,
+      fetchWithAbort,
+    ],
+  );
+
+  /**
+   * 纯客户端排序切换（性能优化）
+   */
+  const handleSortChange = async (sortValue: string) => {
+    // 1. 优先使用缓存数据
+    const cached = getCache({
+      platform: currentPlatform,
+      sort: sortValue,
+      folder: currentFolder,
+    });
+
+    if (cached) {
+      setBookmarks(cached.data);
+      setHasMore(cached.hasMore);
+    }
+
+    // 2. 更新 URL（不触发导航）
     const params = new URLSearchParams(searchParams);
     params.set("sort", sortValue);
-    router.push(`/home?${params.toString()}`);
+    const newUrl = `/home?${params.toString()}`;
+    window.history.replaceState(
+      { ...window.history.state, as: newUrl, url: newUrl },
+      "",
+      newUrl,
+    );
+
+    // 3. 调用 API 获取最新数据
+    try {
+      const apiParams = new URLSearchParams();
+      if (currentPlatform === "browser") {
+        apiParams.set("platform", "browser");
+      } else if (currentPlatform) {
+        apiParams.set("platform", currentPlatform);
+      } else {
+        apiParams.set("excludeBrowser", "true");
+      }
+      apiParams.set("sort", sortValue);
+      apiParams.set("limit", "50");
+      if (currentFolder) {
+        apiParams.set("folder", currentFolder);
+      }
+
+      const res = await fetchWithAbort(
+        `/api/bookmarks?${apiParams.toString()}`,
+        {
+          credentials: "include", // 确保发送认证 cookie
+        },
+      );
+      if (!res.ok) {
+        throw new Error("加载失败");
+      }
+
+      const data = await res.json();
+      const newBookmarks = data.data.bookmarks;
+      const newHasMore = data.data.pagination.hasMore;
+
+      setBookmarks(newBookmarks);
+      setHasMore(newHasMore);
+      setCache(
+        { platform: currentPlatform, sort: sortValue, folder: currentFolder },
+        newBookmarks,
+        newHasMore,
+      );
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        return;
+      }
+      if (!cached) {
+        toast.error("加载失败，请重试");
+      }
+    }
   };
 
   const handleRetry = () => {
@@ -388,6 +649,8 @@ export function HomePageClient({
     try {
       // 乐观更新 UI
       setBookmarks((prev) => prev.filter((b) => b.id !== id));
+      // 同步更新缓存
+      removeCacheItem(id);
 
       // 调用删除 API（可取消）
       const res = await fetchWithAbort(`/api/bookmarks/${id}`, {
@@ -400,11 +663,7 @@ export function HomePageClient({
       }
 
       toast.success("删除成功");
-
-      // 刷新数据
-      startTransition(() => {
-        router.refresh();
-      });
+      // 乐观更新已完成，无需 router.refresh()
     } catch (error) {
       // 如果是取消错误，不显示错误提示
       if (error instanceof Error && error.name === "AbortError") {
@@ -436,11 +695,7 @@ export function HomePageClient({
       }
 
       toast.success("已恢复收藏");
-
-      // 刷新数据
-      startTransition(() => {
-        router.refresh();
-      });
+      // 乐观更新已完成，无需 router.refresh()
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") {
         return;
@@ -469,11 +724,7 @@ export function HomePageClient({
       }
 
       toast.success("已永久删除");
-
-      // 刷新数据
-      startTransition(() => {
-        router.refresh();
-      });
+      // 乐观更新已完成，无需 router.refresh()
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") {
         return;
@@ -488,7 +739,13 @@ export function HomePageClient({
     const ids = Array.from(selectedIds);
     if (ids.length === 0) return;
 
+    // 保存快照用于回滚
+    const snapshot = [...bookmarks];
+
     try {
+      // 乐观更新 UI
+      setBookmarks((prev) => prev.filter((b) => !ids.includes(b.id)));
+
       const res = await fetchWithAbort("/api/bookmarks/batch-restore", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -504,16 +761,14 @@ export function HomePageClient({
       deselectAll();
 
       toast.success(`已恢复 ${ids.length} 个收藏`);
-
-      // 刷新数据
-      startTransition(() => {
-        router.refresh();
-      });
+      // 乐观更新已完成，无需 router.refresh()
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") {
         return;
       }
 
+      // 失败时回滚
+      setBookmarks(snapshot);
       toast.error(error instanceof Error ? error.message : "批量恢复失败");
     }
   };
@@ -533,11 +788,7 @@ export function HomePageClient({
       setBookmarks([]);
 
       toast.success("垃圾箱已清空");
-
-      // 刷新数据
-      startTransition(() => {
-        router.refresh();
-      });
+      // setBookmarks([]) 已完成 UI 更新，无需 router.refresh()
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") {
         return;
@@ -564,6 +815,12 @@ export function HomePageClient({
             : b,
         ),
       );
+      // 同步更新缓存
+      updateCacheItem(id, (b) => ({
+        ...b,
+        is_read: isRead,
+        read_at: isRead ? new Date().toISOString() : null,
+      }));
 
       // 调用 PATCH API 更新已读状态
       const res = await fetchWithAbort(`/api/bookmarks/${id}`, {
@@ -616,9 +873,17 @@ export function HomePageClient({
 
       const data = await res.json();
       const newBookmarks = data.data.bookmarks;
+      const newHasMore = data.data.pagination.hasMore;
 
       setBookmarks((prev) => [...prev, ...newBookmarks]);
-      setHasMore(data.data.pagination.hasMore);
+      setHasMore(newHasMore);
+
+      // 同步追加到缓存
+      appendToCache(
+        { platform: currentPlatform, sort: currentSort, folder: currentFolder },
+        newBookmarks,
+        newHasMore,
+      );
     } catch (error) {
       // 如果是取消错误，不显示错误提示
       if (error instanceof Error && error.name === "AbortError") {
@@ -668,12 +933,10 @@ export function HomePageClient({
 
       // 更新 UI（乐观更新）
       setBookmarks((prev) => prev.filter((b) => !selectedIds.has(b.id)));
+      // 同步更新缓存
+      selectedIds.forEach((id) => removeCacheItem(id));
       exitSelectionMode();
-
-      // 刷新数据
-      startTransition(() => {
-        router.refresh();
-      });
+      // 乐观更新已完成，无需 router.refresh()
     } catch (error) {
       // 如果是取消错误，不显示错误提示
       if (error instanceof Error && error.name === "AbortError") {
@@ -949,10 +1212,32 @@ export function HomePageClient({
 
       {/* 内容区域 */}
       <div className="flex-1 overflow-auto px-4 md:px-8 py-0.5 md:py-1">
-        {/* V4.2 智能分类横幅 */}
-        <ReclassifyBanner className="mb-4" />
+        {/* V4.2 智能分类横幅（懒加载） */}
+        <Suspense fallback={null}>
+          <ReclassifyBanner className="mb-4" />
+        </Suspense>
 
-        {error ? (
+        {/* 初始加载骨架屏 */}
+        {isInitialLoading ? (
+          <div className="masonry-grid">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="masonry-item">
+                <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                  <Skeleton className="w-full h-40" />
+                  <div className="p-4 space-y-3">
+                    <Skeleton className="h-5 w-3/4" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-2/3" />
+                    <div className="flex gap-2 pt-2">
+                      <Skeleton className="h-6 w-16 rounded-full" />
+                      <Skeleton className="h-6 w-16 rounded-full" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : error ? (
           <ErrorMessage message={error} retry={handleRetry} />
         ) : bookmarks && bookmarks.length > 0 ? (
           <>

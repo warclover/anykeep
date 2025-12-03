@@ -78,7 +78,7 @@ export function PlatformFilter() {
   };
 
   const handlePlatformChange = (platformValue: string) => {
-    const params = new URLSearchParams(searchParams);
+    const params = new URLSearchParams(searchParams.toString());
     // 切换平台时清除文件夹筛选
     params.delete("folder");
     if (platformValue) {

@@ -266,13 +266,31 @@ export type UpdateBookmark = z.infer<typeof updateBookmarkSchema>;
 
 /**
  * 获取收藏列表查询参数验证
+ * 注意：searchParams.get() 返回 null（不是 undefined），需要使用 .nullable()
  */
 export const getBookmarksQuerySchema = z.object({
   platform: z
-    .enum(["WECHAT_OFFICIAL_ACCOUNT", "BILIBILI", "XIAOHONGSHU", "UNKNOWN"])
-    .optional(),
-  folderId: z.coerce.number().int().positive().optional(),
-  folder: z.enum(["trash", "invalid", "high-value"]).optional(), // 虚拟文件夹
+    .enum([
+      "WECHAT_OFFICIAL_ACCOUNT",
+      "BILIBILI",
+      "XIAOHONGSHU",
+      "UNKNOWN",
+      "browser", // 统一浏览器平台入口
+    ])
+    .nullable()
+    .optional()
+    .transform((val) => val ?? undefined),
+  excludeBrowser: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((val) => val === "true"), // 排除浏览器平台（用于"全部"）
+  folderId: z.coerce.number().int().positive().nullable().optional(),
+  folder: z
+    .enum(["trash", "invalid", "high-value"])
+    .nullable()
+    .optional()
+    .transform((val) => val ?? undefined), // 虚拟文件夹
   keyword: z
     .string()
     .trim()
@@ -280,9 +298,16 @@ export const getBookmarksQuerySchema = z.object({
       VALIDATION_LIMITS.SEARCH_QUERY_MAX_LENGTH,
       VALIDATION.TOO_LONG("关键词", VALIDATION_LIMITS.SEARCH_QUERY_MAX_LENGTH),
     )
-    .optional(),
-  cursor: z.coerce.number().int().positive().optional(),
+    .nullable()
+    .optional()
+    .transform((val) => val ?? undefined),
+  cursor: z.coerce.number().int().positive().nullable().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(50),
+  sort: z
+    .enum(["created_desc", "created_asc", "title_asc", "title_desc"])
+    .nullable()
+    .optional()
+    .transform((val) => val ?? undefined),
 });
 
 export type GetBookmarksQuery = z.infer<typeof getBookmarksQuerySchema>;
@@ -364,3 +389,29 @@ export const toggleReadSchema = z.object({
 });
 
 export type ToggleRead = z.infer<typeof toggleReadSchema>;
+
+/**
+ * 切换星标状态验证 Schema
+ * V8.0新增：星标/Pin置顶功能
+ */
+export const toggleStarredSchema = z.object({
+  isStarred: z.boolean({
+    message: "isStarred 必须是布尔值",
+  }),
+});
+
+export type ToggleStarred = z.infer<typeof toggleStarredSchema>;
+
+/**
+ * PATCH 收藏状态验证 Schema（统一处理已读和星标）
+ */
+export const patchBookmarkSchema = z
+  .object({
+    isRead: z.boolean().optional(),
+    isStarred: z.boolean().optional(),
+  })
+  .refine((data) => data.isRead !== undefined || data.isStarred !== undefined, {
+    message: "必须提供 isRead 或 isStarred 中的至少一个",
+  });
+
+export type PatchBookmark = z.infer<typeof patchBookmarkSchema>;

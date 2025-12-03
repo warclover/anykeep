@@ -1,128 +1,122 @@
-// 标记为动态路由
-export const dynamic = "force-dynamic";
-
 /**
  * 首页 - 收藏列表
+ *
+ * 性能优化：
+ * - 使用 unstable_noStore() 禁用缓存，确保每次获取最新数据
+ * - 服务端获取初始数据，避免客户端认证问题
+ * - 支持 Suspense loading 提升用户体验
  */
 
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { unstable_noStore } from "next/cache";
 import { HomePageClient } from "@/components/home/home-page-client";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
-import type { Platform } from "@/types/supabase";
-import { QUERY_LIMITS } from "@/lib/constants/app";
+import { createClient } from "@/lib/supabase/server";
+import type { Bookmark, Platform } from "@/types/supabase";
 
-// 有效的平台值（包含内容平台和浏览器平台）
-const VALID_PLATFORMS: Platform[] = [
-  "WECHAT_OFFICIAL_ACCOUNT",
-  "BILIBILI",
-  "XIAOHONGSHU",
-  "BROWSER_CHROME",
-  "BROWSER_EDGE",
-  "BROWSER_FIREFOX",
-  "BROWSER_SAFARI",
-  "UNKNOWN",
-];
+type BookmarkWithFolder = Bookmark & {
+  folders?: { name: string } | null;
+};
+
+async function getInitialBookmarks(
+  platform: string,
+  sort: string,
+  folder: string,
+): Promise<{ bookmarks: BookmarkWithFolder[]; error?: string }> {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return { bookmarks: [], error: "请先登录" };
+    }
+
+    let query = supabase
+      .from("bookmarks")
+      .select("*, folders(name)")
+      .eq("user_id", user.id)
+      .is("deleted_at", null);
+
+    // 虚拟文件夹筛选（优先级最高）
+    if (folder === "trash") {
+      query = query.eq("is_in_trash", true);
+    } else if (folder === "invalid") {
+      query = query.eq("is_invalid", true).eq("is_in_trash", false);
+    } else if (folder === "high-value") {
+      query = query.eq("rating", 5).eq("is_in_trash", false);
+    } else {
+      query = query.eq("is_in_trash", false);
+    }
+
+    // 平台筛选
+    if (platform === "browser") {
+      query = query.in("platform", [
+        "BROWSER_CHROME",
+        "BROWSER_EDGE",
+        "BROWSER_FIREFOX",
+        "BROWSER_SAFARI",
+      ]);
+    } else if (platform) {
+      query = query.eq("platform", platform as Platform);
+    } else {
+      // "全部"时排除浏览器平台
+      query = query.not(
+        "platform",
+        "in",
+        '("BROWSER_CHROME","BROWSER_EDGE","BROWSER_FIREFOX","BROWSER_SAFARI")',
+      );
+    }
+
+    // 排序
+    const sortField = sort?.split("_")[0] || "created";
+    const ascending = sort?.endsWith("_asc") || false;
+    if (sortField === "created") {
+      query = query.order("created_at", { ascending });
+    } else if (sortField === "title") {
+      query = query.order("title", { ascending, nullsFirst: false });
+    }
+
+    query = query.limit(50);
+
+    const { data, error } = await query;
+
+    if (error) {
+      return { bookmarks: [], error: error.message };
+    }
+
+    return { bookmarks: (data as BookmarkWithFolder[]) || [] };
+  } catch (error) {
+    return {
+      bookmarks: [],
+      error: error instanceof Error ? error.message : "加载失败",
+    };
+  }
+}
 
 interface HomePageProps {
-  searchParams: Promise<{
-    platform?: string;
-    folder?: string;
-    sort?: string;
-  }>;
+  searchParams: Promise<{ platform?: string; sort?: string; folder?: string }>;
 }
 
 export default async function HomePage({ searchParams }: HomePageProps) {
+  // 禁用缓存，确保每次都获取最新数据
+  unstable_noStore();
+
   const params = await searchParams;
-  const supabase = await createClient();
-
-  // 获取当前用户
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    redirect("/login");
-  }
-
-  // 解析排序参数
+  const platform = params.platform || "";
   const sort = params.sort || "created_desc";
-  const [sortField, sortOrder] = sort.split("_");
-  const ascending = sortOrder === "asc";
+  const folder = params.folder || "";
 
-  // 构建查询
-  let query = supabase
-    .from("bookmarks")
-    .select("*, folders(name)")
-    .eq("user_id", user.id)
-    .is("deleted_at", null);
-
-  // 虚拟文件夹筛选（优先级最高）
-  if (params.folder === "trash") {
-    // 垃圾箱：只显示垃圾箱中的收藏
-    query = query.eq("is_in_trash", true);
-  } else if (params.folder === "invalid") {
-    // 已失效：只显示失效且不在垃圾箱的收藏
-    query = query.eq("is_invalid", true).eq("is_in_trash", false);
-  } else if (params.folder === "high-value") {
-    // 高价值：只显示5星评级且不在垃圾箱的收藏
-    query = query.eq("rating", 5).eq("is_in_trash", false);
-  } else {
-    // 正常收藏：排除垃圾箱
-    query = query.eq("is_in_trash", false);
-
-    // 物理文件夹筛选（仅对非虚拟文件夹生效）
-    if (params.folder && !isNaN(parseInt(params.folder))) {
-      query = query.eq("folder_id", parseInt(params.folder));
-    }
-  }
-
-  query = query.limit(QUERY_LIMITS.HOME_BOOKMARKS_PER_PAGE);
-
-  // 平台筛选（验证平台值有效性）
-  if (params.platform === "browser") {
-    // 「浏览器书签」筛选：查询所有浏览器平台
-    query = query.in("platform", [
-      "BROWSER_CHROME",
-      "BROWSER_EDGE",
-      "BROWSER_FIREFOX",
-      "BROWSER_SAFARI",
-    ]);
-  } else if (
-    params.platform &&
-    VALID_PLATFORMS.includes(params.platform as Platform)
-  ) {
-    query = query.eq("platform", params.platform as Platform);
-  } else if (!params.folder) {
-    // 默认「全部」：排除浏览器平台（仅当不是虚拟文件夹时）
-    query = query.not(
-      "platform",
-      "in",
-      '("BROWSER_CHROME","BROWSER_EDGE","BROWSER_FIREFOX","BROWSER_SAFARI")',
-    );
-  }
-
-  // 应用排序
-  if (sortField === "created") {
-    query = query.order("created_at", { ascending });
-  } else if (sortField === "title") {
-    query = query.order("title", { ascending });
-  }
-
-  const { data: bookmarks, error } = await query;
-
-  if (error) {
-    return (
-      <ErrorBoundary>
-        <HomePageClient bookmarks={[]} error="加载收藏列表时出错，请稍后重试" />
-      </ErrorBoundary>
-    );
-  }
+  const { bookmarks, error } = await getInitialBookmarks(
+    platform,
+    sort,
+    folder,
+  );
 
   return (
     <ErrorBoundary>
-      <HomePageClient bookmarks={bookmarks || []} />
+      <HomePageClient initialBookmarks={bookmarks} error={error} />
     </ErrorBoundary>
   );
 }
