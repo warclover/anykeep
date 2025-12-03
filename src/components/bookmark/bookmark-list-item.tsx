@@ -1,13 +1,17 @@
 /**
  * 浏览器书签列表项组件
  * 专为浏览器书签设计的紧凑列表视图
+ *
+ * 性能优化：
+ * - 使用原生 img 标签避免 Next.js 图像优化器的网络请求
+ * - 使用 DuckDuckGo favicon 服务（国内可访问）
+ * - 添加 loading="lazy" 延迟加载
  */
 
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import {
   MoreVertical,
   Edit,
@@ -40,13 +44,15 @@ interface BookmarkListItemProps {
 
 /**
  * 从 URL 提取域名用于显示 Favicon
+ * 使用 DuckDuckGo favicon 服务（国内可访问，比 Google 更稳定）
  */
 function getFaviconUrl(url: string): string {
   try {
     const urlObj = new URL(url);
-    return `https://www.google.com/s2/favicons?domain=${urlObj.hostname}&sz=32`;
+    // DuckDuckGo favicon 服务：国内可访问，无需 VPN
+    return `https://icons.duckduckgo.com/ip3/${urlObj.hostname}.ico`;
   } catch {
-    return "/icons/default-favicon.svg"; // 降级方案
+    return ""; // 返回空字符串，让 onError 处理
   }
 }
 
@@ -81,7 +87,8 @@ export function BookmarkListItem({
     }
   };
 
-  const faviconUrl = getFaviconUrl(bookmark.url);
+  // 性能优化：缓存 Favicon URL 计算结果
+  const faviconUrl = useMemo(() => getFaviconUrl(bookmark.url), [bookmark.url]);
 
   return (
     <div
@@ -107,15 +114,16 @@ export function BookmarkListItem({
         </div>
       )}
 
-      {/* Favicon */}
+      {/* Favicon - 使用原生 img 避免 Next.js 图像优化器的网络请求超时 */}
       <div className="w-4 h-4 flex-shrink-0 relative">
-        {!imageError ? (
-          <Image
+        {!imageError && faviconUrl ? (
+          <img
             src={faviconUrl}
             alt=""
             width={16}
             height={16}
-            className="object-contain"
+            loading="lazy"
+            className="w-4 h-4 object-contain"
             onError={() => setImageError(true)}
           />
         ) : (

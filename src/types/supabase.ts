@@ -244,6 +244,8 @@ export type Database = {
           is_invalid: boolean; // V7.0新增：链接失效状态
           invalidated_at: string | null; // V7.0新增：首次检测到失效时间
           last_validation_at: string | null; // V7.0新增：最后验证时间
+          is_starred: boolean; // V8.0新增：星标/置顶状态
+          starred_at: string | null; // V8.0新增：星标时间
           created_at: string;
           updated_at: string;
           deleted_at: string | null;
@@ -282,6 +284,8 @@ export type Database = {
           is_invalid?: boolean; // V7.0新增
           invalidated_at?: string | null; // V7.0新增
           last_validation_at?: string | null; // V7.0新增
+          is_starred?: boolean; // V8.0新增
+          starred_at?: string | null; // V8.0新增
           created_at?: string;
           updated_at?: string;
           deleted_at?: string | null;
@@ -320,6 +324,8 @@ export type Database = {
           is_invalid?: boolean; // V7.0新增
           invalidated_at?: string | null; // V7.0新增
           last_validation_at?: string | null; // V7.0新增
+          is_starred?: boolean; // V8.0新增
+          starred_at?: string | null; // V8.0新增
           created_at?: string;
           updated_at?: string;
           deleted_at?: string | null;

@@ -177,7 +177,7 @@ export function FlipBookmarkCard({
   return (
     <div
       className={cn(
-        "flip-card-container",
+        "flip-card-container card-hover-effect",
         isSelected && "ring-2 ring-blue-500 dark:ring-blue-400 rounded-lg",
       )}
     >
@@ -205,16 +205,16 @@ export function FlipBookmarkCard({
               style={{ backgroundColor: getPlatformColor(bookmark.platform) }}
             />
 
-            {/* 封面图 */}
+            {/* 封面图 - P0.1: 16:9 + 顶部对齐 */}
             <div className="relative aspect-video overflow-hidden">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={coverImage}
                 alt={bookmark.title}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover card-cover-top card-cover-zoom"
               />
 
-              {/* 平台标识 - 放大显示 */}
+              {/* 平台标识 - P0.5: 放大 + 固定左上角 */}
               <div className="absolute top-3 left-3">
                 <PlatformBadge
                   platform={bookmark.platform}
@@ -250,10 +250,10 @@ export function FlipBookmarkCard({
               )}
             </div>
 
-            {/* 内容区域 */}
-            <div className="p-4 flex-1 flex flex-col">
-              {/* 标题 */}
-              <h3 className="font-semibold text-gray-900 dark:text-white line-clamp-2 mb-3 text-base">
+            {/* 内容区域 - P0.4: 增加图文间距 */}
+            <div className="p-4 pt-3 flex-1 flex flex-col card-content-spacing">
+              {/* 标题 - P0.2: 放大字号 + 渐隐截断 */}
+              <h3 className="font-semibold text-gray-900 dark:text-white card-title-fade mb-3 text-lg leading-snug">
                 {bookmark.title}
               </h3>
 

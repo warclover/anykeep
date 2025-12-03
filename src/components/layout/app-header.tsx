@@ -1,5 +1,8 @@
 /**
  * 应用顶部导航栏
+ *
+ * 用户数据通过 UserContext 客户端获取
+ * 避免每次页面切换都执行服务端数据库查询
  */
 
 "use client";
@@ -9,7 +12,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
-import type { User } from "@supabase/supabase-js";
 import { Moon, Sun, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,18 +22,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Skeleton } from "@/components/ui/skeleton";
 import { createClient } from "@/lib/supabase/client";
 import { MobileMenu } from "@/components/layout/mobile-menu";
 import { PlatformFilter } from "@/components/layout/platform-filter";
 import { HeaderMenu } from "@/components/layout/header-menu";
-import type { Profile } from "@/types/supabase";
+import { useUser } from "@/contexts/user-context";
 
-interface AppHeaderProps {
-  user: User;
-  profile: Profile | null;
-}
-
-export function AppHeader({ user, profile }: AppHeaderProps) {
+export function AppHeader() {
+  const { user, profile, isLoading } = useUser();
   const router = useRouter();
   const { theme, setTheme } = useTheme();
   const [loading, setLoading] = useState(false);
@@ -110,53 +109,61 @@ export function AppHeader({ user, profile }: AppHeaderProps) {
           <HeaderMenu />
 
           {/* 用户菜单 */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                className="relative h-9 gap-2 rounded-full px-2 hover:bg-gray-100 dark:hover:bg-gray-800"
-              >
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900 flex-shrink-0">
-                  <span className="text-sm font-medium text-purple-600 dark:text-purple-300">
-                    {profile?.nickname?.[0] ||
-                      user.email?.[0]?.toUpperCase() ||
-                      "U"}
+          {isLoading ? (
+            // 加载状态骨架屏
+            <div className="flex items-center gap-2 px-2">
+              <Skeleton className="h-8 w-8 rounded-full" />
+              <Skeleton className="hidden md:block h-4 w-16" />
+            </div>
+          ) : user ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="relative h-9 gap-2 rounded-full px-2 hover:bg-gray-100 dark:hover:bg-gray-800"
+                >
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900 flex-shrink-0">
+                    <span className="text-sm font-medium text-purple-600 dark:text-purple-300">
+                      {profile?.nickname?.[0] ||
+                        user.email?.[0]?.toUpperCase() ||
+                        "U"}
+                    </span>
+                  </div>
+                  {/* 用户名 - 在中等及以上屏幕显示 */}
+                  <span className="hidden md:inline-block text-sm font-medium text-gray-700 dark:text-gray-200 max-w-[120px] truncate">
+                    {profile?.nickname || user.email?.split("@")[0] || "用户"}
                   </span>
-                </div>
-                {/* 用户名 - 在中等及以上屏幕显示 */}
-                <span className="hidden md:inline-block text-sm font-medium text-gray-700 dark:text-gray-200 max-w-[120px] truncate">
-                  {profile?.nickname || user.email?.split("@")[0] || "用户"}
-                </span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56" align="end" forceMount>
-              <DropdownMenuLabel className="font-normal">
-                <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">
-                    {profile?.nickname || "用户"}
-                  </p>
-                  <p className="text-xs leading-none text-gray-500">
-                    {user.email}
-                  </p>
-                </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <span className="text-sm">
-                  已用 {profile?.storage_used || 0} /{" "}
-                  {profile?.storage_quota || 500} 条
-                </span>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={handleSignOut}
-                disabled={loading}
-                className="text-red-600 focus:text-red-600"
-              >
-                {loading ? "退出中..." : "退出登录"}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56" align="end" forceMount>
+                <DropdownMenuLabel className="font-normal">
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium leading-none">
+                      {profile?.nickname || "用户"}
+                    </p>
+                    <p className="text-xs leading-none text-gray-500">
+                      {user.email}
+                    </p>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem>
+                  <span className="text-sm">
+                    已用 {profile?.storage_used || 0} /{" "}
+                    {profile?.storage_quota || 500} 条
+                  </span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={handleSignOut}
+                  disabled={loading}
+                  className="text-red-600 focus:text-red-600"
+                >
+                  {loading ? "退出中..." : "退出登录"}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : null}
         </div>
       </div>
     </header>

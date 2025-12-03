@@ -8,7 +8,7 @@
 
 import type { NextRequest } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
-import { updateBookmarkSchema, toggleReadSchema } from "@/lib/validation";
+import { updateBookmarkSchema, patchBookmarkSchema } from "@/lib/validation";
 import {
   successResponse,
   handleValidationError,
@@ -188,7 +188,8 @@ export async function PUT(
 
 /**
  * PATCH /api/bookmarks/[id]
- * 切换已读状态
+ * 切换已读状态或星标状态
+ * V8.0: 支持星标/Pin置顶功能
  */
 export async function PATCH(
   request: NextRequest,
@@ -215,13 +216,13 @@ export async function PATCH(
 
     // 2. 解析并验证请求体
     const body = await request.json();
-    const validation = toggleReadSchema.safeParse(body);
+    const validation = patchBookmarkSchema.safeParse(body);
 
     if (!validation.success) {
       return handleValidationError(validation.error);
     }
 
-    const { isRead } = validation.data;
+    const { isRead, isStarred } = validation.data;
 
     // 3. 检查收藏是否存在且属于当前用户
     const { data: existingBookmark, error: checkError } = await supabase
@@ -242,11 +243,21 @@ export async function PATCH(
       return forbiddenError(AUTH.FORBIDDEN);
     }
 
-    // 4. 更新已读状态
-    const updateData: BookmarkUpdate = {
-      is_read: isRead,
-      read_at: isRead ? new Date().toISOString() : null,
-    };
+    // 4. 构建更新数据
+    const updateData: BookmarkUpdate = {};
+    const now = new Date().toISOString();
+
+    // 处理已读状态
+    if (isRead !== undefined) {
+      updateData.is_read = isRead;
+      updateData.read_at = isRead ? now : null;
+    }
+
+    // 处理星标状态
+    if (isStarred !== undefined) {
+      updateData.is_starred = isStarred;
+      updateData.starred_at = isStarred ? now : null;
+    }
 
     const { data: updatedBookmark, error: updateError } = await supabase
       .from("bookmarks")
@@ -263,9 +274,10 @@ export async function PATCH(
       {
         bookmarkId,
         isRead,
-        action: "toggle_read_status",
+        isStarred,
+        action: "patch_bookmark_status",
       },
-      "PATCH: Read status updated",
+      "PATCH: Bookmark status updated",
     );
 
     // 5. 返回更新后的收藏
@@ -275,7 +287,7 @@ export async function PATCH(
       {
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
-        operation: "toggle_read_status",
+        operation: "patch_bookmark_status",
       },
       "PATCH /api/bookmarks/[id] error",
     );

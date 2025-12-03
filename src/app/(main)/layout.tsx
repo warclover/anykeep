@@ -1,39 +1,28 @@
 /**
  * 主应用布局
  * 包含导航栏和侧边栏
+ *
+ * 性能优化：用户数据通过 UserContext 客户端获取
+ * 避免每次页面切换都执行服务端数据库查询
  */
 
-import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
 import { AppHeader } from "@/components/layout/app-header";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
 
-export default async function MainLayout({
+export default function MainLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login");
-  }
-
-  // 获取用户资料
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single();
+  // 注意：认证检查由 middleware 处理
+  // 用户数据通过 UserContext 客户端获取（见 root-providers.tsx）
+  // 这样页面切换时不会重复执行数据库查询
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* 顶部导航 */}
-      <AppHeader user={user} profile={profile} />
+      <AppHeader />
 
       <div className="flex">
         {/* 侧边栏（桌面端） */}

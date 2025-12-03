@@ -9,6 +9,7 @@
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { ServiceWorkerRegister } from "@/components/pwa/sw-register";
+import { UserProvider } from "@/contexts/user-context";
 
 interface RootProvidersProps {
   children: React.ReactNode;
@@ -22,7 +23,7 @@ export function RootProviders({ children }: RootProvidersProps) {
       enableSystem
       disableTransitionOnChange
     >
-      {children}
+      <UserProvider>{children}</UserProvider>
       <Toaster />
       <ServiceWorkerRegister />
     </ThemeProvider>

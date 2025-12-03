@@ -633,11 +633,13 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const queryParams = {
       platform: searchParams.get("platform"),
+      excludeBrowser: searchParams.get("excludeBrowser"),
       folderId: searchParams.get("folderId"),
       folder: searchParams.get("folder"), // 虚拟文件夹
       keyword: searchParams.get("keyword"),
       cursor: searchParams.get("cursor"),
       limit: searchParams.get("limit"),
+      sort: searchParams.get("sort"),
     };
 
     const validation = getBookmarksQuerySchema.safeParse(queryParams);
@@ -646,8 +648,16 @@ export async function GET(request: NextRequest) {
       return handleValidationError(validation.error);
     }
 
-    const { platform, folderId, folder, keyword, cursor, limit } =
-      validation.data;
+    const {
+      platform,
+      excludeBrowser,
+      folderId,
+      folder,
+      keyword,
+      cursor,
+      limit,
+      sort,
+    } = validation.data;
 
     // 3. 构建查询
     let query = supabase
@@ -671,11 +681,35 @@ export async function GET(request: NextRequest) {
       query = query.eq("is_in_trash", false);
     }
 
-    query = query.order("created_at", { ascending: false });
-
     // 平台筛选
-    if (platform) {
+    if (platform === "browser") {
+      // 「浏览器书签」统一入口：查询所有浏览器平台
+      query = query.in("platform", [
+        "BROWSER_CHROME",
+        "BROWSER_EDGE",
+        "BROWSER_FIREFOX",
+        "BROWSER_SAFARI",
+      ]);
+    } else if (platform) {
       query = query.eq("platform", platform);
+    } else if (excludeBrowser) {
+      // 「全部」时排除浏览器平台
+      query = query.not(
+        "platform",
+        "in",
+        '("BROWSER_CHROME","BROWSER_EDGE","BROWSER_FIREFOX","BROWSER_SAFARI")',
+      );
+    }
+
+    // 排序
+    const sortField = sort?.split("_")[0] || "created";
+    const ascending = sort?.endsWith("_asc") || false;
+    if (sortField === "created") {
+      query = query.order("created_at", { ascending });
+    } else if (sortField === "title") {
+      query = query.order("title", { ascending });
+    } else {
+      query = query.order("created_at", { ascending: false });
     }
 
     // 文件夹筛选（仅对非虚拟文件夹生效）

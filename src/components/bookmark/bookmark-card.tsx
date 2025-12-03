@@ -14,12 +14,13 @@ import {
   Check,
   FileText,
   Image as ImageIcon,
-  Folder,
   Tag,
   Circle,
   CheckCircle2,
-  Calendar,
+  Clock,
+  Zap,
   Lock,
+  Star,
 } from "lucide-react";
 import {
   Card,
@@ -38,11 +39,22 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { Bookmark } from "@/types/supabase";
 import { cn } from "@/lib/utils";
-import { formatRelativeTime, formatFriendlyDate } from "@/lib/utils/date-utils";
+import { formatRelativeTime } from "@/lib/utils/date-utils";
+import {
+  calculateReadingTime,
+  getContentTypeLabel,
+} from "@/lib/utils/reading-time";
+import { getPlatformHexColor } from "@/lib/constants/platforms";
 import { generatePlaceholderImage } from "@/lib/utils/placeholder-image";
 import { getProxiedImageUrl } from "@/lib/utils/image-proxy";
 import { PlatformBadge } from "@/components/ui/platform-badge";
 import { BookmarkRatingDisplay } from "@/components/bookmark/bookmark-rating-display";
+import {
+  separateUserTags,
+  getUsageTagStyle,
+  getAiTagColor,
+} from "@/lib/constants/usage-tags";
+import "./bookmark-card-flip.css"; // 复用卡片优化样式
 
 type ViewVariant = "card" | "list" | "compact";
 
@@ -53,6 +65,7 @@ interface BookmarkCardProps {
   onEdit?: (id: number) => void;
   onDelete?: (id: number) => void;
   onToggleRead?: (id: number, isRead: boolean) => void;
+  onToggleStarred?: (id: number, isStarred: boolean) => void; // V8.0新增：星标切换
   // 批量选择模式
   isSelectionMode?: boolean;
   isSelected?: boolean;
@@ -66,6 +79,7 @@ export function BookmarkCard({
   onEdit,
   onDelete,
   onToggleRead,
+  onToggleStarred,
   isSelectionMode = false,
   isSelected = false,
   onToggleSelect,
@@ -118,6 +132,12 @@ export function BookmarkCard({
     onToggleRead?.(bookmark.id, !bookmark.is_read);
   };
 
+  const handleToggleStarred = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onToggleStarred?.(bookmark.id, !bookmark.is_starred);
+  };
+
   // 操作菜单组件（复用）
   const ActionMenu = ({
     className = "",
@@ -156,6 +176,21 @@ export function BookmarkCard({
               <>
                 <CheckCircle2 className="mr-2 h-4 w-4" />
                 标记为已读
+              </>
+            )}
+          </DropdownMenuItem>
+        )}
+        {onToggleStarred && (
+          <DropdownMenuItem onClick={handleToggleStarred}>
+            {bookmark.is_starred ? (
+              <>
+                <Star className="mr-2 h-4 w-4 fill-yellow-400 text-yellow-400" />
+                取消星标
+              </>
+            ) : (
+              <>
+                <Star className="mr-2 h-4 w-4" />
+                添加星标
               </>
             )}
           </DropdownMenuItem>
@@ -347,27 +382,63 @@ export function BookmarkCard({
                   variant="compact"
                   className="flex-shrink-0"
                 />
-                {/* 标签 - 移动端也显示少量 */}
+                {/* P3: 标签 - 列表视图简化显示 */}
                 <div className="flex items-center gap-1.5 flex-wrap">
+                  {/* AI标签标识 */}
                   {bookmark.ai_tags && bookmark.ai_tags.length > 0 && (
                     <>
                       <Badge
                         variant="outline"
-                        className="bg-pink-100 dark:bg-pink-900/30 border-pink-200 dark:border-pink-700 text-pink-700 dark:text-pink-300 text-xs"
+                        className="bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 border-purple-200 dark:border-purple-700 text-purple-700 dark:text-purple-300 text-xs"
                       >
+                        <Zap className="size-2.5 mr-0.5" />
                         AI
                       </Badge>
-                      {bookmark.ai_tags.slice(0, 1).map((tag) => (
-                        <Badge
-                          key={`ai-${tag}`}
-                          variant="secondary"
-                          className="text-xs hidden sm:inline-flex"
-                        >
-                          {tag}
-                        </Badge>
-                      ))}
+                      {bookmark.ai_tags.slice(0, 1).map((tag) => {
+                        const colorStyle = getAiTagColor(tag);
+                        return (
+                          <Badge
+                            key={`ai-${tag}`}
+                            variant="outline"
+                            className={cn(
+                              "text-xs hidden sm:inline-flex",
+                              colorStyle.bgLight,
+                              colorStyle.bgDark,
+                              colorStyle.borderLight,
+                              colorStyle.borderDark,
+                              colorStyle.textLight,
+                              colorStyle.textDark,
+                            )}
+                          >
+                            {tag}
+                          </Badge>
+                        );
+                      })}
                     </>
                   )}
+                  {/* 用途标签（仅显示首个） */}
+                  {(() => {
+                    const { usageTags } = separateUserTags(bookmark.user_tags);
+                    if (usageTags.length === 0) return null;
+                    const style = getUsageTagStyle(usageTags[0]);
+                    if (!style) return null;
+                    return (
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "text-xs hidden sm:inline-flex",
+                          style.bgLight,
+                          style.bgDark,
+                          style.borderLight,
+                          style.borderDark,
+                          style.textLight,
+                          style.textDark,
+                        )}
+                      >
+                        {usageTags[0]}
+                      </Badge>
+                    );
+                  })()}
                 </div>
               </div>
 
@@ -406,22 +477,22 @@ export function BookmarkCard({
     >
       <Card
         className={cn(
-          "h-full hover:shadow-md transition-shadow cursor-pointer flex flex-col group relative",
+          "h-full card-hover-effect cursor-pointer flex flex-col group relative",
           isDeleting && "opacity-50 pointer-events-none",
           isSelected && "ring-2 ring-blue-500 dark:ring-blue-400",
         )}
       >
-        {/* 封面图 - 16:9 比例（总是显示，使用真实图片或占位符） */}
+        {/* 封面图 - P0.1: 16:9 + 顶部对齐 */}
         <div className="relative aspect-video overflow-hidden rounded-t-lg">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={coverImage}
             alt={bookmark.title}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover card-cover-top card-cover-zoom"
           />
-          {/* 平台标识 - PRD v4.1: Source Memory 强化 */}
-          <div className="absolute top-2 left-2">
-            <PlatformBadge platform={bookmark.platform} size="md" showName />
+          {/* 平台标识 - P0.5: 放大 + 固定左上角 */}
+          <div className="absolute top-3 left-3">
+            <PlatformBadge platform={bookmark.platform} size="lg" showName />
           </div>
 
           {/* V6.0新增：锁定图标 - 右上角（优先级高于选择和操作按钮） */}
@@ -429,6 +500,23 @@ export function BookmarkCard({
             <div className="absolute top-2 right-2">
               <div className="bg-yellow-500/90 text-white p-1.5 rounded-md shadow-md">
                 <Lock className="size-4" />
+              </div>
+            </div>
+          )}
+
+          {/* V8.0新增：星标图标 - 右上角（锁定图标右侧或单独显示） */}
+          {bookmark.is_starred && !isSelectionMode && !bookmark.is_locked && (
+            <div className="absolute top-2 right-2">
+              <div className="bg-yellow-400/90 text-white p-1.5 rounded-md shadow-md">
+                <Star className="size-4 fill-white" />
+              </div>
+            </div>
+          )}
+          {/* 星标 + 锁定同时显示时 */}
+          {bookmark.is_starred && bookmark.is_locked && !isSelectionMode && (
+            <div className="absolute top-2 right-12">
+              <div className="bg-yellow-400/90 text-white p-1.5 rounded-md shadow-md">
+                <Star className="size-4 fill-white" />
               </div>
             </div>
           )}
@@ -448,166 +536,226 @@ export function BookmarkCard({
           )}
         </div>
 
-        <CardHeader className="pb-3">
+        {/* P0.4: 增加图文间距 */}
+        <CardHeader className="pb-3 pt-4">
           <div className="flex items-start gap-2">
             {/* 未读指示器 */}
             {!bookmark.is_read && (
               <Circle className="size-2 mt-2 flex-shrink-0 fill-blue-500 text-blue-500" />
             )}
+            {/* P0.2: 标题放大 + 渐隐截断 */}
             <CardTitle
               className={cn(
-                "line-clamp-2 text-base min-h-[3rem] leading-6",
+                "card-title-fade text-lg min-h-[3.25rem] leading-snug",
                 bookmark.is_read && "text-gray-500 dark:text-gray-400",
               )}
             >
               {bookmark.title}
             </CardTitle>
           </div>
+          {/* P0.3: 摘要渐隐效果 */}
           {bookmark.ai_summary && (
-            <CardDescription className="line-clamp-2">
+            <CardDescription className="card-summary-fade">
               {bookmark.ai_summary}
             </CardDescription>
           )}
         </CardHeader>
 
-        <CardContent className="pt-0">
+        <CardContent className="pt-0 flex-1 flex flex-col">
+          {/* P1.3: 关键信息图标化 - 阅读时长 & 内容类型 */}
+          <div className="flex items-center gap-2 mb-2">
+            {/* 阅读时长 */}
+            {calculateReadingTime(
+              bookmark.word_count,
+              (bookmark.image_count ?? 0) > 0,
+              bookmark.image_count ?? 0,
+            ) && (
+              <span className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                <Clock className="size-3" />
+                {calculateReadingTime(
+                  bookmark.word_count,
+                  (bookmark.image_count ?? 0) > 0,
+                  bookmark.image_count ?? 0,
+                )}
+              </span>
+            )}
+            {/* 内容类型 */}
+            <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+              {getContentTypeLabel(
+                bookmark.word_count,
+                bookmark.image_count,
+                bookmark.platform,
+              )}
+            </span>
+            {/* 字数 & 图片数 */}
+            {bookmark.word_count != null && bookmark.word_count > 0 && (
+              <span className="flex items-center gap-1 text-xs text-gray-400">
+                <FileText className="size-3" />
+                {bookmark.word_count >= 10000
+                  ? `${(bookmark.word_count / 10000).toFixed(1)}万`
+                  : bookmark.word_count}
+              </span>
+            )}
+            {bookmark.image_count != null && bookmark.image_count > 0 && (
+              <span className="flex items-center gap-1 text-xs text-gray-400">
+                <ImageIcon className="size-3" aria-hidden="true" />
+                {bookmark.image_count}
+              </span>
+            )}
+          </div>
+
           {/* V6.0新增：评级显示 */}
           <BookmarkRatingDisplay
             rating={bookmark.rating}
             isLocked={bookmark.is_locked}
             variant="default"
-            className="mb-3"
+            className="mb-2"
           />
 
-          {/* 标签区域 */}
-          {((bookmark.ai_tags && bookmark.ai_tags.length > 0) ||
-            (bookmark.user_tags && bookmark.user_tags.length > 0)) && (
-            <div className="flex flex-wrap gap-1 mb-3">
-              {/* AI 标签 */}
-              {bookmark.ai_tags && bookmark.ai_tags.length > 0 && (
-                <>
-                  <Badge
-                    variant="outline"
-                    className="bg-pink-100 dark:bg-pink-900/30 border-pink-200 dark:border-pink-700 text-pink-700 dark:text-pink-300 text-xs"
-                  >
-                    AI
-                  </Badge>
-                  {bookmark.ai_tags.slice(0, 2).map((tag) => (
-                    <Badge
-                      key={`ai-${tag}`}
-                      variant="secondary"
-                      className="text-xs"
-                    >
-                      {tag}
-                    </Badge>
-                  ))}
-                </>
-              )}
-              {/* 用户标签 */}
-              {bookmark.user_tags && bookmark.user_tags.length > 0 && (
-                <>
-                  {bookmark.user_tags.slice(0, 2).map((tag) => (
-                    <Badge
-                      key={`user-${tag}`}
-                      variant="outline"
-                      className="bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300 text-xs"
-                    >
-                      <Tag className="size-2.5 mr-0.5" />
-                      {tag}
-                    </Badge>
-                  ))}
-                </>
-              )}
-              {/* 溢出计数 */}
-              {(bookmark.ai_tags?.length || 0) +
-                (bookmark.user_tags?.length || 0) >
-                4 && (
-                <Badge variant="outline" className="text-xs">
-                  +
-                  {(bookmark.ai_tags?.length || 0) +
-                    (bookmark.user_tags?.length || 0) -
-                    4}
-                </Badge>
-              )}
-            </div>
-          )}
+          {/* P3: 标签区域优化 - 分区独立显示 */}
+          {(() => {
+            const { usageTags, regularTags } = separateUserTags(
+              bookmark.user_tags,
+            );
+            const hasAiTags = bookmark.ai_tags && bookmark.ai_tags.length > 0;
+            const hasUsageTags = usageTags.length > 0;
+            const hasRegularTags = regularTags.length > 0;
+            const hasTags = hasAiTags || hasUsageTags || hasRegularTags;
 
-          {/* 元信息 - 第一行：来源/作者/文件夹 */}
-          <div className="flex items-center gap-1.5 text-xs text-gray-500 min-w-0">
-            {/* 来源名称和作者显示逻辑 */}
-            {bookmark.source_name &&
-            bookmark.author &&
-            bookmark.source_name !== bookmark.author ? (
-              // 两者都有且不同：显示 "来源 · 作者"
-              <span className="truncate">
-                <span className="text-gray-600 dark:text-gray-300">
-                  {bookmark.source_name}
-                </span>
-                <span className="mx-1">·</span>
-                <span>{bookmark.author}</span>
-              </span>
-            ) : (
-              // 只显示一个（优先 author）
-              <span className="truncate">
-                {bookmark.author || bookmark.source_name || "未知作者"}
-              </span>
-            )}
-            {bookmark.folders && (
-              <>
-                <span>·</span>
-                <span className="flex items-center gap-0.5 text-blue-600 dark:text-blue-400 truncate">
-                  <Folder className="size-3 flex-shrink-0" />
-                  <span className="truncate">{bookmark.folders.name}</span>
-                </span>
-              </>
-            )}
-          </div>
+            if (!hasTags) return null;
 
-          {/* 元信息 - 第二行：发布时间/收藏时间 */}
-          <div className="flex items-center gap-2 text-xs text-gray-400 mt-1">
-            {bookmark.publish_time && (
-              <span className="flex items-center gap-1">
-                <Calendar className="size-3" />
-                <span>发布 {formatFriendlyDate(bookmark.publish_time)}</span>
-              </span>
-            )}
-            <span className="flex items-center gap-1">
-              <Calendar className="size-3" />
-              <span>收藏 {formatFriendlyDate(bookmark.created_at)}</span>
-            </span>
-          </div>
+            return (
+              <div className="space-y-2 mb-2">
+                {/* P3.1: AI标签区 - 独立显示 + 闪电图标 */}
+                {hasAiTags && (
+                  <div className="p-2 rounded-lg bg-gradient-to-r from-purple-50/80 to-pink-50/80 dark:from-purple-900/20 dark:to-pink-900/20 border border-purple-100 dark:border-purple-800/50">
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <Zap className="size-3 text-purple-500 dark:text-purple-400" />
+                      <span className="text-[10px] font-medium text-purple-600 dark:text-purple-400 uppercase tracking-wider">
+                        AI 提取
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {/* P3.3: AI标签彩色Pill样式 */}
+                      {bookmark.ai_tags!.slice(0, 3).map((tag) => {
+                        const colorStyle = getAiTagColor(tag);
+                        return (
+                          <Badge
+                            key={`ai-${tag}`}
+                            variant="outline"
+                            className={cn(
+                              "text-xs font-normal",
+                              colorStyle.bgLight,
+                              colorStyle.bgDark,
+                              colorStyle.borderLight,
+                              colorStyle.borderDark,
+                              colorStyle.textLight,
+                              colorStyle.textDark,
+                            )}
+                          >
+                            {tag}
+                          </Badge>
+                        );
+                      })}
+                      {bookmark.ai_tags!.length > 3 && (
+                        <Badge
+                          variant="outline"
+                          className="text-xs text-gray-500"
+                        >
+                          +{bookmark.ai_tags!.length - 3}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                )}
 
-          {/* 内容统计 */}
-          {(bookmark.word_count || bookmark.image_count) && (
-            <div className="flex items-center gap-3 mt-1.5 text-xs text-gray-600 dark:text-gray-300">
-              {bookmark.word_count != null && bookmark.word_count > 0 && (
-                <span className="flex items-center gap-1">
-                  <FileText className="size-3" />
-                  {bookmark.word_count >= 10000
-                    ? `${(bookmark.word_count / 10000).toFixed(1)}万字`
-                    : `${bookmark.word_count}字`}
-                </span>
-              )}
-              {bookmark.image_count != null && bookmark.image_count > 0 && (
-                <span className="flex items-center gap-1">
-                  <ImageIcon className="size-3" aria-hidden="true" />
-                  {bookmark.image_count}图
-                </span>
-              )}
-            </div>
-          )}
+                {/* P3.2: 用途标签 - 预设彩色样式 */}
+                {hasUsageTags && (
+                  <div className="flex flex-wrap gap-1">
+                    {usageTags.map((tag) => {
+                      const style = getUsageTagStyle(tag);
+                      if (!style) return null;
+                      return (
+                        <Badge
+                          key={`usage-${tag}`}
+                          variant="outline"
+                          className={cn(
+                            "text-xs font-medium",
+                            style.bgLight,
+                            style.bgDark,
+                            style.borderLight,
+                            style.borderDark,
+                            style.textLight,
+                            style.textDark,
+                          )}
+                        >
+                          {tag}
+                        </Badge>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* 普通用户标签 */}
+                {hasRegularTags && (
+                  <div className="flex flex-wrap gap-1">
+                    {regularTags.slice(0, 2).map((tag) => (
+                      <Badge
+                        key={`user-${tag}`}
+                        variant="outline"
+                        className="bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300 text-xs"
+                      >
+                        <Tag className="size-2.5 mr-0.5" />
+                        {tag}
+                      </Badge>
+                    ))}
+                    {regularTags.length > 2 && (
+                      <Badge
+                        variant="outline"
+                        className="text-xs text-gray-500"
+                      >
+                        +{regularTags.length - 2}
+                      </Badge>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* 处理状态 */}
           {bookmark.status === "PROCESSING" && (
-            <div className="mt-2 flex items-center gap-1 text-xs text-blue-600">
+            <div className="mb-2 flex items-center gap-1 text-xs text-blue-600">
               <span className="animate-pulse">●</span>
-              处理中...
+              AI 正在提炼要点...
             </div>
           )}
           {bookmark.status === "FAILED" && (
-            <div className="mt-2 text-xs text-red-500">处理失败</div>
+            <div className="mb-2 text-xs text-red-500">处理失败</div>
           )}
+
+          {/* P1.2: 次要信息弱化到底部一行 */}
+          <div className="mt-auto pt-2 border-t border-gray-100 dark:border-gray-700">
+            <div className="flex items-center justify-between text-xs text-gray-400">
+              {/* 左侧：来源/作者 */}
+              <span className="truncate max-w-[60%]">
+                {bookmark.source_name || bookmark.author || "未知来源"}
+              </span>
+              {/* 右侧：时间 */}
+              <span className="flex-shrink-0">
+                {formatRelativeTime(
+                  bookmark.publish_time || bookmark.created_at,
+                )}
+              </span>
+            </div>
+          </div>
         </CardContent>
+
+        {/* P1.4: 平台主色底部条 */}
+        <div
+          className="h-1 w-full rounded-b-lg"
+          style={{ backgroundColor: getPlatformHexColor(bookmark.platform) }}
+        />
       </Card>
     </Link>
   );

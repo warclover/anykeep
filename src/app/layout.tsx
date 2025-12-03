@@ -3,8 +3,9 @@ import { Inter } from "next/font/google";
 import { RootProviders } from "@/components/providers/root-providers";
 import "./globals.css";
 
-// 标记为动态路由
-export const dynamic = "force-dynamic";
+// 注意：根布局不应设置 force-dynamic
+// 它只包含静态 Providers，不获取数据
+// 各页面根据需要自行设置动态策略
 
 const inter = Inter({
   subsets: ["latin"],
