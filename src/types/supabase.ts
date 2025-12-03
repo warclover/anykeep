@@ -38,6 +38,8 @@ export type Database = {
           storage_quota: number;
           storage_used: number;
           settings: Json;
+          last_trash_cleanup_at: string | null; // V7.0新增
+          last_validation_at: string | null; // V7.0新增
           created_at: string;
           updated_at: string;
         };
@@ -50,6 +52,8 @@ export type Database = {
           storage_quota?: number;
           storage_used?: number;
           settings?: Json;
+          last_trash_cleanup_at?: string | null; // V7.0新增
+          last_validation_at?: string | null; // V7.0新增
           created_at?: string;
           updated_at?: string;
         };
@@ -62,6 +66,8 @@ export type Database = {
           storage_quota?: number;
           storage_used?: number;
           settings?: Json;
+          last_trash_cleanup_at?: string | null; // V7.0新增
+          last_validation_at?: string | null; // V7.0新增
           created_at?: string;
           updated_at?: string;
         };
@@ -233,6 +239,11 @@ export type Database = {
           rating: number; // V6.0新增：评级（0-5星，0表示未评级）
           is_locked: boolean; // V6.0新增：锁定状态（防止误删）
           is_marked_for_deletion: boolean; // V6.0新增：标记为待删除（仅UI标识）
+          is_in_trash: boolean; // V7.0新增：垃圾箱状态
+          trashed_at: string | null; // V7.0新增：进入垃圾箱时间
+          is_invalid: boolean; // V7.0新增：链接失效状态
+          invalidated_at: string | null; // V7.0新增：首次检测到失效时间
+          last_validation_at: string | null; // V7.0新增：最后验证时间
           created_at: string;
           updated_at: string;
           deleted_at: string | null;
@@ -266,6 +277,11 @@ export type Database = {
           rating?: number; // V6.0新增
           is_locked?: boolean; // V6.0新增
           is_marked_for_deletion?: boolean; // V6.0新增
+          is_in_trash?: boolean; // V7.0新增
+          trashed_at?: string | null; // V7.0新增
+          is_invalid?: boolean; // V7.0新增
+          invalidated_at?: string | null; // V7.0新增
+          last_validation_at?: string | null; // V7.0新增
           created_at?: string;
           updated_at?: string;
           deleted_at?: string | null;
@@ -299,6 +315,11 @@ export type Database = {
           rating?: number; // V6.0新增
           is_locked?: boolean; // V6.0新增
           is_marked_for_deletion?: boolean; // V6.0新增
+          is_in_trash?: boolean; // V7.0新增
+          trashed_at?: string | null; // V7.0新增
+          is_invalid?: boolean; // V7.0新增
+          invalidated_at?: string | null; // V7.0新增
+          last_validation_at?: string | null; // V7.0新增
           created_at?: string;
           updated_at?: string;
           deleted_at?: string | null;
@@ -414,6 +435,69 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "import_history_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      // V7.0新增：失效检测历史记录表
+      validation_history: {
+        Row: {
+          id: number;
+          user_id: string;
+          total_bookmarks: number;
+          total_checked: number;
+          skipped_count: number;
+          valid_count: number;
+          invalid_count: number;
+          error_count: number;
+          duration_ms: number | null;
+          average_response_time_ms: number | null;
+          invalid_bookmarks: Json | null;
+          skipped_reasons: Json | null;
+          started_at: string;
+          completed_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: number;
+          user_id: string;
+          total_bookmarks: number;
+          total_checked: number;
+          skipped_count: number;
+          valid_count: number;
+          invalid_count: number;
+          error_count: number;
+          duration_ms?: number | null;
+          average_response_time_ms?: number | null;
+          invalid_bookmarks?: Json | null;
+          skipped_reasons?: Json | null;
+          started_at: string;
+          completed_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: number;
+          user_id?: string;
+          total_bookmarks?: number;
+          total_checked?: number;
+          skipped_count?: number;
+          valid_count?: number;
+          invalid_count?: number;
+          error_count?: number;
+          duration_ms?: number | null;
+          average_response_time_ms?: number | null;
+          invalid_bookmarks?: Json | null;
+          skipped_reasons?: Json | null;
+          started_at?: string;
+          completed_at?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "validation_history_user_id_fkey";
             columns: ["user_id"];
             isOneToOne: false;
             referencedRelation: "users";

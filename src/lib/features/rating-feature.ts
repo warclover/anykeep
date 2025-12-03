@@ -37,7 +37,9 @@ export function hasRatingFeature(
   membershipType?: MembershipType | null,
 ): boolean {
   if (!membershipType) return false;
-  return RATING_FEATURE_CONFIG.allowedTiers.includes(membershipType);
+  return (
+    RATING_FEATURE_CONFIG.allowedTiers as readonly MembershipType[]
+  ).includes(membershipType);
 }
 
 /**

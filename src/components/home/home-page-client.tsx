@@ -59,8 +59,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import type { Bookmark } from "@/types/supabase";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { UserAvatar } from "@/components/ui/user-avatar";
 
 interface HomePageClientProps {
   bookmarks: (Bookmark & {
@@ -740,11 +738,13 @@ export function HomePageClient({
 
           {/* 右侧操作按钮 */}
           <div className="flex items-center gap-1 flex-shrink-0">
-            {/* 主题切换按钮 */}
-            <ThemeToggle />
-
-            {/* 搜索按钮（占位，后续实现） */}
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+            {/* 搜索按钮 */}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0"
+              onClick={() => router.push("/search")}
+            >
               <Search className="size-4" />
             </Button>
 
@@ -879,9 +879,6 @@ export function HomePageClient({
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-
-            {/* 用户头像 */}
-            <UserAvatar />
           </div>
         </div>
 
