@@ -1,15 +1,16 @@
-// 标记为动态路由
-export const dynamic = "force-dynamic";
-
 /**
  * 搜索页面 - 服务端组件
+ * 优化：使用 Suspense 流式渲染热门标签，提升首屏加载速度
  */
 
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { SearchPageClient } from "@/components/search/search-page-client";
+import { HotTagsSection } from "@/components/search/hot-tags-section";
+import { HotTagsSkeleton } from "@/components/search/hot-tags-skeleton";
 import { searchQuerySchema } from "@/lib/validation";
-import { QUERY_LIMITS, ANALYTICS } from "@/lib/constants/app";
+import { QUERY_LIMITS } from "@/lib/constants/app";
 import { searchBookmarksFulltext } from "@/lib/utils/fulltext-search";
 import { searchBookmarksHybrid } from "@/lib/utils/semantic-search";
 import type { Bookmark } from "@/types/supabase";
@@ -88,34 +89,19 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
     }
   }
 
-  // 获取热门标签（从所有收藏的 AI 标签中统计）
-  const { data: allBookmarks } = await supabase
-    .from("bookmarks")
-    .select("ai_tags")
-    .eq("user_id", user.id)
-    .is("deleted_at", null)
-    .not("ai_tags", "is", null);
-
-  // 统计标签频率
-  const tagCounts: Record<string, number> = {};
-  allBookmarks?.forEach((bookmark) => {
-    bookmark.ai_tags?.forEach((tag: string) => {
-      tagCounts[tag] = (tagCounts[tag] || 0) + 1;
-    });
-  });
-
-  // 获取热门标签
-  const hotTags = Object.entries(tagCounts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, ANALYTICS.TOP_TAGS_COUNT)
-    .map(([tag]) => tag);
+  // 热门标签使用 Suspense 流式渲染，不阻塞主页面
+  const hotTagsSlot = (
+    <Suspense fallback={<HotTagsSkeleton />}>
+      <HotTagsSection userId={user.id} />
+    </Suspense>
+  );
 
   return (
     <SearchPageClient
       initialQuery={params.q || ""}
       initialAIMode={params.ai === "true"}
       searchResults={searchResults}
-      hotTags={hotTags}
+      hotTagsSlot={hotTagsSlot}
       error={searchError}
     />
   );

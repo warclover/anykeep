@@ -1,124 +1,125 @@
 /**
  * 搜索页面客户端组件
+ * 优化：接收 hotTagsSlot 作为流式渲染的插槽
  */
 
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { Search, Sparkles, Clock, X } from 'lucide-react'
-import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Switch } from '@/components/ui/switch'
-import { Label } from '@/components/ui/label'
-import { BookmarkCard } from '@/components/bookmark/bookmark-card'
-import { ErrorMessage } from '@/components/ui/error-message'
-import type { Bookmark } from '@/types/supabase'
-// cn import removed - unused
+import { useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import { Search, Sparkles, Clock, X } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { BookmarkCard } from "@/components/bookmark/bookmark-card";
+import { ErrorMessage } from "@/components/ui/error-message";
+import type { Bookmark } from "@/types/supabase";
 
 interface SearchPageClientProps {
-  initialQuery: string
-  initialAIMode: boolean
-  searchResults: (Bookmark & { folders?: { name: string } | null })[]
-  hotTags: string[]
-  error?: string
+  initialQuery: string;
+  initialAIMode: boolean;
+  searchResults: (Bookmark & { folders?: { name: string } | null })[];
+  /** 热门标签插槽 - 支持 Suspense 流式渲染 */
+  hotTagsSlot?: ReactNode;
+  error?: string;
 }
 
-const SEARCH_HISTORY_KEY = 'anykeep_search_history'
-const MAX_HISTORY = 10
+const SEARCH_HISTORY_KEY = "anykeep_search_history";
+const MAX_HISTORY = 10;
 
 export function SearchPageClient({
   initialQuery,
   initialAIMode,
   searchResults,
-  hotTags,
+  hotTagsSlot,
   error,
 }: SearchPageClientProps) {
-  const router = useRouter()
-    const [query, setQuery] = useState(initialQuery)
-  const [aiMode, setAIMode] = useState(initialAIMode)
+  const router = useRouter();
+  const [query, setQuery] = useState(initialQuery);
+  const [aiMode, setAIMode] = useState(initialAIMode);
   const [searchHistory, setSearchHistory] = useState<string[]>(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       try {
-        const history = localStorage.getItem(SEARCH_HISTORY_KEY)
-        return history ? JSON.parse(history) : []
+        const history = localStorage.getItem(SEARCH_HISTORY_KEY);
+        return history ? JSON.parse(history) : [];
       } catch {
-        return []
+        return [];
       }
     }
-    return []
-  })
-  const [showHistory, setShowHistory] = useState(false)
+    return [];
+  });
+  const [showHistory, setShowHistory] = useState(false);
 
   const handleRetry = () => {
-    router.refresh()
-  }
+    router.refresh();
+  };
 
-    // 保存搜索历史
+  // 保存搜索历史
   const saveToHistory = (searchQuery: string) => {
-    if (!searchQuery.trim()) return
+    if (!searchQuery.trim()) return;
 
     const newHistory = [
       searchQuery,
       ...searchHistory.filter((item) => item !== searchQuery),
-    ].slice(0, MAX_HISTORY)
+    ].slice(0, MAX_HISTORY);
 
-    setSearchHistory(newHistory)
-    localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(newHistory))
-  }
+    setSearchHistory(newHistory);
+    localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(newHistory));
+  };
 
   // 清空搜索历史
   const clearHistory = () => {
-    setSearchHistory([])
-    localStorage.removeItem(SEARCH_HISTORY_KEY)
-  }
+    setSearchHistory([]);
+    localStorage.removeItem(SEARCH_HISTORY_KEY);
+  };
 
   // 执行搜索
   const handleSearch = (searchQuery: string) => {
-    if (!searchQuery.trim()) return
+    if (!searchQuery.trim()) return;
 
-    saveToHistory(searchQuery)
-    setShowHistory(false)
+    saveToHistory(searchQuery);
+    setShowHistory(false);
 
     // 更新 URL
-    const params = new URLSearchParams()
-    params.set('q', searchQuery)
+    const params = new URLSearchParams();
+    params.set("q", searchQuery);
     if (aiMode) {
-      params.set('ai', 'true')
+      params.set("ai", "true");
     }
-    router.push(`/search?${params.toString()}`)
-  }
+    router.push(`/search?${params.toString()}`);
+  };
 
   // 处理输入框回车
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      handleSearch(query)
+    if (e.key === "Enter") {
+      handleSearch(query);
     }
-  }
+  };
 
   // 点击热门标签或历史记录
   const handleTagClick = (tag: string) => {
-    setQuery(tag)
-    handleSearch(tag)
-  }
+    setQuery(tag);
+    handleSearch(tag);
+  };
 
   // 切换 AI 模式
   const handleAIModeToggle = (checked: boolean) => {
-    setAIMode(checked)
+    setAIMode(checked);
     // 如果当前有搜索，立即重新搜索
     if (query.trim()) {
-      const params = new URLSearchParams()
-      params.set('q', query)
+      const params = new URLSearchParams();
+      params.set("q", query);
       if (checked) {
-        params.set('ai', 'true')
+        params.set("ai", "true");
       }
-      router.push(`/search?${params.toString()}`)
+      router.push(`/search?${params.toString()}`);
     }
-  }
+  };
 
-  const hasResults = searchResults.length > 0
-  const hasQuery = initialQuery.trim().length > 0
+  const hasResults = searchResults.length > 0;
+  const hasQuery = initialQuery.trim().length > 0;
 
   return (
     <div className="h-full flex flex-col">
@@ -151,7 +152,7 @@ export function SearchPageClient({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setQuery('')}
+                onClick={() => setQuery("")}
                 className="absolute right-2 top-1/2 -translate-y-1/2"
               >
                 <X className="size-4" />
@@ -166,7 +167,10 @@ export function SearchPageClient({
                 <Sparkles className="size-5 text-purple-600 dark:text-purple-400" />
               </div>
               <div>
-                <Label htmlFor="ai-mode" className="text-sm font-medium cursor-pointer">
+                <Label
+                  htmlFor="ai-mode"
+                  className="text-sm font-medium cursor-pointer"
+                >
                   AI 语义搜索
                 </Label>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -213,26 +217,8 @@ export function SearchPageClient({
             </div>
           )}
 
-          {/* 热门搜索（仅在无搜索结果时显示） */}
-          {!hasQuery && hotTags.length > 0 && (
-            <div className="mb-8">
-              <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                🔥 热门标签
-              </h3>
-              <div className="flex flex-wrap gap-2">
-                {hotTags.map((tag) => (
-                  <Badge
-                    key={tag}
-                    variant="secondary"
-                    className="cursor-pointer hover:bg-purple-100 dark:hover:bg-purple-900/50"
-                    onClick={() => handleTagClick(tag)}
-                  >
-                    {tag}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
+          {/* 热门搜索（仅在无搜索结果时显示）- 使用 Suspense 流式渲染 */}
+          {!hasQuery && hotTagsSlot}
         </div>
 
         {/* 搜索结果 */}
@@ -249,9 +235,16 @@ export function SearchPageClient({
                 {/* 结果统计 */}
                 <div className="flex items-center justify-between mb-4">
                   <p className="text-sm text-gray-600 dark:text-gray-400">
-                    找到 <span className="font-medium text-gray-900 dark:text-white">{searchResults.length}</span> 个结果
+                    找到{" "}
+                    <span className="font-medium text-gray-900 dark:text-white">
+                      {searchResults.length}
+                    </span>{" "}
+                    个结果
                     {aiMode && (
-                      <Badge variant="outline" className="ml-2 bg-purple-50 dark:bg-purple-900/30 border-purple-200 dark:border-purple-700 text-purple-600 dark:text-purple-300">
+                      <Badge
+                        variant="outline"
+                        className="ml-2 bg-purple-50 dark:bg-purple-900/30 border-purple-200 dark:border-purple-700 text-purple-600 dark:text-purple-300"
+                      >
                         <Sparkles className="size-3 mr-1" />
                         AI 搜索
                       </Badge>
@@ -302,5 +295,5 @@ export function SearchPageClient({
         )}
       </div>
     </div>
-  )
+  );
 }

@@ -94,15 +94,16 @@ export function AppHeader({ user, profile }: AppHeaderProps) {
             <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
           </Button>
 
-          {/* 搜索按钮 */}
+          {/* 搜索按钮 - 使用 Link + Button asChild 启用预取并保持样式一致 */}
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => router.push("/search")}
+            asChild
             className="hidden sm:flex"
-            aria-label="搜索"
           >
-            <Search className="h-5 w-5" />
+            <Link href="/search" aria-label="搜索" prefetch={true}>
+              <Search className="h-5 w-5" />
+            </Link>
           </Button>
 
           {/* 更多菜单 */}

@@ -584,6 +584,17 @@ export type Database = {
         Args: Record<string, never>;
         Returns: number;
       };
+      // V8.0新增：获取用户热门标签（搜索页面性能优化）
+      get_user_hot_tags: {
+        Args: {
+          p_user_id: string;
+          p_limit?: number;
+        };
+        Returns: {
+          tag: string;
+          count: number;
+        }[];
+      };
     };
     Enums: {
       [_ in never]: never;
