@@ -24,6 +24,7 @@ import {
   Columns3,
   Sparkles,
   Globe,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAbortableFetch } from "@/hooks/use-abortable-fetch";
@@ -36,6 +37,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { BookmarkCard } from "@/components/bookmark/bookmark-card";
+import { FlipBookmarkCard } from "@/components/bookmark/bookmark-card-flip";
 import { TrashBookmarkCard } from "@/components/bookmark/trash-bookmark-card";
 import { BrowserBookmarkVirtualList } from "@/components/bookmark/browser-bookmark-virtual-list";
 import { BrowserBookmarkEmptyState } from "@/components/bookmark/browser-bookmark-empty-state";
@@ -134,6 +136,9 @@ export function HomePageClient({
 
   // 布局模式（仅用于卡片视图）
   const [layoutMode, setLayoutMode] = useState<LayoutMode>("auto");
+
+  // 翻转卡片模式（Demo 测试）
+  const [enableFlipCard, setEnableFlipCard] = useState(false);
 
   // 初始化视图模式和布局模式（从 localStorage 读取）
   useEffect(() => {
@@ -810,6 +815,24 @@ export function HomePageClient({
                 </Button>
               </div>
             )}
+
+            {/* 翻转卡片 Demo 切换（仅卡片视图显示） */}
+            {!isBrowserPlatform && viewMode === "card" && (
+              <Button
+                variant={enableFlipCard ? "default" : "outline"}
+                size="sm"
+                onClick={() => setEnableFlipCard(!enableFlipCard)}
+                title="翻转卡片 Demo"
+                className={cn(
+                  "h-7 sm:h-8 px-2 sm:px-3 text-xs",
+                  enableFlipCard &&
+                    "bg-purple-500 hover:bg-purple-600 text-white dark:bg-purple-600 dark:hover:bg-purple-700",
+                )}
+              >
+                <RotateCcw className="size-3.5 sm:size-4 mr-1" />
+                <span className="hidden sm:inline">翻转</span>
+              </Button>
+            )}
           </div>
         </div>
 
@@ -943,16 +966,29 @@ export function HomePageClient({
                   <div className={gridClassName}>
                     {bookmarks.map((bookmark) => (
                       <div key={bookmark.id} className="masonry-item">
-                        <BookmarkCard
-                          bookmark={bookmark}
-                          onEdit={handleEdit}
-                          onDelete={handleDelete}
-                          onToggleRead={handleToggleRead}
-                          isSelectionMode={isSelectionMode}
-                          isSelected={selectedIds.has(bookmark.id)}
-                          onToggleSelect={toggleSelect}
-                          variant="card"
-                        />
+                        {enableFlipCard ? (
+                          <FlipBookmarkCard
+                            bookmark={bookmark}
+                            onEdit={handleEdit}
+                            onDelete={handleDelete}
+                            onToggleRead={handleToggleRead}
+                            isSelectionMode={isSelectionMode}
+                            isSelected={selectedIds.has(bookmark.id)}
+                            onToggleSelect={toggleSelect}
+                            enableFlip={true}
+                          />
+                        ) : (
+                          <BookmarkCard
+                            bookmark={bookmark}
+                            onEdit={handleEdit}
+                            onDelete={handleDelete}
+                            onToggleRead={handleToggleRead}
+                            isSelectionMode={isSelectionMode}
+                            isSelected={selectedIds.has(bookmark.id)}
+                            onToggleSelect={toggleSelect}
+                            variant="card"
+                          />
+                        )}
                       </div>
                     ))}
                   </div>
