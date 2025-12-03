@@ -948,7 +948,7 @@ export function HomePageClient({
       </header>
 
       {/* 内容区域 */}
-      <div className="flex-1 overflow-auto px-4 md:px-8 py-4 md:py-6">
+      <div className="flex-1 overflow-auto px-4 md:px-8 py-0.5 md:py-1">
         {/* V4.2 智能分类横幅 */}
         <ReclassifyBanner className="mb-4" />
 
