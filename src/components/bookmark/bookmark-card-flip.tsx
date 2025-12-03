@@ -6,23 +6,14 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import {
-  RotateCcw,
-  ExternalLink,
-  Star,
-  FileText,
-  Image as ImageIcon,
-  Folder,
-  Clock,
-  Check,
-} from "lucide-react";
+import { RotateCcw, ExternalLink, FileText, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { Bookmark } from "@/types/supabase";
 import { cn } from "@/lib/utils";
-import { formatRelativeTime, formatFriendlyDate } from "@/lib/utils/date-utils";
+import { formatRelativeTime } from "@/lib/utils/date-utils";
 import { generatePlaceholderImage } from "@/lib/utils/placeholder-image";
 import { getProxiedImageUrl } from "@/lib/utils/image-proxy";
 import { PlatformBadge } from "@/components/ui/platform-badge";
@@ -54,6 +45,17 @@ export function FlipBookmarkCard({
   enableFlip = true,
 }: FlipBookmarkCardProps) {
   const [isFlipped, setIsFlipped] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // 检测是否为移动设备
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   // 生成封面图
   const coverImage =
@@ -75,8 +77,26 @@ export function FlipBookmarkCard({
     return colors[platform] || colors.UNKNOWN;
   };
 
-  // 点击卡片翻转（排除链接点击）
+  // 桌面端 Hover 翻转
+  const handleMouseEnter = () => {
+    if (!isMobile && enableFlip && !isSelectionMode) {
+      setIsFlipped(true);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (!isMobile && enableFlip && !isSelectionMode) {
+      setIsFlipped(false);
+    }
+  };
+
+  // 移动端点击翻转（排除链接点击）
   const handleCardClick = (e: React.MouseEvent) => {
+    // 桌面端不处理点击翻转（由 hover 控制）
+    if (!isMobile) {
+      return;
+    }
+
     // 如果是批量选择模式，不翻转
     if (isSelectionMode) {
       e.preventDefault();
@@ -95,7 +115,7 @@ export function FlipBookmarkCard({
       return;
     }
 
-    // 翻转卡片
+    // 翻转卡片（仅移动端）
     e.preventDefault();
     if (enableFlip) {
       setIsFlipped(!isFlipped);
@@ -164,9 +184,11 @@ export function FlipBookmarkCard({
       <div
         className={cn("flip-card", isFlipped && "is-flipped")}
         onClick={handleCardClick}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
         role="button"
         tabIndex={0}
-        aria-label={`收藏卡片: ${bookmark.title}。点击翻转查看详情`}
+        aria-label={`收藏卡片: ${bookmark.title}。${isMobile ? "点击" : "悬停"}翻转查看详情`}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
@@ -292,7 +314,7 @@ export function FlipBookmarkCard({
             </div>
 
             {/* AI 摘要 */}
-            <div className="mb-4 flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto">
               {bookmark.ai_summary ? (
                 <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
                   {bookmark.ai_summary}
@@ -302,70 +324,33 @@ export function FlipBookmarkCard({
               )}
             </div>
 
-            {/* 详细信息 */}
-            <div className="space-y-2 text-xs text-gray-600 dark:text-gray-400">
-              {/* 内容统计 */}
-              {(bookmark.word_count || bookmark.image_count) && (
-                <div className="flex items-center gap-3">
-                  {bookmark.word_count && (
-                    <span className="flex items-center gap-1">
-                      <FileText className="size-3" />
-                      {bookmark.word_count} 字
-                    </span>
-                  )}
-                  {bookmark.image_count && (
-                    <span className="flex items-center gap-1">
-                      <ImageIcon className="size-3" />
-                      {bookmark.image_count} 张图片
-                    </span>
-                  )}
-                </div>
-              )}
-
-              {/* 评级 */}
-              {bookmark.rating && bookmark.rating > 0 && (
-                <div className="flex items-center gap-1">
-                  {Array.from({ length: 5 }, (_, i) => (
-                    <Star
-                      key={i}
-                      className={cn(
-                        "size-3",
-                        i < bookmark.rating
-                          ? "fill-yellow-400 text-yellow-400"
-                          : "text-gray-300 dark:text-gray-600",
-                      )}
-                    />
-                  ))}
-                  <span className="ml-1">({bookmark.rating} 星)</span>
-                </div>
-              )}
-
-              {/* 文件夹 */}
-              {bookmark.folders && (
-                <div className="flex items-center gap-1">
-                  <Folder className="size-3" />
-                  <span>{bookmark.folders.name}</span>
-                </div>
-              )}
-
-              {/* 收藏时间 */}
-              <div className="flex items-center gap-1">
-                <Clock className="size-3" />
-                <span>收藏于 {formatFriendlyDate(bookmark.created_at)}</span>
-              </div>
-            </div>
-
             {/* 操作按钮 */}
             <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleOpenOriginal}
-                className="w-full"
-              >
-                <ExternalLink className="size-4 mr-2" />
-                阅读原文
-              </Button>
+              <div className="flex gap-2">
+                {/* 阅读原文 */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleOpenOriginal}
+                  className="flex-1"
+                >
+                  <ExternalLink className="size-4 mr-2" />
+                  阅读原文
+                </Button>
+
+                {/* 进入详情页 */}
+                <Link href={`/bookmark/${bookmark.id}`} className="flex-1">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="w-full"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <FileText className="size-4 mr-2" />
+                    详情页
+                  </Button>
+                </Link>
+              </div>
             </div>
           </div>
         </div>

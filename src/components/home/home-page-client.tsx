@@ -25,17 +25,12 @@ import {
   Sparkles,
   Globe,
   RotateCcw,
+  Search,
+  Check,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAbortableFetch } from "@/hooks/use-abortable-fetch";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { BookmarkCard } from "@/components/bookmark/bookmark-card";
 import { FlipBookmarkCard } from "@/components/bookmark/bookmark-card-flip";
 import { TrashBookmarkCard } from "@/components/bookmark/trash-bookmark-card";
@@ -58,11 +53,14 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import type { Bookmark } from "@/types/supabase";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { UserAvatar } from "@/components/ui/user-avatar";
 
 interface HomePageClientProps {
   bookmarks: (Bookmark & {
@@ -97,9 +95,10 @@ type LayoutMode = "auto" | "row" | "column";
 // 本地存储 key
 const VIEW_MODE_STORAGE_KEY = "anykeep-view-mode";
 const LAYOUT_MODE_STORAGE_KEY = "anykeep-layout-mode";
+const FLIP_CARD_STORAGE_KEY = "anykeep-flip-card";
 
-// 布局模式选项
-const layoutOptions = [
+// 布局模式选项（移至 HeaderMenu 组件）
+const _layoutOptions = [
   {
     value: "auto",
     label: "自动",
@@ -140,7 +139,7 @@ export function HomePageClient({
   // 翻转卡片模式（Demo 测试）
   const [enableFlipCard, setEnableFlipCard] = useState(false);
 
-  // 初始化视图模式和布局模式（从 localStorage 读取）
+  // 初始化视图模式、布局模式和翻转状态（从 localStorage 读取）
   useEffect(() => {
     const savedViewMode = localStorage.getItem(
       VIEW_MODE_STORAGE_KEY,
@@ -158,6 +157,93 @@ export function HomePageClient({
     ) {
       setLayoutMode(savedLayoutMode);
     }
+
+    // 初始化翻转状态
+    const savedFlipCard = localStorage.getItem(FLIP_CARD_STORAGE_KEY);
+    if (savedFlipCard) {
+      setEnableFlipCard(savedFlipCard === "true");
+    }
+
+    // 监听来自 PlatformFilter 的翻转状态变化
+    const handleFlipCardChange = (event: CustomEvent<boolean>) => {
+      setEnableFlipCard(event.detail);
+    };
+
+    // 监听来自 HeaderMenu 的视图模式变化
+    const handleViewModeChangeEvent = (
+      event: CustomEvent<"card" | "list" | "compact">,
+    ) => {
+      setViewMode(event.detail);
+    };
+
+    // 监听来自 HeaderMenu 的布局模式变化
+    const handleLayoutModeChangeEvent = (
+      event: CustomEvent<"auto" | "row" | "column">,
+    ) => {
+      setLayoutMode(event.detail);
+    };
+
+    // 监听来自 HeaderMenu 的对话框事件
+    const handleOpenDialog = (event: CustomEvent<string>) => {
+      switch (event.detail) {
+        case "create":
+          openCreateDialog();
+          break;
+        case "import":
+          openImportDialog();
+          break;
+        case "browserImport":
+          openBrowserImportDialog();
+          break;
+        case "export":
+          openExportDialog();
+          break;
+      }
+    };
+
+    // 监听来自 HeaderMenu 的批量选择模式切换
+    const handleToggleSelectionMode = () => {
+      toggleSelectionMode();
+    };
+
+    window.addEventListener(
+      "flipCardChange",
+      handleFlipCardChange as EventListener,
+    );
+    window.addEventListener(
+      "viewModeChange",
+      handleViewModeChangeEvent as EventListener,
+    );
+    window.addEventListener(
+      "layoutModeChange",
+      handleLayoutModeChangeEvent as EventListener,
+    );
+    window.addEventListener("openDialog", handleOpenDialog as EventListener);
+    window.addEventListener("toggleSelectionMode", handleToggleSelectionMode);
+
+    return () => {
+      window.removeEventListener(
+        "flipCardChange",
+        handleFlipCardChange as EventListener,
+      );
+      window.removeEventListener(
+        "viewModeChange",
+        handleViewModeChangeEvent as EventListener,
+      );
+      window.removeEventListener(
+        "layoutModeChange",
+        handleLayoutModeChangeEvent as EventListener,
+      );
+      window.removeEventListener(
+        "openDialog",
+        handleOpenDialog as EventListener,
+      );
+      window.removeEventListener(
+        "toggleSelectionMode",
+        handleToggleSelectionMode,
+      );
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 切换视图模式并保存到 localStorage
@@ -170,6 +256,17 @@ export function HomePageClient({
   const handleLayoutModeChange = (mode: LayoutMode) => {
     setLayoutMode(mode);
     localStorage.setItem(LAYOUT_MODE_STORAGE_KEY, mode);
+  };
+
+  // 切换翻转卡片模式并同步
+  const handleFlipCardToggle = () => {
+    const newValue = !enableFlipCard;
+    setEnableFlipCard(newValue);
+    localStorage.setItem(FLIP_CARD_STORAGE_KEY, String(newValue));
+    // 触发自定义事件通知其他组件（如 PlatformFilter）
+    window.dispatchEvent(
+      new CustomEvent("flipCardChange", { detail: newValue }),
+    );
   };
 
   // 计算网格容器的 CSS 类名
@@ -198,7 +295,7 @@ export function HomePageClient({
     showBrowserImportDialog,
     showExportDialog,
     showMoveDialog,
-    isDesktopImportMenuOpen,
+    isDesktopImportMenuOpen: _isDesktopImportMenuOpen,
     isMobileMoreMenuOpen,
     openCreateDialog,
     setShowCreateDialog,
@@ -210,7 +307,7 @@ export function HomePageClient({
     setShowExportDialog,
     openMoveDialog,
     setShowMoveDialog,
-    setIsDesktopImportMenuOpen,
+    setIsDesktopImportMenuOpen: _setIsDesktopImportMenuOpen,
     setIsMobileMoreMenuOpen,
   } = useDialogs();
 
@@ -596,265 +693,196 @@ export function HomePageClient({
 
   return (
     <div className="flex flex-col h-full">
-      {/* 顶部区域 */}
-      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 md:px-8 py-4 md:py-6">
-        {/* 标题和视图切换 */}
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-gray-900 dark:text-white text-xl md:text-2xl font-semibold">
-              我的收藏
-            </h2>
-            <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
-              共 {bookmarks.length} 条收藏
-            </p>
+      {/* 顶部工具栏（移动端显示） */}
+      <header className="sm:hidden bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-2">
+        <div className="flex items-center gap-2">
+          {/* 移动端平台筛选 */}
+          <div className="flex-1 overflow-x-auto scrollbar-hide">
+            <div className="flex items-center gap-1.5">
+              {platforms.map((platform) => {
+                const isActive = currentPlatform === platform.value;
+                return (
+                  <button
+                    key={platform.id}
+                    onClick={() => handlePlatformChange(platform.value)}
+                    className={cn(
+                      "px-3 py-1 text-xs font-medium rounded-full transition-colors whitespace-nowrap flex-shrink-0",
+                      isActive
+                        ? "bg-gray-900 text-white dark:bg-white dark:text-gray-900"
+                        : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700",
+                    )}
+                  >
+                    {platform.name}
+                  </button>
+                );
+              })}
+
+              {/* 翻转卡片按钮（移动端） */}
+              {!isBrowserPlatform && viewMode === "card" && (
+                <Button
+                  variant={enableFlipCard ? "default" : "outline"}
+                  size="sm"
+                  onClick={handleFlipCardToggle}
+                  title="翻转卡片"
+                  className={cn(
+                    "px-2.5 py-1 h-auto text-xs font-medium rounded-full whitespace-nowrap flex-shrink-0",
+                    enableFlipCard
+                      ? "bg-purple-500 hover:bg-purple-600 text-white dark:bg-purple-600 dark:hover:bg-purple-700"
+                      : "border-gray-200 dark:border-gray-700",
+                  )}
+                >
+                  <RotateCcw className="size-3 mr-1" />
+                  翻转
+                </Button>
+              )}
+            </div>
           </div>
 
-          {/* 排序和视图切换 - 响应式设计 */}
-          <div className="flex items-center gap-1 sm:gap-2 md:gap-3">
-            {/* 移动端：更多操作菜单 */}
-            <div className="flex md:hidden">
-              <DropdownMenu
-                open={isMobileMoreMenuOpen}
-                onOpenChange={setIsMobileMoreMenuOpen}
-              >
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-8 px-2">
-                    <MoreHorizontal className="size-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem
-                    onClick={() => {
-                      openImportDialog();
-                      setIsMobileMoreMenuOpen(false);
-                    }}
-                  >
-                    <Upload className="size-4 mr-2" />
-                    批量导入
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => {
-                      openBrowserImportDialog();
-                      setIsMobileMoreMenuOpen(false);
-                    }}
-                  >
-                    <Globe className="size-4 mr-2" />
-                    从浏览器书签导入
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => {
-                      openExportDialog();
-                      setIsMobileMoreMenuOpen(false);
-                    }}
-                  >
-                    <Download className="size-4 mr-2" />
-                    导出
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => {
-                      toggleSelectionMode();
-                      setIsMobileMoreMenuOpen(false);
-                    }}
-                  >
-                    <CheckSquare className="size-4 mr-2" />
-                    {isSelectionMode ? "取消选择" : "批量选择"}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+          {/* 右侧操作按钮 */}
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {/* 主题切换按钮 */}
+            <ThemeToggle />
 
-            {/* 桌面端：完整按钮 */}
-            <div className="hidden md:flex items-center gap-3">
-              {/* 导入下拉菜单 */}
-              <DropdownMenu
-                open={isDesktopImportMenuOpen}
-                onOpenChange={setIsDesktopImportMenuOpen}
-              >
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <Upload className="size-4 mr-1.5" />
-                    导入
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    onClick={() => {
-                      openImportDialog();
-                      setIsDesktopImportMenuOpen(false);
-                    }}
-                  >
-                    <Upload className="size-4 mr-2" />
-                    批量导入 URL
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => {
-                      openBrowserImportDialog();
-                      setIsDesktopImportMenuOpen(false);
-                    }}
-                  >
-                    <Globe className="size-4 mr-2" />
-                    从浏览器书签导入
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+            {/* 搜索按钮（占位，后续实现） */}
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+              <Search className="size-4" />
+            </Button>
 
-              {/* 导出按钮 */}
-              <Button variant="outline" size="sm" onClick={openExportDialog}>
-                <Download className="size-4 mr-1.5" />
-                导出
-              </Button>
-
-              {/* 批量选择按钮 */}
-              <Button
-                variant={isSelectionMode ? "default" : "outline"}
-                size="sm"
-                onClick={toggleSelectionMode}
-                className={cn(
-                  isSelectionMode &&
-                    "bg-blue-500 hover:bg-blue-600 text-white dark:bg-blue-600 dark:hover:bg-blue-700",
+            {/* 统一菜单 */}
+            <DropdownMenu
+              open={isMobileMoreMenuOpen}
+              onOpenChange={setIsMobileMoreMenuOpen}
+            >
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  <MoreHorizontal className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                {/* 视图模式 */}
+                {!isBrowserPlatform && (
+                  <>
+                    <DropdownMenuLabel className="text-xs">
+                      视图模式
+                    </DropdownMenuLabel>
+                    <DropdownMenuItem
+                      onClick={() => handleViewModeChange("card")}
+                    >
+                      <LayoutGrid className="size-4 mr-2" />
+                      <span className="flex-1">瀑布流</span>
+                      {viewMode === "card" && <Check className="size-4" />}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => handleViewModeChange("list")}
+                    >
+                      <List className="size-4 mr-2" />
+                      <span className="flex-1">列表</span>
+                      {viewMode === "list" && <Check className="size-4" />}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => handleViewModeChange("compact")}
+                    >
+                      <AlignJustify className="size-4 mr-2" />
+                      <span className="flex-1">紧凑</span>
+                      {viewMode === "compact" && <Check className="size-4" />}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
                 )}
-              >
-                <CheckSquare className="size-4 mr-1.5" />
-                {isSelectionMode ? "取消选择" : "批量选择"}
-              </Button>
-            </div>
 
-            {/* 排序选择器 - 移动端紧凑 */}
-            <Select value={currentSort} onValueChange={handleSortChange}>
-              <SelectTrigger className="w-10 md:w-[140px] h-8">
-                <ArrowUpDown className="size-4 md:mr-2" />
-                <span className="hidden md:inline">
-                  <SelectValue />
-                </span>
-              </SelectTrigger>
-              <SelectContent>
+                {/* 布局模式（仅卡片视图） */}
+                {viewMode === "card" && (
+                  <>
+                    <DropdownMenuLabel className="text-xs">
+                      布局模式
+                    </DropdownMenuLabel>
+                    <DropdownMenuItem
+                      onClick={() => handleLayoutModeChange("auto")}
+                    >
+                      <Sparkles className="size-4 mr-2" />
+                      <span className="flex-1">自动</span>
+                      {layoutMode === "auto" && <Check className="size-4" />}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => handleLayoutModeChange("row")}
+                    >
+                      <Rows3 className="size-4 mr-2" />
+                      <span className="flex-1">行优先</span>
+                      {layoutMode === "row" && <Check className="size-4" />}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => handleLayoutModeChange("column")}
+                    >
+                      <Columns3 className="size-4 mr-2" />
+                      <span className="flex-1">列优先</span>
+                      {layoutMode === "column" && <Check className="size-4" />}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
+
+                {/* 排序 */}
+                <DropdownMenuLabel className="text-xs">排序</DropdownMenuLabel>
                 {sortOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
+                  <DropdownMenuItem
+                    key={option.value}
+                    onClick={() => handleSortChange(option.value)}
+                  >
+                    <ArrowUpDown className="size-4 mr-2" />
+                    <span className="flex-1">{option.label}</span>
+                    {currentSort === option.value && (
+                      <Check className="size-4" />
+                    )}
+                  </DropdownMenuItem>
                 ))}
-              </SelectContent>
-            </Select>
+                <DropdownMenuSeparator />
 
-            {/* 布局模式选择器（仅卡片视图显示） */}
-            {viewMode === "card" && (
-              <Select
-                value={layoutMode}
-                onValueChange={(v) => handleLayoutModeChange(v as LayoutMode)}
-              >
-                <SelectTrigger className="w-10 md:w-[130px] h-8">
-                  {layoutMode === "auto" && (
-                    <Sparkles className="size-4 md:mr-2" />
-                  )}
-                  {layoutMode === "row" && <Rows3 className="size-4 md:mr-2" />}
-                  {layoutMode === "column" && (
-                    <Columns3 className="size-4 md:mr-2" />
-                  )}
-                  <span className="hidden md:inline">
-                    <SelectValue />
-                  </span>
-                </SelectTrigger>
-                <SelectContent>
-                  {layoutOptions.map((option) => {
-                    const Icon = option.icon;
-                    return (
-                      <SelectItem key={option.value} value={option.value}>
-                        <div className="flex items-center gap-2">
-                          <Icon className="size-4" />
-                          <span>{option.label}</span>
-                        </div>
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
-            )}
+                {/* 导入/导出 */}
+                <DropdownMenuItem
+                  onClick={() => {
+                    openImportDialog();
+                    setIsMobileMoreMenuOpen(false);
+                  }}
+                >
+                  <Upload className="size-4 mr-2" />
+                  批量导入
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    openBrowserImportDialog();
+                    setIsMobileMoreMenuOpen(false);
+                  }}
+                >
+                  <Globe className="size-4 mr-2" />
+                  导入浏览器书签
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    openExportDialog();
+                    setIsMobileMoreMenuOpen(false);
+                  }}
+                >
+                  <Download className="size-4 mr-2" />
+                  导出
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
 
-            {/* 视图切换按钮（浏览器平台隐藏，固定为列表视图） */}
-            {!isBrowserPlatform && (
-              <div className="flex items-center gap-0.5 sm:gap-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-0.5 sm:p-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleViewModeChange("card")}
-                  title="瀑布流视图"
-                  className={cn(
-                    "h-7 w-7 sm:h-8 sm:w-8 p-0",
-                    viewMode === "card" &&
-                      "bg-white dark:bg-gray-600 shadow-sm",
-                  )}
+                {/* 批量选择 */}
+                <DropdownMenuItem
+                  onClick={() => {
+                    toggleSelectionMode();
+                    setIsMobileMoreMenuOpen(false);
+                  }}
                 >
-                  <LayoutGrid className="size-3.5 sm:size-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleViewModeChange("list")}
-                  title="列表视图"
-                  className={cn(
-                    "h-7 w-7 sm:h-8 sm:w-8 p-0",
-                    viewMode === "list" &&
-                      "bg-white dark:bg-gray-600 shadow-sm",
-                  )}
-                >
-                  <List className="size-3.5 sm:size-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleViewModeChange("compact")}
-                  title="紧凑视图"
-                  className={cn(
-                    "h-7 w-7 sm:h-8 sm:w-8 p-0",
-                    viewMode === "compact" &&
-                      "bg-white dark:bg-gray-600 shadow-sm",
-                  )}
-                >
-                  <AlignJustify className="size-3.5 sm:size-4" />
-                </Button>
-              </div>
-            )}
+                  <CheckSquare className="size-4 mr-2" />
+                  {isSelectionMode ? "取消批量选择" : "批量选择"}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
-            {/* 翻转卡片 Demo 切换（仅卡片视图显示） */}
-            {!isBrowserPlatform && viewMode === "card" && (
-              <Button
-                variant={enableFlipCard ? "default" : "outline"}
-                size="sm"
-                onClick={() => setEnableFlipCard(!enableFlipCard)}
-                title="翻转卡片 Demo"
-                className={cn(
-                  "h-7 sm:h-8 px-2 sm:px-3 text-xs",
-                  enableFlipCard &&
-                    "bg-purple-500 hover:bg-purple-600 text-white dark:bg-purple-600 dark:hover:bg-purple-700",
-                )}
-              >
-                <RotateCcw className="size-3.5 sm:size-4 mr-1" />
-                <span className="hidden sm:inline">翻转</span>
-              </Button>
-            )}
+            {/* 用户头像 */}
+            <UserAvatar />
           </div>
-        </div>
-
-        {/* 平台筛选标签 */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
-          {platforms.map((platform) => {
-            const isActive = currentPlatform === platform.value;
-            return (
-              <button
-                key={platform.id}
-                onClick={() => handlePlatformChange(platform.value)}
-                className={cn(
-                  "px-4 py-1.5 text-sm font-medium rounded-full transition-colors whitespace-nowrap",
-                  isActive
-                    ? "bg-gray-900 text-white dark:bg-white dark:text-gray-900"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600",
-                )}
-              >
-                {platform.name}
-              </button>
-            );
-          })}
         </div>
 
         {/* 垃圾箱工具栏 */}
