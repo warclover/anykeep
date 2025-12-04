@@ -158,16 +158,57 @@ export function getPlatformName(platform: Platform | string): string {
 }
 
 /**
- * 检测 URL 所属平台
+ * 检测 URL 所属平台（增强版）
+ * 使用精确的域名匹配，支持所有微信域名变种
  * @param url 内容 URL
  * @returns 平台类型
  */
 export function detectPlatformFromUrl(url: string): Platform {
-  if (url.includes("mp.weixin.qq.com")) return "WECHAT_OFFICIAL_ACCOUNT";
-  if (url.includes("bilibili.com")) return "BILIBILI";
-  if (url.includes("xiaohongshu.com") || url.includes("xhslink.com"))
-    return "XIAOHONGSHU";
-  return "UNKNOWN";
+  try {
+    const urlObj = new URL(url);
+    const hostname = urlObj.hostname.toLowerCase();
+
+    // 微信：支持所有子域名
+    if (
+      hostname === "mp.weixin.qq.com" ||
+      hostname === "weixin.qq.com" ||
+      hostname.endsWith(".weixin.qq.com")
+    ) {
+      return "WECHAT_OFFICIAL_ACCOUNT";
+    }
+
+    // B站：支持所有子域名和短链
+    if (
+      hostname === "bilibili.com" ||
+      hostname.endsWith(".bilibili.com") ||
+      hostname === "b23.tv"
+    ) {
+      return "BILIBILI";
+    }
+
+    // 小红书：支持所有子域名和短链
+    if (
+      hostname === "xiaohongshu.com" ||
+      hostname.endsWith(".xiaohongshu.com") ||
+      hostname === "xhslink.com"
+    ) {
+      return "XIAOHONGSHU";
+    }
+
+    return "UNKNOWN";
+  } catch {
+    // URL 解析失败，回退到字符串匹配
+    const urlLower = url.toLowerCase();
+    if (urlLower.includes("weixin.qq.com")) return "WECHAT_OFFICIAL_ACCOUNT";
+    if (urlLower.includes("bilibili.com") || urlLower.includes("b23.tv"))
+      return "BILIBILI";
+    if (
+      urlLower.includes("xiaohongshu.com") ||
+      urlLower.includes("xhslink.com")
+    )
+      return "XIAOHONGSHU";
+    return "UNKNOWN";
+  }
 }
 
 /**

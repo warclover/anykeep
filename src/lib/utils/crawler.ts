@@ -4,6 +4,7 @@
  */
 
 import { logger } from "@/lib/logger";
+import { detectPlatformFromUrl } from "@/lib/platform-utils";
 import { decodeHtmlEntities } from "./html-utils";
 import { extractWordCount, extractImageCount } from "./content-extractor";
 import {
@@ -21,35 +22,6 @@ export interface CrawlResult {
   wordCount?: number;
   imageCount?: number;
   publishTime?: string; // 原文发布时间（ISO 8601 格式）
-}
-
-/**
- * 识别 URL 所属平台
- */
-function detectPlatform(url: string): CrawlResult["platform"] {
-  try {
-    const hostname = new URL(url).hostname.toLowerCase();
-
-    if (
-      hostname.includes("weixin.qq.com") ||
-      hostname.includes("mp.weixin.qq.com")
-    ) {
-      return "WECHAT_OFFICIAL_ACCOUNT";
-    }
-    if (hostname.includes("bilibili.com") || hostname.includes("b23.tv")) {
-      return "BILIBILI";
-    }
-    if (
-      hostname.includes("xiaohongshu.com") ||
-      hostname.includes("xhslink.com")
-    ) {
-      return "XIAOHONGSHU";
-    }
-
-    return "UNKNOWN";
-  } catch {
-    return "UNKNOWN";
-  }
 }
 
 /**
@@ -273,8 +245,14 @@ export async function crawlContent(url: string): Promise<CrawlResult> {
     throw new Error("无效的 URL 格式");
   }
 
-  // 识别平台
-  const platform = detectPlatform(url);
+  // 识别平台（浏览器平台在爬虫中视为 UNKNOWN）
+  const detectedPlatform = detectPlatformFromUrl(url);
+  const platform: CrawlResult["platform"] =
+    detectedPlatform === "WECHAT_OFFICIAL_ACCOUNT" ||
+    detectedPlatform === "BILIBILI" ||
+    detectedPlatform === "XIAOHONGSHU"
+      ? detectedPlatform
+      : "UNKNOWN";
 
   // 根据平台选择爬取策略
   let result: Partial<CrawlResult>;

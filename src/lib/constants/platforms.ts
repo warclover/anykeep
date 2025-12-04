@@ -177,15 +177,6 @@ export function getPlatformIcon(platform: Platform | string): string {
   return getPlatformConfig(platform).icon;
 }
 
-/**
- * 检测 URL 所属平台
- * @param url 内容 URL
- * @returns 平台类型
- */
-export function detectPlatformFromUrl(url: string): Platform {
-  if (url.includes("mp.weixin.qq.com")) return "WECHAT_OFFICIAL_ACCOUNT";
-  if (url.includes("bilibili.com")) return "BILIBILI";
-  if (url.includes("xiaohongshu.com") || url.includes("xhslink.com"))
-    return "XIAOHONGSHU";
-  return "UNKNOWN";
-}
+// Re-export 平台检测函数（保持向后兼容）
+// 实际实现在 @/lib/platform-utils.ts
+export { detectPlatformFromUrl } from "@/lib/platform-utils";
