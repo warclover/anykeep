@@ -6,7 +6,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import { useSearchParams, usePathname } from "next/navigation";
 import { RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -25,11 +25,20 @@ const VIEW_MODE_STORAGE_KEY = "anykeep-view-mode";
 const FLIP_CARD_STORAGE_KEY = "anykeep-flip-card";
 
 export function PlatformFilter() {
-  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const currentPlatform = searchParams.get("platform") || "";
-  const currentFolder = searchParams.get("folder") || "";
+
+  // 从 URL 读取初始值
+  const urlPlatform = searchParams.get("platform") || "";
+  const urlFolder = searchParams.get("folder") || "";
+
+  // 本地状态管理当前平台（支持客户端即时切换）
+  const [localPlatform, setLocalPlatform] = useState(urlPlatform);
+  const [localFolder, setLocalFolder] = useState(urlFolder);
+
+  // 当前使用的值（优先本地状态）
+  const currentPlatform = localPlatform;
+  const currentFolder = localFolder;
 
   // 检测是否为浏览器书签平台
   const isBrowserPlatform = currentPlatform === "browser";
@@ -78,15 +87,36 @@ export function PlatformFilter() {
   };
 
   const handlePlatformChange = (platformValue: string) => {
+    // 如果平台未变化，不做任何操作
+    if (platformValue === currentPlatform) {
+      return;
+    }
+
+    // 1. 立即更新本地状态（UI 即时响应）
+    setLocalPlatform(platformValue);
+    setLocalFolder(""); // 切换平台时清除文件夹
+
+    // 2. 更新 URL（用于书签和分享）
     const params = new URLSearchParams(searchParams.toString());
-    // 切换平台时清除文件夹筛选
     params.delete("folder");
     if (platformValue) {
       params.set("platform", platformValue);
     } else {
       params.delete("platform");
     }
-    router.push(`/home?${params.toString()}`);
+    const newUrl = `/home?${params.toString()}`;
+    window.history.replaceState(
+      { ...window.history.state, as: newUrl, url: newUrl },
+      "",
+      newUrl,
+    );
+
+    // 3. 触发自定义事件通知 HomePageClient 平台已变化
+    window.dispatchEvent(
+      new CustomEvent("platformChange", {
+        detail: { platform: platformValue, folder: "" },
+      }),
+    );
   };
 
   // 非首页不显示

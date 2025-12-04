@@ -138,9 +138,20 @@ export function HomePageClient({
 }: HomePageClientProps = {}) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const currentPlatform = searchParams.get("platform") || "";
-  const currentSort = searchParams.get("sort") || "created_desc";
-  const currentFolder = searchParams.get("folder") || "";
+
+  // 本地状态管理（用于客户端平台切换，避免 SSR）
+  const urlPlatform = searchParams.get("platform") || "";
+  const urlSort = searchParams.get("sort") || "created_desc";
+  const urlFolder = searchParams.get("folder") || "";
+
+  // 使用本地状态跟踪当前平台（支持客户端切换）
+  const [localPlatform, setLocalPlatform] = useState(urlPlatform);
+  const [localFolder, setLocalFolder] = useState(urlFolder);
+
+  // 当前使用的参数（优先使用本地状态，支持客户端即时切换）
+  const currentPlatform = localPlatform;
+  const currentSort = urlSort; // 排序暂不做客户端优化
+  const currentFolder = localFolder;
 
   // 检测是否为浏览器书签平台
   const isBrowserPlatform = currentPlatform === "browser";
@@ -229,9 +240,21 @@ export function HomePageClient({
       toggleSelectionMode();
     };
 
+    // 监听来自 PlatformFilter 的平台切换事件（客户端优化，避免 SSR）
+    const handlePlatformChange = (
+      event: CustomEvent<{ platform: string; folder: string }>,
+    ) => {
+      setLocalPlatform(event.detail.platform);
+      setLocalFolder(event.detail.folder);
+    };
+
     window.addEventListener(
       "flipCardChange",
       handleFlipCardChange as EventListener,
+    );
+    window.addEventListener(
+      "platformChange",
+      handlePlatformChange as EventListener,
     );
     window.addEventListener(
       "viewModeChange",
@@ -248,6 +271,10 @@ export function HomePageClient({
       window.removeEventListener(
         "flipCardChange",
         handleFlipCardChange as EventListener,
+      );
+      window.removeEventListener(
+        "platformChange",
+        handlePlatformChange as EventListener,
       );
       window.removeEventListener(
         "viewModeChange",
@@ -364,10 +391,11 @@ export function HomePageClient({
     exitSelectionMode,
   } = useSelectionMode();
 
-  // 保留旧的缓存 hook 用于兼容（将逐步移除）
+  // 旧缓存系统已弃用，保留 hook 引用但不再使用其方法
+  // SWR 系统 (useBookmarksSWR) 已完整实现缓存功能
   const {
-    getCache,
-    setCache,
+    getCache: _getCacheOld,
+    setCache: _setCacheOld,
     updateCacheItem: _updateCacheItemOld,
     removeCacheItem: _removeCacheItemOld,
     appendToCache: _appendToCacheOld,
@@ -419,35 +447,16 @@ export function HomePageClient({
     [fetchWithAbort],
   );
 
-  // ===== 初始数据同步 =====
-  // 当有服务端数据时，更新缓存以供后续切换使用
-  useEffect(() => {
-    if (initialBookmarks && initialBookmarks.length > 0) {
-      setCache(
-        { platform: currentPlatform, sort: currentSort, folder: currentFolder },
-        initialBookmarks,
-        initialBookmarks.length === 50,
-      );
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // 只在首次挂载时执行
-
-  // ===== useEffect 数据同步 =====
-  // 同步 props 和 state：当 initialBookmarks 更新时同步到 bookmarks state
-  // 这仅在 SSR 模式下需要（有 initialBookmarks 时）
+  // ===== SSR 数据同步 =====
+  // 当 initialBookmarks 更新时（URL 参数变化导致 SSR 重新获取），同步到 SWR state
+  // 注意：SWR 内部的初始化 useEffect 只在首次挂载时执行，
+  // 所以需要这个 useEffect 来处理后续的 initialBookmarks 变化
   useEffect(() => {
     if (!initialBookmarks) return;
     setBookmarks(initialBookmarks);
-    // 同时更新 hasMore 状态
-    const newHasMore = initialBookmarks.length === 50;
-    setHasMore(newHasMore);
-    // 更新缓存
-    setCache(
-      { platform: currentPlatform, sort: currentSort, folder: currentFolder },
-      initialBookmarks,
-      newHasMore,
-    );
-  }, [initialBookmarks, currentPlatform, currentSort, currentFolder, setCache]);
+    setHasMore(initialBookmarks.length === 50);
+    // 旧缓存系统调用已移除，SWR 内部会自动管理缓存
+  }, [initialBookmarks, setBookmarks, setHasMore]);
 
   // AI 文件夹推荐
   const {
@@ -514,11 +523,11 @@ export function HomePageClient({
     [searchParams, router],
   );
 
-  // 保留旧的实现作为备用（已弃用）
+  // 保留旧的实现作为备用（已弃用，使用旧缓存系统）
   const _handlePlatformChangeOld = useCallback(
     async (platformValue: string) => {
       // 1. 优先使用缓存数据，提供即时反馈
-      const cached = getCache({
+      const cached = _getCacheOld({
         platform: platformValue,
         sort: currentSort,
         folder: currentFolder,
@@ -575,7 +584,7 @@ export function HomePageClient({
 
         // 更新状态和缓存
         setBookmarks((_prev) => newBookmarks);
-        setCache(
+        _setCacheOld(
           { platform: platformValue, sort: currentSort, folder: currentFolder },
           newBookmarks,
           newHasMore,
@@ -595,8 +604,8 @@ export function HomePageClient({
       currentSort,
       currentFolder,
       searchParams,
-      getCache,
-      setCache,
+      _getCacheOld,
+      _setCacheOld,
       fetchWithAbort,
       setBookmarks,
     ],
@@ -605,7 +614,7 @@ export function HomePageClient({
   // 保留旧的排序实现作为备用（已弃用）
   const _handleSortChangeOld = async (sortValue: string) => {
     // 1. 优先使用缓存数据
-    const cached = getCache({
+    const cached = _getCacheOld({
       platform: currentPlatform,
       sort: sortValue,
       folder: currentFolder,
@@ -656,7 +665,7 @@ export function HomePageClient({
       const newHasMore = data.data.pagination.hasMore;
 
       setBookmarks((_prev) => newBookmarks);
-      setCache(
+      _setCacheOld(
         { platform: currentPlatform, sort: sortValue, folder: currentFolder },
         newBookmarks,
         newHasMore,
