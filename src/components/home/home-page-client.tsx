@@ -1347,11 +1347,6 @@ export function HomePageClient({
           <ReclassifyBanner className="mb-4" />
         </Suspense>
 
-        {/* V9.0 用途标签筛选（仅非浏览器书签平台和非虚拟文件夹时显示） */}
-        {!isBrowserPlatform && !currentFolder && (
-          <UsageTagFilter className="mb-4" />
-        )}
-
         {/* 初始加载骨架屏 */}
         {isInitialLoading ? (
           <div className="masonry-grid">
@@ -1506,16 +1501,24 @@ export function HomePageClient({
         )}
       </div>
 
-      {/* 底部添加收藏按钮 */}
+      {/* 底部工具栏：用途标签筛选 + 添加收藏按钮 */}
       <div className="sticky bottom-0 left-0 right-0 p-4 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
-        <Button
-          className="w-full bg-gray-900 hover:bg-gray-800 text-white dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
-          size="lg"
-          onClick={openCreateDialog}
-        >
-          <Plus className="size-5 mr-2" />
-          添加收藏
-        </Button>
+        <div className="flex items-center gap-3">
+          {/* V9.0 用途标签筛选（仅非浏览器书签平台和非虚拟文件夹时显示） */}
+          {!isBrowserPlatform && !currentFolder && (
+            <div className="flex-1 min-w-0">
+              <UsageTagFilter />
+            </div>
+          )}
+          <Button
+            className="shrink-0 bg-gray-900 hover:bg-gray-800 text-white dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
+            size="lg"
+            onClick={openCreateDialog}
+          >
+            <Plus className="size-5 mr-2" />
+            添加收藏
+          </Button>
+        </div>
       </div>
 
       {/* 批量导入对话框（URL导入） */}
