@@ -18,9 +18,56 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   type ReactNode,
 } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
+
+// ==================== 常量定义 ====================
+
+/**
+ * SSR 渲染完成后启用客户端导航的延迟（毫秒）
+ * 确保首次服务端渲染完成后再启用客户端导航
+ */
+const CLIENT_NAV_ENABLE_DELAY_MS = 100;
+
+/**
+ * 所有支持的页面 ID 列表
+ * 作为单一数据源，避免在多处重复定义
+ */
+export const PAGE_IDS: readonly PageId[] = [
+  "home",
+  "search",
+  "folders",
+  "analytics",
+  "settings",
+] as const;
+
+// ==================== 类型定义 ====================
+
+/**
+ * History API 状态类型
+ * 用于 pushState/replaceState 和 popstate 事件
+ */
+interface ClientNavHistoryState {
+  pageId: PageId;
+  params: string;
+  clientNav: true;
+}
+
+/**
+ * 类型守卫：检查是否为客户端导航的 history state
+ */
+function isClientNavState(state: unknown): state is ClientNavHistoryState {
+  return (
+    typeof state === "object" &&
+    state !== null &&
+    "clientNav" in state &&
+    (state as ClientNavHistoryState).clientNav === true &&
+    "pageId" in state &&
+    typeof (state as ClientNavHistoryState).pageId === "string"
+  );
+}
 
 /**
  * 支持的页面类型
@@ -97,24 +144,23 @@ export const NavigationContext = createContext<NavigationContextValue | null>(
 function createInitialPageStates(
   initialPage?: PageId,
 ): Record<PageId, PageCacheEntry> {
-  const pages: PageId[] = [
-    "home",
-    "search",
-    "folders",
-    "analytics",
-    "settings",
-  ];
-  return pages.reduce(
+  const defaultEntry: PageCacheEntry = {
+    state: "idle",
+    scrollPosition: { x: 0, y: 0 },
+    lastVisited: 0,
+  };
+
+  return PAGE_IDS.reduce(
     (acc, pageId) => ({
       ...acc,
-      [pageId]: {
-        state:
-          pageId === initialPage
-            ? ("loading" as PageState)
-            : ("idle" as PageState),
-        scrollPosition: { x: 0, y: 0 },
-        lastVisited: pageId === initialPage ? Date.now() : 0,
-      },
+      [pageId]:
+        pageId === initialPage
+          ? {
+              ...defaultEntry,
+              state: "loading" as PageState,
+              lastVisited: Date.now(),
+            }
+          : defaultEntry,
     }),
     {} as Record<PageId, PageCacheEntry>,
   );
@@ -138,6 +184,14 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
 
   // 当前激活的页面
   const [activePage, setActivePage] = useState<PageId>(initialPage);
+
+  // 使用 ref 跟踪当前页面，避免 popstate 事件处理器中的闭包陷阱
+  const activePageRef = useRef<PageId>(initialPage);
+
+  // 保持 ref 与 state 同步（使用 useEffect 避免渲染期间更新 ref）
+  useEffect(() => {
+    activePageRef.current = activePage;
+  }, [activePage]);
 
   // 当前页面参数
   const [activeParams, setActiveParams] = useState<URLSearchParams>(
@@ -191,11 +245,12 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
         : PAGE_ROUTES[pageId];
 
       // 更新 URL（不触发服务端导航）
-      window.history.pushState(
-        { pageId, params: newParams.toString(), clientNav: true },
-        "",
-        newUrl,
-      );
+      const historyState: ClientNavHistoryState = {
+        pageId,
+        params: newParams.toString(),
+        clientNav: true,
+      };
+      window.history.pushState(historyState, "", newUrl);
 
       // 更新状态
       setActivePage(pageId);
@@ -257,30 +312,44 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
 
   /**
    * 监听浏览器前进/后退
+   * 使用 ref 获取当前页面，避免闭包陷阱
+   * 依赖数组为空，只在挂载时注册一次事件
    */
   useEffect(() => {
     const handlePopState = (event: PopStateEvent) => {
-      if (event.state?.clientNav) {
-        // 客户端导航历史
-        const pageId = event.state.pageId as PageId;
-        const params = new URLSearchParams(event.state.params || "");
+      // 使用 ref 获取最新的 activePage，避免闭包陷阱
+      const currentPage = activePageRef.current;
+
+      if (isClientNavState(event.state)) {
+        // 客户端导航历史（类型安全）
+        const { pageId, params } = event.state;
+        const newParams = new URLSearchParams(params || "");
 
         // 保存当前页面滚动位置
         setPageStates((prev) => ({
           ...prev,
-          [activePage]: {
-            ...prev[activePage],
+          [currentPage]: {
+            ...prev[currentPage],
             scrollPosition: { x: window.scrollX, y: window.scrollY },
           },
         }));
 
         setActivePage(pageId);
-        setActiveParams(params);
+        setActiveParams(newParams);
       } else {
         // 服务端导航历史，解析当前 URL
         const currentPath = window.location.pathname;
         const pageId = ROUTE_TO_PAGE[currentPath];
         if (pageId) {
+          // 保存当前页面滚动位置
+          setPageStates((prev) => ({
+            ...prev,
+            [currentPage]: {
+              ...prev[currentPage],
+              scrollPosition: { x: window.scrollX, y: window.scrollY },
+            },
+          }));
+
           setActivePage(pageId);
           setActiveParams(new URLSearchParams(window.location.search));
         }
@@ -289,7 +358,7 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
 
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
-  }, [activePage]);
+  }, []); // 空依赖数组，只在挂载时注册一次
 
   /**
    * 首次加载完成后启用客户端导航
@@ -299,7 +368,7 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
     // 延迟启用客户端导航，确保首次 SSR 渲染完成
     const timer = setTimeout(() => {
       setIsClientNavEnabled(true);
-    }, 100);
+    }, CLIENT_NAV_ENABLE_DELAY_MS);
 
     return () => clearTimeout(timer);
   }, []);
@@ -349,6 +418,7 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
 
 /**
  * 使用导航 Context 的 Hook
+ * @throws 如果在 NavigationProvider 外部使用
  */
 export function useNavigation(): NavigationContextValue {
   const context = useContext(NavigationContext);
@@ -356,6 +426,15 @@ export function useNavigation(): NavigationContextValue {
     throw new Error("useNavigation must be used within a NavigationProvider");
   }
   return context;
+}
+
+/**
+ * 安全获取导航上下文（不抛出错误）
+ * 适用于可能在 NavigationProvider 外部渲染的组件
+ * @returns NavigationContextValue 或 null
+ */
+export function useSafeNavigation(): NavigationContextValue | null {
+  return useContext(NavigationContext);
 }
 
 /**

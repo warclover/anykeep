@@ -11,19 +11,10 @@ import { usePathname } from "next/navigation";
 import { Home, Search, Folder, BarChart3, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
-  NavigationContext,
+  useSafeNavigation,
   type PageId,
   PAGE_ROUTES,
 } from "@/contexts/navigation-context";
-import { useContext } from "react";
-
-/**
- * 安全获取导航上下文（不抛出错误）
- */
-function useSafeNavigation() {
-  const context = useContext(NavigationContext);
-  return context;
-}
 
 // 主导航配置
 const navigation: {

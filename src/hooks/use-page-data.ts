@@ -529,6 +529,16 @@ export function useSearchData(query: string, aiMode: boolean) {
     }
   }, [query, search]);
 
+  // 组件卸载时清理 AbortController
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+    };
+  }, []);
+
   return {
     ...state,
     search,

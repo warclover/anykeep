@@ -11,17 +11,9 @@
 
 "use client";
 
-import { type ReactNode, useContext } from "react";
-import { NavigationContext } from "@/contexts/navigation-context";
+import { type ReactNode } from "react";
+import { useSafeNavigation } from "@/contexts/navigation-context";
 import { PageContainer } from "./page-container";
-
-/**
- * 安全获取导航上下文（不抛出错误）
- */
-function useSafeNavigation() {
-  const context = useContext(NavigationContext);
-  return context;
-}
 
 interface MainContentProps {
   /** 服务端渲染的初始内容 */

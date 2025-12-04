@@ -1,6 +1,10 @@
 /**
  * 平台筛选组件
  * 用于首页顶部导航栏的平台切换
+ *
+ * 支持客户端导航（Keep-Alive）模式：
+ * - 使用 NavigationContext 判断当前页面
+ * - 同时兼容传统 SSR 导航模式
  */
 
 "use client";
@@ -10,6 +14,7 @@ import { useSearchParams, usePathname } from "next/navigation";
 import { RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useSafeNavigation } from "@/contexts/navigation-context";
 
 // 平台配置（内容平台 + 浏览器书签统一入口）
 const platforms = [
@@ -27,6 +32,13 @@ const FLIP_CARD_STORAGE_KEY = "anykeep-flip-card";
 export function PlatformFilter() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+
+  // 获取导航上下文（支持客户端导航模式）
+  const navigationContext = useSafeNavigation();
+  const { activePage, isClientNavEnabled } = navigationContext || {
+    activePage: null,
+    isClientNavEnabled: false,
+  };
 
   // 从 URL 读取初始值
   const urlPlatform = searchParams.get("platform") || "";
@@ -53,8 +65,12 @@ export function PlatformFilter() {
     return localStorage.getItem(FLIP_CARD_STORAGE_KEY) === "true";
   });
 
-  // 仅在首页显示
-  const isHomePage = pathname === "/home";
+  // 判断是否在首页：
+  // - 客户端导航模式：使用 NavigationContext.activePage
+  // - 传统 SSR 模式：使用 pathname
+  const isHomePage = isClientNavEnabled
+    ? activePage === "home"
+    : pathname === "/home";
 
   // 监听来自其他组件的翻转状态变化事件
   useEffect(() => {
