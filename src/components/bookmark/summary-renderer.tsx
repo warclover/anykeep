@@ -3,7 +3,7 @@
  * 智能解析纯文本摘要，提供结构化视觉呈现
  */
 
-import { Lightbulb, List, Target, Info, Sparkles } from "lucide-react";
+import { Lightbulb, List, Info, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface SummaryRendererProps {
@@ -19,35 +19,50 @@ type SectionType = "heading" | "list" | "paragraph" | "quote";
 interface Section {
   type: SectionType;
   title?: string;
-  icon?: React.ReactNode;
+  iconData?: {
+    icon: React.ReactNode;
+    colorClass: string;
+  };
   content?: string;
   items?: string[];
 }
 
 /**
- * 根据标题文本返回对应图标
+ * 根据标题文本返回对应图标和样式
  */
-function getIconForHeading(text: string): React.ReactNode {
+function getIconForHeading(text: string): {
+  icon: React.ReactNode;
+  colorClass: string;
+} {
   const lowerText = text.toLowerCase();
 
   if (lowerText.includes("核心") || lowerText.includes("主旨")) {
-    return <Lightbulb className="size-4 text-blue-500" />;
-  }
-  if (lowerText.includes("关键") || lowerText.includes("信息")) {
-    return <List className="size-4 text-green-500" />;
+    return {
+      icon: <Lightbulb className="size-4" />,
+      colorClass: "text-blue-500",
+    };
   }
   if (
-    lowerText.includes("适用") ||
-    lowerText.includes("场景") ||
-    lowerText.includes("价值")
+    lowerText.includes("关键") ||
+    lowerText.includes("价值") ||
+    lowerText.includes("信息")
   ) {
-    return <Target className="size-4 text-purple-500" />;
+    return {
+      icon: <List className="size-4" />,
+      colorClass: "text-emerald-500",
+    };
   }
   if (lowerText.includes("要点") || lowerText.includes("步骤")) {
-    return <Sparkles className="size-4 text-orange-500" />;
+    return {
+      icon: <Sparkles className="size-4" />,
+      colorClass: "text-amber-500",
+    };
   }
 
-  return <Info className="size-4 text-gray-500" />;
+  return {
+    icon: <Info className="size-4" />,
+    colorClass: "text-slate-400",
+  };
 }
 
 /**
@@ -136,9 +151,11 @@ function parseSummary(summary: string): Section[] {
   const sections: Section[] = [];
 
   // 步骤 1: 先尝试识别结构化标记，分割成段落
-  // 匹配模式: "关键信息点：" 或 "适用场景：" 等
+  // 匹配模式支持两种格式：
+  // - "关键价值点：" 或 "核心主旨：" (标记+冒号)
+  // - "核心主旨是" 或 "关键信息点包括：" (标记+是/包括)
   const sectionRegex =
-    /(核心主旨|关键信息点?|适用场景|价值|要点|步骤|方法论?|总结)[：:]/g;
+    /(核心主旨|关键价值点?|关键信息点?|价值|要点|步骤|方法论?|总结)(?:[：:]|(?:是|包括[：:]))/g;
 
   // 查找所有标记位置
   const matches = [...summary.matchAll(sectionRegex)];
@@ -150,33 +167,47 @@ function parseSummary(summary: string): Section[] {
 
   // 有结构化标记，按标记分割
   let lastIndex = 0;
+  let leadingContent = ""; // 保存前导段落，用于合并到核心主旨
 
   matches.forEach((match, idx) => {
     const matchStart = match.index!;
     const title = match[1];
+    const isCore = title.includes("核心") || title.includes("主旨");
 
     // 提取前一段内容（如果有）
     if (matchStart > lastIndex) {
       const prevContent = summary.substring(lastIndex, matchStart).trim();
       if (prevContent) {
-        // 这是第一段（核心描述），去除可能的句号
-        const cleanContent = prevContent.replace(/[。\.]+$/, "");
-        sections.push({ type: "paragraph", content: cleanContent });
+        // 如果下一个是核心主旨，保存前导内容用于合并
+        if (isCore && sections.length === 0) {
+          leadingContent = prevContent.replace(/[，,]+$/, "");
+        } else {
+          // 非核心主旨前的内容，作为独立段落
+          const cleanContent = prevContent.replace(/[。\.]+$/, "");
+          sections.push({ type: "paragraph", content: cleanContent });
+        }
       }
     }
 
-    // 添加标题
+    // 添加标题（将"关键信息点"自动转换为"关键价值点"显示）
+    const displayTitle = title.replace("关键信息点", "关键价值点");
     sections.push({
       type: "heading",
-      title,
-      icon: getIconForHeading(title),
+      title: displayTitle,
+      iconData: getIconForHeading(title),
     });
 
     // 提取此标记后的内容（到下一个标记或结尾）
     const contentStart = matchStart + match[0].length;
     const nextMatch = matches[idx + 1];
     const contentEnd = nextMatch ? nextMatch.index! : summary.length;
-    const content = summary.substring(contentStart, contentEnd).trim();
+    let content = summary.substring(contentStart, contentEnd).trim();
+
+    // 如果是核心主旨且有前导内容，合并它们
+    if (isCore && leadingContent) {
+      content = leadingContent + "，" + content;
+      leadingContent = ""; // 清空，避免重复使用
+    }
 
     // 解析内容（可能是列表或段落）
     if (content) {
@@ -197,91 +228,155 @@ function parseSummary(summary: string): Section[] {
 }
 
 /**
+ * 判断是否为核心主旨类型的标题
+ */
+function isCoreSection(title: string): boolean {
+  const lowerText = title.toLowerCase();
+  return lowerText.includes("核心") || lowerText.includes("主旨");
+}
+
+/**
  * AI 摘要渲染组件
+ * 采用卡片式结构化布局，层次分明，便于阅读
  */
 export function SummaryRenderer({ summary, className }: SummaryRendererProps) {
   const sections = parseSummary(summary);
 
-  // 如果解析失败或只有一个段落，降级到简单渲染
+  // 如果解析失败或只有一个段落，降级到简单卡片渲染
   if (sections.length === 0) {
     return (
-      <p
+      <div
         className={cn(
-          "text-gray-600 dark:text-gray-400 leading-relaxed",
+          "rounded-xl p-5 bg-gradient-to-br from-slate-50 to-slate-100/50 dark:from-slate-900/50 dark:to-slate-800/30 border border-slate-200/60 dark:border-slate-700/50",
           className,
         )}
       >
-        {summary}
-      </p>
+        <p className="text-slate-700 dark:text-slate-300 leading-7">
+          {summary}
+        </p>
+      </div>
     );
   }
 
-  // 如果只有一个普通段落（无结构化内容），也使用简单渲染
+  // 如果只有一个普通段落（无结构化内容），也使用简单卡片渲染
   if (sections.length === 1 && sections[0].type === "paragraph") {
     return (
-      <p
+      <div
         className={cn(
-          "text-gray-600 dark:text-gray-400 leading-relaxed",
+          "rounded-xl p-5 bg-gradient-to-br from-slate-50 to-slate-100/50 dark:from-slate-900/50 dark:to-slate-800/30 border border-slate-200/60 dark:border-slate-700/50",
           className,
         )}
       >
-        {sections[0].content}
-      </p>
+        <p className="text-slate-700 dark:text-slate-300 leading-7">
+          {sections[0].content}
+        </p>
+      </div>
     );
   }
 
   return (
-    <div className={cn("space-y-3", className)}>
+    <div
+      className={cn(
+        "rounded-xl p-5 bg-gradient-to-br from-slate-50 to-slate-100/50 dark:from-slate-900/50 dark:to-slate-800/30 border border-slate-200/60 dark:border-slate-700/50 space-y-3",
+        className,
+      )}
+    >
       {sections.map((section, idx) => {
         // 标题
-        if (section.type === "heading") {
+        if (section.type === "heading" && section.title) {
+          const isCore = isCoreSection(section.title);
           return (
-            <div key={idx} className="flex items-center gap-2 mt-4 first:mt-0">
-              {section.icon}
-              <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+            <div
+              key={idx}
+              className={cn(
+                "flex items-center gap-2 pt-2 first:pt-0",
+                isCore && "pb-0.5",
+              )}
+            >
+              <span
+                className={cn(
+                  "flex items-center justify-center size-6 rounded-full bg-white dark:bg-slate-800 shadow-sm",
+                  section.iconData?.colorClass,
+                )}
+              >
+                {section.iconData?.icon}
+              </span>
+              <h4
+                className={cn(
+                  "text-sm font-semibold tracking-wide",
+                  isCore
+                    ? "text-slate-800 dark:text-slate-200"
+                    : "text-slate-500 dark:text-slate-400 uppercase",
+                )}
+              >
                 {section.title}
               </h4>
             </div>
           );
         }
 
-        // 列表
+        // 列表 - 带编号圆点样式
         if (section.type === "list" && section.items) {
           return (
-            <ul
-              key={idx}
-              className="text-sm text-gray-600 dark:text-gray-400 space-y-1.5 ml-6"
-            >
-              {section.items.map((item, i) => (
-                <li
-                  key={i}
-                  className="relative pl-0 before:content-['•'] before:absolute before:-left-4 before:text-gray-400"
-                >
-                  {item}
-                </li>
-              ))}
+            <ul key={idx} className="space-y-2 ml-1">
+              {section.items.map((item, i) => {
+                // 去除文本开头的序号前缀（如 "1）"、"2."、"①" 等）
+                const cleanItem = item
+                  .replace(/^[\d①②③④⑤⑥⑦⑧⑨⑩]+[）\)\.、\s]+/, "")
+                  .trim();
+                return (
+                  <li key={i} className="flex items-start gap-2.5">
+                    <span className="flex-shrink-0 flex items-center justify-center size-5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-xs font-medium mt-0.5">
+                      {i + 1}
+                    </span>
+                    <span className="text-slate-700 dark:text-slate-300 leading-relaxed">
+                      {cleanItem}
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           );
         }
 
-        // 引用块（特殊段落，如果包含"建议"、"注意"等关键词）
+        // 引用块
         if (section.type === "quote" && section.content) {
           return (
             <blockquote
               key={idx}
-              className="border-l-4 border-blue-500 pl-3 text-sm text-gray-700 dark:text-gray-300 italic"
+              className="border-l-4 border-blue-400 dark:border-blue-500 pl-4 py-2 bg-blue-50/50 dark:bg-blue-950/20 rounded-r-lg text-slate-700 dark:text-slate-300 italic leading-relaxed"
             >
               {section.content}
             </blockquote>
           );
         }
 
-        // 普通段落
+        // 普通段落 - 核心主旨后的内容突出显示
         if (section.type === "paragraph" && section.content) {
+          // 检查前一个 section 是否是核心主旨
+          const prevSection = idx > 0 ? sections[idx - 1] : null;
+          const isAfterCore =
+            prevSection?.type === "heading" &&
+            prevSection.title &&
+            isCoreSection(prevSection.title);
+
+          if (isAfterCore) {
+            return (
+              <div
+                key={idx}
+                className="border-l-4 border-blue-500 dark:border-blue-400 pl-3 py-2 bg-white/60 dark:bg-slate-800/50 rounded-r-lg"
+              >
+                <p className="text-[15px] text-slate-800 dark:text-slate-200 font-medium leading-relaxed">
+                  {section.content}
+                </p>
+              </div>
+            );
+          }
+
           return (
             <p
               key={idx}
-              className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed"
+              className="text-slate-700 dark:text-slate-300 leading-7 ml-1"
             >
               {section.content}
             </p>
