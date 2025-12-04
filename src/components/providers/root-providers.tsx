@@ -10,6 +10,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { ServiceWorkerRegister } from "@/components/pwa/sw-register";
 import { UserProvider } from "@/contexts/user-context";
+import { KeepAliveProvider } from "@/lib/cache";
 
 interface RootProvidersProps {
   children: React.ReactNode;
@@ -23,7 +24,9 @@ export function RootProviders({ children }: RootProvidersProps) {
       enableSystem
       disableTransitionOnChange
     >
-      <UserProvider>{children}</UserProvider>
+      <UserProvider>
+        <KeepAliveProvider>{children}</KeepAliveProvider>
+      </UserProvider>
       <Toaster />
       <ServiceWorkerRegister />
     </ThemeProvider>

@@ -42,6 +42,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAbortableFetch } from "@/hooks/use-abortable-fetch";
+import { useBookmarksSWR } from "@/lib/cache";
 import { Button } from "@/components/ui/button";
 import { BookmarkCard } from "@/components/bookmark/bookmark-card";
 import { FlipBookmarkCard } from "@/components/bookmark/bookmark-card-flip";
@@ -151,9 +152,6 @@ export function HomePageClient({
 
   // 可取消请求 Hook
   const { fetchWithAbort } = useAbortableFetch();
-
-  // 初始加载状态（当没有服务端数据时显示 skeleton）
-  const [isInitialLoading, _setIsInitialLoading] = useState(false);
 
   // 视图模式（从 localStorage 读取默认值）
   const [viewMode, setViewMode] = useState<ViewMode>("card");
@@ -301,14 +299,33 @@ export function HomePageClient({
     layoutMode === "column" && "layout-column",
   );
 
-  // ===== 状态声明 =====
-  const [bookmarks, setBookmarks] = useState<BookmarkWithFolder[]>(
-    initialBookmarks || [],
-  );
+  // ===== SWR 数据缓存（性能优化核心） =====
+  // 使用 SWR 模式：有缓存先显示，后台自动刷新
+  const {
+    data: bookmarks,
+    hasMore,
+    isLoading: isInitialLoading,
+    isValidating: _isValidating,
+    isStale: _isStale,
+    error: _swrError,
+    mutate: mutateBookmarks,
+    setHasMore,
+    refetch: _refetch,
+    loadMore: _loadMore,
+    updateCacheItem,
+    removeCacheItem,
+    appendToCache,
+  } = useBookmarksSWR({
+    platform: currentPlatform,
+    sort: currentSort,
+    folder: currentFolder,
+    initialData: initialBookmarks,
+  });
+
+  // 兼容层：setBookmarks 改为使用 mutate（支持数组和函数两种形式）
+  const setBookmarks = mutateBookmarks;
+
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(
-    (initialBookmarks?.length || 0) === 50,
-  );
   const [_isPending, startTransition] = useTransition();
 
   // 对话框和下拉菜单状态管理
@@ -347,13 +364,13 @@ export function HomePageClient({
     exitSelectionMode,
   } = useSelectionMode();
 
-  // 平台数据缓存（性能优化）
+  // 保留旧的缓存 hook 用于兼容（将逐步移除）
   const {
     getCache,
     setCache,
-    updateCacheItem,
-    removeCacheItem,
-    appendToCache,
+    updateCacheItem: _updateCacheItemOld,
+    removeCacheItem: _removeCacheItemOld,
+    appendToCache: _appendToCacheOld,
   } = usePlatformCache();
 
   /**
@@ -467,12 +484,38 @@ export function HomePageClient({
   };
 
   /**
-   * 纯客户端平台切换（性能优化核心）
-   * 1. 优先使用缓存 → 即时响应
-   * 2. API 获取最新数据 → 后台更新
-   * 3. replaceState 更新 URL → 不触发服务端渲染
+   * 平台切换（SWR 优化版）
+   * 使用 router.replace 更新 URL，SWR hook 会自动响应参数变化
+   * 有缓存时立即显示，后台自动刷新
    */
   const handlePlatformChange = useCallback(
+    (platformValue: string) => {
+      const params = new URLSearchParams(searchParams);
+      if (platformValue) {
+        params.set("platform", platformValue);
+      } else {
+        params.delete("platform");
+      }
+      // 使用 router.replace 确保 searchParams 更新，触发 SWR hook 重新获取
+      router.replace(`/home?${params.toString()}`);
+    },
+    [searchParams, router],
+  );
+
+  /**
+   * 排序切换（SWR 优化版）
+   */
+  const handleSortChange = useCallback(
+    (sortValue: string) => {
+      const params = new URLSearchParams(searchParams);
+      params.set("sort", sortValue);
+      router.replace(`/home?${params.toString()}`);
+    },
+    [searchParams, router],
+  );
+
+  // 保留旧的实现作为备用（已弃用）
+  const _handlePlatformChangeOld = useCallback(
     async (platformValue: string) => {
       // 1. 优先使用缓存数据，提供即时反馈
       const cached = getCache({
@@ -482,8 +525,7 @@ export function HomePageClient({
       });
 
       if (cached) {
-        setBookmarks(cached.data);
-        setHasMore(cached.hasMore);
+        setBookmarks((_prev) => cached.data);
       }
 
       // 2. 更新 URL（不触发导航）
@@ -532,8 +574,7 @@ export function HomePageClient({
         const newHasMore = data.data.pagination.hasMore;
 
         // 更新状态和缓存
-        setBookmarks(newBookmarks);
-        setHasMore(newHasMore);
+        setBookmarks((_prev) => newBookmarks);
         setCache(
           { platform: platformValue, sort: currentSort, folder: currentFolder },
           newBookmarks,
@@ -557,13 +598,12 @@ export function HomePageClient({
       getCache,
       setCache,
       fetchWithAbort,
+      setBookmarks,
     ],
   );
 
-  /**
-   * 纯客户端排序切换（性能优化）
-   */
-  const handleSortChange = async (sortValue: string) => {
+  // 保留旧的排序实现作为备用（已弃用）
+  const _handleSortChangeOld = async (sortValue: string) => {
     // 1. 优先使用缓存数据
     const cached = getCache({
       platform: currentPlatform,
@@ -572,8 +612,7 @@ export function HomePageClient({
     });
 
     if (cached) {
-      setBookmarks(cached.data);
-      setHasMore(cached.hasMore);
+      setBookmarks((_prev) => cached.data);
     }
 
     // 2. 更新 URL（不触发导航）
@@ -616,8 +655,7 @@ export function HomePageClient({
       const newBookmarks = data.data.bookmarks;
       const newHasMore = data.data.pagination.hasMore;
 
-      setBookmarks(newBookmarks);
-      setHasMore(newHasMore);
+      setBookmarks((_prev) => newBookmarks);
       setCache(
         { platform: currentPlatform, sort: sortValue, folder: currentFolder },
         newBookmarks,
@@ -875,15 +913,8 @@ export function HomePageClient({
       const newBookmarks = data.data.bookmarks;
       const newHasMore = data.data.pagination.hasMore;
 
-      setBookmarks((prev) => [...prev, ...newBookmarks]);
-      setHasMore(newHasMore);
-
-      // 同步追加到缓存
-      appendToCache(
-        { platform: currentPlatform, sort: currentSort, folder: currentFolder },
-        newBookmarks,
-        newHasMore,
-      );
+      // 使用 SWR hook 的 appendToCache（自动更新数据和 hasMore 状态）
+      appendToCache(newBookmarks, newHasMore);
     } catch (error) {
       // 如果是取消错误，不显示错误提示
       if (error instanceof Error && error.name === "AbortError") {
