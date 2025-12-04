@@ -97,6 +97,13 @@ const ROUTE_TO_PAGE: Record<string, PageId> = {
 };
 
 /**
+ * 检查路径是否是主页面（Keep-Alive 管理的页面）
+ */
+export function isMainPagePath(pathname: string): boolean {
+  return pathname in ROUTE_TO_PAGE;
+}
+
+/**
  * 页面状态
  */
 export type PageState = "idle" | "loading" | "ready" | "cached";
@@ -115,7 +122,8 @@ interface PageCacheEntry {
  */
 interface NavigationContextValue {
   // 当前状态
-  activePage: PageId;
+  // activePage 为 null 表示当前不在主页面（如详情页）
+  activePage: PageId | null;
   activeParams: URLSearchParams;
 
   // 页面缓存状态
@@ -131,6 +139,9 @@ interface NavigationContextValue {
 
   // 是否启用客户端导航模式
   isClientNavEnabled: boolean;
+
+  // 是否在主页面（Keep-Alive 管理的页面）
+  isOnMainPage: boolean;
 }
 
 export const NavigationContext = createContext<NavigationContextValue | null>(
@@ -178,15 +189,16 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
   const searchParams = useSearchParams();
 
   // 从 URL 解析初始页面（只在首次渲染时使用）
-  const [initialPage] = useState<PageId>(
-    () => ROUTE_TO_PAGE[pathname] || "home",
+  // 如果不是主页面（如详情页），则为 null
+  const [initialPage] = useState<PageId | null>(
+    () => ROUTE_TO_PAGE[pathname] || null,
   );
 
-  // 当前激活的页面
-  const [activePage, setActivePage] = useState<PageId>(initialPage);
+  // 当前激活的页面（null 表示不在主页面）
+  const [activePage, setActivePage] = useState<PageId | null>(initialPage);
 
   // 使用 ref 跟踪当前页面，避免 popstate 事件处理器中的闭包陷阱
-  const activePageRef = useRef<PageId>(initialPage);
+  const activePageRef = useRef<PageId | null>(initialPage);
 
   // 保持 ref 与 state 同步（使用 useEffect 避免渲染期间更新 ref）
   useEffect(() => {
@@ -198,13 +210,16 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
     () => new URLSearchParams(searchParams.toString()),
   );
 
-  // 页面缓存状态（初始时将当前页面标记为 loading）
+  // 页面缓存状态（初始时将当前页面标记为 loading，如果有的话）
   const [pageStates, setPageStates] = useState<Record<PageId, PageCacheEntry>>(
-    () => createInitialPageStates(initialPage),
+    () => createInitialPageStates(initialPage ?? undefined),
   );
 
   // 是否启用客户端导航（首次加载后启用）
   const [isClientNavEnabled, setIsClientNavEnabled] = useState(false);
+
+  // 是否在主页面
+  const isOnMainPage = activePage !== null;
 
   /**
    * 导航到指定页面
@@ -219,18 +234,20 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
         return;
       }
 
-      // 保存当前页面滚动位置
-      setPageStates((prev) => ({
-        ...prev,
-        [activePage]: {
-          ...prev[activePage],
-          scrollPosition: { x: window.scrollX, y: window.scrollY },
-          state:
-            prev[activePage].state === "ready"
-              ? "cached"
-              : prev[activePage].state,
-        },
-      }));
+      // 保存当前页面滚动位置（仅当在主页面时）
+      if (activePage !== null) {
+        setPageStates((prev) => ({
+          ...prev,
+          [activePage]: {
+            ...prev[activePage],
+            scrollPosition: { x: window.scrollX, y: window.scrollY },
+            state:
+              prev[activePage].state === "ready"
+                ? "cached"
+                : prev[activePage].state,
+          },
+        }));
+      }
 
       // 构建新 URL
       const newParams = new URLSearchParams();
@@ -325,23 +342,8 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
         const { pageId, params } = event.state;
         const newParams = new URLSearchParams(params || "");
 
-        // 保存当前页面滚动位置
-        setPageStates((prev) => ({
-          ...prev,
-          [currentPage]: {
-            ...prev[currentPage],
-            scrollPosition: { x: window.scrollX, y: window.scrollY },
-          },
-        }));
-
-        setActivePage(pageId);
-        setActiveParams(newParams);
-      } else {
-        // 服务端导航历史，解析当前 URL
-        const currentPath = window.location.pathname;
-        const pageId = ROUTE_TO_PAGE[currentPath];
-        if (pageId) {
-          // 保存当前页面滚动位置
+        // 保存当前页面滚动位置（仅当在主页面时）
+        if (currentPage !== null) {
           setPageStates((prev) => ({
             ...prev,
             [currentPage]: {
@@ -349,10 +351,29 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
               scrollPosition: { x: window.scrollX, y: window.scrollY },
             },
           }));
-
-          setActivePage(pageId);
-          setActiveParams(new URLSearchParams(window.location.search));
         }
+
+        setActivePage(pageId);
+        setActiveParams(newParams);
+      } else {
+        // 服务端导航历史，解析当前 URL
+        const currentPath = window.location.pathname;
+        const pageId = ROUTE_TO_PAGE[currentPath];
+
+        // 保存当前页面滚动位置（仅当在主页面时）
+        if (currentPage !== null) {
+          setPageStates((prev) => ({
+            ...prev,
+            [currentPage]: {
+              ...prev[currentPage],
+              scrollPosition: { x: window.scrollX, y: window.scrollY },
+            },
+          }));
+        }
+
+        // 如果是主页面，更新 activePage；否则设为 null
+        setActivePage(pageId || null);
+        setActiveParams(new URLSearchParams(window.location.search));
       }
     };
 
@@ -378,8 +399,9 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
    * 这是响应外部 URL 变化的合法用例，需要同步内部状态
    */
   useEffect(() => {
-    const pageId = ROUTE_TO_PAGE[pathname];
-    if (pageId && pageId !== activePage) {
+    const pageId = ROUTE_TO_PAGE[pathname] || null;
+    // 只有当 pageId 确实变化时才更新（包括从主页面到非主页面）
+    if (pageId !== activePage) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- 响应外部 URL 变化
       setActivePage(pageId);
       setActiveParams(new URLSearchParams(searchParams.toString()));
@@ -396,6 +418,7 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
       saveScrollPosition,
       restoreScrollPosition,
       isClientNavEnabled,
+      isOnMainPage,
     }),
     [
       activePage,
@@ -406,6 +429,7 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
       saveScrollPosition,
       restoreScrollPosition,
       isClientNavEnabled,
+      isOnMainPage,
     ],
   );
 

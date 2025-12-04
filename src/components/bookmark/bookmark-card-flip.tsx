@@ -7,6 +7,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { RotateCcw, ExternalLink, FileText, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -44,6 +45,7 @@ export function FlipBookmarkCard({
   onToggleSelect,
   enableFlip = true,
 }: FlipBookmarkCardProps) {
+  const router = useRouter();
   const [isFlipped, setIsFlipped] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
@@ -138,12 +140,22 @@ export function FlipBookmarkCard({
     }
   };
 
+  // 非翻转模式：处理卡片点击导航（使用程序化导航确保可靠性）
+  const handleNonFlipCardClick = (e: React.MouseEvent) => {
+    if (isSelectionMode) {
+      handleToggleSelect(e);
+      return;
+    }
+    e.preventDefault();
+    router.push(`/bookmark/${bookmark.id}`);
+  };
+
   // 如果不启用翻转，使用原始卡片（降级方案）
   if (!enableFlip) {
     return (
       <Link
         href={isSelectionMode ? "#" : `/bookmark/${bookmark.id}`}
-        onClick={isSelectionMode ? handleToggleSelect : undefined}
+        onClick={handleNonFlipCardClick}
         className="block h-full"
       >
         <div className="h-full hover:shadow-md transition-shadow cursor-pointer flex flex-col group relative bg-white dark:bg-gray-800 rounded-lg overflow-hidden">

@@ -33,11 +33,19 @@ export function MainContent({ children }: MainContentProps) {
     return <>{children}</>;
   }
 
-  const { isClientNavEnabled, activePage, pageStates } = navigationContext;
+  const { isClientNavEnabled, activePage, pageStates, isOnMainPage } =
+    navigationContext;
+
+  // 如果不在主页面（如详情页），直接渲染 SSR children
+  // 不使用 PageContainer，让 Next.js 正常渲染页面
+  if (!isOnMainPage) {
+    return <>{children}</>;
+  }
 
   // 判断是否应该使用 PageContainer
   // 条件：客户端导航已启用 且 当前页面已经被访问过（非首次）
-  const currentPageState = pageStates[activePage];
+  // activePage 不可能为 null（因为上面已经检查了 isOnMainPage）
+  const currentPageState = activePage ? pageStates[activePage] : null;
   const shouldUsePageContainer =
     isClientNavEnabled &&
     currentPageState &&

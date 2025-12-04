@@ -5,7 +5,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   MoreVertical,
   Edit,
@@ -85,6 +85,7 @@ export function BookmarkCard({
   onToggleSelect,
   variant = "card",
 }: BookmarkCardProps) {
+  const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
 
   // 生成封面图（真实封面或占位符，微信图片使用代理）
@@ -229,77 +230,111 @@ export function BookmarkCard({
     </div>
   );
 
+  // 通用的卡片/列表点击处理（使用程序化导航确保可靠性）
+  const handleItemClick = (e: React.MouseEvent) => {
+    // 如果点击的是按钮或链接，不处理（让按钮/链接自己处理）
+    const target = e.target as HTMLElement;
+    if (
+      target.tagName === "BUTTON" ||
+      target.tagName === "A" ||
+      target.closest("button") ||
+      target.closest("a") ||
+      target.closest("[data-radix-collection-item]") // Dropdown menu items
+    ) {
+      return;
+    }
+
+    if (isSelectionMode) {
+      handleToggleSelect(e);
+      return;
+    }
+
+    // 使用 Next.js router 进行客户端导航
+    // NavigationContext 已支持非主页面（activePage = null），不会被拦截
+    router.push(`/bookmark/${bookmark.id}`);
+  };
+
   // 紧凑列表视图（compact）
   if (variant === "compact") {
     return (
-      <Link
-        href={isSelectionMode ? "#" : `/bookmark/${bookmark.id}`}
-        onClick={isSelectionMode ? handleToggleSelect : undefined}
+      <div
+        onClick={handleItemClick}
+        className={cn(
+          "flex items-center gap-2 sm:gap-4 p-2 sm:p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-sm transition-shadow cursor-pointer group",
+          isDeleting && "opacity-50 pointer-events-none",
+          isSelected && "ring-2 ring-blue-500 dark:ring-blue-400",
+        )}
+        role="link"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            handleItemClick(e as unknown as React.MouseEvent);
+          }
+        }}
       >
-        <div
-          className={cn(
-            "flex items-center gap-2 sm:gap-4 p-2 sm:p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-sm transition-shadow cursor-pointer group",
-            isDeleting && "opacity-50 pointer-events-none",
-            isSelected && "ring-2 ring-blue-500 dark:ring-blue-400",
-          )}
-        >
-          {/* 选择复选框 */}
-          {isSelectionMode && <SelectionCheckbox />}
+        {/* 选择复选框 */}
+        {isSelectionMode && <SelectionCheckbox />}
 
-          {/* 平台标识 */}
-          <PlatformBadge platform={bookmark.platform} size="sm" />
+        {/* 平台标识 */}
+        <PlatformBadge platform={bookmark.platform} size="sm" />
 
-          {/* 标题和元信息 */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-0.5">
-              <h3 className="font-medium text-gray-900 dark:text-white truncate text-sm sm:text-base flex-1">
-                {bookmark.title}
-              </h3>
-              {/* V6.0新增：评级显示（Compact视图） */}
-              <BookmarkRatingDisplay
-                rating={bookmark.rating}
-                isLocked={bookmark.is_locked}
-                variant="compact"
-                className="flex-shrink-0"
-              />
-            </div>
-            <div className="flex items-center gap-1.5 sm:gap-2 text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-              {/* compact 视图：简洁显示来源/作者 */}
-              <span className="truncate max-w-[80px] sm:max-w-none">
-                {bookmark.source_name || bookmark.author || "未知作者"}
-              </span>
-              <span>·</span>
-              <span className="flex-shrink-0">
-                {formatRelativeTime(
-                  bookmark.publish_time || bookmark.created_at,
-                )}
-              </span>
-              {bookmark.folders && (
-                <span className="hidden sm:contents">
-                  <span>·</span>
-                  <span className="truncate">{bookmark.folders.name}</span>
-                </span>
-              )}
-            </div>
+        {/* 标题和元信息 */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-0.5">
+            <h3 className="font-medium text-gray-900 dark:text-white truncate text-sm sm:text-base flex-1">
+              {bookmark.title}
+            </h3>
+            {/* V6.0新增：评级显示（Compact视图） */}
+            <BookmarkRatingDisplay
+              rating={bookmark.rating}
+              isLocked={bookmark.is_locked}
+              variant="compact"
+              className="flex-shrink-0"
+            />
           </div>
-
-          {/* 操作按钮 - 移动端始终显示，桌面端悬停显示 */}
-          {!isSelectionMode && (
-            <div className="flex-shrink-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-              <ActionMenu />
-            </div>
-          )}
+          <div className="flex items-center gap-1.5 sm:gap-2 text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+            {/* compact 视图：简洁显示来源/作者 */}
+            <span className="truncate max-w-[80px] sm:max-w-none">
+              {bookmark.source_name || bookmark.author || "未知作者"}
+            </span>
+            <span>·</span>
+            <span className="flex-shrink-0">
+              {formatRelativeTime(bookmark.publish_time || bookmark.created_at)}
+            </span>
+            {bookmark.folders && (
+              <span className="hidden sm:contents">
+                <span>·</span>
+                <span className="truncate">{bookmark.folders.name}</span>
+              </span>
+            )}
+          </div>
         </div>
-      </Link>
+
+        {/* 操作按钮 - 移动端始终显示，桌面端悬停显示 */}
+        {!isSelectionMode && (
+          <div className="flex-shrink-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+            <ActionMenu />
+          </div>
+        )}
+      </div>
     );
   }
 
   // 列表视图（list）- 移动端垂直布局，桌面端水平布局
   if (variant === "list") {
     return (
-      <Link
-        href={isSelectionMode ? "#" : `/bookmark/${bookmark.id}`}
-        onClick={isSelectionMode ? handleToggleSelect : undefined}
+      <div
+        onClick={handleItemClick}
+        className="block cursor-pointer"
+        role="link"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            handleItemClick(e as unknown as React.MouseEvent);
+          }
+        }}
       >
         <Card
           className={cn(
@@ -465,15 +500,24 @@ export function BookmarkCard({
             </div>
           )}
         </Card>
-      </Link>
+      </div>
     );
   }
 
   // 卡片视图（card，默认 - 瀑布流样式）
+  // 完全使用 div + onClick 替代 Link，确保点击事件可靠触发
   return (
-    <Link
-      href={isSelectionMode ? "#" : `/bookmark/${bookmark.id}`}
-      onClick={isSelectionMode ? handleToggleSelect : undefined}
+    <div
+      onClick={handleItemClick}
+      className="block h-full cursor-pointer"
+      role="link"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          handleItemClick(e as unknown as React.MouseEvent);
+        }
+      }}
     >
       <Card
         className={cn(
@@ -757,6 +801,6 @@ export function BookmarkCard({
           style={{ backgroundColor: getPlatformHexColor(bookmark.platform) }}
         />
       </Card>
-    </Link>
+    </div>
   );
 }
