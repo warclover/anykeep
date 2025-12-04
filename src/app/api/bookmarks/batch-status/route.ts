@@ -60,6 +60,7 @@ export async function GET(request: NextRequest) {
         id,
         title,
         description,
+        platform,
         ai_summary,
         ai_tags,
         status,

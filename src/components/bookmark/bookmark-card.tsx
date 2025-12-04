@@ -541,13 +541,13 @@ export function BookmarkCard({
     >
       <Card
         className={cn(
-          "h-full card-hover-effect cursor-pointer flex flex-col group relative",
+          "h-full card-hover-effect cursor-pointer flex flex-col group relative pt-0",
           isDeleting && "opacity-50 pointer-events-none",
           isSelected && "ring-2 ring-blue-500 dark:ring-blue-400",
         )}
       >
-        {/* 封面图 - P0.1: 16:9 + 顶部对齐 */}
-        <div className="relative aspect-video overflow-hidden rounded-t-lg">
+        {/* 封面图 - P0.1: 16:9 + 顶部贴边对齐 */}
+        <div className="relative aspect-video overflow-hidden rounded-t-xl">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={coverImage}

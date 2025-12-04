@@ -54,11 +54,13 @@ async function fetchAndUpdateTitle(
     const { createClient } = await import("@/lib/supabase/server");
     const supabase = await createClient();
 
-    // 更新标题和其他爬取到的信息
+    // 更新标题、平台和其他爬取到的信息
+    // 关键：platform 在此处更新，确保异步爬取完成后平台标签正确
     const { error } = await supabase
       .from("bookmarks")
       .update({
         title,
+        platform: crawlResult.platform, // 防御性更新：基于爬取结果校正平台
         description: crawlResult.description || null,
         source_name: crawlResult.sourceName || null,
         author: crawlResult.author || null,
@@ -75,8 +77,13 @@ async function fetchAndUpdateTitle(
     }
 
     logger.info(
-      { bookmarkId, title, action: "async_title_success" },
-      "Async Title: Updated successfully",
+      {
+        bookmarkId,
+        title,
+        platform: crawlResult.platform,
+        action: "async_title_success",
+      },
+      "Async Title: Updated successfully (including platform)",
     );
 
     return { title, description: crawlResult.description || null };
