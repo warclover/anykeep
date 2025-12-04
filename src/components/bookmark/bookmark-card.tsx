@@ -37,7 +37,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { Bookmark } from "@/types/supabase";
+import type { Bookmark, CustomUsageTag } from "@/types/supabase";
 import { cn } from "@/lib/utils";
 import { formatRelativeTime } from "@/lib/utils/date-utils";
 import {
@@ -50,8 +50,8 @@ import { getProxiedImageUrl } from "@/lib/utils/image-proxy";
 import { PlatformBadge } from "@/components/ui/platform-badge";
 import { BookmarkRatingDisplay } from "@/components/bookmark/bookmark-rating-display";
 import {
-  separateUserTags,
-  getUsageTagStyle,
+  separateUserTagsExtended,
+  getUsageTagStyleExtended,
   getAiTagColor,
 } from "@/lib/constants/usage-tags";
 import "./bookmark-card-flip.css"; // 复用卡片优化样式
@@ -72,6 +72,8 @@ interface BookmarkCardProps {
   onToggleSelect?: (id: number) => void;
   // 视图模式
   variant?: ViewVariant;
+  // V9.0新增：用户自定义用途标签（用于识别和样式渲染）
+  customUsageTags?: CustomUsageTag[];
 }
 
 // 判断是否是正在获取中的占位符标题
@@ -87,6 +89,7 @@ export function BookmarkCard({
   isSelected = false,
   onToggleSelect,
   variant = "card",
+  customUsageTags = [],
 }: BookmarkCardProps) {
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
@@ -473,24 +476,30 @@ export function BookmarkCard({
                   )}
                   {/* 用途标签（仅显示首个） */}
                   {(() => {
-                    const { usageTags } = separateUserTags(bookmark.user_tags);
+                    const { usageTags } = separateUserTagsExtended(
+                      bookmark.user_tags,
+                      customUsageTags,
+                    );
                     if (usageTags.length === 0) return null;
-                    const style = getUsageTagStyle(usageTags[0]);
-                    if (!style) return null;
+                    const tagStyle = getUsageTagStyleExtended(
+                      usageTags[0],
+                      customUsageTags,
+                    );
+                    if (!tagStyle) return null;
                     return (
                       <Badge
                         variant="outline"
                         className={cn(
                           "text-xs hidden sm:inline-flex",
-                          style.bgLight,
-                          style.bgDark,
-                          style.borderLight,
-                          style.borderDark,
-                          style.textLight,
-                          style.textDark,
+                          tagStyle.style.bgLight,
+                          tagStyle.style.bgDark,
+                          tagStyle.style.borderLight,
+                          tagStyle.style.borderDark,
+                          tagStyle.style.textLight,
+                          tagStyle.style.textDark,
                         )}
                       >
-                        {usageTags[0]}
+                        {tagStyle.label}
                       </Badge>
                     );
                   })()}
@@ -680,10 +689,12 @@ export function BookmarkCard({
             className="mb-2"
           />
 
-          {/* P3: 标签区域优化 - 分区独立显示 */}
+          {/* P3/V9.0: 标签区域优化 - 用途标签在上，AI标签在下 */}
           {(() => {
-            const { usageTags, regularTags } = separateUserTags(
+            // V9.0: 使用扩展函数支持自定义用途标签
+            const { usageTags, regularTags } = separateUserTagsExtended(
               bookmark.user_tags,
+              customUsageTags,
             );
             const hasAiTags = bookmark.ai_tags && bookmark.ai_tags.length > 0;
             const hasUsageTags = usageTags.length > 0;
@@ -694,7 +705,38 @@ export function BookmarkCard({
 
             return (
               <div className="space-y-2 mb-2">
-                {/* P3.1: AI标签区 - 独立显示 + 闪电图标 */}
+                {/* V9.0: 用途标签优先显示（用户意图导向） */}
+                {hasUsageTags && (
+                  <div className="flex flex-wrap gap-1">
+                    {usageTags.map((tag) => {
+                      // V9.0: 使用扩展函数支持自定义标签样式
+                      const tagStyle = getUsageTagStyleExtended(
+                        tag,
+                        customUsageTags,
+                      );
+                      if (!tagStyle) return null;
+                      return (
+                        <Badge
+                          key={`usage-${tag}`}
+                          variant="outline"
+                          className={cn(
+                            "text-xs font-medium",
+                            tagStyle.style.bgLight,
+                            tagStyle.style.bgDark,
+                            tagStyle.style.borderLight,
+                            tagStyle.style.borderDark,
+                            tagStyle.style.textLight,
+                            tagStyle.style.textDark,
+                          )}
+                        >
+                          {tagStyle.label}
+                        </Badge>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* AI标签区 - 独立显示 + 闪电图标 */}
                 {hasAiTags && (
                   <div className="p-2 rounded-lg bg-gradient-to-r from-purple-50/80 to-pink-50/80 dark:from-purple-900/20 dark:to-pink-900/20 border border-purple-100 dark:border-purple-800/50">
                     <div className="flex items-center gap-1.5 mb-1.5">
@@ -704,7 +746,7 @@ export function BookmarkCard({
                       </span>
                     </div>
                     <div className="flex flex-wrap gap-1">
-                      {/* P3.3: AI标签彩色Pill样式 */}
+                      {/* AI标签彩色Pill样式 */}
                       {bookmark.ai_tags!.slice(0, 3).map((tag) => {
                         const colorStyle = getAiTagColor(tag);
                         return (
@@ -734,33 +776,6 @@ export function BookmarkCard({
                         </Badge>
                       )}
                     </div>
-                  </div>
-                )}
-
-                {/* P3.2: 用途标签 - 预设彩色样式 */}
-                {hasUsageTags && (
-                  <div className="flex flex-wrap gap-1">
-                    {usageTags.map((tag) => {
-                      const style = getUsageTagStyle(tag);
-                      if (!style) return null;
-                      return (
-                        <Badge
-                          key={`usage-${tag}`}
-                          variant="outline"
-                          className={cn(
-                            "text-xs font-medium",
-                            style.bgLight,
-                            style.bgDark,
-                            style.borderLight,
-                            style.borderDark,
-                            style.textLight,
-                            style.textDark,
-                          )}
-                        >
-                          {tag}
-                        </Badge>
-                      );
-                    })}
                   </div>
                 )}
 

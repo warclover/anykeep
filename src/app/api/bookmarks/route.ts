@@ -750,6 +750,7 @@ export async function GET(request: NextRequest) {
       cursor: searchParams.get("cursor"),
       limit: searchParams.get("limit"),
       sort: searchParams.get("sort"),
+      usageTags: searchParams.get("usageTags"), // V9.0新增：用途标签筛选
     };
 
     const validation = getBookmarksQuerySchema.safeParse(queryParams);
@@ -767,6 +768,7 @@ export async function GET(request: NextRequest) {
       cursor,
       limit,
       sort,
+      usageTags,
     } = validation.data;
 
     // 3. 构建查询
@@ -832,6 +834,11 @@ export async function GET(request: NextRequest) {
       query = query.or(
         `title.ilike.%${keyword}%,description.ilike.%${keyword}%`,
       );
+    }
+
+    // V9.0新增：用途标签筛选（user_tags 数组包含任意指定标签）
+    if (usageTags && usageTags.length > 0) {
+      query = query.overlaps("user_tags", usageTags);
     }
 
     // 游标分页（"加载更多"模式）

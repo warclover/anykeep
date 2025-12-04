@@ -716,3 +716,76 @@ export interface ImportHistoryOptions {
   targetFolderId?: number | null;
   [key: string]: unknown;
 }
+
+// ============================================
+// V9.0 新增：用途标签功能类型定义
+// ============================================
+
+/**
+ * 自定义用途标签
+ * 用户可创建最多 12 个自定义用途标签
+ */
+export interface CustomUsageTag {
+  /** 唯一标识（UUID） */
+  id: string;
+  /** 标签值（存储到 user_tags，需唯一） */
+  value: string;
+  /** 显示标签 */
+  label: string;
+  /** 主题色（Tailwind 颜色名，如 'blue', 'purple'） */
+  color: string;
+  /** 创建时间（ISO 8601） */
+  createdAt: string;
+  /** 最后使用时间（用于"最近使用"排序，可选） */
+  lastUsedAt?: string;
+}
+
+/**
+ * 用户设置扩展类型
+ * 存储在 profiles.settings JSON 字段
+ */
+export interface ProfileSettings {
+  /** 自定义用途标签列表（最多 12 个） */
+  customUsageTags?: CustomUsageTag[];
+  /** 重分类设置 */
+  reclassify?: ReclassifySettings;
+  /** 其他设置... */
+  [key: string]: unknown;
+}
+
+/**
+ * 用途标签使用统计（用于首页筛选栏显示）
+ */
+export interface UsageTagStats {
+  /** 标签值 */
+  value: string;
+  /** 使用次数 */
+  count: number;
+}
+
+/**
+ * 用途标签筛选条件
+ */
+export interface UsageTagFilter {
+  /** 选中的用途标签列表 */
+  selectedTags: string[];
+  /** 筛选模式：AND（全部匹配）/ OR（任一匹配） */
+  mode: "AND" | "OR";
+}
+
+// 用途标签相关常量
+export const CUSTOM_USAGE_TAG_LIMIT = 12;
+
+// 可用的自定义标签颜色（避免与预设标签颜色重复）
+export const CUSTOM_TAG_COLORS = [
+  "blue",
+  "purple",
+  "pink",
+  "sky",
+  "lime",
+  "yellow",
+  "slate",
+  "zinc",
+] as const;
+
+export type CustomTagColor = (typeof CUSTOM_TAG_COLORS)[number];

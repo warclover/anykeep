@@ -57,6 +57,7 @@ import { ExportDialog } from "@/components/bookmark/export-dialog";
 import { BrowserBookmarkImportDialog } from "@/components/browser-bookmark";
 import { FolderRecommendationToast } from "@/components/bookmark/folder-recommendation-toast";
 import { EmptyState } from "@/components/bookmark/empty-state";
+import { UsageTagFilter } from "@/components/layout/usage-tag-filter";
 
 // 懒加载 ReclassifyBanner（非首屏关键组件）
 const ReclassifyBanner = lazy(() =>
@@ -150,10 +151,15 @@ export function HomePageClient({
   const urlPlatform = propPlatform ?? searchParams.get("platform") ?? "";
   const urlSort = searchParams.get("sort") || "created_desc";
   const urlFolder = propFolder ?? searchParams.get("folder") ?? "";
+  const urlUsageTags = searchParams.get("usageTags") || "";
 
   // 使用本地状态跟踪当前平台（支持客户端切换）
   const [localPlatform, setLocalPlatform] = useState(urlPlatform);
   const [localFolder, setLocalFolder] = useState(urlFolder);
+  // V9.0新增：用途标签筛选状态
+  const [localUsageTags, setLocalUsageTags] = useState<string[]>(
+    urlUsageTags ? urlUsageTags.split(",").filter(Boolean) : [],
+  );
 
   // 同步客户端导航参数变化到本地状态
   useEffect(() => {
@@ -163,8 +169,15 @@ export function HomePageClient({
     if (urlPlatform !== localPlatform) {
       setLocalPlatform(urlPlatform);
     }
+    // V9.0新增：同步用途标签筛选
+    const newUsageTags = urlUsageTags
+      ? urlUsageTags.split(",").filter(Boolean)
+      : [];
+    if (JSON.stringify(newUsageTags) !== JSON.stringify(localUsageTags)) {
+      setLocalUsageTags(newUsageTags);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 只响应 URL 参数变化
-  }, [urlFolder, urlPlatform]);
+  }, [urlFolder, urlPlatform, urlUsageTags]);
 
   // 当前使用的参数（优先使用本地状态，支持客户端即时切换）
   const currentPlatform = localPlatform;
@@ -266,6 +279,13 @@ export function HomePageClient({
       setLocalFolder(event.detail.folder);
     };
 
+    // V9.0新增：监听来自 UsageTagFilter 的用途标签筛选事件
+    const handleUsageTagFilterChange = (
+      event: CustomEvent<{ usageTags: string[] }>,
+    ) => {
+      setLocalUsageTags(event.detail.usageTags);
+    };
+
     window.addEventListener(
       "flipCardChange",
       handleFlipCardChange as EventListener,
@@ -284,6 +304,10 @@ export function HomePageClient({
     );
     window.addEventListener("openDialog", handleOpenDialog as EventListener);
     window.addEventListener("toggleSelectionMode", handleToggleSelectionMode);
+    window.addEventListener(
+      "usageTagFilterChange",
+      handleUsageTagFilterChange as EventListener,
+    );
 
     return () => {
       window.removeEventListener(
@@ -309,6 +333,10 @@ export function HomePageClient({
       window.removeEventListener(
         "toggleSelectionMode",
         handleToggleSelectionMode,
+      );
+      window.removeEventListener(
+        "usageTagFilterChange",
+        handleUsageTagFilterChange as EventListener,
       );
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -364,6 +392,7 @@ export function HomePageClient({
     platform: currentPlatform,
     sort: currentSort,
     folder: currentFolder,
+    usageTags: localUsageTags, // V9.0新增：用途标签筛选
     initialData: initialBookmarks,
   });
 
@@ -1317,6 +1346,11 @@ export function HomePageClient({
         <Suspense fallback={null}>
           <ReclassifyBanner className="mb-4" />
         </Suspense>
+
+        {/* V9.0 用途标签筛选（仅非浏览器书签平台和非虚拟文件夹时显示） */}
+        {!isBrowserPlatform && !currentFolder && (
+          <UsageTagFilter className="mb-4" />
+        )}
 
         {/* 初始加载骨架屏 */}
         {isInitialLoading ? (

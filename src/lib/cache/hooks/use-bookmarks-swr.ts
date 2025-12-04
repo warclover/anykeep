@@ -30,8 +30,12 @@ function generateCacheKey(params: {
   platform: string;
   sort: string;
   folder: string;
+  usageTags?: string[];
 }): string {
-  return `bookmarks:${params.platform || "all"}:${params.sort || "created_desc"}:${params.folder || ""}`;
+  const tagsKey = params.usageTags?.length
+    ? `:tags:${params.usageTags.sort().join(",")}`
+    : "";
+  return `bookmarks:${params.platform || "all"}:${params.sort || "created_desc"}:${params.folder || ""}${tagsKey}`;
 }
 
 /**
@@ -41,6 +45,8 @@ interface UseBookmarksSWROptions {
   platform: string;
   sort: string;
   folder: string;
+  /** V9.0新增：用途标签筛选 */
+  usageTags?: string[];
   enabled?: boolean;
   initialData?: BookmarkWithFolder[];
 }
@@ -84,10 +90,17 @@ interface UseBookmarksSWRResult {
 export function useBookmarksSWR(
   options: UseBookmarksSWROptions,
 ): UseBookmarksSWRResult {
-  const { platform, sort, folder, enabled = true, initialData } = options;
+  const {
+    platform,
+    sort,
+    folder,
+    usageTags = [],
+    enabled = true,
+    initialData,
+  } = options;
 
-  // 缓存键
-  const cacheKey = generateCacheKey({ platform, sort, folder });
+  // 缓存键（包含用途标签）
+  const cacheKey = generateCacheKey({ platform, sort, folder, usageTags });
 
   // 状态
   const [data, setData] = useState<BookmarkWithFolder[]>(initialData || []);
@@ -131,6 +144,11 @@ export function useBookmarksSWR(
         apiParams.set("folder", folder);
       }
 
+      // V9.0新增：用途标签筛选
+      if (usageTags.length > 0) {
+        apiParams.set("usageTags", usageTags.join(","));
+      }
+
       const res = await fetch(`/api/bookmarks?${apiParams.toString()}`, {
         credentials: "include",
         signal,
@@ -146,7 +164,7 @@ export function useBookmarksSWR(
         hasMore: result.data.pagination.hasMore as boolean,
       };
     },
-    [platform, sort, folder],
+    [platform, sort, folder, usageTags],
   );
 
   /**
@@ -368,6 +386,11 @@ export function useBookmarksSWR(
         apiParams.set("folder", folder);
       }
 
+      // V9.0新增：用途标签筛选
+      if (usageTags.length > 0) {
+        apiParams.set("usageTags", usageTags.join(","));
+      }
+
       const res = await fetch(`/api/bookmarks?${apiParams.toString()}`, {
         credentials: "include",
       });
@@ -407,6 +430,7 @@ export function useBookmarksSWR(
     platform,
     sort,
     folder,
+    usageTags,
   ]);
 
   /**

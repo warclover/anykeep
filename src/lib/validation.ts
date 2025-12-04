@@ -310,6 +310,16 @@ export const getBookmarksQuerySchema = z.object({
     .nullable()
     .optional()
     .transform((val) => val ?? undefined),
+  // V9.0新增：用途标签筛选（逗号分隔的标签值）
+  usageTags: z
+    .string()
+    .trim()
+    .nullable()
+    .optional()
+    .transform((val) => {
+      if (!val) return undefined;
+      return val.split(",").filter((t) => t.trim().length > 0);
+    }),
 });
 
 export type GetBookmarksQuery = z.infer<typeof getBookmarksQuerySchema>;

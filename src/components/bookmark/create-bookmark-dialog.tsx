@@ -41,6 +41,8 @@ import {
   rejectClassificationSuggestion,
   type ClassificationResponse,
 } from "@/lib/utils/classification-notification";
+import { UsageTagSelector } from "./usage-tag-selector";
+import type { CustomUsageTag } from "@/types/supabase";
 
 interface BookmarkCreatedData {
   id: number;
@@ -99,6 +101,10 @@ export function CreateBookmarkDialog({
   // 用户输入的标签
   const [userAddedTags, setUserAddedTags] = useState<string[]>([]);
 
+  // 用途标签相关状态
+  const [selectedUsageTags, setSelectedUsageTags] = useState<string[]>([]);
+  const [customUsageTags, setCustomUsageTags] = useState<CustomUsageTag[]>([]);
+
   // 元数据获取状态
   const [fetchStatus, setFetchStatus] = useState<FetchStatus>("idle");
   const [fetchError, setFetchError] = useState<string>("");
@@ -132,6 +138,8 @@ export function CreateBookmarkDialog({
     userModifiedFieldsRef.current = new Set();
     // 重置用户标签
     setUserAddedTags([]);
+    // 重置用途标签
+    setSelectedUsageTags([]);
   };
 
   /**
@@ -305,8 +313,11 @@ export function CreateBookmarkDialog({
         .map((t) => t.trim())
         .filter(Boolean);
 
-      // 最终用户标签 = 已添加的标签 + 输入框标签（去重）
-      const finalTags = Array.from(new Set([...userAddedTags, ...inputTags]));
+      // 最终用户标签 = 用途标签 + 已添加的标签 + 输入框标签（去重）
+      // 用途标签放在最前面，便于展示时优先显示
+      const finalTags = Array.from(
+        new Set([...selectedUsageTags, ...userAddedTags, ...inputTags]),
+      );
 
       const userTags = finalTags.length > 0 ? finalTags : undefined;
 
@@ -602,9 +613,24 @@ export function CreateBookmarkDialog({
             </div>
           )}
 
+          {/* 用途标签选择（快捷选择区） */}
+          <div className="space-y-2">
+            <Label>用途标签</Label>
+            <UsageTagSelector
+              selectedTags={selectedUsageTags}
+              onSelectedTagsChange={setSelectedUsageTags}
+              customUsageTags={customUsageTags}
+              onCustomTagsChange={setCustomUsageTags}
+              disabled={isSubmitting}
+            />
+            <p className="text-xs text-gray-500">
+              标记收藏的用途，方便日后快速筛选
+            </p>
+          </div>
+
           {/* 标签输入区域 */}
           <div className="space-y-2">
-            <Label htmlFor="tags">标签</Label>
+            <Label htmlFor="tags">自定义标签</Label>
 
             {/* 已添加的标签展示 */}
             {userAddedTags.length > 0 && (
@@ -645,8 +671,8 @@ export function CreateBookmarkDialog({
               <p className="text-xs text-red-500">{errors.userTags}</p>
             )}
             <p className="text-xs text-gray-500">
-              {userAddedTags.length > 0
-                ? `已添加 ${userAddedTags.length} 个标签，保存后会自动生成 AI 标签`
+              {userAddedTags.length > 0 || selectedUsageTags.length > 0
+                ? `已添加 ${selectedUsageTags.length + userAddedTags.length} 个标签，保存后会自动生成 AI 标签`
                 : "可选，保存后系统会自动生成 AI 标签"}
             </p>
           </div>

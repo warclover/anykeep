@@ -33,10 +33,14 @@ import { EditBookmarkDialog } from "@/components/bookmark/edit-bookmark-dialog";
 import { MoveToFolderDialog } from "@/components/bookmark/move-to-folder-dialog";
 import { SummaryRenderer } from "@/components/bookmark/summary-renderer";
 import { BookmarkRating } from "@/components/bookmark/bookmark-rating";
-import type { Bookmark } from "@/types/supabase";
+import type { Bookmark, CustomUsageTag } from "@/types/supabase";
 import { cn } from "@/lib/utils";
 import { getPlatformConfig } from "@/lib/platform-utils";
 import { formatFriendlyDate } from "@/lib/utils/date-utils";
+import {
+  separateUserTagsExtended,
+  getUsageTagStyleExtended,
+} from "@/lib/constants/usage-tags";
 
 interface BookmarkDetailClientProps {
   bookmark: Bookmark & {
@@ -103,6 +107,33 @@ export function BookmarkDetailClient({
 
     markAsRead();
   }, [bookmark.id, bookmark.is_read, router]);
+
+  // V9.0新增：自定义用途标签
+  const [customUsageTags, setCustomUsageTags] = useState<CustomUsageTag[]>([]);
+
+  // 加载自定义用途标签
+  useEffect(() => {
+    const loadCustomTags = async () => {
+      try {
+        const response = await fetch("/api/settings/usage-tags");
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.data?.customUsageTags) {
+            setCustomUsageTags(data.data.customUsageTags);
+          }
+        }
+      } catch {
+        // 静默失败
+      }
+    };
+    loadCustomTags();
+  }, []);
+
+  // 分离用途标签和普通标签
+  const { usageTags, regularTags } = separateUserTagsExtended(
+    bookmark.user_tags,
+    customUsageTags,
+  );
 
   // 标签内联编辑状态
   const [isEditingTags, setIsEditingTags] = useState(false);
@@ -414,6 +445,35 @@ export function BookmarkDetailClient({
                   {bookmark.title}
                 </h1>
 
+                {/* V9.0新增：用途标签（高亮显示在 AI 标签上方） */}
+                {usageTags.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    {usageTags.map((tagValue) => {
+                      const tagStyle = getUsageTagStyleExtended(
+                        tagValue,
+                        customUsageTags,
+                      );
+                      if (!tagStyle) return null;
+                      return (
+                        <span
+                          key={tagValue}
+                          className={cn(
+                            "inline-flex items-center px-2.5 py-1 rounded-full text-sm font-medium border",
+                            tagStyle.style.bgLight,
+                            tagStyle.style.bgDark,
+                            tagStyle.style.borderLight,
+                            tagStyle.style.borderDark,
+                            tagStyle.style.textLight,
+                            tagStyle.style.textDark,
+                          )}
+                        >
+                          {tagStyle.label}
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+
                 {/* 第2行：AI 标签 */}
                 {bookmark.ai_tags && bookmark.ai_tags.length > 0 && (
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm md:text-base">
@@ -605,9 +665,8 @@ export function BookmarkDetailClient({
                 </>
               )}
 
-              {/* 用户标签 */}
-              {(bookmark.user_tags && bookmark.user_tags.length > 0) ||
-              isEditingTags ? (
+              {/* 用户标签（只显示普通标签，用途标签已在顶部展示） */}
+              {regularTags.length > 0 || isEditingTags ? (
                 <>
                   <div>
                     <div className="flex items-center justify-between mb-3">
@@ -655,7 +714,7 @@ export function BookmarkDetailClient({
                       </div>
                     ) : (
                       <div className="flex flex-wrap gap-2">
-                        {bookmark.user_tags?.map((tag) => (
+                        {regularTags.map((tag) => (
                           <Badge key={tag} variant="default">
                             {tag}
                           </Badge>
