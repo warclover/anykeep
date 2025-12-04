@@ -136,7 +136,12 @@ export function BookmarkListItem({
         {/* 标题 */}
         <Link
           href={`/bookmark/${bookmark.id}`}
-          className="block text-sm font-medium text-gray-900 dark:text-white truncate hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+          className={cn(
+            "block text-sm font-medium truncate transition-colors",
+            bookmark.title === "正在获取标题..."
+              ? "text-gray-400 dark:text-gray-500 italic animate-pulse"
+              : "text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400",
+          )}
         >
           {bookmark.title || "无标题"}
         </Link>

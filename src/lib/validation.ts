@@ -144,14 +144,16 @@ export type Pagination = z.infer<typeof paginationSchema>;
  */
 export const createBookmarkSchema = z.object({
   url: bookmarkUrlSchema,
+  // 标题改为选填：用户只需贴入链接即可创建，标题由后台异步补充
   title: z
     .string()
     .trim()
-    .min(1, VALIDATION.BOOKMARK_TITLE_REQUIRED)
     .max(
       VALIDATION_LIMITS.BOOKMARK_TITLE_MAX_LENGTH,
       VALIDATION.TOO_LONG("标题", VALIDATION_LIMITS.BOOKMARK_TITLE_MAX_LENGTH),
-    ),
+    )
+    .optional()
+    .or(z.literal("")),
   description: z
     .string()
     .trim()

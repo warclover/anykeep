@@ -74,6 +74,9 @@ interface BookmarkCardProps {
   variant?: ViewVariant;
 }
 
+// 判断是否是正在获取中的占位符标题
+const isLoadingTitle = (title: string) => title === "正在获取标题...";
+
 export function BookmarkCard({
   bookmark,
   onEdit,
@@ -87,6 +90,9 @@ export function BookmarkCard({
 }: BookmarkCardProps) {
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // 判断标题是否正在加载
+  const titleLoading = isLoadingTitle(bookmark.title);
 
   // 生成封面图（真实封面或占位符，微信图片使用代理）
   const coverImage =
@@ -282,7 +288,14 @@ export function BookmarkCard({
         {/* 标题和元信息 */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5">
-            <h3 className="font-medium text-gray-900 dark:text-white truncate text-sm sm:text-base flex-1">
+            <h3
+              className={cn(
+                "font-medium truncate text-sm sm:text-base flex-1",
+                titleLoading
+                  ? "text-gray-400 dark:text-gray-500 italic animate-pulse"
+                  : "text-gray-900 dark:text-white",
+              )}
+            >
               {bookmark.title}
             </h3>
             {/* V6.0新增：评级显示（Compact视图） */}
@@ -397,7 +410,14 @@ export function BookmarkCard({
           {/* 内容区域 */}
           <div className="flex-1 p-3 sm:p-3 md:p-4 flex flex-col justify-between min-w-0">
             <div>
-              <h3 className="font-semibold text-gray-900 dark:text-white line-clamp-2 sm:line-clamp-1 mb-1 text-sm sm:text-base">
+              <h3
+                className={cn(
+                  "font-semibold line-clamp-2 sm:line-clamp-1 mb-1 text-sm sm:text-base",
+                  titleLoading
+                    ? "text-gray-400 dark:text-gray-500 italic animate-pulse"
+                    : "text-gray-900 dark:text-white",
+                )}
+              >
                 {bookmark.title}
               </h3>
               {bookmark.ai_summary && (
@@ -591,7 +611,11 @@ export function BookmarkCard({
             <CardTitle
               className={cn(
                 "card-title-fade text-lg min-h-[3.25rem] leading-snug",
-                bookmark.is_read && "text-gray-500 dark:text-gray-400",
+                titleLoading
+                  ? "text-gray-400 dark:text-gray-500 italic animate-pulse"
+                  : bookmark.is_read
+                    ? "text-gray-500 dark:text-gray-400"
+                    : "",
               )}
             >
               {bookmark.title}

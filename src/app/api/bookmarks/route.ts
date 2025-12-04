@@ -31,6 +31,84 @@ import type { BookmarkInsert } from "@/types/supabase";
 import { BOOKMARK, STORAGE } from "@/lib/constants/messages";
 
 /**
+ * 异步补充书签标题（不阻塞主流程）
+ * 当用户未输入标题时，后台爬取网页获取标题
+ * @param bookmarkId - 书签ID
+ * @param url - 网页URL
+ * @param userId - 用户ID
+ */
+async function fetchAndUpdateTitle(
+  bookmarkId: number,
+  url: string,
+  userId: string,
+): Promise<{ title: string; description: string | null }> {
+  try {
+    logger.info(
+      { bookmarkId, url, action: "async_title_start" },
+      "Async Title: Starting fetch",
+    );
+
+    const crawlResult = await crawlContent(url);
+    const title = crawlResult.title || url; // 兜底使用 URL
+
+    const { createClient } = await import("@/lib/supabase/server");
+    const supabase = await createClient();
+
+    // 更新标题和其他爬取到的信息
+    const { error } = await supabase
+      .from("bookmarks")
+      .update({
+        title,
+        description: crawlResult.description || null,
+        source_name: crawlResult.sourceName || null,
+        author: crawlResult.author || null,
+        cover_url: crawlResult.coverUrl || null,
+        word_count: crawlResult.wordCount || null,
+        image_count: crawlResult.imageCount || null,
+        publish_time: crawlResult.publishTime || null,
+      })
+      .eq("id", bookmarkId)
+      .eq("user_id", userId);
+
+    if (error) {
+      throw error;
+    }
+
+    logger.info(
+      { bookmarkId, title, action: "async_title_success" },
+      "Async Title: Updated successfully",
+    );
+
+    return { title, description: crawlResult.description || null };
+  } catch (error) {
+    // 标题获取失败，使用 URL 作为兜底
+    logger.error(
+      {
+        bookmarkId,
+        error: error instanceof Error ? error.message : String(error),
+        action: "async_title_failed",
+      },
+      "Async Title: Fetch failed, using URL as fallback",
+    );
+
+    try {
+      const { createClient } = await import("@/lib/supabase/server");
+      const supabase = await createClient();
+
+      await supabase
+        .from("bookmarks")
+        .update({ title: url })
+        .eq("id", bookmarkId)
+        .eq("user_id", userId);
+    } catch {
+      // 忽略更新错误
+    }
+
+    return { title: url, description: null };
+  }
+}
+
+/**
  * 异步生成书签向量嵌入（不阻塞主流程）
  * @param bookmarkId - 书签ID
  * @param title - 标题
@@ -409,9 +487,7 @@ export async function POST(request: NextRequest) {
     // 4. 识别平台类型
     const platform = detectPlatformFromUrl(url);
 
-    // 5. 如果缺少标题或描述，尝试自动爬取
-    let finalTitle = title;
-    let finalDescription: string | null | undefined = description;
+    // 5. 处理标题和描述
     // 优先使用前端传来的数据（来自 metadata API）
     let sourceName: string | undefined = userSourceName || undefined;
     let author: string | undefined = userAuthor || undefined;
@@ -420,27 +496,33 @@ export async function POST(request: NextRequest) {
     let imageCount: number | undefined = userImageCount;
     let publishTime: string | undefined = userPublishTime || undefined;
 
-    if (!title || !description) {
+    // 判断是否需要异步补充标题
+    const needsAsyncTitleFetch = !title || title.trim() === "";
+    // 使用临时占位符或用户提供的标题
+    const finalTitle = needsAsyncTitleFetch ? "正在获取标题..." : title!;
+    let finalDescription: string | null | undefined = description;
+
+    // 仅当有描述需求且用户没有提供时，才同步爬取（快速返回）
+    // 如果标题为空，完全异步处理（不阻塞创建响应）
+    if (title && !description) {
       try {
         logger.info(
           {
             url,
             action: "crawl_start",
           },
-          "Crawler: Auto-crawling content",
+          "Crawler: Auto-crawling for description only",
         );
         const crawlResult = await crawlContent(url);
 
         // 使用爬取的数据填充缺失字段（优先使用前端提供的值）
-        finalTitle = title || crawlResult.title;
         finalDescription = description || crawlResult.description || null;
-        sourceName = sourceName || crawlResult.sourceName; // 来源名称
-        author = author || crawlResult.author; // 文章作者
+        sourceName = sourceName || crawlResult.sourceName;
+        author = author || crawlResult.author;
         coverUrl = crawlResult.coverUrl;
-        // 只在前端没有提供统计数据时才使用爬取的值
         wordCount = wordCount ?? crawlResult.wordCount;
         imageCount = imageCount ?? crawlResult.imageCount;
-        publishTime = publishTime || crawlResult.publishTime; // 发布时间
+        publishTime = publishTime || crawlResult.publishTime;
 
         logger.info(
           {
@@ -453,19 +535,17 @@ export async function POST(request: NextRequest) {
             imageCount,
             action: "crawl_success",
           },
-          "Crawler: Success",
+          "Crawler: Success (description only)",
         );
       } catch (error) {
-        // 爬取失败不影响创建收藏，使用用户输入或默认值
         logger.error(
           {
             error: error instanceof Error ? error.message : String(error),
             url,
             action: "crawl_failed",
           },
-          "Crawler: Failed",
+          "Crawler: Failed (description only)",
         );
-        finalTitle = title || "URL 收藏";
         finalDescription = description || null;
       }
     }
@@ -581,20 +661,43 @@ export async function POST(request: NextRequest) {
     }
 
     // 12. 异步后台任务（不阻塞响应）
-    // 异步生成 AI 内容（摘要、标签）及后续任务（向量嵌入、文件夹推荐）
-    generateBookmarkAIContent(
-      bookmark.id,
-      finalTitle,
-      finalDescription ?? null, // 确保类型为 string | null
-      folderNames,
-      user.id,
-      !!folderId, // 用户是否指定了文件夹
-    ).catch((err) => {
-      logger.error(
-        { error: err, bookmarkId: bookmark.id },
-        "Background AI content generation failed",
-      );
-    });
+    // 如果需要异步获取标题，先获取标题再生成 AI 内容
+    if (needsAsyncTitleFetch) {
+      // 异步获取标题，然后生成 AI 内容
+      fetchAndUpdateTitle(bookmark.id, url, user.id)
+        .then(({ title: fetchedTitle, description: fetchedDesc }) => {
+          // 标题获取成功后，继续生成 AI 内容
+          return generateBookmarkAIContent(
+            bookmark.id,
+            fetchedTitle,
+            fetchedDesc,
+            folderNames,
+            user.id,
+            !!folderId,
+          );
+        })
+        .catch((err) => {
+          logger.error(
+            { error: err, bookmarkId: bookmark.id },
+            "Background title fetch or AI content generation failed",
+          );
+        });
+    } else {
+      // 已有标题，直接生成 AI 内容
+      generateBookmarkAIContent(
+        bookmark.id,
+        finalTitle,
+        finalDescription ?? null,
+        folderNames,
+        user.id,
+        !!folderId,
+      ).catch((err) => {
+        logger.error(
+          { error: err, bookmarkId: bookmark.id },
+          "Background AI content generation failed",
+        );
+      });
+    }
 
     // 13. 返回创建的收藏对象
     // 注意：分类信息现在是异步处理，前端可通过轮询或 WebSocket 获取更新

@@ -404,8 +404,13 @@ export function CreateBookmarkDialog({
       resetForm();
       onOpenChange(false);
 
-      // 刷新页面数据
-      router.refresh();
+      // 发送自定义事件通知首页更新（乐观更新，避免 SWR 缓存问题）
+      // 首页监听此事件后会将新书签插入列表头部
+      if (data.data) {
+        window.dispatchEvent(
+          new CustomEvent("bookmarkCreated", { detail: data.data }),
+        );
+      }
     } catch (error) {
       // 如果是取消错误，不显示错误提示
       if (error instanceof Error && error.name === "AbortError") {
@@ -530,22 +535,26 @@ export function CreateBookmarkDialog({
           {/* 标题输入 */}
           <div className="space-y-2">
             <Label htmlFor="title" className="flex items-center">
-              标题 <span className="text-red-500">*</span>
+              标题
               {renderAutoFilledBadge("title")}
             </Label>
             <Input
               id="title"
-              placeholder="输入收藏标题"
+              placeholder="可选，保存后自动获取"
               value={title}
               onChange={(e) => {
                 setTitle(e.target.value);
                 markFieldAsModified("title");
               }}
-              required
               className={errors.title ? "border-red-500" : ""}
             />
             {errors.title && (
               <p className="text-xs text-red-500">{errors.title}</p>
+            )}
+            {!title && (
+              <p className="text-xs text-gray-500">
+                留空时系统会自动获取网页标题
+              </p>
             )}
           </div>
 

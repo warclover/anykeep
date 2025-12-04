@@ -68,6 +68,7 @@ import { useFolderRecommendation } from "@/hooks/use-folder-recommendation";
 import { useDialogs } from "@/hooks/use-dialogs";
 import { useSelectionMode } from "@/hooks/use-selection-mode";
 import { usePlatformCache } from "@/hooks/use-platform-cache";
+import { useProcessingPoller } from "@/hooks/use-processing-poller";
 import { ErrorMessage } from "@/components/ui/error-message";
 import {
   DropdownMenu,
@@ -368,6 +369,49 @@ export function HomePageClient({
 
   // 兼容层：setBookmarks 改为使用 mutate（支持数组和函数两种形式）
   const setBookmarks = mutateBookmarks;
+
+  // 监听新建收藏事件（乐观更新，将新书签插入列表头部）
+  // 单独的 useEffect 以正确处理依赖项，避免闭包问题
+  useEffect(() => {
+    const handleBookmarkCreated = (event: Event) => {
+      const customEvent = event as CustomEvent<BookmarkWithFolder>;
+      const newBookmark = customEvent.detail;
+
+      // 只在「全部」平台或新书签匹配当前平台时插入
+      // 避免在筛选其他平台时显示不相关的新书签
+      const shouldInsert =
+        !currentPlatform || // 「全部」平台
+        currentPlatform === newBookmark.platform || // 匹配当前平台
+        (currentPlatform === "browser" &&
+          newBookmark.platform?.startsWith("BROWSER_")); // 浏览器书签
+
+      if (shouldInsert && !currentFolder) {
+        // 仅在非虚拟文件夹（如垃圾箱）时插入
+        setBookmarks((prev) => [newBookmark, ...prev]);
+      }
+    };
+
+    window.addEventListener("bookmarkCreated", handleBookmarkCreated);
+
+    return () => {
+      window.removeEventListener("bookmarkCreated", handleBookmarkCreated);
+    };
+  }, [currentPlatform, currentFolder, setBookmarks]);
+
+  // 智能轮询：自动更新 PROCESSING 状态的书签
+  // 当后台完成标题获取或 AI 处理后，自动刷新卡片数据
+  useProcessingPoller({
+    bookmarks,
+    onUpdate: useCallback(
+      (updatedBookmark: BookmarkWithFolder) => {
+        setBookmarks((prev) =>
+          prev.map((b) => (b.id === updatedBookmark.id ? updatedBookmark : b)),
+        );
+      },
+      [setBookmarks],
+    ),
+    enabled: !isInitialLoading, // 初始加载完成后才启用
+  });
 
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [_isPending, startTransition] = useTransition();
