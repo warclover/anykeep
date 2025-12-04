@@ -1,0 +1,377 @@
+/**
+ * 导航状态管理 Context
+ * 实现客户端页面切换，避免服务端重复渲染
+ *
+ * 核心功能：
+ * - 管理当前激活的页面
+ * - 支持 URL 同步（不触发服务端导航）
+ * - 支持浏览器前进/后退
+ * - 兼容直接 URL 访问
+ */
+
+"use client";
+
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useEffect,
+  useMemo,
+  type ReactNode,
+} from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+
+/**
+ * 支持的页面类型
+ */
+export type PageId = "home" | "search" | "folders" | "analytics" | "settings";
+
+/**
+ * 页面路由映射
+ */
+export const PAGE_ROUTES: Record<PageId, string> = {
+  home: "/home",
+  search: "/search",
+  folders: "/folders",
+  analytics: "/analytics",
+  settings: "/settings",
+};
+
+/**
+ * 路由到页面 ID 的反向映射
+ */
+const ROUTE_TO_PAGE: Record<string, PageId> = {
+  "/home": "home",
+  "/search": "search",
+  "/folders": "folders",
+  "/analytics": "analytics",
+  "/settings": "settings",
+};
+
+/**
+ * 页面状态
+ */
+export type PageState = "idle" | "loading" | "ready" | "cached";
+
+/**
+ * 页面缓存信息
+ */
+interface PageCacheEntry {
+  state: PageState;
+  scrollPosition: { x: number; y: number };
+  lastVisited: number;
+}
+
+/**
+ * Context 值类型
+ */
+interface NavigationContextValue {
+  // 当前状态
+  activePage: PageId;
+  activeParams: URLSearchParams;
+
+  // 页面缓存状态
+  pageStates: Record<PageId, PageCacheEntry>;
+
+  // 导航操作
+  navigateTo: (pageId: PageId, params?: Record<string, string>) => void;
+
+  // 页面状态操作
+  setPageState: (pageId: PageId, state: PageState) => void;
+  saveScrollPosition: (pageId: PageId) => void;
+  restoreScrollPosition: (pageId: PageId) => void;
+
+  // 是否启用客户端导航模式
+  isClientNavEnabled: boolean;
+}
+
+export const NavigationContext = createContext<NavigationContextValue | null>(
+  null,
+);
+
+/**
+ * 初始化页面缓存状态
+ * @param initialPage - 可选的初始页面（将被标记为 loading）
+ */
+function createInitialPageStates(
+  initialPage?: PageId,
+): Record<PageId, PageCacheEntry> {
+  const pages: PageId[] = [
+    "home",
+    "search",
+    "folders",
+    "analytics",
+    "settings",
+  ];
+  return pages.reduce(
+    (acc, pageId) => ({
+      ...acc,
+      [pageId]: {
+        state:
+          pageId === initialPage
+            ? ("loading" as PageState)
+            : ("idle" as PageState),
+        scrollPosition: { x: 0, y: 0 },
+        lastVisited: pageId === initialPage ? Date.now() : 0,
+      },
+    }),
+    {} as Record<PageId, PageCacheEntry>,
+  );
+}
+
+interface NavigationProviderProps {
+  children: ReactNode;
+}
+
+/**
+ * 导航状态 Provider
+ */
+export function NavigationProvider({ children }: NavigationProviderProps) {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  // 从 URL 解析初始页面（只在首次渲染时使用）
+  const [initialPage] = useState<PageId>(
+    () => ROUTE_TO_PAGE[pathname] || "home",
+  );
+
+  // 当前激活的页面
+  const [activePage, setActivePage] = useState<PageId>(initialPage);
+
+  // 当前页面参数
+  const [activeParams, setActiveParams] = useState<URLSearchParams>(
+    () => new URLSearchParams(searchParams.toString()),
+  );
+
+  // 页面缓存状态（初始时将当前页面标记为 loading）
+  const [pageStates, setPageStates] = useState<Record<PageId, PageCacheEntry>>(
+    () => createInitialPageStates(initialPage),
+  );
+
+  // 是否启用客户端导航（首次加载后启用）
+  const [isClientNavEnabled, setIsClientNavEnabled] = useState(false);
+
+  /**
+   * 导航到指定页面
+   */
+  const navigateTo = useCallback(
+    (pageId: PageId, params?: Record<string, string>) => {
+      // 如果是同一页面且参数完全相同，不做操作
+      const hasExistingParams = activeParams.toString().length > 0;
+      const hasNewParams = params && Object.keys(params).length > 0;
+
+      if (pageId === activePage && !hasNewParams && !hasExistingParams) {
+        return;
+      }
+
+      // 保存当前页面滚动位置
+      setPageStates((prev) => ({
+        ...prev,
+        [activePage]: {
+          ...prev[activePage],
+          scrollPosition: { x: window.scrollX, y: window.scrollY },
+          state:
+            prev[activePage].state === "ready"
+              ? "cached"
+              : prev[activePage].state,
+        },
+      }));
+
+      // 构建新 URL
+      const newParams = new URLSearchParams();
+      if (params) {
+        Object.entries(params).forEach(([key, value]) => {
+          if (value) newParams.set(key, value);
+        });
+      }
+
+      const newUrl = newParams.toString()
+        ? `${PAGE_ROUTES[pageId]}?${newParams.toString()}`
+        : PAGE_ROUTES[pageId];
+
+      // 更新 URL（不触发服务端导航）
+      window.history.pushState(
+        { pageId, params: newParams.toString(), clientNav: true },
+        "",
+        newUrl,
+      );
+
+      // 更新状态
+      setActivePage(pageId);
+      setActiveParams(newParams);
+
+      // 标记页面状态
+      setPageStates((prev) => ({
+        ...prev,
+        [pageId]: {
+          ...prev[pageId],
+          lastVisited: Date.now(),
+          state: prev[pageId].state === "idle" ? "loading" : prev[pageId].state,
+        },
+      }));
+    },
+    [activePage, activeParams],
+  );
+
+  /**
+   * 设置页面状态
+   */
+  const setPageState = useCallback((pageId: PageId, state: PageState) => {
+    setPageStates((prev) => ({
+      ...prev,
+      [pageId]: {
+        ...prev[pageId],
+        state,
+      },
+    }));
+  }, []);
+
+  /**
+   * 保存滚动位置
+   */
+  const saveScrollPosition = useCallback((pageId: PageId) => {
+    setPageStates((prev) => ({
+      ...prev,
+      [pageId]: {
+        ...prev[pageId],
+        scrollPosition: { x: window.scrollX, y: window.scrollY },
+      },
+    }));
+  }, []);
+
+  /**
+   * 恢复滚动位置
+   */
+  const restoreScrollPosition = useCallback(
+    (pageId: PageId) => {
+      const entry = pageStates[pageId];
+      if (entry && entry.scrollPosition) {
+        requestAnimationFrame(() => {
+          window.scrollTo(entry.scrollPosition.x, entry.scrollPosition.y);
+        });
+      }
+    },
+    [pageStates],
+  );
+
+  /**
+   * 监听浏览器前进/后退
+   */
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      if (event.state?.clientNav) {
+        // 客户端导航历史
+        const pageId = event.state.pageId as PageId;
+        const params = new URLSearchParams(event.state.params || "");
+
+        // 保存当前页面滚动位置
+        setPageStates((prev) => ({
+          ...prev,
+          [activePage]: {
+            ...prev[activePage],
+            scrollPosition: { x: window.scrollX, y: window.scrollY },
+          },
+        }));
+
+        setActivePage(pageId);
+        setActiveParams(params);
+      } else {
+        // 服务端导航历史，解析当前 URL
+        const currentPath = window.location.pathname;
+        const pageId = ROUTE_TO_PAGE[currentPath];
+        if (pageId) {
+          setActivePage(pageId);
+          setActiveParams(new URLSearchParams(window.location.search));
+        }
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [activePage]);
+
+  /**
+   * 首次加载完成后启用客户端导航
+   * 注意：页面初始状态已在 useState 中设置
+   */
+  useEffect(() => {
+    // 延迟启用客户端导航，确保首次 SSR 渲染完成
+    const timer = setTimeout(() => {
+      setIsClientNavEnabled(true);
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  /**
+   * URL 变化时同步状态（处理直接 URL 访问）
+   * 这是响应外部 URL 变化的合法用例，需要同步内部状态
+   */
+  useEffect(() => {
+    const pageId = ROUTE_TO_PAGE[pathname];
+    if (pageId && pageId !== activePage) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- 响应外部 URL 变化
+      setActivePage(pageId);
+      setActiveParams(new URLSearchParams(searchParams.toString()));
+    }
+  }, [pathname, searchParams, activePage]);
+
+  const value = useMemo<NavigationContextValue>(
+    () => ({
+      activePage,
+      activeParams,
+      pageStates,
+      navigateTo,
+      setPageState,
+      saveScrollPosition,
+      restoreScrollPosition,
+      isClientNavEnabled,
+    }),
+    [
+      activePage,
+      activeParams,
+      pageStates,
+      navigateTo,
+      setPageState,
+      saveScrollPosition,
+      restoreScrollPosition,
+      isClientNavEnabled,
+    ],
+  );
+
+  return (
+    <NavigationContext.Provider value={value}>
+      {children}
+    </NavigationContext.Provider>
+  );
+}
+
+/**
+ * 使用导航 Context 的 Hook
+ */
+export function useNavigation(): NavigationContextValue {
+  const context = useContext(NavigationContext);
+  if (!context) {
+    throw new Error("useNavigation must be used within a NavigationProvider");
+  }
+  return context;
+}
+
+/**
+ * 检查页面是否应该渲染
+ */
+export function usePageVisibility(pageId: PageId): {
+  isVisible: boolean;
+  shouldRender: boolean;
+  state: PageState;
+} {
+  const { activePage, pageStates } = useNavigation();
+  const entry = pageStates[pageId];
+
+  return {
+    isVisible: activePage === pageId,
+    shouldRender: entry.state !== "idle",
+    state: entry.state,
+  };
+}

@@ -1,9 +1,11 @@
 /**
- * 应用侧边栏 - Figma 设计版本
+ * 应用侧边栏 - 客户端导航优化版
+ * 使用客户端导航实现即时页面切换
  */
 
 "use client";
 
+import { useCallback } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
@@ -17,54 +19,51 @@ import {
   Star,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  NavigationContext,
+  type PageId,
+  PAGE_ROUTES,
+} from "@/contexts/navigation-context";
+import { useContext } from "react";
 
-const navigation = [
-  {
-    name: "首页",
-    href: "/home",
-    icon: Home,
-  },
-  {
-    name: "搜索",
-    href: "/search",
-    icon: Search,
-  },
-  {
-    name: "收藏夹",
-    href: "/folders",
-    icon: Folder,
-  },
-  {
-    name: "数据",
-    href: "/analytics",
-    icon: BarChart3,
-  },
-  {
-    name: "设置",
-    href: "/settings",
-    icon: Settings,
-  },
+/**
+ * 安全获取导航上下文（不抛出错误）
+ */
+function useSafeNavigation() {
+  // 直接使用 useContext，不会抛出错误
+  const context = useContext(NavigationContext);
+  return context;
+}
+
+// 主导航配置
+const navigation: {
+  name: string;
+  pageId: PageId;
+  icon: typeof Home;
+}[] = [
+  { name: "首页", pageId: "home", icon: Home },
+  { name: "搜索", pageId: "search", icon: Search },
+  { name: "收藏夹", pageId: "folders", icon: Folder },
+  { name: "数据", pageId: "analytics", icon: BarChart3 },
+  { name: "设置", pageId: "settings", icon: Settings },
 ];
 
-// 系统文件夹（虚拟）
+// 系统文件夹（虚拟）- 属于首页的子状态
 const systemFolders = [
   {
     name: "高价值",
-    href: "/home?folder=high-value",
-    icon: Star,
     param: "high-value",
+    icon: Star,
   },
   {
     name: "已失效",
-    href: "/home?folder=invalid",
-    icon: AlertCircle,
     param: "invalid",
+    icon: AlertCircle,
   },
   {
     name: "垃圾箱",
-    href: "/home?folder=trash",
-    icon: Trash2,
     param: "trash",
+    icon: Trash2,
   },
 ];
 
@@ -72,6 +71,42 @@ export function AppSidebar() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const currentFolder = searchParams.get("folder");
+
+  // 安全获取导航上下文（不抛出错误）
+  const navigationContext = useSafeNavigation();
+
+  const { activePage, navigateTo, isClientNavEnabled } = navigationContext || {
+    activePage: null,
+    navigateTo: null,
+    isClientNavEnabled: false,
+  };
+
+  /**
+   * 处理主导航点击
+   */
+  const handleNavClick = useCallback(
+    (pageId: PageId, e: React.MouseEvent) => {
+      if (isClientNavEnabled && navigateTo) {
+        e.preventDefault();
+        navigateTo(pageId);
+      }
+      // 否则让 Link 正常工作
+    },
+    [isClientNavEnabled, navigateTo],
+  );
+
+  /**
+   * 处理系统文件夹点击
+   */
+  const handleSystemFolderClick = useCallback(
+    (folderParam: string, e: React.MouseEvent) => {
+      if (isClientNavEnabled && navigateTo) {
+        e.preventDefault();
+        navigateTo("home", { folder: folderParam });
+      }
+    },
+    [isClientNavEnabled, navigateTo],
+  );
 
   return (
     <aside className="fixed left-0 top-14 z-40 hidden lg:block w-44 h-[calc(100vh-3.5rem)] border-r bg-white dark:bg-gray-950 dark:border-gray-800">
@@ -91,12 +126,17 @@ export function AppSidebar() {
           <div className="space-y-1">
             {navigation.map((item) => {
               const Icon = item.icon;
-              const isActive =
-                pathname === item.href || pathname.startsWith(item.href + "/");
+              const href = PAGE_ROUTES[item.pageId];
+              // 客户端导航模式下使用 activePage，否则使用 pathname
+              const isActive = isClientNavEnabled
+                ? activePage === item.pageId
+                : pathname === href || pathname.startsWith(href + "/");
+
               return (
                 <Link
                   key={item.name}
-                  href={item.href}
+                  href={href}
+                  onClick={(e) => handleNavClick(item.pageId, e)}
                   className={cn(
                     "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors",
                     isActive
@@ -121,11 +161,14 @@ export function AppSidebar() {
             <div className="space-y-1">
               {systemFolders.map((item) => {
                 const Icon = item.icon;
+                const href = `/home?folder=${item.param}`;
                 const isActive = currentFolder === item.param;
+
                 return (
                   <Link
                     key={item.name}
-                    href={item.href}
+                    href={href}
+                    onClick={(e) => handleSystemFolderClick(item.param, e)}
                     className={cn(
                       "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors",
                       isActive

@@ -1,0 +1,537 @@
+/**
+ * 页面数据获取 Hooks
+ * 为各页面提供客户端数据获取能力，支持 Keep-Alive 模式
+ */
+
+"use client";
+
+import { useState, useEffect, useCallback, useRef } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { useUser } from "@/contexts/user-context";
+import type { Bookmark, Folder, Platform } from "@/types/supabase";
+import {
+  getPlatformName,
+  getPlatformHexColor,
+} from "@/lib/constants/platforms";
+
+// ==================== 通用类型 ====================
+
+interface DataState<T> {
+  data: T | null;
+  isLoading: boolean;
+  error: string | null;
+  lastFetched: number;
+}
+
+// ==================== 收藏夹页面数据 ====================
+
+export type FolderWithStats = Folder & {
+  bookmark_count: number;
+  today_count: number;
+};
+
+interface FoldersData {
+  folders: FolderWithStats[];
+  recentBookmarks: (Bookmark & { folders?: { name: string } | null })[];
+}
+
+/**
+ * 收藏夹页面数据获取 Hook
+ */
+export function useFoldersData() {
+  const { user } = useUser();
+  const [state, setState] = useState<DataState<FoldersData>>({
+    data: null,
+    isLoading: true,
+    error: null,
+    lastFetched: 0,
+  });
+
+  const fetchData = useCallback(async () => {
+    if (!user) {
+      setState((prev) => ({ ...prev, isLoading: false }));
+      return;
+    }
+
+    setState((prev) => ({ ...prev, isLoading: true, error: null }));
+
+    try {
+      const supabase = createClient();
+
+      // 获取文件夹
+      const { data: folders, error: foldersError } = await supabase
+        .from("folders")
+        .select("*")
+        .eq("user_id", user.id)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false });
+
+      if (foldersError) throw foldersError;
+
+      // 计算统计数据
+      let foldersWithStats: FolderWithStats[] = [];
+
+      if (folders && folders.length > 0) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const todayISO = today.toISOString();
+
+        const folderIds = folders.map((f) => f.id);
+        const { data: allBookmarks } = await supabase
+          .from("bookmarks")
+          .select("folder_id, created_at")
+          .eq("user_id", user.id)
+          .is("deleted_at", null)
+          .in("folder_id", folderIds);
+
+        const countMap = new Map<number, number>();
+        const todayCountMap = new Map<number, number>();
+
+        if (allBookmarks) {
+          for (const bookmark of allBookmarks) {
+            if (bookmark.folder_id) {
+              countMap.set(
+                bookmark.folder_id,
+                (countMap.get(bookmark.folder_id) || 0) + 1,
+              );
+              if (bookmark.created_at && bookmark.created_at >= todayISO) {
+                todayCountMap.set(
+                  bookmark.folder_id,
+                  (todayCountMap.get(bookmark.folder_id) || 0) + 1,
+                );
+              }
+            }
+          }
+        }
+
+        const systemFolders = folders.filter((f) => f.is_system);
+        const normalFolders = folders.filter((f) => !f.is_system);
+
+        foldersWithStats = [...systemFolders, ...normalFolders].map(
+          (folder) => ({
+            ...folder,
+            bookmark_count: countMap.get(folder.id) || 0,
+            today_count: todayCountMap.get(folder.id) || 0,
+          }),
+        );
+      }
+
+      // 获取最近书签
+      const { data: recentBookmarks, error: bookmarksError } = await supabase
+        .from("bookmarks")
+        .select("*, folders:folder_id (name)")
+        .eq("user_id", user.id)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false })
+        .limit(6);
+
+      if (bookmarksError) throw bookmarksError;
+
+      setState({
+        data: {
+          folders: foldersWithStats,
+          recentBookmarks: recentBookmarks || [],
+        },
+        isLoading: false,
+        error: null,
+        lastFetched: Date.now(),
+      });
+    } catch (err) {
+      setState((prev) => ({
+        ...prev,
+        isLoading: false,
+        error: err instanceof Error ? err.message : "加载失败",
+      }));
+    }
+  }, [user]);
+
+  // 初始加载
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  return {
+    ...state,
+    refetch: fetchData,
+  };
+}
+
+// ==================== 数据统计页面数据 ====================
+
+interface AnalyticsData {
+  trendData: { date: string; count: number }[];
+  platformData: { name: string; value: number; color: string }[];
+  tagData: { tag: string; count: number }[];
+  typeData: { type: string; count: number }[];
+}
+
+const ANALYTICS_TREND_DAYS = 30;
+const ANALYTICS_TOP_TAGS_COUNT = 15;
+
+/**
+ * 数据统计页面数据获取 Hook
+ */
+export function useAnalyticsData() {
+  const { user } = useUser();
+  const [state, setState] = useState<DataState<AnalyticsData>>({
+    data: null,
+    isLoading: true,
+    error: null,
+    lastFetched: 0,
+  });
+
+  const fetchData = useCallback(async () => {
+    if (!user) {
+      setState((prev) => ({ ...prev, isLoading: false }));
+      return;
+    }
+
+    setState((prev) => ({ ...prev, isLoading: true, error: null }));
+
+    try {
+      const supabase = createClient();
+
+      // 获取所有书签
+      const { data: bookmarks, error } = await supabase
+        .from("bookmarks")
+        .select("*")
+        .eq("user_id", user.id)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: true });
+
+      if (error) throw error;
+
+      if (!bookmarks || bookmarks.length === 0) {
+        setState({
+          data: {
+            trendData: [],
+            platformData: [],
+            tagData: [],
+            typeData: [],
+          },
+          isLoading: false,
+          error: null,
+          lastFetched: Date.now(),
+        });
+        return;
+      }
+
+      // 1. 收藏趋势数据
+      const trendDaysAgo = new Date();
+      trendDaysAgo.setDate(trendDaysAgo.getDate() - ANALYTICS_TREND_DAYS);
+
+      const trendMap = new Map<string, number>();
+      bookmarks.forEach((bookmark) => {
+        const date = new Date(bookmark.created_at);
+        if (date >= trendDaysAgo) {
+          const dateKey = date.toISOString().split("T")[0];
+          trendMap.set(dateKey, (trendMap.get(dateKey) || 0) + 1);
+        }
+      });
+
+      const trendData = [];
+      for (let i = ANALYTICS_TREND_DAYS - 1; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        const dateKey = date.toISOString().split("T")[0];
+        trendData.push({
+          date: dateKey,
+          count: trendMap.get(dateKey) || 0,
+        });
+      }
+
+      // 2. 平台分布数据
+      const platformMap = new Map<Platform, number>();
+      bookmarks.forEach((bookmark) => {
+        const platform = bookmark.platform;
+        platformMap.set(platform, (platformMap.get(platform) || 0) + 1);
+      });
+
+      const platformData = Array.from(platformMap.entries()).map(
+        ([platform, count]) => ({
+          name: getPlatformName(platform),
+          value: count,
+          color: getPlatformHexColor(platform),
+        }),
+      );
+
+      // 3. 热门标签数据
+      const tagMap = new Map<string, number>();
+      bookmarks.forEach((bookmark) => {
+        bookmark.ai_tags?.forEach((tag: string) => {
+          tagMap.set(tag, (tagMap.get(tag) || 0) + 1);
+        });
+      });
+
+      const tagData = Array.from(tagMap.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, ANALYTICS_TOP_TAGS_COUNT)
+        .map(([tag, count]) => ({ tag, count }));
+
+      // 4. 内容类型统计
+      const typeMap: Record<string, number> = {
+        文章: 0,
+        视频: 0,
+        图文: 0,
+      };
+
+      bookmarks.forEach((bookmark) => {
+        if (bookmark.platform === "BILIBILI") {
+          typeMap["视频"]++;
+        } else if (bookmark.platform === "XIAOHONGSHU") {
+          typeMap["图文"]++;
+        } else {
+          typeMap["文章"]++;
+        }
+      });
+
+      const typeData = Object.entries(typeMap)
+        .filter(([_, count]) => count > 0)
+        .map(([type, count]) => ({ type, count }));
+
+      setState({
+        data: {
+          trendData,
+          platformData,
+          tagData,
+          typeData,
+        },
+        isLoading: false,
+        error: null,
+        lastFetched: Date.now(),
+      });
+    } catch (err) {
+      setState((prev) => ({
+        ...prev,
+        isLoading: false,
+        error: err instanceof Error ? err.message : "加载失败",
+      }));
+    }
+  }, [user]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  return {
+    ...state,
+    refetch: fetchData,
+  };
+}
+
+// ==================== 设置页面数据 ====================
+
+interface SettingsData {
+  platforms: {
+    wechat: boolean;
+    bilibili: boolean;
+    xiaohongshu: boolean;
+    zhihu: boolean;
+  };
+  ai: {
+    autoTags: boolean;
+    autoSummary: boolean;
+    semanticSearch: boolean;
+  };
+  privacy: {
+    dataEncryption: boolean;
+    shareAnalytics: boolean;
+  };
+  notifications: {
+    email: boolean;
+    inApp: boolean;
+    weeklyDigest: boolean;
+  };
+}
+
+const DEFAULT_SETTINGS: SettingsData = {
+  platforms: {
+    wechat: true,
+    bilibili: true,
+    xiaohongshu: true,
+    zhihu: false,
+  },
+  ai: {
+    autoTags: true,
+    autoSummary: true,
+    semanticSearch: true,
+  },
+  privacy: {
+    dataEncryption: false,
+    shareAnalytics: true,
+  },
+  notifications: {
+    email: true,
+    inApp: true,
+    weeklyDigest: false,
+  },
+};
+
+/**
+ * 设置页面数据获取 Hook
+ */
+export function useSettingsData() {
+  // user 未来用于从数据库加载用户设置
+  const { user: _user, isLoading: userLoading } = useUser();
+  const [state, setState] = useState<DataState<SettingsData>>({
+    data: DEFAULT_SETTINGS,
+    isLoading: true,
+    error: null,
+    lastFetched: 0,
+  });
+
+  const fetchData = useCallback(async () => {
+    if (userLoading) return;
+
+    // 设置页即使没有用户也显示默认设置
+    setState({
+      data: DEFAULT_SETTINGS,
+      isLoading: false,
+      error: null,
+      lastFetched: Date.now(),
+    });
+
+    // TODO: 从数据库加载用户设置
+  }, [userLoading]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 数据获取模式
+    fetchData();
+  }, [fetchData]);
+
+  return {
+    ...state,
+    refetch: fetchData,
+  };
+}
+
+// ==================== 搜索页面数据 ====================
+
+interface SearchData {
+  results: (Bookmark & { folders?: { name: string } | null })[];
+  hotTags: string[];
+}
+
+/**
+ * 搜索页面数据获取 Hook
+ */
+export function useSearchData(query: string, aiMode: boolean) {
+  const { user } = useUser();
+  const [state, setState] = useState<DataState<SearchData>>({
+    data: { results: [], hotTags: [] },
+    isLoading: false,
+    error: null,
+    lastFetched: 0,
+  });
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  const fetchHotTags = useCallback(async () => {
+    if (!user) return [];
+
+    try {
+      const supabase = createClient();
+      const { data: bookmarks } = await supabase
+        .from("bookmarks")
+        .select("ai_tags")
+        .eq("user_id", user.id)
+        .is("deleted_at", null)
+        .not("ai_tags", "is", null)
+        .limit(100);
+
+      if (!bookmarks) return [];
+
+      const tagCount = new Map<string, number>();
+      bookmarks.forEach((b) => {
+        b.ai_tags?.forEach((tag: string) => {
+          tagCount.set(tag, (tagCount.get(tag) || 0) + 1);
+        });
+      });
+
+      return Array.from(tagCount.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+        .map(([tag]) => tag);
+    } catch {
+      return [];
+    }
+  }, [user]);
+
+  const search = useCallback(
+    async (searchQuery: string) => {
+      if (!searchQuery.trim() || !user) {
+        setState((prev) => ({
+          ...prev,
+          data: { results: [], hotTags: prev.data?.hotTags || [] },
+          isLoading: false,
+        }));
+        return;
+      }
+
+      // 取消之前的请求
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
+      setState((prev) => ({ ...prev, isLoading: true, error: null }));
+
+      try {
+        const params = new URLSearchParams({
+          q: searchQuery,
+          mode: aiMode ? "ai" : "text",
+        });
+
+        const res = await fetch(`/api/search?${params.toString()}`, {
+          signal: controller.signal,
+        });
+
+        if (!res.ok) throw new Error("搜索失败");
+
+        const result = await res.json();
+
+        setState((prev) => ({
+          data: {
+            results: result.data.bookmarks || [],
+            hotTags: prev.data?.hotTags || [],
+          },
+          isLoading: false,
+          error: null,
+          lastFetched: Date.now(),
+        }));
+      } catch (err) {
+        if ((err as Error).name === "AbortError") return;
+        setState((prev) => ({
+          ...prev,
+          isLoading: false,
+          error: err instanceof Error ? err.message : "搜索失败",
+        }));
+      }
+    },
+    [user, aiMode],
+  );
+
+  // 初始加载热门标签
+  useEffect(() => {
+    fetchHotTags().then((hotTags) => {
+      setState((prev) => ({
+        ...prev,
+        data: { ...prev.data!, hotTags },
+      }));
+    });
+  }, [fetchHotTags]);
+
+  // 搜索
+  useEffect(() => {
+    if (query) {
+      search(query);
+    }
+  }, [query, search]);
+
+  return {
+    ...state,
+    search,
+    refetch: () => search(query),
+  };
+}

@@ -90,6 +90,9 @@ interface HomePageClientProps {
   // 服务端传递的初始数据（可选，用于 SSR 场景）
   initialBookmarks?: BookmarkWithFolder[];
   error?: string;
+  // 客户端导航传入的参数（优先于 searchParams）
+  urlFolder?: string;
+  urlPlatform?: string;
 }
 
 // 平台配置（内容平台 + 浏览器书签统一入口）
@@ -135,18 +138,32 @@ const _layoutOptions = [
 export function HomePageClient({
   initialBookmarks,
   error,
+  urlFolder: propFolder,
+  urlPlatform: propPlatform,
 }: HomePageClientProps = {}) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   // 本地状态管理（用于客户端平台切换，避免 SSR）
-  const urlPlatform = searchParams.get("platform") || "";
+  // 客户端导航时使用 props，SSR 时使用 searchParams
+  const urlPlatform = propPlatform ?? searchParams.get("platform") ?? "";
   const urlSort = searchParams.get("sort") || "created_desc";
-  const urlFolder = searchParams.get("folder") || "";
+  const urlFolder = propFolder ?? searchParams.get("folder") ?? "";
 
   // 使用本地状态跟踪当前平台（支持客户端切换）
   const [localPlatform, setLocalPlatform] = useState(urlPlatform);
   const [localFolder, setLocalFolder] = useState(urlFolder);
+
+  // 同步客户端导航参数变化到本地状态
+  useEffect(() => {
+    if (urlFolder !== localFolder) {
+      setLocalFolder(urlFolder);
+    }
+    if (urlPlatform !== localPlatform) {
+      setLocalPlatform(urlPlatform);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 只响应 URL 参数变化
+  }, [urlFolder, urlPlatform]);
 
   // 当前使用的参数（优先使用本地状态，支持客户端即时切换）
   const currentPlatform = localPlatform;

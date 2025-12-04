@@ -6,10 +6,12 @@
  * 避免在根 layout 中直接使用 Context 导致的 SSR 问题
  */
 
+import { Suspense } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { ServiceWorkerRegister } from "@/components/pwa/sw-register";
 import { UserProvider } from "@/contexts/user-context";
+import { NavigationProvider } from "@/contexts/navigation-context";
 import { KeepAliveProvider } from "@/lib/cache";
 
 interface RootProvidersProps {
@@ -25,7 +27,11 @@ export function RootProviders({ children }: RootProvidersProps) {
       disableTransitionOnChange
     >
       <UserProvider>
-        <KeepAliveProvider>{children}</KeepAliveProvider>
+        <Suspense fallback={null}>
+          <NavigationProvider>
+            <KeepAliveProvider>{children}</KeepAliveProvider>
+          </NavigationProvider>
+        </Suspense>
       </UserProvider>
       <Toaster />
       <ServiceWorkerRegister />
