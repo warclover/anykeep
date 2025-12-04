@@ -7,6 +7,19 @@ export default {
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
+    // 包含常量文件，确保动态类名被扫描
+    "./src/lib/constants/**/*.ts",
+  ],
+  // 确保颜色选择器按钮样式被编译（动态类名）
+  safelist: [
+    "bg-blue-400",
+    "bg-purple-400",
+    "bg-pink-400",
+    "bg-sky-400",
+    "bg-lime-400",
+    "bg-yellow-400",
+    "bg-slate-400",
+    "bg-zinc-400",
   ],
   theme: {
     extend: {

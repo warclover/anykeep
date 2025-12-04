@@ -6,17 +6,18 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { Plus, X, Loader2 } from "lucide-react";
+import { useState, useCallback, useMemo } from "react";
+import { Plus, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   USAGE_TAG_PRESETS,
   getAllUsageTags,
   getUsageTagStyleExtended,
-  type UnifiedUsageTag,
 } from "@/lib/constants/usage-tags";
 import type { CustomUsageTag } from "@/types/supabase";
 import { AddCustomUsageTagDialog } from "./add-custom-usage-tag-dialog";
+import { useCustomUsageTags } from "@/hooks/use-custom-usage-tags";
+import { UsageTagButton } from "./usage-tag-button";
 
 interface UsageTagSelectorProps {
   /** 已选中的用途标签值列表 */
@@ -40,7 +41,7 @@ interface UsageTagSelectorProps {
 export function UsageTagSelector({
   selectedTags,
   onSelectedTagsChange,
-  customUsageTags = [],
+  customUsageTags: externalCustomTags,
   onCustomTagsChange,
   disabled = false,
   showAddButton = true,
@@ -49,46 +50,25 @@ export function UsageTagSelector({
 }: UsageTagSelectorProps) {
   // 添加自定义标签弹窗状态
   const [showAddDialog, setShowAddDialog] = useState(false);
-  // 加载状态
-  const [isLoading, setIsLoading] = useState(false);
-  // 内部自定义标签状态（如果没有外部传入）
-  const [internalCustomTags, setInternalCustomTags] =
-    useState<CustomUsageTag[]>(customUsageTags);
 
-  // 同步外部传入的自定义标签
-  useEffect(() => {
-    setInternalCustomTags(customUsageTags);
-  }, [customUsageTags]);
+  // 使用统一的自定义标签 Hook（共享缓存，避免重复请求）
+  const {
+    customTags: hookCustomTags,
+    isLoading,
+    setTags,
+    updateTag,
+  } = useCustomUsageTags();
+
+  // 优先使用外部传入的标签，否则使用 Hook 的数据
+  const hasExternalTags = externalCustomTags && externalCustomTags.length > 0;
+  const internalCustomTags = hasExternalTags
+    ? externalCustomTags
+    : hookCustomTags;
 
   // 获取所有可用的用途标签（预设 + 自定义）
   const allUsageTags = useMemo(() => {
     return getAllUsageTags(internalCustomTags);
   }, [internalCustomTags]);
-
-  // 加载用户的自定义标签（如果没有外部传入）
-  const loadCustomTags = useCallback(async () => {
-    if (customUsageTags.length > 0) return; // 已有外部传入，不需要加载
-
-    setIsLoading(true);
-    try {
-      const response = await fetch("/api/settings/usage-tags");
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.data?.customUsageTags) {
-          setInternalCustomTags(data.data.customUsageTags);
-        }
-      }
-    } catch (error) {
-      console.error("Failed to load custom usage tags:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [customUsageTags.length]);
-
-  // 组件挂载时加载自定义标签
-  useEffect(() => {
-    loadCustomTags();
-  }, [loadCustomTags]);
 
   /**
    * 更新自定义标签的最后使用时间
@@ -99,13 +79,19 @@ export function UsageTagSelector({
       const customTag = internalCustomTags.find((t) => t.value === tagValue);
       if (!customTag) return;
 
+      const now = new Date().toISOString();
+
+      // 乐观更新本地缓存
+      updateTag(customTag.id, { lastUsedAt: now });
+
+      // 异步同步到服务器
       try {
         await fetch("/api/settings/usage-tags", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             id: customTag.id,
-            lastUsedAt: new Date().toISOString(),
+            lastUsedAt: now,
           }),
         });
       } catch (error) {
@@ -113,7 +99,7 @@ export function UsageTagSelector({
         console.error("Failed to update lastUsedAt:", error);
       }
     },
-    [internalCustomTags],
+    [internalCustomTags, updateTag],
   );
 
   /**
@@ -153,7 +139,9 @@ export function UsageTagSelector({
    */
   const handleCustomTagCreated = useCallback(
     (newTag: CustomUsageTag, allTags: CustomUsageTag[]) => {
-      setInternalCustomTags(allTags);
+      // 同步到 Hook 缓存（所有使用该 Hook 的组件都会更新）
+      setTags(allTags);
+      // 通知外部（如果有）
       onCustomTagsChange?.(allTags);
 
       // 自动选中新创建的标签
@@ -163,59 +151,14 @@ export function UsageTagSelector({
 
       setShowAddDialog(false);
     },
-    [selectedTags, onSelectedTagsChange, onCustomTagsChange, maxSelection],
+    [
+      selectedTags,
+      onSelectedTagsChange,
+      onCustomTagsChange,
+      maxSelection,
+      setTags,
+    ],
   );
-
-  /**
-   * 渲染单个标签按钮
-   */
-  const renderTagButton = (tag: UnifiedUsageTag) => {
-    const isSelected = selectedTags.includes(tag.value);
-    const isDisabled =
-      disabled ||
-      (!isSelected && maxSelection > 0 && selectedTags.length >= maxSelection);
-
-    return (
-      <button
-        key={tag.value}
-        type="button"
-        onClick={() => toggleTag(tag.value)}
-        disabled={isDisabled}
-        className={cn(
-          "px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200",
-          "border flex items-center gap-1.5",
-          "focus:outline-none focus:ring-2 focus:ring-offset-1",
-          isSelected
-            ? // 选中状态：使用标签颜色
-              cn(
-                tag.style.bgLight,
-                tag.style.bgDark,
-                tag.style.borderLight,
-                tag.style.borderDark,
-                tag.style.textLight,
-                tag.style.textDark,
-                "ring-offset-white dark:ring-offset-gray-900",
-                `focus:ring-${tag.style.color}-400`,
-              )
-            : // 未选中状态：灰色边框
-              cn(
-                "bg-white dark:bg-gray-800",
-                "border-gray-200 dark:border-gray-700",
-                "text-gray-600 dark:text-gray-400",
-                "hover:border-gray-300 dark:hover:border-gray-600",
-                "hover:bg-gray-50 dark:hover:bg-gray-700/50",
-                "focus:ring-gray-400",
-              ),
-          isDisabled && "opacity-50 cursor-not-allowed",
-        )}
-      >
-        {tag.label}
-        {isSelected && (
-          <X className="size-3.5 opacity-60 hover:opacity-100 transition-opacity" />
-        )}
-      </button>
-    );
-  };
 
   return (
     <div className={cn("space-y-2", className)}>
@@ -233,7 +176,24 @@ export function UsageTagSelector({
               const unifiedTag = allUsageTags.find(
                 (t) => t.value === preset.value,
               );
-              return unifiedTag ? renderTagButton(unifiedTag) : null;
+              if (!unifiedTag) return null;
+              const isSelected = selectedTags.includes(unifiedTag.value);
+              const isDisabled =
+                disabled ||
+                (!isSelected &&
+                  maxSelection > 0 &&
+                  selectedTags.length >= maxSelection);
+              return (
+                <UsageTagButton
+                  key={unifiedTag.value}
+                  tag={unifiedTag}
+                  isSelected={isSelected}
+                  disabled={isDisabled}
+                  size="md"
+                  showRemoveIcon
+                  onClick={() => toggleTag(unifiedTag.value)}
+                />
+              );
             })}
 
             {/* 分隔线（如果有自定义标签） */}
@@ -246,7 +206,24 @@ export function UsageTagSelector({
               const unifiedTag = allUsageTags.find(
                 (t) => t.value === customTag.value,
               );
-              return unifiedTag ? renderTagButton(unifiedTag) : null;
+              if (!unifiedTag) return null;
+              const isSelected = selectedTags.includes(unifiedTag.value);
+              const isDisabled =
+                disabled ||
+                (!isSelected &&
+                  maxSelection > 0 &&
+                  selectedTags.length >= maxSelection);
+              return (
+                <UsageTagButton
+                  key={unifiedTag.value}
+                  tag={unifiedTag}
+                  isSelected={isSelected}
+                  disabled={isDisabled}
+                  size="md"
+                  showRemoveIcon
+                  onClick={() => toggleTag(unifiedTag.value)}
+                />
+              );
             })}
 
             {/* 添加自定义标签按钮 */}

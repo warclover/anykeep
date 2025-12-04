@@ -26,6 +26,7 @@ import {
   validateCustomTagValue,
   getColorDisplayName,
   CUSTOM_TAG_COLOR_STYLES,
+  COLOR_PICKER_BUTTON_STYLES,
 } from "@/lib/constants/usage-tags";
 
 interface AddCustomUsageTagDialogProps {
@@ -169,7 +170,6 @@ export function AddCustomUsageTagDialog({
             <Label>标签颜色</Label>
             <div className="flex flex-wrap gap-2">
               {CUSTOM_TAG_COLORS.map((c) => {
-                const style = CUSTOM_TAG_COLOR_STYLES[c];
                 const isSelected = color === c;
                 return (
                   <button
@@ -180,9 +180,7 @@ export function AddCustomUsageTagDialog({
                     className={cn(
                       "relative w-8 h-8 rounded-full transition-all duration-200",
                       "focus:outline-none focus:ring-2 focus:ring-offset-2",
-                      style.bgLight
-                        .replace("bg-", "bg-")
-                        .replace("-50", "-400"),
+                      COLOR_PICKER_BUTTON_STYLES[c],
                       isSelected && "ring-2 ring-offset-2 ring-gray-400",
                       "hover:scale-110",
                     )}

@@ -7,7 +7,6 @@
  */
 
 import type { NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import {
   successResponse,
   unauthorizedError,
@@ -15,21 +14,21 @@ import {
   databaseError,
   internalError,
 } from "@/lib/utils/api-response";
-import { logger } from "@/lib/logger";
-import type {
-  CustomUsageTag,
-  ProfileSettings,
-  CustomTagColor,
-  Json,
-} from "@/types/supabase";
+import type { CustomUsageTag, CustomTagColor } from "@/types/supabase";
 import { CUSTOM_USAGE_TAG_LIMIT, CUSTOM_TAG_COLORS } from "@/types/supabase";
 import {
   validateCustomTagValue,
   createCustomUsageTag,
 } from "@/lib/constants/usage-tags";
+import {
+  getAuthenticatedUser,
+  getUserSettings,
+  updateUserCustomTags,
+  logApiError,
+} from "@/lib/utils/usage-tags-api-helpers";
 
 // 错误消息常量
-const USAGE_TAG_MESSAGES = {
+const MESSAGES = {
   LOAD_ERROR: "加载用途标签失败",
   CREATE_ERROR: "创建用途标签失败",
   UPDATE_ERROR: "更新用途标签失败",
@@ -37,7 +36,8 @@ const USAGE_TAG_MESSAGES = {
   LIMIT_EXCEEDED: `自定义用途标签数量已达上限（${CUSTOM_USAGE_TAG_LIMIT}个）`,
   TAG_NOT_FOUND: "标签不存在",
   INVALID_COLOR: "无效的颜色值",
-};
+  MISSING_TAG_ID: "缺少标签ID",
+} as const;
 
 /**
  * GET /api/settings/usage-tags
@@ -45,29 +45,19 @@ const USAGE_TAG_MESSAGES = {
  */
 export async function GET() {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
+    // 认证
+    const authResult = await getAuthenticatedUser();
+    if (!authResult.success) {
       return unauthorizedError();
     }
+    const { supabase, user } = authResult;
 
-    // 获取用户的 settings
-    const { data: profile, error: queryError } = await supabase
-      .from("profiles")
-      .select("settings")
-      .eq("id", user.id)
-      .single();
-
-    if (queryError) {
-      return databaseError(USAGE_TAG_MESSAGES.LOAD_ERROR, queryError);
+    // 获取设置
+    const settingsResult = await getUserSettings(supabase, user.id);
+    if (!settingsResult.success) {
+      return databaseError(MESSAGES.LOAD_ERROR, settingsResult.error);
     }
-
-    const settings = (profile?.settings as ProfileSettings) || {};
-    const customUsageTags = settings.customUsageTags || [];
+    const { customUsageTags } = settingsResult;
 
     return successResponse({
       customUsageTags,
@@ -75,15 +65,8 @@ export async function GET() {
       remaining: CUSTOM_USAGE_TAG_LIMIT - customUsageTags.length,
     });
   } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        operation: "get_usage_tags",
-      },
-      "GET /api/settings/usage-tags error",
-    );
-    return internalError(USAGE_TAG_MESSAGES.LOAD_ERROR);
+    logApiError(error, "get_usage_tags", "GET /api/settings/usage-tags");
+    return internalError(MESSAGES.LOAD_ERROR);
   }
 }
 
@@ -93,15 +76,12 @@ export async function GET() {
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
+    // 认证
+    const authResult = await getAuthenticatedUser();
+    if (!authResult.success) {
       return unauthorizedError();
     }
+    const { supabase, user } = authResult;
 
     // 解析请求体
     const body = await request.json();
@@ -112,26 +92,19 @@ export async function POST(request: NextRequest) {
 
     // 验证颜色
     if (!CUSTOM_TAG_COLORS.includes(color as CustomTagColor)) {
-      return badRequestError(USAGE_TAG_MESSAGES.INVALID_COLOR);
+      return badRequestError(MESSAGES.INVALID_COLOR);
     }
 
-    // 获取现有设置
-    const { data: profile, error: queryError } = await supabase
-      .from("profiles")
-      .select("settings")
-      .eq("id", user.id)
-      .single();
-
-    if (queryError) {
-      return databaseError(USAGE_TAG_MESSAGES.CREATE_ERROR, queryError);
+    // 获取设置
+    const settingsResult = await getUserSettings(supabase, user.id);
+    if (!settingsResult.success) {
+      return databaseError(MESSAGES.CREATE_ERROR, settingsResult.error);
     }
-
-    const settings = (profile?.settings as ProfileSettings) || {};
-    const existingTags = settings.customUsageTags || [];
+    const { settings, customUsageTags: existingTags } = settingsResult;
 
     // 检查数量限制
     if (existingTags.length >= CUSTOM_USAGE_TAG_LIMIT) {
-      return badRequestError(USAGE_TAG_MESSAGES.LIMIT_EXCEEDED);
+      return badRequestError(MESSAGES.LIMIT_EXCEEDED);
     }
 
     // 验证标签值
@@ -144,22 +117,15 @@ export async function POST(request: NextRequest) {
     const newTag = createCustomUsageTag(value, color);
     const updatedTags = [...existingTags, newTag];
 
-    // 更新 settings
-    const newSettings: ProfileSettings = {
-      ...settings,
-      customUsageTags: updatedTags,
-    };
-
-    const { error: updateError } = await supabase
-      .from("profiles")
-      .update({
-        settings: newSettings as unknown as Json,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", user.id);
-
-    if (updateError) {
-      return databaseError(USAGE_TAG_MESSAGES.CREATE_ERROR, updateError);
+    // 更新设置
+    const updateResult = await updateUserCustomTags(
+      supabase,
+      user.id,
+      settings,
+      updatedTags,
+    );
+    if (!updateResult.success) {
+      return databaseError(MESSAGES.CREATE_ERROR, updateResult.error);
     }
 
     return successResponse(
@@ -171,15 +137,8 @@ export async function POST(request: NextRequest) {
       201,
     );
   } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        operation: "create_usage_tag",
-      },
-      "POST /api/settings/usage-tags error",
-    );
-    return internalError(USAGE_TAG_MESSAGES.CREATE_ERROR);
+    logApiError(error, "create_usage_tag", "POST /api/settings/usage-tags");
+    return internalError(MESSAGES.CREATE_ERROR);
   }
 }
 
@@ -189,15 +148,12 @@ export async function POST(request: NextRequest) {
  */
 export async function PUT(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
+    // 认证
+    const authResult = await getAuthenticatedUser();
+    if (!authResult.success) {
       return unauthorizedError();
     }
+    const { supabase, user } = authResult;
 
     // 解析请求体
     const body = await request.json();
@@ -209,27 +165,20 @@ export async function PUT(request: NextRequest) {
     };
 
     if (!id) {
-      return badRequestError("缺少标签ID");
+      return badRequestError(MESSAGES.MISSING_TAG_ID);
     }
 
-    // 获取现有设置
-    const { data: profile, error: queryError } = await supabase
-      .from("profiles")
-      .select("settings")
-      .eq("id", user.id)
-      .single();
-
-    if (queryError) {
-      return databaseError(USAGE_TAG_MESSAGES.UPDATE_ERROR, queryError);
+    // 获取设置
+    const settingsResult = await getUserSettings(supabase, user.id);
+    if (!settingsResult.success) {
+      return databaseError(MESSAGES.UPDATE_ERROR, settingsResult.error);
     }
-
-    const settings = (profile?.settings as ProfileSettings) || {};
-    const existingTags = settings.customUsageTags || [];
+    const { settings, customUsageTags: existingTags } = settingsResult;
 
     // 查找要更新的标签
     const tagIndex = existingTags.findIndex((tag) => tag.id === id);
     if (tagIndex === -1) {
-      return badRequestError(USAGE_TAG_MESSAGES.TAG_NOT_FOUND);
+      return badRequestError(MESSAGES.TAG_NOT_FOUND);
     }
 
     const existingTag = existingTags[tagIndex];
@@ -244,7 +193,7 @@ export async function PUT(request: NextRequest) {
 
     // 如果更新 color，验证颜色值
     if (color !== undefined && !CUSTOM_TAG_COLORS.includes(color)) {
-      return badRequestError(USAGE_TAG_MESSAGES.INVALID_COLOR);
+      return badRequestError(MESSAGES.INVALID_COLOR);
     }
 
     // 更新标签
@@ -258,22 +207,15 @@ export async function PUT(request: NextRequest) {
     const updatedTags = [...existingTags];
     updatedTags[tagIndex] = updatedTag;
 
-    // 更新 settings
-    const newSettings: ProfileSettings = {
-      ...settings,
-      customUsageTags: updatedTags,
-    };
-
-    const { error: updateError } = await supabase
-      .from("profiles")
-      .update({
-        settings: newSettings as unknown as Json,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", user.id);
-
-    if (updateError) {
-      return databaseError(USAGE_TAG_MESSAGES.UPDATE_ERROR, updateError);
+    // 更新设置
+    const updateResult = await updateUserCustomTags(
+      supabase,
+      user.id,
+      settings,
+      updatedTags,
+    );
+    if (!updateResult.success) {
+      return databaseError(MESSAGES.UPDATE_ERROR, updateResult.error);
     }
 
     return successResponse({
@@ -281,15 +223,8 @@ export async function PUT(request: NextRequest) {
       customUsageTags: updatedTags,
     });
   } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        operation: "update_usage_tag",
-      },
-      "PUT /api/settings/usage-tags error",
-    );
-    return internalError(USAGE_TAG_MESSAGES.UPDATE_ERROR);
+    logApiError(error, "update_usage_tag", "PUT /api/settings/usage-tags");
+    return internalError(MESSAGES.UPDATE_ERROR);
   }
 }
 
@@ -299,63 +234,46 @@ export async function PUT(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
+    // 认证
+    const authResult = await getAuthenticatedUser();
+    if (!authResult.success) {
       return unauthorizedError();
     }
+    const { supabase, user } = authResult;
 
     // 从 URL 参数获取标签 ID
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 
     if (!id) {
-      return badRequestError("缺少标签ID");
+      return badRequestError(MESSAGES.MISSING_TAG_ID);
     }
 
-    // 获取现有设置
-    const { data: profile, error: queryError } = await supabase
-      .from("profiles")
-      .select("settings")
-      .eq("id", user.id)
-      .single();
-
-    if (queryError) {
-      return databaseError(USAGE_TAG_MESSAGES.DELETE_ERROR, queryError);
+    // 获取设置
+    const settingsResult = await getUserSettings(supabase, user.id);
+    if (!settingsResult.success) {
+      return databaseError(MESSAGES.DELETE_ERROR, settingsResult.error);
     }
-
-    const settings = (profile?.settings as ProfileSettings) || {};
-    const existingTags = settings.customUsageTags || [];
+    const { settings, customUsageTags: existingTags } = settingsResult;
 
     // 查找要删除的标签
     const tagIndex = existingTags.findIndex((tag) => tag.id === id);
     if (tagIndex === -1) {
-      return badRequestError(USAGE_TAG_MESSAGES.TAG_NOT_FOUND);
+      return badRequestError(MESSAGES.TAG_NOT_FOUND);
     }
 
     // 删除标签
     const updatedTags = existingTags.filter((tag) => tag.id !== id);
 
-    // 更新 settings
-    const newSettings: ProfileSettings = {
-      ...settings,
-      customUsageTags: updatedTags,
-    };
-
-    const { error: updateError } = await supabase
-      .from("profiles")
-      .update({
-        settings: newSettings as unknown as Json,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", user.id);
-
-    if (updateError) {
-      return databaseError(USAGE_TAG_MESSAGES.DELETE_ERROR, updateError);
+    // 更新设置
+    const updateResult = await updateUserCustomTags(
+      supabase,
+      user.id,
+      settings,
+      updatedTags,
+    );
+    if (!updateResult.success) {
+      return databaseError(MESSAGES.DELETE_ERROR, updateResult.error);
     }
 
     return successResponse({
@@ -363,14 +281,7 @@ export async function DELETE(request: NextRequest) {
       remaining: CUSTOM_USAGE_TAG_LIMIT - updatedTags.length,
     });
   } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        operation: "delete_usage_tag",
-      },
-      "DELETE /api/settings/usage-tags error",
-    );
-    return internalError(USAGE_TAG_MESSAGES.DELETE_ERROR);
+    logApiError(error, "delete_usage_tag", "DELETE /api/settings/usage-tags");
+    return internalError(MESSAGES.DELETE_ERROR);
   }
 }

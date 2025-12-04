@@ -93,50 +93,6 @@ export const USAGE_TAG_VALUES = new Set(
 );
 
 /**
- * 获取用途标签的样式配置
- * @param tagValue 标签值
- * @returns 样式配置，如果不是预设标签则返回 null
- */
-export function getUsageTagStyle(tagValue: string): UsageTagPreset | null {
-  return USAGE_TAG_PRESETS.find((preset) => preset.value === tagValue) || null;
-}
-
-/**
- * 判断标签是否为预设用途标签
- * @param tagValue 标签值
- */
-export function isUsageTag(tagValue: string): boolean {
-  return USAGE_TAG_VALUES.has(tagValue);
-}
-
-/**
- * 将用户标签分为用途标签和普通标签
- * @param userTags 用户标签数组
- * @returns { usageTags: string[], regularTags: string[] }
- */
-export function separateUserTags(userTags: string[] | null | undefined): {
-  usageTags: string[];
-  regularTags: string[];
-} {
-  if (!userTags || userTags.length === 0) {
-    return { usageTags: [], regularTags: [] };
-  }
-
-  const usageTags: string[] = [];
-  const regularTags: string[] = [];
-
-  for (const tag of userTags) {
-    if (isUsageTag(tag)) {
-      usageTags.push(tag);
-    } else {
-      regularTags.push(tag);
-    }
-  }
-
-  return { usageTags, regularTags };
-}
-
-/**
  * AI标签彩色样式配置（用于P3.3）
  * 基于标签内容计算颜色，保证同一标签颜色一致
  */
@@ -550,3 +506,18 @@ export function getColorDisplayName(color: CustomTagColor): string {
   };
   return colorNames[color] || color;
 }
+
+/**
+ * 颜色选择器按钮样式（用于颜色选择圆形按钮）
+ * 使用较深的颜色（400级别）以便在白色背景上清晰可见
+ */
+export const COLOR_PICKER_BUTTON_STYLES: Record<CustomTagColor, string> = {
+  blue: "bg-blue-400",
+  purple: "bg-purple-400",
+  pink: "bg-pink-400",
+  sky: "bg-sky-400",
+  lime: "bg-lime-400",
+  yellow: "bg-yellow-400",
+  slate: "bg-slate-400",
+  zinc: "bg-zinc-400",
+};

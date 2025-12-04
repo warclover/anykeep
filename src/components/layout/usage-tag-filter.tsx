@@ -6,17 +6,14 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { Filter, X, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import {
-  USAGE_TAG_PRESETS,
-  getAllUsageTags,
-  type UnifiedUsageTag,
-} from "@/lib/constants/usage-tags";
-import type { CustomUsageTag } from "@/types/supabase";
+import { USAGE_TAG_PRESETS, getAllUsageTags } from "@/lib/constants/usage-tags";
 import { useSafeNavigation } from "@/contexts/navigation-context";
+import { useCustomUsageTags } from "@/hooks/use-custom-usage-tags";
+import { UsageTagButton } from "@/components/bookmark/usage-tag-button";
 
 interface UsageTagFilterProps {
   /** 自定义类名 */
@@ -38,17 +35,17 @@ export function UsageTagFilter({
     isClientNavEnabled: false,
   };
 
-  // 加载状态
-  const [isLoading, setIsLoading] = useState(false);
-  // 自定义用途标签
-  const [customUsageTags, setCustomUsageTags] = useState<CustomUsageTag[]>([]);
-  // 选中的用途标签
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  // 是否展开筛选区
-  const [isExpanded, setIsExpanded] = useState(false);
+  // 使用统一的自定义标签 Hook（共享缓存，避免重复请求）
+  const { customTags: customUsageTags, isLoading } = useCustomUsageTags();
 
-  // 从 URL 读取初始筛选
+  // 从 URL 派生选中状态（单一数据源，避免 state 同步问题）
   const urlUsageTags = searchParams.get("usageTags") || "";
+  const selectedTags = useMemo(() => {
+    return urlUsageTags ? urlUsageTags.split(",").filter(Boolean) : [];
+  }, [urlUsageTags]);
+
+  // 是否展开筛选区（UI 状态，需要独立管理）
+  const [isExpanded, setIsExpanded] = useState(selectedTags.length > 0);
 
   // 判断当前页面
   const pathname =
@@ -62,40 +59,6 @@ export function UsageTagFilter({
     return getAllUsageTags(customUsageTags);
   }, [customUsageTags]);
 
-  // 加载用户的自定义标签
-  const loadCustomTags = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch("/api/settings/usage-tags");
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.data?.customUsageTags) {
-          setCustomUsageTags(data.data.customUsageTags);
-        }
-      }
-    } catch (error) {
-      console.error("Failed to load custom usage tags:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  // 组件挂载时加载自定义标签
-  useEffect(() => {
-    loadCustomTags();
-  }, [loadCustomTags]);
-
-  // 从 URL 同步选中状态
-  useEffect(() => {
-    if (urlUsageTags) {
-      const tags = urlUsageTags.split(",").filter(Boolean);
-      setSelectedTags(tags);
-      setIsExpanded(tags.length > 0);
-    } else {
-      setSelectedTags([]);
-    }
-  }, [urlUsageTags]);
-
   /**
    * 切换标签选中状态
    */
@@ -105,9 +68,7 @@ export function UsageTagFilter({
         ? selectedTags.filter((t) => t !== tagValue)
         : [...selectedTags, tagValue];
 
-      setSelectedTags(newSelected);
-
-      // 更新 URL
+      // 更新 URL（selectedTags 会自动从 URL 派生）
       const params = new URLSearchParams(searchParams.toString());
       if (newSelected.length > 0) {
         params.set("usageTags", newSelected.join(","));
@@ -138,9 +99,7 @@ export function UsageTagFilter({
    * 清除所有筛选
    */
   const clearFilter = useCallback(() => {
-    setSelectedTags([]);
-
-    // 更新 URL
+    // 更新 URL（selectedTags 会自动从 URL 派生）
     const params = new URLSearchParams(searchParams.toString());
     params.delete("usageTags");
     const newUrl = `/home?${params.toString()}`;
@@ -160,42 +119,6 @@ export function UsageTagFilter({
       }),
     );
   }, [searchParams, onFilterChange]);
-
-  /**
-   * 渲染单个标签按钮
-   */
-  const renderTagButton = (tag: UnifiedUsageTag) => {
-    const isSelected = selectedTags.includes(tag.value);
-
-    return (
-      <button
-        key={tag.value}
-        type="button"
-        onClick={() => toggleTag(tag.value)}
-        className={cn(
-          "px-2.5 py-1 text-xs font-medium rounded-full transition-all duration-200",
-          "border whitespace-nowrap flex-shrink-0",
-          isSelected
-            ? cn(
-                tag.style.bgLight,
-                tag.style.bgDark,
-                tag.style.borderLight,
-                tag.style.borderDark,
-                tag.style.textLight,
-                tag.style.textDark,
-              )
-            : cn(
-                "bg-white dark:bg-gray-800",
-                "border-gray-200 dark:border-gray-700",
-                "text-gray-600 dark:text-gray-400",
-                "hover:border-gray-300 dark:hover:border-gray-600",
-              ),
-        )}
-      >
-        {tag.label}
-      </button>
-    );
-  };
 
   // 非首页不显示
   if (!isHomePage) {
@@ -285,7 +208,15 @@ export function UsageTagFilter({
               {/* 预设标签 */}
               {USAGE_TAG_PRESETS.map((preset) => {
                 const tag = allUsageTags.find((t) => t.value === preset.value);
-                return tag ? renderTagButton(tag) : null;
+                return tag ? (
+                  <UsageTagButton
+                    key={tag.value}
+                    tag={tag}
+                    isSelected={selectedTags.includes(tag.value)}
+                    size="sm"
+                    onClick={() => toggleTag(tag.value)}
+                  />
+                ) : null;
               })}
 
               {/* 分隔线（如果有自定义标签） */}
@@ -298,7 +229,15 @@ export function UsageTagFilter({
                 const tag = allUsageTags.find(
                   (t) => t.value === customTag.value,
                 );
-                return tag ? renderTagButton(tag) : null;
+                return tag ? (
+                  <UsageTagButton
+                    key={tag.value}
+                    tag={tag}
+                    isSelected={selectedTags.includes(tag.value)}
+                    size="sm"
+                    onClick={() => toggleTag(tag.value)}
+                  />
+                ) : null;
               })}
 
               {/* 清除按钮 */}
