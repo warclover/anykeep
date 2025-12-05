@@ -1512,10 +1512,10 @@ export function HomePageClient({
           )}
           <Button
             className="shrink-0 bg-gray-900 hover:bg-gray-800 text-white dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
-            size="lg"
+            size="default"
             onClick={openCreateDialog}
           >
-            <Plus className="size-5 mr-2" />
+            <Plus className="size-4 mr-1.5" />
             添加收藏
           </Button>
         </div>

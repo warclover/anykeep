@@ -146,22 +146,22 @@ export function UsageTagFilter({
 
   return (
     <div className={cn("flex items-center gap-2", className)}>
-      {/* 用途按钮 */}
+      {/* 用途按钮 - 深色实心风格（与添加收藏按钮一致） */}
       <button
         type="button"
         onClick={() => setIsExpanded(!isExpanded)}
         className={cn(
-          "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full transition-colors shrink-0",
-          "border",
-          selectedTags.length > 0
-            ? "bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300"
-            : "bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700",
+          // 尺寸与 Button size="default" 一致：h-9 px-4 py-2 rounded-md
+          "h-9 flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-md transition-colors shrink-0",
+          // 深色实心风格
+          "bg-gray-900 text-white hover:bg-gray-800",
+          "dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100",
         )}
       >
-        <Filter className="size-3" />
+        <Filter className="size-4" />
         <span>用途</span>
         {selectedTags.length > 0 && (
-          <span className="px-1.5 py-0.5 text-[10px] bg-blue-500 text-white rounded-full">
+          <span className="px-1.5 py-0.5 text-[10px] bg-white/25 dark:bg-gray-900/25 text-white dark:text-gray-900 rounded-full font-semibold">
             {selectedTags.length}
           </span>
         )}
