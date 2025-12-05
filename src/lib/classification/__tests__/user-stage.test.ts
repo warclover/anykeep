@@ -182,15 +182,31 @@ describe("UserStageService", () => {
       expect(stage).toBe("onboarding");
     });
 
-    it("should throw error when RPC fails", async () => {
+    it("should return fallback stage when RPC fails", async () => {
+      // V2: getStage now has fallback logic instead of throwing
       mockSupabase.rpc.mockResolvedValueOnce({
         data: null,
         error: { message: "Database error" },
       });
 
-      await expect(service.getStage("user-123")).rejects.toThrow(
-        "Failed to get user stage: Database error",
-      );
+      // Mock fallback queries
+      mockSupabase.from = jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            is: jest.fn().mockReturnValue({
+              not: jest.fn().mockResolvedValue({ count: 0 }),
+            }),
+            single: jest.fn().mockResolvedValue({
+              data: { settings: {} },
+              error: null,
+            }),
+          }),
+        }),
+      });
+
+      // Should return cold_start as safe default
+      const stage = await service.getStage("user-123");
+      expect(stage).toBe("cold_start");
     });
   });
 

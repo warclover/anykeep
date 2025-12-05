@@ -53,7 +53,7 @@ export type {
   AIRecommendationContext,
   AIRecommendation,
 
-  // Interest types
+  // Interest types (V1)
   PresetInterestId,
   InterestCategory,
   PresetInterestDomain,
@@ -63,6 +63,19 @@ export type {
   UserInterestConfigFull,
   ExtendedUserProfile,
   UserProfileSettings,
+
+  // Interest Profile V2 types
+  InterestSource,
+  UserStage,
+  ManualSourceDetail,
+  ImportedSourceDetail,
+  LearnedSourceDetail,
+  InterestSources,
+  InterestKeyword,
+  UserInterestProfile,
+  InterestProfileInput,
+  InterestProfileUpdateInput,
+  BookmarkAnalysisResult,
 
   // Suggestion types
   SuggestionType,
@@ -99,6 +112,7 @@ export type {
   IClassificationService,
   IInboxOrganizerService,
   IInterestService,
+  IInterestProfileService,
   IUserStageService,
 } from "./services/interfaces";
 
@@ -117,6 +131,18 @@ export {
   kMeansClustering,
   densityClustering,
 } from "./utils/clustering";
+
+// Client-side utilities (safe for browser)
+export {
+  getInterestProfile,
+  initializeInterestProfile,
+  updateManualDescription,
+  analyzeImportedBookmarks,
+  learnFromBehavior,
+  updateStage,
+  shouldTriggerAnalysis,
+  type ProfileStats,
+} from "./client";
 
 // NOTE: Server-only exports (integration layer) are in ./server
 // Import from '@/lib/classification/server' for:

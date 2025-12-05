@@ -497,4 +497,207 @@ describe("FOLDER_LIMITS configuration", () => {
   it("should have split threshold at least 50", () => {
     expect(FOLDER_LIMITS.SPLIT_SIZE_THRESHOLD).toBeGreaterThanOrEqual(50);
   });
+
+  it("should have split diversity threshold between 0.3 and 0.7", () => {
+    expect(FOLDER_LIMITS.SPLIT_DIVERSITY_THRESHOLD).toBeGreaterThanOrEqual(0.3);
+    expect(FOLDER_LIMITS.SPLIT_DIVERSITY_THRESHOLD).toBeLessThanOrEqual(0.7);
+  });
+
+  it("should have reasonable max suggestions limits", () => {
+    expect(FOLDER_LIMITS.MAX_MERGE_SUGGESTIONS).toBeGreaterThanOrEqual(3);
+    expect(FOLDER_LIMITS.MAX_MERGE_SUGGESTIONS).toBeLessThanOrEqual(10);
+    expect(FOLDER_LIMITS.MAX_SPLIT_SUGGESTIONS).toBeGreaterThanOrEqual(2);
+    expect(FOLDER_LIMITS.MAX_SPLIT_SUGGESTIONS).toBeLessThanOrEqual(10);
+  });
+});
+
+describe("Boundary conditions", () => {
+  let service: FolderHealthService;
+
+  beforeEach(() => {
+    service = new FolderHealthService(
+      mockFolderProfileRepo,
+      mockSuggestionRepo,
+      mockSupabase,
+    );
+    jest.clearAllMocks();
+  });
+
+  describe("findMergeCandidates limits", () => {
+    it("should respect MAX_MERGE_SUGGESTIONS limit", () => {
+      // Create many folders with very similar embeddings
+      const baseEmbedding = createEmbedding(1);
+      const profiles = Array.from({ length: 20 }, (_, i) =>
+        createProfile(i + 1, {
+          profileEmbedding: createSimilarEmbedding(baseEmbedding, 0.02),
+          bookmarkCount: 10 + i,
+        }),
+      );
+
+      const result = service.findMergeCandidates(profiles);
+
+      // Should not exceed MAX_MERGE_SUGGESTIONS
+      expect(result.length).toBeLessThanOrEqual(
+        FOLDER_LIMITS.MAX_MERGE_SUGGESTIONS,
+      );
+    });
+
+    it("should handle single folder", () => {
+      const profiles = [createProfile(1)];
+      const result = service.findMergeCandidates(profiles);
+      expect(result).toEqual([]);
+    });
+
+    it("should handle empty embedding array (not null)", () => {
+      const profiles = [
+        createProfile(1, { profileEmbedding: [] }),
+        createProfile(2, { profileEmbedding: createEmbedding(1) }),
+      ];
+
+      const result = service.findMergeCandidates(profiles);
+
+      // Should not crash and should handle empty array gracefully
+      expect(
+        result.every((s) => s.folder1.id !== 1 && s.folder2.id !== 1),
+      ).toBe(true);
+    });
+
+    it("should handle all folders without embeddings", () => {
+      const profiles = [
+        createProfile(1, { profileEmbedding: null }),
+        createProfile(2, { profileEmbedding: null }),
+        createProfile(3, { profileEmbedding: undefined }),
+      ];
+
+      const result = service.findMergeCandidates(profiles);
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe("findSplitCandidates limits", () => {
+    it("should respect MAX_SPLIT_SUGGESTIONS limit", () => {
+      // Create many large diverse folders
+      const profiles = Array.from({ length: 10 }, (_, i) =>
+        createProfile(i + 1, {
+          bookmarkCount: 200 + i * 10,
+          internalSimilarity: 0.2,
+        }),
+      );
+
+      const result = service.findSplitCandidates(profiles);
+
+      expect(result.length).toBeLessThanOrEqual(
+        FOLDER_LIMITS.MAX_SPLIT_SUGGESTIONS,
+      );
+    });
+
+    it("should handle folder at exact size threshold", () => {
+      const profiles = [
+        createProfile(1, {
+          bookmarkCount: FOLDER_LIMITS.SPLIT_SIZE_THRESHOLD,
+          internalSimilarity: 0.3,
+        }),
+      ];
+
+      const result = service.findSplitCandidates(profiles);
+
+      // Should be included since bookmarkCount >= threshold
+      expect(result.length).toBe(1);
+    });
+
+    it("should handle folder just below size threshold", () => {
+      const profiles = [
+        createProfile(1, {
+          bookmarkCount: FOLDER_LIMITS.SPLIT_SIZE_THRESHOLD - 1,
+          internalSimilarity: 0.3,
+        }),
+      ];
+
+      const result = service.findSplitCandidates(profiles);
+
+      // Should not be included
+      expect(result.length).toBe(0);
+    });
+
+    it("should handle folder at exact diversity threshold", () => {
+      const profiles = [
+        createProfile(1, {
+          bookmarkCount: 150,
+          internalSimilarity: FOLDER_LIMITS.SPLIT_DIVERSITY_THRESHOLD,
+        }),
+      ];
+
+      const result = service.findSplitCandidates(profiles);
+
+      // Should not be included since internalSimilarity >= threshold
+      expect(result.length).toBe(0);
+    });
+
+    it("should handle folder just below diversity threshold", () => {
+      const profiles = [
+        createProfile(1, {
+          bookmarkCount: 150,
+          internalSimilarity: FOLDER_LIMITS.SPLIT_DIVERSITY_THRESHOLD - 0.01,
+        }),
+      ];
+
+      const result = service.findSplitCandidates(profiles);
+
+      // Should be included
+      expect(result.length).toBe(1);
+    });
+  });
+
+  describe("error handling", () => {
+    it("should return empty report when repo throws error", async () => {
+      mockFolderProfileRepo.findByUserId.mockRejectedValue(
+        new Error("Database error"),
+      );
+
+      const report = await service.checkHealth("user-123");
+
+      // Should return empty report as fallback
+      expect(report.status).toBe("healthy");
+      expect(report.totalFolders).toBe(0);
+    });
+
+    it("should return 0 when saveSuggestions fails", async () => {
+      const report = {
+        userId: "user-123",
+        status: "needs_attention" as const,
+        totalFolders: 1,
+        healthyFolders: 0,
+        foldersNeedingAttention: 1,
+        mergeSuggestions: [
+          {
+            folder1: { id: 1, name: "Folder 1", bookmarkCount: 50 },
+            folder2: { id: 2, name: "Folder 2", bookmarkCount: 30 },
+            similarity: 0.9,
+            reason: "Similar",
+            suggestedAction: "merge_to_first" as const,
+          },
+        ],
+        splitSuggestions: [],
+        analyzedAt: new Date(),
+      };
+
+      mockSuggestionRepo.create.mockRejectedValue(new Error("Save failed"));
+
+      const count = await service.saveSuggestions("user-123", report);
+
+      expect(count).toBe(0);
+    });
+
+    it("should return healthy summary when getQuickSummary fails", async () => {
+      mockFolderProfileRepo.findByUserId.mockRejectedValue(
+        new Error("Query error"),
+      );
+
+      const summary = await service.getQuickSummary("user-123");
+
+      expect(summary.status).toBe("healthy");
+      expect(summary.totalFolders).toBe(0);
+      expect(summary.issueCount).toBe(0);
+    });
+  });
 });

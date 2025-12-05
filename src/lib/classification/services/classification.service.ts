@@ -3,9 +3,9 @@
  * Main service for bookmark classification
  */
 
-import { SupabaseClient } from '@supabase/supabase-js'
-import type { IClassificationService } from './interfaces'
-import type { IMatcher, IScoreAggregator } from '../strategies/interfaces'
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { IClassificationService } from "./interfaces";
+import type { IMatcher, IScoreAggregator } from "../strategies/interfaces";
 import type {
   ClassificationResult,
   BookmarkInput,
@@ -13,11 +13,14 @@ import type {
   MatchResult,
   VectorMatchDetail,
   HistoryMatchDetail,
-} from '../types'
-import { UserStageService } from './user-stage.service'
-import { AIRecommender } from '../strategies'
-import { generateEmbedding, buildEmbeddingText } from '@/lib/utils/embedding-generator'
-import { logger } from '@/lib/logger'
+} from "../types";
+import type { UserStageService } from "./user-stage.service";
+import type { AIRecommender } from "../strategies";
+import {
+  generateEmbedding,
+  buildEmbeddingText,
+} from "@/lib/utils/embedding-generator";
+import { logger } from "@/lib/logger";
 
 /**
  * Classification service
@@ -28,7 +31,7 @@ export class ClassificationService implements IClassificationService {
     private matchers: IMatcher[],
     private aggregator: IScoreAggregator,
     private userStageService: UserStageService,
-    private supabase: SupabaseClient
+    private supabase: SupabaseClient,
   ) {}
 
   /**
@@ -36,91 +39,150 @@ export class ClassificationService implements IClassificationService {
    */
   async classify(
     userId: string,
-    bookmark: BookmarkInput
+    bookmark: BookmarkInput,
   ): Promise<ClassificationResult> {
+    try {
+      return await this.classifyInternal(userId, bookmark);
+    } catch (error) {
+      logger.error(
+        {
+          userId,
+          title: bookmark.title,
+          error: error instanceof Error ? error.message : "Unknown error",
+          stack: error instanceof Error ? error.stack : undefined,
+          action: "classification_error",
+        },
+        "Classification: Unexpected error, falling back to inbox",
+      );
+      return this.createInboxResult(
+        "Classification failed due to unexpected error",
+      );
+    }
+  }
+
+  /**
+   * Internal classification logic
+   * Enhanced with performance metrics
+   */
+  private async classifyInternal(
+    userId: string,
+    bookmark: BookmarkInput,
+  ): Promise<ClassificationResult> {
+    const startTime = performance.now();
+    const perfMetrics: Record<string, number> = {};
+
     // Check user stage
-    const isInColdStart = await this.userStageService.isInColdStart(userId)
+    const stageCheckStart = performance.now();
+    const isInColdStart = await this.userStageService.isInColdStart(userId);
+    perfMetrics.stageCheckMs = performance.now() - stageCheckStart;
 
     if (isInColdStart) {
       // During cold start, all bookmarks go to inbox
       logger.info(
-        { userId, title: bookmark.title, action: 'classification_cold_start' },
-        'Classification: User in cold start, sending to inbox'
-      )
-      return this.createInboxResult('User in cold start phase - collecting data')
+        { userId, title: bookmark.title, action: "classification_cold_start" },
+        "Classification: User in cold start, sending to inbox",
+      );
+      return this.createInboxResult(
+        "User in cold start phase - collecting data",
+      );
     }
 
     // Prepare context
-    const context = await this.prepareContext(userId, bookmark)
+    const contextStart = performance.now();
+    const context = await this.prepareContext(userId, bookmark);
+    perfMetrics.contextPrepMs = performance.now() - contextStart;
 
     if (!context.embedding || context.embedding.length === 0) {
       // No embedding - cannot classify intelligently
       logger.warn(
-        { userId, title: bookmark.title, action: 'classification_no_embedding' },
-        'Classification: No embedding available'
-      )
-      return this.createInboxResult('No embedding available for classification')
+        {
+          userId,
+          title: bookmark.title,
+          action: "classification_no_embedding",
+        },
+        "Classification: No embedding available",
+      );
+      return this.createInboxResult(
+        "No embedding available for classification",
+      );
     }
 
     // Run matchers
-    const results = new Map<string, MatchResult[]>()
+    const results = new Map<string, MatchResult[]>();
 
     // First run vector and history matchers
-    let vectorResults: VectorMatchDetail[] = []
-    let historyResults: HistoryMatchDetail[] = []
+    let vectorResults: VectorMatchDetail[] = [];
+    let historyResults: HistoryMatchDetail[] = [];
 
     for (const matcher of this.matchers) {
-      if (matcher.name === 'ai') continue // Run AI last
+      if (matcher.name === "ai") continue; // Run AI last
 
-      const isAvailable = await matcher.isAvailable(context)
-      if (!isAvailable) continue
+      const isAvailable = await matcher.isAvailable(context);
+      if (!isAvailable) continue;
 
+      const matcherStart = performance.now();
       try {
-        const matchResults = await matcher.match(context)
-        results.set(matcher.name, matchResults)
+        const matchResults = await matcher.match(context);
+        results.set(matcher.name, matchResults);
+        perfMetrics[`${matcher.name}MatcherMs`] =
+          performance.now() - matcherStart;
 
-        // Cache results for AI
-        if (matcher.name === 'vector') {
-          vectorResults = matchResults as VectorMatchDetail[]
-        } else if (matcher.name === 'history') {
-          historyResults = matchResults as HistoryMatchDetail[]
+        // Cache results for AI - type guard based on matcher name
+        if (
+          matcher.name === "vector" &&
+          this.isVectorMatchResults(matchResults)
+        ) {
+          vectorResults = matchResults;
+        } else if (
+          matcher.name === "history" &&
+          this.isHistoryMatchResults(matchResults)
+        ) {
+          historyResults = matchResults;
         }
       } catch (error) {
+        perfMetrics[`${matcher.name}MatcherMs`] =
+          performance.now() - matcherStart;
         logger.error(
           {
             matcher: matcher.name,
-            error: error instanceof Error ? error.message : 'Unknown error',
-            action: 'matcher_failed',
+            error: error instanceof Error ? error.message : "Unknown error",
+            action: "matcher_failed",
           },
-          `Classification: ${matcher.name} matcher failed`
-        )
+          `Classification: ${matcher.name} matcher failed`,
+        );
       }
     }
 
     // Run AI matcher with context from other matchers
-    const aiMatcher = this.matchers.find(m => m.name === 'ai') as AIRecommender | undefined
+    const aiMatcher = this.findAIMatcher();
     if (aiMatcher) {
-      const isAvailable = await aiMatcher.isAvailable(context)
+      const isAvailable = await aiMatcher.isAvailable(context);
       if (isAvailable) {
+        const aiStart = performance.now();
         try {
           // Pass results from other matchers to AI
-          aiMatcher.setMatcherResults(vectorResults, historyResults)
-          const aiResults = await aiMatcher.match(context)
-          results.set('ai', aiResults)
+          aiMatcher.setMatcherResults(vectorResults, historyResults);
+          const aiResults = await aiMatcher.match(context);
+          results.set("ai", aiResults);
+          perfMetrics.aiMatcherMs = performance.now() - aiStart;
         } catch (error) {
+          perfMetrics.aiMatcherMs = performance.now() - aiStart;
           logger.error(
             {
-              error: error instanceof Error ? error.message : 'Unknown error',
-              action: 'ai_matcher_failed',
+              error: error instanceof Error ? error.message : "Unknown error",
+              action: "ai_matcher_failed",
             },
-            'Classification: AI matcher failed'
-          )
+            "Classification: AI matcher failed",
+          );
         }
       }
     }
 
     // Aggregate results
-    const classification = this.aggregator.aggregate(results, this.matchers)
+    const aggregateStart = performance.now();
+    const classification = this.aggregator.aggregate(results, this.matchers);
+    perfMetrics.aggregateMs = performance.now() - aggregateStart;
+    perfMetrics.totalMs = performance.now() - startTime;
 
     logger.info(
       {
@@ -131,11 +193,12 @@ export class ClassificationService implements IClassificationService {
         confidence: classification.confidence,
         action: classification.action,
         scores: classification.scores,
+        perfMetrics,
       },
-      `Classification: ${classification.action}`
-    )
+      `Classification: ${classification.action} (${perfMetrics.totalMs.toFixed(1)}ms)`,
+    );
 
-    return classification
+    return classification;
   }
 
   /**
@@ -143,29 +206,29 @@ export class ClassificationService implements IClassificationService {
    */
   async classifyBatch(
     userId: string,
-    bookmarks: BookmarkInput[]
+    bookmarks: BookmarkInput[],
   ): Promise<ClassificationResult[]> {
-    const results: ClassificationResult[] = []
+    const results: ClassificationResult[] = [];
 
     for (const bookmark of bookmarks) {
       try {
-        const result = await this.classify(userId, bookmark)
-        results.push(result)
+        const result = await this.classify(userId, bookmark);
+        results.push(result);
       } catch (error) {
         logger.error(
           {
             userId,
             title: bookmark.title,
-            error: error instanceof Error ? error.message : 'Unknown error',
-            action: 'batch_classification_error',
+            error: error instanceof Error ? error.message : "Unknown error",
+            action: "batch_classification_error",
           },
-          'Classification: Batch item failed'
-        )
-        results.push(this.createInboxResult('Classification failed'))
+          "Classification: Batch item failed",
+        );
+        results.push(this.createInboxResult("Classification failed"));
       }
     }
 
-    return results
+    return results;
   }
 
   /**
@@ -173,37 +236,37 @@ export class ClassificationService implements IClassificationService {
    */
   private async prepareContext(
     userId: string,
-    bookmark: BookmarkInput
+    bookmark: BookmarkInput,
   ): Promise<MatcherContext> {
     // Generate embedding if not provided
-    let embedding = bookmark.embedding
+    let embedding = bookmark.embedding;
 
     if (!embedding || embedding.length === 0) {
       try {
         const text = buildEmbeddingText(
           bookmark.title,
           bookmark.summary,
-          bookmark.tags
-        )
-        embedding = await generateEmbedding(text)
+          bookmark.tags,
+        );
+        embedding = await generateEmbedding(text);
       } catch (error) {
         logger.warn(
           {
-            error: error instanceof Error ? error.message : 'Unknown error',
-            action: 'embedding_generation_failed',
+            error: error instanceof Error ? error.message : "Unknown error",
+            action: "embedding_generation_failed",
           },
-          'Classification: Embedding generation failed'
-        )
+          "Classification: Embedding generation failed",
+        );
       }
     }
 
     return {
       userId,
       title: bookmark.title,
-      summary: bookmark.summary || '',
+      summary: bookmark.summary || "",
       tags: bookmark.tags || [],
       embedding: embedding || [],
-    }
+    };
   }
 
   /**
@@ -212,15 +275,49 @@ export class ClassificationService implements IClassificationService {
   private createInboxResult(reason: string): ClassificationResult {
     return {
       folderId: null,
-      folderName: '待整理',
+      folderName: "待整理",
       confidence: 0,
       reason,
-      action: 'inbox',
+      action: "inbox",
       scores: {
         vectorScore: 0,
         historyScore: 0,
         aiScore: 0,
       },
+    };
+  }
+
+  /**
+   * Find AI matcher from matchers array
+   * Type-safe alternative to using 'as' assertion
+   */
+  private findAIMatcher(): AIRecommender | undefined {
+    const matcher = this.matchers.find((m) => m.name === "ai");
+    if (matcher && "setMatcherResults" in matcher) {
+      return matcher as AIRecommender;
     }
+    return undefined;
+  }
+
+  /**
+   * Type guard for VectorMatchDetail array
+   */
+  private isVectorMatchResults(
+    results: MatchResult[],
+  ): results is VectorMatchDetail[] {
+    if (results.length === 0) return true;
+    const first = results[0];
+    return "folderId" in first && "similarity" in first && "embedding" in first;
+  }
+
+  /**
+   * Type guard for HistoryMatchDetail array
+   */
+  private isHistoryMatchResults(
+    results: MatchResult[],
+  ): results is HistoryMatchDetail[] {
+    if (results.length === 0) return true;
+    const first = results[0];
+    return "folderId" in first && "matchCount" in first && "recency" in first;
   }
 }

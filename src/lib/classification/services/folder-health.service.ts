@@ -77,101 +77,147 @@ export class FolderHealthService {
    * Run full health check for a user's folders
    */
   async checkHealth(userId: string): Promise<FolderHealthReport> {
-    logger.info(
-      { userId, action: "folder_health_check_start" },
-      "FolderHealth: Starting health check",
-    );
+    try {
+      logger.info(
+        { userId, action: "folder_health_check_start" },
+        "FolderHealth: Starting health check",
+      );
 
-    // Get all folder profiles
-    const profiles = await this.folderProfileRepo.findByUserId(userId);
+      // Get all folder profiles
+      const profiles = await this.folderProfileRepo.findByUserId(userId);
 
-    if (profiles.length === 0) {
-      return this.createEmptyReport(userId);
-    }
+      if (profiles.length === 0) {
+        return this.createEmptyReport(userId);
+      }
 
-    // Find merge candidates
-    const mergeSuggestions = this.findMergeCandidates(profiles);
+      // Find merge candidates
+      const mergeSuggestions = this.findMergeCandidates(profiles);
 
-    // Find split candidates
-    const splitSuggestions = this.findSplitCandidates(profiles);
+      // Find split candidates
+      const splitSuggestions = this.findSplitCandidates(profiles);
 
-    // Calculate overall health status
-    const status = this.calculateHealthStatus(
-      profiles,
-      mergeSuggestions,
-      splitSuggestions,
-    );
+      // Calculate overall health status
+      const status = this.calculateHealthStatus(
+        profiles,
+        mergeSuggestions,
+        splitSuggestions,
+      );
 
-    const report: FolderHealthReport = {
-      userId,
-      status,
-      totalFolders: profiles.length,
-      healthyFolders: profiles.filter((p) => this.isFolderHealthy(p)).length,
-      foldersNeedingAttention:
-        mergeSuggestions.length + splitSuggestions.length,
-      mergeSuggestions,
-      splitSuggestions,
-      analyzedAt: new Date(),
-    };
-
-    logger.info(
-      {
+      const report: FolderHealthReport = {
         userId,
         status,
-        totalFolders: report.totalFolders,
-        mergeCount: mergeSuggestions.length,
-        splitCount: splitSuggestions.length,
-        action: "folder_health_check_complete",
-      },
-      "FolderHealth: Health check complete",
-    );
+        totalFolders: profiles.length,
+        healthyFolders: profiles.filter((p) => this.isFolderHealthy(p)).length,
+        foldersNeedingAttention:
+          mergeSuggestions.length + splitSuggestions.length,
+        mergeSuggestions,
+        splitSuggestions,
+        analyzedAt: new Date(),
+      };
 
-    return report;
+      logger.info(
+        {
+          userId,
+          status,
+          totalFolders: report.totalFolders,
+          mergeCount: mergeSuggestions.length,
+          splitCount: splitSuggestions.length,
+          action: "folder_health_check_complete",
+        },
+        "FolderHealth: Health check complete",
+      );
+
+      return report;
+    } catch (error) {
+      logger.error(
+        {
+          userId,
+          error: error instanceof Error ? error.message : "Unknown error",
+          stack: error instanceof Error ? error.stack : undefined,
+          action: "folder_health_check_error",
+        },
+        "FolderHealth: Health check failed",
+      );
+      // Return healthy empty report as fallback
+      return this.createEmptyReport(userId);
+    }
   }
 
   /**
    * Find folders that should be merged
+   * Optimized: Pre-filters embeddings, early termination, performance logging
    */
   findMergeCandidates(profiles: FolderProfile[]): MergeSuggestion[] {
+    const startTime = performance.now();
     const suggestions: MergeSuggestion[] = [];
     const threshold = FOLDER_LIMITS.MERGE_SIMILARITY_THRESHOLD;
+    const maxSuggestions = FOLDER_LIMITS.MAX_MERGE_SUGGESTIONS;
 
-    // Compare all folder pairs
-    for (let i = 0; i < profiles.length; i++) {
-      for (let j = i + 1; j < profiles.length; j++) {
-        const p1 = profiles[i];
-        const p2 = profiles[j];
+    // Pre-filter: Only profiles with valid embeddings
+    const profilesWithEmbeddings = profiles.filter(
+      (p) => p.profileEmbedding && p.profileEmbedding.length > 0,
+    );
 
-        // Skip folders without embeddings
-        if (!p1.profileEmbedding || !p2.profileEmbedding) {
-          continue;
-        }
+    const totalPairs =
+      (profilesWithEmbeddings.length * (profilesWithEmbeddings.length - 1)) / 2;
+    let comparisons = 0;
 
-        // Calculate similarity
+    // Compare folder pairs with early termination
+    outer: for (let i = 0; i < profilesWithEmbeddings.length; i++) {
+      for (let j = i + 1; j < profilesWithEmbeddings.length; j++) {
+        const p1 = profilesWithEmbeddings[i];
+        const p2 = profilesWithEmbeddings[j];
+        comparisons++;
+
+        // Calculate similarity (embeddings guaranteed to exist from pre-filter)
         const similarity = cosineSimilarity(
-          p1.profileEmbedding,
-          p2.profileEmbedding,
+          p1.profileEmbedding!,
+          p2.profileEmbedding!,
         );
 
         if (similarity >= threshold) {
           suggestions.push(this.createMergeSuggestion(p1, p2, similarity));
+
+          // Early termination: Stop if we have enough high-quality suggestions
+          if (suggestions.length >= maxSuggestions * 2) {
+            break outer;
+          }
         }
       }
     }
 
-    // Sort by similarity descending
+    // Sort by similarity descending and limit results
     suggestions.sort((a, b) => b.similarity - a.similarity);
+    const result = suggestions.slice(0, maxSuggestions);
 
-    return suggestions;
+    const duration = performance.now() - startTime;
+    logger.debug(
+      {
+        totalProfiles: profiles.length,
+        profilesWithEmbeddings: profilesWithEmbeddings.length,
+        totalPairs,
+        comparisons,
+        candidatesFound: suggestions.length,
+        returned: result.length,
+        durationMs: duration.toFixed(2),
+        action: "find_merge_candidates_perf",
+      },
+      `FolderHealth: findMergeCandidates completed in ${duration.toFixed(2)}ms`,
+    );
+
+    return result;
   }
 
   /**
    * Find folders that should be split
+   * Optimized: Uses constants, performance logging
    */
   findSplitCandidates(profiles: FolderProfile[]): SplitSuggestion[] {
+    const startTime = performance.now();
     const suggestions: SplitSuggestion[] = [];
     const sizeThreshold = FOLDER_LIMITS.SPLIT_SIZE_THRESHOLD;
-    const diversityThreshold = 0.5; // Low internal similarity indicates diverse content
+    const diversityThreshold = FOLDER_LIMITS.SPLIT_DIVERSITY_THRESHOLD;
+    const maxSuggestions = FOLDER_LIMITS.MAX_SPLIT_SUGGESTIONS;
 
     for (const profile of profiles) {
       // Check size threshold
@@ -197,8 +243,21 @@ export class FolderHealthService {
 
     // Sort by bookmark count descending (prioritize largest folders)
     suggestions.sort((a, b) => b.bookmarkCount - a.bookmarkCount);
+    const result = suggestions.slice(0, maxSuggestions);
 
-    return suggestions;
+    const duration = performance.now() - startTime;
+    logger.debug(
+      {
+        totalProfiles: profiles.length,
+        candidatesFound: suggestions.length,
+        returned: result.length,
+        durationMs: duration.toFixed(2),
+        action: "find_split_candidates_perf",
+      },
+      `FolderHealth: findSplitCandidates completed in ${duration.toFixed(2)}ms`,
+    );
+
+    return result;
   }
 
   /**
@@ -208,42 +267,54 @@ export class FolderHealthService {
     userId: string,
     report: FolderHealthReport,
   ): Promise<number> {
-    let savedCount = 0;
+    try {
+      let savedCount = 0;
 
-    // Save merge suggestions
-    for (const merge of report.mergeSuggestions) {
-      const suggestion: SuggestionInput = {
-        suggestionType: "merge",
-        bookmarkIds: [], // Merge applies to entire folders
-        targetFolderId:
-          merge.suggestedAction === "merge_to_first"
-            ? merge.folder1.id
-            : merge.folder2.id,
-        confidence: Math.round(merge.similarity * 100),
-        reason: merge.reason,
-        sampleTitles: [],
-      };
+      // Save merge suggestions
+      for (const merge of report.mergeSuggestions) {
+        const suggestion: SuggestionInput = {
+          suggestionType: "merge",
+          bookmarkIds: [], // Merge applies to entire folders
+          targetFolderId:
+            merge.suggestedAction === "merge_to_first"
+              ? merge.folder1.id
+              : merge.folder2.id,
+          confidence: Math.round(merge.similarity * 100),
+          reason: merge.reason,
+          sampleTitles: [],
+        };
 
-      await this.suggestionRepo.create(userId, suggestion);
-      savedCount++;
+        await this.suggestionRepo.create(userId, suggestion);
+        savedCount++;
+      }
+
+      // Save split suggestions
+      for (const split of report.splitSuggestions) {
+        const suggestion: SuggestionInput = {
+          suggestionType: "split",
+          bookmarkIds: [], // Split applies to entire folder
+          targetFolderId: split.folderId,
+          confidence: Math.round((1 - (split.internalSimilarity || 0)) * 100),
+          reason: split.reason,
+          sampleTitles: [],
+        };
+
+        await this.suggestionRepo.create(userId, suggestion);
+        savedCount++;
+      }
+
+      return savedCount;
+    } catch (error) {
+      logger.error(
+        {
+          userId,
+          error: error instanceof Error ? error.message : "Unknown error",
+          action: "folder_health_save_suggestions_error",
+        },
+        "FolderHealth: Failed to save suggestions",
+      );
+      return 0;
     }
-
-    // Save split suggestions
-    for (const split of report.splitSuggestions) {
-      const suggestion: SuggestionInput = {
-        suggestionType: "split",
-        bookmarkIds: [], // Split applies to entire folder
-        targetFolderId: split.folderId,
-        confidence: Math.round((1 - (split.internalSimilarity || 0)) * 100),
-        reason: split.reason,
-        sampleTitles: [],
-      };
-
-      await this.suggestionRepo.create(userId, suggestion);
-      savedCount++;
-    }
-
-    return savedCount;
   }
 
   /**
@@ -254,55 +325,67 @@ export class FolderHealthService {
     totalFolders: number;
     issueCount: number;
   }> {
-    const profiles = await this.folderProfileRepo.findByUserId(userId);
+    try {
+      const profiles = await this.folderProfileRepo.findByUserId(userId);
 
-    if (profiles.length === 0) {
-      return { status: "healthy", totalFolders: 0, issueCount: 0 };
-    }
+      if (profiles.length === 0) {
+        return { status: "healthy", totalFolders: 0, issueCount: 0 };
+      }
 
-    // Quick check for potential issues
-    let issueCount = 0;
+      // Quick check for potential issues
+      let issueCount = 0;
 
-    // Check for potential merges (simplified)
-    for (let i = 0; i < profiles.length && issueCount < 10; i++) {
-      for (let j = i + 1; j < profiles.length && issueCount < 10; j++) {
-        const p1 = profiles[i];
-        const p2 = profiles[j];
-        if (p1.profileEmbedding && p2.profileEmbedding) {
-          const sim = cosineSimilarity(
-            p1.profileEmbedding,
-            p2.profileEmbedding,
-          );
-          if (sim >= FOLDER_LIMITS.MERGE_SIMILARITY_THRESHOLD) {
-            issueCount++;
+      // Check for potential merges (simplified)
+      for (let i = 0; i < profiles.length && issueCount < 10; i++) {
+        for (let j = i + 1; j < profiles.length && issueCount < 10; j++) {
+          const p1 = profiles[i];
+          const p2 = profiles[j];
+          if (p1.profileEmbedding && p2.profileEmbedding) {
+            const sim = cosineSimilarity(
+              p1.profileEmbedding,
+              p2.profileEmbedding,
+            );
+            if (sim >= FOLDER_LIMITS.MERGE_SIMILARITY_THRESHOLD) {
+              issueCount++;
+            }
           }
         }
       }
-    }
 
-    // Check for potential splits
-    for (const profile of profiles) {
-      if (
-        profile.bookmarkCount >= FOLDER_LIMITS.SPLIT_SIZE_THRESHOLD &&
-        profile.internalSimilarity !== null &&
-        profile.internalSimilarity < 0.5
-      ) {
-        issueCount++;
+      // Check for potential splits
+      for (const profile of profiles) {
+        if (
+          profile.bookmarkCount >= FOLDER_LIMITS.SPLIT_SIZE_THRESHOLD &&
+          profile.internalSimilarity !== null &&
+          profile.internalSimilarity < FOLDER_LIMITS.SPLIT_DIVERSITY_THRESHOLD
+        ) {
+          issueCount++;
+        }
       }
+
+      const status: FolderHealthStatus =
+        issueCount === 0
+          ? "healthy"
+          : issueCount <= 3
+            ? "needs_attention"
+            : "critical";
+
+      return {
+        status,
+        totalFolders: profiles.length,
+        issueCount,
+      };
+    } catch (error) {
+      logger.error(
+        {
+          userId,
+          error: error instanceof Error ? error.message : "Unknown error",
+          action: "folder_health_quick_summary_error",
+        },
+        "FolderHealth: Failed to get quick summary",
+      );
+      return { status: "healthy", totalFolders: 0, issueCount: 0 };
     }
-
-    const status: FolderHealthStatus =
-      issueCount === 0
-        ? "healthy"
-        : issueCount <= 3
-          ? "needs_attention"
-          : "critical";
-
-    return {
-      status,
-      totalFolders: profiles.length,
-      issueCount,
-    };
   }
 
   // ========== Private Helper Methods ==========

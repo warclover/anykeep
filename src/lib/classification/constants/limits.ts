@@ -12,7 +12,7 @@ export const CLASSIFICATION_WEIGHTS = {
   HISTORY: 0.3,
   /** AI recommendation weight (30%) */
   AI: 0.3,
-} as const
+} as const;
 
 /**
  * Classification thresholds
@@ -20,13 +20,15 @@ export const CLASSIFICATION_WEIGHTS = {
 export const CLASSIFICATION_THRESHOLDS = {
   /** Low confidence threshold - below this goes to inbox */
   LOW_CONFIDENCE: 30,
+  /** Medium confidence threshold - save as suggestion for user review */
+  MEDIUM_CONFIDENCE: 50,
   /** High confidence threshold - above this is auto-classified */
   HIGH_CONFIDENCE: 70,
   /** Vector similarity threshold for folder matching */
   VECTOR_SIMILARITY: 0.5,
   /** History matching count */
   HISTORY_MATCH_COUNT: 10,
-} as const
+} as const;
 
 /**
  * Folder limits
@@ -40,11 +42,17 @@ export const FOLDER_LIMITS = {
   INITIAL_MIN: 3,
   /** Initial folder creation maximum */
   INITIAL_MAX: 7,
-  /** Merge suggestion similarity threshold */
+  /** Merge suggestion similarity threshold (80%) */
   MERGE_SIMILARITY_THRESHOLD: 0.8,
-  /** Split suggestion size threshold */
+  /** Split suggestion size threshold (bookmarks count) */
   SPLIT_SIZE_THRESHOLD: 100,
-} as const
+  /** Split suggestion diversity threshold - below this is too diverse */
+  SPLIT_DIVERSITY_THRESHOLD: 0.5,
+  /** Maximum merge suggestions to return */
+  MAX_MERGE_SUGGESTIONS: 5,
+  /** Maximum split suggestions to return */
+  MAX_SPLIT_SUGGESTIONS: 3,
+} as const;
 
 /**
  * Inbox organization triggers
@@ -60,7 +68,7 @@ export const INBOX_ORGANIZE_TRIGGERS = {
   CLUSTER_SIMILARITY: 0.7,
   /** Minimum similarity to match existing folder */
   FOLDER_MATCH_THRESHOLD: 0.6,
-} as const
+} as const;
 
 /**
  * Custom interest limits
@@ -74,7 +82,7 @@ export const CUSTOM_INTEREST_LIMITS = {
   MAX_KEYWORDS: 10,
   /** Maximum suggested folders per interest */
   MAX_SUGGESTED_FOLDERS: 3,
-} as const
+} as const;
 
 /**
  * User lifecycle thresholds
@@ -84,7 +92,7 @@ export const USER_LIFECYCLE_THRESHOLDS = {
   COLD_START_MAX: 20,
   /** Threshold for growing phase (21-100 bookmarks) */
   GROWING_MAX: 100,
-} as const
+} as const;
 
 /**
  * Profile update schedule
@@ -96,4 +104,4 @@ export const PROFILE_UPDATE_SCHEDULE = {
   HEALTH_CHECK_DAYS: 7,
   /** Suggestion expiry days */
   SUGGESTION_EXPIRY_DAYS: 7,
-} as const
+} as const;
