@@ -26,6 +26,11 @@ import {
   buildEmbeddingText,
 } from "@/lib/utils/embedding-generator";
 import { recommendFolder } from "@/lib/utils/ai-generator";
+import {
+  classifyBookmarkV2,
+  updateFolderProfileAfterClassification,
+  shouldUseV2Classification,
+} from "@/lib/classification";
 import { logger } from "@/lib/logger";
 import type { BookmarkInsert } from "@/types/supabase";
 import { BOOKMARK, STORAGE } from "@/lib/constants/messages";
@@ -256,18 +261,45 @@ async function generateBookmarkAIContent(
       aiResult.summary &&
       aiResult.tags.length > 0
     ) {
-      processAIFolderRecommendation(
-        bookmarkId,
-        title,
-        aiResult.summary,
-        aiResult.tags,
-        userId,
-      ).catch((err) => {
-        logger.error(
-          { error: err, bookmarkId },
-          "AI Content (async): Folder recommendation failed",
-        );
-      });
+      // Use V2 classification system if enabled
+      if (shouldUseV2Classification()) {
+        classifyBookmarkV2(
+          bookmarkId,
+          title,
+          aiResult.summary,
+          aiResult.tags,
+          userId,
+        )
+          .then(async (result) => {
+            // Update folder profile if classified
+            if (result.classified && result.folderId) {
+              await updateFolderProfileAfterClassification(
+                result.folderId,
+                userId,
+              );
+            }
+          })
+          .catch((err) => {
+            logger.error(
+              { error: err, bookmarkId },
+              "AI Content (async): V2 Classification failed",
+            );
+          });
+      } else {
+        // Legacy V1 classification
+        processAIFolderRecommendation(
+          bookmarkId,
+          title,
+          aiResult.summary,
+          aiResult.tags,
+          userId,
+        ).catch((err) => {
+          logger.error(
+            { error: err, bookmarkId },
+            "AI Content (async): Folder recommendation failed",
+          );
+        });
+      }
     }
   } catch (error) {
     logger.error(
