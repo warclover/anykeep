@@ -30,7 +30,10 @@
  */
 
 // Container
-export { ClassificationContainer, getClassificationContainer } from './container'
+export {
+  ClassificationContainer,
+  getClassificationContainer,
+} from "./container";
 
 // Types
 export type {
@@ -69,7 +72,7 @@ export type {
   BookmarkCluster,
   InboxAnalysis,
   OrganizationAnalysis,
-} from './types'
+} from "./types";
 
 // Constants
 export {
@@ -80,7 +83,7 @@ export {
   CUSTOM_INTEREST_LIMITS,
   USER_LIFECYCLE_THRESHOLDS,
   PROFILE_UPDATE_SCHEDULE,
-} from './constants/limits'
+} from "./constants/limits";
 
 export {
   PRESET_INTEREST_DOMAINS,
@@ -89,7 +92,7 @@ export {
   getSuggestedFolders,
   getKeywordsForInterests,
   DEFAULT_FOLDERS,
-} from './constants/interest-domains'
+} from "./constants/interest-domains";
 
 // Services (interfaces for external use)
 export type {
@@ -97,9 +100,9 @@ export type {
   IInboxOrganizerService,
   IInterestService,
   IUserStageService,
-} from './services/interfaces'
+} from "./services/interfaces";
 
-// Utility functions
+// Utility functions (client-safe)
 export {
   cosineSimilarity,
   euclideanDistance,
@@ -107,17 +110,16 @@ export {
   calculateInternalSimilarity,
   findTopKSimilar,
   normalizeVector,
-} from './utils/similarity'
+} from "./utils/similarity";
 
 export {
   clusterBookmarks,
   kMeansClustering,
   densityClustering,
-} from './utils/clustering'
+} from "./utils/clustering";
 
-// Integration layer
-export {
-  classifyBookmarkV2,
-  updateFolderProfileAfterClassification,
-  shouldUseV2Classification,
-} from './integration'
+// NOTE: Server-only exports (integration layer) are in ./server
+// Import from '@/lib/classification/server' for:
+// - classifyBookmarkV2
+// - updateFolderProfileAfterClassification
+// - shouldUseV2Classification

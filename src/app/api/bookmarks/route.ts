@@ -30,7 +30,7 @@ import {
   classifyBookmarkV2,
   updateFolderProfileAfterClassification,
   shouldUseV2Classification,
-} from "@/lib/classification";
+} from "@/lib/classification/server";
 import { logger } from "@/lib/logger";
 import type { BookmarkInsert } from "@/types/supabase";
 import { BOOKMARK, STORAGE } from "@/lib/constants/messages";

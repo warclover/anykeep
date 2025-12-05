@@ -8,7 +8,18 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Sparkles, RefreshCw, Check, AlertCircle } from "lucide-react";
+import {
+  Loader2,
+  Sparkles,
+  RefreshCw,
+  Check,
+  AlertCircle,
+  Link,
+  FileText,
+  Tags,
+  MessageSquare,
+  ChevronDown,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
   useAbortableFetch,
@@ -17,7 +28,6 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -118,6 +128,11 @@ export function CreateBookmarkDialog({
   // 表单错误
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // 折叠状态
+  const [isClassificationExpanded, setIsClassificationExpanded] =
+    useState(true);
+  const [isNotesExpanded, setIsNotesExpanded] = useState(false);
+
   const resetForm = () => {
     setUrl("");
     setTitle("");
@@ -140,6 +155,9 @@ export function CreateBookmarkDialog({
     setUserAddedTags([]);
     // 重置用途标签
     setSelectedUsageTags([]);
+    // 重置折叠状态
+    setIsClassificationExpanded(true);
+    setIsNotesExpanded(false);
   };
 
   /**
@@ -153,6 +171,9 @@ export function CreateBookmarkDialog({
       return false;
     }
   };
+
+  // 是否显示扩展区域（输入有效 URL 后显示）
+  const showExpandedSections = url && isValidUrl(url);
 
   /**
    * 获取网页元数据
@@ -480,11 +501,7 @@ export function CreateBookmarkDialog({
           </div>
         );
       default:
-        return (
-          <p className="text-xs text-gray-500">
-            支持微信公众号、B站、小红书等平台链接
-          </p>
-        );
+        return null;
     }
   };
 
@@ -508,210 +525,381 @@ export function CreateBookmarkDialog({
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>添加收藏</DialogTitle>
-          <DialogDescription>
-            输入链接后自动获取网页信息，稍后可以继续完善内容
-          </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* URL 输入 */}
-          <div className="space-y-2">
-            <Label htmlFor="url">
-              链接 <span className="text-red-500">*</span>
-            </Label>
-            <div className="relative">
+        <form onSubmit={handleSubmit} className="space-y-3">
+          {/* ══════════════════════════════════════════════════════════════
+              📎 核心信息区块 - 始终显示（品牌视觉焦点）
+          ══════════════════════════════════════════════════════════════ */}
+          <div className="rounded-xl bg-gradient-to-br from-violet-50 via-blue-50 to-cyan-50 p-4 space-y-3 border border-violet-100/50">
+            <div className="flex items-center gap-3">
+              {/* 渐变图标徽章 - 品牌视觉锚点 */}
+              <div className="flex-shrink-0 size-9 rounded-xl bg-gradient-to-br from-violet-500 via-blue-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-violet-500/25">
+                <Link className="size-4 text-white" />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <Label
+                    htmlFor="url"
+                    className="text-sm font-medium text-gray-800"
+                  >
+                    粘贴链接
+                  </Label>
+                  <span className="text-red-500 text-xs">*</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  输入链接后自动获取网页信息
+                </p>
+              </div>
+            </div>
+
+            {/* 输入框 - 聚焦时渐变边框 */}
+            <div className="relative group">
+              <div className="absolute -inset-0.5 bg-gradient-to-r from-violet-500 via-blue-500 to-cyan-500 rounded-lg opacity-0 group-focus-within:opacity-100 transition-opacity duration-300 blur-sm" />
               <Input
                 id="url"
                 type="text"
                 placeholder="粘贴链接或分享文本..."
                 value={url}
                 onChange={(e) => {
-                  // 智能提取 URL（支持小红书、抖音等分享文本格式）
                   const extractedUrl = extractUrlFromShareText(e.target.value);
                   setUrl(extractedUrl);
                 }}
                 required
-                className={`${errors.url ? "border-red-500" : ""} ${fetchStatus === "loading" ? "pr-8" : ""}`}
+                className={`relative bg-white border-gray-200 focus:border-transparent focus:ring-2 focus:ring-violet-500/50 transition-all ${errors.url ? "border-red-500" : ""} ${fetchStatus === "loading" ? "pr-8" : ""}`}
               />
               {fetchStatus === "loading" && (
                 <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                  <Loader2 className="size-4 animate-spin text-gray-400" />
+                  <Loader2 className="size-4 animate-spin text-violet-500" />
                 </div>
               )}
             </div>
+
             {errors.url && <p className="text-xs text-red-500">{errors.url}</p>}
             {renderUrlStatus()}
-          </div>
 
-          {/* 标题输入 */}
-          <div className="space-y-2">
-            <Label htmlFor="title" className="flex items-center">
-              标题
-              {renderAutoFilledBadge("title")}
-            </Label>
-            <Input
-              id="title"
-              placeholder="可选，保存后自动获取"
-              value={title}
-              onChange={(e) => {
-                setTitle(e.target.value);
-                markFieldAsModified("title");
-              }}
-              className={errors.title ? "border-red-500" : ""}
-            />
-            {errors.title && (
-              <p className="text-xs text-red-500">{errors.title}</p>
-            )}
-            {!title && (
-              <p className="text-xs text-gray-500">
-                留空时系统会自动获取网页标题
-              </p>
-            )}
-          </div>
-
-          {/* 描述输入 */}
-          <div className="space-y-2">
-            <Label htmlFor="description" className="flex items-center">
-              描述
-              {renderAutoFilledBadge("description")}
-            </Label>
-            <Textarea
-              id="description"
-              placeholder="简单描述这篇内容..."
-              value={description}
-              onChange={(e) => {
-                setDescription(e.target.value);
-                markFieldAsModified("description");
-              }}
-              rows={3}
-              className={errors.description ? "border-red-500" : ""}
-            />
-            {errors.description && (
-              <p className="text-xs text-red-500">{errors.description}</p>
-            )}
-            <p className="text-xs text-gray-500">
-              保存后系统会自动生成 AI 摘要
+            {/* 支持平台提示 */}
+            <p className="text-xs text-muted-foreground text-center">
+              支持微信公众号、B站、小红书、抖音等平台链接
             </p>
           </div>
 
-          {/* 文件夹选择 */}
-          {folders.length > 0 && (
-            <div className="space-y-2">
-              <Label htmlFor="folder">文件夹</Label>
-              <Select value={folderId} onValueChange={setFolderId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="选择文件夹（可选）" />
-                </SelectTrigger>
-                <SelectContent>
-                  {folders.map((folder) => (
-                    <SelectItem key={folder.id} value={folder.id.toString()}>
-                      {folder.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          {/* ══════════════════════════════════════════════════════════════
+              📄 内容信息区块 - 输入链接后展开
+          ══════════════════════════════════════════════════════════════ */}
+          <div
+            className={`rounded-lg bg-blue-50/50 p-3 space-y-3 transition-all duration-300 ease-out ${
+              showExpandedSections
+                ? "opacity-100 max-h-[500px]"
+                : "opacity-0 max-h-0 overflow-hidden p-0"
+            }`}
+          >
+            {/* 区块标题 */}
+            <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
+              <FileText className="size-4" />
+              <span>内容信息</span>
             </div>
-          )}
 
-          {/* 用途标签选择（快捷选择区） */}
-          <div className="space-y-2">
-            <Label>用途标签</Label>
-            <UsageTagSelector
-              selectedTags={selectedUsageTags}
-              onSelectedTagsChange={setSelectedUsageTags}
-              customUsageTags={customUsageTags}
-              onCustomTagsChange={setCustomUsageTags}
-              disabled={isSubmitting}
-            />
-            <p className="text-xs text-gray-500">
-              标记收藏的用途，方便日后快速筛选
-            </p>
-          </div>
-
-          {/* 标签输入区域 */}
-          <div className="space-y-2">
-            <Label htmlFor="tags">自定义标签</Label>
-
-            {/* 已添加的标签展示 */}
-            {userAddedTags.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {userAddedTags.map((tag) => (
-                  <button
-                    key={tag}
-                    type="button"
-                    onClick={() => removeUserTag(tag)}
-                    className="px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-700 border border-blue-300 hover:bg-blue-200 transition-colors flex items-center gap-1"
-                  >
-                    {tag}
-                    <span className="text-blue-500 hover:text-blue-700">×</span>
-                  </button>
-                ))}
+            {/* 标题输入 */}
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <Label
+                  htmlFor="title"
+                  className="flex items-center text-gray-600"
+                >
+                  标题
+                  {renderAutoFilledBadge("title")}
+                </Label>
+                <span className="text-xs text-muted-foreground">
+                  留空时自动获取
+                </span>
               </div>
-            )}
-
-            {/* 标签输入框 */}
-            <Input
-              id="tags"
-              placeholder="输入标签后按回车添加"
-              value={tags}
-              onChange={(e) => setTags(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  const input = e.currentTarget;
-                  if (input.value.trim()) {
-                    addUserTag(input.value.trim());
-                    setTags("");
-                  }
-                }
-              }}
-              className={errors.userTags ? "border-red-500" : ""}
-            />
-            {errors.userTags && (
-              <p className="text-xs text-red-500">{errors.userTags}</p>
-            )}
-            <p className="text-xs text-gray-500">
-              {userAddedTags.length > 0 || selectedUsageTags.length > 0
-                ? `已添加 ${selectedUsageTags.length + userAddedTags.length} 个标签，保存后会自动生成 AI 标签`
-                : "可选，保存后系统会自动生成 AI 标签"}
-            </p>
-          </div>
-
-          {/* 备注输入 */}
-          <div className="space-y-2">
-            <Label htmlFor="notes">备注</Label>
-            <Textarea
-              id="notes"
-              placeholder="记录想法..."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={2}
-              className={`resize-none ${errors.notes ? "border-red-500" : ""}`}
-            />
-            {errors.notes && (
-              <p className="text-xs text-red-500">{errors.notes}</p>
-            )}
-          </div>
-
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={isSubmitting}
-            >
-              取消
-            </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="size-4 mr-2 animate-spin" />
-                  创建中...
-                </>
-              ) : (
-                "创建收藏"
+              <Input
+                id="title"
+                placeholder="可选，保存后自动获取"
+                value={title}
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  markFieldAsModified("title");
+                }}
+                className={`bg-white ${errors.title ? "border-red-500" : ""}`}
+              />
+              {errors.title && (
+                <p className="text-xs text-red-500">{errors.title}</p>
               )}
-            </Button>
+            </div>
+
+            {/* 描述输入 */}
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <Label
+                  htmlFor="description"
+                  className="flex items-center text-gray-600"
+                >
+                  描述
+                  {renderAutoFilledBadge("description")}
+                </Label>
+                <span className="text-xs text-muted-foreground">
+                  保存后自动生成 AI 摘要
+                </span>
+              </div>
+              <Textarea
+                id="description"
+                placeholder="简单描述这篇内容..."
+                value={description}
+                onChange={(e) => {
+                  setDescription(e.target.value);
+                  markFieldAsModified("description");
+                }}
+                rows={1}
+                className={`bg-white ${errors.description ? "border-red-500" : ""}`}
+              />
+              {errors.description && (
+                <p className="text-xs text-red-500">{errors.description}</p>
+              )}
+            </div>
+          </div>
+
+          {/* ══════════════════════════════════════════════════════════════
+              🏷️ 分类整理区块 - 输入链接后展开，可折叠
+          ══════════════════════════════════════════════════════════════ */}
+          <div
+            className={`rounded-lg bg-amber-50/50 transition-all duration-300 ease-out ${
+              showExpandedSections
+                ? "opacity-100 max-h-[800px]"
+                : "opacity-0 max-h-0 overflow-hidden"
+            }`}
+          >
+            {/* 可折叠的区块头部 */}
+            <button
+              type="button"
+              onClick={() =>
+                setIsClassificationExpanded(!isClassificationExpanded)
+              }
+              className="w-full flex items-center justify-between p-3 text-sm font-medium text-gray-700 hover:bg-amber-100/50 rounded-lg transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <Tags className="size-4" />
+                <span>分类整理</span>
+                <span className="text-xs text-muted-foreground font-normal">
+                  标签与文件夹
+                </span>
+              </div>
+              <ChevronDown
+                className={`size-4 transition-transform duration-200 ${
+                  isClassificationExpanded ? "rotate-180" : ""
+                }`}
+              />
+            </button>
+
+            {/* 折叠内容 */}
+            <div
+              className={`px-3 pb-3 space-y-3 transition-all duration-200 ease-out ${
+                isClassificationExpanded
+                  ? "opacity-100 max-h-[600px]"
+                  : "opacity-0 max-h-0 overflow-hidden"
+              }`}
+            >
+              {/* 文件夹选择 */}
+              {folders.length > 0 && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="folder" className="text-gray-600">
+                    文件夹
+                  </Label>
+                  <Select value={folderId} onValueChange={setFolderId}>
+                    <SelectTrigger className="bg-white">
+                      <SelectValue placeholder="选择文件夹（可选）" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {folders.map((folder) => (
+                        <SelectItem
+                          key={folder.id}
+                          value={folder.id.toString()}
+                        >
+                          {folder.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* 用途标签选择 */}
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <Label className="text-gray-600">用途标签</Label>
+                  <span className="text-xs text-muted-foreground">
+                    方便日后筛选
+                  </span>
+                </div>
+                <UsageTagSelector
+                  selectedTags={selectedUsageTags}
+                  onSelectedTagsChange={setSelectedUsageTags}
+                  customUsageTags={customUsageTags}
+                  onCustomTagsChange={setCustomUsageTags}
+                  disabled={isSubmitting}
+                />
+              </div>
+
+              {/* 自定义标签输入 */}
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="tags" className="text-gray-600">
+                    自定义标签
+                  </Label>
+                  <span className="text-xs text-muted-foreground">
+                    可选，保存后自动生成 AI 标签
+                  </span>
+                </div>
+
+                {userAddedTags.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {userAddedTags.map((tag) => (
+                      <button
+                        key={tag}
+                        type="button"
+                        onClick={() => removeUserTag(tag)}
+                        className="px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-700 border border-blue-300 hover:bg-blue-200 transition-colors flex items-center gap-1"
+                      >
+                        {tag}
+                        <span className="text-blue-500 hover:text-blue-700">
+                          ×
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                <Input
+                  id="tags"
+                  placeholder="输入标签后按回车添加"
+                  value={tags}
+                  onChange={(e) => setTags(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      const input = e.currentTarget;
+                      if (input.value.trim()) {
+                        addUserTag(input.value.trim());
+                        setTags("");
+                      }
+                    }
+                  }}
+                  className={`bg-white ${errors.userTags ? "border-red-500" : ""}`}
+                />
+                {errors.userTags && (
+                  <p className="text-xs text-red-500">{errors.userTags}</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* ══════════════════════════════════════════════════════════════
+              💭 个人笔记区块 - 输入链接后展开，默认收起
+          ══════════════════════════════════════════════════════════════ */}
+          <div
+            className={`rounded-lg bg-purple-50/50 transition-all duration-300 ease-out ${
+              showExpandedSections
+                ? "opacity-100 max-h-[400px]"
+                : "opacity-0 max-h-0 overflow-hidden"
+            }`}
+          >
+            {/* 可折叠的区块头部 */}
+            <button
+              type="button"
+              onClick={() => setIsNotesExpanded(!isNotesExpanded)}
+              className="w-full flex items-center justify-between p-3 text-sm font-medium text-gray-700 hover:bg-purple-100/50 rounded-lg transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <MessageSquare className="size-4" />
+                <span>个人笔记</span>
+                <span className="text-xs text-muted-foreground font-normal">
+                  记录想法
+                </span>
+              </div>
+              <ChevronDown
+                className={`size-4 transition-transform duration-200 ${
+                  isNotesExpanded ? "rotate-180" : ""
+                }`}
+              />
+            </button>
+
+            {/* 折叠内容 */}
+            <div
+              className={`px-3 pb-3 transition-all duration-200 ease-out ${
+                isNotesExpanded
+                  ? "opacity-100 max-h-[300px]"
+                  : "opacity-0 max-h-0 overflow-hidden"
+              }`}
+            >
+              <Textarea
+                id="notes"
+                placeholder="记录想法..."
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={2}
+                className={`bg-white ${errors.notes ? "border-red-500" : ""}`}
+              />
+              {errors.notes && (
+                <p className="text-xs text-red-500">{errors.notes}</p>
+              )}
+            </div>
+          </div>
+
+          {/* ══════════════════════════════════════════════════════════════
+              操作按钮 + 品牌 Slogan
+          ══════════════════════════════════════════════════════════════ */}
+          <DialogFooter className="flex-row justify-between items-end sm:justify-between">
+            {/* 品牌 Slogan - 输入链接后隐藏 */}
+            <div
+              className={`transition-all duration-500 ease-out ${
+                showExpandedSections
+                  ? "opacity-0 -translate-x-4 pointer-events-none"
+                  : "opacity-100 translate-x-0"
+              }`}
+            >
+              <div className="flex items-baseline gap-2 select-none">
+                <span
+                  className="text-3xl font-bold bg-gradient-to-r from-violet-600 via-blue-500 to-cyan-400 bg-clip-text text-transparent tracking-wide"
+                  style={{
+                    fontFamily: "'Segoe Script', 'Brush Script MT', cursive",
+                  }}
+                >
+                  Just
+                </span>
+                <span
+                  className="text-4xl font-bold bg-gradient-to-r from-violet-600 via-blue-500 to-cyan-400 bg-clip-text text-transparent tracking-tight"
+                  style={{
+                    fontFamily: "'Segoe Script', 'Brush Script MT', cursive",
+                  }}
+                >
+                  Keep
+                </span>
+              </div>
+              <div className="h-1 w-full bg-gradient-to-r from-violet-500 via-blue-500 to-cyan-400 rounded-full mt-0.5" />
+            </div>
+
+            {/* 操作按钮 */}
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={isSubmitting}
+              >
+                取消
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="size-4 mr-2 animate-spin" />
+                    创建中...
+                  </>
+                ) : (
+                  "创建收藏"
+                )}
+              </Button>
+            </div>
           </DialogFooter>
         </form>
       </DialogContent>

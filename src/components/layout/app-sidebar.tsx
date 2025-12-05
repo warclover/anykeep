@@ -17,6 +17,7 @@ import {
   Trash2,
   AlertCircle,
   Star,
+  Inbox,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -149,6 +150,19 @@ export function AppSidebar() {
               </p>
             </div>
             <div className="space-y-1">
+              {/* 待整理入口（独立页面，不使用客户端导航） */}
+              <Link
+                href="/inbox"
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                  pathname === "/inbox"
+                    ? "bg-gradient-to-r from-amber-50 to-orange-50 text-amber-700 dark:from-amber-900/30 dark:to-orange-900/30 dark:text-amber-400"
+                    : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50",
+                )}
+              >
+                <Inbox className="size-5" />
+                待整理
+              </Link>
               {systemFolders.map((item) => {
                 const Icon = item.icon;
                 const href = `/home?folder=${item.param}`;
