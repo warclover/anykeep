@@ -14,7 +14,6 @@
  */
 
 import { logger } from "@/lib/logger";
-import { getAISummaryConfig } from "@/lib/classification/config/ai-summary-config";
 
 /**
  * Jina Reader 提取结果
@@ -69,7 +68,6 @@ export async function fetchWithJinaReader(
   url: string,
   options: JinaReaderOptions = {},
 ): Promise<JinaReaderResult> {
-  const _config = getAISummaryConfig(); // 保留配置引用用于未来扩展
   const opts = { ...DEFAULT_OPTIONS, ...options };
 
   // 构建 Jina Reader URL

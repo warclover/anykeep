@@ -145,7 +145,11 @@ export async function smartFetchContent(
 
   // 情况 2: 已提供 HTML 内容
   if (options.providedHtml) {
-    return extractFromHtml(options.providedHtml, startTime);
+    return extractFromHtml(
+      options.providedHtml,
+      startTime,
+      config.contentFetcher.maxKeyContentLength,
+    );
   }
 
   // 情况 3: 需要从 URL 获取
@@ -163,7 +167,10 @@ export async function smartFetchContent(
       maxContentLength: options.maxContentLength,
     });
 
-    if (jinaResult.success && jinaResult.content.length > 100) {
+    if (
+      jinaResult.success &&
+      jinaResult.content.length > config.contentFetcher.minJinaContentLength
+    ) {
       // Jina 成功
       const cleanedContent = cleanMarkdownContent(jinaResult.content);
 
@@ -193,8 +200,15 @@ export async function smartFetchContent(
 
   // 原生 HTTP 提取
   try {
-    const html = await fetchHtmlContent(url, options.timeout || 10000);
-    return extractFromHtml(html, startTime);
+    const html = await fetchHtmlContent(
+      url,
+      options.timeout || config.contentFetcher.nativeFetchTimeout,
+    );
+    return extractFromHtml(
+      html,
+      startTime,
+      config.contentFetcher.maxKeyContentLength,
+    );
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
@@ -223,8 +237,16 @@ export async function smartFetchContent(
 
 /**
  * 从 HTML 提取内容
+ *
+ * @param html - HTML 内容
+ * @param startTime - 开始时间戳
+ * @param maxKeyContentLength - 最大关键内容长度
  */
-function extractFromHtml(html: string, startTime: number): ContentFetchResult {
+function extractFromHtml(
+  html: string,
+  startTime: number,
+  maxKeyContentLength: number = 5000,
+): ContentFetchResult {
   // 提取主要内容区域
   const mainContent = extractMainContent(html);
 
@@ -236,7 +258,7 @@ function extractFromHtml(html: string, startTime: number): ContentFetchResult {
   text = text.replace(/\s+/g, " ").trim();
 
   // 提取关键内容（如果过长）
-  const processedContent = extractKeyContent(text, 5000);
+  const processedContent = extractKeyContent(text, maxKeyContentLength);
 
   const wordCount = extractWordCount(html);
   const imageCount = extractImageCount(html);

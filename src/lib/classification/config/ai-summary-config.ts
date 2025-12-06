@@ -44,6 +44,24 @@ export interface AISummaryConfig {
    * 超过此阈值时切换到长文本模型
    */
   longContentTokenThreshold: number;
+
+  /**
+   * 内容提取相关配置
+   */
+  contentFetcher: {
+    /** Jina Reader 最小有效内容长度（字符数），低于此值视为提取失败 */
+    minJinaContentLength: number;
+    /** 关键内容最大长度（字符数），用于截取提取后的内容 */
+    maxKeyContentLength: number;
+    /** 原生 HTTP 提取超时时间（毫秒） */
+    nativeFetchTimeout: number;
+  };
+
+  /**
+   * 回退标签
+   * 当 AI 无法提取有效标签时使用的默认标签
+   */
+  fallbackTags: string[];
 }
 
 /**
@@ -62,6 +80,16 @@ const DEFAULT_CONFIG: AISummaryConfig = {
   // Phase 3: 模型路由（待实施）
   useModelRouting: false,
   longContentTokenThreshold: 30000,
+
+  // 内容提取配置
+  contentFetcher: {
+    minJinaContentLength: 100, // Jina 返回内容少于此值视为失败
+    maxKeyContentLength: 5000, // 关键内容截取长度
+    nativeFetchTimeout: 10000, // 原生 HTTP 超时
+  },
+
+  // 回退标签（AI 无法提取有效标签时使用）
+  fallbackTags: ["收藏", "阅读"],
 };
 
 /**

@@ -102,7 +102,6 @@ async function callDeepSeekAPI(
 
   // 检查是否启用 JSON 结构化输出
   const useJsonOutput = isJsonOutputEnabled();
-  const _config = getAISummaryConfig(); // 保留配置引用用于调试
 
   logger.debug(
     {
@@ -284,9 +283,9 @@ function parseAIResponseV2(content: string): AIGenerateResult {
         .slice(0, 5);
     }
 
-    // 如果没有 keywords，从 key_points 提取
+    // 如果没有 keywords，使用配置中的回退标签
     if (tags.length === 0 && parsed.key_points.length > 0) {
-      tags = ["收藏", "阅读"];
+      tags = getAISummaryConfig().fallbackTags;
     }
 
     // 将完整 JSON 作为 summary 存储（前端会自动检测并渲染）

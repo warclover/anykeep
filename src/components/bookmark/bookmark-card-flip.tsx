@@ -18,27 +18,8 @@ import { formatRelativeTime } from "@/lib/utils/date-utils";
 import { generatePlaceholderImage } from "@/lib/utils/placeholder-image";
 import { getProxiedImageUrl } from "@/lib/utils/image-proxy";
 import { PlatformBadge } from "@/components/ui/platform-badge";
-import { parseStructuredSummary } from "@/lib/classification/types/ai-summary";
+import { getDisplaySummary } from "@/lib/classification/types/ai-summary";
 import "./bookmark-card-flip.css";
-
-/**
- * 获取 AI 摘要的显示文本
- * 支持新版 JSON 格式（提取 tldr）和旧版纯文本格式
- */
-function getDisplaySummary(
-  aiSummary: string | null | undefined,
-): string | null {
-  if (!aiSummary) return null;
-
-  // 尝试解析为结构化摘要（JSON 格式）
-  const structured = parseStructuredSummary(aiSummary);
-  if (structured) {
-    return structured.tldr;
-  }
-
-  // 旧版纯文本格式，直接返回
-  return aiSummary;
-}
 
 interface FlipBookmarkCardProps {
   bookmark: Bookmark & {

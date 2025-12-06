@@ -56,26 +56,7 @@ import {
   getAiTagColor,
 } from "@/lib/constants/usage-tags";
 import "./bookmark-card-flip.css"; // 复用卡片优化样式
-import { parseStructuredSummary } from "@/lib/classification/types/ai-summary";
-
-/**
- * 获取 AI 摘要的显示文本
- * 支持新版 JSON 格式（提取 tldr）和旧版纯文本格式
- */
-function getDisplaySummary(
-  aiSummary: string | null | undefined,
-): string | null {
-  if (!aiSummary) return null;
-
-  // 尝试解析为结构化摘要（JSON 格式）
-  const structured = parseStructuredSummary(aiSummary);
-  if (structured) {
-    return structured.tldr;
-  }
-
-  // 旧版纯文本格式，直接返回
-  return aiSummary;
-}
+import { getDisplaySummary } from "@/lib/classification/types/ai-summary";
 
 type ViewVariant = "card" | "list" | "compact";
 
@@ -453,11 +434,14 @@ export function BookmarkCard({
               >
                 {bookmark.title}
               </h3>
-              {getDisplaySummary(bookmark.ai_summary) && (
-                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
-                  {getDisplaySummary(bookmark.ai_summary)}
-                </p>
-              )}
+              {(() => {
+                const displaySummary = getDisplaySummary(bookmark.ai_summary);
+                return displaySummary ? (
+                  <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+                    {displaySummary}
+                  </p>
+                ) : null;
+              })()}
             </div>
 
             <div className="flex items-center justify-between gap-2 mt-2">
@@ -670,11 +654,14 @@ export function BookmarkCard({
             </CardTitle>
           </div>
           {/* P0.3: 摘要渐隐效果 */}
-          {getDisplaySummary(bookmark.ai_summary) && (
-            <CardDescription className="card-summary-fade">
-              {getDisplaySummary(bookmark.ai_summary)}
-            </CardDescription>
-          )}
+          {(() => {
+            const displaySummary = getDisplaySummary(bookmark.ai_summary);
+            return displaySummary ? (
+              <CardDescription className="card-summary-fade">
+                {displaySummary}
+              </CardDescription>
+            ) : null;
+          })()}
         </CardHeader>
 
         <CardContent className="pt-0 flex-1 flex flex-col">
