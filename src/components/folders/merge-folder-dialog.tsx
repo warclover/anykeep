@@ -39,6 +39,11 @@ interface MergeFolderDialogProps {
   folder: FolderWithCount;
   targetFolders: FolderWithCount[];
   onSuccess?: () => void;
+  onMerged?: (
+    sourceFolderId: number,
+    targetFolderId: number,
+    movedCount: number,
+  ) => void;
 }
 
 export function MergeFolderDialog({
@@ -47,6 +52,7 @@ export function MergeFolderDialog({
   folder,
   targetFolders,
   onSuccess,
+  onMerged,
 }: MergeFolderDialogProps) {
   const router = useRouter();
   const { fetchWithAbort } = useAbortableFetch();
@@ -59,9 +65,7 @@ export function MergeFolderDialog({
     (f) => f.id.toString() === targetFolderId,
   );
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
+  const handleSubmit = async () => {
     if (!targetFolderId) {
       setError("请选择目标文件夹");
       return;
@@ -92,6 +96,8 @@ export function MergeFolderDialog({
       );
       onOpenChange(false);
       setTargetFolderId("");
+      // 先触发乐观更新
+      onMerged?.(folder.id, parseInt(targetFolderId), result.bookmarksMoved);
       onSuccess?.();
       router.refresh();
     } catch (err) {
@@ -124,7 +130,7 @@ export function MergeFolderDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-4">
           {/* 警告提示 */}
           <div className="flex items-start gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
             <AlertTriangle className="size-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
@@ -182,7 +188,8 @@ export function MergeFolderDialog({
               取消
             </Button>
             <Button
-              type="submit"
+              type="button"
+              onClick={handleSubmit}
               disabled={isSubmitting || !targetFolderId}
               variant="default"
             >
@@ -196,7 +203,7 @@ export function MergeFolderDialog({
               )}
             </Button>
           </DialogFooter>
-        </form>
+        </div>
       </DialogContent>
     </Dialog>
   );

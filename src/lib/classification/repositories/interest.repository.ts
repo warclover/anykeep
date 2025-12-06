@@ -3,15 +3,15 @@
  * Data access layer for user interests
  */
 
-import { SupabaseClient } from '@supabase/supabase-js'
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   CustomInterest,
   CustomInterestInput,
   UserInterestConfig,
   UserProfileSettings,
   PresetInterestId,
-} from '../types'
-import { CUSTOM_INTEREST_LIMITS } from '../constants'
+} from "../types";
+import { CUSTOM_INTEREST_LIMITS } from "../constants";
 
 /**
  * Repository for interest-related operations
@@ -24,16 +24,16 @@ export class InterestRepository {
    */
   async getCustomInterests(userId: string): Promise<CustomInterest[]> {
     const { data, error } = await this.supabase
-      .from('user_custom_interests')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: true })
+      .from("user_custom_interests")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: true });
 
     if (error) {
-      throw new Error(`Failed to fetch custom interests: ${error.message}`)
+      throw new Error(`Failed to fetch custom interests: ${error.message}`);
     }
 
-    return (data || []).map(this.mapToCustomInterest)
+    return (data || []).map(this.mapToCustomInterest);
   }
 
   /**
@@ -41,27 +41,38 @@ export class InterestRepository {
    */
   async addCustomInterest(
     userId: string,
-    input: CustomInterestInput
+    input: CustomInterestInput,
   ): Promise<CustomInterest> {
     // Check limit
-    const existing = await this.getCustomInterests(userId)
+    const existing = await this.getCustomInterests(userId);
     if (existing.length >= CUSTOM_INTEREST_LIMITS.MAX_CUSTOM_INTERESTS) {
-      throw new Error(`Maximum ${CUSTOM_INTEREST_LIMITS.MAX_CUSTOM_INTERESTS} custom interests allowed`)
+      throw new Error(
+        `Maximum ${CUSTOM_INTEREST_LIMITS.MAX_CUSTOM_INTERESTS} custom interests allowed`,
+      );
     }
 
     // Validate input
     if (input.name.length > CUSTOM_INTEREST_LIMITS.MAX_NAME_LENGTH) {
-      throw new Error(`Name must be at most ${CUSTOM_INTEREST_LIMITS.MAX_NAME_LENGTH} characters`)
+      throw new Error(
+        `Name must be at most ${CUSTOM_INTEREST_LIMITS.MAX_NAME_LENGTH} characters`,
+      );
     }
     if (input.keywords.length > CUSTOM_INTEREST_LIMITS.MAX_KEYWORDS) {
-      throw new Error(`Maximum ${CUSTOM_INTEREST_LIMITS.MAX_KEYWORDS} keywords allowed`)
+      throw new Error(
+        `Maximum ${CUSTOM_INTEREST_LIMITS.MAX_KEYWORDS} keywords allowed`,
+      );
     }
-    if (input.suggestedFolders.length > CUSTOM_INTEREST_LIMITS.MAX_SUGGESTED_FOLDERS) {
-      throw new Error(`Maximum ${CUSTOM_INTEREST_LIMITS.MAX_SUGGESTED_FOLDERS} suggested folders allowed`)
+    if (
+      input.suggestedFolders.length >
+      CUSTOM_INTEREST_LIMITS.MAX_SUGGESTED_FOLDERS
+    ) {
+      throw new Error(
+        `Maximum ${CUSTOM_INTEREST_LIMITS.MAX_SUGGESTED_FOLDERS} suggested folders allowed`,
+      );
     }
 
     const { data, error } = await this.supabase
-      .from('user_custom_interests')
+      .from("user_custom_interests")
       .insert({
         user_id: userId,
         name: input.name,
@@ -70,13 +81,13 @@ export class InterestRepository {
         suggested_folders: input.suggestedFolders,
       })
       .select()
-      .single()
+      .single();
 
     if (error) {
-      throw new Error(`Failed to create custom interest: ${error.message}`)
+      throw new Error(`Failed to create custom interest: ${error.message}`);
     }
 
-    return this.mapToCustomInterest(data)
+    return this.mapToCustomInterest(data);
   }
 
   /**
@@ -84,44 +95,53 @@ export class InterestRepository {
    */
   async updateCustomInterest(
     interestId: string,
-    input: Partial<CustomInterestInput>
+    input: Partial<CustomInterestInput>,
   ): Promise<CustomInterest> {
-    const updateData: Record<string, unknown> = {}
+    const updateData: Record<string, unknown> = {};
 
     if (input.name !== undefined) {
       if (input.name.length > CUSTOM_INTEREST_LIMITS.MAX_NAME_LENGTH) {
-        throw new Error(`Name must be at most ${CUSTOM_INTEREST_LIMITS.MAX_NAME_LENGTH} characters`)
+        throw new Error(
+          `Name must be at most ${CUSTOM_INTEREST_LIMITS.MAX_NAME_LENGTH} characters`,
+        );
       }
-      updateData.name = input.name
+      updateData.name = input.name;
     }
     if (input.icon !== undefined) {
-      updateData.icon = input.icon
+      updateData.icon = input.icon;
     }
     if (input.keywords !== undefined) {
       if (input.keywords.length > CUSTOM_INTEREST_LIMITS.MAX_KEYWORDS) {
-        throw new Error(`Maximum ${CUSTOM_INTEREST_LIMITS.MAX_KEYWORDS} keywords allowed`)
+        throw new Error(
+          `Maximum ${CUSTOM_INTEREST_LIMITS.MAX_KEYWORDS} keywords allowed`,
+        );
       }
-      updateData.keywords = input.keywords
+      updateData.keywords = input.keywords;
     }
     if (input.suggestedFolders !== undefined) {
-      if (input.suggestedFolders.length > CUSTOM_INTEREST_LIMITS.MAX_SUGGESTED_FOLDERS) {
-        throw new Error(`Maximum ${CUSTOM_INTEREST_LIMITS.MAX_SUGGESTED_FOLDERS} suggested folders allowed`)
+      if (
+        input.suggestedFolders.length >
+        CUSTOM_INTEREST_LIMITS.MAX_SUGGESTED_FOLDERS
+      ) {
+        throw new Error(
+          `Maximum ${CUSTOM_INTEREST_LIMITS.MAX_SUGGESTED_FOLDERS} suggested folders allowed`,
+        );
       }
-      updateData.suggested_folders = input.suggestedFolders
+      updateData.suggested_folders = input.suggestedFolders;
     }
 
     const { data, error } = await this.supabase
-      .from('user_custom_interests')
+      .from("user_custom_interests")
       .update(updateData)
-      .eq('id', interestId)
+      .eq("id", interestId)
       .select()
-      .single()
+      .single();
 
     if (error) {
-      throw new Error(`Failed to update custom interest: ${error.message}`)
+      throw new Error(`Failed to update custom interest: ${error.message}`);
     }
 
-    return this.mapToCustomInterest(data)
+    return this.mapToCustomInterest(data);
   }
 
   /**
@@ -129,31 +149,33 @@ export class InterestRepository {
    */
   async deleteCustomInterest(interestId: string): Promise<void> {
     const { error } = await this.supabase
-      .from('user_custom_interests')
+      .from("user_custom_interests")
       .delete()
-      .eq('id', interestId)
+      .eq("id", interestId);
 
     if (error) {
-      throw new Error(`Failed to delete custom interest: ${error.message}`)
+      throw new Error(`Failed to delete custom interest: ${error.message}`);
     }
   }
 
   /**
    * Get user's interest configuration from profile settings
    */
-  async getUserInterestConfig(userId: string): Promise<UserInterestConfig | null> {
+  async getUserInterestConfig(
+    userId: string,
+  ): Promise<UserInterestConfig | null> {
     const { data, error } = await this.supabase
-      .from('profiles')
-      .select('settings')
-      .eq('id', userId)
-      .single()
+      .from("profiles")
+      .select("settings")
+      .eq("id", userId)
+      .single();
 
     if (error) {
-      throw new Error(`Failed to fetch user profile: ${error.message}`)
+      throw new Error(`Failed to fetch user profile: ${error.message}`);
     }
 
-    const settings = data?.settings as UserProfileSettings | null
-    return settings?.interest_config || null
+    const settings = data?.settings as UserProfileSettings | null;
+    return settings?.interest_config || null;
   }
 
   /**
@@ -161,35 +183,38 @@ export class InterestRepository {
    */
   async setPresetInterests(
     userId: string,
-    presetInterests: PresetInterestId[]
+    presetInterests: PresetInterestId[],
   ): Promise<void> {
     // Get current settings
     const { data: profile, error: fetchError } = await this.supabase
-      .from('profiles')
-      .select('settings')
-      .eq('id', userId)
-      .single()
+      .from("profiles")
+      .select("settings")
+      .eq("id", userId)
+      .single();
 
     if (fetchError) {
-      throw new Error(`Failed to fetch profile: ${fetchError.message}`)
+      throw new Error(`Failed to fetch profile: ${fetchError.message}`);
     }
 
-    const currentSettings = (profile?.settings as UserProfileSettings) || {}
+    const currentSettings = (profile?.settings as UserProfileSettings) || {};
     const newSettings: UserProfileSettings = {
       ...currentSettings,
       interest_config: {
         presetInterests,
-        customInterestIds: currentSettings.interest_config?.customInterestIds || [],
+        customInterestIds:
+          currentSettings.interest_config?.customInterestIds || [],
       },
-    }
+    };
 
     const { error: updateError } = await this.supabase
-      .from('profiles')
+      .from("profiles")
       .update({ settings: newSettings })
-      .eq('id', userId)
+      .eq("id", userId);
 
     if (updateError) {
-      throw new Error(`Failed to update preset interests: ${updateError.message}`)
+      throw new Error(
+        `Failed to update preset interests: ${updateError.message}`,
+      );
     }
   }
 
@@ -198,28 +223,30 @@ export class InterestRepository {
    */
   async markOnboardingCompleted(userId: string): Promise<void> {
     const { data: profile, error: fetchError } = await this.supabase
-      .from('profiles')
-      .select('settings')
-      .eq('id', userId)
-      .single()
+      .from("profiles")
+      .select("settings")
+      .eq("id", userId)
+      .single();
 
     if (fetchError) {
-      throw new Error(`Failed to fetch profile: ${fetchError.message}`)
+      throw new Error(`Failed to fetch profile: ${fetchError.message}`);
     }
 
-    const currentSettings = (profile?.settings as UserProfileSettings) || {}
+    const currentSettings = (profile?.settings as UserProfileSettings) || {};
     const newSettings: UserProfileSettings = {
       ...currentSettings,
       onboarding_completed_at: new Date().toISOString(),
-    }
+    };
 
     const { error: updateError } = await this.supabase
-      .from('profiles')
+      .from("profiles")
       .update({ settings: newSettings })
-      .eq('id', userId)
+      .eq("id", userId);
 
     if (updateError) {
-      throw new Error(`Failed to mark onboarding completed: ${updateError.message}`)
+      throw new Error(
+        `Failed to mark onboarding completed: ${updateError.message}`,
+      );
     }
   }
 
@@ -228,28 +255,30 @@ export class InterestRepository {
    */
   async updateLastInboxOrganizeAt(userId: string): Promise<void> {
     const { data: profile, error: fetchError } = await this.supabase
-      .from('profiles')
-      .select('settings')
-      .eq('id', userId)
-      .single()
+      .from("profiles")
+      .select("settings")
+      .eq("id", userId)
+      .single();
 
     if (fetchError) {
-      throw new Error(`Failed to fetch profile: ${fetchError.message}`)
+      throw new Error(`Failed to fetch profile: ${fetchError.message}`);
     }
 
-    const currentSettings = (profile?.settings as UserProfileSettings) || {}
+    const currentSettings = (profile?.settings as UserProfileSettings) || {};
     const newSettings: UserProfileSettings = {
       ...currentSettings,
       last_inbox_organize_at: new Date().toISOString(),
-    }
+    };
 
     const { error: updateError } = await this.supabase
-      .from('profiles')
+      .from("profiles")
       .update({ settings: newSettings })
-      .eq('id', userId)
+      .eq("id", userId);
 
     if (updateError) {
-      throw new Error(`Failed to update last inbox organize: ${updateError.message}`)
+      throw new Error(
+        `Failed to update last inbox organize: ${updateError.message}`,
+      );
     }
   }
 
@@ -266,6 +295,6 @@ export class InterestRepository {
       suggestedFolders: (row.suggested_folders as string[]) || [],
       createdAt: new Date(row.created_at as string),
       updatedAt: new Date(row.updated_at as string),
-    }
+    };
   }
 }

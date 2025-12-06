@@ -141,7 +141,14 @@ export function useBookmarksSWR(
       apiParams.set("limit", "50");
 
       if (folder) {
-        apiParams.set("folder", folder);
+        // 区分虚拟文件夹和真实文件夹 ID
+        const virtualFolders = ["trash", "invalid", "high-value"];
+        if (virtualFolders.includes(folder)) {
+          apiParams.set("folder", folder);
+        } else {
+          // 数字 ID 使用 folderId 参数
+          apiParams.set("folderId", folder);
+        }
       }
 
       // V9.0新增：用途标签筛选
@@ -383,7 +390,13 @@ export function useBookmarksSWR(
       apiParams.set("sort", sort || "created_desc");
 
       if (folder) {
-        apiParams.set("folder", folder);
+        // 区分虚拟文件夹和真实文件夹 ID
+        const virtualFolders = ["trash", "invalid", "high-value"];
+        if (virtualFolders.includes(folder)) {
+          apiParams.set("folder", folder);
+        } else {
+          apiParams.set("folderId", folder);
+        }
       }
 
       // V9.0新增：用途标签筛选

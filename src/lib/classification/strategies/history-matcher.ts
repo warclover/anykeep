@@ -3,29 +3,31 @@
  * Matches bookmarks to folders based on historical user behavior
  */
 
-import type { IMatcher, MatcherOptions } from './interfaces'
-import type { MatchResult, MatcherContext, HistoryMatchDetail } from '../types'
-import { CLASSIFICATION_WEIGHTS, CLASSIFICATION_THRESHOLDS } from '../constants'
-import { BookmarkRepository } from '../repositories'
+import type { IMatcher, MatcherOptions } from "./interfaces";
+import type { MatchResult, MatcherContext, HistoryMatchDetail } from "../types";
+import {
+  CLASSIFICATION_WEIGHTS,
+  CLASSIFICATION_THRESHOLDS,
+} from "../constants";
+import type { BookmarkRepository } from "../repositories";
 
 /**
  * History-based folder matching strategy
  * Analyzes which folders similar bookmarks were placed in
  */
 export class HistoryMatcher implements IMatcher {
-  readonly name = 'history'
-  readonly weight: number
+  readonly name = "history";
+  readonly weight: number;
 
-  private bookmarkRepo: BookmarkRepository
-  private matchCount: number
+  private bookmarkRepo: BookmarkRepository;
+  private matchCount: number;
 
-  constructor(
-    bookmarkRepo: BookmarkRepository,
-    options?: MatcherOptions
-  ) {
-    this.bookmarkRepo = bookmarkRepo
-    this.weight = options?.weight ?? CLASSIFICATION_WEIGHTS.HISTORY
-    this.matchCount = options?.thresholds?.matchCount ?? CLASSIFICATION_THRESHOLDS.HISTORY_MATCH_COUNT
+  constructor(bookmarkRepo: BookmarkRepository, options?: MatcherOptions) {
+    this.bookmarkRepo = bookmarkRepo;
+    this.weight = options?.weight ?? CLASSIFICATION_WEIGHTS.HISTORY;
+    this.matchCount =
+      options?.thresholds?.matchCount ??
+      CLASSIFICATION_THRESHOLDS.HISTORY_MATCH_COUNT;
   }
 
   /**
@@ -33,36 +35,39 @@ export class HistoryMatcher implements IMatcher {
    */
   async match(context: MatcherContext): Promise<MatchResult[]> {
     if (!context.embedding || context.embedding.length === 0) {
-      return []
+      return [];
     }
 
     // Find similar bookmarks with their folder assignments
     const similarBookmarks = await this.bookmarkRepo.findSimilarWithFolders(
       context.embedding,
       context.userId,
-      this.matchCount
-    )
+      this.matchCount,
+    );
 
     // Filter out bookmarks without folders
     const classifiedBookmarks = similarBookmarks.filter(
-      b => b.folderId != null && b.folderName != null
-    )
+      (b) => b.folderId != null && b.folderName != null,
+    );
 
     if (classifiedBookmarks.length === 0) {
-      return []
+      return [];
     }
 
     // Group by folder and count
-    const folderCounts = new Map<number, {
-      name: string
-      count: number
-      titles: string[]
-      totalSimilarity: number
-    }>()
+    const folderCounts = new Map<
+      number,
+      {
+        name: string;
+        count: number;
+        titles: string[];
+        totalSimilarity: number;
+      }
+    >();
 
     for (const bookmark of classifiedBookmarks) {
-      const folderId = bookmark.folderId!
-      const folderName = bookmark.folderName!
+      const folderId = bookmark.folderId!;
+      const folderName = bookmark.folderName!;
 
       if (!folderCounts.has(folderId)) {
         folderCounts.set(folderId, {
@@ -70,29 +75,30 @@ export class HistoryMatcher implements IMatcher {
           count: 0,
           titles: [],
           totalSimilarity: 0,
-        })
+        });
       }
 
-      const entry = folderCounts.get(folderId)!
-      entry.count++
-      entry.totalSimilarity += bookmark.similarity
+      const entry = folderCounts.get(folderId)!;
+      entry.count++;
+      entry.totalSimilarity += bookmark.similarity;
       if (entry.titles.length < 3) {
-        entry.titles.push(bookmark.bookmarkTitle)
+        entry.titles.push(bookmark.bookmarkTitle);
       }
     }
 
     // Sort by count (descending) and convert to results
-    const sortedFolders = Array.from(folderCounts.entries())
-      .sort((a, b) => b[1].count - a[1].count)
+    const sortedFolders = Array.from(folderCounts.entries()).sort(
+      (a, b) => b[1].count - a[1].count,
+    );
 
-    const totalClassified = classifiedBookmarks.length
+    const totalClassified = classifiedBookmarks.length;
 
     return sortedFolders.map(([folderId, data]): HistoryMatchDetail => {
       // Score based on proportion of similar bookmarks in this folder
-      const proportion = data.count / totalClassified
-      const avgSimilarity = data.totalSimilarity / data.count
+      const proportion = data.count / totalClassified;
+      const avgSimilarity = data.totalSimilarity / data.count;
       // Combine proportion and similarity for final score
-      const score = Math.round((proportion * 0.6 + avgSimilarity * 0.4) * 100)
+      const score = Math.round((proportion * 0.6 + avgSimilarity * 0.4) * 100);
 
       return {
         folderId,
@@ -108,8 +114,8 @@ export class HistoryMatcher implements IMatcher {
           similarCount: data.count,
           similarTitles: data.titles,
         },
-      }
-    })
+      };
+    });
   }
 
   /**
@@ -117,6 +123,6 @@ export class HistoryMatcher implements IMatcher {
    */
   async isAvailable(context: MatcherContext): Promise<boolean> {
     // History matching requires embedding
-    return context.embedding != null && context.embedding.length > 0
+    return context.embedding != null && context.embedding.length > 0;
   }
 }

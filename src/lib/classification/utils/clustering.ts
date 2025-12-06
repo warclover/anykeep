@@ -2,16 +2,20 @@
  * Clustering utilities for inbox organization
  */
 
-import { cosineSimilarity, calculateCentroid, calculateInternalSimilarity } from './similarity'
-import type { BookmarkCluster } from '../types'
+import {
+  cosineSimilarity,
+  calculateCentroid,
+  calculateInternalSimilarity,
+} from "./similarity";
+import type { BookmarkCluster } from "../types";
 
 /**
  * Bookmark item for clustering
  */
 interface ClusterItem {
-  id: number
-  embedding: number[]
-  title: string
+  id: number;
+  embedding: number[];
+  title: string;
 }
 
 /**
@@ -23,49 +27,51 @@ interface ClusterItem {
 export function clusterBookmarks(
   items: ClusterItem[],
   similarityThreshold: number,
-  minClusterSize: number
+  minClusterSize: number,
 ): BookmarkCluster[] {
   if (items.length === 0) {
-    return []
+    return [];
   }
 
   // Initialize: each item is its own cluster
-  let clusters: ClusterItem[][] = items.map(item => [item])
+  let clusters: ClusterItem[][] = items.map((item) => [item]);
 
   // Merge until no more merges possible
-  let merged = true
+  let merged = true;
   while (merged) {
-    merged = false
+    merged = false;
 
     // Find the two most similar clusters
-    let bestI = -1
-    let bestJ = -1
-    let bestSimilarity = similarityThreshold
+    let bestI = -1;
+    let bestJ = -1;
+    let bestSimilarity = similarityThreshold;
 
     for (let i = 0; i < clusters.length; i++) {
       for (let j = i + 1; j < clusters.length; j++) {
-        const similarity = calculateClusterSimilarity(clusters[i], clusters[j])
+        const similarity = calculateClusterSimilarity(clusters[i], clusters[j]);
         if (similarity > bestSimilarity) {
-          bestSimilarity = similarity
-          bestI = i
-          bestJ = j
+          bestSimilarity = similarity;
+          bestI = i;
+          bestJ = j;
         }
       }
     }
 
     // Merge the two most similar clusters
     if (bestI !== -1 && bestJ !== -1) {
-      const mergedCluster = [...clusters[bestI], ...clusters[bestJ]]
-      clusters = clusters.filter((_, index) => index !== bestI && index !== bestJ)
-      clusters.push(mergedCluster)
-      merged = true
+      const mergedCluster = [...clusters[bestI], ...clusters[bestJ]];
+      clusters = clusters.filter(
+        (_, index) => index !== bestI && index !== bestJ,
+      );
+      clusters.push(mergedCluster);
+      merged = true;
     }
   }
 
   // Filter clusters by minimum size and convert to result format
   return clusters
-    .filter(cluster => cluster.length >= minClusterSize)
-    .map(cluster => convertToBookmarkCluster(cluster))
+    .filter((cluster) => cluster.length >= minClusterSize)
+    .map((cluster) => convertToBookmarkCluster(cluster));
 }
 
 /**
@@ -73,35 +79,35 @@ export function clusterBookmarks(
  */
 function calculateClusterSimilarity(
   cluster1: ClusterItem[],
-  cluster2: ClusterItem[]
+  cluster2: ClusterItem[],
 ): number {
-  let totalSimilarity = 0
-  let count = 0
+  let totalSimilarity = 0;
+  let count = 0;
 
   for (const item1 of cluster1) {
     for (const item2 of cluster2) {
-      totalSimilarity += cosineSimilarity(item1.embedding, item2.embedding)
-      count++
+      totalSimilarity += cosineSimilarity(item1.embedding, item2.embedding);
+      count++;
     }
   }
 
-  return count > 0 ? totalSimilarity / count : 0
+  return count > 0 ? totalSimilarity / count : 0;
 }
 
 /**
  * Convert cluster items to BookmarkCluster format
  */
 function convertToBookmarkCluster(items: ClusterItem[]): BookmarkCluster {
-  const embeddings = items.map(item => item.embedding)
-  const centroid = calculateCentroid(embeddings)
-  const avgSimilarity = calculateInternalSimilarity(embeddings)
+  const embeddings = items.map((item) => item.embedding);
+  const centroid = calculateCentroid(embeddings);
+  const avgSimilarity = calculateInternalSimilarity(embeddings);
 
   return {
-    bookmarkIds: items.map(item => item.id),
+    bookmarkIds: items.map((item) => item.id),
     centroid,
     avgSimilarity,
-    sampleTitles: items.slice(0, 5).map(item => item.title),
-  }
+    sampleTitles: items.slice(0, 5).map((item) => item.title),
+  };
 }
 
 /**
@@ -111,63 +117,65 @@ function convertToBookmarkCluster(items: ClusterItem[]): BookmarkCluster {
 export function kMeansClustering(
   items: ClusterItem[],
   k: number,
-  maxIterations: number = 100
+  maxIterations: number = 100,
 ): BookmarkCluster[] {
   if (items.length === 0 || k <= 0) {
-    return []
+    return [];
   }
 
-  const actualK = Math.min(k, items.length)
+  const actualK = Math.min(k, items.length);
 
   // Initialize centroids randomly (using first k items)
-  let centroids = items.slice(0, actualK).map(item => [...item.embedding])
+  const centroids = items.slice(0, actualK).map((item) => [...item.embedding]);
 
   // Assignments: which cluster each item belongs to
-  let assignments = new Array(items.length).fill(0)
+  let assignments = new Array(items.length).fill(0);
 
   for (let iteration = 0; iteration < maxIterations; iteration++) {
     // Assign each item to nearest centroid
     const newAssignments = items.map((item, _index) => {
-      let bestCluster = 0
-      let bestSimilarity = -1
+      let bestCluster = 0;
+      let bestSimilarity = -1;
 
       for (let c = 0; c < centroids.length; c++) {
-        const similarity = cosineSimilarity(item.embedding, centroids[c])
+        const similarity = cosineSimilarity(item.embedding, centroids[c]);
         if (similarity > bestSimilarity) {
-          bestSimilarity = similarity
-          bestCluster = c
+          bestSimilarity = similarity;
+          bestCluster = c;
         }
       }
 
-      return bestCluster
-    })
+      return bestCluster;
+    });
 
     // Check for convergence
-    const converged = assignments.every((a, i) => a === newAssignments[i])
-    assignments = newAssignments
+    const converged = assignments.every((a, i) => a === newAssignments[i]);
+    assignments = newAssignments;
 
     if (converged) {
-      break
+      break;
     }
 
     // Update centroids
     for (let c = 0; c < actualK; c++) {
-      const clusterItems = items.filter((_, i) => assignments[i] === c)
+      const clusterItems = items.filter((_, i) => assignments[i] === c);
       if (clusterItems.length > 0) {
-        centroids[c] = calculateCentroid(clusterItems.map(item => item.embedding))
+        centroids[c] = calculateCentroid(
+          clusterItems.map((item) => item.embedding),
+        );
       }
     }
   }
 
   // Convert to BookmarkCluster format
-  const clusters: ClusterItem[][] = Array.from({ length: actualK }, () => [])
+  const clusters: ClusterItem[][] = Array.from({ length: actualK }, () => []);
   items.forEach((item, i) => {
-    clusters[assignments[i]].push(item)
-  })
+    clusters[assignments[i]].push(item);
+  });
 
   return clusters
-    .filter(cluster => cluster.length > 0)
-    .map(cluster => convertToBookmarkCluster(cluster))
+    .filter((cluster) => cluster.length > 0)
+    .map((cluster) => convertToBookmarkCluster(cluster));
 }
 
 /**
@@ -177,58 +185,58 @@ export function kMeansClustering(
 export function densityClustering(
   items: ClusterItem[],
   similarityThreshold: number,
-  minPoints: number
+  minPoints: number,
 ): BookmarkCluster[] {
-  const n = items.length
-  const visited = new Array(n).fill(false)
-  const clusterAssignments = new Array(n).fill(-1) // -1 = noise
+  const n = items.length;
+  const visited = new Array(n).fill(false);
+  const clusterAssignments = new Array(n).fill(-1); // -1 = noise
 
-  let clusterId = 0
+  let clusterId = 0;
 
   for (let i = 0; i < n; i++) {
-    if (visited[i]) continue
-    visited[i] = true
+    if (visited[i]) continue;
+    visited[i] = true;
 
     // Find neighbors
-    const neighbors = findNeighbors(items, i, similarityThreshold)
+    const neighbors = findNeighbors(items, i, similarityThreshold);
 
     if (neighbors.length < minPoints) {
       // Mark as noise (for now)
-      continue
+      continue;
     }
 
     // Start new cluster
-    clusterAssignments[i] = clusterId
+    clusterAssignments[i] = clusterId;
 
     // Expand cluster
-    const seedSet = [...neighbors]
+    const seedSet = [...neighbors];
     while (seedSet.length > 0) {
-      const j = seedSet.pop()!
+      const j = seedSet.pop()!;
       if (!visited[j]) {
-        visited[j] = true
-        const jNeighbors = findNeighbors(items, j, similarityThreshold)
+        visited[j] = true;
+        const jNeighbors = findNeighbors(items, j, similarityThreshold);
         if (jNeighbors.length >= minPoints) {
-          seedSet.push(...jNeighbors.filter(k => !visited[k]))
+          seedSet.push(...jNeighbors.filter((k) => !visited[k]));
         }
       }
       if (clusterAssignments[j] === -1) {
-        clusterAssignments[j] = clusterId
+        clusterAssignments[j] = clusterId;
       }
     }
 
-    clusterId++
+    clusterId++;
   }
 
   // Group items by cluster
-  const clusters: ClusterItem[][] = []
+  const clusters: ClusterItem[][] = [];
   for (let c = 0; c < clusterId; c++) {
-    const clusterItems = items.filter((_, i) => clusterAssignments[i] === c)
+    const clusterItems = items.filter((_, i) => clusterAssignments[i] === c);
     if (clusterItems.length > 0) {
-      clusters.push(clusterItems)
+      clusters.push(clusterItems);
     }
   }
 
-  return clusters.map(cluster => convertToBookmarkCluster(cluster))
+  return clusters.map((cluster) => convertToBookmarkCluster(cluster));
 }
 
 /**
@@ -237,19 +245,19 @@ export function densityClustering(
 function findNeighbors(
   items: ClusterItem[],
   index: number,
-  threshold: number
+  threshold: number,
 ): number[] {
-  const neighbors: number[] = []
-  const target = items[index]
+  const neighbors: number[] = [];
+  const target = items[index];
 
   for (let i = 0; i < items.length; i++) {
     if (i !== index) {
-      const similarity = cosineSimilarity(target.embedding, items[i].embedding)
+      const similarity = cosineSimilarity(target.embedding, items[i].embedding);
       if (similarity >= threshold) {
-        neighbors.push(i)
+        neighbors.push(i);
       }
     }
   }
 
-  return neighbors
+  return neighbors;
 }

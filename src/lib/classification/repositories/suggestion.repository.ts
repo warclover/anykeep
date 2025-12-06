@@ -3,12 +3,12 @@
  * Data access layer for organization suggestions
  */
 
-import { SupabaseClient } from '@supabase/supabase-js'
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   OrganizationSuggestion,
   SuggestionInput,
   SuggestionStatus,
-} from '../types'
+} from "../types";
 
 /**
  * Repository for suggestion operations
@@ -21,17 +21,17 @@ export class SuggestionRepository {
    */
   async findPendingByUserId(userId: string): Promise<OrganizationSuggestion[]> {
     const { data, error } = await this.supabase
-      .from('organization_suggestions')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false })
+      .from("organization_suggestions")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("status", "pending")
+      .order("created_at", { ascending: false });
 
     if (error) {
-      throw new Error(`Failed to fetch suggestions: ${error.message}`)
+      throw new Error(`Failed to fetch suggestions: ${error.message}`);
     }
 
-    return (data || []).map(this.mapToSuggestion)
+    return (data || []).map(this.mapToSuggestion);
   }
 
   /**
@@ -39,27 +39,30 @@ export class SuggestionRepository {
    */
   async findById(suggestionId: number): Promise<OrganizationSuggestion | null> {
     const { data, error } = await this.supabase
-      .from('organization_suggestions')
-      .select('*')
-      .eq('id', suggestionId)
-      .single()
+      .from("organization_suggestions")
+      .select("*")
+      .eq("id", suggestionId)
+      .single();
 
     if (error) {
-      if (error.code === 'PGRST116') {
-        return null
+      if (error.code === "PGRST116") {
+        return null;
       }
-      throw new Error(`Failed to fetch suggestion: ${error.message}`)
+      throw new Error(`Failed to fetch suggestion: ${error.message}`);
     }
 
-    return this.mapToSuggestion(data)
+    return this.mapToSuggestion(data);
   }
 
   /**
    * Create a new suggestion
    */
-  async create(userId: string, input: SuggestionInput): Promise<OrganizationSuggestion> {
+  async create(
+    userId: string,
+    input: SuggestionInput,
+  ): Promise<OrganizationSuggestion> {
     const { data, error } = await this.supabase
-      .from('organization_suggestions')
+      .from("organization_suggestions")
       .insert({
         user_id: userId,
         suggestion_type: input.suggestionType,
@@ -69,27 +72,30 @@ export class SuggestionRepository {
         confidence: input.confidence,
         reason: input.reason,
         sample_titles: input.sampleTitles || [],
-        status: 'pending',
+        status: "pending",
       })
       .select()
-      .single()
+      .single();
 
     if (error) {
-      throw new Error(`Failed to create suggestion: ${error.message}`)
+      throw new Error(`Failed to create suggestion: ${error.message}`);
     }
 
-    return this.mapToSuggestion(data)
+    return this.mapToSuggestion(data);
   }
 
   /**
    * Create multiple suggestions
    */
-  async createBatch(userId: string, inputs: SuggestionInput[]): Promise<OrganizationSuggestion[]> {
+  async createBatch(
+    userId: string,
+    inputs: SuggestionInput[],
+  ): Promise<OrganizationSuggestion[]> {
     if (inputs.length === 0) {
-      return []
+      return [];
     }
 
-    const insertData = inputs.map(input => ({
+    const insertData = inputs.map((input) => ({
       user_id: userId,
       suggestion_type: input.suggestionType,
       bookmark_ids: input.bookmarkIds,
@@ -98,19 +104,19 @@ export class SuggestionRepository {
       confidence: input.confidence,
       reason: input.reason,
       sample_titles: input.sampleTitles || [],
-      status: 'pending',
-    }))
+      status: "pending",
+    }));
 
     const { data, error } = await this.supabase
-      .from('organization_suggestions')
+      .from("organization_suggestions")
       .insert(insertData)
-      .select()
+      .select();
 
     if (error) {
-      throw new Error(`Failed to create suggestions: ${error.message}`)
+      throw new Error(`Failed to create suggestions: ${error.message}`);
     }
 
-    return (data || []).map(this.mapToSuggestion)
+    return (data || []).map(this.mapToSuggestion);
   }
 
   /**
@@ -118,18 +124,18 @@ export class SuggestionRepository {
    */
   async updateStatus(
     suggestionId: number,
-    status: SuggestionStatus
+    status: SuggestionStatus,
   ): Promise<void> {
     const { error } = await this.supabase
-      .from('organization_suggestions')
+      .from("organization_suggestions")
       .update({
         status,
         responded_at: new Date().toISOString(),
       })
-      .eq('id', suggestionId)
+      .eq("id", suggestionId);
 
     if (error) {
-      throw new Error(`Failed to update suggestion status: ${error.message}`)
+      throw new Error(`Failed to update suggestion status: ${error.message}`);
     }
   }
 
@@ -137,14 +143,14 @@ export class SuggestionRepository {
    * Mark suggestion as accepted
    */
   async accept(suggestionId: number): Promise<void> {
-    await this.updateStatus(suggestionId, 'accepted')
+    await this.updateStatus(suggestionId, "accepted");
   }
 
   /**
    * Mark suggestion as rejected
    */
   async reject(suggestionId: number): Promise<void> {
-    await this.updateStatus(suggestionId, 'rejected')
+    await this.updateStatus(suggestionId, "rejected");
   }
 
   /**
@@ -153,13 +159,13 @@ export class SuggestionRepository {
    */
   async deletePendingByUserId(userId: string): Promise<void> {
     const { error } = await this.supabase
-      .from('organization_suggestions')
+      .from("organization_suggestions")
       .delete()
-      .eq('user_id', userId)
-      .eq('status', 'pending')
+      .eq("user_id", userId)
+      .eq("status", "pending");
 
     if (error) {
-      throw new Error(`Failed to delete pending suggestions: ${error.message}`)
+      throw new Error(`Failed to delete pending suggestions: ${error.message}`);
     }
   }
 
@@ -167,13 +173,13 @@ export class SuggestionRepository {
    * Expire old suggestions (calls SQL function)
    */
   async expireOldSuggestions(): Promise<number> {
-    const { data, error } = await this.supabase.rpc('expire_old_suggestions')
+    const { data, error } = await this.supabase.rpc("expire_old_suggestions");
 
     if (error) {
-      throw new Error(`Failed to expire suggestions: ${error.message}`)
+      throw new Error(`Failed to expire suggestions: ${error.message}`);
     }
 
-    return data as number
+    return data as number;
   }
 
   /**
@@ -181,35 +187,40 @@ export class SuggestionRepository {
    */
   async countPendingByUserId(userId: string): Promise<number> {
     const { count, error } = await this.supabase
-      .from('organization_suggestions')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId)
-      .eq('status', 'pending')
+      .from("organization_suggestions")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("status", "pending");
 
     if (error) {
-      throw new Error(`Failed to count suggestions: ${error.message}`)
+      throw new Error(`Failed to count suggestions: ${error.message}`);
     }
 
-    return count || 0
+    return count || 0;
   }
 
   /**
    * Map database row to OrganizationSuggestion
    */
-  private mapToSuggestion(row: Record<string, unknown>): OrganizationSuggestion {
+  private mapToSuggestion(
+    row: Record<string, unknown>,
+  ): OrganizationSuggestion {
     return {
       id: row.id as number,
       userId: row.user_id as string,
-      suggestionType: row.suggestion_type as OrganizationSuggestion['suggestionType'],
+      suggestionType:
+        row.suggestion_type as OrganizationSuggestion["suggestionType"],
       bookmarkIds: (row.bookmark_ids as number[]) || [],
       targetFolderId: row.target_folder_id as number | null,
       suggestedFolderName: row.suggested_folder_name as string | null,
       confidence: row.confidence as number,
       reason: row.reason as string | null,
       sampleTitles: (row.sample_titles as string[]) || [],
-      status: row.status as OrganizationSuggestion['status'],
+      status: row.status as OrganizationSuggestion["status"],
       createdAt: new Date(row.created_at as string),
-      respondedAt: row.responded_at ? new Date(row.responded_at as string) : null,
-    }
+      respondedAt: row.responded_at
+        ? new Date(row.responded_at as string)
+        : null,
+    };
   }
 }

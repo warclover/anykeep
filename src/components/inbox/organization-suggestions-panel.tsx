@@ -1,34 +1,40 @@
-'use client'
+"use client";
 
 /**
  * 整理建议面板组件
  * 展示待整理文件夹的智能整理建议列表
  */
 
-import { useState, useEffect, useCallback } from 'react'
-import { Button } from '@/components/ui/button'
+import { useState, useEffect, useCallback } from "react";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card'
-import { Skeleton } from '@/components/ui/skeleton'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { RefreshCw, Sparkles, Inbox, AlertCircle, CheckCircle2 } from 'lucide-react'
-import { OrganizationSuggestionCard } from './organization-suggestion-card'
-import type { OrganizationAnalysis, OrganizationSuggestion } from '@/lib/classification'
+} from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  RefreshCw,
+  Sparkles,
+  Inbox,
+  AlertCircle,
+  CheckCircle2,
+} from "lucide-react";
+import { OrganizationSuggestionCard } from "./organization-suggestion-card";
+import type { OrganizationAnalysis } from "@/lib/classification";
 
 interface OrganizationSuggestionsPanelProps {
   /** 初始分析数据 */
-  initialAnalysis?: OrganizationAnalysis | null
+  initialAnalysis?: OrganizationAnalysis | null;
   /** 可用文件夹列表 */
-  availableFolders?: Array<{ id: number; name: string }>
+  availableFolders?: Array<{ id: number; name: string }>;
   /** 刷新回调 */
-  onRefresh?: () => Promise<OrganizationAnalysis>
+  onRefresh?: () => Promise<OrganizationAnalysis>;
   /** 建议应用成功回调 */
-  onSuggestionApplied?: () => void
+  onSuggestionApplied?: () => void;
 }
 
 export function OrganizationSuggestionsPanel({
@@ -37,136 +43,153 @@ export function OrganizationSuggestionsPanel({
   onRefresh,
   onSuggestionApplied,
 }: OrganizationSuggestionsPanelProps) {
-  const [analysis, setAnalysis] = useState<OrganizationAnalysis | null>(initialAnalysis || null)
-  const [isLoading, setIsLoading] = useState(!initialAnalysis)
-  const [isRefreshing, setIsRefreshing] = useState(false)
-  const [processingIds, setProcessingIds] = useState<Set<number>>(new Set())
-  const [error, setError] = useState<string | null>(null)
-  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [analysis, setAnalysis] = useState<OrganizationAnalysis | null>(
+    initialAnalysis || null,
+  );
+  const [isLoading, setIsLoading] = useState(!initialAnalysis);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [processingIds, setProcessingIds] = useState<Set<number>>(new Set());
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // 加载分析数据
   const loadAnalysis = useCallback(async () => {
     try {
-      setError(null)
-      const response = await fetch('/api/classification/inbox')
+      setError(null);
+      const response = await fetch("/api/classification/inbox");
       if (!response.ok) {
-        throw new Error('Failed to load analysis')
+        throw new Error("Failed to load analysis");
       }
-      const data = await response.json()
-      setAnalysis(data.data)
+      const data = await response.json();
+      setAnalysis(data.data);
     } catch (err) {
-      setError('加载整理建议失败')
-      console.error('Failed to load analysis:', err)
+      setError("加载整理建议失败");
+      console.error("Failed to load analysis:", err);
     }
-  }, [])
+  }, []);
 
   // 初始加载
   useEffect(() => {
     if (!initialAnalysis) {
-      setIsLoading(true)
-      loadAnalysis().finally(() => setIsLoading(false))
+      setIsLoading(true);
+      loadAnalysis().finally(() => setIsLoading(false));
     }
-  }, [initialAnalysis, loadAnalysis])
+  }, [initialAnalysis, loadAnalysis]);
 
   // 刷新分析
   const handleRefresh = async () => {
-    setIsRefreshing(true)
-    setError(null)
-    setSuccessMessage(null)
+    setIsRefreshing(true);
+    setError(null);
+    setSuccessMessage(null);
 
     try {
       if (onRefresh) {
-        const newAnalysis = await onRefresh()
-        setAnalysis(newAnalysis)
+        const newAnalysis = await onRefresh();
+        setAnalysis(newAnalysis);
       } else {
-        await loadAnalysis()
+        await loadAnalysis();
       }
     } finally {
-      setIsRefreshing(false)
+      setIsRefreshing(false);
     }
-  }
+  };
 
   // 应用建议
-  const handleApply = async (suggestionId: number, targetFolderId?: number) => {
-    setProcessingIds(prev => new Set(prev).add(suggestionId))
-    setError(null)
-    setSuccessMessage(null)
+  const handleApply = async (
+    suggestionId: number,
+    _targetFolderId?: number,
+  ) => {
+    setProcessingIds((prev) => new Set(prev).add(suggestionId));
+    setError(null);
+    setSuccessMessage(null);
 
     try {
-      const response = await fetch('/api/classification/inbox', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/classification/inbox", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ suggestionId }),
-      })
+      });
 
       if (!response.ok) {
-        throw new Error('Failed to apply suggestion')
+        throw new Error("Failed to apply suggestion");
       }
 
       // 从列表中移除已应用的建议
-      setAnalysis(prev => prev ? {
-        ...prev,
-        suggestions: prev.suggestions.filter(s => s.id !== suggestionId),
-      } : null)
+      setAnalysis((prev) =>
+        prev
+          ? {
+              ...prev,
+              suggestions: prev.suggestions.filter(
+                (s) => s.id !== suggestionId,
+              ),
+            }
+          : null,
+      );
 
-      setSuccessMessage('建议已应用')
-      onSuggestionApplied?.()
+      setSuccessMessage("建议已应用");
+      onSuggestionApplied?.();
     } catch (err) {
-      setError('应用建议失败')
-      console.error('Failed to apply suggestion:', err)
+      setError("应用建议失败");
+      console.error("Failed to apply suggestion:", err);
     } finally {
-      setProcessingIds(prev => {
-        const next = new Set(prev)
-        next.delete(suggestionId)
-        return next
-      })
+      setProcessingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(suggestionId);
+        return next;
+      });
     }
-  }
+  };
 
   // 拒绝建议
   const handleReject = async (suggestionId: number) => {
-    setProcessingIds(prev => new Set(prev).add(suggestionId))
-    setError(null)
-    setSuccessMessage(null)
+    setProcessingIds((prev) => new Set(prev).add(suggestionId));
+    setError(null);
+    setSuccessMessage(null);
 
     try {
-      const response = await fetch('/api/classification/inbox', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/classification/inbox", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ suggestionId }),
-      })
+      });
 
       if (!response.ok) {
-        throw new Error('Failed to reject suggestion')
+        throw new Error("Failed to reject suggestion");
       }
 
       // 从列表中移除已拒绝的建议
-      setAnalysis(prev => prev ? {
-        ...prev,
-        suggestions: prev.suggestions.filter(s => s.id !== suggestionId),
-      } : null)
+      setAnalysis((prev) =>
+        prev
+          ? {
+              ...prev,
+              suggestions: prev.suggestions.filter(
+                (s) => s.id !== suggestionId,
+              ),
+            }
+          : null,
+      );
 
-      setSuccessMessage('已忽略该建议')
+      setSuccessMessage("已忽略该建议");
     } catch (err) {
-      setError('操作失败')
-      console.error('Failed to reject suggestion:', err)
+      setError("操作失败");
+      console.error("Failed to reject suggestion:", err);
     } finally {
-      setProcessingIds(prev => {
-        const next = new Set(prev)
-        next.delete(suggestionId)
-        return next
-      })
+      setProcessingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(suggestionId);
+        return next;
+      });
     }
-  }
+  };
 
   // 一键应用所有建议
   const handleApplyAll = async () => {
-    if (!analysis?.suggestions.length) return
+    if (!analysis?.suggestions.length) return;
 
     for (const suggestion of analysis.suggestions) {
-      await handleApply(suggestion.id)
+      await handleApply(suggestion.id);
     }
-  }
+  };
 
   // 加载中状态
   if (isLoading) {
@@ -181,7 +204,7 @@ export function OrganizationSuggestionsPanel({
           <Skeleton className="h-32 w-full" />
         </CardContent>
       </Card>
-    )
+    );
   }
 
   // 空状态
@@ -196,7 +219,7 @@ export function OrganizationSuggestionsPanel({
           <CardDescription>
             {analysis?.inboxCount
               ? `待整理文件夹有 ${analysis.inboxCount} 个书签，但暂时没有发现明显的整理规律`
-              : '待整理文件夹为空'}
+              : "待整理文件夹为空"}
           </CardDescription>
         </CardHeader>
         <CardContent className="flex justify-center">
@@ -206,12 +229,14 @@ export function OrganizationSuggestionsPanel({
             disabled={isRefreshing}
             className="gap-2"
           >
-            <RefreshCw className={isRefreshing ? 'animate-spin h-4 w-4' : 'h-4 w-4'} />
+            <RefreshCw
+              className={isRefreshing ? "animate-spin h-4 w-4" : "h-4 w-4"}
+            />
             重新分析
           </Button>
         </CardContent>
       </Card>
-    )
+    );
   }
 
   return (
@@ -229,7 +254,9 @@ export function OrganizationSuggestionsPanel({
               onClick={handleRefresh}
               disabled={isRefreshing}
             >
-              <RefreshCw className={isRefreshing ? 'animate-spin h-4 w-4' : 'h-4 w-4'} />
+              <RefreshCw
+                className={isRefreshing ? "animate-spin h-4 w-4" : "h-4 w-4"}
+              />
             </Button>
             {analysis.suggestions.length > 1 && (
               <Button
@@ -243,7 +270,8 @@ export function OrganizationSuggestionsPanel({
           </div>
         </div>
         <CardDescription>
-          待整理文件夹有 {analysis.inboxCount} 个书签，发现 {analysis.suggestions.length} 个整理机会
+          待整理文件夹有 {analysis.inboxCount} 个书签，发现{" "}
+          {analysis.suggestions.length} 个整理机会
         </CardDescription>
       </CardHeader>
 
@@ -267,7 +295,7 @@ export function OrganizationSuggestionsPanel({
 
         {/* 建议列表 */}
         <div className="space-y-4">
-          {analysis.suggestions.map(suggestion => (
+          {analysis.suggestions.map((suggestion) => (
             <OrganizationSuggestionCard
               key={suggestion.id}
               suggestion={suggestion}
@@ -280,7 +308,7 @@ export function OrganizationSuggestionsPanel({
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
 
-export default OrganizationSuggestionsPanel
+export default OrganizationSuggestionsPanel;

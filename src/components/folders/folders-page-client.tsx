@@ -349,6 +349,25 @@ export function FoldersPageClient({
     [],
   );
 
+  // 处理文件夹合并后的乐观更新
+  const handleFolderMerged = useCallback(
+    (sourceFolderId: number, targetFolderId: number, movedCount: number) => {
+      setLocalFolders((prev) =>
+        prev
+          // 移除源文件夹
+          .filter((f) => f.id !== sourceFolderId)
+          // 更新目标文件夹的收藏数
+          .map((f) =>
+            f.id === targetFolderId
+              ? { ...f, bookmark_count: (f.bookmark_count || 0) + movedCount }
+              : f,
+          ),
+      );
+      // router.refresh() 已在 MergeFolderDialog 中调用
+    },
+    [],
+  );
+
   const handleCreateClick = () => {
     setShowCreateDialog(true);
   };
@@ -433,6 +452,7 @@ export function FoldersPageClient({
                   onActionComplete={() => router.refresh()}
                   onFolderDeleted={handleFolderDeleted}
                   onFolderRenamed={handleFolderRenamed}
+                  onFolderMerged={handleFolderMerged}
                 />
               </div>
             </div>

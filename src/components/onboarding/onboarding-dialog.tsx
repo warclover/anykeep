@@ -89,18 +89,20 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
     }
   }, [onComplete]);
 
-  // 禁止关闭对话框（必须完成或跳过引导）
-  const handleOpenChange = useCallback(() => {
-    // 空操作 - 禁止通过点击外部或 ESC 关闭
-  }, []);
+  // 允许关闭对话框（关闭时自动标记引导完成）
+  const handleOpenChange = useCallback(
+    async (newOpen: boolean) => {
+      if (!newOpen) {
+        // 用户关闭对话框，自动跳过引导
+        await handleSkip();
+      }
+    },
+    [handleSkip],
+  );
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent
-        className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto"
-        onPointerDownOutside={(e) => e.preventDefault()}
-        onEscapeKeyDown={(e) => e.preventDefault()}
-      >
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader className="text-center pb-2">
           <DialogTitle className="text-2xl">👋 欢迎来到 AnyKeep！</DialogTitle>
           <DialogDescription className="text-base">

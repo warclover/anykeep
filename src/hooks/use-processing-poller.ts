@@ -179,8 +179,9 @@ export function useProcessingPoller({
 
   // 组件卸载时清理
   useEffect(() => {
+    const pollCountMap = pollCountRef.current;
     return () => {
-      pollCountRef.current.clear();
+      pollCountMap.clear();
       lastPollIdsRef.current = "";
     };
   }, []);
