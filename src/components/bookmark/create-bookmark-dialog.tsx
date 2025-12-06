@@ -129,8 +129,10 @@ export function CreateBookmarkDialog({
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // 折叠状态
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   const [isClassificationExpanded, setIsClassificationExpanded] =
     useState(true);
+  const [isCustomTagsExpanded, setIsCustomTagsExpanded] = useState(false);
   const [isNotesExpanded, setIsNotesExpanded] = useState(false);
 
   const resetForm = () => {
@@ -156,7 +158,9 @@ export function CreateBookmarkDialog({
     // 重置用途标签
     setSelectedUsageTags([]);
     // 重置折叠状态
+    setIsDescriptionExpanded(false);
     setIsClassificationExpanded(true);
+    setIsCustomTagsExpanded(false);
     setIsNotesExpanded(false);
   };
 
@@ -538,7 +542,7 @@ export function CreateBookmarkDialog({
                 <Link className="size-4 text-white" />
               </div>
               <div className="flex-1">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <Label
                     htmlFor="url"
                     className="text-sm font-medium text-gray-800"
@@ -546,9 +550,10 @@ export function CreateBookmarkDialog({
                     粘贴链接
                   </Label>
                   <span className="text-red-500 text-xs">*</span>
+                  {renderUrlStatus()}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  输入链接后自动获取网页信息
+                  输入链接后自动获取网页信息，支持微信公众号、B站、小红书、抖音等平台
                 </p>
               </div>
             </div>
@@ -576,12 +581,6 @@ export function CreateBookmarkDialog({
             </div>
 
             {errors.url && <p className="text-xs text-red-500">{errors.url}</p>}
-            {renderUrlStatus()}
-
-            {/* 支持平台提示 */}
-            <p className="text-xs text-muted-foreground text-center">
-              支持微信公众号、B站、小红书、抖音等平台链接
-            </p>
           </div>
 
           {/* ══════════════════════════════════════════════════════════════
@@ -595,25 +594,22 @@ export function CreateBookmarkDialog({
             }`}
           >
             {/* 区块标题 */}
-            <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
+            <div className="flex items-center gap-2 text-sm font-medium text-gray-700 flex-wrap">
               <FileText className="size-4" />
-              <span>内容信息</span>
+              <span>标题与内容</span>
+              {autoFilledFields.has("title") && (
+                <span className="text-xs text-green-600 font-normal flex items-center gap-1">
+                  <Sparkles className="size-3" />
+                  已自动填充
+                </span>
+              )}
+              <span className="text-xs text-muted-foreground font-normal">
+                留空时自动获取
+              </span>
             </div>
 
             {/* 标题输入 */}
             <div className="space-y-1.5">
-              <div className="flex items-center gap-2">
-                <Label
-                  htmlFor="title"
-                  className="flex items-center text-gray-600"
-                >
-                  标题
-                  {renderAutoFilledBadge("title")}
-                </Label>
-                <span className="text-xs text-muted-foreground">
-                  留空时自动获取
-                </span>
-              </div>
               <Input
                 id="title"
                 placeholder="可选，保存后自动获取"
@@ -629,33 +625,75 @@ export function CreateBookmarkDialog({
               )}
             </div>
 
-            {/* 描述输入 */}
+            {/* 描述输入 - 可折叠 */}
             <div className="space-y-1.5">
-              <div className="flex items-center gap-2">
-                <Label
-                  htmlFor="description"
-                  className="flex items-center text-gray-600"
+              {!isDescriptionExpanded ? (
+                /* 折叠状态：显示展开按钮或描述预览 */
+                <button
+                  type="button"
+                  onClick={() => setIsDescriptionExpanded(true)}
+                  className="w-full flex items-center justify-between py-2 px-3 text-sm text-gray-500 hover:text-gray-700 hover:bg-blue-100/50 rounded-lg transition-colors border border-dashed border-gray-300 hover:border-gray-400"
                 >
-                  描述
-                  {renderAutoFilledBadge("description")}
-                </Label>
-                <span className="text-xs text-muted-foreground">
-                  保存后自动生成 AI 摘要
-                </span>
-              </div>
-              <Textarea
-                id="description"
-                placeholder="简单描述这篇内容..."
-                value={description}
-                onChange={(e) => {
-                  setDescription(e.target.value);
-                  markFieldAsModified("description");
-                }}
-                rows={1}
-                className={`bg-white ${errors.description ? "border-red-500" : ""}`}
-              />
-              {errors.description && (
-                <p className="text-xs text-red-500">{errors.description}</p>
+                  <div className="flex items-center gap-2">
+                    <span>
+                      {description ? (
+                        <span className="text-gray-700 line-clamp-1">
+                          {description.length > 50
+                            ? description.slice(0, 50) + "..."
+                            : description}
+                        </span>
+                      ) : (
+                        "添加描述（可选）"
+                      )}
+                    </span>
+                    {autoFilledFields.has("description") && (
+                      <span className="text-xs text-green-600 flex items-center gap-1">
+                        <Sparkles className="size-3" />
+                        已自动填充
+                      </span>
+                    )}
+                  </div>
+                  <ChevronDown className="size-4" />
+                </button>
+              ) : (
+                /* 展开状态：显示输入框 */
+                <>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Label
+                        htmlFor="description"
+                        className="flex items-center text-gray-600"
+                      >
+                        描述
+                        {renderAutoFilledBadge("description")}
+                      </Label>
+                      <span className="text-xs text-muted-foreground">
+                        保存后自动生成 AI 摘要
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsDescriptionExpanded(false)}
+                      className="text-xs text-gray-500 hover:text-gray-700"
+                    >
+                      收起
+                    </button>
+                  </div>
+                  <Textarea
+                    id="description"
+                    placeholder="简单描述这篇内容..."
+                    value={description}
+                    onChange={(e) => {
+                      setDescription(e.target.value);
+                      markFieldAsModified("description");
+                    }}
+                    rows={2}
+                    className={`bg-white ${errors.description ? "border-red-500" : ""}`}
+                  />
+                  {errors.description && (
+                    <p className="text-xs text-red-500">{errors.description}</p>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -741,54 +779,88 @@ export function CreateBookmarkDialog({
                 />
               </div>
 
-              {/* 自定义标签输入 */}
+              {/* 自定义标签输入 - 可折叠 */}
               <div className="space-y-1.5">
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="tags" className="text-gray-600">
-                    自定义标签
-                  </Label>
-                  <span className="text-xs text-muted-foreground">
-                    可选，保存后自动生成 AI 标签
-                  </span>
-                </div>
-
-                {userAddedTags.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {userAddedTags.map((tag) => (
-                      <button
-                        key={tag}
-                        type="button"
-                        onClick={() => removeUserTag(tag)}
-                        className="px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-700 border border-blue-300 hover:bg-blue-200 transition-colors flex items-center gap-1"
-                      >
-                        {tag}
-                        <span className="text-blue-500 hover:text-blue-700">
-                          ×
+                {!isCustomTagsExpanded ? (
+                  /* 折叠状态：显示展开按钮或已添加标签预览 */
+                  <button
+                    type="button"
+                    onClick={() => setIsCustomTagsExpanded(true)}
+                    className="w-full flex items-center justify-between py-2 px-3 text-sm text-gray-500 hover:text-gray-700 hover:bg-amber-100/50 rounded-lg transition-colors border border-dashed border-gray-300 hover:border-gray-400"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span>
+                        {userAddedTags.length > 0 ? (
+                          <span className="text-gray-700">
+                            已添加 {userAddedTags.length} 个标签
+                          </span>
+                        ) : (
+                          "添加自定义标签（可选）"
+                        )}
+                      </span>
+                    </div>
+                    <ChevronDown className="size-4" />
+                  </button>
+                ) : (
+                  /* 展开状态：显示输入框 */
+                  <>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor="tags" className="text-gray-600">
+                          自定义标签
+                        </Label>
+                        <span className="text-xs text-muted-foreground">
+                          可选，保存后自动生成 AI 标签
                         </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsCustomTagsExpanded(false)}
+                        className="text-xs text-gray-500 hover:text-gray-700"
+                      >
+                        收起
                       </button>
-                    ))}
-                  </div>
-                )}
+                    </div>
 
-                <Input
-                  id="tags"
-                  placeholder="输入标签后按回车添加"
-                  value={tags}
-                  onChange={(e) => setTags(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      const input = e.currentTarget;
-                      if (input.value.trim()) {
-                        addUserTag(input.value.trim());
-                        setTags("");
-                      }
-                    }
-                  }}
-                  className={`bg-white ${errors.userTags ? "border-red-500" : ""}`}
-                />
-                {errors.userTags && (
-                  <p className="text-xs text-red-500">{errors.userTags}</p>
+                    {userAddedTags.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {userAddedTags.map((tag) => (
+                          <button
+                            key={tag}
+                            type="button"
+                            onClick={() => removeUserTag(tag)}
+                            className="px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-700 border border-blue-300 hover:bg-blue-200 transition-colors flex items-center gap-1"
+                          >
+                            {tag}
+                            <span className="text-blue-500 hover:text-blue-700">
+                              ×
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    <Input
+                      id="tags"
+                      placeholder="输入标签后按回车添加"
+                      value={tags}
+                      onChange={(e) => setTags(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          const input = e.currentTarget;
+                          if (input.value.trim()) {
+                            addUserTag(input.value.trim());
+                            setTags("");
+                          }
+                        }
+                      }}
+                      className={`bg-white ${errors.userTags ? "border-red-500" : ""}`}
+                    />
+                    {errors.userTags && (
+                      <p className="text-xs text-red-500">{errors.userTags}</p>
+                    )}
+                  </>
                 )}
               </div>
             </div>
