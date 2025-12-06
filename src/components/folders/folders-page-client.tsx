@@ -12,7 +12,7 @@
 
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -328,6 +328,27 @@ export function FoldersPageClient({
     router.refresh();
   };
 
+  // 处理文件夹删除后的乐观更新
+  const handleFolderDeleted = useCallback(
+    (deletedFolderId: number) => {
+      setLocalFolders((prev) => prev.filter((f) => f.id !== deletedFolderId));
+      // 仍然调用 router.refresh() 确保与服务器数据一致
+      router.refresh();
+    },
+    [router],
+  );
+
+  // 处理文件夹重命名后的乐观更新
+  const handleFolderRenamed = useCallback(
+    (folderId: number, newName: string) => {
+      setLocalFolders((prev) =>
+        prev.map((f) => (f.id === folderId ? { ...f, name: newName } : f)),
+      );
+      // router.refresh() 已在 RenameFolderDialog 中调用
+    },
+    [],
+  );
+
   const handleCreateClick = () => {
     setShowCreateDialog(true);
   };
@@ -410,6 +431,8 @@ export function FoldersPageClient({
                   folder={folder}
                   allFolders={localFolders}
                   onActionComplete={() => router.refresh()}
+                  onFolderDeleted={handleFolderDeleted}
+                  onFolderRenamed={handleFolderRenamed}
                 />
               </div>
             </div>
