@@ -18,7 +18,27 @@ import { formatRelativeTime } from "@/lib/utils/date-utils";
 import { generatePlaceholderImage } from "@/lib/utils/placeholder-image";
 import { getProxiedImageUrl } from "@/lib/utils/image-proxy";
 import { PlatformBadge } from "@/components/ui/platform-badge";
+import { parseStructuredSummary } from "@/lib/classification/types/ai-summary";
 import "./bookmark-card-flip.css";
+
+/**
+ * 获取 AI 摘要的显示文本
+ * 支持新版 JSON 格式（提取 tldr）和旧版纯文本格式
+ */
+function getDisplaySummary(
+  aiSummary: string | null | undefined,
+): string | null {
+  if (!aiSummary) return null;
+
+  // 尝试解析为结构化摘要（JSON 格式）
+  const structured = parseStructuredSummary(aiSummary);
+  if (structured) {
+    return structured.tldr;
+  }
+
+  // 旧版纯文本格式，直接返回
+  return aiSummary;
+}
 
 interface FlipBookmarkCardProps {
   bookmark: Bookmark & {
@@ -175,9 +195,9 @@ export function FlipBookmarkCard({
             <h3 className="font-semibold text-gray-900 dark:text-white line-clamp-2 mb-2">
               {bookmark.title}
             </h3>
-            {bookmark.ai_summary && (
+            {getDisplaySummary(bookmark.ai_summary) && (
               <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2">
-                {bookmark.ai_summary}
+                {getDisplaySummary(bookmark.ai_summary)}
               </p>
             )}
           </div>
@@ -327,9 +347,9 @@ export function FlipBookmarkCard({
 
             {/* AI 摘要 */}
             <div className="flex-1 overflow-y-auto">
-              {bookmark.ai_summary ? (
+              {getDisplaySummary(bookmark.ai_summary) ? (
                 <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-                  {bookmark.ai_summary}
+                  {getDisplaySummary(bookmark.ai_summary)}
                 </p>
               ) : (
                 <p className="text-sm text-gray-400 italic">暂无 AI 摘要</p>

@@ -33,6 +33,8 @@ import { EditBookmarkDialog } from "@/components/bookmark/edit-bookmark-dialog";
 import { MoveToFolderDialog } from "@/components/bookmark/move-to-folder-dialog";
 import { SummaryRenderer } from "@/components/bookmark/summary-renderer";
 import { BookmarkRating } from "@/components/bookmark/bookmark-rating";
+import { UsageTagSelector } from "@/components/bookmark/usage-tag-selector";
+import { ContentTypeBadge } from "@/components/bookmark/content-type-badge";
 import type { Bookmark, CustomUsageTag } from "@/types/supabase";
 import { cn } from "@/lib/utils";
 import { getPlatformConfig } from "@/lib/platform-utils";
@@ -139,6 +141,11 @@ export function BookmarkDetailClient({
   const [isEditingTags, setIsEditingTags] = useState(false);
   const [editedTags, setEditedTags] = useState("");
   const [isSavingTags, setIsSavingTags] = useState(false);
+
+  // V10.0新增：用途标签内联编辑状态
+  const [isEditingUsageTags, setIsEditingUsageTags] = useState(false);
+  const [editedUsageTags, setEditedUsageTags] = useState<string[]>([]);
+  const [isSavingUsageTags, setIsSavingUsageTags] = useState(false);
 
   // 笔记内联编辑状态
   const [isEditingNotes, setIsEditingNotes] = useState(false);
@@ -307,6 +314,59 @@ export function BookmarkDetailClient({
     }
   };
 
+  // V10.0新增：用途标签编辑处理
+  const handleEditUsageTags = () => {
+    setEditedUsageTags([...usageTags]);
+    setIsEditingUsageTags(true);
+  };
+
+  const handleCancelEditUsageTags = () => {
+    setIsEditingUsageTags(false);
+    setEditedUsageTags([]);
+  };
+
+  const handleSaveUsageTags = async () => {
+    if (isSavingUsageTags) return;
+
+    setIsSavingUsageTags(true);
+    try {
+      // 合并：新用途标签 + 保留原普通标签
+      const newUserTags = [...editedUsageTags, ...regularTags];
+
+      const res = await fetchWithAbort(`/api/bookmarks/${bookmark.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userTags: newUserTags.length > 0 ? newUserTags : null,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error?.message || "更新用途标签失败");
+      }
+
+      toast.success("用途标签更新成功");
+      setIsEditingUsageTags(false);
+      router.refresh();
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        return;
+      }
+      toast.error(error instanceof Error ? error.message : "更新用途标签失败");
+    } finally {
+      setIsSavingUsageTags(false);
+    }
+  };
+
+  // 自定义标签变更回调（用于刷新缓存）
+  const handleCustomTagsChange = (newTags: CustomUsageTag[]) => {
+    setCustomUsageTags(newTags);
+  };
+
   const handleEditTags = () => {
     setIsEditingTags(true);
     setEditedTags(bookmark.user_tags?.join(", ") || "");
@@ -445,8 +505,47 @@ export function BookmarkDetailClient({
                   {bookmark.title}
                 </h1>
 
-                {/* V9.0新增：用途标签（高亮显示在 AI 标签上方） */}
-                {usageTags.length > 0 && (
+                {/* V10.0: 用途标签（支持内联编辑） */}
+                {isEditingUsageTags ? (
+                  // 编辑模式
+                  <div className="flex flex-col gap-3 p-3 -mx-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        选择用途标签
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleCancelEditUsageTags}
+                          disabled={isSavingUsageTags}
+                          className="h-7 px-2 text-xs"
+                        >
+                          <X className="size-3 mr-1" />
+                          取消
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={handleSaveUsageTags}
+                          disabled={isSavingUsageTags}
+                          className="h-7 px-3 text-xs"
+                        >
+                          <Check className="size-3 mr-1" />
+                          {isSavingUsageTags ? "保存中..." : "保存"}
+                        </Button>
+                      </div>
+                    </div>
+                    <UsageTagSelector
+                      selectedTags={editedUsageTags}
+                      onSelectedTagsChange={setEditedUsageTags}
+                      customUsageTags={customUsageTags}
+                      onCustomTagsChange={handleCustomTagsChange}
+                      showAddButton={true}
+                      className="!gap-1.5"
+                    />
+                  </div>
+                ) : (
+                  // 查看模式
                   <div className="flex flex-wrap items-center gap-2">
                     {usageTags.map((tagValue) => {
                       const tagStyle = getUsageTagStyleExtended(
@@ -471,27 +570,58 @@ export function BookmarkDetailClient({
                         </span>
                       );
                     })}
+                    {/* 编辑按钮 */}
+                    <button
+                      type="button"
+                      onClick={handleEditUsageTags}
+                      className={cn(
+                        "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium",
+                        "border border-dashed",
+                        usageTags.length > 0
+                          ? // 有标签时：灰色样式
+                            "text-gray-500 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          : // 无标签时：蓝色醒目样式
+                            "text-blue-600 dark:text-blue-400 border-blue-300 dark:border-blue-600 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50",
+                        "transition-colors duration-200",
+                      )}
+                    >
+                      <Edit className="size-3" />
+                      <span>{usageTags.length > 0 ? "编辑" : "添加用途"}</span>
+                    </button>
                   </div>
                 )}
 
-                {/* 第2行：AI 标签 */}
-                {bookmark.ai_tags && bookmark.ai_tags.length > 0 && (
+                {/* 第2行：AI 内容类型 + AI 标签 */}
+                {(bookmark.ai_content_type ||
+                  (bookmark.ai_tags && bookmark.ai_tags.length > 0)) && (
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm md:text-base">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-pink-50 dark:bg-pink-900/30 border border-pink-200 dark:border-pink-700 text-pink-600 dark:text-pink-300 font-medium text-xs md:text-sm">
-                      AI
-                    </span>
-                    {bookmark.ai_tags.map((tag, index) => (
-                      <span key={tag} className="flex items-center gap-2">
-                        {index > 0 && (
-                          <span className="text-gray-300 dark:text-gray-600">
-                            |
-                          </span>
-                        )}
-                        <span className="text-gray-700 dark:text-gray-300">
-                          {tag}
+                    {/* V9.0: AI检测的内容类型 */}
+                    {bookmark.ai_content_type && (
+                      <ContentTypeBadge
+                        type={bookmark.ai_content_type}
+                        size="md"
+                      />
+                    )}
+                    {/* AI 标签 */}
+                    {bookmark.ai_tags && bookmark.ai_tags.length > 0 && (
+                      <>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-pink-50 dark:bg-pink-900/30 border border-pink-200 dark:border-pink-700 text-pink-600 dark:text-pink-300 font-medium text-xs md:text-sm">
+                          AI
                         </span>
-                      </span>
-                    ))}
+                        {bookmark.ai_tags.map((tag, index) => (
+                          <span key={tag} className="flex items-center gap-2">
+                            {index > 0 && (
+                              <span className="text-gray-300 dark:text-gray-600">
+                                |
+                              </span>
+                            )}
+                            <span className="text-gray-700 dark:text-gray-300">
+                              {tag}
+                            </span>
+                          </span>
+                        ))}
+                      </>
+                    )}
                   </div>
                 )}
 

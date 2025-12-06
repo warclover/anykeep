@@ -315,6 +315,8 @@ export type Database = {
           last_validation_at: string | null; // V7.0新增：最后验证时间
           is_starred: boolean; // V8.0新增：星标/置顶状态
           starred_at: string | null; // V8.0新增：星标时间
+          ai_content_type: "article" | "tutorial" | "video" | "tool" | null; // V9.0新增：AI检测的内容类型
+          ai_content_type_confidence: number | null; // V9.0新增：内容类型检测置信度(0-100)
           created_at: string;
           updated_at: string;
           deleted_at: string | null;
@@ -355,6 +357,8 @@ export type Database = {
           last_validation_at?: string | null; // V7.0新增
           is_starred?: boolean; // V8.0新增
           starred_at?: string | null; // V8.0新增
+          ai_content_type?: "article" | "tutorial" | "video" | "tool" | null; // V9.0新增
+          ai_content_type_confidence?: number | null; // V9.0新增
           created_at?: string;
           updated_at?: string;
           deleted_at?: string | null;
@@ -395,6 +399,8 @@ export type Database = {
           last_validation_at?: string | null; // V7.0新增
           is_starred?: boolean; // V8.0新增
           starred_at?: string | null; // V8.0新增
+          ai_content_type?: "article" | "tutorial" | "video" | "tool" | null; // V9.0新增
+          ai_content_type_confidence?: number | null; // V9.0新增
           created_at?: string;
           updated_at?: string;
           deleted_at?: string | null;

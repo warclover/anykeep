@@ -2,6 +2,7 @@
  * Classification module type exports
  */
 
-export * from './classification'
-export * from './interest'
-export * from './suggestion'
+export * from "./classification";
+export * from "./interest";
+export * from "./suggestion";
+export * from "./ai-summary";

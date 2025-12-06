@@ -930,9 +930,9 @@ export function CreateBookmarkDialog({
                   : "opacity-100 translate-x-0"
               }`}
             >
-              <div className="flex items-baseline gap-2 select-none">
+              <div className="flex items-baseline gap-3 select-none">
                 <span
-                  className="text-3xl font-bold bg-gradient-to-r from-violet-600 via-blue-500 to-cyan-400 bg-clip-text text-transparent tracking-wide"
+                  className="text-4xl font-bold bg-gradient-to-r from-violet-600 via-blue-500 to-cyan-400 bg-clip-text text-transparent tracking-wide"
                   style={{
                     fontFamily: "'Segoe Script', 'Brush Script MT', cursive",
                   }}
@@ -940,12 +940,12 @@ export function CreateBookmarkDialog({
                   Just
                 </span>
                 <span
-                  className="text-4xl font-bold bg-gradient-to-r from-violet-600 via-blue-500 to-cyan-400 bg-clip-text text-transparent tracking-tight"
+                  className="text-5xl font-bold bg-gradient-to-r from-violet-600 via-blue-500 to-cyan-400 bg-clip-text text-transparent tracking-tight"
                   style={{
                     fontFamily: "'Segoe Script', 'Brush Script MT', cursive",
                   }}
                 >
-                  Keep
+                  Keep!
                 </span>
               </div>
               <div className="h-1 w-full bg-gradient-to-r from-violet-500 via-blue-500 to-cyan-400 rounded-full mt-0.5" />
