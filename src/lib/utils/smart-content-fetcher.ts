@@ -29,6 +29,7 @@ import {
   extractKeyContent,
 } from "./content-extractor";
 import { stripHtmlTags, decodeHtmlEntities } from "./html-utils";
+import { logFetchError } from "./fetch-error-handler";
 
 /**
  * 内容提取结果
@@ -210,17 +211,8 @@ export async function smartFetchContent(
       config.contentFetcher.maxKeyContentLength,
     );
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
-
-    logger.error(
-      {
-        url,
-        error: errorMessage,
-        action: "smart_fetch_failed",
-      },
-      "Smart Content Fetcher: All methods failed",
-    );
+    // 使用统一的错误处理
+    const errorResult = logFetchError("smart_fetch", url, error);
 
     return {
       success: false,
@@ -230,7 +222,7 @@ export async function smartFetchContent(
       wordCount: 0,
       estimatedTokens: 0,
       fetchTime: Date.now() - startTime,
-      error: errorMessage,
+      error: errorResult.message,
     };
   }
 }

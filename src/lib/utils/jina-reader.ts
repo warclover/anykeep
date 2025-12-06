@@ -14,6 +14,7 @@
  */
 
 import { logger } from "@/lib/logger";
+import { logFetchError } from "./fetch-error-handler";
 
 /**
  * Jina Reader 提取结果
@@ -159,24 +160,15 @@ export async function fetchWithJinaReader(
       source: "jina",
     };
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
-
-    logger.warn(
-      {
-        url,
-        error: errorMessage,
-        action: "jina_reader_failed",
-      },
-      "Jina Reader: Fetch failed",
-    );
+    // 使用统一的错误处理
+    const errorResult = logFetchError("jina_reader", url, error);
 
     return {
       success: false,
       content: "",
       wordCount: 0,
       source: "jina",
-      error: errorMessage,
+      error: errorResult.message,
     };
   }
 }
