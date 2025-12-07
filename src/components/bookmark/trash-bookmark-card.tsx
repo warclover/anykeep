@@ -186,9 +186,10 @@ export function TrashBookmarkCard({
       </CardHeader>
 
       <CardContent className="space-y-3">
-        {/* 封面图 */}
+        {/* 封面图 - 使用原生 img 避免外部域名配置 */}
         {coverImage && (
           <div className="relative w-full h-48 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={coverImage}
               alt={bookmark.title}

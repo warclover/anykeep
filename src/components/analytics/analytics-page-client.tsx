@@ -2,104 +2,132 @@
  * 数据统计页面客户端组件
  */
 
-'use client'
+"use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ErrorMessage } from '@/components/ui/error-message'
-import { LineChart, Line, PieChart, Pie, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
-import { TrendingUp, Users, Bookmark, Calendar } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ErrorMessage } from "@/components/ui/error-message";
+import {
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Cell,
+} from "recharts";
+import { TrendingUp, Users, Bookmark, Calendar } from "lucide-react";
+import { ClassificationHistoryCard } from "./classification-history-card";
+import { useRouter } from "next/navigation";
 
 interface AnalyticsData {
-  trendData: { date: string; count: number }[]
-  platformData: { name: string; value: number; color: string }[]
-  tagData: { tag: string; count: number }[]
-  typeData: { type: string; count: number }[]
+  trendData: { date: string; count: number }[];
+  platformData: { name: string; value: number; color: string }[];
+  tagData: { tag: string; count: number }[];
+  typeData: { type: string; count: number }[];
 }
 
 interface AnalyticsPageClientProps {
-  data: AnalyticsData
-  error?: string
+  data: AnalyticsData;
+  error?: string;
 }
 
 // Tooltip 类型定义
 interface TooltipPayload {
-  value: number
+  value: number;
   payload: {
-    date: string
-    count: number
-  }
+    date: string;
+    count: number;
+  };
 }
 
 interface TooltipProps {
-  active?: boolean
-  payload?: TooltipPayload[]
+  active?: boolean;
+  payload?: TooltipPayload[];
 }
 
 interface PieTooltipPayload {
-  name: string
-  value: number
+  name: string;
+  value: number;
 }
 
 interface PieTooltipProps {
-  active?: boolean
-  payload?: PieTooltipPayload[]
+  active?: boolean;
+  payload?: PieTooltipPayload[];
 }
 
-
 // 自定义 Tooltip 组件（移出主组件以避免每次渲染重新创建）
-function CustomTooltip({ active, payload, formatDate }: TooltipProps & { formatDate: (d: string) => string }) {
+function CustomTooltip({
+  active,
+  payload,
+  formatDate,
+}: TooltipProps & { formatDate: (d: string) => string }) {
   if (active && payload && payload.length) {
     return (
       <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
-        <p className="text-sm text-gray-600 dark:text-gray-400">{formatDate(payload[0].payload.date)}</p>
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          {formatDate(payload[0].payload.date)}
+        </p>
         <p className="text-base font-semibold text-gray-900 dark:text-white">
           {payload[0].value} 篇收藏
         </p>
       </div>
-    )
+    );
   }
-  return null
+  return null;
 }
 
-function CustomPieTooltip({ active, payload, totalBookmarks }: PieTooltipProps & { totalBookmarks: number }) {
+function CustomPieTooltip({
+  active,
+  payload,
+  totalBookmarks,
+}: PieTooltipProps & { totalBookmarks: number }) {
   if (active && payload && payload.length) {
-    const percentage = ((payload[0].value / totalBookmarks) * 100).toFixed(1)
+    const percentage = ((payload[0].value / totalBookmarks) * 100).toFixed(1);
     return (
       <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
-        <p className="text-sm font-medium text-gray-900 dark:text-white">{payload[0].name}</p>
+        <p className="text-sm font-medium text-gray-900 dark:text-white">
+          {payload[0].name}
+        </p>
         <p className="text-sm text-gray-600 dark:text-gray-400">
           {payload[0].value} 篇 ({percentage}%)
         </p>
       </div>
-    )
+    );
   }
-  return null
+  return null;
 }
 
 export function AnalyticsPageClient({ data, error }: AnalyticsPageClientProps) {
-  const router = useRouter()
-  const { trendData, platformData, tagData, typeData } = data
+  const router = useRouter();
+  const { trendData, platformData, tagData, typeData } = data;
 
   // 计算统计数据
-  const totalBookmarks = platformData.reduce((sum, item) => sum + item.value, 0)
-  const todayCount = trendData[trendData.length - 1]?.count || 0
-  const weekCount = trendData.slice(-7).reduce((sum, item) => sum + item.count, 0)
-  const monthCount = trendData.reduce((sum, item) => sum + item.count, 0)
+  const totalBookmarks = platformData.reduce(
+    (sum, item) => sum + item.value,
+    0,
+  );
+  const todayCount = trendData[trendData.length - 1]?.count || 0;
+  const weekCount = trendData
+    .slice(-7)
+    .reduce((sum, item) => sum + item.count, 0);
+  const monthCount = trendData.reduce((sum, item) => sum + item.count, 0);
 
   // 格式化日期显示
   const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr)
-    return `${date.getMonth() + 1}/${date.getDate()}`
-  }
+    const date = new Date(dateStr);
+    return `${date.getMonth() + 1}/${date.getDate()}`;
+  };
 
   const handleRetry = () => {
-    router.refresh()
-  }
+    router.refresh();
+  };
 
-  
-
-  const hasData = totalBookmarks > 0
+  const hasData = totalBookmarks > 0;
 
   return (
     <div className="h-full flex flex-col">
@@ -116,10 +144,7 @@ export function AnalyticsPageClient({ data, error }: AnalyticsPageClientProps) {
       {/* Content */}
       <div className="flex-1 overflow-auto px-4 md:px-8 py-6">
         {error ? (
-          <ErrorMessage
-            message={error}
-            retry={handleRetry}
-          />
+          <ErrorMessage message={error} retry={handleRetry} />
         ) : hasData ? (
           <div className="space-y-6">
             {/* 统计卡片 */}
@@ -131,8 +156,12 @@ export function AnalyticsPageClient({ data, error }: AnalyticsPageClientProps) {
                       <Bookmark className="size-5 sm:size-6 text-purple-600 dark:text-purple-400" />
                     </div>
                     <div>
-                      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">总收藏</p>
-                      <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{totalBookmarks}</p>
+                      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+                        总收藏
+                      </p>
+                      <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
+                        {totalBookmarks}
+                      </p>
                     </div>
                   </div>
                 </CardContent>
@@ -145,8 +174,12 @@ export function AnalyticsPageClient({ data, error }: AnalyticsPageClientProps) {
                       <Calendar className="size-5 sm:size-6 text-blue-600 dark:text-blue-400" />
                     </div>
                     <div>
-                      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">今日新增</p>
-                      <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{todayCount}</p>
+                      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+                        今日新增
+                      </p>
+                      <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
+                        {todayCount}
+                      </p>
                     </div>
                   </div>
                 </CardContent>
@@ -159,8 +192,12 @@ export function AnalyticsPageClient({ data, error }: AnalyticsPageClientProps) {
                       <TrendingUp className="size-5 sm:size-6 text-green-600 dark:text-green-400" />
                     </div>
                     <div>
-                      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">本周新增</p>
-                      <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{weekCount}</p>
+                      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+                        本周新增
+                      </p>
+                      <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
+                        {weekCount}
+                      </p>
                     </div>
                   </div>
                 </CardContent>
@@ -173,8 +210,12 @@ export function AnalyticsPageClient({ data, error }: AnalyticsPageClientProps) {
                       <Users className="size-5 sm:size-6 text-orange-600 dark:text-orange-400" />
                     </div>
                     <div>
-                      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">本月新增</p>
-                      <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{monthCount}</p>
+                      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+                        本月新增
+                      </p>
+                      <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
+                        {monthCount}
+                      </p>
                     </div>
                   </div>
                 </CardContent>
@@ -192,20 +233,25 @@ export function AnalyticsPageClient({ data, error }: AnalyticsPageClientProps) {
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
                   <LineChart data={trendData}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-gray-700" />
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      className="stroke-gray-200 dark:stroke-gray-700"
+                    />
                     <XAxis
                       dataKey="date"
                       tickFormatter={formatDate}
                       className="text-xs text-gray-500 dark:text-gray-400"
                     />
                     <YAxis className="text-xs text-gray-500 dark:text-gray-400" />
-                    <Tooltip content={<CustomTooltip formatDate={formatDate} />} />
+                    <Tooltip
+                      content={<CustomTooltip formatDate={formatDate} />}
+                    />
                     <Line
                       type="monotone"
                       dataKey="count"
                       stroke="#9333ea"
                       strokeWidth={2}
-                      dot={{ fill: '#9333ea', r: 4 }}
+                      dot={{ fill: "#9333ea", r: 4 }}
                       activeDot={{ r: 6 }}
                     />
                   </LineChart>
@@ -231,7 +277,9 @@ export function AnalyticsPageClient({ data, error }: AnalyticsPageClientProps) {
                         cx="50%"
                         cy="50%"
                         labelLine={false}
-                        label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
+                        label={({ name, percent }) =>
+                          `${name} ${((percent || 0) * 100).toFixed(0)}%`
+                        }
                         outerRadius={80}
                         fill="#8884d8"
                         dataKey="value"
@@ -240,7 +288,11 @@ export function AnalyticsPageClient({ data, error }: AnalyticsPageClientProps) {
                           <Cell key={`cell-${index}`} fill={entry.color} />
                         ))}
                       </Pie>
-                      <Tooltip content={<CustomPieTooltip totalBookmarks={totalBookmarks} />} />
+                      <Tooltip
+                        content={
+                          <CustomPieTooltip totalBookmarks={totalBookmarks} />
+                        }
+                      />
                     </PieChart>
                   </ResponsiveContainer>
                 </CardContent>
@@ -263,7 +315,15 @@ export function AnalyticsPageClient({ data, error }: AnalyticsPageClientProps) {
                           cx="50%"
                           cy="50%"
                           labelLine={false}
-                          label={({ payload, percent }: { payload?: { type: string }; percent?: number }) => `${payload?.type ?? ''} ${((percent ?? 0) * 100).toFixed(0)}%`}
+                          label={({
+                            payload,
+                            percent,
+                          }: {
+                            payload?: { type: string };
+                            percent?: number;
+                          }) =>
+                            `${payload?.type ?? ""} ${((percent ?? 0) * 100).toFixed(0)}%`
+                          }
                           outerRadius={80}
                           fill="#8884d8"
                           dataKey="count"
@@ -271,7 +331,9 @@ export function AnalyticsPageClient({ data, error }: AnalyticsPageClientProps) {
                           {typeData.map((entry, index) => (
                             <Cell
                               key={`cell-${index}`}
-                              fill={['#8b5cf6', '#06b6d4', '#f59e0b'][index % 3]}
+                              fill={
+                                ["#8b5cf6", "#06b6d4", "#f59e0b"][index % 3]
+                              }
                             />
                           ))}
                         </Pie>
@@ -283,50 +345,69 @@ export function AnalyticsPageClient({ data, error }: AnalyticsPageClientProps) {
               )}
             </div>
 
-            {/* 热门标签排行 */}
-            {tagData.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <TrendingUp className="size-5 text-orange-600 dark:text-orange-400" />
-                    热门标签 TOP 10
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="px-2 sm:px-6">
-                  <ResponsiveContainer width="100%" height={350}>
-                    <BarChart data={tagData} layout="vertical" margin={{ left: 0, right: 10 }}>
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-gray-700" />
-                      <XAxis type="number" className="text-xs text-gray-500 dark:text-gray-400" />
-                      <YAxis
-                        dataKey="tag"
-                        type="category"
-                        width={70}
-                        tick={{ fontSize: 11 }}
-                        className="text-xs text-gray-500 dark:text-gray-400"
-                      />
-                      <Tooltip
-                        content={({ active, payload }) => {
-                          if (active && payload && payload.length) {
-                            return (
-                              <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
-                                <p className="text-sm font-medium text-gray-900 dark:text-white">
-                                  {payload[0].payload.tag}
-                                </p>
-                                <p className="text-sm text-gray-600 dark:text-gray-400">
-                                  {payload[0].value} 次使用
-                                </p>
-                              </div>
-                            )
-                          }
-                          return null
-                        }}
-                      />
-                      <Bar dataKey="count" fill="#f97316" radius={[0, 4, 4, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-            )}
+            {/* 热门标签排行 & 分类历史 */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {tagData.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <TrendingUp className="size-5 text-orange-600 dark:text-orange-400" />
+                      热门标签 TOP 10
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-2 sm:px-6">
+                    <ResponsiveContainer width="100%" height={350}>
+                      <BarChart
+                        data={tagData}
+                        layout="vertical"
+                        margin={{ left: 0, right: 10 }}
+                      >
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          className="stroke-gray-200 dark:stroke-gray-700"
+                        />
+                        <XAxis
+                          type="number"
+                          className="text-xs text-gray-500 dark:text-gray-400"
+                        />
+                        <YAxis
+                          dataKey="tag"
+                          type="category"
+                          width={70}
+                          tick={{ fontSize: 11 }}
+                          className="text-xs text-gray-500 dark:text-gray-400"
+                        />
+                        <Tooltip
+                          content={({ active, payload }) => {
+                            if (active && payload && payload.length) {
+                              return (
+                                <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+                                  <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                    {payload[0].payload.tag}
+                                  </p>
+                                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                                    {payload[0].value} 次使用
+                                  </p>
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                        />
+                        <Bar
+                          dataKey="count"
+                          fill="#f97316"
+                          radius={[0, 4, 4, 0]}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* 分类建议历史 */}
+              <ClassificationHistoryCard />
+            </div>
           </div>
         ) : (
           // 无数据空状态
@@ -334,7 +415,9 @@ export function AnalyticsPageClient({ data, error }: AnalyticsPageClientProps) {
             <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
               <TrendingUp className="size-8 text-gray-400" />
             </div>
-            <h3 className="text-gray-900 dark:text-white text-lg font-medium mb-2">暂无统计数据</h3>
+            <h3 className="text-gray-900 dark:text-white text-lg font-medium mb-2">
+              暂无统计数据
+            </h3>
             <p className="text-gray-500 dark:text-gray-400 text-sm">
               开始收藏内容后，这里将显示详细的数据分析
             </p>
@@ -342,5 +425,5 @@ export function AnalyticsPageClient({ data, error }: AnalyticsPageClientProps) {
         )}
       </div>
     </div>
-  )
+  );
 }

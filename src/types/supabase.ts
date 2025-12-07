@@ -209,6 +209,75 @@ export type Database = {
           },
         ];
       };
+      // V9.1新增：分类反馈表
+      classification_feedback: {
+        Row: {
+          id: number;
+          user_id: string;
+          suggestion_id: number | null;
+          organization_suggestion_id: number | null;
+          feedback_type: FeedbackType;
+          comment: string | null;
+          suggested_correct_folder_id: number | null;
+          suggested_correct_folder_name: string | null;
+          context: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: number;
+          user_id: string;
+          suggestion_id?: number | null;
+          organization_suggestion_id?: number | null;
+          feedback_type: FeedbackType;
+          comment?: string | null;
+          suggested_correct_folder_id?: number | null;
+          suggested_correct_folder_name?: string | null;
+          context?: Json;
+          created_at?: string;
+        };
+        Update: {
+          id?: number;
+          user_id?: string;
+          suggestion_id?: number | null;
+          organization_suggestion_id?: number | null;
+          feedback_type?: FeedbackType;
+          comment?: string | null;
+          suggested_correct_folder_id?: number | null;
+          suggested_correct_folder_name?: string | null;
+          context?: Json;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "classification_feedback_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "classification_feedback_suggestion_id_fkey";
+            columns: ["suggestion_id"];
+            isOneToOne: false;
+            referencedRelation: "classification_suggestions";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "classification_feedback_organization_suggestion_id_fkey";
+            columns: ["organization_suggestion_id"];
+            isOneToOne: false;
+            referencedRelation: "organization_suggestions";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "classification_feedback_folder_id_fkey";
+            columns: ["suggested_correct_folder_id"];
+            isOneToOne: false;
+            referencedRelation: "folders";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       bookmarks: {
         Row: {
           id: number;
@@ -246,6 +315,8 @@ export type Database = {
           last_validation_at: string | null; // V7.0新增：最后验证时间
           is_starred: boolean; // V8.0新增：星标/置顶状态
           starred_at: string | null; // V8.0新增：星标时间
+          ai_content_type: "article" | "tutorial" | "video" | "tool" | null; // V9.0新增：AI检测的内容类型
+          ai_content_type_confidence: number | null; // V9.0新增：内容类型检测置信度(0-100)
           ai_vision_data: Json | null; // V10.0新增：视觉分析数据 (Qwen-VL)
           created_at: string;
           updated_at: string;
@@ -287,6 +358,8 @@ export type Database = {
           last_validation_at?: string | null; // V7.0新增
           is_starred?: boolean; // V8.0新增
           starred_at?: string | null; // V8.0新增
+          ai_content_type?: "article" | "tutorial" | "video" | "tool" | null; // V9.0新增
+          ai_content_type_confidence?: number | null; // V9.0新增
           ai_vision_data?: Json | null; // V10.0新增
           created_at?: string;
           updated_at?: string;
@@ -328,6 +401,8 @@ export type Database = {
           last_validation_at?: string | null; // V7.0新增
           is_starred?: boolean; // V8.0新增
           starred_at?: string | null; // V8.0新增
+          ai_content_type?: "article" | "tutorial" | "video" | "tool" | null; // V9.0新增
+          ai_content_type_confidence?: number | null; // V9.0新增
           ai_vision_data?: Json | null; // V10.0新增
           created_at?: string;
           updated_at?: string;
@@ -658,6 +733,16 @@ export type SystemFolderType = "INBOX"; // INBOX: 待整理文件夹
 // V4.2新增：分类建议状态
 export type SuggestionStatus = "pending" | "accepted" | "rejected" | "expired";
 
+// V9.1新增：分类反馈类型
+export type FeedbackType =
+  | "wrong_folder"
+  | "better_folder"
+  | "folder_not_exist"
+  | "confidence_too_high"
+  | "confidence_too_low"
+  | "helpful"
+  | "other";
+
 // V4.4新增：文件夹分组类型
 export type FolderGroup = "work" | "study" | "life" | "entertainment" | "other";
 
@@ -668,6 +753,14 @@ export type ClassificationSuggestionInsert =
   Database["public"]["Tables"]["classification_suggestions"]["Insert"];
 export type ClassificationSuggestionUpdate =
   Database["public"]["Tables"]["classification_suggestions"]["Update"];
+
+// V9.1新增：分类反馈类型别名
+export type ClassificationFeedback =
+  Database["public"]["Tables"]["classification_feedback"]["Row"];
+export type ClassificationFeedbackInsert =
+  Database["public"]["Tables"]["classification_feedback"]["Insert"];
+export type ClassificationFeedbackUpdate =
+  Database["public"]["Tables"]["classification_feedback"]["Update"];
 
 // V4.2新增：重分类配置类型
 export interface ReclassifySettings {

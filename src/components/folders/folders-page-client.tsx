@@ -12,7 +12,7 @@
 
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -328,6 +328,46 @@ export function FoldersPageClient({
     router.refresh();
   };
 
+  // 处理文件夹删除后的乐观更新
+  const handleFolderDeleted = useCallback(
+    (deletedFolderId: number) => {
+      setLocalFolders((prev) => prev.filter((f) => f.id !== deletedFolderId));
+      // 仍然调用 router.refresh() 确保与服务器数据一致
+      router.refresh();
+    },
+    [router],
+  );
+
+  // 处理文件夹重命名后的乐观更新
+  const handleFolderRenamed = useCallback(
+    (folderId: number, newName: string) => {
+      setLocalFolders((prev) =>
+        prev.map((f) => (f.id === folderId ? { ...f, name: newName } : f)),
+      );
+      // router.refresh() 已在 RenameFolderDialog 中调用
+    },
+    [],
+  );
+
+  // 处理文件夹合并后的乐观更新
+  const handleFolderMerged = useCallback(
+    (sourceFolderId: number, targetFolderId: number, movedCount: number) => {
+      setLocalFolders((prev) =>
+        prev
+          // 移除源文件夹
+          .filter((f) => f.id !== sourceFolderId)
+          // 更新目标文件夹的收藏数
+          .map((f) =>
+            f.id === targetFolderId
+              ? { ...f, bookmark_count: (f.bookmark_count || 0) + movedCount }
+              : f,
+          ),
+      );
+      // router.refresh() 已在 MergeFolderDialog 中调用
+    },
+    [],
+  );
+
   const handleCreateClick = () => {
     setShowCreateDialog(true);
   };
@@ -410,6 +450,9 @@ export function FoldersPageClient({
                   folder={folder}
                   allFolders={localFolders}
                   onActionComplete={() => router.refresh()}
+                  onFolderDeleted={handleFolderDeleted}
+                  onFolderRenamed={handleFolderRenamed}
+                  onFolderMerged={handleFolderMerged}
                 />
               </div>
             </div>

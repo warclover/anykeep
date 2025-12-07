@@ -49,12 +49,14 @@ import { generatePlaceholderImage } from "@/lib/utils/placeholder-image";
 import { getProxiedImageUrl } from "@/lib/utils/image-proxy";
 import { PlatformBadge } from "@/components/ui/platform-badge";
 import { BookmarkRatingDisplay } from "@/components/bookmark/bookmark-rating-display";
+import { ContentTypeBadge } from "@/components/bookmark/content-type-badge";
 import {
   separateUserTagsExtended,
   getUsageTagStyleExtended,
   getAiTagColor,
 } from "@/lib/constants/usage-tags";
 import "./bookmark-card-flip.css"; // 复用卡片优化样式
+import { getDisplaySummary } from "@/lib/classification/types/ai-summary";
 
 type ViewVariant = "card" | "list" | "compact";
 
@@ -308,6 +310,15 @@ export function BookmarkCard({
               variant="compact"
               className="flex-shrink-0"
             />
+            {/* V9.0: AI内容类型徽章（仅图标） */}
+            {bookmark.ai_content_type && (
+              <ContentTypeBadge
+                type={bookmark.ai_content_type}
+                size="sm"
+                iconOnly
+                className="flex-shrink-0"
+              />
+            )}
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2 text-xs text-gray-500 dark:text-gray-400 mt-0.5">
             {/* compact 视图：简洁显示来源/作者 */}
@@ -423,11 +434,14 @@ export function BookmarkCard({
               >
                 {bookmark.title}
               </h3>
-              {bookmark.ai_summary && (
-                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
-                  {bookmark.ai_summary}
-                </p>
-              )}
+              {(() => {
+                const displaySummary = getDisplaySummary(bookmark.ai_summary);
+                return displaySummary ? (
+                  <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+                    {displaySummary}
+                  </p>
+                ) : null;
+              })()}
             </div>
 
             <div className="flex items-center justify-between gap-2 mt-2">
@@ -440,6 +454,15 @@ export function BookmarkCard({
                   variant="compact"
                   className="flex-shrink-0"
                 />
+                {/* V9.0: AI内容类型徽章 */}
+                {bookmark.ai_content_type && (
+                  <ContentTypeBadge
+                    type={bookmark.ai_content_type}
+                    size="sm"
+                    iconOnly
+                    className="flex-shrink-0"
+                  />
+                )}
                 {/* P3: 标签 - 列表视图简化显示 */}
                 <div className="flex items-center gap-1.5 flex-wrap">
                   {/* AI标签标识 */}
@@ -631,11 +654,14 @@ export function BookmarkCard({
             </CardTitle>
           </div>
           {/* P0.3: 摘要渐隐效果 */}
-          {bookmark.ai_summary && (
-            <CardDescription className="card-summary-fade">
-              {bookmark.ai_summary}
-            </CardDescription>
-          )}
+          {(() => {
+            const displaySummary = getDisplaySummary(bookmark.ai_summary);
+            return displaySummary ? (
+              <CardDescription className="card-summary-fade">
+                {displaySummary}
+              </CardDescription>
+            ) : null;
+          })()}
         </CardHeader>
 
         <CardContent className="pt-0 flex-1 flex flex-col">
@@ -656,14 +682,18 @@ export function BookmarkCard({
                 )}
               </span>
             )}
-            {/* 内容类型 */}
-            <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
-              {getContentTypeLabel(
-                bookmark.word_count,
-                bookmark.image_count,
-                bookmark.platform,
-              )}
-            </span>
+            {/* V9.0: AI内容类型徽章（优先显示）或回退到基础类型 */}
+            {bookmark.ai_content_type ? (
+              <ContentTypeBadge type={bookmark.ai_content_type} size="sm" />
+            ) : (
+              <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+                {getContentTypeLabel(
+                  bookmark.word_count,
+                  bookmark.image_count,
+                  bookmark.platform,
+                )}
+              </span>
+            )}
             {/* 字数 & 图片数 */}
             {bookmark.word_count != null && bookmark.word_count > 0 && (
               <span className="flex items-center gap-1 text-xs text-gray-400">

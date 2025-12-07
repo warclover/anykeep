@@ -13,6 +13,7 @@ import { ServiceWorkerRegister } from "@/components/pwa/sw-register";
 import { UserProvider } from "@/contexts/user-context";
 import { NavigationProvider } from "@/contexts/navigation-context";
 import { KeepAliveProvider } from "@/lib/cache";
+import { OnboardingProvider } from "@/components/providers/onboarding-provider";
 
 interface RootProvidersProps {
   children: React.ReactNode;
@@ -27,11 +28,13 @@ export function RootProviders({ children }: RootProvidersProps) {
       disableTransitionOnChange
     >
       <UserProvider>
-        <Suspense fallback={null}>
-          <NavigationProvider>
-            <KeepAliveProvider>{children}</KeepAliveProvider>
-          </NavigationProvider>
-        </Suspense>
+        <OnboardingProvider>
+          <Suspense fallback={null}>
+            <NavigationProvider>
+              <KeepAliveProvider>{children}</KeepAliveProvider>
+            </NavigationProvider>
+          </Suspense>
+        </OnboardingProvider>
       </UserProvider>
       <Toaster />
       <ServiceWorkerRegister />

@@ -22,10 +22,20 @@ import {
 import { crawlContent } from "@/lib/utils/crawler";
 import { generateAIContent } from "@/lib/utils/ai-generator";
 import {
+  smartFetchContent,
+  prepareContentForAI,
+} from "@/lib/utils/smart-content-fetcher";
+import { isJinaReaderEnabled } from "@/lib/classification/config/ai-summary-config";
+import {
   generateEmbedding,
   buildEmbeddingText,
 } from "@/lib/utils/embedding-generator";
 import { recommendFolder } from "@/lib/utils/ai-generator";
+import {
+  classifyBookmarkV2,
+  updateFolderProfileAfterClassification,
+  shouldUseV2Classification,
+} from "@/lib/classification/server";
 import { logger } from "@/lib/logger";
 import type { BookmarkInsert } from "@/types/supabase";
 import { BOOKMARK, STORAGE } from "@/lib/constants/messages";
@@ -176,7 +186,10 @@ async function generateBookmarkEmbedding(
 /**
  * 异步生成书签 AI 内容（摘要、标签）并触发后续任务
  * 完全不阻塞主流程，用户可以手动添加标签
+ * V2: 支持内容类型自适应摘要
+ * V2.1: 支持 Jina Reader 智能内容提取
  * @param bookmarkId - 书签ID
+ * @param url - 书签URL（用于内容类型检测）
  * @param title - 标题
  * @param description - 描述
  * @param folderNames - 用户现有文件夹名称（用于标签参考）
@@ -185,6 +198,7 @@ async function generateBookmarkEmbedding(
  */
 async function generateBookmarkAIContent(
   bookmarkId: number,
+  url: string,
   title: string,
   description: string | null,
   folderNames: string[],
@@ -192,31 +206,97 @@ async function generateBookmarkAIContent(
   userSpecifiedFolderId: boolean,
 ): Promise<void> {
   try {
+    const useJina = isJinaReaderEnabled();
+
     logger.info(
       {
         bookmarkId,
+        url,
         title: title.substring(0, 30),
+        useJinaReader: useJina,
         action: "async_ai_start",
       },
-      "AI Content (async): Starting generation",
+      "AI Content (async): Starting generation with content type detection",
     );
 
-    // 1. 生成 AI 摘要和标签
+    // V2.1: 智能内容提取（Jina Reader + 原生降级）
+    let contentForAI: string | undefined = description || undefined;
+
+    if (useJina) {
+      try {
+        logger.info(
+          { bookmarkId, url, action: "smart_fetch_start" },
+          "AI Content (async): Fetching content with smart fetcher",
+        );
+
+        const fetchResult = await smartFetchContent(url, {
+          timeout: 15000,
+          maxContentLength: 50000,
+        });
+
+        if (fetchResult.success && fetchResult.content.length > 100) {
+          // 准备内容用于 AI（截断到合适长度）
+          contentForAI = prepareContentForAI(fetchResult, 4000);
+
+          logger.info(
+            {
+              bookmarkId,
+              source: fetchResult.source,
+              format: fetchResult.format,
+              wordCount: fetchResult.wordCount,
+              estimatedTokens: fetchResult.estimatedTokens,
+              preparedLength: contentForAI.length,
+              fetchTime: fetchResult.fetchTime,
+              action: "smart_fetch_success",
+            },
+            "AI Content (async): Content fetched successfully",
+          );
+        } else {
+          logger.warn(
+            {
+              bookmarkId,
+              error: fetchResult.error,
+              contentLength: fetchResult.content.length,
+              action: "smart_fetch_fallback",
+            },
+            "AI Content (async): Smart fetch failed, using description",
+          );
+        }
+      } catch (fetchError) {
+        logger.error(
+          {
+            bookmarkId,
+            error:
+              fetchError instanceof Error
+                ? fetchError.message
+                : String(fetchError),
+            action: "smart_fetch_error",
+          },
+          "AI Content (async): Smart fetch error, using description",
+        );
+      }
+    }
+
+    // 1. 生成 AI 摘要和标签（V2: 包含内容类型检测）
     const aiResult = await generateAIContent({
       title,
+      url,
       description: description || undefined,
+      content: contentForAI,
       existingFolderNames: folderNames,
     });
 
     const { createClient } = await import("@/lib/supabase/server");
     const supabase = await createClient();
 
-    // 2. 更新书签记录（包括状态更新为 ACTIVE）
+    // 2. 更新书签记录（包括状态更新为 ACTIVE + V2 内容类型）
     const { error: updateError } = await supabase
       .from("bookmarks")
       .update({
         ai_summary: aiResult.summary,
         ai_tags: aiResult.tags,
+        ai_content_type: aiResult.contentType || null, // V2: AI检测的内容类型
+        ai_content_type_confidence: aiResult.contentTypeConfidence || null, // V2: 置信度
         status: "COMPLETED", // AI 内容生成完成
       })
       .eq("id", bookmarkId)
@@ -231,9 +311,11 @@ async function generateBookmarkAIContent(
         bookmarkId,
         summary: aiResult.summary.substring(0, 50) + "...",
         tagCount: aiResult.tags.length,
+        contentType: aiResult.contentType,
+        contentTypeConfidence: aiResult.contentTypeConfidence,
         action: "async_ai_success",
       },
-      "AI Content (async): Generated and saved",
+      "AI Content (async): Generated and saved with content type",
     );
 
     // 3. 生成向量嵌入
@@ -256,18 +338,45 @@ async function generateBookmarkAIContent(
       aiResult.summary &&
       aiResult.tags.length > 0
     ) {
-      processAIFolderRecommendation(
-        bookmarkId,
-        title,
-        aiResult.summary,
-        aiResult.tags,
-        userId,
-      ).catch((err) => {
-        logger.error(
-          { error: err, bookmarkId },
-          "AI Content (async): Folder recommendation failed",
-        );
-      });
+      // Use V2 classification system if enabled
+      if (shouldUseV2Classification()) {
+        classifyBookmarkV2(
+          bookmarkId,
+          title,
+          aiResult.summary,
+          aiResult.tags,
+          userId,
+        )
+          .then(async (result) => {
+            // Update folder profile if classified
+            if (result.classified && result.folderId) {
+              await updateFolderProfileAfterClassification(
+                result.folderId,
+                userId,
+              );
+            }
+          })
+          .catch((err) => {
+            logger.error(
+              { error: err, bookmarkId },
+              "AI Content (async): V2 Classification failed",
+            );
+          });
+      } else {
+        // Legacy V1 classification
+        processAIFolderRecommendation(
+          bookmarkId,
+          title,
+          aiResult.summary,
+          aiResult.tags,
+          userId,
+        ).catch((err) => {
+          logger.error(
+            { error: err, bookmarkId },
+            "AI Content (async): Folder recommendation failed",
+          );
+        });
+      }
     }
   } catch (error) {
     logger.error(
@@ -673,9 +782,10 @@ export async function POST(request: NextRequest) {
       // 异步获取标题，然后生成 AI 内容
       fetchAndUpdateTitle(bookmark.id, url, user.id)
         .then(({ title: fetchedTitle, description: fetchedDesc }) => {
-          // 标题获取成功后，继续生成 AI 内容
+          // 标题获取成功后，继续生成 AI 内容（V2: 传递 url 用于内容类型检测）
           return generateBookmarkAIContent(
             bookmark.id,
+            url,
             fetchedTitle,
             fetchedDesc,
             folderNames,
@@ -690,9 +800,10 @@ export async function POST(request: NextRequest) {
           );
         });
     } else {
-      // 已有标题，直接生成 AI 内容
+      // 已有标题，直接生成 AI 内容（V2: 传递 url 用于内容类型检测）
       generateBookmarkAIContent(
         bookmark.id,
+        url,
         finalTitle,
         finalDescription ?? null,
         folderNames,

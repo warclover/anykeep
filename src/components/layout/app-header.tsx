@@ -75,7 +75,7 @@ export function AppHeader() {
         </Link>
 
         {/* 平台筛选（仅首页显示） */}
-        <div className="hidden sm:flex flex-1 justify-center overflow-hidden mx-2">
+        <div className="hidden sm:flex flex-1 justify-start overflow-hidden ml-4 lg:ml-20 mr-2">
           <PlatformFilter />
         </div>
 

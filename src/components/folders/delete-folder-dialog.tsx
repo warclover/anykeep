@@ -62,8 +62,7 @@ export function DeleteFolderDialog({
   const bookmarkCount = folder.bookmark_count || 0;
   const hasBookmarks = bookmarkCount > 0;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     setError(null);
 
     logger.debug(
@@ -229,7 +228,7 @@ export function DeleteFolderDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-4">
           {/* 有收藏时显示选项 */}
           {hasBookmarks && (
             <>
@@ -332,7 +331,8 @@ export function DeleteFolderDialog({
               取消
             </Button>
             <Button
-              type="submit"
+              type="button"
+              onClick={handleSubmit}
               disabled={
                 isSubmitting ||
                 (hasBookmarks && deleteOption === "move" && !targetFolderId)
@@ -349,7 +349,7 @@ export function DeleteFolderDialog({
               )}
             </Button>
           </DialogFooter>
-        </form>
+        </div>
       </DialogContent>
     </Dialog>
   );

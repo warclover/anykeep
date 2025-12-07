@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 /**
  * Generate multi-size PNG icons from SVG
  * Run: node scripts/generate-icons.mjs

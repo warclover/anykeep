@@ -65,6 +65,13 @@ const ReclassifyBanner = lazy(() =>
     default: mod.ReclassifyBanner,
   })),
 );
+
+// 懒加载 InboxOrganizationBanner（V2 整理建议）
+const InboxOrganizationBanner = lazy(() =>
+  import("@/components/inbox/inbox-organization-banner").then((mod) => ({
+    default: mod.InboxOrganizationBanner,
+  })),
+);
 import { useFolderRecommendation } from "@/hooks/use-folder-recommendation";
 import { useDialogs } from "@/hooks/use-dialogs";
 import { useSelectionMode } from "@/hooks/use-selection-mode";
@@ -1345,6 +1352,11 @@ export function HomePageClient({
         {/* V4.2 智能分类横幅（懒加载） */}
         <Suspense fallback={null}>
           <ReclassifyBanner className="mb-4" />
+        </Suspense>
+
+        {/* V2 整理建议横幅（懒加载） */}
+        <Suspense fallback={null}>
+          <InboxOrganizationBanner className="mb-4" />
         </Suspense>
 
         {/* 初始加载骨架屏 */}

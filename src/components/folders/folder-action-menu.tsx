@@ -53,6 +53,13 @@ interface FolderActionMenuProps {
   folder: FolderWithCount;
   allFolders: FolderWithCount[];
   onActionComplete?: () => void;
+  onFolderDeleted?: (folderId: number) => void;
+  onFolderRenamed?: (folderId: number, newName: string) => void;
+  onFolderMerged?: (
+    sourceFolderId: number,
+    targetFolderId: number,
+    movedCount: number,
+  ) => void;
 }
 
 // 文件夹分组配置
@@ -89,6 +96,9 @@ export function FolderActionMenu({
   folder,
   allFolders,
   onActionComplete,
+  onFolderDeleted,
+  onFolderRenamed,
+  onFolderMerged,
 }: FolderActionMenuProps) {
   const router = useRouter();
   const { fetchWithAbort } = useAbortableFetch();
@@ -435,6 +445,7 @@ export function FolderActionMenu({
         onOpenChange={setShowRenameDialog}
         folder={folder}
         onSuccess={handleActionComplete}
+        onRenamed={(newName) => onFolderRenamed?.(folder.id, newName)}
       />
 
       {/* 合并对话框 */}
@@ -444,6 +455,9 @@ export function FolderActionMenu({
         folder={folder}
         targetFolders={targetFolders}
         onSuccess={handleActionComplete}
+        onMerged={(sourceFolderId, targetFolderId, movedCount) =>
+          onFolderMerged?.(sourceFolderId, targetFolderId, movedCount)
+        }
       />
 
       {/* 删除对话框 */}
@@ -452,7 +466,11 @@ export function FolderActionMenu({
         onOpenChange={setShowDeleteDialog}
         folder={folder}
         targetFolders={targetFolders}
-        onSuccess={handleActionComplete}
+        onSuccess={() => {
+          // 先触发乐观更新，再执行通用回调
+          onFolderDeleted?.(folder.id);
+          handleActionComplete();
+        }}
       />
     </>
   );

@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 /**
  * AnyKeep 浏览器扩展 - Background Service Worker
  * PRD v4.1: 浏览器扩展完善

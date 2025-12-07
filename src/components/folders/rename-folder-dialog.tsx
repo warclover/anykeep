@@ -27,6 +27,7 @@ interface RenameFolderDialogProps {
   onOpenChange: (open: boolean) => void;
   folder: Folder;
   onSuccess?: () => void;
+  onRenamed?: (newName: string) => void;
 }
 
 export function RenameFolderDialog({
@@ -34,6 +35,7 @@ export function RenameFolderDialog({
   onOpenChange,
   folder,
   onSuccess,
+  onRenamed,
 }: RenameFolderDialogProps) {
   const router = useRouter();
   const { fetchWithAbort } = useAbortableFetch();
@@ -49,9 +51,7 @@ export function RenameFolderDialog({
     }
   }, [open, folder.name]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
+  const handleSubmit = async () => {
     // 验证
     const trimmedName = name.trim();
     if (!trimmedName) {
@@ -89,6 +89,7 @@ export function RenameFolderDialog({
 
       toast.success("文件夹已重命名");
       onOpenChange(false);
+      onRenamed?.(trimmedName); // 先触发乐观更新
       onSuccess?.();
       router.refresh();
     } catch (err) {
@@ -111,7 +112,7 @@ export function RenameFolderDialog({
           <DialogDescription>为「{folder.name}」设置新名称</DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="folder-name">文件夹名称</Label>
             <Input
@@ -120,6 +121,12 @@ export function RenameFolderDialog({
               onChange={(e) => {
                 setName(e.target.value);
                 setError(null);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !isSubmitting) {
+                  e.preventDefault();
+                  handleSubmit();
+                }
               }}
               placeholder="输入新名称"
               autoFocus
@@ -137,7 +144,11 @@ export function RenameFolderDialog({
             >
               取消
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button
+              type="button"
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+            >
               {isSubmitting ? (
                 <>
                   <Loader2 className="size-4 mr-2 animate-spin" />
@@ -148,7 +159,7 @@ export function RenameFolderDialog({
               )}
             </Button>
           </DialogFooter>
-        </form>
+        </div>
       </DialogContent>
     </Dialog>
   );

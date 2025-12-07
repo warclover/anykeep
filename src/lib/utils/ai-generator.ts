@@ -1,14 +1,49 @@
 /**
  * AI 内容生成工具
  * 使用 DeepSeek API 生成摘要和标签
+ *
+ * V2 优化：
+ * - 内容类型自适应摘要（Article/Tutorial/Video/Tool）
+ * - 类型专用 Prompt 模板
+ * - 类型专用 API 参数（temperature/max_tokens）
+ * - 完整性检测（记录截断警告）
+ *
+ * V2.1 优化：
+ * - 支持 JSON 结构化输出（通过特性开关控制）
+ * - 回滚机制（环境变量 AI_SUMMARY_JSON_OUTPUT=false）
  */
 
 import { logger } from "@/lib/logger";
+import { isSummaryComplete } from "./content-extractor";
+import {
+  detectContentType,
+  type ContentType,
+  type ContentTypeResult,
+} from "@/lib/classification/content-type-detector";
+import {
+  getPromptConfig,
+  buildTypeSpecificPrompt,
+  getPromptConfigV2,
+  buildTypeSpecificPromptV2,
+} from "@/lib/classification/prompts";
+import {
+  isJsonOutputEnabled,
+  getAISummaryConfig,
+} from "@/lib/classification/config/ai-summary-config";
+import {
+  safeParseJson,
+  type StructuredSummary,
+} from "@/lib/classification/types/ai-summary";
 
 export interface AIGenerateResult {
   summary: string;
   tags: string[];
+  contentType?: ContentType; // Detected content type
+  contentTypeConfidence?: number; // Detection confidence (0-100)
 }
+
+// Re-export ContentType for external use
+export type { ContentType } from "@/lib/classification/content-type-detector";
 
 export interface FolderRecommendation {
   folderId: number | null; // null 表示建议新建文件夹
@@ -25,6 +60,7 @@ interface ExistingFolder {
 
 interface AIGenerateRequest {
   title: string;
+  url?: string; // URL for content type detection
   description?: string;
   content?: string;
   existingFolderNames?: string[]; // 用户现有文件夹名称（用于标签参考）
@@ -48,9 +84,12 @@ function getSummaryLimit(contentLength: number): { min: number; max: number } {
 
 /**
  * 调用 DeepSeek API 生成摘要和标签
+ * V2: 支持内容类型自适应 Prompt
+ * V2.1: 支持 JSON 结构化输出（通过配置开关控制）
  */
 async function callDeepSeekAPI(
   title: string,
+  contentTypeResult: ContentTypeResult,
   description?: string,
   content?: string,
   existingFolderNames?: string[],
@@ -61,8 +100,48 @@ async function callDeepSeekAPI(
     throw new Error("DEEPSEEK_API_KEY 环境变量未配置");
   }
 
-  // 构建提示词
-  const prompt = buildPrompt(title, description, content, existingFolderNames);
+  // 检查是否启用 JSON 结构化输出
+  const useJsonOutput = isJsonOutputEnabled();
+
+  logger.debug(
+    {
+      useJsonOutput,
+      configVersion: "2.1",
+      action: "ai_config_check",
+    },
+    "AI Generator: Config check",
+  );
+
+  // 根据配置选择 V1 或 V2 prompt
+  let systemPrompt: string;
+  let userPrompt: string;
+  let temperature: number;
+
+  if (useJsonOutput) {
+    // V2: JSON 结构化输出
+    const promptConfigV2 = getPromptConfigV2(contentTypeResult.type);
+    systemPrompt = promptConfigV2.systemPrompt;
+    userPrompt = buildTypeSpecificPromptV2(
+      contentTypeResult.type,
+      title,
+      description,
+      content,
+      existingFolderNames,
+    );
+    temperature = promptConfigV2.temperature;
+  } else {
+    // V1: 纯文本输出（回滚模式）
+    const promptConfig = getPromptConfig(contentTypeResult.type);
+    systemPrompt = promptConfig.systemPrompt;
+    userPrompt = buildTypeSpecificPrompt(
+      contentTypeResult.type,
+      title,
+      description,
+      content,
+      existingFolderNames,
+    );
+    temperature = promptConfig.temperature;
+  }
 
   try {
     const response = await fetch(
@@ -78,18 +157,17 @@ async function callDeepSeekAPI(
           messages: [
             {
               role: "system",
-              content:
-                "你是一个专业的内容分析助手，擅长提取关键信息、生成结构化摘要和精准标签。请严格按照 JSON 格式返回结果。",
+              content: systemPrompt,
             },
             {
               role: "user",
-              content: prompt,
+              content: userPrompt,
             },
           ],
-          temperature: 0.7,
-          max_tokens: 1000, // 从 500 提升到 1000，支持更完整的摘要
+          temperature: temperature,
+          max_tokens: 2000,
         }),
-        signal: AbortSignal.timeout(15000), // 15秒超时
+        signal: AbortSignal.timeout(15000),
       },
     );
 
@@ -105,14 +183,28 @@ async function callDeepSeekAPI(
       throw new Error("AI 未返回内容");
     }
 
-    // 解析 JSON 响应
-    const result = parseAIResponse(aiContent);
+    // 根据输出模式解析响应
+    let result: AIGenerateResult;
+
+    if (useJsonOutput) {
+      // V2: 解析结构化 JSON 响应
+      result = parseAIResponseV2(aiContent);
+    } else {
+      // V1: 解析传统 JSON 响应
+      result = parseAIResponse(aiContent);
+    }
+
+    // 添加内容类型信息
+    result.contentType = contentTypeResult.type;
+    result.contentTypeConfidence = contentTypeResult.confidence;
+
     return result;
   } catch (error) {
     if (error instanceof Error) {
       logger.error(
         {
           error: error.message,
+          useJsonOutput,
           action: "deepseek_api_call",
         },
         "AI Generator: DeepSeek API error",
@@ -123,209 +215,125 @@ async function callDeepSeekAPI(
   }
 }
 
-/**
- * 识别内容类型
- */
-function detectContentType(
-  title: string,
-  description?: string,
-): "article" | "tutorial" | "video" | "tool" | "course" {
-  const text = `${title} ${description || ""}`.toLowerCase();
-
-  // 教程类
-  if (
-    text.includes("教程") ||
-    text.includes("如何") ||
-    text.includes("实战") ||
-    text.includes("入门") ||
-    text.includes("step by step") ||
-    text.includes("手把手")
-  ) {
-    return "tutorial";
-  }
-
-  // 视频类
-  if (
-    title.includes("视频") ||
-    text.includes("bilibili") ||
-    text.includes("b站") ||
-    text.includes("youtube") ||
-    text.includes("【") || // 视频标题常用括号
-    text.includes("bilibili.com")
-  ) {
-    return "video";
-  }
-
-  // 工具类
-  if (
-    text.includes("工具") ||
-    text.includes("插件") ||
-    text.includes("软件") ||
-    text.includes("app") ||
-    text.includes("应用")
-  ) {
-    return "tool";
-  }
-
-  // 课程类
-  if (
-    text.includes("课程") ||
-    text.includes("训练营") ||
-    text.includes("专栏")
-  ) {
-    return "course";
-  }
-
-  return "article";
-}
+// ============================================================
+// Note: detectContentType, getTagRequirementsByType, and buildPrompt
+// have been moved to:
+// - src/lib/classification/content-type-detector.ts
+// - src/lib/classification/prompts/summary-prompts.ts
+// ============================================================
 
 /**
- * 根据内容类型生成定制化标签要求
+ * 解析 V2 结构化 JSON 响应
+ *
+ * V2 输出格式：
+ * {
+ *   "tldr": "一句话总结",
+ *   "key_points": ["要点1", "要点2"],
+ *   "keywords": ["标签1", "标签2"],
+ *   "sentiment": "positive|neutral|negative",
+ *   "reading_time": 5,
+ *   "action_items": ["步骤1", "步骤2"]
+ * }
+ *
+ * 存储格式：将完整 JSON 存入 summary 字段，前端自动检测并渲染
  */
-function getTagRequirementsByType(
-  type: "tutorial" | "video" | "tool" | "course" | "article",
-): string {
-  const requirements: Record<
-    "tutorial" | "video" | "tool" | "course" | "article",
-    string
-  > = {
-    tutorial: `
-【教程内容特定要求】
-- 必须包含技术栈标签（如"React"、"Python"、"Figma"）
-- 必须包含学习阶段标签（如"入门"、"进阶"、"实战"）
-- 推荐包含应用场景标签（如"项目实战"、"代码重构"）`,
+function parseAIResponseV2(content: string): AIGenerateResult {
+  try {
+    // 移除可能的 markdown 代码块标记
+    const cleaned = content
+      .replace(/```json\n?/gi, "")
+      .replace(/```\n?/g, "")
+      .trim();
 
-    video: `
-【视频内容特定要求】
-- 必须包含视频主题的核心关键词
-- 如果是技术视频，包含具体技术栈
-- 推荐包含适合人群标签（如"初学者友好"、"深度解析"）`,
+    // 安全解析 JSON（带修复尝试）
+    const parsed = safeParseJson<StructuredSummary>(cleaned);
 
-    tool: `
-【工具类特定要求】
-- 必须包含工具类型标签（如"效率工具"、"设计工具"、"开发工具"）
-- 必须包含具体用途标签（如"笔记管理"、"原型设计"、"代码编辑"）
-- 推荐包含平台标签（如"跨平台"、"Web工具"、"Mac专属"）`,
-
-    course: `
-【课程类特定要求】
-- 必须包含课程主题的领域标签
-- 必须包含学习类型标签（如"系统课程"、"专题讲座"）
-- 推荐包含课程深度标签（如"基础课程"、"高级课程"）`,
-
-    article: `
-【文章类特定要求】
-- 必须包含文章主题的领域标签
-- 推荐包含内容深度标签（如"深度分析"、"快速上手"、"案例研究"）
-- 推荐包含应用价值标签（如"最佳实践"、"避坑指南"）`,
-  };
-
-  return requirements[type] || requirements.article;
-}
-
-/**
- * 构建 AI 提示词
- * 根据内容长度动态调整摘要上限
- */
-function buildPrompt(
-  title: string,
-  description?: string,
-  content?: string,
-  existingFolderNames?: string[],
-): string {
-  // 计算总内容长度
-  const contentLength =
-    (title?.length || 0) + (description?.length || 0) + (content?.length || 0);
-  const { min, max } = getSummaryLimit(contentLength);
-
-  // 识别内容类型
-  const contentType = detectContentType(title, description);
-  const typeSpecificRequirements = getTagRequirementsByType(contentType);
-
-  // 构建文件夹参考信息
-  let folderContext = "";
-  if (existingFolderNames && existingFolderNames.length > 0) {
-    // 过滤掉系统文件夹和过长的名称，只保留有意义的文件夹名
-    const meaningfulFolders = existingFolderNames
-      .filter((name) => name.length <= 20 && !name.includes("待整理"))
-      .slice(0, 10); // 最多10个，避免 Prompt 过长
-
-    if (meaningfulFolders.length > 0) {
-      folderContext = `\n\n【用户现有文件夹】\n${meaningfulFolders.join("、")}\n💡 参考这些文件夹名称生成相关标签，便于自动归类`;
+    if (!parsed) {
+      logger.warn(
+        {
+          rawContent: cleaned.substring(0, 200),
+          action: "parse_v2_json_failed",
+        },
+        "AI Generator: V2 JSON parse failed, falling back to V1",
+      );
+      // 回退到 V1 解析
+      return parseAIResponse(content);
     }
+
+    // 验证必要字段
+    if (!parsed.tldr || !Array.isArray(parsed.key_points)) {
+      logger.warn(
+        {
+          hasTldr: !!parsed.tldr,
+          hasKeyPoints: Array.isArray(parsed.key_points),
+          action: "parse_v2_invalid_structure",
+        },
+        "AI Generator: V2 structure invalid, falling back to V1",
+      );
+      return parseAIResponse(content);
+    }
+
+    // 提取标签（优先使用 keywords，回退到 key_points 关键词）
+    let tags: string[] = [];
+    if (Array.isArray(parsed.keywords) && parsed.keywords.length > 0) {
+      tags = parsed.keywords
+        .filter((k): k is string => typeof k === "string")
+        .map((k) => k.trim())
+        .filter((k) => k.length > 0)
+        .slice(0, 5);
+    }
+
+    // 如果没有 keywords，使用配置中的回退标签
+    if (tags.length === 0 && parsed.key_points.length > 0) {
+      tags = getAISummaryConfig().fallbackTags;
+    }
+
+    // 将完整 JSON 作为 summary 存储（前端会自动检测并渲染）
+    const summaryJson = JSON.stringify({
+      tldr: parsed.tldr,
+      key_points: parsed.key_points.filter(
+        (p): p is string => typeof p === "string",
+      ),
+      keywords: tags,
+      sentiment: parsed.sentiment || "neutral",
+      reading_time:
+        typeof parsed.reading_time === "number" ? parsed.reading_time : 5,
+      action_items: Array.isArray(parsed.action_items)
+        ? parsed.action_items.filter((a): a is string => typeof a === "string")
+        : undefined,
+    });
+
+    logger.info(
+      {
+        tldrLength: parsed.tldr.length,
+        keyPointsCount: parsed.key_points.length,
+        tagsCount: tags.length,
+        hasActionItems: !!parsed.action_items?.length,
+        action: "parse_v2_success",
+      },
+      "AI Generator: V2 JSON parsed successfully",
+    );
+
+    return {
+      summary: summaryJson,
+      tags,
+    };
+  } catch (error) {
+    logger.error(
+      {
+        error: error instanceof Error ? error.message : String(error),
+        rawContent: content.substring(0, 200),
+        action: "parse_v2_error",
+      },
+      "AI Generator: V2 parse error, falling back to V1",
+    );
+    // 出错时回退到 V1 解析
+    return parseAIResponse(content);
   }
-
-  let prompt = `你是一个专业的内容分析助手。请对以下内容进行深度分析，生成高质量摘要。
-
-【内容信息】
-标题：${title}`;
-
-  if (description) {
-    prompt += `\n描述：${description}`;
-  }
-
-  if (content) {
-    // 提高到5000字符，确保关键信息不丢失
-    const truncatedContent = content.substring(0, 5000);
-    prompt += `\n\n正文内容：\n${truncatedContent}`;
-  }
-
-  // 添加文件夹参考信息
-  if (folderContext) {
-    prompt += folderContext;
-  }
-
-  prompt += `
-
-【摘要要求】
-1. **长度**：${min}-${max}字，根据内容丰富度灵活调整
-2. **结构**：
-   - 核心主旨（用一句话概括）
-   - 关键信息点（2-4个要点）
-   - 适用场景或价值（可选）
-3. **完整性**：
-   - 保留所有关键信息和数据
-   - 包含重要的专业术语
-   - 如果有方法论/步骤，必须保留
-4. **可读性**：
-   - 使用清晰的逻辑结构
-   - 避免笼统描述，优先具体信息
-
-【标签要求】
-1. **数量**：生成3-5个精准标签
-2. **层次结构**：
-   - 必须包含：1个领域标签（如"前端开发"、"产品设计"、"数据分析"）
-   - 可选包含：1-2个技术标签（如"React"、"TypeScript"、"Figma"）
-   - 可选包含：1-2个场景标签（如"性能优化"、"用户研究"、"团队协作"）
-3. **准确性**：
-   - 标签必须基于内容实际讨论的主题
-   - 避免过于宽泛的标签（如"技术"、"学习"）
-   - 使用行业标准术语（如"前端"而非"网页开发"）
-4. **优先级**：
-   - 如果内容提到具体技术栈，必须作为标签（如React、Vue、Python）
-   - 如果内容有明确应用场景，必须作为标签（如"面试准备"、"项目实战"）
-${typeSpecificRequirements}
-
-【标签示例】
-- 前端技术文章 → ["前端开发", "React", "性能优化"]
-- 产品设计教程 → ["产品设计", "Figma", "用户体验", "设计系统"]
-- Python数据分析 → ["数据分析", "Python", "Pandas", "可视化"]
-- 面试准备资料 → ["职业发展", "面试准备", "算法题解"]
-- 个人效率工具 → ["效率工具", "个人管理", "自动化"]
-
-【返回格式】（严格JSON）
-{
-  "summary": "完整摘要内容",
-  "tags": ["领域标签", "技术标签", "场景标签"]
-}
-
-只返回JSON，不要任何额外说明。`;
-
-  return prompt;
 }
 
 /**
- * 解析 AI 返回的内容
+ * 解析 V1 AI 返回的内容（传统纯文本格式）
  */
 function parseAIResponse(content: string): AIGenerateResult {
   try {
@@ -356,8 +364,22 @@ function parseAIResponse(content: string): AIGenerateResult {
       throw new Error("No valid tags found");
     }
 
+    const trimmedSummary = result.summary.trim();
+
+    // 检测摘要完整性（仅记录日志，不阻断流程）
+    if (!isSummaryComplete(trimmedSummary)) {
+      logger.warn(
+        {
+          summaryLength: trimmedSummary.length,
+          lastChars: trimmedSummary.slice(-20),
+          action: "summary_incomplete_detected",
+        },
+        "AI Generator: Summary may be truncated",
+      );
+    }
+
     return {
-      summary: result.summary.trim(),
+      summary: trimmedSummary,
       tags: tags.slice(0, 5), // 最多5个标签
     };
   } catch (error) {
@@ -431,38 +453,54 @@ function generateFallbackContent(
 
 /**
  * 生成 AI 摘要和标签
- * @param request - 包含标题、描述和内容的请求对象
- * @returns AI 生成的摘要和标签
+ * V2: 支持内容类型自适应摘要
+ * @param request - 包含标题、URL、描述和内容的请求对象
+ * @returns AI 生成的摘要、标签和内容类型
  */
 export async function generateAIContent(
   request: AIGenerateRequest,
 ): Promise<AIGenerateResult> {
-  const { title, description, content, existingFolderNames } = request;
+  const { title, url, description, content, existingFolderNames } = request;
 
   // 验证输入
   if (!title || title.trim().length === 0) {
     throw new Error("标题不能为空");
   }
 
+  // 检测内容类型
+  const contentTypeResult = detectContentType({
+    url,
+    title,
+    description,
+    content,
+  });
+
   try {
     logger.info(
       {
         title,
+        url,
+        contentType: contentTypeResult.type,
+        contentTypeConfidence: contentTypeResult.confidence,
         folderCount: existingFolderNames?.length || 0,
         action: "generate_start",
       },
-      "AI Generator: Generating content",
+      "AI Generator: Generating content with type detection",
     );
+
     const result = await callDeepSeekAPI(
       title,
+      contentTypeResult,
       description,
       content,
       existingFolderNames,
     );
+
     logger.info(
       {
-        summary: result.summary,
+        summary: result.summary.substring(0, 100),
         tagCount: result.tags.length,
+        contentType: result.contentType,
         action: "generate_success",
       },
       "AI Generator: Success",
@@ -474,15 +512,22 @@ export async function generateAIContent(
       {
         error: error instanceof Error ? error.message : String(error),
         title,
+        contentType: contentTypeResult.type,
         action: "generate_failed",
       },
       "AI Generator: Failed, using fallback",
     );
     const fallback = generateFallbackContent(title, description, content);
+
+    // 添加内容类型信息到回退结果
+    fallback.contentType = contentTypeResult.type;
+    fallback.contentTypeConfidence = contentTypeResult.confidence;
+
     logger.info(
       {
         summary: fallback.summary,
         tagCount: fallback.tags.length,
+        contentType: fallback.contentType,
         action: "fallback_used",
       },
       "AI Generator: Fallback",

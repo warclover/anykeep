@@ -117,6 +117,7 @@ export function BookmarkListItem({
       {/* Favicon - 使用原生 img 避免 Next.js 图像优化器的网络请求超时 */}
       <div className="w-4 h-4 flex-shrink-0 relative">
         {!imageError && faviconUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={faviconUrl}
             alt=""
