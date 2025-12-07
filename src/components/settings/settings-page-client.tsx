@@ -27,37 +27,17 @@ import {
   Download,
   Trash2,
   LogOut,
+  Check,
 } from "lucide-react";
 import { InterestSettingsCard } from "./interest-settings-card";
 import { ProfileSettingsCard } from "./profile-settings-card";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { ErrorMessage } from "@/components/ui/error-message";
+import { clientLogger } from "@/lib/client-logger";
 import type { User } from "@supabase/supabase-js";
+import type { UserSettings } from "@/types/user-settings";
 import { ALL_PLATFORMS } from "@/lib/constants/platforms";
-
-interface UserSettings {
-  platforms: {
-    wechat: boolean;
-    bilibili: boolean;
-    xiaohongshu: boolean;
-    zhihu: boolean;
-  };
-  ai: {
-    autoTags: boolean;
-    autoSummary: boolean;
-    semanticSearch: boolean;
-  };
-  privacy: {
-    dataEncryption: boolean;
-    shareAnalytics: boolean;
-  };
-  notifications: {
-    email: boolean;
-    inApp: boolean;
-    weeklyDigest: boolean;
-  };
-}
 
 interface SettingsPageClientProps {
   user: User;
@@ -74,6 +54,8 @@ export function SettingsPageClient({
   const supabase = createClient();
   const [settings, setSettings] = useState(initialSettings);
   const [saving, setSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const handleRetry = () => {
     router.refresh();
@@ -92,19 +74,37 @@ export function SettingsPageClient({
         [key]: value,
       },
     }));
+    // 清除之前的保存状态
+    setSaveSuccess(false);
+    setSaveError(null);
   };
 
-  // 保存设置
+  // 保存设置到数据库
   const handleSave = async () => {
     setSaving(true);
+    setSaveError(null);
     try {
-      // TODO: 保存到数据库
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      // 设置已保存
-    } catch (error) {
-      if (process.env.NODE_ENV === "development") {
-        console.error("Failed to save settings:", error);
+      const response = await fetch("/api/user/settings", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(settings),
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error?.message || "保存失败");
       }
+
+      setSaveSuccess(true);
+      // 3秒后自动隐藏成功提示
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "保存设置失败";
+      setSaveError(message);
+      clientLogger.error({ error: message }, "Failed to save settings");
     } finally {
       setSaving(false);
     }
@@ -146,9 +146,22 @@ export function SettingsPageClient({
               管理你的账号、授权和偏好设置
             </p>
           </div>
-          <Button onClick={handleSave} disabled={saving}>
-            {saving ? "保存中..." : "保存设置"}
-          </Button>
+          <div className="flex items-center gap-3">
+            {saveError && (
+              <span className="text-sm text-red-600 dark:text-red-400">
+                {saveError}
+              </span>
+            )}
+            {saveSuccess && (
+              <span className="flex items-center gap-1 text-sm text-green-600 dark:text-green-400">
+                <Check className="size-4" />
+                已保存
+              </span>
+            )}
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? "保存中..." : "保存设置"}
+            </Button>
+          </div>
         </div>
       </header>
 

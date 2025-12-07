@@ -8,6 +8,8 @@ export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { SettingsPageClient } from "@/components/settings/settings-page-client";
+import { mergeWithDefaults } from "@/types/user-settings";
+import type { UserSettings } from "@/types/user-settings";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
@@ -22,34 +24,17 @@ export default async function SettingsPage() {
     redirect("/login");
   }
 
-  // TODO: 从数据库获取用户设置
-  // 目前使用默认值
-  const userSettings = {
-    // 平台授权
-    platforms: {
-      wechat: false,
-      bilibili: false,
-      xiaohongshu: false,
-      zhihu: false,
-    },
-    // AI 功能
-    ai: {
-      autoTags: true,
-      autoSummary: true,
-      semanticSearch: false,
-    },
-    // 隐私安全
-    privacy: {
-      dataEncryption: true,
-      shareAnalytics: false,
-    },
-    // 通知偏好
-    notifications: {
-      email: true,
-      inApp: true,
-      weeklyDigest: false,
-    },
-  };
+  // 从数据库获取用户设置
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("settings")
+    .eq("id", user.id)
+    .single();
+
+  // 合并默认值（处理旧版设置或新用户）
+  const userSettings = mergeWithDefaults(
+    profile?.settings as Partial<UserSettings> | null,
+  );
 
   return <SettingsPageClient user={user} settings={userSettings} />;
 }

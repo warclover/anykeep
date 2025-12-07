@@ -30,9 +30,10 @@ const eslintConfig = defineConfig([
       // 禁止使用 any 类型
       "@typescript-eslint/no-explicit-any": "error",
 
-      // 限制 console 使用（仅允许 warn 和 error，且需要在开发环境判断）
-      "no-console": ["warn", {
-        allow: ["warn", "error"]
+      // 限制 console 使用 - 推荐使用 logger 或 clientLogger
+      // 生产代码禁止 console.log，允许 console.error（便于调试）
+      "no-console": ["error", {
+        allow: ["error"]
       }],
 
       // 强制使用类型导入

@@ -89,6 +89,14 @@ import {
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Bookmark } from "@/types/supabase";
+import {
+  HOME_PLATFORMS,
+  SORT_OPTIONS,
+  VIEW_MODE_STORAGE_KEY,
+  LAYOUT_MODE_STORAGE_KEY,
+  FLIP_CARD_STORAGE_KEY,
+} from "./constants";
+import type { ViewMode, LayoutMode } from "./constants";
 
 // 扩展的书签类型（包含文件夹信息）
 type BookmarkWithFolder = Bookmark & {
@@ -104,45 +112,9 @@ interface HomePageClientProps {
   urlPlatform?: string;
 }
 
-// 平台配置（内容平台 + 浏览器书签统一入口）
-const platforms = [
-  { id: "all", name: "全部", value: "" },
-  { id: "wechat", name: "微信", value: "WECHAT_OFFICIAL_ACCOUNT" },
-  { id: "xiaohongshu", name: "小红书", value: "XIAOHONGSHU" },
-  { id: "bilibili", name: "B站", value: "BILIBILI" },
-  { id: "browser", name: "浏览器书签", value: "browser" }, // 统一浏览器平台入口
-];
-
-// 排序选项
-const sortOptions = [
-  { value: "created_desc", label: "最新收藏" },
-  { value: "created_asc", label: "最早收藏" },
-  { value: "title_asc", label: "标题 A-Z" },
-  { value: "title_desc", label: "标题 Z-A" },
-];
-
-// 视图模式类型
-type ViewMode = "card" | "list" | "compact";
-
-// 布局模式类型（仅用于卡片视图）
-type LayoutMode = "auto" | "row" | "column";
-
-// 本地存储 key
-const VIEW_MODE_STORAGE_KEY = "anykeep-view-mode";
-const LAYOUT_MODE_STORAGE_KEY = "anykeep-layout-mode";
-const FLIP_CARD_STORAGE_KEY = "anykeep-flip-card";
-
-// 布局模式选项（移至 HeaderMenu 组件）
-const _layoutOptions = [
-  {
-    value: "auto",
-    label: "自动",
-    icon: Sparkles,
-    description: "根据设备自适应",
-  },
-  { value: "row", label: "横向优先", icon: Rows3, description: "按行排列" },
-  { value: "column", label: "纵向优先", icon: Columns3, description: "瀑布流" },
-] as const;
+// 使用提取的常量（保持向后兼容的别名）
+const platforms = HOME_PLATFORMS;
+const sortOptions = SORT_OPTIONS;
 
 export function HomePageClient({
   initialBookmarks,
