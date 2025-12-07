@@ -21,6 +21,7 @@ import type { MatchResult, MatcherContext } from "../../types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
 import { logger } from "@/lib/logger";
+import { tokenize } from "../../utils/text-utils";
 
 // ============================================================================
 // 类型定义
@@ -65,7 +66,7 @@ const DEFAULT_CONFIG: FingerprintMatcherConfig = {
 };
 
 // ============================================================================
-// 指纹缓存
+// 指纹缓存（实例级，避免多租户数据泄露）
 // ============================================================================
 
 interface CacheEntry {
@@ -73,7 +74,8 @@ interface CacheEntry {
   cachedAt: number;
 }
 
-const fingerprintCache = new Map<string, CacheEntry>();
+/** 缓存最大用户数，防止内存溢出 */
+const MAX_CACHE_USERS = 100;
 
 // ============================================================================
 // 匹配器实现
@@ -81,6 +83,9 @@ const fingerprintCache = new Map<string, CacheEntry>();
 
 /**
  * 文件夹意图指纹匹配器
+ *
+ * 注意：缓存已改为实例级，每个 FingerprintMatcher 实例拥有独立缓存。
+ * 这避免了多租户场景下的数据泄露风险。
  */
 export class FingerprintMatcher implements IMatcher {
   readonly name = "fingerprint";
@@ -89,6 +94,9 @@ export class FingerprintMatcher implements IMatcher {
   private config: FingerprintMatcherConfig;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private supabase: SupabaseClient<any>;
+
+  /** 实例级缓存，避免全局状态污染 */
+  private cache: Map<string, CacheEntry> = new Map();
 
   constructor(supabase: SupabaseClient<Database>, options?: MatcherOptions) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -167,7 +175,7 @@ export class FingerprintMatcher implements IMatcher {
     userId: string,
   ): Promise<FolderFingerprint[]> {
     // 检查缓存
-    const cached = fingerprintCache.get(userId);
+    const cached = this.cache.get(userId);
     if (cached && Date.now() - cached.cachedAt < this.config.cacheTimeMs) {
       return cached.fingerprints;
     }
@@ -175,8 +183,16 @@ export class FingerprintMatcher implements IMatcher {
     // 从数据库生成指纹
     const fingerprints = await this.generateFingerprints(userId);
 
+    // 缓存容量控制：LRU 风格，超过上限时清除最旧的
+    if (this.cache.size >= MAX_CACHE_USERS) {
+      const oldestKey = this.cache.keys().next().value;
+      if (oldestKey) {
+        this.cache.delete(oldestKey);
+      }
+    }
+
     // 更新缓存
-    fingerprintCache.set(userId, {
+    this.cache.set(userId, {
       fingerprints,
       cachedAt: Date.now(),
     });
@@ -281,7 +297,7 @@ export class FingerprintMatcher implements IMatcher {
     }
 
     // 从标题提取关键词作为隐式标签
-    const titleWords = this.tokenize(context.title);
+    const titleWords = tokenize(context.title);
     for (const word of titleWords) {
       if (word.length >= 2 && word.length <= 10) {
         tags.add(word.toLowerCase());
@@ -291,15 +307,7 @@ export class FingerprintMatcher implements IMatcher {
     return Array.from(tags);
   }
 
-  /**
-   * 简单分词
-   */
-  private tokenize(text: string): string[] {
-    return text
-      .replace(/[^\w\u4e00-\u9fff\s]/g, " ")
-      .split(/\s+/)
-      .filter((word) => word.length > 0);
-  }
+  // tokenize() 已移至 ../../utils/text-utils.ts
 
   /**
    * 计算匹配分数
@@ -393,17 +401,27 @@ export class FingerprintMatcher implements IMatcher {
   }
 
   /**
-   * 清除指定用户的指纹缓存
+   * 清除指定用户的指纹缓存（实例方法）
    */
-  static clearCache(userId: string): void {
-    fingerprintCache.delete(userId);
+  clearCache(userId: string): void {
+    this.cache.delete(userId);
   }
 
   /**
-   * 清除所有缓存
+   * 清除所有缓存（实例方法）
    */
-  static clearAllCache(): void {
-    fingerprintCache.clear();
+  clearAllCache(): void {
+    this.cache.clear();
+  }
+
+  /**
+   * 获取缓存统计信息（用于调试/监控）
+   */
+  getCacheStats(): { size: number; maxSize: number } {
+    return {
+      size: this.cache.size,
+      maxSize: MAX_CACHE_USERS,
+    };
   }
 }
 

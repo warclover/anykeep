@@ -21,6 +21,7 @@ import type { MatchResult, MatcherContext } from "../../types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
 import { logger } from "@/lib/logger";
+import { truncate } from "../../utils/text-utils";
 
 // ============================================================================
 // 类型定义
@@ -339,7 +340,7 @@ export class TagMatcher implements IMatcher {
 
     if (topBookmark) {
       const commonTagsStr = topBookmark.commonTags.slice(0, 2).join("、");
-      reason = `与「${this.truncate(topBookmark.title, 15)}」有相同标签：${commonTagsStr}`;
+      reason = `与「${truncate(topBookmark.title, 15)}」有相同标签：${commonTagsStr}`;
     } else {
       reason = `匹配标签：${scored.matchedTags.slice(0, 3).join("、")}`;
     }
@@ -363,13 +364,7 @@ export class TagMatcher implements IMatcher {
     };
   }
 
-  /**
-   * 截断字符串
-   */
-  private truncate(str: string, maxLength: number): string {
-    if (str.length <= maxLength) return str;
-    return str.substring(0, maxLength) + "...";
-  }
+  // truncate() 已移至 ../../utils/text-utils.ts
 }
 
 /**

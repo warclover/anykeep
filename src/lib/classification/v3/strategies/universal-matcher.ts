@@ -19,6 +19,7 @@ import {
   type UniversalCategory,
 } from "../constants/universal-categories";
 import { logger } from "@/lib/logger";
+import { tokenize } from "../../utils/text-utils";
 
 /**
  * 通用分类匹配器配置
@@ -133,7 +134,7 @@ export class UniversalCategoryMatcher implements IMatcher {
     }
 
     // 从标题中提取（简单分词）
-    const titleWords = this.tokenize(context.title);
+    const titleWords = tokenize(context.title);
     for (const word of titleWords) {
       if (word.length >= 2) {
         keywords.add(word.toLowerCase());
@@ -142,7 +143,7 @@ export class UniversalCategoryMatcher implements IMatcher {
 
     // 从摘要中提取关键词
     if (context.summary) {
-      const summaryWords = this.tokenize(context.summary);
+      const summaryWords = tokenize(context.summary);
       for (const word of summaryWords) {
         if (word.length >= 2) {
           keywords.add(word.toLowerCase());
@@ -153,16 +154,7 @@ export class UniversalCategoryMatcher implements IMatcher {
     return Array.from(keywords);
   }
 
-  /**
-   * 简单分词
-   */
-  private tokenize(text: string): string[] {
-    // 移除标点符号，按空格和常见分隔符分词
-    return text
-      .replace(/[^\w\u4e00-\u9fff\s]/g, " ")
-      .split(/\s+/)
-      .filter((word) => word.length > 0);
-  }
+  // tokenize() 已移至 ../../utils/text-utils.ts
 
   /**
    * 匹配通用分类

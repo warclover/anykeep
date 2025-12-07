@@ -21,6 +21,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
 import { matchCategoriesByKeyword } from "../constants/universal-categories";
 import { logger } from "@/lib/logger";
+import { tokenize } from "../../utils/text-utils";
 
 // ============================================================================
 // 类型定义
@@ -187,7 +188,7 @@ export class QueryExpansionMatcher implements IMatcher {
     }
 
     // 2. 从标题提取关键词
-    const titleWords = this.tokenize(context.title);
+    const titleWords = tokenize(context.title);
     for (const word of titleWords) {
       const normalized = word.toLowerCase();
       if (normalized.length >= 2 && !seen.has(normalized)) {
@@ -232,7 +233,7 @@ export class QueryExpansionMatcher implements IMatcher {
 
     // 4. 从摘要中提取额外关键词
     if (context.summary) {
-      const summaryWords = this.tokenize(context.summary);
+      const summaryWords = tokenize(context.summary);
       const meaningfulWords = summaryWords
         .filter((w) => w.length >= 3 && w.length <= 15)
         .slice(0, 5);
@@ -256,15 +257,7 @@ export class QueryExpansionMatcher implements IMatcher {
       .slice(0, this.config.maxExpandedKeywords);
   }
 
-  /**
-   * 简单分词
-   */
-  private tokenize(text: string): string[] {
-    return text
-      .replace(/[^\w\u4e00-\u9fff\s]/g, " ")
-      .split(/\s+/)
-      .filter((word) => word.length > 0);
-  }
+  // tokenize() 已移至 ../../utils/text-utils.ts
 
   /**
    * 向量召回

@@ -330,17 +330,113 @@ export class AutoCreateEvaluatorService {
   }
 
   /**
-   * 计算两个字符串的相似度（Jaccard similarity on characters）
+   * 计算两个字符串的相似度
+   * 使用多种算法综合评估，对中文和英文都有较好的效果
+   *
+   * @returns 0-1 之间的相似度分数
    */
   private calculateSimilarity(a: string, b: string): number {
-    const setA = new Set(a.toLowerCase().split(""));
-    const setB = new Set(b.toLowerCase().split(""));
+    const strA = a.toLowerCase().trim();
+    const strB = b.toLowerCase().trim();
+
+    if (strA === strB) return 1;
+    if (!strA || !strB) return 0;
+
+    // 1. 字符级 Jaccard 相似度
+    const charJaccard = this.jaccardSimilarity(
+      new Set(strA.split("")),
+      new Set(strB.split("")),
+    );
+
+    // 2. 双字符组（2-gram）相似度，对中文效果更好
+    const bigramA = this.getNGrams(strA, 2);
+    const bigramB = this.getNGrams(strB, 2);
+    const bigramJaccard = this.jaccardSimilarity(bigramA, bigramB);
+
+    // 3. 归一化编辑距离相似度
+    const editDistSim = this.normalizedLevenshteinSimilarity(strA, strB);
+
+    // 4. 前缀/包含关系加成
+    let prefixBonus = 0;
+    if (strA.startsWith(strB) || strB.startsWith(strA)) {
+      prefixBonus = 0.15;
+    } else if (strA.includes(strB) || strB.includes(strA)) {
+      prefixBonus = 0.1;
+    }
+
+    // 综合评分：2-gram 权重最高（对中文友好），编辑距离次之
+    const combinedScore =
+      bigramJaccard * 0.4 + editDistSim * 0.35 + charJaccard * 0.25;
+
+    return Math.min(1, combinedScore + prefixBonus);
+  }
+
+  /**
+   * Jaccard 相似度计算
+   */
+  private jaccardSimilarity(setA: Set<string>, setB: Set<string>): number {
+    if (setA.size === 0 && setB.size === 0) return 1;
+    if (setA.size === 0 || setB.size === 0) return 0;
 
     const intersection = new Set([...setA].filter((x) => setB.has(x)));
     const union = new Set([...setA, ...setB]);
 
-    if (union.size === 0) return 0;
     return intersection.size / union.size;
+  }
+
+  /**
+   * 获取 n-gram 集合
+   */
+  private getNGrams(str: string, n: number): Set<string> {
+    const ngrams = new Set<string>();
+    for (let i = 0; i <= str.length - n; i++) {
+      ngrams.add(str.slice(i, i + n));
+    }
+    return ngrams;
+  }
+
+  /**
+   * 归一化 Levenshtein 相似度
+   * 使用优化的空间复杂度 O(min(m,n))
+   */
+  private normalizedLevenshteinSimilarity(a: string, b: string): number {
+    const maxLen = Math.max(a.length, b.length);
+    if (maxLen === 0) return 1;
+
+    const distance = this.levenshteinDistance(a, b);
+    return 1 - distance / maxLen;
+  }
+
+  /**
+   * Levenshtein 编辑距离（空间优化版）
+   */
+  private levenshteinDistance(a: string, b: string): number {
+    // 确保 a 是较短的字符串以优化空间
+    if (a.length > b.length) {
+      [a, b] = [b, a];
+    }
+
+    const m = a.length;
+    const n = b.length;
+
+    // 只需要两行空间
+    let prevRow = Array.from({ length: m + 1 }, (_, i) => i);
+    let currRow = new Array(m + 1);
+
+    for (let j = 1; j <= n; j++) {
+      currRow[0] = j;
+      for (let i = 1; i <= m; i++) {
+        const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+        currRow[i] = Math.min(
+          prevRow[i] + 1, // 删除
+          currRow[i - 1] + 1, // 插入
+          prevRow[i - 1] + cost, // 替换
+        );
+      }
+      [prevRow, currRow] = [currRow, prevRow];
+    }
+
+    return prevRow[m];
   }
 
   /**

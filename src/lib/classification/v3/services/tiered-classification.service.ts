@@ -90,7 +90,16 @@ export interface TieredMetrics {
     tier3: number;
     inbox: number;
   };
+
+  /** 指标开始时间 */
+  startedAt: number;
+
+  /** 上次重置时间 */
+  lastResetAt: number;
 }
+
+/** 指标自动重置阈值（防止内存溢出） */
+const METRICS_AUTO_RESET_THRESHOLD = 10000;
 
 /**
  * 分层结果
@@ -135,19 +144,8 @@ export class TieredClassificationService {
   private matcherGroups: MatcherGroups;
   private aggregator: IScoreAggregator;
 
-  // 内存中的优化指标（也可持久化到数据库）
-  private metrics: TieredMetrics = {
-    totalClassifications: 0,
-    aiCallCount: 0,
-    aiSkippedCount: 0,
-    aiSavingsRate: 0,
-    tierCounts: {
-      tier1: 0,
-      tier2: 0,
-      tier3: 0,
-      inbox: 0,
-    },
-  };
+  // 内存中的优化指标（带自动重置机制防止内存溢出）
+  private metrics: TieredMetrics = this.createEmptyMetrics();
 
   constructor(
     supabase: SupabaseClient<Database>,
@@ -599,9 +597,62 @@ export class TieredClassificationService {
   }
 
   /**
+   * 创建空的指标对象
+   */
+  private createEmptyMetrics(): TieredMetrics {
+    const now = Date.now();
+    return {
+      totalClassifications: 0,
+      aiCallCount: 0,
+      aiSkippedCount: 0,
+      aiSavingsRate: 0,
+      tierCounts: {
+        tier1: 0,
+        tier2: 0,
+        tier3: 0,
+        inbox: 0,
+      },
+      startedAt: now,
+      lastResetAt: now,
+    };
+  }
+
+  /**
+   * 重置指标（公开方法，可供外部调用）
+   */
+  resetMetrics(): TieredMetrics {
+    // 记录重置前的指标
+    const previousMetrics = { ...this.metrics };
+    logger.info(
+      {
+        metrics: previousMetrics,
+        action: "tiered_metrics_reset",
+        reason: "manual_or_threshold",
+      },
+      "TieredClassification: Metrics reset",
+    );
+
+    // 创建新的空指标
+    this.metrics = this.createEmptyMetrics();
+    return previousMetrics;
+  }
+
+  /**
    * 更新优化指标
    */
   private updateMetrics(tieredResult: TieredResult): void {
+    // 检查是否需要自动重置（防止内存溢出）
+    if (this.metrics.totalClassifications >= METRICS_AUTO_RESET_THRESHOLD) {
+      logger.warn(
+        {
+          threshold: METRICS_AUTO_RESET_THRESHOLD,
+          action: "tiered_metrics_auto_reset",
+        },
+        "TieredClassification: Auto-resetting metrics due to threshold",
+      );
+      this.resetMetrics();
+    }
+
     this.metrics.totalClassifications++;
 
     if (tieredResult.aiCalled) {
@@ -661,23 +712,7 @@ export class TieredClassificationService {
     return { ...this.metrics };
   }
 
-  /**
-   * 重置优化指标
-   */
-  resetMetrics(): void {
-    this.metrics = {
-      totalClassifications: 0,
-      aiCallCount: 0,
-      aiSkippedCount: 0,
-      aiSavingsRate: 0,
-      tierCounts: {
-        tier1: 0,
-        tier2: 0,
-        tier3: 0,
-        inbox: 0,
-      },
-    };
-  }
+  // resetMetrics() 已在上方定义（包含完整字段和日志记录）
 
   /**
    * 更新配置

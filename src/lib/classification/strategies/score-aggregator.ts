@@ -8,6 +8,7 @@
 import type { IScoreAggregator, IMatcher } from "./interfaces";
 import type { MatchResult, ClassificationResult } from "../types";
 import { CLASSIFICATION_THRESHOLDS } from "../constants";
+import { V3_CONFIG } from "../v3/config";
 import { logger } from "@/lib/logger";
 
 /**
@@ -58,8 +59,10 @@ export class WeightedScoreAggregator implements IScoreAggregator {
     // 第 1 步：检查 k-NN 直接锁定
     // ═══════════════════════════════════════════════════════════════
     const knnDirectResults = results.get("knn-direct") || [];
+    // 从配置读取阈值（V3_CONFIG 存储的是 0.85，转换为 85 分）
+    const knnDirectLockThreshold = V3_CONFIG.knnDirectThreshold * 100;
     const knnDirectMatch = knnDirectResults.find(
-      (r) => r.metadata?.skipAI === true && r.score >= 85,
+      (r) => r.metadata?.skipAI === true && r.score >= knnDirectLockThreshold,
     );
 
     if (knnDirectMatch) {
