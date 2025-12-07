@@ -167,9 +167,6 @@ export async function POST(
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     const errorStack = error instanceof Error ? error.stack : undefined;
-    console.error("[POST /api/folders/[id]/merge] ========= ERROR =========");
-    console.error("[POST /api/folders/[id]/merge] Message:", errorMessage);
-    console.error("[POST /api/folders/[id]/merge] Stack:", errorStack);
     logger.error(
       {
         error: errorMessage,

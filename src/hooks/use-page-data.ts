@@ -8,7 +8,10 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useUser } from "@/contexts/user-context";
+import { clientLogger } from "@/lib/client-logger";
 import type { Bookmark, Folder, Platform } from "@/types/supabase";
+import type { UserSettings } from "@/types/user-settings";
+import { DEFAULT_USER_SETTINGS } from "@/types/user-settings";
 import {
   getPlatformName,
   getPlatformHexColor,
@@ -321,60 +324,14 @@ export function useAnalyticsData() {
 
 // ==================== 设置页面数据 ====================
 
-interface SettingsData {
-  platforms: {
-    wechat: boolean;
-    bilibili: boolean;
-    xiaohongshu: boolean;
-    zhihu: boolean;
-  };
-  ai: {
-    autoTags: boolean;
-    autoSummary: boolean;
-    semanticSearch: boolean;
-  };
-  privacy: {
-    dataEncryption: boolean;
-    shareAnalytics: boolean;
-  };
-  notifications: {
-    email: boolean;
-    inApp: boolean;
-    weeklyDigest: boolean;
-  };
-}
-
-const DEFAULT_SETTINGS: SettingsData = {
-  platforms: {
-    wechat: true,
-    bilibili: true,
-    xiaohongshu: true,
-    zhihu: false,
-  },
-  ai: {
-    autoTags: true,
-    autoSummary: true,
-    semanticSearch: true,
-  },
-  privacy: {
-    dataEncryption: false,
-    shareAnalytics: true,
-  },
-  notifications: {
-    email: true,
-    inApp: true,
-    weeklyDigest: false,
-  },
-};
-
 /**
  * 设置页面数据获取 Hook
+ * 从 API 加载用户设置，支持未登录时显示默认值
  */
 export function useSettingsData() {
-  // user 未来用于从数据库加载用户设置
-  const { user: _user, isLoading: userLoading } = useUser();
-  const [state, setState] = useState<DataState<SettingsData>>({
-    data: DEFAULT_SETTINGS,
+  const { user, isLoading: userLoading } = useUser();
+  const [state, setState] = useState<DataState<UserSettings>>({
+    data: DEFAULT_USER_SETTINGS,
     isLoading: true,
     error: null,
     lastFetched: 0,
@@ -383,19 +340,45 @@ export function useSettingsData() {
   const fetchData = useCallback(async () => {
     if (userLoading) return;
 
-    // 设置页即使没有用户也显示默认设置
-    setState({
-      data: DEFAULT_SETTINGS,
-      isLoading: false,
-      error: null,
-      lastFetched: Date.now(),
-    });
+    // 未登录时使用默认设置
+    if (!user) {
+      setState({
+        data: DEFAULT_USER_SETTINGS,
+        isLoading: false,
+        error: null,
+        lastFetched: Date.now(),
+      });
+      return;
+    }
 
-    // TODO: 从数据库加载用户设置
-  }, [userLoading]);
+    // 从 API 加载用户设置
+    try {
+      const response = await fetch("/api/user/settings");
+      const result = await response.json();
+
+      if (result.success) {
+        setState({
+          data: result.data,
+          isLoading: false,
+          error: null,
+          lastFetched: Date.now(),
+        });
+      } else {
+        throw new Error(result.error?.message || "加载设置失败");
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "加载设置失败";
+      clientLogger.error({ error: message }, "Failed to load settings");
+      setState({
+        data: DEFAULT_USER_SETTINGS,
+        isLoading: false,
+        error: message,
+        lastFetched: Date.now(),
+      });
+    }
+  }, [userLoading, user]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- 数据获取模式
     fetchData();
   }, [fetchData]);
 

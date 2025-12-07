@@ -94,6 +94,7 @@ export function ImageUpload({
           }
         } catch (error) {
           if (process.env.NODE_ENV === "development") {
+            // eslint-disable-next-line no-console
             console.warn(
               "[Image Upload] Compression failed, using original:",
               error,

@@ -10,6 +10,7 @@
  */
 
 import type { ContentType } from "../content-type-detector";
+import { clientLogger } from "@/lib/client-logger";
 
 // ==================== 类型定义 ====================
 
@@ -163,7 +164,7 @@ function loadFromStorage(): AIDebugConfig | null {
 
     return parsed;
   } catch {
-    console.warn(
+    clientLogger.warn(
       "[AIDebugConfig] Failed to parse stored config, using default",
     );
     return null;
@@ -223,7 +224,9 @@ export function getDebugConfig(): AIDebugConfig {
  */
 export function setDebugConfig(updates: Partial<AIDebugConfig>): void {
   if (!isDevEnvironment()) {
-    console.warn("[AIDebugConfig] Config updates are disabled in production");
+    clientLogger.warn(
+      "[AIDebugConfig] Config updates are disabled in production",
+    );
     return;
   }
 

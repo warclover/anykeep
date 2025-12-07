@@ -42,6 +42,7 @@ import {
   getFolderIdForBookmark,
   getFoldersExceedingDepth,
 } from "@/lib/browser-bookmark";
+import { clientLogger } from "@/lib/client-logger";
 import type {
   ParsedBookmarkFile,
   ParsedBookmarkNode,
@@ -376,7 +377,10 @@ export function BrowserBookmarkImportDialog({
             aiInboxFolderId = inboxData.data?.id || inboxData.id;
           }
         } catch (error) {
-          console.warn("Failed to get inbox folder for AI classify:", error);
+          clientLogger.warn(
+            { error: error instanceof Error ? error.message : String(error) },
+            "Failed to get inbox folder for AI classify",
+          );
           // 继续使用默认目标文件夹
         }
       }
