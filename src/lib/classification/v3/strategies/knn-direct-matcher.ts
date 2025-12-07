@@ -84,10 +84,12 @@ export class KnnDirectMatcher implements IMatcher {
 
     try {
       // 查找最相似的书签（取 Top 3，然后筛选高相似度）
+      // 传入 bookmarkId 以排除当前书签（避免自匹配）
       const similar = await this.bookmarkRepo.findSimilarWithFolders(
         context.embedding,
         context.userId,
         3,
+        context.bookmarkId, // 排除当前书签
       );
 
       // 筛选出高于阈值的结果
@@ -109,8 +111,21 @@ export class KnnDirectMatcher implements IMatcher {
 
       const match = highSimilarity[0];
 
-      // 确保书签有文件夹
-      if (!match.folderId || !match.folderName) {
+      // 确保书签有文件夹，且不是系统文件夹（防御性检查）
+      if (
+        !match.folderId ||
+        !match.folderName ||
+        this.isSystemFolder(match.folderName)
+      ) {
+        if (match.folderName && this.isSystemFolder(match.folderName)) {
+          logger.debug(
+            {
+              action: "knn_direct_skip_system_folder",
+              folderName: match.folderName,
+            },
+            "k-NN Direct: Skipped system folder match",
+          );
+        }
         return [];
       }
 
@@ -174,5 +189,14 @@ export class KnnDirectMatcher implements IMatcher {
       (r) =>
         r.metadata?.skipAI === true || r.metadata?.matchType === "knn_direct",
     );
+  }
+
+  /**
+   * 检查是否是系统文件夹（防御性检查）
+   * 数据库层已过滤，这里是额外的安全保障
+   */
+  private isSystemFolder(folderName: string): boolean {
+    const systemFolderNames = ["待整理", "inbox", "Inbox", "INBOX"];
+    return systemFolderNames.includes(folderName);
   }
 }

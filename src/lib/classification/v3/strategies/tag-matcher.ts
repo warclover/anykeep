@@ -176,7 +176,7 @@ export class TagMatcher implements IMatcher {
     // 将标签转为小写用于比较
     const normalizedTags = tags.map((t) => t.toLowerCase().trim());
 
-    // 查询用户的书签（带文件夹信息）
+    // 查询用户的书签（带文件夹信息，排除系统文件夹）
     const { data, error } = await this.supabase
       .from("bookmarks")
       .select(
@@ -185,13 +185,14 @@ export class TagMatcher implements IMatcher {
         title,
         ai_tags,
         folder_id,
-        folders!inner(name)
+        folders!inner(name, is_system)
       `,
       )
       .eq("user_id", userId)
       .is("deleted_at", null)
       .not("ai_tags", "is", null)
       .not("folder_id", "is", null)
+      .eq("folders.is_system", false) // 排除系统文件夹
       .limit(this.config.maxBookmarksToCompare);
 
     if (error) {

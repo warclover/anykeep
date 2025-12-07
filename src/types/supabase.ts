@@ -318,6 +318,8 @@ export type Database = {
           ai_content_type: "article" | "tutorial" | "video" | "tool" | null; // V9.0新增：AI检测的内容类型
           ai_content_type_confidence: number | null; // V9.0新增：内容类型检测置信度(0-100)
           ai_vision_data: Json | null; // V10.0新增：视觉分析数据 (Qwen-VL)
+          classification_status: ClassificationStatus; // V11.0新增：V3分类状态
+          classification_result: ClassificationResultData | null; // V11.0新增：V3分类结果详情
           created_at: string;
           updated_at: string;
           deleted_at: string | null;
@@ -361,6 +363,8 @@ export type Database = {
           ai_content_type?: "article" | "tutorial" | "video" | "tool" | null; // V9.0新增
           ai_content_type_confidence?: number | null; // V9.0新增
           ai_vision_data?: Json | null; // V10.0新增
+          classification_status?: ClassificationStatus; // V11.0新增
+          classification_result?: ClassificationResultData | null; // V11.0新增
           created_at?: string;
           updated_at?: string;
           deleted_at?: string | null;
@@ -404,6 +408,8 @@ export type Database = {
           ai_content_type?: "article" | "tutorial" | "video" | "tool" | null; // V9.0新增
           ai_content_type_confidence?: number | null; // V9.0新增
           ai_vision_data?: Json | null; // V10.0新增
+          classification_status?: ClassificationStatus; // V11.0新增
+          classification_result?: ClassificationResultData | null; // V11.0新增
           created_at?: string;
           updated_at?: string;
           deleted_at?: string | null;
@@ -885,3 +891,42 @@ export const CUSTOM_TAG_COLORS = [
 ] as const;
 
 export type CustomTagColor = (typeof CUSTOM_TAG_COLORS)[number];
+
+// ============================================
+// V11.0 新增：V3 统一分类系统类型定义
+// ============================================
+
+/**
+ * V3 分类状态
+ * - pending: 等待分类
+ * - classified: 已成功分类到文件夹
+ * - suggested: AI 建议创建新文件夹（用户可确认）
+ * - inbox: 低置信度，放入待整理
+ */
+export type ClassificationStatus =
+  | "pending"
+  | "classified"
+  | "suggested"
+  | "inbox";
+
+/**
+ * V3 分类结果详情（存储在 classification_result JSONB 字段）
+ */
+export interface ClassificationResultData {
+  /** 目标文件夹 ID（inbox 时为 null） */
+  folderId: number | null;
+  /** 目标文件夹名称 */
+  folderName: string;
+  /** 分类置信度（0-100） */
+  confidence: number;
+  /** 分类动作 */
+  action: "classify" | "suggest_new" | "inbox";
+  /** 如果是 suggest_new，关联的建议 ID */
+  suggestionId?: number;
+  /** 分类时间戳（ISO 8601） */
+  timestamp: string;
+  /** 分类来源（哪个匹配器） */
+  source?: string;
+  /** 分类原因说明 */
+  reason?: string;
+}

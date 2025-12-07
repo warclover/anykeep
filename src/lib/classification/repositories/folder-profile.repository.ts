@@ -13,7 +13,7 @@ export class FolderProfileRepository {
   constructor(private supabase: SupabaseClient) {}
 
   /**
-   * Get all folder profiles for a user
+   * Get all folder profiles for a user (excludes system folders)
    */
   async findByUserId(userId: string): Promise<FolderProfile[]> {
     const { data, error } = await this.supabase
@@ -21,11 +21,12 @@ export class FolderProfileRepository {
       .select(
         `
         *,
-        folders!inner(name, deleted_at)
+        folders!inner(name, deleted_at, is_system)
       `,
       )
       .eq("user_id", userId)
-      .is("folders.deleted_at", null);
+      .is("folders.deleted_at", null)
+      .eq("folders.is_system", false); // 排除系统文件夹
 
     if (error) {
       throw new Error(`Failed to fetch folder profiles: ${error.message}`);

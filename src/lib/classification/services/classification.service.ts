@@ -262,6 +262,7 @@ export class ClassificationService implements IClassificationService {
 
     return {
       userId,
+      bookmarkId: bookmark.id, // 用于排除自匹配
       title: bookmark.title,
       summary: bookmark.summary || "",
       tags: bookmark.tags || [],

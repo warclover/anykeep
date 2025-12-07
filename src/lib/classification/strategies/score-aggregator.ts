@@ -62,7 +62,10 @@ export class WeightedScoreAggregator implements IScoreAggregator {
     // 从配置读取阈值（V3_CONFIG 存储的是 0.85，转换为 85 分）
     const knnDirectLockThreshold = V3_CONFIG.knnDirectThreshold * 100;
     const knnDirectMatch = knnDirectResults.find(
-      (r) => r.metadata?.skipAI === true && r.score >= knnDirectLockThreshold,
+      (r) =>
+        r.metadata?.skipAI === true &&
+        r.score >= knnDirectLockThreshold &&
+        !this.isSystemFolder(r), // 防御性检查：排除系统文件夹
     );
 
     if (knnDirectMatch) {
@@ -254,5 +257,16 @@ export class WeightedScoreAggregator implements IScoreAggregator {
       ai: "AI推荐",
     };
     return labels[matcherName] || matcherName;
+  }
+
+  /**
+   * 检查是否是系统文件夹（防御性检查）
+   * 系统文件夹如"待整理"不应作为分类目标
+   */
+  private isSystemFolder(result: MatchResult): boolean {
+    // 通过 metadata 或文件夹名称判断
+    return (
+      result.metadata?.isSystemFolder === true || result.folderName === "待整理"
+    );
   }
 }

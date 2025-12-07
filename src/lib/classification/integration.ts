@@ -8,6 +8,11 @@ import { ClassificationContainer } from "./container";
 import { CLASSIFICATION_THRESHOLDS, FOLDER_LIMITS } from "./constants";
 import { logger } from "@/lib/logger";
 import type { ClassificationResult, BookmarkInput } from "./types";
+import type {
+  ClassificationStatus,
+  ClassificationResultData,
+} from "@/types/supabase";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 // Thresholds from centralized constants
 const AUTO_CLASSIFY_THRESHOLD = CLASSIFICATION_THRESHOLDS.HIGH_CONFIDENCE;
@@ -83,6 +88,7 @@ export async function classifyBookmarkV2(
 
     // Prepare bookmark input
     const bookmarkInput: BookmarkInput = {
+      id: bookmarkId, // 传入 ID 用于排除自匹配
       title,
       summary: summary || undefined,
       tags,
@@ -139,6 +145,22 @@ export async function classifyBookmarkV2(
           "Classification V2: Auto-classified (high confidence)",
         );
 
+        // V3.1: Write classification status for frontend polling
+        await updateBookmarkClassificationStatus(
+          supabase,
+          bookmarkId,
+          userId,
+          "classified",
+          {
+            folderId: result.folderId,
+            folderName: result.folderName,
+            confidence: result.confidence,
+            action: "classify",
+            timestamp: new Date().toISOString(),
+            reason: result.reason,
+          },
+        );
+
         return {
           classified: true,
           folderId: result.folderId,
@@ -176,6 +198,23 @@ export async function classifyBookmarkV2(
               confidence: result.confidence,
             },
             "Classification V2: Saved suggestion (medium confidence)",
+          );
+
+          // V3.1: Write classification status for frontend polling
+          await updateBookmarkClassificationStatus(
+            supabase,
+            bookmarkId,
+            userId,
+            "suggested",
+            {
+              folderId: result.folderId,
+              folderName: result.folderName,
+              confidence: result.confidence,
+              action: "classify",
+              suggestionId: suggestion.id,
+              timestamp: new Date().toISOString(),
+              reason: result.reason,
+            },
           );
 
           return {
@@ -224,6 +263,23 @@ export async function classifyBookmarkV2(
           .single();
 
         if (!suggestionError && suggestion) {
+          // V3.1: Write classification status for frontend polling
+          await updateBookmarkClassificationStatus(
+            supabase,
+            bookmarkId,
+            userId,
+            "suggested",
+            {
+              folderId: null,
+              folderName: result.folderName,
+              confidence: result.confidence,
+              action: "suggest_new",
+              suggestionId: suggestion.id,
+              timestamp: new Date().toISOString(),
+              reason: "每日文件夹创建数量已达上限",
+            },
+          );
+
           return {
             classified: false,
             folderId: null,
@@ -267,6 +323,22 @@ export async function classifyBookmarkV2(
               "Classification V2: Created new folder and classified",
             );
 
+            // V3.1: Write classification status for frontend polling
+            await updateBookmarkClassificationStatus(
+              supabase,
+              bookmarkId,
+              userId,
+              "classified",
+              {
+                folderId: newFolder.id,
+                folderName: result.folderName,
+                confidence: result.confidence,
+                action: "suggest_new",
+                timestamp: new Date().toISOString(),
+                reason: "创建新文件夹并归类",
+              },
+            );
+
             return {
               classified: true,
               folderId: newFolder.id,
@@ -307,6 +379,23 @@ export async function classifyBookmarkV2(
             "Classification V2: Saved new folder suggestion",
           );
 
+          // V3.1: Write classification status for frontend polling
+          await updateBookmarkClassificationStatus(
+            supabase,
+            bookmarkId,
+            userId,
+            "suggested",
+            {
+              folderId: null,
+              folderName: result.folderName,
+              confidence: result.confidence,
+              action: "suggest_new",
+              suggestionId: suggestion.id,
+              timestamp: new Date().toISOString(),
+              reason: result.reason || "建议创建新文件夹",
+            },
+          );
+
           return {
             classified: false,
             folderId: null,
@@ -327,6 +416,22 @@ export async function classifyBookmarkV2(
         action: result.action,
       },
       "Classification V2: Staying in inbox (low confidence)",
+    );
+
+    // V3.1: Write classification status for frontend polling
+    await updateBookmarkClassificationStatus(
+      supabase,
+      bookmarkId,
+      userId,
+      "inbox",
+      {
+        folderId: null,
+        folderName: "待整理",
+        confidence: result.confidence,
+        action: "inbox",
+        timestamp: new Date().toISOString(),
+        reason: `置信度 ${result.confidence}% 低于阈值`,
+      },
     );
 
     return {
@@ -407,4 +512,47 @@ export function shouldUseV2Classification(): boolean {
   // Can be overridden via environment variable
   const v2Enabled = process.env.CLASSIFICATION_V2_ENABLED;
   return v2Enabled !== "false";
+}
+
+/**
+ * Update bookmark classification status
+ * V3.1: Writes classification result to bookmark record for frontend polling
+ */
+async function updateBookmarkClassificationStatus(
+  supabase: SupabaseClient,
+  bookmarkId: number,
+  userId: string,
+  status: ClassificationStatus,
+  resultData: ClassificationResultData,
+): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from("bookmarks")
+      .update({
+        classification_status: status,
+        classification_result: resultData,
+      })
+      .eq("id", bookmarkId)
+      .eq("user_id", userId);
+
+    if (error) {
+      logger.error(
+        { error, bookmarkId, status },
+        "Classification V2: Failed to update classification status",
+      );
+    } else {
+      logger.debug(
+        { bookmarkId, status, folderName: resultData.folderName },
+        "Classification V2: Updated classification status",
+      );
+    }
+  } catch (error) {
+    logger.error(
+      {
+        error: error instanceof Error ? error.message : String(error),
+        bookmarkId,
+      },
+      "Classification V2: Exception updating classification status",
+    );
+  }
 }

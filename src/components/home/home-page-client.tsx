@@ -55,7 +55,7 @@ import { BatchImportDialog } from "@/components/bookmark/batch-import-dialog";
 import { BatchMoveDialog } from "@/components/bookmark/batch-move-dialog";
 import { ExportDialog } from "@/components/bookmark/export-dialog";
 import { BrowserBookmarkImportDialog } from "@/components/browser-bookmark";
-import { FolderRecommendationToast } from "@/components/bookmark/folder-recommendation-toast";
+// V3.1: FolderRecommendationToast 已废弃，由 useClassificationPolling 的 toast 通知替代
 import { EmptyState } from "@/components/bookmark/empty-state";
 import { UsageTagFilter } from "@/components/layout/usage-tag-filter";
 
@@ -72,7 +72,8 @@ const InboxOrganizationBanner = lazy(() =>
     default: mod.InboxOrganizationBanner,
   })),
 );
-import { useFolderRecommendation } from "@/hooks/use-folder-recommendation";
+// V3.1: 替换 V1 的 useFolderRecommendation 为 V3 的分类轮询
+import { useClassificationPolling } from "@/hooks/use-classification-polling";
 import { useDialogs } from "@/hooks/use-dialogs";
 import { useSelectionMode } from "@/hooks/use-selection-mode";
 import { usePlatformCache } from "@/hooks/use-platform-cache";
@@ -527,37 +528,21 @@ export function HomePageClient({
     // 旧缓存系统调用已移除，SWR 内部会自动管理缓存
   }, [initialBookmarks, setBookmarks, setHasMore]);
 
-  // AI 文件夹推荐
-  const {
-    recommendation,
-    bookmarkId: recommendationBookmarkId,
-    fetchRecommendation,
-    applyRecommendation,
-    dismissRecommendation,
-  } = useFolderRecommendation();
+  // V3.1: 使用统一的 V3 分类轮询替代 V1 的前端主动推荐
+  const { trackBookmark } = useClassificationPolling();
 
-  // 新建收藏成功后触发文件夹推荐
+  // 新建收藏成功后追踪分类状态
   const handleBookmarkCreated = (bookmark: {
     id: number;
     title: string;
+    folder_id?: number | null;
     ai_summary?: string | null;
     ai_tags?: string[] | null;
   }) => {
-    // 如果收藏没有指定文件夹，则获取 AI 推荐
-    fetchRecommendation(
-      bookmark.id,
-      bookmark.title,
-      bookmark.ai_summary || "",
-      bookmark.ai_tags || [],
-    );
-  };
-
-  // 打开移动对话框（用于自定义选择）
-  const handleCustomizeFolder = () => {
-    if (recommendationBookmarkId) {
-      selectAll([recommendationBookmarkId]);
-      openMoveDialog();
-      dismissRecommendation();
+    // V3.1: 如果书签没有指定文件夹，追踪其分类状态
+    // 后端会自动执行 V3 分类，前端轮询获取结果
+    if (!bookmark.folder_id) {
+      trackBookmark(bookmark.id);
     }
   };
 
@@ -1545,14 +1530,7 @@ export function HomePageClient({
         onSuccess={handleBookmarkCreated}
       />
 
-      {/* AI 文件夹推荐 Toast */}
-      <FolderRecommendationToast
-        recommendation={recommendation}
-        bookmarkId={recommendationBookmarkId || 0}
-        onApply={applyRecommendation}
-        onDismiss={dismissRecommendation}
-        onCustomize={handleCustomizeFolder}
-      />
+      {/* V3.1: FolderRecommendationToast 已移除，分类结果通过 useClassificationPolling 的 toast 显示 */}
     </div>
   );
 }

@@ -39,6 +39,8 @@ export interface MatchResult {
  */
 export interface MatcherContext {
   userId: string;
+  /** 当前书签 ID，用于排除自匹配 */
+  bookmarkId?: number;
   title: string;
   summary: string;
   tags: string[];
@@ -66,6 +68,8 @@ export interface ClassificationResult {
  * Bookmark input for classification
  */
 export interface BookmarkInput {
+  /** 书签 ID（可选，用于排除自匹配） */
+  id?: number;
   title: string;
   summary?: string;
   tags?: string[];

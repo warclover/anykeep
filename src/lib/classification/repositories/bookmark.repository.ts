@@ -95,18 +95,23 @@ export class BookmarkRepository {
 
   /**
    * Find similar bookmarks with their folder info
+   * @param excludeBookmarkId - 可选，排除指定书签（避免自匹配）
    */
   async findSimilarWithFolders(
     embedding: number[],
     userId: string,
     limit: number = 10,
+    excludeBookmarkId?: number,
   ): Promise<SimilarBookmarkWithFolder[]> {
+    // 多请求一个结果，以便在过滤后仍有足够数量
+    const fetchCount = excludeBookmarkId ? limit + 1 : limit;
+
     const { data, error } = await this.supabase.rpc(
       "find_similar_bookmarks_with_folders",
       {
         query_embedding: embedding,
         p_user_id: userId,
-        match_count: limit,
+        match_count: fetchCount,
       },
     );
 
@@ -114,13 +119,22 @@ export class BookmarkRepository {
       throw new Error(`Failed to find similar bookmarks: ${error.message}`);
     }
 
-    return (data || []).map((row: Record<string, unknown>) => ({
+    let results = (data || []).map((row: Record<string, unknown>) => ({
       bookmarkId: row.bookmark_id as number,
       bookmarkTitle: row.bookmark_title as string,
       folderId: row.folder_id as number | null,
       folderName: row.folder_name as string | null,
       similarity: row.similarity as number,
     }));
+
+    // 排除当前书签（避免自匹配）
+    if (excludeBookmarkId) {
+      results = results.filter(
+        (r: SimilarBookmarkWithFolder) => r.bookmarkId !== excludeBookmarkId,
+      );
+    }
+
+    return results.slice(0, limit);
   }
 
   /**
