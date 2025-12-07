@@ -6,6 +6,8 @@
 "use client";
 
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Check, X, RefreshCw } from "lucide-react";
 
 /**
  * 分类响应数据结构
@@ -60,7 +62,7 @@ export function showAutoClassificationToast(
 
 /**
  * 显示中置信度分类建议（60-79%）
- * 带有"确认"和"忽略"操作
+ * 带有"确认"、"换一个"和"忽略"操作
  */
 export function showClassificationSuggestionToast(
   suggestion: {
@@ -69,51 +71,87 @@ export function showClassificationSuggestionToast(
     confidence: number;
     reason: string;
   },
+  bookmarkId: number,
   onAccept: (suggestionId: number) => Promise<void>,
   onReject: (suggestionId: number) => Promise<void>,
+  onChangeFolder?: (bookmarkId: number, suggestionId: number) => void,
 ) {
-  toast(
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-2">
+  const toastId = toast(
+    <div className="flex flex-col gap-3">
+      {/* 信息区域 */}
+      <div className="flex items-start gap-2">
         <div className="flex-1">
-          <div className="font-medium">
-            推荐归类到「{suggestion.folder_name}」
+          <div className="font-medium text-sm">
+            💡 推荐归类到「{suggestion.folder_name}」
           </div>
-          <div className="text-xs text-muted-foreground mt-0.5">
+          <div className="text-xs text-muted-foreground mt-1">
             {suggestion.reason}
           </div>
         </div>
-        <div className="text-xs px-2 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 whitespace-nowrap">
+        <div className="text-xs px-2 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 whitespace-nowrap shrink-0">
           {suggestion.confidence}%
         </div>
       </div>
+
+      {/* 操作按钮区域 */}
+      <div className="flex items-center gap-2">
+        <Button
+          size="sm"
+          variant="default"
+          className="h-7 text-xs flex-1"
+          onClick={async () => {
+            try {
+              await onAccept(suggestion.id);
+              toast.dismiss(toastId);
+              toast.success(`已归类到「${suggestion.folder_name}」`);
+            } catch {
+              toast.error("操作失败，请重试");
+            }
+          }}
+        >
+          <Check className="w-3 h-3 mr-1" />
+          同意
+        </Button>
+
+        {onChangeFolder && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs flex-1"
+            onClick={() => {
+              toast.dismiss(toastId);
+              onChangeFolder(bookmarkId, suggestion.id);
+            }}
+          >
+            <RefreshCw className="w-3 h-3 mr-1" />
+            换一个
+          </Button>
+        )}
+
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-7 text-xs"
+          onClick={async () => {
+            try {
+              await onReject(suggestion.id);
+              toast.dismiss(toastId);
+            } catch (error) {
+              console.error("Reject suggestion failed:", error);
+            }
+          }}
+        >
+          <X className="w-3 h-3" />
+        </Button>
+      </div>
     </div>,
     {
-      duration: 15000, // 15秒后自动关闭
-      action: {
-        label: "确认",
-        onClick: async () => {
-          try {
-            await onAccept(suggestion.id);
-            toast.success(`已归类到「${suggestion.folder_name}」`);
-          } catch {
-            toast.error("操作失败，请重试");
-          }
-        },
-      },
-      cancel: {
-        label: "忽略",
-        onClick: async () => {
-          try {
-            await onReject(suggestion.id);
-          } catch (error) {
-            // 静默失败
-            console.error("Reject suggestion failed:", error);
-          }
-        },
-      },
+      duration: 10000, // 10秒后自动关闭
+      className: "w-[360px]",
     },
   );
+
+  return toastId;
 }
 
 /**
@@ -125,6 +163,7 @@ export async function handleClassificationNotification(
   onAcceptSuggestion: (suggestionId: number) => Promise<void>,
   onRejectSuggestion: (suggestionId: number) => Promise<void>,
   onUndoAutoClassification?: () => Promise<void>,
+  onChangeFolder?: (bookmarkId: number, suggestionId: number) => void,
 ) {
   if (!classification) return;
 
@@ -142,8 +181,10 @@ export async function handleClassificationNotification(
   if (classification.suggestion) {
     showClassificationSuggestionToast(
       classification.suggestion,
+      bookmarkId,
       onAcceptSuggestion,
       onRejectSuggestion,
+      onChangeFolder,
     );
   }
 

@@ -4,10 +4,18 @@
 
 /**
  * Calculate cosine similarity between two vectors
+ * Returns 0 if vectors are invalid or have different lengths (graceful degradation)
  */
 export function cosineSimilarity(a: number[], b: number[]): number {
-  if (a.length !== b.length) {
-    throw new Error("Vectors must have the same length");
+  // 安全检查：确保向量有效
+  if (!a || !b || !Array.isArray(a) || !Array.isArray(b)) {
+    return 0;
+  }
+
+  // 安全检查：向量长度必须一致且非空
+  if (a.length !== b.length || a.length === 0) {
+    // 优雅降级：返回 0 表示不相似，而不是抛出错误
+    return 0;
   }
 
   let dotProduct = 0;
@@ -32,10 +40,16 @@ export function cosineSimilarity(a: number[], b: number[]): number {
 
 /**
  * Calculate euclidean distance between two vectors
+ * Returns Infinity if vectors are invalid or have different lengths
  */
 export function euclideanDistance(a: number[], b: number[]): number {
-  if (a.length !== b.length) {
-    throw new Error("Vectors must have the same length");
+  // 安全检查
+  if (!a || !b || !Array.isArray(a) || !Array.isArray(b)) {
+    return Infinity;
+  }
+
+  if (a.length !== b.length || a.length === 0) {
+    return Infinity;
   }
 
   let sum = 0;

@@ -17,7 +17,7 @@
  * ```
  */
 
-import pino from 'pino'
+import pino from "pino";
 
 /**
  * 日志级别
@@ -28,13 +28,16 @@ import pino from 'pino'
  * - error: 错误信息
  * - fatal: 致命错误
  */
-const LOG_LEVEL = process.env.LOG_LEVEL || 'info'
+const LOG_LEVEL = process.env.LOG_LEVEL || "info";
 
 /**
  * 创建 Pino 日志实例
  *
- * 开发环境: 使用 pino-pretty 美化输出
+ * 开发环境: 使用同步模式避免 Next.js 热更新冲突
  * 生产环境: 输出 JSON 格式，便于日志聚合和分析
+ *
+ * 注意：pino-pretty transport 在 Next.js dev 模式下会导致 worker thread 错误，
+ * 因此在开发环境使用同步模式输出 JSON。
  */
 export const logger = pino({
   level: LOG_LEVEL,
@@ -45,30 +48,20 @@ export const logger = pino({
     serialize: true,
   },
 
-  // 开发环境使用 pino-pretty 美化输出
-  transport:
-    process.env.NODE_ENV === 'development'
-      ? {
-          target: 'pino-pretty',
-          options: {
-            colorize: true,
-            translateTime: 'yyyy-mm-dd HH:MM:ss',
-            ignore: 'pid,hostname',
-            singleLine: false,
-          },
-        }
-      : undefined,
+  // 禁用 transport 避免 worker thread 问题
+  // 开发环境下使用 JSON 输出（可通过 pino-pretty CLI 管道美化）
+  transport: undefined,
 
-  // 生产环境配置
+  // 格式化配置
   formatters: {
     level: (label) => {
-      return { level: label }
+      return { level: label };
     },
   },
 
   // 基础字段
   base:
-    process.env.NODE_ENV === 'production'
+    process.env.NODE_ENV === "production"
       ? {
           env: process.env.NODE_ENV,
         }
@@ -76,7 +69,7 @@ export const logger = pino({
 
   // 时间戳格式
   timestamp: pino.stdTimeFunctions.isoTime,
-})
+});
 
 /**
  * 创建子日志实例（带命名空间）
@@ -88,7 +81,7 @@ export const logger = pino({
  * ```
  */
 export function createLogger(namespace: string) {
-  return logger.child({ namespace })
+  return logger.child({ namespace });
 }
 
 /**
@@ -101,13 +94,13 @@ export const logUtils = {
   logRequest: (method: string, path: string, userId?: string) => {
     logger.info(
       {
-        type: 'api_request',
+        type: "api_request",
         method,
         path,
         userId,
       },
-      `API Request: ${method} ${path}`
-    )
+      `API Request: ${method} ${path}`,
+    );
   },
 
   /**
@@ -117,18 +110,18 @@ export const logUtils = {
     method: string,
     path: string,
     statusCode: number,
-    duration: number
+    duration: number,
   ) => {
     logger.info(
       {
-        type: 'api_response',
+        type: "api_response",
         method,
         path,
         statusCode,
         duration,
       },
-      `API Response: ${method} ${path} ${statusCode} (${duration}ms)`
-    )
+      `API Response: ${method} ${path} ${statusCode} (${duration}ms)`,
+    );
   },
 
   /**
@@ -137,24 +130,24 @@ export const logUtils = {
   logQuery: (table: string, operation: string, duration?: number) => {
     logger.debug(
       {
-        type: 'db_query',
+        type: "db_query",
         table,
         operation,
         duration,
       },
-      `Database: ${operation} on ${table}${duration ? ` (${duration}ms)` : ''}`
-    )
+      `Database: ${operation} on ${table}${duration ? ` (${duration}ms)` : ""}`,
+    );
   },
 
   /**
    * 记录错误（带堆栈）
    */
   logError: (error: unknown, context?: Record<string, unknown>) => {
-    const errorObj = error instanceof Error ? error : new Error(String(error))
+    const errorObj = error instanceof Error ? error : new Error(String(error));
 
     logger.error(
       {
-        type: 'error',
+        type: "error",
         error: {
           message: errorObj.message,
           name: errorObj.name,
@@ -162,12 +155,12 @@ export const logUtils = {
         },
         ...context,
       },
-      `Error: ${errorObj.message}`
-    )
+      `Error: ${errorObj.message}`,
+    );
   },
-}
+};
 
 /**
  * 默认导出
  */
-export default logger
+export default logger;

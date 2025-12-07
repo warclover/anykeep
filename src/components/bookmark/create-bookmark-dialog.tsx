@@ -29,6 +29,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -54,6 +55,7 @@ import {
   type ClassificationResponse,
 } from "@/lib/utils/classification-notification";
 import { UsageTagSelector } from "./usage-tag-selector";
+import { FolderQuickSelect } from "@/components/classification/folder-quick-select";
 import type { CustomUsageTag } from "@/types/supabase";
 
 interface BookmarkCreatedData {
@@ -119,6 +121,15 @@ export function CreateBookmarkDialog({
 
   // V10.0新增：视觉分析开关
   const [enableVisionAnalysis, setEnableVisionAnalysis] = useState(false);
+
+  // 换文件夹对话框状态
+  const [folderSelectOpen, setFolderSelectOpen] = useState(false);
+  const [pendingBookmarkId, setPendingBookmarkId] = useState<number | null>(
+    null,
+  );
+  const [pendingSuggestionId, setPendingSuggestionId] = useState<number | null>(
+    null,
+  );
 
   // 元数据获取状态
   const [fetchStatus, setFetchStatus] = useState<FetchStatus>("idle");
@@ -453,12 +464,23 @@ export function CreateBookmarkDialog({
           // 拒绝不刷新页面
         };
 
+        // 换文件夹的处理函数
+        const handleChangeFolder = (
+          bookmarkId: number,
+          suggestionId: number,
+        ) => {
+          setPendingBookmarkId(bookmarkId);
+          setPendingSuggestionId(suggestionId);
+          setFolderSelectOpen(true);
+        };
+
         await handleClassificationNotification(
           classification,
           data.data.id,
           handleAcceptSuggestion,
           handleRejectSuggestion,
           handleUndoAutoClassification,
+          handleChangeFolder,
         );
       }
 
@@ -559,280 +581,176 @@ export function CreateBookmarkDialog({
     return null;
   };
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>添加收藏</DialogTitle>
-        </DialogHeader>
+  /**
+   * 处理用户选择新文件夹
+   */
+  const handleFolderSelected = async (folderId: number, folderName: string) => {
+    if (!pendingBookmarkId) return;
 
-        <form onSubmit={handleSubmit} className="space-y-3">
-          {/* ══════════════════════════════════════════════════════════════
+    // 移动书签到新文件夹
+    const res = await fetchWithAbort(`/api/bookmarks/${pendingBookmarkId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ folderId }),
+    });
+
+    if (!res.ok) {
+      throw new Error("移动失败");
+    }
+
+    // 如果有待处理的建议，拒绝它（因为用户选择了其他文件夹）
+    if (pendingSuggestionId) {
+      try {
+        await rejectClassificationSuggestion(pendingSuggestionId);
+      } catch {
+        // 静默失败
+      }
+    }
+
+    toast.success(`已移动到「${folderName}」`);
+    router.refresh();
+
+    // 清理状态
+    setPendingBookmarkId(null);
+    setPendingSuggestionId(null);
+  };
+
+  return (
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>添加收藏</DialogTitle>
+            <DialogDescription className="sr-only">
+              输入链接保存网页内容，支持自动获取标题和摘要
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleSubmit} className="space-y-3">
+            {/* ══════════════════════════════════════════════════════════════
               📎 核心信息区块 - 始终显示（品牌视觉焦点）
           ══════════════════════════════════════════════════════════════ */}
-          <div className="rounded-xl bg-gradient-to-br from-violet-50 via-blue-50 to-cyan-50 p-4 space-y-3 border border-violet-100/50">
-            <div className="flex items-center gap-3">
-              {/* 渐变图标徽章 - 品牌视觉锚点 */}
-              <div className="flex-shrink-0 size-9 rounded-xl bg-gradient-to-br from-violet-500 via-blue-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-violet-500/25">
-                <Link className="size-4 text-white" />
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <Label
-                    htmlFor="url"
-                    className="text-sm font-medium text-gray-800"
-                  >
-                    粘贴链接
-                  </Label>
-                  <span className="text-red-500 text-xs">*</span>
-                  {renderUrlStatus()}
+            <div className="rounded-xl bg-gradient-to-br from-violet-50 via-blue-50 to-cyan-50 p-4 space-y-3 border border-violet-100/50">
+              <div className="flex items-center gap-3">
+                {/* 渐变图标徽章 - 品牌视觉锚点 */}
+                <div className="flex-shrink-0 size-9 rounded-xl bg-gradient-to-br from-violet-500 via-blue-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-violet-500/25">
+                  <Link className="size-4 text-white" />
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  输入链接后自动获取网页信息，支持微信公众号、B站、小红书、抖音等平台
-                </p>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Label
+                      htmlFor="url"
+                      className="text-sm font-medium text-gray-800"
+                    >
+                      粘贴链接
+                    </Label>
+                    <span className="text-red-500 text-xs">*</span>
+                    {renderUrlStatus()}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    输入链接后自动获取网页信息，支持微信公众号、B站、小红书、抖音等平台
+                  </p>
+                </div>
               </div>
-            </div>
 
-            {/* 输入框 - 聚焦时渐变边框 */}
-            <div className="relative group">
-              <div className="absolute -inset-0.5 bg-gradient-to-r from-violet-500 via-blue-500 to-cyan-500 rounded-lg opacity-0 group-focus-within:opacity-100 transition-opacity duration-300 blur-sm" />
-              <Input
-                id="url"
-                type="text"
-                placeholder="粘贴链接或分享文本..."
-                value={url}
-                onChange={(e) => {
-                  const extractedUrl = extractUrlFromShareText(e.target.value);
-                  setUrl(extractedUrl);
-                }}
-                required
-                className={`relative bg-white border-gray-200 focus:border-transparent focus:ring-2 focus:ring-violet-500/50 transition-all ${errors.url ? "border-red-500" : ""} ${fetchStatus === "loading" ? "pr-8" : ""}`}
-              />
-              {fetchStatus === "loading" && (
-                <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                  <Loader2 className="size-4 animate-spin text-violet-500" />
-                </div>
+              {/* 输入框 - 聚焦时渐变边框 */}
+              <div className="relative group">
+                <div className="absolute -inset-0.5 bg-gradient-to-r from-violet-500 via-blue-500 to-cyan-500 rounded-lg opacity-0 group-focus-within:opacity-100 transition-opacity duration-300 blur-sm" />
+                <Input
+                  id="url"
+                  type="text"
+                  placeholder="粘贴链接或分享文本..."
+                  value={url}
+                  onChange={(e) => {
+                    const extractedUrl = extractUrlFromShareText(
+                      e.target.value,
+                    );
+                    setUrl(extractedUrl);
+                  }}
+                  required
+                  className={`relative bg-white border-gray-200 focus:border-transparent focus:ring-2 focus:ring-violet-500/50 transition-all ${errors.url ? "border-red-500" : ""} ${fetchStatus === "loading" ? "pr-8" : ""}`}
+                />
+                {fetchStatus === "loading" && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <Loader2 className="size-4 animate-spin text-violet-500" />
+                  </div>
+                )}
+              </div>
+
+              {errors.url && (
+                <p className="text-xs text-red-500">{errors.url}</p>
               )}
             </div>
 
-            {errors.url && <p className="text-xs text-red-500">{errors.url}</p>}
-          </div>
-
-          {/* ══════════════════════════════════════════════════════════════
+            {/* ══════════════════════════════════════════════════════════════
               📄 内容信息区块 - 输入链接后展开
           ══════════════════════════════════════════════════════════════ */}
-          <div
-            className={`rounded-lg bg-blue-50/50 p-3 space-y-3 transition-all duration-300 ease-out ${
-              showExpandedSections
-                ? "opacity-100 max-h-[500px]"
-                : "opacity-0 max-h-0 overflow-hidden p-0"
-            }`}
-          >
-            {/* 区块标题 */}
-            <div className="flex items-center gap-2 text-sm font-medium text-gray-700 flex-wrap">
-              <FileText className="size-4" />
-              <span>标题与内容</span>
-              {autoFilledFields.has("title") && (
-                <span className="text-xs text-green-600 font-normal flex items-center gap-1">
-                  <Sparkles className="size-3" />
-                  已自动填充
-                </span>
-              )}
-              <span className="text-xs text-muted-foreground font-normal">
-                留空时自动获取
-              </span>
-            </div>
-
-            {/* 标题输入 */}
-            <div className="space-y-1.5">
-              <Input
-                id="title"
-                placeholder="可选，保存后自动获取"
-                value={title}
-                onChange={(e) => {
-                  setTitle(e.target.value);
-                  markFieldAsModified("title");
-                }}
-                className={`bg-white ${errors.title ? "border-red-500" : ""}`}
-              />
-              {errors.title && (
-                <p className="text-xs text-red-500">{errors.title}</p>
-              )}
-            </div>
-
-            {/* 描述输入 - 可折叠 */}
-            <div className="space-y-1.5">
-              {!isDescriptionExpanded ? (
-                /* 折叠状态：显示展开按钮或描述预览 */
-                <button
-                  type="button"
-                  onClick={() => setIsDescriptionExpanded(true)}
-                  className="w-full flex items-center justify-between py-2 px-3 text-sm text-gray-500 hover:text-gray-700 hover:bg-blue-100/50 rounded-lg transition-colors border border-dashed border-gray-300 hover:border-gray-400"
-                >
-                  <div className="flex items-center gap-2">
-                    <span>
-                      {description ? (
-                        <span className="text-gray-700 line-clamp-1">
-                          {description.length > 50
-                            ? description.slice(0, 50) + "..."
-                            : description}
-                        </span>
-                      ) : (
-                        "添加描述（可选）"
-                      )}
-                    </span>
-                    {autoFilledFields.has("description") && (
-                      <span className="text-xs text-green-600 flex items-center gap-1">
-                        <Sparkles className="size-3" />
-                        已自动填充
-                      </span>
-                    )}
-                  </div>
-                  <ChevronDown className="size-4" />
-                </button>
-              ) : (
-                /* 展开状态：显示输入框 */
-                <>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Label
-                        htmlFor="description"
-                        className="flex items-center text-gray-600"
-                      >
-                        描述
-                        {renderAutoFilledBadge("description")}
-                      </Label>
-                      <span className="text-xs text-muted-foreground">
-                        保存后自动生成 AI 摘要
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setIsDescriptionExpanded(false)}
-                      className="text-xs text-gray-500 hover:text-gray-700"
-                    >
-                      收起
-                    </button>
-                  </div>
-                  <Textarea
-                    id="description"
-                    placeholder="简单描述这篇内容..."
-                    value={description}
-                    onChange={(e) => {
-                      setDescription(e.target.value);
-                      markFieldAsModified("description");
-                    }}
-                    rows={2}
-                    className={`bg-white ${errors.description ? "border-red-500" : ""}`}
-                  />
-                  {errors.description && (
-                    <p className="text-xs text-red-500">{errors.description}</p>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* ══════════════════════════════════════════════════════════════
-              🏷️ 分类整理区块 - 输入链接后展开，可折叠
-          ══════════════════════════════════════════════════════════════ */}
-          <div
-            className={`rounded-lg bg-amber-50/50 transition-all duration-300 ease-out ${
-              showExpandedSections
-                ? "opacity-100 max-h-[800px]"
-                : "opacity-0 max-h-0 overflow-hidden"
-            }`}
-          >
-            {/* 可折叠的区块头部 */}
-            <button
-              type="button"
-              onClick={() =>
-                setIsClassificationExpanded(!isClassificationExpanded)
-              }
-              className="w-full flex items-center justify-between p-3 text-sm font-medium text-gray-700 hover:bg-amber-100/50 rounded-lg transition-colors"
-            >
-              <div className="flex items-center gap-2">
-                <Tags className="size-4" />
-                <span>分类整理</span>
-                <span className="text-xs text-muted-foreground font-normal">
-                  标签与文件夹
-                </span>
-              </div>
-              <ChevronDown
-                className={`size-4 transition-transform duration-200 ${
-                  isClassificationExpanded ? "rotate-180" : ""
-                }`}
-              />
-            </button>
-
-            {/* 折叠内容 */}
             <div
-              className={`px-3 pb-3 space-y-3 transition-all duration-200 ease-out ${
-                isClassificationExpanded
-                  ? "opacity-100 max-h-[600px]"
-                  : "opacity-0 max-h-0 overflow-hidden"
+              className={`rounded-lg bg-blue-50/50 p-3 space-y-3 transition-all duration-300 ease-out ${
+                showExpandedSections
+                  ? "opacity-100 max-h-[500px]"
+                  : "opacity-0 max-h-0 overflow-hidden p-0"
               }`}
             >
-              {/* 文件夹选择 */}
-              {folders.length > 0 && (
-                <div className="space-y-1.5">
-                  <Label htmlFor="folder" className="text-gray-600">
-                    文件夹
-                  </Label>
-                  <Select value={folderId} onValueChange={setFolderId}>
-                    <SelectTrigger className="bg-white">
-                      <SelectValue placeholder="选择文件夹（可选）" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {folders.map((folder) => (
-                        <SelectItem
-                          key={folder.id}
-                          value={folder.id.toString()}
-                        >
-                          {folder.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              {/* 用途标签选择 */}
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-2">
-                  <Label className="text-gray-600">用途标签</Label>
-                  <span className="text-xs text-muted-foreground">
-                    方便日后筛选
+              {/* 区块标题 */}
+              <div className="flex items-center gap-2 text-sm font-medium text-gray-700 flex-wrap">
+                <FileText className="size-4" />
+                <span>标题与内容</span>
+                {autoFilledFields.has("title") && (
+                  <span className="text-xs text-green-600 font-normal flex items-center gap-1">
+                    <Sparkles className="size-3" />
+                    已自动填充
                   </span>
-                </div>
-                <UsageTagSelector
-                  selectedTags={selectedUsageTags}
-                  onSelectedTagsChange={setSelectedUsageTags}
-                  customUsageTags={customUsageTags}
-                  onCustomTagsChange={setCustomUsageTags}
-                  disabled={isSubmitting}
-                />
+                )}
+                <span className="text-xs text-muted-foreground font-normal">
+                  留空时自动获取
+                </span>
               </div>
 
-              {/* 自定义标签输入 - 可折叠 */}
+              {/* 标题输入 */}
               <div className="space-y-1.5">
-                {!isCustomTagsExpanded ? (
-                  /* 折叠状态：显示展开按钮或已添加标签预览 */
+                <Input
+                  id="title"
+                  placeholder="可选，保存后自动获取"
+                  value={title}
+                  onChange={(e) => {
+                    setTitle(e.target.value);
+                    markFieldAsModified("title");
+                  }}
+                  className={`bg-white ${errors.title ? "border-red-500" : ""}`}
+                />
+                {errors.title && (
+                  <p className="text-xs text-red-500">{errors.title}</p>
+                )}
+              </div>
+
+              {/* 描述输入 - 可折叠 */}
+              <div className="space-y-1.5">
+                {!isDescriptionExpanded ? (
+                  /* 折叠状态：显示展开按钮或描述预览 */
                   <button
                     type="button"
-                    onClick={() => setIsCustomTagsExpanded(true)}
-                    className="w-full flex items-center justify-between py-2 px-3 text-sm text-gray-500 hover:text-gray-700 hover:bg-amber-100/50 rounded-lg transition-colors border border-dashed border-gray-300 hover:border-gray-400"
+                    onClick={() => setIsDescriptionExpanded(true)}
+                    className="w-full flex items-center justify-between py-2 px-3 text-sm text-gray-500 hover:text-gray-700 hover:bg-blue-100/50 rounded-lg transition-colors border border-dashed border-gray-300 hover:border-gray-400"
                   >
                     <div className="flex items-center gap-2">
                       <span>
-                        {userAddedTags.length > 0 ? (
-                          <span className="text-gray-700">
-                            已添加 {userAddedTags.length} 个标签
+                        {description ? (
+                          <span className="text-gray-700 line-clamp-1">
+                            {description.length > 50
+                              ? description.slice(0, 50) + "..."
+                              : description}
                           </span>
                         ) : (
-                          "添加自定义标签（可选）"
+                          "添加描述（可选）"
                         )}
                       </span>
+                      {autoFilledFields.has("description") && (
+                        <span className="text-xs text-green-600 flex items-center gap-1">
+                          <Sparkles className="size-3" />
+                          已自动填充
+                        </span>
+                      )}
                     </div>
                     <ChevronDown className="size-4" />
                   </button>
@@ -841,207 +759,367 @@ export function CreateBookmarkDialog({
                   <>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Label htmlFor="tags" className="text-gray-600">
-                          自定义标签
+                        <Label
+                          htmlFor="description"
+                          className="flex items-center text-gray-600"
+                        >
+                          描述
+                          {renderAutoFilledBadge("description")}
                         </Label>
                         <span className="text-xs text-muted-foreground">
-                          可选，保存后自动生成 AI 标签
+                          保存后自动生成 AI 摘要
                         </span>
                       </div>
                       <button
                         type="button"
-                        onClick={() => setIsCustomTagsExpanded(false)}
+                        onClick={() => setIsDescriptionExpanded(false)}
                         className="text-xs text-gray-500 hover:text-gray-700"
                       >
                         收起
                       </button>
                     </div>
-
-                    {userAddedTags.length > 0 && (
-                      <div className="flex flex-wrap gap-2">
-                        {userAddedTags.map((tag) => (
-                          <button
-                            key={tag}
-                            type="button"
-                            onClick={() => removeUserTag(tag)}
-                            className="px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-700 border border-blue-300 hover:bg-blue-200 transition-colors flex items-center gap-1"
-                          >
-                            {tag}
-                            <span className="text-blue-500 hover:text-blue-700">
-                              ×
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-
-                    <Input
-                      id="tags"
-                      placeholder="输入标签后按回车添加"
-                      value={tags}
-                      onChange={(e) => setTags(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          const input = e.currentTarget;
-                          if (input.value.trim()) {
-                            addUserTag(input.value.trim());
-                            setTags("");
-                          }
-                        }
+                    <Textarea
+                      id="description"
+                      placeholder="简单描述这篇内容..."
+                      value={description}
+                      onChange={(e) => {
+                        setDescription(e.target.value);
+                        markFieldAsModified("description");
                       }}
-                      className={`bg-white ${errors.userTags ? "border-red-500" : ""}`}
+                      rows={2}
+                      className={`bg-white ${errors.description ? "border-red-500" : ""}`}
                     />
-                    {errors.userTags && (
-                      <p className="text-xs text-red-500">{errors.userTags}</p>
+                    {errors.description && (
+                      <p className="text-xs text-red-500">
+                        {errors.description}
+                      </p>
                     )}
                   </>
                 )}
               </div>
             </div>
-          </div>
 
-          {/* ══════════════════════════════════════════════════════════════
-              💭 个人笔记区块 - 输入链接后展开，默认收起
+            {/* ══════════════════════════════════════════════════════════════
+              🏷️ 分类整理区块 - 输入链接后展开，可折叠
           ══════════════════════════════════════════════════════════════ */}
-          <div
-            className={`rounded-lg bg-purple-50/50 transition-all duration-300 ease-out ${
-              showExpandedSections
-                ? "opacity-100 max-h-[400px]"
-                : "opacity-0 max-h-0 overflow-hidden"
-            }`}
-          >
-            {/* 可折叠的区块头部 */}
-            <button
-              type="button"
-              onClick={() => setIsNotesExpanded(!isNotesExpanded)}
-              className="w-full flex items-center justify-between p-3 text-sm font-medium text-gray-700 hover:bg-purple-100/50 rounded-lg transition-colors"
-            >
-              <div className="flex items-center gap-2">
-                <MessageSquare className="size-4" />
-                <span>个人笔记</span>
-                <span className="text-xs text-muted-foreground font-normal">
-                  记录想法
-                </span>
-              </div>
-              <ChevronDown
-                className={`size-4 transition-transform duration-200 ${
-                  isNotesExpanded ? "rotate-180" : ""
-                }`}
-              />
-            </button>
-
-            {/* 折叠内容 */}
             <div
-              className={`px-3 pb-3 transition-all duration-200 ease-out ${
-                isNotesExpanded
-                  ? "opacity-100 max-h-[300px]"
+              className={`rounded-lg bg-amber-50/50 transition-all duration-300 ease-out ${
+                showExpandedSections
+                  ? "opacity-100 max-h-[800px]"
                   : "opacity-0 max-h-0 overflow-hidden"
               }`}
             >
-              <Textarea
-                id="notes"
-                placeholder="记录想法..."
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={2}
-                className={`bg-white ${errors.notes ? "border-red-500" : ""}`}
-              />
-              {errors.notes && (
-                <p className="text-xs text-red-500">{errors.notes}</p>
-              )}
-            </div>
-          </div>
+              {/* 可折叠的区块头部 */}
+              <button
+                type="button"
+                onClick={() =>
+                  setIsClassificationExpanded(!isClassificationExpanded)
+                }
+                className="w-full flex items-center justify-between p-3 text-sm font-medium text-gray-700 hover:bg-amber-100/50 rounded-lg transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <Tags className="size-4" />
+                  <span>分类整理</span>
+                  <span className="text-xs text-muted-foreground font-normal">
+                    标签与文件夹
+                  </span>
+                </div>
+                <ChevronDown
+                  className={`size-4 transition-transform duration-200 ${
+                    isClassificationExpanded ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
 
-          {/* V10.0新增：视觉分析开关 */}
-          <div
-            className={`flex items-center justify-between rounded-lg border p-3 bg-muted/30 transition-all duration-300 ease-out ${
-              showExpandedSections
-                ? "opacity-100 max-h-20"
-                : "opacity-0 max-h-0 overflow-hidden p-0 border-0"
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <div className="size-8 rounded-full bg-gradient-to-br from-purple-500/20 to-blue-500/20 flex items-center justify-center">
-                <Eye className="size-4 text-purple-500" />
-              </div>
-              <div>
-                <Label
-                  htmlFor="vision-analysis"
-                  className="text-sm font-medium cursor-pointer"
-                >
-                  深度视觉分析
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  提取图片文字、分析图表逻辑、生成视觉标签
-                </p>
+              {/* 折叠内容 */}
+              <div
+                className={`px-3 pb-3 space-y-3 transition-all duration-200 ease-out ${
+                  isClassificationExpanded
+                    ? "opacity-100 max-h-[600px]"
+                    : "opacity-0 max-h-0 overflow-hidden"
+                }`}
+              >
+                {/* 文件夹选择 */}
+                {folders.length > 0 && (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="folder" className="text-gray-600">
+                      文件夹
+                    </Label>
+                    <Select value={folderId} onValueChange={setFolderId}>
+                      <SelectTrigger className="bg-white">
+                        <SelectValue placeholder="选择文件夹（可选）" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {folders.map((folder) => (
+                          <SelectItem
+                            key={folder.id}
+                            value={folder.id.toString()}
+                          >
+                            {folder.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {/* 用途标签选择 */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <Label className="text-gray-600">用途标签</Label>
+                    <span className="text-xs text-muted-foreground">
+                      方便日后筛选
+                    </span>
+                  </div>
+                  <UsageTagSelector
+                    selectedTags={selectedUsageTags}
+                    onSelectedTagsChange={setSelectedUsageTags}
+                    customUsageTags={customUsageTags}
+                    onCustomTagsChange={setCustomUsageTags}
+                    disabled={isSubmitting}
+                  />
+                </div>
+
+                {/* 自定义标签输入 - 可折叠 */}
+                <div className="space-y-1.5">
+                  {!isCustomTagsExpanded ? (
+                    /* 折叠状态：显示展开按钮或已添加标签预览 */
+                    <button
+                      type="button"
+                      onClick={() => setIsCustomTagsExpanded(true)}
+                      className="w-full flex items-center justify-between py-2 px-3 text-sm text-gray-500 hover:text-gray-700 hover:bg-amber-100/50 rounded-lg transition-colors border border-dashed border-gray-300 hover:border-gray-400"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span>
+                          {userAddedTags.length > 0 ? (
+                            <span className="text-gray-700">
+                              已添加 {userAddedTags.length} 个标签
+                            </span>
+                          ) : (
+                            "添加自定义标签（可选）"
+                          )}
+                        </span>
+                      </div>
+                      <ChevronDown className="size-4" />
+                    </button>
+                  ) : (
+                    /* 展开状态：显示输入框 */
+                    <>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Label htmlFor="tags" className="text-gray-600">
+                            自定义标签
+                          </Label>
+                          <span className="text-xs text-muted-foreground">
+                            可选，保存后自动生成 AI 标签
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setIsCustomTagsExpanded(false)}
+                          className="text-xs text-gray-500 hover:text-gray-700"
+                        >
+                          收起
+                        </button>
+                      </div>
+
+                      {userAddedTags.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {userAddedTags.map((tag) => (
+                            <button
+                              key={tag}
+                              type="button"
+                              onClick={() => removeUserTag(tag)}
+                              className="px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-700 border border-blue-300 hover:bg-blue-200 transition-colors flex items-center gap-1"
+                            >
+                              {tag}
+                              <span className="text-blue-500 hover:text-blue-700">
+                                ×
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      <Input
+                        id="tags"
+                        placeholder="输入标签后按回车添加"
+                        value={tags}
+                        onChange={(e) => setTags(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            const input = e.currentTarget;
+                            if (input.value.trim()) {
+                              addUserTag(input.value.trim());
+                              setTags("");
+                            }
+                          }
+                        }}
+                        className={`bg-white ${errors.userTags ? "border-red-500" : ""}`}
+                      />
+                      {errors.userTags && (
+                        <p className="text-xs text-red-500">
+                          {errors.userTags}
+                        </p>
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
             </div>
-            <Switch
-              id="vision-analysis"
-              checked={enableVisionAnalysis}
-              onCheckedChange={setEnableVisionAnalysis}
-              disabled={isSubmitting}
-            />
-          </div>
 
-          {/* ══════════════════════════════════════════════════════════════
-              操作按钮 + 品牌 Slogan
+            {/* ══════════════════════════════════════════════════════════════
+              💭 个人笔记区块 - 输入链接后展开，默认收起
           ══════════════════════════════════════════════════════════════ */}
-          <DialogFooter className="flex-row justify-between items-end sm:justify-between">
-            {/* 品牌 Slogan - 输入链接后隐藏 */}
             <div
-              className={`transition-all duration-500 ease-out ${
+              className={`rounded-lg bg-purple-50/50 transition-all duration-300 ease-out ${
                 showExpandedSections
-                  ? "opacity-0 -translate-x-4 pointer-events-none"
-                  : "opacity-100 translate-x-0"
+                  ? "opacity-100 max-h-[400px]"
+                  : "opacity-0 max-h-0 overflow-hidden"
               }`}
             >
-              <div className="flex items-baseline gap-3 select-none">
-                <span
-                  className="text-4xl font-bold bg-gradient-to-r from-violet-600 via-blue-500 to-cyan-400 bg-clip-text text-transparent tracking-wide"
-                  style={{
-                    fontFamily: "'Segoe Script', 'Brush Script MT', cursive",
-                  }}
-                >
-                  Just
-                </span>
-                <span
-                  className="text-5xl font-bold bg-gradient-to-r from-violet-600 via-blue-500 to-cyan-400 bg-clip-text text-transparent tracking-tight"
-                  style={{
-                    fontFamily: "'Segoe Script', 'Brush Script MT', cursive",
-                  }}
-                >
-                  Keep!
-                </span>
+              {/* 可折叠的区块头部 */}
+              <button
+                type="button"
+                onClick={() => setIsNotesExpanded(!isNotesExpanded)}
+                className="w-full flex items-center justify-between p-3 text-sm font-medium text-gray-700 hover:bg-purple-100/50 rounded-lg transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="size-4" />
+                  <span>个人笔记</span>
+                  <span className="text-xs text-muted-foreground font-normal">
+                    记录想法
+                  </span>
+                </div>
+                <ChevronDown
+                  className={`size-4 transition-transform duration-200 ${
+                    isNotesExpanded ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
+
+              {/* 折叠内容 */}
+              <div
+                className={`px-3 pb-3 transition-all duration-200 ease-out ${
+                  isNotesExpanded
+                    ? "opacity-100 max-h-[300px]"
+                    : "opacity-0 max-h-0 overflow-hidden"
+                }`}
+              >
+                <Textarea
+                  id="notes"
+                  placeholder="记录想法..."
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={2}
+                  className={`bg-white ${errors.notes ? "border-red-500" : ""}`}
+                />
+                {errors.notes && (
+                  <p className="text-xs text-red-500">{errors.notes}</p>
+                )}
               </div>
-              <div className="h-1 w-full bg-gradient-to-r from-violet-500 via-blue-500 to-cyan-400 rounded-full mt-0.5" />
             </div>
 
-            {/* 操作按钮 */}
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
+            {/* V10.0新增：视觉分析开关 */}
+            <div
+              className={`flex items-center justify-between rounded-lg border p-3 bg-muted/30 transition-all duration-300 ease-out ${
+                showExpandedSections
+                  ? "opacity-100 max-h-20"
+                  : "opacity-0 max-h-0 overflow-hidden p-0 border-0"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className="size-8 rounded-full bg-gradient-to-br from-purple-500/20 to-blue-500/20 flex items-center justify-center">
+                  <Eye className="size-4 text-purple-500" />
+                </div>
+                <div>
+                  <Label
+                    htmlFor="vision-analysis"
+                    className="text-sm font-medium cursor-pointer"
+                  >
+                    深度视觉分析
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    提取图片文字、分析图表逻辑、生成视觉标签
+                  </p>
+                </div>
+              </div>
+              <Switch
+                id="vision-analysis"
+                checked={enableVisionAnalysis}
+                onCheckedChange={setEnableVisionAnalysis}
                 disabled={isSubmitting}
-              >
-                取消
-              </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="size-4 mr-2 animate-spin" />
-                    创建中...
-                  </>
-                ) : (
-                  "创建收藏"
-                )}
-              </Button>
+              />
             </div>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+
+            {/* ══════════════════════════════════════════════════════════════
+              操作按钮 + 品牌 Slogan
+          ══════════════════════════════════════════════════════════════ */}
+            <DialogFooter className="flex-row justify-between items-end sm:justify-between">
+              {/* 品牌 Slogan - 输入链接后隐藏 */}
+              <div
+                className={`transition-all duration-500 ease-out ${
+                  showExpandedSections
+                    ? "opacity-0 -translate-x-4 pointer-events-none"
+                    : "opacity-100 translate-x-0"
+                }`}
+              >
+                <div className="flex items-baseline gap-3 select-none">
+                  <span
+                    className="text-4xl font-bold bg-gradient-to-r from-violet-600 via-blue-500 to-cyan-400 bg-clip-text text-transparent tracking-wide"
+                    style={{
+                      fontFamily: "'Segoe Script', 'Brush Script MT', cursive",
+                    }}
+                  >
+                    Just
+                  </span>
+                  <span
+                    className="text-5xl font-bold bg-gradient-to-r from-violet-600 via-blue-500 to-cyan-400 bg-clip-text text-transparent tracking-tight"
+                    style={{
+                      fontFamily: "'Segoe Script', 'Brush Script MT', cursive",
+                    }}
+                  >
+                    Keep!
+                  </span>
+                </div>
+                <div className="h-1 w-full bg-gradient-to-r from-violet-500 via-blue-500 to-cyan-400 rounded-full mt-0.5" />
+              </div>
+
+              {/* 操作按钮 */}
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                  disabled={isSubmitting}
+                >
+                  取消
+                </Button>
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="size-4 mr-2 animate-spin" />
+                      创建中...
+                    </>
+                  ) : (
+                    "创建收藏"
+                  )}
+                </Button>
+              </div>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* 换文件夹对话框 */}
+      <FolderQuickSelect
+        open={folderSelectOpen}
+        onOpenChange={setFolderSelectOpen}
+        bookmarkId={pendingBookmarkId || 0}
+        onSelect={handleFolderSelected}
+        title="选择其他文件夹"
+      />
+    </>
   );
 }
