@@ -8,7 +8,14 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Sparkles, RefreshCw, Check, AlertCircle } from "lucide-react";
+import {
+  Loader2,
+  Sparkles,
+  RefreshCw,
+  Check,
+  AlertCircle,
+  Eye,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
   useAbortableFetch,
@@ -26,6 +33,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -105,6 +113,9 @@ export function CreateBookmarkDialog({
   const [selectedUsageTags, setSelectedUsageTags] = useState<string[]>([]);
   const [customUsageTags, setCustomUsageTags] = useState<CustomUsageTag[]>([]);
 
+  // V10.0新增：视觉分析开关
+  const [enableVisionAnalysis, setEnableVisionAnalysis] = useState(false);
+
   // 元数据获取状态
   const [fetchStatus, setFetchStatus] = useState<FetchStatus>("idle");
   const [fetchError, setFetchError] = useState<string>("");
@@ -140,6 +151,8 @@ export function CreateBookmarkDialog({
     setUserAddedTags([]);
     // 重置用途标签
     setSelectedUsageTags([]);
+    // 重置视觉分析开关
+    setEnableVisionAnalysis(false);
   };
 
   /**
@@ -364,6 +377,34 @@ export function CreateBookmarkDialog({
       }
 
       toast.success("收藏创建成功！");
+
+      // V10.0新增：异步触发视觉分析（不阻塞主流程）
+      if (enableVisionAnalysis && data.data?.id) {
+        // 异步调用，不等待结果
+        fetch("/api/ai/vision-analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            bookmarkId: data.data.id,
+            maxImages: 3,
+          }),
+        })
+          .then((res) => res.json())
+          .then((result) => {
+            if (result.success) {
+              toast.success("视觉分析完成", {
+                description: "已提取图片内容和视觉标签",
+              });
+            }
+          })
+          .catch(() => {
+            // 静默失败，不影响用户体验
+          });
+
+        toast.info("正在进行视觉分析...", {
+          description: "分析完成后将自动更新",
+        });
+      }
 
       // 处理 AI 分类通知（高置信度/中置信度）
       if (data.data?.classification) {
@@ -691,6 +732,32 @@ export function CreateBookmarkDialog({
             {errors.notes && (
               <p className="text-xs text-red-500">{errors.notes}</p>
             )}
+          </div>
+
+          {/* V10.0新增：视觉分析开关 */}
+          <div className="flex items-center justify-between rounded-lg border p-3 bg-muted/30">
+            <div className="flex items-center gap-3">
+              <div className="size-8 rounded-full bg-gradient-to-br from-purple-500/20 to-blue-500/20 flex items-center justify-center">
+                <Eye className="size-4 text-purple-500" />
+              </div>
+              <div>
+                <Label
+                  htmlFor="vision-analysis"
+                  className="text-sm font-medium cursor-pointer"
+                >
+                  深度视觉分析
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  提取图片文字、分析图表逻辑、生成视觉标签
+                </p>
+              </div>
+            </div>
+            <Switch
+              id="vision-analysis"
+              checked={enableVisionAnalysis}
+              onCheckedChange={setEnableVisionAnalysis}
+              disabled={isSubmitting}
+            />
           </div>
 
           <DialogFooter>

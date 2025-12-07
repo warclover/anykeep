@@ -33,6 +33,13 @@ import { EditBookmarkDialog } from "@/components/bookmark/edit-bookmark-dialog";
 import { MoveToFolderDialog } from "@/components/bookmark/move-to-folder-dialog";
 import { SummaryRenderer } from "@/components/bookmark/summary-renderer";
 import { BookmarkRating } from "@/components/bookmark/bookmark-rating";
+import {
+  VisionInsights,
+  VisionAnalysisTrigger,
+} from "@/components/bookmark/vision-insights";
+import { useVisionAnalysis } from "@/hooks/use-vision-analysis";
+import type { BookmarkVisionData } from "@/types/vision";
+import { hasVisionData } from "@/types/vision";
 import type { Bookmark, CustomUsageTag } from "@/types/supabase";
 import { cn } from "@/lib/utils";
 import { getPlatformConfig } from "@/lib/platform-utils";
@@ -65,6 +72,32 @@ export function BookmarkDetailClient({
   const [isMarkedForDeletion, setIsMarkedForDeletion] = useState(
     bookmark.is_marked_for_deletion || false,
   );
+
+  // V10.0新增：视觉分析
+  const {
+    data: newVisionData,
+    isLoading: isAnalyzingVision,
+    analyze: analyzeVision,
+  } = useVisionAnalysis();
+
+  // 使用 mounted 状态避免 Hydration 错误
+  // 视觉数据只在客户端挂载后才计算，确保服务端和客户端初始渲染一致
+  const [mounted, setMounted] = useState(false);
+  const [existingVisionData, setExistingVisionData] =
+    useState<BookmarkVisionData | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+    // 仅在客户端计算视觉数据
+    if (hasVisionData(bookmark.ai_vision_data)) {
+      setExistingVisionData(
+        bookmark.ai_vision_data as unknown as BookmarkVisionData,
+      );
+    }
+  }, [bookmark.ai_vision_data]);
+
+  // 使用已有的视觉数据或新分析的数据
+  const visionData = newVisionData || existingVisionData;
 
   // 判断是否为浏览器书签
   const isBrowserPlatform = [
@@ -660,6 +693,38 @@ export function BookmarkDetailClient({
                       AI 摘要
                     </h3>
                     <SummaryRenderer summary={bookmark.ai_summary} />
+                  </div>
+                  <Separator />
+                </>
+              )}
+
+              {/* V10.0新增：视觉洞察 */}
+              {/* 仅在客户端挂载后渲染，避免 Hydration 错误 */}
+              {mounted && (visionData || bookmark.cover_url) && (
+                <>
+                  <div>
+                    {visionData ? (
+                      <VisionInsights
+                        data={visionData}
+                        showHeader={true}
+                        defaultExpanded={true}
+                      />
+                    ) : (
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            视觉分析
+                          </h3>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            使用 AI 分析图片内容，提取文字和视觉特征
+                          </p>
+                        </div>
+                        <VisionAnalysisTrigger
+                          isAnalyzing={isAnalyzingVision}
+                          onAnalyze={() => analyzeVision(bookmark.id)}
+                        />
+                      </div>
+                    )}
                   </div>
                   <Separator />
                 </>
