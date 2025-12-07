@@ -1,15 +1,35 @@
 /**
  * Score Aggregator
  * Aggregates results from multiple matchers into a final classification decision
+ *
+ * V3.0 更新：支持 5 层匹配策略的聚合
  */
 
 import type { IScoreAggregator, IMatcher } from "./interfaces";
 import type { MatchResult, ClassificationResult } from "../types";
 import { CLASSIFICATION_THRESHOLDS } from "../constants";
+import { logger } from "@/lib/logger";
+
+/**
+ * 文件夹聚合分数
+ */
+interface FolderAggregateScore {
+  folderName: string;
+  /** 各匹配器分数 */
+  matcherScores: Map<string, number>;
+  /** 推荐原因 */
+  reasons: string[];
+  /** 是否跳过 AI */
+  skipAI: boolean;
+  /** 元数据 */
+  metadata?: Record<string, unknown>;
+}
 
 /**
  * Weighted score aggregator
  * Combines scores from multiple matchers using their configured weights
+ *
+ * V3.0: 支持任意数量的匹配器
  */
 export class WeightedScoreAggregator implements IScoreAggregator {
   private lowConfidenceThreshold: number;
@@ -22,6 +42,7 @@ export class WeightedScoreAggregator implements IScoreAggregator {
 
   /**
    * Aggregate results from all matchers
+   * V3.0: 动态处理所有匹配器结果
    */
   aggregate(
     results: Map<string, MatchResult[]>,
@@ -33,93 +54,113 @@ export class WeightedScoreAggregator implements IScoreAggregator {
       weights.set(matcher.name, matcher.weight);
     }
 
-    // Collect all unique folder IDs
-    const folderScores = new Map<
-      number,
-      {
-        folderName: string;
-        vectorScore: number;
-        historyScore: number;
-        aiScore: number;
-        reasons: string[];
-      }
-    >();
+    // ═══════════════════════════════════════════════════════════════
+    // 第 1 步：检查 k-NN 直接锁定
+    // ═══════════════════════════════════════════════════════════════
+    const knnDirectResults = results.get("knn-direct") || [];
+    const knnDirectMatch = knnDirectResults.find(
+      (r) => r.metadata?.skipAI === true && r.score >= 85,
+    );
 
-    // Process vector results
-    const vectorResults = results.get("vector") || [];
-    for (const result of vectorResults) {
-      if (!folderScores.has(result.folderId)) {
-        folderScores.set(result.folderId, {
-          folderName: result.folderName,
-          vectorScore: 0,
+    if (knnDirectMatch) {
+      logger.info(
+        {
+          folderId: knnDirectMatch.folderId,
+          folderName: knnDirectMatch.folderName,
+          score: knnDirectMatch.score,
+          action: "knn_direct_lock",
+        },
+        "Score Aggregator: k-NN direct lock activated",
+      );
+
+      return {
+        folderId: knnDirectMatch.folderId,
+        folderName: knnDirectMatch.folderName,
+        confidence: knnDirectMatch.score,
+        reason: knnDirectMatch.reason,
+        action: "classify",
+        scores: {
+          vectorScore: knnDirectMatch.score,
           historyScore: 0,
           aiScore: 0,
-          reasons: [],
-        });
-      }
-      const entry = folderScores.get(result.folderId)!;
-      entry.vectorScore = result.score;
-      entry.reasons.push(`Vector: ${result.score}%`);
+        },
+        matchDetails: [
+          {
+            folderId: knnDirectMatch.folderId,
+            folderName: knnDirectMatch.folderName,
+            score: knnDirectMatch.score,
+            confidence: knnDirectMatch.score,
+            reason: knnDirectMatch.reason,
+          },
+        ],
+      };
     }
 
-    // Process history results
-    const historyResults = results.get("history") || [];
-    for (const result of historyResults) {
-      if (!folderScores.has(result.folderId)) {
-        folderScores.set(result.folderId, {
-          folderName: result.folderName,
-          vectorScore: 0,
-          historyScore: 0,
-          aiScore: 0,
-          reasons: [],
-        });
+    // ═══════════════════════════════════════════════════════════════
+    // 第 2 步：收集所有文件夹的匹配分数
+    // ═══════════════════════════════════════════════════════════════
+    const folderScores = new Map<number, FolderAggregateScore>();
+
+    // 遍历所有匹配器结果
+    for (const [matcherName, matchResults] of results) {
+      for (const result of matchResults) {
+        // 跳过特殊文件夹 ID（如建议创建新文件夹）
+        if (result.folderId < 0) continue;
+
+        if (!folderScores.has(result.folderId)) {
+          folderScores.set(result.folderId, {
+            folderName: result.folderName,
+            matcherScores: new Map(),
+            reasons: [],
+            skipAI: false,
+          });
+        }
+
+        const entry = folderScores.get(result.folderId)!;
+        entry.matcherScores.set(matcherName, result.score);
+
+        // 生成可读的原因
+        const matcherLabel = this.getMatcherLabel(matcherName);
+        entry.reasons.push(`${matcherLabel}: ${result.score}%`);
+
+        // 检查是否有跳过 AI 的标记
+        if (result.metadata?.skipAI) {
+          entry.skipAI = true;
+        }
       }
-      const entry = folderScores.get(result.folderId)!;
-      entry.historyScore = result.score;
-      entry.reasons.push(`History: ${result.score}%`);
     }
 
-    // Process AI results
-    const aiResults = results.get("ai") || [];
-    for (const result of aiResults) {
-      if (!folderScores.has(result.folderId)) {
-        folderScores.set(result.folderId, {
-          folderName: result.folderName,
-          vectorScore: 0,
-          historyScore: 0,
-          aiScore: 0,
-          reasons: [],
-        });
-      }
-      const entry = folderScores.get(result.folderId)!;
-      entry.aiScore = result.score;
-      entry.reasons.push(`AI: ${result.score}%`);
-    }
-
-    // Calculate weighted scores
-    const vectorWeight = weights.get("vector") || 0;
-    const historyWeight = weights.get("history") || 0;
-    const aiWeight = weights.get("ai") || 0;
-
+    // ═══════════════════════════════════════════════════════════════
+    // 第 3 步：计算加权分数
+    // ═══════════════════════════════════════════════════════════════
     const scoredFolders = Array.from(folderScores.entries()).map(
       ([folderId, data]) => {
-        const totalWeight = vectorWeight + historyWeight + aiWeight;
-        const weightedScore =
-          totalWeight > 0
-            ? (data.vectorScore * vectorWeight +
-                data.historyScore * historyWeight +
-                data.aiScore * aiWeight) /
-              totalWeight
-            : 0;
+        let totalWeight = 0;
+        let weightedSum = 0;
+
+        // 核心匹配器分数（用于兼容性）
+        const vectorScore = data.matcherScores.get("vector") || 0;
+        const historyScore = data.matcherScores.get("history") || 0;
+        const aiScore = data.matcherScores.get("ai") || 0;
+
+        // 计算所有匹配器的加权分数
+        for (const [matcherName, score] of data.matcherScores) {
+          const weight = weights.get(matcherName) || 0;
+          weightedSum += score * weight;
+          totalWeight += weight;
+        }
+
+        const weightedScore = totalWeight > 0 ? weightedSum / totalWeight : 0;
 
         return {
           folderId,
           folderName: data.folderName,
           score: Math.round(weightedScore),
-          vectorScore: data.vectorScore,
-          historyScore: data.historyScore,
-          aiScore: data.aiScore,
+          vectorScore,
+          historyScore,
+          aiScore,
           reasons: data.reasons,
+          skipAI: data.skipAI,
         };
       },
     );
@@ -130,7 +171,25 @@ export class WeightedScoreAggregator implements IScoreAggregator {
     // Get best match
     const bestMatch = scoredFolders[0];
 
-    // Determine action
+    // Log aggregation result
+    logger.debug(
+      {
+        matchersUsed: Array.from(results.keys()),
+        candidateFolders: scoredFolders.length,
+        bestMatch: bestMatch
+          ? {
+              folderId: bestMatch.folderId,
+              folderName: bestMatch.folderName,
+              score: bestMatch.score,
+            }
+          : null,
+      },
+      "Score Aggregator: Aggregation complete",
+    );
+
+    // ═══════════════════════════════════════════════════════════════
+    // 第 4 步：决定最终动作
+    // ═══════════════════════════════════════════════════════════════
     if (!bestMatch || bestMatch.score < this.lowConfidenceThreshold) {
       // Low confidence - go to inbox
       return {
@@ -138,8 +197,8 @@ export class WeightedScoreAggregator implements IScoreAggregator {
         folderName: "待整理",
         confidence: bestMatch?.score ?? 0,
         reason: bestMatch
-          ? `Confidence ${bestMatch.score}% below threshold ${this.lowConfidenceThreshold}%`
-          : "No matching folders found",
+          ? `置信度 ${bestMatch.score}% 低于阈值 ${this.lowConfidenceThreshold}%`
+          : "未找到匹配的文件夹",
         action: "inbox",
         scores: {
           vectorScore: bestMatch?.vectorScore ?? 0,
@@ -176,5 +235,21 @@ export class WeightedScoreAggregator implements IScoreAggregator {
         reason: f.reasons.join(", "),
       })),
     };
+  }
+
+  /**
+   * 获取匹配器的可读标签
+   */
+  private getMatcherLabel(matcherName: string): string {
+    const labels: Record<string, string> = {
+      "knn-direct": "k-NN直接锁定",
+      fingerprint: "指纹匹配",
+      tag: "标签匹配",
+      vector: "向量相似度",
+      universal: "通用分类",
+      history: "历史记录",
+      ai: "AI推荐",
+    };
+    return labels[matcherName] || matcherName;
   }
 }

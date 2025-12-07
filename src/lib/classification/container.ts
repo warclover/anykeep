@@ -1,6 +1,8 @@
 /**
  * Classification Module Dependency Container
  * Manages service instances and dependencies
+ *
+ * V3.0 更新：集成 5 层匹配策略
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -19,13 +21,22 @@ import {
   SuggestionRepository,
 } from "./repositories";
 
-// Strategies
+// V2 Strategies
 import {
   VectorMatcher,
   HistoryMatcher,
   AIRecommender,
   WeightedScoreAggregator,
 } from "./strategies";
+
+// V3 Strategies
+import {
+  UniversalCategoryMatcher,
+  KnnDirectMatcher,
+  FingerprintMatcher,
+  TagMatcher,
+} from "./v3/strategies";
+import { V3_CONFIG } from "./v3/config";
 
 // Services
 import {
@@ -37,6 +48,7 @@ import {
 
 // Constants
 import { CLASSIFICATION_WEIGHTS } from "./constants";
+import { logger } from "@/lib/logger";
 
 /**
  * Dependency injection container for classification module
@@ -157,24 +169,110 @@ export class ClassificationContainer {
 
   /**
    * Get Classification Service
+   * V3.0: 集成 5 层匹配策略
    */
   getClassificationService(): IClassificationService {
     if (!this._classificationService) {
       const folderProfileRepo = this.getFolderProfileRepository();
       const bookmarkRepo = this.getBookmarkRepository();
 
-      // Create matchers
-      const matchers: IMatcher[] = [
+      // 构建匹配器列表（V3.0 5 层策略）
+      const matchers: IMatcher[] = [];
+
+      // ═══════════════════════════════════════════════════════════════
+      // 第 1 层：k-NN 直接锁定（最高优先级，可跳过后续层）
+      // ═══════════════════════════════════════════════════════════════
+      if (V3_CONFIG.enableKnnDirect) {
+        matchers.push(
+          new KnnDirectMatcher(bookmarkRepo, {
+            weight: 1.0, // 最高权重
+            thresholds: { similarity: V3_CONFIG.knnDirectThreshold },
+          }),
+        );
+        logger.debug(
+          { matcher: "knn-direct", enabled: true },
+          "V3 Matcher enabled",
+        );
+      }
+
+      // ═══════════════════════════════════════════════════════════════
+      // 第 2 层：标签指纹匹配
+      // ═══════════════════════════════════════════════════════════════
+      if (V3_CONFIG.enableFolderFingerprint) {
+        matchers.push(
+          new FingerprintMatcher(this.supabase, {
+            weight: 0.25,
+          }),
+        );
+        logger.debug(
+          { matcher: "fingerprint", enabled: true },
+          "V3 Matcher enabled",
+        );
+      }
+
+      // ═══════════════════════════════════════════════════════════════
+      // 第 3 层：Tag-to-Tag 精准匹配
+      // ═══════════════════════════════════════════════════════════════
+      if (V3_CONFIG.enableTagMatcher) {
+        matchers.push(
+          new TagMatcher(this.supabase, {
+            weight: 0.3,
+          }),
+        );
+        logger.debug({ matcher: "tag", enabled: true }, "V3 Matcher enabled");
+      }
+
+      // ═══════════════════════════════════════════════════════════════
+      // 第 4 层：向量相似度匹配 (V2 核心)
+      // ═══════════════════════════════════════════════════════════════
+      matchers.push(
         new VectorMatcher(folderProfileRepo, {
           weight: CLASSIFICATION_WEIGHTS.VECTOR,
         }),
+      );
+
+      // ═══════════════════════════════════════════════════════════════
+      // 第 5 层：通用分类匹配（冷启动兜底）
+      // ═══════════════════════════════════════════════════════════════
+      if (V3_CONFIG.enableUniversalCategories) {
+        matchers.push(
+          new UniversalCategoryMatcher(folderProfileRepo, {
+            weight: 0.2,
+          }),
+        );
+        logger.debug(
+          { matcher: "universal", enabled: true },
+          "V3 Matcher enabled",
+        );
+      }
+
+      // ═══════════════════════════════════════════════════════════════
+      // 历史匹配 + AI 推荐（辅助层）
+      // ═══════════════════════════════════════════════════════════════
+      matchers.push(
         new HistoryMatcher(bookmarkRepo, {
           weight: CLASSIFICATION_WEIGHTS.HISTORY,
         }),
+      );
+
+      matchers.push(
         new AIRecommender(folderProfileRepo, {
           weight: CLASSIFICATION_WEIGHTS.AI,
         }),
-      ];
+      );
+
+      logger.info(
+        {
+          totalMatchers: matchers.length,
+          v3Features: {
+            knnDirect: V3_CONFIG.enableKnnDirect,
+            fingerprint: V3_CONFIG.enableFolderFingerprint,
+            tagMatcher: V3_CONFIG.enableTagMatcher,
+            universal: V3_CONFIG.enableUniversalCategories,
+          },
+        },
+        "V3 Classification Service initialized",
+      );
 
       // Create aggregator
       const aggregator: IScoreAggregator = new WeightedScoreAggregator();

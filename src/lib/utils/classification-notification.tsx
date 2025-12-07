@@ -236,3 +236,294 @@ export async function rejectClassificationSuggestion(
     throw new Error(error.error?.message || "拒绝建议失败");
   }
 }
+
+// ============================================================================
+// V3.0 新增：自动创建文件夹通知
+// ============================================================================
+
+import {
+  FolderPlus,
+  Lightbulb,
+  FolderSync,
+  FolderOpen,
+  Undo2,
+} from "lucide-react";
+
+/**
+ * V3.0 - 显示自动创建文件夹通知
+ * 当系统自动创建新文件夹并归类书签时触发
+ */
+export function showAutoCreateFolderToast(
+  folderName: string,
+  bookmarkTitle: string,
+  onUndo: () => Promise<void>,
+  onViewFolder?: () => void,
+) {
+  const toastId = toast(
+    <div className="flex flex-col gap-2">
+      {/* 标题 */}
+      <div className="flex items-center gap-2">
+        <FolderPlus className="w-4 h-4 text-green-500 shrink-0" />
+        <span className="font-medium text-sm">
+          已创建新文件夹「{folderName}」
+        </span>
+      </div>
+
+      {/* 归类信息 */}
+      <div className="text-xs text-muted-foreground pl-6">
+        「
+        {bookmarkTitle.length > 30
+          ? bookmarkTitle.slice(0, 30) + "..."
+          : bookmarkTitle}
+        」已归入此文件夹
+      </div>
+
+      {/* 操作按钮 */}
+      <div className="flex items-center gap-2 pl-6">
+        {onViewFolder && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-6 text-xs"
+            onClick={() => {
+              toast.dismiss(toastId);
+              onViewFolder();
+            }}
+          >
+            <FolderOpen className="w-3 h-3 mr-1" />
+            查看
+          </Button>
+        )}
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-6 text-xs"
+          onClick={async () => {
+            try {
+              await onUndo();
+              toast.dismiss(toastId);
+              toast.info("已撤销，内容已移回待整理，文件夹已删除");
+            } catch {
+              toast.error("撤销失败，请重试");
+            }
+          }}
+        >
+          <Undo2 className="w-3 h-3 mr-1" />
+          撤销
+        </Button>
+      </div>
+    </div>,
+    {
+      duration: 8000,
+      className: "w-[340px]",
+    },
+  );
+
+  return toastId;
+}
+
+/**
+ * V3.0 - 显示建议创建文件夹通知（用户确认模式）
+ * 当 AI 建议创建新文件夹但需要用户确认时触发
+ */
+export function showSuggestCreateFolderToast(
+  suggestedName: string,
+  bookmarkTitle: string,
+  universalCategoryName: string,
+  onConfirm: () => Promise<void>,
+  onReject: () => void,
+) {
+  const toastId = toast(
+    <div className="flex flex-col gap-3">
+      {/* 建议信息 */}
+      <div className="flex items-start gap-2">
+        <Lightbulb className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+        <div className="flex-1">
+          <div className="font-medium text-sm">
+            建议创建新文件夹「{suggestedName}」
+          </div>
+          <div className="text-xs text-muted-foreground mt-1">
+            「
+            {bookmarkTitle.length > 25
+              ? bookmarkTitle.slice(0, 25) + "..."
+              : bookmarkTitle}
+            」 属于「{universalCategoryName}」领域，但无匹配文件夹
+          </div>
+        </div>
+      </div>
+
+      {/* 操作按钮 */}
+      <div className="flex items-center gap-2">
+        <Button
+          size="sm"
+          variant="default"
+          className="h-7 text-xs flex-1"
+          onClick={async () => {
+            try {
+              await onConfirm();
+              toast.dismiss(toastId);
+              toast.success(`已创建「${suggestedName}」并归类`);
+            } catch {
+              toast.error("创建失败，请重试");
+            }
+          }}
+        >
+          <Check className="w-3 h-3 mr-1" />
+          创建并归类
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-7 text-xs"
+          onClick={() => {
+            onReject();
+            toast.dismiss(toastId);
+          }}
+        >
+          暂不创建
+        </Button>
+      </div>
+    </div>,
+    {
+      duration: 15000, // 15秒，给用户足够时间决定
+      className: "w-[380px]",
+    },
+  );
+
+  return toastId;
+}
+
+// ============================================================================
+// V3.0 新增：回溯分类通知
+// ============================================================================
+
+/**
+ * 回溯分类项目信息
+ */
+interface BackfillClassifiedItem {
+  id: number;
+  title: string;
+  confidence: number;
+}
+
+/**
+ * V3.0 - 显示回溯分类完成通知
+ * 当新文件夹创建后，待整理中的相关内容被自动归类时触发
+ */
+export function showBackfillClassificationToast(
+  folderName: string,
+  classifiedCount: number,
+  classifiedItems: BackfillClassifiedItem[],
+  onViewFolder: () => void,
+  onUndo: () => Promise<void>,
+) {
+  // 如果没有归类任何内容，不显示通知
+  if (classifiedCount === 0) return null;
+
+  const toastId = toast(
+    <div className="flex flex-col gap-3">
+      {/* 标题 */}
+      <div className="flex items-center gap-2">
+        <FolderSync className="w-4 h-4 text-blue-500 shrink-0" />
+        <span className="font-medium text-sm">
+          已整理 {classifiedCount} 条相关内容
+        </span>
+      </div>
+
+      {/* 详情说明 */}
+      <div className="text-xs text-muted-foreground">
+        以下内容已从「待整理」移动到「{folderName}」：
+      </div>
+
+      {/* 归类列表预览 */}
+      <div className="space-y-1 max-h-[100px] overflow-y-auto">
+        {classifiedItems.slice(0, 5).map((item) => (
+          <div
+            key={item.id}
+            className="flex items-center justify-between text-xs bg-muted/50 rounded px-2 py-1"
+          >
+            <span className="truncate flex-1 mr-2">
+              {item.title.length > 30
+                ? item.title.slice(0, 30) + "..."
+                : item.title}
+            </span>
+            <span className="text-muted-foreground shrink-0">
+              {item.confidence}%
+            </span>
+          </div>
+        ))}
+        {classifiedCount > 5 && (
+          <div className="text-xs text-muted-foreground text-center py-1">
+            还有 {classifiedCount - 5} 条...
+          </div>
+        )}
+      </div>
+
+      {/* 操作按钮 */}
+      <div className="flex items-center gap-2">
+        <Button
+          size="sm"
+          variant="default"
+          className="h-7 text-xs flex-1"
+          onClick={() => {
+            toast.dismiss(toastId);
+            onViewFolder();
+          }}
+        >
+          <FolderOpen className="w-3 h-3 mr-1" />
+          查看文件夹
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-7 text-xs"
+          onClick={async () => {
+            try {
+              await onUndo();
+              toast.dismiss(toastId);
+              toast.info(`已撤销，${classifiedCount} 条内容已移回待整理`);
+            } catch {
+              toast.error("撤销失败，请重试");
+            }
+          }}
+        >
+          <Undo2 className="w-3 h-3 mr-1" />
+          撤销全部
+        </Button>
+      </div>
+    </div>,
+    {
+      duration: 15000, // 15秒，给用户足够时间查看
+      className: "w-[400px]",
+    },
+  );
+
+  return toastId;
+}
+
+/**
+ * V3.0 - 显示简洁的回溯分类通知（少量内容时）
+ */
+export function showSimpleBackfillToast(
+  folderName: string,
+  count: number,
+  onViewFolder?: () => void,
+) {
+  toast.success(
+    <div className="flex flex-col gap-1">
+      <div className="font-medium">
+        已将 {count} 条相关内容整理到「{folderName}」
+      </div>
+      <div className="text-xs text-muted-foreground">来自待整理的历史内容</div>
+    </div>,
+    {
+      duration: 5000,
+      action: onViewFolder
+        ? {
+            label: "查看",
+            onClick: onViewFolder,
+          }
+        : undefined,
+    },
+  );
+}

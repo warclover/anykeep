@@ -36,7 +36,7 @@ export function RootProviders({ children }: RootProvidersProps) {
           </Suspense>
         </OnboardingProvider>
       </UserProvider>
-      <Toaster />
+      <Toaster position="top-center" offset={16} />
       <ServiceWorkerRegister />
     </ThemeProvider>
   );

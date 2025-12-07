@@ -14,7 +14,13 @@ export type ClassificationStage =
 /**
  * Classification action
  */
-export type ClassificationAction = "classify" | "inbox" | "suggest_new";
+export type ClassificationAction =
+  | "classify"
+  | "inbox"
+  | "suggest"
+  | "suggest_new"
+  | "suggest_create"
+  | "auto_create";
 
 /**
  * Match result from a single matcher

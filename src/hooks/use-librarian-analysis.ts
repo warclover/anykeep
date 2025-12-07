@@ -1,0 +1,207 @@
+/**
+ * V3.0 整理大师 (AI Librarian) React Hook
+ *
+ * 用于获取和管理文件夹结构分析数据
+ */
+
+"use client";
+
+import { useState, useCallback, useEffect } from "react";
+
+// ============================================================================
+// 类型定义
+// ============================================================================
+
+/**
+ * 文件夹基础信息
+ */
+export interface Folder {
+  id: number;
+  name: string;
+  bookmarkCount?: number;
+}
+
+/**
+ * 重复文件夹组
+ */
+export interface DuplicateFolderGroup {
+  folders: Folder[];
+  similarity: number;
+  suggestedMerge: string;
+}
+
+/**
+ * 过大文件夹
+ */
+export interface OversizedFolder {
+  folder: Folder;
+  bookmarkCount: number;
+  suggestedSplits: string[];
+}
+
+/**
+ * 命名问题文件夹
+ */
+export interface PoorlyNamedFolder {
+  folder: Folder;
+  issue: "too_short" | "too_vague" | "contains_special" | "duplicate_style";
+  suggestedName: string;
+}
+
+/**
+ * 缺失分类建议
+ */
+export interface MissingCategory {
+  category: string;
+  bookmarkCount: number;
+  reason: string;
+  sampleTitles: string[];
+}
+
+/**
+ * 整理大师分析结果
+ */
+export interface LibrarianAnalysis {
+  duplicateFolders: DuplicateFolderGroup[];
+  emptyFolders: Folder[];
+  oversizedFolders: OversizedFolder[];
+  poorlyNamedFolders: PoorlyNamedFolder[];
+  missingCategories: MissingCategory[];
+  healthScore: number;
+  analyzedAt: Date;
+  totalSuggestions: number;
+}
+
+/**
+ * Hook 返回类型
+ */
+export interface UseLibrarianAnalysisReturn {
+  /** 分析结果 */
+  analysis: LibrarianAnalysis | null;
+
+  /** 是否正在加载 */
+  isLoading: boolean;
+
+  /** 是否正在分析 */
+  isAnalyzing: boolean;
+
+  /** 错误信息 */
+  error: string | null;
+
+  /** 执行分析 */
+  runAnalysis: () => Promise<void>;
+
+  /** 刷新（获取最近的分析结果） */
+  refresh: () => Promise<void>;
+
+  /** 清除错误 */
+  clearError: () => void;
+}
+
+// ============================================================================
+// Hook 实现
+// ============================================================================
+
+/**
+ * 整理大师分析 Hook
+ */
+export function useLibrarianAnalysis(): UseLibrarianAnalysisReturn {
+  const [analysis, setAnalysis] = useState<LibrarianAnalysis | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  /**
+   * 获取最近的分析结果
+   */
+  const fetchRecent = useCallback(async () => {
+    try {
+      const response = await fetch("/api/librarian/analysis");
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          // 没有历史分析，这是正常的
+          setAnalysis(null);
+          return;
+        }
+        throw new Error("获取分析结果失败");
+      }
+
+      const data = await response.json();
+      if (data.data) {
+        setAnalysis({
+          ...data.data,
+          analyzedAt: new Date(data.data.analyzedAt),
+        });
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "获取分析结果失败");
+    }
+  }, []);
+
+  /**
+   * 执行新的分析
+   */
+  const runAnalysis = useCallback(async () => {
+    setIsAnalyzing(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/librarian/analysis", {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error?.message || "分析失败");
+      }
+
+      const data = await response.json();
+      if (data.data) {
+        setAnalysis({
+          ...data.data,
+          analyzedAt: new Date(data.data.analyzedAt),
+        });
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "分析失败");
+    } finally {
+      setIsAnalyzing(false);
+    }
+  }, []);
+
+  /**
+   * 刷新数据
+   */
+  const refresh = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    await fetchRecent();
+    setIsLoading(false);
+  }, [fetchRecent]);
+
+  /**
+   * 清除错误
+   */
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
+
+  // 初始加载
+  useEffect(() => {
+    setIsLoading(true);
+    fetchRecent().finally(() => setIsLoading(false));
+  }, [fetchRecent]);
+
+  return {
+    analysis,
+    isLoading,
+    isAnalyzing,
+    error,
+    runAnalysis,
+    refresh,
+    clearError,
+  };
+}
+
+export default useLibrarianAnalysis;
