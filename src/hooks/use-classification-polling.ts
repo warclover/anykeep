@@ -11,6 +11,17 @@
  * V3.2 修复：
  * - 添加并发执行锁，防止多个轮询同时运行
  * - 添加已通知书签追踪，防止重复显示通知
+ *
+ * V3.3 修复：
+ * - 区分 suggest_new 的两种情况：文件夹实际创建 vs 仅建议创建
+ * - 修复通知显示"已创建并归类到「内容分类与标签管理」"的错误
+ *   （当文件夹未实际创建时，应显示"AI 建议创建新文件夹"）
+ *
+ * V3.4 修复：
+ * - 根据 classification_status 区分"自动归类"vs"仅建议"
+ * - classified (≥80%置信度): 显示"已自动归类到"
+ * - suggested (60-79%置信度): 显示"AI 推荐归类到"（需用户确认）
+ * - inbox (<60%置信度): 显示"已放入待整理"
  */
 
 "use client";
@@ -72,31 +83,59 @@ export function useClassificationPolling(): UseClassificationPollingReturn {
 
   /**
    * 显示分类完成通知
+   * V3.3 修复：区分 suggest_new 的两种情况（实际创建 vs 仅建议）
+   * V3.4 修复：根据 classification_status 区分自动归类 vs 仅建议
+   *   - classified: 真正自动归类了
+   *   - suggested: 仅保存了建议，需要用户确认
+   *   - inbox: 放入待整理
    */
   const showClassificationNotification = useCallback(
-    (result: ClassificationResultData | null) => {
+    (
+      result: ClassificationResultData | null,
+      status: "classified" | "suggested" | "inbox" | null,
+    ) => {
       if (!result) return;
 
-      switch (result.action) {
-        case "classify":
+      // V3.4: 优先根据 classification_status 判断
+      if (status === "classified") {
+        // 真正自动归类了
+        if (result.action === "suggest_new") {
+          // 创建了新文件夹
+          toast.success(`已创建并归类到「${result.folderName}」`, {
+            icon: "📁",
+            description: "AI 自动创建的新文件夹",
+          });
+        } else {
+          // 归类到现有文件夹
           toast.success(`已自动归类到「${result.folderName}」`, {
             icon: "✨",
             description: `AI 智能分类 (${result.confidence}% 置信度)`,
           });
-          break;
-        case "suggest_new":
-          toast.success(`已创建并归类到「${result.folderName}」`, {
-            icon: "📁",
-            description: "AI 建议的新文件夹",
-          });
-          break;
-        case "inbox":
-          toast.info("已放入「待整理」文件夹", {
-            icon: "📥",
-            description: "稍后可手动整理",
-          });
-          break;
+        }
+        return;
       }
+
+      if (status === "suggested") {
+        // 仅保存了建议，需要用户确认
+        if (result.action === "suggest_new") {
+          toast.info(`AI 建议创建新文件夹「${result.folderName}」`, {
+            icon: "💡",
+            description: result.reason || "请在建议列表中确认",
+          });
+        } else {
+          toast.info(`AI 推荐归类到「${result.folderName}」`, {
+            icon: "💡",
+            description: `${result.confidence}% 置信度，请确认或忽略`,
+          });
+        }
+        return;
+      }
+
+      // status === "inbox" 或其他情况
+      toast.info("已放入「待整理」文件夹", {
+        icon: "📥",
+        description: result.reason || "稍后可手动整理",
+      });
     },
     [],
   );
@@ -143,10 +182,16 @@ export function useClassificationPolling(): UseClassificationPollingReturn {
           completed.push(bookmark.id);
 
           // V3.2: 仅在未通知过时显示通知
+          // V3.4: 同时传入 classification_status 以区分自动归类 vs 仅建议
           if (!notifiedIds.current.has(bookmark.id)) {
             notifiedIds.current.add(bookmark.id);
             showClassificationNotification(
               bookmark.classification_result as ClassificationResultData,
+              bookmark.classification_status as
+                | "classified"
+                | "suggested"
+                | "inbox"
+                | null,
             );
           }
         }
