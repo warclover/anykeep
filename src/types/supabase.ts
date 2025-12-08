@@ -595,6 +595,150 @@ export type Database = {
           },
         ];
       };
+      // V12.0新增：消息通知表
+      messages: {
+        Row: {
+          id: number;
+          user_id: string;
+          type: MessageType;
+          level: MessageLevel;
+          title: string;
+          content: string | null;
+          related_bookmark_id: number | null;
+          related_folder_id: number | null;
+          related_import_id: number | null;
+          action_url: string | null;
+          action_label: string | null;
+          metadata: Json;
+          status: MessageStatus;
+          created_at: string;
+          read_at: string | null;
+          priority: number;
+          expires_at: string;
+        };
+        Insert: {
+          id?: number;
+          user_id: string;
+          type: MessageType;
+          level?: MessageLevel;
+          title: string;
+          content?: string | null;
+          related_bookmark_id?: number | null;
+          related_folder_id?: number | null;
+          related_import_id?: number | null;
+          action_url?: string | null;
+          action_label?: string | null;
+          metadata?: Json;
+          status?: MessageStatus;
+          created_at?: string;
+          read_at?: string | null;
+          priority?: number;
+          expires_at?: string;
+        };
+        Update: {
+          id?: number;
+          user_id?: string;
+          type?: MessageType;
+          level?: MessageLevel;
+          title?: string;
+          content?: string | null;
+          related_bookmark_id?: number | null;
+          related_folder_id?: number | null;
+          related_import_id?: number | null;
+          action_url?: string | null;
+          action_label?: string | null;
+          metadata?: Json;
+          status?: MessageStatus;
+          created_at?: string;
+          read_at?: string | null;
+          priority?: number;
+          expires_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "messages_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "messages_related_bookmark_id_fkey";
+            columns: ["related_bookmark_id"];
+            isOneToOne: false;
+            referencedRelation: "bookmarks";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "messages_related_folder_id_fkey";
+            columns: ["related_folder_id"];
+            isOneToOne: false;
+            referencedRelation: "folders";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "messages_related_import_id_fkey";
+            columns: ["related_import_id"];
+            isOneToOne: false;
+            referencedRelation: "import_history";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      // V12.0新增：用户通知偏好表
+      notification_preferences: {
+        Row: {
+          id: number;
+          user_id: string;
+          silent_toast: boolean;
+          normal_toast: boolean;
+          important_toast: boolean;
+          web_push_enabled: boolean;
+          web_push_subscription: Json | null;
+          do_not_disturb: boolean;
+          dnd_start_time: string | null;
+          dnd_end_time: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: number;
+          user_id: string;
+          silent_toast?: boolean;
+          normal_toast?: boolean;
+          important_toast?: boolean;
+          web_push_enabled?: boolean;
+          web_push_subscription?: Json | null;
+          do_not_disturb?: boolean;
+          dnd_start_time?: string | null;
+          dnd_end_time?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: number;
+          user_id?: string;
+          silent_toast?: boolean;
+          normal_toast?: boolean;
+          important_toast?: boolean;
+          web_push_enabled?: boolean;
+          web_push_subscription?: Json | null;
+          do_not_disturb?: boolean;
+          dnd_start_time?: string | null;
+          dnd_end_time?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "notification_preferences_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: true;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -684,6 +828,67 @@ export type Database = {
           tag: string;
           count: number;
         }[];
+      };
+      // V12.0新增：获取未读消息数量（分等级统计）
+      get_unread_message_counts: {
+        Args: {
+          p_user_id: string;
+        };
+        Returns: {
+          total: number;
+          silent: number;
+          normal: number;
+          important: number;
+        };
+      };
+      // V12.0新增：批量标记消息已读
+      mark_messages_read: {
+        Args: {
+          p_user_id: string;
+          p_message_ids?: number[] | null;
+        };
+        Returns: number;
+      };
+      // V12.0新增：清理过期消息
+      cleanup_expired_messages: {
+        Args: Record<string, never>;
+        Returns: number;
+      };
+      // V12.0新增：获取消息列表（带日期分组）
+      get_messages_grouped: {
+        Args: {
+          p_user_id: string;
+          p_status?: string | null;
+          p_level?: string | null;
+          p_limit?: number;
+          p_offset?: number;
+        };
+        Returns: {
+          id: number;
+          type: string;
+          level: string;
+          title: string;
+          content: string | null;
+          action_url: string | null;
+          action_label: string | null;
+          status: string;
+          priority: number;
+          created_at: string;
+          read_at: string | null;
+          metadata: Json;
+          related_bookmark_id: number | null;
+          related_folder_id: number | null;
+          date_group: string;
+        }[];
+      };
+      // V12.0新增：获取消息总数
+      get_messages_count: {
+        Args: {
+          p_user_id: string;
+          p_status?: string | null;
+          p_level?: string | null;
+        };
+        Returns: number;
       };
     };
     Enums: {
@@ -930,3 +1135,79 @@ export interface ClassificationResultData {
   /** 分类原因说明 */
   reason?: string;
 }
+
+// ============================================
+// V12.0 新增：消息系统类型定义
+// ============================================
+
+/**
+ * 消息类型
+ * 包含分类、导入、批量操作、书签状态、文件夹、系统、配额、反馈、AI 处理等
+ */
+export type MessageType =
+  // 分类相关
+  | "classification_auto"
+  | "classification_batch"
+  | "classification_suggest"
+  | "classification_failed"
+  // 导入相关
+  | "import_complete"
+  | "import_partial"
+  | "import_failed"
+  // 批量操作
+  | "batch_move"
+  | "batch_delete"
+  | "batch_tag"
+  | "batch_restore"
+  // 书签状态
+  | "bookmark_saved"
+  | "bookmark_invalid"
+  | "bookmark_expired"
+  // 文件夹操作
+  | "folder_created"
+  | "folder_merged"
+  // 系统消息
+  | "system_announcement"
+  | "system_maintenance"
+  | "system_update"
+  // 配额相关
+  | "quota_warning"
+  | "quota_critical"
+  | "quota_exceeded"
+  // 用户反馈
+  | "feedback_received"
+  | "feedback_response"
+  // AI 处理
+  | "ai_summary_complete"
+  | "ai_tags_complete"
+  | "ai_processing_failed";
+
+/**
+ * 消息等级
+ * - silent: 静默，仅记录不打扰
+ * - normal: 普通，Toast + 记录
+ * - important: 重要，Modal + Toast + 记录
+ */
+export type MessageLevel = "silent" | "normal" | "important";
+
+/**
+ * 消息状态
+ */
+export type MessageStatus = "unread" | "read" | "archived";
+
+/**
+ * 消息表类型别名
+ */
+export type MessageRow = Database["public"]["Tables"]["messages"]["Row"];
+export type MessageInsert = Database["public"]["Tables"]["messages"]["Insert"];
+export type MessageUpdate = Database["public"]["Tables"]["messages"]["Update"];
+
+/**
+ * 通知偏好类型别名
+ */
+export type NotificationPreferences =
+  Database["public"]["Tables"]["notification_preferences"]["Row"];
+export type NotificationPreferencesInsert =
+  Database["public"]["Tables"]["notification_preferences"]["Insert"];
+export type NotificationPreferencesUpdate =
+  Database["public"]["Tables"]["notification_preferences"]["Update"];
