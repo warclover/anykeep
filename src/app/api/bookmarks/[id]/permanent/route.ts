@@ -7,7 +7,7 @@ import {
   unauthorizedError,
   forbiddenError,
   databaseError,
-} from "@/lib/api/response";
+} from "@/lib/utils/api-response";
 import { AUTH, BOOKMARK } from "@/lib/constants/error-messages";
 
 /**

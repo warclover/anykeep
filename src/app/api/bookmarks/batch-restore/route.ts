@@ -1,12 +1,13 @@
 import type { NextRequest } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
+import { MessageService } from "@/lib/messages/server";
 import {
   successResponse,
   badRequestError,
   unauthorizedError,
   databaseError,
-} from "@/lib/api/response";
+} from "@/lib/utils/api-response";
 
 /**
  * POST /api/bookmarks/batch-restore
@@ -89,7 +90,16 @@ export async function POST(request: NextRequest) {
     const restoredCount = restoredBookmarks?.length || 0;
     const restoredIds = restoredBookmarks?.map((b) => b.id) || [];
 
-    // 4. 返回成功响应
+    // 4. 发送批量恢复消息通知（静默级别）
+    if (restoredCount > 0) {
+      await MessageService.notifyBatchRestore(user.id, restoredCount).catch(
+        (err) => {
+          logger.warn({ error: err }, "Failed to create batch restore message");
+        },
+      );
+    }
+
+    // 5. 返回成功响应
     logger.info(
       {
         restoredCount,

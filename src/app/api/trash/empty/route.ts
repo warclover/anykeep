@@ -5,7 +5,7 @@ import {
   successResponse,
   unauthorizedError,
   databaseError,
-} from "@/lib/api/response";
+} from "@/lib/utils/api-response";
 
 /**
  * POST /api/trash/empty
