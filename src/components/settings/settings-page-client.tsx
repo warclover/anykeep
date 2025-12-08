@@ -32,6 +32,7 @@ import {
 import { InterestSettingsCard } from "./interest-settings-card";
 import { ProfileSettingsCard } from "./profile-settings-card";
 import { ClassificationSettingsCard } from "./classification-settings-card";
+import { NotificationSettingsCard } from "@/components/messages";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { ErrorMessage } from "@/components/ui/error-message";
@@ -507,6 +508,9 @@ export function SettingsPageClient({
                 </div>
               </CardContent>
             </Card>
+
+            {/* 消息通知设置（分级控制） */}
+            <NotificationSettingsCard />
 
             {/* 账号操作 */}
             <Card>

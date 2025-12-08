@@ -1,0 +1,320 @@
+/**
+ * 消息模板系统
+ * @description 定义各类消息的标题、内容、操作链接等模板
+ */
+
+import type { MessageType } from "./types";
+
+// ============================================
+// 模板类型定义
+// ============================================
+
+export interface MessageTemplate {
+  /** 生成消息标题 */
+  title: (data: Record<string, unknown>) => string;
+  /** 生成消息内容（可选） */
+  content?: (data: Record<string, unknown>) => string | undefined;
+  /** 生成操作链接（可选） */
+  actionUrl?: (data: Record<string, unknown>) => string | undefined;
+  /** 操作按钮文案 */
+  actionLabel?: string;
+  /** 默认优先级 */
+  defaultPriority?: number;
+}
+
+// ============================================
+// 消息模板定义
+// ============================================
+
+export const MESSAGE_TEMPLATES: Record<MessageType, MessageTemplate> = {
+  // ========== 分类相关 ==========
+  classification_auto: {
+    title: (data) => `已自动分类到「${data.folderName}」`,
+    content: (data) => {
+      const confidence = data.confidence as number;
+      return confidence ? `置信度 ${Math.round(confidence * 100)}%` : undefined;
+    },
+    actionUrl: (data) => `/home?bookmark=${data.bookmarkId}`,
+    actionLabel: "查看",
+    defaultPriority: 2,
+  },
+
+  classification_batch: {
+    title: (data) => `批量分类完成：${data.successCount}/${data.totalCount} 条`,
+    content: (data) => {
+      const failed =
+        (data.totalCount as number) - (data.successCount as number);
+      return failed > 0 ? `${failed} 条未能自动分类` : "全部分类成功";
+    },
+    actionUrl: () => "/home",
+    actionLabel: "查看",
+    defaultPriority: 2,
+  },
+
+  classification_suggest: {
+    title: (data) => `建议分类到「${data.folderName}」`,
+    content: (data) => {
+      const confidence = data.confidence as number;
+      return `置信度 ${Math.round(confidence * 100)}%，请确认是否正确`;
+    },
+    actionUrl: (data) => `/home?bookmark=${data.bookmarkId}&action=confirm`,
+    actionLabel: "确认分类",
+    defaultPriority: 5,
+  },
+
+  classification_failed: {
+    title: () => "分类失败",
+    content: (data) => `无法为书签自动分类：${data.reason || "未知原因"}`,
+    actionUrl: (data) => `/home?bookmark=${data.bookmarkId}`,
+    actionLabel: "手动分类",
+    defaultPriority: 4,
+  },
+
+  // ========== 导入相关 ==========
+  import_complete: {
+    title: (data) => `成功导入 ${data.successCount} 条书签`,
+    content: (data) =>
+      data.folderName ? `已保存到「${data.folderName}」` : undefined,
+    actionUrl: () => "/home?platform=browser",
+    actionLabel: "查看",
+    defaultPriority: 5,
+  },
+
+  import_partial: {
+    title: (data) => `导入完成，${data.failedCount} 条失败`,
+    content: (data) =>
+      `成功 ${data.successCount} 条，失败 ${data.failedCount} 条`,
+    actionUrl: () => "/home?platform=browser",
+    actionLabel: "查看详情",
+    defaultPriority: 5,
+  },
+
+  import_failed: {
+    title: () => "导入失败",
+    content: (data) => (data.reason as string) || "请检查文件格式后重试",
+    actionUrl: () => "/settings/import",
+    actionLabel: "重试",
+    defaultPriority: 8,
+  },
+
+  // ========== 批量操作 ==========
+  batch_move: {
+    title: (data) => `已移动 ${data.count} 条书签`,
+    content: (data) => `移动到「${data.targetFolder}」`,
+    actionUrl: (data) => `/folders/${data.folderId}`,
+    actionLabel: "查看文件夹",
+    defaultPriority: 2,
+  },
+
+  batch_delete: {
+    title: (data) => `已删除 ${data.count} 条书签`,
+    content: () => "可在垃圾箱中恢复",
+    actionUrl: () => "/home?folder=trash",
+    actionLabel: "查看垃圾箱",
+    defaultPriority: 2,
+  },
+
+  batch_tag: {
+    title: (data) => `已为 ${data.count} 条书签添加标签`,
+    content: (data) => {
+      const tags = data.tags as string[];
+      return tags?.length ? `标签：${tags.join("、")}` : undefined;
+    },
+    defaultPriority: 2,
+  },
+
+  batch_restore: {
+    title: (data) => `已恢复 ${data.count} 条书签`,
+    content: () => "书签已从垃圾箱恢复",
+    actionUrl: () => "/home",
+    actionLabel: "查看",
+    defaultPriority: 2,
+  },
+
+  // ========== 书签状态 ==========
+  bookmark_saved: {
+    title: (data) => {
+      const bookmarkTitle = data.title as string;
+      return bookmarkTitle?.length > 30
+        ? `已保存：${bookmarkTitle.substring(0, 30)}...`
+        : `已保存：${bookmarkTitle}`;
+    },
+    content: (data) =>
+      data.folderName ? `保存到「${data.folderName}」` : undefined,
+    actionUrl: (data) => `/home?bookmark=${data.bookmarkId}`,
+    actionLabel: "查看",
+    defaultPriority: 1,
+  },
+
+  bookmark_invalid: {
+    title: (data) => `检测到 ${data.count} 个失效链接`,
+    content: () => "建议清理或更新这些书签",
+    actionUrl: () => "/home?folder=invalid",
+    actionLabel: "查看",
+    defaultPriority: 4,
+  },
+
+  bookmark_expired: {
+    title: (data) => `${data.count} 条书签即将过期`,
+    content: () => "请及时阅读或归档",
+    actionUrl: () => "/home?sort=expires",
+    actionLabel: "查看",
+    defaultPriority: 4,
+  },
+
+  // ========== 文件夹操作 ==========
+  folder_created: {
+    title: (data) => `已创建文件夹「${data.folderName}」`,
+    actionUrl: (data) => `/folders/${data.folderId}`,
+    actionLabel: "查看",
+    defaultPriority: 1,
+  },
+
+  folder_merged: {
+    title: (data) => `已合并到「${data.targetFolder}」`,
+    content: (data) => `${data.count} 条书签已迁移`,
+    actionUrl: (data) => `/folders/${data.folderId}`,
+    actionLabel: "查看",
+    defaultPriority: 4,
+  },
+
+  // ========== 系统消息 ==========
+  system_announcement: {
+    title: (data) => data.title as string,
+    content: (data) => data.content as string,
+    actionUrl: (data) => data.url as string | undefined,
+    actionLabel: "了解更多",
+    defaultPriority: 8,
+  },
+
+  system_maintenance: {
+    title: () => "系统维护通知",
+    content: (data) =>
+      (data.content as string) || "系统将进行维护，届时可能暂时无法访问",
+    actionUrl: (data) => data.url as string | undefined,
+    actionLabel: "了解详情",
+    defaultPriority: 9,
+  },
+
+  system_update: {
+    title: () => "新版本更新",
+    content: (data) => (data.content as string) || "有新功能上线，快来体验吧",
+    actionUrl: (data) => data.url as string | undefined,
+    actionLabel: "查看更新",
+    defaultPriority: 5,
+  },
+
+  // ========== 配额相关 ==========
+  quota_warning: {
+    title: (data) => `存储空间即将用尽 (${data.usagePercent}%)`,
+    content: () => "建议清理不需要的内容或升级套餐",
+    actionUrl: () => "/settings/subscription",
+    actionLabel: "升级",
+    defaultPriority: 7,
+  },
+
+  quota_critical: {
+    title: (data) => `存储空间严重不足 (${data.usagePercent}%)`,
+    content: () => "即将无法保存新内容，请立即处理",
+    actionUrl: () => "/settings/subscription",
+    actionLabel: "立即升级",
+    defaultPriority: 9,
+  },
+
+  quota_exceeded: {
+    title: () => "存储空间已用尽",
+    content: () => "无法保存新内容，请清理或升级套餐",
+    actionUrl: () => "/settings/subscription",
+    actionLabel: "立即处理",
+    defaultPriority: 10,
+  },
+
+  // ========== 用户反馈 ==========
+  feedback_received: {
+    title: () => "感谢您的反馈",
+    content: () => "我们已收到您的反馈，会认真处理",
+    defaultPriority: 2,
+  },
+
+  feedback_response: {
+    title: () => "您的反馈有回复了",
+    content: (data) => data.response as string,
+    actionUrl: () => "/settings/feedback",
+    actionLabel: "查看回复",
+    defaultPriority: 5,
+  },
+
+  // ========== AI 处理 ==========
+  ai_summary_complete: {
+    title: () => "AI 摘要生成完成",
+    content: (data) => {
+      const count = data.count as number;
+      return count ? `已为 ${count} 条书签生成摘要` : undefined;
+    },
+    actionUrl: (data) =>
+      data.bookmarkId ? `/home?bookmark=${data.bookmarkId}` : "/home",
+    actionLabel: "查看",
+    defaultPriority: 2,
+  },
+
+  ai_tags_complete: {
+    title: () => "AI 标签生成完成",
+    content: (data) => {
+      const count = data.count as number;
+      return count ? `已为 ${count} 条书签生成标签` : undefined;
+    },
+    actionUrl: (data) =>
+      data.bookmarkId ? `/home?bookmark=${data.bookmarkId}` : "/home",
+    actionLabel: "查看",
+    defaultPriority: 2,
+  },
+
+  ai_processing_failed: {
+    title: () => "AI 处理失败",
+    content: (data) => (data.reason as string) || "请稍后重试",
+    actionUrl: (data) =>
+      data.bookmarkId ? `/home?bookmark=${data.bookmarkId}` : undefined,
+    actionLabel: "重试",
+    defaultPriority: 4,
+  },
+};
+
+// ============================================
+// 工具函数
+// ============================================
+
+/**
+ * 获取消息模板
+ */
+export function getMessageTemplate(
+  type: MessageType,
+): MessageTemplate | undefined {
+  return MESSAGE_TEMPLATES[type];
+}
+
+/**
+ * 渲染消息内容
+ */
+export function renderMessage(
+  type: MessageType,
+  data: Record<string, unknown>,
+): {
+  title: string;
+  content: string | undefined;
+  actionUrl: string | undefined;
+  actionLabel: string | undefined;
+  defaultPriority: number;
+} | null {
+  const template = MESSAGE_TEMPLATES[type];
+  if (!template) {
+    return null;
+  }
+
+  return {
+    title: template.title(data),
+    content: template.content?.(data),
+    actionUrl: template.actionUrl?.(data),
+    actionLabel: template.actionLabel,
+    defaultPriority: template.defaultPriority ?? 1,
+  };
+}

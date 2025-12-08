@@ -19,7 +19,11 @@ import {
   Star,
   Inbox,
   Sparkles,
+  Bell,
+  BrainCircuit,
 } from "lucide-react";
+import { useUnreadCount } from "@/hooks/use-unread-count";
+import { MessageBadge } from "@/components/messages";
 import { cn } from "@/lib/utils";
 import {
   useSafeNavigation,
@@ -32,10 +36,12 @@ const navigation: {
   name: string;
   pageId: PageId;
   icon: typeof Home;
+  showBadge?: boolean; // 是否显示角标
 }[] = [
   { name: "首页", pageId: "home", icon: Home },
   { name: "搜索", pageId: "search", icon: Search },
   { name: "收藏夹", pageId: "folders", icon: Folder },
+  { name: "消息", pageId: "messages", icon: Bell, showBadge: true },
   { name: "数据", pageId: "analytics", icon: BarChart3 },
   { name: "设置", pageId: "settings", icon: Settings },
 ];
@@ -63,6 +69,9 @@ export function AppSidebar() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const currentFolder = searchParams.get("folder");
+
+  // 获取未读消息数量
+  const { total: unreadCount, important: importantCount } = useUnreadCount();
 
   // 安全获取导航上下文（不抛出错误）
   const navigationContext = useSafeNavigation();
@@ -137,7 +146,13 @@ export function AppSidebar() {
                   )}
                 >
                   <Icon className="size-5" />
-                  {item.name}
+                  <span className="flex-1">{item.name}</span>
+                  {item.showBadge && (
+                    <MessageBadge
+                      count={unreadCount}
+                      hasImportant={importantCount > 0}
+                    />
+                  )}
                 </Link>
               );
             })}
@@ -189,15 +204,27 @@ export function AppSidebar() {
             </div>
           </div>
 
-          {/* 开发者工具（仅开发环境） */}
-          {process.env.NODE_ENV === "development" && (
-            <div>
-              <div className="px-3 mb-2">
-                <p className="text-xs font-semibold text-purple-400 dark:text-purple-500 uppercase">
-                  开发者工具
-                </p>
-              </div>
-              <div className="space-y-1">
+          {/* 开发者工具 */}
+          <div>
+            <div className="px-3 mb-2">
+              <p className="text-xs font-semibold text-purple-400 dark:text-purple-500 uppercase">
+                开发者工具
+              </p>
+            </div>
+            <div className="space-y-1">
+              <Link
+                href="/classification-debugger"
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                  pathname === "/classification-debugger"
+                    ? "bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
+                    : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50",
+                )}
+              >
+                <BrainCircuit className="size-5" />
+                智能分类
+              </Link>
+              {process.env.NODE_ENV === "development" && (
                 <Link
                   href="/debug/ai-summary"
                   className={cn(
@@ -210,9 +237,9 @@ export function AppSidebar() {
                   <Sparkles className="size-5" />
                   摘要调试
                 </Link>
-              </div>
+              )}
             </div>
-          )}
+          </div>
         </nav>
 
         {/* 底部信息 */}

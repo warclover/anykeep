@@ -39,8 +39,10 @@ export const PAGE_IDS: readonly PageId[] = [
   "home",
   "search",
   "folders",
+  "messages",
   "analytics",
   "settings",
+  "classification-debugger",
 ] as const;
 
 // ==================== 类型定义 ====================
@@ -72,7 +74,14 @@ function isClientNavState(state: unknown): state is ClientNavHistoryState {
 /**
  * 支持的页面类型
  */
-export type PageId = "home" | "search" | "folders" | "analytics" | "settings";
+export type PageId =
+  | "home"
+  | "search"
+  | "folders"
+  | "messages"
+  | "analytics"
+  | "settings"
+  | "classification-debugger";
 
 /**
  * 页面路由映射
@@ -81,8 +90,10 @@ export const PAGE_ROUTES: Record<PageId, string> = {
   home: "/home",
   search: "/search",
   folders: "/folders",
+  messages: "/messages",
   analytics: "/analytics",
   settings: "/settings",
+  "classification-debugger": "/classification-debugger",
 };
 
 /**
@@ -92,8 +103,10 @@ const ROUTE_TO_PAGE: Record<string, PageId> = {
   "/home": "home",
   "/search": "search",
   "/folders": "folders",
+  "/messages": "messages",
   "/analytics": "analytics",
   "/settings": "settings",
+  "/classification-debugger": "classification-debugger",
 };
 
 /**
