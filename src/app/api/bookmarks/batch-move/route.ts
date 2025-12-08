@@ -16,6 +16,7 @@ import {
 } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
 import { MessageService } from "@/lib/messages/server";
+import { updateFolderProfilesOnBookmarkChange } from "@/lib/classification/server";
 
 /**
  * POST /api/bookmarks/batch-move
@@ -43,6 +44,19 @@ export async function POST(request: NextRequest) {
     }
 
     const { ids, folderId } = validation.data;
+
+    // 2.5 获取要移动的书签的当前文件夹（用于更新源文件夹 profile）
+    const { data: bookmarksToMove } = await supabase
+      .from("bookmarks")
+      .select("id, folder_id")
+      .in("id", ids)
+      .eq("user_id", user.id)
+      .is("deleted_at", null);
+
+    const sourceFolderIds =
+      bookmarksToMove
+        ?.map((b) => b.folder_id)
+        .filter((id): id is number => id !== null) || [];
 
     // 3. 如果指定了文件夹，验证文件夹是否存在且属于当前用户
     let folderName = "待整理";
@@ -88,6 +102,20 @@ export async function POST(request: NextRequest) {
         folderId,
       ).catch((err) => {
         logger.warn({ error: err }, "Failed to create batch move message");
+      });
+    }
+
+    // 5.5 异步更新源和目标文件夹的 profile（不阻塞响应）
+    if (movedCount > 0) {
+      updateFolderProfilesOnBookmarkChange(
+        sourceFolderIds,
+        folderId,
+        user.id,
+      ).catch((err) => {
+        logger.warn(
+          { error: err },
+          "Failed to update folder profiles after batch move",
+        );
       });
     }
 

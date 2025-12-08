@@ -544,6 +544,95 @@ export function shouldUseV2Classification(): boolean {
 }
 
 /**
+ * Update folder profiles when bookmarks are moved or deleted
+ * Handles both source and target folder profile updates
+ *
+ * @param fromFolderIds - Source folder IDs (bookmarks moved from)
+ * @param toFolderId - Target folder ID (bookmarks moved to, null for inbox)
+ * @param userId - User ID
+ */
+export async function updateFolderProfilesOnBookmarkChange(
+  fromFolderIds: (number | null)[],
+  toFolderId: number | null,
+  userId: string,
+): Promise<void> {
+  try {
+    const { createClient } = await import("@/lib/supabase/server");
+    const supabase = await createClient();
+
+    // Collect all unique folder IDs that need updating
+    const folderIdsToUpdate = new Set<number>();
+
+    // Add source folders (filter out null)
+    for (const folderId of fromFolderIds) {
+      if (folderId !== null) {
+        folderIdsToUpdate.add(folderId);
+      }
+    }
+
+    // Add target folder
+    if (toFolderId !== null) {
+      folderIdsToUpdate.add(toFolderId);
+    }
+
+    if (folderIdsToUpdate.size === 0) {
+      logger.debug(
+        { userId },
+        "updateFolderProfilesOnBookmarkChange: No folders to update",
+      );
+      return;
+    }
+
+    // Update all affected folder profiles
+    const updatePromises = Array.from(folderIdsToUpdate).map(
+      async (folderId) => {
+        try {
+          const { error } = await (supabase.rpc as CallableFunction)(
+            "compute_folder_profile",
+            { p_folder_id: folderId },
+          );
+
+          if (error) {
+            logger.error(
+              { error, folderId, userId },
+              "updateFolderProfilesOnBookmarkChange: Failed to update folder profile",
+            );
+          } else {
+            logger.debug(
+              { folderId, userId },
+              "updateFolderProfilesOnBookmarkChange: Folder profile updated",
+            );
+          }
+        } catch (error) {
+          logger.error(
+            {
+              error: error instanceof Error ? error.message : String(error),
+              folderId,
+            },
+            "updateFolderProfilesOnBookmarkChange: Exception",
+          );
+        }
+      },
+    );
+
+    await Promise.allSettled(updatePromises);
+
+    logger.info(
+      { folderCount: folderIdsToUpdate.size, userId },
+      "updateFolderProfilesOnBookmarkChange: All folder profiles updated",
+    );
+  } catch (error) {
+    logger.error(
+      {
+        error: error instanceof Error ? error.message : String(error),
+        userId,
+      },
+      "updateFolderProfilesOnBookmarkChange: Failed",
+    );
+  }
+}
+
+/**
  * Update bookmark classification status
  * V3.1: Writes classification result to bookmark record for frontend polling
  */
@@ -582,6 +671,77 @@ async function updateBookmarkClassificationStatus(
         bookmarkId,
       },
       "Classification V2: Exception updating classification status",
+    );
+  }
+}
+
+/**
+ * Initialize or update folder profile with name embedding
+ * Called when folder is created or renamed
+ *
+ * This solves the "cold start" problem for new folders:
+ * - New folders have no bookmarks, so no content-based profile
+ * - But the folder name itself carries semantic meaning
+ * - By generating an embedding for the folder name, the classification system
+ *   can match bookmarks to the folder even before any bookmarks are added
+ *
+ * @param folderId - Folder ID
+ * @param folderName - Folder name (will be used to generate embedding)
+ * @param userId - User ID
+ */
+export async function initializeFolderNameProfile(
+  folderId: number,
+  folderName: string,
+  userId: string,
+): Promise<void> {
+  try {
+    // Generate embedding for folder name
+    const { generateEmbedding } = await import(
+      "@/lib/utils/embedding-generator"
+    );
+
+    // Use folder name directly for embedding (short text works well)
+    const nameEmbedding = await generateEmbedding(folderName);
+
+    logger.info(
+      { folderId, folderName, userId },
+      "initializeFolderNameProfile: Generated name embedding",
+    );
+
+    // Call SQL function to update profile
+    const { createClient } = await import("@/lib/supabase/server");
+    const supabase = await createClient();
+
+    // Format embedding as PostgreSQL vector string
+    const embeddingString = `[${nameEmbedding.join(",")}]`;
+
+    const { error } = await (supabase.rpc as CallableFunction)(
+      "update_folder_name_embedding",
+      {
+        p_folder_id: folderId,
+        p_name_embedding: embeddingString,
+      },
+    );
+
+    if (error) {
+      logger.error(
+        { error, folderId, folderName },
+        "initializeFolderNameProfile: Failed to update name embedding",
+      );
+    } else {
+      logger.info(
+        { folderId, folderName },
+        "initializeFolderNameProfile: Profile initialized/updated successfully",
+      );
+    }
+  } catch (error) {
+    logger.error(
+      {
+        error: error instanceof Error ? error.message : String(error),
+        folderId,
+        folderName,
+      },
+      "initializeFolderNameProfile: Exception",
     );
   }
 }

@@ -132,6 +132,7 @@ async function fetchAndUpdateTitle(
  * @param summary - AI摘要
  * @param tags - AI标签
  * @param userId - 用户ID
+ * @param folderId - 文件夹ID（用于 embedding 完成后更新 folder profile）
  */
 async function generateBookmarkEmbedding(
   bookmarkId: number,
@@ -139,6 +140,7 @@ async function generateBookmarkEmbedding(
   summary: string | null,
   tags: string[] | null,
   userId: string,
+  folderId?: number | null,
 ): Promise<void> {
   try {
     const text = buildEmbeddingText(title, summary, tags);
@@ -170,6 +172,21 @@ async function generateBookmarkEmbedding(
       { bookmarkId, action: "embedding_success" },
       "Embedding: Generated successfully",
     );
+
+    // Embedding 生成成功后，更新 folder profile（如果书签在文件夹中）
+    if (folderId) {
+      const { updateFolderProfilesOnBookmarkChange } = await import(
+        "@/lib/classification/server"
+      );
+      updateFolderProfilesOnBookmarkChange([], folderId, userId).catch(
+        (err) => {
+          logger.warn(
+            { error: err, folderId, bookmarkId },
+            "Embedding: Failed to update folder profile after embedding",
+          );
+        },
+      );
+    }
   } catch (error) {
     // 向量生成失败不影响书签创建
     logger.error(
@@ -318,13 +335,23 @@ async function generateBookmarkAIContent(
       "AI Content (async): Generated and saved with content type",
     );
 
-    // 3. 生成向量嵌入
+    // 3. 获取书签当前的 folder_id（用于 embedding 完成后更新 profile）
+    const { data: bookmarkData } = await supabase
+      .from("bookmarks")
+      .select("folder_id")
+      .eq("id", bookmarkId)
+      .single();
+
+    const currentFolderId = bookmarkData?.folder_id ?? null;
+
+    // 4. 生成向量嵌入（传入 folderId 用于后续 profile 更新）
     generateBookmarkEmbedding(
       bookmarkId,
       title,
       aiResult.summary,
       aiResult.tags,
       userId,
+      currentFolderId,
     ).catch((err) => {
       logger.error(
         { error: err, bookmarkId },
@@ -332,7 +359,7 @@ async function generateBookmarkAIContent(
       );
     });
 
-    // 4. AI 文件夹推荐（仅当用户未指定文件夹时）
+    // 5. AI 文件夹推荐（仅当用户未指定文件夹时）
     if (
       !userSpecifiedFolderId &&
       aiResult.summary &&

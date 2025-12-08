@@ -22,6 +22,7 @@ import { logger } from "@/lib/logger";
 import type { FolderUpdate, Database } from "@/types/supabase";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { FOLDER, AUTH } from "@/lib/constants/messages";
+import { initializeFolderNameProfile } from "@/lib/classification/server";
 
 /**
  * GET /api/folders/[id]
@@ -195,6 +196,16 @@ export async function PUT(
 
     if (updateError) {
       return databaseError(FOLDER.UPDATE_ERROR, updateError);
+    }
+
+    // 7. 如果文件夹名称变更，异步更新 Profile（不阻塞响应）
+    if (name !== undefined) {
+      initializeFolderNameProfile(folderId, name, user.id).catch((err) => {
+        logger.warn(
+          { error: err, folderId },
+          "Failed to update folder name profile after rename",
+        );
+      });
     }
 
     return successResponse(updatedFolder);
