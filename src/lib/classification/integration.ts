@@ -7,6 +7,7 @@ import { z } from "zod";
 import { ClassificationContainer } from "./container";
 import { CLASSIFICATION_THRESHOLDS, FOLDER_LIMITS } from "./constants";
 import { logger } from "@/lib/logger";
+import { MessageService } from "@/lib/messages/server";
 import type { ClassificationResult, BookmarkInput } from "./types";
 import type {
   ClassificationStatus,
@@ -145,6 +146,20 @@ export async function classifyBookmarkV2(
           "Classification V2: Auto-classified (high confidence)",
         );
 
+        // 发送自动分类完成消息（静默级别）
+        await MessageService.notifyClassificationComplete(
+          userId,
+          bookmarkId,
+          result.folderName || "未知文件夹",
+          result.confidence,
+          true, // isAuto = true
+        ).catch((err) => {
+          logger.warn(
+            { error: err },
+            "Failed to create classification message",
+          );
+        });
+
         // V3.1: Write classification status for frontend polling
         await updateBookmarkClassificationStatus(
           supabase,
@@ -199,6 +214,20 @@ export async function classifyBookmarkV2(
             },
             "Classification V2: Saved suggestion (medium confidence)",
           );
+
+          // 发送分类建议消息（普通级别）
+          await MessageService.notifyClassificationComplete(
+            userId,
+            bookmarkId,
+            result.folderName || "未知文件夹",
+            result.confidence,
+            false, // isAuto = false，表示需要用户确认
+          ).catch((err) => {
+            logger.warn(
+              { error: err },
+              "Failed to create classification suggestion message",
+            );
+          });
 
           // V3.1: Write classification status for frontend polling
           await updateBookmarkClassificationStatus(

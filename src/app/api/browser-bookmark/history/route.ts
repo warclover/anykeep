@@ -13,6 +13,7 @@ import {
   databaseError,
 } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
+import { MessageService } from "@/lib/messages/server";
 import type { ImportSource, Json } from "@/types/supabase";
 
 // 有效的导入来源列表
@@ -181,6 +182,18 @@ export async function POST(request: NextRequest) {
       },
       "Import history: Record created",
     );
+
+    // 发送导入完成消息通知
+    await MessageService.notifyImportComplete(
+      user.id,
+      created.id,
+      total_count || 0,
+      success_count || 0,
+      failed_count || 0,
+      "浏览器书签", // 默认文件夹名称
+    ).catch((err) => {
+      logger.warn({ error: err }, "Failed to create import message");
+    });
 
     return successResponse({
       history: created,
