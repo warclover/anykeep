@@ -1,24 +1,29 @@
 /**
- * V3.0 动态权重调整服务
+ * V4.0 动态权重调整服务
  *
- * 核心概念：基于用户反馈自动调整匹配器权重，实现个性化适配。
+ * 核心概念：基于用户场景和反馈自动调整匹配器权重，实现个性化适配。
  *
  * 工作原理：
- * 1. 收集用户对分类结果的反馈（接受/拒绝/修改）
- * 2. 分析各匹配器在成功和失败案例中的表现
- * 3. 动态调整权重，提高准确率高的匹配器权重
- * 4. 提供个性化的匹配策略
+ * 1. 检测用户场景（cold_start / learning / mature）
+ * 2. 从数据库加载场景对应的基准权重
+ * 3. 基于用户反馈进行微调
+ * 4. 支持 A/B 测试对比不同配置
  *
- * 调整策略：
- * - 用户接受 → 增加相关匹配器权重
- * - 用户拒绝 → 降低相关匹配器权重
- * - 用户修改 → 分析正确答案，调整权重
+ * V4.0 新增：
+ * - 场景化权重配置（从数据库加载）
+ * - A/B 测试支持
+ * - 场景阈值自动应用
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
 import { CLASSIFICATION_WEIGHTS } from "../../constants/limits";
 import { logger } from "@/lib/logger";
+import {
+  UserScenarioDetectorService,
+  type UserScenario,
+  type ScenarioDetectionResult,
+} from "./user-scenario-detector.service";
 
 // ============================================================================
 // 类型定义
@@ -47,19 +52,63 @@ export interface MatcherWeights {
 }
 
 /**
+ * 阈值配置
+ */
+export interface ThresholdConfig {
+  /** 高置信度阈值 */
+  highConfidence: number;
+  /** 中置信度阈值 */
+  mediumConfidence: number;
+  /** 自动创建阈值 */
+  autoCreate: number;
+  /** k-NN 直接锁定阈值 */
+  knnDirect: number;
+}
+
+/**
  * 权重调整结果
  */
 export interface WeightAdjustmentResult {
   /** 调整后的权重 */
   weights: MatcherWeights;
+
+  /** 阈值配置 */
+  thresholds: ThresholdConfig;
+
   /** 是否有足够数据进行调整 */
   dataSufficient: boolean;
+
   /** 样本数量 */
   sampleSize: number;
+
   /** 各匹配器准确率 */
   accuracy: Partial<Record<keyof MatcherWeights, number>>;
+
   /** 上次调整时间 */
   lastAdjustedAt: Date | null;
+
+  /** V4.0: 用户场景 */
+  scenario: UserScenario;
+
+  /** V4.0: 场景检测结果 */
+  scenarioResult: ScenarioDetectionResult;
+
+  /** V4.0: A/B 测试变体 */
+  abTestVariant: string | null;
+
+  /** V4.0: 权重来源 (scenario | feedback | default) */
+  source: "scenario" | "feedback" | "default";
+}
+
+/**
+ * 数据库场景配置
+ */
+interface ScenarioWeightConfig {
+  scenario: string;
+  weights: Record<string, number>;
+  thresholds: Record<string, number>;
+  ab_test_variant: string | null;
+  is_active: boolean;
 }
 
 /**
@@ -76,7 +125,7 @@ interface MatcherPerformance {
  * 服务配置
  */
 export interface DynamicWeightsConfig {
-  /** 最小样本数（低于此值使用默认权重） */
+  /** 最小样本数（低于此值不进行反馈调整） */
   minSampleSize: number;
   /** 权重调整幅度 */
   adjustmentRate: number;
@@ -86,18 +135,24 @@ export interface DynamicWeightsConfig {
   maxWeight: number;
   /** 缓存时间（毫秒） */
   cacheTimeMs: number;
+  /** 场景配置缓存时间（毫秒） */
+  scenarioConfigCacheTimeMs: number;
+  /** 是否启用 A/B 测试 */
+  abTestEnabled: boolean;
 }
 
 const DEFAULT_CONFIG: DynamicWeightsConfig = {
   minSampleSize: 20,
   adjustmentRate: 0.1,
-  minWeight: 0.05,
+  minWeight: 0.02,
   maxWeight: 0.5,
   cacheTimeMs: 10 * 60 * 1000, // 10 分钟
+  scenarioConfigCacheTimeMs: 30 * 60 * 1000, // 30 分钟
+  abTestEnabled: false,
 };
 
 /**
- * 默认权重
+ * 默认权重（兜底配置）
  */
 const DEFAULT_WEIGHTS: MatcherWeights = {
   vector: CLASSIFICATION_WEIGHTS.VECTOR,
@@ -110,6 +165,16 @@ const DEFAULT_WEIGHTS: MatcherWeights = {
   queryExpansion: 0.25,
 };
 
+/**
+ * 默认阈值
+ */
+const DEFAULT_THRESHOLDS: ThresholdConfig = {
+  highConfidence: 80,
+  mediumConfidence: 60,
+  autoCreate: 50,
+  knnDirect: 0.85,
+};
+
 // ============================================================================
 // 缓存
 // ============================================================================
@@ -119,7 +184,13 @@ interface CacheEntry {
   cachedAt: number;
 }
 
+interface ScenarioConfigCache {
+  configs: Map<UserScenario, ScenarioWeightConfig>;
+  cachedAt: number;
+}
+
 const weightsCache = new Map<string, CacheEntry>();
+let scenarioConfigCache: ScenarioConfigCache | null = null;
 
 // ============================================================================
 // 服务实现
@@ -132,6 +203,7 @@ export class DynamicWeightsService {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private supabase: SupabaseClient<any>;
   private config: DynamicWeightsConfig;
+  private scenarioDetector: UserScenarioDetectorService;
 
   constructor(
     supabase: SupabaseClient<Database>,
@@ -140,6 +212,7 @@ export class DynamicWeightsService {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     this.supabase = supabase as SupabaseClient<any>;
     this.config = { ...DEFAULT_CONFIG, ...config };
+    this.scenarioDetector = new UserScenarioDetectorService(supabase);
   }
 
   /**
@@ -153,36 +226,65 @@ export class DynamicWeightsService {
     }
 
     try {
-      // 获取用户反馈数据
+      // 1. 检测用户场景
+      const scenarioResult = await this.scenarioDetector.detectScenario(userId);
+
+      // 2. 加载场景配置
+      const scenarioConfig = await this.loadScenarioConfig(
+        scenarioResult.scenario,
+      );
+
+      // 3. 获取 A/B 测试变体（如果启用）
+      const abTestVariant = this.config.abTestEnabled
+        ? await this.getABTestVariant(userId, "weights_v4")
+        : null;
+
+      // 4. 获取用户反馈数据
       const performance = await this.getMatcherPerformance(userId);
+      const sampleSize = this.getTotalSamples(performance);
 
-      if (
-        performance.length === 0 ||
-        this.getTotalSamples(performance) < this.config.minSampleSize
-      ) {
-        // 数据不足，返回默认权重
-        const result: WeightAdjustmentResult = {
-          weights: { ...DEFAULT_WEIGHTS },
-          dataSufficient: false,
-          sampleSize: this.getTotalSamples(performance),
-          accuracy: {},
-          lastAdjustedAt: null,
-        };
+      // 5. 计算最终权重
+      let weights: MatcherWeights;
+      let thresholds: ThresholdConfig;
+      let source: "scenario" | "feedback" | "default";
 
-        this.cacheResult(userId, result);
-        return result;
+      if (scenarioConfig) {
+        // 使用场景配置
+        weights = this.parseWeights(scenarioConfig.weights);
+        thresholds = this.parseThresholds(scenarioConfig.thresholds);
+        source = "scenario";
+
+        // 如果有足够的反馈数据，进行微调
+        if (sampleSize >= this.config.minSampleSize) {
+          weights = this.applyFeedbackAdjustments(weights, performance);
+          source = "feedback";
+        }
+      } else {
+        // 使用默认配置
+        weights = { ...DEFAULT_WEIGHTS };
+        thresholds = { ...DEFAULT_THRESHOLDS };
+        source = "default";
+
+        // 如果有足够的反馈数据，进行调整
+        if (sampleSize >= this.config.minSampleSize) {
+          weights = this.calculateAdjustedWeights(performance);
+          source = "feedback";
+        }
       }
 
-      // 计算调整后的权重
-      const adjustedWeights = this.calculateAdjustedWeights(performance);
       const accuracy = this.buildAccuracyMap(performance);
 
       const result: WeightAdjustmentResult = {
-        weights: adjustedWeights,
-        dataSufficient: true,
-        sampleSize: this.getTotalSamples(performance),
+        weights,
+        thresholds,
+        dataSufficient: sampleSize >= this.config.minSampleSize,
+        sampleSize,
         accuracy,
-        lastAdjustedAt: new Date(),
+        lastAdjustedAt: sampleSize > 0 ? new Date() : null,
+        scenario: scenarioResult.scenario,
+        scenarioResult,
+        abTestVariant,
+        source,
       };
 
       this.cacheResult(userId, result);
@@ -190,8 +292,10 @@ export class DynamicWeightsService {
       logger.info(
         {
           userId,
-          sampleSize: result.sampleSize,
-          adjustedWeights,
+          scenario: result.scenario,
+          sampleSize,
+          source,
+          abTestVariant,
         },
         "Dynamic weights calculated",
       );
@@ -203,15 +307,185 @@ export class DynamicWeightsService {
         "Failed to calculate dynamic weights",
       );
 
-      // 出错时返回默认权重
-      return {
-        weights: { ...DEFAULT_WEIGHTS },
-        dataSufficient: false,
-        sampleSize: 0,
-        accuracy: {},
-        lastAdjustedAt: null,
-      };
+      // 出错时返回默认配置
+      return this.getDefaultResult();
     }
+  }
+
+  /**
+   * 加载场景配置
+   */
+  private async loadScenarioConfig(
+    scenario: UserScenario,
+  ): Promise<ScenarioWeightConfig | null> {
+    // 检查缓存
+    if (
+      scenarioConfigCache &&
+      Date.now() - scenarioConfigCache.cachedAt <
+        this.config.scenarioConfigCacheTimeMs
+    ) {
+      return scenarioConfigCache.configs.get(scenario) || null;
+    }
+
+    try {
+      // 从数据库加载所有场景配置
+      const { data, error } = await this.supabase
+        .from("scenario_weight_configs")
+        .select("scenario, weights, thresholds, ab_test_variant, is_active")
+        .eq("is_active", true);
+
+      if (error) {
+        logger.warn(
+          { error: error.message },
+          "Failed to load scenario configs, using defaults",
+        );
+        return null;
+      }
+
+      // 缓存配置
+      const configs = new Map<UserScenario, ScenarioWeightConfig>();
+      for (const config of data || []) {
+        configs.set(config.scenario as UserScenario, config);
+      }
+
+      scenarioConfigCache = {
+        configs,
+        cachedAt: Date.now(),
+      };
+
+      return configs.get(scenario) || null;
+    } catch (error) {
+      logger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        "Error loading scenario configs",
+      );
+      return null;
+    }
+  }
+
+  /**
+   * 获取 A/B 测试变体
+   */
+  private async getABTestVariant(
+    userId: string,
+    testName: string,
+  ): Promise<string | null> {
+    try {
+      // 检查是否已有分配
+      const { data: existing } = await this.supabase
+        .from("ab_test_assignments")
+        .select("variant")
+        .eq("user_id", userId)
+        .eq("test_name", testName)
+        .single();
+
+      if (existing) {
+        return existing.variant;
+      }
+
+      // 随机分配（50/50）
+      const variant = Math.random() < 0.5 ? "control" : "treatment";
+
+      // 保存分配
+      await this.supabase.from("ab_test_assignments").insert({
+        user_id: userId,
+        test_name: testName,
+        variant,
+        expires_at: new Date(
+          Date.now() + 30 * 24 * 60 * 60 * 1000,
+        ).toISOString(), // 30 天后过期
+      });
+
+      return variant;
+    } catch (error) {
+      logger.warn(
+        { error: error instanceof Error ? error.message : String(error) },
+        "Failed to get AB test variant",
+      );
+      return null;
+    }
+  }
+
+  /**
+   * 解析权重配置
+   */
+  private parseWeights(weights: Record<string, number>): MatcherWeights {
+    return {
+      vector: weights.vector ?? DEFAULT_WEIGHTS.vector,
+      history: weights.history ?? DEFAULT_WEIGHTS.history,
+      ai: weights.ai ?? DEFAULT_WEIGHTS.ai,
+      universal: weights.universal ?? DEFAULT_WEIGHTS.universal,
+      tag: weights.tag ?? DEFAULT_WEIGHTS.tag,
+      fingerprint: weights.fingerprint ?? DEFAULT_WEIGHTS.fingerprint,
+      knnDirect: weights.knnDirect ?? DEFAULT_WEIGHTS.knnDirect,
+      queryExpansion: weights.queryExpansion ?? DEFAULT_WEIGHTS.queryExpansion,
+    };
+  }
+
+  /**
+   * 解析阈值配置
+   */
+  private parseThresholds(thresholds: Record<string, number>): ThresholdConfig {
+    return {
+      highConfidence:
+        thresholds.highConfidence ?? DEFAULT_THRESHOLDS.highConfidence,
+      mediumConfidence:
+        thresholds.mediumConfidence ?? DEFAULT_THRESHOLDS.mediumConfidence,
+      autoCreate: thresholds.autoCreate ?? DEFAULT_THRESHOLDS.autoCreate,
+      knnDirect: thresholds.knnDirect ?? DEFAULT_THRESHOLDS.knnDirect,
+    };
+  }
+
+  /**
+   * 应用反馈调整
+   */
+  private applyFeedbackAdjustments(
+    baseWeights: MatcherWeights,
+    performance: MatcherPerformance[],
+  ): MatcherWeights {
+    const weights = { ...baseWeights };
+
+    // 计算总准确率（用于归一化）
+    const totalAccuracy = performance.reduce((sum, p) => sum + p.accuracy, 0);
+    if (totalAccuracy === 0 || performance.length === 0) {
+      return weights;
+    }
+
+    // 准确率映射
+    const accuracyMap = new Map<string, number>();
+    for (const p of performance) {
+      accuracyMap.set(p.matcher, p.accuracy);
+    }
+
+    // 根据准确率微调权重（调整幅度较小）
+    const adjustableMatchers: (keyof MatcherWeights)[] = [
+      "vector",
+      "history",
+      "ai",
+      "universal",
+      "tag",
+      "fingerprint",
+      "queryExpansion",
+    ];
+
+    const avgAccuracy = totalAccuracy / performance.length;
+
+    for (const matcher of adjustableMatchers) {
+      const accuracy = accuracyMap.get(matcher);
+      if (accuracy !== undefined) {
+        // 微调幅度：基于与平均准确率的偏差
+        const adjustment =
+          (accuracy - avgAccuracy) * (this.config.adjustmentRate * 0.5); // 减半调整幅度
+
+        weights[matcher] = Math.max(
+          this.config.minWeight,
+          Math.min(this.config.maxWeight, weights[matcher] + adjustment),
+        );
+      }
+    }
+
+    // 归一化权重
+    return this.normalizeWeights(weights);
   }
 
   /**
@@ -285,7 +559,7 @@ export class DynamicWeightsService {
   }
 
   /**
-   * 计算调整后的权重
+   * 计算调整后的权重（纯反馈驱动）
    */
   private calculateAdjustedWeights(
     performance: MatcherPerformance[],
@@ -319,8 +593,6 @@ export class DynamicWeightsService {
       const accuracy = accuracyMap.get(matcher);
       if (accuracy !== undefined) {
         // 根据准确率调整权重
-        // 准确率高于平均值 → 增加权重
-        // 准确率低于平均值 → 降低权重
         const avgAccuracy = totalAccuracy / performance.length;
         const adjustment =
           (accuracy - avgAccuracy) * this.config.adjustmentRate;
@@ -332,11 +604,28 @@ export class DynamicWeightsService {
       }
     }
 
-    // 归一化权重（确保总和为 1）
+    return this.normalizeWeights(weights);
+  }
+
+  /**
+   * 归一化权重
+   */
+  private normalizeWeights(weights: MatcherWeights): MatcherWeights {
+    const adjustableMatchers: (keyof MatcherWeights)[] = [
+      "vector",
+      "history",
+      "ai",
+      "universal",
+      "tag",
+      "fingerprint",
+      "queryExpansion",
+    ];
+
     const totalWeight = adjustableMatchers.reduce(
       (sum, m) => sum + weights[m],
       0,
     );
+
     if (totalWeight > 0) {
       for (const matcher of adjustableMatchers) {
         weights[matcher] = weights[matcher] / totalWeight;
@@ -371,6 +660,38 @@ export class DynamicWeightsService {
   }
 
   /**
+   * 获取默认结果
+   */
+  private getDefaultResult(): WeightAdjustmentResult {
+    return {
+      weights: { ...DEFAULT_WEIGHTS },
+      thresholds: { ...DEFAULT_THRESHOLDS },
+      dataSufficient: false,
+      sampleSize: 0,
+      accuracy: {},
+      lastAdjustedAt: null,
+      scenario: "cold_start",
+      scenarioResult: {
+        scenario: "cold_start",
+        stats: {
+          bookmarkCount: 0,
+          folderCount: 0,
+          feedbackCount: 0,
+          feedbackAcceptanceRate: 0,
+          accountAgeDays: 0,
+          recentBookmarkCount: 0,
+          foldersWithProfile: 0,
+        },
+        reason: "使用默认配置",
+        detectedAt: new Date(),
+        confidence: 0,
+      },
+      abTestVariant: null,
+      source: "default",
+    };
+  }
+
+  /**
    * 缓存结果
    */
   private cacheResult(userId: string, result: WeightAdjustmentResult): void {
@@ -385,6 +706,7 @@ export class DynamicWeightsService {
    */
   static clearCache(userId: string): void {
     weightsCache.delete(userId);
+    UserScenarioDetectorService.clearCache(userId);
   }
 
   /**
@@ -392,6 +714,8 @@ export class DynamicWeightsService {
    */
   static clearAllCache(): void {
     weightsCache.clear();
+    scenarioConfigCache = null;
+    UserScenarioDetectorService.clearAllCache();
   }
 
   /**
@@ -400,6 +724,13 @@ export class DynamicWeightsService {
   async recordFeedback(userId: string): Promise<void> {
     // 清除缓存，下次获取时重新计算
     DynamicWeightsService.clearCache(userId);
+  }
+
+  /**
+   * 获取场景检测器实例
+   */
+  getScenarioDetector(): UserScenarioDetectorService {
+    return this.scenarioDetector;
   }
 }
 
