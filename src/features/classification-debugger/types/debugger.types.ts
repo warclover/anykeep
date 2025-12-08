@@ -86,6 +86,22 @@ export interface VersionResult {
     correctionApplied?: boolean;
     /** 是否启用命名引擎 */
     namingEngineUsed?: boolean;
+    /** 分层执行详情 */
+    tieredDetails?: {
+      /** 实际使用的分层 (0=缓存/兜底, 1=快速匹配, 2=AI确认, 3=自动创建) */
+      tier: 0 | 1 | 2 | 3;
+      /** 是否调用了 AI */
+      aiCalled: boolean;
+      /** 各层耗时 */
+      timings: {
+        tier0Ms?: number;
+        tier1Ms?: number;
+        tier2Ms?: number;
+        tier3Ms?: number;
+      };
+      /** 追踪 ID */
+      traceId: string;
+    };
   };
   /** 完整决策路径（可选，用于深度调试） */
   decisionPath?: DecisionPath;
