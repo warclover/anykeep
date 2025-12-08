@@ -34,6 +34,7 @@ const CLIENT_NAV_ENABLE_DELAY_MS = 100;
 /**
  * 所有支持的页面 ID 列表
  * 作为单一数据源，避免在多处重复定义
+ * 注意：仅包含 Keep-Alive 管理的主页面，开发者工具页面不在此列
  */
 export const PAGE_IDS: readonly PageId[] = [
   "home",
@@ -42,7 +43,6 @@ export const PAGE_IDS: readonly PageId[] = [
   "messages",
   "analytics",
   "settings",
-  "classification-debugger",
 ] as const;
 
 // ==================== 类型定义 ====================
@@ -73,6 +73,7 @@ function isClientNavState(state: unknown): state is ClientNavHistoryState {
 
 /**
  * 支持的页面类型
+ * 注意：仅包含 Keep-Alive 管理的主页面
  */
 export type PageId =
   | "home"
@@ -80,8 +81,7 @@ export type PageId =
   | "folders"
   | "messages"
   | "analytics"
-  | "settings"
-  | "classification-debugger";
+  | "settings";
 
 /**
  * 页面路由映射
@@ -93,7 +93,6 @@ export const PAGE_ROUTES: Record<PageId, string> = {
   messages: "/messages",
   analytics: "/analytics",
   settings: "/settings",
-  "classification-debugger": "/classification-debugger",
 };
 
 /**
@@ -106,7 +105,6 @@ const ROUTE_TO_PAGE: Record<string, PageId> = {
   "/messages": "messages",
   "/analytics": "analytics",
   "/settings": "settings",
-  "/classification-debugger": "classification-debugger",
 };
 
 /**
