@@ -22,6 +22,7 @@ import {
 } from "../repositories/decision.repository";
 import { V3_CONFIG } from "../config";
 import { logger } from "@/lib/logger";
+import { getCorrectionCache } from "./correction-cache.service";
 
 /**
  * 分类结果上下文（从分类服务传入）
@@ -107,12 +108,18 @@ export class FeedbackLoopService {
   /**
    * 记录用户反馈
    * 当用户接受、拒绝建议或手动移动书签时调用
+   *
+   * V4.0: 增加 URL 和 folderName 参数，用于写入纠错缓存
    */
   async recordFeedback(
     bookmarkId: number,
     userId: string,
     action: UserAction,
     chosenFolderId?: number,
+    /** V4.0: 书签 URL，用于纠错缓存 */
+    bookmarkUrl?: string,
+    /** V4.0: 目标文件夹名称，用于纠错缓存 */
+    chosenFolderName?: string,
   ): Promise<void> {
     if (!V3_CONFIG.enableFeedbackLoop) {
       return;
@@ -130,6 +137,28 @@ export class FeedbackLoopService {
 
       // 清除缓存的权重，强制重新计算
       this.cachedWeights.delete(userId);
+
+      // V4.0: 写入纠错缓存
+      // 当用户手动移动或更改文件夹时，记录其选择
+      if (
+        bookmarkUrl &&
+        chosenFolderId &&
+        chosenFolderName &&
+        (action === "manual_move" || action === "changed_folder")
+      ) {
+        const correctionCache = getCorrectionCache();
+        correctionCache.set(
+          userId,
+          bookmarkUrl,
+          chosenFolderId,
+          chosenFolderName,
+          "user_move",
+        );
+        logger.debug(
+          { bookmarkId, url: bookmarkUrl, folderId: chosenFolderId },
+          "Correction cache updated from user feedback",
+        );
+      }
 
       logger.info(
         { bookmarkId, action, chosenFolderId },

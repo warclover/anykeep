@@ -23,7 +23,7 @@ import { getMockContext, loadRealContext } from "./mock-context.service";
 import { logger } from "@/lib/logger";
 
 /**
- * 执行 V3 vs V4 分类对比
+ * 执行 V3 vs V4 vs V4.1 分类对比
  *
  * @param supabase - Supabase 客户端（用于读取数据，不写入）
  * @param request - 对比请求
@@ -43,7 +43,7 @@ export async function compareClassification(
       preset: request.preset || "default",
       bookmarkTitle: request.bookmark.title,
     },
-    "[ClassificationDebugger] Starting comparison",
+    "[ClassificationDebugger] Starting comparison (V3 vs V4 vs V4.1)",
   );
 
   try {
@@ -57,8 +57,8 @@ export async function compareClassification(
       ? mergeConfig(request.preset || "default", request.customV4Config)
       : getPresetConfig(request.preset || "default");
 
-    // 3. 并行执行 V3 和 V4 分类
-    const [v3Result, v4Result] = await Promise.all([
+    // 3. 并行执行 V3、V4 和 V4.1 分类
+    const [v3Result, v4Result, v41Result] = await Promise.all([
       executeClassification(supabase, {
         bookmark: request.bookmark,
         userId: context.userId,
@@ -77,21 +77,34 @@ export async function compareClassification(
         version: "v4",
         dryRun: true, // 强制 dry-run
       }),
+      executeClassification(supabase, {
+        bookmark: request.bookmark,
+        userId: context.userId,
+        config: {}, // V4.1 使用内置配置
+        folders: context.folders,
+        history: context.history,
+        version: "v41",
+        dryRun: true, // 强制 dry-run
+      }),
     ]);
 
     // 4. 生成差异分析
     const comparison = generateComparison(v3Result, v4Result);
+    const v41Comparison = generateComparison(v3Result, v41Result);
 
     // 5. 构建响应
     const response: CompareResponse = {
       success: true,
       v3Result,
       v4Result,
+      v41Result,
       comparison,
+      v41Comparison,
       configSummary: {
         scenario: request.scenario,
         preset: request.customV4Config ? "custom" : request.preset || "default",
         v4Features: extractV4Features(v4Config),
+        v41Features: ["统一向量搜索", "标签增强", "AI选择题", "冷启动支持"],
       },
     };
 
@@ -102,10 +115,13 @@ export async function compareClassification(
         v3Confidence: v3Result.confidence,
         v4Folder: v4Result.folderName,
         v4Confidence: v4Result.confidence,
-        sameFolder: comparison.sameFolder,
+        v41Folder: v41Result.folderName,
+        v41Confidence: v41Result.confidence,
+        v3v4SameFolder: comparison.sameFolder,
+        v3v41SameFolder: v41Comparison.sameFolder,
         totalTime: Date.now() - startTime,
       },
-      "[ClassificationDebugger] Comparison completed",
+      "[ClassificationDebugger] Comparison completed (V3 vs V4 vs V4.1)",
     );
 
     return response;

@@ -85,6 +85,72 @@ function getSummaryLimit(contentLength: number): { min: number; max: number } {
 }
 
 /**
+ * 简单 AI 生成函数
+ * 用于 V4.1 分类等场景的简单文本生成
+ *
+ * @param prompt - 用户 prompt
+ * @param options - 生成选项
+ * @returns 生成的文本
+ */
+export async function generateWithAI(
+  prompt: string,
+  options?: {
+    maxTokens?: number;
+    temperature?: number;
+  },
+): Promise<string> {
+  const apiKey = process.env.DEEPSEEK_API_KEY;
+
+  if (!apiKey) {
+    throw new Error("DEEPSEEK_API_KEY 环境变量未配置");
+  }
+
+  try {
+    const response = await fetch(
+      "https://api.deepseek.com/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: "deepseek-chat",
+          messages: [
+            {
+              role: "user",
+              content: prompt,
+            },
+          ],
+          temperature: options?.temperature ?? 0.3,
+          max_tokens: options?.maxTokens ?? 100,
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`DeepSeek API error: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content;
+
+    if (!content) {
+      throw new Error("DeepSeek API 返回空内容");
+    }
+
+    return content.trim();
+  } catch (error) {
+    logger.error(
+      { error: error instanceof Error ? error.message : String(error) },
+      "generateWithAI: API call failed",
+    );
+    throw error;
+  }
+}
+
+/**
  * 调用 DeepSeek API 生成摘要和标签
  * V2: 支持内容类型自适应 Prompt
  * V2.1: 支持 JSON 结构化输出（通过配置开关控制）
@@ -577,11 +643,13 @@ export async function recommendFolder(
             {
               role: "system",
               content:
-                "你是一个内容分类助手。你的任务是根据内容特征，推荐最合适的文件夹。请严格按照 JSON 格式返回结果。",
+                "你是一个内容分类专家。你的任务是根据内容特征，从用户现有的文件夹中选择最匹配的一个，或者根据内容生成一个新的、简洁的文件夹名称。请严格按照 JSON 格式返回结果。",
             },
             {
               role: "user",
-              content: prompt,
+              content:
+                prompt +
+                "\n\n注意：如果建议新建文件夹，请根据内容生成一个简洁的名称（2-6个字），严禁使用'内容分类与标签管理'、'待分类'、'未命名'等无意义名称。",
             },
           ],
           temperature: 0.3, // 较低的温度以获得更一致的结果

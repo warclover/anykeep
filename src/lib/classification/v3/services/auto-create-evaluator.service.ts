@@ -81,6 +81,68 @@ export class AutoCreateEvaluatorService {
     confidence: number,
     bookmarkTags?: string[],
   ): Promise<AutoCreateEvaluation> {
+    // 0. 黑名单过滤：直接拒绝系统性命名
+    const BLACKLIST = [
+      "内容分类与标签管理",
+      "内容分类",
+      "标签管理",
+      "待整理",
+      "未分类",
+      "新建文件夹",
+      "New Folder",
+      "我的收藏",
+      "书签",
+    ];
+
+    if (
+      BLACKLIST.some(
+        (badName) =>
+          proposedName.includes(badName) || badName.includes(proposedName),
+      )
+    ) {
+      // 如果名字在黑名单中，尝试使用第一个有意义的标签或标题截断作为替代
+      let fallbackName = proposedName;
+      if (bookmarkTags && bookmarkTags.length > 0) {
+        const meaningfulTag = bookmarkTags.find(
+          (t) =>
+            t.length >= 2 &&
+            t.length <= 10 &&
+            !BLACKLIST.some((b) => t.includes(b)),
+        );
+        if (meaningfulTag) {
+          fallbackName = meaningfulTag;
+        }
+      }
+
+      // 如果还没找到合适的，就用通用分类匹配
+      if (
+        fallbackName === proposedName ||
+        BLACKLIST.some((b) => fallbackName.includes(b))
+      ) {
+        const matches = matchCategoriesByKeyword(fallbackName);
+        if (matches.length > 0) {
+          fallbackName = matches[0].category.suggestedFolderName;
+        } else {
+          // 最后的兜底：置信度设为0，强制拒绝
+          return this.buildResult({
+            shouldCreate: false,
+            shouldSuggest: false,
+            recommendedName: proposedName,
+            rejectReason: `触发命名黑名单且无可用替代: "${proposedName}"`,
+            details: {
+              originalName: proposedName,
+              totalFolders: -1,
+              todayCreated: -1,
+            },
+          });
+        }
+      }
+
+      // 使用替代名称继续评估（但降低一点置信度，以防万一）
+      proposedName = fallbackName;
+      confidence = Math.max(0, confidence - 10);
+    }
+
     if (!V3_CONFIG.enableAutoCreateEnhanced) {
       // 如果增强模式未启用，使用简单逻辑
       return this.simpleEvaluation(proposedName, confidence);

@@ -29,6 +29,41 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
+// 调试结果类型
+interface ClassificationDebugResult {
+  classification: {
+    action: string;
+    folderId: number | null;
+    folderName: string;
+    confidence: number;
+    reason: string;
+    scores: {
+      vectorScore: number;
+      historyScore: number;
+      aiScore: number;
+    };
+  };
+  // 支持 meta 或 metrics 字段名
+  meta?: {
+    tierCounts?: {
+      tier1?: number;
+      tier2?: number;
+      tier3?: number;
+    };
+    aiSavingsRate?: number;
+  };
+  metrics?: {
+    tierCounts?: {
+      tier1?: number;
+      tier2?: number;
+      tier3?: number;
+    };
+    aiSavingsRate?: number;
+  };
+  // 其他可能的字段
+  [key: string]: unknown;
+}
+
 // 默认配置
 const DEFAULT_CONFIG = {
   highConfidenceThreshold: 80,
@@ -51,7 +86,7 @@ export default function ClassificationDebuggerPage() {
     tags: "",
   });
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<Record<string, unknown> | null>(null);
+  const [result, setResult] = useState<ClassificationDebugResult | null>(null);
 
   const handleRun = async () => {
     if (!input.title && !input.url) {

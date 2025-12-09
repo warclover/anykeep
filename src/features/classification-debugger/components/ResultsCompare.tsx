@@ -52,8 +52,8 @@ export function ResultsCompare({ result }: ResultsCompareProps) {
 
   return (
     <div className="space-y-4">
-      {/* 版本对比 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* 版本对比 - 三列布局 */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <VersionResultCard
           title="V3 结果"
           result={result.v3Result}
@@ -62,12 +62,28 @@ export function ResultsCompare({ result }: ResultsCompareProps) {
         <VersionResultCard
           title="V4 结果"
           result={result.v4Result}
-          variant="primary"
+          variant="secondary"
         />
+        {result.v41Result && (
+          <VersionResultCard
+            title="V4.1 结果"
+            result={result.v41Result}
+            variant="primary"
+          />
+        )}
       </div>
 
       {/* 差异分析 */}
-      <ComparisonCard comparison={result.comparison} />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <ComparisonCard comparison={result.comparison} title="V3 vs V4 差异" />
+        {result.v41Comparison && (
+          <ComparisonCard
+            comparison={result.v41Comparison}
+            title="V3 vs V4.1 差异"
+            highlight
+          />
+        )}
+      </div>
 
       {/* 配置摘要 */}
       <ConfigSummaryCard configSummary={result.configSummary} />
@@ -168,6 +184,50 @@ function VersionResultCard({
           </div>
         )}
 
+        {/* V4.1 扩展信息 */}
+        {result.v41Details && (
+          <div className="pt-2 border-t">
+            <div className="text-xs text-muted-foreground space-y-1">
+              {result.v41Details.matchType && (
+                <div className="flex items-center gap-1">
+                  <Sparkles className="w-3 h-3" />
+                  匹配类型：
+                  {result.v41Details.matchType === "profile"
+                    ? "内容向量"
+                    : result.v41Details.matchType === "name"
+                      ? "名称向量(冷启动)"
+                      : result.v41Details.matchType === "ai_select"
+                        ? "AI选择"
+                        : "AI创建"}
+                </div>
+              )}
+              {result.v41Details.tagBoost !== undefined &&
+                result.v41Details.tagBoost > 0 && (
+                  <div className="flex items-center gap-1">
+                    <TrendingUp className="w-3 h-3" />
+                    标签增强：+{result.v41Details.tagBoost}%
+                  </div>
+                )}
+              {result.v41Details.candidates &&
+                result.v41Details.candidates.length > 0 && (
+                  <div className="mt-2">
+                    <div className="font-medium mb-1">候选文件夹：</div>
+                    {result.v41Details.candidates.slice(0, 3).map((c, i) => (
+                      <div key={i} className="flex justify-between">
+                        <span>
+                          {i + 1}. {c.folderName}
+                        </span>
+                        <span>
+                          {c.score}%{c.tagBoost ? ` (+${c.tagBoost})` : ""}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+            </div>
+          </div>
+        )}
+
         {/* 推理过程 */}
         <div className="pt-2 border-t">
           <div className="text-xs text-muted-foreground">
@@ -182,13 +242,23 @@ function VersionResultCard({
 /**
  * 差异分析卡片
  */
-function ComparisonCard({ comparison }: { comparison: ComparisonDiff }) {
+function ComparisonCard({
+  comparison,
+  title = "差异分析",
+  highlight = false,
+}: {
+  comparison: ComparisonDiff;
+  title?: string;
+  highlight?: boolean;
+}) {
   return (
-    <Card>
+    <Card className={highlight ? "border-primary/50 bg-primary/5" : ""}>
       <CardHeader className="pb-3">
         <CardTitle className="text-lg flex items-center gap-2">
-          <TrendingUp className="w-5 h-5" />
-          差异分析
+          <TrendingUp
+            className={`w-5 h-5 ${highlight ? "text-primary" : ""}`}
+          />
+          {title}
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -291,6 +361,15 @@ function ConfigSummaryCard({
                 : "无"}
             </span>
           </div>
+          {configSummary.v41Features &&
+            configSummary.v41Features.length > 0 && (
+              <div className="flex items-center gap-1">
+                <span className="text-muted-foreground">V4.1 特性：</span>
+                <span className="text-xs text-primary font-medium">
+                  {configSummary.v41Features.join(", ")}
+                </span>
+              </div>
+            )}
         </div>
       </CardContent>
     </Card>

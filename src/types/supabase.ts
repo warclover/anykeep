@@ -222,6 +222,12 @@ export type Database = {
           suggested_correct_folder_name: string | null;
           context: Json;
           created_at: string;
+          // V4.0新增字段
+          folder_id: number | null;
+          bookmark_url: string | null;
+          reject_reason: RejectReason | null;
+          trace_id: string | null;
+          original_confidence: number | null;
         };
         Insert: {
           id?: number;
@@ -234,6 +240,12 @@ export type Database = {
           suggested_correct_folder_name?: string | null;
           context?: Json;
           created_at?: string;
+          // V4.0新增字段
+          folder_id?: number | null;
+          bookmark_url?: string | null;
+          reject_reason?: RejectReason | null;
+          trace_id?: string | null;
+          original_confidence?: number | null;
         };
         Update: {
           id?: number;
@@ -246,6 +258,12 @@ export type Database = {
           suggested_correct_folder_name?: string | null;
           context?: Json;
           created_at?: string;
+          // V4.0新增字段
+          folder_id?: number | null;
+          bookmark_url?: string | null;
+          reject_reason?: RejectReason | null;
+          trace_id?: string | null;
+          original_confidence?: number | null;
         };
         Relationships: [
           {
@@ -273,6 +291,85 @@ export type Database = {
             foreignKeyName: "classification_feedback_folder_id_fkey";
             columns: ["suggested_correct_folder_id"];
             isOneToOne: false;
+            referencedRelation: "folders";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      // V4.0新增：文件夹画像表
+      folder_profiles: {
+        Row: {
+          id: number;
+          user_id: string;
+          folder_id: number;
+          profile_embedding: number[] | null;
+          name_embedding: number[] | null; // V4.0: 文件夹名称向量
+          bookmark_count: number;
+          last_bookmark_at: string | null;
+          top_tags: string[] | null;
+          sample_titles: string[] | null;
+          internal_similarity: number | null;
+          source:
+            | "interest_onboarding"
+            | "manual"
+            | "auto_created"
+            | "clustering"
+            | null;
+          computed_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: number;
+          user_id: string;
+          folder_id: number;
+          profile_embedding?: number[] | null;
+          name_embedding?: number[] | null;
+          bookmark_count?: number;
+          last_bookmark_at?: string | null;
+          top_tags?: string[] | null;
+          sample_titles?: string[] | null;
+          internal_similarity?: number | null;
+          source?:
+            | "interest_onboarding"
+            | "manual"
+            | "auto_created"
+            | "clustering"
+            | null;
+          computed_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: number;
+          user_id?: string;
+          folder_id?: number;
+          profile_embedding?: number[] | null;
+          name_embedding?: number[] | null;
+          bookmark_count?: number;
+          last_bookmark_at?: string | null;
+          top_tags?: string[] | null;
+          sample_titles?: string[] | null;
+          internal_similarity?: number | null;
+          source?:
+            | "interest_onboarding"
+            | "manual"
+            | "auto_created"
+            | "clustering"
+            | null;
+          computed_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "folder_profiles_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "folder_profiles_folder_id_fkey";
+            columns: ["folder_id"];
+            isOneToOne: true;
             referencedRelation: "folders";
             referencedColumns: ["id"];
           },
@@ -685,6 +782,99 @@ export type Database = {
           },
         ];
       };
+      // V13.0新增：分类决策追踪表（V3/V4 智能分类）
+      classification_decisions: {
+        Row: {
+          id: number;
+          user_id: string;
+          bookmark_id: number;
+          decision_type: ClassificationDecisionType;
+          final_folder_id: number | null;
+          final_folder_name: string | null;
+          confidence: number | null;
+          matcher_scores: Json;
+          candidates: Json;
+          ai_skipped: boolean;
+          ai_model: string | null;
+          ai_prompt_version: string | null;
+          ai_response_time_ms: number | null;
+          user_action: ClassificationUserAction | null;
+          user_action_at: string | null;
+          user_chosen_folder_id: number | null;
+          client_version: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: number;
+          user_id: string;
+          bookmark_id: number;
+          decision_type: ClassificationDecisionType;
+          final_folder_id?: number | null;
+          final_folder_name?: string | null;
+          confidence?: number | null;
+          matcher_scores?: Json;
+          candidates?: Json;
+          ai_skipped?: boolean;
+          ai_model?: string | null;
+          ai_prompt_version?: string | null;
+          ai_response_time_ms?: number | null;
+          user_action?: ClassificationUserAction | null;
+          user_action_at?: string | null;
+          user_chosen_folder_id?: number | null;
+          client_version?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: number;
+          user_id?: string;
+          bookmark_id?: number;
+          decision_type?: ClassificationDecisionType;
+          final_folder_id?: number | null;
+          final_folder_name?: string | null;
+          confidence?: number | null;
+          matcher_scores?: Json;
+          candidates?: Json;
+          ai_skipped?: boolean;
+          ai_model?: string | null;
+          ai_prompt_version?: string | null;
+          ai_response_time_ms?: number | null;
+          user_action?: ClassificationUserAction | null;
+          user_action_at?: string | null;
+          user_chosen_folder_id?: number | null;
+          client_version?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "classification_decisions_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "classification_decisions_bookmark_id_fkey";
+            columns: ["bookmark_id"];
+            isOneToOne: true;
+            referencedRelation: "bookmarks";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "classification_decisions_folder_id_fkey";
+            columns: ["final_folder_id"];
+            isOneToOne: false;
+            referencedRelation: "folders";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "classification_decisions_user_chosen_folder_fkey";
+            columns: ["user_chosen_folder_id"];
+            isOneToOne: false;
+            referencedRelation: "folders";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       // V12.0新增：用户通知偏好表
       notification_preferences: {
         Row: {
@@ -952,10 +1142,40 @@ export type FeedbackType =
   | "confidence_too_high"
   | "confidence_too_low"
   | "helpful"
+  | "reject" // V4.0: 用户拒绝分类建议
+  | "confirm" // V4.0: 用户确认分类建议
+  | "other";
+
+// V4.0新增：拒绝原因类型
+export type RejectReason =
+  | "wrong_category"
+  | "irrelevant"
+  | "low_confidence"
+  | "prefer_inbox"
   | "other";
 
 // V4.4新增：文件夹分组类型
 export type FolderGroup = "work" | "study" | "life" | "entertainment" | "other";
+
+// V13.0新增：分类决策类型
+export type ClassificationDecisionType =
+  | "auto_classified"
+  | "suggestion_shown"
+  | "to_inbox"
+  | "knn_direct"
+  | "universal_match"
+  | "tier1_direct" // V4.0: Tier 1 直接分类
+  | "tier2_ai_confirmed" // V4.0: Tier 2 AI 确认
+  | "tier3_auto_create"; // V4.0: Tier 3 自动创建
+
+// V13.0新增：用户对分类结果的反馈动作
+export type ClassificationUserAction =
+  | "accepted"
+  | "rejected"
+  | "changed_folder"
+  | "undo"
+  | "ignored"
+  | "manual_move";
 
 // V4.2新增：分类建议类型别名
 export type ClassificationSuggestion =
@@ -972,6 +1192,14 @@ export type ClassificationFeedbackInsert =
   Database["public"]["Tables"]["classification_feedback"]["Insert"];
 export type ClassificationFeedbackUpdate =
   Database["public"]["Tables"]["classification_feedback"]["Update"];
+
+// V13.0新增：分类决策类型别名
+export type ClassificationDecision =
+  Database["public"]["Tables"]["classification_decisions"]["Row"];
+export type ClassificationDecisionInsert =
+  Database["public"]["Tables"]["classification_decisions"]["Insert"];
+export type ClassificationDecisionUpdate =
+  Database["public"]["Tables"]["classification_decisions"]["Update"];
 
 // V4.2新增：重分类配置类型
 export interface ReclassifySettings {

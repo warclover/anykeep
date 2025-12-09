@@ -1,7 +1,7 @@
 /**
  * 智能分类调试工具 - 类型定义
  *
- * 用于 V3 vs V4 分类对比调试
+ * 用于 V3 vs V4 vs V4.1 分类对比调试
  */
 
 import type {
@@ -103,6 +103,25 @@ export interface VersionResult {
       traceId: string;
     };
   };
+  /** V4.1 扩展信息（统一向量搜索 + 标签增强） */
+  v41Details?: {
+    /** 匹配类型: profile=内容匹配, name=名称匹配(冷启动), ai_select=AI选择, ai_create=AI创建 */
+    matchType?: "profile" | "name" | "ai_select" | "ai_create";
+    /** 标签增强分数 */
+    tagBoost?: number;
+    /** 候选文件夹列表 */
+    candidates?: Array<{
+      folderId: number;
+      folderName: string;
+      score: number;
+      matchType: "profile" | "name";
+      tagBoost?: number;
+    }>;
+    /** 是否调用 AI */
+    aiCalled?: boolean;
+    /** AI 选择的候选序号 (1-based) */
+    aiSelectedIndex?: number;
+  };
   /** 完整决策路径（可选，用于深度调试） */
   decisionPath?: DecisionPath;
 }
@@ -135,8 +154,12 @@ export interface CompareResponse {
   v3Result: VersionResult;
   /** V4 结果 */
   v4Result: VersionResult;
-  /** 差异分析 */
+  /** V4.1 结果（统一向量搜索 + 标签增强） */
+  v41Result?: VersionResult;
+  /** 差异分析 (V3 vs V4) */
   comparison: ComparisonDiff;
+  /** V4.1 与 V3 的差异分析 */
+  v41Comparison?: ComparisonDiff;
   /** 错误信息（如果失败） */
   error?: string;
   /** 使用的配置摘要 */
@@ -144,6 +167,8 @@ export interface CompareResponse {
     scenario: DebugScenario;
     preset: PresetConfigKey | "custom";
     v4Features: string[];
+    /** V4.1 启用的特性 */
+    v41Features?: string[];
   };
 }
 

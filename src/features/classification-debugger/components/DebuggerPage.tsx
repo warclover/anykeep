@@ -3,7 +3,7 @@
 /**
  * 智能分类调试工具 - 主页面组件
  *
- * V3 vs V4 分类对比分析
+ * V3 vs V4 vs V4.1 分类对比分析
  */
 
 import { useState } from "react";
@@ -67,7 +67,7 @@ export function DebuggerPage() {
             智能分类调试工具
           </h1>
           <p className="text-muted-foreground">
-            V3 vs V4 分类对比分析 - 开发者工具
+            V3 vs V4 vs V4.1 分类对比分析 - 开发者工具
           </p>
         </div>
         <div className="flex items-center gap-2">
