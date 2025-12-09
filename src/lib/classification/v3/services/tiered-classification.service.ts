@@ -1,9 +1,18 @@
 /**
- * V3.0 分层分类编排服务
+ * V4.0 分层分类编排服务
+ *
+ * @deprecated 自 V4.1 起，推荐使用 SimpleClassificationService 替代
+ * @see src/lib/classification/services/simple-classification.service.ts
+ *
+ * 此服务仍可用于：
+ * - 需要分层编排（Tier 0-3）的复杂场景
+ * - 需要纠错缓存功能的场景
+ * - 调试工具中的 V4 对比测试
  *
  * 核心优化目标：减少 70% AI API 调用成本
  *
  * 分层策略：
+ * - Tier 0: 纠错缓存（V4.0 新增）
  * - Tier 1: 快速匹配（无 API 成本）
  *   - 向量相似度匹配
  *   - 历史行为匹配
@@ -713,6 +722,10 @@ export class TieredClassificationService {
 
   /**
    * 综合快速匹配和 AI 结果
+   *
+   * V4.2 更新：更保守的综合策略
+   * - 如果快速匹配和 AI 推荐同一文件夹 → 提高置信度
+   * - 如果 AI 推荐不同文件夹 → 优先使用快速匹配（除非 AI 置信度明显更高）
    */
   private combineResults(
     fastScore: {
@@ -723,15 +736,55 @@ export class TieredClassificationService {
     },
     aiResult: ClassificationResult,
   ): ClassificationResult {
-    // AI 结果优先，但保留快速匹配的分数信息
+    const sameFolder = fastScore.folderId === aiResult.folderId;
+
+    // 情况 1: 快速匹配和 AI 推荐同一文件夹 → 提高置信度
+    if (sameFolder && fastScore.folderId !== null) {
+      const boostedConfidence = Math.min(
+        Math.max(fastScore.score, aiResult.confidence) + 5,
+        100,
+      );
+      return {
+        ...aiResult,
+        confidence: boostedConfidence,
+        scores: {
+          vectorScore: fastScore.scores.vectorScore,
+          historyScore: fastScore.scores.historyScore,
+          aiScore: aiResult.confidence,
+        },
+        reason: `快速匹配与 AI 一致确认 (${boostedConfidence}%)`,
+      };
+    }
+
+    // 情况 2: AI 推荐不同文件夹
+    // V4.2: 更保守 - 只有当 AI 置信度比快速匹配高 10% 以上才采用 AI 结果
+    const aiAdvantage = aiResult.confidence - fastScore.score;
+
+    if (aiAdvantage > 10 && aiResult.folderId !== null) {
+      // AI 明显更有信心，使用 AI 结果
+      return {
+        ...aiResult,
+        scores: {
+          vectorScore: fastScore.scores.vectorScore,
+          historyScore: fastScore.scores.historyScore,
+          aiScore: aiResult.confidence,
+        },
+        reason: `AI 调整 (${aiResult.confidence}% > 快速匹配 ${fastScore.score}%)`,
+      };
+    }
+
+    // 默认: 优先使用快速匹配结果（基于向量相似度和历史记录更可靠）
     return {
-      ...aiResult,
+      folderId: fastScore.folderId,
+      folderName: fastScore.folderName || aiResult.folderName,
+      confidence: fastScore.score,
+      action: fastScore.folderId ? "classify" : aiResult.action,
       scores: {
         vectorScore: fastScore.scores.vectorScore,
         historyScore: fastScore.scores.historyScore,
         aiScore: aiResult.confidence,
       },
-      reason: `AI 确认 (${aiResult.confidence}%)，快速匹配 (${fastScore.score}%)`,
+      reason: `快速匹配优先 (${fastScore.score}%)，AI 参考 (${aiResult.confidence}%)`,
     };
   }
 

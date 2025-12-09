@@ -265,6 +265,13 @@ export class ClassificationContainer {
   /**
    * Get Classification Service
    * V3.0: 集成 5 层匹配策略
+   *
+   * @deprecated 自 V4.1 起，生产环境推荐使用 createSimpleClassificationService()
+   * @see src/lib/classification/services/simple-classification.service.ts
+   *
+   * 此方法仍保留用于：
+   * - 环境变量 CLASSIFICATION_VERSION=v3 时的回滚
+   * - 调试工具中的 V3 对比测试
    */
   getClassificationService(): IClassificationService {
     if (!this._classificationService) {

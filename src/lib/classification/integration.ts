@@ -5,6 +5,7 @@
 
 import { z } from "zod";
 import { ClassificationContainer } from "./container";
+import { createSimpleClassificationService } from "./services/simple-classification.service";
 import { CLASSIFICATION_THRESHOLDS, FOLDER_LIMITS } from "./constants";
 import { logger } from "@/lib/logger";
 import { MessageService } from "@/lib/messages/server";
@@ -14,10 +15,25 @@ import type {
   ClassificationResultData,
 } from "@/types/supabase";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/types/supabase";
 
 // Thresholds from centralized constants
 const AUTO_CLASSIFY_THRESHOLD = CLASSIFICATION_THRESHOLDS.HIGH_CONFIDENCE;
 const SUGGEST_THRESHOLD = CLASSIFICATION_THRESHOLDS.MEDIUM_CONFIDENCE;
+
+/**
+ * 获取当前分类系统版本
+ * 通过环境变量 CLASSIFICATION_VERSION 控制
+ * - "v3": 使用 V3 ClassificationService（5层匹配器）
+ * - "v4.1": 使用 V4.1 SimpleClassificationService（默认）
+ */
+export function getClassificationVersion(): "v3" | "v4.1" {
+  const version = process.env.CLASSIFICATION_VERSION;
+  if (version === "v3") {
+    return "v3";
+  }
+  return "v4.1"; // 默认使用 V4.1
+}
 
 /**
  * Input validation schema for classifyBookmarkV2
@@ -83,9 +99,8 @@ export async function classifyBookmarkV2(
     const { createClient } = await import("@/lib/supabase/server");
     const supabase = await createClient();
 
-    // Initialize classification container
-    const container = ClassificationContainer.initialize(supabase);
-    const classificationService = container.getClassificationService();
+    // 获取分类版本
+    const classificationVersion = getClassificationVersion();
 
     // Prepare bookmark input
     const bookmarkInput: BookmarkInput = {
@@ -95,21 +110,68 @@ export async function classifyBookmarkV2(
       tags,
     };
 
-    // Run classification
-    const result = await classificationService.classify(userId, bookmarkInput);
+    // Run classification based on version
+    let result: ClassificationResult;
 
-    logger.info(
-      {
-        bookmarkId,
-        title: title.substring(0, 30),
-        action: result.action,
-        confidence: result.confidence,
-        folderId: result.folderId,
-        folderName: result.folderName,
-        scores: result.scores,
-      },
-      "Classification V2: Result received",
-    );
+    if (classificationVersion === "v4.1") {
+      // V4.1: 使用 SimpleClassificationService（统一向量搜索，支持冷启动）
+      const simpleService = createSimpleClassificationService(
+        supabase as SupabaseClient<Database>,
+      );
+      const simpleResult = await simpleService.classify(userId, {
+        title,
+        summary: summary || undefined,
+        tags,
+        url: undefined, // URL 在此上下文不可用
+      });
+
+      // 转换 SimpleClassificationResult 到 ClassificationResult
+      result = {
+        folderId: simpleResult.folderId,
+        folderName: simpleResult.folderName,
+        confidence: simpleResult.confidence,
+        reason: simpleResult.reason,
+        action: simpleResult.action as ClassificationResult["action"],
+        scores: {
+          vectorScore: simpleResult.confidence,
+          historyScore: 0,
+          aiScore:
+            simpleResult.matchType === "ai_select"
+              ? simpleResult.confidence
+              : 0,
+        },
+      };
+
+      logger.info(
+        {
+          version: "v4.1",
+          bookmarkId,
+          title: title.substring(0, 30),
+          action: result.action,
+          confidence: result.confidence,
+          matchType: simpleResult.matchType,
+          executionTime: simpleResult.executionTime,
+        },
+        "Classification V4.1: Result received",
+      );
+    } else {
+      // V3: 使用 ClassificationContainer（5层匹配器）
+      const container = ClassificationContainer.initialize(supabase);
+      const classificationService = container.getClassificationService();
+      result = await classificationService.classify(userId, bookmarkInput);
+
+      logger.info(
+        {
+          version: "v3",
+          bookmarkId,
+          title: title.substring(0, 30),
+          action: result.action,
+          confidence: result.confidence,
+          scores: result.scores,
+        },
+        "Classification V3: Result received",
+      );
+    }
 
     // Handle result based on action and confidence
     if (result.action === "classify" && result.folderId) {

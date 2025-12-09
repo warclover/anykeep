@@ -1,8 +1,10 @@
 /**
  * 智能分类调试工具 - 分类执行器
  *
- * 独立执行分类逻辑，不依赖全局 Container
- * 支持 V3/V4 配置切换
+ * V4.2 更新：与生产环境保持一致
+ * - V3 使用 ClassificationContainer（与首页分类完全一致）
+ * - V4 使用 TieredClassificationService + 动态权重
+ * - V4.1 使用 SimpleClassificationService
  *
  * V4 特性：
  * - TieredClassificationService (分层分类)
@@ -24,29 +26,17 @@ import type { ClassificationAction } from "@/lib/classification/types/classifica
 import type { MatcherContext } from "@/lib/classification/types";
 import { logger } from "@/lib/logger";
 
-// 导入核心分类组件
+// V4.2: 简化导入，使用 Container 统一管理
+import { WeightedScoreAggregator } from "@/lib/classification/strategies";
+
+// V4.2: 导入 Container 确保与生产一致
+import { ClassificationContainer } from "@/lib/classification/container";
+
+// V4 需要生成 embedding
 import {
-  FolderProfileRepository,
-  BookmarkRepository,
-} from "@/lib/classification/repositories";
-import {
-  VectorMatcher,
-  HistoryMatcher,
-  AIRecommender,
-  WeightedScoreAggregator,
-} from "@/lib/classification/strategies";
-import {
-  UniversalCategoryMatcher,
-  KnnDirectMatcher,
-  FingerprintMatcher,
-  TagMatcher,
-} from "@/lib/classification/v3/strategies";
-import {
-  ClassificationService,
-  UserStageService,
-} from "@/lib/classification/services";
-import { CLASSIFICATION_WEIGHTS } from "@/lib/classification/constants";
-import type { IMatcher } from "@/lib/classification/strategies/interfaces";
+  generateEmbedding,
+  buildEmbeddingText,
+} from "@/lib/utils/embedding-generator";
 
 // V4 核心服务
 import {
@@ -61,6 +51,9 @@ import {
 // Reranker 可用于后续扩展重排序功能
 // import { getReranker } from "@/lib/classification/v3/services/reranker.service";
 
+// V4.1 简化分类服务
+import { SimpleClassificationService } from "@/lib/classification/services/simple-classification.service";
+
 /**
  * 执行参数
  */
@@ -70,7 +63,7 @@ export interface ExecutionParams {
   config: Partial<V3Config>;
   folders: MockFolder[];
   history: MockHistoryItem[];
-  version: "v3" | "v4";
+  version: "v3" | "v4" | "v41";
   dryRun: boolean;
 }
 
@@ -79,6 +72,7 @@ export interface ExecutionParams {
  *
  * V3: 使用基础 ClassificationService
  * V4: 使用 TieredClassificationService + 动态权重 + 纠错缓存 + 重排序
+ * V4.1: 使用 SimpleClassificationService（统一向量搜索 + 标签增强）
  */
 export async function executeClassification(
   supabase: SupabaseClient,
@@ -98,7 +92,9 @@ export async function executeClassification(
 
   try {
     // 根据版本选择执行路径
-    if (params.version === "v4") {
+    if (params.version === "v41") {
+      return await executeV41Classification(supabase, params, startTime);
+    } else if (params.version === "v4") {
       return await executeV4Classification(supabase, params, startTime);
     } else {
       return await executeV3Classification(supabase, params, startTime);
@@ -130,38 +126,28 @@ export async function executeClassification(
 /**
  * V3 分类执行（基础版本）
  *
- * 使用 ClassificationService，无 V4 增强功能
+ * V4.2 更新：使用 ClassificationContainer 确保与生产环境完全一致
+ * 这修复了调试工具与首页分类结果不一致的问题
  */
 async function executeV3Classification(
   supabase: SupabaseClient,
   params: ExecutionParams,
   startTime: number,
 ): Promise<VersionResult> {
-  // 创建独立的仓库实例
-  const folderProfileRepo = new FolderProfileRepository(supabase);
-  const bookmarkRepo = new BookmarkRepository(supabase);
+  // V4.2: 使用 ClassificationContainer（与首页 classifyBookmarkV2 一致）
+  const container = ClassificationContainer.initialize(supabase);
+  const classificationService = container.getClassificationService();
 
-  // 根据配置构建匹配器
-  const matchers = buildMatchers(
-    supabase,
-    folderProfileRepo,
-    bookmarkRepo,
-    params.config,
+  logger.debug(
+    {
+      userId: params.userId,
+      title: params.bookmark.title,
+      method: "ClassificationContainer",
+    },
+    "[ClassificationDebugger] V3 using production-consistent Container",
   );
 
-  // 创建聚合器和用户阶段服务
-  const aggregator = new WeightedScoreAggregator();
-  const userStageService = new UserStageService(supabase);
-
-  // 创建基础分类服务实例
-  const classificationService = new ClassificationService(
-    matchers,
-    aggregator,
-    userStageService,
-    supabase,
-  );
-
-  // 执行分类
+  // 执行分类（与首页完全一致的调用方式）
   const result = await classificationService.classify(params.userId, {
     title: params.bookmark.title,
     summary: params.bookmark.description,
@@ -198,7 +184,8 @@ async function executeV3Classification(
 /**
  * V4 分类执行（增强版本）
  *
- * 使用 TieredClassificationService + 完整 V4 特性：
+ * V4.2 更新：使用 Container 的 matchers 确保与 V3 一致的基础匹配器
+ * 在此基础上叠加 V4 特性：
  * - 纠错缓存（Tier 0）
  * - 分层优化（Tier 1-3）
  * - 动态权重
@@ -209,9 +196,8 @@ async function executeV4Classification(
   params: ExecutionParams,
   startTime: number,
 ): Promise<VersionResult> {
-  // 创建独立的仓库实例
-  const folderProfileRepo = new FolderProfileRepository(supabase);
-  const bookmarkRepo = new BookmarkRepository(supabase);
+  // V4.2: 使用 Container 获取与 V3 一致的 matchers
+  const container = ClassificationContainer.initialize(supabase);
 
   // 1. 获取动态权重（V4 核心特性）
   let dynamicWeights: WeightAdjustmentResult | null = null;
@@ -232,13 +218,16 @@ async function executeV4Classification(
     );
   }
 
-  // 2. 根据配置和动态权重构建匹配器
-  const matchers = buildMatchersV4(
-    supabase,
-    folderProfileRepo,
-    bookmarkRepo,
-    params.config,
-    dynamicWeights,
+  // V4.2: 使用 Container 的 V3 matchers（与生产一致）
+  // 而非手动构建可能不一致的 matchers
+  const matchers = container.getV3Matchers();
+
+  logger.debug(
+    {
+      matcherCount: matchers.length,
+      matcherNames: matchers.map((m) => m.name),
+    },
+    "[ClassificationDebugger] V4 using Container matchers",
   );
 
   // 3. 创建聚合器
@@ -267,16 +256,44 @@ async function executeV4Classification(
     tieredConfig,
   );
 
-  // 6. 构建匹配器上下文
+  // 6. 生成 embedding（V4 核心修复：必须生成向量才能进行匹配）
+  let embedding: number[] = [];
+  try {
+    const embeddingText = buildEmbeddingText(
+      params.bookmark.title,
+      params.bookmark.description,
+      params.bookmark.tags,
+    );
+    embedding = await generateEmbedding(embeddingText);
+
+    logger.debug(
+      {
+        userId: params.userId,
+        title: params.bookmark.title,
+        embeddingLength: embedding.length,
+      },
+      "[ClassificationDebugger] V4 embedding generated",
+    );
+  } catch (error) {
+    logger.warn(
+      {
+        userId: params.userId,
+        error: error instanceof Error ? error.message : String(error),
+      },
+      "[ClassificationDebugger] V4 embedding generation failed",
+    );
+  }
+
+  // 7. 构建匹配器上下文
   const context: MatcherContext = {
     userId: params.userId,
     title: params.bookmark.title,
     summary: params.bookmark.description || "",
     tags: params.bookmark.tags || [],
-    embedding: [], // 调试模式下不需要 embedding，由各匹配器按需生成
+    embedding, // 使用生成的 embedding
   };
 
-  // 7. 执行分层分类（使用 classifyWithDetails 获取完整结果）
+  // 8. 执行分层分类（使用 classifyWithDetails 获取完整结果）
   const tieredResult: TieredResult = await tieredService.classifyWithDetails(
     params.userId,
     {
@@ -291,11 +308,11 @@ async function executeV4Classification(
   const result = tieredResult.result;
   const executionTime = Date.now() - startTime;
 
-  // 8. 使用 TieredResult 中的准确信息
+  // 9. 使用 TieredResult 中的准确信息
   const correctionApplied = tieredResult.cacheHit;
   const actualTier = mapTieredResultTier(tieredResult.tier);
 
-  // 9. 构建 V4 详情（包含完整的分层信息）
+  // 10. 构建 V4 详情（包含完整的分层信息）
   const v4Details: VersionResult["v4Details"] = {
     scenarioWeight: dynamicWeights
       ? calculateScenarioWeight(dynamicWeights)
@@ -344,6 +361,148 @@ async function executeV4Classification(
     v4Details,
     decisionPath: result.decisionPath,
   };
+}
+
+/**
+ * V4.1 分类执行（简化版本）
+ *
+ * 使用 SimpleClassificationService：
+ * - 统一向量搜索（profile + name embedding）
+ * - 标签增强（+5%~+15%）
+ * - 单阈值决策（70%）
+ * - AI 选择题模式
+ */
+async function executeV41Classification(
+  supabase: SupabaseClient,
+  params: ExecutionParams,
+  startTime: number,
+): Promise<VersionResult> {
+  // 创建 V4.1 简化分类服务
+  const simpleService = new SimpleClassificationService(
+    supabase as SupabaseClient<Database>,
+    {
+      autoClassifyThreshold: 70,
+      minMatchThreshold: 40,
+      maxCandidates: 5,
+      maxTagBoost: 15,
+      enableAISelection: true,
+      enableAICreate: true,
+    },
+  );
+
+  // 执行分类
+  const result = await simpleService.classify(params.userId, {
+    title: params.bookmark.title,
+    summary: params.bookmark.description,
+    tags: params.bookmark.tags,
+    url: params.bookmark.url,
+  });
+
+  const executionTime = Date.now() - startTime;
+
+  // 确定分层：V4.1 使用简化分层逻辑
+  const tier = determineV41Tier(result.confidence, result.action);
+
+  logger.debug(
+    {
+      version: "v41",
+      folderId: result.folderId,
+      folderName: result.folderName,
+      confidence: result.confidence,
+      tier,
+      matchType: result.matchType,
+      tagBoost: result.tagBoost,
+      executionTime,
+    },
+    "[ClassificationDebugger] V4.1 classification completed",
+  );
+
+  return {
+    folderId: result.folderId,
+    folderName: result.folderName || "待整理",
+    confidence: result.confidence,
+    reasoning: generateV41Reasoning(result),
+    executionTime,
+    tier,
+    action: result.action,
+    v41Details: {
+      matchType: result.matchType as
+        | "profile"
+        | "name"
+        | "ai_select"
+        | "ai_create"
+        | undefined,
+      tagBoost: result.tagBoost,
+      candidates: result.candidates?.map((c) => ({
+        folderId: c.folderId,
+        folderName: c.folderName,
+        score: c.score,
+        matchType: c.matchType,
+        tagBoost: c.tagBoost,
+      })),
+      aiCalled:
+        result.matchType === "ai_select" || result.matchType === "ai_create",
+    },
+  };
+}
+
+/**
+ * 确定 V4.1 分层
+ */
+function determineV41Tier(
+  confidence: number,
+  action: string,
+): "T1" | "T2" | "T3" {
+  // V4.1 使用简化的单阈值分层
+  if (confidence >= 70) return "T1"; // 高置信度自动归类
+  if (action === "classify" && confidence >= 40) return "T2"; // AI 选择完成
+  return "T3"; // 需要创建或待整理
+}
+
+/**
+ * 生成 V4.1 推理说明
+ */
+function generateV41Reasoning(result: {
+  action: string;
+  confidence: number;
+  folderName?: string;
+  matchType?: string;
+  tagBoost?: number;
+  reason?: string;
+}): string {
+  const parts: string[] = [];
+
+  // 匹配类型
+  if (result.matchType === "profile") {
+    parts.push("[V4.1] 内容向量匹配");
+  } else if (result.matchType === "name") {
+    parts.push("[V4.1] 名称向量匹配(冷启动)");
+  } else if (result.matchType === "ai_select") {
+    parts.push("[V4.1] AI 选择题");
+  } else if (result.matchType === "ai_create") {
+    parts.push("[V4.1] AI 创建新文件夹");
+  } else {
+    parts.push("[V4.1]");
+  }
+
+  // 分类结果
+  if (result.action === "classify" && result.folderName) {
+    parts.push(`归入「${result.folderName}」`);
+  } else if (result.action === "suggest_create") {
+    parts.push(`建议创建「${result.folderName}」`);
+  } else if (result.action === "inbox") {
+    parts.push("保留待整理");
+  }
+
+  // 标签增强
+  if (result.tagBoost && result.tagBoost > 0) {
+    parts.push(`标签增强 +${result.tagBoost}%`);
+  }
+
+  // 置信度
+  parts.push(`置信度 ${result.confidence}%`);
+
+  return parts.join(" | ");
 }
 
 /**
@@ -462,172 +621,8 @@ function generateV4Reasoning(
   return parts.join(" | ");
 }
 
-/**
- * 根据配置构建匹配器列表（V3 基础版本）
- */
-function buildMatchers(
-  supabase: SupabaseClient,
-  folderProfileRepo: FolderProfileRepository,
-  bookmarkRepo: BookmarkRepository,
-  config: Partial<V3Config>,
-): IMatcher[] {
-  const matchers: IMatcher[] = [];
-
-  // k-NN 直接锁定
-  if (config.enableKnnDirect !== false) {
-    matchers.push(
-      new KnnDirectMatcher(bookmarkRepo, {
-        weight: 1.0,
-        thresholds: { similarity: config.knnDirectThreshold || 0.85 },
-      }),
-    );
-  }
-
-  // 文件夹指纹匹配
-  if (config.enableFolderFingerprint !== false) {
-    matchers.push(
-      new FingerprintMatcher(supabase, {
-        weight: 0.25,
-      }),
-    );
-  }
-
-  // 标签匹配
-  if (config.enableTagMatcher !== false) {
-    matchers.push(
-      new TagMatcher(supabase, {
-        weight: 0.3,
-      }),
-    );
-  }
-
-  // 向量匹配（始终启用）
-  matchers.push(
-    new VectorMatcher(folderProfileRepo, {
-      weight: CLASSIFICATION_WEIGHTS.VECTOR,
-    }),
-  );
-
-  // 通用分类
-  if (config.enableUniversalCategories !== false) {
-    matchers.push(
-      new UniversalCategoryMatcher(folderProfileRepo, {
-        weight: 0.2,
-      }),
-    );
-  }
-
-  // 历史匹配
-  matchers.push(
-    new HistoryMatcher(bookmarkRepo, {
-      weight: CLASSIFICATION_WEIGHTS.HISTORY,
-    }),
-  );
-
-  // AI 推荐
-  matchers.push(
-    new AIRecommender(folderProfileRepo, {
-      weight: CLASSIFICATION_WEIGHTS.AI,
-    }),
-  );
-
-  return matchers;
-}
-
-/**
- * 根据配置和动态权重构建匹配器列表（V4 增强版本）
- *
- * 使用动态权重服务返回的权重配置
- */
-function buildMatchersV4(
-  supabase: SupabaseClient,
-  folderProfileRepo: FolderProfileRepository,
-  bookmarkRepo: BookmarkRepository,
-  config: Partial<V3Config>,
-  dynamicWeights: WeightAdjustmentResult | null,
-): IMatcher[] {
-  const matchers: IMatcher[] = [];
-
-  // 获取动态权重或使用默认值
-  const weights = dynamicWeights?.weights || {
-    vector: CLASSIFICATION_WEIGHTS.VECTOR,
-    history: CLASSIFICATION_WEIGHTS.HISTORY,
-    ai: CLASSIFICATION_WEIGHTS.AI,
-    universal: 0.2,
-    tag: 0.3,
-    fingerprint: 0.25,
-    knnDirect: 1.0,
-    queryExpansion: 0.25,
-  };
-
-  // 获取动态阈值或使用默认值
-  const thresholds = dynamicWeights?.thresholds || {
-    highConfidence: config.highConfidenceThreshold || 80,
-    mediumConfidence: config.mediumConfidenceThreshold || 60,
-    autoCreate: config.mediumConfidenceThreshold || 50,
-    knnDirect: config.knnDirectThreshold || 0.85,
-  };
-
-  // k-NN 直接锁定（高优先级）
-  if (config.enableKnnDirect !== false) {
-    matchers.push(
-      new KnnDirectMatcher(bookmarkRepo, {
-        weight: weights.knnDirect || 1.0,
-        thresholds: { similarity: thresholds.knnDirect },
-      }),
-    );
-  }
-
-  // 文件夹指纹匹配
-  if (config.enableFolderFingerprint !== false) {
-    matchers.push(
-      new FingerprintMatcher(supabase, {
-        weight: weights.fingerprint,
-      }),
-    );
-  }
-
-  // 标签匹配
-  if (config.enableTagMatcher !== false) {
-    matchers.push(
-      new TagMatcher(supabase, {
-        weight: weights.tag,
-      }),
-    );
-  }
-
-  // 向量匹配（始终启用，使用动态权重）
-  matchers.push(
-    new VectorMatcher(folderProfileRepo, {
-      weight: weights.vector,
-    }),
-  );
-
-  // 通用分类
-  if (config.enableUniversalCategories !== false) {
-    matchers.push(
-      new UniversalCategoryMatcher(folderProfileRepo, {
-        weight: weights.universal,
-      }),
-    );
-  }
-
-  // 历史匹配（使用动态权重）
-  matchers.push(
-    new HistoryMatcher(bookmarkRepo, {
-      weight: weights.history,
-    }),
-  );
-
-  // AI 推荐（使用动态权重）
-  matchers.push(
-    new AIRecommender(folderProfileRepo, {
-      weight: weights.ai,
-    }),
-  );
-
-  return matchers;
-}
+// V4.2: buildMatchers 和 buildMatchersV4 已移除
+// 现在统一使用 ClassificationContainer.getV3Matchers() 确保与生产一致
 
 /**
  * 确定分层
