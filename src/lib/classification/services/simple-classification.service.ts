@@ -18,7 +18,8 @@ import type {
   SimpleBookmarkInput,
   SimpleClassificationResult,
   SimpleClassificationConfig,
-  UnifiedSearchResult,
+  SearchFoldersUnifiedParams,
+  SearchFoldersUnifiedResult,
 } from "../types/simple-classification.types";
 import {
   generateEmbedding,
@@ -26,6 +27,99 @@ import {
 } from "@/lib/utils/embedding-generator";
 import { generateWithAI } from "@/lib/utils/ai-generator";
 import { logger } from "@/lib/logger";
+
+// ═══════════════════════════════════════════════════════════════
+// 常量定义
+// ═══════════════════════════════════════════════════════════════
+
+/** Embedding 向量维度（与数据库 vector(1024) 一致） */
+const EMBEDDING_DIMENSIONS = 1024;
+
+/** AI 确认选择后的加分 */
+const AI_SELECTION_BOOST = 10;
+
+/** 置信度上限 */
+const MAX_CONFIDENCE = 95;
+
+/** 最大得分 */
+const MAX_SCORE = 100;
+
+/** AI 创建文件夹的默认置信度 */
+const AI_CREATE_CONFIDENCE = 85;
+
+/** AI 创建失败时的回退置信度 */
+const AI_CREATE_FALLBACK_CONFIDENCE = 70;
+
+/** 标题截取长度（用于日志和回退名称） */
+const TITLE_TRUNCATE_LENGTH = 6;
+
+/** 日志中标题最大显示长度（隐私保护） */
+const LOG_TITLE_MAX_LENGTH = 30;
+
+/** 默认文件夹名称（回退值） */
+const DEFAULT_FOLDER_NAME = "新收藏";
+
+/** 待整理文件夹名称 */
+const INBOX_FOLDER_NAME = "待整理";
+
+/** 文件夹名称黑名单 */
+const FOLDER_NAME_BLACKLIST = [
+  "内容分类",
+  "待整理",
+  "收藏夹",
+  "默认",
+  "其他",
+  "未分类",
+  "杂项",
+];
+
+/** Prompt 输入最大长度（防止注入） */
+const PROMPT_INPUT_MAX_LENGTH = 200;
+
+/** 标签最大数量（防止注入） */
+const PROMPT_TAGS_MAX_COUNT = 10;
+
+/**
+ * 消毒用户输入（防止 Prompt 注入）
+ * - 移除控制字符
+ * - 转义引号
+ * - 截断长度
+ */
+function sanitizePromptInput(
+  input: string | undefined,
+  maxLength = PROMPT_INPUT_MAX_LENGTH,
+): string {
+  if (!input) return "";
+
+  return (
+    input
+      // 移除控制字符和特殊 Unicode
+      .replace(/[\x00-\x1F\x7F]/g, "")
+      // 转义双引号
+      .replace(/"/g, '\\"')
+      // 移除可能的 prompt 注入模式
+      .replace(/\n{2,}/g, "\n")
+      .replace(/^(system|user|assistant):/gim, "")
+      // 截断长度
+      .slice(0, maxLength)
+      .trim()
+  );
+}
+
+/**
+ * 消毒标签数组
+ */
+function sanitizeTags(
+  tags: string[] | undefined,
+  maxCount = PROMPT_TAGS_MAX_COUNT,
+): string[] {
+  if (!tags || tags.length === 0) return [];
+
+  return tags
+    .slice(0, maxCount)
+    .map((tag) => sanitizePromptInput(tag, 50))
+    .filter((tag) => tag.length > 0);
+}
 
 /**
  * V4.1 简化分类服务
@@ -66,12 +160,29 @@ export class SimpleClassificationService {
       );
       const embedding = await generateEmbedding(embeddingText);
 
+      // 向量验证：必须存在且维度正确
       if (!embedding || embedding.length === 0) {
         logger.warn(
-          { userId, title: bookmark.title },
+          { userId, title: this.truncateTitle(bookmark.title) },
           "[SimpleClassification] Failed to generate embedding",
         );
         return this.createInboxResult("无法生成书签向量", startTime);
+      }
+
+      if (embedding.length !== EMBEDDING_DIMENSIONS) {
+        logger.error(
+          {
+            userId,
+            title: this.truncateTitle(bookmark.title),
+            actual: embedding.length,
+            expected: EMBEDDING_DIMENSIONS,
+          },
+          "[SimpleClassification] Embedding dimension mismatch",
+        );
+        return this.createInboxResult(
+          `向量维度错误: ${embedding.length} (期望 ${EMBEDDING_DIMENSIONS})`,
+          startTime,
+        );
       }
 
       // 2. 统一向量搜索（单次 SQL）
@@ -80,7 +191,7 @@ export class SimpleClassificationService {
       logger.debug(
         {
           userId,
-          title: bookmark.title,
+          title: this.truncateTitle(bookmark.title),
           candidateCount: candidates.length,
           topCandidate: candidates[0]?.folderName,
           topScore: candidates[0]?.score,
@@ -114,7 +225,7 @@ export class SimpleClassificationService {
         logger.info(
           {
             userId,
-            title: bookmark.title,
+            title: this.truncateTitle(bookmark.title),
             folderId: best.folderId,
             folderName: best.folderName,
             score: best.score,
@@ -162,7 +273,11 @@ export class SimpleClassificationService {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       logger.error(
-        { userId, title: bookmark.title, error: errorMessage },
+        {
+          userId,
+          title: this.truncateTitle(bookmark.title),
+          error: errorMessage,
+        },
         "[SimpleClassification] Classification failed",
       );
 
@@ -178,16 +293,21 @@ export class SimpleClassificationService {
     userId: string,
     embedding: number[],
   ): Promise<CandidateFolder[]> {
-    // 使用类型断言绕过类型检查（函数通过 SQL 迁移添加，类型需重新生成）
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (this.supabase.rpc as any)(
-      "search_folders_unified",
-      {
-        p_user_id: userId,
-        p_embedding: embedding,
-        p_limit: this.config.maxCandidates,
-      },
-    );
+    // 类型安全的 RPC 参数
+    const params: SearchFoldersUnifiedParams = {
+      p_user_id: userId,
+      p_embedding: embedding,
+      p_limit: this.config.maxCandidates,
+    };
+
+    // 调用 Supabase RPC（自定义 SQL 函数需要类型断言）
+    const { data, error } = (await this.supabase.rpc(
+      "search_folders_unified" as never,
+      params as never,
+    )) as {
+      data: SearchFoldersUnifiedResult | null;
+      error: { message: string } | null;
+    };
 
     if (error) {
       logger.error(
@@ -197,11 +317,11 @@ export class SimpleClassificationService {
       return [];
     }
 
-    return ((data as UnifiedSearchResult[]) || []).map((row) => ({
+    return (data || []).map((row) => ({
       folderId: row.folder_id,
       folderName: row.folder_name,
       score: Math.round(row.similarity * 100),
-      matchType: row.match_type as "profile" | "name",
+      matchType: row.match_type,
       bookmarkCount: row.bookmark_count,
       topTags: row.top_tags || [],
     }));
@@ -246,7 +366,7 @@ export class SimpleClassificationService {
 
       return {
         ...c,
-        score: Math.min(c.score + boost, 100),
+        score: Math.min(c.score + boost, MAX_SCORE),
         tagBoost: boost,
       };
     });
@@ -260,11 +380,16 @@ export class SimpleClassificationService {
     candidates: CandidateFolder[],
     startTime: number,
   ): Promise<SimpleClassificationResult> {
+    // 消毒用户输入（防止 Prompt 注入）
+    const safeTitle = sanitizePromptInput(bookmark.title);
+    const safeTags = sanitizeTags(bookmark.tags);
+    const safeSummary = sanitizePromptInput(bookmark.summary, 300);
+
     const prompt = `你是一个智能书签分类助手。请根据书签内容选择最合适的文件夹。
 
-书签标题: "${bookmark.title}"
-书签标签: ${bookmark.tags?.join(", ") || "无"}
-${bookmark.summary ? `书签摘要: ${bookmark.summary}` : ""}
+书签标题: "${safeTitle}"
+书签标签: ${safeTags.length > 0 ? safeTags.join(", ") : "无"}
+${safeSummary ? `书签摘要: ${safeSummary}` : ""}
 
 请从以下文件夹中选择最合适的，只回复数字：
 ${candidates.map((c, i) => `${i + 1}. ${c.folderName} (当前匹配度: ${c.score}%)`).join("\n")}
@@ -283,7 +408,7 @@ ${candidates.map((c, i) => `${i + 1}. ${c.folderName} (当前匹配度: ${c.scor
 
       logger.debug(
         {
-          title: bookmark.title,
+          title: this.truncateTitle(bookmark.title),
           aiResponse: response,
           choice,
           candidates: candidates.map((c) => c.folderName),
@@ -300,13 +425,17 @@ ${candidates.map((c, i) => `${i + 1}. ${c.folderName} (当前匹配度: ${c.scor
       }
 
       const selected = candidates[choice - 1];
+      const boostedConfidence = Math.min(
+        selected.score + AI_SELECTION_BOOST,
+        MAX_CONFIDENCE,
+      );
 
       logger.info(
         {
-          title: bookmark.title,
+          title: this.truncateTitle(bookmark.title),
           selectedFolder: selected.folderName,
           originalScore: selected.score,
-          finalConfidence: Math.min(selected.score + 10, 95),
+          finalConfidence: boostedConfidence,
         },
         "[SimpleClassification] AI selected folder",
       );
@@ -314,7 +443,7 @@ ${candidates.map((c, i) => `${i + 1}. ${c.folderName} (当前匹配度: ${c.scor
       return {
         folderId: selected.folderId,
         folderName: selected.folderName,
-        confidence: Math.min(selected.score + 10, 95), // AI 确认加分
+        confidence: boostedConfidence,
         action: "classify",
         reason: `AI 选择: ${selected.folderName}`,
         executionTime,
@@ -327,7 +456,11 @@ ${candidates.map((c, i) => `${i + 1}. ${c.folderName} (当前匹配度: ${c.scor
         "[SimpleClassification] AI selection failed",
       );
 
-      // AI 失败时使用最佳候选
+      // AI 失败时使用最佳候选（防御性检查）
+      if (candidates.length === 0) {
+        return this.createInboxResult("AI 选择失败且无候选文件夹", startTime);
+      }
+
       const best = candidates[0];
       return {
         folderId: best.folderId,
@@ -349,11 +482,16 @@ ${candidates.map((c, i) => `${i + 1}. ${c.folderName} (当前匹配度: ${c.scor
     bookmark: SimpleBookmarkInput,
     startTime: number,
   ): Promise<SimpleClassificationResult> {
+    // 消毒用户输入（防止 Prompt 注入）
+    const safeTitle = sanitizePromptInput(bookmark.title);
+    const safeTags = sanitizeTags(bookmark.tags);
+    const safeSummary = sanitizePromptInput(bookmark.summary, 300);
+
     const prompt = `根据以下书签内容，生成一个简洁的文件夹名称（2-6个中文字或英文单词）：
 
-标题：${bookmark.title}
-${bookmark.summary ? `摘要：${bookmark.summary}` : ""}
-标签：${bookmark.tags?.join("、") || "无"}
+标题：${safeTitle}
+${safeSummary ? `摘要：${safeSummary}` : ""}
+标签：${safeTags.length > 0 ? safeTags.join("、") : "无"}
 
 要求：
 1. 名称简洁明了，能概括内容主题
@@ -373,27 +511,20 @@ ${bookmark.summary ? `摘要：${bookmark.summary}` : ""}
       const executionTime = Math.round(performance.now() - startTime);
 
       // 黑名单检查
-      const blacklist = [
-        "内容分类",
-        "待整理",
-        "收藏夹",
-        "默认",
-        "其他",
-        "未分类",
-        "杂项",
-      ];
-      const isBlacklisted = blacklist.some(
+      const isBlacklisted = FOLDER_NAME_BLACKLIST.some(
         (word) =>
           cleanedName.includes(word) || cleanedName.toLowerCase() === word,
       );
 
+      // 使用统一的安全回退逻辑
+      const safeFallback = this.getSafeFallbackName(bookmark);
       const finalName = isBlacklisted
-        ? bookmark.tags?.[0] || bookmark.title.slice(0, 6)
-        : cleanedName;
+        ? safeFallback
+        : cleanedName || safeFallback;
 
       logger.info(
         {
-          title: bookmark.title,
+          title: this.truncateTitle(bookmark.title),
           suggestedFolder: finalName,
           originalSuggestion: cleanedName,
           wasBlacklisted: isBlacklisted,
@@ -404,7 +535,7 @@ ${bookmark.summary ? `摘要：${bookmark.summary}` : ""}
       return {
         folderId: null,
         folderName: finalName,
-        confidence: 85,
+        confidence: AI_CREATE_CONFIDENCE,
         action: "suggest_create",
         reason: `AI 建议创建: ${finalName}`,
         executionTime,
@@ -416,12 +547,12 @@ ${bookmark.summary ? `摘要：${bookmark.summary}` : ""}
         "[SimpleClassification] AI folder creation failed",
       );
 
-      // AI 失败时使用标签或标题
-      const fallbackName = bookmark.tags?.[0] || bookmark.title.slice(0, 6);
+      // AI 失败时使用统一的安全回退逻辑
+      const fallbackName = this.getSafeFallbackName(bookmark);
       return {
         folderId: null,
         folderName: fallbackName,
-        confidence: 70,
+        confidence: AI_CREATE_FALLBACK_CONFIDENCE,
         action: "suggest_create",
         reason: `建议创建: ${fallbackName} (AI 生成失败)`,
         executionTime: Math.round(performance.now() - startTime),
@@ -460,12 +591,34 @@ ${bookmark.summary ? `摘要：${bookmark.summary}` : ""}
   ): SimpleClassificationResult {
     return {
       folderId: null,
-      folderName: "待整理",
+      folderName: INBOX_FOLDER_NAME,
       confidence: 0,
       action: "inbox",
       reason,
       executionTime: Math.round(performance.now() - startTime),
     };
+  }
+
+  /**
+   * 截断标题用于日志（隐私保护）
+   */
+  private truncateTitle(title: string | undefined): string {
+    if (!title) return "";
+    return title.length > LOG_TITLE_MAX_LENGTH
+      ? `${title.slice(0, LOG_TITLE_MAX_LENGTH)}...`
+      : title;
+  }
+
+  /**
+   * 获取安全回退文件夹名称
+   * 优先级：标签[0] → 标题前N字 → 默认值
+   */
+  private getSafeFallbackName(bookmark: SimpleBookmarkInput): string {
+    return (
+      bookmark.tags?.[0] ||
+      bookmark.title?.slice(0, TITLE_TRUNCATE_LENGTH).trim() ||
+      DEFAULT_FOLDER_NAME
+    );
   }
 }
 

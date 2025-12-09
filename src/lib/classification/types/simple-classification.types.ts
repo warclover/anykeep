@@ -106,3 +106,29 @@ export const DEFAULT_SIMPLE_CONFIG: SimpleClassificationConfig = {
   enableAISelection: true,
   enableAICreate: true,
 };
+
+// ═══════════════════════════════════════════════════════════════
+// RPC 类型定义（用于 Supabase 自定义函数）
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * search_folders_unified RPC 函数参数
+ */
+export interface SearchFoldersUnifiedParams {
+  p_user_id: string;
+  p_embedding: number[];
+  p_limit: number;
+}
+
+/**
+ * search_folders_unified RPC 函数返回类型
+ */
+export type SearchFoldersUnifiedResult = UnifiedSearchResult[];
+
+/**
+ * Supabase RPC 响应类型
+ */
+export interface SupabaseRpcResponse<T> {
+  data: T | null;
+  error: { message: string; code?: string } | null;
+}
