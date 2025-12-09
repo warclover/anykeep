@@ -3,29 +3,44 @@
  * 保存内容后显示非阻塞的文件夹推荐卡片
  *
  * 设计参考：PRD v4.1 - "我觉得可以放这里" 轻松感设计
+ *
+ * @deprecated V3.1 - 此组件已废弃
+ * 分类结果现在通过 useClassificationPolling 的 sonner toast 通知显示
+ * 保留此组件是为了向后兼容，将在未来版本中移除
  */
 
-'use client'
+"use client";
 
-import { useState, useEffect } from 'react'
-import { Folder, FolderPlus, Sparkles, X, Check, ChevronRight } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
+import { useState, useEffect } from "react";
+import {
+  Folder,
+  FolderPlus,
+  Sparkles,
+  X,
+  Check,
+  ChevronRight,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 export interface FolderRecommendation {
-  folderId: number | null
-  folderName: string
-  confidence: number
-  reason: string
-  suggestNew: boolean
+  folderId: number | null;
+  folderName: string;
+  confidence: number;
+  reason: string;
+  suggestNew: boolean;
 }
 
 interface FolderRecommendationToastProps {
-  recommendation: FolderRecommendation | null
-  bookmarkId: number
-  onApply: (folderId: number | null, createNew: boolean, newFolderName?: string) => Promise<void>
-  onDismiss: () => void
-  onCustomize: () => void
+  recommendation: FolderRecommendation | null;
+  bookmarkId: number;
+  onApply: (
+    folderId: number | null,
+    createNew: boolean,
+    newFolderName?: string,
+  ) => Promise<void>;
+  onDismiss: () => void;
+  onCustomize: () => void;
 }
 
 export function FolderRecommendationToast({
@@ -35,56 +50,56 @@ export function FolderRecommendationToast({
   onDismiss,
   onCustomize,
 }: FolderRecommendationToastProps) {
-  const [isApplying, setIsApplying] = useState(false)
-  const [isVisible, setIsVisible] = useState(false)
-  const [shouldRender, setShouldRender] = useState(false)
+  const [isApplying, setIsApplying] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
+  const [shouldRender, setShouldRender] = useState(false);
 
   // 显示/隐藏动画控制
   useEffect(() => {
     if (recommendation) {
-      setShouldRender(true)
+      setShouldRender(true);
       // 延迟显示，让保存成功的 toast 先显示
       const showTimer = setTimeout(() => {
-        setIsVisible(true)
-      }, 500)
-      return () => clearTimeout(showTimer)
+        setIsVisible(true);
+      }, 500);
+      return () => clearTimeout(showTimer);
     } else {
-      setIsVisible(false)
+      setIsVisible(false);
       // 等待退出动画完成后移除
       const hideTimer = setTimeout(() => {
-        setShouldRender(false)
-      }, 300)
-      return () => clearTimeout(hideTimer)
+        setShouldRender(false);
+      }, 300);
+      return () => clearTimeout(hideTimer);
     }
-  }, [recommendation])
+  }, [recommendation]);
 
   // 自动隐藏（15秒后）
   useEffect(() => {
     if (isVisible) {
       const timer = setTimeout(() => {
-        onDismiss()
-      }, 15000)
-      return () => clearTimeout(timer)
+        onDismiss();
+      }, 15000);
+      return () => clearTimeout(timer);
     }
-  }, [isVisible, onDismiss])
+  }, [isVisible, onDismiss]);
 
   const handleApply = async () => {
-    if (!recommendation || isApplying) return
+    if (!recommendation || isApplying) return;
 
-    setIsApplying(true)
+    setIsApplying(true);
     try {
       await onApply(
         recommendation.folderId,
         recommendation.suggestNew,
-        recommendation.suggestNew ? recommendation.folderName : undefined
-      )
-      onDismiss()
+        recommendation.suggestNew ? recommendation.folderName : undefined,
+      );
+      onDismiss();
     } finally {
-      setIsApplying(false)
+      setIsApplying(false);
     }
-  }
+  };
 
-  if (!shouldRender || !recommendation) return null
+  if (!shouldRender || !recommendation) return null;
 
   return (
     <div
@@ -93,7 +108,7 @@ export function FolderRecommendationToast({
         "transition-all duration-300 ease-out",
         isVisible
           ? "opacity-100 translate-y-0"
-          : "opacity-0 translate-y-8 pointer-events-none"
+          : "opacity-0 translate-y-8 pointer-events-none",
       )}
     >
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
@@ -139,16 +154,20 @@ export function FolderRecommendationToast({
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="font-medium text-gray-900 dark:text-white truncate">
-                    {recommendation.suggestNew ? `新建「${recommendation.folderName}」` : recommendation.folderName}
+                    {recommendation.suggestNew
+                      ? `新建「${recommendation.folderName}」`
+                      : recommendation.folderName}
                   </span>
-                  <span className={cn(
-                    "text-xs px-1.5 py-0.5 rounded-full whitespace-nowrap",
-                    recommendation.confidence >= 70
-                      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                      : recommendation.confidence >= 40
-                      ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
-                      : "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400"
-                  )}>
+                  <span
+                    className={cn(
+                      "text-xs px-1.5 py-0.5 rounded-full whitespace-nowrap",
+                      recommendation.confidence >= 70
+                        ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                        : recommendation.confidence >= 40
+                          ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
+                          : "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400",
+                    )}
+                  >
                     {recommendation.confidence}% 匹配
                   </span>
                 </div>
@@ -197,5 +216,5 @@ export function FolderRecommendationToast({
         </div>
       </div>
     </div>
-  )
+  );
 }

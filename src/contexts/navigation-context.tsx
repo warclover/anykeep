@@ -34,11 +34,13 @@ const CLIENT_NAV_ENABLE_DELAY_MS = 100;
 /**
  * 所有支持的页面 ID 列表
  * 作为单一数据源，避免在多处重复定义
+ * 注意：仅包含 Keep-Alive 管理的主页面，开发者工具页面不在此列
  */
 export const PAGE_IDS: readonly PageId[] = [
   "home",
   "search",
   "folders",
+  "messages",
   "analytics",
   "settings",
 ] as const;
@@ -71,8 +73,15 @@ function isClientNavState(state: unknown): state is ClientNavHistoryState {
 
 /**
  * 支持的页面类型
+ * 注意：仅包含 Keep-Alive 管理的主页面
  */
-export type PageId = "home" | "search" | "folders" | "analytics" | "settings";
+export type PageId =
+  | "home"
+  | "search"
+  | "folders"
+  | "messages"
+  | "analytics"
+  | "settings";
 
 /**
  * 页面路由映射
@@ -81,6 +90,7 @@ export const PAGE_ROUTES: Record<PageId, string> = {
   home: "/home",
   search: "/search",
   folders: "/folders",
+  messages: "/messages",
   analytics: "/analytics",
   settings: "/settings",
 };
@@ -92,6 +102,7 @@ const ROUTE_TO_PAGE: Record<string, PageId> = {
   "/home": "home",
   "/search": "search",
   "/folders": "folders",
+  "/messages": "messages",
   "/analytics": "analytics",
   "/settings": "settings",
 };

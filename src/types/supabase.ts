@@ -222,6 +222,12 @@ export type Database = {
           suggested_correct_folder_name: string | null;
           context: Json;
           created_at: string;
+          // V4.0新增字段
+          folder_id: number | null;
+          bookmark_url: string | null;
+          reject_reason: RejectReason | null;
+          trace_id: string | null;
+          original_confidence: number | null;
         };
         Insert: {
           id?: number;
@@ -234,6 +240,12 @@ export type Database = {
           suggested_correct_folder_name?: string | null;
           context?: Json;
           created_at?: string;
+          // V4.0新增字段
+          folder_id?: number | null;
+          bookmark_url?: string | null;
+          reject_reason?: RejectReason | null;
+          trace_id?: string | null;
+          original_confidence?: number | null;
         };
         Update: {
           id?: number;
@@ -246,6 +258,12 @@ export type Database = {
           suggested_correct_folder_name?: string | null;
           context?: Json;
           created_at?: string;
+          // V4.0新增字段
+          folder_id?: number | null;
+          bookmark_url?: string | null;
+          reject_reason?: RejectReason | null;
+          trace_id?: string | null;
+          original_confidence?: number | null;
         };
         Relationships: [
           {
@@ -273,6 +291,85 @@ export type Database = {
             foreignKeyName: "classification_feedback_folder_id_fkey";
             columns: ["suggested_correct_folder_id"];
             isOneToOne: false;
+            referencedRelation: "folders";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      // V4.0新增：文件夹画像表
+      folder_profiles: {
+        Row: {
+          id: number;
+          user_id: string;
+          folder_id: number;
+          profile_embedding: number[] | null;
+          name_embedding: number[] | null; // V4.0: 文件夹名称向量
+          bookmark_count: number;
+          last_bookmark_at: string | null;
+          top_tags: string[] | null;
+          sample_titles: string[] | null;
+          internal_similarity: number | null;
+          source:
+            | "interest_onboarding"
+            | "manual"
+            | "auto_created"
+            | "clustering"
+            | null;
+          computed_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: number;
+          user_id: string;
+          folder_id: number;
+          profile_embedding?: number[] | null;
+          name_embedding?: number[] | null;
+          bookmark_count?: number;
+          last_bookmark_at?: string | null;
+          top_tags?: string[] | null;
+          sample_titles?: string[] | null;
+          internal_similarity?: number | null;
+          source?:
+            | "interest_onboarding"
+            | "manual"
+            | "auto_created"
+            | "clustering"
+            | null;
+          computed_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: number;
+          user_id?: string;
+          folder_id?: number;
+          profile_embedding?: number[] | null;
+          name_embedding?: number[] | null;
+          bookmark_count?: number;
+          last_bookmark_at?: string | null;
+          top_tags?: string[] | null;
+          sample_titles?: string[] | null;
+          internal_similarity?: number | null;
+          source?:
+            | "interest_onboarding"
+            | "manual"
+            | "auto_created"
+            | "clustering"
+            | null;
+          computed_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "folder_profiles_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "folder_profiles_folder_id_fkey";
+            columns: ["folder_id"];
+            isOneToOne: true;
             referencedRelation: "folders";
             referencedColumns: ["id"];
           },
@@ -318,6 +415,8 @@ export type Database = {
           ai_content_type: "article" | "tutorial" | "video" | "tool" | null; // V9.0新增：AI检测的内容类型
           ai_content_type_confidence: number | null; // V9.0新增：内容类型检测置信度(0-100)
           ai_vision_data: Json | null; // V10.0新增：视觉分析数据 (Qwen-VL)
+          classification_status: ClassificationStatus; // V11.0新增：V3分类状态
+          classification_result: ClassificationResultData | null; // V11.0新增：V3分类结果详情
           created_at: string;
           updated_at: string;
           deleted_at: string | null;
@@ -361,6 +460,8 @@ export type Database = {
           ai_content_type?: "article" | "tutorial" | "video" | "tool" | null; // V9.0新增
           ai_content_type_confidence?: number | null; // V9.0新增
           ai_vision_data?: Json | null; // V10.0新增
+          classification_status?: ClassificationStatus; // V11.0新增
+          classification_result?: ClassificationResultData | null; // V11.0新增
           created_at?: string;
           updated_at?: string;
           deleted_at?: string | null;
@@ -404,6 +505,8 @@ export type Database = {
           ai_content_type?: "article" | "tutorial" | "video" | "tool" | null; // V9.0新增
           ai_content_type_confidence?: number | null; // V9.0新增
           ai_vision_data?: Json | null; // V10.0新增
+          classification_status?: ClassificationStatus; // V11.0新增
+          classification_result?: ClassificationResultData | null; // V11.0新增
           created_at?: string;
           updated_at?: string;
           deleted_at?: string | null;
@@ -589,6 +692,243 @@ export type Database = {
           },
         ];
       };
+      // V12.0新增：消息通知表
+      messages: {
+        Row: {
+          id: number;
+          user_id: string;
+          type: MessageType;
+          level: MessageLevel;
+          title: string;
+          content: string | null;
+          related_bookmark_id: number | null;
+          related_folder_id: number | null;
+          related_import_id: number | null;
+          action_url: string | null;
+          action_label: string | null;
+          metadata: Json;
+          status: MessageStatus;
+          created_at: string;
+          read_at: string | null;
+          priority: number;
+          expires_at: string;
+        };
+        Insert: {
+          id?: number;
+          user_id: string;
+          type: MessageType;
+          level?: MessageLevel;
+          title: string;
+          content?: string | null;
+          related_bookmark_id?: number | null;
+          related_folder_id?: number | null;
+          related_import_id?: number | null;
+          action_url?: string | null;
+          action_label?: string | null;
+          metadata?: Json;
+          status?: MessageStatus;
+          created_at?: string;
+          read_at?: string | null;
+          priority?: number;
+          expires_at?: string;
+        };
+        Update: {
+          id?: number;
+          user_id?: string;
+          type?: MessageType;
+          level?: MessageLevel;
+          title?: string;
+          content?: string | null;
+          related_bookmark_id?: number | null;
+          related_folder_id?: number | null;
+          related_import_id?: number | null;
+          action_url?: string | null;
+          action_label?: string | null;
+          metadata?: Json;
+          status?: MessageStatus;
+          created_at?: string;
+          read_at?: string | null;
+          priority?: number;
+          expires_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "messages_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "messages_related_bookmark_id_fkey";
+            columns: ["related_bookmark_id"];
+            isOneToOne: false;
+            referencedRelation: "bookmarks";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "messages_related_folder_id_fkey";
+            columns: ["related_folder_id"];
+            isOneToOne: false;
+            referencedRelation: "folders";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "messages_related_import_id_fkey";
+            columns: ["related_import_id"];
+            isOneToOne: false;
+            referencedRelation: "import_history";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      // V13.0新增：分类决策追踪表（V3/V4 智能分类）
+      classification_decisions: {
+        Row: {
+          id: number;
+          user_id: string;
+          bookmark_id: number;
+          decision_type: ClassificationDecisionType;
+          final_folder_id: number | null;
+          final_folder_name: string | null;
+          confidence: number | null;
+          matcher_scores: Json;
+          candidates: Json;
+          ai_skipped: boolean;
+          ai_model: string | null;
+          ai_prompt_version: string | null;
+          ai_response_time_ms: number | null;
+          user_action: ClassificationUserAction | null;
+          user_action_at: string | null;
+          user_chosen_folder_id: number | null;
+          client_version: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: number;
+          user_id: string;
+          bookmark_id: number;
+          decision_type: ClassificationDecisionType;
+          final_folder_id?: number | null;
+          final_folder_name?: string | null;
+          confidence?: number | null;
+          matcher_scores?: Json;
+          candidates?: Json;
+          ai_skipped?: boolean;
+          ai_model?: string | null;
+          ai_prompt_version?: string | null;
+          ai_response_time_ms?: number | null;
+          user_action?: ClassificationUserAction | null;
+          user_action_at?: string | null;
+          user_chosen_folder_id?: number | null;
+          client_version?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: number;
+          user_id?: string;
+          bookmark_id?: number;
+          decision_type?: ClassificationDecisionType;
+          final_folder_id?: number | null;
+          final_folder_name?: string | null;
+          confidence?: number | null;
+          matcher_scores?: Json;
+          candidates?: Json;
+          ai_skipped?: boolean;
+          ai_model?: string | null;
+          ai_prompt_version?: string | null;
+          ai_response_time_ms?: number | null;
+          user_action?: ClassificationUserAction | null;
+          user_action_at?: string | null;
+          user_chosen_folder_id?: number | null;
+          client_version?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "classification_decisions_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "classification_decisions_bookmark_id_fkey";
+            columns: ["bookmark_id"];
+            isOneToOne: true;
+            referencedRelation: "bookmarks";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "classification_decisions_folder_id_fkey";
+            columns: ["final_folder_id"];
+            isOneToOne: false;
+            referencedRelation: "folders";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "classification_decisions_user_chosen_folder_fkey";
+            columns: ["user_chosen_folder_id"];
+            isOneToOne: false;
+            referencedRelation: "folders";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      // V12.0新增：用户通知偏好表
+      notification_preferences: {
+        Row: {
+          id: number;
+          user_id: string;
+          silent_toast: boolean;
+          normal_toast: boolean;
+          important_toast: boolean;
+          web_push_enabled: boolean;
+          web_push_subscription: Json | null;
+          do_not_disturb: boolean;
+          dnd_start_time: string | null;
+          dnd_end_time: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: number;
+          user_id: string;
+          silent_toast?: boolean;
+          normal_toast?: boolean;
+          important_toast?: boolean;
+          web_push_enabled?: boolean;
+          web_push_subscription?: Json | null;
+          do_not_disturb?: boolean;
+          dnd_start_time?: string | null;
+          dnd_end_time?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: number;
+          user_id?: string;
+          silent_toast?: boolean;
+          normal_toast?: boolean;
+          important_toast?: boolean;
+          web_push_enabled?: boolean;
+          web_push_subscription?: Json | null;
+          do_not_disturb?: boolean;
+          dnd_start_time?: string | null;
+          dnd_end_time?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "notification_preferences_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: true;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -679,6 +1019,67 @@ export type Database = {
           count: number;
         }[];
       };
+      // V12.0新增：获取未读消息数量（分等级统计）
+      get_unread_message_counts: {
+        Args: {
+          p_user_id: string;
+        };
+        Returns: {
+          total: number;
+          silent: number;
+          normal: number;
+          important: number;
+        };
+      };
+      // V12.0新增：批量标记消息已读
+      mark_messages_read: {
+        Args: {
+          p_user_id: string;
+          p_message_ids?: number[] | null;
+        };
+        Returns: number;
+      };
+      // V12.0新增：清理过期消息
+      cleanup_expired_messages: {
+        Args: Record<string, never>;
+        Returns: number;
+      };
+      // V12.0新增：获取消息列表（带日期分组）
+      get_messages_grouped: {
+        Args: {
+          p_user_id: string;
+          p_status?: string | null;
+          p_level?: string | null;
+          p_limit?: number;
+          p_offset?: number;
+        };
+        Returns: {
+          id: number;
+          type: string;
+          level: string;
+          title: string;
+          content: string | null;
+          action_url: string | null;
+          action_label: string | null;
+          status: string;
+          priority: number;
+          created_at: string;
+          read_at: string | null;
+          metadata: Json;
+          related_bookmark_id: number | null;
+          related_folder_id: number | null;
+          date_group: string;
+        }[];
+      };
+      // V12.0新增：获取消息总数
+      get_messages_count: {
+        Args: {
+          p_user_id: string;
+          p_status?: string | null;
+          p_level?: string | null;
+        };
+        Returns: number;
+      };
     };
     Enums: {
       [_ in never]: never;
@@ -741,10 +1142,40 @@ export type FeedbackType =
   | "confidence_too_high"
   | "confidence_too_low"
   | "helpful"
+  | "reject" // V4.0: 用户拒绝分类建议
+  | "confirm" // V4.0: 用户确认分类建议
+  | "other";
+
+// V4.0新增：拒绝原因类型
+export type RejectReason =
+  | "wrong_category"
+  | "irrelevant"
+  | "low_confidence"
+  | "prefer_inbox"
   | "other";
 
 // V4.4新增：文件夹分组类型
 export type FolderGroup = "work" | "study" | "life" | "entertainment" | "other";
+
+// V13.0新增：分类决策类型
+export type ClassificationDecisionType =
+  | "auto_classified"
+  | "suggestion_shown"
+  | "to_inbox"
+  | "knn_direct"
+  | "universal_match"
+  | "tier1_direct" // V4.0: Tier 1 直接分类
+  | "tier2_ai_confirmed" // V4.0: Tier 2 AI 确认
+  | "tier3_auto_create"; // V4.0: Tier 3 自动创建
+
+// V13.0新增：用户对分类结果的反馈动作
+export type ClassificationUserAction =
+  | "accepted"
+  | "rejected"
+  | "changed_folder"
+  | "undo"
+  | "ignored"
+  | "manual_move";
 
 // V4.2新增：分类建议类型别名
 export type ClassificationSuggestion =
@@ -761,6 +1192,14 @@ export type ClassificationFeedbackInsert =
   Database["public"]["Tables"]["classification_feedback"]["Insert"];
 export type ClassificationFeedbackUpdate =
   Database["public"]["Tables"]["classification_feedback"]["Update"];
+
+// V13.0新增：分类决策类型别名
+export type ClassificationDecision =
+  Database["public"]["Tables"]["classification_decisions"]["Row"];
+export type ClassificationDecisionInsert =
+  Database["public"]["Tables"]["classification_decisions"]["Insert"];
+export type ClassificationDecisionUpdate =
+  Database["public"]["Tables"]["classification_decisions"]["Update"];
 
 // V4.2新增：重分类配置类型
 export interface ReclassifySettings {
@@ -885,3 +1324,118 @@ export const CUSTOM_TAG_COLORS = [
 ] as const;
 
 export type CustomTagColor = (typeof CUSTOM_TAG_COLORS)[number];
+
+// ============================================
+// V11.0 新增：V3 统一分类系统类型定义
+// ============================================
+
+/**
+ * V3 分类状态
+ * - pending: 等待分类
+ * - classified: 已成功分类到文件夹
+ * - suggested: AI 建议创建新文件夹（用户可确认）
+ * - inbox: 低置信度，放入待整理
+ */
+export type ClassificationStatus =
+  | "pending"
+  | "classified"
+  | "suggested"
+  | "inbox";
+
+/**
+ * V3 分类结果详情（存储在 classification_result JSONB 字段）
+ */
+export interface ClassificationResultData {
+  /** 目标文件夹 ID（inbox 时为 null） */
+  folderId: number | null;
+  /** 目标文件夹名称 */
+  folderName: string;
+  /** 分类置信度（0-100） */
+  confidence: number;
+  /** 分类动作 */
+  action: "classify" | "suggest_new" | "inbox";
+  /** 如果是 suggest_new，关联的建议 ID */
+  suggestionId?: number;
+  /** 分类时间戳（ISO 8601） */
+  timestamp: string;
+  /** 分类来源（哪个匹配器） */
+  source?: string;
+  /** 分类原因说明 */
+  reason?: string;
+}
+
+// ============================================
+// V12.0 新增：消息系统类型定义
+// ============================================
+
+/**
+ * 消息类型
+ * 包含分类、导入、批量操作、书签状态、文件夹、系统、配额、反馈、AI 处理等
+ */
+export type MessageType =
+  // 分类相关
+  | "classification_auto"
+  | "classification_batch"
+  | "classification_suggest"
+  | "classification_failed"
+  // 导入相关
+  | "import_complete"
+  | "import_partial"
+  | "import_failed"
+  // 批量操作
+  | "batch_move"
+  | "batch_delete"
+  | "batch_tag"
+  | "batch_restore"
+  // 书签状态
+  | "bookmark_saved"
+  | "bookmark_invalid"
+  | "bookmark_expired"
+  // 文件夹操作
+  | "folder_created"
+  | "folder_merged"
+  // 系统消息
+  | "system_announcement"
+  | "system_maintenance"
+  | "system_update"
+  // 配额相关
+  | "quota_warning"
+  | "quota_critical"
+  | "quota_exceeded"
+  // 用户反馈
+  | "feedback_received"
+  | "feedback_response"
+  // AI 处理
+  | "ai_summary_complete"
+  | "ai_tags_complete"
+  | "ai_processing_failed";
+
+/**
+ * 消息等级
+ * - silent: 静默，仅记录不打扰
+ * - normal: 普通，Toast + 记录
+ * - important: 重要，Modal + Toast + 记录
+ */
+export type MessageLevel = "silent" | "normal" | "important";
+
+/**
+ * 消息状态
+ */
+export type MessageStatus = "unread" | "read" | "archived";
+
+/**
+ * 消息表类型别名
+ */
+export type MessageRow = Database["public"]["Tables"]["messages"]["Row"];
+export type MessageInsert = Database["public"]["Tables"]["messages"]["Insert"];
+export type MessageUpdate = Database["public"]["Tables"]["messages"]["Update"];
+
+/**
+ * 通知偏好类型别名
+ */
+export type NotificationPreferences =
+  Database["public"]["Tables"]["notification_preferences"]["Row"];
+export type NotificationPreferencesInsert =
+  Database["public"]["Tables"]["notification_preferences"]["Insert"];
+export type NotificationPreferencesUpdate =
+  Database["public"]["Tables"]["notification_preferences"]["Update"];

@@ -56,6 +56,8 @@ export interface FolderRecommendation {
 interface ExistingFolder {
   id: number;
   name: string;
+  topTags?: string[]; // 文件夹的热门标签（用于 AI 理解文件夹内容）
+  bookmarkCount?: number; // 文件夹内书签数量
 }
 
 interface AIGenerateRequest {
@@ -79,6 +81,72 @@ function getSummaryLimit(contentLength: number): { min: number; max: number } {
     return { min: 300, max: 500 };
   } else {
     return { min: 500, max: 800 };
+  }
+}
+
+/**
+ * 简单 AI 生成函数
+ * 用于 V4.1 分类等场景的简单文本生成
+ *
+ * @param prompt - 用户 prompt
+ * @param options - 生成选项
+ * @returns 生成的文本
+ */
+export async function generateWithAI(
+  prompt: string,
+  options?: {
+    maxTokens?: number;
+    temperature?: number;
+  },
+): Promise<string> {
+  const apiKey = process.env.DEEPSEEK_API_KEY;
+
+  if (!apiKey) {
+    throw new Error("DEEPSEEK_API_KEY 环境变量未配置");
+  }
+
+  try {
+    const response = await fetch(
+      "https://api.deepseek.com/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: "deepseek-chat",
+          messages: [
+            {
+              role: "user",
+              content: prompt,
+            },
+          ],
+          temperature: options?.temperature ?? 0.3,
+          max_tokens: options?.maxTokens ?? 100,
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`DeepSeek API error: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content;
+
+    if (!content) {
+      throw new Error("DeepSeek API 返回空内容");
+    }
+
+    return content.trim();
+  } catch (error) {
+    logger.error(
+      { error: error instanceof Error ? error.message : String(error) },
+      "generateWithAI: API call failed",
+    );
+    throw error;
   }
 }
 
@@ -575,11 +643,13 @@ export async function recommendFolder(
             {
               role: "system",
               content:
-                "你是一个内容分类助手。你的任务是根据内容特征，推荐最合适的文件夹。请严格按照 JSON 格式返回结果。",
+                "你是一个内容分类专家。你的任务是根据内容特征，从用户现有的文件夹中选择最匹配的一个，或者根据内容生成一个新的、简洁的文件夹名称。请严格按照 JSON 格式返回结果。",
             },
             {
               role: "user",
-              content: prompt,
+              content:
+                prompt +
+                "\n\n注意：如果建议新建文件夹，请根据内容生成一个简洁的名称（2-6个字），严禁使用'内容分类与标签管理'、'待分类'、'未命名'等无意义名称。",
             },
           ],
           temperature: 0.3, // 较低的温度以获得更一致的结果
@@ -615,7 +685,7 @@ export async function recommendFolder(
 }
 
 /**
- * 构建文件夹推荐提示词
+ * 构建文件夹推荐提示词（增强版：包含文件夹内容描述）
  */
 function buildFolderRecommendationPrompt(
   title: string,
@@ -623,19 +693,34 @@ function buildFolderRecommendationPrompt(
   tags: string[],
   existingFolders: ExistingFolder[],
 ): string {
+  // 构建增强的文件夹列表（包含 top_tags 帮助 AI 理解文件夹内容）
   const folderList = existingFolders
-    .map((f) => `- ${f.name} (ID: ${f.id})`)
+    .map((f) => {
+      const tagsStr =
+        f.topTags && f.topTags.length > 0
+          ? ` [常见内容: ${f.topTags.slice(0, 4).join(", ")}]`
+          : "";
+      const countStr =
+        f.bookmarkCount && f.bookmarkCount > 0 ? ` (${f.bookmarkCount}篇)` : "";
+      return `- ${f.name}${countStr}${tagsStr} (ID: ${f.id})`;
+    })
     .join("\n");
 
   return `请根据以下内容，从现有文件夹中选择最合适的一个，或建议创建新文件夹。
 
-内容信息：
+【待分类内容】
 - 标题：${title}
-- 摘要：${summary}
-- 标签：${tags.join("、")}
+- 摘要：${summary || "无"}
+- 标签：${tags.join("、") || "无"}
 
-现有文件夹：
+【现有文件夹】（格式：文件夹名 (书签数) [常见内容标签]）
 ${folderList || "（暂无文件夹）"}
+
+【决策规则】
+1. 优先匹配：如果内容标签与某个文件夹的"常见内容"高度相关，优先选择该文件夹
+2. 名称匹配：如果内容标签包含文件夹名称的关键词（如标签含"Claude"应匹配"claude 学习"）
+3. 新建条件：只有内容主题与所有现有文件夹都不相关时，才建议新建
+4. 置信度：匹配程度越高，置信度越高（80-100：强匹配，60-79：中等匹配）
 
 请以 JSON 格式返回：
 {
@@ -646,11 +731,7 @@ ${folderList || "（暂无文件夹）"}
   "suggestNew": false         // 是否建议新建文件夹
 }
 
-要求：
-1. 如果现有文件夹中有匹配的，优先推荐现有文件夹
-2. 只有内容主题与现有文件夹都不匹配时，才建议新建
-3. 建议新建时，给出简洁有意义的文件夹名称
-4. 只返回 JSON，不要额外说明`;
+只返回 JSON，不要额外说明。`;
 }
 
 /**
@@ -762,6 +843,34 @@ function generateFallbackFolderRecommendation(
       }
     }
 
+    // 1.5. 关键词级别匹配（新增：解决 "Claude Code" 匹配 "claude 学习" 的问题）
+    // 将标签分割成单词，检查文件夹名是否包含这些关键词
+    const matchedKeywords = new Set<string>();
+    for (const tag of tags) {
+      // 分割标签为单词（支持空格、连字符等分隔符）
+      const tagWords = tag
+        .toLowerCase()
+        .split(/[\s\-_]+/)
+        .filter((w) => w.length >= 2);
+
+      for (const word of tagWords) {
+        // 检查文件夹名是否包含该关键词（至少3个字符以避免误匹配）
+        if (word.length >= 3 && folderNameLower.includes(word)) {
+          if (!matchedKeywords.has(word)) {
+            matchedKeywords.add(word);
+            // 关键词匹配权重：35分（首个关键词），后续每个额外 10 分
+            const keywordScore = matchedKeywords.size === 1 ? 35 : 10;
+            score += keywordScore;
+          }
+        }
+      }
+    }
+    if (matchedKeywords.size > 0) {
+      matchDetails.push(
+        `关键词匹配: ${Array.from(matchedKeywords).slice(0, 3).join(", ")}`,
+      );
+    }
+
     // 2. 标题关键词匹配（次要权重：15分每个关键词）
     const titleWords = title
       .toLowerCase()
@@ -823,48 +932,139 @@ function calculateSemanticSimilarity(
   folderName: string,
   tags: string[],
 ): number {
-  // 领域关键词映射表
+  // 领域关键词映射表（2025 年更新版）
   const semanticKeywords: Record<string, string[]> = {
     前端: [
+      // 框架
       "react",
       "vue",
       "angular",
+      "svelte",
+      "solid",
+      "qwik",
+      // 元框架
+      "next.js",
+      "nextjs",
+      "nuxt",
+      "remix",
+      "astro",
+      "gatsby",
+      // 语言
       "javascript",
       "typescript",
       "css",
       "html",
-      "web",
-      "next.js",
-      "nuxt",
+      "sass",
+      "less",
+      // 构建工具
       "webpack",
       "vite",
+      "turbopack",
+      "esbuild",
+      "rollup",
+      "parcel",
+      // UI 库
+      "tailwind",
+      "shadcn",
+      "radix",
+      "chakra",
+      "mui",
+      "antd",
+      // 包管理
+      "npm",
+      "pnpm",
+      "yarn",
+      "bun",
+      // 其他
+      "web",
+      "前端",
+      "组件",
+      "状态管理",
+      "redux",
+      "zustand",
+      "jotai",
     ],
     后端: [
+      // 语言
       "java",
       "python",
       "node",
       "golang",
+      "go",
+      "rust",
       "php",
-      "api",
-      "database",
-      "server",
+      "ruby",
+      "c#",
+      "dotnet",
+      // 运行时
+      "nodejs",
+      "deno",
+      "bun",
+      // 框架
       "spring",
+      "springboot",
       "django",
+      "fastapi",
+      "flask",
       "express",
+      "nestjs",
+      "koa",
+      "gin",
+      "fiber",
+      "actix",
+      "axum",
+      // 数据库
       "mysql",
       "postgresql",
+      "postgres",
+      "mongodb",
+      "redis",
+      "sqlite",
+      // ORM
+      "prisma",
+      "drizzle",
+      "typeorm",
+      "sequelize",
+      "sqlalchemy",
+      // BaaS
+      "supabase",
+      "firebase",
+      "appwrite",
+      "pocketbase",
+      // 其他
+      "api",
+      "graphql",
+      "rest",
+      "grpc",
+      "微服务",
+      "后端",
+      "服务端",
     ],
     设计: [
+      // 工具
       "figma",
       "sketch",
+      "adobe",
+      "photoshop",
+      "illustrator",
+      "xd",
+      "canva",
+      "framer",
+      "principle",
+      "protopie",
+      // 概念
       "ui",
       "ux",
       "用户体验",
       "交互",
       "界面",
       "视觉",
-      "adobe",
-      "photoshop",
+      "原型",
+      "设计系统",
+      "design system",
+      "组件库",
+      "图标",
+      "动效",
     ],
     产品: [
       "需求",
@@ -876,47 +1076,336 @@ function calculateSemanticSimilarity(
       "竞品",
       "迭代",
       "用户体验",
+      "增长",
+      "留存",
+      "转化",
+      "mvp",
+      "敏捷",
+      "scrum",
+      "okr",
+      "北极星指标",
+      "用户画像",
+      "产品规划",
+      "路线图",
+      "roadmap",
     ],
     数据: [
-      "分析",
+      // 分析工具
       "sql",
       "pandas",
-      "可视化",
-      "bi",
+      "numpy",
       "excel",
       "tableau",
+      "powerbi",
+      "superset",
+      // 数据库
+      "clickhouse",
+      "duckdb",
+      "snowflake",
+      "bigquery",
+      "databricks",
+      // 数据工程
+      "spark",
+      "flink",
+      "kafka",
+      "airflow",
+      "dbt",
+      "etl",
+      // 可视化
+      "可视化",
+      "echarts",
+      "d3",
+      "plotly",
+      // 概念
+      "分析",
+      "bi",
       "统计",
-      "机器学习",
+      "数据分析",
+      "数据科学",
+      "数据工程",
     ],
     移动: [
+      // 原生
       "ios",
       "android",
-      "flutter",
-      "react native",
       "swift",
       "kotlin",
+      "swiftui",
+      "jetpack compose",
+      // 跨平台
+      "flutter",
+      "react native",
+      "expo",
+      "capacitor",
+      "ionic",
+      "tauri",
+      // 小程序
       "小程序",
+      "微信小程序",
+      "uniapp",
+      "taro",
+      // 概念
       "移动开发",
+      "app",
+      "移动端",
     ],
     运维: [
+      // 容器化
       "docker",
       "kubernetes",
+      "k8s",
+      "podman",
+      "containerd",
+      // CI/CD
       "devops",
       "ci/cd",
+      "github actions",
+      "gitlab ci",
+      "jenkins",
+      "argocd",
+      // 云平台
+      "aws",
+      "azure",
+      "gcp",
+      "阿里云",
+      "腾讯云",
+      "华为云",
+      // 基础设施
+      "terraform",
+      "pulumi",
+      "ansible",
+      "helm",
+      // 边缘/Serverless
+      "vercel",
+      "cloudflare",
+      "netlify",
+      "serverless",
+      "边缘计算",
+      // 服务器
       "linux",
-      "部署",
-      "监控",
       "nginx",
+      "caddy",
+      "traefik",
+      // 监控
+      "prometheus",
+      "grafana",
+      "监控",
+      "日志",
+      "elk",
     ],
     AI: [
+      // === 基础概念 ===
       "机器学习",
       "深度学习",
-      "chatgpt",
-      "openai",
       "神经网络",
       "自然语言",
+      "nlp",
+      "cv",
+      "计算机视觉",
+
+      // === 大模型通用术语 ===
       "llm",
+      "大模型",
+      "大语言模型",
+      "生成式ai",
+      "aigc",
       "prompt",
+      "提示词",
+
+      // === Anthropic/Claude 系列 ===
+      "claude",
+      "anthropic",
+      "claude code",
+      "sonnet",
+      "opus",
+      "haiku",
+
+      // === OpenAI 系列 ===
+      "openai",
+      "chatgpt",
+      "gpt",
+      "gpt-4",
+      "gpt-4o",
+      "gpt-4-turbo",
+      "o1",
+      "o1-pro",
+      "o3",
+
+      // === Google 系列 ===
+      "gemini",
+      "bard",
+      "palm",
+      "gemma",
+      "google ai",
+
+      // === Meta 系列 ===
+      "llama",
+      "llama2",
+      "llama3",
+      "meta ai",
+
+      // === 其他国际模型 ===
+      "mistral",
+      "mixtral",
+      "cohere",
+      "perplexity",
+      "groq",
+
+      // === 国产大模型 ===
+      "deepseek",
+      "通义千问",
+      "qwen",
+      "文心一言",
+      "ernie",
+      "智谱",
+      "glm",
+      "chatglm",
+      "kimi",
+      "moonshot",
+      "豆包",
+      "字节",
+      "讯飞星火",
+      "百川",
+      "minimax",
+      "零一万物",
+      "yi",
+
+      // === AI 编程工具 ===
+      "copilot",
+      "github copilot",
+      "cursor",
+      "windsurf",
+      "cline",
+      "aider",
+      "tabnine",
+      "codeium",
+      "replit",
+      "v0",
+      "bolt",
+      "ai编程",
+      "ai coding",
+
+      // === AI 开发框架 ===
+      "langchain",
+      "llamaindex",
+      "semantic kernel",
+      "autogen",
+      "crewai",
+      "dify",
+
+      // === RAG 与向量 ===
+      "rag",
+      "embedding",
+      "向量",
+      "向量数据库",
+      "pinecone",
+      "weaviate",
+      "milvus",
+      "chroma",
+      "qdrant",
+      "faiss",
+
+      // === Agent 相关 ===
+      "ai agent",
+      "agent",
+      "智能体",
+      "mcp",
+      "function calling",
+      "tool use",
+      "autogpt",
+      "babyagi",
+      "agents",
+
+      // === 训练技术 ===
+      "fine-tuning",
+      "微调",
+      "rlhf",
+      "dpo",
+      "lora",
+      "qlora",
+      "peft",
+      "sft",
+      "预训练",
+      "对齐",
+      "alignment",
+
+      // === 推理优化 ===
+      "量化",
+      "quantization",
+      "gguf",
+      "ggml",
+      "ollama",
+      "vllm",
+      "tgi",
+      "推理",
+      "inference",
+      "本地部署",
+
+      // === 多模态 AI ===
+      "多模态",
+      "multimodal",
+      "vision",
+      "图像生成",
+      "text-to-image",
+      "midjourney",
+      "mj",
+      "dall-e",
+      "stable diffusion",
+      "sd",
+      "sdxl",
+      "flux",
+      "comfyui",
+      "automatic1111",
+      "webui",
+
+      // === AI 视频 ===
+      "sora",
+      "runway",
+      "pika",
+      "kling",
+      "可灵",
+      "ai视频",
+      "text-to-video",
+
+      // === AI 语音 ===
+      "语音合成",
+      "tts",
+      "whisper",
+      "语音识别",
+      "asr",
+      "elevenlabs",
+
+      // === AI 应用场景 ===
+      "ai助手",
+      "智能助手",
+      "对话机器人",
+      "chatbot",
+      "知识库",
+      "ai写作",
+      "ai绘画",
+      "ai视频",
+      "ai音乐",
+      "ai翻译",
+    ],
+    // === 新增：学习/教程分类 ===
+    学习: [
+      "教程",
+      "学习",
+      "入门",
+      "进阶",
+      "实战",
+      "课程",
+      "培训",
+      "笔记",
+      "总结",
+      "指南",
+      "手册",
+      "文档",
+      "博客",
+      "视频教程",
+      "在线课程",
+      "学习路径",
+      "知识体系",
     ],
   };
 

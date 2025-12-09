@@ -3,7 +3,8 @@
  * GET /api/bookmarks/batch-status?ids=1,2,3
  *
  * 用于轮询 PROCESSING 状态的书签，获取最新数据
- * 仅返回必要字段以减少数据传输
+ * V3.1 更新：新增 classification_status 和 classification_result 字段
+ * 支持前端轮询获取分类完成状态
  */
 
 import type { NextRequest } from "next/server";
@@ -53,6 +54,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 3. 查询书签数据（仅返回需要更新的字段）
+    // V3.1: 新增 classification_status 和 classification_result 字段
     const { data: bookmarks, error: queryError } = await supabase
       .from("bookmarks")
       .select(
@@ -70,6 +72,9 @@ export async function GET(request: NextRequest) {
         word_count,
         image_count,
         publish_time,
+        folder_id,
+        classification_status,
+        classification_result,
         folders(name)
       `,
       )

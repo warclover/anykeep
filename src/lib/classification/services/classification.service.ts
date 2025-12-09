@@ -63,6 +63,9 @@ export class ClassificationService implements IClassificationService {
   /**
    * Internal classification logic
    * Enhanced with performance metrics
+   *
+   * V3.5: Cold start now uses lightweight matchers (VectorMatcher with name_embedding)
+   * instead of sending all bookmarks to inbox
    */
   private async classifyInternal(
     userId: string,
@@ -76,14 +79,20 @@ export class ClassificationService implements IClassificationService {
     const isInColdStart = await this.userStageService.isInColdStart(userId);
     perfMetrics.stageCheckMs = performance.now() - stageCheckStart;
 
+    // V3.5: Cold start mode - use lightweight matchers only (vector, tag, fingerprint)
+    // Skip heavy matchers (AI, history) to save resources while still allowing classification
+    const coldStartLightweightMatchers = [
+      "vector",
+      "tag",
+      "fingerprint",
+      "knn-direct",
+      "universal",
+    ];
+
     if (isInColdStart) {
-      // During cold start, all bookmarks go to inbox
       logger.info(
         { userId, title: bookmark.title, action: "classification_cold_start" },
-        "Classification: User in cold start, sending to inbox",
-      );
-      return this.createInboxResult(
-        "User in cold start phase - collecting data",
+        "Classification: Cold start mode - using lightweight matchers with name_embedding",
       );
     }
 
@@ -116,6 +125,18 @@ export class ClassificationService implements IClassificationService {
 
     for (const matcher of this.matchers) {
       if (matcher.name === "ai") continue; // Run AI last
+
+      // V3.5: In cold start, skip heavy matchers (history)
+      if (
+        isInColdStart &&
+        !coldStartLightweightMatchers.includes(matcher.name)
+      ) {
+        logger.debug(
+          { matcher: matcher.name },
+          "Classification: Skipping matcher in cold start mode",
+        );
+        continue;
+      }
 
       const isAvailable = await matcher.isAvailable(context);
       if (!isAvailable) continue;
@@ -153,9 +174,10 @@ export class ClassificationService implements IClassificationService {
       }
     }
 
+    // V3.5: Skip AI matcher in cold start mode to save API calls
     // Run AI matcher with context from other matchers
     const aiMatcher = this.findAIMatcher();
-    if (aiMatcher) {
+    if (aiMatcher && !isInColdStart) {
       const isAvailable = await aiMatcher.isAvailable(context);
       if (isAvailable) {
         const aiStart = performance.now();
@@ -194,8 +216,9 @@ export class ClassificationService implements IClassificationService {
         action: classification.action,
         scores: classification.scores,
         perfMetrics,
+        coldStartMode: isInColdStart,
       },
-      `Classification: ${classification.action} (${perfMetrics.totalMs.toFixed(1)}ms)`,
+      `Classification: ${classification.action} (${perfMetrics.totalMs.toFixed(1)}ms)${isInColdStart ? " [cold-start]" : ""}`,
     );
 
     return classification;
@@ -262,6 +285,7 @@ export class ClassificationService implements IClassificationService {
 
     return {
       userId,
+      bookmarkId: bookmark.id, // 用于排除自匹配
       title: bookmark.title,
       summary: bookmark.summary || "",
       tags: bookmark.tags || [],

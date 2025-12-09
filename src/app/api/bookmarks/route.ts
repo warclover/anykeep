@@ -132,6 +132,7 @@ async function fetchAndUpdateTitle(
  * @param summary - AI摘要
  * @param tags - AI标签
  * @param userId - 用户ID
+ * @param folderId - 文件夹ID（用于 embedding 完成后更新 folder profile）
  */
 async function generateBookmarkEmbedding(
   bookmarkId: number,
@@ -139,6 +140,7 @@ async function generateBookmarkEmbedding(
   summary: string | null,
   tags: string[] | null,
   userId: string,
+  folderId?: number | null,
 ): Promise<void> {
   try {
     const text = buildEmbeddingText(title, summary, tags);
@@ -170,6 +172,21 @@ async function generateBookmarkEmbedding(
       { bookmarkId, action: "embedding_success" },
       "Embedding: Generated successfully",
     );
+
+    // Embedding 生成成功后，更新 folder profile（如果书签在文件夹中）
+    if (folderId) {
+      const { updateFolderProfilesOnBookmarkChange } = await import(
+        "@/lib/classification/server"
+      );
+      updateFolderProfilesOnBookmarkChange([], folderId, userId).catch(
+        (err) => {
+          logger.warn(
+            { error: err, folderId, bookmarkId },
+            "Embedding: Failed to update folder profile after embedding",
+          );
+        },
+      );
+    }
   } catch (error) {
     // 向量生成失败不影响书签创建
     logger.error(
@@ -318,13 +335,23 @@ async function generateBookmarkAIContent(
       "AI Content (async): Generated and saved with content type",
     );
 
-    // 3. 生成向量嵌入
+    // 3. 获取书签当前的 folder_id（用于 embedding 完成后更新 profile）
+    const { data: bookmarkData } = await supabase
+      .from("bookmarks")
+      .select("folder_id")
+      .eq("id", bookmarkId)
+      .single();
+
+    const currentFolderId = bookmarkData?.folder_id ?? null;
+
+    // 4. 生成向量嵌入（传入 folderId 用于后续 profile 更新）
     generateBookmarkEmbedding(
       bookmarkId,
       title,
       aiResult.summary,
       aiResult.tags,
       userId,
+      currentFolderId,
     ).catch((err) => {
       logger.error(
         { error: err, bookmarkId },
@@ -332,7 +359,7 @@ async function generateBookmarkAIContent(
       );
     });
 
-    // 4. AI 文件夹推荐（仅当用户未指定文件夹时）
+    // 5. AI 文件夹推荐（仅当用户未指定文件夹时）
     if (
       !userSpecifiedFolderId &&
       aiResult.summary &&
@@ -405,10 +432,16 @@ async function processAIFolderRecommendation(
     const { createClient } = await import("@/lib/supabase/server");
     const supabase = await createClient();
 
-    // 获取用户文件夹
+    // 获取用户文件夹（包含 folder_profiles 用于 AI 上下文增强）
     const { data: userFolders } = await supabase
       .from("folders")
-      .select("id, name")
+      .select(
+        `
+        id,
+        name,
+        folder_profiles(top_tags, bookmark_count)
+      `,
+      )
       .eq("user_id", userId)
       .eq("is_system", false)
       .is("deleted_at", null);
@@ -421,22 +454,36 @@ async function processAIFolderRecommendation(
       return;
     }
 
+    // 转换为增强的文件夹信息
+    const enrichedFolders = userFolders.map((folder) => {
+      // folder_profiles 是一对一关系，但 Supabase 返回数组
+      const profile = Array.isArray(folder.folder_profiles)
+        ? folder.folder_profiles[0]
+        : folder.folder_profiles;
+      return {
+        id: folder.id,
+        name: folder.name,
+        topTags: (profile?.top_tags as string[] | null) || [],
+        bookmarkCount: profile?.bookmark_count || 0,
+      };
+    });
+
     logger.info(
       {
         bookmarkId,
         title: title.substring(0, 30),
-        folderCount: userFolders.length,
+        folderCount: enrichedFolders.length,
         action: "async_recommend_start",
       },
       "AI Classification (async): Starting folder recommendation",
     );
 
-    // 调用 AI 推荐
+    // 调用 AI 推荐（传入增强的文件夹信息）
     const aiRecommendation = await recommendFolder(
       title,
       summary,
       tags,
-      userFolders,
+      enrichedFolders,
     );
 
     logger.info(

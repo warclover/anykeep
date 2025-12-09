@@ -18,6 +18,8 @@ export * from "./index";
 export {
   classifyBookmarkV2,
   updateFolderProfileAfterClassification,
+  updateFolderProfilesOnBookmarkChange,
+  initializeFolderNameProfile,
   shouldUseV2Classification,
 } from "./integration";
 

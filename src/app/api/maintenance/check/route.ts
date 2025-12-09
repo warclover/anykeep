@@ -15,7 +15,7 @@ import {
   successResponse,
   unauthorizedError,
   databaseError,
-} from "@/lib/api/response";
+} from "@/lib/utils/api-response";
 
 interface MaintenanceTask {
   name: "cleanup-trash" | "validate-all-links";

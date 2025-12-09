@@ -21,6 +21,7 @@ import {
 import { logger } from "@/lib/logger";
 import type { BookmarkUpdate } from "@/types/supabase";
 import { BOOKMARK, AUTH } from "@/lib/constants/messages";
+import { updateFolderProfilesOnBookmarkChange } from "@/lib/classification/server";
 
 /**
  * GET /api/bookmarks/[id]
@@ -126,10 +127,10 @@ export async function PUT(
       isMarkedForDeletion,
     } = validation.data;
 
-    // 3. 检查收藏是否存在且属于当前用户
+    // 3. 检查收藏是否存在且属于当前用户（包含 folder_id 用于 profile 更新）
     const { data: existingBookmark, error: checkError } = await supabase
       .from("bookmarks")
-      .select("id, user_id")
+      .select("id, user_id, folder_id")
       .eq("id", bookmarkId)
       .is("deleted_at", null)
       .single();
@@ -144,6 +145,9 @@ export async function PUT(
     if (existingBookmark.user_id !== user.id) {
       return forbiddenError(AUTH.FORBIDDEN);
     }
+
+    // 记录原始 folder_id（用于后续 profile 更新）
+    const originalFolderId = existingBookmark.folder_id;
 
     // 4. 构建更新数据
     const updateData: BookmarkUpdate = {};
@@ -169,6 +173,20 @@ export async function PUT(
 
     if (updateError) {
       return databaseError(BOOKMARK.UPDATE_ERROR, updateError);
+    }
+
+    // 5.5 如果 folderId 变更，异步更新源和目标文件夹的 profile
+    if (folderId !== undefined && folderId !== originalFolderId) {
+      updateFolderProfilesOnBookmarkChange(
+        [originalFolderId],
+        folderId,
+        user.id,
+      ).catch((err) => {
+        logger.warn(
+          { error: err },
+          "Failed to update folder profiles after bookmark update",
+        );
+      });
     }
 
     // 6. 返回更新后的收藏
@@ -338,10 +356,10 @@ export async function DELETE(
       return unauthorizedError();
     }
 
-    // 2. 检查收藏是否存在且属于当前用户
+    // 2. 检查收藏是否存在且属于当前用户（包含 folder_id 用于 profile 更新）
     const { data: existingBookmark, error: checkError } = await supabase
       .from("bookmarks")
-      .select("id, user_id, is_locked, is_in_trash")
+      .select("id, user_id, is_locked, is_in_trash, folder_id")
       .eq("id", bookmarkId)
       .is("deleted_at", null)
       .single();
@@ -391,6 +409,20 @@ export async function DELETE(
 
     if (moveToTrashError) {
       return databaseError(BOOKMARK.DELETE_ERROR(1), moveToTrashError);
+    }
+
+    // 3.5 异步更新源文件夹的 profile（书签离开该文件夹）
+    if (existingBookmark.folder_id !== null) {
+      updateFolderProfilesOnBookmarkChange(
+        [existingBookmark.folder_id],
+        null, // 移入垃圾箱，无目标文件夹
+        user.id,
+      ).catch((err) => {
+        logger.warn(
+          { error: err },
+          "Failed to update folder profile after bookmark deletion",
+        );
+      });
     }
 
     // 注意：不减少存储计数，因为收藏还在垃圾箱中

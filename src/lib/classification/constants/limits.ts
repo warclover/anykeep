@@ -16,14 +16,18 @@ export const CLASSIFICATION_WEIGHTS = {
 
 /**
  * Classification thresholds
+ * V3.4 修正：调整阈值为正确值
+ * - ≥80%: 自动归类（高置信度）
+ * - 60-79%: 保存建议（中等置信度，需用户确认）
+ * - <60%: 放入待整理（低置信度）
  */
 export const CLASSIFICATION_THRESHOLDS = {
   /** Low confidence threshold - below this goes to inbox */
-  LOW_CONFIDENCE: 30,
+  LOW_CONFIDENCE: 60,
   /** Medium confidence threshold - save as suggestion for user review */
-  MEDIUM_CONFIDENCE: 50,
+  MEDIUM_CONFIDENCE: 60,
   /** High confidence threshold - above this is auto-classified */
-  HIGH_CONFIDENCE: 70,
+  HIGH_CONFIDENCE: 80,
   /** Vector similarity threshold for folder matching */
   VECTOR_SIMILARITY: 0.5,
   /** History matching count */

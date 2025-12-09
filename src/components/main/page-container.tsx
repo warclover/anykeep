@@ -147,6 +147,13 @@ const SettingsPageClient = lazy(() =>
   })),
 );
 
+// 消息页
+const MessagesPageClient = lazy(() =>
+  import("@/components/messages/messages-page-client").then((mod) => ({
+    default: mod.MessagesPageClient,
+  })),
+);
+
 // ==================== 页面加载骨架屏 ====================
 
 function PageSkeleton() {
@@ -183,6 +190,7 @@ const PAGE_LABELS: Record<PageId, string> = {
   home: "首页",
   search: "搜索",
   folders: "收藏夹",
+  messages: "消息",
   analytics: "数据统计",
   settings: "设置",
 };
@@ -361,6 +369,13 @@ function SettingsPageRenderer() {
   );
 }
 
+/**
+ * 消息页渲染器
+ */
+function MessagesPageRenderer() {
+  return <MessagesPageClient />;
+}
+
 interface PageRendererProps {
   pageId: PageId;
 }
@@ -381,6 +396,8 @@ function PageRenderer({ pageId }: PageRendererProps) {
       return <AnalyticsPageRenderer />;
     case "settings":
       return <SettingsPageRenderer />;
+    case "messages":
+      return <MessagesPageRenderer />;
     default:
       return null;
   }

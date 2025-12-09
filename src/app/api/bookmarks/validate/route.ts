@@ -11,7 +11,7 @@ import {
   unauthorizedError,
   databaseError,
   badRequestError,
-} from "@/lib/api/response";
+} from "@/lib/utils/api-response";
 import { isUrlValidatable, getSkipReason } from "@/lib/validation/url-filter";
 
 interface ValidationResult {

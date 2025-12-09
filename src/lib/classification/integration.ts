@@ -5,13 +5,35 @@
 
 import { z } from "zod";
 import { ClassificationContainer } from "./container";
+import { createSimpleClassificationService } from "./services/simple-classification.service";
 import { CLASSIFICATION_THRESHOLDS, FOLDER_LIMITS } from "./constants";
 import { logger } from "@/lib/logger";
+import { MessageService } from "@/lib/messages/server";
 import type { ClassificationResult, BookmarkInput } from "./types";
+import type {
+  ClassificationStatus,
+  ClassificationResultData,
+} from "@/types/supabase";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/types/supabase";
 
 // Thresholds from centralized constants
 const AUTO_CLASSIFY_THRESHOLD = CLASSIFICATION_THRESHOLDS.HIGH_CONFIDENCE;
 const SUGGEST_THRESHOLD = CLASSIFICATION_THRESHOLDS.MEDIUM_CONFIDENCE;
+
+/**
+ * 获取当前分类系统版本
+ * 通过环境变量 CLASSIFICATION_VERSION 控制
+ * - "v3": 使用 V3 ClassificationService（5层匹配器）
+ * - "v4.1": 使用 V4.1 SimpleClassificationService（默认）
+ */
+export function getClassificationVersion(): "v3" | "v4.1" {
+  const version = process.env.CLASSIFICATION_VERSION;
+  if (version === "v3") {
+    return "v3";
+  }
+  return "v4.1"; // 默认使用 V4.1
+}
 
 /**
  * Input validation schema for classifyBookmarkV2
@@ -77,32 +99,79 @@ export async function classifyBookmarkV2(
     const { createClient } = await import("@/lib/supabase/server");
     const supabase = await createClient();
 
-    // Initialize classification container
-    const container = ClassificationContainer.initialize(supabase);
-    const classificationService = container.getClassificationService();
+    // 获取分类版本
+    const classificationVersion = getClassificationVersion();
 
     // Prepare bookmark input
     const bookmarkInput: BookmarkInput = {
+      id: bookmarkId, // 传入 ID 用于排除自匹配
       title,
       summary: summary || undefined,
       tags,
     };
 
-    // Run classification
-    const result = await classificationService.classify(userId, bookmarkInput);
+    // Run classification based on version
+    let result: ClassificationResult;
 
-    logger.info(
-      {
-        bookmarkId,
-        title: title.substring(0, 30),
-        action: result.action,
-        confidence: result.confidence,
-        folderId: result.folderId,
-        folderName: result.folderName,
-        scores: result.scores,
-      },
-      "Classification V2: Result received",
-    );
+    if (classificationVersion === "v4.1") {
+      // V4.1: 使用 SimpleClassificationService（统一向量搜索，支持冷启动）
+      const simpleService = createSimpleClassificationService(
+        supabase as SupabaseClient<Database>,
+      );
+      const simpleResult = await simpleService.classify(userId, {
+        title,
+        summary: summary || undefined,
+        tags,
+        url: undefined, // URL 在此上下文不可用
+      });
+
+      // 转换 SimpleClassificationResult 到 ClassificationResult
+      result = {
+        folderId: simpleResult.folderId,
+        folderName: simpleResult.folderName,
+        confidence: simpleResult.confidence,
+        reason: simpleResult.reason,
+        action: simpleResult.action as ClassificationResult["action"],
+        scores: {
+          vectorScore: simpleResult.confidence,
+          historyScore: 0,
+          aiScore:
+            simpleResult.matchType === "ai_select"
+              ? simpleResult.confidence
+              : 0,
+        },
+      };
+
+      logger.info(
+        {
+          version: "v4.1",
+          bookmarkId,
+          title: title.substring(0, 30),
+          action: result.action,
+          confidence: result.confidence,
+          matchType: simpleResult.matchType,
+          executionTime: simpleResult.executionTime,
+        },
+        "Classification V4.1: Result received",
+      );
+    } else {
+      // V3: 使用 ClassificationContainer（5层匹配器）
+      const container = ClassificationContainer.initialize(supabase);
+      const classificationService = container.getClassificationService();
+      result = await classificationService.classify(userId, bookmarkInput);
+
+      logger.info(
+        {
+          version: "v3",
+          bookmarkId,
+          title: title.substring(0, 30),
+          action: result.action,
+          confidence: result.confidence,
+          scores: result.scores,
+        },
+        "Classification V3: Result received",
+      );
+    }
 
     // Handle result based on action and confidence
     if (result.action === "classify" && result.folderId) {
@@ -137,6 +206,36 @@ export async function classifyBookmarkV2(
             confidence: result.confidence,
           },
           "Classification V2: Auto-classified (high confidence)",
+        );
+
+        // 发送自动分类完成消息（静默级别）
+        await MessageService.notifyClassificationComplete(
+          userId,
+          bookmarkId,
+          result.folderName || "未知文件夹",
+          result.confidence,
+          true, // isAuto = true
+        ).catch((err) => {
+          logger.warn(
+            { error: err },
+            "Failed to create classification message",
+          );
+        });
+
+        // V3.1: Write classification status for frontend polling
+        await updateBookmarkClassificationStatus(
+          supabase,
+          bookmarkId,
+          userId,
+          "classified",
+          {
+            folderId: result.folderId,
+            folderName: result.folderName,
+            confidence: result.confidence,
+            action: "classify",
+            timestamp: new Date().toISOString(),
+            reason: result.reason,
+          },
         );
 
         return {
@@ -176,6 +275,37 @@ export async function classifyBookmarkV2(
               confidence: result.confidence,
             },
             "Classification V2: Saved suggestion (medium confidence)",
+          );
+
+          // 发送分类建议消息（普通级别）
+          await MessageService.notifyClassificationComplete(
+            userId,
+            bookmarkId,
+            result.folderName || "未知文件夹",
+            result.confidence,
+            false, // isAuto = false，表示需要用户确认
+          ).catch((err) => {
+            logger.warn(
+              { error: err },
+              "Failed to create classification suggestion message",
+            );
+          });
+
+          // V3.1: Write classification status for frontend polling
+          await updateBookmarkClassificationStatus(
+            supabase,
+            bookmarkId,
+            userId,
+            "suggested",
+            {
+              folderId: result.folderId,
+              folderName: result.folderName,
+              confidence: result.confidence,
+              action: "classify",
+              suggestionId: suggestion.id,
+              timestamp: new Date().toISOString(),
+              reason: result.reason,
+            },
           );
 
           return {
@@ -224,6 +354,23 @@ export async function classifyBookmarkV2(
           .single();
 
         if (!suggestionError && suggestion) {
+          // V3.1: Write classification status for frontend polling
+          await updateBookmarkClassificationStatus(
+            supabase,
+            bookmarkId,
+            userId,
+            "suggested",
+            {
+              folderId: null,
+              folderName: result.folderName,
+              confidence: result.confidence,
+              action: "suggest_new",
+              suggestionId: suggestion.id,
+              timestamp: new Date().toISOString(),
+              reason: "每日文件夹创建数量已达上限",
+            },
+          );
+
           return {
             classified: false,
             folderId: null,
@@ -267,6 +414,22 @@ export async function classifyBookmarkV2(
               "Classification V2: Created new folder and classified",
             );
 
+            // V3.1: Write classification status for frontend polling
+            await updateBookmarkClassificationStatus(
+              supabase,
+              bookmarkId,
+              userId,
+              "classified",
+              {
+                folderId: newFolder.id,
+                folderName: result.folderName,
+                confidence: result.confidence,
+                action: "suggest_new",
+                timestamp: new Date().toISOString(),
+                reason: "创建新文件夹并归类",
+              },
+            );
+
             return {
               classified: true,
               folderId: newFolder.id,
@@ -307,6 +470,23 @@ export async function classifyBookmarkV2(
             "Classification V2: Saved new folder suggestion",
           );
 
+          // V3.1: Write classification status for frontend polling
+          await updateBookmarkClassificationStatus(
+            supabase,
+            bookmarkId,
+            userId,
+            "suggested",
+            {
+              folderId: null,
+              folderName: result.folderName,
+              confidence: result.confidence,
+              action: "suggest_new",
+              suggestionId: suggestion.id,
+              timestamp: new Date().toISOString(),
+              reason: result.reason || "建议创建新文件夹",
+            },
+          );
+
           return {
             classified: false,
             folderId: null,
@@ -327,6 +507,22 @@ export async function classifyBookmarkV2(
         action: result.action,
       },
       "Classification V2: Staying in inbox (low confidence)",
+    );
+
+    // V3.1: Write classification status for frontend polling
+    await updateBookmarkClassificationStatus(
+      supabase,
+      bookmarkId,
+      userId,
+      "inbox",
+      {
+        folderId: null,
+        folderName: "待整理",
+        confidence: result.confidence,
+        action: "inbox",
+        timestamp: new Date().toISOString(),
+        reason: `置信度 ${result.confidence}% 低于阈值`,
+      },
     );
 
     return {
@@ -407,4 +603,207 @@ export function shouldUseV2Classification(): boolean {
   // Can be overridden via environment variable
   const v2Enabled = process.env.CLASSIFICATION_V2_ENABLED;
   return v2Enabled !== "false";
+}
+
+/**
+ * Update folder profiles when bookmarks are moved or deleted
+ * Handles both source and target folder profile updates
+ *
+ * @param fromFolderIds - Source folder IDs (bookmarks moved from)
+ * @param toFolderId - Target folder ID (bookmarks moved to, null for inbox)
+ * @param userId - User ID
+ */
+export async function updateFolderProfilesOnBookmarkChange(
+  fromFolderIds: (number | null)[],
+  toFolderId: number | null,
+  userId: string,
+): Promise<void> {
+  try {
+    const { createClient } = await import("@/lib/supabase/server");
+    const supabase = await createClient();
+
+    // Collect all unique folder IDs that need updating
+    const folderIdsToUpdate = new Set<number>();
+
+    // Add source folders (filter out null)
+    for (const folderId of fromFolderIds) {
+      if (folderId !== null) {
+        folderIdsToUpdate.add(folderId);
+      }
+    }
+
+    // Add target folder
+    if (toFolderId !== null) {
+      folderIdsToUpdate.add(toFolderId);
+    }
+
+    if (folderIdsToUpdate.size === 0) {
+      logger.debug(
+        { userId },
+        "updateFolderProfilesOnBookmarkChange: No folders to update",
+      );
+      return;
+    }
+
+    // Update all affected folder profiles
+    const updatePromises = Array.from(folderIdsToUpdate).map(
+      async (folderId) => {
+        try {
+          const { error } = await (supabase.rpc as CallableFunction)(
+            "compute_folder_profile",
+            { p_folder_id: folderId },
+          );
+
+          if (error) {
+            logger.error(
+              { error, folderId, userId },
+              "updateFolderProfilesOnBookmarkChange: Failed to update folder profile",
+            );
+          } else {
+            logger.debug(
+              { folderId, userId },
+              "updateFolderProfilesOnBookmarkChange: Folder profile updated",
+            );
+          }
+        } catch (error) {
+          logger.error(
+            {
+              error: error instanceof Error ? error.message : String(error),
+              folderId,
+            },
+            "updateFolderProfilesOnBookmarkChange: Exception",
+          );
+        }
+      },
+    );
+
+    await Promise.allSettled(updatePromises);
+
+    logger.info(
+      { folderCount: folderIdsToUpdate.size, userId },
+      "updateFolderProfilesOnBookmarkChange: All folder profiles updated",
+    );
+  } catch (error) {
+    logger.error(
+      {
+        error: error instanceof Error ? error.message : String(error),
+        userId,
+      },
+      "updateFolderProfilesOnBookmarkChange: Failed",
+    );
+  }
+}
+
+/**
+ * Update bookmark classification status
+ * V3.1: Writes classification result to bookmark record for frontend polling
+ */
+async function updateBookmarkClassificationStatus(
+  supabase: SupabaseClient,
+  bookmarkId: number,
+  userId: string,
+  status: ClassificationStatus,
+  resultData: ClassificationResultData,
+): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from("bookmarks")
+      .update({
+        classification_status: status,
+        classification_result: resultData,
+      })
+      .eq("id", bookmarkId)
+      .eq("user_id", userId);
+
+    if (error) {
+      logger.error(
+        { error, bookmarkId, status },
+        "Classification V2: Failed to update classification status",
+      );
+    } else {
+      logger.debug(
+        { bookmarkId, status, folderName: resultData.folderName },
+        "Classification V2: Updated classification status",
+      );
+    }
+  } catch (error) {
+    logger.error(
+      {
+        error: error instanceof Error ? error.message : String(error),
+        bookmarkId,
+      },
+      "Classification V2: Exception updating classification status",
+    );
+  }
+}
+
+/**
+ * Initialize or update folder profile with name embedding
+ * Called when folder is created or renamed
+ *
+ * This solves the "cold start" problem for new folders:
+ * - New folders have no bookmarks, so no content-based profile
+ * - But the folder name itself carries semantic meaning
+ * - By generating an embedding for the folder name, the classification system
+ *   can match bookmarks to the folder even before any bookmarks are added
+ *
+ * @param folderId - Folder ID
+ * @param folderName - Folder name (will be used to generate embedding)
+ * @param userId - User ID
+ */
+export async function initializeFolderNameProfile(
+  folderId: number,
+  folderName: string,
+  userId: string,
+): Promise<void> {
+  try {
+    // Generate embedding for folder name
+    const { generateEmbedding } = await import(
+      "@/lib/utils/embedding-generator"
+    );
+
+    // Use folder name directly for embedding (short text works well)
+    const nameEmbedding = await generateEmbedding(folderName);
+
+    logger.info(
+      { folderId, folderName, userId },
+      "initializeFolderNameProfile: Generated name embedding",
+    );
+
+    // Call SQL function to update profile
+    const { createClient } = await import("@/lib/supabase/server");
+    const supabase = await createClient();
+
+    // Format embedding as PostgreSQL vector string
+    const embeddingString = `[${nameEmbedding.join(",")}]`;
+
+    const { error } = await (supabase.rpc as CallableFunction)(
+      "update_folder_name_embedding",
+      {
+        p_folder_id: folderId,
+        p_name_embedding: embeddingString,
+      },
+    );
+
+    if (error) {
+      logger.error(
+        { error, folderId, folderName },
+        "initializeFolderNameProfile: Failed to update name embedding",
+      );
+    } else {
+      logger.info(
+        { folderId, folderName },
+        "initializeFolderNameProfile: Profile initialized/updated successfully",
+      );
+    }
+  } catch (error) {
+    logger.error(
+      {
+        error: error instanceof Error ? error.message : String(error),
+        folderId,
+        folderName,
+      },
+      "initializeFolderNameProfile: Exception",
+    );
+  }
 }

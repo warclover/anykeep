@@ -31,6 +31,8 @@ import {
 } from "lucide-react";
 import { InterestSettingsCard } from "./interest-settings-card";
 import { ProfileSettingsCard } from "./profile-settings-card";
+import { ClassificationSettingsCard } from "./classification-settings-card";
+import { NotificationSettingsCard } from "@/components/messages";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { ErrorMessage } from "@/components/ui/error-message";
@@ -272,6 +274,9 @@ export function SettingsPageClient({
             {/* 兴趣领域设置 */}
             <InterestSettingsCard />
 
+            {/* 智能分类设置 - V3.0 */}
+            <ClassificationSettingsCard />
+
             {/* 扩展画像设置 */}
             <ProfileSettingsCard />
 
@@ -503,6 +508,9 @@ export function SettingsPageClient({
                 </div>
               </CardContent>
             </Card>
+
+            {/* 消息通知设置（分级控制） */}
+            <NotificationSettingsCard />
 
             {/* 账号操作 */}
             <Card>
