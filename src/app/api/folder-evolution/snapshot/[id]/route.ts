@@ -5,7 +5,7 @@
 
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { operationLogService } from "@/lib/classification/services/server";
 
 interface RouteParams {
@@ -16,7 +16,7 @@ interface RouteParams {
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    const supabase = await createServerSupabaseClient();
+    const supabase = await createClient();
     const { id: snapshotId } = await params;
 
     // 验证用户身份

@@ -6,12 +6,15 @@
  * 1. 用户数据通过 UserContext 客户端获取
  * 2. 页面切换使用客户端导航（Keep-Alive 模式）
  * 避免每次页面切换都执行服务端数据库查询
+ *
+ * Phase 4: 集成 AI 对话功能
  */
 
 import { AppHeader } from "@/components/layout/app-header";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
 import { MainContent } from "@/components/main/main-content";
+import { ChatButton } from "@/components/chat";
 
 export default function MainLayout({
   children,
@@ -39,6 +42,9 @@ export default function MainLayout({
 
       {/* 底部导航栏（移动端） */}
       <MobileBottomNav />
+
+      {/* AI 对话悬浮按钮 */}
+      <ChatButton />
     </div>
   );
 }

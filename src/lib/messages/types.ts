@@ -43,7 +43,14 @@ export type MessageType =
   // AI 处理
   | "ai_summary_complete" // AI 摘要生成完成（静默）
   | "ai_tags_complete" // AI 标签生成完成（静默）
-  | "ai_processing_failed"; // AI 处理失败（普通）
+  | "ai_processing_failed" // AI 处理失败（普通）
+  // V4.2 新增：AI 文件夹进化
+  | "folder_auto_created" // AI 自动创建文件夹（普通）
+  | "folder_auto_split" // AI 自动分拆文件夹（普通）
+  | "folder_auto_merged" // AI 自动合并文件夹（普通）
+  | "folder_auto_renamed" // AI 自动重命名文件夹（普通）
+  | "folder_operation_undone" // 操作已撤销（普通）
+  | "ai_evolution_report"; // 月度进化报告（普通）
 
 // ============================================
 // 消息等级

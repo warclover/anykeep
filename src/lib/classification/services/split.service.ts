@@ -9,6 +9,7 @@
  */
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { v42Table, v42Rpc } from "@/lib/supabase/v42-types";
 import { operationLogService } from "./operation-log.service";
 import { generateFolderNameFromBookmarks } from "@/lib/utils/ai-generator";
 import { logger } from "@/lib/logger";
@@ -118,8 +119,8 @@ export class SplitService {
   async getSplitCandidates(userId: string): Promise<FolderWithProfile[]> {
     const supabase = await this.getSupabase();
 
-    // Query folders with low internal similarity and enough bookmarks
-    const { data, error } = await supabase
+    // Query folders with low internal similarity and enough bookmarks (V4.2 表)
+    const { data, error } = await v42Table(supabase)
       .from("folder_profiles")
       .select(
         `
@@ -150,22 +151,28 @@ export class SplitService {
       return [];
     }
 
-    return (data || []).map((item) => {
-      const folder = item.folders as unknown as {
+    // 类型断言
+    type ProfileRow = {
+      folder_id: number;
+      internal_similarity: number | null;
+      bookmark_count: number;
+      folders: {
         id: number;
         name: string;
         parent_id: number | null;
         user_id: string;
       };
-      return {
-        id: folder.id,
-        name: folder.name,
-        parent_id: folder.parent_id,
-        user_id: folder.user_id,
-        bookmark_count: item.bookmark_count,
-        internal_similarity: item.internal_similarity,
-      };
-    });
+    };
+    const typedData = (data || []) as ProfileRow[];
+
+    return typedData.map((item: ProfileRow) => ({
+      id: item.folders.id,
+      name: item.folders.name,
+      parent_id: item.folders.parent_id,
+      user_id: item.folders.user_id,
+      bookmark_count: item.bookmark_count,
+      internal_similarity: item.internal_similarity,
+    }));
   }
 
   /**
@@ -192,11 +199,18 @@ export class SplitService {
     }
 
     // 2. Get folder profile
-    const { data: profile } = await supabase
+    // Note: folder_profiles 是 V4.2 新增表
+    const { data: profileData } = await v42Table(supabase)
       .from("folder_profiles")
       .select("internal_similarity, bookmark_count")
       .eq("folder_id", folderId)
       .single();
+
+    // 类型断言
+    const profile = profileData as {
+      internal_similarity: number | null;
+      bookmark_count: number;
+    } | null;
 
     if (
       !profile ||
@@ -350,7 +364,8 @@ export class SplitService {
         }
 
         // Compute profile for new folder
-        await supabase.rpc("compute_folder_profile", {
+        // Note: compute_folder_profile 是 V4.2 新增 RPC
+        await v42Rpc(supabase).rpc("compute_folder_profile", {
           p_folder_id: newFolder.id,
         });
       }

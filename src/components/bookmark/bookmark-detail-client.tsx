@@ -37,6 +37,7 @@ import {
   VisionInsights,
   VisionAnalysisTrigger,
 } from "@/components/bookmark/vision-insights";
+import { RelatedBookmarks } from "@/components/bookmark/related-bookmarks";
 import { useVisionAnalysis } from "@/hooks/use-vision-analysis";
 import type { BookmarkVisionData } from "@/types/vision";
 import { hasVisionData } from "@/types/vision";
@@ -978,6 +979,13 @@ export function BookmarkDetailClient({
                   <Separator />
                 </>
               ) : null}
+
+              {/* Phase 2.2: 相关收藏推荐 */}
+              <RelatedBookmarks
+                bookmarkId={bookmark.id}
+                defaultExpanded={true}
+                limit={5}
+              />
 
               {/* 处理状态：仅当状态为 PROCESSING 且 AI 内容尚未生成时显示 */}
               {bookmark.status === "PROCESSING" &&

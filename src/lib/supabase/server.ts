@@ -57,3 +57,9 @@ export async function createServiceClient() {
     },
   );
 }
+
+/**
+ * 别名：createServerSupabaseClient
+ * 兼容 V4.2 服务代码
+ */
+export const createServerSupabaseClient = createClient;

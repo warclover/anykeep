@@ -9,6 +9,7 @@ import type {
   OrganizationAnalysis,
   BookmarkCluster,
   SuggestionInput,
+  ClusterProcessingStatus,
 } from "../types";
 import type {
   BookmarkRepository,
@@ -322,6 +323,102 @@ export class InboxOrganizerService implements IInboxOrganizerService {
     next.setDate(
       next.getDate() + INBOX_ORGANIZE_TRIGGERS.DAYS_SINCE_LAST_ORGANIZE,
     );
+    return next;
+  }
+
+  /**
+   * V4.2: 获取聚类处理状态
+   */
+  async getClusterProcessingStatus(
+    userId: string,
+  ): Promise<ClusterProcessingStatus> {
+    // 1. 获取待聚类书签数量
+    const { count: pendingClusterCount, error: pendingError } =
+      await this.supabase
+        .from("bookmarks")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .eq("pending_cluster", true)
+        .is("deleted_at", null);
+
+    if (pendingError) {
+      logger.warn(
+        { error: pendingError, userId },
+        "Failed to get pending cluster count",
+      );
+    }
+
+    // 2. 获取当前聚类数量（已分配 cluster_id 的书签）
+    const { data: clusterData, error: clusterError } = await this.supabase
+      .from("bookmarks")
+      .select("cluster_id")
+      .eq("user_id", userId)
+      .not("cluster_id", "is", null)
+      .is("deleted_at", null);
+
+    if (clusterError) {
+      logger.warn({ error: clusterError, userId }, "Failed to get cluster IDs");
+    }
+
+    // 统计不同的 cluster_id 数量
+    const uniqueClusterIds = new Set(
+      clusterData?.map((b) => b.cluster_id) ?? [],
+    );
+    const clusterCount = uniqueClusterIds.size;
+
+    // 3. 获取待确认的聚类建议
+    const { count: pendingSuggestionCount, error: suggestionError } =
+      await this.supabase
+        .from("classification_suggestions")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .eq("status", "pending")
+        .eq("suggested_action", "create_folder");
+
+    if (suggestionError) {
+      logger.warn(
+        { error: suggestionError, userId },
+        "Failed to get pending suggestion count",
+      );
+    }
+
+    // 4. 获取上次处理时间（从用户兴趣表或直接从书签表）
+    const { data: lastProcessed } = await this.supabase
+      .from("bookmarks")
+      .select("updated_at")
+      .eq("user_id", userId)
+      .not("cluster_id", "is", null)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .single();
+
+    // 5. 计算下次计划处理时间（每日凌晨 4:00）
+    const nextScheduledAt = this.getNextCronTime(4); // 4:00 AM
+
+    return {
+      pendingClusterCount: pendingClusterCount ?? 0,
+      clusterCount,
+      lastProcessedAt: lastProcessed?.updated_at
+        ? new Date(lastProcessed.updated_at)
+        : null,
+      nextScheduledAt,
+      hasPendingSuggestions: (pendingSuggestionCount ?? 0) > 0,
+    };
+  }
+
+  /**
+   * 获取下一个 cron 执行时间
+   */
+  private getNextCronTime(hour: number): Date {
+    const now = new Date();
+    const next = new Date(now);
+    next.setHours(hour, 0, 0, 0);
+
+    // 如果今天的时间已过，则设为明天
+    if (next <= now) {
+      next.setDate(next.getDate() + 1);
+    }
+
     return next;
   }
 }

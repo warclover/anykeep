@@ -277,6 +277,94 @@ export const MESSAGE_TEMPLATES: Record<MessageType, MessageTemplate> = {
     actionLabel: "重试",
     defaultPriority: 4,
   },
+
+  // ========== V4.2 新增：AI 文件夹进化 ==========
+  folder_auto_created: {
+    title: (data) => `✨ AI 创建了新文件夹「${data.folderName}」`,
+    content: (data) => {
+      const count = data.bookmarkCount as number;
+      const reason = data.reason as string;
+      let text = count ? `已将 ${count} 条相似收藏归类` : "";
+      if (reason) {
+        text += text ? `\n${reason}` : reason;
+      }
+      return text || undefined;
+    },
+    actionUrl: (data) => `/folders/${data.folderId}`,
+    actionLabel: "查看",
+    defaultPriority: 5,
+  },
+
+  folder_auto_split: {
+    title: (data) => `✂️ AI 分拆了文件夹「${data.originalName}」`,
+    content: (data) => {
+      const newFolders = data.newFolders as string[];
+      const reason = data.reason as string;
+      let text = newFolders?.length
+        ? `分拆为：${newFolders.join("、")}`
+        : "";
+      if (reason) {
+        text += text ? `\n${reason}` : reason;
+      }
+      return text || undefined;
+    },
+    actionUrl: () => "/folders",
+    actionLabel: "查看文件夹",
+    defaultPriority: 5,
+  },
+
+  folder_auto_merged: {
+    title: (data) => `🔗 AI 合并了 ${data.folderCount} 个文件夹`,
+    content: (data) => {
+      const targetName = data.targetName as string;
+      const reason = data.reason as string;
+      let text = targetName ? `合并到「${targetName}」` : "";
+      if (reason) {
+        text += text ? `\n${reason}` : reason;
+      }
+      return text || undefined;
+    },
+    actionUrl: (data) => `/folders/${data.targetFolderId}`,
+    actionLabel: "查看",
+    defaultPriority: 5,
+  },
+
+  folder_auto_renamed: {
+    title: () => `✏️ AI 重命名了文件夹`,
+    content: (data) => {
+      const oldName = data.oldName as string;
+      const newName = data.newName as string;
+      const reason = data.reason as string;
+      let text = `「${oldName}」→「${newName}」`;
+      if (reason) {
+        text += `\n${reason}`;
+      }
+      return text;
+    },
+    actionUrl: (data) => `/folders/${data.folderId}`,
+    actionLabel: "查看",
+    defaultPriority: 5,
+  },
+
+  folder_operation_undone: {
+    title: (data) => `↩️ 已撤销：${data.actionLabel}`,
+    content: (data) => (data.detail as string) || "操作已成功撤销",
+    actionUrl: () => "/settings/ai-history",
+    actionLabel: "查看历史",
+    defaultPriority: 4,
+  },
+
+  ai_evolution_report: {
+    title: (data) => `📊 ${data.month} 月 AI 进化报告`,
+    content: (data) => {
+      const classifiedCount = data.classifiedCount as number;
+      const createdFolders = data.createdFolders as number;
+      return `本月整理了 ${classifiedCount} 条收藏${createdFolders ? `，创建了 ${createdFolders} 个新文件夹` : ""}`;
+    },
+    actionUrl: () => "/settings/ai-reports",
+    actionLabel: "查看报告",
+    defaultPriority: 5,
+  },
 };
 
 // ============================================

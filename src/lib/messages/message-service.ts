@@ -546,4 +546,114 @@ export class MessageService {
       data: { response },
     });
   }
+
+  // ============================================
+  // 快捷方法 - V4.2 AI 文件夹进化
+  // ============================================
+
+  /**
+   * AI 自动创建文件夹通知
+   */
+  static async notifyFolderAutoCreated(
+    userId: string,
+    folderId: number,
+    folderName: string,
+    bookmarkCount: number,
+    reason?: string,
+    snapshotId?: string,
+  ): Promise<MessageResult> {
+    return this.create({
+      userId,
+      type: "folder_auto_created",
+      data: { folderId, folderName, bookmarkCount, reason, snapshotId },
+      relatedFolderId: folderId,
+    });
+  }
+
+  /**
+   * AI 自动分拆文件夹通知
+   */
+  static async notifyFolderAutoSplit(
+    userId: string,
+    originalName: string,
+    newFolders: string[],
+    reason?: string,
+    snapshotId?: string,
+  ): Promise<MessageResult> {
+    return this.create({
+      userId,
+      type: "folder_auto_split",
+      data: { originalName, newFolders, reason, snapshotId },
+    });
+  }
+
+  /**
+   * AI 自动合并文件夹通知
+   */
+  static async notifyFolderAutoMerged(
+    userId: string,
+    targetFolderId: number,
+    targetName: string,
+    folderCount: number,
+    reason?: string,
+    snapshotId?: string,
+  ): Promise<MessageResult> {
+    return this.create({
+      userId,
+      type: "folder_auto_merged",
+      data: { targetFolderId, targetName, folderCount, reason, snapshotId },
+      relatedFolderId: targetFolderId,
+    });
+  }
+
+  /**
+   * AI 自动重命名文件夹通知
+   */
+  static async notifyFolderAutoRenamed(
+    userId: string,
+    folderId: number,
+    oldName: string,
+    newName: string,
+    reason?: string,
+    snapshotId?: string,
+  ): Promise<MessageResult> {
+    return this.create({
+      userId,
+      type: "folder_auto_renamed",
+      data: { folderId, oldName, newName, reason, snapshotId },
+      relatedFolderId: folderId,
+    });
+  }
+
+  /**
+   * 操作已撤销通知
+   */
+  static async notifyOperationUndone(
+    userId: string,
+    actionLabel: string,
+    detail?: string,
+  ): Promise<MessageResult> {
+    return this.create({
+      userId,
+      type: "folder_operation_undone",
+      data: { actionLabel, detail },
+    });
+  }
+
+  /**
+   * AI 月度进化报告
+   */
+  static async notifyEvolutionReport(
+    userId: string,
+    month: string,
+    classifiedCount: number,
+    createdFolders: number,
+    reportUrl?: string,
+  ): Promise<MessageResult> {
+    return this.create({
+      userId,
+      type: "ai_evolution_report",
+      data: { month, classifiedCount, createdFolders, reportUrl },
+    });
+  }
 }

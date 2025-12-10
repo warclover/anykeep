@@ -32,6 +32,7 @@ import {
 import { InterestSettingsCard } from "./interest-settings-card";
 import { ProfileSettingsCard } from "./profile-settings-card";
 import { ClassificationSettingsCard } from "./classification-settings-card";
+import { AIOperationHistoryCard } from "./ai-operation-history-card";
 import { NotificationSettingsCard } from "@/components/messages";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -276,6 +277,9 @@ export function SettingsPageClient({
 
             {/* 智能分类设置 - V3.0 */}
             <ClassificationSettingsCard />
+
+            {/* AI 操作历史 - V4.2 */}
+            <AIOperationHistoryCard />
 
             {/* 扩展画像设置 */}
             <ProfileSettingsCard />

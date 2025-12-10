@@ -10,6 +10,7 @@
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
+import { v42Table, v42Rpc } from "@/lib/supabase/v42-types";
 
 // ============================================
 // Type Definitions
@@ -121,7 +122,8 @@ export class CostMonitorService {
         request.outputTokens,
       );
 
-      const { data, error } = await supabase.rpc("record_llm_usage", {
+      // V4.2 RPC
+      const { data, error } = await v42Rpc(supabase).rpc("record_llm_usage", {
         p_user_id: request.userId,
         p_operation: request.operation,
         p_model: request.model,
@@ -201,19 +203,24 @@ export class CostMonitorService {
     const targetDate = date || new Date();
     const dateStr = targetDate.toISOString().split("T")[0];
 
-    const { data, error } = await supabase.rpc("get_user_daily_llm_cost", {
+    // V4.2 RPC
+    const { data, error } = await v42Rpc(supabase).rpc("get_user_daily_llm_cost", {
       p_user_id: userId,
       p_date: dateStr,
     });
 
-    if (error || !data || data.length === 0) {
+    // 类型断言
+    type DailyCostRow = { total_calls?: number; total_tokens?: number; total_cost_cents?: number };
+    const typedData = data as DailyCostRow[] | null;
+
+    if (error || !typedData || typedData.length === 0) {
       return { totalCalls: 0, totalTokens: 0, totalCostCents: 0 };
     }
 
     return {
-      totalCalls: data[0].total_calls || 0,
-      totalTokens: data[0].total_tokens || 0,
-      totalCostCents: data[0].total_cost_cents || 0,
+      totalCalls: typedData[0].total_calls || 0,
+      totalTokens: typedData[0].total_tokens || 0,
+      totalCostCents: typedData[0].total_cost_cents || 0,
     };
   }
 
@@ -224,14 +231,27 @@ export class CostMonitorService {
     const supabase = await this.getSupabase();
     const targetMonth = month || new Date().toISOString().slice(0, 7);
 
-    const { data, error } = await supabase
+    // V4.2 表
+    const { data, error } = await v42Table(supabase)
       .from("llm_usage_monthly")
       .select("*")
       .eq("user_id", userId)
       .eq("month", targetMonth)
       .single();
 
-    if (error || !data) {
+    // 类型断言
+    type MonthlyUsageRow = {
+      call_count?: number;
+      total_tokens?: number;
+      total_cost_cents?: number;
+      classification_calls?: number;
+      naming_calls?: number;
+      analysis_calls?: number;
+      chat_calls?: number;
+    };
+    const typedData = data as MonthlyUsageRow | null;
+
+    if (error || !typedData) {
       return {
         totalCalls: 0,
         totalTokens: 0,
@@ -242,22 +262,22 @@ export class CostMonitorService {
     }
 
     return {
-      totalCalls: data.call_count,
-      totalTokens: data.total_tokens,
-      totalCostCents: data.total_cost_cents,
+      totalCalls: typedData.call_count || 0,
+      totalTokens: typedData.total_tokens || 0,
+      totalCostCents: typedData.total_cost_cents || 0,
       byOperation: {
         classification: {
-          calls: data.classification_calls,
+          calls: typedData.classification_calls || 0,
           tokens: 0,
           costCents: 0,
         },
-        folder_naming: { calls: data.naming_calls, tokens: 0, costCents: 0 },
+        folder_naming: { calls: typedData.naming_calls || 0, tokens: 0, costCents: 0 },
         content_analysis: {
-          calls: data.analysis_calls,
+          calls: typedData.analysis_calls || 0,
           tokens: 0,
           costCents: 0,
         },
-        chat: { calls: data.chat_calls, tokens: 0, costCents: 0 },
+        chat: { calls: typedData.chat_calls || 0, tokens: 0, costCents: 0 },
       },
       byModel: {},
     };
@@ -273,14 +293,25 @@ export class CostMonitorService {
   ): Promise<UsageSummary> {
     const supabase = await this.getSupabase();
 
-    const { data, error } = await supabase
+    // V4.2 表
+    const { data, error } = await v42Table(supabase)
       .from("llm_usage_log")
       .select("operation, model, input_tokens, output_tokens, cost_cents")
       .eq("user_id", userId)
       .gte("created_at", startDate.toISOString())
       .lte("created_at", endDate.toISOString());
 
-    if (error || !data) {
+    // 类型断言
+    type UsageLogRow = {
+      operation: string;
+      model: string;
+      input_tokens: number;
+      output_tokens: number;
+      cost_cents: number;
+    };
+    const typedData = data as UsageLogRow[] | null;
+
+    if (error || !typedData) {
       return {
         totalCalls: 0,
         totalTokens: 0,
@@ -302,7 +333,7 @@ export class CostMonitorService {
     let totalTokens = 0;
     let totalCostCents = 0;
 
-    for (const row of data) {
+    for (const row of typedData) {
       const tokens = row.input_tokens + row.output_tokens;
       totalTokens += tokens;
       totalCostCents += row.cost_cents;
@@ -325,7 +356,7 @@ export class CostMonitorService {
     }
 
     return {
-      totalCalls: data.length,
+      totalCalls: typedData.length,
       totalTokens,
       totalCostCents,
       byOperation,

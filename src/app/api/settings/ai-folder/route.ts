@@ -7,6 +7,7 @@
 import type { NextRequest } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { v42Rpc } from "@/lib/supabase/v42-types";
 import {
   successResponse,
   handleValidationError,
@@ -45,8 +46,8 @@ export async function GET() {
       return unauthorizedError("请先登录");
     }
 
-    // Get settings using RPC function (with defaults)
-    const { data, error } = await supabase.rpc("get_ai_folder_settings", {
+    // Get settings using RPC function (with defaults) - V4.2 RPC
+    const { data, error } = await v42Rpc(supabase).rpc("get_ai_folder_settings", {
       p_user_id: user.id,
     });
 
@@ -94,8 +95,8 @@ export async function PUT(request: NextRequest) {
       return handleValidationError(validation.error);
     }
 
-    // Update settings using RPC function
-    const { data, error } = await supabase.rpc("update_ai_folder_settings", {
+    // Update settings using RPC function - V4.2 RPC
+    const { data, error } = await v42Rpc(supabase).rpc("update_ai_folder_settings", {
       p_user_id: user.id,
       p_settings: validation.data,
     });

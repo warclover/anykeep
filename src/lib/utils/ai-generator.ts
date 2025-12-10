@@ -1489,3 +1489,177 @@ function extractKeyword(title: string): string {
 
   return "";
 }
+
+// ============================================
+// V4.2 AI 文件夹命名生成
+// ============================================
+
+/**
+ * 从聚类书签生成文件夹名称的请求参数
+ */
+export interface GenerateFolderNameRequest {
+  titles: string[]; // 聚类中的书签标题
+  tags: string[]; // 所有书签的标签（去重后）
+  summaries: string[]; // 书签摘要
+  count: number; // 书签数量
+}
+
+/**
+ * 从聚类书签生成文件夹名称的返回结果
+ */
+export interface GenerateFolderNameResult {
+  name: string; // 生成的文件夹名称
+  reason: string; // 命名理由
+}
+
+/**
+ * 从聚类的书签中生成语义化的文件夹名称
+ * 用于 V4.2 智能分拣功能，当系统检测到缓存池中有相似书签时自动生成文件夹建议
+ *
+ * @param request - 包含聚类书签的标题、标签和摘要信息
+ * @returns 文件夹名称和命名理由
+ */
+export async function generateFolderNameFromBookmarks(
+  request: GenerateFolderNameRequest,
+): Promise<GenerateFolderNameResult> {
+  const { titles, tags, summaries, count } = request;
+
+  // 构建上下文信息
+  const titlesContext = titles.slice(0, 10).join("\n- ");
+  const tagsContext = tags.slice(0, 20).join(", ");
+  const summariesContext = summaries
+    .slice(0, 5)
+    .map((s) => s.slice(0, 200))
+    .join("\n---\n");
+
+  const prompt = `你是一个智能收藏夹命名助手。根据以下聚类的书签内容，为这组书签生成一个简洁且有语义的文件夹名称。
+
+## 书签信息
+
+**数量**: ${count} 个书签
+
+**标题列表**:
+- ${titlesContext}
+
+**标签**:
+${tagsContext}
+
+**部分摘要**:
+${summariesContext}
+
+## 要求
+
+1. 名称要简洁（2-6个汉字或等效英文，最多15个字符）
+2. 名称要能概括这组书签的共同主题或领域
+3. 避免使用过于宽泛的词（如"技术"、"文章"、"学习"）
+4. 优先使用领域特定的术语
+5. 避免使用标点符号
+
+## 输出格式
+
+请以 JSON 格式返回：
+{
+  "name": "文件夹名称",
+  "reason": "命名理由（简短说明为什么选择这个名称）"
+}
+
+只返回 JSON，不要其他内容。`;
+
+  try {
+    const response = await generateWithAI(prompt, {
+      maxTokens: 150,
+      temperature: 0.3,
+    });
+
+    // 解析 JSON 响应
+    const cleaned = response.replace(/```json\n?|```\n?/g, "").trim();
+    const parsed = JSON.parse(cleaned);
+
+    // 验证返回结构
+    if (!parsed.name || typeof parsed.name !== "string") {
+      throw new Error("Invalid response: missing name");
+    }
+
+    // 清理名称（移除特殊字符，限制长度）
+    let name = parsed.name.trim().replace(/[^\w\u4e00-\u9fff\s-]/g, "");
+    if (name.length > 15) {
+      name = name.slice(0, 15);
+    }
+
+    return {
+      name: name || "未分类",
+      reason: parsed.reason || "基于内容相似性自动生成",
+    };
+  } catch (error) {
+    logger.error(
+      { error: error instanceof Error ? error.message : String(error) },
+      "generateFolderNameFromBookmarks: Failed to generate folder name",
+    );
+
+    // 降级策略：尝试从标签中提取主题
+    const fallbackName = extractDominantTopic(titles, tags);
+
+    return {
+      name: fallbackName || "待整理",
+      reason: "AI 生成失败，使用关键词提取",
+    };
+  }
+}
+
+/**
+ * 从标题和标签中提取主导主题（降级策略）
+ */
+function extractDominantTopic(titles: string[], tags: string[]): string {
+  // 统计标签频率
+  const tagCount = new Map<string, number>();
+  for (const tag of tags) {
+    const normalized = tag.toLowerCase().trim();
+    if (normalized.length >= 2 && normalized.length <= 10) {
+      tagCount.set(normalized, (tagCount.get(normalized) || 0) + 1);
+    }
+  }
+
+  // 找出最高频标签
+  let maxTag = "";
+  let maxCount = 0;
+  for (const [tag, count] of tagCount) {
+    if (count > maxCount) {
+      maxCount = count;
+      maxTag = tag;
+    }
+  }
+
+  if (maxTag) {
+    return maxTag;
+  }
+
+  // 从标题中提取常见关键词
+  const titleText = titles.join(" ");
+  const commonKeywords = [
+    "前端",
+    "后端",
+    "React",
+    "Vue",
+    "Node",
+    "Python",
+    "AI",
+    "机器学习",
+    "深度学习",
+    "产品",
+    "设计",
+    "运营",
+    "营销",
+    "投资",
+    "创业",
+    "效率",
+    "工具",
+  ];
+
+  for (const keyword of commonKeywords) {
+    if (titleText.includes(keyword)) {
+      return keyword;
+    }
+  }
+
+  return "";
+}

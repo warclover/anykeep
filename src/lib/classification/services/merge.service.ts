@@ -9,6 +9,7 @@
  */
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { v42Table, v42Rpc } from "@/lib/supabase/v42-types";
 import { operationLogService } from "./operation-log.service";
 import { logger } from "@/lib/logger";
 
@@ -108,8 +109,8 @@ export class MergeService {
   async getMergeCandidates(userId: string): Promise<MergeCandidate[]> {
     const supabase = await this.getSupabase();
 
-    // 1. Get all folders with profiles
-    const { data: profiles, error } = await supabase
+    // 1. Get all folders with profiles (V4.2 表)
+    const { data: profiles, error } = await v42Table(supabase)
       .from("folder_profiles")
       .select(
         `
@@ -136,20 +137,28 @@ export class MergeService {
       return [];
     }
 
-    // 2. Convert to FolderProfile format
-    const folderProfiles: FolderProfile[] = profiles.map((p) => {
-      const folder = p.folders as unknown as {
+    // 2. Convert to FolderProfile format - 类型断言
+    type ProfileRow = {
+      folder_id: number;
+      profile_embedding: number[] | null;
+      common_tags: string[] | null;
+      bookmark_count: number;
+      folders: {
         id: number;
         name: string;
         parent_id: number | null;
       };
+    };
+    const typedProfiles = profiles as ProfileRow[];
+
+    const folderProfiles: FolderProfile[] = typedProfiles.map((p: ProfileRow) => {
       return {
-        folderId: folder.id,
-        name: folder.name,
-        parentId: folder.parent_id,
+        folderId: p.folders.id,
+        name: p.folders.name,
+        parentId: p.folders.parent_id,
         bookmarkCount: p.bookmark_count,
-        embedding: p.profile_embedding as number[] | null,
-        commonTags: (p.common_tags as string[]) || [],
+        embedding: p.profile_embedding,
+        commonTags: p.common_tags || [],
       };
     });
 
@@ -243,15 +252,28 @@ export class MergeService {
       return null;
     }
 
+    // 类型断言
+    type FolderWithProfile = {
+      id: number;
+      name: string;
+      parent_id: number | null;
+      folder_profiles: Array<{
+        bookmark_count: number;
+        profile_embedding: number[] | null;
+        common_tags: string[] | null;
+      }> | null;
+    };
+    const typedFolders = folders as unknown as FolderWithProfile[];
+
     // Calculate metrics
-    const folderProfiles = folders.map((f) => {
+    const folderProfiles = typedFolders.map((f: FolderWithProfile) => {
       const profile = f.folder_profiles?.[0];
       return {
         id: f.id,
         name: f.name,
         bookmarkCount: profile?.bookmark_count || 0,
-        embedding: profile?.profile_embedding as number[] | null,
-        commonTags: (profile?.common_tags as string[]) || [],
+        embedding: profile?.profile_embedding ?? null,
+        commonTags: profile?.common_tags || [],
       };
     });
 
@@ -395,8 +417,8 @@ export class MergeService {
         );
       }
 
-      // 6. Recompute target folder profile
-      await supabase.rpc("compute_folder_profile", {
+      // 6. Recompute target folder profile (V4.2 RPC)
+      await v42Rpc(supabase).rpc("compute_folder_profile", {
         p_folder_id: targetFolderId,
       });
 
@@ -557,7 +579,8 @@ export class MergeService {
   ): Promise<{ canMerge: boolean; similarity: number; tagOverlap: number }> {
     const supabase = await this.getSupabase();
 
-    const { data: profiles } = await supabase
+    // V4.2 表
+    const { data: profiles } = await v42Table(supabase)
       .from("folder_profiles")
       .select("folder_id, profile_embedding, common_tags")
       .in("folder_id", [folderId1, folderId2]);
@@ -566,8 +589,16 @@ export class MergeService {
       return { canMerge: false, similarity: 0, tagOverlap: 0 };
     }
 
-    const p1 = profiles.find((p) => p.folder_id === folderId1);
-    const p2 = profiles.find((p) => p.folder_id === folderId2);
+    // 类型断言
+    type FolderProfileRow = {
+      folder_id: number;
+      profile_embedding: number[] | null;
+      common_tags: string[] | null;
+    };
+    const typedProfiles = profiles as FolderProfileRow[];
+
+    const p1 = typedProfiles.find((p: FolderProfileRow) => p.folder_id === folderId1);
+    const p2 = typedProfiles.find((p: FolderProfileRow) => p.folder_id === folderId2);
 
     if (!p1 || !p2) {
       return { canMerge: false, similarity: 0, tagOverlap: 0 };
@@ -575,15 +606,12 @@ export class MergeService {
 
     const similarity =
       p1.profile_embedding && p2.profile_embedding
-        ? this.cosineSimilarity(
-            p1.profile_embedding as number[],
-            p2.profile_embedding as number[],
-          )
+        ? this.cosineSimilarity(p1.profile_embedding, p2.profile_embedding)
         : 0;
 
     const tagOverlap = this.calculateTagOverlap(
-      (p1.common_tags as string[]) || [],
-      (p2.common_tags as string[]) || [],
+      p1.common_tags || [],
+      p2.common_tags || [],
     );
 
     return {

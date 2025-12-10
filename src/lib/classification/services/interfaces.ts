@@ -16,6 +16,7 @@ import type {
   BookmarkAnalysisResult,
   UserStage,
   InterestKeyword,
+  ClusterProcessingStatus,
 } from "../types";
 
 /**
@@ -72,6 +73,11 @@ export interface IInboxOrganizerService {
    * Reject organization suggestion
    */
   rejectSuggestion(userId: string, suggestionId: number): Promise<void>;
+
+  /**
+   * V4.2: Get cluster processing status
+   */
+  getClusterProcessingStatus(userId: string): Promise<ClusterProcessingStatus>;
 }
 
 /**

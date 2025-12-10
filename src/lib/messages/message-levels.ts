@@ -90,6 +90,13 @@ export const MESSAGE_TYPE_LEVELS: Record<MessageType, MessageLevel> = {
   system_update: "normal",
   feedback_response: "normal",
   ai_processing_failed: "normal",
+  // V4.2 新增：AI 文件夹进化相关消息
+  folder_auto_created: "normal",
+  folder_auto_split: "normal",
+  folder_auto_merged: "normal",
+  folder_auto_renamed: "normal",
+  folder_operation_undone: "normal",
+  ai_evolution_report: "normal",
 
   // 重要级别 (L3) - Modal + Toast + 记录
   import_failed: "important",

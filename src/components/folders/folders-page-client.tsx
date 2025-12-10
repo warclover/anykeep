@@ -29,6 +29,7 @@ import {
   Heart,
   Gamepad2,
   MoreHorizontal,
+  Lock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -52,6 +53,7 @@ type FolderWithStats = FolderType & {
   bookmark_count: number;
   today_count: number;
   is_archived?: boolean;
+  is_locked?: boolean;
 };
 
 interface FoldersPageClientProps {
@@ -437,6 +439,11 @@ export function FoldersPageClient({
                       >
                         已停用
                       </Badge>
+                    )}
+                    {folder.is_locked && (
+                      <span title="AI 管理已锁定">
+                        <Lock className="size-3 text-amber-600 flex-shrink-0" />
+                      </span>
                     )}
                   </div>
                 </div>

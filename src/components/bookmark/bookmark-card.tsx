@@ -21,6 +21,7 @@ import {
   Zap,
   Lock,
   Star,
+  Sparkles,
 } from "lucide-react";
 import {
   Card,
@@ -37,7 +38,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import type { Bookmark, CustomUsageTag } from "@/types/supabase";
+import type { BookmarkV42Fields } from "@/lib/supabase/v42-types";
 import { cn } from "@/lib/utils";
 import { formatRelativeTime } from "@/lib/utils/date-utils";
 import {
@@ -61,7 +68,7 @@ import { getDisplaySummary } from "@/lib/classification/types/ai-summary";
 type ViewVariant = "card" | "list" | "compact";
 
 interface BookmarkCardProps {
-  bookmark: Bookmark & {
+  bookmark: Bookmark & Partial<BookmarkV42Fields> & {
     folders?: { name: string } | null;
   };
   onEdit?: (id: number) => void;
@@ -303,6 +310,20 @@ export function BookmarkCard({
             >
               {bookmark.title}
             </h3>
+            {/* V12.0: AI 整理中状态指示器（compact视图） */}
+            {bookmark.pending_cluster && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center gap-1 text-xs text-purple-600 dark:text-purple-400 cursor-help flex-shrink-0">
+                    <Sparkles className="h-3 w-3 animate-pulse" />
+                    <span className="hidden sm:inline">AI整理中</span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-[200px]">
+                  <p className="text-xs">AI 正在观察相似内容，稍后会智能建议归类文件夹</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
             {/* V6.0新增：评级显示（Compact视图） */}
             <BookmarkRatingDisplay
               rating={bookmark.rating}
@@ -454,6 +475,20 @@ export function BookmarkCard({
                   variant="compact"
                   className="flex-shrink-0"
                 />
+                {/* V12.0: AI 整理中状态指示器（list视图） */}
+                {bookmark.pending_cluster && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex items-center gap-1 text-xs text-purple-600 dark:text-purple-400 cursor-help flex-shrink-0">
+                        <Sparkles className="h-3 w-3 animate-pulse" />
+                        <span>AI整理中</span>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-[200px]">
+                      <p className="text-xs">AI 正在观察相似内容，稍后会智能建议归类文件夹</p>
+                    </TooltipContent>
+                  </Tooltip>
+                )}
                 {/* V9.0: AI内容类型徽章 */}
                 {bookmark.ai_content_type && (
                   <ContentTypeBadge
@@ -845,6 +880,21 @@ export function BookmarkCard({
           )}
           {bookmark.status === "FAILED" && (
             <div className="mb-2 text-xs text-red-500">处理失败</div>
+          )}
+
+          {/* V12.0: AI 整理中状态（缓存池等待聚类） */}
+          {bookmark.pending_cluster && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="mb-2 flex items-center gap-1.5 text-xs text-purple-600 dark:text-purple-400 cursor-help">
+                  <Sparkles className="h-3.5 w-3.5 animate-pulse" />
+                  <span>AI 整理中</span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-[200px]">
+                <p className="text-xs">AI 正在观察相似内容，稍后会智能建议归类文件夹</p>
+              </TooltipContent>
+            </Tooltip>
           )}
 
           {/* P1.2: 次要信息弱化到底部一行 */}

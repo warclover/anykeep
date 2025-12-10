@@ -24,6 +24,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { OrganizationSuggestionCard } from "./organization-suggestion-card";
+import { ClusterProcessingStatusCard } from "./cluster-processing-status";
 import type { OrganizationAnalysis } from "@/lib/classification";
 
 interface OrganizationSuggestionsPanelProps {
@@ -276,6 +277,11 @@ export function OrganizationSuggestionsPanel({
       </CardHeader>
 
       <CardContent className="space-y-4">
+        {/* V4.2: 聚类处理状态 */}
+        {analysis.clusterStatus && (
+          <ClusterProcessingStatusCard status={analysis.clusterStatus} />
+        )}
+
         {/* 错误提示 */}
         {error && (
           <Alert variant="destructive">

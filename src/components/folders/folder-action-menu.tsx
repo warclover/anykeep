@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   MoreVertical,
@@ -25,6 +25,8 @@ import {
   Heart,
   Gamepad2,
   MoreHorizontal,
+  Lock,
+  Unlock,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -107,6 +109,8 @@ export function FolderActionMenu({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
   const [isMoving, setIsMoving] = useState(false);
+  const [isLocked, setIsLocked] = useState(false);
+  const [isLocking, setIsLocking] = useState(false);
 
   // 系统文件夹限制
   const isSystemFolder = folder.is_system;
@@ -249,6 +253,61 @@ export function FolderActionMenu({
       toast.error(message);
     } finally {
       setIsArchiving(false);
+    }
+  };
+
+  // 获取锁定状态
+  useEffect(() => {
+    const fetchLockStatus = async () => {
+      try {
+        const res = await fetch(`/api/folders/${folder.id}/lock`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success) {
+            setIsLocked(data.data.isLocked);
+          }
+        }
+      } catch {
+        // 静默处理，默认为未锁定
+      }
+    };
+
+    if (!isSystemFolder) {
+      fetchLockStatus();
+    }
+  }, [folder.id, isSystemFolder]);
+
+  // 处理锁定/解锁
+  const handleToggleLock = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsLocking(true);
+
+    try {
+      const res = await fetchWithAbort(`/api/folders/${folder.id}/lock`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ locked: !isLocked }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error?.message || "操作失败");
+      }
+
+      setIsLocked(!isLocked);
+      toast.success(data.data.message);
+      onActionComplete?.();
+    } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") {
+        return;
+      }
+      const message = err instanceof Error ? err.message : "操作失败";
+      toast.error(message);
+    } finally {
+      setIsLocking(false);
     }
   };
 
@@ -412,6 +471,26 @@ export function FolderActionMenu({
               <Archive className="size-4 mr-2" />
             )}
             {isArchived ? "启用" : "停用"}
+            {isSystemFolder && (
+              <span className="ml-auto text-xs text-muted-foreground">
+                系统
+              </span>
+            )}
+          </DropdownMenuItem>
+
+          {/* AI 锁定/解锁 */}
+          <DropdownMenuItem
+            onClick={handleToggleLock}
+            disabled={isSystemFolder || isLocking}
+          >
+            {isLocking ? (
+              <Loader2 className="size-4 mr-2 animate-spin" />
+            ) : isLocked ? (
+              <Unlock className="size-4 mr-2" />
+            ) : (
+              <Lock className="size-4 mr-2" />
+            )}
+            {isLocked ? "解锁 AI 管理" : "锁定 AI 管理"}
             {isSystemFolder && (
               <span className="ml-auto text-xs text-muted-foreground">
                 系统

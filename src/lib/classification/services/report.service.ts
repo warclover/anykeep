@@ -9,6 +9,7 @@
  */
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { v42Table } from "@/lib/supabase/v42-types";
 import { operationLogService } from "./operation-log.service";
 import { logger } from "@/lib/logger";
 
@@ -129,8 +130,8 @@ export class ReportService {
         suggestions.length,
       );
 
-      // 6. Save report
-      const { data: report, error } = await supabase
+      // 6. Save report (V4.2 表)
+      const { data: report, error } = await v42Table(supabase)
         .from("evolution_reports")
         .upsert(
           {
@@ -193,7 +194,8 @@ export class ReportService {
   ): Promise<MonthlyReport | null> {
     const supabase = await this.getSupabase();
 
-    const { data, error } = await supabase
+    // V4.2 表
+    const { data, error } = await v42Table(supabase)
       .from("evolution_reports")
       .select("*")
       .eq("user_id", userId)
@@ -213,7 +215,8 @@ export class ReportService {
   async getReports(userId: string, limit = 12): Promise<MonthlyReport[]> {
     const supabase = await this.getSupabase();
 
-    const { data, error } = await supabase
+    // V4.2 表
+    const { data, error } = await v42Table(supabase)
       .from("evolution_reports")
       .select("*")
       .eq("user_id", userId)
@@ -224,7 +227,8 @@ export class ReportService {
       return [];
     }
 
-    return data.map((r) => this.mapReportToInterface(r));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (data as any[]).map((r: Record<string, unknown>) => this.mapReportToInterface(r));
   }
 
   /**
@@ -233,7 +237,8 @@ export class ReportService {
   async markReportViewed(userId: string, reportId: number): Promise<void> {
     const supabase = await this.getSupabase();
 
-    await supabase
+    // V4.2 表
+    await v42Table(supabase)
       .from("evolution_reports")
       .update({ viewed_at: new Date().toISOString() })
       .eq("id", reportId)
@@ -262,18 +267,21 @@ export class ReportService {
       .gte("created_at", startDate.toISOString())
       .lte("created_at", endDate.toISOString());
 
-    // Get manually adjusted (from classification_metrics)
-    const { data: metrics } = await supabase
+    // Get manually adjusted (from classification_metrics, V4.2 表)
+    const { data: metrics } = await v42Table(supabase)
       .from("classification_metrics")
       .select("user_feedback")
       .eq("user_id", userId)
       .gte("created_at", startDate.toISOString())
       .lte("created_at", endDate.toISOString());
 
-    const manual =
-      metrics?.filter(
-        (m) => m.user_feedback === "modify" || m.user_feedback === "reject",
-      ).length || 0;
+    // 类型断言
+    type MetricRow = { user_feedback: string | null };
+    const typedMetrics = (metrics || []) as MetricRow[];
+
+    const manual = typedMetrics.filter(
+      (m: MetricRow) => m.user_feedback === "modify" || m.user_feedback === "reject",
+    ).length;
     const auto = (total || 0) - manual;
 
     return {
@@ -301,13 +309,18 @@ export class ReportService {
     const startDate = new Date(year, monthNum - 1, 1);
     const endDate = new Date(year, monthNum, 0, 23, 59, 59);
 
-    const { data } = await supabase
+    // V4.2 表
+    const { data } = await v42Table(supabase)
       .from("operation_snapshots")
       .select("action")
       .eq("user_id", userId)
       .eq("is_undone", false)
       .gte("created_at", startDate.toISOString())
       .lte("created_at", endDate.toISOString());
+
+    // 类型断言
+    type OpRow = { action: string };
+    const typedOps = (data || []) as OpRow[];
 
     const counts = {
       created: 0,
@@ -316,7 +329,7 @@ export class ReportService {
       renamed: 0,
     };
 
-    for (const op of data || []) {
+    for (const op of typedOps) {
       switch (op.action) {
         case "create":
           counts.created++;
@@ -349,7 +362,8 @@ export class ReportService {
     const startDate = new Date(year, monthNum - 1, 1);
     const endDate = new Date(year, monthNum, 0, 23, 59, 59);
 
-    const { data } = await supabase
+    // V4.2 表
+    const { data } = await v42Table(supabase)
       .from("classification_metrics")
       .select("confidence, user_feedback")
       .eq("user_id", userId)
@@ -360,11 +374,15 @@ export class ReportService {
       return { avgConfidence: null, acceptanceRate: null };
     }
 
-    const avgConfidence =
-      data.reduce((sum, d) => sum + d.confidence, 0) / data.length;
+    // 类型断言
+    type QualityRow = { confidence: number; user_feedback: string | null };
+    const typedData = data as QualityRow[];
 
-    const withFeedback = data.filter((d) => d.user_feedback !== null);
-    const accepted = withFeedback.filter((d) => d.user_feedback === "accept");
+    const avgConfidence =
+      typedData.reduce((sum: number, d: QualityRow) => sum + d.confidence, 0) / typedData.length;
+
+    const withFeedback = typedData.filter((d: QualityRow) => d.user_feedback !== null);
+    const accepted = withFeedback.filter((d: QualityRow) => d.user_feedback === "accept");
     const acceptanceRate =
       withFeedback.length > 0 ? accepted.length / withFeedback.length : null;
 
@@ -384,8 +402,8 @@ export class ReportService {
     const supabase = await this.getSupabase();
     const suggestions: ReportSuggestion[] = [];
 
-    // 1. Check for folders with low internal similarity (split candidates)
-    const { data: splitCandidates } = await supabase
+    // 1. Check for folders with low internal similarity (split candidates, V4.2 表)
+    const { data: splitCandidates } = await v42Table(supabase)
       .from("folder_profiles")
       .select(
         `

@@ -9,6 +9,7 @@ import { createSimpleClassificationService } from "./services/simple-classificat
 import { CLASSIFICATION_THRESHOLDS, FOLDER_LIMITS } from "./constants";
 import { logger } from "@/lib/logger";
 import { MessageService } from "@/lib/messages/server";
+import { v42Table } from "@/lib/supabase/v42-types";
 import type { ClassificationResult, BookmarkInput } from "./types";
 import type {
   ClassificationStatus,
@@ -177,10 +178,18 @@ export async function classifyBookmarkV2(
     if (result.action === "classify" && result.folderId) {
       // High confidence - auto-classify
       if (result.confidence >= AUTO_CLASSIFY_THRESHOLD) {
-        // Move bookmark to classified folder
-        const { error: moveError } = await supabase
+        // Move bookmark to classified folder and clear pending cluster status
+        // Note: pending_cluster, pending_since, cluster_id, cluster_confidence 是 V4.2 新增字段
+        const { error: moveError } = await v42Table(supabase)
           .from("bookmarks")
-          .update({ folder_id: result.folderId })
+          .update({
+            folder_id: result.folderId,
+            // V4.2: 清除待聚类状态
+            pending_cluster: false,
+            pending_since: null,
+            cluster_id: null,
+            cluster_confidence: null,
+          })
           .eq("id", bookmarkId)
           .eq("user_id", userId);
 
@@ -396,10 +405,18 @@ export async function classifyBookmarkV2(
           .single();
 
         if (!createError && newFolder) {
-          // Move bookmark to new folder
-          const { error: moveError } = await supabase
+          // Move bookmark to new folder and clear pending cluster status
+          // Note: pending_cluster, pending_since, cluster_id, cluster_confidence 是 V4.2 新增字段
+          const { error: moveError } = await v42Table(supabase)
             .from("bookmarks")
-            .update({ folder_id: newFolder.id })
+            .update({
+              folder_id: newFolder.id,
+              // V4.2: 清除待聚类状态
+              pending_cluster: false,
+              pending_since: null,
+              cluster_id: null,
+              cluster_confidence: null,
+            })
             .eq("id", bookmarkId)
             .eq("user_id", userId);
 
@@ -507,6 +524,22 @@ export async function classifyBookmarkV2(
         action: result.action,
       },
       "Classification V2: Staying in inbox (low confidence)",
+    );
+
+    // V4.2: 标记为待聚类状态，等待智能分拣处理
+    // Note: pending_cluster, pending_since 是 V4.2 新增字段
+    await v42Table(supabase)
+      .from("bookmarks")
+      .update({
+        pending_cluster: true,
+        pending_since: new Date().toISOString(),
+      })
+      .eq("id", bookmarkId)
+      .eq("user_id", userId);
+
+    logger.info(
+      { bookmarkId, userId },
+      "Classification V4.2: Marked as pending cluster for smart sorting",
     );
 
     // V3.1: Write classification status for frontend polling

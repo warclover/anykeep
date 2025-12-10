@@ -56,17 +56,25 @@ export async function GET() {
     // 3. 分析待整理文件夹
     const analysis = await inboxOrganizerService.analyze(user.id);
 
+    // V4.2: 获取聚类处理状态
+    const clusterStatus =
+      await inboxOrganizerService.getClusterProcessingStatus(user.id);
+
     logger.info(
       {
         userId: user.id,
         inboxCount: analysis.inboxCount,
         suggestionCount: analysis.suggestions.length,
+        pendingClusterCount: clusterStatus.pendingClusterCount,
       },
       "Inbox analysis completed",
     );
 
-    // 4. 返回分析结果
-    return successResponse(analysis);
+    // 4. 返回分析结果（包含聚类状态）
+    return successResponse({
+      ...analysis,
+      clusterStatus,
+    });
   } catch (error) {
     logger.error(
       {

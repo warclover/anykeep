@@ -1,6 +1,8 @@
 /**
  * 智能分类 API
  * POST /api/classification/classify - 对书签进行智能分类
+ *
+ * V4.1+ 增强：集成分类指标记录
  */
 
 import type { NextRequest } from "next/server";
@@ -14,6 +16,10 @@ import {
   internalError,
 } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
+import {
+  classificationMetricsService,
+  type MatchType,
+} from "@/lib/classification/services/classification-metrics.service";
 
 /**
  * 请求体验证 Schema
@@ -80,7 +86,31 @@ export async function POST(request: NextRequest) {
       "Classification completed",
     );
 
-    // 5. 返回分类结果
+    // 5. 异步记录分类指标（非阻塞）
+    void classificationMetricsService
+      .recordMetrics({
+        userId: user.id,
+        bookmarkUrl: url,
+        action: result.action,
+        folderId: result.folderId,
+        folderName: result.folderName,
+        confidence: result.confidence,
+        tier: result.matchType === "ai_select" || result.matchType === "ai_create" ? 2 : 1,
+        cacheHit: false,
+        aiCalled: result.matchType === "ai_select" || result.matchType === "ai_create",
+        matchType: result.matchType as MatchType | undefined,
+        vectorScore: result.candidates?.[0]?.score,
+        executionTimeMs: result.executionTime || 0,
+        decisionReason: result.reason,
+      })
+      .catch((err) => {
+        logger.warn(
+          { error: err instanceof Error ? err.message : String(err) },
+          "Failed to record classification metrics (non-blocking)"
+        );
+      });
+
+    // 6. 返回分类结果
     return successResponse({
       folderId: result.folderId,
       folderName: result.folderName,

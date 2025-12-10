@@ -26,6 +26,8 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { BookmarkCard } from "@/components/bookmark/bookmark-card";
 import { OrganizationSuggestionsPanel } from "./organization-suggestions-panel";
+import { ClusterSuggestionsPanel } from "./cluster-suggestions-panel";
+import { ClusterAnalysisBanner } from "./cluster-analysis-banner";
 import { ErrorMessage } from "@/components/ui/error-message";
 import { cn } from "@/lib/utils";
 import type { Bookmark } from "@/types/supabase";
@@ -103,6 +105,9 @@ export function InboxPageClient({
 
   return (
     <div className="space-y-6">
+      {/* V4.2: AI 聚类分析状态横幅 */}
+      <ClusterAnalysisBanner className="mb-2" />
+
       {/* 页面标题 */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -147,7 +152,13 @@ export function InboxPageClient({
       {/* 内容区域 - 两栏布局 */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* 左侧：智能整理建议 */}
-        <div className="lg:col-span-1 order-2 lg:order-1">
+        <div className="lg:col-span-1 order-2 lg:order-1 space-y-6">
+          {/* V4.2: 聚类建议面板 */}
+          <ClusterSuggestionsPanel
+            onRefreshBookmarks={refreshBookmarks}
+          />
+
+          {/* 原有整理建议面板 */}
           <OrganizationSuggestionsPanel
             availableFolders={availableFolders}
             onSuggestionApplied={handleSuggestionApplied}

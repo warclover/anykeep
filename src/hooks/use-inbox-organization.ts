@@ -8,10 +8,13 @@
 import { useState, useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import type { OrganizationAnalysis } from "@/lib/classification";
+import type { ClusterProcessingStatus } from "@/types/supabase";
 
 interface UseInboxOrganizationResult {
   /** 分析结果 */
   analysis: OrganizationAnalysis | null;
+  /** V4.2 聚类处理状态 */
+  clusterStatus: ClusterProcessingStatus | null;
   /** 是否正在加载 */
   isLoading: boolean;
   /** 是否正在处理 */
@@ -165,8 +168,12 @@ export function useInboxOrganization(): UseInboxOrganizationResult {
   // 计算待处理建议数量
   const pendingCount = analysis?.suggestions.length ?? 0;
 
+  // V4.2: 获取聚类处理状态
+  const clusterStatus = analysis?.clusterStatus ?? null;
+
   return {
     analysis,
+    clusterStatus,
     isLoading,
     isProcessing,
     error,

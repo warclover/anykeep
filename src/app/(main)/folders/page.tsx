@@ -8,6 +8,7 @@ export const dynamic = "force-dynamic";
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { v42Table } from "@/lib/supabase/v42-types";
 import { FoldersPageClient } from "@/components/folders/folders-page-client";
 import { QUERY_LIMITS } from "@/lib/constants/app";
 import type { Folder } from "@/types/supabase";
@@ -16,6 +17,7 @@ import type { Folder } from "@/types/supabase";
 type FolderWithStats = Folder & {
   bookmark_count: number;
   today_count: number;
+  is_locked?: boolean;
 };
 
 export default async function FoldersPage() {
@@ -57,6 +59,22 @@ export default async function FoldersPage() {
       .is("deleted_at", null)
       .in("folder_id", folderIds);
 
+    // 获取文件夹锁定状态
+    // 注：folder_profiles 表由 V4.2 迁移添加
+    const { data: folderProfiles } = await v42Table(supabase)
+      .from("folder_profiles")
+      .select("folder_id, is_system_locked")
+      .eq("user_id", user.id)
+      .in("folder_id", folderIds);
+
+    // 构建锁定状态映射
+    const lockedMap = new Map<number, boolean>();
+    if (folderProfiles) {
+      for (const profile of folderProfiles as unknown as Array<{ folder_id: number; is_system_locked: boolean | null }>) {
+        lockedMap.set(profile.folder_id, profile.is_system_locked === true);
+      }
+    }
+
     // 统计每个文件夹的总数和今日新增
     const countMap = new Map<number, number>();
     const todayCountMap = new Map<number, number>();
@@ -88,6 +106,7 @@ export default async function FoldersPage() {
       ...folder,
       bookmark_count: countMap.get(folder.id) || 0,
       today_count: todayCountMap.get(folder.id) || 0,
+      is_locked: lockedMap.get(folder.id) || false,
     }));
   }
 

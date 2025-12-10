@@ -168,6 +168,18 @@ export interface ClassificationResult {
   decisionPath?: DecisionPath;
   /** 用户可读的决策理由 (V4.0) */
   decisionReason?: DecisionReason;
+
+  // V4.1+ 指标记录字段
+  /** 匹配类型 (profile/name/ai_select/ai_create/correction_cache/history/universal) */
+  matchType?: string;
+  /** 候选文件夹列表 */
+  candidates?: Array<{
+    folderId: number;
+    folderName: string;
+    score: number;
+  }>;
+  /** 执行时间 (毫秒) */
+  executionTime?: number;
 }
 
 /**

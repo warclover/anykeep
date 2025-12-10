@@ -69,6 +69,13 @@ export interface InboxAnalysis {
 }
 
 /**
+ * V4.2 聚类处理状态
+ * 导入并重新导出自 supabase.ts 以保持一致性
+ */
+import type { ClusterProcessingStatus } from "@/types/supabase";
+export type { ClusterProcessingStatus };
+
+/**
  * Organization analysis result for UI
  */
 export interface OrganizationAnalysis {
@@ -76,4 +83,6 @@ export interface OrganizationAnalysis {
   suggestions: OrganizationSuggestion[];
   lastAnalyzedAt: Date | null;
   nextSuggestedAnalyzeAt: Date | null;
+  /** V4.2 聚类处理状态 */
+  clusterStatus?: ClusterProcessingStatus;
 }
