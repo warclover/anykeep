@@ -12,6 +12,7 @@ import {
   Merge,
   Edit3,
   MoveRight,
+  Trash2,
   Clock,
   CheckCircle,
   XCircle,
@@ -23,9 +24,11 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import type { OperationDetail, OperationSnapshotAction } from "@/types/supabase";
+import type {
+  OperationDetail,
+  OperationSnapshotAction,
+} from "@/types/supabase";
 
 interface OperationDetailDialogProps {
   operation: OperationDetail | null;
@@ -34,24 +37,19 @@ interface OperationDetailDialogProps {
 }
 
 /**
- * 获取操作类型的图标
+ * 操作类型对应的图标映射（静态定义，避免在渲染期间创建组件）
  */
-function getActionIcon(action: OperationSnapshotAction) {
-  switch (action) {
-    case "create":
-      return FolderPlus;
-    case "split":
-      return Scissors;
-    case "merge":
-      return Merge;
-    case "rename":
-      return Edit3;
-    case "move":
-      return MoveRight;
-    default:
-      return FolderPlus;
-  }
-}
+const ACTION_ICONS: Record<
+  OperationSnapshotAction,
+  React.ComponentType<{ className?: string }>
+> = {
+  create: FolderPlus,
+  split: Scissors,
+  merge: Merge,
+  rename: Edit3,
+  move: MoveRight,
+  delete: Trash2,
+};
 
 /**
  * 获取操作类型的中文标签
@@ -68,6 +66,8 @@ function getActionLabel(action: OperationSnapshotAction): string {
       return "重命名";
     case "move":
       return "移动书签";
+    case "delete":
+      return "删除";
     default:
       return "操作";
   }
@@ -82,8 +82,12 @@ function renderStateDetails(operation: OperationDetail) {
 
   switch (operation.action) {
     case "create": {
-      const folder = afterState?.folder as { id: number; name: string } | undefined;
-      const bookmarks = afterState?.bookmarks as Array<{ id: number; title: string }> | undefined;
+      const folder = afterState?.folder as
+        | { id: number; name: string }
+        | undefined;
+      const bookmarks = afterState?.bookmarks as
+        | Array<{ id: number; title: string }>
+        | undefined;
 
       return (
         <div className="space-y-3">
@@ -95,10 +99,14 @@ function renderStateDetails(operation: OperationDetail) {
           )}
           {bookmarks && bookmarks.length > 0 && (
             <div>
-              <h4 className="text-sm font-medium mb-1">归类的书签 ({bookmarks.length})</h4>
+              <h4 className="text-sm font-medium mb-1">
+                归类的书签 ({bookmarks.length})
+              </h4>
               <ul className="text-sm text-muted-foreground space-y-1">
                 {bookmarks.slice(0, 5).map((b) => (
-                  <li key={b.id} className="truncate">• {b.title}</li>
+                  <li key={b.id} className="truncate">
+                    • {b.title}
+                  </li>
                 ))}
                 {bookmarks.length > 5 && (
                   <li className="text-xs">...还有 {bookmarks.length - 5} 条</li>
@@ -117,7 +125,9 @@ function renderStateDetails(operation: OperationDetail) {
       return (
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground line-through">{oldName}</span>
+            <span className="text-sm text-muted-foreground line-through">
+              {oldName}
+            </span>
             <span>→</span>
             <span className="text-sm font-medium">{newName}</span>
           </div>
@@ -126,15 +136,21 @@ function renderStateDetails(operation: OperationDetail) {
     }
 
     case "split": {
-      const originalFolder = beforeState?.original_folder as { name: string } | undefined;
-      const newFolders = afterState?.new_folders as Array<{ id: number; name: string }> | undefined;
+      const originalFolder = beforeState?.original_folder as
+        | { name: string }
+        | undefined;
+      const newFolders = afterState?.new_folders as
+        | Array<{ id: number; name: string }>
+        | undefined;
 
       return (
         <div className="space-y-3">
           {originalFolder && (
             <div>
               <h4 className="text-sm font-medium mb-1">原文件夹</h4>
-              <p className="text-sm text-muted-foreground">「{originalFolder.name}」</p>
+              <p className="text-sm text-muted-foreground">
+                「{originalFolder.name}」
+              </p>
             </div>
           )}
           {newFolders && newFolders.length > 0 && (
@@ -152,8 +168,12 @@ function renderStateDetails(operation: OperationDetail) {
     }
 
     case "merge": {
-      const sourceFolders = beforeState?.source_folders as Array<{ name: string }> | undefined;
-      const targetFolder = afterState?.target_folder as { name: string } | undefined;
+      const sourceFolders = beforeState?.source_folders as
+        | Array<{ name: string }>
+        | undefined;
+      const targetFolder = afterState?.target_folder as
+        | { name: string }
+        | undefined;
 
       return (
         <div className="space-y-3">
@@ -170,7 +190,9 @@ function renderStateDetails(operation: OperationDetail) {
           {targetFolder && (
             <div>
               <h4 className="text-sm font-medium mb-1">合并到</h4>
-              <p className="text-sm text-muted-foreground">「{targetFolder.name}」</p>
+              <p className="text-sm text-muted-foreground">
+                「{targetFolder.name}」
+              </p>
             </div>
           )}
         </div>
@@ -178,17 +200,25 @@ function renderStateDetails(operation: OperationDetail) {
     }
 
     case "move": {
-      const bookmarks = afterState?.bookmarks as Array<{ id: number; title: string }> | undefined;
+      const bookmarks = afterState?.bookmarks as
+        | Array<{ id: number; title: string }>
+        | undefined;
 
       return (
         <div>
-          <h4 className="text-sm font-medium mb-1">移动的书签 ({bookmarks?.length || 0})</h4>
+          <h4 className="text-sm font-medium mb-1">
+            移动的书签 ({bookmarks?.length || 0})
+          </h4>
           <ul className="text-sm text-muted-foreground space-y-1">
             {bookmarks?.slice(0, 5).map((b) => (
-              <li key={b.id} className="truncate">• {b.title}</li>
+              <li key={b.id} className="truncate">
+                • {b.title}
+              </li>
             ))}
             {(bookmarks?.length || 0) > 5 && (
-              <li className="text-xs">...还有 {(bookmarks?.length || 0) - 5} 条</li>
+              <li className="text-xs">
+                ...还有 {(bookmarks?.length || 0) - 5} 条
+              </li>
             )}
           </ul>
         </div>
@@ -207,7 +237,8 @@ export function OperationDetailDialog({
 }: OperationDetailDialogProps) {
   if (!operation) return null;
 
-  const Icon = getActionIcon(operation.action);
+  // 使用静态映射获取图标组件，避免在渲染期间动态创建
+  const IconComponent = ACTION_ICONS[operation.action] || FolderPlus;
   const actionLabel = getActionLabel(operation.action);
   const createdAt = new Date(operation.created_at);
   const expiresAt = new Date(operation.expires_at);
@@ -228,11 +259,12 @@ export function OperationDetailDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Icon className="w-5 h-5 text-primary" />
+            <IconComponent className="w-5 h-5 text-primary" />
             {actionLabel}
           </DialogTitle>
           <DialogDescription>
-            {timeAgo} · {format(createdAt, "yyyy-MM-dd HH:mm", { locale: zhCN })}
+            {timeAgo} ·{" "}
+            {format(createdAt, "yyyy-MM-dd HH:mm", { locale: zhCN })}
           </DialogDescription>
         </DialogHeader>
 
@@ -270,7 +302,9 @@ export function OperationDetailDialog({
               <Separator />
               <div>
                 <h4 className="text-sm font-medium mb-1">AI 决策原因</h4>
-                <p className="text-sm text-muted-foreground">{operation.reason}</p>
+                <p className="text-sm text-muted-foreground">
+                  {operation.reason}
+                </p>
               </div>
             </>
           )}
@@ -280,7 +314,8 @@ export function OperationDetailDialog({
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Clock className="w-3 h-3" />
             <span>
-              撤销窗口截止：{format(expiresAt, "yyyy-MM-dd HH:mm", { locale: zhCN })}
+              撤销窗口截止：
+              {format(expiresAt, "yyyy-MM-dd HH:mm", { locale: zhCN })}
             </span>
           </div>
         </div>

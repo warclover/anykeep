@@ -66,7 +66,10 @@ interface UseEvolutionReportsReturn {
   // Actions
   fetchReports: () => Promise<void>;
   fetchReport: (month: string) => Promise<MonthlyReport | null>;
-  generateReport: (month?: string, forceRegenerate?: boolean) => Promise<MonthlyReport | null>;
+  generateReport: (
+    month?: string,
+    forceRegenerate?: boolean,
+  ) => Promise<MonthlyReport | null>;
   selectReport: (report: MonthlyReport | null) => void;
 }
 
@@ -80,7 +83,9 @@ export function useEvolutionReports(
   const { autoFetch = true, limit = 12 } = options;
 
   const [reports, setReports] = useState<MonthlyReport[]>([]);
-  const [currentReport, setCurrentReport] = useState<MonthlyReport | null>(null);
+  const [currentReport, setCurrentReport] = useState<MonthlyReport | null>(
+    null,
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -89,7 +94,9 @@ export function useEvolutionReports(
   const fetchReports = useCallback(async () => {
     try {
       setError(null);
-      const response = await fetch(`/api/folder-evolution/reports?limit=${limit}`);
+      const response = await fetch(
+        `/api/folder-evolution/reports?limit=${limit}`,
+      );
 
       if (!response.ok) {
         throw new Error("获取报告列表失败");
@@ -97,10 +104,11 @@ export function useEvolutionReports(
 
       const result = await response.json();
       if (result.success) {
-        setReports(result.data?.reports || []);
-        // Auto-select the first report
-        if (result.data?.reports?.length > 0 && !currentReport) {
-          setCurrentReport(result.data.reports[0]);
+        const newReports = result.data?.reports || [];
+        setReports(newReports);
+        // Auto-select the first report (use functional update to avoid dependency)
+        if (newReports.length > 0) {
+          setCurrentReport((prev) => prev || newReports[0]);
         }
       } else {
         throw new Error(result.error || "获取报告列表失败");
@@ -112,35 +120,43 @@ export function useEvolutionReports(
     } finally {
       setIsLoading(false);
     }
-  }, [limit, currentReport]);
+  }, [limit]);
 
   // Fetch specific month's report
-  const fetchReport = useCallback(async (month: string): Promise<MonthlyReport | null> => {
-    try {
-      setError(null);
-      const response = await fetch(`/api/folder-evolution/reports?month=${month}`);
+  const fetchReport = useCallback(
+    async (month: string): Promise<MonthlyReport | null> => {
+      try {
+        setError(null);
+        const response = await fetch(
+          `/api/folder-evolution/reports?month=${month}`,
+        );
 
-      if (!response.ok) {
-        throw new Error("获取报告失败");
-      }
+        if (!response.ok) {
+          throw new Error("获取报告失败");
+        }
 
-      const result = await response.json();
-      if (result.success && result.data?.report) {
-        setCurrentReport(result.data.report);
-        return result.data.report;
+        const result = await response.json();
+        if (result.success && result.data?.report) {
+          setCurrentReport(result.data.report);
+          return result.data.report;
+        }
+        return null;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "获取报告失败";
+        setError(message);
+        console.error("[useEvolutionReports] fetchReport error:", err);
+        return null;
       }
-      return null;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "获取报告失败";
-      setError(message);
-      console.error("[useEvolutionReports] fetchReport error:", err);
-      return null;
-    }
-  }, []);
+    },
+    [],
+  );
 
   // Generate new report
   const generateReport = useCallback(
-    async (month?: string, forceRegenerate = false): Promise<MonthlyReport | null> => {
+    async (
+      month?: string,
+      forceRegenerate = false,
+    ): Promise<MonthlyReport | null> => {
       setIsGenerating(true);
       try {
         const response = await fetch("/api/folder-evolution/reports", {
@@ -160,9 +176,11 @@ export function useEvolutionReports(
           setCurrentReport(newReport);
           // Update reports list
           setReports((prev) => {
-            const filtered = prev.filter((r) => r.reportMonth !== newReport.reportMonth);
-            return [newReport, ...filtered].sort(
-              (a, b) => b.reportMonth.localeCompare(a.reportMonth),
+            const filtered = prev.filter(
+              (r) => r.reportMonth !== newReport.reportMonth,
+            );
+            return [newReport, ...filtered].sort((a, b) =>
+              b.reportMonth.localeCompare(a.reportMonth),
             );
           });
           toast.success(result.data?.message || "报告生成成功");
@@ -186,12 +204,13 @@ export function useEvolutionReports(
     setCurrentReport(report);
   }, []);
 
-  // Initial fetch
+  // Initial fetch - 仅在挂载或关键参数变化时执行
   useEffect(() => {
     if (autoFetch) {
       fetchReports();
     }
-  }, [autoFetch, fetchReports]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoFetch, limit]);
 
   return {
     // Data

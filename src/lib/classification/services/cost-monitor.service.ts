@@ -8,9 +8,10 @@
  * - 成本预警通知
  */
 
-import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 import { v42Table, v42Rpc } from "@/lib/supabase/v42-types";
+import { BaseSupabaseService } from "./base-supabase.service";
+import { MessageService } from "@/lib/messages/message-service";
 
 // ============================================
 // Type Definitions
@@ -96,18 +97,7 @@ const DEFAULT_COST_ALERT: CostAlertConfig = {
 // CostMonitorService Class
 // ============================================
 
-export class CostMonitorService {
-  private supabase: Awaited<
-    ReturnType<typeof createServerSupabaseClient>
-  > | null = null;
-
-  private async getSupabase() {
-    if (!this.supabase) {
-      this.supabase = await createServerSupabaseClient();
-    }
-    return this.supabase;
-  }
-
+export class CostMonitorService extends BaseSupabaseService {
   /**
    * Record LLM usage
    */
@@ -204,13 +194,20 @@ export class CostMonitorService {
     const dateStr = targetDate.toISOString().split("T")[0];
 
     // V4.2 RPC
-    const { data, error } = await v42Rpc(supabase).rpc("get_user_daily_llm_cost", {
-      p_user_id: userId,
-      p_date: dateStr,
-    });
+    const { data, error } = await v42Rpc(supabase).rpc(
+      "get_user_daily_llm_cost",
+      {
+        p_user_id: userId,
+        p_date: dateStr,
+      },
+    );
 
     // 类型断言
-    type DailyCostRow = { total_calls?: number; total_tokens?: number; total_cost_cents?: number };
+    type DailyCostRow = {
+      total_calls?: number;
+      total_tokens?: number;
+      total_cost_cents?: number;
+    };
     const typedData = data as DailyCostRow[] | null;
 
     if (error || !typedData || typedData.length === 0) {
@@ -271,7 +268,11 @@ export class CostMonitorService {
           tokens: 0,
           costCents: 0,
         },
-        folder_naming: { calls: typedData.naming_calls || 0, tokens: 0, costCents: 0 },
+        folder_naming: {
+          calls: typedData.naming_calls || 0,
+          tokens: 0,
+          costCents: 0,
+        },
         content_analysis: {
           calls: typedData.analysis_calls || 0,
           tokens: 0,
@@ -366,6 +367,7 @@ export class CostMonitorService {
 
   /**
    * Check if cost alert should be sent
+   * V4.2: Implemented notification via MessageService
    */
   private async checkCostAlert(userId: string): Promise<void> {
     try {
@@ -386,8 +388,37 @@ export class CostMonitorService {
           "CostMonitor: Daily cost alert threshold reached",
         );
 
-        // TODO: Send notification to user
-        // await MessageService.notifyCostAlert(userId, 'daily', daily.totalCostCents);
+        // V4.2: Send notification to user
+        await MessageService.notifyCostAlert(
+          userId,
+          "daily",
+          daily.totalCostCents,
+          config.dailyLimitCents,
+        );
+      }
+
+      // Also check monthly limit
+      const monthly = await this.getMonthlyCost(userId);
+      if (
+        monthly.totalCostCents >=
+        config.monthlyLimitCents * config.alertThreshold
+      ) {
+        logger.warn(
+          {
+            userId: userId.slice(0, 8) + "...",
+            monthlyCostCents: monthly.totalCostCents,
+            limitCents: config.monthlyLimitCents,
+          },
+          "CostMonitor: Monthly cost alert threshold reached",
+        );
+
+        // V4.2: Send monthly notification
+        await MessageService.notifyCostAlert(
+          userId,
+          "monthly",
+          monthly.totalCostCents,
+          config.monthlyLimitCents,
+        );
       }
     } catch (error) {
       logger.error(

@@ -437,7 +437,12 @@ export class SplitService {
     // Simple greedy clustering
     const similarityMatrix = this.computeSimilarityMatrix(bookmarks);
 
-    while (assigned.size < bookmarks.length) {
+    // 循环保护：最多迭代 bookmarks.length 次
+    const maxIterations = bookmarks.length;
+    let iterations = 0;
+
+    while (assigned.size < bookmarks.length && iterations < maxIterations) {
+      iterations++;
       // Find the unassigned bookmark with lowest average similarity to others
       let seedIdx = -1;
       let lowestAvg = Infinity;

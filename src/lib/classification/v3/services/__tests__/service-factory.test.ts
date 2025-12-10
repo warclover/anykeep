@@ -2,7 +2,7 @@
  * ServiceFactory 单元测试
  */
 
-import { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
 import {
   serviceFactory,
@@ -42,7 +42,7 @@ describe("ServiceFactory", () => {
   describe("初始化", () => {
     it("应该在初始化前抛出错误", () => {
       expect(() => getConfigCenter()).toThrow(
-        "ServiceFactory not initialized. Call initialize() first."
+        "ServiceFactory not initialized. Call initialize() first.",
       );
     });
 

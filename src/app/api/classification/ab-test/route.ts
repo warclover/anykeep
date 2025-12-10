@@ -13,7 +13,6 @@ import { embeddingABTestService } from "@/lib/classification/services/server";
 import {
   getEmbeddingConfig,
   getEmbeddingConfigInfo,
-  type EmbeddingModelId,
 } from "@/lib/classification/config/embedding-config";
 import {
   successResponse,
@@ -63,7 +62,7 @@ export async function GET(request: NextRequest) {
         controlModel,
         treatmentModel,
         operationType || "classification",
-        days
+        days,
       );
 
       if (!report) {
@@ -82,7 +81,7 @@ export async function GET(request: NextRequest) {
           days,
           recommendation: report.comparison.recommendation,
         },
-        "A/B test comparison report generated"
+        "A/B test comparison report generated",
       );
 
       return successResponse({
@@ -139,7 +138,7 @@ export async function GET(request: NextRequest) {
               acc.accepted += (s.acceptanceRate || 0) * s.feedbackCount;
               return acc;
             },
-            { total: 0, accepted: 0 }
+            { total: 0, accepted: 0 },
           );
 
         if (feedbackData.total > 0) {
@@ -164,7 +163,7 @@ export async function GET(request: NextRequest) {
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
       },
-      "GET /api/classification/ab-test error"
+      "GET /api/classification/ab-test error",
     );
     return internalError("获取 A/B 测试数据失败");
   }

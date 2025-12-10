@@ -5,9 +5,15 @@
  * AI 进化报告页面客户端组件
  */
 
-import { useEvolutionReports, MonthlyReport } from "@/hooks/use-evolution-reports";
+import { useEvolutionReports } from "@/hooks/use-evolution-reports";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -25,9 +31,6 @@ import {
   RefreshCw,
   Loader2,
   FileText,
-  TrendingUp,
-  TrendingDown,
-  Minus,
   CheckCircle2,
   AlertCircle,
   ArrowLeft,
@@ -38,7 +41,8 @@ import { format } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import Link from "next/link";
 import { ReportChangesList } from "./report-changes-list";
-import { ReportSuggestionsList, ReportSuggestion } from "./report-suggestions-list";
+import type { ReportSuggestion } from "./report-suggestions-list";
+import { ReportSuggestionsList } from "./report-suggestions-list";
 
 // ============================================
 // Helper Functions
@@ -97,9 +101,9 @@ export function ReportPageClient() {
   } = useEvolutionReports();
 
   // Handle suggestion click (navigate to relevant page)
-  const handleSuggestionClick = (suggestion: ReportSuggestion) => {
+  const handleSuggestionClick = (_suggestion: ReportSuggestion) => {
     // In a full implementation, this would navigate to the appropriate action
-    console.log("Suggestion clicked:", suggestion);
+    // Currently no-op: navigation logic to be implemented
   };
 
   // Loading state
@@ -249,7 +253,10 @@ export function ReportPageClient() {
                   <CardDescription className="flex items-center gap-2 mt-1">
                     <Calendar className="w-3 h-3" />
                     生成于{" "}
-                    {format(new Date(currentReport.generatedAt), "M月d日 HH:mm")}
+                    {format(
+                      new Date(currentReport.generatedAt),
+                      "M月d日 HH:mm",
+                    )}
                   </CardDescription>
                 </div>
               </div>
@@ -341,9 +348,7 @@ export function ReportPageClient() {
                     )}
                     {currentReport.acceptanceRate !== null && (
                       <div className="p-4 rounded-lg border bg-card">
-                        <p className="text-xs text-muted-foreground">
-                          采纳率
-                        </p>
+                        <p className="text-xs text-muted-foreground">采纳率</p>
                         <p className="text-2xl font-bold">
                           {Math.round(currentReport.acceptanceRate * 100)}%
                         </p>

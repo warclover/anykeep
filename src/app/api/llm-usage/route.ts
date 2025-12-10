@@ -3,13 +3,14 @@
  * GET /api/llm-usage?period=daily|monthly
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "edge";
 
-// 模型定价 (每百万 token, 单位: 分)
-const MODEL_PRICING: Record<string, { input: number; output: number }> = {
+// 模型定价 (每百万 token, 单位: 分) - 预留用于成本计算功能
+const _MODEL_PRICING: Record<string, { input: number; output: number }> = {
   "gpt-4o-mini": { input: 15, output: 60 }, // $0.15/$0.60 per 1M tokens
   "deepseek-chat": { input: 14, output: 28 }, // ¥0.14/¥0.28 per 1M tokens
   "qwen-turbo": { input: 8, output: 20 }, // ¥0.008/¥0.02 per 1K tokens
@@ -39,7 +40,12 @@ interface LLMUsageStats {
     contentAnalysis: { calls: number; tokens: number; costCents: number };
     chat: { calls: number; tokens: number; costCents: number };
   };
-  byModel: { model: string; calls: number; tokens: number; costCents: number }[];
+  byModel: {
+    model: string;
+    calls: number;
+    tokens: number;
+    costCents: number;
+  }[];
   quota?: {
     dailyLimit: number;
     used: number;
@@ -80,15 +86,17 @@ export async function GET(request: NextRequest) {
 
     // 查询使用记录 (使用 RPC 或直接查询)
     // Note: llm_usage_log 表在迁移中创建，类型需要手动处理
-    const { data: usageData, error: usageError } = await supabase
+    const { data: usageData, error: usageError } = (await supabase
       .from("llm_usage_log" as "profiles") // Type cast for new table
-      .select("operation, model, input_tokens, output_tokens, cost_cents, created_at")
+      .select(
+        "operation, model, input_tokens, output_tokens, cost_cents, created_at",
+      )
       .eq("user_id", user.id)
       .gte("created_at", startDate.toISOString())
-      .order("created_at", { ascending: false }) as unknown as {
-        data: UsageRecord[] | null;
-        error: Error | null;
-      };
+      .order("created_at", { ascending: false })) as unknown as {
+      data: UsageRecord[] | null;
+      error: Error | null;
+    };
 
     if (usageError) {
       console.error("Failed to fetch usage data:", usageError);
@@ -112,8 +120,7 @@ export async function GET(request: NextRequest) {
         .single();
 
       // PRO 用户 500 次，FREE 用户 100 次
-      const dailyLimit =
-        profileData?.membership_type === "PRO" ? 500 : 100;
+      const dailyLimit = profileData?.membership_type === "PRO" ? 500 : 100;
       stats.quota = {
         dailyLimit,
         used: stats.totalCalls,
@@ -126,14 +133,14 @@ export async function GET(request: NextRequest) {
       const thirtyDaysAgo = new Date(now);
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-      const { data: trendData } = await supabase
+      const { data: trendData } = (await supabase
         .from("llm_usage_log" as "profiles")
         .select("created_at, cost_cents")
         .eq("user_id", user.id)
-        .gte("created_at", thirtyDaysAgo.toISOString()) as unknown as {
-          data: { created_at: string; cost_cents: number }[] | null;
-          error: Error | null;
-        };
+        .gte("created_at", thirtyDaysAgo.toISOString())) as unknown as {
+        data: { created_at: string; cost_cents: number }[] | null;
+        error: Error | null;
+      };
 
       if (trendData) {
         stats.trends = calculateTrends(trendData);
@@ -145,7 +152,7 @@ export async function GET(request: NextRequest) {
     console.error("LLM usage API error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -172,7 +179,7 @@ function createEmptyStats(period: string, date: string): LLMUsageStats {
 function calculateStats(
   records: UsageRecord[],
   period: string,
-  date: string
+  date: string,
 ): LLMUsageStats {
   const stats = createEmptyStats(period, date);
 
@@ -229,7 +236,7 @@ function mapOperation(operation: string): string {
 }
 
 function calculateTrends(
-  data: { created_at: string; cost_cents: number }[]
+  data: { created_at: string; cost_cents: number }[],
 ): { date: string; calls: number; costCents: number }[] {
   const dayMap = new Map<string, { calls: number; costCents: number }>();
 

@@ -10,16 +10,31 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { logger } from "@/lib/logger";
 import type { Database } from "@/types/supabase";
-import { v42Table, v42Rpc } from "@/lib/supabase/v42-types";
+import { v42Table } from "@/lib/supabase/v42-types";
 
-// 使用 Service Role Key 以绕过 RLS
-const supabaseAdmin = createClient<Database>(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+// 模块级别的 Supabase 客户端（在请求处理时初始化）
+let supabaseAdmin: ReturnType<typeof createClient<Database>> | null = null;
 
-// Cron secret for authentication
-const CRON_SECRET = process.env.CRON_SECRET;
+// 环境变量（延迟检查，在请求时验证）
+const initSupabaseAdmin = () => {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !serviceKey) {
+    throw new Error("Missing Supabase credentials in environment variables");
+  }
+
+  supabaseAdmin = createClient<Database>(url, serviceKey);
+  return supabaseAdmin;
+};
+
+// 获取已初始化的客户端（在 helper 函数中使用）
+const getAdmin = () => {
+  if (!supabaseAdmin) {
+    throw new Error("Supabase admin client not initialized");
+  }
+  return supabaseAdmin;
+};
 
 // 配置常量
 const MIN_PENDING_AGE_HOURS = 1; // 最少等待 1 小时
@@ -34,10 +49,31 @@ const MIN_SIMILARITY = 0.65; // 最小相似度阈值
  */
 export async function GET(request: Request) {
   try {
+    // 验证环境变量配置
+    const CRON_SECRET = process.env.CRON_SECRET;
+    if (!CRON_SECRET) {
+      logger.error("CRON_SECRET environment variable is not set");
+      return NextResponse.json(
+        { error: "Server configuration error: CRON_SECRET not set" },
+        { status: 500 },
+      );
+    }
+
     // 验证 Cron 请求
     const authHeader = request.headers.get("authorization");
-    if (CRON_SECRET && authHeader !== `Bearer ${CRON_SECRET}`) {
+    if (authHeader !== `Bearer ${CRON_SECRET}`) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // 初始化 Supabase Admin 客户端
+    try {
+      initSupabaseAdmin();
+    } catch (error) {
+      logger.error({ error }, "Failed to initialize Supabase admin client");
+      return NextResponse.json(
+        { error: "Server configuration error" },
+        { status: 500 },
+      );
     }
 
     logger.info({ action: "cron_start" }, "Smart sorting cron job started");
@@ -53,14 +89,18 @@ export async function GET(request: Request) {
 
     // 1. 获取有待聚类书签的用户列表
     // Note: pending_cluster, pending_since 是 V4.2 新增字段
-    const { data: usersWithPending, error: fetchError } = await v42Table(supabaseAdmin)
+    const { data: usersWithPending, error: fetchError } = await v42Table(
+      getAdmin(),
+    )
       .from("bookmarks")
       .select("user_id")
       .eq("pending_cluster", true)
       .is("deleted_at", null)
       .lt(
         "pending_since",
-        new Date(Date.now() - MIN_PENDING_AGE_HOURS * 60 * 60 * 1000).toISOString(),
+        new Date(
+          Date.now() - MIN_PENDING_AGE_HOURS * 60 * 60 * 1000,
+        ).toISOString(),
       )
       .limit(1000);
 
@@ -116,10 +156,7 @@ export async function GET(request: Request) {
 
     const duration = Date.now() - startTime;
 
-    logger.info(
-      { ...stats, duration },
-      "Smart sorting cron job completed",
-    );
+    logger.info({ ...stats, duration }, "Smart sorting cron job completed");
 
     return NextResponse.json({
       success: true,
@@ -157,7 +194,7 @@ async function processUserInbox(userId: string): Promise<{
 
   // 1. 获取用户的自治等级设置
   // Note: ai_evolution_level 是 V4.2 新增字段
-  const { data: profile } = await v42Table(supabaseAdmin)
+  const { data: profile } = await v42Table(getAdmin())
     .from("profiles")
     .select("ai_evolution_level")
     .eq("id", userId)
@@ -172,7 +209,9 @@ async function processUserInbox(userId: string): Promise<{
 
   // 2. 获取待聚类书签
   // Note: pending_cluster, pending_since 是 V4.2 新增字段
-  const { data: pendingBookmarks, error: fetchError } = await v42Table(supabaseAdmin)
+  const { data: pendingBookmarks, error: fetchError } = await v42Table(
+    getAdmin(),
+  )
     .from("bookmarks")
     .select("id, title, url, ai_summary, ai_tags, embedding, pending_since")
     .eq("user_id", userId)
@@ -180,7 +219,9 @@ async function processUserInbox(userId: string): Promise<{
     .is("deleted_at", null)
     .lt(
       "pending_since",
-      new Date(Date.now() - MIN_PENDING_AGE_HOURS * 60 * 60 * 1000).toISOString(),
+      new Date(
+        Date.now() - MIN_PENDING_AGE_HOURS * 60 * 60 * 1000,
+      ).toISOString(),
     )
     .order("pending_since", { ascending: true })
     .limit(MAX_BOOKMARKS_PER_USER);
@@ -195,7 +236,11 @@ async function processUserInbox(userId: string): Promise<{
     pending_since: string | null;
   }> | null;
 
-  if (fetchError || !typedBookmarks || typedBookmarks.length < MIN_CLUSTER_SIZE) {
+  if (
+    fetchError ||
+    !typedBookmarks ||
+    typedBookmarks.length < MIN_CLUSTER_SIZE
+  ) {
     return result;
   }
 
@@ -286,7 +331,10 @@ function performClustering(
   // DBSCAN 聚类
   const visited = new Set<number>();
   const clustered = new Set<number>();
-  const clusters: Array<{ bookmarks: typeof bookmarksWithEmbedding; centroid: number[] | null }> = [];
+  const clusters: Array<{
+    bookmarks: typeof bookmarksWithEmbedding;
+    centroid: number[] | null;
+  }> = [];
 
   for (let i = 0; i < n; i++) {
     if (visited.has(i)) continue;
@@ -425,7 +473,7 @@ async function autoCreateFolder(
     today.setHours(0, 0, 0, 0);
 
     // Note: operation_snapshots 是 V4.2 新增表
-    const { count: todayCount } = await v42Table(supabaseAdmin)
+    const { count: todayCount } = await v42Table(getAdmin())
       .from("operation_snapshots")
       .select("*", { count: "exact", head: true })
       .eq("user_id", userId)
@@ -440,11 +488,11 @@ async function autoCreateFolder(
       return await createSuggestion(userId, cluster);
     }
 
-    // 3. 创建快照（用于撤销）
-    const snapshotId = crypto.randomUUID();
+    // 3. 预留：快照 ID 用于撤销功能
+    // const _snapshotId = crypto.randomUUID();
 
     // 4. 创建文件夹
-    const { data: newFolder, error: createError } = await supabaseAdmin
+    const { data: newFolder, error: createError } = await getAdmin()
       .from("folders")
       .insert({
         user_id: userId,
@@ -463,7 +511,7 @@ async function autoCreateFolder(
     // 5. 移动书签到新文件夹
     // Note: pending_cluster, pending_since, cluster_id 是 V4.2 新增字段
     const bookmarkIds = cluster.bookmarks.map((b) => b.id);
-    const { error: moveError } = await v42Table(supabaseAdmin)
+    const { error: moveError } = await v42Table(getAdmin())
       .from("bookmarks")
       .update({
         folder_id: newFolder.id,
@@ -479,38 +527,44 @@ async function autoCreateFolder(
 
     // 6. 记录操作快照
     // Note: operation_snapshots 是 V4.2 新增表
-    await v42Table(supabaseAdmin).from("operation_snapshots").insert({
-      user_id: userId,
-      operation_type: "folder_evolution",
-      action: "create",
-      folder_id: newFolder.id,
-      folder_name: newFolder.name,
-      bookmark_ids: bookmarkIds,
-      before_state: null,
-      after_state: {
-        folder: { id: newFolder.id, name: newFolder.name },
-        bookmarkIds,
-      },
-      reason: folderName.reason,
-      source: "ai_auto",
-      expires_at: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), // 2天后过期
-    });
+    await v42Table(getAdmin())
+      .from("operation_snapshots")
+      .insert({
+        user_id: userId,
+        operation_type: "folder_evolution",
+        action: "create",
+        folder_id: newFolder.id,
+        folder_name: newFolder.name,
+        bookmark_ids: bookmarkIds,
+        before_state: null,
+        after_state: {
+          folder: { id: newFolder.id, name: newFolder.name },
+          bookmarkIds,
+        },
+        reason: folderName.reason,
+        source: "ai_auto",
+        expires_at: new Date(
+          Date.now() + 2 * 24 * 60 * 60 * 1000,
+        ).toISOString(), // 2天后过期
+      });
 
     // 7. 创建消息通知
-    await supabaseAdmin.from("messages").insert({
-      user_id: userId,
-      type: "folder_auto_created",
-      level: "normal",
-      title: `AI 自动创建了「${newFolder.name}」`,
-      content: `已将 ${bookmarkIds.length} 个相似书签整理到新文件夹中`,
-      metadata: {
-        folderId: newFolder.id,
-        folderName: newFolder.name,
-        bookmarkCount: bookmarkIds.length,
-        reason: folderName.reason,
-      },
-      related_folder_id: newFolder.id,
-    });
+    await getAdmin()
+      .from("messages")
+      .insert({
+        user_id: userId,
+        type: "folder_auto_created",
+        level: "normal",
+        title: `AI 自动创建了「${newFolder.name}」`,
+        content: `已将 ${bookmarkIds.length} 个相似书签整理到新文件夹中`,
+        metadata: {
+          folderId: newFolder.id,
+          folderName: newFolder.name,
+          bookmarkCount: bookmarkIds.length,
+          reason: folderName.reason,
+        },
+        related_folder_id: newFolder.id,
+      });
 
     logger.info(
       {
@@ -554,7 +608,7 @@ async function createSuggestion(
 
     // 3. 更新书签的聚类 ID
     // Note: cluster_id, cluster_confidence 是 V4.2 新增字段
-    await v42Table(supabaseAdmin)
+    await v42Table(getAdmin())
       .from("bookmarks")
       .update({
         cluster_id: clusterId,
@@ -564,22 +618,24 @@ async function createSuggestion(
 
     // 4. 创建建议记录
     // Note: bookmark_ids, suggested_action, metadata 是 V4.2 classification_suggestions 新增字段
-    await v42Table(supabaseAdmin).from("classification_suggestions").insert({
-      user_id: userId,
-      bookmark_id: bookmarkIds[0], // V4.1 遗留字段，用第一个书签 ID
-      bookmark_ids: bookmarkIds,
-      suggested_action: "create_folder",
-      suggested_folder_name: folderName.name,
-      suggest_new_folder: true,
-      confidence: 0.8,
-      reason: folderName.reason,
-      status: "pending",
-      metadata: {
-        clusterId,
-        bookmarkCount: bookmarkIds.length,
-        sampleTitles: cluster.bookmarks.slice(0, 5).map((b) => b.title),
-      },
-    });
+    await v42Table(getAdmin())
+      .from("classification_suggestions")
+      .insert({
+        user_id: userId,
+        bookmark_id: bookmarkIds[0], // V4.1 遗留字段，用第一个书签 ID
+        bookmark_ids: bookmarkIds,
+        suggested_action: "create_folder",
+        suggested_folder_name: folderName.name,
+        suggest_new_folder: true,
+        confidence: 0.8,
+        reason: folderName.reason,
+        status: "pending",
+        metadata: {
+          clusterId,
+          bookmarkCount: bookmarkIds.length,
+          sampleTitles: cluster.bookmarks.slice(0, 5).map((b) => b.title),
+        },
+      });
 
     logger.info(
       {
@@ -620,7 +676,10 @@ async function generateFolderName(cluster: {
   // 取最高频标签
   const sortedTags = Object.entries(tagFrequency).sort((a, b) => b[1] - a[1]);
 
-  if (sortedTags.length > 0 && sortedTags[0][1] >= cluster.bookmarks.length * 0.5) {
+  if (
+    sortedTags.length > 0 &&
+    sortedTags[0][1] >= cluster.bookmarks.length * 0.5
+  ) {
     // 如果最高频标签出现在至少 50% 的书签中，使用它作为文件夹名
     return {
       name: sortedTags[0][0],

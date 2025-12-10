@@ -13,6 +13,8 @@ import {
   unauthorizedError,
   notFoundError,
   internalError,
+  badRequestError,
+  safeParseJson,
 } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
 import { operationLogService } from "@/lib/classification/services/operation-log.service";
@@ -54,7 +56,10 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. 解析并验证请求体
-    const body = await request.json();
+    const { data: body, error: parseError } = await safeParseJson(request);
+    if (parseError) {
+      return badRequestError(parseError);
+    }
     const validation = confirmSuggestionSchema.safeParse(body);
 
     if (!validation.success) {
@@ -94,7 +99,8 @@ export async function POST(request: NextRequest) {
     }
 
     // 5. 创建文件夹
-    const folderName = customFolderName || typedSuggestion.suggested_folder_name;
+    const folderName =
+      customFolderName || typedSuggestion.suggested_folder_name;
     if (!folderName) {
       return internalError("建议中没有有效的文件夹名称");
     }
@@ -215,7 +221,10 @@ export async function DELETE(request: NextRequest) {
     }
 
     // 2. 解析并验证请求体
-    const body = await request.json();
+    const { data: body, error: parseError } = await safeParseJson(request);
+    if (parseError) {
+      return badRequestError(parseError);
+    }
     const validation = rejectSuggestionSchema.safeParse(body);
 
     if (!validation.success) {

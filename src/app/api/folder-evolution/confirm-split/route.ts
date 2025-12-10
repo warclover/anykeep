@@ -11,6 +11,8 @@ import {
   handleValidationError,
   unauthorizedError,
   internalError,
+  badRequestError,
+  safeParseJson,
 } from "@/lib/utils/api-response";
 import { splitService } from "@/lib/classification/services/split.service";
 import { logger } from "@/lib/logger";
@@ -48,7 +50,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate request body
-    const body = await request.json();
+    const { data: body, error: parseError } = await safeParseJson(request);
+    if (parseError) {
+      return badRequestError(parseError);
+    }
     const validation = confirmSplitSchema.safeParse(body);
 
     if (!validation.success) {

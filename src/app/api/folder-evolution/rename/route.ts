@@ -4,9 +4,11 @@
  * POST /api/folder-evolution/rename - 执行重命名
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { renameService } from "@/lib/classification/services/rename.service";
+import { safeParseJson, safeParseInt } from "@/lib/utils/api-response";
 
 /**
  * GET - 获取文件夹重命名建议
@@ -27,15 +29,16 @@ export async function GET(request: NextRequest) {
 
     // 获取查询参数
     const { searchParams } = new URL(request.url);
-    const folderId = searchParams.get("folderId");
-    const limit = parseInt(searchParams.get("limit") || "5", 10);
+    const folderIdParam = searchParams.get("folderId");
+    const limit = safeParseInt(searchParams.get("limit"), 5) || 5;
 
-    if (folderId) {
+    if (folderIdParam) {
+      const folderId = safeParseInt(folderIdParam);
+      if (folderId === null) {
+        return NextResponse.json({ error: "无效的文件夹 ID" }, { status: 400 });
+      }
       // 分析单个文件夹
-      const suggestion = await renameService.analyzeFolder(
-        user.id,
-        parseInt(folderId, 10),
-      );
+      const suggestion = await renameService.analyzeFolder(user.id, folderId);
 
       return NextResponse.json({
         success: true,
@@ -82,20 +85,36 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "未授权访问" }, { status: 401 });
     }
 
-    const body = await request.json();
-    const { folderId, newName } = body;
-
-    if (!folderId || !newName) {
+    const { data: body, error: parseError } = await safeParseJson(request);
+    if (parseError || !body) {
       return NextResponse.json(
-        { error: "缺少必要参数" },
+        { error: parseError || "请求体格式错误" },
         { status: 400 },
       );
+    }
+    const { folderId: folderIdRaw, newName } = body as {
+      folderId?: string | number;
+      newName?: string;
+    };
+
+    if (folderIdRaw === undefined || !newName) {
+      return NextResponse.json({ error: "缺少必要参数" }, { status: 400 });
+    }
+
+    // 解析 folderId
+    const folderId =
+      typeof folderIdRaw === "number"
+        ? folderIdRaw
+        : safeParseInt(String(folderIdRaw));
+
+    if (folderId === null) {
+      return NextResponse.json({ error: "无效的文件夹 ID" }, { status: 400 });
     }
 
     // 执行重命名
     const result = await renameService.executeRename(
       user.id,
-      parseInt(folderId, 10),
+      folderId,
       newName.trim(),
     );
 

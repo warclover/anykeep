@@ -24,7 +24,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Search, RefreshCw, Clock, Zap, Brain, Folder } from "lucide-react";
-import type { DecisionPath, MatcherScoreDetail } from "@/lib/classification/types";
+import type {
+  DecisionPath,
+  MatcherScoreDetail,
+} from "@/lib/classification/types";
 
 interface TraceListItem {
   traceId: string;
@@ -52,7 +55,7 @@ export default function ClassificationTracePage() {
       } else {
         setError(data.error || "加载失败");
       }
-    } catch (err) {
+    } catch {
       setError("网络错误");
     } finally {
       setLoading(false);
@@ -65,7 +68,9 @@ export default function ClassificationTracePage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/classification/trace?traceId=${encodeURIComponent(id)}`);
+      const res = await fetch(
+        `/api/classification/trace?traceId=${encodeURIComponent(id)}`,
+      );
       const data = await res.json();
       if (data.success) {
         setSelectedTrace(data.data);
@@ -73,7 +78,7 @@ export default function ClassificationTracePage() {
         setError(data.error || "未找到追踪");
         setSelectedTrace(null);
       }
-    } catch (err) {
+    } catch {
       setError("网络错误");
     } finally {
       setLoading(false);
@@ -86,7 +91,13 @@ export default function ClassificationTracePage() {
 
   // 层级徽章
   const TierBadge = ({ tier }: { tier: 0 | 1 | 2 | 3 }) => {
-    const variants: Record<number, { variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
+    const variants: Record<
+      number,
+      {
+        variant: "default" | "secondary" | "destructive" | "outline";
+        label: string;
+      }
+    > = {
       1: { variant: "default", label: "Tier 1 快速" },
       2: { variant: "secondary", label: "Tier 2 AI" },
       3: { variant: "outline", label: "Tier 3 创建" },
@@ -137,7 +148,9 @@ export default function ClassificationTracePage() {
           <p className="text-muted-foreground">V4.0 全链路追踪 - 开发者工具</p>
         </div>
         <Button variant="outline" onClick={loadRecentTraces} disabled={loading}>
-          <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+          <RefreshCw
+            className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`}
+          />
           刷新
         </Button>
       </div>
@@ -188,7 +201,9 @@ export default function ClassificationTracePage() {
               </div>
               <div className="space-y-1">
                 <div className="text-sm text-muted-foreground">AI 调用</div>
-                <Badge variant={selectedTrace.aiCalled ? "secondary" : "outline"}>
+                <Badge
+                  variant={selectedTrace.aiCalled ? "secondary" : "outline"}
+                >
                   {selectedTrace.aiCalled ? "是" : "否 (节省)"}
                 </Badge>
               </div>
@@ -212,7 +227,9 @@ export default function ClassificationTracePage() {
               <div className="bg-muted/50 p-4 rounded-lg">
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="font-medium">{selectedTrace.finalResult.folderName}</div>
+                    <div className="font-medium">
+                      {selectedTrace.finalResult.folderName}
+                    </div>
                     <div className="text-sm text-muted-foreground">
                       {selectedTrace.decisionReason.primary}
                     </div>
@@ -252,7 +269,10 @@ export default function ClassificationTracePage() {
                           其他候选:
                         </div>
                         {score.candidates.slice(1, 3).map((c, j) => (
-                          <div key={j} className="text-xs text-muted-foreground">
+                          <div
+                            key={j}
+                            className="text-xs text-muted-foreground"
+                          >
                             {c.folderName}: {c.score.toFixed(1)}%
                           </div>
                         ))}

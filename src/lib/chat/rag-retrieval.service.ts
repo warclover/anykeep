@@ -60,7 +60,9 @@ export interface RAGRetrievalOptions {
   includeDescription?: boolean;
 }
 
-const DEFAULT_OPTIONS: Required<Omit<RAGRetrievalOptions, "folderId" | "bookmarkIds">> = {
+const DEFAULT_OPTIONS: Required<
+  Omit<RAGRetrievalOptions, "folderId" | "bookmarkIds">
+> = {
   limit: 5,
   minSimilarity: 0.5,
   includeDescription: true,
@@ -81,14 +83,17 @@ export class RAGRetrievalService {
   async retrieve(
     userId: string,
     query: string,
-    options: RAGRetrievalOptions = {}
+    options: RAGRetrievalOptions = {},
   ): Promise<RAGRetrievalResult> {
     const startTime = Date.now();
     const opts = { ...DEFAULT_OPTIONS, ...options };
 
     try {
       // 1. 为用户查询生成向量
-      logger.debug({ query, userId: userId.slice(0, 8) + "..." }, "RAG: Generating query embedding");
+      logger.debug(
+        { query, userId: userId.slice(0, 8) + "..." },
+        "RAG: Generating query embedding",
+      );
 
       const queryEmbedding = await generateEmbedding(query);
 
@@ -96,7 +101,7 @@ export class RAGRetrievalService {
       const supabase = await createClient();
 
       // 构建查询
-      let rpcParams: Record<string, unknown> = {
+      const rpcParams: Record<string, unknown> = {
         query_embedding: queryEmbedding,
         match_threshold: opts.minSimilarity,
         match_count: opts.limit,
@@ -109,10 +114,9 @@ export class RAGRetrievalService {
       }
 
       // 调用 RPC 函数进行向量搜索 (V4.2 RPC)
-      const { data: searchResults, error: searchError } = await v42Rpc(supabase).rpc(
-        "search_bookmarks_by_embedding",
-        rpcParams
-      );
+      const { data: searchResults, error: searchError } = await v42Rpc(
+        supabase,
+      ).rpc("search_bookmarks_by_embedding", rpcParams);
 
       if (searchError) {
         logger.error({ error: searchError }, "RAG: Vector search failed");
@@ -123,7 +127,7 @@ export class RAGRetrievalService {
       let filteredResults = searchResults || [];
       if (opts.bookmarkIds && opts.bookmarkIds.length > 0) {
         filteredResults = filteredResults.filter((r: { id: number }) =>
-          opts.bookmarkIds!.includes(r.id)
+          opts.bookmarkIds!.includes(r.id),
         );
       }
 
@@ -151,7 +155,7 @@ export class RAGRetrievalService {
           platform: item.platform,
           similarity: item.similarity,
           createdAt: item.created_at,
-        })
+        }),
       );
 
       // 5. 生成上下文文本
@@ -160,7 +164,8 @@ export class RAGRetrievalService {
       // 6. 计算元数据
       const avgSimilarity =
         bookmarks.length > 0
-          ? bookmarks.reduce((sum, b) => sum + b.similarity, 0) / bookmarks.length
+          ? bookmarks.reduce((sum, b) => sum + b.similarity, 0) /
+            bookmarks.length
           : 0;
 
       const retrievalTimeMs = Date.now() - startTime;
@@ -173,7 +178,7 @@ export class RAGRetrievalService {
           avgSimilarity: avgSimilarity.toFixed(3),
           timeMs: retrievalTimeMs,
         },
-        "RAG: Retrieval completed"
+        "RAG: Retrieval completed",
       );
 
       return {
@@ -189,7 +194,7 @@ export class RAGRetrievalService {
     } catch (error) {
       logger.error(
         { error: error instanceof Error ? error.message : String(error) },
-        "RAG: Retrieval failed"
+        "RAG: Retrieval failed",
       );
       throw error;
     }
@@ -204,15 +209,13 @@ export class RAGRetrievalService {
    */
   private buildContext(
     bookmarks: RetrievedBookmark[],
-    includeDescription: boolean
+    includeDescription: boolean,
   ): string {
     if (bookmarks.length === 0) {
       return "";
     }
 
-    const contextParts: string[] = [
-      "以下是用户收藏中与问题相关的内容：\n",
-    ];
+    const contextParts: string[] = ["以下是用户收藏中与问题相关的内容：\n"];
 
     bookmarks.forEach((bookmark, index) => {
       const parts: string[] = [];
@@ -257,7 +260,7 @@ export class RAGRetrievalService {
    */
   async retrieveBookmarkContext(
     userId: string,
-    bookmarkId: number
+    bookmarkId: number,
   ): Promise<RetrievedBookmark | null> {
     try {
       const supabase = await createClient();
@@ -277,7 +280,7 @@ export class RAGRetrievalService {
           folders!inner (
             name
           )
-        `
+        `,
         )
         .eq("id", bookmarkId)
         .eq("user_id", userId)
@@ -301,8 +304,11 @@ export class RAGRetrievalService {
       };
     } catch (error) {
       logger.error(
-        { error: error instanceof Error ? error.message : String(error), bookmarkId },
-        "RAG: Failed to retrieve bookmark context"
+        {
+          error: error instanceof Error ? error.message : String(error),
+          bookmarkId,
+        },
+        "RAG: Failed to retrieve bookmark context",
       );
       return null;
     }

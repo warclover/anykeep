@@ -8,10 +8,10 @@
  * - 提供优化建议
  */
 
-import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { v42Table } from "@/lib/supabase/v42-types";
 import { operationLogService } from "./operation-log.service";
 import { logger } from "@/lib/logger";
+import { BaseSupabaseService } from "./base-supabase.service";
 
 // ============================================
 // Type Definitions
@@ -71,18 +71,7 @@ export interface ReportGenerationOptions {
 // ReportService Class
 // ============================================
 
-export class ReportService {
-  private supabase: Awaited<
-    ReturnType<typeof createServerSupabaseClient>
-  > | null = null;
-
-  private async getSupabase() {
-    if (!this.supabase) {
-      this.supabase = await createServerSupabaseClient();
-    }
-    return this.supabase;
-  }
-
+export class ReportService extends BaseSupabaseService {
   /**
    * Generate monthly report for a user
    */
@@ -228,7 +217,9 @@ export class ReportService {
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (data as any[]).map((r: Record<string, unknown>) => this.mapReportToInterface(r));
+    return (data as any[]).map((r: Record<string, unknown>) =>
+      this.mapReportToInterface(r),
+    );
   }
 
   /**
@@ -280,7 +271,8 @@ export class ReportService {
     const typedMetrics = (metrics || []) as MetricRow[];
 
     const manual = typedMetrics.filter(
-      (m: MetricRow) => m.user_feedback === "modify" || m.user_feedback === "reject",
+      (m: MetricRow) =>
+        m.user_feedback === "modify" || m.user_feedback === "reject",
     ).length;
     const auto = (total || 0) - manual;
 
@@ -379,10 +371,15 @@ export class ReportService {
     const typedData = data as QualityRow[];
 
     const avgConfidence =
-      typedData.reduce((sum: number, d: QualityRow) => sum + d.confidence, 0) / typedData.length;
+      typedData.reduce((sum: number, d: QualityRow) => sum + d.confidence, 0) /
+      typedData.length;
 
-    const withFeedback = typedData.filter((d: QualityRow) => d.user_feedback !== null);
-    const accepted = withFeedback.filter((d: QualityRow) => d.user_feedback === "accept");
+    const withFeedback = typedData.filter(
+      (d: QualityRow) => d.user_feedback !== null,
+    );
+    const accepted = withFeedback.filter(
+      (d: QualityRow) => d.user_feedback === "accept",
+    );
     const acceptanceRate =
       withFeedback.length > 0 ? accepted.length / withFeedback.length : null;
 

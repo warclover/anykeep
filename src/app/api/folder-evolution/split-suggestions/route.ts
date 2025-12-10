@@ -9,6 +9,8 @@ import {
   successResponse,
   unauthorizedError,
   internalError,
+  badRequestError,
+  safeParseInt,
 } from "@/lib/utils/api-response";
 import { splitService } from "@/lib/classification/services/split.service";
 import { logger } from "@/lib/logger";
@@ -31,13 +33,18 @@ export async function GET(request: NextRequest) {
 
     // Get folder ID from query params (optional - for specific folder analysis)
     const { searchParams } = new URL(request.url);
-    const folderId = searchParams.get("folderId");
+    const folderIdParam = searchParams.get("folderId");
 
-    if (folderId) {
+    if (folderIdParam) {
+      const folderId = safeParseInt(folderIdParam);
+      if (folderId === null) {
+        return badRequestError("无效的文件夹 ID");
+      }
+
       // Analyze specific folder
       const suggestion = await splitService.analyzeSplitOptions(
         user.id,
-        parseInt(folderId, 10),
+        folderId,
       );
 
       return successResponse({

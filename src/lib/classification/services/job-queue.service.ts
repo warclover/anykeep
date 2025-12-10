@@ -55,11 +55,15 @@ export interface JobQueryOptions {
  * 任务队列服务
  */
 export class JobQueueService {
-  private supabase: Awaited<ReturnType<typeof createServerSupabaseClient>> | null = null;
+  private supabase: Awaited<
+    ReturnType<typeof createServerSupabaseClient>
+  > | null = null;
   private workerId: string;
 
   constructor(workerId?: string) {
-    this.workerId = workerId || `worker-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    this.workerId =
+      workerId ||
+      `worker-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   }
 
   /**
@@ -83,7 +87,7 @@ export class JobQueueService {
       priority?: number;
       scheduledAt?: Date;
       maxAttempts?: number;
-    } = {}
+    } = {},
   ): Promise<string> {
     const supabase = await this.getSupabase();
 
@@ -99,7 +103,8 @@ export class JobQueueService {
       type,
       payload,
       priority: options.priority ?? 0,
-      scheduled_at: options.scheduledAt?.toISOString() ?? new Date().toISOString(),
+      scheduled_at:
+        options.scheduledAt?.toISOString() ?? new Date().toISOString(),
       max_attempts: options.maxAttempts ?? 3,
     };
 
@@ -110,7 +115,15 @@ export class JobQueueService {
       .single();
 
     if (error) {
-      console.error("[JobQueueService] Failed to enqueue job:", error);
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          userId,
+          jobType: type,
+          priority: options.priority ?? 0,
+        },
+        "[JobQueueService] Failed to enqueue job",
+      );
       throw new Error(`任务入队失败: ${error.message}`);
     }
 
@@ -123,7 +136,7 @@ export class JobQueueService {
   async hasPendingJob(
     userId: string,
     type: JobQueueType,
-    payload?: Json
+    payload?: Json,
   ): Promise<boolean> {
     const supabase = await this.getSupabase();
 
@@ -142,7 +155,14 @@ export class JobQueueService {
     const { count, error } = await query;
 
     if (error) {
-      console.error("[JobQueueService] Failed to check pending job:", error);
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          userId,
+          jobType: type,
+        },
+        "[JobQueueService] Failed to check pending job",
+      );
       return false;
     }
 
@@ -154,7 +174,7 @@ export class JobQueueService {
    */
   async claimNextJob(
     jobTypes?: JobQueueType[],
-    lockDurationMinutes: number = 5
+    lockDurationMinutes: number = 5,
   ): Promise<ClaimedJob | null> {
     const supabase = await this.getSupabase();
 
@@ -166,7 +186,15 @@ export class JobQueueService {
     });
 
     if (error) {
-      console.error("[JobQueueService] Failed to claim job:", error);
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          workerId: this.workerId,
+          jobTypes,
+          lockDurationMinutes,
+        },
+        "[JobQueueService] Failed to claim job",
+      );
       return null;
     }
 
@@ -196,7 +224,13 @@ export class JobQueueService {
     });
 
     if (error) {
-      console.error("[JobQueueService] Failed to complete job:", error);
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          jobId,
+        },
+        "[JobQueueService] Failed to complete job",
+      );
       return false;
     }
 
@@ -209,7 +243,7 @@ export class JobQueueService {
   async failJob(
     jobId: string,
     errorMessage: string,
-    retry: boolean = true
+    retry: boolean = true,
   ): Promise<boolean> {
     const supabase = await this.getSupabase();
 
@@ -220,7 +254,15 @@ export class JobQueueService {
     });
 
     if (error) {
-      console.error("[JobQueueService] Failed to fail job:", error);
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          jobId,
+          errorMessage,
+          retry,
+        },
+        "[JobQueueService] Failed to fail job",
+      );
       return false;
     }
 
@@ -241,7 +283,14 @@ export class JobQueueService {
       .eq("status", "pending");
 
     if (error) {
-      console.error("[JobQueueService] Failed to cancel job:", error);
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          userId,
+          jobId,
+        },
+        "[JobQueueService] Failed to cancel job",
+      );
       return false;
     }
 
@@ -253,7 +302,7 @@ export class JobQueueService {
    */
   async getUserJobs(
     userId: string,
-    options: JobQueryOptions = {}
+    options: JobQueryOptions = {},
   ): Promise<JobQueueItem[]> {
     const supabase = await this.getSupabase();
     const { type, status, limit = 50 } = options;
@@ -280,7 +329,16 @@ export class JobQueueService {
     const { data, error } = await query;
 
     if (error) {
-      console.error("[JobQueueService] Failed to get user jobs:", error);
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          userId,
+          queryType: type,
+          queryStatus: status,
+          limit,
+        },
+        "[JobQueueService] Failed to get user jobs",
+      );
       throw new Error(`获取任务列表失败: ${error.message}`);
     }
 
@@ -290,7 +348,10 @@ export class JobQueueService {
   /**
    * 获取任务详情
    */
-  async getJobById(userId: string, jobId: string): Promise<JobQueueItem | null> {
+  async getJobById(
+    userId: string,
+    jobId: string,
+  ): Promise<JobQueueItem | null> {
     const supabase = await this.getSupabase();
 
     const { data, error } = await v42Table(supabase)
@@ -304,7 +365,14 @@ export class JobQueueService {
       if (error.code === "PGRST116") {
         return null;
       }
-      console.error("[JobQueueService] Failed to get job:", error);
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          userId,
+          jobId,
+        },
+        "[JobQueueService] Failed to get job",
+      );
       throw new Error(`获取任务详情失败: ${error.message}`);
     }
 
@@ -354,7 +422,7 @@ export class JobQueueService {
     options: {
       priority?: number;
       scheduledAt?: Date;
-    } = {}
+    } = {},
   ): Promise<string[]> {
     const supabase = await this.getSupabase();
 
@@ -363,7 +431,8 @@ export class JobQueueService {
       type,
       payload,
       priority: options.priority ?? 0,
-      scheduled_at: options.scheduledAt?.toISOString() ?? new Date().toISOString(),
+      scheduled_at:
+        options.scheduledAt?.toISOString() ?? new Date().toISOString(),
     }));
 
     const { data, error } = await v42Table(supabase)
@@ -372,7 +441,16 @@ export class JobQueueService {
       .select("id");
 
     if (error) {
-      console.error("[JobQueueService] Failed to enqueue batch:", error);
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          userId,
+          jobType: type,
+          batchSize: payloads.length,
+          priority: options.priority ?? 0,
+        },
+        "[JobQueueService] Failed to enqueue batch",
+      );
       throw new Error(`批量任务入队失败: ${error.message}`);
     }
 
@@ -396,7 +474,14 @@ export class JobQueueService {
       .select("id");
 
     if (error) {
-      console.error("[JobQueueService] Failed to cleanup:", error);
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          daysOld,
+          cutoffDate: cutoffDate.toISOString(),
+        },
+        "[JobQueueService] Failed to cleanup",
+      );
       return 0;
     }
 
@@ -421,7 +506,13 @@ export class JobQueueService {
       .select("id");
 
     if (error) {
-      console.error("[JobQueueService] Failed to reset stuck jobs:", error);
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          timestamp: new Date().toISOString(),
+        },
+        "[JobQueueService] Failed to reset stuck jobs",
+      );
       return 0;
     }
 
@@ -450,7 +541,14 @@ export class JobQueueService {
     const { count, error } = await query;
 
     if (error) {
-      console.error("[JobQueueService] Failed to get pending count:", error);
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          userId,
+          jobType: type,
+        },
+        "[JobQueueService] Failed to get pending count",
+      );
       return 0;
     }
 

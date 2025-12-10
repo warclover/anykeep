@@ -105,6 +105,10 @@ export const MESSAGE_TYPE_LEVELS: Record<MessageType, MessageLevel> = {
   quota_warning: "important",
   quota_critical: "important",
   quota_exceeded: "important",
+  // V4.2 新增：成本监控
+  cost_warning: "important",
+  cost_critical: "important",
+  cost_daily_exceeded: "important",
 };
 
 // ============================================

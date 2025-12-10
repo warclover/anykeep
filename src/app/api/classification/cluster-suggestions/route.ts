@@ -4,7 +4,7 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
-import { v42Table, type SuggestionV42Fields, type BookmarkV42Fields } from "@/lib/supabase/v42-types";
+import { v42Table } from "@/lib/supabase/v42-types";
 import {
   successResponse,
   unauthorizedError,
@@ -33,7 +33,8 @@ export async function GET() {
     // Note: bookmark_ids, suggested_action, metadata 是 V4.2 新增字段
     const { data: suggestions, error: fetchError } = await v42Table(supabase)
       .from("classification_suggestions")
-      .select(`
+      .select(
+        `
         id,
         suggested_folder_name,
         bookmark_ids,
@@ -41,7 +42,8 @@ export async function GET() {
         reason,
         created_at,
         metadata
-      `)
+      `,
+      )
       .eq("user_id", user.id)
       .eq("status", "pending")
       .eq("suggested_action", "create_folder")
@@ -67,7 +69,9 @@ export async function GET() {
       created_at: string;
     };
     const typedSuggestions = (suggestions || []) as SuggestionRow[];
-    const allBookmarkIds = typedSuggestions.flatMap((s) => s.bookmark_ids ?? []);
+    const allBookmarkIds = typedSuggestions.flatMap(
+      (s) => s.bookmark_ids ?? [],
+    );
 
     let bookmarkTitles: Record<number, string> = {};
     if (allBookmarkIds.length > 0) {
@@ -76,10 +80,13 @@ export async function GET() {
         .select("id, title")
         .in("id", allBookmarkIds);
 
-      bookmarkTitles = (bookmarks || []).reduce((acc, b) => {
-        acc[b.id] = b.title;
-        return acc;
-      }, {} as Record<number, string>);
+      bookmarkTitles = (bookmarks || []).reduce(
+        (acc, b) => {
+          acc[b.id] = b.title;
+          return acc;
+        },
+        {} as Record<number, string>,
+      );
     }
 
     // 4. 格式化建议数据
@@ -117,8 +124,12 @@ export async function GET() {
       .not("cluster_id", "is", null)
       .is("deleted_at", null);
 
-    const clusterDataTyped = (clusterData || []) as Array<{ cluster_id: string | null }>;
-    const uniqueClusterIds = new Set(clusterDataTyped.map(b => b.cluster_id).filter(Boolean));
+    const clusterDataTyped = (clusterData || []) as Array<{
+      cluster_id: string | null;
+    }>;
+    const uniqueClusterIds = new Set(
+      clusterDataTyped.map((b) => b.cluster_id).filter(Boolean),
+    );
     const clusterCount = uniqueClusterIds.size;
 
     // 计算下次 cron 时间（凌晨 4:00）

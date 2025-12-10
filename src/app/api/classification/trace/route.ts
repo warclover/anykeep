@@ -6,7 +6,8 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { createTraceStorageService } from "@/lib/classification/v3/services/trace.service";
 
 export async function GET(request: NextRequest) {
@@ -20,10 +21,7 @@ export async function GET(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
@@ -37,18 +35,12 @@ export async function GET(request: NextRequest) {
       const trace = await traceService.getTrace(traceId);
 
       if (!trace) {
-        return NextResponse.json(
-          { error: "Trace not found" },
-          { status: 404 }
-        );
+        return NextResponse.json({ error: "Trace not found" }, { status: 404 });
       }
 
       // 验证用户权限
       if (trace.userId !== user.id) {
-        return NextResponse.json(
-          { error: "Forbidden" },
-          { status: 403 }
-        );
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
 
       return NextResponse.json({
@@ -71,13 +63,13 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(
       { error: "Missing traceId or recent parameter" },
-      { status: 400 }
+      { status: 400 },
     );
   } catch (error) {
     console.error("Trace API error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

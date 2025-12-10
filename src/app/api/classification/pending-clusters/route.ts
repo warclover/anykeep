@@ -4,9 +4,12 @@
  * POST /api/classification/pending-clusters - 确认或拒绝聚类建议
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { v42Table, type BookmarkV42Fields } from "@/lib/supabase/v42-types";
+import { v42Table } from "@/lib/supabase/v42-types";
+import { safeParseJson } from "@/lib/utils/api-response";
+import { logger } from "@/lib/logger";
 
 interface ClusterGroup {
   clusterId: string;
@@ -178,22 +181,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "未授权访问" }, { status: 401 });
     }
 
-    const body = await request.json();
-    const { action, clusterId, folderName, bookmarkIds } = body;
-
-    if (!action || !["confirm", "reject"].includes(action)) {
+    const { data: body, error: parseError } = await safeParseJson(request);
+    if (parseError || !body) {
       return NextResponse.json(
-        { error: "无效的操作类型" },
+        { error: parseError || "请求体格式错误" },
         { status: 400 },
       );
+    }
+    const { action, clusterId, folderName, bookmarkIds } = body as {
+      action?: string;
+      clusterId?: string;
+      folderName?: string;
+      bookmarkIds?: number[];
+    };
+
+    if (!action || !["confirm", "reject"].includes(action)) {
+      return NextResponse.json({ error: "无效的操作类型" }, { status: 400 });
     }
 
     if (action === "confirm") {
       if (!folderName || !bookmarkIds?.length) {
-        return NextResponse.json(
-          { error: "缺少必要参数" },
-          { status: 400 },
-        );
+        return NextResponse.json({ error: "缺少必要参数" }, { status: 400 });
       }
 
       // 创建新文件夹
@@ -209,10 +217,7 @@ export async function POST(request: NextRequest) {
 
       if (folderError) {
         console.error("[API] create folder error:", folderError);
-        return NextResponse.json(
-          { error: "创建文件夹失败" },
-          { status: 500 },
-        );
+        return NextResponse.json({ error: "创建文件夹失败" }, { status: 500 });
       }
 
       // 更新书签：移动到新文件夹并清除聚类标记
@@ -231,10 +236,7 @@ export async function POST(request: NextRequest) {
 
       if (updateError) {
         console.error("[API] update bookmarks error:", updateError);
-        return NextResponse.json(
-          { error: "移动书签失败" },
-          { status: 500 },
-        );
+        return NextResponse.json({ error: "移动书签失败" }, { status: 500 });
       }
 
       // 记录操作快照（用于撤销）
@@ -262,10 +264,21 @@ export async function POST(request: NextRequest) {
           });
 
         if (snapshotError) {
-          console.warn("[API] snapshot creation warning:", snapshotError);
+          logger.warn(
+            { error: snapshotError.message },
+            "[API] snapshot creation warning",
+          );
         }
       } catch (snapshotErr) {
-        console.warn("[API] snapshot creation failed:", snapshotErr);
+        logger.warn(
+          {
+            error:
+              snapshotErr instanceof Error
+                ? snapshotErr.message
+                : String(snapshotErr),
+          },
+          "[API] snapshot creation failed",
+        );
       }
 
       return NextResponse.json({

@@ -5,7 +5,11 @@
 
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { v42Table, v42Rpc, asV42Bookmark, type BookmarkV42Fields } from "@/lib/supabase/v42-types";
+import {
+  v42Table,
+  v42Rpc,
+  type BookmarkV42Fields,
+} from "@/lib/supabase/v42-types";
 
 export async function GET() {
   try {
@@ -23,14 +27,19 @@ export async function GET() {
 
     // 使用 RPC 获取聚类统计
     // Note: get_user_cluster_stats 函数类型尚未在 supabase.ts 中定义
-    const { data, error } = await v42Rpc(supabase).rpc("get_user_cluster_stats", {
-      p_user_id: user.id,
-    });
+    const { data, error } = await v42Rpc(supabase).rpc(
+      "get_user_cluster_stats",
+      {
+        p_user_id: user.id,
+      },
+    );
 
     if (error) {
       console.error("[API] cluster-stats RPC error:", error);
       // 如果 RPC 不存在，回退到直接查询
-      const { data: fallbackData, error: fallbackError } = await v42Table(supabase)
+      const { data: fallbackData, error: fallbackError } = await v42Table(
+        supabase,
+      )
         .from("bookmarks")
         .select("id, pending_cluster, pending_since, cluster_id")
         .eq("user_id", user.id)
@@ -38,13 +47,12 @@ export async function GET() {
         .is("deleted_at", null);
 
       if (fallbackError) {
-        return NextResponse.json(
-          { error: "获取统计失败" },
-          { status: 500 },
-        );
+        return NextResponse.json({ error: "获取统计失败" }, { status: 500 });
       }
 
-      const bookmarks = (fallbackData || []) as Array<{ id: number } & BookmarkV42Fields>;
+      const bookmarks = (fallbackData || []) as Array<
+        { id: number } & BookmarkV42Fields
+      >;
       const totalPending = bookmarks.length;
       const clusteredCount = bookmarks.filter((b) => b.cluster_id).length;
       const unclusteredCount = totalPending - clusteredCount;

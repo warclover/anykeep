@@ -3,7 +3,7 @@
  * 展示月度 AI 文件夹管理报告
  */
 
-import { Metadata } from "next";
+import type { Metadata } from "next";
 import { ReportPageClient } from "@/components/folder-evolution/report-page-client";
 
 export const metadata: Metadata = {

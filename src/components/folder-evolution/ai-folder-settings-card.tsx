@@ -127,9 +127,11 @@ export function AIFolderSettingsCard({ className }: AIFolderSettingsCardProps) {
     }
   }, []);
 
+  // 初始加载 - 仅在组件挂载时执行一次
   useEffect(() => {
     loadSettings();
-  }, [loadSettings]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // 检查是否有变化
   const checkChanges = useCallback(
@@ -138,13 +140,13 @@ export function AIFolderSettingsCard({ className }: AIFolderSettingsCardProps) {
         JSON.stringify(newSettings) !== JSON.stringify(originalSettings);
       setHasChanges(changed);
     },
-    [originalSettings]
+    [originalSettings],
   );
 
   // 更新设置
   const updateSetting = <K extends keyof AIFolderSettings>(
     key: K,
-    value: AIFolderSettings[K]
+    value: AIFolderSettings[K],
   ) => {
     const newSettings = { ...settings, [key]: value };
     setSettings(newSettings);
@@ -304,7 +306,7 @@ export function AIFolderSettingsCard({ className }: AIFolderSettingsCardProps) {
           <div
             className={cn(
               "flex items-center justify-between pl-4 transition-opacity",
-              !settings.autoSplitEnabled && "opacity-50"
+              !settings.autoSplitEnabled && "opacity-50",
             )}
           >
             <div className="flex-1 pr-4">
@@ -331,7 +333,7 @@ export function AIFolderSettingsCard({ className }: AIFolderSettingsCardProps) {
           <div
             className={cn(
               "space-y-2 pl-4 transition-opacity",
-              !settings.autoSplitEnabled && "opacity-50"
+              !settings.autoSplitEnabled && "opacity-50",
             )}
           >
             <div className="flex items-center justify-between">
@@ -409,7 +411,7 @@ export function AIFolderSettingsCard({ className }: AIFolderSettingsCardProps) {
           <div
             className={cn(
               "flex items-center justify-between pl-4 transition-opacity",
-              !settings.autoMergeEnabled && "opacity-50"
+              !settings.autoMergeEnabled && "opacity-50",
             )}
           >
             <div className="flex-1 pr-4">
@@ -436,7 +438,7 @@ export function AIFolderSettingsCard({ className }: AIFolderSettingsCardProps) {
           <div
             className={cn(
               "space-y-2 pl-4 transition-opacity",
-              !settings.autoMergeEnabled && "opacity-50"
+              !settings.autoMergeEnabled && "opacity-50",
             )}
           >
             <div className="flex items-center justify-between">

@@ -27,9 +27,6 @@ import {
 import {
   Cpu,
   DollarSign,
-  TrendingUp,
-  TrendingDown,
-  Minus,
   RefreshCw,
   HelpCircle,
   Sparkles,
@@ -37,11 +34,9 @@ import {
   MessageSquare,
   FileText,
   Zap,
-  Calendar,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import { zhCN } from "date-fns/locale";
 
 // ============================================================================
 // 类型定义
@@ -104,10 +99,8 @@ interface LLMUsageCardProps {
 // ============================================================================
 
 function formatCost(cents: number): string {
-  if (cents < 100) {
-    return `¥${(cents / 100).toFixed(2)}`;
-  }
-  return `¥${(cents / 100).toFixed(2)}`;
+  const yuan = Math.max(0, cents) / 100; // 防止负数
+  return `¥${yuan.toFixed(2)}`;
 }
 
 function formatTokens(tokens: number): string {
@@ -183,9 +176,11 @@ export function LLMUsageCard({ className }: LLMUsageCardProps) {
     }
   }, []);
 
+  // 初始加载 - 仅在组件挂载时执行一次
   useEffect(() => {
     loadStats();
-  }, [loadStats]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const currentStats = activeTab === "daily" ? dailyStats : monthlyStats;
 
@@ -258,19 +253,21 @@ export function LLMUsageCard({ className }: LLMUsageCardProps) {
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">今日配额</span>
                       <span>
-                        {currentStats.quota.used} / {currentStats.quota.dailyLimit}{" "}
-                        次
+                        {currentStats.quota.used} /{" "}
+                        {currentStats.quota.dailyLimit} 次
                       </span>
                     </div>
                     <Progress
                       value={
-                        (currentStats.quota.used / currentStats.quota.dailyLimit) *
+                        (currentStats.quota.used /
+                          currentStats.quota.dailyLimit) *
                         100
                       }
                       className={cn(
                         "h-2",
-                        currentStats.quota.used / currentStats.quota.dailyLimit >
-                          0.8 && "[&>div]:bg-amber-500"
+                        currentStats.quota.used /
+                          currentStats.quota.dailyLimit >
+                          0.8 && "[&>div]:bg-amber-500",
                       )}
                     />
                     <p className="text-xs text-muted-foreground">
@@ -353,7 +350,7 @@ export function LLMUsageCard({ className }: LLMUsageCardProps) {
                               </span>
                             </div>
                           </div>
-                        )
+                        ),
                     )}
                   </div>
                 </div>
@@ -398,9 +395,9 @@ export function LLMUsageCard({ className }: LLMUsageCardProps) {
                         近期趋势
                       </h4>
                       <div className="flex items-end gap-1 h-20">
-                        {currentStats.trends.map((t, i) => {
+                        {currentStats.trends.map((t, _i) => {
                           const maxCost = Math.max(
-                            ...currentStats.trends!.map((x) => x.costCents)
+                            ...currentStats.trends!.map((x) => x.costCents),
                           );
                           const height =
                             maxCost > 0 ? (t.costCents / maxCost) * 100 : 0;

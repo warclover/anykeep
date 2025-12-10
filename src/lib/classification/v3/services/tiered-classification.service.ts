@@ -186,8 +186,7 @@ const DEFAULT_CONFIG: TieredClassificationConfig = {
  * 分层分类编排服务
  */
 export class TieredClassificationService {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private supabase: SupabaseClient<any>;
+  private supabase: SupabaseClient<Database>;
   private config: TieredClassificationConfig;
   private matcherGroups: MatcherGroups;
   private aggregator: IScoreAggregator;
@@ -201,8 +200,7 @@ export class TieredClassificationService {
     aggregator: IScoreAggregator,
     config?: Partial<TieredClassificationConfig>,
   ) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    this.supabase = supabase as SupabaseClient<any>;
+    this.supabase = supabase;
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.aggregator = aggregator;
 

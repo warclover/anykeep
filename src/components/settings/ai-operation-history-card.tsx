@@ -41,7 +41,7 @@ export function AIOperationHistoryCard({
     undoableCount,
     undoOperation,
     refresh,
-    isUndoing,
+    isUndoing: _isUndoing,
   } = useOperationHistory({
     limit: 10,
     autoRefresh: true,
@@ -51,7 +51,10 @@ export function AIOperationHistoryCard({
   return (
     <Card>
       <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
-        <CardHeader className="cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
+        <CardHeader
+          className="cursor-pointer"
+          onClick={() => setIsExpanded(!isExpanded)}
+        >
           <CollapsibleTrigger asChild>
             <div className="flex items-center justify-between w-full">
               <div className="flex items-center gap-2">
@@ -82,7 +85,9 @@ export function AIOperationHistoryCard({
               operations={operations}
               isLoading={isLoading}
               error={error}
-              onUndo={async (id: string) => { await undoOperation(id); }}
+              onUndo={async (id: string) => {
+                await undoOperation(id);
+              }}
               onRefresh={refresh}
               undoableCount={undoableCount}
             />

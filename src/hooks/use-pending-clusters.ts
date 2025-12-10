@@ -95,7 +95,9 @@ export function usePendingClusters(options: UsePendingClustersOptions = {}) {
           throw new Error(result.error || "创建文件夹失败");
         }
 
-        toast.success(`已创建文件夹「${folderName}」并移动 ${bookmarkIds.length} 个书签`);
+        toast.success(
+          `已创建文件夹「${folderName}」并移动 ${bookmarkIds.length} 个书签`,
+        );
 
         // 刷新数据
         await fetchClusters();
@@ -187,10 +189,11 @@ export function usePendingClusters(options: UsePendingClustersOptions = {}) {
     [fetchClusters],
   );
 
-  // 初始加载
+  // 初始加载 - 仅在组件挂载时执行一次
   useEffect(() => {
     fetchClusters();
-  }, [fetchClusters]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // 自动刷新
   useEffect(() => {
@@ -198,7 +201,8 @@ export function usePendingClusters(options: UsePendingClustersOptions = {}) {
 
     const interval = setInterval(fetchClusters, refreshInterval);
     return () => clearInterval(interval);
-  }, [autoRefresh, refreshInterval, fetchClusters]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoRefresh, refreshInterval]);
 
   return {
     // 数据

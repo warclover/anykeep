@@ -82,15 +82,17 @@ export function SplitSuggestionCard({
 }: SplitSuggestionCardProps) {
   const [isConfirming, setIsConfirming] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-  const [selectedSplits, setSelectedSplits] = useState<SplitOption[]>(
-    suggestion.suggestedSplits
+  const [selectedSplits, _setSelectedSplits] = useState<SplitOption[]>(
+    suggestion.suggestedSplits,
   );
 
   const handleConfirm = async () => {
     setIsConfirming(true);
     try {
       await onConfirm(suggestion.folderId, selectedSplits);
-      toast.success(`「${suggestion.folderName}」已分拆为 ${selectedSplits.length} 个文件夹`);
+      toast.success(
+        `「${suggestion.folderName}」已分拆为 ${selectedSplits.length} 个文件夹`,
+      );
       setShowConfirmDialog(false);
     } catch (error) {
       toast.error("分拆失败，请重试");
@@ -112,7 +114,10 @@ export function SplitSuggestionCard({
     }
     if (similarity < 0.5) {
       return (
-        <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+        <Badge
+          variant="secondary"
+          className="text-xs bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+        >
           中等内聚
         </Badge>
       );
@@ -143,8 +148,8 @@ export function SplitSuggestionCard({
                       </TooltipTrigger>
                       <TooltipContent className="max-w-xs">
                         <p>
-                          该文件夹内容较为分散，AI 建议将其分拆为多个更专注的文件夹，
-                          以提高查找效率。
+                          该文件夹内容较为分散，AI
+                          建议将其分拆为多个更专注的文件夹， 以提高查找效率。
                         </p>
                       </TooltipContent>
                     </Tooltip>
@@ -166,7 +171,8 @@ export function SplitSuggestionCard({
             <div className="flex-1">
               <p className="font-medium">{suggestion.folderName}</p>
               <p className="text-xs text-muted-foreground">
-                {suggestion.bookmarkCount} 个收藏 · 内聚度 {Math.round(suggestion.internalSimilarity * 100)}%
+                {suggestion.bookmarkCount} 个收藏 · 内聚度{" "}
+                {Math.round(suggestion.internalSimilarity * 100)}%
               </p>
             </div>
           </div>
@@ -185,8 +191,8 @@ export function SplitSuggestionCard({
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm">{split.name}</p>
                   <p className="text-xs text-muted-foreground truncate">
-                    {split.bookmarkIds.length} 个收藏 ·
-                    如「{split.sampleTitles[0]}」等
+                    {split.bookmarkIds.length} 个收藏 · 如「
+                    {split.sampleTitles[0]}」等
                   </p>
                 </div>
               </div>
@@ -194,9 +200,7 @@ export function SplitSuggestionCard({
           </div>
 
           {/* 分拆原因 */}
-          <p className="text-xs text-muted-foreground">
-            {suggestion.reason}
-          </p>
+          <p className="text-xs text-muted-foreground">{suggestion.reason}</p>
 
           {/* 操作按钮 */}
           <div className="flex items-center gap-2 pt-2">
@@ -228,7 +232,8 @@ export function SplitSuggestionCard({
             <AlertDialogTitle>确认分拆文件夹？</AlertDialogTitle>
             <AlertDialogDescription className="space-y-2">
               <p>
-                将「{suggestion.folderName}」分拆为 {selectedSplits.length} 个新文件夹：
+                将「{suggestion.folderName}」分拆为 {selectedSplits.length}{" "}
+                个新文件夹：
               </p>
               <ul className="list-disc list-inside space-y-1 mt-2">
                 {selectedSplits.map((split, i) => (

@@ -30,7 +30,9 @@ interface UseRenameSuggestionsOptions {
   limit?: number;
 }
 
-export function useRenameSuggestions(options: UseRenameSuggestionsOptions = {}) {
+export function useRenameSuggestions(
+  options: UseRenameSuggestionsOptions = {},
+) {
   const { autoFetch = true, folderId, limit = 5 } = options;
 
   const [suggestions, setSuggestions] = useState<RenameSuggestion[]>([]);
@@ -130,12 +132,13 @@ export function useRenameSuggestions(options: UseRenameSuggestionsOptions = {}) 
     [],
   );
 
-  // 初始加载
+  // 初始加载 - 仅在挂载或关键参数变化时执行
   useEffect(() => {
     if (autoFetch) {
       fetchSuggestions();
     }
-  }, [autoFetch, fetchSuggestions]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoFetch, folderId, limit]);
 
   return {
     // 数据

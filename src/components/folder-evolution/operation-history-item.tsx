@@ -4,7 +4,6 @@
  * 操作历史记录项组件
  */
 
-import { useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import {
@@ -13,6 +12,7 @@ import {
   Merge,
   Edit3,
   MoveRight,
+  Trash2,
   Undo2,
   ChevronRight,
   Clock,
@@ -25,7 +25,10 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import type { OperationDetail, OperationSnapshotAction } from "@/types/supabase";
+import type {
+  OperationDetail,
+  OperationSnapshotAction,
+} from "@/types/supabase";
 
 interface OperationHistoryItemProps {
   operation: OperationDetail;
@@ -35,24 +38,19 @@ interface OperationHistoryItemProps {
 }
 
 /**
- * 获取操作类型的图标
+ * 操作类型对应的图标映射（静态定义，避免在渲染期间创建组件）
  */
-function getActionIcon(action: OperationSnapshotAction) {
-  switch (action) {
-    case "create":
-      return FolderPlus;
-    case "split":
-      return Scissors;
-    case "merge":
-      return Merge;
-    case "rename":
-      return Edit3;
-    case "move":
-      return MoveRight;
-    default:
-      return FolderPlus;
-  }
-}
+const ACTION_ICONS: Record<
+  OperationSnapshotAction,
+  React.ComponentType<{ className?: string }>
+> = {
+  create: FolderPlus,
+  split: Scissors,
+  merge: Merge,
+  rename: Edit3,
+  move: MoveRight,
+  delete: Trash2,
+};
 
 /**
  * 获取操作类型的中文标签
@@ -69,6 +67,8 @@ function getActionLabel(action: OperationSnapshotAction): string {
       return "重命名";
     case "move":
       return "移动书签";
+    case "delete":
+      return "删除";
     default:
       return "操作";
   }
@@ -95,8 +95,12 @@ function getOperationDescription(operation: OperationDetail): string {
       return `「${oldName}」→「${newName}」`;
     }
     case "split": {
-      const original = afterState?.original_folder as { name: string } | undefined;
-      const newFolders = afterState?.new_folders as { name: string }[] | undefined;
+      const original = afterState?.original_folder as
+        | { name: string }
+        | undefined;
+      const newFolders = afterState?.new_folders as
+        | { name: string }[]
+        | undefined;
       const names = newFolders?.map((f) => f.name).join("、") || "";
       return original?.name
         ? `将「${original.name}」分拆为 ${names || "多个文件夹"}`
@@ -104,7 +108,8 @@ function getOperationDescription(operation: OperationDetail): string {
     }
     case "merge": {
       const target = afterState?.target_folder as { name: string } | undefined;
-      const sources = (operation.before_state as Record<string, unknown>)?.source_folders as { name: string }[] | undefined;
+      const sources = (operation.before_state as Record<string, unknown>)
+        ?.source_folders as { name: string }[] | undefined;
       const count = sources?.length || 0;
       return target?.name
         ? `将 ${count} 个文件夹合并到「${target.name}」`
@@ -148,9 +153,8 @@ export function OperationHistoryItem({
   onViewDetail,
   isUndoing = false,
 }: OperationHistoryItemProps) {
-  const [isHovered, setIsHovered] = useState(false);
-
-  const Icon = getActionIcon(operation.action);
+  // 使用静态映射获取图标组件，避免在渲染期间动态创建
+  const IconComponent = ACTION_ICONS[operation.action] || FolderPlus;
   const actionLabel = getActionLabel(operation.action);
   const description = getOperationDescription(operation);
   const remaining = getRemainingTime(operation.expires_at);
@@ -161,14 +165,10 @@ export function OperationHistoryItem({
   });
 
   return (
-    <div
-      className="group flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
+    <div className="group flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors">
       {/* 图标 */}
       <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-        <Icon className="w-5 h-5 text-primary" />
+        <IconComponent className="w-5 h-5 text-primary" />
       </div>
 
       {/* 内容 */}

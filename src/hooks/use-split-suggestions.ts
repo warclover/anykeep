@@ -134,12 +134,13 @@ export function useSplitSuggestions(options: UseSplitSuggestionsOptions = {}) {
     [],
   );
 
-  // 初始加载
+  // 初始加载 - 仅在挂载或关键参数变化时执行
   useEffect(() => {
     if (autoFetch) {
       fetchSuggestions();
     }
-  }, [autoFetch, fetchSuggestions]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoFetch, folderId]);
 
   return {
     // 数据

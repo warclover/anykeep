@@ -9,6 +9,8 @@ import {
   successResponse,
   unauthorizedError,
   internalError,
+  badRequestError,
+  safeParseInt,
 } from "@/lib/utils/api-response";
 import { mergeService } from "@/lib/classification/services/merge.service";
 import { logger } from "@/lib/logger";
@@ -35,10 +37,18 @@ export async function GET(request: NextRequest) {
 
     if (folderIdsParam) {
       // Analyze specific folders
-      const folderIds = folderIdsParam.split(",").map((id) => parseInt(id, 10));
+      const parsedIds = folderIdsParam
+        .split(",")
+        .map((id) => safeParseInt(id.trim()))
+        .filter((id): id is number => id !== null);
+
+      if (parsedIds.length === 0) {
+        return badRequestError("无效的文件夹 ID 参数");
+      }
+
       const suggestion = await mergeService.getMergeSuggestion(
         user.id,
-        folderIds,
+        parsedIds,
       );
 
       return successResponse({

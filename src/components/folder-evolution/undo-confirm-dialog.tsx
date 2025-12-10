@@ -23,7 +23,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import type { OperationDetail, OperationSnapshotAction } from "@/types/supabase";
+import type {
+  OperationDetail,
+  OperationSnapshotAction,
+} from "@/types/supabase";
 
 interface UndoConfirmDialogProps {
   operation: OperationDetail | null;
@@ -75,12 +78,16 @@ function getUndoDescription(operation: OperationDetail): string {
       return `将把文件夹名称从「${newName}」恢复为「${oldName}」`;
     }
     case "split": {
-      const newFolders = afterState?.new_folders as { name: string }[] | undefined;
+      const newFolders = afterState?.new_folders as
+        | { name: string }[]
+        | undefined;
       const count = newFolders?.length || 0;
       return `将删除分拆后的 ${count} 个文件夹，书签将恢复到原文件夹`;
     }
     case "merge": {
-      const sourceFolders = beforeState?.source_folders as { name: string }[] | undefined;
+      const sourceFolders = beforeState?.source_folders as
+        | { name: string }[]
+        | undefined;
       const count = sourceFolders?.length || 0;
       return `将恢复合并前的 ${count} 个文件夹，书签将移回原位置`;
     }
@@ -115,7 +122,9 @@ function getUndoImpact(operation: OperationDetail): string[] {
       break;
     }
     case "split": {
-      const newFolders = afterState?.new_folders as { name: string }[] | undefined;
+      const newFolders = afterState?.new_folders as
+        | { name: string }[]
+        | undefined;
       if (newFolders) {
         newFolders.forEach((f) => {
           impacts.push(`文件夹「${f.name}」将被删除`);
@@ -124,7 +133,9 @@ function getUndoImpact(operation: OperationDetail): string[] {
       break;
     }
     case "merge": {
-      const sourceFolders = beforeState?.source_folders as { name: string }[] | undefined;
+      const sourceFolders = beforeState?.source_folders as
+        | { name: string }[]
+        | undefined;
       if (sourceFolders) {
         sourceFolders.forEach((f) => {
           impacts.push(`文件夹「${f.name}」将被恢复`);
@@ -146,7 +157,7 @@ export function UndoConfirmDialog({
 }: UndoConfirmDialogProps) {
   if (!operation) return null;
 
-  const Icon = getActionIcon(operation.action);
+  const _Icon = getActionIcon(operation.action);
   const description = getUndoDescription(operation);
   const impacts = getUndoImpact(operation);
 

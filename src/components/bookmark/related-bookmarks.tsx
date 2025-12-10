@@ -11,7 +11,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ExternalLink, Folder, Sparkles, ChevronRight } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -57,7 +57,7 @@ export function RelatedBookmarks({
 
       try {
         const response = await fetch(
-          `/api/bookmarks/${bookmarkId}/related?limit=${limit}&minSimilarity=0.5`
+          `/api/bookmarks/${bookmarkId}/related?limit=${limit}&minSimilarity=0.5`,
         );
 
         if (!response.ok) {
@@ -86,9 +86,12 @@ export function RelatedBookmarks({
 
   // 相似度标签颜色
   const getSimilarityColor = (similarity: number) => {
-    if (similarity >= 0.8) return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300";
-    if (similarity >= 0.7) return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300";
-    if (similarity >= 0.6) return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300";
+    if (similarity >= 0.8)
+      return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300";
+    if (similarity >= 0.7)
+      return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300";
+    if (similarity >= 0.6)
+      return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300";
     return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300";
   };
 
@@ -119,7 +122,7 @@ export function RelatedBookmarks({
         <ChevronRight
           className={cn(
             "size-4 text-gray-400 transition-transform duration-200",
-            isExpanded && "rotate-90"
+            isExpanded && "rotate-90",
           )}
         />
       </button>
@@ -131,7 +134,10 @@ export function RelatedBookmarks({
             // 加载状态
             <div className="space-y-2">
               {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                <div
+                  key={i}
+                  className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50"
+                >
                   <Skeleton className="h-10 w-10 rounded" />
                   <div className="flex-1 space-y-2">
                     <Skeleton className="h-4 w-3/4" />
@@ -185,7 +191,7 @@ export function RelatedBookmarks({
                         <Badge
                           className={cn(
                             "text-xs font-medium",
-                            getSimilarityColor(item.similarity)
+                            getSimilarityColor(item.similarity),
                           )}
                         >
                           {Math.round(item.similarity * 100)}%
@@ -196,7 +202,11 @@ export function RelatedBookmarks({
                           className="h-6 w-6 p-0"
                           onClick={(e) => {
                             e.stopPropagation();
-                            window.open(item.url, "_blank", "noopener,noreferrer");
+                            window.open(
+                              item.url,
+                              "_blank",
+                              "noopener,noreferrer",
+                            );
                           }}
                         >
                           <ExternalLink className="size-3 text-gray-400" />

@@ -300,9 +300,7 @@ export const MESSAGE_TEMPLATES: Record<MessageType, MessageTemplate> = {
     content: (data) => {
       const newFolders = data.newFolders as string[];
       const reason = data.reason as string;
-      let text = newFolders?.length
-        ? `分拆为：${newFolders.join("、")}`
-        : "";
+      let text = newFolders?.length ? `分拆为：${newFolders.join("、")}` : "";
       if (reason) {
         text += text ? `\n${reason}` : reason;
       }
@@ -364,6 +362,47 @@ export const MESSAGE_TEMPLATES: Record<MessageType, MessageTemplate> = {
     actionUrl: () => "/settings/ai-reports",
     actionLabel: "查看报告",
     defaultPriority: 5,
+  },
+
+  // ========== V4.2 新增：成本监控 ==========
+  cost_warning: {
+    title: (data) => `⚠️ AI 使用费用接近限额 (${data.usagePercent}%)`,
+    content: (data) => {
+      const period = data.period as string;
+      const currentCost = (data.currentCostCents as number) / 100;
+      const limit = (data.limitCents as number) / 100;
+      const periodLabel = period === "daily" ? "今日" : "本月";
+      return `${periodLabel}已使用 $${currentCost.toFixed(2)}，限额 $${limit.toFixed(2)}`;
+    },
+    actionUrl: () => "/settings/usage",
+    actionLabel: "查看详情",
+    defaultPriority: 7,
+  },
+
+  cost_critical: {
+    title: () => "🚨 AI 使用费用超出限额",
+    content: (data) => {
+      const period = data.period as string;
+      const currentCost = (data.currentCostCents as number) / 100;
+      const limit = (data.limitCents as number) / 100;
+      const periodLabel = period === "daily" ? "今日" : "本月";
+      return `${periodLabel}费用 $${currentCost.toFixed(2)} 已超出限额 $${limit.toFixed(2)}，部分 AI 功能可能受限`;
+    },
+    actionUrl: () => "/settings/usage",
+    actionLabel: "立即查看",
+    defaultPriority: 9,
+  },
+
+  cost_daily_exceeded: {
+    title: () => "📊 今日 AI 使用费用已达上限",
+    content: (data) => {
+      const currentCost = (data.currentCostCents as number) / 100;
+      const limit = (data.limitCents as number) / 100;
+      return `今日费用 $${currentCost.toFixed(2)}（限额 $${limit.toFixed(2)}），明日将自动恢复`;
+    },
+    actionUrl: () => "/settings/usage",
+    actionLabel: "查看使用情况",
+    defaultPriority: 8,
   },
 };
 

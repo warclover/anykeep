@@ -275,7 +275,9 @@ export function MonthlyReportCard({
                 <Activity className="w-3 h-3" />
                 文件夹总数
               </div>
-              <p className="text-xl font-semibold">{report.stats.totalFolders}</p>
+              <p className="text-xl font-semibold">
+                {report.stats.totalFolders}
+              </p>
             </div>
             <div className="p-3 rounded-lg bg-muted/50">
               <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
@@ -376,7 +378,10 @@ export function MonthlyReportCard({
                 <div className="flex items-center gap-1 mb-2">
                   {getTrendIcon(report.healthScore, report.previousHealthScore)}
                   <span className="text-sm text-muted-foreground">
-                    {getTrendText(report.healthScore, report.previousHealthScore)}
+                    {getTrendText(
+                      report.healthScore,
+                      report.previousHealthScore,
+                    )}
                   </span>
                 </div>
               </div>
@@ -457,16 +462,19 @@ export function MonthlyReportCard({
               <div className="space-y-3">
                 <h3 className="font-medium">健康度趋势</h3>
                 <div className="flex items-end gap-2 h-24">
-                  {report.trends.map((t, i) => (
-                    <div key={t.month} className="flex-1 flex flex-col items-center">
+                  {report.trends.map((t, _i) => (
+                    <div
+                      key={t.month}
+                      className="flex-1 flex flex-col items-center"
+                    >
                       <div
                         className={cn(
                           "w-full rounded-t transition-all",
                           t.healthScore >= 80
                             ? "bg-green-400"
                             : t.healthScore >= 60
-                            ? "bg-amber-400"
-                            : "bg-red-400"
+                              ? "bg-amber-400"
+                              : "bg-red-400",
                         )}
                         style={{ height: `${t.healthScore}%` }}
                       />
@@ -519,14 +527,15 @@ function StatItem({
     <div
       className={cn(
         "p-3 rounded-lg border",
-        warning && "border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20"
+        warning &&
+          "border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20",
       )}
     >
       <p className="text-xs text-muted-foreground">{label}</p>
       <p
         className={cn(
           "text-xl font-semibold",
-          warning && "text-amber-600 dark:text-amber-400"
+          warning && "text-amber-600 dark:text-amber-400",
         )}
       >
         {value}

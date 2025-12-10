@@ -5,6 +5,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { SimilarBookmarkWithFolder } from "../types";
+import { SimilarBookmarkRowSchema, parseRows } from "./validation-schemas";
 
 /**
  * Bookmark data for classification
@@ -119,19 +120,24 @@ export class BookmarkRepository {
       throw new Error(`Failed to find similar bookmarks: ${error.message}`);
     }
 
-    let results = (data || []).map((row: Record<string, unknown>) => ({
-      bookmarkId: row.bookmark_id as number,
-      bookmarkTitle: row.bookmark_title as string,
-      folderId: row.folder_id as number | null,
-      folderName: row.folder_name as string | null,
-      similarity: row.similarity as number,
+    // 运行时验证数据库返回结果
+    const validatedRows = parseRows(
+      SimilarBookmarkRowSchema,
+      data || [],
+      "findSimilarWithFolders",
+    );
+
+    let results: SimilarBookmarkWithFolder[] = validatedRows.map((row) => ({
+      bookmarkId: row.bookmark_id,
+      bookmarkTitle: row.bookmark_title,
+      folderId: row.folder_id,
+      folderName: row.folder_name,
+      similarity: row.similarity,
     }));
 
     // 排除当前书签（避免自匹配）
     if (excludeBookmarkId) {
-      results = results.filter(
-        (r: SimilarBookmarkWithFolder) => r.bookmarkId !== excludeBookmarkId,
-      );
+      results = results.filter((r) => r.bookmarkId !== excludeBookmarkId);
     }
 
     return results.slice(0, limit);

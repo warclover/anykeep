@@ -656,4 +656,77 @@ export class MessageService {
       data: { month, classifiedCount, createdFolders, reportUrl },
     });
   }
+
+  // ============================================
+  // 快捷方法 - V4.2 成本监控
+  // ============================================
+
+  /**
+   * 成本预警通知
+   * @param period - 'daily' | 'monthly'
+   * @param currentCostCents - 当前费用（分）
+   * @param limitCents - 限额（分）
+   */
+  static async notifyCostAlert(
+    userId: string,
+    period: "daily" | "monthly",
+    currentCostCents: number,
+    limitCents: number,
+  ): Promise<MessageResult> {
+    const usagePercent = Math.round((currentCostCents / limitCents) * 100);
+
+    // 根据使用率选择消息类型
+    let type: MessageType;
+    if (currentCostCents >= limitCents) {
+      type = period === "daily" ? "cost_daily_exceeded" : "cost_critical";
+    } else if (usagePercent >= 80) {
+      type = "cost_warning";
+    } else {
+      // 不需要发送通知
+      return {
+        success: true,
+        level: "silent",
+        shouldShowToast: false,
+        shouldShowModal: false,
+      };
+    }
+
+    return this.create({
+      userId,
+      type,
+      data: {
+        period,
+        currentCostCents,
+        limitCents,
+        usagePercent,
+      },
+    });
+  }
+
+  /**
+   * 每日成本超限通知
+   */
+  static async notifyDailyCostExceeded(
+    userId: string,
+    currentCostCents: number,
+    limitCents: number,
+  ): Promise<MessageResult> {
+    return this.notifyCostAlert(userId, "daily", currentCostCents, limitCents);
+  }
+
+  /**
+   * 每月成本超限通知
+   */
+  static async notifyMonthlyCostExceeded(
+    userId: string,
+    currentCostCents: number,
+    limitCents: number,
+  ): Promise<MessageResult> {
+    return this.notifyCostAlert(
+      userId,
+      "monthly",
+      currentCostCents,
+      limitCents,
+    );
+  }
 }

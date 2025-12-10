@@ -12,6 +12,11 @@ import type {
   PresetInterestId,
 } from "../types";
 import { CUSTOM_INTEREST_LIMITS } from "../constants";
+import {
+  CustomInterestRowSchema,
+  parseRows,
+  parseRow,
+} from "./validation-schemas";
 
 /**
  * Repository for interest-related operations
@@ -33,25 +38,34 @@ export class InterestRepository {
       throw new Error(`Failed to fetch custom interests: ${error.message}`);
     }
 
-    return (data || []).map(this.mapToCustomInterest);
+    // 运行时验证数据库返回结果
+    const validatedRows = parseRows(
+      CustomInterestRowSchema,
+      data || [],
+      "getCustomInterests",
+    );
+
+    return validatedRows.map((row) => ({
+      id: row.id,
+      userId: row.user_id,
+      name: row.name,
+      icon: row.icon,
+      keywords: row.keywords ?? [],
+      suggestedFolders: row.suggested_folders ?? [],
+      createdAt: new Date(row.created_at),
+      updatedAt: new Date(row.updated_at),
+    }));
   }
 
   /**
-   * Add a custom interest
+   * Add a custom interest (atomic operation with limit check)
+   * 使用 RPC 函数实现原子操作，解决 N+1 查询和竞态条件问题
    */
   async addCustomInterest(
     userId: string,
     input: CustomInterestInput,
   ): Promise<CustomInterest> {
-    // Check limit
-    const existing = await this.getCustomInterests(userId);
-    if (existing.length >= CUSTOM_INTEREST_LIMITS.MAX_CUSTOM_INTERESTS) {
-      throw new Error(
-        `Maximum ${CUSTOM_INTEREST_LIMITS.MAX_CUSTOM_INTERESTS} custom interests allowed`,
-      );
-    }
-
-    // Validate input
+    // 前端验证（快速失败，减少数据库压力）
     if (input.name.length > CUSTOM_INTEREST_LIMITS.MAX_NAME_LENGTH) {
       throw new Error(
         `Name must be at most ${CUSTOM_INTEREST_LIMITS.MAX_NAME_LENGTH} characters`,
@@ -71,23 +85,48 @@ export class InterestRepository {
       );
     }
 
-    const { data, error } = await this.supabase
-      .from("user_custom_interests")
-      .insert({
-        user_id: userId,
-        name: input.name,
-        icon: input.icon,
-        keywords: input.keywords,
-        suggested_folders: input.suggestedFolders,
-      })
-      .select()
-      .single();
+    // 使用原子操作 RPC 函数（单次数据库往返，解决 N+1 和竞态条件）
+    const { data, error } = await this.supabase.rpc(
+      "add_custom_interest_atomic",
+      {
+        p_user_id: userId,
+        p_name: input.name,
+        p_icon: input.icon,
+        p_keywords: input.keywords,
+        p_suggested_folders: input.suggestedFolders,
+        p_max_count: CUSTOM_INTEREST_LIMITS.MAX_CUSTOM_INTERESTS,
+      },
+    );
 
     if (error) {
       throw new Error(`Failed to create custom interest: ${error.message}`);
     }
 
-    return this.mapToCustomInterest(data);
+    // RPC 返回数组，取第一条记录
+    const row = Array.isArray(data) ? data[0] : data;
+
+    // 检查是否超限
+    if (row?.error_code === "MAX_LIMIT_EXCEEDED") {
+      throw new Error(
+        `Maximum ${CUSTOM_INTEREST_LIMITS.MAX_CUSTOM_INTERESTS} custom interests allowed`,
+      );
+    }
+
+    // 验证返回数据
+    if (!row?.id) {
+      throw new Error("Failed to create custom interest: no data returned");
+    }
+
+    return {
+      id: row.id,
+      userId: row.user_id,
+      name: row.name,
+      icon: row.icon,
+      keywords: row.keywords || [],
+      suggestedFolders: row.suggested_folders || [],
+      createdAt: new Date(row.created_at),
+      updatedAt: new Date(row.updated_at),
+    };
   }
 
   /**
@@ -141,7 +180,23 @@ export class InterestRepository {
       throw new Error(`Failed to update custom interest: ${error.message}`);
     }
 
-    return this.mapToCustomInterest(data);
+    // 运行时验证返回结果
+    const validated = parseRow(
+      CustomInterestRowSchema,
+      data,
+      "updateCustomInterest",
+    );
+
+    return {
+      id: validated.id,
+      userId: validated.user_id,
+      name: validated.name,
+      icon: validated.icon,
+      keywords: validated.keywords ?? [],
+      suggestedFolders: validated.suggested_folders ?? [],
+      createdAt: new Date(validated.created_at),
+      updatedAt: new Date(validated.updated_at),
+    };
   }
 
   /**
@@ -280,21 +335,5 @@ export class InterestRepository {
         `Failed to update last inbox organize: ${updateError.message}`,
       );
     }
-  }
-
-  /**
-   * Map database row to CustomInterest
-   */
-  private mapToCustomInterest(row: Record<string, unknown>): CustomInterest {
-    return {
-      id: row.id as string,
-      userId: row.user_id as string,
-      name: row.name as string,
-      icon: row.icon as string,
-      keywords: (row.keywords as string[]) || [],
-      suggestedFolders: (row.suggested_folders as string[]) || [],
-      createdAt: new Date(row.created_at as string),
-      updatedAt: new Date(row.updated_at as string),
-    };
   }
 }

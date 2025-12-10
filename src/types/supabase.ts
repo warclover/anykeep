@@ -1187,7 +1187,11 @@ export type MessageType =
   | "ai_summary_complete"
   | "ai_tags_complete"
   | "ai_processing_failed"
-  | "ai_evolution_report"; // V4.2: 月度进化报告
+  | "ai_evolution_report" // V4.2: 月度进化报告
+  // V4.2: 成本监控
+  | "cost_warning" // 成本预警
+  | "cost_critical" // 成本超限
+  | "cost_daily_exceeded"; // 日成本超限
 
 /**
  * 消息等级

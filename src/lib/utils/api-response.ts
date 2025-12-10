@@ -159,3 +159,36 @@ export function internalError(
 ): NextResponse<ApiResponse> {
   return errorResponse(API_ERROR_CODES.INTERNAL_ERROR, message, 500, details);
 }
+
+/**
+ * 安全解析请求体 JSON
+ * 如果解析失败，返回 null
+ */
+export async function safeParseJson<T = unknown>(
+  request: Request,
+): Promise<{ data: T; error: null } | { data: null; error: string }> {
+  try {
+    const data = (await request.json()) as T;
+    return { data, error: null };
+  } catch {
+    return { data: null, error: "请求体格式错误，请提供有效的 JSON" };
+  }
+}
+
+/**
+ * 安全解析整数
+ * 如果解析失败，返回 null
+ */
+export function safeParseInt(
+  value: string | null | undefined,
+  defaultValue?: number,
+): number | null {
+  if (value === null || value === undefined) {
+    return defaultValue ?? null;
+  }
+  const parsed = parseInt(value, 10);
+  if (isNaN(parsed)) {
+    return defaultValue ?? null;
+  }
+  return parsed;
+}

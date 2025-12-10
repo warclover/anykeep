@@ -120,10 +120,7 @@ export function useMergeSuggestions(options: UseMergeSuggestionsOptions = {}) {
       try {
         // 从本地状态中移除
         setSuggestions((prev) =>
-          prev.filter(
-            (s) =>
-              !s.folders.every((f) => folderIds.includes(f.id)),
-          ),
+          prev.filter((s) => !s.folders.every((f) => folderIds.includes(f.id))),
         );
         toast.success("已忽略该建议");
         return true;
@@ -135,12 +132,13 @@ export function useMergeSuggestions(options: UseMergeSuggestionsOptions = {}) {
     [],
   );
 
-  // 初始加载
+  // 初始加载 - 仅在挂载或关键参数变化时执行
   useEffect(() => {
     if (autoFetch) {
       fetchSuggestions();
     }
-  }, [autoFetch, fetchSuggestions]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoFetch, minSimilarity]);
 
   return {
     // 数据

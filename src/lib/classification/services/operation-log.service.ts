@@ -9,6 +9,7 @@
  */
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
 import {
   v42Table,
   type OperationSnapshot,
@@ -47,7 +48,9 @@ export interface OperationHistoryOptions {
  * 操作日志服务
  */
 export class OperationLogService {
-  private supabase: Awaited<ReturnType<typeof createServerSupabaseClient>> | null = null;
+  private supabase: Awaited<
+    ReturnType<typeof createServerSupabaseClient>
+  > | null = null;
 
   /**
    * 获取 Supabase 客户端（延迟初始化）
@@ -72,7 +75,7 @@ export class OperationLogService {
       folderIds?: number[];
       bookmarkIds?: number[];
       reason?: string;
-    } = {}
+    } = {},
   ): Promise<OperationSnapshot> {
     const supabase = await this.getSupabase();
 
@@ -95,7 +98,10 @@ export class OperationLogService {
       .single();
 
     if (error) {
-      console.error("[OperationLogService] Failed to create snapshot:", error);
+      logger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        "[OperationLogService] Failed to create snapshot",
+      );
       throw new Error(`创建操作快照失败: ${error.message}`);
     }
 
@@ -109,7 +115,7 @@ export class OperationLogService {
     userId: string,
     folder: { id: number; name: string; parent_id: number | null },
     bookmarks: Array<{ id: number; title: string; folder_id: number | null }>,
-    reason?: string
+    reason?: string,
   ): Promise<OperationSnapshot> {
     const beforeState: CreateOperationState = {
       folder: { id: 0, name: "", parent_id: null }, // 创建前不存在
@@ -133,11 +139,17 @@ export class OperationLogService {
       })),
     };
 
-    return this.createSnapshot(userId, "create", beforeState as Json, afterState as Json, {
-      folderId: folder.id,
-      bookmarkIds: bookmarks.map((b) => b.id),
-      reason,
-    });
+    return this.createSnapshot(
+      userId,
+      "create",
+      beforeState as Json,
+      afterState as Json,
+      {
+        folderId: folder.id,
+        bookmarkIds: bookmarks.map((b) => b.id),
+        reason,
+      },
+    );
   }
 
   /**
@@ -148,7 +160,7 @@ export class OperationLogService {
     folderId: number,
     oldName: string,
     newName: string,
-    reason?: string
+    reason?: string,
   ): Promise<OperationSnapshot> {
     const beforeState: RenameOperationState = {
       folder_id: folderId,
@@ -162,10 +174,16 @@ export class OperationLogService {
       new_name: newName,
     };
 
-    return this.createSnapshot(userId, "rename", beforeState as Json, afterState as Json, {
-      folderId,
-      reason,
-    });
+    return this.createSnapshot(
+      userId,
+      "rename",
+      beforeState as Json,
+      afterState as Json,
+      {
+        folderId,
+        reason,
+      },
+    );
   }
 
   /**
@@ -180,7 +198,7 @@ export class OperationLogService {
       from_folder_id: number;
       to_folder_id: number;
     }>,
-    reason?: string
+    reason?: string,
   ): Promise<OperationSnapshot> {
     const beforeState: SplitOperationState = {
       original_folder: {
@@ -210,12 +228,18 @@ export class OperationLogService {
       bookmark_moves: bookmarkMoves,
     };
 
-    return this.createSnapshot(userId, "split", beforeState as Json, afterState as Json, {
-      folderId: originalFolder.id,
-      folderIds: newFolders.map((f) => f.id),
-      bookmarkIds: bookmarkMoves.map((m) => m.bookmark_id),
-      reason,
-    });
+    return this.createSnapshot(
+      userId,
+      "split",
+      beforeState as Json,
+      afterState as Json,
+      {
+        folderId: originalFolder.id,
+        folderIds: newFolders.map((f) => f.id),
+        bookmarkIds: bookmarkMoves.map((m) => m.bookmark_id),
+        reason,
+      },
+    );
   }
 
   /**
@@ -223,10 +247,18 @@ export class OperationLogService {
    */
   async createMergeSnapshot(
     userId: string,
-    sourceFolders: Array<{ id: number; name: string; parent_id: number | null }>,
+    sourceFolders: Array<{
+      id: number;
+      name: string;
+      parent_id: number | null;
+    }>,
     targetFolder: { id: number; name: string; parent_id: number | null },
-    mergedBookmarks: Array<{ id: number; title: string; folder_id: number | null }>,
-    reason?: string
+    mergedBookmarks: Array<{
+      id: number;
+      title: string;
+      folder_id: number | null;
+    }>,
+    reason?: string,
   ): Promise<OperationSnapshot> {
     const beforeState: MergeOperationState = {
       source_folders: sourceFolders.map((f) => ({
@@ -260,12 +292,18 @@ export class OperationLogService {
       })),
     };
 
-    return this.createSnapshot(userId, "merge", beforeState as Json, afterState as Json, {
-      folderId: targetFolder.id,
-      folderIds: sourceFolders.map((f) => f.id),
-      bookmarkIds: mergedBookmarks.map((b) => b.id),
-      reason,
-    });
+    return this.createSnapshot(
+      userId,
+      "merge",
+      beforeState as Json,
+      afterState as Json,
+      {
+        folderId: targetFolder.id,
+        folderIds: sourceFolders.map((f) => f.id),
+        bookmarkIds: mergedBookmarks.map((b) => b.id),
+        reason,
+      },
+    );
   }
 
   /**
@@ -273,10 +311,15 @@ export class OperationLogService {
    */
   async getOperationHistory(
     userId: string,
-    options: OperationHistoryOptions = {}
+    options: OperationHistoryOptions = {},
   ): Promise<OperationDetail[]> {
     const supabase = await this.getSupabase();
-    const { limit = 50, includeUndone = false, includeExpired = false, actionFilter } = options;
+    const {
+      limit = 50,
+      includeUndone = false,
+      includeExpired = false,
+      actionFilter,
+    } = options;
 
     // V4.2 表
     let query = v42Table(supabase)
@@ -304,7 +347,10 @@ export class OperationLogService {
     const { data, error } = await query;
 
     if (error) {
-      console.error("[OperationLogService] Failed to get history:", error);
+      logger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        "[OperationLogService] Failed to get history",
+      );
       throw new Error(`获取操作历史失败: ${error.message}`);
     }
 
@@ -339,7 +385,8 @@ export class OperationLogService {
       expires_at: snapshot.expires_at,
       is_undone: snapshot.is_undone,
       undone_at: snapshot.undone_at,
-      can_undo: !snapshot.is_undone && new Date(snapshot.expires_at) > new Date(),
+      can_undo:
+        !snapshot.is_undone && new Date(snapshot.expires_at) > new Date(),
     }));
   }
 
@@ -348,7 +395,7 @@ export class OperationLogService {
    */
   async getSnapshotById(
     userId: string,
-    snapshotId: string
+    snapshotId: string,
   ): Promise<OperationSnapshot | null> {
     const supabase = await this.getSupabase();
 
@@ -364,7 +411,10 @@ export class OperationLogService {
       if (error.code === "PGRST116") {
         return null; // 未找到
       }
-      console.error("[OperationLogService] Failed to get snapshot:", error);
+      logger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        "[OperationLogService] Failed to get snapshot",
+      );
       throw new Error(`获取操作快照失败: ${error.message}`);
     }
 
@@ -407,13 +457,22 @@ export class OperationLogService {
 
       // 5. 发送撤销成功的消息通知
       if (result.success) {
-        const actionLabel = this.getActionLabel(snapshot.action as OperationSnapshotAction);
-        await MessageService.notifyOperationUndone(userId, actionLabel, result.message);
+        const actionLabel = this.getActionLabel(
+          snapshot.action as OperationSnapshotAction,
+        );
+        await MessageService.notifyOperationUndone(
+          userId,
+          actionLabel,
+          result.message,
+        );
       }
 
       return result;
     } catch (error) {
-      console.error("[OperationLogService] Undo failed:", error);
+      logger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        "[OperationLogService] Undo failed",
+      );
       return {
         success: false,
         message: error instanceof Error ? error.message : "撤销操作失败",
@@ -445,8 +504,14 @@ export class OperationLogService {
     switch (snapshot.action) {
       case "create": {
         // 撤销文件夹创建：删除文件夹，恢复书签位置
-        const beforeState = snapshot.before_state as unknown as CreateOperationState;
-        const afterState = snapshot.after_state as unknown as CreateOperationState;
+        // 空值检查：确保操作状态完整
+        if (!snapshot.before_state || !snapshot.after_state) {
+          return { success: false, message: "操作快照数据不完整，无法撤销" };
+        }
+        const beforeState =
+          snapshot.before_state as unknown as CreateOperationState;
+        const afterState =
+          snapshot.after_state as unknown as CreateOperationState;
 
         // 恢复书签到原位置
         const bookmarks = beforeState.bookmarks || [];
@@ -459,7 +524,8 @@ export class OperationLogService {
 
         // 软删除新创建的文件夹
         const folderId = afterState.folder?.id || afterState.folder_id;
-        const folderName = afterState.folder?.name || afterState.folder_name || "未知";
+        const folderName =
+          afterState.folder?.name || afterState.folder_name || "未知";
         if (folderId) {
           await supabase
             .from("folders")
@@ -476,7 +542,11 @@ export class OperationLogService {
 
       case "rename": {
         // 撤销重命名：恢复原名称
-        const beforeState = snapshot.before_state as unknown as RenameOperationState;
+        if (!snapshot.before_state) {
+          return { success: false, message: "操作快照数据不完整，无法撤销" };
+        }
+        const beforeState =
+          snapshot.before_state as unknown as RenameOperationState;
         const folderId = beforeState.folder_id;
         const oldName = beforeState.old_name || "未知";
 
@@ -496,8 +566,13 @@ export class OperationLogService {
 
       case "split": {
         // 撤销分拆：删除新文件夹，恢复书签位置
-        const beforeState = snapshot.before_state as unknown as SplitOperationState;
-        const afterState = snapshot.after_state as unknown as SplitOperationState;
+        if (!snapshot.before_state || !snapshot.after_state) {
+          return { success: false, message: "操作快照数据不完整，无法撤销" };
+        }
+        const beforeState =
+          snapshot.before_state as unknown as SplitOperationState;
+        const afterState =
+          snapshot.after_state as unknown as SplitOperationState;
 
         // 恢复书签到原文件夹
         const bookmarkMoves = beforeState.bookmark_moves || [];
@@ -517,8 +592,12 @@ export class OperationLogService {
             .eq("id", folder.id);
         }
 
-        const originalFolderName = beforeState.original_folder?.name || beforeState.original_folder_name || "未知";
-        const originalFolderId = beforeState.original_folder?.id || beforeState.original_folder_id;
+        const originalFolderName =
+          beforeState.original_folder?.name ||
+          beforeState.original_folder_name ||
+          "未知";
+        const originalFolderId =
+          beforeState.original_folder?.id || beforeState.original_folder_id;
 
         return {
           success: true,
@@ -530,7 +609,8 @@ export class OperationLogService {
 
       case "merge": {
         // 撤销合并：恢复源文件夹，恢复书签位置
-        const beforeState = snapshot.before_state as unknown as MergeOperationState;
+        const beforeState =
+          snapshot.before_state as unknown as MergeOperationState;
 
         // 恢复源文件夹（取消软删除）
         const sourceFolders = beforeState.source_folders || [];
@@ -560,7 +640,8 @@ export class OperationLogService {
 
       case "move": {
         // 撤销移动：恢复书签位置
-        const beforeState = snapshot.before_state as unknown as CreateOperationState;
+        const beforeState =
+          snapshot.before_state as unknown as CreateOperationState;
 
         const bookmarks = beforeState.bookmarks || [];
         for (const bookmark of bookmarks) {
@@ -600,7 +681,10 @@ export class OperationLogService {
       .gt("expires_at", new Date().toISOString());
 
     if (error) {
-      console.error("[OperationLogService] Failed to get undoable count:", error);
+      logger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        "[OperationLogService] Failed to get undoable count",
+      );
       return 0;
     }
 
@@ -621,7 +705,10 @@ export class OperationLogService {
       .select("id");
 
     if (error) {
-      console.error("[OperationLogService] Failed to cleanup:", error);
+      logger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        "[OperationLogService] Failed to cleanup",
+      );
       return 0;
     }
 
@@ -640,14 +727,14 @@ export class OperationLogService {
     userId: string,
     folder: { id: number; name: string; parent_id: number | null },
     bookmarks: Array<{ id: number; title: string; folder_id: number | null }>,
-    reason?: string
+    reason?: string,
   ): Promise<OperationSnapshot> {
     // 创建快照
     const snapshot = await this.createFolderCreateSnapshot(
       userId,
       folder,
       bookmarks,
-      reason
+      reason,
     );
 
     // 发送消息通知
@@ -657,7 +744,7 @@ export class OperationLogService {
       folder.name,
       bookmarks.length,
       reason,
-      String(snapshot.id)
+      String(snapshot.id),
     );
 
     return snapshot;
@@ -671,7 +758,7 @@ export class OperationLogService {
     folderId: number,
     oldName: string,
     newName: string,
-    reason?: string
+    reason?: string,
   ): Promise<OperationSnapshot> {
     // 创建快照
     const snapshot = await this.createRenameSnapshot(
@@ -679,7 +766,7 @@ export class OperationLogService {
       folderId,
       oldName,
       newName,
-      reason
+      reason,
     );
 
     // 发送消息通知
@@ -689,7 +776,7 @@ export class OperationLogService {
       oldName,
       newName,
       reason,
-      String(snapshot.id)
+      String(snapshot.id),
     );
 
     return snapshot;
@@ -707,7 +794,7 @@ export class OperationLogService {
       from_folder_id: number;
       to_folder_id: number;
     }>,
-    reason?: string
+    reason?: string,
   ): Promise<OperationSnapshot> {
     // 创建快照
     const snapshot = await this.createSplitSnapshot(
@@ -715,7 +802,7 @@ export class OperationLogService {
       originalFolder,
       newFolders,
       bookmarkMoves,
-      reason
+      reason,
     );
 
     // 发送消息通知
@@ -724,7 +811,7 @@ export class OperationLogService {
       originalFolder.name,
       newFolders.map((f) => f.name),
       reason,
-      String(snapshot.id)
+      String(snapshot.id),
     );
 
     return snapshot;
@@ -735,10 +822,18 @@ export class OperationLogService {
    */
   async mergeFoldersWithNotification(
     userId: string,
-    sourceFolders: Array<{ id: number; name: string; parent_id: number | null }>,
+    sourceFolders: Array<{
+      id: number;
+      name: string;
+      parent_id: number | null;
+    }>,
     targetFolder: { id: number; name: string; parent_id: number | null },
-    mergedBookmarks: Array<{ id: number; title: string; folder_id: number | null }>,
-    reason?: string
+    mergedBookmarks: Array<{
+      id: number;
+      title: string;
+      folder_id: number | null;
+    }>,
+    reason?: string,
   ): Promise<OperationSnapshot> {
     // 创建快照
     const snapshot = await this.createMergeSnapshot(
@@ -746,7 +841,7 @@ export class OperationLogService {
       sourceFolders,
       targetFolder,
       mergedBookmarks,
-      reason
+      reason,
     );
 
     // 发送消息通知
@@ -756,7 +851,7 @@ export class OperationLogService {
       targetFolder.name,
       sourceFolders.length,
       reason,
-      String(snapshot.id)
+      String(snapshot.id),
     );
 
     return snapshot;
@@ -770,14 +865,14 @@ export class OperationLogService {
     month: string,
     classifiedCount: number,
     createdFolders: number,
-    reportUrl?: string
+    reportUrl?: string,
   ): Promise<void> {
     await MessageService.notifyEvolutionReport(
       userId,
       month,
       classifiedCount,
       createdFolders,
-      reportUrl
+      reportUrl,
     );
   }
 }

@@ -99,7 +99,9 @@ const DAILY_LIMIT = 6;
 // ============================================
 
 export class SmartSortingService {
-  private supabase: Awaited<ReturnType<typeof createServerSupabaseClient>> | null = null;
+  private supabase: Awaited<
+    ReturnType<typeof createServerSupabaseClient>
+  > | null = null;
 
   /**
    * 获取 Supabase 客户端（延迟初始化）
@@ -130,7 +132,10 @@ export class SmartSortingService {
 
       // 如果用户禁用了自动创建，跳过
       if (!settings.enable_auto_create) {
-        logger.info({ userId }, "SmartSorting: User disabled auto-create, skipping");
+        logger.info(
+          { userId },
+          "SmartSorting: User disabled auto-create, skipping",
+        );
         return result;
       }
 
@@ -139,7 +144,7 @@ export class SmartSortingService {
       const dailyLimit = settings.daily_create_limit ?? DAILY_LIMIT;
       const remainingQuota = Math.min(
         dailyLimit - todayCreated,
-        DAILY_LIMIT - todayCreated
+        DAILY_LIMIT - todayCreated,
       );
 
       if (remainingQuota <= 0) {
@@ -152,13 +157,19 @@ export class SmartSortingService {
       result.processed = pendingBookmarks.length;
 
       if (pendingBookmarks.length < CLUSTERING_CONFIG.MIN_CLUSTER_SIZE) {
-        logger.info({ count: pendingBookmarks.length }, "SmartSorting: Not enough pending bookmarks");
+        logger.info(
+          { count: pendingBookmarks.length },
+          "SmartSorting: Not enough pending bookmarks",
+        );
         return result;
       }
 
       // 4. 执行 DBSCAN 聚类
       const clusters = this.performClustering(pendingBookmarks);
-      result.clustered = clusters.reduce((sum, c) => sum + c.bookmarks.length, 0);
+      result.clustered = clusters.reduce(
+        (sum, c) => sum + c.bookmarks.length,
+        0,
+      );
 
       if (clusters.length === 0) {
         logger.info("SmartSorting: No valid clusters found");
@@ -172,7 +183,10 @@ export class SmartSortingService {
           cluster.suggestedName = naming.name;
           cluster.suggestedNameReason = naming.reason;
         } catch (namingError) {
-          logger.error({ error: namingError }, "SmartSorting: Failed to name cluster");
+          logger.error(
+            { error: namingError },
+            "SmartSorting: Failed to name cluster",
+          );
           cluster.suggestedName = this.generateFallbackName(cluster);
           cluster.suggestedNameReason = "基于关键词自动生成";
         }
@@ -210,8 +224,13 @@ export class SmartSortingService {
       logger.info({ userId, result }, "SmartSorting: User processed");
       return result;
     } catch (processError) {
-      logger.error({ userId, error: processError }, "SmartSorting: Error processing user");
-      result.errors.push(processError instanceof Error ? processError.message : "未知错误");
+      logger.error(
+        { userId, error: processError },
+        "SmartSorting: Error processing user",
+      );
+      result.errors.push(
+        processError instanceof Error ? processError.message : "未知错误",
+      );
       return result;
     }
   }
@@ -229,7 +248,9 @@ export class SmartSortingService {
       .single();
 
     // profile.settings 是 Json 类型，需要类型断言
-    const settings = profile?.settings as { ai_folder_settings?: AIFolderSettings } | null;
+    const settings = profile?.settings as {
+      ai_folder_settings?: AIFolderSettings;
+    } | null;
     const aiSettings = settings?.ai_folder_settings;
 
     // 合并默认设置
@@ -267,16 +288,22 @@ export class SmartSortingService {
   /**
    * 获取待聚类书签
    */
-  private async getPendingBookmarks(userId: string): Promise<PendingBookmark[]> {
+  private async getPendingBookmarks(
+    userId: string,
+  ): Promise<PendingBookmark[]> {
     const supabase = await this.getSupabase();
 
     const cutoffTime = new Date();
-    cutoffTime.setHours(cutoffTime.getHours() - CLUSTERING_CONFIG.MIN_WAIT_HOURS);
+    cutoffTime.setHours(
+      cutoffTime.getHours() - CLUSTERING_CONFIG.MIN_WAIT_HOURS,
+    );
 
     // Note: pending_cluster, pending_since, cluster_id 是 V4.2 新增字段
     const { data, error } = await v42Table(supabase)
       .from("bookmarks")
-      .select("id, title, url, ai_summary, ai_tags, embedding, pending_since, cluster_id")
+      .select(
+        "id, title, url, ai_summary, ai_tags, embedding, pending_since, cluster_id",
+      )
       .eq("user_id", userId)
       .eq("pending_cluster", true)
       .is("deleted_at", null)
@@ -286,11 +313,16 @@ export class SmartSortingService {
       .limit(CLUSTERING_CONFIG.MAX_BATCH_SIZE);
 
     if (error) {
-      console.error("[SmartSorting] Failed to get pending bookmarks:", error);
+      logger.error(
+        { error: error.message },
+        "[SmartSorting] Failed to get pending bookmarks",
+      );
       return [];
     }
 
-    return (data || []).filter((b: { embedding?: unknown }) => b.embedding != null) as PendingBookmark[];
+    return (data || []).filter(
+      (b: { embedding?: unknown }) => b.embedding != null,
+    ) as PendingBookmark[];
   }
 
   /**
@@ -323,14 +355,19 @@ export class SmartSortingService {
           neighbors,
           visited,
           clustered,
-          similarityMatrix
+          similarityMatrix,
         );
 
-        if (clusterIndices.length >= CLUSTERING_CONFIG.MIN_CLUSTER_SIZE &&
-            clusterIndices.length <= CLUSTERING_CONFIG.MAX_CLUSTER_SIZE) {
-          const clusterBookmarks = clusterIndices.map(idx => bookmarks[idx]);
+        if (
+          clusterIndices.length >= CLUSTERING_CONFIG.MIN_CLUSTER_SIZE &&
+          clusterIndices.length <= CLUSTERING_CONFIG.MAX_CLUSTER_SIZE
+        ) {
+          const clusterBookmarks = clusterIndices.map((idx) => bookmarks[idx]);
           const centroid = this.computeCentroid(clusterBookmarks);
-          const avgSimilarity = this.computeAverageSimilarity(clusterIndices, similarityMatrix);
+          const avgSimilarity = this.computeAverageSimilarity(
+            clusterIndices,
+            similarityMatrix,
+          );
 
           clusters.push({
             id: crypto.randomUUID(),
@@ -353,13 +390,15 @@ export class SmartSortingService {
    */
   private computeSimilarityMatrix(bookmarks: PendingBookmark[]): number[][] {
     const n = bookmarks.length;
-    const matrix: number[][] = Array(n).fill(null).map(() => Array(n).fill(0));
+    const matrix: number[][] = Array(n)
+      .fill(null)
+      .map(() => Array(n).fill(0));
 
     for (let i = 0; i < n; i++) {
       for (let j = i + 1; j < n; j++) {
         const similarity = this.cosineSimilarity(
           bookmarks[i].embedding,
-          bookmarks[j].embedding
+          bookmarks[j].embedding,
         );
         matrix[i][j] = similarity;
         matrix[j][i] = similarity;
@@ -393,7 +432,10 @@ export class SmartSortingService {
   /**
    * 找到邻居点
    */
-  private findNeighbors(pointIdx: number, similarityMatrix: number[][]): number[] {
+  private findNeighbors(
+    pointIdx: number,
+    similarityMatrix: number[][],
+  ): number[] {
     const neighbors: number[] = [];
     const row = similarityMatrix[pointIdx];
 
@@ -414,14 +456,17 @@ export class SmartSortingService {
     neighbors: number[],
     visited: Set<number>,
     clustered: Set<number>,
-    similarityMatrix: number[][]
+    similarityMatrix: number[][],
   ): number[] {
     const cluster = [pointIdx];
     clustered.add(pointIdx);
 
     const queue = [...neighbors];
 
-    while (queue.length > 0 && cluster.length < CLUSTERING_CONFIG.MAX_CLUSTER_SIZE) {
+    while (
+      queue.length > 0 &&
+      cluster.length < CLUSTERING_CONFIG.MAX_CLUSTER_SIZE
+    ) {
       const current = queue.shift()!;
 
       if (!visited.has(current)) {
@@ -471,7 +516,10 @@ export class SmartSortingService {
   /**
    * 计算聚类平均相似度
    */
-  private computeAverageSimilarity(indices: number[], matrix: number[][]): number {
+  private computeAverageSimilarity(
+    indices: number[],
+    matrix: number[][],
+  ): number {
     if (indices.length <= 1) return 1;
 
     let sum = 0;
@@ -490,15 +538,17 @@ export class SmartSortingService {
   /**
    * 为聚类生成文件夹名称
    */
-  private async generateClusterName(cluster: Cluster): Promise<{ name: string; reason: string }> {
+  private async generateClusterName(
+    cluster: Cluster,
+  ): Promise<{ name: string; reason: string }> {
     // 收集聚类信息
-    const titles = cluster.bookmarks.map(b => b.title);
+    const titles = cluster.bookmarks.map((b) => b.title);
     const tags = cluster.bookmarks
-      .flatMap(b => b.ai_tags || [])
+      .flatMap((b) => b.ai_tags || [])
       .filter((tag, idx, arr) => arr.indexOf(tag) === idx)
       .slice(0, 10);
     const summaries = cluster.bookmarks
-      .map(b => b.ai_summary)
+      .map((b) => b.ai_summary)
       .filter(Boolean)
       .slice(0, 3);
 
@@ -539,13 +589,18 @@ export class SmartSortingService {
 
     // 使用第一个书签标题的关键词
     const firstTitle = cluster.bookmarks[0]?.title || "新文件夹";
-    return firstTitle.length > 20 ? firstTitle.substring(0, 20) + "..." : firstTitle;
+    return firstTitle.length > 20
+      ? firstTitle.substring(0, 20) + "..."
+      : firstTitle;
   }
 
   /**
    * 检查重复文件夹
    */
-  async checkDuplicateFolder(userId: string, folderName: string): Promise<boolean> {
+  async checkDuplicateFolder(
+    userId: string,
+    folderName: string,
+  ): Promise<boolean> {
     const supabase = await this.getSupabase();
 
     const { count } = await supabase
@@ -561,7 +616,10 @@ export class SmartSortingService {
   /**
    * 自动创建文件夹（Level 1 模式）
    */
-  private async autoCreateFolder(userId: string, cluster: Cluster): Promise<void> {
+  private async autoCreateFolder(
+    userId: string,
+    cluster: Cluster,
+  ): Promise<void> {
     const supabase = await this.getSupabase();
 
     // 检查重复
@@ -575,24 +633,48 @@ export class SmartSortingService {
       suffix++;
     }
 
-    // 创建文件夹
-    const { data: folder, error: folderError } = await supabase
-      .from("folders")
-      .insert({
-        user_id: userId,
-        name: finalName,
-        source: "auto_created",
-        is_system: false,
-      })
-      .select()
-      .single();
+    // 创建文件夹（处理并发冲突）
+    let folder;
+    let createAttempts = 0;
+    const maxCreateAttempts = 3;
 
-    if (folderError || !folder) {
+    while (createAttempts < maxCreateAttempts) {
+      const { data: newFolder, error: folderError } = await supabase
+        .from("folders")
+        .insert({
+          user_id: userId,
+          name: finalName,
+          source: "auto_created",
+          is_system: false,
+        })
+        .select()
+        .single();
+
+      if (!folderError && newFolder) {
+        folder = newFolder;
+        break;
+      }
+
+      // 处理唯一约束冲突（code 23505）
+      if (folderError?.code === "23505") {
+        createAttempts++;
+        finalName = `${cluster.suggestedName || "新文件夹"} (${Date.now() % 10000})`;
+        logger.warn(
+          { finalName, attempt: createAttempts },
+          "SmartSorting: Folder name conflict, retrying",
+        );
+        continue;
+      }
+
       throw new Error(`创建文件夹失败: ${folderError?.message}`);
     }
 
+    if (!folder) {
+      throw new Error("创建文件夹失败：超过最大重试次数");
+    }
+
     // 移动书签到新文件夹
-    const bookmarkIds = cluster.bookmarks.map(b => b.id);
+    const bookmarkIds = cluster.bookmarks.map((b) => b.id);
     const { error: moveError } = await supabase
       .from("bookmarks")
       .update({
@@ -616,18 +698,23 @@ export class SmartSortingService {
         name: finalName,
         parent_id: null,
       },
-      cluster.bookmarks.map(b => ({
+      cluster.bookmarks.map((b) => ({
         id: b.id,
         title: b.title,
         folder_id: null, // 之前在待整理
       })),
-      cluster.suggestedNameReason || "AI 自动聚类创建"
+      cluster.suggestedNameReason || "AI 自动聚类创建",
     );
 
     // Note: compute_folder_profile 是 V4.2 RPC 函数
-    await v42Rpc(supabase).rpc("compute_folder_profile", { p_folder_id: folder.id });
+    await v42Rpc(supabase).rpc("compute_folder_profile", {
+      p_folder_id: folder.id,
+    });
 
-    logger.info({ folderName: finalName, bookmarkCount: bookmarkIds.length }, "SmartSorting: Auto-created folder");
+    logger.info(
+      { folderName: finalName, bookmarkCount: bookmarkIds.length },
+      "SmartSorting: Auto-created folder",
+    );
   }
 
   /**
@@ -636,30 +723,35 @@ export class SmartSortingService {
   private async createSuggestion(
     userId: string,
     cluster: Cluster,
-    autonomyLevel: number
+    autonomyLevel: number,
   ): Promise<void> {
     const supabase = await this.getSupabase();
 
-    const bookmarkIds = cluster.bookmarks.map(b => b.id);
-    const sampleTitles = cluster.bookmarks.slice(0, 5).map(b => b.title);
+    const bookmarkIds = cluster.bookmarks.map((b) => b.id);
+    const sampleTitles = cluster.bookmarks.slice(0, 5).map((b) => b.title);
 
     // Note: organization_suggestions 是 V4.2 建议表
-    const { error } = await v42Table(supabase).from("organization_suggestions").insert({
-      user_id: userId,
-      suggestion_type: "create_new",
-      bookmark_ids: bookmarkIds,
-      suggested_folder_name: cluster.suggestedName,
-      confidence: Math.round(cluster.avgSimilarity * 100),
-      reason: cluster.suggestedNameReason,
-      sample_titles: sampleTitles,
-      status: "pending",
-    });
+    const { error } = await v42Table(supabase)
+      .from("organization_suggestions")
+      .insert({
+        user_id: userId,
+        suggestion_type: "create_new",
+        bookmark_ids: bookmarkIds,
+        suggested_folder_name: cluster.suggestedName,
+        confidence: Math.round(cluster.avgSimilarity * 100),
+        reason: cluster.suggestedNameReason,
+        sample_titles: sampleTitles,
+        status: "pending",
+      });
 
     if (error) {
       throw new Error(`创建建议失败: ${error.message}`);
     }
 
-    logger.info({ folderName: cluster.suggestedName, autonomyLevel }, "SmartSorting: Created suggestion");
+    logger.info(
+      { folderName: cluster.suggestedName, autonomyLevel },
+      "SmartSorting: Created suggestion",
+    );
   }
 
   /**
@@ -669,7 +761,7 @@ export class SmartSortingService {
     const supabase = await this.getSupabase();
 
     for (const cluster of clusters) {
-      const bookmarkIds = cluster.bookmarks.map(b => b.id);
+      const bookmarkIds = cluster.bookmarks.map((b) => b.id);
 
       // Note: cluster_id, cluster_confidence 是 V4.2 新增字段
       await v42Table(supabase)
@@ -703,14 +795,16 @@ export class SmartSortingService {
       return [];
     }
 
-    return (suggestions as Array<{
-      id: number;
-      suggested_folder_name: string | null;
-      reason: string | null;
-      bookmark_ids: number[] | null;
-      sample_titles: string[] | null;
-      confidence: number;
-    }>).map(s => ({
+    return (
+      suggestions as Array<{
+        id: number;
+        suggested_folder_name: string | null;
+        reason: string | null;
+        bookmark_ids: number[] | null;
+        sample_titles: string[] | null;
+        confidence: number;
+      }>
+    ).map((s) => ({
       clusterId: s.id.toString(),
       suggestedName: s.suggested_folder_name || "新文件夹",
       reason: s.reason || "",
@@ -726,7 +820,7 @@ export class SmartSortingService {
   async confirmCreate(
     userId: string,
     suggestionId: number,
-    customName?: string
+    customName?: string,
   ): Promise<{ success: boolean; folderId?: number; error?: string }> {
     const supabase = await this.getSupabase();
 
@@ -747,7 +841,8 @@ export class SmartSortingService {
       suggested_folder_name: string | null;
       bookmark_ids: number[] | null;
     };
-    const folderName = customName || typedSuggestion.suggested_folder_name || "新文件夹";
+    const folderName =
+      customName || typedSuggestion.suggested_folder_name || "新文件夹";
 
     // 创建文件夹
     const { data: folder, error: createError } = await supabase
@@ -762,7 +857,10 @@ export class SmartSortingService {
       .single();
 
     if (createError || !folder) {
-      return { success: false, error: `创建文件夹失败: ${createError?.message}` };
+      return {
+        success: false,
+        error: `创建文件夹失败: ${createError?.message}`,
+      };
     }
 
     // Note: pending_cluster, pending_since, cluster_id, cluster_confidence 是 V4.2 新增字段
@@ -788,7 +886,9 @@ export class SmartSortingService {
       .eq("id", suggestionId);
 
     // Note: compute_folder_profile 是 V4.2 RPC 函数
-    await v42Rpc(supabase).rpc("compute_folder_profile", { p_folder_id: folder.id });
+    await v42Rpc(supabase).rpc("compute_folder_profile", {
+      p_folder_id: folder.id,
+    });
 
     return { success: true, folderId: folder.id };
   }
@@ -811,7 +911,10 @@ export class SmartSortingService {
       .eq("status", "pending");
 
     if (error) {
-      console.error("[SmartSorting] Failed to reject suggestion:", error);
+      logger.error(
+        { error: error.message },
+        "[SmartSorting] Failed to reject suggestion",
+      );
       return false;
     }
 
@@ -822,7 +925,9 @@ export class SmartSortingService {
       .eq("id", suggestionId)
       .single();
 
-    const typedSuggestion = suggestion as { bookmark_ids: number[] | null } | null;
+    const typedSuggestion = suggestion as {
+      bookmark_ids: number[] | null;
+    } | null;
     if (typedSuggestion?.bookmark_ids) {
       // Note: cluster_id, cluster_confidence 是 V4.2 新增字段
       await v42Table(supabase)

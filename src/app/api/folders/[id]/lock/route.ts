@@ -5,7 +5,8 @@
  * 锁定后 AI 不会对该文件夹进行任何操作（分类、重命名、分拆、合并）
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { v42Table } from "@/lib/supabase/v42-types";
 import { logger } from "@/lib/logger";
@@ -192,7 +193,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       .eq("user_id", user.id)
       .single();
 
-    const profileData = profile as { is_system_locked?: boolean; is_ai_renamable?: boolean } | null;
+    const profileData = profile as {
+      is_system_locked?: boolean;
+      is_ai_renamable?: boolean;
+    } | null;
 
     return NextResponse.json({
       success: true,

@@ -50,7 +50,11 @@ export type MessageType =
   | "folder_auto_merged" // AI 自动合并文件夹（普通）
   | "folder_auto_renamed" // AI 自动重命名文件夹（普通）
   | "folder_operation_undone" // 操作已撤销（普通）
-  | "ai_evolution_report"; // 月度进化报告（普通）
+  | "ai_evolution_report" // 月度进化报告（普通）
+  // V4.2 新增：成本监控
+  | "cost_warning" // 成本预警（重要）
+  | "cost_critical" // 成本超限（紧急）
+  | "cost_daily_exceeded"; // 日成本超限（重要）
 
 // ============================================
 // 消息等级

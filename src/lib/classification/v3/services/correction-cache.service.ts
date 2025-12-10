@@ -74,9 +74,9 @@ function normalizeUrl(url: string): string {
   try {
     const parsed = new URL(url);
     // 去除 www
-    let host = parsed.hostname.replace(/^www\./, "");
+    const host = parsed.hostname.replace(/^www\./, "");
     // 去除尾部斜杠
-    let path = parsed.pathname.replace(/\/$/, "");
+    const path = parsed.pathname.replace(/\/$/, "");
     // 返回标准化的 URL
     return `${host}${path}`.toLowerCase();
   } catch {
@@ -180,7 +180,7 @@ export class CorrectionCacheService {
     url: string,
     folderId: number,
     folderName: string,
-    source: CacheEntry["source"] = "user_move"
+    source: CacheEntry["source"] = "user_move",
   ): void {
     const key = generateCacheKey(userId, url);
     const now = Date.now();
@@ -221,7 +221,7 @@ export class CorrectionCacheService {
         folderName,
         source,
       },
-      "CorrectionCache: Entry written"
+      "CorrectionCache: Entry written",
     );
   }
 
@@ -234,7 +234,7 @@ export class CorrectionCacheService {
    */
   get(
     userId: string,
-    url: string
+    url: string,
   ): { folderId: number; folderName: string; confidence: number } | null {
     const key = generateCacheKey(userId, url);
     const now = Date.now();
@@ -252,7 +252,7 @@ export class CorrectionCacheService {
           folderId: exactEntry.folderId,
           matchType: "exact",
         },
-        "CorrectionCache: Exact hit"
+        "CorrectionCache: Exact hit",
       );
 
       return {
@@ -281,7 +281,7 @@ export class CorrectionCacheService {
   private findSimilarUrlMatch(
     userId: string,
     url: string,
-    now: number
+    now: number,
   ): { folderId: number; folderName: string; confidence: number } | null {
     const domainKey = generateDomainKey(userId, url);
     const domainEntries = this.domainCache.get(domainKey);
@@ -329,7 +329,7 @@ export class CorrectionCacheService {
     // 计算置信度（基于占比）
     const confidence = Math.min(
       95, // 相似匹配最高 95%
-      Math.round((topCount / totalCount) * 100)
+      Math.round((topCount / totalCount) * 100),
     );
 
     // 仅当置信度 >= 60% 时返回
@@ -342,7 +342,7 @@ export class CorrectionCacheService {
           matchType: "similar",
           confidence,
         },
-        "CorrectionCache: Similar URL hit"
+        "CorrectionCache: Similar URL hit",
       );
 
       return {
@@ -405,7 +405,7 @@ export class CorrectionCacheService {
     if (cleaned > 0) {
       logger.info(
         { cleaned, remaining: this.urlCache.size },
-        "CorrectionCache: Cleanup completed"
+        "CorrectionCache: Cleanup completed",
       );
     }
   }
@@ -480,7 +480,7 @@ let _instance: CorrectionCacheService | null = null;
  * @deprecated 请使用 `import { getCorrectionCache } from './service-factory'` 代替
  */
 export function getCorrectionCache(
-  config?: Partial<CorrectionCacheConfig>
+  config?: Partial<CorrectionCacheConfig>,
 ): CorrectionCacheService {
   if (!_instance) {
     _instance = new CorrectionCacheService(config);

@@ -192,7 +192,10 @@ function saveToStorage(config: AIDebugConfig): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
   } catch (error) {
-    console.error("[AIDebugConfig] Failed to save config:", error);
+    clientLogger.error(
+      { error: error instanceof Error ? error.message : String(error) },
+      "[AIDebugConfig] Failed to save config",
+    );
   }
 }
 
@@ -290,7 +293,10 @@ export function importConfigFromJson(json: string): boolean {
     setDebugConfig(parsed);
     return true;
   } catch (error) {
-    console.error("[AIDebugConfig] Failed to import config:", error);
+    clientLogger.error(
+      { error: error instanceof Error ? error.message : String(error) },
+      "[AIDebugConfig] Failed to import config",
+    );
     return false;
   }
 }

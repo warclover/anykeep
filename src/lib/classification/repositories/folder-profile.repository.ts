@@ -5,6 +5,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { FolderProfile, SimilarFolder } from "../types";
+import { SimilarFolderRowSchema, parseRows } from "./validation-schemas";
 
 /**
  * Repository for folder profile operations
@@ -81,13 +82,20 @@ export class FolderProfileRepository {
       throw new Error(`Failed to search similar folders: ${error.message}`);
     }
 
-    return (data || []).map((row: Record<string, unknown>) => ({
-      folderId: row.folder_id as number,
-      folderName: row.folder_name as string,
-      bookmarkCount: row.bookmark_count as number,
-      topTags: (row.top_tags as string[]) || [],
-      sampleTitles: (row.sample_titles as string[]) || [],
-      similarity: row.similarity as number,
+    // 运行时验证数据库返回结果
+    const validatedRows = parseRows(
+      SimilarFolderRowSchema,
+      data || [],
+      "searchSimilarFolders",
+    );
+
+    return validatedRows.map((row) => ({
+      folderId: row.folder_id,
+      folderName: row.folder_name,
+      bookmarkCount: row.bookmark_count,
+      topTags: row.top_tags ?? [],
+      sampleTitles: row.sample_titles ?? [],
+      similarity: row.similarity,
     }));
   }
 
