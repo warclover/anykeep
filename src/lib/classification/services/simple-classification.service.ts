@@ -18,8 +18,6 @@ import type {
   SimpleBookmarkInput,
   SimpleClassificationResult,
   SimpleClassificationConfig,
-  SearchFoldersUnifiedParams,
-  SearchFoldersUnifiedResult,
 } from "../types/simple-classification.types";
 import {
   generateEmbedding,
@@ -27,6 +25,7 @@ import {
 } from "@/lib/utils/embedding-generator";
 import { generateWithAI } from "@/lib/utils/ai-generator";
 import { logger } from "@/lib/logger";
+import { eventBus, ClassificationEvents } from "@/lib/shared/event-bus";
 
 // ═══════════════════════════════════════════════════════════════
 // 常量定义
@@ -202,7 +201,7 @@ export class SimpleClassificationService {
       if (candidates.length === 0) {
         // 无候选 → AI 创建新文件夹
         if (this.config.enableAICreate) {
-          return this.aiCreateFolder(bookmark, startTime);
+          return this.aiCreateFolder(userId, bookmark, startTime);
         }
         return this.createInboxResult("没有匹配的文件夹", startTime);
       }
@@ -236,7 +235,7 @@ export class SimpleClassificationService {
           "[SimpleClassification] Auto classify (high confidence)",
         );
 
-        return {
+        const result: SimpleClassificationResult = {
           folderId: best.folderId,
           folderName: best.folderName,
           confidence: best.score,
@@ -247,11 +246,17 @@ export class SimpleClassificationService {
           matchType: best.matchType,
           tagBoost: best.tagBoost,
         };
+
+        // 发布分类事件
+        this.emitClassificationEvent(userId, bookmark.id, result);
+
+        return result;
       }
 
       // 中低置信度 → AI 选择题
       if (this.config.enableAISelection) {
         return this.aiSelectFromCandidates(
+          userId,
           bookmark,
           boostedCandidates.slice(0, 3),
           startTime,
@@ -259,7 +264,7 @@ export class SimpleClassificationService {
       }
 
       // AI 选择题禁用时，使用最佳匹配
-      return {
+      const fallbackResult: SimpleClassificationResult = {
         folderId: best.folderId,
         folderName: best.folderName,
         confidence: best.score,
@@ -269,6 +274,11 @@ export class SimpleClassificationService {
         candidates: boostedCandidates.slice(0, 3),
         matchType: best.matchType,
       };
+
+      // 发布分类事件
+      this.emitClassificationEvent(userId, bookmark.id, fallbackResult);
+
+      return fallbackResult;
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
@@ -293,21 +303,12 @@ export class SimpleClassificationService {
     userId: string,
     embedding: number[],
   ): Promise<CandidateFolder[]> {
-    // 类型安全的 RPC 参数
-    const params: SearchFoldersUnifiedParams = {
+    // 调用 Supabase RPC（直接传参以获得正确的类型推断）
+    const { data, error } = await this.supabase.rpc("search_folders_unified", {
       p_user_id: userId,
-      p_embedding: embedding,
+      p_embedding: JSON.stringify(embedding),
       p_limit: this.config.maxCandidates,
-    };
-
-    // 调用 Supabase RPC（自定义 SQL 函数需要类型断言）
-    const { data, error } = (await this.supabase.rpc(
-      "search_folders_unified" as never,
-      params as never,
-    )) as {
-      data: SearchFoldersUnifiedResult | null;
-      error: { message: string } | null;
-    };
+    });
 
     if (error) {
       logger.error(
@@ -321,7 +322,7 @@ export class SimpleClassificationService {
       folderId: row.folder_id,
       folderName: row.folder_name,
       score: Math.round(row.similarity * 100),
-      matchType: row.match_type,
+      matchType: row.match_type as "profile" | "name",
       bookmarkCount: row.bookmark_count,
       topTags: row.top_tags || [],
     }));
@@ -376,6 +377,7 @@ export class SimpleClassificationService {
    * AI 选择题模式
    */
   private async aiSelectFromCandidates(
+    userId: string,
     bookmark: SimpleBookmarkInput,
     candidates: CandidateFolder[],
     startTime: number,
@@ -419,7 +421,7 @@ ${candidates.map((c, i) => `${i + 1}. ${c.folderName} (当前匹配度: ${c.scor
       if (choice === 0 || isNaN(choice) || choice > candidates.length) {
         // AI 认为都不合适 → 创建新文件夹
         if (this.config.enableAICreate) {
-          return this.aiCreateFolder(bookmark, startTime);
+          return this.aiCreateFolder(userId, bookmark, startTime);
         }
         return this.createInboxResult("AI 无法选择合适的文件夹", startTime);
       }
@@ -440,7 +442,7 @@ ${candidates.map((c, i) => `${i + 1}. ${c.folderName} (当前匹配度: ${c.scor
         "[SimpleClassification] AI selected folder",
       );
 
-      return {
+      const result: SimpleClassificationResult = {
         folderId: selected.folderId,
         folderName: selected.folderName,
         confidence: boostedConfidence,
@@ -450,6 +452,11 @@ ${candidates.map((c, i) => `${i + 1}. ${c.folderName} (当前匹配度: ${c.scor
         candidates,
         matchType: "ai_select",
       };
+
+      // 发布分类事件
+      this.emitClassificationEvent(userId, bookmark.id, result);
+
+      return result;
     } catch (error) {
       logger.error(
         { error: error instanceof Error ? error.message : String(error) },
@@ -479,6 +486,7 @@ ${candidates.map((c, i) => `${i + 1}. ${c.folderName} (当前匹配度: ${c.scor
    * AI 创建新文件夹
    */
   private async aiCreateFolder(
+    userId: string,
     bookmark: SimpleBookmarkInput,
     startTime: number,
   ): Promise<SimpleClassificationResult> {
@@ -532,7 +540,7 @@ ${safeSummary ? `摘要：${safeSummary}` : ""}
         "[SimpleClassification] AI created folder suggestion",
       );
 
-      return {
+      const result: SimpleClassificationResult = {
         folderId: null,
         folderName: finalName,
         confidence: AI_CREATE_CONFIDENCE,
@@ -541,6 +549,11 @@ ${safeSummary ? `摘要：${safeSummary}` : ""}
         executionTime,
         matchType: "ai_create",
       };
+
+      // 发布分类事件（action: create_folder）
+      this.emitClassificationEvent(userId, bookmark.id, result);
+
+      return result;
     } catch (error) {
       logger.error(
         { error: error instanceof Error ? error.message : String(error) },
@@ -580,6 +593,43 @@ ${safeSummary ? `摘要：${safeSummary}` : ""}
     }
 
     return parts.join(" ");
+  }
+
+  /**
+   * 发布分类完成事件（V4.2 事件总线）
+   */
+  private emitClassificationEvent(
+    userId: string,
+    bookmarkId: number | undefined,
+    result: SimpleClassificationResult,
+  ): void {
+    // 只在有 bookmarkId 时发布事件
+    if (!bookmarkId) return;
+
+    // 映射 ClassificationAction 到事件 action
+    const mapAction = (
+      action: string,
+    ): "classify" | "inbox" | "create_folder" => {
+      if (action === "inbox") return "inbox";
+      if (
+        action === "suggest_create" ||
+        action === "suggest_new" ||
+        action === "auto_create"
+      ) {
+        return "create_folder";
+      }
+      return "classify";
+    };
+
+    eventBus.emit(ClassificationEvents.BOOKMARK_CLASSIFIED, {
+      userId,
+      bookmarkId,
+      folderId: result.folderId,
+      folderName: result.folderName,
+      confidence: result.confidence,
+      action: mapAction(result.action),
+      timestamp: new Date().toISOString(),
+    });
   }
 
   /**

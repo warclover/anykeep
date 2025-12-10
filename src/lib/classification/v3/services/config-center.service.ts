@@ -134,18 +134,36 @@ interface CacheStats {
 // ============================================================================
 
 const DEFAULT_SCENARIO_WEIGHTS: Record<UserScenario, ScenarioWeights> = {
-  cold_start: { vector: 0.8, universal: 0.2, history: 0.0, fingerprint: 0.0, tag: 0.0 },
-  learning: { vector: 0.5, history: 0.3, fingerprint: 0.1, universal: 0.1, tag: 0.0 },
-  mature: { vector: 0.3, history: 0.4, fingerprint: 0.2, tag: 0.1, universal: 0.0 },
+  cold_start: {
+    vector: 0.8,
+    universal: 0.2,
+    history: 0.0,
+    fingerprint: 0.0,
+    tag: 0.0,
+  },
+  learning: {
+    vector: 0.5,
+    history: 0.3,
+    fingerprint: 0.1,
+    universal: 0.1,
+    tag: 0.0,
+  },
+  mature: {
+    vector: 0.3,
+    history: 0.4,
+    fingerprint: 0.2,
+    tag: 0.1,
+    universal: 0.0,
+  },
 };
 
 const DEFAULT_THRESHOLDS: ThresholdsConfig = {
   directLock: 0.92,
-  highConfidence: 0.80,
-  mediumConfidence: 0.50,
+  highConfidence: 0.8,
+  mediumConfidence: 0.5,
   aiConfirm: 0.65,
   autoCreate: 0.75,
-  correctionCacheMin: 0.60,
+  correctionCacheMin: 0.6,
 };
 
 const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
@@ -248,7 +266,7 @@ export class ConfigCenterService {
       } catch (error) {
         logger.warn(
           { error: error instanceof Error ? error.message : String(error) },
-          "ConfigCenter: Failed to refresh categories cache"
+          "ConfigCenter: Failed to refresh categories cache",
         );
       }
     }
@@ -258,11 +276,17 @@ export class ConfigCenterService {
       if (entry.expiresAt <= now) {
         try {
           await this.loadStrategy(key, true);
-          logger.debug({ configKey: key }, "ConfigCenter: Strategy cache refreshed");
+          logger.debug(
+            { configKey: key },
+            "ConfigCenter: Strategy cache refreshed",
+          );
         } catch (error) {
           logger.warn(
-            { configKey: key, error: error instanceof Error ? error.message : String(error) },
-            "ConfigCenter: Failed to refresh strategy cache"
+            {
+              configKey: key,
+              error: error instanceof Error ? error.message : String(error),
+            },
+            "ConfigCenter: Failed to refresh strategy cache",
           );
         }
       }
@@ -278,11 +302,17 @@ export class ConfigCenterService {
   /**
    * 获取所有通用分类
    */
-  async getCategories(forceRefresh: boolean = false): Promise<UniversalCategoryConfig[]> {
+  async getCategories(
+    forceRefresh: boolean = false,
+  ): Promise<UniversalCategoryConfig[]> {
     const now = Date.now();
 
     // 检查缓存
-    if (!forceRefresh && this.categoriesCache && this.categoriesCache.expiresAt > now) {
+    if (
+      !forceRefresh &&
+      this.categoriesCache &&
+      this.categoriesCache.expiresAt > now
+    ) {
       this.stats.categoriesHits++;
       return this.categoriesCache.data;
     }
@@ -293,12 +323,15 @@ export class ConfigCenterService {
   /**
    * 从数据库加载分类
    */
-  private async loadCategories(forceRefresh: boolean): Promise<UniversalCategoryConfig[]> {
+  private async loadCategories(
+    forceRefresh: boolean,
+  ): Promise<UniversalCategoryConfig[]> {
     this.stats.categoriesMisses++;
 
     try {
+      // V4.2 表：类型已添加到 supabase.ts
       const { data, error } = await this.supabase
-        .from("universal_categories" as never)
+        .from("universal_categories")
         .select("*")
         .eq("is_active", true)
         .order("sort_order", { ascending: true });
@@ -307,7 +340,9 @@ export class ConfigCenterService {
         throw error;
       }
 
-      const categories: UniversalCategoryConfig[] = ((data as Record<string, unknown>[]) || []).map((row) => ({
+      const categories: UniversalCategoryConfig[] = (
+        (data as Record<string, unknown>[]) || []
+      ).map((row) => ({
         id: row.id as string,
         name: row.name as string,
         synonyms: (row.synonyms as string[]) || [],
@@ -327,14 +362,14 @@ export class ConfigCenterService {
 
       logger.info(
         { count: categories.length, forceRefresh },
-        "ConfigCenter: Categories loaded from database"
+        "ConfigCenter: Categories loaded from database",
       );
 
       return categories;
     } catch (error) {
       logger.error(
         { error: error instanceof Error ? error.message : String(error) },
-        "ConfigCenter: Failed to load categories, using cached data"
+        "ConfigCenter: Failed to load categories, using cached data",
       );
 
       // 返回过期缓存或空数组
@@ -346,11 +381,12 @@ export class ConfigCenterService {
    * 根据关键词匹配分类
    */
   async matchCategoriesByKeyword(
-    keyword: string
+    keyword: string,
   ): Promise<Array<{ category: UniversalCategoryConfig; score: number }>> {
     const categories = await this.getCategories();
     const lowerKeyword = keyword.toLowerCase();
-    const results: Array<{ category: UniversalCategoryConfig; score: number }> = [];
+    const results: Array<{ category: UniversalCategoryConfig; score: number }> =
+      [];
 
     for (const category of categories) {
       let score = 0;
@@ -364,11 +400,17 @@ export class ConfigCenterService {
         score = 80;
       }
       // 同义词完全匹配
-      else if (category.synonyms.some((syn) => syn.toLowerCase() === lowerKeyword)) {
+      else if (
+        category.synonyms.some((syn) => syn.toLowerCase() === lowerKeyword)
+      ) {
         score = 90;
       }
       // 同义词包含关键词
-      else if (category.synonyms.some((syn) => syn.toLowerCase().includes(lowerKeyword))) {
+      else if (
+        category.synonyms.some((syn) =>
+          syn.toLowerCase().includes(lowerKeyword),
+        )
+      ) {
         score = 60;
       }
 
@@ -388,7 +430,9 @@ export class ConfigCenterService {
    * 获取策略配置
    * @param configKey 配置键，默认 'default'
    */
-  async getStrategyConfig(configKey: string = "default"): Promise<StrategyConfig> {
+  async getStrategyConfig(
+    configKey: string = "default",
+  ): Promise<StrategyConfig> {
     const now = Date.now();
 
     // 检查缓存
@@ -404,12 +448,16 @@ export class ConfigCenterService {
   /**
    * 从数据库加载策略配置
    */
-  private async loadStrategy(configKey: string, forceRefresh: boolean): Promise<StrategyConfig> {
+  private async loadStrategy(
+    configKey: string,
+    forceRefresh: boolean,
+  ): Promise<StrategyConfig> {
     this.stats.strategyMisses++;
 
     try {
+      // V4.2 表：类型已添加到 supabase.ts
       const { data, error } = await this.supabase
-        .from("classification_strategy_config" as never)
+        .from("classification_strategy_config")
         .select("*")
         .eq("config_key", configKey)
         .eq("is_active", true)
@@ -420,7 +468,7 @@ export class ConfigCenterService {
         if (configKey !== "default") {
           logger.warn(
             { configKey },
-            "ConfigCenter: Config not found, falling back to default"
+            "ConfigCenter: Config not found, falling back to default",
           );
           return this.loadStrategy("default", forceRefresh);
         }
@@ -440,14 +488,17 @@ export class ConfigCenterService {
 
       logger.info(
         { configKey, version: config.version, forceRefresh },
-        "ConfigCenter: Strategy config loaded from database"
+        "ConfigCenter: Strategy config loaded from database",
       );
 
       return config;
     } catch (error) {
       logger.error(
-        { configKey, error: error instanceof Error ? error.message : String(error) },
-        "ConfigCenter: Failed to load strategy config, using default"
+        {
+          configKey,
+          error: error instanceof Error ? error.message : String(error),
+        },
+        "ConfigCenter: Failed to load strategy config, using default",
       );
 
       // 返回过期缓存或默认配置
@@ -459,16 +510,21 @@ export class ConfigCenterService {
    * 解析策略配置
    */
   private parseStrategyConfig(row: Record<string, unknown>): StrategyConfig {
-    const scenarioWeightsRaw = row.scenario_weights as Record<string, Record<string, number>> | undefined;
+    const scenarioWeightsRaw = row.scenario_weights as
+      | Record<string, Record<string, number>>
+      | undefined;
     const thresholdsRaw = row.thresholds as Record<string, number>;
     const featureFlagsRaw = row.feature_flags as Record<string, boolean>;
-    const matcherConfigRaw = row.matcher_config as Record<string, MatcherConfigItem>;
+    const matcherConfigRaw = row.matcher_config as Record<
+      string,
+      MatcherConfigItem
+    >;
     const aiConfigRaw = row.ai_config as Record<string, unknown>;
 
     // 解析场景权重，确保每个属性都有正确的类型
     const parseScenarioWeights = (
       raw: Record<string, number> | undefined,
-      defaultVal: ScenarioWeights
+      defaultVal: ScenarioWeights,
     ): ScenarioWeights => {
       if (!raw) return defaultVal;
       return {
@@ -484,38 +540,71 @@ export class ConfigCenterService {
       version: (row.version as string) || "v4.0",
 
       scenarioWeights: {
-        cold_start: parseScenarioWeights(scenarioWeightsRaw?.cold_start, DEFAULT_SCENARIO_WEIGHTS.cold_start),
-        learning: parseScenarioWeights(scenarioWeightsRaw?.learning, DEFAULT_SCENARIO_WEIGHTS.learning),
-        mature: parseScenarioWeights(scenarioWeightsRaw?.mature, DEFAULT_SCENARIO_WEIGHTS.mature),
+        cold_start: parseScenarioWeights(
+          scenarioWeightsRaw?.cold_start,
+          DEFAULT_SCENARIO_WEIGHTS.cold_start,
+        ),
+        learning: parseScenarioWeights(
+          scenarioWeightsRaw?.learning,
+          DEFAULT_SCENARIO_WEIGHTS.learning,
+        ),
+        mature: parseScenarioWeights(
+          scenarioWeightsRaw?.mature,
+          DEFAULT_SCENARIO_WEIGHTS.mature,
+        ),
       },
 
       thresholds: {
         directLock: thresholdsRaw?.direct_lock ?? DEFAULT_THRESHOLDS.directLock,
-        highConfidence: thresholdsRaw?.high_confidence ?? DEFAULT_THRESHOLDS.highConfidence,
-        mediumConfidence: thresholdsRaw?.medium_confidence ?? DEFAULT_THRESHOLDS.mediumConfidence,
+        highConfidence:
+          thresholdsRaw?.high_confidence ?? DEFAULT_THRESHOLDS.highConfidence,
+        mediumConfidence:
+          thresholdsRaw?.medium_confidence ??
+          DEFAULT_THRESHOLDS.mediumConfidence,
         aiConfirm: thresholdsRaw?.ai_confirm ?? DEFAULT_THRESHOLDS.aiConfirm,
         autoCreate: thresholdsRaw?.auto_create ?? DEFAULT_THRESHOLDS.autoCreate,
-        correctionCacheMin: thresholdsRaw?.correction_cache_min ?? DEFAULT_THRESHOLDS.correctionCacheMin,
+        correctionCacheMin:
+          thresholdsRaw?.correction_cache_min ??
+          DEFAULT_THRESHOLDS.correctionCacheMin,
       },
 
       featureFlags: {
-        enableTieredOptimization: featureFlagsRaw?.enable_tiered_optimization ?? DEFAULT_FEATURE_FLAGS.enableTieredOptimization,
-        enableCorrectionCache: featureFlagsRaw?.enable_correction_cache ?? DEFAULT_FEATURE_FLAGS.enableCorrectionCache,
-        enableTracing: featureFlagsRaw?.enable_tracing ?? DEFAULT_FEATURE_FLAGS.enableTracing,
-        enableDynamicWeights: featureFlagsRaw?.enable_dynamic_weights ?? DEFAULT_FEATURE_FLAGS.enableDynamicWeights,
-        enableCoTPrompt: featureFlagsRaw?.enable_cot_prompt ?? DEFAULT_FEATURE_FLAGS.enableCoTPrompt,
-        enableReranking: featureFlagsRaw?.enable_reranking ?? DEFAULT_FEATURE_FLAGS.enableReranking,
-        enableAutoCreate: featureFlagsRaw?.enable_auto_create ?? DEFAULT_FEATURE_FLAGS.enableAutoCreate,
+        enableTieredOptimization:
+          featureFlagsRaw?.enable_tiered_optimization ??
+          DEFAULT_FEATURE_FLAGS.enableTieredOptimization,
+        enableCorrectionCache:
+          featureFlagsRaw?.enable_correction_cache ??
+          DEFAULT_FEATURE_FLAGS.enableCorrectionCache,
+        enableTracing:
+          featureFlagsRaw?.enable_tracing ??
+          DEFAULT_FEATURE_FLAGS.enableTracing,
+        enableDynamicWeights:
+          featureFlagsRaw?.enable_dynamic_weights ??
+          DEFAULT_FEATURE_FLAGS.enableDynamicWeights,
+        enableCoTPrompt:
+          featureFlagsRaw?.enable_cot_prompt ??
+          DEFAULT_FEATURE_FLAGS.enableCoTPrompt,
+        enableReranking:
+          featureFlagsRaw?.enable_reranking ??
+          DEFAULT_FEATURE_FLAGS.enableReranking,
+        enableAutoCreate:
+          featureFlagsRaw?.enable_auto_create ??
+          DEFAULT_FEATURE_FLAGS.enableAutoCreate,
       },
 
       matcherConfig: matcherConfigRaw || {},
 
       aiConfig: {
         model: (aiConfigRaw?.model as string) || DEFAULT_AI_CONFIG.model,
-        maxTokens: (aiConfigRaw?.max_tokens as number) || DEFAULT_AI_CONFIG.maxTokens,
-        temperature: (aiConfigRaw?.temperature as number) || DEFAULT_AI_CONFIG.temperature,
-        timeoutMs: (aiConfigRaw?.timeout_ms as number) || DEFAULT_AI_CONFIG.timeoutMs,
-        fallbackModel: (aiConfigRaw?.fallback_model as string) || DEFAULT_AI_CONFIG.fallbackModel,
+        maxTokens:
+          (aiConfigRaw?.max_tokens as number) || DEFAULT_AI_CONFIG.maxTokens,
+        temperature:
+          (aiConfigRaw?.temperature as number) || DEFAULT_AI_CONFIG.temperature,
+        timeoutMs:
+          (aiConfigRaw?.timeout_ms as number) || DEFAULT_AI_CONFIG.timeoutMs,
+        fallbackModel:
+          (aiConfigRaw?.fallback_model as string) ||
+          DEFAULT_AI_CONFIG.fallbackModel,
       },
     };
   }
@@ -523,9 +612,13 @@ export class ConfigCenterService {
   /**
    * 根据用户场景获取权重
    */
-  async getWeightsForScenario(scenario: UserScenario): Promise<ScenarioWeights> {
+  async getWeightsForScenario(
+    scenario: UserScenario,
+  ): Promise<ScenarioWeights> {
     const config = await this.getStrategyConfig();
-    return config.scenarioWeights[scenario] || DEFAULT_SCENARIO_WEIGHTS[scenario];
+    return (
+      config.scenarioWeights[scenario] || DEFAULT_SCENARIO_WEIGHTS[scenario]
+    );
   }
 
   /**
@@ -590,8 +683,14 @@ export class ConfigCenterService {
 
     return {
       ...this.stats,
-      categoriesHitRate: catTotal > 0 ? Math.round((this.stats.categoriesHits / catTotal) * 100) : 0,
-      strategyHitRate: stratTotal > 0 ? Math.round((this.stats.strategyHits / stratTotal) * 100) : 0,
+      categoriesHitRate:
+        catTotal > 0
+          ? Math.round((this.stats.categoriesHits / catTotal) * 100)
+          : 0,
+      strategyHitRate:
+        stratTotal > 0
+          ? Math.round((this.stats.strategyHits / stratTotal) * 100)
+          : 0,
       categoriesCached: this.categoriesCache !== null,
       strategyCachedCount: this.strategyCache.size,
     };
@@ -607,7 +706,9 @@ let _instance: ConfigCenterService | null = null;
 /**
  * 获取配置中心服务实例
  */
-export function getConfigCenter(supabase: SupabaseClient<Database>): ConfigCenterService {
+export function getConfigCenter(
+  supabase: SupabaseClient<Database>,
+): ConfigCenterService {
   if (!_instance) {
     _instance = new ConfigCenterService(supabase);
   }

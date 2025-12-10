@@ -37,12 +37,11 @@ describe("cosineSimilarity", () => {
     expect(cosineSimilarity(a, b)).toBeCloseTo(Math.SQRT1_2, 5);
   });
 
-  it("should throw error for vectors of different lengths", () => {
+  it("should return 0 for vectors of different lengths (graceful degradation)", () => {
     const a = [1, 2, 3];
     const b = [1, 2];
-    expect(() => cosineSimilarity(a, b)).toThrow(
-      "Vectors must have the same length",
-    );
+    // 优雅降级：返回 0 表示不相似，而不是抛出错误
+    expect(cosineSimilarity(a, b)).toBe(0);
   });
 
   it("should return 0 when one vector is zero", () => {
@@ -76,12 +75,11 @@ describe("euclideanDistance", () => {
     expect(euclideanDistance(a, b)).toBeCloseTo(Math.sqrt(3), 5);
   });
 
-  it("should throw error for vectors of different lengths", () => {
+  it("should return Infinity for vectors of different lengths (graceful degradation)", () => {
     const a = [1, 2, 3];
     const b = [1, 2];
-    expect(() => euclideanDistance(a, b)).toThrow(
-      "Vectors must have the same length",
-    );
+    // 优雅降级：返回 Infinity 表示无限距离，而不是抛出错误
+    expect(euclideanDistance(a, b)).toBe(Infinity);
   });
 
   it("should be commutative", () => {

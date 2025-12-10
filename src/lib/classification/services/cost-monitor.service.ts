@@ -9,9 +9,9 @@
  */
 
 import { logger } from "@/lib/logger";
-import { v42Table, v42Rpc } from "@/lib/supabase/v42-types";
 import { BaseSupabaseService } from "./base-supabase.service";
 import { MessageService } from "@/lib/messages/message-service";
+import type { Json } from "@/types/supabase";
 
 // ============================================
 // Type Definitions
@@ -61,7 +61,7 @@ export interface RecordUsageRequest {
   outputTokens: number;
   requestId?: string;
   executionTimeMs?: number;
-  metadata?: Record<string, unknown>;
+  metadata?: Json;
 }
 
 /**
@@ -113,16 +113,16 @@ export class CostMonitorService extends BaseSupabaseService {
       );
 
       // V4.2 RPC
-      const { data, error } = await v42Rpc(supabase).rpc("record_llm_usage", {
+      const { data, error } = await supabase.rpc("record_llm_usage", {
         p_user_id: request.userId,
         p_operation: request.operation,
         p_model: request.model,
         p_input_tokens: request.inputTokens,
         p_output_tokens: request.outputTokens,
         p_cost_cents: costCents,
-        p_request_id: request.requestId || null,
-        p_execution_time_ms: request.executionTimeMs || null,
-        p_metadata: request.metadata || {},
+        p_request_id: request.requestId ?? undefined,
+        p_execution_time_ms: request.executionTimeMs ?? undefined,
+        p_metadata: request.metadata ?? null,
       });
 
       if (error) {
@@ -194,13 +194,10 @@ export class CostMonitorService extends BaseSupabaseService {
     const dateStr = targetDate.toISOString().split("T")[0];
 
     // V4.2 RPC
-    const { data, error } = await v42Rpc(supabase).rpc(
-      "get_user_daily_llm_cost",
-      {
-        p_user_id: userId,
-        p_date: dateStr,
-      },
-    );
+    const { data, error } = await supabase.rpc("get_user_daily_llm_cost", {
+      p_user_id: userId,
+      p_date: dateStr,
+    });
 
     // 类型断言
     type DailyCostRow = {
@@ -229,7 +226,7 @@ export class CostMonitorService extends BaseSupabaseService {
     const targetMonth = month || new Date().toISOString().slice(0, 7);
 
     // V4.2 表
-    const { data, error } = await v42Table(supabase)
+    const { data, error } = await supabase
       .from("llm_usage_monthly")
       .select("*")
       .eq("user_id", userId)
@@ -295,7 +292,7 @@ export class CostMonitorService extends BaseSupabaseService {
     const supabase = await this.getSupabase();
 
     // V4.2 表
-    const { data, error } = await v42Table(supabase)
+    const { data, error } = await supabase
       .from("llm_usage_log")
       .select("operation, model, input_tokens, output_tokens, cost_cents")
       .eq("user_id", userId)

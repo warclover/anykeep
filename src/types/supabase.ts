@@ -530,6 +530,54 @@ export type Database = {
           },
         ];
       };
+      classification_strategy_config: {
+        Row: {
+          ai_config: Json;
+          config_key: string;
+          created_at: string;
+          created_by: string | null;
+          description: string | null;
+          feature_flags: Json;
+          id: number;
+          is_active: boolean;
+          matcher_config: Json;
+          scenario_weights: Json;
+          thresholds: Json;
+          updated_at: string;
+          version: string;
+        };
+        Insert: {
+          ai_config?: Json;
+          config_key: string;
+          created_at?: string;
+          created_by?: string | null;
+          description?: string | null;
+          feature_flags?: Json;
+          id?: number;
+          is_active?: boolean;
+          matcher_config?: Json;
+          scenario_weights?: Json;
+          thresholds?: Json;
+          updated_at?: string;
+          version?: string;
+        };
+        Update: {
+          ai_config?: Json;
+          config_key?: string;
+          created_at?: string;
+          created_by?: string | null;
+          description?: string | null;
+          feature_flags?: Json;
+          id?: number;
+          is_active?: boolean;
+          matcher_config?: Json;
+          scenario_weights?: Json;
+          thresholds?: Json;
+          updated_at?: string;
+          version?: string;
+        };
+        Relationships: [];
+      };
       classification_suggestions: {
         Row: {
           batch_id: string;
@@ -918,6 +966,45 @@ export type Database = {
           skipped_count?: number;
           success_count?: number;
           total_count?: number;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
+      librarian_analysis_history: {
+        Row: {
+          analysis_data: Json;
+          created_at: string;
+          duplicate_count: number;
+          empty_count: number;
+          health_score: number;
+          id: number;
+          missing_count: number;
+          oversized_count: number;
+          poorly_named_count: number;
+          user_id: string;
+        };
+        Insert: {
+          analysis_data?: Json;
+          created_at?: string;
+          duplicate_count?: number;
+          empty_count?: number;
+          health_score: number;
+          id?: number;
+          missing_count?: number;
+          oversized_count?: number;
+          poorly_named_count?: number;
+          user_id: string;
+        };
+        Update: {
+          analysis_data?: Json;
+          created_at?: string;
+          duplicate_count?: number;
+          empty_count?: number;
+          health_score?: number;
+          id?: number;
+          missing_count?: number;
+          oversized_count?: number;
+          poorly_named_count?: number;
           user_id?: string;
         };
         Relationships: [];
@@ -1452,6 +1539,45 @@ export type Database = {
           locale?: string;
           system_type?: string;
           updated_at?: string | null;
+        };
+        Relationships: [];
+      };
+      universal_categories: {
+        Row: {
+          category_group: Database["public"]["Enums"]["classification_category_group"];
+          created_at: string;
+          icon: string;
+          id: string;
+          is_active: boolean;
+          name: string;
+          sort_order: number;
+          suggested_folder_name: string;
+          synonyms: string[];
+          updated_at: string;
+        };
+        Insert: {
+          category_group: Database["public"]["Enums"]["classification_category_group"];
+          created_at?: string;
+          icon?: string;
+          id: string;
+          is_active?: boolean;
+          name: string;
+          sort_order?: number;
+          suggested_folder_name: string;
+          synonyms?: string[];
+          updated_at?: string;
+        };
+        Update: {
+          category_group?: Database["public"]["Enums"]["classification_category_group"];
+          created_at?: string;
+          icon?: string;
+          id?: string;
+          is_active?: boolean;
+          name?: string;
+          sort_order?: number;
+          suggested_folder_name?: string;
+          synonyms?: string[];
+          updated_at?: string;
         };
         Relationships: [];
       };
@@ -2157,7 +2283,14 @@ export type Database = {
       };
     };
     Enums: {
-      [_ in never]: never;
+      classification_category_group:
+        | "tech"
+        | "design"
+        | "business"
+        | "content"
+        | "lifestyle"
+        | "learning"
+        | "other";
     };
     CompositeTypes: {
       [_ in never]: never;
