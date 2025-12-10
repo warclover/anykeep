@@ -27,6 +27,8 @@ import {
   MoreHorizontal,
   Lock,
   Unlock,
+  Folder,
+  Pin,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -45,9 +47,9 @@ import { RenameFolderDialog } from "./rename-folder-dialog";
 import { MergeFolderDialog } from "./merge-folder-dialog";
 import { DeleteFolderDialog } from "./delete-folder-dialog";
 import { useAbortableFetch } from "@/hooks/use-abortable-fetch";
-import type { Folder, FolderGroup } from "@/types/supabase";
+import type { Folder as FolderType, FolderGroup } from "@/types/supabase";
 
-type FolderWithCount = Folder & {
+type FolderWithCount = FolderType & {
   bookmark_count?: number;
 };
 
@@ -64,14 +66,20 @@ interface FolderActionMenuProps {
   ) => void;
 }
 
-// 文件夹分组配置
-const FOLDER_GROUPS: Record<
-  FolderGroup,
-  {
-    label: string;
-    icon: React.ComponentType<{ className?: string }>;
-  }
-> = {
+// 文件夹分组配置（包含系统分组以保证类型安全）
+const FOLDER_GROUPS: Record<string, { label: string; icon: typeof Folder }> = {
+  default: {
+    label: "默认",
+    icon: Folder,
+  },
+  pinned: {
+    label: "已固定",
+    icon: Pin,
+  },
+  archived: {
+    label: "已归档",
+    icon: Archive,
+  },
   work: {
     label: "工作相关",
     icon: Briefcase,

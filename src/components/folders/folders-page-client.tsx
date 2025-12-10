@@ -30,6 +30,8 @@ import {
   Gamepad2,
   MoreHorizontal,
   Lock,
+  Pin,
+  Archive,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -42,11 +44,7 @@ import {
 } from "@/components/ui/collapsible";
 import { CreateFolderDialog } from "@/components/folders/create-folder-dialog";
 import { FolderActionMenu } from "@/components/folders/folder-action-menu";
-import type {
-  Folder as FolderType,
-  Bookmark,
-  FolderGroup,
-} from "@/types/supabase";
+import type { Folder as FolderType, Bookmark } from "@/types/supabase";
 
 // 扩展 Folder 类型，包含统计字段
 type FolderWithStats = FolderType & {
@@ -66,16 +64,39 @@ interface FoldersPageClientProps {
 
 // ==================== 文件夹分组配置 ====================
 
-// 分组配置
+// UI 显示分组类型（不包含系统分组）
+type UIFolderGroup = "work" | "study" | "life" | "entertainment" | "other";
+
+// 分组配置（包含系统分组以保证类型安全）
 const FOLDER_GROUPS: Record<
-  FolderGroup,
+  string,
   {
     label: string;
-    icon: React.ComponentType<{ className?: string }>;
-    keywords: string[];
+    icon: typeof Folder;
+    keywords: readonly string[];
     gradient: { from: string; to: string };
   }
 > = {
+  // 系统分组（通常不在 UI 中直接显示）
+  default: {
+    label: "默认",
+    icon: Folder,
+    keywords: [],
+    gradient: { from: "from-gray-400", to: "to-gray-500" },
+  },
+  pinned: {
+    label: "已固定",
+    icon: Pin,
+    keywords: [],
+    gradient: { from: "from-yellow-400", to: "to-amber-500" },
+  },
+  archived: {
+    label: "已归档",
+    icon: Archive,
+    keywords: [],
+    gradient: { from: "from-slate-400", to: "to-slate-500" },
+  },
+  // UI 显示分组
   work: {
     label: "工作相关",
     icon: Briefcase,
@@ -145,7 +166,7 @@ const FOLDER_GROUPS: Record<
 // 分组文件夹
 type GroupedFolders = {
   system: FolderWithStats[];
-  groups: Record<FolderGroup, FolderWithStats[]>;
+  groups: Record<UIFolderGroup, FolderWithStats[]>;
 };
 
 function groupFolders(folders: FolderWithStats[]): GroupedFolders {
@@ -160,20 +181,34 @@ function groupFolders(folders: FolderWithStats[]): GroupedFolders {
     },
   };
 
+  // UI 显示的分组键列表
+  const uiGroups: UIFolderGroup[] = [
+    "work",
+    "study",
+    "life",
+    "entertainment",
+    "other",
+  ];
+
   for (const folder of folders) {
     if (folder.is_system) {
       result.system.push(folder);
     } else {
       // V4.4更新：直接使用数据库的 folder_group 字段
-      const group = (folder.folder_group || "other") as FolderGroup;
+      // 如果是系统分组（default/pinned/archived），归入 other
+      const rawGroup = folder.folder_group || "other";
+      const group = uiGroups.includes(rawGroup as UIFolderGroup)
+        ? (rawGroup as UIFolderGroup)
+        : "other";
       result.groups[group].push(folder);
     }
   }
 
   // V4.4新增：按 sort_order 排序每个组内的文件夹
-  Object.keys(result.groups).forEach((groupKey) => {
-    result.groups[groupKey as FolderGroup].sort(
-      (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0),
+  uiGroups.forEach((groupKey) => {
+    result.groups[groupKey].sort(
+      (a: FolderWithStats, b: FolderWithStats) =>
+        (a.sort_order ?? 0) - (b.sort_order ?? 0),
     );
   });
 
@@ -299,9 +334,9 @@ export function FoldersPageClient({
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [localFolders, setLocalFolders] = useState(folders);
 
-  // 分组折叠状态
+  // 分组折叠状态（仅针对 UI 显示分组）
   const [expandedGroups, setExpandedGroups] = useState<
-    Record<FolderGroup, boolean>
+    Record<UIFolderGroup, boolean>
   >({
     work: true,
     study: true,
@@ -322,7 +357,7 @@ export function FoldersPageClient({
   );
 
   // 切换分组展开/折叠
-  const toggleGroup = (group: FolderGroup) => {
+  const toggleGroup = (group: UIFolderGroup) => {
     setExpandedGroups((prev) => ({ ...prev, [group]: !prev[group] }));
   };
 
@@ -374,8 +409,15 @@ export function FoldersPageClient({
     setShowCreateDialog(true);
   };
 
-  // 获取非空分组列表
-  const nonEmptyGroups = (Object.keys(FOLDER_GROUPS) as FolderGroup[]).filter(
+  // 获取非空分组列表（仅 UI 显示分组）
+  const uiGroupKeys: UIFolderGroup[] = [
+    "work",
+    "study",
+    "life",
+    "entertainment",
+    "other",
+  ];
+  const nonEmptyGroups = uiGroupKeys.filter(
     (group) => groupedFolders.groups[group].length > 0,
   );
 

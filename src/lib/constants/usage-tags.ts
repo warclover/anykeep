@@ -168,9 +168,8 @@ export function getAiTagColor(tag: string): (typeof AI_TAG_COLORS)[0] {
  * 自定义标签的颜色样式映射
  * 将 Tailwind 颜色名转换为完整样式配置
  */
-export const CUSTOM_TAG_COLOR_STYLES: Record<
-  CustomTagColor,
-  Omit<UsageTagPreset, "value" | "label" | "icon">
+export const CUSTOM_TAG_COLOR_STYLES: Partial<
+  Record<CustomTagColor, Omit<UsageTagPreset, "value" | "label" | "icon">>
 > = {
   blue: {
     color: "blue",
@@ -293,10 +292,10 @@ export function getAllUsageTags(
   const customUnifiedTags: UnifiedUsageTag[] = customTags.map((tag) => {
     const colorStyle =
       CUSTOM_TAG_COLOR_STYLES[tag.color as CustomTagColor] ||
-      CUSTOM_TAG_COLOR_STYLES.blue;
+      CUSTOM_TAG_COLOR_STYLES.blue!;
     return {
       value: tag.value,
-      label: tag.label,
+      label: tag.label || tag.value, // 如果没有 label，使用 value 作为默认
       isPreset: false,
       style: colorStyle,
       lastUsedAt: tag.lastUsedAt,
@@ -358,10 +357,10 @@ export function getUsageTagStyleExtended(
   if (customTag) {
     const colorStyle =
       CUSTOM_TAG_COLOR_STYLES[customTag.color as CustomTagColor] ||
-      CUSTOM_TAG_COLOR_STYLES.blue;
+      CUSTOM_TAG_COLOR_STYLES.blue!;
     return {
       value: customTag.value,
-      label: customTag.label,
+      label: customTag.label || customTag.value, // 如果没有 label，使用 value 作为默认
       isPreset: false,
       style: colorStyle,
       lastUsedAt: customTag.lastUsedAt,
@@ -487,14 +486,14 @@ export function createCustomUsageTag(
  * 获取可用的标签颜色列表
  */
 export function getAvailableColors(): CustomTagColor[] {
-  return [...CUSTOM_TAG_COLORS];
+  return Object.keys(CUSTOM_TAG_COLORS) as CustomTagColor[];
 }
 
 /**
  * 获取颜色的显示名称（中文）
  */
 export function getColorDisplayName(color: CustomTagColor): string {
-  const colorNames: Record<CustomTagColor, string> = {
+  const colorNames: Partial<Record<CustomTagColor, string>> = {
     blue: "蓝色",
     purple: "紫色",
     pink: "粉色",
@@ -503,6 +502,17 @@ export function getColorDisplayName(color: CustomTagColor): string {
     yellow: "黄色",
     slate: "灰色",
     zinc: "深灰",
+    green: "绿色",
+    red: "红色",
+    orange: "橙色",
+    cyan: "青色",
+    indigo: "靛蓝",
+    amber: "琥珀",
+    rose: "玫红",
+    violet: "紫罗兰",
+    teal: "青绿",
+    emerald: "翡翠绿",
+    fuchsia: "紫红",
   };
   return colorNames[color] || color;
 }
@@ -511,7 +521,9 @@ export function getColorDisplayName(color: CustomTagColor): string {
  * 颜色选择器按钮样式（用于颜色选择圆形按钮）
  * 使用较深的颜色（400级别）以便在白色背景上清晰可见
  */
-export const COLOR_PICKER_BUTTON_STYLES: Record<CustomTagColor, string> = {
+export const COLOR_PICKER_BUTTON_STYLES: Partial<
+  Record<CustomTagColor, string>
+> = {
   blue: "bg-blue-400",
   purple: "bg-purple-400",
   pink: "bg-pink-400",
@@ -520,4 +532,15 @@ export const COLOR_PICKER_BUTTON_STYLES: Record<CustomTagColor, string> = {
   yellow: "bg-yellow-400",
   slate: "bg-slate-400",
   zinc: "bg-zinc-400",
+  green: "bg-green-400",
+  red: "bg-red-400",
+  orange: "bg-orange-400",
+  cyan: "bg-cyan-400",
+  indigo: "bg-indigo-400",
+  amber: "bg-amber-400",
+  rose: "bg-rose-400",
+  violet: "bg-violet-400",
+  teal: "bg-teal-400",
+  emerald: "bg-emerald-400",
+  fuchsia: "bg-fuchsia-400",
 };

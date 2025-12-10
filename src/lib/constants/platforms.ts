@@ -24,7 +24,7 @@ export interface PlatformConfig {
 /**
  * 平台配置映射表
  */
-export const PLATFORM_CONFIGS: Record<Platform, PlatformConfig> = {
+export const PLATFORM_CONFIGS = {
   WECHAT_OFFICIAL_ACCOUNT: {
     name: "微信公众号",
     key: "wechat",
@@ -138,7 +138,10 @@ export function isContentPlatform(platform: Platform): boolean {
  * @returns 平台配置对象
  */
 export function getPlatformConfig(platform: Platform | string): PlatformConfig {
-  return PLATFORM_CONFIGS[platform as Platform] || PLATFORM_CONFIGS.UNKNOWN;
+  const key = platform as keyof typeof PLATFORM_CONFIGS;
+  return key in PLATFORM_CONFIGS
+    ? PLATFORM_CONFIGS[key]
+    : PLATFORM_CONFIGS.UNKNOWN;
 }
 
 /**

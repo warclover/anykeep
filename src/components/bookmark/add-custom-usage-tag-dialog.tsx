@@ -20,8 +20,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { CUSTOM_TAG_COLOR_LIST } from "@/types/supabase";
 import type { CustomUsageTag, CustomTagColor } from "@/types/supabase";
-import { CUSTOM_USAGE_TAG_LIMIT, CUSTOM_TAG_COLORS } from "@/types/supabase";
+import { CUSTOM_USAGE_TAG_LIMIT } from "@/types/supabase";
 import {
   validateCustomTagValue,
   getColorDisplayName,
@@ -169,7 +170,7 @@ export function AddCustomUsageTagDialog({
           <div className="space-y-2">
             <Label>标签颜色</Label>
             <div className="flex flex-wrap gap-2">
-              {CUSTOM_TAG_COLORS.map((c) => {
+              {CUSTOM_TAG_COLOR_LIST.map((c) => {
                 const isSelected = color === c;
                 return (
                   <button
@@ -264,7 +265,7 @@ function PreviewTag({
   value: string;
   color: CustomTagColor;
 }) {
-  const style = CUSTOM_TAG_COLOR_STYLES[color];
+  const style = CUSTOM_TAG_COLOR_STYLES[color] || CUSTOM_TAG_COLOR_STYLES.blue!;
 
   return (
     <span

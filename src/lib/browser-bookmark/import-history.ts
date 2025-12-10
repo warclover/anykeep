@@ -67,7 +67,7 @@ export function browserSourceToImportSource(
 
 /** 获取导入来源的显示名称 */
 export function getImportSourceDisplayName(source: ImportSource): string {
-  const names: Record<ImportSource, string> = {
+  const names: Partial<Record<ImportSource, string>> = {
     browser_chrome: "Chrome 浏览器",
     browser_edge: "Edge 浏览器",
     browser_firefox: "Firefox 浏览器",

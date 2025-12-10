@@ -48,7 +48,11 @@ import {
   calculateSuccessRate,
   formatDuration,
 } from "@/lib/browser-bookmark";
-import type { ImportHistory, ImportErrorDetail } from "@/types/supabase";
+import type {
+  ImportHistory,
+  ImportErrorDetail,
+  ImportSource,
+} from "@/types/supabase";
 import { cn } from "@/lib/utils";
 
 // ============================================
@@ -211,7 +215,9 @@ function HistoryItem({
           {/* 来源和状态 */}
           <div className="flex items-center gap-2">
             <span className="font-medium">
-              {getImportSourceDisplayName(history.import_source)}
+              {getImportSourceDisplayName(
+                history.import_source as ImportSource,
+              )}
             </span>
             <StatusBadge history={history} />
           </div>

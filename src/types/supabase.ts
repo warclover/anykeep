@@ -6,16 +6,6 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[];
 
-// V5.0新增：导入来源类型（定义在 Database 之前以便引用）
-export type ImportSource =
-  | "browser_chrome"
-  | "browser_edge"
-  | "browser_firefox"
-  | "browser_safari"
-  | "api"
-  | "share_sheet"
-  | "manual";
-
 export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
@@ -61,6 +51,8 @@ export type Database = {
           author: string | null;
           classification_result: Json | null;
           classification_status: string | null;
+          cluster_confidence: number | null;
+          cluster_id: string | null;
           content_type: string | null;
           cover_url: string | null;
           created_at: string | null;
@@ -81,6 +73,8 @@ export type Database = {
           is_starred: boolean;
           last_validation_at: string | null;
           notes: string | null;
+          pending_cluster: boolean | null;
+          pending_since: string | null;
           platform: string;
           platform_content_id: string | null;
           publish_time: string | null;
@@ -96,11 +90,6 @@ export type Database = {
           user_id: string;
           user_tags: string[] | null;
           word_count: number | null;
-          // V4.2 聚类扩展字段
-          cluster_confidence: number | null;
-          cluster_id: string | null;
-          pending_cluster: boolean | null;
-          pending_since: string | null;
         };
         Insert: {
           ai_content_type?: string | null;
@@ -111,6 +100,8 @@ export type Database = {
           author?: string | null;
           classification_result?: Json | null;
           classification_status?: string | null;
+          cluster_confidence?: number | null;
+          cluster_id?: string | null;
           content_type?: string | null;
           cover_url?: string | null;
           created_at?: string | null;
@@ -131,6 +122,8 @@ export type Database = {
           is_starred?: boolean;
           last_validation_at?: string | null;
           notes?: string | null;
+          pending_cluster?: boolean | null;
+          pending_since?: string | null;
           platform: string;
           platform_content_id?: string | null;
           publish_time?: string | null;
@@ -146,11 +139,6 @@ export type Database = {
           user_id: string;
           user_tags?: string[] | null;
           word_count?: number | null;
-          // V4.2 聚类扩展字段
-          cluster_confidence?: number | null;
-          cluster_id?: string | null;
-          pending_cluster?: boolean | null;
-          pending_since?: string | null;
         };
         Update: {
           ai_content_type?: string | null;
@@ -161,6 +149,8 @@ export type Database = {
           author?: string | null;
           classification_result?: Json | null;
           classification_status?: string | null;
+          cluster_confidence?: number | null;
+          cluster_id?: string | null;
           content_type?: string | null;
           cover_url?: string | null;
           created_at?: string | null;
@@ -181,6 +171,8 @@ export type Database = {
           is_starred?: boolean;
           last_validation_at?: string | null;
           notes?: string | null;
+          pending_cluster?: boolean | null;
+          pending_since?: string | null;
           platform?: string;
           platform_content_id?: string | null;
           publish_time?: string | null;
@@ -196,11 +188,6 @@ export type Database = {
           user_id?: string;
           user_tags?: string[] | null;
           word_count?: number | null;
-          // V4.2 聚类扩展字段
-          cluster_confidence?: number | null;
-          cluster_id?: string | null;
-          pending_cluster?: boolean | null;
-          pending_since?: string | null;
         };
         Relationships: [
           {
@@ -603,6 +590,88 @@ export type Database = {
           },
         ];
       };
+      embedding_ab_test_metrics: {
+        Row: {
+          ab_test_bucket: number | null;
+          ab_test_group: string | null;
+          bookmark_id: number | null;
+          classification_result: Json | null;
+          created_at: string;
+          dimensions: number;
+          execution_time_ms: number;
+          feedback_at: string | null;
+          feedback_folder_id: number | null;
+          folder_id: number | null;
+          id: number;
+          model_id: string;
+          model_name: string;
+          operation_type: string;
+          token_count: number | null;
+          user_feedback: string | null;
+          user_id: string;
+        };
+        Insert: {
+          ab_test_bucket?: number | null;
+          ab_test_group?: string | null;
+          bookmark_id?: number | null;
+          classification_result?: Json | null;
+          created_at?: string;
+          dimensions?: number;
+          execution_time_ms: number;
+          feedback_at?: string | null;
+          feedback_folder_id?: number | null;
+          folder_id?: number | null;
+          id?: number;
+          model_id: string;
+          model_name: string;
+          operation_type: string;
+          token_count?: number | null;
+          user_feedback?: string | null;
+          user_id: string;
+        };
+        Update: {
+          ab_test_bucket?: number | null;
+          ab_test_group?: string | null;
+          bookmark_id?: number | null;
+          classification_result?: Json | null;
+          created_at?: string;
+          dimensions?: number;
+          execution_time_ms?: number;
+          feedback_at?: string | null;
+          feedback_folder_id?: number | null;
+          folder_id?: number | null;
+          id?: number;
+          model_id?: string;
+          model_name?: string;
+          operation_type?: string;
+          token_count?: number | null;
+          user_feedback?: string | null;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "embedding_ab_test_metrics_bookmark_id_fkey";
+            columns: ["bookmark_id"];
+            isOneToOne: false;
+            referencedRelation: "bookmarks";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "embedding_ab_test_metrics_feedback_folder_id_fkey";
+            columns: ["feedback_folder_id"];
+            isOneToOne: false;
+            referencedRelation: "folders";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "embedding_ab_test_metrics_folder_id_fkey";
+            columns: ["folder_id"];
+            isOneToOne: false;
+            referencedRelation: "folders";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       evolution_reports: {
         Row: {
           acceptance_rate: number | null;
@@ -668,7 +737,6 @@ export type Database = {
           bookmark_count: number | null;
           computed_at: string | null;
           folder_id: number;
-          // V4.2 扩展字段
           heat_computed_at: string | null;
           heat_score: number | null;
           id: number;
@@ -694,7 +762,6 @@ export type Database = {
           bookmark_count?: number | null;
           computed_at?: string | null;
           folder_id: number;
-          // V4.2 扩展字段
           heat_computed_at?: string | null;
           heat_score?: number | null;
           id?: number;
@@ -720,7 +787,6 @@ export type Database = {
           bookmark_count?: number | null;
           computed_at?: string | null;
           folder_id?: number;
-          // V4.2 扩展字段
           heat_computed_at?: string | null;
           heat_score?: number | null;
           id?: number;
@@ -852,6 +918,63 @@ export type Database = {
           skipped_count?: number;
           success_count?: number;
           total_count?: number;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
+      job_queue: {
+        Row: {
+          attempts: number | null;
+          claimed_by: string | null;
+          completed_at: string | null;
+          created_at: string | null;
+          error: string | null;
+          id: string;
+          lock_until: string | null;
+          max_attempts: number | null;
+          payload: Json;
+          priority: number | null;
+          result: Json | null;
+          scheduled_at: string | null;
+          started_at: string | null;
+          status: string | null;
+          type: string;
+          user_id: string;
+        };
+        Insert: {
+          attempts?: number | null;
+          claimed_by?: string | null;
+          completed_at?: string | null;
+          created_at?: string | null;
+          error?: string | null;
+          id?: string;
+          lock_until?: string | null;
+          max_attempts?: number | null;
+          payload?: Json;
+          priority?: number | null;
+          result?: Json | null;
+          scheduled_at?: string | null;
+          started_at?: string | null;
+          status?: string | null;
+          type: string;
+          user_id: string;
+        };
+        Update: {
+          attempts?: number | null;
+          claimed_by?: string | null;
+          completed_at?: string | null;
+          created_at?: string | null;
+          error?: string | null;
+          id?: string;
+          lock_until?: string | null;
+          max_attempts?: number | null;
+          payload?: Json;
+          priority?: number | null;
+          result?: Json | null;
+          scheduled_at?: string | null;
+          started_at?: string | null;
+          status?: string | null;
+          type?: string;
           user_id?: string;
         };
         Relationships: [];
@@ -1027,6 +1150,62 @@ export type Database = {
           web_push_subscription?: Json | null;
         };
         Relationships: [];
+      };
+      operation_snapshots: {
+        Row: {
+          action: string;
+          after_state: Json;
+          before_state: Json;
+          bookmark_ids: number[] | null;
+          created_at: string | null;
+          expires_at: string | null;
+          folder_id: number | null;
+          folder_ids: number[] | null;
+          id: string;
+          is_undone: boolean | null;
+          reason: string | null;
+          undone_at: string | null;
+          user_id: string;
+        };
+        Insert: {
+          action: string;
+          after_state?: Json;
+          before_state?: Json;
+          bookmark_ids?: number[] | null;
+          created_at?: string | null;
+          expires_at?: string | null;
+          folder_id?: number | null;
+          folder_ids?: number[] | null;
+          id?: string;
+          is_undone?: boolean | null;
+          reason?: string | null;
+          undone_at?: string | null;
+          user_id: string;
+        };
+        Update: {
+          action?: string;
+          after_state?: Json;
+          before_state?: Json;
+          bookmark_ids?: number[] | null;
+          created_at?: string | null;
+          expires_at?: string | null;
+          folder_id?: number | null;
+          folder_ids?: number[] | null;
+          id?: string;
+          is_undone?: boolean | null;
+          reason?: string | null;
+          undone_at?: string | null;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "operation_snapshots_folder_id_fkey";
+            columns: ["folder_id"];
+            isOneToOne: false;
+            referencedRelation: "folders";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       organization_suggestions: {
         Row: {
@@ -1435,6 +1614,22 @@ export type Database = {
         };
         Relationships: [];
       };
+      embedding_ab_test_summary: {
+        Row: {
+          ab_test_group: string | null;
+          acceptance_rate: number | null;
+          avg_execution_time_ms: number | null;
+          avg_token_count: number | null;
+          date: string | null;
+          feedback_count: number | null;
+          median_execution_time_ms: number | null;
+          model_id: string | null;
+          operation_type: string | null;
+          p95_execution_time_ms: number | null;
+          total_count: number | null;
+        };
+        Relationships: [];
+      };
       embedding_stats: {
         Row: {
           bookmarks_with_embedding: number | null;
@@ -1514,13 +1709,44 @@ export type Database = {
           user_id: string;
         }[];
       };
+      assign_cluster_id: {
+        Args: {
+          p_bookmark_ids: number[];
+          p_cluster_id: string;
+          p_confidence: number;
+        };
+        Returns: number;
+      };
       calculate_matcher_weight_adjustments: {
         Args: { p_user_id: string };
         Returns: Json;
       };
+      claim_next_job: {
+        Args: {
+          p_job_types?: string[];
+          p_lock_duration?: unknown;
+          p_worker_id: string;
+        };
+        Returns: {
+          job_attempts: number;
+          job_id: string;
+          job_payload: Json;
+          job_type: string;
+          job_user_id: string;
+        }[];
+      };
       cleanup_expired_messages: { Args: never; Returns: number };
       cleanup_old_chat_cache: { Args: { p_days?: number }; Returns: number };
       cleanup_old_patrol_reports: { Args: never; Returns: undefined };
+      clear_bookmark_pending_cluster: {
+        Args: { p_bookmark_id: number; p_user_id: string };
+        Returns: boolean;
+      };
+      complete_job: {
+        Args: { p_job_id: string; p_result?: Json };
+        Returns: boolean;
+      };
+      compute_folder_heat: { Args: { p_folder_id: number }; Returns: number };
       compute_folder_profile: {
         Args: { p_folder_id: number };
         Returns: undefined;
@@ -1535,7 +1761,21 @@ export type Database = {
             Args: { decrement_by?: number; target_user_id: string };
             Returns: undefined;
           };
+      enqueue_job: {
+        Args: {
+          p_payload?: Json;
+          p_priority?: number;
+          p_scheduled_at?: string;
+          p_type: string;
+          p_user_id: string;
+        };
+        Returns: string;
+      };
       expire_old_suggestions: { Args: never; Returns: number };
+      fail_job: {
+        Args: { p_error: string; p_job_id: string; p_retry?: boolean };
+        Returns: boolean;
+      };
       find_cross_folder_connections: {
         Args: {
           p_folder_id?: number;
@@ -1589,6 +1829,22 @@ export type Database = {
           similarity: number;
         }[];
       };
+      get_active_operations: {
+        Args: { p_limit?: number; p_user_id: string };
+        Returns: {
+          action: string;
+          after_state: Json;
+          before_state: Json;
+          bookmark_ids: number[];
+          can_undo: boolean;
+          created_at: string;
+          expires_at: string;
+          folder_id: number;
+          folder_ids: number[];
+          id: string;
+          reason: string;
+        }[];
+      };
       get_ai_folder_settings: { Args: { p_user_id: string }; Returns: Json };
       get_folder_similarity_matrix: {
         Args: { p_min_bookmarks?: number; p_user_id: string };
@@ -1638,6 +1894,19 @@ export type Database = {
         Args: { p_user_id?: string };
         Returns: number;
       };
+      get_pending_cluster_bookmarks: {
+        Args: { p_limit?: number; p_min_age_hours?: number; p_user_id: string };
+        Returns: {
+          ai_summary: string;
+          ai_tags: string[];
+          cluster_id: string;
+          embedding: string;
+          id: number;
+          pending_since: string;
+          title: string;
+          url: string;
+        }[];
+      };
       get_pending_suggestions_count: {
         Args: { p_user_id: string };
         Returns: number;
@@ -1668,6 +1937,16 @@ export type Database = {
         Args: { p_user_id: string };
         Returns: string;
       };
+      get_user_cluster_stats: {
+        Args: { p_user_id: string };
+        Returns: {
+          cluster_count: number;
+          clustered_count: number;
+          oldest_pending: string;
+          total_pending: number;
+          unclustered_count: number;
+        }[];
+      };
       get_user_daily_llm_cost: {
         Args: { p_date?: string; p_user_id: string };
         Returns: {
@@ -1693,6 +1972,15 @@ export type Database = {
         }[];
       };
       get_vision_tags: { Args: { vision_data: Json }; Returns: string[] };
+      has_pending_job: {
+        Args: {
+          p_payload_key?: string;
+          p_payload_value?: string;
+          p_type: string;
+          p_user_id: string;
+        };
+        Returns: boolean;
+      };
       has_vision_analysis: { Args: { vision_data: Json }; Returns: boolean };
       increment_chat_usage: {
         Args: { p_date: string; p_tokens?: number; p_user_id: string };
@@ -1702,9 +1990,17 @@ export type Database = {
         Args: { target_user_id: string };
         Returns: undefined;
       };
+      mark_bookmark_pending_cluster: {
+        Args: { p_bookmark_id: number; p_user_id: string };
+        Returns: boolean;
+      };
       mark_messages_read: {
         Args: { p_message_ids?: number[]; p_user_id: string };
         Returns: number;
+      };
+      mark_operation_undone: {
+        Args: { p_operation_id: string; p_user_id: string };
+        Returns: boolean;
       };
       record_classification_metrics: {
         Args: {
@@ -1850,9 +2146,14 @@ export type Database = {
         Args: { p_settings: Json; p_user_id: string };
         Returns: Json;
       };
+      update_folder_heat: { Args: { p_folder_id: number }; Returns: undefined };
       update_folder_name_embedding: {
         Args: { p_folder_id: number; p_name_embedding: string };
         Returns: undefined;
+      };
+      update_user_folder_heats: {
+        Args: { p_user_id: string };
+        Returns: number;
       };
     };
     Enums: {
@@ -1989,350 +2290,147 @@ export const Constants = {
     Enums: {},
   },
 } as const;
-export type Profile = Database["public"]["Tables"]["profiles"]["Row"];
-export type ProfileInsert = Database["public"]["Tables"]["profiles"]["Insert"];
-export type ProfileUpdate = Database["public"]["Tables"]["profiles"]["Update"];
 
-export type Folder = Database["public"]["Tables"]["folders"]["Row"];
-export type FolderInsert = Database["public"]["Tables"]["folders"]["Insert"];
-export type FolderUpdate = Database["public"]["Tables"]["folders"]["Update"];
+// ============================================================================
+// 便捷类型别名
+// ============================================================================
 
+// �?Row 类型
 export type Bookmark = Database["public"]["Tables"]["bookmarks"]["Row"];
 export type BookmarkInsert =
   Database["public"]["Tables"]["bookmarks"]["Insert"];
 export type BookmarkUpdate =
   Database["public"]["Tables"]["bookmarks"]["Update"];
 
-export type PlatformAuthorization =
-  Database["public"]["Tables"]["platform_authorizations"]["Row"];
-export type PlatformAuthorizationInsert =
-  Database["public"]["Tables"]["platform_authorizations"]["Insert"];
-export type PlatformAuthorizationUpdate =
-  Database["public"]["Tables"]["platform_authorizations"]["Update"];
+export type Folder = Database["public"]["Tables"]["folders"]["Row"];
+export type FolderInsert = Database["public"]["Tables"]["folders"]["Insert"];
+export type FolderUpdate = Database["public"]["Tables"]["folders"]["Update"];
 
-// 平台类型
-export type Platform =
-  | "WECHAT_OFFICIAL_ACCOUNT"
-  | "BILIBILI"
-  | "XIAOHONGSHU"
-  | "BROWSER_CHROME" // V1.2 新增：Chrome 书签
-  | "BROWSER_EDGE" // V1.2 新增：Edge 书签
-  | "BROWSER_FIREFOX" // 预留：Firefox 书签
-  | "BROWSER_SAFARI" // 预留：Safari 书签
-  | "UNKNOWN";
-export type AuthPlatform = "WECHAT" | "BILIBILI" | "XIAOHONGSHU";
-export type ContentType = "ARTICLE" | "VIDEO" | "IMAGE" | "UNKNOWN";
-export type BookmarkStatus = "PROCESSING" | "COMPLETED" | "FAILED";
-export type MembershipType = "FREE" | "PRO";
-export type AuthorizationStatus = "ACTIVE" | "EXPIRED" | "REVOKED";
+export type Profile = Database["public"]["Tables"]["profiles"]["Row"];
+export type ProfileInsert = Database["public"]["Tables"]["profiles"]["Insert"];
+export type ProfileUpdate = Database["public"]["Tables"]["profiles"]["Update"];
 
-// V4.2新增：系统文件夹类型
-export type SystemFolderType = "INBOX"; // INBOX: 待整理文件夹
+export type ImportHistory =
+  Database["public"]["Tables"]["import_history"]["Row"];
+export type ImportHistoryInsert =
+  Database["public"]["Tables"]["import_history"]["Insert"];
 
-// V4.2新增：分类建议状态
-export type SuggestionStatus = "pending" | "accepted" | "rejected" | "expired";
-
-// V9.1新增：分类反馈类型
-export type FeedbackType =
-  | "wrong_folder"
-  | "better_folder"
-  | "folder_not_exist"
-  | "confidence_too_high"
-  | "confidence_too_low"
-  | "helpful"
-  | "confirm" // V4.2: 用户确认分类正确
-  | "other";
-
-// V4.4新增：文件夹分组类型
-export type FolderGroup = "work" | "study" | "life" | "entertainment" | "other";
-
-// V4.2新增：分类建议类型别名
 export type ClassificationSuggestion =
   Database["public"]["Tables"]["classification_suggestions"]["Row"];
 export type ClassificationSuggestionInsert =
   Database["public"]["Tables"]["classification_suggestions"]["Insert"];
-export type ClassificationSuggestionUpdate =
-  Database["public"]["Tables"]["classification_suggestions"]["Update"];
 
-// V9.1新增：分类反馈类型别名
 export type ClassificationFeedback =
   Database["public"]["Tables"]["classification_feedback"]["Row"];
 export type ClassificationFeedbackInsert =
   Database["public"]["Tables"]["classification_feedback"]["Insert"];
-export type ClassificationFeedbackUpdate =
-  Database["public"]["Tables"]["classification_feedback"]["Update"];
 
-// V4.2新增：重分类配置类型
-export interface ReclassifySettings {
-  last_run_at: string | null;
-  inbox_threshold: number;
-  auto_run_weekly: boolean;
-}
+export type ClassificationDecision =
+  Database["public"]["Tables"]["classification_decisions"]["Row"];
+export type OperationSnapshot =
+  Database["public"]["Tables"]["operation_snapshots"]["Row"];
+export type FolderProfile =
+  Database["public"]["Tables"]["folder_profiles"]["Row"];
 
-// V5.0新增：导入历史记录表类型
-export interface ImportHistory {
-  id: number;
-  user_id: string;
-  import_source: ImportSource;
-  import_batch_id: string;
-  total_count: number;
-  success_count: number;
-  failed_count: number;
-  skipped_count: number;
-  folders_created: number;
-  duration_ms: number | null;
-  error_details: ImportErrorDetail[] | null;
-  options: ImportHistoryOptions | null;
-  created_at: string;
-}
+// ============================================================================
+// 枚举类型（字符串联合类型�?// ============================================================================
 
-export interface ImportHistoryInsert {
-  user_id: string;
-  import_source: ImportSource;
-  import_batch_id: string;
-  total_count: number;
-  success_count: number;
-  failed_count: number;
-  skipped_count: number;
-  folders_created?: number;
-  duration_ms?: number | null;
-  error_details?: ImportErrorDetail[] | null;
-  options?: ImportHistoryOptions | null;
-}
+/** 平台类型 */
+export type Platform =
+  | "wechat"
+  | "bilibili"
+  | "xiaohongshu"
+  | "zhihu"
+  | "weibo"
+  | "douyin"
+  | "twitter"
+  | "youtube"
+  | "github"
+  | "juejin"
+  | "csdn"
+  | "jianshu"
+  | "toutiao"
+  | "chrome"
+  | "edge"
+  | "firefox"
+  | "safari"
+  | "other"
+  | "WECHAT_OFFICIAL_ACCOUNT"
+  | "BROWSER_CHROME"
+  | "BROWSER_EDGE"
+  | "BROWSER_FIREFOX"
+  | "BROWSER_SAFARI"
+  | "UNKNOWN"
+  | "BILIBILI"
+  | "XIAOHONGSHU"
+  | "ZHIHU"
+  | "WEIBO"
+  | "DOUYIN"
+  | "TWITTER"
+  | "YOUTUBE"
+  | "GITHUB"
+  | "JUEJIN"
+  | "CSDN"
+  | "JIANSHU"
+  | "TOUTIAO";
 
-export interface ImportErrorDetail {
-  url: string;
-  title?: string;
-  reason: string;
-}
+/** 浏览器平台列�?*/
+export const BROWSER_PLATFORMS: Platform[] = [
+  "chrome",
+  "edge",
+  "firefox",
+  "safari",
+];
 
-export interface ImportHistoryOptions {
-  skipDuplicates?: boolean;
-  preserveFolderStructure?: boolean;
-  targetFolderId?: number | null;
-  [key: string]: unknown;
-}
+/** 导入来源 */
+export type ImportSource =
+  | "chrome"
+  | "edge"
+  | "firefox"
+  | "safari"
+  | "file"
+  | "manual"
+  | "browser_chrome"
+  | "browser_edge"
+  | "browser_firefox"
+  | "browser_safari"
+  | "api"
+  | "share_sheet";
 
-// ============================================
-// V9.0 新增：用途标签功能类型定义
-// ============================================
+/** 文件夹分�?*/
+export type FolderGroup =
+  | "default"
+  | "pinned"
+  | "archived"
+  | "work"
+  | "study"
+  | "life"
+  | "entertainment"
+  | "other";
 
-/**
- * 自定义用途标签
- * 用户可创建最多 12 个自定义用途标签
- */
-export interface CustomUsageTag {
-  /** 唯一标识（UUID） */
-  id: string;
-  /** 标签值（存储到 user_tags，需唯一） */
-  value: string;
-  /** 显示标签 */
-  label: string;
-  /** 主题色（Tailwind 颜色名，如 'blue', 'purple'） */
-  color: string;
-  /** 创建时间（ISO 8601） */
-  createdAt: string;
-  /** 最后使用时间（用于"最近使用"排序，可选） */
-  lastUsedAt?: string;
-}
+/** 建议状�?*/
+export type SuggestionStatus = "pending" | "accepted" | "rejected" | "expired";
 
-/**
- * 用户设置扩展类型
- * 存储在 profiles.settings JSON 字段
- */
-export interface ProfileSettings {
-  /** 自定义用途标签列表（最多 12 个） */
-  customUsageTags?: CustomUsageTag[];
-  /** 重分类设置 */
-  reclassify?: ReclassifySettings;
-  /** 其他设置... */
-  [key: string]: unknown;
-}
-
-/**
- * 用途标签使用统计（用于首页筛选栏显示）
- */
-export interface UsageTagStats {
-  /** 标签值 */
-  value: string;
-  /** 使用次数 */
-  count: number;
-}
-
-/**
- * 用途标签筛选条件
- */
-export interface UsageTagFilter {
-  /** 选中的用途标签列表 */
-  selectedTags: string[];
-  /** 筛选模式：AND（全部匹配）/ OR（任一匹配） */
-  mode: "AND" | "OR";
-}
-
-// 用途标签相关常量
-export const CUSTOM_USAGE_TAG_LIMIT = 12;
-
-// 可用的自定义标签颜色（避免与预设标签颜色重复）
-export const CUSTOM_TAG_COLORS = [
-  "blue",
-  "purple",
-  "pink",
-  "sky",
-  "lime",
-  "yellow",
-  "slate",
-  "zinc",
-] as const;
-
-export type CustomTagColor = (typeof CUSTOM_TAG_COLORS)[number];
-
-// ============================================
-// V11.0 新增：V3 统一分类系统类型定义
-// ============================================
-
-/**
- * V3 分类状态
- * - pending: 等待分类
- * - classified: 已成功分类到文件夹
- * - suggested: AI 建议创建新文件夹（用户可确认）
- * - inbox: 低置信度，放入待整理
- */
+/** 分类状�?*/
 export type ClassificationStatus =
   | "pending"
+  | "processing"
+  | "completed"
+  | "failed"
   | "classified"
   | "suggested"
   | "inbox";
 
-/**
- * V3 分类结果详情（存储在 classification_result JSONB 字段）
- */
-export interface ClassificationResultData {
-  /** 目标文件夹 ID（inbox 时为 null） */
-  folderId: number | null;
-  /** 目标文件夹名称 */
-  folderName: string;
-  /** 分类置信度（0-100） */
-  confidence: number;
-  /** 分类动作 */
-  action: "classify" | "suggest_new" | "inbox";
-  /** 如果是 suggest_new，关联的建议 ID */
-  suggestionId?: number;
-  /** 分类时间戳（ISO 8601） */
-  timestamp: string;
-  /** 分类来源（哪个匹配器） */
-  source?: string;
-  /** 分类原因说明 */
-  reason?: string;
-}
+/** 会员类型 */
+export type MembershipType =
+  | "free"
+  | "pro"
+  | "premium"
+  | "FREE"
+  | "PRO"
+  | "PREMIUM";
 
-// ============================================
-// V12.0 新增：消息系统类型定义
-// ============================================
-
-/**
- * 消息类型
- * 包含分类、导入、批量操作、书签状态、文件夹、系统、配额、反馈、AI 处理等
- */
-export type MessageType =
-  // 分类相关
-  | "classification_auto"
-  | "classification_batch"
-  | "classification_suggest"
-  | "classification_failed"
-  // 导入相关
-  | "import_complete"
-  | "import_partial"
-  | "import_failed"
-  // 批量操作
-  | "batch_move"
-  | "batch_delete"
-  | "batch_tag"
-  | "batch_restore"
-  // 书签状态
-  | "bookmark_saved"
-  | "bookmark_invalid"
-  | "bookmark_expired"
-  // 文件夹操作
-  | "folder_created"
-  | "folder_auto_created" // V4.2: AI 自动创建文件夹
-  | "folder_auto_split" // V4.2: AI 自动分拆文件夹
-  | "folder_auto_merged" // V4.2: AI 自动合并文件夹
-  | "folder_auto_renamed" // V4.2: AI 自动重命名文件夹
-  | "folder_operation_undone" // V4.2: 操作已撤销
-  | "folder_merged"
-  // 系统消息
-  | "system_announcement"
-  | "system_maintenance"
-  | "system_update"
-  // 配额相关
-  | "quota_warning"
-  | "quota_critical"
-  | "quota_exceeded"
-  // 用户反馈
-  | "feedback_received"
-  | "feedback_response"
-  // AI 处理
-  | "ai_summary_complete"
-  | "ai_tags_complete"
-  | "ai_processing_failed"
-  | "ai_evolution_report" // V4.2: 月度进化报告
-  // V4.2: 成本监控
-  | "cost_warning" // 成本预警
-  | "cost_critical" // 成本超限
-  | "cost_daily_exceeded"; // 日成本超限
-
-/**
- * 消息等级
- * - silent: 静默，仅记录不打扰
- * - normal: 普通，Toast + 记录
- * - important: 重要，Modal + Toast + 记录
- */
-export type MessageLevel = "silent" | "normal" | "important";
-
-/**
- * 消息状态
- */
-export type MessageStatus = "unread" | "read" | "archived";
-
-/**
- * 消息表类型别名
- */
-export type MessageRow = Database["public"]["Tables"]["messages"]["Row"];
-export type MessageInsert = Database["public"]["Tables"]["messages"]["Insert"];
-export type MessageUpdate = Database["public"]["Tables"]["messages"]["Update"];
-
-/**
- * 通知偏好类型别名
- */
-export type NotificationPreferences =
-  Database["public"]["Tables"]["notification_preferences"]["Row"];
-export type NotificationPreferencesInsert =
-  Database["public"]["Tables"]["notification_preferences"]["Insert"];
-export type NotificationPreferencesUpdate =
-  Database["public"]["Tables"]["notification_preferences"]["Update"];
-
-// ============================================
-// V4.2 新增：AI 文件夹进化系统类型定义
-// 注意：这些类型用于 V4.2 新功能，独立于 Database 类型
-// ============================================
-
-/**
- * AI 进化等级
- */
-export type AIEvolutionLevel = "manual" | "semi" | "auto";
-
-/**
- * 建议操作类型
- */
-export type SuggestedAction =
-  | "classify"
-  | "create_folder"
-  | "merge_cluster"
-  | "split_folder";
-
-/**
- * 操作快照动作类型
- */
+/** 操作快照动作类型 */
 export type OperationSnapshotAction =
   | "create"
   | "split"
@@ -2341,30 +2439,7 @@ export type OperationSnapshotAction =
   | "move"
   | "delete";
 
-/**
- * 任务队列类型
- */
-export type JobQueueType =
-  | "compute_folder_profile"
-  | "cluster_bookmarks"
-  | "generate_suggestions"
-  | "update_folder_heat"
-  | "ai_rename_folder"
-  | "batch_classify";
-
-/**
- * 任务状态
- */
-export type JobStatus =
-  | "pending"
-  | "running"
-  | "completed"
-  | "failed"
-  | "cancelled";
-
-/**
- * 聚类处理状态 (V4.2)
- */
+/** 聚类处理状态 */
 export interface ClusterProcessingStatus {
   pendingClusterCount: number;
   clusterCount: number;
@@ -2373,30 +2448,199 @@ export interface ClusterProcessingStatus {
   hasPendingSuggestions: boolean;
 }
 
-/**
- * AI 文件夹设置
- */
-export interface AIFolderSettings {
-  // 基本设置
-  autoClassify?: boolean;
-  autoRename?: boolean;
-  suggestSplitMerge?: boolean;
-  confidenceThreshold?: number;
-  // V4.2 智能分拣设置
-  autonomy_level?: number; // 1=全自动, 2=建议确认, 3=仅建议
-  enable_auto_create?: boolean;
-  enable_auto_split?: boolean;
-  enable_auto_merge?: boolean;
-  enable_auto_rename?: boolean;
-  create_notification?: boolean;
-  report_interval?: "weekly" | "monthly" | "never";
-  daily_create_limit?: number;
+/** 聚类处理状态字符串 */
+export type ClusterProcessingStatusString =
+  | "pending"
+  | "processing"
+  | "completed"
+  | "skipped";
+
+// ============================================================================
+// 业务接口类型
+// ============================================================================
+
+/** 自定义标签颜�?*/
+export type CustomTagColor =
+  | "blue"
+  | "green"
+  | "yellow"
+  | "red"
+  | "purple"
+  | "pink"
+  | "orange"
+  | "cyan"
+  | "indigo"
+  | "sky"
+  | "lime"
+  | "amber"
+  | "rose"
+  | "violet"
+  | "teal"
+  | "emerald"
+  | "fuchsia"
+  | "slate"
+  | "zinc";
+
+/** 自定义用途标�?*/
+export interface CustomUsageTag {
+  id: string;
+  name?: string;
+  label?: string;
+  value: string;
+  color: CustomTagColor;
+  createdAt: string;
+  lastUsedAt?: string;
+}
+
+/** 自定义标签颜色配�?*/
+export const CUSTOM_TAG_COLORS: Record<
+  CustomTagColor,
+  { light: string; dark: string; border: string }
+> = {
+  blue: {
+    light: "bg-blue-100",
+    dark: "bg-blue-900/30",
+    border: "border-blue-300",
+  },
+  green: {
+    light: "bg-green-100",
+    dark: "bg-green-900/30",
+    border: "border-green-300",
+  },
+  yellow: {
+    light: "bg-yellow-100",
+    dark: "bg-yellow-900/30",
+    border: "border-yellow-300",
+  },
+  red: { light: "bg-red-100", dark: "bg-red-900/30", border: "border-red-300" },
+  purple: {
+    light: "bg-purple-100",
+    dark: "bg-purple-900/30",
+    border: "border-purple-300",
+  },
+  pink: {
+    light: "bg-pink-100",
+    dark: "bg-pink-900/30",
+    border: "border-pink-300",
+  },
+  orange: {
+    light: "bg-orange-100",
+    dark: "bg-orange-900/30",
+    border: "border-orange-300",
+  },
+  cyan: {
+    light: "bg-cyan-100",
+    dark: "bg-cyan-900/30",
+    border: "border-cyan-300",
+  },
+  indigo: {
+    light: "bg-indigo-100",
+    dark: "bg-indigo-900/30",
+    border: "border-indigo-300",
+  },
+  sky: { light: "bg-sky-100", dark: "bg-sky-900/30", border: "border-sky-300" },
+  lime: {
+    light: "bg-lime-100",
+    dark: "bg-lime-900/30",
+    border: "border-lime-300",
+  },
+  amber: {
+    light: "bg-amber-100",
+    dark: "bg-amber-900/30",
+    border: "border-amber-300",
+  },
+  rose: {
+    light: "bg-rose-100",
+    dark: "bg-rose-900/30",
+    border: "border-rose-300",
+  },
+  violet: {
+    light: "bg-violet-100",
+    dark: "bg-violet-900/30",
+    border: "border-violet-300",
+  },
+  teal: {
+    light: "bg-teal-100",
+    dark: "bg-teal-900/30",
+    border: "border-teal-300",
+  },
+  emerald: {
+    light: "bg-emerald-100",
+    dark: "bg-emerald-900/30",
+    border: "border-emerald-300",
+  },
+  fuchsia: {
+    light: "bg-fuchsia-100",
+    dark: "bg-fuchsia-900/30",
+    border: "border-fuchsia-300",
+  },
+  slate: {
+    light: "bg-slate-100",
+    dark: "bg-slate-900/30",
+    border: "border-slate-300",
+  },
+  zinc: {
+    light: "bg-zinc-100",
+    dark: "bg-zinc-900/30",
+    border: "border-zinc-300",
+  },
+};
+
+/** 自定义标签颜色列表（用于遍历和 includes 检查） */
+export const CUSTOM_TAG_COLOR_LIST: CustomTagColor[] = [
+  "blue",
+  "green",
+  "yellow",
+  "red",
+  "purple",
+  "pink",
+  "orange",
+  "cyan",
+  "indigo",
+  "sky",
+  "lime",
+  "amber",
+  "rose",
+  "violet",
+  "teal",
+  "emerald",
+  "fuchsia",
+  "slate",
+  "zinc",
+];
+
+/** 自定义标签数量限�?*/
+export const CUSTOM_USAGE_TAG_LIMIT = 10;
+
+/** 用户配置设置 */
+export interface ProfileSettings {
+  customUsageTags?: CustomUsageTag[];
+  theme?: "light" | "dark" | "system";
+  language?: string;
+  aiEvolutionLevel?: "manual" | "semi" | "auto";
   [key: string]: unknown;
 }
 
-/**
- * 操作详情（用于历史记录展示）
- */
+/** 重分类设�?*/
+export interface ReclassifySettings {
+  enabled: boolean;
+  autoAcceptThreshold: number;
+  notifyOnSuggestion: boolean;
+  inbox_threshold?: number;
+  last_run_at?: string | null;
+  auto_run_weekly?: boolean;
+}
+
+/** 导入错误详情 */
+export interface ImportErrorDetail {
+  url: string;
+  title?: string;
+  error?: string;
+  reason?: string;
+  timestamp?: string;
+}
+
+/** 操作历史详情（用�?UI 展示�?*/
 export interface OperationDetail {
   id: string;
   action: OperationSnapshotAction;
@@ -2407,94 +2651,60 @@ export interface OperationDetail {
   after_state: Json;
   reason: string | null;
   is_undone: boolean;
-  undone_at: string | null;
   created_at: string;
   expires_at: string;
-  can_undo: boolean;
-  folder_name?: string;
-  folder_names?: string[];
-  bookmark_count?: number;
+  can_undo?: boolean;
 }
 
-/**
- * V4.2 任务队列项（手动定义，数据库表未纳入 Database 类型）
- */
-export interface JobQueueItem {
-  id: string;
-  user_id: string;
-  type: JobQueueType;
-  payload: Json;
-  status: JobStatus;
-  priority: number;
-  attempts: number;
-  max_attempts: number;
-  scheduled_at: string;
-  started_at: string | null;
-  completed_at: string | null;
-  error_message: string | null;
-  worker_id: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface JobQueueInsert {
-  id?: string;
-  user_id: string;
-  type: JobQueueType;
-  payload?: Json;
-  status?: JobStatus;
-  priority?: number;
-  attempts?: number;
-  max_attempts?: number;
-  scheduled_at?: string;
-  started_at?: string | null;
-  completed_at?: string | null;
-  error_message?: string | null;
-  worker_id?: string | null;
-  created_at?: string;
-  updated_at?: string;
-}
-
-/**
- * V4.2 文件夹配置（手动定义）
- */
-export interface FolderProfile {
+/** 文件夹树节点 */
+export interface FolderTreeNode {
   id: number;
-  folder_id: number;
-  user_id: string;
-  description: string | null;
-  sample_titles: string[] | null;
-  embedding: number[] | null;
-  confidence_threshold: number;
-  is_ai_renamable: boolean;
-  is_system_locked: boolean;
-  recent_additions: number;
-  heat_score: number;
-  heat_computed_at: string | null;
-  suggested_name: string | null;
-  suggested_name_reason: string | null;
-  is_split_candidate: boolean;
-  is_merge_candidate: boolean;
-  similar_folder_ids: number[] | null;
-  created_at: string;
-  updated_at: string;
+  name: string;
+  parent_id: number | null;
+  children: FolderTreeNode[];
+  bookmark_count?: number;
+  is_system?: boolean;
+  system_type?: string | null;
 }
 
-/**
- * V4.2 操作快照（手动定义）
- */
-export interface OperationSnapshot {
-  id: string;
-  user_id: string;
-  action: OperationSnapshotAction;
-  folder_id: number | null;
-  folder_ids: number[] | null;
-  bookmark_ids: number[] | null;
-  before_state: Json;
-  after_state: Json;
-  reason: string | null;
-  is_undone: boolean;
-  undone_at: string | null;
-  created_at: string;
-  expires_at: string;
+/** AI 文件夹设�?*/
+export interface AIFolderSettings {
+  autoClassify?: boolean;
+  autoCreateFolder?: boolean;
+  confidenceThreshold?: number;
+  maxFoldersPerDay?: number;
+  aiEvolutionLevel?: "manual" | "semi" | "auto";
+  autonomy_level?: number;
+  enable_auto_create?: boolean;
+  enable_auto_split?: boolean;
+  enable_auto_merge?: boolean;
+  enable_auto_rename?: boolean;
+  create_notification?: boolean;
+  report_interval?: string;
+  daily_create_limit?: number;
+}
+
+/** 分类结果数据 */
+export interface ClassificationResultData {
+  folder_id?: number | null;
+  folder_name?: string | null;
+  folderId?: number | null;
+  folderName?: string | null;
+  confidence?: number;
+  reason?: string;
+  tier?: number;
+  action?: string;
+  matcher_scores?: Record<string, number>;
+  ai_called?: boolean;
+  timestamp?: string;
+  suggestionId?: number;
+  [key: string]: unknown;
+}
+
+/** 导入历史选项 */
+export interface ImportHistoryOptions {
+  preserveFolders?: boolean;
+  skipDuplicates?: boolean;
+  validateUrls?: boolean;
+  [key: string]: unknown;
 }

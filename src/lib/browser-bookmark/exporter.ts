@@ -50,7 +50,7 @@ interface FolderNode {
 
 const DEFAULT_ROOT_NAME = "AnyKeep 导出";
 
-const PLATFORM_NAMES: Record<Platform, string> = {
+const PLATFORM_NAMES: Partial<Record<Platform, string>> = {
   WECHAT_OFFICIAL_ACCOUNT: "微信公众号",
   BILIBILI: "B站",
   XIAOHONGSHU: "小红书",

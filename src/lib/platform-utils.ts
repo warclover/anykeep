@@ -41,7 +41,7 @@ export interface PlatformConfig {
  * 平台配置映射表 - 增强版
  * PRD v4.1: Source Memory - 平台视觉识别
  */
-const PLATFORM_CONFIGS: Record<Platform, PlatformConfig> = {
+const PLATFORM_CONFIGS = {
   WECHAT_OFFICIAL_ACCOUNT: {
     name: "微信",
     fullName: "微信公众号",
@@ -128,7 +128,7 @@ const PLATFORM_CONFIGS: Record<Platform, PlatformConfig> = {
 /**
  * 平台中文名称映射表
  */
-const PLATFORM_NAMES: Record<Platform, string> = {
+const PLATFORM_NAMES: Partial<Record<Platform, string>> = {
   WECHAT_OFFICIAL_ACCOUNT: "微信公众号",
   BILIBILI: "B站",
   XIAOHONGSHU: "小红书",
@@ -145,7 +145,10 @@ const PLATFORM_NAMES: Record<Platform, string> = {
  * @returns 平台配置对象
  */
 export function getPlatformConfig(platform: Platform | string): PlatformConfig {
-  return PLATFORM_CONFIGS[platform as Platform] || PLATFORM_CONFIGS.UNKNOWN;
+  const key = platform as keyof typeof PLATFORM_CONFIGS;
+  return key in PLATFORM_CONFIGS
+    ? PLATFORM_CONFIGS[key]
+    : PLATFORM_CONFIGS.UNKNOWN;
 }
 
 /**
