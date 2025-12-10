@@ -237,10 +237,22 @@ export class SplitService {
       return null;
     }
 
+    // 转换 embedding 从数据库字符串格式到 number[]
+    const clusterableBookmarks: ClusterableBookmark[] = bookmarks
+      .filter((b) => b.embedding)
+      .map((b) => ({
+        id: b.id,
+        title: b.title,
+        ai_summary: b.ai_summary,
+        ai_tags: b.ai_tags,
+        embedding:
+          typeof b.embedding === "string"
+            ? JSON.parse(b.embedding)
+            : b.embedding,
+      }));
+
     // 4. Perform sub-clustering
-    const subClusters = this.performSubClustering(
-      bookmarks as ClusterableBookmark[],
-    );
+    const subClusters = this.performSubClustering(clusterableBookmarks);
 
     if (subClusters.length < 2) {
       // No meaningful split possible

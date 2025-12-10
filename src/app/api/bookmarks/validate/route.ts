@@ -13,6 +13,7 @@ import {
   badRequestError,
 } from "@/lib/utils/api-response";
 import { isUrlValidatable, getSkipReason } from "@/lib/validation/url-filter";
+import type { Platform } from "@/types/supabase";
 
 interface ValidationResult {
   bookmarkId: number;
@@ -155,13 +156,14 @@ export async function POST(request: NextRequest) {
     }> = [];
 
     for (const bookmark of bookmarks) {
-      if (isUrlValidatable(bookmark.url, bookmark.platform)) {
+      const platform = bookmark.platform as Platform | null | undefined;
+      if (isUrlValidatable(bookmark.url, platform)) {
         validatableBookmarks.push(bookmark);
       } else {
         skippedBookmarks.push({
           bookmarkId: bookmark.id,
           url: bookmark.url,
-          skipReason: getSkipReason(bookmark.url, bookmark.platform),
+          skipReason: getSkipReason(bookmark.url, platform),
         });
       }
     }

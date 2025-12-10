@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import type { Bookmark } from "@/types/supabase";
+import type { Bookmark, Platform } from "@/types/supabase";
 import { cn } from "@/lib/utils";
 import { formatFriendlyDate } from "@/lib/utils/date-utils";
 import { generatePlaceholderImage } from "@/lib/utils/placeholder-image";
@@ -65,7 +65,7 @@ export function TrashBookmarkCard({
   // 生成封面图
   const coverImage =
     getProxiedImageUrl(bookmark.cover_url) ||
-    generatePlaceholderImage(bookmark.title, bookmark.platform);
+    generatePlaceholderImage(bookmark.title, bookmark.platform as Platform);
 
   // 计算剩余天数
   const remainingDays = calculateRemainingDays(bookmark.trashed_at);
@@ -204,7 +204,9 @@ export function TrashBookmarkCard({
           <span className="flex items-center gap-1">
             <Calendar className="size-3" />
             删除于{" "}
-            {formatFriendlyDate(bookmark.trashed_at || bookmark.created_at)}
+            {formatFriendlyDate(
+              bookmark.trashed_at || bookmark.created_at || new Date(),
+            )}
           </span>
         </div>
 

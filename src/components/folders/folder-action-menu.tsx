@@ -113,7 +113,7 @@ export function FolderActionMenu({
   const [isLocking, setIsLocking] = useState(false);
 
   // 系统文件夹限制
-  const isSystemFolder = folder.is_system;
+  const isSystemFolder = folder.is_system ?? false;
   const isArchived = folder.is_archived;
   const hasBookmarks = (folder.bookmark_count || 0) > 0;
 
@@ -129,7 +129,7 @@ export function FolderActionMenu({
   // 获取同组文件夹（用于计算移动位置）
   const groupFolders = allFolders
     .filter((f) => !f.is_system && f.folder_group === folder.folder_group)
-    .sort((a, b) => a.sort_order - b.sort_order);
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
 
   const currentIndex = groupFolders.findIndex((f) => f.id === folder.id);
   const isFirst = currentIndex === 0;

@@ -38,13 +38,16 @@ export async function GET() {
       return internalError("获取未读消息数量失败");
     }
 
-    // 数据库函数返回单行结果
-    const counts: UnreadCounts = data ?? {
-      total: 0,
-      silent: 0,
-      normal: 0,
-      important: 0,
-    };
+    // 数据库函数返回单行结果（作为数组的第一个元素）
+    const counts: UnreadCounts =
+      Array.isArray(data) && data.length > 0
+        ? data[0]
+        : {
+            total: 0,
+            silent: 0,
+            normal: 0,
+            important: 0,
+          };
 
     return successResponse(counts);
   } catch (error) {

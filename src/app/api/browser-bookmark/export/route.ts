@@ -140,7 +140,7 @@ export async function GET(request: NextRequest) {
     const exportBookmarks: ExportBookmark[] = bookmarks.map((bookmark) => ({
       title: bookmark.title || "无标题",
       url: bookmark.url,
-      addedAt: bookmark.created_at,
+      addedAt: bookmark.created_at ?? undefined,
       description: bookmark.description || undefined,
       folderPath: bookmark.folder_id
         ? folderPathMap.get(bookmark.folder_id)

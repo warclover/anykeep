@@ -225,6 +225,7 @@ export function useAnalyticsData() {
 
       const trendMap = new Map<string, number>();
       bookmarks.forEach((bookmark) => {
+        if (!bookmark.created_at) return;
         const date = new Date(bookmark.created_at);
         if (date >= trendDaysAgo) {
           const dateKey = date.toISOString().split("T")[0];
@@ -246,7 +247,7 @@ export function useAnalyticsData() {
       // 2. 平台分布数据
       const platformMap = new Map<Platform, number>();
       bookmarks.forEach((bookmark) => {
-        const platform = bookmark.platform;
+        const platform = bookmark.platform as Platform;
         platformMap.set(platform, (platformMap.get(platform) || 0) + 1);
       });
 

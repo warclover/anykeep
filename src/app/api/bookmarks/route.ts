@@ -158,9 +158,10 @@ async function generateBookmarkEmbedding(
     const { createClient } = await import("@/lib/supabase/server");
     const supabase = await createClient();
 
+    // pgvector 接受 number[] 格式，TypeScript 类型为 string
     const { error } = await supabase
       .from("bookmarks")
-      .update({ embedding })
+      .update({ embedding: embedding as unknown as string })
       .eq("id", bookmarkId)
       .eq("user_id", userId);
 
@@ -643,7 +644,7 @@ export async function POST(request: NextRequest) {
       return databaseError(BOOKMARK.LOAD_ERROR, profileError);
     }
 
-    if (profile.storage_used >= profile.storage_quota) {
+    if ((profile.storage_used ?? 0) >= (profile.storage_quota ?? 0)) {
       return quotaExceededError(STORAGE.QUOTA_EXCEEDED);
     }
 

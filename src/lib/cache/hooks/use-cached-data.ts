@@ -336,6 +336,7 @@ export function useAnalytics(
       // 按月份分组统计
       const monthlyStats = (bookmarks || []).reduce(
         (acc, bookmark) => {
+          if (!bookmark.created_at) return acc;
           const month = new Date(bookmark.created_at).toISOString().slice(0, 7);
           acc[month] = (acc[month] || 0) + 1;
           return acc;

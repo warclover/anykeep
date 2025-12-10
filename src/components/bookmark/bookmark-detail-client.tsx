@@ -43,6 +43,7 @@ import type { BookmarkVisionData } from "@/types/vision";
 import { hasVisionData } from "@/types/vision";
 import { UsageTagSelector } from "@/components/bookmark/usage-tag-selector";
 import { ContentTypeBadge } from "@/components/bookmark/content-type-badge";
+import type { ContentType } from "@/lib/classification/content-type-detector";
 import type { Bookmark, CustomUsageTag } from "@/types/supabase";
 import { cn } from "@/lib/utils";
 import { getPlatformConfig } from "@/lib/platform-utils";
@@ -632,7 +633,7 @@ export function BookmarkDetailClient({
                     {/* V9.0: AI检测的内容类型 */}
                     {bookmark.ai_content_type && (
                       <ContentTypeBadge
-                        type={bookmark.ai_content_type}
+                        type={bookmark.ai_content_type as ContentType}
                         size="md"
                       />
                     )}
@@ -694,7 +695,10 @@ export function BookmarkDetailClient({
                   <span className="text-gray-300 dark:text-gray-600">|</span>
                   <div className="flex items-center gap-1 text-gray-400">
                     <Calendar className="size-4" />
-                    <span>收藏 {formatFriendlyDate(bookmark.created_at)}</span>
+                    <span>
+                      收藏{" "}
+                      {formatFriendlyDate(bookmark.created_at || new Date())}
+                    </span>
                   </div>
                 </div>
 

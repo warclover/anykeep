@@ -43,7 +43,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import type { Bookmark, CustomUsageTag } from "@/types/supabase";
+import type { Bookmark, CustomUsageTag, Platform } from "@/types/supabase";
 import type { BookmarkV42Fields } from "@/lib/supabase/v42-types";
 import { cn } from "@/lib/utils";
 import { formatRelativeTime } from "@/lib/utils/date-utils";
@@ -57,6 +57,7 @@ import { getProxiedImageUrl } from "@/lib/utils/image-proxy";
 import { PlatformBadge } from "@/components/ui/platform-badge";
 import { BookmarkRatingDisplay } from "@/components/bookmark/bookmark-rating-display";
 import { ContentTypeBadge } from "@/components/bookmark/content-type-badge";
+import type { ContentType } from "@/lib/classification/content-type-detector";
 import {
   separateUserTagsExtended,
   getUsageTagStyleExtended,
@@ -68,9 +69,10 @@ import { getDisplaySummary } from "@/lib/classification/types/ai-summary";
 type ViewVariant = "card" | "list" | "compact";
 
 interface BookmarkCardProps {
-  bookmark: Bookmark & Partial<BookmarkV42Fields> & {
-    folders?: { name: string } | null;
-  };
+  bookmark: Bookmark &
+    Partial<BookmarkV42Fields> & {
+      folders?: { name: string } | null;
+    };
   onEdit?: (id: number) => void;
   onDelete?: (id: number) => void;
   onToggleRead?: (id: number, isRead: boolean) => void;
@@ -109,7 +111,7 @@ export function BookmarkCard({
   // 生成封面图（真实封面或占位符，微信图片使用代理）
   const coverImage =
     getProxiedImageUrl(bookmark.cover_url) ||
-    generatePlaceholderImage(bookmark.title, bookmark.platform);
+    generatePlaceholderImage(bookmark.title, bookmark.platform as Platform);
 
   const handleEdit = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -320,21 +322,23 @@ export function BookmarkCard({
                   </div>
                 </TooltipTrigger>
                 <TooltipContent side="top" className="max-w-[200px]">
-                  <p className="text-xs">AI 正在观察相似内容，稍后会智能建议归类文件夹</p>
+                  <p className="text-xs">
+                    AI 正在观察相似内容，稍后会智能建议归类文件夹
+                  </p>
                 </TooltipContent>
               </Tooltip>
             )}
             {/* V6.0新增：评级显示（Compact视图） */}
             <BookmarkRatingDisplay
-              rating={bookmark.rating}
-              isLocked={bookmark.is_locked}
+              rating={bookmark.rating ?? 0}
+              isLocked={bookmark.is_locked ?? false}
               variant="compact"
               className="flex-shrink-0"
             />
             {/* V9.0: AI内容类型徽章（仅图标） */}
             {bookmark.ai_content_type && (
               <ContentTypeBadge
-                type={bookmark.ai_content_type}
+                type={bookmark.ai_content_type as ContentType}
                 size="sm"
                 iconOnly
                 className="flex-shrink-0"
@@ -348,7 +352,9 @@ export function BookmarkCard({
             </span>
             <span>·</span>
             <span className="flex-shrink-0">
-              {formatRelativeTime(bookmark.publish_time || bookmark.created_at)}
+              {formatRelativeTime(
+                bookmark.publish_time || bookmark.created_at || new Date(),
+              )}
             </span>
             {bookmark.folders && (
               <span className="hidden sm:contents">
@@ -470,8 +476,8 @@ export function BookmarkCard({
               <div className="flex items-center gap-2 flex-wrap min-w-0">
                 {/* V6.0新增：评级显示（List视图） */}
                 <BookmarkRatingDisplay
-                  rating={bookmark.rating}
-                  isLocked={bookmark.is_locked}
+                  rating={bookmark.rating ?? 0}
+                  isLocked={bookmark.is_locked ?? false}
                   variant="compact"
                   className="flex-shrink-0"
                 />
@@ -485,14 +491,16 @@ export function BookmarkCard({
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="top" className="max-w-[200px]">
-                      <p className="text-xs">AI 正在观察相似内容，稍后会智能建议归类文件夹</p>
+                      <p className="text-xs">
+                        AI 正在观察相似内容，稍后会智能建议归类文件夹
+                      </p>
                     </TooltipContent>
                   </Tooltip>
                 )}
                 {/* V9.0: AI内容类型徽章 */}
                 {bookmark.ai_content_type && (
                   <ContentTypeBadge
-                    type={bookmark.ai_content_type}
+                    type={bookmark.ai_content_type as ContentType}
                     size="sm"
                     iconOnly
                     className="flex-shrink-0"
@@ -573,7 +581,7 @@ export function BookmarkCard({
                 <span>·</span>
                 <span>
                   {formatRelativeTime(
-                    bookmark.publish_time || bookmark.created_at,
+                    bookmark.publish_time || bookmark.created_at || new Date(),
                   )}
                 </span>
               </div>
@@ -719,7 +727,10 @@ export function BookmarkCard({
             )}
             {/* V9.0: AI内容类型徽章（优先显示）或回退到基础类型 */}
             {bookmark.ai_content_type ? (
-              <ContentTypeBadge type={bookmark.ai_content_type} size="sm" />
+              <ContentTypeBadge
+                type={bookmark.ai_content_type as ContentType}
+                size="sm"
+              />
             ) : (
               <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
                 {getContentTypeLabel(
@@ -748,8 +759,8 @@ export function BookmarkCard({
 
           {/* V6.0新增：评级显示 */}
           <BookmarkRatingDisplay
-            rating={bookmark.rating}
-            isLocked={bookmark.is_locked}
+            rating={bookmark.rating ?? 0}
+            isLocked={bookmark.is_locked ?? false}
             variant="default"
             className="mb-2"
           />
@@ -892,7 +903,9 @@ export function BookmarkCard({
                 </div>
               </TooltipTrigger>
               <TooltipContent side="top" className="max-w-[200px]">
-                <p className="text-xs">AI 正在观察相似内容，稍后会智能建议归类文件夹</p>
+                <p className="text-xs">
+                  AI 正在观察相似内容，稍后会智能建议归类文件夹
+                </p>
               </TooltipContent>
             </Tooltip>
           )}
@@ -907,7 +920,7 @@ export function BookmarkCard({
               {/* 右侧：时间 */}
               <span className="flex-shrink-0">
                 {formatRelativeTime(
-                  bookmark.publish_time || bookmark.created_at,
+                  bookmark.publish_time || bookmark.created_at || new Date(),
                 )}
               </span>
             </div>

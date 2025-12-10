@@ -165,7 +165,7 @@ function groupFolders(folders: FolderWithStats[]): GroupedFolders {
       result.system.push(folder);
     } else {
       // V4.4更新：直接使用数据库的 folder_group 字段
-      const group = folder.folder_group || "other";
+      const group = (folder.folder_group || "other") as FolderGroup;
       result.groups[group].push(folder);
     }
   }
@@ -173,7 +173,7 @@ function groupFolders(folders: FolderWithStats[]): GroupedFolders {
   // V4.4新增：按 sort_order 排序每个组内的文件夹
   Object.keys(result.groups).forEach((groupKey) => {
     result.groups[groupKey as FolderGroup].sort(
-      (a, b) => a.sort_order - b.sort_order,
+      (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0),
     );
   });
 

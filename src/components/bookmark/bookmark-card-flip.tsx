@@ -12,7 +12,7 @@ import Link from "next/link";
 import { RotateCcw, ExternalLink, FileText, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import type { Bookmark } from "@/types/supabase";
+import type { Bookmark, Platform } from "@/types/supabase";
 import { cn } from "@/lib/utils";
 import { formatRelativeTime } from "@/lib/utils/date-utils";
 import { generatePlaceholderImage } from "@/lib/utils/placeholder-image";
@@ -63,7 +63,7 @@ export function FlipBookmarkCard({
   // 生成封面图
   const coverImage =
     getProxiedImageUrl(bookmark.cover_url) ||
-    generatePlaceholderImage(bookmark.title, bookmark.platform);
+    generatePlaceholderImage(bookmark.title, bookmark.platform as Platform);
 
   // 平台色彩映射
   const getPlatformColor = (platform: string): string => {
@@ -293,7 +293,7 @@ export function FlipBookmarkCard({
                 <span>·</span>
                 <span className="flex-shrink-0">
                   {formatRelativeTime(
-                    bookmark.publish_time || bookmark.created_at,
+                    bookmark.publish_time || bookmark.created_at || new Date(),
                   )}
                 </span>
               </div>

@@ -300,7 +300,7 @@ export class RAGRetrievalService {
         folderName: (data.folders as { name: string } | null)?.name || null,
         platform: data.platform,
         similarity: 1.0, // 精确匹配
-        createdAt: data.created_at,
+        createdAt: data.created_at ?? new Date().toISOString(),
       };
     } catch (error) {
       logger.error(

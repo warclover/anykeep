@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
       "mark_messages_read",
       {
         p_user_id: user.id,
-        p_message_ids: messageIds || null,
+        p_message_ids: messageIds || undefined,
       },
     );
 

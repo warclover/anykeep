@@ -71,8 +71,8 @@ export async function GET(request: NextRequest) {
       "get_messages_grouped",
       {
         p_user_id: user.id,
-        p_status: statusFilter,
-        p_level: level || null,
+        p_status: statusFilter ?? undefined,
+        p_level: level || undefined,
         p_limit: limit,
         p_offset: offset,
       },
@@ -91,8 +91,8 @@ export async function GET(request: NextRequest) {
       "get_messages_count",
       {
         p_user_id: user.id,
-        p_status: statusFilter,
-        p_level: level || null,
+        p_status: statusFilter ?? undefined,
+        p_level: level || undefined,
       },
     );
 

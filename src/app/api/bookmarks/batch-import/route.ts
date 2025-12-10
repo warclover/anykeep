@@ -78,7 +78,8 @@ export async function POST(request: NextRequest) {
       return databaseError(BOOKMARK.LOAD_ERROR, profileError);
     }
 
-    const remainingQuota = profile.storage_quota - profile.storage_used;
+    const remainingQuota =
+      (profile.storage_quota ?? 0) - (profile.storage_used ?? 0);
     if (remainingQuota < bookmarks.length) {
       return quotaExceededError(
         `存储配额不足，剩余 ${remainingQuota} 条，需要 ${bookmarks.length} 条`,

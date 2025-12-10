@@ -1,12 +1,3 @@
-/**
- * Supabase 数据库类型定义
- *
- * 注意：此文件应该由 Supabase CLI 自动生成
- * 运行: npx supabase gen types typescript --local > src/types/supabase.ts
- *
- * 当前为手动定义的类型，与数据库迁移文件保持同步
- */
-
 export type Json =
   | string
   | number
@@ -26,240 +17,383 @@ export type ImportSource =
   | "manual";
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "13.0.5";
+  };
   public: {
     Tables: {
-      profiles: {
+      ab_test_assignments: {
         Row: {
-          id: string;
-          phone: string | null;
-          nickname: string | null;
-          avatar_url: string | null;
-          membership_type: "FREE" | "PRO";
-          storage_quota: number;
-          storage_used: number;
-          settings: Json;
-          last_trash_cleanup_at: string | null; // V7.0新增
-          last_validation_at: string | null; // V7.0新增
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id: string;
-          phone?: string | null;
-          nickname?: string | null;
-          avatar_url?: string | null;
-          membership_type?: "FREE" | "PRO";
-          storage_quota?: number;
-          storage_used?: number;
-          settings?: Json;
-          last_trash_cleanup_at?: string | null; // V7.0新增
-          last_validation_at?: string | null; // V7.0新增
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          id?: string;
-          phone?: string | null;
-          nickname?: string | null;
-          avatar_url?: string | null;
-          membership_type?: "FREE" | "PRO";
-          storage_quota?: number;
-          storage_used?: number;
-          settings?: Json;
-          last_trash_cleanup_at?: string | null; // V7.0新增
-          last_validation_at?: string | null; // V7.0新增
-          created_at?: string;
-          updated_at?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "profiles_id_fkey";
-            columns: ["id"];
-            isOneToOne: true;
-            referencedRelation: "users";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      folders: {
-        Row: {
+          assigned_at: string | null;
+          expires_at: string | null;
           id: number;
+          test_name: string;
           user_id: string;
-          name: string;
-          parent_id: number | null;
-          sort_order: number;
-          is_system: boolean; // V4.2新增：系统文件夹标识
-          system_type: SystemFolderType | null; // V4.2新增：系统文件夹类型
-          is_archived: boolean; // V4.3新增：是否已停用
-          folder_group: FolderGroup | null; // V4.4新增：文件夹分组
-          created_at: string;
-          updated_at: string;
-          deleted_at: string | null;
+          variant: string;
         };
         Insert: {
+          assigned_at?: string | null;
+          expires_at?: string | null;
           id?: number;
+          test_name: string;
           user_id: string;
-          name: string;
-          parent_id?: number | null;
-          sort_order?: number;
-          is_system?: boolean;
-          system_type?: SystemFolderType | null;
-          is_archived?: boolean;
-          folder_group?: FolderGroup | null;
-          created_at?: string;
-          updated_at?: string;
-          deleted_at?: string | null;
+          variant: string;
         };
         Update: {
+          assigned_at?: string | null;
+          expires_at?: string | null;
           id?: number;
+          test_name?: string;
           user_id?: string;
-          name?: string;
-          parent_id?: number | null;
-          sort_order?: number;
-          is_system?: boolean;
-          system_type?: SystemFolderType | null;
-          is_archived?: boolean;
-          folder_group?: FolderGroup | null;
-          created_at?: string;
-          updated_at?: string;
+          variant?: string;
+        };
+        Relationships: [];
+      };
+      bookmarks: {
+        Row: {
+          ai_content_type: string | null;
+          ai_content_type_confidence: number | null;
+          ai_summary: string | null;
+          ai_tags: string[] | null;
+          ai_vision_data: Json | null;
+          author: string | null;
+          classification_result: Json | null;
+          classification_status: string | null;
+          content_type: string | null;
+          cover_url: string | null;
+          created_at: string | null;
+          deleted_at: string | null;
+          description: string | null;
+          embedding: string | null;
+          folder_id: number | null;
+          id: number;
+          image_count: number | null;
+          import_batch_id: string | null;
+          import_source: string | null;
+          invalidated_at: string | null;
+          is_in_trash: boolean | null;
+          is_invalid: boolean | null;
+          is_locked: boolean | null;
+          is_marked_for_deletion: boolean | null;
+          is_read: boolean | null;
+          is_starred: boolean;
+          last_validation_at: string | null;
+          notes: string | null;
+          platform: string;
+          platform_content_id: string | null;
+          publish_time: string | null;
+          rating: number | null;
+          read_at: string | null;
+          source_name: string | null;
+          starred_at: string | null;
+          status: string | null;
+          title: string;
+          trashed_at: string | null;
+          updated_at: string | null;
+          url: string;
+          user_id: string;
+          user_tags: string[] | null;
+          word_count: number | null;
+        };
+        Insert: {
+          ai_content_type?: string | null;
+          ai_content_type_confidence?: number | null;
+          ai_summary?: string | null;
+          ai_tags?: string[] | null;
+          ai_vision_data?: Json | null;
+          author?: string | null;
+          classification_result?: Json | null;
+          classification_status?: string | null;
+          content_type?: string | null;
+          cover_url?: string | null;
+          created_at?: string | null;
           deleted_at?: string | null;
+          description?: string | null;
+          embedding?: string | null;
+          folder_id?: number | null;
+          id?: number;
+          image_count?: number | null;
+          import_batch_id?: string | null;
+          import_source?: string | null;
+          invalidated_at?: string | null;
+          is_in_trash?: boolean | null;
+          is_invalid?: boolean | null;
+          is_locked?: boolean | null;
+          is_marked_for_deletion?: boolean | null;
+          is_read?: boolean | null;
+          is_starred?: boolean;
+          last_validation_at?: string | null;
+          notes?: string | null;
+          platform: string;
+          platform_content_id?: string | null;
+          publish_time?: string | null;
+          rating?: number | null;
+          read_at?: string | null;
+          source_name?: string | null;
+          starred_at?: string | null;
+          status?: string | null;
+          title: string;
+          trashed_at?: string | null;
+          updated_at?: string | null;
+          url: string;
+          user_id: string;
+          user_tags?: string[] | null;
+          word_count?: number | null;
+        };
+        Update: {
+          ai_content_type?: string | null;
+          ai_content_type_confidence?: number | null;
+          ai_summary?: string | null;
+          ai_tags?: string[] | null;
+          ai_vision_data?: Json | null;
+          author?: string | null;
+          classification_result?: Json | null;
+          classification_status?: string | null;
+          content_type?: string | null;
+          cover_url?: string | null;
+          created_at?: string | null;
+          deleted_at?: string | null;
+          description?: string | null;
+          embedding?: string | null;
+          folder_id?: number | null;
+          id?: number;
+          image_count?: number | null;
+          import_batch_id?: string | null;
+          import_source?: string | null;
+          invalidated_at?: string | null;
+          is_in_trash?: boolean | null;
+          is_invalid?: boolean | null;
+          is_locked?: boolean | null;
+          is_marked_for_deletion?: boolean | null;
+          is_read?: boolean | null;
+          is_starred?: boolean;
+          last_validation_at?: string | null;
+          notes?: string | null;
+          platform?: string;
+          platform_content_id?: string | null;
+          publish_time?: string | null;
+          rating?: number | null;
+          read_at?: string | null;
+          source_name?: string | null;
+          starred_at?: string | null;
+          status?: string | null;
+          title?: string;
+          trashed_at?: string | null;
+          updated_at?: string | null;
+          url?: string;
+          user_id?: string;
+          user_tags?: string[] | null;
+          word_count?: number | null;
         };
         Relationships: [
           {
-            foreignKeyName: "folders_user_id_fkey";
-            columns: ["user_id"];
-            isOneToOne: false;
-            referencedRelation: "users";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "folders_parent_id_fkey";
-            columns: ["parent_id"];
+            foreignKeyName: "bookmarks_folder_id_fkey";
+            columns: ["folder_id"];
             isOneToOne: false;
             referencedRelation: "folders";
             referencedColumns: ["id"];
           },
         ];
       };
-      // V4.2新增：分类建议表
-      classification_suggestions: {
+      chat_cache: {
         Row: {
-          id: number;
-          user_id: string;
-          bookmark_id: number;
-          suggested_folder_id: number | null;
-          suggested_folder_name: string;
-          suggest_new_folder: boolean;
-          confidence: number;
-          reason: string | null;
-          status: SuggestionStatus;
-          batch_id: string;
           created_at: string;
-          processed_at: string | null;
+          id: number;
+          query_hash: string;
+          response: string;
+          user_id: string;
         };
         Insert: {
-          id?: number;
-          user_id: string;
-          bookmark_id: number;
-          suggested_folder_id?: number | null;
-          suggested_folder_name: string;
-          suggest_new_folder?: boolean;
-          confidence: number;
-          reason?: string | null;
-          status?: SuggestionStatus;
-          batch_id: string;
           created_at?: string;
-          processed_at?: string | null;
+          id?: never;
+          query_hash: string;
+          response: string;
+          user_id: string;
         };
         Update: {
-          id?: number;
-          user_id?: string;
-          bookmark_id?: number;
-          suggested_folder_id?: number | null;
-          suggested_folder_name?: string;
-          suggest_new_folder?: boolean;
-          confidence?: number;
-          reason?: string | null;
-          status?: SuggestionStatus;
-          batch_id?: string;
           created_at?: string;
-          processed_at?: string | null;
+          id?: never;
+          query_hash?: string;
+          response?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
+      chat_usage: {
+        Row: {
+          conversation_count: number;
+          created_at: string;
+          date: string;
+          id: number;
+          tokens_used: number;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          conversation_count?: number;
+          created_at?: string;
+          date?: string;
+          id?: never;
+          tokens_used?: number;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          conversation_count?: number;
+          created_at?: string;
+          date?: string;
+          id?: never;
+          tokens_used?: number;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
+      classification_decisions: {
+        Row: {
+          ai_model: string | null;
+          ai_prompt_version: string | null;
+          ai_response_time_ms: number | null;
+          ai_skipped: boolean | null;
+          bookmark_id: number;
+          candidates: Json | null;
+          client_version: string | null;
+          confidence: number | null;
+          created_at: string | null;
+          decision_type: string;
+          final_folder_id: number | null;
+          final_folder_name: string | null;
+          id: number;
+          matcher_scores: Json | null;
+          user_action: string | null;
+          user_action_at: string | null;
+          user_chosen_folder_id: number | null;
+          user_id: string;
+        };
+        Insert: {
+          ai_model?: string | null;
+          ai_prompt_version?: string | null;
+          ai_response_time_ms?: number | null;
+          ai_skipped?: boolean | null;
+          bookmark_id: number;
+          candidates?: Json | null;
+          client_version?: string | null;
+          confidence?: number | null;
+          created_at?: string | null;
+          decision_type: string;
+          final_folder_id?: number | null;
+          final_folder_name?: string | null;
+          id?: number;
+          matcher_scores?: Json | null;
+          user_action?: string | null;
+          user_action_at?: string | null;
+          user_chosen_folder_id?: number | null;
+          user_id: string;
+        };
+        Update: {
+          ai_model?: string | null;
+          ai_prompt_version?: string | null;
+          ai_response_time_ms?: number | null;
+          ai_skipped?: boolean | null;
+          bookmark_id?: number;
+          candidates?: Json | null;
+          client_version?: string | null;
+          confidence?: number | null;
+          created_at?: string | null;
+          decision_type?: string;
+          final_folder_id?: number | null;
+          final_folder_name?: string | null;
+          id?: number;
+          matcher_scores?: Json | null;
+          user_action?: string | null;
+          user_action_at?: string | null;
+          user_chosen_folder_id?: number | null;
+          user_id?: string;
         };
         Relationships: [
           {
-            foreignKeyName: "classification_suggestions_user_id_fkey";
-            columns: ["user_id"];
-            isOneToOne: false;
-            referencedRelation: "users";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "classification_suggestions_bookmark_id_fkey";
+            foreignKeyName: "classification_decisions_bookmark_id_fkey";
             columns: ["bookmark_id"];
-            isOneToOne: false;
+            isOneToOne: true;
             referencedRelation: "bookmarks";
             referencedColumns: ["id"];
           },
           {
-            foreignKeyName: "classification_suggestions_folder_id_fkey";
-            columns: ["suggested_folder_id"];
+            foreignKeyName: "classification_decisions_final_folder_id_fkey";
+            columns: ["final_folder_id"];
+            isOneToOne: false;
+            referencedRelation: "folders";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "classification_decisions_user_chosen_folder_id_fkey";
+            columns: ["user_chosen_folder_id"];
             isOneToOne: false;
             referencedRelation: "folders";
             referencedColumns: ["id"];
           },
         ];
       };
-      // V9.1新增：分类反馈表
       classification_feedback: {
         Row: {
-          id: number;
-          user_id: string;
-          suggestion_id: number | null;
-          organization_suggestion_id: number | null;
-          feedback_type: FeedbackType;
+          bookmark_url: string | null;
           comment: string | null;
+          context: Json | null;
+          created_at: string | null;
+          feedback_type: string;
+          folder_id: number | null;
+          id: number;
+          organization_suggestion_id: number | null;
+          original_confidence: number | null;
+          reject_reason: string | null;
           suggested_correct_folder_id: number | null;
           suggested_correct_folder_name: string | null;
-          context: Json;
-          created_at: string;
+          suggestion_id: number | null;
+          trace_id: string | null;
+          user_id: string;
         };
         Insert: {
-          id?: number;
-          user_id: string;
-          suggestion_id?: number | null;
-          organization_suggestion_id?: number | null;
-          feedback_type: FeedbackType;
+          bookmark_url?: string | null;
           comment?: string | null;
+          context?: Json | null;
+          created_at?: string | null;
+          feedback_type: string;
+          folder_id?: number | null;
+          id?: number;
+          organization_suggestion_id?: number | null;
+          original_confidence?: number | null;
+          reject_reason?: string | null;
           suggested_correct_folder_id?: number | null;
           suggested_correct_folder_name?: string | null;
-          context?: Json;
-          created_at?: string;
+          suggestion_id?: number | null;
+          trace_id?: string | null;
+          user_id: string;
         };
         Update: {
-          id?: number;
-          user_id?: string;
-          suggestion_id?: number | null;
-          organization_suggestion_id?: number | null;
-          feedback_type?: FeedbackType;
+          bookmark_url?: string | null;
           comment?: string | null;
+          context?: Json | null;
+          created_at?: string | null;
+          feedback_type?: string;
+          folder_id?: number | null;
+          id?: number;
+          organization_suggestion_id?: number | null;
+          original_confidence?: number | null;
+          reject_reason?: string | null;
           suggested_correct_folder_id?: number | null;
           suggested_correct_folder_name?: string | null;
-          context?: Json;
-          created_at?: string;
+          suggestion_id?: number | null;
+          trace_id?: string | null;
+          user_id?: string;
         };
         Relationships: [
           {
-            foreignKeyName: "classification_feedback_user_id_fkey";
-            columns: ["user_id"];
+            foreignKeyName: "classification_feedback_folder_id_fkey";
+            columns: ["folder_id"];
             isOneToOne: false;
-            referencedRelation: "users";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "classification_feedback_suggestion_id_fkey";
-            columns: ["suggestion_id"];
-            isOneToOne: false;
-            referencedRelation: "classification_suggestions";
+            referencedRelation: "folders";
             referencedColumns: ["id"];
           },
           {
@@ -270,160 +404,123 @@ export type Database = {
             referencedColumns: ["id"];
           },
           {
-            foreignKeyName: "classification_feedback_folder_id_fkey";
+            foreignKeyName: "classification_feedback_suggested_correct_folder_id_fkey";
             columns: ["suggested_correct_folder_id"];
             isOneToOne: false;
             referencedRelation: "folders";
             referencedColumns: ["id"];
           },
+          {
+            foreignKeyName: "classification_feedback_suggestion_id_fkey";
+            columns: ["suggestion_id"];
+            isOneToOne: false;
+            referencedRelation: "classification_suggestions";
+            referencedColumns: ["id"];
+          },
         ];
       };
-      bookmarks: {
+      classification_metrics: {
         Row: {
-          id: number;
-          user_id: string;
-          title: string;
-          url: string;
-          description: string | null;
-          cover_url: string | null;
-          platform: Platform;
-          platform_content_id: string | null;
-          ai_summary: string | null;
-          ai_tags: string[] | null;
-          folder_id: number | null;
-          user_tags: string[] | null;
-          notes: string | null;
-          source_name: string | null;
-          author: string | null;
-          publish_time: string | null;
-          content_type: "ARTICLE" | "VIDEO" | "IMAGE" | "UNKNOWN" | null;
-          embedding: number[] | null;
-          status: "PROCESSING" | "COMPLETED" | "FAILED";
-          word_count: number | null;
-          image_count: number | null;
-          is_read: boolean;
-          read_at: string | null;
-          import_source: string | null; // V1.2新增：导入来源
-          import_batch_id: string | null; // V1.2新增：导入批次ID
-          rating: number; // V6.0新增：评级（0-5星，0表示未评级）
-          is_locked: boolean; // V6.0新增：锁定状态（防止误删）
-          is_marked_for_deletion: boolean; // V6.0新增：标记为待删除（仅UI标识）
-          is_in_trash: boolean; // V7.0新增：垃圾箱状态
-          trashed_at: string | null; // V7.0新增：进入垃圾箱时间
-          is_invalid: boolean; // V7.0新增：链接失效状态
-          invalidated_at: string | null; // V7.0新增：首次检测到失效时间
-          last_validation_at: string | null; // V7.0新增：最后验证时间
-          is_starred: boolean; // V8.0新增：星标/置顶状态
-          starred_at: string | null; // V8.0新增：星标时间
-          ai_content_type: "article" | "tutorial" | "video" | "tool" | null; // V9.0新增：AI检测的内容类型
-          ai_content_type_confidence: number | null; // V9.0新增：内容类型检测置信度(0-100)
-          ai_vision_data: Json | null; // V10.0新增：视觉分析数据 (Qwen-VL)
-          classification_status: ClassificationStatus; // V11.0新增：V3分类状态
-          classification_result: ClassificationResultData | null; // V11.0新增：V3分类结果详情
+          action: string;
+          ai_called: boolean;
+          ai_score: number | null;
+          bookmark_id: number | null;
+          bookmark_url: string | null;
+          cache_hit: boolean;
+          confidence: number;
           created_at: string;
-          updated_at: string;
-          deleted_at: string | null;
+          decision_reason: string | null;
+          execution_time_ms: number;
+          feedback_at: string | null;
+          feedback_folder_id: number | null;
+          folder_id: number | null;
+          folder_name: string | null;
+          history_score: number | null;
+          id: number;
+          match_type: string | null;
+          tier: number;
+          tier0_time_ms: number | null;
+          tier1_time_ms: number | null;
+          tier2_time_ms: number | null;
+          tier3_time_ms: number | null;
+          trace_id: string | null;
+          user_feedback: string | null;
+          user_id: string;
+          vector_score: number | null;
         };
         Insert: {
-          id?: number;
-          user_id: string;
-          title: string;
-          url: string;
-          description?: string | null;
-          cover_url?: string | null;
-          platform: Platform;
-          platform_content_id?: string | null;
-          ai_summary?: string | null;
-          ai_tags?: string[] | null;
-          folder_id?: number | null;
-          user_tags?: string[] | null;
-          notes?: string | null;
-          source_name?: string | null;
-          author?: string | null;
-          publish_time?: string | null;
-          content_type?: "ARTICLE" | "VIDEO" | "IMAGE" | "UNKNOWN" | null;
-          embedding?: number[] | null;
-          status?: "PROCESSING" | "COMPLETED" | "FAILED";
-          word_count?: number | null;
-          image_count?: number | null;
-          is_read?: boolean;
-          read_at?: string | null;
-          import_source?: string | null;
-          import_batch_id?: string | null;
-          rating?: number; // V6.0新增
-          is_locked?: boolean; // V6.0新增
-          is_marked_for_deletion?: boolean; // V6.0新增
-          is_in_trash?: boolean; // V7.0新增
-          trashed_at?: string | null; // V7.0新增
-          is_invalid?: boolean; // V7.0新增
-          invalidated_at?: string | null; // V7.0新增
-          last_validation_at?: string | null; // V7.0新增
-          is_starred?: boolean; // V8.0新增
-          starred_at?: string | null; // V8.0新增
-          ai_content_type?: "article" | "tutorial" | "video" | "tool" | null; // V9.0新增
-          ai_content_type_confidence?: number | null; // V9.0新增
-          ai_vision_data?: Json | null; // V10.0新增
-          classification_status?: ClassificationStatus; // V11.0新增
-          classification_result?: ClassificationResultData | null; // V11.0新增
+          action: string;
+          ai_called?: boolean;
+          ai_score?: number | null;
+          bookmark_id?: number | null;
+          bookmark_url?: string | null;
+          cache_hit?: boolean;
+          confidence: number;
           created_at?: string;
-          updated_at?: string;
-          deleted_at?: string | null;
+          decision_reason?: string | null;
+          execution_time_ms: number;
+          feedback_at?: string | null;
+          feedback_folder_id?: number | null;
+          folder_id?: number | null;
+          folder_name?: string | null;
+          history_score?: number | null;
+          id?: number;
+          match_type?: string | null;
+          tier: number;
+          tier0_time_ms?: number | null;
+          tier1_time_ms?: number | null;
+          tier2_time_ms?: number | null;
+          tier3_time_ms?: number | null;
+          trace_id?: string | null;
+          user_feedback?: string | null;
+          user_id: string;
+          vector_score?: number | null;
         };
         Update: {
-          id?: number;
-          user_id?: string;
-          title?: string;
-          url?: string;
-          description?: string | null;
-          cover_url?: string | null;
-          platform?: Platform;
-          platform_content_id?: string | null;
-          ai_summary?: string | null;
-          ai_tags?: string[] | null;
-          folder_id?: number | null;
-          user_tags?: string[] | null;
-          notes?: string | null;
-          source_name?: string | null;
-          author?: string | null;
-          publish_time?: string | null;
-          content_type?: "ARTICLE" | "VIDEO" | "IMAGE" | "UNKNOWN" | null;
-          embedding?: number[] | null;
-          status?: "PROCESSING" | "COMPLETED" | "FAILED";
-          word_count?: number | null;
-          image_count?: number | null;
-          is_read?: boolean;
-          read_at?: string | null;
-          import_source?: string | null;
-          import_batch_id?: string | null;
-          rating?: number; // V6.0新增
-          is_locked?: boolean; // V6.0新增
-          is_marked_for_deletion?: boolean; // V6.0新增
-          is_in_trash?: boolean; // V7.0新增
-          trashed_at?: string | null; // V7.0新增
-          is_invalid?: boolean; // V7.0新增
-          invalidated_at?: string | null; // V7.0新增
-          last_validation_at?: string | null; // V7.0新增
-          is_starred?: boolean; // V8.0新增
-          starred_at?: string | null; // V8.0新增
-          ai_content_type?: "article" | "tutorial" | "video" | "tool" | null; // V9.0新增
-          ai_content_type_confidence?: number | null; // V9.0新增
-          ai_vision_data?: Json | null; // V10.0新增
-          classification_status?: ClassificationStatus; // V11.0新增
-          classification_result?: ClassificationResultData | null; // V11.0新增
+          action?: string;
+          ai_called?: boolean;
+          ai_score?: number | null;
+          bookmark_id?: number | null;
+          bookmark_url?: string | null;
+          cache_hit?: boolean;
+          confidence?: number;
           created_at?: string;
-          updated_at?: string;
-          deleted_at?: string | null;
+          decision_reason?: string | null;
+          execution_time_ms?: number;
+          feedback_at?: string | null;
+          feedback_folder_id?: number | null;
+          folder_id?: number | null;
+          folder_name?: string | null;
+          history_score?: number | null;
+          id?: number;
+          match_type?: string | null;
+          tier?: number;
+          tier0_time_ms?: number | null;
+          tier1_time_ms?: number | null;
+          tier2_time_ms?: number | null;
+          tier3_time_ms?: number | null;
+          trace_id?: string | null;
+          user_feedback?: string | null;
+          user_id?: string;
+          vector_score?: number | null;
         };
         Relationships: [
           {
-            foreignKeyName: "bookmarks_user_id_fkey";
-            columns: ["user_id"];
+            foreignKeyName: "classification_metrics_bookmark_id_fkey";
+            columns: ["bookmark_id"];
             isOneToOne: false;
-            referencedRelation: "users";
+            referencedRelation: "bookmarks";
             referencedColumns: ["id"];
           },
           {
-            foreignKeyName: "bookmarks_folder_id_fkey";
+            foreignKeyName: "classification_metrics_feedback_folder_id_fkey";
+            columns: ["feedback_folder_id"];
+            isOneToOne: false;
+            referencedRelation: "folders";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "classification_metrics_folder_id_fkey";
             columns: ["folder_id"];
             isOneToOne: false;
             referencedRelation: "folders";
@@ -431,237 +528,390 @@ export type Database = {
           },
         ];
       };
-      platform_authorizations: {
+      classification_suggestions: {
         Row: {
+          batch_id: string;
+          bookmark_id: number;
+          confidence: number;
+          created_at: string | null;
           id: number;
+          processed_at: string | null;
+          reason: string | null;
+          status: string | null;
+          suggest_new_folder: boolean | null;
+          suggested_folder_id: number | null;
+          suggested_folder_name: string;
           user_id: string;
-          platform: "WECHAT" | "BILIBILI" | "XIAOHONGSHU";
-          access_token: string | null;
-          refresh_token: string | null;
-          expires_at: string | null;
-          status: "ACTIVE" | "EXPIRED" | "REVOKED";
-          created_at: string;
-          updated_at: string;
         };
         Insert: {
+          batch_id: string;
+          bookmark_id: number;
+          confidence: number;
+          created_at?: string | null;
           id?: number;
+          processed_at?: string | null;
+          reason?: string | null;
+          status?: string | null;
+          suggest_new_folder?: boolean | null;
+          suggested_folder_id?: number | null;
+          suggested_folder_name: string;
           user_id: string;
-          platform: "WECHAT" | "BILIBILI" | "XIAOHONGSHU";
-          access_token?: string | null;
-          refresh_token?: string | null;
-          expires_at?: string | null;
-          status?: "ACTIVE" | "EXPIRED" | "REVOKED";
-          created_at?: string;
-          updated_at?: string;
         };
         Update: {
+          batch_id?: string;
+          bookmark_id?: number;
+          confidence?: number;
+          created_at?: string | null;
           id?: number;
+          processed_at?: string | null;
+          reason?: string | null;
+          status?: string | null;
+          suggest_new_folder?: boolean | null;
+          suggested_folder_id?: number | null;
+          suggested_folder_name?: string;
           user_id?: string;
-          platform?: "WECHAT" | "BILIBILI" | "XIAOHONGSHU";
-          access_token?: string | null;
-          refresh_token?: string | null;
-          expires_at?: string | null;
-          status?: "ACTIVE" | "EXPIRED" | "REVOKED";
-          created_at?: string;
-          updated_at?: string;
         };
         Relationships: [
           {
-            foreignKeyName: "platform_authorizations_user_id_fkey";
-            columns: ["user_id"];
+            foreignKeyName: "classification_suggestions_bookmark_id_fkey";
+            columns: ["bookmark_id"];
             isOneToOne: false;
-            referencedRelation: "users";
+            referencedRelation: "bookmarks";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "classification_suggestions_suggested_folder_id_fkey";
+            columns: ["suggested_folder_id"];
+            isOneToOne: false;
+            referencedRelation: "folders";
             referencedColumns: ["id"];
           },
         ];
       };
-      // V5.0新增：导入历史记录表
+      evolution_reports: {
+        Row: {
+          acceptance_rate: number | null;
+          auto_classified: number;
+          avg_confidence: number | null;
+          folders_created: number;
+          folders_merged: number;
+          folders_renamed: number;
+          folders_split: number;
+          generated_at: string;
+          health_score: number | null;
+          id: number;
+          manual_adjusted: number;
+          pending_suggestions: number;
+          report_month: string;
+          suggestions_data: Json | null;
+          total_classified: number;
+          user_id: string;
+          viewed_at: string | null;
+        };
+        Insert: {
+          acceptance_rate?: number | null;
+          auto_classified?: number;
+          avg_confidence?: number | null;
+          folders_created?: number;
+          folders_merged?: number;
+          folders_renamed?: number;
+          folders_split?: number;
+          generated_at?: string;
+          health_score?: number | null;
+          id?: number;
+          manual_adjusted?: number;
+          pending_suggestions?: number;
+          report_month: string;
+          suggestions_data?: Json | null;
+          total_classified?: number;
+          user_id: string;
+          viewed_at?: string | null;
+        };
+        Update: {
+          acceptance_rate?: number | null;
+          auto_classified?: number;
+          avg_confidence?: number | null;
+          folders_created?: number;
+          folders_merged?: number;
+          folders_renamed?: number;
+          folders_split?: number;
+          generated_at?: string;
+          health_score?: number | null;
+          id?: number;
+          manual_adjusted?: number;
+          pending_suggestions?: number;
+          report_month?: string;
+          suggestions_data?: Json | null;
+          total_classified?: number;
+          user_id?: string;
+          viewed_at?: string | null;
+        };
+        Relationships: [];
+      };
+      folder_profiles: {
+        Row: {
+          bookmark_count: number | null;
+          computed_at: string | null;
+          folder_id: number;
+          id: number;
+          internal_similarity: number | null;
+          last_bookmark_at: string | null;
+          name_embedding: string | null;
+          profile_embedding: string | null;
+          sample_titles: string[] | null;
+          source: string | null;
+          top_tags: string[] | null;
+          updated_at: string | null;
+          user_id: string;
+        };
+        Insert: {
+          bookmark_count?: number | null;
+          computed_at?: string | null;
+          folder_id: number;
+          id?: number;
+          internal_similarity?: number | null;
+          last_bookmark_at?: string | null;
+          name_embedding?: string | null;
+          profile_embedding?: string | null;
+          sample_titles?: string[] | null;
+          source?: string | null;
+          top_tags?: string[] | null;
+          updated_at?: string | null;
+          user_id: string;
+        };
+        Update: {
+          bookmark_count?: number | null;
+          computed_at?: string | null;
+          folder_id?: number;
+          id?: number;
+          internal_similarity?: number | null;
+          last_bookmark_at?: string | null;
+          name_embedding?: string | null;
+          profile_embedding?: string | null;
+          sample_titles?: string[] | null;
+          source?: string | null;
+          top_tags?: string[] | null;
+          updated_at?: string | null;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "folder_profiles_folder_id_fkey";
+            columns: ["folder_id"];
+            isOneToOne: true;
+            referencedRelation: "folders";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      folders: {
+        Row: {
+          created_at: string | null;
+          deleted_at: string | null;
+          folder_group: string | null;
+          id: number;
+          is_archived: boolean;
+          is_system: boolean | null;
+          name: string;
+          parent_id: number | null;
+          sort_order: number | null;
+          source: string | null;
+          system_type: string | null;
+          updated_at: string | null;
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string | null;
+          deleted_at?: string | null;
+          folder_group?: string | null;
+          id?: number;
+          is_archived?: boolean;
+          is_system?: boolean | null;
+          name: string;
+          parent_id?: number | null;
+          sort_order?: number | null;
+          source?: string | null;
+          system_type?: string | null;
+          updated_at?: string | null;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string | null;
+          deleted_at?: string | null;
+          folder_group?: string | null;
+          id?: number;
+          is_archived?: boolean;
+          is_system?: boolean | null;
+          name?: string;
+          parent_id?: number | null;
+          sort_order?: number | null;
+          source?: string | null;
+          system_type?: string | null;
+          updated_at?: string | null;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "folders_parent_id_fkey";
+            columns: ["parent_id"];
+            isOneToOne: false;
+            referencedRelation: "folders";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       import_history: {
         Row: {
-          id: number;
-          user_id: string;
-          import_source: ImportSource;
-          import_batch_id: string;
-          total_count: number;
-          success_count: number;
-          failed_count: number;
-          skipped_count: number;
-          folders_created: number;
+          created_at: string;
           duration_ms: number | null;
           error_details: Json | null;
-          options: Json | null;
-          created_at: string;
-        };
-        Insert: {
-          id?: number;
-          user_id: string;
-          import_source: ImportSource;
-          import_batch_id: string;
-          total_count: number;
-          success_count: number;
           failed_count: number;
-          skipped_count: number;
-          folders_created?: number;
-          duration_ms?: number | null;
-          error_details?: Json | null;
-          options?: Json | null;
-          created_at?: string;
-        };
-        Update: {
-          id?: number;
-          user_id?: string;
-          import_source?: ImportSource;
-          import_batch_id?: string;
-          total_count?: number;
-          success_count?: number;
-          failed_count?: number;
-          skipped_count?: number;
-          folders_created?: number;
-          duration_ms?: number | null;
-          error_details?: Json | null;
-          options?: Json | null;
-          created_at?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "import_history_user_id_fkey";
-            columns: ["user_id"];
-            isOneToOne: false;
-            referencedRelation: "users";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      // V7.0新增：失效检测历史记录表
-      validation_history: {
-        Row: {
+          folders_created: number;
           id: number;
-          user_id: string;
-          total_bookmarks: number;
-          total_checked: number;
+          import_batch_id: string;
+          import_source: string;
+          options: Json | null;
           skipped_count: number;
-          valid_count: number;
-          invalid_count: number;
-          error_count: number;
-          duration_ms: number | null;
-          average_response_time_ms: number | null;
-          invalid_bookmarks: Json | null;
-          skipped_reasons: Json | null;
-          started_at: string;
-          completed_at: string | null;
-          created_at: string;
+          success_count: number;
+          total_count: number;
+          user_id: string;
         };
         Insert: {
-          id?: number;
-          user_id: string;
-          total_bookmarks: number;
-          total_checked: number;
-          skipped_count: number;
-          valid_count: number;
-          invalid_count: number;
-          error_count: number;
-          duration_ms?: number | null;
-          average_response_time_ms?: number | null;
-          invalid_bookmarks?: Json | null;
-          skipped_reasons?: Json | null;
-          started_at: string;
-          completed_at?: string | null;
           created_at?: string;
+          duration_ms?: number | null;
+          error_details?: Json | null;
+          failed_count?: number;
+          folders_created?: number;
+          id?: number;
+          import_batch_id: string;
+          import_source: string;
+          options?: Json | null;
+          skipped_count?: number;
+          success_count?: number;
+          total_count?: number;
+          user_id: string;
         };
         Update: {
-          id?: number;
-          user_id?: string;
-          total_bookmarks?: number;
-          total_checked?: number;
-          skipped_count?: number;
-          valid_count?: number;
-          invalid_count?: number;
-          error_count?: number;
-          duration_ms?: number | null;
-          average_response_time_ms?: number | null;
-          invalid_bookmarks?: Json | null;
-          skipped_reasons?: Json | null;
-          started_at?: string;
-          completed_at?: string | null;
           created_at?: string;
+          duration_ms?: number | null;
+          error_details?: Json | null;
+          failed_count?: number;
+          folders_created?: number;
+          id?: number;
+          import_batch_id?: string;
+          import_source?: string;
+          options?: Json | null;
+          skipped_count?: number;
+          success_count?: number;
+          total_count?: number;
+          user_id?: string;
         };
-        Relationships: [
-          {
-            foreignKeyName: "validation_history_user_id_fkey";
-            columns: ["user_id"];
-            isOneToOne: false;
-            referencedRelation: "users";
-            referencedColumns: ["id"];
-          },
-        ];
+        Relationships: [];
       };
-      // V12.0新增：消息通知表
+      llm_usage_log: {
+        Row: {
+          cost_cents: number;
+          created_at: string;
+          execution_time_ms: number | null;
+          id: number;
+          input_tokens: number;
+          metadata: Json | null;
+          model: string;
+          operation: string;
+          output_tokens: number;
+          request_id: string | null;
+          total_tokens: number | null;
+          user_id: string;
+        };
+        Insert: {
+          cost_cents?: number;
+          created_at?: string;
+          execution_time_ms?: number | null;
+          id?: number;
+          input_tokens?: number;
+          metadata?: Json | null;
+          model: string;
+          operation: string;
+          output_tokens?: number;
+          request_id?: string | null;
+          total_tokens?: number | null;
+          user_id: string;
+        };
+        Update: {
+          cost_cents?: number;
+          created_at?: string;
+          execution_time_ms?: number | null;
+          id?: number;
+          input_tokens?: number;
+          metadata?: Json | null;
+          model?: string;
+          operation?: string;
+          output_tokens?: number;
+          request_id?: string | null;
+          total_tokens?: number | null;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       messages: {
         Row: {
-          id: number;
-          user_id: string;
-          type: MessageType;
-          level: MessageLevel;
-          title: string;
+          action_label: string | null;
+          action_url: string | null;
           content: string | null;
+          created_at: string | null;
+          expires_at: string | null;
+          id: number;
+          level: string;
+          metadata: Json | null;
+          priority: number | null;
+          read_at: string | null;
           related_bookmark_id: number | null;
           related_folder_id: number | null;
           related_import_id: number | null;
-          action_url: string | null;
-          action_label: string | null;
-          metadata: Json;
-          status: MessageStatus;
-          created_at: string;
-          read_at: string | null;
-          priority: number;
-          expires_at: string;
+          status: string;
+          title: string;
+          type: string;
+          user_id: string;
         };
         Insert: {
-          id?: number;
-          user_id: string;
-          type: MessageType;
-          level?: MessageLevel;
-          title: string;
+          action_label?: string | null;
+          action_url?: string | null;
           content?: string | null;
+          created_at?: string | null;
+          expires_at?: string | null;
+          id?: number;
+          level?: string;
+          metadata?: Json | null;
+          priority?: number | null;
+          read_at?: string | null;
           related_bookmark_id?: number | null;
           related_folder_id?: number | null;
           related_import_id?: number | null;
-          action_url?: string | null;
-          action_label?: string | null;
-          metadata?: Json;
-          status?: MessageStatus;
-          created_at?: string;
-          read_at?: string | null;
-          priority?: number;
-          expires_at?: string;
+          status?: string;
+          title: string;
+          type: string;
+          user_id: string;
         };
         Update: {
-          id?: number;
-          user_id?: string;
-          type?: MessageType;
-          level?: MessageLevel;
-          title?: string;
+          action_label?: string | null;
+          action_url?: string | null;
           content?: string | null;
+          created_at?: string | null;
+          expires_at?: string | null;
+          id?: number;
+          level?: string;
+          metadata?: Json | null;
+          priority?: number | null;
+          read_at?: string | null;
           related_bookmark_id?: number | null;
           related_folder_id?: number | null;
           related_import_id?: number | null;
-          action_url?: string | null;
-          action_label?: string | null;
-          metadata?: Json;
-          status?: MessageStatus;
-          created_at?: string;
-          read_at?: string | null;
-          priority?: number;
-          expires_at?: string;
+          status?: string;
+          title?: string;
+          type?: string;
+          user_id?: string;
         };
         Relationships: [
-          {
-            foreignKeyName: "messages_user_id_fkey";
-            columns: ["user_id"];
-            isOneToOne: false;
-            referencedRelation: "users";
-            referencedColumns: ["id"];
-          },
           {
             foreignKeyName: "messages_related_bookmark_id_fkey";
             columns: ["related_bookmark_id"];
@@ -685,210 +935,876 @@ export type Database = {
           },
         ];
       };
-      // V12.0新增：用户通知偏好表
       notification_preferences: {
         Row: {
-          id: number;
-          user_id: string;
-          silent_toast: boolean;
-          normal_toast: boolean;
-          important_toast: boolean;
-          web_push_enabled: boolean;
-          web_push_subscription: Json | null;
-          do_not_disturb: boolean;
-          dnd_start_time: string | null;
+          created_at: string | null;
           dnd_end_time: string | null;
-          created_at: string;
-          updated_at: string;
+          dnd_start_time: string | null;
+          do_not_disturb: boolean | null;
+          id: number;
+          important_toast: boolean | null;
+          normal_toast: boolean | null;
+          silent_toast: boolean | null;
+          updated_at: string | null;
+          user_id: string;
+          web_push_enabled: boolean | null;
+          web_push_subscription: Json | null;
         };
         Insert: {
-          id?: number;
-          user_id: string;
-          silent_toast?: boolean;
-          normal_toast?: boolean;
-          important_toast?: boolean;
-          web_push_enabled?: boolean;
-          web_push_subscription?: Json | null;
-          do_not_disturb?: boolean;
-          dnd_start_time?: string | null;
+          created_at?: string | null;
           dnd_end_time?: string | null;
-          created_at?: string;
-          updated_at?: string;
+          dnd_start_time?: string | null;
+          do_not_disturb?: boolean | null;
+          id?: number;
+          important_toast?: boolean | null;
+          normal_toast?: boolean | null;
+          silent_toast?: boolean | null;
+          updated_at?: string | null;
+          user_id: string;
+          web_push_enabled?: boolean | null;
+          web_push_subscription?: Json | null;
         };
         Update: {
-          id?: number;
-          user_id?: string;
-          silent_toast?: boolean;
-          normal_toast?: boolean;
-          important_toast?: boolean;
-          web_push_enabled?: boolean;
-          web_push_subscription?: Json | null;
-          do_not_disturb?: boolean;
-          dnd_start_time?: string | null;
+          created_at?: string | null;
           dnd_end_time?: string | null;
-          created_at?: string;
-          updated_at?: string;
+          dnd_start_time?: string | null;
+          do_not_disturb?: boolean | null;
+          id?: number;
+          important_toast?: boolean | null;
+          normal_toast?: boolean | null;
+          silent_toast?: boolean | null;
+          updated_at?: string | null;
+          user_id?: string;
+          web_push_enabled?: boolean | null;
+          web_push_subscription?: Json | null;
+        };
+        Relationships: [];
+      };
+      organization_suggestions: {
+        Row: {
+          bookmark_ids: number[];
+          confidence: number;
+          created_at: string | null;
+          id: number;
+          reason: string | null;
+          responded_at: string | null;
+          sample_titles: string[] | null;
+          status: string | null;
+          suggested_folder_name: string | null;
+          suggestion_type: string;
+          target_folder_id: number | null;
+          user_id: string;
+        };
+        Insert: {
+          bookmark_ids: number[];
+          confidence: number;
+          created_at?: string | null;
+          id?: number;
+          reason?: string | null;
+          responded_at?: string | null;
+          sample_titles?: string[] | null;
+          status?: string | null;
+          suggested_folder_name?: string | null;
+          suggestion_type: string;
+          target_folder_id?: number | null;
+          user_id: string;
+        };
+        Update: {
+          bookmark_ids?: number[];
+          confidence?: number;
+          created_at?: string | null;
+          id?: number;
+          reason?: string | null;
+          responded_at?: string | null;
+          sample_titles?: string[] | null;
+          status?: string | null;
+          suggested_folder_name?: string | null;
+          suggestion_type?: string;
+          target_folder_id?: number | null;
+          user_id?: string;
         };
         Relationships: [
           {
-            foreignKeyName: "notification_preferences_user_id_fkey";
-            columns: ["user_id"];
-            isOneToOne: true;
-            referencedRelation: "users";
+            foreignKeyName: "organization_suggestions_target_folder_id_fkey";
+            columns: ["target_folder_id"];
+            isOneToOne: false;
+            referencedRelation: "folders";
             referencedColumns: ["id"];
           },
         ];
       };
+      patrol_reports: {
+        Row: {
+          broken_links_count: number;
+          created_at: string;
+          generated_at: string;
+          id: string;
+          overall_score: number;
+          report_data: Json;
+          report_period: string;
+          stale_bookmarks_count: number;
+          total_issues: number;
+          user_id: string;
+        };
+        Insert: {
+          broken_links_count?: number;
+          created_at?: string;
+          generated_at?: string;
+          id: string;
+          overall_score?: number;
+          report_data?: Json;
+          report_period?: string;
+          stale_bookmarks_count?: number;
+          total_issues?: number;
+          user_id: string;
+        };
+        Update: {
+          broken_links_count?: number;
+          created_at?: string;
+          generated_at?: string;
+          id?: string;
+          overall_score?: number;
+          report_data?: Json;
+          report_period?: string;
+          stale_bookmarks_count?: number;
+          total_issues?: number;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
+      platform_authorizations: {
+        Row: {
+          access_token: string | null;
+          created_at: string | null;
+          expires_at: string | null;
+          id: number;
+          platform: string;
+          refresh_token: string | null;
+          status: string | null;
+          updated_at: string | null;
+          user_id: string;
+        };
+        Insert: {
+          access_token?: string | null;
+          created_at?: string | null;
+          expires_at?: string | null;
+          id?: number;
+          platform: string;
+          refresh_token?: string | null;
+          status?: string | null;
+          updated_at?: string | null;
+          user_id: string;
+        };
+        Update: {
+          access_token?: string | null;
+          created_at?: string | null;
+          expires_at?: string | null;
+          id?: number;
+          platform?: string;
+          refresh_token?: string | null;
+          status?: string | null;
+          updated_at?: string | null;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
+      profiles: {
+        Row: {
+          avatar_url: string | null;
+          created_at: string | null;
+          id: string;
+          last_trash_cleanup_at: string | null;
+          last_validation_at: string | null;
+          membership_type: string | null;
+          nickname: string | null;
+          patrol_frequency: string | null;
+          patrol_notification_enabled: boolean | null;
+          phone: string | null;
+          settings: Json | null;
+          storage_quota: number | null;
+          storage_used: number | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          avatar_url?: string | null;
+          created_at?: string | null;
+          id: string;
+          last_trash_cleanup_at?: string | null;
+          last_validation_at?: string | null;
+          membership_type?: string | null;
+          nickname?: string | null;
+          patrol_frequency?: string | null;
+          patrol_notification_enabled?: boolean | null;
+          phone?: string | null;
+          settings?: Json | null;
+          storage_quota?: number | null;
+          storage_used?: number | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          avatar_url?: string | null;
+          created_at?: string | null;
+          id?: string;
+          last_trash_cleanup_at?: string | null;
+          last_validation_at?: string | null;
+          membership_type?: string | null;
+          nickname?: string | null;
+          patrol_frequency?: string | null;
+          patrol_notification_enabled?: boolean | null;
+          phone?: string | null;
+          settings?: Json | null;
+          storage_quota?: number | null;
+          storage_used?: number | null;
+          updated_at?: string | null;
+        };
+        Relationships: [];
+      };
+      scenario_weight_configs: {
+        Row: {
+          ab_test_enabled: boolean | null;
+          ab_test_variant: string | null;
+          created_at: string | null;
+          description: string | null;
+          id: number;
+          is_active: boolean | null;
+          priority: number | null;
+          scenario: string;
+          thresholds: Json;
+          updated_at: string | null;
+          weights: Json;
+        };
+        Insert: {
+          ab_test_enabled?: boolean | null;
+          ab_test_variant?: string | null;
+          created_at?: string | null;
+          description?: string | null;
+          id?: number;
+          is_active?: boolean | null;
+          priority?: number | null;
+          scenario: string;
+          thresholds?: Json;
+          updated_at?: string | null;
+          weights?: Json;
+        };
+        Update: {
+          ab_test_enabled?: boolean | null;
+          ab_test_variant?: string | null;
+          created_at?: string | null;
+          description?: string | null;
+          id?: number;
+          is_active?: boolean | null;
+          priority?: number | null;
+          scenario?: string;
+          thresholds?: Json;
+          updated_at?: string | null;
+          weights?: Json;
+        };
+        Relationships: [];
+      };
+      system_folder_i18n: {
+        Row: {
+          created_at: string | null;
+          display_name: string;
+          id: number;
+          locale: string;
+          system_type: string;
+          updated_at: string | null;
+        };
+        Insert: {
+          created_at?: string | null;
+          display_name: string;
+          id?: number;
+          locale: string;
+          system_type: string;
+          updated_at?: string | null;
+        };
+        Update: {
+          created_at?: string | null;
+          display_name?: string;
+          id?: number;
+          locale?: string;
+          system_type?: string;
+          updated_at?: string | null;
+        };
+        Relationships: [];
+      };
+      user_custom_interests: {
+        Row: {
+          created_at: string | null;
+          icon: string;
+          id: string;
+          keywords: string[] | null;
+          name: string;
+          suggested_folders: string[] | null;
+          updated_at: string | null;
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string | null;
+          icon?: string;
+          id?: string;
+          keywords?: string[] | null;
+          name: string;
+          suggested_folders?: string[] | null;
+          updated_at?: string | null;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string | null;
+          icon?: string;
+          id?: string;
+          keywords?: string[] | null;
+          name?: string;
+          suggested_folders?: string[] | null;
+          updated_at?: string | null;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
+      validation_history: {
+        Row: {
+          average_response_time_ms: number | null;
+          completed_at: string | null;
+          created_at: string | null;
+          duration_ms: number | null;
+          error_count: number;
+          id: number;
+          invalid_bookmarks: Json | null;
+          invalid_count: number;
+          skipped_count: number;
+          skipped_reasons: Json | null;
+          started_at: string;
+          total_bookmarks: number;
+          total_checked: number;
+          user_id: string;
+          valid_count: number;
+        };
+        Insert: {
+          average_response_time_ms?: number | null;
+          completed_at?: string | null;
+          created_at?: string | null;
+          duration_ms?: number | null;
+          error_count: number;
+          id?: number;
+          invalid_bookmarks?: Json | null;
+          invalid_count: number;
+          skipped_count: number;
+          skipped_reasons?: Json | null;
+          started_at: string;
+          total_bookmarks: number;
+          total_checked: number;
+          user_id: string;
+          valid_count: number;
+        };
+        Update: {
+          average_response_time_ms?: number | null;
+          completed_at?: string | null;
+          created_at?: string | null;
+          duration_ms?: number | null;
+          error_count?: number;
+          id?: number;
+          invalid_bookmarks?: Json | null;
+          invalid_count?: number;
+          skipped_count?: number;
+          skipped_reasons?: Json | null;
+          started_at?: string;
+          total_bookmarks?: number;
+          total_checked?: number;
+          user_id?: string;
+          valid_count?: number;
+        };
+        Relationships: [];
+      };
     };
     Views: {
-      [_ in never]: never;
+      classification_metrics_daily: {
+        Row: {
+          acceptance_rate: number | null;
+          ai_call_rate: number | null;
+          avg_confidence: number | null;
+          avg_execution_time_ms: number | null;
+          cache_hit_rate: number | null;
+          date: string | null;
+          feedback_count: number | null;
+          inbox_count: number | null;
+          median_confidence: number | null;
+          p95_execution_time_ms: number | null;
+          tier1_count: number | null;
+          tier2_count: number | null;
+          tier3_count: number | null;
+          total_count: number | null;
+          user_id: string | null;
+        };
+        Relationships: [];
+      };
+      classification_metrics_summary: {
+        Row: {
+          acceptance_rate: number | null;
+          ai_call_rate: number | null;
+          ai_skip_rate: number | null;
+          avg_confidence: number | null;
+          avg_execution_time_ms: number | null;
+          cache_hit_rate: number | null;
+          date: string | null;
+          feedback_count: number | null;
+          inbox_count: number | null;
+          p95_execution_time_ms: number | null;
+          tier1_count: number | null;
+          tier2_count: number | null;
+          tier3_count: number | null;
+          total_count: number | null;
+          unique_users: number | null;
+        };
+        Relationships: [];
+      };
+      classification_stats: {
+        Row: {
+          custom_interests: number | null;
+          pending_suggestions: number | null;
+          profiled_folders: number | null;
+          stage: string | null;
+          total_bookmarks: number | null;
+          total_folders: number | null;
+          user_id: string | null;
+        };
+        Insert: {
+          custom_interests?: never;
+          pending_suggestions?: never;
+          profiled_folders?: never;
+          stage?: never;
+          total_bookmarks?: never;
+          total_folders?: never;
+          user_id?: string | null;
+        };
+        Update: {
+          custom_interests?: never;
+          pending_suggestions?: never;
+          profiled_folders?: never;
+          stage?: never;
+          total_bookmarks?: never;
+          total_folders?: never;
+          user_id?: string | null;
+        };
+        Relationships: [];
+      };
+      embedding_stats: {
+        Row: {
+          bookmarks_with_embedding: number | null;
+          bookmarks_without_embedding: number | null;
+          embedding_coverage_percent: number | null;
+          total_bookmarks: number | null;
+        };
+        Relationships: [];
+      };
+      llm_usage_daily: {
+        Row: {
+          avg_execution_time_ms: number | null;
+          call_count: number | null;
+          date: string | null;
+          model: string | null;
+          operation: string | null;
+          total_cost_cents: number | null;
+          total_input_tokens: number | null;
+          total_output_tokens: number | null;
+          total_tokens: number | null;
+          user_id: string | null;
+        };
+        Relationships: [];
+      };
+      llm_usage_monthly: {
+        Row: {
+          analysis_calls: number | null;
+          call_count: number | null;
+          chat_calls: number | null;
+          classification_calls: number | null;
+          month: string | null;
+          naming_calls: number | null;
+          total_cost_cents: number | null;
+          total_input_tokens: number | null;
+          total_output_tokens: number | null;
+          total_tokens: number | null;
+          user_id: string | null;
+        };
+        Relationships: [];
+      };
+      v_user_classification_stats: {
+        Row: {
+          accepted_count: number | null;
+          avg_confidence: number | null;
+          count: number | null;
+          decision_type: string | null;
+          rejected_count: number | null;
+          user_action: string | null;
+          user_id: string | null;
+        };
+        Relationships: [];
+      };
     };
     Functions: {
-      search_bookmarks_semantic: {
+      accept_classification_suggestions: {
+        Args: { p_suggestion_ids: number[]; p_user_id: string };
+        Returns: number;
+      };
+      add_custom_interest_atomic: {
         Args: {
-          query_embedding: number[];
+          p_icon: string;
+          p_keywords?: string[];
+          p_max_count?: number;
+          p_name: string;
+          p_suggested_folders?: string[];
           p_user_id: string;
-          match_threshold?: number;
-          match_count?: number;
         };
         Returns: {
+          created_at: string;
+          error_code: string;
+          icon: string;
+          id: string;
+          keywords: string[];
+          name: string;
+          suggested_folders: string[];
+          updated_at: string;
+          user_id: string;
+        }[];
+      };
+      calculate_matcher_weight_adjustments: {
+        Args: { p_user_id: string };
+        Returns: Json;
+      };
+      cleanup_expired_messages: { Args: never; Returns: number };
+      cleanup_old_chat_cache: { Args: { p_days?: number }; Returns: number };
+      cleanup_old_patrol_reports: { Args: never; Returns: undefined };
+      compute_folder_profile: {
+        Args: { p_folder_id: number };
+        Returns: undefined;
+      };
+      compute_user_folder_profiles: {
+        Args: { p_user_id: string };
+        Returns: number;
+      };
+      decrement_storage_used:
+        | { Args: { target_user_id: string }; Returns: undefined }
+        | {
+            Args: { decrement_by?: number; target_user_id: string };
+            Returns: undefined;
+          };
+      expire_old_suggestions: { Args: never; Returns: number };
+      find_cross_folder_connections: {
+        Args: {
+          p_folder_id?: number;
+          p_limit?: number;
+          p_min_similarity?: number;
+          p_user_id: string;
+        };
+        Returns: {
+          similarity: number;
+          source_bookmark_id: number;
+          source_folder_id: number;
+          source_folder_name: string;
+          source_title: string;
+          target_bookmark_id: number;
+          target_folder_id: number;
+          target_folder_name: string;
+          target_title: string;
+        }[];
+      };
+      find_related_bookmarks: {
+        Args: {
+          p_bookmark_id: number;
+          p_exclude_same_folder?: boolean;
+          p_limit?: number;
+          p_min_similarity?: number;
+          p_user_id: string;
+        };
+        Returns: {
+          created_at: string;
+          description: string;
+          folder_id: number;
+          folder_name: string;
           id: number;
+          platform: string;
+          similarity: number;
           title: string;
           url: string;
-          description: string | null;
-          cover_url: string | null;
-          platform: string;
-          ai_summary: string | null;
-          ai_tags: string[] | null;
-          folder_id: number | null;
-          author: string | null;
-          publish_time: string | null;
-          content_type: string | null;
-          user_tags: string[] | null;
-          notes: string | null;
-          created_at: string;
-          updated_at: string;
+        }[];
+      };
+      find_similar_bookmarks_with_folders: {
+        Args: {
+          match_count?: number;
+          p_user_id: string;
+          query_embedding: string;
+        };
+        Returns: {
+          bookmark_id: number;
+          bookmark_title: string;
+          folder_id: number;
+          folder_name: string;
           similarity: number;
         }[];
       };
-      increment_storage_used: {
-        Args: {
-          target_user_id: string;
-        };
-        Returns: void;
-      };
-      decrement_storage_used: {
-        Args: {
-          target_user_id: string;
-        };
-        Returns: void;
-      };
-      // V4.2新增：获取或创建待整理文件夹
-      get_or_create_inbox_folder: {
-        Args: {
-          p_user_id: string;
-        };
-        Returns: number;
-      };
-      // V4.2新增：获取待处理建议数量
-      get_pending_suggestions_count: {
-        Args: {
-          p_user_id: string;
-        };
-        Returns: number;
-      };
-      // V4.2新增：批量接受分类建议
-      accept_classification_suggestions: {
-        Args: {
-          p_user_id: string;
-          p_suggestion_ids: number[];
-        };
-        Returns: number;
-      };
-      // V4.2新增：批量拒绝分类建议
-      reject_classification_suggestions: {
-        Args: {
-          p_user_id: string;
-          p_suggestion_ids: number[];
-        };
-        Returns: number;
-      };
-      // V4.2新增：过期旧建议
-      expire_old_suggestions: {
-        Args: Record<string, never>;
-        Returns: number;
-      };
-      // V8.0新增：获取用户热门标签（搜索页面性能优化）
-      get_user_hot_tags: {
-        Args: {
-          p_user_id: string;
-          p_limit?: number;
-        };
+      get_ai_folder_settings: { Args: { p_user_id: string }; Returns: Json };
+      get_folder_similarity_matrix: {
+        Args: { p_min_bookmarks?: number; p_user_id: string };
         Returns: {
-          tag: string;
-          count: number;
+          avg_similarity: number;
+          connection_count: number;
+          folder1_count: number;
+          folder1_id: number;
+          folder1_name: string;
+          folder2_count: number;
+          folder2_id: number;
+          folder2_name: string;
+          max_similarity: number;
         }[];
       };
-      // V12.0新增：获取未读消息数量（分等级统计）
-      get_unread_message_counts: {
-        Args: {
-          p_user_id: string;
-        };
-        Returns: {
-          total: number;
-          silent: number;
-          normal: number;
-          important: number;
-        };
-      };
-      // V12.0新增：批量标记消息已读
-      mark_messages_read: {
-        Args: {
-          p_user_id: string;
-          p_message_ids?: number[] | null;
-        };
+      get_messages_count: {
+        Args: { p_level?: string; p_status?: string; p_user_id: string };
         Returns: number;
       };
-      // V12.0新增：清理过期消息
-      cleanup_expired_messages: {
-        Args: Record<string, never>;
-        Returns: number;
-      };
-      // V12.0新增：获取消息列表（带日期分组）
       get_messages_grouped: {
         Args: {
-          p_user_id: string;
-          p_status?: string | null;
-          p_level?: string | null;
+          p_level?: string;
           p_limit?: number;
           p_offset?: number;
+          p_status?: string;
+          p_user_id: string;
         };
         Returns: {
-          id: number;
-          type: string;
-          level: string;
-          title: string;
-          content: string | null;
-          action_url: string | null;
-          action_label: string | null;
-          status: string;
-          priority: number;
+          action_label: string;
+          action_url: string;
+          content: string;
           created_at: string;
-          read_at: string | null;
-          metadata: Json;
-          related_bookmark_id: number | null;
-          related_folder_id: number | null;
           date_group: string;
+          id: number;
+          level: string;
+          metadata: Json;
+          priority: number;
+          read_at: string;
+          related_bookmark_id: number;
+          related_folder_id: number;
+          status: string;
+          title: string;
+          type: string;
         }[];
       };
-      // V12.0新增：获取消息总数
-      get_messages_count: {
+      get_or_create_inbox_folder: {
+        Args: { p_user_id?: string };
+        Returns: number;
+      };
+      get_pending_suggestions_count: {
+        Args: { p_user_id: string };
+        Returns: number;
+      };
+      get_system_folder_name: {
+        Args: { p_locale?: string; p_system_type: string };
+        Returns: string;
+      };
+      get_unread_message_counts: {
+        Args: { p_user_id: string };
+        Returns: {
+          important: number;
+          normal: number;
+          silent: number;
+          total: number;
+        }[];
+      };
+      get_user_chat_stats: {
+        Args: { p_end_date?: string; p_start_date?: string; p_user_id: string };
+        Returns: {
+          active_days: number;
+          avg_tokens_per_chat: number;
+          total_conversations: number;
+          total_tokens: number;
+        }[];
+      };
+      get_user_classification_stage: {
+        Args: { p_user_id: string };
+        Returns: string;
+      };
+      get_user_daily_llm_cost: {
+        Args: { p_date?: string; p_user_id: string };
+        Returns: {
+          total_calls: number;
+          total_cost_cents: number;
+          total_tokens: number;
+        }[];
+      };
+      get_user_folder_stats: {
+        Args: { p_user_id: string };
+        Returns: {
+          can_create_more: boolean;
+          daily_remaining: number;
+          folders_today: number;
+          total_folders: number;
+        }[];
+      };
+      get_user_hot_tags: {
+        Args: { p_limit?: number; p_user_id: string };
+        Returns: {
+          count: number;
+          tag: string;
+        }[];
+      };
+      get_vision_tags: { Args: { vision_data: Json }; Returns: string[] };
+      has_vision_analysis: { Args: { vision_data: Json }; Returns: boolean };
+      increment_chat_usage: {
+        Args: { p_date: string; p_tokens?: number; p_user_id: string };
+        Returns: undefined;
+      };
+      increment_storage_used: {
+        Args: { target_user_id: string };
+        Returns: undefined;
+      };
+      mark_messages_read: {
+        Args: { p_message_ids?: number[]; p_user_id: string };
+        Returns: number;
+      };
+      record_classification_metrics: {
         Args: {
+          p_action?: string;
+          p_ai_called?: boolean;
+          p_ai_score?: number;
+          p_bookmark_id?: number;
+          p_bookmark_url?: string;
+          p_cache_hit?: boolean;
+          p_confidence?: number;
+          p_decision_reason?: string;
+          p_execution_time_ms?: number;
+          p_folder_id?: number;
+          p_folder_name?: string;
+          p_history_score?: number;
+          p_match_type?: string;
+          p_tier?: number;
+          p_tier0_time_ms?: number;
+          p_tier1_time_ms?: number;
+          p_tier2_time_ms?: number;
+          p_tier3_time_ms?: number;
+          p_trace_id?: string;
           p_user_id: string;
-          p_status?: string | null;
-          p_level?: string | null;
+          p_vector_score?: number;
         };
         Returns: number;
+      };
+      record_llm_usage: {
+        Args: {
+          p_cost_cents?: number;
+          p_execution_time_ms?: number;
+          p_input_tokens: number;
+          p_metadata?: Json;
+          p_model: string;
+          p_operation: string;
+          p_output_tokens: number;
+          p_request_id?: string;
+          p_user_id: string;
+        };
+        Returns: number;
+      };
+      reject_classification_suggestions: {
+        Args: { p_suggestion_ids: number[]; p_user_id: string };
+        Returns: number;
+      };
+      search_bookmarks_by_embedding: {
+        Args: {
+          match_count?: number;
+          match_threshold?: number;
+          p_folder_id?: number;
+          p_user_id?: string;
+          query_embedding: string;
+        };
+        Returns: {
+          ai_summary: string;
+          ai_tags: string[];
+          created_at: string;
+          description: string;
+          folder_id: number;
+          folder_name: string;
+          id: number;
+          platform: string;
+          similarity: number;
+          title: string;
+          url: string;
+        }[];
+      };
+      search_bookmarks_hybrid: {
+        Args: {
+          keyword_weight?: number;
+          match_count?: number;
+          p_user_id: string;
+          query_embedding: string;
+          query_text: string;
+          vector_weight?: number;
+        };
+        Returns: {
+          ai_summary: string;
+          combined_score: number;
+          folder_name: string;
+          id: number;
+          keyword_score: number;
+          title: string;
+          url: string;
+          vector_score: number;
+        }[];
+      };
+      search_bookmarks_semantic: {
+        Args: {
+          match_count?: number;
+          match_threshold?: number;
+          p_user_id: string;
+          query_embedding: string;
+        };
+        Returns: {
+          ai_summary: string;
+          ai_tags: string[];
+          author: string;
+          content_type: string;
+          cover_url: string;
+          created_at: string;
+          description: string;
+          folder_id: number;
+          id: number;
+          notes: string;
+          platform: string;
+          publish_time: string;
+          similarity: number;
+          title: string;
+          updated_at: string;
+          url: string;
+          user_tags: string[];
+        }[];
+      };
+      search_folders_unified: {
+        Args: { p_embedding: string; p_limit?: number; p_user_id: string };
+        Returns: {
+          bookmark_count: number;
+          folder_id: number;
+          folder_name: string;
+          match_type: string;
+          similarity: number;
+          top_tags: string[];
+        }[];
+      };
+      search_similar_folders: {
+        Args: {
+          match_count?: number;
+          match_threshold?: number;
+          p_user_id: string;
+          query_embedding: string;
+        };
+        Returns: {
+          bookmark_count: number;
+          folder_id: number;
+          folder_name: string;
+          sample_titles: string[];
+          similarity: number;
+          top_tags: string[];
+        }[];
+      };
+      update_ai_folder_settings: {
+        Args: { p_settings: Json; p_user_id: string };
+        Returns: Json;
+      };
+      update_folder_name_embedding: {
+        Args: { p_folder_id: number; p_name_embedding: string };
+        Returns: undefined;
       };
     };
     Enums: {
@@ -900,7 +1816,131 @@ export type Database = {
   };
 };
 
-// 便捷类型别名
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">;
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<
+  keyof Database,
+  "public"
+>];
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals;
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R;
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R;
+      }
+      ? R
+      : never
+    : never;
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals;
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I;
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I;
+      }
+      ? I
+      : never
+    : never;
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals;
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U;
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U;
+      }
+      ? U
+      : never
+    : never;
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals;
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never;
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals;
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never;
+
+export const Constants = {
+  public: {
+    Enums: {},
+  },
+} as const;
 export type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 export type ProfileInsert = Database["public"]["Tables"]["profiles"]["Insert"];
 export type ProfileUpdate = Database["public"]["Tables"]["profiles"]["Update"];
