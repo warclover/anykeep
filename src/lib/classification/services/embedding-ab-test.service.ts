@@ -9,7 +9,6 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
-import { v42Table } from "@/lib/supabase/v42-types";
 import type { EmbeddingModelId } from "@/lib/classification/config/embedding-config";
 
 /**
@@ -79,7 +78,7 @@ export class EmbeddingABTestService {
       const supabase = await createClient();
 
       // V4.2 表
-      const { error } = await v42Table(supabase)
+      const { error } = await supabase
         .from("embedding_ab_test_metrics")
         .insert({
           user_id: request.userId,
@@ -101,7 +100,7 @@ export class EmbeddingABTestService {
       if (error) {
         logger.error(
           { error: error.message, modelId: request.modelId },
-          "EmbeddingABTest: Failed to record metrics"
+          "EmbeddingABTest: Failed to record metrics",
         );
         // Don't throw - metrics recording should not block main flow
         return;
@@ -115,12 +114,12 @@ export class EmbeddingABTestService {
           abTestGroup: request.abTestGroup,
           executionTimeMs: request.executionTimeMs,
         },
-        "EmbeddingABTest: Metrics recorded"
+        "EmbeddingABTest: Metrics recorded",
       );
     } catch (error) {
       logger.error(
         { error: error instanceof Error ? error.message : String(error) },
-        "EmbeddingABTest: Exception while recording metrics"
+        "EmbeddingABTest: Exception while recording metrics",
       );
       // Don't throw - metrics recording should not block main flow
     }
@@ -133,13 +132,13 @@ export class EmbeddingABTestService {
     metricsId: number,
     userId: string,
     feedback: "accept" | "reject" | "modify",
-    feedbackFolderId?: number
+    feedbackFolderId?: number,
   ): Promise<void> {
     try {
       const supabase = await createClient();
 
       // V4.2 表
-      const { error } = await v42Table(supabase)
+      const { error } = await supabase
         .from("embedding_ab_test_metrics")
         .update({
           user_feedback: feedback,
@@ -152,19 +151,16 @@ export class EmbeddingABTestService {
       if (error) {
         logger.error(
           { error: error.message, metricsId },
-          "EmbeddingABTest: Failed to update feedback"
+          "EmbeddingABTest: Failed to update feedback",
         );
         return;
       }
 
-      logger.info(
-        { metricsId, feedback },
-        "EmbeddingABTest: Feedback updated"
-      );
+      logger.info({ metricsId, feedback }, "EmbeddingABTest: Feedback updated");
     } catch (error) {
       logger.error(
         { error: error instanceof Error ? error.message : String(error) },
-        "EmbeddingABTest: Exception while updating feedback"
+        "EmbeddingABTest: Exception while updating feedback",
       );
     }
   }
@@ -178,15 +174,13 @@ export class EmbeddingABTestService {
       operationType?: ABTestOperationType;
       startDate?: Date;
       endDate?: Date;
-    } = {}
+    } = {},
   ): Promise<ABTestSummary[]> {
     try {
       const supabase = await createClient();
 
       // V4.2 视图
-      let query = v42Table(supabase)
-        .from("embedding_ab_test_summary")
-        .select("*");
+      let query = supabase.from("embedding_ab_test_summary").select("*");
 
       if (options.modelIds && options.modelIds.length > 0) {
         query = query.in("model_id", options.modelIds);
@@ -209,7 +203,7 @@ export class EmbeddingABTestService {
       if (error) {
         logger.error(
           { error: error.message },
-          "EmbeddingABTest: Failed to get summary"
+          "EmbeddingABTest: Failed to get summary",
         );
         return [];
       }
@@ -245,7 +239,7 @@ export class EmbeddingABTestService {
     } catch (error) {
       logger.error(
         { error: error instanceof Error ? error.message : String(error) },
-        "EmbeddingABTest: Exception while getting summary"
+        "EmbeddingABTest: Exception while getting summary",
       );
       return [];
     }
@@ -258,7 +252,7 @@ export class EmbeddingABTestService {
     controlModelId: EmbeddingModelId,
     treatmentModelId: EmbeddingModelId,
     operationType: ABTestOperationType = "classification",
-    days: number = 7
+    days: number = 7,
   ): Promise<{
     control: {
       modelId: string;
@@ -296,11 +290,9 @@ export class EmbeddingABTestService {
       }
 
       // Aggregate by model
-      const controlData = summaries.filter(
-        (s) => s.modelId === controlModelId
-      );
+      const controlData = summaries.filter((s) => s.modelId === controlModelId);
       const treatmentData = summaries.filter(
-        (s) => s.modelId === treatmentModelId
+        (s) => s.modelId === treatmentModelId,
       );
 
       const aggregateData = (data: ABTestSummary[]) => {
@@ -310,13 +302,13 @@ export class EmbeddingABTestService {
           totalCount > 0
             ? data.reduce(
                 (sum, d) => sum + d.avgExecutionTimeMs * d.totalCount,
-                0
+                0,
               ) / totalCount
             : 0;
 
         const acceptanceRateSum = data
           .filter((d) => d.acceptanceRate !== null)
-          .reduce((sum, d) => sum + (d.acceptanceRate! * d.feedbackCount), 0);
+          .reduce((sum, d) => sum + d.acceptanceRate! * d.feedbackCount, 0);
         const acceptanceRate =
           totalFeedback > 0 ? acceptanceRateSum / totalFeedback : null;
 
@@ -395,7 +387,7 @@ export class EmbeddingABTestService {
     } catch (error) {
       logger.error(
         { error: error instanceof Error ? error.message : String(error) },
-        "EmbeddingABTest: Exception while generating comparison report"
+        "EmbeddingABTest: Exception while generating comparison report",
       );
       return null;
     }

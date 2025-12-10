@@ -325,23 +325,34 @@ export class ClassificationService implements IClassificationService {
 
   /**
    * Type guard for VectorMatchDetail array
+   * Checks for VectorMatchDetail-specific fields: topTags, sampleTitles, bookmarkCount
    */
   private isVectorMatchResults(
     results: MatchResult[],
   ): results is VectorMatchDetail[] {
     if (results.length === 0) return true;
     const first = results[0];
-    return "folderId" in first && "similarity" in first && "embedding" in first;
+    return (
+      "folderId" in first &&
+      "topTags" in first &&
+      "sampleTitles" in first &&
+      "bookmarkCount" in first
+    );
   }
 
   /**
    * Type guard for HistoryMatchDetail array
+   * Checks for HistoryMatchDetail-specific fields: similarBookmarkCount, similarTitles
    */
   private isHistoryMatchResults(
     results: MatchResult[],
   ): results is HistoryMatchDetail[] {
     if (results.length === 0) return true;
     const first = results[0];
-    return "folderId" in first && "matchCount" in first && "recency" in first;
+    return (
+      "folderId" in first &&
+      "similarBookmarkCount" in first &&
+      "similarTitles" in first
+    );
   }
 }

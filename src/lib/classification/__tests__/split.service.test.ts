@@ -60,11 +60,7 @@ jest.mock("@/lib/supabase/server", () => ({
   createServerSupabaseClient: jest.fn(),
 }));
 
-// Mock v42 helpers
-jest.mock("@/lib/supabase/v42-types", () => ({
-  v42Table: jest.fn((supabase) => supabase),
-  v42Rpc: jest.fn((supabase) => supabase),
-}));
+// v42 helpers removed - now using native Supabase types
 
 describe("SplitService", () => {
   let service: SplitService;

@@ -8,7 +8,6 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
-import { v42Table, v42Rpc } from "@/lib/supabase/v42-types";
 import { logger } from "@/lib/logger";
 
 /**
@@ -110,42 +109,42 @@ export class ClassificationMetricsService {
    * @returns 指标记录 ID
    */
   async recordMetrics(
-    request: RecordClassificationMetricsRequest
+    request: RecordClassificationMetricsRequest,
   ): Promise<number | null> {
     try {
       const supabase = await createClient();
 
-      const { data, error } = await v42Rpc(supabase).rpc(
+      const { data, error } = await supabase.rpc(
         "record_classification_metrics",
         {
           p_user_id: request.userId,
-          p_bookmark_id: request.bookmarkId || null,
-          p_bookmark_url: request.bookmarkUrl || null,
+          p_bookmark_id: request.bookmarkId ?? undefined,
+          p_bookmark_url: request.bookmarkUrl ?? undefined,
           p_action: request.action,
-          p_folder_id: request.folderId || null,
-          p_folder_name: request.folderName || null,
+          p_folder_id: request.folderId ?? undefined,
+          p_folder_name: request.folderName ?? undefined,
           p_confidence: request.confidence,
           p_tier: request.tier,
-          p_cache_hit: request.cacheHit || false,
-          p_ai_called: request.aiCalled || false,
-          p_match_type: request.matchType || null,
-          p_vector_score: request.vectorScore || null,
-          p_history_score: request.historyScore || null,
-          p_ai_score: request.aiScore || null,
+          p_cache_hit: request.cacheHit ?? false,
+          p_ai_called: request.aiCalled ?? false,
+          p_match_type: request.matchType ?? undefined,
+          p_vector_score: request.vectorScore ?? undefined,
+          p_history_score: request.historyScore ?? undefined,
+          p_ai_score: request.aiScore ?? undefined,
           p_execution_time_ms: request.executionTimeMs,
-          p_tier0_time_ms: request.tier0TimeMs || null,
-          p_tier1_time_ms: request.tier1TimeMs || null,
-          p_tier2_time_ms: request.tier2TimeMs || null,
-          p_tier3_time_ms: request.tier3TimeMs || null,
-          p_trace_id: request.traceId || null,
-          p_decision_reason: request.decisionReason || null,
-        }
+          p_tier0_time_ms: request.tier0TimeMs ?? undefined,
+          p_tier1_time_ms: request.tier1TimeMs ?? undefined,
+          p_tier2_time_ms: request.tier2TimeMs ?? undefined,
+          p_tier3_time_ms: request.tier3TimeMs ?? undefined,
+          p_trace_id: request.traceId ?? undefined,
+          p_decision_reason: request.decisionReason ?? undefined,
+        },
       );
 
       if (error) {
         logger.error(
           { error: error.message, userId: request.userId.slice(0, 8) + "..." },
-          "ClassificationMetrics: Failed to record metrics"
+          "ClassificationMetrics: Failed to record metrics",
         );
         return null;
       }
@@ -159,14 +158,14 @@ export class ClassificationMetricsService {
           aiCalled: request.aiCalled,
           executionTimeMs: request.executionTimeMs,
         },
-        "ClassificationMetrics: Metrics recorded"
+        "ClassificationMetrics: Metrics recorded",
       );
 
       return data;
     } catch (error) {
       logger.error(
         { error: error instanceof Error ? error.message : String(error) },
-        "ClassificationMetrics: Exception while recording metrics"
+        "ClassificationMetrics: Exception while recording metrics",
       );
       return null;
     }
@@ -179,12 +178,12 @@ export class ClassificationMetricsService {
     metricsId: number,
     userId: string,
     feedback: UserFeedback,
-    feedbackFolderId?: number
+    feedbackFolderId?: number,
   ): Promise<boolean> {
     try {
       const supabase = await createClient();
 
-      const { error } = await v42Table(supabase)
+      const { error } = await supabase
         .from("classification_metrics")
         .update({
           user_feedback: feedback,
@@ -197,20 +196,20 @@ export class ClassificationMetricsService {
       if (error) {
         logger.error(
           { error: error.message, metricsId },
-          "ClassificationMetrics: Failed to update feedback"
+          "ClassificationMetrics: Failed to update feedback",
         );
         return false;
       }
 
       logger.info(
         { metricsId, feedback },
-        "ClassificationMetrics: Feedback updated"
+        "ClassificationMetrics: Feedback updated",
       );
       return true;
     } catch (error) {
       logger.error(
         { error: error instanceof Error ? error.message : String(error) },
-        "ClassificationMetrics: Exception while updating feedback"
+        "ClassificationMetrics: Exception while updating feedback",
       );
       return false;
     }
@@ -222,12 +221,12 @@ export class ClassificationMetricsService {
   async getUserDailyMetrics(
     userId: string,
     startDate?: Date,
-    endDate?: Date
+    endDate?: Date,
   ): Promise<ClassificationMetricsSummary[]> {
     try {
       const supabase = await createClient();
 
-      let query = v42Table(supabase)
+      let query = supabase
         .from("classification_metrics_daily")
         .select("*")
         .eq("user_id", userId)
@@ -246,7 +245,7 @@ export class ClassificationMetricsService {
       if (error) {
         logger.error(
           { error: error.message, userId: userId.slice(0, 8) + "..." },
-          "ClassificationMetrics: Failed to get user daily metrics"
+          "ClassificationMetrics: Failed to get user daily metrics",
         );
         return [];
       }
@@ -268,28 +267,30 @@ export class ClassificationMetricsService {
         feedback_count?: number;
       };
 
-      return ((data || []) as DailyMetricsRow[]).map((row: DailyMetricsRow) => ({
-        date: row.date,
-        totalCount: row.total_count,
-        tierCounts: {
-          inbox: row.inbox_count,
-          tier1: row.tier1_count,
-          tier2: row.tier2_count,
-          tier3: row.tier3_count,
-        },
-        aiCallRate: row.ai_call_rate || 0,
-        aiSkipRate: 1 - (row.ai_call_rate || 0),
-        cacheHitRate: row.cache_hit_rate || 0,
-        avgConfidence: row.avg_confidence || 0,
-        avgExecutionTimeMs: row.avg_execution_time_ms || 0,
-        p95ExecutionTimeMs: row.p95_execution_time_ms || 0,
-        acceptanceRate: row.acceptance_rate ?? null,
-        feedbackCount: row.feedback_count || 0,
-      }));
+      return ((data || []) as DailyMetricsRow[]).map(
+        (row: DailyMetricsRow) => ({
+          date: row.date,
+          totalCount: row.total_count,
+          tierCounts: {
+            inbox: row.inbox_count,
+            tier1: row.tier1_count,
+            tier2: row.tier2_count,
+            tier3: row.tier3_count,
+          },
+          aiCallRate: row.ai_call_rate || 0,
+          aiSkipRate: 1 - (row.ai_call_rate || 0),
+          cacheHitRate: row.cache_hit_rate || 0,
+          avgConfidence: row.avg_confidence || 0,
+          avgExecutionTimeMs: row.avg_execution_time_ms || 0,
+          p95ExecutionTimeMs: row.p95_execution_time_ms || 0,
+          acceptanceRate: row.acceptance_rate ?? null,
+          feedbackCount: row.feedback_count || 0,
+        }),
+      );
     } catch (error) {
       logger.error(
         { error: error instanceof Error ? error.message : String(error) },
-        "ClassificationMetrics: Exception while getting user daily metrics"
+        "ClassificationMetrics: Exception while getting user daily metrics",
       );
       return [];
     }
@@ -314,16 +315,18 @@ export class ClassificationMetricsService {
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-      const { data, error } = await v42Table(supabase)
+      const { data, error } = await supabase
         .from("classification_metrics")
-        .select("tier, ai_called, cache_hit, confidence, execution_time_ms, user_feedback")
+        .select(
+          "tier, ai_called, cache_hit, confidence, execution_time_ms, user_feedback",
+        )
         .eq("user_id", userId)
         .gte("created_at", thirtyDaysAgo.toISOString());
 
       if (error) {
         logger.error(
           { error: error.message },
-          "ClassificationMetrics: Failed to get user stats"
+          "ClassificationMetrics: Failed to get user stats",
         );
         return null;
       }
@@ -344,11 +347,17 @@ export class ClassificationMetricsService {
       const typedData = data as MetricsRow[];
 
       const totalClassifications = typedData.length;
-      const aiCallCount = typedData.filter((d: MetricsRow) => d.ai_called).length;
-      const cacheHitCount = typedData.filter((d: MetricsRow) => d.cache_hit).length;
-      const feedbackData = typedData.filter((d: MetricsRow) => d.user_feedback !== null);
+      const aiCallCount = typedData.filter(
+        (d: MetricsRow) => d.ai_called,
+      ).length;
+      const cacheHitCount = typedData.filter(
+        (d: MetricsRow) => d.cache_hit,
+      ).length;
+      const feedbackData = typedData.filter(
+        (d: MetricsRow) => d.user_feedback !== null,
+      );
       const acceptCount = feedbackData.filter(
-        (d: MetricsRow) => d.user_feedback === "accept"
+        (d: MetricsRow) => d.user_feedback === "accept",
       ).length;
 
       const tierDistribution: Record<string, number> = {
@@ -377,13 +386,20 @@ export class ClassificationMetricsService {
 
       return {
         totalClassifications,
-        aiCallRate: totalClassifications > 0 ? aiCallCount / totalClassifications : 0,
-        cacheHitRate: totalClassifications > 0 ? cacheHitCount / totalClassifications : 0,
+        aiCallRate:
+          totalClassifications > 0 ? aiCallCount / totalClassifications : 0,
+        cacheHitRate:
+          totalClassifications > 0 ? cacheHitCount / totalClassifications : 0,
         avgConfidence:
-          typedData.reduce((sum: number, d: MetricsRow) => sum + d.confidence, 0) / totalClassifications,
+          typedData.reduce(
+            (sum: number, d: MetricsRow) => sum + d.confidence,
+            0,
+          ) / totalClassifications,
         avgExecutionTimeMs:
-          typedData.reduce((sum: number, d: MetricsRow) => sum + d.execution_time_ms, 0) /
-          totalClassifications,
+          typedData.reduce(
+            (sum: number, d: MetricsRow) => sum + d.execution_time_ms,
+            0,
+          ) / totalClassifications,
         acceptanceRate:
           feedbackData.length > 0 ? acceptCount / feedbackData.length : null,
         tierDistribution,
@@ -391,7 +407,7 @@ export class ClassificationMetricsService {
     } catch (error) {
       logger.error(
         { error: error instanceof Error ? error.message : String(error) },
-        "ClassificationMetrics: Exception while getting user stats"
+        "ClassificationMetrics: Exception while getting user stats",
       );
       return null;
     }

@@ -11,15 +11,13 @@
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
-import {
-  v42Table,
-  v42Rpc,
-  type JobQueueItem,
-  type JobQueueInsert,
-  type JobQueueType,
-  type JobStatus,
-  type Json,
-} from "@/lib/supabase/v42-types";
+import type {
+  JobQueueItem,
+  JobQueueCreateParams,
+  JobQueueType,
+  JobStatus,
+  Json,
+} from "@/lib/classification/types";
 
 /**
  * 任务领取结果
@@ -98,7 +96,7 @@ export class JobQueueService {
       return ""; // 返回空字符串表示已存在
     }
 
-    const jobData: JobQueueInsert = {
+    const jobData: JobQueueCreateParams = {
       user_id: userId,
       type,
       payload,
@@ -108,7 +106,7 @@ export class JobQueueService {
       max_attempts: options.maxAttempts ?? 3,
     };
 
-    const { data, error } = await v42Table(supabase)
+    const { data, error } = await supabase
       .from("job_queue")
       .insert(jobData)
       .select("id")
@@ -140,7 +138,7 @@ export class JobQueueService {
   ): Promise<boolean> {
     const supabase = await this.getSupabase();
 
-    let query = v42Table(supabase)
+    let query = supabase
       .from("job_queue")
       .select("id", { count: "exact", head: true })
       .eq("user_id", userId)
@@ -179,9 +177,9 @@ export class JobQueueService {
     const supabase = await this.getSupabase();
 
     // 使用 RPC 函数实现原子领取
-    const { data, error } = await v42Rpc(supabase).rpc("claim_next_job", {
+    const { data, error } = await supabase.rpc("claim_next_job", {
       p_worker_id: this.workerId,
-      p_job_types: jobTypes ?? null,
+      p_job_types: jobTypes as string[] | undefined,
       p_lock_duration: `${lockDurationMinutes} minutes`,
     });
 
@@ -218,7 +216,7 @@ export class JobQueueService {
   async completeJob(jobId: string, result?: Json): Promise<boolean> {
     const supabase = await this.getSupabase();
 
-    const { data, error } = await v42Rpc(supabase).rpc("complete_job", {
+    const { data, error } = await supabase.rpc("complete_job", {
       p_job_id: jobId,
       p_result: result ?? null,
     });
@@ -247,7 +245,7 @@ export class JobQueueService {
   ): Promise<boolean> {
     const supabase = await this.getSupabase();
 
-    const { data, error } = await v42Rpc(supabase).rpc("fail_job", {
+    const { data, error } = await supabase.rpc("fail_job", {
       p_job_id: jobId,
       p_error: errorMessage,
       p_retry: retry,
@@ -275,7 +273,7 @@ export class JobQueueService {
   async cancelJob(userId: string, jobId: string): Promise<boolean> {
     const supabase = await this.getSupabase();
 
-    const { error } = await v42Table(supabase)
+    const { error } = await supabase
       .from("job_queue")
       .update({ status: "cancelled" })
       .eq("id", jobId)
@@ -307,7 +305,7 @@ export class JobQueueService {
     const supabase = await this.getSupabase();
     const { type, status, limit = 50 } = options;
 
-    let query = v42Table(supabase)
+    let query = supabase
       .from("job_queue")
       .select("*")
       .eq("user_id", userId)
@@ -354,7 +352,7 @@ export class JobQueueService {
   ): Promise<JobQueueItem | null> {
     const supabase = await this.getSupabase();
 
-    const { data, error } = await v42Table(supabase)
+    const { data, error } = await supabase
       .from("job_queue")
       .select("*")
       .eq("id", jobId)
@@ -394,7 +392,7 @@ export class JobQueueService {
     };
 
     for (const status of statuses) {
-      const { count, error } = await v42Table(supabase)
+      const { count, error } = await supabase
         .from("job_queue")
         .select("*", { count: "exact", head: true })
         .eq("user_id", userId)
@@ -426,7 +424,7 @@ export class JobQueueService {
   ): Promise<string[]> {
     const supabase = await this.getSupabase();
 
-    const jobsData: JobQueueInsert[] = payloads.map((payload) => ({
+    const jobsData: JobQueueCreateParams[] = payloads.map((payload) => ({
       user_id: userId,
       type,
       payload,
@@ -435,7 +433,7 @@ export class JobQueueService {
         options.scheduledAt?.toISOString() ?? new Date().toISOString(),
     }));
 
-    const { data, error } = await v42Table(supabase)
+    const { data, error } = await supabase
       .from("job_queue")
       .insert(jobsData)
       .select("id");
@@ -466,7 +464,7 @@ export class JobQueueService {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - daysOld);
 
-    const { data, error } = await v42Table(supabase)
+    const { data, error } = await supabase
       .from("job_queue")
       .delete()
       .in("status", ["completed", "failed", "cancelled"])
@@ -494,7 +492,7 @@ export class JobQueueService {
   async resetStuckJobs(): Promise<number> {
     const supabase = await this.getSupabase();
 
-    const { data, error } = await v42Table(supabase)
+    const { data, error } = await supabase
       .from("job_queue")
       .update({
         status: "pending",
@@ -525,7 +523,7 @@ export class JobQueueService {
   async getPendingCount(userId?: string, type?: JobQueueType): Promise<number> {
     const supabase = await this.getSupabase();
 
-    let query = v42Table(supabase)
+    let query = supabase
       .from("job_queue")
       .select("*", { count: "exact", head: true })
       .eq("status", "pending");

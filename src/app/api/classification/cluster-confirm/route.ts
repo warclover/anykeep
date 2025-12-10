@@ -18,7 +18,6 @@ import {
 } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
 import { operationLogService } from "@/lib/classification/services/operation-log.service";
-import { v42Table } from "@/lib/supabase/v42-types";
 
 /**
  * 确认建议 Schema
@@ -70,7 +69,7 @@ export async function POST(request: NextRequest) {
 
     // 3. 获取建议记录
     // Note: bookmark_ids, suggested_action, metadata 是 V4.2 新增字段
-    const { data: suggestion, error: fetchError } = await v42Table(supabase)
+    const { data: suggestion, error: fetchError } = await supabase
       .from("classification_suggestions")
       .select("*")
       .eq("id", suggestionId)
@@ -82,8 +81,8 @@ export async function POST(request: NextRequest) {
       return notFoundError("建议不存在或已处理");
     }
 
-    // 类型断言
-    const typedSuggestion = suggestion as {
+    // 类型断言 - TODO: V4.2 bookmark_ids, suggested_action, metadata 待添加到数据库
+    const typedSuggestion = suggestion as unknown as {
       id: number;
       suggested_folder_name: string | null;
       suggested_action: string | null;
@@ -134,7 +133,7 @@ export async function POST(request: NextRequest) {
 
     // 7. 移动书签到新文件夹并清除聚类状态
     // Note: pending_cluster, pending_since, cluster_id, cluster_confidence 是 V4.2 新增字段
-    const { error: moveError } = await v42Table(supabase)
+    const { error: moveError } = await supabase
       .from("bookmarks")
       .update({
         folder_id: newFolder.id,
@@ -235,7 +234,7 @@ export async function DELETE(request: NextRequest) {
 
     // 3. 获取建议记录
     // Note: bookmark_ids, metadata 是 V4.2 新增字段
-    const { data: suggestion, error: fetchError } = await v42Table(supabase)
+    const { data: suggestion, error: fetchError } = await supabase
       .from("classification_suggestions")
       .select("*")
       .eq("id", suggestionId)
@@ -247,14 +246,14 @@ export async function DELETE(request: NextRequest) {
       return notFoundError("建议不存在或已处理");
     }
 
-    // 类型断言
-    const typedSuggestion = suggestion as {
+    // 类型断言 - TODO: V4.2 bookmark_ids, metadata 待添加到数据库
+    const typedSuggestion = suggestion as unknown as {
       bookmark_ids: number[] | null;
       metadata: Record<string, unknown> | null;
     };
 
     // 4. 更新建议状态为拒绝
-    await v42Table(supabase)
+    await supabase
       .from("classification_suggestions")
       .update({
         status: "rejected",
@@ -271,7 +270,7 @@ export async function DELETE(request: NextRequest) {
     // Note: cluster_id, cluster_confidence 是 V4.2 新增字段
     const bookmarkIds = typedSuggestion.bookmark_ids || [];
     if (bookmarkIds.length > 0) {
-      await v42Table(supabase)
+      await supabase
         .from("bookmarks")
         .update({
           cluster_id: null,

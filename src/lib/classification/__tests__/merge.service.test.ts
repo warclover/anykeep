@@ -47,11 +47,7 @@ jest.mock("@/lib/supabase/server", () => ({
   createServerSupabaseClient: jest.fn(),
 }));
 
-// Mock v42 helpers
-jest.mock("@/lib/supabase/v42-types", () => ({
-  v42Table: jest.fn((supabase) => supabase),
-  v42Rpc: jest.fn((supabase) => supabase),
-}));
+// v42 helpers removed - now using native Supabase types
 
 describe("MergeService", () => {
   let service: MergeService;
@@ -62,7 +58,7 @@ describe("MergeService", () => {
     {
       folder_id: 1,
       profile_embedding: Array(1536).fill(0.5),
-      common_tags: ["react", "frontend", "javascript"],
+      top_tags: ["react", "frontend", "javascript"],
       bookmark_count: 10,
       folders: {
         id: 1,
@@ -75,7 +71,7 @@ describe("MergeService", () => {
     {
       folder_id: 2,
       profile_embedding: Array(1536).fill(0.51), // Similar embedding
-      common_tags: ["react", "frontend", "hooks"],
+      top_tags: ["react", "frontend", "hooks"],
       bookmark_count: 5,
       folders: {
         id: 2,
@@ -88,7 +84,7 @@ describe("MergeService", () => {
     {
       folder_id: 3,
       profile_embedding: Array(1536).fill(0.1), // Different embedding
-      common_tags: ["backend", "nodejs", "express"],
+      top_tags: ["backend", "nodejs", "express"],
       bookmark_count: 8,
       folders: {
         id: 3,
@@ -154,14 +150,14 @@ describe("MergeService", () => {
         {
           ...mockFolderProfiles[0],
           profile_embedding: Array(1536).fill(1),
-          common_tags: ["a", "b", "c"],
+          top_tags: ["a", "b", "c"],
         },
         {
           ...mockFolderProfiles[1],
           folder_id: 4,
           folders: { ...mockFolderProfiles[1].folders, id: 4 },
           profile_embedding: Array(1536).fill(-1),
-          common_tags: ["x", "y", "z"],
+          top_tags: ["x", "y", "z"],
         },
       ];
 
@@ -183,7 +179,7 @@ describe("MergeService", () => {
         {
           folder_id: 4,
           profile_embedding: Array(1536).fill(0.5), // Exact match with folder 1
-          common_tags: ["react", "frontend", "javascript"],
+          top_tags: ["react", "frontend", "javascript"],
           bookmark_count: 3,
           folders: {
             id: 4,
@@ -219,7 +215,7 @@ describe("MergeService", () => {
         .map((_, i) => ({
           folder_id: i + 1,
           profile_embedding: Array(1536).fill(0.5 + i * 0.001),
-          common_tags: ["react", "frontend"],
+          top_tags: ["react", "frontend"],
           bookmark_count: 5,
           folders: {
             id: i + 1,
@@ -270,7 +266,7 @@ describe("MergeService", () => {
             {
               bookmark_count: 10,
               profile_embedding: Array(1536).fill(0.5),
-              common_tags: ["react", "frontend"],
+              top_tags: ["react", "frontend"],
             },
           ],
         },
@@ -282,7 +278,7 @@ describe("MergeService", () => {
             {
               bookmark_count: 5,
               profile_embedding: Array(1536).fill(0.5),
-              common_tags: ["react", "hooks"],
+              top_tags: ["react", "hooks"],
             },
           ],
         },
@@ -372,7 +368,7 @@ describe("MergeService", () => {
   describe("areMergeCandidates()", () => {
     it("should return false when profiles not found", async () => {
       mockSupabase.in.mockResolvedValue({
-        data: [{ folder_id: 1, profile_embedding: null, common_tags: [] }],
+        data: [{ folder_id: 1, profile_embedding: null, top_tags: [] }],
         error: null,
       });
 
@@ -389,12 +385,12 @@ describe("MergeService", () => {
           {
             folder_id: 1,
             profile_embedding: embedding,
-            common_tags: ["a", "b"],
+            top_tags: ["a", "b"],
           },
           {
             folder_id: 2,
             profile_embedding: embedding,
-            common_tags: ["a", "b"],
+            top_tags: ["a", "b"],
           },
         ],
         error: null,
@@ -413,12 +409,12 @@ describe("MergeService", () => {
           {
             folder_id: 1,
             profile_embedding: Array(1536).fill(0.1),
-            common_tags: ["react", "frontend", "hooks", "state"],
+            top_tags: ["react", "frontend", "hooks", "state"],
           },
           {
             folder_id: 2,
             profile_embedding: Array(1536).fill(0.9),
-            common_tags: ["react", "frontend", "hooks", "context"],
+            top_tags: ["react", "frontend", "hooks", "context"],
           },
         ],
         error: null,
@@ -436,12 +432,12 @@ describe("MergeService", () => {
           {
             folder_id: 1,
             profile_embedding: Array(1536).fill(1),
-            common_tags: ["frontend", "react"],
+            top_tags: ["frontend", "react"],
           },
           {
             folder_id: 2,
             profile_embedding: Array(1536).fill(-1),
-            common_tags: ["backend", "python"],
+            top_tags: ["backend", "python"],
           },
         ],
         error: null,
@@ -459,8 +455,8 @@ describe("MergeService", () => {
       it("should return 0 for empty tag arrays", async () => {
         mockSupabase.in.mockResolvedValue({
           data: [
-            { folder_id: 1, profile_embedding: null, common_tags: [] },
-            { folder_id: 2, profile_embedding: null, common_tags: [] },
+            { folder_id: 1, profile_embedding: null, top_tags: [] },
+            { folder_id: 2, profile_embedding: null, top_tags: [] },
           ],
           error: null,
         });
@@ -475,12 +471,12 @@ describe("MergeService", () => {
             {
               folder_id: 1,
               profile_embedding: null,
-              common_tags: ["React", "FRONTEND"],
+              top_tags: ["React", "FRONTEND"],
             },
             {
               folder_id: 2,
               profile_embedding: null,
-              common_tags: ["react", "frontend"],
+              top_tags: ["react", "frontend"],
             },
           ],
           error: null,
@@ -496,8 +492,8 @@ describe("MergeService", () => {
         const embedding = Array(1536).fill(0.5);
         mockSupabase.in.mockResolvedValue({
           data: [
-            { folder_id: 1, profile_embedding: embedding, common_tags: [] },
-            { folder_id: 2, profile_embedding: embedding, common_tags: [] },
+            { folder_id: 1, profile_embedding: embedding, top_tags: [] },
+            { folder_id: 2, profile_embedding: embedding, top_tags: [] },
           ],
           error: null,
         });
@@ -512,12 +508,12 @@ describe("MergeService", () => {
             {
               folder_id: 1,
               profile_embedding: Array(1536).fill(1),
-              common_tags: [],
+              top_tags: [],
             },
             {
               folder_id: 2,
               profile_embedding: Array(1536).fill(-1),
-              common_tags: [],
+              top_tags: [],
             },
           ],
           error: null,
@@ -533,12 +529,12 @@ describe("MergeService", () => {
             {
               folder_id: 1,
               profile_embedding: Array(1536).fill(0),
-              common_tags: [],
+              top_tags: [],
             },
             {
               folder_id: 2,
               profile_embedding: Array(1536).fill(0.5),
-              common_tags: [],
+              top_tags: [],
             },
           ],
           error: null,

@@ -44,7 +44,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import type { Bookmark, CustomUsageTag, Platform } from "@/types/supabase";
-import type { BookmarkV42Fields } from "@/lib/supabase/v42-types";
+import type { BookmarkV42Fields } from "@/lib/classification/types";
 import { cn } from "@/lib/utils";
 import { formatRelativeTime } from "@/lib/utils/date-utils";
 import {

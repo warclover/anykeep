@@ -10,18 +10,18 @@
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
-import {
-  v42Table,
-  type OperationSnapshot,
-  type OperationSnapshotInsert,
-  type OperationSnapshotAction,
-  type Json,
-  type CreateOperationState,
-  type SplitOperationState,
-  type MergeOperationState,
-  type RenameOperationState,
-} from "@/lib/supabase/v42-types";
+import type {
+  OperationSnapshot,
+  OperationSnapshotInsert,
+  OperationSnapshotAction,
+  Json,
+  CreateOperationState,
+  SplitOperationState,
+  MergeOperationState,
+  RenameOperationState,
+} from "@/lib/classification/types";
 import { MessageService } from "@/lib/messages/message-service";
+import { eventBus, OrganizationEvents } from "@/lib/shared/event-bus";
 import type { OperationDetail } from "@/types/supabase";
 
 /**
@@ -91,7 +91,7 @@ export class OperationLogService {
     };
 
     // V4.2 表
-    const { data, error } = await v42Table(supabase)
+    const { data, error } = await supabase
       .from("operation_snapshots")
       .insert(snapshotData)
       .select()
@@ -322,7 +322,7 @@ export class OperationLogService {
     } = options;
 
     // V4.2 表
-    let query = v42Table(supabase)
+    let query = supabase
       .from("operation_snapshots")
       .select("*")
       .eq("user_id", userId)
@@ -369,7 +369,7 @@ export class OperationLogService {
       is_undone: boolean;
       undone_at: string | null;
     };
-    const typedData = (data || []) as SnapshotRow[];
+    const typedData = (data || []) as unknown as SnapshotRow[];
 
     // 转换为 OperationDetail 格式
     return typedData.map((snapshot: SnapshotRow) => ({
@@ -400,7 +400,7 @@ export class OperationLogService {
     const supabase = await this.getSupabase();
 
     // V4.2 表
-    const { data, error } = await v42Table(supabase)
+    const { data, error } = await supabase
       .from("operation_snapshots")
       .select("*")
       .eq("id", snapshotId)
@@ -438,7 +438,11 @@ export class OperationLogService {
       return { success: false, message: "该操作已被撤销" };
     }
 
-    if (new Date(snapshot.expires_at) < new Date()) {
+    // expires_at 可能为 null
+    const expiresAt = snapshot.expires_at
+      ? new Date(snapshot.expires_at)
+      : new Date(0);
+    if (expiresAt < new Date()) {
       return { success: false, message: "撤销窗口已过期（超过 2 天）" };
     }
 
@@ -447,7 +451,7 @@ export class OperationLogService {
       const result = await this.executeUndo(snapshot);
 
       // 4. 标记快照为已撤销 (V4.2 表)
-      await v42Table(supabase)
+      await supabase
         .from("operation_snapshots")
         .update({
           is_undone: true,
@@ -465,6 +469,14 @@ export class OperationLogService {
           actionLabel,
           result.message,
         );
+
+        // 6. 发布撤销事件（V4.2 事件总线）
+        eventBus.emit(OrganizationEvents.OPERATION_UNDONE, {
+          userId,
+          snapshotId,
+          action: snapshot.action as OperationSnapshotAction,
+          timestamp: new Date().toISOString(),
+        });
       }
 
       return result;
@@ -673,7 +685,7 @@ export class OperationLogService {
     const supabase = await this.getSupabase();
 
     // V4.2 表
-    const { count, error } = await v42Table(supabase)
+    const { count, error } = await supabase
       .from("operation_snapshots")
       .select("*", { count: "exact", head: true })
       .eq("user_id", userId)
@@ -698,7 +710,7 @@ export class OperationLogService {
     const supabase = await this.getSupabase();
 
     // V4.2 表
-    const { data, error } = await v42Table(supabase)
+    const { data, error } = await supabase
       .from("operation_snapshots")
       .delete()
       .lt("expires_at", new Date().toISOString())
@@ -746,6 +758,16 @@ export class OperationLogService {
       reason,
       String(snapshot.id),
     );
+
+    // 发布文件夹创建事件（V4.2 事件总线）
+    eventBus.emit(OrganizationEvents.FOLDER_CREATED, {
+      userId,
+      folderId: folder.id,
+      folderName: folder.name,
+      isAiSuggested: true,
+      bookmarkIds: bookmarks.map((b) => b.id),
+      timestamp: new Date().toISOString(),
+    });
 
     return snapshot;
   }

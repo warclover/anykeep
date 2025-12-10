@@ -11,11 +11,10 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
-import {
-  v42Table,
-  type ClassificationDecisionType,
-  type ClassificationDecisionInsert,
-} from "@/lib/supabase/v42-types";
+import type {
+  ClassificationDecisionType,
+  ClassificationDecisionInsert,
+} from "@/lib/classification/types";
 import type {
   DecisionPath,
   MatcherScoreDetail,
@@ -44,7 +43,7 @@ export interface TraceContext {
  */
 export function createTraceContext(
   userId: string,
-  bookmark: BookmarkInput
+  bookmark: BookmarkInput,
 ): TraceContext {
   return {
     traceId: generateTraceId(),
@@ -64,7 +63,7 @@ export function recordMatcherResult(
   startTime: number,
   available: boolean,
   results: MatchResult[] | null,
-  error?: string
+  error?: string,
 ): void {
   const durationMs = Math.round(performance.now() - startTime);
 
@@ -113,12 +112,14 @@ export function generateDecisionReason(
     folderName: string;
     confidence: number;
     action: ClassificationAction;
-  }
+  },
 ): DecisionReason {
   // 找到贡献最大的匹配器
   const topMatcher = matcherScores
     .filter((m) => m.available && m.topCandidate)
-    .sort((a, b) => (b.topCandidate?.score || 0) - (a.topCandidate?.score || 0))[0];
+    .sort(
+      (a, b) => (b.topCandidate?.score || 0) - (a.topCandidate?.score || 0),
+    )[0];
 
   let primary = "";
   let secondary: string | undefined;
@@ -201,14 +202,14 @@ export function buildDecisionPath(
     confidence: number;
     action: ClassificationAction;
     reason: string;
-  }
+  },
 ): DecisionPath {
   const totalMs = Math.round(performance.now() - context.startTime);
 
   const decisionReason = generateDecisionReason(
     tier,
     context.matcherScores,
-    finalResult
+    finalResult,
   );
 
   return {
@@ -256,17 +257,22 @@ export class TraceStorageService {
    * @param decisionPath 决策路径
    * @param bookmarkId 书签 ID（必填，因为 classification_decisions 表需要）
    */
-  async saveTrace(decisionPath: DecisionPath, bookmarkId?: number): Promise<void> {
+  async saveTrace(
+    decisionPath: DecisionPath,
+    bookmarkId?: number,
+  ): Promise<void> {
     try {
       // 只有提供 bookmarkId 时才保存到数据库
       if (bookmarkId) {
         // 将 matcher_scores 序列化为 JSON 兼容格式
-        const matcherScoresJson = JSON.parse(JSON.stringify({
-          traceId: decisionPath.traceId,
-          matcherScores: decisionPath.matcherScores,
-          tierTimings: decisionPath.tierTimings,
-          decisionReason: decisionPath.decisionReason,
-        }));
+        const matcherScoresJson = JSON.parse(
+          JSON.stringify({
+            traceId: decisionPath.traceId,
+            matcherScores: decisionPath.matcherScores,
+            tierTimings: decisionPath.tierTimings,
+            decisionReason: decisionPath.decisionReason,
+          }),
+        );
 
         const insertData: ClassificationDecisionInsert = {
           user_id: decisionPath.userId,
@@ -280,12 +286,15 @@ export class TraceStorageService {
         };
 
         // Note: classification_decisions 是 V4.2 新增表
-        const { error } = await v42Table(this.supabase)
+        const { error } = await this.supabase
           .from("classification_decisions")
           .upsert(insertData);
 
         if (error) {
-          logger.warn({ error, traceId: decisionPath.traceId }, "Failed to save trace to database");
+          logger.warn(
+            { error, traceId: decisionPath.traceId },
+            "Failed to save trace to database",
+          );
         }
       }
 
@@ -294,7 +303,7 @@ export class TraceStorageService {
     } catch (error) {
       logger.error(
         { error: error instanceof Error ? error.message : String(error) },
-        "TraceStorageService: saveTrace failed"
+        "TraceStorageService: saveTrace failed",
       );
     }
   }
@@ -329,7 +338,7 @@ export class TraceStorageService {
       // 使用 RPC 或原始 SQL 查询 JSONB 字段
       // 由于 Supabase JS SDK 不直接支持 JSONB 操作符，使用 textSearch 模式
       // Note: classification_decisions 是 V4.2 新增表
-      const { data: allDataRaw, error } = await v42Table(this.supabase)
+      const { data: allDataRaw, error } = await this.supabase
         .from("classification_decisions")
         .select("*")
         .limit(100)
@@ -392,8 +401,11 @@ export class TraceStorageService {
       };
     } catch (error) {
       logger.error(
-        { error: error instanceof Error ? error.message : String(error), traceId },
-        "TraceStorageService: getTrace failed"
+        {
+          error: error instanceof Error ? error.message : String(error),
+          traceId,
+        },
+        "TraceStorageService: getTrace failed",
       );
       return null;
     }
@@ -404,11 +416,18 @@ export class TraceStorageService {
    */
   async getRecentTraces(
     userId: string,
-    limit: number = 50
-  ): Promise<Array<{ traceId: string; timestamp: string; folderName: string; confidence: number }>> {
+    limit: number = 50,
+  ): Promise<
+    Array<{
+      traceId: string;
+      timestamp: string;
+      folderName: string;
+      confidence: number;
+    }>
+  > {
     try {
       // Note: classification_decisions 是 V4.2 新增表
-      const { data: dataRaw, error } = await v42Table(this.supabase)
+      const { data: dataRaw, error } = await this.supabase
         .from("classification_decisions")
         .select("matcher_scores, created_at, final_folder_name, confidence")
         .eq("user_id", userId)
@@ -441,7 +460,7 @@ export class TraceStorageService {
     } catch (error) {
       logger.error(
         { error: error instanceof Error ? error.message : String(error) },
-        "TraceStorageService: getRecentTraces failed"
+        "TraceStorageService: getRecentTraces failed",
       );
       return [];
     }
@@ -450,7 +469,9 @@ export class TraceStorageService {
   /**
    * 辅助方法：tier 转 decision_type
    */
-  private mapTierToDecisionType(tier: 0 | 1 | 2 | 3): ClassificationDecisionType {
+  private mapTierToDecisionType(
+    tier: 0 | 1 | 2 | 3,
+  ): ClassificationDecisionType {
     switch (tier) {
       case 1:
         return "tier1_direct";
@@ -483,7 +504,9 @@ export class TraceStorageService {
   /**
    * 辅助方法：decision_type 转 action
    */
-  private mapDecisionTypeToAction(decisionType: string | null): ClassificationAction {
+  private mapDecisionTypeToAction(
+    decisionType: string | null,
+  ): ClassificationAction {
     switch (decisionType) {
       case "tier3_auto_create":
         return "suggest_create";
@@ -501,7 +524,7 @@ export class TraceStorageService {
  * @deprecated 请使用 `import { getTraceStorage } from './service-factory'` 代替
  */
 export function createTraceStorageService(
-  supabase: SupabaseClient<Database>
+  supabase: SupabaseClient<Database>,
 ): TraceStorageService {
   return new TraceStorageService(supabase);
 }

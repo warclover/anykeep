@@ -219,8 +219,11 @@ export class TagMatcher implements IMatcher {
 
       // 只保留有足够共同标签的书签
       if (commonTags.length >= this.config.minCommonTags) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const folder = row.folders as any;
+        // Supabase !inner join 返回单个对象（非数组）
+        const folder = row.folders as unknown as {
+          name: string;
+          is_system: boolean;
+        } | null;
         similarBookmarks.push({
           id: row.id,
           title: row.title,

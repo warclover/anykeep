@@ -8,7 +8,6 @@
  * - 提供优化建议
  */
 
-import { v42Table } from "@/lib/supabase/v42-types";
 import { operationLogService } from "./operation-log.service";
 import { logger } from "@/lib/logger";
 import { BaseSupabaseService } from "./base-supabase.service";
@@ -120,7 +119,7 @@ export class ReportService extends BaseSupabaseService {
       );
 
       // 6. Save report (V4.2 表)
-      const { data: report, error } = await v42Table(supabase)
+      const { data: report, error } = await supabase
         .from("evolution_reports")
         .upsert(
           {
@@ -184,7 +183,7 @@ export class ReportService extends BaseSupabaseService {
     const supabase = await this.getSupabase();
 
     // V4.2 表
-    const { data, error } = await v42Table(supabase)
+    const { data, error } = await supabase
       .from("evolution_reports")
       .select("*")
       .eq("user_id", userId)
@@ -205,7 +204,7 @@ export class ReportService extends BaseSupabaseService {
     const supabase = await this.getSupabase();
 
     // V4.2 表
-    const { data, error } = await v42Table(supabase)
+    const { data, error } = await supabase
       .from("evolution_reports")
       .select("*")
       .eq("user_id", userId)
@@ -216,8 +215,8 @@ export class ReportService extends BaseSupabaseService {
       return [];
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (data as any[]).map((r: Record<string, unknown>) =>
+    // 类型安全的报告数据映射
+    return (data as Record<string, unknown>[]).map((r) =>
       this.mapReportToInterface(r),
     );
   }
@@ -229,7 +228,7 @@ export class ReportService extends BaseSupabaseService {
     const supabase = await this.getSupabase();
 
     // V4.2 表
-    await v42Table(supabase)
+    await supabase
       .from("evolution_reports")
       .update({ viewed_at: new Date().toISOString() })
       .eq("id", reportId)
@@ -259,7 +258,7 @@ export class ReportService extends BaseSupabaseService {
       .lte("created_at", endDate.toISOString());
 
     // Get manually adjusted (from classification_metrics, V4.2 表)
-    const { data: metrics } = await v42Table(supabase)
+    const { data: metrics } = await supabase
       .from("classification_metrics")
       .select("user_feedback")
       .eq("user_id", userId)
@@ -302,7 +301,7 @@ export class ReportService extends BaseSupabaseService {
     const endDate = new Date(year, monthNum, 0, 23, 59, 59);
 
     // V4.2 表
-    const { data } = await v42Table(supabase)
+    const { data } = await supabase
       .from("operation_snapshots")
       .select("action")
       .eq("user_id", userId)
@@ -355,7 +354,7 @@ export class ReportService extends BaseSupabaseService {
     const endDate = new Date(year, monthNum, 0, 23, 59, 59);
 
     // V4.2 表
-    const { data } = await v42Table(supabase)
+    const { data } = await supabase
       .from("classification_metrics")
       .select("confidence, user_feedback")
       .eq("user_id", userId)
@@ -400,7 +399,7 @@ export class ReportService extends BaseSupabaseService {
     const suggestions: ReportSuggestion[] = [];
 
     // 1. Check for folders with low internal similarity (split candidates, V4.2 表)
-    const { data: splitCandidates } = await v42Table(supabase)
+    const { data: splitCandidates } = await supabase
       .from("folder_profiles")
       .select(
         `

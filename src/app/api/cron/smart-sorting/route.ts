@@ -10,7 +10,6 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { logger } from "@/lib/logger";
 import type { Database } from "@/types/supabase";
-import { v42Table } from "@/lib/supabase/v42-types";
 
 // 模块级别的 Supabase 客户端（在请求处理时初始化）
 let supabaseAdmin: ReturnType<typeof createClient<Database>> | null = null;
@@ -89,9 +88,7 @@ export async function GET(request: Request) {
 
     // 1. 获取有待聚类书签的用户列表
     // Note: pending_cluster, pending_since 是 V4.2 新增字段
-    const { data: usersWithPending, error: fetchError } = await v42Table(
-      getAdmin(),
-    )
+    const { data: usersWithPending, error: fetchError } = await getAdmin()
       .from("bookmarks")
       .select("user_id")
       .eq("pending_cluster", true)
@@ -194,7 +191,7 @@ async function processUserInbox(userId: string): Promise<{
 
   // 1. 获取用户的自治等级设置
   // Note: ai_evolution_level 是 V4.2 新增字段
-  const { data: profile } = await v42Table(getAdmin())
+  const { data: profile } = await getAdmin()
     .from("profiles")
     .select("ai_evolution_level")
     .eq("id", userId)
@@ -209,9 +206,7 @@ async function processUserInbox(userId: string): Promise<{
 
   // 2. 获取待聚类书签
   // Note: pending_cluster, pending_since 是 V4.2 新增字段
-  const { data: pendingBookmarks, error: fetchError } = await v42Table(
-    getAdmin(),
-  )
+  const { data: pendingBookmarks, error: fetchError } = await getAdmin()
     .from("bookmarks")
     .select("id, title, url, ai_summary, ai_tags, embedding, pending_since")
     .eq("user_id", userId)
@@ -473,7 +468,7 @@ async function autoCreateFolder(
     today.setHours(0, 0, 0, 0);
 
     // Note: operation_snapshots 是 V4.2 新增表
-    const { count: todayCount } = await v42Table(getAdmin())
+    const { count: todayCount } = await getAdmin()
       .from("operation_snapshots")
       .select("*", { count: "exact", head: true })
       .eq("user_id", userId)
@@ -511,7 +506,7 @@ async function autoCreateFolder(
     // 5. 移动书签到新文件夹
     // Note: pending_cluster, pending_since, cluster_id 是 V4.2 新增字段
     const bookmarkIds = cluster.bookmarks.map((b) => b.id);
-    const { error: moveError } = await v42Table(getAdmin())
+    const { error: moveError } = await getAdmin()
       .from("bookmarks")
       .update({
         folder_id: newFolder.id,
@@ -527,7 +522,7 @@ async function autoCreateFolder(
 
     // 6. 记录操作快照
     // Note: operation_snapshots 是 V4.2 新增表
-    await v42Table(getAdmin())
+    await getAdmin()
       .from("operation_snapshots")
       .insert({
         user_id: userId,
@@ -608,7 +603,7 @@ async function createSuggestion(
 
     // 3. 更新书签的聚类 ID
     // Note: cluster_id, cluster_confidence 是 V4.2 新增字段
-    await v42Table(getAdmin())
+    await getAdmin()
       .from("bookmarks")
       .update({
         cluster_id: clusterId,
@@ -617,24 +612,18 @@ async function createSuggestion(
       .in("id", bookmarkIds);
 
     // 4. 创建建议记录
-    // Note: bookmark_ids, suggested_action, metadata 是 V4.2 classification_suggestions 新增字段
-    await v42Table(getAdmin())
+    // Note: bookmark_ids, suggested_action, metadata 是 V4.2 待添加字段，当前使用现有 schema
+    await getAdmin()
       .from("classification_suggestions")
       .insert({
         user_id: userId,
-        bookmark_id: bookmarkIds[0], // V4.1 遗留字段，用第一个书签 ID
-        bookmark_ids: bookmarkIds,
-        suggested_action: "create_folder",
+        batch_id: clusterId, // 使用聚类 ID 作为批次标识
+        bookmark_id: bookmarkIds[0], // 使用第一个书签 ID
         suggested_folder_name: folderName.name,
         suggest_new_folder: true,
         confidence: 0.8,
-        reason: folderName.reason,
+        reason: `聚类建议: ${folderName.reason} (包含 ${bookmarkIds.length} 个书签, IDs: ${bookmarkIds.slice(0, 5).join(",")})`,
         status: "pending",
-        metadata: {
-          clusterId,
-          bookmarkCount: bookmarkIds.length,
-          sampleTitles: cluster.bookmarks.slice(0, 5).map((b) => b.title),
-        },
       });
 
     logger.info(

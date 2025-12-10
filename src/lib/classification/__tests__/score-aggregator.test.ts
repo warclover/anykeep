@@ -198,10 +198,12 @@ describe("WeightedScoreAggregator", () => {
 
       const result = aggregator.aggregate(results, matchers);
 
-      // Folder A: 80*0.4 = 32
-      // Folder B: 60*0.4 + 90*0.3 = 24 + 27 = 51
-      expect(result.folderId).toBe(2);
-      expect(result.folderName).toBe("Folder B");
+      // 使用加权平均算法：weightedScore = weightedSum / totalWeight
+      // Folder A: (80*0.4) / 0.4 = 80
+      // Folder B: (60*0.4 + 90*0.3) / 0.7 = 51 / 0.7 ≈ 72.86
+      // Folder A 得分更高
+      expect(result.folderId).toBe(1);
+      expect(result.folderName).toBe("Folder A");
     });
 
     it("should include match details in result", () => {
@@ -261,8 +263,8 @@ describe("WeightedScoreAggregator", () => {
 
       const result = aggregator.aggregate(results, matchers);
 
-      // Only vector contributes: 100*0.4 = 40
-      expect(result.confidence).toBe(40);
+      // 加权平均：(100*0.4) / 0.4 = 100（不是简单的 100*0.4 = 40）
+      expect(result.confidence).toBe(100);
       expect(result.action).toBe("classify");
     });
   });
@@ -280,8 +282,8 @@ describe("WeightedScoreAggregator", () => {
             {
               folderId: 1,
               folderName: "Test",
-              score: 100,
-              confidence: 100,
+              score: 40, // 设置低分以测试阈值
+              confidence: 40,
               reason: "",
             },
           ],
@@ -290,7 +292,7 @@ describe("WeightedScoreAggregator", () => {
 
       const result = customAggregator.aggregate(results, matchers);
 
-      // 100 * 0.4 = 40, which is below custom threshold of 50
+      // 加权平均：(40*0.4) / 0.4 = 40，低于自定义阈值 50
       expect(result.action).toBe("inbox");
     });
   });

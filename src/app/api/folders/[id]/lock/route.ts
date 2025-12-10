@@ -8,7 +8,6 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { v42Table } from "@/lib/supabase/v42-types";
 import { logger } from "@/lib/logger";
 
 interface RouteParams {
@@ -86,7 +85,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       // 如果锁定，同时禁止 AI 重命名
       is_ai_renamable: !locked,
     };
-    const { error: updateError } = await v42Table(supabase)
+    const { error: updateError } = await supabase
       .from("folder_profiles")
       .update(updateData)
       .eq("folder_id", folderId)
@@ -101,7 +100,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
           is_system_locked: locked,
           is_ai_renamable: !locked,
         };
-        const { error: insertError } = await v42Table(supabase)
+        const { error: insertError } = await supabase
           .from("folder_profiles")
           .insert(insertData);
 
@@ -186,7 +185,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     // 获取锁定状态
     // Note: folder_profiles 是 V4.2 新增表
-    const { data: profile } = await v42Table(supabase)
+    const { data: profile } = await supabase
       .from("folder_profiles")
       .select("is_system_locked, is_ai_renamable")
       .eq("folder_id", folderId)

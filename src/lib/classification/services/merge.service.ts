@@ -9,7 +9,6 @@
  */
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { v42Table, v42Rpc } from "@/lib/supabase/v42-types";
 import { operationLogService } from "./operation-log.service";
 import { logger } from "@/lib/logger";
 
@@ -110,13 +109,13 @@ export class MergeService {
     const supabase = await this.getSupabase();
 
     // 1. Get all folders with profiles (V4.2 表)
-    const { data: profiles, error } = await v42Table(supabase)
+    const { data: profiles, error } = await supabase
       .from("folder_profiles")
       .select(
         `
         folder_id,
         profile_embedding,
-        common_tags,
+        top_tags,
         bookmark_count,
         folders!inner (
           id,
@@ -141,7 +140,7 @@ export class MergeService {
     type ProfileRow = {
       folder_id: number;
       profile_embedding: number[] | null;
-      common_tags: string[] | null;
+      top_tags: string[] | null;
       bookmark_count: number;
       folders: {
         id: number;
@@ -151,16 +150,18 @@ export class MergeService {
     };
     const typedProfiles = profiles as ProfileRow[];
 
-    const folderProfiles: FolderProfile[] = typedProfiles.map((p: ProfileRow) => {
-      return {
-        folderId: p.folders.id,
-        name: p.folders.name,
-        parentId: p.folders.parent_id,
-        bookmarkCount: p.bookmark_count,
-        embedding: p.profile_embedding,
-        commonTags: p.common_tags || [],
-      };
-    });
+    const folderProfiles: FolderProfile[] = typedProfiles.map(
+      (p: ProfileRow) => {
+        return {
+          folderId: p.folders.id,
+          name: p.folders.name,
+          parentId: p.folders.parent_id,
+          bookmarkCount: p.bookmark_count,
+          embedding: p.profile_embedding,
+          commonTags: p.top_tags || [],
+        };
+      },
+    );
 
     // 3. Find similar pairs
     const candidates: MergeCandidate[] = [];
@@ -240,7 +241,7 @@ export class MergeService {
         folder_profiles (
           bookmark_count,
           profile_embedding,
-          common_tags
+          top_tags
         )
       `,
       )
@@ -260,7 +261,7 @@ export class MergeService {
       folder_profiles: Array<{
         bookmark_count: number;
         profile_embedding: number[] | null;
-        common_tags: string[] | null;
+        top_tags: string[] | null;
       }> | null;
     };
     const typedFolders = folders as unknown as FolderWithProfile[];
@@ -273,7 +274,7 @@ export class MergeService {
         name: f.name,
         bookmarkCount: profile?.bookmark_count || 0,
         embedding: profile?.profile_embedding ?? null,
-        commonTags: profile?.common_tags || [],
+        commonTags: profile?.top_tags || [],
       };
     });
 
@@ -418,7 +419,7 @@ export class MergeService {
       }
 
       // 6. Recompute target folder profile (V4.2 RPC)
-      await v42Rpc(supabase).rpc("compute_folder_profile", {
+      await supabase.rpc("compute_folder_profile", {
         p_folder_id: targetFolderId,
       });
 
@@ -580,9 +581,9 @@ export class MergeService {
     const supabase = await this.getSupabase();
 
     // V4.2 表
-    const { data: profiles } = await v42Table(supabase)
+    const { data: profiles } = await supabase
       .from("folder_profiles")
-      .select("folder_id, profile_embedding, common_tags")
+      .select("folder_id, profile_embedding, top_tags")
       .in("folder_id", [folderId1, folderId2]);
 
     if (!profiles || profiles.length < 2) {
@@ -593,12 +594,16 @@ export class MergeService {
     type FolderProfileRow = {
       folder_id: number;
       profile_embedding: number[] | null;
-      common_tags: string[] | null;
+      top_tags: string[] | null;
     };
     const typedProfiles = profiles as FolderProfileRow[];
 
-    const p1 = typedProfiles.find((p: FolderProfileRow) => p.folder_id === folderId1);
-    const p2 = typedProfiles.find((p: FolderProfileRow) => p.folder_id === folderId2);
+    const p1 = typedProfiles.find(
+      (p: FolderProfileRow) => p.folder_id === folderId1,
+    );
+    const p2 = typedProfiles.find(
+      (p: FolderProfileRow) => p.folder_id === folderId2,
+    );
 
     if (!p1 || !p2) {
       return { canMerge: false, similarity: 0, tagOverlap: 0 };
@@ -610,8 +615,8 @@ export class MergeService {
         : 0;
 
     const tagOverlap = this.calculateTagOverlap(
-      p1.common_tags || [],
-      p2.common_tags || [],
+      p1.top_tags || [],
+      p2.top_tags || [],
     );
 
     return {

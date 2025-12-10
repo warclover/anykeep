@@ -4,7 +4,6 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
-import { v42Table } from "@/lib/supabase/v42-types";
 import {
   successResponse,
   unauthorizedError,
@@ -30,23 +29,21 @@ export async function GET() {
     }
 
     // 2. 获取待确认的聚类建议
-    // Note: bookmark_ids, suggested_action, metadata 是 V4.2 新增字段
-    const { data: suggestions, error: fetchError } = await v42Table(supabase)
+    // TODO: V4.2 待添加 bookmark_ids, suggested_action, metadata 列
+    const { data: suggestions, error: fetchError } = await supabase
       .from("classification_suggestions")
       .select(
         `
         id,
         suggested_folder_name,
-        bookmark_ids,
+        bookmark_id,
         confidence,
         reason,
-        created_at,
-        metadata
+        created_at
       `,
       )
       .eq("user_id", user.id)
       .eq("status", "pending")
-      .eq("suggested_action", "create_folder")
       .order("created_at", { ascending: false })
       .limit(20);
 
@@ -59,19 +56,18 @@ export async function GET() {
     }
 
     // 3. 获取书签标题（用于示例展示）
-    // 类型断言
+    // TODO: V4.2 bookmark_ids 列待添加到数据库，当前使用 bookmark_id (单数)
     type SuggestionRow = {
       id: number;
       suggested_folder_name: string | null;
-      bookmark_ids: number[] | null;
+      bookmark_id: number; // 当前数据库是单数
       confidence: number;
       reason: string | null;
       created_at: string;
     };
-    const typedSuggestions = (suggestions || []) as SuggestionRow[];
-    const allBookmarkIds = typedSuggestions.flatMap(
-      (s) => s.bookmark_ids ?? [],
-    );
+    const typedSuggestions = (suggestions || []) as unknown as SuggestionRow[];
+    // 使用 bookmark_id (单数) 构建数组
+    const allBookmarkIds = typedSuggestions.map((s) => s.bookmark_id);
 
     let bookmarkTitles: Record<number, string> = {};
     if (allBookmarkIds.length > 0) {
@@ -90,11 +86,12 @@ export async function GET() {
     }
 
     // 4. 格式化建议数据
+    // TODO: V4.2 待迁移为 bookmark_ids (数组)
     const formattedSuggestions = typedSuggestions.map((s) => {
-      const bookmarkIds = s.bookmark_ids ?? [];
+      const bookmarkIds = [s.bookmark_id]; // 当前数据库是单数
       const sampleTitles = bookmarkIds
         .slice(0, 5)
-        .map((id) => bookmarkTitles[id] || `书签 #${id}`)
+        .map((id: number) => bookmarkTitles[id] || `书签 #${id}`)
         .filter(Boolean);
 
       return {
@@ -110,14 +107,14 @@ export async function GET() {
 
     // 5. 获取聚类处理状态
     // Note: pending_cluster, cluster_id 是 V4.2 新增字段
-    const { count: pendingClusterCount } = await v42Table(supabase)
+    const { count: pendingClusterCount } = await supabase
       .from("bookmarks")
       .select("*", { count: "exact", head: true })
       .eq("user_id", user.id)
       .eq("pending_cluster", true)
       .is("deleted_at", null);
 
-    const { data: clusterData } = await v42Table(supabase)
+    const { data: clusterData } = await supabase
       .from("bookmarks")
       .select("cluster_id")
       .eq("user_id", user.id)

@@ -9,7 +9,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { generateEmbedding } from "@/lib/utils/embedding-generator";
 import { logger } from "@/lib/logger";
-import { v42Rpc } from "@/lib/supabase/v42-types";
 
 /**
  * 检索到的书签上下文
@@ -100,23 +99,20 @@ export class RAGRetrievalService {
       // 2. 在数据库中搜索相似书签
       const supabase = await createClient();
 
-      // 构建查询
-      const rpcParams: Record<string, unknown> = {
-        query_embedding: queryEmbedding,
+      // 构建查询参数 - query_embedding 需要转换为字符串格式
+      const rpcParams = {
+        query_embedding: JSON.stringify(queryEmbedding),
         match_threshold: opts.minSimilarity,
         match_count: opts.limit,
         p_user_id: userId,
+        p_folder_id: opts.folderId,
       };
 
-      // 添加可选的文件夹过滤
-      if (opts.folderId) {
-        rpcParams.p_folder_id = opts.folderId;
-      }
-
       // 调用 RPC 函数进行向量搜索 (V4.2 RPC)
-      const { data: searchResults, error: searchError } = await v42Rpc(
-        supabase,
-      ).rpc("search_bookmarks_by_embedding", rpcParams);
+      const { data: searchResults, error: searchError } = await supabase.rpc(
+        "search_bookmarks_by_embedding",
+        rpcParams,
+      );
 
       if (searchError) {
         logger.error({ error: searchError }, "RAG: Vector search failed");

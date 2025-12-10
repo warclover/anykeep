@@ -9,7 +9,6 @@
  */
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { v42Table, v42Rpc } from "@/lib/supabase/v42-types";
 import { operationLogService } from "./operation-log.service";
 import { generateFolderNameFromBookmarks } from "@/lib/utils/ai-generator";
 import { logger } from "@/lib/logger";
@@ -120,7 +119,7 @@ export class SplitService {
     const supabase = await this.getSupabase();
 
     // Query folders with low internal similarity and enough bookmarks (V4.2 表)
-    const { data, error } = await v42Table(supabase)
+    const { data, error } = await supabase
       .from("folder_profiles")
       .select(
         `
@@ -200,7 +199,7 @@ export class SplitService {
 
     // 2. Get folder profile
     // Note: folder_profiles 是 V4.2 新增表
-    const { data: profileData } = await v42Table(supabase)
+    const { data: profileData } = await supabase
       .from("folder_profiles")
       .select("internal_similarity, bookmark_count")
       .eq("folder_id", folderId)
@@ -377,7 +376,7 @@ export class SplitService {
 
         // Compute profile for new folder
         // Note: compute_folder_profile 是 V4.2 新增 RPC
-        await v42Rpc(supabase).rpc("compute_folder_profile", {
+        await supabase.rpc("compute_folder_profile", {
           p_folder_id: newFolder.id,
         });
       }

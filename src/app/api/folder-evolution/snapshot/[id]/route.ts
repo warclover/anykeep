@@ -49,12 +49,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // 计算是否可撤销
-    const canUndo =
-      !snapshot.is_undone && new Date(snapshot.expires_at) > new Date();
+    // 计算是否可撤销 (expires_at 可能为 null)
+    const expiresAtDate = snapshot.expires_at
+      ? new Date(snapshot.expires_at)
+      : new Date(0);
+    const canUndo = !snapshot.is_undone && expiresAtDate > new Date();
 
     // 计算剩余时间
-    const expiresAt = new Date(snapshot.expires_at);
+    const expiresAt = expiresAtDate;
     const now = new Date();
     const remainingMs = Math.max(0, expiresAt.getTime() - now.getTime());
     const remainingHours = Math.floor(remainingMs / (1000 * 60 * 60));

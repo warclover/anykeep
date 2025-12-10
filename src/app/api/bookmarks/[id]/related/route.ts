@@ -10,7 +10,6 @@
 
 import type { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { v42Rpc } from "@/lib/supabase/v42-types";
 import {
   successResponse,
   unauthorizedError,
@@ -68,12 +67,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     // 3. 解析查询参数
     const { searchParams } = new URL(request.url);
-    const limit = Math.min(
-      parseInt(searchParams.get("limit") || "5", 10),
-      20
-    ); // 最大 20
+    const limit = Math.min(parseInt(searchParams.get("limit") || "5", 10), 20); // 最大 20
     const minSimilarity = parseFloat(
-      searchParams.get("minSimilarity") || "0.5"
+      searchParams.get("minSimilarity") || "0.5",
     );
     const excludeSameFolder = searchParams.get("excludeSameFolder") === "true";
 
@@ -98,7 +94,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     // 5. 调用 RPC 函数查询相关书签 (V4.2 RPC)
-    const { data: relatedData, error: rpcError } = await v42Rpc(supabase).rpc(
+    const { data: relatedData, error: rpcError } = await supabase.rpc(
       "find_related_bookmarks",
       {
         p_bookmark_id: bookmarkId,
@@ -106,13 +102,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         p_limit: limit,
         p_min_similarity: minSimilarity,
         p_exclude_same_folder: excludeSameFolder,
-      }
+      },
     );
 
     if (rpcError) {
       logger.error(
         { error: rpcError, bookmarkId, userId: user.id },
-        "Failed to find related bookmarks"
+        "Failed to find related bookmarks",
       );
       return internalError("查询相关书签失败");
     }
@@ -139,7 +135,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         folderName: item.folder_name,
         platform: item.platform,
         createdAt: item.created_at,
-      })
+      }),
     );
 
     logger.debug(
@@ -149,7 +145,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         foundCount: related.length,
         params: { limit, minSimilarity, excludeSameFolder },
       },
-      "Related bookmarks fetched"
+      "Related bookmarks fetched",
     );
 
     return successResponse({
@@ -168,7 +164,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
       },
-      "GET /api/bookmarks/[id]/related error"
+      "GET /api/bookmarks/[id]/related error",
     );
     return internalError("获取相关书签失败");
   }

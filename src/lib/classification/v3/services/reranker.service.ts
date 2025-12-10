@@ -10,7 +10,6 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
-import { v42Table } from "@/lib/supabase/v42-types";
 import { logger } from "@/lib/logger";
 
 // ============================================================================
@@ -159,18 +158,16 @@ export class RerankerService {
       );
 
       // 失败时返回原始顺序
-      return candidates
-        .slice(0, this.config.maxCandidates)
-        .map((c) => ({
-          ...c,
-          finalScore: c.score,
-          rankingFactors: {
-            baseScore: c.score,
-            preferenceBoost: 0,
-            recencyBoost: 0,
-            qualityBoost: 0,
-          },
-        }));
+      return candidates.slice(0, this.config.maxCandidates).map((c) => ({
+        ...c,
+        finalScore: c.score,
+        rankingFactors: {
+          baseScore: c.score,
+          preferenceBoost: 0,
+          recencyBoost: 0,
+          qualityBoost: 0,
+        },
+      }));
     }
   }
 
@@ -251,7 +248,7 @@ export class RerankerService {
 
     // 获取文件夹画像
     // Note: folder_profiles 是 V4.2 新增表
-    const { data: profilesData } = await v42Table(this.supabase)
+    const { data: profilesData } = await this.supabase
       .from("folder_profiles")
       .select("folder_id, bookmark_count, internal_similarity, top_tags")
       .in("folder_id", uncached);

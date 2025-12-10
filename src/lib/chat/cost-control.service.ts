@@ -14,7 +14,6 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
-import { v42Table, v42Rpc } from "@/lib/supabase/v42-types";
 
 /**
  * 用量配额配置（按会员类型）
@@ -92,9 +91,10 @@ export class CostControlService {
     if (stats.isLimitReached) {
       return {
         allowed: false,
-        reason: stats.remaining.conversations <= 0
-          ? "今日对话次数已用完"
-          : "今日 Token 配额已用完",
+        reason:
+          stats.remaining.conversations <= 0
+            ? "今日对话次数已用完"
+            : "今日 Token 配额已用完",
         stats,
       };
     }
@@ -117,17 +117,21 @@ export class CostControlService {
       .single();
 
     const membershipType = profile?.membership_type || "free";
-    const quota = QUOTA_BY_MEMBERSHIP[membershipType] || QUOTA_BY_MEMBERSHIP.free;
+    const quota =
+      QUOTA_BY_MEMBERSHIP[membershipType] || QUOTA_BY_MEMBERSHIP.free;
 
     // 获取今日用量 (V4.2 chat_usage 表)
-    const { data: usage } = await v42Table(supabase)
+    const { data: usage } = await supabase
       .from("chat_usage")
       .select("conversation_count, tokens_used")
       .eq("user_id", userId)
       .eq("date", today)
       .single();
 
-    const typedUsage = usage as { conversation_count?: number; tokens_used?: number } | null;
+    const typedUsage = usage as {
+      conversation_count?: number;
+      tokens_used?: number;
+    } | null;
     const conversationCount = typedUsage?.conversation_count || 0;
     const tokensUsed = typedUsage?.tokens_used || 0;
 
@@ -163,15 +167,12 @@ export class CostControlService {
   /**
    * 记录对话使用
    */
-  async recordUsage(
-    userId: string,
-    tokensUsed: number
-  ): Promise<void> {
+  async recordUsage(userId: string, tokensUsed: number): Promise<void> {
     const supabase = await createClient();
     const today = new Date().toISOString().split("T")[0];
 
     // 使用 upsert 更新或创建记录 (V4.2 RPC)
-    const { error } = await v42Rpc(supabase).rpc("increment_chat_usage", {
+    const { error } = await supabase.rpc("increment_chat_usage", {
       p_user_id: userId,
       p_date: today,
       p_tokens: tokensUsed,
@@ -180,7 +181,7 @@ export class CostControlService {
     if (error) {
       logger.error(
         { error: error.message, userId, tokensUsed },
-        "CostControl: Failed to record usage"
+        "CostControl: Failed to record usage",
       );
       // 不抛出错误，允许继续使用
     }
@@ -215,7 +216,7 @@ export class CostControlService {
    */
   async getCachedResponse(
     userId: string,
-    queryHash: string
+    queryHash: string,
   ): Promise<string | null> {
     const shouldCache = await this.shouldUseCache(userId);
     if (!shouldCache) return null;
@@ -223,12 +224,15 @@ export class CostControlService {
     const supabase = await createClient();
 
     // 查找 24 小时内的缓存 (V4.2 chat_cache 表)
-    const { data } = await v42Table(supabase)
+    const { data } = await supabase
       .from("chat_cache")
       .select("response")
       .eq("user_id", userId)
       .eq("query_hash", queryHash)
-      .gte("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+      .gte(
+        "created_at",
+        new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+      )
       .order("created_at", { ascending: false })
       .limit(1)
       .single();
@@ -243,7 +247,7 @@ export class CostControlService {
   async cacheResponse(
     userId: string,
     queryHash: string,
-    response: string
+    response: string,
   ): Promise<void> {
     const shouldCache = await this.shouldUseCache(userId);
     if (!shouldCache) return;
@@ -251,14 +255,14 @@ export class CostControlService {
     const supabase = await createClient();
 
     // V4.2 chat_cache 表
-    await v42Table(supabase).from("chat_cache").upsert(
+    await supabase.from("chat_cache").upsert(
       {
         user_id: userId,
         query_hash: queryHash,
         response,
         created_at: new Date().toISOString(),
       },
-      { onConflict: "user_id,query_hash" }
+      { onConflict: "user_id,query_hash" },
     );
   }
 }

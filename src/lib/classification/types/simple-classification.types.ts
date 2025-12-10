@@ -31,6 +31,8 @@ export interface CandidateFolder {
  * 简化分类输入
  */
 export interface SimpleBookmarkInput {
+  /** 书签 ID（用于事件发布） */
+  id?: number;
   /** 书签标题 */
   title: string;
   /** 书签摘要 */
@@ -113,10 +115,11 @@ export const DEFAULT_SIMPLE_CONFIG: SimpleClassificationConfig = {
 
 /**
  * search_folders_unified RPC 函数参数
+ * 注意: p_embedding 需要是 JSON 字符串格式（与 Supabase 生成类型一致）
  */
 export interface SearchFoldersUnifiedParams {
   p_user_id: string;
-  p_embedding: number[];
+  p_embedding: string; // JSON.stringify(number[])
   p_limit: number;
 }
 

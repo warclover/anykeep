@@ -11,7 +11,6 @@
 
 import type { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { v42Rpc } from "@/lib/supabase/v42-types";
 import {
   successResponse,
   unauthorizedError,
@@ -80,34 +79,31 @@ export async function GET(request: NextRequest) {
     const folderId = searchParams.get("folderId")
       ? parseInt(searchParams.get("folderId")!, 10)
       : null;
-    const limit = Math.min(
-      parseInt(searchParams.get("limit") || "20", 10),
-      50
-    ); // 最大 50
+    const limit = Math.min(parseInt(searchParams.get("limit") || "20", 10), 50); // 最大 50
     const minSimilarity = parseFloat(
-      searchParams.get("minSimilarity") || "0.7"
+      searchParams.get("minSimilarity") || "0.7",
     );
 
     if (isMatrix) {
       // 3a. 获取文件夹相似度矩阵
       const minBookmarks = parseInt(
         searchParams.get("minBookmarks") || "3",
-        10
+        10,
       );
 
       // V4.2 RPC
-      const { data: matrixData, error: matrixError } = await v42Rpc(supabase).rpc(
+      const { data: matrixData, error: matrixError } = await supabase.rpc(
         "get_folder_similarity_matrix",
         {
           p_user_id: user.id,
           p_min_bookmarks: minBookmarks,
-        }
+        },
       );
 
       if (matrixError) {
         logger.error(
           { error: matrixError, userId: user.id },
-          "Failed to get folder similarity matrix"
+          "Failed to get folder similarity matrix",
         );
         return internalError("获取文件夹相似度矩阵失败");
       }
@@ -138,7 +134,7 @@ export async function GET(request: NextRequest) {
           avgSimilarity: Math.round(item.avg_similarity * 100) / 100,
           maxSimilarity: Math.round(item.max_similarity * 100) / 100,
           connectionCount: item.connection_count,
-        })
+        }),
       );
 
       // 生成合并建议
@@ -158,7 +154,7 @@ export async function GET(request: NextRequest) {
           matrixSize: matrix.length,
           mergeSuggestionsCount: mergeSuggestions.length,
         },
-        "Folder similarity matrix fetched"
+        "Folder similarity matrix fetched",
       );
 
       return successResponse({
@@ -172,9 +168,9 @@ export async function GET(request: NextRequest) {
     } else {
       // 3b. 获取跨文件夹连接 - V4.2 RPC
       const { data: connectionsData, error: connectionsError } =
-        await v42Rpc(supabase).rpc("find_cross_folder_connections", {
+        await supabase.rpc("find_cross_folder_connections", {
           p_user_id: user.id,
-          p_folder_id: folderId,
+          p_folder_id: folderId ?? undefined,
           p_min_similarity: minSimilarity,
           p_limit: limit,
         });
@@ -182,7 +178,7 @@ export async function GET(request: NextRequest) {
       if (connectionsError) {
         logger.error(
           { error: connectionsError, userId: user.id, folderId },
-          "Failed to find cross folder connections"
+          "Failed to find cross folder connections",
         );
         return internalError("获取文件夹关联失败");
       }
@@ -213,7 +209,7 @@ export async function GET(request: NextRequest) {
             folderName: item.target_folder_name,
           },
           similarity: Math.round(item.similarity * 100) / 100,
-        })
+        }),
       );
 
       // 按文件夹对分组统计
@@ -260,7 +256,7 @@ export async function GET(request: NextRequest) {
           folderId,
           connectionsCount: connections.length,
         },
-        "Cross folder connections fetched"
+        "Cross folder connections fetched",
       );
 
       return successResponse({
@@ -280,7 +276,7 @@ export async function GET(request: NextRequest) {
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
       },
-      "GET /api/folders/connections error"
+      "GET /api/folders/connections error",
     );
     return internalError("获取文件夹关联失败");
   }

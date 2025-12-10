@@ -9,7 +9,6 @@ import { createSimpleClassificationService } from "./services/simple-classificat
 import { CLASSIFICATION_THRESHOLDS, FOLDER_LIMITS } from "./constants";
 import { logger } from "@/lib/logger";
 import { MessageService } from "@/lib/messages/server";
-import { v42Table } from "@/lib/supabase/v42-types";
 import type { ClassificationResult, BookmarkInput } from "./types";
 import type {
   ClassificationStatus,
@@ -180,7 +179,7 @@ export async function classifyBookmarkV2(
       if (result.confidence >= AUTO_CLASSIFY_THRESHOLD) {
         // Move bookmark to classified folder and clear pending cluster status
         // Note: pending_cluster, pending_since, cluster_id, cluster_confidence 是 V4.2 新增字段
-        const { error: moveError } = await v42Table(supabase)
+        const { error: moveError } = await supabase
           .from("bookmarks")
           .update({
             folder_id: result.folderId,
@@ -407,7 +406,7 @@ export async function classifyBookmarkV2(
         if (!createError && newFolder) {
           // Move bookmark to new folder and clear pending cluster status
           // Note: pending_cluster, pending_since, cluster_id, cluster_confidence 是 V4.2 新增字段
-          const { error: moveError } = await v42Table(supabase)
+          const { error: moveError } = await supabase
             .from("bookmarks")
             .update({
               folder_id: newFolder.id,
@@ -528,7 +527,7 @@ export async function classifyBookmarkV2(
 
     // V4.2: 标记为待聚类状态，等待智能分拣处理
     // Note: pending_cluster, pending_since 是 V4.2 新增字段
-    await v42Table(supabase)
+    await supabase
       .from("bookmarks")
       .update({
         pending_cluster: true,

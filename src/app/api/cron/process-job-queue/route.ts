@@ -9,7 +9,6 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { logger } from "@/lib/logger";
 import type { Database } from "@/types/supabase";
-import { v42Rpc, v42Table } from "@/lib/supabase/v42-types";
 import { reportService } from "@/lib/classification/services/report.service";
 
 // Cron secret for authentication
@@ -88,13 +87,14 @@ export async function GET(request: Request) {
     // Process jobs up to the limit
     for (let i = 0; i < MAX_JOBS_PER_RUN; i++) {
       // Claim next job
-      const { data: claimedJobs, error: claimError } = await v42Rpc(
-        getAdmin(),
-      ).rpc("claim_next_job", {
-        p_worker_id: WORKER_ID,
-        p_job_types: null, // Process all types
-        p_lock_duration: "5 minutes",
-      });
+      const { data: claimedJobs, error: claimError } = await getAdmin().rpc(
+        "claim_next_job",
+        {
+          p_worker_id: WORKER_ID,
+          p_job_types: undefined, // Process all types
+          p_lock_duration: "5 minutes",
+        },
+      );
 
       if (claimError) {
         logger.error({ error: claimError }, "Failed to claim job");
@@ -114,7 +114,7 @@ export async function GET(request: Request) {
         await processJob(job);
 
         // Mark as completed
-        await v42Rpc(getAdmin()).rpc("complete_job", {
+        await getAdmin().rpc("complete_job", {
           p_job_id: job.job_id,
           p_result: { processedAt: new Date().toISOString() },
         });
@@ -129,7 +129,7 @@ export async function GET(request: Request) {
         stats.failed++;
 
         // Mark as failed
-        await v42Rpc(getAdmin()).rpc("fail_job", {
+        await getAdmin().rpc("fail_job", {
           p_job_id: job.job_id,
           p_error: error instanceof Error ? error.message : String(error),
           p_retry: true,
@@ -143,7 +143,7 @@ export async function GET(request: Request) {
     }
 
     // Also reset stuck jobs
-    const { data: resetJobs } = await v42Table(getAdmin())
+    const { data: resetJobs } = await getAdmin()
       .from("job_queue")
       .update({
         status: "pending",
@@ -246,7 +246,7 @@ async function cleanupExpiredData(userId: string): Promise<void> {
   cutoffDate.setDate(cutoffDate.getDate() - 30); // 30 days
 
   // Cleanup expired suggestions
-  await v42Table(getAdmin())
+  await getAdmin()
     .from("classification_suggestions")
     .update({ status: "expired" })
     .eq("user_id", userId)
@@ -254,7 +254,7 @@ async function cleanupExpiredData(userId: string): Promise<void> {
     .lt("created_at", cutoffDate.toISOString());
 
   // Cleanup expired operation snapshots
-  await v42Table(getAdmin())
+  await getAdmin()
     .from("operation_snapshots")
     .delete()
     .eq("user_id", userId)

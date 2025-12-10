@@ -22,6 +22,7 @@ import {
   Bell,
   BrainCircuit,
   FlaskConical,
+  GitCompareArrows,
 } from "lucide-react";
 import { useUnreadCount } from "@/hooks/use-unread-count";
 import { MessageBadge } from "@/components/messages";
@@ -236,6 +237,18 @@ export function AppSidebar() {
               >
                 <FlaskConical className="size-5" />
                 分类对比
+              </Link>
+              <Link
+                href="/dev/v3-vs-v4"
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                  pathname === "/dev/v3-vs-v4"
+                    ? "bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
+                    : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50",
+                )}
+              >
+                <GitCompareArrows className="size-5" />
+                v3对比v4
               </Link>
               {process.env.NODE_ENV === "development" && (
                 <Link

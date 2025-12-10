@@ -220,7 +220,8 @@ export class AILibrarianService {
   }
 
   /**
-   * 获取用户的所有文件夹
+   * 获取用户的所有文件夹（含书签数量）
+   * 优化：使用 Promise.all 并行查询书签数量，避免 N+1 问题
    */
   private async getUserFolders(userId: string): Promise<Folder[]> {
     const { data, error } = await this.supabase
@@ -234,39 +235,41 @@ export class AILibrarianService {
       throw new Error(`Failed to fetch folders: ${error.message}`);
     }
 
-    // 获取每个文件夹的书签数量
-    const foldersWithCount: Folder[] = [];
-    for (const folder of data || []) {
-      const { count } = await this.supabase
+    if (!data || data.length === 0) {
+      return [];
+    }
+
+    // 并行获取所有文件夹的书签数量
+    const countPromises = data.map((folder) =>
+      this.supabase
         .from("bookmarks")
         .select("*", { count: "exact", head: true })
         .eq("folder_id", folder.id)
-        .is("deleted_at", null);
+        .is("deleted_at", null)
+        .then(({ count }) => ({
+          id: folder.id,
+          name: folder.name,
+          bookmarkCount: count || 0,
+        })),
+    );
 
-      foldersWithCount.push({
-        id: folder.id,
-        name: folder.name,
-        bookmarkCount: count || 0,
-      });
-    }
-
-    return foldersWithCount;
+    return Promise.all(countPromises);
   }
 
   /**
    * 获取待整理中的书签
+   * 注意：universal_category_id 字段已弃用，改用 ai_tags 进行分类推断
    */
   private async getInboxBookmarks(userId: string): Promise<
     Array<{
       id: number;
       title: string;
       ai_tags: string[];
-      universal_category_id: string | null;
     }>
   > {
     const { data, error } = await this.supabase
       .from("bookmarks")
-      .select("id, title, ai_tags, universal_category_id")
+      .select("id, title, ai_tags")
       .eq("user_id", userId)
       .is("folder_id", null)
       .is("deleted_at", null)
@@ -406,13 +409,13 @@ export class AILibrarianService {
 
   /**
    * 检测缺失的分类
+   * 使用 ai_tags 聚合分析，推断可能缺失的分类
    */
   private async detectMissingCategories(
     inboxBookmarks: Array<{
       id: number;
       title: string;
       ai_tags: string[];
-      universal_category_id: string | null;
     }>,
     folders: Folder[],
   ): Promise<MissingCategory[]> {
@@ -420,22 +423,23 @@ export class AILibrarianService {
       return [];
     }
 
-    // 按通用分类聚合
-    const categoryGroups = new Map<
-      string,
-      { count: number; titles: string[] }
-    >();
+    // 按 ai_tags 聚合统计
+    const tagGroups = new Map<string, { count: number; titles: string[] }>();
 
     for (const bookmark of inboxBookmarks) {
-      if (bookmark.universal_category_id) {
-        const existing = categoryGroups.get(bookmark.universal_category_id);
+      const tags = bookmark.ai_tags || [];
+      for (const tag of tags) {
+        const normalizedTag = tag.toLowerCase().trim();
+        if (!normalizedTag) continue;
+
+        const existing = tagGroups.get(normalizedTag);
         if (existing) {
           existing.count++;
           if (existing.titles.length < 3) {
             existing.titles.push(bookmark.title);
           }
         } else {
-          categoryGroups.set(bookmark.universal_category_id, {
+          tagGroups.set(normalizedTag, {
             count: 1,
             titles: [bookmark.title],
           });
@@ -443,16 +447,16 @@ export class AILibrarianService {
       }
     }
 
-    // 筛选超过阈值的分类
+    // 筛选超过阈值的标签作为潜在分类
     const missing: MissingCategory[] = [];
     const existingFolderNames = new Set(
       folders.map((f) => f.name.toLowerCase()),
     );
 
-    for (const [categoryId, data] of categoryGroups) {
+    for (const [tag, data] of tagGroups) {
       if (data.count >= this.config.missingCategoryThreshold) {
-        // 提取分类名称（从 categoryId 如 "tech/frontend" 提取 "前端开发"）
-        const categoryName = this.getCategoryDisplayName(categoryId);
+        // 尝试从标签获取更好的显示名称
+        const categoryName = this.getCategoryDisplayName(tag) || tag;
 
         // 检查是否已有类似文件夹
         if (!existingFolderNames.has(categoryName.toLowerCase())) {

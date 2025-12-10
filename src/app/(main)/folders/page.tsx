@@ -8,7 +8,6 @@ export const dynamic = "force-dynamic";
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { v42Table } from "@/lib/supabase/v42-types";
 import { FoldersPageClient } from "@/components/folders/folders-page-client";
 import { QUERY_LIMITS } from "@/lib/constants/app";
 import type { Folder } from "@/types/supabase";
@@ -61,7 +60,7 @@ export default async function FoldersPage() {
 
     // 获取文件夹锁定状态
     // 注：folder_profiles 表由 V4.2 迁移添加
-    const { data: folderProfiles } = await v42Table(supabase)
+    const { data: folderProfiles } = await supabase
       .from("folder_profiles")
       .select("folder_id, is_system_locked")
       .eq("user_id", user.id)
@@ -70,7 +69,10 @@ export default async function FoldersPage() {
     // 构建锁定状态映射
     const lockedMap = new Map<number, boolean>();
     if (folderProfiles) {
-      for (const profile of folderProfiles as unknown as Array<{ folder_id: number; is_system_locked: boolean | null }>) {
+      for (const profile of folderProfiles as unknown as Array<{
+        folder_id: number;
+        is_system_locked: boolean | null;
+      }>) {
         lockedMap.set(profile.folder_id, profile.is_system_locked === true);
       }
     }

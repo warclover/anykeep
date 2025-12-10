@@ -14,8 +14,9 @@ import {
   databaseError,
   internalError,
 } from "@/lib/utils/api-response";
+import { CUSTOM_TAG_COLOR_LIST } from "@/types/supabase";
 import type { CustomUsageTag, CustomTagColor } from "@/types/supabase";
-import { CUSTOM_USAGE_TAG_LIMIT, CUSTOM_TAG_COLORS } from "@/types/supabase";
+import { CUSTOM_USAGE_TAG_LIMIT } from "@/types/supabase";
 import {
   validateCustomTagValue,
   createCustomUsageTag,
@@ -91,7 +92,7 @@ export async function POST(request: NextRequest) {
     };
 
     // 验证颜色
-    if (!CUSTOM_TAG_COLORS.includes(color as CustomTagColor)) {
+    if (!CUSTOM_TAG_COLOR_LIST.includes(color as CustomTagColor)) {
       return badRequestError(MESSAGES.INVALID_COLOR);
     }
 
@@ -192,7 +193,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // 如果更新 color，验证颜色值
-    if (color !== undefined && !CUSTOM_TAG_COLORS.includes(color)) {
+    if (color !== undefined && !CUSTOM_TAG_COLOR_LIST.includes(color)) {
       return badRequestError(MESSAGES.INVALID_COLOR);
     }
 

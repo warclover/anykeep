@@ -7,7 +7,6 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { v42Table } from "@/lib/supabase/v42-types";
 import { safeParseJson } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
 
@@ -46,7 +45,7 @@ export async function GET() {
 
     // 获取待聚类书签
     // Note: pending_cluster, pending_since, cluster_id, cluster_confidence 是 V4.2 新增字段
-    const { data: bookmarks, error: bookmarksError } = await v42Table(supabase)
+    const { data: bookmarks, error: bookmarksError } = await supabase
       .from("bookmarks")
       .select(
         "id, title, url, ai_summary, ai_tags, pending_since, cluster_id, cluster_confidence",
@@ -222,7 +221,7 @@ export async function POST(request: NextRequest) {
 
       // 更新书签：移动到新文件夹并清除聚类标记
       // Note: pending_cluster, pending_since, cluster_id, cluster_confidence 是 V4.2 新增字段
-      const { error: updateError } = await v42Table(supabase)
+      const { error: updateError } = await supabase
         .from("bookmarks")
         .update({
           folder_id: folder.id,
@@ -242,7 +241,7 @@ export async function POST(request: NextRequest) {
       // 记录操作快照（用于撤销）
       // Note: operation_snapshots 是 V4.2 新增表
       try {
-        const { error: snapshotError } = await v42Table(supabase)
+        const { error: snapshotError } = await supabase
           .from("operation_snapshots")
           .insert({
             user_id: user.id,
@@ -300,7 +299,7 @@ export async function POST(request: NextRequest) {
 
       // 清除聚类标记但保留 pending_cluster 状态
       // Note: cluster_id, cluster_confidence 是 V4.2 新增字段
-      const query = v42Table(supabase)
+      const query = supabase
         .from("bookmarks")
         .update({
           cluster_id: null,

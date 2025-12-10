@@ -30,6 +30,14 @@ export { ReportService, reportService } from "./report.service";
 // V4.2 Phase 6: 成本监控服务
 export { CostMonitorService, costMonitorService } from "./cost-monitor.service";
 
+// V4.2 Phase 3: 事件驱动画像更新处理器
+export {
+  ProfileEventHandlerService,
+  initProfileEventHandler,
+  getProfileEventHandler,
+  stopProfileEventHandler,
+} from "./profile-event-handler.service";
+
 // V4.1+ 新增：Embedding A/B 测试服务（服务器端）
 export {
   EmbeddingABTestService,
@@ -77,6 +85,8 @@ export type {
   RecordUsageRequest,
   UsageSummary,
 } from "./cost-monitor.service";
+
+export type { ProfileEventHandlerConfig } from "./profile-event-handler.service";
 
 export type {
   ClassificationAction,

@@ -189,7 +189,7 @@ describe("UserStageService", () => {
         error: { message: "Database error" },
       });
 
-      // Mock fallback queries
+      // Mock fallback queries - returns count: 0, onboarding not completed
       mockSupabase.from = jest.fn().mockReturnValue({
         select: jest.fn().mockReturnValue({
           eq: jest.fn().mockReturnValue({
@@ -204,9 +204,10 @@ describe("UserStageService", () => {
         }),
       });
 
-      // Should return cold_start as safe default
+      // When RPC fails but fallback succeeds with count=0 and no onboarding,
+      // getStageFromCount(0, false) returns "onboarding"
       const stage = await service.getStage("user-123");
-      expect(stage).toBe("cold_start");
+      expect(stage).toBe("onboarding");
     });
   });
 

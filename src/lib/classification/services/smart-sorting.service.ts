@@ -12,7 +12,6 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { operationLogService } from "./operation-log.service";
 import { generateFolderNameFromBookmarks } from "@/lib/utils/ai-generator";
-import { v42Table, v42Rpc } from "@/lib/supabase/v42-types";
 import { logger } from "@/lib/logger";
 import type { AIFolderSettings } from "@/types/supabase";
 
@@ -299,7 +298,7 @@ export class SmartSortingService {
     );
 
     // Note: pending_cluster, pending_since, cluster_id 是 V4.2 新增字段
-    const { data, error } = await v42Table(supabase)
+    const { data, error } = await supabase
       .from("bookmarks")
       .select(
         "id, title, url, ai_summary, ai_tags, embedding, pending_since, cluster_id",
@@ -322,7 +321,7 @@ export class SmartSortingService {
 
     return (data || []).filter(
       (b: { embedding?: unknown }) => b.embedding != null,
-    ) as PendingBookmark[];
+    ) as unknown as PendingBookmark[];
   }
 
   /**
@@ -707,7 +706,7 @@ export class SmartSortingService {
     );
 
     // Note: compute_folder_profile 是 V4.2 RPC 函数
-    await v42Rpc(supabase).rpc("compute_folder_profile", {
+    await supabase.rpc("compute_folder_profile", {
       p_folder_id: folder.id,
     });
 
@@ -731,18 +730,16 @@ export class SmartSortingService {
     const sampleTitles = cluster.bookmarks.slice(0, 5).map((b) => b.title);
 
     // Note: organization_suggestions 是 V4.2 建议表
-    const { error } = await v42Table(supabase)
-      .from("organization_suggestions")
-      .insert({
-        user_id: userId,
-        suggestion_type: "create_new",
-        bookmark_ids: bookmarkIds,
-        suggested_folder_name: cluster.suggestedName,
-        confidence: Math.round(cluster.avgSimilarity * 100),
-        reason: cluster.suggestedNameReason,
-        sample_titles: sampleTitles,
-        status: "pending",
-      });
+    const { error } = await supabase.from("organization_suggestions").insert({
+      user_id: userId,
+      suggestion_type: "create_new",
+      bookmark_ids: bookmarkIds,
+      suggested_folder_name: cluster.suggestedName,
+      confidence: Math.round(cluster.avgSimilarity * 100),
+      reason: cluster.suggestedNameReason,
+      sample_titles: sampleTitles,
+      status: "pending",
+    });
 
     if (error) {
       throw new Error(`创建建议失败: ${error.message}`);
@@ -764,7 +761,7 @@ export class SmartSortingService {
       const bookmarkIds = cluster.bookmarks.map((b) => b.id);
 
       // Note: cluster_id, cluster_confidence 是 V4.2 新增字段
-      await v42Table(supabase)
+      await supabase
         .from("bookmarks")
         .update({
           cluster_id: cluster.id,
@@ -782,7 +779,7 @@ export class SmartSortingService {
     const supabase = await this.getSupabase();
 
     // Note: organization_suggestions 是 V4.2 建议表
-    const { data: suggestions } = await v42Table(supabase)
+    const { data: suggestions } = await supabase
       .from("organization_suggestions")
       .select("*")
       .eq("user_id", userId)
@@ -825,7 +822,7 @@ export class SmartSortingService {
     const supabase = await this.getSupabase();
 
     // Note: organization_suggestions 是 V4.2 建议表
-    const { data: suggestion, error: fetchError } = await v42Table(supabase)
+    const { data: suggestion, error: fetchError } = await supabase
       .from("organization_suggestions")
       .select("*")
       .eq("id", suggestionId)
@@ -864,7 +861,7 @@ export class SmartSortingService {
     }
 
     // Note: pending_cluster, pending_since, cluster_id, cluster_confidence 是 V4.2 新增字段
-    await v42Table(supabase)
+    await supabase
       .from("bookmarks")
       .update({
         folder_id: folder.id,
@@ -876,7 +873,7 @@ export class SmartSortingService {
       .in("id", typedSuggestion.bookmark_ids || []);
 
     // 更新建议状态
-    await v42Table(supabase)
+    await supabase
       .from("organization_suggestions")
       .update({
         status: "accepted",
@@ -886,7 +883,7 @@ export class SmartSortingService {
       .eq("id", suggestionId);
 
     // Note: compute_folder_profile 是 V4.2 RPC 函数
-    await v42Rpc(supabase).rpc("compute_folder_profile", {
+    await supabase.rpc("compute_folder_profile", {
       p_folder_id: folder.id,
     });
 
@@ -900,7 +897,7 @@ export class SmartSortingService {
     const supabase = await this.getSupabase();
 
     // Note: organization_suggestions 是 V4.2 建议表
-    const { error } = await v42Table(supabase)
+    const { error } = await supabase
       .from("organization_suggestions")
       .update({
         status: "rejected",
@@ -919,7 +916,7 @@ export class SmartSortingService {
     }
 
     // 清除相关书签的聚类标记（让它们重新进入聚类池）
-    const { data: suggestion } = await v42Table(supabase)
+    const { data: suggestion } = await supabase
       .from("organization_suggestions")
       .select("bookmark_ids")
       .eq("id", suggestionId)
@@ -930,7 +927,7 @@ export class SmartSortingService {
     } | null;
     if (typedSuggestion?.bookmark_ids) {
       // Note: cluster_id, cluster_confidence 是 V4.2 新增字段
-      await v42Table(supabase)
+      await supabase
         .from("bookmarks")
         .update({
           cluster_id: null,
