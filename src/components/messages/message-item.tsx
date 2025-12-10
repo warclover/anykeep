@@ -21,6 +21,14 @@ import {
   MessageSquare,
   Zap,
   AlertCircle,
+  // V4.2 新增图标
+  FolderPlus,
+  Scissors,
+  GitMerge,
+  Pencil,
+  Undo2,
+  BarChart3,
+  DollarSign,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -91,6 +99,17 @@ const TYPE_ICONS: Record<
   ai_summary_complete: Zap,
   ai_tags_complete: Tags,
   ai_processing_failed: AlertCircle,
+  // V4.2 AI 文件夹进化
+  folder_auto_created: FolderPlus,
+  folder_auto_split: Scissors,
+  folder_auto_merged: GitMerge,
+  folder_auto_renamed: Pencil,
+  folder_operation_undone: Undo2,
+  ai_evolution_report: BarChart3,
+  // V4.2 成本监控
+  cost_warning: DollarSign,
+  cost_critical: DollarSign,
+  cost_daily_exceeded: DollarSign,
 };
 
 // ============================================
