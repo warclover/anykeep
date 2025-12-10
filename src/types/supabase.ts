@@ -96,6 +96,11 @@ export type Database = {
           user_id: string;
           user_tags: string[] | null;
           word_count: number | null;
+          // V4.2 聚类扩展字段
+          cluster_confidence: number | null;
+          cluster_id: string | null;
+          pending_cluster: boolean | null;
+          pending_since: string | null;
         };
         Insert: {
           ai_content_type?: string | null;
@@ -141,6 +146,11 @@ export type Database = {
           user_id: string;
           user_tags?: string[] | null;
           word_count?: number | null;
+          // V4.2 聚类扩展字段
+          cluster_confidence?: number | null;
+          cluster_id?: string | null;
+          pending_cluster?: boolean | null;
+          pending_since?: string | null;
         };
         Update: {
           ai_content_type?: string | null;
@@ -186,6 +196,11 @@ export type Database = {
           user_id?: string;
           user_tags?: string[] | null;
           word_count?: number | null;
+          // V4.2 聚类扩展字段
+          cluster_confidence?: number | null;
+          cluster_id?: string | null;
+          pending_cluster?: boolean | null;
+          pending_since?: string | null;
         };
         Relationships: [
           {
@@ -653,13 +668,24 @@ export type Database = {
           bookmark_count: number | null;
           computed_at: string | null;
           folder_id: number;
+          // V4.2 扩展字段
+          heat_computed_at: string | null;
+          heat_score: number | null;
           id: number;
           internal_similarity: number | null;
+          is_ai_renamable: boolean | null;
+          is_merge_candidate: boolean | null;
+          is_split_candidate: boolean | null;
+          is_system_locked: boolean | null;
           last_bookmark_at: string | null;
           name_embedding: string | null;
           profile_embedding: string | null;
+          recent_additions: number | null;
           sample_titles: string[] | null;
+          similar_folder_ids: number[] | null;
           source: string | null;
+          suggested_name: string | null;
+          suggested_name_reason: string | null;
           top_tags: string[] | null;
           updated_at: string | null;
           user_id: string;
@@ -668,13 +694,24 @@ export type Database = {
           bookmark_count?: number | null;
           computed_at?: string | null;
           folder_id: number;
+          // V4.2 扩展字段
+          heat_computed_at?: string | null;
+          heat_score?: number | null;
           id?: number;
           internal_similarity?: number | null;
+          is_ai_renamable?: boolean | null;
+          is_merge_candidate?: boolean | null;
+          is_split_candidate?: boolean | null;
+          is_system_locked?: boolean | null;
           last_bookmark_at?: string | null;
           name_embedding?: string | null;
           profile_embedding?: string | null;
+          recent_additions?: number | null;
           sample_titles?: string[] | null;
+          similar_folder_ids?: number[] | null;
           source?: string | null;
+          suggested_name?: string | null;
+          suggested_name_reason?: string | null;
           top_tags?: string[] | null;
           updated_at?: string | null;
           user_id: string;
@@ -683,13 +720,24 @@ export type Database = {
           bookmark_count?: number | null;
           computed_at?: string | null;
           folder_id?: number;
+          // V4.2 扩展字段
+          heat_computed_at?: string | null;
+          heat_score?: number | null;
           id?: number;
           internal_similarity?: number | null;
+          is_ai_renamable?: boolean | null;
+          is_merge_candidate?: boolean | null;
+          is_split_candidate?: boolean | null;
+          is_system_locked?: boolean | null;
           last_bookmark_at?: string | null;
           name_embedding?: string | null;
           profile_embedding?: string | null;
+          recent_additions?: number | null;
           sample_titles?: string[] | null;
+          similar_folder_ids?: number[] | null;
           source?: string | null;
+          suggested_name?: string | null;
+          suggested_name_reason?: string | null;
           top_tags?: string[] | null;
           updated_at?: string | null;
           user_id?: string;

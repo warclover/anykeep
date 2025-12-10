@@ -134,7 +134,7 @@ CREATE OR REPLACE FUNCTION mark_operation_undone(
 )
 RETURNS BOOLEAN AS $$
 DECLARE
-  v_success BOOLEAN := FALSE;
+  v_count INT;
 BEGIN
   UPDATE operation_snapshots
   SET
@@ -145,8 +145,8 @@ BEGIN
     AND NOT is_undone
     AND expires_at > NOW();
 
-  GET DIAGNOSTICS v_success = ROW_COUNT > 0;
-  RETURN v_success;
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  RETURN v_count > 0;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 

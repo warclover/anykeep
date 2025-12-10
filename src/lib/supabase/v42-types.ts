@@ -15,23 +15,34 @@ import type { Database } from "@/types/supabase";
 // ============================================================================
 
 /**
- * folder_profiles 表类型
+ * folder_profiles 表类型 (与 supabase.ts 保持同步)
+ * @see Database["public"]["Tables"]["folder_profiles"]["Row"]
  */
 export interface FolderProfileRow {
   id: number;
   folder_id: number;
   user_id: string;
-  description: string | null;
-  keywords: string[] | null;
-  embedding: number[] | null;
-  bookmark_count: number;
-  heat_score: number;
-  last_activity_at: string | null;
-  is_system_locked: boolean;
-  ai_managed: boolean;
-  evolution_level: "manual" | "semi" | "auto";
-  created_at: string;
-  updated_at: string;
+  bookmark_count: number | null;
+  computed_at: string | null;
+  internal_similarity: number | null;
+  last_bookmark_at: string | null;
+  name_embedding: string | null;
+  profile_embedding: string | null;
+  sample_titles: string[] | null;
+  source: string | null;
+  top_tags: string[] | null;
+  updated_at: string | null;
+  // V4.2 扩展字段
+  heat_computed_at: string | null;
+  heat_score: number | null;
+  is_ai_renamable: boolean | null;
+  is_merge_candidate: boolean | null;
+  is_split_candidate: boolean | null;
+  is_system_locked: boolean | null;
+  recent_additions: number | null;
+  similar_folder_ids: number[] | null;
+  suggested_name: string | null;
+  suggested_name_reason: string | null;
 }
 
 /**
@@ -146,14 +157,14 @@ export interface ClassificationDecisionRow {
  * 分类决策类型
  */
 export type ClassificationDecisionType =
-  | "tier1_direct"        // T1: 高置信度直接分类
-  | "tier2_ai_confirmed"  // T2: AI 确认分类
-  | "tier3_auto_create"   // T3: 自动创建文件夹
-  | "to_inbox"            // 送入待整理
-  | "exact_match"         // 精确匹配（规则/历史）
-  | "high_confidence"     // 高置信度
-  | "ai_assisted"         // AI 辅助
-  | "user_manual";        // 用户手动
+  | "tier1_direct" // T1: 高置信度直接分类
+  | "tier2_ai_confirmed" // T2: AI 确认分类
+  | "tier3_auto_create" // T3: 自动创建文件夹
+  | "to_inbox" // 送入待整理
+  | "exact_match" // 精确匹配（规则/历史）
+  | "high_confidence" // 高置信度
+  | "ai_assisted" // AI 辅助
+  | "user_manual"; // 用户手动
 
 /**
  * classification_decisions 插入类型
@@ -176,7 +187,13 @@ export interface ClassificationDecisionInsert {
 /**
  * 操作快照动作类型
  */
-export type OperationSnapshotAction = "create" | "split" | "merge" | "rename" | "move" | "delete";
+export type OperationSnapshotAction =
+  | "create"
+  | "split"
+  | "merge"
+  | "rename"
+  | "move"
+  | "delete";
 
 /**
  * 操作快照插入类型
@@ -282,7 +299,12 @@ export type JobQueueType =
 /**
  * 任务状态
  */
-export type JobStatus = "pending" | "running" | "completed" | "failed" | "cancelled";
+export type JobStatus =
+  | "pending"
+  | "running"
+  | "completed"
+  | "failed"
+  | "cancelled";
 
 /**
  * 任务队列项
