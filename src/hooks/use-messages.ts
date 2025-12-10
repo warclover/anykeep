@@ -156,83 +156,190 @@ export function useMessages(
     await mutate();
   }, [mutate]);
 
-  // 标记已读
+  // 乐观更新辅助函数：更新消息状态
+  const optimisticUpdateStatus = useCallback(
+    (messageId: number, newStatus: MessageStatus) => {
+      setAllGroups((prevGroups) =>
+        prevGroups.map((group) => ({
+          ...group,
+          messages: group.messages.map((msg) =>
+            msg.id === messageId
+              ? {
+                  ...msg,
+                  status: newStatus,
+                  read_at:
+                    newStatus === "read"
+                      ? new Date().toISOString()
+                      : msg.read_at,
+                }
+              : msg,
+          ),
+        })),
+      );
+    },
+    [],
+  );
+
+  // 乐观更新辅助函数：删除消息
+  const optimisticDelete = useCallback((messageId: number) => {
+    setAllGroups(
+      (prevGroups) =>
+        prevGroups
+          .map((group) => ({
+            ...group,
+            messages: group.messages.filter((msg) => msg.id !== messageId),
+          }))
+          .filter((group) => group.messages.length > 0), // 移除空分组
+    );
+  }, []);
+
+  // 乐观更新辅助函数：标记所有已读
+  const optimisticMarkAllRead = useCallback(() => {
+    setAllGroups((prevGroups) =>
+      prevGroups.map((group) => ({
+        ...group,
+        messages: group.messages.map((msg) =>
+          msg.status === "unread"
+            ? {
+                ...msg,
+                status: "read" as MessageStatus,
+                read_at: new Date().toISOString(),
+              }
+            : msg,
+        ),
+      })),
+    );
+  }, []);
+
+  // 标记已读（带乐观更新）
   const markAsRead = useCallback(
     async (messageId: number): Promise<boolean> => {
+      // 保存原始状态用于回滚
+      const originalGroups = [...allGroups];
+
+      // 乐观更新
+      optimisticUpdateStatus(messageId, "read");
+
       try {
         const response = await fetch(`/api/messages/${messageId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ status: "read" }),
         });
-        if (response.ok) {
-          await mutate();
-          return true;
+
+        if (!response.ok) {
+          // 回滚
+          setAllGroups(originalGroups);
+          return false;
         }
-        return false;
+
+        // 后台重新验证（不阻塞）
+        mutate();
+        return true;
       } catch {
+        // 回滚
+        setAllGroups(originalGroups);
         return false;
       }
     },
-    [mutate],
+    [allGroups, optimisticUpdateStatus, mutate],
   );
 
-  // 删除消息
+  // 删除消息（带乐观更新）
   const deleteMessage = useCallback(
     async (messageId: number): Promise<boolean> => {
+      // 保存原始状态用于回滚
+      const originalGroups = [...allGroups];
+
+      // 乐观更新
+      optimisticDelete(messageId);
+
       try {
         const response = await fetch(`/api/messages/${messageId}`, {
           method: "DELETE",
         });
-        if (response.ok) {
-          await mutate();
-          return true;
+
+        if (!response.ok) {
+          // 回滚
+          setAllGroups(originalGroups);
+          return false;
         }
-        return false;
+
+        // 后台重新验证
+        mutate();
+        return true;
       } catch {
+        // 回滚
+        setAllGroups(originalGroups);
         return false;
       }
     },
-    [mutate],
+    [allGroups, optimisticDelete, mutate],
   );
 
-  // 标记所有已读
+  // 标记所有已读（带乐观更新）
   const markAllAsRead = useCallback(async (): Promise<boolean> => {
+    // 保存原始状态用于回滚
+    const originalGroups = [...allGroups];
+
+    // 乐观更新
+    optimisticMarkAllRead();
+
     try {
       const response = await fetch("/api/messages/batch-read", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       });
-      if (response.ok) {
-        await mutate();
-        return true;
+
+      if (!response.ok) {
+        // 回滚
+        setAllGroups(originalGroups);
+        return false;
       }
-      return false;
+
+      // 后台重新验证
+      mutate();
+      return true;
     } catch {
+      // 回滚
+      setAllGroups(originalGroups);
       return false;
     }
-  }, [mutate]);
+  }, [allGroups, optimisticMarkAllRead, mutate]);
 
-  // 归档消息
+  // 归档消息（带乐观更新）
   const archiveMessage = useCallback(
     async (messageId: number): Promise<boolean> => {
+      // 保存原始状态用于回滚
+      const originalGroups = [...allGroups];
+
+      // 乐观更新
+      optimisticUpdateStatus(messageId, "archived");
+
       try {
         const response = await fetch(`/api/messages/${messageId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ status: "archived" }),
         });
-        if (response.ok) {
-          await mutate();
-          return true;
+
+        if (!response.ok) {
+          // 回滚
+          setAllGroups(originalGroups);
+          return false;
         }
-        return false;
+
+        // 后台重新验证
+        mutate();
+        return true;
       } catch {
+        // 回滚
+        setAllGroups(originalGroups);
         return false;
       }
     },
-    [mutate],
+    [allGroups, optimisticUpdateStatus, mutate],
   );
 
   return {
@@ -260,6 +367,7 @@ export function useMessages(
 
 /**
  * 合并消息分组（用于加载更多）
+ * @description 合并时按 created_at 降序排序，确保时间顺序正确
  */
 function mergeGroups(
   existing: MessageGroup[],
@@ -279,12 +387,37 @@ function mergeGroups(
       const uniqueNewMessages = newGroup.messages.filter(
         (m) => !existingIds.has(m.id),
       );
-      result[existingIndex].messages.push(...uniqueNewMessages);
+
+      // 合并后按时间降序排序
+      const mergedMessages = [
+        ...result[existingIndex].messages,
+        ...uniqueNewMessages,
+      ].sort((a, b) => {
+        const timeA = new Date(a.created_at).getTime();
+        const timeB = new Date(b.created_at).getTime();
+        return timeB - timeA; // 降序：最新的在前
+      });
+
+      result[existingIndex].messages = mergedMessages;
     } else {
       // 添加新分组
       result.push(newGroup);
     }
   }
+
+  // 确保分组按正确顺序排列（today > yesterday > this_week > earlier）
+  const groupOrder: Record<string, number> = {
+    today: 0,
+    yesterday: 1,
+    this_week: 2,
+    earlier: 3,
+  };
+
+  result.sort((a, b) => {
+    const orderA = groupOrder[a.date_group] ?? 4;
+    const orderB = groupOrder[b.date_group] ?? 4;
+    return orderA - orderB;
+  });
 
   return result;
 }

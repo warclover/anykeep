@@ -15,6 +15,11 @@ import {
 import { logger } from "@/lib/logger";
 import type { MessageGroup, MessageWithGroup, DateGroup } from "@/lib/messages";
 
+// 优化查询函数返回类型（待类型生成后可删除）
+interface MessageWithCount extends MessageWithGroup {
+  total_count: number;
+}
+
 // 请求参数验证
 const getMessagesSchema = z.object({
   status: z
@@ -64,19 +69,19 @@ export async function GET(request: NextRequest) {
     const { status, level, page, limit } = validation.data;
     const offset = (page - 1) * limit;
 
-    // 3. 获取消息列表（使用数据库函数）
+    // 3. 获取消息列表（使用优化后的单次查询函数）
     const statusFilter = status === "all" ? null : status;
 
-    const { data: messages, error: listError } = await supabase.rpc(
-      "get_messages_grouped",
-      {
-        p_user_id: user.id,
-        p_status: statusFilter ?? undefined,
-        p_level: level || undefined,
-        p_limit: limit,
-        p_offset: offset,
-      },
-    );
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: messagesWithCount, error: listError } = await (
+      supabase.rpc as any
+    )("get_messages_with_count", {
+      p_user_id: user.id,
+      p_status: statusFilter ?? undefined,
+      p_level: level || undefined,
+      p_limit: limit,
+      p_offset: offset,
+    });
 
     if (listError) {
       logger.error(
@@ -86,29 +91,14 @@ export async function GET(request: NextRequest) {
       return internalError("获取消息列表失败");
     }
 
-    // 4. 获取总数
-    const { data: totalResult, error: countError } = await supabase.rpc(
-      "get_messages_count",
-      {
-        p_user_id: user.id,
-        p_status: statusFilter ?? undefined,
-        p_level: level || undefined,
-      },
-    );
+    // 从结果中提取消息和总数
+    const messages = messagesWithCount as MessageWithCount[] | null;
+    const total = messages?.[0]?.total_count ?? 0;
 
-    if (countError) {
-      logger.error(
-        { error: countError, userId: user.id },
-        "Failed to get messages count",
-      );
-    }
-
-    const total = totalResult ?? 0;
-
-    // 5. 按日期分组
+    // 4. 按日期分组
     const groups = groupMessagesByDate(messages as MessageWithGroup[]);
 
-    // 6. 返回响应
+    // 5. 返回响应
     return successResponse({
       groups,
       pagination: {

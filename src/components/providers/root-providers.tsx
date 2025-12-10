@@ -14,6 +14,7 @@ import { UserProvider } from "@/contexts/user-context";
 import { NavigationProvider } from "@/contexts/navigation-context";
 import { KeepAliveProvider } from "@/lib/cache";
 import { OnboardingProvider } from "@/components/providers/onboarding-provider";
+import { MessageNotificationProvider } from "@/components/messages/message-notification-provider";
 
 interface RootProvidersProps {
   children: React.ReactNode;
@@ -31,7 +32,11 @@ export function RootProviders({ children }: RootProvidersProps) {
         <OnboardingProvider>
           <Suspense fallback={null}>
             <NavigationProvider>
-              <KeepAliveProvider>{children}</KeepAliveProvider>
+              <KeepAliveProvider>
+                <MessageNotificationProvider>
+                  {children}
+                </MessageNotificationProvider>
+              </KeepAliveProvider>
             </NavigationProvider>
           </Suspense>
         </OnboardingProvider>

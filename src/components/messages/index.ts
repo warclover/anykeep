@@ -12,7 +12,10 @@ export { MessageGroupHeader } from "./message-group-header";
 export type { MessageGroupHeaderProps } from "./message-group-header";
 
 export { MessageEmptyState } from "./message-empty-state";
-export type { MessageEmptyStateProps } from "./message-empty-state";
+export type {
+  MessageEmptyStateProps,
+  EmptyStateVariant,
+} from "./message-empty-state";
 
 export { MessageFilter } from "./message-filter";
 export type { MessageFilterProps } from "./message-filter";
@@ -26,3 +29,7 @@ export type { MessageModalProps } from "./message-modal";
 export { MessagesPageClient } from "./messages-page-client";
 
 export { NotificationSettingsCard } from "./notification-settings";
+
+// 消息通知 Provider
+export { MessageNotificationProvider } from "./message-notification-provider";
+export type { MessageNotificationProviderProps } from "./message-notification-provider";

@@ -45,9 +45,20 @@ export type { MessageTemplate } from "./message-templates";
 // 消息服务 - 仅限服务端使用
 // 从 '@/lib/messages/server' 导入 MessageService
 
-// 消息分发器（前端使用）
+// 消息分发器（前端使用）- 已废弃，推荐使用 useMessageNotification
 export {
   MessageDispatcher,
   useMessageModalHandler,
 } from "./message-dispatcher";
 export type { DispatchMessage } from "./message-dispatcher";
+
+// 消息通知 Hook（前端推荐使用）
+export {
+  useMessageNotification,
+  registerGlobalModalHandler,
+  unregisterGlobalModalHandler,
+} from "@/hooks/use-message-notification";
+export type {
+  UseMessageNotificationOptions,
+  UseMessageNotificationResult,
+} from "@/hooks/use-message-notification";
