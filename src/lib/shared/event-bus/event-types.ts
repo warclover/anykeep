@@ -37,8 +37,17 @@ export interface ClassificationFeedbackEvent {
   userId: string;
   bookmarkId: number;
   originalFolderId: number | null;
-  correctedFolderId: number;
-  feedbackType: "correct" | "incorrect" | "manual_move";
+  /** @deprecated 使用 newFolderId 代替 */
+  correctedFolderId?: number;
+  newFolderId: number | null;
+  feedbackType: "confirmed" | "rejected" | "corrected" | "correct" | "incorrect" | "manual_move";
+  confidence?: number;
+  /** 托管模式 */
+  trustMode?: "full_auto" | "semi_auto" | "manual";
+  /** 书签标签（用于负样本学习） */
+  bookmarkTags?: string[];
+  /** 来源 ID（用于负样本学习） */
+  sourceId?: string;
   timestamp: string;
 }
 
@@ -59,6 +68,13 @@ export interface FolderProfileUpdatedEvent {
   folderId: number;
   folderName: string;
   bookmarkCount: number;
+  /** 更新原因 */
+  updateReason?: "bookmark_added" | "bookmark_removed" | "bookmark_moved" | "scheduled" | "manual";
+  /** 更新统计 */
+  stats?: {
+    bookmarksAdded?: number;
+    bookmarksRemoved?: number;
+  };
   timestamp: string;
 }
 

@@ -11,6 +11,14 @@ export { InterestService } from "./interest.service";
 export { InterestProfileService } from "./interest-profile.service";
 export { InboxOrganizerService } from "./inbox-organizer.service";
 export { FolderHealthService } from "./folder-health.service";
+export {
+  TrustModeClassificationService,
+  createTrustModeClassificationService,
+} from "./trust-mode-classification.service";
+export type {
+  EnhancedBookmarkInput,
+  EnhancedClassificationResult,
+} from "./trust-mode-classification.service";
 
 export type {
   IClassificationService,

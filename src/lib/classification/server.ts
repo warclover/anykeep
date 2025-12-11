@@ -36,6 +36,13 @@ export {
   InterestService,
   InboxOrganizerService,
   FolderHealthService,
+  TrustModeClassificationService,
+  createTrustModeClassificationService,
+} from "./services";
+
+export type {
+  EnhancedBookmarkInput,
+  EnhancedClassificationResult,
 } from "./services";
 
 export type {

@@ -5,10 +5,11 @@
  * 职责：
  * 1. 订阅分类事件（classification:bookmark_classified）
  * 2. 转换事件格式，调用 IncrementalProfileService
- * 3. 发布画像更新完成事件（organization:profile_updated）
+ * 3. 触发核心/边缘区画像计算（节流处理）
+ * 4. 发布画像更新完成事件（organization:profile_updated）
  *
- * @version 4.2
- * @description 实现分类模块与自组织模块的事件驱动解耦
+ * @version 4.2.1
+ * @description 实现分类模块与自组织模块的事件驱动解耦，增加核心/边缘区画像支持
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -23,6 +24,10 @@ import {
   IncrementalProfileService,
   type BookmarkChangeEvent,
 } from "@/lib/classification/v3/services/incremental-profile.service";
+import {
+  CoreEdgeProfileService,
+  createCoreEdgeProfileService,
+} from "@/lib/classification/profile";
 import { logger } from "@/lib/logger";
 
 /**
@@ -33,11 +38,20 @@ export interface ProfileEventHandlerConfig {
   enabled: boolean;
   /** 是否发布画像更新事件 */
   emitProfileUpdatedEvents: boolean;
+  /** 是否启用核心/边缘区计算 */
+  enableZoneComputation: boolean;
+  /** 核心/边缘区计算节流时间（毫秒） */
+  zoneComputeThrottleMs: number;
+  /** 触发核心/边缘区计算的最小书签数 */
+  minBookmarksForZone: number;
 }
 
 const DEFAULT_CONFIG: ProfileEventHandlerConfig = {
   enabled: true,
   emitProfileUpdatedEvents: true,
+  enableZoneComputation: true,
+  zoneComputeThrottleMs: 30000, // 30秒节流
+  minBookmarksForZone: 3,
 };
 
 /**
@@ -46,15 +60,25 @@ const DEFAULT_CONFIG: ProfileEventHandlerConfig = {
  */
 export class ProfileEventHandlerService {
   private config: ProfileEventHandlerConfig;
+  private supabase: SupabaseClient<Database>;
   private profileService: IncrementalProfileService;
+  private coreEdgeService: CoreEdgeProfileService;
   private unsubscribe: (() => void) | null = null;
+
+  /** 核心/边缘区计算节流记录 */
+  private zoneComputeTimers: Map<number, NodeJS.Timeout> = new Map();
+  /** 待计算的文件夹队列 */
+  private pendingZoneComputes: Map<number, { userId: string; count: number }> =
+    new Map();
 
   constructor(
     supabase: SupabaseClient<Database>,
     config?: Partial<ProfileEventHandlerConfig>,
   ) {
+    this.supabase = supabase;
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.profileService = new IncrementalProfileService(supabase);
+    this.coreEdgeService = createCoreEdgeProfileService(supabase);
   }
 
   /**
@@ -96,8 +120,16 @@ export class ProfileEventHandlerService {
     if (this.unsubscribe) {
       this.unsubscribe();
       this.unsubscribe = null;
-      logger.info({}, "ProfileEventHandlerService: Stopped");
     }
+
+    // 清理所有待执行的 zone 计算定时器
+    for (const timer of this.zoneComputeTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.zoneComputeTimers.clear();
+    this.pendingZoneComputes.clear();
+
+    logger.info({}, "ProfileEventHandlerService: Stopped");
   }
 
   /**
@@ -136,6 +168,11 @@ export class ProfileEventHandlerService {
         "ProfileEventHandlerService: Triggered profile update",
       );
 
+      // 调度核心/边缘区计算（节流处理）
+      if (this.config.enableZoneComputation) {
+        this.scheduleZoneComputation(event.userId, event.folderId);
+      }
+
       // 发布画像更新事件
       if (this.config.emitProfileUpdatedEvents) {
         this.emitProfileUpdatedEvent(event);
@@ -150,6 +187,73 @@ export class ProfileEventHandlerService {
         "ProfileEventHandlerService: Failed to handle bookmark classified event",
       );
     }
+  }
+
+  /**
+   * 调度核心/边缘区计算（节流处理）
+   * 同一文件夹在短时间内多次分类只触发一次计算
+   */
+  private scheduleZoneComputation(userId: string, folderId: number): void {
+    // 累积计数
+    const pending = this.pendingZoneComputes.get(folderId);
+    if (pending) {
+      pending.count++;
+    } else {
+      this.pendingZoneComputes.set(folderId, { userId, count: 1 });
+    }
+
+    // 如果已有定时器，跳过
+    if (this.zoneComputeTimers.has(folderId)) {
+      logger.debug(
+        { folderId },
+        "ProfileEventHandlerService: Zone computation already scheduled",
+      );
+      return;
+    }
+
+    // 设置节流定时器
+    const timer = setTimeout(async () => {
+      this.zoneComputeTimers.delete(folderId);
+      const pendingInfo = this.pendingZoneComputes.get(folderId);
+      this.pendingZoneComputes.delete(folderId);
+
+      if (!pendingInfo) return;
+
+      try {
+        // 执行核心/边缘区计算
+        const profile = await this.coreEdgeService.computeZoneProfile(
+          pendingInfo.userId,
+          folderId,
+        );
+
+        if (profile) {
+          logger.info(
+            {
+              folderId,
+              coreCount: profile.coreCount,
+              edgeCount: profile.edgeCount,
+              pendingCount: pendingInfo.count,
+            },
+            "ProfileEventHandlerService: Zone profile computed",
+          );
+        }
+      } catch (error) {
+        logger.error(
+          {
+            folderId,
+            error: error instanceof Error ? error.message : String(error),
+          },
+          "ProfileEventHandlerService: Failed to compute zone profile",
+        );
+      }
+    }, this.config.zoneComputeThrottleMs);
+
+    this.zoneComputeTimers.set(folderId, timer);
+
+    logger.debug(
+      { folderId, throttleMs: this.config.zoneComputeThrottleMs },
+      "ProfileEventHandlerService: Scheduled zone computation",
+    );
   }
 
   /**
@@ -172,6 +276,87 @@ export class ProfileEventHandlerService {
    */
   async flushPendingUpdates(): Promise<void> {
     await this.profileService.flushAll();
+
+    // 立即执行所有待处理的 zone 计算
+    await this.flushPendingZoneComputes();
+  }
+
+  /**
+   * 强制执行所有待处理的核心/边缘区计算
+   */
+  async flushPendingZoneComputes(): Promise<void> {
+    // 取消所有定时器
+    for (const timer of this.zoneComputeTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.zoneComputeTimers.clear();
+
+    // 立即执行所有待处理的计算
+    const computePromises: Promise<void>[] = [];
+
+    for (const [folderId, info] of this.pendingZoneComputes) {
+      computePromises.push(
+        this.coreEdgeService
+          .computeZoneProfile(info.userId, folderId)
+          .then((profile) => {
+            if (profile) {
+              logger.info(
+                {
+                  folderId,
+                  coreCount: profile.coreCount,
+                  edgeCount: profile.edgeCount,
+                },
+                "ProfileEventHandlerService: Zone profile flushed",
+              );
+            }
+          })
+          .catch((error) => {
+            logger.error(
+              {
+                folderId,
+                error: error instanceof Error ? error.message : String(error),
+              },
+              "ProfileEventHandlerService: Failed to flush zone profile",
+            );
+          }),
+      );
+    }
+
+    this.pendingZoneComputes.clear();
+    await Promise.all(computePromises);
+  }
+
+  /**
+   * 手动触发单个文件夹的核心/边缘区计算
+   */
+  async computeZoneProfile(
+    userId: string,
+    folderId: number,
+  ): Promise<void> {
+    const profile = await this.coreEdgeService.computeZoneProfile(
+      userId,
+      folderId,
+    );
+
+    if (profile) {
+      logger.info(
+        {
+          folderId,
+          coreCount: profile.coreCount,
+          edgeCount: profile.edgeCount,
+          coreTightness: profile.coreTightness.toFixed(2),
+          boundaryClarity: profile.boundaryClarity.toFixed(2),
+        },
+        "ProfileEventHandlerService: Manual zone profile computation completed",
+      );
+    }
+  }
+
+  /**
+   * 获取核心/边缘区服务实例
+   */
+  getCoreEdgeService(): CoreEdgeProfileService {
+    return this.coreEdgeService;
   }
 }
 
