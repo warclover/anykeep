@@ -56,7 +56,10 @@ export async function GET(
     const decodedSourceId = decodeURIComponent(sourceId);
 
     // 获取来源画像
-    const profile = await sourceProfileService.findBySourceId(user.id, decodedSourceId);
+    const profile = await sourceProfileService.findBySourceId(
+      user.id,
+      decodedSourceId,
+    );
 
     if (!profile) {
       return notFoundError("来源画像不存在");
@@ -65,7 +68,10 @@ export async function GET(
     return successResponse(profile);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error({ error: errorMessage }, "GET /api/classification/source-profiles/[id] error");
+    logger.error(
+      { error: errorMessage },
+      "GET /api/classification/source-profiles/[id] error",
+    );
     return internalError("获取来源画像失败");
   }
 }
@@ -116,7 +122,10 @@ export async function PUT(
     const body = (await request.json()) as UpdateSourceProfileBody;
 
     // 获取现有画像
-    const existing = await sourceProfileService.findBySourceId(user.id, decodedSourceId);
+    const existing = await sourceProfileService.findBySourceId(
+      user.id,
+      decodedSourceId,
+    );
 
     if (!existing) {
       return notFoundError("来源画像不存在");
@@ -136,10 +145,21 @@ export async function PUT(
 
     // 添加领域标签
     if (body.addDomains && body.addDomains.length > 0) {
-      await sourceProfileService.addDomains(user.id, decodedSourceId, body.addDomains);
+      await sourceProfileService.addDomains(
+        user.id,
+        decodedSourceId,
+        body.addDomains,
+      );
     }
 
-    // TODO: 实现 removeDomains 功能
+    // 移除领域标签
+    if (body.removeDomains && body.removeDomains.length > 0) {
+      await sourceProfileService.removeDomains(
+        user.id,
+        decodedSourceId,
+        body.removeDomains,
+      );
+    }
 
     // 获取更新后的画像
     const updatedProfile = await sourceProfileService.findBySourceId(
@@ -162,7 +182,10 @@ export async function PUT(
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error({ error: errorMessage }, "PUT /api/classification/source-profiles/[id] error");
+    logger.error(
+      { error: errorMessage },
+      "PUT /api/classification/source-profiles/[id] error",
+    );
     return internalError("更新来源画像失败");
   }
 }
@@ -215,7 +238,10 @@ export async function DELETE(
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error({ error: errorMessage }, "DELETE /api/classification/source-profiles/[id] error");
+    logger.error(
+      { error: errorMessage },
+      "DELETE /api/classification/source-profiles/[id] error",
+    );
     return internalError("删除来源画像失败");
   }
 }

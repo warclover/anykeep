@@ -13,6 +13,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { FAST_PATH_THRESHOLDS } from "@/lib/trust-mode/config";
+import { tagGraphService } from "@/lib/classification/services/tag-graph.service";
 
 // ============================================================================
 // 类型定义
@@ -56,32 +57,32 @@ interface FolderTagCacheItem {
  */
 const SYNONYM_MAP: Record<string, string[]> = {
   // 技术类
-  "前端": ["frontend", "前端开发", "web前端", "前端技术"],
-  "后端": ["backend", "后端开发", "服务端", "服务器端"],
-  "全栈": ["fullstack", "full-stack", "全栈开发"],
-  "人工智能": ["AI", "ai", "机器学习", "ML", "深度学习", "神经网络"],
-  "编程": ["programming", "coding", "开发", "代码"],
-  "javascript": ["js", "JS", "JavaScript"],
-  "typescript": ["ts", "TS", "TypeScript"],
-  "python": ["Python", "py"],
-  "react": ["React", "reactjs", "React.js"],
-  "vue": ["Vue", "vuejs", "Vue.js"],
-  "node": ["nodejs", "Node.js", "node.js"],
+  前端: ["frontend", "前端开发", "web前端", "前端技术"],
+  后端: ["backend", "后端开发", "服务端", "服务器端"],
+  全栈: ["fullstack", "full-stack", "全栈开发"],
+  人工智能: ["AI", "ai", "机器学习", "ML", "深度学习", "神经网络"],
+  编程: ["programming", "coding", "开发", "代码"],
+  javascript: ["js", "JS", "JavaScript"],
+  typescript: ["ts", "TS", "TypeScript"],
+  python: ["Python", "py"],
+  react: ["React", "reactjs", "React.js"],
+  vue: ["Vue", "vuejs", "Vue.js"],
+  node: ["nodejs", "Node.js", "node.js"],
 
   // 设计类
-  "设计": ["design", "UI", "UX", "UI/UX"],
-  "产品": ["product", "产品设计", "产品经理", "PM"],
+  设计: ["design", "UI", "UX", "UI/UX"],
+  产品: ["product", "产品设计", "产品经理", "PM"],
 
   // 商业类
-  "创业": ["startup", "创业公司", "entrepreneurship"],
-  "投资": ["investment", "投资理财", "理财"],
-  "管理": ["management", "管理学", "团队管理"],
+  创业: ["startup", "创业公司", "entrepreneurship"],
+  投资: ["investment", "投资理财", "理财"],
+  管理: ["management", "管理学", "团队管理"],
 
   // 生活类
-  "健康": ["health", "健身", "养生"],
-  "旅行": ["travel", "旅游", "出行"],
-  "美食": ["food", "烹饪", "美食推荐"],
-  "阅读": ["reading", "书籍", "读书"],
+  健康: ["health", "健身", "养生"],
+  旅行: ["travel", "旅游", "出行"],
+  美食: ["food", "烹饪", "美食推荐"],
+  阅读: ["reading", "书籍", "读书"],
 };
 
 // ============================================================================
@@ -99,10 +100,7 @@ export class TagMatcher {
   /**
    * 尝试标签匹配
    */
-  async tryTagMatch(
-    userId: string,
-    tags: string[],
-  ): Promise<TagMatchResult> {
+  async tryTagMatch(userId: string, tags: string[]): Promise<TagMatchResult> {
     if (!tags || tags.length === 0) {
       return {
         found: false,
@@ -113,6 +111,12 @@ export class TagMatcher {
 
     // 标准化标签
     const normalizedTags = this.normalizeTags(tags);
+
+    // V4.2: 使用标签图谱扩展标签（包含用户学习的同义词）
+    const expandedTags = await tagGraphService.expandTagsWithSynonyms(
+      userId,
+      normalizedTags,
+    );
 
     // 获取用户文件夹的标签关联
     const folderTags = await this.getUserFolderTags(userId);
@@ -125,14 +129,20 @@ export class TagMatcher {
       };
     }
 
-    // 计算每个文件夹的匹配分数
-    const matches = folderTags.map((folder) => {
-      const matchResult = this.calculateTagMatchScore(normalizedTags, folder.tags);
-      return {
-        ...folder,
-        ...matchResult,
-      };
-    });
+    // 计算每个文件夹的匹配分数（使用扩展后的标签）
+    const matches = await Promise.all(
+      folderTags.map(async (folder) => {
+        const matchResult = await this.calculateTagMatchScoreWithGraph(
+          userId,
+          expandedTags,
+          folder.tags,
+        );
+        return {
+          ...folder,
+          ...matchResult,
+        };
+      }),
+    );
 
     // 按分数排序
     matches.sort((a, b) => b.score - a.score);
@@ -170,13 +180,19 @@ export class TagMatcher {
   /**
    * 获取用户文件夹的标签关联
    */
-  private async getUserFolderTags(userId: string): Promise<FolderTagCacheItem[]> {
+  private async getUserFolderTags(
+    userId: string,
+  ): Promise<FolderTagCacheItem[]> {
     // 检查缓存
     const cacheKey = `folder_tags_${userId}`;
     const cached = this.folderTagCache.get(cacheKey);
     const now = Date.now();
 
-    if (cached && cached.length > 0 && cached[0].lastUpdated > now - this.cacheExpiry) {
+    if (
+      cached &&
+      cached.length > 0 &&
+      cached[0].lastUpdated > now - this.cacheExpiry
+    ) {
       return cached;
     }
 
@@ -199,13 +215,15 @@ export class TagMatcher {
 
     for (const folder of folders) {
       // tags 列类型断言
-      const { data: bookmarks } = await supabase
+      const { data: bookmarks } = (await supabase
         .from("bookmarks")
         .select("tags")
         .eq("folder_id", folder.id)
         .eq("user_id", userId)
         .is("deleted_at", null)
-        .limit(100) as unknown as { data: Array<{ tags: string[] | null }> | null };
+        .limit(100)) as unknown as {
+        data: Array<{ tags: string[] | null }> | null;
+      };
 
       if (bookmarks && bookmarks.length > 0) {
         // 统计标签频率
@@ -215,7 +233,10 @@ export class TagMatcher {
           if (tags) {
             for (const tag of tags) {
               const normalized = tag.toLowerCase().trim();
-              tagFrequency.set(normalized, (tagFrequency.get(normalized) || 0) + 1);
+              tagFrequency.set(
+                normalized,
+                (tagFrequency.get(normalized) || 0) + 1,
+              );
             }
           }
         }
@@ -246,7 +267,65 @@ export class TagMatcher {
   }
 
   /**
-   * 计算标签匹配分数
+   * 计算标签匹配分数（使用标签图谱增强）
+   * V4.2: 支持用户学习的同义词
+   */
+  private async calculateTagMatchScoreWithGraph(
+    userId: string,
+    inputTags: string[],
+    folderTags: string[],
+  ): Promise<{ score: number; matchedTags: string[] }> {
+    const matchedTags: string[] = [];
+    let score = 0;
+
+    for (const inputTag of inputTags) {
+      // 精确匹配（最高分）
+      if (folderTags.includes(inputTag)) {
+        matchedTags.push(inputTag);
+        score += 30;
+        continue;
+      }
+
+      // 用户学习的同义词匹配（V4.2 新增）
+      const learnedSynonyms = await tagGraphService.getSynonyms(
+        userId,
+        inputTag,
+      );
+      let foundLearnedSynonym = false;
+      for (const synonym of learnedSynonyms) {
+        if (folderTags.includes(synonym)) {
+          matchedTags.push(`${inputTag}≈${synonym}`);
+          score += 25; // 学习的同义词分数略低于精确匹配
+          foundLearnedSynonym = true;
+          break;
+        }
+      }
+      if (foundLearnedSynonym) continue;
+
+      // 硬编码同义词匹配
+      const synonymMatch = this.findSynonymMatch(inputTag, folderTags);
+      if (synonymMatch) {
+        matchedTags.push(`${inputTag}≈${synonymMatch}`);
+        score += 20;
+        continue;
+      }
+
+      // 部分匹配（包含关系）
+      const partialMatch = folderTags.find(
+        (ft) => ft.includes(inputTag) || inputTag.includes(ft),
+      );
+      if (partialMatch) {
+        matchedTags.push(`${inputTag}~${partialMatch}`);
+        score += 10;
+      }
+    }
+
+    return { score, matchedTags };
+  }
+
+  /**
+   * 计算标签匹配分数（基础版本，不使用标签图谱）
+   * @deprecated 使用 calculateTagMatchScoreWithGraph 代替
    */
   private calculateTagMatchScore(
     inputTags: string[],
@@ -290,7 +369,10 @@ export class TagMatcher {
   private findSynonymMatch(tag: string, folderTags: string[]): string | null {
     // 检查 tag 是否有同义词在 folderTags 中
     for (const [key, synonyms] of Object.entries(SYNONYM_MAP)) {
-      const allForms = [key.toLowerCase(), ...synonyms.map((s) => s.toLowerCase())];
+      const allForms = [
+        key.toLowerCase(),
+        ...synonyms.map((s) => s.toLowerCase()),
+      ];
 
       if (allForms.includes(tag)) {
         // 找到该标签的所有形式，检查 folderTags 中是否有任一

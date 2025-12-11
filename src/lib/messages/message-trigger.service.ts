@@ -27,6 +27,7 @@ import {
   type CreateClassificationConfirmationInput,
   type CreateFolderConfirmationInput,
 } from "@/lib/confirmation";
+import { folderExecutorService } from "@/lib/folder-operations";
 import { logger } from "@/lib/logger";
 
 // ============================================================================
@@ -283,13 +284,29 @@ class MessageTriggerService {
 
     // 全自动模式：直接创建，发送普通通知
     if (trustMode === "full_auto") {
-      // TODO: 实际创建文件夹的逻辑
-      // const folder = await folderService.create(...)
+      // 执行文件夹创建
+      const createResult = await folderExecutorService.executeCreate({
+        userId,
+        name: suggestedName,
+        bookmarkIds,
+        reason,
+        tags: suggestedTags,
+      });
 
-      // 模拟创建成功
+      if (!createResult.success || !createResult.folderId) {
+        logger.warn(
+          { error: createResult.message },
+          "MessageTrigger: Auto folder creation failed",
+        );
+        return {
+          action: "skipped",
+          reason: createResult.message,
+        };
+      }
+
       const messageResult = await MessageService.notifyFolderAutoCreated(
         userId,
-        0, // TODO: 使用实际 folderId
+        createResult.folderId,
         suggestedName,
         estimatedCount,
         reason,
@@ -371,7 +388,24 @@ class MessageTriggerService {
 
     // 全自动模式：直接合并，发送普通通知
     if (trustMode === "full_auto") {
-      // TODO: 实际合并文件夹的逻辑
+      // 执行文件夹合并
+      const mergeResult = await folderExecutorService.executeMerge({
+        userId,
+        targetFolderId,
+        sourceFolderIds,
+        reason,
+      });
+
+      if (!mergeResult.success) {
+        logger.warn(
+          { error: mergeResult.message },
+          "MessageTrigger: Auto folder merge failed",
+        );
+        return {
+          action: "skipped",
+          reason: mergeResult.message,
+        };
+      }
 
       const messageResult = await MessageService.notifyFolderAutoMerged(
         userId,
@@ -455,9 +489,31 @@ class MessageTriggerService {
 
     // 全自动模式：直接拆分，发送普通通知
     if (trustMode === "full_auto") {
-      // TODO: 实际拆分文件夹的逻辑
+      // 执行文件夹拆分
+      const splitResult = await folderExecutorService.executeSplit({
+        userId,
+        sourceFolderId,
+        subFolders: suggestedSubFolders.map((f) => ({
+          name: f.name,
+          bookmarkIds: f.bookmarkIds,
+        })),
+        reason,
+      });
 
-      const newFolderNames = suggestedSubFolders.map((f) => f.name);
+      if (!splitResult.success) {
+        logger.warn(
+          { error: splitResult.message },
+          "MessageTrigger: Auto folder split failed",
+        );
+        return {
+          action: "skipped",
+          reason: splitResult.message,
+        };
+      }
+
+      const newFolderNames =
+        splitResult.newFolders?.map((f) => f.name) ||
+        suggestedSubFolders.map((f) => f.name);
       const messageResult = await MessageService.notifyFolderAutoSplit(
         userId,
         sourceFolderName,
@@ -537,7 +593,24 @@ class MessageTriggerService {
 
     // 全自动模式：直接重命名，发送普通通知
     if (trustMode === "full_auto") {
-      // TODO: 实际重命名文件夹的逻辑
+      // 执行文件夹重命名
+      const renameResult = await folderExecutorService.executeRename({
+        userId,
+        folderId,
+        newName: suggestedName,
+        reason,
+      });
+
+      if (!renameResult.success) {
+        logger.warn(
+          { error: renameResult.message },
+          "MessageTrigger: Auto folder rename failed",
+        );
+        return {
+          action: "skipped",
+          reason: renameResult.message,
+        };
+      }
 
       const messageResult = await MessageService.notifyFolderAutoRenamed(
         userId,

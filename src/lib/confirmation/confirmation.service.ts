@@ -32,6 +32,10 @@ import type {
 } from "@/types/confirmation";
 import { preferenceLearner } from "@/lib/classification/learning/preference-learner";
 import { logger } from "@/lib/logger";
+import { folderExecutorService } from "@/lib/folder-operations";
+import type { ExecutionResult } from "@/lib/folder-operations";
+import { BookmarkRepository } from "@/lib/classification/repositories/bookmark.repository";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 // ============================================================================
 // 类型定义
@@ -70,6 +74,8 @@ export interface ConfirmationResponse {
   confirmation: PendingConfirmationRecord;
   learningApplied: boolean;
   error?: string;
+  /** 执行结果（仅当确认被接受时） */
+  executionResult?: ExecutionResult;
 }
 
 /**
@@ -329,14 +335,112 @@ class ConfirmationService {
       userChoice,
     );
 
-    // TODO: 如果接受，执行文件夹操作
-    // 这里需要与文件夹服务集成
+    // 如果接受，执行文件夹操作
+    let executionResult: ExecutionResult | undefined;
+    if (choice.accepted) {
+      try {
+        executionResult = await this.executeConfirmedFolderOperation(
+          confirmation,
+          choice.modifications,
+        );
+
+        if (!executionResult.success) {
+          logger.warn(
+            { confirmationId, result: executionResult },
+            "Folder operation execution failed",
+          );
+        }
+      } catch (error) {
+        logger.error(
+          { confirmationId, error },
+          "Failed to execute confirmed folder operation",
+        );
+      }
+    }
 
     return {
       success: true,
       confirmation: updated,
       learningApplied: false,
+      executionResult,
     };
+  }
+
+  /**
+   * 执行已确认的文件夹操作
+   */
+  private async executeConfirmedFolderOperation(
+    confirmation: PendingConfirmationRecord,
+    modifications?: Record<string, unknown>,
+  ): Promise<ExecutionResult> {
+    const userId = confirmation.user_id;
+
+    switch (confirmation.confirmation_type) {
+      case "folder_create": {
+        const suggestion = confirmation.suggestion as FolderCreateSuggestion;
+        // 应用用户修改
+        const name =
+          (modifications?.name as string) || suggestion.suggestedName;
+        const parentId = (modifications?.parentId as number | null) ?? null;
+        return folderExecutorService.executeCreate({
+          userId,
+          name,
+          parentId,
+          bookmarkIds: suggestion.bookmarkIds || [],
+          reason: suggestion.reason,
+          tags: suggestion.suggestedTags,
+        });
+      }
+
+      case "folder_merge": {
+        const suggestion = confirmation.suggestion as FolderMergeSuggestion;
+        return folderExecutorService.executeMerge({
+          userId,
+          targetFolderId: suggestion.targetFolderId,
+          sourceFolderIds: suggestion.sourceFolderIds,
+          reason: suggestion.reason,
+        });
+      }
+
+      case "folder_split": {
+        const suggestion = confirmation.suggestion as FolderSplitSuggestion;
+        // 应用用户修改
+        const subFolders =
+          (modifications?.subFolders as Array<{
+            name: string;
+            bookmarkIds: number[];
+          }>) ||
+          suggestion.suggestedSubFolders.map((sf) => ({
+            name: sf.name,
+            bookmarkIds: sf.bookmarkIds,
+          }));
+
+        return folderExecutorService.executeSplit({
+          userId,
+          sourceFolderId: suggestion.sourceFolderId,
+          subFolders,
+          reason: suggestion.reason,
+        });
+      }
+
+      case "folder_rename": {
+        const suggestion = confirmation.suggestion as FolderRenameSuggestion;
+        const newName =
+          (modifications?.newName as string) || suggestion.suggestedName;
+        return folderExecutorService.executeRename({
+          userId,
+          folderId: suggestion.folderId,
+          newName,
+          reason: suggestion.reason,
+        });
+      }
+
+      default:
+        return {
+          success: false,
+          message: `Unknown confirmation type: ${confirmation.confirmation_type}`,
+        };
+    }
   }
 
   // ============================================================================
@@ -366,9 +470,37 @@ class ConfirmationService {
             const suggestion =
               confirmation.suggestion as ClassificationSuggestion;
 
-            if (suggestion.folderId !== null) {
-              // TODO: 执行分类操作
-              result.autoExecuted++;
+            if (
+              suggestion.folderId !== null &&
+              confirmation.bookmark_id !== null
+            ) {
+              // 执行分类操作：将书签移动到建议的文件夹
+              try {
+                const supabase = await createServerSupabaseClient();
+                const bookmarkRepository = new BookmarkRepository(supabase);
+                await bookmarkRepository.moveToFolder(
+                  [confirmation.bookmark_id],
+                  suggestion.folderId,
+                );
+                result.autoExecuted++;
+
+                logger.info(
+                  {
+                    confirmationId: confirmation.id,
+                    bookmarkId: confirmation.bookmark_id,
+                    folderId: suggestion.folderId,
+                  },
+                  "Auto-executed expired classification",
+                );
+              } catch (moveError) {
+                const msg =
+                  moveError instanceof Error
+                    ? moveError.message
+                    : String(moveError);
+                result.errors.push(
+                  `ID ${confirmation.id}: Failed to move bookmark - ${msg}`,
+                );
+              }
             } else {
               result.movedToInbox++;
             }

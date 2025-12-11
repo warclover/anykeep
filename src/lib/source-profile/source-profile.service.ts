@@ -82,7 +82,10 @@ export class SourceProfileService extends BaseSupabaseService {
       return null;
     }
 
-    const existing = await this.findBySourceId(userId, extractedSource.sourceId);
+    const existing = await this.findBySourceId(
+      userId,
+      extractedSource.sourceId,
+    );
 
     if (existing) {
       return existing;
@@ -282,12 +285,44 @@ export class SourceProfileService extends BaseSupabaseService {
   }
 
   /**
+   * 移除领域标签
+   */
+  async removeDomains(
+    userId: string,
+    sourceId: string,
+    domainsToRemove: string[],
+  ): Promise<void> {
+    const existing = await this.findBySourceId(userId, sourceId);
+    if (!existing) {
+      return;
+    }
+
+    const supabase = await this.getSupabase();
+
+    // 过滤掉要移除的标签
+    const filteredDomains = existing.domains.filter(
+      (d) => !domainsToRemove.includes(d),
+    );
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any)
+      .from(SOURCE_PROFILES_TABLE)
+      .update({
+        domains: filteredDomains,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("user_id", userId)
+      .eq("source_id", sourceId);
+
+    if (error) {
+      throw new Error(`Failed to remove domains: ${error.message}`);
+    }
+  }
+
+  /**
    * 快速匹配：基于来源画像推荐文件夹
    */
-  async getQuickMatch(
-    userId: string,
-    url: string,
-  ): Promise<SourceMatchResult> {
+  async getQuickMatch(userId: string, url: string): Promise<SourceMatchResult> {
     const extractedSource = extractSourceFromUrl(url);
 
     if (!extractedSource.sourceId || extractedSource.sourceId === "unknown") {
@@ -416,7 +451,10 @@ export class SourceProfileService extends BaseSupabaseService {
     }
 
     const supabase = await this.getSupabase();
-    const newScore = Math.max(0, Math.min(100, existing.trustScore + adjustment));
+    const newScore = Math.max(
+      0,
+      Math.min(100, existing.trustScore + adjustment),
+    );
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabase as any)
