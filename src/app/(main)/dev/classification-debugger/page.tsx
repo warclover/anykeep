@@ -11,10 +11,15 @@
 
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertTriangle } from "lucide-react";
-import {
-  isDebuggerEnabled,
-  DebuggerPage,
-} from "@/features/classification-debugger";
+// 直接从组件模块导入，避免导入服务端代码
+import { DebuggerPage } from "@/features/classification-debugger/components";
+
+/**
+ * 客户端功能开关检查
+ */
+function isDebuggerEnabled(): boolean {
+  return process.env.NEXT_PUBLIC_ENABLE_CLASSIFICATION_DEBUGGER === "true";
+}
 
 export default function ClassificationDebuggerPageRoute() {
   // 环境变量检查

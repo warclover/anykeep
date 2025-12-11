@@ -29,21 +29,25 @@ export {
   getClassificationContainer,
 } from "./container";
 
-// Server-only: Services
+// Server-only: Services (client-safe parts)
 export {
   ClassificationService,
   UserStageService,
   InterestService,
   InboxOrganizerService,
   FolderHealthService,
+} from "./services";
+
+// Server-only: TrustModeClassificationService (depends on server code)
+export {
   TrustModeClassificationService,
   createTrustModeClassificationService,
-} from "./services";
+} from "./services/server";
 
 export type {
   EnhancedBookmarkInput,
   EnhancedClassificationResult,
-} from "./services";
+} from "./services/server";
 
 export type {
   FolderHealthStatus,

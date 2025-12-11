@@ -11,14 +11,13 @@ export { InterestService } from "./interest.service";
 export { InterestProfileService } from "./interest-profile.service";
 export { InboxOrganizerService } from "./inbox-organizer.service";
 export { FolderHealthService } from "./folder-health.service";
-export {
-  TrustModeClassificationService,
-  createTrustModeClassificationService,
-} from "./trust-mode-classification.service";
-export type {
-  EnhancedBookmarkInput,
-  EnhancedClassificationResult,
-} from "./trust-mode-classification.service";
+
+// 注意：TrustModeClassificationService 依赖服务端代码
+// 请从 "@/lib/classification/services/server" 导入：
+// - TrustModeClassificationService
+// - createTrustModeClassificationService
+// - EnhancedBookmarkInput
+// - EnhancedClassificationResult
 
 export type {
   IClassificationService,

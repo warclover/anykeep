@@ -50,6 +50,16 @@ export {
   classificationMetricsService,
 } from "./classification-metrics.service";
 
+// V4.2 Trust Mode 分类服务（依赖服务端代码）
+export {
+  TrustModeClassificationService,
+  createTrustModeClassificationService,
+} from "./trust-mode-classification.service";
+export type {
+  EnhancedBookmarkInput,
+  EnhancedClassificationResult,
+} from "./trust-mode-classification.service";
+
 // 类型导出（类型安全，不会引入运行时依赖）
 export type {
   UndoResult,

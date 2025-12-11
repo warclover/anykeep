@@ -2,6 +2,10 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "crons": [
     {
+      "path": "/api/cron/classification-optimize",
+      "schedule": "0 2 * * *"
+    },
+    {
       "path": "/api/cron/update-folder-profiles",
       "schedule": "0 3 * * *"
     },
