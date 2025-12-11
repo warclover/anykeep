@@ -7,7 +7,13 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCheck, RefreshCw, Bell, ChevronRight } from "lucide-react";
+import {
+  CheckCheck,
+  RefreshCw,
+  ChevronRight,
+  Activity,
+  Inbox,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MessageList } from "./message-list";
@@ -154,35 +160,53 @@ export function MessagesPageClient() {
         </div>
       </div>
 
-      {/* V4.2: 待确认消息入口 */}
-      {pendingCount > 0 && (
-        <div className="px-4 sm:px-6 py-3 border-b">
-          <button
-            onClick={() => router.push("/messages/pending")}
-            className="w-full flex items-center justify-between p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors"
-          >
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/50">
-                <Bell className="size-4 text-amber-600 dark:text-amber-400" />
-              </div>
-              <div className="text-left">
-                <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
-                  待确认的 AI 建议
-                </p>
-                <p className="text-xs text-amber-700 dark:text-amber-300">
-                  有 {pendingCount} 条分类建议需要您确认
-                </p>
-              </div>
+      {/* V4.3: 快捷入口 */}
+      <div className="px-4 sm:px-6 py-3 border-b space-y-2">
+        {/* 待办中心入口 */}
+        <button
+          onClick={() => router.push("/messages/pending")}
+          className="w-full flex items-center justify-between p-3 bg-primary/5 border border-primary/20 rounded-lg hover:bg-primary/10 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <Inbox className="size-4 text-primary" />
             </div>
-            <div className="flex items-center gap-2">
-              <Badge className="bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200 hover:bg-amber-200">
-                {pendingCount}
-              </Badge>
-              <ChevronRight className="size-4 text-amber-600 dark:text-amber-400" />
+            <div className="text-left">
+              <p className="text-sm font-medium">待办中心</p>
+              <p className="text-xs text-muted-foreground">
+                {pendingCount > 0
+                  ? `${pendingCount} 条 AI 建议待确认`
+                  : "暂无待处理事项"}
+              </p>
             </div>
-          </button>
-        </div>
-      )}
+          </div>
+          <div className="flex items-center gap-2">
+            {pendingCount > 0 && (
+              <Badge variant="default">{pendingCount}</Badge>
+            )}
+            <ChevronRight className="size-4 text-muted-foreground" />
+          </div>
+        </button>
+
+        {/* 活动日志入口 */}
+        <button
+          onClick={() => router.push("/activity")}
+          className="w-full flex items-center justify-between p-3 bg-muted/50 border rounded-lg hover:bg-muted transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-muted">
+              <Activity className="size-4 text-muted-foreground" />
+            </div>
+            <div className="text-left">
+              <p className="text-sm font-medium">活动日志</p>
+              <p className="text-xs text-muted-foreground">
+                查看历史操作和 AI 报告
+              </p>
+            </div>
+          </div>
+          <ChevronRight className="size-4 text-muted-foreground" />
+        </button>
+      </div>
 
       {/* 消息列表 */}
       <div className="flex-1 overflow-auto">

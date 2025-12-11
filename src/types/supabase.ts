@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "13.0.5";
   };
-  graphql_public: {
-    Tables: {
-      [_ in never]: never;
-    };
-    Views: {
-      [_ in never]: never;
-    };
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json;
-          operationName?: string;
-          query?: string;
-          variables?: Json;
-        };
-        Returns: Json;
-      };
-    };
-    Enums: {
-      [_ in never]: never;
-    };
-    CompositeTypes: {
-      [_ in never]: never;
-    };
-  };
   public: {
     Tables: {
       ab_test_assignments: {
@@ -84,7 +59,6 @@ export type Database = {
           deleted_at: string | null;
           description: string | null;
           embedding: string | null;
-          embedding_version: number | null;
           folder_id: number | null;
           id: number;
           image_count: number | null;
@@ -109,15 +83,12 @@ export type Database = {
           source_name: string | null;
           starred_at: string | null;
           status: string | null;
-          tag_embedding: string | null;
-          tag_embedding_at: string | null;
           title: string;
-          title_embedding: string | null;
-          title_embedding_at: string | null;
           trashed_at: string | null;
           updated_at: string | null;
           url: string;
           user_id: string;
+          source_id: string | null;
           user_tags: string[] | null;
           word_count: number | null;
         };
@@ -138,7 +109,6 @@ export type Database = {
           deleted_at?: string | null;
           description?: string | null;
           embedding?: string | null;
-          embedding_version?: number | null;
           folder_id?: number | null;
           id?: number;
           image_count?: number | null;
@@ -163,15 +133,12 @@ export type Database = {
           source_name?: string | null;
           starred_at?: string | null;
           status?: string | null;
-          tag_embedding?: string | null;
-          tag_embedding_at?: string | null;
           title: string;
-          title_embedding?: string | null;
-          title_embedding_at?: string | null;
           trashed_at?: string | null;
           updated_at?: string | null;
           url: string;
           user_id: string;
+          source_id?: string | null;
           user_tags?: string[] | null;
           word_count?: number | null;
         };
@@ -192,7 +159,6 @@ export type Database = {
           deleted_at?: string | null;
           description?: string | null;
           embedding?: string | null;
-          embedding_version?: number | null;
           folder_id?: number | null;
           id?: number;
           image_count?: number | null;
@@ -217,15 +183,12 @@ export type Database = {
           source_name?: string | null;
           starred_at?: string | null;
           status?: string | null;
-          tag_embedding?: string | null;
-          tag_embedding_at?: string | null;
           title?: string;
-          title_embedding?: string | null;
-          title_embedding_at?: string | null;
           trashed_at?: string | null;
           updated_at?: string | null;
           url?: string;
           user_id?: string;
+          source_id?: string | null;
           user_tags?: string[] | null;
           word_count?: number | null;
         };
@@ -290,42 +253,6 @@ export type Database = {
           tokens_used?: number;
           updated_at?: string;
           user_id?: string;
-        };
-        Relationships: [];
-      };
-      classification_config_audit: {
-        Row: {
-          action: string;
-          changed_at: string;
-          changed_by: string | null;
-          changed_fields: string[] | null;
-          config_key: string;
-          id: number;
-          new_value: Json | null;
-          old_value: Json | null;
-          reason: string | null;
-        };
-        Insert: {
-          action: string;
-          changed_at?: string;
-          changed_by?: string | null;
-          changed_fields?: string[] | null;
-          config_key: string;
-          id?: number;
-          new_value?: Json | null;
-          old_value?: Json | null;
-          reason?: string | null;
-        };
-        Update: {
-          action?: string;
-          changed_at?: string;
-          changed_by?: string | null;
-          changed_fields?: string[] | null;
-          config_key?: string;
-          id?: number;
-          new_value?: Json | null;
-          old_value?: Json | null;
-          reason?: string | null;
         };
         Relationships: [];
       };
@@ -859,17 +786,7 @@ export type Database = {
       folder_profiles: {
         Row: {
           bookmark_count: number | null;
-          boundary_clarity: number | null;
           computed_at: string | null;
-          core_count: number | null;
-          core_embedding: string | null;
-          core_radius: number | null;
-          core_sample_ids: number[] | null;
-          core_tightness: number | null;
-          edge_count: number | null;
-          edge_embedding: string | null;
-          edge_radius: number | null;
-          edge_sample_ids: number[] | null;
           folder_id: number;
           heat_computed_at: string | null;
           heat_score: number | null;
@@ -891,21 +808,10 @@ export type Database = {
           top_tags: string[] | null;
           updated_at: string | null;
           user_id: string;
-          zone_computed_at: string | null;
         };
         Insert: {
           bookmark_count?: number | null;
-          boundary_clarity?: number | null;
           computed_at?: string | null;
-          core_count?: number | null;
-          core_embedding?: string | null;
-          core_radius?: number | null;
-          core_sample_ids?: number[] | null;
-          core_tightness?: number | null;
-          edge_count?: number | null;
-          edge_embedding?: string | null;
-          edge_radius?: number | null;
-          edge_sample_ids?: number[] | null;
           folder_id: number;
           heat_computed_at?: string | null;
           heat_score?: number | null;
@@ -927,21 +833,10 @@ export type Database = {
           top_tags?: string[] | null;
           updated_at?: string | null;
           user_id: string;
-          zone_computed_at?: string | null;
         };
         Update: {
           bookmark_count?: number | null;
-          boundary_clarity?: number | null;
           computed_at?: string | null;
-          core_count?: number | null;
-          core_embedding?: string | null;
-          core_radius?: number | null;
-          core_sample_ids?: number[] | null;
-          core_tightness?: number | null;
-          edge_count?: number | null;
-          edge_embedding?: string | null;
-          edge_radius?: number | null;
-          edge_sample_ids?: number[] | null;
           folder_id?: number;
           heat_computed_at?: string | null;
           heat_score?: number | null;
@@ -963,7 +858,6 @@ export type Database = {
           top_tags?: string[] | null;
           updated_at?: string | null;
           user_id?: string;
-          zone_computed_at?: string | null;
         };
         Relationships: [
           {
@@ -1079,6 +973,45 @@ export type Database = {
         };
         Relationships: [];
       };
+      librarian_analysis_history: {
+        Row: {
+          analysis_data: Json;
+          created_at: string;
+          duplicate_count: number;
+          empty_count: number;
+          health_score: number;
+          id: number;
+          missing_count: number;
+          oversized_count: number;
+          poorly_named_count: number;
+          user_id: string;
+        };
+        Insert: {
+          analysis_data?: Json;
+          created_at?: string;
+          duplicate_count?: number;
+          empty_count?: number;
+          health_score: number;
+          id?: number;
+          missing_count?: number;
+          oversized_count?: number;
+          poorly_named_count?: number;
+          user_id: string;
+        };
+        Update: {
+          analysis_data?: Json;
+          created_at?: string;
+          duplicate_count?: number;
+          empty_count?: number;
+          health_score?: number;
+          id?: number;
+          missing_count?: number;
+          oversized_count?: number;
+          poorly_named_count?: number;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       job_queue: {
         Row: {
           attempts: number | null;
@@ -1132,45 +1065,6 @@ export type Database = {
           started_at?: string | null;
           status?: string | null;
           type?: string;
-          user_id?: string;
-        };
-        Relationships: [];
-      };
-      librarian_analysis_history: {
-        Row: {
-          analysis_data: Json;
-          created_at: string;
-          duplicate_count: number;
-          empty_count: number;
-          health_score: number;
-          id: number;
-          missing_count: number;
-          oversized_count: number;
-          poorly_named_count: number;
-          user_id: string;
-        };
-        Insert: {
-          analysis_data?: Json;
-          created_at?: string;
-          duplicate_count?: number;
-          empty_count?: number;
-          health_score: number;
-          id?: number;
-          missing_count?: number;
-          oversized_count?: number;
-          poorly_named_count?: number;
-          user_id: string;
-        };
-        Update: {
-          analysis_data?: Json;
-          created_at?: string;
-          duplicate_count?: number;
-          empty_count?: number;
-          health_score?: number;
-          id?: number;
-          missing_count?: number;
-          oversized_count?: number;
-          poorly_named_count?: number;
           user_id?: string;
         };
         Relationships: [];
@@ -1495,63 +1389,6 @@ export type Database = {
         };
         Relationships: [];
       };
-      pending_confirmations: {
-        Row: {
-          bookmark_id: number | null;
-          confirmation_type: string;
-          created_at: string;
-          expires_at: string;
-          folder_id: number | null;
-          id: number;
-          resolved_at: string | null;
-          status: string;
-          suggestion: Json;
-          user_choice: Json | null;
-          user_id: string;
-        };
-        Insert: {
-          bookmark_id?: number | null;
-          confirmation_type: string;
-          created_at?: string;
-          expires_at?: string;
-          folder_id?: number | null;
-          id?: number;
-          resolved_at?: string | null;
-          status?: string;
-          suggestion: Json;
-          user_choice?: Json | null;
-          user_id: string;
-        };
-        Update: {
-          bookmark_id?: number | null;
-          confirmation_type?: string;
-          created_at?: string;
-          expires_at?: string;
-          folder_id?: number | null;
-          id?: number;
-          resolved_at?: string | null;
-          status?: string;
-          suggestion?: Json;
-          user_choice?: Json | null;
-          user_id?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "pending_confirmations_bookmark_id_fkey";
-            columns: ["bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "pending_confirmations_folder_id_fkey";
-            columns: ["folder_id"];
-            isOneToOne: false;
-            referencedRelation: "folders";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
       platform_authorizations: {
         Row: {
           access_token: string | null;
@@ -1681,57 +1518,6 @@ export type Database = {
         };
         Relationships: [];
       };
-      source_profiles: {
-        Row: {
-          avg_confidence: number | null;
-          content_type: string | null;
-          created_at: string;
-          domains: string[];
-          frequent_folders: number[];
-          id: number;
-          last_seen_at: string | null;
-          sample_count: number;
-          source_id: string;
-          source_name: string | null;
-          source_type: string;
-          trust_score: number;
-          updated_at: string;
-          user_id: string;
-        };
-        Insert: {
-          avg_confidence?: number | null;
-          content_type?: string | null;
-          created_at?: string;
-          domains?: string[];
-          frequent_folders?: number[];
-          id?: number;
-          last_seen_at?: string | null;
-          sample_count?: number;
-          source_id: string;
-          source_name?: string | null;
-          source_type?: string;
-          trust_score?: number;
-          updated_at?: string;
-          user_id: string;
-        };
-        Update: {
-          avg_confidence?: number | null;
-          content_type?: string | null;
-          created_at?: string;
-          domains?: string[];
-          frequent_folders?: number[];
-          id?: number;
-          last_seen_at?: string | null;
-          sample_count?: number;
-          source_id?: string;
-          source_name?: string | null;
-          source_type?: string;
-          trust_score?: number;
-          updated_at?: string;
-          user_id?: string;
-        };
-        Relationships: [];
-      };
       system_folder_i18n: {
         Row: {
           created_at: string | null;
@@ -1756,45 +1542,6 @@ export type Database = {
           locale?: string;
           system_type?: string;
           updated_at?: string | null;
-        };
-        Relationships: [];
-      };
-      tag_relationships: {
-        Row: {
-          co_occurrence_count: number;
-          created_at: string;
-          id: number;
-          relationship_type: string;
-          source: string;
-          source_tag: string;
-          target_tag: string;
-          updated_at: string;
-          user_id: string;
-          weight: number;
-        };
-        Insert: {
-          co_occurrence_count?: number;
-          created_at?: string;
-          id?: number;
-          relationship_type: string;
-          source?: string;
-          source_tag: string;
-          target_tag: string;
-          updated_at?: string;
-          user_id: string;
-          weight?: number;
-        };
-        Update: {
-          co_occurrence_count?: number;
-          created_at?: string;
-          id?: number;
-          relationship_type?: string;
-          source?: string;
-          source_tag?: string;
-          target_tag?: string;
-          updated_at?: string;
-          user_id?: string;
-          weight?: number;
         };
         Relationships: [];
       };
@@ -1866,45 +1613,6 @@ export type Database = {
           name?: string;
           suggested_folders?: string[] | null;
           updated_at?: string | null;
-          user_id?: string;
-        };
-        Relationships: [];
-      };
-      user_trust_mode: {
-        Row: {
-          auto_decisions_count: number;
-          created_at: string;
-          id: number;
-          mode_history: Json;
-          overrides: Json;
-          pending_confirmations_count: number;
-          trust_mode: string;
-          updated_at: string;
-          user_corrections_count: number;
-          user_id: string;
-        };
-        Insert: {
-          auto_decisions_count?: number;
-          created_at?: string;
-          id?: number;
-          mode_history?: Json;
-          overrides?: Json;
-          pending_confirmations_count?: number;
-          trust_mode?: string;
-          updated_at?: string;
-          user_corrections_count?: number;
-          user_id: string;
-        };
-        Update: {
-          auto_decisions_count?: number;
-          created_at?: string;
-          id?: number;
-          mode_history?: Json;
-          overrides?: Json;
-          pending_confirmations_count?: number;
-          trust_mode?: string;
-          updated_at?: string;
-          user_corrections_count?: number;
           user_id?: string;
         };
         Relationships: [];
@@ -2103,6 +1811,53 @@ export type Database = {
         };
         Relationships: [];
       };
+      tag_relationships: {
+        Row: {
+          id: number;
+          user_id: string;
+          relationship_type: string;
+          source_tag: string;
+          target_tag: string;
+          weight: number;
+          source: string;
+          co_occurrence_count: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: number;
+          user_id: string;
+          relationship_type: string;
+          source_tag: string;
+          target_tag: string;
+          weight?: number;
+          source?: string;
+          co_occurrence_count?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: number;
+          user_id?: string;
+          relationship_type?: string;
+          source_tag?: string;
+          target_tag?: string;
+          weight?: number;
+          source?: string;
+          co_occurrence_count?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "tag_relationships_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Functions: {
       accept_classification_suggestions: {
@@ -2141,17 +1896,6 @@ export type Database = {
       calculate_matcher_weight_adjustments: {
         Args: { p_user_id: string };
         Returns: Json;
-      };
-      check_bookmark_zone: {
-        Args: { p_bookmark_embedding: string; p_folder_id: number };
-        Returns: {
-          confidence: number;
-          core_distance: number;
-          edge_distance: number;
-          is_in_core: boolean;
-          is_in_edge: boolean;
-          zone: string;
-        }[];
       };
       claim_next_job: {
         Args: {
@@ -2204,7 +1948,6 @@ export type Database = {
         Returns: string;
       };
       expire_old_suggestions: { Args: never; Returns: number };
-      expire_pending_confirmations: { Args: never; Returns: number };
       fail_job: {
         Args: { p_error: string; p_job_id: string; p_retry?: boolean };
         Returns: boolean;
@@ -2279,18 +2022,6 @@ export type Database = {
         }[];
       };
       get_ai_folder_settings: { Args: { p_user_id: string }; Returns: Json };
-      get_bookmarks_pending_multi_vector: {
-        Args: { p_limit?: number; p_user_id: string };
-        Returns: {
-          ai_summary: string;
-          ai_tags: string[];
-          bookmark_id: number;
-          has_tag_embedding: boolean;
-          has_title_embedding: boolean;
-          title: string;
-          user_tags: string[];
-        }[];
-      };
       get_folder_similarity_matrix: {
         Args: { p_min_bookmarks?: number; p_user_id: string };
         Returns: {
@@ -2335,33 +2066,6 @@ export type Database = {
           type: string;
         }[];
       };
-      get_messages_with_count: {
-        Args: {
-          p_level?: string;
-          p_limit?: number;
-          p_offset?: number;
-          p_status?: string;
-          p_user_id: string;
-        };
-        Returns: {
-          action_label: string;
-          action_url: string;
-          content: string;
-          created_at: string;
-          date_group: string;
-          id: number;
-          level: string;
-          metadata: Json;
-          priority: number;
-          read_at: string;
-          related_bookmark_id: number;
-          related_folder_id: number;
-          status: string;
-          title: string;
-          total_count: number;
-          type: string;
-        }[];
-      };
       get_or_create_inbox_folder: {
         Args: { p_user_id?: string };
         Returns: number;
@@ -2379,33 +2083,29 @@ export type Database = {
           url: string;
         }[];
       };
-      get_pending_confirmation_count: {
-        Args: { p_user_id: string };
-        Returns: number;
-      };
       get_pending_suggestions_count: {
         Args: { p_user_id: string };
         Returns: number;
       };
       get_related_tags: {
-        Args: { p_limit?: number; p_tag: string; p_user_id: string };
+        Args: { p_user_id: string; p_tag: string; p_limit?: number };
         Returns: {
-          co_occurrence_count: number;
           related_tag: string;
           relationship_type: string;
+          weight: number;
+          co_occurrence_count: number;
+        }[];
+      };
+      get_tag_synonyms: {
+        Args: { p_user_id: string; p_tag: string };
+        Returns: {
+          synonym: string;
           weight: number;
         }[];
       };
       get_system_folder_name: {
         Args: { p_locale?: string; p_system_type: string };
         Returns: string;
-      };
-      get_tag_synonyms: {
-        Args: { p_tag: string; p_user_id: string };
-        Returns: {
-          synonym: string;
-          weight: number;
-        }[];
       };
       get_unread_message_counts: {
         Args: { p_user_id: string };
@@ -2463,7 +2163,6 @@ export type Database = {
           tag: string;
         }[];
       };
-      get_user_trust_mode: { Args: { p_user_id: string }; Returns: Json };
       get_vision_tags: { Args: { vision_data: Json }; Returns: string[] };
       has_pending_job: {
         Args: {
@@ -2475,21 +2174,21 @@ export type Database = {
         Returns: boolean;
       };
       has_vision_analysis: { Args: { vision_data: Json }; Returns: boolean };
+      increment_tag_cooccurrence: {
+        Args: {
+          p_user_id: string;
+          p_source_tag: string;
+          p_target_tag: string;
+          p_relationship_type?: string;
+        };
+        Returns: undefined;
+      };
       increment_chat_usage: {
         Args: { p_date: string; p_tokens?: number; p_user_id: string };
         Returns: undefined;
       };
       increment_storage_used: {
         Args: { target_user_id: string };
-        Returns: undefined;
-      };
-      increment_tag_cooccurrence: {
-        Args: {
-          p_relationship_type?: string;
-          p_source_tag: string;
-          p_target_tag: string;
-          p_user_id: string;
-        };
         Returns: undefined;
       };
       mark_bookmark_pending_cluster: {
@@ -2570,37 +2269,6 @@ export type Database = {
           url: string;
         }[];
       };
-      search_bookmarks_by_tag_vector: {
-        Args: {
-          p_limit?: number;
-          p_min_similarity?: number;
-          p_query_embedding: string;
-          p_user_id: string;
-        };
-        Returns: {
-          ai_tags: string[];
-          bookmark_id: number;
-          folder_id: number;
-          similarity: number;
-          title: string;
-          user_tags: string[];
-        }[];
-      };
-      search_bookmarks_by_title_vector: {
-        Args: {
-          p_limit?: number;
-          p_min_similarity?: number;
-          p_query_embedding: string;
-          p_user_id: string;
-        };
-        Returns: {
-          bookmark_id: number;
-          folder_id: number;
-          folder_name: string;
-          similarity: number;
-          title: string;
-        }[];
-      };
       search_bookmarks_hybrid: {
         Args: {
           keyword_weight?: number;
@@ -2619,27 +2287,6 @@ export type Database = {
           title: string;
           url: string;
           vector_score: number;
-        }[];
-      };
-      search_bookmarks_multi_vector: {
-        Args: {
-          p_content_weight?: number;
-          p_limit?: number;
-          p_min_similarity?: number;
-          p_query_embedding: string;
-          p_tag_weight?: number;
-          p_title_weight?: number;
-          p_user_id: string;
-        };
-        Returns: {
-          bookmark_id: number;
-          content_similarity: number;
-          folder_id: number;
-          folder_name: string;
-          tag_similarity: number;
-          title: string;
-          title_similarity: number;
-          weighted_similarity: number;
         }[];
       };
       search_bookmarks_semantic: {
@@ -2667,22 +2314,6 @@ export type Database = {
           updated_at: string;
           url: string;
           user_tags: string[];
-        }[];
-      };
-      search_folders_by_core_similarity: {
-        Args: {
-          p_limit?: number;
-          p_min_similarity?: number;
-          p_query_embedding: string;
-          p_user_id: string;
-        };
-        Returns: {
-          confidence_level: string;
-          core_similarity: number;
-          edge_similarity: number;
-          folder_id: number;
-          folder_name: string;
-          zone_match: string;
         }[];
       };
       search_folders_unified: {
@@ -2723,21 +2354,6 @@ export type Database = {
       };
       update_user_folder_heats: {
         Args: { p_user_id: string };
-        Returns: number;
-      };
-      update_user_trust_mode: {
-        Args: { p_reason?: string; p_trust_mode: string; p_user_id: string };
-        Returns: Json;
-      };
-      upsert_source_profile: {
-        Args: {
-          p_confidence?: number;
-          p_folder_id?: number;
-          p_source_id: string;
-          p_source_name?: string;
-          p_source_type?: string;
-          p_user_id: string;
-        };
         Returns: number;
       };
     };
@@ -2878,23 +2494,13 @@ export type CompositeTypes<
     : never;
 
 export const Constants = {
-  graphql_public: {
+  public: {
     Enums: {},
   },
-  public: {
-    Enums: {
-      classification_category_group: [
-        "tech",
-        "design",
-        "business",
-        "content",
-        "lifestyle",
-        "learning",
-        "other",
-      ],
-    },
-  },
 } as const;
+
+// ============================================================================
+// 便捷类型别名
 // ============================================================================
 
 // �?Row 类型

@@ -2,28 +2,29 @@
 
 /**
  * 待确认消息专页
- * V4.2 半托管模式核心功能
+ * V4.3 待办中心 - 内联操作、批量处理
  *
  * @description 专门展示需要用户确认的 AI 建议
  * - 分类确认：低置信度分类需要用户选择
  * - 文件夹操作：创建/合并/拆分/重命名建议
- * - 支持批量操作
+ * - 支持批量操作（全部确认/全部拒绝）
+ * - 内联操作按钮
  * - 按类型筛选
  *
- * @version 1.0.0
- * @since 2025-12-11
+ * @version 1.1.0
+ * @since 2025-12-12
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Card,
   CardContent,
   CardDescription,
-  CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { ConfirmationMessageItem } from "@/components/messages/confirmation-message-item";
@@ -32,11 +33,12 @@ import {
   type FilterMode,
 } from "@/components/messages/pending-confirmation-filter";
 import {
-  CheckCircle2,
   XCircle,
   ArrowLeft,
   Inbox,
   RefreshCw,
+  CheckCheck,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { ConfirmationMessageDisplay } from "@/types/confirmation";
@@ -53,9 +55,11 @@ export default function PendingConfirmationsPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterMode>("all");
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [batchProcessing, setBatchProcessing] = useState(false);
 
   // 获取待确认消息
-  const fetchConfirmations = async () => {
+  const fetchConfirmations = useCallback(async () => {
     try {
       const response = await fetch("/api/confirmations?status=pending");
       if (!response.ok) throw new Error("Failed to fetch confirmations");
@@ -69,11 +73,11 @@ export default function PendingConfirmationsPage() {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchConfirmations();
-  }, []);
+  }, [fetchConfirmations]);
 
   // 刷新
   const handleRefresh = () => {
@@ -98,8 +102,13 @@ export default function PendingConfirmationsPage() {
 
       if (!response.ok) throw new Error("Failed to confirm");
 
-      toast.success("已确认");
+      toast.success("已确认分类");
       setConfirmations((prev) => prev.filter((c) => c.id !== id));
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
     } catch (error) {
       console.error("Failed to confirm:", error);
       toast.error("确认失败");
@@ -117,11 +126,113 @@ export default function PendingConfirmationsPage() {
 
       if (!response.ok) throw new Error("Failed to reject");
 
-      toast.success("已拒绝");
+      toast.success("已移至待整理");
       setConfirmations((prev) => prev.filter((c) => c.id !== id));
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
     } catch (error) {
       console.error("Failed to reject:", error);
       toast.error("拒绝失败");
+    }
+  };
+
+  // 选择/取消选择
+  const handleToggleSelect = (id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  // 全选/取消全选
+  const handleSelectAll = () => {
+    const currentFilteredIds = filteredConfirmations.map((c) => c.id);
+    const allSelected = currentFilteredIds.every((id) => selectedIds.has(id));
+
+    if (allSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(currentFilteredIds));
+    }
+  };
+
+  // 批量确认
+  const handleBatchConfirm = async () => {
+    const idsToProcess =
+      selectedIds.size > 0
+        ? Array.from(selectedIds)
+        : filteredConfirmations.map((c) => c.id);
+
+    if (idsToProcess.length === 0) return;
+
+    setBatchProcessing(true);
+    try {
+      const response = await fetch("/api/confirmations/batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "confirm",
+          ids: idsToProcess,
+        }),
+      });
+
+      if (!response.ok) throw new Error("Failed to batch confirm");
+
+      const result = await response.json();
+      toast.success(`已确认 ${result.success} 条`);
+
+      // 刷新列表
+      await fetchConfirmations();
+      setSelectedIds(new Set());
+    } catch (error) {
+      console.error("Batch confirm failed:", error);
+      toast.error("批量确认失败");
+    } finally {
+      setBatchProcessing(false);
+    }
+  };
+
+  // 批量拒绝
+  const handleBatchReject = async () => {
+    const idsToProcess =
+      selectedIds.size > 0
+        ? Array.from(selectedIds)
+        : filteredConfirmations.map((c) => c.id);
+
+    if (idsToProcess.length === 0) return;
+
+    setBatchProcessing(true);
+    try {
+      const response = await fetch("/api/confirmations/batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "reject",
+          ids: idsToProcess,
+        }),
+      });
+
+      if (!response.ok) throw new Error("Failed to batch reject");
+
+      const result = await response.json();
+      toast.success(`已拒绝 ${result.success} 条`);
+
+      // 刷新列表
+      await fetchConfirmations();
+      setSelectedIds(new Set());
+    } catch (error) {
+      console.error("Batch reject failed:", error);
+      toast.error("批量拒绝失败");
+    } finally {
+      setBatchProcessing(false);
     }
   };
 
@@ -144,6 +255,11 @@ export default function PendingConfirmationsPage() {
       .length,
   };
 
+  const filteredIds = filteredConfirmations.map((c) => c.id);
+  const isAllSelected =
+    filteredIds.length > 0 && filteredIds.every((id) => selectedIds.has(id));
+  const hasSelection = selectedIds.size > 0;
+
   return (
     <div className="container max-w-4xl py-6 space-y-6">
       {/* 头部 */}
@@ -157,7 +273,7 @@ export default function PendingConfirmationsPage() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold">待确认消息</h1>
+            <h1 className="text-2xl font-bold">待办中心</h1>
             <p className="text-sm text-muted-foreground">AI 建议需要您的确认</p>
           </div>
         </div>
@@ -192,19 +308,58 @@ export default function PendingConfirmationsPage() {
         }}
       />
 
+      {/* 批量操作栏 */}
+      {filteredConfirmations.length > 0 && (
+        <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border">
+          <div className="flex items-center gap-3">
+            <Checkbox
+              checked={isAllSelected}
+              onCheckedChange={handleSelectAll}
+              aria-label="全选"
+            />
+            <span className="text-sm text-muted-foreground">
+              {hasSelection
+                ? `已选 ${selectedIds.size} 条`
+                : `全选 ${filteredConfirmations.length} 条`}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleBatchReject}
+              disabled={batchProcessing}
+            >
+              <XCircle className="h-4 w-4 mr-1" />
+              {hasSelection ? "拒绝所选" : "全部拒绝"}
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleBatchConfirm}
+              disabled={batchProcessing}
+            >
+              <CheckCheck className="h-4 w-4 mr-1" />
+              {hasSelection ? "确认所选" : "全部确认"}
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* 列表 */}
       {loading ? (
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
-            <Card key={i}>
-              <CardHeader>
-                <Skeleton className="h-4 w-1/3" />
-                <Skeleton className="h-3 w-2/3" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-20 w-full" />
-              </CardContent>
-            </Card>
+            <div key={i} className="border rounded-lg p-4 space-y-3">
+              <div className="flex items-center gap-3">
+                <Skeleton className="size-10 rounded-lg" />
+                <div className="space-y-2 flex-1">
+                  <Skeleton className="h-4 w-1/3" />
+                  <Skeleton className="h-3 w-2/3" />
+                </div>
+              </div>
+              <Skeleton className="h-20 w-full" />
+            </div>
           ))}
         </div>
       ) : filteredConfirmations.length === 0 ? (
@@ -212,13 +367,13 @@ export default function PendingConfirmationsPage() {
           <CardContent>
             <div className="flex flex-col items-center gap-4">
               <div className="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                <CheckCircle2 className="h-8 w-8 text-green-600 dark:text-green-400" />
+                <Sparkles className="h-8 w-8 text-green-600 dark:text-green-400" />
               </div>
               <div>
-                <CardTitle className="text-lg">全部处理完成</CardTitle>
+                <CardTitle className="text-lg">太棒了！</CardTitle>
                 <CardDescription className="mt-1">
                   {filter === "all"
-                    ? "暂无待确认的消息"
+                    ? "没有待处理事项，AI 会继续帮你整理收藏"
                     : "该类型暂无待确认消息"}
                 </CardDescription>
               </div>
@@ -235,48 +390,25 @@ export default function PendingConfirmationsPage() {
       ) : (
         <div className="space-y-4">
           {filteredConfirmations.map((confirmation) => (
-            <ConfirmationMessageItem
-              key={confirmation.id}
-              confirmation={confirmation}
-              onConfirm={handleConfirm}
-              onReject={handleReject}
-            />
+            <div key={confirmation.id} className="relative">
+              {/* 选择框覆盖层 */}
+              <div className="absolute left-3 top-4 z-10">
+                <Checkbox
+                  checked={selectedIds.has(confirmation.id)}
+                  onCheckedChange={() => handleToggleSelect(confirmation.id)}
+                  aria-label={`选择 ${confirmation.title}`}
+                />
+              </div>
+              <div className="pl-10">
+                <ConfirmationMessageItem
+                  confirmation={confirmation}
+                  onConfirm={handleConfirm}
+                  onReject={handleReject}
+                />
+              </div>
+            </div>
           ))}
         </div>
-      )}
-
-      {/* 批量操作 */}
-      {filteredConfirmations.length > 1 && (
-        <Card>
-          <CardContent className="flex items-center justify-between py-4">
-            <p className="text-sm text-muted-foreground">
-              {filteredConfirmations.length} 条待确认消息
-            </p>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  // 批量拒绝
-                  toast.info("批量操作功能开发中");
-                }}
-              >
-                <XCircle className="h-4 w-4 mr-1" />
-                全部拒绝
-              </Button>
-              <Button
-                size="sm"
-                onClick={() => {
-                  // 批量确认
-                  toast.info("批量操作功能开发中");
-                }}
-              >
-                <CheckCircle2 className="h-4 w-4 mr-1" />
-                全部确认
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
       )}
     </div>
   );
