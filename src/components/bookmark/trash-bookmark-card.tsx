@@ -155,7 +155,7 @@ export function TrashBookmarkCard({
           <div className="flex-1 min-w-0">
             <CardTitle className="text-base line-clamp-2 mb-2">
               <Link
-                href={`/bookmarks/${bookmark.id}`}
+                href={`/bookmark/${bookmark.id}`}
                 className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
               >
                 {bookmark.title}

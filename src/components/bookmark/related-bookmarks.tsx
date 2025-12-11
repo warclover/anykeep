@@ -60,14 +60,21 @@ export function RelatedBookmarks({
           `/api/bookmarks/${bookmarkId}/related?limit=${limit}&minSimilarity=0.5`,
         );
 
-        if (!response.ok) {
-          throw new Error("获取相关书签失败");
-        }
-
         const data = await response.json();
+
+        if (!response.ok) {
+          // 提取 API 返回的具体错误信息
+          const errorMessage =
+            data?.error?.message || data?.message || "获取相关书签失败";
+          throw new Error(errorMessage);
+        }
 
         if (data.success && data.data?.related) {
           setRelated(data.data.related);
+        } else if (data.data?.message) {
+          // 显示 API 返回的提示信息（如：书签尚未生成向量索引）
+          setError(data.data.message);
+          setRelated([]);
         } else {
           setRelated([]);
         }
@@ -163,7 +170,7 @@ export function RelatedBookmarks({
                 <Card
                   key={item.id}
                   className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
-                  onClick={() => router.push(`/bookmarks/${item.id}`)}
+                  onClick={() => router.push(`/bookmark/${item.id}`)}
                 >
                   <CardContent className="p-3">
                     <div className="flex items-start justify-between gap-3">

@@ -110,7 +110,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         { error: rpcError, bookmarkId, userId: user.id },
         "Failed to find related bookmarks",
       );
-      return internalError("查询相关书签失败");
+      // 返回详细的 RPC 错误信息以便调试
+      const errorMessage =
+        process.env.NODE_ENV === "development"
+          ? `查询相关书签失败: ${rpcError.message || rpcError.code || JSON.stringify(rpcError)}`
+          : "查询相关书签失败";
+      return internalError(errorMessage);
     }
 
     // 6. 格式化响应
@@ -166,6 +171,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       },
       "GET /api/bookmarks/[id]/related error",
     );
-    return internalError("获取相关书签失败");
+    // 开发环境返回详细错误信息
+    const errorMessage =
+      process.env.NODE_ENV === "development"
+        ? `获取相关书签失败: ${error instanceof Error ? error.message : String(error)}`
+        : "获取相关书签失败";
+    return internalError(errorMessage);
   }
 }
