@@ -5,9 +5,11 @@
 
 "use client";
 
-import { useState, useCallback } from "react";
-import { CheckCheck, RefreshCw } from "lucide-react";
+import { useState, useCallback, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { CheckCheck, RefreshCw, Bell, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { MessageList } from "./message-list";
 import { MessageFilter } from "./message-filter";
 import { useMessages } from "@/hooks/use-messages";
@@ -19,9 +21,30 @@ import type { MessageStatus, MessageLevel } from "@/lib/messages";
 // ============================================
 
 export function MessagesPageClient() {
+  const router = useRouter();
+
   // 筛选状态
   const [status, setStatus] = useState<MessageStatus | "all">("all");
   const [level, setLevel] = useState<MessageLevel | undefined>(undefined);
+
+  // V4.2: 待确认消息数量
+  const [pendingCount, setPendingCount] = useState(0);
+
+  // 获取待确认数量
+  useEffect(() => {
+    const fetchPendingCount = async () => {
+      try {
+        const res = await fetch("/api/confirmations?status=pending&limit=1");
+        if (res.ok) {
+          const data = await res.json();
+          setPendingCount(data.pendingCount || 0);
+        }
+      } catch {
+        // 静默处理错误
+      }
+    };
+    fetchPendingCount();
+  }, []);
 
   // 获取消息数据
   const {
@@ -130,6 +153,36 @@ export function MessagesPageClient() {
           />
         </div>
       </div>
+
+      {/* V4.2: 待确认消息入口 */}
+      {pendingCount > 0 && (
+        <div className="px-4 sm:px-6 py-3 border-b">
+          <button
+            onClick={() => router.push("/messages/pending")}
+            className="w-full flex items-center justify-between p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/50">
+                <Bell className="size-4 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div className="text-left">
+                <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
+                  待确认的 AI 建议
+                </p>
+                <p className="text-xs text-amber-700 dark:text-amber-300">
+                  有 {pendingCount} 条分类建议需要您确认
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge className="bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200 hover:bg-amber-200">
+                {pendingCount}
+              </Badge>
+              <ChevronRight className="size-4 text-amber-600 dark:text-amber-400" />
+            </div>
+          </button>
+        </div>
+      )}
 
       {/* 消息列表 */}
       <div className="flex-1 overflow-auto">

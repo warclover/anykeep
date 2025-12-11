@@ -51,6 +51,13 @@ export const MESSAGE_TEMPLATES: Record<MessageType, MessageTemplate> = {
     defaultPriority: 2,
   },
 
+  /**
+   * @deprecated V4.2 已弃用
+   * 新的分类建议改用 V4.2 待确认系统（pending_confirmations 表 + ConfirmationMessageItem 组件）
+   * 此模板仅为旧消息的向后兼容保留，新分类建议不再生成此类型消息
+   * 旧消息点击"确认分类"会被重定向到 /messages/pending
+   * @see src/lib/confirmation/confirmation.service.ts
+   */
   classification_suggest: {
     title: (data) => `建议分类到「${data.folderName}」`,
     content: (data) => {

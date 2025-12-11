@@ -9,7 +9,9 @@ import { createSimpleClassificationService } from "./services/simple-classificat
 import { CLASSIFICATION_THRESHOLDS, FOLDER_LIMITS } from "./constants";
 import { logger } from "@/lib/logger";
 import { MessageService } from "@/lib/messages/server";
+import { confirmationService } from "@/lib/confirmation";
 import type { ClassificationResult, BookmarkInput } from "./types";
+import type { ClassificationSuggestion } from "@/types/confirmation";
 import type {
   ClassificationStatus,
   ClassificationResultData,
@@ -285,19 +287,36 @@ export async function classifyBookmarkV2(
             "Classification V2: Saved suggestion (medium confidence)",
           );
 
-          // 发送分类建议消息（普通级别）
-          await MessageService.notifyClassificationComplete(
-            userId,
-            bookmarkId,
-            result.folderName || "未知文件夹",
-            result.confidence,
-            false, // isAuto = false，表示需要用户确认
-          ).catch((err) => {
-            logger.warn(
-              { error: err },
-              "Failed to create classification suggestion message",
-            );
-          });
+          // V4.2: 创建待确认记录（替代旧的 classification_suggest 消息）
+          // 获取书签 URL 用于确认消息展示
+          const { data: bookmarkData } = await supabase
+            .from("bookmarks")
+            .select("url")
+            .eq("id", bookmarkId)
+            .single();
+
+          const confirmationSuggestion: ClassificationSuggestion = {
+            folderId: result.folderId,
+            folderName: result.folderName,
+            confidence: Math.round(result.confidence), // 已是 0-100 范围
+            reason: result.reason || "基于内容相似度匹配",
+            alternatives: [], // 可从 result.scores 中提取备选项
+          };
+
+          await confirmationService
+            .createClassificationConfirmation({
+              userId,
+              bookmarkId,
+              bookmarkTitle: title,
+              bookmarkUrl: bookmarkData?.url || "",
+              suggestion: confirmationSuggestion,
+            })
+            .catch((err) => {
+              logger.warn(
+                { error: err },
+                "Failed to create classification confirmation",
+              );
+            });
 
           // V3.1: Write classification status for frontend polling
           await updateBookmarkClassificationStatus(

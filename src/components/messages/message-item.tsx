@@ -146,11 +146,19 @@ export function MessageItem({
 
   // 处理点击操作按钮
   const handleAction = () => {
+    // 标记已读
+    if (isUnread && onRead) {
+      onRead(message.id);
+    }
+
+    // V4.2: 对于旧版 classification_suggest 消息，重定向到待确认页面
+    // 因为旧的 action_url 指向 /home?action=confirm 已不再有效
+    if (message.type === "classification_suggest") {
+      router.push("/messages/pending");
+      return;
+    }
+
     if (message.action_url) {
-      // 标记已读
-      if (isUnread && onRead) {
-        onRead(message.id);
-      }
       router.push(message.action_url);
     }
   };

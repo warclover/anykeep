@@ -174,6 +174,13 @@ export class MessageService {
 
   /**
    * 分类完成通知
+   *
+   * @param isAuto - true: 自动分类（高置信度），false: 需要确认（中等置信度）
+   *
+   * @deprecated isAuto=false 的用法在 V4.2 中已弃用
+   * 中等置信度分类现在使用 confirmationService.createClassificationConfirmation()
+   * 创建待确认记录，而不是发送 classification_suggest 消息
+   * @see src/lib/confirmation/confirmation.service.ts
    */
   static async notifyClassificationComplete(
     userId: string,
