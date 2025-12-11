@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Trust Mode Service Unit Tests
  * V4.2 托管模式服务测试
@@ -6,9 +7,9 @@
  * @since 2025-12-11
  */
 
-import { TrustModeService, ClassificationDecisionContext } from "../trust-mode.service";
+import type { ClassificationDecisionContext } from "../trust-mode.service";
+import { TrustModeService } from "../trust-mode.service";
 import { TrustModeRepository } from "../trust-mode.repository";
-import { CONFIDENCE_THRESHOLDS } from "../config";
 import type { UserTrustModeRecord } from "@/types/trust-mode";
 
 // ============================================================================
@@ -33,7 +34,7 @@ describe("TrustModeService", () => {
   // 创建模拟记录
   const createMockRecord = (
     mode: "full_auto" | "semi_auto" | "manual",
-    overrides?: Record<string, unknown>
+    overrides?: Record<string, unknown>,
   ): UserTrustModeRecord => ({
     id: 1,
     user_id: testUserId,
@@ -71,6 +72,7 @@ describe("TrustModeService", () => {
     service = new TrustModeService();
 
     // Mock getSupabase 方法
+
     (service as any).getSupabase = jest.fn().mockResolvedValue({});
   });
 
@@ -81,36 +83,60 @@ describe("TrustModeService", () => {
   describe("Static Methods", () => {
     describe("checkRequiresConfirmation", () => {
       it("should return false for full_auto mode regardless of confidence", () => {
-        expect(TrustModeService.checkRequiresConfirmation("full_auto", 90)).toBe(false);
-        expect(TrustModeService.checkRequiresConfirmation("full_auto", 50)).toBe(false);
-        expect(TrustModeService.checkRequiresConfirmation("full_auto", 20)).toBe(false);
+        expect(
+          TrustModeService.checkRequiresConfirmation("full_auto", 90),
+        ).toBe(false);
+        expect(
+          TrustModeService.checkRequiresConfirmation("full_auto", 50),
+        ).toBe(false);
+        expect(
+          TrustModeService.checkRequiresConfirmation("full_auto", 20),
+        ).toBe(false);
       });
 
       it("should return false for manual mode regardless of confidence", () => {
-        expect(TrustModeService.checkRequiresConfirmation("manual", 90)).toBe(false);
-        expect(TrustModeService.checkRequiresConfirmation("manual", 50)).toBe(false);
-        expect(TrustModeService.checkRequiresConfirmation("manual", 20)).toBe(false);
+        expect(TrustModeService.checkRequiresConfirmation("manual", 90)).toBe(
+          false,
+        );
+        expect(TrustModeService.checkRequiresConfirmation("manual", 50)).toBe(
+          false,
+        );
+        expect(TrustModeService.checkRequiresConfirmation("manual", 20)).toBe(
+          false,
+        );
       });
 
       it("should return true for semi_auto mode when confidence is below threshold", () => {
         // semi_auto 阈值通常是 MEDIUM (60)
-        expect(TrustModeService.checkRequiresConfirmation("semi_auto", 59)).toBe(true);
-        expect(TrustModeService.checkRequiresConfirmation("semi_auto", 40)).toBe(true);
+        expect(
+          TrustModeService.checkRequiresConfirmation("semi_auto", 59),
+        ).toBe(true);
+        expect(
+          TrustModeService.checkRequiresConfirmation("semi_auto", 40),
+        ).toBe(true);
       });
 
       it("should return false for semi_auto mode when confidence is above threshold", () => {
-        expect(TrustModeService.checkRequiresConfirmation("semi_auto", 70)).toBe(false);
-        expect(TrustModeService.checkRequiresConfirmation("semi_auto", 90)).toBe(false);
+        expect(
+          TrustModeService.checkRequiresConfirmation("semi_auto", 70),
+        ).toBe(false);
+        expect(
+          TrustModeService.checkRequiresConfirmation("semi_auto", 90),
+        ).toBe(false);
       });
     });
 
     describe("checkShouldAutoClassify", () => {
       it("should return true for full_auto mode", () => {
-        expect(TrustModeService.checkShouldAutoClassify("full_auto")).toBe(true);
+        expect(TrustModeService.checkShouldAutoClassify("full_auto")).toBe(
+          true,
+        );
       });
 
       it("should return true for semi_auto mode", () => {
-        expect(TrustModeService.checkShouldAutoClassify("semi_auto")).toBe(true);
+        expect(TrustModeService.checkShouldAutoClassify("semi_auto")).toBe(
+          true,
+        );
       });
 
       it("should return false for manual mode", () => {
@@ -120,29 +146,41 @@ describe("TrustModeService", () => {
 
     describe("checkShouldAutoCreateFolder", () => {
       it("should return true for full_auto mode", () => {
-        expect(TrustModeService.checkShouldAutoCreateFolder("full_auto")).toBe(true);
+        expect(TrustModeService.checkShouldAutoCreateFolder("full_auto")).toBe(
+          true,
+        );
       });
 
       it("should return false for semi_auto mode", () => {
-        expect(TrustModeService.checkShouldAutoCreateFolder("semi_auto")).toBe(false);
+        expect(TrustModeService.checkShouldAutoCreateFolder("semi_auto")).toBe(
+          false,
+        );
       });
 
       it("should return false for manual mode", () => {
-        expect(TrustModeService.checkShouldAutoCreateFolder("manual")).toBe(false);
+        expect(TrustModeService.checkShouldAutoCreateFolder("manual")).toBe(
+          false,
+        );
       });
     });
 
     describe("getLowConfidenceAction", () => {
       it("should return auto_inbox_then_cluster for full_auto mode", () => {
-        expect(TrustModeService.getLowConfidenceAction("full_auto")).toBe("auto_inbox_then_cluster");
+        expect(TrustModeService.getLowConfidenceAction("full_auto")).toBe(
+          "auto_inbox_then_cluster",
+        );
       });
 
       it("should return pending_with_message for semi_auto mode", () => {
-        expect(TrustModeService.getLowConfidenceAction("semi_auto")).toBe("pending_with_message");
+        expect(TrustModeService.getLowConfidenceAction("semi_auto")).toBe(
+          "pending_with_message",
+        );
       });
 
       it("should return direct_inbox for manual mode", () => {
-        expect(TrustModeService.getLowConfidenceAction("manual")).toBe("direct_inbox");
+        expect(TrustModeService.getLowConfidenceAction("manual")).toBe(
+          "direct_inbox",
+        );
       });
     });
   });
@@ -154,7 +192,9 @@ describe("TrustModeService", () => {
   describe("Instance Methods", () => {
     describe("getUserTrustMode", () => {
       it("should return user trust mode from repository", async () => {
-        mockRepository.findByUserId.mockResolvedValue(createMockRecord("semi_auto"));
+        mockRepository.findByUserId.mockResolvedValue(
+          createMockRecord("semi_auto"),
+        );
 
         const mode = await service.getUserTrustMode(testUserId);
 
@@ -215,7 +255,11 @@ describe("TrustModeService", () => {
         const updatedRecord = createMockRecord("manual");
         mockRepository.update.mockResolvedValue(updatedRecord);
 
-        const result = await service.updateTrustMode(testUserId, "manual", "User preference");
+        const result = await service.updateTrustMode(
+          testUserId,
+          "manual",
+          "User preference",
+        );
 
         expect(result.trust_mode).toBe("manual");
         expect(mockRepository.update).toHaveBeenCalledWith({
@@ -242,14 +286,19 @@ describe("TrustModeService", () => {
 
         await service.updateOverrides(testUserId, overrides);
 
-        expect(mockRepository.updateOverrides).toHaveBeenCalledWith(testUserId, overrides);
+        expect(mockRepository.updateOverrides).toHaveBeenCalledWith(
+          testUserId,
+          overrides,
+        );
       });
     });
 
     describe("getClassificationDecision", () => {
       describe("Manual Mode", () => {
         it("should never auto execute in manual mode", async () => {
-          mockRepository.getOrCreate.mockResolvedValue(createMockRecord("manual"));
+          mockRepository.getOrCreate.mockResolvedValue(
+            createMockRecord("manual"),
+          );
 
           const context: ClassificationDecisionContext = {
             userId: testUserId,
@@ -266,7 +315,9 @@ describe("TrustModeService", () => {
 
       describe("Full Auto Mode", () => {
         it("should always auto execute in full_auto mode", async () => {
-          mockRepository.getOrCreate.mockResolvedValue(createMockRecord("full_auto"));
+          mockRepository.getOrCreate.mockResolvedValue(
+            createMockRecord("full_auto"),
+          );
 
           const context: ClassificationDecisionContext = {
             userId: testUserId,
@@ -280,7 +331,9 @@ describe("TrustModeService", () => {
         });
 
         it("should handle low confidence in full_auto mode", async () => {
-          mockRepository.getOrCreate.mockResolvedValue(createMockRecord("full_auto"));
+          mockRepository.getOrCreate.mockResolvedValue(
+            createMockRecord("full_auto"),
+          );
 
           const context: ClassificationDecisionContext = {
             userId: testUserId,
@@ -295,7 +348,9 @@ describe("TrustModeService", () => {
         });
 
         it("should not notify on new folder creation by default in full_auto mode", async () => {
-          mockRepository.getOrCreate.mockResolvedValue(createMockRecord("full_auto"));
+          mockRepository.getOrCreate.mockResolvedValue(
+            createMockRecord("full_auto"),
+          );
 
           const context: ClassificationDecisionContext = {
             userId: testUserId,
@@ -312,7 +367,9 @@ describe("TrustModeService", () => {
 
       describe("Semi Auto Mode", () => {
         it("should auto execute when confidence is above threshold", async () => {
-          mockRepository.getOrCreate.mockResolvedValue(createMockRecord("semi_auto"));
+          mockRepository.getOrCreate.mockResolvedValue(
+            createMockRecord("semi_auto"),
+          );
 
           const context: ClassificationDecisionContext = {
             userId: testUserId,
@@ -326,7 +383,9 @@ describe("TrustModeService", () => {
         });
 
         it("should require confirmation when confidence is below threshold", async () => {
-          mockRepository.getOrCreate.mockResolvedValue(createMockRecord("semi_auto"));
+          mockRepository.getOrCreate.mockResolvedValue(
+            createMockRecord("semi_auto"),
+          );
 
           const context: ClassificationDecisionContext = {
             userId: testUserId,
@@ -344,9 +403,14 @@ describe("TrustModeService", () => {
 
     describe("getFolderOperationDecision", () => {
       it("should return all false for manual mode", async () => {
-        mockRepository.getOrCreate.mockResolvedValue(createMockRecord("manual"));
+        mockRepository.getOrCreate.mockResolvedValue(
+          createMockRecord("manual"),
+        );
 
-        const decision = await service.getFolderOperationDecision(testUserId, "create");
+        const decision = await service.getFolderOperationDecision(
+          testUserId,
+          "create",
+        );
 
         expect(decision.shouldAutoExecute).toBe(false);
         expect(decision.requiresConfirmation).toBe(false);
@@ -354,25 +418,44 @@ describe("TrustModeService", () => {
       });
 
       it("should auto execute folder operations in full_auto mode", async () => {
-        mockRepository.getOrCreate.mockResolvedValue(createMockRecord("full_auto"));
+        mockRepository.getOrCreate.mockResolvedValue(
+          createMockRecord("full_auto"),
+        );
 
-        const createDecision = await service.getFolderOperationDecision(testUserId, "create");
+        const createDecision = await service.getFolderOperationDecision(
+          testUserId,
+          "create",
+        );
         expect(createDecision.shouldAutoExecute).toBe(true);
 
-        const mergeDecision = await service.getFolderOperationDecision(testUserId, "merge");
+        const mergeDecision = await service.getFolderOperationDecision(
+          testUserId,
+          "merge",
+        );
         expect(mergeDecision.shouldAutoExecute).toBe(true);
 
-        const splitDecision = await service.getFolderOperationDecision(testUserId, "split");
+        const splitDecision = await service.getFolderOperationDecision(
+          testUserId,
+          "split",
+        );
         expect(splitDecision.shouldAutoExecute).toBe(true);
 
-        const renameDecision = await service.getFolderOperationDecision(testUserId, "rename");
+        const renameDecision = await service.getFolderOperationDecision(
+          testUserId,
+          "rename",
+        );
         expect(renameDecision.shouldAutoExecute).toBe(true);
       });
 
       it("should require confirmation for all operations in semi_auto mode", async () => {
-        mockRepository.getOrCreate.mockResolvedValue(createMockRecord("semi_auto"));
+        mockRepository.getOrCreate.mockResolvedValue(
+          createMockRecord("semi_auto"),
+        );
 
-        const decision = await service.getFolderOperationDecision(testUserId, "create");
+        const decision = await service.getFolderOperationDecision(
+          testUserId,
+          "create",
+        );
 
         expect(decision.shouldAutoExecute).toBe(false);
         expect(decision.requiresConfirmation).toBe(true);
@@ -427,7 +510,12 @@ describe("TrustModeService", () => {
     describe("getModeHistory", () => {
       it("should return mode history from repository", async () => {
         const mockHistory = [
-          { from: "full_auto", to: "semi_auto", timestamp: "2025-01-01", reason: "test" },
+          {
+            from: "full_auto",
+            to: "semi_auto",
+            timestamp: "2025-01-01",
+            reason: "test",
+          },
         ];
         mockRepository.getModeHistory.mockResolvedValue(mockHistory as any);
 
@@ -440,7 +528,9 @@ describe("TrustModeService", () => {
 
     describe("shouldLearn", () => {
       it("should check learning settings for manual moves", async () => {
-        mockRepository.getOrCreate.mockResolvedValue(createMockRecord("full_auto"));
+        mockRepository.getOrCreate.mockResolvedValue(
+          createMockRecord("full_auto"),
+        );
 
         const result = await service.shouldLearn(testUserId, "manual_move");
 
@@ -449,7 +539,9 @@ describe("TrustModeService", () => {
       });
 
       it("should check learning settings for deletions", async () => {
-        mockRepository.getOrCreate.mockResolvedValue(createMockRecord("full_auto"));
+        mockRepository.getOrCreate.mockResolvedValue(
+          createMockRecord("full_auto"),
+        );
 
         const result = await service.shouldLearn(testUserId, "deletion");
 

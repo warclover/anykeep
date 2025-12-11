@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
 /**
@@ -31,7 +32,6 @@ import {
   Zap,
   Target,
   TrendingUp,
-  Database,
   Brain,
   CheckCircle2,
   AlertTriangle,
@@ -163,10 +163,7 @@ function ProgressCard({
       </div>
       <Progress
         value={percentage}
-        className={cn(
-          "h-2",
-          status && `[&>div]:${progressColors[status]}`,
-        )}
+        className={cn("h-2", status && `[&>div]:${progressColors[status]}`)}
       />
       {description && (
         <p className="text-xs text-muted-foreground">{description}</p>
@@ -193,7 +190,9 @@ export function PerformanceMonitor({
     setError(null);
 
     try {
-      const res = await fetch("/api/classification/analytics?type=overview,learning,cache,health");
+      const res = await fetch(
+        "/api/classification/analytics?type=overview,learning,cache,health",
+      );
 
       if (!res.ok) {
         throw new Error("Failed to fetch analytics");
@@ -214,7 +213,9 @@ export function PerformanceMonitor({
   }, [fetchData]);
 
   // 获取状态评级
-  const getAccuracyStatus = (accuracy: number): "good" | "warning" | "error" => {
+  const getAccuracyStatus = (
+    accuracy: number,
+  ): "good" | "warning" | "error" => {
     if (accuracy >= 80) return "good";
     if (accuracy >= 60) return "warning";
     return "error";
@@ -369,13 +370,19 @@ export function PerformanceMonitor({
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm">已分类</span>
-              <Badge variant="outline" className="bg-green-50 dark:bg-green-900/20">
+              <Badge
+                variant="outline"
+                className="bg-green-50 dark:bg-green-900/20"
+              >
                 {data.overview.bookmarks.withFolder}
               </Badge>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm">未分类</span>
-              <Badge variant="outline" className="bg-yellow-50 dark:bg-yellow-900/20">
+              <Badge
+                variant="outline"
+                className="bg-yellow-50 dark:bg-yellow-900/20"
+              >
                 {data.overview.bookmarks.withoutFolder}
               </Badge>
             </div>

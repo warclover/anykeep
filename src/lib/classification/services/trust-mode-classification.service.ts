@@ -23,7 +23,6 @@ import {
 import type {
   ClassificationResult,
   BookmarkInput,
-  ClassificationAction,
 } from "@/lib/classification/types";
 import { extractSourceFromUrl } from "@/types/source-profile";
 import { logger } from "@/lib/logger";
@@ -96,7 +95,10 @@ export interface EnhancedClassificationResult extends ClassificationResult {
  * 分类服务接口（用于依赖注入）
  */
 export interface IClassificationService {
-  classify(userId: string, bookmark: BookmarkInput): Promise<ClassificationResult>;
+  classify(
+    userId: string,
+    bookmark: BookmarkInput,
+  ): Promise<ClassificationResult>;
 }
 
 // ============================================================================
@@ -107,9 +109,7 @@ export interface IClassificationService {
  * 托管模式感知的分类服务
  */
 export class TrustModeClassificationService {
-  constructor(
-    private classificationService: IClassificationService,
-  ) {}
+  constructor(private classificationService: IClassificationService) {}
 
   /**
    * 分类入口（托管模式感知）
@@ -181,18 +181,15 @@ export class TrustModeClassificationService {
       const isNewFolderAction =
         classificationResult.action === "auto_create" ||
         classificationResult.action === "suggest_create";
-      const trustModeDecision = await trustModeService.getClassificationDecision({
-        userId,
-        confidence: classificationResult.confidence,
-        isNewFolder: isNewFolderAction,
-      });
+      const trustModeDecision =
+        await trustModeService.getClassificationDecision({
+          userId,
+          confidence: classificationResult.confidence,
+          isNewFolder: isNewFolderAction,
+        });
 
       // 7. 更新来源画像
-      await this.updateSourceProfile(
-        userId,
-        bookmark,
-        classificationResult,
-      );
+      await this.updateSourceProfile(userId, bookmark, classificationResult);
 
       // 8. 记录决策统计
       if (trustModeDecision.shouldAutoExecute) {
@@ -657,8 +654,10 @@ export class TrustModeClassificationService {
       },
       sourceMatch: routeDecision.fastPathResult?.sourceMatch
         ? {
-            sourceId: routeDecision.fastPathResult.sourceMatch.profile?.sourceId || "",
-            sourceName: routeDecision.fastPathResult.sourceMatch.profile?.sourceName,
+            sourceId:
+              routeDecision.fastPathResult.sourceMatch.profile?.sourceId || "",
+            sourceName:
+              routeDecision.fastPathResult.sourceMatch.profile?.sourceName,
             confidence: routeDecision.fastPathResult.confidence,
           }
         : undefined,

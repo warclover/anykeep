@@ -209,14 +209,14 @@ export class PreferenceLearner {
         .is("deleted_at", null)
         .order("created_at", { ascending: false })
         .limit(500) as unknown as Promise<{
-          data: Array<{
-            folder_id: number | null;
-            url: string;
-            tags: string[] | null;
-            created_at: string;
-          }> | null;
-          error: unknown;
-        }>,
+        data: Array<{
+          folder_id: number | null;
+          url: string;
+          tags: string[] | null;
+          created_at: string;
+        }> | null;
+        error: unknown;
+      }>,
       // 获取排除规则
       this.getExclusions(userId),
     ]);
@@ -279,7 +279,8 @@ export class PreferenceLearner {
       }
 
       // 计算准确率
-      const total = stats.confirmations + stats.rejections + stats.modifications;
+      const total =
+        stats.confirmations + stats.rejections + stats.modifications;
       if (total > 0) {
         stats.accuracy = (stats.confirmations / total) * 100;
       }
@@ -409,7 +410,8 @@ export class PreferenceLearner {
     // 检查是否需要创建排除规则
     if (originalFolderId && sourceId) {
       const rejectCount = userSamples.filter(
-        (s) => s.rejectedFolderId === originalFolderId && s.sourceId === sourceId,
+        (s) =>
+          s.rejectedFolderId === originalFolderId && s.sourceId === sourceId,
       ).length;
 
       if (rejectCount >= LEARNING_LIMITS.MIN_SAMPLES_FOR_EXCLUSION) {
@@ -422,7 +424,8 @@ export class PreferenceLearner {
    * 处理修改事件
    */
   private async handleModification(event: LearningEvent): Promise<void> {
-    const { userId, sourceId, originalFolderId, newFolderId, confidence } = event;
+    const { userId, sourceId, originalFolderId, newFolderId, confidence } =
+      event;
 
     if (!sourceId || !newFolderId) return;
 
@@ -455,7 +458,7 @@ export class PreferenceLearner {
   /**
    * 处理文件夹创建事件
    */
-  private async handleFolderCreated(event: LearningEvent): Promise<void> {
+  private async handleFolderCreated(_event: LearningEvent): Promise<void> {
     // 新文件夹创建时，可以记录来源和标签关联
     // 用于未来的智能推荐
   }
@@ -464,7 +467,12 @@ export class PreferenceLearner {
    * 处理文件夹移动事件
    */
   private async handleFolderMoved(event: LearningEvent): Promise<void> {
-    const { userId, sourceId, originalFolderId, newFolderId } = event;
+    const {
+      userId,
+      sourceId,
+      originalFolderId: _originalFolderId,
+      newFolderId,
+    } = event;
 
     // 更新来源画像
     if (sourceId && newFolderId) {
@@ -479,7 +487,7 @@ export class PreferenceLearner {
   /**
    * 处理书签删除事件
    */
-  private async handleBookmarkDeleted(event: LearningEvent): Promise<void> {
+  private async handleBookmarkDeleted(_event: LearningEvent): Promise<void> {
     // 书签删除可能表明分类不当
     // 记录用于分析
   }
@@ -554,7 +562,9 @@ export class PreferenceLearner {
         folderId: folder.id,
         folderName: folder.name,
         usageFrequency: stats?.count || 0,
-        lastUsed: stats?.lastUsed || (folder.updated_at ? new Date(folder.updated_at) : new Date()),
+        lastUsed:
+          stats?.lastUsed ||
+          (folder.updated_at ? new Date(folder.updated_at) : new Date()),
         associatedTags: stats ? [...stats.tags].slice(0, 20) : [],
         associatedSources: stats ? [...stats.sources].slice(0, 10) : [],
       });
@@ -569,7 +579,9 @@ export class PreferenceLearner {
   /**
    * 构建来源偏好
    */
-  private async buildSourcePreferences(userId: string): Promise<SourcePreference[]> {
+  private async buildSourcePreferences(
+    userId: string,
+  ): Promise<SourcePreference[]> {
     const sourceProfiles = await sourceProfileService.findAllByUserId(userId);
 
     return sourceProfiles
@@ -598,7 +610,10 @@ export class PreferenceLearner {
 
       const hour = new Date(bookmark.created_at).getHours();
       const folderMap = hourlyStats.get(hour) || new Map();
-      folderMap.set(bookmark.folder_id, (folderMap.get(bookmark.folder_id) || 0) + 1);
+      folderMap.set(
+        bookmark.folder_id,
+        (folderMap.get(bookmark.folder_id) || 0) + 1,
+      );
       hourlyStats.set(hour, folderMap);
     }
 
@@ -627,7 +642,9 @@ export class PreferenceLearner {
   /**
    * 获取用户排除规则
    */
-  private async getExclusions(userId: string): Promise<InternalFolderExclusion[]> {
+  private async getExclusions(
+    userId: string,
+  ): Promise<InternalFolderExclusion[]> {
     const supabase = await createClient();
 
     const { data: profile } = await supabase
@@ -655,15 +672,17 @@ export class PreferenceLearner {
       .eq("id", userId)
       .single();
 
-    const currentSettings = (profile?.settings as Record<string, unknown>) || {};
+    const currentSettings =
+      (profile?.settings as Record<string, unknown>) || {};
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await supabase
       .from("profiles")
       .update({
         settings: {
           ...currentSettings,
+
           folderExclusions: exclusions,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } as any,
       })
       .eq("id", userId);

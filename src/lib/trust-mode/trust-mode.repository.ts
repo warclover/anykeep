@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /**
  * Trust Mode Repository
  * V4.2 托管模式数据访问层
@@ -82,7 +83,7 @@ export class TrustModeRepository {
    * 获取用户托管模式
    */
   async findByUserId(userId: string): Promise<UserTrustModeRecord | null> {
-    const { data, error } = await this.supabase
+    const { data: data, error } = await this.supabase
       .from("user_trust_mode")
       .select("*")
       .eq("user_id", userId)
@@ -113,7 +114,7 @@ export class TrustModeRepository {
       },
     ];
 
-    const { data, error } = await this.supabase
+    const { data: data, error } = await this.supabase
       .from("user_trust_mode")
       .insert({
         user_id: userId,
@@ -139,11 +140,14 @@ export class TrustModeRepository {
 
     // 使用 RPC 函数更新（处理历史记录）
     if (trustMode) {
-      const { data, error } = await this.supabase.rpc("update_user_trust_mode", {
-        p_user_id: userId,
-        p_trust_mode: trustMode,
-        p_reason: reason || null,
-      });
+      const { data: data, error } = await this.supabase.rpc(
+        "update_user_trust_mode",
+        {
+          p_user_id: userId,
+          p_trust_mode: trustMode,
+          p_reason: reason || null,
+        },
+      );
 
       if (error) {
         throw new Error(`Failed to update trust mode: ${error.message}`);
@@ -190,7 +194,7 @@ export class TrustModeRepository {
       ...overrides,
     };
 
-    const { data, error } = await this.supabase
+    const { data: data, error } = await this.supabase
       .from("user_trust_mode")
       .update({
         overrides: mergedOverrides,
@@ -254,7 +258,9 @@ export class TrustModeRepository {
   /**
    * 直接增量更新统计（备用方法）
    */
-  private async incrementStatsDirect(input: IncrementStatsInput): Promise<void> {
+  private async incrementStatsDirect(
+    input: IncrementStatsInput,
+  ): Promise<void> {
     const {
       userId,
       autoDecisions = 0,
@@ -271,7 +277,8 @@ export class TrustModeRepository {
       .from("user_trust_mode")
       .update({
         auto_decisions_count: current.auto_decisions_count + autoDecisions,
-        user_corrections_count: current.user_corrections_count + userCorrections,
+        user_corrections_count:
+          current.user_corrections_count + userCorrections,
         pending_confirmations_count:
           current.pending_confirmations_count + pendingConfirmations,
         updated_at: new Date().toISOString(),

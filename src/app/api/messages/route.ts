@@ -72,16 +72,15 @@ export async function GET(request: NextRequest) {
     // 3. 获取消息列表（使用优化后的单次查询函数）
     const statusFilter = status === "all" ? null : status;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: messagesWithCount, error: listError } = await (
-      supabase.rpc as any
-    )("get_messages_with_count", {
-      p_user_id: user.id,
-      p_status: statusFilter ?? undefined,
-      p_level: level || undefined,
-      p_limit: limit,
-      p_offset: offset,
-    });
+    const { data: messagesWithCount, error: listError } =
+      await // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (supabase.rpc as any)("get_messages_with_count", {
+        p_user_id: user.id,
+        p_status: statusFilter ?? undefined,
+        p_level: level || undefined,
+        p_limit: limit,
+        p_offset: offset,
+      });
 
     if (listError) {
       logger.error(

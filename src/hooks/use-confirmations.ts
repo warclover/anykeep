@@ -12,7 +12,7 @@
  * @since 2025-12-11
  */
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import { useAbortableFetch } from "./use-abortable-fetch";
 import type {
@@ -73,12 +73,12 @@ export interface UseConfirmationsReturn {
   /** 确认分类 */
   confirmClassification: (
     id: number,
-    choice: ClassificationChoice
+    choice: ClassificationChoice,
   ) => Promise<boolean>;
   /** 确认文件夹操作 */
   confirmFolderOperation: (
     id: number,
-    choice: FolderOperationChoice
+    choice: FolderOperationChoice,
   ) => Promise<boolean>;
   /** 拒绝确认 */
   reject: (id: number) => Promise<boolean>;
@@ -93,7 +93,7 @@ export interface UseConfirmationsReturn {
 // ============================================================================
 
 export function useConfirmations(
-  options: UseConfirmationsOptions = {}
+  options: UseConfirmationsOptions = {},
 ): UseConfirmationsReturn {
   const {
     status,
@@ -113,7 +113,7 @@ export function useConfirmations(
   const [error, setError] = useState<string | null>(null);
   const [pendingCount, setPendingCount] = useState(0);
   const [typeCounts, setTypeCounts] = useState<Partial<ConfirmationTypeCounts>>(
-    {}
+    {},
   );
   const [pagination, setPagination] = useState({
     total: 0,
@@ -133,7 +133,7 @@ export function useConfirmations(
       if (pendingOnly) params.set("pendingOnly", "true");
       return params.toString();
     },
-    [limit, status, type, pendingOnly]
+    [limit, status, type, pendingOnly],
   );
 
   // 加载确认消息
@@ -157,15 +157,14 @@ export function useConfirmations(
           const newConfirmations = data.confirmations || [];
 
           setConfirmations((prev) =>
-            append ? [...prev, ...newConfirmations] : newConfirmations
+            append ? [...prev, ...newConfirmations] : newConfirmations,
           );
           setPendingCount(data.pendingCount || 0);
           setPagination({
             total: data.total || 0,
             limit: data.limit || limit,
             offset: data.offset || offset,
-            hasMore:
-              offset + newConfirmations.length < (data.total || 0),
+            hasMore: offset + newConfirmations.length < (data.total || 0),
           });
 
           // 计算各类型数量（如果后端没有提供）
@@ -188,7 +187,7 @@ export function useConfirmations(
         setIsLoading(false);
       }
     },
-    [buildQueryParams, fetchWithAbort, limit]
+    [buildQueryParams, fetchWithAbort, limit],
   );
 
   // 初始加载
@@ -250,7 +249,7 @@ export function useConfirmations(
         return false;
       }
     },
-    [fetchWithAbort]
+    [fetchWithAbort],
   );
 
   // 确认文件夹操作
@@ -284,7 +283,7 @@ export function useConfirmations(
         return false;
       }
     },
-    [fetchWithAbort]
+    [fetchWithAbort],
   );
 
   // 拒绝
@@ -312,7 +311,7 @@ export function useConfirmations(
         return false;
       }
     },
-    [fetchWithAbort]
+    [fetchWithAbort],
   );
 
   // 批量确认
@@ -349,7 +348,7 @@ export function useConfirmations(
         return { success: 0, failed: ids.length };
       }
     },
-    [fetchWithAbort]
+    [fetchWithAbort],
   );
 
   // 批量拒绝
@@ -386,7 +385,7 @@ export function useConfirmations(
         return { success: 0, failed: ids.length };
       }
     },
-    [fetchWithAbort]
+    [fetchWithAbort],
   );
 
   return {

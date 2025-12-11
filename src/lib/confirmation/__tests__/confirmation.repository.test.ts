@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Confirmation Repository Unit Tests
  * V4.2 待确认消息数据访问层测试
@@ -57,6 +58,7 @@ describe("ConfirmationRepository", () => {
     repository = new ConfirmationRepository();
 
     // Mock getSupabase 方法
+
     (repository as any).getSupabase = jest.fn().mockResolvedValue(mockSupabase);
   });
 
@@ -69,7 +71,9 @@ describe("ConfirmationRepository", () => {
       const mockFrom = jest.fn().mockReturnValue({
         insert: jest.fn().mockReturnValue({
           select: jest.fn().mockReturnValue({
-            single: jest.fn().mockResolvedValue({ data: mockDbRow, error: null }),
+            single: jest
+              .fn()
+              .mockResolvedValue({ data: mockDbRow, error: null }),
           }),
         }),
       });
@@ -95,7 +99,9 @@ describe("ConfirmationRepository", () => {
           insertedData = data;
           return {
             select: jest.fn().mockReturnValue({
-              single: jest.fn().mockResolvedValue({ data: mockDbRow, error: null }),
+              single: jest
+                .fn()
+                .mockResolvedValue({ data: mockDbRow, error: null }),
             }),
           };
         }),
@@ -112,7 +118,9 @@ describe("ConfirmationRepository", () => {
 
       const expiresAt = new Date(insertedData.expires_at);
       const now = new Date();
-      const diffDays = Math.round((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      const diffDays = Math.round(
+        (expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+      );
 
       expect(diffDays).toBeCloseTo(14, 0);
     });
@@ -136,7 +144,7 @@ describe("ConfirmationRepository", () => {
           confirmationType: "classification",
           bookmarkId: testBookmarkId,
           suggestion: mockClassificationSuggestion,
-        })
+        }),
       ).rejects.toThrow("Failed to create confirmation");
     });
   });
@@ -190,7 +198,9 @@ describe("ConfirmationRepository", () => {
       const mockFrom = jest.fn().mockReturnValue({
         select: jest.fn().mockReturnValue({
           eq: jest.fn().mockReturnValue({
-            single: jest.fn().mockResolvedValue({ data: mockDbRow, error: null }),
+            single: jest
+              .fn()
+              .mockResolvedValue({ data: mockDbRow, error: null }),
           }),
         }),
       });
@@ -278,7 +288,7 @@ describe("ConfirmationRepository", () => {
       mockSupabase.from = mockFrom;
 
       await repository.findByUser(testUserId, {
-        type: ["classification", "folder_create"]
+        type: ["classification", "folder_create"],
       });
 
       expect(mockIn).toHaveBeenCalled();
@@ -309,7 +319,10 @@ describe("ConfirmationRepository", () => {
       });
       mockSupabase.from = mockFrom;
 
-      const result = await repository.findByBookmarkId(testUserId, testBookmarkId);
+      const result = await repository.findByBookmarkId(
+        testUserId,
+        testBookmarkId,
+      );
 
       expect(result).not.toBeNull();
     });
@@ -357,7 +370,10 @@ describe("ConfirmationRepository", () => {
 
   describe("findExpired", () => {
     it("should return expired confirmations", async () => {
-      const expiredRow = { ...mockDbRow, expires_at: new Date(Date.now() - 1000).toISOString() };
+      const expiredRow = {
+        ...mockDbRow,
+        expires_at: new Date(Date.now() - 1000).toISOString(),
+      };
       const mockFrom = jest.fn().mockReturnValue({
         select: jest.fn().mockReturnValue({
           eq: jest.fn().mockReturnValue({
@@ -389,7 +405,9 @@ describe("ConfirmationRepository", () => {
         update: jest.fn().mockReturnValue({
           eq: jest.fn().mockReturnValue({
             select: jest.fn().mockReturnValue({
-              single: jest.fn().mockResolvedValue({ data: updatedRow, error: null }),
+              single: jest
+                .fn()
+                .mockResolvedValue({ data: updatedRow, error: null }),
             }),
           }),
         }),
@@ -410,7 +428,9 @@ describe("ConfirmationRepository", () => {
           return {
             eq: jest.fn().mockReturnValue({
               select: jest.fn().mockReturnValue({
-                single: jest.fn().mockResolvedValue({ data: updatedRow, error: null }),
+                single: jest
+                  .fn()
+                  .mockResolvedValue({ data: updatedRow, error: null }),
               }),
             }),
           };
@@ -436,7 +456,9 @@ describe("ConfirmationRepository", () => {
           return {
             eq: jest.fn().mockReturnValue({
               select: jest.fn().mockReturnValue({
-                single: jest.fn().mockResolvedValue({ data: updatedRow, error: null }),
+                single: jest
+                  .fn()
+                  .mockResolvedValue({ data: updatedRow, error: null }),
               }),
             }),
           };
@@ -493,12 +515,16 @@ describe("ConfirmationRepository", () => {
     it("should throw error on delete failure", async () => {
       const mockFrom = jest.fn().mockReturnValue({
         delete: jest.fn().mockReturnValue({
-          eq: jest.fn().mockResolvedValue({ error: { message: "Delete failed" } }),
+          eq: jest
+            .fn()
+            .mockResolvedValue({ error: { message: "Delete failed" } }),
         }),
       });
       mockSupabase.from = mockFrom;
 
-      await expect(repository.delete(1)).rejects.toThrow("Failed to delete confirmation");
+      await expect(repository.delete(1)).rejects.toThrow(
+        "Failed to delete confirmation",
+      );
     });
   });
 

@@ -11,8 +11,10 @@
  * @since 2025-12-11
  */
 
-import { confirmationService, type ExpirationResult } from "./confirmation.service";
-import { MessageService } from "@/lib/messages/message-service";
+import {
+  confirmationService,
+  type ExpirationResult,
+} from "./confirmation.service";
 import { logger } from "@/lib/logger";
 
 // ============================================================================

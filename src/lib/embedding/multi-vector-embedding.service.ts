@@ -14,10 +14,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
-import {
-  generateEmbedding,
-  generateEmbeddingsBatch,
-} from "@/lib/utils/embedding-generator";
+import { generateEmbedding } from "@/lib/utils/embedding-generator";
 import { logger } from "@/lib/logger";
 
 // ============================================================================
@@ -197,7 +194,9 @@ export class MultiVectorEmbeddingService {
     }
 
     try {
-      const text = parts.join("\n\n").substring(0, this.config.contentMaxLength);
+      const text = parts
+        .join("\n\n")
+        .substring(0, this.config.contentMaxLength);
       const embedding = await generateEmbedding(text);
       return embedding;
     } catch (error) {
@@ -396,7 +395,7 @@ export class MultiVectorEmbeddingService {
     userId: string,
     progressCallback?: (current: number, total: number) => void,
   ): Promise<BatchUpdateResult> {
-    let totalResult: BatchUpdateResult = {
+    const totalResult: BatchUpdateResult = {
       successCount: 0,
       failedCount: 0,
       skippedCount: 0,
@@ -479,10 +478,12 @@ export class MultiVectorEmbeddingService {
 
       const { error } = await this.supabase
         .from("bookmarks")
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         .update({
           title_embedding: embedding,
+
           title_embedding_at: new Date().toISOString(),
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } as any)
         .eq("id", bookmarkId);
 
@@ -520,10 +521,12 @@ export class MultiVectorEmbeddingService {
 
       const { error } = await this.supabase
         .from("bookmarks")
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         .update({
           tag_embedding: embedding,
+
           tag_embedding_at: embedding ? new Date().toISOString() : null,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } as any)
         .eq("id", bookmarkId);
 

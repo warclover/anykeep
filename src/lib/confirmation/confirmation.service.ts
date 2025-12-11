@@ -12,7 +12,10 @@
  * @since 2025-12-11
  */
 
-import { confirmationRepository, type ConfirmationQueryFilters } from "./confirmation.repository";
+import {
+  confirmationRepository,
+  type ConfirmationQueryFilters,
+} from "./confirmation.repository";
 import type {
   ConfirmationType,
   ConfirmationStatus,
@@ -21,12 +24,10 @@ import type {
   FolderMergeSuggestion,
   FolderSplitSuggestion,
   FolderRenameSuggestion,
-  Suggestion,
   UserChoice,
   ClassificationChoice,
   FolderOperationChoice,
   PendingConfirmationRecord,
-  CreatePendingConfirmationInput,
   ConfirmationMessageDisplay,
 } from "@/types/confirmation";
 import { preferenceLearner } from "@/lib/classification/learning/preference-learner";
@@ -102,7 +103,10 @@ class ConfirmationService {
     const { userId, bookmarkId, suggestion } = input;
 
     // 检查是否已存在该书签的待确认记录
-    const existing = await confirmationRepository.findByBookmarkId(userId, bookmarkId);
+    const existing = await confirmationRepository.findByBookmarkId(
+      userId,
+      bookmarkId,
+    );
     if (existing) {
       logger.warn({ bookmarkId }, "Classification confirmation already exists");
       return existing;
@@ -359,7 +363,8 @@ class ConfirmationService {
         try {
           if (confirmation.confirmation_type === "classification") {
             // 分类确认过期后按建议执行
-            const suggestion = confirmation.suggestion as ClassificationSuggestion;
+            const suggestion =
+              confirmation.suggestion as ClassificationSuggestion;
 
             if (suggestion.folderId !== null) {
               // TODO: 执行分类操作
@@ -368,13 +373,20 @@ class ConfirmationService {
               result.movedToInbox++;
             }
 
-            await confirmationRepository.updateStatus(confirmation.id, "expired");
+            await confirmationRepository.updateStatus(
+              confirmation.id,
+              "expired",
+            );
           } else {
             // 文件夹操作过期后标记为过期，不自动执行
-            await confirmationRepository.updateStatus(confirmation.id, "expired");
+            await confirmationRepository.updateStatus(
+              confirmation.id,
+              "expired",
+            );
           }
         } catch (error) {
-          const message = error instanceof Error ? error.message : String(error);
+          const message =
+            error instanceof Error ? error.message : String(error);
           result.errors.push(`ID ${confirmation.id}: ${message}`);
         }
       }
@@ -411,7 +423,8 @@ class ConfirmationService {
         }
 
         if (confirmation.confirmation_type === "classification") {
-          const suggestion = confirmation.suggestion as ClassificationSuggestion;
+          const suggestion =
+            confirmation.suggestion as ClassificationSuggestion;
           await this.respondToClassification(id, userId, {
             selectedFolderId: suggestion.folderId,
           });

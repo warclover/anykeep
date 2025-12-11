@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Trust Mode Repository Unit Tests
  * V4.2 托管模式数据访问层测试
@@ -35,12 +36,19 @@ describe("TrustModeRepository", () => {
   };
 
   // 创建 mock 查询构建器
+
   const createMockQueryBuilder = (data: any = mockDbRow, error: any = null) => {
     const single = jest.fn().mockResolvedValue({ data, error });
-    const select = jest.fn().mockReturnValue({ single, eq: jest.fn().mockReturnValue({ single }) });
+    const select = jest
+      .fn()
+      .mockReturnValue({ single, eq: jest.fn().mockReturnValue({ single }) });
     const insert = jest.fn().mockReturnValue({ select });
-    const update = jest.fn().mockReturnValue({ eq: jest.fn().mockReturnValue({ select }) });
-    const del = jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ error }) });
+    const update = jest
+      .fn()
+      .mockReturnValue({ eq: jest.fn().mockReturnValue({ select }) });
+    const del = jest
+      .fn()
+      .mockReturnValue({ eq: jest.fn().mockResolvedValue({ error }) });
 
     return {
       from: jest.fn().mockReturnValue({
@@ -74,7 +82,9 @@ describe("TrustModeRepository", () => {
       const mockFrom = jest.fn().mockReturnValue({
         select: jest.fn().mockReturnValue({
           eq: jest.fn().mockReturnValue({
-            single: jest.fn().mockResolvedValue({ data: mockDbRow, error: null }),
+            single: jest
+              .fn()
+              .mockResolvedValue({ data: mockDbRow, error: null }),
           }),
         }),
       });
@@ -120,7 +130,7 @@ describe("TrustModeRepository", () => {
       mockSupabase.from = mockFrom;
 
       await expect(repository.findByUserId(testUserId)).rejects.toThrow(
-        "Failed to fetch trust mode"
+        "Failed to fetch trust mode",
       );
     });
   });
@@ -134,7 +144,9 @@ describe("TrustModeRepository", () => {
       const mockFrom = jest.fn().mockReturnValue({
         insert: jest.fn().mockReturnValue({
           select: jest.fn().mockReturnValue({
-            single: jest.fn().mockResolvedValue({ data: mockDbRow, error: null }),
+            single: jest
+              .fn()
+              .mockResolvedValue({ data: mockDbRow, error: null }),
           }),
         }),
       });
@@ -151,7 +163,9 @@ describe("TrustModeRepository", () => {
       const mockFrom = jest.fn().mockReturnValue({
         insert: jest.fn().mockReturnValue({
           select: jest.fn().mockReturnValue({
-            single: jest.fn().mockResolvedValue({ data: customRow, error: null }),
+            single: jest
+              .fn()
+              .mockResolvedValue({ data: customRow, error: null }),
           }),
         }),
       });
@@ -177,7 +191,9 @@ describe("TrustModeRepository", () => {
       const mockFrom = jest.fn().mockReturnValue({
         insert: jest.fn().mockReturnValue({
           select: jest.fn().mockReturnValue({
-            single: jest.fn().mockResolvedValue({ data: customRow, error: null }),
+            single: jest
+              .fn()
+              .mockResolvedValue({ data: customRow, error: null }),
           }),
         }),
       });
@@ -205,7 +221,7 @@ describe("TrustModeRepository", () => {
       mockSupabase.from = mockFrom;
 
       await expect(repository.create({ userId: testUserId })).rejects.toThrow(
-        "Failed to create trust mode"
+        "Failed to create trust mode",
       );
     });
   });
@@ -216,7 +232,9 @@ describe("TrustModeRepository", () => {
 
   describe("update", () => {
     it("should update trust mode via RPC function", async () => {
-      mockSupabase.rpc = jest.fn().mockResolvedValue({ data: { success: true }, error: null });
+      mockSupabase.rpc = jest
+        .fn()
+        .mockResolvedValue({ data: { success: true }, error: null });
 
       // Mock findByUserId for re-fetch
       const mockFrom = jest.fn().mockReturnValue({
@@ -247,7 +265,7 @@ describe("TrustModeRepository", () => {
 
     it("should throw error when no update fields provided", async () => {
       await expect(repository.update({ userId: testUserId })).rejects.toThrow(
-        "No update fields provided"
+        "No update fields provided",
       );
     });
   });
@@ -272,7 +290,10 @@ describe("TrustModeRepository", () => {
       });
 
       // Mock update
-      const newOverrides = { classification: { autoClassify: true }, notification: { onFolderCreate: true } };
+      const newOverrides = {
+        classification: { autoClassify: true },
+        notification: { onFolderCreate: true },
+      };
       const updateMock = jest.fn().mockReturnValue({
         update: jest.fn().mockReturnValue({
           eq: jest.fn().mockReturnValue({
@@ -353,7 +374,9 @@ describe("TrustModeRepository", () => {
       const mockFrom = jest.fn().mockReturnValue({
         select: jest.fn().mockReturnValue({
           eq: jest.fn().mockReturnValue({
-            single: jest.fn().mockResolvedValue({ data: mockDbRow, error: null }),
+            single: jest
+              .fn()
+              .mockResolvedValue({ data: mockDbRow, error: null }),
           }),
         }),
       });
@@ -412,12 +435,16 @@ describe("TrustModeRepository", () => {
       const mockFrom = jest.fn().mockReturnValue({
         select: jest.fn().mockReturnValue({
           eq: jest.fn().mockReturnValue({
-            single: jest.fn().mockResolvedValue({ data: mockDbRow, error: null }),
+            single: jest
+              .fn()
+              .mockResolvedValue({ data: mockDbRow, error: null }),
           }),
         }),
       });
       mockSupabase.from = mockFrom;
-      mockSupabase.rpc = jest.fn().mockResolvedValue({ data: null, error: null });
+      mockSupabase.rpc = jest
+        .fn()
+        .mockResolvedValue({ data: null, error: null });
 
       await repository.incrementStats({
         userId: testUserId,
@@ -426,12 +453,15 @@ describe("TrustModeRepository", () => {
         pendingConfirmations: 0,
       });
 
-      expect(mockSupabase.rpc).toHaveBeenCalledWith("increment_trust_mode_stats", {
-        p_user_id: testUserId,
-        p_auto_decisions: 1,
-        p_user_corrections: 0,
-        p_pending_confirmations: 0,
-      });
+      expect(mockSupabase.rpc).toHaveBeenCalledWith(
+        "increment_trust_mode_stats",
+        {
+          p_user_id: testUserId,
+          p_auto_decisions: 1,
+          p_user_corrections: 0,
+          p_pending_confirmations: 0,
+        },
+      );
     });
 
     it("should fallback to direct update when RPC does not exist", async () => {
@@ -486,19 +516,21 @@ describe("TrustModeRepository", () => {
       expect(updateMock).toHaveBeenCalledWith(
         expect.objectContaining({
           pending_confirmations_count: 0,
-        })
+        }),
       );
     });
 
     it("should throw error on failure", async () => {
       mockSupabase.from = jest.fn().mockReturnValue({
         update: jest.fn().mockReturnValue({
-          eq: jest.fn().mockResolvedValue({ error: { message: "Update failed" } }),
+          eq: jest
+            .fn()
+            .mockResolvedValue({ error: { message: "Update failed" } }),
         }),
       });
 
       await expect(repository.resetPendingCount(testUserId)).rejects.toThrow(
-        "Failed to reset pending count"
+        "Failed to reset pending count",
       );
     });
   });
@@ -510,7 +542,12 @@ describe("TrustModeRepository", () => {
   describe("getModeHistory", () => {
     it("should return mode history from record", async () => {
       const mockHistory = [
-        { from: "full_auto", to: "semi_auto", timestamp: "2025-01-01", reason: "test" },
+        {
+          from: "full_auto",
+          to: "semi_auto",
+          timestamp: "2025-01-01",
+          reason: "test",
+        },
       ];
       const mockFrom = jest.fn().mockReturnValue({
         select: jest.fn().mockReturnValue({
@@ -570,12 +607,14 @@ describe("TrustModeRepository", () => {
     it("should throw error on delete failure", async () => {
       mockSupabase.from = jest.fn().mockReturnValue({
         delete: jest.fn().mockReturnValue({
-          eq: jest.fn().mockResolvedValue({ error: { message: "Delete failed" } }),
+          eq: jest
+            .fn()
+            .mockResolvedValue({ error: { message: "Delete failed" } }),
         }),
       });
 
       await expect(repository.delete(testUserId)).rejects.toThrow(
-        "Failed to delete trust mode"
+        "Failed to delete trust mode",
       );
     });
   });

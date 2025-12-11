@@ -10,7 +10,8 @@
  * @since 2025-12-11
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { trustModeService } from "@/lib/trust-mode/trust-mode.service";
 import { isValidTrustMode, TRUST_MODE_INFO } from "@/types/trust-mode";
@@ -30,7 +31,7 @@ export async function GET() {
     if (!user) {
       return NextResponse.json(
         { success: false, error: { message: "未登录" } },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -51,11 +52,10 @@ export async function GET() {
       {
         success: false,
         error: {
-          message:
-            error instanceof Error ? error.message : "获取托管模式失败",
+          message: error instanceof Error ? error.message : "获取托管模式失败",
         },
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -74,7 +74,7 @@ export async function PUT(request: NextRequest) {
     if (!user) {
       return NextResponse.json(
         { success: false, error: { message: "未登录" } },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -90,14 +90,14 @@ export async function PUT(request: NextRequest) {
             code: "INVALID_TRUST_MODE",
           },
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     const updatedRecord = await trustModeService.updateTrustMode(
       user.id,
       mode,
-      reason
+      reason,
     );
 
     return NextResponse.json({
@@ -115,11 +115,10 @@ export async function PUT(request: NextRequest) {
       {
         success: false,
         error: {
-          message:
-            error instanceof Error ? error.message : "更新托管模式失败",
+          message: error instanceof Error ? error.message : "更新托管模式失败",
         },
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

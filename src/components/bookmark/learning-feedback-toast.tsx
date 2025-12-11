@@ -16,15 +16,7 @@
 
 import { useCallback } from "react";
 import { toast } from "sonner";
-import {
-  Brain,
-  FolderMinus,
-  Tag,
-  Link2,
-  Undo2,
-  CheckCircle2,
-  Info,
-} from "lucide-react";
+import { Brain, FolderMinus, Tag, Link2, Undo2, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -111,14 +103,8 @@ const LEARNING_TYPE_CONFIG: Record<
  * 生成学习描述文本
  */
 function generateDescription(options: LearningFeedbackOptions): string {
-  const {
-    type,
-    sourceFolderName,
-    targetFolderName,
-    tags,
-    sourceName,
-    count,
-  } = options;
+  const { type, sourceFolderName, targetFolderName, tags, sourceName, count } =
+    options;
 
   switch (type) {
     case "tag_exclusion":
@@ -221,16 +207,13 @@ export function showLearningFeedback(options: LearningFeedbackOptions): void {
   toast.custom(
     (t) => (
       <div className="bg-card border border-border rounded-lg shadow-lg p-4 w-full max-w-md">
-        <LearningToastContent
-          {...restOptions}
-          toastId={t}
-        />
+        <LearningToastContent {...restOptions} toastId={t} />
       </div>
     ),
     {
       duration,
       position: "bottom-right",
-    }
+    },
   );
 }
 
@@ -265,24 +248,24 @@ export interface UseLearningFeedbackReturn {
   showTagExclusion: (
     tags: string[],
     folderName: string,
-    onUndo?: () => Promise<boolean>
+    onUndo?: () => Promise<boolean>,
   ) => void;
   /** 显示来源排除反馈 */
   showSourceExclusion: (
     sourceName: string,
     folderName: string,
-    onUndo?: () => Promise<boolean>
+    onUndo?: () => Promise<boolean>,
   ) => void;
   /** 显示文件夹偏好反馈 */
   showFolderPreference: (
     folderName: string,
-    onUndo?: () => Promise<boolean>
+    onUndo?: () => Promise<boolean>,
   ) => void;
   /** 显示来源偏好反馈 */
   showSourcePreference: (
     sourceName: string,
     folderName: string,
-    onUndo?: () => Promise<boolean>
+    onUndo?: () => Promise<boolean>,
   ) => void;
   /** 显示批量学习反馈 */
   showBulkLearning: (count: number, onUndo?: () => Promise<boolean>) => void;
@@ -300,14 +283,14 @@ export function useLearningFeedback(): UseLearningFeedbackReturn {
         onUndo,
       });
     },
-    []
+    [],
   );
 
   const showSourceExclusion = useCallback(
     (
       sourceName: string,
       folderName: string,
-      onUndo?: () => Promise<boolean>
+      onUndo?: () => Promise<boolean>,
     ) => {
       showLearningFeedback({
         type: "source_exclusion",
@@ -316,7 +299,7 @@ export function useLearningFeedback(): UseLearningFeedbackReturn {
         onUndo,
       });
     },
-    []
+    [],
   );
 
   const showFolderPreference = useCallback(
@@ -327,14 +310,14 @@ export function useLearningFeedback(): UseLearningFeedbackReturn {
         onUndo,
       });
     },
-    []
+    [],
   );
 
   const showSourcePreference = useCallback(
     (
       sourceName: string,
       folderName: string,
-      onUndo?: () => Promise<boolean>
+      onUndo?: () => Promise<boolean>,
     ) => {
       showLearningFeedback({
         type: "source_preference",
@@ -343,7 +326,7 @@ export function useLearningFeedback(): UseLearningFeedbackReturn {
         onUndo,
       });
     },
-    []
+    [],
   );
 
   const showBulkLearning = useCallback(
@@ -354,7 +337,7 @@ export function useLearningFeedback(): UseLearningFeedbackReturn {
         onUndo,
       });
     },
-    []
+    [],
   );
 
   const showSimple = useCallback((message: string) => {

@@ -57,14 +57,22 @@ describe("ConfirmationService", () => {
 
   const createMockRecord = (
     type: "classification" | "folder_create" = "classification",
-    status: "pending" | "confirmed" | "rejected" | "modified" | "expired" = "pending"
+    status:
+      | "pending"
+      | "confirmed"
+      | "rejected"
+      | "modified"
+      | "expired" = "pending",
   ): PendingConfirmationRecord => ({
     id: 1,
     user_id: testUserId,
     confirmation_type: type,
     bookmark_id: type === "classification" ? testBookmarkId : null,
     folder_id: type === "folder_create" ? 5 : null,
-    suggestion: type === "classification" ? mockClassificationSuggestion : mockFolderCreateSuggestion,
+    suggestion:
+      type === "classification"
+        ? mockClassificationSuggestion
+        : mockFolderCreateSuggestion,
     status,
     user_choice: null,
     expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
@@ -83,16 +91,22 @@ describe("ConfirmationService", () => {
   describe("createClassificationConfirmation", () => {
     it("should create new classification confirmation", async () => {
       const mockRecord = createMockRecord("classification");
-      (confirmationRepository.findByBookmarkId as jest.Mock).mockResolvedValue(null);
-      (confirmationRepository.create as jest.Mock).mockResolvedValue(mockRecord);
+      (confirmationRepository.findByBookmarkId as jest.Mock).mockResolvedValue(
+        null,
+      );
+      (confirmationRepository.create as jest.Mock).mockResolvedValue(
+        mockRecord,
+      );
 
-      const result = await confirmationService.createClassificationConfirmation({
-        userId: testUserId,
-        bookmarkId: testBookmarkId,
-        bookmarkTitle: "测试书签",
-        bookmarkUrl: "https://example.com",
-        suggestion: mockClassificationSuggestion,
-      });
+      const result = await confirmationService.createClassificationConfirmation(
+        {
+          userId: testUserId,
+          bookmarkId: testBookmarkId,
+          bookmarkTitle: "测试书签",
+          bookmarkUrl: "https://example.com",
+          suggestion: mockClassificationSuggestion,
+        },
+      );
 
       expect(result).toEqual(mockRecord);
       expect(confirmationRepository.create).toHaveBeenCalledWith({
@@ -105,15 +119,19 @@ describe("ConfirmationService", () => {
 
     it("should return existing confirmation if one exists", async () => {
       const existingRecord = createMockRecord("classification");
-      (confirmationRepository.findByBookmarkId as jest.Mock).mockResolvedValue(existingRecord);
+      (confirmationRepository.findByBookmarkId as jest.Mock).mockResolvedValue(
+        existingRecord,
+      );
 
-      const result = await confirmationService.createClassificationConfirmation({
-        userId: testUserId,
-        bookmarkId: testBookmarkId,
-        bookmarkTitle: "测试书签",
-        bookmarkUrl: "https://example.com",
-        suggestion: mockClassificationSuggestion,
-      });
+      const result = await confirmationService.createClassificationConfirmation(
+        {
+          userId: testUserId,
+          bookmarkId: testBookmarkId,
+          bookmarkTitle: "测试书签",
+          bookmarkUrl: "https://example.com",
+          suggestion: mockClassificationSuggestion,
+        },
+      );
 
       expect(result).toEqual(existingRecord);
       expect(confirmationRepository.create).not.toHaveBeenCalled();
@@ -123,7 +141,9 @@ describe("ConfirmationService", () => {
   describe("createFolderConfirmation", () => {
     it("should create folder creation confirmation", async () => {
       const mockRecord = createMockRecord("folder_create");
-      (confirmationRepository.create as jest.Mock).mockResolvedValue(mockRecord);
+      (confirmationRepository.create as jest.Mock).mockResolvedValue(
+        mockRecord,
+      );
 
       const result = await confirmationService.createFolderConfirmation({
         userId: testUserId,
@@ -148,12 +168,17 @@ describe("ConfirmationService", () => {
   describe("getUserConfirmations", () => {
     it("should return user confirmations from repository", async () => {
       const mockRecords = [createMockRecord(), createMockRecord()];
-      (confirmationRepository.findByUser as jest.Mock).mockResolvedValue(mockRecords);
+      (confirmationRepository.findByUser as jest.Mock).mockResolvedValue(
+        mockRecords,
+      );
 
       const result = await confirmationService.getUserConfirmations(testUserId);
 
       expect(result).toEqual(mockRecords);
-      expect(confirmationRepository.findByUser).toHaveBeenCalledWith(testUserId, undefined);
+      expect(confirmationRepository.findByUser).toHaveBeenCalledWith(
+        testUserId,
+        undefined,
+      );
     });
 
     it("should pass filters to repository", async () => {
@@ -162,7 +187,10 @@ describe("ConfirmationService", () => {
 
       await confirmationService.getUserConfirmations(testUserId, filters);
 
-      expect(confirmationRepository.findByUser).toHaveBeenCalledWith(testUserId, filters);
+      expect(confirmationRepository.findByUser).toHaveBeenCalledWith(
+        testUserId,
+        filters,
+      );
     });
   });
 
@@ -179,7 +207,9 @@ describe("ConfirmationService", () => {
   describe("getById", () => {
     it("should return confirmation by id", async () => {
       const mockRecord = createMockRecord();
-      (confirmationRepository.findById as jest.Mock).mockResolvedValue(mockRecord);
+      (confirmationRepository.findById as jest.Mock).mockResolvedValue(
+        mockRecord,
+      );
 
       const result = await confirmationService.getById(1);
 
@@ -204,14 +234,18 @@ describe("ConfirmationService", () => {
       const mockRecord = createMockRecord("classification");
       const updatedRecord = { ...mockRecord, status: "confirmed" as const };
 
-      (confirmationRepository.findById as jest.Mock).mockResolvedValue(mockRecord);
-      (confirmationRepository.updateStatus as jest.Mock).mockResolvedValue(updatedRecord);
+      (confirmationRepository.findById as jest.Mock).mockResolvedValue(
+        mockRecord,
+      );
+      (confirmationRepository.updateStatus as jest.Mock).mockResolvedValue(
+        updatedRecord,
+      );
       (preferenceLearner.recordEvent as jest.Mock).mockResolvedValue(undefined);
 
       const result = await confirmationService.respondToClassification(
         1,
         testUserId,
-        { selectedFolderId: mockClassificationSuggestion.folderId }
+        { selectedFolderId: mockClassificationSuggestion.folderId },
       );
 
       expect(result.success).toBe(true);
@@ -221,7 +255,7 @@ describe("ConfirmationService", () => {
         "confirmed",
         expect.objectContaining({
           choice: { selectedFolderId: mockClassificationSuggestion.folderId },
-        })
+        }),
       );
     });
 
@@ -229,14 +263,18 @@ describe("ConfirmationService", () => {
       const mockRecord = createMockRecord("classification");
       const updatedRecord = { ...mockRecord, status: "modified" as const };
 
-      (confirmationRepository.findById as jest.Mock).mockResolvedValue(mockRecord);
-      (confirmationRepository.updateStatus as jest.Mock).mockResolvedValue(updatedRecord);
+      (confirmationRepository.findById as jest.Mock).mockResolvedValue(
+        mockRecord,
+      );
+      (confirmationRepository.updateStatus as jest.Mock).mockResolvedValue(
+        updatedRecord,
+      );
       (preferenceLearner.recordEvent as jest.Mock).mockResolvedValue(undefined);
 
       const result = await confirmationService.respondToClassification(
         1,
         testUserId,
-        { selectedFolderId: 99 } // 不同的文件夹
+        { selectedFolderId: 99 }, // 不同的文件夹
       );
 
       expect(result.success).toBe(true);
@@ -247,13 +285,17 @@ describe("ConfirmationService", () => {
       const mockRecord = createMockRecord("classification");
       const updatedRecord = { ...mockRecord, status: "rejected" as const };
 
-      (confirmationRepository.findById as jest.Mock).mockResolvedValue(mockRecord);
-      (confirmationRepository.updateStatus as jest.Mock).mockResolvedValue(updatedRecord);
+      (confirmationRepository.findById as jest.Mock).mockResolvedValue(
+        mockRecord,
+      );
+      (confirmationRepository.updateStatus as jest.Mock).mockResolvedValue(
+        updatedRecord,
+      );
 
       const result = await confirmationService.respondToClassification(
         1,
         testUserId,
-        { selectedFolderId: null }
+        { selectedFolderId: null },
       );
 
       expect(result.success).toBe(true);
@@ -266,7 +308,7 @@ describe("ConfirmationService", () => {
       const result = await confirmationService.respondToClassification(
         999,
         testUserId,
-        { selectedFolderId: 10 }
+        { selectedFolderId: 10 },
       );
 
       expect(result.success).toBe(false);
@@ -277,12 +319,14 @@ describe("ConfirmationService", () => {
       const mockRecord = createMockRecord("classification");
       mockRecord.user_id = "other-user";
 
-      (confirmationRepository.findById as jest.Mock).mockResolvedValue(mockRecord);
+      (confirmationRepository.findById as jest.Mock).mockResolvedValue(
+        mockRecord,
+      );
 
       const result = await confirmationService.respondToClassification(
         1,
         testUserId,
-        { selectedFolderId: 10 }
+        { selectedFolderId: 10 },
       );
 
       expect(result.success).toBe(false);
@@ -292,12 +336,14 @@ describe("ConfirmationService", () => {
     it("should return error for already processed confirmation", async () => {
       const mockRecord = createMockRecord("classification", "confirmed");
 
-      (confirmationRepository.findById as jest.Mock).mockResolvedValue(mockRecord);
+      (confirmationRepository.findById as jest.Mock).mockResolvedValue(
+        mockRecord,
+      );
 
       const result = await confirmationService.respondToClassification(
         1,
         testUserId,
-        { selectedFolderId: 10 }
+        { selectedFolderId: 10 },
       );
 
       expect(result.success).toBe(false);
@@ -308,14 +354,18 @@ describe("ConfirmationService", () => {
       const mockRecord = createMockRecord("classification");
       const updatedRecord = { ...mockRecord, status: "confirmed" as const };
 
-      (confirmationRepository.findById as jest.Mock).mockResolvedValue(mockRecord);
-      (confirmationRepository.updateStatus as jest.Mock).mockResolvedValue(updatedRecord);
+      (confirmationRepository.findById as jest.Mock).mockResolvedValue(
+        mockRecord,
+      );
+      (confirmationRepository.updateStatus as jest.Mock).mockResolvedValue(
+        updatedRecord,
+      );
       (preferenceLearner.recordEvent as jest.Mock).mockResolvedValue(undefined);
 
       const result = await confirmationService.respondToClassification(
         1,
         testUserId,
-        { selectedFolderId: mockClassificationSuggestion.folderId }
+        { selectedFolderId: mockClassificationSuggestion.folderId },
       );
 
       expect(result.learningApplied).toBe(true);
@@ -324,7 +374,7 @@ describe("ConfirmationService", () => {
           userId: testUserId,
           eventType: "classification_confirmed",
           bookmarkId: testBookmarkId,
-        })
+        }),
       );
     });
   });
@@ -334,13 +384,17 @@ describe("ConfirmationService", () => {
       const mockRecord = createMockRecord("folder_create");
       const updatedRecord = { ...mockRecord, status: "confirmed" as const };
 
-      (confirmationRepository.findById as jest.Mock).mockResolvedValue(mockRecord);
-      (confirmationRepository.updateStatus as jest.Mock).mockResolvedValue(updatedRecord);
+      (confirmationRepository.findById as jest.Mock).mockResolvedValue(
+        mockRecord,
+      );
+      (confirmationRepository.updateStatus as jest.Mock).mockResolvedValue(
+        updatedRecord,
+      );
 
       const result = await confirmationService.respondToFolderOperation(
         1,
         testUserId,
-        { accepted: true }
+        { accepted: true },
       );
 
       expect(result.success).toBe(true);
@@ -351,13 +405,17 @@ describe("ConfirmationService", () => {
       const mockRecord = createMockRecord("folder_create");
       const updatedRecord = { ...mockRecord, status: "modified" as const };
 
-      (confirmationRepository.findById as jest.Mock).mockResolvedValue(mockRecord);
-      (confirmationRepository.updateStatus as jest.Mock).mockResolvedValue(updatedRecord);
+      (confirmationRepository.findById as jest.Mock).mockResolvedValue(
+        mockRecord,
+      );
+      (confirmationRepository.updateStatus as jest.Mock).mockResolvedValue(
+        updatedRecord,
+      );
 
       const result = await confirmationService.respondToFolderOperation(
         1,
         testUserId,
-        { accepted: true, modifications: { newName: "自定义名称" } }
+        { accepted: true, modifications: { newName: "自定义名称" } },
       );
 
       expect(result.success).toBe(true);
@@ -368,13 +426,17 @@ describe("ConfirmationService", () => {
       const mockRecord = createMockRecord("folder_create");
       const updatedRecord = { ...mockRecord, status: "rejected" as const };
 
-      (confirmationRepository.findById as jest.Mock).mockResolvedValue(mockRecord);
-      (confirmationRepository.updateStatus as jest.Mock).mockResolvedValue(updatedRecord);
+      (confirmationRepository.findById as jest.Mock).mockResolvedValue(
+        mockRecord,
+      );
+      (confirmationRepository.updateStatus as jest.Mock).mockResolvedValue(
+        updatedRecord,
+      );
 
       const result = await confirmationService.respondToFolderOperation(
         1,
         testUserId,
-        { accepted: false }
+        { accepted: false },
       );
 
       expect(result.success).toBe(true);
@@ -390,7 +452,9 @@ describe("ConfirmationService", () => {
     it("should process expired classification confirmations", async () => {
       const expiredRecord = createMockRecord("classification");
 
-      (confirmationRepository.findExpired as jest.Mock).mockResolvedValue([expiredRecord]);
+      (confirmationRepository.findExpired as jest.Mock).mockResolvedValue([
+        expiredRecord,
+      ]);
       (confirmationRepository.updateStatus as jest.Mock).mockResolvedValue({
         ...expiredRecord,
         status: "expired",
@@ -402,7 +466,7 @@ describe("ConfirmationService", () => {
       expect(result.autoExecuted).toBe(1);
       expect(confirmationRepository.updateStatus).toHaveBeenCalledWith(
         expiredRecord.id,
-        "expired"
+        "expired",
       );
     });
 
@@ -410,7 +474,9 @@ describe("ConfirmationService", () => {
       const expiredRecord = createMockRecord("classification");
       (expiredRecord.suggestion as ClassificationSuggestion).folderId = null;
 
-      (confirmationRepository.findExpired as jest.Mock).mockResolvedValue([expiredRecord]);
+      (confirmationRepository.findExpired as jest.Mock).mockResolvedValue([
+        expiredRecord,
+      ]);
       (confirmationRepository.updateStatus as jest.Mock).mockResolvedValue({
         ...expiredRecord,
         status: "expired",
@@ -424,9 +490,11 @@ describe("ConfirmationService", () => {
     it("should handle errors gracefully", async () => {
       const expiredRecord = createMockRecord("classification");
 
-      (confirmationRepository.findExpired as jest.Mock).mockResolvedValue([expiredRecord]);
+      (confirmationRepository.findExpired as jest.Mock).mockResolvedValue([
+        expiredRecord,
+      ]);
       (confirmationRepository.updateStatus as jest.Mock).mockRejectedValue(
-        new Error("Update failed")
+        new Error("Update failed"),
       );
 
       const result = await confirmationService.processExpired();
@@ -446,11 +514,13 @@ describe("ConfirmationService", () => {
         { ...createMockRecord("classification"), id: 2 },
       ];
 
-      mockRecords.forEach((record, index) => {
-        (confirmationRepository.findById as jest.Mock)
-          .mockResolvedValueOnce(record);
-        (confirmationRepository.updateStatus as jest.Mock)
-          .mockResolvedValueOnce({ ...record, status: "confirmed" });
+      mockRecords.forEach((record, _index) => {
+        (confirmationRepository.findById as jest.Mock).mockResolvedValueOnce(
+          record,
+        );
+        (
+          confirmationRepository.updateStatus as jest.Mock
+        ).mockResolvedValueOnce({ ...record, status: "confirmed" });
       });
       (preferenceLearner.recordEvent as jest.Mock).mockResolvedValue(undefined);
 
@@ -469,8 +539,10 @@ describe("ConfirmationService", () => {
         .mockResolvedValueOnce(mockRecord)
         .mockResolvedValueOnce(mockRecord) // 内部 respondToClassification 会再次查找
         .mockResolvedValueOnce(otherUserRecord); // ID 2 属于另一个用户
-      (confirmationRepository.updateStatus as jest.Mock)
-        .mockResolvedValueOnce({ ...mockRecord, status: "confirmed" });
+      (confirmationRepository.updateStatus as jest.Mock).mockResolvedValueOnce({
+        ...mockRecord,
+        status: "confirmed",
+      });
       (preferenceLearner.recordEvent as jest.Mock).mockResolvedValue(undefined);
 
       const result = await confirmationService.batchConfirm(testUserId, [1, 2]);
@@ -488,10 +560,12 @@ describe("ConfirmationService", () => {
       ];
 
       mockRecords.forEach((record) => {
-        (confirmationRepository.findById as jest.Mock)
-          .mockResolvedValueOnce(record);
-        (confirmationRepository.updateStatus as jest.Mock)
-          .mockResolvedValueOnce({ ...record, status: "rejected" });
+        (confirmationRepository.findById as jest.Mock).mockResolvedValueOnce(
+          record,
+        );
+        (
+          confirmationRepository.updateStatus as jest.Mock
+        ).mockResolvedValueOnce({ ...record, status: "rejected" });
       });
 
       const result = await confirmationService.batchReject(testUserId, [1, 2]);
@@ -508,7 +582,9 @@ describe("ConfirmationService", () => {
   describe("getDisplayData", () => {
     it("should return formatted display data", async () => {
       const mockRecord = createMockRecord("classification");
-      (confirmationRepository.findByUser as jest.Mock).mockResolvedValue([mockRecord]);
+      (confirmationRepository.findByUser as jest.Mock).mockResolvedValue([
+        mockRecord,
+      ]);
 
       const result = await confirmationService.getDisplayData(testUserId);
 
@@ -525,7 +601,9 @@ describe("ConfirmationService", () => {
       const expiredRecord = createMockRecord("classification");
       expiredRecord.expires_at = new Date(Date.now() - 1000).toISOString();
 
-      (confirmationRepository.findByUser as jest.Mock).mockResolvedValue([expiredRecord]);
+      (confirmationRepository.findByUser as jest.Mock).mockResolvedValue([
+        expiredRecord,
+      ]);
 
       const result = await confirmationService.getDisplayData(testUserId);
 

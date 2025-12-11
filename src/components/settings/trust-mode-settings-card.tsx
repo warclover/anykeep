@@ -84,7 +84,8 @@ const TRUST_MODE_OPTIONS = [
     description: "AI 全权处理所有分类，低置信度内容进入待整理聚类",
     icon: Zap,
     iconColor: "text-green-500",
-    badgeColor: "bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-700 text-green-600 dark:text-green-300",
+    badgeColor:
+      "bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-700 text-green-600 dark:text-green-300",
   },
   {
     value: "semi_auto" as TrustMode,
@@ -92,7 +93,8 @@ const TRUST_MODE_OPTIONS = [
     description: "高置信度自动处理，低置信度发送确认消息等待用户决定",
     icon: UserCheck,
     iconColor: "text-blue-500",
-    badgeColor: "bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-700 text-blue-600 dark:text-blue-300",
+    badgeColor:
+      "bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-700 text-blue-600 dark:text-blue-300",
   },
   {
     value: "manual" as TrustMode,
@@ -100,7 +102,8 @@ const TRUST_MODE_OPTIONS = [
     description: "仅整理到待整理，不自动分类，适合喜欢完全掌控的用户",
     icon: Hand,
     iconColor: "text-orange-500",
-    badgeColor: "bg-orange-50 dark:bg-orange-900/30 border-orange-200 dark:border-orange-700 text-orange-600 dark:text-orange-300",
+    badgeColor:
+      "bg-orange-50 dark:bg-orange-900/30 border-orange-200 dark:border-orange-700 text-orange-600 dark:text-orange-300",
   },
 ];
 
@@ -112,7 +115,8 @@ export function TrustModeSettingsCard({
   className,
 }: TrustModeSettingsCardProps) {
   const [settings, setSettings] = useState<TrustModeSettings>(DEFAULT_SETTINGS);
-  const [originalSettings, setOriginalSettings] = useState<TrustModeSettings>(DEFAULT_SETTINGS);
+  const [originalSettings, setOriginalSettings] =
+    useState<TrustModeSettings>(DEFAULT_SETTINGS);
   const [stats, setStats] = useState<TrustModeStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -130,7 +134,8 @@ export function TrustModeSettingsCard({
       if (data.success) {
         const loadedSettings: TrustModeSettings = {
           mode: data.data.mode || "full_auto",
-          autoConfirmThreshold: data.data.config?.classification?.autoConfirmThreshold || 80,
+          autoConfirmThreshold:
+            data.data.config?.classification?.autoConfirmThreshold || 80,
           dailyAutoLimit: data.data.config?.folder?.dailyAutoLimit || 100,
         };
 
@@ -154,7 +159,8 @@ export function TrustModeSettingsCard({
   // 检查是否有变化
   const checkChanges = useCallback(
     (newSettings: TrustModeSettings) => {
-      const changed = JSON.stringify(newSettings) !== JSON.stringify(originalSettings);
+      const changed =
+        JSON.stringify(newSettings) !== JSON.stringify(originalSettings);
       setHasChanges(changed);
     },
     [originalSettings],
@@ -210,7 +216,7 @@ export function TrustModeSettingsCard({
   };
 
   // 当前模式配置
-  const currentModeConfig = TRUST_MODE_OPTIONS.find(
+  const _currentModeConfig = TRUST_MODE_OPTIONS.find(
     (opt) => opt.value === settings.mode,
   );
 

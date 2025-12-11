@@ -12,7 +12,8 @@
  * @since 2025-12-11
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
 // ============================================================================
@@ -127,7 +128,7 @@ const MATCH_SOURCE_INFO: Record<
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: Promise<{ bookmarkId: string }> }
+  { params }: { params: Promise<{ bookmarkId: string }> },
 ) {
   try {
     const supabase = await createClient();
@@ -138,7 +139,7 @@ export async function GET(
     if (!user) {
       return NextResponse.json(
         { success: false, error: { message: "未登录" } },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -148,7 +149,7 @@ export async function GET(
     if (isNaN(id)) {
       return NextResponse.json(
         { success: false, error: { message: "无效的书签 ID" } },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -171,7 +172,7 @@ export async function GET(
           name,
           is_system
         )
-      `
+      `,
       )
       .eq("id", id)
       .eq("user_id", user.id)
@@ -181,7 +182,7 @@ export async function GET(
     if (bookmarkError || !bookmark) {
       return NextResponse.json(
         { success: false, error: { message: "书签不存在" } },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -195,14 +196,19 @@ export async function GET(
       .single();
 
     // 解析分类结果 JSON
-    const classificationResult = (bookmark.classification_result as ClassificationResult) || {};
+    const classificationResult =
+      (bookmark.classification_result as ClassificationResult) || {};
 
     // 确定分类状态
     type StatusType = "classified" | "inbox" | "uncategorized" | "pending";
     let classificationStatus: StatusType;
     const dbStatus = bookmark.classification_status;
 
-    if (dbStatus === "classified" || dbStatus === "inbox" || dbStatus === "pending") {
+    if (
+      dbStatus === "classified" ||
+      dbStatus === "inbox" ||
+      dbStatus === "pending"
+    ) {
       classificationStatus = dbStatus as StatusType;
     } else if (bookmark.folder_id) {
       const folder = bookmark.folders as { is_system?: boolean } | null;
@@ -217,7 +223,8 @@ export async function GET(
     const matchSourceType =
       classificationResult.matchSource ||
       (bookmark.cluster_confidence ? "cluster" : "unknown");
-    const matchSourceInfo = MATCH_SOURCE_INFO[matchSourceType] || MATCH_SOURCE_INFO.unknown;
+    const matchSourceInfo =
+      MATCH_SOURCE_INFO[matchSourceType] || MATCH_SOURCE_INFO.unknown;
 
     // 确定置信度
     const confidence =
@@ -244,7 +251,8 @@ export async function GET(
 
     // 构建决策详情
     const decisionDetails = {
-      isAutoClassified: classificationStatus === "classified" && matchSourceType !== "manual",
+      isAutoClassified:
+        classificationStatus === "classified" && matchSourceType !== "manual",
       wasManuallyAdjusted: matchSourceType === "manual",
       classifiedAt: recentSuggestion?.created_at || null,
       lastAdjustedAt: bookmark.updated_at,
@@ -258,13 +266,18 @@ export async function GET(
       factors.push({
         name: "置信度",
         value: `${confidence}%`,
-        impact: confidence >= 80 ? "positive" : confidence >= 50 ? "neutral" : "negative",
+        impact:
+          confidence >= 80
+            ? "positive"
+            : confidence >= 50
+              ? "neutral"
+              : "negative",
         description:
           confidence >= 80
             ? "AI 对此分类非常有信心"
             : confidence >= 50
-            ? "AI 对此分类有一定信心"
-            : "AI 对此分类信心较低，可能需要人工确认",
+              ? "AI 对此分类有一定信心"
+              : "AI 对此分类信心较低，可能需要人工确认",
       });
     }
 
@@ -283,19 +296,19 @@ export async function GET(
         classificationStatus === "classified"
           ? "已分类"
           : classificationStatus === "inbox"
-          ? "待整理"
-          : classificationStatus === "pending"
-          ? "等待处理"
-          : "未分类",
+            ? "待整理"
+            : classificationStatus === "pending"
+              ? "等待处理"
+              : "未分类",
       impact: classificationStatus === "classified" ? "positive" : "neutral",
       description:
         classificationStatus === "classified"
           ? "内容已被分类到合适的文件夹"
           : classificationStatus === "inbox"
-          ? "内容在待整理区等待进一步处理"
-          : classificationStatus === "pending"
-          ? "内容正在等待 AI 处理"
-          : "内容尚未进行分类",
+            ? "内容在待整理区等待进一步处理"
+            : classificationStatus === "pending"
+              ? "内容正在等待 AI 处理"
+              : "内容尚未进行分类",
     });
 
     // 获取备选建议
@@ -312,7 +325,11 @@ export async function GET(
     }
 
     // 构建响应
-    const folderData = bookmark.folders as { id?: number; name?: string; is_system?: boolean } | null;
+    const folderData = bookmark.folders as {
+      id?: number;
+      name?: string;
+      is_system?: boolean;
+    } | null;
     const response: ClassificationReason = {
       bookmarkId: bookmark.id,
       title: bookmark.title,
@@ -346,11 +363,10 @@ export async function GET(
       {
         success: false,
         error: {
-          message:
-            error instanceof Error ? error.message : "获取分类理由失败",
+          message: error instanceof Error ? error.message : "获取分类理由失败",
         },
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

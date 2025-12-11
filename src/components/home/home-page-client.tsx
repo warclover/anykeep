@@ -72,6 +72,15 @@ const InboxOrganizationBanner = lazy(() =>
     default: mod.InboxOrganizationBanner,
   })),
 );
+
+// 懒加载 PendingConfirmationsSection（V4.2 待确认消息）
+const PendingConfirmationsSection = lazy(() =>
+  import("@/components/classification/pending-confirmations-section").then(
+    (mod) => ({
+      default: mod.PendingConfirmationsSection,
+    }),
+  ),
+);
 // V3.1: 替换 V1 的 useFolderRecommendation 为 V3 的分类轮询
 import { useClassificationPolling } from "@/hooks/use-classification-polling";
 import { useDialogs } from "@/hooks/use-dialogs";
@@ -1314,6 +1323,11 @@ export function HomePageClient({
         {/* V2 整理建议横幅（懒加载） */}
         <Suspense fallback={null}>
           <InboxOrganizationBanner className="mb-4" />
+        </Suspense>
+
+        {/* V4.2 待确认消息区域（懒加载） */}
+        <Suspense fallback={null}>
+          <PendingConfirmationsSection className="mb-4" />
         </Suspense>
 
         {/* 初始加载骨架屏 */}

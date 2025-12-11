@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /**
  * Confirmation Message Item Component
  * V4.2 待确认消息组件
@@ -14,7 +15,7 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import {
   FolderOpen,
   FolderPlus,
@@ -123,7 +124,9 @@ function ExpirationCountdown({ expiresIn }: { expiresIn: string }) {
     <div
       className={cn(
         "flex items-center gap-1 text-xs",
-        isUrgent ? "text-orange-600 dark:text-orange-400" : "text-muted-foreground"
+        isUrgent
+          ? "text-orange-600 dark:text-orange-400"
+          : "text-muted-foreground",
       )}
     >
       <Clock className="size-3" />
@@ -183,7 +186,7 @@ function FolderOption({
         "w-full flex items-center justify-between p-3 rounded-lg border transition-colors text-left",
         isSelected
           ? "border-primary bg-primary/5"
-          : "border-border hover:border-primary/50 hover:bg-accent/50"
+          : "border-border hover:border-primary/50 hover:bg-accent/50",
       )}
     >
       <div className="flex items-center gap-2">
@@ -218,11 +221,12 @@ function ClassificationContent({
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [selectedFolderId, setSelectedFolderId] = useState<number | null>(
-    confirmation.suggestion.folderId
+    confirmation.suggestion.folderId,
   );
 
   const suggestion = confirmation.suggestion;
-  const hasAlternatives = suggestion.alternatives && suggestion.alternatives.length > 0;
+  const hasAlternatives =
+    suggestion.alternatives && suggestion.alternatives.length > 0;
 
   const handleConfirm = () => {
     onConfirm?.(confirmation.id, selectedFolderId);
@@ -257,7 +261,11 @@ function ClassificationContent({
       {hasAlternatives && (
         <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
           <CollapsibleTrigger asChild>
-            <Button variant="ghost" size="sm" className="w-full justify-between">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full justify-between"
+            >
               <span>其他选项 ({suggestion.alternatives.length})</span>
               {isExpanded ? (
                 <ChevronUp className="size-4" />
@@ -384,7 +392,10 @@ function FolderOperationContent({
               </span>
             </div>
             <p className="text-xs text-muted-foreground">
-              拆分为：{splitSuggestion.suggestedSubFolders.map((f) => f.name).join("、")}
+              拆分为：
+              {splitSuggestion.suggestedSubFolders
+                .map((f) => f.name)
+                .join("、")}
             </p>
             <p className="text-xs text-muted-foreground">
               影响 {splitSuggestion.affectedBookmarks} 个书签
@@ -402,7 +413,8 @@ function FolderOperationContent({
             <div className="flex items-center gap-2">
               <Pencil className="size-4 text-muted-foreground" />
               <span className="text-sm font-medium">
-                重命名：{renameSuggestion.currentName} → {renameSuggestion.suggestedName}
+                重命名：{renameSuggestion.currentName} →{" "}
+                {renameSuggestion.suggestedName}
               </span>
             </div>
             <p className="text-xs text-muted-foreground">
@@ -485,7 +497,9 @@ export function ConfirmationMessageItem({
 
       {/* 描述 */}
       {confirmation.description && (
-        <p className="text-sm text-muted-foreground">{confirmation.description}</p>
+        <p className="text-sm text-muted-foreground">
+          {confirmation.description}
+        </p>
       )}
 
       {/* 内容区 */}

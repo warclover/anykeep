@@ -29,7 +29,6 @@ import {
   Twitter,
   Linkedin,
   Youtube,
-  Instagram,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -298,7 +297,7 @@ export function inferSourceType(domain: string): SourceType {
 /**
  * 从 URL 提取域名
  */
-function extractDomain(url: string): string {
+function _extractDomain(url: string): string {
   try {
     const urlObj = new URL(url);
     return urlObj.hostname.replace(/^www\./, "");
@@ -355,7 +354,7 @@ export function SourceBadge({
         config.color,
         sizeClasses[size],
         onClick && "cursor-pointer hover:opacity-80",
-        className
+        className,
       )}
       onClick={onClick}
     >

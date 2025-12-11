@@ -161,7 +161,7 @@ export class ConfidenceCalibrationService {
     userId: string,
     rawConfidence: number,
     folderId: number | null,
-    matcherResults?: MatcherResult[]
+    matcherResults?: MatcherResult[],
   ): Promise<CalibrationResult> {
     let calibratedConfidence = rawConfidence;
     let calibrationFactor = 1.0;
@@ -183,10 +183,16 @@ export class ConfidenceCalibrationService {
 
         if (agreement.hasConsensus) {
           // 高一致性：提升置信度
-          if (agreement.agreementScore >= CALIBRATION_CONFIG.HIGH_AGREEMENT_THRESHOLD) {
+          if (
+            agreement.agreementScore >=
+            CALIBRATION_CONFIG.HIGH_AGREEMENT_THRESHOLD
+          ) {
             calibrationFactor = Math.min(
               CALIBRATION_CONFIG.HIGH_AGREEMENT_BONUS,
-              1 + (agreement.agreementScore - CALIBRATION_CONFIG.HIGH_AGREEMENT_THRESHOLD) * 0.5
+              1 +
+                (agreement.agreementScore -
+                  CALIBRATION_CONFIG.HIGH_AGREEMENT_THRESHOLD) *
+                  0.5,
             );
             reason = `High matcher agreement (${(agreement.agreementScore * 100).toFixed(0)}%)`;
           }
@@ -202,9 +208,16 @@ export class ConfidenceCalibrationService {
 
       // 2. 文件夹级别校准
       if (folderId) {
-        const folderData = await this.getFolderCalibrationData(userId, folderId);
+        const folderData = await this.getFolderCalibrationData(
+          userId,
+          folderId,
+        );
 
-        if (folderData && folderData.totalPredictions >= CALIBRATION_CONFIG.MIN_SAMPLES_FOR_CALIBRATION) {
+        if (
+          folderData &&
+          folderData.totalPredictions >=
+            CALIBRATION_CONFIG.MIN_SAMPLES_FOR_CALIBRATION
+        ) {
           const folderBias = folderData.confidenceBias;
 
           // 如果文件夹历史偏差较大，进行调整
@@ -221,14 +234,19 @@ export class ConfidenceCalibrationService {
       const buckets = await this.getCalibrationBuckets(userId);
       const bucket = this.findBucket(buckets, rawConfidence);
 
-      if (bucket && bucket.totalPredictions >= CALIBRATION_CONFIG.MIN_SAMPLES_FOR_CALIBRATION) {
+      if (
+        bucket &&
+        bucket.totalPredictions >=
+          CALIBRATION_CONFIG.MIN_SAMPLES_FOR_CALIBRATION
+      ) {
         // 只有当桶校准与其他校准差异较大时才使用
         const bucketCalibrated = bucket.calibratedConfidence;
         const currentCalibrated = calibratedConfidence;
 
         if (Math.abs(bucketCalibrated - currentCalibrated) > 0.15) {
           // 混合使用：70% 当前校准 + 30% 桶校准
-          calibratedConfidence = currentCalibrated * 0.7 + bucketCalibrated * 0.3;
+          calibratedConfidence =
+            currentCalibrated * 0.7 + bucketCalibrated * 0.3;
           if (source === "none") {
             source = "bucket";
             reason = `Bucket calibration (${bucket.bucketId * 10}-${(bucket.bucketId + 1) * 10}%)`;
@@ -258,7 +276,9 @@ export class ConfidenceCalibrationService {
   /**
    * 获取一致性级别
    */
-  private getAgreementLevel(score: number): "high" | "medium" | "low" | "conflict" {
+  private getAgreementLevel(
+    score: number,
+  ): "high" | "medium" | "low" | "conflict" {
     if (score >= CALIBRATION_CONFIG.HIGH_AGREEMENT_THRESHOLD) return "high";
     if (score >= CALIBRATION_CONFIG.CONSENSUS_THRESHOLD) return "medium";
     if (score >= 0.3) return "low";
@@ -281,11 +301,14 @@ export class ConfidenceCalibrationService {
     }
 
     // 按文件夹 ID 分组，统计加权投票
-    const folderVotes = new Map<number | null, {
-      weight: number;
-      confidence: number;
-      count: number;
-    }>();
+    const folderVotes = new Map<
+      number | null,
+      {
+        weight: number;
+        confidence: number;
+        count: number;
+      }
+    >();
 
     let totalWeight = 0;
 
@@ -370,7 +393,7 @@ export class ConfidenceCalibrationService {
       }
 
       // 构建校准桶 - 转换 user_feedback 为 boolean
-      const convertedMetrics = (metrics || []).map(m => ({
+      const convertedMetrics = (metrics || []).map((m) => ({
         confidence: m.confidence,
         user_accepted: m.user_feedback === "accept",
         folder_id: m.folder_id,
@@ -393,7 +416,7 @@ export class ConfidenceCalibrationService {
    */
   async getFolderCalibrationData(
     userId: string,
-    folderId: number
+    folderId: number,
   ): Promise<FolderCalibrationData | null> {
     const cacheKey = `folders:${userId}`;
     const now = Date.now();
@@ -421,7 +444,10 @@ export class ConfidenceCalibrationService {
         .limit(2000);
 
       if (error) {
-        logger.error({ error, userId }, "Failed to fetch folder calibration data");
+        logger.error(
+          { error, userId },
+          "Failed to fetch folder calibration data",
+        );
         return null;
       }
 
@@ -434,7 +460,7 @@ export class ConfidenceCalibrationService {
         if (!metric.folder_id) continue;
 
         const existing = folderMap.get(metric.folder_id);
-        const isRecent = new Date(metric.created_at) > thirtyDaysAgo;
+        const _isRecent = new Date(metric.created_at) > thirtyDaysAgo;
         const isCorrect = metric.user_feedback === "accept";
 
         if (existing) {
@@ -454,10 +480,10 @@ export class ConfidenceCalibrationService {
       }
 
       // 计算准确率和偏差
-      for (const [id, data] of folderMap.entries()) {
+      for (const [_id, data] of folderMap.entries()) {
         data.accuracy = this.calculateBayesianAccuracy(
           data.correctPredictions,
-          data.totalPredictions
+          data.totalPredictions,
         );
         // 简化：假设平均预测置信度为 0.7
         data.confidenceBias = 0.7 - data.accuracy;
@@ -469,7 +495,10 @@ export class ConfidenceCalibrationService {
 
       return folderMap.get(folderId) || null;
     } catch (error) {
-      logger.error({ error, userId, folderId }, "Failed to get folder calibration data");
+      logger.error(
+        { error, userId, folderId },
+        "Failed to get folder calibration data",
+      );
       return null;
     }
   }
@@ -482,7 +511,7 @@ export class ConfidenceCalibrationService {
     userId: string,
     bookmarkId: number,
     feedback: "accept" | "reject" | "modify",
-    feedbackFolderId?: number | null
+    feedbackFolderId?: number | null,
   ): Promise<void> {
     try {
       const supabase = await createClient();
@@ -506,7 +535,7 @@ export class ConfidenceCalibrationService {
     } catch (error) {
       logger.error(
         { error, userId, bookmarkId },
-        "Failed to record classification feedback"
+        "Failed to record classification feedback",
       );
     }
   }
@@ -533,7 +562,7 @@ export class ConfidenceCalibrationService {
       confidence: number;
       user_accepted: boolean | null;
       folder_id: number | null;
-    }>
+    }>,
   ): CalibrationBucket[] {
     // 初始化 10 个桶
     const buckets: CalibrationBucket[] = [];
@@ -564,7 +593,7 @@ export class ConfidenceCalibrationService {
     for (const bucket of buckets) {
       bucket.actualAccuracy = this.calculateBayesianAccuracy(
         bucket.correctPredictions,
-        bucket.totalPredictions
+        bucket.totalPredictions,
       );
       bucket.calibratedConfidence = bucket.actualAccuracy;
     }
@@ -596,7 +625,7 @@ export class ConfidenceCalibrationService {
    */
   private findBucket(
     buckets: CalibrationBucket[],
-    confidence: number
+    confidence: number,
   ): CalibrationBucket | null {
     const bucketId = Math.min(Math.floor(confidence * 10), 9);
     return buckets[bucketId] || null;
@@ -611,9 +640,7 @@ export class ConfidenceCalibrationService {
     const priorAccuracy = CALIBRATION_CONFIG.BAYESIAN_PRIOR_ACCURACY;
 
     // 贝叶斯平滑：(实际正确 + 先验正确) / (实际总数 + 先验总数)
-    return (
-      (correct + priorStrength * priorAccuracy) / (total + priorStrength)
-    );
+    return (correct + priorStrength * priorAccuracy) / (total + priorStrength);
   }
 
   /**
@@ -630,7 +657,7 @@ export class ConfidenceCalibrationService {
   private clampConfidence(confidence: number): number {
     return Math.max(
       CALIBRATION_CONFIG.MIN_CONFIDENCE,
-      Math.min(CALIBRATION_CONFIG.MAX_CONFIDENCE, confidence)
+      Math.min(CALIBRATION_CONFIG.MAX_CONFIDENCE, confidence),
     );
   }
 }
@@ -656,7 +683,9 @@ export function getConfidenceCalibrationService(): ConfidenceCalibrationService 
 /**
  * 创建新的置信度校准服务实例
  */
+
 export function createConfidenceCalibrationService(): ConfidenceCalibrationService {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return new (ConfidenceCalibrationService as any)();
 }
 

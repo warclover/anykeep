@@ -24,10 +24,8 @@ import {
   IncrementalProfileService,
   type BookmarkChangeEvent,
 } from "@/lib/classification/v3/services/incremental-profile.service";
-import {
-  CoreEdgeProfileService,
-  createCoreEdgeProfileService,
-} from "@/lib/classification/profile";
+import type { CoreEdgeProfileService } from "@/lib/classification/profile";
+import { createCoreEdgeProfileService } from "@/lib/classification/profile";
 import { logger } from "@/lib/logger";
 
 /**
@@ -329,10 +327,7 @@ export class ProfileEventHandlerService {
   /**
    * 手动触发单个文件夹的核心/边缘区计算
    */
-  async computeZoneProfile(
-    userId: string,
-    folderId: number,
-  ): Promise<void> {
+  async computeZoneProfile(userId: string, folderId: number): Promise<void> {
     const profile = await this.coreEdgeService.computeZoneProfile(
       userId,
       folderId,

@@ -16,7 +16,6 @@ import { MessageService } from "./message-service";
 import type { MessageResult } from "./types";
 import type { TrustMode } from "@/types/trust-mode";
 import type {
-  ConfirmationType,
   ClassificationSuggestion,
   FolderCreateSuggestion,
   FolderMergeSuggestion,
@@ -155,7 +154,18 @@ class MessageTriggerService {
     trustMode: TrustMode,
     confirmationThreshold: number = CONFIDENCE_THRESHOLDS.SEMI_AUTO_CONFIRM,
   ): Promise<TriggerResult> {
-    const { userId, bookmarkId, bookmarkTitle, bookmarkUrl, folderId, folderName, confidence, reason, alternatives, matchSource } = event;
+    const {
+      userId,
+      bookmarkId,
+      bookmarkTitle,
+      bookmarkUrl,
+      folderId,
+      folderName,
+      confidence,
+      reason,
+      alternatives,
+      matchSource,
+    } = event;
 
     // 手动模式：不自动分类
     if (trustMode === "manual") {
@@ -218,14 +228,18 @@ class MessageTriggerService {
       };
 
       try {
-        const confirmation = await confirmationService.createClassificationConfirmation(input);
+        const confirmation =
+          await confirmationService.createClassificationConfirmation(input);
 
         return {
           action: "confirmation_created",
           confirmationId: confirmation.id,
         };
       } catch (error) {
-        logger.error({ error, bookmarkId }, "Failed to create classification confirmation");
+        logger.error(
+          { error, bookmarkId },
+          "Failed to create classification confirmation",
+        );
         return {
           action: "skipped",
           reason: "Failed to create confirmation",
@@ -250,7 +264,14 @@ class MessageTriggerService {
     event: FolderCreateEvent,
     trustMode: TrustMode,
   ): Promise<TriggerResult> {
-    const { userId, suggestedName, reason, bookmarkIds, estimatedCount, suggestedTags } = event;
+    const {
+      userId,
+      suggestedName,
+      reason,
+      bookmarkIds,
+      estimatedCount,
+      suggestedTags,
+    } = event;
 
     // 手动模式：不自动创建
     if (trustMode === "manual") {
@@ -297,14 +318,18 @@ class MessageTriggerService {
       };
 
       try {
-        const confirmation = await confirmationService.createFolderConfirmation(input);
+        const confirmation =
+          await confirmationService.createFolderConfirmation(input);
 
         return {
           action: "confirmation_created",
           confirmationId: confirmation.id,
         };
       } catch (error) {
-        logger.error({ error }, "Failed to create folder creation confirmation");
+        logger.error(
+          { error },
+          "Failed to create folder creation confirmation",
+        );
         return {
           action: "skipped",
           reason: "Failed to create confirmation",
@@ -325,7 +350,16 @@ class MessageTriggerService {
     event: FolderMergeEvent,
     trustMode: TrustMode,
   ): Promise<TriggerResult> {
-    const { userId, targetFolderId, targetFolderName, sourceFolderIds, sourceFolderNames, reason, affectedBookmarks, similarityScore } = event;
+    const {
+      userId,
+      targetFolderId,
+      targetFolderName,
+      sourceFolderIds,
+      sourceFolderNames,
+      reason,
+      affectedBookmarks,
+      similarityScore,
+    } = event;
 
     // 手动模式：不自动合并
     if (trustMode === "manual") {
@@ -373,7 +407,8 @@ class MessageTriggerService {
       };
 
       try {
-        const confirmation = await confirmationService.createFolderConfirmation(input);
+        const confirmation =
+          await confirmationService.createFolderConfirmation(input);
 
         return {
           action: "confirmation_created",
@@ -401,7 +436,14 @@ class MessageTriggerService {
     event: FolderSplitEvent,
     trustMode: TrustMode,
   ): Promise<TriggerResult> {
-    const { userId, sourceFolderId, sourceFolderName, suggestedSubFolders, reason, affectedBookmarks } = event;
+    const {
+      userId,
+      sourceFolderId,
+      sourceFolderName,
+      suggestedSubFolders,
+      reason,
+      affectedBookmarks,
+    } = event;
 
     // 手动模式：不自动拆分
     if (trustMode === "manual") {
@@ -415,7 +457,7 @@ class MessageTriggerService {
     if (trustMode === "full_auto") {
       // TODO: 实际拆分文件夹的逻辑
 
-      const newFolderNames = suggestedSubFolders.map(f => f.name);
+      const newFolderNames = suggestedSubFolders.map((f) => f.name);
       const messageResult = await MessageService.notifyFolderAutoSplit(
         userId,
         sourceFolderName,
@@ -447,7 +489,8 @@ class MessageTriggerService {
       };
 
       try {
-        const confirmation = await confirmationService.createFolderConfirmation(input);
+        const confirmation =
+          await confirmationService.createFolderConfirmation(input);
 
         return {
           action: "confirmation_created",
@@ -475,7 +518,14 @@ class MessageTriggerService {
     event: FolderRenameEvent,
     trustMode: TrustMode,
   ): Promise<TriggerResult> {
-    const { userId, folderId, currentName, suggestedName, reason, alternatives } = event;
+    const {
+      userId,
+      folderId,
+      currentName,
+      suggestedName,
+      reason,
+      alternatives,
+    } = event;
 
     // 手动模式：不自动重命名
     if (trustMode === "manual") {
@@ -521,7 +571,8 @@ class MessageTriggerService {
       };
 
       try {
-        const confirmation = await confirmationService.createFolderConfirmation(input);
+        const confirmation =
+          await confirmationService.createFolderConfirmation(input);
 
         return {
           action: "confirmation_created",
@@ -565,7 +616,11 @@ class MessageTriggerService {
     const results: TriggerResult[] = [];
 
     for (const event of events) {
-      const result = await this.handleClassificationEvent(event, trustMode, confirmationThreshold);
+      const result = await this.handleClassificationEvent(
+        event,
+        trustMode,
+        confirmationThreshold,
+      );
       results.push(result);
 
       switch (result.action) {

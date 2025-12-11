@@ -245,7 +245,7 @@ export function TrustModeSwitchDialog({
         <DialogHeader>
           <DialogTitle>切换托管模式</DialogTitle>
           <DialogDescription>
-            确认从 "{fromInfo.label}" 切换到 "{toInfo.label}"
+            确认从「{fromInfo.label}」切换到「{toInfo.label}」
           </DialogDescription>
         </DialogHeader>
 
@@ -277,10 +277,7 @@ export function TrustModeSwitchDialog({
             </Label>
             <div className="space-y-2">
               {impacts.map((impact, index) => (
-                <div
-                  key={index}
-                  className="flex items-start gap-2 text-sm"
-                >
+                <div key={index} className="flex items-start gap-2 text-sm">
                   {impact.type === "positive" ? (
                     <CheckCircle2 className="size-4 text-green-500 mt-0.5 flex-shrink-0" />
                   ) : impact.type === "negative" ? (
@@ -290,8 +287,10 @@ export function TrustModeSwitchDialog({
                   )}
                   <span
                     className={cn(
-                      impact.type === "positive" && "text-green-600 dark:text-green-400",
-                      impact.type === "negative" && "text-red-600 dark:text-red-400",
+                      impact.type === "positive" &&
+                        "text-green-600 dark:text-green-400",
+                      impact.type === "negative" &&
+                        "text-red-600 dark:text-red-400",
                     )}
                   >
                     {impact.message}
@@ -366,7 +365,10 @@ export function TrustModeSwitchDialog({
                     name="processPending"
                     checked={options.processPendingAs === "auto_execute"}
                     onChange={() =>
-                      setOptions({ ...options, processPendingAs: "auto_execute" })
+                      setOptions({
+                        ...options,
+                        processPendingAs: "auto_execute",
+                      })
                     }
                     className="sr-only"
                   />
@@ -455,7 +457,10 @@ export function TrustModeSwitchDialog({
           {/* 警告提示 */}
           {/* ════════════════════════════════════════════════════════════════ */}
           {targetMode === "manual" && (
-            <Alert variant="default" className="border-orange-200 dark:border-orange-800">
+            <Alert
+              variant="default"
+              className="border-orange-200 dark:border-orange-800"
+            >
               <AlertTriangle className="size-4 text-orange-500" />
               <AlertDescription className="text-sm">
                 切换到手动模式后，AI 将不再自动分类。

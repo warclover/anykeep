@@ -19,7 +19,6 @@ import type {
   UserChoice,
   PendingConfirmationRecord,
   CreatePendingConfirmationInput,
-  calculateExpirationDate,
 } from "@/types/confirmation";
 import { DEFAULT_EXPIRATION_DAYS } from "@/types/confirmation";
 
@@ -79,7 +78,9 @@ export class ConfirmationRepository extends BaseSupabaseService {
   /**
    * 创建待确认记录
    */
-  async create(input: CreatePendingConfirmationInput): Promise<PendingConfirmationRecord> {
+  async create(
+    input: CreatePendingConfirmationInput,
+  ): Promise<PendingConfirmationRecord> {
     const supabase = await this.getSupabase();
 
     const expirationDays = input.expiresInDays ?? DEFAULT_EXPIRATION_DAYS;
@@ -226,7 +227,10 @@ export class ConfirmationRepository extends BaseSupabaseService {
       }
 
       if (filters.offset) {
-        query = query.range(filters.offset, filters.offset + (filters.limit || 50) - 1);
+        query = query.range(
+          filters.offset,
+          filters.offset + (filters.limit || 50) - 1,
+        );
       }
     }
 

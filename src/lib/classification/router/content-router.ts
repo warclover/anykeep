@@ -13,7 +13,6 @@
 import { sourceProfileService } from "@/lib/source-profile/source-profile.service";
 import {
   FAST_PATH_THRESHOLDS,
-  SLOW_PATH_THRESHOLDS,
   CONTENT_ROUTER_CONFIG,
   CONFIDENCE_THRESHOLDS,
 } from "@/lib/trust-mode/config";
@@ -106,7 +105,7 @@ export class ContentRouter {
    * 路由决策
    */
   async route(input: RouteInput): Promise<RouteDecision> {
-    const { userId, url, title, content, tags } = input;
+    const { userId: _userId, url: _url, title, content, tags: _tags } = input;
 
     // 1. 尝试快速路径
     const fastPathResult = await this.tryFastPath(input);
@@ -151,7 +150,8 @@ export class ContentRouter {
       reason: complexity.isComplex
         ? "Complex content requires deep analysis"
         : "No confident fast path match",
-      fastPathResult: fastPathResult.matchType !== "none" ? fastPathResult : undefined,
+      fastPathResult:
+        fastPathResult.matchType !== "none" ? fastPathResult : undefined,
       needsSlowPathValidation: false,
       estimatedTimeMs: CONTENT_ROUTER_CONFIG.SLOW_PATH_TIMEOUT_MS,
     };
@@ -261,11 +261,12 @@ export class ContentRouter {
     // 复杂度因素
     const factors = {
       length: estimatedTokens > 500 ? 20 : estimatedTokens > 200 ? 10 : 0,
-      hasCode: /```|<code|function\s|class\s|const\s|let\s|var\s/.test(text) ? 15 : 0,
+      hasCode: /```|<code|function\s|class\s|const\s|let\s|var\s/.test(text)
+        ? 15
+        : 0,
       hasTable: /\|.*\|.*\||\t.*\t/.test(text) ? 10 : 0,
       hasMath: /\$.*\$|\\[|\\]/.test(text) ? 15 : 0,
-      multiTopic:
-        (text.match(/[。！？\.\!\?]/g) || []).length > 10 ? 10 : 0,
+      multiTopic: (text.match(/[。！？\.\!\?]/g) || []).length > 10 ? 10 : 0,
     };
 
     const complexityScore = Math.min(

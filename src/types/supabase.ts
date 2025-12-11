@@ -90,6 +90,12 @@ export type Database = {
           user_id: string;
           user_tags: string[] | null;
           word_count: number | null;
+          source_id: string | null;
+          title_embedding: string | null;
+          tag_embedding: string | null;
+          embedding_version: number | null;
+          title_embedding_at: string | null;
+          tag_embedding_at: string | null;
         };
         Insert: {
           ai_content_type?: string | null;
@@ -139,6 +145,12 @@ export type Database = {
           user_id: string;
           user_tags?: string[] | null;
           word_count?: number | null;
+          source_id?: string | null;
+          title_embedding?: string | null;
+          tag_embedding?: string | null;
+          embedding_version?: number | null;
+          title_embedding_at?: string | null;
+          tag_embedding_at?: string | null;
         };
         Update: {
           ai_content_type?: string | null;
@@ -188,6 +200,12 @@ export type Database = {
           user_id?: string;
           user_tags?: string[] | null;
           word_count?: number | null;
+          source_id?: string | null;
+          title_embedding?: string | null;
+          tag_embedding?: string | null;
+          embedding_version?: number | null;
+          title_embedding_at?: string | null;
+          tag_embedding_at?: string | null;
         };
         Relationships: [
           {

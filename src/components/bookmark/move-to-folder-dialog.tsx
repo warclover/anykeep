@@ -1,6 +1,14 @@
 /**
  * 移动到文件夹对话框组件
- * 提供快速移动收藏到指定文件夹的功能
+ * V4.2 集成学习反馈
+ *
+ * @description 提供快速移动收藏到指定文件夹的功能
+ * - 支持文件夹树形选择
+ * - 移动时触发学习事件
+ * - 显示学习反馈 Toast
+ *
+ * @version 1.1.0
+ * @since 2025-12-11
  */
 
 "use client";
@@ -10,6 +18,7 @@ import { useRouter } from "next/navigation";
 import { Loader2, Folder, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useAbortableFetch } from "@/hooks/use-abortable-fetch";
+import { useLearningFeedback } from "./learning-feedback-toast";
 import {
   Dialog,
   DialogContent,
@@ -52,16 +61,28 @@ interface MoveToFolderDialogProps {
     id: number;
     folder_id: number | null;
     folders?: { id: number; name: string } | null;
+    /** V4.2: 书签标题（用于学习反馈显示） */
+    title?: string;
+    /** V4.2: 书签标签（用于负样本学习） */
+    tags?: string[];
+    /** V4.2: 来源 ID（用于来源偏好学习） */
+    source_id?: string;
+    /** V4.2: 来源名称（用于来源偏好学习） */
+    source_name?: string;
   };
+  /** V4.2: 是否启用学习反馈（默认 true） */
+  enableLearning?: boolean;
 }
 
 export function MoveToFolderDialog({
   open,
   onOpenChange,
   bookmark,
+  enableLearning = true,
 }: MoveToFolderDialogProps) {
   const router = useRouter();
   const { fetchWithAbort } = useAbortableFetch();
+  const { showFolderPreference, showSourcePreference } = useLearningFeedback();
 
   // 文件夹数据状态
   const [folders, setFolders] = useState<FolderTreeNode[]>([]);
@@ -152,6 +173,7 @@ export function MoveToFolderDialog({
 
   /**
    * 提交移动操作
+   * V4.2: 集成学习反馈
    */
   const handleMove = async () => {
     if (isMoving) return;
@@ -170,6 +192,9 @@ export function MoveToFolderDialog({
     setIsMoving(true);
 
     try {
+      // 获取原文件夹名称（用于学习反馈）
+      const _originalFolderName = bookmark.folders?.name || null;
+
       const res = await fetchWithAbort(`/api/bookmarks/${bookmark.id}`, {
         method: "PUT",
         headers: {
@@ -177,6 +202,15 @@ export function MoveToFolderDialog({
         },
         body: JSON.stringify({
           folderId: targetFolderId,
+          // V4.2: 添加学习事件数据
+          learningData: enableLearning
+            ? {
+                feedbackType: "manual_move",
+                originalFolderId: bookmark.folder_id,
+                bookmarkTags: bookmark.tags,
+                sourceId: bookmark.source_id,
+              }
+            : undefined,
         }),
       });
 
@@ -194,6 +228,18 @@ export function MoveToFolderDialog({
 
       toast.success(`已移动到「${targetFolderName}」`);
       onOpenChange(false);
+
+      // V4.2: 显示学习反馈
+      if (enableLearning && targetFolderId !== null) {
+        // 判断是否有来源信息，决定显示哪种学习反馈
+        if (bookmark.source_name && bookmark.source_id) {
+          // 来源偏好学习：该来源的内容将优先推荐到目标文件夹
+          showSourcePreference(bookmark.source_name, targetFolderName);
+        } else {
+          // 普通文件夹偏好学习
+          showFolderPreference(targetFolderName);
+        }
+      }
 
       // 刷新页面数据
       router.refresh();

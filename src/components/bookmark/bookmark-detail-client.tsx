@@ -1,11 +1,18 @@
 /**
  * 收藏详情客户端组件
- * 展示收藏的完整信息并提供编辑、删除操作
+ * V4.2 集成来源徽章和学习反馈
+ *
+ * @description 展示收藏的完整信息并提供编辑、删除操作
+ * - 显示来源徽章（V4.2）
+ * - 移动对话框集成学习反馈
+ *
+ * @version 1.1.0
+ * @since 2025-12-11
  */
 
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -23,6 +30,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAbortableFetch } from "@/hooks/use-abortable-fetch";
+import { SourceBadge, inferSourceType } from "./source-badge";
+import type { SourceInfo } from "./source-badge";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -171,6 +180,34 @@ export function BookmarkDetailClient({
     bookmark.user_tags,
     customUsageTags,
   );
+
+  // V4.2: 构建来源信息
+  const sourceInfo = useMemo((): SourceInfo | null => {
+    // 优先使用 source_id（如果有）
+    if (bookmark.source_id) {
+      return {
+        sourceId: bookmark.source_id,
+        sourceName: bookmark.source_name || undefined,
+        domain: bookmark.url ? new URL(bookmark.url).hostname : undefined,
+        sourceType: inferSourceType(bookmark.source_id),
+      };
+    }
+    // 否则从 URL 推断
+    if (bookmark.url) {
+      try {
+        const domain = new URL(bookmark.url).hostname;
+        return {
+          sourceId: domain,
+          sourceName: bookmark.source_name || domain,
+          domain: domain,
+          sourceType: inferSourceType(domain),
+        };
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  }, [bookmark.source_id, bookmark.source_name, bookmark.url]);
 
   // 标签内联编辑状态
   const [isEditingTags, setIsEditingTags] = useState(false);
@@ -660,13 +697,17 @@ export function BookmarkDetailClient({
                   </div>
                 )}
 
-                {/* 第3行：元信息（来源、作者、时间） */}
+                {/* 第3行：元信息（来源徽章、作者、时间） */}
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-gray-500 dark:text-gray-400">
-                  {bookmark.source_name && (
-                    <span className="font-bold text-gray-700 dark:text-gray-200">
-                      {bookmark.source_name}
-                    </span>
+                  {/* V4.2: 来源徽章 */}
+                  {sourceInfo && (
+                    <SourceBadge
+                      source={sourceInfo}
+                      size="md"
+                      showTooltip={true}
+                    />
                   )}
+                  {/* 作者（如果不同于来源名称） */}
                   {bookmark.author &&
                     bookmark.author !== bookmark.source_name && (
                       <>
@@ -1019,11 +1060,20 @@ export function BookmarkDetailClient({
         bookmark={bookmark}
       />
 
-      {/* 移动到文件夹对话框 */}
+      {/* 移动到文件夹对话框 - V4.2: 传递学习所需的来源信息 */}
       <MoveToFolderDialog
         open={showMoveDialog}
         onOpenChange={setShowMoveDialog}
-        bookmark={bookmark}
+        bookmark={{
+          ...bookmark,
+          // V4.2: 传递学习所需的额外信息
+          title: bookmark.title,
+          tags: bookmark.user_tags || bookmark.ai_tags || undefined,
+          source_id: bookmark.source_id || sourceInfo?.sourceId || undefined,
+          source_name:
+            bookmark.source_name || sourceInfo?.sourceName || undefined,
+        }}
+        enableLearning={true}
       />
     </div>
   );
