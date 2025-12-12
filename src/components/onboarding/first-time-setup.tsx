@@ -110,8 +110,7 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
       <div className="space-y-2">
         <h2 className="text-2xl font-bold">👋 欢迎来到 AnyKeep！</h2>
         <p className="text-muted-foreground max-w-md mx-auto">
-          您的智能收藏助手。只需几步简单设置，AI
-          就能帮您自动整理所有收藏内容。
+          您的智能收藏助手。只需几步简单设置，AI 就能帮您自动整理所有收藏内容。
         </p>
       </div>
 
@@ -211,7 +210,9 @@ function CompleteStep({
 export function FirstTimeSetup({ open, onComplete }: FirstTimeSetupProps) {
   const [currentStep, setCurrentStep] = useState<SetupStep>("welcome");
   const [trustMode, setTrustMode] = useState<TrustMode>("full_auto");
-  const [selectedInterests, setSelectedInterests] = useState<PresetInterestId[]>([]);
+  const [selectedInterests, setSelectedInterests] = useState<
+    PresetInterestId[]
+  >([]);
   const [isLoading, setIsLoading] = useState(false);
 
   // 计算进度
@@ -240,7 +241,7 @@ export function FirstTimeSetup({ open, onComplete }: FirstTimeSetupProps) {
       setTrustMode(mode);
       handleNext();
     },
-    [handleNext]
+    [handleNext],
   );
 
   // 兴趣选择确认
@@ -361,7 +362,12 @@ export function FirstTimeSetup({ open, onComplete }: FirstTimeSetupProps) {
   const currentStepConfig = STEPS.find((s) => s.id === currentStep);
 
   return (
-    <Dialog open={open} onOpenChange={() => {}}>
+    <Dialog
+      open={open}
+      onOpenChange={() => {
+        /* noop - prevent close */
+      }}
+    >
       <DialogContent
         className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto"
         onPointerDownOutside={(e) => e.preventDefault()}
@@ -378,9 +384,7 @@ export function FirstTimeSetup({ open, onComplete }: FirstTimeSetupProps) {
             <div
               key={step.id}
               className={`w-2 h-2 rounded-full transition-colors ${
-                index <= stepIndex
-                  ? "bg-primary"
-                  : "bg-muted"
+                index <= stepIndex ? "bg-primary" : "bg-muted"
               }`}
             />
           ))}

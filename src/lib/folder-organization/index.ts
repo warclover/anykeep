@@ -53,6 +53,20 @@ export {
 } from "./algorithms/dbscan-cluster";
 
 // ============================================================================
+// Auto-Organization Service (V4.2 GAP-09)
+// ============================================================================
+export {
+  FolderAutoOrganizationService,
+  createFolderAutoOrganizationService,
+  type OrganizationSuggestion,
+  type OrganizationSuggestionType,
+  type MergeSuggestionAction,
+  type SplitSuggestionAction,
+  type RenameSuggestionAction,
+  type AutoOrganizationConfig,
+} from "./services/auto-organization.service";
+
+// ============================================================================
 // Module Initialization
 // ============================================================================
 export { initFolderOrganization, getFolderOrganizationStatus } from "./init";

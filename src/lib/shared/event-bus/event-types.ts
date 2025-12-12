@@ -40,7 +40,13 @@ export interface ClassificationFeedbackEvent {
   /** @deprecated 使用 newFolderId 代替 */
   correctedFolderId?: number;
   newFolderId: number | null;
-  feedbackType: "confirmed" | "rejected" | "corrected" | "correct" | "incorrect" | "manual_move";
+  feedbackType:
+    | "confirmed"
+    | "rejected"
+    | "corrected"
+    | "correct"
+    | "incorrect"
+    | "manual_move";
   confidence?: number;
   /** 托管模式 */
   trustMode?: "full_auto" | "semi_auto" | "manual";
@@ -69,7 +75,12 @@ export interface FolderProfileUpdatedEvent {
   folderName: string;
   bookmarkCount: number;
   /** 更新原因 */
-  updateReason?: "bookmark_added" | "bookmark_removed" | "bookmark_moved" | "scheduled" | "manual";
+  updateReason?:
+    | "bookmark_added"
+    | "bookmark_removed"
+    | "bookmark_moved"
+    | "scheduled"
+    | "manual";
   /** 更新统计 */
   stats?: {
     bookmarksAdded?: number;
@@ -134,6 +145,42 @@ export interface OrganizationEventTypes {
 }
 
 // ============================================================================
+// AI 摘要事件 (V4.2 GAP-10)
+// ============================================================================
+
+/** AI 摘要完成事件 */
+export interface SummaryCompletedEvent {
+  userId: string;
+  bookmarkId: number;
+  /** 摘要版本 (1: 纯文本, 2: JSON结构化) */
+  summaryVersion: 1 | 2;
+  /** 生成的标签数量 */
+  tagsGenerated: number;
+  /** 处理耗时 (ms) */
+  processingTimeMs: number;
+  /** 是否需要分类 */
+  needsClassification: boolean;
+  timestamp: string;
+}
+
+/** AI 标签生成事件 */
+export interface TagsGeneratedEvent {
+  userId: string;
+  bookmarkId: number;
+  /** 生成的标签 */
+  tags: string[];
+  /** 标签来源 */
+  source: "ai_summary" | "content_analysis" | "user_input";
+  timestamp: string;
+}
+
+/** AI 摘要事件类型映射 */
+export interface SummaryEventTypes {
+  "summary:completed": SummaryCompletedEvent;
+  "summary:tags_generated": TagsGeneratedEvent;
+}
+
+// ============================================================================
 // 任务队列事件
 // ============================================================================
 
@@ -188,6 +235,7 @@ export interface CostMonitorEventTypes {
 /** 所有事件类型 */
 export type EventTypes = ClassificationEventTypes &
   OrganizationEventTypes &
+  SummaryEventTypes &
   JobQueueEventTypes &
   CostMonitorEventTypes;
 

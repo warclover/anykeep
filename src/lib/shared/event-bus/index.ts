@@ -33,6 +33,19 @@
 export { EventBus, eventBus, createEventBus } from "./event-bus";
 export type { EventBusOptions } from "./event-bus";
 
+// System Coordinator (V4.2 GAP-10)
+export {
+  SystemCoordinatorService,
+  initSystemCoordinator,
+  getSystemCoordinator,
+  stopSystemCoordinator,
+  createSystemCoordinator,
+} from "./system-coordinator.service";
+export type {
+  SystemCoordinatorConfig,
+  SystemCoordinatorStatus,
+} from "./system-coordinator.service";
+
 // Types
 export type {
   // Event type mappings
@@ -52,6 +65,10 @@ export type {
   FolderCreatedEvent,
   FoldersMergedEvent,
   FolderSplitEvent,
+  // Summary events (V4.2 GAP-10)
+  SummaryEventTypes,
+  SummaryCompletedEvent,
+  TagsGeneratedEvent,
   // Job queue events
   JobQueueEventTypes,
   JobEnqueuedEvent,
@@ -91,4 +108,10 @@ export const JobQueueEvents = {
 /** 成本监控事件名称 */
 export const CostMonitorEvents = {
   ALERT_TRIGGERED: "cost:alert_triggered",
+} as const;
+
+/** AI 摘要事件名称 (V4.2 GAP-10) */
+export const SummaryEvents = {
+  COMPLETED: "summary:completed",
+  TAGS_GENERATED: "summary:tags_generated",
 } as const;

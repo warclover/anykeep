@@ -2,13 +2,21 @@
  * 智能分类 API
  * POST /api/classification/classify - 对书签进行智能分类
  *
- * V4.1+ 增强：集成分类指标记录
+ * V4.2+ 增强：集成托管模式感知分类
+ * - 快慢路径路由
+ * - 托管模式决策
+ * - 来源画像更新
+ * - 置信度校准
  */
 
 import type { NextRequest } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { ClassificationContainer } from "@/lib/classification";
+import {
+  createTrustModeClassificationService,
+  type EnhancedClassificationResult,
+} from "@/lib/classification/services/trust-mode-classification.service";
 import {
   successResponse,
   handleValidationError,
@@ -61,16 +69,30 @@ export async function POST(request: NextRequest) {
 
     // 3. 初始化分类容器并获取服务
     const container = ClassificationContainer.initialize(supabase);
-    const classificationService = container.getClassificationService();
+    const baseClassificationService = container.getClassificationService();
 
-    // 4. 执行分类
-    const result = await classificationService.classify(user.id, {
-      title,
-      summary,
-      tags,
-      embedding,
-      url,
-    });
+    // 4. 创建托管模式感知的分类服务（包装器模式）
+    const trustModeClassificationService = createTrustModeClassificationService(
+      baseClassificationService,
+    );
+
+    // 5. 执行托管模式感知的分类
+    // 如果没有 URL，回退到基础分类服务
+    const result = url
+      ? await trustModeClassificationService.classify(user.id, {
+          title,
+          summary: summary || "",
+          tags,
+          embedding,
+          url,
+        })
+      : await baseClassificationService.classify(user.id, {
+          title,
+          summary,
+          tags,
+          embedding,
+          url,
+        });
 
     logger.info(
       {
@@ -81,12 +103,18 @@ export async function POST(request: NextRequest) {
           folderName: result.folderName,
           confidence: result.confidence,
           action: result.action,
+          // V4.2: 托管模式相关信息
+          routePath: "routePath" in result ? result.routePath : undefined,
+          trustModeDecision:
+            "trustModeDecision" in result
+              ? result.trustModeDecision
+              : undefined,
         },
       },
-      "Classification completed",
+      "Classification completed (Trust Mode aware)",
     );
 
-    // 5. 异步记录分类指标（非阻塞）
+    // 6. 异步记录分类指标（非阻塞）
     void classificationMetricsService
       .recordMetrics({
         userId: user.id,
@@ -95,22 +123,32 @@ export async function POST(request: NextRequest) {
         folderId: result.folderId,
         folderName: result.folderName,
         confidence: result.confidence,
-        tier: result.matchType === "ai_select" || result.matchType === "ai_create" ? 2 : 1,
+        tier:
+          result.matchType === "ai_select" || result.matchType === "ai_create"
+            ? 2
+            : 1,
         cacheHit: false,
-        aiCalled: result.matchType === "ai_select" || result.matchType === "ai_create",
+        aiCalled:
+          result.matchType === "ai_select" || result.matchType === "ai_create",
         matchType: result.matchType as MatchType | undefined,
-        vectorScore: result.candidates?.[0]?.score,
-        executionTimeMs: result.executionTime || 0,
+        vectorScore: result.candidates?.[0]?.score as number | undefined,
+        executionTimeMs:
+          "processingTimeMs" in result
+            ? (result as EnhancedClassificationResult).processingTimeMs
+            : result.executionTime || 0,
         decisionReason: result.reason,
       })
       .catch((err) => {
         logger.warn(
           { error: err instanceof Error ? err.message : String(err) },
-          "Failed to record classification metrics (non-blocking)"
+          "Failed to record classification metrics (non-blocking)",
         );
       });
 
-    // 6. 返回分类结果
+    // 7. 返回分类结果（包含托管模式决策信息）
+    const isEnhancedResult = "routePath" in result;
+    const enhancedResult = result as EnhancedClassificationResult;
+
     return successResponse({
       folderId: result.folderId,
       folderName: result.folderName,
@@ -118,6 +156,13 @@ export async function POST(request: NextRequest) {
       action: result.action,
       reason: result.reason,
       scores: result.scores,
+      // V4.2: 托管模式增强字段（仅当使用托管模式服务时返回）
+      ...(isEnhancedResult && {
+        routePath: enhancedResult.routePath,
+        trustModeDecision: enhancedResult.trustModeDecision,
+        processingTimeMs: enhancedResult.processingTimeMs,
+        calibration: enhancedResult.calibration,
+      }),
     });
   } catch (error) {
     logger.error(

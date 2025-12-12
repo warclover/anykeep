@@ -140,7 +140,9 @@ export class ConfidenceCalibrationService {
   /** 缓存 TTL (毫秒) */
   private readonly CACHE_TTL = 5 * 60 * 1000; // 5 分钟
 
-  private constructor() {}
+  private constructor() {
+    /* singleton pattern */
+  }
 
   /**
    * 获取单例实例
