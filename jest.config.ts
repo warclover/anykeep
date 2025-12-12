@@ -31,6 +31,7 @@ const config: Config = {
     "/coverage/",
     "/figma1121/",
     "/browser-extension/",
+    "/.backups/",
   ],
 };
 

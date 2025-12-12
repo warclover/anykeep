@@ -33,14 +33,17 @@ export async function GET(): Promise<NextResponse> {
     }
 
     // 获取用户托管模式设置
-    const { data: trustModeData } = await supabase
+    // Note: Table may not exist yet - using type assertion
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: trustModeData } = await (supabase as any)
       .from("user_trust_mode")
       .select("trust_mode")
       .eq("user_id", user.id)
       .single();
 
     // 根据托管模式配置自动组织参数
-    const trustMode = trustModeData?.trust_mode ?? "semi";
+    const trustMode =
+      (trustModeData as { trust_mode?: string })?.trust_mode ?? "semi";
     const autoExecute = trustMode === "full";
 
     const service = createFolderAutoOrganizationService(supabase, {

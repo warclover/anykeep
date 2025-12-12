@@ -353,7 +353,9 @@ describe("V4.2 Fast Path Performance Benchmarks", () => {
         } else if (this.cache.size >= this.maxSize) {
           // 淘汰最老的
           const firstKey = this.cache.keys().next().value;
-          this.cache.delete(firstKey);
+          if (firstKey !== undefined) {
+            this.cache.delete(firstKey);
+          }
         }
         this.cache.set(key, value);
       }

@@ -35,6 +35,19 @@ jest.mock("@/lib/logger", () => ({
   },
 }));
 
+// Mock Supabase server client
+jest.mock("@/lib/supabase/server", () => ({
+  createServerSupabaseClient: jest.fn().mockResolvedValue({}),
+}));
+
+// Mock BookmarkRepository
+const mockMoveToFolder = jest.fn().mockResolvedValue(undefined);
+jest.mock("@/lib/classification/repositories/bookmark.repository", () => ({
+  BookmarkRepository: jest.fn().mockImplementation(() => ({
+    moveToFolder: mockMoveToFolder,
+  })),
+}));
+
 describe("ConfirmationService", () => {
   // 测试数据
   const testUserId = "test-user-123";

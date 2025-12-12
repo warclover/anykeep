@@ -214,6 +214,7 @@ export function InboxItem({
                 {/* 书签信息 */}
                 {confirmation.bookmark && (
                   <div className="flex items-center gap-2 p-2 bg-muted/50 rounded-md">
+                    {/* eslint-disable-next-line @next/next/no-img-element -- External favicon API, not suitable for Next/Image optimization */}
                     <img
                       src={`https://www.google.com/s2/favicons?domain=${new URL(confirmation.bookmark.url).hostname}&sz=32`}
                       alt=""

@@ -86,7 +86,9 @@ class TagGraphService extends BaseSupabaseService {
     try {
       const supabase = await this.getSupabase();
 
-      const { data, error } = await supabase.rpc("get_tag_synonyms", {
+      // Note: RPC function may not exist yet - using type assertion
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any).rpc("get_tag_synonyms", {
         p_user_id: userId,
         p_tag: tag.toLowerCase(),
       });
@@ -96,7 +98,8 @@ class TagGraphService extends BaseSupabaseService {
         return [];
       }
 
-      return (data || []).map((row) => row.synonym);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return (data || []).map((row: any) => row.synonym);
     } catch (error) {
       logger.error({ error, tag }, "Error getting tag synonyms");
       return [];
@@ -114,7 +117,9 @@ class TagGraphService extends BaseSupabaseService {
     try {
       const supabase = await this.getSupabase();
 
-      const { data, error } = await supabase.rpc("get_related_tags", {
+      // Note: RPC function may not exist yet - using type assertion
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any).rpc("get_related_tags", {
         p_user_id: userId,
         p_tag: tag.toLowerCase(),
         p_limit: limit,
@@ -125,7 +130,8 @@ class TagGraphService extends BaseSupabaseService {
         return [];
       }
 
-      return (data || []).map((row) => ({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return (data || []).map((row: any) => ({
         tag: row.related_tag,
         relationshipType: row.relationship_type as TagRelationshipType,
         weight: Number(row.weight),
@@ -162,12 +168,17 @@ class TagGraphService extends BaseSupabaseService {
           }
 
           // 使用 RPC 函数增加共现计数
-          const { error } = await supabase.rpc("increment_tag_cooccurrence", {
-            p_user_id: userId,
-            p_source_tag: bookmarkTag.toLowerCase(),
-            p_target_tag: folderTag.toLowerCase(),
-            p_relationship_type: "related",
-          });
+          // Note: RPC function may not exist yet - using type assertion
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { error } = await (supabase as any).rpc(
+            "increment_tag_cooccurrence",
+            {
+              p_user_id: userId,
+              p_source_tag: bookmarkTag.toLowerCase(),
+              p_target_tag: folderTag.toLowerCase(),
+              p_relationship_type: "related",
+            },
+          );
 
           if (error) {
             logger.warn(
@@ -202,20 +213,24 @@ class TagGraphService extends BaseSupabaseService {
     try {
       const supabase = await this.getSupabase();
 
-      const { error } = await supabase.from("tag_relationships").upsert(
-        {
-          user_id: userId,
-          relationship_type: "synonym",
-          source_tag: sourceTag.toLowerCase(),
-          target_tag: targetTag.toLowerCase(),
-          weight: 1.0, // 用户定义的同义词权重最高
-          source: "user",
-          co_occurrence_count: 0,
-        },
-        {
-          onConflict: "user_id,source_tag,target_tag,relationship_type",
-        },
-      );
+      // Note: Table may not exist yet - using type assertion
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any)
+        .from("tag_relationships")
+        .upsert(
+          {
+            user_id: userId,
+            relationship_type: "synonym",
+            source_tag: sourceTag.toLowerCase(),
+            target_tag: targetTag.toLowerCase(),
+            weight: 1.0, // 用户定义的同义词权重最高
+            source: "user",
+            co_occurrence_count: 0,
+          },
+          {
+            onConflict: "user_id,source_tag,target_tag,relationship_type",
+          },
+        );
 
       if (error) {
         logger.error(
@@ -247,7 +262,9 @@ class TagGraphService extends BaseSupabaseService {
     try {
       const supabase = await this.getSupabase();
 
-      const { error } = await supabase
+      // Note: Table may not exist yet - using type assertion
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any)
         .from("tag_relationships")
         .delete()
         .eq("user_id", userId)
@@ -283,7 +300,9 @@ class TagGraphService extends BaseSupabaseService {
     try {
       const supabase = await this.getSupabase();
 
-      const { data, error } = await supabase
+      // Note: Table may not exist yet - using type assertion
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any)
         .from("tag_relationships")
         .select("source_tag, target_tag")
         .eq("user_id", userId)
@@ -298,7 +317,8 @@ class TagGraphService extends BaseSupabaseService {
       // 构建同义词映射
       const synonymMap = new Map<string, string[]>();
 
-      for (const row of data || []) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      for (const row of (data || []) as any[]) {
         // 双向映射
         const existing1 = synonymMap.get(row.source_tag) || [];
         if (!existing1.includes(row.target_tag)) {
@@ -327,7 +347,9 @@ class TagGraphService extends BaseSupabaseService {
     try {
       const supabase = await this.getSupabase();
 
-      const { data, error } = await supabase
+      // Note: Table may not exist yet - using type assertion
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any)
         .from("tag_relationships")
         .select("source_tag, target_tag, relationship_type, weight")
         .eq("user_id", userId)
@@ -345,7 +367,8 @@ class TagGraphService extends BaseSupabaseService {
       const nodeWeights = new Map<string, number>();
       const edges: TagGraphData["edges"] = [];
 
-      for (const row of data || []) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      for (const row of (data || []) as any[]) {
         nodeSet.add(row.source_tag);
         nodeSet.add(row.target_tag);
 

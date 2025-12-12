@@ -87,8 +87,8 @@ export interface MhtmlResult {
 const DEFAULT_TIMEOUT = 60000; // 60 秒
 const _DEFAULT_VIEWPORT_WIDTH = 1280;
 const _DEFAULT_VIEWPORT_HEIGHT = 800;
-const _MAX_SCREENSHOT_SIZE = 5 * 1024 * 1024; // 5MB
-const _MAX_MHTML_SIZE = 20 * 1024 * 1024; // 20MB
+const MAX_SCREENSHOT_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_MHTML_SIZE = 20 * 1024 * 1024; // 20MB
 
 const DEVICE_CONFIGS = {
   desktop: { width: 1280, height: 800 },

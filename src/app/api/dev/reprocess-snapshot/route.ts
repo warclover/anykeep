@@ -79,7 +79,18 @@ export async function POST(request: Request) {
       );
     }
 
-    const bookmarkUrl = (snapshot.bookmarks as { url: string }).url;
+    // Handle both array and object cases from Supabase join
+    const bookmarks = snapshot.bookmarks as unknown;
+    const bookmarkUrl = Array.isArray(bookmarks)
+      ? (bookmarks[0] as { url: string })?.url
+      : (bookmarks as { url: string })?.url;
+
+    if (!bookmarkUrl) {
+      return NextResponse.json(
+        { error: "Bookmark URL not found" },
+        { status: 404 },
+      );
+    }
 
     // Fetch the webpage
     const controller = new AbortController();
@@ -126,25 +137,24 @@ export async function POST(request: Request) {
       );
     }
 
-    // Calculate hash and size
+    // Calculate hash and size (with null safety)
+    const textContent = article.textContent || "";
+    const htmlContent = article.content || "";
     const contentHash = createHash("sha256")
-      .update(article.textContent, "utf8")
+      .update(textContent, "utf8")
       .digest("hex");
-    const fileSize = Buffer.byteLength(article.content, "utf8");
-    const excerpt = article.textContent
-      .replace(/\s+/g, " ")
-      .trim()
-      .slice(0, 300);
+    const fileSize = Buffer.byteLength(htmlContent, "utf8");
+    const excerpt = textContent.replace(/\s+/g, " ").trim().slice(0, 300);
 
     // Update the snapshot
     const updateData = {
       status: "completed",
       readable_title: article.title || null,
-      readable_content: article.content,
-      readable_text_content: article.textContent,
+      readable_content: htmlContent,
+      readable_text_content: textContent,
       readable_excerpt: excerpt,
       readable_byline: article.byline || null,
-      readable_word_count: article.length,
+      readable_word_count: article.length || 0,
       content_hash: contentHash,
       file_size: fileSize,
       final_url: finalUrl !== bookmarkUrl ? finalUrl : null,

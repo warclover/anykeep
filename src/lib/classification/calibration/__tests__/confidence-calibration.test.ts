@@ -12,8 +12,6 @@
  * @since 2025-12-12
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 import { describe, it, expect, beforeEach, afterAll } from "@jest/globals";
 
 // ============================================================================
@@ -346,7 +344,8 @@ describe("V4.2 Confidence Calibration Tests", () => {
         "../confidence-calibration.service"
       );
 
-      const service = new ConfidenceCalibrationService({} as any);
+      // Use getInstance() for singleton pattern
+      const service = ConfidenceCalibrationService.getInstance();
       expect(service).toBeDefined();
     });
 

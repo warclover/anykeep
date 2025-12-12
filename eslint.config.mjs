@@ -23,6 +23,7 @@ const eslintConfig = defineConfig([
     "browser-extension/node_modules/**",  // 浏览器扩展依赖
     "coverage/**",  // 测试覆盖率报告
     "public/sw.js",  // Service Worker（自动生成）
+    ".backups/**",  // 代码审查备份文件
   ]),
   // Custom rules for code quality
   {
