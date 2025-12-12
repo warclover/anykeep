@@ -14,7 +14,10 @@
  * 在类型生成前，部分操作使用 `any` 类型断言。
  */
 
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import {
+  createServerSupabaseClient,
+  createServiceClient,
+} from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 import type {
   SnapshotType,
@@ -289,19 +292,18 @@ export class SnapshotService {
       priority,
     };
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: job, error: jobError } = await (
-      supabase.from("job_queue") as any
-    )
-      .insert({
-        user_id: userId,
-        type: jobType,
-        payload: jobPayload,
-        priority: priorityValue,
-        scheduled_at: new Date().toISOString(),
-      })
-      .select("id")
-      .single();
+    const { data: job, error: jobError } =
+      await // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (supabase.from("job_queue") as any)
+        .insert({
+          user_id: userId,
+          type: jobType,
+          payload: jobPayload,
+          priority: priorityValue,
+          scheduled_at: new Date().toISOString(),
+        })
+        .select("id")
+        .single();
 
     if (jobError) {
       // 回滚快照记录
@@ -705,16 +707,21 @@ export class SnapshotService {
 
   /**
    * 更新快照状态（供 Worker 使用）
+   * 注意：此方法使用 service client 绕过 RLS，因为后台任务没有用户会话
    */
   async updateSnapshot(
     snapshotId: number,
     update: BookmarkSnapshotUpdate,
   ): Promise<boolean> {
-    const supabase = await this.getSupabase();
+    // 使用 service client 绕过 RLS（后台任务没有用户会话）
+    const supabase = await createServiceClient();
 
-    const { error } = await getSnapshotsTable(supabase)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error, count } = await (supabase as any)
+      .from("bookmark_snapshots")
       .update(update)
-      .eq("id", snapshotId);
+      .eq("id", snapshotId)
+      .select("id", { count: "exact" });
 
     if (error) {
       logger.error(
@@ -724,6 +731,19 @@ export class SnapshotService {
       return false;
     }
 
+    // 检查是否实际更新了行
+    if (count === 0) {
+      logger.warn(
+        { snapshotId },
+        "[SnapshotService] No rows updated - snapshot may not exist",
+      );
+      return false;
+    }
+
+    logger.debug(
+      { snapshotId, updatedFields: Object.keys(update) },
+      "[SnapshotService] Snapshot updated successfully",
+    );
     return true;
   }
 

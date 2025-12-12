@@ -212,6 +212,123 @@ async function fetchWebpage(
 }
 
 /**
+ * 检测是否为微信公众号 URL
+ */
+function isWeChatUrl(url: string): boolean {
+  return url.includes("mp.weixin.qq.com");
+}
+
+/**
+ * 预处理微信公众号 HTML
+ * - 转换 data-src 为 src（微信懒加载图片）
+ * - 移除微信特有干扰元素
+ */
+function preprocessWeChatHtml(document: Document): void {
+  // 1. 转换所有 data-src 为 src（图片懒加载处理）
+  const lazyImages = document.querySelectorAll("img[data-src]");
+  lazyImages.forEach((img) => {
+    const dataSrc = img.getAttribute("data-src");
+    if (dataSrc) {
+      img.setAttribute("src", dataSrc);
+    }
+  });
+
+  // 2. 移除微信特有的干扰元素
+  const wechatNoise = [
+    // 水印和版权声明
+    ".copyright_logo",
+    ".rich_media_tool",
+    ".weui-wa-hotarea",
+    // 关注/订阅提示
+    ".profile_container",
+    ".profile_inner",
+    ".follow-nickName-tips",
+    // 底部推荐
+    ".js_hot_article",
+    ".hot_article_list",
+    // 分享/点赞按钮
+    ".like_tips",
+    ".share_notice",
+    ".reward_area",
+    // 相关阅读
+    ".related_article",
+    // 广告
+    ".ad_container",
+    ".qr_code_pc_outer",
+    // 滑动提示
+    '[class*="tips"]',
+    // 投票/互动组件
+    ".vote_area",
+    ".js_vote_container",
+  ];
+
+  for (const selector of wechatNoise) {
+    try {
+      const elements = document.querySelectorAll(selector);
+      elements.forEach((el) => el.remove());
+    } catch {
+      // 忽略选择器错误
+    }
+  }
+
+  // 3. 移除包含特定文本的元素
+  const textPatterns = [
+    "此图片来自微信公众平台",
+    "未经允许不可引用",
+    "继续滑动看下一个",
+    "向上滑动看下一个",
+    "轻触阅读原文",
+    "点击上方蓝字关注",
+  ];
+
+  // 查找所有文本节点并移除包含干扰文本的父元素
+  const walker = document.createTreeWalker(
+    document.body,
+    // NodeFilter.SHOW_TEXT
+    4,
+    null,
+  );
+
+  const nodesToRemove: Element[] = [];
+  let node;
+  while ((node = walker.nextNode())) {
+    const text = node.textContent || "";
+    for (const pattern of textPatterns) {
+      if (text.includes(pattern)) {
+        const parent = node.parentElement;
+        if (parent && !nodesToRemove.includes(parent)) {
+          nodesToRemove.push(parent);
+        }
+        break;
+      }
+    }
+  }
+
+  nodesToRemove.forEach((el) => {
+    try {
+      el.remove();
+    } catch {
+      // 忽略移除失败
+    }
+  });
+
+  // 4. 确保主内容区域可见
+  const contentArea = document.querySelector("#js_content");
+  if (contentArea) {
+    // 移除 visibility: hidden 样式（微信默认隐藏内容）
+    contentArea.setAttribute("style", "visibility: visible !important;");
+  }
+
+  logger.debug(
+    {
+      lazyImagesConverted: lazyImages.length,
+      nodesRemoved: nodesToRemove.length,
+    },
+    "[SnapshotProcessor] WeChat HTML preprocessed",
+  );
+}
+
+/**
  * 使用 Readability 解析内容
  */
 function parseWithReadability(
@@ -219,6 +336,8 @@ function parseWithReadability(
   url: string,
 ): ReadabilityResult | null {
   try {
+    const isWeChat = isWeChatUrl(url);
+
     // 创建 JSDOM 实例
     const dom = new JSDOM(html, {
       url,
@@ -229,6 +348,11 @@ function parseWithReadability(
     });
 
     const document = dom.window.document;
+
+    // 针对微信公众号特殊处理
+    if (isWeChat) {
+      preprocessWeChatHtml(document);
+    }
 
     // 移除可能干扰的元素
     removeNoisyElements(document);
