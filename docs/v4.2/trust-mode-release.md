@@ -14,11 +14,11 @@ Trust Mode（托管模式）是 AnyKeep V4.2 智能分类系统的核心功能�
 
 ### 三种托管模式
 
-| 模式 | 中文名 | 描述 |
-|------|--------|------|
-| `full_auto` | 完全托管 | AI 全权负责分类和整理，无需用户干预 |
-| `semi_auto` | 半托管 | AI 处理大部分工作，不确定时询问用户意见 |
-| `manual` | 不托管 | 用户完全控制，AI 仅在请求时提供辅助 |
+| 模式        | 中文名   | 描述                                    |
+| ----------- | -------- | --------------------------------------- |
+| `full_auto` | 完全托管 | AI 全权负责分类和整理，无需用户干预     |
+| `semi_auto` | 半托管   | AI 处理大部分工作，不确定时询问用户意见 |
+| `manual`    | 不托管   | 用户完全控制，AI 仅在请求时提供辅助     |
 
 ### 核心功能
 
@@ -68,22 +68,22 @@ src/lib/
 
 ### 数据库表
 
-| 表名 | 用途 |
-|------|------|
-| `user_trust_mode` | 用户托管模式配置 |
-| `pending_confirmations` | 待确认消息队列 |
-| `classification_suggestions` | 分类建议历史 |
-| `user_preferences` | 用户偏好学习数据 |
+| 表名                         | 用途             |
+| ---------------------------- | ---------------- |
+| `user_trust_mode`            | 用户托管模式配置 |
+| `pending_confirmations`      | 待确认消息队列   |
+| `classification_suggestions` | 分类建议历史     |
+| `user_preferences`           | 用户偏好学习数据 |
 
 ### API 端点
 
-| 端点 | 方法 | 描述 |
-|------|------|------|
-| `/api/user/trust-mode` | GET/PUT | 获取/更新托管模式 |
-| `/api/user/trust-mode/stats` | GET | 获取统计数据 |
-| `/api/classification/[id]/reason` | GET | 获取分类决策理由 |
-| `/api/classification/history` | GET | 获取分类历史 |
-| `/api/classification/trace` | GET | 获取分类追踪 |
+| 端点                              | 方法    | 描述              |
+| --------------------------------- | ------- | ----------------- |
+| `/api/user/trust-mode`            | GET/PUT | 获取/更新托管模式 |
+| `/api/user/trust-mode/stats`      | GET     | 获取统计数据      |
+| `/api/classification/[id]/reason` | GET     | 获取分类决策理由  |
+| `/api/classification/history`     | GET     | 获取分类历史      |
+| `/api/classification/trace`       | GET     | 获取分类追踪      |
 
 ## 部署清单
 
@@ -119,6 +119,7 @@ NEXT_PUBLIC_METRICS_ENABLED=false          # 是否启用指标收集
 ### 部署步骤
 
 1. **代码部署**
+
    ```bash
    git checkout feature/classification-v4.2
    npm install
@@ -126,6 +127,7 @@ NEXT_PUBLIC_METRICS_ENABLED=false          # 是否启用指标收集
    ```
 
 2. **数据库迁移**
+
    ```bash
    npm run supabase:db:push
    ```
@@ -169,12 +171,12 @@ UPDATE user_trust_mode SET trust_mode = 'full_auto';
 
 ### 关键指标
 
-| 指标名 | 类型 | 描述 | 告警阈值 |
-|--------|------|------|----------|
-| `classification_latency_ms` | Histogram | 分类延迟 | P99 > 5000ms |
-| `user_corrections_total` | Counter | 用户纠正次数 | 日增长 > 20% |
-| `pending_confirmations_gauge` | Gauge | 待确认消息数 | > 100/用户 |
-| `classification_failures_total` | Counter | 分类失败数 | > 5/分钟 |
+| 指标名                          | 类型      | 描述         | 告警阈值     |
+| ------------------------------- | --------- | ------------ | ------------ |
+| `classification_latency_ms`     | Histogram | 分类延迟     | P99 > 5000ms |
+| `user_corrections_total`        | Counter   | 用户纠正次数 | 日增长 > 20% |
+| `pending_confirmations_gauge`   | Gauge     | 待确认消息数 | > 100/用户   |
+| `classification_failures_total` | Counter   | 分类失败数   | > 5/分钟     |
 
 ### 仪表盘
 
@@ -250,6 +252,6 @@ UPDATE user_trust_mode SET trust_mode = 'full_auto';
 
 ## 更新记录
 
-| 日期 | 版本 | 变更内容 |
-|------|------|----------|
+| 日期       | 版本  | 变更内容 |
+| ---------- | ----- | -------- |
 | 2025-12-11 | 1.0.0 | 初始版本 |

@@ -4,25 +4,25 @@
 
 ### 1.1 已实现的移动端功能
 
-| 功能模块 | 实现状态 | 说明 |
-|---------|---------|------|
-| Viewport 配置 | ✅ 完成 | device-width, initialScale=1, userScalable=true |
-| 底部导航栏 | ✅ 完成 | `mobile-bottom-nav.tsx`, lg:hidden |
-| 侧边汉堡菜单 | ✅ 完成 | `mobile-menu.tsx`, Sheet 抽屉 |
-| 瀑布流响应式 | ✅ 完成 | 1/2/3/4 列自适应 |
-| 深色模式 | ✅ 完成 | 全组件 dark: 前缀支持 |
-| 顶部导航适配 | ✅ 基本完成 | Logo、用户名响应式隐藏 |
+| 功能模块      | 实现状态    | 说明                                            |
+| ------------- | ----------- | ----------------------------------------------- |
+| Viewport 配置 | ✅ 完成     | device-width, initialScale=1, userScalable=true |
+| 底部导航栏    | ✅ 完成     | `mobile-bottom-nav.tsx`, lg:hidden              |
+| 侧边汉堡菜单  | ✅ 完成     | `mobile-menu.tsx`, Sheet 抽屉                   |
+| 瀑布流响应式  | ✅ 完成     | 1/2/3/4 列自适应                                |
+| 深色模式      | ✅ 完成     | 全组件 dark: 前缀支持                           |
+| 顶部导航适配  | ✅ 基本完成 | Logo、用户名响应式隐藏                          |
 
 ### 1.2 存在的问题
 
-| 优先级 | 问题 | 影响范围 | 严重程度 |
-|--------|------|----------|----------|
-| **P0** | 首页操作栏按钮溢出 | 首页核心功能 | 🔴 严重 |
-| **P1** | 底部导航间距断点不一致 | 全局布局 | 🟠 中等 |
-| **P1** | 安全区适配不完整 | iOS 设备 | 🟠 中等 |
-| **P2** | 搜索框移动端过小 | 搜索体验 | 🟡 轻微 |
-| **P2** | 列表视图缺少 sm 过渡 | 卡片显示 | 🟡 轻微 |
-| **P2** | Dialog 移动端宽度 | 弹窗显示 | 🟡 轻微 |
+| 优先级 | 问题                   | 影响范围     | 严重程度 |
+| ------ | ---------------------- | ------------ | -------- |
+| **P0** | 首页操作栏按钮溢出     | 首页核心功能 | 🔴 严重  |
+| **P1** | 底部导航间距断点不一致 | 全局布局     | 🟠 中等  |
+| **P1** | 安全区适配不完整       | iOS 设备     | 🟠 中等  |
+| **P2** | 搜索框移动端过小       | 搜索体验     | 🟡 轻微  |
+| **P2** | 列表视图缺少 sm 过渡   | 卡片显示     | 🟡 轻微  |
+| **P2** | Dialog 移动端宽度      | 弹窗显示     | 🟡 轻微  |
 
 ---
 
@@ -102,6 +102,7 @@
 ```
 
 **验证：**
+
 - 底部导航 `lg:hidden` ✓
 - 内容 padding `pb-20 lg:pb-6` ✓ (一致)
 
@@ -219,35 +220,35 @@ export const viewport: Viewport = {
 
 ### 第一阶段：紧急修复 (Day 1)
 
-| 任务 | 优先级 | 预计时间 | 负责文件 |
-|------|--------|----------|----------|
-| 首页操作栏按钮折叠 | P0 | 2-3h | `home-page-client.tsx` |
-| 底部导航间距修复 | P1 | 30min | `(main)/layout.tsx` |
+| 任务               | 优先级 | 预计时间 | 负责文件               |
+| ------------------ | ------ | -------- | ---------------------- |
+| 首页操作栏按钮折叠 | P0     | 2-3h     | `home-page-client.tsx` |
+| 底部导航间距修复   | P1     | 30min    | `(main)/layout.tsx`    |
 
 ### 第二阶段：安全区适配 (Day 2)
 
-| 任务 | 优先级 | 预计时间 | 负责文件 |
-|------|--------|----------|----------|
-| viewport-fit 配置 | P1 | 30min | `layout.tsx`, `globals.css` |
-| 底部导航安全区 | P1 | 30min | `mobile-bottom-nav.tsx` |
-| 顶部导航安全区 | P1 | 30min | `app-header.tsx` |
+| 任务              | 优先级 | 预计时间 | 负责文件                    |
+| ----------------- | ------ | -------- | --------------------------- |
+| viewport-fit 配置 | P1     | 30min    | `layout.tsx`, `globals.css` |
+| 底部导航安全区    | P1     | 30min    | `mobile-bottom-nav.tsx`     |
+| 顶部导航安全区    | P1     | 30min    | `app-header.tsx`            |
 
 ### 第三阶段：细节优化 (Day 3)
 
-| 任务 | 优先级 | 预计时间 | 负责文件 |
-|------|--------|----------|----------|
-| 搜索框响应式 | P2 | 30min | `app-header.tsx` |
-| 列表视图 sm 断点 | P2 | 30min | `bookmark-card.tsx` |
-| Dialog 宽度规范 | P2 | 1h | 各 Dialog 组件 |
+| 任务             | 优先级 | 预计时间 | 负责文件            |
+| ---------------- | ------ | -------- | ------------------- |
+| 搜索框响应式     | P2     | 30min    | `app-header.tsx`    |
+| 列表视图 sm 断点 | P2     | 30min    | `bookmark-card.tsx` |
+| Dialog 宽度规范  | P2     | 1h       | 各 Dialog 组件      |
 
 ### 第四阶段：测试验证 (Day 4)
 
-| 测试项目 | 设备 | 检查点 |
-|----------|------|--------|
-| iPhone 测试 | iPhone 12/14/15 | 安全区、刘海显示 |
-| Android 测试 | Pixel 6/7 | 导航栏、状态栏 |
-| 平板测试 | iPad | 布局断点、侧边栏 |
-| 横屏测试 | 各设备 | 布局不破裂 |
+| 测试项目     | 设备            | 检查点           |
+| ------------ | --------------- | ---------------- |
+| iPhone 测试  | iPhone 12/14/15 | 安全区、刘海显示 |
+| Android 测试 | Pixel 6/7       | 导航栏、状态栏   |
+| 平板测试     | iPad            | 布局断点、侧边栏 |
+| 横屏测试     | 各设备          | 布局不破裂       |
 
 ---
 
@@ -265,14 +266,14 @@ xl:  1280px  // 笔记本
 
 ### 4.2 组件断点使用规范
 
-| 组件类型 | 移动端 (< 768px) | 平板 (768-1024px) | 桌面 (> 1024px) |
-|----------|------------------|-------------------|-----------------|
-| 侧边栏 | hidden | hidden | lg:block |
-| 底部导航 | block | block | lg:hidden |
-| 汉堡菜单 | block | block | lg:hidden |
-| 操作按钮 | icon-only | text | text |
-| 网格列数 | 1 col | 2 cols | 3-4 cols |
-| Dialog 宽度 | 95vw | 80vw | max-w-lg |
+| 组件类型    | 移动端 (< 768px) | 平板 (768-1024px) | 桌面 (> 1024px) |
+| ----------- | ---------------- | ----------------- | --------------- |
+| 侧边栏      | hidden           | hidden            | lg:block        |
+| 底部导航    | block            | block             | lg:hidden       |
+| 汉堡菜单    | block            | block             | lg:hidden       |
+| 操作按钮    | icon-only        | text              | text            |
+| 网格列数    | 1 col            | 2 cols            | 3-4 cols        |
+| Dialog 宽度 | 95vw             | 80vw              | max-w-lg        |
 
 ---
 
@@ -337,18 +338,18 @@ xl:  1280px  // 笔记本
 
 ## 七、相关文件清单
 
-| 文件路径 | 修改类型 | 说明 |
-|----------|----------|------|
-| `src/app/layout.tsx` | 修改 | viewport-fit |
-| `src/app/globals.css` | 修改 | safe-area 变量 |
-| `src/app/(main)/layout.tsx` | 修改 | padding 断点 |
-| `src/components/home/home-page-client.tsx` | 修改 | 操作栏响应式 |
-| `src/components/bookmark/bookmark-card.tsx` | 修改 | sm 断点 |
-| `src/components/layout/app-header.tsx` | 修改 | 搜索框宽度 |
-| `src/components/layout/mobile-bottom-nav.tsx` | 修改 | 安全区 |
+| 文件路径                                      | 修改类型 | 说明           |
+| --------------------------------------------- | -------- | -------------- |
+| `src/app/layout.tsx`                          | 修改     | viewport-fit   |
+| `src/app/globals.css`                         | 修改     | safe-area 变量 |
+| `src/app/(main)/layout.tsx`                   | 修改     | padding 断点   |
+| `src/components/home/home-page-client.tsx`    | 修改     | 操作栏响应式   |
+| `src/components/bookmark/bookmark-card.tsx`   | 修改     | sm 断点        |
+| `src/components/layout/app-header.tsx`        | 修改     | 搜索框宽度     |
+| `src/components/layout/mobile-bottom-nav.tsx` | 修改     | 安全区         |
 
 ---
 
-*文档版本: v1.0.0*
-*创建日期: 2025-11-25*
-*最后更新: 2025-11-25*
+_文档版本: v1.0.0_
+_创建日期: 2025-11-25_
+_最后更新: 2025-11-25_
