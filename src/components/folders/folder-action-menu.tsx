@@ -53,6 +53,14 @@ type FolderWithCount = FolderType & {
   bookmark_count?: number;
 };
 
+/**
+ * V4.2.1: 初始锁状态（从批量查询结果传入）
+ */
+interface InitialLockStatus {
+  isLocked: boolean;
+  isAiRenamable: boolean;
+}
+
 interface FolderActionMenuProps {
   folder: FolderWithCount;
   allFolders: FolderWithCount[];
@@ -64,6 +72,11 @@ interface FolderActionMenuProps {
     targetFolderId: number,
     movedCount: number,
   ) => void;
+  /**
+   * V4.2.1: 从父组件批量查询结果传入的初始锁状态
+   * 如果提供，则跳过单独的 API 请求
+   */
+  initialLockStatus?: InitialLockStatus;
 }
 
 // 文件夹分组配置（包含系统分组以保证类型安全）
@@ -109,6 +122,7 @@ export function FolderActionMenu({
   onFolderDeleted,
   onFolderRenamed,
   onFolderMerged,
+  initialLockStatus,
 }: FolderActionMenuProps) {
   const router = useRouter();
   const { fetchWithAbort } = useAbortableFetch();
@@ -264,8 +278,16 @@ export function FolderActionMenu({
     }
   };
 
-  // 获取锁定状态
+  // V4.2.1: 获取锁定状态
+  // 优先使用父组件批量查询的结果，否则才进行单独请求
   useEffect(() => {
+    // 如果父组件已提供锁状态，直接使用
+    if (initialLockStatus !== undefined) {
+      setIsLocked(initialLockStatus.isLocked);
+      return;
+    }
+
+    // 否则进行单独请求（兜底逻辑）
     const fetchLockStatus = async () => {
       try {
         const res = await fetch(`/api/folders/${folder.id}/lock`);
@@ -283,7 +305,7 @@ export function FolderActionMenu({
     if (!isSystemFolder) {
       fetchLockStatus();
     }
-  }, [folder.id, isSystemFolder]);
+  }, [folder.id, isSystemFolder, initialLockStatus]);
 
   // 处理锁定/解锁
   const handleToggleLock = async (e: React.MouseEvent) => {

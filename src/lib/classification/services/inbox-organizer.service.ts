@@ -1,30 +1,61 @@
 /**
  * Inbox Organizer Service
  * Manages intelligent organization of inbox bookmarks
+ *
+ * V4.2.1 优化:
+ * - 修复 N+1 查询问题，使用批量查询 + 内存匹配
+ * - 增量更新：新增书签时只计算增量，而非全量重新聚类
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { IInboxOrganizerService } from "./interfaces";
 import type {
   OrganizationAnalysis,
+  OrganizationSuggestion,
   BookmarkCluster,
   SuggestionInput,
   ClusterProcessingStatus,
+  FolderProfile,
 } from "../types";
 import type {
   BookmarkRepository,
+  BookmarkForClassification,
   FolderProfileRepository,
   SuggestionRepository,
   InterestRepository,
 } from "../repositories";
 import { INBOX_ORGANIZE_TRIGGERS } from "../constants";
 import { clusterBookmarks } from "../utils/clustering";
+import { cosineSimilarity, calculateCentroid } from "../utils/similarity";
 import { logger } from "@/lib/logger";
+import { PerformanceMonitor } from "@/lib/utils/performance-monitor";
+
+/**
+ * V4.2.1: 增量分析状态
+ * 用于跟踪上次分析的书签集合，判断是否可以进行增量更新
+ */
+interface IncrementalAnalysisState {
+  /** 上次分析时的书签 ID 集合 */
+  analyzedBookmarkIds: Set<number>;
+  /** 上次分析时间 */
+  analyzedAt: Date;
+  /** 现有建议与其聚类中心的映射 */
+  suggestionCentroids: Map<number, number[]>;
+}
 
 /**
  * Service for organizing inbox bookmarks
  */
 export class InboxOrganizerService implements IInboxOrganizerService {
+  /**
+   * V4.2.1: 用户增量分析状态缓存
+   * 以用户 ID 为 key，存储上次分析的状态
+   */
+  private static incrementalStateCache = new Map<
+    string,
+    IncrementalAnalysisState
+  >();
+
   constructor(
     private bookmarkRepo: BookmarkRepository,
     private folderProfileRepo: FolderProfileRepository,
@@ -34,11 +65,29 @@ export class InboxOrganizerService implements IInboxOrganizerService {
   ) {}
 
   /**
+   * V4.2.1: 缓存 TTL（5 分钟）
+   */
+  private readonly CACHE_TTL = 5 * 60 * 1000;
+
+  /**
+   * V4.2.1: 增量分析的相似度阈值
+   * 新书签与现有聚类匹配时使用
+   */
+  private readonly INCREMENTAL_MATCH_THRESHOLD = 0.75;
+
+  /**
    * Analyze inbox and generate organization suggestions
+   * V4.2.1: 添加智能缓存 + 增量更新
+   * - 如果有未过期的 pending 建议且数据未变，直接返回
+   * - 如果只有新增书签，尝试增量更新而非全量重新聚类
    */
   async analyze(userId: string): Promise<OrganizationAnalysis> {
+    const monitor = new PerformanceMonitor("InboxOrganizerAnalyze");
+
     // Get inbox bookmarks
-    const inboxBookmarks = await this.bookmarkRepo.findInboxBookmarks(userId);
+    const inboxBookmarks = await monitor.measure("FetchInboxBookmarks", () =>
+      this.bookmarkRepo.findInboxBookmarks(userId),
+    );
 
     if (inboxBookmarks.length < INBOX_ORGANIZE_TRIGGERS.COUNT_THRESHOLD) {
       // Not enough bookmarks to analyze
@@ -50,8 +99,104 @@ export class InboxOrganizerService implements IInboxOrganizerService {
       };
     }
 
+    // V4.2.1: 智能缓存检查 - 如果有 pending 建议且未过期，直接返回
+    const existingSuggestions = await monitor.measure(
+      "FetchExistingSuggestions",
+      () => this.suggestionRepo.findPendingByUserId(userId),
+    );
+
+    if (existingSuggestions.length > 0) {
+      const oldestSuggestion = existingSuggestions.reduce((oldest, s) =>
+        s.createdAt < oldest.createdAt ? s : oldest,
+      );
+      const suggestionAge =
+        Date.now() - new Date(oldestSuggestion.createdAt).getTime();
+
+      // 获取上次分析状态
+      const lastState = InboxOrganizerService.incrementalStateCache.get(userId);
+      const currentBookmarkIds = new Set(inboxBookmarks.map((b) => b.id));
+
+      // 如果建议未过期（小于 5 分钟），检查是否完全缓存命中
+      if (suggestionAge < this.CACHE_TTL && lastState) {
+        // 检查是否有任何变化
+        const hasRemovals = [...lastState.analyzedBookmarkIds].some(
+          (id) => !currentBookmarkIds.has(id),
+        );
+        const newBookmarkIds = [...currentBookmarkIds].filter(
+          (id) => !lastState.analyzedBookmarkIds.has(id),
+        );
+
+        // 完全缓存命中：没有变化
+        if (!hasRemovals && newBookmarkIds.length === 0) {
+          logger.debug(
+            {
+              userId,
+              existingSuggestionsCount: existingSuggestions.length,
+              suggestionAgeMs: suggestionAge,
+              cacheHit: "full",
+            },
+            "Inbox Organizer: Full cache hit - returning existing suggestions",
+          );
+
+          return {
+            inboxCount: inboxBookmarks.length,
+            suggestions: existingSuggestions,
+            lastAnalyzedAt: oldestSuggestion.createdAt,
+            nextSuggestedAnalyzeAt: this.getNextAnalyzeDate(),
+          };
+        }
+
+        // V4.2.1: 增量更新场景 - 只有新增书签，没有删除
+        if (!hasRemovals && newBookmarkIds.length > 0) {
+          const incrementalResult = await monitor.measure(
+            "IncrementalAnalysis",
+            () =>
+              this.tryIncrementalAnalysis(
+                userId,
+                inboxBookmarks,
+                existingSuggestions,
+                newBookmarkIds,
+                lastState,
+              ),
+          );
+
+          if (incrementalResult) {
+            const perfReport = monitor.getReport();
+            logger.info(
+              {
+                userId,
+                newBookmarkCount: newBookmarkIds.length,
+                updatedSuggestionCount: incrementalResult.suggestions.length,
+                performanceMs: Math.round(perfReport.totalDuration),
+                action: "inbox_incremental_update",
+              },
+              "Inbox Organizer: Incremental update successful",
+            );
+
+            return incrementalResult;
+          }
+          // 增量更新失败，继续全量分析
+        }
+      }
+    }
+
+    // 全量分析
+    return this.performFullAnalysis(userId, inboxBookmarks, monitor);
+  }
+
+  /**
+   * V4.2.1: 执行全量聚类分析
+   * 当增量更新不适用时调用
+   */
+  private async performFullAnalysis(
+    userId: string,
+    inboxBookmarks: BookmarkForClassification[],
+    monitor: PerformanceMonitor,
+  ): Promise<OrganizationAnalysis> {
     // Delete old pending suggestions
-    await this.suggestionRepo.deletePendingByUserId(userId);
+    await monitor.measure("DeleteOldSuggestions", () =>
+      this.suggestionRepo.deletePendingByUserId(userId),
+    );
 
     // Get embeddings for clustering
     const bookmarksWithEmbedding = inboxBookmarks.filter(
@@ -69,7 +214,8 @@ export class InboxOrganizerService implements IInboxOrganizerService {
       };
     }
 
-    // Cluster bookmarks
+    // Cluster bookmarks (synchronous operation)
+    const clusterStart = performance.now();
     const clusters = clusterBookmarks(
       bookmarksWithEmbedding.map((b) => ({
         id: b.id,
@@ -79,28 +225,35 @@ export class InboxOrganizerService implements IInboxOrganizerService {
       INBOX_ORGANIZE_TRIGGERS.CLUSTER_SIMILARITY,
       INBOX_ORGANIZE_TRIGGERS.MIN_CLUSTER_SIZE,
     );
+    monitor.mark("ClusterBookmarks", {
+      clusterCount: clusters.length,
+      durationMs: Math.round(performance.now() - clusterStart),
+    });
 
     // Generate suggestions from clusters
     const suggestionInputs: SuggestionInput[] = [];
 
-    // Get folder stats to check limits
-    const { data: folderStats } = await this.supabase.rpc(
-      "get_user_folder_stats",
-      {
-        p_user_id: userId,
-      },
+    // V4.2.1: 批量预取所有文件夹配置，避免 N+1 查询
+    const [folderProfiles, { data: folderStats }] = await monitor.measure(
+      "FetchFolderProfiles",
+      () =>
+        Promise.all([
+          this.folderProfileRepo.findByUserId(userId),
+          this.supabase.rpc("get_user_folder_stats", { p_user_id: userId }),
+        ]),
     );
     const canCreateMore = folderStats?.can_create_more ?? true;
 
+    // 构建建议与其聚类中心的映射（用于增量更新）
+    const suggestionCentroids = new Map<number, number[]>();
+
     for (const cluster of clusters) {
-      // Try to match with existing folder
-      const matchedFolder = await this.matchClusterToFolder(
+      const matchedFolder = this.matchClusterInMemory(
         cluster.centroid,
-        userId,
+        folderProfiles,
       );
 
       if (matchedFolder) {
-        // Suggest moving to existing folder
         suggestionInputs.push({
           suggestionType: "move_to_existing",
           bookmarkIds: cluster.bookmarkIds,
@@ -110,7 +263,6 @@ export class InboxOrganizerService implements IInboxOrganizerService {
           sampleTitles: cluster.sampleTitles.slice(0, 3),
         });
       } else if (canCreateMore) {
-        // Suggest creating new folder
         const suggestedName = await this.generateFolderName(cluster);
         suggestionInputs.push({
           suggestionType: "create_new",
@@ -124,28 +276,203 @@ export class InboxOrganizerService implements IInboxOrganizerService {
     }
 
     // Save suggestions
-    const savedSuggestions = await this.suggestionRepo.createBatch(
-      userId,
-      suggestionInputs,
+    const savedSuggestions = await monitor.measure("SaveSuggestions", () =>
+      this.suggestionRepo.createBatch(userId, suggestionInputs),
     );
+
+    // 保存增量分析状态（用于下次增量更新）
+    const analyzedBookmarkIds = new Set(inboxBookmarks.map((b) => b.id));
+    for (let i = 0; i < savedSuggestions.length && i < clusters.length; i++) {
+      suggestionCentroids.set(savedSuggestions[i].id, clusters[i].centroid);
+    }
+
+    InboxOrganizerService.incrementalStateCache.set(userId, {
+      analyzedBookmarkIds,
+      analyzedAt: new Date(),
+      suggestionCentroids,
+    });
 
     // Update last organize timestamp
     await this.interestRepo.updateLastInboxOrganizeAt(userId);
 
+    const perfReport = monitor.getReport();
     logger.info(
       {
         userId,
         inboxCount: inboxBookmarks.length,
         clusterCount: clusters.length,
         suggestionCount: savedSuggestions.length,
-        action: "inbox_analyzed",
+        performanceMs: Math.round(perfReport.totalDuration),
+        action: "inbox_full_analyzed",
       },
-      "Inbox Organizer: Analysis complete",
+      "Inbox Organizer: Full analysis complete",
     );
 
     return {
       inboxCount: inboxBookmarks.length,
       suggestions: savedSuggestions,
+      lastAnalyzedAt: new Date(),
+      nextSuggestedAnalyzeAt: this.getNextAnalyzeDate(),
+    };
+  }
+
+  /**
+   * V4.2.1: 尝试增量分析
+   * 当只有新增书签时，尝试将新书签匹配到现有建议，而非全量重新聚类
+   *
+   * @returns OrganizationAnalysis if incremental update succeeded, null if full analysis needed
+   */
+  private async tryIncrementalAnalysis(
+    userId: string,
+    inboxBookmarks: BookmarkForClassification[],
+    existingSuggestions: OrganizationSuggestion[],
+    newBookmarkIds: number[],
+    lastState: IncrementalAnalysisState,
+  ): Promise<OrganizationAnalysis | null> {
+    // 获取新书签的详细信息
+    const newBookmarks = inboxBookmarks.filter((b) =>
+      newBookmarkIds.includes(b.id),
+    );
+    const newBookmarksWithEmbedding = newBookmarks.filter(
+      (b) => b.embedding && b.embedding.length > 0,
+    );
+
+    // 如果新书签太多（>10），回退到全量分析以保证聚类质量
+    if (newBookmarksWithEmbedding.length > 10) {
+      logger.debug(
+        { userId, newBookmarkCount: newBookmarksWithEmbedding.length },
+        "Inbox Organizer: Too many new bookmarks, falling back to full analysis",
+      );
+      return null;
+    }
+
+    // 如果新书签没有 embedding，跳过
+    if (newBookmarksWithEmbedding.length === 0) {
+      logger.debug(
+        { userId, newBookmarkCount: newBookmarks.length },
+        "Inbox Organizer: New bookmarks have no embeddings, skipping incremental",
+      );
+      // 返回现有建议（无变化）
+      return {
+        inboxCount: inboxBookmarks.length,
+        suggestions: existingSuggestions,
+        lastAnalyzedAt: lastState.analyzedAt,
+        nextSuggestedAnalyzeAt: this.getNextAnalyzeDate(),
+      };
+    }
+
+    // 尝试将每个新书签匹配到现有建议
+    const updatedSuggestions = new Map<
+      number,
+      {
+        newBookmarkIds: number[];
+        newTitles: string[];
+      }
+    >();
+    const unmatchedBookmarks: BookmarkForClassification[] = [];
+
+    for (const bookmark of newBookmarksWithEmbedding) {
+      let matched = false;
+
+      // 遍历现有建议，寻找最佳匹配
+      for (const suggestion of existingSuggestions) {
+        const centroid = lastState.suggestionCentroids.get(suggestion.id);
+        if (!centroid) continue;
+
+        const similarity = cosineSimilarity(bookmark.embedding!, centroid);
+        if (similarity >= this.INCREMENTAL_MATCH_THRESHOLD) {
+          // 找到匹配，记录需要更新的建议
+          const existing = updatedSuggestions.get(suggestion.id) || {
+            newBookmarkIds: [],
+            newTitles: [],
+          };
+          existing.newBookmarkIds.push(bookmark.id);
+          existing.newTitles.push(bookmark.title);
+          updatedSuggestions.set(suggestion.id, existing);
+          matched = true;
+          break;
+        }
+      }
+
+      if (!matched) {
+        unmatchedBookmarks.push(bookmark);
+      }
+    }
+
+    // 如果有太多未匹配的书签，回退到全量分析
+    if (unmatchedBookmarks.length >= INBOX_ORGANIZE_TRIGGERS.MIN_CLUSTER_SIZE) {
+      logger.debug(
+        { userId, unmatchedCount: unmatchedBookmarks.length },
+        "Inbox Organizer: Too many unmatched bookmarks, falling back to full analysis",
+      );
+      return null;
+    }
+
+    // 更新匹配到的建议
+    const updatedSuggestionList: OrganizationSuggestion[] = [];
+
+    for (const suggestion of existingSuggestions) {
+      const updates = updatedSuggestions.get(suggestion.id);
+
+      if (updates && updates.newBookmarkIds.length > 0) {
+        // 合并书签 ID 和标题
+        const mergedBookmarkIds = [
+          ...suggestion.bookmarkIds,
+          ...updates.newBookmarkIds,
+        ];
+        const mergedTitles = [
+          ...suggestion.sampleTitles,
+          ...updates.newTitles,
+        ].slice(0, 5);
+
+        // 更新建议
+        await this.suggestionRepo.updateBookmarkIds(
+          suggestion.id,
+          mergedBookmarkIds,
+          mergedTitles,
+        );
+
+        // 更新聚类中心（加入新书签的 embeddings）
+        const newEmbeddings = newBookmarksWithEmbedding
+          .filter((b) => updates.newBookmarkIds.includes(b.id))
+          .map((b) => b.embedding!)
+          .filter((e) => e.length > 0);
+
+        if (newEmbeddings.length > 0) {
+          const oldCentroid = lastState.suggestionCentroids.get(suggestion.id);
+          if (oldCentroid) {
+            // 简化处理：使用加权平均更新中心点
+            const allEmbeddings = [oldCentroid, ...newEmbeddings];
+            const newCentroid = calculateCentroid(allEmbeddings);
+            lastState.suggestionCentroids.set(suggestion.id, newCentroid);
+          }
+        }
+
+        // 更新返回的建议对象
+        updatedSuggestionList.push({
+          ...suggestion,
+          bookmarkIds: mergedBookmarkIds,
+          sampleTitles: mergedTitles,
+        });
+      } else {
+        updatedSuggestionList.push(suggestion);
+      }
+    }
+
+    // 更新增量状态
+    const newAnalyzedIds = new Set([
+      ...lastState.analyzedBookmarkIds,
+      ...newBookmarkIds,
+    ]);
+    InboxOrganizerService.incrementalStateCache.set(userId, {
+      ...lastState,
+      analyzedBookmarkIds: newAnalyzedIds,
+      analyzedAt: new Date(),
+    });
+
+    return {
+      inboxCount: inboxBookmarks.length,
+      suggestions: updatedSuggestionList,
       lastAnalyzedAt: new Date(),
       nextSuggestedAnalyzeAt: this.getNextAnalyzeDate(),
     };
@@ -251,7 +578,8 @@ export class InboxOrganizerService implements IInboxOrganizerService {
   }
 
   /**
-   * Match cluster to existing folder
+   * Match cluster to existing folder (DB query - deprecated, use matchClusterInMemory)
+   * @deprecated Use matchClusterInMemory for batch processing
    */
   private async matchClusterToFolder(
     centroid: number[],
@@ -277,6 +605,53 @@ export class InboxOrganizerService implements IInboxOrganizerService {
       folderName: similarFolders[0].folderName,
       similarity: similarFolders[0].similarity,
     };
+  }
+
+  /**
+   * V4.2.1: 在内存中匹配聚类到现有文件夹
+   * 避免 N+1 查询问题，使用预取的文件夹配置进行内存匹配
+   */
+  private matchClusterInMemory(
+    centroid: number[],
+    folderProfiles: FolderProfile[],
+    threshold: number = INBOX_ORGANIZE_TRIGGERS.FOLDER_MATCH_THRESHOLD,
+  ): {
+    folderId: number;
+    folderName: string;
+    similarity: number;
+  } | null {
+    let bestMatch: {
+      folderId: number;
+      folderName: string;
+      similarity: number;
+    } | null = null;
+
+    for (const profile of folderProfiles) {
+      // 跳过没有向量或名称的文件夹
+      if (
+        !profile.profileEmbedding ||
+        profile.profileEmbedding.length === 0 ||
+        !profile.folderName
+      ) {
+        continue;
+      }
+
+      // 计算余弦相似度
+      const similarity = cosineSimilarity(centroid, profile.profileEmbedding);
+
+      // 检查是否超过阈值且是目前最佳匹配
+      if (similarity >= threshold) {
+        if (!bestMatch || similarity > bestMatch.similarity) {
+          bestMatch = {
+            folderId: profile.folderId,
+            folderName: profile.folderName,
+            similarity,
+          };
+        }
+      }
+    }
+
+    return bestMatch;
   }
 
   /**
@@ -420,5 +795,24 @@ export class InboxOrganizerService implements IInboxOrganizerService {
     }
 
     return next;
+  }
+
+  /**
+   * V4.2.1: 计算书签数据哈希
+   * 基于最新待整理书签的更新时间生成哈希，用于缓存失效判断
+   */
+  private async computeBookmarkHash(userId: string): Promise<string> {
+    const { data } = await this.supabase
+      .from("bookmarks")
+      .select("id, updated_at")
+      .eq("user_id", userId)
+      .is("folder_id", null)
+      .is("deleted_at", null)
+      .order("updated_at", { ascending: false })
+      .limit(1);
+
+    const latestUpdate = data?.[0]?.updated_at || "";
+    const latestId = data?.[0]?.id || 0;
+    return `${userId}-${latestId}-${latestUpdate}`;
   }
 }

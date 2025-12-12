@@ -5,6 +5,7 @@
  */
 
 import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createFolderSchema } from "@/lib/validation";
 import {
@@ -18,48 +19,121 @@ import { logger } from "@/lib/logger";
 import type { Folder } from "@/types/supabase";
 import { FOLDER } from "@/lib/constants/messages";
 import { initializeFolderNameProfile } from "@/lib/classification/server";
+import { PerformanceMonitor } from "@/lib/utils/performance-monitor";
+
+/**
+ * V4.2.1: HTTP 缓存配置
+ * 文件夹结构变化不频繁，可使用较长的缓存时间
+ * - private: 仅客户端缓存
+ * - max-age=300: 5 分钟内使用缓存
+ * - stale-while-revalidate=60: 缓存过期后 1 分钟内仍可使用旧数据
+ */
+const CACHE_CONTROL_HEADER = "private, max-age=300, stale-while-revalidate=60";
 
 /**
  * GET /api/folders
  * 获取当前用户的所有文件夹（树形结构）
  */
 export async function GET(_request: NextRequest) {
+  const monitor = new PerformanceMonitor("FoldersQuery");
+
   try {
     // 1. 验证用户身份
-    const supabase = await createClient();
+    const supabase = await monitor.measure("Auth", () => createClient());
     const {
       data: { user },
       error: authError,
-    } = await supabase.auth.getUser();
+    } = await monitor.measure("GetUser", () => supabase.auth.getUser());
 
     if (authError || !user) {
       return unauthorizedError();
     }
 
+    monitor.mark("AuthComplete", { userId: user.id });
+
     // 2. 查询用户的所有文件夹
     // V4.2更新：按 sort_order 升序排列（系统文件夹 sort_order=-1 会排在最前面）
+    // V4.2.1: 精简字段选择，只返回列表所需字段
+    const listFields = `
+      id,
+      name,
+      parent_id,
+      is_system,
+      sort_order,
+      created_at,
+      updated_at
+    `.replace(/\s+/g, "");
+
+    const queryStart = performance.now();
     const { data: folders, error: queryError } = await supabase
       .from("folders")
-      .select("*")
+      .select(listFields)
       .eq("user_id", user.id)
       .is("deleted_at", null)
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: true });
+
+    monitor.mark("DatabaseQuery", {
+      durationMs: Math.round(performance.now() - queryStart),
+    });
 
     if (queryError) {
       return databaseError(FOLDER.LOAD_ERROR, queryError);
     }
 
     // 3. 构建树形结构
-    const folderTree = buildFolderTree(folders || []);
+    // V4.2.1: 双重类型断言处理动态字段选择的类型推断问题
+    const treeStart = performance.now();
+    const folderTree = buildFolderTree((folders as unknown as Folder[]) || []);
+    monitor.mark("BuildTree", {
+      folderCount: folders?.length || 0,
+      durationMs: Math.round(performance.now() - treeStart),
+    });
 
-    return successResponse(folderTree);
+    // 输出性能报告
+    const perfReport = monitor.getReport();
+    logger.info(
+      {
+        userId: user.id,
+        folderCount: folders?.length || 0,
+        performance: {
+          totalMs: Math.round(perfReport.totalDuration),
+          stages: perfReport.entries.map((e) => ({
+            name: e.name,
+            ms: Math.round(e.duration),
+          })),
+        },
+      },
+      "Folders query completed",
+    );
+
+    // V4.2.1: 返回带缓存头的响应
+    const responseData = {
+      success: true,
+      data: folderTree,
+      // 开发环境返回性能数据
+      ...(process.env.NODE_ENV === "development" && {
+        _performance: monitor.toJSON(),
+      }),
+    };
+
+    return NextResponse.json(responseData, {
+      status: 200,
+      headers: {
+        "Cache-Control": CACHE_CONTROL_HEADER,
+      },
+    });
   } catch (error) {
+    const perfReport = monitor.getReport();
     logger.error(
       {
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
         operation: "get_folders",
+        performance: {
+          totalMs: Math.round(perfReport.totalDuration),
+          failedAt: perfReport.entries[perfReport.entries.length - 1]?.name,
+        },
       },
       "GET /api/folders error",
     );

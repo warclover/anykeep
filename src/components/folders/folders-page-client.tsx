@@ -350,6 +350,42 @@ export function FoldersPageClient({
     setLocalFolders(folders);
   }, [folders]);
 
+  // V4.2.1: 批量锁状态缓存
+  const [lockStatusMap, setLockStatusMap] = useState<
+    Record<string, { isLocked: boolean; isAiRenamable: boolean }>
+  >({});
+
+  // V4.2.1: 批量获取所有文件夹的锁状态（替代每个文件夹单独查询）
+  useEffect(() => {
+    const fetchBatchLockStatus = async () => {
+      // 筛选非系统文件夹
+      const nonSystemFolderIds = localFolders
+        .filter((f) => !f.is_system)
+        .map((f) => f.id);
+
+      if (nonSystemFolderIds.length === 0) return;
+
+      try {
+        const res = await fetch("/api/folders/batch-lock-status", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ folderIds: nonSystemFolderIds }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success) {
+            setLockStatusMap(data.data);
+          }
+        }
+      } catch {
+        // 静默处理，每个 FolderActionMenu 会有自己的 fallback
+      }
+    };
+
+    fetchBatchLockStatus();
+  }, [localFolders]);
+
   // 分组后的文件夹 - 使用 localFolders 而不是 folders
   const groupedFolders = useMemo(
     () => groupFolders(localFolders),
@@ -502,6 +538,8 @@ export function FoldersPageClient({
                   onFolderDeleted={handleFolderDeleted}
                   onFolderRenamed={handleFolderRenamed}
                   onFolderMerged={handleFolderMerged}
+                  // V4.2.1: 传递批量查询的锁状态，避免每个文件夹单独请求
+                  initialLockStatus={lockStatusMap[folder.id.toString()]}
                 />
               </div>
             </div>

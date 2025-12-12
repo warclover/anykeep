@@ -30,6 +30,7 @@ import {
   type FolderOption,
 } from "./confirmation-message-card";
 import { cn } from "@/lib/utils";
+import { fetchWithRetry } from "@/lib/utils/fetch-with-retry";
 
 // ============================================================================
 // 类型定义
@@ -41,19 +42,22 @@ interface PendingConfirmationsSectionProps {
 
 interface ApiConfirmation {
   id: number;
-  bookmark_id: number;
-  suggested_folder_id: number;
-  confidence: number;
-  reason: string;
+  bookmarkId: number | null;
+  type: string;
   status: string;
-  created_at: string;
-  expires_at: string;
-  bookmarks?: {
+  suggestion: {
+    folderId: number | null;
+    folderName: string | null;
+    confidence: number;
+    reason: string | null;
+  };
+  metadata: Record<string, unknown> | null;
+  expiresAt: string | null;
+  createdAt: string;
+  // 关联数据（可选，需要 API 支持）
+  bookmark?: {
     title: string;
     url: string;
-  };
-  folders?: {
-    name: string;
   };
 }
 
@@ -73,31 +77,44 @@ export function PendingConfirmationsSection({
   const [isOpen, setIsOpen] = useState(true);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
-  // 获取待确认消息
+  // V4.2.1: 获取待确认消息（带自动重试机制）
   const fetchConfirmations = useCallback(async () => {
     try {
+      // 使用 fetchWithRetry 处理偶发的 401 错误
       const [confirmationsRes, foldersRes] = await Promise.all([
-        fetch("/api/classification/confirmations?status=pending"),
-        fetch("/api/folders"),
+        fetchWithRetry(
+          "/api/classification/confirmations?status=pending",
+          undefined,
+          { requestId: "confirmations-list" },
+        ),
+        fetchWithRetry("/api/folders", undefined, {
+          requestId: "folders-list",
+        }),
       ]);
 
       if (confirmationsRes.ok) {
         const confirmationsData = await confirmationsRes.json();
-        const transformedMessages: ConfirmationMessage[] = (
-          confirmationsData.data || []
-        ).map((c: ApiConfirmation) => ({
-          id: c.id,
-          bookmarkId: c.bookmark_id,
-          bookmarkTitle: c.bookmarks?.title || "无标题",
-          bookmarkUrl: c.bookmarks?.url || "",
-          suggestedFolderId: c.suggested_folder_id,
-          suggestedFolderName: c.folders?.name || "未知文件夹",
-          confidence: c.confidence,
-          reason: c.reason,
-          status: c.status as ConfirmationMessage["status"],
-          createdAt: c.created_at,
-          expiresAt: c.expires_at,
-        }));
+        // API 返回 { success, data: { confirmations, total, ... } }
+        const confirmations = confirmationsData.data?.confirmations || [];
+        const transformedMessages: ConfirmationMessage[] = confirmations.map(
+          (c: ApiConfirmation) => ({
+            id: c.id,
+            bookmarkId: c.bookmarkId || 0,
+            bookmarkTitle:
+              c.bookmark?.title ||
+              (c.metadata?.bookmarkTitle as string) ||
+              "无标题",
+            bookmarkUrl:
+              c.bookmark?.url || (c.metadata?.bookmarkUrl as string) || "",
+            suggestedFolderId: c.suggestion.folderId || 0,
+            suggestedFolderName: c.suggestion.folderName || "未知文件夹",
+            confidence: c.suggestion.confidence,
+            reason: c.suggestion.reason || "",
+            status: c.status as ConfirmationMessage["status"],
+            createdAt: c.createdAt,
+            expiresAt: c.expiresAt || "",
+          }),
+        );
         setMessages(transformedMessages);
       }
 
@@ -122,14 +139,18 @@ export function PendingConfirmationsSection({
     fetchConfirmations();
   }, [fetchConfirmations]);
 
-  // 处理确认
+  // V4.2.1: 处理确认（带重试）
   const handleConfirm = async (messageId: number) => {
     try {
-      const res = await fetch(`/api/classification/confirmations/${messageId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "confirm" }),
-      });
+      const res = await fetchWithRetry(
+        `/api/classification/confirmations/${messageId}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "confirm" }),
+        },
+        { requestId: `confirm-${messageId}` },
+      );
 
       if (!res.ok) throw new Error("确认失败");
 
@@ -140,14 +161,18 @@ export function PendingConfirmationsSection({
     }
   };
 
-  // 处理拒绝
+  // V4.2.1: 处理拒绝（带重试）
   const handleReject = async (messageId: number) => {
     try {
-      const res = await fetch(`/api/classification/confirmations/${messageId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "reject" }),
-      });
+      const res = await fetchWithRetry(
+        `/api/classification/confirmations/${messageId}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "reject" }),
+        },
+        { requestId: `reject-${messageId}` },
+      );
 
       if (!res.ok) throw new Error("拒绝失败");
 
@@ -158,14 +183,21 @@ export function PendingConfirmationsSection({
     }
   };
 
-  // 处理修改
+  // V4.2.1: 处理修改（使用不同的文件夹确认，带重试）
   const handleModify = async (messageId: number, newFolderId: number) => {
     try {
-      const res = await fetch(`/api/classification/confirmations/${messageId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "modify", newFolderId }),
-      });
+      const res = await fetchWithRetry(
+        `/api/classification/confirmations/${messageId}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "confirm",
+            selectedFolderId: newFolderId,
+          }),
+        },
+        { requestId: `modify-${messageId}` },
+      );
 
       if (!res.ok) throw new Error("修改失败");
 
@@ -176,51 +208,69 @@ export function PendingConfirmationsSection({
     }
   };
 
-  // 批量确认
+  // V4.2.1: 批量确认（带重试）
   const handleConfirmAll = async () => {
     const ids = Array.from(selectedIds);
     if (ids.length === 0) return;
 
     try {
-      const res = await fetch("/api/classification/confirmations/batch", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          actions: ids.map((id) => ({ confirmationId: id, action: "confirm" })),
-        }),
-      });
+      const res = await fetchWithRetry(
+        "/api/classification/confirmations/batch",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            actions: ids.map((id) => ({
+              confirmationId: id,
+              action: "confirm",
+            })),
+          }),
+        },
+        { requestId: "batch-confirm" },
+      );
 
       if (!res.ok) throw new Error("批量确认失败");
 
       const result = await res.json();
       setMessages((prev) => prev.filter((m) => !selectedIds.has(m.id)));
       setSelectedIds(new Set());
-      toast.success(`已确认 ${result.data?.summary?.success || ids.length} 条分类`);
+      toast.success(
+        `已确认 ${result.data?.summary?.success || ids.length} 条分类`,
+      );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "操作失败");
     }
   };
 
-  // 批量拒绝
+  // V4.2.1: 批量拒绝（带重试）
   const handleRejectAll = async () => {
     const ids = Array.from(selectedIds);
     if (ids.length === 0) return;
 
     try {
-      const res = await fetch("/api/classification/confirmations/batch", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          actions: ids.map((id) => ({ confirmationId: id, action: "reject" })),
-        }),
-      });
+      const res = await fetchWithRetry(
+        "/api/classification/confirmations/batch",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            actions: ids.map((id) => ({
+              confirmationId: id,
+              action: "reject",
+            })),
+          }),
+        },
+        { requestId: "batch-reject" },
+      );
 
       if (!res.ok) throw new Error("批量拒绝失败");
 
       const result = await res.json();
       setMessages((prev) => prev.filter((m) => !selectedIds.has(m.id)));
       setSelectedIds(new Set());
-      toast.success(`已拒绝 ${result.data?.summary?.success || ids.length} 条分类`);
+      toast.success(
+        `已拒绝 ${result.data?.summary?.success || ids.length} 条分类`,
+      );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "操作失败");
     }
@@ -306,7 +356,8 @@ export function PendingConfirmationsSection({
                   key={message.id}
                   className={cn(
                     "relative",
-                    selectedIds.has(message.id) && "ring-2 ring-primary rounded-lg",
+                    selectedIds.has(message.id) &&
+                      "ring-2 ring-primary rounded-lg",
                   )}
                   onClick={() => toggleSelect(message.id)}
                 >

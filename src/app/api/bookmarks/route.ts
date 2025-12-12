@@ -39,6 +39,7 @@ import {
 import { logger } from "@/lib/logger";
 import type { BookmarkInsert } from "@/types/supabase";
 import { BOOKMARK, STORAGE } from "@/lib/constants/messages";
+import { PerformanceMonitor } from "@/lib/utils/performance-monitor";
 
 /**
  * 异步补充书签标题（不阻塞主流程）
@@ -886,17 +887,21 @@ export async function POST(request: NextRequest) {
  * 获取收藏列表（支持分页和筛选）
  */
 export async function GET(request: NextRequest) {
+  const monitor = new PerformanceMonitor("BookmarksQuery");
+
   try {
     // 1. 验证用户身份
-    const supabase = await createClient();
+    const supabase = await monitor.measure("Auth", () => createClient());
     const {
       data: { user },
       error: authError,
-    } = await supabase.auth.getUser();
+    } = await monitor.measure("GetUser", () => supabase.auth.getUser());
 
     if (authError || !user) {
       return unauthorizedError();
     }
+
+    monitor.mark("AuthComplete", { userId: user.id });
 
     // 2. 解析查询参数
     const searchParams = request.nextUrl.searchParams;
@@ -930,10 +935,40 @@ export async function GET(request: NextRequest) {
       usageTags,
     } = validation.data;
 
+    monitor.mark("ParamsParsed", {
+      platform,
+      excludeBrowser,
+      folderId,
+      folder,
+      keyword: !!keyword,
+      cursor: !!cursor,
+      limit,
+    });
+
     // 3. 构建查询
+    // V4.2.1: 精简字段选择，减少响应大小
+    // 列表视图只需要显示必要字段，embedding/summary 等大字段按需单独获取
+    const listFields = `
+      id,
+      title,
+      url,
+      platform,
+      cover_url,
+      description,
+      site_name,
+      rating,
+      is_invalid,
+      is_in_trash,
+      folder_id,
+      user_tags,
+      created_at,
+      updated_at,
+      folders(name)
+    `.replace(/\s+/g, "");
+
     let query = supabase
       .from("bookmarks")
-      .select("*, folders(name)", { count: "exact" })
+      .select(listFields, { count: "exact" })
       .eq("user_id", user.id)
       .is("deleted_at", null);
 
@@ -1008,19 +1043,52 @@ export async function GET(request: NextRequest) {
     // 限制数量
     query = query.limit(limit);
 
+    monitor.mark("QueryBuilt");
+
     // 4. 执行查询
+    const queryStart = performance.now();
     const { data: bookmarks, error: queryError, count } = await query;
+    monitor.mark("DatabaseQuery", {
+      durationMs: Math.round(performance.now() - queryStart),
+    });
 
     if (queryError) {
       return databaseError(BOOKMARK.LOAD_ERROR, queryError);
     }
 
     // 5. 返回结果（包含分页元数据）
-    const hasMore = bookmarks && bookmarks.length === limit;
+    // V4.2.1: 类型断言处理动态字段选择的类型推断问题
+    const bookmarkList = bookmarks as unknown as Array<{
+      id: number;
+      [key: string]: unknown;
+    }> | null;
+    const hasMore = bookmarkList && bookmarkList.length === limit;
     const nextCursor =
-      hasMore && bookmarks.length > 0
-        ? bookmarks[bookmarks.length - 1].id
+      hasMore && bookmarkList.length > 0
+        ? bookmarkList[bookmarkList.length - 1].id
         : null;
+
+    // 输出性能报告
+    const perfReport = monitor.getReport();
+    const responseSize = JSON.stringify(bookmarks || []).length;
+
+    logger.info(
+      {
+        userId: user.id,
+        bookmarkCount: bookmarks?.length || 0,
+        totalCount: count || 0,
+        responseSize,
+        performance: {
+          totalMs: Math.round(perfReport.totalDuration),
+          stages: perfReport.entries.map((e) => ({
+            name: e.name,
+            ms: Math.round(e.duration),
+          })),
+          slowOperations: perfReport.slowEntries.map((e) => e.name),
+        },
+      },
+      "Bookmarks query completed",
+    );
 
     return successResponse({
       bookmarks: bookmarks || [],
@@ -1030,13 +1098,23 @@ export async function GET(request: NextRequest) {
         nextCursor,
         hasMore,
       },
+      // 开发环境返回性能数据
+      ...(process.env.NODE_ENV === "development" && {
+        _performance: monitor.toJSON(),
+        _responseSize: responseSize,
+      }),
     });
   } catch (error) {
+    const perfReport = monitor.getReport();
     logger.error(
       {
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
         operation: "get_bookmarks",
+        performance: {
+          totalMs: Math.round(perfReport.totalDuration),
+          failedAt: perfReport.entries[perfReport.entries.length - 1]?.name,
+        },
       },
       "GET /api/bookmarks error",
     );

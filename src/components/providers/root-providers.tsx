@@ -15,6 +15,7 @@ import { NavigationProvider } from "@/contexts/navigation-context";
 import { KeepAliveProvider } from "@/lib/cache";
 import { OnboardingProvider } from "@/components/providers/onboarding-provider";
 import { MessageNotificationProvider } from "@/components/messages/message-notification-provider";
+import { WebVitalsReporter } from "@/components/analytics/web-vitals-reporter";
 
 interface RootProvidersProps {
   children: React.ReactNode;
@@ -43,6 +44,8 @@ export function RootProviders({ children }: RootProvidersProps) {
       </UserProvider>
       <Toaster position="top-center" offset={16} />
       <ServiceWorkerRegister />
+      {/* V4.2.1: Web Vitals 性能监控 */}
+      <WebVitalsReporter debug={process.env.NODE_ENV === "development"} />
     </ThemeProvider>
   );
 }

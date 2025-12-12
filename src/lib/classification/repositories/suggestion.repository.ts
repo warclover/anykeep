@@ -200,6 +200,37 @@ export class SuggestionRepository {
   }
 
   /**
+   * V4.2.1: Update suggestion with new bookmark IDs (for incremental analysis)
+   * Adds new bookmarks to existing suggestion and updates sample titles
+   */
+  async updateBookmarkIds(
+    suggestionId: number,
+    newBookmarkIds: number[],
+    newSampleTitles: string[],
+    newConfidence?: number,
+  ): Promise<void> {
+    const updates: Record<string, unknown> = {
+      bookmark_ids: newBookmarkIds,
+      sample_titles: newSampleTitles.slice(0, 5), // Keep max 5 sample titles
+    };
+
+    if (newConfidence !== undefined) {
+      updates.confidence = newConfidence;
+    }
+
+    const { error } = await this.supabase
+      .from("organization_suggestions")
+      .update(updates)
+      .eq("id", suggestionId);
+
+    if (error) {
+      throw new Error(
+        `Failed to update suggestion bookmark IDs: ${error.message}`,
+      );
+    }
+  }
+
+  /**
    * Map database row to OrganizationSuggestion
    */
   private mapToSuggestion(
