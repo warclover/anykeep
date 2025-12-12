@@ -61,6 +61,8 @@ import {
   separateUserTagsExtended,
   getUsageTagStyleExtended,
 } from "@/lib/constants/usage-tags";
+// V4.2.1: 快照功能（懒加载 + 功能开关）
+import { SnapshotSectionLazy } from "@/components/snapshot";
 
 interface BookmarkDetailClientProps {
   bookmark: Bookmark & {
@@ -1030,6 +1032,13 @@ export function BookmarkDetailClient({
                 bookmarkId={bookmark.id}
                 defaultExpanded={true}
                 limit={5}
+              />
+
+              {/* V4.2.1: 网页快照 */}
+              <SnapshotSectionLazy
+                bookmarkId={bookmark.id}
+                bookmarkUrl={bookmark.url}
+                defaultExpanded={false}
               />
 
               {/* 处理状态：仅当状态为 PROCESSING 且 AI 内容尚未生成时显示 */}

@@ -39,6 +39,7 @@ import {
   RotateCcw,
   Search,
   Check,
+  Camera,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAbortableFetch } from "@/hooks/use-abortable-fetch";
@@ -58,6 +59,7 @@ import { BrowserBookmarkImportDialog } from "@/components/browser-bookmark";
 // V3.1: FolderRecommendationToast 已废弃，由 useClassificationPolling 的 toast 通知替代
 import { EmptyState } from "@/components/bookmark/empty-state";
 import { UsageTagFilter } from "@/components/layout/usage-tag-filter";
+import { useSnapshotFeature } from "@/components/snapshot";
 
 // 懒加载 ReclassifyBanner（非首屏关键组件）
 const ReclassifyBanner = lazy(() =>
@@ -469,6 +471,12 @@ export function HomePageClient({
     setIsBatchDeleting,
     exitSelectionMode,
   } = useSelectionMode();
+
+  // V4.2.1: 快照功能开关
+  const isSnapshotEnabled = useSnapshotFeature();
+
+  // 批量创建快照状态
+  const [isBatchCreatingSnapshot, setIsBatchCreatingSnapshot] = useState(false);
 
   // 旧缓存系统已弃用，保留 hook 引用但不再使用其方法
   // SWR 系统 (useBookmarksSWR) 已完整实现缓存功能
@@ -1055,6 +1063,97 @@ export function HomePageClient({
     }
   };
 
+  /**
+   * V4.2.1: 批量创建快照
+   */
+  const handleBatchCreateSnapshot = async () => {
+    if (selectedIds.size === 0) return;
+
+    // 获取选中的书签
+    const selectedBookmarks = bookmarks.filter((b) => selectedIds.has(b.id));
+    const validBookmarks = selectedBookmarks.filter((b) => b.url);
+
+    if (validBookmarks.length === 0) {
+      toast.error("选中的书签没有有效的 URL");
+      return;
+    }
+
+    if (validBookmarks.length > 10) {
+      if (
+        !confirm(
+          `将为 ${validBookmarks.length} 个书签创建快照，这可能需要较长时间。确定继续吗？`,
+        )
+      ) {
+        return;
+      }
+    }
+
+    setIsBatchCreatingSnapshot(true);
+    let successCount = 0;
+    let failCount = 0;
+
+    try {
+      // 批量创建快照（逐个创建，避免服务器压力过大）
+      for (const bookmark of validBookmarks) {
+        try {
+          const response = await fetchWithAbort("/api/snapshots", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              bookmarkId: bookmark.id,
+              snapshotType: "standard",
+            }),
+          });
+
+          if (response.ok) {
+            successCount++;
+          } else {
+            const result = await response.json();
+            // SNAPSHOT_EXISTS 和 QUOTA_EXCEEDED 不算失败
+            if (
+              result.error?.code === "SNAPSHOT_EXISTS" ||
+              result.error?.code === "QUOTA_EXCEEDED"
+            ) {
+              // 配额超限时停止创建更多快照
+              if (result.error?.code === "QUOTA_EXCEEDED") {
+                toast.error("快照配额已满", {
+                  description: "请删除一些旧快照后重试",
+                });
+                break;
+              }
+            } else {
+              failCount++;
+            }
+          }
+        } catch {
+          failCount++;
+        }
+      }
+
+      if (successCount > 0) {
+        toast.success(`已为 ${successCount} 个书签创建快照任务`, {
+          description: "后台正在处理，稍后可查看",
+        });
+      }
+
+      if (failCount > 0) {
+        toast.error(`${failCount} 个书签快照创建失败`);
+      }
+
+      exitSelectionMode();
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        return;
+      }
+      if (process.env.NODE_ENV === "development") {
+        console.error("Batch snapshot error:", error);
+      }
+      toast.error("批量创建快照失败");
+    } finally {
+      setIsBatchCreatingSnapshot(false);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full">
       {/* 顶部工具栏（移动端显示） */}
@@ -1308,6 +1407,28 @@ export function HomePageClient({
                 <FolderInput className="size-4 mr-1.5" />
                 移动到文件夹
               </Button>
+              {/* V4.2.1: 批量创建快照按钮（功能开关控制） */}
+              {isSnapshotEnabled && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleBatchCreateSnapshot}
+                  disabled={isBatchCreatingSnapshot}
+                  className="text-blue-600 hover:text-blue-700 border-blue-200 hover:bg-blue-50 dark:text-blue-400 dark:hover:text-blue-300 dark:border-blue-800 dark:hover:bg-blue-900/20"
+                >
+                  {isBatchCreatingSnapshot ? (
+                    <>
+                      <Loader2 className="size-4 mr-1.5 animate-spin" />
+                      创建中...
+                    </>
+                  ) : (
+                    <>
+                      <Camera className="size-4 mr-1.5" />
+                      创建快照
+                    </>
+                  )}
+                </Button>
+              )}
             </div>
           </div>
         )}

@@ -20,6 +20,10 @@
     {
       "path": "/api/cron/process-job-queue",
       "schedule": "0 */2 * * *"
+    },
+    {
+      "path": "/api/cron/cleanup-snapshots",
+      "schedule": "0 6 * * *"
     }
   ]
 }

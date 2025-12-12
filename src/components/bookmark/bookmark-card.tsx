@@ -65,6 +65,8 @@ import {
 } from "@/lib/constants/usage-tags";
 import "./bookmark-card-flip.css"; // 复用卡片优化样式
 import { getDisplaySummary } from "@/lib/classification/types/ai-summary";
+// V4.2.1: 快照功能（功能开关 + 菜单项组件）
+import { SnapshotMenuItem, useSnapshotFeature } from "@/components/snapshot";
 
 type ViewVariant = "card" | "list" | "compact";
 
@@ -104,6 +106,8 @@ export function BookmarkCard({
 }: BookmarkCardProps) {
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
+  // V4.2.1: 快照功能状态
+  const isSnapshotEnabled = useSnapshotFeature();
 
   // 判断标题是否正在加载
   const titleLoading = isLoadingTitle(bookmark.title);
@@ -186,6 +190,22 @@ export function BookmarkCard({
           <ExternalLink className="mr-2 h-4 w-4" />
           打开原文
         </DropdownMenuItem>
+        {/* V4.2.1: 快照功能入口 */}
+        {isSnapshotEnabled && (
+          <SnapshotMenuItem
+            bookmarkId={bookmark.id}
+            bookmarkUrl={bookmark.url}
+            hasSnapshot={(bookmark as { has_snapshot?: boolean }).has_snapshot}
+            snapshotStatus={
+              (bookmark as { snapshot_status?: string }).snapshot_status as
+                | "pending"
+                | "processing"
+                | "completed"
+                | "failed"
+                | null
+            }
+          />
+        )}
         {onToggleRead && (
           <DropdownMenuItem onClick={handleToggleRead}>
             {bookmark.is_read ? (

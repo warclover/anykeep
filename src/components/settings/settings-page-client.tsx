@@ -35,6 +35,7 @@ import { ClassificationSettingsCard } from "./classification-settings-card";
 import { TrustModeSettingsCard } from "./trust-mode-settings-card";
 import { AIOperationHistoryCard } from "./ai-operation-history-card";
 import { NotificationSettingsCard } from "@/components/messages";
+import { SnapshotQuotaSectionLazy } from "@/components/snapshot";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { ErrorMessage } from "@/components/ui/error-message";
@@ -287,6 +288,9 @@ export function SettingsPageClient({
 
             {/* 扩展画像设置 */}
             <ProfileSettingsCard />
+
+            {/* 网页快照配额 - V4.2.1 */}
+            <SnapshotQuotaSectionLazy />
 
             {/* AI 智能功能 */}
             <Card>

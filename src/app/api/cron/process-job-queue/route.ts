@@ -9,6 +9,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { logger } from "@/lib/logger";
 import type { Database } from "@/types/supabase";
+import type { SnapshotJobPayload } from "@/lib/snapshot";
 import { reportService } from "@/lib/classification/services/report.service";
 
 // Cron secret for authentication
@@ -230,6 +231,83 @@ async function processJob(job: {
 
     case "cleanup_expired_data": {
       await cleanupExpiredData(job.job_user_id);
+      break;
+    }
+
+    // === 快照任务处理 (V4.2.1) ===
+    case "create_snapshot_basic": {
+      // Basic 快照：仅 Readability 正文
+      const { processSnapshotJob } = await import("@/lib/snapshot/processors");
+      await processSnapshotJob({
+        id: job.job_id,
+        type: job.job_type,
+        payload: payload as unknown as SnapshotJobPayload,
+        userId: job.job_user_id,
+        attempts: (payload.retry_count as number) || 0,
+      });
+      break;
+    }
+
+    case "create_snapshot_standard": {
+      // Standard 快照：完整 HTML + CSS 内联（Pro）
+      const { processStandardSnapshot } = await import(
+        "@/lib/snapshot/processors"
+      );
+      await processStandardSnapshot({
+        id: job.job_id,
+        type: job.job_type,
+        payload: payload as unknown as SnapshotJobPayload,
+        userId: job.job_user_id,
+        attempts: (payload.retry_count as number) || 0,
+      });
+      break;
+    }
+
+    case "create_snapshot_full": {
+      // Full 快照：含截图（Phase 3 实现）
+      logger.info(
+        { jobId: job.job_id },
+        "[Cron] Full snapshot scheduled for Phase 3",
+      );
+      // 暂时回退到 Standard 处理
+      const { processStandardSnapshot: processFull } = await import(
+        "@/lib/snapshot/processors"
+      );
+      await processFull({
+        id: job.job_id,
+        type: job.job_type,
+        payload: payload as unknown as SnapshotJobPayload,
+        userId: job.job_user_id,
+        attempts: (payload.retry_count as number) || 0,
+      });
+      break;
+    }
+
+    case "retry_failed_snapshot": {
+      const { processRetrySnapshot } = await import(
+        "@/lib/snapshot/processors"
+      );
+      await processRetrySnapshot({
+        id: job.job_id,
+        type: job.job_type,
+        payload: payload as unknown as SnapshotJobPayload,
+        userId: job.job_user_id,
+        attempts: (payload.retry_count as number) || 0,
+      });
+      break;
+    }
+
+    case "cleanup_expired_snapshots": {
+      const { processCleanupSnapshots } = await import(
+        "@/lib/snapshot/processors"
+      );
+      await processCleanupSnapshots({
+        id: job.job_id,
+        type: job.job_type,
+        payload: payload as { days_old?: number; batch_size?: number },
+        userId: job.job_user_id,
+        attempts: 0,
+      });
       break;
     }
 

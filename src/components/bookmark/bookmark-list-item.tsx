@@ -1,11 +1,14 @@
 /**
- * 浏览器书签列表项组件
+ * 浏览器书签列表项组件 (V4.2.1)
  * 专为浏览器书签设计的紧凑列表视图
  *
  * 性能优化：
  * - 使用原生 img 标签避免 Next.js 图像优化器的网络请求
  * - 使用 DuckDuckGo favicon 服务（国内可访问）
  * - 添加 loading="lazy" 延迟加载
+ *
+ * V4.2.1 更新：
+ * - 添加快照状态指示器支持
  */
 
 "use client";
@@ -19,6 +22,7 @@ import {
   ExternalLink,
   Folder,
   Globe,
+  Camera,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -27,11 +31,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import type { Bookmark } from "@/types/supabase";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import type { BookmarkWithSnapshot } from "@/types/supabase";
 import { cn } from "@/lib/utils";
+import { useSnapshotFeature } from "@/lib/feature-flags";
 
 interface BookmarkListItemProps {
-  bookmark: Bookmark & {
+  bookmark: BookmarkWithSnapshot & {
     folders?: { name: string } | null;
   };
   onEdit?: (id: number) => void;
@@ -68,6 +79,10 @@ export function BookmarkListItem({
   onToggleSelect,
 }: BookmarkListItemProps) {
   const [imageError, setImageError] = useState(false);
+  const isSnapshotEnabled = useSnapshotFeature();
+
+  // V4.2.1: 快照状态显示
+  const hasSnapshot = isSnapshotEnabled && bookmark.has_snapshot;
 
   const handleDelete = () => {
     if (onDelete) {
@@ -152,8 +167,24 @@ export function BookmarkListItem({
           {bookmark.url}
         </p>
 
-        {/* 标签 + 文件夹 */}
+        {/* 标签 + 文件夹 + 快照状态 */}
         <div className="flex items-center gap-2 mt-1 text-xs text-gray-600 dark:text-gray-400">
+          {/* V4.2.1: 快照状态指示器 */}
+          {hasSnapshot && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center gap-0.5 text-green-600 dark:text-green-400 flex-shrink-0">
+                    <Camera className="w-3 h-3" />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">
+                  已保存网页快照
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+
           {/* 标签 */}
           {bookmark.ai_tags && bookmark.ai_tags.length > 0 && (
             <div className="flex items-center gap-1 truncate">
