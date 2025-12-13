@@ -1671,6 +1671,66 @@ export type Database = {
         };
         Relationships: [];
       };
+      smart_lists: {
+        Row: {
+          id: number;
+          user_id: string;
+          name: string;
+          description: string | null;
+          icon: string;
+          color: string;
+          filters: Json;
+          sort_by: string;
+          view_mode: string;
+          sort_order: number;
+          is_pinned: boolean;
+          is_preset: boolean;
+          bookmark_count: number;
+          last_accessed_at: string | null;
+          created_at: string | null;
+          updated_at: string | null;
+          deleted_at: string | null;
+        };
+        Insert: {
+          id?: number;
+          user_id: string;
+          name: string;
+          description?: string | null;
+          icon?: string;
+          color?: string;
+          filters?: Json;
+          sort_by?: string;
+          view_mode?: string;
+          sort_order?: number;
+          is_pinned?: boolean;
+          is_preset?: boolean;
+          bookmark_count?: number;
+          last_accessed_at?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+          deleted_at?: string | null;
+        };
+        Update: {
+          id?: number;
+          user_id?: string;
+          name?: string;
+          description?: string | null;
+          icon?: string;
+          color?: string;
+          filters?: Json;
+          sort_by?: string;
+          view_mode?: string;
+          sort_order?: number;
+          is_pinned?: boolean;
+          is_preset?: boolean;
+          bookmark_count?: number;
+          last_accessed_at?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+          deleted_at?: string | null;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       classification_metrics_daily: {

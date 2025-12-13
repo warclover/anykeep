@@ -150,6 +150,15 @@ export function HomePageClient({
   const urlFolder = propFolder ?? searchParams.get("folder") ?? "";
   const urlUsageTags = searchParams.get("usageTags") || "";
 
+  // V10.0: 智能列表 ID（客户端导航时从 URL 读取，SSR 时从 props 读取）
+  const urlSmartListParam = searchParams.get("smartList");
+  const urlSmartListId = urlSmartListParam
+    ? parseInt(urlSmartListParam, 10)
+    : null;
+  // 最终使用的智能列表 ID：URL 参数优先（支持客户端导航）
+  const currentSmartListId =
+    urlSmartListId && !isNaN(urlSmartListId) ? urlSmartListId : smartListId;
+
   // 使用本地状态跟踪当前平台（支持客户端切换）
   const [localPlatform, setLocalPlatform] = useState(urlPlatform);
   const [localFolder, setLocalFolder] = useState(urlFolder);
@@ -1174,9 +1183,9 @@ export function HomePageClient({
     }
   };
 
-  // 智能列表模式：显示专属视图
-  if (smartListId) {
-    return <SmartListView smartListId={smartListId} />;
+  // 智能列表模式：显示专属视图（支持客户端导航）
+  if (currentSmartListId) {
+    return <SmartListView smartListId={currentSmartListId} />;
   }
 
   return (

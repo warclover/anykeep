@@ -2,6 +2,7 @@
  * 用途标签筛选组件
  * 用于首页顶部的用途标签快捷筛选
  * 支持预设标签 + 自定义标签
+ * V10.1: 支持快速保存为智能列表
  */
 
 "use client";
@@ -14,6 +15,7 @@ import { USAGE_TAG_PRESETS, getAllUsageTags } from "@/lib/constants/usage-tags";
 import { useSafeNavigation } from "@/contexts/navigation-context";
 import { useCustomUsageTags } from "@/hooks/use-custom-usage-tags";
 import { UsageTagButton } from "@/components/bookmark/usage-tag-button";
+import { SmartListQuickSave } from "@/components/smart-list";
 
 interface UsageTagFilterProps {
   /** 自定义类名 */
@@ -208,16 +210,25 @@ export function UsageTagFilter({
                 ) : null;
               })}
 
-              {/* 清除按钮 */}
+              {/* 操作按钮组：清除 + 保存为智能列表 */}
               {selectedTags.length > 0 && (
-                <button
-                  type="button"
-                  onClick={clearFilter}
-                  className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 shrink-0"
-                  title="清除筛选"
-                >
-                  <X className="size-3.5" />
-                </button>
+                <div className="flex items-center gap-1 shrink-0">
+                  {/* 快速保存为智能列表 */}
+                  <SmartListQuickSave
+                    filters={{ usageTags: selectedTags }}
+                    visible={true}
+                    onSaved={clearFilter}
+                  />
+                  {/* 清除按钮 */}
+                  <button
+                    type="button"
+                    onClick={clearFilter}
+                    className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                    title="清除筛选"
+                  >
+                    <X className="size-4" />
+                  </button>
+                </div>
               )}
             </>
           )}
@@ -248,14 +259,22 @@ export function UsageTagFilter({
               +{selectedTags.length - 3}
             </span>
           )}
-          <button
-            type="button"
-            onClick={clearFilter}
-            className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 shrink-0"
-            title="清除筛选"
-          >
-            <X className="size-3.5" />
-          </button>
+          {/* 操作按钮组 */}
+          <div className="flex items-center gap-1 shrink-0">
+            <SmartListQuickSave
+              filters={{ usageTags: selectedTags }}
+              visible={true}
+              onSaved={clearFilter}
+            />
+            <button
+              type="button"
+              onClick={clearFilter}
+              className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              title="清除筛选"
+            >
+              <X className="size-4" />
+            </button>
+          </div>
         </div>
       ) : null}
     </div>

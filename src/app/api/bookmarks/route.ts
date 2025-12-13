@@ -924,6 +924,13 @@ export async function GET(request: NextRequest) {
       limit: searchParams.get("limit"),
       sort: searchParams.get("sort"),
       usageTags: searchParams.get("usageTags"), // V9.0新增：用途标签筛选
+      dateFrom: searchParams.get("dateFrom"), // V10.0新增：时间范围起始
+      dateTo: searchParams.get("dateTo"), // V10.0新增：时间范围结束
+      isRead: searchParams.get("isRead"), // V10.0新增：阅读状态筛选
+      isStarred: searchParams.get("isStarred"), // V10.0新增：星标筛选
+      isHighValue: searchParams.get("isHighValue"), // V10.0新增：高价值筛选
+      ratingMin: searchParams.get("ratingMin"), // V10.0新增：评级下限
+      ratingMax: searchParams.get("ratingMax"), // V10.0新增：评级上限
     };
 
     const validation = getBookmarksQuerySchema.safeParse(queryParams);
@@ -942,6 +949,13 @@ export async function GET(request: NextRequest) {
       limit,
       sort,
       usageTags,
+      dateFrom,
+      dateTo,
+      isRead,
+      isStarred,
+      isHighValue,
+      ratingMin,
+      ratingMax,
     } = validation.data;
 
     monitor.mark("ParamsParsed", {
@@ -952,6 +966,8 @@ export async function GET(request: NextRequest) {
       keyword: !!keyword,
       cursor: !!cursor,
       limit,
+      dateFrom: !!dateFrom,
+      dateTo: !!dateTo,
     });
 
     // 3. 构建查询
@@ -1050,6 +1066,37 @@ export async function GET(request: NextRequest) {
     // V9.0新增：用途标签筛选（user_tags 数组包含任意指定标签）
     if (usageTags && usageTags.length > 0) {
       query = query.overlaps("user_tags", usageTags);
+    }
+
+    // V10.0新增：时间范围筛选（用于智能列表）
+    if (dateFrom) {
+      query = query.gte("created_at", dateFrom);
+    }
+    if (dateTo) {
+      query = query.lte("created_at", dateTo);
+    }
+
+    // V10.0新增：阅读状态筛选（用于智能列表的"待阅读"场景）
+    if (isRead !== undefined) {
+      query = query.eq("is_read", isRead);
+    }
+
+    // V10.0新增：星标筛选（用于智能列表的"星标收藏"场景）
+    if (isStarred !== undefined) {
+      query = query.eq("is_starred", isStarred);
+    }
+
+    // V10.0新增：高价值筛选（rating=5）
+    if (isHighValue === true) {
+      query = query.eq("rating", 5);
+    }
+
+    // V10.0新增：评级范围筛选
+    if (ratingMin !== undefined) {
+      query = query.gte("rating", ratingMin);
+    }
+    if (ratingMax !== undefined) {
+      query = query.lte("rating", ratingMax);
     }
 
     // 游标分页（"加载更多"模式）

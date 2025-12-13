@@ -1,12 +1,12 @@
 /**
  * 智能列表区块组件
  * @description 侧边栏中显示智能列表区块的容器组件，支持拖拽排序
- * @version 10.1.0
+ * @version 10.2.0 - 新增首次访问自动初始化预设
  */
 
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import {
   ChevronDown,
   ChevronRight,
@@ -164,6 +164,39 @@ export function SmartListSection({
     includePresets: true,
     enabled: true,
   });
+
+  // V10.2: 自动初始化预设（首次访问时自动创建 6 个预设）
+  const hasAttemptedAutoInit = useRef(false);
+  const [isAutoIniting, setIsAutoIniting] = useState(false);
+
+  useEffect(() => {
+    // 条件：加载完成、列表为空、尚未尝试自动初始化
+    if (
+      !isLoading &&
+      smartLists.length === 0 &&
+      !hasAttemptedAutoInit.current
+    ) {
+      hasAttemptedAutoInit.current = true;
+      setIsAutoIniting(true);
+
+      // 自动初始化预设（静默执行，不打扰用户）
+      initPresets()
+        .then((count) => {
+          if (count > 0) {
+            toast.success(`已为您创建 ${count} 个预设智能列表`, {
+              description: "点击侧边栏查看",
+            });
+          }
+        })
+        .catch((err) => {
+          // 静默处理错误，用户可以手动重试
+          console.error("Auto-init presets failed:", err);
+        })
+        .finally(() => {
+          setIsAutoIniting(false);
+        });
+    }
+  }, [isLoading, smartLists.length, initPresets]);
 
   // 拖拽传感器配置（支持鼠标、触屏、键盘）
   const sensors = useSensors(
@@ -332,7 +365,7 @@ export function SmartListSection({
     );
   }
 
-  // 空状态 - 提示初始化预设
+  // 空状态 - 自动初始化中或手动重试按钮
   if (smartLists.length === 0) {
     return (
       <div className="py-2">
@@ -342,15 +375,24 @@ export function SmartListSection({
           </p>
         </div>
         <div className="px-3 py-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full text-xs"
-            onClick={handleInitPresets}
-          >
-            <Plus className="size-3 mr-1" />
-            初始化预设模板
-          </Button>
+          {isAutoIniting ? (
+            // 自动初始化进行中
+            <div className="flex items-center justify-center py-2 text-xs text-gray-500">
+              <Loader2 className="size-3 mr-1.5 animate-spin" />
+              正在创建预设...
+            </div>
+          ) : (
+            // 自动初始化失败后的手动重试按钮
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full text-xs"
+              onClick={handleInitPresets}
+            >
+              <Plus className="size-3 mr-1" />
+              初始化预设模板
+            </Button>
+          )}
         </div>
       </div>
     );

@@ -320,6 +320,78 @@ export const getBookmarksQuerySchema = z.object({
       if (!val) return undefined;
       return val.split(",").filter((t) => t.trim().length > 0);
     }),
+  // V10.0新增：时间范围筛选（ISO 8601 格式，用于智能列表）
+  dateFrom: z
+    .string()
+    .trim()
+    .nullable()
+    .optional()
+    .transform((val) => {
+      if (!val) return undefined;
+      // 验证日期格式
+      const date = new Date(val);
+      if (isNaN(date.getTime())) return undefined;
+      return val;
+    }),
+  dateTo: z
+    .string()
+    .trim()
+    .nullable()
+    .optional()
+    .transform((val) => {
+      if (!val) return undefined;
+      // 验证日期格式
+      const date = new Date(val);
+      if (isNaN(date.getTime())) return undefined;
+      return val;
+    }),
+  // V10.0新增：阅读状态筛选（用于智能列表的"待阅读"场景）
+  isRead: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((val) => {
+      if (val === "true") return true;
+      if (val === "false") return false;
+      return undefined;
+    }),
+  // V10.0新增：星标筛选（用于智能列表的"星标收藏"场景）
+  isStarred: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((val) => {
+      if (val === "true") return true;
+      if (val === "false") return false;
+      return undefined;
+    }),
+  // V10.0新增：高价值筛选（rating=5，用于智能列表的"高价值收藏"场景）
+  isHighValue: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((val) => {
+      if (val === "true") return true;
+      if (val === "false") return false;
+      return undefined;
+    }),
+  // V10.0新增：评级范围筛选（用于智能列表按评级筛选）
+  ratingMin: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .max(5)
+    .nullable()
+    .optional()
+    .transform((val) => val ?? undefined),
+  ratingMax: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .max(5)
+    .nullable()
+    .optional()
+    .transform((val) => val ?? undefined),
 });
 
 export type GetBookmarksQuery = z.infer<typeof getBookmarksQuerySchema>;
