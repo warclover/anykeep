@@ -7,7 +7,7 @@
  * Integrates input, preview, success, and drawer components.
  */
 
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -40,6 +40,9 @@ export function QuickAddBookmark({
 }: QuickAddBookmarkProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Track last successfully processed URL to prevent auto-paste repeat
+  const [lastProcessedUrl, setLastProcessedUrl] = useState<string | null>(null);
 
   // State management
   const { state, actions } = useQuickAddState();
@@ -148,6 +151,11 @@ export function QuickAddBookmark({
       // Show success state
       actions.showSuccess("已收藏！");
 
+      // Mark URL as processed to prevent auto-paste repeat
+      if (extractedUrl) {
+        setLastProcessedUrl(extractedUrl);
+      }
+
       // Trigger callback
       onBookmarkCreated?.(newBookmark);
 
@@ -218,6 +226,7 @@ export function QuickAddBookmark({
             onBlur={actions.handleBlur}
             onUrlDetected={handleUrlDetected}
             mode={mode}
+            lastProcessedUrl={lastProcessedUrl}
           />
         );
 

@@ -23,6 +23,8 @@ export interface QuickAddInputProps {
   placeholder?: string;
   className?: string;
   disabled?: boolean;
+  /** URL that was just successfully processed - will be skipped on next auto-paste */
+  lastProcessedUrl?: string | null;
 }
 
 export const QuickAddInput = forwardRef<HTMLInputElement, QuickAddInputProps>(
@@ -37,6 +39,7 @@ export const QuickAddInput = forwardRef<HTMLInputElement, QuickAddInputProps>(
       placeholder = "粘贴链接，一秒收藏",
       className,
       disabled = false,
+      lastProcessedUrl,
     },
     ref,
   ) => {
@@ -59,12 +62,20 @@ export const QuickAddInput = forwardRef<HTMLInputElement, QuickAddInputProps>(
     );
 
     // Clipboard paste hook
-    const { readClipboard, extractUrlFromText } = useClipboardPaste({
-      onUrlExtracted: (url) => {
-        onChange(url);
-        onUrlDetected(url);
-      },
-    });
+    const { readClipboard, extractUrlFromText, markUrlAsProcessed } =
+      useClipboardPaste({
+        onUrlExtracted: (url) => {
+          onChange(url);
+          onUrlDetected(url);
+        },
+      });
+
+    // Mark URL as processed when lastProcessedUrl changes
+    useEffect(() => {
+      if (lastProcessedUrl) {
+        markUrlAsProcessed(lastProcessedUrl);
+      }
+    }, [lastProcessedUrl, markUrlAsProcessed]);
 
     // Auto-paste on focus
     const handleFocus = useCallback(async () => {

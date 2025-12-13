@@ -32,6 +32,8 @@ export interface ClipboardPasteResult {
   isSupported: boolean;
   permissionState: PermissionState | null;
   checkPermission: () => Promise<PermissionState>;
+  markUrlAsProcessed: (url: string) => void;
+  clearProcessedUrls: () => void;
 }
 
 type PermissionState = "granted" | "denied" | "prompt";
@@ -44,6 +46,7 @@ export function useClipboardPaste(
   const [permissionState, setPermissionState] =
     useState<PermissionState | null>(null);
   const lastReadRef = useRef<string | null>(null);
+  const processedUrlsRef = useRef<Set<string>>(new Set());
 
   // Check if clipboard API is supported
   const isSupported =
@@ -140,6 +143,10 @@ export function useClipboardPaste(
         // Try to extract URL
         const url = extractUrlFromText(text);
         if (url) {
+          // Skip if this URL was already successfully processed
+          if (processedUrlsRef.current.has(url)) {
+            return null;
+          }
           onUrlExtracted?.(url);
           return url;
         }
@@ -172,12 +179,28 @@ export function useClipboardPaste(
     onPermissionDenied,
   ]);
 
+  /**
+   * Mark a URL as processed (won't trigger auto-fill again)
+   */
+  const markUrlAsProcessed = useCallback((url: string) => {
+    processedUrlsRef.current.add(url);
+  }, []);
+
+  /**
+   * Clear all processed URLs (for cleanup)
+   */
+  const clearProcessedUrls = useCallback(() => {
+    processedUrlsRef.current.clear();
+  }, []);
+
   return {
     readClipboard,
     extractUrlFromText,
     isSupported,
     permissionState,
     checkPermission,
+    markUrlAsProcessed,
+    clearProcessedUrls,
   };
 }
 
