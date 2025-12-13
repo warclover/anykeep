@@ -95,13 +95,47 @@ export function SnapshotSection({
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isLoading, setIsLoading] = useState(!initialSnapshot);
 
   // 同步外部快照数据
   useEffect(() => {
     if (initialSnapshot !== undefined) {
       setSnapshot(initialSnapshot);
+      setIsLoading(false);
     }
   }, [initialSnapshot]);
+
+  // 组件挂载时获取现有快照
+  useEffect(() => {
+    if (initialSnapshot) return; // 如果已有初始数据，跳过
+
+    const loadExistingSnapshot = async () => {
+      try {
+        const response = await fetch(`/api/snapshots?bookmarkId=${bookmarkId}`);
+        const result = await response.json();
+
+        if (response.ok && result.data) {
+          const existingSnapshot: SnapshotInfo = {
+            id: result.data.id,
+            status: result.data.status,
+            snapshotType: result.data.snapshotType,
+            capturedAt: result.data.capturedAt,
+            errorMessage: result.data.errorMessage,
+            readableTitle: result.data.readableTitle,
+            readableWordCount: result.data.readableWordCount,
+          };
+          setSnapshot(existingSnapshot);
+          onSnapshotChange?.(existingSnapshot);
+        }
+      } catch (error) {
+        console.error("Failed to load existing snapshot:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadExistingSnapshot();
+  }, [bookmarkId, initialSnapshot, onSnapshotChange]);
 
   // 获取快照详情
   const fetchSnapshot = useCallback(async () => {
@@ -179,6 +213,22 @@ export function SnapshotSection({
     },
     [onSnapshotChange],
   );
+
+  // 加载状态
+  if (isLoading) {
+    return (
+      <div className={cn("border rounded-lg p-4 bg-muted/30", className)}>
+        <div className="flex items-center gap-2">
+          <Camera className="size-5 text-muted-foreground" />
+          <div className="flex-1">
+            <h3 className="text-sm font-medium">网页快照</h3>
+            <p className="text-xs text-muted-foreground">加载中...</p>
+          </div>
+          <Loader2 className="size-4 animate-spin text-muted-foreground" />
+        </div>
+      </div>
+    );
+  }
 
   // 无快照状态
   if (!snapshot) {

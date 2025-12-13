@@ -59,7 +59,7 @@ export interface SnapshotButtonProps {
 export function SnapshotButton({
   bookmarkId,
   url: _url,
-  snapshotType = "standard",
+  snapshotType = "basic",
   hasSnapshot = false,
   variant = "ghost",
   size = "icon-sm",

@@ -58,7 +58,7 @@ export function SnapshotMenuItem({
   bookmarkUrl: _bookmarkUrl,
   hasSnapshot = false,
   snapshotStatus = null,
-  snapshotType = "standard",
+  snapshotType = "basic",
   onSuccess,
   onError,
   className,
