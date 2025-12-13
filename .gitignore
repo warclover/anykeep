@@ -71,3 +71,4 @@ logs
 *.log
 browser-extension/node_modules/
 browser-extension/.output/
+.backups
