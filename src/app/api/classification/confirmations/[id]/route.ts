@@ -74,22 +74,27 @@ export async function GET(
     return successResponse({
       id: data.id,
       bookmarkId: data.bookmark_id,
-      type: data.type,
+      folderId: data.folder_id,
+      type: data.confirmation_type,
       status: data.status,
       suggestion: {
-        folderId: data.suggested_folder_id,
-        folderName: data.suggested_folder_name,
-        confidence: data.confidence,
-        reason: data.reason,
+        folderId: data.suggestion?.folderId,
+        folderName: data.suggestion?.folderName,
+        confidence: data.suggestion?.confidence,
+        reason: data.suggestion?.reason,
+        alternatives: data.suggestion?.alternatives,
       },
-      metadata: data.metadata,
+      userChoice: data.user_choice,
       expiresAt: data.expires_at,
       createdAt: data.created_at,
-      updatedAt: data.updated_at,
+      resolvedAt: data.resolved_at,
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error({ error: errorMessage }, "GET /api/classification/confirmations/[id] error");
+    logger.error(
+      { error: errorMessage },
+      "GET /api/classification/confirmations/[id] error",
+    );
     return internalError("获取确认项失败");
   }
 }
@@ -184,15 +189,15 @@ export async function PUT(
       .from(PENDING_CONFIRMATIONS_TABLE)
       .update({
         status: newStatus,
-        metadata: {
-          ...existing.metadata,
+        user_choice: {
+          ...(existing.user_choice || {}),
           userAction: body.action,
           selectedFolderId: body.selectedFolderId,
           newFolderName: body.newFolderName,
           rejectReason: body.rejectReason,
           processedAt: new Date().toISOString(),
         },
-        updated_at: new Date().toISOString(),
+        resolved_at: new Date().toISOString(),
       })
       .eq("id", confirmationId);
 
@@ -206,7 +211,8 @@ export async function PUT(
 
     // 如果确认，执行分类操作
     if (body.action === "confirm" && existing.bookmark_id) {
-      const targetFolderId = body.selectedFolderId || existing.suggested_folder_id;
+      const targetFolderId =
+        body.selectedFolderId || existing.suggestion?.folderId;
 
       if (targetFolderId) {
         // 更新书签的文件夹
@@ -250,7 +256,10 @@ export async function PUT(
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error({ error: errorMessage }, "PUT /api/classification/confirmations/[id] error");
+    logger.error(
+      { error: errorMessage },
+      "PUT /api/classification/confirmations/[id] error",
+    );
     return internalError("处理确认项失败");
   }
 }
@@ -315,7 +324,10 @@ export async function DELETE(
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error({ error: errorMessage }, "DELETE /api/classification/confirmations/[id] error");
+    logger.error(
+      { error: errorMessage },
+      "DELETE /api/classification/confirmations/[id] error",
+    );
     return internalError("删除确认项失败");
   }
 }

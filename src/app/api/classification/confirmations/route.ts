@@ -17,7 +17,10 @@ import {
   internalError,
 } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
-import type { ConfirmationType, ConfirmationStatus } from "@/types/confirmation";
+import type {
+  ConfirmationType,
+  ConfirmationStatus,
+} from "@/types/confirmation";
 import type { NextRequest } from "next/server";
 
 // 表名常量
@@ -31,16 +34,20 @@ interface PendingConfirmationRow {
   id: number;
   user_id: string;
   bookmark_id: number | null;
-  type: ConfirmationType;
+  folder_id: number | null;
+  confirmation_type: ConfirmationType;
   status: ConfirmationStatus;
-  suggested_folder_id: number | null;
-  suggested_folder_name: string | null;
-  confidence: number;
-  reason: string | null;
-  metadata: Record<string, unknown> | null;
+  suggestion: {
+    folderId?: number | null;
+    folderName?: string | null;
+    confidence?: number;
+    reason?: string | null;
+    alternatives?: unknown[];
+  };
+  user_choice: Record<string, unknown> | null;
   expires_at: string | null;
   created_at: string;
-  updated_at: string;
+  resolved_at: string | null;
 }
 
 interface ConfirmationsQueryParams {
@@ -75,8 +82,12 @@ export async function GET(request: NextRequest) {
     const params: ConfirmationsQueryParams = {
       status: searchParams.get("status") as ConfirmationStatus | undefined,
       type: searchParams.get("type") as ConfirmationType | undefined,
-      limit: searchParams.get("limit") ? parseInt(searchParams.get("limit")!, 10) : 50,
-      offset: searchParams.get("offset") ? parseInt(searchParams.get("offset")!, 10) : 0,
+      limit: searchParams.get("limit")
+        ? parseInt(searchParams.get("limit")!, 10)
+        : 50,
+      offset: searchParams.get("offset")
+        ? parseInt(searchParams.get("offset")!, 10)
+        : 0,
     };
 
     // 构建查询
@@ -96,7 +107,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (params.type) {
-      query = query.eq("type", params.type);
+      query = query.eq("confirmation_type", params.type);
     }
 
     // 分页
@@ -116,17 +127,20 @@ export async function GET(request: NextRequest) {
     const confirmations = (data || []).map((row: PendingConfirmationRow) => ({
       id: row.id,
       bookmarkId: row.bookmark_id,
-      type: row.type,
+      folderId: row.folder_id,
+      type: row.confirmation_type,
       status: row.status,
       suggestion: {
-        folderId: row.suggested_folder_id,
-        folderName: row.suggested_folder_name,
-        confidence: row.confidence,
-        reason: row.reason,
+        folderId: row.suggestion?.folderId,
+        folderName: row.suggestion?.folderName,
+        confidence: row.suggestion?.confidence,
+        reason: row.suggestion?.reason,
+        alternatives: row.suggestion?.alternatives,
       },
-      metadata: row.metadata,
+      userChoice: row.user_choice,
       expiresAt: row.expires_at,
       createdAt: row.created_at,
+      resolvedAt: row.resolved_at,
     }));
 
     return successResponse({
@@ -137,7 +151,10 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error({ error: errorMessage }, "GET /api/classification/confirmations error");
+    logger.error(
+      { error: errorMessage },
+      "GET /api/classification/confirmations error",
+    );
     return internalError("获取待确认列表失败");
   }
 }
@@ -200,13 +217,14 @@ export async function POST(request: NextRequest) {
       .insert({
         user_id: user.id,
         bookmark_id: body.bookmarkId,
-        type: body.type,
+        confirmation_type: body.type,
         status: "pending",
-        suggested_folder_id: body.suggestedFolderId || null,
-        suggested_folder_name: body.suggestedFolderName || null,
-        confidence: body.confidence,
-        reason: body.reason || null,
-        metadata: body.metadata || null,
+        suggestion: {
+          folderId: body.suggestedFolderId || null,
+          folderName: body.suggestedFolderName || null,
+          confidence: body.confidence,
+          reason: body.reason || null,
+        },
         expires_at: body.expiresAt || null,
       })
       .select()
@@ -236,7 +254,10 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error({ error: errorMessage }, "POST /api/classification/confirmations error");
+    logger.error(
+      { error: errorMessage },
+      "POST /api/classification/confirmations error",
+    );
     return internalError("创建待确认项失败");
   }
 }

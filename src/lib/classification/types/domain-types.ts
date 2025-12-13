@@ -122,7 +122,9 @@ export type JobQueueType =
   | "generate_suggestions"
   | "update_folder_heat"
   | "ai_rename_folder"
-  | "batch_classify";
+  | "batch_classify"
+  | "generate_summary"
+  | "batch_generate_summary";
 
 /**
  * 任务状态
