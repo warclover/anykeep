@@ -121,21 +121,26 @@ export function QuickAddBookmark({
           url: extractedUrl,
           title: metadata?.title,
           description: metadata?.description,
-          folderId: folderId,
+          folderId: folderId || undefined, // Fix: 避免发送 null 导致验证失败
           userTags: tags.length > 0 ? tags : undefined,
           notes: notes || undefined,
-          coverUrl: metadata?.coverUrl,
-          sourceName: metadata?.sourceName,
-          author: metadata?.author,
-          publishTime: metadata?.publishTime,
-          wordCount: metadata?.wordCount,
-          imageCount: metadata?.imageCount,
+          coverUrl: metadata?.coverUrl || undefined, // Fix: 避免发送空字符串
+          sourceName: metadata?.sourceName || undefined,
+          author: metadata?.author || undefined,
+          publishTime: metadata?.publishTime || undefined,
+          wordCount: metadata?.wordCount || undefined,
+          imageCount: metadata?.imageCount || undefined,
         }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || "创建失败");
+        // Fix: 正确解析错误消息
+        const errorMessage =
+          typeof errorData.error === "string"
+            ? errorData.error
+            : errorData.message || "创建失败";
+        throw new Error(errorMessage);
       }
 
       const newBookmark = await response.json();

@@ -57,8 +57,12 @@ export function useClipboardPaste(
 
     const trimmedText = text.trim();
 
+    // Reset regex state before using (global flag side effect)
+    URL_REGEX.lastIndex = 0;
+
     // Check if the entire text is a URL
     if (URL_REGEX.test(trimmedText)) {
+      URL_REGEX.lastIndex = 0; // Reset again after test()
       const matches = trimmedText.match(URL_REGEX);
       if (matches && matches.length === 1 && matches[0] === trimmedText) {
         return trimmedText;

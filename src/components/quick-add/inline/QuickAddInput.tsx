@@ -128,14 +128,16 @@ export const QuickAddInput = forwardRef<HTMLInputElement, QuickAddInputProps>(
       <div
         className={cn(
           // Base styles
-          "relative flex items-center gap-3 w-full h-11 px-4",
-          "rounded-full border transition-all duration-200",
+          "relative flex items-center gap-3 w-full h-12 px-5",
+          "rounded-full border-2 transition-all duration-200",
 
-          // Idle state - dashed border, subtle background
+          // Idle state - 醒目的虚线边框和渐变背景
           isIdle && [
-            "border-dashed border-purple-200/60",
-            "bg-gradient-to-r from-purple-50/30 to-blue-50/30",
-            "hover:border-purple-300 hover:shadow-sm hover:shadow-purple-100",
+            "border-dashed border-purple-400",
+            "bg-gradient-to-r from-purple-50 via-white to-blue-50",
+            "shadow-sm shadow-purple-100",
+            "hover:border-purple-500 hover:shadow-md hover:shadow-purple-200/50",
+            "hover:bg-gradient-to-r hover:from-purple-100/50 hover:via-white hover:to-blue-100/50",
             "cursor-text",
           ],
 
@@ -143,8 +145,8 @@ export const QuickAddInput = forwardRef<HTMLInputElement, QuickAddInputProps>(
           (isFocused || isLoading) && [
             "border-solid border-purple-500",
             "bg-white",
-            "shadow-[0_0_0_3px_rgba(139,92,246,0.1)]",
-            "scale-[1.01]",
+            "shadow-[0_0_0_4px_rgba(139,92,246,0.15)]",
+            "scale-[1.02]",
           ],
 
           // Disabled state
@@ -158,14 +160,14 @@ export const QuickAddInput = forwardRef<HTMLInputElement, QuickAddInputProps>(
         <div
           className={cn(
             "flex-shrink-0 transition-colors duration-200",
-            isIdle && "text-purple-400",
+            isIdle && "text-purple-500",
             (isFocused || isLoading) && "text-purple-600",
           )}
         >
           {isLoading ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
+            <Loader2 className="w-5 h-5 animate-spin" />
           ) : (
-            <Link2 className="w-4 h-4" />
+            <Link2 className="w-5 h-5" />
           )}
         </div>
 
@@ -186,7 +188,7 @@ export const QuickAddInput = forwardRef<HTMLInputElement, QuickAddInputProps>(
           spellCheck={false}
           className={cn(
             "flex-1 bg-transparent border-none outline-none",
-            "text-sm placeholder:text-gray-400",
+            "text-sm font-medium placeholder:text-purple-400/80 placeholder:font-normal",
             "disabled:cursor-not-allowed",
           )}
         />

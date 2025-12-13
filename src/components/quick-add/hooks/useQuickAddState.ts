@@ -156,35 +156,56 @@ function quickAddReducer(
     case "RESET":
       return { ...initialState };
 
-    case "START_LOADING":
+    case "START_LOADING": {
+      // Allow transition from focused, preview, or idle (implicit focus)
+      const allowedModes: QuickAddMode[] = ["focused", "preview", "idle"];
+      if (!allowedModes.includes(state.mode)) {
+        return state;
+      }
       return {
         ...state,
         mode: "loading",
         metadataError: null,
       };
+    }
 
-    case "SHOW_PREVIEW":
+    case "SHOW_PREVIEW": {
+      // Only allow from loading mode
+      if (state.mode !== "loading") {
+        return state;
+      }
       return {
         ...state,
         mode: "preview",
         metadata: action.payload,
         metadataError: null,
       };
+    }
 
-    case "SHOW_SUCCESS":
+    case "SHOW_SUCCESS": {
+      // Only allow from preview mode
+      if (state.mode !== "preview") {
+        return state;
+      }
       return {
         ...state,
         mode: "success",
         successMessage: action.payload,
         isSubmitting: false,
       };
+    }
 
-    case "SHOW_ERROR":
+    case "SHOW_ERROR": {
+      // Only allow from loading mode
+      if (state.mode !== "loading") {
+        return state;
+      }
       return {
         ...state,
         mode: "error",
         metadataError: action.payload,
       };
+    }
 
     default:
       return state;
