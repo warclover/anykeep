@@ -59,7 +59,6 @@ export type Database = {
           deleted_at: string | null;
           description: string | null;
           embedding: string | null;
-          embedding_version: number | null;
           folder_id: number | null;
           id: number;
           image_count: number | null;
@@ -84,15 +83,12 @@ export type Database = {
           source_name: string | null;
           starred_at: string | null;
           status: string | null;
-          tag_embedding: string | null;
-          tag_embedding_at: string | null;
           title: string;
-          title_embedding: string | null;
-          title_embedding_at: string | null;
           trashed_at: string | null;
           updated_at: string | null;
           url: string;
           user_id: string;
+          source_id: string | null;
           user_tags: string[] | null;
           word_count: number | null;
         };
@@ -113,7 +109,6 @@ export type Database = {
           deleted_at?: string | null;
           description?: string | null;
           embedding?: string | null;
-          embedding_version?: number | null;
           folder_id?: number | null;
           id?: number;
           image_count?: number | null;
@@ -138,15 +133,12 @@ export type Database = {
           source_name?: string | null;
           starred_at?: string | null;
           status?: string | null;
-          tag_embedding?: string | null;
-          tag_embedding_at?: string | null;
           title: string;
-          title_embedding?: string | null;
-          title_embedding_at?: string | null;
           trashed_at?: string | null;
           updated_at?: string | null;
           url: string;
           user_id: string;
+          source_id?: string | null;
           user_tags?: string[] | null;
           word_count?: number | null;
         };
@@ -167,7 +159,6 @@ export type Database = {
           deleted_at?: string | null;
           description?: string | null;
           embedding?: string | null;
-          embedding_version?: number | null;
           folder_id?: number | null;
           id?: number;
           image_count?: number | null;
@@ -192,15 +183,12 @@ export type Database = {
           source_name?: string | null;
           starred_at?: string | null;
           status?: string | null;
-          tag_embedding?: string | null;
-          tag_embedding_at?: string | null;
           title?: string;
-          title_embedding?: string | null;
-          title_embedding_at?: string | null;
           trashed_at?: string | null;
           updated_at?: string | null;
           url?: string;
           user_id?: string;
+          source_id?: string | null;
           user_tags?: string[] | null;
           word_count?: number | null;
         };
@@ -265,42 +253,6 @@ export type Database = {
           tokens_used?: number;
           updated_at?: string;
           user_id?: string;
-        };
-        Relationships: [];
-      };
-      classification_config_audit: {
-        Row: {
-          action: string;
-          changed_at: string;
-          changed_by: string | null;
-          changed_fields: string[] | null;
-          config_key: string;
-          id: number;
-          new_value: Json | null;
-          old_value: Json | null;
-          reason: string | null;
-        };
-        Insert: {
-          action: string;
-          changed_at?: string;
-          changed_by?: string | null;
-          changed_fields?: string[] | null;
-          config_key: string;
-          id?: number;
-          new_value?: Json | null;
-          old_value?: Json | null;
-          reason?: string | null;
-        };
-        Update: {
-          action?: string;
-          changed_at?: string;
-          changed_by?: string | null;
-          changed_fields?: string[] | null;
-          config_key?: string;
-          id?: number;
-          new_value?: Json | null;
-          old_value?: Json | null;
-          reason?: string | null;
         };
         Relationships: [];
       };
@@ -834,17 +786,7 @@ export type Database = {
       folder_profiles: {
         Row: {
           bookmark_count: number | null;
-          boundary_clarity: number | null;
           computed_at: string | null;
-          core_count: number | null;
-          core_embedding: string | null;
-          core_radius: number | null;
-          core_sample_ids: number[] | null;
-          core_tightness: number | null;
-          edge_count: number | null;
-          edge_embedding: string | null;
-          edge_radius: number | null;
-          edge_sample_ids: number[] | null;
           folder_id: number;
           heat_computed_at: string | null;
           heat_score: number | null;
@@ -866,21 +808,10 @@ export type Database = {
           top_tags: string[] | null;
           updated_at: string | null;
           user_id: string;
-          zone_computed_at: string | null;
         };
         Insert: {
           bookmark_count?: number | null;
-          boundary_clarity?: number | null;
           computed_at?: string | null;
-          core_count?: number | null;
-          core_embedding?: string | null;
-          core_radius?: number | null;
-          core_sample_ids?: number[] | null;
-          core_tightness?: number | null;
-          edge_count?: number | null;
-          edge_embedding?: string | null;
-          edge_radius?: number | null;
-          edge_sample_ids?: number[] | null;
           folder_id: number;
           heat_computed_at?: string | null;
           heat_score?: number | null;
@@ -902,21 +833,10 @@ export type Database = {
           top_tags?: string[] | null;
           updated_at?: string | null;
           user_id: string;
-          zone_computed_at?: string | null;
         };
         Update: {
           bookmark_count?: number | null;
-          boundary_clarity?: number | null;
           computed_at?: string | null;
-          core_count?: number | null;
-          core_embedding?: string | null;
-          core_radius?: number | null;
-          core_sample_ids?: number[] | null;
-          core_tightness?: number | null;
-          edge_count?: number | null;
-          edge_embedding?: string | null;
-          edge_radius?: number | null;
-          edge_sample_ids?: number[] | null;
           folder_id?: number;
           heat_computed_at?: string | null;
           heat_score?: number | null;
@@ -938,7 +858,6 @@ export type Database = {
           top_tags?: string[] | null;
           updated_at?: string | null;
           user_id?: string;
-          zone_computed_at?: string | null;
         };
         Relationships: [
           {
@@ -1054,6 +973,45 @@ export type Database = {
         };
         Relationships: [];
       };
+      librarian_analysis_history: {
+        Row: {
+          analysis_data: Json;
+          created_at: string;
+          duplicate_count: number;
+          empty_count: number;
+          health_score: number;
+          id: number;
+          missing_count: number;
+          oversized_count: number;
+          poorly_named_count: number;
+          user_id: string;
+        };
+        Insert: {
+          analysis_data?: Json;
+          created_at?: string;
+          duplicate_count?: number;
+          empty_count?: number;
+          health_score: number;
+          id?: number;
+          missing_count?: number;
+          oversized_count?: number;
+          poorly_named_count?: number;
+          user_id: string;
+        };
+        Update: {
+          analysis_data?: Json;
+          created_at?: string;
+          duplicate_count?: number;
+          empty_count?: number;
+          health_score?: number;
+          id?: number;
+          missing_count?: number;
+          oversized_count?: number;
+          poorly_named_count?: number;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       job_queue: {
         Row: {
           attempts: number | null;
@@ -1107,45 +1065,6 @@ export type Database = {
           started_at?: string | null;
           status?: string | null;
           type?: string;
-          user_id?: string;
-        };
-        Relationships: [];
-      };
-      librarian_analysis_history: {
-        Row: {
-          analysis_data: Json;
-          created_at: string;
-          duplicate_count: number;
-          empty_count: number;
-          health_score: number;
-          id: number;
-          missing_count: number;
-          oversized_count: number;
-          poorly_named_count: number;
-          user_id: string;
-        };
-        Insert: {
-          analysis_data?: Json;
-          created_at?: string;
-          duplicate_count?: number;
-          empty_count?: number;
-          health_score: number;
-          id?: number;
-          missing_count?: number;
-          oversized_count?: number;
-          poorly_named_count?: number;
-          user_id: string;
-        };
-        Update: {
-          analysis_data?: Json;
-          created_at?: string;
-          duplicate_count?: number;
-          empty_count?: number;
-          health_score?: number;
-          id?: number;
-          missing_count?: number;
-          oversized_count?: number;
-          poorly_named_count?: number;
           user_id?: string;
         };
         Relationships: [];
@@ -1470,63 +1389,6 @@ export type Database = {
         };
         Relationships: [];
       };
-      pending_confirmations: {
-        Row: {
-          bookmark_id: number | null;
-          confirmation_type: string;
-          created_at: string;
-          expires_at: string;
-          folder_id: number | null;
-          id: number;
-          resolved_at: string | null;
-          status: string;
-          suggestion: Json;
-          user_choice: Json | null;
-          user_id: string;
-        };
-        Insert: {
-          bookmark_id?: number | null;
-          confirmation_type: string;
-          created_at?: string;
-          expires_at?: string;
-          folder_id?: number | null;
-          id?: number;
-          resolved_at?: string | null;
-          status?: string;
-          suggestion: Json;
-          user_choice?: Json | null;
-          user_id: string;
-        };
-        Update: {
-          bookmark_id?: number | null;
-          confirmation_type?: string;
-          created_at?: string;
-          expires_at?: string;
-          folder_id?: number | null;
-          id?: number;
-          resolved_at?: string | null;
-          status?: string;
-          suggestion?: Json;
-          user_choice?: Json | null;
-          user_id?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "pending_confirmations_bookmark_id_fkey";
-            columns: ["bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "pending_confirmations_folder_id_fkey";
-            columns: ["folder_id"];
-            isOneToOne: false;
-            referencedRelation: "folders";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
       platform_authorizations: {
         Row: {
           access_token: string | null;
@@ -1656,57 +1518,6 @@ export type Database = {
         };
         Relationships: [];
       };
-      source_profiles: {
-        Row: {
-          avg_confidence: number | null;
-          content_type: string | null;
-          created_at: string;
-          domains: string[];
-          frequent_folders: number[];
-          id: number;
-          last_seen_at: string | null;
-          sample_count: number;
-          source_id: string;
-          source_name: string | null;
-          source_type: string;
-          trust_score: number;
-          updated_at: string;
-          user_id: string;
-        };
-        Insert: {
-          avg_confidence?: number | null;
-          content_type?: string | null;
-          created_at?: string;
-          domains?: string[];
-          frequent_folders?: number[];
-          id?: number;
-          last_seen_at?: string | null;
-          sample_count?: number;
-          source_id: string;
-          source_name?: string | null;
-          source_type?: string;
-          trust_score?: number;
-          updated_at?: string;
-          user_id: string;
-        };
-        Update: {
-          avg_confidence?: number | null;
-          content_type?: string | null;
-          created_at?: string;
-          domains?: string[];
-          frequent_folders?: number[];
-          id?: number;
-          last_seen_at?: string | null;
-          sample_count?: number;
-          source_id?: string;
-          source_name?: string | null;
-          source_type?: string;
-          trust_score?: number;
-          updated_at?: string;
-          user_id?: string;
-        };
-        Relationships: [];
-      };
       system_folder_i18n: {
         Row: {
           created_at: string | null;
@@ -1731,45 +1542,6 @@ export type Database = {
           locale?: string;
           system_type?: string;
           updated_at?: string | null;
-        };
-        Relationships: [];
-      };
-      tag_relationships: {
-        Row: {
-          co_occurrence_count: number;
-          created_at: string;
-          id: number;
-          relationship_type: string;
-          source: string;
-          source_tag: string;
-          target_tag: string;
-          updated_at: string;
-          user_id: string;
-          weight: number;
-        };
-        Insert: {
-          co_occurrence_count?: number;
-          created_at?: string;
-          id?: number;
-          relationship_type: string;
-          source?: string;
-          source_tag: string;
-          target_tag: string;
-          updated_at?: string;
-          user_id: string;
-          weight?: number;
-        };
-        Update: {
-          co_occurrence_count?: number;
-          created_at?: string;
-          id?: number;
-          relationship_type?: string;
-          source?: string;
-          source_tag?: string;
-          target_tag?: string;
-          updated_at?: string;
-          user_id?: string;
-          weight?: number;
         };
         Relationships: [];
       };
@@ -1841,45 +1613,6 @@ export type Database = {
           name?: string;
           suggested_folders?: string[] | null;
           updated_at?: string | null;
-          user_id?: string;
-        };
-        Relationships: [];
-      };
-      user_trust_mode: {
-        Row: {
-          auto_decisions_count: number;
-          created_at: string;
-          id: number;
-          mode_history: Json;
-          overrides: Json;
-          pending_confirmations_count: number;
-          trust_mode: string;
-          updated_at: string;
-          user_corrections_count: number;
-          user_id: string;
-        };
-        Insert: {
-          auto_decisions_count?: number;
-          created_at?: string;
-          id?: number;
-          mode_history?: Json;
-          overrides?: Json;
-          pending_confirmations_count?: number;
-          trust_mode?: string;
-          updated_at?: string;
-          user_corrections_count?: number;
-          user_id: string;
-        };
-        Update: {
-          auto_decisions_count?: number;
-          created_at?: string;
-          id?: number;
-          mode_history?: Json;
-          overrides?: Json;
-          pending_confirmations_count?: number;
-          trust_mode?: string;
-          updated_at?: string;
-          user_corrections_count?: number;
           user_id?: string;
         };
         Relationships: [];
@@ -2117,17 +1850,6 @@ export type Database = {
         Args: { p_user_id: string };
         Returns: Json;
       };
-      check_bookmark_zone: {
-        Args: { p_bookmark_embedding: string; p_folder_id: number };
-        Returns: {
-          confidence: number;
-          core_distance: number;
-          edge_distance: number;
-          is_in_core: boolean;
-          is_in_edge: boolean;
-          zone: string;
-        }[];
-      };
       claim_next_job: {
         Args: {
           p_job_types?: string[];
@@ -2179,7 +1901,6 @@ export type Database = {
         Returns: string;
       };
       expire_old_suggestions: { Args: never; Returns: number };
-      expire_pending_confirmations: { Args: never; Returns: number };
       fail_job: {
         Args: { p_error: string; p_job_id: string; p_retry?: boolean };
         Returns: boolean;
@@ -2254,18 +1975,6 @@ export type Database = {
         }[];
       };
       get_ai_folder_settings: { Args: { p_user_id: string }; Returns: Json };
-      get_bookmarks_pending_multi_vector: {
-        Args: { p_limit?: number; p_user_id: string };
-        Returns: {
-          ai_summary: string;
-          ai_tags: string[];
-          bookmark_id: number;
-          has_tag_embedding: boolean;
-          has_title_embedding: boolean;
-          title: string;
-          user_tags: string[];
-        }[];
-      };
       get_folder_similarity_matrix: {
         Args: { p_min_bookmarks?: number; p_user_id: string };
         Returns: {
@@ -2310,33 +2019,6 @@ export type Database = {
           type: string;
         }[];
       };
-      get_messages_with_count: {
-        Args: {
-          p_level?: string;
-          p_limit?: number;
-          p_offset?: number;
-          p_status?: string;
-          p_user_id: string;
-        };
-        Returns: {
-          action_label: string;
-          action_url: string;
-          content: string;
-          created_at: string;
-          date_group: string;
-          id: number;
-          level: string;
-          metadata: Json;
-          priority: number;
-          read_at: string;
-          related_bookmark_id: number;
-          related_folder_id: number;
-          status: string;
-          title: string;
-          total_count: number;
-          type: string;
-        }[];
-      };
       get_or_create_inbox_folder: {
         Args: { p_user_id?: string };
         Returns: number;
@@ -2354,33 +2036,13 @@ export type Database = {
           url: string;
         }[];
       };
-      get_pending_confirmation_count: {
-        Args: { p_user_id: string };
-        Returns: number;
-      };
       get_pending_suggestions_count: {
         Args: { p_user_id: string };
         Returns: number;
       };
-      get_related_tags: {
-        Args: { p_limit?: number; p_tag: string; p_user_id: string };
-        Returns: {
-          co_occurrence_count: number;
-          related_tag: string;
-          relationship_type: string;
-          weight: number;
-        }[];
-      };
       get_system_folder_name: {
         Args: { p_locale?: string; p_system_type: string };
         Returns: string;
-      };
-      get_tag_synonyms: {
-        Args: { p_tag: string; p_user_id: string };
-        Returns: {
-          synonym: string;
-          weight: number;
-        }[];
       };
       get_unread_message_counts: {
         Args: { p_user_id: string };
@@ -2438,7 +2100,6 @@ export type Database = {
           tag: string;
         }[];
       };
-      get_user_trust_mode: { Args: { p_user_id: string }; Returns: Json };
       get_vision_tags: { Args: { vision_data: Json }; Returns: string[] };
       has_pending_job: {
         Args: {
@@ -2456,15 +2117,6 @@ export type Database = {
       };
       increment_storage_used: {
         Args: { target_user_id: string };
-        Returns: undefined;
-      };
-      increment_tag_cooccurrence: {
-        Args: {
-          p_relationship_type?: string;
-          p_source_tag: string;
-          p_target_tag: string;
-          p_user_id: string;
-        };
         Returns: undefined;
       };
       mark_bookmark_pending_cluster: {
@@ -2545,37 +2197,6 @@ export type Database = {
           url: string;
         }[];
       };
-      search_bookmarks_by_tag_vector: {
-        Args: {
-          p_limit?: number;
-          p_min_similarity?: number;
-          p_query_embedding: string;
-          p_user_id: string;
-        };
-        Returns: {
-          ai_tags: string[];
-          bookmark_id: number;
-          folder_id: number;
-          similarity: number;
-          title: string;
-          user_tags: string[];
-        }[];
-      };
-      search_bookmarks_by_title_vector: {
-        Args: {
-          p_limit?: number;
-          p_min_similarity?: number;
-          p_query_embedding: string;
-          p_user_id: string;
-        };
-        Returns: {
-          bookmark_id: number;
-          folder_id: number;
-          folder_name: string;
-          similarity: number;
-          title: string;
-        }[];
-      };
       search_bookmarks_hybrid: {
         Args: {
           keyword_weight?: number;
@@ -2594,27 +2215,6 @@ export type Database = {
           title: string;
           url: string;
           vector_score: number;
-        }[];
-      };
-      search_bookmarks_multi_vector: {
-        Args: {
-          p_content_weight?: number;
-          p_limit?: number;
-          p_min_similarity?: number;
-          p_query_embedding: string;
-          p_tag_weight?: number;
-          p_title_weight?: number;
-          p_user_id: string;
-        };
-        Returns: {
-          bookmark_id: number;
-          content_similarity: number;
-          folder_id: number;
-          folder_name: string;
-          tag_similarity: number;
-          title: string;
-          title_similarity: number;
-          weighted_similarity: number;
         }[];
       };
       search_bookmarks_semantic: {
@@ -2642,22 +2242,6 @@ export type Database = {
           updated_at: string;
           url: string;
           user_tags: string[];
-        }[];
-      };
-      search_folders_by_core_similarity: {
-        Args: {
-          p_limit?: number;
-          p_min_similarity?: number;
-          p_query_embedding: string;
-          p_user_id: string;
-        };
-        Returns: {
-          confidence_level: string;
-          core_similarity: number;
-          edge_similarity: number;
-          folder_id: number;
-          folder_name: string;
-          zone_match: string;
         }[];
       };
       search_folders_unified: {
@@ -2698,21 +2282,6 @@ export type Database = {
       };
       update_user_folder_heats: {
         Args: { p_user_id: string };
-        Returns: number;
-      };
-      update_user_trust_mode: {
-        Args: { p_reason?: string; p_trust_mode: string; p_user_id: string };
-        Returns: Json;
-      };
-      upsert_source_profile: {
-        Args: {
-          p_confidence?: number;
-          p_folder_id?: number;
-          p_source_id: string;
-          p_source_name?: string;
-          p_source_type?: string;
-          p_user_id: string;
-        };
         Returns: number;
       };
     };
@@ -2854,16 +2423,445 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {
-      classification_category_group: [
-        "tech",
-        "design",
-        "business",
-        "content",
-        "lifestyle",
-        "learning",
-        "other",
-      ],
-    },
+    Enums: {},
   },
 } as const;
+
+// ============================================================================
+// 便捷类型别名
+// ============================================================================
+
+// �?Row 类型
+export type Bookmark = Database["public"]["Tables"]["bookmarks"]["Row"];
+export type BookmarkInsert =
+  Database["public"]["Tables"]["bookmarks"]["Insert"];
+export type BookmarkUpdate =
+  Database["public"]["Tables"]["bookmarks"]["Update"];
+
+// ============================================================================
+// V4.2.1 快照扩展字段 (数据库已添加，类型需要手动扩展)
+// ============================================================================
+
+/** 快照状态类型 */
+export type SnapshotStatusType =
+  | "pending"
+  | "processing"
+  | "completed"
+  | "failed";
+
+/** 带快照字段的书签类型 (V4.2.1) */
+export type BookmarkWithSnapshot = Bookmark & {
+  /** 是否有快照 */
+  has_snapshot?: boolean | null;
+  /** 快照状态 */
+  snapshot_status?: SnapshotStatusType | null;
+  /** 最后快照时间 */
+  last_snapshot_at?: string | null;
+};
+
+export type Folder = Database["public"]["Tables"]["folders"]["Row"];
+export type FolderInsert = Database["public"]["Tables"]["folders"]["Insert"];
+export type FolderUpdate = Database["public"]["Tables"]["folders"]["Update"];
+
+export type Profile = Database["public"]["Tables"]["profiles"]["Row"];
+export type ProfileInsert = Database["public"]["Tables"]["profiles"]["Insert"];
+export type ProfileUpdate = Database["public"]["Tables"]["profiles"]["Update"];
+
+export type ImportHistory =
+  Database["public"]["Tables"]["import_history"]["Row"];
+export type ImportHistoryInsert =
+  Database["public"]["Tables"]["import_history"]["Insert"];
+
+export type ClassificationSuggestion =
+  Database["public"]["Tables"]["classification_suggestions"]["Row"];
+export type ClassificationSuggestionInsert =
+  Database["public"]["Tables"]["classification_suggestions"]["Insert"];
+
+export type ClassificationFeedback =
+  Database["public"]["Tables"]["classification_feedback"]["Row"];
+export type ClassificationFeedbackInsert =
+  Database["public"]["Tables"]["classification_feedback"]["Insert"];
+
+export type ClassificationDecision =
+  Database["public"]["Tables"]["classification_decisions"]["Row"];
+export type OperationSnapshot =
+  Database["public"]["Tables"]["operation_snapshots"]["Row"];
+export type FolderProfile =
+  Database["public"]["Tables"]["folder_profiles"]["Row"];
+
+// ============================================================================
+// 枚举类型（字符串联合类型�?// ============================================================================
+
+/** 平台类型 */
+export type Platform =
+  | "wechat"
+  | "bilibili"
+  | "xiaohongshu"
+  | "zhihu"
+  | "weibo"
+  | "douyin"
+  | "twitter"
+  | "youtube"
+  | "github"
+  | "juejin"
+  | "csdn"
+  | "jianshu"
+  | "toutiao"
+  | "chrome"
+  | "edge"
+  | "firefox"
+  | "safari"
+  | "other"
+  | "WECHAT_OFFICIAL_ACCOUNT"
+  | "BROWSER_CHROME"
+  | "BROWSER_EDGE"
+  | "BROWSER_FIREFOX"
+  | "BROWSER_SAFARI"
+  | "UNKNOWN"
+  | "BILIBILI"
+  | "XIAOHONGSHU"
+  | "ZHIHU"
+  | "WEIBO"
+  | "DOUYIN"
+  | "TWITTER"
+  | "YOUTUBE"
+  | "GITHUB"
+  | "JUEJIN"
+  | "CSDN"
+  | "JIANSHU"
+  | "TOUTIAO";
+
+/** 浏览器平台列�?*/
+export const BROWSER_PLATFORMS: Platform[] = [
+  "chrome",
+  "edge",
+  "firefox",
+  "safari",
+];
+
+/** 导入来源 */
+export type ImportSource =
+  | "chrome"
+  | "edge"
+  | "firefox"
+  | "safari"
+  | "file"
+  | "manual"
+  | "browser_chrome"
+  | "browser_edge"
+  | "browser_firefox"
+  | "browser_safari"
+  | "api"
+  | "share_sheet";
+
+/** 文件夹分�?*/
+export type FolderGroup =
+  | "default"
+  | "pinned"
+  | "archived"
+  | "work"
+  | "study"
+  | "life"
+  | "entertainment"
+  | "other";
+
+/** 建议状�?*/
+export type SuggestionStatus = "pending" | "accepted" | "rejected" | "expired";
+
+/** 分类状�?*/
+export type ClassificationStatus =
+  | "pending"
+  | "processing"
+  | "completed"
+  | "failed"
+  | "classified"
+  | "suggested"
+  | "inbox";
+
+/** 会员类型 */
+export type MembershipType =
+  | "free"
+  | "pro"
+  | "premium"
+  | "FREE"
+  | "PRO"
+  | "PREMIUM";
+
+/** 操作快照动作类型 */
+export type OperationSnapshotAction =
+  | "create"
+  | "split"
+  | "merge"
+  | "rename"
+  | "move"
+  | "delete";
+
+/** 聚类处理状态 */
+export interface ClusterProcessingStatus {
+  pendingClusterCount: number;
+  clusterCount: number;
+  lastProcessedAt: Date | null;
+  nextScheduledAt: Date;
+  hasPendingSuggestions: boolean;
+}
+
+/** 聚类处理状态字符串 */
+export type ClusterProcessingStatusString =
+  | "pending"
+  | "processing"
+  | "completed"
+  | "skipped";
+
+// ============================================================================
+// 业务接口类型
+// ============================================================================
+
+/** 自定义标签颜�?*/
+export type CustomTagColor =
+  | "blue"
+  | "green"
+  | "yellow"
+  | "red"
+  | "purple"
+  | "pink"
+  | "orange"
+  | "cyan"
+  | "indigo"
+  | "sky"
+  | "lime"
+  | "amber"
+  | "rose"
+  | "violet"
+  | "teal"
+  | "emerald"
+  | "fuchsia"
+  | "slate"
+  | "zinc";
+
+/** 自定义用途标�?*/
+export interface CustomUsageTag {
+  id: string;
+  name?: string;
+  label?: string;
+  value: string;
+  color: CustomTagColor;
+  createdAt: string;
+  lastUsedAt?: string;
+}
+
+/** 自定义标签颜色配�?*/
+export const CUSTOM_TAG_COLORS: Record<
+  CustomTagColor,
+  { light: string; dark: string; border: string }
+> = {
+  blue: {
+    light: "bg-blue-100",
+    dark: "bg-blue-900/30",
+    border: "border-blue-300",
+  },
+  green: {
+    light: "bg-green-100",
+    dark: "bg-green-900/30",
+    border: "border-green-300",
+  },
+  yellow: {
+    light: "bg-yellow-100",
+    dark: "bg-yellow-900/30",
+    border: "border-yellow-300",
+  },
+  red: { light: "bg-red-100", dark: "bg-red-900/30", border: "border-red-300" },
+  purple: {
+    light: "bg-purple-100",
+    dark: "bg-purple-900/30",
+    border: "border-purple-300",
+  },
+  pink: {
+    light: "bg-pink-100",
+    dark: "bg-pink-900/30",
+    border: "border-pink-300",
+  },
+  orange: {
+    light: "bg-orange-100",
+    dark: "bg-orange-900/30",
+    border: "border-orange-300",
+  },
+  cyan: {
+    light: "bg-cyan-100",
+    dark: "bg-cyan-900/30",
+    border: "border-cyan-300",
+  },
+  indigo: {
+    light: "bg-indigo-100",
+    dark: "bg-indigo-900/30",
+    border: "border-indigo-300",
+  },
+  sky: { light: "bg-sky-100", dark: "bg-sky-900/30", border: "border-sky-300" },
+  lime: {
+    light: "bg-lime-100",
+    dark: "bg-lime-900/30",
+    border: "border-lime-300",
+  },
+  amber: {
+    light: "bg-amber-100",
+    dark: "bg-amber-900/30",
+    border: "border-amber-300",
+  },
+  rose: {
+    light: "bg-rose-100",
+    dark: "bg-rose-900/30",
+    border: "border-rose-300",
+  },
+  violet: {
+    light: "bg-violet-100",
+    dark: "bg-violet-900/30",
+    border: "border-violet-300",
+  },
+  teal: {
+    light: "bg-teal-100",
+    dark: "bg-teal-900/30",
+    border: "border-teal-300",
+  },
+  emerald: {
+    light: "bg-emerald-100",
+    dark: "bg-emerald-900/30",
+    border: "border-emerald-300",
+  },
+  fuchsia: {
+    light: "bg-fuchsia-100",
+    dark: "bg-fuchsia-900/30",
+    border: "border-fuchsia-300",
+  },
+  slate: {
+    light: "bg-slate-100",
+    dark: "bg-slate-900/30",
+    border: "border-slate-300",
+  },
+  zinc: {
+    light: "bg-zinc-100",
+    dark: "bg-zinc-900/30",
+    border: "border-zinc-300",
+  },
+};
+
+/** 自定义标签颜色列表（用于遍历和 includes 检查） */
+export const CUSTOM_TAG_COLOR_LIST: CustomTagColor[] = [
+  "blue",
+  "green",
+  "yellow",
+  "red",
+  "purple",
+  "pink",
+  "orange",
+  "cyan",
+  "indigo",
+  "sky",
+  "lime",
+  "amber",
+  "rose",
+  "violet",
+  "teal",
+  "emerald",
+  "fuchsia",
+  "slate",
+  "zinc",
+];
+
+/** 自定义标签数量限�?*/
+export const CUSTOM_USAGE_TAG_LIMIT = 10;
+
+/** 用户配置设置 */
+export interface ProfileSettings {
+  customUsageTags?: CustomUsageTag[];
+  theme?: "light" | "dark" | "system";
+  language?: string;
+  aiEvolutionLevel?: "manual" | "semi" | "auto";
+  [key: string]: unknown;
+}
+
+/** 重分类设�?*/
+export interface ReclassifySettings {
+  enabled: boolean;
+  autoAcceptThreshold: number;
+  notifyOnSuggestion: boolean;
+  inbox_threshold?: number;
+  last_run_at?: string | null;
+  auto_run_weekly?: boolean;
+}
+
+/** 导入错误详情 */
+export interface ImportErrorDetail {
+  url: string;
+  title?: string;
+  error?: string;
+  reason?: string;
+  timestamp?: string;
+}
+
+/** 操作历史详情（用�?UI 展示�?*/
+export interface OperationDetail {
+  id: string;
+  action: OperationSnapshotAction;
+  folder_id: number | null;
+  folder_ids: number[] | null;
+  bookmark_ids: number[] | null;
+  before_state: Json;
+  after_state: Json;
+  reason: string | null;
+  is_undone: boolean;
+  created_at: string;
+  expires_at: string;
+  can_undo?: boolean;
+}
+
+/** 文件夹树节点 */
+export interface FolderTreeNode {
+  id: number;
+  name: string;
+  parent_id: number | null;
+  children: FolderTreeNode[];
+  bookmark_count?: number;
+  is_system?: boolean;
+  system_type?: string | null;
+}
+
+/** AI 文件夹设�?*/
+export interface AIFolderSettings {
+  autoClassify?: boolean;
+  autoCreateFolder?: boolean;
+  confidenceThreshold?: number;
+  maxFoldersPerDay?: number;
+  aiEvolutionLevel?: "manual" | "semi" | "auto";
+  autonomy_level?: number;
+  enable_auto_create?: boolean;
+  enable_auto_split?: boolean;
+  enable_auto_merge?: boolean;
+  enable_auto_rename?: boolean;
+  create_notification?: boolean;
+  report_interval?: string;
+  daily_create_limit?: number;
+}
+
+/** 分类结果数据 */
+export interface ClassificationResultData {
+  folder_id?: number | null;
+  folder_name?: string | null;
+  folderId?: number | null;
+  folderName?: string | null;
+  confidence?: number;
+  reason?: string;
+  tier?: number;
+  action?: string;
+  matcher_scores?: Record<string, number>;
+  ai_called?: boolean;
+  timestamp?: string;
+  suggestionId?: number;
+  [key: string]: unknown;
+}
+
+/** 导入历史选项 */
+export interface ImportHistoryOptions {
+  preserveFolders?: boolean;
+  skipDuplicates?: boolean;
+  validateUrls?: boolean;
+  [key: string]: unknown;
+}
