@@ -35,6 +35,14 @@ import {
   type StructuredSummary,
 } from "@/lib/classification/types/ai-summary";
 
+// V2.0 Summary Service Integration
+import {
+  getSummaryService,
+  isNewSummaryServiceEnabled,
+  type SummaryInput,
+  type SummaryResult,
+} from "@/lib/summary";
+
 export interface AIGenerateResult {
   summary: string;
   tags: string[];
@@ -522,11 +530,21 @@ function generateFallbackContent(
 /**
  * 生成 AI 摘要和标签
  * V2: 支持内容类型自适应摘要
+ * V2.0: 支持新 SummaryService（通过 AI_SUMMARY_V2 特性开关控制）
  * @param request - 包含标题、URL、描述和内容的请求对象
+ * @param options - 额外选项
  * @returns AI 生成的摘要、标签和内容类型
  */
 export async function generateAIContent(
   request: AIGenerateRequest,
+  options?: {
+    /** 书签 ID（用于新服务追踪） */
+    bookmarkId?: number;
+    /** 用户 ID（用于新服务追踪） */
+    userId?: string;
+    /** 强制使用旧服务 */
+    forceLegacy?: boolean;
+  },
 ): Promise<AIGenerateResult> {
   const { title, url, description, content, existingFolderNames } = request;
 
@@ -543,6 +561,36 @@ export async function generateAIContent(
     content,
   });
 
+  // 检查是否使用新的 SummaryService (V2.0)
+  const useNewService =
+    !options?.forceLegacy &&
+    isNewSummaryServiceEnabled() &&
+    options?.bookmarkId &&
+    options?.userId;
+
+  if (useNewService) {
+    try {
+      return await generateWithNewService(
+        request,
+        contentTypeResult,
+        options.bookmarkId!,
+        options.userId!,
+      );
+    } catch (error) {
+      // 新服务失败时，回退到旧实现
+      logger.warn(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          bookmarkId: options.bookmarkId,
+          action: "new_service_fallback",
+        },
+        "AI Generator: New service failed, falling back to legacy",
+      );
+      // 继续使用旧实现
+    }
+  }
+
+  // 旧实现逻辑
   try {
     logger.info(
       {
@@ -551,6 +599,7 @@ export async function generateAIContent(
         contentType: contentTypeResult.type,
         contentTypeConfidence: contentTypeResult.confidence,
         folderCount: existingFolderNames?.length || 0,
+        useNewService: false,
         action: "generate_start",
       },
       "AI Generator: Generating content with type detection",
@@ -602,6 +651,67 @@ export async function generateAIContent(
     );
     return fallback;
   }
+}
+
+/**
+ * 使用新的 SummaryService 生成摘要
+ * @internal
+ */
+async function generateWithNewService(
+  request: AIGenerateRequest,
+  contentTypeResult: ContentTypeResult,
+  bookmarkId: number,
+  userId: string,
+): Promise<AIGenerateResult> {
+  const { title, url, description, content } = request;
+
+  logger.info(
+    {
+      bookmarkId,
+      userId,
+      contentType: contentTypeResult.type,
+      action: "new_service_start",
+    },
+    "AI Generator: Using new SummaryService (V2.0)",
+  );
+
+  const summaryService = getSummaryService();
+
+  // 构建新服务输入
+  const summaryInput: SummaryInput = {
+    bookmarkId,
+    userId,
+    title,
+    url,
+    description,
+    content,
+    contentType: contentTypeResult.type,
+  };
+
+  // 调用新服务
+  const result: SummaryResult = await summaryService.generate(summaryInput, {
+    needsClassification: true,
+  });
+
+  logger.info(
+    {
+      bookmarkId,
+      provider: result.providerUsed,
+      latencyMs: result.latencyMs,
+      tagsCount: result.tags.length,
+      action: "new_service_success",
+    },
+    "AI Generator: New SummaryService success",
+  );
+
+  // 映射到旧格式
+  return {
+    summary: result.summary,
+    tags: result.tags,
+    contentType: result.contentType || contentTypeResult.type,
+    contentTypeConfidence:
+      result.contentTypeConfidence || contentTypeResult.confidence,
+  };
 }
 
 /**

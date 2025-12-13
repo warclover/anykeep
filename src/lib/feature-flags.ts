@@ -24,6 +24,19 @@ const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
 };
 
 // ============================================================================
+// 静态环境变量映射
+// ============================================================================
+// 重要：Next.js 在构建时静态分析 process.env.XXX
+// 动态 key 访问 (process.env[key]) 不会被替换，始终返回 undefined
+// 必须使用静态的完整变量名访问
+
+const ENV_VAR_MAP: Record<FeatureFlag, string | undefined> = {
+  snapshot: process.env.NEXT_PUBLIC_FEATURE_SNAPSHOT,
+  ai_summary: process.env.NEXT_PUBLIC_FEATURE_AI_SUMMARY,
+  smart_sorting: process.env.NEXT_PUBLIC_FEATURE_SMART_SORTING,
+};
+
+// ============================================================================
 // 功能开关服务
 // ============================================================================
 
@@ -39,9 +52,8 @@ class FeatureFlagService {
       return this.cache.get(flag)!;
     }
 
-    // 从环境变量读取
-    const envKey = `NEXT_PUBLIC_FEATURE_${flag.toUpperCase()}`;
-    const envValue = process.env[envKey];
+    // 从静态映射读取环境变量（Next.js 要求静态访问）
+    const envValue = ENV_VAR_MAP[flag];
 
     let enabled: boolean;
     if (envValue !== undefined) {

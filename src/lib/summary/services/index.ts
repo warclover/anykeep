@@ -33,5 +33,11 @@ export {
   resetQualityTrackerService,
 } from "./quality-tracker.service";
 
-// TODO: P6+ - 实现其他服务
-// export { ContentFetcherService } from './content-fetcher.service';
+// Content Fetcher Service
+export {
+  ContentFetcherService,
+  getContentFetcherService,
+  resetContentFetcherService,
+} from "./content-fetcher.service";
+
+export type { FetchOptions } from "./content-fetcher.service";

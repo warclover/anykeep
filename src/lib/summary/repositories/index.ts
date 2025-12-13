@@ -27,5 +27,9 @@ export {
   resetQualityLogRepository,
 } from "./quality-log.repository";
 
-// TODO: P5+ - 实现 SummaryRepository
-// export { SummaryRepository } from './summary.repository';
+// Summary Repository
+export {
+  SummaryRepository,
+  getSummaryRepository,
+  resetSummaryRepository,
+} from "./summary.repository";

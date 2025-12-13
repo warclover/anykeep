@@ -129,8 +129,14 @@ export {
   resetQualityTrackerService,
 } from "./services";
 
-// TODO: P6+ - 其他服务
-// export { ContentFetcherService } from './services';
+// Content Fetcher Service
+export {
+  ContentFetcherService,
+  getContentFetcherService,
+  resetContentFetcherService,
+} from "./services";
+
+export type { FetchOptions } from "./services";
 
 // ============================================================================
 // Repositories
@@ -155,8 +161,12 @@ export {
   resetQualityLogRepository,
 } from "./repositories";
 
-// TODO: P6+ - 其他仓库
-// export { SummaryRepository } from './repositories';
+// Summary Repository
+export {
+  SummaryRepository,
+  getSummaryRepository,
+  resetSummaryRepository,
+} from "./repositories";
 
 // ============================================================================
 // Prompts
