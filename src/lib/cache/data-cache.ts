@@ -1,9 +1,15 @@
 /**
  * SWR 风格的数据缓存层
  * stale-while-revalidate 策略实现
+ *
+ * V5.0: 新增本地持久化能力
+ * - 应用启动时从 localStorage 恢复缓存
+ * - 数据变更时自动持久化
  */
 
 import { DATA_CACHE_CONFIG } from "./cache-config";
+import { persistentStorage } from "./persistent-storage";
+import { cachePerformanceTracker } from "./cache-performance-tracker";
 
 /**
  * 缓存条目接口
@@ -42,6 +48,8 @@ export interface FetchResult<T> {
 /**
  * 数据缓存管理器
  * 实现 stale-while-revalidate 策略
+ *
+ * V5.0: 支持本地持久化
  */
 class DataCacheManager {
   private cache = new Map<string, CacheEntry<unknown>>();
@@ -50,15 +58,71 @@ class DataCacheManager {
     Set<(entry: CacheEntry<unknown> | undefined) => void>
   >();
   private pendingRequests = new Map<string, Promise<unknown>>();
+  private initialized = false;
+
+  constructor() {
+    // 延迟初始化：在首次访问时从 localStorage 恢复
+    // 这样可以确保在浏览器环境下才执行
+    this.restoreFromStorage();
+  }
+
+  /**
+   * V5.0: 从持久化存储恢复缓存
+   * V5.0.1: 集成性能追踪
+   */
+  private restoreFromStorage(): void {
+    if (this.initialized) return;
+    this.initialized = true;
+
+    // 开始性能追踪
+    cachePerformanceTracker.startSession("data-cache");
+
+    const restored = persistentStorage.restore();
+    const cacheHit = restored !== null && restored.size > 0;
+    const entryCount = restored?.size ?? 0;
+
+    if (cacheHit && restored) {
+      // 合并恢复的缓存
+      for (const [key, entry] of restored) {
+        this.cache.set(key, entry as CacheEntry<unknown>);
+      }
+    }
+
+    // 记录缓存恢复完成
+    cachePerformanceTracker.markCacheRestored(
+      "data-cache",
+      entryCount,
+      cacheHit,
+    );
+  }
+
+  /**
+   * V5.0: 触发持久化（仅持久化书签数据）
+   */
+  private triggerPersist(): void {
+    persistentStorage.persist(this.cache as Map<string, CacheEntry<unknown>>);
+  }
+
+  /**
+   * V5.0: 检查是否有指定键的缓存（同步）
+   */
+  hasSync(cacheKey: string): boolean {
+    this.restoreFromStorage();
+    return this.cache.has(cacheKey);
+  }
 
   /**
    * 同步获取缓存数据（不触发请求）
+   * V5.0: 自动从持久化存储恢复
    */
   getSync<T>(cacheKey: string): {
     data: T | undefined;
     isStale: boolean;
     timestamp: number | undefined;
   } {
+    // 确保已从持久化存储恢复
+    this.restoreFromStorage();
+
     const cached = this.cache.get(cacheKey) as CacheEntry<T> | undefined;
     const now = Date.now();
 
@@ -232,9 +296,19 @@ class DataCacheManager {
   }
 
   /**
-   * 设置缓存
+   * V5.1: 检查是否应该持久化该缓存键
    */
-  private setCache<T>(cacheKey: string, data: T): void {
+  private shouldPersist(cacheKey: string): boolean {
+    return cacheKey.startsWith("bookmarks:") || cacheKey.startsWith("folders:");
+  }
+
+  /**
+   * 设置缓存
+   * V5.0: 设置后自动持久化
+   * V5.1: 支持书签和文件夹数据持久化
+   * 注意：此方法现在是 public，供乐观更新和降级请求使用
+   */
+  setCache<T>(cacheKey: string, data: T): void {
     this.cache.set(cacheKey, {
       data,
       timestamp: Date.now(),
@@ -242,6 +316,11 @@ class DataCacheManager {
       error: undefined,
     });
     this.notifySubscribers(cacheKey);
+
+    // V5.1: 触发持久化（书签和文件夹数据）
+    if (this.shouldPersist(cacheKey)) {
+      this.triggerPersist();
+    }
   }
 
   /**
@@ -315,29 +394,48 @@ class DataCacheManager {
 
   /**
    * 使特定缓存失效
+   * V5.0: 失效后同步持久化
+   * V5.1: 支持书签和文件夹数据持久化
    */
   invalidate(pattern: string | RegExp): void {
+    let hasPersistableChange = false;
+
     if (typeof pattern === "string") {
+      if (this.shouldPersist(pattern)) {
+        hasPersistableChange = true;
+      }
       this.cache.delete(pattern);
       this.notifySubscribers(pattern);
     } else {
       // 正则匹配批量失效
       for (const key of this.cache.keys()) {
         if (pattern.test(key)) {
+          if (this.shouldPersist(key)) {
+            hasPersistableChange = true;
+          }
           this.cache.delete(key);
           this.notifySubscribers(key);
         }
       }
     }
+
+    // V5.1: 同步持久化（书签和文件夹）
+    if (hasPersistableChange) {
+      this.triggerPersist();
+    }
   }
 
   /**
    * 清除所有缓存
+   * V5.0: 同时清除持久化存储
    */
   clear(): void {
     const keys = Array.from(this.cache.keys());
     this.cache.clear();
     keys.forEach((key) => this.notifySubscribers(key));
+
+    // V5.0: 清除持久化存储
+    persistentStorage.clear();
   }
 
   /**

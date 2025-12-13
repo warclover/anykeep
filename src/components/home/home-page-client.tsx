@@ -15,6 +15,7 @@ import {
   useTransition,
   useEffect,
   useCallback,
+  useRef,
   lazy,
   Suspense,
 } from "react";
@@ -43,7 +44,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAbortableFetch } from "@/hooks/use-abortable-fetch";
-import { useBookmarksSWR } from "@/lib/cache";
+import { useBookmarksSWR, cachePerformanceTracker } from "@/lib/cache";
 import { Button } from "@/components/ui/button";
 import { BookmarkCard } from "@/components/bookmark/bookmark-card";
 import { FlipBookmarkCard } from "@/components/bookmark/bookmark-card-flip";
@@ -390,6 +391,20 @@ export function HomePageClient({
 
   // 兼容层：setBookmarks 改为使用 mutate（支持数组和函数两种形式）
   const setBookmarks = mutateBookmarks;
+
+  // V5.0.1: 追踪首次渲染性能（有缓存时标记首次渲染完成）
+  const hasTrackedFirstRenderRef = useRef(false);
+  useEffect(() => {
+    // 只在有数据且未追踪过时标记首次渲染
+    if (bookmarks.length > 0 && !hasTrackedFirstRenderRef.current) {
+      hasTrackedFirstRenderRef.current = true;
+      cachePerformanceTracker.markFirstRender("data-cache");
+      // 延迟结束会话，确保所有指标被记录
+      setTimeout(() => {
+        cachePerformanceTracker.endSession("data-cache");
+      }, 100);
+    }
+  }, [bookmarks]);
 
   // 监听新建收藏事件（乐观更新，将新书签插入列表头部）
   // 单独的 useEffect 以正确处理依赖项，避免闭包问题

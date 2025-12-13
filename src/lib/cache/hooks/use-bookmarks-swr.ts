@@ -8,6 +8,11 @@
  * - 首次访问：显示 loading，等待数据
  * - 再次访问：立即返回缓存，后台刷新
  * - 平台切换：立即返回缓存（如有），后台刷新
+ *
+ * V5.0: 本地持久化支持
+ * - 应用启动时从 localStorage 同步读取缓存
+ * - 有缓存时不显示 loading，立即显示数据
+ * - 后台静默刷新，用户无感知
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -52,6 +57,15 @@ interface UseBookmarksSWROptions {
 }
 
 /**
+ * V5.0 增强：快照类型，用于乐观更新的回滚
+ */
+interface CacheSnapshot {
+  data: BookmarkWithFolder[];
+  hasMore: boolean;
+  timestamp: number;
+}
+
+/**
  * Hook 返回值
  */
 interface UseBookmarksSWRResult {
@@ -82,6 +96,10 @@ interface UseBookmarksSWRResult {
   ) => void;
   removeCacheItem: (bookmarkId: number) => void;
   appendToCache: (newData: BookmarkWithFolder[], newHasMore: boolean) => void;
+
+  // V5.0 增强：乐观更新支持
+  createSnapshot: () => CacheSnapshot;
+  rollback: (snapshot: CacheSnapshot) => void;
 }
 
 /**
@@ -102,10 +120,45 @@ export function useBookmarksSWR(
   // 缓存键（包含用途标签）
   const cacheKey = generateCacheKey({ platform, sort, folder, usageTags });
 
-  // 状态
-  const [data, setData] = useState<BookmarkWithFolder[]>(initialData || []);
-  const [hasMore, setHasMore] = useState(false);
-  const [isLoading, setIsLoading] = useState(!initialData && enabled);
+  /**
+   * V5.0: 使用 useState 初始化函数同步读取缓存
+   * 这确保在首次渲染时就能显示缓存数据，无需等待 useEffect
+   */
+  const [data, setData] = useState<BookmarkWithFolder[]>(() => {
+    // 优先使用 initialData
+    if (initialData && initialData.length > 0) {
+      return initialData;
+    }
+    // 同步读取缓存（包括从 localStorage 恢复的数据）
+    const cached = dataCache.getSync<{
+      bookmarks: BookmarkWithFolder[];
+      hasMore: boolean;
+    }>(cacheKey);
+    return cached.data?.bookmarks || [];
+  });
+
+  const [hasMore, setHasMore] = useState(() => {
+    if (initialData && initialData.length > 0) {
+      return initialData.length === 50;
+    }
+    const cached = dataCache.getSync<{
+      bookmarks: BookmarkWithFolder[];
+      hasMore: boolean;
+    }>(cacheKey);
+    return cached.data?.hasMore || false;
+  });
+
+  /**
+   * V5.0: 只有在没有缓存数据时才显示 loading
+   * 有缓存时立即显示数据，后台静默刷新
+   */
+  const [isLoading, setIsLoading] = useState(() => {
+    if (!enabled) return false;
+    if (initialData && initialData.length > 0) return false;
+    // 检查是否有缓存（包括持久化缓存）
+    return !dataCache.hasSync(cacheKey);
+  });
+
   const [isValidating, setIsValidating] = useState(false);
   const [isStale, setIsStale] = useState(false);
   const [error, setError] = useState<Error | undefined>();
@@ -330,7 +383,22 @@ export function useBookmarksSWR(
   }, []); // 仅首次挂载时执行
 
   /**
+   * V5.0 增强：同步更新到持久化缓存
+   * 确保乐观更新后数据持久化到 localStorage
+   */
+  const syncToCache = useCallback(
+    (bookmarks: BookmarkWithFolder[], currentHasMore: boolean) => {
+      dataCache.setCache(cacheKey, {
+        bookmarks,
+        hasMore: currentHasMore,
+      });
+    },
+    [cacheKey],
+  );
+
+  /**
    * 乐观更新（支持数组或函数两种形式）
+   * V5.0 增强：同步更新到内存缓存和 localStorage
    */
   const mutate = useCallback(
     (
@@ -338,13 +406,22 @@ export function useBookmarksSWR(
         | BookmarkWithFolder[]
         | ((data: BookmarkWithFolder[]) => BookmarkWithFolder[]),
     ) => {
+      let newData: BookmarkWithFolder[];
       if (typeof dataOrUpdater === "function") {
-        setData((prev) => dataOrUpdater(prev));
+        setData((prev) => {
+          newData = dataOrUpdater(prev);
+          // 同步到持久化缓存
+          syncToCache(newData, hasMore);
+          return newData;
+        });
       } else {
-        setData(dataOrUpdater);
+        newData = dataOrUpdater;
+        setData(newData);
+        // 同步到持久化缓存
+        syncToCache(newData, hasMore);
       }
     },
-    [],
+    [hasMore, syncToCache],
   );
 
   /**
@@ -448,35 +525,94 @@ export function useBookmarksSWR(
 
   /**
    * 更新缓存中的单条数据（兼容现有接口）
+   * V5.0 增强：同步更新到持久化缓存
    */
   const updateCacheItem = useCallback(
     (
       bookmarkId: number,
       updater: (bookmark: BookmarkWithFolder) => BookmarkWithFolder,
     ) => {
-      setData((prev) =>
-        prev.map((b) => (b.id === bookmarkId ? updater(b) : b)),
-      );
+      setData((prev) => {
+        const newData = prev.map((b) => (b.id === bookmarkId ? updater(b) : b));
+        // 同步到持久化缓存
+        syncToCache(newData, hasMore);
+        return newData;
+      });
     },
-    [],
+    [hasMore, syncToCache],
   );
 
   /**
    * 从缓存中移除单条数据（兼容现有接口）
+   * V5.0 增强：同步更新到持久化缓存
    */
-  const removeCacheItem = useCallback((bookmarkId: number) => {
-    setData((prev) => prev.filter((b) => b.id !== bookmarkId));
-  }, []);
+  const removeCacheItem = useCallback(
+    (bookmarkId: number) => {
+      setData((prev) => {
+        const newData = prev.filter((b) => b.id !== bookmarkId);
+        // 同步到持久化缓存
+        syncToCache(newData, hasMore);
+        return newData;
+      });
+    },
+    [hasMore, syncToCache],
+  );
 
   /**
    * 追加数据到缓存（兼容现有接口）
+   * V5.0 增强：同步更新到持久化缓存
    */
   const appendToCache = useCallback(
     (newData: BookmarkWithFolder[], newHasMore: boolean) => {
-      setData((prev) => [...prev, ...newData]);
+      setData((prev) => {
+        const mergedData = [...prev, ...newData];
+        // 同步到持久化缓存
+        syncToCache(mergedData, newHasMore);
+        return mergedData;
+      });
       setHasMore(newHasMore);
     },
-    [],
+    [syncToCache],
+  );
+
+  /**
+   * V5.0 增强：创建快照
+   * 在执行乐观更新前调用，用于失败时回滚
+   *
+   * 使用示例：
+   * const snapshot = createSnapshot();
+   * removeCacheItem(bookmarkId);
+   * try {
+   *   await deleteBookmarkAPI(bookmarkId);
+   * } catch (error) {
+   *   rollback(snapshot);
+   *   throw error;
+   * }
+   */
+  const createSnapshot = useCallback((): CacheSnapshot => {
+    return {
+      data: [...data], // 浅拷贝数组
+      hasMore,
+      timestamp: Date.now(),
+    };
+  }, [data, hasMore]);
+
+  /**
+   * V5.0 增强：从快照回滚
+   * API 请求失败时恢复到之前的状态
+   */
+  const rollback = useCallback(
+    (snapshot: CacheSnapshot) => {
+      setData(snapshot.data);
+      setHasMore(snapshot.hasMore);
+      // 同步回滚到持久化缓存
+      syncToCache(snapshot.data, snapshot.hasMore);
+      // eslint-disable-next-line no-console -- 回滚操作需要日志记录
+      console.log(
+        `[useBookmarksSWR] Rolled back to snapshot from ${new Date(snapshot.timestamp).toISOString()}`,
+      );
+    },
+    [syncToCache],
   );
 
   return {
@@ -493,5 +629,10 @@ export function useBookmarksSWR(
     updateCacheItem,
     removeCacheItem,
     appendToCache,
+    createSnapshot,
+    rollback,
   };
 }
+
+// 导出快照类型供外部使用
+export type { CacheSnapshot };

@@ -1,6 +1,8 @@
 /**
  * 页面数据获取 Hooks
  * 为各页面提供客户端数据获取能力，支持 Keep-Alive 模式
+ *
+ * V5.1: 收藏夹数据支持本地持久化缓存
  */
 
 "use client";
@@ -9,6 +11,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useUser } from "@/contexts/user-context";
 import { clientLogger } from "@/lib/client-logger";
+import { dataCache, CACHE_KEYS } from "@/lib/cache";
 import type { Bookmark, Folder, Platform } from "@/types/supabase";
 import type { UserSettings } from "@/types/user-settings";
 import { DEFAULT_USER_SETTINGS } from "@/types/user-settings";
@@ -40,15 +43,37 @@ interface FoldersData {
 
 /**
  * 收藏夹页面数据获取 Hook
+ * V5.1: 支持本地持久化缓存，启动即显示
  */
 export function useFoldersData() {
   const { user } = useUser();
-  const [state, setState] = useState<DataState<FoldersData>>({
-    data: null,
-    isLoading: true,
-    error: null,
-    lastFetched: 0,
+
+  // V5.1: 生成缓存键
+  const cacheKey = user ? CACHE_KEYS.folders(user.id) : "";
+
+  // V5.1: 同步读取缓存（包括从 localStorage 恢复的数据）
+  const [state, setState] = useState<DataState<FoldersData>>(() => {
+    if (user && cacheKey) {
+      const cached = dataCache.getSync<FoldersData>(cacheKey);
+      if (cached.data) {
+        return {
+          data: cached.data,
+          isLoading: false,
+          error: null,
+          lastFetched: cached.timestamp || 0,
+        };
+      }
+    }
+    return {
+      data: null,
+      isLoading: true,
+      error: null,
+      lastFetched: 0,
+    };
   });
+
+  // V5.1: 后台刷新状态
+  const [isValidating, setIsValidating] = useState(false);
 
   const fetchData = useCallback(async () => {
     if (!user) {
@@ -56,7 +81,15 @@ export function useFoldersData() {
       return;
     }
 
-    setState((prev) => ({ ...prev, isLoading: true, error: null }));
+    const currentCacheKey = CACHE_KEYS.folders(user.id);
+
+    // V5.1: 有缓存时只设置 isValidating，不阻塞 UI
+    const hasCache = dataCache.hasSync(currentCacheKey);
+    if (hasCache) {
+      setIsValidating(true);
+    } else {
+      setState((prev) => ({ ...prev, isLoading: true, error: null }));
+    }
 
     try {
       const supabase = createClient();
@@ -130,11 +163,16 @@ export function useFoldersData() {
 
       if (bookmarksError) throw bookmarksError;
 
+      const newData: FoldersData = {
+        folders: foldersWithStats,
+        recentBookmarks: recentBookmarks || [],
+      };
+
+      // V5.1: 存入缓存（自动持久化到 localStorage）
+      dataCache.setCache(currentCacheKey, newData);
+
       setState({
-        data: {
-          folders: foldersWithStats,
-          recentBookmarks: recentBookmarks || [],
-        },
+        data: newData,
         isLoading: false,
         error: null,
         lastFetched: Date.now(),
@@ -145,6 +183,8 @@ export function useFoldersData() {
         isLoading: false,
         error: err instanceof Error ? err.message : "加载失败",
       }));
+    } finally {
+      setIsValidating(false);
     }
   }, [user]);
 
@@ -155,6 +195,7 @@ export function useFoldersData() {
 
   return {
     ...state,
+    isValidating, // V5.1: 新增后台刷新状态
     refetch: fetchData,
   };
 }

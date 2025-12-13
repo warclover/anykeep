@@ -44,3 +44,9 @@ export {
   shouldCachePage,
   getPagePriority,
 } from "./keep-alive";
+
+// V5.0.1: 性能追踪
+export {
+  cachePerformanceTracker,
+  useCachePerformanceTracking,
+} from "./cache-performance-tracker";
