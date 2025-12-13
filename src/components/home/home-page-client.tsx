@@ -49,6 +49,7 @@ import { BookmarkCard } from "@/components/bookmark/bookmark-card";
 import { FlipBookmarkCard } from "@/components/bookmark/bookmark-card-flip";
 import { TrashBookmarkCard } from "@/components/bookmark/trash-bookmark-card";
 import { BrowserBookmarkVirtualList } from "@/components/bookmark/browser-bookmark-virtual-list";
+import { VirtualBookmarkList } from "@/components/bookmark/virtual-bookmark-list";
 import { BrowserBookmarkEmptyState } from "@/components/bookmark/browser-bookmark-empty-state";
 import { TrashToolbar } from "@/components/trash/trash-toolbar";
 import { CreateBookmarkDialog } from "@/components/bookmark/create-bookmark-dialog";
@@ -1538,42 +1539,21 @@ export function HomePageClient({
                   </div>
                 )}
 
-                {/* 列表视图（list） */}
-                {viewMode === "list" && (
-                  <div className="space-y-4">
-                    {bookmarks.map((bookmark) => (
-                      <BookmarkCard
-                        key={bookmark.id}
-                        bookmark={bookmark}
-                        onEdit={handleEdit}
-                        onDelete={handleDelete}
-                        onToggleRead={handleToggleRead}
-                        isSelectionMode={isSelectionMode}
-                        isSelected={selectedIds.has(bookmark.id)}
-                        onToggleSelect={toggleSelect}
-                        variant="list"
-                      />
-                    ))}
-                  </div>
-                )}
-
-                {/* 紧凑视图（compact） */}
-                {viewMode === "compact" && (
-                  <div className="space-y-2">
-                    {bookmarks.map((bookmark) => (
-                      <BookmarkCard
-                        key={bookmark.id}
-                        bookmark={bookmark}
-                        onEdit={handleEdit}
-                        onDelete={handleDelete}
-                        onToggleRead={handleToggleRead}
-                        isSelectionMode={isSelectionMode}
-                        isSelected={selectedIds.has(bookmark.id)}
-                        onToggleSelect={toggleSelect}
-                        variant="compact"
-                      />
-                    ))}
-                  </div>
+                {/* V4.2.1: 列表/紧凑视图使用虚拟滚动 */}
+                {(viewMode === "list" || viewMode === "compact") && (
+                  <VirtualBookmarkList
+                    bookmarks={bookmarks}
+                    viewMode={viewMode}
+                    hasMore={hasMore}
+                    isLoadingMore={isLoadingMore}
+                    onLoadMore={handleLoadMore}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                    onToggleRead={handleToggleRead}
+                    isSelectionMode={isSelectionMode}
+                    selectedIds={selectedIds}
+                    onToggleSelect={toggleSelect}
+                  />
                 )}
               </>
             )}
