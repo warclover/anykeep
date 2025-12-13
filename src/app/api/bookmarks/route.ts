@@ -42,6 +42,15 @@ import { BOOKMARK, STORAGE } from "@/lib/constants/messages";
 import { PerformanceMonitor } from "@/lib/utils/performance-monitor";
 
 /**
+ * V4.2.1: HTTP 缓存配置
+ * 书签数据更新较频繁，使用较短的缓存时间
+ * - private: 仅客户端缓存
+ * - max-age=30: 30 秒内使用缓存
+ * - stale-while-revalidate=60: 缓存过期后 1 分钟内仍可使用旧数据
+ */
+const CACHE_CONTROL_HEADER = "private, max-age=30, stale-while-revalidate=60";
+
+/**
  * 异步补充书签标题（不阻塞主流程）
  * 当用户未输入标题时，后台爬取网页获取标题
  * @param bookmarkId - 书签ID
@@ -947,7 +956,7 @@ export async function GET(request: NextRequest) {
 
     // 3. 构建查询
     // V4.2.1: 精简字段选择，减少响应大小
-    // 列表视图只需要显示必要字段，embedding/summary 等大字段按需单独获取
+    // 排除 embedding 大字段，保留卡片显示和翻转模式所需字段
     const listFields = `
       id,
       title,
@@ -955,12 +964,20 @@ export async function GET(request: NextRequest) {
       platform,
       cover_url,
       description,
-      site_name,
+      source_name,
       rating,
       is_invalid,
       is_in_trash,
+      is_read,
+      is_starred,
+      is_locked,
       folder_id,
       user_tags,
+      ai_summary,
+      ai_tags,
+      ai_content_type,
+      status,
+      pending_cluster,
       created_at,
       updated_at,
       folders(name)
@@ -1070,7 +1087,16 @@ export async function GET(request: NextRequest) {
 
     // 输出性能报告
     const perfReport = monitor.getReport();
-    const responseSize = JSON.stringify(bookmarks || []).length;
+
+    // V4.2.1: 安全计算响应大小，处理 BigInt 等不可序列化的类型
+    let responseSize = 0;
+    try {
+      responseSize = JSON.stringify(bookmarks || [], (_, value) =>
+        typeof value === "bigint" ? value.toString() : value,
+      ).length;
+    } catch {
+      responseSize = -1; // 表示无法计算
+    }
 
     logger.info(
       {
@@ -1090,19 +1116,36 @@ export async function GET(request: NextRequest) {
       "Bookmarks query completed",
     );
 
-    return successResponse({
-      bookmarks: bookmarks || [],
-      pagination: {
-        total: count || 0,
-        limit,
-        nextCursor,
-        hasMore,
+    // V4.2.1: 返回带缓存头的响应
+    const responseData = {
+      success: true,
+      data: {
+        bookmarks: bookmarks || [],
+        pagination: {
+          total: count || 0,
+          limit,
+          nextCursor,
+          hasMore,
+        },
+        // 开发环境返回性能数据
+        ...(process.env.NODE_ENV === "development" && {
+          _performance: monitor.toJSON(),
+          _responseSize: responseSize,
+        }),
       },
-      // 开发环境返回性能数据
-      ...(process.env.NODE_ENV === "development" && {
-        _performance: monitor.toJSON(),
-        _responseSize: responseSize,
-      }),
+    };
+
+    // V4.2.1: 使用自定义序列化处理 BigInt 等特殊类型
+    const jsonString = JSON.stringify(responseData, (_, value) =>
+      typeof value === "bigint" ? Number(value) : value,
+    );
+
+    return new Response(jsonString, {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": CACHE_CONTROL_HEADER,
+      },
     });
   } catch (error) {
     const perfReport = monitor.getReport();

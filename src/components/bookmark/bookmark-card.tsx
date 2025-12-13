@@ -1,10 +1,11 @@
 /**
  * 收藏卡片组件
+ * V4.2.1: 使用 React.memo 优化，避免列表中其他卡片变化时的不必要重渲染
  */
 
 "use client";
 
-import { useState } from "react";
+import { useState, memo } from "react";
 import { useRouter } from "next/navigation";
 import {
   MoreVertical,
@@ -92,7 +93,59 @@ interface BookmarkCardProps {
 // 判断是否是正在获取中的占位符标题
 const isLoadingTitle = (title: string) => title === "正在获取标题...";
 
-export function BookmarkCard({
+/**
+ * V4.2.1: 自定义比较函数，避免不必要的重渲染
+ * 只比较会影响渲染的关键属性
+ */
+function arePropsEqual(
+  prevProps: BookmarkCardProps,
+  nextProps: BookmarkCardProps,
+): boolean {
+  // 比较书签核心数据
+  const prevBookmark = prevProps.bookmark;
+  const nextBookmark = nextProps.bookmark;
+
+  if (
+    prevBookmark.id !== nextBookmark.id ||
+    prevBookmark.title !== nextBookmark.title ||
+    prevBookmark.cover_url !== nextBookmark.cover_url ||
+    prevBookmark.platform !== nextBookmark.platform ||
+    prevBookmark.is_read !== nextBookmark.is_read ||
+    prevBookmark.is_starred !== nextBookmark.is_starred ||
+    prevBookmark.is_locked !== nextBookmark.is_locked ||
+    prevBookmark.rating !== nextBookmark.rating ||
+    prevBookmark.status !== nextBookmark.status ||
+    prevBookmark.pending_cluster !== nextBookmark.pending_cluster ||
+    prevBookmark.ai_summary !== nextBookmark.ai_summary ||
+    prevBookmark.ai_content_type !== nextBookmark.ai_content_type
+  ) {
+    return false;
+  }
+
+  // 比较数组类型（简单长度比较，避免深度比较开销）
+  if (
+    prevBookmark.ai_tags?.length !== nextBookmark.ai_tags?.length ||
+    prevBookmark.user_tags?.length !== nextBookmark.user_tags?.length
+  ) {
+    return false;
+  }
+
+  // 比较其他 props
+  if (
+    prevProps.isSelectionMode !== nextProps.isSelectionMode ||
+    prevProps.isSelected !== nextProps.isSelected ||
+    prevProps.variant !== nextProps.variant
+  ) {
+    return false;
+  }
+
+  // 回调函数引用比较（如果父组件使用 useCallback 则稳定）
+  // 这里不比较回调函数，因为它们通常是稳定的
+
+  return true;
+}
+
+export const BookmarkCard = memo(function BookmarkCard({
   bookmark,
   onEdit,
   onDelete,
@@ -955,4 +1008,4 @@ export function BookmarkCard({
       </Card>
     </div>
   );
-}
+}, arePropsEqual);
