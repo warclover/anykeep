@@ -96,7 +96,12 @@ async function getInitialBookmarks(
 }
 
 interface HomePageProps {
-  searchParams: Promise<{ platform?: string; sort?: string; folder?: string }>;
+  searchParams: Promise<{
+    platform?: string;
+    sort?: string;
+    folder?: string;
+    smartList?: string;
+  }>;
 }
 
 export default async function HomePage({ searchParams }: HomePageProps) {
@@ -107,6 +112,16 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const platform = params.platform || "";
   const sort = params.sort || "created_desc";
   const folder = params.folder || "";
+  const smartListId = params.smartList ? parseInt(params.smartList, 10) : null;
+
+  // 智能列表视图模式：不预加载书签，由客户端组件处理
+  if (smartListId && !isNaN(smartListId)) {
+    return (
+      <ErrorBoundary>
+        <HomePageClient smartListId={smartListId} />
+      </ErrorBoundary>
+    );
+  }
 
   const { bookmarks, error } = await getInitialBookmarks(
     platform,

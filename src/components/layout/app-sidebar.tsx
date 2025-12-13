@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { useUnreadCount } from "@/hooks/use-unread-count";
 import { MessageBadge } from "@/components/messages";
+import { SmartListSection } from "@/components/smart-list";
 import { cn } from "@/lib/utils";
 import {
   useSafeNavigation,
@@ -159,6 +160,9 @@ export function AppSidebar() {
               );
             })}
           </div>
+
+          {/* 智能列表 */}
+          <SmartListSection />
 
           {/* 系统文件夹 */}
           <div>

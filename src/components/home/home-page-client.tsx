@@ -111,6 +111,7 @@ import {
   FLIP_CARD_STORAGE_KEY,
 } from "./constants";
 import type { ViewMode, LayoutMode } from "./constants";
+import { SmartListView } from "@/components/smart-list";
 
 // 扩展的书签类型（包含文件夹信息）
 type BookmarkWithFolder = Bookmark & {
@@ -124,6 +125,8 @@ interface HomePageClientProps {
   // 客户端导航传入的参数（优先于 searchParams）
   urlFolder?: string;
   urlPlatform?: string;
+  // 智能列表模式：传入 smartListId 时显示智能列表视图
+  smartListId?: number | null;
 }
 
 // 使用提取的常量（保持向后兼容的别名）
@@ -135,6 +138,7 @@ export function HomePageClient({
   error,
   urlFolder: propFolder,
   urlPlatform: propPlatform,
+  smartListId,
 }: HomePageClientProps = {}) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -1169,6 +1173,11 @@ export function HomePageClient({
       setIsBatchCreatingSnapshot(false);
     }
   };
+
+  // 智能列表模式：显示专属视图
+  if (smartListId) {
+    return <SmartListView smartListId={smartListId} />;
+  }
 
   return (
     <div className="flex flex-col h-full">
