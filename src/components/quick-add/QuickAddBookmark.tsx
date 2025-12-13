@@ -1,0 +1,300 @@
+"use client";
+
+/**
+ * Quick Add Bookmark - Main Component
+ *
+ * The main controller component that manages the quick add bookmark flow.
+ * Integrates input, preview, success, and drawer components.
+ */
+
+import { useCallback, useRef } from "react";
+import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+
+// Hooks
+import {
+  useQuickAddState,
+  type BookmarkMetadata,
+} from "./hooks/useQuickAddState";
+import {
+  useKeyboardShortcuts,
+  KEYBOARD_SHORTCUTS,
+} from "./hooks/useKeyboardShortcuts";
+
+// Inline components
+import { QuickAddInput } from "./inline/QuickAddInput";
+import { QuickAddPreview, QuickAddError } from "./inline/QuickAddPreview";
+import { QuickAddSuccess } from "./inline/QuickAddSuccess";
+
+// Drawer (will be implemented later)
+import { DetailDrawer } from "./drawer/DetailDrawer";
+
+export interface QuickAddBookmarkProps {
+  onBookmarkCreated?: (bookmark: unknown) => void;
+  className?: string;
+}
+
+export function QuickAddBookmark({
+  onBookmarkCreated,
+  className,
+}: QuickAddBookmarkProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // State management
+  const { state, actions } = useQuickAddState();
+  const {
+    mode,
+    drawerState,
+    inputValue,
+    extractedUrl,
+    metadata,
+    metadataError,
+    folderId,
+    tags,
+    notes,
+    isSubmitting,
+  } = state;
+
+  // Fetch metadata when URL is detected
+  const fetchMetadata = useCallback(
+    async (url: string) => {
+      actions.startLoading();
+
+      try {
+        const response = await fetch(
+          `/api/bookmarks/metadata?url=${encodeURIComponent(url)}`,
+        );
+
+        if (!response.ok) {
+          throw new Error("无法获取网页信息");
+        }
+
+        const data = await response.json();
+
+        const bookmarkMetadata: BookmarkMetadata = {
+          title: data.title || url,
+          description: data.description,
+          coverUrl: data.coverUrl,
+          sourceName: data.sourceName,
+          author: data.author,
+          publishTime: data.publishTime,
+          wordCount: data.wordCount,
+          imageCount: data.imageCount,
+          platform: data.platform,
+          favicon: data.favicon,
+        };
+
+        actions.showPreview(bookmarkMetadata);
+      } catch (error) {
+        console.error("Failed to fetch metadata:", error);
+        // Still show preview with URL as title
+        actions.showPreview({
+          title: url,
+          platform: "DEFAULT",
+        });
+      }
+    },
+    [actions],
+  );
+
+  // Handle URL detected from input
+  const handleUrlDetected = useCallback(
+    (url: string) => {
+      actions.setExtractedUrl(url);
+      fetchMetadata(url);
+    },
+    [actions, fetchMetadata],
+  );
+
+  // Submit bookmark
+  const handleSubmit = useCallback(async () => {
+    if (!extractedUrl || isSubmitting) return;
+
+    actions.setSubmitting(true);
+
+    try {
+      const response = await fetch("/api/bookmarks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: extractedUrl,
+          title: metadata?.title,
+          description: metadata?.description,
+          folderId: folderId,
+          userTags: tags.length > 0 ? tags : undefined,
+          notes: notes || undefined,
+          coverUrl: metadata?.coverUrl,
+          sourceName: metadata?.sourceName,
+          author: metadata?.author,
+          publishTime: metadata?.publishTime,
+          wordCount: metadata?.wordCount,
+          imageCount: metadata?.imageCount,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "创建失败");
+      }
+
+      const newBookmark = await response.json();
+
+      // Show success state
+      actions.showSuccess("已收藏！");
+
+      // Trigger callback
+      onBookmarkCreated?.(newBookmark);
+
+      // Dispatch custom event for other components
+      window.dispatchEvent(
+        new CustomEvent("bookmarkCreated", { detail: newBookmark }),
+      );
+
+      // Close drawer if open
+      if (drawerState === "open") {
+        actions.closeDrawer();
+      }
+    } catch (error) {
+      console.error("Failed to create bookmark:", error);
+      toast.error(error instanceof Error ? error.message : "创建失败");
+      actions.setSubmitting(false);
+    }
+  }, [
+    extractedUrl,
+    isSubmitting,
+    metadata,
+    folderId,
+    tags,
+    notes,
+    actions,
+    onBookmarkCreated,
+    drawerState,
+  ]);
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts({
+    enabled: mode === "preview" && drawerState === "closed",
+    handlers: {
+      onEnter: handleSubmit,
+      onTab: actions.openDrawer,
+      onEscape: actions.handleCancel,
+      onCtrlEnter: () => {
+        actions.openDrawer();
+      },
+    },
+    targetRef: containerRef,
+  });
+
+  // Handle success dismiss
+  const handleSuccessDismiss = useCallback(() => {
+    actions.reset();
+  }, [actions]);
+
+  // Handle retry on error
+  const handleRetry = useCallback(() => {
+    if (extractedUrl) {
+      fetchMetadata(extractedUrl);
+    }
+  }, [extractedUrl, fetchMetadata]);
+
+  // Render based on mode
+  const renderContent = () => {
+    switch (mode) {
+      case "idle":
+      case "focused":
+      case "loading":
+        return (
+          <QuickAddInput
+            ref={inputRef}
+            value={inputValue}
+            onChange={actions.setInputValue}
+            onFocus={actions.handleFocus}
+            onBlur={actions.handleBlur}
+            onUrlDetected={handleUrlDetected}
+            mode={mode}
+          />
+        );
+
+      case "preview":
+        return metadata ? (
+          <QuickAddPreview
+            metadata={metadata}
+            onSubmit={handleSubmit}
+            onOpenDrawer={actions.openDrawer}
+            isSubmitting={isSubmitting}
+          />
+        ) : null;
+
+      case "error":
+        return (
+          <QuickAddError
+            error={metadataError || "发生错误"}
+            onRetry={handleRetry}
+            onCancel={actions.handleCancel}
+          />
+        );
+
+      case "success":
+        return (
+          <QuickAddSuccess
+            message="已收藏！"
+            folderName={folderId ? undefined : "待整理"}
+            onDismiss={handleSuccessDismiss}
+          />
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <>
+      <div
+        ref={containerRef}
+        className={cn(
+          "quick-add-bookmark",
+          "w-full max-w-3xl mx-auto",
+          className,
+        )}
+        data-mode={mode}
+      >
+        {renderContent()}
+
+        {/* Keyboard hints - show on first use */}
+        {mode === "preview" && (
+          <div className="flex justify-center gap-4 mt-2 text-xs text-gray-400">
+            <span>
+              <kbd className="px-1.5 py-0.5 bg-gray-100 rounded text-[10px]">
+                {KEYBOARD_SHORTCUTS.quickSave.display}
+              </kbd>{" "}
+              {KEYBOARD_SHORTCUTS.quickSave.description}
+            </span>
+            <span>
+              <kbd className="px-1.5 py-0.5 bg-gray-100 rounded text-[10px]">
+                {KEYBOARD_SHORTCUTS.openDrawer.display}
+              </kbd>{" "}
+              {KEYBOARD_SHORTCUTS.openDrawer.description}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Detail Drawer */}
+      <DetailDrawer
+        isOpen={drawerState === "open" || drawerState === "opening"}
+        onClose={actions.closeDrawer}
+        metadata={metadata}
+        folderId={folderId}
+        tags={tags}
+        notes={notes}
+        onFolderChange={actions.setFolderId}
+        onTagsChange={actions.setTags}
+        onNotesChange={actions.setNotes}
+        onSubmit={handleSubmit}
+        isSubmitting={isSubmitting}
+      />
+    </>
+  );
+}

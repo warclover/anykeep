@@ -62,6 +62,7 @@ import { BrowserBookmarkImportDialog } from "@/components/browser-bookmark";
 import { EmptyState } from "@/components/bookmark/empty-state";
 import { UsageTagFilter } from "@/components/layout/usage-tag-filter";
 import { useSnapshotFeature } from "@/components/snapshot";
+import { QuickAddBookmark } from "@/components/quick-add";
 
 // 懒加载 ReclassifyBanner（非首屏关键组件）
 const ReclassifyBanner = lazy(() =>
@@ -1470,6 +1471,20 @@ export function HomePageClient({
 
       {/* 内容区域 */}
       <div className="flex-1 overflow-auto px-4 md:px-8 py-0.5 md:py-1">
+        {/* 快速添加收藏组件（仅在非垃圾箱页面显示） */}
+        {!isTrashFolder && (
+          <div className="mb-6 max-w-3xl mx-auto">
+            <QuickAddBookmark
+              onBookmarkCreated={() => {
+                // 刷新列表
+                if (_refetch) {
+                  _refetch();
+                }
+              }}
+            />
+          </div>
+        )}
+
         {/* V4.2 智能分类横幅（懒加载） */}
         <Suspense fallback={null}>
           <ReclassifyBanner className="mb-4" />
