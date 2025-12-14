@@ -63,6 +63,7 @@ import { EmptyState } from "@/components/bookmark/empty-state";
 import { UsageTagFilter } from "@/components/layout/usage-tag-filter";
 import { useSnapshotFeature } from "@/components/snapshot";
 import { QuickAddBookmark } from "@/components/quick-add";
+import { prefetchCustomUsageTags } from "@/hooks/use-custom-usage-tags";
 
 // 懒加载 ReclassifyBanner（非首屏关键组件）
 const ReclassifyBanner = lazy(() =>
@@ -142,15 +143,20 @@ export function HomePageClient({
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  // V10.1: 预加载自定义用途标签（详情页需要，提前加载消除延迟）
+  useEffect(() => {
+    prefetchCustomUsageTags();
+  }, []);
+
   // 本地状态管理（用于客户端平台切换，避免 SSR）
   // 客户端导航时使用 props，SSR 时使用 searchParams
-  const urlPlatform = propPlatform ?? searchParams.get("platform") ?? "";
-  const urlSort = searchParams.get("sort") || "created_desc";
-  const urlFolder = propFolder ?? searchParams.get("folder") ?? "";
-  const urlUsageTags = searchParams.get("usageTags") || "";
+  const urlPlatform = propPlatform ?? searchParams?.get("platform") ?? "";
+  const urlSort = searchParams?.get("sort") || "created_desc";
+  const urlFolder = propFolder ?? searchParams?.get("folder") ?? "";
+  const urlUsageTags = searchParams?.get("usageTags") || "";
 
   // V10.0: 智能列表 ID（客户端导航时从 URL 读取，SSR 时从 props 读取）
-  const urlSmartListParam = searchParams.get("smartList");
+  const urlSmartListParam = searchParams?.get("smartList");
   const urlSmartListId = urlSmartListParam
     ? parseInt(urlSmartListParam, 10)
     : null;
@@ -598,7 +604,7 @@ export function HomePageClient({
    */
   const handlePlatformChange = useCallback(
     (platformValue: string) => {
-      const params = new URLSearchParams(searchParams);
+      const params = new URLSearchParams(searchParams?.toString() ?? "");
       if (platformValue) {
         params.set("platform", platformValue);
       } else {
@@ -615,7 +621,7 @@ export function HomePageClient({
    */
   const handleSortChange = useCallback(
     (sortValue: string) => {
-      const params = new URLSearchParams(searchParams);
+      const params = new URLSearchParams(searchParams?.toString() ?? "");
       params.set("sort", sortValue);
       router.replace(`/home?${params.toString()}`);
     },
@@ -637,7 +643,7 @@ export function HomePageClient({
       }
 
       // 2. 更新 URL（不触发导航）
-      const params = new URLSearchParams(searchParams);
+      const params = new URLSearchParams(searchParams?.toString() ?? "");
       if (platformValue) {
         params.set("platform", platformValue);
       } else {
@@ -724,7 +730,7 @@ export function HomePageClient({
     }
 
     // 2. 更新 URL（不触发导航）
-    const params = new URLSearchParams(searchParams);
+    const params = new URLSearchParams(searchParams?.toString() ?? "");
     params.set("sort", sortValue);
     const newUrl = `/home?${params.toString()}`;
     window.history.replaceState(

@@ -1,0 +1,368 @@
+/**
+ * 用途标签内联编辑器
+ * 支持点击即保存的 Toggle 模式，无需额外的保存/取消按钮
+ *
+ * 特性：
+ * - 乐观更新：点击立即更新 UI
+ * - 错误回滚：保存失败时恢复原状态
+ * - 微妙动画：选中/取消时的视觉反馈
+ * - 静默成功：成功时不显示 Toast，失败时才提示
+ *
+ * @version 1.0.0
+ * @since 2025-12-14
+ */
+
+"use client";
+
+import { useState, useCallback, useMemo, useRef, useEffect } from "react";
+import {
+  Plus,
+  Loader2,
+  X,
+  Share2,
+  RefreshCcw,
+  Award,
+  Eye,
+  type LucideIcon,
+} from "lucide-react";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import {
+  USAGE_TAG_PRESETS,
+  getAllUsageTags,
+  type UnifiedUsageTag,
+} from "@/lib/constants/usage-tags";
+
+// 图标名称到组件的映射
+const ICON_MAP: Record<string, LucideIcon> = {
+  Share2,
+  RefreshCcw,
+  Award,
+  Eye,
+};
+import type { CustomUsageTag } from "@/types/supabase";
+import { AddCustomUsageTagDialog } from "./add-custom-usage-tag-dialog";
+import { useCustomUsageTags } from "@/hooks/use-custom-usage-tags";
+
+interface UsageTagInlineEditorProps {
+  /** 书签 ID */
+  bookmarkId: number;
+  /** 当前已选中的用途标签值列表 */
+  selectedTags: string[];
+  /** 当前的普通标签（非用途标签，需要保留） */
+  regularTags: string[];
+  /** 保存成功后的回调 */
+  onSaveSuccess?: (newUsageTags: string[]) => void;
+  /** 自定义类名 */
+  className?: string;
+}
+
+export function UsageTagInlineEditor({
+  bookmarkId,
+  selectedTags: initialSelectedTags,
+  regularTags,
+  onSaveSuccess,
+  className,
+}: UsageTagInlineEditorProps) {
+  // 本地状态（用于乐观更新）
+  const [localSelectedTags, setLocalSelectedTags] =
+    useState<string[]>(initialSelectedTags);
+
+  // 正在保存中的标签（用于显示加载状态）
+  const [savingTags, setSavingTags] = useState<Set<string>>(new Set());
+
+  // 最近操作的标签（用于动画效果）
+  const [recentlyToggled, setRecentlyToggled] = useState<string | null>(null);
+
+  // 添加自定义标签弹窗状态
+  const [showAddDialog, setShowAddDialog] = useState(false);
+
+  // 保存原始值，用于错误回滚
+  const originalTagsRef = useRef<string[]>(initialSelectedTags);
+
+  // 使用统一的自定义标签 Hook
+  const { customTags, isLoading, setTags, updateTag } = useCustomUsageTags();
+
+  // 同步外部传入的 selectedTags 变化
+  useEffect(() => {
+    setLocalSelectedTags(initialSelectedTags);
+    originalTagsRef.current = initialSelectedTags;
+  }, [initialSelectedTags]);
+
+  // 获取所有可用的用途标签
+  const allUsageTags = useMemo(() => {
+    return getAllUsageTags(customTags);
+  }, [customTags]);
+
+  /**
+   * 保存标签到服务器
+   */
+  const saveToServer = useCallback(
+    async (newUsageTags: string[]): Promise<boolean> => {
+      try {
+        // 合并：新用途标签 + 保留原普通标签
+        const newUserTags = [...newUsageTags, ...regularTags];
+
+        const response = await fetch(`/api/bookmarks/${bookmarkId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userTags: newUserTags }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+          throw new Error(data.error?.message || "保存失败");
+        }
+
+        return true;
+      } catch (error) {
+        console.error("保存用途标签失败:", error);
+        return false;
+      }
+    },
+    [bookmarkId, regularTags],
+  );
+
+  /**
+   * 更新自定义标签的最后使用时间
+   */
+  const updateLastUsedAt = useCallback(
+    async (tagValue: string) => {
+      const customTag = customTags.find((t) => t.value === tagValue);
+      if (!customTag) return;
+
+      const now = new Date().toISOString();
+      updateTag(customTag.id, { lastUsedAt: now });
+
+      // 异步同步到服务器（静默失败）
+      try {
+        await fetch("/api/settings/usage-tags", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: customTag.id, lastUsedAt: now }),
+        });
+      } catch {
+        // 静默失败
+      }
+    },
+    [customTags, updateTag],
+  );
+
+  /**
+   * Toggle 标签（点击即保存）
+   */
+  const toggleTag = useCallback(
+    async (tagValue: string) => {
+      // 防止重复点击
+      if (savingTags.has(tagValue)) return;
+
+      const isSelected = localSelectedTags.includes(tagValue);
+      const newTags = isSelected
+        ? localSelectedTags.filter((t) => t !== tagValue)
+        : [...localSelectedTags, tagValue];
+
+      // 1. 乐观更新 UI
+      setLocalSelectedTags(newTags);
+      setSavingTags((prev) => new Set(prev).add(tagValue));
+      setRecentlyToggled(tagValue);
+
+      // 清除动画状态
+      setTimeout(() => setRecentlyToggled(null), 300);
+
+      // 2. 后台保存
+      const success = await saveToServer(newTags);
+
+      // 3. 处理结果
+      setSavingTags((prev) => {
+        const next = new Set(prev);
+        next.delete(tagValue);
+        return next;
+      });
+
+      if (success) {
+        // 更新原始值（成功后）
+        originalTagsRef.current = newTags;
+        // 更新最后使用时间（仅添加时）
+        if (!isSelected) {
+          updateLastUsedAt(tagValue);
+        }
+        // 通知父组件
+        onSaveSuccess?.(newTags);
+      } else {
+        // 回滚到原始状态
+        setLocalSelectedTags(originalTagsRef.current);
+        toast.error("保存失败，请重试");
+      }
+    },
+    [
+      localSelectedTags,
+      savingTags,
+      saveToServer,
+      updateLastUsedAt,
+      onSaveSuccess,
+    ],
+  );
+
+  /**
+   * 处理新建自定义标签成功
+   */
+  const handleCustomTagCreated = useCallback(
+    async (newTag: CustomUsageTag, allTags: CustomUsageTag[]) => {
+      // 同步到 Hook 缓存
+      setTags(allTags);
+      setShowAddDialog(false);
+
+      // 自动选中新创建的标签并保存
+      const newTags = [...localSelectedTags, newTag.value];
+      setLocalSelectedTags(newTags);
+
+      const success = await saveToServer(newTags);
+      if (success) {
+        originalTagsRef.current = newTags;
+        onSaveSuccess?.(newTags);
+      } else {
+        setLocalSelectedTags(originalTagsRef.current);
+        toast.error("保存失败，请重试");
+      }
+    },
+    [localSelectedTags, saveToServer, setTags, onSaveSuccess],
+  );
+
+  /**
+   * 渲染单个标签按钮
+   */
+  const renderTagButton = (tag: UnifiedUsageTag) => {
+    const isSelected = localSelectedTags.includes(tag.value);
+    const isSaving = savingTags.has(tag.value);
+    const isRecentlyToggled = recentlyToggled === tag.value;
+
+    return (
+      <button
+        key={tag.value}
+        type="button"
+        onClick={() => toggleTag(tag.value)}
+        disabled={isSaving}
+        className={cn(
+          // 基础样式
+          "relative inline-flex items-center gap-1.5 rounded-full",
+          "px-3 py-1.5 text-sm font-medium",
+          "border transition-all duration-200",
+          // 选中状态
+          isSelected
+            ? [
+                tag.style.bgLight,
+                tag.style.bgDark,
+                tag.style.borderLight,
+                tag.style.borderDark,
+                tag.style.textLight,
+                tag.style.textDark,
+                "shadow-sm",
+              ]
+            : [
+                // 未选中：淡色/虚线边框
+                "bg-white dark:bg-gray-900",
+                "border-dashed border-gray-300 dark:border-gray-600",
+                "text-gray-500 dark:text-gray-400",
+                "hover:border-gray-400 dark:hover:border-gray-500",
+                "hover:bg-gray-50 dark:hover:bg-gray-800",
+              ],
+          // 动画效果
+          isRecentlyToggled && isSelected && "animate-pulse scale-105",
+          isRecentlyToggled && !isSelected && "animate-pulse",
+          // 禁用状态
+          isSaving && "opacity-70 cursor-wait",
+        )}
+      >
+        {/* 图标（预设标签） */}
+        {tag.icon &&
+          ICON_MAP[tag.icon] &&
+          (() => {
+            const IconComponent = ICON_MAP[tag.icon];
+            return <IconComponent className="size-3.5" />;
+          })()}
+
+        {/* 标签文字 */}
+        <span>{tag.label}</span>
+
+        {/* 选中时显示移除图标或加载指示器 */}
+        {isSelected &&
+          (isSaving ? (
+            <Loader2 className="size-3 animate-spin ml-0.5" />
+          ) : (
+            <X className="size-3 ml-0.5 opacity-60" />
+          ))}
+
+        {/* 未选中时保存中显示加载 */}
+        {!isSelected && isSaving && (
+          <Loader2 className="size-3 animate-spin ml-0.5" />
+        )}
+      </button>
+    );
+  };
+
+  return (
+    <div className={cn("space-y-2", className)}>
+      {/* 标签区域 */}
+      <div className="flex flex-wrap gap-2">
+        {isLoading ? (
+          <div className="flex items-center gap-2 text-sm text-gray-500">
+            <Loader2 className="size-4 animate-spin" />
+            <span>加载中...</span>
+          </div>
+        ) : (
+          <>
+            {/* 预设标签 */}
+            {USAGE_TAG_PRESETS.map((preset) => {
+              const unifiedTag = allUsageTags.find(
+                (t) => t.value === preset.value,
+              );
+              return unifiedTag ? renderTagButton(unifiedTag) : null;
+            })}
+
+            {/* 分隔线（如果有自定义标签） */}
+            {customTags.length > 0 && (
+              <div className="w-px h-7 bg-gray-200 dark:bg-gray-700 self-center mx-1" />
+            )}
+
+            {/* 自定义标签 */}
+            {customTags.map((customTag) => {
+              const unifiedTag = allUsageTags.find(
+                (t) => t.value === customTag.value,
+              );
+              return unifiedTag ? renderTagButton(unifiedTag) : null;
+            })}
+
+            {/* 添加自定义标签按钮 */}
+            <button
+              type="button"
+              onClick={() => setShowAddDialog(true)}
+              className={cn(
+                "inline-flex items-center gap-1 rounded-full",
+                "px-3 py-1.5 text-sm font-medium",
+                "border border-dashed",
+                "border-gray-300 dark:border-gray-600",
+                "text-gray-500 dark:text-gray-400",
+                "hover:border-gray-400 dark:hover:border-gray-500",
+                "hover:text-gray-600 dark:hover:text-gray-300",
+                "hover:bg-gray-50 dark:hover:bg-gray-800",
+                "transition-colors duration-200",
+              )}
+            >
+              <Plus className="size-3.5" />
+              <span>自定义</span>
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* 添加自定义标签弹窗 */}
+      <AddCustomUsageTagDialog
+        open={showAddDialog}
+        onOpenChange={setShowAddDialog}
+        existingTags={customTags}
+        onSuccess={handleCustomTagCreated}
+      />
+    </div>
+  );
+}

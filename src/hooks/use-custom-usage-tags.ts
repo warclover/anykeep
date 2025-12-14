@@ -210,9 +210,12 @@ export function useCustomUsageTags(): UseCustomUsageTagsResult {
 }
 
 // ============================================
-// 工具函数：清除缓存（测试或登出时使用）
+// 工具函数
 // ============================================
 
+/**
+ * 清除缓存（测试或登出时使用）
+ */
 export function clearCustomUsageTagsCache() {
   cache = {
     data: [],
@@ -222,4 +225,38 @@ export function clearCustomUsageTagsCache() {
   };
   pendingRequest = null;
   notifySubscribers();
+}
+
+/**
+ * 预加载自定义标签数据（在首页或布局中调用）
+ * 静默加载，不阻塞渲染，无返回值
+ */
+export function prefetchCustomUsageTags() {
+  const now = Date.now();
+  const isStale = now - cache.timestamp > CACHE_TTL;
+  const hasData = cache.data.length > 0;
+
+  // 有新鲜数据或正在加载中，跳过
+  if ((hasData && !isStale) || cache.isLoading || pendingRequest) {
+    return;
+  }
+
+  // 静默预加载
+  cache.isLoading = true;
+  pendingRequest = fetchCustomTags()
+    .then((tags) => {
+      cache.data = tags;
+      cache.timestamp = Date.now();
+      cache.error = null;
+      return tags;
+    })
+    .catch(() => {
+      // 静默失败
+      return cache.data;
+    })
+    .finally(() => {
+      cache.isLoading = false;
+      pendingRequest = null;
+      notifySubscribers();
+    });
 }

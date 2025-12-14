@@ -50,17 +50,14 @@ import { RelatedBookmarks } from "@/components/bookmark/related-bookmarks";
 import { useVisionAnalysis } from "@/hooks/use-vision-analysis";
 import type { BookmarkVisionData } from "@/types/vision";
 import { hasVisionData } from "@/types/vision";
-import { UsageTagSelector } from "@/components/bookmark/usage-tag-selector";
+import { UsageTagInlineEditor } from "@/components/bookmark/usage-tag-inline-editor";
 import { ContentTypeBadge } from "@/components/bookmark/content-type-badge";
 import type { ContentType } from "@/lib/classification/content-type-detector";
 import type { Bookmark, CustomUsageTag } from "@/types/supabase";
 import { cn } from "@/lib/utils";
 import { getPlatformConfig } from "@/lib/platform-utils";
 import { formatFriendlyDate } from "@/lib/utils/date-utils";
-import {
-  separateUserTagsExtended,
-  getUsageTagStyleExtended,
-} from "@/lib/constants/usage-tags";
+import { separateUserTagsExtended } from "@/lib/constants/usage-tags";
 // V4.2.1: 快照功能（懒加载 + 功能开关）
 import { SnapshotSectionLazy } from "@/components/snapshot";
 
@@ -215,11 +212,6 @@ export function BookmarkDetailClient({
   const [isEditingTags, setIsEditingTags] = useState(false);
   const [editedTags, setEditedTags] = useState("");
   const [isSavingTags, setIsSavingTags] = useState(false);
-
-  // V10.0新增：用途标签内联编辑状态
-  const [isEditingUsageTags, setIsEditingUsageTags] = useState(false);
-  const [editedUsageTags, setEditedUsageTags] = useState<string[]>([]);
-  const [isSavingUsageTags, setIsSavingUsageTags] = useState(false);
 
   // 笔记内联编辑状态
   const [isEditingNotes, setIsEditingNotes] = useState(false);
@@ -388,59 +380,6 @@ export function BookmarkDetailClient({
     }
   };
 
-  // V10.0新增：用途标签编辑处理
-  const handleEditUsageTags = () => {
-    setEditedUsageTags([...usageTags]);
-    setIsEditingUsageTags(true);
-  };
-
-  const handleCancelEditUsageTags = () => {
-    setIsEditingUsageTags(false);
-    setEditedUsageTags([]);
-  };
-
-  const handleSaveUsageTags = async () => {
-    if (isSavingUsageTags) return;
-
-    setIsSavingUsageTags(true);
-    try {
-      // 合并：新用途标签 + 保留原普通标签
-      const newUserTags = [...editedUsageTags, ...regularTags];
-
-      const res = await fetchWithAbort(`/api/bookmarks/${bookmark.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          userTags: newUserTags.length > 0 ? newUserTags : null,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error?.message || "更新用途标签失败");
-      }
-
-      toast.success("用途标签更新成功");
-      setIsEditingUsageTags(false);
-      router.refresh();
-    } catch (error) {
-      if (error instanceof Error && error.name === "AbortError") {
-        return;
-      }
-      toast.error(error instanceof Error ? error.message : "更新用途标签失败");
-    } finally {
-      setIsSavingUsageTags(false);
-    }
-  };
-
-  // 自定义标签变更回调（用于刷新缓存）
-  const handleCustomTagsChange = (newTags: CustomUsageTag[]) => {
-    setCustomUsageTags(newTags);
-  };
-
   const handleEditTags = () => {
     setIsEditingTags(true);
     setEditedTags(bookmark.user_tags?.join(", ") || "");
@@ -579,91 +518,13 @@ export function BookmarkDetailClient({
                   {bookmark.title}
                 </h1>
 
-                {/* V10.0: 用途标签（支持内联编辑） */}
-                {isEditingUsageTags ? (
-                  // 编辑模式
-                  <div className="flex flex-col gap-3 p-3 -mx-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        选择用途标签
-                      </span>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={handleCancelEditUsageTags}
-                          disabled={isSavingUsageTags}
-                          className="h-7 px-2 text-xs"
-                        >
-                          <X className="size-3 mr-1" />
-                          取消
-                        </Button>
-                        <Button
-                          size="sm"
-                          onClick={handleSaveUsageTags}
-                          disabled={isSavingUsageTags}
-                          className="h-7 px-3 text-xs"
-                        >
-                          <Check className="size-3 mr-1" />
-                          {isSavingUsageTags ? "保存中..." : "保存"}
-                        </Button>
-                      </div>
-                    </div>
-                    <UsageTagSelector
-                      selectedTags={editedUsageTags}
-                      onSelectedTagsChange={setEditedUsageTags}
-                      customUsageTags={customUsageTags}
-                      onCustomTagsChange={handleCustomTagsChange}
-                      showAddButton={true}
-                      className="!gap-1.5"
-                    />
-                  </div>
-                ) : (
-                  // 查看模式
-                  <div className="flex flex-wrap items-center gap-2">
-                    {usageTags.map((tagValue) => {
-                      const tagStyle = getUsageTagStyleExtended(
-                        tagValue,
-                        customUsageTags,
-                      );
-                      if (!tagStyle) return null;
-                      return (
-                        <span
-                          key={tagValue}
-                          className={cn(
-                            "inline-flex items-center px-2.5 py-1 rounded-full text-sm font-medium border",
-                            tagStyle.style.bgLight,
-                            tagStyle.style.bgDark,
-                            tagStyle.style.borderLight,
-                            tagStyle.style.borderDark,
-                            tagStyle.style.textLight,
-                            tagStyle.style.textDark,
-                          )}
-                        >
-                          {tagStyle.label}
-                        </span>
-                      );
-                    })}
-                    {/* 编辑按钮 */}
-                    <button
-                      type="button"
-                      onClick={handleEditUsageTags}
-                      className={cn(
-                        "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium",
-                        "border border-dashed",
-                        usageTags.length > 0
-                          ? // 有标签时：灰色样式
-                            "text-gray-500 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700"
-                          : // 无标签时：蓝色醒目样式
-                            "text-blue-600 dark:text-blue-400 border-blue-300 dark:border-blue-600 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50",
-                        "transition-colors duration-200",
-                      )}
-                    >
-                      <Edit className="size-3" />
-                      <span>{usageTags.length > 0 ? "编辑" : "添加用途"}</span>
-                    </button>
-                  </div>
-                )}
+                {/* V10.1: 用途标签（点击即保存，无需编辑按钮） */}
+                <UsageTagInlineEditor
+                  bookmarkId={bookmark.id}
+                  selectedTags={usageTags}
+                  regularTags={regularTags}
+                  onSaveSuccess={() => router.refresh()}
+                />
 
                 {/* 第2行：AI 内容类型 + AI 标签 */}
                 {(bookmark.ai_content_type ||
