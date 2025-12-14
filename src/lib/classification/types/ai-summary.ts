@@ -3,8 +3,9 @@
  *
  * 结构化 AI 摘要类型定义
  *
- * @version 2.0.0
+ * @version 3.0.0
  * @since 2025-12-06
+ * @updated 2025-12-14 - 添加智能浓缩 v3.0 类型
  */
 
 /**
@@ -320,5 +321,316 @@ export function safeParseJson<T>(jsonString: string): T | null {
     return JSON.parse(fixed);
   } catch {
     return null;
+  }
+}
+
+// =============================================================================
+// 智能浓缩 v3.0 类型定义
+// =============================================================================
+
+/**
+ * 摘要模式
+ * - standard: v2.0 标准摘要（更快、更省 Token）
+ * - enhanced: v3.0 智能浓缩（含实体提取、关键数据）
+ */
+export type SummaryMode = "standard" | "enhanced";
+
+/**
+ * 摘要版本
+ * - 1: 纯文本格式（旧版）
+ * - 2: JSON 结构化格式（v2.0）
+ * - 3: 增强 JSON 格式（v3.0 智能浓缩）
+ */
+export type SummaryVersion = 1 | 2 | 3;
+
+/**
+ * 实体类型
+ */
+export type EntityType =
+  | "person" // 人名
+  | "company" // 公司/组织
+  | "tech" // 技术/框架
+  | "concept" // 概念/术语
+  | "product" // 产品
+  | "place" // 地点
+  | "other"; // 其他
+
+/**
+ * 实体
+ */
+export interface Entity {
+  /** 实体名称 */
+  name: string;
+  /** 实体类型 */
+  type: EntityType;
+  /** 标准化名称（小写，用于匹配） */
+  normalized_name?: string;
+  /** 置信度 (0-1) */
+  confidence?: number;
+}
+
+/**
+ * 关键数据项
+ */
+export interface KeyDataItem {
+  /** 数据标签（如 "性能提升"） */
+  label: string;
+  /** 数据值（如 "40%"） */
+  value: string;
+  /** 单位（可选） */
+  unit?: string;
+  /** 上下文说明 */
+  context?: string;
+}
+
+/**
+ * 内容类型（AI 识别）
+ */
+export type ContentType =
+  | "article" // 文章
+  | "tutorial" // 教程
+  | "news" // 新闻
+  | "opinion" // 观点
+  | "reference" // 参考资料
+  | "video" // 视频
+  | "tool" // 工具介绍
+  | "case_study" // 案例研究
+  | "unknown"; // 未知
+
+/**
+ * 难度等级
+ */
+export type DifficultyLevel = "easy" | "medium" | "hard";
+
+/**
+ * 增强版摘要（v3.0）
+ *
+ * 继承 StructuredSummary，新增实体、关键数据、难度等字段
+ */
+export interface EnhancedSummary extends StructuredSummary {
+  // 继承所有 v2.0 字段：tldr, key_points, keywords, sentiment, reading_time, action_items
+
+  // 🆕 v3.0 新增字段
+  /**
+   * 实体提取
+   * 从内容中识别的重要实体（人名、公司、技术等）
+   */
+  entities?: Entity[];
+
+  /**
+   * 关键数据
+   * 从内容中提取的具体数字、统计信息
+   */
+  key_data?: KeyDataItem[];
+
+  /**
+   * 难度评估
+   * 根据专业术语密度和概念复杂度评估
+   */
+  difficulty?: DifficultyLevel;
+
+  /**
+   * 内容类型（AI 识别）
+   */
+  content_type?: ContentType;
+
+  /**
+   * 摘要版本标识
+   * - 2: v2.0 标准摘要
+   * - 3: v3.0 智能浓缩
+   */
+  summary_version?: 2 | 3;
+}
+
+/**
+ * 判断摘要是否为增强版 (v3.0)
+ *
+ * @param summary - 摘要字符串（JSON 格式）
+ * @returns 是否为增强版摘要
+ */
+export function isEnhancedSummary(summary: string): boolean {
+  if (!summary || typeof summary !== "string") {
+    return false;
+  }
+
+  const trimmed = summary.trim();
+  if (!trimmed.startsWith("{")) {
+    return false;
+  }
+
+  try {
+    const parsed = JSON.parse(trimmed);
+    // 检查是否有 v3.0 特有字段
+    return (
+      typeof parsed.tldr === "string" &&
+      Array.isArray(parsed.key_points) &&
+      (parsed.summary_version === 3 ||
+        Array.isArray(parsed.entities) ||
+        Array.isArray(parsed.key_data) ||
+        typeof parsed.difficulty === "string")
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 解析增强版摘要
+ *
+ * @param summary - 摘要字符串（JSON 格式）
+ * @returns 解析后的 EnhancedSummary，失败返回 null
+ */
+export function parseEnhancedSummary(summary: string): EnhancedSummary | null {
+  if (!summary || typeof summary !== "string") {
+    return null;
+  }
+
+  const trimmed = summary.trim();
+  if (!trimmed.startsWith("{")) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(trimmed);
+
+    // 验证基本字段
+    if (typeof parsed.tldr !== "string" || !Array.isArray(parsed.key_points)) {
+      return null;
+    }
+
+    // 解析实体
+    const entities: Entity[] = [];
+    if (Array.isArray(parsed.entities)) {
+      for (const e of parsed.entities) {
+        if (typeof e.name === "string" && typeof e.type === "string") {
+          entities.push({
+            name: e.name,
+            type: validateEntityType(e.type),
+            normalized_name: e.normalized_name || e.name.toLowerCase().trim(),
+            confidence:
+              typeof e.confidence === "number" ? e.confidence : undefined,
+          });
+        }
+      }
+    }
+
+    // 解析关键数据
+    const keyData: KeyDataItem[] = [];
+    if (Array.isArray(parsed.key_data)) {
+      for (const d of parsed.key_data) {
+        if (typeof d.label === "string" && typeof d.value === "string") {
+          keyData.push({
+            label: d.label,
+            value: d.value,
+            unit: typeof d.unit === "string" ? d.unit : undefined,
+            context: typeof d.context === "string" ? d.context : undefined,
+          });
+        }
+      }
+    }
+
+    return {
+      tldr: parsed.tldr,
+      key_points: parsed.key_points.filter(
+        (p: unknown) => typeof p === "string",
+      ),
+      keywords: Array.isArray(parsed.keywords)
+        ? parsed.keywords.filter((k: unknown) => typeof k === "string")
+        : [],
+      sentiment: validateSentiment(parsed.sentiment),
+      reading_time:
+        typeof parsed.reading_time === "number" ? parsed.reading_time : 5,
+      action_items: Array.isArray(parsed.action_items)
+        ? parsed.action_items.filter((a: unknown) => typeof a === "string")
+        : undefined,
+      // v3.0 字段
+      entities: entities.length > 0 ? entities : undefined,
+      key_data: keyData.length > 0 ? keyData : undefined,
+      difficulty: validateDifficulty(parsed.difficulty),
+      content_type: validateContentType(parsed.content_type),
+      summary_version: parsed.summary_version === 3 ? 3 : 2,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 验证实体类型
+ */
+function validateEntityType(value: unknown): EntityType {
+  const validTypes: EntityType[] = [
+    "person",
+    "company",
+    "tech",
+    "concept",
+    "product",
+    "place",
+    "other",
+  ];
+  if (typeof value === "string" && validTypes.includes(value as EntityType)) {
+    return value as EntityType;
+  }
+  return "other";
+}
+
+/**
+ * 验证难度等级
+ */
+function validateDifficulty(value: unknown): DifficultyLevel | undefined {
+  if (value === "easy" || value === "medium" || value === "hard") {
+    return value;
+  }
+  return undefined;
+}
+
+/**
+ * 验证内容类型
+ */
+function validateContentType(value: unknown): ContentType | undefined {
+  const validTypes: ContentType[] = [
+    "article",
+    "tutorial",
+    "news",
+    "opinion",
+    "reference",
+    "video",
+    "tool",
+    "case_study",
+    "unknown",
+  ];
+  if (typeof value === "string" && validTypes.includes(value as ContentType)) {
+    return value as ContentType;
+  }
+  return undefined;
+}
+
+/**
+ * 获取摘要版本
+ *
+ * @param summary - 摘要字符串
+ * @returns 摘要版本号
+ */
+export function getSummaryVersion(
+  summary: string | null | undefined,
+): SummaryVersion {
+  if (!summary) return 1;
+
+  const trimmed = summary.trim();
+  if (!trimmed.startsWith("{")) {
+    return 1; // 纯文本
+  }
+
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (parsed.summary_version === 3) {
+      return 3;
+    }
+    if (typeof parsed.tldr === "string" && Array.isArray(parsed.key_points)) {
+      return 2;
+    }
+    return 1;
+  } catch {
+    return 1;
   }
 }

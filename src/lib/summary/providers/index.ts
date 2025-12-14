@@ -24,6 +24,10 @@ export {
   ALIYUN_MODELS,
 } from "./aliyun-bailian.provider";
 export {
+  EnhancedSummaryProvider,
+  type EnhancedParsedResponse,
+} from "./enhanced.provider";
+export {
   ProviderFactory,
   getProviderFactory,
   resetProviderFactory,

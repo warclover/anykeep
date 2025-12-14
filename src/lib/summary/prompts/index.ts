@@ -71,6 +71,19 @@ export const CONTENT_TYPE_MAX_TOKENS: Record<string, number> = {
 // Future: Custom Prompt Builders
 // ============================================================================
 
+// ============================================================================
+// V3 Enhanced Prompts (智能浓缩 v3.0)
+// ============================================================================
+
+export {
+  ENHANCED_SYSTEM_PROMPT,
+  ENHANCED_SYSTEM_PROMPT_LITE,
+  getEnhancedPromptConfig,
+  buildEnhancedUserPrompt,
+  CONTENT_TYPE_KEYWORDS,
+  type EnhancedPromptConfig,
+} from "./enhanced.prompt";
+
 // TODO: P1 - 实现本模块专用的 Prompt 构建器
 // export { buildArticlePrompt } from './article.prompt';
 // export { buildTutorialPrompt } from './tutorial.prompt';

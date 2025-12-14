@@ -152,10 +152,14 @@ export interface OrganizationEventTypes {
 export interface SummaryCompletedEvent {
   userId: string;
   bookmarkId: number;
-  /** 摘要版本 (1: 纯文本, 2: JSON结构化) */
-  summaryVersion: 1 | 2;
+  /** 摘要版本 (1: 纯文本, 2: JSON结构化, 3: 增强版) */
+  summaryVersion: 1 | 2 | 3;
+  /** 摘要模式 */
+  summaryMode?: "standard" | "enhanced";
   /** 生成的标签数量 */
   tagsGenerated: number;
+  /** 提取的实体数量 (v3.0) */
+  entitiesExtracted?: number;
   /** 处理耗时 (ms) */
   processingTimeMs: number;
   /** 是否需要分类 */
@@ -174,10 +178,49 @@ export interface TagsGeneratedEvent {
   timestamp: string;
 }
 
+/** 实体提取事件 (v3.0) */
+export interface EntitiesExtractedEvent {
+  userId: string;
+  bookmarkId: number;
+  /** 提取的实体列表 */
+  entities: Array<{
+    name: string;
+    type:
+      | "person"
+      | "company"
+      | "tech"
+      | "concept"
+      | "product"
+      | "place"
+      | "other";
+    confidence?: number;
+  }>;
+  /** 实体数量 */
+  entityCount: number;
+  /** 是否需要知识关联处理 */
+  needsLinkProcessing: boolean;
+  timestamp: string;
+}
+
+/** 关键数据提取事件 (v3.0) */
+export interface KeyDataExtractedEvent {
+  userId: string;
+  bookmarkId: number;
+  /** 提取的关键数据 */
+  keyData: Array<{
+    label: string;
+    value: string;
+    unit?: string;
+  }>;
+  timestamp: string;
+}
+
 /** AI 摘要事件类型映射 */
 export interface SummaryEventTypes {
   "summary:completed": SummaryCompletedEvent;
   "summary:tags_generated": TagsGeneratedEvent;
+  "summary:entities_extracted": EntitiesExtractedEvent;
+  "summary:key_data_extracted": KeyDataExtractedEvent;
 }
 
 // ============================================================================
@@ -229,6 +272,45 @@ export interface CostMonitorEventTypes {
 }
 
 // ============================================================================
+// 知识关联事件 (Phase 2)
+// ============================================================================
+
+/** 关联发现完成事件 */
+export interface LinksDiscoveredEvent {
+  userId: string;
+  bookmarkId: number;
+  /** 发现的关联数量 */
+  linksDiscovered: number;
+  /** 按类型统计 */
+  linksByType: {
+    semantic: number;
+    entity: number;
+    tag: number;
+    topic: number;
+  };
+  /** 处理耗时 (ms) */
+  processingTimeMs: number;
+  timestamp: string;
+}
+
+/** 关联重建完成事件 */
+export interface LinksRebuiltEvent {
+  userId: string;
+  bookmarkId: number;
+  /** 旧关联数量 */
+  oldLinksCount: number;
+  /** 新关联数量 */
+  newLinksCount: number;
+  timestamp: string;
+}
+
+/** 知识关联事件类型映射 */
+export interface KnowledgeLinkEventTypes {
+  "link:discovered": LinksDiscoveredEvent;
+  "link:rebuilt": LinksRebuiltEvent;
+}
+
+// ============================================================================
 // 聚合所有事件类型
 // ============================================================================
 
@@ -237,7 +319,8 @@ export type EventTypes = ClassificationEventTypes &
   OrganizationEventTypes &
   SummaryEventTypes &
   JobQueueEventTypes &
-  CostMonitorEventTypes;
+  CostMonitorEventTypes &
+  KnowledgeLinkEventTypes;
 
 /** 事件名称联合类型 */
 export type EventName = keyof EventTypes;

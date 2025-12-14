@@ -218,9 +218,9 @@ export interface ParsedResponse {
   summary: string;
   /** 标签列表 */
   tags: string[];
-  /** 版本 */
-  version: 1 | 2;
-  /** 结构化摘要（仅 V2） */
+  /** 版本 (1: 纯文本, 2: JSON结构化, 3: 增强版) */
+  version: 1 | 2 | 3;
+  /** 结构化摘要（V2-V3） */
   structured?: StructuredSummary;
 }
 

@@ -2,9 +2,11 @@
  * Summary Service Implementation
  *
  * 摘要服务核心实现，集成 Provider、EventBus、JobQueue
+ * v3.0: 支持增强模式（实体提取、关键数据、难度评估）
  *
- * @version 2.0.0
+ * @version 3.0.0
  * @since 2025-12-12
+ * @updated 2025-12-14 - 添加增强模式支持
  */
 
 import { logger } from "@/lib/logger";
@@ -13,6 +15,8 @@ import { JobQueueService } from "@/lib/classification/services/job-queue.service
 import type {
   SummaryCompletedEvent,
   TagsGeneratedEvent,
+  EntitiesExtractedEvent,
+  KeyDataExtractedEvent,
 } from "@/lib/shared/event-bus/event-types";
 import type { ISummaryService } from "./summary.service.interface";
 import type {
@@ -24,10 +28,21 @@ import type {
   ProviderHealth,
   ProviderName,
   ContentType,
+  SummaryMode,
 } from "../summary.types";
 import { SummaryError, SummaryErrorCode } from "../summary.types";
-import { getProviderFactory, type ISummaryProvider } from "../providers";
+import {
+  getProviderFactory,
+  EnhancedSummaryProvider,
+  type ISummaryProvider,
+} from "../providers";
 import { getSummaryServiceConfig, isFallbackEnabled } from "../summary.config";
+import {
+  getUserSummaryMode,
+  getEnhancedModeConfig,
+} from "@/lib/classification/config/ai-summary-config";
+import { getEntityRepository } from "../repositories/entity.repository";
+import { initializeLinkEventHandler } from "@/lib/knowledge-link";
 
 /**
  * 摘要服务统计
@@ -40,6 +55,9 @@ interface ServiceStats {
   providerUsage: Record<ProviderName, number>;
   fallbackTriggered: number;
   byContentType: Record<string, number>;
+  // v3.0 统计
+  enhancedModeUsage: number;
+  entitiesExtracted: number;
 }
 
 /**
@@ -90,6 +108,9 @@ export class SummaryService implements ISummaryService {
       },
       fallbackTriggered: 0,
       byContentType: {},
+      // v3.0 统计
+      enhancedModeUsage: 0,
+      entitiesExtracted: 0,
     };
 
     this.jobQueue = new JobQueueService("summary-service");
@@ -97,12 +118,35 @@ export class SummaryService implements ISummaryService {
 
   /**
    * 生成摘要
+   *
+   * v3.0: 根据用户设置或选项自动选择标准模式或增强模式
    */
   async generate(
     input: SummaryInput,
     options?: GenerateOptions,
   ): Promise<SummaryResult> {
     const startTime = Date.now();
+
+    // 确定摘要模式
+    const summaryMode: SummaryMode =
+      options?.summaryMode || (await getUserSummaryMode(input.userId));
+
+    // 根据模式选择生成方法
+    if (summaryMode === "enhanced") {
+      return this.generateEnhanced(input, options, startTime);
+    }
+
+    return this.generateStandard(input, options, startTime);
+  }
+
+  /**
+   * 标准模式生成摘要（v2.0）
+   */
+  private async generateStandard(
+    input: SummaryInput,
+    options: GenerateOptions | undefined,
+    startTime: number,
+  ): Promise<SummaryResult> {
     let result: SummaryResult | null = null;
     let lastError: Error | null = null;
     let fallbackUsed = false;
@@ -209,6 +253,7 @@ export class SummaryService implements ISummaryService {
         input,
         result,
         options?.needsClassification ?? true,
+        "standard",
       );
     }
 
@@ -219,8 +264,114 @@ export class SummaryService implements ISummaryService {
         latencyMs,
         fallbackUsed,
         tagsCount: result.tags.length,
+        mode: "standard",
       },
-      "SummaryService: Summary generated successfully",
+      "SummaryService: Summary generated successfully (standard mode)",
+    );
+
+    return result;
+  }
+
+  /**
+   * 增强模式生成摘要（v3.0）
+   *
+   * 包含实体提取、关键数据、难度评估
+   */
+  private async generateEnhanced(
+    input: SummaryInput,
+    options: GenerateOptions | undefined,
+    startTime: number,
+  ): Promise<SummaryResult> {
+    const enhancedConfig = getEnhancedModeConfig();
+    const provider = new EnhancedSummaryProvider(undefined, enhancedConfig);
+
+    let result: SummaryResult;
+
+    try {
+      result = await provider.generateSummary(input);
+    } catch (error) {
+      // 增强模式失败，降级到标准模式
+      logger.warn(
+        {
+          bookmarkId: input.bookmarkId,
+          error: error instanceof Error ? error.message : String(error),
+        },
+        "SummaryService: Enhanced mode failed, falling back to standard",
+      );
+      return this.generateStandard(input, options, startTime);
+    }
+
+    // 更新统计
+    const latencyMs = Date.now() - startTime;
+    this.updateStats(result, latencyMs, false);
+    this.stats.enhancedModeUsage++;
+
+    // 保存实体（如果有）
+    if (
+      options?.saveEntities !== false &&
+      result.enhanced?.entities &&
+      result.enhanced.entities.length > 0
+    ) {
+      try {
+        const entityRepo = getEntityRepository();
+        const savedCount = await entityRepo.saveEntities(
+          input.bookmarkId,
+          input.userId,
+          result.enhanced.entities,
+        );
+        this.stats.entitiesExtracted += savedCount;
+
+        logger.info(
+          {
+            bookmarkId: input.bookmarkId,
+            entitiesCount: savedCount,
+          },
+          "SummaryService: Entities saved successfully",
+        );
+      } catch (err) {
+        // 实体保存失败不影响摘要结果
+        logger.error(
+          {
+            bookmarkId: input.bookmarkId,
+            error: err instanceof Error ? err.message : String(err),
+          },
+          "SummaryService: Failed to save entities",
+        );
+      }
+    }
+
+    // 发布事件
+    if (this.config.emitEvents) {
+      await this.emitEvents(
+        input,
+        result,
+        options?.needsClassification ?? true,
+        "enhanced",
+      );
+
+      // 发布实体提取事件
+      if (result.enhanced?.entities && result.enhanced.entities.length > 0) {
+        await this.emitEntitiesExtractedEvent(input, result);
+      }
+
+      // 发布关键数据提取事件
+      if (result.enhanced?.key_data && result.enhanced.key_data.length > 0) {
+        await this.emitKeyDataExtractedEvent(input, result);
+      }
+    }
+
+    logger.info(
+      {
+        bookmarkId: input.bookmarkId,
+        provider: result.providerUsed,
+        latencyMs,
+        tagsCount: result.tags.length,
+        entitiesCount: result.enhanced?.entities?.length || 0,
+        keyDataCount: result.enhanced?.key_data?.length || 0,
+        difficulty: result.enhanced?.difficulty,
+        mode: "enhanced",
+      },
+      "SummaryService: Summary generated successfully (enhanced mode)",
     );
 
     return result;
@@ -422,13 +573,16 @@ export class SummaryService implements ISummaryService {
     input: SummaryInput,
     result: SummaryResult,
     needsClassification: boolean,
+    summaryMode: SummaryMode = "standard",
   ): Promise<void> {
     // 发布摘要完成事件
     const summaryEvent: SummaryCompletedEvent = {
       userId: input.userId,
       bookmarkId: input.bookmarkId,
       summaryVersion: result.version,
+      summaryMode,
       tagsGenerated: result.tags.length,
+      entitiesExtracted: result.enhanced?.entities?.length,
       processingTimeMs: result.latencyMs,
       needsClassification,
       timestamp: new Date().toISOString(),
@@ -449,6 +603,58 @@ export class SummaryService implements ISummaryService {
       eventBus.emit("summary:tags_generated", tagsEvent);
     }
   }
+
+  /**
+   * 发布实体提取事件
+   */
+  private async emitEntitiesExtractedEvent(
+    input: SummaryInput,
+    result: SummaryResult,
+  ): Promise<void> {
+    if (!result.enhanced?.entities || result.enhanced.entities.length === 0) {
+      return;
+    }
+
+    const event: EntitiesExtractedEvent = {
+      userId: input.userId,
+      bookmarkId: input.bookmarkId,
+      entities: result.enhanced.entities.map((e) => ({
+        name: e.name,
+        type: e.type,
+        confidence: e.confidence,
+      })),
+      entityCount: result.enhanced.entities.length,
+      needsLinkProcessing: true, // 触发知识关联处理
+      timestamp: new Date().toISOString(),
+    };
+
+    eventBus.emit("summary:entities_extracted", event);
+  }
+
+  /**
+   * 发布关键数据提取事件
+   */
+  private async emitKeyDataExtractedEvent(
+    input: SummaryInput,
+    result: SummaryResult,
+  ): Promise<void> {
+    if (!result.enhanced?.key_data || result.enhanced.key_data.length === 0) {
+      return;
+    }
+
+    const event: KeyDataExtractedEvent = {
+      userId: input.userId,
+      bookmarkId: input.bookmarkId,
+      keyData: result.enhanced.key_data.map((k) => ({
+        label: k.label,
+        value: k.value,
+        unit: k.unit,
+      })),
+      timestamp: new Date().toISOString(),
+    };
+
+    eventBus.emit("summary:key_data_extracted", event);
+  }
 }
 
 // ============================================================================
@@ -456,9 +662,12 @@ export class SummaryService implements ISummaryService {
 // ============================================================================
 
 let serviceInstance: SummaryService | null = null;
+let linkEventHandlerInitialized = false;
 
 /**
  * 获取 SummaryService 单例
+ *
+ * 同时确保 LinkEventHandler 已初始化，用于监听摘要事件并触发知识关联
  */
 export function getSummaryService(
   config?: Partial<SummaryServiceConfig>,
@@ -466,6 +675,28 @@ export function getSummaryService(
   if (!serviceInstance) {
     serviceInstance = new SummaryService(config);
   }
+
+  // 确保 LinkEventHandler 已初始化（仅初始化一次）
+  // 这会注册事件监听器，当摘要完成时自动触发知识关联发现
+  if (!linkEventHandlerInitialized) {
+    try {
+      initializeLinkEventHandler({
+        enableOnSummaryCompleted: true,
+        enableOnEntitiesExtracted: true,
+        processingDelayMs: 1000,
+        debug: process.env.NODE_ENV === "development",
+      });
+      linkEventHandlerInitialized = true;
+      logger.debug("LinkEventHandler initialized with SummaryService");
+    } catch (error) {
+      // 不阻塞摘要服务，仅记录警告
+      logger.warn(
+        { error: error instanceof Error ? error.message : String(error) },
+        "Failed to initialize LinkEventHandler, knowledge linking disabled",
+      );
+    }
+  }
+
   return serviceInstance;
 }
 
@@ -474,4 +705,5 @@ export function getSummaryService(
  */
 export function resetSummaryService(): void {
   serviceInstance = null;
+  linkEventHandlerInitialized = false;
 }

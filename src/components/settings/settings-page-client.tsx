@@ -33,6 +33,7 @@ import { InterestSettingsCard } from "./interest-settings-card";
 import { ProfileSettingsCard } from "./profile-settings-card";
 import { ClassificationSettingsCard } from "./classification-settings-card";
 import { TrustModeSettingsCard } from "./trust-mode-settings-card";
+import { SummaryModeSettingsCard } from "./summary-mode-settings-card";
 import { AIOperationHistoryCard } from "./ai-operation-history-card";
 import { NotificationSettingsCard } from "@/components/messages";
 import { SnapshotQuotaSectionLazy } from "@/components/snapshot";
@@ -282,6 +283,9 @@ export function SettingsPageClient({
 
             {/* 托管模式设置 - V4.2 */}
             <TrustModeSettingsCard />
+
+            {/* 摘要模式设置 - V3.0 */}
+            <SummaryModeSettingsCard />
 
             {/* AI 操作历史 - V4.2 */}
             <AIOperationHistoryCard />

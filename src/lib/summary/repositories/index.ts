@@ -33,3 +33,12 @@ export {
   getSummaryRepository,
   resetSummaryRepository,
 } from "./summary.repository";
+
+// Entity Repository (V3.0)
+export {
+  EntityRepository,
+  getEntityRepository,
+  resetEntityRepository,
+  type EntityRecord,
+  type SharedEntityBookmark,
+} from "./entity.repository";

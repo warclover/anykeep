@@ -12,6 +12,12 @@ import type {
   Sentiment as _Sentiment,
   StructuredSummary as _StructuredSummary,
   AISummaryData as _AISummaryData,
+  EnhancedSummary as _EnhancedSummary,
+  Entity as _Entity,
+  KeyDataItem as _KeyDataItem,
+  EntityType as _EntityType,
+  DifficultyLevel as _DifficultyLevel,
+  SummaryMode as _SummaryMode,
 } from "@/lib/classification/types/ai-summary";
 
 import type {
@@ -27,6 +33,14 @@ export type AISummaryData = _AISummaryData;
 export type ContentType = _ContentType;
 export type ContentTypeResult = _ContentTypeResult;
 export type DetectionInput = _DetectionInput;
+
+// v3.0 增强类型
+export type EnhancedSummary = _EnhancedSummary;
+export type Entity = _Entity;
+export type KeyDataItem = _KeyDataItem;
+export type EntityType = _EntityType;
+export type DifficultyLevel = _DifficultyLevel;
+export type SummaryMode = _SummaryMode;
 
 // Re-export functions
 export {
@@ -54,8 +68,11 @@ export type ProviderName = "deepseek" | "aliyun-bailian" | "ollama";
 
 /**
  * 摘要版本
+ * - 1: 纯文本输出
+ * - 2: JSON 结构化输出
+ * - 3: 增强版输出（含实体、关键数据、难度等）
  */
-export type SummaryVersion = 1 | 2;
+export type SummaryVersion = 1 | 2 | 3;
 
 /**
  * Token 使用统计
@@ -135,14 +152,16 @@ export interface SummaryInput {
  * 摘要生成结果
  */
 export interface SummaryResult {
-  /** 摘要文本（V1: 纯文本 / V2: JSON 字符串） */
+  /** 摘要文本（V1: 纯文本 / V2-V3: JSON 字符串） */
   summary: string;
   /** 生成的标签 */
   tags: string[];
   /** 摘要版本 */
   version: SummaryVersion;
-  /** 结构化摘要（仅 V2） */
+  /** 结构化摘要（V2-V3） */
   structured?: StructuredSummary;
+  /** 增强摘要（仅 V3，包含实体、关键数据等） */
+  enhanced?: EnhancedSummary;
   /** Token 使用量 */
   usage: TokenUsage;
   /** 处理耗时 (ms) */
@@ -171,6 +190,10 @@ export interface GenerateOptions {
   outputVersion?: SummaryVersion;
   /** 强制重新生成（忽略缓存） */
   forceRegenerate?: boolean;
+  /** 摘要模式（v3.0: standard/enhanced） */
+  summaryMode?: SummaryMode;
+  /** 是否保存实体（仅 enhanced 模式） */
+  saveEntities?: boolean;
 }
 
 // ============================================================================

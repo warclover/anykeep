@@ -46,7 +46,7 @@ import {
   VisionInsights,
   VisionAnalysisTrigger,
 } from "@/components/bookmark/vision-insights";
-import { RelatedBookmarks } from "@/components/bookmark/related-bookmarks";
+import { RelatedBookmarksV2 } from "@/components/bookmark/related-bookmarks-v2";
 import { useVisionAnalysis } from "@/hooks/use-vision-analysis";
 import type { BookmarkVisionData } from "@/types/vision";
 import { hasVisionData } from "@/types/vision";
@@ -888,11 +888,12 @@ export function BookmarkDetailClient({
                 </>
               ) : null}
 
-              {/* Phase 2.2: 相关收藏推荐 */}
-              <RelatedBookmarks
+              {/* Phase 2: 知识关联推荐 */}
+              <RelatedBookmarksV2
                 bookmarkId={bookmark.id}
                 defaultExpanded={true}
                 limit={5}
+                minStrength={0.3}
               />
 
               {/* V4.2.1: 网页快照 */}

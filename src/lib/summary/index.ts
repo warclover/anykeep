@@ -44,6 +44,7 @@ export type {
   SummaryInput,
   SummaryResult,
   GenerateOptions,
+  SummaryMode,
 
   // Service Types
   SummaryServiceConfig,
@@ -57,6 +58,11 @@ export type {
   // Re-exported Types
   Sentiment,
   StructuredSummary,
+  EnhancedSummary,
+  Entity,
+  EntityType,
+  KeyDataItem,
+  DifficultyLevel,
   AISummaryData,
   ContentType,
   ContentTypeResult,
@@ -94,6 +100,10 @@ export type {
 // Concrete Provider Implementations
 export { DeepSeekProvider } from "./providers";
 export { AliyunBailianProvider } from "./providers";
+export {
+  EnhancedSummaryProvider,
+  type EnhancedParsedResponse,
+} from "./providers";
 export {
   ProviderFactory,
   getProviderFactory,
@@ -168,6 +178,15 @@ export {
   resetSummaryRepository,
 } from "./repositories";
 
+// Entity Repository (V3.0)
+export {
+  EntityRepository,
+  getEntityRepository,
+  resetEntityRepository,
+  type EntityRecord,
+  type SharedEntityBookmark,
+} from "./repositories";
+
 // ============================================================================
 // Prompts
 // ============================================================================
@@ -177,6 +196,13 @@ export {
   buildTypeSpecificPrompt,
   getPromptConfigV2,
   buildTypeSpecificPromptV2,
+  // V3 Enhanced Prompts
+  ENHANCED_SYSTEM_PROMPT,
+  ENHANCED_SYSTEM_PROMPT_LITE,
+  getEnhancedPromptConfig,
+  buildEnhancedUserPrompt,
+  CONTENT_TYPE_KEYWORDS,
+  // Constants
   PROMPT_VERSIONS,
   DEFAULT_PROMPT_VERSION,
   CONTENT_TYPE_TEMPERATURE,
@@ -188,6 +214,7 @@ export type {
   PromptVersion,
   TypePromptConfigV2,
   SummaryLengthConfig,
+  EnhancedPromptConfig,
 } from "./prompts";
 
 // ============================================================================
