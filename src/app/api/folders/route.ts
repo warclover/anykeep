@@ -7,6 +7,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getCachedUser } from "@/lib/supabase/cached-auth";
 import { createFolderSchema } from "@/lib/validation";
 import {
   successResponse,
@@ -38,16 +39,19 @@ export async function GET(_request: NextRequest) {
   const monitor = new PerformanceMonitor("FoldersQuery");
 
   try {
-    // 1. 验证用户身份
-    const supabase = await monitor.measure("Auth", () => createClient());
-    const {
-      data: { user },
-      error: authError,
-    } = await monitor.measure("GetUser", () => supabase.auth.getUser());
+    // 1. 验证用户身份（使用缓存认证，性能优化）
+    const { user, error: authError } = await monitor.measure("CachedAuth", () =>
+      getCachedUser(),
+    );
 
     if (authError || !user) {
       return unauthorizedError();
     }
+
+    // 创建 Supabase 客户端用于数据库操作
+    const supabase = await monitor.measure("CreateClient", () =>
+      createClient(),
+    );
 
     monitor.mark("AuthComplete", { userId: user.id });
 
@@ -147,16 +151,15 @@ export async function GET(_request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    // 1. 验证用户身份
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    // 1. 验证用户身份（使用缓存认证，避免重复验证）
+    const { user, error: authError } = await getCachedUser();
 
     if (authError || !user) {
       return unauthorizedError();
     }
+
+    // 创建 Supabase 客户端用于数据库操作
+    const supabase = await createClient();
 
     // 2. 解析并验证请求体
     const body = await request.json();

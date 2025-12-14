@@ -10,6 +10,7 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
+import { getCachedUser } from "@/lib/supabase/cached-auth";
 import {
   successResponse,
   unauthorizedError,
@@ -73,15 +74,15 @@ interface ConfirmationsQueryParams {
  */
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    // 使用缓存认证，避免重复验证
+    const { user, error: authError } = await getCachedUser();
 
     if (authError || !user) {
       return unauthorizedError();
     }
+
+    // 创建 Supabase 客户端用于数据库操作
+    const supabase = await createClient();
 
     // 解析查询参数
     const { searchParams } = new URL(request.url);
@@ -203,15 +204,15 @@ interface CreateConfirmationBody {
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    // 使用缓存认证，避免重复验证
+    const { user, error: authError } = await getCachedUser();
 
     if (authError || !user) {
       return unauthorizedError();
     }
+
+    // 创建 Supabase 客户端用于数据库操作
+    const supabase = await createClient();
 
     // 解析请求体
     const body = (await request.json()) as CreateConfirmationBody;

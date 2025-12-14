@@ -5,6 +5,8 @@
  * @admin 仅管理员可访问
  */
 
+export const dynamic = "force-dynamic";
+
 import { createClient } from "@/lib/supabase/server";
 import {
   successResponse,
@@ -99,15 +101,15 @@ export async function GET(request: NextRequest) {
       case "comparison": {
         // 获取对比报告
         const controlModel = searchParams.get(
-          "controlModel"
+          "controlModel",
         ) as EmbeddingModelId | null;
         const treatmentModel = searchParams.get(
-          "treatmentModel"
+          "treatmentModel",
         ) as EmbeddingModelId | null;
 
         if (!controlModel || !treatmentModel) {
           return badRequestError(
-            "对比报告需要 controlModel 和 treatmentModel 参数"
+            "对比报告需要 controlModel 和 treatmentModel 参数",
           );
         }
 
@@ -121,7 +123,7 @@ export async function GET(request: NextRequest) {
           controlModel,
           treatmentModel,
           operationType,
-          days
+          days,
         );
 
         if (!report) {
@@ -136,7 +138,7 @@ export async function GET(request: NextRequest) {
 
       default:
         return badRequestError(
-          "无效的 action 参数，支持: config, summary, comparison"
+          "无效的 action 参数，支持: config, summary, comparison",
         );
     }
   } catch (error) {
@@ -145,7 +147,7 @@ export async function GET(request: NextRequest) {
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
       },
-      "GET /api/admin/embedding-ab-test error"
+      "GET /api/admin/embedding-ab-test error",
     );
     return internalError("获取 A/B 测试数据失败");
   }

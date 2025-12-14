@@ -8,6 +8,7 @@
 import type { NextRequest } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { getCachedUser } from "@/lib/supabase/cached-auth";
 import {
   ClassificationContainer,
   PRESET_INTEREST_DOMAINS,
@@ -42,16 +43,15 @@ const setInterestsSchema = z.object({
  */
 export async function GET() {
   try {
-    // 1. 验证用户身份
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    // 1. 验证用户身份（使用缓存认证，性能优化）
+    const { user, error: authError } = await getCachedUser();
 
     if (authError || !user) {
       return unauthorizedError("请先登录");
     }
+
+    // 创建 Supabase 客户端用于数据库操作
+    const supabase = await createClient();
 
     // 2. 初始化分类容器并获取服务
     const container = ClassificationContainer.initialize(supabase);
@@ -91,16 +91,15 @@ export async function GET() {
  */
 export async function POST(request: NextRequest) {
   try {
-    // 1. 验证用户身份
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    // 1. 验证用户身份（使用缓存认证，避免重复验证）
+    const { user, error: authError } = await getCachedUser();
 
     if (authError || !user) {
       return unauthorizedError("请先登录");
     }
+
+    // 创建 Supabase 客户端用于数据库操作
+    const supabase = await createClient();
 
     // 2. 解析并验证请求体
     const body = await request.json();
@@ -182,16 +181,15 @@ export async function POST(request: NextRequest) {
  */
 export async function PUT() {
   try {
-    // 1. 验证用户身份
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    // 1. 验证用户身份（使用缓存认证，避免重复验证）
+    const { user, error: authError } = await getCachedUser();
 
     if (authError || !user) {
       return unauthorizedError("请先登录");
     }
+
+    // 创建 Supabase 客户端用于数据库操作
+    const supabase = await createClient();
 
     // 2. 初始化分类容器并获取服务
     const container = ClassificationContainer.initialize(supabase);

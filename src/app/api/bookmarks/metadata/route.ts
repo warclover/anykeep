@@ -3,6 +3,8 @@
  * GET /api/bookmarks/metadata - 获取网页元数据
  */
 
+export const dynamic = "force-dynamic";
+
 import type { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getWebMetadata } from "@/lib/utils/metadata-parser";

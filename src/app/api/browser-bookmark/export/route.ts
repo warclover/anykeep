@@ -3,6 +3,8 @@
  * GET /api/browser-bookmark/export - 导出书签为 HTML 格式
  */
 
+export const dynamic = "force-dynamic";
+
 import type { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { unauthorizedError, badRequestError } from "@/lib/utils/api-response";

@@ -7,6 +7,8 @@
  * @since 2025-12-09
  */
 
+export const dynamic = "force-dynamic";
+
 import type { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { embeddingABTestService } from "@/lib/classification/services/server";

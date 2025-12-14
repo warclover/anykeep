@@ -6,7 +6,7 @@
 
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getCachedUser } from "@/lib/supabase/cached-auth";
 import { snapshotService } from "@/lib/snapshot";
 import type {
   CreateSnapshotRequest,
@@ -19,11 +19,8 @@ import type {
  */
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createServerSupabaseClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    // 使用缓存认证，避免重复验证
+    const { user, error: authError } = await getCachedUser();
 
     if (authError || !user) {
       return NextResponse.json(
@@ -95,12 +92,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // 1. 验证用户认证
-    const supabase = await createServerSupabaseClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    // 1. 验证用户认证（使用缓存认证，避免重复验证）
+    const { user, error: authError } = await getCachedUser();
 
     if (authError || !user) {
       return NextResponse.json(

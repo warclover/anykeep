@@ -3,6 +3,8 @@
  * 获取用户的聚类统计信息
  */
 
+export const dynamic = "force-dynamic";
+
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import type { BookmarkV42Fields } from "@/lib/classification/types";

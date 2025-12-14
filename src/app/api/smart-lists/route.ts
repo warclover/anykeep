@@ -7,6 +7,7 @@
 import type { NextRequest } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { getCachedUser } from "@/lib/supabase/cached-auth";
 import {
   createSmartListSchema,
   getSmartListsQuerySchema,
@@ -186,16 +187,15 @@ async function getBookmarkCount(
  */
 export async function GET(request: NextRequest) {
   try {
-    // 1. 验证用户身份
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    // 1. 验证用户身份（使用缓存认证，性能优化）
+    const { user, error: authError } = await getCachedUser();
 
     if (authError || !user) {
       return unauthorizedError();
     }
+
+    // 创建 Supabase 客户端用于数据库操作
+    const supabase = await createClient();
 
     // 2. 解析查询参数
     const searchParams = request.nextUrl.searchParams;
@@ -290,16 +290,15 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    // 1. 验证用户身份
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    // 1. 验证用户身份（使用缓存认证，避免重复验证）
+    const { user, error: authError } = await getCachedUser();
 
     if (authError || !user) {
       return unauthorizedError();
     }
+
+    // 创建 Supabase 客户端用于数据库操作
+    const supabase = await createClient();
 
     // 2. 解析并验证请求体
     const body = await request.json();

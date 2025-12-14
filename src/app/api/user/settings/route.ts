@@ -5,6 +5,7 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
+import { getCachedUser } from "@/lib/supabase/cached-auth";
 import {
   successResponse,
   unauthorizedError,
@@ -26,15 +27,15 @@ import type { NextRequest } from "next/server";
  */
 export async function GET() {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    // 验证用户身份（使用缓存认证，性能优化）
+    const { user, error: authError } = await getCachedUser();
 
     if (authError || !user) {
       return unauthorizedError();
     }
+
+    // 创建 Supabase 客户端用于数据库操作
+    const supabase = await createClient();
 
     // 从 profiles 表获取设置
     const { data: profile, error: profileError } = await supabase
@@ -70,15 +71,15 @@ export async function GET() {
  */
 export async function PUT(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    // 验证用户身份（使用缓存认证，避免重复验证）
+    const { user, error: authError } = await getCachedUser();
 
     if (authError || !user) {
       return unauthorizedError();
     }
+
+    // 创建 Supabase 客户端用于数据库操作
+    const supabase = await createClient();
 
     // 解析请求体
     const body = (await request.json()) as Partial<UserSettings>;

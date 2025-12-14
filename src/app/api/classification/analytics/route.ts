@@ -8,6 +8,8 @@
  * @since 2025-12-11
  */
 
+export const dynamic = "force-dynamic";
+
 import { createClient } from "@/lib/supabase/server";
 import {
   successResponse,
@@ -95,7 +97,10 @@ export async function GET(request: NextRequest) {
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error({ error: errorMessage }, "GET /api/classification/analytics error");
+    logger.error(
+      { error: errorMessage },
+      "GET /api/classification/analytics error",
+    );
     return internalError("获取分类分析数据失败");
   }
 }
@@ -113,24 +118,19 @@ async function getOverviewAnalytics(userId: string, days: number) {
   startDate.setDate(startDate.getDate() - days);
 
   // 并行获取各项统计
-  const [
-    bookmarkStats,
-    folderStats,
-    sourceStats,
-    learningStats,
-    cacheStats,
-  ] = await Promise.all([
-    // 书签统计
-    getBookmarkStats(supabase, userId, startDate),
-    // 文件夹统计
-    getFolderStats(supabase, userId),
-    // 来源统计
-    getSourceStats(userId),
-    // 学习统计
-    preferenceLearner.getLearningStats(userId),
-    // 缓存统计
-    Promise.resolve(fastPathCacheManager.getStats()),
-  ]);
+  const [bookmarkStats, folderStats, sourceStats, learningStats, cacheStats] =
+    await Promise.all([
+      // 书签统计
+      getBookmarkStats(supabase, userId, startDate),
+      // 文件夹统计
+      getFolderStats(supabase, userId),
+      // 来源统计
+      getSourceStats(userId),
+      // 学习统计
+      preferenceLearner.getLearningStats(userId),
+      // 缓存统计
+      Promise.resolve(fastPathCacheManager.getStats()),
+    ]);
 
   return {
     period: {
@@ -200,7 +200,10 @@ async function getSourcesAnalytics(userId: string) {
   );
 
   for (const source of sources) {
-    typeCount.set(source.source_type, (typeCount.get(source.source_type) || 0) + 1);
+    typeCount.set(
+      source.source_type,
+      (typeCount.get(source.source_type) || 0) + 1,
+    );
 
     if (source.trust_score >= 70) {
       trustDistribution.high++;
@@ -219,23 +222,25 @@ async function getSourcesAnalytics(userId: string) {
     }),
   );
 
-  const topSources = sources.slice(0, 20).map(
-    (s: {
-      source_id: string;
-      source_name: string;
-      source_type: string;
-      sample_count: number;
-      trust_score: number;
-      avg_confidence: number | null;
-    }) => ({
-      sourceId: s.source_id,
-      sourceName: s.source_name,
-      sourceType: s.source_type,
-      sampleCount: s.sample_count,
-      trustScore: s.trust_score,
-      avgConfidence: s.avg_confidence,
-    }),
-  );
+  const topSources = sources
+    .slice(0, 20)
+    .map(
+      (s: {
+        source_id: string;
+        source_name: string;
+        source_type: string;
+        sample_count: number;
+        trust_score: number;
+        avg_confidence: number | null;
+      }) => ({
+        sourceId: s.source_id,
+        sourceName: s.source_name,
+        sourceType: s.source_type,
+        sampleCount: s.sample_count,
+        trustScore: s.trust_score,
+        avgConfidence: s.avg_confidence,
+      }),
+    );
 
   return {
     totalSources: sources.length,
@@ -346,7 +351,11 @@ async function getTrendsAnalytics(userId: string, days: number) {
   }
 
   // 计算文件夹分布趋势
-  const folderDistribution = await getFolderDistribution(supabase, userId, startDate);
+  const folderDistribution = await getFolderDistribution(
+    supabase,
+    userId,
+    startDate,
+  );
 
   return {
     period: {
@@ -358,7 +367,7 @@ async function getTrendsAnalytics(userId: string, days: number) {
     folderDistribution,
     summary: {
       totalBookmarks: bookmarks?.length || 0,
-      avgPerDay: Math.round((bookmarks?.length || 0) / days * 10) / 10,
+      avgPerDay: Math.round(((bookmarks?.length || 0) / days) * 10) / 10,
       classificationRate:
         bookmarks && bookmarks.length > 0
           ? Math.round(
@@ -418,7 +427,11 @@ async function getFolderStats(
     .eq("is_archived", false);
 
   // 获取每个文件夹的书签数
-  const folderBookmarkCounts: Array<{ folderId: number; name: string; count: number }> = [];
+  const folderBookmarkCounts: Array<{
+    folderId: number;
+    name: string;
+    count: number;
+  }> = [];
 
   for (const folder of folders || []) {
     const { count: bookmarkCount } = await supabase
