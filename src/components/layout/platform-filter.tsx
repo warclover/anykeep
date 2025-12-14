@@ -41,8 +41,8 @@ export function PlatformFilter() {
   };
 
   // 从 URL 读取初始值
-  const urlPlatform = searchParams.get("platform") || "";
-  const urlFolder = searchParams.get("folder") || "";
+  const urlPlatform = searchParams?.get("platform") || "";
+  const urlFolder = searchParams?.get("folder") || "";
 
   // 本地状态管理当前平台（支持客户端即时切换）
   const [localPlatform, setLocalPlatform] = useState(urlPlatform);
@@ -113,7 +113,7 @@ export function PlatformFilter() {
     setLocalFolder(""); // 切换平台时清除文件夹
 
     // 2. 更新 URL（用于书签和分享）
-    const params = new URLSearchParams(searchParams.toString());
+    const params = new URLSearchParams(searchParams?.toString() ?? "");
     params.delete("folder");
     if (platformValue) {
       params.set("platform", platformValue);

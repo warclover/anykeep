@@ -115,7 +115,7 @@ export default async function FoldersPage() {
   // 获取最近添加的收藏
   const { data: recentBookmarks, error: bookmarksError } = await supabase
     .from("bookmarks")
-    .select("*, folders:folder_id (name)")
+    .select("*, folders(name)")
     .eq("user_id", user.id)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })

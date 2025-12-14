@@ -63,7 +63,7 @@ export function MobileBottomNav() {
           // 客户端导航模式下使用 activePage，否则使用 pathname
           const isActive = isClientNavEnabled
             ? activePage === item.pageId
-            : pathname === href || pathname.startsWith(href + "/");
+            : pathname === href || (pathname?.startsWith(href + "/") ?? false);
 
           return (
             <Link

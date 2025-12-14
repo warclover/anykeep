@@ -71,7 +71,7 @@ const systemFolders = [
 export function AppSidebar() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const currentFolder = searchParams.get("folder");
+  const currentFolder = searchParams?.get("folder") ?? null;
 
   // 获取未读消息数量
   const { total: unreadCount, important: importantCount } = useUnreadCount();
@@ -134,7 +134,8 @@ export function AppSidebar() {
               // 客户端导航模式下使用 activePage，否则使用 pathname
               const isActive = isClientNavEnabled
                 ? activePage === item.pageId
-                : pathname === href || pathname.startsWith(href + "/");
+                : pathname === href ||
+                  (pathname?.startsWith(href + "/") ?? false);
 
               return (
                 <Link

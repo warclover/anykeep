@@ -64,6 +64,8 @@ import { SnapshotSectionLazy } from "@/components/snapshot";
 interface BookmarkDetailClientProps {
   bookmark: Bookmark & {
     folders?: { id: number; name: string } | null;
+    /** Optional source ID for future knowledge linking (not yet in database) */
+    source_id?: string | null;
   };
   folderPath?: Array<{ id: number; name: string }>;
 }

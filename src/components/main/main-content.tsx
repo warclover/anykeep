@@ -14,6 +14,7 @@
 import { type ReactNode } from "react";
 import { useSafeNavigation } from "@/contexts/navigation-context";
 import { PageContainer } from "./page-container";
+import { FolderCacheListener } from "@/components/cache/folder-cache-listener";
 
 interface MainContentProps {
   /** 服务端渲染的初始内容 */
@@ -55,6 +56,8 @@ export function MainContent({ children }: MainContentProps) {
   if (!shouldUsePageContainer) {
     return (
       <>
+        {/* 文件夹缓存监听器 */}
+        <FolderCacheListener />
         {children}
         {/* 预渲染 PageContainer（隐藏），用于后续客户端导航 */}
         {isClientNavEnabled && (
@@ -67,5 +70,10 @@ export function MainContent({ children }: MainContentProps) {
   }
 
   // 客户端导航模式，使用 PageContainer
-  return <PageContainer>{children}</PageContainer>;
+  return (
+    <>
+      <FolderCacheListener />
+      <PageContainer>{children}</PageContainer>
+    </>
+  );
 }

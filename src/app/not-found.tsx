@@ -3,6 +3,8 @@
  * 当用户访问不存在的页面时显示
  */
 
+export const dynamic = "force-dynamic";
+
 import Link from "next/link";
 
 export default function NotFound() {

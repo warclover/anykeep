@@ -47,7 +47,13 @@ import { RenameFolderDialog } from "./rename-folder-dialog";
 import { MergeFolderDialog } from "./merge-folder-dialog";
 import { DeleteFolderDialog } from "./delete-folder-dialog";
 import { useAbortableFetch } from "@/hooks/use-abortable-fetch";
-import type { Folder as FolderType, FolderGroup } from "@/types/supabase";
+import { useUser } from "@/contexts/user-context";
+import { folderCacheInvalidation } from "@/lib/cache";
+import type {
+  Folder as FolderType,
+  FolderGroup,
+  FolderDisplayGroup,
+} from "@/types/supabase";
 
 type FolderWithCount = FolderType & {
   bookmark_count?: number;
@@ -79,8 +85,11 @@ interface FolderActionMenuProps {
   initialLockStatus?: InitialLockStatus;
 }
 
-// 文件夹分组配置（包含系统分组以保证类型安全）
-const FOLDER_GROUPS: Record<string, { label: string; icon: typeof Folder }> = {
+// 文件夹分组配置（包含 UI 显示用的虚拟分组）
+const FOLDER_GROUPS: Record<
+  FolderDisplayGroup,
+  { label: string; icon: typeof Folder }
+> = {
   default: {
     label: "默认",
     icon: Folder,
@@ -115,6 +124,15 @@ const FOLDER_GROUPS: Record<string, { label: string; icon: typeof Folder }> = {
   },
 };
 
+// 可用于数据库存储的有效分组（用于"移至类别"菜单）
+const VALID_FOLDER_GROUPS: FolderGroup[] = [
+  "work",
+  "study",
+  "life",
+  "entertainment",
+  "other",
+];
+
 export function FolderActionMenu({
   folder,
   allFolders,
@@ -126,6 +144,7 @@ export function FolderActionMenu({
 }: FolderActionMenuProps) {
   const router = useRouter();
   const { fetchWithAbort } = useAbortableFetch();
+  const { user } = useUser();
   const [showRenameDialog, setShowRenameDialog] = useState(false);
   const [showMergeDialog, setShowMergeDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -174,6 +193,10 @@ export function FolderActionMenu({
       }
 
       toast.success(`已移至「${FOLDER_GROUPS[newGroup].label}」`);
+      // 清除文件夹缓存
+      if (user?.id) {
+        folderCacheInvalidation.onFolderGroupChange(user.id);
+      }
       onActionComplete?.();
       router.refresh();
     } catch (err) {
@@ -232,6 +255,10 @@ export function FolderActionMenu({
       }
 
       toast.success("移动成功");
+      // 清除文件夹缓存
+      if (user?.id) {
+        folderCacheInvalidation.onAnyChange(user.id);
+      }
       onActionComplete?.();
       router.refresh();
     } catch (err) {
@@ -265,6 +292,10 @@ export function FolderActionMenu({
       }
 
       toast.success(data.data.message);
+      // 清除文件夹缓存
+      if (user?.id) {
+        folderCacheInvalidation.onAnyChange(user.id);
+      }
       onActionComplete?.();
       router.refresh();
     } catch (err) {
@@ -280,6 +311,7 @@ export function FolderActionMenu({
 
   // V4.2.1: 获取锁定状态
   // 优先使用父组件批量查询的结果，否则才进行单独请求
+  // P0-5 修复：添加 AbortController 避免内存泄漏
   useEffect(() => {
     // 如果父组件已提供锁状态，直接使用
     if (initialLockStatus !== undefined) {
@@ -288,23 +320,35 @@ export function FolderActionMenu({
     }
 
     // 否则进行单独请求（兜底逻辑）
+    const abortController = new AbortController();
+
     const fetchLockStatus = async () => {
       try {
-        const res = await fetch(`/api/folders/${folder.id}/lock`);
+        const res = await fetch(`/api/folders/${folder.id}/lock`, {
+          signal: abortController.signal,
+        });
         if (res.ok) {
           const data = await res.json();
           if (data.success) {
             setIsLocked(data.data.isLocked);
           }
         }
-      } catch {
-        // 静默处理，默认为未锁定
+      } catch (err) {
+        // 忽略 AbortError，静默处理其他错误
+        if (err instanceof Error && err.name !== "AbortError") {
+          // 默认为未锁定
+        }
       }
     };
 
     if (!isSystemFolder) {
       fetchLockStatus();
     }
+
+    // Cleanup: 取消进行中的请求
+    return () => {
+      abortController.abort();
+    };
   }, [folder.id, isSystemFolder, initialLockStatus]);
 
   // 处理锁定/解锁
@@ -329,7 +373,12 @@ export function FolderActionMenu({
 
       setIsLocked(!isLocked);
       toast.success(data.data.message);
+      // 清除文件夹缓存
+      if (user?.id) {
+        folderCacheInvalidation.onAnyChange(user.id);
+      }
       onActionComplete?.();
+      router.refresh();
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") {
         return;
@@ -448,7 +497,7 @@ export function FolderActionMenu({
               移至类别
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent>
-              {(Object.keys(FOLDER_GROUPS) as FolderGroup[]).map((groupKey) => {
+              {VALID_FOLDER_GROUPS.map((groupKey) => {
                 const groupConfig = FOLDER_GROUPS[groupKey];
                 const GroupIcon = groupConfig.icon;
                 const isCurrent = folder.folder_group === groupKey;

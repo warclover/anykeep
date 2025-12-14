@@ -16,7 +16,7 @@ export function HotTagsClient({ tags }: HotTagsClientProps) {
   const searchParams = useSearchParams();
 
   const handleTagClick = (tag: string) => {
-    const params = new URLSearchParams(searchParams);
+    const params = new URLSearchParams(searchParams?.toString() ?? "");
     params.set("q", tag);
     router.push(`/search?${params.toString()}`);
   };

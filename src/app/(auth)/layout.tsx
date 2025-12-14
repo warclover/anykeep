@@ -3,10 +3,12 @@
  * 用于登录、注册等页面
  */
 
+export const dynamic = "force-dynamic";
+
 export default function AuthLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
@@ -25,5 +27,5 @@ export default function AuthLayout({
         {children}
       </div>
     </div>
-  )
+  );
 }

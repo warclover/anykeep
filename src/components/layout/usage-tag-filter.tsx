@@ -41,7 +41,7 @@ export function UsageTagFilter({
   const { customTags: customUsageTags, isLoading } = useCustomUsageTags();
 
   // 从 URL 获取初始值
-  const urlUsageTags = searchParams.get("usageTags") || "";
+  const urlUsageTags = searchParams?.get("usageTags") || "";
   const initialTags = useMemo(() => {
     return urlUsageTags ? urlUsageTags.split(",").filter(Boolean) : [];
   }, [urlUsageTags]);
@@ -82,7 +82,7 @@ export function UsageTagFilter({
       setSelectedTags(newSelected);
 
       // 更新 URL
-      const params = new URLSearchParams(searchParams.toString());
+      const params = new URLSearchParams(searchParams?.toString() ?? "");
       if (newSelected.length > 0) {
         params.set("usageTags", newSelected.join(","));
       } else {
@@ -116,7 +116,7 @@ export function UsageTagFilter({
     setSelectedTags([]);
 
     // 更新 URL
-    const params = new URLSearchParams(searchParams.toString());
+    const params = new URLSearchParams(searchParams?.toString() ?? "");
     params.delete("usageTags");
     const newUrl = `/home?${params.toString()}`;
     window.history.replaceState(

@@ -3,9 +3,9 @@ import { Inter } from "next/font/google";
 import { RootProviders } from "@/components/providers/root-providers";
 import "./globals.css";
 
-// 注意：根布局不应设置 force-dynamic
-// 它只包含静态 Providers，不获取数据
-// 各页面根据需要自行设置动态策略
+// 强制动态渲染以避免预渲染时的 Context 问题
+// 子布局和页面会继承此配置
+export const dynamic = "force-dynamic";
 
 const inter = Inter({
   subsets: ["latin"],

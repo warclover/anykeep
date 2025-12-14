@@ -56,8 +56,8 @@ export function HeaderMenu() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const currentPlatform = searchParams.get("platform") || "";
-  const currentSort = searchParams.get("sort") || "created_desc";
+  const currentPlatform = searchParams?.get("platform") || "";
+  const currentSort = searchParams?.get("sort") || "created_desc";
 
   // 检测是否为浏览器书签平台
   const isBrowserPlatform = currentPlatform === "browser";
@@ -119,7 +119,7 @@ export function HeaderMenu() {
 
   // 切换排序
   const handleSortChange = (sortValue: string) => {
-    const params = new URLSearchParams(searchParams);
+    const params = new URLSearchParams(searchParams?.toString() ?? "");
     params.set("sort", sortValue);
     router.push(`/home?${params.toString()}`);
     setIsOpen(false);

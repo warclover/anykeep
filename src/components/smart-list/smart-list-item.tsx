@@ -93,7 +93,7 @@ export function SmartListItem({
   const href = `/home?smartList=${smartList.id}`;
 
   // 判断是否激活（如果没有传入 isActive，则根据 URL 判断）
-  const currentSmartListId = searchParams.get("smartList");
+  const currentSmartListId = searchParams?.get("smartList") ?? null;
   const active =
     isActive ??
     (pathname === "/home" && currentSmartListId === String(smartList.id));

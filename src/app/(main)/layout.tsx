@@ -10,6 +10,8 @@
  * Phase 4: 集成 AI 对话功能
  */
 
+export const dynamic = "force-dynamic";
+
 import { AppHeader } from "@/components/layout/app-header";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";

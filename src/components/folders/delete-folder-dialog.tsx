@@ -30,6 +30,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { Folder } from "@/types/supabase";
+import { useUser } from "@/contexts/user-context";
+import { folderCacheInvalidation } from "@/lib/cache";
 
 type FolderWithCount = Folder & {
   bookmark_count?: number;
@@ -54,6 +56,7 @@ export function DeleteFolderDialog({
 }: DeleteFolderDialogProps) {
   const router = useRouter();
   const { fetchWithAbort } = useAbortableFetch();
+  const { user } = useUser();
   const [deleteOption, setDeleteOption] = useState<DeleteOption>("move");
   const [targetFolderId, setTargetFolderId] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -170,6 +173,11 @@ export function DeleteFolderDialog({
         }
 
         toast.success(`已删除文件夹「${folder.name}」`);
+      }
+
+      // 统一的缓存失效调用（所有删除路径共用）
+      if (user?.id) {
+        folderCacheInvalidation.onFolderDelete(user.id);
       }
 
       onOpenChange(false);

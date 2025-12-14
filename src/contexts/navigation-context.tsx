@@ -202,7 +202,7 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
   // 从 URL 解析初始页面（只在首次渲染时使用）
   // 如果不是主页面（如详情页），则为 null
   const [initialPage] = useState<PageId | null>(
-    () => ROUTE_TO_PAGE[pathname] || null,
+    () => (pathname ? ROUTE_TO_PAGE[pathname] : null) || null,
   );
 
   // 当前激活的页面（null 表示不在主页面）
@@ -218,7 +218,7 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
 
   // 当前页面参数
   const [activeParams, setActiveParams] = useState<URLSearchParams>(
-    () => new URLSearchParams(searchParams.toString()),
+    () => new URLSearchParams(searchParams?.toString() ?? ""),
   );
 
   // 页面缓存状态（初始时将当前页面标记为 loading，如果有的话）
@@ -410,12 +410,12 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
    * 这是响应外部 URL 变化的合法用例，需要同步内部状态
    */
   useEffect(() => {
-    const pageId = ROUTE_TO_PAGE[pathname] || null;
+    const pageId = (pathname ? ROUTE_TO_PAGE[pathname] : null) || null;
     // 只有当 pageId 确实变化时才更新（包括从主页面到非主页面）
     if (pageId !== activePage) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- 响应外部 URL 变化
       setActivePage(pageId);
-      setActiveParams(new URLSearchParams(searchParams.toString()));
+      setActiveParams(new URLSearchParams(searchParams?.toString() ?? ""));
     }
   }, [pathname, searchParams, activePage]);
 

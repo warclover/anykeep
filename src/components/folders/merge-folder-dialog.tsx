@@ -28,6 +28,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { Folder } from "@/types/supabase";
+import { useUser } from "@/contexts/user-context";
+import { folderCacheInvalidation } from "@/lib/cache";
 
 type FolderWithCount = Folder & {
   bookmark_count?: number;
@@ -56,6 +58,7 @@ export function MergeFolderDialog({
 }: MergeFolderDialogProps) {
   const router = useRouter();
   const { fetchWithAbort } = useAbortableFetch();
+  const { user } = useUser();
   const [targetFolderId, setTargetFolderId] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -94,6 +97,12 @@ export function MergeFolderDialog({
       toast.success(
         `已将 ${result.bookmarksMoved} 条收藏合并到「${result.targetFolderName}」，文件夹「${folder.name}」已删除`,
       );
+
+      // 清除文件夹缓存
+      if (user?.id) {
+        folderCacheInvalidation.onFolderMerge(user.id);
+      }
+
       onOpenChange(false);
       setTargetFolderId("");
       // 先触发乐观更新

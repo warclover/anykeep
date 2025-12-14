@@ -21,6 +21,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { Folder } from "@/types/supabase";
+import { useUser } from "@/contexts/user-context";
+import { folderCacheInvalidation } from "@/lib/cache";
 
 interface RenameFolderDialogProps {
   open: boolean;
@@ -39,6 +41,7 @@ export function RenameFolderDialog({
 }: RenameFolderDialogProps) {
   const router = useRouter();
   const { fetchWithAbort } = useAbortableFetch();
+  const { user } = useUser();
   const [name, setName] = useState(folder.name);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -88,6 +91,12 @@ export function RenameFolderDialog({
       }
 
       toast.success("文件夹已重命名");
+
+      // 清除文件夹缓存
+      if (user?.id) {
+        folderCacheInvalidation.onFolderRename(user.id);
+      }
+
       onOpenChange(false);
       onRenamed?.(trimmedName); // 先触发乐观更新
       onSuccess?.();

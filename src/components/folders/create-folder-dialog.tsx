@@ -29,7 +29,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { createFolderSchema } from "@/lib/validation";
+import { folderCacheInvalidation } from "@/lib/cache";
 import type { Folder } from "@/types/supabase";
+import { useUser } from "@/contexts/user-context";
 
 interface CreateFolderDialogProps {
   open: boolean;
@@ -54,6 +56,7 @@ export function CreateFolderDialog({
 }: CreateFolderDialogProps) {
   const router = useRouter();
   const { fetchWithAbort } = useAbortableFetch();
+  const { user } = useUser();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // 表单状态
@@ -103,14 +106,23 @@ export function CreateFolderDialog({
       }
 
       toast.success("文件夹创建成功！");
-      onOpenChange(false);
 
-      // 重置表单
+      // 清除文件夹缓存，确保页面数据同步
+      if (user?.id) {
+        folderCacheInvalidation.onFolderCreate(user.id);
+      }
+
+      // P0-6 修复：先重置表单状态，再关闭对话框
+      // 避免用户快速重新打开时看到旧状态
       setName("");
       setParentId("");
       setColor(PRESET_COLORS[0].value);
+      setErrors({});
 
-      // 刷新页面数据
+      // 关闭对话框
+      onOpenChange(false);
+
+      // 最后刷新页面数据
       router.refresh();
     } catch (error) {
       // 如果是取消错误，不显示错误提示
