@@ -46,20 +46,26 @@ jest.mock("../services/link.service", () => ({
 const mockSummaryCompletedEvent: SummaryCompletedEvent = {
   userId: "test-user-uuid",
   bookmarkId: 123,
-  summaryLength: 150,
-  provider: "deepseek",
-  latencyMs: 1500,
-  cached: false,
-  timestamp: new Date().toISOString(),
+  summaryVersion: 2,
   summaryMode: "standard",
-  entitiesExtracted: false,
+  tagsGenerated: 5,
+  entitiesExtracted: 0,
+  processingTimeMs: 1500,
+  needsClassification: true,
+  timestamp: new Date().toISOString(),
 };
 
 const mockEntitiesExtractedEvent: EntitiesExtractedEvent = {
   userId: "test-user-uuid",
   bookmarkId: 123,
+  entities: [
+    { name: "React", type: "tech", confidence: 0.9 },
+    { name: "Next.js", type: "tech", confidence: 0.85 },
+    { name: "John Doe", type: "person", confidence: 0.8 },
+    { name: "AI", type: "concept", confidence: 0.95 },
+    { name: "OpenAI", type: "company", confidence: 0.9 },
+  ],
   entityCount: 5,
-  entityTypes: ["tech", "person", "concept"],
   needsLinkProcessing: true,
   timestamp: new Date().toISOString(),
 };
@@ -274,7 +280,7 @@ describe("Event Handling Logic", () => {
     const enhancedEvent: SummaryCompletedEvent = {
       ...mockSummaryCompletedEvent,
       summaryMode: "enhanced",
-      entitiesExtracted: true,
+      entitiesExtracted: 5,
     };
 
     summaryCompletedCallback(enhancedEvent);

@@ -92,6 +92,28 @@ export {
   resetEntityMatcherService,
 } from "./services/entity-matcher.service";
 
+export type { IGraphBuilderService } from "./services/graph-builder.service";
+
+export {
+  GraphBuilderService,
+  getGraphBuilderService,
+  resetGraphBuilderService,
+  type GraphNode,
+  type GraphEdge,
+  type GraphData,
+  type GraphBuildOptions,
+} from "./services/graph-builder.service";
+
+export type { ITopicClustererService } from "./services/topic-clusterer.service";
+
+export {
+  TopicClustererService,
+  getTopicClustererService,
+  resetTopicClustererService,
+  type ClusterDataPoint,
+  type ClusterResult,
+} from "./services/topic-clusterer.service";
+
 // ============================================================================
 // Repositories
 // ============================================================================

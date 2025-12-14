@@ -66,9 +66,23 @@ export interface ILinkService {
   getGraphStats(userId: string): Promise<KnowledgeGraphStats>;
 
   /**
-   * 手动触发关联重建
+   * 手动触发单个书签的关联重建
    */
   rebuildLinks(bookmarkId: number, userId: string): Promise<number>;
+
+  /**
+   * 重建用户的整个知识图谱
+   * 批量处理所有书签的关联发现
+   */
+  rebuildUserGraph(
+    userId: string,
+    options?: {
+      /** 批处理大小 */
+      batchSize?: number;
+      /** 进度回调 */
+      onProgress?: (processed: number, total: number) => void;
+    },
+  ): Promise<{ totalProcessed: number; totalLinks: number }>;
 }
 
 // ============================================================================
@@ -207,9 +221,147 @@ export class LinkService implements ILinkService {
     return links.length;
   }
 
+  /**
+   * 重建用户的整个知识图谱
+   * 批量处理所有书签的关联发现
+   */
+  async rebuildUserGraph(
+    userId: string,
+    options?: {
+      batchSize?: number;
+      onProgress?: (processed: number, total: number) => void;
+    },
+  ): Promise<{ totalProcessed: number; totalLinks: number }> {
+    const batchSize = options?.batchSize || 10;
+    const onProgress = options?.onProgress;
+
+    logger.info(
+      { userId, batchSize },
+      "[LinkService] Starting user graph rebuild",
+    );
+
+    const supabase = createClient();
+
+    try {
+      // 1. 获取用户的所有书签 ID
+      const { data: bookmarks, error } = await supabase
+        .from("bookmarks")
+        .select("id")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        throw new Error(`Failed to get bookmarks: ${error.message}`);
+      }
+
+      const bookmarkIds = (bookmarks || []).map((b) => b.id);
+      const total = bookmarkIds.length;
+
+      if (total === 0) {
+        logger.info({ userId }, "[LinkService] No bookmarks to process");
+        return { totalProcessed: 0, totalLinks: 0 };
+      }
+
+      logger.info(
+        { userId, totalBookmarks: total },
+        "[LinkService] Found bookmarks for rebuild",
+      );
+
+      // 2. 删除所有现有关联
+      await this.deleteAllUserLinks(userId);
+
+      // 3. 批量处理书签
+      let processed = 0;
+      let totalLinksCreated = 0;
+
+      for (let i = 0; i < bookmarkIds.length; i += batchSize) {
+        const batch = bookmarkIds.slice(i, i + batchSize);
+
+        // 并行处理批次内的书签
+        const results = await Promise.allSettled(
+          batch.map((bookmarkId) =>
+            this.processNewBookmark(bookmarkId, userId),
+          ),
+        );
+
+        // 统计成功处理的数量
+        for (const result of results) {
+          if (result.status === "fulfilled") {
+            processed++;
+          } else {
+            logger.warn(
+              { error: result.reason },
+              "[LinkService] Failed to process bookmark in batch",
+            );
+          }
+        }
+
+        // 调用进度回调
+        if (onProgress) {
+          onProgress(processed, total);
+        }
+
+        // 短暂延迟，避免过载
+        if (i + batchSize < bookmarkIds.length) {
+          await this.delay(100);
+        }
+      }
+
+      // 4. 获取最终统计
+      const stats = await this.getGraphStats(userId);
+      totalLinksCreated = stats.totalLinks;
+
+      logger.info(
+        { userId, totalProcessed: processed, totalLinks: totalLinksCreated },
+        "[LinkService] User graph rebuild complete",
+      );
+
+      return {
+        totalProcessed: processed,
+        totalLinks: totalLinksCreated,
+      };
+    } catch (error) {
+      logger.error(
+        {
+          userId,
+          error: error instanceof Error ? error.message : String(error),
+        },
+        "[LinkService] User graph rebuild failed",
+      );
+      throw error;
+    }
+  }
+
   // ============================================================================
   // Private Methods
   // ============================================================================
+
+  /**
+   * 删除用户的所有知识关联
+   */
+  private async deleteAllUserLinks(userId: string): Promise<void> {
+    const supabase = createClient();
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any)
+      .from("knowledge_links")
+      .delete()
+      .eq("user_id", userId);
+
+    if (error) {
+      logger.error({ error }, "[LinkService] Failed to delete user links");
+      throw new Error(`Failed to delete user links: ${error.message}`);
+    }
+
+    logger.info({ userId }, "[LinkService] Deleted all user links");
+  }
+
+  /**
+   * 延迟函数
+   */
+  private delay(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
 
   /**
    * 获取书签信息（用于关联发现）
