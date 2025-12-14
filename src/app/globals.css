@@ -82,6 +82,15 @@
   }
 }
 
+/* 隐藏滚动条 - 跨浏览器兼容 */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE/Edge */
+  scrollbar-width: none;      /* Firefox */
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;              /* Chrome/Safari/Opera */
+}
+
 /* iOS 安全区 CSS 变量 */
 :root {
   --safe-area-inset-top: env(safe-area-inset-top, 0px);

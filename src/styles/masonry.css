@@ -16,11 +16,12 @@
 }
 
 /* 平板及以上：行优先网格 */
+/* 使用 minmax(0, 1fr) 防止内容撑大列宽导致溢出 */
 @media (min-width: 768px) {
   .masonry-grid {
     column-count: unset;
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 1.5rem;
   }
 }
@@ -28,14 +29,14 @@
 /* 桌面：3 列网格 */
 @media (min-width: 1024px) {
   .masonry-grid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
 /* 大屏幕：4 列网格 */
 @media (min-width: 1536px) {
   .masonry-grid {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
@@ -44,26 +45,26 @@
 .masonry-grid.layout-row {
   column-count: unset !important;
   display: grid !important;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1rem;
 }
 
 @media (min-width: 768px) {
   .masonry-grid.layout-row {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 1.5rem;
   }
 }
 
 @media (min-width: 1024px) {
   .masonry-grid.layout-row {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
 @media (min-width: 1536px) {
   .masonry-grid.layout-row {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 

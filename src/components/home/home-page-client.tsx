@@ -78,13 +78,11 @@ const InboxOrganizationBanner = lazy(() =>
   })),
 );
 
-// 懒加载 PendingConfirmationsSection（V4.2 待确认消息）
+// 懒加载 PendingConfirmationsSection（V4.2 待确认消息 - 重构版）
 const PendingConfirmationsSection = lazy(() =>
-  import("@/components/classification/pending-confirmations-section").then(
-    (mod) => ({
-      default: mod.PendingConfirmationsSection,
-    }),
-  ),
+  import("@/components/classification/pending-confirmations").then((mod) => ({
+    default: mod.PendingConfirmationsSection,
+  })),
 );
 // V3.1: 替换 V1 的 useFolderRecommendation 为 V3 的分类轮询
 import { useClassificationPolling } from "@/hooks/use-classification-polling";
@@ -1192,10 +1190,10 @@ export function HomePageClient({
   return (
     <div className="flex flex-col h-full">
       {/* 顶部工具栏（移动端显示） */}
-      <header className="sm:hidden bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-2">
-        <div className="flex items-center gap-2">
+      <header className="sm:hidden bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-2 overflow-hidden">
+        <div className="flex items-center gap-2 max-w-full">
           {/* 移动端平台筛选 */}
-          <div className="flex-1 overflow-x-auto scrollbar-hide">
+          <div className="flex-1 min-w-0 overflow-x-auto scrollbar-hide">
             <div className="flex items-center gap-1.5">
               {platforms.map((platform) => {
                 const isActive = currentPlatform === platform.value;
@@ -1470,7 +1468,7 @@ export function HomePageClient({
       </header>
 
       {/* 内容区域 */}
-      <div className="flex-1 overflow-auto px-4 md:px-8 py-0.5 md:py-1">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 md:px-8 py-0.5 md:py-1">
         {/* 快速添加收藏组件（仅在非垃圾箱页面显示） */}
         {!isTrashFolder && (
           <div className="mb-6 max-w-3xl mx-auto">
@@ -1634,11 +1632,11 @@ export function HomePageClient({
       </div>
 
       {/* 底部工具栏：用途标签筛选 + 添加收藏按钮 */}
-      <div className="sticky bottom-0 left-0 right-0 p-4 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
-        <div className="flex items-center gap-3">
+      <div className="sticky bottom-0 left-0 right-0 p-4 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="flex items-center gap-3 max-w-full">
           {/* V9.0 用途标签筛选（仅非浏览器书签平台和非虚拟文件夹时显示） */}
           {!isBrowserPlatform && !currentFolder && (
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 overflow-hidden">
               <UsageTagFilter />
             </div>
           )}
