@@ -32,7 +32,6 @@ const mockRelatedBookmarks: RelatedBookmark[] = [
       id: 456,
       title: "React Hooks 深入理解",
       url: "https://example.com/react-hooks",
-      favicon: "https://example.com/favicon.ico",
       platform: "article",
     },
     link: {

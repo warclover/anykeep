@@ -144,7 +144,6 @@ describe("Type Shapes", () => {
         id: 456,
         title: "Test Bookmark",
         url: "https://example.com",
-        favicon: "https://example.com/favicon.ico",
         platform: "article",
       },
       link: {

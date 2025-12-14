@@ -32,7 +32,6 @@ interface GetRelatedResponse {
         id: number;
         title: string;
         url: string;
-        favicon?: string;
         platform?: string;
       };
       link: {

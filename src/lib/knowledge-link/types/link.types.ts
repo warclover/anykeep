@@ -109,6 +109,7 @@ export interface LinkEvidenceDetails {
 
 /**
  * 相关书签（带关联信息）
+ * Note: favicon 通过 URL 动态计算，不存储在数据库
  */
 export interface RelatedBookmark {
   /** 书签基本信息 */
@@ -116,7 +117,6 @@ export interface RelatedBookmark {
     id: number;
     title: string;
     url: string;
-    favicon?: string;
     platform?: string;
   };
 
