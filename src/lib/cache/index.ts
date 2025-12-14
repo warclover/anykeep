@@ -50,3 +50,10 @@ export {
   cachePerformanceTracker,
   useCachePerformanceTracking,
 } from "./cache-performance-tracker";
+
+// V5.2: 文件夹缓存失效
+export {
+  invalidateFolderCache,
+  subscribeFolderCacheInvalidation,
+  folderCacheInvalidation,
+} from "./folder-cache-invalidation";

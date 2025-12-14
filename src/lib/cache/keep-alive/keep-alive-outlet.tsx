@@ -109,11 +109,12 @@ export function KeepAliveOutlet({
   noCache = false,
 }: KeepAliveOutletProps) {
   const pathname = usePathname();
-  const cacheKey = customCacheKey || pathname;
+  const cacheKey = customCacheKey || pathname || "";
   const { cache, getCached, setActiveKey, cachedKeys } = useKeepAlive();
 
   // 判断是否应该缓存当前页面
-  const shouldCache = !noCache && shouldCachePage(pathname);
+  const shouldCache =
+    !noCache && pathname !== null && shouldCachePage(pathname);
 
   // 更新活动键
   useEffect(() => {
@@ -169,21 +170,23 @@ export function usePageKeepAlive() {
     remove,
   } = useKeepAlive();
 
+  const safePathname = pathname || "";
+
   return {
     /** 保存当前页面滚动位置 */
-    saveScroll: () => saveScrollPosition(pathname),
+    saveScroll: () => saveScrollPosition(safePathname),
 
     /** 恢复当前页面滚动位置 */
-    restoreScroll: () => restoreScrollPosition(pathname),
+    restoreScroll: () => restoreScrollPosition(safePathname),
 
     /** 保存页面状态 */
-    saveState: (state: unknown) => savePageState(pathname, state),
+    saveState: (state: unknown) => savePageState(safePathname, state),
 
     /** 获取页面状态 */
-    getState: <T,>() => getPageState(pathname) as T | undefined,
+    getState: <T,>() => getPageState(safePathname) as T | undefined,
 
     /** 清除当前页面缓存 */
-    clearCache: () => remove(pathname),
+    clearCache: () => remove(safePathname),
 
     /** 当前路径 */
     pathname,

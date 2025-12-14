@@ -1,10 +1,11 @@
 /**
  * 本地持久化存储管理器
  * V5.0: 为 DataCacheManager 提供 localStorage 持久化能力
+ * V5.2: 使用 requestIdleCallback 异步持久化，避免阻塞 UI
  *
  * 特点：
  * - 应用启动时从 localStorage 恢复缓存
- * - 数据变更时自动持久化（防抖）
+ * - 数据变更时自动持久化（防抖 + 异步）
  * - 24小时过期自动清理
  * - 最多缓存10个键（防止膨胀）
  */
@@ -44,7 +45,8 @@ class PersistentStorage {
   private readonly maxAge = 24 * 60 * 60 * 1000; // 24小时过期
   private readonly maxEntries = 10; // 最多缓存10个键
   private persistTimer: ReturnType<typeof setTimeout> | null = null;
-  private persistDebounceMs = 500; // 防抖时间
+  private persistDebounceMs = 100; // V5.2: 缩短防抖时间（异步执行不再阻塞）
+  private idleCallbackId: number | null = null; // V5.2: requestIdleCallback ID
 
   /**
    * 从 localStorage 恢复缓存
@@ -108,7 +110,8 @@ class PersistentStorage {
   }
 
   /**
-   * 持久化到 localStorage（防抖）
+   * 持久化到 localStorage（防抖 + 异步）
+   * V5.2: 使用 requestIdleCallback 在空闲时执行，避免阻塞 UI
    * @param entries 要持久化的缓存 Map
    */
   persist(entries: Map<string, CacheEntry>): void {
@@ -122,8 +125,26 @@ class PersistentStorage {
       clearTimeout(this.persistTimer);
     }
 
+    // V5.2: 取消之前的 idle callback
+    if (this.idleCallbackId !== null && "cancelIdleCallback" in window) {
+      (window as Window).cancelIdleCallback(this.idleCallbackId);
+      this.idleCallbackId = null;
+    }
+
     this.persistTimer = setTimeout(() => {
-      this.doPersist(entries);
+      // V5.2: 使用 requestIdleCallback 异步执行持久化
+      if ("requestIdleCallback" in window) {
+        this.idleCallbackId = (window as Window).requestIdleCallback(
+          () => {
+            this.idleCallbackId = null;
+            this.doPersist(entries);
+          },
+          { timeout: 1000 }, // 最多等待 1 秒
+        );
+      } else {
+        // 回退方案：使用 setTimeout(0) 异步执行
+        setTimeout(() => this.doPersist(entries), 0);
+      }
     }, this.persistDebounceMs);
   }
 

@@ -32,10 +32,12 @@ import { useRouter } from "next/navigation";
 import type { ClassificationResultData } from "@/types/supabase";
 
 // 轮询间隔（毫秒）
-const POLLING_INTERVAL = 2000;
+// V3.5: 从 2000ms 缩短至 500ms，提升响应速度
+const POLLING_INTERVAL = 500;
 
 // 最大轮询次数（防止无限轮询）
-const MAX_POLL_COUNT = 30; // 最多 60 秒
+// V3.5: 调整为 120 次，保持最多 60 秒
+const MAX_POLL_COUNT = 120;
 
 interface PendingBookmark {
   id: number;
@@ -49,6 +51,8 @@ interface UseClassificationPollingReturn {
   pendingCount: number;
   /** 是否正在轮询 */
   isPolling: boolean;
+  /** V3.5: 立即触发一次轮询（跳过等待周期） */
+  triggerImmediatePoll: () => void;
 }
 
 export function useClassificationPolling(): UseClassificationPollingReturn {
@@ -262,9 +266,20 @@ export function useClassificationPolling(): UseClassificationPollingReturn {
     };
   }, [pendingBookmarks.length, pollStatus]);
 
+  /**
+   * V3.5: 立即触发一次轮询
+   * 用于书签创建后立即检查分类状态，而不是等待下一个轮询周期
+   */
+  const triggerImmediatePoll = useCallback(() => {
+    if (pendingBookmarks.length > 0 && !isPollingInProgress.current) {
+      pollStatus();
+    }
+  }, [pendingBookmarks.length, pollStatus]);
+
   return {
     trackBookmark,
     pendingCount: pendingBookmarks.length,
     isPolling,
+    triggerImmediatePoll,
   };
 }
