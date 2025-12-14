@@ -73,7 +73,9 @@ export function QuickAddBookmark({
           throw new Error("无法获取网页信息");
         }
 
-        const data = await response.json();
+        const responseData = await response.json();
+        // API 返回格式: { data: { title, description, ... } }
+        const data = responseData.data || responseData;
 
         const bookmarkMetadata: BookmarkMetadata = {
           title: data.title || url,

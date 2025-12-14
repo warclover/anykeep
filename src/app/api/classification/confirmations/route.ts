@@ -48,6 +48,12 @@ interface PendingConfirmationRow {
   expires_at: string | null;
   created_at: string;
   resolved_at: string | null;
+  // 关联的书签数据
+  bookmarks?: {
+    id: number;
+    title: string;
+    url: string;
+  } | null;
 }
 
 interface ConfirmationsQueryParams {
@@ -90,11 +96,21 @@ export async function GET(request: NextRequest) {
         : 0,
     };
 
-    // 构建查询
+    // 构建查询 - 关联 bookmarks 表获取标题和 URL
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let query = (supabase as any)
       .from(PENDING_CONFIRMATIONS_TABLE)
-      .select("*", { count: "exact" })
+      .select(
+        `
+        *,
+        bookmarks:bookmark_id (
+          id,
+          title,
+          url
+        )
+      `,
+        { count: "exact" },
+      )
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
 
@@ -141,6 +157,13 @@ export async function GET(request: NextRequest) {
       expiresAt: row.expires_at,
       createdAt: row.created_at,
       resolvedAt: row.resolved_at,
+      // 关联的书签数据
+      bookmark: row.bookmarks
+        ? {
+            title: row.bookmarks.title,
+            url: row.bookmarks.url,
+          }
+        : null,
     }));
 
     return successResponse({

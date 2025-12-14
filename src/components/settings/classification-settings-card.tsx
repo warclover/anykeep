@@ -41,7 +41,16 @@ import {
   Undo2,
   Bell,
   Gauge,
+  Layout,
+  PanelRight,
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -93,6 +102,63 @@ interface ClassificationSettingsCardProps {
 }
 
 // ============================================================================
+// 待确认消息显示模式相关
+// ============================================================================
+
+const DISPLAY_MODE_STORAGE_KEY = "anykeep:confirmation-display-mode";
+
+type DisplayMode = "inline" | "drawer";
+
+interface DisplayModeConfig {
+  mode: DisplayMode;
+  autoConfirmThreshold?: number;
+}
+
+const DEFAULT_DISPLAY_CONFIG: DisplayModeConfig = {
+  mode: "inline",
+  autoConfirmThreshold: undefined,
+};
+
+/**
+ * 从 localStorage 读取显示模式配置
+ */
+function loadDisplayModeConfig(): DisplayModeConfig {
+  if (typeof window === "undefined") {
+    return DEFAULT_DISPLAY_CONFIG;
+  }
+
+  try {
+    const stored = localStorage.getItem(DISPLAY_MODE_STORAGE_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      return {
+        ...DEFAULT_DISPLAY_CONFIG,
+        ...parsed,
+      };
+    }
+  } catch {
+    // localStorage 读取失败，使用默认配置
+  }
+
+  return DEFAULT_DISPLAY_CONFIG;
+}
+
+/**
+ * 保存显示模式配置到 localStorage
+ */
+function saveDisplayModeConfig(config: DisplayModeConfig): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    localStorage.setItem(DISPLAY_MODE_STORAGE_KEY, JSON.stringify(config));
+  } catch {
+    // localStorage 保存失败，静默忽略
+  }
+}
+
+// ============================================================================
 // 组件实现
 // ============================================================================
 
@@ -106,6 +172,9 @@ export function ClassificationSettingsCard({
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+
+  // 显示模式状态（独立于其他设置，使用 localStorage）
+  const [displayMode, setDisplayMode] = useState<DisplayMode>("inline");
 
   // 加载设置
   const loadSettings = useCallback(async () => {
@@ -134,6 +203,21 @@ export function ClassificationSettingsCard({
   useEffect(() => {
     loadSettings();
   }, [loadSettings]);
+
+  // 加载显示模式（从 localStorage）
+  useEffect(() => {
+    const config = loadDisplayModeConfig();
+    setDisplayMode(config.mode);
+  }, []);
+
+  // 更新显示模式
+  const handleDisplayModeChange = (mode: DisplayMode) => {
+    setDisplayMode(mode);
+    saveDisplayModeConfig({ mode });
+    toast.success(
+      `已切换为${mode === "inline" ? "内联通知条" : "浮动按钮"}模式`,
+    );
+  };
 
   // 检查是否有变化
   const checkChanges = useCallback(
@@ -488,6 +572,65 @@ export function ClassificationSettingsCard({
               <span>更多自动 (60%)</span>
               <span>更高精度 (95%)</span>
             </div>
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* ════════════════════════════════════════════════════════════════ */}
+        {/* 待确认消息显示模式 */}
+        {/* ════════════════════════════════════════════════════════════════ */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+            <Layout className="size-4" />
+            待确认消息显示
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="flex-1 pr-4">
+              <Label className="text-sm font-medium">
+                显示模式
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <HelpCircle className="inline-block ml-1 size-3.5 text-muted-foreground" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="max-w-xs">
+                        内联模式：在首页顶部显示紧凑通知条
+                        <br />
+                        浮动按钮：在右下角显示浮动按钮，点击展开抽屉
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </Label>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                选择 AI 分类建议的展示方式
+              </p>
+            </div>
+            <Select
+              value={displayMode}
+              onValueChange={(v) => handleDisplayModeChange(v as DisplayMode)}
+            >
+              <SelectTrigger className="w-[140px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="inline">
+                  <div className="flex items-center gap-2">
+                    <Layout className="size-4" />
+                    <span>内联通知条</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="drawer">
+                  <div className="flex items-center gap-2">
+                    <PanelRight className="size-4" />
+                    <span>浮动按钮</span>
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
