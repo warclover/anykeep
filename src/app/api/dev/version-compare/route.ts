@@ -4,11 +4,16 @@
  * POST /api/dev/version-compare
  *
  * 支持 V3 / V4.1 / V4.2 版本对比
+ *
+ * @security 仅开发环境可用
  */
 
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 import type { SupabaseClient } from "@supabase/supabase-js";
+
+// Only available in development
+const isDev = process.env.NODE_ENV === "development";
 import type {
   CompareRequest,
   CompareResponse,
@@ -25,6 +30,17 @@ import { getPresetConfig } from "@/features/classification-debugger/constants/pr
 import type { DebugScenario } from "@/features/classification-debugger/types";
 
 export async function POST(request: Request) {
+  // 环境检查：仅开发环境可用
+  if (!isDev) {
+    return Response.json(
+      {
+        success: false,
+        error: "This endpoint is only available in development",
+      },
+      { status: 403 },
+    );
+  }
+
   try {
     // 验证用户身份
     const supabase = await createClient();

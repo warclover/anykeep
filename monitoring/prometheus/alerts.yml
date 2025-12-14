@@ -1,0 +1,69 @@
+# Prometheus 告警规则
+# AnyKeep 监控告警
+
+groups:
+  - name: anykeep-alerts
+    rules:
+      # 应用不可用
+      - alert: AnyKeepDown
+        expr: up{job="anykeep"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "AnyKeep 应用不可用"
+          description: "AnyKeep 应用在过去 1 分钟内无法访问"
+
+      # 高错误率
+      - alert: HighClassificationErrorRate
+        expr: |
+          (
+            rate(classification_failures_total[5m]) /
+            (rate(classification_requests_total[5m]) + 0.001)
+          ) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "分类错误率过高"
+          description: "分类错误率超过 10%，当前: {{ $value | printf \"%.2f\" }}"
+
+      # 高延迟
+      - alert: HighClassificationLatency
+        expr: classification_latency_ms{quantile="0.9"} > 5000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "分类延迟过高"
+          description: "P90 分类延迟超过 5 秒，当前: {{ $value }}ms"
+
+      # AI 调用延迟
+      - alert: HighAILatency
+        expr: ai_latency_ms{quantile="0.9"} > 10000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "AI 调用延迟过高"
+          description: "P90 AI 调用延迟超过 10 秒，当前: {{ $value }}ms"
+
+      # 内存使用过高
+      - alert: HighMemoryUsage
+        expr: nodejs_heap_used_bytes / nodejs_heap_size_bytes > 0.9
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Node.js 内存使用过高"
+          description: "堆内存使用率超过 90%"
+
+      # 待确认消息堆积
+      - alert: PendingConfirmationsBacklog
+        expr: pending_confirmations_gauge > 50
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "待确认消息堆积"
+          description: "待确认消息数量超过 50，当前: {{ $value }}"

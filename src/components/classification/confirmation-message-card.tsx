@@ -9,11 +9,13 @@
  * - 显示建议的文件夹
  * - 提供确认/拒绝/修改操作
  *
- * @version 1.0.0
+ * @performance 使用 React.memo 优化，避免列表中不必要的重渲染
+ * @version 1.1.0
  * @since 2025-12-11
+ * @updated 2025-12-14 - 添加 memo 优化
  */
 
-import { useState } from "react";
+import { useState, memo, useCallback } from "react";
 import {
   Card,
   CardContent,
@@ -150,7 +152,7 @@ function formatUrl(url: string): string {
 /**
  * 确认消息卡片
  */
-export function ConfirmationMessageCard({
+export const ConfirmationMessageCard = memo(function ConfirmationMessageCard({
   message,
   folders,
   onConfirm,
@@ -168,28 +170,28 @@ export function ConfirmationMessageCard({
   const timeRemaining = getTimeRemaining(message.expiresAt);
   const isExpired = timeRemaining === "已过期";
 
-  // 处理确认
-  const handleConfirm = async () => {
+  // 处理确认（useCallback 优化）
+  const handleConfirm = useCallback(async () => {
     setIsLoading(true);
     try {
       await onConfirm(message.id);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [onConfirm, message.id]);
 
-  // 处理拒绝
-  const handleReject = async () => {
+  // 处理拒绝（useCallback 优化）
+  const handleReject = useCallback(async () => {
     setIsLoading(true);
     try {
       await onReject(message.id);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [onReject, message.id]);
 
-  // 处理修改
-  const handleModify = async () => {
+  // 处理修改（useCallback 优化）
+  const handleModify = useCallback(async () => {
     if (!selectedFolderId) return;
     setIsLoading(true);
     try {
@@ -198,7 +200,7 @@ export function ConfirmationMessageCard({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [selectedFolderId, onModify, message.id]);
 
   return (
     <Card
@@ -231,7 +233,10 @@ export function ConfirmationMessageCard({
               <TooltipTrigger>
                 <Badge
                   variant="outline"
-                  className={cn("text-xs", getConfidenceColor(message.confidence))}
+                  className={cn(
+                    "text-xs",
+                    getConfidenceColor(message.confidence),
+                  )}
                 >
                   <Sparkles className="w-3 h-3 mr-1" />
                   {message.confidence}%
@@ -239,7 +244,9 @@ export function ConfirmationMessageCard({
               </TooltipTrigger>
               <TooltipContent>
                 <p>AI 置信度: {getConfidenceLevel(message.confidence)}</p>
-                <p className="text-xs text-muted-foreground">{message.reason}</p>
+                <p className="text-xs text-muted-foreground">
+                  {message.reason}
+                </p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -288,7 +295,11 @@ export function ConfirmationMessageCard({
             <Button
               size="sm"
               onClick={handleModify}
-              disabled={isLoading || disabled || selectedFolderId === String(message.suggestedFolderId)}
+              disabled={
+                isLoading ||
+                disabled ||
+                selectedFolderId === String(message.suggestedFolderId)
+              }
             >
               <Check className="w-4 h-4 mr-1" />
               保存
@@ -337,7 +348,7 @@ export function ConfirmationMessageCard({
       </CardFooter>
     </Card>
   );
-}
+});
 
 // ============================================================================
 // 批量操作组件
@@ -354,7 +365,7 @@ interface BatchConfirmationBarProps {
 /**
  * 批量确认操作栏
  */
-export function BatchConfirmationBar({
+export const BatchConfirmationBar = memo(function BatchConfirmationBar({
   selectedCount,
   onConfirmAll,
   onRejectAll,
@@ -363,31 +374,30 @@ export function BatchConfirmationBar({
 }: BatchConfirmationBarProps) {
   const [isLoading, setIsLoading] = useState(false);
 
-  if (selectedCount === 0) return null;
-
-  const handleConfirmAll = async () => {
+  // 性能优化：useCallback
+  const handleConfirmAll = useCallback(async () => {
     setIsLoading(true);
     try {
       await onConfirmAll();
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [onConfirmAll]);
 
-  const handleRejectAll = async () => {
+  const handleRejectAll = useCallback(async () => {
     setIsLoading(true);
     try {
       await onRejectAll();
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [onRejectAll]);
+
+  if (selectedCount === 0) return null;
 
   return (
     <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-background border rounded-lg shadow-lg p-3 flex items-center gap-4">
-      <span className="text-sm font-medium">
-        已选择 {selectedCount} 条
-      </span>
+      <span className="text-sm font-medium">已选择 {selectedCount} 条</span>
       <div className="flex gap-2">
         <Button
           size="sm"
@@ -417,4 +427,4 @@ export function BatchConfirmationBar({
       </div>
     </div>
   );
-}
+});

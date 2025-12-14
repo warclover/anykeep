@@ -17,6 +17,9 @@ export type {
   IProviderBase,
 } from "./provider.interface";
 
+// Base Class
+export { BaseProvider } from "./base.provider";
+
 // Concrete Implementations
 export { DeepSeekProvider } from "./deepseek.provider";
 export {

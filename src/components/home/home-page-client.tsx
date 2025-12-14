@@ -53,11 +53,32 @@ import { BrowserBookmarkVirtualList } from "@/components/bookmark/browser-bookma
 import { VirtualBookmarkList } from "@/components/bookmark/virtual-bookmark-list";
 import { BrowserBookmarkEmptyState } from "@/components/bookmark/browser-bookmark-empty-state";
 import { TrashToolbar } from "@/components/trash/trash-toolbar";
-import { CreateBookmarkDialog } from "@/components/bookmark/create-bookmark-dialog";
-import { BatchImportDialog } from "@/components/bookmark/batch-import-dialog";
-import { BatchMoveDialog } from "@/components/bookmark/batch-move-dialog";
-import { ExportDialog } from "@/components/bookmark/export-dialog";
-import { BrowserBookmarkImportDialog } from "@/components/browser-bookmark";
+// 懒加载 Dialog 组件（按需显示，非首屏必需）
+const CreateBookmarkDialog = lazy(() =>
+  import("@/components/bookmark/create-bookmark-dialog").then((mod) => ({
+    default: mod.CreateBookmarkDialog,
+  })),
+);
+const BatchImportDialog = lazy(() =>
+  import("@/components/bookmark/batch-import-dialog").then((mod) => ({
+    default: mod.BatchImportDialog,
+  })),
+);
+const BatchMoveDialog = lazy(() =>
+  import("@/components/bookmark/batch-move-dialog").then((mod) => ({
+    default: mod.BatchMoveDialog,
+  })),
+);
+const ExportDialog = lazy(() =>
+  import("@/components/bookmark/export-dialog").then((mod) => ({
+    default: mod.ExportDialog,
+  })),
+);
+const BrowserBookmarkImportDialog = lazy(() =>
+  import("@/components/browser-bookmark").then((mod) => ({
+    default: mod.BrowserBookmarkImportDialog,
+  })),
+);
 // V3.1: FolderRecommendationToast 已废弃，由 useClassificationPolling 的 toast 通知替代
 import { EmptyState } from "@/components/bookmark/empty-state";
 import { UsageTagFilter } from "@/components/layout/usage-tag-filter";
@@ -1657,45 +1678,58 @@ export function HomePageClient({
         </div>
       </div>
 
-      {/* 批量导入对话框（URL导入） */}
-      <BatchImportDialog
-        open={showImportDialog}
-        onOpenChange={setShowImportDialog}
-      />
+      {/* 懒加载的 Dialog 组件 - 使用 Suspense 包裹 */}
+      <Suspense fallback={null}>
+        {/* 批量导入对话框（URL导入） */}
+        {showImportDialog && (
+          <BatchImportDialog
+            open={showImportDialog}
+            onOpenChange={setShowImportDialog}
+          />
+        )}
 
-      {/* 浏览器书签导入对话框 */}
-      <BrowserBookmarkImportDialog
-        open={showBrowserImportDialog}
-        onOpenChange={setShowBrowserImportDialog}
-        onSuccess={() => {
-          startTransition(() => {
-            router.refresh();
-          });
-        }}
-      />
+        {/* 浏览器书签导入对话框 */}
+        {showBrowserImportDialog && (
+          <BrowserBookmarkImportDialog
+            open={showBrowserImportDialog}
+            onOpenChange={setShowBrowserImportDialog}
+            onSuccess={() => {
+              startTransition(() => {
+                router.refresh();
+              });
+            }}
+          />
+        )}
 
-      {/* 导出对话框 */}
-      <ExportDialog
-        open={showExportDialog}
-        onOpenChange={setShowExportDialog}
-        bookmarks={bookmarks}
-        selectedIds={selectedIds}
-      />
+        {/* 导出对话框 */}
+        {showExportDialog && (
+          <ExportDialog
+            open={showExportDialog}
+            onOpenChange={setShowExportDialog}
+            bookmarks={bookmarks}
+            selectedIds={selectedIds}
+          />
+        )}
 
-      {/* 批量移动对话框 */}
-      <BatchMoveDialog
-        open={showMoveDialog}
-        onOpenChange={setShowMoveDialog}
-        selectedIds={selectedIds}
-        onSuccess={exitSelectionMode}
-      />
+        {/* 批量移动对话框 */}
+        {showMoveDialog && (
+          <BatchMoveDialog
+            open={showMoveDialog}
+            onOpenChange={setShowMoveDialog}
+            selectedIds={selectedIds}
+            onSuccess={exitSelectionMode}
+          />
+        )}
 
-      {/* 创建收藏对话框 */}
-      <CreateBookmarkDialog
-        open={showCreateDialog}
-        onOpenChange={setShowCreateDialog}
-        onSuccess={handleBookmarkCreated}
-      />
+        {/* 创建收藏对话框 */}
+        {showCreateDialog && (
+          <CreateBookmarkDialog
+            open={showCreateDialog}
+            onOpenChange={setShowCreateDialog}
+            onSuccess={handleBookmarkCreated}
+          />
+        )}
+      </Suspense>
 
       {/* V3.1: FolderRecommendationToast 已移除，分类结果通过 useClassificationPolling 的 toast 显示 */}
     </div>

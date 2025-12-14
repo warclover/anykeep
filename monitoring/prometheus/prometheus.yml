@@ -1,0 +1,42 @@
+# Prometheus 配置
+# AnyKeep 监控系统
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'anykeep-monitor'
+
+# 告警规则文件
+rule_files:
+  - "alerts.yml"
+
+# 抓取配置
+scrape_configs:
+  # Prometheus 自身指标
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # AnyKeep 应用指标
+  - job_name: 'anykeep'
+    metrics_path: '/api/metrics'
+    scheme: 'http'
+    # 如果配置了 METRICS_SECRET，添加认证头
+    # authorization:
+    #   type: Bearer
+    #   credentials: 'your-metrics-secret'
+    static_configs:
+      # 开发环境
+      - targets: ['host.docker.internal:3000']
+        labels:
+          env: 'development'
+    # 生产环境使用以下配置
+    # - targets: ['your-production-url.com']
+    #   labels:
+    #     env: 'production'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: '(.+):\d+'
+        replacement: '${1}'

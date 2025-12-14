@@ -18,6 +18,10 @@ import {
 } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
 import type { ClassificationSuggestionInsert } from "@/types/supabase";
+import {
+  recommendFolder,
+  type FolderRecommendation,
+} from "@/lib/utils/ai-generator";
 
 // 请求体验证
 const reclassifySchema = z.object({
@@ -25,14 +29,7 @@ const reclassifySchema = z.object({
   forceRun: z.boolean().default(false),
 });
 
-// AI 推荐文件夹 API 的响应类型
-interface FolderRecommendation {
-  folderId: number | null;
-  folderName: string;
-  confidence: number;
-  reason: string;
-  suggestNew: boolean;
-}
+// FolderRecommendation 类型从 ai-generator 导入
 
 /**
  * POST /api/reclassify
@@ -257,6 +254,7 @@ export async function POST(request: NextRequest) {
 
 /**
  * 获取 AI 推荐的文件夹
+ * 直接调用 recommendFolder 函数，避免 HTTP 内部调用
  */
 async function getAIRecommendation(
   title: string,
@@ -265,35 +263,21 @@ async function getAIRecommendation(
   existingFolders: Array<{ id: number; name: string; is_system: boolean }>,
 ): Promise<FolderRecommendation | null> {
   try {
-    // 构建请求（这里应该调用内部 AI 服务，为简化直接调用现有 API）
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-
-    const response = await fetch(`${baseUrl}/api/ai/recommend-folder`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        title,
-        summary,
-        tags,
-        existingFolders: existingFolders.map((f) => ({
-          id: f.id,
-          name: f.name,
-        })),
-      }),
-    });
-
-    if (!response.ok) {
-      return null;
-    }
-
-    const data = await response.json();
-    return data.data as FolderRecommendation;
+    // 直接调用 recommendFolder 函数（重构：移除 HTTP 内部调用）
+    const recommendation = await recommendFolder(
+      title,
+      summary,
+      tags,
+      existingFolders.map((f) => ({
+        id: f.id,
+        name: f.name,
+      })),
+    );
+    return recommendation;
   } catch (error) {
     logger.error(
       { error: error instanceof Error ? error.message : String(error) },
-      "AI recommendation request failed",
+      "AI recommendation failed",
     );
     return null;
   }

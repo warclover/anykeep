@@ -3,10 +3,11 @@
  * V4.2 待确认消息 API
  *
  * GET /api/confirmations - 获取待确认消息列表
- * POST /api/confirmations/batch - 批量处理确认消息
+ * POST /api/confirmations - 批量操作确认消息（支持 ids 和 confirmationIds 参数）
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-11
+ * @updated 2025-12-14 - 合并 /api/confirmations/batch 路由
  */
 
 import { createClient } from "@/lib/supabase/server";
@@ -17,7 +18,10 @@ import {
   internalError,
 } from "@/lib/utils/api-response";
 import { confirmationService } from "@/lib/confirmation";
-import type { ConfirmationStatus, ConfirmationType } from "@/types/confirmation";
+import type {
+  ConfirmationStatus,
+  ConfirmationType,
+} from "@/types/confirmation";
 import type { NextRequest } from "next/server";
 
 /**
@@ -43,7 +47,9 @@ export async function GET(request: NextRequest) {
     const pendingOnly = searchParams.get("pendingOnly") === "true";
 
     // 构建过滤条件
-    const filters: Parameters<typeof confirmationService.getUserConfirmations>[1] = {
+    const filters: Parameters<
+      typeof confirmationService.getUserConfirmations
+    >[1] = {
       limit,
       offset,
     };
@@ -82,6 +88,10 @@ export async function GET(request: NextRequest) {
 /**
  * POST /api/confirmations
  * 批量操作确认消息
+ *
+ * 支持两种参数格式（向后兼容）:
+ * - { action, confirmationIds } - 原始格式
+ * - { action, ids } - 简化格式
  */
 export async function POST(request: NextRequest) {
   try {
@@ -95,20 +105,23 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { action, confirmationIds } = body;
+    const { action, confirmationIds, ids } = body;
 
-    if (!action || !Array.isArray(confirmationIds) || confirmationIds.length === 0) {
-      return badRequestError("缺少 action 或 confirmationIds");
+    // 支持两种参数格式：confirmationIds 或 ids
+    const targetIds = confirmationIds || ids;
+
+    if (!action || !Array.isArray(targetIds) || targetIds.length === 0) {
+      return badRequestError("缺少 action 或 ids/confirmationIds");
     }
 
     let result: { success: number; failed: number };
 
     switch (action) {
       case "confirm":
-        result = await confirmationService.batchConfirm(user.id, confirmationIds);
+        result = await confirmationService.batchConfirm(user.id, targetIds);
         break;
       case "reject":
-        result = await confirmationService.batchReject(user.id, confirmationIds);
+        result = await confirmationService.batchReject(user.id, targetIds);
         break;
       default:
         return badRequestError(`未知操作: ${action}`);
@@ -117,7 +130,7 @@ export async function POST(request: NextRequest) {
     return successResponse({
       action,
       ...result,
-      total: confirmationIds.length,
+      total: targetIds.length,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";

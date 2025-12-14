@@ -1,10 +1,14 @@
 /**
  * 用途标签按钮组件
  * 统一的标签按钮样式，支持选择器和筛选器两种场景
+ *
+ * @performance 使用 React.memo 优化，避免列表中不必要的重渲染
+ * @since V4.2.2 添加 memo 优化
  */
 
 "use client";
 
+import { memo } from "react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { UnifiedUsageTag } from "@/lib/constants/usage-tags";
@@ -24,7 +28,7 @@ export interface UsageTagButtonProps {
   onClick?: () => void;
 }
 
-export function UsageTagButton({
+export const UsageTagButton = memo(function UsageTagButton({
   tag,
   isSelected,
   disabled = false,
@@ -83,4 +87,4 @@ export function UsageTagButton({
       )}
     </button>
   );
-}
+});

@@ -13,7 +13,7 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, memo, useCallback } from "react";
 import Link from "next/link";
 import {
   MoreVertical,
@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/tooltip";
 import type { BookmarkWithSnapshot } from "@/types/supabase";
 import { cn } from "@/lib/utils";
+import { getMergedTags, limitTags } from "@/lib/utils/unified-tags";
 import { useSnapshotFeature } from "@/lib/feature-flags";
 
 interface BookmarkListItemProps {
@@ -69,8 +70,11 @@ function getFaviconUrl(url: string): string {
 
 /**
  * 浏览器书签列表项组件
+ *
+ * @performance 使用 React.memo 优化，避免不必要的重渲染
+ * @since V4.2.2 添加 memo + useCallback 优化
  */
-export function BookmarkListItem({
+export const BookmarkListItem = memo(function BookmarkListItem({
   bookmark,
   onEdit,
   onDelete,
@@ -84,26 +88,28 @@ export function BookmarkListItem({
   // V4.2.1: 快照状态显示
   const hasSnapshot = isSnapshotEnabled && bookmark.has_snapshot;
 
-  const handleDelete = () => {
-    if (onDelete) {
-      onDelete(bookmark.id);
-    }
-  };
+  // 性能优化：使用 useCallback 避免每次渲染创建新函数
+  const handleDelete = useCallback(() => {
+    onDelete?.(bookmark.id);
+  }, [onDelete, bookmark.id]);
 
-  const handleEdit = () => {
-    if (onEdit) {
-      onEdit(bookmark.id);
-    }
-  };
+  const handleEdit = useCallback(() => {
+    onEdit?.(bookmark.id);
+  }, [onEdit, bookmark.id]);
 
-  const handleToggleSelect = () => {
-    if (onToggleSelect) {
-      onToggleSelect(bookmark.id);
-    }
-  };
+  const handleToggleSelect = useCallback(() => {
+    onToggleSelect?.(bookmark.id);
+  }, [onToggleSelect, bookmark.id]);
 
   // 性能优化：缓存 Favicon URL 计算结果
   const faviconUrl = useMemo(() => getFaviconUrl(bookmark.url), [bookmark.url]);
+
+  // 性能优化：缓存合并后的标签
+  const mergedTags = useMemo(() => getMergedTags(bookmark), [bookmark]);
+  const { visible: displayTags, remaining: moreTagsCount } = useMemo(
+    () => limitTags(mergedTags, 3),
+    [mergedTags],
+  );
 
   return (
     <div
@@ -185,18 +191,16 @@ export function BookmarkListItem({
             </TooltipProvider>
           )}
 
-          {/* 标签 */}
-          {bookmark.ai_tags && bookmark.ai_tags.length > 0 && (
+          {/* 标签（统一显示 ai_tags + user_tags） */}
+          {displayTags.length > 0 && (
             <div className="flex items-center gap-1 truncate">
-              {bookmark.ai_tags.slice(0, 3).map((tag) => (
+              {displayTags.map((tag) => (
                 <span key={tag} className="text-blue-600 dark:text-blue-400">
                   #{tag}
                 </span>
               ))}
-              {bookmark.ai_tags.length > 3 && (
-                <span className="text-gray-400">
-                  +{bookmark.ai_tags.length - 3}
-                </span>
+              {moreTagsCount > 0 && (
+                <span className="text-gray-400">+{moreTagsCount}</span>
               )}
             </div>
           )}
@@ -259,7 +263,7 @@ export function BookmarkListItem({
       )}
     </div>
   );
-}
+});
 
 // 辅助组件：Check Icon（用于选择框）
 function Check({ className }: { className?: string }) {

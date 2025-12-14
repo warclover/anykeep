@@ -175,7 +175,7 @@ export default function PendingConfirmationsPage() {
 
     setBatchProcessing(true);
     try {
-      const response = await fetch("/api/confirmations/batch", {
+      const response = await fetch("/api/confirmations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -211,7 +211,7 @@ export default function PendingConfirmationsPage() {
 
     setBatchProcessing(true);
     try {
-      const response = await fetch("/api/confirmations/batch", {
+      const response = await fetch("/api/confirmations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
