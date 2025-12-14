@@ -72,3 +72,16 @@ logs
 browser-extension/node_modules/
 browser-extension/.output/
 .backups
+
+# Backup and temporary files
+.backup/
+*.bak
+*.bak2
+snapshot_*.sql
+nul
+
+# Playwright screenshots
+.playwright-mcp/
+
+# Environment backups
+.env.local.backup
