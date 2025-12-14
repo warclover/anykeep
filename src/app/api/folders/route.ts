@@ -58,11 +58,14 @@ export async function GET(_request: NextRequest) {
     // 2. 查询用户的所有文件夹
     // V4.2更新：按 sort_order 升序排列（系统文件夹 sort_order=-1 会排在最前面）
     // V4.2.1: 精简字段选择，只返回列表所需字段
+    // V4.2.2: 添加 is_archived 和 folder_group 字段，用于菜单和分组功能
     const listFields = `
       id,
       name,
       parent_id,
       is_system,
+      is_archived,
+      folder_group,
       sort_order,
       created_at,
       updated_at

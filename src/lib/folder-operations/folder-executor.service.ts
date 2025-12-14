@@ -1,13 +1,14 @@
 /**
  * Folder Executor Service
- * V4.2 文件夹操作执行器 - 统一的文件夹操作执行入口
+ * V4.2.2 文件夹操作执行器 - 统一的文件夹操作执行入口
  *
  * @description 执行文件夹的创建、合并、拆分、重命名操作
  * - 复用现有的 merge/split/rename 服务
  * - 统一的操作快照管理
  * - 支持撤销功能
+ * - V4.2.2: executeMerge 使用 merge_folders_atomic RPC 确保原子性
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-11
  */
 
@@ -191,6 +192,7 @@ class FolderExecutorService {
 
   /**
    * 执行文件夹合并
+   * V4.2.2: 使用 merge_folders_atomic RPC 确保每个合并操作的原子性
    */
   async executeMerge(input: FolderMergeInput): Promise<FolderMergeResult> {
     const { userId, targetFolderId, sourceFolderIds, reason } = input;
@@ -224,7 +226,7 @@ class FolderExecutorService {
         return { success: false, message: "源文件夹不存在" };
       }
 
-      // 2. 获取要移动的书签
+      // 2. 获取要移动的书签（用于快照记录）
       const { data: bookmarks, error: bookmarksError } = await supabase
         .from("bookmarks")
         .select("id, title, folder_id")
@@ -238,37 +240,86 @@ class FolderExecutorService {
 
       const mergedBookmarks = bookmarks || [];
 
-      // 3. 移动书签到目标文件夹
-      if (mergedBookmarks.length > 0) {
-        const { error: moveError } = await supabase
-          .from("bookmarks")
-          .update({ folder_id: targetFolderId })
-          .in("folder_id", sourceFolderIds)
-          .eq("user_id", userId);
+      // 3. 使用 RPC 事务函数逐个合并源文件夹（原子性保证）
+      let totalMovedCount = 0;
+      const mergeResults: Array<{
+        sourceFolderId: number;
+        sourceFolderName: string;
+        bookmarksMoved: number;
+        success: boolean;
+        error?: string;
+      }> = [];
 
-        if (moveError) {
-          return {
+      for (const sourceFolder of sourceFolders) {
+        const { data: rpcResult, error: rpcError } = await supabase.rpc(
+          "merge_folders_atomic",
+          {
+            p_source_folder_id: sourceFolder.id,
+            p_target_folder_id: targetFolderId,
+            p_user_id: userId,
+          },
+        );
+
+        if (rpcError) {
+          logger.warn(
+            {
+              error: rpcError.message,
+              sourceFolderId: sourceFolder.id,
+              targetFolderId,
+            },
+            `${this.LOG_PREFIX} RPC merge_folders_atomic failed for folder`,
+          );
+          mergeResults.push({
+            sourceFolderId: sourceFolder.id,
+            sourceFolderName: sourceFolder.name,
+            bookmarksMoved: 0,
             success: false,
-            message: `移动书签失败: ${moveError.message}`,
-          };
+            error: rpcError.message,
+          });
+          continue;
+        }
+
+        const result = rpcResult as {
+          success: boolean;
+          bookmarksMoved?: number;
+          error?: string;
+        };
+
+        if (result.success) {
+          totalMovedCount += result.bookmarksMoved || 0;
+          mergeResults.push({
+            sourceFolderId: sourceFolder.id,
+            sourceFolderName: sourceFolder.name,
+            bookmarksMoved: result.bookmarksMoved || 0,
+            success: true,
+          });
+        } else {
+          logger.warn(
+            {
+              error: result.error,
+              sourceFolderId: sourceFolder.id,
+            },
+            `${this.LOG_PREFIX} merge_folders_atomic returned error`,
+          );
+          mergeResults.push({
+            sourceFolderId: sourceFolder.id,
+            sourceFolderName: sourceFolder.name,
+            bookmarksMoved: 0,
+            success: false,
+            error: result.error,
+          });
         }
       }
 
-      // 4. 软删除源文件夹
-      const { error: deleteError } = await supabase
-        .from("folders")
-        .update({ deleted_at: new Date().toISOString() })
-        .in("id", sourceFolderIds)
-        .eq("user_id", userId);
-
-      if (deleteError) {
-        logger.warn(
-          { error: deleteError.message },
-          `${this.LOG_PREFIX} Failed to soft-delete source folders`,
-        );
+      const successfulMerges = mergeResults.filter((r) => r.success);
+      if (successfulMerges.length === 0) {
+        return {
+          success: false,
+          message: "所有文件夹合并均失败",
+        };
       }
 
-      // 5. 创建操作快照
+      // 4. 创建操作快照
       let snapshotId: string | undefined;
       try {
         const snapshot = await operationLogService.createSnapshot(
@@ -287,8 +338,9 @@ class FolderExecutorService {
           },
           {
             target_folder: { id: targetFolder.id, name: targetFolder.name },
-            merged_count: sourceFolders.length,
-            moved_bookmarks: mergedBookmarks.length,
+            merged_count: successfulMerges.length,
+            moved_bookmarks: totalMovedCount,
+            merge_results: mergeResults,
           },
           {
             folderId: targetFolderId,
@@ -314,18 +366,25 @@ class FolderExecutorService {
         {
           targetFolderId,
           sourceFolderIds,
-          movedCount: mergedBookmarks.length,
+          successfulMerges: successfulMerges.length,
+          totalSourceFolders: sourceFolders.length,
+          movedCount: totalMovedCount,
         },
-        `${this.LOG_PREFIX} Folders merged successfully`,
+        `${this.LOG_PREFIX} Folders merged successfully (atomic)`,
       );
+
+      const partialSuccess =
+        successfulMerges.length < sourceFolders.length
+          ? ` (${sourceFolders.length - successfulMerges.length} 个失败)`
+          : "";
 
       return {
         success: true,
-        message: `已将 ${sourceFolders.length} 个文件夹合并到「${targetFolder.name}」`,
+        message: `已将 ${successfulMerges.length} 个文件夹合并到「${targetFolder.name}」${partialSuccess}`,
         targetFolderId: targetFolder.id,
         targetFolderName: targetFolder.name,
-        mergedFolderCount: sourceFolders.length,
-        movedBookmarkCount: mergedBookmarks.length,
+        mergedFolderCount: successfulMerges.length,
+        movedBookmarkCount: totalMovedCount,
         snapshotId,
       };
     } catch (error) {

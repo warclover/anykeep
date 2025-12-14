@@ -2,7 +2,8 @@
  * 文件夹合并 API 路由
  * POST /api/folders/[id]/merge - 将文件夹合并到目标文件夹
  *
- * 合并操作：
+ * V4.2.2: 使用数据库事务函数 merge_folders_atomic 确保原子性
+ * 合并操作（事务保护）：
  * 1. 将源文件夹的所有书签移动到目标文件夹
  * 2. 软删除源文件夹
  */
@@ -20,6 +21,17 @@ import {
 } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
 import { AUTH, FOLDER } from "@/lib/constants/messages";
+
+// 事务函数返回类型
+interface MergeFoldersAtomicResult {
+  success: boolean;
+  error?: string;
+  bookmarksMoved?: number;
+  sourceFolderName?: string;
+  targetFolderName?: string;
+  sourceFolderId?: number;
+  targetFolderId?: number;
+}
 
 /**
  * POST /api/folders/[id]/merge
@@ -105,44 +117,46 @@ export async function POST(
       return forbiddenError(AUTH.FORBIDDEN);
     }
 
-    // 5. 统计源文件夹的书签数量
-    const { count: bookmarkCount, error: countError } = await supabase
-      .from("bookmarks")
-      .select("*", { count: "exact", head: true })
-      .eq("folder_id", sourceFolderId)
-      .eq("user_id", user.id)
-      .is("deleted_at", null);
-
-    if (countError) {
-      return databaseError(FOLDER.LOAD_ERROR, countError);
-    }
-
-    // 6. 移动书签到目标文件夹（使用 Service Role Client 绕过 RLS）
+    // 5. 使用事务函数执行原子合并操作
     // 安全说明：已验证用户身份、源/目标文件夹所有权
     const serviceClient = await createServiceClient();
 
-    if (bookmarkCount && bookmarkCount > 0) {
-      const { error: moveError } = await serviceClient
-        .from("bookmarks")
-        .update({ folder_id: targetFolderId })
-        .eq("folder_id", sourceFolderId)
-        .eq("user_id", user.id)
-        .is("deleted_at", null);
+    const { data: rpcResult, error: rpcError } = await serviceClient.rpc(
+      "merge_folders_atomic",
+      {
+        p_source_folder_id: sourceFolderId,
+        p_target_folder_id: targetFolderId,
+        p_user_id: user.id,
+      },
+    );
 
-      if (moveError) {
-        return databaseError("移动书签失败", moveError);
-      }
+    if (rpcError) {
+      logger.error(
+        {
+          error: rpcError,
+          sourceFolderId,
+          targetFolderId,
+          operation: "merge_folders_atomic",
+        },
+        "RPC merge_folders_atomic failed",
+      );
+      return databaseError("合并文件夹失败", rpcError);
     }
 
-    // 7. 软删除源文件夹
-    const { error: deleteError } = await serviceClient
-      .from("folders")
-      .update({ deleted_at: new Date().toISOString() })
-      .eq("id", sourceFolderId)
-      .eq("user_id", user.id); // 额外安全检查
+    // 解析事务函数返回结果
+    const result = rpcResult as unknown as MergeFoldersAtomicResult;
 
-    if (deleteError) {
-      return databaseError(FOLDER.DELETE_ERROR, deleteError);
+    if (!result.success) {
+      logger.error(
+        {
+          error: result.error,
+          sourceFolderId,
+          targetFolderId,
+          operation: "merge_folders_atomic",
+        },
+        "merge_folders_atomic returned error",
+      );
+      return badRequestError(result.error || "合并失败");
     }
 
     logger.info(
@@ -150,19 +164,19 @@ export async function POST(
         userId: user.id,
         sourceFolderId,
         targetFolderId,
-        bookmarksMoved: bookmarkCount || 0,
+        bookmarksMoved: result.bookmarksMoved || 0,
         action: "folder_merged",
       },
-      "Folder merged successfully",
+      "Folder merged successfully (atomic)",
     );
 
     return successResponse({
       merged: true,
       sourceFolderId,
-      sourceFolderName: sourceFolder.name,
+      sourceFolderName: result.sourceFolderName || sourceFolder.name,
       targetFolderId,
-      targetFolderName: targetFolder.name,
-      bookmarksMoved: bookmarkCount || 0,
+      targetFolderName: result.targetFolderName || targetFolder.name,
+      bookmarksMoved: result.bookmarksMoved || 0,
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);

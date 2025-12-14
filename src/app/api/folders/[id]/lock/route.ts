@@ -80,50 +80,32 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     // 更新 folder_profiles 中的锁定状态
     // Note: folder_profiles 是 V4.2 新增表
-    const updateData = {
-      is_system_locked: locked,
-      // 如果锁定，同时禁止 AI 重命名
-      is_ai_renamable: !locked,
-    };
-    const { error: updateError } = await supabase
+    // P1-2 修复：使用 upsert 避免并发请求导致的竞态条件
+    // 替代原来的 update + insert 两步操作
+    const { error: upsertError } = await supabase
       .from("folder_profiles")
-      .update(updateData)
-      .eq("folder_id", folderId)
-      .eq("user_id", user.id);
-
-    if (updateError) {
-      // 如果 folder_profiles 不存在，尝试创建
-      if (updateError.code === "PGRST116") {
-        const insertData = {
+      .upsert(
+        {
           folder_id: folderId,
           user_id: user.id,
           is_system_locked: locked,
+          // 如果锁定，同时禁止 AI 重命名
           is_ai_renamable: !locked,
-        };
-        const { error: insertError } = await supabase
-          .from("folder_profiles")
-          .insert(insertData);
+        },
+        {
+          onConflict: "folder_id,user_id",
+        },
+      );
 
-        if (insertError) {
-          logger.error(
-            { error: insertError.message },
-            "Failed to create folder profile for lock",
-          );
-          return NextResponse.json(
-            { success: false, error: "更新锁定状态失败" },
-            { status: 500 },
-          );
-        }
-      } else {
-        logger.error(
-          { error: updateError.message },
-          "Failed to update folder lock status",
-        );
-        return NextResponse.json(
-          { success: false, error: "更新锁定状态失败" },
-          { status: 500 },
-        );
-      }
+    if (upsertError) {
+      logger.error(
+        { error: upsertError.message, folderId, locked },
+        "Failed to upsert folder lock status",
+      );
+      return NextResponse.json(
+        { success: false, error: "更新锁定状态失败" },
+        { status: 500 },
+      );
     }
 
     logger.info(

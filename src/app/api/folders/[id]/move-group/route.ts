@@ -65,8 +65,32 @@ export async function PATCH(
       return badRequestError("Invalid folder group");
     }
 
+    // P0-4 修复：显式验证文件夹存在且属于当前用户
+    const { data: existingFolder, error: checkError } = await supabase
+      .from("folders")
+      .select("id, user_id, is_system")
+      .eq("id", folderId)
+      .is("deleted_at", null)
+      .single();
+
+    if (checkError) {
+      if (checkError.code === "PGRST116") {
+        return badRequestError("文件夹不存在");
+      }
+      return databaseError("查询失败", checkError);
+    }
+
+    if (existingFolder.user_id !== user.id) {
+      return badRequestError("无权操作此文件夹");
+    }
+
+    if (existingFolder.is_system) {
+      return badRequestError("系统文件夹不可移动");
+    }
+
     // 4. 更新文件夹分组
     // 注意：移动到新类别后，sort_order 设为 0（移到新类别的顶部）
+    // 已在上方验证所有权和系统文件夹状态，这里仅需基本条件
     const { error: updateError } = await supabase
       .from("folders")
       .update({
@@ -76,7 +100,6 @@ export async function PATCH(
       })
       .eq("id", folderId)
       .eq("user_id", user.id)
-      .eq("is_system", false) // 系统文件夹不可移动
       .is("deleted_at", null);
 
     if (updateError) {

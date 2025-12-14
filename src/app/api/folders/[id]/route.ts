@@ -3,10 +3,12 @@
  * GET /api/folders/[id] - 获取文件夹详情
  * PUT /api/folders/[id] - 更新文件夹
  * DELETE /api/folders/[id] - 删除文件夹
+ *
+ * V4.2.2: DELETE 使用数据库事务函数 delete_folder_cascade 确保原子性
  */
 
 import type { NextRequest } from "next/server";
-import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { updateFolderSchema } from "@/lib/validation";
 import {
   successResponse,
@@ -23,6 +25,15 @@ import type { FolderUpdate, Database } from "@/types/supabase";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { FOLDER, AUTH } from "@/lib/constants/messages";
 import { initializeFolderNameProfile } from "@/lib/classification/server";
+
+// 事务函数返回类型
+interface DeleteFolderCascadeResult {
+  success: boolean;
+  folderName?: string;
+  folderId?: number;
+  deletedBookmarks?: number;
+  error?: string;
+}
 
 /**
  * GET /api/folders/[id]
@@ -289,25 +300,62 @@ export async function DELETE(
       return badRequestError(FOLDER.DELETE_ERROR_HAS_BOOKMARKS(bookmarkCount));
     }
 
-    // 5. 软删除文件夹（使用 Service Role Client 绕过 RLS）
+    // 5. 使用事务函数执行原子删除操作
     // 安全说明：已验证用户身份、文件夹所有权、非系统文件夹、无书签
-    const serviceClient = await createServiceClient();
-    const { error: deleteError } = await serviceClient
-      .from("folders")
-      .update({ deleted_at: new Date().toISOString() })
-      .eq("id", folderId)
-      .eq("user_id", user.id);
+    const { data: rpcResult, error: rpcError } = await supabase.rpc(
+      "delete_folder_cascade",
+      {
+        p_folder_id: folderId,
+        p_user_id: user.id,
+        p_delete_bookmarks: false, // 已验证文件夹为空
+      },
+    );
 
-    if (deleteError) {
-      return databaseError(FOLDER.DELETE_ERROR, deleteError);
+    if (rpcError) {
+      logger.error(
+        {
+          error: rpcError,
+          folderId,
+          operation: "delete_folder_cascade",
+        },
+        "RPC delete_folder_cascade failed",
+      );
+      return databaseError(FOLDER.DELETE_ERROR, rpcError);
+    }
+
+    // 解析事务函数返回结果
+    const result = rpcResult as unknown as DeleteFolderCascadeResult;
+
+    if (!result.success) {
+      logger.error(
+        {
+          error: result.error,
+          folderId,
+          operation: "delete_folder_cascade",
+        },
+        "delete_folder_cascade returned error",
+      );
+      return databaseError(
+        FOLDER.DELETE_ERROR,
+        new Error(result.error || "Unknown error"),
+      );
     }
 
     logger.info(
-      { userId: user.id, folderId, action: "folder_deleted" },
-      "Folder deleted successfully",
+      {
+        userId: user.id,
+        folderId,
+        folderName: result.folderName,
+        action: "folder_deleted",
+      },
+      "Folder deleted successfully (atomic)",
     );
 
-    return successResponse({ id: folderId, deleted: true });
+    return successResponse({
+      id: folderId,
+      deleted: true,
+      folderName: result.folderName,
+    });
   } catch (error) {
     logger.error(
       {
