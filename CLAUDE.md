@@ -114,7 +114,7 @@ anykeep/                    # 项目根目录
 
 ### 前端
 
-- **框架**: Next.js 16.0.3 (App Router + Turbopack)
+- **框架**: Next.js 14.x (App Router + Turbopack)
 - **样式**: Tailwind CSS 4
 - **组件库**: Shadcn UI + Radix UI
 - **类型系统**: TypeScript 5
