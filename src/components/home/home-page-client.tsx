@@ -591,13 +591,43 @@ export function HomePageClient({
 
   // ===== SSR 数据同步 =====
   // 当 initialBookmarks 更新时（URL 参数变化导致 SSR 重新获取），同步到 SWR state
-  // 注意：SWR 内部的初始化 useEffect 只在首次挂载时执行，
-  // 所以需要这个 useEffect 来处理后续的 initialBookmarks 变化
+  // V4.2.3: 修复竞态条件 - 仅在 initialBookmarks 真正变化且内容不同时才更新
+  // 避免与 SWR 的后台刷新产生冲突
+  const prevInitialBookmarksRef = useRef<BookmarkWithFolder[] | undefined>(
+    initialBookmarks,
+  );
+
   useEffect(() => {
+    // 1. 无数据时跳过
     if (!initialBookmarks) return;
-    setBookmarks(initialBookmarks);
-    setHasMore(initialBookmarks.length === 50);
-    // 旧缓存系统调用已移除，SWR 内部会自动管理缓存
+
+    // 2. 首次挂载时跳过（SWR 内部会处理 initialData）
+    const prevData = prevInitialBookmarksRef.current;
+    if (prevData === undefined) {
+      prevInitialBookmarksRef.current = initialBookmarks;
+      return;
+    }
+
+    // 3. 数据未变化时跳过（避免不必要的更新）
+    if (prevData === initialBookmarks) return;
+
+    // 4. 深度比较第一个和最后一个书签 ID（快速检测变化）
+    const prevFirstId = prevData[0]?.id;
+    const prevLastId = prevData[prevData.length - 1]?.id;
+    const newFirstId = initialBookmarks[0]?.id;
+    const newLastId = initialBookmarks[initialBookmarks.length - 1]?.id;
+
+    const hasChanged =
+      prevData.length !== initialBookmarks.length ||
+      prevFirstId !== newFirstId ||
+      prevLastId !== newLastId;
+
+    if (hasChanged) {
+      // 更新状态，使用回调形式避免覆盖正在进行的乐观更新
+      setBookmarks(initialBookmarks);
+      setHasMore(initialBookmarks.length === 50);
+      prevInitialBookmarksRef.current = initialBookmarks;
+    }
   }, [initialBookmarks, setBookmarks, setHasMore]);
 
   // V3.1: 使用统一的 V3 分类轮询替代 V1 的前端主动推荐

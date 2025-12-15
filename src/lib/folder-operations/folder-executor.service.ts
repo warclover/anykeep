@@ -15,6 +15,7 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { operationLogService } from "@/lib/classification/services/operation-log.service";
 import { logger } from "@/lib/logger";
+import { folderCacheInvalidation } from "@/lib/cache/folder-cache-invalidation";
 import type {
   FolderCreateInput,
   FolderMergeInput,
@@ -149,13 +150,23 @@ class FolderExecutorService {
         );
       }
 
-      // 5. 初始化文件夹画像（异步，不阻塞）
-      this.initializeFolderProfile(userId, folder.id).catch((err) => {
-        logger.warn(
-          { error: err instanceof Error ? err.message : String(err) },
-          `${this.LOG_PREFIX} Profile init warning`,
-        );
-      });
+      // 5. V4.2.5: 计算文件夹画像（异步，不阻塞）
+      // 如果有书签移动，计算实际画像；否则只初始化空记录
+      if (movedCount > 0) {
+        this.computeFolderProfile(folder.id).catch((err) => {
+          logger.warn(
+            { error: err instanceof Error ? err.message : String(err) },
+            `${this.LOG_PREFIX} Profile computation warning`,
+          );
+        });
+      } else {
+        this.initializeFolderProfile(userId, folder.id).catch((err) => {
+          logger.warn(
+            { error: err instanceof Error ? err.message : String(err) },
+            `${this.LOG_PREFIX} Profile init warning`,
+          );
+        });
+      }
 
       logger.info(
         {
@@ -165,6 +176,9 @@ class FolderExecutorService {
         },
         `${this.LOG_PREFIX} Folder created successfully`,
       );
+
+      // 6. 触发缓存失效（确保客户端获取最新数据）
+      folderCacheInvalidation.onFolderCreate(userId);
 
       return {
         success: true,
@@ -378,6 +392,9 @@ class FolderExecutorService {
           ? ` (${sourceFolders.length - successfulMerges.length} 个失败)`
           : "";
 
+      // 5. 触发缓存失效（确保客户端获取最新数据）
+      folderCacheInvalidation.onFolderMerge(userId);
+
       return {
         success: true,
         message: `已将 ${successfulMerges.length} 个文件夹合并到「${targetFolder.name}」${partialSuccess}`,
@@ -550,6 +567,20 @@ class FolderExecutorService {
         `${this.LOG_PREFIX} Folder split successfully`,
       );
 
+      // 5. V4.2.5: 为新文件夹计算画像（异步，不阻塞）
+      // 这确保新文件夹可以被分类系统正确匹配
+      Promise.all(
+        newFolders.map((folder) => this.computeFolderProfile(folder.id)),
+      ).catch((err) => {
+        logger.warn(
+          { error: err instanceof Error ? err.message : String(err) },
+          `${this.LOG_PREFIX} Profile computation warning after split`,
+        );
+      });
+
+      // 6. 触发缓存失效（确保客户端获取最新数据）
+      folderCacheInvalidation.onFolderGroupChange(userId);
+
       return {
         success: true,
         message: `已将「${sourceFolder.name}」拆分为 ${newFolders.length} 个子文件夹`,
@@ -662,6 +693,9 @@ class FolderExecutorService {
         `${this.LOG_PREFIX} Folder renamed successfully`,
       );
 
+      // 6. 触发缓存失效（确保客户端获取最新数据）
+      folderCacheInvalidation.onFolderRename(userId);
+
       return {
         success: true,
         message: `已将「${oldName}」重命名为「${newName}」`,
@@ -720,6 +754,42 @@ class FolderExecutorService {
       logger.debug(
         { error: error instanceof Error ? error.message : String(error) },
         `${this.LOG_PREFIX} initializeFolderProfile skipped`,
+      );
+    }
+  }
+
+  /**
+   * V4.2.5: 计算/更新文件夹画像
+   * 调用 compute_folder_profile RPC 函数重新计算文件夹的向量画像
+   * 用于文件夹创建、合并、拆分后更新画像
+   */
+  private async computeFolderProfile(folderId: number): Promise<void> {
+    try {
+      const supabase = await this.getSupabase();
+
+      const { error } = await supabase.rpc("compute_folder_profile", {
+        p_folder_id: folderId,
+      });
+
+      if (error) {
+        logger.warn(
+          { error: error.message, folderId },
+          `${this.LOG_PREFIX} compute_folder_profile RPC failed`,
+        );
+      } else {
+        logger.debug(
+          { folderId },
+          `${this.LOG_PREFIX} Folder profile computed`,
+        );
+      }
+    } catch (error) {
+      // 静默处理，不影响主流程
+      logger.debug(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          folderId,
+        },
+        `${this.LOG_PREFIX} computeFolderProfile skipped`,
       );
     }
   }

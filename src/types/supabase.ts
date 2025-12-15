@@ -2472,8 +2472,17 @@ export type Database = {
         Returns: number;
       };
       batch_reorder_folders: {
-        Args: { p_updates: Json; p_user_id: string };
-        Returns: Json;
+        Args: {
+          p_updates: Array<{ id: number; sort_order: number }>;
+          p_user_id: string;
+        };
+        Returns: {
+          success: boolean;
+          updatedCount?: number;
+          requestedCount?: number;
+          message?: string;
+          error?: string;
+        };
       };
       batch_upsert_knowledge_links: {
         Args: { p_links: Json; p_user_id: string };
@@ -2548,7 +2557,13 @@ export type Database = {
           p_folder_id: number;
           p_user_id: string;
         };
-        Returns: Json;
+        Returns: {
+          success: boolean;
+          folderName?: string;
+          folderId?: number;
+          deletedBookmarks?: number;
+          error?: string;
+        };
       };
       discover_bookmark_links: {
         Args: { p_bookmark_id: number; p_options?: Json; p_user_id: string };
@@ -2989,7 +3004,15 @@ export type Database = {
           p_target_folder_id: number;
           p_user_id: string;
         };
-        Returns: Json;
+        Returns: {
+          success: boolean;
+          bookmarksMoved?: number;
+          sourceFolderName?: string;
+          targetFolderName?: string;
+          sourceFolderId?: number;
+          targetFolderId?: number;
+          error?: string;
+        };
       };
       record_classification_metrics: {
         Args: {

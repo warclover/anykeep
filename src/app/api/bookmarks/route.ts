@@ -43,13 +43,13 @@ import { BOOKMARK, STORAGE } from "@/lib/constants/messages";
 import { PerformanceMonitor } from "@/lib/utils/performance-monitor";
 
 /**
- * V4.2.1: HTTP 缓存配置
- * 书签数据更新较频繁，使用较短的缓存时间
+ * V4.2.3: HTTP 缓存配置（优化）
+ * 书签数据更新频繁，使用更短的缓存时间以确保数据一致性
  * - private: 仅客户端缓存
- * - max-age=30: 30 秒内使用缓存
- * - stale-while-revalidate=60: 缓存过期后 1 分钟内仍可使用旧数据
+ * - max-age=5: 5 秒内使用缓存（从 30 秒缩短，解决删除后仍显示的问题）
+ * - stale-while-revalidate=10: 缓存过期后 10 秒内可后台刷新
  */
-const CACHE_CONTROL_HEADER = "private, max-age=30, stale-while-revalidate=60";
+const CACHE_CONTROL_HEADER = "private, max-age=5, stale-while-revalidate=10";
 
 /**
  * 异步补充书签标题（不阻塞主流程）

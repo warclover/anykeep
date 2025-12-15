@@ -47,6 +47,7 @@ import { ErrorMessage } from "@/components/ui/error-message";
 import { useTrustMode } from "@/hooks/use-trust-mode";
 import { useConfirmations } from "@/hooks/use-confirmations";
 import { cn } from "@/lib/utils";
+import { dataCache } from "@/lib/cache";
 import type { Bookmark } from "@/types/supabase";
 
 // 扩展的书签类型
@@ -91,10 +92,13 @@ export function InboxPageClient({
   });
 
   // 刷新书签列表
+  // V4.2.3: 添加缓存失效，确保数据一致性
   const refreshBookmarks = useCallback(async () => {
     setIsRefreshing(true);
     try {
-      // 简单刷新 - 重新加载页面数据
+      // 失效书签相关缓存，确保获取最新数据
+      dataCache.invalidate(/^bookmarks:/);
+      // 刷新页面数据
       router.refresh();
     } catch {
       toast.error("刷新失败");
