@@ -249,6 +249,11 @@ export class SummaryRepository implements ISummaryRepository {
       throw new Error(`Failed to get bookmark: ${error.message}`);
     }
 
+    // V4.2.7: 添加 null 检查
+    if (!data) {
+      return null;
+    }
+
     return {
       id: data.id,
       userId: data.user_id,

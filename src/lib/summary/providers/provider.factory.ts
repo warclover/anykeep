@@ -16,6 +16,7 @@ import type {
 } from "./provider.interface";
 import { DeepSeekProvider } from "./deepseek.provider";
 import { AliyunBailianProvider } from "./aliyun-bailian.provider";
+import { LocalFallbackProvider } from "./local-fallback.provider";
 import { getConfiguredProviders, isFallbackEnabled } from "../summary.config";
 
 /**
@@ -130,6 +131,10 @@ export class ProviderFactory implements IProviderFactory {
         );
         return null;
 
+      case "local":
+        // V4.2.7: 本地降级 Provider（始终可用）
+        return new LocalFallbackProvider();
+
       default:
         logger.warn({ provider: name }, "ProviderFactory: Unknown provider");
         return null;
@@ -206,6 +211,15 @@ export class ProviderFactory implements IProviderFactory {
           `Provider ${provider.name} is unavailable and fallback is disabled`,
         );
       }
+    }
+
+    // V4.2.7: 所有云端 Provider 都失败时，使用本地降级 Provider
+    if (this.config.enableFallback) {
+      logger.warn(
+        {},
+        "ProviderFactory: All cloud providers unavailable, using local fallback",
+      );
+      return new LocalFallbackProvider();
     }
 
     throw new Error("No available providers");

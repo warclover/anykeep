@@ -344,6 +344,7 @@ export class SummaryConfigService {
       deepseek: null,
       "aliyun-bailian": null,
       ollama: null,
+      local: null, // V4.2.7: 本地降级 Provider
     },
   };
 

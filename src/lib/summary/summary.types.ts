@@ -63,8 +63,9 @@ export {
 
 /**
  * Provider 名称
+ * V4.2.7: 添加 "local" 本地降级 Provider
  */
-export type ProviderName = "deepseek" | "aliyun-bailian" | "ollama";
+export type ProviderName = "deepseek" | "aliyun-bailian" | "ollama" | "local";
 
 /**
  * 摘要版本

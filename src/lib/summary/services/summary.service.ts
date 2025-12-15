@@ -107,6 +107,7 @@ export class SummaryService implements ISummaryService {
         deepseek: 0,
         "aliyun-bailian": 0,
         ollama: 0,
+        local: 0, // V4.2.7: 本地降级 Provider
       },
       fallbackTriggered: 0,
       byContentType: {},

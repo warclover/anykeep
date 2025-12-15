@@ -34,6 +34,17 @@ jest.mock("@/lib/logger", () => ({
 const mockRpc = jest.fn();
 const mockFrom = jest.fn();
 
+// V4.2.7: Mock server client (used by entity.repository.ts)
+jest.mock("@/lib/supabase/server", () => ({
+  createClient: jest.fn(() =>
+    Promise.resolve({
+      rpc: mockRpc,
+      from: mockFrom,
+    }),
+  ),
+}));
+
+// Keep client mock for compatibility
 jest.mock("@/lib/supabase/client", () => ({
   createClient: jest.fn(() => ({
     rpc: mockRpc,
@@ -140,11 +151,11 @@ describe("EntityRepository", () => {
     });
 
     it("should return 0 for null entities", async () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const result = await repository.saveEntities(
         mockBookmarkId,
         mockUserId,
-        null as any,
+
+        null as unknown as Parameters<typeof repository.saveEntities>[2],
       );
 
       expect(result).toBe(0);

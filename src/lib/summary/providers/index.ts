@@ -35,3 +35,6 @@ export {
   getProviderFactory,
   resetProviderFactory,
 } from "./provider.factory";
+
+// V4.2.7: Local Fallback Provider
+export { LocalFallbackProvider } from "./local-fallback.provider";

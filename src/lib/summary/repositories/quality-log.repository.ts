@@ -366,6 +366,13 @@ export class QualityLogRepository implements IQualityLogRepository {
           avgLatencyMs: 0,
           totalTokens: 0,
         },
+        local: {
+          count: 0,
+          successCount: 0,
+          failedCount: 0,
+          avgLatencyMs: 0,
+          totalTokens: 0,
+        },
       };
 
       let totalCalls = 0;
@@ -454,6 +461,13 @@ export class QualityLogRepository implements IQualityLogRepository {
         totalTokens: 0,
       },
       ollama: {
+        count: 0,
+        successCount: 0,
+        failedCount: 0,
+        avgLatencyMs: 0,
+        totalTokens: 0,
+      },
+      local: {
         count: 0,
         successCount: 0,
         failedCount: 0,

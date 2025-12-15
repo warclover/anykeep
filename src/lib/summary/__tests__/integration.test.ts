@@ -7,6 +7,19 @@
  * @since 2025-12-12
  */
 
+// V4.2.7: Mock Supabase server client for regenerate tests
+const mockFrom = jest.fn();
+const mockRpc = jest.fn();
+
+jest.mock("@/lib/supabase/server", () => ({
+  createClient: jest.fn(() =>
+    Promise.resolve({
+      from: mockFrom,
+      rpc: mockRpc,
+    }),
+  ),
+}));
+
 // Module exports
 import {
   // Types that are actually used in tests
@@ -696,7 +709,8 @@ describe("AI Summary Module", () => {
     });
 
     describe("Error Handling", () => {
-      it("should throw SummaryError when no providers available", async () => {
+      it("should use local fallback when no cloud providers available", async () => {
+        // V4.2.7: 当没有云端 Provider 时，使用本地降级而非抛出错误
         const originalEnv = process.env;
         // Clear all API keys to simulate no providers
         process.env = { ...originalEnv };
@@ -706,7 +720,7 @@ describe("AI Summary Module", () => {
         // Need to reset factory to pick up new env
         resetProviderFactory();
 
-        const service = new SummaryService({ enableFallback: false });
+        const service = new SummaryService({ enableFallback: true });
 
         const input: SummaryInput = {
           bookmarkId: 1,
@@ -715,7 +729,10 @@ describe("AI Summary Module", () => {
           content: "Test content",
         };
 
-        await expect(service.generate(input)).rejects.toThrow();
+        // V4.2.7: 本地降级会返回结果而非抛出错误
+        const result = await service.generate(input);
+        expect(result.providerUsed).toBe("local");
+        expect(result.modelUsed).toBe("local-fallback");
 
         process.env = originalEnv;
       });
@@ -759,7 +776,24 @@ describe("AI Summary Module", () => {
     });
 
     describe("Regenerate", () => {
-      it("should throw not implemented error for regenerate", async () => {
+      beforeEach(() => {
+        jest.clearAllMocks();
+      });
+
+      it("should throw SummaryError when bookmark not found", async () => {
+        // V4.2.7: Mock repository to return null (bookmark not found)
+        mockFrom.mockReturnValueOnce({
+          select: jest.fn().mockReturnValue({
+            eq: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                single: jest
+                  .fn()
+                  .mockResolvedValue({ data: null, error: null }),
+              }),
+            }),
+          }),
+        });
+
         const service = new SummaryService();
 
         await expect(service.regenerate(123, "user-id")).rejects.toThrow(
