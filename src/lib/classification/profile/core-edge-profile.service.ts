@@ -13,6 +13,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
 import { logger } from "@/lib/logger";
+import { getCurrentEmbeddingVersion } from "@/lib/utils/embedding-generator";
 
 // ============================================================================
 // 数据库 RPC 函数返回类型（类型生成前的临时定义）
@@ -699,9 +700,12 @@ export class CoreEdgeProfileService {
 
   /**
    * 保存区域画像
+   * V4.2.7: 添加 embedding 版本追踪字段
    */
   private async saveZoneProfile(profile: CoreEdgeProfile): Promise<void> {
     // 使用动态更新绕过类型检查（迁移应用后字段将存在）
+    // V4.2.7: 添加 embedding 版本字段
+    const embeddingVersion = getCurrentEmbeddingVersion();
     const updateData: Record<string, unknown> = {
       core_embedding: profile.coreEmbedding,
       edge_embedding: profile.edgeEmbedding,
@@ -714,6 +718,9 @@ export class CoreEdgeProfileService {
       core_tightness: profile.coreTightness,
       boundary_clarity: profile.boundaryClarity,
       zone_computed_at: profile.zoneComputedAt,
+      // V4.2.7: embedding 版本追踪
+      core_embedding_version: profile.coreEmbedding ? embeddingVersion : null,
+      edge_embedding_version: profile.edgeEmbedding ? embeddingVersion : null,
     };
 
     const { error } = await this.supabase

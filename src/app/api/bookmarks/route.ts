@@ -34,13 +34,13 @@ import {
 import { recommendFolder } from "@/lib/utils/ai-generator";
 import {
   classifyBookmarkV2,
-  updateFolderProfileAfterClassification,
   shouldUseV2Classification,
 } from "@/lib/classification/server";
 import { logger } from "@/lib/logger";
 import type { BookmarkInsert } from "@/types/supabase";
 import { BOOKMARK, STORAGE } from "@/lib/constants/messages";
 import { PerformanceMonitor } from "@/lib/utils/performance-monitor";
+import { bookmarkAITasks } from "@/lib/utils/async-task-retry";
 
 /**
  * V4.2.3: HTTP 缓存配置（优化）
@@ -50,6 +50,39 @@ import { PerformanceMonitor } from "@/lib/utils/performance-monitor";
  * - stale-while-revalidate=10: 缓存过期后 10 秒内可后台刷新
  */
 const CACHE_CONTROL_HEADER = "private, max-age=5, stale-while-revalidate=10";
+
+/**
+ * V4.2.7: 数据版本缓存配置
+ * 用于让客户端判断是否需要重新获取数据
+ */
+const DATA_VERSION_HEADER = "X-Data-Version";
+
+/**
+ * V4.2.7: 生成数据版本号
+ * 基于返回数据的最新 updated_at 时间戳
+ */
+function generateDataVersion(
+  bookmarks: Array<{ updated_at?: string | null }> | null,
+): string {
+  if (!bookmarks || bookmarks.length === 0) {
+    return Date.now().toString();
+  }
+
+  // 找到最新的 updated_at 时间戳
+  let latestTimestamp = 0;
+  for (const bookmark of bookmarks) {
+    if (bookmark.updated_at) {
+      const ts = new Date(bookmark.updated_at).getTime();
+      if (ts > latestTimestamp) {
+        latestTimestamp = ts;
+      }
+    }
+  }
+
+  return latestTimestamp > 0
+    ? latestTimestamp.toString()
+    : Date.now().toString();
+}
 
 /**
  * 异步补充书签标题（不阻塞主流程）
@@ -356,20 +389,20 @@ async function generateBookmarkAIContent(
 
     const currentFolderId = bookmarkData?.folder_id ?? null;
 
-    // 4. 生成向量嵌入（传入 folderId 用于后续 profile 更新）
-    generateBookmarkEmbedding(
-      bookmarkId,
-      title,
-      aiResult.summary,
-      aiResult.tags,
+    // 4. 生成向量嵌入（V4.2.7: 使用重试机制，失败时入队）
+    bookmarkAITasks.generateEmbedding(
+      () =>
+        generateBookmarkEmbedding(
+          bookmarkId,
+          title,
+          aiResult.summary,
+          aiResult.tags,
+          userId,
+          currentFolderId,
+        ),
       userId,
-      currentFolderId,
-    ).catch((err) => {
-      logger.error(
-        { error: err, bookmarkId },
-        "AI Content (async): Embedding generation failed",
-      );
-    });
+      bookmarkId,
+    );
 
     // 5. AI 文件夹推荐（仅当用户未指定文件夹时）
     if (
@@ -378,43 +411,36 @@ async function generateBookmarkAIContent(
       aiResult.tags.length > 0
     ) {
       // Use V2 classification system if enabled
+      // V4.2.7: Profile 更新已集成到 classifyBookmarkV2 内部（同步执行）
+      // V4.2.7: 使用重试机制，失败时入队到 job_queue
       if (shouldUseV2Classification()) {
-        classifyBookmarkV2(
-          bookmarkId,
-          title,
-          aiResult.summary,
-          aiResult.tags,
-          userId,
-        )
-          .then(async (result) => {
-            // Update folder profile if classified
-            if (result.classified && result.folderId) {
-              await updateFolderProfileAfterClassification(
-                result.folderId,
-                userId,
-              );
-            }
-          })
-          .catch((err) => {
-            logger.error(
-              { error: err, bookmarkId },
-              "AI Content (async): V2 Classification failed",
+        bookmarkAITasks.classifyBookmark(
+          async () => {
+            await classifyBookmarkV2(
+              bookmarkId,
+              title,
+              aiResult.summary,
+              aiResult.tags,
+              userId,
             );
-          });
-      } else {
-        // Legacy V1 classification
-        processAIFolderRecommendation(
-          bookmarkId,
-          title,
-          aiResult.summary,
-          aiResult.tags,
+          },
           userId,
-        ).catch((err) => {
-          logger.error(
-            { error: err, bookmarkId },
-            "AI Content (async): Folder recommendation failed",
-          );
-        });
+          bookmarkId,
+        );
+      } else {
+        // Legacy V1 classification（同样使用重试机制）
+        bookmarkAITasks.classifyBookmark(
+          () =>
+            processAIFolderRecommendation(
+              bookmarkId,
+              title,
+              aiResult.summary,
+              aiResult.tags,
+              userId,
+            ),
+          userId,
+          bookmarkId,
+        );
       }
     }
   } catch (error) {
@@ -835,44 +861,68 @@ export async function POST(request: NextRequest) {
     }
 
     // 12. 异步后台任务（不阻塞响应）
+    // V4.2.7: 使用重试机制，失败时入队到 job_queue
     // 如果需要异步获取标题，先获取标题再生成 AI 内容
     if (needsAsyncTitleFetch) {
       // 异步获取标题，然后生成 AI 内容
       fetchAndUpdateTitle(bookmark.id, url, user.id)
         .then(({ title: fetchedTitle, description: fetchedDesc }) => {
-          // 标题获取成功后，继续生成 AI 内容（V2: 传递 url 用于内容类型检测）
-          return generateBookmarkAIContent(
+          // 标题获取成功后，继续生成 AI 内容（使用重试机制）
+          bookmarkAITasks.generateContent(
+            () =>
+              generateBookmarkAIContent(
+                bookmark.id,
+                url,
+                fetchedTitle,
+                fetchedDesc,
+                folderNames,
+                user.id,
+                !!folderId,
+              ),
+            user.id,
             bookmark.id,
             url,
-            fetchedTitle,
-            fetchedDesc,
-            folderNames,
-            user.id,
-            !!folderId,
           );
         })
         .catch((err) => {
           logger.error(
             { error: err, bookmarkId: bookmark.id },
-            "Background title fetch or AI content generation failed",
+            "Background title fetch failed",
+          );
+          // 标题获取失败，仍然尝试生成 AI 内容（使用 URL 作为标题）
+          bookmarkAITasks.generateContent(
+            () =>
+              generateBookmarkAIContent(
+                bookmark.id,
+                url,
+                url, // 使用 URL 作为标题
+                null,
+                folderNames,
+                user.id,
+                !!folderId,
+              ),
+            user.id,
+            bookmark.id,
+            url,
           );
         });
     } else {
-      // 已有标题，直接生成 AI 内容（V2: 传递 url 用于内容类型检测）
-      generateBookmarkAIContent(
+      // 已有标题，直接生成 AI 内容（使用重试机制）
+      bookmarkAITasks.generateContent(
+        () =>
+          generateBookmarkAIContent(
+            bookmark.id,
+            url,
+            finalTitle,
+            finalDescription ?? null,
+            folderNames,
+            user.id,
+            !!folderId,
+          ),
+        user.id,
         bookmark.id,
         url,
-        finalTitle,
-        finalDescription ?? null,
-        folderNames,
-        user.id,
-        !!folderId,
-      ).catch((err) => {
-        logger.error(
-          { error: err, bookmarkId: bookmark.id },
-          "Background AI content generation failed",
-        );
-      });
+      );
     }
 
     // 13. 返回创建的收藏对象
@@ -1166,6 +1216,11 @@ export async function GET(request: NextRequest) {
       "Bookmarks query completed",
     );
 
+    // V4.2.7: 生成数据版本号用于客户端缓存验证
+    const dataVersion = generateDataVersion(
+      bookmarks as Array<{ updated_at?: string | null }> | null,
+    );
+
     // V4.2.1: 返回带缓存头的响应
     const responseData = {
       success: true,
@@ -1177,6 +1232,8 @@ export async function GET(request: NextRequest) {
           nextCursor,
           hasMore,
         },
+        // V4.2.7: 数据版本号，客户端可用于判断缓存是否过期
+        dataVersion,
         // 开发环境返回性能数据
         ...(process.env.NODE_ENV === "development" && {
           _performance: monitor.toJSON(),
@@ -1195,6 +1252,9 @@ export async function GET(request: NextRequest) {
       headers: {
         "Content-Type": "application/json",
         "Cache-Control": CACHE_CONTROL_HEADER,
+        // V4.2.7: 添加数据版本头，让客户端可以用 If-None-Match 验证
+        [DATA_VERSION_HEADER]: dataVersion,
+        ETag: `"${dataVersion}"`,
       },
     });
   } catch (error) {

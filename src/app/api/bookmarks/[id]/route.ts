@@ -24,6 +24,14 @@ import { BOOKMARK, AUTH } from "@/lib/constants/messages";
 import { updateFolderProfilesOnBookmarkChange } from "@/lib/classification/server";
 
 /**
+ * V4.2.7: 生成数据版本号
+ * 用于客户端缓存失效验证
+ */
+function generateDataVersion(): string {
+  return Date.now().toString();
+}
+
+/**
  * GET /api/bookmarks/[id]
  * 获取单个收藏详情
  */
@@ -299,7 +307,11 @@ export async function PATCH(
     );
 
     // 5. 返回更新后的收藏
-    return successResponse(updatedBookmark);
+    // V4.2.7: 添加数据版本号用于客户端缓存失效
+    return successResponse({
+      ...updatedBookmark,
+      dataVersion: generateDataVersion(),
+    });
   } catch (error) {
     logger.error(
       {
@@ -429,6 +441,7 @@ export async function DELETE(
     // 只有永久删除时才减少存储计数
 
     // 4. 返回成功响应
+    // V4.2.7: 添加数据版本号用于客户端缓存失效
     logger.info(
       {
         bookmarkId,
@@ -441,6 +454,7 @@ export async function DELETE(
       deleted: false, // 未永久删除
       movedToTrash: true,
       message: "已移入垃圾箱，30天后自动永久删除",
+      dataVersion: generateDataVersion(),
     });
   } catch (error) {
     logger.error(

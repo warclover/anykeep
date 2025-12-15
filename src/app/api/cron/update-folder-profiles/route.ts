@@ -8,6 +8,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { logger } from "@/lib/logger";
+import { getCurrentEmbeddingVersion } from "@/lib/utils/embedding-generator";
 
 // 使用 Service Role Key 以绕过 RLS
 const supabaseAdmin = createClient(
@@ -208,6 +209,7 @@ async function updateFolderProfile(
   }
 
   // 5. Upsert 画像
+  // V4.2.7: 添加 embedding 版本追踪
   const { error: upsertError } = await supabaseAdmin
     .from("folder_profiles")
     .upsert(
@@ -215,6 +217,10 @@ async function updateFolderProfile(
         user_id: userId,
         folder_id: folderId,
         profile_embedding: profileEmbedding,
+        // V4.2.7: 保存 embedding 版本信息
+        profile_embedding_version: profileEmbedding
+          ? getCurrentEmbeddingVersion()
+          : null,
         bookmark_count: bookmarkCount,
         top_tags: topTags,
         sample_titles: sampleTitles,

@@ -18,6 +18,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
 import { logger } from "@/lib/logger";
+import { getCurrentEmbeddingVersion } from "@/lib/utils/embedding-generator";
 
 // ============================================================================
 // 类型定义
@@ -310,12 +311,18 @@ export class IncrementalProfileService {
       (currentProfile.bookmark_count as number) + bookmarkCountDelta,
     );
 
+    // V4.2.7: 添加 embedding 版本追踪
     const { error: updateError } = await this.supabase
       .from("folder_profiles")
       .update({
         bookmark_count: newBookmarkCount,
         top_tags: newTopTags,
         profile_embedding: newEmbedding,
+        // V4.2.7: 更新 embedding 版本（如果 embedding 有变化）
+        profile_embedding_version:
+          embeddingsToAdd.length > 0 && newEmbedding
+            ? getCurrentEmbeddingVersion()
+            : undefined,
         last_bookmark_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
@@ -528,6 +535,7 @@ export class IncrementalProfileService {
         .single();
 
       // 创建初始画像
+      // V4.2.7: 添加 embedding 版本追踪
       const { error } = await this.supabase.from("folder_profiles").insert({
         user_id: userId,
         folder_id: folderId,
@@ -535,6 +543,10 @@ export class IncrementalProfileService {
         bookmark_count: initialBookmark ? 1 : 0,
         top_tags: initialBookmark?.tags || [],
         profile_embedding: initialBookmark?.embedding || null,
+        // V4.2.7: 保存 embedding 版本
+        profile_embedding_version: initialBookmark?.embedding
+          ? getCurrentEmbeddingVersion()
+          : null,
         sample_titles: [],
         source: "incremental",
         computed_at: new Date().toISOString(),

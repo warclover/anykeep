@@ -6,7 +6,8 @@
 import { z } from "zod";
 import { ClassificationContainer } from "./container";
 import { createSimpleClassificationService } from "./services/simple-classification.service";
-import { CLASSIFICATION_THRESHOLDS, FOLDER_LIMITS } from "./constants";
+import { FOLDER_LIMITS } from "./constants";
+import { CONFIDENCE_THRESHOLDS } from "./types/classification-status";
 import { logger } from "@/lib/logger";
 import { MessageService } from "@/lib/messages/server";
 import { confirmationService } from "@/lib/confirmation";
@@ -19,9 +20,9 @@ import type {
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
 
-// Thresholds from centralized constants
-const AUTO_CLASSIFY_THRESHOLD = CLASSIFICATION_THRESHOLDS.HIGH_CONFIDENCE;
-const SUGGEST_THRESHOLD = CLASSIFICATION_THRESHOLDS.MEDIUM_CONFIDENCE;
+// V4.2.7: 使用统一的置信度阈值配置
+const AUTO_CLASSIFY_THRESHOLD = CONFIDENCE_THRESHOLDS.AUTO_CLASSIFY;
+const SUGGEST_THRESHOLD = CONFIDENCE_THRESHOLDS.SUGGEST;
 
 /**
  * 获取当前分类系统版本
@@ -247,6 +248,28 @@ export async function classifyBookmarkV2(
             reason: result.reason,
           },
         );
+
+        // V4.2.7: 同步更新文件夹 Profile（确保后续分类使用最新数据）
+        // 对于高置信度分类，同步等待 Profile 更新完成
+        try {
+          await updateFolderProfileAfterClassification(result.folderId, userId);
+          logger.debug(
+            { folderId: result.folderId, bookmarkId },
+            "Classification V2: Folder profile updated synchronously",
+          );
+        } catch (profileErr) {
+          // Profile 更新失败不应阻止分类返回，只记录警告
+          logger.warn(
+            {
+              error:
+                profileErr instanceof Error
+                  ? profileErr.message
+                  : String(profileErr),
+              folderId: result.folderId,
+            },
+            "Classification V2: Folder profile update failed (non-blocking)",
+          );
+        }
 
         return {
           classified: true,

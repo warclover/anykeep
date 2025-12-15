@@ -1,14 +1,15 @@
 /**
  * Folder Executor Service
- * V4.2.2 文件夹操作执行器 - 统一的文件夹操作执行入口
+ * V4.2.7 文件夹操作执行器 - 统一的文件夹操作执行入口
  *
  * @description 执行文件夹的创建、合并、拆分、重命名操作
  * - 复用现有的 merge/split/rename 服务
  * - 统一的操作快照管理
  * - 支持撤销功能
  * - V4.2.2: executeMerge 使用 merge_folders_atomic RPC 确保原子性
+ * - V4.2.7: 文件夹变更时清除服务端分类缓存 (fastPathCacheManager)
  *
- * @version 1.1.0
+ * @version 1.2.0
  * @since 2025-12-11
  */
 
@@ -16,6 +17,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { operationLogService } from "@/lib/classification/services/operation-log.service";
 import { logger } from "@/lib/logger";
 import { folderCacheInvalidation } from "@/lib/cache/folder-cache-invalidation";
+import { fastPathCacheManager } from "@/lib/classification/router/cache-manager";
 import type {
   FolderCreateInput,
   FolderMergeInput,
@@ -179,6 +181,8 @@ class FolderExecutorService {
 
       // 6. 触发缓存失效（确保客户端获取最新数据）
       folderCacheInvalidation.onFolderCreate(userId);
+      // V4.2.7: 清除服务端分类缓存（确保下次分类使用最新文件夹列表）
+      fastPathCacheManager.invalidateUser(userId);
 
       return {
         success: true,
@@ -394,6 +398,8 @@ class FolderExecutorService {
 
       // 5. 触发缓存失效（确保客户端获取最新数据）
       folderCacheInvalidation.onFolderMerge(userId);
+      // V4.2.7: 清除服务端分类缓存（确保下次分类使用最新文件夹列表）
+      fastPathCacheManager.invalidateUser(userId);
 
       return {
         success: true,
@@ -580,6 +586,8 @@ class FolderExecutorService {
 
       // 6. 触发缓存失效（确保客户端获取最新数据）
       folderCacheInvalidation.onFolderGroupChange(userId);
+      // V4.2.7: 清除服务端分类缓存（确保下次分类使用最新文件夹列表）
+      fastPathCacheManager.invalidateUser(userId);
 
       return {
         success: true,
@@ -695,6 +703,8 @@ class FolderExecutorService {
 
       // 6. 触发缓存失效（确保客户端获取最新数据）
       folderCacheInvalidation.onFolderRename(userId);
+      // V4.2.7: 清除服务端分类缓存（确保下次分类使用最新文件夹列表）
+      fastPathCacheManager.invalidateUser(userId);
 
       return {
         success: true,

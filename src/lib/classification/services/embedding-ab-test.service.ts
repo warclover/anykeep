@@ -10,6 +10,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 import type { EmbeddingModelId } from "@/lib/classification/config/embedding-config";
+import type { ClassificationResultData } from "@/types/supabase";
 
 /**
  * A/B 测试操作类型
@@ -22,9 +23,12 @@ export type ABTestOperationType = "classification" | "search" | "similarity";
 export type ABTestGroup = "control" | "treatment";
 
 /**
- * 分类结果数据
+ * A/B 测试专用的分类结果数据
+ * 继承自规范的 ClassificationResultData，添加 A/B 测试所需的必填字段约束
+ *
+ * @deprecated 使用 ClassificationResultData from "@/types/supabase" 替代
  */
-export interface ClassificationResultData {
+export interface ABTestClassificationResult {
   folderId: number | null;
   folderName: string;
   confidence: number;
@@ -44,6 +48,7 @@ export interface RecordMetricsRequest {
   folderId?: number;
   executionTimeMs: number;
   tokenCount?: number;
+  /** 使用规范的 ClassificationResultData 类型 */
   classificationResult?: ClassificationResultData;
   abTestGroup: ABTestGroup;
   abTestBucket: number;

@@ -75,10 +75,13 @@ export type {
 export type {
   ABTestOperationType,
   ABTestGroup,
-  ClassificationResultData,
+  ABTestClassificationResult,
   RecordMetricsRequest,
   ABTestSummary,
 } from "./embedding-ab-test.service";
+
+// 统一的分类结果类型 - 从规范位置导出
+export type { ClassificationResultData } from "@/types/supabase";
 
 export type { SplitSuggestion, SplitResult } from "./split.service";
 
