@@ -5,6 +5,11 @@
  * V5.0: 新增本地持久化能力
  * - 应用启动时从 localStorage 恢复缓存
  * - 数据变更时自动持久化
+ *
+ * V4.2.7: LRU 淘汰策略
+ * - 最大条目数限制 (默认 500)
+ * - 内存估算监控 (默认 50MB)
+ * - 自动淘汰最少访问的条目
  */
 
 import { DATA_CACHE_CONFIG } from "./cache-config";
@@ -13,12 +18,15 @@ import { cachePerformanceTracker } from "./cache-performance-tracker";
 
 /**
  * 缓存条目接口
+ * V4.2.7: 添加 lastAccessedAt 用于 LRU 淘汰
  */
 interface CacheEntry<T> {
   data: T;
   timestamp: number;
   isValidating: boolean;
   error?: Error;
+  /** V4.2.7: 最后访问时间（用于 LRU） */
+  lastAccessedAt: number;
 }
 
 /**
@@ -50,6 +58,7 @@ export interface FetchResult<T> {
  * 实现 stale-while-revalidate 策略
  *
  * V5.0: 支持本地持久化
+ * V4.2.7: LRU 淘汰策略
  */
 class DataCacheManager {
   private cache = new Map<string, CacheEntry<unknown>>();
@@ -59,6 +68,8 @@ class DataCacheManager {
   >();
   private pendingRequests = new Map<string, Promise<unknown>>();
   private initialized = false;
+  /** V4.2.7: 淘汰统计 */
+  private evictionCount = 0;
 
   constructor() {
     // 延迟初始化：在首次访问时从 localStorage 恢复
@@ -69,6 +80,7 @@ class DataCacheManager {
   /**
    * V5.0: 从持久化存储恢复缓存
    * V5.0.1: 集成性能追踪
+   * V4.2.7: 确保恢复的条目有 lastAccessedAt
    */
   private restoreFromStorage(): void {
     if (this.initialized) return;
@@ -80,11 +92,17 @@ class DataCacheManager {
     const restored = persistentStorage.restore();
     const cacheHit = restored !== null && restored.size > 0;
     const entryCount = restored?.size ?? 0;
+    const now = Date.now();
 
     if (cacheHit && restored) {
-      // 合并恢复的缓存
+      // 合并恢复的缓存，确保有 lastAccessedAt
       for (const [key, entry] of restored) {
-        this.cache.set(key, entry as CacheEntry<unknown>);
+        const cacheEntry = entry as CacheEntry<unknown>;
+        // V4.2.7: 确保旧数据有 lastAccessedAt
+        if (!cacheEntry.lastAccessedAt) {
+          cacheEntry.lastAccessedAt = cacheEntry.timestamp || now;
+        }
+        this.cache.set(key, cacheEntry);
       }
     }
 
@@ -114,6 +132,7 @@ class DataCacheManager {
   /**
    * 同步获取缓存数据（不触发请求）
    * V5.0: 自动从持久化存储恢复
+   * V4.2.7: 更新 lastAccessedAt 用于 LRU
    */
   getSync<T>(cacheKey: string): {
     data: T | undefined;
@@ -129,6 +148,9 @@ class DataCacheManager {
     if (!cached) {
       return { data: undefined, isStale: true, timestamp: undefined };
     }
+
+    // V4.2.7: 更新访问时间（LRU）
+    cached.lastAccessedAt = now;
 
     const isStale = now - cached.timestamp > DATA_CACHE_CONFIG.staleTime;
 
@@ -306,14 +328,26 @@ class DataCacheManager {
    * 设置缓存
    * V5.0: 设置后自动持久化
    * V5.1: 支持书签和文件夹数据持久化
+   * V4.2.7: LRU 淘汰策略
    * 注意：此方法现在是 public，供乐观更新和降级请求使用
    */
   setCache<T>(cacheKey: string, data: T): void {
+    const now = Date.now();
+
+    // V4.2.7: 检查是否需要淘汰
+    if (
+      !this.cache.has(cacheKey) &&
+      this.cache.size >= DATA_CACHE_CONFIG.maxEntries
+    ) {
+      this.evictLRU();
+    }
+
     this.cache.set(cacheKey, {
       data,
-      timestamp: Date.now(),
+      timestamp: now,
       isValidating: false,
       error: undefined,
+      lastAccessedAt: now,
     });
     this.notifySubscribers(cacheKey);
 
@@ -321,6 +355,32 @@ class DataCacheManager {
     if (this.shouldPersist(cacheKey)) {
       this.triggerPersist();
     }
+  }
+
+  /**
+   * V4.2.7: LRU 淘汰
+   * 移除最少最近访问的条目
+   */
+  private evictLRU(): void {
+    const evictCount = Math.ceil(
+      this.cache.size * DATA_CACHE_CONFIG.evictionRatio,
+    );
+
+    // 按 lastAccessedAt 排序，找出最旧的条目
+    const entries = Array.from(this.cache.entries())
+      .sort((a, b) => a[1].lastAccessedAt - b[1].lastAccessedAt)
+      .slice(0, evictCount);
+
+    // 淘汰条目
+    for (const [key] of entries) {
+      this.cache.delete(key);
+      this.notifySubscribers(key);
+    }
+
+    this.evictionCount += entries.length;
+
+    // 触发持久化更新
+    this.triggerPersist();
   }
 
   /**
@@ -440,11 +500,15 @@ class DataCacheManager {
 
   /**
    * 获取缓存统计信息
+   * V4.2.7: 添加 LRU 淘汰统计和内存监控
    */
   getStats(): {
     size: number;
     keys: string[];
     memoryEstimate: string;
+    maxEntries: number;
+    evictionCount: number;
+    utilizationPercent: number;
   } {
     const keys = Array.from(this.cache.keys());
     const jsonSize = JSON.stringify(Array.from(this.cache.values())).length;
@@ -457,6 +521,12 @@ class DataCacheManager {
       size: this.cache.size,
       keys,
       memoryEstimate,
+      // V4.2.7: LRU 相关统计
+      maxEntries: DATA_CACHE_CONFIG.maxEntries,
+      evictionCount: this.evictionCount,
+      utilizationPercent: Math.round(
+        (this.cache.size / DATA_CACHE_CONFIG.maxEntries) * 100,
+      ),
     };
   }
 }

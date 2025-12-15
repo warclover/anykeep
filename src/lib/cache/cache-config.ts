@@ -23,6 +23,13 @@ export const DATA_CACHE_CONFIG = {
   retryCount: 3,
   // 重试延迟（毫秒）
   retryDelay: 1000,
+  // V4.2.7: LRU 淘汰策略配置
+  /** 最大缓存条目数 */
+  maxEntries: 500,
+  /** 最大内存估算 (bytes) - 约 50MB */
+  maxMemoryBytes: 50 * 1024 * 1024,
+  /** 淘汰时移除的条目比例 (当达到上限时删除 20% 最旧的) */
+  evictionRatio: 0.2,
 } as const;
 
 // 页面特定配置

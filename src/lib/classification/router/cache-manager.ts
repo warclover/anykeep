@@ -1,14 +1,15 @@
 /**
  * Fast Path Cache Manager
- * V4.2 快速路径缓存管理器
+ * V4.2.7 快速路径缓存管理器
  *
  * @description 统一管理快速路径匹配器的缓存
  * - LRU 淘汰策略
  * - 自动过期清理
  * - 预热机制
  * - 统计监控
+ * - V4.2.7: 动态 TTL（活跃用户 2 分钟，非活跃用户 5 分钟）
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-11
  */
 
@@ -96,8 +97,24 @@ interface UserFastPathCache {
 // 默认配置
 // ============================================================================
 
+/**
+ * V4.2.7: 动态 TTL 配置
+ * - 活跃用户（近期有多次访问）: 较短 TTL，确保数据新鲜度
+ * - 非活跃用户: 较长 TTL，减少数据库负载
+ */
+const DYNAMIC_TTL_CONFIG = {
+  /** 活跃用户 TTL (2 分钟) */
+  activeTtlMs: 2 * 60 * 1000,
+  /** 非活跃用户 TTL (5 分钟) */
+  inactiveTtlMs: 5 * 60 * 1000,
+  /** 判定为活跃用户的访问次数阈值 */
+  activeThreshold: 3,
+  /** 判定活跃的时间窗口 (10 分钟) */
+  activeWindowMs: 10 * 60 * 1000,
+} as const;
+
 const DEFAULT_CACHE_CONFIG: CacheConfig = {
-  ttlMs: 5 * 60 * 1000, // 5 分钟
+  ttlMs: DYNAMIC_TTL_CONFIG.activeTtlMs, // V4.2.7: 默认使用活跃用户 TTL
   maxEntries: 100,
   enableWarmup: true,
   warmupLimit: 50,
@@ -130,20 +147,26 @@ export class FastPathCacheManager {
 
   /**
    * 获取用户快速路径缓存
+   * V4.2.7: 支持动态 TTL（活跃用户更短，非活跃用户更长）
    */
   async getUserCache(userId: string): Promise<UserFastPathCache | null> {
     const cacheKey = `user_fast_path_${userId}`;
     const entry = this.cache.get(cacheKey);
     const now = Date.now();
 
-    // 检查缓存是否有效
-    if (entry && entry.createdAt + this.config.ttlMs > now) {
-      // 更新访问统计
-      entry.lastAccessedAt = now;
-      entry.accessCount++;
-      this.stats.hits++;
-      this.updateHitRate();
-      return entry.data;
+    // V4.2.7: 使用动态 TTL
+    if (entry) {
+      const effectiveTtl = this.getEffectiveTtl(entry);
+
+      // 检查缓存是否有效
+      if (entry.createdAt + effectiveTtl > now) {
+        // 更新访问统计
+        entry.lastAccessedAt = now;
+        entry.accessCount++;
+        this.stats.hits++;
+        this.updateHitRate();
+        return entry.data;
+      }
     }
 
     // 缓存未命中
@@ -160,7 +183,28 @@ export class FastPathCacheManager {
   }
 
   /**
+   * V4.2.7: 计算有效 TTL
+   * 活跃用户使用较短 TTL，非活跃用户使用较长 TTL
+   */
+  private getEffectiveTtl(entry: CacheEntry<UserFastPathCache>): number {
+    const now = Date.now();
+    const timeSinceLastAccess = now - entry.lastAccessedAt;
+
+    // 如果用户在时间窗口内有足够多的访问，认为是活跃用户
+    if (
+      entry.accessCount >= DYNAMIC_TTL_CONFIG.activeThreshold &&
+      timeSinceLastAccess < DYNAMIC_TTL_CONFIG.activeWindowMs
+    ) {
+      return DYNAMIC_TTL_CONFIG.activeTtlMs;
+    }
+
+    // 非活跃用户使用较长 TTL
+    return DYNAMIC_TTL_CONFIG.inactiveTtlMs;
+  }
+
+  /**
    * 预热用户缓存
+   * V4.2.7: 使用动态 TTL 判断缓存有效性
    */
   async warmupUserCache(userId: string): Promise<void> {
     if (!this.config.enableWarmup) {
@@ -169,10 +213,13 @@ export class FastPathCacheManager {
 
     const cacheKey = `user_fast_path_${userId}`;
 
-    // 已有有效缓存则跳过
+    // 已有有效缓存则跳过（使用动态 TTL）
     const existing = this.cache.get(cacheKey);
-    if (existing && existing.createdAt + this.config.ttlMs > Date.now()) {
-      return;
+    if (existing) {
+      const effectiveTtl = this.getEffectiveTtl(existing);
+      if (existing.createdAt + effectiveTtl > Date.now()) {
+        return;
+      }
     }
 
     // 加载并缓存数据
@@ -187,9 +234,9 @@ export class FastPathCacheManager {
    * 批量预热
    */
   async batchWarmup(userIds: string[]): Promise<void> {
-    const warmupPromises = userIds.slice(0, this.config.warmupLimit).map(
-      (userId) => this.warmupUserCache(userId).catch(() => null),
-    );
+    const warmupPromises = userIds
+      .slice(0, this.config.warmupLimit)
+      .map((userId) => this.warmupUserCache(userId).catch(() => null));
     await Promise.all(warmupPromises);
     this.stats.lastWarmup = new Date();
   }
@@ -252,7 +299,9 @@ export class FastPathCacheManager {
   /**
    * 加载用户快速路径数据
    */
-  private async loadUserFastPathData(userId: string): Promise<UserFastPathCache | null> {
+  private async loadUserFastPathData(
+    userId: string,
+  ): Promise<UserFastPathCache | null> {
     try {
       const supabase = await createClient();
 
@@ -274,9 +323,13 @@ export class FastPathCacheManager {
           .is("deleted_at", null)
           .order("created_at", { ascending: false })
           .limit(200) as unknown as Promise<{
-            data: Array<{ folder_id: number | null; url: string; tags: string[] | null }> | null;
-            error: unknown;
-          }>,
+          data: Array<{
+            folder_id: number | null;
+            url: string;
+            tags: string[] | null;
+          }> | null;
+          error: unknown;
+        }>,
       ]);
 
       if (foldersResult.error || !foldersResult.data) {
@@ -293,7 +346,10 @@ export class FastPathCacheManager {
           if (!bookmark.folder_id) continue;
 
           // 文件夹使用统计
-          const usage = folderUsage.get(bookmark.folder_id) || { count: 0, lastUsed: new Date() };
+          const usage = folderUsage.get(bookmark.folder_id) || {
+            count: 0,
+            lastUsed: new Date(),
+          };
           usage.count++;
           folderUsage.set(bookmark.folder_id, usage);
 
@@ -301,7 +357,10 @@ export class FastPathCacheManager {
           try {
             const domain = new URL(bookmark.url).hostname;
             const domainMap = domainPreference.get(domain) || new Map();
-            domainMap.set(bookmark.folder_id, (domainMap.get(bookmark.folder_id) || 0) + 1);
+            domainMap.set(
+              bookmark.folder_id,
+              (domainMap.get(bookmark.folder_id) || 0) + 1,
+            );
             domainPreference.set(domain, domainMap);
           } catch {
             // Invalid URL, skip
@@ -313,7 +372,10 @@ export class FastPathCacheManager {
             for (const tag of tags) {
               const normalizedTag = tag.toLowerCase().trim();
               const tagMap = tagPreference.get(normalizedTag) || new Map();
-              tagMap.set(bookmark.folder_id, (tagMap.get(bookmark.folder_id) || 0) + 1);
+              tagMap.set(
+                bookmark.folder_id,
+                (tagMap.get(bookmark.folder_id) || 0) + 1,
+              );
               tagPreference.set(normalizedTag, tagMap);
             }
           }
@@ -348,7 +410,10 @@ export class FastPathCacheManager {
         }
         if (maxCount >= 3) {
           // 至少 3 个样本
-          const totalForDomain = Array.from(folderMap.values()).reduce((a, b) => a + b, 0);
+          const totalForDomain = Array.from(folderMap.values()).reduce(
+            (a, b) => a + b,
+            0,
+          );
           frequentSources.push({
             domain,
             preferredFolderId,
@@ -504,7 +569,10 @@ export async function warmupActiveUsers(): Promise<void> {
     const { data: activeUsers } = await supabase
       .from("profiles")
       .select("id")
-      .gte("updated_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+      .gte(
+        "updated_at",
+        new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+      )
       .limit(50);
 
     if (activeUsers && activeUsers.length > 0) {
@@ -533,7 +601,9 @@ export function getCacheHealthStatus(): {
 
   // 检查缓存大小
   if (stats.size > DEFAULT_CACHE_CONFIG.maxEntries * 0.9) {
-    issues.push(`Cache near capacity: ${stats.size}/${DEFAULT_CACHE_CONFIG.maxEntries}`);
+    issues.push(
+      `Cache near capacity: ${stats.size}/${DEFAULT_CACHE_CONFIG.maxEntries}`,
+    );
   }
 
   return {
