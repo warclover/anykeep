@@ -53,10 +53,10 @@ import { BrowserBookmarkVirtualList } from "@/components/bookmark/browser-bookma
 import { VirtualBookmarkList } from "@/components/bookmark/virtual-bookmark-list";
 import { BrowserBookmarkEmptyState } from "@/components/bookmark/browser-bookmark-empty-state";
 import { TrashToolbar } from "@/components/trash/trash-toolbar";
-// 懒加载 Dialog 组件（按需显示，非首屏必需）
-const CreateBookmarkDialog = lazy(() =>
-  import("@/components/bookmark/create-bookmark-dialog").then((mod) => ({
-    default: mod.CreateBookmarkDialog,
+// 懒加载 Dialog/Drawer 组件（按需显示，非首屏必需）
+const CreateBookmarkDrawer = lazy(() =>
+  import("@/components/bookmark/create-bookmark-drawer").then((mod) => ({
+    default: mod.CreateBookmarkDrawer,
   })),
 );
 const BatchImportDialog = lazy(() =>
@@ -1528,23 +1528,24 @@ export function HomePageClient({
       <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 md:px-8 py-0.5 md:py-1">
         {/* 快速添加收藏组件（仅在非垃圾箱页面显示） */}
         {!isTrashFolder && (
-          <div className="mb-6 max-w-3xl mx-auto space-y-3">
-            <QuickAddBookmark
-              onBookmarkCreated={() => {
-                // 刷新列表
-                if (_refetch) {
-                  _refetch();
-                }
-              }}
-            />
+          <div className="mb-6 max-w-4xl mx-auto flex items-center gap-3">
+            <div className="flex-1 min-w-0">
+              <QuickAddBookmark
+                onBookmarkCreated={() => {
+                  // 刷新列表
+                  if (_refetch) {
+                    _refetch();
+                  }
+                }}
+              />
+            </div>
             {/* 创建自定义收藏按钮 */}
             <Button
-              variant="outline"
-              className="w-full h-10 text-muted-foreground hover:text-foreground border-dashed"
+              className="shrink-0 h-12 px-4 bg-violet-600 hover:bg-violet-700 text-white shadow-sm"
               onClick={openCreateDialog}
             >
-              <Plus className="size-4 mr-2" />
-              创建自定义收藏
+              <Plus className="size-4 mr-1.5" />
+              手动创建
             </Button>
           </div>
         )}
@@ -1749,9 +1750,9 @@ export function HomePageClient({
           />
         )}
 
-        {/* 创建收藏对话框 */}
+        {/* 创建收藏抽屉 */}
         {showCreateDialog && (
-          <CreateBookmarkDialog
+          <CreateBookmarkDrawer
             open={showCreateDialog}
             onOpenChange={setShowCreateDialog}
             onSuccess={handleBookmarkCreated}
