@@ -16,6 +16,7 @@ import {
   generateEmbedding,
   buildEmbeddingText,
   isValidEmbedding,
+  getCurrentEmbeddingVersion,
 } from "@/lib/utils/embedding-generator";
 import { logger } from "@/lib/logger";
 
@@ -129,9 +130,13 @@ export async function POST(request: NextRequest) {
           }
 
           // 更新数据库（pgvector 接受 number[] 格式，TypeScript 类型为 string）
+          // V4.2.7: 同时保存 embedding_version 用于版本追踪
           const { error: updateError } = await supabase
             .from("bookmarks")
-            .update({ embedding: embedding as unknown as string })
+            .update({
+              embedding: embedding as unknown as string,
+              embedding_version: getCurrentEmbeddingVersion(),
+            })
             .eq("id", bookmark.id)
             .eq("user_id", user.id);
 
