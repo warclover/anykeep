@@ -637,10 +637,14 @@ export class DynamicWeightsService {
 
   /**
    * 获取总样本数
+   *
+   * V4.2.5 修复：Math.max(...[]) 返回 -Infinity，需要显式处理空数组
    */
   private getTotalSamples(performance: MatcherPerformance[]): number {
     if (performance.length === 0) return 0;
-    return Math.max(...performance.map((p) => p.totalPredictions));
+    const predictions = performance.map((p) => p.totalPredictions);
+    // V4.2.5: 显式处理空数组，避免 Math.max() 返回 -Infinity
+    return predictions.length > 0 ? Math.max(...predictions) : 0;
   }
 
   /**

@@ -19,10 +19,27 @@ interface ClusterItem {
 }
 
 /**
+ * V4.2.5: 层次聚类性能保护常量
+ *
+ * 时间复杂度分析：
+ * - 层次聚类的时间复杂度为 O(n³)（n 个项目，每次迭代 O(n²) 比较，最多 n 次迭代）
+ * - 当 n > 500 时，性能开始显著下降
+ * - 当 n > 1000 时，可能导致 API 超时
+ *
+ * 解决方案：
+ * - 限制最大处理项目数为 500
+ * - 超过限制时降级为 K-means 聚类（O(nk)）
+ */
+const MAX_HIERARCHICAL_ITEMS = 500;
+const MAX_ITERATIONS = 10000; // 防止无限循环
+
+/**
  * Cluster bookmarks using hierarchical agglomerative clustering
  * @param items Bookmarks to cluster
  * @param similarityThreshold Minimum similarity to merge clusters (0-1)
  * @param minClusterSize Minimum cluster size to include in results
+ *
+ * V4.2.5: 添加性能保护，大数据集自动降级为 K-means
  */
 export function clusterBookmarks(
   items: ClusterItem[],
@@ -33,13 +50,25 @@ export function clusterBookmarks(
     return [];
   }
 
+  // V4.2.5: 大数据集性能保护 - 自动降级为 K-means
+  if (items.length > MAX_HIERARCHICAL_ITEMS) {
+    // 估算聚类数量：假设平均每个聚类 5 个项目
+    const estimatedK = Math.ceil(items.length / 5);
+    const k = Math.max(2, Math.min(estimatedK, 50)); // 限制在 2-50 之间
+    return kMeansClustering(items, k);
+  }
+
   // Initialize: each item is its own cluster
   let clusters: ClusterItem[][] = items.map((item) => [item]);
 
+  // V4.2.5: 添加迭代计数器防止无限循环
+  let iterations = 0;
+
   // Merge until no more merges possible
   let merged = true;
-  while (merged) {
+  while (merged && iterations < MAX_ITERATIONS) {
     merged = false;
+    iterations++;
 
     // Find the two most similar clusters
     let bestI = -1;
@@ -96,9 +125,38 @@ function calculateClusterSimilarity(
 
 /**
  * Convert cluster items to BookmarkCluster format
+ *
+ * V4.2.5: 添加空聚类防御性检查
  */
 function convertToBookmarkCluster(items: ClusterItem[]): BookmarkCluster {
-  const embeddings = items.map((item) => item.embedding);
+  // V4.2.5: 防御性检查 - 空聚类返回安全默认值
+  if (!items || items.length === 0) {
+    return {
+      bookmarkIds: [],
+      centroid: [],
+      avgSimilarity: 0,
+      sampleTitles: [],
+    };
+  }
+
+  // V4.2.5: 过滤无效的 embedding
+  const validItems = items.filter(
+    (item) =>
+      item.embedding &&
+      Array.isArray(item.embedding) &&
+      item.embedding.length > 0,
+  );
+
+  if (validItems.length === 0) {
+    return {
+      bookmarkIds: items.map((item) => item.id),
+      centroid: [],
+      avgSimilarity: 0,
+      sampleTitles: items.slice(0, 5).map((item) => item.title),
+    };
+  }
+
+  const embeddings = validItems.map((item) => item.embedding);
   const centroid = calculateCentroid(embeddings);
   const avgSimilarity = calculateInternalSimilarity(embeddings);
 

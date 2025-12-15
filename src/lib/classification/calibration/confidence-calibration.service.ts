@@ -103,8 +103,8 @@ export interface AgreementAssessment {
 export const CALIBRATION_CONFIG = {
   /** 最小样本数量（用于贝叶斯平滑） */
   MIN_SAMPLES_FOR_CALIBRATION: 10,
-  /** 贝叶斯先验强度（伪样本数） */
-  BAYESIAN_PRIOR_STRENGTH: 5,
+  /** V4.2.5: 降低贝叶斯先验强度，减少对小样本的影响 */
+  BAYESIAN_PRIOR_STRENGTH: 2,
   /** 贝叶斯先验准确率 */
   BAYESIAN_PRIOR_ACCURACY: 0.7,
   /** 达成共识的最小一致性分数 */
@@ -584,7 +584,11 @@ export class ConfidenceCalibrationService {
     for (const metric of metrics) {
       if (metric.user_accepted === null) continue;
 
-      const bucketId = Math.min(Math.floor(metric.confidence * 10), 9);
+      // V4.2.5: 添加边界检查，确保 bucketId 在 [0, 9] 范围内
+      const bucketId = Math.max(
+        0,
+        Math.min(Math.floor(metric.confidence * 10), 9),
+      );
       buckets[bucketId].totalPredictions++;
       if (metric.user_accepted) {
         buckets[bucketId].correctPredictions++;
@@ -629,19 +633,23 @@ export class ConfidenceCalibrationService {
     buckets: CalibrationBucket[],
     confidence: number,
   ): CalibrationBucket | null {
-    const bucketId = Math.min(Math.floor(confidence * 10), 9);
+    // V4.2.5: 添加边界检查，确保 bucketId 在 [0, 9] 范围内
+    const bucketId = Math.max(0, Math.min(Math.floor(confidence * 10), 9));
     return buckets[bucketId] || null;
   }
 
   /**
    * 贝叶斯平滑计算准确率
-   * 处理小样本问题
+   * V4.2.5: 优化小样本处理
+   * - 先验强度从 5 降至 2，减少对新文件夹的压制
+   * - 0 样本时返回 0.7，1 个正确样本时约 0.8
    */
   private calculateBayesianAccuracy(correct: number, total: number): number {
     const priorStrength = CALIBRATION_CONFIG.BAYESIAN_PRIOR_STRENGTH;
     const priorAccuracy = CALIBRATION_CONFIG.BAYESIAN_PRIOR_ACCURACY;
 
     // 贝叶斯平滑：(实际正确 + 先验正确) / (实际总数 + 先验总数)
+    // 新计算: 0 样本 → 0.7, 1 正确 → (1 + 1.4) / 3 ≈ 0.8
     return (correct + priorStrength * priorAccuracy) / (total + priorStrength);
   }
 

@@ -44,6 +44,69 @@ export interface RAGRetrievalResult {
 }
 
 /**
+ * V4.2.5: RAG 上下文格式配置
+ *
+ * 配置化设计原因：
+ * - 不同的 LLM 模型对上下文格式有不同的偏好
+ * - 方便 A/B 测试不同格式对回答质量的影响
+ * - 支持多语言场景（中文/英文）
+ */
+export interface RAGContextFormatConfig {
+  /** 上下文开头提示语 */
+  header: string;
+  /** 单条书签格式模板（支持变量: {index}, {title}, {folder}, {platform}, {summary}, {description}, {tags}, {url}） */
+  itemTemplate: string;
+  /** 书签之间的分隔符 */
+  itemSeparator: string;
+  /** 最大上下文长度（字符数），超过则截断 */
+  maxLength?: number;
+  /** 是否显示相似度分数（用于调试） */
+  showSimilarity?: boolean;
+}
+
+/** 默认中文上下文格式 */
+export const DEFAULT_CONTEXT_FORMAT: RAGContextFormatConfig = {
+  header: "以下是用户收藏中与问题相关的内容：\n",
+  itemTemplate: [
+    "【{index}】{title}",
+    "{folder?   文件夹：{folder}}",
+    "{platform?   来源：{platform}}",
+    "{summary?   摘要：{summary}}",
+    "{description?   描述：{description}}",
+    "{tags?   标签：{tags}}",
+    "   链接：{url}",
+  ].join("\n"),
+  itemSeparator: "\n\n",
+  maxLength: 8000,
+  showSimilarity: false,
+};
+
+/** 简洁格式（用于 token 受限场景） */
+export const COMPACT_CONTEXT_FORMAT: RAGContextFormatConfig = {
+  header: "相关收藏内容：\n",
+  itemTemplate: "{index}. {title}\n   {summary}\n   {url}",
+  itemSeparator: "\n",
+  maxLength: 4000,
+  showSimilarity: false,
+};
+
+/** 英文格式（用于英文 LLM） */
+export const ENGLISH_CONTEXT_FORMAT: RAGContextFormatConfig = {
+  header: "Here are relevant bookmarks from the user's collection:\n",
+  itemTemplate: [
+    "[{index}] {title}",
+    "{folder?   Folder: {folder}}",
+    "{platform?   Source: {platform}}",
+    "{summary?   Summary: {summary}}",
+    "{tags?   Tags: {tags}}",
+    "   URL: {url}",
+  ].join("\n"),
+  itemSeparator: "\n\n",
+  maxLength: 8000,
+  showSimilarity: false,
+};
+
+/**
  * RAG 检索选项
  */
 export interface RAGRetrievalOptions {
@@ -57,14 +120,17 @@ export interface RAGRetrievalOptions {
   bookmarkIds?: number[];
   /** 是否包含书签描述 */
   includeDescription?: boolean;
+  /** V4.2.5: 上下文格式配置 */
+  contextFormat?: RAGContextFormatConfig;
 }
 
 const DEFAULT_OPTIONS: Required<
-  Omit<RAGRetrievalOptions, "folderId" | "bookmarkIds">
-> = {
+  Omit<RAGRetrievalOptions, "folderId" | "bookmarkIds" | "contextFormat">
+> & { contextFormat: RAGContextFormatConfig } = {
   limit: 5,
   minSimilarity: 0.5,
   includeDescription: true,
+  contextFormat: DEFAULT_CONTEXT_FORMAT,
 };
 
 /**
@@ -99,9 +165,9 @@ export class RAGRetrievalService {
       // 2. 在数据库中搜索相似书签
       const supabase = await createClient();
 
-      // 构建查询参数 - query_embedding 需要转换为字符串格式
+      // V4.2.5: 修复向量格式，pgvector 需要 [1,2,3,...] 格式
       const rpcParams = {
-        query_embedding: JSON.stringify(queryEmbedding),
+        query_embedding: `[${queryEmbedding.join(",")}]`,
         match_threshold: opts.minSimilarity,
         match_count: opts.limit,
         p_user_id: userId,
@@ -154,8 +220,13 @@ export class RAGRetrievalService {
         }),
       );
 
-      // 5. 生成上下文文本
-      const context = this.buildContext(bookmarks, opts.includeDescription);
+      // 5. 生成上下文文本（使用配置化格式）
+      const contextFormat = options.contextFormat || DEFAULT_CONTEXT_FORMAT;
+      const context = this.buildContext(
+        bookmarks,
+        opts.includeDescription,
+        contextFormat,
+      );
 
       // 6. 计算元数据
       const avgSimilarity =
@@ -166,13 +237,48 @@ export class RAGRetrievalService {
 
       const retrievalTimeMs = Date.now() - startTime;
 
+      // V4.2.5: 增强检索质量指标日志
+      const similarities = bookmarks.map((b) => b.similarity);
+      const sortedSimilarities = [...similarities].sort((a, b) => b - a);
+      const qualityMetrics = {
+        // 基础指标
+        found: bookmarks.length,
+        requested: opts.limit,
+        fillRate:
+          opts.limit > 0 ? (bookmarks.length / opts.limit).toFixed(2) : "0",
+        // 相似度分布
+        avgSimilarity: avgSimilarity.toFixed(3),
+        maxSimilarity: sortedSimilarities[0]?.toFixed(3) ?? "N/A",
+        minSimilarity:
+          sortedSimilarities[sortedSimilarities.length - 1]?.toFixed(3) ??
+          "N/A",
+        medianSimilarity:
+          sortedSimilarities.length > 0
+            ? sortedSimilarities[
+                Math.floor(sortedSimilarities.length / 2)
+              ].toFixed(3)
+            : "N/A",
+        // 质量分布（高于阈值的比例）
+        highQualityRatio:
+          bookmarks.length > 0
+            ? (
+                bookmarks.filter((b) => b.similarity >= 0.7).length /
+                bookmarks.length
+              ).toFixed(2)
+            : "0",
+        // 文件夹分布（检索结果是否集中在少数文件夹）
+        uniqueFolders: new Set(
+          bookmarks.map((b) => b.folderName).filter(Boolean),
+        ).size,
+      };
+
       logger.info(
         {
           userId: userId.slice(0, 8) + "...",
-          query: query.slice(0, 50) + "...",
-          found: bookmarks.length,
-          avgSimilarity: avgSimilarity.toFixed(3),
+          query: query.slice(0, 50) + (query.length > 50 ? "..." : ""),
+          ...qualityMetrics,
           timeMs: retrievalTimeMs,
+          threshold: opts.minSimilarity,
         },
         "RAG: Retrieval completed",
       );
@@ -198,53 +304,103 @@ export class RAGRetrievalService {
 
   /**
    * 从检索到的书签构建上下文文本
+   * V4.2.5: 支持配置化格式
    *
    * @param bookmarks - 检索到的书签列表
    * @param includeDescription - 是否包含描述
+   * @param format - 上下文格式配置
    * @returns 格式化的上下文文本
    */
   private buildContext(
     bookmarks: RetrievedBookmark[],
     includeDescription: boolean,
+    format: RAGContextFormatConfig = DEFAULT_CONTEXT_FORMAT,
   ): string {
     if (bookmarks.length === 0) {
       return "";
     }
 
-    const contextParts: string[] = ["以下是用户收藏中与问题相关的内容：\n"];
+    const contextParts: string[] = [format.header];
 
     bookmarks.forEach((bookmark, index) => {
-      const parts: string[] = [];
+      // 构建变量映射
+      const vars: Record<string, string | undefined> = {
+        index: String(index + 1),
+        title: bookmark.title,
+        folder: bookmark.folderName || undefined,
+        platform: bookmark.platform || undefined,
+        summary: bookmark.summary || undefined,
+        description: includeDescription
+          ? bookmark.description || undefined
+          : undefined,
+        tags: bookmark.tags?.join("、") || undefined,
+        url: bookmark.url,
+        similarity: format.showSimilarity
+          ? bookmark.similarity.toFixed(3)
+          : undefined,
+      };
 
-      // 标题和来源
-      parts.push(`【${index + 1}】${bookmark.title}`);
-      if (bookmark.folderName) {
-        parts.push(`   文件夹：${bookmark.folderName}`);
-      }
-      if (bookmark.platform) {
-        parts.push(`   来源：${bookmark.platform}`);
-      }
-
-      // 摘要（优先）或描述
-      if (bookmark.summary) {
-        parts.push(`   摘要：${bookmark.summary}`);
-      } else if (includeDescription && bookmark.description) {
-        parts.push(`   描述：${bookmark.description}`);
-      }
-
-      // 标签
-      if (bookmark.tags && bookmark.tags.length > 0) {
-        parts.push(`   标签：${bookmark.tags.join("、")}`);
-      }
-
-      // URL（作为引用来源）
-      parts.push(`   链接：${bookmark.url}`);
-
-      contextParts.push(parts.join("\n"));
-      contextParts.push(""); // 空行分隔
+      // 应用模板
+      const itemText = this.applyTemplate(format.itemTemplate, vars);
+      contextParts.push(itemText);
     });
 
-    return contextParts.join("\n").trim();
+    let result = contextParts.join(format.itemSeparator).trim();
+
+    // 截断到最大长度
+    if (format.maxLength && result.length > format.maxLength) {
+      result = result.slice(0, format.maxLength) + "\n...(内容已截断)";
+    }
+
+    return result;
+  }
+
+  /**
+   * V4.2.5: 应用模板变量
+   * 支持条件语法: {var?text with {var}}
+   *
+   * @param template - 模板字符串
+   * @param vars - 变量映射
+   * @returns 替换后的字符串
+   */
+  private applyTemplate(
+    template: string,
+    vars: Record<string, string | undefined>,
+  ): string {
+    // 处理条件语法: {var?text}
+    // 如果 var 存在，则显示 text（text 中的 {var} 会被替换）
+    // 如果 var 不存在，则整行被移除
+    let result = template;
+
+    // 1. 处理条件语法 {varName?conditional text with {varName}}
+    result = result.replace(
+      /\{(\w+)\?([^}]+(?:\{[^}]+\}[^}]*)*)\}/g,
+      (_, varName: string, conditionalText: string) => {
+        const value = vars[varName];
+        if (value === undefined || value === "") {
+          return ""; // 条件不满足，移除整个块
+        }
+        // 替换条件文本中的变量
+        return conditionalText.replace(
+          /\{(\w+)\}/g,
+          (__, v: string) => vars[v] || "",
+        );
+      },
+    );
+
+    // 2. 处理普通变量 {varName}
+    result = result.replace(
+      /\{(\w+)\}/g,
+      (_, varName: string) => vars[varName] || "",
+    );
+
+    // 3. 清理空行（由条件语法移除产生）
+    result = result
+      .split("\n")
+      .filter((line) => line.trim() !== "")
+      .join("\n");
+
+    return result;
   }
 
   /**

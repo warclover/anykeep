@@ -158,10 +158,16 @@ export class WeightedScoreAggregator implements IScoreAggregator {
 
         const weightedScore = totalWeight > 0 ? weightedSum / totalWeight : 0;
 
+        // V4.2.5: 钳位置信度到 [0, 100] 范围，防止边界异常
+        const clampedScore = Math.max(
+          0,
+          Math.min(100, Math.round(weightedScore)),
+        );
+
         return {
           folderId,
           folderName: data.folderName,
-          score: Math.round(weightedScore),
+          score: clampedScore,
           vectorScore,
           historyScore,
           aiScore,

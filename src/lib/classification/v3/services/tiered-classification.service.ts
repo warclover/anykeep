@@ -133,8 +133,40 @@ export interface TieredMetrics {
   lastResetAt: number;
 }
 
-/** 指标自动重置阈值（防止内存溢出） */
+/**
+ * V4.2.5: 指标采样策略说明
+ *
+ * 设计原则：
+ * - 平衡详细度与性能开销
+ * - 防止内存无限增长
+ * - 提供足够的统计样本量
+ *
+ * 采样策略：
+ * 1. 内存指标（TieredMetrics）：
+ *    - 每次分类都更新计数器（轻量级操作）
+ *    - 每 100 次分类记录一次详细日志（采样率 1%）
+ *    - 达到 10000 次后自动重置（防止内存溢出）
+ *
+ * 2. 日志采样（logMetrics）：
+ *    - 采样率：1/100 = 1%
+ *    - 原因：减少日志存储成本，同时保持统计有效性
+ *    - 统计学依据：根据大数定律，1% 采样率在 10000 次操作中
+ *      可提供约 100 个样本点，足以估计真实分布（误差 < 10%）
+ *
+ * 3. 持久化指标（ClassificationMetricsService）：
+ *    - 所有分类都记录到数据库（完整记录）
+ *    - 通过 RPC 函数批量写入优化性能
+ *    - 每日聚合视图（classification_metrics_daily）减少查询开销
+ *
+ * 阈值来源：
+ * - 10000 次重置阈值：假设单用户每天最多 1000 次分类，
+ *   10000 次覆盖约 10 天数据，足够分析短期趋势
+ * - 100 次日志间隔：平衡日志可读性与信息密度
+ */
 const METRICS_AUTO_RESET_THRESHOLD = 10000;
+
+/** V4.2.5: 日志采样间隔（每 N 次分类记录一次详细日志） */
+const METRICS_LOG_INTERVAL = 100;
 
 /**
  * 分层结果
@@ -958,8 +990,8 @@ export class TieredClassificationService {
           )
         : 0;
 
-    // 定期记录指标
-    if (this.metrics.totalClassifications % 100 === 0) {
+    // V4.2.5: 定期记录指标（采样策略：每 N 次记录一次）
+    if (this.metrics.totalClassifications % METRICS_LOG_INTERVAL === 0) {
       this.logMetrics();
     }
   }

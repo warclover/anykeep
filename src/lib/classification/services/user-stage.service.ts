@@ -16,10 +16,22 @@ import { logger } from "@/lib/logger";
 /** Threshold for imported bookmarks to accelerate cold start exit */
 const IMPORT_ACCELERATE_THRESHOLD = 50;
 
+/** V4.2.5: 冷启动缓存 TTL (毫秒) - 用户状态在短期内不会变化 */
+const COLD_START_CACHE_TTL = 5 * 60 * 1000; // 5 分钟
+
+/** V4.2.5: 冷启动缓存条目 */
+interface ColdStartCacheEntry {
+  value: boolean;
+  expiry: number;
+}
+
 /**
  * Service for determining and managing user classification stages
  */
 export class UserStageService implements IUserStageService {
+  /** V4.2.5: 冷启动状态缓存，减少重复数据库查询 */
+  private coldStartCache: Map<string, ColdStartCacheEntry> = new Map();
+
   constructor(private supabase: SupabaseClient) {}
 
   /**
@@ -61,12 +73,20 @@ export class UserStageService implements IUserStageService {
   /**
    * Check if user is in cold start phase
    * V2: Also considers interest profile data
+   * V4.2.5: 添加短期缓存，减少重复数据库查询
    */
   async isInColdStart(userId: string): Promise<boolean> {
+    // V4.2.5: 检查缓存
+    const cached = this.coldStartCache.get(userId);
+    if (cached && cached.expiry > Date.now()) {
+      return cached.value;
+    }
+
     const stage = await this.getStage(userId);
 
     // Basic check
     if (stage !== "onboarding" && stage !== "cold_start") {
+      this.setColdStartCache(userId, false);
       return false;
     }
 
@@ -97,6 +117,7 @@ export class UserStageService implements IUserStageService {
             },
             "UserStage: Cold start accelerated due to imported bookmarks",
           );
+          this.setColdStartCache(userId, false);
           return false;
         }
       }
@@ -108,7 +129,35 @@ export class UserStageService implements IUserStageService {
       );
     }
 
+    this.setColdStartCache(userId, true);
     return true;
+  }
+
+  /**
+   * V4.2.5: 设置冷启动缓存
+   */
+  private setColdStartCache(userId: string, value: boolean): void {
+    this.coldStartCache.set(userId, {
+      value,
+      expiry: Date.now() + COLD_START_CACHE_TTL,
+    });
+
+    // 清理过期缓存（简单策略：缓存超过 100 条时清理）
+    if (this.coldStartCache.size > 100) {
+      const now = Date.now();
+      for (const [key, entry] of this.coldStartCache.entries()) {
+        if (entry.expiry <= now) {
+          this.coldStartCache.delete(key);
+        }
+      }
+    }
+  }
+
+  /**
+   * V4.2.5: 清除用户的冷启动缓存（当用户状态变化时调用）
+   */
+  invalidateColdStartCache(userId: string): void {
+    this.coldStartCache.delete(userId);
   }
 
   /**

@@ -8,7 +8,8 @@
  */
 
 import { logger } from "@/lib/logger";
-import { createClient } from "@/lib/supabase/client";
+// V4.2.5: 修复 - 使用服务端客户端而非浏览器客户端
+import { createClient } from "@/lib/supabase/server";
 import type { Entity, EntityType } from "@/lib/classification/types/ai-summary";
 
 /**
@@ -74,7 +75,7 @@ export class EntityRepository {
     }
 
     try {
-      const supabase = createClient();
+      const supabase = await createClient();
 
       // 使用数据库函数批量保存（会自动替换现有实体）
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -134,7 +135,7 @@ export class EntityRepository {
    */
   async getBookmarkEntities(bookmarkId: number): Promise<Entity[]> {
     try {
-      const supabase = createClient();
+      const supabase = await createClient();
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await (supabase.rpc as any)(
@@ -185,7 +186,7 @@ export class EntityRepository {
    */
   async deleteBookmarkEntities(bookmarkId: number): Promise<void> {
     try {
-      const supabase = createClient();
+      const supabase = await createClient();
 
       // bookmark_entities 表尚未在类型定义中，使用类型断言
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -245,7 +246,7 @@ export class EntityRepository {
     }
 
     try {
-      const supabase = createClient();
+      const supabase = await createClient();
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await (supabase.rpc as any)(
@@ -307,7 +308,7 @@ export class EntityRepository {
    */
   async getEntityStats(userId: string): Promise<Record<EntityType, number>> {
     try {
-      const supabase = createClient();
+      const supabase = await createClient();
 
       // bookmark_entities 表尚未在类型定义中，使用类型断言
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -371,7 +372,7 @@ export class EntityRepository {
     limit: number = 20,
   ): Promise<Array<{ name: string; type: EntityType; count: number }>> {
     try {
-      const supabase = createClient();
+      const supabase = await createClient();
 
       // bookmark_entities 表尚未在类型定义中，使用类型断言
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

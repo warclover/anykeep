@@ -146,9 +146,21 @@ export class ProfileEventHandlerService {
         return;
       }
 
-      // 转换为 BookmarkChangeEvent
+      // V4.2.4: 修复事件类型转换 bug
+      // 原代码两个分支都返回 "create"，无法区分不同操作类型
+      // 正确映射：
+      // - create_folder: 创建新文件夹并分类 → create
+      // - classify: 分类到现有文件夹 → move
+      // - inbox: 放入待整理 → create
+      const eventType: "create" | "move" | "delete" | "update_tags" =
+        event.action === "create_folder"
+          ? "create"
+          : event.action === "classify"
+            ? "move"
+            : "create"; // inbox
+
       const changeEvent: BookmarkChangeEvent = {
-        type: event.action === "create_folder" ? "create" : "create",
+        type: eventType,
         bookmarkId: event.bookmarkId,
         userId: event.userId,
         toFolderId: event.folderId,

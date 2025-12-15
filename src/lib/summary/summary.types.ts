@@ -98,6 +98,8 @@ export interface ProviderConfig {
   model: string;
   /** 超时时间 (ms) */
   timeoutMs: number;
+  /** V4.2.5: 健康检查超时时间 (ms)，默认为 timeoutMs 的 1/6 */
+  healthCheckTimeoutMs?: number;
   /** 最大重试次数 */
   maxRetries: number;
   /** 温度参数 */

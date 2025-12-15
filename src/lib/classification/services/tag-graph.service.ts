@@ -72,6 +72,37 @@ export interface TagGraphData {
 }
 
 // ============================================================================
+// V4.2.4: RPC 响应类型定义（避免 any）
+// ============================================================================
+
+/** RPC: get_tag_synonyms 返回类型 */
+interface SynonymRpcRow {
+  synonym: string;
+}
+
+/** RPC: get_related_tags 返回类型 */
+interface RelatedTagRpcRow {
+  related_tag: string;
+  relationship_type: string;
+  weight: number;
+  co_occurrence_count: number;
+}
+
+/** RPC: tag_relationships 表行类型 */
+interface TagRelationshipRow {
+  id: number;
+  user_id: string;
+  relationship_type: string;
+  source_tag: string;
+  target_tag: string;
+  weight: number;
+  source: string;
+  co_occurrence_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+// ============================================================================
 // 服务实现
 // ============================================================================
 
@@ -98,8 +129,8 @@ class TagGraphService extends BaseSupabaseService {
         return [];
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return (data || []).map((row: any) => row.synonym);
+      // V4.2.4: 使用明确类型替代 any
+      return (data || []).map((row: SynonymRpcRow) => row.synonym);
     } catch (error) {
       logger.error({ error, tag }, "Error getting tag synonyms");
       return [];
@@ -130,8 +161,8 @@ class TagGraphService extends BaseSupabaseService {
         return [];
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return (data || []).map((row: any) => ({
+      // V4.2.4: 使用明确类型替代 any
+      return (data || []).map((row: RelatedTagRpcRow) => ({
         tag: row.related_tag,
         relationshipType: row.relationship_type as TagRelationshipType,
         weight: Number(row.weight),
@@ -317,8 +348,11 @@ class TagGraphService extends BaseSupabaseService {
       // 构建同义词映射
       const synonymMap = new Map<string, string[]>();
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      for (const row of (data || []) as any[]) {
+      // V4.2.4: 使用明确类型替代 any
+      for (const row of (data || []) as Pick<
+        TagRelationshipRow,
+        "source_tag" | "target_tag"
+      >[]) {
         // 双向映射
         const existing1 = synonymMap.get(row.source_tag) || [];
         if (!existing1.includes(row.target_tag)) {
@@ -367,8 +401,12 @@ class TagGraphService extends BaseSupabaseService {
       const nodeWeights = new Map<string, number>();
       const edges: TagGraphData["edges"] = [];
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      for (const row of (data || []) as any[]) {
+      // V4.2.4: 使用明确类型替代 any
+      type GraphRow = Pick<
+        TagRelationshipRow,
+        "source_tag" | "target_tag" | "relationship_type" | "weight"
+      >;
+      for (const row of (data || []) as GraphRow[]) {
         nodeSet.add(row.source_tag);
         nodeSet.add(row.target_tag);
 

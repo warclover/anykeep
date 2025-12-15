@@ -18,6 +18,80 @@ import { generateEmbedding } from "@/lib/utils/embedding-generator";
 import { logger } from "@/lib/logger";
 
 // ============================================================================
+// V4.2.5: 错误分类（改进异常处理）
+// ============================================================================
+
+/** 嵌入生成错误类型 */
+type EmbeddingErrorType =
+  | "api_error"
+  | "rate_limit"
+  | "timeout"
+  | "input_error"
+  | "network_error"
+  | "unknown";
+
+/**
+ * V4.2.5: 分类嵌入生成错误
+ * 用于改进日志和决定是否应该重试
+ */
+function classifyEmbeddingError(error: unknown): {
+  type: EmbeddingErrorType;
+  retryable: boolean;
+  message: string;
+} {
+  const message = error instanceof Error ? error.message : String(error);
+  const lowerMessage = message.toLowerCase();
+
+  // API 速率限制
+  if (
+    lowerMessage.includes("rate") ||
+    lowerMessage.includes("429") ||
+    lowerMessage.includes("quota")
+  ) {
+    return { type: "rate_limit", retryable: true, message };
+  }
+
+  // 超时错误
+  if (
+    lowerMessage.includes("timeout") ||
+    lowerMessage.includes("timed out") ||
+    lowerMessage.includes("aborted")
+  ) {
+    return { type: "timeout", retryable: true, message };
+  }
+
+  // 网络错误
+  if (
+    lowerMessage.includes("network") ||
+    lowerMessage.includes("econnrefused") ||
+    lowerMessage.includes("fetch failed")
+  ) {
+    return { type: "network_error", retryable: true, message };
+  }
+
+  // 输入错误（不应重试）
+  if (
+    lowerMessage.includes("invalid") ||
+    lowerMessage.includes("empty") ||
+    lowerMessage.includes("too long")
+  ) {
+    return { type: "input_error", retryable: false, message };
+  }
+
+  // API 错误
+  if (
+    lowerMessage.includes("api") ||
+    lowerMessage.includes("401") ||
+    lowerMessage.includes("403") ||
+    lowerMessage.includes("500")
+  ) {
+    return { type: "api_error", retryable: false, message };
+  }
+
+  return { type: "unknown", retryable: false, message };
+}
+
+// ============================================================================
 // Types
 // ============================================================================
 
@@ -72,6 +146,8 @@ export interface MultiVectorConfig {
   minTagsForEmbedding: number;
   /** 批处理大小 */
   batchSize: number;
+  /** V4.2.5: 最大并发数（防止 API 过载） */
+  maxConcurrency: number;
 }
 
 const DEFAULT_CONFIG: MultiVectorConfig = {
@@ -83,7 +159,43 @@ const DEFAULT_CONFIG: MultiVectorConfig = {
   tagSeparator: " | ",
   minTagsForEmbedding: 1,
   batchSize: 10,
+  maxConcurrency: 3, // V4.2.5: 限制并发，避免 API 速率限制
 };
+
+// ============================================================================
+// V4.2.5: 并发控制辅助函数
+// ============================================================================
+
+/**
+ * 带并发限制的 Promise 执行器
+ * @param tasks 异步任务数组
+ * @param concurrency 最大并发数
+ */
+async function runWithConcurrency<T>(
+  tasks: (() => Promise<T>)[],
+  concurrency: number,
+): Promise<T[]> {
+  const results: T[] = [];
+  const executing: Promise<void>[] = [];
+
+  for (const task of tasks) {
+    const p = task().then((result) => {
+      results.push(result);
+    });
+
+    const e = p.then(() => {
+      executing.splice(executing.indexOf(e), 1);
+    });
+    executing.push(e);
+
+    if (executing.length >= concurrency) {
+      await Promise.race(executing);
+    }
+  }
+
+  await Promise.all(executing);
+  return results;
+}
 
 // ============================================================================
 // Service Implementation
@@ -152,6 +264,7 @@ export class MultiVectorEmbeddingService {
   /**
    * 生成标题向量
    * 使用纯标题文本，适用于快速路径匹配
+   * V4.2.5: 改进异常处理，区分错误类型
    */
   async generateTitleEmbedding(title: string): Promise<number[] | null> {
     if (!title || title.trim().length === 0) {
@@ -163,9 +276,16 @@ export class MultiVectorEmbeddingService {
       const embedding = await generateEmbedding(truncatedTitle);
       return embedding;
     } catch (error) {
+      // V4.2.5: 使用错误分类改进日志
+      const classified = classifyEmbeddingError(error);
       logger.warn(
-        { error: error instanceof Error ? error.message : String(error) },
-        "MultiVector: Failed to generate title embedding",
+        {
+          errorType: classified.type,
+          retryable: classified.retryable,
+          error: classified.message,
+          titleLength: title.length,
+        },
+        `MultiVector: Title embedding failed (${classified.type})`,
       );
       return null;
     }
@@ -174,6 +294,7 @@ export class MultiVectorEmbeddingService {
   /**
    * 生成内容向量
    * 合并标题和摘要，用于深度语义匹配
+   * V4.2.5: 改进异常处理，区分错误类型
    */
   async generateContentEmbedding(
     title: string,
@@ -200,9 +321,16 @@ export class MultiVectorEmbeddingService {
       const embedding = await generateEmbedding(text);
       return embedding;
     } catch (error) {
+      // V4.2.5: 使用错误分类改进日志
+      const classified = classifyEmbeddingError(error);
       logger.warn(
-        { error: error instanceof Error ? error.message : String(error) },
-        "MultiVector: Failed to generate content embedding",
+        {
+          errorType: classified.type,
+          retryable: classified.retryable,
+          error: classified.message,
+          contentLength: parts.join("").length,
+        },
+        `MultiVector: Content embedding failed (${classified.type})`,
       );
       return null;
     }
@@ -211,6 +339,7 @@ export class MultiVectorEmbeddingService {
   /**
    * 生成标签向量
    * 合并 AI 标签和用户标签，捕获标签语义
+   * V4.2.5: 改进异常处理，区分错误类型
    */
   async generateTagEmbedding(
     aiTags?: string[] | null,
@@ -238,9 +367,16 @@ export class MultiVectorEmbeddingService {
       const embedding = await generateEmbedding(tagText);
       return embedding;
     } catch (error) {
+      // V4.2.5: 使用错误分类改进日志
+      const classified = classifyEmbeddingError(error);
       logger.warn(
-        { error: error instanceof Error ? error.message : String(error) },
-        "MultiVector: Failed to generate tag embedding",
+        {
+          errorType: classified.type,
+          retryable: classified.retryable,
+          error: classified.message,
+          tagCount: uniqueTags.length,
+        },
+        `MultiVector: Tag embedding failed (${classified.type})`,
       );
       return null;
     }
@@ -307,6 +443,7 @@ export class MultiVectorEmbeddingService {
 
   /**
    * 批量更新书签的多向量
+   * V4.2.5: 添加并发控制，防止 API 过载
    */
   async batchUpdateBookmarkVectors(
     bookmarks: BookmarkMultiVector[],
@@ -322,15 +459,19 @@ export class MultiVectorEmbeddingService {
     for (let i = 0; i < bookmarks.length; i += this.config.batchSize) {
       const batch = bookmarks.slice(i, i + this.config.batchSize);
 
-      // 并行处理每批
-      const updateResults = await Promise.all(
-        batch.map(async (bookmark) => {
-          const success = await this.updateBookmarkVectors(
-            bookmark.bookmarkId,
-            bookmark,
-          );
-          return { bookmarkId: bookmark.bookmarkId, success };
-        }),
+      // V4.2.5: 使用并发控制替代 Promise.all
+      // 防止大量并发 API 调用导致速率限制或内存溢出
+      const tasks = batch.map((bookmark) => async () => {
+        const success = await this.updateBookmarkVectors(
+          bookmark.bookmarkId,
+          bookmark,
+        );
+        return { bookmarkId: bookmark.bookmarkId, success };
+      });
+
+      const updateResults = await runWithConcurrency(
+        tasks,
+        this.config.maxConcurrency,
       );
 
       for (const { bookmarkId, success } of updateResults) {
@@ -348,6 +489,7 @@ export class MultiVectorEmbeddingService {
         total: bookmarks.length,
         success: result.successCount,
         failed: result.failedCount,
+        concurrency: this.config.maxConcurrency,
       },
       "MultiVector: Batch update completed",
     );
@@ -577,7 +719,8 @@ export class MultiVectorEmbeddingService {
       "search_bookmarks_by_title_vector",
       {
         p_user_id: userId,
-        p_query_embedding: JSON.stringify(queryEmbedding),
+        // V4.2.5: 修复向量格式，pgvector 需要 [1,2,3,...] 格式
+        p_query_embedding: `[${queryEmbedding.join(",")}]`,
         p_limit: limit,
         p_min_similarity: minSimilarity,
       },
@@ -637,7 +780,8 @@ export class MultiVectorEmbeddingService {
       "search_bookmarks_multi_vector",
       {
         p_user_id: userId,
-        p_query_embedding: JSON.stringify(queryEmbedding),
+        // V4.2.5: 修复向量格式，pgvector 需要 [1,2,3,...] 格式
+        p_query_embedding: `[${queryEmbedding.join(",")}]`,
         p_title_weight: titleWeight,
         p_content_weight: contentWeight,
         p_tag_weight: tagWeight,
