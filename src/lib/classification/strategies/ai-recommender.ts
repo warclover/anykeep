@@ -12,14 +12,32 @@ import type {
   VectorMatchDetail,
   HistoryMatchDetail,
 } from "../types";
-import { CLASSIFICATION_WEIGHTS } from "../constants";
+import { CLASSIFICATION_WEIGHTS, AI_SERVICE_CONFIG } from "../constants";
 import type { FolderProfileRepository } from "../repositories";
 import { logger } from "@/lib/logger";
+import {
+  resilientFetch,
+  FetchError,
+  type ResilientFetchOptions,
+} from "@/lib/utils/resilient-fetch";
 
 // AI API configuration
 const DEEPSEEK_BASE_URL = "https://api.deepseek.com/v1";
 const AI_MODEL = "deepseek-chat";
-const AI_TIMEOUT = 30000; // 30 seconds
+
+/**
+ * V4.2.5: AI API 请求配置
+ * 使用 resilientFetch 提供自动重试和指数退避
+ * 配置值来自集中管理的 AI_SERVICE_CONFIG
+ */
+const AI_FETCH_CONFIG: Partial<ResilientFetchOptions> = {
+  timeout: AI_SERVICE_CONFIG.DEEPSEEK_TIMEOUT_MS,
+  maxRetries: AI_SERVICE_CONFIG.MAX_RETRIES,
+  retryDelay: AI_SERVICE_CONFIG.RETRY_DELAY_MS,
+  retryMultiplier: AI_SERVICE_CONFIG.RETRY_MULTIPLIER,
+  maxRetryDelay: AI_SERVICE_CONFIG.MAX_RETRY_DELAY_MS,
+  fallbackToCache: false, // AI 响应不使用缓存降级
+};
 
 /**
  * AI-based folder recommendation strategy
@@ -215,13 +233,19 @@ ${candidateFolders}
 
   /**
    * Call AI API
+   *
+   * V4.2.5: 使用 resilientFetch 提供自动重试和错误恢复
    */
   private async callAI(
     prompt: string,
     apiKey: string,
   ): Promise<AIRecommendation | null> {
     try {
-      const response = await fetch(`${DEEPSEEK_BASE_URL}/chat/completions`, {
+      // 使用 resilientFetch 进行带重试的请求
+      const result = await resilientFetch<{
+        choices?: Array<{ message?: { content?: string } }>;
+      }>(`${DEEPSEEK_BASE_URL}/chat/completions`, {
+        ...AI_FETCH_CONFIG,
         method: "POST",
         headers: {
           Authorization: `Bearer ${apiKey}`,
@@ -240,19 +264,36 @@ ${candidateFolders}
               content: prompt,
             },
           ],
-          temperature: 0.3, // Low temperature for consistent results
-          max_tokens: 200,
+          temperature: AI_SERVICE_CONFIG.TEMPERATURE,
+          max_tokens: AI_SERVICE_CONFIG.MAX_TOKENS,
         }),
-        signal: AbortSignal.timeout(AI_TIMEOUT),
+        // 重试时记录日志
+        onRetry: (attempt, error) => {
+          logger.warn(
+            {
+              attempt,
+              errorType: error.type,
+              errorMessage: error.message,
+              action: "ai_recommender_retry",
+            },
+            `AI Recommender: Retrying (attempt ${attempt})`,
+          );
+        },
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`AI API error: ${response.status} - ${errorText}`);
+      // 如果有重试，记录成功信息
+      if (result.retryCount > 0) {
+        logger.info(
+          {
+            retryCount: result.retryCount,
+            duration: result.duration,
+            action: "ai_recommender_recovered",
+          },
+          "AI Recommender: Recovered after retries",
+        );
       }
 
-      const data = await response.json();
-      const content = data.choices?.[0]?.message?.content;
+      const content = result.data.choices?.[0]?.message?.content;
 
       if (!content) {
         return null;
@@ -268,17 +309,29 @@ ${candidateFolders}
         return null;
       }
 
-      const result = JSON.parse(jsonMatch[0]);
+      const parsed = JSON.parse(jsonMatch[0]);
 
       return {
-        folderId: result.folderId,
-        folderName: result.folderName || "",
-        confidence: result.confidence || 50,
-        reason: result.reason || "AI recommendation",
-        suggestNew: result.suggestNew || false,
+        folderId: parsed.folderId,
+        folderName: parsed.folderName || "",
+        confidence: parsed.confidence || 50,
+        reason: parsed.reason || "AI recommendation",
+        suggestNew: parsed.suggestNew || false,
       };
     } catch (error) {
-      if (error instanceof Error) {
+      // V4.2.5: 增强的错误处理 - 区分错误类型
+      if (error instanceof FetchError) {
+        logger.error(
+          {
+            errorType: error.type,
+            status: error.status,
+            retryCount: error.retryCount,
+            isRetryable: error.isRetryable,
+            action: "ai_recommender_fetch_error",
+          },
+          `AI Recommender: ${error.type} error after ${error.retryCount} retries`,
+        );
+      } else if (error instanceof Error) {
         if (error.name === "TimeoutError" || error.name === "AbortError") {
           logger.warn(
             { action: "ai_recommender_timeout" },

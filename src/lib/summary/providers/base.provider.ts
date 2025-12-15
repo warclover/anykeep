@@ -117,6 +117,8 @@ export abstract class BaseProvider implements ISummaryProvider {
 
   /**
    * 生成摘要
+   *
+   * V4.2.6: 添加重试机制，使用配置的 maxRetries 进行自动重试
    */
   async generateSummary(input: SummaryInput): Promise<SummaryResult> {
     const startTime = Date.now();
@@ -135,88 +137,210 @@ export abstract class BaseProvider implements ISummaryProvider {
       contentType,
     });
 
-    try {
-      const response = await fetch(`${this.config.baseUrl}/chat/completions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${this.config.apiKey}`,
-        },
-        body: JSON.stringify({
-          model: this.config.model,
-          messages: [
-            { role: "system", content: promptResult.systemPrompt },
-            { role: "user", content: promptResult.userPrompt },
-          ],
-          temperature: promptResult.temperature,
-          max_tokens: promptResult.maxTokens,
-        }),
-        signal: AbortSignal.timeout(this.config.timeoutMs),
-      });
+    // V4.2.6: 重试机制
+    const maxRetries = this.config.maxRetries || 2;
+    let lastError: Error | null = null;
+    let attempt = 0;
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(
-          `${this.name} API 错误: ${response.status} - ${errorText}`,
+    while (attempt <= maxRetries) {
+      try {
+        // 如果是重试，等待一段时间（指数退避）
+        if (attempt > 0) {
+          const delayMs = Math.min(1000 * Math.pow(2, attempt - 1), 10000);
+          logger.warn(
+            {
+              provider: this.name,
+              attempt: attempt + 1,
+              maxRetries: maxRetries + 1,
+              delayMs,
+            },
+            `${this.name}: Retrying after ${delayMs}ms`,
+          );
+          await this.delay(delayMs);
+        }
+
+        const response = await fetch(
+          `${this.config.baseUrl}/chat/completions`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${this.config.apiKey}`,
+            },
+            body: JSON.stringify({
+              model: this.config.model,
+              messages: [
+                { role: "system", content: promptResult.systemPrompt },
+                { role: "user", content: promptResult.userPrompt },
+              ],
+              temperature: promptResult.temperature,
+              max_tokens: promptResult.maxTokens,
+            }),
+            signal: AbortSignal.timeout(this.config.timeoutMs),
+          },
         );
-      }
 
-      const data = await response.json();
-      const aiContent = data.choices?.[0]?.message?.content;
+        // V4.2.6: 检查是否为可重试的错误状态码
+        if (!response.ok) {
+          const errorText = await response.text();
+          const isRetryable = this.isRetryableStatusCode(response.status);
 
-      if (!aiContent) {
-        throw new Error(`${this.name} API 返回空内容`);
-      }
+          if (isRetryable && attempt < maxRetries) {
+            lastError = new Error(
+              `${this.name} API 错误: ${response.status} - ${errorText}`,
+            );
+            attempt++;
+            continue;
+          }
 
-      // 解析响应
-      const parsed = this.parseResponse(aiContent);
-      const latencyMs = Date.now() - startTime;
+          throw new Error(
+            `${this.name} API 错误: ${response.status} - ${errorText}`,
+          );
+        }
 
-      logger.info(
-        {
-          provider: this.name,
-          model: this.config.model,
+        const data = await response.json();
+        const aiContent = data.choices?.[0]?.message?.content;
+
+        if (!aiContent) {
+          throw new Error(`${this.name} API 返回空内容`);
+        }
+
+        // 解析响应
+        const parsed = this.parseResponse(aiContent);
+        const latencyMs = Date.now() - startTime;
+
+        // V4.2.6: 记录重试成功信息
+        if (attempt > 0) {
+          logger.info(
+            {
+              provider: this.name,
+              attempts: attempt + 1,
+            },
+            `${this.name}: Succeeded after ${attempt} retries`,
+          );
+        }
+
+        logger.info(
+          {
+            provider: this.name,
+            model: this.config.model,
+            contentType,
+            summaryLength: parsed.summary.length,
+            tagsCount: parsed.tags.length,
+            latencyMs,
+            inputTokens: data.usage?.prompt_tokens,
+            outputTokens: data.usage?.completion_tokens,
+            retryCount: attempt,
+          },
+          `${this.name}: Summary generated successfully`,
+        );
+
+        return {
+          summary: parsed.summary,
+          tags: parsed.tags,
+          version: parsed.version,
+          structured: parsed.structured,
+          usage: {
+            inputTokens: data.usage?.prompt_tokens || 0,
+            outputTokens: data.usage?.completion_tokens || 0,
+          },
+          latencyMs,
+          providerUsed: this.name,
+          modelUsed: this.config.model,
           contentType,
-          summaryLength: parsed.summary.length,
-          tagsCount: parsed.tags.length,
-          latencyMs,
-          inputTokens: data.usage?.prompt_tokens,
-          outputTokens: data.usage?.completion_tokens,
-        },
-        `${this.name}: Summary generated successfully`,
-      );
+          contentTypeConfidence,
+        };
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
 
-      return {
-        summary: parsed.summary,
-        tags: parsed.tags,
-        version: parsed.version,
-        structured: parsed.structured,
-        usage: {
-          inputTokens: data.usage?.prompt_tokens || 0,
-          outputTokens: data.usage?.completion_tokens || 0,
-        },
-        latencyMs,
-        providerUsed: this.name,
-        modelUsed: this.config.model,
-        contentType,
-        contentTypeConfidence,
-      };
-    } catch (error) {
-      const latencyMs = Date.now() - startTime;
-      logger.error(
-        {
-          provider: this.name,
-          error: error instanceof Error ? error.message : String(error),
-          latencyMs,
-        },
-        `${this.name}: generateSummary failed`,
-      );
-      throw error;
+        // V4.2.6: 检查是否为可重试的错误
+        const isRetryable = this.isRetryableError(lastError);
+
+        if (isRetryable && attempt < maxRetries) {
+          logger.warn(
+            {
+              provider: this.name,
+              error: lastError.message,
+              attempt: attempt + 1,
+              maxRetries: maxRetries + 1,
+            },
+            `${this.name}: Retryable error occurred`,
+          );
+          attempt++;
+          continue;
+        }
+
+        // 不可重试或已达最大重试次数
+        break;
+      }
     }
+
+    // 所有重试都失败
+    const latencyMs = Date.now() - startTime;
+    logger.error(
+      {
+        provider: this.name,
+        error: lastError?.message || "Unknown error",
+        latencyMs,
+        totalAttempts: attempt + 1,
+      },
+      `${this.name}: generateSummary failed after ${attempt + 1} attempts`,
+    );
+    throw lastError || new Error(`${this.name}: 摘要生成失败`);
+  }
+
+  /**
+   * V4.2.6: 判断 HTTP 状态码是否可重试
+   */
+  private isRetryableStatusCode(status: number): boolean {
+    // 5xx 服务器错误和 429 限流错误可重试
+    return status >= 500 || status === 429;
+  }
+
+  /**
+   * V4.2.6: 判断错误是否可重试
+   */
+  private isRetryableError(error: Error): boolean {
+    const message = error.message.toLowerCase();
+
+    // 网络错误
+    if (
+      message.includes("network") ||
+      message.includes("fetch") ||
+      message.includes("econnreset") ||
+      message.includes("etimedout")
+    ) {
+      return true;
+    }
+
+    // 超时错误
+    if (message.includes("timeout") || message.includes("aborted")) {
+      return true;
+    }
+
+    // 服务器错误（5xx）
+    if (/api 错误: 5\d\d/.test(message) || /api error: 5\d\d/i.test(message)) {
+      return true;
+    }
+
+    // 限流错误（429）
+    if (message.includes("429") || message.includes("rate limit")) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * V4.2.6: 延迟函数
+   */
+  private delay(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   /**
    * 健康检查
+   * V4.2.5: 使用可配置的超时时间
    */
   async healthCheck(): Promise<ProviderHealth> {
     const startTime = Date.now();
@@ -229,12 +353,17 @@ export abstract class BaseProvider implements ISummaryProvider {
       };
     }
 
+    // V4.2.5: 使用配置的健康检查超时，默认为 API 超时的 1/6（约 5 秒）
+    const healthCheckTimeout =
+      this.config.healthCheckTimeoutMs ??
+      Math.min(Math.round(this.config.timeoutMs / 6), 10000);
+
     try {
       const response = await fetch(`${this.config.baseUrl}/models`, {
         headers: {
           Authorization: `Bearer ${this.config.apiKey}`,
         },
-        signal: AbortSignal.timeout(5000),
+        signal: AbortSignal.timeout(healthCheckTimeout),
       });
 
       return {

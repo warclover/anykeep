@@ -28,6 +28,12 @@ const DEFAULT_FACTORY_CONFIG: ProviderFactoryConfig = {
 };
 
 /**
+ * V4.2.5: 健康缓存 TTL（毫秒）
+ * 缓存超过此时间后视为过期，需要重新检查
+ */
+const HEALTH_CACHE_TTL_MS = 30000; // 30 秒
+
+/**
  * Provider Factory 实现
  *
  * 单例模式，管理所有 Provider 实例
@@ -146,10 +152,18 @@ export class ProviderFactory implements IProviderFactory {
     );
 
     for (const provider of sortedProviders) {
-      // 检查缓存的健康状态
+      // V4.2.5: 检查缓存的健康状态（带 TTL 验证）
       const cachedHealth = this.healthCache.get(provider.name);
-      if (cachedHealth?.available) {
+      if (cachedHealth?.available && !this.isHealthCacheExpired(cachedHealth)) {
         return provider;
+      }
+
+      // V4.2.6: 如果缓存过期，记录日志
+      if (cachedHealth?.available) {
+        logger.debug(
+          { provider: provider.name, cachedAt: cachedHealth.checkedAt },
+          "ProviderFactory: Health cache expired, rechecking",
+        );
       }
 
       // 如果缓存不可用或过期，执行实时健康检查
@@ -169,6 +183,14 @@ export class ProviderFactory implements IProviderFactory {
           "ProviderFactory: Provider unhealthy, trying next",
         );
       } catch (error) {
+        // V4.2.6: 健康检查失败时也要更新缓存，避免频繁重试
+        const errorHealth: ProviderHealth = {
+          available: false,
+          error: error instanceof Error ? error.message : String(error),
+          checkedAt: new Date().toISOString(),
+        };
+        this.healthCache.set(provider.name, errorHealth);
+
         logger.error(
           {
             provider: provider.name,
@@ -282,13 +304,27 @@ export class ProviderFactory implements IProviderFactory {
 
   /**
    * 获取健康 Provider 数量
+   *
+   * V4.2.6: 考虑缓存过期时间，过期的健康状态不计入
    */
   getHealthyProviderCount(): number {
     let count = 0;
+
     for (const health of this.healthCache.values()) {
-      if (health.available) count++;
+      // V4.2.6: 只计算未过期的可用 Provider
+      if (health.available && !this.isHealthCacheExpired(health)) {
+        count++;
+      }
     }
     return count;
+  }
+
+  /**
+   * V4.2.6: 判断缓存是否过期
+   */
+  private isHealthCacheExpired(health: ProviderHealth): boolean {
+    const cachedTime = new Date(health.checkedAt).getTime();
+    return Date.now() - cachedTime > HEALTH_CACHE_TTL_MS;
   }
 }
 

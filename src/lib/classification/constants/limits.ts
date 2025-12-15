@@ -109,3 +109,99 @@ export const PROFILE_UPDATE_SCHEDULE = {
   /** Suggestion expiry days */
   SUGGESTION_EXPIRY_DAYS: 7,
 } as const;
+
+/**
+ * V4.2.5: Matcher strategy constants
+ * 集中管理各匹配器的配置参数
+ */
+export const MATCHER_STRATEGY_CONFIG = {
+  /** k-NN 直接匹配器 */
+  KNN_DIRECT: {
+    /** 相似度阈值 (0-1)，高于此值直接采用 */
+    SIMILARITY_THRESHOLD: 0.9,
+    /** 最大返回结果数 */
+    MAX_RESULTS: 5,
+    /** 候选书签数量限制 */
+    CANDIDATE_LIMIT: 20,
+  },
+  /** 通用分类匹配器 */
+  UNIVERSAL: {
+    /** 最小匹配分数 (0-100) */
+    MIN_MATCH_SCORE: 50,
+    /** 匹配器权重 (0-1) */
+    WEIGHT: 0.2,
+    /** 分数累加衰减系数 */
+    SCORE_DECAY: 0.3,
+    /** 模糊匹配分数衰减 */
+    FUZZY_SCORE_DECAY: 0.9,
+  },
+  /** 标签匹配器 */
+  TAG: {
+    /** 最小匹配分数 (0-100) */
+    MIN_MATCH_SCORE: 50,
+    /** 匹配器权重 (0-1) */
+    WEIGHT: 0.3,
+    /** 最大比较书签数 */
+    MAX_BOOKMARKS_TO_COMPARE: 50,
+    /** 书签数量奖励上限 */
+    BOOKMARK_BONUS_CAP: 0.2,
+    /** 每个书签奖励系数 */
+    BOOKMARK_BONUS_RATE: 0.05,
+  },
+  /** 指纹匹配器 */
+  FINGERPRINT: {
+    /** 最小匹配分数 (0-100) */
+    MIN_MATCH_SCORE: 40,
+    /** 匹配器权重 (0-1) */
+    WEIGHT: 0.25,
+    /** 缓存时间 (毫秒) */
+    CACHE_TIME_MS: 5 * 60 * 1000,
+    /** 最大缓存用户数 */
+    MAX_CACHE_USERS: 100,
+    /** 查询书签限制 */
+    QUERY_LIMIT: 100,
+    /** 部分匹配权重衰减 */
+    PARTIAL_MATCH_DECAY: 0.7,
+    /** 匹配率权重 */
+    MATCH_RATIO_WEIGHT: 0.6,
+    /** 权重率权重 */
+    WEIGHT_RATIO_WEIGHT: 0.4,
+  },
+  /** 查询扩展匹配器 */
+  QUERY_EXPANSION: {
+    /** 最小匹配分数 (0-100) */
+    MIN_MATCH_SCORE: 40,
+    /** 匹配器权重 (0-1) */
+    WEIGHT: 0.25,
+    /** 最大扩展关键词数 */
+    MAX_EXPANDED_KEYWORDS: 10,
+    /** 向量召回权重 */
+    VECTOR_WEIGHT: 0.4,
+    /** 关键词召回权重 */
+    KEYWORD_WEIGHT: 0.35,
+    /** 标签召回权重 */
+    TAG_WEIGHT: 0.25,
+    /** 相似度阈值 */
+    SIMILARITY_THRESHOLD: 0.5,
+  },
+} as const;
+
+/**
+ * V4.2.5: AI 服务配置常量
+ */
+export const AI_SERVICE_CONFIG = {
+  /** DeepSeek API 超时 (毫秒) */
+  DEEPSEEK_TIMEOUT_MS: 30000,
+  /** 最大重试次数 */
+  MAX_RETRIES: 2,
+  /** 初始重试延迟 (毫秒) */
+  RETRY_DELAY_MS: 1000,
+  /** 重试延迟倍数 */
+  RETRY_MULTIPLIER: 2,
+  /** 最大重试延迟 (毫秒) */
+  MAX_RETRY_DELAY_MS: 5000,
+  /** 温度参数（输出稳定性）*/
+  TEMPERATURE: 0.3,
+  /** 最大 token 数 */
+  MAX_TOKENS: 200,
+} as const;

@@ -4,13 +4,16 @@
  * 当文件夹发生变更时，需要同时清除：
  * 1. dataCache 中的文件夹数据缓存
  * 2. Keep-Alive 中的 /folders 页面缓存
+ * 3. V4.2.5: 分类系统相关缓存（快速路径、纠错缓存等）
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-15
  */
 
 import { dataCache } from "./data-cache";
 import { CACHE_KEYS } from "./cache-config";
+import { fastPathCacheManager } from "@/lib/classification/router/cache-manager";
+import { logger } from "@/lib/logger";
 
 // 缓存失效事件类型
 type CacheInvalidationListener = () => void;
@@ -34,6 +37,8 @@ export function subscribeFolderCacheInvalidation(
 /**
  * 触发文件夹缓存失效
  * 清除所有文件夹相关缓存
+ *
+ * V4.2.5: 增强版 - 同时清除分类系统缓存
  */
 export function invalidateFolderCache(userId?: string): void {
   // 1. 清除 dataCache 中的文件夹数据
@@ -44,7 +49,30 @@ export function invalidateFolderCache(userId?: string): void {
     dataCache.invalidate(/^folders:/);
   }
 
-  // 2. 通知所有监听器（用于清除 Keep-Alive 缓存）
+  // 2. V4.2.5: 清除分类系统缓存（快速路径缓存）
+  // 这确保文件夹变更后，分类系统使用最新的文件夹信息
+  try {
+    if (userId) {
+      fastPathCacheManager.invalidateUser(userId);
+      logger.debug(
+        { userId },
+        "[FolderCacheInvalidation] Classification cache invalidated for user",
+      );
+    } else {
+      fastPathCacheManager.clearAllCache();
+      logger.debug(
+        "[FolderCacheInvalidation] All classification caches cleared",
+      );
+    }
+  } catch (error) {
+    // 分类缓存清除失败不应影响主流程
+    logger.warn(
+      { error: error instanceof Error ? error.message : String(error) },
+      "[FolderCacheInvalidation] Failed to invalidate classification cache",
+    );
+  }
+
+  // 3. 通知所有监听器（用于清除 Keep-Alive 缓存）
   listeners.forEach((listener) => {
     try {
       listener();

@@ -439,8 +439,49 @@ export class SourceProfileService extends BaseSupabaseService {
 
   /**
    * 更新来源可信度
+   *
+   * V4.2.6: 使用 RPC 函数实现原子更新，避免竞态条件
+   * 之前的实现是 read-modify-write 模式，在高并发场景下可能导致数据不一致
    */
   async updateTrustScore(
+    userId: string,
+    sourceId: string,
+    adjustment: number,
+  ): Promise<void> {
+    const supabase = await this.getSupabase();
+
+    // V4.2.6: 使用原子 RPC 函数更新信任分数
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase as any).rpc(
+      "adjust_source_trust_score",
+      {
+        p_user_id: userId,
+        p_source_id: sourceId,
+        p_adjustment: adjustment,
+      },
+    );
+
+    if (error) {
+      // 如果 RPC 函数不存在（迁移未运行），回退到原来的实现
+      if (error.code === "42883" || error.message?.includes("does not exist")) {
+        await this.updateTrustScoreFallback(userId, sourceId, adjustment);
+        return;
+      }
+      throw new Error(`Failed to update trust score: ${error.message}`);
+    }
+
+    // 检查是否找到了记录
+    if (data && !data.found) {
+      // 来源画像不存在，忽略更新
+      return;
+    }
+  }
+
+  /**
+   * V4.2.6: 降级的信任分数更新方法（当 RPC 函数不可用时）
+   * 注意：此方法存在竞态条件风险，仅作为降级方案
+   */
+  private async updateTrustScoreFallback(
     userId: string,
     sourceId: string,
     adjustment: number,

@@ -6,6 +6,26 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { logger } from "@/lib/logger";
 
 /**
+ * V4.2.6: 转义 ILIKE 模式中的特殊字符
+ * 防止 SQL 注入和意外的通配符匹配
+ *
+ * ILIKE 特殊字符：
+ * - % 匹配任意字符序列
+ * - _ 匹配单个字符
+ * - \ 转义字符
+ *
+ * @param pattern - 原始搜索模式
+ * @returns 转义后的安全模式
+ */
+export function escapeIlikePattern(pattern: string): string {
+  // 先转义反斜杠，再转义其他特殊字符
+  return pattern
+    .replace(/\\/g, "\\\\")
+    .replace(/%/g, "\\%")
+    .replace(/_/g, "\\_");
+}
+
+/**
  * 准备全文搜索查询字符串
  * 将用户输入转换为 PostgreSQL tsquery 格式
  */
@@ -78,6 +98,8 @@ export async function searchBookmarksFulltext(
 
 /**
  * 降级到 ILIKE 搜索（作为备用方案）
+ *
+ * V4.2.6: 修复 SQL 注入漏洞 - 转义 ILIKE 特殊字符
  */
 export async function searchBookmarksIlike(
   supabase: SupabaseClient,
@@ -85,13 +107,16 @@ export async function searchBookmarksIlike(
   query: string,
   limit: number = 50,
 ) {
+  // V4.2.6: 转义 ILIKE 特殊字符防止 SQL 注入
+  const escapedQuery = escapeIlikePattern(query);
+
   const { data, error } = await supabase
     .from("bookmarks")
     .select("*, folders(name)")
     .eq("user_id", userId)
     .is("deleted_at", null)
     .or(
-      `title.ilike.%${query}%,ai_summary.ilike.%${query}%,author.ilike.%${query}%`,
+      `title.ilike.%${escapedQuery}%,ai_summary.ilike.%${escapedQuery}%,author.ilike.%${escapedQuery}%`,
     )
     .order("created_at", { ascending: false })
     .limit(limit);

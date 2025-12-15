@@ -16,10 +16,7 @@ import { logger } from "@/lib/logger";
 /**
  * 支持的嵌入模型类型
  */
-export type EmbeddingModelId =
-  | "dashscope-v3"
-  | "dashscope-v4"
-  | "bge-large-zh"; // 开源备选
+export type EmbeddingModelId = "dashscope-v3" | "dashscope-v4" | "bge-large-zh"; // 开源备选
 
 /**
  * 单个模型的配置
@@ -66,38 +63,60 @@ export interface EmbeddingConfig {
 /**
  * 可用的嵌入模型定义
  */
-export const EMBEDDING_MODELS: Record<EmbeddingModelId, EmbeddingModelConfig> = {
-  "dashscope-v3": {
-    id: "dashscope-v3",
-    baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
-    modelName: "text-embedding-v3",
-    dimensions: 1024,
-    description: "阿里云百炼 text-embedding-v3 (当前默认)",
-    maxTokens: 8191,
-    isDefault: true,
-    apiKeyEnvVar: "DASHSCOPE_API_KEY",
-  },
-  "dashscope-v4": {
-    id: "dashscope-v4",
-    baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
-    modelName: "text-embedding-v4",
-    dimensions: 1024,
-    description: "阿里云百炼 text-embedding-v4 (测试中)",
-    maxTokens: 8191,
-    apiKeyEnvVar: "DASHSCOPE_API_KEY",
-    // v4 可能需要额外参数
-    extraParams: {},
-  },
-  "bge-large-zh": {
-    id: "bge-large-zh",
-    baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
-    modelName: "bge-large-zh-v1.5",
-    dimensions: 1024,
-    description: "BGE Large Chinese (开源备选)",
-    maxTokens: 512,
-    apiKeyEnvVar: "DASHSCOPE_API_KEY",
-  },
-};
+export const EMBEDDING_MODELS: Record<EmbeddingModelId, EmbeddingModelConfig> =
+  {
+    "dashscope-v3": {
+      id: "dashscope-v3",
+      baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      modelName: "text-embedding-v3",
+      dimensions: 1024,
+      description: "阿里云百炼 text-embedding-v3 (当前默认)",
+      maxTokens: 8191,
+      isDefault: true,
+      apiKeyEnvVar: "DASHSCOPE_API_KEY",
+    },
+    "dashscope-v4": {
+      id: "dashscope-v4",
+      baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      modelName: "text-embedding-v4",
+      dimensions: 1024,
+      description: "阿里云百炼 text-embedding-v4 (测试中)",
+      maxTokens: 8191,
+      apiKeyEnvVar: "DASHSCOPE_API_KEY",
+      // v4 可能需要额外参数
+      extraParams: {},
+    },
+    "bge-large-zh": {
+      id: "bge-large-zh",
+      baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      modelName: "bge-large-zh-v1.5",
+      dimensions: 1024,
+      description: "BGE Large Chinese (开源备选)",
+      maxTokens: 512,
+      apiKeyEnvVar: "DASHSCOPE_API_KEY",
+    },
+  };
+
+/**
+ * V4.2.5: API 并发限流常量
+ *
+ * 设计原则：
+ * - 防止 API 限流（DashScope QPS 限制）
+ * - 避免内存溢出（批量请求过大）
+ * - 保证用户体验（合理的超时时间）
+ */
+export const EMBEDDING_RATE_LIMITS = {
+  /** 最大并发请求数 */
+  MAX_CONCURRENT_REQUESTS: 3,
+  /** 批量请求最大文本数 */
+  MAX_BATCH_SIZE: 25,
+  /** 请求间隔（毫秒）- 防止触发限流 */
+  REQUEST_INTERVAL_MS: 100,
+  /** 重试次数 */
+  MAX_RETRIES: 2,
+  /** 重试延迟（毫秒）*/
+  RETRY_DELAY_MS: 1000,
+} as const;
 
 /**
  * 默认配置
@@ -139,8 +158,9 @@ function getConfigFromEnv(): Partial<EmbeddingConfig> {
   }
 
   // EMBEDDING_AB_TEST_NEW_MODEL: A/B 测试新模型 ID
-  const newModelId = process.env
-    .EMBEDDING_AB_TEST_NEW_MODEL as EmbeddingModelId | undefined;
+  const newModelId = process.env.EMBEDDING_AB_TEST_NEW_MODEL as
+    | EmbeddingModelId
+    | undefined;
   if (newModelId && newModelId in EMBEDDING_MODELS) {
     envConfig.abTestNewModel = newModelId;
   }
@@ -211,7 +231,7 @@ export function getModelForUser(userId: string): EmbeddingModelConfig {
       isNewModel: useNewModel,
       action: "ab_test_model_selection",
     },
-    "Embedding: A/B test model selection"
+    "Embedding: A/B test model selection",
   );
 
   return EMBEDDING_MODELS[selectedModel];
@@ -232,14 +252,48 @@ function simpleHash(str: string): number {
 }
 
 /**
- * 获取模型的 API Key
+ * V4.2.4: 增强 API 密钥获取逻辑
+ * 获取模型的 API Key，支持可选的静默模式
+ *
+ * @param modelConfig - 模型配置
+ * @param options - 选项
+ * @param options.silent - 如果为 true，密钥缺失时返回空字符串而非抛出错误
+ * @returns API Key 或空字符串（静默模式）
  */
-export function getModelApiKey(modelConfig: EmbeddingModelConfig): string {
+export function getModelApiKey(
+  modelConfig: EmbeddingModelConfig,
+  options?: { silent?: boolean },
+): string {
   const apiKey = process.env[modelConfig.apiKeyEnvVar];
+
   if (!apiKey) {
-    throw new Error(`${modelConfig.apiKeyEnvVar} 环境变量未配置`);
+    const errorMsg = `Embedding API 密钥未配置: ${modelConfig.apiKeyEnvVar}。请在 .env.local 中配置此环境变量。`;
+
+    // 记录警告日志（即使静默模式也记录）
+    logger.warn(
+      { envVar: modelConfig.apiKeyEnvVar, modelId: modelConfig.id },
+      `[EmbeddingConfig] ${errorMsg}`,
+    );
+
+    if (options?.silent) {
+      return "";
+    }
+
+    throw new Error(errorMsg);
   }
+
   return apiKey;
+}
+
+/**
+ * V4.2.4: 检查 API 密钥是否可用
+ * 用于在调用前判断服务是否可用，避免不必要的错误
+ */
+export function isApiKeyAvailable(modelConfig?: EmbeddingModelConfig): boolean {
+  const config =
+    modelConfig || EMBEDDING_MODELS[getEmbeddingConfig().activeModel];
+  const apiKey = process.env[config.apiKeyEnvVar];
+  return Boolean(apiKey && apiKey.length > 0);
 }
 
 /**
