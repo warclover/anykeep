@@ -20,6 +20,9 @@ import {
   RefreshCw,
   Loader2,
   FileText,
+  Zap,
+  Clock,
+  Info,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -39,6 +42,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import { SnapshotButton } from "./snapshot-button";
 import { SnapshotStatus } from "./snapshot-status";
@@ -96,6 +100,7 @@ export function SnapshotSection({
   const [isDeleting, setIsDeleting] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoading, setIsLoading] = useState(!initialSnapshot);
+  const [isManualProcessing, setIsManualProcessing] = useState(false);
 
   // 同步外部快照数据
   useEffect(() => {
@@ -214,6 +219,50 @@ export function SnapshotSection({
     [onSnapshotChange],
   );
 
+  // 手动触发快照处理
+  const handleManualProcess = useCallback(async () => {
+    if (!snapshot?.id) return;
+
+    setIsManualProcessing(true);
+    try {
+      const response = await fetch("/api/snapshots/process", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ snapshotId: snapshot.id }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "处理失败");
+      }
+
+      if (result.stats?.completed > 0) {
+        toast.success("快照处理完成", {
+          description: "网页内容已成功保存",
+        });
+        // 刷新快照状态
+        await fetchSnapshot();
+      } else if (result.stats?.processed === 0) {
+        toast.info("没有待处理的快照任务", {
+          description: "快照可能已在处理中或已完成",
+        });
+        // 也刷新一下状态
+        await fetchSnapshot();
+      } else {
+        toast.warning("快照处理未完成", {
+          description: "请稍后重试或等待系统自动处理",
+        });
+      }
+    } catch (error) {
+      toast.error("处理失败", {
+        description: error instanceof Error ? error.message : "请稍后重试",
+      });
+    } finally {
+      setIsManualProcessing(false);
+    }
+  }, [snapshot?.id, fetchSnapshot]);
+
   // 加载状态
   if (isLoading) {
     return (
@@ -252,6 +301,11 @@ export function SnapshotSection({
             showLabel
             onSuccess={handleCreateSuccess}
           />
+        </div>
+        {/* 提示信息 */}
+        <div className="mt-3 flex items-start gap-2 text-xs text-muted-foreground">
+          <Info className="size-3.5 mt-0.5 shrink-0" />
+          <span>创建后系统每 30 分钟自动处理，或可手动立即处理</span>
         </div>
       </div>
     );
@@ -374,27 +428,58 @@ export function SnapshotSection({
             />
           ) : snapshot.status === "pending" ||
             snapshot.status === "processing" ? (
-            <div className="flex flex-col items-center justify-center py-8 space-y-3">
+            <div className="flex flex-col items-center justify-center py-6 space-y-4">
               <Loader2 className="size-8 animate-spin text-muted-foreground" />
               <p className="text-sm text-muted-foreground">
                 {snapshot.status === "pending"
                   ? "等待处理..."
                   : "正在抓取网页内容..."}
               </p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={fetchSnapshot}
-                disabled={isRefreshing}
-              >
-                <RefreshCw
-                  className={cn(
-                    "size-4 mr-1.5",
-                    isRefreshing && "animate-spin",
-                  )}
-                />
-                刷新状态
-              </Button>
+
+              {/* 操作按钮组 */}
+              <div className="flex items-center gap-2">
+                {/* 手动触发按钮 - 仅在 pending 状态显示 */}
+                {snapshot.status === "pending" && (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={handleManualProcess}
+                    disabled={isManualProcessing}
+                  >
+                    {isManualProcessing ? (
+                      <Loader2 className="size-4 mr-1.5 animate-spin" />
+                    ) : (
+                      <Zap className="size-4 mr-1.5" />
+                    )}
+                    立即处理
+                  </Button>
+                )}
+
+                {/* 刷新状态按钮 */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={fetchSnapshot}
+                  disabled={isRefreshing}
+                >
+                  <RefreshCw
+                    className={cn(
+                      "size-4 mr-1.5",
+                      isRefreshing && "animate-spin",
+                    )}
+                  />
+                  刷新状态
+                </Button>
+              </div>
+
+              {/* 提示信息 */}
+              <Alert className="max-w-sm bg-muted/50 border-muted">
+                <Clock className="size-4" />
+                <AlertDescription className="text-xs text-muted-foreground">
+                  快照系统每 30
+                  分钟自动执行一次。如需立即处理，请点击「立即处理」按钮。
+                </AlertDescription>
+              </Alert>
             </div>
           ) : snapshot.status === "failed" ? (
             <div className="flex flex-col items-center justify-center py-8 space-y-3">

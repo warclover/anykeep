@@ -19,7 +19,7 @@
     },
     {
       "path": "/api/cron/process-job-queue",
-      "schedule": "0 */2 * * *"
+      "schedule": "*/30 * * * *"
     },
     {
       "path": "/api/cron/cleanup-snapshots",

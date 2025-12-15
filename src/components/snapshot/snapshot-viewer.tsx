@@ -12,7 +12,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   ExternalLink,
   Copy,
@@ -72,6 +72,20 @@ export interface SnapshotViewerProps {
   defaultViewMode?: ViewMode;
   /** 自定义类名 */
   className?: string;
+}
+
+// ============================================================================
+// 辅助函数
+// ============================================================================
+
+/**
+ * 移除 HTML 中的 img 标签
+ * 用于处理微信等平台的防盗链问题，避免图片显示异常
+ */
+function sanitizeHtmlImages(html: string): string {
+  if (!html) return html;
+  // 移除所有 <img> 标签（包括自闭合形式）
+  return html.replace(/<img[^>]*\/?>/gi, "");
 }
 
 // ============================================================================
@@ -247,6 +261,12 @@ export function SnapshotViewer({
 
   // 是否有截图
   const hasScreenshot = !!content?.screenshotUrl;
+
+  // 处理后的 HTML 内容（移除图片标签以避免防盗链问题）
+  const sanitizedContent = useMemo(() => {
+    if (!content?.readableContent) return "";
+    return sanitizeHtmlImages(content.readableContent);
+  }, [content?.readableContent]);
 
   // 加载快照内容
   const loadContent = useCallback(async () => {
@@ -474,7 +494,7 @@ export function SnapshotViewer({
         <ScrollArea style={{ maxHeight }} className="pr-4">
           <article
             className="prose prose-sm dark:prose-invert max-w-none"
-            dangerouslySetInnerHTML={{ __html: content.readableContent || "" }}
+            dangerouslySetInnerHTML={{ __html: sanitizedContent }}
           />
         </ScrollArea>
       )}
