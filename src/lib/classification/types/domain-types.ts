@@ -115,6 +115,7 @@ export type OperationSnapshotAction =
 
 /**
  * 任务队列类型
+ * V4.2.7: 添加 AI 内容生成相关任务类型
  */
 export type JobQueueType =
   | "compute_folder_profile"
@@ -124,7 +125,19 @@ export type JobQueueType =
   | "ai_rename_folder"
   | "batch_classify"
   | "generate_summary"
-  | "batch_generate_summary";
+  | "batch_generate_summary"
+  // V4.2.7: 新增 AI 任务类型（与数据库 job_queue 表对应）
+  | "process_inbox_cache"
+  | "check_rename_candidates"
+  | "check_split_candidates"
+  | "check_merge_candidates"
+  | "generate_monthly_report"
+  | "update_folder_profiles"
+  | "cleanup_expired_data"
+  | "generate_ai_content"
+  | "generate_embedding"
+  | "classify_bookmark"
+  | "fetch_bookmark_content";
 
 /**
  * 任务状态

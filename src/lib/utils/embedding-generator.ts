@@ -588,3 +588,21 @@ export {
   getEmbeddingConfigInfo,
   EMBEDDING_CONFIG_VERSION,
 } from "@/lib/classification/config/embedding-config";
+
+/**
+ * V4.2.7: 当前 embedding 模型版本
+ * 用于追踪数据库中向量的来源模型
+ *
+ * 版本历史:
+ * - v3: text-embedding-v3 (1024 维) - 当前默认
+ * - v4: text-embedding-v4 (待支持)
+ */
+export const CURRENT_EMBEDDING_VERSION = "v3" as const;
+
+/**
+ * V4.2.7: 获取当前 embedding 版本
+ * 用于存储时附带版本信息
+ */
+export function getCurrentEmbeddingVersion(): string {
+  return CURRENT_EMBEDDING_VERSION;
+}

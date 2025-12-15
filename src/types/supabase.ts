@@ -173,7 +173,8 @@ export type Database = {
           deleted_at: string | null;
           description: string | null;
           embedding: string | null;
-          embedding_version: number | null;
+          /** V4.2.7: embedding 版本追踪 (e.g., "v3") */
+          embedding_version: string | null;
           folder_id: number | null;
           has_snapshot: boolean | null;
           id: number;
@@ -231,7 +232,8 @@ export type Database = {
           deleted_at?: string | null;
           description?: string | null;
           embedding?: string | null;
-          embedding_version?: number | null;
+          /** V4.2.7: embedding 版本追踪 (e.g., "v3") */
+          embedding_version?: string | null;
           folder_id?: number | null;
           has_snapshot?: boolean | null;
           id?: number;
@@ -289,7 +291,8 @@ export type Database = {
           deleted_at?: string | null;
           description?: string | null;
           embedding?: string | null;
-          embedding_version?: number | null;
+          /** V4.2.7: embedding 版本追踪 (e.g., "v3") */
+          embedding_version?: string | null;
           folder_id?: number | null;
           has_snapshot?: boolean | null;
           id?: number;
@@ -1034,11 +1037,15 @@ export type Database = {
           computed_at: string | null;
           core_count: number | null;
           core_embedding: string | null;
+          /** V4.2.7: core_embedding 版本 */
+          core_embedding_version: string | null;
           core_radius: number | null;
           core_sample_ids: number[] | null;
           core_tightness: number | null;
           edge_count: number | null;
           edge_embedding: string | null;
+          /** V4.2.7: edge_embedding 版本 */
+          edge_embedding_version: string | null;
           edge_radius: number | null;
           edge_sample_ids: number[] | null;
           folder_id: number;
@@ -1052,7 +1059,11 @@ export type Database = {
           is_system_locked: boolean | null;
           last_bookmark_at: string | null;
           name_embedding: string | null;
+          /** V4.2.7: name_embedding 版本 */
+          name_embedding_version: string | null;
           profile_embedding: string | null;
+          /** V4.2.7: profile_embedding 版本 */
+          profile_embedding_version: string | null;
           recent_additions: number | null;
           sample_titles: string[] | null;
           similar_folder_ids: number[] | null;
@@ -1070,11 +1081,15 @@ export type Database = {
           computed_at?: string | null;
           core_count?: number | null;
           core_embedding?: string | null;
+          /** V4.2.7: core_embedding 版本 */
+          core_embedding_version?: string | null;
           core_radius?: number | null;
           core_sample_ids?: number[] | null;
           core_tightness?: number | null;
           edge_count?: number | null;
           edge_embedding?: string | null;
+          /** V4.2.7: edge_embedding 版本 */
+          edge_embedding_version?: string | null;
           edge_radius?: number | null;
           edge_sample_ids?: number[] | null;
           folder_id: number;
@@ -1088,7 +1103,11 @@ export type Database = {
           is_system_locked?: boolean | null;
           last_bookmark_at?: string | null;
           name_embedding?: string | null;
+          /** V4.2.7: name_embedding 版本 */
+          name_embedding_version?: string | null;
           profile_embedding?: string | null;
+          /** V4.2.7: profile_embedding 版本 */
+          profile_embedding_version?: string | null;
           recent_additions?: number | null;
           sample_titles?: string[] | null;
           similar_folder_ids?: number[] | null;
@@ -1106,11 +1125,15 @@ export type Database = {
           computed_at?: string | null;
           core_count?: number | null;
           core_embedding?: string | null;
+          /** V4.2.7: core_embedding 版本 */
+          core_embedding_version?: string | null;
           core_radius?: number | null;
           core_sample_ids?: number[] | null;
           core_tightness?: number | null;
           edge_count?: number | null;
           edge_embedding?: string | null;
+          /** V4.2.7: edge_embedding 版本 */
+          edge_embedding_version?: string | null;
           edge_radius?: number | null;
           edge_sample_ids?: number[] | null;
           folder_id?: number;
@@ -1124,7 +1147,11 @@ export type Database = {
           is_system_locked?: boolean | null;
           last_bookmark_at?: string | null;
           name_embedding?: string | null;
+          /** V4.2.7: name_embedding 版本 */
+          name_embedding_version?: string | null;
           profile_embedding?: string | null;
+          /** V4.2.7: profile_embedding 版本 */
+          profile_embedding_version?: string | null;
           recent_additions?: number | null;
           sample_titles?: string[] | null;
           similar_folder_ids?: number[] | null;
