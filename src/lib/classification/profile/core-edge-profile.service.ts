@@ -208,9 +208,16 @@ export class CoreEdgeProfileService {
       }
 
       // 2. 计算文件夹中心向量（所有书签的平均）
-      const centroid = this.computeCentroid(
-        bookmarks.map((b) => b.embedding),
-      );
+      const centroid = this.computeCentroid(bookmarks.map((b) => b.embedding));
+
+      // V4.2.5: 检查 centroid 是否有效
+      if (centroid.length === 0) {
+        logger.warn(
+          { folderId },
+          "CoreEdgeProfile: Failed to compute centroid, invalid embeddings",
+        );
+        return null;
+      }
 
       // 3. 计算每个书签到中心的距离
       const distances = bookmarks.map((b) => ({
@@ -327,12 +334,13 @@ export class CoreEdgeProfileService {
     bookmarkEmbedding: number[],
   ): Promise<ZoneMatchResult> {
     // 使用数据库函数检查
+    // V4.2.4: 修复向量参数格式，pgvector 需要 [1,2,3,...] 格式而非 JSON 字符串
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await (this.supabase.rpc as any)(
       "check_bookmark_zone",
       {
         p_folder_id: folderId,
-        p_bookmark_embedding: JSON.stringify(bookmarkEmbedding),
+        p_bookmark_embedding: `[${bookmarkEmbedding.join(",")}]`,
       },
     );
 
@@ -381,12 +389,13 @@ export class CoreEdgeProfileService {
     limit = 5,
     minSimilarity = 0.5,
   ): Promise<FolderZoneMatch[]> {
+    // V4.2.4: 修复向量参数格式，pgvector 需要 [1,2,3,...] 格式而非 JSON 字符串
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await (this.supabase.rpc as any)(
       "search_folders_by_core_similarity",
       {
         p_user_id: userId,
-        p_query_embedding: JSON.stringify(queryEmbedding),
+        p_query_embedding: `[${queryEmbedding.join(",")}]`,
         p_limit: limit,
         p_min_similarity: minSimilarity,
       },
@@ -506,11 +515,9 @@ export class CoreEdgeProfileService {
       .map((b) => ({
         id: b.id,
         // Supabase 返回 embedding 为 JSON 字符串或 number[]
-        embedding: (
-          typeof b.embedding === "string"
-            ? JSON.parse(b.embedding)
-            : b.embedding
-        ) as number[],
+        embedding: (typeof b.embedding === "string"
+          ? JSON.parse(b.embedding)
+          : b.embedding) as number[],
         title: b.title ?? undefined,
         createdAt: b.created_at ?? undefined,
       }));
@@ -518,14 +525,34 @@ export class CoreEdgeProfileService {
 
   /**
    * 计算向量集合的中心点
+   * V4.2.5: 增强空数组和维度不一致的处理
    */
   private computeCentroid(vectors: number[][]): number[] {
-    if (vectors.length === 0) return [];
+    // V4.2.5: 空数组返回空数组，调用方需要检查
+    if (vectors.length === 0) {
+      logger.warn("computeCentroid: empty vectors array");
+      return [];
+    }
 
     const dim = vectors[0].length;
+
+    // V4.2.5: 检查维度有效性
+    if (dim === 0) {
+      logger.warn("computeCentroid: vectors have zero dimensions");
+      return [];
+    }
+
     const centroid = new Array(dim).fill(0);
 
     for (const vec of vectors) {
+      // V4.2.5: 跳过维度不一致的向量
+      if (vec.length !== dim) {
+        logger.warn(
+          { expected: dim, actual: vec.length },
+          "computeCentroid: skipping vector with mismatched dimensions",
+        );
+        continue;
+      }
       for (let i = 0; i < dim; i++) {
         centroid[i] += vec[i];
       }
@@ -579,10 +606,7 @@ export class CoreEdgeProfileService {
   /**
    * 计算紧密度
    */
-  private computeTightness(
-    vectors: number[][],
-    centroid: number[],
-  ): number {
+  private computeTightness(vectors: number[][], centroid: number[]): number {
     if (vectors.length === 0) return 0;
 
     const avgDistance =
@@ -621,8 +645,7 @@ export class CoreEdgeProfileService {
     const distributionBalance =
       1 -
       Math.abs(
-        coreBookmarks.length / distances.length -
-          this.config.corePercentile,
+        coreBookmarks.length / distances.length - this.config.corePercentile,
       );
 
     return Math.max(0, Math.min(1, gapRatio * 0.5 + distributionBalance * 0.5));
@@ -630,6 +653,7 @@ export class CoreEdgeProfileService {
 
   /**
    * 内存计算区域匹配
+   * V4.2.5: 添加零除保护
    */
   private computeZoneMatch(
     queryEmbedding: number[],
@@ -643,20 +667,24 @@ export class CoreEdgeProfileService {
       ? this.cosineDistance(queryEmbedding, edgeEmbedding)
       : coreDistance;
 
-    const isInCore = coreDistance <= coreRadius;
-    const isInEdge = edgeDistance <= edgeRadius;
+    // V4.2.5: 确保半径最小值，防止除零
+    const safeCoreRadius = Math.max(coreRadius, 0.01);
+    const safeEdgeRadius = Math.max(edgeRadius, safeCoreRadius * 1.5);
+
+    const isInCore = coreDistance <= safeCoreRadius;
+    const isInEdge = edgeDistance <= safeEdgeRadius;
 
     let zone: ZoneType = "outside";
     let confidence = 0;
 
     if (isInCore) {
       zone = "core";
-      confidence = 0.7 + (1 - coreDistance / coreRadius) * 0.3;
+      confidence = 0.7 + (1 - coreDistance / safeCoreRadius) * 0.3;
     } else if (isInEdge) {
       zone = "edge";
-      confidence = 0.4 + (1 - edgeDistance / edgeRadius) * 0.3;
+      confidence = 0.4 + (1 - edgeDistance / safeEdgeRadius) * 0.3;
     } else {
-      confidence = Math.max(0, 0.3 - (edgeDistance - edgeRadius) * 2);
+      confidence = Math.max(0, 0.3 - (edgeDistance - safeEdgeRadius) * 2);
     }
 
     return {

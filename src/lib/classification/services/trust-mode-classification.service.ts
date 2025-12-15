@@ -286,18 +286,39 @@ export class TrustModeClassificationService {
       this.executeSlowPathBatch(userId, slowPathBookmarks),
     ]);
 
-    // 合并结果并按原顺序返回
+    // V4.2.4: 修复结果映射错误 - 使用 URL 作为唯一键
+    // 原代码使用 reason 存储但用 title 查询，导致键不匹配
     const resultMap = new Map<string, EnhancedClassificationResult>();
-    for (const result of [...fastResults, ...slowResults]) {
-      // 使用 reason 中的信息作为临时 key（实际应该用 bookmark ID）
-      resultMap.set(result.reason || "", result);
+
+    // 将快速路径结果按 URL 映射
+    for (let i = 0; i < fastResults.length; i++) {
+      const bookmark = fastPathBookmarks[i];
+      if (bookmark) {
+        resultMap.set(bookmark.url, fastResults[i]);
+      }
     }
 
+    // 将慢速路径结果按 URL 映射
+    for (let i = 0; i < slowResults.length; i++) {
+      const bookmark = slowPathBookmarks[i];
+      if (bookmark) {
+        resultMap.set(bookmark.url, slowResults[i]);
+      }
+    }
+
+    // 按原始顺序返回结果
     for (const bookmark of bookmarks) {
-      const result =
-        resultMap.get(bookmark.title) ||
-        (await this.classify(userId, bookmark));
-      results.push(result);
+      const result = resultMap.get(bookmark.url);
+      if (result) {
+        results.push(result);
+      } else {
+        // 仅在缓存未命中时才调用 classify（理论上不应发生）
+        logger.warn(
+          { url: bookmark.url },
+          "TrustModeClassification: Batch result not found, falling back to single classify",
+        );
+        results.push(await this.classify(userId, bookmark));
+      }
     }
 
     return results;

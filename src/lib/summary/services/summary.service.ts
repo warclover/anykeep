@@ -42,6 +42,8 @@ import {
   getEnhancedModeConfig,
 } from "@/lib/classification/config/ai-summary-config";
 import { getEntityRepository } from "../repositories/entity.repository";
+import { getSummaryRepository } from "../repositories/summary.repository";
+import { createClient } from "@/lib/supabase/server";
 import { initializeLinkEventHandler } from "@/lib/knowledge-link";
 
 /**
@@ -417,18 +419,46 @@ export class SummaryService implements ISummaryService {
 
   /**
    * 重新生成摘要
+   *
+   * V4.2.4: 实现从数据库获取书签信息并重新生成
+   *
+   * @param bookmarkId - 书签 ID
+   * @param userId - 用户 ID
+   * @param options - 生成选项
    */
   async regenerate(
-    _bookmarkId: number,
-    _userId: string,
-    _options?: GenerateOptions,
+    bookmarkId: number,
+    userId: string,
+    options?: GenerateOptions,
   ): Promise<SummaryResult> {
-    // TODO: 从数据库获取书签信息
-    // 暂时抛出未实现错误
-    throw new SummaryError(
-      SummaryErrorCode.INVALID_INPUT,
-      "regenerate requires database integration, not yet implemented",
-    );
+    // 1. 从数据库获取书签信息
+    const supabase = await createClient();
+    const repository = getSummaryRepository(supabase);
+    const bookmark = await repository.getBookmarkForSummary(bookmarkId, userId);
+
+    if (!bookmark) {
+      throw new SummaryError(
+        SummaryErrorCode.INVALID_INPUT,
+        `Bookmark ${bookmarkId} not found for user ${userId}`,
+      );
+    }
+
+    // 2. 构建 SummaryInput
+    const input: SummaryInput = {
+      bookmarkId: bookmark.id,
+      userId: bookmark.userId,
+      url: bookmark.url,
+      title: bookmark.title,
+      description: bookmark.description,
+    };
+
+    // 3. 调用 generate 方法，强制重新生成
+    logger.info({ bookmarkId, userId }, "SummaryService: Regenerating summary");
+
+    return this.generate(input, {
+      ...options,
+      forceRegenerate: true,
+    });
   }
 
   /**

@@ -133,6 +133,8 @@ export async function POST(request: NextRequest) {
       summary: string;
       tags: string[];
       provider?: string;
+      saveStatus: "success" | "failed";
+      saveError?: string;
     }> = [];
     const errorResults: Array<{
       bookmarkId: number;
@@ -161,6 +163,8 @@ export async function POST(request: NextRequest) {
         })
         .eq("id", bookmarkId);
 
+      // V4.2.4: 修复数据库更新错误被忽略的问题
+      // 在结果中包含保存状态
       if (updateError) {
         logger.warn(
           {
@@ -176,6 +180,8 @@ export async function POST(request: NextRequest) {
         summary: result.summary,
         tags: result.tags,
         provider: result.providerUsed,
+        saveStatus: updateError ? "failed" : "success",
+        ...(updateError && { saveError: updateError.message }),
       });
     }
 

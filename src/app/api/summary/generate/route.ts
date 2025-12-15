@@ -127,6 +127,11 @@ export async function POST(request: NextRequest) {
       })
       .eq("id", bookmarkId);
 
+    // V4.2.4: 修复数据库更新错误被忽略的问题
+    // 在响应中包含保存状态，让客户端知道是否需要重试
+    let saveStatus: "success" | "failed" = "success";
+    let saveError: string | undefined;
+
     if (updateError) {
       logger.error(
         {
@@ -135,7 +140,8 @@ export async function POST(request: NextRequest) {
         },
         "Failed to update bookmark summary",
       );
-      // 不返回错误，因为摘要已经生成成功
+      saveStatus = "failed";
+      saveError = updateError.message;
     }
 
     const totalLatencyMs = Date.now() - startTime;
@@ -148,11 +154,12 @@ export async function POST(request: NextRequest) {
         latencyMs: result.latencyMs,
         totalLatencyMs,
         tagsCount: result.tags.length,
+        saveStatus,
       },
       "Summary generated successfully",
     );
 
-    // 9. 返回结果
+    // 9. 返回结果（包含保存状态）
     return successResponse({
       bookmarkId,
       summary: result.summary,
@@ -166,6 +173,8 @@ export async function POST(request: NextRequest) {
       latencyMs: result.latencyMs,
       totalLatencyMs,
       cached: false,
+      saveStatus,
+      ...(saveError && { saveError }),
     });
   } catch (error) {
     // 处理摘要服务错误

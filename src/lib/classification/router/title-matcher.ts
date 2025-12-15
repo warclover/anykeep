@@ -74,23 +74,99 @@ interface TitleKeywords {
  * 中文停用词
  */
 const CHINESE_STOPWORDS = new Set([
-  "的", "了", "是", "在", "和", "与", "或", "等", "这", "那",
-  "有", "为", "以", "及", "到", "从", "也", "就", "要", "会",
-  "可以", "如何", "什么", "怎么", "怎样", "哪些", "哪个", "为什么",
-  "一个", "一种", "一些", "一下", "一点", "几个",
+  "的",
+  "了",
+  "是",
+  "在",
+  "和",
+  "与",
+  "或",
+  "等",
+  "这",
+  "那",
+  "有",
+  "为",
+  "以",
+  "及",
+  "到",
+  "从",
+  "也",
+  "就",
+  "要",
+  "会",
+  "可以",
+  "如何",
+  "什么",
+  "怎么",
+  "怎样",
+  "哪些",
+  "哪个",
+  "为什么",
+  "一个",
+  "一种",
+  "一些",
+  "一下",
+  "一点",
+  "几个",
 ]);
 
 /**
  * 英文停用词
  */
 const ENGLISH_STOPWORDS = new Set([
-  "the", "a", "an", "is", "are", "was", "were", "be", "been",
-  "being", "have", "has", "had", "do", "does", "did", "will",
-  "would", "could", "should", "may", "might", "can", "to", "of",
-  "in", "for", "on", "with", "at", "by", "from", "as", "into",
-  "through", "during", "before", "after", "above", "below",
-  "how", "what", "which", "who", "when", "where", "why",
-  "this", "that", "these", "those", "it", "its",
+  "the",
+  "a",
+  "an",
+  "is",
+  "are",
+  "was",
+  "were",
+  "be",
+  "been",
+  "being",
+  "have",
+  "has",
+  "had",
+  "do",
+  "does",
+  "did",
+  "will",
+  "would",
+  "could",
+  "should",
+  "may",
+  "might",
+  "can",
+  "to",
+  "of",
+  "in",
+  "for",
+  "on",
+  "with",
+  "at",
+  "by",
+  "from",
+  "as",
+  "into",
+  "through",
+  "during",
+  "before",
+  "after",
+  "above",
+  "below",
+  "how",
+  "what",
+  "which",
+  "who",
+  "when",
+  "where",
+  "why",
+  "this",
+  "that",
+  "these",
+  "those",
+  "it",
+  "its",
 ]);
 
 // ============================================================================
@@ -184,7 +260,8 @@ export class TitleMatcher {
         "search_bookmarks_by_title_vector",
         {
           p_user_id: userId,
-          p_query_embedding: JSON.stringify(titleEmbedding),
+          // V4.2.5: 修复向量格式，pgvector 需要 [1,2,3,...] 格式
+          p_query_embedding: `[${titleEmbedding.join(",")}]`,
           p_limit: this.vectorConfig.limit,
           p_min_similarity: this.vectorConfig.minSimilarity,
         },
@@ -218,7 +295,10 @@ export class TitleMatcher {
       const baseConfidence = Math.round(bestMatch.avgSimilarity * 100);
       const vectorBonus = this.vectorConfig.vectorConfidenceBonus;
       const countBonus = Math.min(10, bestMatch.matchCount * 2);
-      const confidence = Math.min(95, baseConfidence + vectorBonus + countBonus);
+      const confidence = Math.min(
+        95,
+        baseConfidence + vectorBonus + countBonus,
+      );
 
       logger.debug(
         {
@@ -299,21 +379,24 @@ export class TitleMatcher {
       }
     }
 
-    const aggregated = Array.from(folderMap.entries()).map(([folderId, data]) => {
-      const avgSimilarity =
-        data.similarities.reduce((a, b) => a + b, 0) / data.similarities.length;
-      const maxSimilarity = Math.max(...data.similarities);
-      const bestIdx = data.similarities.indexOf(maxSimilarity);
+    const aggregated = Array.from(folderMap.entries()).map(
+      ([folderId, data]) => {
+        const avgSimilarity =
+          data.similarities.reduce((a, b) => a + b, 0) /
+          data.similarities.length;
+        const maxSimilarity = Math.max(...data.similarities);
+        const bestIdx = data.similarities.indexOf(maxSimilarity);
 
-      return {
-        folderId,
-        folderName: data.folderName,
-        avgSimilarity,
-        maxSimilarity,
-        matchCount: data.similarities.length,
-        bestTitle: data.titles[bestIdx],
-      };
-    });
+        return {
+          folderId,
+          folderName: data.folderName,
+          avgSimilarity,
+          maxSimilarity,
+          matchCount: data.similarities.length,
+          bestTitle: data.titles[bestIdx],
+        };
+      },
+    );
 
     // 按平均相似度排序
     return aggregated.sort((a, b) => b.avgSimilarity - a.avgSimilarity);
@@ -396,13 +479,19 @@ export class TitleMatcher {
   /**
    * 获取用户文件夹的标题关联
    */
-  private async getUserFolderTitles(userId: string): Promise<FolderTitleCacheItem[]> {
+  private async getUserFolderTitles(
+    userId: string,
+  ): Promise<FolderTitleCacheItem[]> {
     // 检查缓存
     const cacheKey = `folder_titles_${userId}`;
     const cached = this.folderTitleCache.get(cacheKey);
     const now = Date.now();
 
-    if (cached && cached.length > 0 && cached[0].lastUpdated > now - this.cacheExpiry) {
+    if (
+      cached &&
+      cached.length > 0 &&
+      cached[0].lastUpdated > now - this.cacheExpiry
+    ) {
       return cached;
     }
 
@@ -433,7 +522,9 @@ export class TitleMatcher {
         .limit(50);
 
       if (bookmarks && bookmarks.length > 0) {
-        const titles = bookmarks.map((b) => b.title || "").filter((t) => t.length > 0);
+        const titles = bookmarks
+          .map((b) => b.title || "")
+          .filter((t) => t.length > 0);
 
         // 提取所有标题的关键词
         const allKeywords = new Set<string>();
@@ -473,17 +564,21 @@ export class TitleMatcher {
 
     // 1. 关键词重叠度
     const inputKeywordSet = new Set(input.keywords);
-    const overlapCount = input.keywords.filter((k) => folder.keywords.has(k)).length;
-    const keywordOverlap = inputKeywordSet.size > 0
-      ? (overlapCount / inputKeywordSet.size) * 100
-      : 0;
+    const overlapCount = input.keywords.filter((k) =>
+      folder.keywords.has(k),
+    ).length;
+    const keywordOverlap =
+      inputKeywordSet.size > 0
+        ? (overlapCount / inputKeywordSet.size) * 100
+        : 0;
 
     // 2. 与文件夹名称的相似度
     const folderNameKeywords = this.extractKeywords(folder.folderName);
-    const folderNameOverlap = this.calculateJaccardSimilarity(
-      input.keywords,
-      folderNameKeywords.keywords,
-    ) * 100;
+    const folderNameOverlap =
+      this.calculateJaccardSimilarity(
+        input.keywords,
+        folderNameKeywords.keywords,
+      ) * 100;
 
     // 3. 与具体书签标题的相似度（取最高）
     for (const title of folder.titles) {
@@ -510,9 +605,7 @@ export class TitleMatcher {
 
     // 综合评分：关键词重叠 40% + 文件夹名匹配 20% + 最佳标题匹配 40%
     const similarityScore =
-      keywordOverlap * 0.4 +
-      folderNameOverlap * 0.2 +
-      bestScore * 0.4;
+      keywordOverlap * 0.4 + folderNameOverlap * 0.2 + bestScore * 0.4;
 
     return {
       similarityScore: Math.round(similarityScore * 10) / 10,
@@ -545,14 +638,14 @@ export class TitleMatcher {
     }
 
     // 英文分词
-    const englishWords = original
-      .toLowerCase()
-      .match(/[a-z][a-z0-9]*[a-z0-9]/gi) || [];
+    const englishWords =
+      original.toLowerCase().match(/[a-z][a-z0-9]*[a-z0-9]/gi) || [];
     words.push(...englishWords.map((w) => w.toLowerCase()));
 
     // 过滤停用词
     const filteredWords = words.filter(
-      (w) => !CHINESE_STOPWORDS.has(w) && !ENGLISH_STOPWORDS.has(w.toLowerCase()),
+      (w) =>
+        !CHINESE_STOPWORDS.has(w) && !ENGLISH_STOPWORDS.has(w.toLowerCase()),
     );
 
     // 生成 bigrams

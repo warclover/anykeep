@@ -105,6 +105,10 @@ export async function POST(request: NextRequest) {
       })
       .eq("id", bookmarkId);
 
+    // V4.2.4: 修复数据库更新错误被忽略的问题
+    let saveStatus: "success" | "failed" = "success";
+    let saveError: string | undefined;
+
     if (updateError) {
       logger.error(
         {
@@ -113,6 +117,8 @@ export async function POST(request: NextRequest) {
         },
         "Failed to update bookmark summary after regeneration",
       );
+      saveStatus = "failed";
+      saveError = updateError.message;
     }
 
     const totalLatencyMs = Date.now() - startTime;
@@ -124,11 +130,12 @@ export async function POST(request: NextRequest) {
         provider: result.providerUsed,
         latencyMs: result.latencyMs,
         totalLatencyMs,
+        saveStatus,
       },
       "Summary regenerated successfully",
     );
 
-    // 7. 返回结果
+    // 7. 返回结果（包含保存状态）
     return successResponse({
       bookmarkId,
       summary: result.summary,
@@ -142,6 +149,8 @@ export async function POST(request: NextRequest) {
       latencyMs: result.latencyMs,
       totalLatencyMs,
       regenerated: true,
+      saveStatus,
+      ...(saveError && { saveError }),
     });
   } catch (error) {
     // 处理摘要服务错误

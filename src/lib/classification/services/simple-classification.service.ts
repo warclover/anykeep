@@ -79,9 +79,14 @@ const PROMPT_INPUT_MAX_LENGTH = 200;
 const PROMPT_TAGS_MAX_COUNT = 10;
 
 /**
+ * V4.2.4: 增强 Prompt 注入防护
  * 消毒用户输入（防止 Prompt 注入）
- * - 移除控制字符
- * - 转义引号
+ * - 替换控制字符为空格
+ * - 合并空白符
+ * - 转义引号（单引号和双引号）
+ * - 移除模板注入模式（Handlebars、Jinja）
+ * - 移除 SQL 关键词
+ * - 移除角色前缀
  * - 截断长度
  */
 function sanitizePromptInput(
@@ -92,13 +97,30 @@ function sanitizePromptInput(
 
   return (
     input
-      // 移除控制字符和特殊 Unicode
-      .replace(/[\x00-\x1F\x7F]/g, "")
-      // 转义双引号
+      // 替换控制字符为空格（保持文本可读性）
+      .replace(/[\x00-\x1F\x7F]/g, " ")
+      // 合并连续的空白符
+      .replace(/[\n\r\t]+/g, " ")
+      .replace(/\s{2,}/g, " ")
+      // 转义双引号和单引号
       .replace(/"/g, '\\"')
-      // 移除可能的 prompt 注入模式
-      .replace(/\n{2,}/g, "\n")
-      .replace(/^(system|user|assistant):/gim, "")
+      .replace(/'/g, "\\'")
+      // 移除模板注入模式（Handlebars、Jinja、EJS）
+      .replace(/{{\s*[\w.]+\s*}}/g, "")
+      .replace(/{%\s*[\w\s]+\s*%}/g, "")
+      .replace(/<%[=\-]?\s*[\w\s]+\s*%>/g, "")
+      // 移除可能的 SQL 注入关键词
+      .replace(
+        /\b(select|insert|update|delete|drop|truncate|union|exec)\b/gi,
+        "",
+      )
+      // 移除角色前缀（防止角色混淆攻击）
+      .replace(
+        /^(system|user|assistant|human|ai|command|instruct|role|prompt):/gim,
+        "",
+      )
+      // 移除 XML/HTML 标签（防止标签注入）
+      .replace(/<\/?[a-z][^>]*>/gi, "")
       // 截断长度
       .slice(0, maxLength)
       .trim()
@@ -303,10 +325,10 @@ export class SimpleClassificationService {
     userId: string,
     embedding: number[],
   ): Promise<CandidateFolder[]> {
-    // 调用 Supabase RPC（直接传参以获得正确的类型推断）
+    // V4.2.5: 修复向量格式，pgvector 需要 [1,2,3,...] 格式
     const { data, error } = await this.supabase.rpc("search_folders_unified", {
       p_user_id: userId,
-      p_embedding: JSON.stringify(embedding),
+      p_embedding: `[${embedding.join(",")}]`,
       p_limit: this.config.maxCandidates,
     });
 
@@ -348,18 +370,22 @@ export class SimpleClassificationService {
         t.toLowerCase().trim(),
       );
 
-      // 计算重叠（模糊匹配）
+      // V4.2.5: 改进标签匹配 - 使用精确匹配替代模糊匹配，避免假正例
       const overlap = normalizedBookmarkTags.filter((tag) =>
-        normalizedFolderTags.some((ft) => ft.includes(tag) || tag.includes(ft)),
+        normalizedFolderTags.includes(tag),
       ).length;
 
       if (overlap === 0) {
         return c;
       }
 
-      // 重叠率 → 加分（最多 +maxTagBoost%）
-      const overlapRate =
-        overlap / Math.max(bookmarkTags.length, c.topTags.length);
+      // V4.2.5: 使用 Jaccard 相似度替代 max 分母，避免过度惩罚
+      // Jaccard = |A ∩ B| / |A ∪ B|
+      const union = new Set([
+        ...normalizedBookmarkTags,
+        ...normalizedFolderTags,
+      ]).size;
+      const overlapRate = overlap / union;
       const boost = Math.min(
         Math.round(overlapRate * this.config.maxTagBoost),
         this.config.maxTagBoost,
