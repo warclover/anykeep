@@ -174,8 +174,17 @@ class ClassificationMetricsCollector {
   private enabled: boolean;
 
   constructor() {
-    this.enabled = process.env.NEXT_PUBLIC_METRICS_ENABLED === "true" ||
-                   process.env.NODE_ENV === "development";
+    this.enabled =
+      process.env.NEXT_PUBLIC_METRICS_ENABLED === "true" ||
+      process.env.NODE_ENV === "development" ||
+      process.env.NODE_ENV === "test";
+  }
+
+  /**
+   * 启用/禁用指标收集（用于测试）
+   */
+  setEnabled(enabled: boolean): void {
+    this.enabled = enabled;
   }
 
   // ============================================================================
@@ -185,7 +194,12 @@ class ClassificationMetricsCollector {
   /**
    * 记录计数器指标
    */
-  counter(name: string, value: number = 1, labels?: MetricLabels, userId?: string): void {
+  counter(
+    name: string,
+    value: number = 1,
+    labels?: MetricLabels,
+    userId?: string,
+  ): void {
     this.record({
       name,
       type: "counter",
@@ -199,7 +213,12 @@ class ClassificationMetricsCollector {
   /**
    * 记录仪表盘指标
    */
-  gauge(name: string, value: number, labels?: MetricLabels, userId?: string): void {
+  gauge(
+    name: string,
+    value: number,
+    labels?: MetricLabels,
+    userId?: string,
+  ): void {
     this.record({
       name,
       type: "gauge",
@@ -213,7 +232,12 @@ class ClassificationMetricsCollector {
   /**
    * 记录直方图指标
    */
-  histogram(name: string, value: number, labels?: MetricLabels, userId?: string): void {
+  histogram(
+    name: string,
+    value: number,
+    labels?: MetricLabels,
+    userId?: string,
+  ): void {
     this.record({
       name,
       type: "histogram",
@@ -260,7 +284,7 @@ class ClassificationMetricsCollector {
    */
   recordClassificationRequest(
     userId: string,
-    labels?: Pick<MetricLabels, "trustMode" | "source" | "experimentVariant">
+    labels?: Pick<MetricLabels, "trustMode" | "source" | "experimentVariant">,
   ): TimingContext {
     this.counter(CLASSIFICATION_METRICS.REQUESTS_TOTAL, 1, labels, userId);
     return this.startTiming(CLASSIFICATION_METRICS.LATENCY_MS, labels);
@@ -273,15 +297,26 @@ class ClassificationMetricsCollector {
     userId: string,
     confidence: number,
     timingContext: TimingContext,
-    labels?: MetricLabels
+    labels?: MetricLabels,
   ): void {
     this.counter(CLASSIFICATION_METRICS.SUCCESS_TOTAL, 1, labels, userId);
-    this.histogram(CLASSIFICATION_METRICS.CONFIDENCE_DISTRIBUTION, confidence, labels, userId);
+    this.histogram(
+      CLASSIFICATION_METRICS.CONFIDENCE_DISTRIBUTION,
+      confidence,
+      labels,
+      userId,
+    );
     this.endTiming(timingContext, userId);
 
     // 记录置信度级别
-    const confidenceLevel = confidence >= 80 ? "high" : confidence >= 60 ? "medium" : "low";
-    this.counter(CLASSIFICATION_METRICS.SUCCESS_TOTAL, 1, { ...labels, confidenceLevel }, userId);
+    const confidenceLevel =
+      confidence >= 80 ? "high" : confidence >= 60 ? "medium" : "low";
+    this.counter(
+      CLASSIFICATION_METRICS.SUCCESS_TOTAL,
+      1,
+      { ...labels, confidenceLevel },
+      userId,
+    );
   }
 
   /**
@@ -291,9 +326,14 @@ class ClassificationMetricsCollector {
     userId: string,
     error: string,
     timingContext: TimingContext,
-    labels?: MetricLabels
+    labels?: MetricLabels,
   ): void {
-    this.counter(CLASSIFICATION_METRICS.FAILURES_TOTAL, 1, { ...labels, error }, userId);
+    this.counter(
+      CLASSIFICATION_METRICS.FAILURES_TOTAL,
+      1,
+      { ...labels, error },
+      userId,
+    );
     this.endTiming(timingContext, userId);
   }
 
@@ -303,12 +343,22 @@ class ClassificationMetricsCollector {
   recordUserCorrection(
     userId: string,
     originalConfidence: number,
-    labels?: Pick<MetricLabels, "trustMode" | "source">
+    labels?: Pick<MetricLabels, "trustMode" | "source">,
   ): void {
-    this.counter(CLASSIFICATION_METRICS.USER_CORRECTIONS_TOTAL, 1, {
-      ...labels,
-      confidenceLevel: originalConfidence >= 80 ? "high" : originalConfidence >= 60 ? "medium" : "low",
-    }, userId);
+    this.counter(
+      CLASSIFICATION_METRICS.USER_CORRECTIONS_TOTAL,
+      1,
+      {
+        ...labels,
+        confidenceLevel:
+          originalConfidence >= 80
+            ? "high"
+            : originalConfidence >= 60
+              ? "medium"
+              : "low",
+      },
+      userId,
+    );
   }
 
   /**
@@ -316,9 +366,14 @@ class ClassificationMetricsCollector {
    */
   recordAutoDecision(
     userId: string,
-    labels?: Pick<MetricLabels, "trustMode" | "source" | "confidenceLevel">
+    labels?: Pick<MetricLabels, "trustMode" | "source" | "confidenceLevel">,
   ): void {
-    this.counter(CLASSIFICATION_METRICS.AUTO_DECISIONS_TOTAL, 1, labels, userId);
+    this.counter(
+      CLASSIFICATION_METRICS.AUTO_DECISIONS_TOTAL,
+      1,
+      labels,
+      userId,
+    );
   }
 
   // ============================================================================
@@ -331,21 +386,35 @@ class ClassificationMetricsCollector {
   recordModeSwitchEvent(
     userId: string,
     fromMode: string,
-    toMode: string
+    toMode: string,
   ): void {
-    this.counter(TRUST_MODE_METRICS.MODE_SWITCHES_TOTAL, 1, {
-      fromMode,
-      toMode,
-    } as MetricLabels, userId);
+    this.counter(
+      TRUST_MODE_METRICS.MODE_SWITCHES_TOTAL,
+      1,
+      {
+        fromMode,
+        toMode,
+      } as MetricLabels,
+      userId,
+    );
   }
 
   /**
    * 记录待确认消息数量
    */
-  recordPendingConfirmations(userId: string, count: number, trustMode: string): void {
-    this.gauge(TRUST_MODE_METRICS.PENDING_CONFIRMATIONS, count, {
-      trustMode: trustMode as MetricLabels["trustMode"],
-    }, userId);
+  recordPendingConfirmations(
+    userId: string,
+    count: number,
+    trustMode: string,
+  ): void {
+    this.gauge(
+      TRUST_MODE_METRICS.PENDING_CONFIRMATIONS,
+      count,
+      {
+        trustMode: trustMode as MetricLabels["trustMode"],
+      },
+      userId,
+    );
   }
 
   /**
@@ -355,12 +424,17 @@ class ClassificationMetricsCollector {
     userId: string,
     accepted: boolean,
     responseTimeMs: number,
-    trustMode: string
+    trustMode: string,
   ): void {
-    this.histogram(TRUST_MODE_METRICS.CONFIRMATION_RESPONSE_TIME_MS, responseTimeMs, {
-      trustMode: trustMode as MetricLabels["trustMode"],
-      accepted: accepted.toString(),
-    } as MetricLabels, userId);
+    this.histogram(
+      TRUST_MODE_METRICS.CONFIRMATION_RESPONSE_TIME_MS,
+      responseTimeMs,
+      {
+        trustMode: trustMode as MetricLabels["trustMode"],
+        accepted: accepted.toString(),
+      } as MetricLabels,
+      userId,
+    );
   }
 
   // ============================================================================
@@ -371,18 +445,28 @@ class ClassificationMetricsCollector {
    * 记录文件夹自动创建
    */
   recordFolderAutoCreate(userId: string, trustMode: string): void {
-    this.counter(FOLDER_METRICS.AUTO_CREATE_TOTAL, 1, {
-      trustMode: trustMode as MetricLabels["trustMode"],
-    }, userId);
+    this.counter(
+      FOLDER_METRICS.AUTO_CREATE_TOTAL,
+      1,
+      {
+        trustMode: trustMode as MetricLabels["trustMode"],
+      },
+      userId,
+    );
   }
 
   /**
    * 记录文件夹自动合并
    */
   recordFolderAutoMerge(userId: string, trustMode: string): void {
-    this.counter(FOLDER_METRICS.AUTO_MERGE_TOTAL, 1, {
-      trustMode: trustMode as MetricLabels["trustMode"],
-    }, userId);
+    this.counter(
+      FOLDER_METRICS.AUTO_MERGE_TOTAL,
+      1,
+      {
+        trustMode: trustMode as MetricLabels["trustMode"],
+      },
+      userId,
+    );
   }
 
   // ============================================================================
@@ -393,15 +477,23 @@ class ClassificationMetricsCollector {
    * 记录 AI 调用
    */
   recordAICall(latencyMs: number, success: boolean, model?: string): void {
-    this.counter(SYSTEM_METRICS.AI_CALLS_TOTAL, 1, { success: success.toString(), model } as MetricLabels);
-    this.histogram(SYSTEM_METRICS.AI_LATENCY_MS, latencyMs, { success: success.toString(), model } as MetricLabels);
+    this.counter(SYSTEM_METRICS.AI_CALLS_TOTAL, 1, {
+      success: success.toString(),
+      model,
+    } as MetricLabels);
+    this.histogram(SYSTEM_METRICS.AI_LATENCY_MS, latencyMs, {
+      success: success.toString(),
+      model,
+    } as MetricLabels);
   }
 
   /**
    * 记录向量搜索
    */
   recordVectorSearch(latencyMs: number, resultCount: number): void {
-    this.counter(SYSTEM_METRICS.VECTOR_SEARCH_TOTAL, 1, { resultCount: resultCount.toString() } as MetricLabels);
+    this.counter(SYSTEM_METRICS.VECTOR_SEARCH_TOTAL, 1, {
+      resultCount: resultCount.toString(),
+    } as MetricLabels);
     this.histogram(SYSTEM_METRICS.VECTOR_SEARCH_LATENCY_MS, latencyMs);
   }
 
@@ -453,7 +545,9 @@ class ClassificationMetricsCollector {
       logger.error({ error, count: events.length }, "Failed to flush metrics");
       // 失败时将事件放回缓冲区（但不超过最大大小）
       if (metricsBuffer.length < MAX_BUFFER_SIZE) {
-        metricsBuffer.push(...events.slice(0, MAX_BUFFER_SIZE - metricsBuffer.length));
+        metricsBuffer.push(
+          ...events.slice(0, MAX_BUFFER_SIZE - metricsBuffer.length),
+        );
       }
     }
   }
@@ -502,7 +596,7 @@ export function withTiming(metricName: string, labels?: MetricLabels) {
   return function (
     _target: unknown,
     _propertyKey: string,
-    descriptor: PropertyDescriptor
+    descriptor: PropertyDescriptor,
   ) {
     const originalMethod = descriptor.value;
 
