@@ -179,8 +179,28 @@ export async function classifyBookmarkV2(
 
     // Handle result based on action and confidence
     if (result.action === "classify" && result.folderId) {
-      // High confidence - auto-classify
-      if (result.confidence >= AUTO_CLASSIFY_THRESHOLD) {
+      // V4.2.21: 首先检查托管模式，manual 模式下不自动分类
+      const trustMode = await trustModeService.getUserTrustMode(userId);
+
+      // Manual 模式：所有置信度都创建确认消息，不自动分类
+      if (trustMode === "manual") {
+        logger.info(
+          {
+            bookmarkId,
+            confidence: result.confidence,
+            trustMode: "manual",
+          },
+          "Classification V2: Manual mode - skipping auto-classify, creating confirmation",
+        );
+        // 跳过自动分类，进入中等置信度的确认消息创建流程
+        // 注意：这里不 return，让代码继续执行到下面的确认消息创建逻辑
+      }
+
+      // High confidence - auto-classify (仅 full_auto 和 semi_auto 模式)
+      if (
+        result.confidence >= AUTO_CLASSIFY_THRESHOLD &&
+        trustMode !== "manual"
+      ) {
         // Move bookmark to classified folder and clear pending cluster status
         // Note: pending_cluster, pending_since, cluster_id, cluster_confidence 是 V4.2 新增字段
         const { error: moveError } = await supabase
@@ -282,9 +302,10 @@ export async function classifyBookmarkV2(
       }
 
       // Medium confidence - check trust mode before deciding action
+      // 注意：高置信度 >= 80% 在 manual 模式下也会进入这里，因为跳过了自动分类
       if (result.confidence >= SUGGEST_THRESHOLD) {
-        // V4.2.19: 检查用户托管模式，full_auto 模式下直接自动分类
-        const trustMode = await trustModeService.getUserTrustMode(userId);
+        // V4.2.21: trustMode 已在上面获取，无需重复调用
+        // const trustMode = await trustModeService.getUserTrustMode(userId);
 
         if (trustMode === "full_auto" && result.folderId) {
           // Full Auto 模式：中等置信度也直接自动分类，不创建确认消息
