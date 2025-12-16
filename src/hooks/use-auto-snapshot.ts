@@ -11,7 +11,7 @@
 
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { useAutoSnapshotSettings } from "@/hooks/use-auto-snapshot-settings";
@@ -151,6 +151,16 @@ export function useAutoSnapshot({
   const pendingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const cancelledRef = useRef(false);
   const [hasPendingSnapshot, setHasPendingSnapshot] = useState(false);
+
+  // 组件卸载时清理 timeout，防止内存泄漏
+  useEffect(() => {
+    return () => {
+      if (pendingTimeoutRef.current) {
+        clearTimeout(pendingTimeoutRef.current);
+        pendingTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   // 取消待执行的快照
   const cancelPendingSnapshot = useCallback(() => {

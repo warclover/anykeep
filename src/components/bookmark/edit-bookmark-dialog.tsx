@@ -72,11 +72,12 @@ export function EditBookmarkDialog({
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // P2-010: 自动快照触发
+  // 注：hasSnapshot 暂时默认 false，API 会处理重复创建（返回 ALREADY_EXISTS）
   const originalUsageTagsRef = useRef<string[]>([]);
   const { checkAndTriggerSnapshot } = useAutoSnapshot({
     bookmarkId: bookmark.id,
     bookmarkUrl: bookmark.url,
-    hasSnapshot: false, // 由 hook 内部检查
+    hasSnapshot: false,
   });
 
   // 当 bookmark 变化时重置表单

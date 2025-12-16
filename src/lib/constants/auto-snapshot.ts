@@ -3,45 +3,12 @@
  * P2-010: 用途标签触发自动快照功能
  */
 
-import type { SnapshotType } from "@/lib/snapshot/snapshot.types";
+// 从规范位置导入/重导出类型，避免重复定义
+import type { AutoSnapshotSettings } from "@/types/user-settings";
 
-/**
- * 自动快照设置接口
- */
-export interface AutoSnapshotSettings {
-  /** 功能总开关 (默认: true) */
-  enabled: boolean;
-
-  /** 触发标签列表 (默认: ["优质经验"]) */
-  triggerTags: string[];
-
-  /** 快照类型 (默认: "basic") */
-  snapshotType: SnapshotType;
-
-  /** 创建前显示确认 Toast (默认: true) */
-  showConfirmToast: boolean;
-
-  /** 确认延迟时间(毫秒) (默认: 3000) */
-  confirmDelayMs: number;
-
-  /** 配额不足时静默跳过 (默认: false) */
-  silentOnQuotaExceeded: boolean;
-}
-
-/**
- * 默认自动快照设置
- * - 「优质经验」预设为已配置
- * - 使用 basic 类型节省配额
- * - 3秒取消窗口
- */
-export const DEFAULT_AUTO_SNAPSHOT_SETTINGS: AutoSnapshotSettings = {
-  enabled: true,
-  triggerTags: ["优质经验"], // 预设「优质经验」已配置
-  snapshotType: "basic",
-  showConfirmToast: true,
-  confirmDelayMs: 3000, // 3秒取消窗口
-  silentOnQuotaExceeded: false, // 配额不足时显示升级提示
-};
+export type { AutoSnapshotSettings } from "@/types/user-settings";
+export { DEFAULT_AUTO_SNAPSHOT_SETTINGS } from "@/types/user-settings";
+export type { SnapshotTriggerSource } from "@/lib/snapshot/snapshot.types";
 
 /**
  * 推荐的触发标签配置
@@ -78,16 +45,6 @@ export const CONFIRM_DELAY_OPTIONS = [
   { value: 3000, label: "3 秒" },
   { value: 5000, label: "5 秒" },
 ] as const;
-
-/**
- * 快照触发来源类型
- */
-export type SnapshotTriggerSource =
-  | "manual" // 手动创建
-  | "auto-tag" // 标签自动触发
-  | "batch" // 批量创建
-  | "scheduled" // 定时任务
-  | "api"; // API 调用
 
 /**
  * 检查标签是否为触发标签
