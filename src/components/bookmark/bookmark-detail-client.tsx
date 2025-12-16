@@ -53,7 +53,7 @@ import { hasVisionData } from "@/types/vision";
 import { UsageTagInlineEditor } from "@/components/bookmark/usage-tag-inline-editor";
 import { ContentTypeBadge } from "@/components/bookmark/content-type-badge";
 import type { ContentType } from "@/lib/classification/content-type-detector";
-import type { Bookmark } from "@/types/supabase";
+import type { Bookmark, CustomUsageTag } from "@/types/supabase";
 import { useCustomUsageTags } from "@/hooks/use-custom-usage-tags";
 import { cn } from "@/lib/utils";
 import { getPlatformConfig } from "@/lib/platform-utils";
@@ -69,11 +69,14 @@ interface BookmarkDetailClientProps {
     source_id?: string | null;
   };
   folderPath?: Array<{ id: number; name: string }>;
+  /** V4.2.22: SSR 预取的自定义用途标签，消除客户端加载延迟 */
+  initialCustomUsageTags?: CustomUsageTag[];
 }
 
 export function BookmarkDetailClient({
   bookmark,
   folderPath = [],
+  initialCustomUsageTags = [],
 }: BookmarkDetailClientProps) {
   const router = useRouter();
   const { fetchWithAbort } = useAbortableFetch();
@@ -156,8 +159,11 @@ export function BookmarkDetailClient({
     markAsRead();
   }, [bookmark.id, bookmark.is_read, router]);
 
-  // V9.0新增：自定义用途标签（使用全局缓存 Hook，避免重复请求）
-  const { customTags: customUsageTags } = useCustomUsageTags();
+  // V4.2.22: 自定义用途标签 - 优先使用 SSR 预取数据，消除加载延迟
+  // 如果 SSR 数据为空（如直接访问 URL），回退到客户端 Hook
+  const { customTags: hookCustomTags } = useCustomUsageTags();
+  const customUsageTags =
+    initialCustomUsageTags.length > 0 ? initialCustomUsageTags : hookCustomTags;
 
   // 分离用途标签和普通标签
   const { usageTags, regularTags } = separateUserTagsExtended(
