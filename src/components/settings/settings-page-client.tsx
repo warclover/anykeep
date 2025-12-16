@@ -118,19 +118,100 @@ export function SettingsPageClient({
   };
 
   // 平台授权
-  const handlePlatformAuth = (_platform: string) => {
-    // TODO: 实现平台 OAuth 流程
+  const handlePlatformAuth = (platform: string) => {
+    // 平台 OAuth 集成需要各平台开发者账号和回调配置
+    // 当前显示开发中提示
+    alert(`「${platform}」平台授权功能开发中，敬请期待！`);
   };
 
   // 导出数据
+  const [exporting, setExporting] = useState(false);
   const handleExportData = async () => {
-    // TODO: 实现数据导出
+    if (exporting) return;
+
+    setExporting(true);
+    try {
+      const response = await fetch("/api/user/export", {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        throw new Error("导出失败");
+      }
+
+      // 获取文件名
+      const contentDisposition = response.headers.get("Content-Disposition");
+      const filenameMatch = contentDisposition?.match(/filename="(.+)"/);
+      const filename = filenameMatch?.[1] || "anykeep-export.json";
+
+      // 下载文件
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      clientLogger.info({}, "Data exported successfully");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "导出失败";
+      alert(message);
+      clientLogger.error({ error: message }, "Failed to export data");
+    } finally {
+      setExporting(false);
+    }
   };
 
   // 删除账号
+  const [deleting, setDeleting] = useState(false);
   const handleDeleteAccount = async () => {
-    if (confirm("确定要删除账号吗？此操作不可逆！")) {
-      // TODO: 实现账号删除
+    // 第一次确认
+    if (!confirm("确定要删除账号吗？此操作将删除所有数据且不可逆！")) {
+      return;
+    }
+
+    // 要求输入邮箱确认
+    const confirmEmail = prompt("请输入您的邮箱地址以确认删除：");
+    if (!confirmEmail) {
+      return;
+    }
+
+    if (confirmEmail !== user.email) {
+      alert("邮箱地址不匹配，删除已取消");
+      return;
+    }
+
+    setDeleting(true);
+    try {
+      const response = await fetch("/api/user/delete", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          confirmDelete: true,
+          confirmEmail,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error?.message || "删除失败");
+      }
+
+      alert("账号已删除");
+      // 跳转到登录页
+      router.push("/login");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "删除账号失败";
+      alert(message);
+      clientLogger.error({ error: message }, "Failed to delete account");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -438,17 +519,19 @@ export function SettingsPageClient({
                     variant="outline"
                     className="w-full justify-start"
                     onClick={handleExportData}
+                    disabled={exporting}
                   >
                     <Download className="size-4 mr-2" />
-                    导出我的数据
+                    {exporting ? "导出中..." : "导出我的数据"}
                   </Button>
                   <Button
                     variant="outline"
                     className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/10"
                     onClick={handleDeleteAccount}
+                    disabled={deleting}
                   >
                     <Trash2 className="size-4 mr-2" />
-                    删除我的账号
+                    {deleting ? "删除中..." : "删除我的账号"}
                   </Button>
                 </div>
               </CardContent>

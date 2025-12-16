@@ -13,6 +13,12 @@ import {
   stopProfileEventHandler,
   getProfileEventHandler,
 } from "@/lib/classification/services/profile-event-handler.service";
+import {
+  initHeatTracker,
+  stopHeatTracker,
+  getHeatTracker,
+  getPendingSuggestionsCount,
+} from "./services/heat-tracker.service";
 import type { FolderOrganizationStatus } from "./types/domain-types";
 
 // ============================================================================
@@ -63,13 +69,14 @@ export function initFolderOrganization(
     logger.debug({}, "FolderOrganization: Profile event handler started");
   }
 
-  // 2. 热度追踪（后续迭代实现）
+  // 2. 热度追踪
   if (enableHeatTracking) {
-    // TODO: 初始化热度追踪定时任务
-    logger.debug(
-      {},
-      "FolderOrganization: Heat tracking enabled (pending implementation)",
-    );
+    const heatTracker = initHeatTracker({
+      intervalMs: 60 * 60 * 1000, // 1 小时
+      autoUpdate: true,
+    });
+    heatTracker.start();
+    logger.debug({}, "FolderOrganization: Heat tracker started");
   }
 
   isInitialized = true;
@@ -89,22 +96,47 @@ export function stopFolderOrganization(): void {
   // 停止事件处理器
   stopProfileEventHandler();
 
+  // 停止热度追踪
+  stopHeatTracker();
+
   isInitialized = false;
   logger.info({}, "FolderOrganization: Module stopped");
 }
 
 /**
- * 获取模块状态
+ * 获取模块状态（同步版本）
+ * @returns 模块状态（不含待处理建议数，需调用异步版本获取）
  */
 export function getFolderOrganizationStatus(): FolderOrganizationStatus {
   const handler = getProfileEventHandler();
+  const heatTracker = getHeatTracker();
 
   return {
     initialized: isInitialized,
     eventHandlerActive: handler !== null,
-    heatTrackerActive: false, // TODO: 实现后更新
+    heatTrackerActive: heatTracker?.isRunning() ?? false,
     lastEventTime,
-    pendingSuggestions: 0, // TODO: 从数据库查询
+    pendingSuggestions: 0, // 使用 getFullFolderOrganizationStatus 获取实际值
+  };
+}
+
+/**
+ * 获取完整模块状态（异步版本，包含数据库查询）
+ * @param supabase - Supabase 客户端
+ * @param userId - 用户 ID
+ */
+export async function getFullFolderOrganizationStatus(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+): Promise<FolderOrganizationStatus> {
+  const baseStatus = getFolderOrganizationStatus();
+
+  // 查询待处理建议数量
+  const pendingSuggestions = await getPendingSuggestionsCount(supabase, userId);
+
+  return {
+    ...baseStatus,
+    pendingSuggestions,
   };
 }
 

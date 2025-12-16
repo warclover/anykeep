@@ -67,6 +67,23 @@ export {
 } from "./services/auto-organization.service";
 
 // ============================================================================
+// Heat Tracking Service (V4.2 P3)
+// ============================================================================
+export {
+  FolderHeatTrackerService,
+  initHeatTracker,
+  getHeatTracker,
+  stopHeatTracker,
+  getPendingSuggestionsCount,
+  type HeatTrackerConfig,
+  type HeatTrackerStatus,
+} from "./services/heat-tracker.service";
+
+// ============================================================================
 // Module Initialization
 // ============================================================================
-export { initFolderOrganization, getFolderOrganizationStatus } from "./init";
+export {
+  initFolderOrganization,
+  getFolderOrganizationStatus,
+  getFullFolderOrganizationStatus,
+} from "./init";

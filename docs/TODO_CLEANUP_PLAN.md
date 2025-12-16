@@ -182,18 +182,23 @@ async deleteSnapshot(userId: string, snapshotId: number): Promise<boolean> {
 
 ## P3 优先级 (建议本月完成)
 
-### 3. Folder Organization 热度追踪
+### 3. Folder Organization 热度追踪 ✅
+
+**状态**: 已完成 (2025-12-16)
 
 **涉及文件**:
 
 - `src/lib/folder-organization/init.ts` (3 处)
+- `src/lib/folder-organization/services/heat-tracker.service.ts` (新建)
 
-**待实现**:
+**已实现**:
 
-- 热度追踪定时任务
-- 从数据库查询待处理建议数量
+- ✅ 热度追踪定时任务 (`FolderHeatTrackerService`)
+- ✅ 从数据库查询待处理建议数量 (`getPendingSuggestionsCount`)
+- ✅ 模块状态返回实际热度追踪状态 (`heatTrackerActive`)
+- ✅ 新增异步完整状态查询 (`getFullFolderOrganizationStatus`)
 
-**预计工时**: 4-6 小时
+**实际工时**: 2 小时
 
 ---
 
@@ -215,19 +220,28 @@ async deleteSnapshot(userId: string, snapshotId: number): Promise<boolean> {
 
 ---
 
-### 5. Settings 页面功能
+### 5. Settings 页面功能 ✅
+
+**状态**: 已完成 (2025-12-16)
 
 **涉及文件**:
 
 - `src/components/settings/settings-page-client.tsx` (3 处)
+- `src/app/api/user/export/route.ts` (新建)
+- `src/app/api/user/delete/route.ts` (新建)
 
-**待实现**:
+**已实现**:
 
-- 平台 OAuth 流程
-- 数据导出功能
-- 账号删除功能
+- ✅ 平台 OAuth 流程（占位提示，需各平台开发者账号配置）
+- ✅ 数据导出功能 (`POST /api/user/export`)
+  - 导出书签、文件夹、浏览器书签、用户设置
+  - JSON 格式下载
+- ✅ 账号删除功能 (`DELETE /api/user/delete`)
+  - 二次确认（邮箱验证）
+  - 清理 Storage 文件
+  - 级联删除所有关联数据
 
-**预计工时**: 12-16 小时
+**实际工时**: 3 小时
 
 ---
 
