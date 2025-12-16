@@ -22,11 +22,8 @@ import { logger } from "@/lib/logger";
 import type {
   SnapshotType,
   SnapshotStatus,
-  SnapshotJobType,
   BookmarkSnapshotRow,
-  BookmarkSnapshotInsert,
   BookmarkSnapshotUpdate,
-  SnapshotJobPayload,
   SnapshotQuota,
   SnapshotSummary,
 } from "./snapshot.types";
@@ -203,6 +200,7 @@ export class SnapshotService {
 
   /**
    * 创建快照任务
+   * V4.2.16: 使用原子化 RPC 函数，避免竞态条件
    */
   async createSnapshot(
     userId: string,
@@ -211,133 +209,54 @@ export class SnapshotService {
   ): Promise<CreateSnapshotResult> {
     const supabase = await this.getSupabase();
 
-    // 1. 检查书签是否存在且属于当前用户
-    const { data: bookmark, error: bookmarkError } = await supabase
-      .from("bookmarks")
-      .select("id, url, user_id")
-      .eq("id", bookmarkId)
-      .eq("user_id", userId)
-      .is("deleted_at", null)
-      .single();
-
-    if (bookmarkError || !bookmark) {
-      throw new Error("BOOKMARK_NOT_FOUND: 书签不存在或无权访问");
-    }
-
-    // 2. 检查是否已有进行中的快照
-    const existingSnapshot = await this.getActiveSnapshot(userId, bookmarkId);
-    if (existingSnapshot) {
-      throw new Error("ALREADY_EXISTS: 该书签已有快照或快照任务进行中");
-    }
-
-    // 3. 获取配额信息（包含会员等级）
-    const quota = await this.getUserQuota(userId);
-
-    // 4. 检查配额
-    if (!quota.canCreate) {
-      throw new Error("QUOTA_EXCEEDED: 快照配额已满");
-    }
-
-    // 5. 确定快照类型（默认 basic）
-    const requestedType = options.snapshotType || "basic";
-
-    // 6. Pro 权限检查：standard/full 快照需要 Pro 会员
-    const allowedTypes = this.getAllowedSnapshotTypes(quota.membership);
-    if (!allowedTypes.includes(requestedType)) {
-      throw new Error(
-        `INVALID_TYPE: ${requestedType} 类型快照需要 Pro 会员，请升级后使用`,
-      );
-    }
-
-    const snapshotType = requestedType;
-    const expiresAt =
-      quota.membership === "PRO"
-        ? null
-        : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(); // 30天
-
-    // 6. 创建快照记录 (P2-010: 支持 trigger_source/trigger_tag)
-    const snapshotInsert: BookmarkSnapshotInsert = {
-      bookmark_id: bookmarkId,
-      user_id: userId,
-      snapshot_type: snapshotType,
-      status: "pending",
-      original_url: bookmark.url,
-      expires_at: expiresAt || undefined,
-      trigger_source: options.source || "manual",
-      trigger_tag:
-        options.source === "auto-tag" ? options.triggerTag : undefined,
-    };
-
-    const { data: snapshot, error: insertError } = await getSnapshotsTable(
-      supabase,
-    )
-      .insert(snapshotInsert)
-      .select("id")
-      .single();
-
-    if (insertError) {
-      logger.error(
-        { error: insertError.message, bookmarkId },
-        "[SnapshotService] Failed to create snapshot record",
-      );
-      throw new Error(`创建快照失败: ${insertError.message}`);
-    }
-
-    // 7. 入队任务
-    const jobType: SnapshotJobType =
-      `create_snapshot_${snapshotType}` as SnapshotJobType;
+    const snapshotType = options.snapshotType || "basic";
     const priority = options.priority || "normal";
     const priorityValue = priority === "high" ? 1 : priority === "low" ? -1 : 0;
 
-    const jobPayload: SnapshotJobPayload = {
-      bookmark_id: bookmarkId,
-      snapshot_id: snapshot.id,
-      url: bookmark.url,
-      snapshot_type: snapshotType,
-      user_id: userId,
-      priority,
-    };
+    // V4.2.16: 使用原子化函数，在单个事务中完成配额检查和记录创建
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.rpc as any)(
+      "atomic_create_snapshot",
+      {
+        p_user_id: userId,
+        p_bookmark_id: bookmarkId,
+        p_snapshot_type: snapshotType,
+        p_estimated_size: 102400, // 预估 100KB
+        p_trigger_source: options.source || "manual",
+        p_trigger_tag:
+          options.source === "auto-tag" ? options.triggerTag : null,
+        p_priority: priorityValue,
+      },
+    );
 
-    const { data: job, error: jobError } =
-      await // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (supabase.from("job_queue") as any)
-        .insert({
-          user_id: userId,
-          type: jobType,
-          payload: jobPayload,
-          priority: priorityValue,
-          scheduled_at: new Date().toISOString(),
-        })
-        .select("id")
-        .single();
-
-    if (jobError) {
-      // 回滚快照记录
-      await getSnapshotsTable(supabase).delete().eq("id", snapshot.id);
+    if (error) {
       logger.error(
-        { error: jobError.message, bookmarkId },
-        "[SnapshotService] Failed to enqueue job",
+        { error: error.message, bookmarkId },
+        "[SnapshotService] Failed to create snapshot atomically",
       );
-      throw new Error(`任务入队失败: ${jobError.message}`);
+      throw new Error(`创建快照失败: ${error.message}`);
     }
 
-    // 8. 更新快照关联的 job_id
-    await getSnapshotsTable(supabase)
-      .update({ job_id: job.id })
-      .eq("id", snapshot.id);
+    const result = Array.isArray(data) ? data[0] : data;
 
-    // 9. 估算等待时间
+    if (!result?.success) {
+      const errorCode = result?.error_code || "UNKNOWN_ERROR";
+      const errorMessage = result?.error_message || "未知错误";
+      throw new Error(`${errorCode}: ${errorMessage}`);
+    }
+
+    // 估算等待时间
     const pendingCount = await this.getPendingCount();
-    const estimatedWaitTime = Math.max(5, pendingCount * 3); // 每个任务约3秒
+    const estimatedWaitTime = Math.max(5, pendingCount * 3);
 
     logger.info(
-      { snapshotId: snapshot.id, jobId: job.id, bookmarkId },
-      "[SnapshotService] Snapshot task created",
+      { snapshotId: result.snapshot_id, jobId: result.job_id, bookmarkId },
+      "[SnapshotService] Snapshot task created atomically",
     );
 
     return {
-      snapshotId: snapshot.id,
-      jobId: job.id,
+      snapshotId: result.snapshot_id,
+      jobId: result.job_id,
       status: "pending",
       estimatedWaitTime,
     };
@@ -345,6 +264,7 @@ export class SnapshotService {
 
   /**
    * 批量创建快照
+   * V4.2.16: 使用原子化批量 RPC 函数，提高效率并避免竞态条件
    */
   async batchCreateSnapshots(
     userId: string,
@@ -361,53 +281,52 @@ export class SnapshotService {
       error?: string;
     }>;
   }> {
-    const results = {
-      created: 0,
-      skipped: 0,
-      failed: 0,
-      details: [] as Array<{
-        bookmarkId: number;
-        snapshotId?: number;
-        jobId?: string;
-        error?: string;
-      }>,
+    const supabase = await this.getSupabase();
+    const snapshotType = options.snapshotType || "basic";
+
+    // V4.2.16: 使用原子化批量函数
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.rpc as any)(
+      "atomic_batch_create_snapshots",
+      {
+        p_user_id: userId,
+        p_bookmark_ids: bookmarkIds,
+        p_snapshot_type: snapshotType,
+        p_trigger_source: options.source || "batch",
+        p_max_batch_size: 50,
+      },
+    );
+
+    if (error) {
+      logger.error(
+        { error: error.message, count: bookmarkIds.length },
+        "[SnapshotService] Failed to batch create snapshots atomically",
+      );
+      throw new Error(`批量创建快照失败: ${error.message}`);
+    }
+
+    const result = Array.isArray(data) ? data[0] : data;
+
+    logger.info(
+      {
+        requested: result?.total_requested,
+        created: result?.total_created,
+        skipped: result?.total_skipped,
+      },
+      "[SnapshotService] Batch snapshots created atomically",
+    );
+
+    // 注意：原子函数返回的是 snapshot_ids，无法直接映射回 bookmark_ids
+    // 这里简化处理，只返回总计数
+    return {
+      created: result?.total_created || 0,
+      skipped: result?.total_skipped || 0,
+      failed:
+        (result?.total_requested || 0) -
+        (result?.total_created || 0) -
+        (result?.total_skipped || 0),
+      details: [], // 原子函数不返回每条详情
     };
-
-    // 检查总配额
-    const quota = await this.getUserQuota(userId);
-    const availableSlots = quota.maxCount - quota.usedCount;
-
-    if (availableSlots <= 0) {
-      throw new Error("QUOTA_EXCEEDED: 配额已满，无法创建更多快照");
-    }
-
-    // 限制批量数量
-    const idsToProcess = bookmarkIds.slice(0, Math.min(availableSlots, 50));
-
-    for (const bookmarkId of idsToProcess) {
-      try {
-        const result = await this.createSnapshot(userId, bookmarkId, options);
-        results.created++;
-        results.details.push({
-          bookmarkId,
-          snapshotId: result.snapshotId,
-          jobId: result.jobId,
-        });
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        if (message.includes("ALREADY_EXISTS")) {
-          results.skipped++;
-        } else {
-          results.failed++;
-        }
-        results.details.push({
-          bookmarkId,
-          error: message,
-        });
-      }
-    }
-
-    return results;
   }
 
   // ==========================================================================
