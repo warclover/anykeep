@@ -81,7 +81,7 @@ const BrowserBookmarkImportDialog = lazy(() =>
 );
 // V3.1: FolderRecommendationToast 已废弃，由 useClassificationPolling 的 toast 通知替代
 import { EmptyState } from "@/components/bookmark/empty-state";
-import { UsageTagFilter } from "@/components/layout/usage-tag-filter";
+import { UsageTagFilterSheet } from "@/components/layout/usage-tag-filter-sheet";
 import { useSnapshotFeature } from "@/components/snapshot";
 import { QuickAddBookmark } from "@/components/quick-add";
 import { prefetchCustomUsageTags } from "@/hooks/use-custom-usage-tags";
@@ -1547,6 +1547,8 @@ export function HomePageClient({
               <Plus className="size-4 mr-1.5" />
               手动创建
             </Button>
+            {/* V10.2: 用途筛选按钮（Sheet 形式） */}
+            {!isBrowserPlatform && !currentFolder && <UsageTagFilterSheet />}
           </div>
         )}
 
@@ -1697,15 +1699,6 @@ export function HomePageClient({
           <EmptyState />
         )}
       </div>
-
-      {/* 底部工具栏：用途标签筛选（仅非浏览器书签平台和非虚拟文件夹时显示） */}
-      {!isBrowserPlatform && !currentFolder && (
-        <div className="sticky bottom-0 left-0 right-0 p-4 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 overflow-hidden">
-          <div className="flex-1 min-w-0 overflow-hidden">
-            <UsageTagFilter />
-          </div>
-        </div>
-      )}
 
       {/* 懒加载的 Dialog 组件 - 使用 Suspense 包裹 */}
       <Suspense fallback={null}>
