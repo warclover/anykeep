@@ -617,15 +617,25 @@ self.addEventListener("fetch", (event) => {
 
 ## 四、实施路线图（修订版）
 
-### 🔴 Week 1：核心认证优化（Phase 1）
+### ✅ Week 1：核心认证优化（Phase 1）— 已完成
 
 **目标**：解决 Supabase Auth 延迟问题，这是当前最大瓶颈。
 
-| 任务                           | 工作量 | 预期收益      |
-| ------------------------------ | ------ | ------------- |
-| P1-1: Session Token 传递机制   | 2天    | 认证时间 -80% |
-| P1-2: API 聚合端点 `/api/init` | 2天    | 请求数 -85%   |
-| P1-3: 延迟加载非关键数据       | 1天    | 首屏时间 -30% |
+| 任务                           | 工作量 | 预期收益      | 状态      |
+| ------------------------------ | ------ | ------------- | --------- |
+| P1-1: Session Token 传递机制   | 2天    | 认证时间 -80% | ✅ 已完成 |
+| P1-2: API 聚合端点 `/api/init` | 2天    | 请求数 -85%   | ✅ 已完成 |
+| P1-3: 延迟加载非关键数据       | 1天    | 首屏时间 -30% | ✅ 已完成 |
+
+**实现文件**：
+
+- `src/lib/api/fetch-with-auth.ts` - 客户端 token 缓存与自动携带
+- `src/lib/api/auth-middleware.ts` - 服务端三级认证（Header/Token/Cookie）
+- `src/app/api/init/route.ts` - 数据聚合端点
+- `src/hooks/use-init-data.ts` - 聚合数据 Hook
+- `src/hooks/use-unread-count.ts` - 延迟加载优化
+- `src/hooks/use-smart-lists.ts` - SWR 缓存优化
+- `src/components/smart-list/smart-list-section.tsx` - requestIdleCallback 延迟加载
 
 **预期效果：** TTFB -60%, Time to First Render -70%
 
@@ -634,6 +644,8 @@ self.addEventListener("fetch", (event) => {
 - [ ] 首页 TTFB < 1000ms
 - [ ] 首屏渲染 < 3000ms
 - [ ] API 请求数从 7+ 降至 2-3
+
+> **下一步**：在首页 `home-page-client.tsx` 中集成 `useInitData` Hook 以获得完整收益
 
 ### 🟡 Week 2：网络与缓存优化（Phase 2）
 
