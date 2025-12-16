@@ -44,6 +44,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAbortableFetch } from "@/hooks/use-abortable-fetch";
+import { useInitData } from "@/hooks/use-init-data";
 import { useBookmarksSWR, cachePerformanceTracker } from "@/lib/cache";
 import { Button } from "@/components/ui/button";
 import { BookmarkCard } from "@/components/bookmark/bookmark-card";
@@ -406,8 +407,29 @@ export function HomePageClient({
     layoutMode === "column" && "layout-column",
   );
 
+  // ===== V4.2.24: 聚合数据获取（性能优化） =====
+  // 当没有 SSR 初始数据时，使用聚合 API 一次获取所有数据
+  // 好处：7+ 个请求合并为 1 个，单次认证替代多次重复认证
+  const shouldUseInitData =
+    !initialBookmarks?.length && // 没有 SSR 数据
+    !currentPlatform && // 默认平台（全部）
+    !currentFolder && // 没有文件夹筛选
+    !localUsageTags.length; // 没有用途标签筛选
+
+  const { bookmarks: initBookmarks, isLoading: isInitDataLoading } =
+    useInitData({
+      enabled: shouldUseInitData,
+    });
+
   // ===== SWR 数据缓存（性能优化核心） =====
   // 使用 SWR 模式：有缓存先显示，后台自动刷新
+  // V4.2.24: 优先使用聚合 API 数据作为初始值
+  const effectiveInitialData = initialBookmarks?.length
+    ? initialBookmarks
+    : initBookmarks.length
+      ? initBookmarks
+      : undefined;
+
   const {
     data: bookmarks,
     hasMore,
@@ -427,7 +449,9 @@ export function HomePageClient({
     sort: currentSort,
     folder: currentFolder,
     usageTags: localUsageTags, // V9.0新增：用途标签筛选
-    initialData: initialBookmarks,
+    initialData: effectiveInitialData,
+    // V4.2.24: 当使用聚合 API 且正在加载时，暂时禁用独立获取
+    enabled: !shouldUseInitData || !isInitDataLoading,
   });
 
   // 兼容层：setBookmarks 改为使用 mutate（支持数组和函数两种形式）
