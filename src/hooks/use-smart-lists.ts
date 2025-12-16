@@ -8,6 +8,7 @@
 
 import useSWR from "swr";
 import { useCallback, useState } from "react";
+import { authFetcher, fetchWithAuth } from "@/lib/api/fetch-with-auth";
 import type {
   SmartListClient,
   SmartListFilters,
@@ -73,15 +74,17 @@ export interface UseSmartListsResult {
 }
 
 // ============================================
-// Fetcher
+// Fetcher（使用带认证的 fetcher）
 // ============================================
 
+interface SmartListApiResponse {
+  success: boolean;
+  data: { smartLists: SmartListClient[] };
+  error?: { message: string };
+}
+
 async function fetcher(url: string): Promise<SmartListClient[]> {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error("获取智能列表失败");
-  }
-  const result = await response.json();
+  const result = await authFetcher<SmartListApiResponse>(url);
   if (!result.success) {
     throw new Error(result.error?.message || "获取智能列表失败");
   }
@@ -95,7 +98,7 @@ async function fetcher(url: string): Promise<SmartListClient[]> {
 async function createSmartList(
   data: CreateSmartListRequest,
 ): Promise<SmartListClient> {
-  const response = await fetch(API_BASE, {
+  const response = await fetchWithAuth(API_BASE, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
@@ -112,7 +115,7 @@ async function updateSmartList(
   id: number,
   data: UpdateSmartListRequest,
 ): Promise<SmartListClient> {
-  const response = await fetch(`${API_BASE}/${id}`, {
+  const response = await fetchWithAuth(`${API_BASE}/${id}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
@@ -126,7 +129,7 @@ async function updateSmartList(
 }
 
 async function deleteSmartList(id: number): Promise<void> {
-  const response = await fetch(`${API_BASE}/${id}`, {
+  const response = await fetchWithAuth(`${API_BASE}/${id}`, {
     method: "DELETE",
   });
 
@@ -137,7 +140,7 @@ async function deleteSmartList(id: number): Promise<void> {
 }
 
 async function previewSmartList(filters: SmartListFilters): Promise<number> {
-  const response = await fetch(`${API_BASE}/preview`, {
+  const response = await fetchWithAuth(`${API_BASE}/preview`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ filters }),
@@ -151,7 +154,7 @@ async function previewSmartList(filters: SmartListFilters): Promise<number> {
 }
 
 async function reorderSmartLists(ids: number[]): Promise<void> {
-  const response = await fetch(`${API_BASE}/reorder`, {
+  const response = await fetchWithAuth(`${API_BASE}/reorder`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ ids }),
@@ -164,7 +167,7 @@ async function reorderSmartLists(ids: number[]): Promise<void> {
 }
 
 async function initSmartListPresets(): Promise<number> {
-  const response = await fetch(`${API_BASE}/init-presets`, {
+  const response = await fetchWithAuth(`${API_BASE}/init-presets`, {
     method: "POST",
   });
 
@@ -193,14 +196,19 @@ export function useSmartLists(
   // 构建 API URL
   const url = enabled ? `${API_BASE}?includePresets=${includePresets}` : null;
 
-  // SWR 获取数据
+  // SWR 获取数据（优化配置）
   const { data, error, isLoading, mutate } = useSWR<SmartListClient[]>(
     url,
     fetcher,
     {
       refreshInterval: refreshInterval > 0 ? refreshInterval : undefined,
-      revalidateOnFocus: true,
-      dedupingInterval: 5000,
+      // 性能优化：减少不必要的重新验证
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      // 5 分钟内去重，减少重复请求
+      dedupingInterval: 300_000,
+      // 使用过期数据先展示，后台刷新
+      keepPreviousData: true,
     },
   );
 
