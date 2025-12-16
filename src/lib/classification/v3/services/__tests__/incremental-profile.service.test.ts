@@ -643,8 +643,10 @@ describe("IncrementalProfileService - Algorithm Tests", () => {
 
       // Should update with bookmark_count: 6
       expect(updateMock).toHaveBeenCalled();
-      const updateCall = updateMock.mock.calls[0][0];
-      expect(updateCall.bookmark_count).toBe(6);
+      const updateCall = (updateMock.mock.calls as unknown[][])[0]?.[0] as
+        | { bookmark_count: number }
+        | undefined;
+      expect(updateCall?.bookmark_count).toBe(6);
     });
 
     it("should decrement count on delete", async () => {
@@ -680,8 +682,10 @@ describe("IncrementalProfileService - Algorithm Tests", () => {
 
       // Should update with bookmark_count: 4
       expect(updateMock).toHaveBeenCalled();
-      const updateCall = updateMock.mock.calls[0][0];
-      expect(updateCall.bookmark_count).toBe(4);
+      const updateCall = (updateMock.mock.calls as unknown[][])[0]?.[0] as
+        | { bookmark_count: number }
+        | undefined;
+      expect(updateCall?.bookmark_count).toBe(4);
     });
 
     it("should not go below zero", async () => {
@@ -717,8 +721,10 @@ describe("IncrementalProfileService - Algorithm Tests", () => {
 
       // Should stay at 0, not go negative
       expect(updateMock).toHaveBeenCalled();
-      const updateCall = updateMock.mock.calls[0][0];
-      expect(updateCall.bookmark_count).toBe(0);
+      const updateCall = (updateMock.mock.calls as unknown[][])[0]?.[0] as
+        | { bookmark_count: number }
+        | undefined;
+      expect(updateCall?.bookmark_count).toBe(0);
     });
   });
 });

@@ -84,15 +84,14 @@ export async function POST(request: NextRequest) {
 
     // 验证所有 ID 属于当前用户
     const confirmationIds = body.actions.map((a) => a.confirmationId);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: validConfirmations, error: fetchError } = await (
-      supabase as any
-    )
-      .from(PENDING_CONFIRMATIONS_TABLE)
-      .select("id, bookmark_id, suggestion")
-      .eq("user_id", user.id)
-      .eq("status", "pending")
-      .in("id", confirmationIds);
+    const { data: validConfirmations, error: fetchError } =
+      await // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase 动态表查询类型限制
+      (supabase as any)
+        .from(PENDING_CONFIRMATIONS_TABLE)
+        .select("id, bookmark_id, suggestion")
+        .eq("user_id", user.id)
+        .eq("status", "pending")
+        .in("id", confirmationIds);
 
     if (fetchError) {
       throw new Error(`获取确认消息失败: ${fetchError.message}`);

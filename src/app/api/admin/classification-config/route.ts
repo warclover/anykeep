@@ -8,12 +8,29 @@
  * POST /api/admin/classification-config/refresh - 强制刷新缓存
  *
  * 注意：这是一个开发者工具 API，仅供内部使用
+ * 安全：需要管理员权限（通过 ADMIN_EMAILS 环境变量配置）
  */
 
 import { createClient } from "@/lib/supabase/server";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { getConfigCenter } from "@/lib/classification/v3/services/config-center.service";
+
+/**
+ * 检查用户是否为管理员
+ * 通过环境变量 ADMIN_EMAILS 配置，逗号分隔
+ */
+function isAdminUser(email: string | undefined): boolean {
+  if (!email) return false;
+  const adminEmails =
+    process.env.ADMIN_EMAILS?.split(",").map((e) => e.trim().toLowerCase()) ||
+    [];
+  // 开发环境默认允许所有用户访问（便于调试）
+  if (process.env.NODE_ENV === "development" && adminEmails.length === 0) {
+    return true;
+  }
+  return adminEmails.includes(email.toLowerCase());
+}
 
 /**
  * GET - 获取配置
@@ -30,6 +47,14 @@ export async function GET(request: NextRequest) {
 
     if (authError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // 验证管理员权限
+    if (!isAdminUser(user.email)) {
+      return NextResponse.json(
+        { error: "Forbidden - Admin access required" },
+        { status: 403 },
+      );
     }
 
     const { searchParams } = new URL(request.url);
@@ -130,6 +155,14 @@ export async function POST(request: NextRequest) {
 
     if (authError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // 验证管理员权限
+    if (!isAdminUser(user.email)) {
+      return NextResponse.json(
+        { error: "Forbidden - Admin access required" },
+        { status: 403 },
+      );
     }
 
     const body = await request.json();

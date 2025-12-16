@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 import {
   successResponse,
@@ -68,13 +68,13 @@ export async function POST(_request: NextRequest) {
       });
     }
 
-    // 3. 批量永久删除
-    const serviceClient = await createServiceClient();
+    // 3. 批量永久删除（使用普通客户端 + 显式 user_id 检查，不绕过 RLS）
     const itemIds = trashItems.map((item) => item.id);
-    const { error: deleteError } = await serviceClient
+    const { error: deleteError } = await supabase
       .from("bookmarks")
       .update({ deleted_at: new Date().toISOString() })
-      .in("id", itemIds);
+      .in("id", itemIds)
+      .eq("user_id", user.id); // 显式验证所有权，配合 RLS 双重保护
 
     logger.debug(
       {
@@ -89,8 +89,8 @@ export async function POST(_request: NextRequest) {
       return databaseError("清空垃圾箱失败", deleteError);
     }
 
-    // 4. 减少用户存储计数
-    const { error: decrementError } = await serviceClient.rpc(
+    // 4. 减少用户存储计数（使用普通客户端，RPC 内部应有权限检查）
+    const { error: decrementError } = await supabase.rpc(
       "decrement_storage_used",
       {
         target_user_id: user.id,

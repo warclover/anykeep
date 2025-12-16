@@ -22,6 +22,32 @@ import { logger } from "@/lib/logger";
 import { PerformanceMonitor } from "@/lib/utils/performance-monitor";
 
 /**
+ * V4.2.15: API 超时配置
+ * - 主分析操作不应超过 5 秒
+ * - 超时后返回部分结果或错误
+ */
+const API_TIMEOUT_MS = 5000;
+
+/**
+ * 带超时的 Promise 包装器
+ */
+function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  operation: string,
+): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(
+        () => reject(new Error(`操作超时: ${operation} 超过 ${timeoutMs}ms`)),
+        timeoutMs,
+      ),
+    ),
+  ]);
+}
+
+/**
  * V4.2.1: HTTP 缓存配置
  * - private: 仅客户端缓存，不共享
  * - max-age=60: 60 秒内使用缓存
@@ -72,16 +98,31 @@ export async function GET() {
     const inboxOrganizerService = container.getInboxOrganizerService();
     monitor.mark("ContainerInitialized");
 
-    // 3. 分析待整理文件夹（主要耗时操作）
+    // 3. 分析待整理文件夹（主要耗时操作，添加超时控制）
+    // V4.2.15: 使用 Promise.race 添加 5 秒超时保护
     const analysis = await monitor.measure(
       "InboxAnalyze",
-      () => inboxOrganizerService.analyze(user.id),
+      () =>
+        withTimeout(
+          inboxOrganizerService.analyze(user.id),
+          API_TIMEOUT_MS,
+          "InboxAnalyze",
+        ),
       { userId: user.id },
     );
 
-    // V4.2: 获取聚类处理状态
+    // V4.2: 获取聚类处理状态（独立超时，2秒足够）
     const clusterStatus = await monitor.measure("GetClusterStatus", () =>
-      inboxOrganizerService.getClusterProcessingStatus(user.id),
+      withTimeout(
+        inboxOrganizerService.getClusterProcessingStatus(user.id),
+        2000,
+        "GetClusterStatus",
+      ).catch(() => ({
+        // 超时时返回默认状态，不阻塞主流程
+        pendingClusterCount: 0,
+        processingCount: 0,
+        lastProcessedAt: null,
+      })),
     );
 
     // 输出性能报告

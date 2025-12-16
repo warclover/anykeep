@@ -83,9 +83,11 @@ export class BookmarkRepository {
       query = query.is("folder_id", null);
     }
 
-    const { data, error } = await query.order("created_at", {
-      ascending: false,
-    });
+    // V4.2.15: 添加 LIMIT 限制，防止大量数据导致性能问题
+    // 只处理最近 200 条待整理书签，更早的可通过分页逐步处理
+    const { data, error } = await query
+      .order("created_at", { ascending: false })
+      .limit(200);
 
     if (error) {
       throw new Error(`Failed to fetch inbox bookmarks: ${error.message}`);

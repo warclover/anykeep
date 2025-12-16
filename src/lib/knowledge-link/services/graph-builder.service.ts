@@ -183,15 +183,14 @@ export class GraphBuilderService implements IGraphBuilderService {
 
     try {
       // 1. 获取所有关联
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: linksData, error: linksError } = await (
-        this.supabase.rpc as any
-      )("get_user_knowledge_links", {
-        p_user_id: userId,
-        p_min_strength: minStrength,
-        p_link_types: linkTypes || null,
-        p_limit: maxNodes * 10, // Allow more edges
-      });
+      const { data: linksData, error: linksError } =
+        await // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase RPC 动态调用类型限制
+        (this.supabase.rpc as any)("get_user_knowledge_links", {
+          p_user_id: userId,
+          p_min_strength: minStrength,
+          p_link_types: linkTypes || null,
+          p_limit: maxNodes * 10, // Allow more edges
+        });
 
       if (linksError) {
         logger.error(
