@@ -3,79 +3,85 @@
  * 与登录页面保持一致的设计风格
  */
 
-'use client'
+"use client";
 
-import { useState } from 'react'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { useTheme } from 'next-themes'
-import { toast } from 'sonner'
-import { Sparkles, Mail, CheckCircle2, Moon, Sun } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { createClient } from '@/lib/supabase/client'
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useTheme } from "next-themes";
+import { toast } from "sonner";
+import { Sparkles, Mail, CheckCircle2, Moon, Sun } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { createClient } from "@/lib/supabase/client";
 
 export default function RegisterPage() {
-  const _router = useRouter()
-  const { theme, setTheme } = useTheme()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [success, setSuccess] = useState(false)
+  const _router = useRouter();
+  const { theme, setTheme } = useTheme();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
 
   const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
+    e.preventDefault();
+    setLoading(true);
 
     // 验证密码
     if (password !== confirmPassword) {
-      toast.error('密码不一致', {
-        description: '两次输入的密码不一致',
-      })
-      setLoading(false)
-      return
+      toast.error("密码不一致", {
+        description: "两次输入的密码不一致",
+      });
+      setLoading(false);
+      return;
     }
 
     if (password.length < 6) {
-      toast.error('密码长度不足', {
-        description: '密码长度至少6位',
-      })
-      setLoading(false)
-      return
+      toast.error("密码长度不足", {
+        description: "密码长度至少6位",
+      });
+      setLoading(false);
+      return;
     }
 
     try {
-      const supabase = createClient()
+      const supabase = createClient();
       const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/home`,
+          emailRedirectTo: `${window.location.origin}/auth/callback?next=/home`,
         },
-      })
+      });
 
       if (error) {
-        toast.error('注册失败', {
+        toast.error("注册失败", {
           description: error.message,
-        })
-        return
+        });
+        return;
       }
 
-      setSuccess(true)
-      toast.success('注册成功！', {
-        description: '请查收验证邮件',
-      })
+      setSuccess(true);
+      toast.success("注册成功！", {
+        description: "请查收验证邮件",
+      });
     } catch {
-      toast.error('注册失败', {
-        description: '请稍后重试',
-      })
+      toast.error("注册失败", {
+        description: "请稍后重试",
+      });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   // 成功状态页面
   if (success) {
@@ -88,7 +94,11 @@ export default function RegisterPage() {
             </div>
             <CardTitle className="text-2xl">注册成功！</CardTitle>
             <CardDescription className="text-base">
-              我们已向 <span className="font-medium text-gray-900 dark:text-white">{email}</span> 发送了一封验证邮件，请查收并点击链接完成注册。
+              我们已向{" "}
+              <span className="font-medium text-gray-900 dark:text-white">
+                {email}
+              </span>{" "}
+              发送了一封验证邮件，请查收并点击链接完成注册。
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -105,7 +115,7 @@ export default function RegisterPage() {
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
 
   return (
@@ -115,7 +125,7 @@ export default function RegisterPage() {
         variant="outline"
         size="sm"
         className="fixed top-4 right-4 z-50"
-        onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+        onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
       >
         <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
         <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
@@ -230,8 +240,13 @@ export default function RegisterPage() {
                 />
               </div>
 
-              <Button type="submit" className="w-full" size="lg" disabled={loading}>
-                {loading ? '注册中...' : '创建账号'}
+              <Button
+                type="submit"
+                className="w-full"
+                size="lg"
+                disabled={loading}
+              >
+                {loading ? "注册中..." : "创建账号"}
               </Button>
             </form>
 
@@ -249,7 +264,7 @@ export default function RegisterPage() {
 
             {/* 登录链接 */}
             <p className="text-center text-sm text-gray-600 dark:text-gray-400">
-              已有账号？{' '}
+              已有账号？{" "}
               <Link
                 href="/login"
                 className="text-purple-600 hover:text-purple-700 dark:text-purple-400 font-medium"
@@ -263,11 +278,11 @@ export default function RegisterPage() {
               <div className="flex items-start gap-2">
                 <CheckCircle2 className="size-4 text-green-600 flex-shrink-0 mt-0.5" />
                 <p className="text-xs text-gray-600 dark:text-gray-400">
-                  注册即表示您同意我们的{' '}
+                  注册即表示您同意我们的{" "}
                   <Link href="#" className="text-purple-600 hover:underline">
                     服务条款
-                  </Link>{' '}
-                  和{' '}
+                  </Link>{" "}
+                  和{" "}
                   <Link href="#" className="text-purple-600 hover:underline">
                     隐私政策
                   </Link>
@@ -278,5 +293,5 @@ export default function RegisterPage() {
         </Card>
       </div>
     </div>
-  )
+  );
 }

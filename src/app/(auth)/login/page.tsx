@@ -3,72 +3,124 @@
  * 左右分栏布局，品牌展示 + 多种登录方式
  */
 
-'use client'
+"use client";
 
-import { useState } from 'react'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { useTheme } from 'next-themes'
-import { toast } from 'sonner'
-import { Sparkles, Mail, Phone, CheckCircle2, Moon, Sun } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { createClient } from '@/lib/supabase/client'
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useTheme } from "next-themes";
+import { toast } from "sonner";
+import {
+  Sparkles,
+  Mail,
+  Phone,
+  CheckCircle2,
+  Moon,
+  Sun,
+  AlertCircle,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
-  const router = useRouter()
-  const { theme, setTheme } = useTheme()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [phone, setPhone] = useState('')
-  const [code, setCode] = useState('')
-  const [loading, setLoading] = useState(false)
+  const router = useRouter();
+  const { theme, setTheme } = useTheme();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [phone, setPhone] = useState("");
+  const [code, setCode] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [remainingAttempts, setRemainingAttempts] = useState<number | null>(
+    null,
+  );
 
   const handleEmailLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
+    e.preventDefault();
+    setLoading(true);
+    setLoginError(null);
 
     try {
-      const supabase = createClient()
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
+      // 使用带速率限制的 API
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
 
-      if (error) {
-        toast.error('登录失败', {
-          description: error.message,
-        })
-        return
+      const data = await response.json();
+
+      if (!response.ok) {
+        // 处理速率限制
+        if (response.status === 429) {
+          setLoginError(data.error);
+          setRemainingAttempts(0);
+          toast.error("登录受限", {
+            description: data.error,
+          });
+          return;
+        }
+
+        // 处理登录失败
+        setLoginError(data.error || "邮箱或密码错误");
+        if (data.remaining !== undefined) {
+          setRemainingAttempts(data.remaining);
+        }
+        toast.error("登录失败", {
+          description: data.message || data.error,
+        });
+        return;
       }
 
-      toast.success('登录成功！')
-      router.push('/home')
-      router.refresh()
+      // 登录成功，需要刷新 Supabase 客户端会话
+      const supabase = createClient();
+      const { error: sessionError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (sessionError) {
+        toast.error("会话创建失败", {
+          description: sessionError.message,
+        });
+        return;
+      }
+
+      setRemainingAttempts(null);
+      toast.success("登录成功！");
+      router.push("/home");
+      router.refresh();
     } catch {
-      toast.error('登录失败', {
-        description: '请稍后重试',
-      })
+      toast.error("登录失败", {
+        description: "网络错误，请稍后重试",
+      });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleDemoLogin = async () => {
-    setLoading(true)
+    setLoading(true);
 
     // 演示账号快速登录
     setTimeout(() => {
-      toast.success('欢迎体验 AnyKeep！', {
-        description: '演示账号已登录',
-      })
-      setLoading(false)
-      router.push('/home')
-    }, 1500)
-  }
+      toast.success("欢迎体验 AnyKeep！", {
+        description: "演示账号已登录",
+      });
+      setLoading(false);
+      router.push("/home");
+    }, 1500);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center">
@@ -77,7 +129,7 @@ export default function LoginPage() {
         variant="outline"
         size="sm"
         className="fixed top-4 right-4 z-50"
-        onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+        onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
       >
         <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
         <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
@@ -130,7 +182,7 @@ export default function LoginPage() {
                   </div>
                 </div>
                 <Button className="w-full" size="lg" disabled={loading}>
-                  {loading ? '登录中...' : '登录'}
+                  {loading ? "登录中..." : "登录"}
                 </Button>
               </TabsContent>
 
@@ -155,7 +207,7 @@ export default function LoginPage() {
                     onClick={handleDemoLogin}
                     disabled={loading}
                   >
-                    {loading ? '登录中...' : '模拟微信登录'}
+                    {loading ? "登录中..." : "模拟微信登录"}
                   </Button>
                 </div>
               </TabsContent>
@@ -163,6 +215,25 @@ export default function LoginPage() {
               {/* 邮箱登录 */}
               <TabsContent value="email" className="space-y-4">
                 <form onSubmit={handleEmailLogin} className="space-y-4">
+                  {/* 错误提示 */}
+                  {loginError && (
+                    <div className="p-3 bg-red-50 dark:bg-red-900/30 rounded-lg border border-red-200 dark:border-red-700">
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="size-4 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                          <p className="text-sm text-red-900 dark:text-red-300">
+                            {loginError}
+                          </p>
+                          {remainingAttempts !== null &&
+                            remainingAttempts > 0 && (
+                              <p className="text-xs text-red-700 dark:text-red-400 mt-1">
+                                还可尝试 {remainingAttempts} 次
+                              </p>
+                            )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   <div className="space-y-2">
                     <Label htmlFor="email">邮箱地址</Label>
                     <div className="relative">
@@ -197,14 +268,19 @@ export default function LoginPage() {
                       </span>
                     </label>
                     <Link
-                      href="#"
+                      href="/forgot-password"
                       className="text-purple-600 hover:text-purple-700 dark:text-purple-400"
                     >
                       忘记密码？
                     </Link>
                   </div>
-                  <Button type="submit" className="w-full" size="lg" disabled={loading}>
-                    {loading ? '登录中...' : '登录'}
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    size="lg"
+                    disabled={loading}
+                  >
+                    {loading ? "登录中..." : "登录"}
                   </Button>
                 </form>
               </TabsContent>
@@ -235,7 +311,7 @@ export default function LoginPage() {
               </Button>
 
               <p className="text-center text-sm text-gray-600 dark:text-gray-400">
-                还没有账号？{' '}
+                还没有账号？{" "}
                 <Link
                   href="/register"
                   className="text-purple-600 hover:text-purple-700 dark:text-purple-400"
@@ -258,5 +334,5 @@ export default function LoginPage() {
         </Card>
       </div>
     </div>
-  )
+  );
 }
