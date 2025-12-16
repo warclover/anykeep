@@ -1,13 +1,20 @@
 /**
  * 搜索页面客户端组件
  * 优化：接收 hotTagsSlot 作为流式渲染的插槽
+ * V4.2.17: 支持客户端导航时自动获取搜索结果
  */
 
 "use client";
 
-import { useState, type ReactNode } from "react";
+import {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  type ReactNode,
+} from "react";
 import { useRouter } from "next/navigation";
-import { Search, Sparkles, Clock, X } from "lucide-react";
+import { Search, Sparkles, Clock, X, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -32,9 +39,9 @@ const MAX_HISTORY = 10;
 export function SearchPageClient({
   initialQuery,
   initialAIMode,
-  searchResults,
+  searchResults: ssrSearchResults,
   hotTagsSlot,
-  error,
+  error: ssrError,
 }: SearchPageClientProps) {
   const router = useRouter();
   const [query, setQuery] = useState(initialQuery);
@@ -52,8 +59,111 @@ export function SearchPageClient({
   });
   const [showHistory, setShowHistory] = useState(false);
 
+  // V4.2.17: 客户端搜索状态（用于客户端导航时自动获取结果）
+  const [clientSearchResults, setClientSearchResults] = useState<
+    typeof ssrSearchResults | null
+  >(null);
+  const [isClientSearching, setIsClientSearching] = useState(false);
+  const [clientError, setClientError] = useState<string | null>(null);
+
+  // 合并 SSR 结果和客户端获取的结果
+  const searchResults = clientSearchResults ?? ssrSearchResults;
+  const error = clientError ?? ssrError;
+
+  // V4.2.17: 客户端搜索函数
+  const fetchSearchResults = useCallback(
+    async (searchQuery: string, isAI: boolean) => {
+      if (!searchQuery.trim()) return;
+
+      setIsClientSearching(true);
+      setClientError(null);
+
+      try {
+        const params = new URLSearchParams({
+          q: searchQuery,
+          mode: isAI ? "hybrid" : "keyword",
+          limit: "50",
+        });
+
+        const response = await fetch(`/api/search?${params.toString()}`);
+        const responseData = await response.json();
+
+        // API 响应格式: { success: boolean, data?: { results: [...] }, error?: { message: string } }
+        if (!response.ok || !responseData.success) {
+          throw new Error(responseData.error?.message || "搜索失败");
+        }
+
+        // 正确访问嵌套的 results 数组
+        const results = responseData.data?.results || [];
+        setClientSearchResults(results);
+      } catch (err) {
+        console.error("[SearchPageClient] Client search error:", err);
+        setClientError(
+          err instanceof Error ? err.message : "搜索时出错，请稍后重试",
+        );
+        setClientSearchResults([]);
+      } finally {
+        setIsClientSearching(false);
+      }
+    },
+    [],
+  );
+
+  // V4.2.17: 使用 ref 追踪上一次的查询，用于检测查询变化
+  const prevQueryRef = useRef<string>("");
+  const prevAIModeRef = useRef<boolean>(false);
+
+  // V4.2.17: 合并的 effect - 处理查询变化和自动获取
+  // 解决了分离 effects 的竞态条件问题
+  useEffect(() => {
+    const queryChanged = prevQueryRef.current !== initialQuery;
+    const aiModeChanged = prevAIModeRef.current !== initialAIMode;
+    const isFirstRender = prevQueryRef.current === "" && initialQuery !== "";
+
+    // 更新 refs
+    prevQueryRef.current = initialQuery;
+    prevAIModeRef.current = initialAIMode;
+
+    // 如果查询变化了（非首次渲染），重置状态并触发新搜索
+    if ((queryChanged || aiModeChanged) && !isFirstRender) {
+      setClientSearchResults(null);
+      setClientError(null);
+
+      // 直接触发搜索，避免依赖另一个 effect
+      if (initialQuery.trim().length > 0 && ssrSearchResults.length === 0) {
+        fetchSearchResults(initialQuery, initialAIMode);
+      }
+      return;
+    }
+
+    // 首次渲染或初始加载：当有查询但没有 SSR 结果时，自动进行客户端搜索
+    const needsClientSearch =
+      initialQuery.trim().length > 0 &&
+      ssrSearchResults.length === 0 &&
+      clientSearchResults === null &&
+      !ssrError;
+
+    if (needsClientSearch) {
+      fetchSearchResults(initialQuery, initialAIMode);
+    }
+  }, [
+    initialQuery,
+    initialAIMode,
+    ssrSearchResults,
+    clientSearchResults,
+    ssrError,
+    fetchSearchResults,
+  ]);
+
   const handleRetry = () => {
-    router.refresh();
+    // V4.2.17: 如果是客户端搜索模式，重新获取结果
+    if (clientSearchResults !== null || clientError) {
+      setClientSearchResults(null);
+      setClientError(null);
+      fetchSearchResults(initialQuery, aiMode);
+    } else {
+      router.refresh();
+    }
   };
 
   // 保存搜索历史
@@ -224,7 +334,15 @@ export function SearchPageClient({
         {/* 搜索结果 */}
         {hasQuery && (
           <div className="max-w-7xl mx-auto mt-8">
-            {error ? (
+            {isClientSearching ? (
+              // V4.2.17: 客户端搜索加载状态
+              <div className="flex flex-col items-center justify-center py-16">
+                <Loader2 className="size-8 text-purple-600 animate-spin mb-4" />
+                <p className="text-gray-500 dark:text-gray-400 text-sm">
+                  正在搜索...
+                </p>
+              </div>
+            ) : error ? (
               <ErrorMessage
                 title="搜索失败"
                 message={error}

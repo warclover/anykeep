@@ -405,17 +405,30 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
     return () => clearTimeout(timer);
   }, []);
 
+  // 用于追踪上一次的 searchParams，避免 useEffect 无限循环
+  const prevSearchParamsRef = useRef<string>("");
+
   /**
-   * URL 变化时同步状态（处理直接 URL 访问）
-   * 这是响应外部 URL 变化的合法用例，需要同步内部状态
+   * URL 变化时同步状态（处理直接 URL 访问和同页面参数变化）
+   * V4.2.17: 修复同一页面参数变化时 activeParams 不更新的问题
    */
   useEffect(() => {
     const pageId = (pathname ? ROUTE_TO_PAGE[pathname] : null) || null;
-    // 只有当 pageId 确实变化时才更新（包括从主页面到非主页面）
+    const newParamsString = searchParams?.toString() ?? "";
+    const paramsChanged = prevSearchParamsRef.current !== newParamsString;
+
+    // 更新 ref
+    prevSearchParamsRef.current = newParamsString;
+
+    // 当 pageId 变化时更新
     if (pageId !== activePage) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- 响应外部 URL 变化
       setActivePage(pageId);
-      setActiveParams(new URLSearchParams(searchParams?.toString() ?? ""));
+      setActiveParams(new URLSearchParams(newParamsString));
+    } else if (paramsChanged) {
+      // V4.2.17: 同一页面但参数变化（如搜索关键词变化）
+
+      setActiveParams(new URLSearchParams(newParamsString));
     }
   }, [pathname, searchParams, activePage]);
 

@@ -83,7 +83,8 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
           if (error) throw error;
           searchResults = (data as SearchResult[]) || [];
         }
-      } catch {
+      } catch (err) {
+        console.error("[SearchPage] Search error:", err);
         searchError = "搜索时出错，请稍后重试";
       }
     }
@@ -96,11 +97,15 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
     </Suspense>
   );
 
+  // V4.2.17: 确保 searchResults 是纯 JSON 可序列化的，避免 RSC hydration 问题
+  // 通过 JSON.parse(JSON.stringify()) 强制序列化，移除任何非 JSON 兼容的值
+  const serializedResults = JSON.parse(JSON.stringify(searchResults));
+
   return (
     <SearchPageClient
       initialQuery={params.q || ""}
       initialAIMode={params.ai === "true"}
-      searchResults={searchResults}
+      searchResults={serializedResults}
       hotTagsSlot={hotTagsSlot}
       error={searchError}
     />

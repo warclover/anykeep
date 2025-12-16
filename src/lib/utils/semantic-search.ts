@@ -151,9 +151,19 @@ export async function searchBookmarksHybrid(
     const [semanticResult, keywordResult] = await Promise.allSettled([
       searchBookmarksSemantic(supabase, userId, query, { threshold, limit }),
       // 关键词搜索（ILIKE）- 使用转义后的查询
+      // V4.2.17: 明确选择字段，排除 embedding 向量避免序列化问题
       supabase
         .from("bookmarks")
-        .select("*, folders(name)")
+        .select(
+          `
+          id, title, url, description, cover_url, platform,
+          ai_summary, ai_tags, folder_id, author, publish_time,
+          content_type, user_tags, notes, created_at, updated_at,
+          is_read, is_starred, is_locked, rating, status,
+          ai_content_type, source_name, word_count, image_count,
+          folders(name)
+        `,
+        )
         .eq("user_id", userId)
         .is("deleted_at", null)
         .or(

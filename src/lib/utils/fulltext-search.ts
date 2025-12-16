@@ -73,9 +73,19 @@ export async function searchBookmarksFulltext(
 
   try {
     // 使用全文搜索（需要 search_vector 列存在）
+    // V4.2.17: 明确选择字段，排除 embedding/search_vector 向量避免 RSC 序列化问题
     const { data, error } = await supabase
       .from("bookmarks")
-      .select("*, folders(name)")
+      .select(
+        `
+        id, title, url, description, cover_url, platform,
+        ai_summary, ai_tags, folder_id, author, publish_time,
+        content_type, user_tags, notes, created_at, updated_at,
+        is_read, is_starred, is_locked, rating, status,
+        ai_content_type, source_name, word_count, image_count,
+        folders(name)
+      `,
+      )
       .eq("user_id", userId)
       .is("deleted_at", null)
       .textSearch("search_vector", tsquery, {
@@ -110,9 +120,19 @@ export async function searchBookmarksIlike(
   // V4.2.6: 转义 ILIKE 特殊字符防止 SQL 注入
   const escapedQuery = escapeIlikePattern(query);
 
+  // V4.2.17: 明确选择字段，排除 embedding/search_vector 向量避免 RSC 序列化问题
   const { data, error } = await supabase
     .from("bookmarks")
-    .select("*, folders(name)")
+    .select(
+      `
+      id, title, url, description, cover_url, platform,
+      ai_summary, ai_tags, folder_id, author, publish_time,
+      content_type, user_tags, notes, created_at, updated_at,
+      is_read, is_starred, is_locked, rating, status,
+      ai_content_type, source_name, word_count, image_count,
+      folders(name)
+    `,
+    )
     .eq("user_id", userId)
     .is("deleted_at", null)
     .or(

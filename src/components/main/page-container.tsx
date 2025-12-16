@@ -285,15 +285,29 @@ function HomePageRenderer() {
 
 /**
  * 搜索页渲染器
+ * V4.2.17: 修复客户端导航时搜索结果丢失的问题
+ * 从 URL 参数读取查询和 AI 模式
+ *
+ * 重要：只有当搜索页面是当前活动页面时才渲染 SearchPageClient
+ * 这避免了隐藏的 PageContainer 触发不必要的 auto-fetch
  */
 function SearchPageRenderer() {
-  const { activeParams } = useNavigation();
+  const { activeParams, activePage } = useNavigation();
+
+  // V4.2.17: 只有当搜索页是当前活动页面时才渲染完整组件
+  // 这避免了隐藏 PageContainer 中的实例触发不必要的 API 调用
+  if (activePage !== "search") {
+    // 返回一个占位符，保持组件树结构
+    return <div data-placeholder="search-page" />;
+  }
+
   const initialQuery = activeParams.get("q") || "";
+  const initialAIMode = activeParams.get("ai") === "true";
 
   return (
     <SearchPageClient
       initialQuery={initialQuery}
-      initialAIMode={false}
+      initialAIMode={initialAIMode}
       searchResults={[]}
     />
   );
