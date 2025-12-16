@@ -249,13 +249,13 @@ async deleteSnapshot(userId: string, snapshotId: number): Promise<boolean> {
 
 ### 6. 其他零散 TODO
 
-| 文件                                                | 行号 | 内容                      | 工时 |
-| --------------------------------------------------- | ---- | ------------------------- | ---- |
-| `classification/learning/learning-event-handler.ts` | 165  | 获取书签的标签和来源      | 1h   |
-| `confirmation/confirmation.service.ts`              | 651  | 加载关联的书签/文件夹信息 | 2h   |
-| `confirmation/confirmation-expiry.cron.ts`          | 163  | 按用户分组发送通知        | 3h   |
-| `metrics/classification-metrics.ts`                 | 542  | 发送到指标收集服务        | 4h   |
-| `quick-add/drawer/DetailDrawer.tsx`                 | 187  | 从 API 加载文件夹         | 1h   |
+| 文件                                                | 行号 | 内容                      | 工时 | 状态      |
+| --------------------------------------------------- | ---- | ------------------------- | ---- | --------- |
+| `classification/learning/learning-event-handler.ts` | 165  | 获取书签的标签和来源      | 1h   | ✅ 已完成 |
+| `quick-add/drawer/DetailDrawer.tsx`                 | 187  | 从 API 加载文件夹         | 1h   | ✅ 已完成 |
+| `confirmation/confirmation.service.ts`              | 651  | 加载关联的书签/文件夹信息 | 2h   | 待处理    |
+| `confirmation/confirmation-expiry.cron.ts`          | 163  | 按用户分组发送通知        | 3h   | 待处理    |
+| `metrics/classification-metrics.ts`                 | 542  | 发送到指标收集服务        | 4h   | 待处理    |
 
 ---
 

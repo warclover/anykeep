@@ -5,10 +5,14 @@
  *
  * Right-side sliding drawer for advanced bookmark options.
  * Contains folder selection, tags, and notes inputs.
+ *
+ * @version 1.1.0 - Added API folder loading
+ * @since 2025-12-16
  */
 
 import { useEffect, useRef } from "react";
-import { X, FolderOpen, Tag, FileText } from "lucide-react";
+import { X, FolderOpen, Tag, FileText, Loader2 } from "lucide-react";
+import { useFolderList } from "../hooks/useFolderList";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -54,6 +58,13 @@ export function DetailDrawer({
 }: DetailDrawerProps) {
   const drawerRef = useRef<HTMLDivElement>(null);
   const tagInputRef = useRef<HTMLInputElement>(null);
+
+  // Load folders from API
+  const {
+    folders,
+    isLoading: foldersLoading,
+    error: foldersError,
+  } = useFolderList();
 
   // Handle escape key
   useEffect(() => {
@@ -171,22 +182,35 @@ export function DetailDrawer({
             <Label className="flex items-center gap-2 text-sm text-gray-700">
               <FolderOpen className="w-4 h-4" />
               文件夹
+              {foldersLoading && (
+                <Loader2 className="w-3 h-3 animate-spin text-gray-400" />
+              )}
             </Label>
             <select
               value={folderId || ""}
               onChange={(e) =>
                 onFolderChange(e.target.value ? Number(e.target.value) : null)
               }
+              disabled={foldersLoading}
               className={cn(
                 "w-full h-9 px-3 rounded-md border border-gray-200",
                 "bg-white text-sm",
                 "focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500",
+                "disabled:bg-gray-50 disabled:cursor-not-allowed",
               )}
             >
               <option value="">待整理</option>
-              {/* TODO: Load folders from API */}
+              {folders.map((folder) => (
+                <option key={folder.id} value={folder.id}>
+                  {folder.displayName}
+                </option>
+              ))}
             </select>
-            <p className="text-xs text-gray-400">AI 会自动推荐适合的文件夹</p>
+            {foldersError ? (
+              <p className="text-xs text-red-500">{foldersError}</p>
+            ) : (
+              <p className="text-xs text-gray-400">AI 会自动推荐适合的文件夹</p>
+            )}
           </div>
 
           {/* Tags */}

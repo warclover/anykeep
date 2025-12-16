@@ -8,11 +8,16 @@
  * - 监听批量操作事件
  * - 协调 NegativeSampleService 和 PreferenceLearner
  *
- * @version 1.0.0
+ * @version 1.1.0 - Added bookmark metadata fetching
  * @since 2025-12-11
  */
 
-import { eventBus, ClassificationEvents, OrganizationEvents } from "@/lib/shared/event-bus";
+import {
+  eventBus,
+  ClassificationEvents,
+  OrganizationEvents,
+} from "@/lib/shared/event-bus";
+import { createClient } from "@/lib/supabase/server";
 import type {
   BookmarkClassifiedEvent,
   ClassificationFeedbackEvent,
@@ -49,6 +54,14 @@ export interface LearningEventStats {
   preferencesLearned: number;
   errors: number;
   lastEventTime: Date | null;
+}
+
+/**
+ * 书签元数据（用于负样本学习）
+ */
+interface BookmarkMetadata {
+  tags: string[];
+  sourceId: string | null;
 }
 
 // ============================================================================
@@ -142,12 +155,21 @@ class LearningEventHandler {
   /**
    * 处理分类反馈事件
    */
-  private async handleClassificationFeedback(event: ClassificationFeedbackEvent): Promise<void> {
+  private async handleClassificationFeedback(
+    event: ClassificationFeedbackEvent,
+  ): Promise<void> {
     this.stats.totalEventsProcessed++;
     this.stats.lastEventTime = new Date();
 
     try {
-      const { userId, bookmarkId, feedbackType, originalFolderId, newFolderId, confidence } = event;
+      const {
+        userId,
+        bookmarkId,
+        feedbackType,
+        originalFolderId,
+        newFolderId,
+        confidence,
+      } = event;
 
       // 检查是否需要学习
       if (!this.shouldLearn(event)) {
@@ -157,14 +179,26 @@ class LearningEventHandler {
       // 负样本学习：用户拒绝或修改建议
       if (this.config.enableNegativeSampling && originalFolderId) {
         if (feedbackType === "rejected" || feedbackType === "corrected") {
+          // V4.2.16: 获取书签的标签和来源（如果事件中未提供）
+          let bookmarkTags = event.bookmarkTags;
+          let bookmarkSourceId = event.sourceId;
+
+          if (!bookmarkTags || !bookmarkSourceId) {
+            const metadata = await this.fetchBookmarkMetadata(bookmarkId);
+            if (metadata) {
+              bookmarkTags = bookmarkTags || metadata.tags;
+              bookmarkSourceId =
+                bookmarkSourceId || metadata.sourceId || undefined;
+            }
+          }
+
           // 从拒绝中学习
           const result = await negativeSampleService.learnFromRejection({
             userId,
             bookmarkId,
             rejectedFolderId: originalFolderId,
-            // TODO: 获取书签的标签和来源
-            bookmarkTags: event.bookmarkTags,
-            bookmarkSourceId: event.sourceId,
+            bookmarkTags,
+            bookmarkSourceId,
           });
 
           this.stats.negativeSamplesCreated += result.exclusionsCreated;
@@ -203,14 +237,19 @@ class LearningEventHandler {
       }
     } catch (error) {
       this.stats.errors++;
-      logger.error({ error, event }, "Failed to handle classification feedback");
+      logger.error(
+        { error, event },
+        "Failed to handle classification feedback",
+      );
     }
   }
 
   /**
    * 处理书签分类完成事件
    */
-  private async handleBookmarkClassified(event: BookmarkClassifiedEvent): Promise<void> {
+  private async handleBookmarkClassified(
+    event: BookmarkClassifiedEvent,
+  ): Promise<void> {
     this.stats.totalEventsProcessed++;
     this.stats.lastEventTime = new Date();
 
@@ -223,14 +262,19 @@ class LearningEventHandler {
       }
     } catch (error) {
       this.stats.errors++;
-      logger.error({ error, event }, "Failed to handle bookmark classified event");
+      logger.error(
+        { error, event },
+        "Failed to handle bookmark classified event",
+      );
     }
   }
 
   /**
    * 处理文件夹画像更新事件
    */
-  private async handleProfileUpdated(event: FolderProfileUpdatedEvent): Promise<void> {
+  private async handleProfileUpdated(
+    event: FolderProfileUpdatedEvent,
+  ): Promise<void> {
     this.stats.totalEventsProcessed++;
     this.stats.lastEventTime = new Date();
 
@@ -392,6 +436,52 @@ class LearningEventHandler {
     }
 
     return true;
+  }
+
+  /**
+   * V4.2.16: 从数据库获取书签的标签和来源信息
+   * 用于负样本学习时补充缺失的元数据
+   */
+  private async fetchBookmarkMetadata(
+    bookmarkId: number,
+  ): Promise<BookmarkMetadata | null> {
+    try {
+      const supabase = await createClient();
+
+      // source_id 字段可能不在生成的类型中，使用类型断言
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any)
+        .from("bookmarks")
+        .select("ai_tags, source_id")
+        .eq("id", bookmarkId)
+        .is("deleted_at", null)
+        .single();
+
+      if (error) {
+        if (error.code !== "PGRST116") {
+          // 忽略 "no rows returned" 错误
+          logger.warn(
+            { error: error.message, bookmarkId },
+            "[LearningEventHandler] Failed to fetch bookmark metadata",
+          );
+        }
+        return null;
+      }
+
+      return {
+        tags: (data?.ai_tags as string[]) || [],
+        sourceId: (data?.source_id as string) || null,
+      };
+    } catch (error) {
+      logger.warn(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          bookmarkId,
+        },
+        "[LearningEventHandler] Exception fetching bookmark metadata",
+      );
+      return null;
+    }
   }
 
   // ============================================================================
