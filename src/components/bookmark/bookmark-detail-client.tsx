@@ -53,7 +53,8 @@ import { hasVisionData } from "@/types/vision";
 import { UsageTagInlineEditor } from "@/components/bookmark/usage-tag-inline-editor";
 import { ContentTypeBadge } from "@/components/bookmark/content-type-badge";
 import type { ContentType } from "@/lib/classification/content-type-detector";
-import type { Bookmark, CustomUsageTag } from "@/types/supabase";
+import type { Bookmark } from "@/types/supabase";
+import { useCustomUsageTags } from "@/hooks/use-custom-usage-tags";
 import { cn } from "@/lib/utils";
 import { getPlatformConfig } from "@/lib/platform-utils";
 import { formatFriendlyDate } from "@/lib/utils/date-utils";
@@ -155,26 +156,8 @@ export function BookmarkDetailClient({
     markAsRead();
   }, [bookmark.id, bookmark.is_read, router]);
 
-  // V9.0新增：自定义用途标签
-  const [customUsageTags, setCustomUsageTags] = useState<CustomUsageTag[]>([]);
-
-  // 加载自定义用途标签
-  useEffect(() => {
-    const loadCustomTags = async () => {
-      try {
-        const response = await fetch("/api/settings/usage-tags");
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success && data.data?.customUsageTags) {
-            setCustomUsageTags(data.data.customUsageTags);
-          }
-        }
-      } catch {
-        // 静默失败
-      }
-    };
-    loadCustomTags();
-  }, []);
+  // V9.0新增：自定义用途标签（使用全局缓存 Hook，避免重复请求）
+  const { customTags: customUsageTags } = useCustomUsageTags();
 
   // 分离用途标签和普通标签
   const { usageTags, regularTags } = separateUserTagsExtended(
@@ -521,8 +504,10 @@ export function BookmarkDetailClient({
                 </h1>
 
                 {/* V10.1: 用途标签（点击即保存，无需编辑按钮） */}
+                {/* P2-010: 集成自动快照触发 */}
                 <UsageTagInlineEditor
                   bookmarkId={bookmark.id}
+                  bookmarkUrl={bookmark.url}
                   selectedTags={usageTags}
                   regularTags={regularTags}
                   onSaveSuccess={() => router.refresh()}

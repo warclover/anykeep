@@ -291,63 +291,73 @@ export async function classifyBookmarkV2(
           const { error: moveError } = await supabase
             .from("bookmarks")
             .update({ folder_id: result.folderId })
-            .eq("id", bookmarkId);
+            .eq("id", bookmarkId)
+            .eq("user_id", userId); // V4.2.20: 添加 user_id 条件，确保 RLS 正确工作
 
           if (moveError) {
             logger.error(
               { error: moveError, bookmarkId, folderId: result.folderId },
               "Classification V2: Failed to auto-classify (full_auto, medium confidence)",
             );
-          } else {
-            logger.info(
-              {
-                bookmarkId,
-                folderId: result.folderId,
-                folderName: result.folderName,
-                confidence: result.confidence,
-                trustMode: "full_auto",
-              },
-              "Classification V2: Auto-classified (full_auto mode, medium confidence)",
-            );
-
-            // 发送自动分类完成消息（静默级别）
-            await MessageService.notifyClassificationComplete(
-              userId,
-              bookmarkId,
-              result.folderName || "未知文件夹",
-              result.confidence,
-              true, // isAuto = true
-            ).catch((err) => {
-              logger.warn(
-                { error: err },
-                "Failed to create classification message",
-              );
-            });
-
-            // 更新分类状态
-            await updateBookmarkClassificationStatus(
-              supabase,
-              bookmarkId,
-              userId,
-              "classified",
-              {
-                folderId: result.folderId,
-                folderName: result.folderName,
-                confidence: result.confidence,
-                action: "classify",
-                timestamp: new Date().toISOString(),
-                reason: `${result.reason || ""} (full_auto mode)`,
-              },
-            );
-
+            // V4.2.20: 移动失败时返回，不继续创建确认消息
             return {
-              classified: true,
+              classified: false,
+              folderId: null,
+              folderName: null,
+              confidence: result.confidence,
+              action: "inbox",
+            };
+          }
+
+          // 移动成功，记录日志并返回
+          logger.info(
+            {
+              bookmarkId,
+              folderId: result.folderId,
+              folderName: result.folderName,
+              confidence: result.confidence,
+              trustMode: "full_auto",
+            },
+            "Classification V2: Auto-classified (full_auto mode, medium confidence)",
+          );
+
+          // 发送自动分类完成消息（静默级别）
+          await MessageService.notifyClassificationComplete(
+            userId,
+            bookmarkId,
+            result.folderName || "未知文件夹",
+            result.confidence,
+            true, // isAuto = true
+          ).catch((err) => {
+            logger.warn(
+              { error: err },
+              "Failed to create classification message",
+            );
+          });
+
+          // 更新分类状态
+          await updateBookmarkClassificationStatus(
+            supabase,
+            bookmarkId,
+            userId,
+            "classified",
+            {
               folderId: result.folderId,
               folderName: result.folderName,
               confidence: result.confidence,
               action: "classify",
-            };
-          }
+              timestamp: new Date().toISOString(),
+              reason: `${result.reason || ""} (full_auto mode)`,
+            },
+          );
+
+          return {
+            classified: true,
+            folderId: result.folderId,
+            folderName: result.folderName,
+            confidence: result.confidence,
+            action: "classify",
+          };
         }
 
         // Semi-auto 或 Manual 模式：创建确认消息
