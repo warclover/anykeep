@@ -129,6 +129,8 @@ export function BookmarkDetailClient({
   const hasMarkedAsRead = useRef(false);
 
   // 访问详情页时自动标记已读
+  // V4.2.23: 移除 router.refresh()，避免页面二次渲染
+  // 首页通过 SWR 后台刷新获取最新已读状态
   useEffect(() => {
     const markAsRead = async () => {
       // 如果已读或已经调用过，则跳过
@@ -139,25 +141,23 @@ export function BookmarkDetailClient({
       hasMarkedAsRead.current = true;
 
       try {
-        const res = await fetch(`/api/bookmarks/${bookmark.id}`, {
+        await fetch(`/api/bookmarks/${bookmark.id}`, {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ isRead: true }),
         });
-
-        if (res.ok) {
-          // 静默成功，不显示 toast（避免干扰用户阅读）
-          router.refresh();
-        }
+        // V4.2.23: 静默成功，不调用 router.refresh()
+        // 这是后台静默操作，无需触发页面刷新
+        // 用户返回首页时，SWR 会自动获取最新状态
       } catch {
         // 静默失败，不阻塞用户体验
       }
     };
 
     markAsRead();
-  }, [bookmark.id, bookmark.is_read, router]);
+  }, [bookmark.id, bookmark.is_read]);
 
   // V4.2.22: 自定义用途标签 - 优先使用 SSR 预取数据，消除加载延迟
   // 如果 SSR 数据为空（如直接访问 URL），回退到客户端 Hook

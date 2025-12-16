@@ -323,6 +323,12 @@ export const BookmarkCard = memo(function BookmarkCard({
     </div>
   );
 
+  // V4.2.23: 预加载详情页，减少点击后的感知延迟
+  // 鼠标悬停时触发，Next.js 会预加载目标页面的 JS 和数据
+  const handlePrefetch = () => {
+    router.prefetch(`/bookmark/${bookmark.id}`);
+  };
+
   // 通用的卡片/列表点击处理（使用程序化导航确保可靠性）
   const handleItemClick = (e: React.MouseEvent) => {
     // 如果点击的是按钮或链接，不处理（让按钮/链接自己处理）
@@ -352,6 +358,7 @@ export const BookmarkCard = memo(function BookmarkCard({
     return (
       <div
         onClick={handleItemClick}
+        onMouseEnter={handlePrefetch}
         className={cn(
           "flex items-center gap-2 sm:gap-4 p-2 sm:p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-sm transition-shadow cursor-pointer group",
           isDeleting && "opacity-50 pointer-events-none",
@@ -453,6 +460,7 @@ export const BookmarkCard = memo(function BookmarkCard({
     return (
       <div
         onClick={handleItemClick}
+        onMouseEnter={handlePrefetch}
         className="block cursor-pointer"
         role="link"
         tabIndex={0}
@@ -677,6 +685,7 @@ export const BookmarkCard = memo(function BookmarkCard({
   return (
     <div
       onClick={handleItemClick}
+      onMouseEnter={handlePrefetch}
       className="block h-full cursor-pointer"
       role="link"
       tabIndex={0}

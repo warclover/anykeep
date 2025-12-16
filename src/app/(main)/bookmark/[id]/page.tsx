@@ -63,32 +63,21 @@ export default async function BookmarkDetailPage({
   const settings = (profileResult.data?.settings as ProfileSettings) || {};
   const customUsageTags: CustomUsageTag[] = settings.customUsageTags || [];
 
-  // 如果有文件夹，递归获取父文件夹链
+  // V4.2.23: 使用 CTE 递归查询替代客户端递归，优化性能
+  // 单次数据库往返替代 N 次（N = 文件夹嵌套层级）
   let folderPath: Array<{ id: number; name: string }> = [];
   if (bookmark.folders) {
-    const buildFolderPath = async (
-      folderId: number,
-    ): Promise<Array<{ id: number; name: string }>> => {
-      const { data: folder } = await supabase
-        .from("folders")
-        .select("id, name, parent_id")
-        .eq("id", folderId)
-        .single();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: pathData } = await (supabase.rpc as any)("get_folder_path", {
+      p_folder_id: bookmark.folders.id,
+    });
 
-      if (!folder) return [];
-
-      const path = [{ id: folder.id, name: folder.name }];
-
-      // 如果有父文件夹，递归获取
-      if (folder.parent_id) {
-        const parentPath = await buildFolderPath(folder.parent_id);
-        return [...parentPath, ...path];
-      }
-
-      return path;
-    };
-
-    folderPath = await buildFolderPath(bookmark.folders.id);
+    if (pathData && Array.isArray(pathData)) {
+      folderPath = pathData.map((item: { id: number; name: string }) => ({
+        id: item.id,
+        name: item.name,
+      }));
+    }
   }
 
   return (

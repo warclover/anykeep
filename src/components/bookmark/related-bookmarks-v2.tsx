@@ -10,8 +10,9 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import useSWR from "swr";
 import {
   ExternalLink,
   Folder,
@@ -97,6 +98,16 @@ const LINK_TYPE_CONFIG: Record<
 // Component
 // ============================================================================
 
+// V4.2.23: SWR fetcher 函数
+const relatedBookmarksFetcher = async (url: string): Promise<ApiResponse> => {
+  const response = await fetch(url);
+  const data: ApiResponse = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || "获取相关书签失败");
+  }
+  return data;
+};
+
 export function RelatedBookmarksV2({
   bookmarkId,
   className,
@@ -107,51 +118,39 @@ export function RelatedBookmarksV2({
 }: RelatedBookmarksV2Props) {
   const router = useRouter();
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
-  const [isLoading, setIsLoading] = useState(true);
-  const [related, setRelated] = useState<RelatedBookmark[]>([]);
-  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchRelated = async () => {
-      setIsLoading(true);
-      setError(null);
+  // V4.2.23: 构建 SWR key（仅在展开时请求）
+  const swrKey = useMemo(() => {
+    if (!isExpanded) return null;
 
-      try {
-        // 构建查询参数
-        const params = new URLSearchParams();
-        params.set("limit", String(limit));
-        params.set("minStrength", String(minStrength));
-        if (types && types.length > 0) {
-          params.set("types", types.join(","));
-        }
-
-        const response = await fetch(
-          `/api/knowledge-link/related/${bookmarkId}?${params.toString()}`,
-        );
-
-        const data: ApiResponse = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.error || "获取相关书签失败");
-        }
-
-        if (data.success && data.data?.related) {
-          setRelated(data.data.related);
-        } else {
-          setRelated([]);
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "未知错误");
-        setRelated([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    if (isExpanded) {
-      fetchRelated();
+    const params = new URLSearchParams();
+    params.set("limit", String(limit));
+    params.set("minStrength", String(minStrength));
+    if (types && types.length > 0) {
+      params.set("types", types.join(","));
     }
+    return `/api/knowledge-link/related/${bookmarkId}?${params.toString()}`;
   }, [bookmarkId, limit, minStrength, types, isExpanded]);
+
+  // V4.2.23: 使用 SWR 缓存，减少重复请求
+  const {
+    data,
+    error: swrError,
+    isLoading,
+  } = useSWR<ApiResponse>(swrKey, relatedBookmarksFetcher, {
+    revalidateOnFocus: false, // 切换标签页不重新请求
+    revalidateOnReconnect: false, // 网络恢复不重新请求
+    dedupingInterval: 60000, // 60秒内相同请求去重
+    errorRetryCount: 2, // 错误重试次数
+  });
+
+  // 提取数据和错误
+  const related = data?.success ? data.data?.related || [] : [];
+  const error = swrError
+    ? swrError instanceof Error
+      ? swrError.message
+      : "未知错误"
+    : null;
 
   // 强度标签颜色
   const getStrengthColor = (strength: number) => {
@@ -237,6 +236,9 @@ export function RelatedBookmarksV2({
                     key={item.bookmark.id}
                     className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
                     onClick={() => router.push(`/bookmark/${item.bookmark.id}`)}
+                    onMouseEnter={() =>
+                      router.prefetch(`/bookmark/${item.bookmark.id}`)
+                    }
                   >
                     <CardContent className="p-3">
                       <div className="flex items-start justify-between gap-3">
