@@ -11,6 +11,7 @@ import { CONFIDENCE_THRESHOLDS } from "./types/classification-status";
 import { logger } from "@/lib/logger";
 import { MessageService } from "@/lib/messages/server";
 import { confirmationService } from "@/lib/confirmation";
+import { trustModeService } from "@/lib/trust-mode/trust-mode.service";
 import type { ClassificationResult, BookmarkInput } from "./types";
 import type { ClassificationSuggestion } from "@/types/confirmation";
 import type {
@@ -280,8 +281,76 @@ export async function classifyBookmarkV2(
         };
       }
 
-      // Medium confidence - save suggestion
+      // Medium confidence - check trust mode before deciding action
       if (result.confidence >= SUGGEST_THRESHOLD) {
+        // V4.2.19: 检查用户托管模式，full_auto 模式下直接自动分类
+        const trustMode = await trustModeService.getUserTrustMode(userId);
+
+        if (trustMode === "full_auto" && result.folderId) {
+          // Full Auto 模式：中等置信度也直接自动分类，不创建确认消息
+          const { error: moveError } = await supabase
+            .from("bookmarks")
+            .update({ folder_id: result.folderId })
+            .eq("id", bookmarkId);
+
+          if (moveError) {
+            logger.error(
+              { error: moveError, bookmarkId, folderId: result.folderId },
+              "Classification V2: Failed to auto-classify (full_auto, medium confidence)",
+            );
+          } else {
+            logger.info(
+              {
+                bookmarkId,
+                folderId: result.folderId,
+                folderName: result.folderName,
+                confidence: result.confidence,
+                trustMode: "full_auto",
+              },
+              "Classification V2: Auto-classified (full_auto mode, medium confidence)",
+            );
+
+            // 发送自动分类完成消息（静默级别）
+            await MessageService.notifyClassificationComplete(
+              userId,
+              bookmarkId,
+              result.folderName || "未知文件夹",
+              result.confidence,
+              true, // isAuto = true
+            ).catch((err) => {
+              logger.warn(
+                { error: err },
+                "Failed to create classification message",
+              );
+            });
+
+            // 更新分类状态
+            await updateBookmarkClassificationStatus(
+              supabase,
+              bookmarkId,
+              userId,
+              "classified",
+              {
+                folderId: result.folderId,
+                folderName: result.folderName,
+                confidence: result.confidence,
+                action: "classify",
+                timestamp: new Date().toISOString(),
+                reason: `${result.reason || ""} (full_auto mode)`,
+              },
+            );
+
+            return {
+              classified: true,
+              folderId: result.folderId,
+              folderName: result.folderName,
+              confidence: result.confidence,
+              action: "classify",
+            };
+          }
+        }
+
+        // Semi-auto 或 Manual 模式：创建确认消息
         const { data: suggestion, error: suggestionError } = await supabase
           .from("classification_suggestions")
           .insert({
@@ -306,40 +375,43 @@ export async function classifyBookmarkV2(
               folderId: result.folderId,
               folderName: result.folderName,
               confidence: result.confidence,
+              trustMode,
             },
             "Classification V2: Saved suggestion (medium confidence)",
           );
 
-          // V4.2: 创建待确认记录（替代旧的 classification_suggest 消息）
-          // 获取书签 URL 用于确认消息展示
-          const { data: bookmarkData } = await supabase
-            .from("bookmarks")
-            .select("url")
-            .eq("id", bookmarkId)
-            .single();
+          // V4.2: 仅在非 full_auto 模式下创建待确认记录
+          if (trustMode !== "full_auto") {
+            // 获取书签 URL 用于确认消息展示
+            const { data: bookmarkData } = await supabase
+              .from("bookmarks")
+              .select("url")
+              .eq("id", bookmarkId)
+              .single();
 
-          const confirmationSuggestion: ClassificationSuggestion = {
-            folderId: result.folderId,
-            folderName: result.folderName,
-            confidence: Math.round(result.confidence), // 已是 0-100 范围
-            reason: result.reason || "基于内容相似度匹配",
-            alternatives: [], // 可从 result.scores 中提取备选项
-          };
+            const confirmationSuggestion: ClassificationSuggestion = {
+              folderId: result.folderId,
+              folderName: result.folderName,
+              confidence: Math.round(result.confidence),
+              reason: result.reason || "基于内容相似度匹配",
+              alternatives: [],
+            };
 
-          await confirmationService
-            .createClassificationConfirmation({
-              userId,
-              bookmarkId,
-              bookmarkTitle: title,
-              bookmarkUrl: bookmarkData?.url || "",
-              suggestion: confirmationSuggestion,
-            })
-            .catch((err) => {
-              logger.warn(
-                { error: err },
-                "Failed to create classification confirmation",
-              );
-            });
+            await confirmationService
+              .createClassificationConfirmation({
+                userId,
+                bookmarkId,
+                bookmarkTitle: title,
+                bookmarkUrl: bookmarkData?.url || "",
+                suggestion: confirmationSuggestion,
+              })
+              .catch((err) => {
+                logger.warn(
+                  { error: err },
+                  "Failed to create classification confirmation",
+                );
+              });
+          }
 
           // V3.1: Write classification status for frontend polling
           await updateBookmarkClassificationStatus(
