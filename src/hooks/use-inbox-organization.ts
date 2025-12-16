@@ -1,14 +1,34 @@
 /**
  * 待整理文件夹智能整理 Hook
  * 管理待整理文件夹的分析和建议处理
+ *
+ * @version V4.2.24 - 性能优化：
+ * - 添加 enabled 选项支持延迟加载
+ * - 添加 SWR 缓存和去重
+ * - 添加 requestIdleCallback 空闲时加载
+ * - 改善超时错误处理
  */
 
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
+import useSWR from "swr";
 import { toast } from "sonner";
 import type { OrganizationAnalysis } from "@/lib/classification";
 import type { ClusterProcessingStatus } from "@/types/supabase";
+
+// ============================================
+// 类型定义
+// ============================================
+
+interface UseInboxOrganizationOptions {
+  /** 是否启用数据获取（默认 true） */
+  enabled?: boolean;
+  /** 是否使用空闲时加载（默认 true） */
+  useIdleCallback?: boolean;
+  /** 延迟加载时间（毫秒），0 表示立即加载 */
+  loadDelay?: number;
+}
 
 interface UseInboxOrganizationResult {
   /** 分析结果 */
@@ -31,44 +51,136 @@ interface UseInboxOrganizationResult {
   pendingCount: number;
 }
 
-export function useInboxOrganization(): UseInboxOrganizationResult {
-  const [analysis, setAnalysis] = useState<OrganizationAnalysis | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+// ============================================
+// 常量配置
+// ============================================
 
-  /**
-   * 获取分析结果
-   */
-  const fetchAnalysis = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
+/** API 请求超时时间（毫秒） */
+const REQUEST_TIMEOUT = 8000;
 
-    try {
-      const response = await fetch("/api/classification/inbox");
+/** SWR 缓存 Key */
+const SWR_KEY = "/api/classification/inbox";
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error?.message || "获取整理建议失败");
-      }
+// ============================================
+// Fetcher 函数
+// ============================================
 
-      const data = await response.json();
-      setAnalysis(data.data);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "获取整理建议失败";
-      setError(message);
-      console.error("Failed to fetch inbox analysis:", err);
-    } finally {
-      setIsLoading(false);
+/**
+ * 带超时的 Inbox 分析 Fetcher
+ */
+async function inboxFetcher(url: string): Promise<OrganizationAnalysis> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
+
+  try {
+    const response = await fetch(url, {
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.error?.message || "获取整理建议失败");
     }
-  }, []);
+
+    const data = await response.json();
+    return data.data;
+  } catch (err) {
+    // 处理超时错误
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new Error("分析超时，请稍后重试");
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+// ============================================
+// Hook 实现
+// ============================================
+
+export function useInboxOrganization(
+  options: UseInboxOrganizationOptions = {},
+): UseInboxOrganizationResult {
+  const {
+    enabled = true,
+    useIdleCallback = true,
+    loadDelay = 500, // 默认延迟 500ms
+  } = options;
+
+  // V4.2.24: 延迟加载控制
+  const [shouldFetch, setShouldFetch] = useState(loadDelay === 0 && enabled);
+  const hasInitialized = useRef(false);
+
+  // 延迟加载逻辑
+  useEffect(() => {
+    if (!enabled || shouldFetch || hasInitialized.current) return;
+
+    hasInitialized.current = true;
+    let cleanup: (() => void) | undefined;
+
+    if (
+      useIdleCallback &&
+      typeof window !== "undefined" &&
+      "requestIdleCallback" in window
+    ) {
+      // 使用 requestIdleCallback 在浏览器空闲时加载
+      const idleId = window.requestIdleCallback(
+        () => setShouldFetch(true),
+        { timeout: loadDelay + 2000 }, // 最大等待时间
+      );
+      cleanup = () => window.cancelIdleCallback(idleId);
+    } else {
+      // 回退到 setTimeout
+      const timerId = setTimeout(() => setShouldFetch(true), loadDelay);
+      cleanup = () => clearTimeout(timerId);
+    }
+
+    return cleanup;
+  }, [enabled, loadDelay, useIdleCallback, shouldFetch]);
+
+  // V4.2.24: 使用 SWR 进行数据获取和缓存
+  const {
+    data: analysis,
+    error: swrError,
+    isLoading,
+    mutate,
+  } = useSWR<OrganizationAnalysis>(
+    shouldFetch ? SWR_KEY : null, // 条件获取
+    inboxFetcher,
+    {
+      // 5 分钟内不重复请求（与服务端缓存 TTL 一致）
+      dedupingInterval: 300000,
+      // 不在聚焦时自动刷新（手动控制）
+      revalidateOnFocus: false,
+      // 网络恢复时不自动刷新
+      revalidateOnReconnect: false,
+      // 保持之前的数据（避免闪烁）
+      keepPreviousData: true,
+      // 错误重试配置
+      errorRetryCount: 2,
+      errorRetryInterval: 3000,
+      // 失败时静默处理（不自动 toast）
+      shouldRetryOnError: true,
+    },
+  );
+
+  // 处理状态
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  // 错误信息
+  const error = swrError
+    ? swrError instanceof Error
+      ? swrError.message
+      : "获取整理建议失败"
+    : null;
 
   /**
    * 刷新分析
    */
   const refresh = useCallback(async () => {
-    await fetchAnalysis();
-  }, [fetchAnalysis]);
+    await mutate();
+  }, [mutate]);
 
   /**
    * 应用建议
@@ -89,16 +201,18 @@ export function useInboxOrganization(): UseInboxOrganizationResult {
           throw new Error(data.error?.message || "应用建议失败");
         }
 
-        // 从列表中移除已应用的建议
-        setAnalysis((prev) =>
-          prev
-            ? {
-                ...prev,
-                suggestions: prev.suggestions.filter(
-                  (s) => s.id !== suggestionId,
-                ),
-              }
-            : null,
+        // 乐观更新：从列表中移除已应用的建议
+        await mutate(
+          (prev) =>
+            prev
+              ? {
+                  ...prev,
+                  suggestions: prev.suggestions.filter(
+                    (s) => s.id !== suggestionId,
+                  ),
+                }
+              : prev,
+          { revalidate: false },
         );
 
         toast.success("建议已应用");
@@ -106,13 +220,12 @@ export function useInboxOrganization(): UseInboxOrganizationResult {
       } catch (err) {
         const message = err instanceof Error ? err.message : "应用建议失败";
         toast.error(message);
-        console.error("Failed to apply suggestion:", err);
         return false;
       } finally {
         setIsProcessing(false);
       }
     },
-    [],
+    [mutate],
   );
 
   /**
@@ -134,16 +247,18 @@ export function useInboxOrganization(): UseInboxOrganizationResult {
           throw new Error(data.error?.message || "忽略建议失败");
         }
 
-        // 从列表中移除已拒绝的建议
-        setAnalysis((prev) =>
-          prev
-            ? {
-                ...prev,
-                suggestions: prev.suggestions.filter(
-                  (s) => s.id !== suggestionId,
-                ),
-              }
-            : null,
+        // 乐观更新：从列表中移除已拒绝的建议
+        await mutate(
+          (prev) =>
+            prev
+              ? {
+                  ...prev,
+                  suggestions: prev.suggestions.filter(
+                    (s) => s.id !== suggestionId,
+                  ),
+                }
+              : prev,
+          { revalidate: false },
         );
 
         toast.success("已忽略该建议");
@@ -151,19 +266,13 @@ export function useInboxOrganization(): UseInboxOrganizationResult {
       } catch (err) {
         const message = err instanceof Error ? err.message : "忽略建议失败";
         toast.error(message);
-        console.error("Failed to reject suggestion:", err);
         return false;
       } finally {
         setIsProcessing(false);
       }
     },
-    [],
+    [mutate],
   );
-
-  // 初始加载
-  useEffect(() => {
-    fetchAnalysis();
-  }, [fetchAnalysis]);
 
   // 计算待处理建议数量
   const pendingCount = analysis?.suggestions.length ?? 0;
@@ -172,9 +281,9 @@ export function useInboxOrganization(): UseInboxOrganizationResult {
   const clusterStatus = analysis?.clusterStatus ?? null;
 
   return {
-    analysis,
+    analysis: analysis ?? null,
     clusterStatus,
-    isLoading,
+    isLoading: !shouldFetch || isLoading,
     isProcessing,
     error,
     refresh,
