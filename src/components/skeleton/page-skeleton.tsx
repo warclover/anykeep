@@ -1,6 +1,6 @@
 /**
  * 页面骨架屏组件
- * V5.0: 用于首次加载时的视觉占位
+ * @version V4.2.24 - 性能优化：新增智能列表骨架屏
  *
  * 特点：
  * - 与实际布局保持一致，避免布局偏移
@@ -151,6 +151,60 @@ export function ContentSkeleton({ lines = 3 }: { lines?: number }) {
           style={{ width: `${100 - i * 15}%` }}
         />
       ))}
+    </div>
+  );
+}
+
+/**
+ * 智能列表骨架屏
+ * 与侧边栏智能列表项布局保持一致
+ * @version V4.2.24 - 性能优化：改善用户感知
+ */
+export function SmartListSkeleton({ count = 6 }: { count?: number }) {
+  return (
+    <div className="space-y-0.5">
+      {Array.from({ length: count }).map((_, i) => (
+        <SmartListItemSkeleton key={i} />
+      ))}
+    </div>
+  );
+}
+
+/**
+ * 单个智能列表项骨架屏
+ * 布局：图标 + 名称 + 数量角标
+ */
+export function SmartListItemSkeleton() {
+  return (
+    <div className="flex items-center gap-3 px-3 py-2">
+      {/* 图标占位 */}
+      <Skeleton className="size-4 shrink-0 rounded" />
+      {/* 名称占位（随机宽度增加自然感） */}
+      <Skeleton className="h-4 flex-1 max-w-[70%]" />
+      {/* 数量角标占位 */}
+      <Skeleton className="h-4 w-6 shrink-0" />
+    </div>
+  );
+}
+
+/**
+ * 侧边栏智能列表区块骨架屏
+ * 包含标题和列表项
+ */
+export function SmartListSectionSkeleton({
+  itemCount = 6,
+}: {
+  itemCount?: number;
+}) {
+  return (
+    <div className="py-2">
+      {/* 标题栏骨架 */}
+      <div className="px-3 mb-2 flex items-center justify-between">
+        <Skeleton className="h-3 w-16" />
+        <Skeleton className="size-5 rounded" />
+      </div>
+      {/* 列表项骨架 */}
+      <SmartListSkeleton count={itemCount} />
     </div>
   );
 }

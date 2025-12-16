@@ -1,7 +1,7 @@
 /**
  * 智能列表区块组件
  * @description 侧边栏中显示智能列表区块的容器组件，支持拖拽排序
- * @version 10.2.1 - V4.2.24 性能优化：DnD 库懒加载（-30KB 初始包体积）
+ * @version 10.2.2 - V4.2.24 性能优化：DnD 懒加载 + 骨架屏改善用户感知
  */
 
 "use client";
@@ -21,6 +21,7 @@ import {
   Loader2,
   AlertTriangle,
 } from "lucide-react";
+import { SmartListSkeleton } from "@/components/skeleton/page-skeleton";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { SmartListItem } from "./smart-list-item";
@@ -273,6 +274,7 @@ export function SmartListSection({
   );
 
   // 加载中状态（包括延迟等待和数据获取）
+  // V4.2.24: 使用骨架屏替代旋转图标，改善用户感知
   if (!shouldFetch || isLoading) {
     return (
       <div className="py-2">
@@ -281,9 +283,8 @@ export function SmartListSection({
             智能列表
           </p>
         </div>
-        <div className="flex items-center justify-center py-4">
-          <Loader2 className="size-4 animate-spin text-gray-400" />
-        </div>
+        {/* 骨架屏：与实际内容布局一致，减少布局偏移 */}
+        <SmartListSkeleton count={6} />
       </div>
     );
   }
