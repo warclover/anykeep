@@ -275,6 +275,77 @@ export const ANALYTICS = {
 } as const;
 
 /**
+ * V4.2.15: 快照相关文案
+ */
+export const SNAPSHOT = {
+  // 创建
+  CREATE_SUCCESS: "快照创建成功",
+  CREATE_ERROR: "快照创建失败",
+  CREATING: "正在创建快照...",
+  CREATING_FOR_TAG: (tag: string) => `正在为「${tag}」内容创建快照...`,
+
+  // 配额
+  QUOTA_EXCEEDED: "快照配额已满",
+  QUOTA_WARNING: "快照配额即将用尽",
+  UPGRADE_HINT: "升级到 Pro 获取更多配额",
+
+  // 操作
+  CANCELLED: "已取消自动快照",
+  VIEW: "查看快照",
+  DELETE_CONFIRM: "确定要删除这个快照吗？",
+  DELETE_SUCCESS: "快照删除成功",
+  DELETE_ERROR: "快照删除失败",
+
+  // 提示
+  DESCRIPTION: "内容将被永久保存，防止网页失效",
+  BATCH_CREATING: (count: number) => `正在为 ${count} 个收藏创建快照...`,
+  BATCH_SUCCESS: (count: number) => `成功创建 ${count} 个快照`,
+} as const;
+
+/**
+ * V4.2.15: 垃圾箱相关文案
+ */
+export const TRASH = {
+  TITLE: "垃圾箱",
+  EMPTY: "垃圾箱为空",
+  EMPTY_HINT: "删除的收藏会显示在这里",
+
+  // 操作
+  RESTORE_SUCCESS: "已恢复收藏",
+  RESTORE_ERROR: "恢复失败",
+  RESTORE_CONFIRM: "确定要恢复这个收藏吗？",
+
+  // 清空
+  EMPTY_CONFIRM: "确定要清空垃圾箱吗？此操作不可恢复。",
+  EMPTY_SUCCESS: "垃圾箱已清空",
+  EMPTY_ERROR: "清空垃圾箱失败",
+  EMPTIED_COUNT: (count: number) => `已永久删除 ${count} 个收藏`,
+
+  // 批量
+  BATCH_RESTORE_SUCCESS: (count: number) => `已恢复 ${count} 个收藏`,
+  BATCH_DELETE_SUCCESS: (count: number) => `已永久删除 ${count} 个收藏`,
+} as const;
+
+/**
+ * V4.2.15: 分类相关文案
+ */
+export const CLASSIFICATION = {
+  // 建议
+  SUGGESTION_ACCEPTED: "已接受分类建议",
+  SUGGESTION_REJECTED: "已拒绝分类建议",
+  SUGGESTION_ERROR: "分类操作失败",
+
+  // 整理
+  ORGANIZING: "正在整理...",
+  NO_SUGGESTIONS: "暂无整理建议",
+  INBOX_ANALYZING: "正在分析待整理内容...",
+
+  // 重分类
+  RECLASSIFY_SUCCESS: "重新分类成功",
+  RECLASSIFY_ERROR: "重新分类失败",
+} as const;
+
+/**
  * 所有文案的聚合导出
  */
 export const MESSAGES = {
@@ -287,6 +358,9 @@ export const MESSAGES = {
   STORAGE,
   SETTINGS,
   ANALYTICS,
+  SNAPSHOT,
+  TRASH,
+  CLASSIFICATION,
 } as const;
 
 /**

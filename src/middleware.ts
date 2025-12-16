@@ -1,15 +1,17 @@
 /**
  * Next.js 中间件
- * 处理认证保护、会话刷新和请求追踪
+ * 处理认证保护、会话刷新、请求追踪和速率限制
  *
  * @features
  * - Request ID 追踪 (x-request-id header)
  * - 认证保护
  * - 会话自动刷新
+ * - V4.2.15: API 速率限制
  */
 
 import { type NextRequest, NextResponse } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
+import { checkRateLimit } from "@/lib/utils/rate-limiter";
 
 // 需要认证保护的路由
 const protectedRoutes = [
@@ -36,12 +38,56 @@ function generateRequestId(): string {
 export async function middleware(request: NextRequest) {
   // 1. 获取或生成 Request ID
   const requestId = request.headers.get("x-request-id") || generateRequestId();
-
-  // 2. 更新会话
-  const { supabaseResponse, user } = await updateSession(request);
   const { pathname } = request.nextUrl;
 
-  // 3. 将 Request ID 添加到响应头
+  // 2. V4.2.15: API 速率限制（仅对 /api 路由生效）
+  if (pathname.startsWith("/api")) {
+    // 获取用户标识：尝试多个 header 来源获取真实 IP
+    const forwarded = request.headers.get("x-forwarded-for");
+    const realIp = request.headers.get("x-real-ip");
+    const cfConnectingIp = request.headers.get("cf-connecting-ip"); // Cloudflare
+    const vercelForwardedFor = request.headers.get("x-vercel-forwarded-for"); // Vercel
+
+    // 优先级: cf-connecting-ip > x-vercel-forwarded-for > x-real-ip > x-forwarded-for
+    let ip = "anonymous";
+    if (cfConnectingIp) {
+      ip = cfConnectingIp;
+    } else if (vercelForwardedFor) {
+      ip = vercelForwardedFor.split(",")[0].trim();
+    } else if (realIp) {
+      ip = realIp;
+    } else if (forwarded) {
+      ip = forwarded.split(",")[0].trim();
+    }
+
+    const identifier = ip;
+
+    const rateLimitResult = checkRateLimit(identifier, pathname);
+
+    if (!rateLimitResult.allowed) {
+      const response = NextResponse.json(
+        {
+          error: "Too Many Requests",
+          message: "请求过于频繁，请稍后再试",
+          retryAfter: Math.ceil(rateLimitResult.resetMs / 1000),
+        },
+        { status: 429 },
+      );
+      response.headers.set("x-request-id", requestId);
+      response.headers.set(
+        "Retry-After",
+        String(Math.ceil(rateLimitResult.resetMs / 1000)),
+      );
+      response.headers.set("X-RateLimit-Limit", String(rateLimitResult.limit));
+      response.headers.set("X-RateLimit-Remaining", "0");
+      return response;
+    }
+  }
+
+  // 3. 更新会话
+  const { supabaseResponse, user } = await updateSession(request);
+
+  // 4. 将 Request ID 添加到响应头
   supabaseResponse.headers.set("x-request-id", requestId);
 
   // 检查是否是受保护的路由

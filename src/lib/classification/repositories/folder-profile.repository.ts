@@ -1,11 +1,39 @@
 /**
  * Folder Profile Repository
  * Data access layer for folder profiles
+ *
+ * V4.2.15: 添加向量搜索超时控制
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { FolderProfile, SimilarFolder } from "../types";
 import { SimilarFolderRowSchema, parseRows } from "./validation-schemas";
+
+/**
+ * V4.2.15: 向量搜索超时时间（毫秒）
+ */
+const VECTOR_SEARCH_TIMEOUT_MS = 5000;
+
+/**
+ * 带超时的 Promise 包装器
+ * 支持 PromiseLike（Supabase 的 PostgrestFilterBuilder 是 thenable）
+ */
+function withTimeout<T>(
+  promiseLike: PromiseLike<T>,
+  timeoutMs: number,
+  operation: string,
+): Promise<T> {
+  return Promise.race([
+    Promise.resolve(promiseLike),
+    new Promise<T>((_, reject) =>
+      setTimeout(
+        () =>
+          reject(new Error(`向量搜索超时: ${operation} 超过 ${timeoutMs}ms`)),
+        timeoutMs,
+      ),
+    ),
+  ]);
+}
 
 /**
  * Repository for folder profile operations
@@ -64,6 +92,7 @@ export class FolderProfileRepository {
 
   /**
    * Search similar folders using vector similarity
+   * V4.2.15: 添加 5 秒超时保护
    */
   async searchSimilarFolders(
     embedding: number[],
@@ -71,12 +100,17 @@ export class FolderProfileRepository {
     threshold: number = 0.5,
     limit: number = 5,
   ): Promise<SimilarFolder[]> {
-    const { data, error } = await this.supabase.rpc("search_similar_folders", {
-      query_embedding: embedding,
-      p_user_id: userId,
-      match_threshold: threshold,
-      match_count: limit,
-    });
+    // V4.2.15: 使用 Promise.race 添加超时保护
+    const { data, error } = await withTimeout(
+      this.supabase.rpc("search_similar_folders", {
+        query_embedding: embedding,
+        p_user_id: userId,
+        match_threshold: threshold,
+        match_count: limit,
+      }),
+      VECTOR_SEARCH_TIMEOUT_MS,
+      "searchSimilarFolders",
+    );
 
     if (error) {
       throw new Error(`Failed to search similar folders: ${error.message}`);
@@ -101,11 +135,16 @@ export class FolderProfileRepository {
 
   /**
    * Compute folder profile (calls SQL function)
+   * V4.2.15: 添加 10 秒超时保护（计算操作耗时较长）
    */
   async computeProfile(folderId: number): Promise<void> {
-    const { error } = await this.supabase.rpc("compute_folder_profile", {
-      p_folder_id: folderId,
-    });
+    const { error } = await withTimeout(
+      this.supabase.rpc("compute_folder_profile", {
+        p_folder_id: folderId,
+      }),
+      10000, // 计算操作允许更长时间
+      "computeProfile",
+    );
 
     if (error) {
       throw new Error(`Failed to compute folder profile: ${error.message}`);
@@ -114,13 +153,15 @@ export class FolderProfileRepository {
 
   /**
    * Compute all folder profiles for a user
+   * V4.2.15: 添加 30 秒超时保护（批量计算操作）
    */
   async computeUserProfiles(userId: string): Promise<number> {
-    const { data, error } = await this.supabase.rpc(
-      "compute_user_folder_profiles",
-      {
+    const { data, error } = await withTimeout(
+      this.supabase.rpc("compute_user_folder_profiles", {
         p_user_id: userId,
-      },
+      }),
+      30000, // 批量计算允许 30 秒
+      "computeUserProfiles",
     );
 
     if (error) {
