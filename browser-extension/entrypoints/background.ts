@@ -9,83 +9,23 @@
  * 3. 右键菜单快速收藏
  * 4. 快捷键 Ctrl+Shift+S 支持
  * 5. 保存成功通知
+ * 6. 离线队列管理
  */
 
-// 平台检测函数
-function detectPlatform(url: string): string {
-  const platformPatterns: Record<string, RegExp[]> = {
-    WECHAT_OFFICIAL_ACCOUNT: [/mp\.weixin\.qq\.com/],
-    BILIBILI: [/bilibili\.com/, /b23\.tv/],
-    XIAOHONGSHU: [/xiaohongshu\.com/, /xhslink\.com/],
-    ZHIHU: [/zhihu\.com/, /zhuanlan\.zhihu\.com/],
-    DOUYIN: [/douyin\.com/, /v\.douyin\.com/],
-    WEIBO: [/weibo\.com/, /weibo\.cn/],
-    JUEJIN: [/juejin\.cn/],
-    JIANSHU: [/jianshu\.com/],
-    CSDN: [/csdn\.net/, /blog\.csdn\.net/],
-    GITHUB: [/github\.com/],
-    YOUTUBE: [/youtube\.com/, /youtu\.be/],
-    TWITTER: [/twitter\.com/, /x\.com/],
-    MEDIUM: [/medium\.com/],
-    NOTION: [/notion\.so/],
-  };
+import type { PageMetadata, SaveResult } from "@/types";
+import { api, auth, offlineQueue, storage } from "@/lib";
 
-  for (const [platform, patterns] of Object.entries(platformPatterns)) {
-    if (patterns.some((pattern) => pattern.test(url))) {
-      return platform;
-    }
-  }
+/** 扩展版本 */
+const EXTENSION_VERSION = "1.0.0";
 
-  return "OTHER";
-}
-
-// 保存页面到 AnyKeep
-async function saveToAnyKeep(
-  url: string,
+/**
+ * 显示通知
+ */
+function showNotification(
   title: string,
-): Promise<{ success: boolean; message: string }> {
-  try {
-    const storage = await browser.storage.local.get([
-      "authToken",
-      "userId",
-      "apiUrl",
-    ]);
-
-    if (!storage.authToken || !storage.userId) {
-      return { success: false, message: "请先登录 AnyKeep" };
-    }
-
-    const apiUrl = storage.apiUrl || "https://anykeep.vercel.app";
-    const platform = detectPlatform(url);
-
-    const response = await fetch(`${apiUrl}/api/bookmarks`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${storage.authToken}`,
-      },
-      body: JSON.stringify({
-        url,
-        title,
-        platform,
-        user_id: storage.userId,
-      }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      return { success: false, message: error.message || "保存失败" };
-    }
-
-    return { success: true, message: "保存成功！" };
-  } catch (error) {
-    console.error("Save error:", error);
-    return { success: false, message: "网络错误，请稍后重试" };
-  }
-}
-
-// 显示通知
-function showNotification(title: string, message: string, isSuccess: boolean) {
+  message: string,
+  isSuccess: boolean,
+): void {
   browser.notifications.create({
     type: "basic",
     iconUrl: browser.runtime.getURL("/icon/128.png"),
@@ -95,8 +35,175 @@ function showNotification(title: string, message: string, isSuccess: boolean) {
   });
 }
 
+/**
+ * 从 Content Script 获取页面信息
+ */
+async function getPageInfoFromContentScript(
+  tabId: number,
+): Promise<PageMetadata | null> {
+  try {
+    const response = await browser.tabs.sendMessage(tabId, {
+      type: "GET_PAGE_INFO",
+    });
+    return response as PageMetadata;
+  } catch (error) {
+    console.warn(
+      "[Background] Failed to get page info from content script:",
+      error,
+    );
+    return null;
+  }
+}
+
+/**
+ * 保存页面到 AnyKeep
+ * 支持在线保存和离线队列
+ */
+async function saveToAnyKeep(
+  url: string,
+  title: string,
+  metadata?: Partial<PageMetadata>,
+): Promise<SaveResult> {
+  try {
+    // 检查登录状态
+    const loggedIn = await auth.isLoggedIn();
+    if (!loggedIn) {
+      return { success: false, message: "请先登录 AnyKeep" };
+    }
+
+    // 检查网络状态
+    if (!navigator.onLine) {
+      // 离线模式：存入队列
+      const platform = api.detectPlatform(url);
+      await offlineQueue.init();
+      await offlineQueue.add({
+        url,
+        title,
+        platform,
+        metadata,
+      });
+
+      const count = await offlineQueue.getCount();
+      return {
+        success: true,
+        message: `已保存到离线队列 (${count} 条待同步)`,
+        isOffline: true,
+      };
+    }
+
+    // 在线模式：直接保存
+    const platform = api.detectPlatform(url);
+    const response = await api.saveBookmark({
+      url,
+      title,
+      platform,
+      description: metadata?.description,
+      coverUrl: metadata?.coverUrl,
+      author: metadata?.author,
+      publishTime: metadata?.publishTime,
+      wordCount: metadata?.wordCount,
+      imageCount: metadata?.imageCount,
+    });
+
+    if (response.success && response.data) {
+      return {
+        success: true,
+        message: "保存成功！",
+        bookmarkId: response.data.id,
+      };
+    }
+
+    return {
+      success: false,
+      message: response.error?.message || "保存失败",
+    };
+  } catch (error) {
+    console.error("[Background] Save error:", error);
+
+    // 网络错误时尝试离线保存
+    if (error instanceof TypeError && error.message.includes("fetch")) {
+      try {
+        const platform = api.detectPlatform(url);
+        await offlineQueue.init();
+        await offlineQueue.add({
+          url,
+          title,
+          platform,
+          metadata,
+        });
+
+        const count = await offlineQueue.getCount();
+        return {
+          success: true,
+          message: `网络异常，已保存到离线队列 (${count} 条待同步)`,
+          isOffline: true,
+        };
+      } catch (offlineError) {
+        console.error("[Background] Offline save error:", offlineError);
+      }
+    }
+
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "保存失败，请重试",
+    };
+  }
+}
+
+/**
+ * 同步离线队列
+ */
+async function syncOfflineQueue(): Promise<void> {
+  try {
+    await offlineQueue.init();
+    const count = await offlineQueue.getCount();
+
+    if (count === 0) {
+      console.log("[Background] No offline bookmarks to sync");
+      return;
+    }
+
+    console.log(`[Background] Syncing ${count} offline bookmarks`);
+    const result = await offlineQueue.syncAll();
+
+    if (result.synced > 0) {
+      showNotification(
+        "离线同步完成",
+        `已同步 ${result.synced} 条收藏${result.failed > 0 ? `，${result.failed} 条失败` : ""}`,
+        result.failed === 0,
+      );
+    }
+  } catch (error) {
+    console.error("[Background] Sync error:", error);
+  }
+}
+
+/**
+ * 判断是否为浏览器内部页面
+ */
+function isInternalPage(url: string): boolean {
+  return (
+    url.startsWith("chrome://") ||
+    url.startsWith("chrome-extension://") ||
+    url.startsWith("edge://") ||
+    url.startsWith("about:") ||
+    url.startsWith("moz-extension://") ||
+    url.startsWith("file://")
+  );
+}
+
 export default defineBackground(() => {
-  console.log("AnyKeep Extension: Background script loaded");
+  console.log(
+    "[AnyKeep] Background script loaded, version:",
+    EXTENSION_VERSION,
+  );
+
+  // ==================== 网络状态监听 ====================
+  // 监听网络恢复
+  self.addEventListener("online", () => {
+    console.log("[Background] Network restored, syncing offline queue");
+    syncOfflineQueue();
+  });
 
   // ==================== 右键菜单 ====================
   // 创建右键菜单
@@ -116,10 +223,16 @@ export default defineBackground(() => {
   browser.contextMenus.onClicked.addListener(async (info, tab) => {
     let url: string;
     let title: string;
+    let metadata: Partial<PageMetadata> | undefined;
 
     if (info.menuItemId === "save-page-to-anykeep" && tab) {
       url = info.pageUrl || tab.url || "";
       title = tab.title || url;
+
+      // 尝试从 Content Script 获取更丰富的信息
+      if (tab.id) {
+        metadata = (await getPageInfoFromContentScript(tab.id)) || undefined;
+      }
     } else if (info.menuItemId === "save-link-to-anykeep") {
       url = info.linkUrl || "";
       title = info.linkText || url;
@@ -132,7 +245,7 @@ export default defineBackground(() => {
       return;
     }
 
-    const result = await saveToAnyKeep(url, title);
+    const result = await saveToAnyKeep(url, title, metadata);
     showNotification(
       result.success ? "✓ 收藏成功" : "✗ 收藏失败",
       result.message,
@@ -155,16 +268,22 @@ export default defineBackground(() => {
       }
 
       // 过滤浏览器内部页面
-      if (
-        tab.url.startsWith("chrome://") ||
-        tab.url.startsWith("edge://") ||
-        tab.url.startsWith("about:")
-      ) {
+      if (isInternalPage(tab.url)) {
         showNotification("AnyKeep", "不支持保存浏览器内部页面", false);
         return;
       }
 
-      const result = await saveToAnyKeep(tab.url, tab.title || tab.url);
+      // 尝试从 Content Script 获取更丰富的信息
+      let metadata: Partial<PageMetadata> | undefined;
+      if (tab.id) {
+        metadata = (await getPageInfoFromContentScript(tab.id)) || undefined;
+      }
+
+      const result = await saveToAnyKeep(
+        tab.url,
+        tab.title || tab.url,
+        metadata,
+      );
       showNotification(
         result.success ? "✓ 收藏成功" : "✗ 收藏失败",
         result.message,
@@ -176,22 +295,29 @@ export default defineBackground(() => {
   // ==================== 消息监听 ====================
   // 监听来自网页的消息（用于登录认证）
   browser.runtime.onMessageExternal.addListener(
-    async (message, sender, sendResponse) => {
-      console.log("Received external message:", message);
+    async (message, _sender, sendResponse) => {
+      console.log("[Background] Received external message:", message.type);
 
       // 健康检查
       if (message.type === "PING") {
-        sendResponse({ success: true, version: "1.0.0" });
+        sendResponse({ success: true, version: EXTENSION_VERSION });
         return true;
       }
 
       if (message.type === "ANYKEEP_AUTH") {
         // 存储认证信息
-        await browser.storage.local.set({
-          authToken: message.token,
-          userId: message.userId,
-          apiUrl: message.apiUrl || "http://localhost:3000",
-        });
+        const expiresIn = message.expiresIn || 7 * 24 * 60 * 60; // 默认 7 天
+        await auth.setAuth(message.token, message.userId, expiresIn);
+
+        // 同时更新 API URL
+        if (message.apiUrl) {
+          await auth.setApiUrl(message.apiUrl);
+        }
+
+        // 登录后尝试同步离线队列
+        if (navigator.onLine) {
+          syncOfflineQueue();
+        }
 
         sendResponse({ success: true });
         return true;
@@ -199,7 +325,7 @@ export default defineBackground(() => {
 
       if (message.type === "ANYKEEP_LOGOUT") {
         // 清除认证信息
-        await browser.storage.local.remove(["authToken", "userId"]);
+        await auth.logout();
         sendResponse({ success: true });
         return true;
       }
@@ -210,30 +336,63 @@ export default defineBackground(() => {
 
   // 监听来自 popup 的消息
   browser.runtime.onMessage.addListener(
-    async (message, sender, sendResponse) => {
-      console.log("Received message:", message);
+    async (message, _sender, sendResponse) => {
+      console.log("[Background] Received message:", message.type);
 
       if (message.type === "GET_AUTH_STATUS") {
-        const storage = await browser.storage.local.get([
-          "authToken",
-          "userId",
-        ]);
+        const status = await auth.getStatus();
+        const authInfo = await auth.getAuth();
         sendResponse({
-          isLoggedIn: !!(storage.authToken && storage.userId),
-          userId: storage.userId,
+          status,
+          isLoggedIn: status === "loggedIn",
+          isExpired: status === "expired",
+          userId: authInfo?.userId,
         });
         return true;
       }
 
       if (message.type === "CLEAR_AUTH") {
-        await browser.storage.local.remove(["authToken", "userId"]);
+        await auth.logout();
         sendResponse({ success: true });
         return true;
       }
 
       if (message.type === "SAVE_BOOKMARK") {
-        const result = await saveToAnyKeep(message.url, message.title);
+        const result = await saveToAnyKeep(
+          message.url,
+          message.title,
+          message.metadata,
+        );
         sendResponse(result);
+        return true;
+      }
+
+      if (message.type === "GET_PAGE_INFO") {
+        // 从当前标签页获取页面信息
+        const [tab] = await browser.tabs.query({
+          active: true,
+          currentWindow: true,
+        });
+
+        if (tab?.id) {
+          const pageInfo = await getPageInfoFromContentScript(tab.id);
+          sendResponse(pageInfo);
+        } else {
+          sendResponse(null);
+        }
+        return true;
+      }
+
+      if (message.type === "SYNC_OFFLINE_QUEUE") {
+        await syncOfflineQueue();
+        sendResponse({ success: true });
+        return true;
+      }
+
+      if (message.type === "GET_OFFLINE_COUNT") {
+        await offlineQueue.init();
+        const count = await offlineQueue.getCount();
+        sendResponse({ count });
         return true;
       }
 
@@ -244,13 +403,11 @@ export default defineBackground(() => {
   // ==================== 初始化 ====================
   // 扩展安装/更新时的初始化
   browser.runtime.onInstalled.addListener(async (details) => {
-    console.log("Extension installed/updated:", details.reason);
+    console.log("[AnyKeep] Extension installed/updated:", details.reason);
 
     if (details.reason === "install") {
       // 首次安装，设置默认值（生产环境 URL）
-      await browser.storage.local.set({
-        apiUrl: "https://anykeep.vercel.app",
-      });
+      await storage.set("apiUrl", "https://anykeep.vercel.app");
 
       // 显示欢迎通知
       showNotification(
@@ -259,5 +416,27 @@ export default defineBackground(() => {
         true,
       );
     }
+
+    if (details.reason === "update") {
+      // 更新时检查并同步离线队列
+      if (navigator.onLine) {
+        syncOfflineQueue();
+      }
+    }
   });
+
+  // 启动时检查离线队列
+  (async () => {
+    if (navigator.onLine) {
+      const loggedIn = await auth.isLoggedIn();
+      if (loggedIn) {
+        await offlineQueue.init();
+        const count = await offlineQueue.getCount();
+        if (count > 0) {
+          console.log(`[AnyKeep] Found ${count} offline bookmarks, syncing...`);
+          syncOfflineQueue();
+        }
+      }
+    }
+  })();
 });
