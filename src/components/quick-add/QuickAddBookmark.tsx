@@ -238,7 +238,9 @@ export function QuickAddBookmark({
             metadata={metadata}
             onSubmit={handleSubmit}
             onOpenDrawer={actions.openDrawer}
+            onCancel={actions.handleCancel}
             isSubmitting={isSubmitting}
+            autoSubmit={true}
           />
         ) : null;
 
