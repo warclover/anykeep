@@ -333,7 +333,6 @@ export function UsageTagFilterSheet({
                 filters={{ usageTags: selectedTags }}
                 visible={true}
                 onSaved={handleSaved}
-                className="w-full justify-center"
               />
             </div>
           )}

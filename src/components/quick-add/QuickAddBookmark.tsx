@@ -16,10 +16,7 @@ import {
   useQuickAddState,
   type BookmarkMetadata,
 } from "./hooks/useQuickAddState";
-import {
-  useKeyboardShortcuts,
-  KEYBOARD_SHORTCUTS,
-} from "./hooks/useKeyboardShortcuts";
+import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 
 // Inline components
 import { QuickAddInput } from "./inline/QuickAddInput";
@@ -275,24 +272,6 @@ export function QuickAddBookmark({
         data-mode={mode}
       >
         {renderContent()}
-
-        {/* Keyboard hints - show on first use */}
-        {mode === "preview" && (
-          <div className="flex justify-center gap-4 mt-2 text-xs text-gray-400">
-            <span>
-              <kbd className="px-1.5 py-0.5 bg-gray-100 rounded text-[10px]">
-                {KEYBOARD_SHORTCUTS.quickSave.display}
-              </kbd>{" "}
-              {KEYBOARD_SHORTCUTS.quickSave.description}
-            </span>
-            <span>
-              <kbd className="px-1.5 py-0.5 bg-gray-100 rounded text-[10px]">
-                {KEYBOARD_SHORTCUTS.openDrawer.display}
-              </kbd>{" "}
-              {KEYBOARD_SHORTCUTS.openDrawer.description}
-            </span>
-          </div>
-        )}
       </div>
 
       {/* Detail Drawer */}
