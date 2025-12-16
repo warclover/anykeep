@@ -1,40 +1,35 @@
 /**
  * 智能列表区块组件
  * @description 侧边栏中显示智能列表区块的容器组件，支持拖拽排序
- * @version 10.2.0 - 新增首次访问自动初始化预设
+ * @version 10.2.1 - V4.2.24 性能优化：DnD 库懒加载（-30KB 初始包体积）
  */
 
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import {
+  useState,
+  useCallback,
+  useEffect,
+  useRef,
+  lazy,
+  Suspense,
+} from "react";
 import {
   ChevronDown,
   ChevronRight,
   Plus,
   Loader2,
-  GripVertical,
   AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  TouchSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
+import { SmartListItem } from "./smart-list-item";
+
+// V4.2.24: 懒加载 DnD 排序组件（减少 ~30KB 初始包体积）
+const SortableSmartListContent = lazy(
+  () => import("./sortable-smart-list-content"),
+);
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,10 +40,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { SmartListItem } from "./smart-list-item";
 import { SmartListEditorDialog } from "./smart-list-editor-dialog";
 import { useSmartLists } from "@/hooks/use-smart-lists";
-import { cn } from "@/lib/utils";
 import type {
   SmartListClient,
   CreateSmartListRequest,
@@ -71,57 +64,25 @@ export interface SmartListSectionProps {
 }
 
 // ============================================
-// 可排序列表项组件
+// 静态列表项组件（DnD 加载前的回退）
 // ============================================
 
-interface SortableSmartListItemProps {
+interface StaticSmartListItemProps {
   smartList: SmartListClient;
   onTogglePin: (id: number, isPinned: boolean) => void;
   onEdit: (smartList: SmartListClient) => void;
   onDelete: (id: number) => void;
 }
 
-function SortableSmartListItem({
+function StaticSmartListItem({
   smartList,
   onTogglePin,
   onEdit,
   onDelete,
-}: SortableSmartListItemProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: smartList.id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
-
+}: StaticSmartListItemProps) {
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={cn(
-        "group relative flex items-center",
-        isDragging && "opacity-50 z-50",
-      )}
-    >
-      {/* 拖拽手柄：移动端始终可见，桌面端 hover 显示 */}
-      <div
-        {...attributes}
-        {...listeners}
-        className="absolute left-0 top-1/2 -translate-y-1/2 opacity-40 md:opacity-0 md:group-hover:opacity-100 cursor-grab active:cursor-grabbing p-1.5 -ml-1 touch-none"
-        aria-label="拖拽排序"
-      >
-        <GripVertical className="size-4 md:size-3 text-gray-400" />
-      </div>
-
-      {/* 智能列表项 */}
-      <div className="flex-1 pl-4 group-hover:pl-4">
+    <div className="group relative flex items-center">
+      <div className="flex-1">
         <SmartListItem
           smartList={smartList}
           count={smartList.bookmarkCount}
@@ -232,52 +193,6 @@ export function SmartListSection({
         });
     }
   }, [isLoading, smartLists.length, initPresets]);
-
-  // 拖拽传感器配置（支持鼠标、触屏、键盘）
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8, // 最小拖拽距离，避免误触
-      },
-    }),
-    useSensor(TouchSensor, {
-      activationConstraint: {
-        delay: 200, // 长按延迟，区分滚动和拖拽
-        tolerance: 5, // 容差范围
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    }),
-  );
-
-  // 处理拖拽结束
-  const handleDragEnd = useCallback(
-    async (event: DragEndEvent) => {
-      const { active, over } = event;
-
-      if (!over || active.id === over.id) return;
-
-      // 找到拖拽项在列表中的位置
-      const oldIndex = smartLists.findIndex((item) => item.id === active.id);
-      const newIndex = smartLists.findIndex((item) => item.id === over.id);
-
-      if (oldIndex === -1 || newIndex === -1) return;
-
-      // 计算新顺序
-      const newOrder = arrayMove(smartLists, oldIndex, newIndex);
-      const newIds = newOrder.map((item) => item.id);
-
-      // 调用 API 保存新顺序
-      try {
-        await reorder(newIds);
-      } catch (err) {
-        toast.error("排序失败，请稍后重试");
-        console.error("Failed to reorder smart lists:", err);
-      }
-    },
-    [smartLists, reorder],
-  );
 
   // 处理置顶切换
   const handleTogglePin = useCallback(
@@ -466,21 +381,14 @@ export function SmartListSection({
           )}
         </div>
 
-        {/* 列表内容（支持拖拽排序） */}
+        {/* 列表内容（V4.2.24: 懒加载 DnD 排序功能） */}
         {isExpanded && (
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-          >
-            <SortableContext
-              items={smartLists.map((item) => item.id)}
-              strategy={verticalListSortingStrategy}
-            >
+          <Suspense
+            fallback={
+              // 静态列表作为 DnD 加载前的回退
               <div className="space-y-0.5">
-                {/* 置顶列表 */}
                 {pinnedLists.map((smartList) => (
-                  <SortableSmartListItem
+                  <StaticSmartListItem
                     key={smartList.id}
                     smartList={smartList}
                     onTogglePin={handleTogglePin}
@@ -488,15 +396,11 @@ export function SmartListSection({
                     onDelete={setDeleteConfirmId}
                   />
                 ))}
-
-                {/* 分隔线（如果有置顶和非置顶列表） */}
                 {pinnedLists.length > 0 && unpinnedLists.length > 0 && (
                   <div className="my-1 mx-3 border-t border-gray-100 dark:border-gray-800" />
                 )}
-
-                {/* 非置顶列表 */}
                 {unpinnedLists.map((smartList) => (
-                  <SortableSmartListItem
+                  <StaticSmartListItem
                     key={smartList.id}
                     smartList={smartList}
                     onTogglePin={handleTogglePin}
@@ -505,8 +409,18 @@ export function SmartListSection({
                   />
                 ))}
               </div>
-            </SortableContext>
-          </DndContext>
+            }
+          >
+            <SortableSmartListContent
+              smartLists={smartLists}
+              pinnedLists={pinnedLists}
+              unpinnedLists={unpinnedLists}
+              onReorder={reorder}
+              onTogglePin={handleTogglePin}
+              onEdit={handleEdit}
+              onDelete={setDeleteConfirmId}
+            />
+          </Suspense>
         )}
       </div>
 
