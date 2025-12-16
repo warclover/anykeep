@@ -64,6 +64,10 @@ export interface SmartListSectionProps {
   defaultExpanded?: boolean;
   /** 是否显示创建按钮 */
   showCreateButton?: boolean;
+  /** 延迟加载时间（毫秒），0 表示立即加载 */
+  loadDelay?: number;
+  /** 是否使用 requestIdleCallback 延迟加载 */
+  useIdleCallback?: boolean;
 }
 
 // ============================================
@@ -137,8 +141,39 @@ function SortableSmartListItem({
 export function SmartListSection({
   defaultExpanded = true,
   showCreateButton = true,
+  loadDelay = 1000, // 默认延迟 1 秒加载
+  useIdleCallback = true, // 默认使用 requestIdleCallback
 }: SmartListSectionProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+
+  // 延迟加载控制
+  const [shouldFetch, setShouldFetch] = useState(loadDelay === 0);
+
+  // 延迟加载逻辑
+  useEffect(() => {
+    if (loadDelay === 0 || shouldFetch) return;
+
+    let cleanup: (() => void) | undefined;
+
+    if (
+      useIdleCallback &&
+      typeof window !== "undefined" &&
+      "requestIdleCallback" in window
+    ) {
+      // 使用 requestIdleCallback 在浏览器空闲时加载
+      const idleId = window.requestIdleCallback(
+        () => setShouldFetch(true),
+        { timeout: loadDelay + 1000 }, // 最大等待时间
+      );
+      cleanup = () => window.cancelIdleCallback(idleId);
+    } else {
+      // 回退到 setTimeout
+      const timerId = setTimeout(() => setShouldFetch(true), loadDelay);
+      cleanup = () => clearTimeout(timerId);
+    }
+
+    return cleanup;
+  }, [loadDelay, useIdleCallback, shouldFetch]);
 
   // 对话框状态
   const [isEditorOpen, setIsEditorOpen] = useState(false);
@@ -147,7 +182,7 @@ export function SmartListSection({
   >();
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
 
-  // 使用 SWR Hook 获取智能列表
+  // 使用 SWR Hook 获取智能列表（支持延迟加载）
   const {
     smartLists,
     isLoading,
@@ -162,7 +197,7 @@ export function SmartListSection({
     initPresets,
   } = useSmartLists({
     includePresets: true,
-    enabled: true,
+    enabled: shouldFetch, // 只有 shouldFetch 为 true 时才获取数据
   });
 
   // V10.2: 自动初始化预设（首次访问时自动创建 6 个预设）
@@ -322,8 +357,8 @@ export function SmartListSection({
     [editingSmartList, create, update],
   );
 
-  // 加载中状态
-  if (isLoading) {
+  // 加载中状态（包括延迟等待和数据获取）
+  if (!shouldFetch || isLoading) {
     return (
       <div className="py-2">
         <div className="px-3 mb-2 flex items-center justify-between">
