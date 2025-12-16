@@ -1,6 +1,6 @@
 /**
  * Web Vitals 性能监控组件
- * V4.2.1: 收集 Core Web Vitals 指标并报告
+ * V4.2.24: 集成性能告警系统
  *
  * 核心指标：
  * - LCP (Largest Contentful Paint): 最大内容绘制，目标 < 2.5s
@@ -16,6 +16,10 @@
 import { useReportWebVitals } from "next/web-vitals";
 import { useCallback, useEffect, useRef } from "react";
 import { logger } from "@/lib/logger";
+import {
+  performanceMonitor,
+  type MetricName,
+} from "@/lib/monitoring/performance-alerts";
 
 /**
  * Web Vitals 指标类型
@@ -170,6 +174,12 @@ export function WebVitalsReporter({
 
       // 缓存指标
       metricsBuffer.current.set(metric.name, enrichedMetric);
+
+      // V4.2.24: 触发性能告警检查
+      const validMetricNames = ["TTFB", "FCP", "LCP", "FID", "CLS", "INP"];
+      if (validMetricNames.includes(metric.name)) {
+        performanceMonitor.report(metric.name as MetricName, metric.value);
+      }
 
       // 调用自定义上报回调
       onReport?.(enrichedMetric);
