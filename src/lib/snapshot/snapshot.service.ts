@@ -572,6 +572,7 @@ export class SnapshotService {
 
   /**
    * 删除快照
+   * 同时清理 Supabase Storage 中的关联文件
    */
   async deleteSnapshot(userId: string, snapshotId: number): Promise<boolean> {
     const supabase = await this.getSupabase();
@@ -582,10 +583,52 @@ export class SnapshotService {
       return false;
     }
 
-    // TODO: 清理 Supabase Storage 中的文件
-    // if (snapshot.storage_path) { ... }
+    // 收集需要删除的存储文件路径
+    const pathsToDelete: string[] = [];
 
-    // 删除记录
+    if (snapshot.screenshot_storage_path) {
+      pathsToDelete.push(snapshot.screenshot_storage_path);
+    }
+
+    if (
+      snapshot.html_storage_path &&
+      !snapshot.html_storage_path.startsWith("inline:")
+    ) {
+      pathsToDelete.push(snapshot.html_storage_path);
+    }
+
+    if (
+      snapshot.mhtml_storage_path &&
+      !snapshot.mhtml_storage_path.startsWith("inline:")
+    ) {
+      pathsToDelete.push(snapshot.mhtml_storage_path);
+    }
+
+    // 清理 Storage 文件（失败不阻塞记录删除）
+    if (pathsToDelete.length > 0) {
+      const { error: storageError } = await supabase.storage
+        .from("snapshots")
+        .remove(pathsToDelete);
+
+      if (storageError) {
+        logger.warn(
+          {
+            error: storageError.message,
+            snapshotId,
+            paths: pathsToDelete,
+          },
+          "[SnapshotService] Failed to delete storage files, continuing with record deletion",
+        );
+        // 继续删除记录，即使存储清理失败
+      } else {
+        logger.debug(
+          { snapshotId, cleanedFiles: pathsToDelete.length },
+          "[SnapshotService] Storage files cleaned",
+        );
+      }
+    }
+
+    // 删除数据库记录
     const { error } = await getSnapshotsTable(supabase)
       .delete()
       .eq("id", snapshotId)
@@ -599,7 +642,10 @@ export class SnapshotService {
       return false;
     }
 
-    logger.info({ snapshotId }, "[SnapshotService] Snapshot deleted");
+    logger.info(
+      { snapshotId, cleanedFiles: pathsToDelete.length },
+      "[SnapshotService] Snapshot deleted",
+    );
     return true;
   }
 

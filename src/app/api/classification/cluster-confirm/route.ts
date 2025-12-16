@@ -81,25 +81,15 @@ export async function POST(request: NextRequest) {
       return notFoundError("建议不存在或已处理");
     }
 
-    // 类型断言 - TODO: V4.2 bookmark_ids, suggested_action, metadata 待添加到数据库
-    const typedSuggestion = suggestion as unknown as {
-      id: number;
-      suggested_folder_name: string | null;
-      suggested_action: string | null;
-      bookmark_ids: number[] | null;
-      reason: string | null;
-      confidence: number;
-      metadata: Record<string, unknown> | null;
-    };
-
     // 4. 检查是否是创建文件夹建议
-    if (typedSuggestion.suggested_action !== "create_folder") {
+    // 兼容处理：默认动作为 create_folder（向后兼容旧数据）
+    const suggestedAction = suggestion.suggested_action || "create_folder";
+    if (suggestedAction !== "create_folder") {
       return internalError("此建议类型不支持通过此 API 确认");
     }
 
     // 5. 创建文件夹
-    const folderName =
-      customFolderName || typedSuggestion.suggested_folder_name;
+    const folderName = customFolderName || suggestion.suggested_folder_name;
     if (!folderName) {
       return internalError("建议中没有有效的文件夹名称");
     }
@@ -111,7 +101,7 @@ export async function POST(request: NextRequest) {
         name: folderName,
         is_system: false,
         is_ai_suggested: true,
-        ai_reason: typedSuggestion.reason,
+        ai_reason: suggestion.reason,
       })
       .select("id, name")
       .single();
@@ -125,7 +115,13 @@ export async function POST(request: NextRequest) {
     }
 
     // 6. 获取建议中的书签 ID
-    const bookmarkIds = typedSuggestion.bookmark_ids || [];
+    // 兼容处理：优先使用 bookmark_ids，回退到 bookmark_id
+    const bookmarkIds =
+      suggestion.bookmark_ids && suggestion.bookmark_ids.length > 0
+        ? suggestion.bookmark_ids
+        : suggestion.bookmark_id
+          ? [suggestion.bookmark_id]
+          : [];
     if (bookmarkIds.length === 0) {
       logger.warn({ suggestionId }, "Suggestion has no bookmark IDs");
       return internalError("建议中没有书签");
@@ -167,7 +163,7 @@ export async function POST(request: NextRequest) {
       user.id,
       { id: newFolder.id, name: newFolder.name, parent_id: null },
       bookmarkIds.map((id) => ({ id, title: "书签", folder_id: null })), // 简化处理
-      `用户确认聚类建议：${typedSuggestion.reason || "基于内容相似性"}`,
+      `用户确认聚类建议：${suggestion.reason || "基于内容相似性"}`,
     );
 
     logger.info(
@@ -246,12 +242,6 @@ export async function DELETE(request: NextRequest) {
       return notFoundError("建议不存在或已处理");
     }
 
-    // 类型断言 - TODO: V4.2 bookmark_ids, metadata 待添加到数据库
-    const typedSuggestion = suggestion as unknown as {
-      bookmark_ids: number[] | null;
-      metadata: Record<string, unknown> | null;
-    };
-
     // 4. 更新建议状态为拒绝
     await supabase
       .from("classification_suggestions")
@@ -259,7 +249,7 @@ export async function DELETE(request: NextRequest) {
         status: "rejected",
         processed_at: new Date().toISOString(),
         metadata: {
-          ...(typedSuggestion.metadata || {}),
+          ...((suggestion.metadata as Record<string, unknown>) || {}),
           rejectedReason: reason,
           rejectedAt: new Date().toISOString(),
         },
@@ -267,8 +257,13 @@ export async function DELETE(request: NextRequest) {
       .eq("id", suggestionId);
 
     // 5. 清除相关书签的聚类状态（保留在待整理）
-    // Note: cluster_id, cluster_confidence 是 V4.2 新增字段
-    const bookmarkIds = typedSuggestion.bookmark_ids || [];
+    // 兼容处理：优先使用 bookmark_ids，回退到 bookmark_id
+    const bookmarkIds =
+      suggestion.bookmark_ids && suggestion.bookmark_ids.length > 0
+        ? suggestion.bookmark_ids
+        : suggestion.bookmark_id
+          ? [suggestion.bookmark_id]
+          : [];
     if (bookmarkIds.length > 0) {
       await supabase
         .from("bookmarks")

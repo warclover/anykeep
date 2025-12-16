@@ -811,13 +811,16 @@ export type Database = {
         Row: {
           batch_id: string;
           bookmark_id: number;
+          bookmark_ids: number[] | null;
           confidence: number;
           created_at: string | null;
           id: number;
+          metadata: Json | null;
           processed_at: string | null;
           reason: string | null;
           status: string | null;
           suggest_new_folder: boolean | null;
+          suggested_action: string | null;
           suggested_folder_id: number | null;
           suggested_folder_name: string;
           user_id: string;
@@ -825,13 +828,16 @@ export type Database = {
         Insert: {
           batch_id: string;
           bookmark_id: number;
+          bookmark_ids?: number[] | null;
           confidence: number;
           created_at?: string | null;
           id?: number;
+          metadata?: Json | null;
           processed_at?: string | null;
           reason?: string | null;
           status?: string | null;
           suggest_new_folder?: boolean | null;
+          suggested_action?: string | null;
           suggested_folder_id?: number | null;
           suggested_folder_name: string;
           user_id: string;
@@ -839,13 +845,16 @@ export type Database = {
         Update: {
           batch_id?: string;
           bookmark_id?: number;
+          bookmark_ids?: number[] | null;
           confidence?: number;
           created_at?: string | null;
           id?: number;
+          metadata?: Json | null;
           processed_at?: string | null;
           reason?: string | null;
           status?: string | null;
           suggest_new_folder?: boolean | null;
+          suggested_action?: string | null;
           suggested_folder_id?: number | null;
           suggested_folder_name?: string;
           user_id?: string;

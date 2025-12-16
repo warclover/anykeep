@@ -7,7 +7,7 @@
 "use client";
 
 import useSWR from "swr";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import type { SmartListClient, SmartListFilters } from "@/types/smart-list";
 import type { Bookmark } from "@/types/supabase";
 
@@ -228,9 +228,9 @@ export function useSmartListBookmarks(
     },
   );
 
-  // 智能列表数据
-  const smartList = data?.smartList ?? null;
-  const bookmarks = data?.bookmarks ?? [];
+  // 智能列表数据 - 使用 useMemo 稳定引用，避免不必要的重渲染
+  const smartList = useMemo(() => data?.smartList ?? null, [data?.smartList]);
+  const bookmarks = useMemo(() => data?.bookmarks ?? [], [data?.bookmarks]);
   const hasMore = data?.hasMore ?? false;
   const total = data?.total ?? 0;
 
@@ -239,17 +239,18 @@ export function useSmartListBookmarks(
     await mutate();
   }, [mutate]);
 
-  // 加载更多
+  // 加载更多 - 直接使用 data 避免 bookmarks 依赖导致的频繁重建
   const loadMore = useCallback(async () => {
-    if (!smartList || !hasMore || bookmarks.length === 0) return;
+    if (!data?.smartList || !data.hasMore || data.bookmarks.length === 0)
+      return;
 
-    const lastBookmark = bookmarks[bookmarks.length - 1];
-    const params = filtersToQueryParams(smartList.filters);
+    const lastBookmark = data.bookmarks[data.bookmarks.length - 1];
+    const params = filtersToQueryParams(data.smartList.filters);
     params.set("cursor", String(lastBookmark.id));
     params.set("limit", "50");
 
-    if (smartList.sortBy) {
-      params.set("sort", smartList.sortBy);
+    if (data.smartList.sortBy) {
+      params.set("sort", data.smartList.sortBy);
     }
 
     const res = await fetch(`/api/bookmarks?${params.toString()}`);
@@ -270,7 +271,7 @@ export function useSmartListBookmarks(
           : prev,
       { revalidate: false },
     );
-  }, [smartList, hasMore, bookmarks, mutate]);
+  }, [data, mutate]);
 
   return {
     smartList,

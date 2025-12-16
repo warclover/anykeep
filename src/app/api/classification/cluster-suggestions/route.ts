@@ -29,7 +29,6 @@ export async function GET() {
     }
 
     // 2. 获取待确认的聚类建议
-    // TODO: V4.2 待添加 bookmark_ids, suggested_action, metadata 列
     const { data: suggestions, error: fetchError } = await supabase
       .from("classification_suggestions")
       .select(
@@ -37,8 +36,11 @@ export async function GET() {
         id,
         suggested_folder_name,
         bookmark_id,
+        bookmark_ids,
+        suggested_action,
         confidence,
         reason,
+        metadata,
         created_at
       `,
       )
@@ -56,18 +58,15 @@ export async function GET() {
     }
 
     // 3. 获取书签标题（用于示例展示）
-    // TODO: V4.2 bookmark_ids 列待添加到数据库，当前使用 bookmark_id (单数)
-    type SuggestionRow = {
-      id: number;
-      suggested_folder_name: string | null;
-      bookmark_id: number; // 当前数据库是单数
-      confidence: number;
-      reason: string | null;
-      created_at: string;
+    // 兼容处理：优先使用 bookmark_ids，回退到 bookmark_id
+    const getBookmarkIds = (s: (typeof suggestions)[number]): number[] => {
+      if (s.bookmark_ids && s.bookmark_ids.length > 0) {
+        return s.bookmark_ids;
+      }
+      return s.bookmark_id ? [s.bookmark_id] : [];
     };
-    const typedSuggestions = (suggestions || []) as unknown as SuggestionRow[];
-    // 使用 bookmark_id (单数) 构建数组
-    const allBookmarkIds = typedSuggestions.map((s) => s.bookmark_id);
+
+    const allBookmarkIds = (suggestions || []).flatMap(getBookmarkIds);
 
     let bookmarkTitles: Record<number, string> = {};
     if (allBookmarkIds.length > 0) {
@@ -86,9 +85,8 @@ export async function GET() {
     }
 
     // 4. 格式化建议数据
-    // TODO: V4.2 待迁移为 bookmark_ids (数组)
-    const formattedSuggestions = typedSuggestions.map((s) => {
-      const bookmarkIds = [s.bookmark_id]; // 当前数据库是单数
+    const formattedSuggestions = (suggestions || []).map((s) => {
+      const bookmarkIds = getBookmarkIds(s);
       const sampleTitles = bookmarkIds
         .slice(0, 5)
         .map((id: number) => bookmarkTitles[id] || `书签 #${id}`)
@@ -97,10 +95,12 @@ export async function GET() {
       return {
         id: s.id,
         suggestedFolderName: s.suggested_folder_name,
+        suggestedAction: s.suggested_action || "move_to_folder",
         bookmarkIds,
         sampleTitles,
         confidence: s.confidence,
         reason: s.reason,
+        metadata: s.metadata,
         createdAt: s.created_at,
       };
     });
