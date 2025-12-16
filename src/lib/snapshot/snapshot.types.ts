@@ -93,6 +93,16 @@ export interface BookmarkSnapshotRow {
 }
 
 /**
+ * 快照触发来源 (P2-010)
+ */
+export type SnapshotTriggerSource =
+  | "manual" // 手动创建
+  | "auto-tag" // 标签自动触发
+  | "batch" // 批量创建
+  | "scheduled" // 定时任务
+  | "api"; // API 调用
+
+/**
  * bookmark_snapshots 插入类型
  */
 export interface BookmarkSnapshotInsert {
@@ -103,6 +113,9 @@ export interface BookmarkSnapshotInsert {
   original_url: string;
   expires_at?: string;
   job_id?: string;
+  // P2-010: 触发来源
+  trigger_source?: SnapshotTriggerSource;
+  trigger_tag?: string;
 }
 
 /**
@@ -174,6 +187,9 @@ export interface CreateSnapshotRequest {
   bookmarkId: number;
   snapshotType?: SnapshotType;
   priority?: "low" | "normal" | "high";
+  // P2-010: 触发来源
+  source?: SnapshotTriggerSource;
+  triggerTag?: string;
 }
 
 /**

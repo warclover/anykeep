@@ -7,8 +7,9 @@
  * - 错误回滚：保存失败时恢复原状态
  * - 微妙动画：选中/取消时的视觉反馈
  * - 静默成功：成功时不显示 Toast，失败时才提示
+ * - P2-010: 自动快照触发（添加特定标签时自动创建快照）
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-14
  */
 
@@ -43,10 +44,15 @@ const ICON_MAP: Record<string, LucideIcon> = {
 import type { CustomUsageTag } from "@/types/supabase";
 import { AddCustomUsageTagDialog } from "./add-custom-usage-tag-dialog";
 import { useCustomUsageTags } from "@/hooks/use-custom-usage-tags";
+import { useAutoSnapshot } from "@/hooks/use-auto-snapshot";
 
 interface UsageTagInlineEditorProps {
   /** 书签 ID */
   bookmarkId: number;
+  /** 书签 URL（P2-010: 自动快照需要） */
+  bookmarkUrl?: string;
+  /** 是否已有快照（P2-010: 避免重复创建） */
+  hasSnapshot?: boolean;
   /** 当前已选中的用途标签值列表 */
   selectedTags: string[];
   /** 当前的普通标签（非用途标签，需要保留） */
@@ -59,6 +65,8 @@ interface UsageTagInlineEditorProps {
 
 export function UsageTagInlineEditor({
   bookmarkId,
+  bookmarkUrl = "",
+  hasSnapshot = false,
   selectedTags: initialSelectedTags,
   regularTags,
   onSaveSuccess,
@@ -67,6 +75,13 @@ export function UsageTagInlineEditor({
   // 本地状态（用于乐观更新）
   const [localSelectedTags, setLocalSelectedTags] =
     useState<string[]>(initialSelectedTags);
+
+  // P2-010: 自动快照触发 Hook
+  const { checkAndTriggerSnapshot } = useAutoSnapshot({
+    bookmarkId,
+    bookmarkUrl,
+    hasSnapshot,
+  });
 
   // 正在保存中的标签（用于显示加载状态）
   const [savingTags, setSavingTags] = useState<Set<string>>(new Set());
@@ -182,6 +197,7 @@ export function UsageTagInlineEditor({
 
       if (success) {
         // 更新原始值（成功后）
+        const prevTags = originalTagsRef.current;
         originalTagsRef.current = newTags;
         // 更新最后使用时间（仅添加时）
         if (!isSelected) {
@@ -189,6 +205,8 @@ export function UsageTagInlineEditor({
         }
         // 通知父组件
         onSaveSuccess?.(newTags);
+        // P2-010: 检查是否需要触发自动快照
+        checkAndTriggerSnapshot(prevTags, newTags);
       } else {
         // 回滚到原始状态
         setLocalSelectedTags(originalTagsRef.current);
@@ -201,6 +219,7 @@ export function UsageTagInlineEditor({
       saveToServer,
       updateLastUsedAt,
       onSaveSuccess,
+      checkAndTriggerSnapshot,
     ],
   );
 
@@ -214,6 +233,7 @@ export function UsageTagInlineEditor({
       setShowAddDialog(false);
 
       // 自动选中新创建的标签并保存
+      const prevTags = localSelectedTags;
       const newTags = [...localSelectedTags, newTag.value];
       setLocalSelectedTags(newTags);
 
@@ -221,12 +241,20 @@ export function UsageTagInlineEditor({
       if (success) {
         originalTagsRef.current = newTags;
         onSaveSuccess?.(newTags);
+        // P2-010: 检查是否需要触发自动快照（自定义标签也可能是触发标签）
+        checkAndTriggerSnapshot(prevTags, newTags);
       } else {
         setLocalSelectedTags(originalTagsRef.current);
         toast.error("保存失败，请重试");
       }
     },
-    [localSelectedTags, saveToServer, setTags, onSaveSuccess],
+    [
+      localSelectedTags,
+      saveToServer,
+      setTags,
+      onSaveSuccess,
+      checkAndTriggerSnapshot,
+    ],
   );
 
   /**

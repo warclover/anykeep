@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
 
     // 2. 解析请求体
     const body: CreateSnapshotRequest = await request.json();
-    const { bookmarkId, snapshotType, priority } = body;
+    const { bookmarkId, snapshotType, priority, source, triggerTag } = body;
 
     if (!bookmarkId || typeof bookmarkId !== "number") {
       return NextResponse.json(
@@ -119,10 +119,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 3. 调用服务创建快照
+    // 3. 调用服务创建快照 (P2-010: 支持 source/triggerTag)
     const result = await snapshotService.createSnapshot(user.id, bookmarkId, {
       snapshotType,
       priority,
+      source: source || "manual",
+      triggerTag: source === "auto-tag" ? triggerTag : undefined,
     });
 
     const response: CreateSnapshotResponse = {

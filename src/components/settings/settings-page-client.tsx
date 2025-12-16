@@ -37,6 +37,7 @@ import { SummaryModeSettingsCard } from "./summary-mode-settings-card";
 import { AIOperationHistoryCard } from "./ai-operation-history-card";
 import { NotificationSettingsCard } from "@/components/messages";
 import { SnapshotQuotaSectionLazy } from "@/components/snapshot";
+import { AutoSnapshotSettings } from "./auto-snapshot-settings";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { ErrorMessage } from "@/components/ui/error-message";
@@ -295,6 +296,9 @@ export function SettingsPageClient({
 
             {/* 网页快照配额 - V4.2.1 */}
             <SnapshotQuotaSectionLazy />
+
+            {/* 自动快照设置 - P2-010 */}
+            <AutoSnapshotSettings />
 
             {/* AI 智能功能 */}
             <Card>

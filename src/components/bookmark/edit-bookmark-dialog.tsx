@@ -1,11 +1,12 @@
 /**
  * 编辑收藏对话框组件
  * 提供表单让用户编辑收藏的标题、描述、文件夹、标签、备注等信息
+ * P2-010: 集成自动快照触发（修改标签时检查）
  */
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -33,6 +34,7 @@ import { updateBookmarkSchema } from "@/lib/validation";
 import type { Bookmark, CustomUsageTag } from "@/types/supabase";
 import { UsageTagSelector } from "./usage-tag-selector";
 import { separateUserTagsExtended } from "@/lib/constants/usage-tags";
+import { useAutoSnapshot } from "@/hooks/use-auto-snapshot";
 
 interface EditBookmarkDialogProps {
   open: boolean;
@@ -69,6 +71,14 @@ export function EditBookmarkDialog({
   // 表单错误
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // P2-010: 自动快照触发
+  const originalUsageTagsRef = useRef<string[]>([]);
+  const { checkAndTriggerSnapshot } = useAutoSnapshot({
+    bookmarkId: bookmark.id,
+    bookmarkUrl: bookmark.url,
+    hasSnapshot: false, // 由 hook 内部检查
+  });
+
   // 当 bookmark 变化时重置表单
   useEffect(() => {
     setTitle(bookmark.title);
@@ -85,6 +95,8 @@ export function EditBookmarkDialog({
     );
     setSelectedUsageTags(usageTags);
     setTags(regularTags.join(", "));
+    // P2-010: 保存原始用途标签用于比较
+    originalUsageTagsRef.current = usageTags;
   }, [bookmark, customUsageTags]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -139,6 +151,10 @@ export function EditBookmarkDialog({
       }
 
       toast.success("收藏更新成功！");
+
+      // P2-010: 检查是否需要触发自动快照
+      checkAndTriggerSnapshot(originalUsageTagsRef.current, selectedUsageTags);
+
       onOpenChange(false);
 
       // 刷新页面数据

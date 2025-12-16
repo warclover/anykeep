@@ -47,6 +47,9 @@ const getSnapshotsTable = (supabase: SupabaseClient) =>
 export interface CreateSnapshotOptions {
   snapshotType?: SnapshotType;
   priority?: "low" | "normal" | "high";
+  // P2-010: 触发来源
+  source?: "manual" | "auto-tag" | "batch" | "scheduled" | "api";
+  triggerTag?: string;
 }
 
 /**
@@ -252,7 +255,7 @@ export class SnapshotService {
         ? null
         : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(); // 30天
 
-    // 6. 创建快照记录
+    // 6. 创建快照记录 (P2-010: 支持 trigger_source/trigger_tag)
     const snapshotInsert: BookmarkSnapshotInsert = {
       bookmark_id: bookmarkId,
       user_id: userId,
@@ -260,6 +263,9 @@ export class SnapshotService {
       status: "pending",
       original_url: bookmark.url,
       expires_at: expiresAt || undefined,
+      trigger_source: options.source || "manual",
+      trigger_tag:
+        options.source === "auto-tag" ? options.triggerTag : undefined,
     };
 
     const { data: snapshot, error: insertError } = await getSnapshotsTable(
