@@ -1532,7 +1532,7 @@ export function HomePageClient({
       <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 md:px-8 py-0.5 md:py-1">
         {/* 快速添加收藏组件（仅在非垃圾箱页面显示） */}
         {!isTrashFolder && (
-          <div className="mb-6 max-w-4xl mx-auto flex items-center gap-3">
+          <div className="mb-6 flex items-center gap-3">
             <div className="flex-1 min-w-0">
               <QuickAddBookmark
                 onBookmarkCreated={() => {

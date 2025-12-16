@@ -269,11 +269,7 @@ export function QuickAddBookmark({
     <>
       <div
         ref={containerRef}
-        className={cn(
-          "quick-add-bookmark",
-          "w-full max-w-3xl mx-auto",
-          className,
-        )}
+        className={cn("quick-add-bookmark", "w-full", className)}
         data-mode={mode}
       >
         {renderContent()}
