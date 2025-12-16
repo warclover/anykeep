@@ -1,6 +1,8 @@
 /**
  * Supabase 服务端客户端
  * 用于 Server Components 和 API Routes
+ *
+ * @version V4.2.24 - 性能优化：添加连接配置
  */
 
 import { createServerClient } from "@supabase/ssr";
@@ -8,9 +10,44 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import type { Database } from "@/types/supabase";
 
+// ============================================
+// 连接配置常量
+// ============================================
+
+/** 请求超时时间（毫秒） */
+const REQUEST_TIMEOUT = 10_000;
+
+/**
+ * 创建带超时的 fetch 函数
+ * @param timeout 超时时间（毫秒）
+ */
+function createFetchWithTimeout(timeout: number) {
+  return async (url: RequestInfo | URL, options?: RequestInit) => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+    try {
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal,
+        // keepalive 保持连接复用
+        keepalive: true,
+      });
+      return response;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  };
+}
+
 /**
  * 创建服务端 Supabase 客户端
  * 每次请求都需要新建实例（因为需要访问 cookies）
+ *
+ * @features V4.2.24
+ * - 请求超时控制（10秒）
+ * - keepalive 连接复用
+ * - 禁用 Realtime（服务端不需要）
  */
 export async function createClient() {
   const cookieStore = await cookies();
@@ -34,6 +71,18 @@ export async function createClient() {
           }
         },
       },
+      // V4.2.24: 性能优化配置
+      global: {
+        fetch: createFetchWithTimeout(REQUEST_TIMEOUT),
+      },
+      auth: {
+        // 服务端不需要自动刷新 token
+        autoRefreshToken: false,
+        // 服务端不持久化会话
+        persistSession: false,
+        // 不自动检测会话变化
+        detectSessionInUrl: false,
+      },
     },
   );
 }
@@ -44,6 +93,10 @@ export async function createClient() {
  *
  * 注意：使用 @supabase/supabase-js 的 createClient 而非 createServerClient
  * 因为 createServerClient 会应用用户会话，即使使用 service role key 也可能触发 RLS
+ *
+ * @features V4.2.24
+ * - 请求超时控制（10秒）
+ * - keepalive 连接复用
  */
 export async function createServiceClient() {
   return createSupabaseClient<Database>(
@@ -53,6 +106,10 @@ export async function createServiceClient() {
       auth: {
         autoRefreshToken: false,
         persistSession: false,
+      },
+      // V4.2.24: 性能优化配置
+      global: {
+        fetch: createFetchWithTimeout(REQUEST_TIMEOUT),
       },
     },
   );

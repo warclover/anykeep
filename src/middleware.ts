@@ -7,6 +7,7 @@
  * - 认证保护
  * - 会话自动刷新
  * - V4.2.15: API 速率限制
+ * - V4.2.24: 用户预验证注入（性能优化）
  */
 
 import { type NextRequest, NextResponse } from "next/server";
@@ -89,6 +90,33 @@ export async function middleware(request: NextRequest) {
 
   // 4. 将 Request ID 添加到响应头
   supabaseResponse.headers.set("x-request-id", requestId);
+
+  // 5. V4.2.24 性能优化：注入预验证的用户信息到请求头
+  // 这样 API 路由可以使用 header 模式跳过重复认证（节省 ~1000ms/请求）
+  // 注意：这些 header 仅供内部 API 使用，不应被客户端信任
+  if (user && pathname.startsWith("/api")) {
+    // 注入到下一个请求的 headers（通过修改 request）
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set("x-user-id", user.id);
+    requestHeaders.set("x-user-verified", "true");
+
+    // 重新创建响应以包含修改后的请求
+    const response = NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    });
+
+    // 复制原响应的 cookies 和 headers
+    supabaseResponse.headers.forEach((value, key) => {
+      response.headers.set(key, value);
+    });
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      response.cookies.set(cookie.name, cookie.value, cookie);
+    });
+
+    return response;
+  }
 
   // 检查是否是受保护的路由
   const isProtectedRoute = protectedRoutes.some((route) =>

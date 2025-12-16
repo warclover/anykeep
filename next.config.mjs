@@ -26,6 +26,53 @@ const nextConfig = {
       },
     ],
   },
+
+  // V4.2.24: HTTP/2 预连接和缓存优化
+  async headers() {
+    return [
+      {
+        // 所有页面添加预连接头
+        source: '/(.*)',
+        headers: [
+          // 预连接 Supabase（减少 DNS + TLS 握手时间）
+          {
+            key: 'Link',
+            value: `<${process.env.NEXT_PUBLIC_SUPABASE_URL}>; rel=preconnect`,
+          },
+          // 预连接 Google Fonts（favicon 服务）
+          {
+            key: 'Link',
+            value: '<https://www.google.com>; rel=preconnect',
+          },
+          // DNS 预解析
+          {
+            key: 'Link',
+            value: '<https://fonts.googleapis.com>; rel=dns-prefetch',
+          },
+        ],
+      },
+      {
+        // 静态资源缓存优化
+        source: '/_next/static/(.*)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
+        // API 路由禁止缓存
+        source: '/api/(.*)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'no-store, no-cache, must-revalidate',
+          },
+        ],
+      },
+    ];
+  },
 };
 
 // Sentry configuration options
