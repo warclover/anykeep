@@ -11,6 +11,7 @@ import { unstable_noStore } from "next/cache";
 import { HomePageClient } from "@/components/home/home-page-client";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { createClient } from "@/lib/supabase/server";
+import { DEFAULT_PAGE_SIZE } from "@/components/home/constants";
 import type { Bookmark, Platform } from "@/types/supabase";
 
 type BookmarkWithFolder = Bookmark & {
@@ -78,7 +79,8 @@ async function getInitialBookmarks(
       query = query.order("title", { ascending, nullsFirst: false });
     }
 
-    query = query.limit(50);
+    // SSR 阶段使用默认分页大小（客户端视图模式未知）
+    query = query.limit(DEFAULT_PAGE_SIZE);
 
     const { data, error } = await query;
 

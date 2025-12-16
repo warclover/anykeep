@@ -304,7 +304,7 @@ export const getBookmarksQuerySchema = z.object({
     .optional()
     .transform((val) => val ?? undefined),
   cursor: z.coerce.number().int().positive().nullable().optional(),
-  limit: z.coerce.number().int().min(1).max(100).default(12), // V5.0: 首屏仅加载12条，配合持久化缓存实现秒开
+  limit: z.coerce.number().int().min(1).max(100).default(24), // V4.2.x: 默认与 constants.DEFAULT_PAGE_SIZE 保持一致
   sort: z
     .enum(["created_desc", "created_asc", "title_asc", "title_desc"])
     .nullable()

@@ -18,6 +18,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { dataCache } from "../data-cache";
 import { DATA_CACHE_CONFIG } from "../cache-config";
+import { DEFAULT_PAGE_SIZE } from "@/components/home/constants";
 import type { Bookmark } from "@/types/supabase";
 
 // 扩展的书签类型（包含文件夹信息）
@@ -52,6 +53,8 @@ interface UseBookmarksSWROptions {
   folder: string;
   /** V9.0新增：用途标签筛选 */
   usageTags?: string[];
+  /** V4.2.x新增：每页加载数量（根据视图模式动态调整） */
+  pageSize?: number;
   enabled?: boolean;
   initialData?: BookmarkWithFolder[];
 }
@@ -113,6 +116,7 @@ export function useBookmarksSWR(
     sort,
     folder,
     usageTags = [],
+    pageSize = DEFAULT_PAGE_SIZE,
     enabled = true,
     initialData,
   } = options;
@@ -139,7 +143,8 @@ export function useBookmarksSWR(
 
   const [hasMore, setHasMore] = useState(() => {
     if (initialData && initialData.length > 0) {
-      return initialData.length === 50;
+      // 使用传入的 pageSize 判断是否有更多数据（精确匹配）
+      return initialData.length === pageSize;
     }
     const cached = dataCache.getSync<{
       bookmarks: BookmarkWithFolder[];
@@ -191,7 +196,7 @@ export function useBookmarksSWR(
       }
 
       apiParams.set("sort", sort || "created_desc");
-      apiParams.set("limit", "50");
+      apiParams.set("limit", pageSize.toString());
 
       if (folder) {
         // 区分虚拟文件夹和真实文件夹 ID
@@ -224,7 +229,7 @@ export function useBookmarksSWR(
         hasMore: result.data.pagination.hasMore as boolean,
       };
     },
-    [platform, sort, folder, usageTags],
+    [platform, sort, folder, usageTags, pageSize],
   );
 
   /**
@@ -326,6 +331,9 @@ export function useBookmarksSWR(
     }
   }, [cacheKey, enabled, fetchFromAPI]);
 
+  // 记录是否使用了 initialData（用于防止缓存覆盖 SSR 数据）
+  const hasInitialDataRef = useRef(initialData && initialData.length > 0);
+
   /**
    * 参数变化时重新获取数据
    */
@@ -349,6 +357,13 @@ export function useBookmarksSWR(
       }
 
       prevCacheKeyRef.current = cacheKey;
+    }
+
+    // 如果有 SSR initialData，首次挂载时跳过 fetchData，避免不必要的请求
+    // 后续 cacheKey 变化时正常刷新
+    if (hasInitialDataRef.current && prevCacheKeyRef.current === cacheKey) {
+      hasInitialDataRef.current = false; // 标记已消费，后续正常刷新
+      return;
     }
 
     fetchData();
@@ -453,7 +468,7 @@ export function useBookmarksSWR(
     try {
       const apiParams = new URLSearchParams({
         cursor: lastBookmark.id.toString(),
-        limit: "50",
+        limit: pageSize.toString(),
       });
 
       if (platform === "browser") {
@@ -521,6 +536,7 @@ export function useBookmarksSWR(
     sort,
     folder,
     usageTags,
+    pageSize,
   ]);
 
   /**

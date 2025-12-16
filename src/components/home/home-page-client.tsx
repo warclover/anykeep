@@ -130,6 +130,8 @@ import {
   VIEW_MODE_STORAGE_KEY,
   LAYOUT_MODE_STORAGE_KEY,
   FLIP_CARD_STORAGE_KEY,
+  DEFAULT_PAGE_SIZE,
+  getPageSizeByView,
 } from "./constants";
 import type { ViewMode, LayoutMode } from "./constants";
 import { SmartListView } from "@/components/smart-list";
@@ -559,7 +561,7 @@ export function HomePageClient({
           apiParams.set("excludeBrowser", "true");
         }
         apiParams.set("sort", sort);
-        apiParams.set("limit", "50");
+        apiParams.set("limit", getPageSizeByView(viewMode).toString());
         if (folder) {
           apiParams.set("folder", folder);
         }
@@ -586,7 +588,7 @@ export function HomePageClient({
         throw error;
       }
     },
-    [fetchWithAbort],
+    [fetchWithAbort, viewMode],
   );
 
   // ===== SSR 数据同步 =====
@@ -625,7 +627,8 @@ export function HomePageClient({
     if (hasChanged) {
       // 更新状态，使用回调形式避免覆盖正在进行的乐观更新
       setBookmarks(initialBookmarks);
-      setHasMore(initialBookmarks.length === 50);
+      // SSR 使用 DEFAULT_PAGE_SIZE，判断是否有更多数据
+      setHasMore(initialBookmarks.length === DEFAULT_PAGE_SIZE);
       prevInitialBookmarksRef.current = initialBookmarks;
     }
   }, [initialBookmarks, setBookmarks, setHasMore]);
@@ -719,7 +722,7 @@ export function HomePageClient({
           apiParams.set("excludeBrowser", "true");
         }
         apiParams.set("sort", currentSort);
-        apiParams.set("limit", "50");
+        apiParams.set("limit", getPageSizeByView(viewMode).toString());
         if (currentFolder) {
           apiParams.set("folder", currentFolder);
         }
@@ -764,6 +767,7 @@ export function HomePageClient({
       _setCacheOld,
       fetchWithAbort,
       setBookmarks,
+      viewMode,
     ],
   );
 
@@ -801,7 +805,7 @@ export function HomePageClient({
         apiParams.set("excludeBrowser", "true");
       }
       apiParams.set("sort", sortValue);
-      apiParams.set("limit", "50");
+      apiParams.set("limit", getPageSizeByView(viewMode).toString());
       if (currentFolder) {
         apiParams.set("folder", currentFolder);
       }
@@ -1060,7 +1064,7 @@ export function HomePageClient({
       const lastBookmark = bookmarks[bookmarks.length - 1];
       const params = new URLSearchParams({
         cursor: lastBookmark.id.toString(),
-        limit: "50",
+        limit: getPageSizeByView(viewMode).toString(),
       });
 
       if (currentPlatform) {

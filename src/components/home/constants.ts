@@ -58,3 +58,32 @@ export const DEFAULT_LAYOUT_MODE: LayoutMode = "auto";
 
 /** 默认排序方式 */
 export const DEFAULT_SORT: SortValue = "created_desc";
+
+// ==================== 分页配置 ====================
+
+/**
+ * 根据视图模式动态调整分页大小
+ * - card: 卡片视图首屏约 4-8 张，16 条足够
+ * - list: 列表视图首屏约 10-15 条，24 条合适
+ * - compact: 紧凑视图首屏约 15-20 条，32 条合适
+ */
+export const PAGE_SIZE_BY_VIEW: Record<ViewMode, number> = {
+  card: 16,
+  list: 24,
+  compact: 32,
+} as const;
+
+/** 默认分页大小（向后兼容） */
+export const DEFAULT_PAGE_SIZE = 24;
+
+/**
+ * 获取视图模式对应的分页大小
+ * @param viewMode - 视图模式
+ * @returns 分页大小
+ */
+export function getPageSizeByView(viewMode: ViewMode | undefined): number {
+  if (!viewMode || !(viewMode in PAGE_SIZE_BY_VIEW)) {
+    return DEFAULT_PAGE_SIZE;
+  }
+  return PAGE_SIZE_BY_VIEW[viewMode];
+}
