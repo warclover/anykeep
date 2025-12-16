@@ -1,15 +1,17 @@
 /**
  * 批量移动到文件夹对话框
  * 允许用户将选中的收藏移动到指定文件夹
+ * V4.2.24: 使用 useFolders Hook 统一缓存
  */
 
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Loader2, Folder, FolderOpen, Check } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAbortableFetch } from '@/hooks/use-abortable-fetch'
+import { useFolders } from '@/hooks/use-folders'
 import {
   Dialog,
   DialogContent,
@@ -42,39 +44,19 @@ export function BatchMoveDialog({
   const router = useRouter()
   const { fetchWithAbort } = useAbortableFetch()
 
-  const [isLoading, setIsLoading] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [folders, setFolders] = useState<FolderTreeNode[]>([])
   const [selectedFolderId, setSelectedFolderId] = useState<number | null>(null)
   const [expandedFolders, setExpandedFolders] = useState<Set<number>>(new Set())
 
-  // 加载文件夹列表
-  const loadFolders = useCallback(async () => {
-    setIsLoading(true)
-    try {
-      const res = await fetchWithAbort('/api/folders')
-      const data = await res.json()
+  // V4.2.24: 使用统一的文件夹缓存 Hook（仅在对话框打开时获取）
+  const {
+    folders: rawFolders,
+    isLoading,
+    error: loadError,
+  } = useFolders({ enabled: open })
 
-      if (!res.ok) {
-        throw new Error(data.error?.message || '加载文件夹失败')
-      }
-
-      setFolders(data.data || [])
-    } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') {
-        return
-      }
-      toast.error(error instanceof Error ? error.message : '加载文件夹失败')
-    } finally {
-      setIsLoading(false)
-    }
-  }, [fetchWithAbort])
-
-  useEffect(() => {
-    if (open) {
-      loadFolders()
-    }
-  }, [open, loadFolders])
+  // 转换为树形结构类型
+  const folders = (rawFolders || []) as FolderTreeNode[]
 
   const handleSubmit = async () => {
     if (selectedIds.size === 0) return
@@ -229,6 +211,10 @@ export function BatchMoveDialog({
             <div className="flex items-center justify-center py-8">
               <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
               <span className="ml-2 text-gray-500">加载文件夹...</span>
+            </div>
+          ) : loadError ? (
+            <div className="flex items-center justify-center py-8 text-red-500">
+              {loadError.message || '加载文件夹失败'}
             </div>
           ) : (
             <div className="h-[300px] border rounded-lg overflow-y-auto">

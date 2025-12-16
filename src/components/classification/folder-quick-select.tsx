@@ -2,13 +2,15 @@
  * 文件夹快速选择器
  * 用于分类建议的「换一个」功能
  * 轻量级弹窗，快速选择目标文件夹
+ * V4.2.24: 使用 useFolders Hook 统一缓存
  */
 
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Loader2, Folder, Check } from "lucide-react";
 import { toast } from "sonner";
+import { useFolders } from "@/hooks/use-folders";
 import {
   Dialog,
   DialogContent,
@@ -49,48 +51,46 @@ export function FolderQuickSelect({
   onSelect,
   title = "选择文件夹",
 }: FolderQuickSelectProps) {
-  const [folders, setFolders] = useState<FolderOption[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // 加载文件夹列表
-  const loadFolders = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const res = await fetch("/api/folders");
-      const data = await res.json();
+  // V4.2.24: 使用统一的文件夹缓存 Hook
+  const {
+    folders: rawFolders,
+    isLoading,
+    error: loadError,
+  } = useFolders({ enabled: open });
 
-      if (!res.ok) {
-        throw new Error(data.error?.message || "加载文件夹失败");
-      }
-
-      // 扁平化文件夹列表并排除原建议文件夹
-      const flatFolders: FolderOption[] = [];
-      const flatten = (items: FolderOption[]) => {
-        for (const item of items) {
-          if (item.id !== excludeFolderId) {
-            flatFolders.push({ id: item.id, name: item.name });
-          }
+  // 扁平化文件夹列表并排除原建议文件夹
+  const folders = useMemo<FolderOption[]>(() => {
+    if (!rawFolders) return [];
+    const flatFolders: FolderOption[] = [];
+    const flatten = (items: FolderOption[]) => {
+      for (const item of items) {
+        if (item.id !== excludeFolderId) {
+          flatFolders.push({ id: item.id, name: item.name });
         }
-      };
-      flatten(data.data || []);
-      setFolders(flatFolders);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "加载文件夹失败");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [excludeFolderId]);
+      }
+    };
+    flatten(rawFolders as FolderOption[]);
+    return flatFolders;
+  }, [rawFolders, excludeFolderId]);
 
+  // 对话框打开时重置状态
   useEffect(() => {
     if (open) {
-      loadFolders();
       setSelectedId(null);
       setSearchTerm("");
     }
-  }, [open, loadFolders]);
+  }, [open]);
+
+  // 显示加载错误
+  useEffect(() => {
+    if (loadError) {
+      toast.error(loadError.message || "加载文件夹失败");
+    }
+  }, [loadError]);
 
   // 过滤文件夹
   const filteredFolders = folders.filter((folder) =>

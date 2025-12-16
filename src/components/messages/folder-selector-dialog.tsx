@@ -1,6 +1,7 @@
 /**
  * Folder Selector Dialog
  * V4.2 文件夹选择器对话框
+ * V4.2.24: 使用 useFolders Hook 统一缓存
  *
  * @description 用于待确认消息流程中的文件夹选择
  * - 显示可用文件夹列表（树形结构）
@@ -8,13 +9,13 @@
  * - 搜索过滤
  * - 置信度显示（如果有备选建议）
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-11
  */
 
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import {
   Loader2,
   Folder,
@@ -24,7 +25,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useAbortableFetch } from "@/hooks/use-abortable-fetch";
+import { useFolders } from "@/hooks/use-folders";
 import {
   Dialog,
   DialogContent,
@@ -95,12 +96,7 @@ export function FolderSelectorDialog({
   description = "选择要将内容归类到的文件夹",
   allowNoFolder = true,
 }: FolderSelectorDialogProps) {
-  const { fetchWithAbort } = useAbortableFetch();
-
   // 状态
-  const [folders, setFolders] = useState<FolderTreeNode[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedId, setSelectedId] = useState<number | null>(
     currentFolderId ?? null
@@ -108,42 +104,24 @@ export function FolderSelectorDialog({
   const [isCreating, setIsCreating] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
 
-  // 加载文件夹
-  const loadFolders = useCallback(async () => {
-    setIsLoading(true);
-    setLoadError(null);
+  // V4.2.24: 使用统一的文件夹缓存 Hook
+  const {
+    folders: rawFolders,
+    isLoading,
+    error: hookError,
+    refresh: loadFolders,
+  } = useFolders({ enabled: open });
 
-    try {
-      const res = await fetchWithAbort("/api/folders");
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error?.message || "加载文件夹失败");
-      }
-      const data = await res.json();
-      setFolders(data.data || []);
-    } catch (error) {
-      if (error instanceof Error && error.name === "AbortError") return;
-      const errorMsg = error instanceof Error ? error.message : "加载文件夹失败";
-      setLoadError(errorMsg);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [fetchWithAbort]);
+  // 转换为树形结构类型
+  const loadError = hookError?.message || null;
 
-  // 打开时加载
-  useEffect(() => {
-    if (open) {
-      loadFolders();
-      setSelectedId(currentFolderId ?? null);
-      setSearchQuery("");
-      setIsCreating(false);
-      setNewFolderName("");
-    }
-  }, [open, currentFolderId, loadFolders]);
-
-  // 扁平化文件夹树
-  const flattenFolderTree = useCallback(
-    (nodes: FolderTreeNode[], level = 0): FlattenedFolder[] => {
+  // 扁平化列表（将数据转换整合到 useMemo 内部）
+  const flattenedFolders = useMemo(() => {
+    const folders = (rawFolders || []) as FolderTreeNode[];
+    const flattenTree = (
+      nodes: FolderTreeNode[],
+      level = 0,
+    ): FlattenedFolder[] => {
       const result: FlattenedFolder[] = [];
       for (const node of nodes) {
         if (node.is_system) continue;
@@ -154,19 +132,24 @@ export function FolderSelectorDialog({
           parentId: node.parent_id,
         });
         if (node.children?.length > 0) {
-          result.push(...flattenFolderTree(node.children, level + 1));
+          result.push(...flattenTree(node.children, level + 1));
         }
       }
       return result;
-    },
-    []
-  );
+    };
+    return flattenTree(folders);
+  }, [rawFolders]);
 
-  // 扁平化列表
-  const flattenedFolders = useMemo(
-    () => flattenFolderTree(folders),
-    [folders, flattenFolderTree]
-  );
+  // 打开时重置状态（使用 ref 避免 ESLint 警告）
+  const prevOpenRef = useRef(open);
+  if (open && !prevOpenRef.current) {
+    // 对话框刚打开时重置状态
+    setSelectedId(currentFolderId ?? null);
+    setSearchQuery("");
+    setIsCreating(false);
+    setNewFolderName("");
+  }
+  prevOpenRef.current = open;
 
   // 过滤列表
   const filteredFolders = useMemo(() => {

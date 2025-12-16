@@ -3,17 +3,18 @@
 /**
  * Pending Confirmations Section
  * V4.2 待确认消息区域组件
+ * V4.2.24: 使用 useFolders Hook 统一缓存
  *
  * @description 展示和管理待确认的分类建议
  * - 获取待确认消息列表
  * - 支持单个和批量操作
  * - 集成学习反馈
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-11
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { toast } from "sonner";
 import { ChevronDown, ChevronUp, Bell, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ import {
 } from "./confirmation-message-card";
 import { cn } from "@/lib/utils";
 import { fetchWithRetry } from "@/lib/utils/fetch-with-retry";
+import { useFolders } from "@/hooks/use-folders";
 
 // ============================================================================
 // 类型定义
@@ -72,25 +74,31 @@ export function PendingConfirmationsSection({
   className,
 }: PendingConfirmationsSectionProps) {
   const [messages, setMessages] = useState<ConfirmationMessage[]>([]);
-  const [folders, setFolders] = useState<FolderOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(true);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
-  // V4.2.1: 获取待确认消息（带自动重试机制）
+  // V4.2.24: 使用统一的文件夹缓存 Hook
+  const { folders: rawFolders } = useFolders();
+
+  // 转换文件夹数据格式
+  const folders = useMemo<FolderOption[]>(() => {
+    if (!rawFolders) return [];
+    return rawFolders.map((f) => ({
+      id: f.id,
+      name: f.name,
+    }));
+  }, [rawFolders]);
+
+  // V4.2.24: 获取待确认消息（文件夹数据由 useFolders Hook 提供）
   const fetchConfirmations = useCallback(async () => {
     try {
       // 使用 fetchWithRetry 处理偶发的 401 错误
-      const [confirmationsRes, foldersRes] = await Promise.all([
-        fetchWithRetry(
-          "/api/classification/confirmations?status=pending",
-          undefined,
-          { requestId: "confirmations-list" },
-        ),
-        fetchWithRetry("/api/folders", undefined, {
-          requestId: "folders-list",
-        }),
-      ]);
+      const confirmationsRes = await fetchWithRetry(
+        "/api/classification/confirmations?status=pending",
+        undefined,
+        { requestId: "confirmations-list" },
+      );
 
       if (confirmationsRes.ok) {
         const confirmationsData = await confirmationsRes.json();
@@ -116,16 +124,6 @@ export function PendingConfirmationsSection({
           }),
         );
         setMessages(transformedMessages);
-      }
-
-      if (foldersRes.ok) {
-        const foldersData = await foldersRes.json();
-        setFolders(
-          (foldersData.data || []).map((f: { id: number; name: string }) => ({
-            id: f.id,
-            name: f.name,
-          })),
-        );
       }
     } catch (error) {
       console.error("Failed to fetch confirmations:", error);

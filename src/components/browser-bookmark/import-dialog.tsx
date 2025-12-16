@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { toast } from "sonner";
+import { useFolders } from "@/hooks/use-folders";
 import {
   Dialog,
   DialogContent,
@@ -126,9 +127,58 @@ export function BrowserBookmarkImportDialog({
   const [options, setOptions] = useState<BrowserBookmarkImportOptions>(
     DEFAULT_IMPORT_OPTIONS,
   );
-  const [folders, setFolders] = useState<
-    Array<{ id: number; name: string; parent_id: number | null }>
-  >([]);
+
+  // V4.2.24: 使用统一的文件夹缓存 Hook（仅在配置步骤时获取）
+  const { folders: rawFolders } = useFolders({
+    enabled: open && step === IMPORT_DIALOG_STEPS.OPTIONS,
+  });
+
+  // 扁平化文件夹列表
+  const folders = useMemo(() => {
+    if (!rawFolders) return [];
+    const flatFolders: Array<{
+      id: number;
+      name: string;
+      parent_id: number | null;
+    }> = [];
+
+    function flattenTree(
+      nodes: Array<{
+        id: number;
+        name: string;
+        parent_id: number | null;
+        children?: Array<unknown>;
+      }>,
+    ) {
+      for (const node of nodes) {
+        flatFolders.push({
+          id: node.id,
+          name: node.name,
+          parent_id: node.parent_id,
+        });
+        if (node.children && Array.isArray(node.children)) {
+          flattenTree(
+            node.children as Array<{
+              id: number;
+              name: string;
+              parent_id: number | null;
+              children?: Array<unknown>;
+            }>,
+          );
+        }
+      }
+    }
+
+    flattenTree(
+      rawFolders as Array<{
+        id: number;
+        name: string;
+        parent_id: number | null;
+        children?: Array<unknown>;
+      }>,
+    );
+    return flatFolders;
+  }, [rawFolders]);
 
   // 导入状态
   const [progress, setProgress] = useState<ImportProgressType>(
@@ -177,60 +227,7 @@ export function BrowserBookmarkImportDialog({
   }, [open, resetState]);
 
   // 加载文件夹列表
-  useEffect(() => {
-    if (open && step === IMPORT_DIALOG_STEPS.OPTIONS) {
-      fetchFolders();
-    }
-  }, [open, step]);
-
-  const fetchFolders = async () => {
-    try {
-      const response = await fetch("/api/folders");
-      if (response.ok) {
-        const result = await response.json();
-        // API 返回 { success, data: FolderTreeNode[] }
-        // 需要扁平化树形结构
-        const folderTree = result.data || [];
-        const flatFolders: Array<{
-          id: number;
-          name: string;
-          parent_id: number | null;
-        }> = [];
-
-        function flattenTree(
-          nodes: Array<{
-            id: number;
-            name: string;
-            parent_id: number | null;
-            children?: Array<unknown>;
-          }>,
-        ) {
-          for (const node of nodes) {
-            flatFolders.push({
-              id: node.id,
-              name: node.name,
-              parent_id: node.parent_id,
-            });
-            if (node.children && Array.isArray(node.children)) {
-              flattenTree(
-                node.children as Array<{
-                  id: number;
-                  name: string;
-                  parent_id: number | null;
-                  children?: Array<unknown>;
-                }>,
-              );
-            }
-          }
-        }
-
-        flattenTree(folderTree);
-        setFolders(flatFolders);
-      }
-    } catch (error) {
-      console.error("Failed to fetch folders:", error);
-    }
-  };
+  // V4.2.24: 文件夹数据现在由 useFolders Hook 提供，无需手动 fetch
 
   // 处理文件选择
   const handleFileSelect = useCallback(

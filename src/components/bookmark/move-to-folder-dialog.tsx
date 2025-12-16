@@ -1,23 +1,25 @@
 /**
  * 移动到文件夹对话框组件
  * V4.2 集成学习反馈
+ * V4.2.24: 使用 useFolders Hook 统一缓存，避免重复请求
  *
  * @description 提供快速移动收藏到指定文件夹的功能
  * - 支持文件夹树形选择
  * - 移动时触发学习事件
  * - 显示学习反馈 Toast
  *
- * @version 1.1.0
+ * @version 1.2.0
  * @since 2025-12-11
  */
 
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Folder, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useAbortableFetch } from "@/hooks/use-abortable-fetch";
+import { useFolders } from "@/hooks/use-folders";
 import { useLearningFeedback } from "./learning-feedback-toast";
 import {
   Dialog,
@@ -84,54 +86,28 @@ export function MoveToFolderDialog({
   const { fetchWithAbort } = useAbortableFetch();
   const { showFolderPreference, showSourcePreference } = useLearningFeedback();
 
-  // 文件夹数据状态
-  const [folders, setFolders] = useState<FolderTreeNode[]>([]);
-  const [isLoadingFolders, setIsLoadingFolders] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  // V4.2.24: 使用统一的文件夹缓存 Hook（仅在对话框打开时获取）
+  const {
+    folders: rawFolders,
+    isLoading: isLoadingFolders,
+    error: loadError,
+    refresh: loadFolders,
+  } = useFolders({ enabled: open });
+
+  // 转换为树形结构（兼容原有逻辑）
+  const folders = (rawFolders || []) as FolderTreeNode[];
 
   // 选择状态
   const [selectedFolderId, setSelectedFolderId] = useState<string>("");
   const [isMoving, setIsMoving] = useState(false);
 
-  /**
-   * 加载文件夹列表
-   */
-  const loadFolders = useCallback(async () => {
-    setIsLoadingFolders(true);
-    setLoadError(null);
-
-    try {
-      const res = await fetchWithAbort("/api/folders");
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error?.message || "加载文件夹失败");
-      }
-
-      const data = await res.json();
-      setFolders(data.data || []);
-    } catch (error) {
-      // 如果是取消错误，不显示错误提示
-      if (error instanceof Error && error.name === "AbortError") {
-        return;
-      }
-      const errorMsg =
-        error instanceof Error ? error.message : "加载文件夹失败";
-      setLoadError(errorMsg);
-      toast.error(errorMsg);
-    } finally {
-      setIsLoadingFolders(false);
-    }
-  }, [fetchWithAbort]);
-
-  // 对话框打开时加载文件夹列表并初始化选中状态
+  // 对话框打开时初始化选中状态
   useEffect(() => {
     if (open) {
-      loadFolders();
       // 使用 'none' 表示无文件夹，避免空字符串导致的错误
       setSelectedFolderId(bookmark.folder_id?.toString() || "none");
     }
-  }, [open, bookmark.folder_id, loadFolders]);
+  }, [open, bookmark.folder_id]);
 
   /**
    * 递归扁平化文件夹树，添加层级信息
@@ -294,12 +270,12 @@ export function MoveToFolderDialog({
               <div className="flex flex-col items-center gap-2 py-4">
                 <AlertCircle className="size-8 text-red-500" />
                 <p className="text-sm text-red-600 dark:text-red-400">
-                  {loadError}
+                  {loadError.message || "加载文件夹失败"}
                 </p>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={loadFolders}
+                  onClick={() => loadFolders()}
                   className="mt-2"
                 >
                   重试
