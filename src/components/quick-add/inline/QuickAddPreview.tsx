@@ -193,16 +193,15 @@ export function QuickAddPreview({
           <Settings2 className="w-4 h-4" />
         </Button>
 
-        {/* Submit button */}
-        <Button
-          variant="default"
-          size="sm"
+        {/* Submit button - 带填充效果 */}
+        <button
           className={cn(
-            "h-8 px-3 rounded-full",
-            "bg-emerald-500 hover:bg-emerald-600",
+            "relative h-8 px-4 rounded-full overflow-hidden",
             "text-white text-xs font-medium",
             "transition-all duration-200",
+            "focus:outline-none focus:ring-2 focus:ring-violet-400 focus:ring-offset-2",
             isSubmitting && "opacity-70 cursor-not-allowed",
+            !isSubmitting && "hover:shadow-lg hover:scale-105",
           )}
           onClick={() => {
             if (timerRef.current) clearTimeout(timerRef.current);
@@ -211,22 +210,41 @@ export function QuickAddPreview({
           }}
           disabled={isSubmitting}
         >
-          {isSubmitting ? (
-            <span className="flex items-center gap-1">
-              <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              保存中
-            </span>
-          ) : autoSubmit && !isPaused ? (
-            <span className="flex items-center gap-1">
-              收藏
-              <span className="text-emerald-200 text-[10px]">
-                {Math.ceil(countdown / 1000)}s
-              </span>
-            </span>
-          ) : (
-            "收藏"
+          {/* 背景层 - 浅蓝色 */}
+          <div className="absolute inset-0 bg-sky-400" />
+
+          {/* 填充层 - 深紫色，从左到右填充 */}
+          {autoSubmit && !isPaused && !isSubmitting && (
+            <div
+              className="absolute inset-0 bg-violet-600 transition-all duration-100 ease-linear"
+              style={{ width: `${progress}%` }}
+            />
           )}
-        </Button>
+
+          {/* 非倒计时状态的背景 */}
+          {(!autoSubmit || isPaused || isSubmitting) && (
+            <div className="absolute inset-0 bg-violet-600" />
+          )}
+
+          {/* 文字层 */}
+          <span className="relative z-10 flex items-center justify-center gap-1.5">
+            {isSubmitting ? (
+              <>
+                <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                保存中
+              </>
+            ) : autoSubmit && !isPaused ? (
+              <>
+                收藏
+                <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-white/20 text-[10px] font-bold">
+                  {Math.ceil(countdown / 1000)}
+                </span>
+              </>
+            ) : (
+              "收藏"
+            )}
+          </span>
+        </button>
       </div>
     </div>
   );
