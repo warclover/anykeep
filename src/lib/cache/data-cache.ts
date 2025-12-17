@@ -123,8 +123,13 @@ class DataCacheManager {
 
   /**
    * V5.0: 检查是否有指定键的缓存（同步）
+   * V5.3: SSR 环境下返回 false，避免 Hydration Mismatch
    */
   hasSync(cacheKey: string): boolean {
+    // SSR 环境下没有 localStorage，返回 false 保证 SSR/CSR 一致性
+    if (typeof window === "undefined") {
+      return false;
+    }
     this.restoreFromStorage();
     return this.cache.has(cacheKey);
   }
@@ -133,12 +138,18 @@ class DataCacheManager {
    * 同步获取缓存数据（不触发请求）
    * V5.0: 自动从持久化存储恢复
    * V4.2.7: 更新 lastAccessedAt 用于 LRU
+   * V5.3: SSR 环境下返回空，避免 Hydration Mismatch
    */
   getSync<T>(cacheKey: string): {
     data: T | undefined;
     isStale: boolean;
     timestamp: number | undefined;
   } {
+    // SSR 环境下没有 localStorage，返回空保证 SSR/CSR 一致性
+    if (typeof window === "undefined") {
+      return { data: undefined, isStale: true, timestamp: undefined };
+    }
+
     // 确保已从持久化存储恢复
     this.restoreFromStorage();
 
