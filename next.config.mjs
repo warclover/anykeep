@@ -7,6 +7,9 @@ const nextConfig = {
   // 使用 standalone 输出模式，优化生产部署
   output: 'standalone',
 
+  // V5.3: Webpack 编译优化（Next.js 14+ 自动启用文件系统缓存）
+  // 注意：Next.js 不允许修改 devtool，会自动恢复为 eval-source-map
+
   // Turbopack 编译优化：优化大型包的导入（减少首次编译时间 30-50%）
   experimental: {
     optimizePackageImports: [

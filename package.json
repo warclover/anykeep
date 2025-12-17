@@ -122,6 +122,7 @@
     "jest-environment-jsdom": "^29.7.0",
     "lint-staged": "^16.2.7",
     "postcss": "^8.5.6",
+    "postcss-import": "^16.1.1",
     "prettier": "3.6.2",
     "sharp": "^0.34.5",
     "tailwindcss": "^3.4.18",
