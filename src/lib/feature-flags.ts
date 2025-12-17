@@ -14,13 +14,19 @@
 export type FeatureFlag =
   | "snapshot" // 网页快照功能
   | "ai_summary" // AI 摘要功能
-  | "smart_sorting"; // 智能分类功能
+  | "smart_sorting" // 智能分类功能
+  // V4.2.17: 首页重构相关
+  | "home_use_context" // 首页使用新 Context 系统
+  | "home_use_new_bookmarks_hook"; // 首页使用新书签数据 Hook
 
 // 功能开关默认值（生产环境）
 const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   snapshot: false, // 默认关闭，通过环境变量启用
   ai_summary: true, // 已上线功能
   smart_sorting: true, // 已上线功能
+  // V4.2.17: 首页重构（默认关闭，渐进启用）
+  home_use_context: false,
+  home_use_new_bookmarks_hook: false,
 };
 
 // ============================================================================
@@ -34,6 +40,10 @@ const ENV_VAR_MAP: Record<FeatureFlag, string | undefined> = {
   snapshot: process.env.NEXT_PUBLIC_FEATURE_SNAPSHOT,
   ai_summary: process.env.NEXT_PUBLIC_FEATURE_AI_SUMMARY,
   smart_sorting: process.env.NEXT_PUBLIC_FEATURE_SMART_SORTING,
+  // V4.2.17: 首页重构
+  home_use_context: process.env.NEXT_PUBLIC_FEATURE_HOME_USE_CONTEXT,
+  home_use_new_bookmarks_hook:
+    process.env.NEXT_PUBLIC_FEATURE_HOME_USE_NEW_BOOKMARKS_HOOK,
 };
 
 // ============================================================================
@@ -114,4 +124,22 @@ export function useFeatureFlag(flag: FeatureFlag): boolean {
  */
 export function useSnapshotFeature(): boolean {
   return useFeatureFlag("snapshot");
+}
+
+// ============================================================================
+// V4.2.17: 首页重构 Feature Flags
+// ============================================================================
+
+/**
+ * 首页是否使用新 Context 系统
+ */
+export function useHomeContextFeature(): boolean {
+  return useFeatureFlag("home_use_context");
+}
+
+/**
+ * 首页是否使用新书签数据 Hook
+ */
+export function useHomeBookmarksHookFeature(): boolean {
+  return useFeatureFlag("home_use_new_bookmarks_hook");
 }

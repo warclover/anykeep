@@ -12,6 +12,7 @@ import { ThemeProvider } from "@/components/providers/theme-provider";
 import { ServiceWorkerRegister } from "@/components/pwa/sw-register";
 import { UserProvider } from "@/contexts/user-context";
 import { NavigationProvider } from "@/contexts/navigation-context";
+import { HomePageProvider } from "@/contexts/home-page-context";
 import { KeepAliveProvider } from "@/lib/cache";
 import { OnboardingProvider } from "@/components/providers/onboarding-provider";
 import { MessageNotificationProvider } from "@/components/messages/message-notification-provider";
@@ -33,11 +34,14 @@ export function RootProviders({ children }: RootProvidersProps) {
         <OnboardingProvider>
           <Suspense fallback={null}>
             <NavigationProvider>
-              <KeepAliveProvider>
-                <MessageNotificationProvider>
-                  {children}
-                </MessageNotificationProvider>
-              </KeepAliveProvider>
+              {/* V4.2.17: 首页状态 Context（Event Bridge 已验证，关闭兼容模式） */}
+              <HomePageProvider enableEventBridge={false}>
+                <KeepAliveProvider>
+                  <MessageNotificationProvider>
+                    {children}
+                  </MessageNotificationProvider>
+                </KeepAliveProvider>
+              </HomePageProvider>
             </NavigationProvider>
           </Suspense>
         </OnboardingProvider>

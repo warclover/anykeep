@@ -112,6 +112,8 @@ import { useClassificationPolling } from "@/hooks/use-classification-polling";
 import { useDialogs } from "@/hooks/use-dialogs";
 import { useSelectionMode } from "@/hooks/use-selection-mode";
 import { useProcessingPoller } from "@/hooks/use-processing-poller";
+// V4.2.17: Context 支持（Phase 5 验证完成）
+import { useHomePageSafe } from "@/contexts/home-page-context";
 import { ErrorMessage } from "@/components/ui/error-message";
 import {
   DropdownMenu,
@@ -165,6 +167,11 @@ export function HomePageClient({
 }: HomePageClientProps = {}) {
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  // ========== V4.2.17: Context 支持（Phase 5 验证完成） ==========
+  // 安全获取 Context（如果不在 Provider 内返回 null）
+  // 注：当前仅预加载，待功能开关启用后使用
+  const _homePageContext = useHomePageSafe();
 
   // V10.1: 预加载自定义用途标签（详情页需要，提前加载消除延迟）
   useEffect(() => {

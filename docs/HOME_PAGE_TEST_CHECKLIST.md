@@ -227,3 +227,38 @@
 2. **发现问题立即记录，不要等到最后**
 3. **性能指标使用 Chrome DevTools Performance 面板测量**
 4. **如有功能异常，立即回滚到上一个稳定版本**
+
+---
+
+## Phase 4: Event Bridge 验证指南
+
+### 启用 Feature Flag
+
+```javascript
+// 在浏览器控制台中执行
+localStorage.setItem("ff_home_use_context", "true");
+location.reload();
+```
+
+### 验证步骤
+
+| #   | 验证项           | 操作                                | 预期结果                                                       | 通过 |
+| --- | ---------------- | ----------------------------------- | -------------------------------------------------------------- | ---- |
+| 4.1 | Context 初始化   | 打开首页，查看控制台                | 显示 "[HomePageClient] Context available, Event Bridge active" | [ ]  |
+| 4.2 | 平台切换同步     | 点击不同平台，查看控制台            | 无 "[EventBridge] State mismatch" 警告                         | [ ]  |
+| 4.3 | 视图模式同步     | 切换视图模式，查看控制台            | 无同步错误                                                     | [ ]  |
+| 4.4 | 文件夹切换同步   | 点击侧边栏文件夹，查看控制台        | 无同步错误                                                     | [ ]  |
+| 4.5 | Context 状态检查 | 执行 `window.featureFlags.getAll()` | 显示所有 Flag 状态                                             | [ ]  |
+
+### 关闭 Feature Flag（恢复默认）
+
+```javascript
+localStorage.removeItem("ff_home_use_context");
+location.reload();
+```
+
+### 验证结果
+
+- [ ] Event Bridge 双向同步正常工作
+- [ ] 无状态不匹配警告
+- [ ] 所有功能测试（1-14）在 Feature Flag 开启状态下通过
