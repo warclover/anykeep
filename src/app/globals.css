@@ -1,8 +1,8 @@
+@import "../styles/masonry.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import "../styles/masonry.css";
 
 :root {
   --radius: 0.625rem;
@@ -74,8 +74,8 @@
 }
 
 /* ============================================
- * 品牌主题色系统
- * V4.2.25 UI 升级 - 三色可选
+ * 品牌主题色系�?
+ * V4.2.25 UI 升级 - 三色可�?
  * ============================================ */
 
 /* === 知性蓝主题 (默认) === */
@@ -95,7 +95,7 @@
   --sidebar-primary: 217 91% 65%;
 }
 
-/* === 活力紫主题 === */
+/* === 活力紫主�?=== */
 :root[data-color-theme="purple"],
 [data-color-theme="purple"] {
   --primary: 262 83% 58%;
@@ -112,7 +112,7 @@
   --sidebar-primary: 262 83% 65%;
 }
 
-/* === 温暖橙主题 === */
+/* === 温暖橙主�?=== */
 :root[data-color-theme="orange"],
 [data-color-theme="orange"] {
   --primary: 25 95% 53%;
@@ -155,7 +155,7 @@
   }
 }
 
-/* 隐藏滚动条 - 跨浏览器兼容 */
+/* 隐藏滚动�?- 跨浏览器兼容 */
 .scrollbar-hide {
   -ms-overflow-style: none;  /* IE/Edge */
   scrollbar-width: none;      /* Firefox */
@@ -164,7 +164,7 @@
   display: none;              /* Chrome/Safari/Opera */
 }
 
-/* iOS 安全区 CSS 变量 */
+/* iOS 安全�?CSS 变量 */
 :root {
   --safe-area-inset-top: env(safe-area-inset-top, 0px);
   --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
@@ -206,7 +206,7 @@
   transition: opacity 300ms ease-out !important;
 }
 
-/* 强制右侧抽屉关闭动画 - 覆盖 Vaul 的内联样式 */
+/* 强制右侧抽屉关闭动画 - 覆盖 Vaul 的内联样�?*/
 .drawer-slide-out {
   transform: translateX(100%) !important;
   transition: transform 300ms cubic-bezier(0.32, 0.72, 0, 1) !important;
@@ -218,7 +218,7 @@
 }
 
 /* ============================================
- * 登录页 - 柔和极光背景动画
+ * 登录�?- 柔和极光背景动画
  * V4.2.24 UI 升级
  * ============================================ */
 
@@ -273,7 +273,7 @@
   animation: fade-in-up 0.6s ease-out forwards;
 }
 
-/* 玻璃拟态卡片样式 */
+/* 玻璃拟态卡片样�?*/
 .glass-card {
   background: rgba(255, 255, 255, 0.7);
   backdrop-filter: blur(20px);
@@ -286,7 +286,7 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* 渐变按钮样式 - 糖果色 */
+/* 渐变按钮样式 - 糖果�?*/
 .gradient-button {
   background: linear-gradient(135deg, #f9a8d4 0%, #c4b5fd 50%, #93c5fd 100%);
   background-size: 200% 200%;
@@ -304,7 +304,7 @@
   color: white;
 }
 
-/* 输入框聚焦效果 - 糖果色光晕 */
+/* 输入框聚焦效�?- 糖果色光�?*/
 .login-input:focus {
   border-color: #f9a8d4 !important;
   box-shadow: 0 0 0 3px rgba(249, 168, 212, 0.2);
@@ -315,7 +315,7 @@
   box-shadow: 0 0 0 3px rgba(196, 181, 253, 0.3);
 }
 
-/* 登录页 Tab 选中渐变样式 - 糖果色 */
+/* 登录�?Tab 选中渐变样式 - 糖果�?*/
 .login-tabs [data-state="active"] {
   background: linear-gradient(135deg, #f9a8d4 0%, #c4b5fd 50%, #93c5fd 100%);
   color: #4c1d95 !important;
@@ -334,7 +334,7 @@
 }
 
 /* ============================================
- * 微交互动画
+ * 微交互动�?
  * V4.2.25 UI 升级 - 增强用户体验
  * ============================================ */
 
@@ -384,7 +384,7 @@
   animation: content-fade-in 0.3s ease-out forwards;
 }
 
-/* 骨架屏闪烁优化 */
+/* 骨架屏闪烁优�?*/
 .skeleton-shimmer {
   background: linear-gradient(
     90deg,
@@ -401,7 +401,7 @@
   100% { background-position: -200% 0; }
 }
 
-/* 列表项悬停高亮 */
+/* 列表项悬停高�?*/
 .list-item-hover {
   transition: background-color 0.15s ease;
 }

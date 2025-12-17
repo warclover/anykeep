@@ -77,12 +77,28 @@ export function UsageTagFilterSheet({
     };
   }, []);
 
-  // 判断当前页面
-  const pathname =
-    typeof window !== "undefined" ? window.location.pathname : "";
-  const isHomePage = isClientNavEnabled
-    ? activePage === "home"
-    : pathname === "/home";
+  // V5.3: 修复 Hydration 错误
+  // 使用 isMounted 确保组件只在客户端渲染，避免 SSR/CSR 不一致
+  // 原因：useSearchParams 和 window.location 在 SSR/CSR 可能产生不同的值
+  const [isMounted, setIsMounted] = useState(false);
+  const [isHomePage, setIsHomePage] = useState(false);
+
+  // 客户端挂载检测
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // 判断是否为首页
+  useEffect(() => {
+    if (!isMounted) return;
+
+    // 客户端确定是否为首页
+    const pathname = window.location.pathname;
+    const homePageCheck = isClientNavEnabled
+      ? activePage === "home"
+      : pathname === "/home";
+    setIsHomePage(homePageCheck);
+  }, [isMounted, isClientNavEnabled, activePage]);
 
   // 获取所有可用的用途标签
   const allUsageTags = useMemo(() => {
@@ -193,6 +209,11 @@ export function UsageTagFilterSheet({
 
     setIsOpen(false);
   }, [searchParams, onFilterChange]);
+
+  // SSR 阶段不渲染（避免 Hydration 错误）
+  if (!isMounted) {
+    return null;
+  }
 
   // 非首页不显示
   if (!isHomePage) {

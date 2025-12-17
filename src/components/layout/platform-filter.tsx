@@ -10,19 +10,20 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSearchParams, usePathname } from "next/navigation";
+import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import { RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useSafeNavigation } from "@/contexts/navigation-context";
 
-// 平台配置（内容平台 + 浏览器书签统一入口）
+// 平台配置（内容平台 + 浏览器书签统一入口 + MD文档入口）
 const platforms = [
-  { id: "all", name: "全部", value: "" },
-  { id: "wechat", name: "微信", value: "WECHAT_OFFICIAL_ACCOUNT" },
-  { id: "xiaohongshu", name: "小红书", value: "XIAOHONGSHU" },
-  { id: "bilibili", name: "B站", value: "BILIBILI" },
-  { id: "browser", name: "浏览器书签", value: "browser" },
+  { id: "all", name: "全部", value: "", href: null },
+  { id: "wechat", name: "微信", value: "WECHAT_OFFICIAL_ACCOUNT", href: null },
+  { id: "xiaohongshu", name: "小红书", value: "XIAOHONGSHU", href: null },
+  { id: "bilibili", name: "B站", value: "BILIBILI", href: null },
+  { id: "browser", name: "浏览器书签", value: "browser", href: null },
+  { id: "md", name: "MD文档", value: "md", href: "/md-collections" },
 ];
 
 // 本地存储 key
@@ -32,6 +33,7 @@ const FLIP_CARD_STORAGE_KEY = "anykeep-flip-card";
 export function PlatformFilter() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const router = useRouter();
 
   // 获取导航上下文（支持客户端导航模式）
   const navigationContext = useSafeNavigation();
@@ -102,7 +104,13 @@ export function PlatformFilter() {
     );
   };
 
-  const handlePlatformChange = (platformValue: string) => {
+  const handlePlatformChange = (platformValue: string, href: string | null) => {
+    // 如果有独立页面跳转链接，直接导航
+    if (href) {
+      router.push(href);
+      return;
+    }
+
     // 如果平台未变化，不做任何操作
     if (platformValue === currentPlatform) {
       return;
@@ -149,11 +157,14 @@ export function PlatformFilter() {
     <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
       {/* 平台筛选标签 */}
       {platforms.map((platform) => {
-        const isActive = currentPlatform === platform.value;
+        // 对于外链平台，永远不高亮
+        const isActive = platform.href
+          ? false
+          : currentPlatform === platform.value;
         return (
           <button
             key={platform.id}
-            onClick={() => handlePlatformChange(platform.value)}
+            onClick={() => handlePlatformChange(platform.value, platform.href)}
             className={cn(
               "px-3 py-1 text-xs font-medium rounded-full transition-colors whitespace-nowrap flex-shrink-0",
               isActive
