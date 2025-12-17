@@ -710,16 +710,11 @@ export function BookmarkDetailClient({
 
             <Separator className="my-0" />
 
-            <CardContent className="pt-4 space-y-5">
-              {/* AI 摘要 */}
+            <CardContent className="pt-1 space-y-5">
+              {/* AI 摘要（无标题，直接显示内容） */}
               {bookmark.ai_summary && (
                 <>
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      AI 摘要
-                    </h3>
-                    <SummaryRenderer summary={bookmark.ai_summary} />
-                  </div>
+                  <SummaryRenderer summary={bookmark.ai_summary} />
                   <Separator />
                 </>
               )}
