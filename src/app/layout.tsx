@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { RootProviders } from "@/components/providers/root-providers";
+import { COLOR_THEME_INIT_SCRIPT } from "@/hooks/use-color-theme";
 import "./globals.css";
 
 // 强制动态渲染以避免预渲染时的 Context 问题
@@ -38,6 +39,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="zh-CN" suppressHydrationWarning className={inter.variable}>
+      <head>
+        {/* 防闪烁：在 React 水合前设置颜色主题 */}
+        <script dangerouslySetInnerHTML={{ __html: COLOR_THEME_INIT_SCRIPT }} />
+      </head>
       <body className="font-sans antialiased">
         <RootProviders>{children}</RootProviders>
       </body>

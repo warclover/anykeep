@@ -1,9 +1,31 @@
 /**
  * 用户设置类型定义
  * 用于设置页面和 API 之间的数据传递
+ *
+ * V4.2.25: 新增外观设置（多色主题支持）
  */
 
 import type { SnapshotType } from "@/lib/snapshot/snapshot.types";
+
+// ============================================
+// V4.2.25: 外观设置类型
+// ============================================
+
+/**
+ * 品牌色主题类型
+ * - blue: 知性蓝（默认）- 专业稳重，适合知识管理
+ * - purple: 活力紫 - 创意灵感，激发想象力
+ * - orange: 温暖橙 - 高效能量，提升专注力
+ */
+export type ColorTheme = "blue" | "purple" | "orange";
+
+/**
+ * 外观设置
+ */
+export interface AppearanceSettings {
+  /** 颜色主题 (默认: 'blue') */
+  colorTheme: ColorTheme;
+}
 
 /**
  * 自动快照设置 (P2-010)
@@ -53,7 +75,16 @@ export interface UserSettings {
   };
   /** 自动快照设置 (P2-010) */
   autoSnapshot?: AutoSnapshotSettings;
+  /** 外观设置 (V4.2.25) */
+  appearance?: AppearanceSettings;
 }
+
+/**
+ * 默认外观设置 (V4.2.25)
+ */
+export const DEFAULT_APPEARANCE_SETTINGS: AppearanceSettings = {
+  colorTheme: "blue",
+};
 
 /**
  * 默认自动快照设置 (P2-010)
@@ -92,6 +123,7 @@ export const DEFAULT_USER_SETTINGS: UserSettings = {
     weeklyDigest: false,
   },
   autoSnapshot: DEFAULT_AUTO_SNAPSHOT_SETTINGS,
+  appearance: DEFAULT_APPEARANCE_SETTINGS,
 };
 
 /**
@@ -124,6 +156,10 @@ export function mergeWithDefaults(
     autoSnapshot: {
       ...DEFAULT_AUTO_SNAPSHOT_SETTINGS,
       ...(stored.autoSnapshot || {}),
+    },
+    appearance: {
+      ...DEFAULT_APPEARANCE_SETTINGS,
+      ...(stored.appearance || {}),
     },
   };
 }

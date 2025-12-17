@@ -73,6 +73,79 @@
   --sidebar-ring: 0 0% 55.6%;
 }
 
+/* ============================================
+ * 品牌主题色系统
+ * V4.2.25 UI 升级 - 三色可选
+ * ============================================ */
+
+/* === 知性蓝主题 (默认) === */
+:root[data-color-theme="blue"],
+[data-color-theme="blue"] {
+  --primary: 217 91% 60%;
+  --primary-foreground: 0 0% 100%;
+  --ring: 217 91% 60%;
+  --sidebar-primary: 217 91% 60%;
+}
+
+.dark[data-color-theme="blue"],
+[data-color-theme="blue"].dark {
+  --primary: 217 91% 65%;
+  --primary-foreground: 217 91% 10%;
+  --ring: 217 91% 50%;
+  --sidebar-primary: 217 91% 65%;
+}
+
+/* === 活力紫主题 === */
+:root[data-color-theme="purple"],
+[data-color-theme="purple"] {
+  --primary: 262 83% 58%;
+  --primary-foreground: 0 0% 100%;
+  --ring: 262 83% 58%;
+  --sidebar-primary: 262 83% 58%;
+}
+
+.dark[data-color-theme="purple"],
+[data-color-theme="purple"].dark {
+  --primary: 262 83% 65%;
+  --primary-foreground: 262 83% 10%;
+  --ring: 262 83% 50%;
+  --sidebar-primary: 262 83% 65%;
+}
+
+/* === 温暖橙主题 === */
+:root[data-color-theme="orange"],
+[data-color-theme="orange"] {
+  --primary: 25 95% 53%;
+  --primary-foreground: 0 0% 100%;
+  --ring: 25 95% 53%;
+  --sidebar-primary: 25 95% 53%;
+}
+
+.dark[data-color-theme="orange"],
+[data-color-theme="orange"].dark {
+  --primary: 25 95% 60%;
+  --primary-foreground: 25 95% 10%;
+  --ring: 25 95% 45%;
+  --sidebar-primary: 25 95% 60%;
+}
+
+/* ============================================
+ * 间距系统 - 4px 基准
+ * V4.2.25 UI 升级 - 统一间距规范
+ * ============================================ */
+:root {
+  --space-0: 0;
+  --space-1: 0.25rem;   /* 4px */
+  --space-2: 0.5rem;    /* 8px */
+  --space-3: 0.75rem;   /* 12px */
+  --space-4: 1rem;      /* 16px */
+  --space-5: 1.25rem;   /* 20px */
+  --space-6: 1.5rem;    /* 24px */
+  --space-8: 2rem;      /* 32px */
+  --space-10: 2.5rem;   /* 40px */
+  --space-12: 3rem;     /* 48px */
+}
+
 @layer base {
   * {
     @apply border-border;
@@ -258,4 +331,90 @@
 .dark .login-tabs [data-state="active"] {
   color: white !important;
   box-shadow: 0 2px 12px rgba(196, 181, 253, 0.5);
+}
+
+/* ============================================
+ * 微交互动画
+ * V4.2.25 UI 升级 - 增强用户体验
+ * ============================================ */
+
+/* 卡片悬停上浮 */
+.card-lift {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.card-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.1),
+              0 4px 10px -6px rgba(0, 0, 0, 0.05);
+}
+
+.dark .card-lift:hover {
+  box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.3),
+              0 4px 10px -6px rgba(0, 0, 0, 0.2);
+}
+
+/* 按钮按压反馈 */
+.btn-press {
+  transition: transform 0.1s ease;
+}
+.btn-press:active {
+  transform: scale(0.97);
+}
+
+/* 标签弹性选中 */
+.tag-bounce {
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.tag-bounce:hover {
+  transform: scale(1.05);
+}
+
+/* 页面内容淡入 */
+@keyframes content-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-content-in {
+  animation: content-fade-in 0.3s ease-out forwards;
+}
+
+/* 骨架屏闪烁优化 */
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--muted)) 0%,
+    hsl(var(--muted-foreground) / 0.1) 50%,
+    hsl(var(--muted)) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* 列表项悬停高亮 */
+.list-item-hover {
+  transition: background-color 0.15s ease;
+}
+.list-item-hover:hover {
+  background-color: hsl(var(--accent));
+}
+
+/* 图标旋转动画 */
+.icon-spin-on-hover:hover svg {
+  animation: spin-once 0.5s ease-in-out;
+}
+
+@keyframes spin-once {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }

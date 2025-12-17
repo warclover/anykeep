@@ -28,6 +28,7 @@ import {
   Trash2,
   LogOut,
   Check,
+  Palette,
 } from "lucide-react";
 import { InterestSettingsCard } from "./interest-settings-card";
 import { ProfileSettingsCard } from "./profile-settings-card";
@@ -35,6 +36,7 @@ import { ClassificationSettingsCard } from "./classification-settings-card";
 import { TrustModeSettingsCard } from "./trust-mode-settings-card";
 import { SummaryModeSettingsCard } from "./summary-mode-settings-card";
 import { AIOperationHistoryCard } from "./ai-operation-history-card";
+import { ColorThemeSelector } from "./color-theme-selector";
 import { NotificationSettingsCard } from "@/components/messages";
 import { SnapshotQuotaSectionLazy } from "@/components/snapshot";
 import { AutoSnapshotSettings } from "./auto-snapshot-settings";
@@ -294,6 +296,29 @@ export function SettingsPageClient({
                     <p className="text-sm text-gray-500 dark:text-gray-400 font-mono">
                       {user.id.slice(0, 8)}...
                     </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 外观设置 - V4.2.25 */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Palette className="size-5 text-pink-600 dark:text-pink-400" />
+                  外观设置
+                </CardTitle>
+                <CardDescription>
+                  选择你喜欢的品牌色彩，让 AnyKeep 更符合你的风格
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-sm font-medium mb-3 block">
+                      品牌色主题
+                    </Label>
+                    <ColorThemeSelector />
                   </div>
                 </div>
               </CardContent>
