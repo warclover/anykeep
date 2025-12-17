@@ -23,6 +23,7 @@ import {
   BrainCircuit,
   FlaskConical,
   GitCompareArrows,
+  FileText,
 } from "lucide-react";
 import { useUnreadCount } from "@/hooks/use-unread-count";
 import { MessageBadge } from "@/components/messages";
@@ -160,6 +161,33 @@ export function AppSidebar() {
                 </Link>
               );
             })}
+          </div>
+
+          {/* 内容收藏 (Pro) */}
+          <div>
+            <div className="px-3 mb-2">
+              <p className="text-xs font-semibold text-emerald-500 dark:text-emerald-400 uppercase">
+                内容收藏
+              </p>
+            </div>
+            <div className="space-y-1">
+              <Link
+                href="/md-collections"
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                  pathname === "/md-collections" ||
+                    pathname?.startsWith("/md-collections/")
+                    ? "bg-gradient-to-r from-emerald-50 to-teal-50 text-emerald-700 dark:from-emerald-900/30 dark:to-teal-900/30 dark:text-emerald-400"
+                    : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50",
+                )}
+              >
+                <FileText className="size-5" />
+                <span className="flex-1">MD 收藏</span>
+                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300">
+                  Pro
+                </span>
+              </Link>
+            </div>
           </div>
 
           {/* 智能列表 */}

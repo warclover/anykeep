@@ -1,7 +1,7 @@
 # P2-007: Markdown 内容收藏 - 技术设计方案
 
-> **版本**: v2.1 (待审核)
-> **制定日期**: 2025-12-16
+> **版本**: v2.2 (已校准)
+> **制定日期**: 2025-12-17
 > **工时估算**: 9 天
 > **前置依赖**: P1-004 (核心流程)
 > **定位**: 独立付费功能模块（完全解耦）
@@ -48,18 +48,15 @@ AnyKeep 解法：
 
 ```typescript
 // 功能模块完全解耦，便于付费控制
+// ⚠️ v2.2 校准：与现有 profiles.membership_type 字段对齐（大写 'FREE' | 'PRO'）
 const MD_FEATURE_CONFIG = {
-  free: {
+  FREE: {
     enabled: false, // 免费用户不可用
     limit: 0,
   },
-  pro: {
+  PRO: {
     enabled: true,
-    limit: 500, // Pro: 500 条
-  },
-  proPlus: {
-    enabled: true,
-    limit: -1, // Pro+: 无限制
+    limit: -1, // Pro 用户无限制（现有系统无 PRO_PLUS 等级）
   },
 };
 ```
@@ -149,15 +146,15 @@ folder_id BIGINT REFERENCES folders(id) ON DELETE SET NULL,
 - 可在文件夹页面查看该文件夹下的 MD 收藏
 - 支持拖拽移动到不同文件夹
 
-### 1.6 AI 能力支持（v2.1 确认）
+### 1.6 AI 能力支持（v2.2 校准）
 
-| AI 功能  | 支持状态 | 实现方式                           |
-| -------- | -------- | ---------------------------------- |
-| 智能摘要 | ✅       | 异步 AI 处理，存入 ai_summary 字段 |
-| 自动标签 | ✅       | AI 生成，存入 ai_tags 数组         |
-| 内容分类 | ✅       | 检测内容类型（教程/代码/分析等）   |
-| 语义搜索 | ✅       | 1536 维向量嵌入，支持相似度检索    |
-| 全库问答 | ✅       | 基于 embedding 的 RAG 检索         |
+| AI 功能  | 支持状态 | 实现方式                                                               |
+| -------- | -------- | ---------------------------------------------------------------------- |
+| 智能摘要 | ✅       | 复用 `SummaryService.generate()`，存入 ai_summary 字段                 |
+| 自动标签 | ✅       | 复用 `generateAIContent()`，存入 ai_tags 数组                          |
+| 内容分类 | ✅       | 复用 `ContentTypeDetector`，检测内容类型（教程/代码/分析等）           |
+| 语义搜索 | ✅       | **1024 维向量嵌入**（与 bookmarks 表一致），复用 `generateEmbedding()` |
+| 全库问答 | ✅       | 基于 embedding 的 RAG 检索，复用现有语义搜索函数                       |
 
 ---
 
@@ -228,32 +225,35 @@ export type { MdCollection, MdCollectionCreate } from "./types";
 export { isMdFeatureEnabled, getMdFeatureLimit } from "./lib/feature-gate";
 ```
 
-### 2.3 功能开关门控
+### 2.3 功能开关门控（v2.2 校准）
 
 ```typescript
 // src/features/md-collections/lib/feature-gate.ts
+// ⚠️ v2.2 校准：与现有 profiles.membership_type 字段对齐
 
-import { MembershipType } from "@/types/supabase";
+// 现有系统会员类型（来自 profiles 表）
+type MembershipType = "FREE" | "PRO";
 
 const FEATURE_CONFIG: Record<
   MembershipType,
   { enabled: boolean; limit: number }
 > = {
-  free: { enabled: false, limit: 0 },
-  pro: { enabled: true, limit: 500 },
-  pro_plus: { enabled: true, limit: -1 },
+  FREE: { enabled: false, limit: 0 },
+  PRO: { enabled: true, limit: -1 }, // Pro 用户无限制
 };
 
-export function isMdFeatureEnabled(membership: MembershipType): boolean {
-  return FEATURE_CONFIG[membership]?.enabled ?? false;
+export function isMdFeatureEnabled(membership: string): boolean {
+  const key = membership.toUpperCase() as MembershipType;
+  return FEATURE_CONFIG[key]?.enabled ?? false;
 }
 
-export function getMdFeatureLimit(membership: MembershipType): number {
-  return FEATURE_CONFIG[membership]?.limit ?? 0;
+export function getMdFeatureLimit(membership: string): number {
+  const key = membership.toUpperCase() as MembershipType;
+  return FEATURE_CONFIG[key]?.limit ?? 0;
 }
 
 export function canCreateMdCollection(
-  membership: MembershipType,
+  membership: string,
   currentCount: number,
 ): { allowed: boolean; reason?: string } {
   if (!isMdFeatureEnabled(membership)) {
@@ -264,7 +264,7 @@ export function canCreateMdCollection(
   if (limit !== -1 && currentCount >= limit) {
     return {
       allowed: false,
-      reason: `已达到 ${limit} 条限制，请升级到 Pro+ 解锁无限制`,
+      reason: `已达到 ${limit} 条限制`,
     };
   }
 
@@ -276,9 +276,15 @@ export function canCreateMdCollection(
 
 ## 三、数据库设计
 
-### 3.1 独立表设计（完全解耦）
+### 3.1 独立表设计（v2.2 校准 - 完全解耦）
 
 **设计理念**: 使用独立表而非扩展 bookmarks 表，实现完全解耦
+
+**⚠️ v2.2 校准说明**:
+
+- 向量维度：**1024 维**（与 bookmarks 表保持一致）
+- 向量索引：使用 **HNSW 算法**（与 bookmarks 表保持一致，性能更优）
+- 版本追踪：新增 `embedding_version` 字段
 
 ```sql
 -- Migration: 20251220000001_create_md_collections.sql
@@ -304,8 +310,9 @@ CREATE TABLE IF NOT EXISTS md_collections (
   content_type VARCHAR(50),           -- TUTORIAL, CODE_SNIPPET, ANALYSIS 等
   content_type_confidence REAL,
 
-  -- 向量嵌入
-  embedding vector(1536),
+  -- 向量嵌入（⚠️ v2.2 校准：1024 维，与 bookmarks 表一致）
+  embedding vector(1024),
+  embedding_version TEXT DEFAULT 'v3', -- 向量模型版本追踪
 
   -- 组织
   folder_id BIGINT REFERENCES folders(id) ON DELETE SET NULL,
@@ -332,9 +339,9 @@ CREATE INDEX idx_md_collections_folder ON md_collections(folder_id)
 CREATE INDEX idx_md_collections_created ON md_collections(created_at DESC)
   WHERE deleted_at IS NULL;
 
--- 向量索引（用于语义搜索）
-CREATE INDEX idx_md_collections_embedding ON md_collections
-  USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100)
+-- 向量索引（⚠️ v2.2 校准：使用 HNSW 算法，与 bookmarks 表一致）
+CREATE INDEX idx_md_collections_embedding_hnsw ON md_collections
+  USING hnsw (embedding vector_cosine_ops) WITH (m = 16, ef_construction = 64)
   WHERE deleted_at IS NULL AND embedding IS NOT NULL;
 
 -- RLS 策略
@@ -363,17 +370,16 @@ CREATE TRIGGER update_md_collections_updated_at
   EXECUTE FUNCTION update_updated_at_column();
 ```
 
-### 3.2 存储容量估算
+### 3.2 存储容量估算（v2.2 校准）
 
 ```
 单条 MD 收藏：
 - raw_content: 平均 5KB（约 2000 字）
-- embedding: 6KB (1536 维 float32)
+- embedding: 4KB (1024 维 float32)  ← v2.2 校准
 - 其他字段: ~1KB
-- 总计: ~12KB/条
+- 总计: ~10KB/条
 
-Pro 用户限制：500 条 → ~6MB
-Pro+ 用户：无限制（监控使用量）
+Pro 用户：无限制（监控使用量）
 ```
 
 ---
@@ -1709,7 +1715,7 @@ supabase/migrations/
 
 ---
 
-**文档状态**: 📝 待审核 (v2.1)
+**文档状态**: ✅ 已校准 (v2.2)
 **制定者**: Claude
 **审核者**: [待填写]
 
@@ -1735,3 +1741,12 @@ supabase/migrations/
 - ✅ 新增 3 个子任务（P2-007-14 ~ P2-007-16）
 - ✅ 新增 7 个验收项
 - ✅ 工时更新为 9 天
+
+**v2.2 更新说明（实际项目校准）**:
+
+- ⚠️ **向量维度校准**: 1536 → **1024 维**（与 bookmarks 表保持一致）
+- ⚠️ **向量索引校准**: IVFFlat → **HNSW 算法**（与 bookmarks 表保持一致）
+- ⚠️ **会员类型校准**: `'free'/'pro'/'pro_plus'` → **`'FREE'/'PRO'`**（与 profiles 表对齐）
+- ✅ 新增 `embedding_version` 字段用于模型版本追踪
+- ✅ AI 服务复用方案明确（SummaryService、generateEmbedding、ContentTypeDetector）
+- ✅ 存储容量估算更新（10KB/条）

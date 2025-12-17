@@ -346,6 +346,58 @@ export const CLASSIFICATION = {
 } as const;
 
 /**
+ * P2-007: MD 收藏相关文案
+ */
+export const MD_COLLECTION = {
+  // 创建
+  CREATE_SUCCESS: "MD 收藏创建成功",
+  CREATE_ERROR: "创建 MD 收藏失败",
+  CREATING: "创建 MD 收藏中...",
+
+  // 更新
+  UPDATE_SUCCESS: "MD 收藏更新成功",
+  UPDATE_ERROR: "更新 MD 收藏失败",
+  UPDATING: "更新 MD 收藏中...",
+
+  // 删除
+  DELETE_SUCCESS: "MD 收藏删除成功",
+  DELETE_ERROR: "删除 MD 收藏失败",
+  DELETE_CONFIRM: "确定要删除这篇 MD 收藏吗？删除后无法恢复。",
+  DELETING: "删除 MD 收藏中...",
+
+  // 查询
+  NOT_FOUND: "MD 收藏不存在",
+  LOAD_ERROR: "加载 MD 收藏失败",
+  EMPTY: "暂无 MD 收藏",
+  EMPTY_HINT: "支持直接粘贴 Markdown 内容或上传 .md 文件",
+
+  // 上传
+  UPLOAD_SUCCESS: "文件上传成功",
+  UPLOAD_ERROR: "文件上传失败",
+  UPLOADING: "上传文件中...",
+  INVALID_FILE_TYPE: "仅支持 .md 或 .txt 文件",
+  FILE_TOO_LARGE: "文件大小不能超过 1MB",
+  CONTENT_TOO_LARGE: "内容超过 100KB 限制",
+
+  // 重复检测
+  DUPLICATE_FOUND: "检测到重复内容",
+  DUPLICATE_CONFIRM: "已存在相似内容，是否继续保存？",
+
+  // 处理状态
+  PROCESSING: "AI 处理中...",
+  PROCESS_SUCCESS: "AI 处理完成",
+  PROCESS_ERROR: "AI 处理失败",
+
+  // 权限
+  FEATURE_DISABLED: "MD 收藏功能仅限 Pro 会员使用",
+  UPGRADE_HINT: "升级到 Pro 解锁 MD 收藏功能",
+
+  // 验证
+  TITLE_REQUIRED: "标题不能为空",
+  CONTENT_REQUIRED: "内容不能为空",
+} as const;
+
+/**
  * 所有文案的聚合导出
  */
 export const MESSAGES = {
@@ -361,6 +413,7 @@ export const MESSAGES = {
   SNAPSHOT,
   TRASH,
   CLASSIFICATION,
+  MD_COLLECTION,
 } as const;
 
 /**

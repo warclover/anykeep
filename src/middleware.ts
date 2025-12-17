@@ -21,6 +21,10 @@ const protectedRoutes = [
   "/search",
   "/folders",
   "/settings",
+  "/md-collections",
+  "/analytics",
+  "/messages",
+  "/inbox",
 ];
 
 // 认证相关路由（已登录用户应跳过）
