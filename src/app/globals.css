@@ -143,3 +143,119 @@
   transform: translateX(0) !important;
   transition: transform 300ms cubic-bezier(0.32, 0.72, 0, 1) !important;
 }
+
+/* ============================================
+ * 登录页 - 柔和极光背景动画
+ * V4.2.24 UI 升级
+ * ============================================ */
+
+/* 柔和背景渐变流动 - 25s 周期 */
+@keyframes soft-aurora {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.animate-soft-aurora {
+  animation: soft-aurora 25s ease infinite;
+}
+
+/* 光晕呼吸动画 - 8s 周期 */
+@keyframes orb-breathe {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.4;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.15);
+    opacity: 0.6;
+  }
+}
+
+.animate-orb-breathe {
+  animation: orb-breathe 8s ease-in-out infinite;
+}
+
+.animate-orb-breathe-delayed {
+  animation: orb-breathe 8s ease-in-out infinite;
+  animation-delay: 4s;
+}
+
+/* 入场动画 - 淡入上移 */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.6s ease-out forwards;
+}
+
+/* 玻璃拟态卡片样式 */
+.glass-card {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.dark .glass-card {
+  background: rgba(30, 30, 40, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* 渐变按钮样式 - 糖果色 */
+.gradient-button {
+  background: linear-gradient(135deg, #f9a8d4 0%, #c4b5fd 50%, #93c5fd 100%);
+  background-size: 200% 200%;
+  transition: all 0.3s ease;
+  color: #4c1d95;
+  font-weight: 500;
+}
+
+.gradient-button:hover {
+  background-position: 100% 50%;
+  box-shadow: 0 4px 16px rgba(249, 168, 212, 0.5);
+}
+
+.dark .gradient-button {
+  color: white;
+}
+
+/* 输入框聚焦效果 - 糖果色光晕 */
+.login-input:focus {
+  border-color: #f9a8d4 !important;
+  box-shadow: 0 0 0 3px rgba(249, 168, 212, 0.2);
+  outline: none;
+}
+
+.dark .login-input:focus {
+  box-shadow: 0 0 0 3px rgba(196, 181, 253, 0.3);
+}
+
+/* 登录页 Tab 选中渐变样式 - 糖果色 */
+.login-tabs [data-state="active"] {
+  background: linear-gradient(135deg, #f9a8d4 0%, #c4b5fd 50%, #93c5fd 100%);
+  color: #4c1d95 !important;
+  font-weight: 500;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(249, 168, 212, 0.4);
+}
+
+.login-tabs [data-state="active"]:hover {
+  background: linear-gradient(135deg, #f9a8d4 0%, #c4b5fd 50%, #93c5fd 100%);
+}
+
+.dark .login-tabs [data-state="active"] {
+  color: white !important;
+  box-shadow: 0 2px 12px rgba(196, 181, 253, 0.5);
+}

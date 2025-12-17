@@ -123,12 +123,50 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center">
+    <div className="min-h-screen relative overflow-hidden flex items-center justify-center">
+      {/* 柔和极光背景 */}
+      <div
+        className="absolute inset-0 animate-soft-aurora bg-[length:400%_400%]"
+        style={{
+          background:
+            "linear-gradient(135deg, #e9d5ff 0%, #fbcfe8 25%, #e0f2fe 50%, #fbcfe8 75%, #e9d5ff 100%)",
+          backgroundSize: "400% 400%",
+        }}
+      />
+
+      {/* 暗色模式背景 */}
+      <div
+        className="absolute inset-0 animate-soft-aurora bg-[length:400%_400%] opacity-0 dark:opacity-100 transition-opacity duration-500"
+        style={{
+          background:
+            "linear-gradient(135deg, #1e1b4b 0%, #312e81 25%, #1e3a5f 50%, #312e81 75%, #1e1b4b 100%)",
+          backgroundSize: "400% 400%",
+        }}
+      />
+
+      {/* 装饰光晕 - 左上 */}
+      <div
+        className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full blur-3xl animate-orb-breathe pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(circle, rgba(167,139,250,0.5) 0%, transparent 70%)",
+        }}
+      />
+
+      {/* 装饰光晕 - 右下 */}
+      <div
+        className="absolute bottom-1/4 right-1/4 w-80 h-80 rounded-full blur-3xl animate-orb-breathe-delayed pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(circle, rgba(6,182,212,0.4) 0%, transparent 70%)",
+        }}
+      />
+
       {/* 主题切换按钮 */}
       <Button
         variant="outline"
         size="sm"
-        className="fixed top-4 right-4 z-50"
+        className="fixed top-4 right-4 z-50 glass-card rounded-full"
         onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
       >
         <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
@@ -136,15 +174,79 @@ export default function LoginPage() {
       </Button>
 
       {/* 登录表单 */}
-      <div className="w-full max-w-md px-6 py-12">
-        <Card className="w-full max-w-md shadow-xl">
+      <div className="w-full max-w-md px-6 py-12 relative z-10 animate-fade-in-up">
+        {/* Slogan - K 和 R 首字母放大突出 */}
+        <div className="flex flex-col items-center select-none mb-8">
+          <div className="flex items-baseline gap-0.5 flex-wrap justify-center">
+            {/* Keep - K 放大 */}
+            <span className="flex items-baseline">
+              <span
+                className="text-3xl font-bold animate-gradient-flow bg-gradient-to-r from-violet-600 via-blue-500 via-cyan-400 via-blue-500 to-violet-600 bg-[length:200%_100%] bg-clip-text text-transparent"
+                style={{
+                  fontFamily: "'Segoe Script', 'Brush Script MT', cursive",
+                }}
+              >
+                K
+              </span>
+              <span
+                className="text-lg font-bold animate-gradient-flow bg-gradient-to-r from-violet-600 via-blue-500 via-cyan-400 via-blue-500 to-violet-600 bg-[length:200%_100%] bg-clip-text text-transparent tracking-wide"
+                style={{
+                  fontFamily: "'Segoe Script', 'Brush Script MT', cursive",
+                }}
+              >
+                eep
+              </span>
+            </span>
+            <span
+              className="text-2xl font-bold animate-gradient-flow bg-gradient-to-r from-violet-600 via-blue-500 via-cyan-400 via-blue-500 to-violet-600 bg-[length:200%_100%] bg-clip-text text-transparent tracking-tight ml-1"
+              style={{
+                fontFamily: "'Segoe Script', 'Brush Script MT', cursive",
+              }}
+            >
+              Smart.
+            </span>
+            {/* Read - R 放大 */}
+            <span className="flex items-baseline ml-2">
+              <span
+                className="text-3xl font-bold animate-gradient-flow bg-gradient-to-r from-cyan-400 via-blue-500 via-violet-600 via-blue-500 to-cyan-400 bg-[length:200%_100%] bg-clip-text text-transparent"
+                style={{
+                  fontFamily: "'Segoe Script', 'Brush Script MT', cursive",
+                  animationDelay: "0.3s",
+                }}
+              >
+                R
+              </span>
+              <span
+                className="text-lg font-bold animate-gradient-flow bg-gradient-to-r from-cyan-400 via-blue-500 via-violet-600 via-blue-500 to-cyan-400 bg-[length:200%_100%] bg-clip-text text-transparent tracking-wide"
+                style={{
+                  fontFamily: "'Segoe Script', 'Brush Script MT', cursive",
+                  animationDelay: "0.3s",
+                }}
+              >
+                ead
+              </span>
+            </span>
+            <span
+              className="text-2xl font-bold animate-gradient-flow bg-gradient-to-r from-cyan-400 via-blue-500 via-violet-600 via-blue-500 to-cyan-400 bg-[length:200%_100%] bg-clip-text text-transparent tracking-tight ml-1"
+              style={{
+                fontFamily: "'Segoe Script', 'Brush Script MT', cursive",
+                animationDelay: "0.3s",
+              }}
+            >
+              Anytime.
+            </span>
+          </div>
+          <div className="h-1 w-52 animate-gradient-flow bg-gradient-to-r from-violet-500 via-blue-500 via-cyan-400 via-blue-500 to-violet-500 bg-[length:200%_100%] rounded-full mt-1" />
+        </div>
+
+        <Card className="w-full max-w-md glass-card shadow-2xl rounded-3xl border-0">
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl">欢迎回来</CardTitle>
             <CardDescription>选择你喜欢的方式登录 AnyKeep</CardDescription>
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="email" className="w-full">
-              <TabsList className="grid w-full grid-cols-3 mb-6">
+              <TabsList className="login-tabs grid w-full grid-cols-3 mb-6 bg-white/50 dark:bg-gray-800/50 rounded-2xl p-1">
                 <TabsTrigger value="phone">手机号</TabsTrigger>
                 <TabsTrigger value="wechat">微信</TabsTrigger>
                 <TabsTrigger value="email">邮箱</TabsTrigger>
@@ -155,11 +257,11 @@ export default function LoginPage() {
                 <div className="space-y-2">
                   <Label htmlFor="phone">手机号</Label>
                   <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-pink-400" />
                     <Input
                       id="phone"
                       placeholder="请输入手机号"
-                      className="pl-10"
+                      className="pl-10 login-input"
                       type="tel"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
@@ -172,6 +274,7 @@ export default function LoginPage() {
                     <Input
                       id="code"
                       placeholder="请输入验证码"
+                      className="login-input"
                       maxLength={6}
                       value={code}
                       onChange={(e) => setCode(e.target.value)}
@@ -181,29 +284,34 @@ export default function LoginPage() {
                     </Button>
                   </div>
                 </div>
-                <Button className="w-full" size="lg" disabled={loading}>
+                <Button
+                  className="w-full gradient-button rounded-xl"
+                  size="lg"
+                  disabled={loading}
+                >
                   {loading ? "登录中..." : "登录"}
                 </Button>
               </TabsContent>
 
               {/* 微信登录 */}
               <TabsContent value="wechat" className="space-y-4">
-                <div className="flex flex-col items-center py-8">
-                  <div className="w-48 h-48 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center mb-4">
+                <div className="flex flex-col items-center py-6">
+                  <div className="w-44 h-44 bg-gradient-to-br from-pink-50 to-purple-50 dark:from-gray-800 dark:to-gray-700 rounded-2xl flex items-center justify-center mb-4 border border-pink-100 dark:border-gray-600">
                     <div className="text-center">
-                      <div className="w-32 h-32 bg-white dark:bg-gray-700 rounded-lg flex items-center justify-center mb-3 mx-auto border-2 border-gray-200 dark:border-gray-600">
-                        <span className="text-4xl">📱</span>
+                      <div className="w-28 h-28 bg-white dark:bg-gray-600 rounded-xl flex items-center justify-center mb-2 mx-auto shadow-sm">
+                        <div className="text-4xl">💬</div>
                       </div>
-                      <p className="text-gray-500 dark:text-gray-400 text-sm">
-                        微信扫码登录
+                      <p className="text-pink-500 dark:text-pink-300 text-xs font-medium">
+                        扫码登录
                       </p>
                     </div>
                   </div>
-                  <p className="text-gray-600 dark:text-gray-400 text-sm text-center mb-4">
-                    使用微信扫描二维码即可快速登录
+                  <p className="text-gray-500 dark:text-gray-400 text-sm text-center mb-4">
+                    打开微信扫一扫，快速安全登录
                   </p>
                   <Button
                     variant="outline"
+                    className="rounded-xl bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-700 text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/50"
                     onClick={handleDemoLogin}
                     disabled={loading}
                   >
@@ -237,12 +345,12 @@ export default function LoginPage() {
                   <div className="space-y-2">
                     <Label htmlFor="email">邮箱地址</Label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-pink-400" />
                       <Input
                         id="email"
                         type="email"
                         placeholder="请输入邮箱地址"
-                        className="pl-10"
+                        className="pl-10 login-input"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         required
@@ -255,6 +363,7 @@ export default function LoginPage() {
                       id="password"
                       type="password"
                       placeholder="请输入密码"
+                      className="login-input"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
@@ -262,21 +371,24 @@ export default function LoginPage() {
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <label className="flex items-center gap-2 cursor-pointer">
-                      <input type="checkbox" className="rounded" />
+                      <input
+                        type="checkbox"
+                        className="rounded accent-pink-400"
+                      />
                       <span className="text-gray-600 dark:text-gray-400">
                         记住我
                       </span>
                     </label>
                     <Link
                       href="/forgot-password"
-                      className="text-purple-600 hover:text-purple-700 dark:text-purple-400"
+                      className="text-pink-500 hover:text-pink-600 dark:text-pink-400"
                     >
                       忘记密码？
                     </Link>
                   </div>
                   <Button
                     type="submit"
-                    className="w-full"
+                    className="w-full gradient-button font-medium rounded-xl"
                     size="lg"
                     disabled={loading}
                   >
@@ -302,11 +414,11 @@ export default function LoginPage() {
             <div className="space-y-3">
               <Button
                 variant="outline"
-                className="w-full"
+                className="w-full rounded-xl bg-white/50 dark:bg-gray-800/50 hover:bg-white/80 dark:hover:bg-gray-700/50 transition-all"
                 onClick={handleDemoLogin}
                 disabled={loading}
               >
-                <Sparkles className="size-4 mr-2" />
+                <Sparkles className="size-4 mr-2 text-pink-400" />
                 体验演示账号
               </Button>
 
@@ -314,7 +426,7 @@ export default function LoginPage() {
                 还没有账号？{" "}
                 <Link
                   href="/register"
-                  className="text-purple-600 hover:text-purple-700 dark:text-purple-400"
+                  className="text-pink-500 hover:text-pink-600 dark:text-pink-400"
                 >
                   立即注册
                 </Link>
@@ -322,9 +434,9 @@ export default function LoginPage() {
             </div>
 
             {/* 隐私提示 */}
-            <div className="mt-6 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+            <div className="mt-6 p-3 bg-white/30 dark:bg-gray-800/30 rounded-2xl border border-white/50 dark:border-gray-700/50">
               <div className="flex items-start gap-2">
-                <CheckCircle2 className="size-4 text-green-600 flex-shrink-0 mt-0.5" />
+                <CheckCircle2 className="size-4 text-emerald-500 flex-shrink-0 mt-0.5" />
                 <p className="text-xs text-gray-600 dark:text-gray-400">
                   登录即表示您同意我们的服务条款和隐私政策。我们承诺保护您的隐私，仅存储必要的元数据信息。
                 </p>
