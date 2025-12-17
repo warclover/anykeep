@@ -111,7 +111,6 @@ const PendingConfirmationsSection = lazy(() =>
 import { useClassificationPolling } from "@/hooks/use-classification-polling";
 import { useDialogs } from "@/hooks/use-dialogs";
 import { useSelectionMode } from "@/hooks/use-selection-mode";
-import { usePlatformCache } from "@/hooks/use-platform-cache";
 import { useProcessingPoller } from "@/hooks/use-processing-poller";
 import { ErrorMessage } from "@/components/ui/error-message";
 import {
@@ -224,8 +223,6 @@ export function HomePageClient({
 
   // 检测是否为虚拟文件夹
   const isTrashFolder = currentFolder === "trash";
-  const _isInvalidFolder = currentFolder === "invalid";
-  const _isHighValueFolder = currentFolder === "high-value";
 
   // 可取消请求 Hook
   const { fetchWithAbort } = useAbortableFetch();
@@ -559,62 +556,6 @@ export function HomePageClient({
   // 批量创建快照状态
   const [isBatchCreatingSnapshot, setIsBatchCreatingSnapshot] = useState(false);
 
-  // 旧缓存系统已弃用，保留 hook 引用但不再使用其方法
-  // SWR 系统 (useBookmarksSWR) 已完整实现缓存功能
-  const {
-    getCache: _getCacheOld,
-    setCache: _setCacheOld,
-    updateCacheItem: _updateCacheItemOld,
-    removeCacheItem: _removeCacheItemOld,
-    appendToCache: _appendToCacheOld,
-  } = usePlatformCache();
-
-  /**
-   * 获取书签数据（客户端）- 保留供未来重构使用
-   */
-  const _fetchBookmarks = useCallback(
-    async (platform: string, sort: string, folder: string) => {
-      try {
-        const apiParams = new URLSearchParams();
-        if (platform === "browser") {
-          apiParams.set("platform", "browser");
-        } else if (platform) {
-          apiParams.set("platform", platform);
-        } else {
-          // "全部" 时排除浏览器平台
-          apiParams.set("excludeBrowser", "true");
-        }
-        apiParams.set("sort", sort);
-        apiParams.set("limit", getPageSizeByView(viewMode).toString());
-        if (folder) {
-          apiParams.set("folder", folder);
-        }
-
-        const res = await fetchWithAbort(
-          `/api/bookmarks?${apiParams.toString()}`,
-          {
-            credentials: "include", // 确保发送认证 cookie
-          },
-        );
-        if (!res.ok) {
-          throw new Error("加载失败");
-        }
-
-        const data = await res.json();
-        return {
-          bookmarks: data.data.bookmarks as BookmarkWithFolder[],
-          hasMore: data.data.pagination.hasMore as boolean,
-        };
-      } catch (error) {
-        if (error instanceof Error && error.name === "AbortError") {
-          return null; // 请求被取消
-        }
-        throw error;
-      }
-    },
-    [fetchWithAbort, viewMode],
-  );
-
   // ===== SSR 数据同步 =====
   // 当 initialBookmarks 更新时（URL 参数变化导致 SSR 重新获取），同步到 SWR state
   // V4.2.3: 修复竞态条件 - 仅在 initialBookmarks 真正变化且内容不同时才更新
@@ -705,164 +646,6 @@ export function HomePageClient({
     },
     [searchParams, router],
   );
-
-  // 保留旧的实现作为备用（已弃用，使用旧缓存系统）
-  const _handlePlatformChangeOld = useCallback(
-    async (platformValue: string) => {
-      // 1. 优先使用缓存数据，提供即时反馈
-      const cached = _getCacheOld({
-        platform: platformValue,
-        sort: currentSort,
-        folder: currentFolder,
-      });
-
-      if (cached) {
-        setBookmarks((_prev) => cached.data);
-      }
-
-      // 2. 更新 URL（不触发导航）
-      const params = new URLSearchParams(searchParams?.toString() ?? "");
-      if (platformValue) {
-        params.set("platform", platformValue);
-      } else {
-        params.delete("platform");
-      }
-      const newUrl = `/home?${params.toString()}`;
-      window.history.replaceState(
-        { ...window.history.state, as: newUrl, url: newUrl },
-        "",
-        newUrl,
-      );
-
-      // 3. 调用 API 获取最新数据（后台更新）
-      try {
-        const apiParams = new URLSearchParams();
-        if (platformValue === "browser") {
-          apiParams.set("platform", "browser");
-        } else if (platformValue) {
-          apiParams.set("platform", platformValue);
-        } else {
-          // "全部" 时排除浏览器平台
-          apiParams.set("excludeBrowser", "true");
-        }
-        apiParams.set("sort", currentSort);
-        apiParams.set("limit", getPageSizeByView(viewMode).toString());
-        if (currentFolder) {
-          apiParams.set("folder", currentFolder);
-        }
-
-        const res = await fetchWithAbort(
-          `/api/bookmarks?${apiParams.toString()}`,
-          {
-            credentials: "include", // 确保发送认证 cookie
-          },
-        );
-        if (!res.ok) {
-          throw new Error("加载失败");
-        }
-
-        const data = await res.json();
-        const newBookmarks = data.data.bookmarks;
-        const newHasMore = data.data.pagination.hasMore;
-
-        // 更新状态和缓存
-        setBookmarks((_prev) => newBookmarks);
-        _setCacheOld(
-          { platform: platformValue, sort: currentSort, folder: currentFolder },
-          newBookmarks,
-          newHasMore,
-        );
-      } catch (error) {
-        // 如果是取消错误，静默处理（用户快速切换时会取消之前的请求）
-        if (error instanceof Error && error.name === "AbortError") {
-          return;
-        }
-        // 如果缓存命中，API 失败不影响用户体验
-        if (!cached) {
-          toast.error("加载失败，请重试");
-        }
-      }
-    },
-    [
-      currentSort,
-      currentFolder,
-      searchParams,
-      _getCacheOld,
-      _setCacheOld,
-      fetchWithAbort,
-      setBookmarks,
-      viewMode,
-    ],
-  );
-
-  // 保留旧的排序实现作为备用（已弃用）
-  const _handleSortChangeOld = async (sortValue: string) => {
-    // 1. 优先使用缓存数据
-    const cached = _getCacheOld({
-      platform: currentPlatform,
-      sort: sortValue,
-      folder: currentFolder,
-    });
-
-    if (cached) {
-      setBookmarks((_prev) => cached.data);
-    }
-
-    // 2. 更新 URL（不触发导航）
-    const params = new URLSearchParams(searchParams?.toString() ?? "");
-    params.set("sort", sortValue);
-    const newUrl = `/home?${params.toString()}`;
-    window.history.replaceState(
-      { ...window.history.state, as: newUrl, url: newUrl },
-      "",
-      newUrl,
-    );
-
-    // 3. 调用 API 获取最新数据
-    try {
-      const apiParams = new URLSearchParams();
-      if (currentPlatform === "browser") {
-        apiParams.set("platform", "browser");
-      } else if (currentPlatform) {
-        apiParams.set("platform", currentPlatform);
-      } else {
-        apiParams.set("excludeBrowser", "true");
-      }
-      apiParams.set("sort", sortValue);
-      apiParams.set("limit", getPageSizeByView(viewMode).toString());
-      if (currentFolder) {
-        apiParams.set("folder", currentFolder);
-      }
-
-      const res = await fetchWithAbort(
-        `/api/bookmarks?${apiParams.toString()}`,
-        {
-          credentials: "include", // 确保发送认证 cookie
-        },
-      );
-      if (!res.ok) {
-        throw new Error("加载失败");
-      }
-
-      const data = await res.json();
-      const newBookmarks = data.data.bookmarks;
-      const newHasMore = data.data.pagination.hasMore;
-
-      setBookmarks((_prev) => newBookmarks);
-      _setCacheOld(
-        { platform: currentPlatform, sort: sortValue, folder: currentFolder },
-        newBookmarks,
-        newHasMore,
-      );
-    } catch (error) {
-      if (error instanceof Error && error.name === "AbortError") {
-        return;
-      }
-      if (!cached) {
-        toast.error("加载失败，请重试");
-      }
-    }
-  };
 
   const handleRetry = () => {
     router.refresh();
