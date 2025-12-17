@@ -499,3 +499,117 @@ export const patchBookmarkSchema = z
   });
 
 export type PatchBookmark = z.infer<typeof patchBookmarkSchema>;
+
+// ============================================
+// P2-007: MD 收藏验证 Schema
+// ============================================
+
+/**
+ * 创建 MD 收藏验证 Schema
+ */
+export const createMdCollectionSchema = z.object({
+  title: z
+    .string()
+    .trim()
+    .max(500, VALIDATION.TOO_LONG("标题", 500))
+    .optional(), // 标题可选，会从内容自动提取
+  rawContent: z
+    .string()
+    .min(1, VALIDATION.REQUIRED("内容"))
+    .max(100 * 1024, "内容超过 100KB 限制"),
+  contentType: z
+    .enum(["article", "tutorial", "code", "note", "documentation"])
+    .optional()
+    .default("article"),
+  userTags: tagsArraySchema.optional(),
+  folderId: z.coerce.number().int().positive().nullable().optional(),
+});
+
+export type CreateMdCollection = z.infer<typeof createMdCollectionSchema>;
+
+/**
+ * 更新 MD 收藏验证 Schema
+ */
+export const updateMdCollectionSchema = z.object({
+  title: z
+    .string()
+    .trim()
+    .min(1, VALIDATION.REQUIRED("标题"))
+    .max(500, VALIDATION.TOO_LONG("标题", 500))
+    .optional(),
+  rawContent: z
+    .string()
+    .min(1, VALIDATION.REQUIRED("内容"))
+    .max(100 * 1024, "内容超过 100KB 限制")
+    .optional(),
+  contentType: z
+    .enum(["article", "tutorial", "code", "note", "documentation"])
+    .optional(),
+  userTags: tagsArraySchema.optional(),
+  folderId: z.coerce.number().int().positive().nullable().optional(),
+  isRead: z.boolean().optional(),
+  isStarred: z.boolean().optional(),
+});
+
+export type UpdateMdCollection = z.infer<typeof updateMdCollectionSchema>;
+
+/**
+ * MD 收藏列表查询参数验证
+ */
+export const getMdCollectionsQuerySchema = z.object({
+  cursor: z.coerce.number().int().positive().nullable().optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  folderId: z.coerce.number().int().positive().nullable().optional(),
+  contentType: z
+    .enum(["article", "note", "tutorial", "reference", "other"])
+    .nullable()
+    .optional()
+    .transform((val) => val ?? undefined),
+  keyword: z
+    .string()
+    .trim()
+    .max(200, VALIDATION.TOO_LONG("关键词", 200))
+    .nullable()
+    .optional()
+    .transform((val) => val ?? undefined),
+  sort: z
+    .enum([
+      "created_desc",
+      "created_asc",
+      "title_asc",
+      "title_desc",
+      "reading_time_desc",
+    ])
+    .nullable()
+    .optional()
+    .transform((val) => val ?? "created_desc"),
+  isRead: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((val) => {
+      if (val === "true") return true;
+      if (val === "false") return false;
+      return undefined;
+    }),
+  isStarred: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((val) => {
+      if (val === "true") return true;
+      if (val === "false") return false;
+      return undefined;
+    }),
+});
+
+export type GetMdCollectionsQuery = z.infer<typeof getMdCollectionsQuerySchema>;
+
+/**
+ * MD 内容去重检查验证 Schema
+ */
+export const checkMdDuplicateSchema = z.object({
+  contentHash: z.string().length(64, "无效的内容哈希"),
+});
+
+export type CheckMdDuplicate = z.infer<typeof checkMdDuplicateSchema>;
