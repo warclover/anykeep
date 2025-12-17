@@ -203,8 +203,13 @@ export async function searchBookmarksHybrid(
     for (const result of keywordResults) {
       if (!seenIds.has(result.id) && mergedResults.length < limit) {
         seenIds.add(result.id);
+        // 转换 folders 类型：Supabase 返回数组，需要转换为单对象或 null
+        const folders = Array.isArray(result.folders)
+          ? result.folders[0] || null
+          : result.folders;
         mergedResults.push({
           ...result,
+          folders,
           similarity: 0, // 关键词匹配没有相似度分数
         });
       }

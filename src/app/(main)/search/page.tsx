@@ -81,7 +81,8 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
           );
 
           if (error) throw error;
-          searchResults = (data as SearchResult[]) || [];
+          // 全文搜索返回部分字段，使用 unknown 中转类型转换
+          searchResults = (data as unknown as SearchResult[]) || [];
         }
       } catch (err) {
         console.error("[SearchPage] Search error:", err);
