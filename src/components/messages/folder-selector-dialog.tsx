@@ -15,7 +15,7 @@
 
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useCallback } from "react";
 import {
   Loader2,
   Folder,
@@ -99,7 +99,7 @@ export function FolderSelectorDialog({
   // 状态
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedId, setSelectedId] = useState<number | null>(
-    currentFolderId ?? null
+    currentFolderId ?? null,
   );
   const [isCreating, setIsCreating] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
@@ -140,16 +140,20 @@ export function FolderSelectorDialog({
     return flattenTree(folders);
   }, [rawFolders]);
 
-  // 打开时重置状态（使用 ref 避免 ESLint 警告）
-  const prevOpenRef = useRef(open);
-  if (open && !prevOpenRef.current) {
-    // 对话框刚打开时重置状态
-    setSelectedId(currentFolderId ?? null);
-    setSearchQuery("");
-    setIsCreating(false);
-    setNewFolderName("");
-  }
-  prevOpenRef.current = open;
+  // 处理对话框打开/关闭
+  const handleOpenChange = useCallback(
+    (newOpen: boolean) => {
+      if (newOpen) {
+        // 对话框打开时重置状态
+        setSelectedId(currentFolderId ?? null);
+        setSearchQuery("");
+        setIsCreating(false);
+        setNewFolderName("");
+      }
+      onOpenChange(newOpen);
+    },
+    [currentFolderId, onOpenChange],
+  );
 
   // 过滤列表
   const filteredFolders = useMemo(() => {
@@ -161,7 +165,7 @@ export function FolderSelectorDialog({
   // 备选文件夹 ID 集合
   const alternativeIds = useMemo(
     () => new Set(alternatives.map((a) => a.folderId)),
-    [alternatives]
+    [alternatives],
   );
 
   // 获取文件夹的置信度
@@ -188,7 +192,7 @@ export function FolderSelectorDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
@@ -211,7 +215,9 @@ export function FolderSelectorDialog({
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="size-6 animate-spin text-muted-foreground" />
-              <span className="ml-2 text-sm text-muted-foreground">加载中...</span>
+              <span className="ml-2 text-sm text-muted-foreground">
+                加载中...
+              </span>
             </div>
           ) : loadError ? (
             <div className="flex flex-col items-center gap-2 py-4">
@@ -232,7 +238,7 @@ export function FolderSelectorDialog({
                       "w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left transition-colors",
                       selectedId === null
                         ? "bg-primary/10 text-primary"
-                        : "hover:bg-accent"
+                        : "hover:bg-accent",
                     )}
                   >
                     <Folder className="size-4 text-muted-foreground" />
@@ -257,7 +263,7 @@ export function FolderSelectorDialog({
                           "w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left transition-colors",
                           selectedId === alt.folderId
                             ? "bg-primary/10 text-primary"
-                            : "hover:bg-accent"
+                            : "hover:bg-accent",
                         )}
                       >
                         <Folder className="size-4 text-muted-foreground" />
@@ -295,7 +301,7 @@ export function FolderSelectorDialog({
                             "w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left transition-colors",
                             selectedId === folder.id
                               ? "bg-primary/10 text-primary"
-                              : "hover:bg-accent"
+                              : "hover:bg-accent",
                           )}
                           style={{ paddingLeft: `${12 + folder.level * 16}px` }}
                         >

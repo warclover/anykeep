@@ -77,6 +77,11 @@ interface HealthCheckConfig {
   ) => void;
 }
 
+// 默认空操作回调（避免空函数 lint 警告）
+const noop = () => {
+  /* 默认不执行任何操作 */
+};
+
 /**
  * API 健康检查管理器
  */
@@ -92,7 +97,7 @@ class APIHealthChecker {
       timeout: 5000,
       degradedThreshold: 1000,
       unhealthyThreshold: 3,
-      onStatusChange: () => {},
+      onStatusChange: noop,
       ...config,
     };
 

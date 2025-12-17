@@ -330,8 +330,13 @@ export const MdRenderer = memo(function MdRenderer({
       ),
 
       // 图片
+      // 注意：此处使用原生 img 而非 next/image，原因：
+      // 1. Markdown 内容包含外部图片，域名未知无法预配置
+      // 2. 图片尺寸未知，无法提供 width/height 属性
+      // 3. 用户生成内容的图片 URL 不可预测
       img: ({ src, alt }: { src?: string; alt?: string }) => (
         <span className="block my-4">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={src}
             alt={alt || ""}

@@ -1492,6 +1492,114 @@ export type Database = {
         };
         Relationships: [];
       };
+      /**
+       * P2-007: Markdown 内容收藏表
+       * @since 2025-12-20
+       */
+      md_collections: {
+        Row: {
+          id: number;
+          user_id: string;
+          title: string;
+          raw_content: string;
+          content_hash: string;
+          word_count: number;
+          code_block_count: number;
+          reading_time_minutes: number;
+          ai_summary: string | null;
+          ai_tags: string[] | null;
+          content_type: string | null;
+          content_type_confidence: number | null;
+          embedding: string | null;
+          embedding_version: string | null;
+          folder_id: number | null;
+          user_tags: string[] | null;
+          notes: string | null;
+          processing_status: string;
+          source_type: string | null;
+          source_filename: string | null;
+          is_read: boolean;
+          is_starred: boolean;
+          read_at: string | null;
+          starred_at: string | null;
+          processed_at: string | null;
+          processing_error: string | null;
+          created_at: string;
+          updated_at: string;
+          deleted_at: string | null;
+        };
+        Insert: {
+          id?: number;
+          user_id: string;
+          title: string;
+          raw_content: string;
+          content_hash: string;
+          word_count?: number;
+          code_block_count?: number;
+          reading_time_minutes?: number;
+          ai_summary?: string | null;
+          ai_tags?: string[] | null;
+          content_type?: string | null;
+          content_type_confidence?: number | null;
+          embedding?: string | null;
+          embedding_version?: string | null;
+          folder_id?: number | null;
+          user_tags?: string[] | null;
+          notes?: string | null;
+          processing_status?: string;
+          source_type?: string | null;
+          source_filename?: string | null;
+          is_read?: boolean;
+          is_starred?: boolean;
+          read_at?: string | null;
+          starred_at?: string | null;
+          processed_at?: string | null;
+          processing_error?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          deleted_at?: string | null;
+        };
+        Update: {
+          id?: number;
+          user_id?: string;
+          title?: string;
+          raw_content?: string;
+          content_hash?: string;
+          word_count?: number;
+          code_block_count?: number;
+          reading_time_minutes?: number;
+          ai_summary?: string | null;
+          ai_tags?: string[] | null;
+          content_type?: string | null;
+          content_type_confidence?: number | null;
+          embedding?: string | null;
+          embedding_version?: string | null;
+          folder_id?: number | null;
+          user_tags?: string[] | null;
+          notes?: string | null;
+          processing_status?: string;
+          source_type?: string | null;
+          source_filename?: string | null;
+          is_read?: boolean;
+          is_starred?: boolean;
+          read_at?: string | null;
+          starred_at?: string | null;
+          processed_at?: string | null;
+          processing_error?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          deleted_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "md_collections_folder_id_fkey";
+            columns: ["folder_id"];
+            isOneToOne: false;
+            referencedRelation: "folders";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       messages: {
         Row: {
           action_label: string | null;
