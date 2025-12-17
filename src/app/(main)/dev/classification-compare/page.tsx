@@ -57,7 +57,7 @@ interface Bookmark {
   id: number;
   title: string;
   url: string;
-  tags: string[];
+  ai_tags: string[] | null;
   embedding: number[] | null;
   folder_id: number | null;
 }
@@ -127,14 +127,14 @@ export default function ClassificationComparePage() {
       // 获取待分类中的书签
       const { data: bookmarksData } = await supabase
         .from("bookmarks")
-        .select("id, title, url, tags, embedding, folder_id")
+        .select("id, title, url, ai_tags, embedding, folder_id")
         .eq("user_id", user.user.id)
         .eq("folder_id", inboxFolder.id)
         .not("embedding", "is", null)
         .order("created_at", { ascending: false })
         .limit(100);
 
-      setBookmarks(bookmarksData || []);
+      setBookmarks((bookmarksData as Bookmark[]) || []);
     } catch (error) {
       console.error("加载书签失败:", error);
     } finally {
@@ -195,7 +195,7 @@ export default function ClassificationComparePage() {
           version: "v4.2",
           bookmarkId: bookmark.id,
           embedding: bookmark.embedding,
-          tags: bookmark.tags,
+          tags: bookmark.ai_tags || [],
           title: bookmark.title,
         }),
       });
@@ -235,7 +235,7 @@ export default function ClassificationComparePage() {
           version: "lite-v2",
           bookmarkId: bookmark.id,
           embedding: bookmark.embedding,
-          tags: bookmark.tags,
+          tags: bookmark.ai_tags || [],
           title: bookmark.title,
         }),
       });
@@ -566,15 +566,17 @@ export default function ClassificationComparePage() {
                           {result.bookmark.title}
                         </div>
                         <div className="flex flex-wrap gap-1">
-                          {result.bookmark.tags.slice(0, 3).map((tag) => (
-                            <Badge
-                              key={tag}
-                              variant="outline"
-                              className="text-xs"
-                            >
-                              {tag}
-                            </Badge>
-                          ))}
+                          {(result.bookmark.ai_tags || [])
+                            .slice(0, 3)
+                            .map((tag) => (
+                              <Badge
+                                key={tag}
+                                variant="outline"
+                                className="text-xs"
+                              >
+                                {tag}
+                              </Badge>
+                            ))}
                         </div>
                       </div>
                     </TableCell>

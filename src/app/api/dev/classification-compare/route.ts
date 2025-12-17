@@ -42,11 +42,12 @@ async function classifyWithLiteV2(
   // ========================================
 
   // 1. 获取候选文件夹
+  // embedding 需要转换为字符串格式以匹配 Supabase RPC 的 vector 类型
   const { data: candidates, error } = await supabase.rpc(
     "search_folders_unified",
     {
       p_user_id: userId,
-      p_embedding: embedding,
+      p_embedding: JSON.stringify(embedding),
       p_limit: 5,
     },
   );
@@ -162,7 +163,7 @@ export async function POST(request: NextRequest) {
         folderId: result.folderId,
         folderName: result.folderName,
         confidence: result.confidence,
-        reason: result.action === "classified" ? "自动分类" : "建议分类",
+        reason: result.action === "classify" ? "自动分类" : "建议分类",
       });
     } else if (version === "lite-v2") {
       // 使用 Lite V2 分类
