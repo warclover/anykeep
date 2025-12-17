@@ -59,6 +59,8 @@ interface UsageTagInlineEditorProps {
   regularTags: string[];
   /** 保存成功后的回调 */
   onSaveSuccess?: (newUsageTags: string[]) => void;
+  /** 紧凑模式：用于详情页 Header 等空间受限场景 */
+  compact?: boolean;
   /** 自定义类名 */
   className?: string;
 }
@@ -70,6 +72,7 @@ export function UsageTagInlineEditor({
   selectedTags: initialSelectedTags,
   regularTags,
   onSaveSuccess,
+  compact = false,
   className,
 }: UsageTagInlineEditorProps) {
   // 本地状态（用于乐观更新）
@@ -273,9 +276,12 @@ export function UsageTagInlineEditor({
         disabled={isSaving}
         className={cn(
           // 基础样式
-          "relative inline-flex items-center gap-1.5 rounded-full",
-          "px-3 py-1.5 text-sm font-medium",
+          "relative inline-flex items-center rounded-full",
           "border transition-all duration-200",
+          // 紧凑模式 vs 默认模式
+          compact
+            ? "gap-1 px-2 py-0.5 text-xs font-medium"
+            : "gap-1.5 px-3 py-1.5 text-sm font-medium",
           // 选中状态
           isSelected
             ? [
@@ -307,7 +313,9 @@ export function UsageTagInlineEditor({
           ICON_MAP[tag.icon] &&
           (() => {
             const IconComponent = ICON_MAP[tag.icon];
-            return <IconComponent className="size-3.5" />;
+            return (
+              <IconComponent className={compact ? "size-3" : "size-3.5"} />
+            );
           })()}
 
         {/* 标签文字 */}
@@ -316,26 +324,61 @@ export function UsageTagInlineEditor({
         {/* 选中时显示移除图标或加载指示器 */}
         {isSelected &&
           (isSaving ? (
-            <Loader2 className="size-3 animate-spin ml-0.5" />
+            <Loader2
+              className={cn(
+                "animate-spin ml-0.5",
+                compact ? "size-2.5" : "size-3",
+              )}
+            />
           ) : (
-            <X className="size-3 ml-0.5 opacity-60" />
+            <X
+              className={cn(
+                "ml-0.5 opacity-60",
+                compact ? "size-2.5" : "size-3",
+              )}
+            />
           ))}
 
         {/* 未选中时保存中显示加载 */}
         {!isSelected && isSaving && (
-          <Loader2 className="size-3 animate-spin ml-0.5" />
+          <Loader2
+            className={cn(
+              "animate-spin ml-0.5",
+              compact ? "size-2.5" : "size-3",
+            )}
+          />
         )}
       </button>
     );
   };
 
   return (
-    <div className={cn("space-y-2", className)}>
-      {/* 标签区域 */}
-      <div className="flex flex-wrap gap-2">
+    <div className={cn(compact ? "" : "space-y-2", className)}>
+      {/* 标签区域（紧凑模式下包含前缀） */}
+      <div
+        className={cn(
+          "flex flex-wrap items-center",
+          compact ? "gap-1.5" : "gap-2",
+        )}
+      >
+        {/* 紧凑模式：显示「用途标签」前缀（与标签同行） */}
+        {compact && (
+          <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-violet-50 dark:bg-violet-900/30 border border-violet-200 dark:border-violet-700 text-violet-600 dark:text-violet-300 font-medium text-xs flex-shrink-0">
+            用途标签
+          </span>
+        )}
         {isLoading ? (
-          <div className="flex items-center gap-2 text-sm text-gray-500">
-            <Loader2 className="size-4 animate-spin" />
+          <div
+            className={cn(
+              "flex items-center gap-2 text-gray-500",
+              compact ? "text-xs" : "text-sm",
+            )}
+          >
+            <Loader2
+              className={
+                compact ? "size-3 animate-spin" : "size-4 animate-spin"
+              }
+            />
             <span>加载中...</span>
           </div>
         ) : (
@@ -350,7 +393,12 @@ export function UsageTagInlineEditor({
 
             {/* 分隔线（如果有自定义标签） */}
             {customTags.length > 0 && (
-              <div className="w-px h-7 bg-gray-200 dark:bg-gray-700 self-center mx-1" />
+              <div
+                className={cn(
+                  "w-px bg-gray-200 dark:bg-gray-700 self-center mx-0.5",
+                  compact ? "h-5" : "h-7",
+                )}
+              />
             )}
 
             {/* 自定义标签 */}
@@ -367,7 +415,6 @@ export function UsageTagInlineEditor({
               onClick={() => setShowAddDialog(true)}
               className={cn(
                 "inline-flex items-center gap-1 rounded-full",
-                "px-3 py-1.5 text-sm font-medium",
                 "border border-dashed",
                 "border-gray-300 dark:border-gray-600",
                 "text-gray-500 dark:text-gray-400",
@@ -375,9 +422,12 @@ export function UsageTagInlineEditor({
                 "hover:text-gray-600 dark:hover:text-gray-300",
                 "hover:bg-gray-50 dark:hover:bg-gray-800",
                 "transition-colors duration-200",
+                compact
+                  ? "px-2 py-0.5 text-xs font-medium"
+                  : "px-3 py-1.5 text-sm font-medium",
               )}
             >
-              <Plus className="size-3.5" />
+              <Plus className={compact ? "size-3" : "size-3.5"} />
               <span>自定义</span>
             </button>
           </>

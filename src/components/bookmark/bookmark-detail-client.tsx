@@ -21,8 +21,6 @@ import {
   Trash2,
   Folder,
   FolderInput,
-  Calendar,
-  User,
   Share2,
   Check,
   X,
@@ -250,8 +248,12 @@ export function BookmarkDetailClient({
     }
   };
 
-  // V6.0新增：处理评级变更
+  // V6.0新增：处理评级变更（乐观更新）
   const handleRatingChange = async (newRating: number) => {
+    const previousRating = rating;
+    // 乐观更新：立即更新 UI
+    setRating(newRating);
+
     try {
       const res = await fetchWithAbort(`/api/bookmarks/${bookmark.id}`, {
         method: "PUT",
@@ -266,21 +268,25 @@ export function BookmarkDetailClient({
         throw new Error(data.error?.message || "评级更新失败");
       }
 
-      setRating(newRating);
-      toast.success(newRating === 0 ? "已取消评级" : `已评${newRating}星`);
-      router.refresh();
+      // 成功：静默处理，不显示 toast
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") {
         return;
       }
+      // 失败：回滚状态并提示
+      setRating(previousRating);
       toast.error(error instanceof Error ? error.message : "评级更新失败");
     }
   };
 
-  // V6.0新增：处理锁定切换
+  // V6.0新增：处理锁定切换（乐观更新）
   const handleLockToggle = async () => {
+    const previousState = isLocked;
+    const newLockState = !isLocked;
+    // 乐观更新：立即更新 UI
+    setIsLocked(newLockState);
+
     try {
-      const newLockState = !isLocked;
       const res = await fetchWithAbort(`/api/bookmarks/${bookmark.id}`, {
         method: "PUT",
         headers: {
@@ -293,22 +299,25 @@ export function BookmarkDetailClient({
         const data = await res.json();
         throw new Error(data.error?.message || "操作失败");
       }
-
-      setIsLocked(newLockState);
-      toast.success(newLockState ? "已锁定" : "已解锁");
-      router.refresh();
+      // 成功：静默处理
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") {
         return;
       }
+      // 失败：回滚状态并提示
+      setIsLocked(previousState);
       toast.error(error instanceof Error ? error.message : "操作失败");
     }
   };
 
-  // V6.0新增：处理删除标记切换
+  // V6.0新增：处理删除标记切换（乐观更新）
   const handleMarkerToggle = async () => {
+    const previousState = isMarkedForDeletion;
+    const newMarkerState = !isMarkedForDeletion;
+    // 乐观更新：立即更新 UI
+    setIsMarkedForDeletion(newMarkerState);
+
     try {
-      const newMarkerState = !isMarkedForDeletion;
       const res = await fetchWithAbort(`/api/bookmarks/${bookmark.id}`, {
         method: "PUT",
         headers: {
@@ -321,14 +330,13 @@ export function BookmarkDetailClient({
         const data = await res.json();
         throw new Error(data.error?.message || "操作失败");
       }
-
-      setIsMarkedForDeletion(newMarkerState);
-      toast.success(newMarkerState ? "已标记为待删除" : "已取消删除标记");
-      router.refresh();
+      // 成功：静默处理
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") {
         return;
       }
+      // 失败：回滚状态并提示
+      setIsMarkedForDeletion(previousState);
       toast.error(error instanceof Error ? error.message : "操作失败");
     }
   };
@@ -475,248 +483,234 @@ export function BookmarkDetailClient({
       <div className="flex-1 overflow-auto px-1 md:px-2 pt-1 pb-4">
         <div className="max-w-5xl mx-auto">
           {/* 主要信息卡片 */}
-          <Card className="relative">
-            {/* 平台标识（右上角） */}
-            <div className="absolute top-4 right-4 md:top-6 md:right-6 z-10">
-              <span
-                className={cn(
-                  "inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold rounded-lg shadow-md",
-                  isBrowserPlatform
-                    ? "border-2 border-white/20"
-                    : platformConfig.bgColor,
-                )}
-                style={
-                  isBrowserPlatform
-                    ? {
-                        backgroundColor: platformConfig.brandColor,
-                        color: "#FFFFFF",
-                      }
-                    : undefined
-                }
-              >
-                {isBrowserPlatform ? (
-                  <Globe className="size-4 flex-shrink-0" />
-                ) : null}
-                <span>{platformConfig.name}</span>
-              </span>
-            </div>
+          <Card>
+            <CardHeader className="pb-1">
+              {/* V4.2.24: 3行紧凑布局 */}
+              <div className="space-y-2">
+                {/* === 行1：标题 + 核心元数据 === */}
+                <div>
+                  {/* 上排：标题 + 平台/类型徽章 */}
+                  <div className="flex items-start justify-between gap-3">
+                    <h1 className="text-lg md:text-xl font-bold text-gray-900 dark:text-white leading-tight">
+                      {bookmark.title}
+                    </h1>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {/* 平台徽章 */}
+                      <span
+                        className={cn(
+                          "inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-md",
+                          isBrowserPlatform
+                            ? "border border-white/20"
+                            : platformConfig.bgColor,
+                        )}
+                        style={
+                          isBrowserPlatform
+                            ? {
+                                backgroundColor: platformConfig.brandColor,
+                                color: "#FFFFFF",
+                              }
+                            : undefined
+                        }
+                      >
+                        {isBrowserPlatform && (
+                          <Globe className="size-3 flex-shrink-0" />
+                        )}
+                        <span>{platformConfig.name}</span>
+                      </span>
+                      {/* 内容类型徽章 */}
+                      {bookmark.ai_content_type && (
+                        <ContentTypeBadge
+                          type={bookmark.ai_content_type as ContentType}
+                          size="sm"
+                        />
+                      )}
+                    </div>
+                  </div>
 
-            <CardHeader>
-              {/* 内容布局 */}
-              <div className="pr-12 md:pr-20 flex flex-col gap-2 md:gap-3">
-                {/* 第1行：标题 */}
-                <h1 className="text-lg md:text-2xl font-bold text-gray-900 dark:text-white">
-                  {bookmark.title}
-                </h1>
-
-                {/* V10.1: 用途标签（点击即保存，无需编辑按钮） */}
-                {/* P2-010: 集成自动快照触发 */}
-                <UsageTagInlineEditor
-                  bookmarkId={bookmark.id}
-                  bookmarkUrl={bookmark.url}
-                  selectedTags={usageTags}
-                  regularTags={regularTags}
-                  onSaveSuccess={() => router.refresh()}
-                />
-
-                {/* 第2行：AI 内容类型 + AI 标签 */}
-                {(bookmark.ai_content_type ||
-                  (bookmark.ai_tags && bookmark.ai_tags.length > 0)) && (
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm md:text-base">
-                    {/* V9.0: AI检测的内容类型 */}
-                    {bookmark.ai_content_type && (
-                      <ContentTypeBadge
-                        type={bookmark.ai_content_type as ContentType}
-                        size="md"
-                      />
-                    )}
-                    {/* AI 标签 */}
-                    {bookmark.ai_tags && bookmark.ai_tags.length > 0 && (
-                      <>
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-pink-50 dark:bg-pink-900/30 border border-pink-200 dark:border-pink-700 text-pink-600 dark:text-pink-300 font-medium text-xs md:text-sm">
-                          AI
-                        </span>
-                        {bookmark.ai_tags.map((tag, index) => (
-                          <span key={tag} className="flex items-center gap-2">
-                            {index > 0 && (
-                              <span className="text-gray-300 dark:text-gray-600">
-                                |
-                              </span>
-                            )}
-                            <span className="text-gray-700 dark:text-gray-300">
-                              {tag}
+                  {/* 下排：元数据 + 评级/锁定/删除标记 */}
+                  <div className="flex items-center justify-between gap-2 mt-1.5">
+                    {/* 左侧：文件夹 · 来源 · 作者 · 时间 */}
+                    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
+                      {/* 文件夹 */}
+                      {bookmark.folders && folderPath.length > 0 && (
+                        <>
+                          <span className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400">
+                            <Folder className="size-3" />
+                            <span>
+                              {folderPath[folderPath.length - 1].name}
                             </span>
                           </span>
-                        ))}
-                      </>
-                    )}
-                  </div>
-                )}
-
-                {/* 第3行：元信息（来源徽章、作者、时间） */}
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-gray-500 dark:text-gray-400">
-                  {/* V4.2: 来源徽章 */}
-                  {sourceInfo && (
-                    <SourceBadge
-                      source={sourceInfo}
-                      size="md"
-                      showTooltip={true}
-                    />
-                  )}
-                  {/* 作者（如果不同于来源名称） */}
-                  {bookmark.author &&
-                    bookmark.author !== bookmark.source_name && (
-                      <>
-                        <span className="text-gray-300 dark:text-gray-600">
-                          |
-                        </span>
-                        <div className="flex items-center gap-1">
-                          <User className="size-4" />
-                          <span>{bookmark.author}</span>
-                        </div>
-                      </>
-                    )}
-                  {bookmark.publish_time && (
-                    <>
-                      <span className="text-gray-300 dark:text-gray-600">
-                        |
+                          <span className="text-gray-300 dark:text-gray-600">
+                            ·
+                          </span>
+                        </>
+                      )}
+                      {/* 来源徽章 */}
+                      {sourceInfo && (
+                        <>
+                          <SourceBadge
+                            source={sourceInfo}
+                            size="sm"
+                            showTooltip={true}
+                          />
+                          <span className="text-gray-300 dark:text-gray-600">
+                            ·
+                          </span>
+                        </>
+                      )}
+                      {/* 作者 */}
+                      {bookmark.author &&
+                        bookmark.author !== bookmark.source_name && (
+                          <>
+                            <span>{bookmark.author}</span>
+                            <span className="text-gray-300 dark:text-gray-600">
+                              ·
+                            </span>
+                          </>
+                        )}
+                      {/* 发表时间 */}
+                      {bookmark.publish_time && (
+                        <>
+                          <span>
+                            发表 {formatFriendlyDate(bookmark.publish_time)}
+                          </span>
+                          <span className="text-gray-300 dark:text-gray-600">
+                            ·
+                          </span>
+                        </>
+                      )}
+                      {/* 收藏时间 */}
+                      <span className="text-gray-400">
+                        收藏{" "}
+                        {formatFriendlyDate(bookmark.created_at || new Date())}
                       </span>
-                      <div className="flex items-center gap-1">
-                        <Calendar className="size-4" />
-                        <span>
-                          发表 {formatFriendlyDate(bookmark.publish_time)}
-                        </span>
-                      </div>
-                    </>
-                  )}
-                  <span className="text-gray-300 dark:text-gray-600">|</span>
-                  <div className="flex items-center gap-1 text-gray-400">
-                    <Calendar className="size-4" />
-                    <span>
-                      收藏{" "}
-                      {formatFriendlyDate(bookmark.created_at || new Date())}
-                    </span>
+                    </div>
+
+                    {/* 右侧：评级 + 锁定 + 删除标记 */}
+                    <div className="flex-shrink-0">
+                      <BookmarkRating
+                        rating={rating}
+                        isLocked={isLocked}
+                        isMarkedForDeletion={isMarkedForDeletion}
+                        onRatingChange={handleRatingChange}
+                        onLockToggle={handleLockToggle}
+                        onMarkerToggle={handleMarkerToggle}
+                        size="sm"
+                      />
+                    </div>
                   </div>
                 </div>
 
-                {/* 第4行：文件夹 + 评级UI */}
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4">
-                  {/* 左侧：文件夹路径 */}
-                  {bookmark.folders && folderPath.length > 0 ? (
-                    <div className="flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400">
-                      <Folder className="size-4 flex-shrink-0" />
-                      <span className="flex items-center gap-1.5 flex-wrap">
-                        {folderPath.map((folder, index) => (
-                          <span
-                            key={folder.id}
-                            className="flex items-center gap-1.5"
-                          >
-                            {index > 0 && (
-                              <span className="text-gray-400 dark:text-gray-500">
-                                |
-                              </span>
-                            )}
-                            <span>{folder.name}</span>
-                          </span>
-                        ))}
+                {/* === 行2：标签区（AI标签 + 用途标签） === */}
+                <div className="space-y-1.5">
+                  {/* AI 标签行 */}
+                  {bookmark.ai_tags && bookmark.ai_tags.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1.5 text-sm">
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-pink-50 dark:bg-pink-900/30 border border-pink-200 dark:border-pink-700 text-pink-600 dark:text-pink-300 font-medium text-xs">
+                        AI 标签
                       </span>
+                      {bookmark.ai_tags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs"
+                        >
+                          {tag}
+                        </span>
+                      ))}
                     </div>
-                  ) : (
-                    <div className="hidden sm:block" />
                   )}
 
-                  {/* 右侧：评级UI */}
-                  <BookmarkRating
-                    rating={rating}
-                    isLocked={isLocked}
-                    isMarkedForDeletion={isMarkedForDeletion}
-                    onRatingChange={handleRatingChange}
-                    onLockToggle={handleLockToggle}
-                    onMarkerToggle={handleMarkerToggle}
+                  {/* 用途标签行 */}
+                  <UsageTagInlineEditor
+                    bookmarkId={bookmark.id}
+                    bookmarkUrl={bookmark.url}
+                    selectedTags={usageTags}
+                    regularTags={regularTags}
+                    onSaveSuccess={() => router.refresh()}
+                    compact={true}
                   />
                 </div>
 
-                {/* 操作按钮区域 */}
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 pt-4">
-                  {/* 左侧：主要操作按钮 */}
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleOpenOriginal}
-                      className="flex items-center gap-2"
-                    >
-                      <ExternalLink className="size-4" />
-                      <span>打开原文</span>
-                    </Button>
-
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleShare}
-                      className="flex items-center gap-2"
-                    >
-                      <Share2 className="size-4" />
-                      <span>分享</span>
-                    </Button>
-
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleEdit}
-                      className="flex items-center gap-2"
-                    >
-                      <Edit className="size-4" />
-                      <span>编辑</span>
-                    </Button>
-
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowMoveDialog(true)}
-                      className="flex items-center gap-2"
-                    >
-                      <FolderInput className="size-4" />
-                      <span>移动到</span>
-                    </Button>
-
-                    {/* V6.0新增：独立删除按钮（执行真正的删除） */}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleDelete}
-                      disabled={isDeleting || isLocked}
-                      className={cn(
-                        "flex items-center gap-2",
-                        isLocked
-                          ? "opacity-50 cursor-not-allowed"
-                          : "text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20",
-                      )}
-                    >
-                      <Trash2 className="size-4" />
-                      <span>{isDeleting ? "删除中..." : "删除"}</span>
-                    </Button>
-                  </div>
-
-                  {/* 右侧：返回按钮 */}
-                  <div className="flex justify-end sm:justify-start">
+                {/* === 行3：操作栏 === */}
+                <div className="flex items-center justify-between gap-2">
+                  {/* 左侧：返回 + 主要操作 */}
+                  <div className="flex flex-wrap items-center gap-1.5">
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={handleBack}
-                      className="flex items-center gap-2"
+                      className="h-8 px-2"
                     >
                       <ArrowLeft className="size-4" />
-                      <span>返回</span>
+                      <span className="ml-1">返回</span>
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleOpenOriginal}
+                      className="h-8"
+                    >
+                      <ExternalLink className="size-3.5" />
+                      <span className="ml-1.5">打开原文</span>
+                    </Button>
+
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleShare}
+                      className="h-8 px-2"
+                    >
+                      <Share2 className="size-3.5" />
+                      <span className="ml-1 hidden sm:inline">分享</span>
+                    </Button>
+
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleEdit}
+                      className="h-8 px-2"
+                    >
+                      <Edit className="size-3.5" />
+                      <span className="ml-1 hidden sm:inline">编辑</span>
+                    </Button>
+
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowMoveDialog(true)}
+                      className="h-8 px-2"
+                    >
+                      <FolderInput className="size-3.5" />
+                      <span className="ml-1 hidden sm:inline">移动到</span>
                     </Button>
                   </div>
+
+                  {/* 右侧：删除按钮（危险操作分离） */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleDelete}
+                    disabled={isDeleting || isLocked}
+                    className={cn(
+                      "h-8 px-2",
+                      isLocked
+                        ? "opacity-50 cursor-not-allowed"
+                        : "text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20",
+                    )}
+                  >
+                    <Trash2 className="size-3.5" />
+                    <span className="ml-1">
+                      {isDeleting ? "删除中..." : "删除"}
+                    </span>
+                  </Button>
                 </div>
               </div>
             </CardHeader>
 
-            <Separator />
+            <Separator className="my-0" />
 
-            <CardContent className="space-y-6">
+            <CardContent className="pt-4 space-y-5">
               {/* AI 摘要 */}
               {bookmark.ai_summary && (
                 <>
