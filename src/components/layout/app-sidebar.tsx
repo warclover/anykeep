@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
@@ -24,6 +24,7 @@ import {
   FlaskConical,
   GitCompareArrows,
   FileText,
+  ChevronRight,
 } from "lucide-react";
 import { useUnreadCount } from "@/hooks/use-unread-count";
 import { MessageBadge } from "@/components/messages";
@@ -86,6 +87,10 @@ export function AppSidebar() {
     isClientNavEnabled: false,
   };
 
+  // 折叠状态（默认折叠）
+  const [isSystemFoldersExpanded, setIsSystemFoldersExpanded] = useState(false);
+  const [isDevToolsExpanded, setIsDevToolsExpanded] = useState(false);
+
   /**
    * 处理主导航点击
    */
@@ -114,7 +119,7 @@ export function AppSidebar() {
   );
 
   return (
-    <aside className="fixed left-0 top-14 z-40 hidden lg:block w-44 h-[calc(100vh-3.5rem)] border-r bg-white dark:bg-gray-950 dark:border-gray-800">
+    <aside className="fixed left-0 top-14 z-40 hidden lg:block w-48 h-[calc(100vh-3.5rem)] border-r bg-white dark:bg-gray-950 dark:border-gray-800">
       <div className="flex flex-col h-full p-4">
         {/* 品牌区域 */}
         <div className="px-3 mb-6">
@@ -127,7 +132,7 @@ export function AppSidebar() {
         </div>
 
         {/* 主导航 */}
-        <nav className="flex-1 space-y-4">
+        <nav className="flex-1 space-y-4 overflow-y-auto scrollbar-hide">
           <div className="space-y-1">
             {navigation.map((item) => {
               const Icon = item.icon;
@@ -182,7 +187,7 @@ export function AppSidebar() {
                 )}
               >
                 <FileText className="size-5" />
-                <span className="flex-1">MD 收藏</span>
+                <span className="flex-1 whitespace-nowrap">MD 收藏</span>
                 <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300">
                   Pro
                 </span>
@@ -193,111 +198,135 @@ export function AppSidebar() {
           {/* 智能列表 */}
           <SmartListSection />
 
-          {/* 系统文件夹 */}
+          {/* 系统文件夹（可折叠） */}
           <div>
-            <div className="px-3 mb-2">
+            <button
+              onClick={() =>
+                setIsSystemFoldersExpanded(!isSystemFoldersExpanded)
+              }
+              className="flex items-center justify-between w-full px-3 mb-2 group"
+            >
               <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase">
                 系统文件夹
               </p>
-            </div>
-            <div className="space-y-1">
-              {/* 待整理入口（独立页面，不使用客户端导航） */}
-              <Link
-                href="/inbox"
+              <ChevronRight
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                  pathname === "/inbox"
-                    ? "bg-gradient-to-r from-amber-50 to-orange-50 text-amber-700 dark:from-amber-900/30 dark:to-orange-900/30 dark:text-amber-400"
-                    : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50",
+                  "size-3.5 text-gray-400 transition-transform duration-200",
+                  isSystemFoldersExpanded && "rotate-90",
                 )}
-              >
-                <Inbox className="size-5" />
-                待整理
-              </Link>
-              {systemFolders.map((item) => {
-                const Icon = item.icon;
-                const href = `/home?folder=${item.param}`;
-                const isActive = currentFolder === item.param;
+              />
+            </button>
+            {isSystemFoldersExpanded && (
+              <div className="space-y-1">
+                {/* 待整理入口（独立页面，不使用客户端导航） */}
+                <Link
+                  href="/inbox"
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                    pathname === "/inbox"
+                      ? "bg-gradient-to-r from-amber-50 to-orange-50 text-amber-700 dark:from-amber-900/30 dark:to-orange-900/30 dark:text-amber-400"
+                      : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50",
+                  )}
+                >
+                  <Inbox className="size-5" />
+                  待整理
+                </Link>
+                {systemFolders.map((item) => {
+                  const Icon = item.icon;
+                  const href = `/home?folder=${item.param}`;
+                  const isActive = currentFolder === item.param;
 
-                return (
-                  <Link
-                    key={item.name}
-                    href={href}
-                    onClick={(e) => handleSystemFolderClick(item.param, e)}
-                    className={cn(
-                      "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                      isActive
-                        ? "bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-white"
-                        : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50",
-                    )}
-                  >
-                    <Icon className="size-5" />
-                    {item.name}
-                  </Link>
-                );
-              })}
-            </div>
+                  return (
+                    <Link
+                      key={item.name}
+                      href={href}
+                      onClick={(e) => handleSystemFolderClick(item.param, e)}
+                      className={cn(
+                        "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                        isActive
+                          ? "bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-white"
+                          : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50",
+                      )}
+                    >
+                      <Icon className="size-5" />
+                      {item.name}
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
-          {/* 开发者工具 */}
+          {/* 开发者工具（可折叠） */}
           <div>
-            <div className="px-3 mb-2">
+            <button
+              onClick={() => setIsDevToolsExpanded(!isDevToolsExpanded)}
+              className="flex items-center justify-between w-full px-3 mb-2 group"
+            >
               <p className="text-xs font-semibold text-purple-400 dark:text-purple-500 uppercase">
                 开发者工具
               </p>
-            </div>
-            <div className="space-y-1">
-              <Link
-                href="/classification-debugger"
+              <ChevronRight
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                  pathname === "/classification-debugger"
-                    ? "bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
-                    : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50",
+                  "size-3.5 text-purple-400 transition-transform duration-200",
+                  isDevToolsExpanded && "rotate-90",
                 )}
-              >
-                <BrainCircuit className="size-5" />
-                智能分类
-              </Link>
-              <Link
-                href="/dev/classification-debugger"
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                  pathname === "/dev/classification-debugger"
-                    ? "bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
-                    : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50",
-                )}
-              >
-                <FlaskConical className="size-5" />
-                分类对比
-              </Link>
-              <Link
-                href="/dev/v3-vs-v4"
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                  pathname === "/dev/v3-vs-v4"
-                    ? "bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
-                    : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50",
-                )}
-              >
-                <GitCompareArrows className="size-5" />
-                v3对比v4
-              </Link>
-              {process.env.NODE_ENV === "development" && (
+              />
+            </button>
+            {isDevToolsExpanded && (
+              <div className="space-y-1">
                 <Link
-                  href="/debug/ai-summary"
+                  href="/classification-debugger"
                   className={cn(
                     "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                    pathname === "/debug/ai-summary"
+                    pathname === "/classification-debugger"
                       ? "bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
                       : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50",
                   )}
                 >
-                  <Sparkles className="size-5" />
-                  摘要调试
+                  <BrainCircuit className="size-5" />
+                  智能分类
                 </Link>
-              )}
-            </div>
+                <Link
+                  href="/dev/classification-debugger"
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                    pathname === "/dev/classification-debugger"
+                      ? "bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
+                      : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50",
+                  )}
+                >
+                  <FlaskConical className="size-5" />
+                  分类对比
+                </Link>
+                <Link
+                  href="/dev/v3-vs-v4"
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                    pathname === "/dev/v3-vs-v4"
+                      ? "bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
+                      : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50",
+                  )}
+                >
+                  <GitCompareArrows className="size-5" />
+                  v3对比v4
+                </Link>
+                {process.env.NODE_ENV === "development" && (
+                  <Link
+                    href="/debug/ai-summary"
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                      pathname === "/debug/ai-summary"
+                        ? "bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
+                        : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50",
+                    )}
+                  >
+                    <Sparkles className="size-5" />
+                    摘要调试
+                  </Link>
+                )}
+              </div>
+            )}
           </div>
         </nav>
 

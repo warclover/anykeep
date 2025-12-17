@@ -37,7 +37,7 @@ export default function MainLayout({
         <AppSidebar />
 
         {/* 主内容区 - 使用客户端导航管理 */}
-        <main className="flex-1 min-w-0 p-4 md:p-6 lg:ml-44 pb-20 lg:pb-6 overflow-hidden">
+        <main className="flex-1 min-w-0 p-4 md:p-6 lg:ml-48 pb-20 lg:pb-6 overflow-hidden">
           <MainContent>{children}</MainContent>
         </main>
       </div>
