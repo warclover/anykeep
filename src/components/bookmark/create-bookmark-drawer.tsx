@@ -1,7 +1,10 @@
 /**
- * 创建收藏抽屉组件
- * 右侧滑入的抽屉式表单，用于手动创建收藏
- * 支持粘贴 URL 后自动获取网页元数据
+ * V5.0: 创建收藏 SideSheet 组件
+ *
+ * 基于统一的 SideSheet 设计系统重构
+ * - 使用新的 SideSheet 组件
+ * - 简化布局结构（移除 Slogan，合并区块）
+ * - 保持所有功能不变
  */
 
 "use client";
@@ -16,9 +19,9 @@ import {
   AlertCircle,
   Link,
   FileText,
+  FolderOpen,
   Tags,
   MessageSquare,
-  ChevronDown,
   Eye,
   Plus,
   X,
@@ -29,12 +32,6 @@ import {
   useDebouncedAbortableFetch,
 } from "@/hooks/use-abortable-fetch";
 import { useClipboardPaste } from "@/components/quick-add/hooks/useClipboardPaste";
-import {
-  Drawer,
-  DrawerContent,
-  DrawerDescription,
-  DrawerTitle,
-} from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -47,6 +44,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  SideSheet,
+  SideSheetPrimaryZone,
+  SideSheetSecondaryZone,
+  SideSheetExpandableZone,
+} from "@/components/ui/side-sheet";
 import { createBookmarkSchema } from "@/lib/validation";
 import { extractUrlFromShareText } from "@/lib/utils/url-extractor";
 import {
@@ -59,6 +62,10 @@ import { UsageTagSelector } from "./usage-tag-selector";
 import { FolderQuickSelect } from "@/components/classification/folder-quick-select";
 import { uiEventBus, UIEvents } from "@/lib/shared/event-bus";
 import type { CustomUsageTag } from "@/types/supabase";
+
+// ============================================================================
+// 类型定义
+// ============================================================================
 
 interface BookmarkCreatedData {
   id: number;
@@ -89,53 +96,47 @@ interface WebMetadata {
 
 type FetchStatus = "idle" | "loading" | "success" | "error";
 
-/**
- * 渐变流光 Slogan 组件
- */
-function GradientSlogan() {
-  return (
-    <div className="flex flex-col items-center select-none">
-      {/* 单行: Keep Smart. Read Anytime. */}
-      <div className="flex items-baseline gap-1.5 flex-wrap justify-center">
-        <span
-          className="text-xl font-bold animate-gradient-flow bg-gradient-to-r from-violet-600 via-blue-500 via-cyan-400 via-blue-500 to-violet-600 bg-[length:200%_100%] bg-clip-text text-transparent tracking-wide"
-          style={{
-            fontFamily: "'Segoe Script', 'Brush Script MT', cursive",
-          }}
-        >
-          Keep
-        </span>
-        <span
-          className="text-2xl font-bold animate-gradient-flow bg-gradient-to-r from-violet-600 via-blue-500 via-cyan-400 via-blue-500 to-violet-600 bg-[length:200%_100%] bg-clip-text text-transparent tracking-tight"
-          style={{
-            fontFamily: "'Segoe Script', 'Brush Script MT', cursive",
-          }}
-        >
-          Smart.
-        </span>
-        <span
-          className="text-xl font-bold animate-gradient-flow bg-gradient-to-r from-cyan-400 via-blue-500 via-violet-600 via-blue-500 to-cyan-400 bg-[length:200%_100%] bg-clip-text text-transparent tracking-wide"
-          style={{
-            fontFamily: "'Segoe Script', 'Brush Script MT', cursive",
-            animationDelay: "0.3s",
-          }}
-        >
-          Read
-        </span>
-        <span
-          className="text-2xl font-bold animate-gradient-flow bg-gradient-to-r from-cyan-400 via-blue-500 via-violet-600 via-blue-500 to-cyan-400 bg-[length:200%_100%] bg-clip-text text-transparent tracking-tight"
-          style={{
-            fontFamily: "'Segoe Script', 'Brush Script MT', cursive",
-            animationDelay: "0.3s",
-          }}
-        >
-          Anytime.
-        </span>
-      </div>
-      <div className="h-1 w-52 animate-gradient-flow bg-gradient-to-r from-violet-500 via-blue-500 via-cyan-400 via-blue-500 to-violet-500 bg-[length:200%_100%] rounded-full mt-1" />
-    </div>
-  );
-}
+// ============================================================================
+// 常量
+// ============================================================================
+
+const TEXT = {
+  SHEET_TITLE: "新建收藏",
+  SHEET_DESCRIPTION: "输入链接保存网页内容，支持自动获取标题和摘要",
+  SUBMIT_BUTTON: "创建",
+  SUBMITTING: "创建中",
+  URL_LABEL: "粘贴链接",
+  URL_PLACEHOLDER: "粘贴链接或分享文本...",
+  URL_HELPER: "输入链接后自动获取网页信息",
+  TITLE_LABEL: "标题",
+  TITLE_PLACEHOLDER: "可选，保存后自动获取",
+  DESCRIPTION_LABEL: "描述",
+  DESCRIPTION_PLACEHOLDER: "简单描述这篇内容...",
+  FOLDER_LABEL: "保存到",
+  FOLDER_PLACEHOLDER: "选择文件夹（可选）",
+  USAGE_TAGS_LABEL: "用途标签",
+  USAGE_TAGS_HELPER: "方便日后筛选",
+  CUSTOM_TAGS_LABEL: "自定义标签",
+  CUSTOM_TAGS_PLACEHOLDER: "输入标签后按回车添加",
+  CUSTOM_TAGS_HELPER: "可选，保存后自动生成 AI 标签",
+  NOTES_LABEL: "个人笔记",
+  NOTES_PLACEHOLDER: "记录想法...",
+  VISION_LABEL: "深度视觉分析",
+  VISION_HELPER: "提取图片文字、分析图表逻辑",
+  MORE_OPTIONS: "更多选项",
+  MORE_OPTIONS_DESC: "描述、标签、笔记、视觉分析",
+  AUTO_FILLED: "已自动填充",
+  FETCHING: "正在获取网页信息...",
+  FETCH_SUCCESS: "已自动填充网页信息",
+  FETCH_ERROR: "获取失败，请手动填写",
+  REFETCH: "重新获取",
+  RETRY: "重试",
+  TAGS_COUNT: (count: number) => `已添加 ${count} 个标签`,
+};
+
+// ============================================================================
+// 主组件
+// ============================================================================
 
 export function CreateBookmarkDrawer({
   open,
@@ -147,10 +148,6 @@ export function CreateBookmarkDrawer({
   const { fetchWithAbort } = useAbortableFetch();
   const { debouncedFetch, abortAll } = useDebouncedAbortableFetch(500);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // 关闭动画状态
-  const [isClosing, setIsClosing] = useState(false);
-  const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // URL 输入框 ref 和剪贴板自动读取标记
   const urlInputRef = useRef<HTMLInputElement>(null);
@@ -211,13 +208,6 @@ export function CreateBookmarkDrawer({
   // 表单错误
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // 折叠状态
-  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
-  const [isClassificationExpanded, setIsClassificationExpanded] =
-    useState(true);
-  const [isCustomTagsExpanded, setIsCustomTagsExpanded] = useState(false);
-  const [isNotesExpanded, setIsNotesExpanded] = useState(false);
-
   const resetForm = () => {
     setUrl("");
     setTitle("");
@@ -239,10 +229,6 @@ export function CreateBookmarkDrawer({
     setUserAddedTags([]);
     setSelectedUsageTags([]);
     setEnableVisionAnalysis(false);
-    setIsDescriptionExpanded(false);
-    setIsClassificationExpanded(true);
-    setIsCustomTagsExpanded(false);
-    setIsNotesExpanded(false);
   };
 
   const isValidUrl = (urlString: string): boolean => {
@@ -371,11 +357,6 @@ export function CreateBookmarkDrawer({
     }
   }, [url, readClipboard]);
 
-  // URL 输入框失焦时重置自动读取标记
-  const handleUrlInputBlur = useCallback(() => {
-    // 不需要重置，因为我们只想在每次打开抽屉时自动读取一次
-  }, []);
-
   // URL 输入框粘贴事件处理
   const handleUrlPaste = useCallback(
     (e: React.ClipboardEvent<HTMLInputElement>) => {
@@ -396,39 +377,13 @@ export function CreateBookmarkDrawer({
     if (open) {
       // 抽屉打开时重置标记，允许自动读取
       hasAutoReadRef.current = false;
-      // 重置关闭状态
-      setIsClosing(false);
     }
-    // 清理定时器
-    return () => {
-      if (closeTimeoutRef.current) {
-        clearTimeout(closeTimeoutRef.current);
-      }
-    };
   }, [open]);
 
-  // 带动画的关闭处理
+  // 处理关闭
   const handleClose = useCallback(() => {
-    if (isClosing) return; // 防止重复触发
-    setIsClosing(true);
-    // 延迟关闭，等待动画完成 (350ms CSS 动画 + 50ms 缓冲)
-    closeTimeoutRef.current = setTimeout(() => {
-      onOpenChange(false);
-      setIsClosing(false);
-    }, 400);
-  }, [isClosing, onOpenChange]);
-
-  // 处理 Drawer 的 onOpenChange
-  const handleOpenChange = useCallback(
-    (newOpen: boolean) => {
-      if (newOpen) {
-        onOpenChange(true);
-      } else {
-        handleClose();
-      }
-    },
-    [onOpenChange, handleClose],
-  );
+    onOpenChange(false);
+  }, [onOpenChange]);
 
   const addUserTag = (tag: string) => {
     const trimmed = tag.trim();
@@ -597,16 +552,16 @@ export function CreateBookmarkDrawer({
     switch (fetchStatus) {
       case "loading":
         return (
-          <div className="flex items-center gap-1.5 text-xs text-blue-600">
+          <div className="flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400">
             <Loader2 className="size-3 animate-spin" />
-            <span>正在获取网页信息...</span>
+            <span>{TEXT.FETCHING}</span>
           </div>
         );
       case "success":
         return (
-          <div className="flex items-center gap-1.5 text-xs text-green-600">
+          <div className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400">
             <Check className="size-3" />
-            <span>已自动填充网页信息</span>
+            <span>{TEXT.FETCH_SUCCESS}</span>
             <Button
               type="button"
               variant="ghost"
@@ -615,15 +570,15 @@ export function CreateBookmarkDrawer({
               onClick={handleRefetch}
             >
               <RefreshCw className="size-3 mr-1" />
-              重新获取
+              {TEXT.REFETCH}
             </Button>
           </div>
         );
       case "error":
         return (
-          <div className="flex items-center gap-1.5 text-xs text-amber-600">
+          <div className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
             <AlertCircle className="size-3" />
-            <span>{fetchError || "获取失败，请手动填写"}</span>
+            <span>{fetchError || TEXT.FETCH_ERROR}</span>
             <Button
               type="button"
               variant="ghost"
@@ -632,7 +587,7 @@ export function CreateBookmarkDrawer({
               onClick={handleRefetch}
             >
               <RefreshCw className="size-3 mr-1" />
-              重试
+              {TEXT.RETRY}
             </Button>
           </div>
         );
@@ -644,9 +599,9 @@ export function CreateBookmarkDrawer({
   const renderAutoFilledBadge = (field: string) => {
     if (autoFilledFields.has(field)) {
       return (
-        <span className="ml-2 text-xs text-green-600 font-normal flex items-center gap-1">
+        <span className="ml-2 text-xs text-emerald-600 dark:text-emerald-400 font-normal flex items-center gap-1">
           <Sparkles className="size-3" />
-          已自动填充
+          {TEXT.AUTO_FILLED}
         </span>
       );
     }
@@ -683,491 +638,323 @@ export function CreateBookmarkDrawer({
 
   return (
     <>
-      <div className={isClosing ? "drawer-closing" : ""}>
-        <Drawer open={open} onOpenChange={handleOpenChange} direction="right">
-          <DrawerContent
-            className={`h-full w-full sm:w-[520px] sm:max-w-[520px] p-0 flex flex-col gap-0 rounded-none ${isClosing ? "drawer-slide-out" : "drawer-slide-in"}`}
+      <SideSheet
+        open={open}
+        onOpenChange={onOpenChange}
+        size="md"
+        title={TEXT.SHEET_TITLE}
+        description={TEXT.SHEET_DESCRIPTION}
+        headerAction={
+          <Button
+            type="submit"
+            form="create-bookmark-form"
+            disabled={isSubmitting || !url}
+            size="sm"
+            className="h-8 px-4 bg-violet-600 hover:bg-violet-700 text-white shadow-md shadow-violet-500/25 disabled:opacity-50"
           >
-            {/* 隐藏的无障碍标题 */}
-            <DrawerTitle className="sr-only">手动创建收藏</DrawerTitle>
-            <DrawerDescription className="sr-only">
-              输入链接保存网页内容，支持自动获取标题和摘要
-            </DrawerDescription>
-
-            {/* ══════════════════════════════════════════════════════════════
-              顶部固定区域：Slogan + 操作按钮
-          ══════════════════════════════════════════════════════════════ */}
-            <div className="sticky top-0 z-10 bg-gradient-to-b from-violet-50/90 via-blue-50/80 to-transparent backdrop-blur-sm border-b border-violet-100/50 px-6 pt-6 pb-4">
-              {/* Slogan with gradient flow animation */}
-              <GradientSlogan />
-
-              {/* 操作按钮 */}
-              <div className="flex items-center justify-between mt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleClose}
-                  disabled={isSubmitting || isClosing}
-                  className="w-24"
-                >
-                  取消
-                </Button>
-                <Button
-                  type="submit"
-                  form="create-bookmark-form"
-                  disabled={isSubmitting}
-                  className="w-28 bg-violet-600 hover:bg-violet-700 text-white shadow-md shadow-violet-500/25"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="size-4 mr-1.5 animate-spin" />
-                      创建中
-                    </>
-                  ) : (
-                    <>
-                      <Plus className="size-4 mr-1.5" />
-                      创建收藏
-                    </>
-                  )}
-                </Button>
+            {isSubmitting ? (
+              <>
+                <Loader2 className="size-3.5 mr-1.5 animate-spin" />
+                {TEXT.SUBMITTING}
+              </>
+            ) : (
+              <>
+                <Plus className="size-3.5 mr-1.5" />
+                {TEXT.SUBMIT_BUTTON}
+              </>
+            )}
+          </Button>
+        }
+      >
+        <form
+          id="create-bookmark-form"
+          onSubmit={handleSubmit}
+          className="contents"
+        >
+          {/* ============================================
+              Primary Zone: URL 输入
+          ============================================ */}
+          <SideSheetPrimaryZone index={0}>
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0 size-10 rounded-xl bg-gradient-to-br from-violet-500 via-blue-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-violet-500/25">
+                <Link className="size-5 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap mb-1">
+                  <Label
+                    htmlFor="url"
+                    className="text-sm font-medium text-slate-800 dark:text-slate-200"
+                  >
+                    {TEXT.URL_LABEL}
+                  </Label>
+                  <span className="text-red-500 text-xs">*</span>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
+                  {TEXT.URL_HELPER}
+                </p>
+                {renderUrlStatus()}
               </div>
             </div>
 
-            {/* ══════════════════════════════════════════════════════════════
-              可滚动的表单区域
-          ══════════════════════════════════════════════════════════════ */}
-            <div className="flex-1 overflow-y-auto px-6 py-4">
-              <form
-                id="create-bookmark-form"
-                onSubmit={handleSubmit}
-                className="space-y-4"
-              >
-                {/* 📎 核心信息区块 */}
-                <div className="rounded-xl bg-gradient-to-br from-violet-50 via-blue-50 to-cyan-50 p-4 space-y-3 border border-violet-100/50">
-                  <div className="flex items-center gap-3">
-                    <div className="flex-shrink-0 size-9 rounded-xl bg-gradient-to-br from-violet-500 via-blue-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-violet-500/25">
-                      <Link className="size-4 text-white" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <Label
-                          htmlFor="url"
-                          className="text-sm font-medium text-gray-800"
+            <div className="relative group mt-3">
+              <div className="absolute -inset-0.5 bg-gradient-to-r from-violet-500 via-blue-500 to-cyan-500 rounded-lg opacity-0 group-focus-within:opacity-100 transition-opacity duration-300 blur-sm" />
+              <Input
+                ref={urlInputRef}
+                id="url"
+                type="text"
+                placeholder={TEXT.URL_PLACEHOLDER}
+                value={url}
+                onChange={(e) => {
+                  const extractedUrl = extractUrlFromShareText(e.target.value);
+                  setUrl(extractedUrl);
+                }}
+                onFocus={handleUrlInputFocus}
+                onPaste={handleUrlPaste}
+                required
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
+                className={`relative bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 focus:border-transparent focus:ring-2 focus:ring-violet-500/50 transition-all ${errors.url ? "border-red-500" : ""} ${fetchStatus === "loading" ? "pr-10" : ""}`}
+              />
+              {fetchStatus === "loading" && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <Loader2 className="size-4 animate-spin text-violet-500" />
+                </div>
+              )}
+            </div>
+
+            {errors.url && (
+              <p className="text-xs text-red-500 mt-1">{errors.url}</p>
+            )}
+          </SideSheetPrimaryZone>
+
+          {/* ============================================
+              Secondary Zone: 标题 + 文件夹 + 用途标签
+          ============================================ */}
+          {showExpandedSections && (
+            <SideSheetSecondaryZone index={1}>
+              {/* 标题 */}
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <FileText className="size-4 text-slate-500" />
+                  <Label
+                    htmlFor="title"
+                    className="text-sm font-medium text-slate-700 dark:text-slate-300"
+                  >
+                    {TEXT.TITLE_LABEL}
+                  </Label>
+                  {renderAutoFilledBadge("title")}
+                </div>
+                <Input
+                  id="title"
+                  placeholder={TEXT.TITLE_PLACEHOLDER}
+                  value={title}
+                  onChange={(e) => {
+                    setTitle(e.target.value);
+                    markFieldAsModified("title");
+                  }}
+                  className={`bg-white dark:bg-slate-900 ${errors.title ? "border-red-500" : ""}`}
+                />
+                {errors.title && (
+                  <p className="text-xs text-red-500">{errors.title}</p>
+                )}
+              </div>
+
+              {/* 文件夹 */}
+              {folders.length > 0 && (
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <FolderOpen className="size-4 text-slate-500" />
+                    <Label
+                      htmlFor="folder"
+                      className="text-sm font-medium text-slate-700 dark:text-slate-300"
+                    >
+                      {TEXT.FOLDER_LABEL}
+                    </Label>
+                  </div>
+                  <Select value={folderId} onValueChange={setFolderId}>
+                    <SelectTrigger className="bg-white dark:bg-slate-900">
+                      <SelectValue placeholder={TEXT.FOLDER_PLACEHOLDER} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {folders.map((folder) => (
+                        <SelectItem
+                          key={folder.id}
+                          value={folder.id.toString()}
                         >
-                          粘贴链接
-                        </Label>
-                        <span className="text-red-500 text-xs">*</span>
-                        {renderUrlStatus()}
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        输入链接后自动获取网页信息
-                      </p>
-                    </div>
-                  </div>
+                          {folder.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
-                  <div className="relative group">
-                    <div className="absolute -inset-0.5 bg-gradient-to-r from-violet-500 via-blue-500 to-cyan-500 rounded-lg opacity-0 group-focus-within:opacity-100 transition-opacity duration-300 blur-sm" />
-                    <Input
-                      ref={urlInputRef}
-                      id="url"
-                      type="text"
-                      placeholder="粘贴链接或分享文本..."
-                      value={url}
-                      onChange={(e) => {
-                        const extractedUrl = extractUrlFromShareText(
-                          e.target.value,
-                        );
-                        setUrl(extractedUrl);
-                      }}
-                      onFocus={handleUrlInputFocus}
-                      onBlur={handleUrlInputBlur}
-                      onPaste={handleUrlPaste}
-                      required
-                      autoComplete="off"
-                      autoCorrect="off"
-                      autoCapitalize="off"
-                      spellCheck={false}
-                      className={`relative bg-white border-gray-200 focus:border-transparent focus:ring-2 focus:ring-violet-500/50 transition-all ${errors.url ? "border-red-500" : ""} ${fetchStatus === "loading" ? "pr-8" : ""}`}
-                    />
-                    {fetchStatus === "loading" && (
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                        <Loader2 className="size-4 animate-spin text-violet-500" />
-                      </div>
-                    )}
-                  </div>
+              {/* 用途标签 */}
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <Tags className="size-4 text-slate-500" />
+                  <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                    {TEXT.USAGE_TAGS_LABEL}
+                  </Label>
+                  <span className="text-xs text-slate-500">
+                    {TEXT.USAGE_TAGS_HELPER}
+                  </span>
+                </div>
+                <UsageTagSelector
+                  selectedTags={selectedUsageTags}
+                  onSelectedTagsChange={setSelectedUsageTags}
+                  customUsageTags={customUsageTags}
+                  onCustomTagsChange={setCustomUsageTags}
+                  disabled={isSubmitting}
+                />
+              </div>
+            </SideSheetSecondaryZone>
+          )}
 
-                  {errors.url && (
-                    <p className="text-xs text-red-500">{errors.url}</p>
-                  )}
+          {/* ============================================
+              Expandable Zone: 更多选项
+          ============================================ */}
+          {showExpandedSections && (
+            <SideSheetExpandableZone
+              index={2}
+              title={TEXT.MORE_OPTIONS}
+              description={TEXT.MORE_OPTIONS_DESC}
+              defaultExpanded={false}
+            >
+              {/* 描述 */}
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <Label
+                    htmlFor="description"
+                    className="text-sm font-medium text-slate-700 dark:text-slate-300"
+                  >
+                    {TEXT.DESCRIPTION_LABEL}
+                  </Label>
+                  {renderAutoFilledBadge("description")}
+                </div>
+                <Textarea
+                  id="description"
+                  placeholder={TEXT.DESCRIPTION_PLACEHOLDER}
+                  value={description}
+                  onChange={(e) => {
+                    setDescription(e.target.value);
+                    markFieldAsModified("description");
+                  }}
+                  rows={2}
+                  className={`bg-white dark:bg-slate-900 ${errors.description ? "border-red-500" : ""}`}
+                />
+                {errors.description && (
+                  <p className="text-xs text-red-500">{errors.description}</p>
+                )}
+              </div>
+
+              {/* 自定义标签 */}
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <Label
+                    htmlFor="tags"
+                    className="text-sm font-medium text-slate-700 dark:text-slate-300"
+                  >
+                    {TEXT.CUSTOM_TAGS_LABEL}
+                  </Label>
+                  <span className="text-xs text-slate-500">
+                    {TEXT.CUSTOM_TAGS_HELPER}
+                  </span>
                 </div>
 
-                {/* 📄 内容信息区块 */}
-                <div
-                  className={`rounded-lg bg-blue-50/50 p-3 space-y-3 transition-all duration-300 ease-out ${
-                    showExpandedSections
-                      ? "opacity-100 max-h-[500px]"
-                      : "opacity-0 max-h-0 overflow-hidden p-0"
-                  }`}
-                >
-                  <div className="flex items-center gap-2 text-sm font-medium text-gray-700 flex-wrap">
-                    <FileText className="size-4" />
-                    <span>标题与内容</span>
-                    {autoFilledFields.has("title") && (
-                      <span className="text-xs text-green-600 font-normal flex items-center gap-1">
-                        <Sparkles className="size-3" />
-                        已自动填充
-                      </span>
-                    )}
-                    <span className="text-xs text-muted-foreground font-normal">
-                      留空时自动获取
-                    </span>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Input
-                      id="title"
-                      placeholder="可选，保存后自动获取"
-                      value={title}
-                      onChange={(e) => {
-                        setTitle(e.target.value);
-                        markFieldAsModified("title");
-                      }}
-                      className={`bg-white ${errors.title ? "border-red-500" : ""}`}
-                    />
-                    {errors.title && (
-                      <p className="text-xs text-red-500">{errors.title}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-1.5">
-                    {!isDescriptionExpanded ? (
+                {userAddedTags.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {userAddedTags.map((tag) => (
                       <button
+                        key={tag}
                         type="button"
-                        onClick={() => setIsDescriptionExpanded(true)}
-                        className="w-full flex items-center justify-between py-2 px-3 text-sm text-gray-500 hover:text-gray-700 hover:bg-blue-100/50 rounded-lg transition-colors border border-dashed border-gray-300 hover:border-gray-400"
+                        onClick={() => removeUserTag(tag)}
+                        className="px-3 py-1 rounded-full text-sm bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700 hover:bg-blue-200 dark:hover:bg-blue-900/60 transition-colors flex items-center gap-1"
                       >
-                        <div className="flex items-center gap-2">
-                          <span>
-                            {description ? (
-                              <span className="text-gray-700 line-clamp-1">
-                                {description.length > 40
-                                  ? description.slice(0, 40) + "..."
-                                  : description}
-                              </span>
-                            ) : (
-                              "添加描述（可选）"
-                            )}
-                          </span>
-                          {autoFilledFields.has("description") && (
-                            <span className="text-xs text-green-600 flex items-center gap-1">
-                              <Sparkles className="size-3" />
-                              已自动填充
-                            </span>
-                          )}
-                        </div>
-                        <ChevronDown className="size-4" />
+                        {tag}
+                        <X className="size-3 opacity-60 hover:opacity-100" />
                       </button>
-                    ) : (
-                      <>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Label
-                              htmlFor="description"
-                              className="flex items-center text-gray-600"
-                            >
-                              描述
-                              {renderAutoFilledBadge("description")}
-                            </Label>
-                            <span className="text-xs text-muted-foreground">
-                              保存后自动生成 AI 摘要
-                            </span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setIsDescriptionExpanded(false)}
-                            className="text-xs text-gray-500 hover:text-gray-700"
-                          >
-                            收起
-                          </button>
-                        </div>
-                        <Textarea
-                          id="description"
-                          placeholder="简单描述这篇内容..."
-                          value={description}
-                          onChange={(e) => {
-                            setDescription(e.target.value);
-                            markFieldAsModified("description");
-                          }}
-                          rows={2}
-                          className={`bg-white ${errors.description ? "border-red-500" : ""}`}
-                        />
-                        {errors.description && (
-                          <p className="text-xs text-red-500">
-                            {errors.description}
-                          </p>
-                        )}
-                      </>
-                    )}
+                    ))}
                   </div>
-                </div>
+                )}
 
-                {/* 🏷️ 分类整理区块 */}
-                <div
-                  className={`rounded-lg bg-amber-50/50 transition-all duration-300 ease-out ${
-                    showExpandedSections
-                      ? "opacity-100 max-h-[800px]"
-                      : "opacity-0 max-h-0 overflow-hidden"
-                  }`}
-                >
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setIsClassificationExpanded(!isClassificationExpanded)
+                <Input
+                  id="tags"
+                  placeholder={TEXT.CUSTOM_TAGS_PLACEHOLDER}
+                  value={tags}
+                  onChange={(e) => setTags(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      const input = e.currentTarget;
+                      if (input.value.trim()) {
+                        addUserTag(input.value.trim());
+                        setTags("");
+                      }
                     }
-                    className="w-full flex items-center justify-between p-3 text-sm font-medium text-gray-700 hover:bg-amber-100/50 rounded-lg transition-colors"
+                  }}
+                  className={`bg-white dark:bg-slate-900 ${errors.userTags ? "border-red-500" : ""}`}
+                />
+                {errors.userTags && (
+                  <p className="text-xs text-red-500">{errors.userTags}</p>
+                )}
+              </div>
+
+              {/* 个人笔记 */}
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="size-4 text-slate-500" />
+                  <Label
+                    htmlFor="notes"
+                    className="text-sm font-medium text-slate-700 dark:text-slate-300"
                   >
-                    <div className="flex items-center gap-2">
-                      <Tags className="size-4" />
-                      <span>分类整理</span>
-                      <span className="text-xs text-muted-foreground font-normal">
-                        标签与文件夹
-                      </span>
-                    </div>
-                    <ChevronDown
-                      className={`size-4 transition-transform duration-200 ${
-                        isClassificationExpanded ? "rotate-180" : ""
-                      }`}
-                    />
-                  </button>
+                    {TEXT.NOTES_LABEL}
+                  </Label>
+                </div>
+                <Textarea
+                  id="notes"
+                  placeholder={TEXT.NOTES_PLACEHOLDER}
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={2}
+                  className={`bg-white dark:bg-slate-900 ${errors.notes ? "border-red-500" : ""}`}
+                />
+                {errors.notes && (
+                  <p className="text-xs text-red-500">{errors.notes}</p>
+                )}
+              </div>
 
-                  <div
-                    className={`px-3 pb-3 space-y-3 transition-all duration-200 ease-out ${
-                      isClassificationExpanded
-                        ? "opacity-100 max-h-[600px]"
-                        : "opacity-0 max-h-0 overflow-hidden"
-                    }`}
-                  >
-                    {folders.length > 0 && (
-                      <div className="space-y-1.5">
-                        <Label htmlFor="folder" className="text-gray-600">
-                          文件夹
-                        </Label>
-                        <Select value={folderId} onValueChange={setFolderId}>
-                          <SelectTrigger className="bg-white">
-                            <SelectValue placeholder="选择文件夹（可选）" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {folders.map((folder) => (
-                              <SelectItem
-                                key={folder.id}
-                                value={folder.id.toString()}
-                              >
-                                {folder.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
-
-                    <div className="space-y-1.5">
-                      <div className="flex items-center gap-2">
-                        <Label className="text-gray-600">用途标签</Label>
-                        <span className="text-xs text-muted-foreground">
-                          方便日后筛选
-                        </span>
-                      </div>
-                      <UsageTagSelector
-                        selectedTags={selectedUsageTags}
-                        onSelectedTagsChange={setSelectedUsageTags}
-                        customUsageTags={customUsageTags}
-                        onCustomTagsChange={setCustomUsageTags}
-                        disabled={isSubmitting}
-                      />
-                    </div>
-
-                    <div className="space-y-1.5">
-                      {!isCustomTagsExpanded ? (
-                        <button
-                          type="button"
-                          onClick={() => setIsCustomTagsExpanded(true)}
-                          className="w-full flex items-center justify-between py-2 px-3 text-sm text-gray-500 hover:text-gray-700 hover:bg-amber-100/50 rounded-lg transition-colors border border-dashed border-gray-300 hover:border-gray-400"
-                        >
-                          <div className="flex items-center gap-2">
-                            <span>
-                              {userAddedTags.length > 0 ? (
-                                <span className="text-gray-700">
-                                  已添加 {userAddedTags.length} 个标签
-                                </span>
-                              ) : (
-                                "添加自定义标签（可选）"
-                              )}
-                            </span>
-                          </div>
-                          <ChevronDown className="size-4" />
-                        </button>
-                      ) : (
-                        <>
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <Label htmlFor="tags" className="text-gray-600">
-                                自定义标签
-                              </Label>
-                              <span className="text-xs text-muted-foreground">
-                                可选，保存后自动生成 AI 标签
-                              </span>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => setIsCustomTagsExpanded(false)}
-                              className="text-xs text-gray-500 hover:text-gray-700"
-                            >
-                              收起
-                            </button>
-                          </div>
-
-                          {userAddedTags.length > 0 && (
-                            <div className="flex flex-wrap gap-2">
-                              {userAddedTags.map((tag) => (
-                                <button
-                                  key={tag}
-                                  type="button"
-                                  onClick={() => removeUserTag(tag)}
-                                  className="px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-700 border border-blue-300 hover:bg-blue-200 transition-colors flex items-center gap-1"
-                                >
-                                  {tag}
-                                  <span className="text-blue-500 hover:text-blue-700">
-                                    ×
-                                  </span>
-                                </button>
-                              ))}
-                            </div>
-                          )}
-
-                          <Input
-                            id="tags"
-                            placeholder="输入标签后按回车添加"
-                            value={tags}
-                            onChange={(e) => setTags(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                e.preventDefault();
-                                const input = e.currentTarget;
-                                if (input.value.trim()) {
-                                  addUserTag(input.value.trim());
-                                  setTags("");
-                                }
-                              }
-                            }}
-                            className={`bg-white ${errors.userTags ? "border-red-500" : ""}`}
-                          />
-                          {errors.userTags && (
-                            <p className="text-xs text-red-500">
-                              {errors.userTags}
-                            </p>
-                          )}
-                        </>
-                      )}
-                    </div>
+              {/* 视觉分析开关 */}
+              <div className="flex items-center justify-between rounded-lg border border-slate-200 dark:border-slate-700 p-3 bg-slate-50/50 dark:bg-slate-800/50">
+                <div className="flex items-center gap-3">
+                  <div className="size-8 rounded-full bg-gradient-to-br from-purple-500/20 to-blue-500/20 flex items-center justify-center">
+                    <Eye className="size-4 text-purple-500" />
+                  </div>
+                  <div>
+                    <Label
+                      htmlFor="vision-analysis"
+                      className="text-sm font-medium cursor-pointer text-slate-700 dark:text-slate-300"
+                    >
+                      {TEXT.VISION_LABEL}
+                    </Label>
+                    <p className="text-xs text-slate-500">
+                      {TEXT.VISION_HELPER}
+                    </p>
                   </div>
                 </div>
-
-                {/* 💭 个人笔记区块 */}
-                <div
-                  className={`rounded-lg bg-purple-50/50 transition-all duration-300 ease-out ${
-                    showExpandedSections
-                      ? "opacity-100 max-h-[400px]"
-                      : "opacity-0 max-h-0 overflow-hidden"
-                  }`}
-                >
-                  <button
-                    type="button"
-                    onClick={() => setIsNotesExpanded(!isNotesExpanded)}
-                    className="w-full flex items-center justify-between p-3 text-sm font-medium text-gray-700 hover:bg-purple-100/50 rounded-lg transition-colors"
-                  >
-                    <div className="flex items-center gap-2">
-                      <MessageSquare className="size-4" />
-                      <span>个人笔记</span>
-                      <span className="text-xs text-muted-foreground font-normal">
-                        记录想法
-                      </span>
-                    </div>
-                    <ChevronDown
-                      className={`size-4 transition-transform duration-200 ${
-                        isNotesExpanded ? "rotate-180" : ""
-                      }`}
-                    />
-                  </button>
-
-                  <div
-                    className={`px-3 pb-3 transition-all duration-200 ease-out ${
-                      isNotesExpanded
-                        ? "opacity-100 max-h-[300px]"
-                        : "opacity-0 max-h-0 overflow-hidden"
-                    }`}
-                  >
-                    <Textarea
-                      id="notes"
-                      placeholder="记录想法..."
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      rows={2}
-                      className={`bg-white ${errors.notes ? "border-red-500" : ""}`}
-                    />
-                    {errors.notes && (
-                      <p className="text-xs text-red-500">{errors.notes}</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* 视觉分析开关 */}
-                <div
-                  className={`flex items-center justify-between rounded-lg border p-3 bg-muted/30 transition-all duration-300 ease-out ${
-                    showExpandedSections
-                      ? "opacity-100 max-h-20"
-                      : "opacity-0 max-h-0 overflow-hidden p-0 border-0"
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="size-8 rounded-full bg-gradient-to-br from-purple-500/20 to-blue-500/20 flex items-center justify-center">
-                      <Eye className="size-4 text-purple-500" />
-                    </div>
-                    <div>
-                      <Label
-                        htmlFor="vision-analysis"
-                        className="text-sm font-medium cursor-pointer"
-                      >
-                        深度视觉分析
-                      </Label>
-                      <p className="text-xs text-muted-foreground">
-                        提取图片文字、分析图表逻辑
-                      </p>
-                    </div>
-                  </div>
-                  <Switch
-                    id="vision-analysis"
-                    checked={enableVisionAnalysis}
-                    onCheckedChange={setEnableVisionAnalysis}
-                    disabled={isSubmitting}
-                  />
-                </div>
-              </form>
-            </div>
-
-            {/* 底部关闭按钮 */}
-            <div className="sticky bottom-0 p-4 flex justify-center bg-gradient-to-t from-white via-white to-transparent">
-              <button
-                type="button"
-                onClick={handleClose}
-                disabled={isClosing}
-                className="size-10 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors disabled:opacity-50"
-              >
-                <X className="size-5 text-gray-500" />
-              </button>
-            </div>
-          </DrawerContent>
-        </Drawer>
-      </div>
+                <Switch
+                  id="vision-analysis"
+                  checked={enableVisionAnalysis}
+                  onCheckedChange={setEnableVisionAnalysis}
+                  disabled={isSubmitting}
+                />
+              </div>
+            </SideSheetExpandableZone>
+          )}
+        </form>
+      </SideSheet>
 
       {/* 换文件夹对话框 */}
       <FolderQuickSelect

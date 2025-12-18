@@ -1,18 +1,17 @@
 /**
- * V4.2.17: 用途标签筛选 Sheet 组件
+ * V5.0: 用途标签筛选 SideSheet 组件
  *
- * Phase 3.3 - 迁移到 HomePageContext
- *
- * 用于首页顶部的用途标签筛选（右侧滑窗形式）
- * 即时生效模式 - 点击标签立即应用筛选（带防抖）
- * 优先使用 Context，Fallback 到 Window Event（兼容非首页场景）
+ * 基于统一的 SideSheet 设计系统重构
+ * - 使用新的 SideSheet 组件
+ * - 优化视觉设计和动效
+ * - 保持原有功能不变
  */
 
 "use client";
 
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
-import { Filter, Loader2 } from "lucide-react";
+import { Filter, X, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { USAGE_TAG_PRESETS, getAllUsageTags } from "@/lib/constants/usage-tags";
 import { useSafeNavigation } from "@/contexts/navigation-context";
@@ -21,17 +20,31 @@ import { useCustomUsageTags } from "@/hooks/use-custom-usage-tags";
 import { UsageTagButton } from "@/components/bookmark/usage-tag-button";
 import { SmartListQuickSave } from "@/components/smart-list";
 import { Button } from "@/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from "@/components/ui/sheet";
+import { SideSheet, SideSheetSection } from "@/components/ui/side-sheet";
 import { uiEventBus, UIEvents } from "@/lib/shared/event-bus";
 
-// 防抖延迟时间（毫秒）
+// ============================================================================
+// 常量
+// ============================================================================
+
+/** 防抖延迟时间（毫秒）*/
 const DEBOUNCE_DELAY = 300;
+
+/** 组件文案 */
+const TEXT = {
+  TRIGGER_DEFAULT: "用途筛选",
+  SHEET_TITLE: "用途筛选",
+  SHEET_DESCRIPTION: "点击标签即可筛选，再次点击取消",
+  SELECTED_COUNT: (count: number) => `已选择 ${count} 个标签`,
+  PRESET_TAGS: "预设标签",
+  CUSTOM_TAGS: "自定义标签",
+  CLEAR_ALL: "清除",
+  SAVE_SMART_LIST: "保存为智能列表",
+};
+
+// ============================================================================
+// 类型
+// ============================================================================
 
 interface UsageTagFilterSheetProps {
   /** 自定义类名 */
@@ -39,6 +52,10 @@ interface UsageTagFilterSheetProps {
   /** 筛选变化回调 */
   onFilterChange?: (selectedTags: string[]) => void;
 }
+
+// ============================================================================
+// 组件
+// ============================================================================
 
 export function UsageTagFilterSheet({
   className,
@@ -115,14 +132,14 @@ export function UsageTagFilterSheet({
   // 生成按钮显示文本（必须在早期返回之前调用）
   const buttonText = useMemo(() => {
     if (selectedTags.length === 0) {
-      return "用途筛选";
+      return TEXT.TRIGGER_DEFAULT;
     }
     // 显示第一个标签名称
     const firstTag = allUsageTags.find((t) => t.value === selectedTags[0]);
     if (selectedTags.length === 1) {
-      return firstTag?.label || "用途筛选";
+      return firstTag?.label || TEXT.TRIGGER_DEFAULT;
     }
-    return `${firstTag?.label || "用途筛选"} +${selectedTags.length - 1}`;
+    return `${firstTag?.label || TEXT.TRIGGER_DEFAULT} +${selectedTags.length - 1}`;
   }, [selectedTags, allUsageTags]);
 
   /**
@@ -187,9 +204,9 @@ export function UsageTagFilterSheet({
   );
 
   /**
-   * 保存为智能列表后清除筛选
+   * 清除所有选中标签
    */
-  const handleSaved = useCallback(() => {
+  const clearAllTags = useCallback(() => {
     setSelectedTags([]);
 
     // 清除防抖定时器
@@ -198,11 +215,8 @@ export function UsageTagFilterSheet({
     }
 
     if (homeContext) {
-      // Phase 3.3: 使用 Context
       homeContext.filter.setUsageTags([]);
     } else {
-      // Fallback: UIEventBus（内置 Legacy Bridge 保持兼容）
-      // 立即更新 URL
       const params = new URLSearchParams(searchParams?.toString() ?? "");
       params.delete("usageTags");
       const newUrl = `/home?${params.toString()}`;
@@ -211,16 +225,19 @@ export function UsageTagFilterSheet({
         "",
         newUrl,
       );
-
-      // 触发事件通知首页
       uiEventBus.emit(UIEvents.USAGE_TAGS_CHANGE, { usageTags: [] });
     }
 
-    // 触发回调
     onFilterChange?.([]);
-
-    setIsOpen(false);
   }, [homeContext, searchParams, onFilterChange]);
+
+  /**
+   * 保存为智能列表后清除筛选
+   */
+  const handleSaved = useCallback(() => {
+    clearAllTags();
+    setIsOpen(false);
+  }, [clearAllTags]);
 
   // SSR 阶段不渲染（避免 Hydration 错误）
   if (!isMounted) {
@@ -240,83 +257,141 @@ export function UsageTagFilterSheet({
   return (
     <div className={cn("flex items-center", className)}>
       {/* 筛选触发按钮 */}
-      <Sheet open={isOpen} onOpenChange={setIsOpen}>
-        <Button
-          variant="default"
-          size="default"
-          onClick={() => setIsOpen(true)}
-          className={cn(
-            "h-12 px-4 gap-2 shrink-0",
-            selectedTags.length > 0
-              ? "bg-blue-600 hover:bg-blue-700 text-white"
-              : "bg-blue-500 hover:bg-blue-600 text-white",
-          )}
-        >
-          <Filter className="size-4" />
-          <span>{buttonText}</span>
-          {selectedTags.length > 0 && (
-            <span className="px-1.5 py-0.5 text-[10px] bg-white/25 rounded-full font-semibold">
-              {selectedTags.length}
-            </span>
-          )}
-        </Button>
+      <Button
+        variant="default"
+        size="default"
+        onClick={() => setIsOpen(true)}
+        className={cn(
+          "h-12 px-4 gap-2 shrink-0",
+          "transition-all duration-200",
+          selectedTags.length > 0
+            ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/25"
+            : "bg-blue-500 hover:bg-blue-600 text-white",
+        )}
+      >
+        <Filter className="size-4" />
+        <span>{buttonText}</span>
+        {selectedTags.length > 0 && (
+          <span className="px-1.5 py-0.5 text-[10px] bg-white/25 rounded-full font-semibold">
+            {selectedTags.length}
+          </span>
+        )}
+      </Button>
 
-        <SheetContent
-          side="right"
-          className="w-[340px] sm:w-[400px] flex flex-col"
-        >
-          <SheetHeader className="pb-2">
-            <SheetTitle className="text-lg">用途筛选</SheetTitle>
-            <SheetDescription>点击标签即可筛选，再次点击取消</SheetDescription>
-          </SheetHeader>
-
-          {/* 已选标签预览 */}
-          {selectedTags.length > 0 && (
-            <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg mx-4">
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                已选择 {selectedTags.length} 个标签
+      {/* SideSheet 弹窗 */}
+      <SideSheet
+        open={isOpen}
+        onOpenChange={setIsOpen}
+        size="md"
+        title={TEXT.SHEET_TITLE}
+        description={TEXT.SHEET_DESCRIPTION}
+        headerAction={
+          selectedTags.length > 0 ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearAllTags}
+              className="h-8 px-2 text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+            >
+              <Trash2 className="size-4 mr-1" />
+              {TEXT.CLEAR_ALL}
+            </Button>
+          ) : undefined
+        }
+        footer={
+          selectedTags.length > 0 ? (
+            <SmartListQuickSave
+              filters={{ usageTags: selectedTags }}
+              visible={true}
+              onSaved={handleSaved}
+            />
+          ) : undefined
+        }
+      >
+        {/* 已选标签预览区 */}
+        {selectedTags.length > 0 && (
+          <SideSheetSection index={0}>
+            <div className="rounded-xl bg-blue-50/80 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/50 p-4">
+              <p className="text-sm text-blue-700 dark:text-blue-300 mb-3 font-medium">
+                {TEXT.SELECTED_COUNT(selectedTags.length)}
               </p>
-              <div className="flex flex-wrap gap-1.5">
+              <div className="flex flex-wrap gap-2">
                 {selectedTags.map((tagValue) => {
                   const tag = allUsageTags.find((t) => t.value === tagValue);
                   if (!tag) return null;
                   return (
-                    <span
+                    <button
                       key={tagValue}
+                      type="button"
+                      onClick={() => toggleTag(tagValue)}
                       className={cn(
-                        "px-2 py-1 text-xs rounded-full cursor-pointer transition-opacity hover:opacity-80",
+                        "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm",
+                        "transition-all duration-150",
+                        "hover:scale-105 active:scale-95",
                         tag.style.bgLight,
                         tag.style.bgDark,
                         tag.style.textLight,
                         tag.style.textDark,
                       )}
-                      onClick={() => toggleTag(tagValue)}
                     >
-                      {tag.label} ×
-                    </span>
+                      {tag.label}
+                      <X className="size-3.5 opacity-60 hover:opacity-100" />
+                    </button>
                   );
                 })}
               </div>
             </div>
-          )}
+          </SideSheetSection>
+        )}
 
-          {/* 标签选择区域 */}
-          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6">
-            {isLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="size-6 animate-spin text-gray-400" />
+        {/* 标签选择区域 */}
+        {isLoading ? (
+          <SideSheetSection index={1}>
+            <div className="flex items-center justify-center py-12">
+              <div className="flex items-center gap-2 text-slate-400">
+                <div className="size-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                <span className="text-sm">加载中...</span>
               </div>
-            ) : (
-              <>
-                {/* 预设标签 */}
+            </div>
+          </SideSheetSection>
+        ) : (
+          <>
+            {/* 预设标签 */}
+            <SideSheetSection index={selectedTags.length > 0 ? 1 : 0}>
+              <div>
+                <h4 className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-3 px-1">
+                  {TEXT.PRESET_TAGS}
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {USAGE_TAG_PRESETS.map((preset) => {
+                    const tag = allUsageTags.find(
+                      (t) => t.value === preset.value,
+                    );
+                    return tag ? (
+                      <UsageTagButton
+                        key={tag.value}
+                        tag={tag}
+                        isSelected={selectedTags.includes(tag.value)}
+                        size="sm"
+                        onClick={() => toggleTag(tag.value)}
+                      />
+                    ) : null;
+                  })}
+                </div>
+              </div>
+            </SideSheetSection>
+
+            {/* 自定义标签 */}
+            {customUsageTags.length > 0 && (
+              <SideSheetSection index={selectedTags.length > 0 ? 2 : 1}>
                 <div>
-                  <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                    预设标签
+                  <h4 className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-3 px-1">
+                    {TEXT.CUSTOM_TAGS}
                   </h4>
                   <div className="flex flex-wrap gap-2">
-                    {USAGE_TAG_PRESETS.map((preset) => {
+                    {customUsageTags.map((customTag) => {
                       const tag = allUsageTags.find(
-                        (t) => t.value === preset.value,
+                        (t) => t.value === customTag.value,
                       );
                       return tag ? (
                         <UsageTagButton
@@ -330,47 +405,11 @@ export function UsageTagFilterSheet({
                     })}
                   </div>
                 </div>
-
-                {/* 自定义标签 */}
-                {customUsageTags.length > 0 && (
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                      自定义标签
-                    </h4>
-                    <div className="flex flex-wrap gap-2">
-                      {customUsageTags.map((customTag) => {
-                        const tag = allUsageTags.find(
-                          (t) => t.value === customTag.value,
-                        );
-                        return tag ? (
-                          <UsageTagButton
-                            key={tag.value}
-                            tag={tag}
-                            isSelected={selectedTags.includes(tag.value)}
-                            size="sm"
-                            onClick={() => toggleTag(tag.value)}
-                          />
-                        ) : null;
-                      })}
-                    </div>
-                  </div>
-                )}
-              </>
+              </SideSheetSection>
             )}
-          </div>
-
-          {/* 底部：保存为智能列表 */}
-          {selectedTags.length > 0 && (
-            <div className="p-4 border-t border-gray-200 dark:border-gray-700">
-              <SmartListQuickSave
-                filters={{ usageTags: selectedTags }}
-                visible={true}
-                onSaved={handleSaved}
-              />
-            </div>
-          )}
-        </SheetContent>
-      </Sheet>
+          </>
+        )}
+      </SideSheet>
     </div>
   );
 }

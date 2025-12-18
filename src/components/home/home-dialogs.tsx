@@ -13,7 +13,7 @@
 
 "use client";
 
-import { lazy, Suspense, useTransition, memo } from "react";
+import { lazy, Suspense, useTransition, memo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import type { Bookmark } from "@/types/supabase";
 
@@ -106,6 +106,17 @@ export const HomeDialogs = memo(function HomeDialogs({
   const router = useRouter();
   const [, startTransition] = useTransition();
 
+  // 使用 ref 跟踪对话框是否曾经打开过（避免 useEffect 中 setState 问题）
+  // 这是一个有效的用例：我们需要在渲染期间检查和更新 ref，以保持组件挂载状态
+  // 从而让 AnimatePresence 能够播放退出动画
+  const hasShownCreateRef = useRef(false);
+
+  // 首次打开后标记为已显示，保持组件挂载以支持退出动画
+  // eslint-disable-next-line react-hooks/refs
+  if (showCreateDialog && !hasShownCreateRef.current) {
+    hasShownCreateRef.current = true;
+  }
+
   return (
     <Suspense fallback={null}>
       {/* 批量导入对话框（URL导入） */}
@@ -149,8 +160,9 @@ export const HomeDialogs = memo(function HomeDialogs({
         />
       )}
 
-      {/* 创建收藏抽屉 */}
-      {showCreateDialog && (
+      {/* 创建收藏抽屉 - 使用 ref 保持组件挂载以支持退出动画 */}
+      {/* eslint-disable-next-line react-hooks/refs */}
+      {hasShownCreateRef.current && (
         <CreateBookmarkDrawer
           open={showCreateDialog}
           onOpenChange={setShowCreateDialog}
