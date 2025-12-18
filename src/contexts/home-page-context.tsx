@@ -182,11 +182,21 @@ export function HomePageProvider({
   enableEventBridge = true,
 }: HomePageProviderProps) {
   // ========== 视图模式状态 ==========
-  const [viewMode, setViewModeState] = useState<ViewMode>(getStoredViewMode);
+  // Phase 2.4: 修复 hydration 问题 - 使用默认值初始化，useEffect 后读取 localStorage
+  const [viewMode, setViewModeState] = useState<ViewMode>(DEFAULT_VIEW_MODE);
   const [layoutMode, setLayoutModeState] =
-    useState<LayoutMode>(getStoredLayoutMode);
-  const [enableFlipCard, setEnableFlipCardState] =
-    useState<boolean>(getStoredFlipCard);
+    useState<LayoutMode>(DEFAULT_LAYOUT_MODE);
+  const [enableFlipCard, setEnableFlipCardState] = useState<boolean>(false);
+
+  // Phase 2.4: 客户端 hydration 后从 localStorage 读取初始值
+  // 这是合法的 hydration 模式：SSR 使用默认值，客户端挂载后从 localStorage 同步
+  useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect */
+    setViewModeState(getStoredViewMode());
+    setLayoutModeState(getStoredLayoutMode());
+    setEnableFlipCardState(getStoredFlipCard());
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, []);
 
   // ========== 筛选状态 ==========
   const [platform, setPlatformState] = useState(initialPlatform);

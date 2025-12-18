@@ -24,8 +24,9 @@ const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   snapshot: false, // 默认关闭，通过环境变量启用
   ai_summary: true, // 已上线功能
   smart_sorting: true, // 已上线功能
-  // V4.2.17: 首页重构（默认关闭，渐进启用）
-  home_use_context: false,
+  // V4.2.17: 首页重构
+  // Phase 2.4: 启用 Context 系统（已修复 hydration 问题）
+  home_use_context: true,
   home_use_new_bookmarks_hook: false,
 };
 

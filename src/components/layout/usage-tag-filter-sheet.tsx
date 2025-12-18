@@ -1,7 +1,11 @@
 /**
- * 用途标签筛选 Sheet 组件
+ * V4.2.17: 用途标签筛选 Sheet 组件
+ *
+ * Phase 3.3 - 迁移到 HomePageContext
+ *
  * 用于首页顶部的用途标签筛选（右侧滑窗形式）
- * V10.3: 即时生效模式 - 点击标签立即应用筛选（带防抖）
+ * 即时生效模式 - 点击标签立即应用筛选（带防抖）
+ * 优先使用 Context，Fallback 到 Window Event（兼容非首页场景）
  */
 
 "use client";
@@ -12,6 +16,7 @@ import { Filter, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { USAGE_TAG_PRESETS, getAllUsageTags } from "@/lib/constants/usage-tags";
 import { useSafeNavigation } from "@/contexts/navigation-context";
+import { useHomePageSafe } from "@/contexts/home-page-context";
 import { useCustomUsageTags } from "@/hooks/use-custom-usage-tags";
 import { UsageTagButton } from "@/components/bookmark/usage-tag-button";
 import { SmartListQuickSave } from "@/components/smart-list";
@@ -39,6 +44,9 @@ export function UsageTagFilterSheet({
   onFilterChange,
 }: UsageTagFilterSheetProps) {
   const searchParams = useSearchParams();
+
+  // Phase 3.3: 尝试获取 HomePageContext（安全版本，不抛错）
+  const homeContext = useHomePageSafe();
 
   // 获取导航上下文
   const navigationContext = useSafeNavigation();
@@ -77,9 +85,7 @@ export function UsageTagFilterSheet({
     };
   }, []);
 
-  // V5.3: 修复 Hydration 错误
-  // 使用 isMounted 确保组件只在客户端渲染，避免 SSR/CSR 不一致
-  // 原因：useSearchParams 和 window.location 在 SSR/CSR 可能产生不同的值
+  // Hydration 修复：确保组件只在客户端渲染
   const [isMounted, setIsMounted] = useState(false);
   const [isHomePage, setIsHomePage] = useState(false);
 
@@ -119,7 +125,8 @@ export function UsageTagFilterSheet({
   }, [selectedTags, allUsageTags]);
 
   /**
-   * 应用筛选到 URL 和触发事件（防抖处理）
+   * 应用筛选（防抖处理）
+   * 优先使用 Context，Fallback 到 Window Event
    */
   const applyFilterDebounced = useCallback(
     (tags: string[]) => {
@@ -130,32 +137,38 @@ export function UsageTagFilterSheet({
 
       // 设置新的防抖定时器
       debounceTimerRef.current = setTimeout(() => {
-        // 更新 URL
-        const params = new URLSearchParams(searchParams?.toString() ?? "");
-        if (tags.length > 0) {
-          params.set("usageTags", tags.join(","));
+        if (homeContext) {
+          // Phase 3.3: 使用 Context
+          homeContext.filter.setUsageTags(tags);
         } else {
-          params.delete("usageTags");
+          // Fallback: 旧的 Window Event 方式
+          // 更新 URL
+          const params = new URLSearchParams(searchParams?.toString() ?? "");
+          if (tags.length > 0) {
+            params.set("usageTags", tags.join(","));
+          } else {
+            params.delete("usageTags");
+          }
+          const newUrl = `/home?${params.toString()}`;
+          window.history.replaceState(
+            { ...window.history.state, as: newUrl, url: newUrl },
+            "",
+            newUrl,
+          );
+
+          // 触发自定义事件通知首页
+          window.dispatchEvent(
+            new CustomEvent("usageTagFilterChange", {
+              detail: { usageTags: tags },
+            }),
+          );
         }
-        const newUrl = `/home?${params.toString()}`;
-        window.history.replaceState(
-          { ...window.history.state, as: newUrl, url: newUrl },
-          "",
-          newUrl,
-        );
 
         // 触发回调
         onFilterChange?.(tags);
-
-        // 触发自定义事件通知首页
-        window.dispatchEvent(
-          new CustomEvent("usageTagFilterChange", {
-            detail: { usageTags: tags },
-          }),
-        );
       }, DEBOUNCE_DELAY);
     },
-    [searchParams, onFilterChange],
+    [homeContext, searchParams, onFilterChange],
   );
 
   /**
@@ -187,28 +200,34 @@ export function UsageTagFilterSheet({
       clearTimeout(debounceTimerRef.current);
     }
 
-    // 立即更新 URL
-    const params = new URLSearchParams(searchParams?.toString() ?? "");
-    params.delete("usageTags");
-    const newUrl = `/home?${params.toString()}`;
-    window.history.replaceState(
-      { ...window.history.state, as: newUrl, url: newUrl },
-      "",
-      newUrl,
-    );
+    if (homeContext) {
+      // Phase 3.3: 使用 Context
+      homeContext.filter.setUsageTags([]);
+    } else {
+      // Fallback: 旧的方式
+      // 立即更新 URL
+      const params = new URLSearchParams(searchParams?.toString() ?? "");
+      params.delete("usageTags");
+      const newUrl = `/home?${params.toString()}`;
+      window.history.replaceState(
+        { ...window.history.state, as: newUrl, url: newUrl },
+        "",
+        newUrl,
+      );
+
+      // 触发自定义事件通知首页
+      window.dispatchEvent(
+        new CustomEvent("usageTagFilterChange", {
+          detail: { usageTags: [] },
+        }),
+      );
+    }
 
     // 触发回调
     onFilterChange?.([]);
 
-    // 触发自定义事件通知首页
-    window.dispatchEvent(
-      new CustomEvent("usageTagFilterChange", {
-        detail: { usageTags: [] },
-      }),
-    );
-
     setIsOpen(false);
-  }, [searchParams, onFilterChange]);
+  }, [homeContext, searchParams, onFilterChange]);
 
   // SSR 阶段不渲染（避免 Hydration 错误）
   if (!isMounted) {

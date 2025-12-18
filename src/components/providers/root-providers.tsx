@@ -12,6 +12,7 @@ import { ThemeProvider } from "@/components/providers/theme-provider";
 import { ServiceWorkerRegister } from "@/components/pwa/sw-register";
 import { UserProvider } from "@/contexts/user-context";
 import { NavigationProvider } from "@/contexts/navigation-context";
+// Phase 2.4: 重新启用（已修复 hydration 问题）
 import { HomePageProvider } from "@/contexts/home-page-context";
 import { KeepAliveProvider } from "@/lib/cache";
 import { OnboardingProvider } from "@/components/providers/onboarding-provider";
@@ -34,8 +35,8 @@ export function RootProviders({ children }: RootProvidersProps) {
         <OnboardingProvider>
           <Suspense fallback={null}>
             <NavigationProvider>
-              {/* V4.2.17: 首页状态 Context（Event Bridge 已验证，关闭兼容模式） */}
-              <HomePageProvider enableEventBridge={false}>
+              {/* Phase 2.4: HomePageProvider 重新启用 */}
+              <HomePageProvider>
                 <KeepAliveProvider>
                   <MessageNotificationProvider>
                     {children}

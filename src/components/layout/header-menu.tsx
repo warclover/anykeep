@@ -1,11 +1,15 @@
 /**
- * 顶部导航栏更多菜单
+ * V4.2.17: 顶部导航栏更多菜单
+ *
+ * Phase 3.1 - 迁移到 HomePageContext
+ *
  * 包含视图模式、布局模式、排序、导入导出等功能
+ * 优先使用 Context，Fallback 到 Window Event（兼容非首页场景）
  */
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
   MoreHorizontal,
@@ -33,16 +37,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useHomePageSafe } from "@/contexts/home-page-context";
+import type { ViewMode, LayoutMode, DialogType } from "@/components/home/types";
 
-// 本地存储 key
+// 本地存储 key（Fallback 使用）
 const VIEW_MODE_STORAGE_KEY = "anykeep-view-mode";
 const LAYOUT_MODE_STORAGE_KEY = "anykeep-layout-mode";
-
-// 视图模式类型
-type ViewMode = "card" | "list" | "compact";
-
-// 布局模式类型
-type LayoutMode = "auto" | "row" | "column";
 
 // 排序选项
 const sortOptions = [
@@ -52,6 +52,26 @@ const sortOptions = [
   { value: "title_desc", label: "标题 Z-A" },
 ];
 
+// Fallback: 从 localStorage 读取视图模式
+function getStoredViewMode(): ViewMode {
+  if (typeof window === "undefined") return "card";
+  const saved = localStorage.getItem(VIEW_MODE_STORAGE_KEY);
+  if (saved && ["card", "list", "compact"].includes(saved)) {
+    return saved as ViewMode;
+  }
+  return "card";
+}
+
+// Fallback: 从 localStorage 读取布局模式
+function getStoredLayoutMode(): LayoutMode {
+  if (typeof window === "undefined") return "auto";
+  const saved = localStorage.getItem(LAYOUT_MODE_STORAGE_KEY);
+  if (saved && ["auto", "row", "column"].includes(saved)) {
+    return saved as LayoutMode;
+  }
+  return "auto";
+}
+
 export function HeaderMenu() {
   const router = useRouter();
   const pathname = usePathname();
@@ -59,65 +79,67 @@ export function HeaderMenu() {
   const currentPlatform = searchParams?.get("platform") || "";
   const currentSort = searchParams?.get("sort") || "created_desc";
 
+  // Phase 3.1: 尝试获取 HomePageContext（安全版本，不抛错）
+  const homeContext = useHomePageSafe();
+
   // 检测是否为浏览器书签平台
   const isBrowserPlatform = currentPlatform === "browser";
 
   // 仅在首页显示完整菜单
   const isHomePage = pathname === "/home";
 
-  // 视图模式和布局模式（使用惰性初始化）
-  const [viewMode, setViewMode] = useState<ViewMode>(() => {
-    if (typeof window === "undefined") return "card";
-    const saved = localStorage.getItem(
-      VIEW_MODE_STORAGE_KEY,
-    ) as ViewMode | null;
-    return saved && ["card", "list", "compact"].includes(saved)
-      ? saved
-      : "card";
-  });
-  const [layoutMode, setLayoutMode] = useState<LayoutMode>(() => {
-    if (typeof window === "undefined") return "auto";
-    const saved = localStorage.getItem(
-      LAYOUT_MODE_STORAGE_KEY,
-    ) as LayoutMode | null;
-    return saved && ["auto", "row", "column"].includes(saved) ? saved : "auto";
-  });
+  // 菜单开关状态
   const [isOpen, setIsOpen] = useState(false);
 
-  // 监听外部视图模式变化事件
-  useEffect(() => {
-    const handleViewModeChange = (event: CustomEvent<ViewMode>) => {
-      setViewMode(event.detail);
-    };
+  // Fallback 本地状态（仅在无 Context 时使用）
+  const [localViewMode, setLocalViewMode] =
+    useState<ViewMode>(getStoredViewMode);
+  const [localLayoutMode, setLocalLayoutMode] =
+    useState<LayoutMode>(getStoredLayoutMode);
 
-    window.addEventListener(
-      "viewModeChange",
-      handleViewModeChange as EventListener,
-    );
+  // 视图模式：优先从 Context 读取，Fallback 到本地状态
+  const viewMode = homeContext?.view.viewMode ?? localViewMode;
+  const layoutMode = homeContext?.view.layoutMode ?? localLayoutMode;
 
-    return () => {
-      window.removeEventListener(
-        "viewModeChange",
-        handleViewModeChange as EventListener,
-      );
-    };
-  }, []);
+  // ========== Handler 函数 ==========
 
-  // 切换视图模式
+  /**
+   * 切换视图模式
+   * 优先使用 Context，Fallback 到 Window Event
+   */
   const handleViewModeChange = (mode: ViewMode) => {
-    setViewMode(mode);
-    localStorage.setItem(VIEW_MODE_STORAGE_KEY, mode);
-    window.dispatchEvent(new CustomEvent("viewModeChange", { detail: mode }));
+    if (homeContext) {
+      // Phase 3.1: 使用 Context
+      homeContext.view.setViewMode(mode);
+    } else {
+      // Fallback: 旧的 Window Event 方式
+      setLocalViewMode(mode);
+      localStorage.setItem(VIEW_MODE_STORAGE_KEY, mode);
+      window.dispatchEvent(new CustomEvent("viewModeChange", { detail: mode }));
+    }
   };
 
-  // 切换布局模式
+  /**
+   * 切换布局模式
+   * 优先使用 Context，Fallback 到 Window Event
+   */
   const handleLayoutModeChange = (mode: LayoutMode) => {
-    setLayoutMode(mode);
-    localStorage.setItem(LAYOUT_MODE_STORAGE_KEY, mode);
-    window.dispatchEvent(new CustomEvent("layoutModeChange", { detail: mode }));
+    if (homeContext) {
+      // Phase 3.1: 使用 Context
+      homeContext.view.setLayoutMode(mode);
+    } else {
+      // Fallback: 旧的 Window Event 方式
+      setLocalLayoutMode(mode);
+      localStorage.setItem(LAYOUT_MODE_STORAGE_KEY, mode);
+      window.dispatchEvent(
+        new CustomEvent("layoutModeChange", { detail: mode }),
+      );
+    }
   };
 
-  // 切换排序
+  /**
+   * 切换排序（仍使用 URL 参数，与 Context 无关）
+   */
   const handleSortChange = (sortValue: string) => {
     const params = new URLSearchParams(searchParams?.toString() ?? "");
     params.set("sort", sortValue);
@@ -125,15 +147,35 @@ export function HeaderMenu() {
     setIsOpen(false);
   };
 
-  // 触发对话框事件
-  const triggerDialog = (dialogType: string) => {
-    window.dispatchEvent(new CustomEvent("openDialog", { detail: dialogType }));
+  /**
+   * 触发对话框
+   * 优先使用 Context，Fallback 到 Window Event
+   */
+  const triggerDialog = (dialogType: DialogType) => {
+    if (homeContext) {
+      // Phase 3.1: 使用 Context
+      homeContext.dialog.openDialogAction(dialogType);
+    } else {
+      // Fallback: 旧的 Window Event 方式
+      window.dispatchEvent(
+        new CustomEvent("openDialog", { detail: dialogType }),
+      );
+    }
     setIsOpen(false);
   };
 
-  // 切换批量选择模式
+  /**
+   * 切换批量选择模式
+   * 优先使用 Context，Fallback 到 Window Event
+   */
   const triggerSelectionMode = () => {
-    window.dispatchEvent(new CustomEvent("toggleSelectionMode"));
+    if (homeContext) {
+      // Phase 3.1: 使用 Context
+      homeContext.selection.toggleSelectionMode();
+    } else {
+      // Fallback: 旧的 Window Event 方式
+      window.dispatchEvent(new CustomEvent("toggleSelectionMode"));
+    }
     setIsOpen(false);
   };
 
@@ -221,7 +263,7 @@ export function HeaderMenu() {
               <Plus className="size-4 mr-2" />
               新建收藏
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => triggerDialog("import")}>
+            <DropdownMenuItem onClick={() => triggerDialog("batchImport")}>
               <Upload className="size-4 mr-2" />
               批量导入
             </DropdownMenuItem>

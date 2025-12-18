@@ -12,7 +12,6 @@
 
 import {
   useState,
-  useTransition,
   useEffect,
   useCallback,
   useRef,
@@ -20,28 +19,7 @@ import {
   Suspense,
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import {
-  LayoutGrid,
-  List,
-  Plus,
-  Loader2,
-  ArrowUpDown,
-  CheckSquare,
-  Trash2,
-  FolderInput,
-  Upload,
-  Download,
-  AlignJustify,
-  MoreHorizontal,
-  Rows3,
-  Columns3,
-  Sparkles,
-  Globe,
-  RotateCcw,
-  Search,
-  Check,
-  Camera,
-} from "lucide-react";
+import { Plus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAbortableFetch } from "@/hooks/use-abortable-fetch";
 import { useInitData } from "@/hooks/use-init-data";
@@ -53,36 +31,11 @@ import { TrashBookmarkCard } from "@/components/bookmark/trash-bookmark-card";
 import { BrowserBookmarkVirtualList } from "@/components/bookmark/browser-bookmark-virtual-list";
 import { VirtualBookmarkList } from "@/components/bookmark/virtual-bookmark-list";
 import { BrowserBookmarkEmptyState } from "@/components/bookmark/browser-bookmark-empty-state";
-import { TrashToolbar } from "@/components/trash/trash-toolbar";
-// 懒加载 Dialog/Drawer 组件（按需显示，非首屏必需）
-const CreateBookmarkDrawer = lazy(() =>
-  import("@/components/bookmark/create-bookmark-drawer").then((mod) => ({
-    default: mod.CreateBookmarkDrawer,
-  })),
-);
-const BatchImportDialog = lazy(() =>
-  import("@/components/bookmark/batch-import-dialog").then((mod) => ({
-    default: mod.BatchImportDialog,
-  })),
-);
-const BatchMoveDialog = lazy(() =>
-  import("@/components/bookmark/batch-move-dialog").then((mod) => ({
-    default: mod.BatchMoveDialog,
-  })),
-);
-const ExportDialog = lazy(() =>
-  import("@/components/bookmark/export-dialog").then((mod) => ({
-    default: mod.ExportDialog,
-  })),
-);
-const BrowserBookmarkImportDialog = lazy(() =>
-  import("@/components/browser-bookmark").then((mod) => ({
-    default: mod.BrowserBookmarkImportDialog,
-  })),
-);
 // V3.1: FolderRecommendationToast 已废弃，由 useClassificationPolling 的 toast 通知替代
 import { EmptyState } from "@/components/bookmark/empty-state";
 import { UsageTagFilterSheet } from "@/components/layout/usage-tag-filter-sheet";
+// Phase 3.4: 使用 HomePageContext 替代 Event 监听
+import { useHomePageContext } from "@/contexts/home-page-context";
 import { useSnapshotFeature } from "@/components/snapshot";
 import { QuickAddBookmark } from "@/components/quick-add";
 import { prefetchCustomUsageTags } from "@/hooks/use-custom-usage-tags";
@@ -112,30 +65,16 @@ import { useClassificationPolling } from "@/hooks/use-classification-polling";
 import { useDialogs } from "@/hooks/use-dialogs";
 import { useSelectionMode } from "@/hooks/use-selection-mode";
 import { useProcessingPoller } from "@/hooks/use-processing-poller";
-// V4.2.17: Context 支持（Phase 5 验证完成）
-import { useHomePageSafe } from "@/contexts/home-page-context";
 import { ErrorMessage } from "@/components/ui/error-message";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Bookmark } from "@/types/supabase";
-import {
-  HOME_PLATFORMS,
-  SORT_OPTIONS,
-  VIEW_MODE_STORAGE_KEY,
-  LAYOUT_MODE_STORAGE_KEY,
-  FLIP_CARD_STORAGE_KEY,
-  DEFAULT_PAGE_SIZE,
-  getPageSizeByView,
-} from "./constants";
-import type { ViewMode, LayoutMode } from "./constants";
+import { DEFAULT_PAGE_SIZE, getPageSizeByView } from "./constants";
+import { useHomeViewMode } from "./hooks/use-home-view-mode";
+import { useHomeMutations } from "./hooks/use-home-mutations";
+import { useHomeBatch } from "./hooks/use-home-batch";
+import { HomeToolbar } from "./home-toolbar";
+import { HomeDialogs } from "./home-dialogs";
 import { SmartListView } from "@/components/smart-list";
 
 // 扩展的书签类型（包含文件夹信息）
@@ -154,10 +93,6 @@ interface HomePageClientProps {
   smartListId?: number | null;
 }
 
-// 使用提取的常量（保持向后兼容的别名）
-const platforms = HOME_PLATFORMS;
-const sortOptions = SORT_OPTIONS;
-
 export function HomePageClient({
   initialBookmarks,
   error,
@@ -168,22 +103,49 @@ export function HomePageClient({
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // ========== V4.2.17: Context 支持（Phase 5 验证完成） ==========
-  // 安全获取 Context（如果不在 Provider 内返回 null）
-  // 注：当前仅预加载，待功能开关启用后使用
-  const _homePageContext = useHomePageSafe();
+  // Phase 3.4: 使用 HomePageContext 获取筛选状态（替代 Event 监听）
+  const homeContext = useHomePageContext();
+
+  // Phase 3.4 修复：URL 参数作为数据获取的主要来源（避免双重获取）
+  // Context 仅用于跨组件通信，不作为数据获取的依据
+  const urlPlatform = propPlatform ?? searchParams?.get("platform") ?? "";
+  const urlFolder = propFolder ?? searchParams?.get("folder") ?? "";
+  const urlUsageTags = searchParams?.get("usageTags") || "";
+  const urlSort = searchParams?.get("sort") || "created_desc";
+
+  // 解析用途标签
+  const parsedUsageTags = urlUsageTags
+    ? urlUsageTags.split(",").filter(Boolean)
+    : [];
+
+  // Phase 3.4: 同步 URL 参数到 Context（仅首次挂载时）
+  // 使用 ref 确保只同步一次，避免触发不必要的重渲染
+  const hasSyncedRef = useRef(false);
+  useEffect(() => {
+    if (hasSyncedRef.current) return;
+    hasSyncedRef.current = true;
+
+    // 仅当 URL 有值且与 Context 不同时才同步
+    if (urlPlatform && urlPlatform !== homeContext.filter.platform) {
+      homeContext.filter.setPlatform(urlPlatform);
+    }
+    if (urlFolder && urlFolder !== homeContext.filter.folder) {
+      homeContext.filter.setFolder(urlFolder);
+    }
+    if (
+      parsedUsageTags.length > 0 &&
+      JSON.stringify(parsedUsageTags) !==
+        JSON.stringify([...homeContext.filter.usageTags])
+    ) {
+      homeContext.filter.setUsageTags(parsedUsageTags);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 仅首次挂载
+  }, []);
 
   // V10.1: 预加载自定义用途标签（详情页需要，提前加载消除延迟）
   useEffect(() => {
     prefetchCustomUsageTags();
   }, []);
-
-  // 本地状态管理（用于客户端平台切换，避免 SSR）
-  // 客户端导航时使用 props，SSR 时使用 searchParams
-  const urlPlatform = propPlatform ?? searchParams?.get("platform") ?? "";
-  const urlSort = searchParams?.get("sort") || "created_desc";
-  const urlFolder = propFolder ?? searchParams?.get("folder") ?? "";
-  const urlUsageTags = searchParams?.get("usageTags") || "";
 
   // V10.0: 智能列表 ID（客户端导航时从 URL 读取，SSR 时从 props 读取）
   const urlSmartListParam = searchParams?.get("smartList");
@@ -194,36 +156,31 @@ export function HomePageClient({
   const currentSmartListId =
     urlSmartListId && !isNaN(urlSmartListId) ? urlSmartListId : smartListId;
 
-  // 使用本地状态跟踪当前平台（支持客户端切换）
-  const [localPlatform, setLocalPlatform] = useState(urlPlatform);
-  const [localFolder, setLocalFolder] = useState(urlFolder);
-  // V9.0新增：用途标签筛选状态
-  const [localUsageTags, setLocalUsageTags] = useState<string[]>(
-    urlUsageTags ? urlUsageTags.split(",").filter(Boolean) : [],
-  );
+  // Phase 3.4 修复：数据获取的参数来源
+  // - 首次加载：使用 URL 参数（避免双重获取）
+  // - 后续交互：响应 Context 变化（跨组件通信）
+  const [currentPlatform, setCurrentPlatform] = useState(urlPlatform);
+  const [currentFolder, setCurrentFolder] = useState(urlFolder);
+  const [localUsageTags, setLocalUsageTags] = useState(parsedUsageTags);
+  const currentSort = urlSort;
 
-  // 同步客户端导航参数变化到本地状态
+  // 响应 Context 平台/文件夹变化（用户交互触发）
+  // 使用 ref 跳过首次挂载，避免与初始 URL 同步冲突
+  const isFirstRenderRef = useRef(true);
   useEffect(() => {
-    if (urlFolder !== localFolder) {
-      setLocalFolder(urlFolder);
+    if (isFirstRenderRef.current) {
+      isFirstRenderRef.current = false;
+      return;
     }
-    if (urlPlatform !== localPlatform) {
-      setLocalPlatform(urlPlatform);
-    }
-    // V9.0新增：同步用途标签筛选
-    const newUsageTags = urlUsageTags
-      ? urlUsageTags.split(",").filter(Boolean)
-      : [];
-    if (JSON.stringify(newUsageTags) !== JSON.stringify(localUsageTags)) {
-      setLocalUsageTags(newUsageTags);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- 只响应 URL 参数变化
-  }, [urlFolder, urlPlatform, urlUsageTags]);
-
-  // 当前使用的参数（优先使用本地状态，支持客户端即时切换）
-  const currentPlatform = localPlatform;
-  const currentSort = urlSort; // 排序暂不做客户端优化
-  const currentFolder = localFolder;
+    // Context 变化时更新本地状态（触发数据重新获取）
+    setCurrentPlatform(homeContext.filter.platform);
+    setCurrentFolder(homeContext.filter.folder);
+    setLocalUsageTags([...homeContext.filter.usageTags]);
+  }, [
+    homeContext.filter.platform,
+    homeContext.filter.folder,
+    homeContext.filter.usageTags,
+  ]);
 
   // 检测是否为浏览器书签平台
   const isBrowserPlatform = currentPlatform === "browser";
@@ -234,170 +191,26 @@ export function HomePageClient({
   // 可取消请求 Hook
   const { fetchWithAbort } = useAbortableFetch();
 
-  // 视图模式（从 localStorage 读取默认值）
-  const [viewMode, setViewMode] = useState<ViewMode>("card");
+  // V4.2.17: 使用提取的视图模式 Hook（包含 localStorage 持久化和事件监听）
+  const {
+    viewMode,
+    setViewMode,
+    layoutMode,
+    setLayoutMode,
+    enableFlipCard,
+    setEnableFlipCard,
+    effectiveViewMode: _effectiveViewMode,
+  } = useHomeViewMode({ isBrowserPlatform });
 
-  // 布局模式（仅用于卡片视图）
-  const [layoutMode, setLayoutMode] = useState<LayoutMode>("auto");
+  // V4.2.17: 视图模式切换（Hook 已内置 localStorage 持久化）
+  // 直接使用 Hook 返回的 setViewMode、setLayoutMode
+  const handleViewModeChange = setViewMode;
+  const handleLayoutModeChange = setLayoutMode;
 
-  // 翻转卡片模式（Demo 测试）
-  const [enableFlipCard, setEnableFlipCard] = useState(false);
-
-  // 初始化视图模式、布局模式和翻转状态（从 localStorage 读取）
-  useEffect(() => {
-    const savedViewMode = localStorage.getItem(
-      VIEW_MODE_STORAGE_KEY,
-    ) as ViewMode | null;
-    if (savedViewMode && ["card", "list", "compact"].includes(savedViewMode)) {
-      setViewMode(savedViewMode);
-    }
-
-    const savedLayoutMode = localStorage.getItem(
-      LAYOUT_MODE_STORAGE_KEY,
-    ) as LayoutMode | null;
-    if (
-      savedLayoutMode &&
-      ["auto", "row", "column"].includes(savedLayoutMode)
-    ) {
-      setLayoutMode(savedLayoutMode);
-    }
-
-    // 初始化翻转状态
-    const savedFlipCard = localStorage.getItem(FLIP_CARD_STORAGE_KEY);
-    if (savedFlipCard) {
-      setEnableFlipCard(savedFlipCard === "true");
-    }
-
-    // 监听来自 PlatformFilter 的翻转状态变化
-    const handleFlipCardChange = (event: CustomEvent<boolean>) => {
-      setEnableFlipCard(event.detail);
-    };
-
-    // 监听来自 HeaderMenu 的视图模式变化
-    const handleViewModeChangeEvent = (
-      event: CustomEvent<"card" | "list" | "compact">,
-    ) => {
-      setViewMode(event.detail);
-    };
-
-    // 监听来自 HeaderMenu 的布局模式变化
-    const handleLayoutModeChangeEvent = (
-      event: CustomEvent<"auto" | "row" | "column">,
-    ) => {
-      setLayoutMode(event.detail);
-    };
-
-    // 监听来自 HeaderMenu 的对话框事件
-    const handleOpenDialog = (event: CustomEvent<string>) => {
-      switch (event.detail) {
-        case "create":
-          openCreateDialog();
-          break;
-        case "import":
-          openImportDialog();
-          break;
-        case "browserImport":
-          openBrowserImportDialog();
-          break;
-        case "export":
-          openExportDialog();
-          break;
-      }
-    };
-
-    // 监听来自 HeaderMenu 的批量选择模式切换
-    const handleToggleSelectionMode = () => {
-      toggleSelectionMode();
-    };
-
-    // 监听来自 PlatformFilter 的平台切换事件（客户端优化，避免 SSR）
-    const handlePlatformChange = (
-      event: CustomEvent<{ platform: string; folder: string }>,
-    ) => {
-      setLocalPlatform(event.detail.platform);
-      setLocalFolder(event.detail.folder);
-    };
-
-    // V9.0新增：监听来自 UsageTagFilter 的用途标签筛选事件
-    const handleUsageTagFilterChange = (
-      event: CustomEvent<{ usageTags: string[] }>,
-    ) => {
-      setLocalUsageTags(event.detail.usageTags);
-    };
-
-    window.addEventListener(
-      "flipCardChange",
-      handleFlipCardChange as EventListener,
-    );
-    window.addEventListener(
-      "platformChange",
-      handlePlatformChange as EventListener,
-    );
-    window.addEventListener(
-      "viewModeChange",
-      handleViewModeChangeEvent as EventListener,
-    );
-    window.addEventListener(
-      "layoutModeChange",
-      handleLayoutModeChangeEvent as EventListener,
-    );
-    window.addEventListener("openDialog", handleOpenDialog as EventListener);
-    window.addEventListener("toggleSelectionMode", handleToggleSelectionMode);
-    window.addEventListener(
-      "usageTagFilterChange",
-      handleUsageTagFilterChange as EventListener,
-    );
-
-    return () => {
-      window.removeEventListener(
-        "flipCardChange",
-        handleFlipCardChange as EventListener,
-      );
-      window.removeEventListener(
-        "platformChange",
-        handlePlatformChange as EventListener,
-      );
-      window.removeEventListener(
-        "viewModeChange",
-        handleViewModeChangeEvent as EventListener,
-      );
-      window.removeEventListener(
-        "layoutModeChange",
-        handleLayoutModeChangeEvent as EventListener,
-      );
-      window.removeEventListener(
-        "openDialog",
-        handleOpenDialog as EventListener,
-      );
-      window.removeEventListener(
-        "toggleSelectionMode",
-        handleToggleSelectionMode,
-      );
-      window.removeEventListener(
-        "usageTagFilterChange",
-        handleUsageTagFilterChange as EventListener,
-      );
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // 切换视图模式并保存到 localStorage
-  const handleViewModeChange = (mode: ViewMode) => {
-    setViewMode(mode);
-    localStorage.setItem(VIEW_MODE_STORAGE_KEY, mode);
-  };
-
-  // 切换布局模式并保存到 localStorage
-  const handleLayoutModeChange = (mode: LayoutMode) => {
-    setLayoutMode(mode);
-    localStorage.setItem(LAYOUT_MODE_STORAGE_KEY, mode);
-  };
-
-  // 切换翻转卡片模式并同步
+  // 切换翻转卡片模式并同步到其他组件
   const handleFlipCardToggle = () => {
     const newValue = !enableFlipCard;
     setEnableFlipCard(newValue);
-    localStorage.setItem(FLIP_CARD_STORAGE_KEY, String(newValue));
     // 触发自定义事件通知其他组件（如 PlatformFilter）
     window.dispatchEvent(
       new CustomEvent("flipCardChange", { detail: newValue }),
@@ -519,7 +332,6 @@ export function HomePageClient({
   });
 
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [_isPending, startTransition] = useTransition();
 
   // 对话框和下拉菜单状态管理
   const {
@@ -553,15 +365,96 @@ export function HomePageClient({
     toggleSelect,
     selectAll,
     deselectAll,
-    setIsBatchDeleting,
+    setIsBatchDeleting: _setIsBatchDeleting,
     exitSelectionMode,
   } = useSelectionMode();
+
+  // Phase 3.4: 使用 Context 状态响应对话框请求（替代 Event 监听）
+  useEffect(() => {
+    const dialogType = homeContext.dialog.openDialog;
+    if (!dialogType) return;
+
+    // 根据对话框类型打开对应对话框
+    switch (dialogType) {
+      case "create":
+        openCreateDialog();
+        break;
+      case "batchImport":
+        openImportDialog();
+        break;
+      case "browserImport":
+        openBrowserImportDialog();
+        break;
+      case "export":
+        openExportDialog();
+        break;
+      case "batchMove":
+        openMoveDialog();
+        break;
+    }
+
+    // 处理完成后关闭 Context 对话框状态
+    homeContext.dialog.closeDialog();
+  }, [
+    homeContext.dialog,
+    openCreateDialog,
+    openImportDialog,
+    openBrowserImportDialog,
+    openExportDialog,
+    openMoveDialog,
+  ]);
+
+  // Phase 3.4: 使用 Context 状态响应选择模式切换（替代 Event 监听）
+  const prevSelectionModeRef = useRef(homeContext.selection.isSelectionMode);
+  useEffect(() => {
+    const contextSelectionMode = homeContext.selection.isSelectionMode;
+    // 仅当 Context 状态变化且与当前状态不同时才切换
+    if (
+      contextSelectionMode !== prevSelectionModeRef.current &&
+      contextSelectionMode !== isSelectionMode
+    ) {
+      toggleSelectionMode();
+    }
+    prevSelectionModeRef.current = contextSelectionMode;
+  }, [
+    homeContext.selection.isSelectionMode,
+    isSelectionMode,
+    toggleSelectionMode,
+  ]);
 
   // V4.2.1: 快照功能开关
   const isSnapshotEnabled = useSnapshotFeature();
 
-  // 批量创建快照状态
-  const [isBatchCreatingSnapshot, setIsBatchCreatingSnapshot] = useState(false);
+  // ===== Phase 2.3.4: 集成新 Hooks =====
+
+  // CRUD 操作 Hook
+  const {
+    handleDelete,
+    handleRestore,
+    handlePermanentDelete,
+    handleToggleRead,
+    handleEdit,
+  } = useHomeMutations({
+    getBookmarks: () => bookmarks,
+    setBookmarks,
+    updateCacheItem,
+    removeCacheItem,
+  });
+
+  // 批量操作 Hook
+  const {
+    isBatchDeleting: _isBatchDeletingFromHook,
+    isBatchCreatingSnapshot,
+    handleBatchDelete,
+    handleBatchRestore,
+    handleBatchCreateSnapshot,
+  } = useHomeBatch({
+    getBookmarks: () => bookmarks,
+    setBookmarks,
+    removeCacheItem,
+    selectedIds,
+    exitSelectionMode,
+  });
 
   // ===== SSR 数据同步 =====
   // 当 initialBookmarks 更新时（URL 参数变化导致 SSR 重新获取），同步到 SWR state
@@ -658,141 +551,8 @@ export function HomePageClient({
     router.refresh();
   };
 
-  const handleEdit = (id: number) => {
-    // 跳转到详情页进行编辑（未来计划：实现内联编辑对话框）
-    router.push(`/bookmark/${id}`);
-  };
-
-  const handleDelete = async (id: number) => {
-    // 保存当前快照用于回滚
-    const snapshot = [...bookmarks];
-
-    try {
-      // 乐观更新 UI
-      setBookmarks((prev) => prev.filter((b) => b.id !== id));
-      // 同步更新缓存
-      removeCacheItem(id);
-
-      // 调用删除 API（可取消）
-      const res = await fetchWithAbort(`/api/bookmarks/${id}`, {
-        method: "DELETE",
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error?.message || "删除失败");
-      }
-
-      toast.success("删除成功");
-      // 乐观更新已完成，无需 router.refresh()
-    } catch (error) {
-      // 如果是取消错误，不显示错误提示
-      if (error instanceof Error && error.name === "AbortError") {
-        return;
-      }
-
-      // 失败时恢复到快照状态
-      setBookmarks(snapshot);
-      toast.error(error instanceof Error ? error.message : "删除失败");
-    }
-  };
-
-  // 垃圾箱相关操作
-  const handleRestore = async (id: number) => {
-    const snapshot = [...bookmarks];
-
-    try {
-      // 乐观更新 UI
-      setBookmarks((prev) => prev.filter((b) => b.id !== id));
-
-      // 调用恢复 API
-      const res = await fetchWithAbort(`/api/bookmarks/${id}/restore`, {
-        method: "POST",
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error?.message || "恢复失败");
-      }
-
-      toast.success("已恢复收藏");
-      // 乐观更新已完成，无需 router.refresh()
-    } catch (error) {
-      if (error instanceof Error && error.name === "AbortError") {
-        return;
-      }
-
-      setBookmarks(snapshot);
-      toast.error(error instanceof Error ? error.message : "恢复失败");
-    }
-  };
-
-  const handlePermanentDelete = async (id: number) => {
-    const snapshot = [...bookmarks];
-
-    try {
-      // 乐观更新 UI
-      setBookmarks((prev) => prev.filter((b) => b.id !== id));
-
-      // 调用永久删除 API
-      const res = await fetchWithAbort(`/api/bookmarks/${id}/permanent`, {
-        method: "DELETE",
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error?.message || "永久删除失败");
-      }
-
-      toast.success("已永久删除");
-      // 乐观更新已完成，无需 router.refresh()
-    } catch (error) {
-      if (error instanceof Error && error.name === "AbortError") {
-        return;
-      }
-
-      setBookmarks(snapshot);
-      toast.error(error instanceof Error ? error.message : "永久删除失败");
-    }
-  };
-
-  const handleBatchRestore = async () => {
-    const ids = Array.from(selectedIds);
-    if (ids.length === 0) return;
-
-    // 保存快照用于回滚
-    const snapshot = [...bookmarks];
-
-    try {
-      // 乐观更新 UI
-      setBookmarks((prev) => prev.filter((b) => !ids.includes(b.id)));
-
-      const res = await fetchWithAbort("/api/bookmarks/batch-restore", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bookmarkIds: ids }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error?.message || "批量恢复失败");
-      }
-
-      // 清除选择
-      deselectAll();
-
-      toast.success(`已恢复 ${ids.length} 个收藏`);
-      // 乐观更新已完成，无需 router.refresh()
-    } catch (error) {
-      if (error instanceof Error && error.name === "AbortError") {
-        return;
-      }
-
-      // 失败时回滚
-      setBookmarks(snapshot);
-      toast.error(error instanceof Error ? error.message : "批量恢复失败");
-    }
-  };
+  // CRUD handlers 已移至 useHomeMutations Hook (Phase 2.3.4)
+  // 批量恢复已移至 useHomeBatch Hook
 
   const handleEmptyTrash = async () => {
     try {
@@ -819,56 +579,7 @@ export function HomePageClient({
     }
   };
 
-  const handleToggleRead = async (id: number, isRead: boolean) => {
-    // 保存当前快照用于回滚
-    const snapshot = [...bookmarks];
-
-    try {
-      // 乐观更新 UI
-      setBookmarks((prev) =>
-        prev.map((b) =>
-          b.id === id
-            ? {
-                ...b,
-                is_read: isRead,
-                read_at: isRead ? new Date().toISOString() : null,
-              }
-            : b,
-        ),
-      );
-      // 同步更新缓存
-      updateCacheItem(id, (b) => ({
-        ...b,
-        is_read: isRead,
-        read_at: isRead ? new Date().toISOString() : null,
-      }));
-
-      // 调用 PATCH API 更新已读状态
-      const res = await fetchWithAbort(`/api/bookmarks/${id}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ isRead }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error?.message || "更新失败");
-      }
-
-      toast.success(isRead ? "已标记为已读" : "已标记为未读");
-    } catch (error) {
-      // 如果是取消错误，不显示错误提示
-      if (error instanceof Error && error.name === "AbortError") {
-        return;
-      }
-
-      // 失败时恢复到快照状态
-      setBookmarks(snapshot);
-      toast.error(error instanceof Error ? error.message : "更新失败");
-    }
-  };
+  // handleToggleRead 已移至 useHomeMutations Hook (Phase 2.3.4)
 
   const handleLoadMore = async () => {
     if (isLoadingMore || !hasMore) return;
@@ -909,153 +620,7 @@ export function HomePageClient({
     }
   };
 
-  // 选择模式操作函数已从 useSelectionMode Hook 中获取
-
-  const handleBatchDelete = async () => {
-    if (selectedIds.size === 0) return;
-
-    if (
-      !confirm(
-        `确定要删除选中的 ${selectedIds.size} 条收藏吗？删除后无法恢复。`,
-      )
-    ) {
-      return;
-    }
-
-    setIsBatchDeleting(true);
-    try {
-      // 使用批量删除 API（单次请求）
-      const response = await fetchWithAbort("/api/bookmarks/batch-delete", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          ids: Array.from(selectedIds),
-        }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        toast.error(result.error?.message || "批量删除失败");
-        return;
-      }
-
-      const deletedCount = result.data?.deletedCount || 0;
-      toast.success(`成功删除 ${deletedCount} 条收藏`);
-
-      // 更新 UI（乐观更新）
-      setBookmarks((prev) => prev.filter((b) => !selectedIds.has(b.id)));
-      // 同步更新缓存
-      selectedIds.forEach((id) => removeCacheItem(id));
-      exitSelectionMode();
-      // 乐观更新已完成，无需 router.refresh()
-    } catch (error) {
-      // 如果是取消错误，不显示错误提示
-      if (error instanceof Error && error.name === "AbortError") {
-        return;
-      }
-      // 前端错误仅在开发环境使用 console
-      if (process.env.NODE_ENV === "development") {
-        console.error("Batch delete error:", error);
-      }
-      toast.error("批量删除失败");
-    } finally {
-      setIsBatchDeleting(false);
-    }
-  };
-
-  /**
-   * V4.2.1: 批量创建快照
-   */
-  const handleBatchCreateSnapshot = async () => {
-    if (selectedIds.size === 0) return;
-
-    // 获取选中的书签
-    const selectedBookmarks = bookmarks.filter((b) => selectedIds.has(b.id));
-    const validBookmarks = selectedBookmarks.filter((b) => b.url);
-
-    if (validBookmarks.length === 0) {
-      toast.error("选中的书签没有有效的 URL");
-      return;
-    }
-
-    if (validBookmarks.length > 10) {
-      if (
-        !confirm(
-          `将为 ${validBookmarks.length} 个书签创建快照，这可能需要较长时间。确定继续吗？`,
-        )
-      ) {
-        return;
-      }
-    }
-
-    setIsBatchCreatingSnapshot(true);
-    let successCount = 0;
-    let failCount = 0;
-
-    try {
-      // 批量创建快照（逐个创建，避免服务器压力过大）
-      for (const bookmark of validBookmarks) {
-        try {
-          const response = await fetchWithAbort("/api/snapshots", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              bookmarkId: bookmark.id,
-              snapshotType: "standard",
-            }),
-          });
-
-          if (response.ok) {
-            successCount++;
-          } else {
-            const result = await response.json();
-            // SNAPSHOT_EXISTS 和 QUOTA_EXCEEDED 不算失败
-            if (
-              result.error?.code === "SNAPSHOT_EXISTS" ||
-              result.error?.code === "QUOTA_EXCEEDED"
-            ) {
-              // 配额超限时停止创建更多快照
-              if (result.error?.code === "QUOTA_EXCEEDED") {
-                toast.error("快照配额已满", {
-                  description: "请删除一些旧快照后重试",
-                });
-                break;
-              }
-            } else {
-              failCount++;
-            }
-          }
-        } catch {
-          failCount++;
-        }
-      }
-
-      if (successCount > 0) {
-        toast.success(`已为 ${successCount} 个书签创建快照任务`, {
-          description: "后台正在处理，稍后可查看",
-        });
-      }
-
-      if (failCount > 0) {
-        toast.error(`${failCount} 个书签快照创建失败`);
-      }
-
-      exitSelectionMode();
-    } catch (error) {
-      if (error instanceof Error && error.name === "AbortError") {
-        return;
-      }
-      if (process.env.NODE_ENV === "development") {
-        console.error("Batch snapshot error:", error);
-      }
-      toast.error("批量创建快照失败");
-    } finally {
-      setIsBatchCreatingSnapshot(false);
-    }
-  };
+  // 批量操作函数已移至 useHomeBatch Hook (Phase 2.3.4)
 
   // 智能列表模式：显示专属视图（支持客户端导航）
   if (currentSmartListId) {
@@ -1064,283 +629,40 @@ export function HomePageClient({
 
   return (
     <div className="flex flex-col h-full">
-      {/* 顶部工具栏（移动端显示） */}
-      <header className="sm:hidden bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-2 overflow-hidden">
-        <div className="flex items-center gap-2 max-w-full">
-          {/* 移动端平台筛选 */}
-          <div className="flex-1 min-w-0 overflow-x-auto scrollbar-hide">
-            <div className="flex items-center gap-1.5">
-              {platforms.map((platform) => {
-                const isActive = currentPlatform === platform.value;
-                return (
-                  <button
-                    key={platform.id}
-                    onClick={() => handlePlatformChange(platform.value)}
-                    className={cn(
-                      "px-3 py-1 text-xs font-medium rounded-full transition-colors whitespace-nowrap flex-shrink-0",
-                      isActive
-                        ? "bg-gray-900 text-white dark:bg-white dark:text-gray-900"
-                        : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700",
-                    )}
-                  >
-                    {platform.name}
-                  </button>
-                );
-              })}
-
-              {/* 翻转卡片按钮（移动端） */}
-              {!isBrowserPlatform && viewMode === "card" && (
-                <Button
-                  variant={enableFlipCard ? "default" : "outline"}
-                  size="sm"
-                  onClick={handleFlipCardToggle}
-                  title="翻转卡片"
-                  className={cn(
-                    "px-2.5 py-1 h-auto text-xs font-medium rounded-full whitespace-nowrap flex-shrink-0",
-                    enableFlipCard
-                      ? "bg-purple-500 hover:bg-purple-600 text-white dark:bg-purple-600 dark:hover:bg-purple-700"
-                      : "border-gray-200 dark:border-gray-700",
-                  )}
-                >
-                  <RotateCcw className="size-3 mr-1" />
-                  翻转
-                </Button>
-              )}
-            </div>
-          </div>
-
-          {/* 右侧操作按钮 */}
-          <div className="flex items-center gap-1 flex-shrink-0">
-            {/* 搜索按钮 */}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0"
-              onClick={() => router.push("/search")}
-            >
-              <Search className="size-4" />
-            </Button>
-
-            {/* 统一菜单 */}
-            <DropdownMenu
-              open={isMobileMoreMenuOpen}
-              onOpenChange={setIsMobileMoreMenuOpen}
-            >
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                  <MoreHorizontal className="size-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                {/* 视图模式 */}
-                {!isBrowserPlatform && (
-                  <>
-                    <DropdownMenuLabel className="text-xs">
-                      视图模式
-                    </DropdownMenuLabel>
-                    <DropdownMenuItem
-                      onClick={() => handleViewModeChange("card")}
-                    >
-                      <LayoutGrid className="size-4 mr-2" />
-                      <span className="flex-1">瀑布流</span>
-                      {viewMode === "card" && <Check className="size-4" />}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => handleViewModeChange("list")}
-                    >
-                      <List className="size-4 mr-2" />
-                      <span className="flex-1">列表</span>
-                      {viewMode === "list" && <Check className="size-4" />}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => handleViewModeChange("compact")}
-                    >
-                      <AlignJustify className="size-4 mr-2" />
-                      <span className="flex-1">紧凑</span>
-                      {viewMode === "compact" && <Check className="size-4" />}
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                  </>
-                )}
-
-                {/* 布局模式（仅卡片视图） */}
-                {viewMode === "card" && (
-                  <>
-                    <DropdownMenuLabel className="text-xs">
-                      布局模式
-                    </DropdownMenuLabel>
-                    <DropdownMenuItem
-                      onClick={() => handleLayoutModeChange("auto")}
-                    >
-                      <Sparkles className="size-4 mr-2" />
-                      <span className="flex-1">自动</span>
-                      {layoutMode === "auto" && <Check className="size-4" />}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => handleLayoutModeChange("row")}
-                    >
-                      <Rows3 className="size-4 mr-2" />
-                      <span className="flex-1">行优先</span>
-                      {layoutMode === "row" && <Check className="size-4" />}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => handleLayoutModeChange("column")}
-                    >
-                      <Columns3 className="size-4 mr-2" />
-                      <span className="flex-1">列优先</span>
-                      {layoutMode === "column" && <Check className="size-4" />}
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                  </>
-                )}
-
-                {/* 排序 */}
-                <DropdownMenuLabel className="text-xs">排序</DropdownMenuLabel>
-                {sortOptions.map((option) => (
-                  <DropdownMenuItem
-                    key={option.value}
-                    onClick={() => handleSortChange(option.value)}
-                  >
-                    <ArrowUpDown className="size-4 mr-2" />
-                    <span className="flex-1">{option.label}</span>
-                    {currentSort === option.value && (
-                      <Check className="size-4" />
-                    )}
-                  </DropdownMenuItem>
-                ))}
-                <DropdownMenuSeparator />
-
-                {/* 导入/导出 */}
-                <DropdownMenuItem
-                  onClick={() => {
-                    openImportDialog();
-                    setIsMobileMoreMenuOpen(false);
-                  }}
-                >
-                  <Upload className="size-4 mr-2" />
-                  批量导入
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => {
-                    openBrowserImportDialog();
-                    setIsMobileMoreMenuOpen(false);
-                  }}
-                >
-                  <Globe className="size-4 mr-2" />
-                  导入浏览器书签
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => {
-                    openExportDialog();
-                    setIsMobileMoreMenuOpen(false);
-                  }}
-                >
-                  <Download className="size-4 mr-2" />
-                  导出
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-
-                {/* 批量选择 */}
-                <DropdownMenuItem
-                  onClick={() => {
-                    toggleSelectionMode();
-                    setIsMobileMoreMenuOpen(false);
-                  }}
-                >
-                  <CheckSquare className="size-4 mr-2" />
-                  {isSelectionMode ? "取消批量选择" : "批量选择"}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-
-        {/* 垃圾箱工具栏 */}
-        {isTrashFolder && (
-          <div className="mt-4">
-            <TrashToolbar
-              selectedCount={selectedIds.size}
-              onBatchRestore={handleBatchRestore}
-              onEmptyTrash={handleEmptyTrash}
-              totalCount={bookmarks.length}
-            />
-          </div>
-        )}
-
-        {/* 批量操作工具栏 */}
-        {isSelectionMode && selectedIds.size > 0 && !isTrashFolder && (
-          <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                已选择 {selectedIds.size} 条
-              </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => selectAll(bookmarks.map((b) => b.id))}
-                className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
-              >
-                全选
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={deselectAll}
-                className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
-              >
-                取消全选
-              </Button>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleBatchDelete}
-                disabled={isBatchDeleting}
-                className="text-red-600 hover:text-red-700 border-red-200 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:border-red-800 dark:hover:bg-red-900/20"
-              >
-                {isBatchDeleting ? (
-                  <>
-                    <Loader2 className="size-4 mr-1.5 animate-spin" />
-                    删除中...
-                  </>
-                ) : (
-                  <>
-                    <Trash2 className="size-4 mr-1.5" />
-                    删除
-                  </>
-                )}
-              </Button>
-              <Button variant="outline" size="sm" onClick={openMoveDialog}>
-                <FolderInput className="size-4 mr-1.5" />
-                移动到文件夹
-              </Button>
-              {/* V4.2.1: 批量创建快照按钮（功能开关控制） */}
-              {isSnapshotEnabled && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleBatchCreateSnapshot}
-                  disabled={isBatchCreatingSnapshot}
-                  className="text-blue-600 hover:text-blue-700 border-blue-200 hover:bg-blue-50 dark:text-blue-400 dark:hover:text-blue-300 dark:border-blue-800 dark:hover:bg-blue-900/20"
-                >
-                  {isBatchCreatingSnapshot ? (
-                    <>
-                      <Loader2 className="size-4 mr-1.5 animate-spin" />
-                      创建中...
-                    </>
-                  ) : (
-                    <>
-                      <Camera className="size-4 mr-1.5" />
-                      创建快照
-                    </>
-                  )}
-                </Button>
-              )}
-            </div>
-          </div>
-        )}
-      </header>
+      {/* 顶部工具栏（移动端显示） - Phase 2.5.1 提取到独立组件 */}
+      <HomeToolbar
+        viewMode={viewMode}
+        layoutMode={layoutMode}
+        enableFlipCard={enableFlipCard}
+        onViewModeChange={handleViewModeChange}
+        onLayoutModeChange={handleLayoutModeChange}
+        onFlipCardToggle={handleFlipCardToggle}
+        currentPlatform={currentPlatform}
+        currentSort={currentSort}
+        onPlatformChange={handlePlatformChange}
+        onSortChange={handleSortChange}
+        isSelectionMode={isSelectionMode}
+        selectedIds={selectedIds}
+        totalCount={bookmarks.length}
+        isBatchDeleting={isBatchDeleting}
+        isBatchCreatingSnapshot={isBatchCreatingSnapshot}
+        onToggleSelectionMode={toggleSelectionMode}
+        onSelectAll={() => selectAll(bookmarks.map((b) => b.id))}
+        onDeselectAll={deselectAll}
+        onBatchDelete={handleBatchDelete}
+        onOpenMoveDialog={openMoveDialog}
+        onBatchCreateSnapshot={handleBatchCreateSnapshot}
+        onBatchRestore={handleBatchRestore}
+        onEmptyTrash={handleEmptyTrash}
+        onOpenImportDialog={openImportDialog}
+        onOpenBrowserImportDialog={openBrowserImportDialog}
+        onOpenExportDialog={openExportDialog}
+        isBrowserPlatform={isBrowserPlatform}
+        isTrashFolder={isTrashFolder}
+        isSnapshotEnabled={isSnapshotEnabled}
+        isMobileMoreMenuOpen={isMobileMoreMenuOpen}
+        onMobileMoreMenuOpenChange={setIsMobileMoreMenuOpen}
+      />
 
       {/* 内容区域 */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 md:px-8 py-0.5 md:py-1">
@@ -1518,60 +840,23 @@ export function HomePageClient({
         )}
       </div>
 
-      {/* 懒加载的 Dialog 组件 - 使用 Suspense 包裹 */}
-      <Suspense fallback={null}>
-        {/* 批量导入对话框（URL导入） */}
-        {showImportDialog && (
-          <BatchImportDialog
-            open={showImportDialog}
-            onOpenChange={setShowImportDialog}
-          />
-        )}
-
-        {/* 浏览器书签导入对话框 */}
-        {showBrowserImportDialog && (
-          <BrowserBookmarkImportDialog
-            open={showBrowserImportDialog}
-            onOpenChange={setShowBrowserImportDialog}
-            onSuccess={() => {
-              startTransition(() => {
-                router.refresh();
-              });
-            }}
-          />
-        )}
-
-        {/* 导出对话框 */}
-        {showExportDialog && (
-          <ExportDialog
-            open={showExportDialog}
-            onOpenChange={setShowExportDialog}
-            bookmarks={bookmarks}
-            selectedIds={selectedIds}
-          />
-        )}
-
-        {/* 批量移动对话框 */}
-        {showMoveDialog && (
-          <BatchMoveDialog
-            open={showMoveDialog}
-            onOpenChange={setShowMoveDialog}
-            selectedIds={selectedIds}
-            onSuccess={exitSelectionMode}
-          />
-        )}
-
-        {/* 创建收藏抽屉 */}
-        {showCreateDialog && (
-          <CreateBookmarkDrawer
-            open={showCreateDialog}
-            onOpenChange={setShowCreateDialog}
-            onSuccess={handleBookmarkCreated}
-          />
-        )}
-      </Suspense>
-
-      {/* V3.1: FolderRecommendationToast 已移除，分类结果通过 useClassificationPolling 的 toast 显示 */}
+      {/* 对话框组件 - Phase 2.5.2 提取到独立组件 */}
+      <HomeDialogs
+        showImportDialog={showImportDialog}
+        showBrowserImportDialog={showBrowserImportDialog}
+        showExportDialog={showExportDialog}
+        showMoveDialog={showMoveDialog}
+        showCreateDialog={showCreateDialog}
+        setShowImportDialog={setShowImportDialog}
+        setShowBrowserImportDialog={setShowBrowserImportDialog}
+        setShowExportDialog={setShowExportDialog}
+        setShowMoveDialog={setShowMoveDialog}
+        setShowCreateDialog={setShowCreateDialog}
+        bookmarks={bookmarks}
+        selectedIds={selectedIds}
+        onBookmarkCreated={handleBookmarkCreated}
+        onMoveSuccess={exitSelectionMode}
+      />
     </div>
   );
 }

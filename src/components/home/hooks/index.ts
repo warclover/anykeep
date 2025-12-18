@@ -14,3 +14,14 @@ export type {
   UseHomeBookmarksOptions,
   UseHomeBookmarksReturn,
 } from "./use-home-bookmarks";
+
+// 书签 CRUD 操作 Hook（Phase 2.3.1）
+export { useHomeMutations } from "./use-home-mutations";
+export type {
+  UseHomeMutationsOptions,
+  UseHomeMutationsReturn,
+} from "./use-home-mutations";
+
+// 批量操作 Hook（Phase 2.3.2）
+export { useHomeBatch } from "./use-home-batch";
+export type { UseHomeBatchOptions, UseHomeBatchReturn } from "./use-home-batch";
