@@ -11,15 +11,18 @@
  * 4. 如果没有匹配的文件夹，建议创建新文件夹
  */
 
-import type { IMatcher, MatcherOptions } from "../../strategies/interfaces";
-import type { MatchResult, MatcherContext } from "../../types";
-import type { FolderProfileRepository } from "../../repositories";
+import type {
+  IMatcher,
+  MatcherOptions,
+} from "@/lib/classification/strategies/interfaces";
+import type { MatchResult, MatcherContext } from "@/lib/classification/types";
+import type { FolderProfileRepository } from "@/lib/classification/repositories";
 import {
   matchCategoriesByKeyword,
   type UniversalCategory,
 } from "../constants/universal-categories";
 import { logger } from "@/lib/logger";
-import { tokenize } from "../../utils/text-utils";
+import { tokenize } from "@/lib/classification/utils/text-utils";
 
 /**
  * 通用分类匹配器配置

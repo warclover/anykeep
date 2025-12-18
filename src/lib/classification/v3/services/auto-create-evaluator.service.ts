@@ -15,7 +15,7 @@ import {
   type UniversalCategory,
 } from "../constants/universal-categories";
 import { V3_CONFIG } from "../config";
-import { FOLDER_LIMITS } from "../../constants/limits";
+import { FOLDER_LIMITS } from "@/lib/classification/constants/limits";
 import { logger } from "@/lib/logger";
 
 // ============================================================================

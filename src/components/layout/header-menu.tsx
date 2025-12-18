@@ -38,6 +38,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useHomePageSafe } from "@/contexts/home-page-context";
+import { uiEventBus, UIEvents } from "@/lib/shared/event-bus";
 import type { ViewMode, LayoutMode, DialogType } from "@/components/home/types";
 
 // 本地存储 key（Fallback 使用）
@@ -105,35 +106,33 @@ export function HeaderMenu() {
 
   /**
    * 切换视图模式
-   * 优先使用 Context，Fallback 到 Window Event
+   * 优先使用 Context，Fallback 到 UIEventBus
    */
   const handleViewModeChange = (mode: ViewMode) => {
     if (homeContext) {
       // Phase 3.1: 使用 Context
       homeContext.view.setViewMode(mode);
     } else {
-      // Fallback: 旧的 Window Event 方式
+      // Fallback: UIEventBus（内置 Legacy Bridge 保持兼容）
       setLocalViewMode(mode);
       localStorage.setItem(VIEW_MODE_STORAGE_KEY, mode);
-      window.dispatchEvent(new CustomEvent("viewModeChange", { detail: mode }));
+      uiEventBus.emit(UIEvents.VIEW_MODE_CHANGE, { mode });
     }
   };
 
   /**
    * 切换布局模式
-   * 优先使用 Context，Fallback 到 Window Event
+   * 优先使用 Context，Fallback 到 UIEventBus
    */
   const handleLayoutModeChange = (mode: LayoutMode) => {
     if (homeContext) {
       // Phase 3.1: 使用 Context
       homeContext.view.setLayoutMode(mode);
     } else {
-      // Fallback: 旧的 Window Event 方式
+      // Fallback: UIEventBus（内置 Legacy Bridge 保持兼容）
       setLocalLayoutMode(mode);
       localStorage.setItem(LAYOUT_MODE_STORAGE_KEY, mode);
-      window.dispatchEvent(
-        new CustomEvent("layoutModeChange", { detail: mode }),
-      );
+      uiEventBus.emit(UIEvents.LAYOUT_MODE_CHANGE, { mode });
     }
   };
 
@@ -149,32 +148,30 @@ export function HeaderMenu() {
 
   /**
    * 触发对话框
-   * 优先使用 Context，Fallback 到 Window Event
+   * 优先使用 Context，Fallback 到 UIEventBus
    */
   const triggerDialog = (dialogType: DialogType) => {
     if (homeContext) {
       // Phase 3.1: 使用 Context
       homeContext.dialog.openDialogAction(dialogType);
     } else {
-      // Fallback: 旧的 Window Event 方式
-      window.dispatchEvent(
-        new CustomEvent("openDialog", { detail: dialogType }),
-      );
+      // Fallback: UIEventBus（内置 Legacy Bridge 保持兼容）
+      uiEventBus.emit(UIEvents.DIALOG_OPEN, { type: dialogType });
     }
     setIsOpen(false);
   };
 
   /**
    * 切换批量选择模式
-   * 优先使用 Context，Fallback 到 Window Event
+   * 优先使用 Context，Fallback 到 UIEventBus
    */
   const triggerSelectionMode = () => {
     if (homeContext) {
       // Phase 3.1: 使用 Context
       homeContext.selection.toggleSelectionMode();
     } else {
-      // Fallback: 旧的 Window Event 方式
-      window.dispatchEvent(new CustomEvent("toggleSelectionMode"));
+      // Fallback: UIEventBus（内置 Legacy Bridge 保持兼容）
+      uiEventBus.emit(UIEvents.SELECTION_TOGGLE, { enabled: true });
     }
     setIsOpen(false);
   };

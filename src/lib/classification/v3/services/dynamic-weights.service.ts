@@ -17,7 +17,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
-import { CLASSIFICATION_WEIGHTS } from "../../constants/limits";
+import { CLASSIFICATION_WEIGHTS } from "@/lib/classification/constants/limits";
 import { logger } from "@/lib/logger";
 import {
   UserScenarioDetectorService,

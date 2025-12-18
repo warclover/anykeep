@@ -10,7 +10,7 @@
  * 预期效果：准确率 +10-15%
  */
 
-import type { AIRecommendationContext } from "../../types";
+import type { AIRecommendationContext } from "@/lib/classification/types";
 
 /**
  * 系统提示词 - 定义 AI 角色和能力

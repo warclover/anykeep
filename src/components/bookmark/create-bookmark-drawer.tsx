@@ -57,6 +57,7 @@ import {
 } from "@/lib/utils/classification-notification";
 import { UsageTagSelector } from "./usage-tag-selector";
 import { FolderQuickSelect } from "@/components/classification/folder-quick-select";
+import { uiEventBus, UIEvents } from "@/lib/shared/event-bus";
 import type { CustomUsageTag } from "@/types/supabase";
 
 interface BookmarkCreatedData {
@@ -580,9 +581,7 @@ export function CreateBookmarkDrawer({
       handleClose();
 
       if (data.data) {
-        window.dispatchEvent(
-          new CustomEvent("bookmarkCreated", { detail: data.data }),
-        );
+        uiEventBus.emit(UIEvents.BOOKMARK_CREATED, { bookmark: data.data });
       }
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") {

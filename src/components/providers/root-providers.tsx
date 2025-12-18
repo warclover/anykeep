@@ -4,6 +4,11 @@
  * 根提供者组件
  * 将所有客户端 Context Provider 集中在这里，
  * 避免在根 layout 中直接使用 Context 导致的 SSR 问题
+ *
+ * Phase 3.5 修复：
+ * - HomePageProvider 移出 Suspense 边界
+ * - NavigationProvider 使用 useSearchParams() 会触发 Suspense
+ * - 如果 HomePageProvider 在 Suspense 内，挂起时子组件无法访问 Context
  */
 
 import { Suspense } from "react";
@@ -12,7 +17,6 @@ import { ThemeProvider } from "@/components/providers/theme-provider";
 import { ServiceWorkerRegister } from "@/components/pwa/sw-register";
 import { UserProvider } from "@/contexts/user-context";
 import { NavigationProvider } from "@/contexts/navigation-context";
-// Phase 2.4: 重新启用（已修复 hydration 问题）
 import { HomePageProvider } from "@/contexts/home-page-context";
 import { KeepAliveProvider } from "@/lib/cache";
 import { OnboardingProvider } from "@/components/providers/onboarding-provider";
@@ -33,18 +37,19 @@ export function RootProviders({ children }: RootProvidersProps) {
     >
       <UserProvider>
         <OnboardingProvider>
-          <Suspense fallback={null}>
-            <NavigationProvider>
-              {/* Phase 2.4: HomePageProvider 重新启用 */}
-              <HomePageProvider>
+          {/* Phase 3.5: HomePageProvider 移出 Suspense 边界
+              避免 NavigationProvider 挂起时 Context 不可用 */}
+          <HomePageProvider>
+            <Suspense fallback={null}>
+              <NavigationProvider>
                 <KeepAliveProvider>
                   <MessageNotificationProvider>
                     {children}
                   </MessageNotificationProvider>
                 </KeepAliveProvider>
-              </HomePageProvider>
-            </NavigationProvider>
-          </Suspense>
+              </NavigationProvider>
+            </Suspense>
+          </HomePageProvider>
         </OnboardingProvider>
       </UserProvider>
       <Toaster position="top-center" offset={16} />

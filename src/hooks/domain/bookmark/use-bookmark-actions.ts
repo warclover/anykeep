@@ -12,7 +12,7 @@
 
 import { useCallback } from "react";
 import { toast } from "sonner";
-import { useAbortableFetch } from "./use-abortable-fetch";
+import { useAbortableFetch } from "@/hooks/use-abortable-fetch";
 
 // ==================== 类型定义 ====================
 

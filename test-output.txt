@@ -1,0 +1,383 @@
+[1A[2K[2m[WebServer] [22m<w> [webpack.cache.PackFileCacheStrategy/webpack.FileSystemInfo] Resolving '../../../typescript/lib/typescript' in c:\anykeep\node_modules\next\dist\build for build dependencies doesn't lead to expected result 'C:\anykeep\node_modules\typescript\lib\typescript.js', but to 'c:\anykeep\node_modules\typescript\lib\typescript.js' instead. Resolving dependencies are ignored for this path.
+[2m[WebServer] [22m<w>  at resolve commonjs file ../../../typescript/lib/typescript (expected C:\anykeep\node_modules\typescript\lib\typescript.js)
+[2m[WebServer] [22m<w>  at file dependencies c:\anykeep\node_modules\next\dist\build\load-jsconfig.js
+[2m[WebServer] [22m<w>  at file c:\anykeep\node_modules\next\dist\build\load-jsconfig.js
+[2m[WebServer] [22m<w>  at file dependencies c:\anykeep\node_modules\next\dist\build\webpack-config.js
+[2m[WebServer] [22m<w>  at file c:\anykeep\node_modules\next\dist\build\webpack-config.js
+[2m[WebServer] [22m<w>  at file dependencies c:\anykeep\node_modules\next\dist\build\handle-externals.js
+[2m[WebServer] [22m<w>  at file c:\anykeep\node_modules\next\dist\build\handle-externals.js
+[2m[WebServer] [22m<w>  at file dependencies c:\anykeep\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+[2m[WebServer] [22m<w>  at file c:\anykeep\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+[2m[WebServer] [22m<w>  at resolve commonjs c:\anykeep\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+
+[1A[2K[2m[WebServer] [22m
+
+[1A[2K[2m[WebServer] [22m[1m[33mwarn[39m[22m - The class `ease-[cubic-bezier(0.32,0.72,0,1)]` is ambiguous and matches multiple utilities.
+[2m[WebServer] [22m[1m[33mwarn[39m[22m - If this is content and not a class, replace it with `ease-&lsqb;cubic-bezier(0.32,0.72,0,1)&rsqb;` to silence this warning.
+
+[1A[2K[2m[WebServer] [22m [33m[1m⚠[22m[39m ./node_modules/require-in-the-middle/index.js
+[2m[WebServer] [22mCritical dependency: require function is used in a way in which dependencies cannot be statically extracted
+[2m[WebServer] [22m
+[2m[WebServer] [22mImport trace for requested module:
+[2m[WebServer] [22m./node_modules/require-in-the-middle/index.js
+[2m[WebServer] [22m./node_modules/@opentelemetry/instrumentation/build/esm/platform/node/instrumentation.js
+[2m[WebServer] [22m./node_modules/@opentelemetry/instrumentation/build/esm/platform/node/index.js
+[2m[WebServer] [22m./node_modules/@opentelemetry/instrumentation/build/esm/platform/index.js
+[2m[WebServer] [22m./node_modules/@opentelemetry/instrumentation/build/esm/index.js
+[2m[WebServer] [22m./node_modules/@sentry/node/build/cjs/integrations/tracing/postgresjs.js
+[2m[WebServer] [22m./node_modules/@sentry/node/build/cjs/index.js
+[2m[WebServer] [22m./node_modules/@sentry/nextjs/build/cjs/index.server.js
+[2m[WebServer] [22m./src/app/global-error.tsx
+
+
+Running 12 tests using 1 worker
+
+[1A[2K[2m[WebServer] [22m<w> [webpack.cache.PackFileCacheStrategy/webpack.FileSystemInfo] Resolving '../../../typescript/lib/typescript' in c:\anykeep\node_modules\next\dist\build for build dependencies doesn't lead to expected result 'C:\anykeep\node_modules\typescript\lib\typescript.js', but to 'c:\anykeep\node_modules\typescript\lib\typescript.js' instead. Resolving dependencies are ignored for this path.
+[2m[WebServer] [22m<w>  at resolve commonjs file ../../../typescript/lib/typescript (expected C:\anykeep\node_modules\typescript\lib\typescript.js)
+[2m[WebServer] [22m<w>  at file dependencies c:\anykeep\node_modules\next\dist\build\load-jsconfig.js
+[2m[WebServer] [22m<w>  at file c:\anykeep\node_modules\next\dist\build\load-jsconfig.js
+[2m[WebServer] [22m<w>  at file dependencies c:\anykeep\node_modules\next\dist\build\webpack-config.js
+[2m[WebServer] [22m<w>  at file c:\anykeep\node_modules\next\dist\build\webpack-config.js
+[2m[WebServer] [22m<w>  at file dependencies c:\anykeep\node_modules\next\dist\build\handle-externals.js
+[2m[WebServer] [22m<w>  at file c:\anykeep\node_modules\next\dist\build\handle-externals.js
+[2m[WebServer] [22m<w>  at file dependencies c:\anykeep\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+[2m[WebServer] [22m<w>  at file c:\anykeep\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+[2m[WebServer] [22m<w>  at resolve commonjs c:\anykeep\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+
+[1A[2K[1/12] [chromium] › tests\e2e\anykeep-functional-test.spec.ts:92:7 › AnyKeep 全面功能测试 › 1.1 首页加载测试
+[1A[2K[2m[WebServer] [22m<w> [webpack.cache.PackFileCacheStrategy/webpack.FileSystemInfo] Resolving '../../../typescript/lib/typescript' in c:\anykeep\node_modules\next\dist\build for build dependencies doesn't lead to expected result 'C:\anykeep\node_modules\typescript\lib\typescript.js', but to 'c:\anykeep\node_modules\typescript\lib\typescript.js' instead. Resolving dependencies are ignored for this path.
+[2m[WebServer] [22m<w>  at resolve commonjs file ../../../typescript/lib/typescript (expected C:\anykeep\node_modules\typescript\lib\typescript.js)
+[2m[WebServer] [22m<w>  at file dependencies c:\anykeep\node_modules\next\dist\build\load-jsconfig.js
+[2m[WebServer] [22m<w>  at file c:\anykeep\node_modules\next\dist\build\load-jsconfig.js
+[2m[WebServer] [22m<w>  at file dependencies c:\anykeep\node_modules\next\dist\build\webpack-config.js
+[2m[WebServer] [22m<w>  at file c:\anykeep\node_modules\next\dist\build\webpack-config.js
+[2m[WebServer] [22m<w>  at file dependencies c:\anykeep\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+[2m[WebServer] [22m<w>  at file c:\anykeep\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+[2m[WebServer] [22m<w>  at resolve commonjs c:\anykeep\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+
+[1A[2K[2m[WebServer] [22m [33m[1m⚠[22m[39m ./node_modules/require-in-the-middle/index.js
+[2m[WebServer] [22mCritical dependency: require function is used in a way in which dependencies cannot be statically extracted
+[2m[WebServer] [22m
+[2m[WebServer] [22mImport trace for requested module:
+[2m[WebServer] [22m./node_modules/require-in-the-middle/index.js
+[2m[WebServer] [22m./node_modules/@opentelemetry/instrumentation/build/esm/platform/node/instrumentation.js
+[2m[WebServer] [22m./node_modules/@opentelemetry/instrumentation/build/esm/platform/node/index.js
+[2m[WebServer] [22m./node_modules/@opentelemetry/instrumentation/build/esm/platform/index.js
+[2m[WebServer] [22m./node_modules/@opentelemetry/instrumentation/build/esm/index.js
+[2m[WebServer] [22m./node_modules/@sentry/node/build/cjs/integrations/tracing/postgresjs.js
+[2m[WebServer] [22m./node_modules/@sentry/node/build/cjs/index.js
+[2m[WebServer] [22m./node_modules/@sentry/nextjs/build/cjs/index.server.js
+[2m[WebServer] [22m./src/app/global-error.tsx
+
+[1A[2K[2m[WebServer] [22m<w> [webpack.cache.PackFileCacheStrategy] Serializing big strings (128kiB) impacts deserialization performance (consider using Buffer instead and decode when needed)
+
+[1A[2K[2m[WebServer] [22m [33m[1m⚠[22m[39m ./node_modules/require-in-the-middle/index.js
+[2m[WebServer] [22mCritical dependency: require function is used in a way in which dependencies cannot be statically extracted
+[2m[WebServer] [22m
+[2m[WebServer] [22mImport trace for requested module:
+[2m[WebServer] [22m./node_modules/require-in-the-middle/index.js
+[2m[WebServer] [22m./node_modules/@opentelemetry/instrumentation/build/esm/platform/node/instrumentation.js
+[2m[WebServer] [22m./node_modules/@opentelemetry/instrumentation/build/esm/platform/node/index.js
+[2m[WebServer] [22m./node_modules/@opentelemetry/instrumentation/build/esm/platform/index.js
+[2m[WebServer] [22m./node_modules/@opentelemetry/instrumentation/build/esm/index.js
+[2m[WebServer] [22m./node_modules/@sentry/node/build/cjs/integrations/tracing/postgresjs.js
+[2m[WebServer] [22m./node_modules/@sentry/node/build/cjs/index.js
+[2m[WebServer] [22m./node_modules/@sentry/nextjs/build/cjs/index.server.js
+[2m[WebServer] [22m./src/app/global-error.tsx
+
+[1A[2K[2/12] [chromium] › tests\e2e\anykeep-functional-test.spec.ts:131:7 › AnyKeep 全面功能测试 › 1.2 检查认证状态和页面路由
+[1A[2K[3/12] [chromium] › tests\e2e\anykeep-functional-test.spec.ts:164:7 › AnyKeep 全面功能测试 › 1.3 首页书签列表显示
+[1A[2K[4/12] [chromium] › tests\e2e\anykeep-functional-test.spec.ts:200:7 › AnyKeep 全面功能测试 › 1.4 平台筛选功能测试
+[1A[2K[5/12] [chromium] › tests\e2e\anykeep-functional-test.spec.ts:262:7 › AnyKeep 全面功能测试 › 1.5 视图切换功能测试
+[1A[2K[6/12] [chromium] › tests\e2e\anykeep-functional-test.spec.ts:310:7 › AnyKeep 全面功能测试 › 1.6 搜索功能测试
+[1A[2K[7/12] [chromium] › tests\e2e\anykeep-functional-test.spec.ts:356:7 › AnyKeep 全面功能测试 › 2.1 浏览器书签导入入口
+[1A[2K[8/12] [chromium] › tests\e2e\anykeep-functional-test.spec.ts:385:7 › AnyKeep 全面功能测试 › 3.1 响应式设计 - 桌面端
+[1A[2K[9/12] [chromium] › tests\e2e\anykeep-functional-test.spec.ts:414:7 › AnyKeep 全面功能测试 › 3.2 响应式设计 - 移动端
+[1A[2K[10/12] [chromium] › tests\e2e\anykeep-functional-test.spec.ts:448:7 › AnyKeep 全面功能测试 › 4.1 空状态展示
+[1A[2K[11/12] [chromium] › tests\e2e\anykeep-functional-test.spec.ts:478:7 › AnyKeep 全面功能测试 › 5.1 检查网络请求
+[1A[2K[chromium] › tests\e2e\anykeep-functional-test.spec.ts:478:7 › AnyKeep 全面功能测试 › 5.1 检查网络请求
+
+================================================================================
+
+[1A[2KAnyKeep 功能测试报告
+
+[1A[2K================================================================================
+
+[1A[2K测试时间: 2025/12/18 02:37:23
+
+[1A[2K测试地址: http://localhost:3000
+
+[1A[2K--------------------------------------------------------------------------------
+
+[1A[2K
+测试统计:
+
+[1A[2K  总计: 11
+
+[1A[2K  ✓ 通过: 3
+
+[1A[2K  ✗ 失败: 3
+
+[1A[2K  ⚠ 警告: 5
+
+[1A[2K
+详细结果:
+
+[1A[2K--------------------------------------------------------------------------------
+
+[1A[2K⚠ 1. 首页加载 - WARNING
+
+[1A[2K   耗时: 8575ms
+
+[1A[2K   详情: {
+     "metrics": {
+       "ttfb": 91.79999999701977,
+       "fcp": 212,
+       "lcp": 0,
+       "domLoad": 0,
+       "pageLoad": 0
+     },
+     "consoleErrors": [
+       "Failed to fetch user data: AuthSessionMissingError: Auth session missing!\n    at eval (webpack-internal:///(app-pages-browser)/./node_modules/@supabase/auth-js/dist/module/GoTrueClient.js:1272:59)\n    at SupabaseAuthClient._useSession (webpack-internal:///(app-pages-browser)/./node_modules/@supabase/auth-js/dist/module/GoTrueClient.js:1163:26)\n    at async SupabaseAuthClient._getUser (webpack-internal:///(app-pages-browser)/./node_modules/@supabase/auth-js/dist/module/GoTrueClient.js:1264:20)\n    at async eval (webpack-internal:///(app-pages-browser)/./node_modules/@supabase/auth-js/dist/module/GoTrueClient.js:1251:20)",
+       "Failed to fetch user data: AuthSessionMissingError: Auth session missing!\n    at eval (webpack-internal:///(app-pages-browser)/./node_modules/@supabase/auth-js/dist/module/GoTrueClient.js:1272:59)\n    at SupabaseAuthClient._useSession (webpack-internal:///(app-pages-browser)/./node_modules/@supabase/auth-js/dist/module/GoTrueClient.js:1163:26)\n    at async SupabaseAuthClient._getUser (webpack-internal:///(app-pages-browser)/./node_modules/@supabase/auth-js/dist/module/GoTrueClient.js:1264:20)\n    at async eval (webpack-internal:///(app-pages-browser)/./node_modules/@supabase/auth-js/dist/module/GoTrueClient.js:1251:20)",
+       "Failed to fetch user data: AuthSessionMissingError: Auth session missing!\n    at eval (webpack-internal:///(app-pages-browser)/./node_modules/@supabase/auth-js/dist/module/GoTrueClient.js:1272:59)\n    at SupabaseAuthClient._useSession (webpack-internal:///(app-pages-browser)/./node_modules/@supabase/auth-js/dist/module/GoTrueClient.js:1163:26)\n    at async SupabaseAuthClient._getUser (webpack-internal:///(app-pages-browser)/./node_modules/@supabase/auth-js/dist/module/GoTrueClient.js:1264:20)\n    at async eval (webpack-internal:///(app-pages-browser)/./node_modules/@supabase/auth-js/dist/module/GoTrueClient.js:1251:20)",
+       "Failed to fetch user data: AuthSessionMissingError: Auth session missing!\n    at eval (webpack-internal:///(app-pages-browser)/./node_modules/@supabase/auth-js/dist/module/GoTrueClient.js:1272:59)\n    at SupabaseAuthClient._useSession (webpack-internal:///(app-pages-browser)/./node_modules/@supabase/auth-js/dist/module/GoTrueClient.js:1163:26)\n    at async SupabaseAuthClient._getUser (webpack-internal:///(app-pages-browser)/./node_modules/@supabase/auth-js/dist/module/GoTrueClient.js:1264:20)\n    at async eval (webpack-internal:///(app-pages-browser)/./node_modules/@supabase/auth-js/dist/module/GoTrueClient.js:1251:20)"
+     ]
+   }
+
+[1A[2K
+
+[1A[2K✓ 2. 认证状态检查 - PASSED
+
+[1A[2K   耗时: 1869ms
+
+[1A[2K   详情: {
+     "currentUrl": "http://localhost:3000/login",
+     "redirectedToLogin": true,
+     "onHomePage": false
+   }
+
+[1A[2K
+
+[1A[2K✗ 3. 书签列表显示 - FAILED
+
+[1A[2K   耗时: 11925ms
+
+[1A[2K   错误: locator.count: Unexpected token "=" while parsing css selector "[data-testid="empty-state"], .empty-state, text=/暂无/i". Did you mean to CSS.escape it?
+
+[1A[2K
+
+[1A[2K⚠ 4. 平台筛选功能 - WARNING
+
+[1A[2K   耗时: 1913ms
+
+[1A[2K   详情: {
+     "hasFilters": false,
+     "message": "未找到平台筛选器"
+   }
+
+[1A[2K
+
+[1A[2K⚠ 5. 视图切换功能 - WARNING
+
+[1A[2K   耗时: 1886ms
+
+[1A[2K   详情: {
+     "viewToggleCount": 0,
+     "message": "未找到视图切换按钮"
+   }
+
+[1A[2K
+
+[1A[2K⚠ 6. 搜索功能 - WARNING
+
+[1A[2K   耗时: 1918ms
+
+[1A[2K   详情: {
+     "hasSearchInput": false,
+     "message": "未找到搜索输入框"
+   }
+
+[1A[2K
+
+[1A[2K⚠ 7. 浏览器书签导入入口 - WARNING
+
+[1A[2K   耗时: 1943ms
+
+[1A[2K   详情: {
+     "importButtonCount": 0
+   }
+
+[1A[2K
+
+[1A[2K✓ 8. 响应式设计 - 桌面端 - PASSED
+
+[1A[2K   耗时: 1909ms
+
+[1A[2K   详情: {
+     "viewport": "1920x1080"
+   }
+
+[1A[2K
+
+[1A[2K✓ 9. 响应式设计 - 移动端 - PASSED
+
+[1A[2K   耗时: 1966ms
+
+[1A[2K   详情: {
+     "viewport": "375x812",
+     "hasMobileMenu": false
+   }
+
+[1A[2K
+
+[1A[2K✗ 10. 空状态展示 - FAILED
+
+[1A[2K   耗时: 1895ms
+
+[1A[2K   错误: locator.count: Unexpected token "=" while parsing css selector "[data-testid="empty-state"], .empty-state, text=/暂无/, text=/还没有/, text=/开始添加/". Did you mean to CSS.escape it?
+
+[1A[2K
+
+[1A[2K✗ 11. 网络请求检查 - FAILED
+
+[1A[2K   耗时: 458ms
+
+[1A[2K   错误: page.goto: Test ended.
+Call log:
+[2m  - navigating to "http://localhost:3000/", waiting until "load"[22m
+
+
+[1A[2K
+
+[1A[2K
+性能数据:
+
+[1A[2K--------------------------------------------------------------------------------
+
+[1A[2K
+首页:
+
+[1A[2K  TTFB (首字节时间): 91.80ms
+
+[1A[2K  FCP (首次内容绘制): 212.00ms
+
+[1A[2K  LCP (最大内容绘制): 0.00ms
+
+[1A[2K  DOM 加载: 0.00ms
+
+[1A[2K  页面加载: 0.00ms
+
+[1A[2K
+================================================================================
+
+[1A[2K测试完成
+
+[1A[2K================================================================================
+
+
+[1A[2K  1) [chromium] › tests\e2e\anykeep-functional-test.spec.ts:478:7 › AnyKeep 全面功能测试 › 5.1 检查网络请求 ────
+
+    TypeError: response.timing is not a function
+
+      491 |
+      492 |       // 记录响应时间（如果可用）
+    > 493 |       const timing = response.timing();
+          |                               ^
+      494 |       if (timing && timing.responseEnd > 2000) {
+      495 |         slowRequests.push({
+      496 |           url: url.substring(0, 100),
+        at Page.<anonymous> (c:\anykeep\tests\e2e\anykeep-functional-test.spec.ts:493:31)
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\anykeep-functional-test-AnyKeep-全面功能测试-5-1-检查网络请求-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\anykeep-functional-test-AnyKeep-全面功能测试-5-1-检查网络请求-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\anykeep-functional-test-AnyKeep-全面功能测试-5-1-检查网络请求-chromium\error-context.md
+
+
+[1A[2K[12/12] [chromium] › tests\e2e\anykeep-functional-test.spec.ts:526:7 › AnyKeep 全面功能测试 › 6.1 性能基准测试
+[1A[2K[chromium] › tests\e2e\anykeep-functional-test.spec.ts:526:7 › AnyKeep 全面功能测试 › 6.1 性能基准测试
+
+================================================================================
+
+[1A[2KAnyKeep 功能测试报告
+
+[1A[2K================================================================================
+
+[1A[2K测试时间: 2025/12/18 02:37:30
+
+[1A[2K测试地址: http://localhost:3000
+
+[1A[2K--------------------------------------------------------------------------------
+
+[1A[2K
+测试统计:
+
+[1A[2K  总计: 1
+
+[1A[2K  ✓ 通过: 1
+
+[1A[2K  ✗ 失败: 0
+
+[1A[2K  ⚠ 警告: 0
+
+[1A[2K
+详细结果:
+
+[1A[2K--------------------------------------------------------------------------------
+
+[1A[2K✓ 1. 性能基准测试 - PASSED
+
+[1A[2K   耗时: 4936ms
+
+[1A[2K   详情: {
+     "metrics": {
+       "ttfb": 49.5,
+       "fcp": 196,
+       "lcp": 0,
+       "domLoad": 0.09999999403953552,
+       "pageLoad": 0
+     },
+     "scores": {
+       "ttfb": "excellent",
+       "fcp": "excellent",
+       "lcp": "excellent"
+     }
+   }
+
+[1A[2K
+
+[1A[2K
+性能数据:
+
+[1A[2K--------------------------------------------------------------------------------
+
+[1A[2K
+性能基准:
+
+[1A[2K  TTFB (首字节时间): 49.50ms
+
+[1A[2K  FCP (首次内容绘制): 196.00ms
+
+[1A[2K  LCP (最大内容绘制): 0.00ms
+
+[1A[2K  DOM 加载: 0.10ms
+
+[1A[2K  页面加载: 0.00ms
+
+[1A[2K
+================================================================================
+
+[1A[2K测试完成
+
+[1A[2K================================================================================
+
+
+[1A[2K  1 failed
+    [chromium] › tests\e2e\anykeep-functional-test.spec.ts:478:7 › AnyKeep 全面功能测试 › 5.1 检查网络请求 ─────
+  11 passed (1.7m)

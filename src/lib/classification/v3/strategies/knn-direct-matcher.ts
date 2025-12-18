@@ -11,9 +11,12 @@
  * 4. 标记 skipAI: true，告知系统跳过 AI 调用
  */
 
-import type { IMatcher, MatcherOptions } from "../../strategies/interfaces";
-import type { MatchResult, MatcherContext } from "../../types";
-import type { BookmarkRepository } from "../../repositories";
+import type {
+  IMatcher,
+  MatcherOptions,
+} from "@/lib/classification/strategies/interfaces";
+import type { MatchResult, MatcherContext } from "@/lib/classification/types";
+import type { BookmarkRepository } from "@/lib/classification/repositories";
 import { V3_CONFIG } from "../config";
 import { logger } from "@/lib/logger";
 

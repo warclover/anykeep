@@ -56,6 +56,7 @@ import {
 } from "@/lib/utils/classification-notification";
 import { UsageTagSelector } from "./usage-tag-selector";
 import { FolderQuickSelect } from "@/components/classification/folder-quick-select";
+import { uiEventBus, UIEvents } from "@/lib/shared/event-bus";
 import type { CustomUsageTag } from "@/types/supabase";
 
 interface BookmarkCreatedData {
@@ -497,12 +498,10 @@ export function CreateBookmarkDialog({
       resetForm();
       onOpenChange(false);
 
-      // 发送自定义事件通知首页更新（乐观更新，避免 SWR 缓存问题）
+      // 发送事件通知首页更新（乐观更新，避免 SWR 缓存问题）
       // 首页监听此事件后会将新书签插入列表头部
       if (data.data) {
-        window.dispatchEvent(
-          new CustomEvent("bookmarkCreated", { detail: data.data }),
-        );
+        uiEventBus.emit(UIEvents.BOOKMARK_CREATED, { bookmark: data.data });
       }
     } catch (error) {
       // 如果是取消错误，不显示错误提示

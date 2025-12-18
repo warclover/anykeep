@@ -28,6 +28,7 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet";
+import { uiEventBus, UIEvents } from "@/lib/shared/event-bus";
 
 // 防抖延迟时间（毫秒）
 const DEBOUNCE_DELAY = 300;
@@ -126,7 +127,7 @@ export function UsageTagFilterSheet({
 
   /**
    * 应用筛选（防抖处理）
-   * 优先使用 Context，Fallback 到 Window Event
+   * 优先使用 Context，Fallback 到 UIEventBus
    */
   const applyFilterDebounced = useCallback(
     (tags: string[]) => {
@@ -141,7 +142,7 @@ export function UsageTagFilterSheet({
           // Phase 3.3: 使用 Context
           homeContext.filter.setUsageTags(tags);
         } else {
-          // Fallback: 旧的 Window Event 方式
+          // Fallback: UIEventBus（内置 Legacy Bridge 保持兼容）
           // 更新 URL
           const params = new URLSearchParams(searchParams?.toString() ?? "");
           if (tags.length > 0) {
@@ -156,12 +157,8 @@ export function UsageTagFilterSheet({
             newUrl,
           );
 
-          // 触发自定义事件通知首页
-          window.dispatchEvent(
-            new CustomEvent("usageTagFilterChange", {
-              detail: { usageTags: tags },
-            }),
-          );
+          // 触发事件通知首页
+          uiEventBus.emit(UIEvents.USAGE_TAGS_CHANGE, { usageTags: tags });
         }
 
         // 触发回调
@@ -204,7 +201,7 @@ export function UsageTagFilterSheet({
       // Phase 3.3: 使用 Context
       homeContext.filter.setUsageTags([]);
     } else {
-      // Fallback: 旧的方式
+      // Fallback: UIEventBus（内置 Legacy Bridge 保持兼容）
       // 立即更新 URL
       const params = new URLSearchParams(searchParams?.toString() ?? "");
       params.delete("usageTags");
@@ -215,12 +212,8 @@ export function UsageTagFilterSheet({
         newUrl,
       );
 
-      // 触发自定义事件通知首页
-      window.dispatchEvent(
-        new CustomEvent("usageTagFilterChange", {
-          detail: { usageTags: [] },
-        }),
-      );
+      // 触发事件通知首页
+      uiEventBus.emit(UIEvents.USAGE_TAGS_CHANGE, { usageTags: [] });
     }
 
     // 触发回调

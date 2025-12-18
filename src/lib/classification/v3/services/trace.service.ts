@@ -22,8 +22,8 @@ import type {
   ClassificationAction,
   MatchResult,
   BookmarkInput,
-} from "../../types";
-import { generateTraceId } from "../../types";
+} from "@/lib/classification/types";
+import { generateTraceId } from "@/lib/classification/types";
 import { logger } from "@/lib/logger";
 
 // ============================================================================

@@ -16,6 +16,7 @@ import { useSafeNavigation } from "@/contexts/navigation-context";
 import { useCustomUsageTags } from "@/hooks/use-custom-usage-tags";
 import { UsageTagButton } from "@/components/bookmark/usage-tag-button";
 import { SmartListQuickSave } from "@/components/smart-list";
+import { uiEventBus, UIEvents } from "@/lib/shared/event-bus";
 
 interface UsageTagFilterProps {
   /** 自定义类名 */
@@ -98,12 +99,8 @@ export function UsageTagFilter({
       // 触发回调
       onFilterChange?.(newSelected);
 
-      // 触发自定义事件通知首页
-      window.dispatchEvent(
-        new CustomEvent("usageTagFilterChange", {
-          detail: { usageTags: newSelected },
-        }),
-      );
+      // 触发事件通知首页
+      uiEventBus.emit(UIEvents.USAGE_TAGS_CHANGE, { usageTags: newSelected });
     },
     [selectedTags, searchParams, onFilterChange],
   );
@@ -128,12 +125,8 @@ export function UsageTagFilter({
     // 触发回调
     onFilterChange?.([]);
 
-    // 触发自定义事件通知首页
-    window.dispatchEvent(
-      new CustomEvent("usageTagFilterChange", {
-        detail: { usageTags: [] },
-      }),
-    );
+    // 触发事件通知首页
+    uiEventBus.emit(UIEvents.USAGE_TAGS_CHANGE, { usageTags: [] });
   }, [searchParams, onFilterChange]);
 
   // 非首页不显示

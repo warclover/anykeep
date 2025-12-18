@@ -18,15 +18,16 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
+// 直接从子模块导入，避免循环依赖（Phase 4 修复）
+import { eventBus } from "./event-bus";
 import {
-  eventBus,
   ClassificationEvents,
   OrganizationEvents,
   SummaryEvents,
   type SummaryCompletedEvent,
   type BookmarkClassifiedEvent,
   type FolderProfileUpdatedEvent,
-} from "./index";
+} from "./event-types";
 import { logger } from "@/lib/logger";
 
 // ============================================================================

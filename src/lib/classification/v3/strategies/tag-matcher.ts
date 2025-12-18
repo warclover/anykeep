@@ -16,12 +16,15 @@
  * - 用户可理解的推荐理由
  */
 
-import type { IMatcher, MatcherOptions } from "../../strategies/interfaces";
-import type { MatchResult, MatcherContext } from "../../types";
+import type {
+  IMatcher,
+  MatcherOptions,
+} from "@/lib/classification/strategies/interfaces";
+import type { MatchResult, MatcherContext } from "@/lib/classification/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
 import { logger } from "@/lib/logger";
-import { truncate } from "../../utils/text-utils";
+import { truncate } from "@/lib/classification/utils/text-utils";
 
 // ============================================================================
 // 类型定义

@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useSafeNavigation } from "@/contexts/navigation-context";
 import { useHomePageSafe } from "@/contexts/home-page-context";
+import { uiEventBus, UIEvents } from "@/lib/shared/event-bus";
 
 // 平台配置（内容平台 + 浏览器书签统一入口 + MD文档入口）
 const platforms = [
@@ -82,26 +83,16 @@ export function PlatformFilter() {
     // 如果有 Context，不需要事件监听（Context 已处理同步）
     if (homeContext) return;
 
-    const handleFlipCardChange = (event: CustomEvent<boolean>) => {
-      setLocalEnableFlipCard(event.detail);
-    };
+    const unsubscribe = uiEventBus.on(UIEvents.FLIP_CARD_CHANGE, (payload) => {
+      setLocalEnableFlipCard(payload.enabled);
+    });
 
-    window.addEventListener(
-      "flipCardChange",
-      handleFlipCardChange as EventListener,
-    );
-
-    return () => {
-      window.removeEventListener(
-        "flipCardChange",
-        handleFlipCardChange as EventListener,
-      );
-    };
+    return unsubscribe;
   }, [homeContext]);
 
   /**
    * 切换翻转卡片状态
-   * 优先使用 Context，Fallback 到 Window Event
+   * 优先使用 Context，Fallback 到 UIEventBus
    */
   const handleFlipToggle = () => {
     const newValue = !enableFlipCard;
@@ -110,18 +101,16 @@ export function PlatformFilter() {
       // Phase 3.2: 使用 Context
       homeContext.view.setEnableFlipCard(newValue);
     } else {
-      // Fallback: 旧的 Window Event 方式
+      // Fallback: UIEventBus（内置 Legacy Bridge 保持兼容）
       setLocalEnableFlipCard(newValue);
       localStorage.setItem(FLIP_CARD_STORAGE_KEY, String(newValue));
-      window.dispatchEvent(
-        new CustomEvent("flipCardChange", { detail: newValue }),
-      );
+      uiEventBus.emit(UIEvents.FLIP_CARD_CHANGE, { enabled: newValue });
     }
   };
 
   /**
    * 切换平台
-   * 优先使用 Context，Fallback 到 Window Event
+   * 优先使用 Context，Fallback 到 UIEventBus
    */
   const handlePlatformChange = (platformValue: string, href: string | null) => {
     // 如果有独立页面跳转链接，直接导航
@@ -140,7 +129,7 @@ export function PlatformFilter() {
       homeContext.filter.setPlatform(platformValue);
       homeContext.filter.setFolder(""); // 切换平台时清除文件夹
     } else {
-      // Fallback: 旧的方式
+      // Fallback: UIEventBus（内置 Legacy Bridge 保持兼容）
       // 1. 立即更新本地状态（UI 即时响应）
       setLocalPlatform(platformValue);
       setLocalFolder(""); // 切换平台时清除文件夹
@@ -160,12 +149,11 @@ export function PlatformFilter() {
         newUrl,
       );
 
-      // 3. 触发自定义事件通知 HomePageClient 平台已变化
-      window.dispatchEvent(
-        new CustomEvent("platformChange", {
-          detail: { platform: platformValue, folder: "" },
-        }),
-      );
+      // 3. 触发事件通知 HomePageClient 平台已变化
+      uiEventBus.emit(UIEvents.PLATFORM_CHANGE, {
+        platform: platformValue,
+        folder: "",
+      });
     }
   };
 

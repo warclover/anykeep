@@ -32,7 +32,10 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
-import type { IMatcher, IScoreAggregator } from "../../strategies/interfaces";
+import type {
+  IMatcher,
+  IScoreAggregator,
+} from "@/lib/classification/strategies/interfaces";
 import type {
   ClassificationResult,
   BookmarkInput,
@@ -40,8 +43,8 @@ import type {
   MatchResult,
   MatcherScoreDetail,
   DecisionReason,
-} from "../../types";
-import { generateTraceId } from "../../types";
+} from "@/lib/classification/types";
+import { generateTraceId } from "@/lib/classification/types";
 import { logger } from "@/lib/logger";
 import { getCorrectionCache } from "./correction-cache.service";
 

@@ -10,6 +10,7 @@
 import { useCallback, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { uiEventBus, UIEvents } from "@/lib/shared/event-bus";
 
 // Hooks
 import {
@@ -158,10 +159,8 @@ export function QuickAddBookmark({
       // Trigger callback
       onBookmarkCreated?.(newBookmark);
 
-      // Dispatch custom event for other components
-      window.dispatchEvent(
-        new CustomEvent("bookmarkCreated", { detail: newBookmark }),
-      );
+      // Dispatch event for other components
+      uiEventBus.emit(UIEvents.BOOKMARK_CREATED, { bookmark: newBookmark });
 
       // Close drawer if open
       if (drawerState === "open") {
