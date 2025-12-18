@@ -11,7 +11,7 @@
 
 "use client";
 
-import { useCallback, useRef, memo, useMemo } from "react";
+import { useCallback, useRef, memo, useMemo, forwardRef } from "react";
 import { VirtuosoGrid, type VirtuosoGridHandle } from "react-virtuoso";
 import { Loader2 } from "lucide-react";
 import { BookmarkCard } from "./bookmark-card";
@@ -118,42 +118,44 @@ const GridBookmarkItem = memo(function GridBookmarkItem({
 });
 
 /**
- * 网格列表容器组件
+ * 网格列表容器组件（支持 ref 转发）
  */
-const ListContainer = memo(function ListContainer({
-  className,
-  children,
-  style,
-  layoutMode = "row",
-  ...props
-}: {
+interface ListContainerProps {
   className?: string;
   children?: React.ReactNode;
   style?: React.CSSProperties;
   layoutMode?: "auto" | "row" | "column";
-}) {
-  // auto 模式映射为 row
-  const effectiveLayoutMode = layoutMode === "auto" ? "row" : layoutMode;
+}
 
-  return (
-    <div
-      className={cn(
-        // 基础网格样式
-        "grid gap-4 p-4",
-        // 响应式列数：移动端1列，sm 2列，md 2列，lg 3列，xl 4列
-        "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4",
-        // 布局模式
-        effectiveLayoutMode === "row" && "auto-rows-fr",
-        effectiveLayoutMode === "column" && "grid-flow-col",
-        className,
-      )}
-      style={style}
-      {...props}
-    >
-      {children}
-    </div>
-  );
-});
+const ListContainer = memo(
+  forwardRef<HTMLDivElement, ListContainerProps>(function ListContainer(
+    { className, children, style, layoutMode = "row", ...props },
+    ref,
+  ) {
+    // auto 模式映射为 row
+    const effectiveLayoutMode = layoutMode === "auto" ? "row" : layoutMode;
+
+    return (
+      <div
+        ref={ref}
+        className={cn(
+          // 基础网格样式
+          "grid gap-4 p-4",
+          // 响应式列数：移动端1列，sm 2列，md 2列，lg 3列，xl 4列
+          "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4",
+          // 布局模式
+          effectiveLayoutMode === "row" && "auto-rows-fr",
+          effectiveLayoutMode === "column" && "grid-flow-col",
+          className,
+        )}
+        style={style}
+        {...props}
+      >
+        {children}
+      </div>
+    );
+  }),
+);
 
 /**
  * 单个网格项容器组件
@@ -233,14 +235,26 @@ export function VirtualBookmarkGrid({
     }
   }, [hasMore, isLoadingMore, onLoadMore]);
 
+  // 创建支持 ref 转发的 List 组件
+  const List = useMemo(
+    () =>
+      forwardRef<
+        HTMLDivElement,
+        {
+          className?: string;
+          children?: React.ReactNode;
+          style?: React.CSSProperties;
+        }
+      >(function List(props, ref) {
+        return <ListContainer {...props} ref={ref} layoutMode={layoutMode} />;
+      }),
+    [layoutMode],
+  );
+
   // Memoized 组件引用
   const components = useMemo(
     () => ({
-      List: (props: {
-        className?: string;
-        children?: React.ReactNode;
-        style?: React.CSSProperties;
-      }) => <ListContainer {...props} layoutMode={layoutMode} />,
+      List,
       Item: ItemContainer,
       Footer: () =>
         isLoadingMore ? (
@@ -249,7 +263,7 @@ export function VirtualBookmarkGrid({
           </div>
         ) : null,
     }),
-    [layoutMode, isLoadingMore],
+    [List, isLoadingMore],
   );
 
   if (bookmarks.length === 0) {

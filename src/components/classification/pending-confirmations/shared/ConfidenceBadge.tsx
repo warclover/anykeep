@@ -90,7 +90,7 @@ export function ConfidenceBadge({
   return (
     <TooltipProvider>
       <Tooltip>
-        <TooltipTrigger asChild>{badge}</TooltipTrigger>
+        <TooltipTrigger>{badge}</TooltipTrigger>
         <TooltipContent>
           <p className="font-medium">AI 置信度: {level}</p>
           <p className="text-xs text-muted-foreground">

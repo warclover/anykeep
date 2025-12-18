@@ -251,7 +251,7 @@ export function RelatedBookmarksV2({
                           {/* 关联类型徽章 */}
                           <div className="flex items-center gap-2 mt-1.5">
                             <Tooltip>
-                              <TooltipTrigger asChild>
+                              <TooltipTrigger>
                                 <Badge
                                   variant="outline"
                                   className={cn(

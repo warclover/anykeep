@@ -382,7 +382,8 @@ export function useBookmarksSWR(
   useEffect(() => {
     if (initialData && initialData.length > 0) {
       setData(initialData);
-      setHasMore(initialData.length === 50);
+      // 使用传入的 pageSize 判断是否有更多数据（与初始化逻辑保持一致）
+      setHasMore(initialData.length === pageSize);
       setIsLoading(false);
 
       // 缓存初始数据
@@ -390,7 +391,7 @@ export function useBookmarksSWR(
         cacheKey,
         fetcher: async () => ({
           bookmarks: initialData,
-          hasMore: initialData.length === 50,
+          hasMore: initialData.length === pageSize,
         }),
       });
     }

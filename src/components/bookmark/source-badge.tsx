@@ -375,7 +375,7 @@ export function SourceBadge({
   return (
     <TooltipProvider>
       <Tooltip>
-        <TooltipTrigger asChild>{badge}</TooltipTrigger>
+        <TooltipTrigger>{badge}</TooltipTrigger>
         <TooltipContent side="top" className="max-w-xs">
           <div className="space-y-1">
             <p className="font-medium">{displayName}</p>
