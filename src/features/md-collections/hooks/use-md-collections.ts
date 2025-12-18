@@ -11,6 +11,10 @@ import type { MdCollection, MdCollectionListParams } from "../types";
 interface UseMdCollectionsOptions extends MdCollectionListParams {
   /** 是否自动加载 */
   autoLoad?: boolean;
+  /** 服务端预取的初始数据 */
+  initialData?: MdCollection[];
+  /** 服务端预取的分页状态 */
+  initialHasMore?: boolean;
 }
 
 interface UseMdCollectionsReturn {
@@ -50,13 +54,19 @@ export function useMdCollections(
     sort = "created_desc",
     isRead,
     isStarred,
+    initialData = [],
+    initialHasMore,
   } = options;
 
-  const [collections, setCollections] = useState<MdCollection[]>([]);
+  // 使用预取数据初始化状态，避免 loading 闪烁
+  const [collections, setCollections] = useState<MdCollection[]>(initialData);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [hasMore, setHasMore] = useState(true);
-  const [nextCursor, setNextCursor] = useState<number | null>(null);
+  const [hasMore, setHasMore] = useState(initialHasMore ?? true);
+  // 从预取数据推断 nextCursor
+  const [nextCursor, setNextCursor] = useState<number | null>(
+    initialData.length > 0 ? initialData[initialData.length - 1].id : null,
+  );
 
   /**
    * 构建查询参数

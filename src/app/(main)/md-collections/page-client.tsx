@@ -55,15 +55,21 @@ import {
 interface MdCollectionPageClientProps {
   hasAccess: boolean;
   membershipType: string;
+  /** 服务端预取的数据 */
+  initialData?: MdCollection[];
+  /** 服务端预取的分页状态 */
+  initialHasMore?: boolean;
 }
 
 export function MdCollectionPageClient({
   hasAccess,
   membershipType: _membershipType,
+  initialData = [],
+  initialHasMore = true,
 }: MdCollectionPageClientProps) {
   const router = useRouter();
 
-  // 数据获取
+  // 数据获取（使用预取数据，避免重复请求）
   const {
     collections,
     isLoading,
@@ -73,7 +79,11 @@ export function MdCollectionPageClient({
     refresh,
     removeLocal,
     addLocal,
-  } = useMdCollections({ autoLoad: hasAccess });
+  } = useMdCollections({
+    autoLoad: hasAccess && initialData.length === 0, // 仅在无预取数据时自动加载
+    initialData,
+    initialHasMore,
+  });
 
   // 删除操作
   const { remove: deleteCollection, isLoading: isDeleting } =
