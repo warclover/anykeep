@@ -1,17 +1,22 @@
 /**
  * 认证缓存优化模块
- * 解决 API 路由中重复调用 getUser() 导致的性能问题
+ * @version V4.2.8 - 集成本地 JWT 验证优化
  *
  * 优化策略：
  * 1. 使用 React cache() 实现请求级别缓存
- * 2. 同一请求内多次调用只执行一次实际验证
+ * 2. 优先使用本地 JWT 验证（~1-5ms）
+ * 3. 仅在必要时回退到 Supabase 网络验证（~1000-2000ms）
  *
- * 性能提升：避免 ~200ms 的重复认证延迟
+ * 性能提升：
+ * - 优化前：每次 ~1000-2000ms（网络请求）
+ * - 优化后：大多数请求 ~1-5ms（本地验证）
  */
 
 import { cache } from "react";
+import { cookies } from "next/headers";
 import { createClient } from "./server";
 import type { User } from "@supabase/supabase-js";
+import { verifyJwtLocally, extractAccessToken } from "@/lib/auth/jwt-verifier";
 
 /**
  * 认证结果类型
@@ -19,13 +24,19 @@ import type { User } from "@supabase/supabase-js";
 interface AuthResult {
   user: User | null;
   error: Error | null;
+  /** 认证方式：local（本地JWT）或 network（Supabase网络请求） */
+  authMethod?: "local" | "network";
+  /** 认证耗时（毫秒） */
+  authDuration?: number;
 }
 
 /**
  * 缓存的认证函数（请求级别）
  *
- * 使用 React 的 cache() 函数确保在同一请求生命周期内
- * 多次调用只会执行一次实际的 getUser() 验证
+ * 优化策略：
+ * 1. 先尝试本地 JWT 验证（~1-5ms）
+ * 2. 如果 Token 有效且未即将过期，直接返回用户信息
+ * 3. 如果 Token 即将过期或本地验证失败，回退到 Supabase 网络验证
  *
  * @example
  * // 在 API route 中使用
@@ -35,21 +46,68 @@ interface AuthResult {
  * }
  */
 export const getCachedUser = cache(async (): Promise<AuthResult> => {
+  const startTime = performance.now();
+
   try {
+    // ============================================
+    // Step 1: 尝试本地 JWT 验证（快速路径）
+    // ============================================
+    const cookieStore = await cookies();
+    const accessToken = extractAccessToken(cookieStore);
+
+    if (accessToken) {
+      const localResult = await verifyJwtLocally(accessToken);
+
+      // 本地验证成功且 Token 未即将过期
+      if (localResult.valid && !localResult.nearExpiry && localResult.payload) {
+        const authDuration = performance.now() - startTime;
+
+        // 构造一个简化的 User 对象（本地验证无法获取完整 User）
+        const localUser: User = {
+          id: localResult.payload.sub,
+          email: localResult.payload.email,
+          app_metadata: localResult.payload.app_metadata || {},
+          user_metadata: localResult.payload.user_metadata || {},
+          aud: "authenticated",
+          created_at: "",
+        } as User;
+
+        return {
+          user: localUser,
+          error: null,
+          authMethod: "local",
+          authDuration,
+        };
+      }
+
+      // Token 即将过期或验证失败，回退到网络验证
+    }
+
+    // ============================================
+    // Step 2: 回退到 Supabase 网络验证
+    // ============================================
     const supabase = await createClient();
     const {
       data: { user },
       error,
     } = await supabase.auth.getUser();
 
+    const authDuration = performance.now() - startTime;
+
     return {
       user,
       error: error ? new Error(error.message) : null,
+      authMethod: "network",
+      authDuration,
     };
   } catch (err) {
+    const authDuration = performance.now() - startTime;
+
     return {
       user: null,
       error: err instanceof Error ? err : new Error(String(err)),
+      authMethod: "network",
+      authDuration,
     };
   }
 });

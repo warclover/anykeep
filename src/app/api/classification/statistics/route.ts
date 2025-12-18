@@ -49,7 +49,8 @@ export async function GET(request: NextRequest) {
 
     // 解析查询参数
     const { searchParams } = new URL(request.url);
-    const period = (searchParams.get("period") as StatisticsQueryParams["period"]) || "all";
+    const period =
+      (searchParams.get("period") as StatisticsQueryParams["period"]) || "all";
 
     // 计算时间范围
     let startDate: Date | null = null;
@@ -88,10 +89,14 @@ export async function GET(request: NextRequest) {
       .eq("user_id", user.id);
 
     if (startDate) {
-      confirmationQuery = confirmationQuery.gte("created_at", startDate.toISOString());
+      confirmationQuery = confirmationQuery.gte(
+        "created_at",
+        startDate.toISOString(),
+      );
     }
 
-    const { data: confirmationData, error: confirmationError } = await confirmationQuery;
+    const { data: confirmationData, error: confirmationError } =
+      await confirmationQuery;
 
     // 统计各状态数量
     const confirmationStats = {
@@ -156,45 +161,73 @@ export async function GET(request: NextRequest) {
 
       // 计算平均可信度
       if (sourceStats.totalSources > 0) {
-        sourceStats.avgTrustScore = Math.round(totalTrustScore / sourceStats.totalSources);
+        sourceStats.avgTrustScore = Math.round(
+          totalTrustScore / sourceStats.totalSources,
+        );
       }
     }
 
     // 获取书签分类统计
-    let bookmarkQuery = supabase
+    // V4.2.8: 修复统计错误 - 使用分离的 count 查询，避免 Supabase 默认 1000 行限制
+    // 同时统一口径：排除垃圾箱中的书签，与 bookmarks API 保持一致
+
+    // 查询1：已分类的书签数量（folder_id 不为空）
+    let classifiedQuery = supabase
       .from("bookmarks")
-      .select("folder_id", { count: "exact" })
+      .select("id", { count: "exact", head: true })
       .eq("user_id", user.id)
-      .is("deleted_at", null);
+      .is("deleted_at", null)
+      .eq("is_in_trash", false) // 排除垃圾箱
+      .not("folder_id", "is", null);
 
     if (startDate) {
-      bookmarkQuery = bookmarkQuery.gte("created_at", startDate.toISOString());
+      classifiedQuery = classifiedQuery.gte(
+        "created_at",
+        startDate.toISOString(),
+      );
     }
 
-    const { data: bookmarkData, count: totalBookmarks } = await bookmarkQuery;
+    // 查询2：未分类的书签数量（folder_id 为空）
+    let unclassifiedQuery = supabase
+      .from("bookmarks")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .is("deleted_at", null)
+      .eq("is_in_trash", false) // 排除垃圾箱
+      .is("folder_id", null);
+
+    if (startDate) {
+      unclassifiedQuery = unclassifiedQuery.gte(
+        "created_at",
+        startDate.toISOString(),
+      );
+    }
+
+    // 并行执行两个查询
+    const [classifiedResult, unclassifiedResult] = await Promise.all([
+      classifiedQuery,
+      unclassifiedQuery,
+    ]);
+
+    const classifiedCount = classifiedResult.count || 0;
+    const unclassifiedCount = unclassifiedResult.count || 0;
 
     const bookmarkStats = {
-      total: totalBookmarks || 0,
-      classified: 0, // folder_id 不为空
-      unclassified: 0, // folder_id 为空
+      total: classifiedCount + unclassifiedCount,
+      classified: classifiedCount,
+      unclassified: unclassifiedCount,
     };
-
-    if (bookmarkData) {
-      for (const item of bookmarkData) {
-        if (item.folder_id) {
-          bookmarkStats.classified++;
-        } else {
-          bookmarkStats.unclassified++;
-        }
-      }
-    }
 
     // 计算效率指标
     const efficiency = {
       // 自动分类率
       autoClassificationRate:
         bookmarkStats.total > 0
-          ? Math.round((trustModeStats.autoDecisionsToday / Math.max(bookmarkStats.total, 1)) * 100)
+          ? Math.round(
+              (trustModeStats.autoDecisionsToday /
+                Math.max(bookmarkStats.total, 1)) *
+                100,
+            )
           : 0,
       // 确认采纳率
       confirmationAcceptRate:
@@ -220,7 +253,10 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error({ error: errorMessage }, "GET /api/classification/statistics error");
+    logger.error(
+      { error: errorMessage },
+      "GET /api/classification/statistics error",
+    );
     return internalError("获取分类统计失败");
   }
 }
