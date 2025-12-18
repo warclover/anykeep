@@ -53,10 +53,7 @@ interface UseTrustModeReturn {
   autoConfirmThreshold: number;
 
   // 操作
-  switchMode: (
-    newMode: TrustMode,
-    options?: SwitchOptions,
-  ) => Promise<boolean>;
+  switchMode: (newMode: TrustMode, options?: SwitchOptions) => Promise<boolean>;
   updateConfig: (updates: Partial<TrustModeConfig>) => Promise<boolean>;
   refresh: () => Promise<void>;
 }

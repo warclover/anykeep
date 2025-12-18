@@ -33,6 +33,10 @@
 export { EventBus, eventBus, createEventBus } from "./event-bus";
 export type { EventBusOptions } from "./event-bus";
 
+// UI Event Bus (V4.2 Phase 1)
+export { UIEventBus, uiEventBus, createUIEventBus } from "./ui-event-bus";
+export type { UIEventBusOptions } from "./ui-event-bus";
+
 // System Coordinator (V4.2 GAP-10)
 export {
   SystemCoordinatorService,
@@ -78,40 +82,55 @@ export type {
   CostAlertEvent,
 } from "./event-types";
 
+// UI Event Types (V4.2 Phase 1)
+export type {
+  UIEventTypes,
+  UIEventName,
+  UIEventPayload,
+  ViewModeChangeEvent,
+  LayoutModeChangeEvent,
+  FlipCardChangeEvent,
+  PlatformChangeEvent,
+  UsageTagFilterChangeEvent,
+  OpenDialogEvent,
+  CloseDialogEvent,
+  ToggleSelectionModeEvent,
+  BookmarkCreatedEvent,
+  BookmarkUpdatedEvent,
+  BookmarkDeletedEvent,
+} from "./ui-event-types";
+export { LEGACY_EVENT_MAP } from "./ui-event-types";
+export type { LegacyEventName } from "./ui-event-types";
+
 // ============================================================================
-// 事件名称常量（便于使用）
+// 事件名称常量（从 event-types.ts 重导出，避免循环依赖）
 // ============================================================================
 
-/** 分类模块事件名称 */
-export const ClassificationEvents = {
-  BOOKMARK_CLASSIFIED: "classification:bookmark_classified",
-  BATCH_COMPLETED: "classification:batch_completed",
-  FEEDBACK_RECEIVED: "classification:feedback_received",
-} as const;
+export {
+  ClassificationEvents,
+  OrganizationEvents,
+  JobQueueEvents,
+  CostMonitorEvents,
+  SummaryEvents,
+  KnowledgeLinkEvents,
+} from "./event-types";
 
-/** 自组织模块事件名称 */
-export const OrganizationEvents = {
-  PROFILE_UPDATED: "organization:profile_updated",
-  SUGGESTION_GENERATED: "organization:suggestion_generated",
-  OPERATION_UNDONE: "organization:operation_undone",
-  FOLDER_CREATED: "organization:folder_created",
-  FOLDERS_MERGED: "organization:folders_merged",
-  FOLDER_SPLIT: "organization:folder_split",
-} as const;
-
-/** 任务队列事件名称 */
-export const JobQueueEvents = {
-  ENQUEUED: "job:enqueued",
-  COMPLETED: "job:completed",
-} as const;
-
-/** 成本监控事件名称 */
-export const CostMonitorEvents = {
-  ALERT_TRIGGERED: "cost:alert_triggered",
-} as const;
-
-/** AI 摘要事件名称 (V4.2 GAP-10) */
-export const SummaryEvents = {
-  COMPLETED: "summary:completed",
-  TAGS_GENERATED: "summary:tags_generated",
+/** UI 事件名称 (V4.2 Phase 1) */
+export const UIEvents = {
+  // 视图模式
+  VIEW_MODE_CHANGE: "ui:view:mode:change",
+  LAYOUT_MODE_CHANGE: "ui:view:layout:change",
+  FLIP_CARD_CHANGE: "ui:view:flipCard:change",
+  // 筛选
+  PLATFORM_CHANGE: "ui:filter:platform:change",
+  USAGE_TAGS_CHANGE: "ui:filter:usageTags:change",
+  // 对话框
+  DIALOG_OPEN: "ui:dialog:open",
+  DIALOG_CLOSE: "ui:dialog:close",
+  // 选择模式
+  SELECTION_TOGGLE: "ui:selection:toggle",
+  // 书签
+  BOOKMARK_CREATED: "ui:bookmark:created",
+  BOOKMARK_UPDATED: "ui:bookmark:updated",
+  BOOKMARK_DELETED: "ui:bookmark:deleted",
 } as const;

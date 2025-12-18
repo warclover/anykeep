@@ -177,8 +177,8 @@ export function useChat(): UseChatReturn {
                       prev.map((m) =>
                         m.id === assistantId
                           ? { ...m, content: fullContent }
-                          : m
-                      )
+                          : m,
+                      ),
                     );
                     break;
 
@@ -193,8 +193,8 @@ export function useChat(): UseChatReturn {
                               citations: messageCitations,
                               isStreaming: false,
                             }
-                          : m
-                      )
+                          : m,
+                      ),
                     );
                     break;
 
@@ -216,9 +216,13 @@ export function useChat(): UseChatReturn {
           setMessages((prev) =>
             prev.map((m) =>
               m.id === assistantId
-                ? { ...m, content: m.content + "\n\n[已取消]", isStreaming: false }
-                : m
-            )
+                ? {
+                    ...m,
+                    content: m.content + "\n\n[已取消]",
+                    isStreaming: false,
+                  }
+                : m,
+            ),
           );
         } else {
           setError(err instanceof Error ? err.message : "对话失败");
@@ -230,7 +234,7 @@ export function useChat(): UseChatReturn {
         abortControllerRef.current = null;
       }
     },
-    [messages, isLoading]
+    [messages, isLoading],
   );
 
   /**

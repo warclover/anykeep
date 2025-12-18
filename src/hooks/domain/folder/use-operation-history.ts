@@ -8,7 +8,10 @@
 import { useState, useCallback } from "react";
 import useSWR from "swr";
 import { toast } from "sonner";
-import type { OperationDetail, OperationSnapshotAction } from "@/types/supabase";
+import type {
+  OperationDetail,
+  OperationSnapshotAction,
+} from "@/types/supabase";
 
 /**
  * 操作历史 API 响应
@@ -99,7 +102,7 @@ function buildQueryUrl(options: UseOperationHistoryOptions): string {
  * 操作历史 Hook
  */
 export function useOperationHistory(
-  options: UseOperationHistoryOptions = {}
+  options: UseOperationHistoryOptions = {},
 ): UseOperationHistoryReturn {
   const {
     limit = 50,
@@ -127,7 +130,7 @@ export function useOperationHistory(
     {
       revalidateOnFocus: true,
       refreshInterval: autoRefresh ? refreshInterval : 0,
-    }
+    },
   );
 
   // 提取数据
@@ -168,7 +171,7 @@ export function useOperationHistory(
         setIsUndoing(false);
       }
     },
-    [mutate]
+    [mutate],
   );
 
   /**

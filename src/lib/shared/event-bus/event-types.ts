@@ -327,3 +327,47 @@ export type EventName = keyof EventTypes;
 
 /** 获取事件负载类型 */
 export type EventPayload<K extends EventName> = EventTypes[K];
+
+// ============================================================================
+// 事件名称常量（从 index.ts 移动，避免循环依赖）
+// ============================================================================
+
+/** 分类模块事件名称 */
+export const ClassificationEvents = {
+  BOOKMARK_CLASSIFIED: "classification:bookmark_classified",
+  BATCH_COMPLETED: "classification:batch_completed",
+  FEEDBACK_RECEIVED: "classification:feedback_received",
+} as const;
+
+/** 自组织模块事件名称 */
+export const OrganizationEvents = {
+  PROFILE_UPDATED: "organization:profile_updated",
+  SUGGESTION_GENERATED: "organization:suggestion_generated",
+  OPERATION_UNDONE: "organization:operation_undone",
+  FOLDER_CREATED: "organization:folder_created",
+  FOLDERS_MERGED: "organization:folders_merged",
+  FOLDER_SPLIT: "organization:folder_split",
+} as const;
+
+/** 任务队列事件名称 */
+export const JobQueueEvents = {
+  ENQUEUED: "job:enqueued",
+  COMPLETED: "job:completed",
+} as const;
+
+/** 成本监控事件名称 */
+export const CostMonitorEvents = {
+  ALERT_TRIGGERED: "cost:alert_triggered",
+} as const;
+
+/** AI 摘要事件名称 (V4.2 GAP-10) */
+export const SummaryEvents = {
+  COMPLETED: "summary:completed",
+  TAGS_GENERATED: "summary:tags_generated",
+} as const;
+
+/** 知识关联事件名称 (Phase 2) */
+export const KnowledgeLinkEvents = {
+  DISCOVERED: "link:discovered",
+  REBUILT: "link:rebuilt",
+} as const;

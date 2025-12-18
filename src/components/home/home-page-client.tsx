@@ -25,11 +25,10 @@ import { useAbortableFetch } from "@/hooks/use-abortable-fetch";
 import { useInitData } from "@/hooks/use-init-data";
 import { useBookmarksSWR, cachePerformanceTracker } from "@/lib/cache";
 import { Button } from "@/components/ui/button";
-import { BookmarkCard } from "@/components/bookmark/bookmark-card";
-import { FlipBookmarkCard } from "@/components/bookmark/bookmark-card-flip";
 import { TrashBookmarkCard } from "@/components/bookmark/trash-bookmark-card";
 import { BrowserBookmarkVirtualList } from "@/components/bookmark/browser-bookmark-virtual-list";
 import { VirtualBookmarkList } from "@/components/bookmark/virtual-bookmark-list";
+import { VirtualBookmarkGrid } from "@/components/bookmark/virtual-bookmark-grid";
 import { BrowserBookmarkEmptyState } from "@/components/bookmark/browser-bookmark-empty-state";
 // V3.1: FolderRecommendationToast 已废弃，由 useClassificationPolling 的 toast 通知替代
 import { EmptyState } from "@/components/bookmark/empty-state";
@@ -39,6 +38,7 @@ import { useHomePageContext } from "@/contexts/home-page-context";
 import { useSnapshotFeature } from "@/components/snapshot";
 import { QuickAddBookmark } from "@/components/quick-add";
 import { prefetchCustomUsageTags } from "@/hooks/use-custom-usage-tags";
+import { uiEventBus, UIEvents } from "@/lib/shared/event-bus";
 
 // 懒加载 ReclassifyBanner（非首屏关键组件）
 const ReclassifyBanner = lazy(() =>
@@ -211,10 +211,8 @@ export function HomePageClient({
   const handleFlipCardToggle = () => {
     const newValue = !enableFlipCard;
     setEnableFlipCard(newValue);
-    // 触发自定义事件通知其他组件（如 PlatformFilter）
-    window.dispatchEvent(
-      new CustomEvent("flipCardChange", { detail: newValue }),
-    );
+    // 触发事件通知其他组件（如 PlatformFilter）
+    uiEventBus.emit(UIEvents.FLIP_CARD_CHANGE, { enabled: newValue });
   };
 
   // 计算网格容器的 CSS 类名
@@ -291,9 +289,8 @@ export function HomePageClient({
   // 监听新建收藏事件（乐观更新，将新书签插入列表头部）
   // 单独的 useEffect 以正确处理依赖项，避免闭包问题
   useEffect(() => {
-    const handleBookmarkCreated = (event: Event) => {
-      const customEvent = event as CustomEvent<BookmarkWithFolder>;
-      const newBookmark = customEvent.detail;
+    const unsubscribe = uiEventBus.on(UIEvents.BOOKMARK_CREATED, (payload) => {
+      const newBookmark = payload.bookmark as BookmarkWithFolder;
 
       // 只在「全部」平台或新书签匹配当前平台时插入
       // 避免在筛选其他平台时显示不相关的新书签
@@ -307,13 +304,9 @@ export function HomePageClient({
         // 仅在非虚拟文件夹（如垃圾箱）时插入
         setBookmarks((prev) => [newBookmark, ...prev]);
       }
-    };
+    });
 
-    window.addEventListener("bookmarkCreated", handleBookmarkCreated);
-
-    return () => {
-      window.removeEventListener("bookmarkCreated", handleBookmarkCreated);
-    };
+    return unsubscribe;
   }, [currentPlatform, currentFolder, setBookmarks]);
 
   // 智能轮询：自动更新 PROCESSING 状态的书签
@@ -761,37 +754,22 @@ export function HomePageClient({
               </>
             ) : (
               <>
-                {/* 卡片视图（支持行优先/列优先布局） */}
+                {/* V4.2.2: 卡片视图使用虚拟滚动网格 */}
                 {viewMode === "card" && (
-                  <div className={gridClassName}>
-                    {bookmarks.map((bookmark) => (
-                      <div key={bookmark.id} className="masonry-item">
-                        {enableFlipCard ? (
-                          <FlipBookmarkCard
-                            bookmark={bookmark}
-                            onEdit={handleEdit}
-                            onDelete={handleDelete}
-                            onToggleRead={handleToggleRead}
-                            isSelectionMode={isSelectionMode}
-                            isSelected={selectedIds.has(bookmark.id)}
-                            onToggleSelect={toggleSelect}
-                            enableFlip={true}
-                          />
-                        ) : (
-                          <BookmarkCard
-                            bookmark={bookmark}
-                            onEdit={handleEdit}
-                            onDelete={handleDelete}
-                            onToggleRead={handleToggleRead}
-                            isSelectionMode={isSelectionMode}
-                            isSelected={selectedIds.has(bookmark.id)}
-                            onToggleSelect={toggleSelect}
-                            variant="card"
-                          />
-                        )}
-                      </div>
-                    ))}
-                  </div>
+                  <VirtualBookmarkGrid
+                    bookmarks={bookmarks}
+                    enableFlipCard={enableFlipCard}
+                    hasMore={hasMore}
+                    isLoadingMore={isLoadingMore}
+                    onLoadMore={handleLoadMore}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                    onToggleRead={handleToggleRead}
+                    isSelectionMode={isSelectionMode}
+                    selectedIds={selectedIds}
+                    onToggleSelect={toggleSelect}
+                    layoutMode={layoutMode}
+                  />
                 )}
 
                 {/* V4.2.1: 列表/紧凑视图使用虚拟滚动 */}

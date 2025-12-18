@@ -71,22 +71,56 @@ import { SnapshotMenuItem, useSnapshotFeature } from "@/components/snapshot";
 
 type ViewVariant = "card" | "list" | "compact";
 
+/**
+ * BookmarkCard 组件属性
+ *
+ * @example
+ * ```tsx
+ * // 基本用法
+ * <BookmarkCard
+ *   bookmark={bookmark}
+ *   onEdit={(id) => openEditDialog(id)}
+ *   onDelete={(id) => confirmDelete(id)}
+ * />
+ *
+ * // 批量选择模式
+ * <BookmarkCard
+ *   bookmark={bookmark}
+ *   isSelectionMode={true}
+ *   isSelected={selectedIds.has(bookmark.id)}
+ *   onToggleSelect={(id) => toggleSelect(id)}
+ * />
+ *
+ * // 紧凑列表视图
+ * <BookmarkCard
+ *   bookmark={bookmark}
+ *   variant="compact"
+ * />
+ * ```
+ */
 interface BookmarkCardProps {
+  /** 书签数据（包含可选的 V4.2 扩展字段和文件夹信息） */
   bookmark: Bookmark &
     Partial<BookmarkV42Fields> & {
       folders?: { name: string } | null;
     };
+  /** 编辑回调，传入书签 ID */
   onEdit?: (id: number) => void;
+  /** 删除回调，传入书签 ID */
   onDelete?: (id: number) => void;
+  /** 切换已读状态回调 */
   onToggleRead?: (id: number, isRead: boolean) => void;
-  onToggleStarred?: (id: number, isStarred: boolean) => void; // V8.0新增：星标切换
-  // 批量选择模式
+  /** 切换星标状态回调 (V8.0) */
+  onToggleStarred?: (id: number, isStarred: boolean) => void;
+  /** 是否处于批量选择模式 */
   isSelectionMode?: boolean;
+  /** 当前卡片是否被选中 */
   isSelected?: boolean;
+  /** 切换选中状态回调 */
   onToggleSelect?: (id: number) => void;
-  // 视图模式
+  /** 视图变体：card（卡片）| list（列表）| compact（紧凑） */
   variant?: ViewVariant;
-  // V9.0新增：用户自定义用途标签（用于识别和样式渲染）
+  /** 用户自定义用途标签，用于标签样式渲染 (V9.0) */
   customUsageTags?: CustomUsageTag[];
 }
 

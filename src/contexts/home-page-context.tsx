@@ -22,6 +22,7 @@ import {
   type ReactNode,
 } from "react";
 import type { ViewMode, LayoutMode, DialogType } from "@/components/home/types";
+import { uiEventBus, UIEvents } from "@/lib/shared/event-bus";
 import {
   VIEW_MODE_STORAGE_KEY,
   LAYOUT_MODE_STORAGE_KEY,
@@ -221,33 +222,29 @@ export function HomePageProvider({
   const setViewMode = useCallback((mode: ViewMode) => {
     setViewModeState(mode);
     localStorage.setItem(VIEW_MODE_STORAGE_KEY, mode);
-    // Event Bridge: 同步到旧系统
-    window.dispatchEvent(new CustomEvent("viewModeChange", { detail: mode }));
+    // UIEventBus: 通知其他组件（内置 Legacy Bridge 会自动触发 window event）
+    uiEventBus.emit(UIEvents.VIEW_MODE_CHANGE, { mode });
   }, []);
 
   const setLayoutMode = useCallback((mode: LayoutMode) => {
     setLayoutModeState(mode);
     localStorage.setItem(LAYOUT_MODE_STORAGE_KEY, mode);
-    window.dispatchEvent(new CustomEvent("layoutModeChange", { detail: mode }));
+    uiEventBus.emit(UIEvents.LAYOUT_MODE_CHANGE, { mode });
   }, []);
 
   const setEnableFlipCard = useCallback((enabled: boolean) => {
     setEnableFlipCardState(enabled);
     localStorage.setItem(FLIP_CARD_STORAGE_KEY, String(enabled));
-    window.dispatchEvent(
-      new CustomEvent("flipCardChange", { detail: enabled }),
-    );
+    uiEventBus.emit(UIEvents.FLIP_CARD_CHANGE, { enabled });
   }, []);
 
   // ========== 筛选操作 ==========
   const setPlatform = useCallback((newPlatform: string) => {
     setPlatformState(newPlatform);
-    // 注意：platformChange 事件的 payload 格式与旧系统一致
-    window.dispatchEvent(
-      new CustomEvent("platformChange", {
-        detail: { platform: newPlatform, folder: "" },
-      }),
-    );
+    uiEventBus.emit(UIEvents.PLATFORM_CHANGE, {
+      platform: newPlatform,
+      folder: "",
+    });
   }, []);
 
   const setFolder = useCallback((newFolder: string) => {
@@ -256,137 +253,90 @@ export function HomePageProvider({
 
   const setUsageTags = useCallback((tags: string[]) => {
     setUsageTagsState(tags);
-    window.dispatchEvent(
-      new CustomEvent("usageTagFilterChange", { detail: { usageTags: tags } }),
-    );
+    uiEventBus.emit(UIEvents.USAGE_TAGS_CHANGE, { usageTags: tags });
   }, []);
 
   // ========== 对话框操作 ==========
   const openDialogAction = useCallback((type: DialogType) => {
     setOpenDialogState(type);
-    window.dispatchEvent(new CustomEvent("openDialog", { detail: type }));
+    uiEventBus.emit(UIEvents.DIALOG_OPEN, { type });
   }, []);
 
   const closeDialog = useCallback(() => {
     setOpenDialogState(null);
+    uiEventBus.emit(UIEvents.DIALOG_CLOSE, {});
   }, []);
 
   // ========== 选择模式操作 ==========
   const setSelectionMode = useCallback((enabled: boolean) => {
     setIsSelectionModeState(enabled);
-    window.dispatchEvent(
-      new CustomEvent("toggleSelectionMode", { detail: enabled }),
-    );
+    uiEventBus.emit(UIEvents.SELECTION_TOGGLE, { enabled });
   }, []);
 
   const toggleSelectionMode = useCallback(() => {
     setIsSelectionModeState((prev) => {
       const newValue = !prev;
-      window.dispatchEvent(
-        new CustomEvent("toggleSelectionMode", { detail: newValue }),
-      );
+      uiEventBus.emit(UIEvents.SELECTION_TOGGLE, { enabled: newValue });
       return newValue;
     });
   }, []);
 
-  // ========== Event Bridge: 监听旧系统事件 ==========
+  // ========== Event Bridge: 通过 UIEventBus 订阅外部事件 ==========
+  // V4.2: 完全迁移到 UIEventBus，替代 window.addEventListener
   useEffect(() => {
     if (!enableEventBridge) return;
 
-    // 监听视图模式变化
-    const handleViewModeEvent = (e: CustomEvent<ViewMode>) => {
-      setViewModeState(e.detail);
-    };
-    const handleLayoutModeEvent = (e: CustomEvent<LayoutMode>) => {
-      setLayoutModeState(e.detail);
-    };
-    const handleFlipCardEvent = (e: CustomEvent<boolean>) => {
-      setEnableFlipCardState(e.detail);
-    };
+    const unsubscribers: (() => void)[] = [];
 
-    // 监听筛选变化
-    const handlePlatformEvent = (
-      e: CustomEvent<{ platform: string; folder: string }>,
-    ) => {
-      setPlatformState(e.detail.platform);
-      if (e.detail.folder !== undefined) {
-        setFolderState(e.detail.folder);
-      }
-    };
-    const handleUsageTagEvent = (e: CustomEvent<{ usageTags: string[] }>) => {
-      setUsageTagsState(e.detail.usageTags);
-    };
-
-    // 监听对话框事件
-    const handleOpenDialogEvent = (e: CustomEvent<DialogType>) => {
-      setOpenDialogState(e.detail);
-    };
-
-    // 监听选择模式事件
-    const handleSelectionModeEvent = (e: CustomEvent<boolean>) => {
-      setIsSelectionModeState(e.detail);
-    };
-
-    // 订阅事件
-    window.addEventListener(
-      "viewModeChange",
-      handleViewModeEvent as EventListener,
+    // 订阅视图模式变化
+    unsubscribers.push(
+      uiEventBus.on(UIEvents.VIEW_MODE_CHANGE, (payload) => {
+        setViewModeState(payload.mode);
+      }),
     );
-    window.addEventListener(
-      "layoutModeChange",
-      handleLayoutModeEvent as EventListener,
+    unsubscribers.push(
+      uiEventBus.on(UIEvents.LAYOUT_MODE_CHANGE, (payload) => {
+        setLayoutModeState(payload.mode);
+      }),
     );
-    window.addEventListener(
-      "flipCardChange",
-      handleFlipCardEvent as EventListener,
-    );
-    window.addEventListener(
-      "platformChange",
-      handlePlatformEvent as EventListener,
-    );
-    window.addEventListener(
-      "usageTagFilterChange",
-      handleUsageTagEvent as EventListener,
-    );
-    window.addEventListener(
-      "openDialog",
-      handleOpenDialogEvent as EventListener,
-    );
-    window.addEventListener(
-      "toggleSelectionMode",
-      handleSelectionModeEvent as EventListener,
+    unsubscribers.push(
+      uiEventBus.on(UIEvents.FLIP_CARD_CHANGE, (payload) => {
+        setEnableFlipCardState(payload.enabled);
+      }),
     );
 
-    // 清理
+    // 订阅筛选变化
+    unsubscribers.push(
+      uiEventBus.on(UIEvents.PLATFORM_CHANGE, (payload) => {
+        setPlatformState(payload.platform);
+        if (payload.folder !== undefined) {
+          setFolderState(payload.folder);
+        }
+      }),
+    );
+    unsubscribers.push(
+      uiEventBus.on(UIEvents.USAGE_TAGS_CHANGE, (payload) => {
+        setUsageTagsState(payload.usageTags);
+      }),
+    );
+
+    // 订阅对话框事件
+    unsubscribers.push(
+      uiEventBus.on(UIEvents.DIALOG_OPEN, (payload) => {
+        setOpenDialogState(payload.type);
+      }),
+    );
+
+    // 订阅选择模式事件
+    unsubscribers.push(
+      uiEventBus.on(UIEvents.SELECTION_TOGGLE, (payload) => {
+        setIsSelectionModeState(payload.enabled);
+      }),
+    );
+
+    // 清理所有订阅
     return () => {
-      window.removeEventListener(
-        "viewModeChange",
-        handleViewModeEvent as EventListener,
-      );
-      window.removeEventListener(
-        "layoutModeChange",
-        handleLayoutModeEvent as EventListener,
-      );
-      window.removeEventListener(
-        "flipCardChange",
-        handleFlipCardEvent as EventListener,
-      );
-      window.removeEventListener(
-        "platformChange",
-        handlePlatformEvent as EventListener,
-      );
-      window.removeEventListener(
-        "usageTagFilterChange",
-        handleUsageTagEvent as EventListener,
-      );
-      window.removeEventListener(
-        "openDialog",
-        handleOpenDialogEvent as EventListener,
-      );
-      window.removeEventListener(
-        "toggleSelectionMode",
-        handleSelectionModeEvent as EventListener,
-      );
+      unsubscribers.forEach((unsub) => unsub());
     };
   }, [enableEventBridge]);
 

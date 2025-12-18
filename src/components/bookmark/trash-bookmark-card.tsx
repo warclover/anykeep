@@ -1,11 +1,12 @@
 /**
  * 垃圾箱收藏卡片组件
  * 显示垃圾箱中的收藏,包含剩余天数、恢复和永久删除功能
+ * V4.2: 使用 React.memo 优化，避免列表中其他卡片变化时的不必要重渲染
  */
 
 "use client";
 
-import { useState } from "react";
+import { useState, memo } from "react";
 import Link from "next/link";
 import { RotateCcw, Trash2, ExternalLink, Clock, Calendar } from "lucide-react";
 import {
@@ -51,7 +52,7 @@ function calculateRemainingDays(trashedAt: string | null): number {
   return Math.max(0, remaining);
 }
 
-export function TrashBookmarkCard({
+export const TrashBookmarkCard = memo(function TrashBookmarkCard({
   bookmark,
   onRestore,
   onPermanentDelete,
@@ -259,4 +260,4 @@ export function TrashBookmarkCard({
       </CardContent>
     </Card>
   );
-}
+});

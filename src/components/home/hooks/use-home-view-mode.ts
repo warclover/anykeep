@@ -18,6 +18,7 @@ import {
   LAYOUT_MODE_STORAGE_KEY,
   FLIP_CARD_STORAGE_KEY,
 } from "../constants";
+import { uiEventBus, UIEvents } from "@/lib/shared/event-bus";
 
 interface UseHomeViewModeOptions {
   /** 是否为浏览器书签平台（强制使用列表视图） */
@@ -105,46 +106,34 @@ export function useHomeViewMode({
     localStorage.setItem(FLIP_CARD_STORAGE_KEY, String(enabled));
   }, []);
 
-  // 监听全局事件（从其他组件更新）
+  // 监听 UIEventBus 事件（从其他组件更新）
+  // V4.2: 迁移到 UIEventBus，替代 window.addEventListener
   useEffect(() => {
-    const handleViewModeChange = (event: CustomEvent<ViewMode>) => {
-      setViewModeState(event.detail);
-    };
-
-    const handleLayoutModeChange = (event: CustomEvent<LayoutMode>) => {
-      setLayoutModeState(event.detail);
-    };
-
-    const handleFlipCardChange = (event: CustomEvent<boolean>) => {
-      setEnableFlipCardState(event.detail);
-    };
-
-    window.addEventListener(
-      "viewModeChange",
-      handleViewModeChange as EventListener,
+    const unsubViewMode = uiEventBus.on(
+      UIEvents.VIEW_MODE_CHANGE,
+      (payload) => {
+        setViewModeState(payload.mode);
+      },
     );
-    window.addEventListener(
-      "layoutModeChange",
-      handleLayoutModeChange as EventListener,
+
+    const unsubLayoutMode = uiEventBus.on(
+      UIEvents.LAYOUT_MODE_CHANGE,
+      (payload) => {
+        setLayoutModeState(payload.mode);
+      },
     );
-    window.addEventListener(
-      "flipCardChange",
-      handleFlipCardChange as EventListener,
+
+    const unsubFlipCard = uiEventBus.on(
+      UIEvents.FLIP_CARD_CHANGE,
+      (payload) => {
+        setEnableFlipCardState(payload.enabled);
+      },
     );
 
     return () => {
-      window.removeEventListener(
-        "viewModeChange",
-        handleViewModeChange as EventListener,
-      );
-      window.removeEventListener(
-        "layoutModeChange",
-        handleLayoutModeChange as EventListener,
-      );
-      window.removeEventListener(
-        "flipCardChange",
-        handleFlipCardChange as EventListener,
-      );
+      unsubViewMode();
+      unsubLayoutMode();
+      unsubFlipCard();
     };
   }, []);
 

@@ -1,12 +1,13 @@
 /**
  * 翻转卡片组件 - 基于 VueConf 设计
+ * V4.2: 使用 React.memo 优化，避免列表中其他卡片变化时的不必要重渲染
  * 正面：封面 + 标题 + 标签（简洁）
  * 背面：AI 摘要 + 详细信息
  */
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, memo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { RotateCcw, ExternalLink, FileText, Check } from "lucide-react";
@@ -36,7 +37,7 @@ interface FlipBookmarkCardProps {
   enableFlip?: boolean; // 是否启用翻转效果
 }
 
-export function FlipBookmarkCard({
+export const FlipBookmarkCard = memo(function FlipBookmarkCard({
   bookmark,
   onEdit: _onEdit,
   onDelete: _onDelete,
@@ -370,4 +371,4 @@ export function FlipBookmarkCard({
       </div>
     </div>
   );
-}
+});
