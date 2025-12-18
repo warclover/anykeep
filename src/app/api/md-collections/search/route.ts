@@ -10,6 +10,7 @@ import { createClient } from "@/lib/supabase/server";
 import {
   successResponse,
   unauthorizedError,
+  forbiddenError,
   badRequestError,
   internalError,
 } from "@/lib/utils/api-response";
@@ -55,6 +56,7 @@ async function searchMdSemantic(
     const queryEmbedding = await generateEmbedding(query);
 
     // 调用数据库语义搜索函数
+    // @ts-expect-error RPC 函数 search_md_collections_semantic 未在自动生成的类型定义中
     const { data, error } = await supabase.rpc(
       "search_md_collections_semantic",
       {
@@ -73,7 +75,7 @@ async function searchMdSemantic(
       return { data: null, error: new Error(error.message) };
     }
 
-    return { data: data as MdSearchResult[], error: null };
+    return { data: data as unknown as MdSearchResult[], error: null };
   } catch (error) {
     logger.error(
       {
@@ -163,7 +165,7 @@ export async function GET(request: NextRequest) {
       .single();
 
     if (profile?.membership_type !== "PRO") {
-      return unauthorizedError("MD 收藏搜索功能仅限 Pro 用户使用");
+      return forbiddenError("MD 收藏搜索功能仅限 Pro 用户使用");
     }
 
     // 3. 解析查询参数

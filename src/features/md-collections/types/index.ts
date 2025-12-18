@@ -60,6 +60,7 @@ export interface MdCollectionCreateRequest {
   folderId?: number;
   userTags?: string[];
   notes?: string;
+  contentType?: MdContentType;
 }
 
 /**
@@ -96,8 +97,12 @@ export interface MdCollectionListParams {
   limit?: number;
   folderId?: number;
   search?: string;
+  keyword?: string;
   tags?: string[];
   sort?: MdCollectionSortType;
+  contentType?: MdContentType;
+  isRead?: boolean;
+  isStarred?: boolean;
 }
 
 /**

@@ -168,4 +168,5 @@ export const PAGINATION_DEFAULTS = {
  */
 export const STORAGE_KEYS = {
   viewMode: "md-collections-view-mode",
+  VIEW_PREFERENCE: "md-collections-view-preference",
 } as const;

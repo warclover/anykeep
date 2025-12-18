@@ -31,16 +31,20 @@ const SyntaxHighlighter = dynamic(
   },
 );
 
-// 动态导入样式
-let oneDark: Record<string, React.CSSProperties> = {};
-let oneLight: Record<string, React.CSSProperties> = {};
+// 动态导入样式（使用 vscDarkPlus 和 vs 替代 oneDark/oneLight）
+let darkTheme: Record<string, React.CSSProperties> = {};
+let lightTheme: Record<string, React.CSSProperties> = {};
 
 if (typeof window !== "undefined") {
   import("react-syntax-highlighter/dist/cjs/styles/prism").then((styles) => {
-    oneDark = styles.oneDark;
-    oneLight = styles.oneLight;
+    darkTheme = styles.vscDarkPlus;
+    lightTheme = styles.vs;
   });
 }
+
+// 为兼容性导出别名
+const oneDark = darkTheme;
+const oneLight = lightTheme;
 
 interface MdRendererProps {
   /** Markdown 内容 */

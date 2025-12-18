@@ -96,11 +96,14 @@ export async function POST(request: NextRequest) {
     const fileExtension = fileName.substring(fileName.lastIndexOf("."));
     const mimeType = file.type;
 
-    if (!ALLOWED_EXTENSIONS.includes(fileExtension)) {
+    if (!(ALLOWED_EXTENSIONS as readonly string[]).includes(fileExtension)) {
       return badRequestError(MD_COLLECTION.INVALID_FILE_TYPE);
     }
 
-    if (mimeType && !ALLOWED_MIME_TYPES.includes(mimeType)) {
+    if (
+      mimeType &&
+      !(ALLOWED_MIME_TYPES as readonly string[]).includes(mimeType)
+    ) {
       // 有些系统可能返回空的 MIME 类型，只在有值时验证
       logger.warn(
         { mimeType, fileName },

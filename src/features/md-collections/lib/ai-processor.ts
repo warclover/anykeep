@@ -100,7 +100,7 @@ export async function processMdCollectionAI(
           userId,
           title: collection.title,
           content: contentForAI,
-          contentType: "markdown", // 自定义内容类型标识
+          contentType: "article", // MD 收藏默认视为文章类型
         });
 
         if (summaryResult.summary && options.generateSummary) {
