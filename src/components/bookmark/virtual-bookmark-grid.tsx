@@ -54,10 +54,12 @@ interface VirtualBookmarkGridProps {
   customUsageTags?: CustomUsageTag[];
   /** 布局模式（auto 映射为 row） */
   layoutMode?: "auto" | "row" | "column";
-  /** 自定义高度 */
+  /** 自定义高度（已废弃，使用 customScrollParent 时忽略） */
   height?: string;
   /** 预取阈值（0-1，默认 0.8 即 80%） */
   prefetchThreshold?: number;
+  /** 自定义滚动父元素（用于嵌套滚动容器场景） */
+  customScrollParent?: HTMLElement | null;
 }
 
 /**
@@ -205,6 +207,7 @@ export function VirtualBookmarkGrid({
   layoutMode = "row",
   height = "calc(100vh - 280px)",
   prefetchThreshold = 0.8,
+  customScrollParent,
 }: VirtualBookmarkGridProps) {
   const virtuosoRef = useRef<VirtuosoGridHandle>(null);
   const prefetchTriggered = useRef(false);
@@ -274,15 +277,52 @@ export function VirtualBookmarkGrid({
     );
   }
 
-  return (
-    <div className="bg-white dark:bg-gray-900 rounded-lg overflow-hidden">
+  // 当使用 customScrollParent 时，不需要固定高度容器
+  // VirtuosoGrid 会使用外部容器的滚动
+  if (customScrollParent) {
+    return (
       <VirtuosoGrid
         ref={virtuosoRef}
-        style={{ height }}
+        customScrollParent={customScrollParent}
         data={bookmarks}
         rangeChanged={handleRangeChanged}
         endReached={handleEndReached}
         overscan={200}
+        initialTopMostItemIndex={0}
+        itemContent={(index, bookmark) => (
+          <GridBookmarkItem
+            key={bookmark.id}
+            bookmark={bookmark}
+            enableFlipCard={enableFlipCard}
+            onEdit={onEdit}
+            onDelete={onDelete}
+            onToggleRead={onToggleRead}
+            onToggleStarred={onToggleStarred}
+            isSelectionMode={isSelectionMode}
+            isSelected={selectedIds.has(bookmark.id)}
+            onToggleSelect={onToggleSelect}
+            customUsageTags={customUsageTags}
+          />
+        )}
+        components={components}
+      />
+    );
+  }
+
+  // 默认模式：使用固定高度容器
+  return (
+    <div
+      className="bg-white dark:bg-gray-900 rounded-lg overflow-hidden"
+      style={{ height, minHeight: "400px" }}
+    >
+      <VirtuosoGrid
+        ref={virtuosoRef}
+        style={{ height: "100%" }}
+        data={bookmarks}
+        rangeChanged={handleRangeChanged}
+        endReached={handleEndReached}
+        overscan={200}
+        initialTopMostItemIndex={0}
         itemContent={(index, bookmark) => (
           <GridBookmarkItem
             key={bookmark.id}

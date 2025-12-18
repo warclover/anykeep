@@ -17,7 +17,16 @@ export function generatePlaceholderImage(
   platform: Platform,
 ): string {
   // 防御性编码：处理 title 为空或 undefined 的情况
-  const firstChar = (title || "?").charAt(0).toUpperCase();
+  // 查找第一个可安全用于 SVG 的字符（字母、数字、中文）
+  const safeTitle = title || "?";
+
+  // 正则匹配：字母、数字、中文、日文假名、韩文
+  const safeCharMatch = safeTitle.match(
+    /[a-zA-Z0-9\u4e00-\u9fa5\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]/,
+  );
+
+  // 如果找到安全字符就使用，否则使用问号（ASCII 安全）
+  const safeChar = safeCharMatch ? safeCharMatch[0].toUpperCase() : "?";
   const color = getPlatformHexColor(platform);
 
   // 生成浅色版本作为渐变起点
@@ -42,13 +51,19 @@ export function generatePlaceholderImage(
         font-weight="600"
         fill="white"
         opacity="0.9"
-      >${firstChar}</text>
+      >${safeChar}</text>
     </svg>
   `;
 
-  // 转换为 Data URL
-  const encoded = encodeURIComponent(svg);
-  return `data:image/svg+xml,${encoded}`;
+  // 转换为 Data URL（添加 try-catch 防护）
+  try {
+    const encoded = encodeURIComponent(svg);
+    return `data:image/svg+xml,${encoded}`;
+  } catch {
+    // 编码失败时返回纯色背景的简化 SVG
+    const fallbackSvg = `<svg width="400" height="225" xmlns="http://www.w3.org/2000/svg"><rect width="400" height="225" fill="${color}"/></svg>`;
+    return `data:image/svg+xml,${encodeURIComponent(fallbackSvg)}`;
+  }
 }
 
 /**

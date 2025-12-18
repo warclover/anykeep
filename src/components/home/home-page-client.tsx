@@ -164,6 +164,19 @@ export function HomePageClient({
   const [localUsageTags, setLocalUsageTags] = useState(parsedUsageTags);
   const currentSort = urlSort;
 
+  // V4.2.x: 滚动容器 ref（用于虚拟滚动的 customScrollParent）
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [scrollContainer, setScrollContainer] = useState<HTMLDivElement | null>(
+    null,
+  );
+
+  // 在 DOM 挂载后获取滚动容器
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      setScrollContainer(scrollContainerRef.current);
+    }
+  }, []);
+
   // 响应 Context 平台/文件夹变化（用户交互触发）
   // 使用 ref 跳过首次挂载，避免与初始 URL 同步冲突
   const isFirstRenderRef = useRef(true);
@@ -657,8 +670,11 @@ export function HomePageClient({
         onMobileMoreMenuOpenChange={setIsMobileMoreMenuOpen}
       />
 
-      {/* 内容区域 */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 md:px-8 py-0.5 md:py-1">
+      {/* 内容区域 - V4.2.x: 添加 ref 用于虚拟滚动 */}
+      <div
+        ref={scrollContainerRef}
+        className="flex-1 overflow-y-auto overflow-x-hidden px-4 md:px-8 py-0.5 md:py-1"
+      >
         {/* 快速添加收藏组件（仅在非垃圾箱页面显示） */}
         {!isTrashFolder && (
           <div className="mb-6 flex items-center gap-3">
@@ -769,6 +785,7 @@ export function HomePageClient({
                     selectedIds={selectedIds}
                     onToggleSelect={toggleSelect}
                     layoutMode={layoutMode}
+                    customScrollParent={scrollContainer}
                   />
                 )}
 
