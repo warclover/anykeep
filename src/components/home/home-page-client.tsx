@@ -13,6 +13,7 @@
 import {
   useState,
   useEffect,
+  useLayoutEffect,
   useCallback,
   useRef,
   lazy,
@@ -170,8 +171,8 @@ export function HomePageClient({
     null,
   );
 
-  // 在 DOM 挂载后获取滚动容器
-  useEffect(() => {
+  // 在 DOM 挂载后获取滚动容器（使用 useLayoutEffect 避免二次渲染闪烁）
+  useLayoutEffect(() => {
     if (scrollContainerRef.current) {
       setScrollContainer(scrollContainerRef.current);
     }
@@ -803,6 +804,7 @@ export function HomePageClient({
                     isSelectionMode={isSelectionMode}
                     selectedIds={selectedIds}
                     onToggleSelect={toggleSelect}
+                    customScrollParent={scrollContainer}
                   />
                 )}
               </>

@@ -11,7 +11,7 @@
 
 "use client";
 
-import { useCallback, useRef, memo } from "react";
+import { useCallback, useRef, memo, useMemo } from "react";
 import { Virtuoso, type VirtuosoHandle } from "react-virtuoso";
 import { Loader2 } from "lucide-react";
 import { BookmarkCard } from "./bookmark-card";
@@ -58,10 +58,12 @@ interface VirtualBookmarkListProps {
   customUsageTags?: CustomUsageTag[];
   /** 布局模式 (card 视图专用) */
   layoutMode?: "row" | "column";
-  /** 自定义高度 */
+  /** 自定义高度（已废弃，使用 customScrollParent 时忽略） */
   height?: string;
   /** 预取阈值（0-1，默认 0.8 即 80%） */
   prefetchThreshold?: number;
+  /** 自定义滚动父元素（用于嵌套滚动容器场景） */
+  customScrollParent?: HTMLElement | null;
 }
 
 /**
@@ -183,6 +185,7 @@ export function VirtualBookmarkList({
   layoutMode = "row",
   height = "calc(100vh - 280px)",
   prefetchThreshold = 0.8,
+  customScrollParent,
 }: VirtualBookmarkListProps) {
   const virtuosoRef = useRef<VirtuosoHandle>(null);
   const prefetchTriggered = useRef(false);
@@ -222,6 +225,94 @@ export function VirtualBookmarkList({
     viewMode === "compact" && "space-y-2",
   );
 
+  // 使用 ref 存储 selectedIds，避免 renderItem 回调因 Set 引用变化而重建
+  const selectedIdsRef = useRef(selectedIds);
+  selectedIdsRef.current = selectedIds;
+
+  // 通用的 itemContent 渲染器（使用 ref 访问 selectedIds，减少依赖）
+  const renderItem = useCallback(
+    (_index: number, bookmark: BookmarkWithFolder) => (
+      <BookmarkItem
+        key={bookmark.id}
+        bookmark={bookmark}
+        viewMode={viewMode}
+        enableFlipCard={enableFlipCard}
+        onEdit={onEdit}
+        onDelete={onDelete}
+        onToggleRead={onToggleRead}
+        onToggleStarred={onToggleStarred}
+        isSelectionMode={isSelectionMode}
+        isSelected={selectedIdsRef.current.has(bookmark.id)}
+        onToggleSelect={onToggleSelect}
+        customUsageTags={customUsageTags}
+        layoutMode={layoutMode}
+      />
+    ),
+    [
+      viewMode,
+      enableFlipCard,
+      onEdit,
+      onDelete,
+      onToggleRead,
+      onToggleStarred,
+      isSelectionMode,
+      onToggleSelect,
+      customUsageTags,
+      layoutMode,
+    ],
+  );
+
+  // 通用的组件配置（使用 useMemo 避免重复创建导致 Virtuoso 重新挂载）
+  const components = useMemo(
+    () => ({
+      Footer: () =>
+        isLoadingMore ? (
+          <div className="flex justify-center py-4">
+            <Loader2 className="size-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : null,
+      EmptyPlaceholder: () => (
+        <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+          <p className="text-sm">暂无书签</p>
+        </div>
+      ),
+    }),
+    [isLoadingMore],
+  );
+
+  // 根据视图模式计算估算项高度（优化 Virtuoso 渲染性能）
+  // compact: ~64px, list: ~120px, card: 动态高度（不使用固定值）
+  const estimatedItemSize = useMemo(() => {
+    switch (viewMode) {
+      case "compact":
+        return 72; // 64px 内容 + 8px 间距
+      case "list":
+        return 136; // 120px 内容 + 16px 间距
+      default:
+        return undefined; // card 视图使用动态高度
+    }
+  }, [viewMode]);
+
+  // 当使用 customScrollParent 时，不需要固定高度容器
+  // Virtuoso 会使用外部容器的滚动
+  if (customScrollParent) {
+    return (
+      <Virtuoso
+        ref={virtuosoRef}
+        customScrollParent={customScrollParent}
+        data={bookmarks}
+        rangeChanged={handleRangeChanged}
+        endReached={handleEndReached}
+        itemContent={renderItem}
+        overscan={200}
+        increaseViewportBy={{ top: 200, bottom: 400 }}
+        components={components}
+        defaultItemHeight={estimatedItemSize}
+      />
+    );
+  }
+
+  // 默认模式：使用固定高度容器
   return (
     <div className="bg-white dark:bg-gray-900 rounded-lg overflow-hidden">
       <Virtuoso
@@ -230,40 +321,11 @@ export function VirtualBookmarkList({
         data={bookmarks}
         rangeChanged={handleRangeChanged}
         endReached={handleEndReached}
-        itemContent={(index, bookmark) => (
-          <BookmarkItem
-            key={bookmark.id}
-            bookmark={bookmark}
-            viewMode={viewMode}
-            enableFlipCard={enableFlipCard}
-            onEdit={onEdit}
-            onDelete={onDelete}
-            onToggleRead={onToggleRead}
-            onToggleStarred={onToggleStarred}
-            isSelectionMode={isSelectionMode}
-            isSelected={selectedIds.has(bookmark.id)}
-            onToggleSelect={onToggleSelect}
-            customUsageTags={customUsageTags}
-            layoutMode={layoutMode}
-          />
-        )}
-        // 性能优化配置
+        itemContent={renderItem}
         overscan={200}
         increaseViewportBy={{ top: 200, bottom: 400 }}
-        // 底部加载指示器
-        components={{
-          Footer: () =>
-            isLoadingMore ? (
-              <div className="flex justify-center py-4">
-                <Loader2 className="size-5 animate-spin text-muted-foreground" />
-              </div>
-            ) : null,
-          EmptyPlaceholder: () => (
-            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-              <p className="text-sm">暂无书签</p>
-            </div>
-          ),
-        }}
+        components={components}
+        defaultItemHeight={estimatedItemSize}
       />
     </div>
   );

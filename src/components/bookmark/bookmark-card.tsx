@@ -479,9 +479,9 @@ export const BookmarkCard = memo(function BookmarkCard({
           </div>
         </div>
 
-        {/* 操作按钮 - 移动端始终显示，桌面端悬停显示 */}
+        {/* 操作按钮 - 移动端始终显示，桌面端弱显示+悬停强调 */}
         {!isSelectionMode && (
-          <div className="flex-shrink-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+          <div className="flex-shrink-0 sm:opacity-60 sm:group-hover:opacity-100 transition-opacity">
             <ActionMenu />
           </div>
         )}
@@ -703,9 +703,9 @@ export const BookmarkCard = memo(function BookmarkCard({
             </div>
           </div>
 
-          {/* 桌面端：操作按钮 */}
+          {/* 桌面端：操作按钮 - 弱显示+悬停强调 */}
           {!isSelectionMode && (
-            <div className="hidden sm:flex items-center px-3 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="hidden sm:flex items-center px-3 opacity-60 group-hover:opacity-100 transition-opacity">
               <ActionMenu />
             </div>
           )}

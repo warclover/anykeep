@@ -8,7 +8,7 @@
  * - localStorage 持久化
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, startTransition } from "react";
 import {
   type ViewMode,
   type LayoutMode,
@@ -88,10 +88,14 @@ export function useHomeViewMode({
   const [enableFlipCard, setEnableFlipCardState] =
     useState<boolean>(getInitialFlipCard);
 
-  // 设置视图模式（带持久化）
+  // 设置视图模式（带持久化 + startTransition 避免阻塞 UI）
   const setViewMode = useCallback((mode: ViewMode) => {
-    setViewModeState(mode);
+    // 先同步保存到 localStorage（避免刷新后状态丢失）
     localStorage.setItem(VIEW_MODE_STORAGE_KEY, mode);
+    // 使用 startTransition 将状态更新标记为低优先级，避免阻塞用户交互
+    startTransition(() => {
+      setViewModeState(mode);
+    });
   }, []);
 
   // 设置布局模式（带持久化）
@@ -112,7 +116,10 @@ export function useHomeViewMode({
     const unsubViewMode = uiEventBus.on(
       UIEvents.VIEW_MODE_CHANGE,
       (payload) => {
-        setViewModeState(payload.mode);
+        // 使用 startTransition 避免阻塞 UI
+        startTransition(() => {
+          setViewModeState(payload.mode);
+        });
       },
     );
 
