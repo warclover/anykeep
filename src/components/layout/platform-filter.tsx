@@ -1,7 +1,8 @@
 /**
- * V4.2.17: 平台筛选组件
+ * V4.2.18: 平台筛选组件
  *
  * Phase 3.2 - 迁移到 HomePageContext
+ * 性能优化：外链平台使用 Link prefetch 预加载
  *
  * 用于首页顶部导航栏的平台切换
  * 优先使用 Context，Fallback 到 Window Event（兼容非首页场景）
@@ -11,6 +12,7 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
+import Link from "next/link";
 import { RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -175,16 +177,34 @@ export function PlatformFilter() {
         const isActive = platform.href
           ? false
           : currentPlatform === platform.value;
+
+        const buttonClassName = cn(
+          "px-3 py-1 text-xs font-medium rounded-full transition-colors whitespace-nowrap flex-shrink-0",
+          isActive
+            ? "bg-gray-900 text-white dark:bg-white dark:text-gray-900"
+            : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700",
+        );
+
+        // 外链平台使用 Link 组件实现预加载（进入视口时触发）
+        if (platform.href) {
+          return (
+            <Link
+              key={platform.id}
+              href={platform.href}
+              prefetch={true}
+              className={buttonClassName}
+            >
+              {platform.name}
+            </Link>
+          );
+        }
+
+        // 普通平台切换使用 button
         return (
           <button
             key={platform.id}
             onClick={() => handlePlatformChange(platform.value, platform.href)}
-            className={cn(
-              "px-3 py-1 text-xs font-medium rounded-full transition-colors whitespace-nowrap flex-shrink-0",
-              isActive
-                ? "bg-gray-900 text-white dark:bg-white dark:text-gray-900"
-                : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700",
-            )}
+            className={buttonClassName}
           >
             {platform.name}
           </button>

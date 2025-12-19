@@ -175,8 +175,10 @@ export function AppSidebar() {
               </p>
             </div>
             <div className="space-y-1">
+              {/* prefetch: 链接进入视口时预加载，配合 SWR 缓存实现秒开 */}
               <Link
                 href="/md-collections"
+                prefetch={true}
                 className={cn(
                   "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors",
                   pathname === "/md-collections" ||

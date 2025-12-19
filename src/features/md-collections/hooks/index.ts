@@ -5,6 +5,8 @@
 
 // 数据获取
 export { useMdCollections, useMdCollection } from "./use-md-collections";
+export { useMdCollectionsSWR } from "./use-md-collections-swr";
+export type { CacheSnapshot as MdCacheSnapshot } from "./use-md-collections-swr";
 
 // 数据变更
 export {

@@ -62,6 +62,7 @@ export {
 export {
   useMdCollections,
   useMdCollection,
+  useMdCollectionsSWR,
   useCreateMdCollection,
   useUpdateMdCollection,
   useDeleteMdCollection,
@@ -70,10 +71,12 @@ export {
   useTriggerAIProcess,
   useMdViewPreference,
 } from "./hooks";
+export type { MdCacheSnapshot } from "./hooks";
 
 // ============================================
 // 组件导出
 // 注意：MdRenderer 和 MdReaderView 需要直接从 ./components 导入
 // 以避免在列表页引起 SSR 问题（react-syntax-highlighter）
 // ============================================
-export { MdCardItem, MdViewToggle } from "./components";
+export { MdCardItem, MdListItem, MdViewToggle } from "./components";
+export type { MdListItemProps } from "./components";

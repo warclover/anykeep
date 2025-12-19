@@ -1,6 +1,11 @@
 /**
  * MD 收藏页面 - 客户端组件
  * P2-007: Markdown 内容收藏
+ *
+ * 性能优化 V2: 使用 SWR 缓存策略
+ * - 二次访问秒开（从缓存读取）
+ * - 后台静默刷新（无感知更新）
+ * - 乐观更新支持
  */
 
 "use client";
@@ -18,18 +23,16 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  useMdCollections,
+  useMdCollectionsSWR,
   useDeleteMdCollection,
   useCreateMdCollection,
   useUploadMdFile,
   useMdViewPreference,
   MdCardItem,
+  MdListItem,
   MdViewToggle,
-} from "@/features/md-collections";
-import {
-  CONTENT_TYPE_CONFIG,
-  DEFAULT_CONTENT_TYPE_CONFIG,
   MD_COLLECTION_LIMITS,
+  CONTENT_TYPE_CONFIG,
 } from "@/features/md-collections";
 import type { MdCollection, MdContentType } from "@/features/md-collections";
 import { cn } from "@/lib/utils";
@@ -41,6 +44,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -69,20 +82,26 @@ export function MdCollectionPageClient({
 }: MdCollectionPageClientProps) {
   const router = useRouter();
 
-  // 数据获取（使用预取数据，避免重复请求）
+  // 数据获取（SWR 缓存策略）
   const {
     collections,
     isLoading,
+    isValidating,
     error,
     hasMore,
     loadMore,
     refresh,
     removeLocal,
     addLocal,
-  } = useMdCollections({
-    autoLoad: hasAccess && initialData.length === 0, // 仅在无预取数据时自动加载
+  } = useMdCollectionsSWR({
+    enabled: hasAccess,
     initialData,
     initialHasMore,
+    onBackgroundError: (err) => {
+      // 后台刷新失败时静默提示（使用 error 级别便于监控）
+      console.error("[MdCollections] 后台刷新失败:", err.message);
+      toast.error("数据同步失败，显示的可能是缓存数据", { duration: 3000 });
+    },
   });
 
   // 删除操作
@@ -107,6 +126,17 @@ export function MdCollectionPageClient({
     contentType: "article" as MdContentType,
   });
 
+  // 删除确认对话框状态
+  const [deleteDialogState, setDeleteDialogState] = useState<{
+    isOpen: boolean;
+    itemId: number | null;
+    itemTitle: string;
+  }>({
+    isOpen: false,
+    itemId: null,
+    itemTitle: "",
+  });
+
   /**
    * 处理点击查看详情
    */
@@ -118,22 +148,32 @@ export function MdCollectionPageClient({
   );
 
   /**
-   * 处理删除
+   * 打开删除确认对话框
    */
-  const handleDelete = useCallback(
-    async (id: number) => {
-      if (!confirm("确定要删除这篇 MD 收藏吗？")) return;
+  const handleDeleteRequest = useCallback((id: number, title: string) => {
+    setDeleteDialogState({
+      isOpen: true,
+      itemId: id,
+      itemTitle: title,
+    });
+  }, []);
 
-      const success = await deleteCollection(id);
-      if (success) {
-        removeLocal(id);
-        toast.success("删除成功");
-      } else {
-        toast.error("删除失败");
-      }
-    },
-    [deleteCollection, removeLocal],
-  );
+  /**
+   * 确认删除
+   */
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!deleteDialogState.itemId) return;
+
+    const success = await deleteCollection(deleteDialogState.itemId);
+    if (success) {
+      removeLocal(deleteDialogState.itemId);
+      toast.success("删除成功");
+    } else {
+      toast.error("删除失败");
+    }
+
+    setDeleteDialogState({ isOpen: false, itemId: null, itemTitle: "" });
+  }, [deleteDialogState.itemId, deleteCollection, removeLocal]);
 
   /**
    * 处理粘贴创建
@@ -239,9 +279,14 @@ export function MdCollectionPageClient({
             variant="outline"
             size="icon"
             onClick={() => refresh()}
-            disabled={isLoading}
+            disabled={isLoading || isValidating}
           >
-            <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} />
+            <RefreshCw
+              className={cn(
+                "w-4 h-4",
+                (isLoading || isValidating) && "animate-spin",
+              )}
+            />
           </Button>
 
           {/* 上传按钮 */}
@@ -401,11 +446,11 @@ export function MdCollectionPageClient({
             /* 列表视图 */
             <div className="space-y-3">
               {collections.map((collection) => (
-                <MdCollectionItem
+                <MdListItem
                   key={collection.id}
                   collection={collection}
                   onClick={handleClick}
-                  onDelete={handleDelete}
+                  onDelete={(id) => handleDeleteRequest(id, collection.title)}
                   isDeleting={isDeleting}
                 />
               ))}
@@ -418,7 +463,7 @@ export function MdCollectionPageClient({
                   key={collection.id}
                   collection={collection}
                   onClick={handleClick}
-                  onDelete={handleDelete}
+                  onDelete={(id) => handleDeleteRequest(id, collection.title)}
                   isDeleting={isDeleting}
                 />
               ))}
@@ -428,8 +473,12 @@ export function MdCollectionPageClient({
           {/* 加载更多 */}
           {hasMore && (
             <div className="text-center pt-4">
-              <Button variant="outline" onClick={loadMore} disabled={isLoading}>
-                {isLoading ? "加载中..." : "加载更多"}
+              <Button
+                variant="outline"
+                onClick={loadMore}
+                disabled={isLoading || isValidating}
+              >
+                {isLoading || isValidating ? "加载中..." : "加载更多"}
               </Button>
             </div>
           )}
@@ -447,114 +496,34 @@ export function MdCollectionPageClient({
           ))}
         </div>
       )}
-    </div>
-  );
-}
 
-/**
- * MD 收藏列表项
- */
-function MdCollectionItem({
-  collection,
-  onClick,
-  onDelete,
-  isDeleting,
-}: {
-  collection: MdCollection;
-  onClick: (id: number) => void;
-  onDelete: (id: number) => void;
-  isDeleting: boolean;
-}) {
-  const contentTypeConfig = (collection.content_type
-    ? CONTENT_TYPE_CONFIG[collection.content_type]
-    : null) ??
-    DEFAULT_CONTENT_TYPE_CONFIG ?? {
-      label: "文档",
-      color: "bg-gray-100 text-gray-600",
-    };
-
-  return (
-    <div
-      className="group p-4 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 hover:border-emerald-200 dark:hover:border-emerald-800 transition-colors cursor-pointer"
-      onClick={() => onClick(collection.id)}
-    >
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex-1 min-w-0">
-          {/* 标题 */}
-          <h3 className="font-medium text-gray-900 dark:text-white truncate mb-1 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
-            {collection.title}
-          </h3>
-
-          {/* 元信息 */}
-          <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
-            {/* 内容类型 */}
-            <span
-              className={cn(
-                "px-1.5 py-0.5 rounded text-xs font-medium",
-                contentTypeConfig.color,
-              )}
+      {/* 删除确认对话框 */}
+      <AlertDialog
+        open={deleteDialogState.isOpen}
+        onOpenChange={(open) =>
+          !open &&
+          setDeleteDialogState({ isOpen: false, itemId: null, itemTitle: "" })
+        }
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认删除</AlertDialogTitle>
+            <AlertDialogDescription>
+              确定要删除「{deleteDialogState.itemTitle}」吗？此操作无法撤销。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="bg-red-500 hover:bg-red-600"
+              disabled={isDeleting}
             >
-              {contentTypeConfig.label}
-            </span>
-
-            {/* 字数 */}
-            <span>{collection.word_count?.toLocaleString() || 0} 字</span>
-
-            {/* 阅读时间 */}
-            <span>{collection.reading_time_minutes || 1} 分钟</span>
-
-            {/* 处理状态 */}
-            {collection.processing_status === "processing" && (
-              <span className="text-amber-500">AI 处理中...</span>
-            )}
-            {collection.processing_status === "failed" && (
-              <span className="text-red-500">处理失败</span>
-            )}
-
-            {/* 创建时间 */}
-            <span>
-              {new Date(collection.created_at).toLocaleDateString("zh-CN")}
-            </span>
-          </div>
-
-          {/* AI 摘要 */}
-          {collection.ai_summary && (
-            <p className="mt-2 text-sm text-gray-600 dark:text-gray-300 line-clamp-2">
-              {collection.ai_summary}
-            </p>
-          )}
-
-          {/* AI 标签 */}
-          {collection.ai_tags && collection.ai_tags.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-2">
-              {collection.ai_tags.slice(0, 5).map((tag, i) => (
-                <span
-                  key={i}
-                  className="px-2 py-0.5 text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded"
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* 操作按钮 */}
-        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-            onClick={(e) => {
-              e.stopPropagation(); // 阻止事件冒泡
-              onDelete(collection.id);
-            }}
-            disabled={isDeleting}
-          >
-            删除
-          </Button>
-        </div>
-      </div>
+              {isDeleting ? "删除中..." : "确认删除"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
