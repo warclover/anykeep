@@ -679,7 +679,7 @@ export function HomePageClient({
         {/* 快速添加收藏组件（仅在非垃圾箱页面显示） */}
         {!isTrashFolder && (
           <div className="mb-6 flex items-center gap-3">
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 max-w-2xl">
               <QuickAddBookmark
                 onBookmarkCreated={() => {
                   // 刷新列表
@@ -689,9 +689,9 @@ export function HomePageClient({
                 }}
               />
             </div>
-            {/* 创建自定义收藏按钮 */}
+            {/* 创建自定义收藏按钮 - 温柔杏色 */}
             <Button
-              className="shrink-0 h-12 px-4 bg-violet-600 hover:bg-violet-700 text-white shadow-sm"
+              className="shrink-0 h-12 px-4 bg-[#f6e2d3] hover:bg-[#edd5c3] text-[#254f61] shadow-sm"
               onClick={openCreateDialog}
             >
               <Plus className="size-4 mr-1.5" />

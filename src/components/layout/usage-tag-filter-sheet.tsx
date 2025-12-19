@@ -257,6 +257,7 @@ export function UsageTagFilterSheet({
   return (
     <div className={cn("flex items-center", className)}>
       {/* 筛选触发按钮 */}
+      {/* 青黛蓝色按钮 */}
       <Button
         variant="default"
         size="default"
@@ -265,8 +266,8 @@ export function UsageTagFilterSheet({
           "h-12 px-4 gap-2 shrink-0",
           "transition-all duration-200",
           selectedTags.length > 0
-            ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/25"
-            : "bg-blue-500 hover:bg-blue-600 text-white",
+            ? "bg-[#1a3a47] hover:bg-[#0f2830] text-white shadow-lg shadow-[#254f61]/25"
+            : "bg-[#254f61] hover:bg-[#1a3a47] text-white",
         )}
       >
         <Filter className="size-4" />
