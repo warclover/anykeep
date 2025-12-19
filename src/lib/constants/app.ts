@@ -81,3 +81,45 @@ export const BROWSER_PLATFORMS = [
 ] as const;
 
 export type BrowserPlatform = (typeof BROWSER_PLATFORMS)[number];
+
+/**
+ * 侧边栏导航图标颜色配置（柔和糖果风格）
+ * 浅色模式和深色模式分别定义
+ */
+export const NAV_ICON_COLORS = {
+  home: {
+    light: "text-blue-400",
+    dark: "dark:text-blue-300",
+  },
+  search: {
+    light: "text-cyan-400",
+    dark: "dark:text-cyan-300",
+  },
+  folders: {
+    light: "text-violet-400",
+    dark: "dark:text-violet-300",
+  },
+  messages: {
+    light: "text-pink-400",
+    dark: "dark:text-pink-300",
+  },
+  analytics: {
+    light: "text-rose-400",
+    dark: "dark:text-rose-300",
+  },
+  settings: {
+    light: "text-gray-400",
+    dark: "dark:text-gray-400",
+  },
+} as const;
+
+/**
+ * 侧边栏激活态样式配置
+ */
+export const NAV_ACTIVE_STYLES = {
+  /** 默认激活态（品牌色） */
+  default: {
+    light: "bg-blue-50 text-blue-700 border-l-2 border-blue-400",
+    dark: "dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-400",
+  },
+} as const;

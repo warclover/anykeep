@@ -37,6 +37,7 @@ import {
   PAGE_ROUTES,
 } from "@/contexts/navigation-context";
 import { useSafeSidebar, SIDEBAR_WIDTH } from "@/contexts/sidebar-context";
+import { NAV_ICON_COLORS, NAV_ACTIVE_STYLES } from "@/lib/constants/app";
 import {
   Tooltip,
   TooltipContent,
@@ -49,14 +50,21 @@ const navigation: {
   name: string;
   pageId: PageId;
   icon: typeof Home;
+  colorKey: keyof typeof NAV_ICON_COLORS;
   showBadge?: boolean;
 }[] = [
-  { name: "首页", pageId: "home", icon: Home },
-  { name: "搜索", pageId: "search", icon: Search },
-  { name: "收藏夹", pageId: "folders", icon: Folder },
-  { name: "消息", pageId: "messages", icon: Bell, showBadge: true },
-  { name: "数据", pageId: "analytics", icon: BarChart3 },
-  { name: "设置", pageId: "settings", icon: Settings },
+  { name: "首页", pageId: "home", icon: Home, colorKey: "home" },
+  { name: "搜索", pageId: "search", icon: Search, colorKey: "search" },
+  { name: "收藏夹", pageId: "folders", icon: Folder, colorKey: "folders" },
+  {
+    name: "消息",
+    pageId: "messages",
+    icon: Bell,
+    colorKey: "messages",
+    showBadge: true,
+  },
+  { name: "数据", pageId: "analytics", icon: BarChart3, colorKey: "analytics" },
+  { name: "设置", pageId: "settings", icon: Settings, colorKey: "settings" },
 ];
 
 // 系统文件夹（虚拟）
@@ -148,20 +156,28 @@ export function AppSidebar() {
   ) => {
     const Icon = item.icon;
     const href = PAGE_ROUTES[item.pageId];
+    const iconColor = NAV_ICON_COLORS[item.colorKey];
+    const activeStyles = NAV_ACTIVE_STYLES.default;
 
     const content = (
       <Link
         href={href}
         onClick={onClick}
         className={cn(
-          "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+          "group flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-150",
           isActive
-            ? "bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-white"
+            ? cn(activeStyles.light, activeStyles.dark)
             : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50",
           !isVisuallyExpanded && "justify-center px-2",
         )}
       >
-        <Icon className="size-5 shrink-0" />
+        <Icon
+          className={cn(
+            "size-5 shrink-0 transition-transform duration-150 group-hover:scale-110",
+            // 激活时图标保持对应颜色，非激活时显示彩色
+            isActive ? "" : cn(iconColor.light, iconColor.dark),
+          )}
+        />
         {isVisuallyExpanded && (
           <>
             <span className="flex-1 truncate">{item.name}</span>
@@ -196,10 +212,14 @@ export function AppSidebar() {
       <aside
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
-        style={{ width: displayWidth }}
+        style={{
+          width: displayWidth,
+          willChange: "width", // GPU 优化提示
+          transform: "translateZ(0)", // 触发 GPU 层
+        }}
         className={cn(
           "fixed left-0 top-14 z-40 hidden lg:block h-[calc(100vh-3.5rem)] border-r bg-white dark:bg-gray-950 dark:border-gray-800",
-          "transition-[width] duration-200 ease-out",
+          "transition-[width] duration-200 ease-[cubic-bezier(0.4,0,0.2,1)]",
         )}
       >
         <div className="flex flex-col h-full">
