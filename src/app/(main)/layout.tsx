@@ -8,6 +8,7 @@
  * 避免每次页面切换都执行服务端数据库查询
  *
  * Phase 4: 集成 AI 对话功能
+ * Phase 5: 可折叠侧边栏，内容区联动
  */
 
 export const dynamic = "force-dynamic";
@@ -17,6 +18,7 @@ import { AppSidebar } from "@/components/layout/app-sidebar";
 import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
 import { MainContent } from "@/components/main/main-content";
 import { ChatButton } from "@/components/chat";
+import { MainContentWrapper } from "@/components/layout/main-content-wrapper";
 
 export default function MainLayout({
   children,
@@ -36,10 +38,10 @@ export default function MainLayout({
         {/* 侧边栏（桌面端） */}
         <AppSidebar />
 
-        {/* 主内容区 - 使用客户端导航管理 */}
-        <main className="flex-1 min-w-0 p-4 md:p-6 lg:ml-48 pb-20 lg:pb-6 overflow-hidden">
+        {/* 主内容区 - 使用客户端导航管理，响应侧边栏折叠 */}
+        <MainContentWrapper>
           <MainContent>{children}</MainContent>
-        </main>
+        </MainContentWrapper>
       </div>
 
       {/* 底部导航栏（移动端） */}

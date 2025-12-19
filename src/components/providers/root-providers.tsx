@@ -18,6 +18,7 @@ import { ServiceWorkerRegister } from "@/components/pwa/sw-register";
 import { UserProvider } from "@/contexts/user-context";
 import { NavigationProvider } from "@/contexts/navigation-context";
 import { HomePageProvider } from "@/contexts/home-page-context";
+import { SidebarProvider } from "@/contexts/sidebar-context";
 import { KeepAliveProvider } from "@/lib/cache";
 import { OnboardingProvider } from "@/components/providers/onboarding-provider";
 import { MessageNotificationProvider } from "@/components/messages/message-notification-provider";
@@ -35,23 +36,26 @@ export function RootProviders({ children }: RootProvidersProps) {
       enableSystem
       disableTransitionOnChange
     >
-      <UserProvider>
-        <OnboardingProvider>
-          {/* Phase 3.5: HomePageProvider 移出 Suspense 边界
-              避免 NavigationProvider 挂起时 Context 不可用 */}
-          <HomePageProvider>
-            <Suspense fallback={null}>
-              <NavigationProvider>
-                <KeepAliveProvider>
-                  <MessageNotificationProvider>
-                    {children}
-                  </MessageNotificationProvider>
-                </KeepAliveProvider>
-              </NavigationProvider>
-            </Suspense>
-          </HomePageProvider>
-        </OnboardingProvider>
-      </UserProvider>
+      {/* Phase 5: 侧边栏折叠状态管理 */}
+      <SidebarProvider>
+        <UserProvider>
+          <OnboardingProvider>
+            {/* Phase 3.5: HomePageProvider 移出 Suspense 边界
+                避免 NavigationProvider 挂起时 Context 不可用 */}
+            <HomePageProvider>
+              <Suspense fallback={null}>
+                <NavigationProvider>
+                  <KeepAliveProvider>
+                    <MessageNotificationProvider>
+                      {children}
+                    </MessageNotificationProvider>
+                  </KeepAliveProvider>
+                </NavigationProvider>
+              </Suspense>
+            </HomePageProvider>
+          </OnboardingProvider>
+        </UserProvider>
+      </SidebarProvider>
       <Toaster position="top-center" offset={16} />
       <ServiceWorkerRegister />
       {/* V4.2.1: Web Vitals 性能监控 */}
