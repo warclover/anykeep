@@ -13,7 +13,7 @@ export const QUERY_LIMITS = {
   SEARCH_RESULTS_PER_PAGE: 50,
   /** 收藏夹页面最近收藏数量 */
   RECENT_BOOKMARKS_COUNT: 5,
-} as const
+} as const;
 
 /**
  * 统计分析相关常量
@@ -27,7 +27,7 @@ export const ANALYTICS = {
   CHART_HEIGHT: 300,
   /** 柱状图默认高度（像素） */
   BAR_CHART_HEIGHT: 400,
-} as const
+} as const;
 
 /**
  * 验证相关常量
@@ -45,26 +45,39 @@ export const VALIDATION = {
   BOOKMARK_TITLE_MAX_LENGTH: 500,
   /** 摘要最大长度 */
   SUMMARY_MAX_LENGTH: 2000,
-} as const
+} as const;
 
 /**
  * UI 相关常量
  */
 export const UI = {
   /** 空状态提示文本 */
-  EMPTY_STATE_TITLE: '暂无内容',
+  EMPTY_STATE_TITLE: "暂无内容",
   /** 加载提示文本 */
-  LOADING_TEXT: '加载中...',
+  LOADING_TEXT: "加载中...",
   /** 保存提示文本 */
-  SAVING_TEXT: '保存中...',
-} as const
+  SAVING_TEXT: "保存中...",
+} as const;
 
 /**
  * 存储键名常量
  */
 export const STORAGE_KEYS = {
   /** 搜索历史 localStorage 键 */
-  SEARCH_HISTORY: 'anykeep_search_history',
+  SEARCH_HISTORY: "anykeep_search_history",
   /** 用户偏好设置 */
-  USER_PREFERENCES: 'anykeep_user_preferences',
-} as const
+  USER_PREFERENCES: "anykeep_user_preferences",
+} as const;
+
+/**
+ * 浏览器书签平台标识
+ * 用于区分内容收藏和浏览器导入书签
+ */
+export const BROWSER_PLATFORMS = [
+  "BROWSER_CHROME",
+  "BROWSER_EDGE",
+  "BROWSER_FIREFOX",
+  "BROWSER_SAFARI",
+] as const;
+
+export type BrowserPlatform = (typeof BROWSER_PLATFORMS)[number];

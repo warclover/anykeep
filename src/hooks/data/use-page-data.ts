@@ -202,18 +202,39 @@ export function useFoldersData() {
 
 // ==================== 数据统计页面数据 ====================
 
-interface AnalyticsData {
-  trendData: { date: string; count: number }[];
-  platformData: { name: string; value: number; color: string }[];
-  tagData: { tag: string; count: number }[];
-  typeData: { type: string; count: number }[];
-}
+import type { AnalyticsData } from "@/lib/analytics";
+import { isBrowserPlatform } from "@/lib/analytics";
 
 const ANALYTICS_TREND_DAYS = 30;
 const ANALYTICS_TOP_TAGS_COUNT = 15;
 
 /**
+ * 创建空的 AnalyticsData 对象
+ */
+function createEmptyAnalyticsData(): AnalyticsData {
+  return {
+    stats: {
+      totalBookmarks: 0,
+      contentBookmarks: 0,
+      browserBookmarks: 0,
+      todayCount: 0,
+      weekCount: 0,
+      last30DaysCount: 0,
+      unclassifiedCount: 0,
+      classificationRate: 0,
+    },
+    trendData: [],
+    platformData: [],
+    folderData: [],
+    tagData: [],
+    typeData: [],
+    generatedAt: new Date().toISOString(),
+  };
+}
+
+/**
  * 数据统计页面数据获取 Hook
+ * 返回与服务层 AnalyticsData 兼容的数据结构
  */
 export function useAnalyticsData() {
   const { user } = useUser();
@@ -247,12 +268,7 @@ export function useAnalyticsData() {
 
       if (!bookmarks || bookmarks.length === 0) {
         setState({
-          data: {
-            trendData: [],
-            platformData: [],
-            tagData: [],
-            typeData: [],
-          },
+          data: createEmptyAnalyticsData(),
           isLoading: false,
           error: null,
           lastFetched: Date.now(),
@@ -260,17 +276,62 @@ export function useAnalyticsData() {
         return;
       }
 
+      // 分离内容收藏和浏览器书签
+      const contentBookmarks = bookmarks.filter(
+        (b) => !isBrowserPlatform(b.platform as Platform),
+      );
+      const browserBookmarks = bookmarks.filter((b) =>
+        isBrowserPlatform(b.platform as Platform),
+      );
+
+      // 计算统计数据
+      const now = new Date();
+      const todayStart = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate(),
+      );
+      const weekStart = new Date(todayStart);
+      weekStart.setDate(weekStart.getDate() - 7);
+      const monthStart = new Date(todayStart);
+      monthStart.setDate(monthStart.getDate() - 30);
+
+      const todayCount = bookmarks.filter(
+        (b) => b.created_at && new Date(b.created_at) >= todayStart,
+      ).length;
+      const weekCount = bookmarks.filter(
+        (b) => b.created_at && new Date(b.created_at) >= weekStart,
+      ).length;
+      const last30DaysCount = bookmarks.filter(
+        (b) => b.created_at && new Date(b.created_at) >= monthStart,
+      ).length;
+      const unclassifiedCount = bookmarks.filter((b) => !b.folder_id).length;
+
       // 1. 收藏趋势数据
       const trendDaysAgo = new Date();
       trendDaysAgo.setDate(trendDaysAgo.getDate() - ANALYTICS_TREND_DAYS);
 
-      const trendMap = new Map<string, number>();
+      const contentTrendMap = new Map<string, number>();
+      const browserTrendMap = new Map<string, number>();
+
       bookmarks.forEach((bookmark) => {
         if (!bookmark.created_at) return;
         const date = new Date(bookmark.created_at);
         if (date >= trendDaysAgo) {
           const dateKey = date.toISOString().split("T")[0];
-          trendMap.set(dateKey, (trendMap.get(dateKey) || 0) + 1);
+          const isBrowser = isBrowserPlatform(bookmark.platform as Platform);
+
+          if (isBrowser) {
+            browserTrendMap.set(
+              dateKey,
+              (browserTrendMap.get(dateKey) || 0) + 1,
+            );
+          } else {
+            contentTrendMap.set(
+              dateKey,
+              (contentTrendMap.get(dateKey) || 0) + 1,
+            );
+          }
         }
       });
 
@@ -279,30 +340,52 @@ export function useAnalyticsData() {
         const date = new Date();
         date.setDate(date.getDate() - i);
         const dateKey = date.toISOString().split("T")[0];
+        const count = contentTrendMap.get(dateKey) || 0;
+        const browserCount = browserTrendMap.get(dateKey) || 0;
+
         trendData.push({
           date: dateKey,
-          count: trendMap.get(dateKey) || 0,
+          count,
+          browserCount,
+          total: count + browserCount,
         });
       }
 
-      // 2. 平台分布数据
-      const platformMap = new Map<Platform, number>();
+      // 2. 平台分布数据（合并浏览器平台）
+      const platformMap = new Map<string, number>();
       bookmarks.forEach((bookmark) => {
         const platform = bookmark.platform as Platform;
-        platformMap.set(platform, (platformMap.get(platform) || 0) + 1);
+        const displayPlatform = isBrowserPlatform(platform)
+          ? "BROWSER"
+          : platform;
+        platformMap.set(
+          displayPlatform,
+          (platformMap.get(displayPlatform) || 0) + 1,
+        );
       });
 
-      const platformData = Array.from(platformMap.entries()).map(
-        ([platform, count]) => ({
-          name: getPlatformName(platform),
-          value: count,
-          color: getPlatformHexColor(platform),
-        }),
-      );
+      const platformData = Array.from(platformMap.entries())
+        .map(([platform, value]) => ({
+          platform,
+          name:
+            platform === "BROWSER"
+              ? "浏览器书签"
+              : getPlatformName(platform as Platform),
+          value,
+          color:
+            platform === "BROWSER"
+              ? "#6366f1"
+              : getPlatformHexColor(platform as Platform),
+          percentage:
+            bookmarks.length > 0
+              ? Math.round((value / bookmarks.length) * 100)
+              : 0,
+        }))
+        .sort((a, b) => b.value - a.value);
 
-      // 3. 热门标签数据
+      // 3. 热门标签数据（仅内容收藏）
       const tagMap = new Map<string, number>();
-      bookmarks.forEach((bookmark) => {
+      contentBookmarks.forEach((bookmark) => {
         bookmark.ai_tags?.forEach((tag: string) => {
           tagMap.set(tag, (tagMap.get(tag) || 0) + 1);
         });
@@ -313,14 +396,14 @@ export function useAnalyticsData() {
         .slice(0, ANALYTICS_TOP_TAGS_COUNT)
         .map(([tag, count]) => ({ tag, count }));
 
-      // 4. 内容类型统计
+      // 4. 内容类型统计（仅内容收藏）
       const typeMap: Record<string, number> = {
         文章: 0,
         视频: 0,
         图文: 0,
       };
 
-      bookmarks.forEach((bookmark) => {
+      contentBookmarks.forEach((bookmark) => {
         if (bookmark.platform === "BILIBILI") {
           typeMap["视频"]++;
         } else if (bookmark.platform === "XIAOHONGSHU") {
@@ -330,16 +413,41 @@ export function useAnalyticsData() {
         }
       });
 
+      const contentTotal = contentBookmarks.length;
       const typeData = Object.entries(typeMap)
         .filter(([_, count]) => count > 0)
-        .map(([type, count]) => ({ type, count }));
+        .map(([type, count]) => ({
+          type,
+          count,
+          percentage:
+            contentTotal > 0 ? Math.round((count / contentTotal) * 100) : 0,
+        }));
 
       setState({
         data: {
+          stats: {
+            totalBookmarks: bookmarks.length,
+            contentBookmarks: contentBookmarks.length,
+            browserBookmarks: browserBookmarks.length,
+            todayCount,
+            weekCount,
+            last30DaysCount,
+            unclassifiedCount,
+            classificationRate:
+              bookmarks.length > 0
+                ? Math.round(
+                    ((bookmarks.length - unclassifiedCount) /
+                      bookmarks.length) *
+                      100,
+                  )
+                : 0,
+          },
           trendData,
           platformData,
+          folderData: [], // 客户端 hook 暂不获取文件夹分布
           tagData,
           typeData,
+          generatedAt: new Date().toISOString(),
         },
         isLoading: false,
         error: null,

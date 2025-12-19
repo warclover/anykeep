@@ -75,7 +75,13 @@ export async function getUserSettings(
     .eq("id", userId)
     .single();
 
+  // 处理 PGRST116 错误（用户 profile 记录不存在）
+  // 这种情况下返回空设置，而不是错误
   if (queryError) {
+    // PGRST116: The result contains 0 rows
+    if (queryError.code === "PGRST116") {
+      return { success: true, settings: {}, customUsageTags: [] };
+    }
     return { success: false, error: queryError };
   }
 

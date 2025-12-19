@@ -346,10 +346,22 @@ function AnalyticsPageRenderer() {
     <AnalyticsPageClient
       data={
         data || {
+          stats: {
+            totalBookmarks: 0,
+            contentBookmarks: 0,
+            browserBookmarks: 0,
+            todayCount: 0,
+            weekCount: 0,
+            last30DaysCount: 0,
+            unclassifiedCount: 0,
+            classificationRate: 0,
+          },
           trendData: [],
           platformData: [],
+          folderData: [],
           tagData: [],
           typeData: [],
+          generatedAt: new Date().toISOString(),
         }
       }
       error={error || undefined}
