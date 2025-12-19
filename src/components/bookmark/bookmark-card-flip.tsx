@@ -266,25 +266,37 @@ export const FlipBookmarkCard = memo(function FlipBookmarkCard({
 
             {/* 内容区域 - P0.4: 增加图文间距 */}
             <div className="p-4 pt-3 flex-1 flex flex-col card-content-spacing">
-              {/* 标题 - P0.2: 放大字号 + 渐隐截断 */}
-              <h3 className="font-semibold text-gray-900 dark:text-white card-title-fade mb-3 text-lg leading-snug">
+              {/* 标题 - 固定2行高度，单行时留白 */}
+              <h3 className="font-semibold text-gray-900 dark:text-white line-clamp-2 mb-3 text-lg leading-snug min-h-[3.25rem]">
                 {bookmark.title}
               </h3>
 
-              {/* 标签 - 最多3个 */}
-              {bookmark.ai_tags && bookmark.ai_tags.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mb-3">
-                  {bookmark.ai_tags.slice(0, 3).map((tag, i) => (
-                    <Badge
-                      key={i}
-                      variant="secondary"
-                      className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
-                    >
-                      #{tag}
-                    </Badge>
-                  ))}
-                </div>
-              )}
+              {/* 标签 - 单行显示，超出用+N */}
+              <div className="flex items-center gap-1.5 mb-3 h-6 overflow-hidden">
+                {bookmark.ai_tags && bookmark.ai_tags.length > 0 ? (
+                  <>
+                    {bookmark.ai_tags.slice(0, 2).map((tag, i) => (
+                      <Badge
+                        key={i}
+                        variant="secondary"
+                        className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 flex-shrink-0"
+                      >
+                        #{tag}
+                      </Badge>
+                    ))}
+                    {bookmark.ai_tags.length > 2 && (
+                      <Badge
+                        variant="secondary"
+                        className="text-xs bg-gray-200 dark:bg-gray-600 text-gray-500 dark:text-gray-400 flex-shrink-0"
+                      >
+                        +{bookmark.ai_tags.length - 2}
+                      </Badge>
+                    )}
+                  </>
+                ) : (
+                  <span className="text-xs text-gray-400">暂无标签</span>
+                )}
+              </div>
 
               {/* 底部元信息 */}
               <div className="mt-auto flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
