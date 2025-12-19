@@ -62,6 +62,18 @@ export const DEFAULT_SORT: SortValue = "created_desc";
 // ==================== 分页配置 ====================
 
 /**
+ * 首页首次加载数量
+ * 精确控制首屏渲染的卡片数量，减少首次加载时间
+ */
+export const INITIAL_LOAD_SIZE = 24;
+
+/**
+ * 滚动加载每批数量
+ * 较小的批量可以提高响应速度，减少单次加载等待时间
+ */
+export const SCROLL_BATCH_SIZE = 12;
+
+/**
  * 根据视图模式动态调整分页大小
  * - card: 卡片视图首屏约 4-8 张，16 条足够
  * - list: 列表视图首屏约 10-15 条，24 条合适
@@ -73,8 +85,8 @@ export const PAGE_SIZE_BY_VIEW: Record<ViewMode, number> = {
   compact: 32,
 } as const;
 
-/** 默认分页大小（向后兼容） */
-export const DEFAULT_PAGE_SIZE = 24;
+/** 默认分页大小（向后兼容，使用 INITIAL_LOAD_SIZE） */
+export const DEFAULT_PAGE_SIZE = INITIAL_LOAD_SIZE;
 
 /**
  * 获取视图模式对应的分页大小

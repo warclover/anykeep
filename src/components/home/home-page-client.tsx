@@ -70,7 +70,11 @@ import { ErrorMessage } from "@/components/ui/error-message";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Bookmark } from "@/types/supabase";
-import { DEFAULT_PAGE_SIZE, getPageSizeByView } from "./constants";
+import {
+  DEFAULT_PAGE_SIZE,
+  SCROLL_BATCH_SIZE,
+  INITIAL_LOAD_SIZE,
+} from "./constants";
 import { useHomeViewMode } from "./hooks/use-home-view-mode";
 import { useHomeMutations } from "./hooks/use-home-mutations";
 import { useHomeBatch } from "./hooks/use-home-batch";
@@ -596,7 +600,7 @@ export function HomePageClient({
       const lastBookmark = bookmarks[bookmarks.length - 1];
       const params = new URLSearchParams({
         cursor: lastBookmark.id.toString(),
-        limit: getPageSizeByView(viewMode).toString(),
+        limit: SCROLL_BATCH_SIZE.toString(), // 每次滚动加载 12 张
       });
 
       if (currentPlatform) {
@@ -827,6 +831,13 @@ export function HomePageClient({
                     "加载更多"
                   )}
                 </Button>
+              </div>
+            )}
+
+            {/* 已加载全部提示 */}
+            {!hasMore && bookmarks.length > INITIAL_LOAD_SIZE && (
+              <div className="text-center py-6 text-sm text-gray-400 dark:text-gray-500">
+                已加载全部 {bookmarks.length} 条收藏
               </div>
             )}
           </>

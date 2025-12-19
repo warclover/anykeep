@@ -9,6 +9,7 @@
  *
  * Phase 4: 集成 AI 对话功能
  * Phase 5: 可折叠侧边栏，内容区联动
+ * Phase 6: CSS Grid 布局优化，消除 Layout Thrashing
  */
 
 export const dynamic = "force-dynamic";
@@ -34,11 +35,13 @@ export default function MainLayout({
       {/* 顶部导航 */}
       <AppHeader />
 
-      <div className="flex overflow-hidden">
-        {/* 侧边栏（桌面端） */}
+      {/* CSS Grid 布局：侧边栏使用 transform 动画，主内容区无需响应宽度变化 */}
+      {/* 高度 = 100vh - header高度(56px)，确保 Grid 填满剩余空间 */}
+      <div className="grid grid-cols-[auto_1fr] h-[calc(100vh-3.5rem)] overflow-hidden">
+        {/* 侧边栏（桌面端）- 使用 transform 动画，仅触发 Composite */}
         <AppSidebar />
 
-        {/* 主内容区 - 使用客户端导航管理，响应侧边栏折叠 */}
+        {/* 主内容区 - 固定在第二列，无需响应侧边栏宽度变化 */}
         <MainContentWrapper>
           <MainContent>{children}</MainContent>
         </MainContentWrapper>
