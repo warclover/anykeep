@@ -1,11 +1,25 @@
 /**
  * 数据统计页面客户端组件
+ * Phase 3: 完整功能版本
+ * - 文件夹分布统计
+ * - 时间对比（周环比/月同比）
+ * - AI 处理统计
+ * - 数据导出
  */
 
 "use client";
 
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { ErrorMessage } from "@/components/ui/error-message";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   LineChart,
   Line,
@@ -20,21 +34,47 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
-import { TrendingUp, Users, Bookmark, Calendar } from "lucide-react";
+import {
+  TrendingUp,
+  Users,
+  Bookmark,
+  Calendar,
+  FolderOpen,
+  Download,
+  Sparkles,
+  ArrowUpRight,
+  ArrowDownRight,
+  Minus,
+} from "lucide-react";
 import { ClassificationHistoryCard } from "./classification-history-card";
 import { useRouter } from "next/navigation";
-
-interface AnalyticsData {
-  trendData: { date: string; count: number }[];
-  platformData: { name: string; value: number; color: string }[];
-  tagData: { tag: string; count: number }[];
-  typeData: { type: string; count: number }[];
-}
+import type { AnalyticsData, TimeComparison } from "@/lib/analytics";
 
 interface AnalyticsPageClientProps {
   data: AnalyticsData;
   error?: string;
 }
+
+// 时间范围选项
+type DateRange = "7" | "14" | "30";
+
+const DATE_RANGE_OPTIONS: { value: DateRange; label: string }[] = [
+  { value: "7", label: "最近 7 天" },
+  { value: "14", label: "最近 14 天" },
+  { value: "30", label: "最近 30 天" },
+];
+
+// 文件夹颜色
+const FOLDER_COLORS = [
+  "#8b5cf6",
+  "#06b6d4",
+  "#10b981",
+  "#f59e0b",
+  "#ef4444",
+  "#ec4899",
+  "#6366f1",
+  "#84cc16",
+];
 
 // Tooltip 类型定义
 interface TooltipPayload {
@@ -60,7 +100,7 @@ interface PieTooltipProps {
   payload?: PieTooltipPayload[];
 }
 
-// 自定义 Tooltip 组件（移出主组件以避免每次渲染重新创建）
+// 自定义 Tooltip 组件
 function CustomTooltip({
   active,
   payload,
@@ -102,20 +142,126 @@ function CustomPieTooltip({
   return null;
 }
 
+// 趋势指示器组件
+function TrendIndicator({ comparison }: { comparison: TimeComparison }) {
+  const { changePercent, trend } = comparison;
+
+  if (trend === "flat") {
+    return (
+      <span className="flex items-center text-xs text-gray-500">
+        <Minus className="size-3 mr-0.5" />
+        持平
+      </span>
+    );
+  }
+
+  const isUp = trend === "up";
+  return (
+    <span
+      className={`flex items-center text-xs ${
+        isUp
+          ? "text-green-600 dark:text-green-400"
+          : "text-red-600 dark:text-red-400"
+      }`}
+    >
+      {isUp ? (
+        <ArrowUpRight className="size-3 mr-0.5" />
+      ) : (
+        <ArrowDownRight className="size-3 mr-0.5" />
+      )}
+      {Math.abs(changePercent).toFixed(1)}%
+    </span>
+  );
+}
+
+// 统计卡片组件（带对比）
+function StatCard({
+  title,
+  value,
+  icon: Icon,
+  iconBgClass,
+  iconClass,
+  comparison,
+  comparisonLabel,
+}: {
+  title: string;
+  value: number;
+  icon: React.ElementType;
+  iconBgClass: string;
+  iconClass: string;
+  comparison?: TimeComparison;
+  comparisonLabel?: string;
+}) {
+  return (
+    <Card>
+      <CardContent className="p-4 sm:p-6">
+        <div className="flex items-center gap-3 sm:gap-4">
+          <div
+            className={`w-10 h-10 sm:w-12 sm:h-12 ${iconBgClass} rounded-lg flex items-center justify-center`}
+          >
+            <Icon className={`size-5 sm:size-6 ${iconClass}`} />
+          </div>
+          <div className="flex-1">
+            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+              {title}
+            </p>
+            <div className="flex items-baseline gap-2">
+              <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
+                {value}
+              </p>
+              {comparison && (
+                <div className="flex flex-col">
+                  <TrendIndicator comparison={comparison} />
+                  {comparisonLabel && (
+                    <span className="text-[10px] text-gray-400">
+                      {comparisonLabel}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function AnalyticsPageClient({ data, error }: AnalyticsPageClientProps) {
   const router = useRouter();
-  const { trendData, platformData, tagData, typeData } = data;
+  const {
+    stats,
+    trendData,
+    platformData,
+    folderData,
+    tagData,
+    typeData,
+    comparison,
+    aiStats,
+  } = data;
 
-  // 计算统计数据
-  const totalBookmarks = platformData.reduce(
-    (sum, item) => sum + item.value,
-    0,
-  );
-  const todayCount = trendData[trendData.length - 1]?.count || 0;
-  const weekCount = trendData
-    .slice(-7)
-    .reduce((sum, item) => sum + item.count, 0);
-  const monthCount = trendData.reduce((sum, item) => sum + item.count, 0);
+  // 时间范围选择状态
+  const [dateRange, setDateRange] = useState<DateRange>("30");
+
+  // 根据时间范围过滤趋势数据
+  const filteredTrendData = useMemo(() => {
+    const days = parseInt(dateRange);
+    // trendData 默认是 30 天，从末尾取最近 N 天
+    return trendData.slice(-days);
+  }, [trendData, dateRange]);
+
+  // 计算选择时间范围内的新增数量
+  const rangeCount = useMemo(() => {
+    return filteredTrendData.reduce((sum, item) => sum + item.count, 0);
+  }, [filteredTrendData]);
+
+  // 从服务层获取的统计数据
+  // 注意：totalBookmarks 包含浏览器书签，contentBookmarks 不包含（与首页"全部"一致）
+  const contentBookmarks = stats.contentBookmarks;
+  const browserBookmarks = stats.browserBookmarks;
+  const todayCount = stats.todayCount;
+  const weekCount = stats.weekCount;
+  const last30DaysCount = stats.last30DaysCount;
 
   // 格式化日期显示
   const formatDate = (dateStr: string) => {
@@ -127,18 +273,64 @@ export function AnalyticsPageClient({ data, error }: AnalyticsPageClientProps) {
     router.refresh();
   };
 
-  const hasData = totalBookmarks > 0;
+  // 数据导出功能
+  const handleExport = () => {
+    const exportData = {
+      exportedAt: new Date().toISOString(),
+      stats,
+      trendData,
+      platformData,
+      folderData,
+      tagData,
+      typeData,
+      comparison,
+      aiStats,
+    };
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `anykeep-analytics-${new Date().toISOString().split("T")[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  // 判断是否有数据：内容收藏或浏览器书签任一有数据
+  const hasData = contentBookmarks > 0 || browserBookmarks > 0;
+  // 总收藏数（用于饼图百分比计算）
+  const totalBookmarks = stats.totalBookmarks;
 
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
       <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 md:px-8 py-4 md:py-6">
-        <h2 className="text-gray-900 dark:text-white text-xl md:text-2xl font-semibold mb-2">
-          数据统计
-        </h2>
-        <p className="text-gray-500 dark:text-gray-400 text-sm">
-          {totalBookmarks} 篇收藏的深度分析
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-gray-900 dark:text-white text-xl md:text-2xl font-semibold mb-2">
+              数据统计
+            </h2>
+            <p className="text-gray-500 dark:text-gray-400 text-sm">
+              {contentBookmarks} 篇内容收藏
+              {browserBookmarks > 0 && ` · ${browserBookmarks} 条浏览器书签`}
+            </p>
+          </div>
+          {hasData && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExport}
+              className="flex items-center gap-2"
+            >
+              <Download className="size-4" />
+              <span className="hidden sm:inline">导出数据</span>
+            </Button>
+          )}
+        </div>
       </header>
 
       {/* Content */}
@@ -149,90 +341,119 @@ export function AnalyticsPageClient({ data, error }: AnalyticsPageClientProps) {
           <div className="space-y-6">
             {/* 统计卡片 */}
             <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-              <Card>
-                <CardContent className="p-4 sm:p-6">
-                  <div className="flex items-center gap-3 sm:gap-4">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
-                      <Bookmark className="size-5 sm:size-6 text-purple-600 dark:text-purple-400" />
-                    </div>
-                    <div>
-                      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-                        总收藏
-                      </p>
-                      <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
-                        {totalBookmarks}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-4 sm:p-6">
-                  <div className="flex items-center gap-3 sm:gap-4">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
-                      <Calendar className="size-5 sm:size-6 text-blue-600 dark:text-blue-400" />
-                    </div>
-                    <div>
-                      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-                        今日新增
-                      </p>
-                      <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
-                        {todayCount}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-4 sm:p-6">
-                  <div className="flex items-center gap-3 sm:gap-4">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
-                      <TrendingUp className="size-5 sm:size-6 text-green-600 dark:text-green-400" />
-                    </div>
-                    <div>
-                      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-                        本周新增
-                      </p>
-                      <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
-                        {weekCount}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-4 sm:p-6">
-                  <div className="flex items-center gap-3 sm:gap-4">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center">
-                      <Users className="size-5 sm:size-6 text-orange-600 dark:text-orange-400" />
-                    </div>
-                    <div>
-                      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-                        本月新增
-                      </p>
-                      <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
-                        {monthCount}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <StatCard
+                title="内容收藏"
+                value={contentBookmarks}
+                icon={Bookmark}
+                iconBgClass="bg-purple-100 dark:bg-purple-900/30"
+                iconClass="text-purple-600 dark:text-purple-400"
+              />
+              <StatCard
+                title="今日新增"
+                value={todayCount}
+                icon={Calendar}
+                iconBgClass="bg-blue-100 dark:bg-blue-900/30"
+                iconClass="text-blue-600 dark:text-blue-400"
+                comparison={comparison?.daily}
+                comparisonLabel="较昨日"
+              />
+              <StatCard
+                title="本周新增"
+                value={weekCount}
+                icon={TrendingUp}
+                iconBgClass="bg-green-100 dark:bg-green-900/30"
+                iconClass="text-green-600 dark:text-green-400"
+                comparison={comparison?.weekly}
+                comparisonLabel="较上周"
+              />
+              <StatCard
+                title="近30天"
+                value={last30DaysCount}
+                icon={Users}
+                iconBgClass="bg-orange-100 dark:bg-orange-900/30"
+                iconClass="text-orange-600 dark:text-orange-400"
+                comparison={comparison?.monthly}
+                comparisonLabel="较上月"
+              />
             </div>
+
+            {/* AI 处理统计卡片 */}
+            {aiStats && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Sparkles className="size-5 text-violet-600 dark:text-violet-400" />
+                    AI 处理统计
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="text-center p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                      <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                        {aiStats.classificationCount}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        分类建议
+                      </p>
+                    </div>
+                    <div className="text-center p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                      <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                        {aiStats.classificationAcceptRate}%
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        采纳率
+                      </p>
+                    </div>
+                    <div className="text-center p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                      <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                        {aiStats.summaryCount}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        摘要生成
+                      </p>
+                    </div>
+                    <div className="text-center p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                      <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                        {aiStats.tagCount}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        标签生成
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* 收藏趋势折线图 */}
             <Card>
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="flex items-center gap-2">
                   <TrendingUp className="size-5 text-purple-600 dark:text-purple-400" />
-                  收藏趋势（最近 30 天）
+                  收藏趋势
+                  <span className="text-sm font-normal text-gray-500 dark:text-gray-400">
+                    （{rangeCount} 篇新增）
+                  </span>
                 </CardTitle>
+                <Select
+                  value={dateRange}
+                  onValueChange={(value: DateRange) => setDateRange(value)}
+                >
+                  <SelectTrigger className="w-[130px] h-8 text-sm">
+                    <SelectValue placeholder="选择时间" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DATE_RANGE_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={trendData}>
+                  <LineChart data={filteredTrendData}>
                     <CartesianGrid
                       strokeDasharray="3 3"
                       className="stroke-gray-200 dark:stroke-gray-700"
@@ -259,7 +480,7 @@ export function AnalyticsPageClient({ data, error }: AnalyticsPageClientProps) {
               </CardContent>
             </Card>
 
-            {/* 平台分布 & 内容类型 */}
+            {/* 平台分布 & 文件夹分布 */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* 平台分布饼图 */}
               <Card>
@@ -273,7 +494,9 @@ export function AnalyticsPageClient({ data, error }: AnalyticsPageClientProps) {
                   <ResponsiveContainer width="100%" height={250}>
                     <PieChart>
                       <Pie
-                        data={platformData}
+                        data={
+                          platformData as unknown as Record<string, unknown>[]
+                        }
                         cx="50%"
                         cy="50%"
                         labelLine={false}
@@ -298,20 +521,72 @@ export function AnalyticsPageClient({ data, error }: AnalyticsPageClientProps) {
                 </CardContent>
               </Card>
 
-              {/* 内容类型饼图 */}
-              {typeData.length > 0 && (
+              {/* 文件夹分布饼图 */}
+              {folderData.length > 0 && (
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <Bookmark className="size-5 text-green-600 dark:text-green-400" />
-                      内容类型
+                      <FolderOpen className="size-5 text-amber-600 dark:text-amber-400" />
+                      文件夹分布
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <ResponsiveContainer width="100%" height={250}>
                       <PieChart>
                         <Pie
-                          data={typeData}
+                          data={
+                            folderData as unknown as Record<string, unknown>[]
+                          }
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={({ name, percent }) =>
+                            `${name} ${((percent || 0) * 100).toFixed(0)}%`
+                          }
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="value"
+                        >
+                          {folderData.map((_, index) => (
+                            <Cell
+                              key={`cell-${index}`}
+                              fill={FOLDER_COLORS[index % FOLDER_COLORS.length]}
+                            />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          content={
+                            <CustomPieTooltip totalBookmarks={totalBookmarks} />
+                          }
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+
+            {/* 内容类型 */}
+            {typeData.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Bookmark className="size-5 text-green-600 dark:text-green-400" />
+                    内容类型分布
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center justify-center">
+                    <ResponsiveContainer
+                      width="100%"
+                      height={200}
+                      className="max-w-md"
+                    >
+                      <PieChart>
+                        <Pie
+                          data={
+                            typeData as unknown as Record<string, unknown>[]
+                          }
                           cx="50%"
                           cy="50%"
                           labelLine={false}
@@ -324,11 +599,11 @@ export function AnalyticsPageClient({ data, error }: AnalyticsPageClientProps) {
                           }) =>
                             `${payload?.type ?? ""} ${((percent ?? 0) * 100).toFixed(0)}%`
                           }
-                          outerRadius={80}
+                          outerRadius={70}
                           fill="#8884d8"
                           dataKey="count"
                         >
-                          {typeData.map((entry, index) => (
+                          {typeData.map((_, index) => (
                             <Cell
                               key={`cell-${index}`}
                               fill={
@@ -340,10 +615,10 @@ export function AnalyticsPageClient({ data, error }: AnalyticsPageClientProps) {
                         <Tooltip />
                       </PieChart>
                     </ResponsiveContainer>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* 热门标签排行 & 分类历史 */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
