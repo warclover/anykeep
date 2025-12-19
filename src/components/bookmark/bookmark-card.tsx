@@ -13,12 +13,8 @@ import {
   Trash2,
   ExternalLink,
   Check,
-  FileText,
-  Image as ImageIcon,
-  Tag,
   Circle,
   CheckCircle2,
-  Clock,
   Zap,
   Lock,
   Star,
@@ -48,10 +44,6 @@ import type { Bookmark, CustomUsageTag, Platform } from "@/types/supabase";
 import type { BookmarkV42Fields } from "@/lib/classification/types";
 import { cn } from "@/lib/utils";
 import { formatRelativeTime } from "@/lib/utils/date-utils";
-import {
-  calculateReadingTime,
-  getContentTypeLabel,
-} from "@/lib/utils/reading-time";
 import { getPlatformHexColor } from "@/lib/constants/platforms";
 import { generatePlaceholderImage } from "@/lib/utils/placeholder-image";
 import { getProxiedImageUrl } from "@/lib/utils/image-proxy";
@@ -732,7 +724,7 @@ export const BookmarkCard = memo(function BookmarkCard({
     >
       <Card
         className={cn(
-          "h-full card-hover-effect cursor-pointer flex flex-col group relative pt-0",
+          "h-full card-hover-effect cursor-pointer flex flex-col group relative pt-0 pb-0",
           isDeleting && "opacity-50 pointer-events-none",
           isSelected && "ring-2 ring-blue-500 dark:ring-blue-400",
         )}
@@ -791,17 +783,17 @@ export const BookmarkCard = memo(function BookmarkCard({
           )}
         </div>
 
-        {/* P0.4: 增加图文间距 */}
-        <CardHeader className="pb-3 pt-4">
+        {/* V4.2.24: 优化间距以降低卡片高度 */}
+        <CardHeader className="pb-0 pt-0.5 px-3">
           <div className="flex items-start gap-2">
             {/* 未读指示器 */}
             {!bookmark.is_read && (
               <Circle className="size-2 mt-2 flex-shrink-0 fill-blue-500 text-blue-500" />
             )}
-            {/* P0.2: 标题放大 + 渐隐截断 */}
+            {/* V4.2.24: 标题固定两行高度，保持卡片对齐 */}
             <CardTitle
               className={cn(
-                "card-title-fade text-lg min-h-[3.25rem] leading-snug",
+                "text-base leading-tight line-clamp-2 min-h-[2.5rem]",
                 titleLoading
                   ? "text-gray-400 dark:text-gray-500 italic animate-pulse"
                   : bookmark.is_read
@@ -812,78 +804,15 @@ export const BookmarkCard = memo(function BookmarkCard({
               {bookmark.title}
             </CardTitle>
           </div>
-          {/* P0.3: 摘要渐隐效果 */}
-          {(() => {
-            const displaySummary = getDisplaySummary(bookmark.ai_summary);
-            return displaySummary ? (
-              <CardDescription className="card-summary-fade">
-                {displaySummary}
-              </CardDescription>
-            ) : null;
-          })()}
+          {/* V4.2.24: 摘要固定两行高度，保持卡片对齐 */}
+          <CardDescription className="text-sm leading-tight mt-0.5 line-clamp-2 min-h-[2.25rem] text-muted-foreground">
+            {getDisplaySummary(bookmark.ai_summary) || "\u00A0"}
+          </CardDescription>
         </CardHeader>
 
-        <CardContent className="pt-0 flex-1 flex flex-col">
-          {/* P1.3: 关键信息图标化 - 阅读时长 & 内容类型 */}
-          <div className="flex items-center gap-2 mb-2">
-            {/* 阅读时长 */}
-            {calculateReadingTime(
-              bookmark.word_count,
-              (bookmark.image_count ?? 0) > 0,
-              bookmark.image_count ?? 0,
-            ) && (
-              <span className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
-                <Clock className="size-3" />
-                {calculateReadingTime(
-                  bookmark.word_count,
-                  (bookmark.image_count ?? 0) > 0,
-                  bookmark.image_count ?? 0,
-                )}
-              </span>
-            )}
-            {/* V9.0: AI内容类型徽章（优先显示）或回退到基础类型 */}
-            {bookmark.ai_content_type ? (
-              <ContentTypeBadge
-                type={bookmark.ai_content_type as ContentType}
-                size="sm"
-              />
-            ) : (
-              <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
-                {getContentTypeLabel(
-                  bookmark.word_count,
-                  bookmark.image_count,
-                  bookmark.platform,
-                )}
-              </span>
-            )}
-            {/* 字数 & 图片数 */}
-            {bookmark.word_count != null && bookmark.word_count > 0 && (
-              <span className="flex items-center gap-1 text-xs text-gray-400">
-                <FileText className="size-3" />
-                {bookmark.word_count >= 10000
-                  ? `${(bookmark.word_count / 10000).toFixed(1)}万`
-                  : bookmark.word_count}
-              </span>
-            )}
-            {bookmark.image_count != null && bookmark.image_count > 0 && (
-              <span className="flex items-center gap-1 text-xs text-gray-400">
-                <ImageIcon className="size-3" aria-hidden="true" />
-                {bookmark.image_count}
-              </span>
-            )}
-          </div>
-
-          {/* V6.0新增：评级显示 */}
-          <BookmarkRatingDisplay
-            rating={bookmark.rating ?? 0}
-            isLocked={bookmark.is_locked ?? false}
-            variant="default"
-            className="mb-2"
-          />
-
-          {/* P3/V9.0: 标签区域优化 - 用途标签在上，AI标签在下 */}
+        <CardContent className="pt-0 pb-0 px-3 flex-1 flex flex-col">
+          {/* V4.2.24: 标签区域简化 - 单行显示，无背景框 */}
           {(() => {
-            // V9.0: 使用扩展函数支持自定义用途标签
             const { usageTags, regularTags } = separateUserTagsExtended(
               bookmark.user_tags,
               customUsageTags,
@@ -895,104 +824,89 @@ export const BookmarkCard = memo(function BookmarkCard({
 
             if (!hasTags) return null;
 
+            // 合并所有标签，按优先级：AI标签 > 用途标签 > 普通标签
+            const allTags: { tag: string; type: "ai" | "usage" | "regular" }[] =
+              [];
+            if (hasAiTags) {
+              bookmark.ai_tags!.forEach((tag) =>
+                allTags.push({ tag, type: "ai" }),
+              );
+            }
+            usageTags.forEach((tag) => allTags.push({ tag, type: "usage" }));
+            regularTags.forEach((tag) =>
+              allTags.push({ tag, type: "regular" }),
+            );
+
+            // V4.2.24: 单行显示，限制最多 2 个标签，其余用 +N 表示
+            const maxVisible = 2;
+            const visibleTags = allTags.slice(0, maxVisible);
+            const hiddenCount = allTags.length - maxVisible;
+
             return (
-              <div className="space-y-2 mb-2">
-                {/* V9.0: 用途标签优先显示（用户意图导向） */}
-                {hasUsageTags && (
-                  <div className="flex flex-wrap gap-1">
-                    {usageTags.map((tag) => {
-                      // V9.0: 使用扩展函数支持自定义标签样式
-                      const tagStyle = getUsageTagStyleExtended(
-                        tag,
-                        customUsageTags,
-                      );
-                      if (!tagStyle) return null;
-                      return (
-                        <Badge
-                          key={`usage-${tag}`}
-                          variant="outline"
-                          className={cn(
-                            "text-xs font-medium",
-                            tagStyle.style.bgLight,
-                            tagStyle.style.bgDark,
-                            tagStyle.style.borderLight,
-                            tagStyle.style.borderDark,
-                            tagStyle.style.textLight,
-                            tagStyle.style.textDark,
-                          )}
-                        >
-                          {tagStyle.label}
-                        </Badge>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* AI标签区 - 独立显示 + 闪电图标 */}
-                {hasAiTags && (
-                  <div className="p-2 rounded-lg bg-gradient-to-r from-purple-50/80 to-pink-50/80 dark:from-purple-900/20 dark:to-pink-900/20 border border-purple-100 dark:border-purple-800/50">
-                    <div className="flex items-center gap-1.5 mb-1.5">
-                      <Zap className="size-3 text-purple-500 dark:text-purple-400" />
-                      <span className="text-[10px] font-medium text-purple-600 dark:text-purple-400 uppercase tracking-wider">
-                        AI 提取
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap gap-1">
-                      {/* AI标签彩色Pill样式 */}
-                      {bookmark.ai_tags!.slice(0, 3).map((tag) => {
-                        const colorStyle = getAiTagColor(tag);
-                        return (
-                          <Badge
-                            key={`ai-${tag}`}
-                            variant="outline"
-                            className={cn(
-                              "text-xs font-normal",
-                              colorStyle.bgLight,
-                              colorStyle.bgDark,
-                              colorStyle.borderLight,
-                              colorStyle.borderDark,
-                              colorStyle.textLight,
-                              colorStyle.textDark,
-                            )}
-                          >
-                            {tag}
-                          </Badge>
-                        );
-                      })}
-                      {bookmark.ai_tags!.length > 3 && (
-                        <Badge
-                          variant="outline"
-                          className="text-xs text-gray-500"
-                        >
-                          +{bookmark.ai_tags!.length - 3}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* 普通用户标签 */}
-                {hasRegularTags && (
-                  <div className="flex flex-wrap gap-1">
-                    {regularTags.slice(0, 2).map((tag) => (
+              <div className="flex flex-nowrap items-center gap-1 overflow-hidden">
+                {visibleTags.map(({ tag, type }) => {
+                  if (type === "ai") {
+                    const colorStyle = getAiTagColor(tag);
+                    return (
                       <Badge
-                        key={`user-${tag}`}
+                        key={`ai-${tag}`}
                         variant="outline"
-                        className="bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300 text-xs"
+                        className={cn(
+                          "text-[11px] py-0 h-5 flex-shrink-0 max-w-[45%] truncate",
+                          colorStyle.bgLight,
+                          colorStyle.bgDark,
+                          colorStyle.borderLight,
+                          colorStyle.borderDark,
+                          colorStyle.textLight,
+                          colorStyle.textDark,
+                        )}
                       >
-                        <Tag className="size-2.5 mr-0.5" />
                         {tag}
                       </Badge>
-                    ))}
-                    {regularTags.length > 2 && (
+                    );
+                  }
+                  if (type === "usage") {
+                    const tagStyle = getUsageTagStyleExtended(
+                      tag,
+                      customUsageTags,
+                    );
+                    if (!tagStyle) return null;
+                    return (
                       <Badge
+                        key={`usage-${tag}`}
                         variant="outline"
-                        className="text-xs text-gray-500"
+                        className={cn(
+                          "text-[11px] py-0 h-5 flex-shrink-0 max-w-[45%] truncate",
+                          tagStyle.style.bgLight,
+                          tagStyle.style.bgDark,
+                          tagStyle.style.borderLight,
+                          tagStyle.style.borderDark,
+                          tagStyle.style.textLight,
+                          tagStyle.style.textDark,
+                        )}
                       >
-                        +{regularTags.length - 2}
+                        {tagStyle.label}
                       </Badge>
-                    )}
-                  </div>
+                    );
+                  }
+                  // regular tag
+                  return (
+                    <Badge
+                      key={`user-${tag}`}
+                      variant="outline"
+                      className="text-[11px] py-0 h-5 flex-shrink-0 max-w-[45%] truncate bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300"
+                    >
+                      {tag}
+                    </Badge>
+                  );
+                })}
+                {hiddenCount > 0 && (
+                  <Badge
+                    variant="outline"
+                    className="text-[11px] py-0 h-5 text-gray-500 flex-shrink-0"
+                  >
+                    +{hiddenCount}
+                  </Badge>
                 )}
               </div>
             );
@@ -1026,9 +940,9 @@ export const BookmarkCard = memo(function BookmarkCard({
             </Tooltip>
           )}
 
-          {/* P1.2: 次要信息弱化到底部一行 */}
-          <div className="mt-auto pt-2 border-t border-gray-100 dark:border-gray-700">
-            <div className="flex items-center justify-between text-xs text-gray-400">
+          {/* V4.2.24: 元信息 - 移除分隔线，减少间距 */}
+          <div className="mt-auto">
+            <div className="flex items-center justify-between text-xs text-gray-400/70 dark:text-gray-500/70">
               {/* 左侧：来源/作者 */}
               <span className="truncate max-w-[60%]">
                 {bookmark.source_name || bookmark.author || "未知来源"}
