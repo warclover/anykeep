@@ -44,7 +44,7 @@ import {
   VisionInsights,
   VisionAnalysisTrigger,
 } from "@/components/bookmark/vision-insights";
-import { RelatedBookmarksV2 } from "@/components/bookmark/related-bookmarks-v2";
+import { RelatedBookmarksV2Lazy } from "@/components/bookmark/related-bookmarks-lazy";
 import { useVisionAnalysis } from "@/hooks/use-vision-analysis";
 import type { BookmarkVisionData } from "@/types/vision";
 import { hasVisionData } from "@/types/vision";
@@ -157,15 +157,16 @@ export function BookmarkDetailClient({
     markAsRead();
   }, [bookmark.id, bookmark.is_read]);
 
-  // V4.2.22: 自定义用途标签 - 优先使用 SSR 预取数据，消除加载延迟
-  // 如果 SSR 数据为空（如直接访问 URL），回退到客户端 Hook
-  const { customTags: hookCustomTags } = useCustomUsageTags();
-  const customUsageTags =
-    initialCustomUsageTags.length > 0 ? initialCustomUsageTags : hookCustomTags;
+  // V4.2.24: 自定义用途标签 - SWR 缓存 + SSR 初始数据
+  // fallbackData 作为初始值，避免客户端首次请求
+  // 后续通过 SWR 缓存去重，跨组件共享状态
+  const { customTags: customUsageTags } = useCustomUsageTags({
+    initialData: initialCustomUsageTags,
+  });
 
-  // 分离用途标签和普通标签
+  // 分离用途标签和普通标签（确保传入数组，避免 null/undefined）
   const { usageTags, regularTags } = separateUserTagsExtended(
-    bookmark.user_tags,
+    bookmark.user_tags ?? [],
     customUsageTags,
   );
 
@@ -870,8 +871,8 @@ export function BookmarkDetailClient({
                 </>
               ) : null}
 
-              {/* Phase 2: 知识关联推荐 */}
-              <RelatedBookmarksV2
+              {/* Phase 2: 知识关联推荐 (V4.2.24: 视口懒加载优化) */}
+              <RelatedBookmarksV2Lazy
                 bookmarkId={bookmark.id}
                 defaultExpanded={true}
                 limit={5}

@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useState, memo } from "react";
+import { useState, memo, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   MoreVertical,
@@ -48,6 +48,7 @@ import { getPlatformHexColor } from "@/lib/constants/platforms";
 import { generatePlaceholderImage } from "@/lib/utils/placeholder-image";
 import { getProxiedImageUrl } from "@/lib/utils/image-proxy";
 import { PlatformBadge } from "@/components/ui/platform-badge";
+import { prefetchCustomUsageTags } from "@/hooks/use-custom-usage-tags";
 import { BookmarkRatingDisplay } from "@/components/bookmark/bookmark-rating-display";
 import { ContentTypeBadge } from "@/components/bookmark/content-type-badge";
 import type { ContentType } from "@/lib/classification/content-type-detector";
@@ -185,6 +186,8 @@ export const BookmarkCard = memo(function BookmarkCard({
 }: BookmarkCardProps) {
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
+  // V4.2.24: 预加载防抖 timer ref
+  const prefetchTimerRef = useRef<NodeJS.Timeout | null>(null);
   // V4.2.1: 快照功能状态
   const isSnapshotEnabled = useSnapshotFeature();
 
@@ -349,11 +352,29 @@ export const BookmarkCard = memo(function BookmarkCard({
     </div>
   );
 
-  // V4.2.23: 预加载详情页，减少点击后的感知延迟
-  // 鼠标悬停时触发，Next.js 会预加载目标页面的 JS 和数据
-  const handlePrefetch = () => {
-    router.prefetch(`/bookmark/${bookmark.id}`);
-  };
+  // V4.2.24: 增强预加载 - 预加载路由 JS + 数据（带防抖）
+  // 鼠标悬停 150ms 后触发，避免快速划过时的请求风暴
+  const handlePrefetch = useCallback(() => {
+    // 清除之前的定时器
+    if (prefetchTimerRef.current) {
+      clearTimeout(prefetchTimerRef.current);
+    }
+    // 防抖 150ms
+    prefetchTimerRef.current = setTimeout(() => {
+      // 1. 预加载详情页 JS 和路由
+      router.prefetch(`/bookmark/${bookmark.id}`);
+      // 2. 预加载自定义标签数据（SWR 会自动去重）
+      prefetchCustomUsageTags();
+    }, 150);
+  }, [bookmark.id, router]);
+
+  // 鼠标离开时取消预加载
+  const handlePrefetchCancel = useCallback(() => {
+    if (prefetchTimerRef.current) {
+      clearTimeout(prefetchTimerRef.current);
+      prefetchTimerRef.current = null;
+    }
+  }, []);
 
   // 通用的卡片/列表点击处理（使用程序化导航确保可靠性）
   const handleItemClick = (e: React.MouseEvent) => {
@@ -385,6 +406,7 @@ export const BookmarkCard = memo(function BookmarkCard({
       <div
         onClick={handleItemClick}
         onMouseEnter={handlePrefetch}
+        onMouseLeave={handlePrefetchCancel}
         className={cn(
           "flex items-center gap-2 sm:gap-4 p-2 sm:p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-sm transition-shadow cursor-pointer group",
           isDeleting && "opacity-50 pointer-events-none",
@@ -487,6 +509,7 @@ export const BookmarkCard = memo(function BookmarkCard({
       <div
         onClick={handleItemClick}
         onMouseEnter={handlePrefetch}
+        onMouseLeave={handlePrefetchCancel}
         className="block cursor-pointer"
         role="link"
         tabIndex={0}
@@ -712,6 +735,7 @@ export const BookmarkCard = memo(function BookmarkCard({
     <div
       onClick={handleItemClick}
       onMouseEnter={handlePrefetch}
+      onMouseLeave={handlePrefetchCancel}
       className="block h-full cursor-pointer"
       role="link"
       tabIndex={0}

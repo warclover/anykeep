@@ -1,67 +1,53 @@
 /**
- * 自定义用途标签数据 Hook
- * 统一管理自定义标签的获取、缓存和同步
+ * 自定义用途标签数据 Hook (V2 - SWR 版本)
  *
- * 特点：
- * - 模块级缓存，多组件共享数据
- * - 自动去重请求（同时只有一个请求在飞行中）
- * - 支持乐观更新和手动刷新
- * - 通过 CustomEvent 跨组件同步
+ * 使用 SWR 统一管理自定义标签的获取、缓存和同步
+ *
+ * 优化点：
+ * - SWR 自动缓存去重，消除重复请求
+ * - 配置合理的 staleTime，减少不必要的 revalidation
+ * - 支持 SSR 初始数据透传，消除客户端加载延迟
+ * - 跨组件自动共享缓存状态
+ *
+ * @version 2.1.0
+ * @since 2025-12-19
  */
 
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useMemo } from "react";
+import useSWR, { useSWRConfig, preload, mutate as globalMutate } from "swr";
 import type { CustomUsageTag } from "@/types/supabase";
 
 // ============================================
-// 模块级缓存（所有组件实例共享）
+// Constants
 // ============================================
 
-interface CacheState {
-  data: CustomUsageTag[];
-  timestamp: number;
-  isLoading: boolean;
-  error: Error | null;
-}
+/** SWR 缓存键 */
+export const CUSTOM_USAGE_TAGS_KEY = "/api/settings/usage-tags" as const;
 
-// 缓存状态
-let cache: CacheState = {
-  data: [],
-  timestamp: 0,
-  isLoading: false,
-  error: null,
-};
-
-// 缓存有效期（5分钟）
-const CACHE_TTL = 5 * 60 * 1000;
-
-// 订阅者列表（用于通知所有使用该 Hook 的组件）
-const subscribers = new Set<() => void>();
-
-// 通知所有订阅者数据已更新
-function notifySubscribers() {
-  subscribers.forEach((callback) => callback());
-}
-
-// 进行中的请求（防止重复请求）
-let pendingRequest: Promise<CustomUsageTag[]> | null = null;
+/** 缓存有效期：30 分钟（SWR dedupingInterval） */
+const DEDUPING_INTERVAL = 30 * 60 * 1000;
 
 // ============================================
-// 核心 API 调用
+// Fetcher
 // ============================================
 
-async function fetchCustomTags(): Promise<CustomUsageTag[]> {
-  const response = await fetch("/api/settings/usage-tags");
+async function customUsageTagsFetcher(url: string): Promise<CustomUsageTag[]> {
+  const response = await fetch(url);
   if (!response.ok) {
-    throw new Error("加载自定义标签失败");
+    const error = new Error("加载自定义标签失败") as Error & {
+      status?: number;
+    };
+    error.status = response.status;
+    throw error;
   }
   const data = await response.json();
   return data.data?.customUsageTags || [];
 }
 
 // ============================================
-// Hook 实现
+// Hook Interface
 // ============================================
 
 export interface UseCustomUsageTagsResult {
@@ -83,124 +69,140 @@ export interface UseCustomUsageTagsResult {
   setTags: (tags: CustomUsageTag[]) => void;
 }
 
-export function useCustomUsageTags(): UseCustomUsageTagsResult {
-  // 组件级状态（触发重新渲染）
-  const [, forceUpdate] = useState({});
+export interface UseCustomUsageTagsOptions {
+  /** SSR 预取的初始数据，避免客户端重复请求 */
+  initialData?: CustomUsageTag[];
+  /** 是否启用自动请求（默认 true） */
+  enabled?: boolean;
+}
 
-  // 订阅缓存更新
-  useEffect(() => {
-    const update = () => forceUpdate({});
-    subscribers.add(update);
-    return () => {
-      subscribers.delete(update);
-    };
-  }, []);
+// ============================================
+// Main Hook
+// ============================================
 
-  // 初始加载
-  useEffect(() => {
-    const now = Date.now();
-    const isStale = now - cache.timestamp > CACHE_TTL;
-    const hasData = cache.data.length > 0;
+/**
+ * 自定义用途标签 Hook
+ *
+ * @param options - 配置选项
+ * @returns 标签数据和操作方法
+ *
+ * @example
+ * ```tsx
+ * // 基础用法
+ * const { customTags, isLoading } = useCustomUsageTags();
+ *
+ * // 使用 SSR 预取数据
+ * const { customTags } = useCustomUsageTags({
+ *   initialData: initialCustomUsageTags
+ * });
+ * ```
+ */
+export function useCustomUsageTags(
+  options: UseCustomUsageTagsOptions = {},
+): UseCustomUsageTagsResult {
+  const { initialData, enabled = true } = options;
 
-    // 有新鲜数据，不需要请求
-    if (hasData && !isStale) {
-      return;
-    }
+  // 稳定化 initialData 引用，避免不必要的缓存更新
+  const stableFallbackData = useMemo(
+    () => initialData,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [initialData?.length],
+  );
 
-    // 正在加载中，不重复请求
-    if (cache.isLoading || pendingRequest) {
-      return;
-    }
-
-    // 发起请求
-    cache.isLoading = true;
-    notifySubscribers();
-
-    pendingRequest = fetchCustomTags()
-      .then((tags) => {
-        cache.data = tags;
-        cache.timestamp = Date.now();
-        cache.error = null;
-        return tags;
-      })
-      .catch((err) => {
-        cache.error = err;
-        return cache.data; // 保留旧数据
-      })
-      .finally(() => {
-        cache.isLoading = false;
-        pendingRequest = null;
-        notifySubscribers();
-      });
-  }, []);
+  const { data, error, isLoading, mutate } = useSWR<CustomUsageTag[]>(
+    enabled ? CUSTOM_USAGE_TAGS_KEY : null,
+    customUsageTagsFetcher,
+    {
+      // SSR 预取数据作为初始值，避免客户端首次请求
+      fallbackData: stableFallbackData,
+      // 请求去重间隔：30 分钟内相同 key 的请求会被合并
+      dedupingInterval: DEDUPING_INTERVAL,
+      // 窗口获得焦点时不自动 revalidate（标签不常变）
+      revalidateOnFocus: false,
+      // 网络恢复时不自动 revalidate
+      revalidateOnReconnect: false,
+      // 挂载时不自动 revalidate（如果有 fallbackData）
+      revalidateOnMount: !stableFallbackData || stableFallbackData.length === 0,
+      // 30分钟内强制使用缓存，不检查是否过期
+      revalidateIfStale: false,
+      // 错误时保留旧数据
+      keepPreviousData: true,
+      // 重试配置
+      errorRetryCount: 3,
+      errorRetryInterval: 5000,
+      // 错误回调
+      onError: (err) => {
+        console.error("[CustomUsageTags] 加载失败:", err);
+      },
+      // 自定义重试逻辑
+      onErrorRetry: (err, _key, _config, revalidate, { retryCount }) => {
+        // 服务端错误（5xx）不重试
+        const status = (err as Error & { status?: number }).status;
+        if (status && status >= 500) return;
+        // 最多重试 3 次
+        if (retryCount >= 3) return;
+        // 指数退避重试
+        setTimeout(
+          () => revalidate({ retryCount }),
+          5000 * Math.pow(2, retryCount),
+        );
+      },
+    },
+  );
 
   // 手动刷新
   const refresh = useCallback(async () => {
-    if (pendingRequest) {
-      await pendingRequest;
-      return;
-    }
+    await mutate();
+  }, [mutate]);
 
-    cache.isLoading = true;
-    notifySubscribers();
-
-    pendingRequest = fetchCustomTags()
-      .then((tags) => {
-        cache.data = tags;
-        cache.timestamp = Date.now();
-        cache.error = null;
-        return tags;
-      })
-      .catch((err) => {
-        cache.error = err;
-        return cache.data;
-      })
-      .finally(() => {
-        cache.isLoading = false;
-        pendingRequest = null;
-        notifySubscribers();
-      });
-
-    await pendingRequest;
-  }, []);
+  // 乐观更新辅助函数
+  const optimisticUpdate = useCallback(
+    (updater: (current?: CustomUsageTag[]) => CustomUsageTag[]) => {
+      mutate(updater, { revalidate: false });
+    },
+    [mutate],
+  );
 
   // 乐观更新：添加
-  const addTag = useCallback((tag: CustomUsageTag) => {
-    cache.data = [...cache.data, tag];
-    cache.timestamp = Date.now();
-    notifySubscribers();
-  }, []);
+  const addTag = useCallback(
+    (tag: CustomUsageTag) => {
+      optimisticUpdate((current) => [...(current || []), tag]);
+    },
+    [optimisticUpdate],
+  );
 
   // 乐观更新：更新
   const updateTag = useCallback(
     (tagId: string, updates: Partial<CustomUsageTag>) => {
-      cache.data = cache.data.map((t) =>
-        t.id === tagId ? { ...t, ...updates } : t,
+      optimisticUpdate((current) =>
+        (current || []).map((t) => (t.id === tagId ? { ...t, ...updates } : t)),
       );
-      cache.timestamp = Date.now();
-      notifySubscribers();
     },
-    [],
+    [optimisticUpdate],
   );
 
   // 乐观更新：删除
-  const removeTag = useCallback((tagId: string) => {
-    cache.data = cache.data.filter((t) => t.id !== tagId);
-    cache.timestamp = Date.now();
-    notifySubscribers();
-  }, []);
+  const removeTag = useCallback(
+    (tagId: string) => {
+      optimisticUpdate((current) =>
+        (current || []).filter((t) => t.id !== tagId),
+      );
+    },
+    [optimisticUpdate],
+  );
 
   // 设置完整列表（API 返回后同步）
-  const setTags = useCallback((tags: CustomUsageTag[]) => {
-    cache.data = tags;
-    cache.timestamp = Date.now();
-    notifySubscribers();
-  }, []);
+  const setTags = useCallback(
+    (tags: CustomUsageTag[]) => {
+      mutate(tags, { revalidate: false });
+    },
+    [mutate],
+  );
 
   return {
-    customTags: cache.data,
-    isLoading: cache.isLoading,
-    error: cache.error,
+    customTags: data || [],
+    isLoading,
+    error: error || null,
     refresh,
     addTag,
     updateTag,
@@ -210,53 +212,64 @@ export function useCustomUsageTags(): UseCustomUsageTagsResult {
 }
 
 // ============================================
-// 工具函数
+// Utility Functions
 // ============================================
 
 /**
- * 清除缓存（测试或登出时使用）
+ * 清除自定义标签缓存（登出时使用）
+ * 可在组件外部调用
  */
 export function clearCustomUsageTagsCache() {
-  cache = {
-    data: [],
-    timestamp: 0,
-    isLoading: false,
-    error: null,
-  };
-  pendingRequest = null;
-  notifySubscribers();
+  if (typeof window !== "undefined") {
+    globalMutate(CUSTOM_USAGE_TAGS_KEY, undefined, { revalidate: false });
+  }
 }
 
 /**
  * 预加载自定义标签数据（在首页或布局中调用）
- * 静默加载，不阻塞渲染，无返回值
+ * 静默加载，不阻塞渲染
+ *
+ * @example
+ * ```tsx
+ * // 在首页组件中
+ * useEffect(() => {
+ *   prefetchCustomUsageTags();
+ * }, []);
+ * ```
  */
 export function prefetchCustomUsageTags() {
-  const now = Date.now();
-  const isStale = now - cache.timestamp > CACHE_TTL;
-  const hasData = cache.data.length > 0;
+  preload(CUSTOM_USAGE_TAGS_KEY, customUsageTagsFetcher);
+}
 
-  // 有新鲜数据或正在加载中，跳过
-  if ((hasData && !isStale) || cache.isLoading || pendingRequest) {
-    return;
-  }
+/**
+ * 全局 mutate 钩子，用于在组件内部更新缓存
+ *
+ * @example
+ * ```tsx
+ * function SomeComponent() {
+ *   const { mutateCustomUsageTags } = useCustomUsageTagsMutate();
+ *
+ *   const handleSave = async () => {
+ *     await saveToServer();
+ *     mutateCustomUsageTags(); // 刷新缓存
+ *   };
+ * }
+ * ```
+ */
+export function useCustomUsageTagsMutate() {
+  const { mutate } = useSWRConfig();
 
-  // 静默预加载
-  cache.isLoading = true;
-  pendingRequest = fetchCustomTags()
-    .then((tags) => {
-      cache.data = tags;
-      cache.timestamp = Date.now();
-      cache.error = null;
-      return tags;
-    })
-    .catch(() => {
-      // 静默失败
-      return cache.data;
-    })
-    .finally(() => {
-      cache.isLoading = false;
-      pendingRequest = null;
-      notifySubscribers();
-    });
+  const mutateCustomUsageTags = useCallback(
+    (
+      data?:
+        | CustomUsageTag[]
+        | ((current?: CustomUsageTag[]) => CustomUsageTag[]),
+      opts?: { revalidate?: boolean },
+    ) => {
+      return mutate(CUSTOM_USAGE_TAGS_KEY, data, opts);
+    },
+    [mutate],
+  );
+
+  return { mutateCustomUsageTags };
 }
