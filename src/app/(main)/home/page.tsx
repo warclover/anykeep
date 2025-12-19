@@ -12,7 +12,7 @@ import { Suspense, cache } from "react";
 import { HomePageClient } from "@/components/home/home-page-client";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { createClient } from "@/lib/supabase/server";
-import { INITIAL_LOAD_SIZE } from "@/components/home/constants";
+import { DEFAULT_PAGE_SIZE } from "@/components/home/constants";
 import HomeLoading from "./loading";
 import type { Bookmark, Platform } from "@/types/supabase";
 
@@ -89,8 +89,8 @@ const getInitialBookmarks = cache(
         query = query.order("title", { ascending, nullsFirst: false });
       }
 
-      // SSR 阶段使用精确的首次加载数量（24 张）
-      query = query.limit(INITIAL_LOAD_SIZE);
+      // SSR 阶段使用默认分页大小（客户端视图模式未知）
+      query = query.limit(DEFAULT_PAGE_SIZE);
 
       const { data, error } = await query;
 

@@ -222,10 +222,10 @@ export function VirtualBookmarkGrid({
       if (endIndex >= threshold && !prefetchTriggered.current) {
         prefetchTriggered.current = true;
         onLoadMore();
-        // 加载完成后重置（缩短重置时间，提高响应速度）
+        // 加载完成后重置
         setTimeout(() => {
           prefetchTriggered.current = false;
-        }, 500);
+        }, 1000);
       }
     },
     [bookmarks.length, hasMore, isLoadingMore, onLoadMore, prefetchThreshold],

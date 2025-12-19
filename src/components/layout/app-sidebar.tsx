@@ -1,11 +1,6 @@
 /**
  * 应用侧边栏 - 可折叠版本
  * 支持折叠/展开、悬停自动展开、锁定功能
- *
- * Phase 6 优化：CSS Grid 布局 + transform 动画
- * - 移除 fixed 定位，成为 Grid 项目
- * - 使用 transform 动画替代 width 动画，避免 Layout Thrashing
- * - 内容区使用 overflow-y-auto 实现独立滚动
  */
 
 "use client";
@@ -220,11 +215,10 @@ export function AppSidebar() {
         style={{
           width: displayWidth,
           willChange: "width", // GPU 优化提示
+          transform: "translateZ(0)", // 触发 GPU 层
         }}
         className={cn(
-          // Phase 6: 从 fixed 改为 Grid 项目
-          "hidden lg:block h-full border-r bg-white dark:bg-gray-950 dark:border-gray-800",
-          // 宽度过渡动画
+          "fixed left-0 top-14 z-40 hidden lg:block h-[calc(100vh-3.5rem)] border-r bg-white dark:bg-gray-950 dark:border-gray-800",
           "transition-[width] duration-200 ease-[cubic-bezier(0.4,0,0.2,1)]",
         )}
       >
