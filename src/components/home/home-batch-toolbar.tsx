@@ -4,13 +4,13 @@
  * Phase 2.3.3 - 从 home-page-client.tsx 提取
  *
  * 职责：批量选择模式下的操作工具栏
- * 特性：全选/取消、删除、移动、创建快照
+ * 特性：全选/取消、删除、移动、标签、创建快照
  */
 
 "use client";
 
 import { memo } from "react";
-import { Trash2, FolderInput, Camera, Loader2 } from "lucide-react";
+import { Trash2, FolderInput, Camera, Loader2, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 // ============================================================================
@@ -36,6 +36,8 @@ export interface HomeBatchToolbarProps {
   onBatchDelete: () => void;
   /** 打开移动对话框回调 */
   onOpenMoveDialog: () => void;
+  /** 打开标签对话框回调 */
+  onOpenTagDialog?: () => void;
   /** 批量创建快照回调 */
   onBatchCreateSnapshot?: () => void;
 }
@@ -54,6 +56,7 @@ export const HomeBatchToolbar = memo(function HomeBatchToolbar({
   onDeselectAll,
   onBatchDelete,
   onOpenMoveDialog,
+  onOpenTagDialog,
   onBatchCreateSnapshot,
 }: HomeBatchToolbarProps) {
   // 无选中项时不渲染
@@ -119,6 +122,19 @@ export const HomeBatchToolbar = memo(function HomeBatchToolbar({
           <FolderInput className="size-4 mr-1.5" />
           移动到文件夹
         </Button>
+
+        {/* 标签操作按钮 */}
+        {onOpenTagDialog && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onOpenTagDialog}
+            className="text-purple-600 hover:text-purple-700 border-purple-200 hover:bg-purple-50 dark:text-purple-400 dark:hover:text-purple-300 dark:border-purple-800 dark:hover:bg-purple-900/20"
+          >
+            <Tag className="size-4 mr-1.5" />
+            标签
+          </Button>
+        )}
 
         {/* 创建快照按钮（功能开关控制） */}
         {isSnapshotEnabled && onBatchCreateSnapshot && (

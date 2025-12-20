@@ -85,6 +85,7 @@ export interface HomeToolbarProps {
   onOpenImportDialog: () => void;
   onOpenBrowserImportDialog: () => void;
   onOpenExportDialog: () => void;
+  onOpenTagDialog?: () => void;
 
   // 其他
   isBrowserPlatform: boolean;
@@ -127,6 +128,7 @@ export const HomeToolbar = memo(function HomeToolbar({
   onOpenImportDialog,
   onOpenBrowserImportDialog,
   onOpenExportDialog,
+  onOpenTagDialog,
   isBrowserPlatform,
   isTrashFolder,
   isSnapshotEnabled,
@@ -339,6 +341,7 @@ export const HomeToolbar = memo(function HomeToolbar({
           onDeselectAll={onDeselectAll}
           onBatchDelete={onBatchDelete}
           onOpenMoveDialog={onOpenMoveDialog}
+          onOpenTagDialog={onOpenTagDialog}
           onBatchCreateSnapshot={onBatchCreateSnapshot}
         />
       )}

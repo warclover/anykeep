@@ -2607,6 +2607,26 @@ export type Database = {
           user_id: string;
         }[];
       };
+      batch_add_tags: {
+        Args: {
+          p_bookmark_ids: number[];
+          p_tags: string[];
+        };
+        Returns: {
+          affected_ids: number[];
+          affected_count: number;
+        };
+      };
+      batch_remove_tags: {
+        Args: {
+          p_bookmark_ids: number[];
+          p_tags: string[];
+        };
+        Returns: {
+          affected_ids: number[];
+          affected_count: number;
+        };
+      };
       assign_cluster_id: {
         Args: {
           p_bookmark_ids: number[];

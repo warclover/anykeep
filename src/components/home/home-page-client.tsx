@@ -77,6 +77,7 @@ import { useHomeBatch } from "./hooks/use-home-batch";
 import { HomeToolbar } from "./home-toolbar";
 import { HomeDialogs } from "./home-dialogs";
 import { SmartListView } from "@/components/smart-list";
+import { BatchTagDialog } from "@/components/batch/batch-tag-dialog";
 
 // 扩展的书签类型（包含文件夹信息）
 type BookmarkWithFolder = Bookmark & {
@@ -362,6 +363,9 @@ export function HomePageClient({
     setIsDesktopImportMenuOpen: _setIsDesktopImportMenuOpen,
     setIsMobileMoreMenuOpen,
   } = useDialogs();
+
+  // 批量标签对话框状态
+  const [showBatchTagDialog, setShowBatchTagDialog] = useState(false);
 
   // 批量选择模式
   const {
@@ -664,6 +668,7 @@ export function HomePageClient({
         onOpenImportDialog={openImportDialog}
         onOpenBrowserImportDialog={openBrowserImportDialog}
         onOpenExportDialog={openExportDialog}
+        onOpenTagDialog={() => setShowBatchTagDialog(true)}
         isBrowserPlatform={isBrowserPlatform}
         isTrashFolder={isTrashFolder}
         isSnapshotEnabled={isSnapshotEnabled}
@@ -853,6 +858,32 @@ export function HomePageClient({
         selectedIds={selectedIds}
         onBookmarkCreated={handleBookmarkCreated}
         onMoveSuccess={exitSelectionMode}
+      />
+
+      {/* 批量标签对话框 */}
+      <BatchTagDialog
+        open={showBatchTagDialog}
+        onOpenChange={setShowBatchTagDialog}
+        selectedIds={Array.from(selectedIds)}
+        selectedBookmarks={bookmarks.filter((b) => selectedIds.has(b.id))}
+        onSuccess={(result) => {
+          // 更新缓存
+          result.affectedIds.forEach((id) => {
+            updateCacheItem(id, (bookmark) => {
+              if (result.action === "add") {
+                const newTags = [
+                  ...new Set([...(bookmark.user_tags || []), ...result.tags]),
+                ];
+                return { ...bookmark, user_tags: newTags };
+              } else {
+                const newTags = (bookmark.user_tags || []).filter(
+                  (t) => !result.tags.includes(t),
+                );
+                return { ...bookmark, user_tags: newTags };
+              }
+            });
+          });
+        }}
       />
     </div>
   );

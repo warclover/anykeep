@@ -73,7 +73,8 @@ function isClientNavState(state: unknown): state is ClientNavHistoryState {
 
 /**
  * 支持的页面类型
- * 注意：仅包含 Keep-Alive 管理的主页面
+ * 注意：Keep-Alive 仅管理 PAGE_IDS 中的页面
+ * batch 页面不参与 Keep-Alive，但仍需要类型和路由定义
  */
 export type PageId =
   | "home"
@@ -81,6 +82,7 @@ export type PageId =
   | "folders"
   | "messages"
   | "analytics"
+  | "batch"
   | "settings";
 
 /**
@@ -92,6 +94,7 @@ export const PAGE_ROUTES: Record<PageId, string> = {
   folders: "/folders",
   messages: "/messages",
   analytics: "/analytics",
+  batch: "/batch",
   settings: "/settings",
 };
 
@@ -104,6 +107,7 @@ const ROUTE_TO_PAGE: Record<string, PageId> = {
   "/folders": "folders",
   "/messages": "messages",
   "/analytics": "analytics",
+  "/batch": "batch",
   "/settings": "settings",
 };
 

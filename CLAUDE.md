@@ -4,6 +4,7 @@
 
 | 日期       | 版本  | 变更内容                                             |
 | ---------- | ----- | ---------------------------------------------------- |
+| 2025-12-20 | 2.2.0 | 完成批量操作功能（批量标签管理 + Shift 范围选择）    |
 | 2025-12-01 | 2.1.0 | 完成浏览器书签隔离与列表视图优化功能                 |
 | 2025-12-01 | 2.0.0 | 项目进入开发阶段，完成浏览器书签导入功能 (Phase 1-3) |
 | 2025-11-21 | 1.0.0 | 初始化 AI 上下文文档，项目处于规划阶段               |
@@ -333,6 +334,62 @@ SUPABASE_SERVICE_ROLE_KEY=服务角色密钥
 | 内存占用       | ~150MB    | ~60MB                   | 60% ↓ |
 | 滚动帧率       | 30-40fps  | 55-60fps                | 50% ↑ |
 | 支持数量       | 500条流畅 | 10,000+条流畅           | 20x   |
+
+---
+
+### 3. 批量操作功能 ✅
+
+**版本**: v2.2.0 (2025-12-20)
+
+独立批量操作页面 `/batch`，支持跨文件夹批量管理书签。
+
+**核心功能**:
+
+- ✅ 批量添加标签（支持 200 条书签 × 20 个标签）
+- ✅ 批量移除标签（精准删除指定标签，差异化功能）
+- ✅ Shift 范围选择（O(1) 性能优化）
+- ✅ 独立批量操作页面（侧边栏集成）
+- ✅ 虚拟滚动书签列表（react-virtuoso）
+
+**安全特性**:
+
+- ✅ 数据库函数使用 `auth.uid()` 验证
+- ✅ API 层书签所有权预验证
+- ✅ XSS 防护（标签输入验证，禁止 `<>'"&` 字符）
+
+**技术实现**:
+
+- 独立模块目录：`src/components/batch/`、`src/hooks/batch/`、`src/lib/batch/`
+- PostgreSQL RPC 函数：`batch_add_tags`、`batch_remove_tags`
+- 乐观更新 + 快照回滚机制
+- Zod 验证 Schema
+
+**文件位置**:
+
+- 页面: `src/app/(main)/batch/page.tsx`
+- 组件: `src/components/batch/`
+  - `batch-page-client.tsx` - 页面客户端组件
+  - `batch-tag-dialog.tsx` - 批量标签对话框
+  - `batch-toolbar.tsx` - 批量操作工具栏
+  - `batch-bookmark-list.tsx` - 虚拟滚动列表
+- Hooks: `src/hooks/batch/use-batch-tags.ts`
+- 验证: `src/lib/batch/validation.ts`
+- 数据库:
+  - `supabase/migrations/20251220000003_add_batch_tags_functions.sql`
+  - `supabase/migrations/20251220000004_fix_batch_tags_security.sql`
+- API: `src/app/api/bookmarks/batch-tags/route.ts`
+
+**首页集成**:
+
+- `src/components/home/home-batch-toolbar.tsx` - 标签按钮
+- `src/components/home/home-page-client.tsx` - BatchTagDialog 集成
+
+**性能优化**:
+
+| 指标             | 优化前       | 优化后   | 说明               |
+| ---------------- | ------------ | -------- | ------------------ |
+| Shift 选择查找   | O(n) indexOf | O(1) Map | 使用 ID→Index 缓存 |
+| 10,000+ 书签选择 | >100ms       | <10ms    | 响应时间优化       |
 
 ---
 

@@ -26,6 +26,7 @@ import {
   ChevronRight,
   PanelLeftClose,
   PanelLeft,
+  CheckSquare,
 } from "lucide-react";
 import { useUnreadCount } from "@/hooks/use-unread-count";
 import { MessageBadge } from "@/components/messages";
@@ -64,6 +65,7 @@ const navigation: {
     showBadge: true,
   },
   { name: "数据", pageId: "analytics", icon: BarChart3, colorKey: "analytics" },
+  { name: "批量", pageId: "batch", icon: CheckSquare, colorKey: "batch" },
   { name: "设置", pageId: "settings", icon: Settings, colorKey: "settings" },
 ];
 
