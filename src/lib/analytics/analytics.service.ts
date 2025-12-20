@@ -110,19 +110,37 @@ export class AnalyticsService {
   // ==========================================================================
 
   private async fetchAllBookmarks(): Promise<Bookmark[]> {
-    const { data, error } = await this.supabase
-      .from("bookmarks")
-      .select("*")
-      .eq("user_id", this.userId)
-      .is("deleted_at", null)
-      .eq("is_in_trash", false) // 排除垃圾箱书签，保持与首页列表一致
-      .order("created_at", { ascending: true });
+    // 分页获取所有书签（Supabase 默认限制 1000 行）
+    // 为确保统计数据准确，需要获取所有书签
+    const allBookmarks: Bookmark[] = [];
+    const pageSize = 1000;
+    let offset = 0;
+    let hasMore = true;
 
-    if (error) {
-      throw new Error(`Failed to fetch bookmarks: ${error.message}`);
+    while (hasMore) {
+      const { data, error } = await this.supabase
+        .from("bookmarks")
+        .select("*")
+        .eq("user_id", this.userId)
+        .is("deleted_at", null)
+        .eq("is_in_trash", false)
+        .order("created_at", { ascending: false })
+        .range(offset, offset + pageSize - 1);
+
+      if (error) {
+        throw new Error(`Failed to fetch bookmarks: ${error.message}`);
+      }
+
+      if (data && data.length > 0) {
+        allBookmarks.push(...(data as Bookmark[]));
+        offset += data.length;
+        hasMore = data.length === pageSize;
+      } else {
+        hasMore = false;
+      }
     }
 
-    return (data as Bookmark[]) || [];
+    return allBookmarks;
   }
 
   private async fetchFolders(): Promise<{ id: number; name: string }[]> {
@@ -168,32 +186,84 @@ export class AnalyticsService {
   // 统计计算方法
   // ==========================================================================
 
+  /**
+   * 获取北京时间（UTC+8）某一天开始的 UTC 时间戳
+   * 服务端在 Vercel 上默认使用 UTC 时区，需要手动调整为用户时区（中国用户）
+   *
+   * @param daysAgo - 几天前（0 = 今天）
+   * @returns UTC 时间点，对应北京时间该日 00:00:00
+   */
+  private getDayStartInBeijingTime(daysAgo: number = 0): Date {
+    const now = new Date();
+    // 北京时间偏移量（UTC+8）
+    const beijingOffsetMs = 8 * 60 * 60 * 1000;
+
+    // 计算当前北京时间
+    const beijingNow = new Date(now.getTime() + beijingOffsetMs);
+
+    // 获取北京时间的日期部分（年月日）
+    const year = beijingNow.getUTCFullYear();
+    const month = beijingNow.getUTCMonth();
+    const day = beijingNow.getUTCDate() - daysAgo;
+
+    // 创建北京时间该日 00:00:00 的 UTC 时间戳
+    // UTC 时间 = 北京时间 - 8小时
+    const beijingMidnight = Date.UTC(year, month, day, 0, 0, 0, 0);
+    return new Date(beijingMidnight - beijingOffsetMs);
+  }
+
+  /**
+   * 将 UTC 时间转换为北京时间的日期字符串 (YYYY-MM-DD)
+   */
+  private formatDateInBeijingTime(date: Date): string {
+    const beijingOffsetMs = 8 * 60 * 60 * 1000;
+    const beijingTime = new Date(date.getTime() + beijingOffsetMs);
+    const year = beijingTime.getUTCFullYear();
+    const month = String(beijingTime.getUTCMonth() + 1).padStart(2, "0");
+    const day = String(beijingTime.getUTCDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
+  /**
+   * 获取今天的北京时间日期字符串
+   */
+  private getTodayInBeijingTime(): string {
+    return this.formatDateInBeijingTime(new Date());
+  }
+
   private calculateStats(
     allBookmarks: Bookmark[],
     contentBookmarks: Bookmark[],
     browserBookmarks: Bookmark[],
   ): AnalyticsStats {
-    const now = new Date();
-    const todayStart = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate(),
-    );
-    const weekStart = new Date(todayStart);
-    weekStart.setDate(weekStart.getDate() - 7);
-    const monthStart = new Date(todayStart);
-    monthStart.setDate(monthStart.getDate() - 30);
+    // 使用北京时间计算时间边界
+    const todayStart = this.getDayStartInBeijingTime(0);
+    const weekStart = this.getDayStartInBeijingTime(7);
+    const monthStart = this.getDayStartInBeijingTime(30);
 
-    const todayCount = allBookmarks.filter(
-      (b) => b.created_at && new Date(b.created_at) >= todayStart,
+    // 统计基于内容收藏（排除浏览器书签），与首页显示一致
+    const todayCount = contentBookmarks.filter((b) => {
+      if (!b.created_at) return false;
+      const createdAt = new Date(b.created_at);
+      return createdAt >= todayStart;
+    }).length;
+
+    const weekCount = contentBookmarks.filter((b) => {
+      if (!b.created_at) return false;
+      const createdAt = new Date(b.created_at);
+      return createdAt >= weekStart;
+    }).length;
+
+    const last30DaysCount = contentBookmarks.filter((b) => {
+      if (!b.created_at) return false;
+      const createdAt = new Date(b.created_at);
+      return createdAt >= monthStart;
+    }).length;
+
+    // 未分类数量基于内容收藏
+    const unclassifiedCount = contentBookmarks.filter(
+      (b) => !b.folder_id,
     ).length;
-    const weekCount = allBookmarks.filter(
-      (b) => b.created_at && new Date(b.created_at) >= weekStart,
-    ).length;
-    const last30DaysCount = allBookmarks.filter(
-      (b) => b.created_at && new Date(b.created_at) >= monthStart,
-    ).length;
-    const unclassifiedCount = allBookmarks.filter((b) => !b.folder_id).length;
 
     return {
       totalBookmarks: allBookmarks.length,
@@ -204,10 +274,10 @@ export class AnalyticsService {
       last30DaysCount,
       unclassifiedCount,
       classificationRate:
-        allBookmarks.length > 0
+        contentBookmarks.length > 0
           ? Math.round(
-              ((allBookmarks.length - unclassifiedCount) /
-                allBookmarks.length) *
+              ((contentBookmarks.length - unclassifiedCount) /
+                contentBookmarks.length) *
                 100,
             )
           : 0,
@@ -215,8 +285,7 @@ export class AnalyticsService {
   }
 
   private calculateTrendData(bookmarks: Bookmark[]): TrendDataItem[] {
-    const trendDaysAgo = new Date();
-    trendDaysAgo.setDate(trendDaysAgo.getDate() - this.config.trendDays);
+    const trendDaysAgo = this.getDayStartInBeijingTime(this.config.trendDays);
 
     const contentTrendMap = new Map<string, number>();
     const browserTrendMap = new Map<string, number>();
@@ -225,7 +294,8 @@ export class AnalyticsService {
       if (!bookmark.created_at) return;
       const date = new Date(bookmark.created_at);
       if (date >= trendDaysAgo) {
-        const dateKey = date.toISOString().split("T")[0];
+        // 使用北京时间日期作为 key
+        const dateKey = this.formatDateInBeijingTime(date);
         const isBrowser = isBrowserPlatform(bookmark.platform as Platform);
 
         if (isBrowser) {
@@ -237,10 +307,10 @@ export class AnalyticsService {
     });
 
     const trendData: TrendDataItem[] = [];
+
     for (let i = this.config.trendDays - 1; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      const dateKey = date.toISOString().split("T")[0];
+      const dayStart = this.getDayStartInBeijingTime(i);
+      const dateKey = this.formatDateInBeijingTime(dayStart);
       const count = contentTrendMap.get(dateKey) || 0;
       const browserCount = browserTrendMap.get(dateKey) || 0;
 
@@ -382,57 +452,55 @@ export class AnalyticsService {
   }
 
   private calculateComparison(bookmarks: Bookmark[]): PeriodComparison {
-    const now = new Date();
+    // 使用北京时间计算时间边界
+    const todayStart = this.getDayStartInBeijingTime(0);
+    const yesterdayStart = this.getDayStartInBeijingTime(1);
+    const thisWeekStart = this.getDayStartInBeijingTime(7);
+    const lastWeekStart = this.getDayStartInBeijingTime(14);
+    const thisMonthStart = this.getDayStartInBeijingTime(30);
+    const lastMonthStart = this.getDayStartInBeijingTime(60);
 
-    // 计算各时间点
-    const todayStart = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate(),
+    // 过滤出内容收藏（排除浏览器书签）
+    const contentBookmarks = bookmarks.filter(
+      (b) => !isBrowserPlatform(b.platform as Platform),
     );
-    const yesterdayStart = new Date(todayStart);
-    yesterdayStart.setDate(yesterdayStart.getDate() - 1);
 
-    const thisWeekStart = new Date(todayStart);
-    thisWeekStart.setDate(thisWeekStart.getDate() - 7);
-    const lastWeekStart = new Date(thisWeekStart);
-    lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+    // 计算各周期数量（基于内容收藏）
+    const todayCount = contentBookmarks.filter((b) => {
+      if (!b.created_at) return false;
+      const createdAt = new Date(b.created_at);
+      return createdAt >= todayStart;
+    }).length;
 
-    const thisMonthStart = new Date(todayStart);
-    thisMonthStart.setDate(thisMonthStart.getDate() - 30);
-    const lastMonthStart = new Date(thisMonthStart);
-    lastMonthStart.setDate(lastMonthStart.getDate() - 30);
+    const yesterdayCount = contentBookmarks.filter((b) => {
+      if (!b.created_at) return false;
+      const createdAt = new Date(b.created_at);
+      return createdAt >= yesterdayStart && createdAt < todayStart;
+    }).length;
 
-    // 计算各周期数量
-    const todayCount = bookmarks.filter(
-      (b) => b.created_at && new Date(b.created_at) >= todayStart,
-    ).length;
-    const yesterdayCount = bookmarks.filter(
-      (b) =>
-        b.created_at &&
-        new Date(b.created_at) >= yesterdayStart &&
-        new Date(b.created_at) < todayStart,
-    ).length;
+    const thisWeekCount = contentBookmarks.filter((b) => {
+      if (!b.created_at) return false;
+      const createdAt = new Date(b.created_at);
+      return createdAt >= thisWeekStart;
+    }).length;
 
-    const thisWeekCount = bookmarks.filter(
-      (b) => b.created_at && new Date(b.created_at) >= thisWeekStart,
-    ).length;
-    const lastWeekCount = bookmarks.filter(
-      (b) =>
-        b.created_at &&
-        new Date(b.created_at) >= lastWeekStart &&
-        new Date(b.created_at) < thisWeekStart,
-    ).length;
+    const lastWeekCount = contentBookmarks.filter((b) => {
+      if (!b.created_at) return false;
+      const createdAt = new Date(b.created_at);
+      return createdAt >= lastWeekStart && createdAt < thisWeekStart;
+    }).length;
 
-    const thisMonthCount = bookmarks.filter(
-      (b) => b.created_at && new Date(b.created_at) >= thisMonthStart,
-    ).length;
-    const lastMonthCount = bookmarks.filter(
-      (b) =>
-        b.created_at &&
-        new Date(b.created_at) >= lastMonthStart &&
-        new Date(b.created_at) < thisMonthStart,
-    ).length;
+    const thisMonthCount = contentBookmarks.filter((b) => {
+      if (!b.created_at) return false;
+      const createdAt = new Date(b.created_at);
+      return createdAt >= thisMonthStart;
+    }).length;
+
+    const lastMonthCount = contentBookmarks.filter((b) => {
+      if (!b.created_at) return false;
+      const createdAt = new Date(b.created_at);
+      return createdAt >= lastMonthStart && createdAt < thisMonthStart;
+    }).length;
 
     return {
       daily: this.createComparison(todayCount, yesterdayCount),
