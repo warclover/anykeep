@@ -67,7 +67,9 @@ async function foldersFetcher(url: string): Promise<Folder[]> {
   }
 
   const data = await response.json();
-  return data.data?.folders || data.folders || [];
+  // API 返回 { success: true, data: folderTree }
+  // data.data 直接是文件夹数组（树形结构）
+  return data.data || data.folders || [];
 }
 
 // ============================================

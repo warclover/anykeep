@@ -43,6 +43,20 @@ import type { Bookmark } from "@/types/supabase";
 /** 页面状态 */
 type PageState = "idle" | "loading" | "ready" | "error";
 
+/**
+ * 预定义平台选项（避免从筛选数据中动态提取导致选项消失）
+ */
+const PLATFORM_OPTIONS = [
+  { value: "all", label: "全部平台" },
+  { value: "WECHAT", label: "微信" },
+  { value: "BILIBILI", label: "B站" },
+  { value: "XIAOHONGSHU", label: "小红书" },
+  { value: "ZHIHU", label: "知乎" },
+  { value: "WEIBO", label: "微博" },
+  { value: "DOUYIN", label: "抖音" },
+  { value: "OTHER", label: "其他" },
+] as const;
+
 export function ExportPageClient() {
   // ==================== URL 参数 ====================
   const searchParams = useSearchParams();
@@ -140,17 +154,6 @@ export function ExportPageClient() {
       previewItems: bookmarks.slice(0, 3),
     };
   }, [bookmarks, format]);
-
-  // 可用平台列表
-  const availablePlatforms = useMemo(() => {
-    const platforms = new Set<string>();
-    bookmarksData?.forEach((b) => {
-      if (b.platform) {
-        platforms.add(b.platform);
-      }
-    });
-    return Array.from(platforms).sort();
-  }, [bookmarksData]);
 
   // ==================== 事件处理 ====================
 
@@ -291,10 +294,9 @@ export function ExportPageClient() {
                     <SelectValue placeholder="全部平台" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">全部平台</SelectItem>
-                    {availablePlatforms.map((platform) => (
-                      <SelectItem key={platform} value={platform}>
-                        {platform}
+                    {PLATFORM_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
