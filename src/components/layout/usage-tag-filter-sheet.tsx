@@ -263,14 +263,14 @@ export function UsageTagFilterSheet({
         size="default"
         onClick={() => setIsOpen(true)}
         className={cn(
-          "h-12 px-4 gap-2 shrink-0",
+          "h-8 px-3 gap-1.5 shrink-0 text-sm",
           "transition-all duration-200",
           selectedTags.length > 0
             ? "bg-[#1a3a47] hover:bg-[#0f2830] text-white shadow-lg shadow-[#254f61]/25"
             : "bg-[#254f61] hover:bg-[#1a3a47] text-white",
         )}
       >
-        <Filter className="size-4" />
+        <Filter className="size-3.5" />
         <span>{buttonText}</span>
         {selectedTags.length > 0 && (
           <span className="px-1.5 py-0.5 text-[10px] bg-white/25 rounded-full font-semibold">

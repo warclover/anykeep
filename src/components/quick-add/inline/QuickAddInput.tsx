@@ -139,7 +139,7 @@ export const QuickAddInput = forwardRef<HTMLInputElement, QuickAddInputProps>(
       <div
         className={cn(
           // Base styles
-          "relative flex items-center gap-3 w-full h-12 px-5",
+          "relative flex items-center gap-2 w-full h-8 px-3",
           "rounded-full border-2 transition-all duration-200",
 
           // Idle state - 醒目的虚线边框和渐变背景
@@ -176,9 +176,9 @@ export const QuickAddInput = forwardRef<HTMLInputElement, QuickAddInputProps>(
           )}
         >
           {isLoading ? (
-            <Loader2 className="w-5 h-5 animate-spin" />
+            <Loader2 className="w-4 h-4 animate-spin" />
           ) : (
-            <Link2 className="w-5 h-5" />
+            <Link2 className="w-4 h-4" />
           )}
         </div>
 

@@ -670,8 +670,8 @@ export function HomePageClient({
 
       {/* 快速添加收藏组件（固定区域，不随内容滚动） */}
       {!isTrashFolder && (
-        <div className="shrink-0 px-4 md:px-8 py-3 border-b border-gray-100 dark:border-gray-800 bg-background">
-          <div className="flex items-center gap-3">
+        <div className="shrink-0 px-4 md:px-8 py-1.5 border-b border-gray-100 dark:border-gray-800 bg-background">
+          <div className="flex items-center gap-2">
             <div className="flex-1 min-w-0 max-w-2xl">
               <QuickAddBookmark
                 onBookmarkCreated={() => {
@@ -684,10 +684,10 @@ export function HomePageClient({
             </div>
             {/* 创建自定义收藏按钮 - 温柔杏色 */}
             <Button
-              className="shrink-0 h-12 px-4 bg-[#f6e2d3] hover:bg-[#edd5c3] text-[#254f61] shadow-sm"
+              className="shrink-0 h-8 px-3 text-sm bg-[#f6e2d3] hover:bg-[#edd5c3] text-[#254f61] shadow-sm"
               onClick={openCreateDialog}
             >
-              <Plus className="size-4 mr-1.5" />
+              <Plus className="size-3.5 mr-1" />
               手动创建
             </Button>
             {/* V10.2: 用途筛选按钮（Sheet 形式） */}
