@@ -83,18 +83,20 @@ export const BatchBookmarkList = memo(function BatchBookmarkList({
   }
 
   return (
-    <Virtuoso
-      data={bookmarks}
-      overscan={200}
-      itemContent={(index, bookmark) => (
-        <BatchBookmarkItem
-          key={bookmark.id}
-          bookmark={bookmark}
-          isSelected={selectedIds.has(bookmark.id)}
-          onClick={handleItemClick}
-        />
-      )}
-      className="flex-1"
-    />
+    <div className="h-full w-full">
+      <Virtuoso
+        data={bookmarks}
+        overscan={200}
+        itemContent={(index, bookmark) => (
+          <BatchBookmarkItem
+            key={bookmark.id}
+            bookmark={bookmark}
+            isSelected={selectedIds.has(bookmark.id)}
+            onClick={handleItemClick}
+          />
+        )}
+        style={{ height: "100%" }}
+      />
+    </div>
   );
 });
