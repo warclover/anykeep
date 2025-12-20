@@ -19,10 +19,12 @@ import {
 import { BatchToolbar } from "./batch-toolbar";
 import { BatchBookmarkList } from "./batch-bookmark-list";
 import { BatchTagDialog } from "./batch-tag-dialog";
+import { ExportDialogV2 } from "@/components/export";
 import { useSelectionMode } from "@/hooks/core/use-selection-mode";
 import { useBookmarksSWR } from "@/lib/cache/hooks/use-bookmarks-swr";
 import { BATCH_TEXT } from "./constants";
 import type { BatchTagsResult } from "@/lib/batch/validation";
+import type { BookmarkWithFolder } from "@/lib/export/types";
 
 /**
  * 平台选项
@@ -61,6 +63,9 @@ export function BatchPageClient() {
 
   // 批量标签对话框
   const [isTagDialogOpen, setIsTagDialogOpen] = useState(false);
+
+  // 导出对话框
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
 
   // 书签数据
   const {
@@ -192,6 +197,7 @@ export function BatchPageClient() {
           onSelectAll={handleSelectAll}
           onClearSelection={deselectAll}
           onOpenTagDialog={() => setIsTagDialogOpen(true)}
+          onOpenExportDialog={() => setIsExportDialogOpen(true)}
         />
       )}
 
@@ -234,6 +240,15 @@ export function BatchPageClient() {
         selectedIds={Array.from(selectedIds)}
         selectedBookmarks={selectedBookmarks}
         onSuccess={handleBatchTagsSuccess}
+      />
+
+      {/* 导出对话框 */}
+      <ExportDialogV2
+        open={isExportDialogOpen}
+        onOpenChange={setIsExportDialogOpen}
+        mode="selected"
+        bookmarks={selectedBookmarks as BookmarkWithFolder[]}
+        onSuccess={() => setIsExportDialogOpen(false)}
       />
     </div>
   );

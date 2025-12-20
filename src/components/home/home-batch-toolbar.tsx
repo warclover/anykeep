@@ -10,7 +10,14 @@
 "use client";
 
 import { memo } from "react";
-import { Trash2, FolderInput, Camera, Loader2, Tag } from "lucide-react";
+import {
+  Trash2,
+  FolderInput,
+  Camera,
+  Loader2,
+  Tag,
+  Download,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 // ============================================================================
@@ -38,6 +45,8 @@ export interface HomeBatchToolbarProps {
   onOpenMoveDialog: () => void;
   /** 打开标签对话框回调 */
   onOpenTagDialog?: () => void;
+  /** 打开导出对话框回调 */
+  onOpenExportDialog?: () => void;
   /** 批量创建快照回调 */
   onBatchCreateSnapshot?: () => void;
 }
@@ -57,6 +66,7 @@ export const HomeBatchToolbar = memo(function HomeBatchToolbar({
   onBatchDelete,
   onOpenMoveDialog,
   onOpenTagDialog,
+  onOpenExportDialog,
   onBatchCreateSnapshot,
 }: HomeBatchToolbarProps) {
   // 无选中项时不渲染
@@ -133,6 +143,19 @@ export const HomeBatchToolbar = memo(function HomeBatchToolbar({
           >
             <Tag className="size-4 mr-1.5" />
             标签
+          </Button>
+        )}
+
+        {/* 导出按钮 */}
+        {onOpenExportDialog && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onOpenExportDialog}
+            className="text-teal-600 hover:text-teal-700 border-teal-200 hover:bg-teal-50 dark:text-teal-400 dark:hover:text-teal-300 dark:border-teal-800 dark:hover:bg-teal-900/20"
+          >
+            <Download className="size-4 mr-1.5" />
+            导出
           </Button>
         )}
 

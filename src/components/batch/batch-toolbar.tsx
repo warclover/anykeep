@@ -6,7 +6,7 @@
 "use client";
 
 import { memo } from "react";
-import { CheckSquare, Tag, Trash2, X, Loader2 } from "lucide-react";
+import { CheckSquare, Tag, Trash2, X, Loader2, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BATCH_TEXT } from "./constants";
 
@@ -21,6 +21,8 @@ interface BatchToolbarProps {
   onClearSelection: () => void;
   /** 打开标签对话框回调 */
   onOpenTagDialog: () => void;
+  /** 打开导出对话框回调 */
+  onOpenExportDialog?: () => void;
   /** 批量删除回调 */
   onBatchDelete?: () => void;
   /** 是否正在处理 */
@@ -36,6 +38,7 @@ export const BatchToolbar = memo(function BatchToolbar({
   onSelectAll,
   onClearSelection,
   onOpenTagDialog,
+  onOpenExportDialog,
   onBatchDelete,
   isProcessing = false,
 }: BatchToolbarProps) {
@@ -74,6 +77,20 @@ export const BatchToolbar = memo(function BatchToolbar({
           )}
           标签
         </Button>
+
+        {/* 导出操作 */}
+        {onOpenExportDialog && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onOpenExportDialog}
+            disabled={selectedCount === 0 || isProcessing}
+            className="h-8 px-2 text-teal-600 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/20"
+          >
+            <Download className="h-4 w-4 mr-1" />
+            {BATCH_TEXT.EXPORT}
+          </Button>
+        )}
 
         {/* 删除操作 */}
         {onBatchDelete && (
