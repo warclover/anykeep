@@ -32,7 +32,10 @@ export const MESSAGE_TEMPLATES: Record<MessageType, MessageTemplate> = {
     title: (data) => `已自动分类到「${data.folderName}」`,
     content: (data) => {
       const confidence = data.confidence as number;
-      return confidence ? `置信度 ${Math.round(confidence * 100)}%` : undefined;
+      if (!confidence) return undefined;
+      // 兼容两种格式：0-1 小数或 0-100 整数
+      const percent = confidence > 1 ? confidence : confidence * 100;
+      return `置信度 ${Math.round(percent)}%`;
     },
     actionUrl: (data) => `/home?bookmark=${data.bookmarkId}`,
     actionLabel: "查看",
@@ -62,7 +65,10 @@ export const MESSAGE_TEMPLATES: Record<MessageType, MessageTemplate> = {
     title: (data) => `建议分类到「${data.folderName}」`,
     content: (data) => {
       const confidence = data.confidence as number;
-      return `置信度 ${Math.round(confidence * 100)}%，请确认是否正确`;
+      if (!confidence) return "请确认是否正确";
+      // 兼容两种格式：0-1 小数或 0-100 整数
+      const percent = confidence > 1 ? confidence : confidence * 100;
+      return `置信度 ${Math.round(percent)}%，请确认是否正确`;
     },
     actionUrl: (data) => `/home?bookmark=${data.bookmarkId}&action=confirm`,
     actionLabel: "确认分类",
