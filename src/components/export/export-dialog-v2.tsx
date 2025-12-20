@@ -259,7 +259,7 @@ export function ExportDialogV2({
   // 渲染配置步骤
   const renderConfigStep = () => (
     <>
-      <DialogHeader>
+      <DialogHeader className="flex-shrink-0">
         <DialogTitle>{EXPORT_DIALOG_TEXT.confirmTitle}</DialogTitle>
         <DialogDescription>
           {mode === "selected"
@@ -268,7 +268,7 @@ export function ExportDialogV2({
         </DialogDescription>
       </DialogHeader>
 
-      <div className="space-y-6 py-4">
+      <div className="space-y-6 py-4 overflow-y-auto flex-1 min-h-0">
         {/* 格式选择 */}
         <ExportFormatSelector value={format} onChange={handleFormatChange} />
 
@@ -286,7 +286,7 @@ export function ExportDialogV2({
       </div>
 
       {/* 操作按钮 */}
-      <div className="flex justify-end gap-2">
+      <div className="flex justify-end gap-2 flex-shrink-0 pt-4 border-t">
         <Button variant="outline" onClick={handleClose}>
           {EXPORT_DIALOG_TEXT.buttons.cancel}
         </Button>
@@ -374,7 +374,7 @@ export function ExportDialogV2({
   return (
     <>
       <Dialog open={open} onOpenChange={handleClose}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[500px] max-h-[90vh] flex flex-col">
           {step === "config" && renderConfigStep()}
           {step === "progress" && renderProgressStep()}
           {step === "success" && renderSuccessStep()}
