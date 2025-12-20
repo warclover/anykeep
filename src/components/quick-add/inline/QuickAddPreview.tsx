@@ -115,9 +115,11 @@ export function QuickAddPreview({
     [onSubmit, isSubmitting, handleCancel],
   );
 
-  // 计算进度百分比
+  // 计算进度百分比（从 0% 到 100%，实现从左到右的动画效果）
   const progress =
-    autoSubmit && !isPaused ? (countdown / AUTO_SUBMIT_DELAY) * 100 : 100;
+    autoSubmit && !isPaused
+      ? ((AUTO_SUBMIT_DELAY - countdown) / AUTO_SUBMIT_DELAY) * 100
+      : 0;
 
   return (
     <div
@@ -141,8 +143,8 @@ export function QuickAddPreview({
       {/* 自动提交进度条 */}
       {autoSubmit && !isPaused && !isSubmitting && (
         <div
-          className="absolute bottom-0 left-0 h-0.5 bg-emerald-400 transition-all duration-100 ease-linear"
-          style={{ width: `${progress}%` }}
+          className="absolute bottom-0 left-0 h-0.5 transition-all duration-100 ease-linear"
+          style={{ width: `${progress}%`, backgroundColor: "#254f61" }}
         />
       )}
 
@@ -210,14 +212,14 @@ export function QuickAddPreview({
           }}
           disabled={isSubmitting}
         >
-          {/* 背景层 - 浅蓝色 */}
-          <div className="absolute inset-0 bg-sky-400" />
+          {/* 背景层 - 深紫色 */}
+          <div className="absolute inset-0 bg-violet-600" />
 
-          {/* 填充层 - 深紫色，从左到右填充 */}
+          {/* 填充层 - 进度条颜色 #254f61，从左到右填充 */}
           {autoSubmit && !isPaused && !isSubmitting && (
             <div
-              className="absolute inset-0 bg-violet-600 transition-all duration-100 ease-linear"
-              style={{ width: `${progress}%` }}
+              className="absolute inset-0 transition-all duration-100 ease-linear"
+              style={{ width: `${progress}%`, backgroundColor: "#254f61" }}
             />
           )}
 
