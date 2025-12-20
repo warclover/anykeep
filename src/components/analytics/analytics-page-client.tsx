@@ -31,6 +31,7 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
+  Legend,
   ResponsiveContainer,
   Cell,
 } from "recharts";
@@ -491,19 +492,21 @@ export function AnalyticsPageClient({ data, error }: AnalyticsPageClientProps) {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={250}>
+                  <ResponsiveContainer width="100%" height={280}>
                     <PieChart>
                       <Pie
                         data={
                           platformData as unknown as Record<string, unknown>[]
                         }
                         cx="50%"
-                        cy="50%"
+                        cy="45%"
                         labelLine={false}
-                        label={({ name, percent }) =>
-                          `${name} ${((percent || 0) * 100).toFixed(0)}%`
+                        label={({ percent }) =>
+                          (percent || 0) > 0.05
+                            ? `${((percent || 0) * 100).toFixed(0)}%`
+                            : ""
                         }
-                        outerRadius={80}
+                        outerRadius={70}
                         fill="#8884d8"
                         dataKey="value"
                       >
@@ -515,6 +518,12 @@ export function AnalyticsPageClient({ data, error }: AnalyticsPageClientProps) {
                         content={
                           <CustomPieTooltip totalBookmarks={totalBookmarks} />
                         }
+                      />
+                      <Legend
+                        layout="horizontal"
+                        verticalAlign="bottom"
+                        align="center"
+                        wrapperStyle={{ fontSize: "12px", paddingTop: "10px" }}
                       />
                     </PieChart>
                   </ResponsiveContainer>
@@ -531,19 +540,21 @@ export function AnalyticsPageClient({ data, error }: AnalyticsPageClientProps) {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <ResponsiveContainer width="100%" height={250}>
+                    <ResponsiveContainer width="100%" height={280}>
                       <PieChart>
                         <Pie
                           data={
                             folderData as unknown as Record<string, unknown>[]
                           }
                           cx="50%"
-                          cy="50%"
+                          cy="45%"
                           labelLine={false}
-                          label={({ name, percent }) =>
-                            `${name} ${((percent || 0) * 100).toFixed(0)}%`
+                          label={({ percent }) =>
+                            (percent || 0) > 0.05
+                              ? `${((percent || 0) * 100).toFixed(0)}%`
+                              : ""
                           }
-                          outerRadius={80}
+                          outerRadius={70}
                           fill="#8884d8"
                           dataKey="value"
                         >
@@ -558,6 +569,15 @@ export function AnalyticsPageClient({ data, error }: AnalyticsPageClientProps) {
                           content={
                             <CustomPieTooltip totalBookmarks={totalBookmarks} />
                           }
+                        />
+                        <Legend
+                          layout="horizontal"
+                          verticalAlign="bottom"
+                          align="center"
+                          wrapperStyle={{
+                            fontSize: "12px",
+                            paddingTop: "10px",
+                          }}
                         />
                       </PieChart>
                     </ResponsiveContainer>
@@ -576,46 +596,43 @@ export function AnalyticsPageClient({ data, error }: AnalyticsPageClientProps) {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex items-center justify-center">
-                    <ResponsiveContainer
-                      width="100%"
-                      height={200}
-                      className="max-w-md"
-                    >
-                      <PieChart>
-                        <Pie
-                          data={
-                            typeData as unknown as Record<string, unknown>[]
-                          }
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          label={({
-                            payload,
-                            percent,
-                          }: {
-                            payload?: { type: string };
-                            percent?: number;
-                          }) =>
-                            `${payload?.type ?? ""} ${((percent ?? 0) * 100).toFixed(0)}%`
-                          }
-                          outerRadius={70}
-                          fill="#8884d8"
-                          dataKey="count"
-                        >
-                          {typeData.map((_, index) => (
-                            <Cell
-                              key={`cell-${index}`}
-                              fill={
-                                ["#8b5cf6", "#06b6d4", "#f59e0b"][index % 3]
-                              }
-                            />
-                          ))}
-                        </Pie>
-                        <Tooltip />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
+                  <ResponsiveContainer width="100%" height={280}>
+                    <PieChart>
+                      <Pie
+                        data={typeData as unknown as Record<string, unknown>[]}
+                        cx="50%"
+                        cy="45%"
+                        labelLine={false}
+                        label={({ percent }) =>
+                          (percent || 0) > 0.05
+                            ? `${((percent || 0) * 100).toFixed(0)}%`
+                            : ""
+                        }
+                        outerRadius={70}
+                        fill="#8884d8"
+                        dataKey="count"
+                        nameKey="type"
+                      >
+                        {typeData.map((_, index) => (
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={["#8b5cf6", "#06b6d4", "#f59e0b"][index % 3]}
+                          />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        content={
+                          <CustomPieTooltip totalBookmarks={totalBookmarks} />
+                        }
+                      />
+                      <Legend
+                        layout="horizontal"
+                        verticalAlign="bottom"
+                        align="center"
+                        wrapperStyle={{ fontSize: "12px", paddingTop: "10px" }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
                 </CardContent>
               </Card>
             )}
