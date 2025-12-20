@@ -268,7 +268,7 @@ export function ExportDialogV2({
         </DialogDescription>
       </DialogHeader>
 
-      <div className="space-y-6 py-4 overflow-y-auto flex-1 min-h-0">
+      <div className="space-y-6 py-4 overflow-y-auto flex-1 min-h-0 max-h-[calc(85vh-180px)]">
         {/* 格式选择 */}
         <ExportFormatSelector value={format} onChange={handleFormatChange} />
 
@@ -374,7 +374,7 @@ export function ExportDialogV2({
   return (
     <>
       <Dialog open={open} onOpenChange={handleClose}>
-        <DialogContent className="sm:max-w-[500px] max-h-[90vh] flex flex-col">
+        <DialogContent className="sm:max-w-[500px] max-h-[85vh] flex flex-col overflow-hidden">
           {step === "config" && renderConfigStep()}
           {step === "progress" && renderProgressStep()}
           {step === "success" && renderSuccessStep()}
