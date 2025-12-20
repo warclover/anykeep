@@ -140,6 +140,12 @@ export function getRateLimitConfig(pathname: string): RateLimitConfig {
     return RATE_LIMIT_CONFIGS.auth;
   }
 
+  // 书签操作（核心用户功能，宽松限制）
+  // 注意：必须在 /batch 检查之前，避免 /bookmarks/batch-status 被错误匹配
+  if (pathname.includes("/bookmarks") || pathname.includes("/bookmark")) {
+    return RATE_LIMIT_CONFIGS.bookmarks;
+  }
+
   // 批量操作（严格）
   if (pathname.includes("/batch")) {
     return RATE_LIMIT_CONFIGS.batch;
@@ -162,11 +168,6 @@ export function getRateLimitConfig(pathname: string): RateLimitConfig {
   // 快照操作
   if (pathname.includes("/snapshots")) {
     return RATE_LIMIT_CONFIGS.snapshots;
-  }
-
-  // 书签操作（核心用户功能，宽松限制）
-  if (pathname.includes("/bookmarks") || pathname.includes("/bookmark")) {
-    return RATE_LIMIT_CONFIGS.bookmarks;
   }
 
   // 默认
@@ -198,6 +199,9 @@ export function checkRateLimit(
  */
 function getConfigKey(pathname: string): string {
   if (pathname.includes("/auth") || pathname.includes("/login")) return "auth";
+  // 注意：必须在 /batch 检查之前，避免 /bookmarks/batch-status 被错误匹配
+  if (pathname.includes("/bookmarks") || pathname.includes("/bookmark"))
+    return "bookmarks";
   if (pathname.includes("/batch")) return "batch";
   if (
     pathname.includes("/classification") ||
@@ -208,8 +212,6 @@ function getConfigKey(pathname: string): string {
   if (pathname.includes("/search") || pathname.includes("/semantic"))
     return "search";
   if (pathname.includes("/snapshots")) return "snapshots";
-  if (pathname.includes("/bookmarks") || pathname.includes("/bookmark"))
-    return "bookmarks";
   return "default";
 }
 

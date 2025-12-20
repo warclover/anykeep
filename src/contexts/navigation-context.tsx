@@ -32,9 +32,9 @@ import { usePathname, useSearchParams } from "next/navigation";
 const CLIENT_NAV_ENABLE_DELAY_MS = 100;
 
 /**
- * 所有支持的页面 ID 列表
- * 作为单一数据源，避免在多处重复定义
- * 注意：仅包含 Keep-Alive 管理的主页面，开发者工具页面不在此列
+ * Keep-Alive 管理的页面 ID 列表
+ * 这些页面使用客户端导航和页面缓存
+ * 注意：batch/export 不在此列，它们使用服务端导航
  */
 export const PAGE_IDS: readonly PageId[] = [
   "home",
@@ -44,6 +44,26 @@ export const PAGE_IDS: readonly PageId[] = [
   "analytics",
   "settings",
 ] as const;
+
+/**
+ * 所有页面 ID（包括非 Keep-Alive 页面）
+ * 用于初始化 pageStates，确保所有页面都有状态条目
+ */
+const ALL_PAGE_IDS: readonly PageId[] = [
+  ...PAGE_IDS,
+  "batch",
+  "export",
+] as const;
+
+/**
+ * 检查是否是 Keep-Alive 管理的页面
+ * @param pageId - 页面 ID
+ * @returns true 如果是 Keep-Alive 页面
+ */
+export function isKeepAlivePage(pageId: PageId | null): boolean {
+  if (!pageId) return false;
+  return (PAGE_IDS as readonly string[]).includes(pageId);
+}
 
 // ==================== 类型定义 ====================
 
@@ -167,29 +187,46 @@ export const NavigationContext = createContext<NavigationContextValue | null>(
 );
 
 /**
+ * 默认页面缓存条目
+ * 用于初始化和安全访问
+ */
+const DEFAULT_PAGE_CACHE_ENTRY: PageCacheEntry = {
+  state: "idle",
+  scrollPosition: { x: 0, y: 0 },
+  lastVisited: 0,
+};
+
+/**
+ * 安全获取页面状态，如果不存在则返回默认值
+ */
+function getPageEntry(
+  states: Record<PageId, PageCacheEntry>,
+  pageId: PageId,
+): PageCacheEntry {
+  return states[pageId] ?? DEFAULT_PAGE_CACHE_ENTRY;
+}
+
+/**
  * 初始化页面缓存状态
  * @param initialPage - 可选的初始页面（将被标记为 loading）
+ * 注意：使用固定值初始化以避免 SSR/CSR hydration 不匹配
  */
 function createInitialPageStates(
   initialPage?: PageId,
 ): Record<PageId, PageCacheEntry> {
-  const defaultEntry: PageCacheEntry = {
-    state: "idle",
-    scrollPosition: { x: 0, y: 0 },
-    lastVisited: 0,
-  };
-
-  return PAGE_IDS.reduce(
+  // 使用 ALL_PAGE_IDS 确保所有页面（包括 batch/export）都有状态条目
+  return ALL_PAGE_IDS.reduce(
     (acc, pageId) => ({
       ...acc,
       [pageId]:
         pageId === initialPage
           ? {
-              ...defaultEntry,
+              ...DEFAULT_PAGE_CACHE_ENTRY,
               state: "loading" as PageState,
-              lastVisited: Date.now(),
+              // 使用 0 而非 Date.now() 避免 hydration 错误
+              lastVisited: 0,
             }
-          : defaultEntry,
+          : { ...DEFAULT_PAGE_CACHE_ENTRY },
     }),
     {} as Record<PageId, PageCacheEntry>,
   );
@@ -241,33 +278,12 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
 
   /**
    * 导航到指定页面
+   * Keep-Alive 页面使用客户端导航（pushState）
+   * 非 Keep-Alive 页面（batch/export）使用服务端导航
    */
   const navigateTo = useCallback(
     (pageId: PageId, params?: Record<string, string>) => {
-      // 如果是同一页面且参数完全相同，不做操作
-      const hasExistingParams = activeParams.toString().length > 0;
-      const hasNewParams = params && Object.keys(params).length > 0;
-
-      if (pageId === activePage && !hasNewParams && !hasExistingParams) {
-        return;
-      }
-
-      // 保存当前页面滚动位置（仅当在主页面时）
-      if (activePage !== null) {
-        setPageStates((prev) => ({
-          ...prev,
-          [activePage]: {
-            ...prev[activePage],
-            scrollPosition: { x: window.scrollX, y: window.scrollY },
-            state:
-              prev[activePage].state === "ready"
-                ? "cached"
-                : prev[activePage].state,
-          },
-        }));
-      }
-
-      // 构建新 URL
+      // 构建 URL 参数
       const newParams = new URLSearchParams();
       if (params) {
         Object.entries(params).forEach(([key, value]) => {
@@ -278,6 +294,39 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
       const newUrl = newParams.toString()
         ? `${PAGE_ROUTES[pageId]}?${newParams.toString()}`
         : PAGE_ROUTES[pageId];
+
+      // 非 Keep-Alive 页面使用服务端导航
+      // 这确保 batch/export 页面获得正确的 SSR 内容
+      if (!isKeepAlivePage(pageId)) {
+        window.location.href = newUrl;
+        return;
+      }
+
+      // === 以下为 Keep-Alive 页面的客户端导航逻辑 ===
+
+      // 如果是同一页面且参数完全相同，不做操作
+      const hasExistingParams = activeParams.toString().length > 0;
+      const hasNewParams = params && Object.keys(params).length > 0;
+
+      if (pageId === activePage && !hasNewParams && !hasExistingParams) {
+        return;
+      }
+
+      // 保存当前页面滚动位置（仅当在 Keep-Alive 主页面时）
+      if (activePage !== null && isKeepAlivePage(activePage)) {
+        setPageStates((prev) => {
+          const currentEntry = getPageEntry(prev, activePage);
+          return {
+            ...prev,
+            [activePage]: {
+              ...currentEntry,
+              scrollPosition: { x: window.scrollX, y: window.scrollY },
+              state:
+                currentEntry.state === "ready" ? "cached" : currentEntry.state,
+            },
+          };
+        });
+      }
 
       // 更新 URL（不触发服务端导航）
       const historyState: ClientNavHistoryState = {
@@ -292,14 +341,17 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
       setActiveParams(newParams);
 
       // 标记页面状态
-      setPageStates((prev) => ({
-        ...prev,
-        [pageId]: {
-          ...prev[pageId],
-          lastVisited: Date.now(),
-          state: prev[pageId].state === "idle" ? "loading" : prev[pageId].state,
-        },
-      }));
+      setPageStates((prev) => {
+        const targetEntry = getPageEntry(prev, pageId);
+        return {
+          ...prev,
+          [pageId]: {
+            ...targetEntry,
+            lastVisited: Date.now(),
+            state: targetEntry.state === "idle" ? "loading" : targetEntry.state,
+          },
+        };
+      });
     },
     [activePage, activeParams],
   );
@@ -308,26 +360,32 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
    * 设置页面状态
    */
   const setPageState = useCallback((pageId: PageId, state: PageState) => {
-    setPageStates((prev) => ({
-      ...prev,
-      [pageId]: {
-        ...prev[pageId],
-        state,
-      },
-    }));
+    setPageStates((prev) => {
+      const entry = getPageEntry(prev, pageId);
+      return {
+        ...prev,
+        [pageId]: {
+          ...entry,
+          state,
+        },
+      };
+    });
   }, []);
 
   /**
    * 保存滚动位置
    */
   const saveScrollPosition = useCallback((pageId: PageId) => {
-    setPageStates((prev) => ({
-      ...prev,
-      [pageId]: {
-        ...prev[pageId],
-        scrollPosition: { x: window.scrollX, y: window.scrollY },
-      },
-    }));
+    setPageStates((prev) => {
+      const entry = getPageEntry(prev, pageId);
+      return {
+        ...prev,
+        [pageId]: {
+          ...entry,
+          scrollPosition: { x: window.scrollX, y: window.scrollY },
+        },
+      };
+    });
   }, []);
 
   /**
@@ -362,13 +420,16 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
 
         // 保存当前页面滚动位置（仅当在主页面时）
         if (currentPage !== null) {
-          setPageStates((prev) => ({
-            ...prev,
-            [currentPage]: {
-              ...prev[currentPage],
-              scrollPosition: { x: window.scrollX, y: window.scrollY },
-            },
-          }));
+          setPageStates((prev) => {
+            const entry = getPageEntry(prev, currentPage);
+            return {
+              ...prev,
+              [currentPage]: {
+                ...entry,
+                scrollPosition: { x: window.scrollX, y: window.scrollY },
+              },
+            };
+          });
         }
 
         setActivePage(pageId);
@@ -380,13 +441,16 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
 
         // 保存当前页面滚动位置（仅当在主页面时）
         if (currentPage !== null) {
-          setPageStates((prev) => ({
-            ...prev,
-            [currentPage]: {
-              ...prev[currentPage],
-              scrollPosition: { x: window.scrollX, y: window.scrollY },
-            },
-          }));
+          setPageStates((prev) => {
+            const entry = getPageEntry(prev, currentPage);
+            return {
+              ...prev,
+              [currentPage]: {
+                ...entry,
+                scrollPosition: { x: window.scrollX, y: window.scrollY },
+              },
+            };
+          });
         }
 
         // 如果是主页面，更新 activePage；否则设为 null
@@ -501,7 +565,7 @@ export function usePageVisibility(pageId: PageId): {
   state: PageState;
 } {
   const { activePage, pageStates } = useNavigation();
-  const entry = pageStates[pageId];
+  const entry = pageStates[pageId] ?? DEFAULT_PAGE_CACHE_ENTRY;
 
   return {
     isVisible: activePage === pageId,

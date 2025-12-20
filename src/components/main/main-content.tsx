@@ -7,12 +7,19 @@
  * 2. 客户端导航启用后：使用 PageContainer 管理页面切换
  * 3. 切换到已访问页面：即时显示（0ms）
  * 4. 切换到新页面：懒加载 + 客户端数据获取
+ *
+ * 重要说明：
+ * - Keep-Alive 页面（home/search/folders等）使用 PageContainer 管理
+ * - 非 Keep-Alive 页面（batch/export）直接渲染 SSR 内容
  */
 
 "use client";
 
 import { type ReactNode } from "react";
-import { useSafeNavigation } from "@/contexts/navigation-context";
+import {
+  useSafeNavigation,
+  isKeepAlivePage,
+} from "@/contexts/navigation-context";
 import { PageContainer } from "./page-container";
 import { FolderCacheListener } from "@/components/cache/folder-cache-listener";
 
@@ -37,9 +44,12 @@ export function MainContent({ children }: MainContentProps) {
   const { isClientNavEnabled, activePage, pageStates, isOnMainPage } =
     navigationContext;
 
-  // 如果不在主页面（如详情页），直接渲染 SSR children
-  // 不使用 PageContainer，让 Next.js 正常渲染页面
-  if (!isOnMainPage) {
+  // 检查当前页面是否是 Keep-Alive 管理的页面
+  const isCurrentPageKeepAlive = isKeepAlivePage(activePage);
+
+  // 如果不在主页面（如详情页）或不是 Keep-Alive 页面（如 batch/export），
+  // 直接渲染 SSR children，让 Next.js 正常处理页面
+  if (!isOnMainPage || !isCurrentPageKeepAlive) {
     return <>{children}</>;
   }
 

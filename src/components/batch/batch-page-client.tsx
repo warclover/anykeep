@@ -30,7 +30,7 @@ import type { BookmarkWithFolder } from "@/lib/export/types";
  * 平台选项
  */
 const PLATFORM_OPTIONS = [
-  { value: "", label: "全部平台" },
+  { value: "all", label: "全部平台" },
   { value: "WECHAT", label: "微信" },
   { value: "BILIBILI", label: "B站" },
   { value: "XIAOHONGSHU", label: "小红书" },
@@ -57,8 +57,15 @@ const SORT_OPTIONS = [
 export function BatchPageClient() {
   const router = useRouter();
 
+  // 客户端挂载状态（防止 Hydration 错误）
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   // 筛选状态
-  const [platform, setPlatform] = useState("");
+  const [platform, setPlatform] = useState("all");
   const [sort, setSort] = useState("created_desc");
 
   // 批量标签对话框
@@ -75,7 +82,7 @@ export function BatchPageClient() {
     createSnapshot: _createSnapshot,
     rollback: _rollback,
   } = useBookmarksSWR({
-    platform,
+    platform: platform === "all" ? "" : platform,
     sort,
     folder: "",
     pageSize: 200, // 批量页面加载更多数据
@@ -215,7 +222,9 @@ export function BatchPageClient() {
       {/* 底部状态栏 */}
       <footer className="px-6 py-2 border-t bg-gray-50 dark:bg-gray-900/50 text-sm text-gray-500 dark:text-gray-400">
         <div className="flex items-center justify-between">
-          <span>{BATCH_TEXT.TOTAL_COUNT(bookmarks.length)}</span>
+          <span>
+            {isMounted ? BATCH_TEXT.TOTAL_COUNT(bookmarks.length) : "加载中..."}
+          </span>
           <div className="flex items-center gap-4">
             <span>
               <kbd className="mx-1 px-1.5 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs">

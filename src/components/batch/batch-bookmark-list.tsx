@@ -5,7 +5,7 @@
 
 "use client";
 
-import { memo, useCallback } from "react";
+import { memo, useCallback, useState, useEffect } from "react";
 import { Virtuoso } from "react-virtuoso";
 import { Loader2, Package } from "lucide-react";
 import { BatchBookmarkItem } from "./batch-bookmark-item";
@@ -39,6 +39,14 @@ export const BatchBookmarkList = memo(function BatchBookmarkList({
   allIds,
   onItemClick,
 }: BatchBookmarkListProps) {
+  // 客户端挂载状态（防止 Hydration 错误）
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 必须用于 hydration 同步
+    setIsMounted(true);
+  }, []);
+
   /**
    * 处理项目点击
    */
@@ -49,8 +57,8 @@ export const BatchBookmarkList = memo(function BatchBookmarkList({
     [onItemClick, allIds],
   );
 
-  // 加载中状态
-  if (isLoading) {
+  // 加载中状态（服务端渲染或客户端加载中）
+  if (!isMounted || isLoading) {
     return (
       <div className="flex-1 flex items-center justify-center">
         <div className="flex flex-col items-center gap-2 text-gray-500">
