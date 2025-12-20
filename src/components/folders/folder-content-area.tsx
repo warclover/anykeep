@@ -74,6 +74,7 @@ export function FolderContentArea({
   onFolderDeleted,
   onFolderRenamed,
   onFolderMerged,
+  onExportFolder,
   className,
 }: FolderContentAreaProps) {
   // 搜索和排序状态
@@ -302,6 +303,7 @@ export function FolderContentArea({
               onFolderDeleted={onFolderDeleted}
               onFolderRenamed={onFolderRenamed}
               onFolderMerged={onFolderMerged}
+              onExportFolder={onExportFolder}
             />
           ) : (
             <div className="space-y-2">
@@ -315,6 +317,7 @@ export function FolderContentArea({
                   onFolderDeleted={onFolderDeleted}
                   onFolderRenamed={onFolderRenamed}
                   onFolderMerged={onFolderMerged}
+                  onExportFolder={onExportFolder}
                 />
               ))}
             </div>

@@ -393,6 +393,75 @@ SUPABASE_SERVICE_ROLE_KEY=服务角色密钥
 
 ---
 
+### 4. 数据导出功能 ✅
+
+**版本**: v2.3.0 (2025-12-20)
+
+完整的数据导出解决方案，支持多种格式和灵活的筛选配置。
+
+**支持格式**:
+
+- ✅ CSV（自定义字段选择）
+- ✅ Markdown（单文件 / 每日聚合）
+- ✅ Obsidian（完整双链语法 + 元数据）
+- ✅ Obsidian ZIP（批量 .md 文件打包）
+- ✅ JSON（结构化数据）
+- ✅ HTML（浏览器兼容导入格式）
+
+**核心功能**:
+
+- ✅ 独立导出页面 `/export`
+- ✅ 统一导出对话框 `ExportDialogV2`（支持 full/selected 两种模式）
+- ✅ 实时预览（格式切换即时更新）
+- ✅ 文件大小估算
+- ✅ 大文件分块处理（JSON/HTML 格式）
+- ✅ 导出进度条（大数据量显示）
+- ✅ 导出分析统计
+
+**集成位置**:
+
+- ✅ 首页批量操作工具栏（选中书签导出）
+- ✅ 批量操作页面工具栏
+- ✅ 文件夹操作菜单（导出文件夹内书签）
+- ✅ 侧边栏快捷入口
+
+**技术架构**:
+
+```
+src/lib/export/
+├── services/           # 导出服务层
+│   └── export.service.ts
+├── formatters/         # 格式化器（策略模式）
+│   ├── csv.formatter.ts
+│   ├── markdown.formatter.ts
+│   ├── obsidian.formatter.ts
+│   ├── json.formatter.ts
+│   └── html.formatter.ts
+├── utils/              # 工具函数
+│   ├── preview.utils.ts
+│   └── file.utils.ts
+├── constants.ts        # 常量配置
+├── analytics.ts        # 导出分析
+└── types.ts            # 类型定义
+
+src/components/export/
+├── export-dialog-v2.tsx      # 统一导出对话框
+├── export-page-client.tsx    # 导出页面客户端组件
+├── export-format-selector.tsx
+├── export-field-selector.tsx
+├── export-preview.tsx
+├── export-preview-modal.tsx
+└── export-progress.tsx
+```
+
+**设计原则**:
+
+- 策略模式：每种格式独立 Formatter，易于扩展
+- 单一职责：服务层/格式化层/UI层分离
+- 复用优先：`ExportDialogV2` 统一导出入口
+
+---
+
 ## AI 使用指引
 
 ### 核心文档

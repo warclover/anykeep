@@ -39,6 +39,7 @@ export function FolderCard({
   onFolderDeleted,
   onFolderRenamed,
   onFolderMerged,
+  onExportFolder,
 }: FolderCardProps) {
   const isInbox = folder.is_system && folder.system_type === "INBOX";
   const isArchived = folder.is_archived;
@@ -178,6 +179,7 @@ export function FolderCard({
           onFolderDeleted={onFolderDeleted}
           onFolderRenamed={onFolderRenamed}
           onFolderMerged={onFolderMerged}
+          onExportFolder={onExportFolder}
           initialLockStatus={lockStatus}
         />
       </div>
@@ -201,6 +203,7 @@ export function FolderListItem({
   onFolderDeleted,
   onFolderRenamed,
   onFolderMerged,
+  onExportFolder,
 }: FolderListItemProps) {
   const isInbox = folder.is_system && folder.system_type === "INBOX";
   const isArchived = folder.is_archived;
@@ -295,6 +298,7 @@ export function FolderListItem({
           onFolderDeleted={onFolderDeleted}
           onFolderRenamed={onFolderRenamed}
           onFolderMerged={onFolderMerged}
+          onExportFolder={onExportFolder}
           initialLockStatus={lockStatus}
         />
       </div>
@@ -319,6 +323,7 @@ export function FolderCardGrid({
   onFolderDeleted,
   onFolderRenamed,
   onFolderMerged,
+  onExportFolder,
   emptyMessage = "暂无文件夹",
 }: FolderCardGridProps) {
   if (folders.length === 0) {
@@ -341,6 +346,7 @@ export function FolderCardGrid({
           onFolderDeleted={onFolderDeleted}
           onFolderRenamed={onFolderRenamed}
           onFolderMerged={onFolderMerged}
+          onExportFolder={onExportFolder}
         />
       ))}
     </div>

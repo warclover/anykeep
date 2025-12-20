@@ -54,4 +54,6 @@ export interface FolderActionCallbacks {
     targetFolderId: number,
     movedCount: number,
   ) => void;
+  /** 导出文件夹内书签 */
+  onExportFolder?: (folderId: number) => void;
 }

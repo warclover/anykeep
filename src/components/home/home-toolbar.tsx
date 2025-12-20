@@ -342,6 +342,7 @@ export const HomeToolbar = memo(function HomeToolbar({
           onBatchDelete={onBatchDelete}
           onOpenMoveDialog={onOpenMoveDialog}
           onOpenTagDialog={onOpenTagDialog}
+          onOpenExportDialog={onOpenExportDialog}
           onBatchCreateSnapshot={onBatchCreateSnapshot}
         />
       )}

@@ -192,6 +192,8 @@ const PAGE_LABELS: Record<PageId, string> = {
   folders: "收藏夹",
   messages: "消息",
   analytics: "数据统计",
+  batch: "批量操作",
+  export: "数据导出",
   settings: "设置",
 };
 

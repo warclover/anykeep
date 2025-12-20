@@ -163,6 +163,15 @@ export function FoldersPageClient({
     [router],
   );
 
+  // 导出文件夹内书签
+  const handleExportFolder = useCallback(
+    (folderId: number) => {
+      // 跳转到导出页面，带上文件夹参数
+      router.push(`/export?folder=${folderId}`);
+    },
+    [router],
+  );
+
   // ==================== 渲染 ====================
 
   // 错误状态
@@ -252,6 +261,7 @@ export function FoldersPageClient({
           onFolderDeleted={handleFolderDeleted}
           onFolderRenamed={handleFolderRenamed}
           onFolderMerged={handleFolderMerged}
+          onExportFolder={handleExportFolder}
           className="flex-1"
         />
       </main>

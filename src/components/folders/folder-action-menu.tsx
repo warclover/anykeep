@@ -29,6 +29,7 @@ import {
   Unlock,
   Folder,
   Pin,
+  Download,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -78,6 +79,8 @@ interface FolderActionMenuProps {
     targetFolderId: number,
     movedCount: number,
   ) => void;
+  /** 导出文件夹内书签回调 */
+  onExportFolder?: (folderId: number) => void;
   /**
    * V4.2.1: 从父组件批量查询结果传入的初始锁状态
    * 如果提供，则跳过单独的 API 请求
@@ -140,6 +143,7 @@ export function FolderActionMenu({
   onFolderDeleted,
   onFolderRenamed,
   onFolderMerged,
+  onExportFolder,
   initialLockStatus,
 }: FolderActionMenuProps) {
   const router = useRouter();
@@ -421,6 +425,21 @@ export function FolderActionMenu({
               </span>
             )}
           </DropdownMenuItem>
+
+          {/* 导出文件夹书签 */}
+          {onExportFolder && hasBookmarks && (
+            <DropdownMenuItem
+              onClick={(e) => {
+                e.stopPropagation();
+                onExportFolder(folder.id);
+              }}
+              className="text-teal-600 dark:text-teal-400"
+            >
+              <Download className="size-4 mr-2" />
+              导出
+              <span className="ml-auto text-xs">({folder.bookmark_count})</span>
+            </DropdownMenuItem>
+          )}
 
           <DropdownMenuSeparator />
 
