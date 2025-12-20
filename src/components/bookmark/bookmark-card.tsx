@@ -529,8 +529,8 @@ export const BookmarkCard = memo(function BookmarkCard({
         >
           {/* 移动端：顶部区域（封面 + 选择框 + 操作按钮） */}
           <div className="relative sm:hidden">
-            {/* 封面图 - 移动端全宽 */}
-            <div className="aspect-video">
+            {/* 封面图 - 移动端全宽，2.35:1 宽幅比例 */}
+            <div className="aspect-[2.35/1]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={coverImage}
@@ -563,9 +563,9 @@ export const BookmarkCard = memo(function BookmarkCard({
             </div>
           )}
 
-          {/* 桌面端：缩略图 */}
+          {/* 桌面端：缩略图，2.35:1 宽幅比例 */}
           <div className="relative hidden sm:block w-32 md:w-48 flex-shrink-0">
-            <div className="aspect-video">
+            <div className="aspect-[2.35/1]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={coverImage}
@@ -753,8 +753,8 @@ export const BookmarkCard = memo(function BookmarkCard({
           isSelected && "ring-2 ring-blue-500 dark:ring-blue-400",
         )}
       >
-        {/* 封面图 - P0.1: 16:9 + 顶部贴边对齐 */}
-        <div className="relative aspect-video overflow-hidden rounded-t-xl">
+        {/* 封面图 - 2.35:1 宽幅比例，更好适配微信等平台封面 */}
+        <div className="relative aspect-[2.35/1] overflow-hidden rounded-t-xl">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={coverImage}
