@@ -2,6 +2,8 @@
 
 /**
  * 智能轮询 Hook
+ * V4.2.21: 修复轮询定时器丢失问题
+ *
  * 对 PROCESSING 状态或"正在获取标题..."的书签进行定时轮询
  * 当数据更新完成后自动停止轮询该书签
  *
@@ -62,9 +64,6 @@ export function useProcessingPoller({
   // 轮询计数器（用于限制最大轮询次数）
   const pollCountRef = useRef<Map<number, number>>(new Map());
 
-  // 上一次轮询的 ID 列表（用于检测变化）
-  const lastPollIdsRef = useRef<string>("");
-
   /**
    * 执行轮询请求
    */
@@ -119,6 +118,7 @@ export function useProcessingPoller({
 
   /**
    * 设置轮询定时器
+   * V4.2.21: 移除错误的"跳过"逻辑，确保每次 effect 执行都正确设置定时器
    */
   useEffect(() => {
     if (!enabled) return;
@@ -144,20 +144,15 @@ export function useProcessingPoller({
 
     // 检查是否有需要轮询的书签
     const pollingIds = getPollingIds();
-    const pollingIdsStr = pollingIds.join(",");
 
     // 如果没有需要轮询的书签，不设置定时器
     if (pollingIds.length === 0) {
-      lastPollIdsRef.current = "";
       return;
     }
 
-    // 如果轮询列表没有变化，且已有定时器在运行，跳过
-    if (pollingIdsStr === lastPollIdsRef.current) {
-      return;
-    }
-
-    lastPollIdsRef.current = pollingIdsStr;
+    // V4.2.21: 移除了错误的跳过逻辑
+    // 旧代码会在 pollingIds 相同时直接 return，但此时 useEffect 的清理函数
+    // 已经清除了旧定时器，导致没有任何定时器在运行
 
     // 设置定时器
     const intervalId = setInterval(() => {
@@ -167,7 +162,6 @@ export function useProcessingPoller({
       } else {
         // 没有需要轮询的书签，清除定时器
         clearInterval(intervalId);
-        lastPollIdsRef.current = "";
       }
     }, POLL_INTERVAL);
 
@@ -182,7 +176,6 @@ export function useProcessingPoller({
     const pollCountMap = pollCountRef.current;
     return () => {
       pollCountMap.clear();
-      lastPollIdsRef.current = "";
     };
   }, []);
 }
