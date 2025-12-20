@@ -67,6 +67,7 @@ export class SummaryRepository implements ISummaryRepository {
       .update({
         ai_summary: summary,
         ai_tags: tags,
+        status: "COMPLETED", // V4.2.21: 修复 - AI 摘要完成后更新状态，使轮询能正确检测完成
         updated_at: new Date().toISOString(),
       })
       .eq("id", bookmarkId);

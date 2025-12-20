@@ -6,7 +6,7 @@
  *                                    -> error -> idle
  */
 
-import { useCallback, useReducer } from "react";
+import { useCallback, useMemo, useReducer } from "react";
 
 // Types
 export type QuickAddMode =
@@ -313,9 +313,10 @@ export function useQuickAddState() {
     dispatch({ type: "RESET" });
   }, []);
 
-  return {
-    state,
-    actions: {
+  // V4.2.21: 使用 useMemo 稳定 actions 对象引用，避免依赖它的组件不必要重渲染
+  // 修复：QuickAddSuccess 定时器被不断重置导致成功状态停留过长的问题
+  const actions = useMemo(
+    () => ({
       setMode,
       setDrawerState,
       setInputValue,
@@ -336,7 +337,34 @@ export function useQuickAddState() {
       handleFocus,
       handleBlur,
       handleCancel,
-    },
+    }),
+    [
+      setMode,
+      setDrawerState,
+      setInputValue,
+      setExtractedUrl,
+      setMetadata,
+      setFolderId,
+      setTags,
+      setNotes,
+      setSubmitting,
+      setShowKeyboardHints,
+      reset,
+      startLoading,
+      showPreview,
+      showSuccess,
+      showError,
+      openDrawer,
+      closeDrawer,
+      handleFocus,
+      handleBlur,
+      handleCancel,
+    ],
+  );
+
+  return {
+    state,
+    actions,
   };
 }
 
