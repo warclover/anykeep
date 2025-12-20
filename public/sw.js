@@ -3,9 +3,9 @@
  * 提供离线支持和缓存功能
  */
 
-const CACHE_NAME = 'anykeep-v1'
-const STATIC_CACHE = 'anykeep-static-v1'
-const DYNAMIC_CACHE = 'anykeep-dynamic-v1'
+const CACHE_NAME = 'anykeep-v3'
+const STATIC_CACHE = 'anykeep-static-v3'
+const DYNAMIC_CACHE = 'anykeep-dynamic-v3'
 
 // 预缓存的静态资源
 const PRECACHE_ASSETS = [
@@ -65,6 +65,16 @@ self.addEventListener('fetch', (event) => {
   // 跳过 Supabase 请求
   if (url.hostname.includes('supabase')) return
 
+  // 跳过 Next.js RSC 请求（React Server Components 数据请求）
+  // RSC 请求包含动态数据，不应被缓存
+  if (url.searchParams.has('_rsc')) return
+
+  // 跳过 analytics 页面（需要实时数据）
+  if (url.pathname === '/analytics') {
+    event.respondWith(networkOnly(request))
+    return
+  }
+
   // 静态资源：Cache First
   if (isStaticAsset(url.pathname)) {
     event.respondWith(cacheFirst(request))
@@ -88,6 +98,16 @@ function isStaticAsset(pathname) {
     pathname.startsWith('/icons/') ||
     pathname.startsWith('/_next/static/')
   )
+}
+
+// Network Only 策略（不使用缓存）
+async function networkOnly(request) {
+  try {
+    return await fetch(request)
+  } catch (error) {
+    console.log('[SW] Network only fetch failed:', error)
+    return new Response('Offline', { status: 503 })
+  }
 }
 
 // Cache First 策略

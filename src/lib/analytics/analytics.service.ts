@@ -3,10 +3,9 @@
  * 统一管理所有统计数据的查询和计算
  *
  * @module lib/analytics/analytics.service
- * @version 2.0.0 - 使用 BookmarkServerRepository 统一数据访问
+ * @version 2.1.0 - 使用轻量级查询优化性能
  */
 
-import { cache } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Platform, Bookmark } from "@/types/supabase";
 import {
@@ -32,6 +31,16 @@ import type {
   AnalyticsConfig,
 } from "./types";
 import { DEFAULT_ANALYTICS_CONFIG } from "./types";
+
+// ============================================================================
+// 类型定义
+// ============================================================================
+
+/** 轻量级书签数据（仅包含统计所需字段） */
+type AnalyticsBookmark = Pick<
+  Bookmark,
+  "id" | "platform" | "created_at" | "folder_id" | "ai_tags"
+>;
 
 // ============================================================================
 // AnalyticsService 类
@@ -60,11 +69,13 @@ export class AnalyticsService {
 
   /**
    * 获取完整分析数据
-   * @description 使用 Repository 统一获取数据，确保数据源一致性
+   * @description 使用轻量级查询优化性能，只获取统计所需字段
    */
   async getFullAnalytics(): Promise<AnalyticsData> {
-    // 使用 Repository 获取所有活跃书签
-    const allBookmarks = await this.repository.getAll({ scope: "active" });
+    // 使用轻量级查询获取所有活跃书签（只选择统计需要的字段）
+    const allBookmarks = await this.repository.getForAnalytics({
+      scope: "active",
+    });
 
     // 在内存中分离内容收藏和浏览器书签（确保使用同一数据源）
     const contentBookmarks = allBookmarks.filter(
@@ -86,6 +97,7 @@ export class AnalyticsService {
       contentBookmarks,
       browserBookmarks,
     );
+
     const trendData = this.calculateTrendData(allBookmarks);
     const platformData = this.calculatePlatformDistribution(allBookmarks);
     const folderData = this.calculateFolderDistribution(allBookmarks, folders);
@@ -208,9 +220,9 @@ export class AnalyticsService {
   }
 
   private calculateStats(
-    allBookmarks: Bookmark[],
-    contentBookmarks: Bookmark[],
-    browserBookmarks: Bookmark[],
+    allBookmarks: AnalyticsBookmark[],
+    contentBookmarks: AnalyticsBookmark[],
+    browserBookmarks: AnalyticsBookmark[],
   ): AnalyticsStats {
     // 使用北京时间计算时间边界
     const todayStart = this.getDayStartInBeijingTime(0);
@@ -260,7 +272,7 @@ export class AnalyticsService {
     };
   }
 
-  private calculateTrendData(bookmarks: Bookmark[]): TrendDataItem[] {
+  private calculateTrendData(bookmarks: AnalyticsBookmark[]): TrendDataItem[] {
     const trendDaysAgo = this.getDayStartInBeijingTime(this.config.trendDays);
 
     const contentTrendMap = new Map<string, number>();
@@ -302,7 +314,7 @@ export class AnalyticsService {
   }
 
   private calculatePlatformDistribution(
-    bookmarks: Bookmark[],
+    bookmarks: AnalyticsBookmark[],
   ): PlatformDistribution[] {
     const platformMap = new Map<string, number>();
 
@@ -339,7 +351,7 @@ export class AnalyticsService {
   }
 
   private calculateFolderDistribution(
-    bookmarks: Bookmark[],
+    bookmarks: AnalyticsBookmark[],
     folders: { id: number; name: string }[],
   ): FolderDistribution[] {
     const folderCountMap = new Map<number, number>();
@@ -384,7 +396,7 @@ export class AnalyticsService {
     return result;
   }
 
-  private calculateTagStats(bookmarks: Bookmark[]): TagStats[] {
+  private calculateTagStats(bookmarks: AnalyticsBookmark[]): TagStats[] {
     const tagMap = new Map<string, number>();
 
     bookmarks.forEach((bookmark) => {
@@ -399,7 +411,9 @@ export class AnalyticsService {
       .map(([tag, count]) => ({ tag, count }));
   }
 
-  private calculateTypeStats(contentBookmarks: Bookmark[]): ContentTypeStats[] {
+  private calculateTypeStats(
+    contentBookmarks: AnalyticsBookmark[],
+  ): ContentTypeStats[] {
     const typeMap: Record<string, number> = {
       文章: 0,
       视频: 0,
@@ -427,7 +441,9 @@ export class AnalyticsService {
       }));
   }
 
-  private calculateComparison(bookmarks: Bookmark[]): PeriodComparison {
+  private calculateComparison(
+    bookmarks: AnalyticsBookmark[],
+  ): PeriodComparison {
     // 使用北京时间计算时间边界
     const todayStart = this.getDayStartInBeijingTime(0);
     const yesterdayStart = this.getDayStartInBeijingTime(1);
@@ -509,15 +525,14 @@ export class AnalyticsService {
 // ============================================================================
 
 /**
- * 获取分析数据（带请求级缓存）
+ * 获取分析数据（临时移除缓存以诊断问题）
  */
-export const getAnalyticsData = cache(
-  async (
-    supabase: SupabaseClient,
-    userId: string,
-    config?: Partial<AnalyticsConfig>,
-  ): Promise<AnalyticsData> => {
-    const service = new AnalyticsService(supabase, userId, config);
-    return service.getFullAnalytics();
-  },
-);
+export async function getAnalyticsData(
+  supabase: SupabaseClient,
+  userId: string,
+  config?: Partial<AnalyticsConfig>,
+): Promise<AnalyticsData> {
+  console.error("[getAnalyticsData] Direct call without cache");
+  const service = new AnalyticsService(supabase, userId, config);
+  return service.getFullAnalytics();
+}

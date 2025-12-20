@@ -1,9 +1,13 @@
-// 标记为动态路由
+// 标记为动态路由，禁用所有缓存
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 /**
  * 数据统计页面 - 服务端组件
  * 使用 AnalyticsService 统一服务层获取数据
+ *
+ * 重要：此页面不使用 Keep-Alive 缓存，确保每次访问都获取最新数据
+ * @see src/contexts/navigation-context.tsx - analytics 已从 PAGE_IDS 移除
  */
 
 import { redirect } from "next/navigation";
@@ -17,7 +21,7 @@ async function fetchAnalyticsData(
   userId: string,
 ) {
   try {
-    // 使用服务层获取分析数据（带 React cache 缓存）
+    // 使用服务层获取分析数据
     // Phase 3: 启用时间对比和 AI 统计功能
     const analyticsData = await getAnalyticsData(supabase, userId, {
       mergeBrowserPlatforms: true,

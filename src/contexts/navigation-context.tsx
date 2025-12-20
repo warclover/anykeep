@@ -34,14 +34,13 @@ const CLIENT_NAV_ENABLE_DELAY_MS = 100;
 /**
  * Keep-Alive 管理的页面 ID 列表
  * 这些页面使用客户端导航和页面缓存
- * 注意：batch/export 不在此列，它们使用服务端导航
+ * 注意：batch/export/analytics 不在此列，它们需要服务端导航获取实时数据
  */
 export const PAGE_IDS: readonly PageId[] = [
   "home",
   "search",
   "folders",
   "messages",
-  "analytics",
   "settings",
 ] as const;
 
@@ -51,6 +50,7 @@ export const PAGE_IDS: readonly PageId[] = [
  */
 const ALL_PAGE_IDS: readonly PageId[] = [
   ...PAGE_IDS,
+  "analytics",
   "batch",
   "export",
 ] as const;

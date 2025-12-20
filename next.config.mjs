@@ -130,6 +130,24 @@ const nextConfig = {
           },
         ],
       },
+      {
+        // Analytics 页面禁止缓存（需要实时数据）
+        source: '/analytics',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          },
+          {
+            key: 'Pragma',
+            value: 'no-cache',
+          },
+          {
+            key: 'Expires',
+            value: '0',
+          },
+        ],
+      },
     ];
   },
 };

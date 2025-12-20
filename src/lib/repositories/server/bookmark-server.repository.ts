@@ -167,6 +167,73 @@ export class BookmarkServerRepository {
   }
 
   /**
+   * 获取统计所需的轻量级书签数据（性能优化）
+   * 只选择 analytics 需要的字段，大幅减少数据传输量
+   */
+  async getForAnalytics(
+    options: BookmarkQueryOptions = {},
+  ): Promise<
+    Pick<Bookmark, "id" | "platform" | "created_at" | "folder_id" | "ai_tags">[]
+  > {
+    const { scope = "active", limit, offset } = options;
+    const allBookmarks: Pick<
+      Bookmark,
+      "id" | "platform" | "created_at" | "folder_id" | "ai_tags"
+    >[] = [];
+    const pageSize = limit || 1000;
+    let currentOffset = offset || 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      let query = this.supabase
+        .from("bookmarks")
+        .select("id, platform, created_at, folder_id, ai_tags") // 只选择需要的字段
+        .eq("user_id", this.userId)
+        .is("deleted_at", null);
+
+      // 应用范围过滤
+      query = this.applyScope(query, scope);
+
+      // 应用平台过滤
+      if (options.excludeBrowser) {
+        query = query.not("platform", "in", `(${BROWSER_PLATFORMS.join(",")})`);
+      } else if (options.onlyBrowser) {
+        query = query.in("platform", BROWSER_PLATFORMS);
+      } else if (options.platform) {
+        query = query.eq("platform", options.platform);
+      }
+
+      // 分页
+      query = query
+        .order("created_at", { ascending: false })
+        .range(currentOffset, currentOffset + pageSize - 1);
+
+      const { data, error } = await query;
+
+      if (error) {
+        throw new Error(
+          `BookmarkServerRepository.getForAnalytics failed: ${error.message}`,
+        );
+      }
+
+      if (data && data.length > 0) {
+        allBookmarks.push(
+          ...(data as Pick<
+            Bookmark,
+            "id" | "platform" | "created_at" | "folder_id" | "ai_tags"
+          >[]),
+        );
+        currentOffset += data.length;
+        hasMore = !limit && data.length === pageSize;
+      } else {
+        hasMore = false;
+      }
+    }
+
+    return allBookmarks;
+  }
+
+  /**
    * 获取内容书签（排除浏览器书签）
    */
   async getContentBookmarks(
