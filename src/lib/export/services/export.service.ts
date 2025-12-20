@@ -312,11 +312,8 @@ export class ExportService {
     const result: string[] = [];
     const total = bookmarks.length;
 
-    // 添加表头
-    const header = formatter
-      .formatAll(bookmarks.slice(0, 1), options)
-      .split("\n")[0];
-    result.push(header);
+    // 添加表头（直接使用格式化器的公开方法）
+    result.push(formatter.generateHeader());
 
     for (let i = 0; i < total; i += CHUNK_SIZE) {
       if (signal?.aborted) {

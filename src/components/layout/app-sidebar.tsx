@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
@@ -27,6 +27,7 @@ import {
   PanelLeftClose,
   PanelLeft,
   CheckSquare,
+  Download,
 } from "lucide-react";
 import { useUnreadCount } from "@/hooks/use-unread-count";
 import { MessageBadge } from "@/components/messages";
@@ -66,6 +67,7 @@ const navigation: {
   },
   { name: "数据", pageId: "analytics", icon: BarChart3, colorKey: "analytics" },
   { name: "批量", pageId: "batch", icon: CheckSquare, colorKey: "batch" },
+  { name: "导出", pageId: "export", icon: Download, colorKey: "export" },
   { name: "设置", pageId: "settings", icon: Settings, colorKey: "settings" },
 ];
 
@@ -93,17 +95,34 @@ export function AppSidebar() {
   };
 
   // 安全获取侧边栏上下文
+  // 注意：默认值必须与 SidebarProvider 的初始状态一致，避免 hydration 不匹配
   const sidebarContext = useSafeSidebar();
+
+  // 客户端挂载状态 - 防止 hydration 不匹配
+  // 首次渲染使用默认值（与服务端一致），挂载后使用实际值
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 必须用于 hydration 同步
+    setIsMounted(true);
+  }, []);
+
+  // 在客户端挂载前使用默认值，确保与服务端渲染一致
   const {
-    isCollapsed = false,
+    isCollapsed = true,
     isLocked = false,
-    isVisuallyExpanded = true,
-    displayWidth = SIDEBAR_WIDTH.expanded,
+    isVisuallyExpanded: contextVisuallyExpanded = false,
+    displayWidth: contextDisplayWidth = SIDEBAR_WIDTH.collapsed,
     lockExpanded,
     unlockAndCollapse,
     handleMouseEnter,
     handleMouseLeave,
   } = sidebarContext || {};
+
+  // hydration 安全：首次渲染使用默认值
+  const isVisuallyExpanded = isMounted ? contextVisuallyExpanded : false;
+  const displayWidth = isMounted
+    ? contextDisplayWidth
+    : SIDEBAR_WIDTH.collapsed;
 
   // 折叠状态（子菜单）
   const [isSystemFoldersExpanded, setIsSystemFoldersExpanded] = useState(false);
@@ -157,8 +176,9 @@ export function AppSidebar() {
     onClick: (e: React.MouseEvent) => void,
   ) => {
     const Icon = item.icon;
-    const href = PAGE_ROUTES[item.pageId];
-    const iconColor = NAV_ICON_COLORS[item.colorKey];
+    // 防御性检查：确保 href 永不为 undefined
+    const href = PAGE_ROUTES[item.pageId] ?? "/home";
+    const iconColor = NAV_ICON_COLORS[item.colorKey] ?? NAV_ICON_COLORS.home;
     const activeStyles = NAV_ACTIVE_STYLES.default;
 
     const content = (
@@ -279,7 +299,8 @@ export function AppSidebar() {
           <nav className="flex-1 space-y-4 overflow-y-auto scrollbar-hide px-2">
             <div className="space-y-1">
               {navigation.map((item) => {
-                const href = PAGE_ROUTES[item.pageId];
+                // 防御性检查：确保 href 永不为 undefined
+                const href = PAGE_ROUTES[item.pageId] ?? "/home";
                 const isActive = isClientNavEnabled
                   ? activePage === item.pageId
                   : pathname === href ||

@@ -114,7 +114,7 @@ export class CsvFormatter implements ExportFormatter {
   /**
    * 生成表头行
    */
-  private generateHeader(): string {
+  generateHeader(): string {
     const headers = this.fields.map((field) =>
       escapeCsvValue(CSV_FIELD_LABELS[field] || field),
     );

@@ -1,0 +1,1943 @@
+# 系统分享集成功能设计文档
+
+**版本**: V2.0
+**日期**: 2025-12-19
+**状态**: 待审核
+**作者**: AI Assistant (BMad Master)
+
+---
+
+## 版本历史
+
+| 版本 | 日期       | 变更内容                                                   |
+| ---- | ---------- | ---------------------------------------------------------- |
+| V1.0 | 2025-12-19 | 初版设计，包含竞品分析、技术方案、UI/UX 设计               |
+| V2.0 | 2025-12-19 | **深化设计**：解耦架构、现有代码集成分析、详细开发任务清单 |
+
+---
+
+## 目录
+
+1. [功能概述](#1-功能概述)
+2. [竞品分析与最佳实践](#2-竞品分析与最佳实践)
+3. [技术调研](#3-技术调研)
+4. [功能清单](#4-功能清单)
+5. [数据模型设计](#5-数据模型设计)
+6. [架构设计](#6-架构设计)
+7. [UI/UX 设计](#7-uiux-设计)
+8. [实现计划](#8-实现计划)
+9. [风险与注意事项](#9-风险与注意事项)
+10. [参考资料](#10-参考资料)
+11. [**V2.0 新增：解耦架构设计**](#11-解耦架构设计)
+12. [**V2.0 新增：现有代码集成分析**](#12-现有代码集成分析)
+13. [**V2.0 新增：详细开发任务清单**](#13-详细开发任务清单)
+
+---
+
+## 关键决策（已确认 ✅）
+
+| 决策项                  | 确认方案                                            | 状态      |
+| ----------------------- | --------------------------------------------------- | --------- |
+| **MVP 平台优先级**      | Android 优先（用户量大，实现复杂度低）              | ✅ 已确认 |
+| **分享界面形式**        | 极简模式（一键保存） + 完整模式（选择文件夹/标签）  | ✅ 已确认 |
+| **离线支持**            | IndexedDB 队列缓存，网络恢复后自动同步              | ✅ 已确认 |
+| **微信公众号处理**      | URL 提取（P0）+ 企业微信（P2）双通道                | ✅ 已确认 |
+| **iOS Share Extension** | Phase 2 实现，需要 App Groups 数据共享              | ✅ 已确认 |
+| **支持内容类型**        | 文本/链接（P0）、图片（P1）、文件（P2）             | ✅ 已确认 |
+| **解耦设计原则**        | 独立模块、通过 API 通信、特性开关控制、零破坏性修改 | ✅ 已确认 |
+
+---
+
+## 1. 功能概述
+
+### 1.1 背景与目标
+
+AnyKeep 的核心价值主张是「一键收藏：通过系统分享菜单快速保存内容」。目前项目已完成浏览器书签导入功能，但缺少移动端系统分享集成——这是移动用户和重度用户的核心需求。
+
+**目标用户画像**：
+
+- 📱 移动端重度用户：主要在手机上浏览内容
+- 📲 多平台内容消费者：微信公众号、B站、小红书、知乎等
+- ⚡ 效率追求者：需要一键保存，不想切换 App
+
+**核心价值**：
+
+```
+从其他 App 分享 → AnyKeep 接收 → 智能处理 → 自动归档
+       ↓
+   减少 90% 的收藏操作步骤
+```
+
+### 1.2 功能定位
+
+| 维度         | 定位                                 |
+| ------------ | ------------------------------------ |
+| **用户体验** | 原生级别的系统集成，分享菜单一键触达 |
+| **智能处理** | 自动识别平台、提取元数据、生成摘要   |
+| **离线优先** | 支持离线收藏，网络恢复自动同步       |
+| **跨平台**   | Android/iOS 双端支持，体验一致       |
+
+### 1.3 与现有功能的关系
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     AnyKeep 内容入口矩阵                         │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│   ┌─────────────┐    ┌─────────────┐    ┌─────────────┐         │
+│   │  手动添加    │    │ 浏览器导入   │    │ 系统分享     │         │
+│   │ (Web/App)   │    │ (已完成 ✅)  │    │ (本文档 📋)  │         │
+│   └──────┬──────┘    └──────┬──────┘    └──────┬──────┘         │
+│          │                  │                  │                 │
+│          └──────────────────┼──────────────────┘                 │
+│                             ▼                                    │
+│                  ┌──────────────────────┐                        │
+│                  │   统一内容处理管道    │                        │
+│                  │  (URL提取/元数据/AI)  │                        │
+│                  └──────────┬───────────┘                        │
+│                             ▼                                    │
+│                  ┌──────────────────────┐                        │
+│                  │    bookmarks 表       │                        │
+│                  │   (Supabase + RLS)   │                        │
+│                  └──────────────────────┘                        │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 2. 竞品分析与最佳实践
+
+### 2.1 竞品功能对比
+
+| 功能点            | Pocket  | Raindrop.io | Cubox       | Instapaper | AnyKeep (规划) |
+| ----------------- | ------- | ----------- | ----------- | ---------- | -------------- |
+| **Android 分享**  | ✅ 完善 | ✅ 完善     | ✅ 完善     | ✅ 基础    | 📋 P0          |
+| **iOS Extension** | ✅ 完善 | ✅ 完善     | ✅ 完善     | ✅ 完善    | 📋 P1          |
+| **微信收藏**      | ⚠️ 繁琐 | ⚠️ 繁琐     | ✅ 企业微信 | ⚠️ 繁琐    | 📋 双通道      |
+| **离线收藏**      | ✅      | ✅          | ✅          | ✅         | 📋 P0          |
+| **一键保存**      | ✅      | ❌          | ✅          | ❌         | 📋 P0          |
+| **选择文件夹**    | ✅      | ✅          | ✅          | ✅         | 📋 P0          |
+| **智能标签**      | ✅ AI   | ❌          | ✅ AI       | ❌         | 📋 P1          |
+| **图片保存**      | ✅      | ✅          | ✅          | ❌         | 📋 P1          |
+| **网页快照**      | ✅      | ✅ 付费     | ✅ 付费     | ✅ 付费    | 📋 P2          |
+
+### 2.2 竞品最佳实践总结
+
+#### Cubox 的成功经验（本土化标杆）
+
+**核心亮点**：
+
+1. **微信收藏助手** - 企业微信号直接转发，无需打开 App
+2. **一键保存模式** - 点击分享立即保存，无需额外操作
+3. **本土化设计** - 针对国内平台优化（公众号/B站/知乎）
+4. **价格优势** - 年费 ¥78，远低于国外竞品
+
+**可借鉴点**：
+
+```
+✅ 微信企业号方案 - 极低摩擦的公众号收藏
+✅ 极简保存模式 - 减少用户决策负担
+✅ 平台智能识别 - 针对不同平台优化提取逻辑
+```
+
+#### Pocket 的成功经验（全球标杆）
+
+**核心亮点**：
+
+1. **完美图文保存** - 公众号文章图片完整保留
+2. **成熟的 Share Extension** - iOS 体验流畅
+3. **阅读器模式** - 去除广告干扰
+4. **跨平台同步** - 实时同步体验
+
+**可借鉴点**：
+
+```
+✅ 图文完整性 - 使用 readability 算法提取
+✅ 离线阅读 - 预下载内容到本地
+✅ 标签建议 - AI 自动推荐标签
+```
+
+#### Raindrop.io 的成功经验（专业用户首选）
+
+**核心亮点**：
+
+1. **收藏夹分享** - 可作为公开网站分享
+2. **全文搜索** - 搜索已保存内容的全文
+3. **集合嵌套** - 多层级文件夹结构
+4. **浏览器深度集成** - 插件功能强大
+
+**可借鉴点**：
+
+```
+✅ 快照功能 - 防止网页失效
+✅ 批量操作 - 多选移动/删除/标签
+✅ 视图模式 - 列表/卡片/瀑布流
+```
+
+### 2.3 差异化竞争策略
+
+基于竞品分析，AnyKeep 的差异化定位：
+
+| 差异化点         | 策略                                       |
+| ---------------- | ------------------------------------------ |
+| **AI 深度集成**  | 不只是标签，而是智能摘要+知识图谱+语义搜索 |
+| **国内平台优化** | 微信/B站/小红书/知乎专属解析器             |
+| **轻量极速**     | 一键保存，秒级响应，不打断用户流           |
+| **渐进式功能**   | 免费版够用，Pro 版强大                     |
+
+---
+
+## 3. 技术调研
+
+### 3.1 Android Share Target 实现
+
+**技术方案**：Android Intent Filter + Capacitor Plugin
+
+**核心配置** (AndroidManifest.xml)：
+
+```xml
+<activity
+    android:name=".MainActivity"
+    android:exported="true"
+    android:launchMode="singleTask">
+
+    <!-- 接收文本/链接 -->
+    <intent-filter>
+        <action android:name="android.intent.action.SEND" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <data android:mimeType="text/plain" />
+    </intent-filter>
+
+    <!-- 接收图片 -->
+    <intent-filter>
+        <action android:name="android.intent.action.SEND" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <data android:mimeType="image/*" />
+    </intent-filter>
+
+    <!-- 接收多张图片 -->
+    <intent-filter>
+        <action android:name="android.intent.action.SEND_MULTIPLE" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <data android:mimeType="image/*" />
+    </intent-filter>
+
+    <!-- Direct Share targets (Android 10+) -->
+    <meta-data
+        android:name="android.service.chooser.chooser_target_service"
+        android:value="androidx.sharetarget.ChooserTargetServiceCompat" />
+</activity>
+```
+
+**Capacitor 集成方案**：
+
+```typescript
+// src/lib/capacitor/share-receiver.ts
+import { App } from "@capacitor/app";
+import { Capacitor } from "@capacitor/core";
+
+export interface SharedContent {
+  type: "text" | "url" | "image" | "file";
+  text?: string;
+  url?: string;
+  title?: string;
+  files?: string[];
+}
+
+export class ShareReceiver {
+  private static instance: ShareReceiver;
+  private listeners: ((content: SharedContent) => void)[] = [];
+
+  static getInstance(): ShareReceiver {
+    if (!ShareReceiver.instance) {
+      ShareReceiver.instance = new ShareReceiver();
+    }
+    return ShareReceiver.instance;
+  }
+
+  async initialize(): Promise<void> {
+    if (!Capacitor.isNativePlatform()) return;
+
+    // 监听 App 恢复时的分享数据
+    App.addListener("appStateChange", async ({ isActive }) => {
+      if (isActive) {
+        await this.checkForSharedContent();
+      }
+    });
+
+    // 初始检查
+    await this.checkForSharedContent();
+  }
+
+  private async checkForSharedContent(): Promise<void> {
+    // 通过自定义 Capacitor 插件获取分享数据
+    // 需要实现原生插件
+  }
+
+  onShare(callback: (content: SharedContent) => void): () => void {
+    this.listeners.push(callback);
+    return () => {
+      this.listeners = this.listeners.filter((l) => l !== callback);
+    };
+  }
+}
+```
+
+**推荐插件**：
+
+- `capacitor-share-target` - 社区维护的分享接收插件
+- 或自定义原生插件以获得更好的控制
+
+### 3.2 iOS Share Extension 实现
+
+**技术方案**：原生 Share Extension + App Groups 数据共享
+
+**架构图**：
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         iOS 系统                                 │
+│  ┌───────────────┐                                              │
+│  │  微信/Safari   │  ← 分享来源 App                              │
+│  │   /B站...     │                                              │
+│  └───────┬───────┘                                              │
+│          │                                                       │
+│          ▼                                                       │
+│  ┌───────────────────────────────────────────────────┐          │
+│  │              iOS Share Sheet                       │          │
+│  │  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ │          │
+│  │  │ AnyKeep │ │ 微信    │ │ 备忘录  │ │  ...   │ │          │
+│  │  │   🔖    │ │        │ │        │ │        │ │          │
+│  │  └────┬────┘ └─────────┘ └─────────┘ └─────────┘ │          │
+│  └───────┼───────────────────────────────────────────┘          │
+│          │                                                       │
+│          ▼                                                       │
+│  ┌───────────────────────────────────────────────────┐          │
+│  │         AnyKeep Share Extension                    │          │
+│  │         (独立进程，有内存限制)                      │          │
+│  │                                                    │          │
+│  │  ┌─────────────────────────────────────────────┐  │          │
+│  │  │  ShareViewController.swift                   │  │          │
+│  │  │  - 解析 extensionContext                     │  │          │
+│  │  │  - 提取 URL/文本/图片                        │  │          │
+│  │  │  - 显示保存 UI                               │  │          │
+│  │  └─────────────────────────────────────────────┘  │          │
+│  └───────────────────────┬───────────────────────────┘          │
+│                          │                                       │
+│                          ▼                                       │
+│  ┌───────────────────────────────────────────────────┐          │
+│  │              App Groups 共享容器                   │          │
+│  │  group.com.anykeep.shared                         │          │
+│  │                                                    │          │
+│  │  ├── UserDefaults (认证 token)                    │          │
+│  │  ├── shared.db (离线队列 - SQLite)                │          │
+│  │  └── pending/ (待上传文件)                        │          │
+│  └───────────────────────┬───────────────────────────┘          │
+│                          │                                       │
+│                          ▼                                       │
+│  ┌───────────────────────────────────────────────────┐          │
+│  │              AnyKeep 主 App                        │          │
+│  │  - 读取共享容器中的待同步数据                      │          │
+│  │  - 上传到 Supabase                                │          │
+│  │  - 清理已同步数据                                  │          │
+│  └───────────────────────────────────────────────────┘          │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Share Extension 核心代码** (Swift)：
+
+```swift
+// ios/App/ShareExtension/ShareViewController.swift
+import UIKit
+import Social
+import MobileCoreServices
+
+class ShareViewController: SLComposeServiceViewController {
+
+    private var sharedURL: URL?
+    private var sharedText: String?
+    private var sharedImage: UIImage?
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        extractSharedContent()
+    }
+
+    private func extractSharedContent() {
+        guard let extensionItems = extensionContext?.inputItems as? [NSExtensionItem] else {
+            return
+        }
+
+        for item in extensionItems {
+            guard let attachments = item.attachments else { continue }
+
+            for attachment in attachments {
+                // URL
+                if attachment.hasItemConformingToTypeIdentifier(kUTTypeURL as String) {
+                    attachment.loadItem(forTypeIdentifier: kUTTypeURL as String) { [weak self] item, _ in
+                        if let url = item as? URL {
+                            self?.sharedURL = url
+                        }
+                    }
+                }
+
+                // Text
+                if attachment.hasItemConformingToTypeIdentifier(kUTTypeText as String) {
+                    attachment.loadItem(forTypeIdentifier: kUTTypeText as String) { [weak self] item, _ in
+                        if let text = item as? String {
+                            self?.sharedText = text
+                        }
+                    }
+                }
+
+                // Image
+                if attachment.hasItemConformingToTypeIdentifier(kUTTypeImage as String) {
+                    attachment.loadItem(forTypeIdentifier: kUTTypeImage as String) { [weak self] item, _ in
+                        if let image = item as? UIImage {
+                            self?.sharedImage = image
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    override func didSelectPost() {
+        // 保存到 App Groups 共享容器
+        saveToSharedContainer()
+        extensionContext?.completeRequest(returningItems: nil)
+    }
+
+    private func saveToSharedContainer() {
+        guard let containerURL = FileManager.default.containerURL(
+            forSecurityApplicationGroupIdentifier: "group.com.anykeep.shared"
+        ) else { return }
+
+        // 保存待同步数据到共享容器
+        let pendingItem = PendingShareItem(
+            url: sharedURL?.absoluteString,
+            text: sharedText,
+            timestamp: Date()
+        )
+
+        // 使用 UserDefaults 或 SQLite 存储
+        let userDefaults = UserDefaults(suiteName: "group.com.anykeep.shared")
+        var pendingItems = userDefaults?.array(forKey: "pendingItems") as? [[String: Any]] ?? []
+        pendingItems.append(pendingItem.toDictionary())
+        userDefaults?.set(pendingItems, forKey: "pendingItems")
+    }
+}
+```
+
+### 3.3 微信公众号收藏方案
+
+**双通道策略**：
+
+| 通道           | 方式                     | 优点     | 缺点             |
+| -------------- | ------------------------ | -------- | ---------------- |
+| **URL 提取**   | 分享时提取链接，后台解析 | 实现简单 | 图片可能失效     |
+| **企业微信号** | 参考 Cubox，建立收藏助手 | 体验最佳 | 需要企业微信资质 |
+
+**URL 提取增强**：
+
+```typescript
+// src/lib/platform-parsers/wechat-parser.ts
+export class WechatParser {
+  // 微信公众号 URL 模式
+  private static patterns = [
+    /mp\.weixin\.qq\.com\/s\//,
+    /mp\.weixin\.qq\.com\/s\?/,
+  ];
+
+  static isWechatArticle(url: string): boolean {
+    return this.patterns.some((p) => p.test(url));
+  }
+
+  static async parseArticle(url: string): Promise<ArticleMetadata> {
+    // 1. 服务端代理抓取（避免 CORS）
+    const response = await fetch("/api/parse/wechat", {
+      method: "POST",
+      body: JSON.stringify({ url }),
+    });
+
+    // 2. 使用 readability 提取正文
+    // 3. 下载图片到 Supabase Storage（防失效）
+    // 4. 返回结构化数据
+
+    return response.json();
+  }
+}
+```
+
+### 3.4 离线支持方案
+
+**IndexedDB 队列设计**：
+
+```typescript
+// src/lib/offline/share-queue.ts
+import { openDB, IDBPDatabase } from "idb";
+
+interface PendingShare {
+  id: string;
+  type: "url" | "text" | "image";
+  content: string;
+  metadata?: Record<string, unknown>;
+  createdAt: Date;
+  retryCount: number;
+  lastError?: string;
+}
+
+export class ShareQueue {
+  private db: IDBPDatabase | null = null;
+  private readonly DB_NAME = "anykeep-share-queue";
+  private readonly STORE_NAME = "pending-shares";
+
+  async initialize(): Promise<void> {
+    this.db = await openDB(this.DB_NAME, 1, {
+      upgrade(db) {
+        const store = db.createObjectStore("pending-shares", { keyPath: "id" });
+        store.createIndex("createdAt", "createdAt");
+      },
+    });
+  }
+
+  async enqueue(
+    item: Omit<PendingShare, "id" | "createdAt" | "retryCount">,
+  ): Promise<string> {
+    const id = crypto.randomUUID();
+    const record: PendingShare = {
+      ...item,
+      id,
+      createdAt: new Date(),
+      retryCount: 0,
+    };
+    await this.db?.add(this.STORE_NAME, record);
+    return id;
+  }
+
+  async dequeue(): Promise<PendingShare | undefined> {
+    const tx = this.db?.transaction(this.STORE_NAME, "readonly");
+    const store = tx?.objectStore(this.STORE_NAME);
+    const index = store?.index("createdAt");
+    const cursor = await index?.openCursor();
+    return cursor?.value;
+  }
+
+  async processQueue(): Promise<void> {
+    if (!navigator.onLine) return;
+
+    const items = await this.getAll();
+    for (const item of items) {
+      try {
+        await this.syncItem(item);
+        await this.remove(item.id);
+      } catch (error) {
+        await this.markRetry(item.id, error);
+      }
+    }
+  }
+
+  private async syncItem(item: PendingShare): Promise<void> {
+    // 调用 Supabase API 保存
+    const response = await fetch("/api/bookmarks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        url: item.type === "url" ? item.content : undefined,
+        note: item.type === "text" ? item.content : undefined,
+        // ...
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Sync failed: ${response.status}`);
+    }
+  }
+}
+```
+
+---
+
+## 4. 功能清单
+
+### 4.1 功能优先级矩阵
+
+| 优先级 | 功能                      | 用户价值   | 技术复杂度 | 依赖关系         |
+| ------ | ------------------------- | ---------- | ---------- | ---------------- |
+| **P0** | Android 文本/链接接收     | ⭐⭐⭐⭐⭐ | ⭐⭐       | Capacitor        |
+| **P0** | 一键保存模式              | ⭐⭐⭐⭐⭐ | ⭐         | -                |
+| **P0** | 选择目标文件夹            | ⭐⭐⭐⭐   | ⭐⭐       | folders 功能     |
+| **P0** | 离线队列                  | ⭐⭐⭐⭐   | ⭐⭐⭐     | IndexedDB        |
+| **P1** | iOS Share Extension       | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐   | Swift/App Groups |
+| **P1** | 图片保存                  | ⭐⭐⭐⭐   | ⭐⭐⭐     | Storage          |
+| **P1** | 平台智能识别              | ⭐⭐⭐⭐   | ⭐⭐       | URL 解析器       |
+| **P1** | AI 智能标签建议           | ⭐⭐⭐     | ⭐⭐⭐     | AI 功能          |
+| **P2** | 微信企业号收藏助手        | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | 企业微信资质     |
+| **P2** | 网页快照                  | ⭐⭐⭐     | ⭐⭐⭐⭐   | 存储成本         |
+| **P2** | 批量分享                  | ⭐⭐⭐     | ⭐⭐⭐     | -                |
+| **P3** | Direct Share (快捷联系人) | ⭐⭐       | ⭐⭐⭐     | Android 10+      |
+
+### 4.2 P0 功能详细规格
+
+#### 4.2.1 Android 文本/链接接收
+
+**功能描述**：
+用户在任意 App 点击分享，选择 AnyKeep，将内容保存到收藏。
+
+**输入**：
+
+- `text/plain` MIME 类型数据
+- 可能包含：纯文本、URL、混合内容
+
+**处理逻辑**：
+
+```
+接收 Intent → 解析内容 → 识别类型 → 提取 URL → 显示保存 UI → 保存
+```
+
+**输出**：
+
+- 新建 bookmark 记录
+- 显示保存成功 Toast
+
+**验收标准**：
+
+- [ ] 从微信分享文章链接成功保存
+- [ ] 从 B 站分享视频链接成功保存
+- [ ] 从浏览器分享网页成功保存
+- [ ] 分享纯文本（无 URL）保存为笔记
+- [ ] 分享响应时间 < 500ms
+
+#### 4.2.2 一键保存模式
+
+**功能描述**：
+用户点击 AnyKeep 后立即保存，无需额外操作。
+
+**交互流程**：
+
+```
+用户点击分享 → 选择 AnyKeep → 显示「已保存」→ 自动关闭
+              ↑                    ↓
+              └─── < 1秒完成 ────────┘
+```
+
+**配置项**：
+
+- 默认保存文件夹（设置页配置）
+- 是否自动生成标签（设置页配置）
+- 保存后行为（关闭/打开详情）
+
+#### 4.2.3 选择目标文件夹
+
+**功能描述**：
+在保存前选择目标文件夹，或创建新文件夹。
+
+**UI 设计**：
+
+```
+┌─────────────────────────────────┐
+│  保存到 AnyKeep              ✕  │
+├─────────────────────────────────┤
+│                                 │
+│  📄 文章标题预览...             │
+│  🔗 example.com                 │
+│                                 │
+├─────────────────────────────────┤
+│  选择文件夹                      │
+│  ┌───────────────────────────┐  │
+│  │ 📁 默认收藏         ✓     │  │
+│  │ 📁 技术文章               │  │
+│  │ 📁 待读清单               │  │
+│  │ + 新建文件夹              │  │
+│  └───────────────────────────┘  │
+│                                 │
+│  ┌─────────────────────────────┐│
+│  │      💾 保存                 ││
+│  └─────────────────────────────┘│
+└─────────────────────────────────┘
+```
+
+---
+
+## 5. 数据模型设计
+
+### 5.1 现有表结构复用
+
+分享保存的内容直接写入现有 `bookmarks` 表，无需新建表。
+
+**bookmarks 表关键字段**：
+
+```sql
+-- 已有字段（复用）
+id              UUID PRIMARY KEY
+user_id         UUID REFERENCES profiles(id)
+url             TEXT
+title           TEXT
+description     TEXT
+platform        platform_type  -- 智能识别来源平台
+folder_id       UUID REFERENCES folders(id)
+created_at      TIMESTAMPTZ
+updated_at      TIMESTAMPTZ
+
+-- 可能需要新增的字段
+source          TEXT  -- 'share_android' | 'share_ios' | 'web' | 'import'
+share_metadata  JSONB -- 原始分享数据（用于调试）
+```
+
+### 5.2 离线队列数据结构
+
+```typescript
+// IndexedDB Schema
+interface PendingShareRecord {
+  id: string; // UUID
+  type: "url" | "text" | "image";
+  content: string; // URL 或文本内容
+  title?: string; // 分享时带的标题
+  folderId?: string; // 目标文件夹
+  source: "share_android" | "share_ios";
+  rawData: string; // 原始 Intent/Extension 数据（JSON）
+  createdAt: number; // timestamp
+  syncStatus: "pending" | "syncing" | "failed";
+  retryCount: number;
+  lastError?: string;
+}
+```
+
+### 5.3 设置存储
+
+```typescript
+// 用户分享偏好设置
+interface SharePreferences {
+  defaultFolderId: string | null; // 默认保存文件夹
+  quickSaveEnabled: boolean; // 一键保存开关
+  autoTagEnabled: boolean; // 自动标签开关
+  afterSaveAction: "close" | "open_detail" | "stay";
+}
+
+// 存储位置：Supabase profiles 表的 preferences JSONB 字段
+```
+
+---
+
+## 6. 架构设计
+
+### 6.1 整体架构图
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              AnyKeep 系统分享架构                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │                         平台接入层                                    │    │
+│  │                                                                      │    │
+│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐               │    │
+│  │  │   Android    │  │     iOS      │  │   微信助手    │               │    │
+│  │  │ Intent Filter│  │Share Extension│  │ (企业微信)   │               │    │
+│  │  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘               │    │
+│  │         │                 │                 │                        │    │
+│  └─────────┼─────────────────┼─────────────────┼────────────────────────┘    │
+│            │                 │                 │                             │
+│            └─────────────────┼─────────────────┘                             │
+│                              ▼                                               │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │                       统一接收处理层                                  │    │
+│  │                                                                      │    │
+│  │  ┌──────────────────────────────────────────────────────────────┐   │    │
+│  │  │                 ShareReceiver Service                         │   │    │
+│  │  │                                                               │   │    │
+│  │  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐           │   │    │
+│  │  │  │ URL 提取器  │  │ 文本解析器  │  │ 图片处理器  │           │   │    │
+│  │  │  └─────────────┘  └─────────────┘  └─────────────┘           │   │    │
+│  │  └──────────────────────────┬───────────────────────────────────┘   │    │
+│  │                             │                                        │    │
+│  └─────────────────────────────┼────────────────────────────────────────┘    │
+│                                ▼                                             │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │                       内容处理管道                                    │    │
+│  │                                                                      │    │
+│  │  ┌───────────┐    ┌───────────┐    ┌───────────┐    ┌───────────┐  │    │
+│  │  │ 平台识别  │ →  │ 元数据    │ →  │ AI 处理   │ →  │ 数据存储  │  │    │
+│  │  │           │    │ 抓取      │    │ (摘要/标签)│    │           │  │    │
+│  │  └───────────┘    └───────────┘    └───────────┘    └───────────┘  │    │
+│  │        ↑                                                    ↓        │    │
+│  │  ┌─────┴─────────────────────────────────────────────────────┐      │    │
+│  │  │                   离线队列 (IndexedDB)                     │      │    │
+│  │  │  - 网络不可用时缓存                                        │      │    │
+│  │  │  - 网络恢复自动同步                                        │      │    │
+│  │  │  - 失败重试机制 (最多 3 次)                                │      │    │
+│  │  └───────────────────────────────────────────────────────────┘      │    │
+│  │                                                                      │    │
+│  └──────────────────────────────────────────────────────────────────────┘    │
+│                                ↓                                             │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │                       数据存储层                                     │    │
+│  │                                                                      │    │
+│  │  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐  │    │
+│  │  │  Supabase        │  │  Supabase        │  │  pgvector        │  │    │
+│  │  │  PostgreSQL      │  │  Storage         │  │  (语义搜索)       │  │    │
+│  │  │  (bookmarks)     │  │  (images)        │  │                   │  │    │
+│  │  └──────────────────┘  └──────────────────┘  └──────────────────┘  │    │
+│  │                                                                      │    │
+│  └──────────────────────────────────────────────────────────────────────┘    │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 6.2 模块职责
+
+| 模块                 | 职责                                | 位置                                         |
+| -------------------- | ----------------------------------- | -------------------------------------------- |
+| **ShareReceiver**    | 接收原生分享数据，转换为统一格式    | `src/lib/share/share-receiver.ts`            |
+| **ContentExtractor** | 从 URL 提取元数据（标题/描述/图片） | `src/lib/share/content-extractor.ts`         |
+| **PlatformDetector** | 识别内容来源平台（微信/B站/知乎等） | `src/lib/share/platform-detector.ts`         |
+| **ShareQueue**       | 离线队列管理，自动同步              | `src/lib/share/share-queue.ts`               |
+| **ShareUI**          | 保存确认 UI（文件夹选择/标签添加）  | `src/components/share/`                      |
+| **ShareSettings**    | 用户偏好设置                        | `src/components/settings/share-settings.tsx` |
+
+### 6.3 数据流程图
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                            数据流程详解                                       │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  1. 用户分享触发                                                             │
+│  ┌────────────┐                                                             │
+│  │ 微信/B站   │ ──分享──→ 系统 Share Sheet ──选择──→ AnyKeep              │
+│  └────────────┘                                                             │
+│                                                                              │
+│  2. 内容接收                                                                 │
+│  ┌────────────┐     ┌────────────────────────────────────┐                 │
+│  │ Intent     │ ──→ │ ShareReceiver                      │                 │
+│  │ {          │     │ - 解析 MIME 类型                    │                 │
+│  │   action,  │     │ - 提取 text/url/image              │                 │
+│  │   type,    │     │ - 生成 SharedContent 对象          │                 │
+│  │   extras   │     └────────────────┬───────────────────┘                 │
+│  │ }          │                      │                                      │
+│  └────────────┘                      ▼                                      │
+│                                                                              │
+│  3. 内容处理                                                                 │
+│  ┌────────────────────────────────────────────────────────────────────┐    │
+│  │                                                                     │    │
+│  │  SharedContent                                                      │    │
+│  │  ┌──────────────┐                                                  │    │
+│  │  │ type: 'url'  │                                                  │    │
+│  │  │ url: '...'   │                                                  │    │
+│  │  │ text: '...'  │                                                  │    │
+│  │  └──────┬───────┘                                                  │    │
+│  │         │                                                           │    │
+│  │         ▼                                                           │    │
+│  │  ┌──────────────────────────────────────────────────────────────┐  │    │
+│  │  │ PlatformDetector                                              │  │    │
+│  │  │ - URL 模式匹配                                                 │  │    │
+│  │  │ - 返回: WECHAT | BILIBILI | XHS | ZHIHU | UNKNOWN            │  │    │
+│  │  └──────────────────────────────┬───────────────────────────────┘  │    │
+│  │                                 │                                   │    │
+│  │                                 ▼                                   │    │
+│  │  ┌──────────────────────────────────────────────────────────────┐  │    │
+│  │  │ ContentExtractor                                              │  │    │
+│  │  │ - 根据平台选择解析器                                           │  │    │
+│  │  │ - 抓取 Open Graph / Twitter Card                              │  │    │
+│  │  │ - 下载封面图（可选）                                           │  │    │
+│  │  │ - 返回: { title, description, image, ... }                   │  │    │
+│  │  └──────────────────────────────┬───────────────────────────────┘  │    │
+│  │                                 │                                   │    │
+│  └─────────────────────────────────┼───────────────────────────────────┘    │
+│                                    │                                        │
+│  4. 用户交互（可选）                │                                        │
+│  ┌─────────────────────────────────▼──────────────────────────────────┐    │
+│  │                                                                     │    │
+│  │  一键保存模式 ─────────────────┬───────────────→ 直接保存           │    │
+│  │                                │                                    │    │
+│  │  详细模式 ─────────────────────┼───→ ShareConfirmDialog            │    │
+│  │                                │     ├── 预览内容                   │    │
+│  │                                │     ├── 选择文件夹                 │    │
+│  │                                │     ├── 添加标签                   │    │
+│  │                                │     └── 确认保存                   │    │
+│  │                                │                                    │    │
+│  └────────────────────────────────┼────────────────────────────────────┘    │
+│                                   │                                         │
+│  5. 数据存储                       ▼                                         │
+│  ┌────────────────────────────────────────────────────────────────────┐    │
+│  │                                                                     │    │
+│  │  ┌─────────────┐     ┌─────────────┐     ┌─────────────┐           │    │
+│  │  │  在线？      │ ──→ │  API 调用   │ ──→ │  Supabase   │           │    │
+│  │  │             │ Yes │  POST       │     │  bookmarks  │           │    │
+│  │  └──────┬──────┘     │  /bookmarks │     │             │           │    │
+│  │         │ No         └─────────────┘     └─────────────┘           │    │
+│  │         ▼                                                           │    │
+│  │  ┌─────────────┐     ┌─────────────┐                               │    │
+│  │  │ ShareQueue  │ ──→ │  IndexedDB  │ ──→ 网络恢复后自动同步        │    │
+│  │  │ .enqueue()  │     │  pending-   │                               │    │
+│  │  │             │     │  shares     │                               │    │
+│  │  └─────────────┘     └─────────────┘                               │    │
+│  │                                                                     │    │
+│  └────────────────────────────────────────────────────────────────────┘    │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 7. UI/UX 设计
+
+### 7.1 设计原则
+
+| 原则         | 说明                             |
+| ------------ | -------------------------------- |
+| **极速响应** | 分享到保存 < 1 秒                |
+| **最小干扰** | 不打断用户当前任务流             |
+| **渐进披露** | 默认一键保存，需要时展开详细选项 |
+| **状态反馈** | 清晰的保存成功/失败/离线提示     |
+
+### 7.2 分享界面设计
+
+#### 7.2.1 一键保存模式（默认）
+
+```
+┌─────────────────────────────────────┐
+│                                     │
+│     ┌─────────────────────────┐     │
+│     │                         │     │
+│     │         ✅              │     │
+│     │                         │     │
+│     │    已保存到 AnyKeep     │     │
+│     │                         │     │
+│     │    📁 默认收藏          │     │
+│     │                         │     │
+│     └─────────────────────────┘     │
+│                                     │
+│            1.5 秒后自动关闭          │
+│                                     │
+└─────────────────────────────────────┘
+```
+
+#### 7.2.2 详细保存模式
+
+```
+┌─────────────────────────────────────┐
+│  保存到 AnyKeep              ✕      │
+├─────────────────────────────────────┤
+│                                     │
+│  ┌─────────────────────────────┐   │
+│  │  🖼️  [文章封面图]           │   │
+│  │                             │   │
+│  │  📰 文章标题：GPT-5 发布... │   │
+│  │  🔗 mp.weixin.qq.com        │   │
+│  │  💬 微信公众号              │   │
+│  └─────────────────────────────┘   │
+│                                     │
+│  ────────────────────────────────   │
+│                                     │
+│  📁 保存到                          │
+│  ┌─────────────────────────────┐   │
+│  │  📁 默认收藏            ▼   │   │
+│  └─────────────────────────────┘   │
+│                                     │
+│  🏷️ 标签                           │
+│  ┌─────────────────────────────┐   │
+│  │  + AI  + 技术  + 添加...    │   │
+│  └─────────────────────────────┘   │
+│                                     │
+│  ┌─────────────────────────────┐   │
+│  │         💾 保存              │   │
+│  └─────────────────────────────┘   │
+│                                     │
+│  ☑️ 下次直接保存（一键模式）        │
+│                                     │
+└─────────────────────────────────────┘
+```
+
+#### 7.2.3 离线状态提示
+
+```
+┌─────────────────────────────────────┐
+│                                     │
+│     ┌─────────────────────────┐     │
+│     │                         │     │
+│     │         📴              │     │
+│     │                         │     │
+│     │    已保存（离线）        │     │
+│     │                         │     │
+│     │  网络恢复后自动同步      │     │
+│     │                         │     │
+│     └─────────────────────────┘     │
+│                                     │
+└─────────────────────────────────────┘
+```
+
+### 7.3 设置页面设计
+
+```
+┌─────────────────────────────────────┐
+│  ← 分享设置                         │
+├─────────────────────────────────────┤
+│                                     │
+│  快速保存                           │
+│  ────────────────────────────────   │
+│                                     │
+│  一键保存模式                 🔘    │
+│  分享时直接保存，不显示确认界面      │
+│                                     │
+│  默认保存位置                        │
+│  ┌─────────────────────────────┐   │
+│  │  📁 默认收藏            ▼   │   │
+│  └─────────────────────────────┘   │
+│                                     │
+│  智能功能                           │
+│  ────────────────────────────────   │
+│                                     │
+│  自动生成标签                 🔘    │
+│  使用 AI 为保存的内容自动添加标签   │
+│                                     │
+│  自动提取摘要                 🔘    │
+│  保存后自动生成内容摘要             │
+│                                     │
+│  同步设置                           │
+│  ────────────────────────────────   │
+│                                     │
+│  待同步: 3 项                       │
+│  ┌─────────────────────────────┐   │
+│  │       立即同步               │   │
+│  └─────────────────────────────┘   │
+│                                     │
+└─────────────────────────────────────┘
+```
+
+---
+
+## 8. 实现计划
+
+### 8.1 开发阶段划分
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              实现路线图                                       │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  Phase 1: Android MVP (1-2 周)                                              │
+│  ─────────────────────────────────                                          │
+│  ✅ Intent Filter 配置                                                      │
+│  ✅ 文本/链接接收                                                            │
+│  ✅ 一键保存功能                                                             │
+│  ✅ 文件夹选择                                                               │
+│  ✅ 离线队列                                                                 │
+│                                                                              │
+│  Phase 2: iOS Share Extension (2-3 周)                                      │
+│  ─────────────────────────────────────                                      │
+│  📋 Swift Share Extension 开发                                              │
+│  📋 App Groups 配置                                                         │
+│  📋 共享容器数据同步                                                         │
+│  📋 iOS 原生 UI 开发                                                        │
+│                                                                              │
+│  Phase 3: 增强功能 (2 周)                                                    │
+│  ─────────────────────────                                                  │
+│  📋 图片保存支持                                                             │
+│  📋 平台智能识别                                                             │
+│  📋 AI 标签建议                                                              │
+│  📋 元数据预览                                                               │
+│                                                                              │
+│  Phase 4: 高级功能 (规划中)                                                  │
+│  ───────────────────────────                                                │
+│  📋 微信企业号收藏助手                                                       │
+│  📋 网页快照功能                                                             │
+│  📋 Direct Share 联系人                                                     │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 8.2 Phase 1 详细任务分解
+
+| 任务                         | 预估工时 | 依赖关系          |
+| ---------------------------- | -------- | ----------------- |
+| 1.1 配置 AndroidManifest.xml | 2h       | -                 |
+| 1.2 创建 Capacitor 分享插件  | 4h       | 1.1               |
+| 1.3 实现 ShareReceiver 服务  | 4h       | 1.2               |
+| 1.4 开发一键保存 UI          | 4h       | 1.3               |
+| 1.5 开发详细保存 UI          | 6h       | 1.4               |
+| 1.6 集成文件夹选择           | 3h       | 现有 folders 功能 |
+| 1.7 实现 IndexedDB 离线队列  | 4h       | -                 |
+| 1.8 实现自动同步逻辑         | 3h       | 1.7               |
+| 1.9 添加分享设置页面         | 3h       | 1.5               |
+| 1.10 集成测试与调试          | 4h       | 1.1-1.9           |
+| **合计**                     | **37h**  | **约 1-2 周**     |
+
+### 8.3 文件结构规划
+
+```
+src/
+├── lib/
+│   └── share/
+│       ├── share-receiver.ts        # 分享接收服务
+│       ├── share-queue.ts           # 离线队列管理
+│       ├── platform-detector.ts     # 平台识别
+│       ├── content-extractor.ts     # 元数据提取
+│       └── types.ts                 # 类型定义
+├── components/
+│   └── share/
+│       ├── share-confirm-dialog.tsx # 保存确认弹窗
+│       ├── share-success-toast.tsx  # 保存成功提示
+│       ├── folder-selector.tsx      # 文件夹选择器
+│       └── share-settings.tsx       # 分享设置页
+├── hooks/
+│   └── use-share-receiver.ts        # 分享接收 Hook
+└── app/
+    └── (main)/
+        └── settings/
+            └── share/
+                └── page.tsx         # 分享设置页面
+
+android/
+└── app/
+    └── src/
+        └── main/
+            ├── AndroidManifest.xml  # Intent Filter 配置
+            └── java/.../
+                └── ShareReceiverPlugin.java  # 原生插件
+
+ios/  (Phase 2)
+└── App/
+    └── ShareExtension/
+        ├── ShareViewController.swift
+        ├── Info.plist
+        └── MainInterface.storyboard
+```
+
+---
+
+## 9. 风险与注意事项
+
+### 9.1 技术风险
+
+| 风险项                       | 影响程度 | 缓解措施                       |
+| ---------------------------- | -------- | ------------------------------ |
+| iOS Share Extension 内存限制 | 高       | 轻量化处理，复杂操作移至主 App |
+| 微信分享链接时效性           | 中       | 即时抓取内容，存储快照         |
+| Android 不同厂商 ROM 兼容性  | 中       | 多设备测试，处理厂商特殊行为   |
+| 离线队列数据丢失             | 中       | 持久化存储，关键操作备份       |
+
+### 9.2 产品风险
+
+| 风险项                      | 影响程度 | 缓解措施                       |
+| --------------------------- | -------- | ------------------------------ |
+| 用户找不到 AnyKeep 分享入口 | 高       | 引导教程，首次使用提示         |
+| 一键保存模式误操作          | 中       | 提供撤销功能，设置页可切换模式 |
+| 与系统/其他 App 冲突        | 低       | 遵循系统规范，充分测试         |
+
+### 9.3 合规风险
+
+| 风险项                          | 影响程度 | 缓解措施                          |
+| ------------------------------- | -------- | --------------------------------- |
+| 微信企业号资质申请              | 高       | Phase 4 处理，预先调研流程        |
+| 数据隐私（分享内容可能敏感）    | 中       | 明确隐私政策，本地处理敏感数据    |
+| App Store 审核（iOS Extension） | 中       | 遵循 Apple 指南，提前准备审核材料 |
+
+---
+
+## 10. 参考资料
+
+### 10.1 官方文档
+
+- [Android Intent Filters](https://developer.android.com/guide/components/intents-filters)
+- [Android Receive Simple Data](https://developer.android.com/training/sharing/receive)
+- [Android Direct Share Targets](https://developer.android.com/training/sharing/direct-share-targets)
+- [Apple Share Extension Guide](https://developer.apple.com/library/archive/documentation/General/Conceptual/ExtensibilityPG/Share.html)
+- [Apple Human Interface Guidelines - Patterns](https://developer.apple.com/design/human-interface-guidelines/patterns)
+
+### 10.2 竞品参考
+
+- [Cubox 与其它服务对比](https://cubox.pro/doc/compare.html)
+- [Cubox 帮助文档](https://docs.cubox.pro/compare)
+
+### 10.3 技术文章
+
+- [Create Powerful iOS Share Extensions](https://curatedios.substack.com/p/19-share-extension)
+- [Make Your Android App a Share Target](https://www.droidcon.com/2023/01/30/make-your-android-app-a-share-target-receive-simple-data-from-other-applications-with-hilt-and-compose/)
+- [Enable Web Share Target in TWA](https://developer.chrome.com/docs/android/trusted-web-activity/web-share-target/)
+
+---
+
+## 审核检查清单
+
+在提交开发前，请确认以下事项：
+
+- [ ] 关键决策已确认
+- [ ] 技术方案可行性已验证
+- [ ] UI/UX 设计符合产品定位
+- [ ] 实现计划合理，工时估算准确
+- [ ] 风险已识别并有缓解措施
+- [ ] 与现有功能兼容，无破坏性变更
+
+---
+
+## 11. 解耦架构设计
+
+### 11.1 解耦设计原则
+
+本功能采用**完全解耦**设计，确保迭代不影响现有功能：
+
+| 原则         | 实现方式                                              |
+| ------------ | ----------------------------------------------------- |
+| **模块独立** | 所有新代码放在独立目录，不修改现有文件                |
+| **接口通信** | 通过现有 API (`POST /api/bookmarks`) 存储，不新建 API |
+| **特性开关** | 使用 Feature Flag 控制功能启用/禁用                   |
+| **渐进增强** | 现有功能不依赖新模块，新模块可选加载                  |
+| **零破坏性** | 删除新模块后，系统可正常运行                          |
+
+### 11.2 模块边界图
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           AnyKeep 现有系统 (不修改)                           │
+│                                                                              │
+│  ┌────────────────────────────────────────────────────────────────────────┐ │
+│  │                         现有模块 (保持不变)                              │ │
+│  │                                                                         │ │
+│  │  src/lib/capacitor.ts          ← 已有 Capacitor 基础设施                │ │
+│  │  src/hooks/use-capacitor.ts    ← 已有 useShareReceiver hook            │ │
+│  │  src/app/api/share-target/     ← 已有 PWA Web Share Target             │ │
+│  │  src/app/api/bookmarks/        ← 已有书签 CRUD API                      │ │
+│  │  src/lib/utils/url-extractor.ts ← 已有 URL 提取工具                     │ │
+│  │  src/lib/constants/platforms.ts ← 已有平台配置                          │ │
+│  │                                                                         │ │
+│  └────────────────────────────────────────────────────────────────────────┘ │
+│                                    ↑                                        │
+│                                    │ 调用 (只读/调用，不修改)               │
+│                                    │                                        │
+│  ┌────────────────────────────────┴───────────────────────────────────────┐ │
+│  │                    ⭐ 新增模块 (独立可删除) ⭐                           │ │
+│  │                                                                         │ │
+│  │  src/lib/share-receiver/       ← 新增：分享接收核心逻辑                 │ │
+│  │  src/components/share/         ← 新增：分享相关 UI 组件                 │ │
+│  │  src/hooks/domain/share/       ← 新增：分享相关 Hooks                   │ │
+│  │  src/lib/features/share.ts     ← 新增：特性开关配置                     │ │
+│  │  android/.../SharePlugin.java  ← 新增：Android 原生插件                 │ │
+│  │                                                                         │ │
+│  └────────────────────────────────────────────────────────────────────────┘ │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 11.3 特性开关设计
+
+参考现有 `src/lib/features/rating-feature.ts` 模式：
+
+```typescript
+// src/lib/features/share-receiver.ts (新建)
+
+/**
+ * 系统分享接收功能特性控制
+ */
+export const SHARE_RECEIVER_CONFIG = {
+  // 功能开关
+  enabled: true,
+
+  // 功能标识
+  featureKey: "share_receiver" as const,
+
+  // 支持的平台
+  supportedPlatforms: ["android"] as const, // Phase 2 加入 'ios'
+
+  // 默认配置
+  defaults: {
+    quickSaveEnabled: true, // 一键保存默认开启
+    autoTagEnabled: true, // 自动标签默认开启
+    defaultFolderId: null, // 默认保存到待整理
+    afterSaveAction: "close" as const,
+  },
+
+  // 离线队列配置
+  offlineQueue: {
+    maxRetries: 3,
+    retryDelayMs: 5000,
+    maxQueueSize: 100,
+  },
+} as const;
+
+/**
+ * 检查分享功能是否启用
+ */
+export function isShareReceiverEnabled(): boolean {
+  return SHARE_RECEIVER_CONFIG.enabled;
+}
+
+/**
+ * 检查当前平台是否支持分享接收
+ */
+export function isPlatformSupported(platform: string): boolean {
+  return (
+    SHARE_RECEIVER_CONFIG.supportedPlatforms as readonly string[]
+  ).includes(platform);
+}
+```
+
+### 11.4 依赖关系图
+
+```
+                    ┌─────────────────────────────────────┐
+                    │          用户分享操作                 │
+                    └─────────────────┬───────────────────┘
+                                      │
+                                      ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           新增模块层                                         │
+│                                                                              │
+│  ┌───────────────────────┐     ┌───────────────────────┐                   │
+│  │ ShareReceiverPlugin   │────→│ ShareReceiverService  │                   │
+│  │ (Android 原生)        │     │ (TypeScript)          │                   │
+│  └───────────────────────┘     └───────────┬───────────┘                   │
+│                                            │                                │
+│  ┌───────────────────────┐                 │                                │
+│  │ useShareReceiver      │←────────────────┤                                │
+│  │ (React Hook)          │                 │                                │
+│  └───────────┬───────────┘                 │                                │
+│              │                             │                                │
+│  ┌───────────▼───────────┐     ┌───────────▼───────────┐                   │
+│  │ ShareConfirmDialog    │     │ ShareQueue            │                   │
+│  │ (UI 组件)             │     │ (离线队列)            │                   │
+│  └───────────┬───────────┘     └───────────┬───────────┘                   │
+│              │                             │                                │
+└──────────────┼─────────────────────────────┼────────────────────────────────┘
+               │                             │
+               │      复用现有模块 (只调用)   │
+               ▼                             ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           现有模块层 (不修改)                                │
+│                                                                              │
+│  ┌───────────────────────┐     ┌───────────────────────┐                   │
+│  │ POST /api/bookmarks   │     │ extractUrlFromShareText│                   │
+│  │ (已有 API)            │     │ (已有工具函数)         │                   │
+│  └───────────────────────┘     └───────────────────────┘                   │
+│                                                                              │
+│  ┌───────────────────────┐     ┌───────────────────────┐                   │
+│  │ detectPlatformFromUrl │     │ useFolders            │                   │
+│  │ (已有平台检测)        │     │ (已有文件夹 Hook)     │                   │
+│  └───────────────────────┘     └───────────────────────┘                   │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 12. 现有代码集成分析
+
+### 12.1 可复用的现有代码
+
+经过代码分析，以下现有模块可直接复用：
+
+| 现有模块                             | 功能                         | 复用方式           |
+| ------------------------------------ | ---------------------------- | ------------------ |
+| `src/app/api/share-target/route.ts`  | PWA Web Share Target API     | 参考实现，增强功能 |
+| `src/lib/capacitor.ts`               | Capacitor 原生功能封装       | 直接调用           |
+| `src/hooks/use-capacitor.ts`         | `useShareReceiver` hook      | 扩展增强           |
+| `src/app/api/bookmarks/route.ts`     | 书签创建 API（完整 AI 管道） | 直接调用，不修改   |
+| `src/lib/utils/url-extractor.ts`     | 从分享文本提取 URL           | 直接调用           |
+| `src/lib/constants/platforms.ts`     | 平台配置和检测               | 直接调用           |
+| `src/lib/utils/content-extractor.ts` | 内容提取工具                 | 直接调用           |
+| `src/lib/utils/wechat-parser.ts`     | 微信公众号解析               | 直接调用           |
+| `src/hooks/use-folders.ts`           | 文件夹数据 Hook              | 直接调用           |
+
+### 12.2 已有 PWA Share Target 分析
+
+**文件**: `src/app/api/share-target/route.ts`
+
+```typescript
+// 已有实现摘要
+export async function POST(request: NextRequest) {
+  // 1. 解析 formData (title, text, url)
+  // 2. 从 text 中提取 URL（如果 url 为空）
+  // 3. 检查用户认证
+  // 4. 重定向到 /home?action=create&url=xxx
+}
+```
+
+**评估**:
+
+- ✅ 基础框架完整
+- ⚠️ 仅支持重定向模式，不支持直接保存
+- ⚠️ 不支持一键保存模式
+- 📋 **建议**: 新增独立的分享接收服务，不修改此文件
+
+### 12.3 已有 Capacitor Hook 分析
+
+**文件**: `src/hooks/domain/platform/use-capacitor.ts`
+
+```typescript
+// 已有 useShareReceiver hook
+export function useShareReceiver(
+  onReceive: (data: { url?: string; text?: string; title?: string }) => void,
+  deps: React.DependencyList = [],
+) {
+  useEffect(() => {
+    const unsubscribe = onAppUrlOpen(({ url }) => {
+      // 处理 anykeep://share?url=xxx 格式
+      // 或直接处理 http:// 开头的 URL
+    });
+    return unsubscribe;
+  }, deps);
+}
+```
+
+**评估**:
+
+- ✅ 基础监听机制完整
+- ⚠️ 仅支持 Deep Link，不支持 Intent Filter
+- ⚠️ 没有离线队列支持
+- 📋 **建议**: 创建增强版 Hook，复用此基础逻辑
+
+### 12.4 已有书签 API 分析
+
+**文件**: `src/app/api/bookmarks/route.ts`
+
+```typescript
+// POST /api/bookmarks 关键流程
+1. 用户认证 (getCachedUser)
+2. 请求验证 (createBookmarkSchema)
+3. 配额检查 (storage_quota)
+4. 平台识别 (detectPlatformFromUrl)
+5. 异步爬取标题 (fetchAndUpdateTitle)
+6. 异步 AI 处理 (generateBookmarkAIContent)
+7. 异步向量生成 (generateBookmarkEmbedding)
+8. 插入记录并返回
+```
+
+**评估**:
+
+- ✅ 完整的书签创建管道
+- ✅ 支持异步 AI 处理
+- ✅ 支持配额检查
+- ✅ 完全满足分享保存需求
+- 📋 **建议**: 直接调用，不需要任何修改
+
+### 12.5 已有 URL 提取工具分析
+
+**文件**: `src/lib/utils/url-extractor.ts`
+
+```typescript
+// 支持的平台
+- 小红书: xiaohongshu.com
+- 抖音: douyin.com
+- 微博: weibo.com / weibo.cn
+- B站: bilibili.com
+- 知乎: zhihu.com
+- 通用: 任意 https:// URL
+
+// 核心函数
+extractUrlFromShareText(text: string): string
+containsExtractableUrl(text: string): boolean
+getPlatformFromUrl(url: string): string | null
+```
+
+**评估**:
+
+- ✅ 完美覆盖主流国内平台
+- ✅ 处理各平台分享格式（带标题/表情等）
+- 📋 **建议**: 直接复用，无需修改
+
+---
+
+## 13. 详细开发任务清单
+
+### 13.1 总体任务概览
+
+```
+Phase 1: Android MVP
+├── 1.1 基础设施 (4h)
+│   ├── 特性开关配置
+│   ├── 类型定义
+│   └── 模块目录结构
+├── 1.2 Android 原生层 (8h)
+│   ├── AndroidManifest.xml 配置
+│   ├── ShareReceiverPlugin.java
+│   └── Capacitor 插件注册
+├── 1.3 分享接收服务 (6h)
+│   ├── ShareReceiverService
+│   ├── 内容解析器
+│   └── 事件分发
+├── 1.4 离线队列 (6h)
+│   ├── IndexedDB Schema
+│   ├── ShareQueue 服务
+│   └── 自动同步逻辑
+├── 1.5 UI 组件 (8h)
+│   ├── ShareConfirmDialog
+│   ├── QuickSaveToast
+│   ├── FolderSelector
+│   └── ShareSettings
+├── 1.6 集成与测试 (5h)
+│   ├── 主应用集成
+│   ├── 多设备测试
+│   └── 边界场景测试
+└── 总计: 37h (约 1-2 周)
+```
+
+### 13.2 Phase 1 详细任务清单
+
+#### 13.2.1 基础设施 (4h)
+
+| 任务 ID | 任务名称             | 文件路径                              | 工时 | 前置依赖    |
+| ------- | -------------------- | ------------------------------------- | ---- | ----------- |
+| 1.1.1   | 创建特性开关配置     | `src/lib/features/share-receiver.ts`  | 1h   | -           |
+| 1.1.2   | 定义 TypeScript 类型 | `src/lib/share-receiver/types.ts`     | 1h   | -           |
+| 1.1.3   | 创建模块入口         | `src/lib/share-receiver/index.ts`     | 0.5h | 1.1.2       |
+| 1.1.4   | 创建常量配置         | `src/lib/share-receiver/constants.ts` | 0.5h | -           |
+| 1.1.5   | 添加模块导出         | `src/lib/share-receiver/index.ts`     | 1h   | 1.1.1-1.1.4 |
+
+**代码示例 - 类型定义**:
+
+```typescript
+// src/lib/share-receiver/types.ts
+export interface SharedContent {
+  id: string;
+  type: "url" | "text" | "image";
+  url?: string;
+  text?: string;
+  title?: string;
+  platform?: string;
+  timestamp: number;
+  source: "android" | "ios" | "pwa";
+}
+
+export interface ShareSaveOptions {
+  folderId?: string;
+  tags?: string[];
+  quickSave?: boolean;
+}
+
+export interface ShareQueueItem extends SharedContent {
+  status: "pending" | "syncing" | "failed";
+  retryCount: number;
+  lastError?: string;
+  options: ShareSaveOptions;
+}
+```
+
+#### 13.2.2 Android 原生层 (8h)
+
+| 任务 ID | 任务名称                  | 文件路径                                                 | 工时 | 前置依赖    |
+| ------- | ------------------------- | -------------------------------------------------------- | ---- | ----------- |
+| 1.2.1   | 配置 Intent Filter        | `android/app/src/main/AndroidManifest.xml`               | 1h   | -           |
+| 1.2.2   | 创建 ShareReceiver Plugin | `android/app/src/main/.../ShareReceiverPlugin.java`      | 4h   | 1.2.1       |
+| 1.2.3   | 注册 Capacitor 插件       | `android/app/src/main/.../MainActivity.java`             | 1h   | 1.2.2       |
+| 1.2.4   | 创建 TypeScript 定义      | `src/lib/share-receiver/native/share-receiver-plugin.ts` | 1h   | 1.2.2       |
+| 1.2.5   | 原生层集成测试            | -                                                        | 1h   | 1.2.1-1.2.4 |
+
+**代码示例 - AndroidManifest.xml**:
+
+```xml
+<!-- android/app/src/main/AndroidManifest.xml -->
+<activity
+    android:name=".MainActivity"
+    android:exported="true"
+    android:launchMode="singleTask">
+
+    <!-- 现有配置保持不变 -->
+
+    <!-- 新增：接收文本/链接分享 -->
+    <intent-filter>
+        <action android:name="android.intent.action.SEND" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <data android:mimeType="text/plain" />
+    </intent-filter>
+
+    <!-- 新增：接收图片分享 (Phase 1.5) -->
+    <intent-filter>
+        <action android:name="android.intent.action.SEND" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <data android:mimeType="image/*" />
+    </intent-filter>
+</activity>
+```
+
+**代码示例 - ShareReceiverPlugin.java**:
+
+```java
+// android/app/src/main/java/com/anykeep/app/ShareReceiverPlugin.java
+package com.anykeep.app;
+
+import android.content.Intent;
+import android.net.Uri;
+import com.getcapacitor.Plugin;
+import com.getcapacitor.PluginCall;
+import com.getcapacitor.PluginMethod;
+import com.getcapacitor.annotation.CapacitorPlugin;
+import com.getcapacitor.JSObject;
+
+@CapacitorPlugin(name = "ShareReceiver")
+public class ShareReceiverPlugin extends Plugin {
+
+    @PluginMethod()
+    public void getSharedContent(PluginCall call) {
+        Intent intent = getActivity().getIntent();
+        String action = intent.getAction();
+        String type = intent.getType();
+
+        if (Intent.ACTION_SEND.equals(action) && type != null) {
+            JSObject result = new JSObject();
+
+            if (type.startsWith("text/")) {
+                String sharedText = intent.getStringExtra(Intent.EXTRA_TEXT);
+                String sharedTitle = intent.getStringExtra(Intent.EXTRA_SUBJECT);
+
+                result.put("type", "text");
+                result.put("text", sharedText);
+                result.put("title", sharedTitle);
+                result.put("source", "android");
+                result.put("timestamp", System.currentTimeMillis());
+
+                call.resolve(result);
+            } else if (type.startsWith("image/")) {
+                Uri imageUri = intent.getParcelableExtra(Intent.EXTRA_STREAM);
+                if (imageUri != null) {
+                    result.put("type", "image");
+                    result.put("uri", imageUri.toString());
+                    result.put("source", "android");
+                    result.put("timestamp", System.currentTimeMillis());
+                }
+                call.resolve(result);
+            }
+        } else {
+            call.resolve(new JSObject()); // 无分享内容
+        }
+    }
+
+    @PluginMethod()
+    public void clearSharedContent(PluginCall call) {
+        // 清除 Intent，防止重复处理
+        getActivity().setIntent(new Intent());
+        call.resolve();
+    }
+}
+```
+
+#### 13.2.3 分享接收服务 (6h)
+
+| 任务 ID | 任务名称                  | 文件路径                                           | 工时 | 前置依赖    |
+| ------- | ------------------------- | -------------------------------------------------- | ---- | ----------- |
+| 1.3.1   | 创建 ShareReceiverService | `src/lib/share-receiver/share-receiver-service.ts` | 2h   | 1.2.4       |
+| 1.3.2   | 实现内容解析器            | `src/lib/share-receiver/content-parser.ts`         | 2h   | 1.1.2       |
+| 1.3.3   | 实现事件分发器            | `src/lib/share-receiver/event-dispatcher.ts`       | 1h   | 1.3.1       |
+| 1.3.4   | 创建 React Hook           | `src/hooks/domain/share/use-share-receiver.ts`     | 1h   | 1.3.1-1.3.3 |
+
+**代码示例 - ShareReceiverService**:
+
+```typescript
+// src/lib/share-receiver/share-receiver-service.ts
+import { registerPlugin } from "@capacitor/core";
+import { App } from "@capacitor/app";
+import { isNativePlatform, getPlatform } from "@/lib/capacitor";
+import { extractUrlFromShareText } from "@/lib/utils/url-extractor";
+import { detectPlatformFromUrl } from "@/lib/constants/platforms";
+import type { SharedContent } from "./types";
+
+// 原生插件接口
+interface ShareReceiverPluginInterface {
+  getSharedContent(): Promise<Partial<SharedContent>>;
+  clearSharedContent(): Promise<void>;
+}
+
+const ShareReceiverPlugin =
+  registerPlugin<ShareReceiverPluginInterface>("ShareReceiver");
+
+export class ShareReceiverService {
+  private static instance: ShareReceiverService;
+  private listeners: Set<(content: SharedContent) => void> = new Set();
+  private initialized = false;
+
+  static getInstance(): ShareReceiverService {
+    if (!ShareReceiverService.instance) {
+      ShareReceiverService.instance = new ShareReceiverService();
+    }
+    return ShareReceiverService.instance;
+  }
+
+  async initialize(): Promise<void> {
+    if (this.initialized || !isNativePlatform()) return;
+
+    // 监听 App 状态变化
+    App.addListener("appStateChange", async ({ isActive }) => {
+      if (isActive) {
+        await this.checkAndDispatch();
+      }
+    });
+
+    // 初始检查
+    await this.checkAndDispatch();
+    this.initialized = true;
+  }
+
+  private async checkAndDispatch(): Promise<void> {
+    try {
+      const rawContent = await ShareReceiverPlugin.getSharedContent();
+
+      if (!rawContent.text && !rawContent.type) {
+        return; // 无分享内容
+      }
+
+      const content = this.parseContent(rawContent);
+      if (content) {
+        this.dispatch(content);
+        await ShareReceiverPlugin.clearSharedContent();
+      }
+    } catch (error) {
+      console.error("[ShareReceiver] Error checking shared content:", error);
+    }
+  }
+
+  private parseContent(raw: Partial<SharedContent>): SharedContent | null {
+    const id = crypto.randomUUID();
+    const timestamp = Date.now();
+    const source = getPlatform() as "android" | "ios";
+
+    // 从文本中提取 URL
+    let url: string | undefined;
+    let text = raw.text;
+
+    if (text) {
+      url = extractUrlFromShareText(text);
+      if (url === text) {
+        text = undefined; // URL 就是全部内容，不需要保存 text
+      }
+    }
+
+    // 检测平台
+    const platform = url ? detectPlatformFromUrl(url) : undefined;
+
+    return {
+      id,
+      type: url ? "url" : "text",
+      url,
+      text,
+      title: raw.title,
+      platform,
+      timestamp,
+      source,
+    };
+  }
+
+  private dispatch(content: SharedContent): void {
+    this.listeners.forEach((listener) => {
+      try {
+        listener(content);
+      } catch (error) {
+        console.error("[ShareReceiver] Listener error:", error);
+      }
+    });
+  }
+
+  subscribe(listener: (content: SharedContent) => void): () => void {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+}
+```
+
+#### 13.2.4 离线队列 (6h)
+
+| 任务 ID | 任务名称              | 文件路径                                            | 工时 | 前置依赖 |
+| ------- | --------------------- | --------------------------------------------------- | ---- | -------- |
+| 1.4.1   | 设计 IndexedDB Schema | `src/lib/share-receiver/offline/schema.ts`          | 1h   | 1.1.2    |
+| 1.4.2   | 实现 ShareQueue 服务  | `src/lib/share-receiver/offline/share-queue.ts`     | 3h   | 1.4.1    |
+| 1.4.3   | 实现自动同步逻辑      | `src/lib/share-receiver/offline/sync-manager.ts`    | 1.5h | 1.4.2    |
+| 1.4.4   | 集成网络状态监听      | `src/lib/share-receiver/offline/network-monitor.ts` | 0.5h | 1.4.3    |
+
+**代码示例 - ShareQueue**:
+
+```typescript
+// src/lib/share-receiver/offline/share-queue.ts
+import { openDB, IDBPDatabase } from "idb";
+import type { ShareQueueItem, SharedContent, ShareSaveOptions } from "../types";
+import { SHARE_RECEIVER_CONFIG } from "@/lib/features/share-receiver";
+
+const DB_NAME = "anykeep-share-queue";
+const DB_VERSION = 1;
+const STORE_NAME = "pending-shares";
+
+export class ShareQueue {
+  private db: IDBPDatabase | null = null;
+  private static instance: ShareQueue;
+
+  static getInstance(): ShareQueue {
+    if (!ShareQueue.instance) {
+      ShareQueue.instance = new ShareQueue();
+    }
+    return ShareQueue.instance;
+  }
+
+  async initialize(): Promise<void> {
+    this.db = await openDB(DB_NAME, DB_VERSION, {
+      upgrade(db) {
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          const store = db.createObjectStore(STORE_NAME, { keyPath: "id" });
+          store.createIndex("timestamp", "timestamp");
+          store.createIndex("status", "status");
+        }
+      },
+    });
+  }
+
+  async enqueue(
+    content: SharedContent,
+    options: ShareSaveOptions = {},
+  ): Promise<string> {
+    if (!this.db) await this.initialize();
+
+    const item: ShareQueueItem = {
+      ...content,
+      status: "pending",
+      retryCount: 0,
+      options,
+    };
+
+    await this.db!.add(STORE_NAME, item);
+    return item.id;
+  }
+
+  async processQueue(): Promise<{ success: number; failed: number }> {
+    if (!this.db) await this.initialize();
+    if (!navigator.onLine) return { success: 0, failed: 0 };
+
+    const items = await this.getPending();
+    let success = 0;
+    let failed = 0;
+
+    for (const item of items) {
+      try {
+        await this.syncItem(item);
+        await this.remove(item.id);
+        success++;
+      } catch (error) {
+        await this.markFailed(item.id, error);
+        failed++;
+      }
+    }
+
+    return { success, failed };
+  }
+
+  private async syncItem(item: ShareQueueItem): Promise<void> {
+    await this.updateStatus(item.id, "syncing");
+
+    const response = await fetch("/api/bookmarks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        url: item.url,
+        title: item.title,
+        notes: item.text,
+        folderId: item.options.folderId,
+        userTags: item.options.tags,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Sync failed: ${response.status}`);
+    }
+  }
+
+  private async getPending(): Promise<ShareQueueItem[]> {
+    const tx = this.db!.transaction(STORE_NAME, "readonly");
+    const index = tx.store.index("status");
+    return index.getAll("pending");
+  }
+
+  private async updateStatus(
+    id: string,
+    status: ShareQueueItem["status"],
+  ): Promise<void> {
+    const item = await this.db!.get(STORE_NAME, id);
+    if (item) {
+      item.status = status;
+      await this.db!.put(STORE_NAME, item);
+    }
+  }
+
+  private async markFailed(id: string, error: unknown): Promise<void> {
+    const item = await this.db!.get(STORE_NAME, id);
+    if (item) {
+      item.retryCount++;
+      item.lastError = error instanceof Error ? error.message : String(error);
+
+      if (item.retryCount >= SHARE_RECEIVER_CONFIG.offlineQueue.maxRetries) {
+        item.status = "failed";
+      } else {
+        item.status = "pending";
+      }
+
+      await this.db!.put(STORE_NAME, item);
+    }
+  }
+
+  async remove(id: string): Promise<void> {
+    await this.db!.delete(STORE_NAME, id);
+  }
+
+  async getQueueSize(): Promise<number> {
+    return this.db!.count(STORE_NAME);
+  }
+
+  async clearFailed(): Promise<void> {
+    const tx = this.db!.transaction(STORE_NAME, "readwrite");
+    const index = tx.store.index("status");
+    let cursor = await index.openCursor("failed");
+
+    while (cursor) {
+      await cursor.delete();
+      cursor = await cursor.continue();
+    }
+  }
+}
+```
+
+#### 13.2.5 UI 组件 (8h)
+
+| 任务 ID | 任务名称                | 文件路径                                        | 工时 | 前置依赖        |
+| ------- | ----------------------- | ----------------------------------------------- | ---- | --------------- |
+| 1.5.1   | 创建 ShareConfirmDialog | `src/components/share/share-confirm-dialog.tsx` | 2.5h | 1.3.4           |
+| 1.5.2   | 创建 QuickSaveToast     | `src/components/share/quick-save-toast.tsx`     | 1h   | 1.3.4           |
+| 1.5.3   | 创建 FolderSelector     | `src/components/share/folder-selector.tsx`      | 1.5h | 现有 useFolders |
+| 1.5.4   | 创建 ShareSettings      | `src/components/share/share-settings.tsx`       | 2h   | 1.1.1           |
+| 1.5.5   | 创建 ShareSettingsPage  | `src/app/(main)/settings/share/page.tsx`        | 1h   | 1.5.4           |
+
+#### 13.2.6 集成与测试 (5h)
+
+| 任务 ID | 任务名称         | 描述                                        | 工时 | 前置依赖     |
+| ------- | ---------------- | ------------------------------------------- | ---- | ------------ |
+| 1.6.1   | 主应用集成       | 在 RootLayout 中初始化 ShareReceiverService | 1h   | 1.3.4        |
+| 1.6.2   | 添加分享入口监听 | 在 HomePage 中监听分享事件                  | 1h   | 1.6.1, 1.5.1 |
+| 1.6.3   | 多设备测试       | 测试不同 Android 设备/版本                  | 1.5h | 1.6.2        |
+| 1.6.4   | 平台分享测试     | 测试微信/B站/小红书等平台分享               | 1.5h | 1.6.3        |
+
+### 13.3 验收测试清单
+
+#### 功能验收
+
+| 测试场景                       | 预期结果                                 | 优先级 |
+| ------------------------------ | ---------------------------------------- | ------ |
+| 从微信分享公众号文章到 AnyKeep | 正确提取 URL，识别为微信平台，保存成功   | P0     |
+| 从 B 站分享视频到 AnyKeep      | 正确提取 URL，识别为 B 站平台，保存成功  | P0     |
+| 从小红书分享笔记到 AnyKeep     | 正确提取 URL，清理分享文本干扰，保存成功 | P0     |
+| 从浏览器分享网页到 AnyKeep     | 正确提取 URL，保存成功                   | P0     |
+| 分享纯文本（无 URL）到 AnyKeep | 保存为笔记类型                           | P1     |
+| 离线状态下分享                 | 入队成功，显示离线提示                   | P0     |
+| 网络恢复后自动同步             | 队列自动清空，数据同步到服务器           | P0     |
+| 一键保存模式                   | < 1 秒完成保存并关闭                     | P0     |
+| 选择文件夹保存                 | 正确保存到指定文件夹                     | P0     |
+
+#### 性能验收
+
+| 指标         | 目标    | 测试方法                 |
+| ------------ | ------- | ------------------------ |
+| 分享响应时间 | < 500ms | 从点击 AnyKeep 到显示 UI |
+| 一键保存时间 | < 1s    | 从点击保存到关闭界面     |
+| 离线入队时间 | < 100ms | 从保存到入队完成         |
+| 内存占用增量 | < 5MB   | 对比开启/关闭分享功能    |
+
+---
+
+**文档状态**: 待审核
+**下一步**: 用户审核通过后，开始 Phase 1 开发

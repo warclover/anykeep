@@ -79,6 +79,16 @@ export function ExportDialogV2({
   // 取消控制器
   const abortControllerRef = useRef<AbortController | null>(null);
 
+  // 组件卸载时清理 AbortController，防止内存泄漏
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+    };
+  }, []);
+
   // 重置状态
   const resetState = useCallback(() => {
     setStep("config");

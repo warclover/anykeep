@@ -324,7 +324,11 @@ export class ObsidianFormatter implements ExportFormatter {
     // 创建文件夹结构
     const folders = new Map<string, typeof zip>();
 
-    bookmarks.forEach((bookmark) => {
+    // 文件名计数器：防止同名文件冲突
+    // key: "folderName/filename", value: 出现次数
+    const filenameCounters = new Map<string, number>();
+
+    bookmarks.forEach((bookmark, index) => {
       const folderName = bookmark.folders?.name || "未分类";
 
       // 获取或创建文件夹
@@ -333,9 +337,24 @@ export class ObsidianFormatter implements ExportFormatter {
       }
 
       const folder = folders.get(folderName)!;
-      const filename = this.generateFilename(bookmark);
-      const content = this.formatItem(bookmark, 0);
+      let filename = this.generateFilename(bookmark);
 
+      // 检查并处理文件名冲突
+      const filenameKey = `${folderName}/${filename}`;
+      const count = filenameCounters.get(filenameKey) || 0;
+
+      if (count > 0) {
+        // 存在冲突，添加序号
+        const extIndex = filename.lastIndexOf(".");
+        const baseName = extIndex > 0 ? filename.slice(0, extIndex) : filename;
+        const ext = extIndex > 0 ? filename.slice(extIndex) : "";
+        filename = `${baseName}_${count}${ext}`;
+      }
+
+      // 更新计数器
+      filenameCounters.set(filenameKey, count + 1);
+
+      const content = this.formatItem(bookmark, index);
       folder.file(filename, content);
     });
 

@@ -111,6 +111,10 @@ export const NAV_ICON_COLORS = {
     light: "text-purple-400",
     dark: "dark:text-purple-300",
   },
+  export: {
+    light: "text-teal-400",
+    dark: "dark:text-teal-300",
+  },
   settings: {
     light: "text-gray-400",
     dark: "dark:text-gray-400",

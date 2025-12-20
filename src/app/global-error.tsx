@@ -1,6 +1,5 @@
 "use client";
 
-import * as Sentry from "@sentry/nextjs";
 import { useEffect } from "react";
 
 /**
@@ -8,7 +7,10 @@ import { useEffect } from "react";
  * 当根布局或其他顶级错误发生时显示
  * 必须是客户端组件，且必须包含完整的 html/body 结构
  *
- * @integrated Sentry - 自动上报错误到 Sentry
+ * 注意：Sentry 错误上报已禁用
+ * 原因：@sentry/nextjs 的动态导入仍会导致 @sentry/node 和 @opentelemetry
+ *       服务端代码被打包到客户端 bundle，引发 hydration 错误
+ * 解决方案：使用单独的 Sentry 客户端配置（sentry.client.config.ts）处理错误上报
  */
 
 export default function GlobalError({
@@ -18,14 +20,9 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  // Report error to Sentry
   useEffect(() => {
-    Sentry.captureException(error, {
-      tags: {
-        errorType: "global",
-        digest: error.digest,
-      },
-    });
+    // 仅记录到控制台，Sentry 上报由 sentry.client.config.ts 全局配置处理
+    console.error("[GlobalError]", error.message, error.digest);
   }, [error]);
   return (
     <html lang="zh-CN">
