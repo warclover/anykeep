@@ -631,7 +631,7 @@ export function HomePageClient({
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full min-h-0">
       {/* 顶部工具栏（移动端显示） - Phase 2.5.1 提取到独立组件 */}
       <HomeToolbar
         viewMode={viewMode}
@@ -668,14 +668,10 @@ export function HomePageClient({
         onMobileMoreMenuOpenChange={setIsMobileMoreMenuOpen}
       />
 
-      {/* 内容区域 - V4.2.x: 添加 ref 用于虚拟滚动 */}
-      <div
-        ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto overflow-x-hidden px-4 md:px-8 py-0.5 md:py-1"
-      >
-        {/* 快速添加收藏组件（仅在非垃圾箱页面显示） */}
-        {!isTrashFolder && (
-          <div className="mb-6 flex items-center gap-3">
+      {/* 快速添加收藏组件（固定区域，不随内容滚动） */}
+      {!isTrashFolder && (
+        <div className="shrink-0 px-4 md:px-8 py-3 border-b border-gray-100 dark:border-gray-800 bg-background">
+          <div className="flex items-center gap-3">
             <div className="flex-1 min-w-0 max-w-2xl">
               <QuickAddBookmark
                 onBookmarkCreated={() => {
@@ -697,9 +693,14 @@ export function HomePageClient({
             {/* V10.2: 用途筛选按钮（Sheet 形式） */}
             {!isBrowserPlatform && !currentFolder && <UsageTagFilterSheet />}
           </div>
-        )}
+        </div>
+      )}
 
-        {/* V4.2 智能分类横幅（懒加载） */}
+      {/* 内容区域 - V4.2.x: 添加 ref 用于虚拟滚动 */}
+      <div
+        ref={scrollContainerRef}
+        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 md:px-8 py-3 md:py-4"
+      >
         <Suspense fallback={null}>
           <ReclassifyBanner className="mb-4" />
         </Suspense>

@@ -30,11 +30,11 @@ export default function MainLayout({
   // 页面切换通过 NavigationContext 客户端管理（见 navigation-context.tsx）
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden">
+    <div className="h-screen bg-gray-50 dark:bg-gray-900 overflow-hidden flex flex-col">
       {/* 顶部导航 */}
       <AppHeader />
 
-      <div className="flex overflow-hidden">
+      <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* 侧边栏（桌面端） */}
         <AppSidebar />
 

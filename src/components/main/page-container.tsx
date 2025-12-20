@@ -245,7 +245,7 @@ const PageWrapper = memo(function PageWrapper({
   // - position: absolute：避免影响布局
   // - pointerEvents: none：禁用交互
   const style: CSSProperties = isVisible
-    ? { display: "block" }
+    ? { display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }
     : {
         display: "none",
         visibility: "hidden",
@@ -451,7 +451,7 @@ export function PageContainer({ children }: PageContainerProps) {
   }
 
   return (
-    <div className="page-container" role="main">
+    <div className="page-container h-full min-h-0 flex flex-col" role="main">
       {PAGE_IDS.map((pageId) => {
         const pageState = pageStates[pageId];
 

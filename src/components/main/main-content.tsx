@@ -38,7 +38,7 @@ export function MainContent({ children }: MainContentProps) {
 
   // 如果 NavigationProvider 不存在，直接显示 children
   if (!navigationContext) {
-    return <>{children}</>;
+    return <div className="h-full min-h-0 flex flex-col">{children}</div>;
   }
 
   const { isClientNavEnabled, activePage, pageStates, isOnMainPage } =
@@ -50,7 +50,7 @@ export function MainContent({ children }: MainContentProps) {
   // 如果不在主页面（如详情页）或不是 Keep-Alive 页面（如 batch/export），
   // 直接渲染 SSR children，让 Next.js 正常处理页面
   if (!isOnMainPage || !isCurrentPageKeepAlive) {
-    return <>{children}</>;
+    return <div className="h-full min-h-0 flex flex-col">{children}</div>;
   }
 
   // 判断是否应该使用 PageContainer
@@ -65,7 +65,7 @@ export function MainContent({ children }: MainContentProps) {
   // 如果是首次访问当前页面，显示 SSR 内容
   if (!shouldUsePageContainer) {
     return (
-      <>
+      <div className="h-full min-h-0 flex flex-col">
         {/* 文件夹缓存监听器 */}
         <FolderCacheListener />
         {children}
@@ -75,15 +75,15 @@ export function MainContent({ children }: MainContentProps) {
             <PageContainer />
           </div>
         )}
-      </>
+      </div>
     );
   }
 
   // 客户端导航模式，使用 PageContainer
   return (
-    <>
+    <div className="h-full min-h-0 flex flex-col">
       <FolderCacheListener />
       <PageContainer>{children}</PageContainer>
-    </>
+    </div>
   );
 }
