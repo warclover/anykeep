@@ -13,6 +13,7 @@ export type MessageType =
   | "classification_batch" // 批量分类完成（静默）
   | "classification_suggest" // 分类建议待确认（普通）
   | "classification_failed" // 分类失败（普通）
+  | "reclassify_complete" // 一键分类完成报告（普通）
   // 导入相关
   | "import_complete" // 导入完成（普通）
   | "import_partial" // 部分导入成功（普通）

@@ -82,6 +82,7 @@ export const MESSAGE_TYPE_LEVELS: Record<MessageType, MessageLevel> = {
   // 普通级别 (L2) - Toast + 记录
   classification_suggest: "normal",
   classification_failed: "normal",
+  reclassify_complete: "normal",
   import_complete: "normal",
   import_partial: "normal",
   bookmark_invalid: "normal",

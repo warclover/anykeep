@@ -228,6 +228,30 @@ export class MessageService {
     });
   }
 
+  /**
+   * 一键分类完成通知
+   */
+  static async notifyReclassifyComplete(
+    userId: string,
+    processed: number,
+    movedCount: number,
+    suggestionsCreated: number,
+    isFullAuto: boolean,
+    batchId?: string,
+  ): Promise<MessageResult> {
+    return this.create({
+      userId,
+      type: "reclassify_complete",
+      data: {
+        processed,
+        movedCount,
+        suggestionsCreated,
+        isFullAuto,
+        batchId,
+      },
+    });
+  }
+
   // ============================================
   // 快捷方法 - 导入相关
   // ============================================

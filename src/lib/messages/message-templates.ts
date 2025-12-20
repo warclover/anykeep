@@ -83,6 +83,58 @@ export const MESSAGE_TEMPLATES: Record<MessageType, MessageTemplate> = {
     defaultPriority: 4,
   },
 
+  reclassify_complete: {
+    title: (data) => {
+      const movedCount = data.movedCount as number;
+      const suggestionsCreated = data.suggestionsCreated as number;
+      if (movedCount > 0 && suggestionsCreated > 0) {
+        return `一键分类完成：已移动 ${movedCount} 条，${suggestionsCreated} 条待确认`;
+      } else if (movedCount > 0) {
+        return `一键分类完成：已移动 ${movedCount} 条书签`;
+      } else if (suggestionsCreated > 0) {
+        return `一键分类完成：${suggestionsCreated} 条待确认`;
+      } else {
+        return "一键分类完成";
+      }
+    },
+    content: (data) => {
+      const processed = data.processed as number;
+      const movedCount = data.movedCount as number;
+      const suggestionsCreated = data.suggestionsCreated as number;
+      const isFullAuto = data.isFullAuto as boolean;
+
+      const parts: string[] = [];
+      parts.push(`共分析 ${processed} 条书签`);
+
+      if (isFullAuto) {
+        if (movedCount > 0) {
+          parts.push(`${movedCount} 条已自动移动`);
+        }
+        if (suggestionsCreated > 0) {
+          parts.push(`${suggestionsCreated} 条需要确认`);
+        }
+      } else {
+        if (suggestionsCreated > 0) {
+          parts.push(`${suggestionsCreated} 条分类建议等待确认`);
+        }
+      }
+
+      if (movedCount === 0 && suggestionsCreated === 0) {
+        parts.push("未找到合适的分类建议");
+      }
+
+      return parts.join("，");
+    },
+    actionUrl: (data) => {
+      const suggestionsCreated = data.suggestionsCreated as number;
+      return suggestionsCreated > 0
+        ? "/messages/pending"
+        : "/home?folder=inbox";
+    },
+    actionLabel: "查看详情",
+    defaultPriority: 5,
+  },
+
   // ========== 导入相关 ==========
   import_complete: {
     title: (data) => `成功导入 ${data.successCount} 条书签`,

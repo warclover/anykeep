@@ -30,6 +30,7 @@ import {
   Folder,
   Pin,
   Download,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -156,9 +157,11 @@ export function FolderActionMenu({
   const [isMoving, setIsMoving] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
   const [isLocking, setIsLocking] = useState(false);
+  const [isReclassifying, setIsReclassifying] = useState(false);
 
   // 系统文件夹限制
   const isSystemFolder = folder.is_system ?? false;
+  const isInboxFolder = folder.system_type === "INBOX";
   const isArchived = folder.is_archived;
   const hasBookmarks = (folder.bookmark_count || 0) > 0;
 
@@ -394,6 +397,81 @@ export function FolderActionMenu({
     }
   };
 
+  // 处理一键分类（仅限待整理文件夹）
+  // 注意：不使用 fetchWithAbort，因为菜单关闭后请求会被取消
+  const handleReclassify = async () => {
+    setIsReclassifying(true);
+
+    // 使用持久化 toast 显示进度
+    const toastId = toast.loading(
+      `正在为 ${folder.bookmark_count} 个书签执行 AI 分类...`,
+      {
+        description: "AI 正在分析内容并匹配最佳文件夹",
+      },
+    );
+
+    try {
+      const res = await fetch("/api/reclassify", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ forceRun: true }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error?.message || "一键分类失败");
+      }
+
+      const { movedCount, suggestionsCreated, processed, message } = data.data;
+
+      // 清除文件夹缓存，确保 bookmark_count 更新
+      if (user?.id) {
+        folderCacheInvalidation.onAnyChange(user.id);
+      }
+
+      // 根据结果更新 toast
+      if (movedCount > 0) {
+        toast.success(`✅ 分类完成`, {
+          id: toastId,
+          description: message,
+          duration: 5000,
+        });
+      } else if (suggestionsCreated > 0) {
+        toast.success(`📋 已生成分类建议`, {
+          id: toastId,
+          description: `${message}，请前往消息中心查看`,
+          duration: 5000,
+        });
+      } else if (processed > 0) {
+        toast.info(`分析完成`, {
+          id: toastId,
+          description: `已分析 ${processed} 个书签，${message}`,
+          duration: 4000,
+        });
+      } else {
+        toast.info(message, {
+          id: toastId,
+          duration: 3000,
+        });
+      }
+
+      onActionComplete?.();
+      router.refresh();
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "一键分类失败";
+      toast.error("分类失败", {
+        id: toastId,
+        description: errorMessage,
+        duration: 5000,
+      });
+    } finally {
+      setIsReclassifying(false);
+    }
+  };
+
   return (
     <>
       <DropdownMenu>
@@ -437,6 +515,26 @@ export function FolderActionMenu({
             >
               <Download className="size-4 mr-2" />
               导出
+              <span className="ml-auto text-xs">({folder.bookmark_count})</span>
+            </DropdownMenuItem>
+          )}
+
+          {/* 一键分类（仅限待整理文件夹） */}
+          {isInboxFolder && hasBookmarks && (
+            <DropdownMenuItem
+              onClick={(e) => {
+                e.stopPropagation();
+                handleReclassify();
+              }}
+              disabled={isReclassifying}
+              className="text-violet-600 dark:text-violet-400"
+            >
+              {isReclassifying ? (
+                <Loader2 className="size-4 mr-2 animate-spin" />
+              ) : (
+                <Sparkles className="size-4 mr-2" />
+              )}
+              一键分类
               <span className="ml-auto text-xs">({folder.bookmark_count})</span>
             </DropdownMenuItem>
           )}

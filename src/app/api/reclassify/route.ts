@@ -2,7 +2,9 @@
  * 重分类执行 API
  * POST /api/reclassify
  *
- * 对待整理文件夹中的书签执行 AI 重分类，生成分类建议
+ * 对待整理文件夹中的书签执行 AI 重分类
+ * - 完全托管模式：直接移动书签到目标文件夹
+ * - 半托管/不托管模式：生成分类建议等待确认
  */
 
 import type { NextRequest } from "next/server";
@@ -22,6 +24,8 @@ import {
   recommendFolder,
   type FolderRecommendation,
 } from "@/lib/utils/ai-generator";
+import { TrustModeService } from "@/lib/trust-mode/trust-mode.service";
+import { MessageService } from "@/lib/messages/message-service";
 
 // 请求体验证
 const reclassifySchema = z.object({
@@ -125,11 +129,17 @@ export async function POST(request: NextRequest) {
       .eq("is_system", false)
       .order("name");
 
-    // 7. 生成批次 ID
+    // 7. 获取用户的托管模式
+    const trustModeService = new TrustModeService();
+    const trustMode = await trustModeService.getUserTrustMode(user.id);
+    const isFullAuto = trustMode === "full_auto";
+
+    // 8. 生成批次 ID
     const batchId = uuidv4();
 
-    // 8. 为每个书签获取 AI 推荐
+    // 9. 为每个书签获取 AI 推荐
     const suggestions: ClassificationSuggestionInsert[] = [];
+    const directMoves: Array<{ bookmarkId: number; folderId: number }> = [];
     const results: Array<{
       bookmarkId: number;
       bookmarkTitle: string;
@@ -150,17 +160,30 @@ export async function POST(request: NextRequest) {
         );
 
         if (recommendation && recommendation.confidence >= 40) {
-          suggestions.push({
-            user_id: user.id,
-            bookmark_id: bookmark.id,
-            suggested_folder_id: recommendation.folderId,
-            suggested_folder_name: recommendation.folderName,
-            suggest_new_folder: recommendation.suggestNew,
-            confidence: recommendation.confidence,
-            reason: recommendation.reason,
-            status: "pending",
-            batch_id: batchId,
-          });
+          if (
+            isFullAuto &&
+            recommendation.folderId &&
+            !recommendation.suggestNew
+          ) {
+            // 完全托管模式：直接移动（只针对已有文件夹）
+            directMoves.push({
+              bookmarkId: bookmark.id,
+              folderId: recommendation.folderId,
+            });
+          } else {
+            // 其他模式或需要创建新文件夹：生成建议
+            suggestions.push({
+              user_id: user.id,
+              bookmark_id: bookmark.id,
+              suggested_folder_id: recommendation.folderId,
+              suggested_folder_name: recommendation.folderName,
+              suggest_new_folder: recommendation.suggestNew,
+              confidence: recommendation.confidence,
+              reason: recommendation.reason,
+              status: "pending",
+              batch_id: batchId,
+            });
+          }
         }
 
         results.push({
@@ -184,7 +207,28 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 9. 批量插入建议
+    // 10. 完全托管模式：直接移动书签
+    let movedCount = 0;
+    if (directMoves.length > 0) {
+      for (const move of directMoves) {
+        const { error: moveError } = await supabase
+          .from("bookmarks")
+          .update({ folder_id: move.folderId })
+          .eq("id", move.bookmarkId)
+          .eq("user_id", user.id);
+
+        if (!moveError) {
+          movedCount++;
+        } else {
+          logger.error(
+            { bookmarkId: move.bookmarkId, error: moveError.message },
+            "Failed to move bookmark",
+          );
+        }
+      }
+    }
+
+    // 11. 批量插入建议（仅非完全托管模式，或需要创建新文件夹的情况）
     if (suggestions.length > 0) {
       const { error: insertError } = await supabase
         .from("classification_suggestions")
@@ -199,7 +243,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 10. 更新用户的重分类设置（记录本次执行时间）
+    // 12. 更新用户的重分类设置（记录本次执行时间）
     const { data: profile } = await supabase
       .from("profiles")
       .select("settings")
@@ -221,24 +265,56 @@ export async function POST(request: NextRequest) {
       .update({ settings: updatedSettings })
       .eq("id", user.id);
 
+    // 13. 创建消息通知
+    if (bookmarks.length > 0) {
+      await MessageService.notifyReclassifyComplete(
+        user.id,
+        bookmarks.length,
+        movedCount,
+        suggestions.length,
+        isFullAuto,
+        batchId,
+      );
+    }
+
     logger.info(
       {
         userId: user.id,
         batchId,
         processed: bookmarks.length,
+        movedCount,
         suggestionsCreated: suggestions.length,
+        isFullAuto,
       },
       "Reclassification completed",
     );
 
-    return successResponse({
-      processed: bookmarks.length,
-      suggestionsCreated: suggestions.length,
-      batchId,
-      message:
+    // 构建返回消息
+    let message = "";
+    if (isFullAuto) {
+      if (movedCount > 0 && suggestions.length > 0) {
+        message = `已移动 ${movedCount} 个书签，另有 ${suggestions.length} 个需要确认`;
+      } else if (movedCount > 0) {
+        message = `已成功移动 ${movedCount} 个书签到目标文件夹`;
+      } else if (suggestions.length > 0) {
+        message = `已为 ${suggestions.length} 个书签生成分类建议`;
+      } else {
+        message = "没有找到合适的分类建议";
+      }
+    } else {
+      message =
         suggestions.length > 0
           ? `已为 ${suggestions.length} 个书签生成分类建议`
-          : "没有找到合适的分类建议",
+          : "没有找到合适的分类建议";
+    }
+
+    return successResponse({
+      processed: bookmarks.length,
+      movedCount,
+      suggestionsCreated: suggestions.length,
+      batchId,
+      isFullAuto,
+      message,
     });
   } catch (error) {
     logger.error(
