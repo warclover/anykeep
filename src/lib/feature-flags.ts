@@ -17,7 +17,9 @@ export type FeatureFlag =
   | "smart_sorting" // 智能分类功能
   // V4.2.17: 首页重构相关
   | "home_use_context" // 首页使用新 Context 系统
-  | "home_use_new_bookmarks_hook"; // 首页使用新书签数据 Hook
+  | "home_use_new_bookmarks_hook" // 首页使用新书签数据 Hook
+  // V4.2.2: 微信文章功能
+  | "wechat_article"; // 微信公众号文章完整内容抓取
 
 // 功能开关默认值（生产环境）
 const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
@@ -28,6 +30,8 @@ const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   // Phase 2.4: 启用 Context 系统（已修复 hydration 问题）
   home_use_context: true,
   home_use_new_bookmarks_hook: false,
+  // V4.2.2: 微信文章功能
+  wechat_article: false, // 默认关闭，通过环境变量启用
 };
 
 // ============================================================================
@@ -45,6 +49,8 @@ const ENV_VAR_MAP: Record<FeatureFlag, string | undefined> = {
   home_use_context: process.env.NEXT_PUBLIC_FEATURE_HOME_USE_CONTEXT,
   home_use_new_bookmarks_hook:
     process.env.NEXT_PUBLIC_FEATURE_HOME_USE_NEW_BOOKMARKS_HOOK,
+  // V4.2.2: 微信文章功能
+  wechat_article: process.env.NEXT_PUBLIC_FEATURE_WECHAT_ARTICLE,
 };
 
 // ============================================================================
@@ -143,4 +149,15 @@ export function useHomeContextFeature(): boolean {
  */
 export function useHomeBookmarksHookFeature(): boolean {
   return useFeatureFlag("home_use_new_bookmarks_hook");
+}
+
+// ============================================================================
+// V4.2.2: 微信文章功能 Feature Flags
+// ============================================================================
+
+/**
+ * 微信公众号文章完整内容功能是否启用
+ */
+export function useWechatArticleFeature(): boolean {
+  return useFeatureFlag("wechat_article");
 }

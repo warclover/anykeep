@@ -43,9 +43,12 @@ export type Database = {
       };
       bookmark_snapshots: {
         Row: {
+          article_images: Json | null;
           bookmark_id: number;
           captured_at: string | null;
           content_hash: string | null;
+          content_markdown: string | null;
+          content_version: number | null;
           created_at: string | null;
           error_message: string | null;
           expires_at: string | null;
@@ -53,6 +56,8 @@ export type Database = {
           final_url: string | null;
           html_storage_path: string | null;
           id: number;
+          images_stats: Json | null;
+          images_status: string | null;
           job_id: string | null;
           max_retries: number | null;
           mhtml_storage_path: string | null;
@@ -75,9 +80,12 @@ export type Database = {
           user_id: string;
         };
         Insert: {
+          article_images?: Json | null;
           bookmark_id: number;
           captured_at?: string | null;
           content_hash?: string | null;
+          content_markdown?: string | null;
+          content_version?: number | null;
           created_at?: string | null;
           error_message?: string | null;
           expires_at?: string | null;
@@ -85,6 +93,8 @@ export type Database = {
           final_url?: string | null;
           html_storage_path?: string | null;
           id?: number;
+          images_stats?: Json | null;
+          images_status?: string | null;
           job_id?: string | null;
           max_retries?: number | null;
           mhtml_storage_path?: string | null;
@@ -107,9 +117,12 @@ export type Database = {
           user_id: string;
         };
         Update: {
+          article_images?: Json | null;
           bookmark_id?: number;
           captured_at?: string | null;
           content_hash?: string | null;
+          content_markdown?: string | null;
+          content_version?: number | null;
           created_at?: string | null;
           error_message?: string | null;
           expires_at?: string | null;
@@ -117,6 +130,8 @@ export type Database = {
           final_url?: string | null;
           html_storage_path?: string | null;
           id?: number;
+          images_stats?: Json | null;
+          images_status?: string | null;
           job_id?: string | null;
           max_retries?: number | null;
           mhtml_storage_path?: string | null;
@@ -3122,6 +3137,16 @@ export type Database = {
       };
       get_user_trust_mode: { Args: { p_user_id: string }; Returns: Json };
       get_vision_tags: { Args: { vision_data: Json }; Returns: string[] };
+      get_wechat_article_stats: {
+        Args: { p_user_id: string };
+        Returns: {
+          failed_images: number;
+          storage_used: number;
+          success_images: number;
+          total_articles: number;
+          total_images: number;
+        }[];
+      };
       has_pending_job: {
         Args: {
           p_payload_key?: string;
@@ -3139,6 +3164,10 @@ export type Database = {
       increment_storage_used: {
         Args: { target_user_id: string };
         Returns: undefined;
+      };
+      increment_snapshot_version: {
+        Args: { p_snapshot_id: number };
+        Returns: number;
       };
       increment_tag_cooccurrence: {
         Args: {

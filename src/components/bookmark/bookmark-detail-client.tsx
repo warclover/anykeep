@@ -59,6 +59,17 @@ import { formatFriendlyDate } from "@/lib/utils/date-utils";
 import { separateUserTagsExtended } from "@/lib/constants/usage-tags";
 // V4.2.1: 快照功能（懒加载 + 功能开关）
 import { SnapshotSectionLazy } from "@/components/snapshot";
+// V4.2.2: 微信文章功能（懒加载 + Feature Flag）
+import { lazy, Suspense } from "react";
+import { useWechatArticleFeature } from "@/lib/feature-flags";
+import { Skeleton } from "@/components/ui/skeleton";
+
+// 懒加载微信文章区块组件
+const WechatArticleSectionLazy = lazy(() =>
+  import("@/components/wechat-article").then((m) => ({
+    default: m.WechatArticleSection,
+  })),
+);
 
 interface BookmarkDetailClientProps {
   bookmark: Bookmark & {
@@ -122,6 +133,11 @@ export function BookmarkDetailClient({
     "BROWSER_FIREFOX",
     "BROWSER_SAFARI",
   ].includes(bookmark.platform);
+
+  // V4.2.2: 判断是否为微信公众号文章并且功能开关已启用
+  const isWechatArticleEnabled = useWechatArticleFeature();
+  const isWechatPlatform = bookmark.platform === "WECHAT_OFFICIAL_ACCOUNT";
+  const showWechatArticle = isWechatArticleEnabled && isWechatPlatform;
 
   // 防止重复调用标记已读 API
   const hasMarkedAsRead = useRef(false);
@@ -885,6 +901,19 @@ export function BookmarkDetailClient({
                 bookmarkUrl={bookmark.url}
                 defaultExpanded={false}
               />
+
+              {/* V4.2.2: 微信文章完整内容（仅微信公众号平台 + Feature Flag 启用时显示） */}
+              {showWechatArticle && (
+                <Suspense
+                  fallback={<Skeleton className="h-64 w-full rounded-lg" />}
+                >
+                  <WechatArticleSectionLazy
+                    bookmarkId={bookmark.id}
+                    bookmarkUrl={bookmark.url}
+                    defaultExpanded={false}
+                  />
+                </Suspense>
+              )}
 
               {/* 处理状态：仅当状态为 PROCESSING 且 AI 内容尚未生成时显示 */}
               {bookmark.status === "PROCESSING" &&
