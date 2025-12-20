@@ -44,17 +44,17 @@ import type { Bookmark } from "@/types/supabase";
 type PageState = "idle" | "loading" | "ready" | "error";
 
 /**
- * 预定义平台选项（避免从筛选数据中动态提取导致选项消失）
+ * 预定义平台选项
+ * 值必须与 validation.ts 中 getBookmarksQuerySchema.platform 枚举匹配
+ * 允许值: "WECHAT_OFFICIAL_ACCOUNT", "BILIBILI", "XIAOHONGSHU", "UNKNOWN", "browser"
  */
 const PLATFORM_OPTIONS = [
   { value: "all", label: "全部平台" },
-  { value: "WECHAT", label: "微信" },
+  { value: "WECHAT_OFFICIAL_ACCOUNT", label: "微信公众号" },
   { value: "BILIBILI", label: "B站" },
   { value: "XIAOHONGSHU", label: "小红书" },
-  { value: "ZHIHU", label: "知乎" },
-  { value: "WEIBO", label: "微博" },
-  { value: "DOUYIN", label: "抖音" },
-  { value: "OTHER", label: "其他" },
+  { value: "browser", label: "浏览器书签" },
+  { value: "UNKNOWN", label: "其他" },
 ] as const;
 
 export function ExportPageClient() {
