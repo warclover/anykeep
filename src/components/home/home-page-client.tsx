@@ -26,10 +26,10 @@ import { useAbortableFetch } from "@/hooks/use-abortable-fetch";
 import { useInitData } from "@/hooks/use-init-data";
 import { useBookmarksSWR, cachePerformanceTracker } from "@/lib/cache";
 import { Button } from "@/components/ui/button";
-import { TrashBookmarkCard } from "@/components/bookmark/trash-bookmark-card";
 import { BrowserBookmarkVirtualList } from "@/components/bookmark/browser-bookmark-virtual-list";
 import { VirtualBookmarkList } from "@/components/bookmark/virtual-bookmark-list";
 import { VirtualBookmarkGrid } from "@/components/bookmark/virtual-bookmark-grid";
+import { VirtualTrashBookmarkGrid } from "@/components/bookmark/virtual-trash-bookmark-grid";
 import { BrowserBookmarkEmptyState } from "@/components/bookmark/browser-bookmark-empty-state";
 // V3.1: FolderRecommendationToast 已废弃，由 useClassificationPolling 的 toast 通知替代
 import { EmptyState } from "@/components/bookmark/empty-state";
@@ -67,7 +67,6 @@ import { useDialogs } from "@/hooks/use-dialogs";
 import { useSelectionMode } from "@/hooks/use-selection-mode";
 import { useProcessingPoller } from "@/hooks/use-processing-poller";
 import { ErrorMessage } from "@/components/ui/error-message";
-import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Bookmark } from "@/types/supabase";
 import { DEFAULT_PAGE_SIZE, getPageSizeByView } from "./constants";
@@ -229,13 +228,6 @@ export function HomePageClient({
     // 触发事件通知其他组件（如 PlatformFilter）
     uiEventBus.emit(UIEvents.FLIP_CARD_CHANGE, { enabled: newValue });
   };
-
-  // 计算网格容器的 CSS 类名
-  const gridClassName = cn(
-    "masonry-grid",
-    layoutMode === "row" && "layout-row",
-    layoutMode === "column" && "layout-column",
-  );
 
   // ===== V4.2.24: 聚合数据获取（性能优化） =====
   // 当没有 SSR 初始数据时，使用聚合 API 一次获取所有数据
@@ -758,21 +750,19 @@ export function HomePageClient({
               />
             ) : isTrashFolder ? (
               <>
-                {/* 垃圾箱卡片视图 */}
-                <div className={gridClassName}>
-                  {bookmarks.map((bookmark) => (
-                    <div key={bookmark.id} className="masonry-item">
-                      <TrashBookmarkCard
-                        bookmark={bookmark}
-                        onRestore={handleRestore}
-                        onPermanentDelete={handlePermanentDelete}
-                        isSelectionMode={isSelectionMode}
-                        isSelected={selectedIds.has(bookmark.id)}
-                        onToggleSelect={toggleSelect}
-                      />
-                    </div>
-                  ))}
-                </div>
+                {/* V4.2.3: 垃圾箱视图使用虚拟滚动网格 */}
+                <VirtualTrashBookmarkGrid
+                  bookmarks={bookmarks}
+                  hasMore={hasMore}
+                  isLoadingMore={isLoadingMore}
+                  onLoadMore={handleLoadMore}
+                  onRestore={handleRestore}
+                  onPermanentDelete={handlePermanentDelete}
+                  isSelectionMode={isSelectionMode}
+                  selectedIds={selectedIds}
+                  onToggleSelect={toggleSelect}
+                  customScrollParent={scrollContainer}
+                />
               </>
             ) : (
               <>

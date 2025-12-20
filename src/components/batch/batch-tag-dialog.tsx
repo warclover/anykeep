@@ -34,7 +34,7 @@ type BookmarkWithFolder = Bookmark & {
   folders?: { name: string } | null;
 };
 
-interface BatchTagDialogProps {
+export interface BatchTagDialogProps {
   /** 是否打开 */
   open: boolean;
   /** 打开状态变更回调 */

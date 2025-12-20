@@ -83,7 +83,7 @@ function createMockBookmark(overrides: Partial<Bookmark> = {}): Bookmark {
  */
 function createBookmarkWithDate(
   daysAgo: number,
-  platform: Platform = "WECHAT",
+  platform: string = "WECHAT_OFFICIAL_ACCOUNT",
 ): Bookmark {
   const date = new Date();
   date.setDate(date.getDate() - daysAgo);
@@ -152,9 +152,7 @@ const createMockSupabase = (
         eq: jest.fn().mockResolvedValue({ data: [], error: null }),
       };
     }),
-  } as unknown as Parameters<
-    typeof AnalyticsService.prototype.getFullAnalytics
-  >[0];
+  } as unknown as ConstructorParameters<typeof AnalyticsService>[0];
 };
 
 // ============================================================================
@@ -171,10 +169,10 @@ describe("AnalyticsService", () => {
     });
 
     it("should correctly identify non-browser platforms", () => {
-      expect(isBrowserPlatform("WECHAT")).toBe(false);
+      expect(isBrowserPlatform("WECHAT_OFFICIAL_ACCOUNT")).toBe(false);
       expect(isBrowserPlatform("BILIBILI")).toBe(false);
       expect(isBrowserPlatform("XIAOHONGSHU")).toBe(false);
-      expect(isBrowserPlatform("ZHIHU")).toBe(false);
+      expect(isBrowserPlatform("UNKNOWN")).toBe(false);
     });
   });
 

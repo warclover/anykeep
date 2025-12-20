@@ -56,8 +56,8 @@ async function searchMdSemantic(
     const queryEmbedding = await generateEmbedding(query);
 
     // 调用数据库语义搜索函数
-    // @ts-expect-error RPC 函数 search_md_collections_semantic 未在自动生成的类型定义中
-    const { data, error } = await supabase.rpc(
+    // Note: 类型定义将在执行 `npm run supabase:gen:types` 后自动生成
+    const { data, error } = await (supabase.rpc as CallableFunction)(
       "search_md_collections_semantic",
       {
         query_embedding: queryEmbedding,

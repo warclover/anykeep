@@ -88,6 +88,8 @@ export class ImportSessionManager {
   private currentSession: ImportSession | null = null;
   private isPaused = false;
   private isCancelled = false;
+  /** 并发锁：防止多个导入操作同时执行 */
+  private isImporting = false;
 
   constructor(config: SessionManagerConfig) {
     this.userId = config.userId;
@@ -199,20 +201,50 @@ export class ImportSessionManager {
 
   /**
    * 开始/继续导入
+   * @throws Error 如果已有导入操作正在进行
    */
   async startImport(): Promise<SessionResult> {
+    // 并发锁检查
+    if (this.isImporting) {
+      throw new Error("导入操作正在进行中，请稍后再试");
+    }
+
     if (!this.currentSession) {
       throw new Error("未设置当前会话");
     }
 
-    const sessionId = this.currentSession.id;
+    // 获取锁
+    this.isImporting = true;
+
+    try {
+      return await this.executeImport();
+    } finally {
+      // 释放锁
+      this.isImporting = false;
+    }
+  }
+
+  /**
+   * 检查是否正在导入
+   */
+  isCurrentlyImporting(): boolean {
+    return this.isImporting;
+  }
+
+  /**
+   * 执行导入逻辑（内部方法）
+   */
+  private async executeImport(): Promise<SessionResult> {
+    // currentSession 已在 startImport 中检查，此处必定存在
+    const session = this.currentSession!;
+    const sessionId = session.id;
     const startTime = Date.now();
-    const wasResumed = this.currentSession.status !== "pending";
+    const wasResumed = session.status !== "pending";
 
     // 更新会话状态
     await updateImportSession(sessionId, {
       status: "processing",
-      startedAt: this.currentSession.startedAt ?? Date.now(),
+      startedAt: session.startedAt ?? Date.now(),
     });
     this.onStatusChange?.("processing");
 
@@ -229,7 +261,7 @@ export class ImportSessionManager {
 
     // 通知初始进度
     this.notifyProgress({
-      totalBookmarks: this.currentSession.progress.totalBookmarks,
+      totalBookmarks: session.progress.totalBookmarks,
       totalBatches: allBatches.length,
       currentBatch: stats.completedBatches,
       batchProgress: { total: 0, processed: 0 },
@@ -258,7 +290,7 @@ export class ImportSessionManager {
 
       // 通知进度
       this.notifyProgress({
-        totalBookmarks: this.currentSession.progress.totalBookmarks,
+        totalBookmarks: session.progress.totalBookmarks,
         totalBatches: allBatches.length,
         currentBatch: batch.batchNumber + 1,
         batchProgress: { total: batch.bookmarks.length, processed: 0 },
@@ -296,7 +328,7 @@ export class ImportSessionManager {
         await updateImportSession(sessionId, {
           completedBatches: stats.completedBatches,
           progress: {
-            ...this.currentSession.progress,
+            ...session.progress,
             totalSuccess: stats.totalSuccess,
             totalFailed: stats.totalFailed,
             totalSkipped: stats.totalSkipped,
@@ -333,7 +365,7 @@ export class ImportSessionManager {
 
       // 通知完成
       this.notifyProgress({
-        totalBookmarks: this.currentSession.progress.totalBookmarks,
+        totalBookmarks: session.progress.totalBookmarks,
         totalBatches: allBatches.length,
         currentBatch: allBatches.length,
         batchProgress: { total: 0, processed: 0 },

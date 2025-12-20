@@ -6,7 +6,7 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { BatchTagDialog } from "../batch-tag-dialog";
+import { BatchTagDialog, type BatchTagDialogProps } from "../batch-tag-dialog";
 
 // Mock hooks
 jest.mock("@/hooks/batch/use-batch-tags", () => ({
@@ -14,6 +14,7 @@ jest.mock("@/hooks/batch/use-batch-tags", () => ({
     batchAddTags: jest.fn(),
     batchRemoveTags: jest.fn(),
     isProcessing: false,
+    error: null,
   })),
 }));
 
@@ -34,45 +35,51 @@ const mockUseBatchTags = useBatchTags as jest.MockedFunction<
 >;
 
 describe("BatchTagDialog", () => {
-  const defaultProps = {
+  // 使用类型断言简化测试数据
+  const mockBookmarks = [
+    {
+      id: 1,
+      title: "Bookmark 1",
+      url: "https://example1.com",
+      user_tags: ["existing-tag"],
+      ai_tags: ["ai-tag"],
+      user_id: "user-1",
+      created_at: "2024-01-01",
+      updated_at: "2024-01-01",
+      platform: "web",
+      is_starred: false,
+    },
+    {
+      id: 2,
+      title: "Bookmark 2",
+      url: "https://example2.com",
+      user_tags: ["existing-tag", "another-tag"],
+      ai_tags: [],
+      user_id: "user-1",
+      created_at: "2024-01-01",
+      updated_at: "2024-01-01",
+      platform: "web",
+      is_starred: false,
+    },
+    {
+      id: 3,
+      title: "Bookmark 3",
+      url: "https://example3.com",
+      user_tags: [],
+      ai_tags: ["ai-tag"],
+      user_id: "user-1",
+      created_at: "2024-01-01",
+      updated_at: "2024-01-01",
+      platform: "web",
+      is_starred: false,
+    },
+  ] as BatchTagDialogProps["selectedBookmarks"];
+
+  const defaultProps: BatchTagDialogProps = {
     open: true,
     onOpenChange: jest.fn(),
     selectedIds: [1, 2, 3],
-    selectedBookmarks: [
-      {
-        id: 1,
-        title: "Bookmark 1",
-        url: "https://example1.com",
-        user_tags: ["existing-tag"],
-        ai_tags: ["ai-tag"],
-        user_id: "user-1",
-        created_at: "2024-01-01",
-        updated_at: "2024-01-01",
-        platform: "web" as const,
-      },
-      {
-        id: 2,
-        title: "Bookmark 2",
-        url: "https://example2.com",
-        user_tags: ["existing-tag", "another-tag"],
-        ai_tags: [],
-        user_id: "user-1",
-        created_at: "2024-01-01",
-        updated_at: "2024-01-01",
-        platform: "web" as const,
-      },
-      {
-        id: 3,
-        title: "Bookmark 3",
-        url: "https://example3.com",
-        user_tags: [],
-        ai_tags: ["ai-tag"],
-        user_id: "user-1",
-        created_at: "2024-01-01",
-        updated_at: "2024-01-01",
-        platform: "web" as const,
-      },
-    ],
+    selectedBookmarks: mockBookmarks,
     onSuccess: jest.fn(),
   };
 
@@ -82,6 +89,7 @@ describe("BatchTagDialog", () => {
       batchAddTags: jest.fn(),
       batchRemoveTags: jest.fn(),
       isProcessing: false,
+      error: null,
     });
   });
 
@@ -140,6 +148,7 @@ describe("BatchTagDialog", () => {
         batchAddTags: mockBatchAddTags,
         batchRemoveTags: jest.fn(),
         isProcessing: false,
+        error: null,
       });
 
       const user = userEvent.setup();
@@ -163,6 +172,7 @@ describe("BatchTagDialog", () => {
         batchAddTags: jest.fn(),
         batchRemoveTags: jest.fn(),
         isProcessing: true,
+        error: null,
       });
 
       render(<BatchTagDialog {...defaultProps} />);
