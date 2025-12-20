@@ -3,7 +3,7 @@
  * 统一管理所有统计数据的查询和计算
  *
  * @module lib/analytics/analytics.service
- * @version 1.0.0
+ * @version 2.0.0 - 使用 BookmarkServerRepository 统一数据访问
  */
 
 import { cache } from "react";
@@ -13,6 +13,11 @@ import {
   getPlatformName,
   getPlatformHexColor,
 } from "@/lib/constants/platforms";
+import type { BookmarkServerRepository } from "@/lib/repositories/server";
+import {
+  createBookmarkServerRepository,
+  isBrowserPlatform,
+} from "@/lib/repositories/server";
 import type {
   AnalyticsStats,
   TrendDataItem,
@@ -26,7 +31,7 @@ import type {
   AnalyticsData,
   AnalyticsConfig,
 } from "./types";
-import { isBrowserPlatform, DEFAULT_ANALYTICS_CONFIG } from "./types";
+import { DEFAULT_ANALYTICS_CONFIG } from "./types";
 
 // ============================================================================
 // AnalyticsService 类
@@ -36,6 +41,7 @@ export class AnalyticsService {
   private supabase: SupabaseClient;
   private userId: string;
   private config: AnalyticsConfig;
+  private repository: BookmarkServerRepository;
 
   constructor(
     supabase: SupabaseClient,
@@ -45,6 +51,7 @@ export class AnalyticsService {
     this.supabase = supabase;
     this.userId = userId;
     this.config = { ...DEFAULT_ANALYTICS_CONFIG, ...config };
+    this.repository = createBookmarkServerRepository(supabase, userId);
   }
 
   // ==========================================================================
@@ -53,22 +60,25 @@ export class AnalyticsService {
 
   /**
    * 获取完整分析数据
+   * @description 使用 Repository 统一获取数据，确保数据源一致性
    */
   async getFullAnalytics(): Promise<AnalyticsData> {
-    // 并行获取所有数据
-    const [allBookmarks, folders, classificationStats] = await Promise.all([
-      this.fetchAllBookmarks(),
-      this.fetchFolders(),
-      this.config.includeAIStats ? this.fetchClassificationStats() : null,
-    ]);
+    // 使用 Repository 获取所有活跃书签
+    const allBookmarks = await this.repository.getAll({ scope: "active" });
 
-    // 分离内容收藏和浏览器书签
+    // 在内存中分离内容收藏和浏览器书签（确保使用同一数据源）
     const contentBookmarks = allBookmarks.filter(
       (b) => !isBrowserPlatform(b.platform as Platform),
     );
     const browserBookmarks = allBookmarks.filter((b) =>
       isBrowserPlatform(b.platform as Platform),
     );
+
+    // 并行获取其他数据
+    const [folders, classificationStats] = await Promise.all([
+      this.fetchFolders(),
+      this.config.includeAIStats ? this.fetchClassificationStats() : null,
+    ]);
 
     // 计算各项统计
     const stats = this.calculateStats(
@@ -106,42 +116,8 @@ export class AnalyticsService {
   }
 
   // ==========================================================================
-  // 数据获取方法
+  // 数据获取方法（辅助数据，非书签）
   // ==========================================================================
-
-  private async fetchAllBookmarks(): Promise<Bookmark[]> {
-    // 分页获取所有书签（Supabase 默认限制 1000 行）
-    // 为确保统计数据准确，需要获取所有书签
-    const allBookmarks: Bookmark[] = [];
-    const pageSize = 1000;
-    let offset = 0;
-    let hasMore = true;
-
-    while (hasMore) {
-      const { data, error } = await this.supabase
-        .from("bookmarks")
-        .select("*")
-        .eq("user_id", this.userId)
-        .is("deleted_at", null)
-        .eq("is_in_trash", false)
-        .order("created_at", { ascending: false })
-        .range(offset, offset + pageSize - 1);
-
-      if (error) {
-        throw new Error(`Failed to fetch bookmarks: ${error.message}`);
-      }
-
-      if (data && data.length > 0) {
-        allBookmarks.push(...(data as Bookmark[]));
-        offset += data.length;
-        hasMore = data.length === pageSize;
-      } else {
-        hasMore = false;
-      }
-    }
-
-    return allBookmarks;
-  }
 
   private async fetchFolders(): Promise<{ id: number; name: string }[]> {
     const { data, error } = await this.supabase

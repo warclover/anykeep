@@ -1059,18 +1059,23 @@ export async function GET(request: NextRequest) {
       .is("deleted_at", null);
 
     // 虚拟文件夹筛选（优先级最高）
+    // 注意：is_in_trash 可能为 NULL（历史数据），使用 .or() 处理
     if (folder === "trash") {
       // 垃圾箱：只显示垃圾箱中的收藏
       query = query.eq("is_in_trash", true);
     } else if (folder === "invalid") {
       // 已失效：只显示失效且不在垃圾箱的收藏
-      query = query.eq("is_invalid", true).eq("is_in_trash", false);
+      query = query
+        .eq("is_invalid", true)
+        .or("is_in_trash.eq.false,is_in_trash.is.null");
     } else if (folder === "high-value") {
       // 高价值：只显示5星评级且不在垃圾箱的收藏
-      query = query.eq("rating", 5).eq("is_in_trash", false);
+      query = query
+        .eq("rating", 5)
+        .or("is_in_trash.eq.false,is_in_trash.is.null");
     } else {
-      // 正常收藏：排除垃圾箱
-      query = query.eq("is_in_trash", false);
+      // 正常收藏：排除垃圾箱（包含 NULL 值）
+      query = query.or("is_in_trash.eq.false,is_in_trash.is.null");
     }
 
     // 平台筛选
