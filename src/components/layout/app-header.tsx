@@ -3,16 +3,18 @@
  *
  * 用户数据通过 UserContext 客户端获取
  * 避免每次页面切换都执行服务端数据库查询
+ *
+ * V4.3: 集成快速添加区域（第二行）
  */
 
 "use client";
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
-import { Moon, Sun, Search } from "lucide-react";
+import { Moon, Sun, Search, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -28,12 +30,53 @@ import { MobileMenu } from "@/components/layout/mobile-menu";
 import { PlatformFilter } from "@/components/layout/platform-filter";
 import { HeaderMenu } from "@/components/layout/header-menu";
 import { useUser } from "@/contexts/user-context";
+import { useSafeNavigation } from "@/contexts/navigation-context";
+import { useHomePageSafe } from "@/contexts/home-page-context";
+import { QuickAddBookmark } from "@/components/quick-add";
+import { UsageTagFilterSheet } from "@/components/layout/usage-tag-filter-sheet";
 
 export function AppHeader() {
   const { user, profile, isLoading } = useUser();
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { theme, setTheme } = useTheme();
   const [loading, setLoading] = useState(false);
+
+  // 获取导航和首页上下文
+  const navigationContext = useSafeNavigation();
+  const homeContext = useHomePageSafe();
+
+  const { activePage, isClientNavEnabled } = navigationContext || {
+    activePage: null,
+    isClientNavEnabled: false,
+  };
+
+  // 判断是否在首页
+  const isHomePage = isClientNavEnabled
+    ? activePage === "home"
+    : pathname === "/home";
+
+  // 获取当前文件夹和平台（用于判断回收站和浏览器书签）
+  const currentFolder =
+    homeContext?.filter.folder ?? searchParams?.get("folder") ?? "";
+  const currentPlatform =
+    homeContext?.filter.platform ?? searchParams?.get("platform") ?? "";
+
+  // 判断是否为回收站或浏览器书签
+  const isTrashFolder = currentFolder === "trash";
+  const isBrowserPlatform = currentPlatform === "browser";
+
+  // 是否显示快速添加区域：首页 + 非回收站
+  const showQuickAdd = isHomePage && !isTrashFolder;
+
+  // 手动创建按钮点击事件
+  const handleOpenCreateDialog = () => {
+    // 使用 HomePageContext 打开创建对话框
+    if (homeContext) {
+      homeContext.dialog.openDialogAction("create");
+    }
+  };
 
   const handleSignOut = async () => {
     setLoading(true);
@@ -63,6 +106,7 @@ export function AppHeader() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-white dark:bg-gray-950 dark:border-gray-800">
+      {/* 第一行：Logo + 平台筛选 + 右侧操作区 */}
       <div className="flex h-14 items-center px-4 lg:px-6 gap-2">
         {/* 移动端汉堡菜单 */}
         <MobileMenu />
@@ -166,6 +210,38 @@ export function AppHeader() {
           ) : null}
         </div>
       </div>
+
+      {/* 第二行：快速添加区域（仅首页非回收站显示） */}
+      {showQuickAdd && (
+        <div className="flex items-center h-11 px-4 lg:px-6 gap-2 border-t border-gray-100 dark:border-gray-800">
+          {/* Logo 占位（桌面端：不可见但占用相同空间，实现与第一行平台筛选左对齐） */}
+          <div
+            className="hidden sm:flex items-center space-x-2 shrink-0 invisible"
+            aria-hidden="true"
+          >
+            <span className="text-lg md:text-xl font-bold">AnyKeep</span>
+          </div>
+
+          {/* 快速添加区域（ml 与第一行平台筛选相同） */}
+          <div className="flex flex-1 items-center gap-2 sm:ml-4 lg:ml-20">
+            <div className="flex-1 min-w-0 max-w-2xl">
+              <QuickAddBookmark />
+            </div>
+
+            {/* 手动创建按钮 */}
+            <Button
+              className="shrink-0 h-8 px-3 text-sm bg-[#f6e2d3] hover:bg-[#edd5c3] text-[#254f61] shadow-sm"
+              onClick={handleOpenCreateDialog}
+            >
+              <Plus className="size-3.5 mr-1" />
+              手动创建
+            </Button>
+
+            {/* 用途筛选按钮（非浏览器书签 + 无文件夹筛选时显示） */}
+            {!isBrowserPlatform && !currentFolder && <UsageTagFilterSheet />}
+          </div>
+        </div>
+      )}
     </header>
   );
 }

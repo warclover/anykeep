@@ -20,7 +20,7 @@ import {
   Suspense,
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Plus, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAbortableFetch } from "@/hooks/use-abortable-fetch";
 import { useInitData } from "@/hooks/use-init-data";
@@ -33,11 +33,9 @@ import { VirtualTrashBookmarkGrid } from "@/components/bookmark/virtual-trash-bo
 import { BrowserBookmarkEmptyState } from "@/components/bookmark/browser-bookmark-empty-state";
 // V3.1: FolderRecommendationToast 已废弃，由 useClassificationPolling 的 toast 通知替代
 import { EmptyState } from "@/components/bookmark/empty-state";
-import { UsageTagFilterSheet } from "@/components/layout/usage-tag-filter-sheet";
 // Phase 3.4: 使用 HomePageContext 替代 Event 监听
 import { useHomePageContext } from "@/contexts/home-page-context";
 import { useSnapshotFeature } from "@/components/snapshot";
-import { QuickAddBookmark } from "@/components/quick-add";
 import { prefetchCustomUsageTags } from "@/hooks/use-custom-usage-tags";
 import { uiEventBus, UIEvents } from "@/lib/shared/event-bus";
 
@@ -667,34 +665,6 @@ export function HomePageClient({
         isMobileMoreMenuOpen={isMobileMoreMenuOpen}
         onMobileMoreMenuOpenChange={setIsMobileMoreMenuOpen}
       />
-
-      {/* 快速添加收藏组件（固定区域，不随内容滚动） */}
-      {!isTrashFolder && (
-        <div className="shrink-0 px-4 md:px-8 py-1.5 border-b border-gray-100 dark:border-gray-800 bg-background">
-          <div className="flex items-center gap-2">
-            <div className="flex-1 min-w-0 max-w-2xl">
-              <QuickAddBookmark
-                onBookmarkCreated={() => {
-                  // 刷新列表
-                  if (_refetch) {
-                    _refetch();
-                  }
-                }}
-              />
-            </div>
-            {/* 创建自定义收藏按钮 - 温柔杏色 */}
-            <Button
-              className="shrink-0 h-8 px-3 text-sm bg-[#f6e2d3] hover:bg-[#edd5c3] text-[#254f61] shadow-sm"
-              onClick={openCreateDialog}
-            >
-              <Plus className="size-3.5 mr-1" />
-              手动创建
-            </Button>
-            {/* V10.2: 用途筛选按钮（Sheet 形式） */}
-            {!isBrowserPlatform && !currentFolder && <UsageTagFilterSheet />}
-          </div>
-        </div>
-      )}
 
       {/* 内容区域 - V4.2.x: 添加 ref 用于虚拟滚动 */}
       <div
