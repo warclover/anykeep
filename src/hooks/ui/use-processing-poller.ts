@@ -3,6 +3,7 @@
 /**
  * 智能轮询 Hook
  * V4.2.21: 修复轮询定时器丢失问题
+ * V4.2.25: 修复中间状态不更新问题 - 每次轮询都更新数据
  *
  * 对 PROCESSING 状态或"正在获取标题..."的书签进行定时轮询
  * 当数据更新完成后自动停止轮询该书签
@@ -92,11 +93,13 @@ export function useProcessingPoller({
 
         // 处理每个返回的书签
         updatedBookmarks.forEach((updated) => {
+          // V4.2.25: 无论是否完成，都更新数据（修复中间状态卡片不更新问题）
+          // 这样标题抓取完成后，卡片会立即显示新标题和封面
+          onUpdate(updated);
+
           // 检查是否已完成
           if (isCompleted(updated)) {
-            // 已完成，触发更新回调
-            onUpdate(updated);
-            // 从轮询计数器中移除
+            // 已完成，从轮询计数器中移除
             pollCountRef.current.delete(updated.id);
           } else {
             // 未完成，增加轮询计数
