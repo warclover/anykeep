@@ -6,9 +6,14 @@
  * - 数据加载异步进行，不阻塞 HTML 返回
  * - 使用 React cache() 在同一请求中缓存数据查询
  * - 客户端 SWR 缓存确保数据新鲜度
+ *
+ * V4.2.27 性能优化：
+ * - 使用 Middleware 预验证的 x-user-id header
+ * - 消除 Server Component 中的重复认证调用（节省 ~1000ms）
  */
 
 import { Suspense, cache } from "react";
+import { headers } from "next/headers";
 import { HomePageClient } from "@/components/home/home-page-client";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { createClient } from "@/lib/supabase/server";
@@ -26,6 +31,8 @@ type BookmarkWithFolder = Bookmark & {
 /**
  * 获取初始书签数据（带请求级缓存）
  * 使用 React cache() 确保同一请求中多次调用只执行一次查询
+ *
+ * V4.2.27: 使用 Middleware 预验证的 userId，跳过重复认证
  */
 const getInitialBookmarks = cache(
   async (
@@ -33,21 +40,28 @@ const getInitialBookmarks = cache(
     sort: string,
     folder: string,
   ): Promise<{ bookmarks: BookmarkWithFolder[]; error?: string }> => {
-    try {
-      const supabase = await createClient();
-      const {
-        data: { user },
-        error: authError,
-      } = await supabase.auth.getUser();
+    const startTime = performance.now();
 
-      if (authError || !user) {
+    try {
+      // V4.2.27: 从 Middleware 注入的 header 获取预验证的 userId
+      // 这避免了在 Server Component 中重复调用 supabase.auth.getUser()
+      const headersList = await headers();
+      const userId = headersList.get("x-user-id");
+      const isVerified = headersList.get("x-user-verified") === "true";
+
+      const headerTime = performance.now() - startTime;
+
+      if (!isVerified || !userId) {
         return { bookmarks: [], error: "请先登录" };
       }
+
+      const supabase = await createClient();
+      const clientTime = performance.now() - startTime;
 
       let query = supabase
         .from("bookmarks")
         .select("*, folders(name)")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .is("deleted_at", null);
 
       // 虚拟文件夹筛选（优先级最高）
@@ -93,6 +107,15 @@ const getInitialBookmarks = cache(
       query = query.limit(DEFAULT_PAGE_SIZE);
 
       const { data, error } = await query;
+      const totalTime = performance.now() - startTime;
+      const queryTime = totalTime - clientTime;
+
+      // V4.2.27: 诊断日志 - Server Component 数据加载耗时
+      if (process.env.NODE_ENV === "development") {
+        console.error(
+          `[HomePage] Headers: ${Math.round(headerTime)}ms | Client: ${Math.round(clientTime - headerTime)}ms | Query: ${Math.round(queryTime)}ms | Total: ${Math.round(totalTime)}ms`,
+        );
+      }
 
       if (error) {
         return { bookmarks: [], error: error.message };

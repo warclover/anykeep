@@ -90,15 +90,32 @@ export async function middleware(request: NextRequest) {
   }
 
   // 3. 更新会话
-  const { supabaseResponse, user } = await updateSession(request);
+  const { supabaseResponse, user, authMethod, authDuration } =
+    await updateSession(request);
+
+  // V4.2.27: 诊断日志 - 认证耗时
+  if (process.env.NODE_ENV === "development") {
+    console.error(
+      `[Middleware] ${pathname} | Auth: ${authMethod} | ${Math.round(authDuration)}ms`,
+    );
+  }
 
   // 4. 将 Request ID 添加到响应头
   supabaseResponse.headers.set("x-request-id", requestId);
 
+  // 检查是否是受保护的路由
+  const isProtectedRoute = protectedRoutes.some((route) =>
+    pathname.startsWith(route),
+  );
+
   // 5. V4.2.24 性能优化：注入预验证的用户信息到请求头
-  // 这样 API 路由可以使用 header 模式跳过重复认证（节省 ~1000ms/请求）
-  // 注意：这些 header 仅供内部 API 使用，不应被客户端信任
-  if (user && pathname.startsWith("/api")) {
+  // V4.2.27: 扩展到所有受保护路由（API + 页面），消除 Server Component 重复认证
+  // 这样 API 路由和 Server Component 都可以使用 header 模式跳过重复认证（节省 ~1000ms/请求）
+  // 注意：这些 header 仅供内部使用，不应被客户端信任
+  const shouldInjectUserHeaders =
+    user && (pathname.startsWith("/api") || isProtectedRoute);
+
+  if (shouldInjectUserHeaders) {
     // 注入到下一个请求的 headers（通过修改 request）
     const requestHeaders = new Headers(request.headers);
     requestHeaders.set("x-user-id", user.id);
@@ -121,11 +138,6 @@ export async function middleware(request: NextRequest) {
 
     return response;
   }
-
-  // 检查是否是受保护的路由
-  const isProtectedRoute = protectedRoutes.some((route) =>
-    pathname.startsWith(route),
-  );
 
   // 检查是否是认证路由
   const isAuthRoute = authRoutes.some((route) => pathname.startsWith(route));
