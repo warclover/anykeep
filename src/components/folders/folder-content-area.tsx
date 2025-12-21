@@ -30,7 +30,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { FolderCardGrid, FolderListItem } from "./folder-card";
 import { FOLDER_GROUPS, UI_GROUP_KEYS, type UIFolderGroup } from "./constants";
 import type {
@@ -283,7 +282,7 @@ export function FolderContentArea({
       </div>
 
       {/* 内容区域 */}
-      <ScrollArea className="flex-1">
+      <div className="flex-1 overflow-y-auto">
         <div className="p-6 space-y-8">
           {/* 文件夹视图 - 根据 viewMode 切换 */}
           {filteredFolders.length === 0 ? (
@@ -381,7 +380,7 @@ export function FolderContentArea({
             </div>
           )}
         </div>
-      </ScrollArea>
+      </div>
     </div>
   );
 }

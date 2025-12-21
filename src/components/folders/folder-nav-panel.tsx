@@ -17,7 +17,6 @@ import {
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Collapsible,
   CollapsibleContent,
@@ -250,7 +249,7 @@ export function FolderNavPanel({
       </div>
 
       {/* 导航内容 */}
-      <ScrollArea className="flex-1">
+      <div className="flex-1 overflow-y-auto">
         <div className="p-2 space-y-1">
           {/* 全部 */}
           <NavItem
@@ -373,7 +372,7 @@ export function FolderNavPanel({
             </div>
           )}
         </div>
-      </ScrollArea>
+      </div>
 
       {/* 底部操作 */}
       <div className="flex-shrink-0 p-3 border-t border-gray-200 dark:border-gray-800">
