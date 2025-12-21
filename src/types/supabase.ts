@@ -4076,3 +4076,124 @@ export type BookmarkWithSnapshot = Bookmark & {
     created_at: string;
   } | null;
 };
+
+// ============================================================================
+// WeChat Article Extended Types (V4.2)
+// ============================================================================
+
+/**
+ * 微信文章图片处理状态
+ */
+export type WechatImageStatus = "pending" | "success" | "failed" | "fallback";
+
+/**
+ * 微信文章图片统计状态
+ */
+export type WechatImagesOverallStatus =
+  | "pending"
+  | "processing"
+  | "completed"
+  | "partial"
+  | "failed";
+
+/**
+ * 样式保留级别
+ */
+export type StylePreserveLevel = "text-only" | "full-snapshot";
+
+/**
+ * 微信文章图片元数据
+ */
+export interface WechatArticleImageMeta {
+  /** 原始图片 URL */
+  originalUrl: string;
+  /** 持久化后的 URL（上传到 Supabase Storage 后） */
+  persistedUrl?: string | null;
+  /** 图片 alt 文本 */
+  alt?: string;
+  /** 图片宽度 */
+  width?: number;
+  /** 图片高度 */
+  height?: number;
+  /** 处理状态 */
+  status: WechatImageStatus;
+  /** 错误信息（失败时） */
+  error?: string;
+}
+
+/**
+ * 微信文章图片统计信息
+ */
+export interface WechatImagesStats {
+  /** 总图片数 */
+  total: number;
+  /** 已持久化数量 */
+  persisted: number;
+  /** 失败数量 */
+  failed: number;
+  /** 降级处理数量（使用 referrerPolicy） */
+  fallback: number;
+}
+
+/**
+ * 微信文章快照扩展类型
+ * 包含 bookmark_snapshots 表的额外字段（用于微信文章功能）
+ *
+ * 注意：此类型用于服务层内部，解决 Supabase 自动生成类型不完整的问题
+ * 当 Supabase 类型重新生成后，可考虑移除此类型
+ */
+export interface WechatArticleSnapshot {
+  /** 快照 ID */
+  id: number;
+  /** 关联的书签 ID */
+  bookmark_id: number;
+  /** Readability 处理后的内容 */
+  readable_content: string | null;
+  /** 纯文本内容 */
+  readable_text_content: string | null;
+  /** 文章标题 */
+  readable_title: string | null;
+  /** 字数统计 */
+  readable_word_count: number | null;
+  /** 原始 URL */
+  original_url: string | null;
+  /** V4.2: 原始 HTML（用于样式重新处理） */
+  original_html?: string | null;
+  /** V4.2: 处理后的 HTML（内联样式版本） */
+  processed_html?: string | null;
+  /** V4.2: 内容版本号 */
+  content_version?: number;
+  /** V4.2: Markdown 内容 */
+  content_markdown?: string | null;
+  /** V4.2: 图片元数据数组 */
+  article_images?: WechatArticleImageMeta[];
+  /** V4.2: 图片处理状态 */
+  images_status?: WechatImagesOverallStatus;
+  /** V4.2: 图片统计信息 */
+  images_stats?: WechatImagesStats;
+  /** V4.2: 样式保留级别 */
+  style_preserve_level?: StylePreserveLevel;
+  /** 关联的书签信息（join 查询时） */
+  bookmarks?: {
+    url: string;
+    platform: string;
+  };
+}
+
+/**
+ * get_wechat_article_stats RPC 函数返回类型
+ */
+export interface WechatArticleStatsResult {
+  /** 微信文章总数 */
+  total_articles: number;
+  /** 图片总数 */
+  total_images: number;
+  /** 已持久化图片数 */
+  persisted_images: number;
+  /** 失败图片数 */
+  failed_images: number;
+  /** 总字数 */
+  total_words: number;
+  /** 存储使用量（MB） */
+  storage_used_mb: number;
+}

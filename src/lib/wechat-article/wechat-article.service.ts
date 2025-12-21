@@ -9,39 +9,14 @@
  * - 复用现有微信解析工具 (wechat-parser.ts)
  * - 新增图片持久化和 Markdown 转换能力
  *
- * 注意：部分类型使用 any 断言，因为新字段 (article_images, content_markdown,
- * content_version, images_status, images_stats) 需要重新生成 Supabase 类型
- * 执行: npx supabase gen types typescript --project-id <ID> > src/types/supabase.ts
+ * V4.2.6: 使用统一类型定义 (WechatArticleSnapshot)
  */
 
 import {
   createServerSupabaseClient,
   createServiceClient,
 } from "@/lib/supabase/server";
-import type { Json } from "@/types/supabase";
-
-// =============================================================================
-// 类型断言辅助（Supabase 类型重新生成后可移除）
-// =============================================================================
-
-interface ExtendedSnapshot {
-  id: number;
-  bookmark_id: number;
-  readable_content: string | null;
-  readable_text_content: string | null;
-  readable_title?: string | null;
-  readable_word_count: number | null;
-  original_url: string | null;
-  original_html?: string | null;
-  content_version?: number;
-  content_markdown?: string | null;
-  processed_html?: string | null;
-  article_images?: unknown[];
-  images_status?: string;
-  images_stats?: Record<string, number>;
-  style_preserve_level?: string;
-  bookmarks?: { url: string; platform: string };
-}
+import type { Json, WechatArticleSnapshot } from "@/types/supabase";
 import type {
   WechatArticleContent,
   WechatArticleCrawlProgress,
@@ -124,7 +99,7 @@ export class WechatArticleService {
       }
 
       // 类型断言
-      const snapshotData = snapshot as unknown as ExtendedSnapshot;
+      const snapshotData = snapshot as unknown as WechatArticleSnapshot;
 
       // 2. 验证是微信平台
       if (snapshotData.bookmarks?.platform !== "WECHAT_OFFICIAL_ACCOUNT") {
@@ -203,7 +178,8 @@ export class WechatArticleService {
           "[WechatArticleService] Failed to update snapshot:",
           updateError,
         );
-        // 不抛出错误，内容已处理成功
+        // 设置警告信息而不是静默失败
+        content.saveWarning = `数据库保存失败: ${updateError.message}`;
       }
 
       onProgress?.({ stage: "completed", progress: 100 });
@@ -259,7 +235,7 @@ export class WechatArticleService {
     }
 
     // 类型断言
-    const snapshotData = snapshot as unknown as ExtendedSnapshot;
+    const snapshotData = snapshot as unknown as WechatArticleSnapshot;
 
     // 2. 仅更新图片模式（传递 styleLevel）
     if (options.imagesOnly) {
@@ -407,7 +383,7 @@ export class WechatArticleService {
     }
 
     // 类型断言
-    const snapshotData = snapshot as unknown as ExtendedSnapshot;
+    const snapshotData = snapshot as unknown as WechatArticleSnapshot;
 
     // 优先使用处理后的 HTML，其次使用原始 readable_content
     const htmlContent =
@@ -447,7 +423,7 @@ export class WechatArticleService {
     }
 
     // 类型断言
-    const snapshotData = data as unknown as ExtendedSnapshot;
+    const snapshotData = data as unknown as WechatArticleSnapshot;
 
     // 有处理后的 HTML、Markdown 内容或图片已处理，认为有完整内容
     return !!(
@@ -472,14 +448,10 @@ export class WechatArticleService {
   }> {
     const supabase = await createServiceClient();
 
-    // 类型断言：RPC 函数在 Supabase 类型重新生成后会自动识别
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- RPC type not yet in generated types
-    const { data, error } = await (supabase.rpc as any)(
-      "get_wechat_article_stats",
-      {
-        p_user_id: userId,
-      },
-    );
+    // RPC 函数类型已在 Database.public.Functions 中定义
+    const { data, error } = await supabase.rpc("get_wechat_article_stats", {
+      p_user_id: userId,
+    });
 
     if (error || !data || !Array.isArray(data) || data.length === 0) {
       return {
@@ -491,13 +463,7 @@ export class WechatArticleService {
       };
     }
 
-    const stats = data[0] as {
-      total_articles: number;
-      total_images: number;
-      success_images: number;
-      failed_images: number;
-      storage_used: number;
-    };
+    const stats = data[0];
 
     return {
       totalArticles: Number(stats.total_articles) || 0,

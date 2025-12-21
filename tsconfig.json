@@ -35,6 +35,7 @@
     "figma1121",
     "browser-extension",
     "supabase/functions",
-    "scripts"
+    "scripts",
+    "_backup"
   ]
 }

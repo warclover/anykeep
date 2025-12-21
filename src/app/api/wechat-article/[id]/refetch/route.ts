@@ -12,6 +12,11 @@ import {
   errorResponse,
   unauthorizedError,
 } from "@/lib/utils/api-response";
+import {
+  validateId,
+  safeParseBody,
+  refetchArticleSchema,
+} from "@/lib/wechat-article/validation";
 
 export const dynamic = "force-dynamic";
 
@@ -42,9 +47,9 @@ export async function POST(
     }
 
     const { id } = await params;
-    const snapshotId = parseInt(id, 10);
+    const snapshotId = validateId(id);
 
-    if (isNaN(snapshotId)) {
+    if (!snapshotId) {
       return errorResponse("INVALID_ID", "无效的快照 ID", 400);
     }
 
@@ -60,31 +65,20 @@ export async function POST(
       return errorResponse("NOT_FOUND", "快照不存在或无权访问", 404);
     }
 
-    // 解析请求体
-    let body: {
-      forceUpdate?: boolean;
-      redownloadImages?: boolean;
-      imagesOnly?: boolean;
-      styleLevel?: "text-only" | "full-snapshot";
-    } = {};
-
-    try {
-      body = await request.json();
-    } catch {
-      // 允许空请求体
+    // 使用 Zod 验证请求体
+    const bodyResult = await safeParseBody(request, refetchArticleSchema);
+    if (!bodyResult.success) {
+      return errorResponse("INVALID_REQUEST", bodyResult.error, 400);
     }
 
-    // 验证 styleLevel 值
-    const styleLevel =
-      body.styleLevel === "text-only" || body.styleLevel === "full-snapshot"
-        ? body.styleLevel
-        : undefined;
+    const { forceUpdate, redownloadImages, imagesOnly, styleLevel } =
+      bodyResult.data;
 
     // 执行重新获取（传递 styleLevel）
     const result = await wechatArticleService.refetch(snapshotId, {
-      forceUpdate: body.forceUpdate,
-      redownloadImages: body.redownloadImages,
-      imagesOnly: body.imagesOnly,
+      forceUpdate,
+      redownloadImages,
+      imagesOnly,
       styleLevel,
     });
 

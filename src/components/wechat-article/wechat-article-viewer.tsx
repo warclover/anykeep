@@ -14,7 +14,7 @@
 
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -38,6 +38,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { sanitizeHtml } from "@/lib/utils/html-sanitizer";
 import { useWechatArticle } from "./hooks/use-wechat-article";
 import { useWechatArticleCrawl } from "./hooks/use-wechat-article-crawl";
 import { useReaderSettings } from "./hooks/use-reader-settings";
@@ -132,12 +133,14 @@ export function WechatArticleViewer({
   const { items: tocItems, scrollToHeading } = useToc(article?.html);
 
   // 样式选项升级：用户偏好
-  const {
-    styleLevel,
-    setStyleLevel,
-    preferences,
-    setRememberChoice,
-  } = useStylePreferences();
+  const { styleLevel, setStyleLevel, preferences, setRememberChoice } =
+    useStylePreferences();
+
+  // XSS 防护：清理 HTML 内容（防御性深度）
+  const sanitizedHtml = useMemo(() => {
+    if (!article?.html) return "";
+    return sanitizeHtml(article.html, true);
+  }, [article?.html]);
 
   // 首次自动抓取（使用用户偏好的 styleLevel）
   useEffect(() => {
@@ -272,7 +275,11 @@ export function WechatArticleViewer({
                   disabled={isCrawling}
                 />
               </div>
-              <Button onClick={() => crawl({ styleLevel })} disabled={isCrawling} size="sm">
+              <Button
+                onClick={() => crawl({ styleLevel })}
+                disabled={isCrawling}
+                size="sm"
+              >
                 {isCrawling ? (
                   <>
                     <RefreshCw className="mr-2 size-4 animate-spin" />
@@ -390,7 +397,9 @@ export function WechatArticleViewer({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
-                  onClick={() => refetch({ redownloadImages: true, styleLevel })}
+                  onClick={() =>
+                    refetch({ redownloadImages: true, styleLevel })
+                  }
                   disabled={isCrawling}
                 >
                   <RefreshCw className="size-4 mr-2" />
@@ -443,7 +452,7 @@ export function WechatArticleViewer({
                 <article
                   className="prose prose-sm dark:prose-invert max-w-none py-4"
                   style={getContentStyle()}
-                  dangerouslySetInnerHTML={{ __html: article.html }}
+                  dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
                 />
               )}
 
@@ -470,7 +479,7 @@ export function WechatArticleViewer({
               <article
                 className="prose prose-sm dark:prose-invert max-w-none py-4"
                 style={getContentStyle()}
-                dangerouslySetInnerHTML={{ __html: article.html }}
+                dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
               />
             )}
 

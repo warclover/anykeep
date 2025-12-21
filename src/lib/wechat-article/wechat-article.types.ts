@@ -147,6 +147,8 @@ export interface WechatArticleContent {
   wordCount: number;
   /** 样式保留级别 - 样式选项升级 */
   styleLevel?: StylePreserveLevel;
+  /** 保存警告（数据库更新失败时设置） */
+  saveWarning?: string;
 }
 
 /**

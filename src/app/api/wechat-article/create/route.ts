@@ -16,6 +16,10 @@ import {
   errorResponse,
   unauthorizedError,
 } from "@/lib/utils/api-response";
+import {
+  safeParseBody,
+  createArticleSchema,
+} from "@/lib/wechat-article/validation";
 
 export const dynamic = "force-dynamic";
 
@@ -48,12 +52,13 @@ export async function POST(request: NextRequest) {
       return unauthorizedError();
     }
 
-    const body = await request.json();
-    const { bookmarkId } = body;
-
-    if (!bookmarkId || typeof bookmarkId !== "number") {
-      return errorResponse("INVALID_REQUEST", "缺少 bookmarkId", 400);
+    // 使用 Zod 验证请求体
+    const bodyResult = await safeParseBody(request, createArticleSchema);
+    if (!bodyResult.success) {
+      return errorResponse("INVALID_REQUEST", bodyResult.error, 400);
     }
+
+    const { bookmarkId } = bodyResult.data;
 
     // 验证书签所有权和平台
     const { data: bookmark, error: bookmarkError } = await supabase

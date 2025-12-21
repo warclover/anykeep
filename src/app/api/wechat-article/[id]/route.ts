@@ -13,6 +13,18 @@ import {
   errorResponse,
   unauthorizedError,
 } from "@/lib/utils/api-response";
+import {
+  validateId,
+  safeParseBody,
+  crawlArticleSchema,
+} from "@/lib/wechat-article/validation";
+import type { Platform } from "@/types/supabase";
+
+// Supabase join 查询结果类型
+interface SnapshotWithBookmark {
+  id: number;
+  bookmarks: { platform: Platform };
+}
 
 export const dynamic = "force-dynamic";
 
@@ -44,7 +56,11 @@ function escapeRegExp(string: string): string {
  */
 function replaceWithPersistedUrls(
   html: string,
-  images: Array<{ originalUrl: string; persistedUrl?: string | null; status: string }>
+  images: Array<{
+    originalUrl: string;
+    persistedUrl?: string | null;
+    status: string;
+  }>,
 ): string {
   if (!html || !images || images.length === 0) return html;
 
@@ -54,7 +70,7 @@ function replaceWithPersistedUrls(
     if (img.persistedUrl && img.status === "success") {
       result = result.replace(
         new RegExp(`(src|data-src)="${escapeRegExp(img.originalUrl)}"`, "g"),
-        `$1="${img.persistedUrl}"`
+        `$1="${img.persistedUrl}"`,
       );
     }
   }
@@ -80,9 +96,9 @@ export async function GET(
     }
 
     const { id } = await params;
-    const snapshotId = parseInt(id, 10);
+    const snapshotId = validateId(id);
 
-    if (isNaN(snapshotId)) {
+    if (!snapshotId) {
       return errorResponse("INVALID_ID", "无效的快照 ID", 400);
     }
 
@@ -148,22 +164,17 @@ export async function POST(
     }
 
     const { id } = await params;
-    const snapshotId = parseInt(id, 10);
+    const snapshotId = validateId(id);
 
-    if (isNaN(snapshotId)) {
+    if (!snapshotId) {
       return errorResponse("INVALID_ID", "无效的快照 ID", 400);
     }
 
-    // 解析请求体（可选）
-    let styleLevel: "text-only" | "full-snapshot" | undefined;
-    try {
-      const body = await request.json();
-      if (body.styleLevel === "text-only" || body.styleLevel === "full-snapshot") {
-        styleLevel = body.styleLevel;
-      }
-    } catch {
-      // 请求体为空或非 JSON，使用默认值
-    }
+    // 使用 Zod 验证请求体
+    const bodyResult = await safeParseBody(request, crawlArticleSchema);
+    const styleLevel = bodyResult.success
+      ? bodyResult.data.styleLevel
+      : undefined;
 
     // 验证快照所有权和平台
     const { data: snapshot, error: snapshotError } = await supabase
@@ -183,8 +194,8 @@ export async function POST(
     }
 
     // 验证是微信平台
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- bookmark relation type mismatch
-    if ((snapshot.bookmarks as any).platform !== "WECHAT_OFFICIAL_ACCOUNT") {
+    const typedSnapshot = snapshot as unknown as SnapshotWithBookmark;
+    if (typedSnapshot.bookmarks.platform !== "WECHAT_OFFICIAL_ACCOUNT") {
       return errorResponse("NOT_WECHAT_ARTICLE", "仅支持微信公众号文章", 400);
     }
 
