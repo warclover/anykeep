@@ -3056,6 +3056,18 @@ export type Database = {
           total: number;
         }[];
       };
+      get_folder_bookmark_stats: {
+        Args: {
+          p_folder_ids: number[];
+          p_today_start: string;
+          p_user_id: string;
+        };
+        Returns: {
+          bookmark_count: number;
+          folder_id: number;
+          today_count: number;
+        }[];
+      };
       get_user_chat_stats: {
         Args: { p_end_date?: string; p_start_date?: string; p_user_id: string };
         Returns: {

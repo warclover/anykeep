@@ -8,8 +8,9 @@
  * 功能保留：
  * - 创建/重命名/合并/删除文件夹
  * - 分组折叠展开
- * - 批量锁状态查询
+ * - 锁状态（从服务端数据直接获取）
  * - 乐观更新
+ * - localStorage 缓存（V4.2.26）
  */
 
 "use client";
@@ -24,6 +25,7 @@ import { CreateFolderDialog } from "@/components/folders/create-folder-dialog";
 import { FolderNavPanel } from "@/components/folders/folder-nav-panel";
 import { FolderContentArea } from "@/components/folders/folder-content-area";
 import { type UIFolderGroup } from "@/components/folders/constants";
+import { setFoldersCache, clearFoldersCache } from "@/lib/folders/cache";
 import type {
   FolderWithStats,
   BookmarkWithFolder,
@@ -63,45 +65,46 @@ export function FoldersPageClient({
   // 移动端导航抽屉状态
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
 
-  // 批量锁状态缓存
-  const [lockStatusMap, setLockStatusMap] = useState<LockStatusMap>({});
+  // V4.2.26: 从服务端数据直接提取锁状态（消除重复请求）
+  // 服务端 page.tsx 已查询 folder_profiles，无需客户端再次请求
+  const [lockStatusMap, setLockStatusMap] = useState<LockStatusMap>(() => {
+    const map: LockStatusMap = {};
+    for (const folder of folders) {
+      if (!folder.is_system) {
+        map[folder.id] = {
+          isLocked: folder.is_locked ?? false,
+          isAiRenamable: !(folder.is_locked ?? false),
+        };
+      }
+    }
+    return map;
+  });
 
-  // ==================== 同步 folders 到 localFolders ====================
+  // ==================== 同步 folders 到 localFolders + 更新缓存 ====================
 
+  // 乐观更新模式：需要将 props 同步到 local state 以支持本地修改
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     setLocalFolders(folders);
-  }, [folders]);
 
-  // ==================== 批量获取锁状态 ====================
-
-  useEffect(() => {
-    const fetchBatchLockStatus = async () => {
-      const nonSystemFolderIds = localFolders
-        .filter((f) => !f.is_system)
-        .map((f) => f.id);
-
-      if (nonSystemFolderIds.length === 0) return;
-
-      try {
-        const res = await fetch("/api/folders/batch-lock-status", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ folderIds: nonSystemFolderIds }),
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          if (data.success) {
-            setLockStatusMap(data.data);
-          }
-        }
-      } catch {
-        // 静默处理，FolderActionMenu 有 fallback
+    // 同步更新锁状态
+    const map: LockStatusMap = {};
+    for (const folder of folders) {
+      if (!folder.is_system) {
+        map[folder.id] = {
+          isLocked: folder.is_locked ?? false,
+          isAiRenamable: !(folder.is_locked ?? false),
+        };
       }
-    };
+    }
+    setLockStatusMap(map);
 
-    fetchBatchLockStatus();
-  }, [localFolders]);
+    // V4.2.26: 更新 localStorage 缓存
+    if (folders.length > 0) {
+      setFoldersCache(folders);
+    }
+  }, [folders]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // ==================== 回调函数 ====================
 
@@ -117,6 +120,7 @@ export function FoldersPageClient({
   const handleFolderDeleted = useCallback(
     (deletedFolderId: number) => {
       setLocalFolders((prev) => prev.filter((f) => f.id !== deletedFolderId));
+      clearFoldersCache(); // V4.2.26: 清除缓存保证一致性
       router.refresh();
     },
     [router],
@@ -128,6 +132,7 @@ export function FoldersPageClient({
       setLocalFolders((prev) =>
         prev.map((f) => (f.id === folderId ? { ...f, name: newName } : f)),
       );
+      clearFoldersCache(); // V4.2.26: 清除缓存保证一致性
     },
     [],
   );
@@ -144,6 +149,7 @@ export function FoldersPageClient({
               : f,
           ),
       );
+      clearFoldersCache(); // V4.2.26: 清除缓存保证一致性
     },
     [],
   );
