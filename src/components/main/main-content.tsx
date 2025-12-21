@@ -49,8 +49,13 @@ export function MainContent({ children }: MainContentProps) {
 
   // 如果不在主页面（如详情页）或不是 Keep-Alive 页面（如 batch/export），
   // 直接渲染 SSR children，让 Next.js 正常处理页面
+  // 添加 overflow-y-auto 允许内容滚动（修复 MD 详情页等无法滚动的问题）
   if (!isOnMainPage || !isCurrentPageKeepAlive) {
-    return <div className="h-full min-h-0 flex flex-col">{children}</div>;
+    return (
+      <div className="h-full min-h-0 flex flex-col overflow-y-auto">
+        {children}
+      </div>
+    );
   }
 
   // 判断是否应该使用 PageContainer

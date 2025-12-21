@@ -153,19 +153,50 @@ export function MdReaderView({
     [collection.raw_content],
   );
 
-  // 监听滚动进度
+  // 内容区 ref（用于滚动监听）
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  // 监听滚动进度（支持 window 滚动和容器滚动两种模式）
   useEffect(() => {
     const handleScroll = () => {
-      const scrollTop = window.scrollY;
-      const docHeight =
-        document.documentElement.scrollHeight - window.innerHeight;
-      const progress = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
-      setScrollProgress(progress);
-      setShowBackToTop(scrollTop > 300);
+      // 优先检查容器滚动（适配 overflow-y-auto 父容器）
+      const scrollContainer = contentRef.current?.closest(
+        ".overflow-y-auto",
+      ) as HTMLElement | null;
+
+      if (scrollContainer) {
+        const scrollTop = scrollContainer.scrollTop;
+        const scrollHeight =
+          scrollContainer.scrollHeight - scrollContainer.clientHeight;
+        const progress =
+          scrollHeight > 0 ? (scrollTop / scrollHeight) * 100 : 0;
+        setScrollProgress(progress);
+        setShowBackToTop(scrollTop > 300);
+      } else {
+        // 回退到 window 滚动
+        const scrollTop = window.scrollY;
+        const docHeight =
+          document.documentElement.scrollHeight - window.innerHeight;
+        const progress = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
+        setScrollProgress(progress);
+        setShowBackToTop(scrollTop > 300);
+      }
     };
 
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
+    // 查找可滚动容器
+    const scrollContainer = contentRef.current?.closest(
+      ".overflow-y-auto",
+    ) as HTMLElement | null;
+
+    if (scrollContainer) {
+      scrollContainer.addEventListener("scroll", handleScroll, {
+        passive: true,
+      });
+      return () => scrollContainer.removeEventListener("scroll", handleScroll);
+    } else {
+      window.addEventListener("scroll", handleScroll, { passive: true });
+      return () => window.removeEventListener("scroll", handleScroll);
+    }
   }, []);
 
   // 全屏切换
@@ -189,9 +220,17 @@ export function MdReaderView({
       document.removeEventListener("fullscreenchange", handleFullscreenChange);
   }, []);
 
-  // 滚动到顶部
+  // 滚动到顶部（支持容器滚动）
   const scrollToTop = useCallback(() => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    const scrollContainer = contentRef.current?.closest(
+      ".overflow-y-auto",
+    ) as HTMLElement | null;
+
+    if (scrollContainer) {
+      scrollContainer.scrollTo({ top: 0, behavior: "smooth" });
+    } else {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
   }, []);
 
   // 滚动到锚点
@@ -219,6 +258,7 @@ export function MdReaderView({
 
   return (
     <div
+      ref={contentRef}
       className={cn(
         "relative min-h-screen bg-white dark:bg-gray-950",
         className,
