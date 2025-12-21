@@ -41,6 +41,8 @@ import type { BookmarkInsert } from "@/types/supabase";
 import { BOOKMARK, STORAGE } from "@/lib/constants/messages";
 import { PerformanceMonitor } from "@/lib/utils/performance-monitor";
 import { bookmarkAITasks } from "@/lib/utils/async-task-retry";
+// Phase 4 升级：微信文章自动抓取
+import { autoFetchWechatArticle } from "@/lib/wechat-article";
 
 /**
  * V4.2.3: HTTP 缓存配置（优化）
@@ -925,7 +927,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 13. 返回创建的收藏对象
+    // 13. Phase 4 升级：微信文章自动抓取（异步，不阻塞响应）
+    if (platform === "WECHAT_OFFICIAL_ACCOUNT") {
+      autoFetchWechatArticle(bookmark.id, user.id, url).catch((err) => {
+        logger.warn(
+          { error: err, bookmarkId: bookmark.id },
+          "WeChat auto-crawl failed (non-blocking)",
+        );
+      });
+    }
+
+    // 14. 返回创建的收藏对象
     // 注意：分类信息现在是异步处理，前端可通过轮询或 WebSocket 获取更新
     return successResponse(bookmark, 201);
   } catch (error) {
