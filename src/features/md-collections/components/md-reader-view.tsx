@@ -23,6 +23,7 @@ import {
 import { Button } from "@/components/ui/button";
 import type { MdCollection } from "../types";
 import { CONTENT_TYPE_CONFIG, DEFAULT_CONTENT_TYPE_CONFIG } from "../constants";
+import { useSafeSidebar, SIDEBAR_WIDTH } from "@/contexts/sidebar-context";
 
 // 普鲁士蓝主题色
 const PRUSSIAN_BLUE = "#00324D";
@@ -81,6 +82,11 @@ export function MdReaderView({
   onBack,
   className,
 }: MdReaderViewProps) {
+  // 获取全局侧边栏宽度（用于计算目录位置）
+  const sidebarContext = useSafeSidebar();
+  const globalSidebarWidth =
+    sidebarContext?.displayWidth ?? SIDEBAR_WIDTH.expanded;
+
   // 阅读设置状态
   const [fontSize, setFontSize] = useState<"small" | "medium" | "large">(
     "medium",
@@ -297,165 +303,157 @@ export function MdReaderView({
         </div>
       </header>
 
-      {/* 主布局容器 */}
-      <div className="max-w-7xl mx-auto flex">
-        {/* 左侧目录 - 可调节宽度 */}
-        {hasTOC && (
-          <aside
-            ref={sidebarRef}
-            className="hidden lg:block shrink-0 sticky top-14 h-[calc(100vh-3.5rem)] overflow-y-auto border-r border-gray-200 dark:border-gray-800 relative"
-            style={{ width: tocWidth }}
-          >
-            <div className="p-4">
-              <h3
-                className="font-medium mb-3 flex items-center gap-2"
-                style={{ color: PRUSSIAN_BLUE }}
-              >
-                <List className="w-4 h-4" />
-                目录
-              </h3>
-              <nav className="space-y-1">
-                {tableOfContents.map((item, index) => (
-                  <button
-                    key={`${item.id}-${index}`}
-                    onClick={() => scrollToHeading(item.id)}
-                    className={cn(
-                      "block w-full text-left px-3 py-1.5 text-sm rounded-md transition-colors",
-                      "hover:bg-[#00324D]/10 dark:hover:bg-[#00324D]/30",
-                      "text-gray-600 dark:text-gray-400",
-                    )}
-                    style={{
-                      paddingLeft: `${(item.level - 1) * 12 + 12}px`,
-                    }}
-                    onMouseEnter={(e) =>
-                      (e.currentTarget.style.color = PRUSSIAN_BLUE)
-                    }
-                    onMouseLeave={(e) => (e.currentTarget.style.color = "")}
-                  >
-                    {item.text}
-                  </button>
-                ))}
-              </nav>
-            </div>
-
-            {/* 拖动调节把手 */}
-            <div
-              className={cn(
-                "absolute top-0 right-0 w-1 h-full cursor-col-resize group",
-                "hover:bg-[#00324D]/30 transition-colors",
-                isResizing && "bg-[#00324D]/50",
-              )}
-              onMouseDown={handleMouseDown}
-            >
-              <div className="absolute top-1/2 -translate-y-1/2 right-0 w-4 h-8 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                <GripVertical className="w-3 h-3 text-gray-400" />
-              </div>
-            </div>
-          </aside>
-        )}
-
-        {/* 主内容区 */}
-        <main
-          className={cn(
-            "flex-1 px-4 py-8",
-            hasTOC ? "lg:px-12" : "max-w-4xl mx-auto",
-          )}
+      {/* 左侧目录 - fixed 定位，不受内容滚动影响 */}
+      {hasTOC && (
+        <aside
+          ref={sidebarRef}
+          className="hidden lg:block fixed top-28 h-[calc(100%-7rem)] overflow-y-auto border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 z-30"
+          style={{ width: tocWidth, left: globalSidebarWidth }}
         >
-          {/* 文章头部 */}
-          <header className="mb-8">
-            {/* 内容类型标签 */}
-            <span
-              className={cn(
-                "inline-block px-2 py-1 text-xs font-medium rounded mb-4",
-                contentTypeConfig.color,
-              )}
-            >
-              {contentTypeConfig.label}
-            </span>
-
-            {/* 标题 */}
-            <h1
-              className="text-3xl md:text-4xl font-bold mb-4 leading-tight dark:text-gray-100"
+          <div className="p-4">
+            <h3
+              className="font-medium mb-3 flex items-center gap-2"
               style={{ color: PRUSSIAN_BLUE }}
             >
-              {collection.title}
-            </h1>
-
-            {/* 元信息 */}
-            <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
-              {/* 字数 */}
-              <span className="flex items-center gap-1">
-                <Type className="w-4 h-4" />
-                {collection.word_count?.toLocaleString() || 0} 字
-              </span>
-
-              {/* 阅读时间 */}
-              <span className="flex items-center gap-1">
-                <Clock className="w-4 h-4" />
-                {collection.reading_time_minutes || 1} 分钟阅读
-              </span>
-
-              {/* 创建时间 */}
-              <span className="flex items-center gap-1">
-                <Calendar className="w-4 h-4" />
-                {new Date(collection.created_at).toLocaleDateString("zh-CN", {
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}
-              </span>
-            </div>
-
-            {/* AI 摘要 */}
-            {collection.ai_summary && (
-              <div className="mt-6 p-4 bg-gradient-to-r from-sky-50 to-cyan-50 dark:from-sky-900/20 dark:to-cyan-900/20 rounded-lg border border-sky-200 dark:border-sky-800">
-                <p
-                  className="text-sm font-medium mb-2"
-                  style={{ color: PRUSSIAN_BLUE }}
+              <List className="w-4 h-4" />
+              目录
+            </h3>
+            <nav className="space-y-1">
+              {tableOfContents.map((item, index) => (
+                <button
+                  key={`${item.id}-${index}`}
+                  onClick={() => scrollToHeading(item.id)}
+                  className={cn(
+                    "block w-full text-left px-3 py-1.5 text-sm rounded-md transition-colors",
+                    "hover:bg-[#00324D]/10 dark:hover:bg-[#00324D]/30",
+                    "text-gray-600 dark:text-gray-400",
+                  )}
+                  style={{
+                    paddingLeft: `${(item.level - 1) * 12 + 12}px`,
+                  }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.color = PRUSSIAN_BLUE)
+                  }
+                  onMouseLeave={(e) => (e.currentTarget.style.color = "")}
                 >
-                  AI 摘要
-                </p>
-                <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                  {collection.ai_summary}
-                </p>
-              </div>
-            )}
-
-            {/* AI 标签 */}
-            {collection.ai_tags && collection.ai_tags.length > 0 && (
-              <div className="mt-4 flex flex-wrap items-center gap-2">
-                <Tag className="w-4 h-4 text-gray-400" />
-                {collection.ai_tags.map((tag, i) => (
-                  <span
-                    key={i}
-                    className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded"
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            )}
-          </header>
-
-          {/* 分隔线 */}
-          <hr className="mb-8 border-gray-200 dark:border-gray-800" />
-
-          {/* Markdown 内容 */}
-          <div className={fontSizeClass[fontSize]}>
-            <MdRenderer
-              content={collection.raw_content}
-              showLineNumbers={true}
-            />
+                  {item.text}
+                </button>
+              ))}
+            </nav>
           </div>
 
-          {/* 文章底部 */}
-          <footer className="mt-12 pt-8 border-t border-gray-200 dark:border-gray-800">
-            <p className="text-center text-sm text-gray-500 dark:text-gray-400">
-              — 文章结束 —
-            </p>
-          </footer>
-        </main>
-      </div>
+          {/* 拖动调节把手 */}
+          <div
+            className={cn(
+              "absolute top-0 right-0 w-1 h-full cursor-col-resize group",
+              "hover:bg-[#00324D]/30 transition-colors",
+              isResizing && "bg-[#00324D]/50",
+            )}
+            onMouseDown={handleMouseDown}
+          >
+            <div className="absolute top-1/2 -translate-y-1/2 right-0 w-4 h-8 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+              <GripVertical className="w-3 h-3 text-gray-400" />
+            </div>
+          </div>
+        </aside>
+      )}
+
+      {/* 主内容区 - 使用 margin-left 为目录留出空间 */}
+      <main
+        className={cn("flex-1 px-4 py-8 max-w-4xl mx-auto")}
+        style={hasTOC ? { marginLeft: tocWidth } : undefined}
+      >
+        {/* 文章头部 */}
+        <header className="mb-8">
+          {/* 内容类型标签 */}
+          <span
+            className={cn(
+              "inline-block px-2 py-1 text-xs font-medium rounded mb-4",
+              contentTypeConfig.color,
+            )}
+          >
+            {contentTypeConfig.label}
+          </span>
+
+          {/* 标题 */}
+          <h1
+            className="text-3xl md:text-4xl font-bold mb-4 leading-tight dark:text-gray-100"
+            style={{ color: PRUSSIAN_BLUE }}
+          >
+            {collection.title}
+          </h1>
+
+          {/* 元信息 */}
+          <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+            {/* 字数 */}
+            <span className="flex items-center gap-1">
+              <Type className="w-4 h-4" />
+              {collection.word_count?.toLocaleString() || 0} 字
+            </span>
+
+            {/* 阅读时间 */}
+            <span className="flex items-center gap-1">
+              <Clock className="w-4 h-4" />
+              {collection.reading_time_minutes || 1} 分钟阅读
+            </span>
+
+            {/* 创建时间 */}
+            <span className="flex items-center gap-1">
+              <Calendar className="w-4 h-4" />
+              {new Date(collection.created_at).toLocaleDateString("zh-CN", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}
+            </span>
+          </div>
+
+          {/* AI 摘要 */}
+          {collection.ai_summary && (
+            <div className="mt-6 p-4 bg-gradient-to-r from-sky-50 to-cyan-50 dark:from-sky-900/20 dark:to-cyan-900/20 rounded-lg border border-sky-200 dark:border-sky-800">
+              <p
+                className="text-sm font-medium mb-2"
+                style={{ color: PRUSSIAN_BLUE }}
+              >
+                AI 摘要
+              </p>
+              <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+                {collection.ai_summary}
+              </p>
+            </div>
+          )}
+
+          {/* AI 标签 */}
+          {collection.ai_tags && collection.ai_tags.length > 0 && (
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <Tag className="w-4 h-4 text-gray-400" />
+              {collection.ai_tags.map((tag, i) => (
+                <span
+                  key={i}
+                  className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
+        </header>
+
+        {/* 分隔线 */}
+        <hr className="mb-8 border-gray-200 dark:border-gray-800" />
+
+        {/* Markdown 内容 */}
+        <div className={fontSizeClass[fontSize]}>
+          <MdRenderer content={collection.raw_content} showLineNumbers={true} />
+        </div>
+
+        {/* 文章底部 */}
+        <footer className="mt-12 pt-8 border-t border-gray-200 dark:border-gray-800">
+          <p className="text-center text-sm text-gray-500 dark:text-gray-400">
+            — 文章结束 —
+          </p>
+        </footer>
+      </main>
 
       {/* 回到顶部按钮 */}
       {showBackToTop && (
