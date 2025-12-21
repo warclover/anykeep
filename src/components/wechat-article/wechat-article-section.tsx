@@ -67,6 +67,21 @@ export function WechatArticleSection({
       setError(null);
 
       const response = await fetch(`/api/snapshots?bookmarkId=${bookmarkId}`);
+
+      // V4.2.27: 检查响应类型，防止 JSON 解析错误
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        // 服务器返回了非 JSON 响应（可能是热更新导致）
+        console.error(
+          "[WechatArticleSection] Non-JSON response:",
+          response.status,
+          contentType,
+        );
+        // 静默处理，不显示错误（可能是临时的编译状态）
+        setSnapshot(null);
+        return;
+      }
+
       const result = await response.json();
 
       if (!response.ok) {
@@ -84,7 +99,16 @@ export function WechatArticleSection({
       }
     } catch (err) {
       console.error("[WechatArticleSection] Failed to fetch snapshot:", err);
-      setError(err instanceof Error ? err.message : "获取快照失败");
+      // V4.2.27: 对 JSON 解析错误静默处理（热更新期间可能发生）
+      const errorMessage = err instanceof Error ? err.message : "获取快照失败";
+      if (errorMessage.includes("Unexpected token")) {
+        console.error(
+          "[WechatArticleSection] JSON parse error, likely hot reload",
+        );
+        setSnapshot(null);
+        return;
+      }
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -106,6 +130,17 @@ export function WechatArticleSection({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ bookmarkId }),
       });
+
+      // V4.2.27: 检查响应类型，防止 JSON 解析错误
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        console.error(
+          "[WechatArticleSection] Non-JSON response on create:",
+          response.status,
+          contentType,
+        );
+        throw new Error("服务器响应异常，请稍后重试");
+      }
 
       const result = await response.json();
 

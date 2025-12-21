@@ -97,6 +97,7 @@ async function checkSnapshotQuota(): Promise<{
 
 /**
  * 创建快照（带触发来源）
+ * V4.2.27: 添加响应类型检查，防止 JSON 解析错误
  */
 async function createSnapshotWithSource(
   bookmarkId: number,
@@ -115,6 +116,20 @@ async function createSnapshotWithSource(
         triggerTag,
       }),
     });
+
+    // V4.2.27: 检查响应类型，防止热更新期间的 JSON 解析错误
+    const contentType = response.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      console.error(
+        "[AutoSnapshot] Non-JSON response:",
+        response.status,
+        contentType,
+      );
+      return {
+        success: false,
+        error: "服务器响应异常，请稍后重试",
+      };
+    }
 
     const result = await response.json();
 
@@ -140,6 +155,7 @@ async function createSnapshotWithSource(
 /**
  * V4.2.5: 创建微信文章快照
  * 使用专用的微信快照 API，支持完整排版和图片持久化
+ * V4.2.27: 添加响应类型检查，防止 JSON 解析错误
  */
 async function createWechatSnapshot(
   bookmarkId: number,
@@ -152,6 +168,20 @@ async function createWechatSnapshot(
         bookmarkId,
       }),
     });
+
+    // V4.2.27: 检查响应类型，防止热更新期间的 JSON 解析错误
+    const contentType = response.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      console.error(
+        "[AutoSnapshot] Non-JSON response:",
+        response.status,
+        contentType,
+      );
+      return {
+        success: false,
+        error: "服务器响应异常，请稍后重试",
+      };
+    }
 
     const result = await response.json();
 
