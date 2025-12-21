@@ -146,7 +146,9 @@ export function QuickAddBookmark({
         throw new Error(errorMessage);
       }
 
-      const newBookmark = await response.json();
+      const responseData = await response.json();
+      // API 返回格式为 { success: true, data: bookmark }
+      const newBookmark = responseData.data;
 
       // Show success state
       actions.showSuccess("已收藏！");
