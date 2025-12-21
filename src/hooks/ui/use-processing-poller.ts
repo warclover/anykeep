@@ -4,6 +4,7 @@
  * 智能轮询 Hook
  * V4.2.21: 修复轮询定时器丢失问题
  * V4.2.25: 修复中间状态不更新问题 - 每次轮询都更新数据
+ * V4.2.26: 新增首次立即轮询，避免新书签等待 3 秒才更新
  *
  * 对 PROCESSING 状态或"正在获取标题..."的书签进行定时轮询
  * 当数据更新完成后自动停止轮询该书签
@@ -13,6 +14,7 @@
  * - 使用批量查询减少请求次数
  * - 书签完成后自动移除轮询列表
  * - 无需轮询时不发送请求
+ * - 首次检测到新书签时立即轮询
  */
 
 import { useEffect, useRef, useCallback } from "react";
@@ -122,6 +124,7 @@ export function useProcessingPoller({
   /**
    * 设置轮询定时器
    * V4.2.21: 移除错误的"跳过"逻辑，确保每次 effect 执行都正确设置定时器
+   * V4.2.26: 新增首次立即轮询，检测到新书签后立即执行一次轮询
    */
   useEffect(() => {
     if (!enabled) return;
@@ -138,10 +141,12 @@ export function useProcessingPoller({
         .map((b) => b.id);
     };
 
-    // 初始化轮询计数器（新加入的书签）
+    // V4.2.26: 检测是否有新加入的书签需要轮询
+    let hasNewPollingBookmarks = false;
     bookmarks.forEach((b) => {
       if (needsPolling(b) && !pollCountRef.current.has(b.id)) {
         pollCountRef.current.set(b.id, 0);
+        hasNewPollingBookmarks = true;
       }
     });
 
@@ -151,6 +156,11 @@ export function useProcessingPoller({
     // 如果没有需要轮询的书签，不设置定时器
     if (pollingIds.length === 0) {
       return;
+    }
+
+    // V4.2.26: 如果有新书签加入，立即执行首次轮询（不等待 3 秒）
+    if (hasNewPollingBookmarks) {
+      pollBookmarks(pollingIds);
     }
 
     // V4.2.21: 移除了错误的跳过逻辑
