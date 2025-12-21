@@ -194,6 +194,7 @@ async function getFolders(
     name,
     parent_id,
     is_system,
+    system_type,
     is_archived,
     folder_group,
     sort_order,
