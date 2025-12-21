@@ -4,9 +4,31 @@
  * 提供防御性的 XSS 防护，作为后端清理的补充层
  *
  * @module utils/html-sanitizer
+ *
+ * 注意：使用惰性初始化避免 SSR 时 JSDOM 的问题
  */
 
-import DOMPurify from "isomorphic-dompurify";
+import type DOMPurifyType from "dompurify";
+
+// 惰性加载 DOMPurify，避免 SSR 时的 JSDOM 问题
+let DOMPurify: typeof DOMPurifyType | null = null;
+
+/**
+ * 获取 DOMPurify 实例（惰性初始化）
+ * 仅在客户端环境下初始化
+ */
+function getDOMPurify() {
+  if (DOMPurify) return DOMPurify;
+
+  // 仅在客户端初始化
+  if (typeof window !== "undefined") {
+    // 使用 require 动态加载，避免 SSR 时的问题
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    DOMPurify = require("dompurify").default || require("dompurify");
+  }
+
+  return DOMPurify;
+}
 
 // 允许的 HTML 标签（与后端保持一致）
 const ALLOWED_TAGS = [
@@ -143,11 +165,18 @@ const ALLOWED_ATTRS = [
 export function sanitizeHtml(html: string, preserveStyles = true): string {
   if (!html) return "";
 
+  const purify = getDOMPurify();
+
+  // SSR 环境下直接返回原始 HTML（后端已清理过）
+  if (!purify) {
+    return html;
+  }
+
   const allowedAttrs = preserveStyles
     ? ALLOWED_ATTRS
     : ALLOWED_ATTRS.filter((attr) => attr !== "style");
 
-  const result = DOMPurify.sanitize(html, {
+  const result = purify.sanitize(html, {
     ALLOWED_TAGS,
     ALLOWED_ATTR: allowedAttrs,
     ALLOW_DATA_ATTR: true,
@@ -172,11 +201,18 @@ export function sanitizeHtml(html: string, preserveStyles = true): string {
 export function sanitizeHtmlWithoutImages(html: string): string {
   if (!html) return "";
 
+  const purify = getDOMPurify();
+
+  // SSR 环境下直接返回原始 HTML（后端已清理过）
+  if (!purify) {
+    return html;
+  }
+
   const tagsWithoutImg = ALLOWED_TAGS.filter(
     (tag) => !["img", "picture", "source"].includes(tag),
   );
 
-  const result = DOMPurify.sanitize(html, {
+  const result = purify.sanitize(html, {
     ALLOWED_TAGS: tagsWithoutImg,
     ALLOWED_ATTR: ALLOWED_ATTRS,
     ALLOW_DATA_ATTR: true,
