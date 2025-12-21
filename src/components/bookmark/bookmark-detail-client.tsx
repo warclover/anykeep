@@ -48,7 +48,7 @@ import { RelatedBookmarksV2Lazy } from "@/components/bookmark/related-bookmarks-
 import { useVisionAnalysis } from "@/hooks/use-vision-analysis";
 import type { BookmarkVisionData } from "@/types/vision";
 import { hasVisionData } from "@/types/vision";
-import { UsageTagInlineEditor } from "@/components/bookmark/usage-tag-inline-editor";
+import { UnifiedTagsSection } from "@/components/bookmark/unified-tags-section";
 import { ContentTypeBadge } from "@/components/bookmark/content-type-badge";
 import type { ContentType } from "@/lib/classification/content-type-detector";
 import type { Bookmark, CustomUsageTag, Platform } from "@/types/supabase";
@@ -618,36 +618,16 @@ export function BookmarkDetailClient({
                   </div>
                 </div>
 
-                {/* === 行2：标签区（AI标签 + 用途标签） === */}
-                <div className="space-y-1.5">
-                  {/* AI 标签行 */}
-                  {bookmark.ai_tags && bookmark.ai_tags.length > 0 && (
-                    <div className="flex flex-wrap items-center gap-1.5 text-sm">
-                      <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-pink-50 dark:bg-pink-900/30 border border-pink-200 dark:border-pink-700 text-pink-600 dark:text-pink-300 font-medium text-xs">
-                        AI 标签
-                      </span>
-                      {bookmark.ai_tags.map((tag) => (
-                        <span
-                          key={tag}
-                          className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* 用途标签行 */}
-                  <UsageTagInlineEditor
-                    bookmarkId={bookmark.id}
-                    bookmarkUrl={bookmark.url}
-                    platform={bookmark.platform as Platform}
-                    selectedTags={usageTags}
-                    regularTags={regularTags}
-                    onSaveSuccess={() => router.refresh()}
-                    compact={true}
-                  />
-                </div>
+                {/* === 行2：标签区（AI标签 + 用途标签统一显示） === */}
+                <UnifiedTagsSection
+                  aiTags={bookmark.ai_tags || []}
+                  bookmarkId={bookmark.id}
+                  bookmarkUrl={bookmark.url}
+                  platform={bookmark.platform as Platform}
+                  selectedUsageTags={usageTags}
+                  regularTags={regularTags}
+                  onSaveSuccess={() => router.refresh()}
+                />
 
                 {/* === 行3：操作栏 === */}
                 <div className="flex items-center justify-between gap-2">
