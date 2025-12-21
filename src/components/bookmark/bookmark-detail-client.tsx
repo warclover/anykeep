@@ -51,7 +51,7 @@ import { hasVisionData } from "@/types/vision";
 import { UsageTagInlineEditor } from "@/components/bookmark/usage-tag-inline-editor";
 import { ContentTypeBadge } from "@/components/bookmark/content-type-badge";
 import type { ContentType } from "@/lib/classification/content-type-detector";
-import type { Bookmark, CustomUsageTag } from "@/types/supabase";
+import type { Bookmark, CustomUsageTag, Platform } from "@/types/supabase";
 import { useCustomUsageTags } from "@/hooks/use-custom-usage-tags";
 import { cn } from "@/lib/utils";
 import { getPlatformConfig } from "@/lib/platform-utils";
@@ -641,6 +641,7 @@ export function BookmarkDetailClient({
                   <UsageTagInlineEditor
                     bookmarkId={bookmark.id}
                     bookmarkUrl={bookmark.url}
+                    platform={bookmark.platform as Platform}
                     selectedTags={usageTags}
                     regularTags={regularTags}
                     onSaveSuccess={() => router.refresh()}
@@ -895,12 +896,14 @@ export function BookmarkDetailClient({
                 minStrength={0.3}
               />
 
-              {/* V4.2.1: 网页快照 */}
-              <SnapshotSectionLazy
-                bookmarkId={bookmark.id}
-                bookmarkUrl={bookmark.url}
-                defaultExpanded={false}
-              />
+              {/* V4.2.1: 网页快照（微信文章不显示，使用专用微信快照组件） */}
+              {!showWechatArticle && (
+                <SnapshotSectionLazy
+                  bookmarkId={bookmark.id}
+                  bookmarkUrl={bookmark.url}
+                  defaultExpanded={false}
+                />
+              )}
 
               {/* V4.2.2: 微信文章完整内容（仅微信公众号平台 + Feature Flag 启用时显示） */}
               {showWechatArticle && (

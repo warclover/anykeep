@@ -8,8 +8,9 @@
  * - 微妙动画：选中/取消时的视觉反馈
  * - 静默成功：成功时不显示 Toast，失败时才提示
  * - P2-010: 自动快照触发（添加特定标签时自动创建快照）
+ * - V4.2.5: 微信文章使用专用微信快照 API
  *
- * @version 1.1.0
+ * @version 1.2.0
  * @since 2025-12-14
  */
 
@@ -41,7 +42,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Award,
   Eye,
 };
-import type { CustomUsageTag } from "@/types/supabase";
+import type { CustomUsageTag, Platform } from "@/types/supabase";
 import { AddCustomUsageTagDialog } from "./add-custom-usage-tag-dialog";
 import { useCustomUsageTags } from "@/hooks/use-custom-usage-tags";
 import { useAutoSnapshot } from "@/hooks/use-auto-snapshot";
@@ -51,6 +52,8 @@ interface UsageTagInlineEditorProps {
   bookmarkId: number;
   /** 书签 URL（P2-010: 自动快照需要） */
   bookmarkUrl?: string;
+  /** 书签平台（V4.2.5: 用于判断使用哪种快照 API） */
+  platform?: Platform;
   /** 是否已有快照（P2-010: 避免重复创建） */
   hasSnapshot?: boolean;
   /** 当前已选中的用途标签值列表 */
@@ -68,6 +71,7 @@ interface UsageTagInlineEditorProps {
 export function UsageTagInlineEditor({
   bookmarkId,
   bookmarkUrl = "",
+  platform,
   hasSnapshot = false,
   selectedTags: initialSelectedTags,
   regularTags,
@@ -80,9 +84,11 @@ export function UsageTagInlineEditor({
     useState<string[]>(initialSelectedTags);
 
   // P2-010: 自动快照触发 Hook
+  // V4.2.5: 传递 platform 参数，微信文章使用专用 API
   const { checkAndTriggerSnapshot } = useAutoSnapshot({
     bookmarkId,
     bookmarkUrl,
+    platform,
     hasSnapshot,
   });
 
