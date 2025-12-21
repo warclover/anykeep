@@ -223,9 +223,9 @@ export function FoldersPageClient({
   );
 
   return (
-    <div className="h-full flex">
+    <div className="h-full flex overflow-hidden">
       {/* 桌面端：左侧导航面板 */}
-      <aside className="hidden lg:block w-[280px] flex-shrink-0 border-r border-gray-200 dark:border-gray-800">
+      <aside className="hidden lg:block w-[280px] flex-shrink-0 border-r border-gray-200 dark:border-gray-800 overflow-hidden">
         {navPanel}
       </aside>
 
@@ -237,7 +237,7 @@ export function FoldersPageClient({
       </Sheet>
 
       {/* 右侧内容区域 */}
-      <main className="flex-1 flex flex-col min-w-0">
+      <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* 移动端顶部栏 */}
         <div className="lg:hidden flex items-center gap-3 px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
           <Button
