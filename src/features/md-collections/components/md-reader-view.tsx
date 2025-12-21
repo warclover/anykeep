@@ -153,50 +153,25 @@ export function MdReaderView({
     [collection.raw_content],
   );
 
-  // 内容区 ref（用于滚动监听）
-  const contentRef = useRef<HTMLDivElement>(null);
+  // 滚动容器 ref（自身作为滚动容器，让 sticky header 正常工作）
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // 监听滚动进度（支持 window 滚动和容器滚动两种模式）
+  // 监听滚动进度（直接监听自身容器）
   useEffect(() => {
-    const handleScroll = () => {
-      // 优先检查容器滚动（适配 overflow-y-auto 父容器）
-      const scrollContainer = contentRef.current?.closest(
-        ".overflow-y-auto",
-      ) as HTMLElement | null;
+    const scrollContainer = scrollContainerRef.current;
+    if (!scrollContainer) return;
 
-      if (scrollContainer) {
-        const scrollTop = scrollContainer.scrollTop;
-        const scrollHeight =
-          scrollContainer.scrollHeight - scrollContainer.clientHeight;
-        const progress =
-          scrollHeight > 0 ? (scrollTop / scrollHeight) * 100 : 0;
-        setScrollProgress(progress);
-        setShowBackToTop(scrollTop > 300);
-      } else {
-        // 回退到 window 滚动
-        const scrollTop = window.scrollY;
-        const docHeight =
-          document.documentElement.scrollHeight - window.innerHeight;
-        const progress = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
-        setScrollProgress(progress);
-        setShowBackToTop(scrollTop > 300);
-      }
+    const handleScroll = () => {
+      const scrollTop = scrollContainer.scrollTop;
+      const scrollHeight =
+        scrollContainer.scrollHeight - scrollContainer.clientHeight;
+      const progress = scrollHeight > 0 ? (scrollTop / scrollHeight) * 100 : 0;
+      setScrollProgress(progress);
+      setShowBackToTop(scrollTop > 300);
     };
 
-    // 查找可滚动容器
-    const scrollContainer = contentRef.current?.closest(
-      ".overflow-y-auto",
-    ) as HTMLElement | null;
-
-    if (scrollContainer) {
-      scrollContainer.addEventListener("scroll", handleScroll, {
-        passive: true,
-      });
-      return () => scrollContainer.removeEventListener("scroll", handleScroll);
-    } else {
-      window.addEventListener("scroll", handleScroll, { passive: true });
-      return () => window.removeEventListener("scroll", handleScroll);
-    }
+    scrollContainer.addEventListener("scroll", handleScroll, { passive: true });
+    return () => scrollContainer.removeEventListener("scroll", handleScroll);
   }, []);
 
   // 全屏切换
@@ -220,17 +195,9 @@ export function MdReaderView({
       document.removeEventListener("fullscreenchange", handleFullscreenChange);
   }, []);
 
-  // 滚动到顶部（支持容器滚动）
+  // 滚动到顶部
   const scrollToTop = useCallback(() => {
-    const scrollContainer = contentRef.current?.closest(
-      ".overflow-y-auto",
-    ) as HTMLElement | null;
-
-    if (scrollContainer) {
-      scrollContainer.scrollTo({ top: 0, behavior: "smooth" });
-    } else {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
+    scrollContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
   // 滚动到锚点
@@ -258,9 +225,9 @@ export function MdReaderView({
 
   return (
     <div
-      ref={contentRef}
+      ref={scrollContainerRef}
       className={cn(
-        "relative min-h-screen bg-white dark:bg-gray-950",
+        "relative h-full overflow-y-auto bg-white dark:bg-gray-950",
         className,
       )}
     >
