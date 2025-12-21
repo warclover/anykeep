@@ -3,6 +3,13 @@
  *
  * @module wechat-article
  * @description 微信公众号文章完整内容展示组件
+ *
+ * Phase 4 升级：阅读器增强
+ * - 字体大小调节
+ * - 阅读主题切换
+ * - 目录导航
+ * - 阅读进度显示
+ * - 复制全文功能
  */
 
 "use client";
@@ -19,18 +26,28 @@ import {
   FileText,
   ExternalLink,
   MoreHorizontal,
+  Download,
+  FileDown,
+  Trash2,
 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { useWechatArticle } from "./hooks/use-wechat-article";
 import { useWechatArticleCrawl } from "./hooks/use-wechat-article-crawl";
+import { useReaderSettings } from "./hooks/use-reader-settings";
+import { useReadingProgress } from "./hooks/use-reading-progress";
+import { useToc } from "./hooks/use-toc";
+import { useStylePreferences } from "./hooks/use-style-preferences";
 import { WechatArticleImages } from "./wechat-article-images";
 import { WechatArticleStatus } from "./wechat-article-status";
+import { ReaderToolbar } from "./reader-toolbar";
+import { StyleSelector } from "./style-selector";
 
 // =============================================================================
 // 类型定义
@@ -49,6 +66,8 @@ export interface WechatArticleViewerProps {
   maxHeight?: string;
   /** 自定义类名 */
   className?: string;
+  /** 删除成功回调 */
+  onDeleted?: () => void;
 }
 
 type ViewMode = "article" | "markdown" | "images";
@@ -71,11 +90,14 @@ export function WechatArticleViewer({
   bookmarkId: _bookmarkId,
   originalUrl,
   autoFetch = false,
-  maxHeight = "600px",
+  maxHeight,
   className,
+  onDeleted,
 }: WechatArticleViewerProps) {
   const [viewMode, setViewMode] = useState<ViewMode>("article");
+  const [isDeleting, setIsDeleting] = useState(false);
   const hasAutoFetchedRef = useRef(false);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   // 数据获取
   const {
@@ -93,7 +115,31 @@ export function WechatArticleViewer({
     },
   );
 
-  // 首次自动抓取
+  // Phase 4 升级：阅读器增强
+  const {
+    settings: readerSettings,
+    setFontSize,
+    setTheme,
+    getContentStyle,
+  } = useReaderSettings();
+
+  // Phase 4 升级：阅读进度
+  const { progress: readingProgress } = useReadingProgress({
+    containerRef: contentRef,
+  });
+
+  // Phase 4 升级：目录导航
+  const { items: tocItems, scrollToHeading } = useToc(article?.html);
+
+  // 样式选项升级：用户偏好
+  const {
+    styleLevel,
+    setStyleLevel,
+    preferences,
+    setRememberChoice,
+  } = useStylePreferences();
+
+  // 首次自动抓取（使用用户偏好的 styleLevel）
   useEffect(() => {
     if (
       autoFetch &&
@@ -103,14 +149,71 @@ export function WechatArticleViewer({
       !isCrawling
     ) {
       hasAutoFetchedRef.current = true;
-      crawl();
+      crawl({ styleLevel });
     }
-  }, [autoFetch, article, isLoading, isCrawling, crawl]);
+  }, [autoFetch, article, isLoading, isCrawling, crawl, styleLevel]);
 
   // 打开原始链接
   const handleOpenOriginal = useCallback(() => {
     window.open(originalUrl, "_blank", "noopener,noreferrer");
   }, [originalUrl]);
+
+  // Phase 4 升级：复制全文
+  const handleCopyText = useCallback(() => {
+    if (!article?.markdown && !article?.html) return;
+
+    // 优先使用 markdown，否则从 HTML 提取纯文本
+    let textToCopy = article.markdown;
+    if (!textToCopy && article.html) {
+      const tempDiv = document.createElement("div");
+      tempDiv.innerHTML = article.html;
+      textToCopy = tempDiv.textContent || tempDiv.innerText || "";
+    }
+
+    if (textToCopy) {
+      navigator.clipboard.writeText(textToCopy).catch(console.error);
+    }
+  }, [article]);
+
+  // Phase 6 升级：导出处理
+  const handleExport = useCallback(
+    (format: "markdown" | "pdf") => {
+      const url = `/api/wechat-article/${snapshotId}/export?format=${format}`;
+      window.open(url, "_blank");
+    },
+    [snapshotId],
+  );
+
+  // 删除快照
+  const handleDelete = useCallback(async () => {
+    if (isDeleting) return;
+
+    // 确认删除
+    const confirmed = window.confirm(
+      "确定要删除快照吗？删除后可重新获取以更新排版样式。",
+    );
+    if (!confirmed) return;
+
+    try {
+      setIsDeleting(true);
+      const response = await fetch(`/api/snapshots/${snapshotId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error?.message || "删除失败");
+      }
+
+      // 通知父组件
+      onDeleted?.();
+    } catch (err) {
+      console.error("[WechatArticleViewer] Delete failed:", err);
+      alert(err instanceof Error ? err.message : "删除失败");
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [snapshotId, isDeleting, onDeleted]);
 
   // ==========================================================================
   // 加载状态
@@ -159,7 +262,17 @@ export function WechatArticleViewer({
               <p className="text-sm text-muted-foreground">
                 文章完整内容尚未抓取
               </p>
-              <Button onClick={() => crawl()} disabled={isCrawling} size="sm">
+              {/* 样式选项升级：抓取前选择样式级别 */}
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <StyleSelector
+                  value={styleLevel}
+                  onChange={setStyleLevel}
+                  rememberChoice={preferences.rememberChoice}
+                  onRememberChoiceChange={setRememberChoice}
+                  disabled={isCrawling}
+                />
+              </div>
+              <Button onClick={() => crawl({ styleLevel })} disabled={isCrawling} size="sm">
                 {isCrawling ? (
                   <>
                     <RefreshCw className="mr-2 size-4 animate-spin" />
@@ -237,6 +350,28 @@ export function WechatArticleViewer({
 
           {/* 操作菜单 */}
           <div className="flex items-center gap-1">
+            {/* 样式选项升级：已有内容时显示当前样式级别 */}
+            <StyleSelector
+              value={article.styleLevel || styleLevel}
+              onChange={setStyleLevel}
+              rememberChoice={preferences.rememberChoice}
+              onRememberChoiceChange={setRememberChoice}
+              disabled={isCrawling}
+            />
+
+            {/* Phase 4 升级：阅读器工具栏 */}
+            {(viewMode === "article" || viewMode === "markdown") && (
+              <ReaderToolbar
+                settings={readerSettings}
+                onFontSizeChange={setFontSize}
+                onThemeChange={setTheme}
+                tocItems={tocItems}
+                onTocClick={scrollToHeading}
+                progress={readingProgress}
+                onCopyText={handleCopyText}
+              />
+            )}
+
             <Button
               variant="ghost"
               size="sm"
@@ -255,18 +390,42 @@ export function WechatArticleViewer({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
-                  onClick={() => refetch({ redownloadImages: true })}
+                  onClick={() => refetch({ redownloadImages: true, styleLevel })}
                   disabled={isCrawling}
                 >
                   <RefreshCw className="size-4 mr-2" />
                   重新获取
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onClick={() => refetch({ imagesOnly: true })}
+                  onClick={() => refetch({ imagesOnly: true, styleLevel })}
                   disabled={isCrawling}
                 >
                   <ImageIcon className="size-4 mr-2" />
                   仅更新图片
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator />
+
+                {/* Phase 6 升级：导出功能 */}
+                <DropdownMenuItem onClick={() => handleExport("markdown")}>
+                  <Download className="size-4 mr-2" />
+                  导出 Markdown
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport("pdf")}>
+                  <FileDown className="size-4 mr-2" />
+                  导出 PDF
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator />
+
+                {/* 删除快照 */}
+                <DropdownMenuItem
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                  className="text-red-600 focus:text-red-600"
+                >
+                  <Trash2 className="size-4 mr-2" />
+                  {isDeleting ? "删除中..." : "删除快照"}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -276,27 +435,61 @@ export function WechatArticleViewer({
 
       {/* 内容区 */}
       <CardContent className="p-0">
-        <ScrollArea style={{ maxHeight }} className="px-6">
-          {/* 文章视图 */}
-          {viewMode === "article" && (
-            <article
-              className="prose prose-sm dark:prose-invert max-w-none py-4"
-              dangerouslySetInnerHTML={{ __html: article.html }}
-            />
-          )}
+        {maxHeight ? (
+          <ScrollArea className="px-6" style={{ maxHeight }}>
+            <div ref={contentRef}>
+              {/* 文章视图 */}
+              {viewMode === "article" && (
+                <article
+                  className="prose prose-sm dark:prose-invert max-w-none py-4"
+                  style={getContentStyle()}
+                  dangerouslySetInnerHTML={{ __html: article.html }}
+                />
+              )}
 
-          {/* Markdown 视图 */}
-          {viewMode === "markdown" && article.markdown && (
-            <div className="prose prose-sm dark:prose-invert max-w-none py-4 whitespace-pre-wrap">
-              {article.markdown}
+              {/* Markdown 视图 */}
+              {viewMode === "markdown" && article.markdown && (
+                <div
+                  className="prose prose-sm dark:prose-invert max-w-none py-4 whitespace-pre-wrap"
+                  style={getContentStyle()}
+                >
+                  {article.markdown}
+                </div>
+              )}
+
+              {/* 图片画廊 */}
+              {viewMode === "images" && hasImages && (
+                <WechatArticleImages images={article.images} className="py-4" />
+              )}
             </div>
-          )}
+          </ScrollArea>
+        ) : (
+          <div ref={contentRef} className="px-6">
+            {/* 文章视图 - 无高度限制 */}
+            {viewMode === "article" && (
+              <article
+                className="prose prose-sm dark:prose-invert max-w-none py-4"
+                style={getContentStyle()}
+                dangerouslySetInnerHTML={{ __html: article.html }}
+              />
+            )}
 
-          {/* 图片画廊 */}
-          {viewMode === "images" && hasImages && (
-            <WechatArticleImages images={article.images} className="py-4" />
-          )}
-        </ScrollArea>
+            {/* Markdown 视图 */}
+            {viewMode === "markdown" && article.markdown && (
+              <div
+                className="prose prose-sm dark:prose-invert max-w-none py-4 whitespace-pre-wrap"
+                style={getContentStyle()}
+              >
+                {article.markdown}
+              </div>
+            )}
+
+            {/* 图片画廊 */}
+            {viewMode === "images" && hasImages && (
+              <WechatArticleImages images={article.images} className="py-4" />
+            )}
+          </div>
+        )}
       </CardContent>
 
       {/* 元信息 */}

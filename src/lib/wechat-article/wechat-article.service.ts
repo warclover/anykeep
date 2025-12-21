@@ -32,11 +32,14 @@ interface ExtendedSnapshot {
   readable_title?: string | null;
   readable_word_count: number | null;
   original_url: string | null;
+  original_html?: string | null;
   content_version?: number;
   content_markdown?: string | null;
+  processed_html?: string | null;
   article_images?: unknown[];
   images_status?: string;
   images_stats?: Record<string, number>;
+  style_preserve_level?: string;
   bookmarks?: { url: string; platform: string };
 }
 import type {
@@ -45,6 +48,7 @@ import type {
   RefetchOptions,
   RefetchResult,
   WechatArticleImage,
+  CrawlOptions,
 } from "./wechat-article.types";
 import {
   processWechatContent,
@@ -56,7 +60,11 @@ import {
   calculateImagesStats,
   getImagesStatus,
 } from "./processors/image.processor";
-import { ERROR_CODES } from "./wechat-article.config";
+import { processStylesInline } from "./processors/style.processor";
+import {
+  ERROR_CODES,
+  DEFAULT_STYLE_PRESERVE_LEVEL,
+} from "./wechat-article.config";
 
 // =============================================================================
 // 服务类
@@ -75,14 +83,19 @@ export class WechatArticleService {
   /**
    * 抓取微信文章完整内容
    *
+   * 样式选项升级：支持 text-only / full-snapshot 两种级别
+   *
    * @param snapshotId - 现有快照 ID（必须已有 basic 快照）
+   * @param options - 抓取选项（包含 styleLevel）
    * @param onProgress - 进度回调
    * @returns 处理后的文章内容
    */
   async crawlFullContent(
     snapshotId: number,
+    options: CrawlOptions = {},
     onProgress?: (progress: WechatArticleCrawlProgress) => void,
   ): Promise<WechatArticleContent> {
+    const { styleLevel = DEFAULT_STYLE_PRESERVE_LEVEL } = options;
     const supabase = await createServiceClient();
 
     try {
@@ -99,6 +112,7 @@ export class WechatArticleService {
           readable_text_content,
           readable_word_count,
           original_url,
+          original_html,
           bookmarks!inner(url, platform)
         `,
         )
@@ -117,15 +131,32 @@ export class WechatArticleService {
         throw new Error(ERROR_CODES.NOT_WECHAT_ARTICLE);
       }
 
-      // 3. 处理正文内容
+      // 3. 准备内容源
+      // 优先使用 original_html（含 <style> 标签），回退到 readable_content
+      let sourceHtml = snapshotData.readable_content || "";
+
+      if (snapshotData.original_html) {
+        // 使用原始 HTML，并内联 CSS 样式
+        sourceHtml = processStylesInline(snapshotData.original_html);
+        console.log(
+          "[WechatArticleService] Using original_html with CSS inlining",
+        );
+      } else {
+        console.log(
+          "[WechatArticleService] Fallback to readable_content (no original_html)",
+        );
+      }
+
+      // 4. 处理正文内容（传入 styleLevel）
       onProgress?.({ stage: "parsing", progress: 30 });
 
       const content = await processWechatContent(
-        snapshotData.readable_content || "",
+        sourceHtml,
         snapshotData.original_url || "",
+        { styleLevel },
       );
 
-      // 4. 持久化图片
+      // 5. 持久化图片
       if (content.images.length > 0) {
         onProgress?.({
           stage: "images",
@@ -152,7 +183,7 @@ export class WechatArticleService {
         content.html = replaceImageUrls(content.html, persistedImages);
       }
 
-      // 5. 更新快照记录
+      // 5. 更新快照记录（包含 styleLevel 和处理后的 HTML）
       onProgress?.({ stage: "saving", progress: 95 });
 
       const imagesStats = calculateImagesStats(content.images);
@@ -161,10 +192,12 @@ export class WechatArticleService {
       const { error: updateError } = await supabase
         .from("bookmark_snapshots")
         .update({
+          processed_html: content.html,
           content_markdown: content.markdown,
           article_images: content.images as unknown as Json,
           images_status: imagesStatus,
           images_stats: imagesStats as unknown as Json,
+          style_preserve_level: styleLevel,
           updated_at: new Date().toISOString(),
         })
         .eq("id", snapshotId);
@@ -232,9 +265,11 @@ export class WechatArticleService {
     // 类型断言
     const snapshotData = snapshot as unknown as ExtendedSnapshot;
 
-    // 2. 仅更新图片模式
+    // 2. 仅更新图片模式（传递 styleLevel）
     if (options.imagesOnly) {
-      const result = await this.crawlFullContent(snapshotId);
+      const result = await this.crawlFullContent(snapshotId, {
+        styleLevel: options.styleLevel,
+      });
       const imagesUpdated = result.images.filter(
         (i) => i.status === "success",
       ).length;
@@ -246,6 +281,40 @@ export class WechatArticleService {
         changes: {
           title: false,
           content: false,
+          wordCount: false,
+          imagesUpdated,
+        },
+      };
+    }
+
+    // 2.5 重新下载模式：强制重新处理内容（不检查变化）
+    if (options.redownloadImages) {
+      const newVersion = (snapshotData.content_version || 1) + 1;
+
+      // 更新版本号
+      await supabase
+        .from("bookmark_snapshots")
+        .update({
+          content_version: newVersion,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", snapshotId);
+
+      // 强制重新处理内容（会生成 processed_html）
+      const result = await this.crawlFullContent(snapshotId, {
+        styleLevel: options.styleLevel,
+      });
+      const imagesUpdated = result.images.filter(
+        (i) => i.status === "success",
+      ).length;
+
+      return {
+        success: true,
+        contentChanged: true,
+        newVersion,
+        changes: {
+          title: false,
+          content: true,
           wordCount: false,
           imagesUpdated,
         },
@@ -293,15 +362,6 @@ export class WechatArticleService {
       throw new Error(ERROR_CODES.REFETCH_FAILED);
     }
 
-    // 6. 重新处理图片（如果需要）
-    let imagesUpdated = 0;
-    if (options.redownloadImages) {
-      const result = await this.crawlFullContent(snapshotId);
-      imagesUpdated = result.images.filter(
-        (i) => i.status === "success",
-      ).length;
-    }
-
     return {
       success: true,
       contentChanged,
@@ -310,13 +370,16 @@ export class WechatArticleService {
         title: false, // 暂不支持标题对比
         content: contentChanged,
         wordCount: false, // 暂不支持字数对比
-        imagesUpdated,
+        imagesUpdated: 0,
       },
     };
   }
 
   /**
    * 获取微信文章内容（用于展示）
+   *
+   * 样式选项升级：返回存储的 styleLevel
+   * 内容完整性修复：优先返回 processed_html，其次返回 readable_content
    *
    * @param snapshotId - 快照 ID
    * @returns 文章内容，如果不存在返回 null
@@ -334,8 +397,10 @@ export class WechatArticleService {
         readable_text_content,
         readable_word_count,
         content_markdown,
+        processed_html,
         article_images,
-        images_status
+        images_status,
+        style_preserve_level
       `,
       )
       .eq("id", snapshotId)
@@ -348,12 +413,21 @@ export class WechatArticleService {
     // 类型断言
     const snapshotData = snapshot as unknown as ExtendedSnapshot;
 
+    // 优先使用处理后的 HTML，其次使用原始 readable_content
+    const htmlContent =
+      snapshotData.processed_html || snapshotData.readable_content || "";
+
     return {
-      html: snapshotData.readable_content || "",
+      html: htmlContent,
       text: snapshotData.readable_text_content || "",
       markdown: snapshotData.content_markdown || null,
       images: (snapshotData.article_images as WechatArticleImage[]) || [],
       wordCount: snapshotData.readable_word_count || 0,
+      styleLevel:
+        (snapshotData.style_preserve_level as
+          | "text-only"
+          | "full-snapshot"
+          | undefined) || undefined,
     };
   }
 
@@ -368,7 +442,7 @@ export class WechatArticleService {
 
     const { data, error } = await supabase
       .from("bookmark_snapshots")
-      .select("images_status, content_markdown")
+      .select("images_status, content_markdown, processed_html")
       .eq("id", snapshotId)
       .single();
 
@@ -379,8 +453,9 @@ export class WechatArticleService {
     // 类型断言
     const snapshotData = data as unknown as ExtendedSnapshot;
 
-    // 有 Markdown 内容或图片已处理，认为有完整内容
+    // 有处理后的 HTML、Markdown 内容或图片已处理，认为有完整内容
     return !!(
+      snapshotData.processed_html ||
       snapshotData.content_markdown ||
       ["completed", "partial"].includes(snapshotData.images_status || "")
     );

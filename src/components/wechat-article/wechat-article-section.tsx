@@ -273,8 +273,11 @@ export function WechatArticleSection({
       bookmarkId={bookmarkId}
       originalUrl={bookmarkUrl}
       autoFetch={false}
-      maxHeight="500px"
       className={className}
+      onDeleted={() => {
+        // 删除成功后重置状态，显示重新获取按钮
+        setSnapshot(null);
+      }}
     />
   );
 }

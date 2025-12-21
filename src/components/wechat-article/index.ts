@@ -32,10 +32,18 @@ export type { WechatArticleImagesProps } from "./wechat-article-images";
 export { WechatArticleStatus } from "./wechat-article-status";
 export type { WechatArticleStatusProps } from "./wechat-article-status";
 
+// 样式选项升级：样式选择器组件
+export { StyleSelector, StyleSelectorCompact } from "./style-selector";
+export type { StyleSelectorProps } from "./style-selector";
+
 // Hooks
 export { useWechatArticle } from "./hooks/use-wechat-article";
 export { useWechatArticleCrawl } from "./hooks/use-wechat-article-crawl";
 export type { UseWechatArticleCrawlOptions } from "./hooks/use-wechat-article-crawl";
+
+// 样式选项升级：用户偏好 Hook
+export { useStylePreferences } from "./hooks/use-style-preferences";
+export type { UseStylePreferencesReturn } from "./hooks/use-style-preferences";
 
 // 默认导出
 export { WechatArticleViewer as default } from "./wechat-article-viewer";

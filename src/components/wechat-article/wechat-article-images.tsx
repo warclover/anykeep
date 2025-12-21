@@ -6,11 +6,11 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Reserved for future optimization
 import Image from "next/image";
 import { cn } from "@/lib/utils";
-import { AlertCircle, CheckCircle2, ImageOff, Download } from "lucide-react";
+import { AlertCircle, CheckCircle2, ImageOff, Download, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -46,6 +46,7 @@ export function WechatArticleImages({
     null,
   );
   const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
+  const [retryKeys, setRetryKeys] = useState<Record<string, number>>({});
 
   if (!images || images.length === 0) {
     return (
@@ -66,10 +67,26 @@ export function WechatArticleImages({
     setImageErrors((prev) => new Set(prev).add(originalUrl));
   };
 
+  // 重试加载图片
+  const handleRetry = useCallback((originalUrl: string) => {
+    // 清除错误状态
+    setImageErrors((prev) => {
+      const next = new Set(prev);
+      next.delete(originalUrl);
+      return next;
+    });
+    // 更新 key 强制重新渲染
+    setRetryKeys((prev) => ({
+      ...prev,
+      [originalUrl]: (prev[originalUrl] || 0) + 1,
+    }));
+  }, []);
+
   // 获取显示 URL
-  const getDisplayUrl = (image: WechatArticleImage): string => {
+  // 优先使用已持久化的 URL，否则使用原始 URL（配合 referrerPolicy="no-referrer" 解决防盗链）
+  const getDisplayUrl = useCallback((image: WechatArticleImage): string => {
     return image.persistedUrl || image.originalUrl;
-  };
+  }, []);
 
   // 下载图片
   const handleDownload = async (image: WechatArticleImage) => {
@@ -104,10 +121,11 @@ export function WechatArticleImages({
           const hasError = imageErrors.has(image.originalUrl);
           const isFailed = image.status === "failed" || hasError;
           const isFallback = image.status === "fallback";
+          const retryKey = retryKeys[image.originalUrl] || 0;
 
           return (
             <div
-              key={image.originalUrl}
+              key={`${image.originalUrl}-${retryKey}`}
               className={cn(
                 "relative aspect-square rounded-lg overflow-hidden border cursor-pointer",
                 "hover:ring-2 hover:ring-primary/50 transition-all",
@@ -123,11 +141,24 @@ export function WechatArticleImages({
                   alt={image.alt || `图片 ${index + 1}`}
                   className="w-full h-full object-cover"
                   loading="lazy"
+                  referrerPolicy="no-referrer"
                   onError={() => handleImageError(image.originalUrl)}
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center bg-muted">
-                  <ImageOff className="size-8 text-muted-foreground" />
+                <div className="w-full h-full flex flex-col items-center justify-center bg-muted gap-2">
+                  <ImageOff className="size-6 text-muted-foreground" />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRetry(image.originalUrl);
+                    }}
+                  >
+                    <RefreshCw className="size-3 mr-1" />
+                    重试
+                  </Button>
                 </div>
               )}
 
@@ -193,6 +224,7 @@ export function WechatArticleImages({
                 src={getDisplayUrl(selectedImage)}
                 alt={selectedImage.alt || "图片预览"}
                 className="max-w-full max-h-[70vh] mx-auto"
+                referrerPolicy="no-referrer"
               />
               {selectedImage.fileSize && (
                 <div className="mt-2 text-center text-sm text-muted-foreground">

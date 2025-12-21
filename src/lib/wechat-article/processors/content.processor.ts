@@ -17,33 +17,136 @@ import {
 import type {
   WechatArticleContent,
   WechatArticleImage,
+  MediaElement,
+  CrawlOptions,
 } from "../wechat-article.types";
 import {
   ALLOWED_HTML_TAGS,
   ALLOWED_HTML_ATTRS,
   DEFAULT_CRAWL_CONFIG,
+  DEFAULT_STYLE_PRESERVE_LEVEL,
+  getStylePropertiesByLevel,
+  getDangerousValuesByLevel,
+  type StylePreserveLevel,
 } from "../wechat-article.config";
 import { extractImages } from "./image.processor";
+import { processMediaElements } from "./media.processor";
 
 // =============================================================================
 // HTML 清理
 // =============================================================================
 
 /**
- * 清理微信文章 HTML
+ * 清理单个 style 属性值
  *
- * 保留正文结构，移除：
- * - 脚本和样式
- * - 追踪代码
- * - 空白节点
- * - 危险属性
+ * 保留安全的样式属性，移除危险内容
+ * Phase 1 升级：样式保留功能
+ * 样式选项升级：支持 text-only / full-snapshot 两种级别
+ *
+ * @param styleValue - 原始 style 属性值
+ * @param styleLevel - 样式保留级别
+ * @returns 清理后的安全样式字符串
  */
-function sanitizeWechatHtml(html: string): string {
+function sanitizeStyleAttribute(
+  styleValue: string,
+  styleLevel: StylePreserveLevel = DEFAULT_STYLE_PRESERVE_LEVEL,
+): string {
+  if (!styleValue) return "";
+
+  // 根据级别获取属性白名单和危险值黑名单
+  const allowedProperties = getStylePropertiesByLevel(styleLevel);
+  const dangerousValues = getDangerousValuesByLevel(styleLevel);
+
+  // 解析 style 为键值对
+  const styles = styleValue.split(";").filter(Boolean);
+  const safeStyles: string[] = [];
+
+  for (const style of styles) {
+    const colonIndex = style.indexOf(":");
+    if (colonIndex === -1) continue;
+
+    const prop = style.substring(0, colonIndex).trim().toLowerCase();
+    const value = style.substring(colonIndex + 1).trim();
+
+    if (!prop || !value) continue;
+
+    // 检查属性是否在白名单中
+    if (!allowedProperties.includes(prop)) continue;
+
+    // 检查值是否包含危险内容
+    const isDangerous = dangerousValues.some((pattern) => pattern.test(value));
+    if (isDangerous) continue;
+
+    // full-snapshot 模式下，额外检查 background 属性的 url()
+    // （基础危险值已经包含 url() 过滤，但这里做双重保护）
+    if (
+      styleLevel === "full-snapshot" &&
+      (prop === "background" || prop === "background-image")
+    ) {
+      if (/url\s*\(/i.test(value)) continue;
+    }
+
+    safeStyles.push(`${prop}: ${value}`);
+  }
+
+  return safeStyles.join("; ");
+}
+
+/**
+ * 清理 HTML 并保留安全的样式
+ *
+ * 样式选项升级：支持 text-only / full-snapshot 两种级别
+ *
+ * @param html - 原始 HTML
+ * @param styleLevel - 样式保留级别
+ * @returns 清理后的 HTML（保留对应级别的样式）
+ */
+function sanitizeHtmlWithStyles(
+  html: string,
+  styleLevel: StylePreserveLevel = DEFAULT_STYLE_PRESERVE_LEVEL,
+): string {
   if (!html) return "";
 
   let result = html;
 
-  // 1. 移除脚本和样式
+  // 清理所有 style 属性，只保留安全的样式
+  result = result.replace(/style="([^"]*)"/gi, (_match, styleValue) => {
+    const safeStyle = sanitizeStyleAttribute(styleValue, styleLevel);
+    return safeStyle ? `style="${safeStyle}"` : "";
+  });
+
+  // 清理 style='...' 单引号格式
+  result = result.replace(/style='([^']*)'/gi, (_match, styleValue) => {
+    const safeStyle = sanitizeStyleAttribute(styleValue, styleLevel);
+    return safeStyle ? `style="${safeStyle}"` : "";
+  });
+
+  return result;
+}
+
+/**
+ * 清理微信文章 HTML
+ *
+ * 保留正文结构，移除：
+ * - 脚本和样式标签（<style>/<script>）
+ * - 追踪代码
+ * - 空白节点
+ * - 危险属性
+ *
+ * 注意：inline style 属性通过 sanitizeHtmlWithStyles 单独处理
+ *
+ * @param html - 原始 HTML
+ * @param styleLevel - 样式保留级别
+ */
+function sanitizeWechatHtml(
+  html: string,
+  styleLevel: StylePreserveLevel = DEFAULT_STYLE_PRESERVE_LEVEL,
+): string {
+  if (!html) return "";
+
+  let result = html;
+
+  // 1. 移除脚本和样式标签
   result = removeScriptsAndStyles(result);
 
   // 2. 移除微信追踪元素
@@ -57,11 +160,8 @@ function sanitizeWechatHtml(html: string): string {
   // 4. 移除 data-* 属性（保留 data-src）
   result = result.replace(/\s+data-(?!src)[a-z-]+="[^"]*"/gi, "");
 
-  // 5. 移除 style 属性中的危险内容
-  result = result.replace(
-    /style="[^"]*(?:javascript|expression|url\s*\()[^"]*"/gi,
-    'style=""',
-  );
+  // 5. 清理 inline style（根据级别保留样式）- 样式选项升级
+  result = sanitizeHtmlWithStyles(result, styleLevel);
 
   // 6. 移除事件处理器
   result = result.replace(/\s+on\w+="[^"]*"/gi, "");
@@ -75,26 +175,40 @@ function sanitizeWechatHtml(html: string): string {
 /**
  * 使用 DOMPurify 清理 HTML（如果可用）
  *
+ * Phase 1 升级：在 DOMPurify 处理后，额外清理 style 属性保留安全样式
+ * 样式选项升级：支持 text-only / full-snapshot 两种级别
+ *
  * 注意：此函数需要在 Node.js 环境中使用 isomorphic-dompurify
+ *
+ * @param html - 原始 HTML
+ * @param styleLevel - 样式保留级别
  */
-async function purifyHtml(html: string): Promise<string> {
+async function purifyHtml(
+  html: string,
+  styleLevel: StylePreserveLevel = DEFAULT_STYLE_PRESERVE_LEVEL,
+): Promise<string> {
   try {
     // 动态导入以支持服务端渲染
     const DOMPurify = (await import("isomorphic-dompurify")).default;
 
-    return DOMPurify.sanitize(html, {
+    // 使用 DOMPurify 清理 HTML
+    let purified = DOMPurify.sanitize(html, {
       ALLOWED_TAGS: ALLOWED_HTML_TAGS,
       ALLOWED_ATTR: ALLOWED_HTML_ATTRS,
       ALLOW_DATA_ATTR: true,
       KEEP_CONTENT: true,
     });
+
+    // 样式选项升级：根据级别清理 style 属性
+    purified = sanitizeHtmlWithStyles(purified, styleLevel);
+
+    return purified;
   } catch {
     // DOMPurify 不可用时使用基础清理
-    // Note: Using error level because ESLint rules restrict console methods
     console.error(
       "[ContentProcessor] DOMPurify not available, using basic sanitization",
     );
-    return sanitizeWechatHtml(html);
+    return sanitizeWechatHtml(html, styleLevel);
   }
 }
 
@@ -122,7 +236,27 @@ function convertDataSrcToSrc(html: string): string {
 }
 
 /**
+ * 为所有 img 标签添加防盗链属性
+ *
+ * 添加 referrerPolicy="no-referrer" 绕过微信防盗链检测
+ * 注意：不使用 crossOrigin="anonymous"，因为它会触发 CORS 检查导致失败
+ */
+function addImageReferrerPolicy(html: string): string {
+  return html.replace(/<img([^>]*)>/gi, (match, attrs) => {
+    // 如果已有 referrerpolicy 属性，跳过
+    if (/referrerpolicy/i.test(attrs)) {
+      return match;
+    }
+    // 只添加 referrerPolicy 属性
+    return `<img${attrs} referrerpolicy="no-referrer">`;
+  });
+}
+
+/**
  * 替换图片 URL 为持久化 URL
+ *
+ * 优先使用已持久化的 Supabase Storage URL
+ * 未持久化的图片保持原 URL（配合 referrerPolicy="no-referrer" 解决防盗链）
  */
 export function replaceImageUrls(
   html: string,
@@ -131,14 +265,17 @@ export function replaceImageUrls(
   let result = html;
 
   for (const img of images) {
-    if (img.persistedUrl && img.status !== "failed") {
-      // 替换 src 和 data-src
+    // 只替换成功持久化的图片 URL
+    if (img.persistedUrl && img.status === "success") {
       result = result.replace(
         new RegExp(`(src|data-src)="${escapeRegExp(img.originalUrl)}"`, "g"),
         `$1="${img.persistedUrl}"`,
       );
     }
   }
+
+  // 为所有图片添加 referrerPolicy（解决防盗链）
+  result = addImageReferrerPolicy(result);
 
   return result;
 }
@@ -231,21 +368,31 @@ function htmlToMarkdown(html: string): string {
 /**
  * 处理微信文章内容
  *
+ * Phase 3 升级：增加媒体元素处理
+ * 样式选项升级：支持 text-only / full-snapshot 两种级别
+ *
  * @param html - 原始 HTML（通常来自 readable_content）
  * @param originalUrl - 原始 URL（用于解析相对路径）
+ * @param options - 处理选项
+ * @param options.styleLevel - 样式保留级别
  * @returns 处理后的文章内容
  */
 export async function processWechatContent(
   html: string,
   _originalUrl: string,
+  options: CrawlOptions = {},
 ): Promise<WechatArticleContent> {
+  const { styleLevel = DEFAULT_STYLE_PRESERVE_LEVEL } = options;
+
   if (!html) {
     return {
       html: "",
       text: "",
       markdown: null,
       images: [],
+      media: [],
       wordCount: 0,
+      styleLevel,
     };
   }
 
@@ -255,21 +402,25 @@ export async function processWechatContent(
   // 2. 转换 data-src 为 src
   const withSrc = convertDataSrcToSrc(mainContent);
 
-  // 3. 清理 HTML（使用 DOMPurify 如果可用）
-  const cleanedHtml = await purifyHtml(withSrc);
+  // 3. Phase 3 升级：处理媒体元素（在清理 HTML 之前，保留占位卡片）
+  const { html: htmlWithMediaPlaceholders, media } =
+    processMediaElements(withSrc);
 
-  // 4. 提取图片列表
+  // 4. 清理 HTML（使用 DOMPurify 如果可用，根据 styleLevel 保留样式）
+  const cleanedHtml = await purifyHtml(htmlWithMediaPlaceholders, styleLevel);
+
+  // 5. 提取图片列表
   const images = extractImages(cleanedHtml);
 
-  // 5. 提取纯文本
+  // 6. 提取纯文本
   let text = stripHtmlTags(cleanedHtml);
   text = decodeHtmlEntities(text);
   text = text.replace(/\s+/g, " ").trim();
 
-  // 6. 计算字数
+  // 7. 计算字数
   const wordCount = extractWordCount(html);
 
-  // 7. 转换为 Markdown（如果启用）
+  // 8. 转换为 Markdown（如果启用）
   let markdown: string | null = null;
   if (DEFAULT_CRAWL_CONFIG.enableMarkdown) {
     markdown = htmlToMarkdown(cleanedHtml);
@@ -280,7 +431,9 @@ export async function processWechatContent(
     text,
     markdown,
     images,
+    media,
     wordCount,
+    styleLevel,
   };
 }
 

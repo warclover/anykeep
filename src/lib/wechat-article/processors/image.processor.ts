@@ -13,13 +13,80 @@ import {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Reserved for future host validation
   ALLOWED_IMAGE_HOSTS,
   IMAGE_FETCH_HEADERS,
+  IMAGE_REFERER_LIST,
   generateImageStoragePath,
   getExtFromMime,
+  getProxyUrl,
 } from "../wechat-article.config";
 
 // =============================================================================
 // 图片提取
 // =============================================================================
+
+/**
+ * 优化微信图片 URL，获取高清原图
+ *
+ * 微信图片 URL 参数说明：
+ * - wx_fmt: 图片格式（jpeg/png/gif）
+ * - tp=webp: 转换为 webp（压缩）
+ * - wx_lazy=1: 懒加载标记
+ * - wx_co=1: 原图参数（关键！）
+ * - wxfrom: 来源标记
+ *
+ * Phase 2 升级：获取原图质量
+ */
+export function optimizeWechatImageUrl(url: string): string {
+  if (!url.includes("mmbiz.qpic.cn")) return url;
+
+  try {
+    const urlObj = new URL(url);
+
+    // 移除压缩参数
+    urlObj.searchParams.delete("tp");
+    urlObj.searchParams.delete("wx_lazy");
+    urlObj.searchParams.delete("wxfrom");
+
+    // 添加原图参数
+    urlObj.searchParams.set("wx_co", "1");
+
+    // 保留格式参数，优先 jpeg
+    if (!urlObj.searchParams.has("wx_fmt")) {
+      urlObj.searchParams.set("wx_fmt", "jpeg");
+    }
+
+    return urlObj.toString();
+  } catch {
+    return url;
+  }
+}
+
+/**
+ * 验证图片数据有效性（检查 magic bytes）
+ *
+ * Phase 2 升级：确保下载的是真实图片数据
+ */
+function isValidImageBuffer(buffer: ArrayBuffer): boolean {
+  if (buffer.byteLength < 4) return false;
+
+  const arr = new Uint8Array(buffer);
+
+  // JPEG: FF D8 FF
+  if (arr[0] === 0xff && arr[1] === 0xd8 && arr[2] === 0xff) return true;
+
+  // PNG: 89 50 4E 47
+  if (arr[0] === 0x89 && arr[1] === 0x50 && arr[2] === 0x4e && arr[3] === 0x47)
+    return true;
+
+  // GIF: 47 49 46 38
+  if (arr[0] === 0x47 && arr[1] === 0x49 && arr[2] === 0x46 && arr[3] === 0x38)
+    return true;
+
+  // WebP: 52 49 46 46 ... 57 45 42 50
+  if (arr[0] === 0x52 && arr[1] === 0x49 && arr[2] === 0x46 && arr[3] === 0x46)
+    return true;
+
+  return false;
+}
 
 /**
  * 检查图片 URL 是否有效
@@ -109,36 +176,118 @@ export function extractImages(html: string): WechatArticleImage[] {
 // =============================================================================
 
 /**
- * 下载单张图片
+ * 下载选项
+ */
+interface DownloadOptions {
+  /** 超时时间 (ms) */
+  timeout?: number;
+  /** 重试次数 */
+  retries?: number;
+  /** 是否使用代理 */
+  useProxy?: boolean;
+  /** 代理索引 */
+  proxyIndex?: number;
+}
+
+/**
+ * 增强的图片下载函数
+ *
+ * Phase 2 升级：支持重试、多 Referer、代理降级、数据验证
  *
  * @param url - 图片 URL
- * @param timeout - 超时时间 (ms)
+ * @param options - 下载选项
  * @returns 图片数据和 MIME 类型
  */
-async function downloadImage(
+async function downloadImageEnhanced(
   url: string,
-  timeout: number = DEFAULT_CRAWL_CONFIG.imageTimeout,
+  options: DownloadOptions = {},
 ): Promise<{ buffer: ArrayBuffer; contentType: string }> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeout);
+  const {
+    timeout = DEFAULT_CRAWL_CONFIG.imageTimeout,
+    retries = 3,
+    useProxy = false,
+    proxyIndex = 0,
+  } = options;
 
-  try {
-    const response = await fetch(url, {
-      signal: controller.signal,
-      headers: IMAGE_FETCH_HEADERS,
-    });
+  // 优化 URL 获取原图
+  const optimizedUrl = optimizeWechatImageUrl(url);
+  let lastError: Error | null = null;
 
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+  for (let attempt = 0; attempt < retries; attempt++) {
+    const referer = IMAGE_REFERER_LIST[attempt % IMAGE_REFERER_LIST.length];
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+      // 构建请求头（使用 Record 类型以支持动态属性）
+      const headers: Record<string, string> = {
+        "User-Agent":
+          (IMAGE_FETCH_HEADERS as Record<string, string>)["User-Agent"] ||
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        Accept:
+          (IMAGE_FETCH_HEADERS as Record<string, string>)["Accept"] ||
+          "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+        "Cache-Control": "no-cache",
+      };
+
+      // 设置 Referer（空值时不设置）
+      if (referer) {
+        headers["Referer"] = referer;
+      }
+
+      // 确定目标 URL
+      const targetUrl = useProxy
+        ? getProxyUrl(optimizedUrl, proxyIndex)
+        : optimizedUrl;
+
+      const response = await fetch(targetUrl, {
+        signal: controller.signal,
+        headers,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const buffer = await response.arrayBuffer();
+      const contentType = response.headers.get("content-type") || "image/jpeg";
+
+      // 验证是否为有效图片数据
+      if (!isValidImageBuffer(buffer)) {
+        throw new Error("Invalid image data (magic bytes check failed)");
+      }
+
+      return { buffer, contentType };
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+
+      console.warn(
+        `[ImageProcessor] Download attempt ${attempt + 1}/${retries} failed: ${lastError.message}`,
+      );
+
+      // 最后一次直接尝试失败，切换到代理
+      if (attempt === retries - 1 && !useProxy) {
+        console.info("[ImageProcessor] Switching to proxy service...");
+        return downloadImageEnhanced(url, {
+          ...options,
+          useProxy: true,
+          retries: 2, // 代理重试 2 次
+        });
+      }
+
+      // 等待后重试（指数退避）
+      if (attempt < retries - 1) {
+        await new Promise((resolve) =>
+          setTimeout(resolve, 500 * Math.pow(2, attempt)),
+        );
+      }
     }
-
-    const buffer = await response.arrayBuffer();
-    const contentType = response.headers.get("content-type") || "image/jpeg";
-
-    return { buffer, contentType };
-  } finally {
-    clearTimeout(timeoutId);
   }
+
+  throw lastError || new Error("Download failed after all retries");
 }
 
 /**
@@ -178,17 +327,9 @@ async function uploadToStorage(
 }
 
 /**
- * 生成降级代理 URL
- */
-function getFallbackProxyUrl(originalUrl: string): string {
-  return DEFAULT_CRAWL_CONFIG.fallbackProxyTemplate.replace(
-    "{url}",
-    encodeURIComponent(originalUrl),
-  );
-}
-
-/**
  * 持久化单张图片
+ *
+ * Phase 2 升级：使用增强下载函数，提高成功率
  *
  * @param supabase - Supabase 客户端
  * @param image - 图片元数据
@@ -203,23 +344,25 @@ async function persistSingleImage(
   index: number,
 ): Promise<WechatArticleImage> {
   try {
-    // 1. 下载图片
-    const { buffer, contentType } = await downloadImage(image.originalUrl);
+    // 1. 使用增强下载函数（自动重试 + 代理降级）
+    const { buffer, contentType } = await downloadImageEnhanced(
+      image.originalUrl,
+    );
 
     // 2. 检查文件大小（跳过过大的图片）
     const fileSize = buffer.byteLength;
     const maxSize = 5 * 1024 * 1024; // 5MB
 
     if (fileSize > maxSize) {
-      console.error(
-        `[ImageProcessor] Image too large (${fileSize} bytes), using fallback proxy`,
+      console.warn(
+        `[ImageProcessor] Image too large (${fileSize} bytes), using original URL with referrerPolicy`,
       );
       return {
         ...image,
-        persistedUrl: getFallbackProxyUrl(image.originalUrl),
+        persistedUrl: null, // 保留原始 URL，前端使用 referrerPolicy="no-referrer" 访问
         status: "fallback",
         fileSize,
-        error: "Image exceeds size limit",
+        error: "Image exceeds size limit (5MB)",
       };
     }
 
@@ -240,17 +383,18 @@ async function persistSingleImage(
       fileSize,
     };
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
     console.error(
       `[ImageProcessor] Failed to persist image: ${image.originalUrl}`,
-      error instanceof Error ? error.message : error,
+      errorMessage,
     );
 
-    // 降级到代理服务
+    // 持久化失败，保留原始 URL（前端使用 referrerPolicy="no-referrer" 访问）
     return {
       ...image,
-      persistedUrl: getFallbackProxyUrl(image.originalUrl),
+      persistedUrl: null,
       status: "fallback",
-      error: error instanceof Error ? error.message : "Unknown error",
+      error: errorMessage,
     };
   }
 }

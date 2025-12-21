@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import type {
   WechatArticleCrawlProgress,
   RefetchOptions,
+  CrawlOptions,
 } from "@/lib/wechat-article/wechat-article.types";
 
 /**
@@ -56,41 +57,50 @@ export function useWechatArticleCrawl(
 
   /**
    * 抓取完整内容
+   *
+   * 样式选项升级：支持 styleLevel 参数
+   *
+   * @param opts - 抓取选项（包含 styleLevel）
    */
-  const crawl = useCallback(async () => {
-    if (!snapshotId || isCrawling) return;
+  const crawl = useCallback(
+    async (opts?: CrawlOptions) => {
+      if (!snapshotId || isCrawling) return;
 
-    setIsCrawling(true);
-    setProgress({ stage: "fetching", progress: 0 });
+      setIsCrawling(true);
+      setProgress({ stage: "fetching", progress: 0 });
 
-    try {
-      const res = await fetch(`/api/wechat-article/${snapshotId}`, {
-        method: "POST",
-      });
+      try {
+        const res = await fetch(`/api/wechat-article/${snapshotId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(opts || {}),
+        });
 
-      if (!res.ok) {
-        const error = await res
-          .json()
-          .catch(() => ({ error: { message: "抓取失败" } }));
-        throw new Error(error.error?.message || `HTTP ${res.status}`);
+        if (!res.ok) {
+          const error = await res
+            .json()
+            .catch(() => ({ error: { message: "抓取失败" } }));
+          throw new Error(error.error?.message || `HTTP ${res.status}`);
+        }
+
+        const result = await res.json();
+
+        setProgress({ stage: "completed", progress: 100 });
+        toast.success("文章内容抓取完成", {
+          description: `${result.data.wordCount} 字，${result.data.imagesSuccess}/${result.data.imagesCount} 张图片`,
+        });
+        options.onSuccess?.();
+      } catch (error) {
+        const err = error instanceof Error ? error : new Error("Unknown error");
+        setProgress({ stage: "failed", progress: 0, error: err.message });
+        toast.error("抓取失败", { description: err.message });
+        options.onError?.(err);
+      } finally {
+        setIsCrawling(false);
       }
-
-      const result = await res.json();
-
-      setProgress({ stage: "completed", progress: 100 });
-      toast.success("文章内容抓取完成", {
-        description: `${result.data.wordCount} 字，${result.data.imagesSuccess}/${result.data.imagesCount} 张图片`,
-      });
-      options.onSuccess?.();
-    } catch (error) {
-      const err = error instanceof Error ? error : new Error("Unknown error");
-      setProgress({ stage: "failed", progress: 0, error: err.message });
-      toast.error("抓取失败", { description: err.message });
-      options.onError?.(err);
-    } finally {
-      setIsCrawling(false);
-    }
-  }, [snapshotId, isCrawling, options]);
+    },
+    [snapshotId, isCrawling, options],
+  );
 
   /**
    * 重新获取内容

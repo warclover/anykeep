@@ -185,7 +185,282 @@ export const ALLOWED_HTML_ATTRS = [
   "data-src",
   "width",
   "height",
+  "style", // 新增：允许 style 属性（通过白名单过滤）
 ];
+
+// =============================================================================
+// 样式保留配置（Phase 1 升级 + 样式选项升级）
+// =============================================================================
+
+/**
+ * 样式保留级别
+ *
+ * - text-only: 仅文字效果（颜色、字号、对齐等）
+ * - full-snapshot: 完整快照（保留完整排版样式）
+ */
+export type StylePreserveLevel = "text-only" | "full-snapshot";
+
+/**
+ * 默认样式保留级别
+ */
+export const DEFAULT_STYLE_PRESERVE_LEVEL: StylePreserveLevel = "full-snapshot";
+
+/**
+ * 仅文字效果 - 基础文字样式白名单
+ */
+export const TEXT_ONLY_STYLE_PROPERTIES = [
+  // 文字颜色
+  "color",
+  // 字体
+  "font-size",
+  "font-weight",
+  "font-style",
+  "font-family",
+  // 文字排版
+  "text-align",
+  "text-decoration",
+  "line-height",
+  "letter-spacing",
+  "text-indent",
+  "word-spacing",
+];
+
+/**
+ * 完整快照 - 保留完整排版样式白名单
+ */
+export const FULL_SNAPSHOT_STYLE_PROPERTIES = [
+  // === 文字样式（继承 text-only）===
+  ...TEXT_ONLY_STYLE_PROPERTIES,
+
+  // === 布局 ===
+  "display",
+  "visibility",
+  "opacity",
+  "width",
+  "max-width",
+  "min-width",
+  "height",
+  "max-height",
+  "min-height",
+
+  // === 间距 ===
+  "margin",
+  "margin-top",
+  "margin-bottom",
+  "margin-left",
+  "margin-right",
+  "padding",
+  "padding-top",
+  "padding-bottom",
+  "padding-left",
+  "padding-right",
+
+  // === 背景（仅颜色）===
+  "background-color",
+  "background",
+
+  // === 边框 ===
+  "border",
+  "border-radius",
+  "border-top",
+  "border-bottom",
+  "border-left",
+  "border-right",
+  "border-color",
+  "border-width",
+  "border-style",
+
+  // === 其他安全属性 ===
+  "vertical-align",
+  "white-space",
+  "overflow",
+  "overflow-x",
+  "overflow-y",
+  "box-sizing",
+  "box-shadow",
+  "flex",
+  "flex-direction",
+  "flex-wrap",
+  "justify-content",
+  "align-items",
+  "gap",
+  "transform",
+];
+
+/**
+ * 兼容旧代码：ALLOWED_STYLE_PROPERTIES 指向 TEXT_ONLY
+ * @deprecated 请使用 getStylePropertiesByLevel()
+ */
+export const ALLOWED_STYLE_PROPERTIES = TEXT_ONLY_STYLE_PROPERTIES;
+
+/**
+ * 基础危险 CSS 值模式（黑名单）
+ *
+ * 即使属性在白名单中，如果值匹配这些模式也会被移除
+ */
+export const DANGEROUS_STYLE_VALUES: RegExp[] = [
+  // JavaScript 注入
+  /javascript\s*:/i,
+
+  // CSS 表达式（IE 特有，XSS 风险）
+  /expression\s*\(/i,
+
+  // URL 函数（可能加载外部资源）
+  /url\s*\(/i,
+
+  // Firefox 绑定（XSS 风险）
+  /-moz-binding/i,
+
+  // IE 行为（XSS 风险）
+  /behavior\s*:/i,
+
+  // 导入外部样式
+  /@import/i,
+];
+
+/**
+ * 完整快照模式 - 额外的危险值过滤
+ */
+export const FULL_SNAPSHOT_DANGEROUS_VALUES: RegExp[] = [
+  // 继承基础危险值
+  ...DANGEROUS_STYLE_VALUES,
+
+  // 禁止 fixed/absolute/sticky 定位（防止覆盖攻击）
+  /position\s*:\s*(fixed|absolute|sticky)/i,
+
+  // 禁止 z-index > 499（防止覆盖攻击）
+  /z-index\s*:\s*([5-9]\d{2,}|\d{4,})/i,
+];
+
+/**
+ * 根据级别获取样式属性白名单
+ */
+export function getStylePropertiesByLevel(level: StylePreserveLevel): string[] {
+  return level === "full-snapshot"
+    ? FULL_SNAPSHOT_STYLE_PROPERTIES
+    : TEXT_ONLY_STYLE_PROPERTIES;
+}
+
+/**
+ * 根据级别获取危险值黑名单
+ */
+export function getDangerousValuesByLevel(level: StylePreserveLevel): RegExp[] {
+  return level === "full-snapshot"
+    ? FULL_SNAPSHOT_DANGEROUS_VALUES
+    : DANGEROUS_STYLE_VALUES;
+}
+
+// =============================================================================
+// 图片代理服务配置（Phase 2 升级）
+// =============================================================================
+
+/**
+ * 图片代理服务列表
+ *
+ * 当直接下载失败时，按优先级尝试代理服务
+ */
+export const IMAGE_PROXY_SERVICES = [
+  {
+    name: "weserv",
+    template: "https://images.weserv.nl/?url={url}",
+    priority: 1,
+  },
+  {
+    name: "wsrv",
+    template: "https://wsrv.nl/?url={url}",
+    priority: 2,
+  },
+] as const;
+
+/**
+ * 获取代理 URL
+ */
+export function getProxyUrl(originalUrl: string, proxyIndex: number = 0): string {
+  const proxy = IMAGE_PROXY_SERVICES[proxyIndex] || IMAGE_PROXY_SERVICES[0];
+  return proxy.template.replace("{url}", encodeURIComponent(originalUrl));
+}
+
+/**
+ * Referer 列表（轮换使用）
+ *
+ * 不同 Referer 可能影响微信图片服务器的响应
+ */
+export const IMAGE_REFERER_LIST = [
+  "https://mp.weixin.qq.com/",
+  "https://weixin.qq.com/",
+  "", // 空 Referer
+];
+
+// =============================================================================
+// 本站图片代理配置
+// =============================================================================
+
+/**
+ * 图片代理 API 路径
+ */
+export const IMAGE_PROXY_PATH = "/api/image-proxy";
+
+/**
+ * 需要代理的图片域名
+ */
+export const PROXY_REQUIRED_HOSTS = ["mmbiz.qpic.cn", "mmbiz.qlogo.cn"];
+
+/**
+ * 获取本站代理 URL
+ *
+ * @param originalUrl - 原始图片 URL
+ * @returns 代理 URL
+ */
+export function getLocalProxyUrl(originalUrl: string): string {
+  return `${IMAGE_PROXY_PATH}?url=${encodeURIComponent(originalUrl)}`;
+}
+
+/**
+ * 检查 URL 是否需要代理
+ *
+ * @param url - 图片 URL
+ * @returns 是否需要代理
+ */
+export function requiresProxy(url: string): boolean {
+  if (!url) return false;
+
+  try {
+    const urlObj = new URL(url);
+    return PROXY_REQUIRED_HOSTS.some(
+      (host) =>
+        urlObj.hostname === host || urlObj.hostname.endsWith(`.${host}`),
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 智能获取图片显示 URL
+ *
+ * 优先使用已持久化的 URL，否则使用本站代理
+ *
+ * @param persistedUrl - 已持久化的 URL (Supabase Storage)
+ * @param originalUrl - 原始 URL
+ * @returns 最终显示 URL
+ */
+export function getImageDisplayUrl(
+  persistedUrl: string | null,
+  originalUrl: string,
+): string {
+  // 已持久化到 Supabase Storage，直接使用
+  if (persistedUrl && !requiresProxy(persistedUrl)) {
+    return persistedUrl;
+  }
+
+  // 原始 URL 需要代理
+  if (requiresProxy(originalUrl)) {
+    return getLocalProxyUrl(originalUrl);
+  }
+
+  // 默认返回原始 URL
+  return originalUrl;
+}
 
 // =============================================================================
 // 错误码

@@ -19,10 +19,13 @@ export const dynamic = "force-dynamic";
  * POST /api/wechat-article/[id]/refetch
  * 重新获取文章内容
  *
+ * 样式选项升级：支持 styleLevel 参数
+ *
  * Body:
  * - forceUpdate?: boolean - 强制更新
  * - redownloadImages?: boolean - 重新下载图片
  * - imagesOnly?: boolean - 仅更新图片
+ * - styleLevel?: 'text-only' | 'full-snapshot' - 样式保留级别
  */
 export async function POST(
   request: NextRequest,
@@ -62,6 +65,7 @@ export async function POST(
       forceUpdate?: boolean;
       redownloadImages?: boolean;
       imagesOnly?: boolean;
+      styleLevel?: "text-only" | "full-snapshot";
     } = {};
 
     try {
@@ -70,11 +74,18 @@ export async function POST(
       // 允许空请求体
     }
 
-    // 执行重新获取
+    // 验证 styleLevel 值
+    const styleLevel =
+      body.styleLevel === "text-only" || body.styleLevel === "full-snapshot"
+        ? body.styleLevel
+        : undefined;
+
+    // 执行重新获取（传递 styleLevel）
     const result = await wechatArticleService.refetch(snapshotId, {
       forceUpdate: body.forceUpdate,
       redownloadImages: body.redownloadImages,
       imagesOnly: body.imagesOnly,
+      styleLevel,
     });
 
     return successResponse(result);

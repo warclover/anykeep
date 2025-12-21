@@ -136,6 +136,10 @@ export async function POST(request: NextRequest) {
       // 生成摘要
       const excerpt = generateExcerpt(readability.textContent, 300);
 
+      // 提取并保存原始 HTML（用于样式保留）
+      // 只保留 <body> 部分，减少存储空间
+      const originalHtml = extractBodyHtml(html);
+
       // 更新快照记录
       const { error: updateError } = await serviceClient
         .from("bookmark_snapshots")
@@ -147,6 +151,7 @@ export async function POST(request: NextRequest) {
           readable_excerpt: excerpt,
           readable_byline: readability.byline || null,
           readable_word_count: readability.length,
+          original_html: originalHtml,
           final_url: finalUrl !== bookmark.url ? finalUrl : null,
           captured_at: new Date().toISOString(),
         })
@@ -422,6 +427,27 @@ function removeNoisyElements(document: Document): void {
       // 忽略
     }
   }
+}
+
+/**
+ * 提取 body HTML
+ * 包含 <head> 中的 <style> 标签和 <body> 内容
+ */
+function extractBodyHtml(html: string): string {
+  // 提取 <style> 标签
+  const styleMatches = html.match(/<style[^>]*>[\s\S]*?<\/style>/gi) || [];
+  const styles = styleMatches.join("\n");
+
+  // 提取 <body> 内容
+  const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+  const body = bodyMatch ? bodyMatch[1] : html;
+
+  // 组合：styles + body
+  if (styles) {
+    return `${styles}\n${body}`;
+  }
+
+  return body;
 }
 
 /**

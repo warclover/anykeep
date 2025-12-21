@@ -10,31 +10,90 @@ import {
 } from "./html-utils";
 
 /**
+ * 提取嵌套标签内容
+ * 正确处理嵌套的同名标签，不会在遇到第一个闭合标签时截断
+ *
+ * @param html - HTML 字符串
+ * @param startIndex - 开始位置（开标签的 > 之后）
+ * @param tagName - 标签名（如 'div', 'article'）
+ * @returns 标签内的完整内容
+ */
+function extractNestedTagContent(
+  html: string,
+  startIndex: number,
+  tagName: string,
+): string {
+  let depth = 1;
+  let currentIndex = startIndex;
+  const tagLower = tagName.toLowerCase();
+
+  // 匹配开标签和闭标签
+  const openTagRegex = new RegExp(`<${tagLower}[\\s>]`, "gi");
+  const closeTagRegex = new RegExp(`</${tagLower}>`, "gi");
+
+  while (depth > 0 && currentIndex < html.length) {
+    // 找下一个开标签位置
+    openTagRegex.lastIndex = currentIndex;
+    const openMatch = openTagRegex.exec(html);
+    const openIndex = openMatch ? openMatch.index : Infinity;
+
+    // 找下一个闭标签位置
+    closeTagRegex.lastIndex = currentIndex;
+    const closeMatch = closeTagRegex.exec(html);
+    const closeIndex = closeMatch ? closeMatch.index : Infinity;
+
+    if (closeIndex === Infinity) {
+      // 没有闭标签，返回剩余内容
+      break;
+    }
+
+    if (openIndex < closeIndex) {
+      // 先遇到开标签，深度+1
+      depth++;
+      currentIndex = openIndex + openMatch!.length;
+    } else {
+      // 先遇到闭标签，深度-1
+      depth--;
+      if (depth === 0) {
+        // 找到匹配的闭标签
+        return html.substring(startIndex, closeIndex);
+      }
+      currentIndex = closeIndex + closeMatch!.length;
+    }
+  }
+
+  // 未找到匹配的闭标签，返回从起始位置到末尾
+  return html.substring(startIndex);
+}
+
+/**
  * 提取正文内容区域
  * 优先提取微信公众号正文、article、main 等语义化标签
+ * 使用嵌套标签算法正确处理深层嵌套的 div 结构
  */
 export function extractMainContent(html: string): string {
   // 移除脚本和样式
   const text = removeScriptsAndStyles(html);
 
-  // 微信公众号正文
-  const wechatContent = text.match(
-    /<div[^>]*id="js_content"[^>]*>([\s\S]*?)<\/div>/i,
-  );
-  if (wechatContent) {
-    return wechatContent[1];
+  // 微信公众号正文 - 使用嵌套匹配算法
+  const wechatMatch = text.match(/<div[^>]*id=["']?js_content["']?[^>]*>/i);
+  if (wechatMatch) {
+    const startIndex = wechatMatch.index! + wechatMatch[0].length;
+    return extractNestedTagContent(text, startIndex, "div");
   }
 
-  // article 标签
-  const articleContent = text.match(/<article[^>]*>([\s\S]*?)<\/article>/i);
-  if (articleContent) {
-    return articleContent[1];
+  // article 标签 - 使用嵌套匹配算法
+  const articleMatch = text.match(/<article[^>]*>/i);
+  if (articleMatch) {
+    const startIndex = articleMatch.index! + articleMatch[0].length;
+    return extractNestedTagContent(text, startIndex, "article");
   }
 
-  // main 标签
-  const mainContent = text.match(/<main[^>]*>([\s\S]*?)<\/main>/i);
-  if (mainContent) {
-    return mainContent[1];
+  // main 标签 - 使用嵌套匹配算法
+  const mainMatch = text.match(/<main[^>]*>/i);
+  if (mainMatch) {
+    const startIndex = mainMatch.index! + mainMatch[0].length;
+    return extractNestedTagContent(text, startIndex, "main");
   }
 
   // 无法识别，返回清理后的全文

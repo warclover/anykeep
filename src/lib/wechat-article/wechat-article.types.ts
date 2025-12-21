@@ -5,6 +5,9 @@
  * @description 微信公众号文章完整内容存储与展示
  */
 
+// 从配置中导出样式级别类型
+export type { StylePreserveLevel } from "./wechat-article.config";
+
 // =============================================================================
 // 图片相关类型
 // =============================================================================
@@ -42,6 +45,57 @@ export interface WechatArticleImage {
 export interface ImagesStats {
   total: number;
   success: number;
+  failed: number;
+}
+
+// =============================================================================
+// 媒体相关类型（Phase 3 升级）
+// =============================================================================
+
+/**
+ * 媒体类型
+ */
+export type MediaType = "video" | "audio" | "vote" | "miniprogram" | "link";
+
+/**
+ * 媒体下载状态
+ */
+export type MediaDownloadStatus = "pending" | "success" | "failed" | "skipped";
+
+/**
+ * 媒体元素
+ */
+export interface MediaElement {
+  /** 媒体类型 */
+  type: MediaType;
+  /** 标题 */
+  title: string;
+  /** 封面 URL */
+  coverUrl?: string;
+  /** 源 URL */
+  sourceUrl?: string;
+  /** 时长（音频/视频） */
+  duration?: string;
+  /** 投票选项 */
+  options?: string[];
+  /** 本地化 URL（下载成功后） */
+  localUrl?: string;
+  /** 下载状态 */
+  downloadStatus?: MediaDownloadStatus;
+  /** 错误信息 */
+  error?: string;
+  /** 文件大小 */
+  fileSize?: number;
+}
+
+/**
+ * 媒体统计信息
+ */
+export interface MediaStats {
+  total: number;
+  videos: number;
+  audios: number;
+  downloaded: number;
   failed: number;
 }
 
@@ -85,8 +139,12 @@ export interface WechatArticleContent {
   markdown: string | null;
   /** 图片列表 */
   images: WechatArticleImage[];
+  /** 媒体元素列表（视频/音频等）- Phase 3 升级 */
+  media?: MediaElement[];
   /** 字数 */
   wordCount: number;
+  /** 样式保留级别 - 样式选项升级 */
+  styleLevel?: import("./wechat-article.config").StylePreserveLevel;
 }
 
 /**
@@ -161,6 +219,16 @@ export interface RefetchOptions {
   redownloadImages?: boolean;
   /** 仅更新图片（不更新正文） */
   imagesOnly?: boolean;
+  /** 样式保留级别 - 样式选项升级 */
+  styleLevel?: import("./wechat-article.config").StylePreserveLevel;
+}
+
+/**
+ * 抓取选项 - 样式选项升级
+ */
+export interface CrawlOptions {
+  /** 样式保留级别 */
+  styleLevel?: import("./wechat-article.config").StylePreserveLevel;
 }
 
 /**
@@ -251,8 +319,35 @@ export interface UseWechatArticleCrawlOptions {
  * useWechatArticleCrawl Hook 返回类型
  */
 export interface UseWechatArticleCrawlReturn {
-  crawl: () => Promise<void>;
+  crawl: (options?: CrawlOptions) => Promise<void>;
   refetch: (options?: RefetchOptions) => Promise<void>;
   isCrawling: boolean;
   progress: WechatArticleCrawlProgress | null;
 }
+
+// =============================================================================
+// 用户偏好类型 - 样式选项升级
+// =============================================================================
+
+/**
+ * 微信文章用户偏好设置
+ */
+export interface WechatArticleUserPreferences {
+  /** 默认样式保留级别 */
+  defaultStyleLevel: import("./wechat-article.config").StylePreserveLevel;
+  /** 记住上次选择 */
+  rememberChoice: boolean;
+}
+
+/**
+ * 默认用户偏好
+ */
+export const DEFAULT_WECHAT_PREFERENCES: WechatArticleUserPreferences = {
+  defaultStyleLevel: "full-snapshot",
+  rememberChoice: true,
+};
+
+/**
+ * 用户偏好 localStorage 存储键
+ */
+export const WECHAT_PREFERENCES_STORAGE_KEY = "wechat-article-preferences";

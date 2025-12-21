@@ -32,6 +32,11 @@ export type {
   ImagePersistStatus,
   WechatArticleImage,
   ImagesStats,
+  // 媒体相关（Phase 3 升级）
+  MediaType,
+  MediaDownloadStatus,
+  MediaElement,
+  MediaStats,
   // 配置
   WechatArticleCrawlConfig,
   // 内容
@@ -64,6 +69,19 @@ export {
   getExtFromMime,
   ALLOWED_HTML_TAGS,
   ALLOWED_HTML_ATTRS,
+  // Phase 1 升级：样式白名单
+  ALLOWED_STYLE_PROPERTIES,
+  DANGEROUS_STYLE_VALUES,
+  // Phase 2 升级：代理配置
+  IMAGE_PROXY_SERVICES,
+  IMAGE_REFERER_LIST,
+  getProxyUrl,
+  // 本站图片代理（解决防盗链）
+  IMAGE_PROXY_PATH,
+  PROXY_REQUIRED_HOSTS,
+  getLocalProxyUrl,
+  requiresProxy,
+  getImageDisplayUrl,
   ERROR_CODES,
   type ErrorCode,
 } from "./wechat-article.config";
@@ -76,4 +94,16 @@ export {
 
 // 处理器导出
 export { processWechatContent } from "./processors/content.processor";
-export { extractImages, persistImages } from "./processors/image.processor";
+export { extractImages, persistImages, optimizeWechatImageUrl } from "./processors/image.processor";
+export {
+  processMediaElements,
+  processVideoElements,
+  processAudioElements,
+  persistMedia,
+} from "./processors/media.processor";
+
+// Phase 4 升级：自动抓取
+export {
+  autoFetchWechatArticle,
+  isWechatArticleUrl,
+} from "./auto-crawl";
