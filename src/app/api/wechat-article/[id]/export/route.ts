@@ -15,10 +15,7 @@ import {
   isPuppeteerAvailable,
   type ArticleMetadata,
 } from "@/lib/wechat-article/export";
-import {
-  errorResponse,
-  unauthorizedError,
-} from "@/lib/utils/api-response";
+import { errorResponse, unauthorizedError } from "@/lib/utils/api-response";
 
 export const dynamic = "force-dynamic";
 
@@ -58,10 +55,22 @@ export async function GET(
     }
 
     // 验证快照所有权并获取基本信息
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: snapshot, error: snapshotError } = await supabase
+    interface SnapshotWithBookmark {
+      id: number;
+      readable_title: string | null;
+      original_url: string | null;
+      captured_at: string | null;
+      bookmarks: {
+        title: string | null;
+        url: string;
+        user_id: string;
+      };
+    }
+
+    const { data: snapshot, error: snapshotError } = (await supabase
       .from("bookmark_snapshots")
-      .select(`
+      .select(
+        `
         id,
         readable_title,
         original_url,
@@ -71,10 +80,11 @@ export async function GET(
           url,
           user_id
         )
-      `)
+      `,
+      )
       .eq("id", snapshotId)
       .eq("user_id", user.id)
-      .single() as { data: any; error: any };
+      .single()) as { data: SnapshotWithBookmark | null; error: unknown };
 
     if (snapshotError || !snapshot) {
       return errorResponse("NOT_FOUND", "快照不存在或无权访问", 404);
@@ -84,12 +94,17 @@ export async function GET(
     const content = await wechatArticleService.getArticleContent(snapshotId);
 
     if (!content || !content.html) {
-      return errorResponse("NO_CONTENT", "文章内容不可用，请先抓取完整内容", 400);
+      return errorResponse(
+        "NO_CONTENT",
+        "文章内容不可用，请先抓取完整内容",
+        400,
+      );
     }
 
     // 构建元数据（优先使用快照标题，否则使用书签标题）
     const metadata: ArticleMetadata = {
-      title: snapshot.readable_title || snapshot.bookmarks?.title || "未命名文章",
+      title:
+        snapshot.readable_title || snapshot.bookmarks?.title || "未命名文章",
       originalUrl: snapshot.original_url || snapshot.bookmarks?.url || "",
       publishTime: snapshot.captured_at || undefined,
       savedAt: new Date().toISOString(),

@@ -113,7 +113,7 @@ function useInViewport(ref: React.RefObject<HTMLElement | null>): boolean {
     observer.observe(element);
 
     return () => observer.disconnect();
-  }, [isInViewport]); // 移除不稳定依赖，只依赖 isInViewport
+  }, [ref, isInViewport]); // ref 是稳定引用，不会导致重复执行
 
   return isInViewport;
 }

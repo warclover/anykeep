@@ -5,7 +5,9 @@
  * @description 微信公众号文章完整内容存储与展示
  */
 
-// 从配置中导出样式级别类型
+import type { StylePreserveLevel } from "./wechat-article.config";
+
+// 重新导出样式级别类型供外部使用
 export type { StylePreserveLevel } from "./wechat-article.config";
 
 // =============================================================================
@@ -144,7 +146,7 @@ export interface WechatArticleContent {
   /** 字数 */
   wordCount: number;
   /** 样式保留级别 - 样式选项升级 */
-  styleLevel?: import("./wechat-article.config").StylePreserveLevel;
+  styleLevel?: StylePreserveLevel;
 }
 
 /**
@@ -220,7 +222,7 @@ export interface RefetchOptions {
   /** 仅更新图片（不更新正文） */
   imagesOnly?: boolean;
   /** 样式保留级别 - 样式选项升级 */
-  styleLevel?: import("./wechat-article.config").StylePreserveLevel;
+  styleLevel?: StylePreserveLevel;
 }
 
 /**
@@ -228,7 +230,7 @@ export interface RefetchOptions {
  */
 export interface CrawlOptions {
   /** 样式保留级别 */
-  styleLevel?: import("./wechat-article.config").StylePreserveLevel;
+  styleLevel?: StylePreserveLevel;
 }
 
 /**
@@ -334,7 +336,7 @@ export interface UseWechatArticleCrawlReturn {
  */
 export interface WechatArticleUserPreferences {
   /** 默认样式保留级别 */
-  defaultStyleLevel: import("./wechat-article.config").StylePreserveLevel;
+  defaultStyleLevel: StylePreserveLevel;
   /** 记住上次选择 */
   rememberChoice: boolean;
 }

@@ -10,7 +10,13 @@ import { useState, useCallback } from "react";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Reserved for future optimization
 import Image from "next/image";
 import { cn } from "@/lib/utils";
-import { AlertCircle, CheckCircle2, ImageOff, Download, RefreshCw } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  ImageOff,
+  Download,
+  RefreshCw,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -48,26 +54,7 @@ export function WechatArticleImages({
   const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
   const [retryKeys, setRetryKeys] = useState<Record<string, number>>({});
 
-  if (!images || images.length === 0) {
-    return (
-      <div
-        className={cn(
-          "flex items-center justify-center py-8 text-muted-foreground",
-          className,
-        )}
-      >
-        <ImageOff className="size-8 mr-2" />
-        <span>暂无图片</span>
-      </div>
-    );
-  }
-
-  // 处理图片加载错误
-  const handleImageError = (originalUrl: string) => {
-    setImageErrors((prev) => new Set(prev).add(originalUrl));
-  };
-
-  // 重试加载图片
+  // 重试加载图片（必须在 early return 之前声明，遵循 Hooks 规则）
   const handleRetry = useCallback((originalUrl: string) => {
     // 清除错误状态
     setImageErrors((prev) => {
@@ -82,11 +69,30 @@ export function WechatArticleImages({
     }));
   }, []);
 
-  // 获取显示 URL
+  // 获取显示 URL（必须在 early return 之前声明，遵循 Hooks 规则）
   // 优先使用已持久化的 URL，否则使用原始 URL（配合 referrerPolicy="no-referrer" 解决防盗链）
   const getDisplayUrl = useCallback((image: WechatArticleImage): string => {
     return image.persistedUrl || image.originalUrl;
   }, []);
+
+  // 处理图片加载错误
+  const handleImageError = (originalUrl: string) => {
+    setImageErrors((prev) => new Set(prev).add(originalUrl));
+  };
+
+  if (!images || images.length === 0) {
+    return (
+      <div
+        className={cn(
+          "flex items-center justify-center py-8 text-muted-foreground",
+          className,
+        )}
+      >
+        <ImageOff className="size-8 mr-2" />
+        <span>暂无图片</span>
+      </div>
+    );
+  }
 
   // 下载图片
   const handleDownload = async (image: WechatArticleImage) => {

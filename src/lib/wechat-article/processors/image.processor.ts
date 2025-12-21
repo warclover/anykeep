@@ -264,13 +264,13 @@ async function downloadImageEnhanced(
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
 
-      console.warn(
+      console.error(
         `[ImageProcessor] Download attempt ${attempt + 1}/${retries} failed: ${lastError.message}`,
       );
 
       // 最后一次直接尝试失败，切换到代理
       if (attempt === retries - 1 && !useProxy) {
-        console.info("[ImageProcessor] Switching to proxy service...");
+        console.error("[ImageProcessor] Switching to proxy service...");
         return downloadImageEnhanced(url, {
           ...options,
           useProxy: true,
@@ -354,7 +354,7 @@ async function persistSingleImage(
     const maxSize = 5 * 1024 * 1024; // 5MB
 
     if (fileSize > maxSize) {
-      console.warn(
+      console.error(
         `[ImageProcessor] Image too large (${fileSize} bytes), using original URL with referrerPolicy`,
       );
       return {
@@ -383,7 +383,8 @@ async function persistSingleImage(
       fileSize,
     };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
     console.error(
       `[ImageProcessor] Failed to persist image: ${image.originalUrl}`,
       errorMessage,

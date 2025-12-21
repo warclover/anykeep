@@ -9,7 +9,7 @@
 
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 
 // =============================================================================
 // 类型定义
@@ -91,23 +91,27 @@ const THEME_STYLES: Record<ReaderTheme, React.CSSProperties> = {
  * - 本地存储持久化
  */
 export function useReaderSettings(): UseReaderSettingsReturn {
-  const [settings, setSettings] = useState<ReaderSettings>(DEFAULT_SETTINGS);
-
-  // 从本地存储加载设置
-  useEffect(() => {
+  // 使用惰性初始化从 localStorage 加载设置（避免 useEffect 中 setState）
+  const [settings, setSettings] = useState<ReaderSettings>(() => {
+    // SSR: 返回默认值
+    if (typeof window === "undefined") {
+      return DEFAULT_SETTINGS;
+    }
+    // 客户端: 尝试从 localStorage 加载
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
-        setSettings({
+        return {
           ...DEFAULT_SETTINGS,
           ...parsed,
-        });
+        };
       }
     } catch {
       // 忽略解析错误
     }
-  }, []);
+    return DEFAULT_SETTINGS;
+  });
 
   // 保存设置到本地存储
   const saveSettings = useCallback((newSettings: ReaderSettings) => {
@@ -121,7 +125,10 @@ export function useReaderSettings(): UseReaderSettingsReturn {
   // 更新字体大小
   const setFontSize = useCallback(
     (size: number) => {
-      const clampedSize = Math.max(MIN_FONT_SIZE, Math.min(MAX_FONT_SIZE, size));
+      const clampedSize = Math.max(
+        MIN_FONT_SIZE,
+        Math.min(MAX_FONT_SIZE, size),
+      );
       const newSettings = { ...settings, fontSize: clampedSize };
       setSettings(newSettings);
       saveSettings(newSettings);

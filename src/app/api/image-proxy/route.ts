@@ -160,15 +160,15 @@ export async function GET(request: NextRequest) {
   try {
     imageUrl = decodeURIComponent(encodedUrl);
   } catch {
-    return NextResponse.json({ error: "Invalid url encoding" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Invalid url encoding" },
+      { status: 400 },
+    );
   }
 
   // 2. 域名白名单验证
   if (!isAllowedHost(imageUrl)) {
-    return NextResponse.json(
-      { error: "Domain not allowed" },
-      { status: 403 },
-    );
+    return NextResponse.json({ error: "Domain not allowed" }, { status: 403 });
   }
 
   // 3. 优化 URL
@@ -234,7 +234,7 @@ export async function GET(request: NextRequest) {
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
 
-      console.warn(
+      console.error(
         `[ImageProxy] Attempt ${attempt + 1}/${MAX_RETRIES} failed:`,
         lastError.message,
       );

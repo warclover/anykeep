@@ -315,9 +315,7 @@ export async function exportToPdf(
     // @ts-expect-error - puppeteer 是可选依赖，可能未安装
     puppeteer = await import("puppeteer");
   } catch {
-    throw new Error(
-      "Puppeteer is not installed. Run: npm install puppeteer",
-    );
+    throw new Error("Puppeteer is not installed. Run: npm install puppeteer");
   }
 
   // 生成完整 HTML
@@ -349,7 +347,7 @@ export async function exportToPdf(
       )
       .catch(() => {
         // 图片加载超时，继续生成 PDF
-        console.warn("[PdfExporter] Some images failed to load");
+        console.error("[PdfExporter] Some images failed to load");
       });
 
     // 生成 PDF

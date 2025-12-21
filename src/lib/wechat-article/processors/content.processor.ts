@@ -17,7 +17,6 @@ import {
 import type {
   WechatArticleContent,
   WechatArticleImage,
-  MediaElement,
   CrawlOptions,
 } from "../wechat-article.types";
 import {

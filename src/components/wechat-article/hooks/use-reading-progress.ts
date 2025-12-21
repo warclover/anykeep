@@ -103,8 +103,8 @@ export function useReadingProgress(
     const target = container || window;
 
     target.addEventListener("scroll", calculateProgress, { passive: true });
-    // 初始计算
-    calculateProgress();
+    // 使用 queueMicrotask 延迟初始计算，避免同步 setState
+    queueMicrotask(calculateProgress);
 
     return () => {
       target.removeEventListener("scroll", calculateProgress);

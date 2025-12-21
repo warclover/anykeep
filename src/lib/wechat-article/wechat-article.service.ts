@@ -138,13 +138,9 @@ export class WechatArticleService {
       if (snapshotData.original_html) {
         // 使用原始 HTML，并内联 CSS 样式
         sourceHtml = processStylesInline(snapshotData.original_html);
-        console.log(
-          "[WechatArticleService] Using original_html with CSS inlining",
-        );
+        // Note: Using original_html with CSS inlining
       } else {
-        console.log(
-          "[WechatArticleService] Fallback to readable_content (no original_html)",
-        );
+        // Note: Fallback to readable_content (no original_html available)
       }
 
       // 4. 处理正文内容（传入 styleLevel）

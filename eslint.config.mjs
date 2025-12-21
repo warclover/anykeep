@@ -24,6 +24,10 @@ const eslintConfig = defineConfig([
     "coverage/**",  // 测试覆盖率报告
     "public/sw.js",  // Service Worker（自动生成）
     ".backups/**",  // 代码审查备份文件
+    ".backup/**",  // 备份文件
+    "__mocks__/**",  // Jest 测试 mocks
+    "_bmad/**",  // BMAD 模块模板文件
+    "anykeep-extension/**",  // 旧版浏览器扩展（独立项目）
   ]),
   // Custom rules for code quality
   {

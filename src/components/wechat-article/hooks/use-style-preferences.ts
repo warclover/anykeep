@@ -9,7 +9,7 @@
 
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import type { StylePreserveLevel } from "@/lib/wechat-article/wechat-article.config";
 import {
   DEFAULT_WECHAT_PREFERENCES,
@@ -61,7 +61,7 @@ function loadPreferences(): WechatArticleUserPreferences {
       }
     }
   } catch (error) {
-    console.warn("[useStylePreferences] Failed to load preferences:", error);
+    console.error("[useStylePreferences] Failed to load preferences:", error);
   }
 
   return DEFAULT_WECHAT_PREFERENCES;
@@ -79,7 +79,7 @@ function savePreferences(preferences: WechatArticleUserPreferences): void {
       JSON.stringify(preferences),
     );
   } catch (error) {
-    console.warn("[useStylePreferences] Failed to save preferences:", error);
+    console.error("[useStylePreferences] Failed to save preferences:", error);
   }
 }
 
@@ -96,45 +96,33 @@ function savePreferences(preferences: WechatArticleUserPreferences): void {
  * - 支持"记住我的选择"开关
  */
 export function useStylePreferences(): UseStylePreferencesReturn {
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [preferences, setPreferences] = useState<WechatArticleUserPreferences>(
-    DEFAULT_WECHAT_PREFERENCES,
-  );
-
-  // 客户端挂载时加载偏好
-  useEffect(() => {
-    const loaded = loadPreferences();
-    setPreferences(loaded);
-    setIsLoaded(true);
-  }, []);
+  // 使用惰性初始化从 localStorage 加载（避免 useEffect 中 setState）
+  const [preferences, setPreferences] =
+    useState<WechatArticleUserPreferences>(loadPreferences);
+  // SSR 时为 false，客户端为 true
+  const [isLoaded] = useState(() => typeof window !== "undefined");
 
   // 设置样式级别
-  const setStyleLevel = useCallback(
-    (level: StylePreserveLevel) => {
-      setPreferences((prev) => {
-        const updated = { ...prev, defaultStyleLevel: level };
-        // 仅在"记住选择"开启时保存
-        if (prev.rememberChoice) {
-          savePreferences(updated);
-        }
-        return updated;
-      });
-    },
-    [],
-  );
+  const setStyleLevel = useCallback((level: StylePreserveLevel) => {
+    setPreferences((prev) => {
+      const updated = { ...prev, defaultStyleLevel: level };
+      // 仅在"记住选择"开启时保存
+      if (prev.rememberChoice) {
+        savePreferences(updated);
+      }
+      return updated;
+    });
+  }, []);
 
   // 设置"记住选择"开关
-  const setRememberChoice = useCallback(
-    (remember: boolean) => {
-      setPreferences((prev) => {
-        const updated = { ...prev, rememberChoice: remember };
-        // 保存新设置
-        savePreferences(updated);
-        return updated;
-      });
-    },
-    [],
-  );
+  const setRememberChoice = useCallback((remember: boolean) => {
+    setPreferences((prev) => {
+      const updated = { ...prev, rememberChoice: remember };
+      // 保存新设置
+      savePreferences(updated);
+      return updated;
+    });
+  }, []);
 
   // 重置为默认值
   const resetPreferences = useCallback(() => {
