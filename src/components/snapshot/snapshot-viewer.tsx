@@ -493,7 +493,8 @@ export function SnapshotViewer({
       ) : (
         <ScrollArea style={{ maxHeight }} className="pr-4">
           <article
-            className="prose prose-sm dark:prose-invert max-w-none"
+            className="prose prose-sm dark:prose-invert max-w-none break-words"
+            style={{ overflowWrap: "break-word", wordBreak: "break-word" }}
             dangerouslySetInnerHTML={{ __html: sanitizedContent }}
           />
         </ScrollArea>

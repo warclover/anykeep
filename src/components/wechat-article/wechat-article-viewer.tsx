@@ -450,8 +450,12 @@ export function WechatArticleViewer({
               {/* 文章视图 */}
               {viewMode === "article" && (
                 <article
-                  className="prose prose-sm dark:prose-invert max-w-none py-4"
-                  style={getContentStyle()}
+                  className="prose prose-sm dark:prose-invert max-w-none py-4 break-words"
+                  style={{
+                    ...getContentStyle(),
+                    overflowWrap: "break-word",
+                    wordBreak: "break-word",
+                  }}
                   dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
                 />
               )}
@@ -477,8 +481,12 @@ export function WechatArticleViewer({
             {/* 文章视图 - 无高度限制 */}
             {viewMode === "article" && (
               <article
-                className="prose prose-sm dark:prose-invert max-w-none py-4"
-                style={getContentStyle()}
+                className="prose prose-sm dark:prose-invert max-w-none py-4 break-words"
+                style={{
+                  ...getContentStyle(),
+                  overflowWrap: "break-word",
+                  wordBreak: "break-word",
+                }}
                 dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
               />
             )}
