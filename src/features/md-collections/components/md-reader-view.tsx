@@ -237,22 +237,11 @@ export function MdReaderView({
         className,
       )}
     >
-      {/* 阅读进度条 */}
-      <div className="fixed top-0 left-0 right-0 z-50 h-1 bg-gray-200 dark:bg-gray-800">
-        <div
-          className="h-full transition-all duration-150"
-          style={{
-            width: `${scrollProgress}%`,
-            backgroundColor: PRUSSIAN_BLUE,
-          }}
-        />
-      </div>
-
       {/* 顶部工具栏 */}
       <header className="sticky top-0 z-40 bg-white/80 dark:bg-gray-950/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-          {/* 返回按钮 */}
-          <div className="flex items-center gap-3">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+          {/* 左侧：返回按钮 */}
+          <div className="flex items-center gap-3 shrink-0">
             {onBack && (
               <Button
                 variant="ghost"
@@ -266,8 +255,36 @@ export function MdReaderView({
             )}
           </div>
 
-          {/* 工具按钮 */}
-          <div className="flex items-center gap-1">
+          {/* 中间：标题 + 进度条 */}
+          <div className="flex-1 flex items-center gap-4 min-w-0">
+            {/* 标题（截断显示） */}
+            <h1
+              className="text-sm font-medium truncate dark:text-gray-200"
+              style={{ color: PRUSSIAN_BLUE }}
+              title={collection.title}
+            >
+              {collection.title}
+            </h1>
+
+            {/* 进度条 */}
+            <div className="hidden sm:flex items-center gap-2 shrink-0">
+              <div className="w-24 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-150"
+                  style={{
+                    width: `${scrollProgress}%`,
+                    backgroundColor: PRUSSIAN_BLUE,
+                  }}
+                />
+              </div>
+              <span className="text-xs text-gray-500 dark:text-gray-400 w-8">
+                {Math.round(scrollProgress)}%
+              </span>
+            </div>
+          </div>
+
+          {/* 右侧：工具按钮 */}
+          <div className="flex items-center gap-1 shrink-0">
             {/* 字体大小 */}
             <Button
               variant="ghost"
