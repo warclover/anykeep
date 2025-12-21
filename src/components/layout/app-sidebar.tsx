@@ -31,7 +31,7 @@ import {
 } from "lucide-react";
 import { useUnreadCount } from "@/hooks/use-unread-count";
 import { MessageBadge } from "@/components/messages";
-import { SmartListSection } from "@/components/smart-list";
+import { SmartListDropdown } from "@/components/smart-list";
 import { cn } from "@/lib/utils";
 import {
   useSafeNavigation,
@@ -363,8 +363,8 @@ export function AppSidebar() {
               </Tooltip>
             )}
 
-            {/* 智能列表 - 仅展开时显示 */}
-            {isVisuallyExpanded && <SmartListSection />}
+            {/* 智能列表下拉选择器 - 仅展开时显示 */}
+            {isVisuallyExpanded && <SmartListDropdown />}
 
             {/* 系统文件夹（可折叠）- 仅展开时显示 */}
             {isVisuallyExpanded && (

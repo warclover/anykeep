@@ -1,7 +1,7 @@
 /**
  * 智能列表区块组件
  * @description 侧边栏中显示智能列表区块的容器组件，支持拖拽排序
- * @version 10.2.2 - V4.2.24 性能优化：DnD 懒加载 + 骨架屏改善用户感知
+ * @version 10.2.3 - V4.2.25 性能优化：支持 localStorage 缓存立即显示
  */
 
 "use client";
@@ -13,6 +13,7 @@ import {
   useRef,
   lazy,
   Suspense,
+  useMemo,
 } from "react";
 import {
   ChevronDown,
@@ -25,6 +26,7 @@ import { SmartListSkeleton } from "@/components/skeleton/page-skeleton";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { SmartListItem } from "./smart-list-item";
+import { getSmartListCache } from "@/lib/smart-list/cache";
 
 // V4.2.24: 懒加载 DnD 排序组件（减少 ~30KB 初始包体积）
 const SortableSmartListContent = lazy(
@@ -108,8 +110,15 @@ export function SmartListSection({
 }: SmartListSectionProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
-  // 延迟加载控制
-  const [shouldFetch, setShouldFetch] = useState(loadDelay === 0);
+  // V4.2.25: 读取 localStorage 缓存，实现立即显示
+  const cachedData = useMemo(() => {
+    if (typeof window === "undefined") return null;
+    return getSmartListCache();
+  }, []);
+  const hasCache = cachedData !== null && cachedData.length > 0;
+
+  // 延迟加载控制 - 如果有缓存则立即启用
+  const [shouldFetch, setShouldFetch] = useState(loadDelay === 0 || hasCache);
 
   // 延迟加载逻辑
   useEffect(() => {
@@ -147,7 +156,7 @@ export function SmartListSection({
   // 使用 SWR Hook 获取智能列表（支持延迟加载）
   const {
     smartLists,
-    isLoading,
+    isFirstLoad,
     error,
     refresh,
     create,
@@ -169,7 +178,7 @@ export function SmartListSection({
   useEffect(() => {
     // 条件：加载完成、列表为空、尚未尝试自动初始化
     if (
-      !isLoading &&
+      !isFirstLoad &&
       smartLists.length === 0 &&
       !hasAttemptedAutoInit.current
     ) {
@@ -193,7 +202,7 @@ export function SmartListSection({
           setIsAutoIniting(false);
         });
     }
-  }, [isLoading, smartLists.length, initPresets]);
+  }, [isFirstLoad, smartLists.length, initPresets]);
 
   // 处理置顶切换
   const handleTogglePin = useCallback(
@@ -274,8 +283,8 @@ export function SmartListSection({
   );
 
   // 加载中状态（包括延迟等待和数据获取）
-  // V4.2.24: 使用骨架屏替代旋转图标，改善用户感知
-  if (!shouldFetch || isLoading) {
+  // V4.2.25: 使用 isFirstLoad 替代 isLoading，有缓存时不显示骨架屏
+  if (!shouldFetch || isFirstLoad) {
     return (
       <div className="py-2">
         <div className="px-3 mb-2 flex items-center justify-between">

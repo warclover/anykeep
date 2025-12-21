@@ -1,14 +1,19 @@
 /**
  * 智能列表 Hook
  * @description 提供智能列表的 CRUD 操作、预览和排序功能
- * @version 10.0.0
+ * @version 10.1.0 - 2025-12-21 性能优化：添加 localStorage 缓存支持
  */
 
 "use client";
 
 import useSWR from "swr";
-import { useCallback, useState } from "react";
+import { useCallback, useState, useEffect, useRef } from "react";
 import { authFetcher, fetchWithAuth } from "@/lib/api/fetch-with-auth";
+import {
+  getSmartListCache,
+  setSmartListCache,
+  isCacheFresh,
+} from "@/lib/smart-list/cache";
 import type {
   SmartListClient,
   SmartListFilters,
@@ -46,8 +51,10 @@ export interface UseSmartListsResult {
   presetLists: SmartListClient[];
   /** 自定义智能列表 */
   customLists: SmartListClient[];
-  /** 是否加载中 */
+  /** 是否加载中（有缓存时为 false） */
   isLoading: boolean;
+  /** 是否首次加载（无缓存时为 true） */
+  isFirstLoad: boolean;
   /** 错误信息 */
   error: Error | null;
   /** 是否正在执行操作 */
@@ -193,14 +200,29 @@ export function useSmartLists(
 
   const [isMutating, setIsMutating] = useState(false);
 
+  // V10.1.0: localStorage 缓存支持
+  const initialCacheRef = useRef<SmartListClient[] | null>(null);
+  const hasMountedRef = useRef(false);
+
+  // 首次挂载时读取缓存
+  if (!hasMountedRef.current && typeof window !== "undefined") {
+    initialCacheRef.current = getSmartListCache();
+    hasMountedRef.current = true;
+  }
+
   // 构建 API URL
   const url = enabled ? `${API_BASE}?includePresets=${includePresets}` : null;
+
+  // 检查缓存是否新鲜（60秒内）
+  const cacheFresh = isCacheFresh();
 
   // SWR 获取数据（优化配置）
   const { data, error, isLoading, mutate } = useSWR<SmartListClient[]>(
     url,
     fetcher,
     {
+      // V10.1.0: 使用 localStorage 缓存作为 fallbackData
+      fallbackData: initialCacheRef.current ?? undefined,
       refreshInterval: refreshInterval > 0 ? refreshInterval : undefined,
       // 性能优化：减少不必要的重新验证
       revalidateOnFocus: false,
@@ -209,10 +231,23 @@ export function useSmartLists(
       dedupingInterval: 300_000,
       // 使用过期数据先展示，后台刷新
       keepPreviousData: true,
+      // V10.1.0: 如果缓存新鲜，跳过首次加载时的 revalidate
+      revalidateOnMount: !cacheFresh,
     },
   );
 
-  const smartLists = data ?? [];
+  // V10.1.0: 数据更新后同步到 localStorage
+  useEffect(() => {
+    if (data && data.length > 0) {
+      setSmartListCache(data);
+    }
+  }, [data]);
+
+  // 使用数据或缓存
+  const smartLists = data ?? initialCacheRef.current ?? [];
+
+  // 判断是否为首次加载（无缓存且正在加载）
+  const isFirstLoad = !initialCacheRef.current && isLoading;
 
   // 分离预设和自定义列表
   const presetLists = smartLists.filter((list) => list.isPreset);
@@ -338,7 +373,9 @@ export function useSmartLists(
     smartLists,
     presetLists,
     customLists,
-    isLoading,
+    // V10.1.0: 有缓存时不显示 loading 状态
+    isLoading: isFirstLoad,
+    isFirstLoad,
     error: error || null,
     isMutating,
     refresh,
