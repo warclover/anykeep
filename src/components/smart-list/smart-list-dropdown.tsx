@@ -146,9 +146,9 @@ export function SmartListDropdown({ className }: SmartListDropdownProps) {
   // 加载中状态
   if (isFirstLoad) {
     return (
-      <div className={cn("px-2", className)}>
-        <div className="flex items-center gap-2 px-3 py-2 text-sm text-gray-400 rounded-lg bg-gray-50 dark:bg-gray-800/50">
-          <Loader2 className="size-4 animate-spin" />
+      <div className={className}>
+        <div className="flex items-center gap-3 px-3 py-2 text-sm text-gray-400 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+          <Loader2 className="size-5 animate-spin" />
           <span>加载中...</span>
         </div>
       </div>
@@ -158,9 +158,9 @@ export function SmartListDropdown({ className }: SmartListDropdownProps) {
   // 错误状态
   if (error) {
     return (
-      <div className={cn("px-2", className)}>
-        <div className="flex items-center gap-2 px-3 py-2 text-sm text-red-500 rounded-lg bg-red-50 dark:bg-red-900/20">
-          <Filter className="size-4" />
+      <div className={className}>
+        <div className="flex items-center gap-3 px-3 py-2 text-sm text-red-500 rounded-lg bg-red-50 dark:bg-red-900/20">
+          <Filter className="size-5" />
           <span>加载失败</span>
         </div>
       </div>
@@ -170,14 +170,14 @@ export function SmartListDropdown({ className }: SmartListDropdownProps) {
   // 空状态
   if (smartLists.length === 0) {
     return (
-      <div className={cn("px-2", className)}>
+      <div className={className}>
         <Button
           variant="outline"
           size="sm"
-          className="w-full justify-start gap-2 text-gray-500"
+          className="w-full justify-start gap-3 text-gray-500"
           onClick={handleCreate}
         >
-          <Plus className="size-4" />
+          <Plus className="size-5" />
           <span>创建智能列表</span>
         </Button>
         <SmartListEditorDialog
@@ -191,19 +191,19 @@ export function SmartListDropdown({ className }: SmartListDropdownProps) {
   }
 
   return (
-    <div className={cn("px-2", className)}>
+    <div className={className}>
       <Popover open={isOpen} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>
           <Button
             variant="ghost"
             className={cn(
-              "w-full justify-between gap-2 h-10 px-3",
+              "w-full justify-between gap-3 h-10 px-3",
               "hover:bg-gray-100 dark:hover:bg-gray-800",
               isOnSmartListPage && cn(colorConfig.bg, colorConfig.text),
             )}
           >
-            <div className="flex items-center gap-2 min-w-0">
-              <IconComponent className="size-4 shrink-0" />
+            <div className="flex items-center gap-3 min-w-0">
+              <IconComponent className="size-5 shrink-0" />
               <span className="truncate font-medium">{displayName}</span>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
