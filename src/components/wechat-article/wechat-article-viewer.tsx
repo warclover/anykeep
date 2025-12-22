@@ -27,7 +27,6 @@ import {
   ExternalLink,
   MoreHorizontal,
   Download,
-  FileDown,
   Trash2,
 } from "lucide-react";
 import {
@@ -420,10 +419,12 @@ export function WechatArticleViewer({
                   <Download className="size-4 mr-2" />
                   导出 Markdown
                 </DropdownMenuItem>
+                {/* PDF 导出暂时禁用（需要安装 puppeteer 依赖）
                 <DropdownMenuItem onClick={() => handleExport("pdf")}>
                   <FileDown className="size-4 mr-2" />
                   导出 PDF
                 </DropdownMenuItem>
+                */}
 
                 <DropdownMenuSeparator />
 
