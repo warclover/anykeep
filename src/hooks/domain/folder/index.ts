@@ -2,6 +2,7 @@
  * Folder Domain Hooks - 文件夹业务逻辑
  */
 
+export * from "./use-folder-health";
 export * from "./use-librarian-analysis";
 export * from "./use-merge-suggestions";
 export * from "./use-operation-history";

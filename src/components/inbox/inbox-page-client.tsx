@@ -27,6 +27,7 @@ import {
   Hand,
   Settings,
   Bell,
+  Wand2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -77,6 +78,7 @@ export function InboxPageClient({
   const [bookmarks, setBookmarks] =
     useState<BookmarkWithFolder[]>(initialBookmarks);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isOrganizing, setIsOrganizing] = useState(false);
 
   // V4.2: 托管模式感知
   const {
@@ -106,6 +108,78 @@ export function InboxPageClient({
       setIsRefreshing(false);
     }
   }, [router]);
+
+  // P1-3: 一键整理功能
+  // 获取所有建议并自动应用
+  const handleOneClickOrganize = useCallback(async () => {
+    if (bookmarks.length === 0) {
+      toast.info("没有需要整理的书签");
+      return;
+    }
+
+    setIsOrganizing(true);
+    const loadingToast = toast.loading("正在分析并整理书签...");
+
+    try {
+      // 1. 获取整理建议
+      const analysisResponse = await fetch("/api/classification/inbox");
+      if (!analysisResponse.ok) {
+        throw new Error("获取整理建议失败");
+      }
+
+      const analysisData = await analysisResponse.json();
+      const suggestions = analysisData.data?.suggestions || [];
+
+      if (suggestions.length === 0) {
+        toast.dismiss(loadingToast);
+        toast.info("暂无可自动整理的建议，请手动整理或等待 AI 聚类分析");
+        return;
+      }
+
+      // 2. 逐个应用建议
+      let successCount = 0;
+      let failCount = 0;
+
+      for (const suggestion of suggestions) {
+        try {
+          const applyResponse = await fetch("/api/classification/inbox", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ suggestionId: suggestion.id }),
+          });
+
+          if (applyResponse.ok) {
+            successCount++;
+          } else {
+            failCount++;
+          }
+        } catch {
+          failCount++;
+        }
+      }
+
+      toast.dismiss(loadingToast);
+
+      if (successCount > 0) {
+        // 失效缓存并刷新
+        dataCache.invalidate(/^bookmarks:/);
+        router.refresh();
+
+        if (failCount === 0) {
+          toast.success(`成功整理 ${successCount} 组书签`);
+        } else {
+          toast.warning(`整理完成：${successCount} 成功，${failCount} 失败`);
+        }
+      } else {
+        toast.error("整理失败，请稍后重试");
+      }
+    } catch (err) {
+      toast.dismiss(loadingToast);
+      toast.error(err instanceof Error ? err.message : "整理失败");
+    } finally {
+      setIsOrganizing(false);
+    }
+  }, [bookmarks.length, router]);
 
   // 建议应用后的回调
   const handleSuggestionApplied = useCallback(() => {
@@ -173,11 +247,25 @@ export function InboxPageClient({
         </div>
 
         <div className="flex items-center gap-2">
+          {/* P1-3: 一键整理按钮 */}
+          {bookmarks.length > 0 && (
+            <Button
+              size="sm"
+              onClick={handleOneClickOrganize}
+              disabled={isOrganizing || isRefreshing}
+              className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white"
+            >
+              <Wand2
+                className={cn("w-4 h-4 mr-2", isOrganizing && "animate-pulse")}
+              />
+              {isOrganizing ? "整理中..." : "一键整理"}
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"
             onClick={refreshBookmarks}
-            disabled={isRefreshing}
+            disabled={isRefreshing || isOrganizing}
           >
             <RefreshCw
               className={cn("w-4 h-4 mr-2", isRefreshing && "animate-spin")}

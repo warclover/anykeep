@@ -28,6 +28,8 @@ import {
   PanelLeft,
   CheckSquare,
   Download,
+  HeartPulse,
+  Wand2,
 } from "lucide-react";
 import { useUnreadCount } from "@/hooks/use-unread-count";
 import { MessageBadge } from "@/components/messages";
@@ -470,6 +472,30 @@ export function AppSidebar() {
                     >
                       <FlaskConical className="size-5" />
                       分类对比
+                    </Link>
+                    <Link
+                      href="/folder-health"
+                      className={cn(
+                        "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                        pathname === "/folder-health"
+                          ? "bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
+                          : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50",
+                      )}
+                    >
+                      <HeartPulse className="size-5" />
+                      健康检查
+                    </Link>
+                    <Link
+                      href="/librarian"
+                      className={cn(
+                        "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                        pathname === "/librarian"
+                          ? "bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
+                          : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50",
+                      )}
+                    >
+                      <Wand2 className="size-5" />
+                      整理大师
                     </Link>
                     {process.env.NODE_ENV === "development" && (
                       <Link
