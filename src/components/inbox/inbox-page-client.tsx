@@ -111,6 +111,7 @@ export function InboxPageClient({
 
   // P1-3: 一键整理功能
   // 获取所有建议并自动应用
+  // C1+C3: 增加重试机制和并发控制
   const handleOneClickOrganize = useCallback(async () => {
     if (bookmarks.length === 0) {
       toast.info("没有需要整理的书签");
@@ -120,9 +121,67 @@ export function InboxPageClient({
     setIsOrganizing(true);
     const loadingToast = toast.loading("正在分析并整理书签...");
 
+    // 带重试的请求函数
+    const fetchWithRetry = async (
+      url: string,
+      options?: RequestInit,
+      maxRetries = 3,
+    ): Promise<Response> => {
+      let lastError: Error | null = null;
+      for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+          const response = await fetch(url, options);
+          if (response.ok) return response;
+          // 4xx 错误不重试（客户端错误）
+          if (response.status >= 400 && response.status < 500) {
+            return response;
+          }
+          // 5xx 错误重试
+          lastError = new Error(`HTTP ${response.status}`);
+        } catch (err) {
+          lastError = err instanceof Error ? err : new Error("Network error");
+        }
+        // 指数退避：100ms, 200ms, 400ms
+        if (attempt < maxRetries - 1) {
+          await new Promise((r) => setTimeout(r, 100 * Math.pow(2, attempt)));
+        }
+      }
+      throw lastError || new Error("Request failed after retries");
+    };
+
+    // 并发控制：每批最多 3 个并发请求
+    const processBatch = async <T, R>(
+      items: T[],
+      processor: (item: T) => Promise<R>,
+      concurrency = 3,
+    ): Promise<Array<{ success: boolean; result?: R; error?: Error }>> => {
+      const results: Array<{ success: boolean; result?: R; error?: Error }> =
+        [];
+      for (let i = 0; i < items.length; i += concurrency) {
+        const batch = items.slice(i, i + concurrency);
+        const batchResults = await Promise.allSettled(batch.map(processor));
+        for (const result of batchResults) {
+          if (result.status === "fulfilled") {
+            results.push({ success: true, result: result.value });
+          } else {
+            results.push({
+              success: false,
+              error:
+                result.reason instanceof Error
+                  ? result.reason
+                  : new Error(String(result.reason)),
+            });
+          }
+        }
+      }
+      return results;
+    };
+
     try {
-      // 1. 获取整理建议
-      const analysisResponse = await fetch("/api/classification/inbox");
+      // 1. 获取整理建议（带重试）
+      const analysisResponse = await fetchWithRetry(
+        "/api/classification/inbox",
+      );
       if (!analysisResponse.ok) {
         throw new Error("获取整理建议失败");
       }
@@ -136,27 +195,29 @@ export function InboxPageClient({
         return;
       }
 
-      // 2. 逐个应用建议
-      let successCount = 0;
-      let failCount = 0;
-
-      for (const suggestion of suggestions) {
-        try {
-          const applyResponse = await fetch("/api/classification/inbox", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ suggestionId: suggestion.id }),
-          });
-
-          if (applyResponse.ok) {
-            successCount++;
-          } else {
-            failCount++;
+      // 2. 并发应用建议（带重试，最多 3 并发）
+      const results = await processBatch(
+        suggestions,
+        async (suggestion: { id: number }) => {
+          const response = await fetchWithRetry(
+            "/api/classification/inbox",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ suggestionId: suggestion.id }),
+            },
+            3,
+          );
+          if (!response.ok) {
+            throw new Error(`Apply failed: ${response.status}`);
           }
-        } catch {
-          failCount++;
-        }
-      }
+          return response;
+        },
+        3,
+      );
+
+      const successCount = results.filter((r) => r.success).length;
+      const failCount = results.filter((r) => !r.success).length;
 
       toast.dismiss(loadingToast);
 

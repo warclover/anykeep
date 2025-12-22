@@ -185,7 +185,10 @@ export function useFolderHealth(options: UseFolderHealthOptions = {}) {
               !(s.folder1.id === folder1Id && s.folder2.id === folder2Id) &&
               !(s.folder1.id === folder2Id && s.folder2.id === folder1Id),
           ),
-          foldersNeedingAttention: prev.foldersNeedingAttention - 1,
+          foldersNeedingAttention: Math.max(
+            0,
+            prev.foldersNeedingAttention - 1,
+          ),
         };
       });
       toast.success("已忽略该合并建议");
@@ -201,7 +204,7 @@ export function useFolderHealth(options: UseFolderHealthOptions = {}) {
         splitSuggestions: prev.splitSuggestions.filter(
           (s) => s.folderId !== folderId,
         ),
-        foldersNeedingAttention: prev.foldersNeedingAttention - 1,
+        foldersNeedingAttention: Math.max(0, prev.foldersNeedingAttention - 1),
       };
     });
     toast.success("已忽略该拆分建议");
