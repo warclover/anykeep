@@ -12,6 +12,10 @@ import { logger } from "@/lib/logger";
 import { MessageService } from "@/lib/messages/server";
 import { confirmationService } from "@/lib/confirmation";
 import { trustModeService } from "@/lib/trust-mode/trust-mode.service";
+import {
+  learningEventHandler,
+  initializeLearningEventHandler,
+} from "./learning/learning-event-handler";
 import type { ClassificationResult, BookmarkInput } from "./types";
 import type { ClassificationSuggestion } from "@/types/confirmation";
 import type {
@@ -20,6 +24,26 @@ import type {
 } from "@/types/supabase";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
+
+// ============================================================================
+// 学习事件处理器懒初始化
+// ============================================================================
+
+/**
+ * 确保学习事件处理器已初始化（懒加载模式）
+ * 在 serverless 环境中，每个实例需要独立初始化
+ */
+function ensureLearningHandlerInitialized(): void {
+  if (!learningEventHandler.isActive()) {
+    initializeLearningEventHandler({
+      enableNegativeSampling: true,
+      enablePreferenceLearning: true,
+      learnInManualMode: false,
+      bulkOperationThreshold: 3,
+    });
+    logger.info("Classification: Learning event handler lazily initialized");
+  }
+}
 
 // V4.2.7: 使用统一的置信度阈值配置
 const AUTO_CLASSIFY_THRESHOLD = CONFIDENCE_THRESHOLDS.AUTO_CLASSIFY;
@@ -100,6 +124,9 @@ export async function classifyBookmarkV2(
   }
 
   try {
+    // P0 Fix: 确保学习事件处理器已初始化
+    ensureLearningHandlerInitialized();
+
     const { createClient } = await import("@/lib/supabase/server");
     const supabase = await createClient();
 

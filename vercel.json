@@ -14,6 +14,10 @@
       "schedule": "0 4 * * *"
     },
     {
+      "path": "/api/cron/profile-updates",
+      "schedule": "0 5 * * *"
+    },
+    {
       "path": "/api/cron/generate-monthly-reports",
       "schedule": "0 5 1 * *"
     },
