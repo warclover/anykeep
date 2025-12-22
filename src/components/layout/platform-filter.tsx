@@ -1,8 +1,9 @@
 /**
- * V4.2.18: 平台筛选组件
+ * V4.2.31: 平台筛选组件
  *
  * Phase 3.2 - 迁移到 HomePageContext
  * 性能优化：外链平台使用 Link prefetch 预加载
+ * V4.2.31: 选中状态使用糖果色风格（各平台品牌色）
  *
  * 用于首页顶部导航栏的平台切换
  * 优先使用 Context，Fallback 到 Window Event（兼容非首页场景）
@@ -19,6 +20,47 @@ import { cn } from "@/lib/utils";
 import { useSafeNavigation } from "@/contexts/navigation-context";
 import { useHomePageSafe } from "@/contexts/home-page-context";
 import { uiEventBus, UIEvents } from "@/lib/shared/event-bus";
+
+/**
+ * 平台糖果色配置
+ * V4.2.31: 选中状态使用各平台品牌色的糖果色风格
+ *
+ * 糖果色特点：浅色背景 + 品牌色文字，视觉轻盈活泼
+ */
+const platformCandyColors: Record<string, { active: string; hover: string }> = {
+  // 全部：中性灰色
+  all: {
+    active: "bg-gray-900 text-white dark:bg-white dark:text-gray-900",
+    hover: "hover:bg-gray-200 dark:hover:bg-gray-700",
+  },
+  // 微信：绿色 #07C160
+  wechat: {
+    active: "bg-green-50 text-green-600 dark:bg-green-950 dark:text-green-400",
+    hover: "hover:bg-green-100 dark:hover:bg-green-900",
+  },
+  // 小红书：红色 #FE2C55
+  xiaohongshu: {
+    active: "bg-red-50 text-red-500 dark:bg-red-950 dark:text-red-400",
+    hover: "hover:bg-red-100 dark:hover:bg-red-900",
+  },
+  // B站：蓝色 #00AEEC（B站品牌蓝）
+  bilibili: {
+    active: "bg-sky-50 text-sky-500 dark:bg-sky-950 dark:text-sky-400",
+    hover: "hover:bg-sky-100 dark:hover:bg-sky-900",
+  },
+  // 浏览器书签：紫色（区别于内容平台）
+  browser: {
+    active:
+      "bg-purple-50 text-purple-600 dark:bg-purple-950 dark:text-purple-400",
+    hover: "hover:bg-purple-100 dark:hover:bg-purple-900",
+  },
+  // MD文档：橙色
+  md: {
+    active:
+      "bg-orange-50 text-orange-600 dark:bg-orange-950 dark:text-orange-400",
+    hover: "hover:bg-orange-100 dark:hover:bg-orange-900",
+  },
+};
 
 // 平台配置（内容平台 + 浏览器书签统一入口 + MD文档入口）
 const platforms = [
@@ -178,11 +220,18 @@ export function PlatformFilter() {
           ? false
           : currentPlatform === platform.value;
 
+        // V4.2.31: 使用糖果色配置
+        const candyColor =
+          platformCandyColors[platform.id] || platformCandyColors.all;
+
         const buttonClassName = cn(
-          "px-3 py-1 text-xs font-medium rounded-full transition-colors whitespace-nowrap flex-shrink-0",
+          "px-3 py-1.5 text-sm font-medium rounded-full transition-colors whitespace-nowrap flex-shrink-0",
           isActive
-            ? "bg-gray-900 text-white dark:bg-white dark:text-gray-900"
-            : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700",
+            ? candyColor.active
+            : cn(
+                "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
+                candyColor.hover,
+              ),
         );
 
         // 外链平台使用 Link 组件实现预加载（进入视口时触发）
@@ -219,7 +268,7 @@ export function PlatformFilter() {
           onClick={handleFlipToggle}
           title="翻转卡片 Demo"
           className={cn(
-            "px-2.5 py-1 h-auto text-xs font-medium rounded-full whitespace-nowrap flex-shrink-0",
+            "px-3 py-1.5 h-auto text-sm font-medium rounded-full whitespace-nowrap flex-shrink-0",
             enableFlipCard
               ? "bg-purple-500 hover:bg-purple-600 text-white dark:bg-purple-600 dark:hover:bg-purple-700"
               : "border-gray-200 dark:border-gray-700",

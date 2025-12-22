@@ -55,11 +55,11 @@ const PLATFORM_CONFIGS = {
   BILIBILI: {
     name: "B站",
     fullName: "B站视频",
-    bgColor: "bg-pink-500",
-    brandColor: "#FB7299", // B站粉
-    brandBgColor: "#FFF0F6", // 浅粉背景
-    brandColorDark: "#F472B6", // 深色模式粉
-    brandBgColorDark: "#831843", // 深色模式背景
+    bgColor: "bg-sky-500",
+    brandColor: "#00AEEC", // B站品牌蓝
+    brandBgColor: "#E0F7FF", // 浅蓝背景
+    brandColorDark: "#38BDF8", // 深色模式蓝
+    brandBgColorDark: "#0C4A6E", // 深色模式背景
     icon: Play,
   },
   XIAOHONGSHU: {

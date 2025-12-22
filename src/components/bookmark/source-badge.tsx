@@ -131,8 +131,8 @@ const SOURCE_CONFIG: Record<
   bilibili: {
     label: "B站",
     icon: Video,
-    color: "text-pink-500",
-    bgColor: "bg-pink-50 dark:bg-pink-950/30",
+    color: "text-sky-500",
+    bgColor: "bg-sky-50 dark:bg-sky-950/30",
   },
   weibo: {
     label: "微博",

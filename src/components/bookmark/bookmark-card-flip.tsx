@@ -70,7 +70,7 @@ export const FlipBookmarkCard = memo(function FlipBookmarkCard({
   const getPlatformColor = (platform: string): string => {
     const colors: Record<string, string> = {
       WECHAT_OFFICIAL_ACCOUNT: "#07C160", // 微信绿
-      BILIBILI: "#FB7299", // B站粉
+      BILIBILI: "#00AEEC", // B站蓝
       XIAOHONGSHU: "#FF2442", // 小红书红
       BROWSER_CHROME: "#4285F4", // Chrome蓝
       BROWSER_EDGE: "#0078D7", // Edge蓝

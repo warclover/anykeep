@@ -27,7 +27,7 @@ const PLATFORM_CONFIG: Partial<
   Record<Platform, { name: string; color: string }>
 > = {
   WECHAT_OFFICIAL_ACCOUNT: { name: "微信公众号", color: "#07C160" },
-  BILIBILI: { name: "B站", color: "#FB7299" },
+  BILIBILI: { name: "B站", color: "#00AEEC" },
   XIAOHONGSHU: { name: "小红书", color: "#FF2442" },
   ZHIHU: { name: "知乎", color: "#0066FF" },
   DOUYIN: { name: "抖音", color: "#000000" },
