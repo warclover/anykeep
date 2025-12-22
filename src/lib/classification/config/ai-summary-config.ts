@@ -392,15 +392,19 @@ export async function setUserSummaryMode(
     );
 
     if (error) {
-      console.error(
-        `[ai-summary-config] Failed to set user summary mode: ${error.message}`,
+      logger.error(
+        { error, mode, userId },
+        "[ai-summary-config] Failed to set user summary mode",
       );
       return false;
     }
 
     return data === true;
   } catch (err) {
-    console.error(`[ai-summary-config] Error setting user summary mode:`, err);
+    logger.error(
+      { error: err, mode },
+      "[ai-summary-config] Error setting user summary mode",
+    );
     return false;
   }
 }

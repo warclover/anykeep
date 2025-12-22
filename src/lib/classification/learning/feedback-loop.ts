@@ -13,6 +13,7 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
 import { preferenceLearner, type LearningStats } from "./preference-learner";
 import { profileUpdater } from "./profile-updater";
 import { sourceProfileService } from "@/lib/source-profile/source-profile.service";
@@ -155,7 +156,7 @@ export class FeedbackLoopService {
         message: "反馈处理成功",
       };
     } catch (error) {
-      console.error("Feedback processing error:", error);
+      logger.error({ error }, "Feedback processing error");
       return {
         success: false,
         learningApplied: false,
@@ -264,7 +265,13 @@ export class FeedbackLoopService {
    */
   private mapSignalToEventType(
     signal: FeedbackSignal,
-  ): "classification_confirmed" | "classification_rejected" | "classification_modified" | "folder_moved" | "bookmark_deleted" | null {
+  ):
+    | "classification_confirmed"
+    | "classification_rejected"
+    | "classification_modified"
+    | "folder_moved"
+    | "bookmark_deleted"
+    | null {
     switch (signal) {
       case "confirm":
         return "classification_confirmed";
@@ -284,7 +291,9 @@ export class FeedbackLoopService {
   /**
    * 从反馈更新来源画像
    */
-  private async updateSourceFromFeedback(feedback: FeedbackData): Promise<void> {
+  private async updateSourceFromFeedback(
+    feedback: FeedbackData,
+  ): Promise<void> {
     if (!feedback.sourceId) return;
 
     const { userId, sourceId, signal, newFolderId, confidence } = feedback;
@@ -326,7 +335,9 @@ export class FeedbackLoopService {
   /**
    * 检查是否需要调整
    */
-  private async checkForAdjustments(userId: string): Promise<LearningAdjustment[]> {
+  private async checkForAdjustments(
+    userId: string,
+  ): Promise<LearningAdjustment[]> {
     const adjustments: LearningAdjustment[] = [];
     const window = this.feedbackWindow.get(userId) || [];
 
@@ -357,7 +368,9 @@ export class FeedbackLoopService {
     if (modifyRate > 0.2) {
       // 找出频繁被修改的来源
       const sourceModifies = new Map<string, number>();
-      for (const f of window.filter((f) => f.signal === "modify" && f.sourceId)) {
+      for (const f of window.filter(
+        (f) => f.signal === "modify" && f.sourceId,
+      )) {
         const count = sourceModifies.get(f.sourceId!) || 0;
         sourceModifies.set(f.sourceId!, count + 1);
       }
@@ -427,9 +440,8 @@ export class FeedbackLoopService {
   private calculateSatisfaction(stats: LearningStats): number {
     // 基于确认率和修改率计算
     const accuracy = this.calculateAccuracy(stats);
-    const modificationPenalty = stats.modifications > 0
-      ? Math.min(20, stats.modifications * 2)
-      : 0;
+    const modificationPenalty =
+      stats.modifications > 0 ? Math.min(20, stats.modifications * 2) : 0;
     return Math.max(0, accuracy - modificationPenalty);
   }
 

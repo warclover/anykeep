@@ -13,6 +13,7 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
 import { sourceProfileService } from "@/lib/source-profile/source-profile.service";
 import { fastPathCacheManager } from "@/lib/classification/router/cache-manager";
 import { LEARNING_LIMITS, FAST_PATH_THRESHOLDS } from "@/lib/trust-mode/config";
@@ -153,7 +154,10 @@ export class ProfileUpdater {
             const folderCounts = new Map<number, number>();
             for (const b of bookmarks) {
               if (b.folder_id) {
-                folderCounts.set(b.folder_id, (folderCounts.get(b.folder_id) || 0) + 1);
+                folderCounts.set(
+                  b.folder_id,
+                  (folderCounts.get(b.folder_id) || 0) + 1,
+                );
               }
             }
 
@@ -178,7 +182,10 @@ export class ProfileUpdater {
             processed++;
           }
         } catch (error) {
-          console.error(`Failed to refresh stats for ${profile.sourceId}:`, error);
+          logger.error(
+            { error, sourceId: profile.sourceId },
+            "Failed to refresh stats",
+          );
           errors++;
         }
       }
@@ -258,7 +265,10 @@ export class ProfileUpdater {
 
           processed++;
         } catch (error) {
-          console.error(`Failed to decay weights for profile ${profile.id}:`, error);
+          logger.error(
+            { error, profileId: profile.id },
+            "Failed to decay weights",
+          );
           errors++;
         }
       }
@@ -330,7 +340,10 @@ export class ProfileUpdater {
 
             // 合并文件夹
             const mergedFolders = [
-              ...new Set([...primary.frequentFolders, ...profile.frequentFolders]),
+              ...new Set([
+                ...primary.frequentFolders,
+                ...profile.frequentFolders,
+              ]),
             ].slice(0, 10);
 
             // 更新主画像
@@ -354,7 +367,7 @@ export class ProfileUpdater {
             processed++;
           }
         } catch (error) {
-          console.error(`Failed to merge profiles for ${baseDomain}:`, error);
+          logger.error({ error, baseDomain }, "Failed to merge profiles");
           errors++;
         }
       }
@@ -418,7 +431,10 @@ export class ProfileUpdater {
           deleted.push(profile.source_id);
           processed++;
         } catch (error) {
-          console.error(`Failed to delete stale profile ${profile.source_id}:`, error);
+          logger.error(
+            { error, sourceId: profile.source_id },
+            "Failed to delete stale profile",
+          );
           errors++;
         }
       }
@@ -496,7 +512,9 @@ export class ProfileUpdater {
     for (const profile of profiles) {
       const lastSeen = profile.lastSeenAt ? new Date(profile.lastSeenAt) : null;
       const daysSinceLastSeen = lastSeen
-        ? Math.floor((now.getTime() - lastSeen.getTime()) / (1000 * 60 * 60 * 24))
+        ? Math.floor(
+            (now.getTime() - lastSeen.getTime()) / (1000 * 60 * 60 * 24),
+          )
         : Infinity;
 
       if (daysSinceLastSeen > staleDays) {
@@ -517,21 +535,29 @@ export class ProfileUpdater {
     }
 
     // 计算重复画像
-    const duplicateProfiles = [...domainCounts.values()].filter((c) => c > 1).length;
+    const duplicateProfiles = [...domainCounts.values()].filter(
+      (c) => c > 1,
+    ).length;
 
     // 生成建议
     const recommendations: string[] = [];
 
     if (staleProfiles > profiles.length * 0.2) {
-      recommendations.push(`${staleProfiles} 个画像超过 ${staleDays} 天未更新，建议清理`);
+      recommendations.push(
+        `${staleProfiles} 个画像超过 ${staleDays} 天未更新，建议清理`,
+      );
     }
 
     if (lowSampleProfiles > profiles.length * 0.3) {
-      recommendations.push(`${lowSampleProfiles} 个画像样本不足，可能影响分类准确性`);
+      recommendations.push(
+        `${lowSampleProfiles} 个画像样本不足，可能影响分类准确性`,
+      );
     }
 
     if (duplicateProfiles > 0) {
-      recommendations.push(`发现 ${duplicateProfiles} 组可能重复的画像，建议合并`);
+      recommendations.push(
+        `发现 ${duplicateProfiles} 组可能重复的画像，建议合并`,
+      );
     }
 
     if (healthyProfiles < 10 && profiles.length > 0) {
@@ -601,13 +627,16 @@ export const profileUpdater = new ProfileUpdater();
 /**
  * 调度定期更新任务
  */
-export function scheduleProfileUpdates(userId: string, intervalHours = 24): NodeJS.Timeout {
+export function scheduleProfileUpdates(
+  userId: string,
+  intervalHours = 24,
+): NodeJS.Timeout {
   return setInterval(
     async () => {
       try {
         await profileUpdater.runFullUpdate(userId);
       } catch (error) {
-        console.error("Scheduled profile update failed:", error);
+        logger.error({ error, userId }, "Scheduled profile update failed");
       }
     },
     intervalHours * 60 * 60 * 1000,

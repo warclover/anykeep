@@ -11,6 +11,7 @@
  */
 
 import { sourceProfileService } from "@/lib/source-profile/source-profile.service";
+import { logger } from "@/lib/logger";
 import {
   FAST_PATH_THRESHOLDS,
   CONTENT_ROUTER_CONFIG,
@@ -243,7 +244,7 @@ export class ContentRouter {
       // 获取快速匹配结果
       return await sourceProfileService.getQuickMatch(userId, url);
     } catch (error) {
-      console.error("Source match error:", error);
+      logger.error({ error, url }, "Source match error");
       return { found: false };
     }
   }

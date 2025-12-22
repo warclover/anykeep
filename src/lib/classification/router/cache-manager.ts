@@ -14,6 +14,7 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
 import { tagMatcher } from "./tag-matcher";
 import { titleMatcher } from "./title-matcher";
 import { sourceProfileService } from "@/lib/source-profile/source-profile.service";
@@ -453,7 +454,7 @@ export class FastPathCacheManager {
         cachedAt: Date.now(),
       };
     } catch (error) {
-      console.error("Failed to load user fast path data:", error);
+      logger.error({ error, userId }, "Failed to load user fast path data");
       return null;
     }
   }
@@ -579,7 +580,7 @@ export async function warmupActiveUsers(): Promise<void> {
       await fastPathCacheManager.batchWarmup(activeUsers.map((u) => u.id));
     }
   } catch (error) {
-    console.error("Failed to warmup active users cache:", error);
+    logger.error({ error }, "Failed to warmup active users cache");
   }
 }
 
