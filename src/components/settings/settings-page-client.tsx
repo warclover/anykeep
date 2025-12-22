@@ -36,6 +36,7 @@ import { ClassificationSettingsCard } from "./classification-settings-card";
 import { TrustModeSettingsCard } from "./trust-mode-settings-card";
 import { SummaryModeSettingsCard } from "./summary-mode-settings-card";
 import { AIOperationHistoryCard } from "./ai-operation-history-card";
+import { AIProviderSettingsCard } from "./ai-provider-settings-card";
 import { ColorThemeSelector } from "./color-theme-selector";
 import { NotificationSettingsCard } from "@/components/messages";
 import { SnapshotQuotaSectionLazy } from "@/components/snapshot";
@@ -486,6 +487,9 @@ export function SettingsPageClient({
                 </div>
               </CardContent>
             </Card>
+
+            {/* AI Provider 状态 - V4.3 */}
+            <AIProviderSettingsCard />
 
             {/* 隐私与安全 */}
             <Card>

@@ -13,8 +13,11 @@ const config: Config = {
   setupFilesAfterEnv: ["<rootDir>/jest.setup.ts"],
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/src/$1",
-    // Mock lucide-react to avoid ESM issues (match exact and all subpaths)
+    // Mock lucide-react to avoid ESM issues
+    // Match both the barrel export and individual icon imports (from modularizeImports)
     "^lucide-react$": "<rootDir>/__mocks__/lucide-react.js",
+    "^lucide-react/dist/esm/icons/(.*)$": "<rootDir>/__mocks__/lucide-react.js",
+    "^lucide-react/dist/cjs/icons/(.*)$": "<rootDir>/__mocks__/lucide-react.js",
     "^lucide-react/dist/(.*)$": "<rootDir>/__mocks__/lucide-react.js",
   },
   // Transform ESM modules that Jest can't handle natively

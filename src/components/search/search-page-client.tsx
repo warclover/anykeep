@@ -2,6 +2,7 @@
  * 搜索页面客户端组件
  * 优化：接收 hotTagsSlot 作为流式渲染的插槽
  * V4.2.17: 支持客户端导航时自动获取搜索结果
+ * V4.3.0: 集成 AI 搜索组件（语义搜索开关、智能建议、搜索增强）
  */
 
 "use client";
@@ -18,10 +19,14 @@ import { Search, Sparkles, Clock, X, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { BookmarkCard } from "@/components/bookmark/bookmark-card";
 import { ErrorMessage } from "@/components/ui/error-message";
+import {
+  SemanticSearchToggle,
+  AISearchSuggestions,
+  AISearchEnhanced,
+  type SearchMode,
+} from "@/components/ai";
 import type { Bookmark } from "@/types/supabase";
 
 interface SearchPageClientProps {
@@ -45,7 +50,11 @@ export function SearchPageClient({
 }: SearchPageClientProps) {
   const router = useRouter();
   const [query, setQuery] = useState(initialQuery);
-  const [aiMode, setAIMode] = useState(initialAIMode);
+  // V4.3.0: 使用 SearchMode 类型替代 boolean
+  const [searchMode, setSearchMode] = useState<SearchMode>(
+    initialAIMode ? "semantic" : "keyword",
+  );
+  const aiMode = searchMode === "semantic";
   const [searchHistory, setSearchHistory] = useState<string[]>(() => {
     if (typeof window !== "undefined") {
       try {
@@ -58,6 +67,9 @@ export function SearchPageClient({
     return [];
   });
   const [showHistory, setShowHistory] = useState(false);
+  // V4.3.0: 控制 AI 搜索建议显示
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // V4.2.17: 客户端搜索状态（用于客户端导航时自动获取结果）
   const [clientSearchResults, setClientSearchResults] = useState<
@@ -215,17 +227,26 @@ export function SearchPageClient({
   };
 
   // 切换 AI 模式
-  const handleAIModeToggle = (checked: boolean) => {
-    setAIMode(checked);
+  // V4.3.0: 使用 SearchMode 类型
+  const handleSearchModeChange = (mode: SearchMode) => {
+    setSearchMode(mode);
+    const isAI = mode === "semantic";
     // 如果当前有搜索，立即重新搜索
     if (query.trim()) {
       const params = new URLSearchParams();
       params.set("q", query);
-      if (checked) {
+      if (isAI) {
         params.set("ai", "true");
       }
       router.push(`/search?${params.toString()}`);
     }
+  };
+
+  // V4.3.0: 处理 AI 建议选择
+  const handleSuggestionSelect = (suggestion: string) => {
+    setQuery(suggestion);
+    setShowSuggestions(false);
+    handleSearch(suggestion);
   };
 
   const hasResults = searchResults.length > 0;
@@ -248,13 +269,24 @@ export function SearchPageClient({
         {/* 搜索框区域 */}
         <div className="max-w-3xl mx-auto">
           {/* 大搜索框 */}
-          <div className="relative mb-6">
+          <div className="relative mb-4">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-gray-400" />
             <Input
+              ref={inputRef}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleKeyDown}
-              onFocus={() => setShowHistory(true)}
+              onFocus={() => {
+                setShowHistory(true);
+                setShowSuggestions(true);
+              }}
+              onBlur={() => {
+                // 延迟关闭，允许点击建议
+                setTimeout(() => {
+                  setShowSuggestions(false);
+                  setShowHistory(false);
+                }, 200);
+              }}
               placeholder="搜索标题、作者、摘要..."
               className="pl-12 pr-4 h-14 text-base"
             />
@@ -268,32 +300,22 @@ export function SearchPageClient({
                 <X className="size-4" />
               </Button>
             )}
-          </div>
 
-          {/* AI 语义搜索开关 */}
-          <div className="flex items-center justify-between mb-8 p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/50 rounded-lg flex items-center justify-center">
-                <Sparkles className="size-5 text-purple-600 dark:text-purple-400" />
-              </div>
-              <div>
-                <Label
-                  htmlFor="ai-mode"
-                  className="text-sm font-medium cursor-pointer"
-                >
-                  AI 语义搜索
-                </Label>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  使用 AI 理解搜索意图，获得更准确的结果
-                </p>
-              </div>
-            </div>
-            <Switch
-              id="ai-mode"
-              checked={aiMode}
-              onCheckedChange={handleAIModeToggle}
+            {/* V4.3.0: AI 搜索建议（下拉面板） */}
+            <AISearchSuggestions
+              query={query}
+              onSuggestionSelect={handleSuggestionSelect}
+              onClearHistory={clearHistory}
+              visible={showSuggestions}
             />
           </div>
+
+          {/* V4.3.0: AI 语义搜索开关（使用 SemanticSearchToggle 组件） */}
+          <SemanticSearchToggle
+            mode={searchMode}
+            onModeChange={handleSearchModeChange}
+            className="mb-8"
+          />
 
           {/* 搜索历史（仅在聚焦且有历史时显示） */}
           {showHistory && searchHistory.length > 0 && !hasQuery && (
@@ -388,6 +410,17 @@ export function SearchPageClient({
                     <p className="text-gray-500 dark:text-gray-400 text-sm">
                       尝试使用其他关键词，或开启 AI 语义搜索
                     </p>
+                  </div>
+                )}
+
+                {/* V4.3.0: AI 搜索增强洞察（仅在有结果时显示） */}
+                {hasResults && aiMode && (
+                  <div className="mt-8">
+                    <AISearchEnhanced
+                      query={initialQuery}
+                      resultCount={searchResults.length}
+                      searchMode={aiMode ? "semantic" : "keyword"}
+                    />
                   </div>
                 )}
               </>

@@ -5,6 +5,9 @@
 
 const React = require("react");
 
+// Debug: log when mock is loaded
+// console.log("[lucide-react mock] Mock file loaded");
+
 // Create a generic mock icon component
 function createMockIcon(displayName) {
   function Icon(props) {
@@ -114,3 +117,30 @@ exports.Package = createMockIcon("Package");
 exports.Boxes = createMockIcon("Boxes");
 exports.ArrowLeft = createMockIcon("ArrowLeft");
 exports.ArrowRight = createMockIcon("ArrowRight");
+
+// AI Components icons
+exports.FileText = createMockIcon("FileText");
+exports.Edit2 = createMockIcon("Edit2");
+exports.CheckCheck = createMockIcon("CheckCheck");
+exports.Copy = createMockIcon("Copy");
+exports.Wand2 = createMockIcon("Wand2");
+exports.Tags = createMockIcon("Tags");
+exports.FolderInput = createMockIcon("FolderInput");
+exports.CheckCircle = createMockIcon("CheckCircle");
+exports.Brain = createMockIcon("Brain");
+exports.Compass = createMockIcon("Compass");
+exports.BookmarkIcon = createMockIcon("BookmarkIcon");
+exports.Bot = createMockIcon("Bot");
+exports.Send = createMockIcon("Send");
+exports.MessageCircle = createMockIcon("MessageCircle");
+exports.Expand = createMockIcon("Expand");
+exports.Lightbulb = createMockIcon("Lightbulb");
+exports.ThumbsUp = createMockIcon("ThumbsUp");
+exports.ThumbsDown = createMockIcon("ThumbsDown");
+exports.BookOpen = createMockIcon("BookOpen");
+exports.Target = createMockIcon("Target");
+exports.Trash2 = createMockIcon("Trash2");
+
+// Also export a default for individual icon file imports (via modularizeImports transform)
+// When lucide-react/dist/esm/icons/compass is imported, it needs a default export
+exports.default = createMockIcon("MockIcon");

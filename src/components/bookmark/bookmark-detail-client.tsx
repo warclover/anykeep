@@ -26,6 +26,7 @@ import {
   Check,
   X,
   Globe,
+  Bot,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAbortableFetch } from "@/hooks/use-abortable-fetch";
@@ -64,6 +65,14 @@ import { SnapshotSectionLazy } from "@/components/snapshot";
 import { lazy, Suspense } from "react";
 import { useWechatArticleFeature } from "@/lib/feature-flags";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AIAssistantPanel,
+  AISmartSummary,
+  AIQuickActions,
+  AIRelatedContent,
+  AIBookmarkChat,
+} from "@/components/ai";
+import { useOptionalUser } from "@/contexts/user-context";
 
 // 懒加载微信文章区块组件
 const WechatArticleSectionLazy = lazy(() =>
@@ -91,9 +100,14 @@ export function BookmarkDetailClient({
   const router = useRouter();
   const { fetchWithAbort } = useAbortableFetch();
   const platformConfig = getPlatformConfig(bookmark.platform);
+  // 获取用户信息（用于 AI 助手）
+  const userContext = useOptionalUser();
+  const userId = userContext?.user?.id;
   const [isDeleting, setIsDeleting] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showMoveDialog, setShowMoveDialog] = useState(false);
+  // AI 助手面板状态
+  const [showAIPanel, setShowAIPanel] = useState(false);
   // V6.0新增：评级和锁定状态
   const [rating, setRating] = useState(bookmark.rating || 0);
   const [isLocked, setIsLocked] = useState(bookmark.is_locked || false);
@@ -107,6 +121,10 @@ export function BookmarkDetailClient({
     bookmark.user_tags,
   );
   const [localNotes, setLocalNotes] = useState<string | null>(bookmark.notes);
+  // AI 摘要本地状态（用于 AISmartSummary 编辑）
+  const [localSummary, setLocalSummary] = useState<string | null>(
+    bookmark.ai_summary,
+  );
 
   // V10.0新增：视觉分析
   const {
@@ -700,6 +718,19 @@ export function BookmarkDetailClient({
                       <span className="ml-1 hidden sm:inline">分享</span>
                     </Button>
 
+                    {/* AI 助手按钮 */}
+                    {userId && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowAIPanel(true)}
+                        className="h-8 px-2 text-primary hover:text-primary"
+                      >
+                        <Bot className="size-3.5" />
+                        <span className="ml-1 hidden sm:inline">AI 助手</span>
+                      </Button>
+                    )}
+
                     <Button
                       variant="ghost"
                       size="sm"
@@ -746,10 +777,65 @@ export function BookmarkDetailClient({
             <Separator className="my-0" />
 
             <CardContent className="pt-1 space-y-5">
-              {/* AI 摘要（无标题，直接显示内容） */}
-              {bookmark.ai_summary && (
+              {/* AI 智能摘要（支持编辑和重新生成） */}
+              {userId ? (
                 <>
-                  <SummaryRenderer summary={bookmark.ai_summary} />
+                  <AISmartSummary
+                    bookmarkId={bookmark.id}
+                    existingSummary={localSummary}
+                    bookmarkTitle={bookmark.title}
+                    onSummaryUpdate={(newSummary) =>
+                      setLocalSummary(newSummary)
+                    }
+                    readonly={false}
+                  />
+                  <Separator />
+                </>
+              ) : (
+                /* 未登录时使用原始摘要渲染 */
+                localSummary && (
+                  <>
+                    <SummaryRenderer summary={localSummary} />
+                    <Separator />
+                  </>
+                )
+              )}
+
+              {/* AI 快捷操作（仅登录用户可见） */}
+              {userId && (
+                <>
+                  <AIQuickActions
+                    bookmarkId={bookmark.id}
+                    bookmarkTitle={bookmark.title}
+                    currentTags={localUserTags ?? undefined}
+                    currentFolderId={bookmark.folder_id ?? undefined}
+                    onActionComplete={(action, result) => {
+                      // 根据操作类型更新本地状态
+                      if (action === "auto-tag" && result) {
+                        // 合并新标签
+                        const newTags = Array.isArray(result) ? result : [];
+                        setLocalUserTags((prev) => {
+                          const existing = prev ?? [];
+                          return [...new Set([...existing, ...newTags])];
+                        });
+                      }
+                    }}
+                  />
+                  <Separator />
+                </>
+              )}
+
+              {/* AI 书签聊天（内联可折叠） */}
+              {userId && (
+                <>
+                  <AIBookmarkChat
+                    userId={userId}
+                    bookmarkId={bookmark.id}
+                    bookmarkTitle={bookmark.title}
+                    bookmarkUrl={bookmark.url}
+                    defaultExpanded={false}
+                    onOpenFullChat={() => setShowAIPanel(true)}
+                  />
                   <Separator />
                 </>
               )}
@@ -913,6 +999,18 @@ export function BookmarkDetailClient({
                 minStrength={0.3}
               />
 
+              {/* AI 相关内容推荐（基于向量相似度） */}
+              {userId && (
+                <AIRelatedContent
+                  bookmarkId={bookmark.id}
+                  bookmarkTitle={bookmark.title}
+                  maxItems={5}
+                  onBookmarkClick={(relatedId) => {
+                    router.push(`/bookmark/${relatedId}`);
+                  }}
+                />
+              )}
+
               {/* V4.2.1: 网页快照（微信文章不显示，使用专用微信快照组件） */}
               {!showWechatArticle && (
                 <SnapshotSectionLazy
@@ -979,6 +1077,18 @@ export function BookmarkDetailClient({
         }}
         enableLearning={true}
       />
+
+      {/* AI 助手面板 */}
+      {userId && (
+        <AIAssistantPanel
+          open={showAIPanel}
+          onOpenChange={setShowAIPanel}
+          userId={userId}
+          bookmarkIds={[bookmark.id]}
+          title="AI 知识助手"
+          description={`关于「${bookmark.title?.slice(0, 20)}${bookmark.title && bookmark.title.length > 20 ? "..." : ""}」`}
+        />
+      )}
     </div>
   );
 }
