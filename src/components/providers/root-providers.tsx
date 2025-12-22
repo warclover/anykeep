@@ -9,6 +9,8 @@
  * - HomePageProvider 移出 Suspense 边界
  * - NavigationProvider 使用 useSearchParams() 会触发 Suspense
  * - 如果 HomePageProvider 在 Suspense 内，挂起时子组件无法访问 Context
+ *
+ * V4.2.30: 添加 SessionHeartbeatProvider 解决长时间操作会话过期问题
  */
 
 import { Suspense } from "react";
@@ -23,6 +25,7 @@ import { KeepAliveProvider } from "@/lib/cache";
 import { OnboardingProvider } from "@/components/providers/onboarding-provider";
 import { MessageNotificationProvider } from "@/components/messages/message-notification-provider";
 import { WebVitalsReporter } from "@/components/analytics/web-vitals-reporter";
+import { SessionHeartbeatProvider } from "@/components/providers/session-heartbeat-provider";
 
 interface RootProvidersProps {
   children: React.ReactNode;
@@ -39,21 +42,24 @@ export function RootProviders({ children }: RootProvidersProps) {
       {/* Phase 5: 侧边栏折叠状态管理 */}
       <SidebarProvider>
         <UserProvider>
-          <OnboardingProvider>
-            {/* Phase 3.5: HomePageProvider 移出 Suspense 边界
-                避免 NavigationProvider 挂起时 Context 不可用 */}
-            <HomePageProvider>
-              <Suspense fallback={null}>
-                <NavigationProvider>
-                  <KeepAliveProvider>
-                    <MessageNotificationProvider>
-                      {children}
-                    </MessageNotificationProvider>
-                  </KeepAliveProvider>
-                </NavigationProvider>
-              </Suspense>
-            </HomePageProvider>
-          </OnboardingProvider>
+          {/* V4.2.30: 会话心跳检测，防止长时间操作时会话过期 */}
+          <SessionHeartbeatProvider>
+            <OnboardingProvider>
+              {/* Phase 3.5: HomePageProvider 移出 Suspense 边界
+                  避免 NavigationProvider 挂起时 Context 不可用 */}
+              <HomePageProvider>
+                <Suspense fallback={null}>
+                  <NavigationProvider>
+                    <KeepAliveProvider>
+                      <MessageNotificationProvider>
+                        {children}
+                      </MessageNotificationProvider>
+                    </KeepAliveProvider>
+                  </NavigationProvider>
+                </Suspense>
+              </HomePageProvider>
+            </OnboardingProvider>
+          </SessionHeartbeatProvider>
         </UserProvider>
       </SidebarProvider>
       <Toaster position="top-center" offset={16} />

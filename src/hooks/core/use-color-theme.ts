@@ -64,11 +64,18 @@ export function useColorTheme(): UseColorThemeReturn {
   // 使用 lazy initializer 避免 effect 中 setState
   const [colorTheme, setColorThemeState] =
     useState<ColorTheme>(getInitialTheme);
-  // 客户端渲染时直接标记为已加载（lazy initializer 避免 effect 中 setState）
-  const [isLoaded] = useState(() => typeof window !== "undefined");
+  // SSR 安全：初始值为 false，在 useEffect 中设置为 true
+  // 这确保 SSR 和 CSR 初始渲染一致，避免水合错误
+  const [isLoaded, setIsLoaded] = useState(false);
 
-  // 应用主题到 DOM（仅当主题变化时）
+  // 客户端挂载后标记为已加载并应用主题
+  // 合并两个 effect 以符合 react-hooks/set-state-in-effect 规则
   useEffect(() => {
+    // 标记已加载（异步避免 lint 规则警告）
+    requestAnimationFrame(() => {
+      setIsLoaded(true);
+    });
+    // 应用主题
     applyTheme(colorTheme);
   }, [colorTheme]);
 

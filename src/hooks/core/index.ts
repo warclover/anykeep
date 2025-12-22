@@ -9,3 +9,4 @@ export * from "./use-debug-config";
 export * from "./use-dialogs";
 export * from "./use-platform-cache";
 export * from "./use-selection-mode";
+export * from "./use-session-heartbeat";

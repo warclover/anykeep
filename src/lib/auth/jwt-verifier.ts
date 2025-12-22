@@ -123,9 +123,10 @@ export async function verifyJwtLocally(
     const now = Math.floor(Date.now() / 1000);
     const expiresIn = typedPayload.exp - now;
 
-    // 检查是否即将过期（1分钟内需要刷新）
-    // 注意：阈值从 5 分钟降低到 1 分钟，让更多请求使用本地验证快速路径
-    const nearExpiry = expiresIn < 60;
+    // 检查是否即将过期（5分钟内需要刷新）
+    // V4.2.30: 将阈值从 1 分钟恢复到 5 分钟，确保 Token 有足够时间刷新
+    // 避免长时间操作时会话意外过期
+    const nearExpiry = expiresIn < 300;
 
     const duration = performance.now() - startTime;
 
