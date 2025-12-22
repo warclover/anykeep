@@ -15,6 +15,7 @@
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { operationLogService } from "@/lib/classification/services/operation-log.service";
+import { initializeFolderNameProfile } from "@/lib/classification/integration";
 import { logger } from "@/lib/logger";
 import { folderCacheInvalidation } from "@/lib/cache/folder-cache-invalidation";
 import { fastPathCacheManager } from "@/lib/classification/router/cache-manager";
@@ -152,8 +153,8 @@ class FolderExecutorService {
         );
       }
 
-      // 5. V4.2.5: 计算文件夹画像（异步，不阻塞）
-      // 如果有书签移动，计算实际画像；否则只初始化空记录
+      // 5. V4.2.8: 计算文件夹画像（异步，不阻塞）
+      // 如果有书签移动，计算实际画像；否则初始化名称向量
       if (movedCount > 0) {
         this.computeFolderProfile(folder.id).catch((err) => {
           logger.warn(
@@ -161,13 +162,25 @@ class FolderExecutorService {
             `${this.LOG_PREFIX} Profile computation warning`,
           );
         });
+        // 同时也要初始化名称向量，确保加权平均正确
+        initializeFolderNameProfile(folder.id, folder.name, userId).catch(
+          (err) => {
+            logger.warn(
+              { error: err instanceof Error ? err.message : String(err) },
+              `${this.LOG_PREFIX} Name embedding init warning`,
+            );
+          },
+        );
       } else {
-        this.initializeFolderProfile(userId, folder.id).catch((err) => {
-          logger.warn(
-            { error: err instanceof Error ? err.message : String(err) },
-            `${this.LOG_PREFIX} Profile init warning`,
-          );
-        });
+        // V4.2.8: 空文件夹也需要名称向量，用于冷启动分类
+        initializeFolderNameProfile(folder.id, folder.name, userId).catch(
+          (err) => {
+            logger.warn(
+              { error: err instanceof Error ? err.message : String(err) },
+              `${this.LOG_PREFIX} Name embedding init warning`,
+            );
+          },
+        );
       }
 
       logger.info(
@@ -701,7 +714,16 @@ class FolderExecutorService {
         `${this.LOG_PREFIX} Folder renamed successfully`,
       );
 
-      // 6. 触发缓存失效（确保客户端获取最新数据）
+      // 6. V4.2.8: 更新文件夹名称向量（异步，不阻塞）
+      // 重命名后需要重新生成 name_embedding 以确保分类准确性
+      initializeFolderNameProfile(folderId, newName, userId).catch((err) => {
+        logger.warn(
+          { error: err instanceof Error ? err.message : String(err) },
+          `${this.LOG_PREFIX} Failed to update name embedding after rename`,
+        );
+      });
+
+      // 7. 触发缓存失效（确保客户端获取最新数据）
       folderCacheInvalidation.onFolderRename(userId);
       // V4.2.7: 清除服务端分类缓存（确保下次分类使用最新文件夹列表）
       fastPathCacheManager.invalidateUser(userId);

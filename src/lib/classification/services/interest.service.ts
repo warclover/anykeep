@@ -19,6 +19,7 @@ import {
 } from "../constants";
 import { FOLDER_LIMITS } from "../constants";
 import { logger } from "@/lib/logger";
+import { initializeFolderNameProfile } from "../integration";
 
 /**
  * Service for managing user interests
@@ -138,15 +139,35 @@ export class InterestService implements IInterestService {
 
     for (const folderName of finalFolders) {
       try {
-        const { error } = await this.supabase.from("folders").insert({
-          user_id: userId,
-          name: folderName,
-          is_system: false,
-          source: "interest_onboarding",
-        });
+        // V4.2.8: 获取创建的文件夹 ID，用于初始化名称向量
+        const { data: folder, error } = await this.supabase
+          .from("folders")
+          .insert({
+            user_id: userId,
+            name: folderName,
+            is_system: false,
+            source: "interest_onboarding",
+          })
+          .select("id")
+          .single();
 
-        if (!error) {
+        if (!error && folder) {
           createdFolders.push(folderName);
+
+          // V4.2.8: 异步初始化文件夹名称向量（不阻塞响应）
+          // 这确保新文件夹可以被智能分类系统感知
+          initializeFolderNameProfile(folder.id, folderName, userId).catch(
+            (err) => {
+              logger.warn(
+                {
+                  error: err instanceof Error ? err.message : String(err),
+                  folderId: folder.id,
+                  folderName,
+                },
+                "Interest: Failed to initialize folder name profile",
+              );
+            },
+          );
         }
       } catch (error) {
         logger.warn(

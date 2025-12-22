@@ -11,6 +11,7 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { operationLogService } from "./operation-log.service";
 import { generateFolderNameFromBookmarks } from "@/lib/utils/ai-generator";
+import { initializeFolderNameProfile } from "../integration";
 import { logger } from "@/lib/logger";
 
 // ============================================
@@ -374,7 +375,21 @@ export class SplitService {
           });
         }
 
-        // Compute profile for new folder
+        // V4.2.8: 初始化新文件夹的名称向量（异步，不阻塞）
+        // 这确保新文件夹可以被智能分类系统感知
+        initializeFolderNameProfile(newFolder.id, newFolder.name, userId).catch(
+          (err) => {
+            logger.warn(
+              {
+                error: err instanceof Error ? err.message : String(err),
+                folderId: newFolder.id,
+              },
+              "SplitService: Failed to initialize name embedding",
+            );
+          },
+        );
+
+        // Compute profile for new folder (content-based)
         // Note: compute_folder_profile 是 V4.2 新增 RPC
         await supabase.rpc("compute_folder_profile", {
           p_folder_id: newFolder.id,
