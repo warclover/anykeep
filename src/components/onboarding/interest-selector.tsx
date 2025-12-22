@@ -16,11 +16,12 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+// 直接从子模块导入，避免触发服务端代码（container → services → integration → supabase/server）
+import type { PresetInterestId } from "@/lib/classification/types";
 import {
   PRESET_INTEREST_DOMAINS,
   getSuggestedFolders,
-  type PresetInterestId,
-} from "@/lib/classification";
+} from "@/lib/classification/constants/interest-domains";
 
 interface InterestSelectorProps {
   /** 已选择的兴趣 ID 列表 */
