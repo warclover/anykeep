@@ -5,8 +5,9 @@
  * @description 展示收藏的完整信息并提供编辑、删除操作
  * - 显示来源徽章（V4.2）
  * - 移动对话框集成学习反馈
+ * - V4.2.30: 乐观更新优化，移除 router.refresh() 提升性能
  *
- * @version 1.1.0
+ * @version 1.2.0
  * @since 2025-12-11
  */
 
@@ -100,6 +101,13 @@ export function BookmarkDetailClient({
     bookmark.is_marked_for_deletion || false,
   );
 
+  // V4.2.30: 本地状态管理 - 用于乐观更新，避免 router.refresh()
+  // 仅跟踪可编辑的字段，其他字段使用原始 bookmark 对象
+  const [localUserTags, setLocalUserTags] = useState<string[] | null>(
+    bookmark.user_tags,
+  );
+  const [localNotes, setLocalNotes] = useState<string | null>(bookmark.notes);
+
   // V10.0新增：视觉分析
   const {
     data: newVisionData,
@@ -181,8 +189,9 @@ export function BookmarkDetailClient({
   });
 
   // 分离用途标签和普通标签（确保传入数组，避免 null/undefined）
+  // V4.2.30: 使用本地状态 localUserTags，支持乐观更新
   const { usageTags, regularTags } = separateUserTagsExtended(
-    bookmark.user_tags ?? [],
+    localUserTags ?? [],
     customUsageTags,
   );
 
@@ -398,7 +407,8 @@ export function BookmarkDetailClient({
 
   const handleEditTags = () => {
     setIsEditingTags(true);
-    setEditedTags(bookmark.user_tags?.join(", ") || "");
+    // V4.2.30: 使用本地状态
+    setEditedTags(localUserTags?.join(", ") || "");
   };
 
   const handleCancelEditTags = () => {
@@ -410,13 +420,22 @@ export function BookmarkDetailClient({
     if (isSavingTags) return;
 
     setIsSavingTags(true);
-    try {
-      // 解析标签字符串
-      const tags = editedTags
-        .split(/[,，\s]+/)
-        .map((t) => t.trim())
-        .filter(Boolean);
 
+    // 解析标签字符串
+    const newTags = editedTags
+      .split(/[,，\s]+/)
+      .map((t) => t.trim())
+      .filter(Boolean);
+
+    // V4.2.30: 乐观更新 - 保存旧值用于回滚
+    const previousTags = localUserTags;
+    const tagsToSave = newTags.length > 0 ? newTags : null;
+
+    // 立即更新本地状态
+    setLocalUserTags(tagsToSave);
+    setIsEditingTags(false);
+
+    try {
       // 调用更新 API
       const res = await fetchWithAbort(`/api/bookmarks/${bookmark.id}`, {
         method: "PUT",
@@ -424,7 +443,7 @@ export function BookmarkDetailClient({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          userTags: tags.length > 0 ? tags : null,
+          userTags: tagsToSave,
         }),
       });
 
@@ -435,13 +454,14 @@ export function BookmarkDetailClient({
       }
 
       toast.success("标签更新成功");
-      setIsEditingTags(false);
-      router.refresh();
+      // V4.2.30: 移除 router.refresh()，使用乐观更新
     } catch (error) {
       // 如果是取消错误，不显示错误提示
       if (error instanceof Error && error.name === "AbortError") {
         return;
       }
+      // 失败时回滚到之前的状态
+      setLocalUserTags(previousTags);
       toast.error(error instanceof Error ? error.message : "更新标签失败");
     } finally {
       setIsSavingTags(false);
@@ -450,7 +470,8 @@ export function BookmarkDetailClient({
 
   const handleEditNotes = () => {
     setIsEditingNotes(true);
-    setEditedNotes(bookmark.notes || "");
+    // V4.2.30: 使用本地状态
+    setEditedNotes(localNotes || "");
   };
 
   const handleCancelEditNotes = () => {
@@ -462,6 +483,15 @@ export function BookmarkDetailClient({
     if (isSavingNotes) return;
 
     setIsSavingNotes(true);
+
+    // V4.2.30: 乐观更新 - 保存旧值用于回滚
+    const previousNotes = localNotes;
+    const notesToSave = editedNotes.trim() || null;
+
+    // 立即更新本地状态
+    setLocalNotes(notesToSave);
+    setIsEditingNotes(false);
+
     try {
       // 调用更新 API
       const res = await fetchWithAbort(`/api/bookmarks/${bookmark.id}`, {
@@ -470,7 +500,7 @@ export function BookmarkDetailClient({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          notes: editedNotes.trim() || null,
+          notes: notesToSave,
         }),
       });
 
@@ -481,13 +511,14 @@ export function BookmarkDetailClient({
       }
 
       toast.success("备注更新成功");
-      setIsEditingNotes(false);
-      router.refresh();
+      // V4.2.30: 移除 router.refresh()，使用乐观更新
     } catch (error) {
       // 如果是取消错误，不显示错误提示
       if (error instanceof Error && error.name === "AbortError") {
         return;
       }
+      // 失败时回滚到之前的状态
+      setLocalNotes(previousNotes);
       toast.error(error instanceof Error ? error.message : "更新备注失败");
     } finally {
       setIsSavingNotes(false);
@@ -626,7 +657,13 @@ export function BookmarkDetailClient({
                   platform={bookmark.platform as Platform}
                   selectedUsageTags={usageTags}
                   regularTags={regularTags}
-                  onSaveSuccess={() => router.refresh()}
+                  onSaveSuccess={(newUsageTags) => {
+                    // V4.2.30: 乐观更新 - 合并新用途标签与普通标签
+                    const newUserTags = [...newUsageTags, ...regularTags];
+                    setLocalUserTags(
+                      newUserTags.length > 0 ? newUserTags : null,
+                    );
+                  }}
                 />
 
                 {/* === 行3：操作栏 === */}
@@ -810,8 +847,8 @@ export function BookmarkDetailClient({
                 </>
               ) : null}
 
-              {/* 备注 */}
-              {bookmark.notes || isEditingNotes ? (
+              {/* 备注 - V4.2.30: 使用 localNotes 支持乐观更新 */}
+              {localNotes || isEditingNotes ? (
                 <>
                   <div>
                     <div className="flex items-center justify-between mb-2">
@@ -860,7 +897,7 @@ export function BookmarkDetailClient({
                       </div>
                     ) : (
                       <p className="text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap">
-                        {bookmark.notes}
+                        {localNotes}
                       </p>
                     )}
                   </div>
@@ -933,8 +970,9 @@ export function BookmarkDetailClient({
         bookmark={{
           ...bookmark,
           // V4.2: 传递学习所需的额外信息
+          // V4.2.30: 使用本地状态 localUserTags
           title: bookmark.title,
-          tags: bookmark.user_tags || bookmark.ai_tags || undefined,
+          tags: localUserTags || bookmark.ai_tags || undefined,
           source_id: bookmark.source_id || sourceInfo?.sourceId || undefined,
           source_name:
             bookmark.source_name || sourceInfo?.sourceName || undefined,
