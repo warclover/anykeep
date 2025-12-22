@@ -67,6 +67,9 @@ export function MdListItem({
             <span>{collection.reading_time_minutes || 1} 分钟</span>
 
             {/* 处理状态 */}
+            {collection.processing_status === "pending" && (
+              <span className="text-gray-400">等待处理...</span>
+            )}
             {collection.processing_status === "processing" && (
               <span className="text-amber-500">AI 处理中...</span>
             )}

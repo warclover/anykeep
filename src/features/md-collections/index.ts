@@ -70,6 +70,7 @@ export {
   useCheckDuplicate,
   useTriggerAIProcess,
   useMdViewPreference,
+  useMdProcessingPoller,
 } from "./hooks";
 export type { MdCacheSnapshot } from "./hooks";
 

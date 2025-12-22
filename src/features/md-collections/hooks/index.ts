@@ -20,3 +20,6 @@ export {
 
 // 视图偏好
 export { useMdViewPreference } from "./use-md-view-preference";
+
+// 处理状态轮询
+export { useMdProcessingPoller } from "./use-md-processing-poller";

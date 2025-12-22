@@ -28,6 +28,7 @@ import {
   useCreateMdCollection,
   useUploadMdFile,
   useMdViewPreference,
+  useMdProcessingPoller,
   MdCardItem,
   MdListItem,
   MdViewToggle,
@@ -93,6 +94,7 @@ export function MdCollectionPageClient({
     refresh,
     removeLocal,
     addLocal,
+    updateLocal,
   } = useMdCollectionsSWR({
     enabled: hasAccess,
     initialData,
@@ -102,6 +104,13 @@ export function MdCollectionPageClient({
       console.error("[MdCollections] 后台刷新失败:", err.message);
       toast.error("数据同步失败，显示的可能是缓存数据", { duration: 3000 });
     },
+  });
+
+  // AI 处理状态轮询
+  useMdProcessingPoller({
+    collections,
+    onUpdate: updateLocal,
+    enabled: hasAccess,
   });
 
   // 删除操作
