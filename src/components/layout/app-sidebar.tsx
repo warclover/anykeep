@@ -240,7 +240,7 @@ export function AppSidebar() {
           transform: "translateZ(0)", // 触发 GPU 层
         }}
         className={cn(
-          "fixed left-0 top-14 z-40 hidden lg:block h-[calc(100vh-3.5rem)] border-r bg-white dark:bg-gray-950 dark:border-gray-800",
+          "fixed left-0 top-[6.25rem] z-40 hidden lg:block h-[calc(100vh-6.25rem)] border-r bg-white dark:bg-gray-950 dark:border-gray-800",
           "transition-[width] duration-200 ease-[cubic-bezier(0.4,0,0.2,1)]",
         )}
       >
