@@ -1,8 +1,18 @@
 /**
  * AI Agent Tools 模块导出
  *
- * @version 1.5.0
+ * @version 1.8.0
  * @since 2025-12-23
+ *
+ * v1.8.0 新增:
+ * - 设置: get-user-interests, update-user-interests
+ * - 导入: import-bookmarks, import-browser-bookmarks
+ *
+ * v1.7.0 新增 P1/P2 Tools:
+ * - 书签: update-bookmark, batch-delete-bookmarks, create-snapshot
+ * - 设置: get-user-settings, get-classification-settings, update-classification-settings
+ * - MD 收藏: toggle-md-read, toggle-md-starred, update-md-collection, delete-md-collection, get-md-stats
+ * - 智能列表: toggle-smart-list-pin, update-smart-list, delete-smart-list, create-smart-list
  */
 
 // 类型定义
@@ -35,6 +45,18 @@ export * from "./folder";
 // 导出 Tools
 export * from "./export";
 
+// 书签 Tools (新增 v1.6.0)
+export * from "./bookmark";
+
+// 设置 Tools (新增 v1.6.0)
+export * from "./settings";
+
+// MD 收藏 Tools (新增 v1.6.0)
+export * from "./md-collection";
+
+// 导入 Tools (新增 v1.8.0)
+export * from "./import";
+
 // 注册默认 Tools
 import { toolRegistry } from "./tool-registry";
 import { queryTools } from "./query";
@@ -44,6 +66,10 @@ import { actionTools } from "./action";
 import { smartListTools } from "./smart-list";
 import { folderTools } from "./folder";
 import { exportTools } from "./export";
+import { bookmarkTools } from "./bookmark";
+import { settingsTools } from "./settings";
+import { mdCollectionTools } from "./md-collection";
+import { importTools } from "./import";
 
 /**
  * 注册所有默认 Tools
@@ -56,6 +82,12 @@ export function registerDefaultTools(): void {
   toolRegistry.registerAll(smartListTools);
   toolRegistry.registerAll(folderTools);
   toolRegistry.registerAll(exportTools);
+  // 新增 Tools (v1.6.0)
+  toolRegistry.registerAll(bookmarkTools);
+  toolRegistry.registerAll(settingsTools);
+  toolRegistry.registerAll(mdCollectionTools);
+  // 新增 Tools (v1.8.0)
+  toolRegistry.registerAll(importTools);
 }
 
 /**
