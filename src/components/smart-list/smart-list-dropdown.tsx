@@ -21,6 +21,7 @@ import {
   Plus,
   Settings2,
   Loader2,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSmartLists } from "@/hooks/use-smart-lists";
@@ -39,6 +40,7 @@ import {
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { AIAssistantPanel } from "@/components/ai/ai-assistant-panel";
 import { toast } from "sonner";
 
 // ============================================
@@ -74,6 +76,7 @@ export function SmartListDropdown({ className }: SmartListDropdownProps) {
   const searchParams = useSearchParams();
   const [isOpen, setIsOpen] = useState(false);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(false);
 
   // 获取智能列表数据
   const { smartLists, isFirstLoad, error, create, preview } = useSmartLists({
@@ -119,6 +122,12 @@ export function SmartListDropdown({ className }: SmartListDropdownProps) {
   const handleCreate = useCallback(() => {
     setIsOpen(false);
     setIsEditorOpen(true);
+  }, []);
+
+  // 打开 AI 助手创建
+  const handleAICreate = useCallback(() => {
+    setIsOpen(false);
+    setIsAIAssistantOpen(true);
   }, []);
 
   // 保存新建的智能列表
@@ -293,6 +302,20 @@ export function SmartListDropdown({ className }: SmartListDropdownProps) {
                 "flex items-center gap-2 w-full px-2 py-1.5 rounded-sm text-sm",
                 "hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors",
                 "focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-800",
+                "text-primary",
+              )}
+              onClick={handleAICreate}
+            >
+              <Sparkles className="size-4" />
+              <span>AI 帮我创建</span>
+            </button>
+
+            <button
+              type="button"
+              className={cn(
+                "flex items-center gap-2 w-full px-2 py-1.5 rounded-sm text-sm",
+                "hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors",
+                "focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-800",
               )}
               onClick={handleManage}
             >
@@ -309,6 +332,14 @@ export function SmartListDropdown({ className }: SmartListDropdownProps) {
         onOpenChange={setIsEditorOpen}
         onSave={handleSave}
         onPreview={preview}
+      />
+
+      {/* AI 助手面板 */}
+      <AIAssistantPanel
+        open={isAIAssistantOpen}
+        onOpenChange={setIsAIAssistantOpen}
+        title="AI 创建智能列表"
+        description="告诉我你想要什么样的智能列表，我来帮你查询和创建"
       />
     </div>
   );
