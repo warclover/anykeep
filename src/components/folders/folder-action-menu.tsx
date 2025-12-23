@@ -82,6 +82,8 @@ interface FolderActionMenuProps {
   ) => void;
   /** 导出文件夹内书签回调 */
   onExportFolder?: (folderId: number) => void;
+  /** 打开 AI 助手回调（传入当前文件夹上下文） */
+  onOpenAIAssistant?: (folder: FolderWithCount) => void;
   /**
    * V4.2.1: 从父组件批量查询结果传入的初始锁状态
    * 如果提供，则跳过单独的 API 请求
@@ -145,6 +147,7 @@ export function FolderActionMenu({
   onFolderRenamed,
   onFolderMerged,
   onExportFolder,
+  onOpenAIAssistant,
   initialLockStatus,
 }: FolderActionMenuProps) {
   const router = useRouter();
@@ -693,6 +696,23 @@ export function FolderActionMenu({
               </span>
             )}
           </DropdownMenuItem>
+
+          {/* AI 协助管理（可选） */}
+          {onOpenAIAssistant && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenAIAssistant(folder);
+                }}
+                className="text-violet-600 dark:text-violet-400"
+              >
+                <Sparkles className="size-4 mr-2" />
+                AI 协助管理
+              </DropdownMenuItem>
+            </>
+          )}
 
           <DropdownMenuSeparator />
 

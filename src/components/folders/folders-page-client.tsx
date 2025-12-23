@@ -17,13 +17,14 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Folder, Plus, Menu } from "lucide-react";
+import { Folder, Plus, Menu, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ErrorMessage } from "@/components/ui/error-message";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { CreateFolderDialog } from "@/components/folders/create-folder-dialog";
 import { FolderNavPanel } from "@/components/folders/folder-nav-panel";
 import { FolderContentArea } from "@/components/folders/folder-content-area";
+import { AIAssistantPanel } from "@/components/ai/ai-assistant-panel";
 import { type UIFolderGroup } from "@/components/folders/constants";
 import { setFoldersCache, clearFoldersCache } from "@/lib/folders/cache";
 import type {
@@ -64,6 +65,9 @@ export function FoldersPageClient({
 
   // 移动端导航抽屉状态
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+
+  // AI 助手面板状态
+  const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(false);
 
   // V4.2.26: 从服务端数据直接提取锁状态（消除重复请求）
   // 服务端 page.tsx 已查询 folder_profiles，无需客户端再次请求
@@ -253,23 +257,50 @@ export function FoldersPageClient({
           >
             <Menu className="size-5" />
           </Button>
-          <h1 className="text-lg font-semibold">收藏夹</h1>
+          <h1 className="text-lg font-semibold flex-1">收藏夹</h1>
+          {/* AI 助手按钮 */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsAIAssistantOpen(true)}
+            className="gap-1.5 text-violet-600 border-violet-200 hover:bg-violet-50 hover:border-violet-300 dark:text-violet-400 dark:border-violet-800 dark:hover:bg-violet-950"
+          >
+            <Sparkles className="size-4" />
+            <span className="hidden sm:inline">AI 助手</span>
+          </Button>
         </div>
 
         {/* 内容区域 */}
-        <FolderContentArea
-          folders={localFolders}
-          selectedGroup={selectedGroup}
-          recentBookmarks={recentBookmarks}
-          lockStatusMap={lockStatusMap}
-          onCreateFolder={handleCreateClick}
-          onActionComplete={() => router.refresh()}
-          onFolderDeleted={handleFolderDeleted}
-          onFolderRenamed={handleFolderRenamed}
-          onFolderMerged={handleFolderMerged}
-          onExportFolder={handleExportFolder}
-          className="flex-1"
-        />
+        <div className="flex-1 flex flex-col min-h-0">
+          {/* 桌面端顶部操作栏 */}
+          <div className="hidden lg:flex items-center justify-between px-6 py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+            <h1 className="text-lg font-semibold">收藏夹</h1>
+            {/* AI 助手按钮 */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsAIAssistantOpen(true)}
+              className="gap-2 text-violet-600 border-violet-200 hover:bg-violet-50 hover:border-violet-300 dark:text-violet-400 dark:border-violet-800 dark:hover:bg-violet-950"
+            >
+              <Sparkles className="size-4" />
+              AI 助手
+            </Button>
+          </div>
+
+          <FolderContentArea
+            folders={localFolders}
+            selectedGroup={selectedGroup}
+            recentBookmarks={recentBookmarks}
+            lockStatusMap={lockStatusMap}
+            onCreateFolder={handleCreateClick}
+            onActionComplete={() => router.refresh()}
+            onFolderDeleted={handleFolderDeleted}
+            onFolderRenamed={handleFolderRenamed}
+            onFolderMerged={handleFolderMerged}
+            onExportFolder={handleExportFolder}
+            className="flex-1"
+          />
+        </div>
       </main>
 
       {/* 创建文件夹对话框 */}
@@ -277,6 +308,13 @@ export function FoldersPageClient({
         open={showCreateDialog}
         onOpenChange={setShowCreateDialog}
         folders={localFolders}
+      />
+
+      {/* AI 助手面板 */}
+      <AIAssistantPanel
+        open={isAIAssistantOpen}
+        onOpenChange={setIsAIAssistantOpen}
+        title="AI 文件夹助手"
       />
     </div>
   );
