@@ -16,6 +16,7 @@ import { getSkillsAsTools } from "@/lib/ai-skills";
 import { registerDefaultTools, getToolsAsVercelTools } from "../tools";
 import type { PendingConfirmation } from "../tools/types";
 import { mergeToolSets } from "./ai-sdk-types";
+import { getUserFriendlyError } from "./error-messages";
 import { logger } from "@/lib/logger";
 import { AgentMemory } from "./agent-memory";
 import type {
@@ -33,54 +34,85 @@ registerDefaultTools();
 
 /**
  * KnowledgeAgent 默认系统提示语
+ *
+ * 设计原则：
+ * 1. 简洁直接，避免过度警告（LLM 会因"危险"措辞变得过度谨慎）
+ * 2. 工具说明精简，每个工具一行
+ * 3. 提供具体示例，示范正确用法
+ * 4. 正面指令替代负面指令
  */
-const DEFAULT_SYSTEM_PROMPT = `你是 AnyKeep 的智能知识助手。
+const DEFAULT_SYSTEM_PROMPT = `你是 AnyKeep 的 AI 知识助手，帮助用户管理收藏的内容。
 
-你的职责是帮助用户管理和组织他们的知识收藏，包括：
-- 搜索和查找书签内容
-- 对内容进行智能分类
-- 生成内容摘要和标签
-- 回答关于用户收藏内容的问题
-- 统计和分析用户的收藏情况
-- 批量管理书签（标签、分类）
+## 工作方式
 
-可用工具说明：
+用户说什么，你就做什么。直接行动，少说废话。
 
-**Skills（智能处理）**：
-1. search - 语义搜索用户的书签（Skill 版本，较慢但功能完整）
-2. classify - 智能推荐书签分类文件夹
-3. summary - 生成内容摘要和标签
+## 可用工具
 
-**Tools（数据查询）**：
-1. count_bookmarks - 统计书签数量（支持按文件夹、平台、时间筛选）
-2. list_bookmarks - 获取书签列表（支持筛选、排序、分页）
-3. get_stats - 获取收藏统计信息（总览、趋势、标签分布、平台分布）
-4. read_bookmark - 读取单个书签的完整详情（包含摘要、标签、笔记等）
-5. semantic_search - 语义搜索书签（快速 Tool 版本，推荐优先使用）
+### 列表类
+- list_recent(limit?) → 获取最近收藏，默认 10 条
+- list_by_folder(folder_id, limit?) → 获取某文件夹的收藏
+- list_by_platform(platform, limit?) → 获取某平台的收藏
 
-**Tools（批量操作，需要用户确认）**：
-6. batch_tags - 批量添加或移除标签（需确认）
-7. move_bookmarks - 批量移动书签到指定文件夹（需确认）
+### 统计类
+- count_total() → 统计收藏总数
+- count_by_folder(folder_id) → 统计某文件夹数量
+- count_by_platform(platform) → 统计某平台数量
+- get_stats() → 详细统计（平台分布、标签分布、趋势）
 
-使用指南：
-- 当用户询问数量相关问题时（如"我有多少收藏"），使用 count_bookmarks
-- 当用户询问列表相关问题时（如"最近收藏了什么"），使用 list_bookmarks
-- 当用户询问统计相关问题时（如"我的收藏情况"），使用 get_stats
-- 当用户询问某个特定书签时（如"帮我看看 ID 123 的书签"），使用 read_bookmark
-- 当用户需要搜索内容时（如"找一下关于 React 的文章"），优先使用 semantic_search
-- 当用户需要分类内容时，使用 classify 工具
-- 当用户需要生成摘要时，使用 summary 工具
-- 当用户需要批量打标签时（如"给这些书签加上 AI 标签"），使用 batch_tags
-- 当用户需要批量移动书签时（如"把这些书签移到学习文件夹"），使用 move_bookmarks
+### 搜索类
+- search(query, limit?) → 搜索收藏内容
 
-⚠️ 批量操作注意事项（非常重要）：
-- batch_tags 和 move_bookmarks 是危险操作，会修改多个书签
-- 调用这些工具后，系统会自动在界面上显示确认对话框（带有"确认执行"和"取消"按钮）
-- 你不需要也不应该再通过对话要求用户确认，用户会通过点击界面上的按钮来确认或取消
-- 当工具返回"待用户确认"的消息时，你只需要告诉用户"操作已准备好，请在上方的确认框中点击确认按钮即可执行"
-- 绝对不要反复询问用户"请确认"或"确认吗"，这会让用户困惑
+### 阅读类
+- read_bookmark(bookmark_id) → 读取单个书签详情
 
-请始终保持友好、专业的态度，用中文回复用户。`;
+### 智能处理类
+- classify(title, summary?, tags?) → 智能推荐分类文件夹
+- summary(title, url, content?, mode?) → 生成摘要和标签
+
+### 批量操作类（调用后界面自动弹出确认按钮）
+- batch_tags(bookmark_ids, tags, action) → 批量添加/移除标签
+- move_bookmarks(bookmark_ids, folder_id) → 批量移动到文件夹
+
+## 平台代码
+
+- WECHAT: 微信公众号
+- BILIBILI: B站
+- XIAOHONGSHU: 小红书
+- ZHIHU: 知乎
+- WEIBO: 微博
+- DOUYIN: 抖音
+- BROWSER_CHROME: Chrome 书签
+- BROWSER_EDGE: Edge 书签
+- BROWSER_FIREFOX: Firefox 书签
+- BROWSER_SAFARI: Safari 书签
+- OTHER: 其他
+
+## 使用示例
+
+用户: "我有多少收藏"
+→ 调用 count_total()，回复: "你有 156 条收藏。"
+
+用户: "找一下关于 React 的"
+→ 调用 search(query="React")，回复: "找到 8 条相关收藏：..."
+
+用户: "最近收藏了什么"
+→ 调用 list_recent()，回复: "最近 10 条收藏：..."
+
+用户: "微信公众号收藏有多少"
+→ 调用 count_by_platform(platform="WECHAT")，回复: "微信收藏有 42 条。"
+
+用户: "学习文件夹里有什么"
+→ 先通过上下文找到学习文件夹的 ID，然后调用 list_by_folder(folder_id=5)
+
+用户: "给这几个加上学习标签"
+→ 调用 batch_tags，回复: "已准备好，请点击上方确认按钮。"
+
+## 注意事项
+
+- 用中文回复
+- 优先使用简单工具（list_recent 而不是复杂的 list_bookmarks）
+- 批量操作调用后，界面会自动显示确认按钮，你只需说"请点击确认"即可`;
 
 /**
  * 默认配置
@@ -249,13 +281,14 @@ export class KnowledgeAgent {
       };
     } catch (error) {
       const durationMs = Math.round(performance.now() - startTime);
-      const errorMessage =
+      const originalMessage =
         error instanceof Error ? error.message : "Unknown error";
+      const friendlyMessage = getUserFriendlyError(error);
 
       logger.error(
         {
           conversationId: conversation.id,
-          error: errorMessage,
+          error: originalMessage,
           durationMs,
         },
         "KnowledgeAgent: Execution failed",
@@ -266,7 +299,7 @@ export class KnowledgeAgent {
         content: "",
         toolCalls: [],
         durationMs,
-        error: errorMessage,
+        error: friendlyMessage,
         finishReason: "error",
       };
     }
@@ -444,20 +477,21 @@ export class KnowledgeAgent {
         "KnowledgeAgent: Stream execution completed",
       );
     } catch (error) {
-      const errorMessage =
+      const originalMessage =
         error instanceof Error ? error.message : "Unknown error";
+      const friendlyMessage = getUserFriendlyError(error);
 
       logger.error(
         {
           conversationId: conversation?.id,
-          error: errorMessage,
+          error: originalMessage,
         },
         "KnowledgeAgent: Stream execution failed",
       );
 
       yield {
         type: "error",
-        error: errorMessage,
+        error: friendlyMessage,
       };
     }
   }

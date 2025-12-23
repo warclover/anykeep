@@ -1,0 +1,77 @@
+/**
+ * count_total Tool
+ *
+ * 统计收藏总数（极简版）
+ * 无参数，直接返回总数
+ *
+ * @version 1.0.0
+ * @since 2025-12-23
+ */
+
+import { z } from "zod";
+import type { Tool, ToolContext, ToolResult } from "../types";
+import { createClient } from "@/lib/supabase/server";
+
+// ============================================
+// 参数定义（无参数）
+// ============================================
+
+const paramsSchema = z.object({});
+
+type CountTotalParams = z.infer<typeof paramsSchema>;
+
+// ============================================
+// 结果类型
+// ============================================
+
+interface CountTotalResult {
+  total: number;
+}
+
+// ============================================
+// Tool 实现
+// ============================================
+
+export const countTotalTool: Tool<CountTotalParams, CountTotalResult> = {
+  definition: {
+    name: "count_total",
+    description:
+      "统计用户的收藏总数。用于回答「我有多少收藏」「总共收藏了多少」等问题。",
+    parameters: paramsSchema,
+    category: "query",
+    requiresConfirmation: false,
+    estimatedDurationMs: 300,
+  },
+
+  async execute(
+    _params: CountTotalParams,
+    context: ToolContext,
+  ): Promise<ToolResult<CountTotalResult>> {
+    const supabase = await createClient();
+
+    const { count, error } = await supabase
+      .from("bookmarks")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", context.userId)
+      .is("deleted_at", null);
+
+    if (error) {
+      return {
+        success: false,
+        error: error.message,
+        errorCode: "DB_ERROR",
+      };
+    }
+
+    return {
+      success: true,
+      data: {
+        total: count ?? 0,
+      },
+      metadata: {
+        executionTimeMs: 0,
+        affectedCount: count ?? 0,
+      },
+    };
+  },
+};
