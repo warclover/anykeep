@@ -11,7 +11,9 @@ export * from "./types";
 // 核心组件
 export { AIMessage } from "./ai-message";
 export { AIInput } from "./ai-input";
+export { AIPanelContent } from "./ai-panel-content";
 export { AIAssistantPanel } from "./ai-assistant-panel";
+export { AIAssistantPanelEmbedded } from "./ai-assistant-panel-embedded";
 export {
   AIAssistantButton,
   FloatingAIAssistantButton,

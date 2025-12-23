@@ -9,6 +9,7 @@
  *
  * Phase 4: 集成 AI 对话功能
  * Phase 5: 可折叠侧边栏，内容区联动
+ * V4.3: AI 面板挤压式布局（与 MainContentWrapper 同级）
  */
 
 export const dynamic = "force-dynamic";
@@ -17,9 +18,8 @@ import { AppHeader } from "@/components/layout/app-header";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
 import { MainContent } from "@/components/main/main-content";
-// ChatButton 已废弃，使用 FloatingAIAssistantButton 替代（在各页面单独集成）
-// import { ChatButton } from "@/components/chat";
 import { MainContentWrapper } from "@/components/layout/main-content-wrapper";
+import { LayoutAIPanel } from "@/components/layout/layout-ai-panel";
 
 export default function MainLayout({
   children,
@@ -43,12 +43,13 @@ export default function MainLayout({
         <MainContentWrapper>
           <MainContent>{children}</MainContent>
         </MainContentWrapper>
+
+        {/* V4.3: AI 助手面板（挤压式布局，与主内容区同级） */}
+        <LayoutAIPanel />
       </div>
 
       {/* 底部导航栏（移动端） */}
       <MobileBottomNav />
-
-      {/* AI 对话悬浮按钮 - 已迁移到各页面使用 FloatingAIAssistantButton */}
     </div>
   );
 }

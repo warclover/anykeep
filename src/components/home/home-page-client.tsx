@@ -75,8 +75,6 @@ import { HomeToolbar } from "./home-toolbar";
 import { HomeDialogs } from "./home-dialogs";
 import { SmartListView } from "@/components/smart-list";
 import { BatchTagDialog } from "@/components/batch/batch-tag-dialog";
-import { FloatingAIAssistantButton } from "@/components/ai";
-import { useOptionalUser } from "@/contexts/user-context";
 
 // 扩展的书签类型（包含文件夹信息）
 type BookmarkWithFolder = Bookmark & {
@@ -103,10 +101,6 @@ export function HomePageClient({
 }: HomePageClientProps = {}) {
   const router = useRouter();
   const searchParams = useSearchParams();
-
-  // 获取用户信息（用于 AI 助手）
-  const userContext = useOptionalUser();
-  const userId = userContext?.user?.id;
 
   // Phase 3.4: 使用 HomePageContext 获取筛选状态（替代 Event 监听）
   const homeContext = useHomePageContext();
@@ -852,9 +846,6 @@ export function HomePageClient({
           });
         }}
       />
-
-      {/* AI 助手悬浮按钮 */}
-      {userId && <FloatingAIAssistantButton userId={userId} />}
     </div>
   );
 }

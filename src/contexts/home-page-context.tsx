@@ -106,6 +106,26 @@ interface SelectionContextActions {
 }
 
 /**
+ * AI 面板状态
+ */
+interface AIPanelContextState {
+  /** AI 面板是否展开 */
+  isAIPanelOpen: boolean;
+}
+
+/**
+ * AI 面板操作
+ */
+interface AIPanelContextActions {
+  /** 打开 AI 面板 */
+  openAIPanel: () => void;
+  /** 关闭 AI 面板 */
+  closeAIPanel: () => void;
+  /** 切换 AI 面板状态 */
+  toggleAIPanel: () => void;
+}
+
+/**
  * 完整的 Context 类型
  */
 export interface HomePageContextType {
@@ -117,6 +137,8 @@ export interface HomePageContextType {
   dialog: DialogContextState & DialogContextActions;
   // 选择模式
   selection: SelectionContextState & SelectionContextActions;
+  // AI 面板
+  aiPanel: AIPanelContextState & AIPanelContextActions;
 }
 
 // ============================================================================
@@ -213,6 +235,9 @@ export function HomePageProvider({
   // ========== 选择模式状态 ==========
   const [isSelectionMode, setIsSelectionModeState] = useState(false);
 
+  // ========== AI 面板状态 ==========
+  const [isAIPanelOpen, setIsAIPanelOpen] = useState(false);
+
   // ========== 派生状态 ==========
   const isBrowserPlatform = platform === "browser";
   const isTrashFolder = folder === "trash";
@@ -279,6 +304,19 @@ export function HomePageProvider({
       uiEventBus.emit(UIEvents.SELECTION_TOGGLE, { enabled: newValue });
       return newValue;
     });
+  }, []);
+
+  // ========== AI 面板操作 ==========
+  const openAIPanel = useCallback(() => {
+    setIsAIPanelOpen(true);
+  }, []);
+
+  const closeAIPanel = useCallback(() => {
+    setIsAIPanelOpen(false);
+  }, []);
+
+  const toggleAIPanel = useCallback(() => {
+    setIsAIPanelOpen((prev) => !prev);
   }, []);
 
   // ========== Event Bridge: 通过 UIEventBus 订阅外部事件 ==========
@@ -372,6 +410,12 @@ export function HomePageProvider({
         setSelectionMode,
         toggleSelectionMode,
       },
+      aiPanel: {
+        isAIPanelOpen,
+        openAIPanel,
+        closeAIPanel,
+        toggleAIPanel,
+      },
     }),
     [
       viewMode,
@@ -395,6 +439,10 @@ export function HomePageProvider({
       isSelectionMode,
       setSelectionMode,
       toggleSelectionMode,
+      isAIPanelOpen,
+      openAIPanel,
+      closeAIPanel,
+      toggleAIPanel,
     ],
   );
 
@@ -459,4 +507,12 @@ export function useHomeDialogs() {
 export function useHomeSelection() {
   const { selection } = useHomePageContext();
   return selection;
+}
+
+/**
+ * 获取 AI 面板相关状态和操作
+ */
+export function useHomeAIPanel() {
+  const { aiPanel } = useHomePageContext();
+  return aiPanel;
 }
