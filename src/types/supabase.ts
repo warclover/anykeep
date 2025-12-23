@@ -41,6 +41,264 @@ export type Database = {
         };
         Relationships: [];
       };
+      /** AI 会话表 - 存储用户与 AI 助手的对话会话 */
+      ai_conversations: {
+        Row: {
+          id: string;
+          user_id: string;
+          title: string | null;
+          /** Agent 类型：knowledge, organize, learn */
+          agent_type: string;
+          /** 关联的书签 ID 列表 */
+          context_bookmark_ids: number[] | null;
+          /** 关联的文件夹 ID */
+          context_folder_id: number | null;
+          metadata: Json | null;
+          /** 会话状态：active, archived, deleted */
+          status: string;
+          message_count: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          title?: string | null;
+          agent_type?: string;
+          context_bookmark_ids?: number[] | null;
+          context_folder_id?: number | null;
+          metadata?: Json | null;
+          status?: string;
+          message_count?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          title?: string | null;
+          agent_type?: string;
+          context_bookmark_ids?: number[] | null;
+          context_folder_id?: number | null;
+          metadata?: Json | null;
+          status?: string;
+          message_count?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "ai_conversations_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "ai_conversations_context_folder_id_fkey";
+            columns: ["context_folder_id"];
+            isOneToOne: false;
+            referencedRelation: "folders";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      /** AI 消息表 - 存储会话中的消息记录 */
+      ai_messages: {
+        Row: {
+          id: string;
+          conversation_id: string;
+          /** 角色：user, assistant, system, tool */
+          role: string;
+          content: string | null;
+          /** AI 发起的工具调用请求 */
+          tool_calls: Json | null;
+          /** 工具执行的结果 */
+          tool_results: Json | null;
+          /** 关联的 tool call ID */
+          tool_call_id: string | null;
+          metadata: Json | null;
+          tokens_prompt: number | null;
+          tokens_completion: number | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          conversation_id: string;
+          role: string;
+          content?: string | null;
+          tool_calls?: Json | null;
+          tool_results?: Json | null;
+          tool_call_id?: string | null;
+          metadata?: Json | null;
+          tokens_prompt?: number | null;
+          tokens_completion?: number | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          conversation_id?: string;
+          role?: string;
+          content?: string | null;
+          tool_calls?: Json | null;
+          tool_results?: Json | null;
+          tool_call_id?: string | null;
+          metadata?: Json | null;
+          tokens_prompt?: number | null;
+          tokens_completion?: number | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "ai_messages_conversation_id_fkey";
+            columns: ["conversation_id"];
+            isOneToOne: false;
+            referencedRelation: "ai_conversations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      /** Skill 执行日志表 - 记录所有 Skill 的执行历史 */
+      ai_skill_executions: {
+        Row: {
+          id: string;
+          user_id: string;
+          conversation_id: string | null;
+          message_id: string | null;
+          /** Skill 唯一标识符，如 search, classify, summarize */
+          skill_id: string;
+          skill_version: string;
+          input: Json;
+          output: Json | null;
+          /** 执行状态：pending, running, success, error, timeout, cancelled */
+          status: string;
+          latency_ms: number | null;
+          tokens_used: number | null;
+          error_message: string | null;
+          error_code: string | null;
+          retry_count: number | null;
+          started_at: string | null;
+          completed_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          conversation_id?: string | null;
+          message_id?: string | null;
+          skill_id: string;
+          skill_version?: string;
+          input: Json;
+          output?: Json | null;
+          status?: string;
+          latency_ms?: number | null;
+          tokens_used?: number | null;
+          error_message?: string | null;
+          error_code?: string | null;
+          retry_count?: number | null;
+          started_at?: string | null;
+          completed_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          conversation_id?: string | null;
+          message_id?: string | null;
+          skill_id?: string;
+          skill_version?: string;
+          input?: Json;
+          output?: Json | null;
+          status?: string;
+          latency_ms?: number | null;
+          tokens_used?: number | null;
+          error_message?: string | null;
+          error_code?: string | null;
+          retry_count?: number | null;
+          started_at?: string | null;
+          completed_at?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "ai_skill_executions_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "ai_skill_executions_conversation_id_fkey";
+            columns: ["conversation_id"];
+            isOneToOne: false;
+            referencedRelation: "ai_conversations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "ai_skill_executions_message_id_fkey";
+            columns: ["message_id"];
+            isOneToOne: false;
+            referencedRelation: "ai_messages";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      /** Skill 版本配置表 - 管理 Skill 的版本和配置 */
+      ai_skill_versions: {
+        Row: {
+          id: string;
+          skill_id: string;
+          version: string;
+          name: string;
+          description: string | null;
+          /** 分类：understanding, organizing, learning, utility */
+          category: string | null;
+          config: Json;
+          is_active: boolean;
+          is_deprecated: boolean;
+          execution_count: number | null;
+          success_count: number | null;
+          error_count: number | null;
+          avg_latency_ms: number | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          skill_id: string;
+          version: string;
+          name: string;
+          description?: string | null;
+          category?: string | null;
+          config?: Json;
+          is_active?: boolean;
+          is_deprecated?: boolean;
+          execution_count?: number | null;
+          success_count?: number | null;
+          error_count?: number | null;
+          avg_latency_ms?: number | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          skill_id?: string;
+          version?: string;
+          name?: string;
+          description?: string | null;
+          category?: string | null;
+          config?: Json;
+          is_active?: boolean;
+          is_deprecated?: boolean;
+          execution_count?: number | null;
+          success_count?: number | null;
+          error_count?: number | null;
+          avg_latency_ms?: number | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       bookmark_snapshots: {
         Row: {
           article_images: Json | null;
@@ -3076,6 +3334,23 @@ export type Database = {
           total_conversations: number;
           total_tokens: number;
         }[];
+      };
+      /** 获取用户的 AI 使用统计 */
+      get_user_ai_stats: {
+        Args: { p_user_id: string; p_days?: number };
+        Returns: {
+          total_conversations: number;
+          total_messages: number;
+          total_skill_executions: number;
+          total_tokens_used: number;
+          avg_latency_ms: number;
+          success_rate: number;
+        }[];
+      };
+      /** 清理过期的 AI 会话消息 */
+      cleanup_old_ai_messages: {
+        Args: { p_days?: number };
+        Returns: number;
       };
       get_user_classification_stage: {
         Args: { p_user_id: string };

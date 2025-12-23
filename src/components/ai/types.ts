@@ -41,8 +41,8 @@ export interface AIAssistantPanelProps {
   open: boolean;
   /** 关闭回调 */
   onOpenChange: (open: boolean) => void;
-  /** 用户 ID */
-  userId: string;
+  /** 用户 ID（可选，API 层会从 session 获取） */
+  userId?: string;
   /** 会话 ID（可选，用于恢复会话） */
   conversationId?: string;
   /** 关联的书签 ID（可选，提供上下文） */
