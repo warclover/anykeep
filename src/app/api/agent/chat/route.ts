@@ -5,15 +5,21 @@
  *
  * 支持流式响应（Server-Sent Events）
  * 集成 KnowledgeAgent 和 Skills
+ * 自动注入用户数据统计上下文
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-22
  */
 
 import type { NextRequest } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { KnowledgeAgent, agentMemory } from "@/lib/ai-agent";
+import {
+  KnowledgeAgent,
+  agentMemory,
+  getQuickStats,
+  formatStatsForPrompt,
+} from "@/lib/ai-agent";
 import { logger } from "@/lib/logger";
 
 /**
@@ -90,10 +96,23 @@ export async function POST(request: NextRequest) {
       "Agent Chat: Request received",
     );
 
-    // 3. 创建 Agent 实例（使用单例 Memory 保持上下文）
+    // 3. 获取用户数据统计（用于上下文注入）
+    const quickStats = await getQuickStats(user.id);
+    const statsContext = formatStatsForPrompt(quickStats);
+
+    logger.debug(
+      {
+        userId: user.id.slice(0, 8) + "...",
+        totalBookmarks: quickStats.totalBookmarks,
+        platformCount: quickStats.platformDistribution.length,
+      },
+      "Agent Chat: Stats loaded",
+    );
+
+    // 4. 创建 Agent 实例（使用单例 Memory 保持上下文）
     const agent = new KnowledgeAgent({}, agentMemory);
 
-    // 4. 构建上下文
+    // 5. 构建上下文（包含统计数据注入的 System Prompt）
     const context = {
       userId: user.id,
       conversationId,
@@ -102,6 +121,10 @@ export async function POST(request: NextRequest) {
         role: m.role as "user" | "assistant",
         content: m.content,
       })),
+      // 注入统计数据到 System Prompt 末尾
+      systemPrompt: statsContext
+        ? `${agent.getConfig().systemPrompt}\n\n${statsContext}`
+        : undefined,
     };
 
     const executeOptions = {
@@ -110,7 +133,7 @@ export async function POST(request: NextRequest) {
       temperature: options?.temperature || 0.7,
     };
 
-    // 5. 处理响应
+    // 6. 处理响应
     if (isStream) {
       // 流式响应 (Server-Sent Events)
       const encoder = new TextEncoder();
