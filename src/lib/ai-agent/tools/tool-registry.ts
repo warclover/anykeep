@@ -1,0 +1,266 @@
+/**
+ * Tool 注册表
+ *
+ * 管理所有 AI Tools 的注册、查询和导出
+ *
+ * @version 1.0.0
+ * @since 2025-12-23
+ */
+
+import { z } from "zod";
+import type {
+  Tool,
+  ToolCategory,
+  ToolRegistryStats,
+  ToolSummary,
+  ToolContext,
+  ToolResult,
+  VercelAITool,
+} from "./types";
+import { logger } from "@/lib/logger";
+
+/**
+ * Tool 注册表类
+ */
+export class ToolRegistry {
+  private tools: Map<string, Tool> = new Map();
+
+  /**
+   * 注册 Tool
+   */
+  register<TParams, TResult>(tool: Tool<TParams, TResult>): void {
+    const name = tool.definition.name;
+
+    if (this.tools.has(name)) {
+      logger.warn(
+        { toolName: name },
+        "ToolRegistry: Overwriting existing tool",
+      );
+    }
+
+    this.tools.set(name, tool as Tool);
+
+    logger.info(
+      {
+        toolName: name,
+        category: tool.definition.category,
+      },
+      "ToolRegistry: Tool registered",
+    );
+  }
+
+  /**
+   * 批量注册 Tools
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  registerAll(tools: Tool<any, any>[]): void {
+    for (const tool of tools) {
+      this.register(tool);
+    }
+  }
+
+  /**
+   * 获取 Tool
+   */
+  get<TParams = unknown, TResult = unknown>(
+    name: string,
+  ): Tool<TParams, TResult> | undefined {
+    return this.tools.get(name) as Tool<TParams, TResult> | undefined;
+  }
+
+  /**
+   * 检查 Tool 是否存在
+   */
+  has(name: string): boolean {
+    return this.tools.has(name);
+  }
+
+  /**
+   * 获取所有 Tools
+   */
+  getAll(): Tool[] {
+    return Array.from(this.tools.values());
+  }
+
+  /**
+   * 按分类获取 Tools
+   */
+  getByCategory(category: ToolCategory): Tool[] {
+    return this.getAll().filter(
+      (tool) => tool.definition.category === category,
+    );
+  }
+
+  /**
+   * 获取 Tool 名称列表
+   */
+  getNames(): string[] {
+    return Array.from(this.tools.keys());
+  }
+
+  /**
+   * 获取 Tool 简要信息列表
+   */
+  getSummaries(): ToolSummary[] {
+    return this.getAll().map((tool) => ({
+      name: tool.definition.name,
+      description: tool.definition.description,
+      category: tool.definition.category,
+      requiresConfirmation: tool.definition.requiresConfirmation ?? false,
+    }));
+  }
+
+  /**
+   * 获取统计信息
+   */
+  getStats(): ToolRegistryStats {
+    const byCategory: Record<ToolCategory, number> = {
+      query: 0,
+      read: 0,
+      action: 0,
+      search: 0,
+    };
+
+    for (const tool of this.tools.values()) {
+      byCategory[tool.definition.category]++;
+    }
+
+    return {
+      totalTools: this.tools.size,
+      byCategory,
+    };
+  }
+
+  /**
+   * 执行 Tool
+   */
+  async execute<TResult = unknown>(
+    name: string,
+    params: unknown,
+    context: ToolContext,
+  ): Promise<ToolResult<TResult>> {
+    const tool = this.get(name);
+
+    if (!tool) {
+      return {
+        success: false,
+        error: `Tool not found: ${name}`,
+        errorCode: "TOOL_NOT_FOUND",
+      };
+    }
+
+    const startTime = performance.now();
+
+    try {
+      // 验证参数
+      const validatedParams = tool.definition.parameters.parse(params);
+
+      // 执行 Tool
+      const result = await tool.execute(validatedParams, context);
+
+      const executionTimeMs = Math.round(performance.now() - startTime);
+
+      // 添加执行时间到元数据
+      if (result.success) {
+        result.metadata = {
+          ...result.metadata,
+          executionTimeMs,
+        };
+      }
+
+      logger.info(
+        {
+          toolName: name,
+          userId: context.userId,
+          success: result.success,
+          executionTimeMs,
+        },
+        "ToolRegistry: Tool executed",
+      );
+
+      return result as ToolResult<TResult>;
+    } catch (error) {
+      const executionTimeMs = Math.round(performance.now() - startTime);
+
+      // Zod 验证错误
+      if (error instanceof z.ZodError) {
+        logger.warn(
+          {
+            toolName: name,
+            userId: context.userId,
+            validationErrors: error.issues,
+          },
+          "ToolRegistry: Parameter validation failed",
+        );
+
+        return {
+          success: false,
+          error: `参数验证失败: ${error.issues.map((e) => e.message).join(", ")}`,
+          errorCode: "VALIDATION_ERROR",
+          metadata: { executionTimeMs },
+        };
+      }
+
+      // 其他错误
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+
+      logger.error(
+        {
+          toolName: name,
+          userId: context.userId,
+          error: errorMessage,
+        },
+        "ToolRegistry: Tool execution failed",
+      );
+
+      return {
+        success: false,
+        error: errorMessage,
+        errorCode: "EXECUTION_ERROR",
+        metadata: { executionTimeMs },
+      };
+    }
+  }
+
+  /**
+   * 转换为 Vercel AI SDK tools 格式
+   */
+  getAsVercelTools(context: ToolContext): Record<string, VercelAITool> {
+    const vercelTools: Record<string, VercelAITool> = {};
+
+    for (const tool of this.tools.values()) {
+      vercelTools[tool.definition.name] = {
+        description: tool.definition.description,
+        // Vercel AI SDK 使用 inputSchema 而非 parameters
+        inputSchema: tool.definition.parameters,
+        execute: async (args: unknown) => {
+          const result = await this.execute(
+            tool.definition.name,
+            args,
+            context,
+          );
+          if (result.success) {
+            return result.data;
+          }
+          throw new Error(result.error);
+        },
+      };
+    }
+
+    return vercelTools;
+  }
+
+  /**
+   * 清空注册表
+   */
+  clear(): void {
+    this.tools.clear();
+    logger.info({}, "ToolRegistry: Cleared all tools");
+  }
+}
+
+/**
+ * 全局 Tool 注册表实例
+ */
+export const toolRegistry = new ToolRegistry();

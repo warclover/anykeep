@@ -11,3 +11,21 @@ export * from "./types";
 // 执行器
 export { AIActionExecutor, executeAIAction } from "./executor";
 export type { AIActionContext } from "./executor";
+
+// Quick Actions Service
+export {
+  QuickActionsService,
+  executeQuickAction,
+  QuickActionRequestSchema,
+} from "./quick-actions.service";
+export type {
+  QuickActionType,
+  QuickActionRequest,
+  QuickActionResult,
+  QuickActionSuccessResult,
+  QuickActionErrorResult,
+  AutoTagResult,
+  AutoClassifyResult,
+  ExtractKeyResult,
+  RateQualityResult,
+} from "./quick-actions.service";

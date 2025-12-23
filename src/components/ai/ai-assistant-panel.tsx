@@ -4,7 +4,7 @@
  * 提供与 AI 助手对话的完整界面
  * 通过 API 路由与后端 Agent 交互
  *
- * @version 1.1.0
+ * @version 1.2.0
  * @since 2025-12-22
  */
 
@@ -23,8 +23,10 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AIMessage } from "./ai-message";
 import { AIInput } from "./ai-input";
+import { ActionConfirmInline } from "./action-confirm-dialog";
 import type { AIAssistantPanelProps, DisplayMessage } from "./types";
 import type { AgentStreamChunk, AgentToolCall } from "@/lib/ai-agent";
+import type { PendingConfirmation } from "@/lib/ai-agent/tools/types";
 
 /**
  * AI 助手面板组件
@@ -45,6 +47,11 @@ export function AIAssistantPanel({
   const [conversationId, setConversationId] = useState<string | undefined>(
     initialConversationId,
   );
+  // 待确认操作状态
+  const [pendingConfirmations, setPendingConfirmations] = useState<
+    PendingConfirmation[]
+  >([]);
+  const [isConfirming, setIsConfirming] = useState(false);
 
   // Refs
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -60,7 +67,7 @@ export function AIAssistantPanel({
   // 消息变化时滚动到底部
   useEffect(() => {
     scrollToBottom();
-  }, [messages, scrollToBottom]);
+  }, [messages, pendingConfirmations, scrollToBottom]);
 
   // 发送消息
   const handleSubmit = useCallback(async () => {
@@ -93,6 +100,18 @@ export function AIAssistantPanel({
     abortControllerRef.current = new AbortController();
 
     try {
+      // 构建消息历史（不包含刚添加的用户消息，因为那会在 message 字段单独发送）
+      const messageHistory = messages
+        .filter(
+          (m) =>
+            m.status === "completed" &&
+            (m.role === "user" || m.role === "assistant"),
+        )
+        .map((m) => ({
+          role: m.role as "user" | "assistant",
+          content: m.content,
+        }));
+
       // 调用 Agent API
       const response = await fetch("/api/agent/chat", {
         method: "POST",
@@ -102,6 +121,7 @@ export function AIAssistantPanel({
         body: JSON.stringify({
           message: userMessage.content,
           conversationId,
+          messageHistory,
           bookmarkIds,
           options: {
             streaming: true,
@@ -124,6 +144,7 @@ export function AIAssistantPanel({
       const decoder = new TextDecoder();
       let fullContent = "";
       let toolCalls: AgentToolCall[] = [];
+      const confirmations: PendingConfirmation[] = [];
 
       while (true) {
         const { done, value } = await reader.read();
@@ -153,7 +174,26 @@ export function AIAssistantPanel({
                     m.id === assistantMessage.id ? { ...m, toolCalls } : m,
                   ),
                 );
+              } else if (chunk.type === "confirmation" && chunk.confirmation) {
+                // 收到确认请求
+                confirmations.push(chunk.confirmation);
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === assistantMessage.id
+                      ? { ...m, pendingConfirmations: [...confirmations] }
+                      : m,
+                  ),
+                );
+                // 同时更新全局状态
+                setPendingConfirmations((prev) => [
+                  ...prev,
+                  chunk.confirmation!,
+                ]);
               } else if (chunk.type === "done" && chunk.result) {
+                // 保存 conversationId 用于后续消息关联
+                if (chunk.result.conversationId) {
+                  setConversationId(chunk.result.conversationId);
+                }
                 // 标记完成
                 setMessages((prev) =>
                   prev.map((m) =>
@@ -163,6 +203,10 @@ export function AIAssistantPanel({
                           content: fullContent || chunk.result!.content,
                           status: "completed",
                           toolCalls: chunk.result!.toolCalls,
+                          pendingConfirmations:
+                            confirmations.length > 0
+                              ? confirmations
+                              : undefined,
                         }
                       : m,
                   ),
@@ -225,12 +269,147 @@ export function AIAssistantPanel({
       setIsLoading(false);
       abortControllerRef.current = null;
     }
-  }, [input, isLoading, conversationId, bookmarkIds]);
+  }, [input, isLoading, conversationId, bookmarkIds, messages]);
+
+  // 处理确认操作
+  const handleConfirm = useCallback(
+    async (confirmationId: string) => {
+      const confirmation = pendingConfirmations.find(
+        (c) => c.confirmationId === confirmationId,
+      );
+      if (!confirmation) return;
+
+      setIsConfirming(true);
+
+      try {
+        // 调用确认 API
+        const response = await fetch("/api/agent/confirm", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            confirmationId: confirmation.confirmationId,
+            toolName: confirmation.toolName,
+            params: confirmation.params,
+            action: "confirm",
+          }),
+        });
+
+        const result = await response.json();
+
+        // 添加结果消息
+        const resultMessage: DisplayMessage = {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          content: result.success
+            ? `✅ 操作已完成：${result.data?.message || confirmation.description}`
+            : `❌ 操作失败：${result.error || "未知错误"}`,
+          status: "completed",
+          createdAt: new Date(),
+        };
+        setMessages((prev) => [...prev, resultMessage]);
+
+        // 从待确认列表中移除
+        setPendingConfirmations((prev) =>
+          prev.filter((c) => c.confirmationId !== confirmationId),
+        );
+
+        // 清除消息中的确认状态
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.pendingConfirmations?.some(
+              (c) => c.confirmationId === confirmationId,
+            )
+              ? {
+                  ...m,
+                  pendingConfirmations: m.pendingConfirmations?.filter(
+                    (c) => c.confirmationId !== confirmationId,
+                  ),
+                }
+              : m,
+          ),
+        );
+      } catch (error) {
+        // 处理网络错误
+        const errorMessage: DisplayMessage = {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          content: `❌ 操作执行失败：${error instanceof Error ? error.message : "网络错误"}`,
+          status: "error",
+          createdAt: new Date(),
+        };
+        setMessages((prev) => [...prev, errorMessage]);
+      } finally {
+        setIsConfirming(false);
+      }
+    },
+    [pendingConfirmations],
+  );
+
+  // 处理取消操作
+  const handleCancel = useCallback(
+    async (confirmationId: string) => {
+      const confirmation = pendingConfirmations.find(
+        (c) => c.confirmationId === confirmationId,
+      );
+      if (!confirmation) return;
+
+      // 通知后端取消（非阻塞）
+      fetch("/api/agent/confirm", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          confirmationId: confirmation.confirmationId,
+          toolName: confirmation.toolName,
+          params: confirmation.params,
+          action: "cancel",
+        }),
+      }).catch(() => {
+        // 忽略取消通知的错误
+      });
+
+      // 从待确认列表中移除
+      setPendingConfirmations((prev) =>
+        prev.filter((c) => c.confirmationId !== confirmationId),
+      );
+
+      // 添加取消消息
+      const cancelMessage: DisplayMessage = {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content: "❌ 操作已取消",
+        status: "completed",
+        createdAt: new Date(),
+      };
+      setMessages((prev) => [...prev, cancelMessage]);
+
+      // 清除消息中的确认状态
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.pendingConfirmations?.some(
+            (c) => c.confirmationId === confirmationId,
+          )
+            ? {
+                ...m,
+                pendingConfirmations: m.pendingConfirmations?.filter(
+                  (c) => c.confirmationId !== confirmationId,
+                ),
+              }
+            : m,
+        ),
+      );
+    },
+    [pendingConfirmations],
+  );
 
   // 清除对话
   const handleClear = useCallback(() => {
     setMessages([]);
     setConversationId(undefined);
+    setPendingConfirmations([]);
   }, []);
 
   // 停止生成（供后续使用）
@@ -310,11 +489,28 @@ export function AIAssistantPanel({
           ) : (
             <div className="py-2">
               {messages.map((message, index) => (
-                <AIMessage
-                  key={message.id}
-                  message={message}
-                  isLast={index === messages.length - 1}
-                />
+                <div key={message.id}>
+                  <AIMessage
+                    message={message}
+                    isLast={index === messages.length - 1}
+                  />
+
+                  {/* 显示待确认操作 */}
+                  {message.pendingConfirmations &&
+                    message.pendingConfirmations.length > 0 && (
+                      <div className="px-4 py-2 space-y-2">
+                        {message.pendingConfirmations.map((confirmation) => (
+                          <ActionConfirmInline
+                            key={confirmation.confirmationId}
+                            confirmation={confirmation}
+                            onConfirm={handleConfirm}
+                            onCancel={handleCancel}
+                            isLoading={isConfirming}
+                          />
+                        ))}
+                      </div>
+                    )}
+                </div>
               ))}
 
               {/* 重试按钮 */}

@@ -1,11 +1,12 @@
 /**
  * AI 助手组件类型定义
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-22
  */
 
 import type { AgentMessage, AgentToolCall } from "@/lib/ai-agent";
+import type { PendingConfirmation } from "@/lib/ai-agent/tools/types";
 
 /**
  * 消息显示状态
@@ -26,6 +27,8 @@ export interface DisplayMessage {
   content: string;
   status: MessageDisplayStatus;
   toolCalls?: AgentToolCall[];
+  /** 待确认操作列表 */
+  pendingConfirmations?: PendingConfirmation[];
   createdAt: Date;
   error?: string;
 }

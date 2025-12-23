@@ -2,8 +2,9 @@
  * AI 快捷操作组件
  *
  * 为书签提供 AI 驱动的快捷操作按钮
+ * 使用专用 Quick Actions API 而非通用对话 API
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-22
  */
 
@@ -35,10 +36,25 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import type {
+  QuickActionType,
+  AutoTagResult,
+  AutoClassifyResult,
+  ExtractKeyResult,
+  RateQualityResult,
+} from "@/lib/ai-actions";
 
 // ============================================
 // 类型定义
 // ============================================
+
+/** Quick Action 结果数据类型映射 */
+type QuickActionResultData = {
+  "auto-tag": AutoTagResult;
+  "auto-classify": AutoClassifyResult;
+  "extract-key": ExtractKeyResult;
+  "rate-quality": RateQualityResult;
+};
 
 export interface AIQuickActionsProps {
   /** 书签 ID */
@@ -49,14 +65,20 @@ export interface AIQuickActionsProps {
   currentTags?: string[];
   /** 当前文件夹 ID */
   currentFolderId?: number;
+  /** 是否自动应用结果（默认 false） */
+  autoApply?: boolean;
   /** 操作完成回调 */
-  onActionComplete?: (action: string, result: unknown) => void;
+  onActionComplete?: <T extends QuickActionType>(
+    action: T,
+    result: QuickActionResultData[T],
+    applied: boolean,
+  ) => void;
   /** 自定义类名 */
   className?: string;
 }
 
 interface QuickAction {
-  id: string;
+  id: QuickActionType;
   label: string;
   description: string;
   icon: React.ElementType;
@@ -119,12 +141,52 @@ export function AIQuickActions({
   bookmarkTitle: _bookmarkTitle,
   currentTags: _currentTags,
   currentFolderId: _currentFolderId,
+  autoApply = false,
   onActionComplete,
   className,
 }: AIQuickActionsProps) {
   const [actionStates, setActionStates] = useState<Record<string, ActionState>>(
     {},
   );
+
+  /**
+   * 格式化操作结果为用户友好的消息
+   */
+  const formatResultMessage = (
+    actionId: QuickActionType,
+    data: QuickActionResultData[typeof actionId],
+    applied: boolean,
+  ): string => {
+    switch (actionId) {
+      case "auto-tag": {
+        const tagData = data as AutoTagResult;
+        const tagCount = tagData.newTags.length;
+        if (tagCount === 0) return "未发现新标签";
+        return applied
+          ? `已添加 ${tagCount} 个标签`
+          : `推荐 ${tagCount} 个新标签`;
+      }
+      case "auto-classify": {
+        const classifyData = data as AutoClassifyResult;
+        if (!classifyData.folderId) return "建议创建新文件夹";
+        return applied
+          ? `已移动到「${classifyData.folderName}」`
+          : `推荐「${classifyData.folderName}」`;
+      }
+      case "extract-key": {
+        const keyData = data as ExtractKeyResult;
+        return `提取 ${keyData.keyPoints.length} 个要点`;
+      }
+      case "rate-quality": {
+        const rateData = data as RateQualityResult;
+        return applied
+          ? `评分 ${rateData.rating} 星`
+          : `建议评分 ${rateData.rating} 星`;
+      }
+      default:
+        return "完成";
+    }
+  };
 
   /**
    * 执行快捷操作
@@ -140,42 +202,41 @@ export function AIQuickActions({
       }));
 
       try {
-        // 构建提示语
-        const prompts: Record<string, string> = {
-          "auto-tag": "请为这篇内容推荐 3-5 个合适的标签，以逗号分隔",
-          "auto-classify": "请推荐一个最合适的文件夹分类，并说明原因",
-          "extract-key": "请提取这篇内容的 3-5 个关键要点",
-          "rate-quality": "请评估这篇内容的质量（1-5分），并简要说明评分理由",
-        };
-
-        const res = await fetch("/api/agent/chat", {
+        // 调用新的 Quick Actions API
+        const res = await fetch("/api/ai/quick-actions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            message: prompts[actionId] || "请分析这篇内容",
-            bookmarkIds: [bookmarkId],
-            options: { streaming: false },
+            action: actionId,
+            bookmarkId,
+            autoApply,
           }),
         });
 
-        if (!res.ok) {
-          const errorData = await res.json();
-          throw new Error(errorData.error || "操作失败");
+        const result = await res.json();
+
+        if (!result.success) {
+          throw new Error(result.error || "操作失败");
         }
 
-        const result = await res.json();
+        // 格式化成功消息
+        const message = formatResultMessage(
+          actionId,
+          result.data,
+          result.applied,
+        );
 
         // 设置成功状态
         setActionStates((prev) => ({
           ...prev,
           [actionId]: {
             status: "success",
-            message: "完成",
+            message,
           },
         }));
 
         // 回调
-        onActionComplete?.(actionId, result.data);
+        onActionComplete?.(actionId, result.data, result.applied);
 
         // 3 秒后重置状态
         setTimeout(() => {
@@ -201,7 +262,7 @@ export function AIQuickActions({
         }, 5000);
       }
     },
-    [bookmarkId, onActionComplete],
+    [bookmarkId, autoApply, onActionComplete],
   );
 
   /**
@@ -287,6 +348,11 @@ export function AIQuickActions({
                   </TooltipTrigger>
                   <TooltipContent side="bottom">
                     <p>{action.description}</p>
+                    {state?.message && state.status === "success" && (
+                      <p className="text-green-500 text-xs mt-1">
+                        ✓ {state.message}
+                      </p>
+                    )}
                     {state?.message && state.status === "error" && (
                       <p className="text-red-400 text-xs mt-1">
                         {state.message}

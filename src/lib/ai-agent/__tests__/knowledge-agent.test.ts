@@ -278,7 +278,7 @@ describe("KnowledgeAgent", () => {
       // Should have done chunk
       const doneChunk = chunks.find((c) => c.type === "done");
       expect(doneChunk).toBeDefined();
-      if (doneChunk?.type === "done") {
+      if (doneChunk?.type === "done" && doneChunk.result) {
         expect(doneChunk.result.success).toBe(true);
         expect(doneChunk.result.content).toBe("Hello World");
       }
@@ -365,7 +365,7 @@ describe("KnowledgeAgent", () => {
       // Should have tool-call chunk
       const toolCallChunk = chunks.find((c) => c.type === "tool-call");
       expect(toolCallChunk).toBeDefined();
-      if (toolCallChunk?.type === "tool-call") {
+      if (toolCallChunk?.type === "tool-call" && toolCallChunk.toolCall) {
         expect(toolCallChunk.toolCall.toolName).toBe("search");
       }
     });

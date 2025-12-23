@@ -14,6 +14,7 @@
 import type { z } from "zod";
 import type { Tool, ToolExecuteFunction } from "ai";
 import { logger } from "@/lib/logger";
+import { logSkillExecutionAsync } from "./skill-execution-logger";
 import type {
   SkillMetadata,
   SkillContext,
@@ -124,6 +125,16 @@ export abstract class BaseSkill<TInput = unknown, TOutput = unknown>
         );
       }
 
+      // 记录成功执行日志（异步，不阻塞）
+      logSkillExecutionAsync({
+        metadata: this.metadata,
+        context,
+        input,
+        output: validatedOutput,
+        status: "success",
+        metrics,
+      });
+
       return {
         success: true,
         data: validatedOutput,
@@ -146,6 +157,18 @@ export abstract class BaseSkill<TInput = unknown, TOutput = unknown>
         },
         `Skill ${this.metadata.id} execution failed`,
       );
+
+      // 记录失败执行日志（异步，不阻塞）
+      const status = error instanceof SkillTimeoutError ? "timeout" : "error";
+      logSkillExecutionAsync({
+        metadata: this.metadata,
+        context,
+        input,
+        status,
+        metrics,
+        errorMessage,
+        errorCode,
+      });
 
       return {
         success: false,

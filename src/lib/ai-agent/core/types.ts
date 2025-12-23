@@ -1,11 +1,12 @@
 /**
  * AI Agent 类型定义
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-22
  */
 
 import type { CoreMessage, ToolResultPart } from "ai";
+import type { PendingConfirmation } from "../tools/types";
 
 /**
  * Agent 类型枚举
@@ -101,6 +102,11 @@ export interface AgentContext {
   conversationId?: string;
   /** 关联的书签 ID */
   bookmarkIds?: number[];
+  /** 前端提供的消息历史（用于无状态环境） */
+  messageHistory?: Array<{
+    role: "user" | "assistant";
+    content: string;
+  }>;
   /** 用户偏好 */
   userPreferences?: Record<string, unknown>;
   /** 最大执行时间 (ms) */
@@ -135,6 +141,8 @@ export interface AgentExecuteOptions {
 export interface AgentExecuteResult {
   /** 是否成功 */
   success: boolean;
+  /** 会话 ID（用于后续消息关联） */
+  conversationId?: string;
   /** 响应内容 */
   content: string;
   /** 工具调用记录 */
@@ -158,13 +166,21 @@ export interface AgentExecuteResult {
  */
 export interface AgentStreamChunk {
   /** 块类型 */
-  type: "text" | "tool-call" | "tool-result" | "error" | "done";
+  type:
+    | "text"
+    | "tool-call"
+    | "tool-result"
+    | "confirmation"
+    | "error"
+    | "done";
   /** 文本内容（type=text 时） */
   text?: string;
   /** 工具调用（type=tool-call 时） */
   toolCall?: AgentToolCall;
   /** 工具结果（type=tool-result 时） */
   toolResult?: ToolResultPart;
+  /** 待确认操作（type=confirmation 时） */
+  confirmation?: PendingConfirmation;
   /** 错误信息（type=error 时） */
   error?: string;
   /** 最终结果（type=done 时） */

@@ -1,7 +1,7 @@
 /**
  * AI 组件模块导出
  *
- * @version 1.3.0
+ * @version 1.4.0
  * @since 2025-12-22
  */
 
@@ -23,6 +23,12 @@ export {
   type AIActionFeedbackInlineProps,
   type ActionRiskLevel,
 } from "./ai-action-feedback";
+export {
+  ActionConfirmDialog,
+  ActionConfirmInline,
+  type ActionConfirmDialogProps,
+  type ActionConfirmInlineProps,
+} from "./action-confirm-dialog";
 export { AIBookmarkChat, type AIBookmarkChatProps } from "./ai-bookmark-chat";
 
 // 书签详情页组件

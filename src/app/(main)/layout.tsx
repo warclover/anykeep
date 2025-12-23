@@ -17,7 +17,8 @@ import { AppHeader } from "@/components/layout/app-header";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
 import { MainContent } from "@/components/main/main-content";
-import { ChatButton } from "@/components/chat";
+// ChatButton 已废弃，使用 FloatingAIAssistantButton 替代（在各页面单独集成）
+// import { ChatButton } from "@/components/chat";
 import { MainContentWrapper } from "@/components/layout/main-content-wrapper";
 
 export default function MainLayout({
@@ -47,8 +48,7 @@ export default function MainLayout({
       {/* 底部导航栏（移动端） */}
       <MobileBottomNav />
 
-      {/* AI 对话悬浮按钮 */}
-      <ChatButton />
+      {/* AI 对话悬浮按钮 - 已迁移到各页面使用 FloatingAIAssistantButton */}
     </div>
   );
 }

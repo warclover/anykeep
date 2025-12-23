@@ -257,7 +257,12 @@ describe("BaseSkill", () => {
     it("should execute tool successfully", async () => {
       const tool = skill.toTool(() => context);
 
-      const result = await tool.execute({ query: "test", limit: 5 });
+      // Vercel AI SDK Tool execute requires two arguments: args and options
+      // Using non-null assertion since we know execute is defined
+      const result = await tool.execute!(
+        { query: "test", limit: 5 },
+        {} as never,
+      );
 
       expect(result).toEqual({
         results: ["Result for: test"],
@@ -272,9 +277,9 @@ describe("BaseSkill", () => {
 
       const tool = skill.toTool(() => context);
 
-      await expect(tool.execute({ query: "test" })).rejects.toThrow(
-        "Tool execution failed",
-      );
+      await expect(
+        tool.execute!({ query: "test" }, {} as never),
+      ).rejects.toThrow("Tool execution failed");
     });
   });
 });

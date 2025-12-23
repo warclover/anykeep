@@ -13,15 +13,22 @@
 import type { NextRequest } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { KnowledgeAgent } from "@/lib/ai-agent";
+import { KnowledgeAgent, agentMemory } from "@/lib/ai-agent";
 import { logger } from "@/lib/logger";
 
 /**
  * 请求体 Schema
  */
+const messageSchema = z.object({
+  role: z.enum(["user", "assistant"]),
+  content: z.string(),
+});
+
 const agentChatRequestSchema = z.object({
   message: z.string().min(1).max(2000),
   conversationId: z.string().uuid().optional(),
+  /** 前端维护的消息历史（用于无状态环境） */
+  messageHistory: z.array(messageSchema).optional(),
   bookmarkIds: z.array(z.number().int().positive()).optional(),
   options: z
     .object({
@@ -67,7 +74,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { message, conversationId, bookmarkIds, options } = validation.data;
+    const { message, conversationId, messageHistory, bookmarkIds, options } =
+      validation.data;
     const isStream = options?.streaming ?? true;
 
     logger.info(
@@ -75,20 +83,25 @@ export async function POST(request: NextRequest) {
         userId: user.id.slice(0, 8) + "...",
         messageLength: message.length,
         conversationId,
+        messageHistoryLength: messageHistory?.length ?? 0,
         hasBookmarkIds: !!bookmarkIds?.length,
         isStream,
       },
       "Agent Chat: Request received",
     );
 
-    // 3. 创建 Agent 实例
-    const agent = new KnowledgeAgent();
+    // 3. 创建 Agent 实例（使用单例 Memory 保持上下文）
+    const agent = new KnowledgeAgent({}, agentMemory);
 
     // 4. 构建上下文
     const context = {
       userId: user.id,
       conversationId,
       bookmarkIds,
+      messageHistory: messageHistory?.map((m) => ({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+      })),
     };
 
     const executeOptions = {
