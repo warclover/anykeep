@@ -34,6 +34,7 @@ import type { PendingConfirmation } from "@/lib/ai-agent/tools/types";
 export function AIAssistantPanel({
   open,
   onOpenChange,
+  // userId 由 API 层从 session 获取，此处不直接使用
   userId: _userId,
   conversationId: initialConversationId,
   bookmarkIds,
@@ -224,8 +225,11 @@ export function AIAssistantPanel({
                   ),
                 );
               }
-            } catch {
-              // 忽略解析错误
+            } catch (parseError) {
+              // SSE 解析错误：开发环境记录，生产环境静默忽略
+              if (process.env.NODE_ENV === "development") {
+                console.error("SSE parse error:", parseError, "Line:", line);
+              }
             }
           }
         }

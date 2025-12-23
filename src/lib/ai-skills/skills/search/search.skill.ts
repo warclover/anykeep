@@ -244,28 +244,51 @@ export class SearchSkill extends BaseSkill<
 
   /**
    * 转换数据库结果为输出格式
+   * @param data - Supabase 查询返回的书签数据数组
    */
   private transformResults(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    data: any[],
+    data: Array<{
+      id: number;
+      title: string | null;
+      url: string | null;
+      description: string | null;
+      cover_url: string | null;
+      platform: string | null;
+      ai_summary: string | null;
+      ai_tags: string[] | null;
+      user_tags: string[] | null;
+      folder_id: number | null;
+      // Supabase join 返回数组格式；语义搜索可能返回 undefined
+      folders?: Array<{ name: string }> | { name: string } | null;
+      author: string | null;
+      publish_time: string | null;
+      created_at: string;
+      similarity?: number;
+    }>,
   ): SearchResultBookmark[] {
-    return data.map((item) => ({
-      id: item.id,
-      title: item.title || "",
-      url: item.url || "",
-      description: item.description || null,
-      coverUrl: item.cover_url || null,
-      platform: item.platform || "unknown",
-      aiSummary: item.ai_summary || null,
-      aiTags: item.ai_tags || null,
-      userTags: item.user_tags || null,
-      folderId: item.folder_id || null,
-      folderName: item.folders?.name || null,
-      author: item.author || null,
-      publishTime: item.publish_time || null,
-      createdAt: item.created_at,
-      similarity: item.similarity,
-    }));
+    return data.map((item) => {
+      // 处理 folders 可能是数组或对象的情况
+      const folder = Array.isArray(item.folders)
+        ? item.folders[0]
+        : item.folders;
+      return {
+        id: item.id,
+        title: item.title || "",
+        url: item.url || "",
+        description: item.description || null,
+        coverUrl: item.cover_url || null,
+        platform: item.platform || "unknown",
+        aiSummary: item.ai_summary || null,
+        aiTags: item.ai_tags || null,
+        userTags: item.user_tags || null,
+        folderId: item.folder_id || null,
+        folderName: folder?.name || null,
+        author: item.author || null,
+        publishTime: item.publish_time || null,
+        createdAt: item.created_at,
+        similarity: item.similarity,
+      };
+    });
   }
 
   /**

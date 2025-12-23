@@ -153,8 +153,8 @@ export const readBookmarkTool: Tool<ReadParams, ReadResult> = {
       }
 
       // 转换为输出格式
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const folderData = bookmark.folders as any;
+      // folders 是 Supabase join 查询结果，类型为 { name: string } | null
+      const folderData = bookmark.folders as { name: string } | null;
       const result: BookmarkDetail = {
         id: bookmark.id,
         title: bookmark.title,

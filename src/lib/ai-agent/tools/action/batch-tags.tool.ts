@@ -4,7 +4,7 @@
  * 批量为书签添加或移除标签
  * 这是一个需要用户确认的危险操作
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-23
  */
 
@@ -15,6 +15,14 @@ import type {
   ToolResult,
   PendingConfirmation,
 } from "../types";
+import {
+  generateConfirmationId,
+  getBookmarkTitles,
+  validateBookmarkOwnership,
+  getConfirmationExpiryTime,
+  determineRiskLevel,
+  BATCH_LIMITS,
+} from "../utils";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 
@@ -29,12 +37,15 @@ const paramsSchema = z.object({
   bookmark_ids: z
     .array(z.number().int().positive())
     .min(1, "至少选择一个书签")
-    .max(200, "单次最多操作200个书签")
+    .max(
+      BATCH_LIMITS.MAX_BOOKMARKS_FOR_TAGS,
+      `单次最多操作${BATCH_LIMITS.MAX_BOOKMARKS_FOR_TAGS}个书签`,
+    )
     .describe("要操作的书签 ID 列表"),
   tags: z
     .array(z.string().min(1).max(50))
     .min(1, "至少提供一个标签")
-    .max(20, "单次最多操作20个标签")
+    .max(BATCH_LIMITS.MAX_TAGS, `单次最多操作${BATCH_LIMITS.MAX_TAGS}个标签`)
     .describe("要添加或移除的标签列表"),
 });
 
@@ -48,41 +59,6 @@ interface BatchTagsResult {
   message: string;
   /** 待确认操作（仅在需要确认时存在） */
   __pendingConfirmation?: PendingConfirmation;
-}
-
-// ============================================
-// 辅助函数
-// ============================================
-
-/**
- * 生成确认 ID
- */
-function generateConfirmationId(): string {
-  return `confirm_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-}
-
-/**
- * 获取书签标题列表（用于确认对话框显示）
- */
-async function getBookmarkTitles(
-  userId: string,
-  bookmarkIds: number[],
-): Promise<Array<{ id: number; title: string }>> {
-  const supabase = await createClient();
-
-  const { data, error } = await supabase
-    .from("bookmarks")
-    .select("id, title")
-    .in("id", bookmarkIds)
-    .eq("user_id", userId)
-    .is("deleted_at", null)
-    .limit(10); // 只获取前10个用于预览
-
-  if (error || !data) {
-    return [];
-  }
-
-  return data.map((b) => ({ id: b.id, title: b.title }));
 }
 
 // ============================================
@@ -102,7 +78,7 @@ export const batchTagsTool: Tool<BatchTagsParams, BatchTagsResult> = {
 注意事项：
 - 这是一个批量修改操作，会影响多个书签
 - 操作不可逆，请谨慎使用
-- 单次最多操作200个书签和20个标签`,
+- 单次最多操作${BATCH_LIMITS.MAX_BOOKMARKS_FOR_TAGS}个书签和${BATCH_LIMITS.MAX_TAGS}个标签`,
     parameters: paramsSchema,
     category: "action",
     requiresConfirmation: true,
@@ -116,21 +92,13 @@ export const batchTagsTool: Tool<BatchTagsParams, BatchTagsResult> = {
     const startTime = performance.now();
 
     try {
-      const supabase = await createClient();
-
       // 1. 验证书签所有权
-      const { count: ownedCount, error: ownershipError } = await supabase
-        .from("bookmarks")
-        .select("id", { count: "exact", head: true })
-        .in("id", params.bookmark_ids)
-        .eq("user_id", context.userId)
-        .is("deleted_at", null);
+      const { valid, ownedCount } = await validateBookmarkOwnership(
+        context.userId,
+        params.bookmark_ids,
+      );
 
-      if (ownershipError) {
-        throw ownershipError;
-      }
-
-      if (ownedCount !== params.bookmark_ids.length) {
+      if (!valid) {
         return {
           success: false,
           error: `部分书签不存在或无权操作（请求 ${params.bookmark_ids.length} 个，有效 ${ownedCount} 个）`,
@@ -153,8 +121,8 @@ export const batchTagsTool: Tool<BatchTagsParams, BatchTagsResult> = {
           impactSummary: `将为 ${params.bookmark_ids.length} 个书签${actionText} ${params.tags.length} 个标签`,
           affectedItems,
           params,
-          expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5分钟过期
-          riskLevel: params.bookmark_ids.length > 50 ? "high" : "medium",
+          expiresAt: getConfirmationExpiryTime(),
+          riskLevel: determineRiskLevel(params.bookmark_ids.length),
         };
 
         logger.info(
@@ -187,6 +155,7 @@ export const batchTagsTool: Tool<BatchTagsParams, BatchTagsResult> = {
       }
 
       // 3. 已确认，执行操作
+      const supabase = await createClient();
       const uniqueTags = [...new Set(params.tags.map((t) => t.trim()))];
 
       let result: { affected_ids: number[]; affected_count: number };

@@ -4,7 +4,7 @@
  * 批量移动书签到指定文件夹
  * 这是一个需要用户确认的危险操作
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-23
  */
 
@@ -15,6 +15,15 @@ import type {
   ToolResult,
   PendingConfirmation,
 } from "../types";
+import {
+  generateConfirmationId,
+  getBookmarkTitles,
+  getFolderName,
+  validateBookmarkOwnership,
+  getConfirmationExpiryTime,
+  determineRiskLevel,
+  BATCH_LIMITS,
+} from "../utils";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 
@@ -26,7 +35,10 @@ const paramsSchema = z.object({
   bookmark_ids: z
     .array(z.number().int().positive())
     .min(1, "至少选择一个书签")
-    .max(100, "单次最多移动100个书签")
+    .max(
+      BATCH_LIMITS.MAX_BOOKMARKS_FOR_MOVE,
+      `单次最多移动${BATCH_LIMITS.MAX_BOOKMARKS_FOR_MOVE}个书签`,
+    )
     .describe("要移动的书签 ID 列表"),
   target_folder_id: z
     .number()
@@ -49,68 +61,6 @@ interface MoveBookmarksResult {
 }
 
 // ============================================
-// 辅助函数
-// ============================================
-
-/**
- * 生成确认 ID
- */
-function generateConfirmationId(): string {
-  return `confirm_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-}
-
-/**
- * 获取书签标题列表
- */
-async function getBookmarkTitles(
-  userId: string,
-  bookmarkIds: number[],
-): Promise<Array<{ id: number; title: string }>> {
-  const supabase = await createClient();
-
-  const { data, error } = await supabase
-    .from("bookmarks")
-    .select("id, title")
-    .in("id", bookmarkIds)
-    .eq("user_id", userId)
-    .is("deleted_at", null)
-    .limit(10);
-
-  if (error || !data) {
-    return [];
-  }
-
-  return data.map((b) => ({ id: b.id, title: b.title }));
-}
-
-/**
- * 获取文件夹名称
- */
-async function getFolderName(
-  userId: string,
-  folderId: number | null,
-): Promise<string | null> {
-  if (folderId === null) {
-    return null;
-  }
-
-  const supabase = await createClient();
-
-  const { data, error } = await supabase
-    .from("folders")
-    .select("name")
-    .eq("id", folderId)
-    .eq("user_id", userId)
-    .single();
-
-  if (error || !data) {
-    return null;
-  }
-
-  return data.name;
-}
-
-// ============================================
 // Tool 实现
 // ============================================
 
@@ -128,7 +78,7 @@ export const moveBookmarksTool: Tool<MoveBookmarksParams, MoveBookmarksResult> =
 注意事项：
 - 这是一个批量修改操作，会影响多个书签的分类
 - 操作会覆盖书签原有的文件夹设置
-- 单次最多移动100个书签`,
+- 单次最多移动${BATCH_LIMITS.MAX_BOOKMARKS_FOR_MOVE}个书签`,
       parameters: paramsSchema,
       category: "action",
       requiresConfirmation: true,
@@ -145,18 +95,12 @@ export const moveBookmarksTool: Tool<MoveBookmarksParams, MoveBookmarksResult> =
         const supabase = await createClient();
 
         // 1. 验证书签所有权
-        const { count: ownedCount, error: ownershipError } = await supabase
-          .from("bookmarks")
-          .select("id", { count: "exact", head: true })
-          .in("id", params.bookmark_ids)
-          .eq("user_id", context.userId)
-          .is("deleted_at", null);
+        const { valid, ownedCount } = await validateBookmarkOwnership(
+          context.userId,
+          params.bookmark_ids,
+        );
 
-        if (ownershipError) {
-          throw ownershipError;
-        }
-
-        if (ownedCount !== params.bookmark_ids.length) {
+        if (!valid) {
           return {
             success: false,
             error: `部分书签不存在或无权操作（请求 ${params.bookmark_ids.length} 个，有效 ${ownedCount} 个）`,
@@ -205,8 +149,8 @@ export const moveBookmarksTool: Tool<MoveBookmarksParams, MoveBookmarksResult> =
             impactSummary: `将 ${params.bookmark_ids.length} 个书签移动到${targetDesc}`,
             affectedItems,
             params,
-            expiresAt: new Date(Date.now() + 5 * 60 * 1000),
-            riskLevel: params.bookmark_ids.length > 20 ? "medium" : "low",
+            expiresAt: getConfirmationExpiryTime(),
+            riskLevel: determineRiskLevel(params.bookmark_ids.length),
           };
 
           logger.info(

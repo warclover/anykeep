@@ -10,17 +10,12 @@
  * @since 2025-12-22
  */
 
-import {
-  generateText,
-  streamText,
-  stepCountIs,
-  type CoreMessage,
-  type ToolSet,
-} from "ai";
+import { generateText, streamText, stepCountIs, type CoreMessage } from "ai";
 import { aiProviderRouter } from "@/lib/ai-providers";
 import { getSkillsAsTools } from "@/lib/ai-skills";
 import { registerDefaultTools, getToolsAsVercelTools } from "../tools";
 import type { PendingConfirmation } from "../tools/types";
+import { mergeToolSets } from "./ai-sdk-types";
 import { logger } from "@/lib/logger";
 import { AgentMemory } from "./agent-memory";
 import type {
@@ -182,8 +177,8 @@ export class KnowledgeAgent {
         userId: context.userId,
         conversationId: context.conversationId,
       });
-      // 合并 Skills 和 Tools，使用类型断言确保兼容性
-      const tools = { ...skillTools, ...dataTools } as unknown as ToolSet;
+      // 使用类型安全的 mergeToolSets 合并 Skills 和 Tools
+      const tools = mergeToolSets(skillTools, dataTools);
 
       // 构建消息历史
       const messages = this.buildMessages(conversation, context);
@@ -338,8 +333,8 @@ export class KnowledgeAgent {
         userId: context.userId,
         conversationId: context.conversationId,
       });
-      // 合并 Skills 和 Tools，使用类型断言确保兼容性
-      const tools = { ...skillTools, ...dataTools } as unknown as ToolSet;
+      // 使用类型安全的 mergeToolSets 合并 Skills 和 Tools
+      const tools = mergeToolSets(skillTools, dataTools);
 
       // 构建消息历史
       const messages = this.buildMessages(conversation, context);

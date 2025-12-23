@@ -18,6 +18,7 @@ import type {
   SummarySkillOutput,
   SkillStructuredSummary,
   SkillEnhancedData,
+  Sentiment,
 } from "./types";
 import { getSummaryService } from "@/lib/summary/services/summary.service";
 import type { SummaryMode } from "@/lib/summary/summary.types";
@@ -196,17 +197,45 @@ export class SummarySkill extends BaseSkill<
 
   /**
    * 转换摘要结果为输出格式
+   * @param result - AI 摘要服务返回的原始结果
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private transformResult(result: any): SummarySkillOutput {
+  private transformResult(result: {
+    summary: string;
+    tags: string[];
+    structured?: {
+      tldr: string;
+      key_points: string[];
+      keywords: string[];
+      sentiment: string;
+      reading_time: number;
+      action_items?: string[];
+    };
+    enhanced?: {
+      entities?: Array<{ name: string; type: string; confidence?: number }>;
+      key_data?: Array<{ label: string; value: string; unit?: string }>;
+      difficulty?: string;
+    };
+    contentType?: string;
+    contentTypeConfidence?: number;
+    providerUsed?: string;
+    latencyMs: number;
+  }): SummarySkillOutput {
     // 转换结构化摘要
     let structured: SkillStructuredSummary | undefined;
     if (result.structured) {
+      // 验证 sentiment 值是否为有效的 Sentiment 类型
+      const validSentiments = ["positive", "neutral", "negative"] as const;
+      const sentiment = validSentiments.includes(
+        result.structured.sentiment as (typeof validSentiments)[number],
+      )
+        ? (result.structured.sentiment as Sentiment)
+        : undefined;
+
       structured = {
         tldr: result.structured.tldr,
         keyPoints: result.structured.key_points,
         keywords: result.structured.keywords,
-        sentiment: result.structured.sentiment,
+        sentiment,
         readingTime: result.structured.reading_time,
         actionItems: result.structured.action_items,
       };

@@ -1,12 +1,15 @@
 /**
  * AI Agent Tools 模块导出
  *
- * @version 1.2.0
+ * @version 1.3.0
  * @since 2025-12-23
  */
 
 // 类型定义
 export * from "./types";
+
+// 共享工具函数和常量
+export * from "./utils";
 
 // Tool 注册表
 export { ToolRegistry, toolRegistry } from "./tool-registry";

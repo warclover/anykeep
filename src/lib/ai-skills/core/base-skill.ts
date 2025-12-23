@@ -213,17 +213,14 @@ export abstract class BaseSkill<TInput = unknown, TOutput = unknown>
    * @param contextProvider - 可选的上下文提供函数，用于在 Tool 调用时获取上下文
    */
   toTool(contextProvider?: () => SkillContext): Tool<TInput, TOutput> {
-    // eslint-disable-next-line @typescript-eslint/no-this-alias
-    const skill = this;
-
-    // 构造符合 Vercel AI SDK Tool 类型的对象
+    // 使用箭头函数绑定 this，避免 this 别名
     const executeFn: ToolExecuteFunction<TInput, TOutput> = async (input) => {
       // 获取上下文（如果提供了 contextProvider）
       const context: SkillContext = contextProvider?.() ?? {
         userId: "", // 需要在实际使用时注入
       };
 
-      const result = await skill.execute(input, context);
+      const result = await this.execute(input, context);
 
       if (result.success) {
         return result.data;
@@ -233,10 +230,11 @@ export abstract class BaseSkill<TInput = unknown, TOutput = unknown>
       }
     };
 
+    // Vercel AI SDK 的 Tool 类型与 Zod schema 存在兼容性问题
+    // 运行时 SDK 支持 Zod，但 TypeScript 类型定义需要类型断言
     return {
       description: this.metadata.description,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      inputSchema: this.inputSchema as any,
+      parameters: this.inputSchema,
       execute: executeFn,
     } as unknown as Tool<TInput, TOutput>;
   }
