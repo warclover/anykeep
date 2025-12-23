@@ -79,6 +79,11 @@ const DEFAULT_SYSTEM_PROMPT = `你是 AnyKeep 的 AI 知识助手，帮助用户
 - batch_tags(bookmark_ids, tags, action) → 批量添加/移除标签
 - move_bookmarks(bookmark_ids, folder_id) → 批量移动到文件夹
 
+### 导出类（调用后界面自动弹出确认按钮）
+- export_bookmarks(format, filter?, bookmarkIds?) → 导出书签到指定格式
+- preview_export(format, previewCount?) → 预览导出内容
+- list_export_formats() → 列出可用的导出格式
+
 ## 平台代码
 
 - WECHAT: 微信公众号
@@ -621,7 +626,9 @@ export class KnowledgeAgent {
   }
 
   /**
-   * 从 generateText 结果提取工具调用
+   * 从结果中提取工具调用
+   *
+   * 注意：AI SDK v5.0 中，toolResults 的 result 属性已重命名为 output
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private extractToolCalls(result: any): AgentToolCall[] {
@@ -631,15 +638,19 @@ export class KnowledgeAgent {
       for (const step of result.steps) {
         if (step.toolCalls) {
           for (const tc of step.toolCalls) {
+            const toolResult = step.toolResults?.find(
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (r: any) => r.toolCallId === tc.toolCallId,
+            );
+            // 兼容 v4 (result) 和 v5 (output)
+            const resultData = toolResult?.output ?? toolResult?.result;
+
             toolCalls.push({
               id: tc.toolCallId,
               toolName: tc.toolName,
-              args: tc.args,
+              args: tc.args ?? tc.input, // v5: args → input
               status: "completed",
-              result: step.toolResults?.find(
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (r: any) => r.toolCallId === tc.toolCallId,
-              )?.result,
+              result: resultData,
             });
           }
         }
@@ -651,6 +662,8 @@ export class KnowledgeAgent {
 
   /**
    * 从 steps 提取工具调用
+   *
+   * 注意：AI SDK v5.0 中，toolResults 的 result 属性已重命名为 output
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private extractToolCallsFromSteps(steps: any[]): AgentToolCall[] {
@@ -661,15 +674,19 @@ export class KnowledgeAgent {
     for (const step of steps) {
       if (step.toolCalls) {
         for (const tc of step.toolCalls) {
-          const result = step.toolResults?.find(
+          // AI SDK v5.0: result → output
+          const toolResult = step.toolResults?.find(
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (r: any) => r.toolCallId === tc.toolCallId,
-          )?.result;
+          );
+
+          // 兼容 v4 (result) 和 v5 (output)
+          const result = toolResult?.output ?? toolResult?.result;
 
           toolCalls.push({
             id: tc.toolCallId,
             toolName: tc.toolName,
-            args: tc.args,
+            args: tc.args ?? tc.input, // v5: args → input
             status: "completed",
             result,
           });

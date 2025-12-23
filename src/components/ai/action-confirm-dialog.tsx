@@ -16,6 +16,7 @@ import {
   FolderOutput,
   ShieldAlert,
   Info,
+  Download,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -50,6 +51,7 @@ const DIALOG_STRINGS = {
   toolDescriptions: {
     batch_tags: "批量标签操作",
     move_bookmarks: "批量移动书签",
+    export_bookmarks: "导出书签",
     default: "批量操作",
   },
   expirationWarning: "此确认将在 5 分钟后过期",
@@ -94,6 +96,8 @@ function ToolIcon({
       return <Tags className={className} />;
     case "move_bookmarks":
       return <FolderOutput className={className} />;
+    case "export_bookmarks":
+      return <Download className={className} />;
     default:
       return <ShieldAlert className={className} />;
   }

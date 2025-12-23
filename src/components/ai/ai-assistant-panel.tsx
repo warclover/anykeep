@@ -310,6 +310,39 @@ export function AIAssistantPanel({
 
         const result = await response.json();
 
+        // 处理导出操作的文件下载
+        if (
+          result.success &&
+          confirmation.toolName === "export_bookmarks" &&
+          result.data?.content
+        ) {
+          const { content, filename, mimeType, isBase64 } = result.data;
+          let blob: Blob;
+
+          if (isBase64) {
+            // Base64 解码
+            const binaryString = atob(content);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+              bytes[i] = binaryString.charCodeAt(i);
+            }
+            blob = new Blob([bytes], { type: mimeType });
+          } else {
+            // 文本内容
+            blob = new Blob([content], { type: `${mimeType};charset=utf-8` });
+          }
+
+          // 触发下载
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = filename;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+        }
+
         // 添加结果消息
         const resultMessage: DisplayMessage = {
           id: crypto.randomUUID(),
