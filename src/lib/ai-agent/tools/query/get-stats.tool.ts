@@ -4,13 +4,20 @@
  * 获取用户的收藏统计信息
  * 包括总览、趋势、标签分布等
  *
- * @version 1.0.0
+ * @version 1.1.0 - 修复：排除浏览器书签，与数据页面一致
  * @since 2025-12-23
  */
 
 import { z } from "zod";
 import type { Tool, ToolContext, ToolResult } from "../types";
 import { createClient } from "@/lib/supabase/server";
+
+// ============================================
+// 常量
+// ============================================
+
+/** 浏览器平台列表（需要排除） */
+const BROWSER_PLATFORMS = ["CHROME", "EDGE", "FIREFOX", "SAFARI"];
 
 // ============================================
 // 参数定义
@@ -124,25 +131,29 @@ export const getStatsTool: Tool<StatsParams, StatsResult> = {
       tags_limit = 20,
     } = params;
 
-    // 并行查询基础数据
+    // 并行查询基础数据（排除浏览器书签）
+    const browserFilter = `(${BROWSER_PLATFORMS.map((p) => `"${p}"`).join(",")})`;
+
     const [bookmarksResult, foldersResult, ratedResult] = await Promise.all([
-      // 获取所有书签（用于标签统计）
+      // 获取所有内容书签（排除浏览器书签）
       supabase
         .from("bookmarks")
         .select("id, platform, user_tags, rating, created_at")
         .eq("user_id", context.userId)
-        .is("deleted_at", null),
+        .is("deleted_at", null)
+        .not("platform", "in", browserFilter),
       // 获取文件夹数量
       supabase
         .from("folders")
         .select("id", { count: "exact", head: true })
         .eq("user_id", context.userId),
-      // 获取有评分的书签
+      // 获取有评分的书签（排除浏览器书签）
       supabase
         .from("bookmarks")
         .select("rating")
         .eq("user_id", context.userId)
         .is("deleted_at", null)
+        .not("platform", "in", browserFilter)
         .not("rating", "is", null),
     ]);
 

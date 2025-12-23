@@ -58,7 +58,7 @@ const DEFAULT_SYSTEM_PROMPT = `你是 AnyKeep 的 AI 知识助手，帮助用户
 - count_total() → 统计收藏总数
 - count_by_folder(folder_id) → 统计某文件夹数量
 - count_by_platform(platform) → 统计某平台数量
-- get_stats() → 详细统计（平台分布、标签分布、趋势）
+- get_stats() → 详细统计（每日趋势、标签分布）— 仅需要详细数据时调用
 
 ### 搜索类
 - search_bookmarks(query, limit?) → 搜索收藏内容
@@ -133,7 +133,8 @@ const DEFAULT_SYSTEM_PROMPT = `你是 AnyKeep 的 AI 知识助手，帮助用户
 - 优先使用简单工具（list_recent 而不是复杂的 list_bookmarks）
 - 批量操作调用后，界面会自动显示确认按钮，你只需说"请点击确认"即可
 - 智能列表查询需要先获取列表 ID，再查询内容或计数
-- 下方会附带"用户数据概况"，包含用户收藏的统计信息，可据此提供个性化建议`;
+- **重要**：下方"用户数据概况"包含最新的实时统计，直接引用这些数据回答用户问题
+- 只有用户需要详细趋势图表或每日数据时才调用 get_stats()`;
 
 /**
  * 默认配置
