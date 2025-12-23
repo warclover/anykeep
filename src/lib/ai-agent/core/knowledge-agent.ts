@@ -61,10 +61,15 @@ const DEFAULT_SYSTEM_PROMPT = `你是 AnyKeep 的 AI 知识助手，帮助用户
 - get_stats() → 详细统计（平台分布、标签分布、趋势）
 
 ### 搜索类
-- search(query, limit?) → 搜索收藏内容
+- search_bookmarks(query, limit?) → 搜索收藏内容
 
 ### 阅读类
 - read_bookmark(bookmark_id) → 读取单个书签详情
+
+### 智能列表类
+- list_smart_lists(includePresets?) → 获取所有智能列表
+- get_smart_list_items(smartListId, limit?, offset?) → 获取列表内书签
+- get_smart_list_count(smartListId) → 获取列表书签数量
 
 ### 智能处理类
 - classify(title, summary?, tags?) → 智能推荐分类文件夹
@@ -94,7 +99,7 @@ const DEFAULT_SYSTEM_PROMPT = `你是 AnyKeep 的 AI 知识助手，帮助用户
 → 调用 count_total()，回复: "你有 156 条收藏。"
 
 用户: "找一下关于 React 的"
-→ 调用 search(query="React")，回复: "找到 8 条相关收藏：..."
+→ 调用 search_bookmarks(query="React")，回复: "找到 8 条相关收藏：..."
 
 用户: "最近收藏了什么"
 → 调用 list_recent()，回复: "最近 10 条收藏：..."
@@ -108,11 +113,21 @@ const DEFAULT_SYSTEM_PROMPT = `你是 AnyKeep 的 AI 知识助手，帮助用户
 用户: "给这几个加上学习标签"
 → 调用 batch_tags，回复: "已准备好，请点击上方确认按钮。"
 
+用户: "我有哪些智能列表"
+→ 调用 list_smart_lists()，回复: "你有 5 个智能列表：..."
+
+用户: "看看我的待阅读"
+→ 先调用 list_smart_lists() 找到待阅读列表 ID，再调用 get_smart_list_items(smartListId=xxx)
+
+用户: "待阅读有多少"
+→ 先调用 list_smart_lists() 找到待阅读列表 ID，再调用 get_smart_list_count(smartListId=xxx)
+
 ## 注意事项
 
 - 用中文回复
 - 优先使用简单工具（list_recent 而不是复杂的 list_bookmarks）
-- 批量操作调用后，界面会自动显示确认按钮，你只需说"请点击确认"即可`;
+- 批量操作调用后，界面会自动显示确认按钮，你只需说"请点击确认"即可
+- 智能列表查询需要先获取列表 ID，再查询内容或计数`;
 
 /**
  * 默认配置
@@ -378,6 +393,13 @@ export class KnowledgeAgent {
           conversationId: conversation.id,
           provider: selection.provider.name,
           streaming: true,
+          toolCount: Object.keys(tools).length,
+          toolNames: Object.keys(tools).slice(0, 10), // 只记录前10个
+          messageCount: messages.length,
+          lastMessageRole: messages[messages.length - 1]?.role,
+          lastMessagePreview: messages[messages.length - 1]?.content
+            ?.toString()
+            .slice(0, 50),
         },
         "KnowledgeAgent: Starting stream execution",
       );
@@ -396,15 +418,56 @@ export class KnowledgeAgent {
 
       let fullText = "";
       const toolCalls: AgentToolCall[] = [];
+      let chunkCount = 0;
 
-      // 流式输出文本
-      for await (const chunk of result.textStream) {
-        fullText += chunk;
-        yield {
-          type: "text",
-          text: chunk,
-        };
+      // 使用 fullStream 处理所有类型的流式事件（包括工具调用）
+      // textStream 在只有工具调用没有文本时会抛出 "No output generated" 错误
+      try {
+        for await (const chunk of result.fullStream) {
+          chunkCount++;
+          logger.debug(
+            { chunkType: chunk.type, chunkCount },
+            "KnowledgeAgent: Stream chunk received",
+          );
+
+          if (chunk.type === "text-delta") {
+            fullText += chunk.text;
+            yield {
+              type: "text",
+              text: chunk.text,
+            };
+          } else if (chunk.type === "error") {
+            // 处理流中的错误事件
+            logger.error(
+              { error: chunk.error },
+              "KnowledgeAgent: Stream error event",
+            );
+            throw new Error(
+              chunk.error instanceof Error
+                ? chunk.error.message
+                : String(chunk.error),
+            );
+          }
+        }
+      } catch (streamError) {
+        logger.error(
+          {
+            error:
+              streamError instanceof Error
+                ? streamError.message
+                : String(streamError),
+            chunkCount,
+            fullTextLength: fullText.length,
+          },
+          "KnowledgeAgent: Stream iteration failed",
+        );
+        throw streamError;
       }
+
+      logger.info(
+        { chunkCount, fullTextLength: fullText.length },
+        "KnowledgeAgent: Stream iteration completed",
+      );
 
       // 等待完成并获取最终结果
       const durationMs = Math.round(performance.now() - startTime);
@@ -498,6 +561,9 @@ export class KnowledgeAgent {
 
   /**
    * 构建消息历史
+   *
+   * @param conversation - 会话对象（包含已添加到内存的当前用户消息）
+   * @param context - 上下文（可能包含前端提供的 messageHistory）
    */
   private buildMessages(
     conversation: { messages: AgentMessage[] },
@@ -518,6 +584,18 @@ export class KnowledgeAgent {
         messages.push({
           role: msg.role,
           content: msg.content,
+        });
+      }
+
+      // 重要：前端的 messageHistory 不包含当前用户消息（它在 message 字段单独发送）
+      // 当前用户消息已在 executeStream/execute 中添加到 conversation.messages
+      // 需要从 conversation.messages 中获取最后一条用户消息并添加
+      const lastMessage =
+        conversation.messages[conversation.messages.length - 1];
+      if (lastMessage && lastMessage.role === "user") {
+        messages.push({
+          role: "user",
+          content: lastMessage.content,
         });
       }
     } else {

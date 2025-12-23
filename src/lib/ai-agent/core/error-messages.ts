@@ -103,7 +103,12 @@ export function getUserFriendlyError(error: unknown): string {
     }
   }
 
-  // 3. 默认错误消息
+  // 3. 开发环境返回原始错误，便于调试
+  if (process.env.NODE_ENV === "development") {
+    return `调试信息: ${errorMessage}`;
+  }
+
+  // 4. 生产环境返回默认错误消息
   return "操作遇到问题，请稍后重试";
 }
 

@@ -8,6 +8,7 @@
  */
 
 import { z } from "zod";
+import { tool as createAITool, zodSchema, type ToolSet } from "ai";
 import type {
   Tool,
   ToolCategory,
@@ -15,7 +16,6 @@ import type {
   ToolSummary,
   ToolContext,
   ToolResult,
-  VercelAITool,
 } from "./types";
 import { logger } from "@/lib/logger";
 
@@ -225,16 +225,19 @@ export class ToolRegistry {
 
   /**
    * 转换为 Vercel AI SDK tools 格式
+   *
+   * 使用 AI SDK 的 tool() 函数确保 Zod schema 正确转换为 JSON Schema
    */
-  getAsVercelTools(context: ToolContext): Record<string, VercelAITool> {
-    const vercelTools: Record<string, VercelAITool> = {};
+  getAsVercelTools(context: ToolContext): ToolSet {
+    const vercelTools: ToolSet = {};
 
     for (const tool of this.tools.values()) {
-      vercelTools[tool.definition.name] = {
+      // 使用 Vercel AI SDK 的 tool 函数来正确创建 Tool
+      // 使用 zodSchema() 将 Zod schema 转换为 AI SDK Schema
+      vercelTools[tool.definition.name] = createAITool({
         description: tool.definition.description,
-        // Vercel AI SDK 使用 inputSchema 而非 parameters
-        inputSchema: tool.definition.parameters,
-        execute: async (args: unknown) => {
+        inputSchema: zodSchema(tool.definition.parameters),
+        execute: async (args) => {
           const result = await this.execute(
             tool.definition.name,
             args,
@@ -245,7 +248,7 @@ export class ToolRegistry {
           }
           throw new Error(result.error);
         },
-      };
+      });
     }
 
     return vercelTools;

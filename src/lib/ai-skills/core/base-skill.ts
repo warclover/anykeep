@@ -12,7 +12,7 @@
  */
 
 import type { z } from "zod";
-import type { Tool, ToolExecuteFunction } from "ai";
+import { zodSchema, type Tool, type ToolExecuteFunction } from "ai";
 import { logger } from "@/lib/logger";
 import { logSkillExecutionAsync } from "./skill-execution-logger";
 import type {
@@ -230,13 +230,15 @@ export abstract class BaseSkill<TInput = unknown, TOutput = unknown>
       }
     };
 
-    // Vercel AI SDK 的 Tool 类型与 Zod schema 存在兼容性问题
-    // 运行时 SDK 支持 Zod，但 TypeScript 类型定义需要类型断言
-    return {
+    // 直接构造 AI SDK Tool 对象
+    // 使用 zodSchema() 将 Zod schema 转换为 AI SDK Schema
+    // tool() 助手函数主要用于类型推断，这里我们已知类型，直接构造即可
+    const toolDef = {
       description: this.metadata.description,
-      parameters: this.inputSchema,
+      inputSchema: zodSchema(this.inputSchema as z.ZodType<TInput>),
       execute: executeFn,
-    } as unknown as Tool<TInput, TOutput>;
+    };
+    return toolDef as unknown as Tool<TInput, TOutput>;
   }
 
   /**

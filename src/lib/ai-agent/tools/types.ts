@@ -186,10 +186,10 @@ export interface ToolSummary {
 /**
  * 转换为 Vercel AI SDK tool 格式
  *
- * 注意：Vercel AI SDK 使用 inputSchema 而非 parameters
+ * 注意：Vercel AI SDK 实际使用 parameters 而非 inputSchema
  */
 export interface VercelAITool {
   description: string;
-  inputSchema: z.ZodSchema;
+  parameters: z.ZodSchema;
   execute?: (args: unknown) => Promise<unknown>;
 }

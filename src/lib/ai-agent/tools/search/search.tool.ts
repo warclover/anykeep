@@ -61,7 +61,7 @@ interface SearchResult {
 
 export const searchTool: Tool<SearchParams, SearchResult> = {
   definition: {
-    name: "search",
+    name: "search_bookmarks",
     description:
       "在用户的收藏中搜索内容。用于回答「找关于 React 的文章」「有没有收藏过机器学习的内容」等问题。",
     parameters: paramsSchema,
@@ -117,13 +117,13 @@ export const searchTool: Tool<SearchParams, SearchResult> = {
 
       logger.info(
         {
-          toolName: "search",
+          toolName: "search_bookmarks",
           userId: context.userId,
           query: params.query.substring(0, 50),
           resultCount: result.total,
           executionTimeMs: Math.round(performance.now() - startTime),
         },
-        "search: Success",
+        "search_bookmarks: Success",
       );
 
       return {
@@ -140,12 +140,12 @@ export const searchTool: Tool<SearchParams, SearchResult> = {
 
       logger.error(
         {
-          toolName: "search",
+          toolName: "search_bookmarks",
           userId: context.userId,
           query: params.query.substring(0, 50),
           error: errorMessage,
         },
-        "search: Failed",
+        "search_bookmarks: Failed",
       );
 
       return {

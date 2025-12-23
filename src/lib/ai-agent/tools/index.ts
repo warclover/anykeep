@@ -26,12 +26,16 @@ export * from "./search";
 // 操作 Tools（需要确认）
 export * from "./action";
 
+// 智能列表 Tools
+export * from "./smart-list";
+
 // 注册默认 Tools
 import { toolRegistry } from "./tool-registry";
 import { queryTools } from "./query";
 import { readTools } from "./read";
 import { searchTools } from "./search";
 import { actionTools } from "./action";
+import { smartListTools } from "./smart-list";
 
 /**
  * 注册所有默认 Tools
@@ -41,6 +45,7 @@ export function registerDefaultTools(): void {
   toolRegistry.registerAll(readTools);
   toolRegistry.registerAll(searchTools);
   toolRegistry.registerAll(actionTools);
+  toolRegistry.registerAll(smartListTools);
 }
 
 /**
