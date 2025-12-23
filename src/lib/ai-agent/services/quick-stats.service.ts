@@ -65,8 +65,13 @@ export interface QuickStats {
 // 常量
 // ============================================
 
-/** 浏览器平台列表 */
-const BROWSER_PLATFORMS = ["CHROME", "EDGE", "FIREFOX", "SAFARI"];
+/** 浏览器平台列表（与 bookmark-server.repository.ts 保持一致） */
+const BROWSER_PLATFORMS = [
+  "BROWSER_CHROME",
+  "BROWSER_EDGE",
+  "BROWSER_FIREFOX",
+  "BROWSER_SAFARI",
+];
 
 /** 缓存过期时间（毫秒）- 5 分钟 */
 const CACHE_TTL_MS = 5 * 60 * 1000;

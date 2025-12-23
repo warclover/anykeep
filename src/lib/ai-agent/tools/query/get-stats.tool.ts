@@ -16,8 +16,13 @@ import { createClient } from "@/lib/supabase/server";
 // 常量
 // ============================================
 
-/** 浏览器平台列表（需要排除） */
-const BROWSER_PLATFORMS = ["CHROME", "EDGE", "FIREFOX", "SAFARI"];
+/** 浏览器平台列表（与 bookmark-server.repository.ts 保持一致） */
+const BROWSER_PLATFORMS = [
+  "BROWSER_CHROME",
+  "BROWSER_EDGE",
+  "BROWSER_FIREFOX",
+  "BROWSER_SAFARI",
+];
 
 // ============================================
 // 参数定义
