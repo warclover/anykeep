@@ -2,20 +2,21 @@
  * AI 消息组件
  *
  * 显示单条对话消息，支持用户消息和助手消息
+ * 糖果色风格设计
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-22
  */
 
 "use client";
 
 import { memo } from "react";
-import { Bot, User, Loader2, AlertCircle, Wrench } from "lucide-react";
+import { Sparkles, User, AlertCircle, Wrench } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AIMessageProps } from "./types";
 
 /**
- * AI 消息组件
+ * AI 消息组件 - 糖果色风格
  */
 export const AIMessage = memo(function AIMessage({
   message,
@@ -33,16 +34,20 @@ export const AIMessage = memo(function AIMessage({
         isUser ? "flex-row-reverse" : "flex-row",
       )}
     >
-      {/* 头像 */}
+      {/* 头像 - 糖果色风格 */}
       <div
         className={cn(
-          "flex-shrink-0 flex items-center justify-center size-8 rounded-full",
+          "flex-shrink-0 flex items-center justify-center size-9 rounded-full shadow-md",
           isUser
-            ? "bg-primary text-primary-foreground"
-            : "bg-muted text-muted-foreground",
+            ? "bg-gradient-to-r from-pink-400 to-rose-400"
+            : "bg-gradient-to-r from-purple-400 to-indigo-400",
         )}
       >
-        {isUser ? <User className="size-4" /> : <Bot className="size-4" />}
+        {isUser ? (
+          <User className="size-4 text-white" />
+        ) : (
+          <Sparkles className="size-4 text-white" />
+        )}
       </div>
 
       {/* 消息内容 */}
@@ -52,50 +57,63 @@ export const AIMessage = memo(function AIMessage({
           isUser ? "items-end" : "items-start",
         )}
       >
-        {/* 消息气泡 */}
+        {/* 消息气泡 - 糖果色风格 */}
         <div
           className={cn(
-            "rounded-lg px-3 py-2 text-sm",
+            "rounded-2xl px-4 py-2.5 text-sm shadow-sm",
             isUser
-              ? "bg-primary text-primary-foreground"
-              : "bg-muted text-foreground",
-            hasError && "bg-destructive/10 text-destructive",
+              ? "bg-gradient-to-r from-pink-400 to-rose-400 text-white rounded-tr-md"
+              : "bg-white text-gray-700 border border-purple-100 rounded-tl-md",
+            hasError && "bg-red-50 border-red-200 text-red-600",
           )}
         >
           {/* 消息文本 */}
-          <div className="whitespace-pre-wrap break-words">
+          <div className="whitespace-pre-wrap break-words leading-relaxed">
             {message.content || (isStreaming && !message.content && "...")}
           </div>
 
-          {/* 流式加载指示器 */}
+          {/* 流式加载指示器 - 打字动画 */}
           {isStreaming && isLast && (
-            <span className="inline-flex items-center gap-1 text-muted-foreground mt-1">
-              <Loader2 className="size-3 animate-spin" />
+            <span className="inline-flex items-center gap-1 mt-1">
+              <span className="flex gap-1">
+                <span
+                  className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-bounce"
+                  style={{ animationDelay: "0ms" }}
+                />
+                <span
+                  className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-bounce"
+                  style={{ animationDelay: "150ms" }}
+                />
+                <span
+                  className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-bounce"
+                  style={{ animationDelay: "300ms" }}
+                />
+              </span>
             </span>
           )}
 
           {/* 错误信息 */}
           {hasError && message.error && (
-            <div className="flex items-center gap-1 mt-2 text-destructive text-xs">
+            <div className="flex items-center gap-1 mt-2 text-red-500 text-xs">
               <AlertCircle className="size-3" />
               <span>{message.error}</span>
             </div>
           )}
         </div>
 
-        {/* 工具调用信息 */}
+        {/* 工具调用信息 - 糖果色标签 */}
         {hasToolCalls && (
           <div className="flex flex-wrap gap-1 mt-1">
             {message.toolCalls!.map((tc) => (
               <div
                 key={tc.id}
                 className={cn(
-                  "inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs",
+                  "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium shadow-sm",
                   tc.status === "completed"
-                    ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                    ? "bg-gradient-to-r from-emerald-100 to-teal-100 text-emerald-700 border border-emerald-200"
                     : tc.status === "failed"
-                      ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                      : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
+                      ? "bg-gradient-to-r from-red-100 to-rose-100 text-red-700 border border-red-200"
+                      : "bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-700 border border-amber-200",
                 )}
               >
                 <Wrench className="size-3" />
@@ -106,7 +124,7 @@ export const AIMessage = memo(function AIMessage({
         )}
 
         {/* 时间戳 */}
-        <span className="text-xs text-muted-foreground">
+        <span className="text-xs text-gray-400 mt-0.5">
           {formatTime(message.createdAt)}
         </span>
       </div>
