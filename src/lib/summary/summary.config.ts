@@ -107,6 +107,21 @@ export const MODEL_PRICING: Record<string, { input: number; output: number }> =
   };
 
 /**
+ * Provider 默认定价（用于未知模型的回退）
+ *
+ * 与 MODEL_PRICING 中对应 provider 的默认模型价格保持一致
+ */
+export const PROVIDER_DEFAULT_PRICING: Record<
+  ProviderName,
+  { input: number; output: number }
+> = {
+  deepseek: MODEL_PRICING["deepseek-chat"],
+  "aliyun-bailian": MODEL_PRICING["qwen-turbo"],
+  ollama: { input: 0, output: 0 }, // 本地模型无成本
+  local: { input: 0, output: 0 }, // 本地模型无成本
+};
+
+/**
  * 默认服务配置
  */
 export const DEFAULT_SERVICE_CONFIG: SummaryServiceConfig = {
@@ -242,7 +257,7 @@ export function getConfiguredProviders(): ProviderName[] {
 /**
  * 估算成本
  *
- * @param provider - Provider 名称
+ * @param provider - Provider 名称（用于未知模型的回退定价）
  * @param model - 模型名称
  * @param inputTokens - 输入 Token 数
  * @param outputTokens - 输出 Token 数
@@ -256,14 +271,32 @@ export function estimateCost(
 ): number {
   const pricing = MODEL_PRICING[model];
   if (!pricing) {
-    // 默认使用 DeepSeek 定价
-    return Math.ceil((inputTokens / 1000) * 0.1 + (outputTokens / 1000) * 0.2);
+    // 根据 provider 使用不同的回退定价
+    const fallbackPricing = getFallbackPricing(provider);
+    return Math.ceil(
+      (inputTokens / 1000) * fallbackPricing.input +
+        (outputTokens / 1000) * fallbackPricing.output,
+    );
   }
 
   const inputCost = (inputTokens / 1000) * pricing.input;
   const outputCost = (outputTokens / 1000) * pricing.output;
 
   return Math.ceil(inputCost + outputCost);
+}
+
+/**
+ * 获取回退定价（当模型未在 MODEL_PRICING 中定义时）
+ *
+ * 使用 PROVIDER_DEFAULT_PRICING 常量，确保与默认模型价格一致
+ */
+function getFallbackPricing(provider: ProviderName): {
+  input: number;
+  output: number;
+} {
+  return (
+    PROVIDER_DEFAULT_PRICING[provider] ?? PROVIDER_DEFAULT_PRICING.deepseek
+  );
 }
 
 // ============================================================================

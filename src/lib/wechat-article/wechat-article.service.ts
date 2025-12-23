@@ -16,7 +16,8 @@ import {
   createServerSupabaseClient,
   createServiceClient,
 } from "@/lib/supabase/server";
-import type { Json, WechatArticleSnapshot } from "@/types/supabase";
+import { logger } from "@/lib/logger";
+import type { Json } from "@/types/supabase";
 import type {
   WechatArticleContent,
   WechatArticleCrawlProgress,
@@ -25,6 +26,7 @@ import type {
   WechatArticleImage,
   CrawlOptions,
 } from "./wechat-article.types";
+import { toWechatArticleSnapshot } from "./utils/type-helpers";
 import {
   processWechatContent,
   replaceImageUrls,
@@ -98,8 +100,11 @@ export class WechatArticleService {
         throw new Error(ERROR_CODES.SNAPSHOT_NOT_FOUND);
       }
 
-      // 类型断言
-      const snapshotData = snapshot as unknown as WechatArticleSnapshot;
+      // 使用类型安全的转换函数
+      // Note: 使用 unknown 中间转换是因为 Supabase 类型定义尚未包含新列
+      const snapshotData = toWechatArticleSnapshot(
+        snapshot as unknown as Record<string, unknown>,
+      );
 
       // 2. 验证是微信平台
       if (snapshotData.bookmarks?.platform !== "WECHAT_OFFICIAL_ACCOUNT") {
@@ -174,9 +179,9 @@ export class WechatArticleService {
         .eq("id", snapshotId);
 
       if (updateError) {
-        console.error(
-          "[WechatArticleService] Failed to update snapshot:",
-          updateError,
+        logger.error(
+          { snapshotId, error: updateError.message },
+          "WechatArticleService: Failed to update snapshot",
         );
         // 设置警告信息而不是静默失败
         content.saveWarning = `数据库保存失败: ${updateError.message}`;
@@ -186,7 +191,13 @@ export class WechatArticleService {
 
       return content;
     } catch (error) {
-      console.error("[WechatArticleService] crawlFullContent failed:", error);
+      logger.error(
+        {
+          snapshotId,
+          error: error instanceof Error ? error.message : String(error),
+        },
+        "WechatArticleService: crawlFullContent failed",
+      );
 
       onProgress?.({
         stage: "failed",
@@ -234,8 +245,11 @@ export class WechatArticleService {
       throw new Error(ERROR_CODES.SNAPSHOT_NOT_FOUND);
     }
 
-    // 类型断言
-    const snapshotData = snapshot as unknown as WechatArticleSnapshot;
+    // 使用类型安全的转换函数
+    // Note: 使用 unknown 中间转换是因为 Supabase 类型定义尚未包含新列
+    const snapshotData = toWechatArticleSnapshot(
+      snapshot as unknown as Record<string, unknown>,
+    );
 
     // 2. 仅更新图片模式（传递 styleLevel）
     if (options.imagesOnly) {
@@ -382,8 +396,11 @@ export class WechatArticleService {
       return null;
     }
 
-    // 类型断言
-    const snapshotData = snapshot as unknown as WechatArticleSnapshot;
+    // 使用类型安全的转换函数
+    // Note: 使用 unknown 中间转换是因为 Supabase 类型定义尚未包含新列
+    const snapshotData = toWechatArticleSnapshot(
+      snapshot as unknown as Record<string, unknown>,
+    );
 
     // 优先使用处理后的 HTML，其次使用原始 readable_content
     const htmlContent =
@@ -422,8 +439,11 @@ export class WechatArticleService {
       return false;
     }
 
-    // 类型断言
-    const snapshotData = data as unknown as WechatArticleSnapshot;
+    // 使用类型安全的转换函数
+    // Note: 使用 unknown 中间转换是因为 Supabase 类型定义尚未包含新列
+    const snapshotData = toWechatArticleSnapshot(
+      data as unknown as Record<string, unknown>,
+    );
 
     // 有处理后的 HTML、Markdown 内容或图片已处理，认为有完整内容
     return !!(

@@ -7,7 +7,7 @@
  * - 实现故障转移和健康检查
  * - 电路断路器模式（Circuit Breaker）
  *
- * @version 1.1.0
+ * @version 1.2.0
  * @since 2025-12-22
  */
 
@@ -26,6 +26,51 @@ import type {
   CircuitBreakerConfig,
   CircuitState,
 } from "./types";
+
+// =============================================================================
+// 模型创建器映射（策略模式）
+// =============================================================================
+
+/**
+ * 模型创建器函数类型
+ * 接收 API Key，返回可以创建模型的工厂函数
+ */
+type ModelCreatorFn = (apiKey: string) => (modelId: string) => LanguageModel;
+
+/**
+ * 模型创建器映射表
+ * 将 provider 名称映射到对应的创建函数，避免冗长的 switch 语句
+ *
+ * null 表示该 provider 尚未实现或不适用
+ */
+const MODEL_CREATORS: Partial<Record<ProviderName, ModelCreatorFn | null>> = {
+  deepseek: (apiKey) => createDeepSeek({ apiKey }),
+  openai: (apiKey) => createOpenAI({ apiKey }),
+  anthropic: (apiKey) => createAnthropic({ apiKey }),
+  // TODO: 添加阿里云百炼支持
+  // "aliyun-bailian": (apiKey) => createAliyunBailian({ apiKey }),
+  // TODO: 添加 Ollama 支持（本地模型）
+  // ollama: () => createOllama({}),
+  local: null, // 本地模型暂不支持
+};
+
+// =============================================================================
+// 缓存配置
+// =============================================================================
+
+/**
+ * 模型缓存 TTL（毫秒）
+ * 默认 30 分钟，避免长时间持有可能过期的模型实例
+ */
+const MODEL_CACHE_TTL_MS = 30 * 60 * 1000;
+
+/**
+ * 带 TTL 的缓存条目
+ */
+interface CacheEntry<T> {
+  value: T;
+  expiresAt: number;
+}
 
 /**
  * 默认电路断路器配置
@@ -106,7 +151,8 @@ export class AIProviderRouter {
   private static instance: AIProviderRouter;
   private providers: Map<ProviderName, ProviderConfig> = new Map();
   private healthStatus: Map<ProviderName, ProviderHealth> = new Map();
-  private modelCache: Map<string, LanguageModel> = new Map();
+  /** 模型缓存（带 TTL 支持） */
+  private modelCache: Map<string, CacheEntry<LanguageModel>> = new Map();
   private circuitConfig: CircuitBreakerConfig;
 
   private constructor(circuitConfig?: Partial<CircuitBreakerConfig>) {
@@ -234,6 +280,9 @@ export class AIProviderRouter {
 
   /**
    * 获取指定 Provider 的模型
+   *
+   * 使用策略映射模式替代冗长的 switch 语句
+   * 添加新 provider 只需在 MODEL_CREATORS 映射表中添加条目
    */
   getModel(providerName: ProviderName, modelId?: string): LanguageModel | null {
     const config = this.providers.get(providerName);
@@ -244,56 +293,52 @@ export class AIProviderRouter {
     const actualModelId = modelId || config.defaultModel;
     const cacheKey = `${providerName}:${actualModelId}`;
 
-    // 检查缓存
-    if (this.modelCache.has(cacheKey)) {
-      return this.modelCache.get(cacheKey)!;
+    // 检查缓存（带 TTL 验证）
+    const cached = this.modelCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.value;
+    }
+
+    // 缓存已过期，删除旧条目
+    if (cached) {
+      this.modelCache.delete(cacheKey);
     }
 
     try {
-      let model: LanguageModel | null = null;
-
-      switch (providerName) {
-        case "deepseek": {
-          const apiKey = process.env.DEEPSEEK_API_KEY;
-          if (!apiKey) {
-            logger.error("DEEPSEEK_API_KEY not found");
-            return null;
-          }
-          const deepseek = createDeepSeek({ apiKey });
-          model = deepseek(actualModelId);
-          break;
-        }
-        case "openai": {
-          const apiKey = process.env.OPENAI_API_KEY;
-          if (!apiKey) {
-            logger.error("OPENAI_API_KEY not found");
-            return null;
-          }
-          const openai = createOpenAI({ apiKey });
-          model = openai(actualModelId);
-          break;
-        }
-        case "anthropic": {
-          const apiKey = process.env.ANTHROPIC_API_KEY;
-          if (!apiKey) {
-            logger.error("ANTHROPIC_API_KEY not found");
-            return null;
-          }
-          const anthropic = createAnthropic({ apiKey });
-          model = anthropic(actualModelId);
-          break;
-        }
-        case "local":
-          // 本地模型暂不支持
-          logger.warn("Local provider not yet implemented");
-          return null;
-        default:
-          logger.error({ providerName }, "Unknown provider");
-          return null;
+      // 获取模型创建器
+      const creator = MODEL_CREATORS[providerName];
+      if (creator === null) {
+        logger.warn(
+          { providerName },
+          `Provider ${providerName} not yet implemented`,
+        );
+        return null;
+      }
+      if (creator === undefined) {
+        logger.error({ providerName }, "Unknown provider");
+        return null;
       }
 
+      // 获取 API Key
+      const apiKey = process.env[config.apiKeyEnv];
+      if (!apiKey) {
+        logger.error(
+          { providerName, apiKeyEnv: config.apiKeyEnv },
+          `${config.apiKeyEnv} not found`,
+        );
+        return null;
+      }
+
+      // 创建模型
+      const providerInstance = creator(apiKey);
+      const model = providerInstance(actualModelId);
+
       if (model) {
-        this.modelCache.set(cacheKey, model);
+        // 缓存模型实例（带 TTL）
+        this.modelCache.set(cacheKey, {
+          value: model,
+          expiresAt: Date.now() + MODEL_CACHE_TTL_MS,
+        });
       }
 
       return model;
