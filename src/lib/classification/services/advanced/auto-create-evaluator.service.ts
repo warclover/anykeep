@@ -14,7 +14,7 @@ import {
   matchCategoriesByKeyword,
   type UniversalCategory,
 } from "../../constants/universal-categories";
-import { V3_CONFIG } from "../../config/v3";
+import { FEATURE_FLAGS } from "../../config/feature-flags";
 import { FOLDER_LIMITS } from "@/lib/classification/constants/limits";
 import { logger } from "@/lib/logger";
 
@@ -143,7 +143,7 @@ export class AutoCreateEvaluatorService {
       confidence = Math.max(0, confidence - 10);
     }
 
-    if (!V3_CONFIG.enableAutoCreateEnhanced) {
+    if (!FEATURE_FLAGS.enableAutoCreateEnhanced) {
       // 如果增强模式未启用，使用简单逻辑
       return this.simpleEvaluation(proposedName, confidence);
     }
@@ -251,8 +251,8 @@ export class AutoCreateEvaluatorService {
       }
 
       // 6. 根据置信度决定操作
-      const highThreshold = V3_CONFIG.highConfidenceThreshold;
-      const mediumThreshold = V3_CONFIG.mediumConfidenceThreshold;
+      const highThreshold = FEATURE_FLAGS.highConfidenceThreshold;
+      const mediumThreshold = FEATURE_FLAGS.mediumConfidenceThreshold;
 
       if (confidence >= highThreshold) {
         return this.buildResult({
@@ -316,8 +316,8 @@ export class AutoCreateEvaluatorService {
     proposedName: string,
     confidence: number,
   ): AutoCreateEvaluation {
-    const highThreshold = V3_CONFIG.highConfidenceThreshold;
-    const mediumThreshold = V3_CONFIG.mediumConfidenceThreshold;
+    const highThreshold = FEATURE_FLAGS.highConfidenceThreshold;
+    const mediumThreshold = FEATURE_FLAGS.mediumConfidenceThreshold;
 
     return {
       shouldCreate: confidence >= highThreshold,

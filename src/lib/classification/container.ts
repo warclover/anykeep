@@ -36,7 +36,7 @@ import {
   FingerprintMatcher,
   TagMatcher,
 } from "./strategies/advanced";
-import { V3_CONFIG } from "./config/v3";
+import { FEATURE_FLAGS } from "./config/feature-flags";
 
 // Services
 import {
@@ -180,11 +180,11 @@ export class ClassificationContainer {
     // ═══════════════════════════════════════════════════════════════
     // 第 1 层：k-NN 直接锁定（最高优先级，可跳过后续层）
     // ═══════════════════════════════════════════════════════════════
-    if (V3_CONFIG.enableKnnDirect) {
+    if (FEATURE_FLAGS.enableKnnDirect) {
       matchers.push(
         new KnnDirectMatcher(bookmarkRepo, {
           weight: 1.0, // 最高权重
-          thresholds: { similarity: V3_CONFIG.knnDirectThreshold },
+          thresholds: { similarity: FEATURE_FLAGS.knnDirectThreshold },
         }),
       );
       logger.debug(
@@ -196,7 +196,7 @@ export class ClassificationContainer {
     // ═══════════════════════════════════════════════════════════════
     // 第 2 层：标签指纹匹配
     // ═══════════════════════════════════════════════════════════════
-    if (V3_CONFIG.enableFolderFingerprint) {
+    if (FEATURE_FLAGS.enableFolderFingerprint) {
       matchers.push(
         new FingerprintMatcher(this.supabase, {
           weight: 0.25,
@@ -211,7 +211,7 @@ export class ClassificationContainer {
     // ═══════════════════════════════════════════════════════════════
     // 第 3 层：Tag-to-Tag 精准匹配
     // ═══════════════════════════════════════════════════════════════
-    if (V3_CONFIG.enableTagMatcher) {
+    if (FEATURE_FLAGS.enableTagMatcher) {
       matchers.push(
         new TagMatcher(this.supabase, {
           weight: 0.3,
@@ -232,7 +232,7 @@ export class ClassificationContainer {
     // ═══════════════════════════════════════════════════════════════
     // 第 5 层：通用分类匹配（冷启动兜底）
     // ═══════════════════════════════════════════════════════════════
-    if (V3_CONFIG.enableUniversalCategories) {
+    if (FEATURE_FLAGS.enableUniversalCategories) {
       matchers.push(
         new UniversalCategoryMatcher(folderProfileRepo, {
           weight: 0.2,
@@ -281,10 +281,10 @@ export class ClassificationContainer {
         {
           totalMatchers: matchers.length,
           v3Features: {
-            knnDirect: V3_CONFIG.enableKnnDirect,
-            fingerprint: V3_CONFIG.enableFolderFingerprint,
-            tagMatcher: V3_CONFIG.enableTagMatcher,
-            universal: V3_CONFIG.enableUniversalCategories,
+            knnDirect: FEATURE_FLAGS.enableKnnDirect,
+            fingerprint: FEATURE_FLAGS.enableFolderFingerprint,
+            tagMatcher: FEATURE_FLAGS.enableTagMatcher,
+            universal: FEATURE_FLAGS.enableUniversalCategories,
           },
         },
         "V3 Classification Service initialized",

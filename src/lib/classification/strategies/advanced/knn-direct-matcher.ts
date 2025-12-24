@@ -17,7 +17,7 @@ import type {
 } from "@/lib/classification/strategies/interfaces";
 import type { MatchResult, MatcherContext } from "@/lib/classification/types";
 import type { BookmarkRepository } from "@/lib/classification/repositories";
-import { V3_CONFIG } from "../../config/v3";
+import { FEATURE_FLAGS } from "../../config/feature-flags";
 import { logger } from "@/lib/logger";
 
 /**
@@ -65,9 +65,9 @@ export class KnnDirectMatcher implements IMatcher {
     this.config = {
       ...DEFAULT_CONFIG,
       similarityThreshold:
-        options?.thresholds?.similarity ?? V3_CONFIG.knnDirectThreshold,
+        options?.thresholds?.similarity ?? FEATURE_FLAGS.knnDirectThreshold,
       weight: options?.weight ?? DEFAULT_CONFIG.weight,
-      enabled: V3_CONFIG.enableKnnDirect,
+      enabled: FEATURE_FLAGS.enableKnnDirect,
     };
     this.weight = this.config.weight;
   }

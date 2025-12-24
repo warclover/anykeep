@@ -20,7 +20,7 @@ import {
   type MatcherScores,
   type CandidateFolder,
 } from "../../repositories/decision.repository";
-import { V3_CONFIG } from "../../config/v3";
+import { FEATURE_FLAGS } from "../../config/feature-flags";
 import { logger } from "@/lib/logger";
 import { getCorrectionCache } from "./correction-cache.service";
 
@@ -61,7 +61,7 @@ export class FeedbackLoopService {
    * 在每次分类完成后调用
    */
   async recordDecision(context: ClassificationContext): Promise<number> {
-    if (!V3_CONFIG.enableFeedbackLoop) {
+    if (!FEATURE_FLAGS.enableFeedbackLoop) {
       logger.debug("Feedback loop disabled, skipping decision recording");
       return 0;
     }
@@ -77,7 +77,7 @@ export class FeedbackLoopService {
       candidates: context.candidates,
       aiSkipped: context.aiSkipped,
       aiModel: context.aiModel,
-      aiPromptVersion: V3_CONFIG.enableCoTPrompt ? "cot_v1" : "simple_v2",
+      aiPromptVersion: FEATURE_FLAGS.enableCoTPrompt ? "cot_v1" : "simple_v2",
       aiResponseTimeMs: context.aiResponseTimeMs,
       clientVersion: "v3.0.0",
     };
@@ -121,7 +121,7 @@ export class FeedbackLoopService {
     /** V4.0: 目标文件夹名称，用于纠错缓存 */
     chosenFolderName?: string,
   ): Promise<void> {
-    if (!V3_CONFIG.enableFeedbackLoop) {
+    if (!FEATURE_FLAGS.enableFeedbackLoop) {
       return;
     }
 
@@ -177,7 +177,7 @@ export class FeedbackLoopService {
    * 带缓存，避免频繁查询数据库
    */
   async getWeightAdjustments(userId: string): Promise<WeightAdjustments> {
-    if (!V3_CONFIG.enableDynamicWeights) {
+    if (!FEATURE_FLAGS.enableDynamicWeights) {
       // 返回默认权重
       return {
         vector: 0.4,
@@ -218,7 +218,7 @@ export class FeedbackLoopService {
    */
   async shouldAdjustKnnThreshold(userId: string): Promise<number> {
     const weights = await this.getWeightAdjustments(userId);
-    return weights.knnDirectThreshold ?? V3_CONFIG.knnDirectThreshold;
+    return weights.knnDirectThreshold ?? FEATURE_FLAGS.knnDirectThreshold;
   }
 
   /**
@@ -247,10 +247,10 @@ export function determineDecisionType(
   if (matchedByUniversal) {
     return "universal_match";
   }
-  if (confidence >= V3_CONFIG.highConfidenceThreshold) {
+  if (confidence >= FEATURE_FLAGS.highConfidenceThreshold) {
     return "auto_classified";
   }
-  if (confidence >= V3_CONFIG.mediumConfidenceThreshold) {
+  if (confidence >= FEATURE_FLAGS.mediumConfidenceThreshold) {
     return "suggestion_shown";
   }
   return "to_inbox";

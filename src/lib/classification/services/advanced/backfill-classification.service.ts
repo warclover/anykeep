@@ -12,7 +12,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
-import { V3_CONFIG } from "../../config/v3";
+import { FEATURE_FLAGS } from "../../config/feature-flags";
 import { matchCategoriesByKeyword } from "../../constants/universal-categories";
 import { logger } from "@/lib/logger";
 
@@ -110,7 +110,7 @@ export class BackfillClassificationService {
   ): Promise<BackfillResult> {
     const startTime = Date.now();
 
-    if (!V3_CONFIG.enableBackfillClassification) {
+    if (!FEATURE_FLAGS.enableBackfillClassification) {
       logger.debug("BackfillClassification: Disabled, skipping");
       return {
         folderId,
@@ -161,7 +161,7 @@ export class BackfillClassificationService {
       }));
 
       // 4. 筛选高分书签
-      const threshold = V3_CONFIG.mediumConfidenceThreshold / 100; // 使用中置信度作为阈值
+      const threshold = FEATURE_FLAGS.mediumConfidenceThreshold / 100; // 使用中置信度作为阈值
       const candidateBookmarks = scoredBookmarks
         .filter((sb) => sb.score >= threshold)
         .sort((a, b) => b.score - a.score)
