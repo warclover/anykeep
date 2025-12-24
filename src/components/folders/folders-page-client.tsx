@@ -26,7 +26,8 @@ import { FolderNavPanel } from "@/components/folders/folder-nav-panel";
 import { FolderContentArea } from "@/components/folders/folder-content-area";
 import { AIAssistantPanel } from "@/components/ai/ai-assistant-panel";
 import { type UIFolderGroup } from "@/components/folders/constants";
-import { setFoldersCache, clearFoldersCache } from "@/lib/folder";
+// V4.2.28: 直接从 cache 子模块导入，避免引入服务端代码
+import { setFoldersCache, clearFoldersCache } from "@/lib/folder/cache";
 import type {
   FolderWithStats,
   BookmarkWithFolder,

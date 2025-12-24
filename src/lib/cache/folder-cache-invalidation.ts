@@ -17,7 +17,8 @@
 
 import { dataCache } from "./data-cache";
 import { CACHE_KEYS } from "./cache-config";
-import { clearFoldersCache } from "@/lib/folder";
+// V4.2.27: 直接从 cache 子模块导入，避免引入服务端代码
+import { clearFoldersCache } from "@/lib/folder/cache";
 import { clientLogger } from "@/lib/client-logger";
 
 // 缓存失效事件类型
