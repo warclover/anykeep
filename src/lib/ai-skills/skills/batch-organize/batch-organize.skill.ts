@@ -477,6 +477,53 @@ export class BatchOrganizeSkill extends OrchestrationSkill<
       }
       yield* this.emitText(`\n`);
 
+      // 检查是否有需要执行的操作
+      const hasPendingActions =
+        stats.categorizeSuggestions > 0 ||
+        stats.tagSuggestions > 0 ||
+        stats.duplicatesFound > 0 ||
+        stats.archiveCandidates > 0;
+
+      // 如果有待处理操作且需要确认
+      if (
+        hasPendingActions &&
+        input.requireConfirmation &&
+        !input.autoExecute
+      ) {
+        yield* this.reportProgress("确认操作", 85, "等待用户确认...");
+
+        // 构建确认消息
+        const confirmMessage = this.buildConfirmationMessage(stats);
+
+        yield* this.emitConfirmation("确认执行智能整理？", confirmMessage, [
+          { id: "confirm", label: "确认执行", danger: false },
+          { id: "preview", label: "仅保存报告", danger: false },
+          { id: "cancel", label: "取消" },
+        ]);
+
+        yield* this.emitText(`\n---\n\n`);
+        yield* this.emitText(
+          `💡 **请在上方选择操作**：\n` +
+            `- 点击"确认执行"将自动应用建议的整理操作\n` +
+            `- 点击"仅保存报告"可下载报告后手动处理\n\n`,
+        );
+      } else if (hasPendingActions && input.autoExecute) {
+        // 自动执行模式：应用整理操作
+        yield* this.reportProgress("执行整理", 85, "正在应用整理操作...");
+        yield* this.emitText(`### ⚡ 执行整理\n\n`);
+
+        // TODO: 实现实际的整理操作
+        // - 应用分类建议：移动书签到建议的文件夹
+        // - 应用标签建议：为书签添加建议的标签
+        // - 清理重复：删除重复书签
+        // - 归档旧内容：移动到归档文件夹
+
+        yield* this.emitText(
+          `⚠️ 自动执行功能正在开发中，当前仅生成整理报告。\n\n`,
+        );
+        stats.actionsExecuted = 0;
+      }
+
       // 输出交付物
       const deliverable = this.createDeliverable(
         "report",
@@ -961,6 +1008,32 @@ export class BatchOrganizeSkill extends OrchestrationSkill<
     }
 
     return output;
+  }
+
+  /**
+   * 构建确认消息
+   */
+  private buildConfirmationMessage(stats: OrganizeStats): string {
+    const parts: string[] = [];
+
+    if (stats.categorizeSuggestions > 0) {
+      parts.push(`${stats.categorizeSuggestions} 条分类建议`);
+    }
+    if (stats.tagSuggestions > 0) {
+      parts.push(`${stats.tagSuggestions} 条标签建议`);
+    }
+    if (stats.duplicatesFound > 0) {
+      parts.push(`${stats.duplicatesFound} 组重复书签`);
+    }
+    if (stats.archiveCandidates > 0) {
+      parts.push(`${stats.archiveCandidates} 条归档候选`);
+    }
+
+    if (parts.length === 0) {
+      return "没有需要执行的整理操作。";
+    }
+
+    return `将执行以下整理操作：${parts.join("、")}。确认后将自动应用这些建议。`;
   }
 }
 
