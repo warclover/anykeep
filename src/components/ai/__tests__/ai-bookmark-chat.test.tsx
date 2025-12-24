@@ -126,7 +126,7 @@ describe("AIBookmarkChat", () => {
 
       await waitFor(() => {
         expect(mockFetch).toHaveBeenCalledWith(
-          "/api/agent/chat",
+          "/api/agent/unified",
           expect.objectContaining({
             method: "POST",
             headers: {

@@ -2704,6 +2704,85 @@ export type Database = {
         };
         Relationships: [];
       };
+      /**
+       * 用户标签表 - 存储用户创建的标签
+       * 注意：此表定义为手动增补，用于支持 SmartTaggingSkill 等功能
+       */
+      tags: {
+        Row: {
+          id: number;
+          user_id: string;
+          name: string;
+          color: string | null;
+          created_at: string;
+          updated_at: string | null;
+        };
+        Insert: {
+          id?: number;
+          user_id: string;
+          name: string;
+          color?: string | null;
+          created_at?: string;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: number;
+          user_id?: string;
+          name?: string;
+          color?: string | null;
+          created_at?: string;
+          updated_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "tags_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      /**
+       * 书签-标签关联表 - 存储书签与标签的多对多关系
+       * 注意：此表定义为手动增补，用于支持 SmartTaggingSkill 等功能
+       */
+      bookmark_tags: {
+        Row: {
+          id: number;
+          bookmark_id: number;
+          tag_id: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: number;
+          bookmark_id: number;
+          tag_id: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: number;
+          bookmark_id?: number;
+          tag_id?: number;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "bookmark_tags_bookmark_id_fkey";
+            columns: ["bookmark_id"];
+            isOneToOne: false;
+            referencedRelation: "bookmarks";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "bookmark_tags_tag_id_fkey";
+            columns: ["tag_id"];
+            isOneToOne: false;
+            referencedRelation: "tags";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: {
       classification_metrics_daily: {

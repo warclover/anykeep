@@ -468,29 +468,22 @@ export class ReadingPlannerSkill extends OrchestrationSkill<
       throw new Error(`获取书签失败：${error.message}`);
     }
 
-    // 获取标签（单独查询避免类型问题）
+    // 获取标签（tags 和 bookmark_tags 表类型已在 supabase.ts 中手动增补）
     const bookmarkIds = (data || []).map((b) => b.id);
     const bookmarkTags = new Map<number, string[]>();
 
     if (bookmarkIds.length > 0) {
-      // 使用 any 断言绕过表名类型检查（bookmark_tags 和 tags 不在生成的类型中）
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: tagData } = (await (supabase as any)
+      const { data: tagData } = await supabase
         .from("bookmark_tags")
         .select("bookmark_id, tag_id")
-        .in("bookmark_id", bookmarkIds)) as {
-        data: Array<{ bookmark_id: number; tag_id: number }> | null;
-      };
+        .in("bookmark_id", bookmarkIds);
 
       if (tagData && tagData.length > 0) {
         const tagIds = [...new Set(tagData.map((bt) => bt.tag_id))];
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: tagsInfo } = (await (supabase as any)
+        const { data: tagsInfo } = await supabase
           .from("tags")
           .select("id, name")
-          .in("id", tagIds)) as {
-          data: Array<{ id: number; name: string }> | null;
-        };
+          .in("id", tagIds);
 
         const tagNameMap = new Map<number, string>();
         (tagsInfo || []).forEach((t) => tagNameMap.set(t.id, t.name));

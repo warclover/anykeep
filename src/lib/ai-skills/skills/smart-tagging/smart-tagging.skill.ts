@@ -505,25 +505,19 @@ export class SmartTaggingSkill extends OrchestrationSkill<
     const bookmarkTags: Map<number, string[]> = new Map();
 
     if (bookmarkIds.length > 0) {
-      // 使用 any 断言绕过表名类型检查（bookmark_tags 和 tags 不在生成的类型中）
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: tagData } = (await (supabase as any)
+      // tags 和 bookmark_tags 表类型已在 supabase.ts 中手动增补
+      const { data: tagData } = await supabase
         .from("bookmark_tags")
         .select("bookmark_id, tag_id")
-        .in("bookmark_id", bookmarkIds)) as {
-        data: Array<{ bookmark_id: number; tag_id: number }> | null;
-      };
+        .in("bookmark_id", bookmarkIds);
 
       if (tagData && tagData.length > 0) {
         // 获取所有标签 ID
         const tagIds = [...new Set(tagData.map((bt) => bt.tag_id))];
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: tagsData } = (await (supabase as any)
+        const { data: tagsData } = await supabase
           .from("tags")
           .select("id, name")
-          .in("id", tagIds)) as {
-          data: Array<{ id: number; name: string }> | null;
-        };
+          .in("id", tagIds);
 
         // 创建 tagId -> tagName 映射
         const tagNameMap = new Map<number, string>();
@@ -568,14 +562,11 @@ export class SmartTaggingSkill extends OrchestrationSkill<
   private async getExistingVocabulary(userId: string): Promise<Set<string>> {
     const supabase = await createClient();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = (await (supabase as any)
+    // tags 表类型已在 supabase.ts 中手动增补
+    const { data, error } = await supabase
       .from("tags")
       .select("name")
-      .eq("user_id", userId)) as {
-      data: Array<{ name: string }> | null;
-      error: unknown;
-    };
+      .eq("user_id", userId);
 
     if (error) {
       logger.warn(
@@ -596,15 +587,11 @@ export class SmartTaggingSkill extends OrchestrationSkill<
   ): Promise<Array<{ tag: string; count: number; bookmarkIds: number[] }>> {
     const supabase = await createClient();
 
-    // 先获取所有标签
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: tagsData, error: tagsError } = (await (supabase as any)
+    // 先获取所有标签（tags 表类型已在 supabase.ts 中手动增补）
+    const { data: tagsData, error: tagsError } = await supabase
       .from("tags")
       .select("id, name")
-      .eq("user_id", userId)) as {
-      data: Array<{ id: number; name: string }> | null;
-      error: unknown;
-    };
+      .eq("user_id", userId);
 
     if (tagsError) {
       logger.warn(
@@ -618,15 +605,12 @@ export class SmartTaggingSkill extends OrchestrationSkill<
       return [];
     }
 
-    // 再获取标签关联
+    // 再获取标签关联（bookmark_tags 表类型已在 supabase.ts 中手动增补）
     const tagIds = tagsData.map((t) => t.id);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: bookmarkTagsData } = (await (supabase as any)
+    const { data: bookmarkTagsData } = await supabase
       .from("bookmark_tags")
       .select("tag_id, bookmark_id")
-      .in("tag_id", tagIds)) as {
-      data: Array<{ tag_id: number; bookmark_id: number }> | null;
-    };
+      .in("tag_id", tagIds);
 
     // 构建 tagId -> bookmarkIds 映射
     const tagBookmarkMap = new Map<number, number[]>();
@@ -658,36 +642,31 @@ export class SmartTaggingSkill extends OrchestrationSkill<
         if (tagSuggestion.confidence >= 0.7) {
           // 只应用高置信度的标签
           try {
-            // 1. 确保标签存在
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const { data: existingTag } = (await (supabase as any)
+            // 1. 确保标签存在（tags 表类型已在 supabase.ts 中手动增补）
+            const { data: existingTag } = await supabase
               .from("tags")
               .select("id")
               .eq("user_id", userId)
               .eq("name", tagSuggestion.tag)
-              .single()) as { data: { id: number } | null };
+              .single();
 
             let tagId: number;
 
             if (existingTag) {
               tagId = Number(existingTag.id);
             } else {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const { data: newTag, error: createError } = (await (
-                supabase as any
-              )
+              const { data: newTag, error: createError } = await supabase
                 .from("tags")
                 .insert({ user_id: userId, name: tagSuggestion.tag })
                 .select("id")
-                .single()) as { data: { id: number } | null; error: unknown };
+                .single();
 
               if (createError || !newTag) continue;
               tagId = Number(newTag.id);
             }
 
-            // 2. 创建关联
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const { error: linkError } = await (supabase as any)
+            // 2. 创建关联（bookmark_tags 表类型已在 supabase.ts 中手动增补）
+            const { error: linkError } = await supabase
               .from("bookmark_tags")
               .insert({
                 bookmark_id: suggestion.bookmarkId,

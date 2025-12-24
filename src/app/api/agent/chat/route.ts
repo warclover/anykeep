@@ -9,6 +9,16 @@
  *
  * @version 1.1.0
  * @since 2025-12-22
+ *
+ * @deprecated 请使用 /api/agent/unified 替代
+ * 该端点将在未来版本中移除。/api/agent/unified 提供：
+ * - 智能路由（自动选择原子模式或编排模式）
+ * - 统一输出协议
+ * - 更丰富的功能（进度报告、交付物、后续建议）
+ *
+ * 迁移指南：
+ * - 将 fetch("/api/agent/chat", ...) 替换为 fetch("/api/agent/unified", ...)
+ * - 添加 options.enableUnified: false 可回退到原有 KnowledgeAgent 行为
  */
 
 import type { NextRequest } from "next/server";

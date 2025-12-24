@@ -167,7 +167,7 @@ describe("AISmartSummary", () => {
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith(
-        "/api/agent/chat",
+        "/api/agent/unified",
         expect.objectContaining({
           method: "POST",
         }),
@@ -203,7 +203,7 @@ describe("AISmartSummary", () => {
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith(
-        "/api/agent/chat",
+        "/api/agent/unified",
         expect.objectContaining({
           method: "POST",
         }),

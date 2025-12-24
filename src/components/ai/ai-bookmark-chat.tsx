@@ -131,7 +131,7 @@ export function AIBookmarkChat({
       abortControllerRef.current = new AbortController();
 
       try {
-        const res = await fetch("/api/agent/chat", {
+        const res = await fetch("/api/agent/unified", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -141,6 +141,7 @@ export function AIBookmarkChat({
             bookmarkIds: [bookmarkId],
             options: {
               streaming: true,
+              enableUnified: false,
             },
           }),
           signal: abortControllerRef.current.signal,

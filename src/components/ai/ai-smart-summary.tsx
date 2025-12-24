@@ -86,13 +86,13 @@ export function AISmartSummary({
     setError(null);
 
     try {
-      const res = await fetch("/api/agent/chat", {
+      const res = await fetch("/api/agent/unified", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: "请为这篇内容生成一个简洁、专业的摘要，控制在100字以内",
           bookmarkIds: [bookmarkId],
-          options: { streaming: true },
+          options: { streaming: true, enableUnified: false },
         }),
       });
 

@@ -142,30 +142,18 @@ export function initializeUnifiedEngine(): void {
   );
 
   // 注册编排 Skills
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  unifiedEngine.registerOrchestrationSkill(knowledgeReviewSkill as any);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  unifiedEngine.registerOrchestrationSkill(dataExportSkill as any);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  unifiedEngine.registerOrchestrationSkill(insightReportSkill as any);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  unifiedEngine.registerOrchestrationSkill(batchOrganizeSkill as any);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  unifiedEngine.registerOrchestrationSkill(duplicateCleanupSkill as any);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  unifiedEngine.registerOrchestrationSkill(quickDigestSkill as any);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  unifiedEngine.registerOrchestrationSkill(smartTaggingSkill as any);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  unifiedEngine.registerOrchestrationSkill(readingPlannerSkill as any);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  unifiedEngine.registerOrchestrationSkill(relatedDiscoverySkill as any);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  unifiedEngine.registerOrchestrationSkill(periodicReportSkill as any);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  unifiedEngine.registerOrchestrationSkill(shareBundleSkill as any);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  unifiedEngine.registerOrchestrationSkill(learningPathSkill as any);
+  unifiedEngine.registerOrchestrationSkill(knowledgeReviewSkill);
+  unifiedEngine.registerOrchestrationSkill(dataExportSkill);
+  unifiedEngine.registerOrchestrationSkill(insightReportSkill);
+  unifiedEngine.registerOrchestrationSkill(batchOrganizeSkill);
+  unifiedEngine.registerOrchestrationSkill(duplicateCleanupSkill);
+  unifiedEngine.registerOrchestrationSkill(quickDigestSkill);
+  unifiedEngine.registerOrchestrationSkill(smartTaggingSkill);
+  unifiedEngine.registerOrchestrationSkill(readingPlannerSkill);
+  unifiedEngine.registerOrchestrationSkill(relatedDiscoverySkill);
+  unifiedEngine.registerOrchestrationSkill(periodicReportSkill);
+  unifiedEngine.registerOrchestrationSkill(shareBundleSkill);
+  unifiedEngine.registerOrchestrationSkill(learningPathSkill);
 
   unifiedEngineInitialized = true;
 

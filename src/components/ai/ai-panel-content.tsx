@@ -140,10 +140,8 @@ export function AIPanelContent({
           content: m.content,
         }));
 
-      // 根据配置选择 API
-      const apiEndpoint = useUnifiedEngine
-        ? "/api/agent/unified"
-        : "/api/agent/chat";
+      // 始终使用统一 API（通过 enableUnified 参数控制模式）
+      const apiEndpoint = "/api/agent/unified";
 
       // 调用 API
       const response = await fetch(apiEndpoint, {

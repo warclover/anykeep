@@ -13,17 +13,26 @@
 import { logger } from "@/lib/logger";
 import type { SkillContext } from "../core/types";
 import type {
-  OrchestrationSkill,
+  IOrchestrationSkill,
   OrchestrationContext,
 } from "../orchestration";
 import type { OrchestrationStreamChunk } from "../output/types";
 import type { EngineContext, OrchestrationEngineConfig } from "./types";
 
 /**
+ * 任意编排 Skill 类型
+ *
+ * 使用 IOrchestrationSkill 接口来接受任何类型参数的 OrchestrationSkill
+ * 这避免了在注册时需要使用 `as any` 类型断言
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyOrchestrationSkill = IOrchestrationSkill<any>;
+
+/**
  * 编排引擎
  */
 export class OrchestrationEngine {
-  private skills: Map<string, OrchestrationSkill<unknown, unknown>> = new Map();
+  private skills: Map<string, AnyOrchestrationSkill> = new Map();
   private config: Required<OrchestrationEngineConfig>;
 
   constructor(config: OrchestrationEngineConfig = {}) {
@@ -37,8 +46,10 @@ export class OrchestrationEngine {
 
   /**
    * 注册编排 Skill
+   *
+   * 使用 AnyOrchestrationSkill 类型以接受任何类型参数的 OrchestrationSkill
    */
-  register(skill: OrchestrationSkill<unknown, unknown>): void {
+  register(skill: AnyOrchestrationSkill): void {
     const skillId = skill.metadata.id;
 
     if (this.skills.has(skillId)) {
@@ -76,7 +87,7 @@ export class OrchestrationEngine {
   /**
    * 获取编排 Skill
    */
-  getSkill(skillId: string): OrchestrationSkill<unknown, unknown> | undefined {
+  getSkill(skillId: string): AnyOrchestrationSkill | undefined {
     return this.skills.get(skillId);
   }
 
