@@ -8,9 +8,12 @@
 export { ClassificationService } from "./classification.service";
 export { UserStageService } from "./user-stage.service";
 export { InterestService } from "./interest.service";
-export { InterestProfileService } from "./interest-profile.service";
 export { InboxOrganizerService } from "./inbox-organizer.service";
 export { FolderHealthService } from "./folder-health.service";
+
+// InterestProfileService 已迁移至独立模块
+// @deprecated 请从 @/lib/interest-profile 导入
+export { InterestProfileService } from "@/lib/interest-profile";
 
 // 注意：TrustModeClassificationService 依赖服务端代码
 // 请从 "@/lib/classification/services/server" 导入：

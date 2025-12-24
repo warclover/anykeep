@@ -157,3 +157,30 @@ export {
   createUnifiedEngine,
   unifiedEngine,
 } from "./engine";
+
+// ============================================
+// Effect 层（新增）
+// ============================================
+
+export {
+  // 类型
+  type EffectContext,
+  type EffectType,
+  type Effect,
+  type ConfirmationPayload,
+  type ConfirmationEffect,
+  type ToolConfirmationConfig,
+  type SkillConfirmationConfig,
+  type NotificationLevel,
+  type NotificationPayload,
+  type NotificationEffect,
+  type AuditAction,
+  type AuditPayload,
+  type AuditEffect,
+  type UnifiedEffect,
+  // 确认适配器
+  ConfirmationAdapter,
+  createConfirmationAdapter,
+  createToolConfirmationAdapter,
+  createSkillConfirmationAdapter,
+} from "./effects";

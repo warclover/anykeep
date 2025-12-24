@@ -1,11 +1,19 @@
 /**
- * Classification Analytics API
- * V4.2 分类分析 API
+ * Classification Analytics API（合并版）
  *
- * GET /api/classification/analytics - 获取分类分析数据
+ * 合并 analytics + statistics + history + ab-test 四个端点
  *
- * @version 1.0.0
- * @since 2025-12-11
+ * GET /api/classification/analytics?type=overview - 概览分析（默认）
+ * GET /api/classification/analytics?type=preferences - 偏好分析
+ * GET /api/classification/analytics?type=sources - 来源分析
+ * GET /api/classification/analytics?type=health - 健康分析
+ * GET /api/classification/analytics?type=trends - 趋势分析
+ * GET /api/classification/analytics?type=statistics - 周期统计（原 /statistics）
+ * GET /api/classification/analytics?type=history - 建议历史（原 /history）
+ * GET /api/classification/analytics?type=abtest - A/B 测试（原 /ab-test）
+ *
+ * @version 2.0.0 (Phase 1 合并)
+ * @since 2025-12-24
  */
 
 export const dynamic = "force-dynamic";
@@ -20,18 +28,27 @@ import { logger } from "@/lib/logger";
 import { preferenceLearner } from "@/lib/classification/learning/preference-learner";
 import { profileUpdater } from "@/lib/classification/learning/profile-updater";
 import { fastPathCacheManager } from "@/lib/classification/router/cache-manager";
+import { trustModeService } from "@/lib/trust-mode/trust-mode.service";
+import { embeddingABTestService } from "@/lib/classification/services/server";
+import {
+  getEmbeddingConfig,
+  getEmbeddingConfigInfo,
+} from "@/lib/classification/config/embedding-config";
 import type { NextRequest } from "next/server";
 
 // ============================================================================
 // 类型定义
 // ============================================================================
 
-interface AnalyticsQueryParams {
-  /** 分析类型 */
-  type?: "overview" | "preferences" | "sources" | "health" | "trends";
-  /** 时间范围（天） */
-  days?: number;
-}
+type AnalyticsType =
+  | "overview"
+  | "preferences"
+  | "sources"
+  | "health"
+  | "trends"
+  | "statistics"
+  | "history"
+  | "abtest";
 
 interface ClassificationTrend {
   date: string;
@@ -55,8 +72,25 @@ interface SourceDistribution {
   percentage: number;
 }
 
+interface SuggestionHistoryItem {
+  id: number;
+  bookmarkId: number;
+  bookmarkTitle: string;
+  suggestedFolderName: string;
+  confidence: number;
+  status: "pending" | "accepted" | "rejected" | "expired";
+  reason: string | null;
+  suggestNewFolder: boolean;
+  createdAt: string;
+  processedAt: string | null;
+}
+
+// 表名常量
+const PENDING_CONFIRMATIONS_TABLE = "pending_confirmations" as const;
+const SOURCE_PROFILES_TABLE = "source_profiles" as const;
+
 // ============================================================================
-// GET - 获取分类分析数据
+// GET - 统一分析入口
 // ============================================================================
 
 /**
@@ -76,24 +110,28 @@ export async function GET(request: NextRequest) {
 
     // 解析查询参数
     const { searchParams } = new URL(request.url);
-    const type =
-      (searchParams.get("type") as AnalyticsQueryParams["type"]) || "overview";
-    const days = parseInt(searchParams.get("days") || "30", 10);
+    const type = (searchParams.get("type") as AnalyticsType) || "overview";
 
-    // 根据类型返回不同分析数据
+    // 路由到对应的分析函数
     switch (type) {
       case "overview":
-        return successResponse(await getOverviewAnalytics(user.id, days));
+        return handleOverview(user.id, searchParams);
       case "preferences":
-        return successResponse(await getPreferencesAnalytics(user.id));
+        return handlePreferences(user.id);
       case "sources":
-        return successResponse(await getSourcesAnalytics(user.id));
+        return handleSources(user.id);
       case "health":
-        return successResponse(await getHealthAnalytics(user.id));
+        return handleHealth(user.id);
       case "trends":
-        return successResponse(await getTrendsAnalytics(user.id, days));
+        return handleTrends(user.id, searchParams);
+      case "statistics":
+        return handleStatistics(user.id, searchParams);
+      case "history":
+        return handleHistory(user.id, searchParams);
+      case "abtest":
+        return handleABTest(user.id, searchParams);
       default:
-        return successResponse(await getOverviewAnalytics(user.id, days));
+        return handleOverview(user.id, searchParams);
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -106,33 +144,29 @@ export async function GET(request: NextRequest) {
 }
 
 // ============================================================================
-// 分析函数
+// 分析处理函数
 // ============================================================================
 
 /**
- * 获取概览分析
+ * 概览分析
  */
-async function getOverviewAnalytics(userId: string, days: number) {
+async function handleOverview(userId: string, searchParams: URLSearchParams) {
+  const days = parseInt(searchParams.get("days") || "30", 10);
   const supabase = await createClient();
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - days);
 
-  // 并行获取各项统计
   const [bookmarkStats, folderStats, sourceStats, learningStats, cacheStats] =
     await Promise.all([
-      // 书签统计
       getBookmarkStats(supabase, userId, startDate),
-      // 文件夹统计
       getFolderStats(supabase, userId),
-      // 来源统计
       getSourceStats(userId),
-      // 学习统计
       preferenceLearner.getLearningStats(userId),
-      // 缓存统计
       Promise.resolve(fastPathCacheManager.getStats()),
     ]);
 
-  return {
+  return successResponse({
+    type: "overview",
     period: {
       days,
       startDate: startDate.toISOString(),
@@ -147,28 +181,29 @@ async function getOverviewAnalytics(userId: string, days: number) {
       size: cacheStats.size,
     },
     generatedAt: new Date().toISOString(),
-  };
+  });
 }
 
 /**
- * 获取偏好分析
+ * 偏好分析
  */
-async function getPreferencesAnalytics(userId: string) {
+async function handlePreferences(userId: string) {
   const preferences = await preferenceLearner.getUserPreferences(userId);
 
-  return {
+  return successResponse({
+    type: "preferences",
     folderPreferences: preferences.folderPreferences.slice(0, 20),
     sourcePreferences: preferences.sourcePreferences.slice(0, 20),
     timePreferences: preferences.timePreferences,
     exclusions: preferences.exclusions,
     lastUpdated: preferences.lastUpdated.toISOString(),
-  };
+  });
 }
 
 /**
- * 获取来源分析
+ * 来源分析
  */
-async function getSourcesAnalytics(userId: string) {
+async function handleSources(userId: string) {
   const supabase = await createClient();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -179,19 +214,15 @@ async function getSourcesAnalytics(userId: string) {
     .order("sample_count", { ascending: false });
 
   if (!sources || sources.length === 0) {
-    return {
+    return successResponse({
+      type: "sources",
       totalSources: 0,
       byType: [],
       topSources: [],
-      trustDistribution: {
-        high: 0,
-        medium: 0,
-        low: 0,
-      },
-    };
+      trustDistribution: { high: 0, medium: 0, low: 0 },
+    });
   }
 
-  // 按类型统计
   const typeCount = new Map<string, number>();
   const trustDistribution = { high: 0, medium: 0, low: 0 };
   const totalSamples = sources.reduce(
@@ -242,23 +273,25 @@ async function getSourcesAnalytics(userId: string) {
       }),
     );
 
-  return {
+  return successResponse({
+    type: "sources",
     totalSources: sources.length,
     totalSamples,
     byType,
     topSources,
     trustDistribution,
-  };
+  });
 }
 
 /**
- * 获取健康分析
+ * 健康分析
  */
-async function getHealthAnalytics(userId: string) {
+async function handleHealth(userId: string) {
   const healthStatus = await profileUpdater.getHealthStatus(userId);
   const cacheStats = fastPathCacheManager.getStats();
 
-  return {
+  return successResponse({
+    type: "health",
     profiles: {
       total: healthStatus.totalProfiles,
       healthy: healthStatus.healthyProfiles,
@@ -281,18 +314,18 @@ async function getHealthAnalytics(userId: string) {
     },
     recommendations: healthStatus.recommendations,
     lastUpdated: healthStatus.lastUpdated?.toISOString() || null,
-  };
+  });
 }
 
 /**
- * 获取趋势分析
+ * 趋势分析
  */
-async function getTrendsAnalytics(userId: string, days: number) {
+async function handleTrends(userId: string, searchParams: URLSearchParams) {
+  const days = parseInt(searchParams.get("days") || "30", 10);
   const supabase = await createClient();
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - days);
 
-  // 获取书签创建趋势
   const { data: bookmarks } = await supabase
     .from("bookmarks")
     .select("created_at, folder_id")
@@ -301,7 +334,6 @@ async function getTrendsAnalytics(userId: string, days: number) {
     .gte("created_at", startDate.toISOString())
     .order("created_at", { ascending: true });
 
-  // 按日期分组
   const dailyStats = new Map<
     string,
     { total: number; classified: number; unclassified: number }
@@ -326,7 +358,6 @@ async function getTrendsAnalytics(userId: string, days: number) {
     dailyStats.set(date, stats);
   }
 
-  // 转换为趋势数组
   const trends: ClassificationTrend[] = [];
   const currentDate = new Date(startDate);
 
@@ -343,21 +374,21 @@ async function getTrendsAnalytics(userId: string, days: number) {
       total: stats.total,
       autoClassified: stats.classified,
       manuallyClassified: stats.unclassified,
-      fastPath: Math.round(stats.classified * 0.7), // 估计值
-      slowPath: Math.round(stats.classified * 0.3), // 估计值
+      fastPath: Math.round(stats.classified * 0.7),
+      slowPath: Math.round(stats.classified * 0.3),
     });
 
     currentDate.setDate(currentDate.getDate() + 1);
   }
 
-  // 计算文件夹分布趋势
   const folderDistribution = await getFolderDistribution(
     supabase,
     userId,
     startDate,
   );
 
-  return {
+  return successResponse({
+    type: "trends",
     period: {
       days,
       startDate: startDate.toISOString(),
@@ -376,7 +407,407 @@ async function getTrendsAnalytics(userId: string, days: number) {
             )
           : 0,
     },
+  });
+}
+
+/**
+ * 周期统计（原 /statistics）
+ */
+async function handleStatistics(userId: string, searchParams: URLSearchParams) {
+  const supabase = await createClient();
+  const period =
+    (searchParams.get("period") as "today" | "week" | "month" | "all") || "all";
+
+  let startDate: Date | null = null;
+  const now = new Date();
+
+  switch (period) {
+    case "today":
+      startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      break;
+    case "week":
+      startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      break;
+    case "month":
+      startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      break;
+    case "all":
+    default:
+      startDate = null;
+  }
+
+  // 获取托管模式统计
+  const effectiveConfig = await trustModeService.getEffectiveConfig(userId);
+  const trustModeStats = {
+    mode: effectiveConfig.mode,
+    autoDecisionsToday: effectiveConfig.stats.autoDecisions,
+    userCorrections: effectiveConfig.stats.userCorrections,
+    pendingConfirmations: effectiveConfig.stats.pendingConfirmations,
+    correctionRate: effectiveConfig.stats.correctionRate,
   };
+
+  // 获取待确认统计
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let confirmationQuery = (supabase as any)
+    .from(PENDING_CONFIRMATIONS_TABLE)
+    .select("status", { count: "exact" })
+    .eq("user_id", userId);
+
+  if (startDate) {
+    confirmationQuery = confirmationQuery.gte(
+      "created_at",
+      startDate.toISOString(),
+    );
+  }
+
+  const { data: confirmationData, error: confirmationError } =
+    await confirmationQuery;
+
+  const confirmationStats = {
+    pending: 0,
+    confirmed: 0,
+    rejected: 0,
+    modified: 0,
+    expired: 0,
+  };
+
+  if (!confirmationError && confirmationData) {
+    for (const item of confirmationData) {
+      const status = item.status as keyof typeof confirmationStats;
+      if (status in confirmationStats) {
+        confirmationStats[status]++;
+      }
+    }
+  }
+
+  // 获取来源画像统计
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: sourceData, error: sourceError } = await (supabase as any)
+    .from(SOURCE_PROFILES_TABLE)
+    .select("source_type, sample_count, trust_score")
+    .eq("user_id", userId);
+
+  const sourceStats = {
+    totalSources: 0,
+    byType: { wechat: 0, website: 0, app: 0, unknown: 0 },
+    totalSamples: 0,
+    avgTrustScore: 0,
+    highTrustSources: 0,
+  };
+
+  if (!sourceError && sourceData) {
+    sourceStats.totalSources = sourceData.length;
+    let totalTrustScore = 0;
+
+    for (const item of sourceData) {
+      const sourceType = item.source_type as keyof typeof sourceStats.byType;
+      if (sourceType in sourceStats.byType) {
+        sourceStats.byType[sourceType]++;
+      }
+      sourceStats.totalSamples += item.sample_count || 0;
+      totalTrustScore += item.trust_score || 0;
+      if (item.trust_score > 70) {
+        sourceStats.highTrustSources++;
+      }
+    }
+
+    if (sourceStats.totalSources > 0) {
+      sourceStats.avgTrustScore = Math.round(
+        totalTrustScore / sourceStats.totalSources,
+      );
+    }
+  }
+
+  // 获取书签分类统计
+  let classifiedQuery = supabase
+    .from("bookmarks")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .is("deleted_at", null)
+    .eq("is_in_trash", false)
+    .not("folder_id", "is", null);
+
+  let unclassifiedQuery = supabase
+    .from("bookmarks")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .is("deleted_at", null)
+    .eq("is_in_trash", false)
+    .is("folder_id", null);
+
+  if (startDate) {
+    classifiedQuery = classifiedQuery.gte(
+      "created_at",
+      startDate.toISOString(),
+    );
+    unclassifiedQuery = unclassifiedQuery.gte(
+      "created_at",
+      startDate.toISOString(),
+    );
+  }
+
+  const [classifiedResult, unclassifiedResult] = await Promise.all([
+    classifiedQuery,
+    unclassifiedQuery,
+  ]);
+
+  const classifiedCount = classifiedResult.count || 0;
+  const unclassifiedCount = unclassifiedResult.count || 0;
+
+  const bookmarkStats = {
+    total: classifiedCount + unclassifiedCount,
+    classified: classifiedCount,
+    unclassified: unclassifiedCount,
+  };
+
+  const efficiency = {
+    autoClassificationRate:
+      bookmarkStats.total > 0
+        ? Math.round(
+            (trustModeStats.autoDecisionsToday /
+              Math.max(bookmarkStats.total, 1)) *
+              100,
+          )
+        : 0,
+    confirmationAcceptRate:
+      confirmationStats.confirmed + confirmationStats.rejected > 0
+        ? Math.round(
+            (confirmationStats.confirmed /
+              (confirmationStats.confirmed + confirmationStats.rejected)) *
+              100,
+          )
+        : 0,
+    fastPathHitRate: 0,
+  };
+
+  return successResponse({
+    type: "statistics",
+    period,
+    trustMode: trustModeStats,
+    confirmations: confirmationStats,
+    sources: sourceStats,
+    bookmarks: bookmarkStats,
+    efficiency,
+    generatedAt: new Date().toISOString(),
+  });
+}
+
+/**
+ * 建议历史（原 /history）
+ */
+async function handleHistory(userId: string, searchParams: URLSearchParams) {
+  const supabase = await createClient();
+  const limit = Math.min(parseInt(searchParams.get("limit") || "50"), 100);
+  const offset = parseInt(searchParams.get("offset") || "0");
+  const status = searchParams.get("status");
+
+  let query = supabase
+    .from("classification_suggestions")
+    .select(
+      `
+      id,
+      bookmark_id,
+      suggested_folder_name,
+      suggest_new_folder,
+      confidence,
+      status,
+      reason,
+      created_at,
+      processed_at,
+      bookmarks!inner(title)
+    `,
+    )
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (
+    status &&
+    ["pending", "accepted", "rejected", "expired"].includes(status)
+  ) {
+    query = query.eq(
+      "status",
+      status as "pending" | "accepted" | "rejected" | "expired",
+    );
+  }
+
+  const { data: suggestions, error: suggestionsError } = await query;
+
+  if (suggestionsError) {
+    logger.error(
+      { error: suggestionsError },
+      "Failed to fetch classification history",
+    );
+    return internalError("获取分类历史失败");
+  }
+
+  const { data: stats } = await supabase
+    .from("classification_suggestions")
+    .select("status")
+    .eq("user_id", userId);
+
+  const historyStats = {
+    total: stats?.length || 0,
+    accepted: stats?.filter((s) => s.status === "accepted").length || 0,
+    rejected: stats?.filter((s) => s.status === "rejected").length || 0,
+    pending: stats?.filter((s) => s.status === "pending").length || 0,
+    acceptanceRate: 0,
+  };
+
+  const processed = historyStats.accepted + historyStats.rejected;
+  if (processed > 0) {
+    historyStats.acceptanceRate = Math.round(
+      (historyStats.accepted / processed) * 100,
+    );
+  }
+
+  const historyItems: SuggestionHistoryItem[] = (suggestions || []).map(
+    (item: Record<string, unknown>) => ({
+      id: item.id as number,
+      bookmarkId: item.bookmark_id as number,
+      bookmarkTitle:
+        ((item.bookmarks as Record<string, unknown>)?.title as string) ||
+        "未知标题",
+      suggestedFolderName: item.suggested_folder_name as string,
+      confidence: item.confidence as number,
+      status: item.status as SuggestionHistoryItem["status"],
+      reason: item.reason as string | null,
+      suggestNewFolder: item.suggest_new_folder as boolean,
+      createdAt: item.created_at as string,
+      processedAt: item.processed_at as string | null,
+    }),
+  );
+
+  return successResponse({
+    type: "history",
+    items: historyItems,
+    stats: historyStats,
+    pagination: {
+      limit,
+      offset,
+      hasMore: historyItems.length === limit,
+    },
+  });
+}
+
+/**
+ * A/B 测试（原 /ab-test）
+ */
+async function handleABTest(userId: string, searchParams: URLSearchParams) {
+  const isComparison = searchParams.get("comparison") === "true";
+  const days = parseInt(searchParams.get("days") || "7", 10);
+  const operationType = searchParams.get("operation") as
+    | "classification"
+    | "search"
+    | "similarity"
+    | null;
+
+  const configInfo = getEmbeddingConfigInfo();
+  const config = getEmbeddingConfig();
+
+  if (isComparison) {
+    const controlModel = config.activeModel;
+    const treatmentModel = config.abTestNewModel;
+
+    const report = await embeddingABTestService.getComparisonReport(
+      controlModel,
+      treatmentModel,
+      operationType || "classification",
+      days,
+    );
+
+    if (!report) {
+      return successResponse({
+        type: "abtest",
+        config: configInfo,
+        comparison: null,
+        message: "暂无足够数据生成对比报告",
+      });
+    }
+
+    logger.info(
+      {
+        userId,
+        controlModel,
+        treatmentModel,
+        days,
+        recommendation: report.comparison.recommendation,
+      },
+      "A/B test comparison report generated",
+    );
+
+    return successResponse({
+      type: "abtest",
+      config: configInfo,
+      comparison: report,
+    });
+  } else {
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+
+    const summaries = await embeddingABTestService.getSummary({
+      operationType: operationType || undefined,
+      startDate,
+    });
+
+    const byModel: Record<
+      string,
+      {
+        totalCount: number;
+        avgExecutionTimeMs: number;
+        feedbackCount: number;
+        acceptanceRate: number | null;
+      }
+    > = {};
+
+    summaries.forEach((s) => {
+      if (!byModel[s.modelId]) {
+        byModel[s.modelId] = {
+          totalCount: 0,
+          avgExecutionTimeMs: 0,
+          feedbackCount: 0,
+          acceptanceRate: null,
+        };
+      }
+      const model = byModel[s.modelId];
+      const prevTotal = model.totalCount;
+      model.totalCount += s.totalCount;
+      model.avgExecutionTimeMs =
+        (model.avgExecutionTimeMs * prevTotal +
+          s.avgExecutionTimeMs * s.totalCount) /
+        model.totalCount;
+      model.feedbackCount += s.feedbackCount;
+    });
+
+    Object.keys(byModel).forEach((modelId) => {
+      const feedbackData = summaries
+        .filter((s) => s.modelId === modelId && s.acceptanceRate !== null)
+        .reduce(
+          (acc, s) => {
+            acc.total += s.feedbackCount;
+            acc.accepted += (s.acceptanceRate || 0) * s.feedbackCount;
+            return acc;
+          },
+          { total: 0, accepted: 0 },
+        );
+
+      if (feedbackData.total > 0) {
+        byModel[modelId].acceptanceRate =
+          feedbackData.accepted / feedbackData.total;
+      }
+    });
+
+    return successResponse({
+      type: "abtest",
+      config: configInfo,
+      summary: {
+        period: `${days} days`,
+        startDate: startDate.toISOString(),
+        byModel,
+        dailyData: summaries,
+      },
+    });
+  }
 }
 
 // ============================================================================
@@ -426,7 +857,6 @@ async function getFolderStats(
     .eq("user_id", userId)
     .eq("is_archived", false);
 
-  // 获取每个文件夹的书签数
   const folderBookmarkCounts: Array<{
     folderId: number;
     name: string;
@@ -448,7 +878,6 @@ async function getFolderStats(
     });
   }
 
-  // 排序
   folderBookmarkCounts.sort((a, b) => b.count - a.count);
 
   return {
@@ -482,7 +911,6 @@ async function getFolderDistribution(
   userId: string,
   startDate: Date,
 ): Promise<FolderDistribution[]> {
-  // 获取时间段内的书签及其文件夹
   const { data: bookmarks } = await supabase
     .from("bookmarks")
     .select("folder_id")
@@ -494,7 +922,6 @@ async function getFolderDistribution(
     return [];
   }
 
-  // 统计每个文件夹的书签数
   const folderCounts = new Map<number, number>();
   for (const bookmark of bookmarks) {
     if (bookmark.folder_id) {
@@ -505,7 +932,6 @@ async function getFolderDistribution(
     }
   }
 
-  // 获取文件夹名称
   const folderIds = [...folderCounts.keys()];
   const { data: folders } = await supabase
     .from("folders")
@@ -517,7 +943,6 @@ async function getFolderDistribution(
     folderNameMap.set(folder.id, folder.name);
   }
 
-  // 构建分布数据
   const distribution: FolderDistribution[] = [];
   const total = [...folderCounts.values()].reduce((a, b) => a + b, 0);
 
@@ -530,7 +955,6 @@ async function getFolderDistribution(
     });
   }
 
-  // 按数量排序
   distribution.sort((a, b) => b.bookmarkCount - a.bookmarkCount);
 
   return distribution.slice(0, 15);

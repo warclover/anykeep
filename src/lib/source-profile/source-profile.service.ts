@@ -15,6 +15,7 @@
  */
 
 import { BaseSupabaseService } from "@/lib/classification/services/base-supabase.service";
+import { logger } from "@/lib/logger";
 import type {
   SourceProfile,
   SourceType,
@@ -409,7 +410,7 @@ export class SourceProfileService extends BaseSupabaseService {
       .in("source_id", sourceIds);
 
     if (error) {
-      console.error("Batch source query failed:", error);
+      logger.error({ error }, "Batch source query failed");
       return results;
     }
 

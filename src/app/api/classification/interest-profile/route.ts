@@ -1,6 +1,16 @@
 /**
- * Interest Profile API
- * Handles user interest profile operations
+ * Interest Profile API (V2.0.0 - Consolidated)
+ *
+ * GET /api/classification/interest-profile - Get user's interest profile
+ * POST /api/classification/interest-profile - Initialize interest profile
+ * PATCH /api/classification/interest-profile - Update interest profile
+ *   - action=update_manual - Update manual description
+ *   - action=analyze_imported - Simple analysis
+ *   - action=full_analyze - Full analysis with stage update (merged from /analyze)
+ *   - action=learn_behavior - Learn from user behavior
+ *   - action=update_stage - Update user stage
+ *
+ * @version 2.0.0 - Merged /analyze endpoint
  */
 
 import type { NextRequest } from "next/server";
@@ -112,7 +122,12 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { action, manualDescription, importSource } = body;
+    const {
+      action,
+      manualDescription,
+      importSource,
+      triggerStageUpdate = true,
+    } = body;
 
     const service = new InterestProfileService(supabase);
     let result: {
@@ -157,6 +172,58 @@ export async function PATCH(request: NextRequest) {
         break;
       }
 
+      // V2.0.0: Full analysis (merged from /analyze endpoint)
+      case "full_analyze": {
+        // Step 1: Analyze imported bookmarks
+        const analysisResult = await service.analyzeImportedBookmarks(
+          user.id,
+          importSource || "browser",
+        );
+
+        // Step 2: Optionally update user stage
+        let newStage = null;
+        if (triggerStageUpdate) {
+          newStage = await service.updateStage(user.id);
+        }
+
+        // Step 3: Get updated profile stats
+        const stats = await service.getProfileStats(user.id);
+
+        logger.info(
+          {
+            userId: user.id,
+            importSource: importSource || "browser",
+            bookmarkCount: analysisResult.totalBookmarks,
+            keywordsExtracted: analysisResult.keywords.length,
+            newStage,
+            action: "post_import_analysis_complete",
+          },
+          "Interest Profile: Post-import analysis completed",
+        );
+
+        result = {
+          success: true,
+          message: `Full analysis completed: ${analysisResult.totalBookmarks} bookmarks analyzed`,
+          data: {
+            analysis: {
+              totalBookmarks: analysisResult.totalBookmarks,
+              validBookmarks: analysisResult.validBookmarks,
+              keywords: analysisResult.keywords,
+              suggestedFolders: analysisResult.suggestedFolders,
+            },
+            profile: {
+              stage: stats.stage,
+              confidence: stats.confidence,
+              interestCount: stats.interestCount,
+              hasImported: stats.hasImported,
+            },
+            stageUpdated: triggerStageUpdate,
+            newStage,
+          },
+        };
+        break;
+      }
+
       case "learn_behavior": {
         const learnResult = await service.learnFromBehavior(user.id);
         result = {
@@ -182,7 +249,7 @@ export async function PATCH(request: NextRequest) {
           {
             error: {
               message:
-                "Invalid action. Use: update_manual, analyze_imported, learn_behavior, update_stage",
+                "Invalid action. Use: update_manual, analyze_imported, full_analyze, learn_behavior, update_stage",
             },
           },
           { status: 400 },

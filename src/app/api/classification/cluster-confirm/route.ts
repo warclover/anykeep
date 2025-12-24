@@ -1,7 +1,17 @@
 /**
- * V4.2 聚类确认 API
+ * V4.2 聚类确认 API (V2.0.0 - Deprecated)
+ *
+ * @deprecated 此端点已弃用，建议使用 /api/classification/inbox 代替：
+ * - POST /api/classification/inbox - 应用建议（包含聚类建议）
+ * - DELETE /api/classification/inbox - 拒绝建议
+ *
+ * 此端点仍保留以向后兼容，但会在日志中记录弃用警告。
+ *
  * POST /api/classification/cluster-confirm - 确认聚类建议（创建文件夹）
  * DELETE /api/classification/cluster-confirm - 拒绝聚类建议
+ *
+ * @version 2.0.0 - Deprecated, use /inbox instead
+ * @deprecated 2025-12-24
  */
 
 import type { NextRequest } from "next/server";
@@ -39,9 +49,16 @@ const rejectSuggestionSchema = z.object({
 
 /**
  * POST /api/classification/cluster-confirm
+ * @deprecated Use POST /api/classification/inbox instead
  * 确认聚类建议，创建文件夹并移动书签
  */
 export async function POST(request: NextRequest) {
+  // Log deprecation warning
+  logger.warn(
+    { endpoint: "/api/classification/cluster-confirm", method: "POST" },
+    "Deprecated endpoint called. Use POST /api/classification/inbox instead",
+  );
+
   try {
     // 1. 验证用户身份
     const supabase = await createClient();
@@ -200,9 +217,16 @@ export async function POST(request: NextRequest) {
 
 /**
  * DELETE /api/classification/cluster-confirm
+ * @deprecated Use DELETE /api/classification/inbox instead
  * 拒绝聚类建议
  */
 export async function DELETE(request: NextRequest) {
+  // Log deprecation warning
+  logger.warn(
+    { endpoint: "/api/classification/cluster-confirm", method: "DELETE" },
+    "Deprecated endpoint called. Use DELETE /api/classification/inbox instead",
+  );
+
   try {
     // 1. 验证用户身份
     const supabase = await createClient();

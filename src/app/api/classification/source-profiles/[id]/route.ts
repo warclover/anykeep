@@ -1,15 +1,16 @@
 /**
- * Single Source Profile API
- * V4.2 单个来源画像操作 API
+ * @deprecated Use /api/classification/source-profiles instead
  *
- * GET    /api/classification/source-profiles/[id] - 获取来源详情
- * PUT    /api/classification/source-profiles/[id] - 更新来源画像
- * DELETE /api/classification/source-profiles/[id] - 删除来源画像
+ * This route is deprecated but kept for backward compatibility:
+ * - GET: Use GET /api/classification/source-profiles?id=X
+ * - PUT: Use PUT /api/classification/source-profiles with { sourceId: X, ... }
+ * - DELETE: Use DELETE /api/classification/source-profiles with { sourceId: X }
  *
- * @version 1.0.0
- * @since 2025-12-11
+ * @version 2.0.0 - Deprecated, proxies to consolidated endpoint
+ * @deprecated 2025-12-24
  */
 
+import { type NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import {
   successResponse,
@@ -20,65 +21,10 @@ import {
 } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
 import { sourceProfileService } from "@/lib/source-profile/source-profile.service";
-import type { NextRequest } from "next/server";
 
-// ============================================================================
-// GET - 获取来源详情
-// ============================================================================
-
-/**
- * GET /api/classification/source-profiles/[id]
- * 获取单个来源画像详情
- * 注意：这里的 id 是 sourceId（如 "mp.weixin.qq.com/abc"），不是数据库 ID
- */
-export async function GET(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return unauthorizedError();
-    }
-
-    const { id: sourceId } = await params;
-
-    if (!sourceId) {
-      return badRequestError("无效的来源 ID");
-    }
-
-    // 解码 URL 编码的 sourceId
-    const decodedSourceId = decodeURIComponent(sourceId);
-
-    // 获取来源画像
-    const profile = await sourceProfileService.findBySourceId(
-      user.id,
-      decodedSourceId,
-    );
-
-    if (!profile) {
-      return notFoundError("来源画像不存在");
-    }
-
-    return successResponse(profile);
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error(
-      { error: errorMessage },
-      "GET /api/classification/source-profiles/[id] error",
-    );
-    return internalError("获取来源画像失败");
-  }
+interface RouteContext {
+  params: Promise<{ id: string }>;
 }
-
-// ============================================================================
-// PUT - 更新来源画像
-// ============================================================================
 
 interface UpdateSourceProfileBody {
   /** 来源名称 */
@@ -92,13 +38,44 @@ interface UpdateSourceProfileBody {
 }
 
 /**
- * PUT /api/classification/source-profiles/[id]
- * 更新来源画像
+ * GET /api/classification/source-profiles/[id]
+ * @deprecated Use GET /api/classification/source-profiles?id=X
  */
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function GET(request: NextRequest, context: RouteContext) {
+  const { id } = await context.params;
+
+  // Log deprecation warning
+  logger.warn(
+    { endpoint: `/api/classification/source-profiles/${id}`, method: "GET" },
+    "Deprecated endpoint called. Use GET /api/classification/source-profiles?id=X",
+  );
+
+  // Redirect to consolidated endpoint
+  return NextResponse.redirect(
+    new URL(
+      `/api/classification/source-profiles?id=${encodeURIComponent(id)}`,
+      process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
+    ),
+    { status: 308 }, // Permanent redirect
+  );
+}
+
+/**
+ * PUT /api/classification/source-profiles/[id]
+ * @deprecated Use PUT /api/classification/source-profiles with { sourceId: X, ... }
+ */
+export async function PUT(request: NextRequest, context: RouteContext) {
+  const { id: sourceId } = await context.params;
+
+  // Log deprecation warning
+  logger.warn(
+    {
+      endpoint: `/api/classification/source-profiles/${sourceId}`,
+      method: "PUT",
+    },
+    "Deprecated endpoint called. Use PUT /api/classification/source-profiles",
+  );
+
   try {
     const supabase = await createClient();
     const {
@@ -110,18 +87,14 @@ export async function PUT(
       return unauthorizedError();
     }
 
-    const { id: sourceId } = await params;
-
     if (!sourceId) {
       return badRequestError("无效的来源 ID");
     }
 
     const decodedSourceId = decodeURIComponent(sourceId);
-
-    // 解析请求体
     const body = (await request.json()) as UpdateSourceProfileBody;
 
-    // 获取现有画像
+    // Get existing profile
     const existing = await sourceProfileService.findBySourceId(
       user.id,
       decodedSourceId,
@@ -131,7 +104,7 @@ export async function PUT(
       return notFoundError("来源画像不存在");
     }
 
-    // 更新可信度
+    // Update trust score
     if (body.trustScoreAdjustment !== undefined) {
       if (body.trustScoreAdjustment < -100 || body.trustScoreAdjustment > 100) {
         return badRequestError("可信度调整值必须在 -100 到 100 之间");
@@ -143,7 +116,7 @@ export async function PUT(
       );
     }
 
-    // 添加领域标签
+    // Add domains
     if (body.addDomains && body.addDomains.length > 0) {
       await sourceProfileService.addDomains(
         user.id,
@@ -152,7 +125,7 @@ export async function PUT(
       );
     }
 
-    // 移除领域标签
+    // Remove domains
     if (body.removeDomains && body.removeDomains.length > 0) {
       await sourceProfileService.removeDomains(
         user.id,
@@ -161,19 +134,10 @@ export async function PUT(
       );
     }
 
-    // 获取更新后的画像
+    // Get updated profile
     const updatedProfile = await sourceProfileService.findBySourceId(
       user.id,
       decodedSourceId,
-    );
-
-    logger.info(
-      {
-        userId: user.id,
-        sourceId: decodedSourceId,
-        action: "source_profile_updated",
-      },
-      "Source profile updated",
     );
 
     return successResponse({
@@ -184,24 +148,28 @@ export async function PUT(
     const errorMessage = error instanceof Error ? error.message : String(error);
     logger.error(
       { error: errorMessage },
-      "PUT /api/classification/source-profiles/[id] error",
+      "PUT /api/classification/source-profiles/[id] error (deprecated)",
     );
     return internalError("更新来源画像失败");
   }
 }
 
-// ============================================================================
-// DELETE - 删除来源画像
-// ============================================================================
-
 /**
  * DELETE /api/classification/source-profiles/[id]
- * 删除来源画像
+ * @deprecated Use DELETE /api/classification/source-profiles with { sourceId: X }
  */
-export async function DELETE(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function DELETE(_request: NextRequest, context: RouteContext) {
+  const { id: sourceId } = await context.params;
+
+  // Log deprecation warning
+  logger.warn(
+    {
+      endpoint: `/api/classification/source-profiles/${sourceId}`,
+      method: "DELETE",
+    },
+    "Deprecated endpoint called. Use DELETE /api/classification/source-profiles",
+  );
+
   try {
     const supabase = await createClient();
     const {
@@ -213,25 +181,14 @@ export async function DELETE(
       return unauthorizedError();
     }
 
-    const { id: sourceId } = await params;
-
     if (!sourceId) {
       return badRequestError("无效的来源 ID");
     }
 
     const decodedSourceId = decodeURIComponent(sourceId);
 
-    // 删除来源画像
+    // Delete source profile
     await sourceProfileService.delete(user.id, decodedSourceId);
-
-    logger.info(
-      {
-        userId: user.id,
-        sourceId: decodedSourceId,
-        action: "source_profile_deleted",
-      },
-      "Source profile deleted",
-    );
 
     return successResponse({
       message: "来源画像已删除",
@@ -240,7 +197,7 @@ export async function DELETE(
     const errorMessage = error instanceof Error ? error.message : String(error);
     logger.error(
       { error: errorMessage },
-      "DELETE /api/classification/source-profiles/[id] error",
+      "DELETE /api/classification/source-profiles/[id] error (deprecated)",
     );
     return internalError("删除来源画像失败");
   }

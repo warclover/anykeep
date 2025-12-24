@@ -1,8 +1,10 @@
 /**
- * 自定义兴趣管理 API
- * POST /api/classification/interests/custom - 添加自定义兴趣
- * PATCH /api/classification/interests/custom - 更新自定义兴趣
- * DELETE /api/classification/interests/custom - 删除自定义兴趣
+ * @deprecated Use /api/classification/interests instead
+ *
+ * This endpoint is deprecated but kept for backward compatibility.
+ * - POST: Use POST /api/classification/interests with { customInterest: { name, icon, ... } }
+ * - PATCH: Use PATCH /api/classification/interests with { id, ...updates }
+ * - DELETE: Use DELETE /api/classification/interests with { customInterestId }
  */
 
 import type { NextRequest } from "next/server";
@@ -67,11 +69,16 @@ const deleteCustomInterestSchema = z.object({
 
 /**
  * POST /api/classification/interests/custom
- * 添加自定义兴趣
+ * @deprecated Use POST /api/classification/interests with { customInterest: { ... } }
  */
 export async function POST(request: NextRequest) {
+  // Log deprecation warning
+  logger.warn(
+    { endpoint: "/api/classification/interests/custom", method: "POST" },
+    "Deprecated endpoint called. Use POST /api/classification/interests with { customInterest: { ... } }",
+  );
+
   try {
-    // 1. 验证用户身份
     const supabase = await createClient();
     const {
       data: { user },
@@ -82,7 +89,6 @@ export async function POST(request: NextRequest) {
       return unauthorizedError("请先登录");
     }
 
-    // 2. 解析并验证请求体
     const body = await request.json();
     const validation = addCustomInterestSchema.safeParse(body);
 
@@ -90,11 +96,9 @@ export async function POST(request: NextRequest) {
       return handleValidationError(validation.error);
     }
 
-    // 3. 初始化分类容器并获取服务
     const container = ClassificationContainer.initialize(supabase);
     const interestService = container.getInterestService();
 
-    // 4. 添加自定义兴趣
     const interest = await interestService.addCustomInterest(
       user.id,
       validation.data,
@@ -106,15 +110,13 @@ export async function POST(request: NextRequest) {
         interestId: interest.id,
         name: interest.name,
       },
-      "Custom interest added",
+      "Custom interest added (via deprecated endpoint)",
     );
 
-    // 5. 返回创建的兴趣
     return successResponse(interest);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
 
-    // 检查是否是限制错误
     if (message.includes("Maximum")) {
       return badRequestError(message);
     }
@@ -132,11 +134,16 @@ export async function POST(request: NextRequest) {
 
 /**
  * PATCH /api/classification/interests/custom
- * 更新自定义兴趣
+ * @deprecated Use PATCH /api/classification/interests with { id, ...updates }
  */
 export async function PATCH(request: NextRequest) {
+  // Log deprecation warning
+  logger.warn(
+    { endpoint: "/api/classification/interests/custom", method: "PATCH" },
+    "Deprecated endpoint called. Use PATCH /api/classification/interests",
+  );
+
   try {
-    // 1. 验证用户身份
     const supabase = await createClient();
     const {
       data: { user },
@@ -147,7 +154,6 @@ export async function PATCH(request: NextRequest) {
       return unauthorizedError("请先登录");
     }
 
-    // 2. 解析并验证请求体
     const body = await request.json();
     const validation = updateCustomInterestSchema.safeParse(body);
 
@@ -157,11 +163,9 @@ export async function PATCH(request: NextRequest) {
 
     const { id, ...updates } = validation.data;
 
-    // 3. 初始化分类容器并获取服务
     const container = ClassificationContainer.initialize(supabase);
     const interestService = container.getInterestService();
 
-    // 4. 更新自定义兴趣
     const interest = await interestService.updateCustomInterest(id, updates);
 
     logger.info(
@@ -169,10 +173,9 @@ export async function PATCH(request: NextRequest) {
         userId: user.id,
         interestId: id,
       },
-      "Custom interest updated",
+      "Custom interest updated (via deprecated endpoint)",
     );
 
-    // 5. 返回更新后的兴趣
     return successResponse(interest);
   } catch (error) {
     logger.error(
@@ -188,11 +191,16 @@ export async function PATCH(request: NextRequest) {
 
 /**
  * DELETE /api/classification/interests/custom
- * 删除自定义兴趣
+ * @deprecated Use DELETE /api/classification/interests with { customInterestId }
  */
 export async function DELETE(request: NextRequest) {
+  // Log deprecation warning
+  logger.warn(
+    { endpoint: "/api/classification/interests/custom", method: "DELETE" },
+    "Deprecated endpoint called. Use DELETE /api/classification/interests",
+  );
+
   try {
-    // 1. 验证用户身份
     const supabase = await createClient();
     const {
       data: { user },
@@ -203,7 +211,6 @@ export async function DELETE(request: NextRequest) {
       return unauthorizedError("请先登录");
     }
 
-    // 2. 解析并验证请求体
     const body = await request.json();
     const validation = deleteCustomInterestSchema.safeParse(body);
 
@@ -213,11 +220,9 @@ export async function DELETE(request: NextRequest) {
 
     const { id } = validation.data;
 
-    // 3. 初始化分类容器并获取服务
     const container = ClassificationContainer.initialize(supabase);
     const interestService = container.getInterestService();
 
-    // 4. 删除自定义兴趣
     await interestService.deleteCustomInterest(id);
 
     logger.info(
@@ -225,10 +230,9 @@ export async function DELETE(request: NextRequest) {
         userId: user.id,
         interestId: id,
       },
-      "Custom interest deleted",
+      "Custom interest deleted (via deprecated endpoint)",
     );
 
-    // 5. 返回成功
     return successResponse({ success: true });
   } catch (error) {
     logger.error(

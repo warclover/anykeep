@@ -1,6 +1,8 @@
 /**
- * Interest Profile Analyze API
- * Dedicated endpoint for post-import analysis
+ * @deprecated Use PATCH /api/classification/interest-profile with action=full_analyze instead
+ *
+ * This endpoint is deprecated but kept for backward compatibility.
+ * It proxies to the consolidated interest-profile endpoint.
  */
 
 import type { NextRequest } from "next/server";
@@ -11,12 +13,15 @@ import { logger } from "@/lib/logger";
 
 /**
  * POST /api/classification/interest-profile/analyze
- * Analyze imported bookmarks and update interest profile
- *
- * This endpoint should be called after browser bookmark import completes.
- * It extracts interests from imported bookmarks to accelerate cold start.
+ * @deprecated Use PATCH /api/classification/interest-profile with action=full_analyze
  */
 export async function POST(request: NextRequest) {
+  // Log deprecation warning
+  logger.warn(
+    { endpoint: "/api/classification/interest-profile/analyze" },
+    "Deprecated endpoint called. Use PATCH /api/classification/interest-profile with action=full_analyze",
+  );
+
   try {
     const supabase = await createClient();
     const {
@@ -49,18 +54,6 @@ export async function POST(request: NextRequest) {
 
     // Step 3: Get updated profile stats
     const stats = await service.getProfileStats(user.id);
-
-    logger.info(
-      {
-        userId: user.id,
-        importSource,
-        bookmarkCount: analysisResult.totalBookmarks,
-        keywordsExtracted: analysisResult.keywords.length,
-        newStage,
-        action: "post_import_analysis_complete",
-      },
-      "Interest Profile: Post-import analysis completed",
-    );
 
     return NextResponse.json({
       data: {

@@ -1,9 +1,14 @@
 /**
- * Folder Health Check API
- * GET /api/classification/folder-health - Get folder health report
- * POST /api/classification/folder-health/save - Save suggestions to database
+ * Folder Health Check API (V2.0.0 - Consolidated)
+ *
+ * GET /api/classification/folder-health - Full health report (default)
+ * GET /api/classification/folder-health?type=summary - Quick summary
+ * POST /api/classification/folder-health - Save suggestions to database
+ *
+ * @version 2.0.0 - Merged /folder-health/summary into this route
  */
 
+import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -14,9 +19,10 @@ import { FolderHealthService } from "@/lib/classification/services";
 import { logger } from "@/lib/logger";
 
 /**
- * GET - Check folder health and get suggestions
+ * GET - Check folder health
+ * @query type - 'report' (default) for full health check, 'summary' for quick summary
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();
     const {
@@ -33,6 +39,10 @@ export async function GET() {
       );
     }
 
+    // Parse query parameters
+    const { searchParams } = new URL(request.url);
+    const type = searchParams.get("type") || "report";
+
     // Initialize services
     const folderProfileRepo = new FolderProfileRepository(supabase);
     const suggestionRepo = new SuggestionRepository(supabase);
@@ -42,7 +52,17 @@ export async function GET() {
       supabase,
     );
 
-    // Run health check
+    // Route based on type
+    if (type === "summary") {
+      // Quick summary (lightweight)
+      const summary = await healthService.getQuickSummary(user.id);
+      return NextResponse.json({
+        success: true,
+        data: summary,
+      });
+    }
+
+    // Default: Full health report
     const report = await healthService.checkHealth(user.id);
 
     return NextResponse.json({

@@ -1,9 +1,16 @@
 /**
- * AI Agent 确认操作 API
+ * AI Agent 确认操作 API (V1.0.0 - Deprecated)
+ *
+ * @deprecated 此端点已弃用，建议使用统一的流式响应处理确认：
+ * - Tool 确认：通过 /api/agent/chat 流式响应中的 confirmation 块处理
+ * - Skill 确认：通过 /api/agent/unified 流式响应中的 confirmation 块处理
+ *
+ * 此端点仍保留以向后兼容，但会在响应头中包含弃用警告。
  *
  * POST /api/agent/confirm - 确认执行待确认的 AI 操作
  *
- * @version 1.0.0
+ * @version 1.0.0 - Deprecated
+ * @deprecated 2025-12-24
  * @since 2025-12-23
  */
 
@@ -28,9 +35,26 @@ const confirmRequestSchema = z.object({
 
 /**
  * POST /api/agent/confirm
+ * @deprecated Use streaming confirmation responses instead
  * 确认或取消 AI 操作
  */
 export async function POST(request: NextRequest) {
+  // Log deprecation warning
+  logger.warn(
+    { endpoint: "/api/agent/confirm", method: "POST" },
+    "Deprecated endpoint called. Use streaming confirmation responses instead.",
+  );
+
+  // Common deprecation headers
+  const deprecationHeaders = {
+    "Content-Type": "application/json",
+    Deprecation: "true",
+    Sunset: "2025-06-01",
+    Link: '</api/agent/unified>; rel="successor-version"',
+    "X-Deprecation-Notice":
+      "This endpoint is deprecated. Use /api/agent/unified or /api/agent/chat streaming responses instead.",
+  };
+
   try {
     // 1. 验证用户身份
     const supabase = await createClient();
@@ -42,7 +66,7 @@ export async function POST(request: NextRequest) {
     if (authError || !user) {
       return new Response(
         JSON.stringify({ success: false, error: "请先登录" }),
-        { status: 401, headers: { "Content-Type": "application/json" } },
+        { status: 401, headers: deprecationHeaders },
       );
     }
 
@@ -57,7 +81,7 @@ export async function POST(request: NextRequest) {
           error: "请求参数无效",
           details: validation.error.issues,
         }),
-        { status: 400, headers: { "Content-Type": "application/json" } },
+        { status: 400, headers: deprecationHeaders },
       );
     }
 
@@ -95,7 +119,7 @@ export async function POST(request: NextRequest) {
         }),
         {
           status: 200,
-          headers: { "Content-Type": "application/json" },
+          headers: deprecationHeaders,
         },
       );
     }
@@ -107,7 +131,7 @@ export async function POST(request: NextRequest) {
           success: false,
           error: `未知的操作类型: ${toolName}`,
         }),
-        { status: 400, headers: { "Content-Type": "application/json" } },
+        { status: 400, headers: deprecationHeaders },
       );
     }
 
@@ -138,7 +162,7 @@ export async function POST(request: NextRequest) {
       }),
       {
         status: result.success ? 200 : 500,
-        headers: { "Content-Type": "application/json" },
+        headers: deprecationHeaders,
       },
     );
   } catch (error) {
@@ -155,7 +179,17 @@ export async function POST(request: NextRequest) {
         success: false,
         error: error instanceof Error ? error.message : "确认操作处理失败",
       }),
-      { status: 500, headers: { "Content-Type": "application/json" } },
+      {
+        status: 500,
+        headers: {
+          "Content-Type": "application/json",
+          Deprecation: "true",
+          Sunset: "2025-06-01",
+          Link: '</api/agent/unified>; rel="successor-version"',
+          "X-Deprecation-Notice":
+            "This endpoint is deprecated. Use /api/agent/unified or /api/agent/chat streaming responses instead.",
+        },
+      },
     );
   }
 }
