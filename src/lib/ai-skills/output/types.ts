@@ -1,0 +1,338 @@
+/**
+ * 统一输出层类型定义
+ *
+ * 定义所有流式输出块的类型，包括原子模式和编排模式
+ *
+ * @version 1.0.0
+ * @since 2025-12-24
+ */
+
+// ============================================
+// 基础输出类型
+// ============================================
+
+/**
+ * 交付物类型
+ */
+export type DeliverableType =
+  | "report" // 报告
+  | "list" // 列表
+  | "cards" // 卡片组
+  | "document" // 文档
+  | "mindmap" // 思维导图
+  | "graph" // 图表
+  | "table"; // 表格
+
+/**
+ * 输出格式
+ */
+export type OutputFormat =
+  | "markdown"
+  | "html"
+  | "json"
+  | "cards"
+  | "mindmap"
+  | "plain";
+
+/**
+ * 确认选项
+ */
+export interface ConfirmOption {
+  /** 选项 ID */
+  id: string;
+  /** 选项标签 */
+  label: string;
+  /** 选项描述 */
+  description?: string;
+  /** 是否为主要选项 */
+  primary?: boolean;
+  /** 是否为危险操作 */
+  danger?: boolean;
+}
+
+/**
+ * 后续建议
+ */
+export interface Suggestion {
+  /** 建议标签 */
+  label: string;
+  /** 触发的动作 */
+  action: string;
+  /** 动作参数 */
+  params?: Record<string, unknown>;
+  /** 图标 */
+  icon?: string;
+}
+
+/**
+ * 交付物操作
+ */
+export interface DeliverableAction {
+  /** 操作 ID */
+  id: string;
+  /** 操作标签 */
+  label: string;
+  /** 操作类型 */
+  type: "download" | "share" | "copy" | "open" | "custom";
+  /** 操作数据 */
+  data?: unknown;
+}
+
+// ============================================
+// 流式输出块类型
+// ============================================
+
+/**
+ * 文本块
+ */
+export interface TextChunk {
+  type: "text";
+  data: {
+    /** 文本内容 */
+    text: string;
+    /** 是否为部分文本（流式） */
+    isPartial?: boolean;
+  };
+}
+
+/**
+ * 进度块
+ */
+export interface ProgressChunk {
+  type: "progress";
+  data: {
+    /** 当前步骤名称 */
+    step: string;
+    /** 进度百分比 0-100 */
+    percent: number;
+    /** 进度消息 */
+    message?: string;
+    /** 时间戳 */
+    timestamp: number;
+    /** 当前步骤索引 */
+    stepIndex?: number;
+    /** 总步骤数 */
+    totalSteps?: number;
+  };
+}
+
+/**
+ * 工具调用块（原子模式）
+ */
+export interface ToolCallChunk {
+  type: "tool-call";
+  data: {
+    /** 工具名称 */
+    toolName: string;
+    /** 调用参数 */
+    args: Record<string, unknown>;
+    /** 调用状态 */
+    status: "pending" | "running" | "completed" | "failed";
+    /** 执行结果 */
+    result?: unknown;
+    /** 错误信息 */
+    error?: string;
+  };
+}
+
+/**
+ * 确认请求块
+ */
+export interface ConfirmationChunk {
+  type: "confirmation";
+  data: {
+    /** 确认 ID */
+    id: string;
+    /** 确认标题 */
+    title: string;
+    /** 确认消息 */
+    message: string;
+    /** 确认选项 */
+    options: ConfirmOption[];
+    /** 预览数据 */
+    preview?: unknown;
+    /** 超时时间（毫秒） */
+    timeout?: number;
+  };
+}
+
+/**
+ * 确认响应
+ */
+export interface ConfirmationResponse {
+  /** 确认 ID */
+  id: string;
+  /** 选择的选项 ID */
+  selectedOption: string;
+  /** 额外数据 */
+  data?: unknown;
+}
+
+/**
+ * 交付物块
+ */
+export interface DeliverableChunk {
+  type: "deliverable";
+  data: {
+    /** 交付物 ID */
+    id: string;
+    /** 交付物类型 */
+    type: DeliverableType;
+    /** 交付物标题 */
+    title: string;
+    /** 输出格式 */
+    format: OutputFormat;
+    /** 交付物内容 */
+    content: unknown;
+    /** 是否可下载 */
+    downloadable?: boolean;
+    /** 是否可分享 */
+    shareable?: boolean;
+    /** 可用操作 */
+    actions?: DeliverableAction[];
+    /** 元数据 */
+    metadata?: Record<string, unknown>;
+  };
+}
+
+/**
+ * 后续建议块
+ */
+export interface SuggestionsChunk {
+  type: "suggestions";
+  data: {
+    /** 建议列表 */
+    suggestions: Suggestion[];
+  };
+}
+
+/**
+ * 路由信息块（调试用）
+ */
+export interface RoutingChunk {
+  type: "routing";
+  data: {
+    /** 执行模式 */
+    mode: "atomic" | "orchestration";
+    /** 路由理由 */
+    reason: string;
+    /** 建议的 Skill */
+    skill: string | null;
+    /** 意图类型 */
+    intentType?: string;
+    /** 复杂度级别 */
+    complexityLevel?: string;
+  };
+}
+
+/**
+ * 错误块
+ */
+export interface ErrorChunk {
+  type: "error";
+  data: {
+    /** 错误消息 */
+    message: string;
+    /** 错误代码 */
+    code?: string;
+    /** 是否可重试 */
+    retryable?: boolean;
+    /** 建议操作 */
+    suggestion?: string;
+  };
+}
+
+/**
+ * 回退通知块
+ */
+export interface FallbackChunk {
+  type: "fallback";
+  data: {
+    /** 回退原因 */
+    reason: string;
+    /** 原始模式 */
+    originalMode: "orchestration";
+    /** 回退模式 */
+    fallbackMode: "atomic";
+  };
+}
+
+/**
+ * 完成块
+ */
+export interface DoneChunk {
+  type: "done";
+  data: {
+    /** 是否成功 */
+    success: boolean;
+    /** 完成摘要 */
+    summary?: string;
+    /** Token 使用量 */
+    tokensUsed?: number;
+    /** 执行时间（毫秒） */
+    durationMs?: number;
+    /** 执行模式 */
+    mode?: "atomic" | "orchestration";
+    /** Skill ID */
+    skillId?: string;
+  };
+}
+
+// ============================================
+// 统一流式输出类型
+// ============================================
+
+/**
+ * 统一流式输出块
+ *
+ * 无论原子模式还是编排模式，都使用此协议
+ */
+export type UnifiedStreamChunk =
+  | TextChunk
+  | ProgressChunk
+  | ToolCallChunk
+  | ConfirmationChunk
+  | DeliverableChunk
+  | SuggestionsChunk
+  | RoutingChunk
+  | ErrorChunk
+  | FallbackChunk
+  | DoneChunk;
+
+/**
+ * 编排模式流式输出块（用于编排 Skill 内部）
+ */
+export type OrchestrationStreamChunk =
+  | TextChunk
+  | ProgressChunk
+  | ConfirmationChunk
+  | DeliverableChunk
+  | SuggestionsChunk
+  | ErrorChunk
+  | DoneChunk;
+
+// ============================================
+// 辅助类型
+// ============================================
+
+/**
+ * 输出块类型映射
+ */
+export type ChunkTypeMap = {
+  text: TextChunk;
+  progress: ProgressChunk;
+  "tool-call": ToolCallChunk;
+  confirmation: ConfirmationChunk;
+  deliverable: DeliverableChunk;
+  suggestions: SuggestionsChunk;
+  routing: RoutingChunk;
+  error: ErrorChunk;
+  fallback: FallbackChunk;
+  done: DoneChunk;
+};
+
+/**
+ * 从输出块提取数据类型
+ */
+export type ChunkData<T extends UnifiedStreamChunk["type"]> =
+  ChunkTypeMap[T]["data"];

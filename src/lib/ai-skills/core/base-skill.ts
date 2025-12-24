@@ -22,6 +22,7 @@ import type {
   SkillExecutionMetrics,
   ISkill,
 } from "./types";
+import { SKILL_ERROR_CODES } from "../config";
 
 /**
  * BaseSkill 抽象类
@@ -216,9 +217,15 @@ export abstract class BaseSkill<TInput = unknown, TOutput = unknown>
     // 使用箭头函数绑定 this，避免 this 别名
     const executeFn: ToolExecuteFunction<TInput, TOutput> = async (input) => {
       // 获取上下文（如果提供了 contextProvider）
-      const context: SkillContext = contextProvider?.() ?? {
-        userId: "", // 需要在实际使用时注入
-      };
+      const context: SkillContext | undefined = contextProvider?.();
+
+      // 安全检查：确保 userId 存在
+      if (!context?.userId) {
+        throw new SkillExecutionError(
+          "User context is required for skill execution",
+          SKILL_ERROR_CODES.AUTH_REQUIRED,
+        );
+      }
 
       const result = await this.execute(input, context);
 
