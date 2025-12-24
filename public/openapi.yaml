@@ -1,0 +1,665 @@
+openapi: 3.0.3
+info:
+  title: AnyKeep API
+  description: |
+    AnyKeep 跨平台智能内容聚合工具 API 文档
+
+    ## 概述
+    AnyKeep API 提供书签管理、智能分类、AI 能力等功能的接口。
+
+    ## 认证
+    所有 API 都需要通过 Supabase Auth 进行认证，请在请求头中携带有效的 JWT Token：
+    ```
+    Authorization: Bearer <your-token>
+    ```
+
+    ## 变更日志
+    | 版本 | 日期 | 变更内容 |
+    |------|------|---------|
+    | 2.4.0 | 2025-12-24 | 新增 AI Skills 统一智能架构 |
+    | 2.3.0 | 2025-12-20 | 新增数据导出功能 |
+    | 2.2.0 | 2025-12-20 | 新增批量操作功能 |
+  version: 2.4.0
+  contact:
+    name: AnyKeep Team
+  license:
+    name: MIT
+
+servers:
+  - url: /api
+    description: API Base URL
+
+tags:
+  - name: bookmarks
+    description: 书签管理
+  - name: folders
+    description: 文件夹管理
+  - name: search
+    description: 搜索功能
+  - name: classification
+    description: 智能分类
+  - name: agent
+    description: AI Agent
+  - name: admin
+    description: 管理接口
+  - name: export
+    description: 数据导出
+
+paths:
+  # ==================== 书签 ====================
+  /bookmarks:
+    get:
+      tags: [bookmarks]
+      summary: 获取书签列表
+      description: 获取当前用户的书签列表，支持分页和过滤
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+          description: 返回数量限制
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+          description: 偏移量
+        - name: folderId
+          in: query
+          schema:
+            type: integer
+          description: 文件夹 ID 过滤
+        - name: platform
+          in: query
+          schema:
+            type: string
+            enum: [wechat, bilibili, xiaohongshu, chrome, edge, firefox, safari]
+          description: 平台过滤
+        - name: isArchived
+          in: query
+          schema:
+            type: boolean
+            default: false
+          description: 是否已归档
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Bookmark'
+                  total:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags: [bookmarks]
+      summary: 创建书签
+      description: 创建新的书签
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url]
+              properties:
+                url:
+                  type: string
+                  format: uri
+                title:
+                  type: string
+                folderId:
+                  type: integer
+                tags:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '201':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Bookmark'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /bookmarks/{id}:
+    get:
+      tags: [bookmarks]
+      summary: 获取书签详情
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Bookmark'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags: [bookmarks]
+      summary: 更新书签
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                folderId:
+                  type: integer
+                tags:
+                  type: array
+                  items:
+                    type: string
+                isArchived:
+                  type: boolean
+      responses:
+        '200':
+          description: 更新成功
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags: [bookmarks]
+      summary: 删除书签
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 删除成功
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /bookmarks/batch-tags:
+    post:
+      tags: [bookmarks]
+      summary: 批量添加/移除标签
+      description: 为多个书签批量添加或移除标签
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [bookmarkIds, tags, action]
+              properties:
+                bookmarkIds:
+                  type: array
+                  items:
+                    type: integer
+                  maxItems: 200
+                tags:
+                  type: array
+                  items:
+                    type: string
+                  maxItems: 20
+                action:
+                  type: string
+                  enum: [add, remove]
+      responses:
+        '200':
+          description: 操作成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      affectedCount:
+                        type: integer
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  # ==================== 文件夹 ====================
+  /folders:
+    get:
+      tags: [folders]
+      summary: 获取文件夹列表
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Folder'
+
+    post:
+      tags: [folders]
+      summary: 创建文件夹
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                  maxLength: 50
+                parentId:
+                  type: integer
+                description:
+                  type: string
+      responses:
+        '201':
+          description: 创建成功
+
+  # ==================== 搜索 ====================
+  /search:
+    get:
+      tags: [search]
+      summary: 语义搜索
+      description: 基于向量相似度的语义搜索
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+          description: 搜索关键词
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+          description: 返回数量限制
+        - name: threshold
+          in: query
+          schema:
+            type: number
+            default: 0.3
+          description: 相似度阈值
+      responses:
+        '200':
+          description: 搜索结果
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      allOf:
+                        - $ref: '#/components/schemas/Bookmark'
+                        - type: object
+                          properties:
+                            similarity:
+                              type: number
+
+  # ==================== AI Agent ====================
+  /agent/unified:
+    post:
+      tags: [agent]
+      summary: 统一 AI 能力入口
+      description: |
+        支持原子模式和编排模式的统一 AI 能力入口。
+        返回 SSE (Server-Sent Events) 流式响应。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message]
+              properties:
+                message:
+                  type: string
+                  description: 用户消息
+                conversationId:
+                  type: string
+                  description: 会话 ID（可选）
+                context:
+                  type: object
+                  description: 额外上下文
+      responses:
+        '200':
+          description: SSE 流式响应
+          content:
+            text/event-stream:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                    enum: [text, progress, deliverable, routing, fallback, error, done]
+                  data:
+                    type: object
+
+  # ==================== 分类 ====================
+  /classification/classify:
+    post:
+      tags: [classification]
+      summary: 智能分类
+      description: 对书签进行智能分类
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [bookmarkId]
+              properties:
+                bookmarkId:
+                  type: integer
+                autoApply:
+                  type: boolean
+                  default: false
+      responses:
+        '200':
+          description: 分类结果
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      folderId:
+                        type: integer
+                      folderName:
+                        type: string
+                      confidence:
+                        type: number
+                      reason:
+                        type: string
+
+  # ==================== 管理 ====================
+  /admin/audit-logs:
+    get:
+      tags: [admin]
+      summary: 查询审计日志
+      description: 查询用户操作审计日志
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: tableName
+          in: query
+          schema:
+            type: string
+          description: 过滤表名
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: stats
+          in: query
+          schema:
+            type: boolean
+          description: 是否返回统计信息
+      responses:
+        '200':
+          description: 审计日志列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      logs:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/AuditLog'
+                      pagination:
+                        type: object
+
+  # ==================== 导出 ====================
+  /user/export:
+    post:
+      tags: [export]
+      summary: 导出用户数据
+      description: 支持多种格式导出用户书签数据
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [format]
+              properties:
+                format:
+                  type: string
+                  enum: [csv, markdown, json, html, obsidian]
+                bookmarkIds:
+                  type: array
+                  items:
+                    type: integer
+                  description: 指定书签 ID（可选，为空导出全部）
+                folderId:
+                  type: integer
+                  description: 指定文件夹 ID（可选）
+                fields:
+                  type: array
+                  items:
+                    type: string
+                  description: 导出字段（CSV 格式适用）
+      responses:
+        '200':
+          description: 导出文件
+          content:
+            text/csv:
+              schema:
+                type: string
+            text/markdown:
+              schema:
+                type: string
+            application/json:
+              schema:
+                type: object
+            text/html:
+              schema:
+                type: string
+            application/zip:
+              schema:
+                type: string
+                format: binary
+
+components:
+  schemas:
+    Bookmark:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        url:
+          type: string
+          format: uri
+        description:
+          type: string
+        summary:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        platform:
+          type: string
+        folder_id:
+          type: integer
+        is_archived:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Folder:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        parent_id:
+          type: integer
+        sort_order:
+          type: integer
+        is_locked:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    AuditLog:
+      type: object
+      properties:
+        id:
+          type: integer
+        event_type:
+          type: string
+          enum: [INSERT, UPDATE, DELETE]
+        event_timestamp:
+          type: string
+          format: date-time
+        table_name:
+          type: string
+        record_id:
+          type: string
+        changed_fields:
+          type: array
+          items:
+            type: string
+        old_data:
+          type: object
+        new_data:
+          type: object
+
+  responses:
+    Unauthorized:
+      description: 未授权
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              error:
+                type: string
+                example: Unauthorized
+
+    NotFound:
+      description: 资源不存在
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              error:
+                type: string
+                example: Resource not found
+
+    BadRequest:
+      description: 请求参数错误
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              error:
+                type: string
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - bearerAuth: []
