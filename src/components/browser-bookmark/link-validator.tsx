@@ -26,6 +26,7 @@ import type {
   BatchValidationResult,
   LinkStatus,
 } from "@/lib/browser-bookmark/link-validator";
+import { clientLogger } from "@/lib/client-logger";
 
 // ============================================
 // 类型
@@ -176,7 +177,7 @@ export function LinkValidator({
       onComplete?.(finalResult, excludedIds);
     } catch (error) {
       if ((error as Error).name !== "AbortError") {
-        console.error("验证失败:", error);
+        clientLogger.error({ error }, "验证失败");
       }
     } finally {
       setIsValidating(false);

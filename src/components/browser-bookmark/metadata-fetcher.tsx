@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import type { PageMetadata } from "@/lib/browser-bookmark";
+import { clientLogger } from "@/lib/client-logger";
 
 // ============================================
 // 类型定义
@@ -133,7 +134,7 @@ export function MetadataFetcher({
       onComplete?.(bookmarksWithMetadata, { successful, failed });
     } catch (error) {
       if (error instanceof Error && error.name !== "AbortError") {
-        console.error("抓取元数据失败:", error);
+        clientLogger.error({ error }, "抓取元数据失败");
       }
     } finally {
       setIsFetching(false);

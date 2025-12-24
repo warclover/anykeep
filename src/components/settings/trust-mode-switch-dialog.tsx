@@ -39,6 +39,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { TrustMode } from "@/types/trust-mode";
+import { clientLogger } from "@/lib/client-logger";
 
 // ============================================================================
 // 类型定义
@@ -228,7 +229,10 @@ export function TrustModeSwitchDialog({
       await onConfirm(options);
       onOpenChange(false);
     } catch (error) {
-      console.error("Failed to switch trust mode:", error);
+      clientLogger.error(
+        { error },
+        "[TrustModeSwitchDialog] Failed to switch trust mode",
+      );
     } finally {
       setIsSubmitting(false);
     }

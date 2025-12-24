@@ -39,6 +39,7 @@ import {
   Brain,
 } from "lucide-react";
 import type { TrustMode } from "@/types/trust-mode";
+import { clientLogger } from "@/lib/client-logger";
 
 // ============================================================================
 // 类型定义
@@ -147,7 +148,7 @@ function ModeCard({
         "relative cursor-pointer transition-all duration-200 hover:shadow-md",
         selected
           ? "border-primary ring-2 ring-primary/20 bg-primary/5"
-          : "border-border hover:border-primary/50"
+          : "border-border hover:border-primary/50",
       )}
       onClick={onSelect}
     >
@@ -182,13 +183,13 @@ function ModeCard({
           <div
             className={cn(
               "rounded-lg p-2",
-              selected ? "bg-primary/10" : "bg-muted"
+              selected ? "bg-primary/10" : "bg-muted",
             )}
           >
             <Icon
               className={cn(
                 "h-5 w-5",
-                selected ? "text-primary" : "text-muted-foreground"
+                selected ? "text-primary" : "text-muted-foreground",
               )}
             />
           </div>
@@ -281,11 +282,15 @@ export function TrustModeGuide({
       }
 
       const modeLabel =
-        MODE_OPTIONS.find((o) => o.mode === selectedMode)?.label || selectedMode;
+        MODE_OPTIONS.find((o) => o.mode === selectedMode)?.label ||
+        selectedMode;
       toast.success(`已设置为「${modeLabel}」模式`);
       onComplete?.(selectedMode);
     } catch (error) {
-      console.error("Failed to set trust mode:", error);
+      clientLogger.error(
+        { error },
+        "[TrustModeGuide] Failed to set trust mode",
+      );
       toast.error("设置失败，请重试");
     } finally {
       setIsLoading(false);
@@ -336,11 +341,7 @@ export function TrustModeGuide({
       {/* 操作按钮 */}
       <div className="flex justify-end gap-3 pt-2">
         {showSkip && (
-          <Button
-            variant="ghost"
-            onClick={handleSkip}
-            disabled={isLoading}
-          >
+          <Button variant="ghost" onClick={handleSkip} disabled={isLoading}>
             跳过
           </Button>
         )}

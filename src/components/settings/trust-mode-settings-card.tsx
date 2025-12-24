@@ -45,6 +45,7 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { TrustMode } from "@/types/trust-mode";
+import { clientLogger } from "@/lib/client-logger";
 
 // ============================================================================
 // 类型定义
@@ -145,7 +146,10 @@ export function TrustModeSettingsCard({
         setHasChanges(false);
       }
     } catch (error) {
-      console.error("Failed to load trust mode settings:", error);
+      clientLogger.error(
+        { error },
+        "[TrustModeSettingsCard] Failed to load trust mode settings",
+      );
       toast.error("加载设置失败");
     } finally {
       setIsLoading(false);
@@ -197,7 +201,10 @@ export function TrustModeSettingsCard({
       toast.success("托管模式设置已保存");
     } catch (error) {
       toast.error("保存失败，请重试");
-      console.error("Failed to save trust mode settings:", error);
+      clientLogger.error(
+        { error },
+        "[TrustModeSettingsCard] Failed to save trust mode settings",
+      );
     } finally {
       setIsSaving(false);
     }

@@ -15,6 +15,7 @@
  */
 
 import { useRef, useEffect, useCallback } from "react";
+import { clientLogger } from "@/lib/client-logger";
 
 /**
  * 可取消请求的 Hook
@@ -75,8 +76,10 @@ export function useAbortableFetch() {
         if (error instanceof Error && error.name === "AbortError") {
           // 开发环境下记录取消日志
           if (process.env.NODE_ENV === "development") {
-            // eslint-disable-next-line no-console
-            console.log("Request cancelled:", input);
+            clientLogger.info(
+              { request: input },
+              "[AbortableFetch] Request cancelled",
+            );
           }
           // 抛出取消错误，让调用者决定如何处理
           throw error;

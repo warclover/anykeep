@@ -12,6 +12,7 @@
 import { useState, useCallback } from "react";
 import { useAbortableFetch } from "@/hooks/use-abortable-fetch";
 import { toast } from "sonner";
+import { clientLogger } from "@/lib/client-logger";
 import type { Bookmark } from "@/types/supabase";
 
 // 带文件夹信息的书签类型
@@ -121,7 +122,7 @@ export function useHomeBatch(options: UseHomeBatchOptions): UseHomeBatchReturn {
 
       // 失败时恢复快照
       setBookmarks(snapshot);
-      console.error("Batch delete error:", error);
+      clientLogger.error({ error }, "Batch delete error");
       toast.error(error instanceof Error ? error.message : "批量删除失败");
     } finally {
       setIsBatchDeleting(false);
@@ -234,7 +235,7 @@ export function useHomeBatch(options: UseHomeBatchOptions): UseHomeBatchReturn {
         return;
       }
 
-      console.error("Batch snapshot error:", error);
+      clientLogger.error({ error }, "Batch snapshot error");
       toast.error(error instanceof Error ? error.message : "批量创建快照失败");
     } finally {
       setIsBatchCreatingSnapshot(false);

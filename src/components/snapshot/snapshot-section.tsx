@@ -51,6 +51,7 @@ import type {
   SnapshotStatus as SnapshotStatusType,
   SnapshotType,
 } from "@/lib/snapshot";
+import { clientLogger } from "@/lib/client-logger";
 
 // ============================================================================
 // 类型定义
@@ -133,7 +134,7 @@ export function SnapshotSection({
           onSnapshotChange?.(existingSnapshot);
         }
       } catch (error) {
-        console.error("Failed to load existing snapshot:", error);
+        clientLogger.error({ error }, "Failed to load existing snapshot");
       } finally {
         setIsLoading(false);
       }
@@ -165,7 +166,7 @@ export function SnapshotSection({
         onSnapshotChange?.(updatedSnapshot);
       }
     } catch (error) {
-      console.error("Failed to fetch snapshot:", error);
+      clientLogger.error({ error }, "Failed to fetch snapshot");
     } finally {
       setIsRefreshing(false);
     }

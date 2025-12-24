@@ -30,6 +30,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { SmartListItem } from "./smart-list-item";
 import { cn } from "@/lib/utils";
 import type { SmartListClient } from "@/types/smart-list";
+import { clientLogger } from "@/lib/client-logger";
 
 // ============================================
 // 类型定义
@@ -169,7 +170,7 @@ export function SortableSmartListContent({
         await onReorder(newIds);
       } catch (err) {
         toast.error("排序失败，请稍后重试");
-        console.error("Failed to reorder smart lists:", err);
+        clientLogger.error({ err }, "Failed to reorder smart lists");
       }
     },
     [smartLists, onReorder],

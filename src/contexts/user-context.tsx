@@ -16,6 +16,7 @@ import {
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import type { Profile } from "@/types/supabase";
+import { clientLogger } from "@/lib/client-logger";
 
 interface UserContextValue {
   user: User | null;
@@ -75,12 +76,12 @@ export function UserProvider({ children }: UserProviderProps) {
 
       if (profileError && profileError.code !== "PGRST116") {
         // PGRST116 = no rows returned
-        console.error("Failed to fetch profile:", profileError);
+        clientLogger.error({ error: profileError }, "Failed to fetch profile");
       }
 
       setProfile(profileData);
     } catch (err) {
-      console.error("Failed to fetch user data:", err);
+      clientLogger.error({ error: err }, "Failed to fetch user data");
       setError(err instanceof Error ? err.message : "获取用户数据失败");
     } finally {
       setIsLoading(false);

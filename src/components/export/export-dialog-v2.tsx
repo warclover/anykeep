@@ -44,6 +44,7 @@ import type {
   ExportPreviewData,
   ExportSource,
 } from "@/lib/export/types";
+import { clientLogger } from "@/lib/client-logger";
 
 /** 对话框步骤 */
 type DialogStep = "config" | "progress" | "success" | "error";
@@ -218,7 +219,7 @@ export function ExportDialogV2({
         throw new Error(result.error || "导出失败");
       }
     } catch (error) {
-      console.error("[ExportDialogV2] Export failed:", error);
+      clientLogger.error({ error }, "[ExportDialogV2] Export failed");
 
       // 检查是否是取消
       if (abortControllerRef.current?.signal.aborted) {

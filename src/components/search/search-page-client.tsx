@@ -28,6 +28,7 @@ import {
   type SearchMode,
 } from "@/components/ai";
 import type { Bookmark } from "@/types/supabase";
+import { clientLogger } from "@/lib/client-logger";
 
 interface SearchPageClientProps {
   initialQuery: string;
@@ -109,7 +110,7 @@ export function SearchPageClient({
         const results = responseData.data?.results || [];
         setClientSearchResults(results);
       } catch (err) {
-        console.error("[SearchPageClient] Client search error:", err);
+        clientLogger.error({ err }, "[SearchPageClient] Client search error");
         setClientError(
           err instanceof Error ? err.message : "搜索时出错，请稍后重试",
         );

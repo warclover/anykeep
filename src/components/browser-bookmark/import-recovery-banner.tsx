@@ -11,6 +11,7 @@ import {
 } from "@/lib/browser-bookmark/import-cache";
 import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
+import { clientLogger } from "@/lib/client-logger";
 
 interface ImportRecoveryBannerProps {
   /** 用户 ID */
@@ -44,7 +45,7 @@ export function ImportRecoveryBanner({
         const pendingSession = await getPendingSession(userId);
         setSession(pendingSession ?? null);
       } catch (error) {
-        console.error("检查待恢复会话失败:", error);
+        clientLogger.error({ error }, "检查待恢复会话失败");
       } finally {
         setIsLoading(false);
       }
@@ -61,7 +62,7 @@ export function ImportRecoveryBanner({
       setSession(null);
       onDismiss?.();
     } catch (error) {
-      console.error("丢弃会话失败:", error);
+      clientLogger.error({ error }, "丢弃会话失败");
     } finally {
       setIsDiscarding(false);
     }

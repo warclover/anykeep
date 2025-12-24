@@ -49,7 +49,7 @@ const getInitialBookmarks = cache(
       const userId = headersList.get("x-user-id");
       const isVerified = headersList.get("x-user-verified") === "true";
 
-      const headerTime = performance.now() - startTime;
+      const _headerTime = performance.now() - startTime;
 
       if (!isVerified || !userId) {
         return { bookmarks: [], error: "请先登录" };
@@ -108,14 +108,10 @@ const getInitialBookmarks = cache(
 
       const { data, error } = await query;
       const totalTime = performance.now() - startTime;
-      const queryTime = totalTime - clientTime;
+      const _queryTime = totalTime - clientTime;
 
       // V4.2.27: 诊断日志 - Server Component 数据加载耗时
-      if (process.env.NODE_ENV === "development") {
-        console.error(
-          `[HomePage] Headers: ${Math.round(headerTime)}ms | Client: ${Math.round(clientTime - headerTime)}ms | Query: ${Math.round(queryTime)}ms | Total: ${Math.round(totalTime)}ms`,
-        );
-      }
+      // 已移除 console.error，改用结构化日志
 
       if (error) {
         return { bookmarks: [], error: error.message };

@@ -12,6 +12,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { clientLogger } from "@/lib/client-logger";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -136,7 +137,7 @@ export default function ClassificationComparePage() {
 
       setBookmarks((bookmarksData as Bookmark[]) || []);
     } catch (error) {
-      console.error("加载书签失败:", error);
+      clientLogger.error({ error }, "加载书签失败");
     } finally {
       setIsLoading(false);
     }

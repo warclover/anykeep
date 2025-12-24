@@ -34,6 +34,7 @@ import {
   useAnalyticsData,
   useSettingsData,
 } from "@/hooks/use-page-data";
+import { clientLogger } from "@/lib/client-logger";
 
 // ==================== 错误边界组件 ====================
 
@@ -66,7 +67,10 @@ class PageErrorBoundary extends Component<
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     // 可以在这里上报错误到监控服务
-    console.error("PageErrorBoundary caught an error:", error, errorInfo);
+    clientLogger.error(
+      { error, errorInfo },
+      "PageErrorBoundary caught an error",
+    );
   }
 
   render() {

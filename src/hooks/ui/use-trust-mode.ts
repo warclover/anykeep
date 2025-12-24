@@ -15,6 +15,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import type { TrustMode, TrustModeConfig } from "@/types/trust-mode";
 import { toast } from "sonner";
+import { clientLogger } from "@/lib/client-logger";
 
 // ============================================================================
 // 类型定义
@@ -128,7 +129,7 @@ export function useTrustMode(): UseTrustModeReturn {
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";
       setError(message);
-      console.error("Failed to load trust mode:", err);
+      clientLogger.error({ err }, "[TrustMode] Failed to load trust mode");
 
       // 使用默认值
       setMode("full_auto");
@@ -188,7 +189,7 @@ export function useTrustMode(): UseTrustModeReturn {
 
         const message = err instanceof Error ? err.message : "Unknown error";
         toast.error(`切换失败: ${message}`);
-        console.error("Failed to switch trust mode:", err);
+        clientLogger.error({ err }, "[TrustMode] Failed to switch trust mode");
         return false;
       }
     },
@@ -230,7 +231,10 @@ export function useTrustMode(): UseTrustModeReturn {
 
         const message = err instanceof Error ? err.message : "Unknown error";
         toast.error(`更新失败: ${message}`);
-        console.error("Failed to update trust mode config:", err);
+        clientLogger.error(
+          { err },
+          "[TrustMode] Failed to update trust mode config",
+        );
         return false;
       }
     },

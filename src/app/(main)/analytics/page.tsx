@@ -30,8 +30,7 @@ async function fetchAnalyticsData(
       includeSkillsStats: true,
     });
     return { data: analyticsData, error: null };
-  } catch (error) {
-    console.error("Analytics data fetch error:", error);
+  } catch {
     return {
       data: {
         stats: {

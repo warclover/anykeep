@@ -11,6 +11,7 @@ import { useCallback, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { uiEventBus, UIEvents } from "@/lib/shared/event-bus";
+import { clientLogger } from "@/lib/client-logger";
 
 // Hooks
 import {
@@ -90,7 +91,7 @@ export function QuickAddBookmark({
 
         actions.showPreview(bookmarkMetadata);
       } catch (error) {
-        console.error("Failed to fetch metadata:", error);
+        clientLogger.error({ error }, "Failed to fetch metadata");
         // Still show preview with URL as title
         actions.showPreview({
           title: url,
@@ -169,7 +170,7 @@ export function QuickAddBookmark({
         actions.closeDrawer();
       }
     } catch (error) {
-      console.error("Failed to create bookmark:", error);
+      clientLogger.error({ error }, "Failed to create bookmark");
       toast.error(error instanceof Error ? error.message : "创建失败");
       actions.setSubmitting(false);
     }

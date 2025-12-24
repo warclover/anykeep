@@ -6,38 +6,21 @@
  * - 显示来源徽章（V4.2）
  * - 移动对话框集成学习反馈
  * - V4.2.30: 乐观更新优化，移除 router.refresh() 提升性能
+ * - V4.2.31: Phase 2.3.7 组件拆分，提取 Hook 和子组件
  *
- * @version 1.2.0
+ * @version 1.3.0
  * @since 2025-12-11
  */
 
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import {
-  ArrowLeft,
-  ExternalLink,
-  Edit,
-  Trash2,
-  Folder,
-  FolderInput,
-  Share2,
-  Check,
-  X,
-  Globe,
-  Bot,
-} from "lucide-react";
-import { toast } from "sonner";
-import { useAbortableFetch } from "@/hooks/use-abortable-fetch";
+import { Folder, Globe } from "lucide-react";
 import { SourceBadge, inferSourceType } from "./source-badge";
 import type { SourceInfo } from "./source-badge";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { EditBookmarkDialog } from "@/components/bookmark/edit-bookmark-dialog";
 import { MoveToFolderDialog } from "@/components/bookmark/move-to-folder-dialog";
 import { SummaryRenderer } from "@/components/bookmark/summary-renderer";
@@ -73,6 +56,11 @@ import {
   AIBookmarkChat,
 } from "@/components/ai";
 import { useOptionalUser } from "@/contexts/user-context";
+// Phase 2.3.7: 拆分组件
+import { useDetailMutations } from "./hooks/use-detail-mutations";
+import { DetailActionBar } from "./detail-action-bar";
+import { DetailTagsEditor } from "./detail-tags-editor";
+import { DetailNotesEditor } from "./detail-notes-editor";
 
 // 懒加载微信文章区块组件
 const WechatArticleSectionLazy = lazy(() =>
@@ -98,33 +86,58 @@ export function BookmarkDetailClient({
   initialCustomUsageTags = [],
 }: BookmarkDetailClientProps) {
   const router = useRouter();
-  const { fetchWithAbort } = useAbortableFetch();
   const platformConfig = getPlatformConfig(bookmark.platform);
   // 获取用户信息（用于 AI 助手）
   const userContext = useOptionalUser();
   const userId = userContext?.user?.id;
-  const [isDeleting, setIsDeleting] = useState(false);
+
+  // 对话框状态
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showMoveDialog, setShowMoveDialog] = useState(false);
-  // AI 助手面板状态
   const [showAIPanel, setShowAIPanel] = useState(false);
-  // V6.0新增：评级和锁定状态
-  const [rating, setRating] = useState(bookmark.rating || 0);
-  const [isLocked, setIsLocked] = useState(bookmark.is_locked || false);
-  const [isMarkedForDeletion, setIsMarkedForDeletion] = useState(
-    bookmark.is_marked_for_deletion || false,
-  );
 
-  // V4.2.30: 本地状态管理 - 用于乐观更新，避免 router.refresh()
-  // 仅跟踪可编辑的字段，其他字段使用原始 bookmark 对象
-  const [localUserTags, setLocalUserTags] = useState<string[] | null>(
-    bookmark.user_tags,
-  );
-  const [localNotes, setLocalNotes] = useState<string | null>(bookmark.notes);
-  // AI 摘要本地状态（用于 AISmartSummary 编辑）
-  const [localSummary, setLocalSummary] = useState<string | null>(
-    bookmark.ai_summary,
-  );
+  // Phase 2.3.7: 使用提取的 mutations hook
+  const {
+    rating,
+    isLocked,
+    isMarkedForDeletion,
+    localUserTags,
+    localNotes,
+    localSummary,
+    isDeleting,
+    // 标签编辑
+    isEditingTags,
+    editedTags,
+    isSavingTags,
+    setEditedTags,
+    handleEditTags,
+    handleCancelEditTags,
+    handleSaveTags,
+    // 备注编辑
+    isEditingNotes,
+    editedNotes,
+    isSavingNotes,
+    setEditedNotes,
+    handleEditNotes,
+    handleCancelEditNotes,
+    handleSaveNotes,
+    // 操作
+    handleRatingChange,
+    handleLockToggle,
+    handleMarkerToggle,
+    handleDelete,
+    setLocalUserTags,
+    setLocalSummary,
+  } = useDetailMutations({
+    bookmarkId: bookmark.id,
+    initialRating: bookmark.rating || 0,
+    initialIsLocked: bookmark.is_locked || false,
+    initialIsMarkedForDeletion: bookmark.is_marked_for_deletion || false,
+    initialUserTags: bookmark.user_tags,
+    initialNotes: bookmark.notes,
+    initialSummary: bookmark.ai_summary,
+    initialIsRead: bookmark.is_read || false,
+  });
 
   // V10.0新增：视觉分析
   const {
@@ -139,10 +152,16 @@ export function BookmarkDetailClient({
   const [existingVisionData, setExistingVisionData] =
     useState<BookmarkVisionData | null>(null);
 
+  // 标记客户端挂载完成
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 用于客户端挂载检测，避免 Hydration 错误
     setMounted(true);
-    // 仅在客户端计算视觉数据
+  }, []);
+
+  // 在客户端计算视觉数据
+  useEffect(() => {
     if (hasVisionData(bookmark.ai_vision_data)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- 依赖 bookmark.ai_vision_data 变化时更新状态
       setExistingVisionData(
         bookmark.ai_vision_data as unknown as BookmarkVisionData,
       );
@@ -164,40 +183,6 @@ export function BookmarkDetailClient({
   const isWechatArticleEnabled = useWechatArticleFeature();
   const isWechatPlatform = bookmark.platform === "WECHAT_OFFICIAL_ACCOUNT";
   const showWechatArticle = isWechatArticleEnabled && isWechatPlatform;
-
-  // 防止重复调用标记已读 API
-  const hasMarkedAsRead = useRef(false);
-
-  // 访问详情页时自动标记已读
-  // V4.2.23: 移除 router.refresh()，避免页面二次渲染
-  // 首页通过 SWR 后台刷新获取最新已读状态
-  useEffect(() => {
-    const markAsRead = async () => {
-      // 如果已读或已经调用过，则跳过
-      if (bookmark.is_read || hasMarkedAsRead.current) {
-        return;
-      }
-
-      hasMarkedAsRead.current = true;
-
-      try {
-        await fetch(`/api/bookmarks/${bookmark.id}`, {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ isRead: true }),
-        });
-        // V4.2.23: 静默成功，不调用 router.refresh()
-        // 这是后台静默操作，无需触发页面刷新
-        // 用户返回首页时，SWR 会自动获取最新状态
-      } catch {
-        // 静默失败，不阻塞用户体验
-      }
-    };
-
-    markAsRead();
-  }, [bookmark.id, bookmark.is_read]);
 
   // V4.2.24: 自定义用途标签 - SWR 缓存 + SSR 初始数据
   // fallbackData 作为初始值，避免客户端首次请求
@@ -241,306 +226,9 @@ export function BookmarkDetailClient({
     return null;
   }, [bookmark.source_id, bookmark.source_name, bookmark.url]);
 
-  // 标签内联编辑状态
-  const [isEditingTags, setIsEditingTags] = useState(false);
-  const [editedTags, setEditedTags] = useState("");
-  const [isSavingTags, setIsSavingTags] = useState(false);
-
-  // 笔记内联编辑状态
-  const [isEditingNotes, setIsEditingNotes] = useState(false);
-  const [editedNotes, setEditedNotes] = useState("");
-  const [isSavingNotes, setIsSavingNotes] = useState(false);
-
+  // Phase 2.3.7: 简化的本地处理函数
   const handleBack = () => {
     router.push("/home");
-  };
-
-  const handleOpenOriginal = () => {
-    window.open(bookmark.url, "_blank", "noopener,noreferrer");
-  };
-
-  const handleEdit = () => {
-    setShowEditDialog(true);
-  };
-
-  const handleShare = async () => {
-    const shareData = {
-      title: bookmark.title,
-      text: `${bookmark.title}${bookmark.ai_summary ? "\n\n" + bookmark.ai_summary : ""}`,
-      url: bookmark.url,
-    };
-
-    // 优先使用 Web Share API（移动端原生分享）
-    if (navigator.share) {
-      try {
-        await navigator.share(shareData);
-        toast.success("分享成功");
-      } catch (error) {
-        // 用户取消分享
-        if (error instanceof Error && error.name !== "AbortError") {
-          toast.error("分享失败");
-        }
-      }
-    } else {
-      // 降级到复制链接
-      try {
-        await navigator.clipboard.writeText(bookmark.url);
-        toast.success("链接已复制到剪贴板");
-      } catch {
-        toast.error("复制失败，请手动复制");
-      }
-    }
-  };
-
-  // V6.0新增：处理评级变更（乐观更新）
-  const handleRatingChange = async (newRating: number) => {
-    const previousRating = rating;
-    // 乐观更新：立即更新 UI
-    setRating(newRating);
-
-    try {
-      const res = await fetchWithAbort(`/api/bookmarks/${bookmark.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ rating: newRating }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error?.message || "评级更新失败");
-      }
-
-      // 成功：静默处理，不显示 toast
-    } catch (error) {
-      if (error instanceof Error && error.name === "AbortError") {
-        return;
-      }
-      // 失败：回滚状态并提示
-      setRating(previousRating);
-      toast.error(error instanceof Error ? error.message : "评级更新失败");
-    }
-  };
-
-  // V6.0新增：处理锁定切换（乐观更新）
-  const handleLockToggle = async () => {
-    const previousState = isLocked;
-    const newLockState = !isLocked;
-    // 乐观更新：立即更新 UI
-    setIsLocked(newLockState);
-
-    try {
-      const res = await fetchWithAbort(`/api/bookmarks/${bookmark.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ isLocked: newLockState }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error?.message || "操作失败");
-      }
-      // 成功：静默处理
-    } catch (error) {
-      if (error instanceof Error && error.name === "AbortError") {
-        return;
-      }
-      // 失败：回滚状态并提示
-      setIsLocked(previousState);
-      toast.error(error instanceof Error ? error.message : "操作失败");
-    }
-  };
-
-  // V6.0新增：处理删除标记切换（乐观更新）
-  const handleMarkerToggle = async () => {
-    const previousState = isMarkedForDeletion;
-    const newMarkerState = !isMarkedForDeletion;
-    // 乐观更新：立即更新 UI
-    setIsMarkedForDeletion(newMarkerState);
-
-    try {
-      const res = await fetchWithAbort(`/api/bookmarks/${bookmark.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ isMarkedForDeletion: newMarkerState }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error?.message || "操作失败");
-      }
-      // 成功：静默处理
-    } catch (error) {
-      if (error instanceof Error && error.name === "AbortError") {
-        return;
-      }
-      // 失败：回滚状态并提示
-      setIsMarkedForDeletion(previousState);
-      toast.error(error instanceof Error ? error.message : "操作失败");
-    }
-  };
-
-  const handleDelete = async () => {
-    if (isDeleting) return;
-
-    // V6.0新增：锁定检查
-    if (isLocked) {
-      toast.error("此收藏已锁定，无法删除");
-      return;
-    }
-
-    // 二次确认
-    if (!confirm("确定要删除这条收藏吗？删除后无法恢复。")) {
-      return;
-    }
-
-    setIsDeleting(true);
-    try {
-      const res = await fetchWithAbort(`/api/bookmarks/${bookmark.id}`, {
-        method: "DELETE",
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error?.message || "删除失败");
-      }
-
-      toast.success("删除成功");
-      router.push("/home");
-    } catch (error) {
-      // 如果是取消错误，不显示错误提示
-      if (error instanceof Error && error.name === "AbortError") {
-        setIsDeleting(false);
-        return;
-      }
-      toast.error(error instanceof Error ? error.message : "删除失败");
-      setIsDeleting(false);
-    }
-  };
-
-  const handleEditTags = () => {
-    setIsEditingTags(true);
-    // V4.2.30: 使用本地状态
-    setEditedTags(localUserTags?.join(", ") || "");
-  };
-
-  const handleCancelEditTags = () => {
-    setIsEditingTags(false);
-    setEditedTags("");
-  };
-
-  const handleSaveTags = async () => {
-    if (isSavingTags) return;
-
-    setIsSavingTags(true);
-
-    // 解析标签字符串
-    const newTags = editedTags
-      .split(/[,，\s]+/)
-      .map((t) => t.trim())
-      .filter(Boolean);
-
-    // V4.2.30: 乐观更新 - 保存旧值用于回滚
-    const previousTags = localUserTags;
-    const tagsToSave = newTags.length > 0 ? newTags : null;
-
-    // 立即更新本地状态
-    setLocalUserTags(tagsToSave);
-    setIsEditingTags(false);
-
-    try {
-      // 调用更新 API
-      const res = await fetchWithAbort(`/api/bookmarks/${bookmark.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          userTags: tagsToSave,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error?.message || "更新标签失败");
-      }
-
-      toast.success("标签更新成功");
-      // V4.2.30: 移除 router.refresh()，使用乐观更新
-    } catch (error) {
-      // 如果是取消错误，不显示错误提示
-      if (error instanceof Error && error.name === "AbortError") {
-        return;
-      }
-      // 失败时回滚到之前的状态
-      setLocalUserTags(previousTags);
-      toast.error(error instanceof Error ? error.message : "更新标签失败");
-    } finally {
-      setIsSavingTags(false);
-    }
-  };
-
-  const handleEditNotes = () => {
-    setIsEditingNotes(true);
-    // V4.2.30: 使用本地状态
-    setEditedNotes(localNotes || "");
-  };
-
-  const handleCancelEditNotes = () => {
-    setIsEditingNotes(false);
-    setEditedNotes("");
-  };
-
-  const handleSaveNotes = async () => {
-    if (isSavingNotes) return;
-
-    setIsSavingNotes(true);
-
-    // V4.2.30: 乐观更新 - 保存旧值用于回滚
-    const previousNotes = localNotes;
-    const notesToSave = editedNotes.trim() || null;
-
-    // 立即更新本地状态
-    setLocalNotes(notesToSave);
-    setIsEditingNotes(false);
-
-    try {
-      // 调用更新 API
-      const res = await fetchWithAbort(`/api/bookmarks/${bookmark.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          notes: notesToSave,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error?.message || "更新备注失败");
-      }
-
-      toast.success("备注更新成功");
-      // V4.2.30: 移除 router.refresh()，使用乐观更新
-    } catch (error) {
-      // 如果是取消错误，不显示错误提示
-      if (error instanceof Error && error.name === "AbortError") {
-        return;
-      }
-      // 失败时回滚到之前的状态
-      setLocalNotes(previousNotes);
-      toast.error(error instanceof Error ? error.message : "更新备注失败");
-    } finally {
-      setIsSavingNotes(false);
-    }
   };
 
   return (
@@ -685,92 +373,19 @@ export function BookmarkDetailClient({
                 />
 
                 {/* === 行3：操作栏 === */}
-                <div className="flex items-center justify-between gap-2">
-                  {/* 左侧：返回 + 主要操作 */}
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleBack}
-                      className="h-8 px-2"
-                    >
-                      <ArrowLeft className="size-4" />
-                      <span className="ml-1">返回</span>
-                    </Button>
-
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleOpenOriginal}
-                      className="h-8"
-                    >
-                      <ExternalLink className="size-3.5" />
-                      <span className="ml-1.5">打开原文</span>
-                    </Button>
-
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleShare}
-                      className="h-8 px-2"
-                    >
-                      <Share2 className="size-3.5" />
-                      <span className="ml-1 hidden sm:inline">分享</span>
-                    </Button>
-
-                    {/* AI 助手按钮 */}
-                    {userId && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setShowAIPanel(true)}
-                        className="h-8 px-2 text-primary hover:text-primary"
-                      >
-                        <Bot className="size-3.5" />
-                        <span className="ml-1 hidden sm:inline">AI 助手</span>
-                      </Button>
-                    )}
-
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleEdit}
-                      className="h-8 px-2"
-                    >
-                      <Edit className="size-3.5" />
-                      <span className="ml-1 hidden sm:inline">编辑</span>
-                    </Button>
-
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowMoveDialog(true)}
-                      className="h-8 px-2"
-                    >
-                      <FolderInput className="size-3.5" />
-                      <span className="ml-1 hidden sm:inline">移动到</span>
-                    </Button>
-                  </div>
-
-                  {/* 右侧：删除按钮（危险操作分离） */}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleDelete}
-                    disabled={isDeleting || isLocked}
-                    className={cn(
-                      "h-8 px-2",
-                      isLocked
-                        ? "opacity-50 cursor-not-allowed"
-                        : "text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20",
-                    )}
-                  >
-                    <Trash2 className="size-3.5" />
-                    <span className="ml-1">
-                      {isDeleting ? "删除中..." : "删除"}
-                    </span>
-                  </Button>
-                </div>
+                <DetailActionBar
+                  title={bookmark.title}
+                  url={bookmark.url}
+                  aiSummary={localSummary}
+                  isLocked={isLocked}
+                  isDeleting={isDeleting}
+                  userId={userId}
+                  onBack={handleBack}
+                  onEdit={() => setShowEditDialog(true)}
+                  onMoveToFolder={() => setShowMoveDialog(true)}
+                  onDelete={handleDelete}
+                  onOpenAIPanel={() => setShowAIPanel(true)}
+                />
               </div>
             </CardHeader>
 
@@ -873,123 +488,38 @@ export function BookmarkDetailClient({
               )}
 
               {/* 用户标签（只显示普通标签，用途标签已在顶部展示） */}
-              {regularTags.length > 0 || isEditingTags ? (
+              {(regularTags.length > 0 || isEditingTags) && (
                 <>
-                  <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        我的标签
-                      </h3>
-                      {!isEditingTags && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={handleEditTags}
-                        >
-                          <Edit className="size-3 mr-1" />
-                          编辑
-                        </Button>
-                      )}
-                    </div>
-                    {isEditingTags ? (
-                      <div className="space-y-3">
-                        <Input
-                          value={editedTags}
-                          onChange={(e) => setEditedTags(e.target.value)}
-                          placeholder="输入标签，用逗号或空格分隔"
-                          autoFocus
-                        />
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            onClick={handleSaveTags}
-                            disabled={isSavingTags}
-                          >
-                            <Check className="size-3 mr-1" />
-                            {isSavingTags ? "保存中..." : "保存"}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={handleCancelEditTags}
-                            disabled={isSavingTags}
-                          >
-                            <X className="size-3 mr-1" />
-                            取消
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex flex-wrap gap-2">
-                        {regularTags.map((tag) => (
-                          <Badge key={tag} variant="default">
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  <DetailTagsEditor
+                    regularTags={regularTags}
+                    isEditing={isEditingTags}
+                    editedTags={editedTags}
+                    isSaving={isSavingTags}
+                    onEditedTagsChange={setEditedTags}
+                    onEdit={handleEditTags}
+                    onCancel={handleCancelEditTags}
+                    onSave={handleSaveTags}
+                  />
                   <Separator />
                 </>
-              ) : null}
+              )}
 
-              {/* 备注 - V4.2.30: 使用 localNotes 支持乐观更新 */}
-              {localNotes || isEditingNotes ? (
+              {/* 备注 - Phase 2.3.7: 使用 DetailNotesEditor 组件 */}
+              {(localNotes || isEditingNotes) && (
                 <>
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        我的备注
-                      </h3>
-                      {!isEditingNotes && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={handleEditNotes}
-                        >
-                          <Edit className="size-3 mr-1" />
-                          编辑
-                        </Button>
-                      )}
-                    </div>
-                    {isEditingNotes ? (
-                      <div className="space-y-3">
-                        <Textarea
-                          value={editedNotes}
-                          onChange={(e) => setEditedNotes(e.target.value)}
-                          placeholder="输入备注..."
-                          rows={4}
-                          autoFocus
-                        />
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            onClick={handleSaveNotes}
-                            disabled={isSavingNotes}
-                          >
-                            <Check className="size-3 mr-1" />
-                            {isSavingNotes ? "保存中..." : "保存"}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={handleCancelEditNotes}
-                            disabled={isSavingNotes}
-                          >
-                            <X className="size-3 mr-1" />
-                            取消
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <p className="text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap">
-                        {localNotes}
-                      </p>
-                    )}
-                  </div>
+                  <DetailNotesEditor
+                    notes={localNotes}
+                    isEditing={isEditingNotes}
+                    editedNotes={editedNotes}
+                    isSaving={isSavingNotes}
+                    onEditedNotesChange={setEditedNotes}
+                    onEdit={handleEditNotes}
+                    onCancel={handleCancelEditNotes}
+                    onSave={handleSaveNotes}
+                  />
                   <Separator />
                 </>
-              ) : null}
+              )}
 
               {/* Phase 2: 知识关联推荐 (V4.2.24: 视口懒加载优化) */}
               <RelatedBookmarksV2Lazy

@@ -17,6 +17,7 @@ import {
   browserSourceToImportSource,
   type ImportSession,
 } from "@/lib/browser-bookmark";
+import { clientLogger } from "@/lib/client-logger";
 import type {
   ImportProgress,
   BrowserBookmarkImportOptions,
@@ -137,7 +138,7 @@ export function useImportSession(
       const session = await getPendingSession(userId);
       setPendingSession(session ?? null);
     } catch (error) {
-      console.error("检查待恢复会话失败:", error);
+      clientLogger.error({ error }, "[ImportSession] 检查待恢复会话失败");
     }
   }, [userId]);
 
@@ -363,7 +364,10 @@ export function useImportSession(
           });
         } catch (historyError) {
           // 历史记录失败不影响主流程
-          console.error("记录导入历史失败:", historyError);
+          clientLogger.error(
+            { error: historyError },
+            "[ImportSession] 记录导入历史失败",
+          );
         }
 
         setIsImporting(false);

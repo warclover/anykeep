@@ -10,6 +10,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { toast } from "sonner";
+import { clientLogger } from "@/lib/client-logger";
 
 // ============================================
 // Type Definitions
@@ -121,7 +122,7 @@ export function useEvolutionReports(
     } catch (err) {
       const message = err instanceof Error ? err.message : "获取报告列表失败";
       setError(message);
-      console.error("[useEvolutionReports] fetchReports error:", err);
+      clientLogger.error({ err }, "[useEvolutionReports] fetchReports error");
     } finally {
       setIsLoading(false);
     }
@@ -149,7 +150,7 @@ export function useEvolutionReports(
       } catch (err) {
         const message = err instanceof Error ? err.message : "获取报告失败";
         setError(message);
-        console.error("[useEvolutionReports] fetchReport error:", err);
+        clientLogger.error({ err }, "[useEvolutionReports] fetchReport error");
         return null;
       }
     },
@@ -195,7 +196,10 @@ export function useEvolutionReports(
       } catch (err) {
         const message = err instanceof Error ? err.message : "生成报告失败";
         toast.error(message);
-        console.error("[useEvolutionReports] generateReport error:", err);
+        clientLogger.error(
+          { err },
+          "[useEvolutionReports] generateReport error",
+        );
         return null;
       } finally {
         setIsGenerating(false);

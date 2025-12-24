@@ -17,6 +17,7 @@
 
 import { useCallback, useMemo } from "react";
 import useSWR, { useSWRConfig, preload, mutate as globalMutate } from "swr";
+import { clientLogger } from "@/lib/client-logger";
 import type { CustomUsageTag } from "@/types/supabase";
 
 // ============================================
@@ -132,7 +133,7 @@ export function useCustomUsageTags(
       errorRetryInterval: 5000,
       // 错误回调
       onError: (err) => {
-        console.error("[CustomUsageTags] 加载失败:", err);
+        clientLogger.error({ err }, "[CustomUsageTags] 加载失败");
       },
       // 自定义重试逻辑
       onErrorRetry: (err, _key, _config, revalidate, { retryCount }) => {

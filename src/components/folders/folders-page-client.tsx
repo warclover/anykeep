@@ -26,7 +26,7 @@ import { FolderNavPanel } from "@/components/folders/folder-nav-panel";
 import { FolderContentArea } from "@/components/folders/folder-content-area";
 import { AIAssistantPanel } from "@/components/ai/ai-assistant-panel";
 import { type UIFolderGroup } from "@/components/folders/constants";
-import { setFoldersCache, clearFoldersCache } from "@/lib/folders/cache";
+import { setFoldersCache, clearFoldersCache } from "@/lib/folder";
 import type {
   FolderWithStats,
   BookmarkWithFolder,

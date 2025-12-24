@@ -51,6 +51,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { clientLogger } from "@/lib/client-logger";
 
 // ============================================================================
 // 类型定义
@@ -121,7 +122,10 @@ export function AIFolderSettingsCard({ className }: AIFolderSettingsCardProps) {
       setOriginalSettings(loadedSettings);
       setHasChanges(false);
     } catch (error) {
-      console.error("Failed to load AI folder settings:", error);
+      clientLogger.error(
+        { error },
+        "[AIFolderSettingsCard] Failed to load AI folder settings",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -170,7 +174,10 @@ export function AIFolderSettingsCard({ className }: AIFolderSettingsCardProps) {
       toast.success("文件夹演化设置已保存");
     } catch (error) {
       toast.error("保存失败，请重试");
-      console.error("Failed to save AI folder settings:", error);
+      clientLogger.error(
+        { error },
+        "[AIFolderSettingsCard] Failed to save AI folder settings",
+      );
     } finally {
       setIsSaving(false);
     }

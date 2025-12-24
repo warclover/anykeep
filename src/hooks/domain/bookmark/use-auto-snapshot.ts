@@ -18,6 +18,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { clientLogger } from "@/lib/client-logger";
 import { useAutoSnapshotSettings } from "@/hooks/use-auto-snapshot-settings";
 import {
   useSnapshotFeature,
@@ -120,10 +121,9 @@ async function createSnapshotWithSource(
     // V4.2.27: 检查响应类型，防止热更新期间的 JSON 解析错误
     const contentType = response.headers.get("content-type");
     if (!contentType || !contentType.includes("application/json")) {
-      console.error(
-        "[AutoSnapshot] Non-JSON response:",
-        response.status,
-        contentType,
+      clientLogger.error(
+        { status: response.status, contentType },
+        "[AutoSnapshot] Non-JSON response",
       );
       return {
         success: false,
@@ -172,10 +172,9 @@ async function createWechatSnapshot(
     // V4.2.27: 检查响应类型，防止热更新期间的 JSON 解析错误
     const contentType = response.headers.get("content-type");
     if (!contentType || !contentType.includes("application/json")) {
-      console.error(
-        "[AutoSnapshot] Non-JSON response:",
-        response.status,
-        contentType,
+      clientLogger.error(
+        { status: response.status, contentType },
+        "[AutoSnapshot] Non-JSON response for wechat",
       );
       return {
         success: false,
@@ -380,7 +379,7 @@ export function useAutoSnapshot({
             onError?.(result.error || "未知错误");
           }
         } catch (error) {
-          console.error("[AutoSnapshot] 创建失败:", error);
+          clientLogger.error({ error }, "[AutoSnapshot] 创建失败");
           if (!settings.silentOnQuotaExceeded) {
             toast.error("快照创建失败", {
               description: "请稍后手动创建",

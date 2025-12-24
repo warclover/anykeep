@@ -29,6 +29,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { clientLogger } from "@/lib/client-logger";
 import type { ClassificationResultData } from "@/types/supabase";
 
 // 轮询间隔（毫秒）
@@ -168,7 +169,10 @@ export function useClassificationPolling(): UseClassificationPollingReturn {
       const response = await fetch(`/api/bookmarks/batch-status?ids=${ids}`);
 
       if (!response.ok) {
-        console.error("Failed to poll bookmark status");
+        clientLogger.error(
+          { status: response.status },
+          "[ClassificationPolling] Failed to poll bookmark status",
+        );
         return;
       }
 
@@ -233,7 +237,10 @@ export function useClassificationPolling(): UseClassificationPollingReturn {
         });
       }
     } catch (error) {
-      console.error("Classification polling error:", error);
+      clientLogger.error(
+        { error },
+        "[ClassificationPolling] Classification polling error",
+      );
     } finally {
       // V3.2: 释放并发锁
       isPollingInProgress.current = false;

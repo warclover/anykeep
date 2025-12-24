@@ -37,7 +37,6 @@ export default async function TagsPage() {
     .is("deleted_at", null);
 
   if (error) {
-    console.error("Failed to fetch bookmarks for tags:", error);
     return <TagsPageClient tags={[]} error="加载标签失败，请稍后重试" />;
   }
 

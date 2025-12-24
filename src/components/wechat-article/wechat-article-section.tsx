@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FileText, Download, Loader2, AlertCircle } from "lucide-react";
 import { WechatArticleViewer } from "./wechat-article-viewer";
+import { clientLogger } from "@/lib/client-logger";
 
 // =============================================================================
 // 类型定义
@@ -72,10 +73,9 @@ export function WechatArticleSection({
       const contentType = response.headers.get("content-type");
       if (!contentType || !contentType.includes("application/json")) {
         // 服务器返回了非 JSON 响应（可能是热更新导致）
-        console.error(
-          "[WechatArticleSection] Non-JSON response:",
-          response.status,
-          contentType,
+        clientLogger.error(
+          { status: response.status, contentType },
+          "[WechatArticleSection] Non-JSON response",
         );
         // 静默处理，不显示错误（可能是临时的编译状态）
         setSnapshot(null);
@@ -98,11 +98,15 @@ export function WechatArticleSection({
         setSnapshot(null);
       }
     } catch (err) {
-      console.error("[WechatArticleSection] Failed to fetch snapshot:", err);
+      clientLogger.error(
+        { error: err },
+        "[WechatArticleSection] Failed to fetch snapshot",
+      );
       // V4.2.27: 对 JSON 解析错误静默处理（热更新期间可能发生）
       const errorMessage = err instanceof Error ? err.message : "获取快照失败";
       if (errorMessage.includes("Unexpected token")) {
-        console.error(
+        clientLogger.error(
+          { error: err },
           "[WechatArticleSection] JSON parse error, likely hot reload",
         );
         setSnapshot(null);
@@ -134,10 +138,9 @@ export function WechatArticleSection({
       // V4.2.27: 检查响应类型，防止 JSON 解析错误
       const contentType = response.headers.get("content-type");
       if (!contentType || !contentType.includes("application/json")) {
-        console.error(
-          "[WechatArticleSection] Non-JSON response on create:",
-          response.status,
-          contentType,
+        clientLogger.error(
+          { status: response.status, contentType },
+          "[WechatArticleSection] Non-JSON response on create",
         );
         throw new Error("服务器响应异常，请稍后重试");
       }
@@ -159,7 +162,10 @@ export function WechatArticleSection({
         await fetchSnapshot();
       }
     } catch (err) {
-      console.error("[WechatArticleSection] Failed to create snapshot:", err);
+      clientLogger.error(
+        { error: err },
+        "[WechatArticleSection] Failed to create snapshot",
+      );
       setError(err instanceof Error ? err.message : "创建快照失败");
     } finally {
       setIsFetching(false);

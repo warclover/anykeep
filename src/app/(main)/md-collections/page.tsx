@@ -113,9 +113,6 @@ const getPageData = cache(
         hasMore,
       };
     } catch (error) {
-      // 记录错误日志，便于排查问题
-      console.error("[MdCollectionsPage] 数据加载失败:", error);
-
       // 开发环境下抛出错误，便于调试
       if (process.env.NODE_ENV === "development") {
         throw error;

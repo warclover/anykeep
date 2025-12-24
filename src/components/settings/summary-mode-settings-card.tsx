@@ -37,6 +37,7 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { SummaryMode } from "@/lib/classification/types/ai-summary";
+import { clientLogger } from "@/lib/client-logger";
 
 // ============================================================================
 // 类型定义
@@ -163,7 +164,10 @@ export function SummaryModeSettingsCard({
         setAllowModeSwitch(data.data.allowModeSwitch);
       }
     } catch (error) {
-      console.error("Failed to load summary mode settings:", error);
+      clientLogger.error(
+        { error },
+        "[SummaryModeSettingsCard] Failed to load summary mode settings",
+      );
       toast.error("加载摘要模式设置失败");
     } finally {
       setIsLoading(false);
@@ -196,7 +200,10 @@ export function SummaryModeSettingsCard({
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "保存失败，请重试");
-      console.error("Failed to save summary mode settings:", error);
+      clientLogger.error(
+        { error },
+        "[SummaryModeSettingsCard] Failed to save summary mode settings",
+      );
     } finally {
       setIsSaving(false);
     }

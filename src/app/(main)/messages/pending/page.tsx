@@ -17,6 +17,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { clientLogger } from "@/lib/client-logger";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -67,7 +68,7 @@ export default function PendingConfirmationsPage() {
       const data = await response.json();
       setConfirmations(data.confirmations || []);
     } catch (error) {
-      console.error("Failed to fetch confirmations:", error);
+      clientLogger.error({ error }, "Failed to fetch confirmations");
       toast.error("获取待确认消息失败");
     } finally {
       setLoading(false);
@@ -110,7 +111,7 @@ export default function PendingConfirmationsPage() {
         return next;
       });
     } catch (error) {
-      console.error("Failed to confirm:", error);
+      clientLogger.error({ error, confirmationId: id }, "Failed to confirm");
       toast.error("确认失败");
     }
   };
@@ -134,7 +135,7 @@ export default function PendingConfirmationsPage() {
         return next;
       });
     } catch (error) {
-      console.error("Failed to reject:", error);
+      clientLogger.error({ error, confirmationId: id }, "Failed to reject");
       toast.error("拒绝失败");
     }
   };
@@ -193,7 +194,10 @@ export default function PendingConfirmationsPage() {
       await fetchConfirmations();
       setSelectedIds(new Set());
     } catch (error) {
-      console.error("Batch confirm failed:", error);
+      clientLogger.error(
+        { error, count: idsToProcess.length },
+        "Batch confirm failed",
+      );
       toast.error("批量确认失败");
     } finally {
       setBatchProcessing(false);
@@ -229,7 +233,10 @@ export default function PendingConfirmationsPage() {
       await fetchConfirmations();
       setSelectedIds(new Set());
     } catch (error) {
-      console.error("Batch reject failed:", error);
+      clientLogger.error(
+        { error, count: idsToProcess.length },
+        "Batch reject failed",
+      );
       toast.error("批量拒绝失败");
     } finally {
       setBatchProcessing(false);

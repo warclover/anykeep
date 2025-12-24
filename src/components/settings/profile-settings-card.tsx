@@ -26,6 +26,7 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useUser } from "@/contexts/user-context";
+import { clientLogger } from "@/lib/client-logger";
 
 /**
  * 职业/身份选项
@@ -127,7 +128,10 @@ export function ProfileSettingsCard({ className }: ProfileSettingsCardProps) {
       setOriginalProfile(savedProfile);
       setHasChanges(false);
     } catch (error) {
-      console.error("Failed to load profile:", error);
+      clientLogger.error(
+        { error },
+        "[ProfileSettingsCard] Failed to load profile",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -197,7 +201,10 @@ export function ProfileSettingsCard({ className }: ProfileSettingsCardProps) {
       toast.success("画像设置已保存");
     } catch (error) {
       toast.error("保存失败，请重试");
-      console.error("Failed to save profile:", error);
+      clientLogger.error(
+        { error },
+        "[ProfileSettingsCard] Failed to save profile",
+      );
     } finally {
       setIsSaving(false);
     }

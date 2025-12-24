@@ -48,6 +48,7 @@ import { WechatArticleImages } from "./wechat-article-images";
 import { WechatArticleStatus } from "./wechat-article-status";
 import { ReaderToolbar } from "./reader-toolbar";
 import { StyleSelector } from "./style-selector";
+import { clientLogger } from "@/lib/client-logger";
 
 // =============================================================================
 // 类型定义
@@ -173,7 +174,14 @@ export function WechatArticleViewer({
     }
 
     if (textToCopy) {
-      navigator.clipboard.writeText(textToCopy).catch(console.error);
+      navigator.clipboard
+        .writeText(textToCopy)
+        .catch((err) =>
+          clientLogger.error(
+            { error: err },
+            "[WechatArticleViewer] Copy text failed",
+          ),
+        );
     }
   }, [article]);
 
@@ -210,7 +218,7 @@ export function WechatArticleViewer({
       // 通知父组件
       onDeleted?.();
     } catch (err) {
-      console.error("[WechatArticleViewer] Delete failed:", err);
+      clientLogger.error({ error: err }, "[WechatArticleViewer] Delete failed");
       alert(err instanceof Error ? err.message : "删除失败");
     } finally {
       setIsDeleting(false);

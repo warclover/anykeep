@@ -18,6 +18,7 @@ import type { CustomUsageTag } from "@/types/supabase";
 import { AddCustomUsageTagDialog } from "./add-custom-usage-tag-dialog";
 import { useCustomUsageTags } from "@/hooks/use-custom-usage-tags";
 import { UsageTagButton } from "./usage-tag-button";
+import { clientLogger } from "@/lib/client-logger";
 
 interface UsageTagSelectorProps {
   /** 已选中的用途标签值列表 */
@@ -96,7 +97,7 @@ export function UsageTagSelector({
         });
       } catch (error) {
         // 静默失败，不影响用户体验
-        console.error("Failed to update lastUsedAt:", error);
+        clientLogger.error({ error }, "Failed to update lastUsedAt");
       }
     },
     [internalCustomTags, updateTag],

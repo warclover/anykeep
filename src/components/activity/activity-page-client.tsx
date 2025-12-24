@@ -35,6 +35,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { MessageGroup, Message } from "@/lib/messages";
 import type { ActivityLogItem } from "@/lib/notifications/types";
+import { clientLogger } from "@/lib/client-logger";
 
 // ============================================================================
 // 类型定义
@@ -185,7 +186,7 @@ export function ActivityPageClient() {
       const data = await response.json();
       setGroups(data.groups || []);
     } catch (error) {
-      console.error("Failed to fetch activity logs:", error);
+      clientLogger.error({ error }, "Failed to fetch activity logs");
       toast.error("获取活动日志失败");
     } finally {
       setLoading(false);

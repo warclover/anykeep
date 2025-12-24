@@ -33,6 +33,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { clientLogger } from "@/lib/client-logger";
 
 interface RenameConfirmDialogProps {
   open: boolean;
@@ -80,7 +81,10 @@ export function RenameConfirmDialog({
       await onConfirm(newName);
       handleOpenChange(false);
     } catch (error) {
-      console.error("Failed to rename folder:", error);
+      clientLogger.error(
+        { error },
+        "[RenameConfirmDialog] Failed to rename folder",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -195,11 +199,7 @@ export function RenameConfirmDialog({
               </Label>
               <div className="flex flex-wrap gap-1.5">
                 {commonTags.map((tag) => (
-                  <Badge
-                    key={tag}
-                    variant="outline"
-                    className="text-xs"
-                  >
+                  <Badge key={tag} variant="outline" className="text-xs">
                     {tag}
                   </Badge>
                 ))}

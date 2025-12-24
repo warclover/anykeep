@@ -8,6 +8,7 @@
 import { useState, useCallback } from "react";
 import useSWR from "swr";
 import { toast } from "sonner";
+import { clientLogger } from "@/lib/client-logger";
 import type {
   OperationDetail,
   OperationSnapshotAction,
@@ -164,7 +165,7 @@ export function useOperationHistory(
 
         return true;
       } catch (err) {
-        console.error("[useOperationHistory] Undo failed:", err);
+        clientLogger.error({ err }, "[useOperationHistory] Undo failed");
         toast.error("撤销操作失败，请稍后重试");
         return false;
       } finally {

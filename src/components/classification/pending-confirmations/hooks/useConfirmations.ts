@@ -16,6 +16,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { toast } from "sonner";
+import { clientLogger } from "@/lib/client-logger";
 import { fetchWithRetry } from "@/lib/utils/fetch-with-retry";
 import type {
   ConfirmationMessage,
@@ -116,7 +117,7 @@ export function useConfirmations(): UseConfirmationsReturn {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "加载失败";
       setError(errorMessage);
-      console.error("Failed to fetch confirmations:", err);
+      clientLogger.error({ error: err }, "Failed to fetch confirmations");
     } finally {
       setIsLoading(false);
       setIsInitialized(true);

@@ -52,6 +52,7 @@ import type {
   CreateSmartListRequest,
   UpdateSmartListRequest,
 } from "@/types/smart-list";
+import { clientLogger } from "@/lib/client-logger";
 
 // ============================================
 // 常量定义
@@ -275,7 +276,7 @@ export function SmartListEditorDialog({
       const count = await onPreview(filters);
       setPreviewCount(count);
     } catch (error) {
-      console.error("Preview failed:", error);
+      clientLogger.error({ error }, "Preview failed");
     } finally {
       setIsLoadingPreview(false);
     }
@@ -303,7 +304,7 @@ export function SmartListEditorDialog({
       onOpenChange(false);
       resetForm();
     } catch (error) {
-      console.error("Save failed:", error);
+      clientLogger.error({ error }, "Save failed");
     } finally {
       setIsSaving(false);
     }

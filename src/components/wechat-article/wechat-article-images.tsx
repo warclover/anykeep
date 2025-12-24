@@ -25,6 +25,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { WechatArticleImage } from "@/lib/wechat-article/wechat-article.types";
+import { clientLogger } from "@/lib/client-logger";
 
 // =============================================================================
 // 类型定义
@@ -109,7 +110,10 @@ export function WechatArticleImages({
       document.body.removeChild(a);
       URL.revokeObjectURL(downloadUrl);
     } catch (error) {
-      console.error("Failed to download image:", error);
+      clientLogger.error(
+        { error },
+        "[WechatArticleImages] Failed to download image",
+      );
     }
   };
 

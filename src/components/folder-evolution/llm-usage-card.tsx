@@ -37,6 +37,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { clientLogger } from "@/lib/client-logger";
 
 // ============================================================================
 // 类型定义
@@ -170,7 +171,10 @@ export function LLMUsageCard({ className }: LLMUsageCardProps) {
         setMonthlyStats(monthly.data);
       }
     } catch (error) {
-      console.error("Failed to load LLM usage stats:", error);
+      clientLogger.error(
+        { error },
+        "[LLMUsageCard] Failed to load LLM usage stats",
+      );
     } finally {
       setIsLoading(false);
     }

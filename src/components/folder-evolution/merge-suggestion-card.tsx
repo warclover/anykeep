@@ -46,6 +46,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { clientLogger } from "@/lib/client-logger";
 
 // ============================================================================
 // 类型定义
@@ -68,7 +69,7 @@ interface MergeSuggestionCardProps {
   onConfirm: (
     sourceFolderId: number,
     targetFolderId: number,
-    newName: string
+    newName: string,
   ) => Promise<void>;
   onDismiss: (sourceFolderId: number, targetFolderId: number) => void;
   className?: string;
@@ -99,15 +100,15 @@ export function MergeSuggestionCard({
       await onConfirm(
         suggestion.sourceFolderId,
         suggestion.targetFolderId,
-        mergedName.trim()
+        mergedName.trim(),
       );
       toast.success(
-        `「${suggestion.sourceFolderName}」已合并到「${mergedName}」`
+        `「${suggestion.sourceFolderName}」已合并到「${mergedName}」`,
       );
       setShowConfirmDialog(false);
     } catch (error) {
       toast.error("合并失败，请重试");
-      console.error("Merge failed:", error);
+      clientLogger.error({ error }, "[MergeSuggestionCard] Merge failed");
     } finally {
       setIsConfirming(false);
     }
@@ -147,9 +148,7 @@ export function MergeSuggestionCard({
 
   return (
     <>
-      <Card
-        className={cn("border-blue-200 dark:border-blue-800", className)}
-      >
+      <Card className={cn("border-blue-200 dark:border-blue-800", className)}>
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-2">

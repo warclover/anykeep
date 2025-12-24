@@ -34,6 +34,7 @@ import type { CustomUsageTag, Platform } from "@/types/supabase";
 import { AddCustomUsageTagDialog } from "./add-custom-usage-tag-dialog";
 import { useCustomUsageTags } from "@/hooks/use-custom-usage-tags";
 import { useAutoSnapshot } from "@/hooks/use-auto-snapshot";
+import { clientLogger } from "@/lib/client-logger";
 
 // 图标名称到组件的映射
 const ICON_MAP: Record<string, LucideIcon> = {
@@ -158,7 +159,7 @@ export function UnifiedTagsSection({
         }
         return true;
       } catch (error) {
-        console.error("保存用途标签失败:", error);
+        clientLogger.error({ error }, "保存用途标签失败");
         return false;
       }
     },

@@ -14,6 +14,7 @@
 import React, { Component, type ReactNode, type ErrorInfo } from "react";
 import { AlertCircle, RefreshCw, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { clientLogger } from "@/lib/client-logger";
 
 /**
  * 错误边界 Props
@@ -74,12 +75,13 @@ export class ErrorBoundary extends Component<
 
     // 开发环境下输出详细错误信息
     if (process.env.NODE_ENV === "development") {
-      /* eslint-disable no-console -- 开发环境错误调试日志 */
-      console.group("🔴 ErrorBoundary 捕获到错误");
-      console.error("Error:", error);
-      console.error("Component Stack:", errorInfo.componentStack);
-      console.groupEnd();
-      /* eslint-enable no-console */
+      clientLogger.group("🔴 ErrorBoundary 捕获到错误");
+      clientLogger.error({ error }, "Error");
+      clientLogger.info(
+        { componentStack: errorInfo.componentStack },
+        "Component Stack",
+      );
+      clientLogger.groupEnd();
     }
   }
 

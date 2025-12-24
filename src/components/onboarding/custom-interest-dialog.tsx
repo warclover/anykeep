@@ -24,6 +24,7 @@ import {
   CUSTOM_INTEREST_LIMITS,
   type CustomInterestInput,
 } from "@/lib/classification";
+import { clientLogger } from "@/lib/client-logger";
 
 // 可选的 emoji 图标
 const EMOJI_OPTIONS = [
@@ -138,7 +139,10 @@ export function CustomInterestDialog({
       resetForm();
       setIsOpen(false);
     } catch (error) {
-      console.error("Failed to create custom interest:", error);
+      clientLogger.error(
+        { error },
+        "[CustomInterestDialog] Failed to create custom interest",
+      );
     } finally {
       setIsSubmitting(false);
     }

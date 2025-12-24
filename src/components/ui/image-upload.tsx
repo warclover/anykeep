@@ -15,6 +15,7 @@ import {
   validateImageFile,
 } from "@/lib/utils/file-upload";
 import type { UploadOptions } from "@/lib/utils/file-upload";
+import { clientLogger } from "@/lib/client-logger";
 
 interface ImageUploadProps {
   bucket: "covers" | "avatars";
@@ -84,20 +85,21 @@ export function ImageUpload({
           fileToUpload = await compressImage(file, maxWidth, maxHeight, 0.8);
           // 前端日志保持简化，仅开发环境输出
           if (process.env.NODE_ENV === "development") {
-            // eslint-disable-next-line no-console
-            console.log("[Image Upload] Compressed:", {
-              original: file.size,
-              compressed: fileToUpload.size,
-              ratio:
-                ((1 - fileToUpload.size / file.size) * 100).toFixed(2) + "%",
-            });
+            clientLogger.info(
+              {
+                original: file.size,
+                compressed: fileToUpload.size,
+                ratio:
+                  ((1 - fileToUpload.size / file.size) * 100).toFixed(2) + "%",
+              },
+              "[Image Upload] Compressed",
+            );
           }
         } catch (error) {
           if (process.env.NODE_ENV === "development") {
-            // eslint-disable-next-line no-console
-            console.warn(
-              "[Image Upload] Compression failed, using original:",
-              error,
+            clientLogger.warn(
+              { error },
+              "[Image Upload] Compression failed, using original",
             );
           }
         }
@@ -119,12 +121,11 @@ export function ImageUpload({
       onUploadSuccess(result.url);
 
       if (process.env.NODE_ENV === "development") {
-        // eslint-disable-next-line no-console
-        console.log("[Image Upload] Success:", result);
+        clientLogger.info({ result }, "[Image Upload] Success");
       }
     } catch (error) {
       if (process.env.NODE_ENV === "development") {
-        console.error("[Image Upload] Failed:", error);
+        clientLogger.error({ error }, "[Image Upload] Failed");
       }
 
       // 恢复默认图片

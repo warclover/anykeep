@@ -4,6 +4,7 @@
  */
 
 import { useState, useCallback, useRef } from "react";
+import { clientLogger } from "@/lib/client-logger";
 import type { PageMetadata } from "@/lib/browser-bookmark";
 
 // ============================================
@@ -156,7 +157,7 @@ export function useMetadataFetcher(): UseMetadataFetcherReturn {
         }
       } catch (error) {
         if (error instanceof Error && error.name !== "AbortError") {
-          console.error("抓取元数据失败:", error);
+          clientLogger.error({ error }, "[MetadataFetcher] 抓取元数据失败");
         }
       } finally {
         setIsFetching(false);

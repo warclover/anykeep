@@ -54,6 +54,7 @@ import type {
   ImportSource,
 } from "@/types/supabase";
 import { cn } from "@/lib/utils";
+import { clientLogger } from "@/lib/client-logger";
 
 // ============================================
 // 类型定义
@@ -199,7 +200,7 @@ function HistoryItem({
       await deleteImportHistory(history.id);
       onDelete(history.id);
     } catch (error) {
-      console.error("删除历史记录失败:", error);
+      clientLogger.error({ error }, "删除历史记录失败");
     } finally {
       setIsDeleting(false);
     }
@@ -334,7 +335,7 @@ export function ImportHistoryList({
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : "加载失败";
       setError(errorMsg);
-      console.error("加载导入历史失败:", err);
+      clientLogger.error({ error: err }, "加载导入历史失败");
     } finally {
       setIsLoading(false);
     }

@@ -19,6 +19,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { clientLogger } from "@/lib/client-logger";
 
 interface TrashToolbarProps {
   // 批量选择
@@ -48,7 +49,7 @@ export function TrashToolbar({
       toast.success(`已恢复 ${selectedCount} 个收藏`);
     } catch (error) {
       toast.error("批量恢复失败");
-      console.error(error);
+      clientLogger.error({ error }, "Batch restore failed");
     } finally {
       setIsRestoring(false);
     }
@@ -64,7 +65,7 @@ export function TrashToolbar({
       setShowEmptyDialog(false);
     } catch (error) {
       toast.error("清空垃圾箱失败");
-      console.error(error);
+      clientLogger.error({ error }, "Empty trash failed");
     } finally {
       setIsEmptying(false);
     }

@@ -12,6 +12,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { clientLogger } from "@/lib/client-logger";
 import type { ClassificationSuggestion, Bookmark } from "@/types/supabase";
 
 // 缓存配置
@@ -197,7 +198,7 @@ export function useReclassify(): UseReclassifyReturn {
         });
       }
     } catch (error) {
-      console.error("Fetch suggestions failed:", error);
+      clientLogger.error({ error }, "[Reclassify] Fetch suggestions failed");
     }
   }, []);
 
@@ -224,7 +225,7 @@ export function useReclassify(): UseReclassifyReturn {
         setCache(CACHE_KEY_CHECK, data.data);
       }
     } catch (error) {
-      console.error("Check reclassify failed:", error);
+      clientLogger.error({ error }, "[Reclassify] Check reclassify failed");
     } finally {
       setIsChecking(false);
     }
@@ -268,7 +269,7 @@ export function useReclassify(): UseReclassifyReturn {
         }
       } catch (error) {
         toast.error("执行重分类失败");
-        console.error("Run reclassify failed:", error);
+        clientLogger.error({ error }, "[Reclassify] Run reclassify failed");
       } finally {
         setIsRunning(false);
       }
@@ -303,7 +304,7 @@ export function useReclassify(): UseReclassifyReturn {
         }
       } catch (error) {
         toast.error("接受建议失败");
-        console.error("Accept suggestions failed:", error);
+        clientLogger.error({ error }, "[Reclassify] Accept suggestions failed");
       } finally {
         setIsProcessing(false);
       }
@@ -337,7 +338,7 @@ export function useReclassify(): UseReclassifyReturn {
         }
       } catch (error) {
         toast.error("拒绝建议失败");
-        console.error("Reject suggestions failed:", error);
+        clientLogger.error({ error }, "[Reclassify] Reject suggestions failed");
       } finally {
         setIsProcessing(false);
       }
@@ -369,7 +370,10 @@ export function useReclassify(): UseReclassifyReturn {
       }
     } catch (error) {
       toast.error("接受全部建议失败");
-      console.error("Accept all suggestions failed:", error);
+      clientLogger.error(
+        { error },
+        "[Reclassify] Accept all suggestions failed",
+      );
     } finally {
       setIsProcessing(false);
     }
@@ -398,7 +402,10 @@ export function useReclassify(): UseReclassifyReturn {
       }
     } catch (error) {
       toast.error("拒绝全部建议失败");
-      console.error("Reject all suggestions failed:", error);
+      clientLogger.error(
+        { error },
+        "[Reclassify] Reject all suggestions failed",
+      );
     } finally {
       setIsProcessing(false);
     }

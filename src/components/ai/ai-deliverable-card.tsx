@@ -29,6 +29,7 @@ import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import type { DeliverableData, DeliverableType } from "./types";
+import { clientLogger } from "@/lib/client-logger";
 
 interface AIDeliverableCardProps {
   /** 交付物数据 */
@@ -101,8 +102,8 @@ export const AIDeliverableCard = memo(function AIDeliverableCard({
       await navigator.clipboard.writeText(textContent);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch {
-      console.error("Failed to copy");
+    } catch (error) {
+      clientLogger.error({ error }, "Failed to copy");
     }
   };
 

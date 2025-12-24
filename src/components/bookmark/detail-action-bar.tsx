@@ -1,0 +1,182 @@
+/**
+ * Detail Action Bar Component
+ *
+ * 书签详情页的操作按钮栏，包含返回、打开原文、分享、编辑、移动、删除等操作。
+ *
+ * @version 1.0.0
+ * @since 2025-12-24 (Phase 2.3.7)
+ */
+
+"use client";
+
+import {
+  ArrowLeft,
+  ExternalLink,
+  Edit,
+  Trash2,
+  FolderInput,
+  Share2,
+  Bot,
+} from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
+// ============================================
+// 类型定义
+// ============================================
+
+export interface DetailActionBarProps {
+  /** 书签标题 */
+  title: string;
+  /** 书签 URL */
+  url: string;
+  /** AI 摘要 */
+  aiSummary?: string | null;
+  /** 是否已锁定 */
+  isLocked: boolean;
+  /** 是否正在删除 */
+  isDeleting: boolean;
+  /** 用户 ID（用于判断是否显示 AI 助手按钮） */
+  userId?: string;
+  /** 返回回调 */
+  onBack: () => void;
+  /** 编辑回调 */
+  onEdit: () => void;
+  /** 移动到文件夹回调 */
+  onMoveToFolder: () => void;
+  /** 删除回调 */
+  onDelete: () => void;
+  /** 打开 AI 助手面板回调 */
+  onOpenAIPanel?: () => void;
+}
+
+// ============================================
+// 组件实现
+// ============================================
+
+export function DetailActionBar({
+  title,
+  url,
+  aiSummary,
+  isLocked,
+  isDeleting,
+  userId,
+  onBack,
+  onEdit,
+  onMoveToFolder,
+  onDelete,
+  onOpenAIPanel,
+}: DetailActionBarProps) {
+  // 打开原文
+  const handleOpenOriginal = () => {
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
+  // 分享
+  const handleShare = async () => {
+    const shareData = {
+      title: title,
+      text: `${title}${aiSummary ? "\n\n" + aiSummary : ""}`,
+      url: url,
+    };
+
+    // 优先使用 Web Share API（移动端原生分享）
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+        toast.success("分享成功");
+      } catch (error) {
+        // 用户取消分享
+        if (error instanceof Error && error.name !== "AbortError") {
+          toast.error("分享失败");
+        }
+      }
+    } else {
+      // 降级到复制链接
+      try {
+        await navigator.clipboard.writeText(url);
+        toast.success("链接已复制到剪贴板");
+      } catch {
+        toast.error("复制失败，请手动复制");
+      }
+    }
+  };
+
+  return (
+    <div className="flex items-center justify-between gap-2">
+      {/* 左侧：返回 + 主要操作 */}
+      <div className="flex flex-wrap items-center gap-1.5">
+        <Button variant="ghost" size="sm" onClick={onBack} className="h-8 px-2">
+          <ArrowLeft className="size-4" />
+          <span className="ml-1">返回</span>
+        </Button>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleOpenOriginal}
+          className="h-8"
+        >
+          <ExternalLink className="size-3.5" />
+          <span className="ml-1.5">打开原文</span>
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleShare}
+          className="h-8 px-2"
+        >
+          <Share2 className="size-3.5" />
+          <span className="ml-1 hidden sm:inline">分享</span>
+        </Button>
+
+        {/* AI 助手按钮 */}
+        {userId && onOpenAIPanel && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onOpenAIPanel}
+            className="h-8 px-2 text-primary hover:text-primary"
+          >
+            <Bot className="size-3.5" />
+            <span className="ml-1 hidden sm:inline">AI 助手</span>
+          </Button>
+        )}
+
+        <Button variant="ghost" size="sm" onClick={onEdit} className="h-8 px-2">
+          <Edit className="size-3.5" />
+          <span className="ml-1 hidden sm:inline">编辑</span>
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onMoveToFolder}
+          className="h-8 px-2"
+        >
+          <FolderInput className="size-3.5" />
+          <span className="ml-1 hidden sm:inline">移动到</span>
+        </Button>
+      </div>
+
+      {/* 右侧：删除按钮（危险操作分离） */}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={onDelete}
+        disabled={isDeleting || isLocked}
+        className={cn(
+          "h-8 px-2",
+          isLocked
+            ? "opacity-50 cursor-not-allowed"
+            : "text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20",
+        )}
+      >
+        <Trash2 className="size-3.5" />
+        <span className="ml-1">{isDeleting ? "删除中..." : "删除"}</span>
+      </Button>
+    </div>
+  );
+}

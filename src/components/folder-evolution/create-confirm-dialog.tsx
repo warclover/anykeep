@@ -34,6 +34,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { clientLogger } from "@/lib/client-logger";
 
 interface BookmarkPreview {
   id: number;
@@ -82,7 +83,10 @@ export function CreateConfirmDialog({
       await onConfirm(folderName);
       handleOpenChange(false);
     } catch (error) {
-      console.error("Failed to create folder:", error);
+      clientLogger.error(
+        { error },
+        "[CreateConfirmDialog] Failed to create folder",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -257,11 +261,7 @@ export function CreateConfirmDialog({
         </div>
 
         <DialogFooter className="gap-2 sm:gap-0">
-          <Button
-            variant="outline"
-            onClick={handleReject}
-            disabled={isLoading}
-          >
+          <Button variant="outline" onClick={handleReject} disabled={isLoading}>
             不需要
           </Button>
           <Button

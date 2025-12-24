@@ -20,6 +20,7 @@ import {
   performanceMonitor,
   type MetricName,
 } from "@/lib/monitoring/performance-alerts";
+import { clientLogger } from "@/lib/client-logger";
 
 /**
  * Web Vitals 指标类型
@@ -123,22 +124,16 @@ export function WebVitalsReporter({
 
     // 在开发环境输出综合报告
     if (debug) {
-      // eslint-disable-next-line no-console -- 调试信息需要在控制台输出
-      console.group("📊 Web Vitals Report");
-      metrics.forEach((metric) => {
-        const emoji =
-          metric.rating === "good"
-            ? "✅"
-            : metric.rating === "needs-improvement"
-              ? "⚠️"
-              : "❌";
-        // eslint-disable-next-line no-console -- 调试信息需要在控制台输出
-        console.log(
-          `${emoji} ${metric.name}: ${formatValue(metric.name, metric.value)} (${metric.rating})`,
-        );
-      });
-      // eslint-disable-next-line no-console -- 调试信息需要在控制台输出
-      console.groupEnd();
+      clientLogger.info(
+        {
+          metrics: metrics.map((metric) => ({
+            name: metric.name,
+            value: formatValue(metric.name, metric.value),
+            rating: metric.rating,
+          })),
+        },
+        "📊 Web Vitals Report",
+      );
     }
 
     // 记录到日志系统
@@ -246,8 +241,10 @@ export function performanceMark(name: string) {
         const duration = measure.duration;
 
         if (process.env.NODE_ENV === "development") {
-          // eslint-disable-next-line no-console -- 性能调试信息
-          console.log(`⏱️ ${name}: ${Math.round(duration)}ms`);
+          clientLogger.debug(
+            { name, duration: Math.round(duration) },
+            `⏱️ ${name} performance`,
+          );
         }
 
         logger.debug(

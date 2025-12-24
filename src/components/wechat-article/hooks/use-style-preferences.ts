@@ -16,6 +16,7 @@ import {
   WECHAT_PREFERENCES_STORAGE_KEY,
   type WechatArticleUserPreferences,
 } from "@/lib/wechat-article/wechat-article.types";
+import { clientLogger } from "@/lib/client-logger";
 
 // =============================================================================
 // 类型定义
@@ -61,7 +62,10 @@ function loadPreferences(): WechatArticleUserPreferences {
       }
     }
   } catch (error) {
-    console.error("[useStylePreferences] Failed to load preferences:", error);
+    clientLogger.error(
+      { error },
+      "[useStylePreferences] Failed to load preferences:",
+    );
   }
 
   return DEFAULT_WECHAT_PREFERENCES;
@@ -79,7 +83,10 @@ function savePreferences(preferences: WechatArticleUserPreferences): void {
       JSON.stringify(preferences),
     );
   } catch (error) {
-    console.error("[useStylePreferences] Failed to save preferences:", error);
+    clientLogger.error(
+      { error },
+      "[useStylePreferences] Failed to save preferences:",
+    );
   }
 }
 

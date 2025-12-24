@@ -43,6 +43,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { clientLogger } from "@/lib/client-logger";
 
 // ============================================================================
 // 类型定义
@@ -96,7 +97,7 @@ export function SplitSuggestionCard({
       setShowConfirmDialog(false);
     } catch (error) {
       toast.error("分拆失败，请重试");
-      console.error("Split failed:", error);
+      clientLogger.error({ error }, "[SplitSuggestionCard] Split failed");
     } finally {
       setIsConfirming(false);
     }

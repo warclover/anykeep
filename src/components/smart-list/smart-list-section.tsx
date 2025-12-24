@@ -50,6 +50,7 @@ import type {
   CreateSmartListRequest,
   UpdateSmartListRequest,
 } from "@/types/smart-list";
+import { clientLogger } from "@/lib/client-logger";
 
 // ============================================
 // 类型定义
@@ -196,7 +197,7 @@ export function SmartListSection({
         })
         .catch((err) => {
           // 静默处理错误，用户可以手动重试
-          console.error("Auto-init presets failed:", err);
+          clientLogger.error({ err }, "Auto-init presets failed");
         })
         .finally(() => {
           setIsAutoIniting(false);
@@ -212,7 +213,7 @@ export function SmartListSection({
         toast.success(isPinned ? "已置顶" : "已取消置顶");
       } catch (err) {
         toast.error("操作失败，请稍后重试");
-        console.error("Failed to toggle pin:", err);
+        clientLogger.error({ err }, "Failed to toggle pin");
       }
     },
     [togglePin],
@@ -227,7 +228,7 @@ export function SmartListSection({
       toast.success("智能列表已删除");
     } catch (err) {
       toast.error("删除失败，请稍后重试");
-      console.error("Failed to delete smart list:", err);
+      clientLogger.error({ err }, "Failed to delete smart list");
     } finally {
       setDeleteConfirmId(null);
     }
@@ -240,7 +241,7 @@ export function SmartListSection({
       toast.success(`已创建 ${count} 个预设智能列表`);
     } catch (err) {
       toast.error("初始化失败，请稍后重试");
-      console.error("Failed to init presets:", err);
+      clientLogger.error({ err }, "Failed to init presets");
     }
   }, [initPresets]);
 

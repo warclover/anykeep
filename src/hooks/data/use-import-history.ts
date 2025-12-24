@@ -10,6 +10,7 @@ import {
   summarizeHistory,
   type ImportHistoryResult,
 } from "@/lib/browser-bookmark";
+import { clientLogger } from "@/lib/client-logger";
 import type { ImportHistory, ImportSource } from "@/types/supabase";
 
 // ============================================
@@ -95,7 +96,7 @@ export function useImportHistory(
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : "加载失败";
         setError(errorMsg);
-        console.error("加载导入历史失败:", err);
+        clientLogger.error({ err }, "[ImportHistory] 加载导入历史失败");
       } finally {
         setIsLoading(false);
       }

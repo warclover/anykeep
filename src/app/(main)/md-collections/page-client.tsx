@@ -99,9 +99,8 @@ export function MdCollectionPageClient({
     enabled: hasAccess,
     initialData,
     initialHasMore,
-    onBackgroundError: (err) => {
-      // 后台刷新失败时静默提示（使用 error 级别便于监控）
-      console.error("[MdCollections] 后台刷新失败:", err.message);
+    onBackgroundError: (_err) => {
+      // 后台刷新失败时静默提示
       toast.error("数据同步失败，显示的可能是缓存数据", { duration: 3000 });
     },
   });

@@ -3,6 +3,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { AlertCircle } from "lucide-react";
+import { clientLogger } from "@/lib/client-logger";
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -35,7 +36,7 @@ export class ErrorBoundary extends React.Component<
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     // 可以将错误日志上报给服务器
-    console.error("ErrorBoundary caught an error:", error, errorInfo);
+    clientLogger.error({ error, errorInfo }, "ErrorBoundary caught an error");
   }
 
   handleReset = () => {
