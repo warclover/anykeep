@@ -10,7 +10,7 @@
  * - 最多缓存10个键（防止膨胀）
  */
 
-/* eslint-disable no-console -- 缓存系统需要日志记录用于调试和性能追踪 */
+import { clientLogger } from "@/lib/client-logger";
 
 /**
  * 缓存条目结构（与 data-cache.ts 保持一致）
@@ -68,14 +68,16 @@ class PersistentStorage {
 
       // 版本检查
       if (parsed.version !== 1) {
-        console.warn("[PersistentStorage] Version mismatch, clearing cache");
+        clientLogger.warn(
+          "[PersistentStorage] Version mismatch, clearing cache",
+        );
         this.clear();
         return null;
       }
 
       // 整体过期检查
       if (Date.now() - parsed.timestamp > this.maxAge) {
-        console.warn("[PersistentStorage] Cache expired, clearing");
+        clientLogger.warn("[PersistentStorage] Cache expired, clearing");
         this.clear();
         return null;
       }
@@ -96,14 +98,15 @@ class PersistentStorage {
       }
 
       if (map.size > 0) {
-        console.log(
-          `[PersistentStorage] Restored ${map.size} entries from localStorage`,
+        clientLogger.info(
+          { entriesCount: map.size },
+          "[PersistentStorage] Restored entries from localStorage",
         );
       }
 
       return map.size > 0 ? map : null;
     } catch (error) {
-      console.warn("[PersistentStorage] Restore failed:", error);
+      clientLogger.warn({ error }, "[PersistentStorage] Restore failed");
       this.clear();
       return null;
     }
@@ -215,11 +218,12 @@ class PersistentStorage {
       const jsonString = JSON.stringify(cache);
       localStorage.setItem(this.storageKey, jsonString);
 
-      console.log(
-        `[PersistentStorage] Persisted ${count} entries (${(jsonString.length / 1024).toFixed(1)}KB)`,
+      clientLogger.info(
+        { entriesCount: count, sizeKB: (jsonString.length / 1024).toFixed(1) },
+        "[PersistentStorage] Persisted entries",
       );
     } catch (error) {
-      console.warn("[PersistentStorage] Persist failed:", error);
+      clientLogger.warn({ error }, "[PersistentStorage] Persist failed");
 
       // localStorage 可能满了，尝试清理
       if (
@@ -252,8 +256,9 @@ class PersistentStorage {
       keysToRemove.forEach((key) => localStorage.removeItem(key));
 
       if (keysToRemove.length > 0) {
-        console.log(
-          `[PersistentStorage] Cleaned up ${keysToRemove.length} cache keys`,
+        clientLogger.info(
+          { keysCount: keysToRemove.length },
+          "[PersistentStorage] Cleaned up cache keys",
         );
       }
     } catch {
@@ -271,7 +276,7 @@ class PersistentStorage {
 
     try {
       localStorage.removeItem(this.storageKey);
-      console.log("[PersistentStorage] Cache cleared");
+      clientLogger.info("[PersistentStorage] Cache cleared");
     } catch {
       // 静默失败
     }

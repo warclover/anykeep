@@ -17,7 +17,7 @@
 
 import { dataCache } from "./data-cache";
 import { CACHE_KEYS } from "./cache-config";
-import { clearFoldersCache } from "@/lib/folders/cache";
+import { clearFoldersCache } from "@/lib/folder";
 import { clientLogger } from "@/lib/client-logger";
 
 // 缓存失效事件类型

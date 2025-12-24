@@ -26,6 +26,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
+import { clientLogger } from "@/lib/client-logger";
 
 function VerifyEmailContent() {
   const router = useRouter();
@@ -72,7 +73,7 @@ function VerifyEmailContent() {
           setErrorMessage("验证链接无效或已过期");
         }
       } catch (err) {
-        console.error("Verification check error:", err);
+        clientLogger.error({ error: err }, "Verification check error");
         setStatus("error");
         setErrorMessage("验证过程中发生错误");
       }

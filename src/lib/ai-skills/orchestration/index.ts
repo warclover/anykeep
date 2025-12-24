@@ -63,3 +63,15 @@ export {
   type ConfirmationStatus,
   type ConfirmationHandlerConfig,
 } from "./confirmation-handler";
+
+// 后端确认适配器（Skills 专用）
+export {
+  BackendConfirmationAdapter,
+  createBackendConfirmationAdapter,
+  backendConfirmationAdapter,
+  type OperationType,
+  type RiskLevel,
+  type ConfirmationDecisionInput,
+  type ConfirmationDecision,
+  type AutoConfirmPolicy,
+} from "./backend-confirmation-adapter";

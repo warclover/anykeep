@@ -10,6 +10,7 @@
  */
 
 import { logger } from "@/lib/logger";
+import { clientLogger } from "@/lib/client-logger";
 
 /**
  * 性能指标类型
@@ -88,9 +89,9 @@ class CachePerformanceTracker {
     session.marks.set(markName, elapsed);
 
     if (process.env.NODE_ENV === "development") {
-      // eslint-disable-next-line no-console -- 开发环境调试输出
-      console.log(
-        `[CachePerf:${sessionId}] ${markName}: ${elapsed.toFixed(2)}ms`,
+      clientLogger.debug(
+        { sessionId, markName, elapsed: elapsed.toFixed(2) },
+        "[CachePerf] Mark",
       );
     }
   }
@@ -116,9 +117,13 @@ class CachePerformanceTracker {
     session.metrics.cacheHit = cacheHit;
 
     if (process.env.NODE_ENV === "development") {
-      // eslint-disable-next-line no-console -- 开发环境调试输出
-      console.log(
-        `[CachePerf] Cache ${cacheHit ? "HIT" : "MISS"} - ${entryCount} entries restored in ${restoreTime.toFixed(2)}ms`,
+      clientLogger.debug(
+        {
+          cacheHit,
+          entryCount,
+          restoreTime: restoreTime.toFixed(2),
+        },
+        "[CachePerf] Cache restored",
       );
     }
   }
@@ -211,42 +216,40 @@ class CachePerformanceTracker {
   private logReport(sessionId: string, metrics: CachePerformanceMetrics): void {
     if (process.env.NODE_ENV !== "development") return;
 
-    /* eslint-disable no-console -- 性能报告需要控制台输出 */
-    console.group(`📊 [CachePerf:${sessionId}] Performance Report`);
-
-    console.log(
+    const reportLines: string[] = [];
+    reportLines.push(`📊 [CachePerf:${sessionId}] Performance Report`);
+    reportLines.push(
       `Cache Hit: ${metrics.cacheHit ? "✅ YES" : "❌ NO"} (${metrics.cacheEntryCount} entries)`,
     );
 
     if (metrics.cacheRestoreTime !== null) {
       const rating = metrics.cacheRestoreTime < 50 ? "✅" : "⚠️";
-      console.log(
+      reportLines.push(
         `${rating} Cache Restore: ${metrics.cacheRestoreTime.toFixed(2)}ms`,
       );
     }
 
     if (metrics.timeToFirstRender !== null) {
       const rating = metrics.timeToFirstRender < 100 ? "✅" : "⚠️";
-      console.log(
+      reportLines.push(
         `${rating} Time to First Render: ${metrics.timeToFirstRender.toFixed(2)}ms`,
       );
     }
 
     if (metrics.backgroundRefreshTime !== null) {
-      console.log(
+      reportLines.push(
         `Background Refresh: ${metrics.backgroundRefreshTime.toFixed(2)}ms`,
       );
     }
 
     // FCP 改善估算
     if (metrics.cacheHit && metrics.timeToFirstRender !== null) {
-      console.log(
+      reportLines.push(
         `💡 Estimated FCP improvement: ~${(3000 - metrics.timeToFirstRender).toFixed(0)}ms faster than no-cache scenario`,
       );
     }
 
-    console.groupEnd();
-    /* eslint-enable no-console */
+    clientLogger.info({ sessionId, metrics }, reportLines.join("\n"));
   }
 
   /**

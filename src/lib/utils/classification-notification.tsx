@@ -8,6 +8,7 @@
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Check, X, RefreshCw } from "lucide-react";
+import { clientLogger } from "@/lib/client-logger";
 
 /**
  * 分类响应数据结构
@@ -137,7 +138,7 @@ export function showClassificationSuggestionToast(
               await onReject(suggestion.id);
               toast.dismiss(toastId);
             } catch (error) {
-              console.error("Reject suggestion failed:", error);
+              clientLogger.error({ error }, "Reject suggestion failed:");
             }
           }}
         >

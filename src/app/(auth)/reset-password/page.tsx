@@ -31,6 +31,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
+import { clientLogger } from "@/lib/client-logger";
 
 // 密码强度检查
 function checkPasswordStrength(password: string): {
@@ -93,7 +94,7 @@ export default function ResetPasswordPage() {
           setError("重置链接无效或已过期，请重新申请");
         }
       } catch (err) {
-        console.error("Session check error:", err);
+        clientLogger.error({ error: err }, "Session check error");
         setError("验证失败，请重新申请重置链接");
       } finally {
         setCheckingSession(false);

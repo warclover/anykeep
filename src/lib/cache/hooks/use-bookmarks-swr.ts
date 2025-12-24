@@ -19,6 +19,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { dataCache } from "../data-cache";
 import { DATA_CACHE_CONFIG } from "../cache-config";
 import { DEFAULT_PAGE_SIZE } from "@/components/home/constants";
+import { clientLogger } from "@/lib/client-logger";
 import type { Bookmark } from "@/types/supabase";
 
 // 扩展的书签类型（包含文件夹信息）
@@ -624,9 +625,9 @@ export function useBookmarksSWR(
       setHasMore(snapshot.hasMore);
       // 同步回滚到持久化缓存
       syncToCache(snapshot.data, snapshot.hasMore);
-      // eslint-disable-next-line no-console -- 回滚操作需要日志记录
-      console.log(
-        `[useBookmarksSWR] Rolled back to snapshot from ${new Date(snapshot.timestamp).toISOString()}`,
+      clientLogger.info(
+        { timestamp: new Date(snapshot.timestamp).toISOString() },
+        "[useBookmarksSWR] Rolled back to snapshot",
       );
     },
     [syncToCache],
