@@ -5,6 +5,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { toast } from "sonner";
+import { clientLogger } from "@/lib/client-logger";
 
 interface RenameSuggestion {
   folderId: number;
@@ -64,7 +65,7 @@ export function useRenameSuggestions(
     } catch (err) {
       const message = err instanceof Error ? err.message : "获取重命名建议失败";
       setError(message);
-      console.error("[useRenameSuggestions] fetch error:", err);
+      clientLogger.error({ err }, "[useRenameSuggestions] fetch error");
     } finally {
       setIsLoading(false);
     }
@@ -105,7 +106,7 @@ export function useRenameSuggestions(
       } catch (err) {
         const message = err instanceof Error ? err.message : "重命名失败";
         toast.error(message);
-        console.error("[useRenameSuggestions] execute error:", err);
+        clientLogger.error({ err }, "[useRenameSuggestions] execute error");
         return { success: false, message };
       } finally {
         setIsProcessing(false);
@@ -125,7 +126,7 @@ export function useRenameSuggestions(
         toast.success("已忽略该建议");
         return true;
       } catch (err) {
-        console.error("[useRenameSuggestions] dismiss error:", err);
+        clientLogger.error({ err }, "[useRenameSuggestions] dismiss error");
         return false;
       }
     },

@@ -1,7 +1,16 @@
 /**
- * 智能分类调试 API
- * POST /api/classification/debug
- * 允许传递配置参数进行分类测试
+ * 智能分类调试 API（合并版）
+ *
+ * 合并 debug + test + trace 三个端点
+ *
+ * GET /api/classification/debug?type=health - 健康检查（无需认证）
+ * GET /api/classification/debug?type=test - 运行集成测试
+ * GET /api/classification/debug?type=trace&traceId=xxx - 查询单个追踪
+ * GET /api/classification/debug?type=trace&recent=50 - 查询最近追踪列表
+ * POST /api/classification/debug - 调试分类（可传递配置参数）
+ *
+ * @version 2.0.0 (Phase 1 合并)
+ * @since 2025-12-24
  */
 
 import { type NextRequest } from "next/server";
@@ -10,18 +19,30 @@ import { createClient } from "@/lib/supabase/server";
 import { ClassificationContainer } from "@/lib/classification";
 import { TieredClassificationService } from "@/lib/classification/v3/services/tiered-classification.service";
 import { WeightedScoreAggregator } from "@/lib/classification/strategies";
+import { createTraceStorageService } from "@/lib/classification/v3/services/trace.service";
+import {
+  runIntegrationTests,
+  runHealthCheck,
+} from "@/lib/classification/testing/integration-test";
 import {
   successResponse,
   handleValidationError,
   unauthorizedError,
+  badRequestError,
+  notFoundError,
+  forbiddenError,
   internalError,
 } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
 
+// ============================================
+// Schema 定义
+// ============================================
+
 /**
- * 调试请求 Schema
+ * 调试分类请求 Schema
  */
-const debugSchema = z.object({
+const debugClassifySchema = z.object({
   // 书签数据
   title: z.string().min(1, "标题不能为空").max(500),
   summary: z.string().max(1000).optional().default(""),
@@ -41,6 +62,124 @@ const debugSchema = z.object({
     .optional(),
 });
 
+// ============================================
+// GET 处理器
+// ============================================
+
+/**
+ * GET /api/classification/debug
+ *
+ * Query params:
+ * - type: 'health' | 'test' | 'trace'
+ * - traceId: string (当 type=trace)
+ * - recent: number (当 type=trace)
+ */
+export async function GET(request: NextRequest) {
+  try {
+    const searchParams = request.nextUrl.searchParams;
+    const type = searchParams.get("type") || "health";
+
+    // 健康检查（无需认证）
+    if (type === "health") {
+      const health = runHealthCheck();
+      return successResponse({
+        type: "health_check",
+        ...health,
+      });
+    }
+
+    // 其他操作需要认证
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return unauthorizedError("请先登录");
+    }
+
+    // 集成测试
+    if (type === "test") {
+      const report = await runIntegrationTests(user.id);
+
+      logger.info(
+        {
+          userId: user.id,
+          totalTests: report.totalTests,
+          passed: report.passed,
+          failed: report.failed,
+          duration: report.duration,
+        },
+        "Integration tests completed",
+      );
+
+      return successResponse({
+        type: "integration_test",
+        ...report,
+      });
+    }
+
+    // 追踪查询
+    if (type === "trace") {
+      const traceId = searchParams.get("traceId");
+      const recent = searchParams.get("recent");
+      const traceService = createTraceStorageService(supabase);
+
+      // 查询单个追踪
+      if (traceId) {
+        const trace = await traceService.getTrace(traceId);
+
+        if (!trace) {
+          return notFoundError("追踪记录不存在");
+        }
+
+        // 验证用户权限
+        if (trace.userId !== user.id) {
+          return forbiddenError("无权访问此追踪记录");
+        }
+
+        return successResponse({
+          type: "trace",
+          data: trace,
+        });
+      }
+
+      // 查询最近的追踪列表
+      if (recent) {
+        const limit = Math.min(parseInt(recent, 10) || 50, 100);
+        const traces = await traceService.getRecentTraces(user.id, limit);
+
+        return successResponse({
+          type: "trace_list",
+          data: traces,
+          count: traces.length,
+        });
+      }
+
+      return badRequestError("缺少 traceId 或 recent 参数");
+    }
+
+    return badRequestError(`未知的调试类型: ${type}`);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logger.error(
+      { error: errorMessage },
+      "GET /api/classification/debug error",
+    );
+    return internalError("调试查询失败");
+  }
+}
+
+// ============================================
+// POST 处理器
+// ============================================
+
+/**
+ * POST /api/classification/debug
+ *
+ * 调试分类，可传递配置参数测试分类结果
+ */
 export async function POST(request: NextRequest) {
   try {
     // 1. 验证用户身份
@@ -56,7 +195,7 @@ export async function POST(request: NextRequest) {
 
     // 2. 解析请求
     const body = await request.json();
-    const validation = debugSchema.safeParse(body);
+    const validation = debugClassifySchema.safeParse(body);
 
     if (!validation.success) {
       return handleValidationError(validation.error);
@@ -70,8 +209,6 @@ export async function POST(request: NextRequest) {
     const aggregator = new WeightedScoreAggregator();
 
     // 4. 创建 TieredClassificationService 实例 (专门用于调试)
-    // 这里我们显式使用 TieredClassificationService 而不是通过 container 获取默认服务
-    // 以便我们可以注入自定义配置
     const service = new TieredClassificationService(
       supabase,
       matchers,
@@ -79,17 +216,7 @@ export async function POST(request: NextRequest) {
       config, // 注入配置覆盖
     );
 
-    // 5. 准备上下文
-    // 注意：我们需要手动准备上下文，因为 TieredClassificationService.classify 需要它
-    // 但 TieredClassificationService 内部并没有 prepareContext 方法 (它是 ClassificationService 的私有方法)
-    // 让我们看看 TieredClassificationService.classify 的签名
-    // classify(userId, bookmark, context) -> Promise<ClassificationResult>
-
-    // 我们需要构建 context。
-    // 这稍微有点麻烦，因为生成 embedding 的逻辑在 ClassificationService 中。
-    // 我们可以复用 embedding-generator 工具。
-
-    // 导入 helper (需要动态导入或者直接使用)
+    // 5. 生成 embedding（如果未提供）
     const { generateEmbedding, buildEmbeddingText } = await import(
       "@/lib/utils/embedding-generator"
     );
@@ -105,6 +232,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // 6. 准备上下文
     const context = {
       userId: user.id,
       bookmarkId: -1, // 调试模式，无具体书签 ID
@@ -115,7 +243,7 @@ export async function POST(request: NextRequest) {
       url,
     };
 
-    // 6. 执行分类
+    // 7. 执行分类
     const result = await service.classify(
       user.id,
       {
@@ -129,10 +257,11 @@ export async function POST(request: NextRequest) {
       context,
     );
 
-    // 7. 获取指标 (如果有)
+    // 8. 获取指标 (如果有)
     const metrics = service.getMetrics();
 
     return successResponse({
+      type: "debug_classify",
       classification: result,
       metrics,
       usedConfig: service.getConfig(),

@@ -20,6 +20,8 @@ import { RefreshCw, Sparkles, Brain, CheckCircle2 } from "lucide-react";
 import { ClusterSuggestionCard } from "./cluster-suggestion-card";
 import { ClusterProcessingStatusCard } from "./cluster-processing-status";
 import type { ClusterProcessingStatus } from "@/lib/classification/types/suggestion";
+import { clientLogger } from "@/lib/client-logger";
+import { API_CLASSIFICATION } from "@/lib/constants/api-paths";
 
 interface ClusterSuggestion {
   id: number;
@@ -40,7 +42,8 @@ export function ClusterSuggestionsPanel({
   onRefreshBookmarks,
 }: ClusterSuggestionsPanelProps) {
   const [suggestions, setSuggestions] = useState<ClusterSuggestion[]>([]);
-  const [clusterStatus, setClusterStatus] = useState<ClusterProcessingStatus | null>(null);
+  const [clusterStatus, setClusterStatus] =
+    useState<ClusterProcessingStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,7 +52,7 @@ export function ClusterSuggestionsPanel({
   const loadSuggestions = useCallback(async () => {
     try {
       setError(null);
-      const response = await fetch("/api/classification/cluster-suggestions");
+      const response = await fetch(API_CLASSIFICATION.inboxSuggestions);
 
       if (!response.ok) {
         throw new Error("加载聚类建议失败");
@@ -60,7 +63,10 @@ export function ClusterSuggestionsPanel({
       setClusterStatus(data.data?.clusterStatus || null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "加载失败");
-      console.error("Failed to load cluster suggestions:", err);
+      clientLogger.error(
+        { error: err },
+        "[ClusterSuggestionsPanel] Failed to load cluster suggestions",
+      );
     }
   }, []);
 
@@ -128,7 +134,11 @@ export function ClusterSuggestionsPanel({
               {pendingClusterCount} 个书签等待智能分拣
               {nextScheduledAt && (
                 <span className="block mt-1 text-xs">
-                  下次处理时间: {new Date(nextScheduledAt).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}
+                  下次处理时间:{" "}
+                  {new Date(nextScheduledAt).toLocaleTimeString("zh-CN", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
                 </span>
               )}
             </CardDescription>
@@ -140,7 +150,9 @@ export function ClusterSuggestionsPanel({
               disabled={isRefreshing}
               className="gap-2"
             >
-              <RefreshCw className={isRefreshing ? "animate-spin h-4 w-4" : "h-4 w-4"} />
+              <RefreshCw
+                className={isRefreshing ? "animate-spin h-4 w-4" : "h-4 w-4"}
+              />
               刷新状态
             </Button>
           </CardContent>
@@ -176,7 +188,10 @@ export function ClusterSuggestionsPanel({
           <div className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-emerald-500" />
             <CardTitle className="text-lg">AI 智能分拣建议</CardTitle>
-            <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300">
+            <Badge
+              variant="secondary"
+              className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300"
+            >
               {suggestions.length} 个待确认
             </Badge>
           </div>
@@ -186,7 +201,9 @@ export function ClusterSuggestionsPanel({
             onClick={handleRefresh}
             disabled={isRefreshing}
           >
-            <RefreshCw className={isRefreshing ? "animate-spin h-4 w-4" : "h-4 w-4"} />
+            <RefreshCw
+              className={isRefreshing ? "animate-spin h-4 w-4" : "h-4 w-4"}
+            />
           </Button>
         </div>
         <CardDescription>
@@ -213,7 +230,9 @@ export function ClusterSuggestionsPanel({
             <ClusterSuggestionCard
               key={suggestion.id}
               suggestion={suggestion}
-              onConfirmed={(folderId, folderName) => handleConfirmed(folderId, folderName)}
+              onConfirmed={(folderId, folderName) =>
+                handleConfirmed(folderId, folderName)
+              }
               onRejected={() => handleRejected(suggestion.id)}
             />
           ))}

@@ -16,6 +16,8 @@ import {
 import { InterestSelector } from "./interest-selector";
 import { toast } from "sonner";
 import type { PresetInterestId } from "@/lib/classification";
+import { clientLogger } from "@/lib/client-logger";
+import { API_CLASSIFICATION } from "@/lib/constants/api-paths";
 
 interface OnboardingDialogProps {
   open: boolean;
@@ -37,7 +39,7 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
 
     setIsLoading(true);
     try {
-      const response = await fetch("/api/classification/interests", {
+      const response = await fetch(API_CLASSIFICATION.interests, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -57,7 +59,10 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
       toast.success(`已创建 ${folderCount} 个文件夹，开始使用吧！`);
       onComplete();
     } catch (error) {
-      console.error("Failed to save interests:", error);
+      clientLogger.error(
+        { error },
+        "[OnboardingDialog] Failed to save interests",
+      );
       toast.error("保存失败，请重试");
     } finally {
       setIsLoading(false);
@@ -69,7 +74,7 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
     setIsLoading(true);
     try {
       // 标记已完成引导（不创建文件夹）
-      await fetch("/api/classification/interests", {
+      await fetch(API_CLASSIFICATION.interests, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -81,7 +86,10 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
       toast.info("已跳过引导，你可以在设置中随时配置兴趣领域");
       onComplete();
     } catch (error) {
-      console.error("Failed to skip onboarding:", error);
+      clientLogger.error(
+        { error },
+        "[OnboardingDialog] Failed to skip onboarding",
+      );
       // 即使失败也继续
       onComplete();
     } finally {

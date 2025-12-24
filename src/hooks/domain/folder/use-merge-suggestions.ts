@@ -5,6 +5,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { toast } from "sonner";
+import { clientLogger } from "@/lib/client-logger";
 
 interface FolderForMerge {
   id: number;
@@ -61,7 +62,7 @@ export function useMergeSuggestions(options: UseMergeSuggestionsOptions = {}) {
     } catch (err) {
       const message = err instanceof Error ? err.message : "获取合并建议失败";
       setError(message);
-      console.error("[useMergeSuggestions] fetch error:", err);
+      clientLogger.error({ err }, "[useMergeSuggestions] fetch error");
     } finally {
       setIsLoading(false);
     }
@@ -105,7 +106,7 @@ export function useMergeSuggestions(options: UseMergeSuggestionsOptions = {}) {
       } catch (err) {
         const message = err instanceof Error ? err.message : "合并失败";
         toast.error(message);
-        console.error("[useMergeSuggestions] execute error:", err);
+        clientLogger.error({ err }, "[useMergeSuggestions] execute error");
         return { success: false, message };
       } finally {
         setIsProcessing(false);
@@ -125,7 +126,7 @@ export function useMergeSuggestions(options: UseMergeSuggestionsOptions = {}) {
         toast.success("已忽略该建议");
         return true;
       } catch (err) {
-        console.error("[useMergeSuggestions] dismiss error:", err);
+        clientLogger.error({ err }, "[useMergeSuggestions] dismiss error");
         return false;
       }
     },

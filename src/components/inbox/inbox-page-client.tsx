@@ -50,6 +50,7 @@ import { useConfirmations } from "@/hooks/use-confirmations";
 import { cn } from "@/lib/utils";
 import { dataCache } from "@/lib/cache";
 import type { Bookmark } from "@/types/supabase";
+import { API_CLASSIFICATION } from "@/lib/constants/api-paths";
 
 // 扩展的书签类型
 type BookmarkWithFolder = Bookmark & {
@@ -179,9 +180,7 @@ export function InboxPageClient({
 
     try {
       // 1. 获取整理建议（带重试）
-      const analysisResponse = await fetchWithRetry(
-        "/api/classification/inbox",
-      );
+      const analysisResponse = await fetchWithRetry(API_CLASSIFICATION.inbox);
       if (!analysisResponse.ok) {
         throw new Error("获取整理建议失败");
       }
@@ -200,7 +199,7 @@ export function InboxPageClient({
         suggestions,
         async (suggestion: { id: number }) => {
           const response = await fetchWithRetry(
-            "/api/classification/inbox",
+            API_CLASSIFICATION.inbox,
             {
               method: "POST",
               headers: { "Content-Type": "application/json" },

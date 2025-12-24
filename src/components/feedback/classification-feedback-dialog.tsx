@@ -35,6 +35,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { clientLogger } from "@/lib/client-logger";
+import { API_CLASSIFICATION } from "@/lib/constants/api-paths";
 
 // 反馈类型定义
 const FEEDBACK_TYPES = [
@@ -118,7 +120,7 @@ export function ClassificationFeedbackDialog({
 
     setIsSubmitting(true);
     try {
-      const response = await fetch("/api/classification/feedback", {
+      const response = await fetch(API_CLASSIFICATION.feedback, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -141,7 +143,7 @@ export function ClassificationFeedbackDialog({
       onFeedbackSubmitted?.();
     } catch (error) {
       toast.error("提交反馈失败，请重试");
-      console.error("Failed to submit feedback:", error);
+      clientLogger.error({ error }, "Failed to submit feedback");
     } finally {
       setIsSubmitting(false);
     }

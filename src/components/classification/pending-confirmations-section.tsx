@@ -33,6 +33,8 @@ import {
 import { cn } from "@/lib/utils";
 import { fetchWithRetry } from "@/lib/utils/fetch-with-retry";
 import { useFolders } from "@/hooks/use-folders";
+import { clientLogger } from "@/lib/client-logger";
+import { API_CLASSIFICATION } from "@/lib/constants/api-paths";
 
 // ============================================================================
 // 类型定义
@@ -95,7 +97,7 @@ export function PendingConfirmationsSection({
     try {
       // 使用 fetchWithRetry 处理偶发的 401 错误
       const confirmationsRes = await fetchWithRetry(
-        "/api/classification/confirmations?status=pending",
+        API_CLASSIFICATION.confirmations + "?status=pending",
         undefined,
         { requestId: "confirmations-list" },
       );
@@ -126,7 +128,7 @@ export function PendingConfirmationsSection({
         setMessages(transformedMessages);
       }
     } catch (error) {
-      console.error("Failed to fetch confirmations:", error);
+      clientLogger.error({ error }, "Failed to fetch confirmations");
     } finally {
       setIsLoading(false);
     }
@@ -141,7 +143,7 @@ export function PendingConfirmationsSection({
   const handleConfirm = async (messageId: number) => {
     try {
       const res = await fetchWithRetry(
-        `/api/classification/confirmations/${messageId}`,
+        API_CLASSIFICATION.confirmationDetail(messageId.toString()),
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -163,7 +165,7 @@ export function PendingConfirmationsSection({
   const handleReject = async (messageId: number) => {
     try {
       const res = await fetchWithRetry(
-        `/api/classification/confirmations/${messageId}`,
+        API_CLASSIFICATION.confirmationDetail(messageId.toString()),
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -185,7 +187,7 @@ export function PendingConfirmationsSection({
   const handleModify = async (messageId: number, newFolderId: number) => {
     try {
       const res = await fetchWithRetry(
-        `/api/classification/confirmations/${messageId}`,
+        API_CLASSIFICATION.confirmationDetail(messageId.toString()),
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -213,7 +215,7 @@ export function PendingConfirmationsSection({
 
     try {
       const res = await fetchWithRetry(
-        "/api/classification/confirmations/batch",
+        API_CLASSIFICATION.confirmationsBatch,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -247,7 +249,7 @@ export function PendingConfirmationsSection({
 
     try {
       const res = await fetchWithRetry(
-        "/api/classification/confirmations/batch",
+        API_CLASSIFICATION.confirmationsBatch,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

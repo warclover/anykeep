@@ -19,6 +19,8 @@ import { Heart, Check, Loader2, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { PresetInterestId } from "@/lib/classification";
+import { clientLogger } from "@/lib/client-logger";
+import { API_CLASSIFICATION } from "@/lib/constants/api-paths";
 
 // 从 InterestSelector 复制的类别定义
 const INTEREST_CATEGORIES = [
@@ -64,7 +66,7 @@ export function InterestSettingsCard({ className }: InterestSettingsCardProps) {
   const loadInterests = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await fetch("/api/classification/interests");
+      const response = await fetch(API_CLASSIFICATION.interests);
       if (!response.ok) throw new Error("Failed to load interests");
 
       const data = await response.json();
@@ -77,7 +79,10 @@ export function InterestSettingsCard({ className }: InterestSettingsCardProps) {
       setHasChanges(false);
     } catch (error) {
       toast.error("加载兴趣配置失败");
-      console.error("Failed to load interests:", error);
+      clientLogger.error(
+        { error },
+        "[InterestSettingsCard] Failed to load interests",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -110,7 +115,7 @@ export function InterestSettingsCard({ className }: InterestSettingsCardProps) {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const response = await fetch("/api/classification/interests", {
+      const response = await fetch(API_CLASSIFICATION.interests, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ presetInterests: selectedInterests }),
@@ -123,7 +128,10 @@ export function InterestSettingsCard({ className }: InterestSettingsCardProps) {
       toast.success("兴趣设置已保存");
     } catch (error) {
       toast.error("保存失败，请重试");
-      console.error("Failed to save interests:", error);
+      clientLogger.error(
+        { error },
+        "[InterestSettingsCard] Failed to save interests",
+      );
     } finally {
       setIsSaving(false);
     }

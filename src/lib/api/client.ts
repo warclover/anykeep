@@ -11,6 +11,7 @@
  */
 
 import { fetchJsonWithAuth } from "./fetch-with-auth";
+import { API_CLASSIFICATION } from "@/lib/constants/api-paths";
 import type { Bookmark, Folder } from "@/types/supabase";
 import type { SmartListClient } from "@/types/smart-list";
 
@@ -461,7 +462,7 @@ export const apiClient = {
       bookmarkId: number,
     ): Promise<{ folderId: number | null; confidence: number }> => {
       return request<{ folderId: number | null; confidence: number }>(
-        "/api/classification/classify",
+        API_CLASSIFICATION.classify,
         {
           method: "POST",
           body: JSON.stringify({ bookmarkId }),

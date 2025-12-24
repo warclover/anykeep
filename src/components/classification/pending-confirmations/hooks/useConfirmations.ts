@@ -23,6 +23,7 @@ import type {
   ApiConfirmation,
   UseConfirmationsReturn,
 } from "../types";
+import { API_CLASSIFICATION } from "@/lib/constants/api-paths";
 
 // ============================================================================
 // 数据转换
@@ -86,7 +87,7 @@ export function useConfirmations(): UseConfirmationsReturn {
 
       const [confirmationsRes, foldersRes] = await Promise.all([
         fetchWithRetry(
-          "/api/classification/confirmations?status=pending",
+          API_CLASSIFICATION.confirmations + "?status=pending",
           undefined,
           { requestId: "confirmations-list-v2" },
         ),
@@ -134,7 +135,7 @@ export function useConfirmations(): UseConfirmationsReturn {
   const confirm = useCallback(async (messageId: number) => {
     try {
       const res = await fetchWithRetry(
-        `/api/classification/confirmations/${messageId}`,
+        API_CLASSIFICATION.confirmationDetail(messageId.toString()),
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -158,7 +159,7 @@ export function useConfirmations(): UseConfirmationsReturn {
   const reject = useCallback(async (messageId: number) => {
     try {
       const res = await fetchWithRetry(
-        `/api/classification/confirmations/${messageId}`,
+        API_CLASSIFICATION.confirmationDetail(messageId.toString()),
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -181,7 +182,7 @@ export function useConfirmations(): UseConfirmationsReturn {
   const modify = useCallback(async (messageId: number, newFolderId: number) => {
     try {
       const res = await fetchWithRetry(
-        `/api/classification/confirmations/${messageId}`,
+        API_CLASSIFICATION.confirmationDetail(messageId.toString()),
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -215,7 +216,7 @@ export function useConfirmations(): UseConfirmationsReturn {
 
       try {
         const res = await fetchWithRetry(
-          "/api/classification/confirmations/batch",
+          API_CLASSIFICATION.confirmationsBatch,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -255,7 +256,7 @@ export function useConfirmations(): UseConfirmationsReturn {
 
       try {
         const res = await fetchWithRetry(
-          "/api/classification/confirmations/batch",
+          API_CLASSIFICATION.confirmationsBatch,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },

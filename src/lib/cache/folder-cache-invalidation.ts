@@ -18,6 +18,7 @@
 import { dataCache } from "./data-cache";
 import { CACHE_KEYS } from "./cache-config";
 import { clearFoldersCache } from "@/lib/folders/cache";
+import { clientLogger } from "@/lib/client-logger";
 
 // 缓存失效事件类型
 type CacheInvalidationListener = () => void;
@@ -68,7 +69,7 @@ export function invalidateFolderCache(userId?: string): void {
     try {
       listener();
     } catch (error) {
-      console.error("[FolderCacheInvalidation] Listener error:", error);
+      clientLogger.error({ error }, "[FolderCacheInvalidation] Listener error");
     }
   });
 }

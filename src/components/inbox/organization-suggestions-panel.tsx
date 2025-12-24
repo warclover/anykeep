@@ -26,6 +26,8 @@ import {
 import { OrganizationSuggestionCard } from "./organization-suggestion-card";
 import { ClusterProcessingStatusCard } from "./cluster-processing-status";
 import type { OrganizationAnalysis } from "@/lib/classification";
+import { clientLogger } from "@/lib/client-logger";
+import { API_CLASSIFICATION } from "@/lib/constants/api-paths";
 
 interface OrganizationSuggestionsPanelProps {
   /** 初始分析数据 */
@@ -57,7 +59,7 @@ export function OrganizationSuggestionsPanel({
   const loadAnalysis = useCallback(async () => {
     try {
       setError(null);
-      const response = await fetch("/api/classification/inbox");
+      const response = await fetch(API_CLASSIFICATION.inbox);
       if (!response.ok) {
         throw new Error("Failed to load analysis");
       }
@@ -65,7 +67,10 @@ export function OrganizationSuggestionsPanel({
       setAnalysis(data.data);
     } catch (err) {
       setError("加载整理建议失败");
-      console.error("Failed to load analysis:", err);
+      clientLogger.error(
+        { error: err },
+        "[OrganizationSuggestionsPanel] Failed to load analysis",
+      );
     }
   }, []);
 
@@ -105,7 +110,7 @@ export function OrganizationSuggestionsPanel({
     setSuccessMessage(null);
 
     try {
-      const response = await fetch("/api/classification/inbox", {
+      const response = await fetch(API_CLASSIFICATION.inbox, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ suggestionId }),
@@ -131,7 +136,10 @@ export function OrganizationSuggestionsPanel({
       onSuggestionApplied?.();
     } catch (err) {
       setError("应用建议失败");
-      console.error("Failed to apply suggestion:", err);
+      clientLogger.error(
+        { error: err },
+        "[OrganizationSuggestionsPanel] Failed to apply suggestion",
+      );
     } finally {
       setProcessingIds((prev) => {
         const next = new Set(prev);
@@ -148,7 +156,7 @@ export function OrganizationSuggestionsPanel({
     setSuccessMessage(null);
 
     try {
-      const response = await fetch("/api/classification/inbox", {
+      const response = await fetch(API_CLASSIFICATION.inbox, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ suggestionId }),
@@ -173,7 +181,10 @@ export function OrganizationSuggestionsPanel({
       setSuccessMessage("已忽略该建议");
     } catch (err) {
       setError("操作失败");
-      console.error("Failed to reject suggestion:", err);
+      clientLogger.error(
+        { error: err },
+        "[OrganizationSuggestionsPanel] Failed to reject suggestion",
+      );
     } finally {
       setProcessingIds((prev) => {
         const next = new Set(prev);

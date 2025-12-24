@@ -21,6 +21,7 @@ import useSWR from "swr";
 import { toast } from "sonner";
 import type { OrganizationAnalysis } from "@/lib/classification";
 import type { ClusterProcessingStatus } from "@/types/supabase";
+import { API_CLASSIFICATION } from "@/lib/constants/api-paths";
 
 // ============================================
 // 类型定义
@@ -64,7 +65,7 @@ interface UseInboxOrganizationResult {
 const REQUEST_TIMEOUT = 8000;
 
 /** SWR 缓存 Key */
-const SWR_KEY = "/api/classification/inbox";
+const SWR_KEY = API_CLASSIFICATION.inbox;
 
 // ============================================
 // Fetcher 函数
@@ -195,7 +196,7 @@ export function useInboxOrganization(
       setIsProcessing(true);
 
       try {
-        const response = await fetch("/api/classification/inbox", {
+        const response = await fetch(API_CLASSIFICATION.inbox, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ suggestionId }),
@@ -241,7 +242,7 @@ export function useInboxOrganization(
       setIsProcessing(true);
 
       try {
-        const response = await fetch("/api/classification/inbox", {
+        const response = await fetch(API_CLASSIFICATION.inbox, {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ suggestionId }),

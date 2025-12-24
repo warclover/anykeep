@@ -31,6 +31,8 @@ import {
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
+import { clientLogger } from "@/lib/client-logger";
+import { API_CLASSIFICATION } from "@/lib/constants/api-paths";
 
 interface SuggestionHistoryItem {
   id: number;
@@ -76,14 +78,16 @@ export function ClassificationHistoryCard({
         params.set("status", filter);
       }
 
-      const response = await fetch(`/api/classification/history?${params}`);
+      const response = await fetch(
+        `${API_CLASSIFICATION.analyticsHistory}&${params}`,
+      );
       if (!response.ok) throw new Error("Failed to load history");
 
       const data = await response.json();
       setItems(data.data?.items || []);
       setStats(data.data?.stats || null);
     } catch (error) {
-      console.error("Failed to load classification history:", error);
+      clientLogger.error({ error }, "Failed to load classification history");
     } finally {
       setIsLoading(false);
     }

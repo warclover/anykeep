@@ -5,6 +5,8 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { toast } from "sonner";
+import { clientLogger } from "@/lib/client-logger";
+import { API_CLASSIFICATION } from "@/lib/constants/api-paths";
 
 // ============================================================================
 // 类型定义
@@ -69,7 +71,7 @@ export function useFolderHealth(options: UseFolderHealthOptions = {}) {
       setIsLoading(true);
       setError(null);
 
-      const response = await fetch("/api/classification/folder-health");
+      const response = await fetch(API_CLASSIFICATION.folderHealth);
 
       if (!response.ok) {
         throw new Error("获取健康报告失败");
@@ -85,7 +87,7 @@ export function useFolderHealth(options: UseFolderHealthOptions = {}) {
     } catch (err) {
       const message = err instanceof Error ? err.message : "获取健康报告失败";
       setError(message);
-      console.error("[useFolderHealth] fetch error:", err);
+      clientLogger.error({ err }, "[useFolderHealth] fetch error");
     } finally {
       setIsLoading(false);
     }
@@ -124,7 +126,7 @@ export function useFolderHealth(options: UseFolderHealthOptions = {}) {
       } catch (err) {
         const message = err instanceof Error ? err.message : "合并失败";
         toast.error(message);
-        console.error("[useFolderHealth] merge error:", err);
+        clientLogger.error({ err }, "[useFolderHealth] merge error");
         return false;
       } finally {
         setIsProcessing(false);
@@ -164,7 +166,7 @@ export function useFolderHealth(options: UseFolderHealthOptions = {}) {
       } catch (err) {
         const message = err instanceof Error ? err.message : "拆分失败";
         toast.error(message);
-        console.error("[useFolderHealth] split error:", err);
+        clientLogger.error({ err }, "[useFolderHealth] split error");
         return false;
       } finally {
         setIsProcessing(false);

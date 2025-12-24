@@ -15,6 +15,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { clientLogger } from "@/lib/client-logger";
+import { API_CLASSIFICATION } from "@/lib/constants/api-paths";
 
 interface ClusterStats {
   totalPending: number;
@@ -41,14 +43,17 @@ export function ClusterAnalysisBanner({
   // 获取聚类统计
   const fetchStats = useCallback(async () => {
     try {
-      const response = await fetch("/api/classification/cluster-stats");
+      const response = await fetch(API_CLASSIFICATION.inboxStats);
       if (response.ok) {
         const data = await response.json();
         setStats(data.data);
         onStatsLoaded?.(data.data);
       }
     } catch (error) {
-      console.error("Failed to fetch cluster stats:", error);
+      clientLogger.error(
+        { error },
+        "[ClusterAnalysisBanner] Failed to fetch cluster stats",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -121,7 +126,8 @@ export function ClusterAnalysisBanner({
                     </TooltipTrigger>
                     <TooltipContent side="top" className="max-w-[280px]">
                       <p className="text-xs">
-                        低置信度的书签会进入观察池，AI 会等待相似内容积累后一起建议创建新文件夹。
+                        低置信度的书签会进入观察池，AI
+                        会等待相似内容积累后一起建议创建新文件夹。
                         这样可以提供更精准的分类建议。
                       </p>
                     </TooltipContent>
@@ -173,7 +179,8 @@ export function ClusterAnalysisBanner({
                     </div>
 
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                      当聚类达到 3 个或更多相似书签时，AI 会自动建议创建新文件夹。
+                      当聚类达到 3 个或更多相似书签时，AI
+                      会自动建议创建新文件夹。
                     </p>
                   </div>
                 )}

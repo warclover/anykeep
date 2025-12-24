@@ -5,6 +5,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { toast } from "sonner";
+import { clientLogger } from "@/lib/client-logger";
 
 interface SubCluster {
   suggestedName: string;
@@ -65,7 +66,7 @@ export function useSplitSuggestions(options: UseSplitSuggestionsOptions = {}) {
     } catch (err) {
       const message = err instanceof Error ? err.message : "获取分拆建议失败";
       setError(message);
-      console.error("[useSplitSuggestions] fetch error:", err);
+      clientLogger.error({ err }, "[useSplitSuggestions] fetch error");
     } finally {
       setIsLoading(false);
     }
@@ -107,7 +108,7 @@ export function useSplitSuggestions(options: UseSplitSuggestionsOptions = {}) {
       } catch (err) {
         const message = err instanceof Error ? err.message : "分拆失败";
         toast.error(message);
-        console.error("[useSplitSuggestions] execute error:", err);
+        clientLogger.error({ err }, "[useSplitSuggestions] execute error");
         return { success: false, message };
       } finally {
         setIsProcessing(false);
@@ -127,7 +128,7 @@ export function useSplitSuggestions(options: UseSplitSuggestionsOptions = {}) {
         toast.success("已忽略该建议");
         return true;
       } catch (err) {
-        console.error("[useSplitSuggestions] dismiss error:", err);
+        clientLogger.error({ err }, "[useSplitSuggestions] dismiss error");
         return false;
       }
     },

@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { API_CLASSIFICATION } from "@/lib/constants/api-paths";
 
 interface ClusterSuggestion {
   id: number;
@@ -69,12 +70,15 @@ export function ClusterSuggestionCard({
   const handleConfirm = async () => {
     setIsConfirming(true);
     try {
-      const response = await fetch("/api/classification/cluster-confirm", {
+      const response = await fetch(API_CLASSIFICATION.clusterConfirm, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           suggestionId: suggestion.id,
-          customFolderName: customName !== suggestion.suggestedFolderName ? customName : undefined,
+          customFolderName:
+            customName !== suggestion.suggestedFolderName
+              ? customName
+              : undefined,
         }),
       });
 
@@ -98,7 +102,7 @@ export function ClusterSuggestionCard({
   const handleReject = async () => {
     setIsRejecting(true);
     try {
-      const response = await fetch("/api/classification/cluster-confirm", {
+      const response = await fetch(API_CLASSIFICATION.clusterConfirm, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -147,7 +151,8 @@ export function ClusterSuggestionCard({
                 </Badge>
               </div>
               <CardDescription className="text-sm">
-                {suggestion.bookmarkIds.length} 个书签内容相似，建议创建新文件夹归类
+                {suggestion.bookmarkIds.length}{" "}
+                个书签内容相似，建议创建新文件夹归类
               </CardDescription>
             </div>
           </div>
@@ -222,9 +227,13 @@ export function ClusterSuggestionCard({
                   📄 {title}
                 </li>
               ))}
-              {suggestion.bookmarkIds.length > suggestion.sampleTitles.length && (
+              {suggestion.bookmarkIds.length >
+                suggestion.sampleTitles.length && (
                 <li className="text-sm text-muted-foreground pl-2">
-                  ...还有 {suggestion.bookmarkIds.length - suggestion.sampleTitles.length} 个
+                  ...还有{" "}
+                  {suggestion.bookmarkIds.length -
+                    suggestion.sampleTitles.length}{" "}
+                  个
                 </li>
               )}
             </ul>

@@ -72,6 +72,24 @@ export const clientLogger = {
     // 错误日志在生产环境也输出，便于问题追踪
     console.error(formatMessage("error", context, message));
   },
+
+  /**
+   * 开始一个控制台分组（仅开发环境）
+   */
+  group(label: string): void {
+    if (isDev) {
+      console.group(label);
+    }
+  },
+
+  /**
+   * 结束当前的控制台分组（仅开发环境）
+   */
+  groupEnd(): void {
+    if (isDev) {
+      console.groupEnd();
+    }
+  },
 };
 /* eslint-enable no-console */
 

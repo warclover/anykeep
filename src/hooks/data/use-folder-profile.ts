@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
+import { API_CLASSIFICATION } from "@/lib/constants/api-paths";
 
 /**
  * 文件夹画像数据
@@ -85,7 +86,7 @@ export function useFolderProfile(
 
     try {
       const response = await fetch(
-        `/api/classification/folders/profiles?folderId=${folderId}`,
+        `${API_CLASSIFICATION.foldersProfiles}?folderId=${folderId}`,
       );
 
       if (!response.ok) {
@@ -132,7 +133,7 @@ export function useFolderProfile(
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
     try {
-      const response = await fetch("/api/classification/folders/profiles", {
+      const response = await fetch(API_CLASSIFICATION.foldersProfiles, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ folderId }),
@@ -190,7 +191,7 @@ export function useFolderProfiles(folderIds: number[]): {
     setError(null);
 
     try {
-      const response = await fetch("/api/classification/folders/profiles");
+      const response = await fetch(API_CLASSIFICATION.foldersProfiles);
 
       if (!response.ok) {
         throw new Error("获取画像列表失败");

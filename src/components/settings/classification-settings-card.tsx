@@ -53,6 +53,8 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { clientLogger } from "@/lib/client-logger";
+import { API_CLASSIFICATION } from "@/lib/constants/api-paths";
 
 // ============================================================================
 // 类型定义
@@ -180,7 +182,7 @@ export function ClassificationSettingsCard({
   const loadSettings = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await fetch("/api/classification/settings");
+      const response = await fetch(API_CLASSIFICATION.settings);
       if (!response.ok) throw new Error("Failed to load settings");
 
       const data = await response.json();
@@ -194,7 +196,10 @@ export function ClassificationSettingsCard({
       setHasChanges(false);
     } catch (error) {
       // 使用默认设置
-      console.error("Failed to load classification settings:", error);
+      clientLogger.error(
+        { error },
+        "[ClassificationSettingsCard] Failed to load classification settings",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -243,7 +248,7 @@ export function ClassificationSettingsCard({
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const response = await fetch("/api/classification/settings", {
+      const response = await fetch(API_CLASSIFICATION.settings, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(settings),
@@ -256,7 +261,10 @@ export function ClassificationSettingsCard({
       toast.success("分类设置已保存");
     } catch (error) {
       toast.error("保存失败，请重试");
-      console.error("Failed to save classification settings:", error);
+      clientLogger.error(
+        { error },
+        "[ClassificationSettingsCard] Failed to save classification settings",
+      );
     } finally {
       setIsSaving(false);
     }

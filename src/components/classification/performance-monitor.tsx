@@ -38,6 +38,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { API_CLASSIFICATION } from "@/lib/constants/api-paths";
 
 // ============================================================================
 // 类型定义
@@ -191,7 +192,7 @@ export function PerformanceMonitor({
 
     try {
       const res = await fetch(
-        "/api/classification/analytics?type=overview,learning,cache,health",
+        API_CLASSIFICATION.analytics + "?type=overview,learning,cache,health",
       );
 
       if (!res.ok) {

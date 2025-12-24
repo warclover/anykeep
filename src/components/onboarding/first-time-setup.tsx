@@ -41,6 +41,8 @@ import {
 } from "lucide-react";
 import type { TrustMode } from "@/types/trust-mode";
 import type { PresetInterestId } from "@/lib/classification";
+import { clientLogger } from "@/lib/client-logger";
+import { API_CLASSIFICATION } from "@/lib/constants/api-paths";
 
 // ============================================================================
 // 类型定义
@@ -249,7 +251,7 @@ export function FirstTimeSetup({ open, onComplete }: FirstTimeSetupProps) {
     // 保存兴趣选择
     if (selectedInterests.length > 0) {
       try {
-        await fetch("/api/classification/interests", {
+        await fetch(API_CLASSIFICATION.interests, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -258,7 +260,10 @@ export function FirstTimeSetup({ open, onComplete }: FirstTimeSetupProps) {
           }),
         });
       } catch (error) {
-        console.error("Failed to save interests:", error);
+        clientLogger.error(
+          { error },
+          "[FirstTimeSetup] Failed to save interests",
+        );
         // 继续流程，不阻塞
       }
     }
@@ -285,7 +290,10 @@ export function FirstTimeSetup({ open, onComplete }: FirstTimeSetupProps) {
       toast.success("设置完成，开始使用吧！");
       onComplete();
     } catch (error) {
-      console.error("Failed to complete onboarding:", error);
+      clientLogger.error(
+        { error },
+        "[FirstTimeSetup] Failed to complete onboarding",
+      );
       // 即使失败也继续
       onComplete();
     } finally {

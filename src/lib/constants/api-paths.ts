@@ -101,26 +101,62 @@ export const API_BROWSER_BOOKMARK = {
 export const API_CLASSIFICATION = {
   /** 分类原因 */
   reason: (bookmarkId: number) => `/api/classification/${bookmarkId}/reason`,
-  /** A/B 测试 */
-  abTest: "/api/classification/ab-test",
-  /** 分析统计 */
+
+  // =====================================================
+  // 合并后的主要端点 (Phase 1.1)
+  // =====================================================
+
+  /** 分析统计（合并后主端点，支持 type 参数） */
   analytics: "/api/classification/analytics",
+  /** 分析统计 - 概览 */
+  analyticsOverview: "/api/classification/analytics?type=overview",
+  /** 分析统计 - 偏好 */
+  analyticsPreferences: "/api/classification/analytics?type=preferences",
+  /** 分析统计 - 来源 */
+  analyticsSources: "/api/classification/analytics?type=sources",
+  /** 分析统计 - 健康 */
+  analyticsHealth: "/api/classification/analytics?type=health",
+  /** 分析统计 - 趋势 */
+  analyticsTrends: "/api/classification/analytics?type=trends",
+  /** 分析统计 - 周期统计（原 /statistics） */
+  analyticsStatistics: "/api/classification/analytics?type=statistics",
+  /** 分析统计 - 历史（原 /history） */
+  analyticsHistory: "/api/classification/analytics?type=history",
+  /** 分析统计 - A/B测试（原 /ab-test） */
+  analyticsAbtest: "/api/classification/analytics?type=abtest",
+
+  /** 调试信息（合并后主端点，支持 type 参数） */
+  debug: "/api/classification/debug",
+  /** 调试 - 健康检查 */
+  debugHealth: "/api/classification/debug?type=health",
+  /** 调试 - 集成测试（原 /test） */
+  debugTest: "/api/classification/debug?type=test",
+  /** 调试 - 追踪（原 /trace） */
+  debugTrace: "/api/classification/debug?type=trace",
+
+  /** 收件箱（合并后主端点，支持 type 参数） */
+  inbox: "/api/classification/inbox",
+  /** 收件箱 - 分析（默认） */
+  inboxAnalyze: "/api/classification/inbox?type=analyze",
+  /** 收件箱 - 聚类建议（原 /cluster-suggestions） */
+  inboxSuggestions: "/api/classification/inbox?type=suggestions",
+  /** 收件箱 - 聚类统计（原 /cluster-stats） */
+  inboxStats: "/api/classification/inbox?type=stats",
+
+  // =====================================================
+  // 其他端点
+  // =====================================================
+
   /** 执行分类 */
   classify: "/api/classification/classify",
   /** 聚类确认 */
   clusterConfirm: "/api/classification/cluster-confirm",
-  /** 聚类统计 */
-  clusterStats: "/api/classification/cluster-stats",
-  /** 聚类建议 */
-  clusterSuggestions: "/api/classification/cluster-suggestions",
   /** 确认列表 */
   confirmations: "/api/classification/confirmations",
   /** 确认详情 */
   confirmationDetail: (id: string) => `/api/classification/confirmations/${id}`,
   /** 批量确认 */
   confirmationsBatch: "/api/classification/confirmations/batch",
-  /** 调试信息 */
-  debug: "/api/classification/debug",
   /** 反馈 */
   feedback: "/api/classification/feedback",
   /** 文件夹健康度 */
@@ -134,10 +170,6 @@ export const API_CLASSIFICATION = {
     `/api/classification/folders/profiles/${id}`,
   /** 文件夹画像摘要 */
   folderProfilesSummary: "/api/classification/folders/profiles/summary",
-  /** 分类历史 */
-  history: "/api/classification/history",
-  /** 收件箱 */
-  inbox: "/api/classification/inbox",
   /** 兴趣画像 */
   interestProfile: "/api/classification/interest-profile",
   /** 兴趣分析 */
@@ -155,11 +187,46 @@ export const API_CLASSIFICATION = {
     `/api/classification/source-profiles/${id}`,
   /** 分类阶段 */
   stage: "/api/classification/stage",
-  /** 统计信息 */
+
+  // =====================================================
+  // 已废弃路径（保留用于向后兼容，通过 rewrite 重定向）
+  // @deprecated 请使用合并后的端点
+  // =====================================================
+
+  /**
+   * @deprecated 使用 analyticsAbtest 代替
+   * 重定向到 /api/classification/analytics?type=abtest
+   */
+  abTest: "/api/classification/ab-test",
+  /**
+   * @deprecated 使用 inboxStats 代替
+   * 重定向到 /api/classification/inbox?type=stats
+   */
+  clusterStats: "/api/classification/cluster-stats",
+  /**
+   * @deprecated 使用 inboxSuggestions 代替
+   * 重定向到 /api/classification/inbox?type=suggestions
+   */
+  clusterSuggestions: "/api/classification/cluster-suggestions",
+  /**
+   * @deprecated 使用 analyticsHistory 代替
+   * 重定向到 /api/classification/analytics?type=history
+   */
+  history: "/api/classification/history",
+  /**
+   * @deprecated 使用 analyticsStatistics 代替
+   * 重定向到 /api/classification/analytics?type=statistics
+   */
   statistics: "/api/classification/statistics",
-  /** 测试 */
+  /**
+   * @deprecated 使用 debugTest 代替
+   * 重定向到 /api/classification/debug?type=test
+   */
   test: "/api/classification/test",
-  /** 追踪 */
+  /**
+   * @deprecated 使用 debugTrace 代替
+   * 重定向到 /api/classification/debug?type=trace
+   */
   trace: "/api/classification/trace",
 } as const;
 
