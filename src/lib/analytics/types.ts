@@ -144,6 +144,42 @@ export interface AIProcessingStats {
 }
 
 // ============================================================================
+// AI Skills 执行统计
+// ============================================================================
+
+/** 单个 Skill 使用统计 */
+export interface SkillUsageStats {
+  /** Skill ID */
+  skillId: string;
+  /** 执行次数 */
+  executionCount: number;
+  /** 成功率 (0-100) */
+  successRate: number;
+  /** 平均延迟 (ms) */
+  avgLatencyMs: number;
+}
+
+/** AI Skills 整体统计 */
+export interface SkillsStats {
+  /** 总执行次数 */
+  totalExecutions: number;
+  /** 成功次数 */
+  successCount: number;
+  /** 错误次数 */
+  errorCount: number;
+  /** 整体成功率 (0-100) */
+  successRate: number;
+  /** 平均延迟 (ms) */
+  avgLatencyMs: number;
+  /** Token 消耗总量 */
+  totalTokensUsed: number;
+  /** 按 Skill 分组统计 */
+  bySkill: SkillUsageStats[];
+  /** 统计周期（天数） */
+  periodDays: number;
+}
+
+// ============================================================================
 // 完整分析数据
 // ============================================================================
 
@@ -164,6 +200,8 @@ export interface AnalyticsData {
   comparison?: PeriodComparison;
   /** AI 处理统计（可选） */
   aiStats?: AIProcessingStats;
+  /** AI Skills 执行统计（可选） */
+  skillsStats?: SkillsStats;
   /** 数据生成时间 */
   generatedAt: string;
 }
@@ -185,6 +223,8 @@ export interface AnalyticsConfig {
   includeComparison: boolean;
   /** 是否包含 AI 统计 */
   includeAIStats: boolean;
+  /** 是否包含 AI Skills 统计 */
+  includeSkillsStats: boolean;
 }
 
 export const DEFAULT_ANALYTICS_CONFIG: AnalyticsConfig = {
@@ -194,6 +234,7 @@ export const DEFAULT_ANALYTICS_CONFIG: AnalyticsConfig = {
   mergeBrowserPlatforms: true,
   includeComparison: false,
   includeAIStats: false,
+  includeSkillsStats: false,
 };
 
 // ============================================================================

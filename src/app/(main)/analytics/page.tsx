@@ -27,6 +27,7 @@ async function fetchAnalyticsData(
       mergeBrowserPlatforms: true,
       includeComparison: true,
       includeAIStats: true,
+      includeSkillsStats: true,
     });
     return { data: analyticsData, error: null };
   } catch (error) {

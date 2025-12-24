@@ -46,6 +46,7 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Minus,
+  Zap,
 } from "lucide-react";
 import { ClassificationHistoryCard } from "./classification-history-card";
 import { useRouter } from "next/navigation";
@@ -76,6 +77,33 @@ const FOLDER_COLORS = [
   "#6366f1",
   "#84cc16",
 ];
+
+// Skill 名称映射
+const SKILL_NAME_MAP: Record<string, string> = {
+  knowledge_review: "知识回顾",
+  data_export: "数据导出",
+  insight_report: "洞察报告",
+  batch_organize: "智能整理",
+  search: "智能搜索",
+  classify: "智能分类",
+  tag: "标签生成",
+  summary: "摘要生成",
+};
+
+/**
+ * 格式化 Skill ID 为可读名称
+ */
+function formatSkillName(skillId: string): string {
+  // 优先使用映射表
+  if (SKILL_NAME_MAP[skillId]) {
+    return SKILL_NAME_MAP[skillId];
+  }
+  // 将 snake_case 转换为可读格式
+  return skillId
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
 
 // Tooltip 类型定义
 interface TooltipPayload {
@@ -239,6 +267,7 @@ export function AnalyticsPageClient({ data, error }: AnalyticsPageClientProps) {
     typeData,
     comparison,
     aiStats,
+    skillsStats,
   } = data;
 
   // 时间范围选择状态
@@ -286,6 +315,7 @@ export function AnalyticsPageClient({ data, error }: AnalyticsPageClientProps) {
       typeData,
       comparison,
       aiStats,
+      skillsStats,
     };
 
     const blob = new Blob([JSON.stringify(exportData, null, 2)], {
@@ -421,6 +451,104 @@ export function AnalyticsPageClient({ data, error }: AnalyticsPageClientProps) {
                         标签生成
                       </p>
                     </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* AI Skills 执行统计卡片 */}
+            {skillsStats && skillsStats.totalExecutions > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Zap className="size-5 text-amber-600 dark:text-amber-400" />
+                    AI Skills 执行统计
+                    <span className="text-sm font-normal text-gray-500 dark:text-gray-400">
+                      （近 {skillsStats.periodDays} 天）
+                    </span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {/* 整体统计 */}
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                      <div className="text-center p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                        <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                          {skillsStats.totalExecutions}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          总执行次数
+                        </p>
+                      </div>
+                      <div className="text-center p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                        <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                          {skillsStats.successRate}%
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          成功率
+                        </p>
+                      </div>
+                      <div className="text-center p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                        <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                          {skillsStats.avgLatencyMs > 1000
+                            ? `${(skillsStats.avgLatencyMs / 1000).toFixed(1)}s`
+                            : `${skillsStats.avgLatencyMs}ms`}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          平均延迟
+                        </p>
+                      </div>
+                      <div className="text-center p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                        <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                          {skillsStats.totalTokensUsed > 1000
+                            ? `${(skillsStats.totalTokensUsed / 1000).toFixed(1)}K`
+                            : skillsStats.totalTokensUsed}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          Token 消耗
+                        </p>
+                      </div>
+                      <div className="text-center p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                        <p className="text-2xl font-bold text-red-600 dark:text-red-400">
+                          {skillsStats.errorCount}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          错误次数
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* 按 Skill 分组统计 */}
+                    {skillsStats.bySkill.length > 0 && (
+                      <div className="mt-4">
+                        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                          各 Skill 使用情况
+                        </h4>
+                        <div className="space-y-2">
+                          {skillsStats.bySkill.slice(0, 5).map((skill) => (
+                            <div
+                              key={skill.skillId}
+                              className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-800/50 rounded-lg"
+                            >
+                              <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                {formatSkillName(skill.skillId)}
+                              </span>
+                              <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
+                                <span>{skill.executionCount} 次</span>
+                                <span className="text-green-600 dark:text-green-400">
+                                  {skill.successRate}% 成功
+                                </span>
+                                <span>
+                                  {skill.avgLatencyMs > 1000
+                                    ? `${(skill.avgLatencyMs / 1000).toFixed(1)}s`
+                                    : `${skill.avgLatencyMs}ms`}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>

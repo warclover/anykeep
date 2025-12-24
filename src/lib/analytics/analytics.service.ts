@@ -27,6 +27,7 @@ import type {
   PeriodComparison,
   TimeComparison,
   AIProcessingStats,
+  SkillsStats,
   AnalyticsData,
   AnalyticsConfig,
 } from "./types";
@@ -86,9 +87,10 @@ export class AnalyticsService {
     );
 
     // 并行获取其他数据
-    const [folders, classificationStats] = await Promise.all([
+    const [folders, classificationStats, skillsStats] = await Promise.all([
       this.fetchFolders(),
       this.config.includeAIStats ? this.fetchClassificationStats() : null,
+      this.config.includeSkillsStats ? this.fetchSkillsStats() : null,
     ]);
 
     // 计算各项统计
@@ -122,6 +124,11 @@ export class AnalyticsService {
     // 可选：AI 处理统计
     if (this.config.includeAIStats && classificationStats) {
       result.aiStats = classificationStats;
+    }
+
+    // 可选：AI Skills 执行统计
+    if (this.config.includeSkillsStats && skillsStats) {
+      result.skillsStats = skillsStats;
     }
 
     return result;
@@ -167,6 +174,125 @@ export class AnalyticsService {
         processed > 0 ? Math.round((accepted / processed) * 100) : 0,
       classificationRejectRate:
         processed > 0 ? Math.round((rejected / processed) * 100) : 0,
+    };
+  }
+
+  /**
+   * 获取 AI Skills 执行统计
+   * @description 查询 ai_skill_executions 表，统计近 N 天的执行情况
+   */
+  private async fetchSkillsStats(
+    periodDays: number = 30,
+  ): Promise<SkillsStats> {
+    const startDate = this.getDayStartInBeijingTime(periodDays);
+
+    // 查询指定时间范围内的所有执行记录
+    const { data: executions, error } = await this.supabase
+      .from("ai_skill_executions")
+      .select("skill_id, status, latency_ms, tokens_used")
+      .eq("user_id", this.userId)
+      .gte("created_at", startDate.toISOString());
+
+    if (error) {
+      console.error("Failed to fetch skills stats:", error.message);
+      // 返回空统计而不是抛出错误，保证页面正常加载
+      return this.getEmptySkillsStats(periodDays);
+    }
+
+    if (!executions || executions.length === 0) {
+      return this.getEmptySkillsStats(periodDays);
+    }
+
+    // 计算整体统计
+    const totalExecutions = executions.length;
+    const successCount = executions.filter(
+      (e) => e.status === "success",
+    ).length;
+    const errorCount = executions.filter(
+      (e) => e.status === "error" || e.status === "timeout",
+    ).length;
+
+    // 计算平均延迟（排除 null 值）
+    const latencies = executions
+      .map((e) => e.latency_ms)
+      .filter((l): l is number => l !== null && l > 0);
+    const avgLatencyMs =
+      latencies.length > 0
+        ? Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length)
+        : 0;
+
+    // 计算 Token 消耗总量
+    const totalTokensUsed = executions.reduce(
+      (sum, e) => sum + (e.tokens_used || 0),
+      0,
+    );
+
+    // 按 Skill 分组统计
+    const skillMap = new Map<
+      string,
+      { total: number; success: number; latencies: number[] }
+    >();
+
+    executions.forEach((e) => {
+      const current = skillMap.get(e.skill_id) || {
+        total: 0,
+        success: 0,
+        latencies: [],
+      };
+      current.total++;
+      if (e.status === "success") {
+        current.success++;
+      }
+      if (e.latency_ms && e.latency_ms > 0) {
+        current.latencies.push(e.latency_ms);
+      }
+      skillMap.set(e.skill_id, current);
+    });
+
+    const bySkill = Array.from(skillMap.entries())
+      .map(([skillId, stats]) => ({
+        skillId,
+        executionCount: stats.total,
+        successRate:
+          stats.total > 0 ? Math.round((stats.success / stats.total) * 100) : 0,
+        avgLatencyMs:
+          stats.latencies.length > 0
+            ? Math.round(
+                stats.latencies.reduce((a, b) => a + b, 0) /
+                  stats.latencies.length,
+              )
+            : 0,
+      }))
+      .sort((a, b) => b.executionCount - a.executionCount);
+
+    return {
+      totalExecutions,
+      successCount,
+      errorCount,
+      successRate:
+        totalExecutions > 0
+          ? Math.round((successCount / totalExecutions) * 100)
+          : 0,
+      avgLatencyMs,
+      totalTokensUsed,
+      bySkill,
+      periodDays,
+    };
+  }
+
+  /**
+   * 返回空的 Skills 统计数据
+   */
+  private getEmptySkillsStats(periodDays: number): SkillsStats {
+    return {
+      totalExecutions: 0,
+      successCount: 0,
+      errorCount: 0,
+      successRate: 0,
+      avgLatencyMs: 0,
+      totalTokensUsed: 0,
+      bySkill: [],
+      periodDays,
     };
   }
 
