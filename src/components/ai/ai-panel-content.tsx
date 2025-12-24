@@ -27,12 +27,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { AIMessage } from "./ai-message";
 import { AIInput } from "./ai-input";
 import { ActionConfirmInline } from "./action-confirm-dialog";
-import type {
-  DisplayMessage,
-  SuggestionItem,
-  UnifiedStreamChunkFrontend,
-} from "./types";
-import { processUnifiedChunk } from "./types";
+import type { DisplayMessage, SuggestionItem } from "./types";
+import { adaptBackendChunk, processUnifiedChunk } from "./types";
 import type { AgentStreamChunk } from "@/lib/ai-agent";
 import type { PendingConfirmation } from "@/lib/ai-agent/tools/types";
 
@@ -187,14 +183,14 @@ export function AIPanelContent({
         for (const line of lines) {
           if (line.startsWith("data: ")) {
             try {
-              const chunk = JSON.parse(line.slice(6));
+              const rawChunk = JSON.parse(line.slice(6));
 
               if (useUnifiedEngine) {
+                // 使用适配器转换后端格式为前端格式
+                const chunk = adaptBackendChunk(rawChunk);
+
                 // 使用统一引擎处理
-                currentMessage = processUnifiedChunk(
-                  chunk as UnifiedStreamChunkFrontend,
-                  currentMessage,
-                );
+                currentMessage = processUnifiedChunk(chunk, currentMessage);
                 setMessages((prev) =>
                   prev.map((m) =>
                     m.id === assistantMessage.id ? currentMessage : m,
@@ -202,15 +198,15 @@ export function AIPanelContent({
                 );
 
                 // 处理待确认操作
-                if (chunk.type === "confirmation" && chunk.data?.confirmation) {
+                if (chunk.type === "confirmation" && chunk.confirmation) {
                   setPendingConfirmations((prev) => [
                     ...prev,
-                    chunk.data.confirmation!,
+                    chunk.confirmation,
                   ]);
                 }
               } else {
                 // 使用原有 Agent API 处理（兼容模式）
-                const agentChunk = chunk as AgentStreamChunk;
+                const agentChunk = rawChunk as AgentStreamChunk;
                 handleAgentChunk(
                   agentChunk,
                   assistantMessage.id,

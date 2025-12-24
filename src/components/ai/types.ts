@@ -353,3 +353,141 @@ export function processUnifiedChunk(
       return message;
   }
 }
+
+// ============================================
+// 后端 Chunk 适配器
+// ============================================
+
+/**
+ * 后端原始 Chunk 类型（所有类型都使用 data 字段）
+ */
+interface BackendStreamChunk {
+  type: string;
+  data?: Record<string, unknown>;
+}
+
+/**
+ * 将后端 Chunk 格式转换为前端期望的格式
+ *
+ * 后端格式: { type: "text", data: { text: "..." } }
+ * 前端格式: { type: "text", text: "..." }
+ */
+export function adaptBackendChunk(
+  backendChunk: BackendStreamChunk,
+): UnifiedStreamChunkFrontend {
+  const { type, data } = backendChunk;
+
+  switch (type) {
+    case "text":
+      return {
+        type: "text",
+        text: (data?.text as string) ?? "",
+        isPartial: data?.isPartial as boolean | undefined,
+      };
+
+    case "progress":
+      return {
+        type: "progress",
+        progress: {
+          step: (data?.step as string) ?? "",
+          percent: (data?.percent as number) ?? 0,
+          message: data?.message as string | undefined,
+          stepIndex: data?.stepIndex as number | undefined,
+          totalSteps: data?.totalSteps as number | undefined,
+          timestamp: (data?.timestamp as number) ?? Date.now(),
+        },
+      };
+
+    case "tool-call":
+      return {
+        type: "tool-call",
+        toolCall: {
+          id: (data?.id as string) ?? `tool-${Date.now()}`,
+          toolName: (data?.toolName as string) ?? "",
+          args: (data?.args as Record<string, unknown>) ?? {},
+          status:
+            (data?.status as "pending" | "running" | "completed" | "failed") ??
+            "pending",
+          result: data?.result,
+          error: data?.error as string | undefined,
+        },
+      };
+
+    case "confirmation":
+      return {
+        type: "confirmation",
+        confirmation: data as unknown as PendingConfirmation,
+      };
+
+    case "deliverable":
+      return {
+        type: "deliverable",
+        deliverable: {
+          id: (data?.id as string) ?? `deliverable-${Date.now()}`,
+          type: (data?.type as DeliverableType) ?? "document",
+          title: (data?.title as string) ?? "",
+          format: (data?.format as DeliverableData["format"]) ?? "markdown",
+          content: data?.content,
+          downloadable: data?.downloadable as boolean | undefined,
+          shareable: data?.shareable as boolean | undefined,
+          metadata: data?.metadata as Record<string, unknown> | undefined,
+        },
+      };
+
+    case "suggestions":
+      return {
+        type: "suggestions",
+        suggestions: (data?.suggestions as SuggestionItem[]) ?? [],
+      };
+
+    case "routing":
+      return {
+        type: "routing",
+        routing: {
+          mode: (data?.mode as "atomic" | "orchestration") ?? "atomic",
+          reason: (data?.reason as string) ?? "",
+          skill: data?.skill as string | null,
+          intentType: data?.intentType as string | undefined,
+          complexityLevel: data?.complexityLevel as string | undefined,
+        },
+      };
+
+    case "fallback":
+      return {
+        type: "fallback",
+        fallback: {
+          reason: (data?.reason as string) ?? "",
+          originalMode: "orchestration",
+          fallbackMode: "atomic",
+        },
+      };
+
+    case "error":
+      return {
+        type: "error",
+        error: (data?.message as string) ?? "未知错误",
+        errorCode: data?.code as string | undefined,
+        retryable: data?.retryable as boolean | undefined,
+      };
+
+    case "done":
+      return {
+        type: "done",
+        data: {
+          success: (data?.success as boolean) ?? false,
+          summary: data?.summary as string | undefined,
+          tokensUsed: data?.tokensUsed as number | undefined,
+          durationMs: data?.durationMs as number | undefined,
+          mode: data?.mode as "atomic" | "orchestration" | undefined,
+          skillId: data?.skillId as string | undefined,
+          conversationId: data?.conversationId as string | undefined,
+          content: data?.content as string | undefined,
+          toolCalls: data?.toolCalls as AgentToolCall[] | undefined,
+        },
+      };
+
+    default:
+      // 未知类型，返回空文本块（静默处理，避免破坏流式输出）
+      return { type: "text", text: "" };
+  }
+}
