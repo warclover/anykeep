@@ -88,8 +88,12 @@ const nextConfig = {
 
   // API 路径重写：向后兼容旧路径
   // Phase 0.1: 隔离管理/调试 API 到 /internal/ 目录
+  // Phase 1.1: Classification API 合并重定向
   async rewrites() {
     return [
+      // =====================================================
+      // Phase 0.1: Internal API 重写
+      // =====================================================
       // Cron APIs: /api/cron/* → /api/internal/cron/*
       { source: '/api/cron/:path*', destination: '/api/internal/cron/:path*' },
       // Dev APIs: /api/dev/* → /api/internal/dev/*
@@ -98,6 +102,22 @@ const nextConfig = {
       { source: '/api/debug/:path*', destination: '/api/internal/debug/:path*' },
       // Maintenance APIs: /api/maintenance/* → /api/internal/maintenance/*
       { source: '/api/maintenance/:path*', destination: '/api/internal/maintenance/:path*' },
+
+      // =====================================================
+      // Phase 1.1: Classification API 合并重写
+      // =====================================================
+      // Debug 相关（已合并到 /debug?type=xxx）
+      { source: '/api/classification/test', destination: '/api/classification/debug?type=test' },
+      { source: '/api/classification/trace', destination: '/api/classification/debug?type=trace' },
+
+      // Analytics 相关（已合并到 /analytics?type=xxx）
+      { source: '/api/classification/statistics', destination: '/api/classification/analytics?type=statistics' },
+      { source: '/api/classification/history', destination: '/api/classification/analytics?type=history' },
+      { source: '/api/classification/ab-test', destination: '/api/classification/analytics?type=abtest' },
+
+      // Inbox 相关（已合并到 /inbox?type=xxx）
+      { source: '/api/classification/cluster-suggestions', destination: '/api/classification/inbox?type=suggestions' },
+      { source: '/api/classification/cluster-stats', destination: '/api/classification/inbox?type=stats' },
     ];
   },
 
