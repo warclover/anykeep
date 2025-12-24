@@ -14,8 +14,10 @@ import type { AgentStreamChunk } from "../../../ai-agent/core/types";
 import { z } from "zod";
 
 import type { UnifiedStreamChunk } from "../../output/types";
+import type { OrchestrationSkill } from "../../orchestration/orchestration-skill";
 
-// Mock skill 接口定义
+// Mock skill 接口定义（用于测试）
+// 注意：这是一个简化版本，使用 as unknown as 进行类型断言
 interface MockOrchestrationSkill {
   metadata: {
     id: string;
@@ -32,6 +34,13 @@ interface MockOrchestrationSkill {
   outputSchema: z.ZodType<unknown>;
   parseInput: jest.Mock;
   executeStream: jest.Mock;
+}
+
+// 类型断言帮助函数
+function asOrchestrationSkill(
+  mock: MockOrchestrationSkill,
+): OrchestrationSkill<unknown, unknown> {
+  return mock as unknown as OrchestrationSkill<unknown, unknown>;
 }
 
 // Mock dependencies
@@ -183,7 +192,7 @@ describe("UnifiedEngine Integration Tests", () => {
         }),
       };
 
-      engine.registerOrchestrationSkill(mockSkill);
+      engine.registerOrchestrationSkill(asOrchestrationSkill(mockSkill));
 
       const registeredSkills = engine.getRegisteredOrchestrationSkills();
       expect(registeredSkills).toHaveLength(1);
@@ -218,7 +227,7 @@ describe("UnifiedEngine Integration Tests", () => {
         }),
       };
 
-      engine.registerOrchestrationSkill(mockSkill);
+      engine.registerOrchestrationSkill(asOrchestrationSkill(mockSkill));
 
       for await (const chunk of engine.execute(
         "force test",
@@ -269,7 +278,7 @@ describe("UnifiedEngine Integration Tests", () => {
           yield { type: "done" };
         }),
       };
-      engine.registerOrchestrationSkill(mockSkill);
+      engine.registerOrchestrationSkill(asOrchestrationSkill(mockSkill));
 
       const chunks: UnifiedStreamChunk[] = [];
       for await (const chunk of engine.execute(
@@ -320,7 +329,7 @@ describe("UnifiedEngine Integration Tests", () => {
         executeStream: jest.fn(),
       };
 
-      engine.registerOrchestrationSkill(mockSkill);
+      engine.registerOrchestrationSkill(asOrchestrationSkill(mockSkill));
       expect(orchEngine.hasSkill("check-skill")).toBe(true);
     });
   });
@@ -419,7 +428,7 @@ describe("UnifiedEngine Integration Tests", () => {
         }),
       };
 
-      engine.registerOrchestrationSkill(failingSkill);
+      engine.registerOrchestrationSkill(asOrchestrationSkill(failingSkill));
 
       const chunks: UnifiedStreamChunk[] = [];
       for await (const chunk of engine.execute(

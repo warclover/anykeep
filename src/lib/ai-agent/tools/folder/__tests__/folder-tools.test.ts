@@ -88,6 +88,45 @@ const mockContextConfirmed: ToolContext = {
 };
 
 // ============================================
+// Parameter Helpers (使用 Zod parse 填充默认值)
+// ============================================
+
+/**
+ * 解析部分参数，自动填充默认值
+ * 通过 Zod schema 的 parse 方法处理，确保类型安全
+ */
+const parseListFoldersParams = (
+  partial: Partial<Parameters<typeof listFoldersTool.execute>[0]> = {},
+) => listFoldersTool.definition.parameters.parse(partial);
+
+const parseGetFolderDetailParams = (
+  partial: { folderId: number } & Partial<
+    Omit<Parameters<typeof getFolderDetailTool.execute>[0], "folderId">
+  >,
+) => getFolderDetailTool.definition.parameters.parse(partial);
+
+const parseGetFolderBookmarksParams = (
+  partial: { folderId: number } & Partial<
+    Omit<Parameters<typeof getFolderBookmarksTool.execute>[0], "folderId">
+  >,
+) => getFolderBookmarksTool.definition.parameters.parse(partial);
+
+const parseDeleteFolderParams = (
+  partial: { folderId: number } & Partial<
+    Omit<Parameters<typeof deleteFolderTool.execute>[0], "folderId">
+  >,
+) => deleteFolderTool.definition.parameters.parse(partial);
+
+const parseMergeFoldersParams = (
+  partial: { sourceFolderId: number; targetFolderId: number } & Partial<
+    Omit<
+      Parameters<typeof mergeFoldersTool.execute>[0],
+      "sourceFolderId" | "targetFolderId"
+    >
+  >,
+) => mergeFoldersTool.definition.parameters.parse(partial);
+
+// ============================================
 // Test Data
 // ============================================
 
@@ -267,7 +306,10 @@ describe("Phase 1: Query Tools Execution", () => {
         error: null,
       });
 
-      const result = await listFoldersTool.execute({}, mockContext);
+      const result = await listFoldersTool.execute(
+        parseListFoldersParams({}),
+        mockContext,
+      );
 
       expect(result.success).toBe(true);
       if (result.success) {
@@ -289,7 +331,7 @@ describe("Phase 1: Query Tools Execution", () => {
       mockIn.mockResolvedValue({ data: [], error: null });
 
       const result = await listFoldersTool.execute(
-        { group: "work" },
+        parseListFoldersParams({ group: "work" }),
         mockContext,
       );
 
@@ -306,7 +348,10 @@ describe("Phase 1: Query Tools Execution", () => {
       });
       mockIn.mockResolvedValue({ data: [], error: null });
 
-      await listFoldersTool.execute({ includeArchived: true }, mockContext);
+      await listFoldersTool.execute(
+        parseListFoldersParams({ includeArchived: true }),
+        mockContext,
+      );
 
       // Should NOT call eq with is_archived: false
       const isArchivedCalls = mockEq.mock.calls.filter(
@@ -323,7 +368,10 @@ describe("Phase 1: Query Tools Execution", () => {
         }),
       });
 
-      const result = await listFoldersTool.execute({}, mockContext);
+      const result = await listFoldersTool.execute(
+        parseListFoldersParams({}),
+        mockContext,
+      );
 
       expect(result.success).toBe(false);
       if (!result.success) {
@@ -358,7 +406,7 @@ describe("Phase 1: Query Tools Execution", () => {
       mockSingle.mockResolvedValueOnce({ data: { count: 7 }, error: null });
 
       const result = await getFolderDetailTool.execute(
-        { folderId: 1 },
+        parseGetFolderDetailParams({ folderId: 1 }),
         mockContext,
       );
 
@@ -373,7 +421,7 @@ describe("Phase 1: Query Tools Execution", () => {
       mockSingle.mockResolvedValue({ data: null, error: null });
 
       const result = await getFolderDetailTool.execute(
-        { folderId: 9999 },
+        parseGetFolderDetailParams({ folderId: 9999 }),
         mockContext,
       );
 
@@ -411,7 +459,7 @@ describe("Phase 1: Query Tools Execution", () => {
       });
 
       const result = await getFolderBookmarksTool.execute(
-        { folderId: 1, limit: 20, offset: 0 },
+        parseGetFolderBookmarksParams({ folderId: 1, limit: 20, offset: 0 }),
         mockContext,
       );
 
@@ -566,7 +614,7 @@ describe("Phase 3: Advanced Action Tools Execution", () => {
       mockSingle.mockResolvedValueOnce({ data: null, count: 5, error: null }); // Bookmark count
 
       const result = await deleteFolderTool.execute(
-        { folderId: 1 },
+        parseDeleteFolderParams({ folderId: 1 }),
         mockContext,
       );
 
@@ -584,7 +632,7 @@ describe("Phase 3: Advanced Action Tools Execution", () => {
       });
 
       const result = await deleteFolderTool.execute(
-        { folderId: 99 },
+        parseDeleteFolderParams({ folderId: 99 }),
         mockContext,
       );
 
@@ -630,7 +678,7 @@ describe("Phase 3: Advanced Action Tools Execution", () => {
       mockSingle.mockResolvedValueOnce({ data: null, count: 5, error: null }); // Bookmark count
 
       const result = await mergeFoldersTool.execute(
-        { sourceFolderId: 1, targetFolderId: 2 },
+        parseMergeFoldersParams({ sourceFolderId: 1, targetFolderId: 2 }),
         mockContext,
       );
 
@@ -651,7 +699,7 @@ describe("Phase 3: Advanced Action Tools Execution", () => {
       });
 
       const result = await mergeFoldersTool.execute(
-        { sourceFolderId: 99, targetFolderId: 1 },
+        parseMergeFoldersParams({ sourceFolderId: 99, targetFolderId: 1 }),
         mockContext,
       );
 
@@ -672,7 +720,7 @@ describe("Phase 3: Advanced Action Tools Execution", () => {
       });
 
       const result = await mergeFoldersTool.execute(
-        { sourceFolderId: 1, targetFolderId: 1 },
+        parseMergeFoldersParams({ sourceFolderId: 1, targetFolderId: 1 }),
         mockContext,
       );
 
@@ -795,7 +843,7 @@ describe("Security Mechanisms", () => {
       });
 
       const result = await deleteFolderTool.execute(
-        { folderId: 99 },
+        parseDeleteFolderParams({ folderId: 99 }),
         mockContextConfirmed,
       );
 
@@ -826,7 +874,7 @@ describe("Security Mechanisms", () => {
       });
 
       const result = await mergeFoldersTool.execute(
-        { sourceFolderId: 99, targetFolderId: 1 },
+        parseMergeFoldersParams({ sourceFolderId: 99, targetFolderId: 1 }),
         mockContextConfirmed,
       );
 
@@ -847,7 +895,7 @@ describe("Security Mechanisms", () => {
       });
       mockIn.mockResolvedValue({ data: [], error: null });
 
-      await listFoldersTool.execute({}, mockContext);
+      await listFoldersTool.execute(parseListFoldersParams({}), mockContext);
 
       expect(mockEq).toHaveBeenCalledWith("user_id", "test-user-123");
     });
@@ -856,7 +904,7 @@ describe("Security Mechanisms", () => {
       mockSingle.mockResolvedValueOnce({ data: null, error: null }); // Folder not found (RLS filtered)
 
       const result = await deleteFolderTool.execute(
-        { folderId: 1 },
+        parseDeleteFolderParams({ folderId: 1 }),
         mockContext,
       );
 
@@ -889,7 +937,7 @@ describe("Security Mechanisms", () => {
       mockSingle.mockResolvedValueOnce({ data: null, count: 0, error: null });
 
       const result = await deleteFolderTool.execute(
-        { folderId: 1 },
+        parseDeleteFolderParams({ folderId: 1 }),
         mockContext,
       );
 
@@ -910,7 +958,7 @@ describe("Security Mechanisms", () => {
       mockSingle.mockResolvedValueOnce({ data: null, count: 5, error: null });
 
       const result = await mergeFoldersTool.execute(
-        { sourceFolderId: 1, targetFolderId: 2 },
+        parseMergeFoldersParams({ sourceFolderId: 1, targetFolderId: 2 }),
         mockContext,
       );
 
@@ -938,7 +986,10 @@ describe("Error Handling", () => {
       }),
     });
 
-    const result = await listFoldersTool.execute({}, mockContext);
+    const result = await listFoldersTool.execute(
+      parseListFoldersParams({}),
+      mockContext,
+    );
 
     expect(result.success).toBe(false);
     if (!result.success) {
@@ -951,7 +1002,10 @@ describe("Error Handling", () => {
       order: jest.fn().mockRejectedValue(new Error("Unexpected error")),
     });
 
-    const result = await listFoldersTool.execute({}, mockContext);
+    const result = await listFoldersTool.execute(
+      parseListFoldersParams({}),
+      mockContext,
+    );
 
     expect(result.success).toBe(false);
     if (!result.success) {
@@ -967,7 +1021,10 @@ describe("Error Handling", () => {
       }),
     });
 
-    const result = await listFoldersTool.execute({}, mockContext);
+    const result = await listFoldersTool.execute(
+      parseListFoldersParams({}),
+      mockContext,
+    );
 
     expect(result.metadata?.executionTimeMs).toBeDefined();
     expect(result.metadata?.executionTimeMs).toBeGreaterThanOrEqual(0);
