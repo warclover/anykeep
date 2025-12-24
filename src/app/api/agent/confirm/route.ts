@@ -1,16 +1,39 @@
 /**
  * AI Agent 确认操作 API (V1.0.0 - Deprecated)
  *
- * @deprecated 此端点已弃用，建议使用统一的流式响应处理确认：
- * - Tool 确认：通过 /api/agent/chat 流式响应中的 confirmation 块处理
- * - Skill 确认：通过 /api/agent/unified 流式响应中的 confirmation 块处理
+ * @deprecated 此端点已弃用，请使用新的 Effect Layer 确认服务：
  *
- * 此端点仍保留以向后兼容，但会在响应头中包含弃用警告。
+ * ## 迁移指南
  *
- * POST /api/agent/confirm - 确认执行待确认的 AI 操作
+ * ### 旧方式（此端点）
+ * ```typescript
+ * // 前端直接调用此端点
+ * fetch('/api/agent/confirm', {
+ *   method: 'POST',
+ *   body: JSON.stringify({ confirmationId, toolName, params, action })
+ * })
+ * ```
+ *
+ * ### 新方式（Effect Layer）
+ * ```typescript
+ * // 1. 通过 UnifiedEngine.respondToConfirmation 响应
+ * import { unifiedEngine } from "@/lib/ai-skills/engine";
+ * unifiedEngine.respondToConfirmation(confirmationId, selectedOption, data);
+ *
+ * // 2. 或直接使用 ConfirmationService
+ * import { confirmationService } from "@/lib/ai-skills/effects";
+ * confirmationService.respondToConfirmation(confirmationId, selectedOption, data);
+ * ```
+ *
+ * ## 废弃时间线
+ * - 弃用日期: 2025-12-24
+ * - 日落日期: 2025-06-01
+ * - 替代方案: /api/agent/unified 流式响应 + confirmationService
  *
  * @version 1.0.0 - Deprecated
- * @deprecated 2025-12-24
+ * @deprecated 2025-12-24 - Use Effect Layer ConfirmationService
+ * @see {@link @/lib/ai-skills/effects} Effect Layer 模块
+ * @see {@link @/lib/ai-skills/effects/services/confirmation.service} ConfirmationService
  * @since 2025-12-23
  */
 

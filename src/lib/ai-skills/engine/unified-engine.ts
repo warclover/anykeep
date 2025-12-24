@@ -6,8 +6,9 @@
  * - 根据意图路由到原子模式或编排模式
  * - 提供统一的流式输出
  * - 处理模式回退
+ * - 管理 Effect Layer（确认、通知、审计）
  *
- * @version 1.0.0
+ * @version 2.0.0
  * @since 2025-12-24
  */
 
@@ -25,6 +26,20 @@ import type {
   EngineExecuteOptions,
   UnifiedEngineConfig,
 } from "./types";
+import {
+  type EffectManager,
+  createEffectManager,
+  type EffectHandler,
+  type UnifiedEffect,
+  type EffectType,
+  type ConfirmationEffect,
+  type NotificationEffect,
+  type AuditEffect,
+  type ConfirmationServiceResult,
+  confirmationService,
+  notificationService,
+  auditLogService,
+} from "../effects";
 
 /**
  * 原子引擎执行函数类型
@@ -43,8 +58,10 @@ export class UnifiedEngine {
   private router: IntentRouter;
   private orchestrationEngine: OrchestrationEngine;
   private outputAdapter: UnifiedOutputAdapter;
+  private effectManager: EffectManager;
   private atomicExecutor: AtomicExecutor | null = null;
   private config: Required<UnifiedEngineConfig>;
+  private effectListenerIds: string[] = [];
 
   constructor(config: UnifiedEngineConfig = {}) {
     this.config = {
@@ -60,6 +77,64 @@ export class UnifiedEngine {
     this.outputAdapter = createUnifiedOutputAdapter({
       includeDebugInfo: config.debug,
     });
+    this.effectManager = createEffectManager({
+      debug: config.debug,
+    });
+
+    // 初始化 Effect 处理器
+    this.initEffectHandlers();
+  }
+
+  /**
+   * 初始化 Effect 处理器
+   *
+   * 将 EffectManager 与 Services 连接起来
+   */
+  private initEffectHandlers(): void {
+    // 监听确认效果并记录日志
+    const confirmationListenerId = this.effectManager.on<ConfirmationEffect>(
+      "confirmation",
+      async (effect) => {
+        logger.debug(
+          { confirmationId: effect.payload.id },
+          "UnifiedEngine: Processing confirmation effect",
+        );
+        // 确认效果通过通知服务记录，不使用审计日志
+        // 因为 AuditAction 不包含 confirmation_requested
+      },
+    );
+    this.effectListenerIds.push(confirmationListenerId);
+
+    // 监听通知效果并转发到 NotificationService
+    const notificationListenerId = this.effectManager.on<NotificationEffect>(
+      "notification",
+      async (effect) => {
+        await notificationService.notify({
+          level: effect.payload.level,
+          title: effect.payload.title,
+          message: effect.payload.message,
+          autoCloseMs: effect.payload.autoCloseMs,
+          userId: effect.context.userId,
+        });
+      },
+    );
+    this.effectListenerIds.push(notificationListenerId);
+
+    // 监听审计效果并转发到 AuditLogService
+    const auditListenerId = this.effectManager.on<AuditEffect>(
+      "audit",
+      async (effect) => {
+        await auditLogService.log({
+          action: effect.payload.action,
+          resourceType: effect.payload.resourceType,
+          resourceIds: effect.payload.resourceIds,
+          changes: effect.payload.changes,
+          userId: effect.context.userId,
+          source: effect.context.source,
+        });
+      },
+    );
+    this.effectListenerIds.push(auditListenerId);
   }
 
   /**
@@ -352,6 +427,7 @@ export class UnifiedEngine {
     if (config.debug !== undefined) {
       this.router.updateConfig({ debug: config.debug });
       this.outputAdapter.updateConfig({ includeDebugInfo: config.debug });
+      this.effectManager.updateConfig({ debug: config.debug });
     }
   }
 
@@ -367,6 +443,129 @@ export class UnifiedEngine {
    */
   getRegisteredOrchestrationSkills() {
     return this.orchestrationEngine.getAllSkillMetadata();
+  }
+
+  // ============================================================
+  // Effect Layer 方法
+  // ============================================================
+
+  /**
+   * 获取 EffectManager 实例
+   */
+  getEffectManager(): EffectManager {
+    return this.effectManager;
+  }
+
+  /**
+   * 注册 Effect 监听器
+   *
+   * @param type - Effect 类型（confirmation/notification/audit/*）
+   * @param handler - 处理函数
+   * @returns 监听器 ID，用于取消监听
+   */
+  onEffect<T extends UnifiedEffect = UnifiedEffect>(
+    type: EffectType | "*",
+    handler: EffectHandler<T>,
+  ): string {
+    const listenerId = this.effectManager.on(type, handler);
+    this.effectListenerIds.push(listenerId);
+    return listenerId;
+  }
+
+  /**
+   * 取消 Effect 监听
+   */
+  offEffect(listenerId: string): boolean {
+    const index = this.effectListenerIds.indexOf(listenerId);
+    if (index !== -1) {
+      this.effectListenerIds.splice(index, 1);
+    }
+    return this.effectManager.off(listenerId);
+  }
+
+  /**
+   * 发送 Effect
+   *
+   * @param effect - 统一 Effect 对象
+   */
+  async emitEffect(effect: UnifiedEffect): Promise<void> {
+    await this.effectManager.emit(effect);
+  }
+
+  /**
+   * 请求用户确认
+   *
+   * 便捷方法，创建确认请求并等待用户响应
+   *
+   * @param options - 确认选项
+   * @returns 确认结果
+   */
+  async requestConfirmation(options: {
+    title: string;
+    message: string;
+    options: Array<{ id: string; label: string; variant?: string }>;
+    userId: string;
+    source: "tool" | "skill";
+    toolName?: string;
+    skillId?: string;
+    timeoutMs?: number;
+  }): Promise<ConfirmationServiceResult> {
+    const pending = confirmationService.createConfirmation({
+      title: options.title,
+      message: options.message,
+      options: options.options,
+      userId: options.userId,
+      source: options.source,
+      toolName: options.toolName,
+      skillId: options.skillId,
+      timeoutMs: options.timeoutMs,
+    });
+
+    return confirmationService.waitForConfirmation(
+      pending.id,
+      options.timeoutMs,
+    );
+  }
+
+  /**
+   * 响应确认请求
+   *
+   * @param confirmationId - 确认 ID
+   * @param selectedOption - 用户选择的选项 ID
+   * @param data - 附加数据
+   */
+  respondToConfirmation(
+    confirmationId: string,
+    selectedOption: string,
+    data?: unknown,
+  ): boolean {
+    return confirmationService.respondToConfirmation(
+      confirmationId,
+      selectedOption,
+      data,
+    );
+  }
+
+  /**
+   * 获取 Effect 统计信息
+   */
+  getEffectStats() {
+    return this.effectManager.getStats();
+  }
+
+  /**
+   * 清理资源
+   *
+   * 移除所有 Effect 监听器
+   */
+  dispose(): void {
+    // 移除所有注册的监听器
+    for (const listenerId of this.effectListenerIds) {
+      this.effectManager.off(listenerId);
+    }
+    this.effectListenerIds = [];
+
+    logger.debug("UnifiedEngine: Disposed, all effect listeners removed");
   }
 }
 

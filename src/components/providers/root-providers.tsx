@@ -2,18 +2,26 @@
 
 /**
  * 根提供者组件
+ *
  * 将所有客户端 Context Provider 集中在这里，
  * 避免在根 layout 中直接使用 Context 导致的 SSR 问题
  *
- * Phase 3.5 修复：
- * - HomePageProvider 移出 Suspense 边界
- * - NavigationProvider 使用 useSearchParams() 会触发 Suspense
- * - 如果 HomePageProvider 在 Suspense 内，挂起时子组件无法访问 Context
+ * ## 架构说明
  *
- * V4.2.30: 添加 SessionHeartbeatProvider 解决长时间操作会话过期问题
+ * Provider 分为两组：
+ * - **CoreProviders**: 基础设施类 Provider，必须按顺序执行
+ * - **FeatureProviders**: 功能类 Provider，相对独立
+ *
+ * ## 变更记录
+ *
+ * - V2.0.0 (2025-12-24): 使用 composeProviders 重构，减少嵌套层级
+ * - V1.3.0 (V4.2.30): 添加 SessionHeartbeatProvider 解决长时间操作会话过期问题
+ * - V1.2.0 (Phase 3.5): HomePageProvider 移出 Suspense 边界
+ *
+ * @version 2.0.0
+ * @since 2025-12-24
  */
 
-import { Suspense } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { ServiceWorkerRegister } from "@/components/pwa/sw-register";
@@ -26,46 +34,82 @@ import { OnboardingProvider } from "@/components/providers/onboarding-provider";
 import { MessageNotificationProvider } from "@/components/messages/message-notification-provider";
 import { WebVitalsReporter } from "@/components/analytics/web-vitals-reporter";
 import { SessionHeartbeatProvider } from "@/components/providers/session-heartbeat-provider";
+import {
+  composeProviders,
+  withProps,
+  withSuspense,
+} from "@/lib/utils/compose-providers";
+
+// ============================================
+// Provider 分组定义
+// ============================================
+
+/**
+ * 核心 Providers
+ *
+ * 基础设施类 Provider，提供主题、用户、会话等核心功能
+ * 必须按顺序执行：Theme → Sidebar → User → SessionHeartbeat
+ */
+const CoreProviders = composeProviders(
+  // 主题管理（最外层）
+  withProps(ThemeProvider, {
+    attribute: "class",
+    defaultTheme: "system",
+    enableSystem: true,
+    disableTransitionOnChange: true,
+  }),
+  // 侧边栏折叠状态管理
+  SidebarProvider,
+  // 用户认证状态
+  UserProvider,
+  // 会话心跳检测，防止长时间操作时会话过期
+  SessionHeartbeatProvider,
+);
+
+/**
+ * 功能 Providers
+ *
+ * 应用功能类 Provider，提供引导、页面状态、导航、缓存等功能
+ * 相对独立，可按需调整顺序
+ *
+ * 注意：NavigationProvider 使用 useSearchParams()，需要 Suspense 包裹
+ * HomePageProvider 必须在 NavigationProvider 外层，避免挂起时 Context 不可用
+ */
+const FeatureProviders = composeProviders(
+  // 新用户引导
+  OnboardingProvider,
+  // 首页状态管理（必须在 NavigationProvider 外层）
+  HomePageProvider,
+  // 导航状态（使用 useSearchParams，需要 Suspense）
+  withSuspense(NavigationProvider, null),
+  // 组件缓存
+  KeepAliveProvider,
+  // 消息通知
+  MessageNotificationProvider,
+);
+
+// ============================================
+// 根组件
+// ============================================
 
 interface RootProvidersProps {
   children: React.ReactNode;
 }
 
+/**
+ * 根 Providers 组件
+ *
+ * 包含所有客户端 Context Provider，按优化后的结构组织
+ */
 export function RootProviders({ children }: RootProvidersProps) {
   return (
-    <ThemeProvider
-      attribute="class"
-      defaultTheme="system"
-      enableSystem
-      disableTransitionOnChange
-    >
-      {/* Phase 5: 侧边栏折叠状态管理 */}
-      <SidebarProvider>
-        <UserProvider>
-          {/* V4.2.30: 会话心跳检测，防止长时间操作时会话过期 */}
-          <SessionHeartbeatProvider>
-            <OnboardingProvider>
-              {/* Phase 3.5: HomePageProvider 移出 Suspense 边界
-                  避免 NavigationProvider 挂起时 Context 不可用 */}
-              <HomePageProvider>
-                <Suspense fallback={null}>
-                  <NavigationProvider>
-                    <KeepAliveProvider>
-                      <MessageNotificationProvider>
-                        {children}
-                      </MessageNotificationProvider>
-                    </KeepAliveProvider>
-                  </NavigationProvider>
-                </Suspense>
-              </HomePageProvider>
-            </OnboardingProvider>
-          </SessionHeartbeatProvider>
-        </UserProvider>
-      </SidebarProvider>
+    <CoreProviders>
+      <FeatureProviders>{children}</FeatureProviders>
+      {/* 全局组件（在 Provider 树内但不影响嵌套结构） */}
       <Toaster position="top-center" offset={16} />
       <ServiceWorkerRegister />
-      {/* V4.2.1: Web Vitals 性能监控 */}
+      {/* Web Vitals 性能监控 */}
       <WebVitalsReporter debug={process.env.NODE_ENV === "development"} />
-    </ThemeProvider>
+    </CoreProviders>
   );
 }
