@@ -84,6 +84,34 @@ export const KNOWLEDGE_REVIEW_CONFIG = {
 } as const;
 
 /**
+ * 重复清理 Skill 配置
+ */
+export const DUPLICATE_CLEANUP_CONFIG = {
+  /** 最大扫描书签数 */
+  MAX_SCAN_LIMIT: 1000,
+
+  /** 最大选择书签数 */
+  MAX_SELECTED_IDS: 100,
+
+  /** 默认语义阈值 */
+  DEFAULT_SEMANTIC_THRESHOLD: 0.9,
+
+  /** 最小语义阈值 */
+  MIN_SEMANTIC_THRESHOLD: 0.8,
+
+  /** 最大语义阈值 */
+  MAX_SEMANTIC_THRESHOLD: 0.99,
+
+  /** 完整度权重 */
+  COMPLETENESS_WEIGHTS: {
+    hasSummary: 40,
+    hasTags: 30,
+    hasFolder: 20,
+    hasDescription: 10,
+  },
+} as const;
+
+/**
  * URL 验证配置
  */
 export const URL_VALIDATION_CONFIG = {

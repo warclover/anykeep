@@ -2,9 +2,11 @@
  * AI 面板内容组件
  *
  * 提取的面板核心内容，支持在 Sheet（覆盖式）和 embedded（内嵌式）模式下复用
+ * 支持统一智能引擎（原子模式 + 编排模式）
  *
- * @version 1.0.0
+ * @version 2.0.0
  * @since 2025-12-23
+ * @updated 2025-12-24 - 集成统一智能引擎
  */
 
 "use client";
@@ -18,14 +20,20 @@ import {
   FolderOpen,
   BarChart3,
   X,
+  BookOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AIMessage } from "./ai-message";
 import { AIInput } from "./ai-input";
 import { ActionConfirmInline } from "./action-confirm-dialog";
-import type { DisplayMessage } from "./types";
-import type { AgentStreamChunk, AgentToolCall } from "@/lib/ai-agent";
+import type {
+  DisplayMessage,
+  SuggestionItem,
+  UnifiedStreamChunkFrontend,
+} from "./types";
+import { processUnifiedChunk } from "./types";
+import type { AgentStreamChunk } from "@/lib/ai-agent";
 import type { PendingConfirmation } from "@/lib/ai-agent/tools/types";
 
 interface AIPanelContentProps {
@@ -33,6 +41,8 @@ interface AIPanelContentProps {
   conversationId?: string;
   /** 关联的书签 ID 列表（可选） */
   bookmarkIds?: number[];
+  /** 关联的文件夹 ID（可选） */
+  folderId?: number;
   /** 面板标题 */
   title?: string;
   /** 是否显示关闭按钮 */
@@ -41,6 +51,8 @@ interface AIPanelContentProps {
   onClose?: () => void;
   /** 自定义 className */
   className?: string;
+  /** 是否使用统一引擎（默认 true） */
+  useUnifiedEngine?: boolean;
 }
 
 /**
@@ -49,10 +61,12 @@ interface AIPanelContentProps {
 export function AIPanelContent({
   conversationId: initialConversationId,
   bookmarkIds,
+  folderId,
   title = "AI 知识助手",
   showCloseButton = false,
   onClose,
   className,
+  useUnifiedEngine = true,
 }: AIPanelContentProps) {
   // 状态
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
@@ -126,8 +140,13 @@ export function AIPanelContent({
           content: m.content,
         }));
 
-      // 调用 Agent API
-      const response = await fetch("/api/agent/chat", {
+      // 根据配置选择 API
+      const apiEndpoint = useUnifiedEngine
+        ? "/api/agent/unified"
+        : "/api/agent/chat";
+
+      // 调用 API
+      const response = await fetch(apiEndpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -137,8 +156,10 @@ export function AIPanelContent({
           conversationId,
           messageHistory,
           bookmarkIds,
+          folderId,
           options: {
             streaming: true,
+            enableUnified: useUnifiedEngine,
           },
         }),
         signal: abortControllerRef.current.signal,
@@ -156,9 +177,7 @@ export function AIPanelContent({
       }
 
       const decoder = new TextDecoder();
-      let fullContent = "";
-      let toolCalls: AgentToolCall[] = [];
-      const confirmations: PendingConfirmation[] = [];
+      let currentMessage: DisplayMessage = { ...assistantMessage };
 
       while (true) {
         const { done, value } = await reader.read();
@@ -170,68 +189,37 @@ export function AIPanelContent({
         for (const line of lines) {
           if (line.startsWith("data: ")) {
             try {
-              const chunk: AgentStreamChunk = JSON.parse(line.slice(6));
+              const chunk = JSON.parse(line.slice(6));
 
-              if (chunk.type === "text" && chunk.text) {
-                fullContent += chunk.text;
+              if (useUnifiedEngine) {
+                // 使用统一引擎处理
+                currentMessage = processUnifiedChunk(
+                  chunk as UnifiedStreamChunkFrontend,
+                  currentMessage,
+                );
                 setMessages((prev) =>
                   prev.map((m) =>
-                    m.id === assistantMessage.id
-                      ? { ...m, content: fullContent }
-                      : m,
+                    m.id === assistantMessage.id ? currentMessage : m,
                   ),
                 );
-              } else if (chunk.type === "tool-call" && chunk.toolCall) {
-                toolCalls = [...toolCalls, chunk.toolCall];
-                setMessages((prev) =>
-                  prev.map((m) =>
-                    m.id === assistantMessage.id ? { ...m, toolCalls } : m,
-                  ),
-                );
-              } else if (chunk.type === "confirmation" && chunk.confirmation) {
-                confirmations.push(chunk.confirmation);
-                setMessages((prev) =>
-                  prev.map((m) =>
-                    m.id === assistantMessage.id
-                      ? { ...m, pendingConfirmations: [...confirmations] }
-                      : m,
-                  ),
-                );
-                setPendingConfirmations((prev) => [
-                  ...prev,
-                  chunk.confirmation!,
-                ]);
-              } else if (chunk.type === "done" && chunk.result) {
-                if (chunk.result.conversationId) {
-                  setConversationId(chunk.result.conversationId);
+
+                // 处理待确认操作
+                if (chunk.type === "confirmation" && chunk.data?.confirmation) {
+                  setPendingConfirmations((prev) => [
+                    ...prev,
+                    chunk.data.confirmation!,
+                  ]);
                 }
-                setMessages((prev) =>
-                  prev.map((m) =>
-                    m.id === assistantMessage.id
-                      ? {
-                          ...m,
-                          content: fullContent || chunk.result!.content,
-                          status: "completed",
-                          toolCalls: chunk.result!.toolCalls,
-                          pendingConfirmations:
-                            confirmations.length > 0
-                              ? confirmations
-                              : undefined,
-                        }
-                      : m,
-                  ),
-                );
-              } else if (chunk.type === "error") {
-                setMessages((prev) =>
-                  prev.map((m) =>
-                    m.id === assistantMessage.id
-                      ? {
-                          ...m,
-                          status: "error",
-                          error: chunk.error,
-                        }
-                      : m,
-                  ),
+              } else {
+                // 使用原有 Agent API 处理（兼容模式）
+                const agentChunk = chunk as AgentStreamChunk;
+                handleAgentChunk(
+                  agentChunk,
+                  assistantMessage.id,
+                  currentMessage,
+                  (msg) => {
+                    currentMessage = msg;
+                  },
                 );
               }
             } catch (parseError) {
@@ -279,7 +267,85 @@ export function AIPanelContent({
       setIsLoading(false);
       abortControllerRef.current = null;
     }
-  }, [input, isLoading, conversationId, bookmarkIds, messages]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- handleAgentChunk has empty deps and is stable
+  }, [
+    input,
+    isLoading,
+    conversationId,
+    bookmarkIds,
+    folderId,
+    messages,
+    useUnifiedEngine,
+  ]);
+
+  /**
+   * 处理原有 Agent API 的流式数据块（兼容模式）
+   */
+  const handleAgentChunk = useCallback(
+    (
+      chunk: AgentStreamChunk,
+      messageId: string,
+      currentMessage: DisplayMessage,
+      updateMessage: (msg: DisplayMessage) => void,
+    ) => {
+      let toolCalls = currentMessage.toolCalls || [];
+      const confirmations = currentMessage.pendingConfirmations || [];
+
+      if (chunk.type === "text" && chunk.text) {
+        const newContent = (currentMessage.content || "") + chunk.text;
+        const updatedMessage = { ...currentMessage, content: newContent };
+        updateMessage(updatedMessage);
+        setMessages((prev) =>
+          prev.map((m) => (m.id === messageId ? updatedMessage : m)),
+        );
+      } else if (chunk.type === "tool-call" && chunk.toolCall) {
+        toolCalls = [...toolCalls, chunk.toolCall];
+        const updatedMessage = { ...currentMessage, toolCalls };
+        updateMessage(updatedMessage);
+        setMessages((prev) =>
+          prev.map((m) => (m.id === messageId ? updatedMessage : m)),
+        );
+      } else if (chunk.type === "confirmation" && chunk.confirmation) {
+        confirmations.push(chunk.confirmation);
+        const updatedMessage = {
+          ...currentMessage,
+          pendingConfirmations: [...confirmations],
+        };
+        updateMessage(updatedMessage);
+        setMessages((prev) =>
+          prev.map((m) => (m.id === messageId ? updatedMessage : m)),
+        );
+        setPendingConfirmations((prev) => [...prev, chunk.confirmation!]);
+      } else if (chunk.type === "done" && chunk.result) {
+        if (chunk.result.conversationId) {
+          setConversationId(chunk.result.conversationId);
+        }
+        const updatedMessage = {
+          ...currentMessage,
+          content: currentMessage.content || chunk.result.content,
+          status: "completed" as const,
+          toolCalls: chunk.result.toolCalls,
+          pendingConfirmations:
+            confirmations.length > 0 ? confirmations : undefined,
+        };
+        updateMessage(updatedMessage);
+        setMessages((prev) =>
+          prev.map((m) => (m.id === messageId ? updatedMessage : m)),
+        );
+      } else if (chunk.type === "error") {
+        const updatedMessage = {
+          ...currentMessage,
+          status: "error" as const,
+          error: chunk.error,
+        };
+        updateMessage(updatedMessage);
+        setMessages((prev) =>
+          prev.map((m) => (m.id === messageId ? updatedMessage : m)),
+        );
+      }
+    },
+    [],
+  );
 
   // 处理确认操作
   const handleConfirm = useCallback(
@@ -401,7 +467,9 @@ export function AIPanelContent({
           params: confirmation.params,
           action: "cancel",
         }),
-      }).catch(() => {});
+      }).catch(() => {
+        // Intentionally ignored - cancel is best-effort
+      });
 
       setPendingConfirmations((prev) =>
         prev.filter((c) => c.confirmationId !== confirmationId),
@@ -455,6 +523,25 @@ export function AIPanelContent({
 
     setInput(lastUserMessage.content);
   }, [messages]);
+
+  // 处理建议点击
+  const handleSuggestionClick = useCallback((suggestion: SuggestionItem) => {
+    // 将建议内容设为输入，并自动提交
+    if (suggestion.action) {
+      // 如果有指定操作，直接执行
+      setInput(suggestion.action);
+    } else {
+      // 否则将建议文本作为输入
+      setInput(suggestion.text);
+    }
+    // 自动提交（延迟执行确保 input 已更新）
+    setTimeout(() => {
+      const submitButton = document.querySelector(
+        "[data-ai-submit-button]",
+      ) as HTMLButtonElement | null;
+      submitButton?.click();
+    }, 100);
+  }, []);
 
   return (
     <div className={`flex flex-col h-full ${className || ""}`}>
@@ -541,6 +628,13 @@ export function AIPanelContent({
                   搜索收藏
                 </button>
                 <button
+                  onClick={() => setInput("帮我制定知识复习计划")}
+                  className="px-3 py-1.5 bg-white rounded-full text-xs text-amber-600 border border-amber-200 hover:bg-amber-50 hover:border-amber-300 transition-colors flex items-center gap-1 shadow-sm"
+                >
+                  <BookOpen className="size-3" />
+                  知识复习
+                </button>
+                <button
                   onClick={() => setInput("我有哪些文件夹")}
                   className="px-3 py-1.5 bg-white rounded-full text-xs text-purple-600 border border-purple-200 hover:bg-purple-50 hover:border-purple-300 transition-colors flex items-center gap-1 shadow-sm"
                 >
@@ -564,6 +658,7 @@ export function AIPanelContent({
                 <AIMessage
                   message={message}
                   isLast={index === messages.length - 1}
+                  onSuggestionClick={handleSuggestionClick}
                 />
 
                 {/* 显示待确认操作 */}
@@ -611,6 +706,13 @@ export function AIPanelContent({
               className="flex-shrink-0 px-3 py-1.5 bg-white border border-pink-200 rounded-full text-xs text-pink-600 hover:bg-pink-50 hover:border-pink-300 transition-colors shadow-sm"
             >
               继续 →
+            </button>
+            <button
+              onClick={() => setInput("帮我制定知识复习计划")}
+              className="flex-shrink-0 px-3 py-1.5 bg-white border border-amber-200 rounded-full text-xs text-amber-600 hover:bg-amber-50 hover:border-amber-300 transition-colors shadow-sm flex items-center gap-1"
+            >
+              <BookOpen className="size-3" />
+              知识复习
             </button>
             <button
               onClick={() => setInput("搜索相关内容")}

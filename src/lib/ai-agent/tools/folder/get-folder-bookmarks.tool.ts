@@ -18,19 +18,30 @@ const paramsSchema = z.object({
     .number()
     .min(1)
     .max(100)
+    .optional()
     .default(20)
     .describe("返回数量，默认 20，最大 100"),
-  offset: z.number().min(0).default(0).describe("偏移量，用于分页"),
+  offset: z.number().min(0).optional().default(0).describe("偏移量，用于分页"),
   sortBy: z
     .enum(["created_at", "title", "rating"])
+    .optional()
     .default("created_at")
     .describe("排序字段：created_at-创建时间、title-标题、rating-评分"),
   sortOrder: z
     .enum(["asc", "desc"])
+    .optional()
     .default("desc")
     .describe("排序顺序：asc-升序、desc-降序"),
-  starredOnly: z.boolean().default(false).describe("是否只返回收藏的书签"),
-  unreadOnly: z.boolean().default(false).describe("是否只返回未读书签"),
+  starredOnly: z
+    .boolean()
+    .optional()
+    .default(false)
+    .describe("是否只返回收藏的书签"),
+  unreadOnly: z
+    .boolean()
+    .optional()
+    .default(false)
+    .describe("是否只返回未读书签"),
 });
 
 type GetFolderBookmarksParams = z.infer<typeof paramsSchema>;

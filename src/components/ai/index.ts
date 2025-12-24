@@ -1,8 +1,9 @@
 /**
  * AI 组件模块导出
  *
- * @version 1.4.0
+ * @version 2.0.0
  * @since 2025-12-22
+ * @updated 2025-12-24 - 添加统一输出协议相关组件
  */
 
 // 类型
@@ -33,6 +34,19 @@ export {
 } from "./action-confirm-dialog";
 export { AIBookmarkChat, type AIBookmarkChatProps } from "./ai-bookmark-chat";
 
+// 统一输出协议组件
+export {
+  AIProgressIndicator,
+  AIProgressIndicatorInline,
+  AIStepsList,
+} from "./ai-progress-indicator";
+export { AIDeliverableCard } from "./ai-deliverable-card";
+export {
+  AISuggestionsPanel,
+  AISuggestionsInline,
+  AIQuickSuggestions,
+} from "./ai-suggestions-panel";
+
 // 书签详情页组件
 export { AISmartSummary, type AISmartSummaryProps } from "./ai-smart-summary";
 export {
@@ -57,3 +71,13 @@ export {
   AISearchExplanation,
   type AISearchEnhancedProps,
 } from "./ai-search-enhanced";
+
+// 交付物展示组件
+export { ReviewCard } from "./deliverables/review-card";
+export { CleanupPreview } from "./deliverables/cleanup-preview";
+export { DigestView } from "./deliverables/digest-view";
+export {
+  MindmapViewer,
+  convertDigestToMindmap,
+  type MindmapNode,
+} from "./deliverables/mindmap-viewer";

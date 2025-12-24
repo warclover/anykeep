@@ -61,18 +61,22 @@ export interface FormatterContext {
  * 交付物格式化器抽象基类
  *
  * @template T - 输入数据类型
+ * @template C - 配置类型（默认为 FormatterConfig）
  */
-export abstract class BaseFormatter<T = unknown> {
-  protected config: Required<FormatterConfig>;
+export abstract class BaseFormatter<
+  T = unknown,
+  C extends FormatterConfig = FormatterConfig,
+> {
+  protected config: Required<C>;
 
-  constructor(config: Partial<FormatterConfig> = {}) {
+  constructor(config: Partial<C> = {} as Partial<C>) {
     this.config = {
       outputFormat: "markdown",
       includeMetadata: true,
       maxLength: 10000,
       pretty: true,
       ...config,
-    };
+    } as Required<C>;
   }
 
   /**
@@ -100,10 +104,11 @@ export abstract class BaseFormatter<T = unknown> {
    * 截断内容
    */
   protected truncate(content: string): string {
-    if (content.length <= this.config.maxLength) {
+    const maxLength = this.config.maxLength ?? 10000;
+    if (content.length <= maxLength) {
       return content;
     }
-    return content.slice(0, this.config.maxLength - 3) + "...";
+    return content.slice(0, maxLength - 3) + "...";
   }
 
   /**
@@ -133,7 +138,7 @@ export abstract class BaseFormatter<T = unknown> {
   /**
    * 更新配置
    */
-  updateConfig(config: Partial<FormatterConfig>): void {
+  updateConfig(config: Partial<C>): void {
     this.config = {
       ...this.config,
       ...config,

@@ -70,7 +70,10 @@ export interface ReportFormatterConfig extends FormatterConfig {
 /**
  * 报告格式化器
  */
-export class ReportFormatter extends BaseFormatter<ReportData> {
+export class ReportFormatter extends BaseFormatter<
+  ReportData,
+  ReportFormatterConfig
+> {
   protected override config: Required<ReportFormatterConfig>;
 
   constructor(config: Partial<ReportFormatterConfig> = {}) {

@@ -12,7 +12,6 @@ export type {
   OrchestrationContext,
   // 确认相关
   ConfirmationOptions,
-  ConfirmationResult,
   // 交付物相关
   DeliverableConfig,
   Deliverable,
@@ -52,3 +51,15 @@ export {
   type ListData,
   type CardData,
 } from "./deliverable-generator";
+
+// 确认处理器
+export {
+  ConfirmationHandler,
+  createConfirmationHandler,
+  confirmationHandler,
+  type PendingConfirmation,
+  type ConfirmationRequestOptions,
+  type ConfirmationResult,
+  type ConfirmationStatus,
+  type ConfirmationHandlerConfig,
+} from "./confirmation-handler";

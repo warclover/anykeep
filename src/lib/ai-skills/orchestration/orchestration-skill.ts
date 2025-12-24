@@ -25,13 +25,13 @@ import type {
   OrchestrationContext,
   OrchestrationSkillMetadata,
   ConfirmationOptions,
-  ConfirmationResult,
   Deliverable,
   StepDefinition,
   ProgressState,
   ToolContext,
   ToolResult,
 } from "./types";
+import type { ConfirmationResult } from "./confirmation-handler";
 
 /**
  * 编排 Skill 基类
@@ -189,9 +189,11 @@ export abstract class OrchestrationSkill<TInput = unknown, TOutput = unknown>
     // 如果有确认回调，等待用户响应
     if (context.onConfirmation) {
       const response = await context.onConfirmation(fullOptions);
+      const confirmed = response.selectedOption !== "cancel";
       return {
-        confirmed: response.selectedOption !== "cancel",
+        confirmed,
         selectedOption: response.selectedOption,
+        status: confirmed ? "confirmed" : "cancelled",
         data: response.data,
       };
     }

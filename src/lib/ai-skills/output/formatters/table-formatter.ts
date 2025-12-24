@@ -58,7 +58,10 @@ export interface TableFormatterConfig extends FormatterConfig {
 /**
  * 表格格式化器
  */
-export class TableFormatter extends BaseFormatter<Record<string, unknown>[]> {
+export class TableFormatter extends BaseFormatter<
+  Record<string, unknown>[],
+  TableFormatterConfig
+> {
   protected override config: Required<TableFormatterConfig>;
 
   constructor(config: Partial<TableFormatterConfig> = {}) {

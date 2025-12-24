@@ -17,10 +17,12 @@ const paramsSchema = z.object({
   folderId: z.number().describe("文件夹 ID"),
   includeTopTags: z
     .boolean()
+    .optional()
     .default(true)
     .describe("是否包含热门标签，默认 true"),
   includeRecentTitles: z
     .boolean()
+    .optional()
     .default(true)
     .describe("是否包含最近书签标题，默认 true"),
 });

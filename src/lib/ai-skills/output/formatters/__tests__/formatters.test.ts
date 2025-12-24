@@ -359,7 +359,9 @@ describe("getFormatterForType()", () => {
 
   it("should pass config to formatter", () => {
     const formatter = getFormatterForType("list", { outputFormat: "html" });
-    const result = formatter.format([{ text: "Test" }], {
+    // 由于 getFormatterForType 返回联合类型，需要类型断言
+    const listFormatter = formatter as ListFormatter;
+    const result = listFormatter.format([{ text: "Test" }], {
       type: "list",
       title: "Test",
     });

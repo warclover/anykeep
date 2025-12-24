@@ -2,6 +2,7 @@
 import "@testing-library/jest-dom";
 import { randomUUID } from "crypto";
 import { TextEncoder, TextDecoder } from "util";
+import { TransformStream, ReadableStream, WritableStream } from "stream/web";
 
 // Polyfill crypto.randomUUID for Jest environment
 if (typeof globalThis.crypto === "undefined") {
@@ -20,4 +21,18 @@ if (typeof globalThis.TextEncoder === "undefined") {
 if (typeof globalThis.TextDecoder === "undefined") {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   globalThis.TextDecoder = TextDecoder as any;
+}
+
+// Polyfill Web Streams API for Jest environment (required by AI SDK)
+if (typeof globalThis.TransformStream === "undefined") {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  globalThis.TransformStream = TransformStream as any;
+}
+if (typeof globalThis.ReadableStream === "undefined") {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  globalThis.ReadableStream = ReadableStream as any;
+}
+if (typeof globalThis.WritableStream === "undefined") {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  globalThis.WritableStream = WritableStream as any;
 }

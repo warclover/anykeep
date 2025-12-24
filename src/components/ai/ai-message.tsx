@@ -2,18 +2,22 @@
  * AI 消息组件
  *
  * 显示单条对话消息，支持用户消息和助手消息
- * 糖果色风格设计
+ * 糖果色风格设计，支持统一输出协议
  *
- * @version 1.1.0
+ * @version 2.0.0
  * @since 2025-12-22
+ * @updated 2025-12-24 - 添加进度、交付物、建议支持
  */
 
 "use client";
 
 import { memo } from "react";
-import { Sparkles, User, AlertCircle, Wrench } from "lucide-react";
+import { Sparkles, User, AlertCircle, Wrench, Zap, Layers } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { AIMessageProps } from "./types";
+import type { AIMessageProps, SuggestionItem } from "./types";
+import { AIProgressIndicatorInline } from "./ai-progress-indicator";
+import { AIDeliverableCard } from "./ai-deliverable-card";
+import { AISuggestionsInline } from "./ai-suggestions-panel";
 
 /**
  * AI 消息组件 - 糖果色风格
@@ -21,11 +25,19 @@ import type { AIMessageProps } from "./types";
 export const AIMessage = memo(function AIMessage({
   message,
   isLast = false,
-}: AIMessageProps) {
+  onSuggestionClick,
+}: AIMessageProps & {
+  onSuggestionClick?: (suggestion: SuggestionItem) => void;
+}) {
   const isUser = message.role === "user";
   const isStreaming = message.status === "streaming";
   const hasError = message.status === "error";
   const hasToolCalls = message.toolCalls && message.toolCalls.length > 0;
+  const hasProgress = message.progress && message.progress.percent < 100;
+  const hasDeliverables =
+    message.deliverables && message.deliverables.length > 0;
+  const hasSuggestions = message.suggestions && message.suggestions.length > 0;
+  const isOrchestration = message.executionMode === "orchestration";
 
   return (
     <div
@@ -120,6 +132,53 @@ export const AIMessage = memo(function AIMessage({
                 <span>{tc.toolName}</span>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* 执行模式标签 */}
+        {!isUser && isOrchestration && (
+          <div className="flex items-center gap-1 mt-1">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-gradient-to-r from-purple-100 to-indigo-100 text-purple-700 border border-purple-200">
+              <Layers className="size-3" />
+              <span>编排模式</span>
+              {message.skillId && (
+                <span className="text-purple-500">· {message.skillId}</span>
+              )}
+            </span>
+          </div>
+        )}
+        {!isUser && message.executionMode === "atomic" && (
+          <div className="flex items-center gap-1 mt-1">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-gradient-to-r from-blue-100 to-cyan-100 text-blue-700 border border-blue-200">
+              <Zap className="size-3" />
+              <span>原子模式</span>
+            </span>
+          </div>
+        )}
+
+        {/* 进度显示 */}
+        {hasProgress && message.progress && (
+          <div className="mt-2">
+            <AIProgressIndicatorInline progress={message.progress} />
+          </div>
+        )}
+
+        {/* 交付物显示 */}
+        {hasDeliverables && (
+          <div className="mt-3 space-y-2">
+            {message.deliverables!.map((deliverable, index) => (
+              <AIDeliverableCard key={index} deliverable={deliverable} />
+            ))}
+          </div>
+        )}
+
+        {/* 建议显示 */}
+        {hasSuggestions && !isStreaming && (
+          <div className="mt-3">
+            <AISuggestionsInline
+              suggestions={message.suggestions!}
+              onSuggestionClick={onSuggestionClick}
+            />
           </div>
         )}
 

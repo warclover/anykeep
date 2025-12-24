@@ -2,13 +2,14 @@
  * AI 聊天 Hook
  *
  * 提供 AI Agent 聊天功能的可复用 Hook
- * 支持 SSE 流式响应、取消请求、错误处理
+ * 支持 SSE 流式响应、统一引擎、取消请求、错误处理
  *
- * @version 1.0.0
+ * @version 2.0.0
  * @since 2025-12-24
+ * @updated 2025-12-24 - 支持统一智能引擎
  */
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import type { AgentStreamChunk } from "@/lib/ai-agent/core/types";
 import type { PendingConfirmation } from "@/lib/ai-agent/tools/types";
 
@@ -44,6 +45,30 @@ export interface ChatMessage {
   error?: string;
   /** 待确认操作 */
   pendingConfirmation?: PendingConfirmation;
+  /** 待确认操作列表（多个） */
+  pendingConfirmations?: PendingConfirmation[];
+  /** 进度信息 */
+  progress?: {
+    step: string;
+    percent: number;
+    message?: string;
+  };
+  /** 交付物 */
+  deliverables?: Array<{
+    id: string;
+    type: string;
+    title: string;
+    format: string;
+    content: unknown;
+    downloadable?: boolean;
+    shareable?: boolean;
+  }>;
+  /** 后续建议 */
+  suggestions?: Array<{
+    label: string;
+    action: string;
+    params?: Record<string, unknown>;
+  }>;
 }
 
 /**
@@ -60,26 +85,76 @@ export interface ChatRequestOptions {
   streaming?: boolean;
   /** 系统提示语 */
   systemPrompt?: string;
+  /** 是否使用统一引擎 */
+  useUnifiedEngine?: boolean;
+}
+
+/**
+ * 统一引擎流式数据块
+ */
+interface UnifiedStreamChunk {
+  type:
+    | "text"
+    | "progress"
+    | "deliverable"
+    | "suggestions"
+    | "routing"
+    | "fallback"
+    | "error"
+    | "done"
+    | "confirmation";
+  data?: {
+    text?: string;
+    isPartial?: boolean;
+    step?: string;
+    percent?: number;
+    message?: string;
+    id?: string;
+    type?: string;
+    title?: string;
+    format?: string;
+    content?: unknown;
+    downloadable?: boolean;
+    shareable?: boolean;
+    suggestions?: Array<{
+      label: string;
+      action: string;
+      params?: Record<string, unknown>;
+    }>;
+    mode?: string;
+    reason?: string;
+    success?: boolean;
+    summary?: string;
+    skillId?: string;
+    durationMs?: number;
+    confirmation?: PendingConfirmation;
+  };
 }
 
 /**
  * useAIChat 配置
  */
 export interface UseAIChatConfig {
-  /** API 端点 */
+  /** API 端点（默认根据 useUnifiedEngine 自动选择） */
   apiEndpoint?: string;
   /** 默认请求选项 */
   defaultOptions?: ChatRequestOptions;
+  /** 是否使用统一引擎（默认 true） */
+  useUnifiedEngine?: boolean;
   /** 消息发送前回调 */
   onBeforeSend?: (message: string) => void;
   /** 流式响应回调 */
-  onStream?: (chunk: AgentStreamChunk) => void;
+  onStream?: (chunk: AgentStreamChunk | UnifiedStreamChunk) => void;
   /** 完成回调 */
   onComplete?: (message: ChatMessage) => void;
   /** 错误回调 */
   onError?: (error: Error) => void;
   /** 确认操作回调 */
   onConfirmation?: (confirmation: PendingConfirmation) => void;
+  /** 进度更新回调 */
+  onProgress?: (step: string, percent: number, message?: string) => void;
+  /** 消息变化回调 */
+  onMessagesChange?: (messages: ChatMessage[]) => void;
 }
 
 /**
@@ -98,6 +173,8 @@ export interface UseAIChatReturn {
   error: string | null;
   /** 待确认操作列表 */
   pendingConfirmations: PendingConfirmation[];
+  /** 当前进度 */
+  progress: { step: string; percent: number; message?: string } | null;
   /** 发送消息 */
   sendMessage: (message: string, options?: ChatRequestOptions) => Promise<void>;
   /** 取消当前请求 */
@@ -108,6 +185,12 @@ export interface UseAIChatReturn {
   clearMessages: () => void;
   /** 重试最后一条消息 */
   retry: () => Promise<void>;
+  /** 滚动区域 Ref */
+  scrollRef: React.RefObject<HTMLDivElement | null>;
+  /** 处理确认 */
+  handleConfirm: (confirmationId: string) => Promise<void>;
+  /** 处理取消确认 */
+  handleCancel: (confirmationId: string) => Promise<void>;
 }
 
 // ============================================
@@ -124,11 +207,13 @@ function generateMessageId(): string {
 /**
  * 解析 SSE 数据行
  */
-function parseSSELine(line: string): AgentStreamChunk | null {
+function parseSSELine(
+  line: string,
+): AgentStreamChunk | UnifiedStreamChunk | null {
   if (!line.startsWith("data: ")) return null;
 
   try {
-    return JSON.parse(line.slice(6)) as AgentStreamChunk;
+    return JSON.parse(line.slice(6));
   } catch {
     return null;
   }
@@ -146,14 +231,20 @@ function parseSSELine(line: string): AgentStreamChunk | null {
  *
  * @example
  * ```tsx
- * const { messages, sendMessage, isLoading, currentResponse } = useAIChat({
- *   apiEndpoint: '/api/agent/chat',
+ * const {
+ *   messages,
+ *   sendMessage,
+ *   isLoading,
+ *   currentResponse,
+ *   progress,
+ * } = useAIChat({
+ *   useUnifiedEngine: true,
  *   defaultOptions: { streaming: true },
- *   onComplete: (msg) => console.log('完成:', msg),
+ *   onProgress: (step, percent) => console.log(`${step}: ${percent}%`),
  * });
  *
  * // 发送消息
- * await sendMessage('你好');
+ * await sendMessage('帮我分析最近收藏的文章');
  *
  * // 取消请求
  * cancel();
@@ -161,13 +252,16 @@ function parseSSELine(line: string): AgentStreamChunk | null {
  */
 export function useAIChat(config: UseAIChatConfig = {}): UseAIChatReturn {
   const {
-    apiEndpoint = "/api/agent/chat",
+    apiEndpoint,
     defaultOptions = {},
+    useUnifiedEngine = true,
     onBeforeSend,
     onStream,
     onComplete,
     onError,
     onConfirmation,
+    onProgress,
+    onMessagesChange,
   } = config;
 
   // 状态
@@ -178,11 +272,209 @@ export function useAIChat(config: UseAIChatConfig = {}): UseAIChatReturn {
   const [pendingConfirmations, setPendingConfirmations] = useState<
     PendingConfirmation[]
   >([]);
+  const [progress, setProgress] = useState<{
+    step: string;
+    percent: number;
+    message?: string;
+  } | null>(null);
 
   // Refs
   const abortControllerRef = useRef<AbortController | null>(null);
   const lastMessageRef = useRef<string | null>(null);
   const lastOptionsRef = useRef<ChatRequestOptions | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // 消息变化时通知
+  useEffect(() => {
+    onMessagesChange?.(messages);
+  }, [messages, onMessagesChange]);
+
+  // 滚动到底部
+  const scrollToBottom = useCallback(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, []);
+
+  // 消息变化时滚动
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, pendingConfirmations, scrollToBottom]);
+
+  /**
+   * 处理统一引擎流式数据块
+   */
+  const handleUnifiedChunk = useCallback(
+    (
+      chunk: UnifiedStreamChunk,
+      messageId: string,
+      currentMessage: ChatMessage,
+      updateMessage: (msg: ChatMessage) => void,
+    ) => {
+      const confirmations = currentMessage.pendingConfirmations || [];
+      const deliverables = currentMessage.deliverables || [];
+
+      switch (chunk.type) {
+        case "text":
+          if (chunk.data?.text) {
+            const newContent = (currentMessage.content || "") + chunk.data.text;
+            const updated = { ...currentMessage, content: newContent };
+            updateMessage(updated);
+            setMessages((prev) =>
+              prev.map((m) => (m.id === messageId ? updated : m)),
+            );
+            setCurrentResponse(newContent);
+          }
+          break;
+
+        case "progress":
+          if (chunk.data) {
+            const progressData = {
+              step: chunk.data.step || "",
+              percent: chunk.data.percent || 0,
+              message: chunk.data.message,
+            };
+            const updated = { ...currentMessage, progress: progressData };
+            updateMessage(updated);
+            setMessages((prev) =>
+              prev.map((m) => (m.id === messageId ? updated : m)),
+            );
+            setProgress(progressData);
+            onProgress?.(
+              progressData.step,
+              progressData.percent,
+              progressData.message,
+            );
+          }
+          break;
+
+        case "deliverable":
+          if (chunk.data) {
+            const deliverable = {
+              id: chunk.data.id || generateMessageId(),
+              type: chunk.data.type || "document",
+              title: chunk.data.title || "交付物",
+              format: chunk.data.format || "markdown",
+              content: chunk.data.content,
+              downloadable: chunk.data.downloadable,
+              shareable: chunk.data.shareable,
+            };
+            deliverables.push(deliverable);
+            const updated = {
+              ...currentMessage,
+              deliverables: [...deliverables],
+            };
+            updateMessage(updated);
+            setMessages((prev) =>
+              prev.map((m) => (m.id === messageId ? updated : m)),
+            );
+          }
+          break;
+
+        case "suggestions":
+          if (chunk.data?.suggestions) {
+            const updated = {
+              ...currentMessage,
+              suggestions: chunk.data.suggestions,
+            };
+            updateMessage(updated);
+            setMessages((prev) =>
+              prev.map((m) => (m.id === messageId ? updated : m)),
+            );
+          }
+          break;
+
+        case "confirmation":
+          if (chunk.data?.confirmation) {
+            confirmations.push(chunk.data.confirmation);
+            const updated = {
+              ...currentMessage,
+              pendingConfirmations: [...confirmations],
+            };
+            updateMessage(updated);
+            setMessages((prev) =>
+              prev.map((m) => (m.id === messageId ? updated : m)),
+            );
+            setPendingConfirmations((prev) => [
+              ...prev,
+              chunk.data!.confirmation!,
+            ]);
+            onConfirmation?.(chunk.data.confirmation);
+          }
+          break;
+
+        case "error":
+          setError(chunk.data?.message || "发生错误");
+          setStatus("error");
+          break;
+
+        case "done":
+          const finalMessage: ChatMessage = {
+            ...currentMessage,
+            isStreaming: false,
+          };
+          updateMessage(finalMessage);
+          setMessages((prev) =>
+            prev.map((m) => (m.id === messageId ? finalMessage : m)),
+          );
+          break;
+      }
+    },
+    [onConfirmation, onProgress],
+  );
+
+  /**
+   * 处理原有 Agent API 的流式数据块
+   */
+  const handleAgentChunk = useCallback(
+    (
+      chunk: AgentStreamChunk,
+      messageId: string,
+      currentMessage: ChatMessage,
+      updateMessage: (msg: ChatMessage) => void,
+    ) => {
+      const confirmations = currentMessage.pendingConfirmations || [];
+
+      switch (chunk.type) {
+        case "text":
+          if (chunk.text) {
+            const newContent = (currentMessage.content || "") + chunk.text;
+            const updated = { ...currentMessage, content: newContent };
+            updateMessage(updated);
+            setMessages((prev) =>
+              prev.map((m) => (m.id === messageId ? updated : m)),
+            );
+            setCurrentResponse(newContent);
+          }
+          break;
+
+        case "confirmation":
+          if (chunk.confirmation) {
+            confirmations.push(chunk.confirmation);
+            const updated = {
+              ...currentMessage,
+              pendingConfirmations: [...confirmations],
+            };
+            updateMessage(updated);
+            setMessages((prev) =>
+              prev.map((m) => (m.id === messageId ? updated : m)),
+            );
+            setPendingConfirmations((prev) => [...prev, chunk.confirmation!]);
+            onConfirmation?.(chunk.confirmation);
+          }
+          break;
+
+        case "error":
+          setError(chunk.error || "发生错误");
+          setStatus("error");
+          break;
+
+        case "done":
+          break;
+      }
+    },
+    [onConfirmation],
+  );
 
   /**
    * 发送消息
@@ -212,14 +504,22 @@ export function useAIChat(config: UseAIChatConfig = {}): UseAIChatReturn {
       setStatus("loading");
       setCurrentResponse(null);
       setError(null);
+      setProgress(null);
 
       // 创建 AbortController
       abortControllerRef.current = new AbortController();
 
       try {
         const mergedOptions = { ...defaultOptions, ...options };
+        const shouldUseUnified =
+          mergedOptions.useUnifiedEngine ?? useUnifiedEngine;
 
-        const res = await fetch(apiEndpoint, {
+        // 根据配置选择 API
+        const endpoint =
+          apiEndpoint ||
+          (shouldUseUnified ? "/api/agent/unified" : "/api/agent/chat");
+
+        const res = await fetch(endpoint, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -230,6 +530,7 @@ export function useAIChat(config: UseAIChatConfig = {}): UseAIChatReturn {
             options: {
               streaming: mergedOptions.streaming ?? true,
               systemPrompt: mergedOptions.systemPrompt,
+              enableUnified: shouldUseUnified,
             },
           }),
           signal: abortControllerRef.current.signal,
@@ -252,9 +553,17 @@ export function useAIChat(config: UseAIChatConfig = {}): UseAIChatReturn {
         setStatus("streaming");
 
         const decoder = new TextDecoder();
-        let fullContent = "";
         const assistantMessageId = generateMessageId();
-        const confirmations: PendingConfirmation[] = [];
+        let assistantMessage: ChatMessage = {
+          id: assistantMessageId,
+          role: "assistant",
+          content: "",
+          createdAt: new Date(),
+          isStreaming: true,
+        };
+
+        // 添加助手消息占位
+        setMessages((prev) => [...prev, assistantMessage]);
 
         while (true) {
           const { done, value } = await reader.read();
@@ -270,50 +579,39 @@ export function useAIChat(config: UseAIChatConfig = {}): UseAIChatReturn {
             // 回调
             onStream?.(chunk);
 
-            switch (chunk.type) {
-              case "text":
-                if (chunk.text) {
-                  fullContent += chunk.text;
-                  setCurrentResponse(fullContent);
-                }
-                break;
-
-              case "confirmation":
-                if (chunk.confirmation) {
-                  confirmations.push(chunk.confirmation);
-                  onConfirmation?.(chunk.confirmation);
-                }
-                break;
-
-              case "error":
-                setError(chunk.error || "发生错误");
-                setStatus("error");
-                break;
-
-              case "done":
-                // 完成
-                break;
+            if (shouldUseUnified) {
+              handleUnifiedChunk(
+                chunk as UnifiedStreamChunk,
+                assistantMessageId,
+                assistantMessage,
+                (msg) => {
+                  assistantMessage = msg;
+                },
+              );
+            } else {
+              handleAgentChunk(
+                chunk as AgentStreamChunk,
+                assistantMessageId,
+                assistantMessage,
+                (msg) => {
+                  assistantMessage = msg;
+                },
+              );
             }
           }
         }
 
-        // 创建助手消息
-        const assistantMessage: ChatMessage = {
-          id: assistantMessageId,
-          role: "assistant",
-          content: fullContent || "AI 没有返回内容",
-          createdAt: new Date(),
-          pendingConfirmation:
-            confirmations.length > 0 ? confirmations[0] : undefined,
+        // 最终更新
+        assistantMessage = {
+          ...assistantMessage,
+          isStreaming: false,
+          content: assistantMessage.content || "AI 没有返回内容",
         };
-
-        setMessages((prev) => [...prev, assistantMessage]);
+        setMessages((prev) =>
+          prev.map((m) => (m.id === assistantMessageId ? assistantMessage : m)),
+        );
         setStatus("idle");
-
-        // 更新待确认列表
-        if (confirmations.length > 0) {
-          setPendingConfirmations((prev) => [...prev, ...confirmations]);
-        }
+        setProgress(null);
 
         // 完成回调
         onComplete?.(assistantMessage);
@@ -335,12 +633,136 @@ export function useAIChat(config: UseAIChatConfig = {}): UseAIChatReturn {
       status,
       apiEndpoint,
       defaultOptions,
+      useUnifiedEngine,
       onBeforeSend,
       onStream,
       onComplete,
       onError,
-      onConfirmation,
+      handleUnifiedChunk,
+      handleAgentChunk,
     ],
+  );
+
+  /**
+   * 处理确认操作
+   */
+  const handleConfirm = useCallback(
+    async (confirmationId: string) => {
+      const confirmation = pendingConfirmations.find(
+        (c) => c.confirmationId === confirmationId,
+      );
+      if (!confirmation) return;
+
+      try {
+        const response = await fetch("/api/agent/confirm", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            confirmationId: confirmation.confirmationId,
+            toolName: confirmation.toolName,
+            params: confirmation.params,
+            action: "confirm",
+          }),
+        });
+
+        const result = await response.json();
+
+        const resultMessage: ChatMessage = {
+          id: generateMessageId(),
+          role: "assistant",
+          content: result.success
+            ? `✅ 操作已完成：${result.data?.message || confirmation.description}`
+            : `❌ 操作失败：${result.error || "未知错误"}`,
+          createdAt: new Date(),
+        };
+        setMessages((prev) => [...prev, resultMessage]);
+
+        // 移除已处理的确认
+        setPendingConfirmations((prev) =>
+          prev.filter((c) => c.confirmationId !== confirmationId),
+        );
+
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.pendingConfirmations?.some(
+              (c) => c.confirmationId === confirmationId,
+            )
+              ? {
+                  ...m,
+                  pendingConfirmations: m.pendingConfirmations?.filter(
+                    (c) => c.confirmationId !== confirmationId,
+                  ),
+                }
+              : m,
+          ),
+        );
+      } catch (err) {
+        const errorMessage: ChatMessage = {
+          id: generateMessageId(),
+          role: "assistant",
+          content: `❌ 操作执行失败：${err instanceof Error ? err.message : "网络错误"}`,
+          createdAt: new Date(),
+          error: err instanceof Error ? err.message : "网络错误",
+        };
+        setMessages((prev) => [...prev, errorMessage]);
+      }
+    },
+    [pendingConfirmations],
+  );
+
+  /**
+   * 处理取消确认
+   */
+  const handleCancel = useCallback(
+    async (confirmationId: string) => {
+      const confirmation = pendingConfirmations.find(
+        (c) => c.confirmationId === confirmationId,
+      );
+      if (!confirmation) return;
+
+      // 异步发送取消请求（不等待结果）
+      fetch("/api/agent/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          confirmationId: confirmation.confirmationId,
+          toolName: confirmation.toolName,
+          params: confirmation.params,
+          action: "cancel",
+        }),
+      }).catch(() => {
+        // Intentionally ignored - cancel is best-effort
+      });
+
+      // 立即移除确认
+      setPendingConfirmations((prev) =>
+        prev.filter((c) => c.confirmationId !== confirmationId),
+      );
+
+      const cancelMessage: ChatMessage = {
+        id: generateMessageId(),
+        role: "assistant",
+        content: "❌ 操作已取消",
+        createdAt: new Date(),
+      };
+      setMessages((prev) => [...prev, cancelMessage]);
+
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.pendingConfirmations?.some(
+            (c) => c.confirmationId === confirmationId,
+          )
+            ? {
+                ...m,
+                pendingConfirmations: m.pendingConfirmations?.filter(
+                  (c) => c.confirmationId !== confirmationId,
+                ),
+              }
+            : m,
+        ),
+      );
+    },
+    [pendingConfirmations],
   );
 
   /**
@@ -361,6 +783,7 @@ export function useAIChat(config: UseAIChatConfig = {}): UseAIChatReturn {
     setCurrentResponse(null);
     setError(null);
     setStatus("idle");
+    setProgress(null);
   }, []);
 
   /**
@@ -372,6 +795,7 @@ export function useAIChat(config: UseAIChatConfig = {}): UseAIChatReturn {
     setError(null);
     setStatus("idle");
     setPendingConfirmations([]);
+    setProgress(null);
   }, []);
 
   /**
@@ -381,7 +805,14 @@ export function useAIChat(config: UseAIChatConfig = {}): UseAIChatReturn {
     if (lastMessageRef.current) {
       // 移除最后的用户消息（如果有）
       setMessages((prev) => {
-        const lastUserIndex = prev.findLastIndex((m) => m.role === "user");
+        // 兼容 ES2022 以下的 findLastIndex 实现
+        let lastUserIndex = -1;
+        for (let i = prev.length - 1; i >= 0; i--) {
+          if (prev[i].role === "user") {
+            lastUserIndex = i;
+            break;
+          }
+        }
         if (lastUserIndex !== -1) {
           return prev.slice(0, lastUserIndex);
         }
@@ -402,11 +833,15 @@ export function useAIChat(config: UseAIChatConfig = {}): UseAIChatReturn {
     currentResponse,
     error,
     pendingConfirmations,
+    progress,
     sendMessage,
     cancel,
     clearResponse,
     clearMessages,
     retry,
+    scrollRef,
+    handleConfirm,
+    handleCancel,
   };
 }
 

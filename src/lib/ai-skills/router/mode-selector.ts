@@ -56,6 +56,12 @@ const DEFAULT_SKILL_MAPPINGS: Record<string, OrchestrationSkillMapping> = {
     minComplexity: "complex",
     enabled: false, // TODO: 待实现
   },
+  "learn:plan": {
+    skillId: "reading_planner",
+    name: "阅读计划助手",
+    minComplexity: "medium",
+    enabled: true,
+  },
 
   // 整理类
   "organize:cleanup": {
@@ -74,7 +80,7 @@ const DEFAULT_SKILL_MAPPINGS: Record<string, OrchestrationSkillMapping> = {
     skillId: "smart_tagging",
     name: "智能标签助手",
     minComplexity: "medium",
-    enabled: false, // TODO: 待实现
+    enabled: true,
   },
 
   // 分析类
@@ -89,6 +95,12 @@ const DEFAULT_SKILL_MAPPINGS: Record<string, OrchestrationSkillMapping> = {
     name: "收藏洞察分析",
     minComplexity: "medium",
     enabled: false, // TODO: 待实现
+  },
+  "analyze:discover": {
+    skillId: "related_discovery",
+    name: "相关发现助手",
+    minComplexity: "medium",
+    enabled: true,
   },
 
   // 创建类

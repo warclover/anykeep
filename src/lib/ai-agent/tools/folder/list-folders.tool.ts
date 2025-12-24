@@ -22,10 +22,12 @@ const paramsSchema = z.object({
     ),
   includeArchived: z
     .boolean()
+    .optional()
     .default(false)
     .describe("是否包含已归档文件夹，默认 false"),
   includeSystem: z
     .boolean()
+    .optional()
     .default(false)
     .describe("是否包含系统文件夹（如 INBOX），默认 false"),
   parentId: z.number().optional().describe("父文件夹 ID，用于获取子文件夹"),

@@ -23,6 +23,14 @@ import { knowledgeReviewSkill } from "./skills/knowledge-review";
 import { dataExportSkill } from "./skills/data-export";
 import { insightReportSkill } from "./skills/insight-report";
 import { batchOrganizeSkill } from "./skills/batch-organize";
+import { duplicateCleanupSkill } from "./skills/duplicate-cleanup";
+import { quickDigestSkill } from "./skills/quick-digest";
+import { smartTaggingSkill } from "./skills/smart-tagging";
+import { readingPlannerSkill } from "./skills/reading-planner";
+import { relatedDiscoverySkill } from "./skills/related-discovery";
+import { periodicReportSkill } from "./skills/periodic-report";
+import { shareBundleSkill } from "./skills/share-bundle";
+import { learningPathSkill } from "./skills/learning-path";
 import { unifiedEngine } from "./engine/unified-engine";
 import { knowledgeAgent } from "../ai-agent/core/knowledge-agent";
 import { logger } from "@/lib/logger";
@@ -142,6 +150,22 @@ export function initializeUnifiedEngine(): void {
   unifiedEngine.registerOrchestrationSkill(insightReportSkill as any);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   unifiedEngine.registerOrchestrationSkill(batchOrganizeSkill as any);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  unifiedEngine.registerOrchestrationSkill(duplicateCleanupSkill as any);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  unifiedEngine.registerOrchestrationSkill(quickDigestSkill as any);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  unifiedEngine.registerOrchestrationSkill(smartTaggingSkill as any);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  unifiedEngine.registerOrchestrationSkill(readingPlannerSkill as any);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  unifiedEngine.registerOrchestrationSkill(relatedDiscoverySkill as any);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  unifiedEngine.registerOrchestrationSkill(periodicReportSkill as any);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  unifiedEngine.registerOrchestrationSkill(shareBundleSkill as any);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  unifiedEngine.registerOrchestrationSkill(learningPathSkill as any);
 
   unifiedEngineInitialized = true;
 

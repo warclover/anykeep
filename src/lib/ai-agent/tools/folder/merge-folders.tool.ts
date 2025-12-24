@@ -35,6 +35,7 @@ const paramsSchema = z.object({
     .describe("目标文件夹 ID（合并到的文件夹）"),
   deleteSourceFolder: z
     .boolean()
+    .optional()
     .default(true)
     .describe("合并后是否删除源文件夹，默认 true"),
 });

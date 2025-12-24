@@ -58,7 +58,10 @@ export interface ListFormatterConfig extends FormatterConfig {
 /**
  * 列表格式化器
  */
-export class ListFormatter extends BaseFormatter<ListItem[]> {
+export class ListFormatter extends BaseFormatter<
+  ListItem[],
+  ListFormatterConfig
+> {
   protected override config: Required<ListFormatterConfig>;
 
   constructor(config: Partial<ListFormatterConfig> = {}) {

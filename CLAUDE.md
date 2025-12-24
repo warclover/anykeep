@@ -2,12 +2,13 @@
 
 ## 变更记录 (Changelog)
 
-| 日期       | 版本  | 变更内容                                             |
-| ---------- | ----- | ---------------------------------------------------- |
-| 2025-12-20 | 2.2.0 | 完成批量操作功能（批量标签管理 + Shift 范围选择）    |
-| 2025-12-01 | 2.1.0 | 完成浏览器书签隔离与列表视图优化功能                 |
-| 2025-12-01 | 2.0.0 | 项目进入开发阶段，完成浏览器书签导入功能 (Phase 1-3) |
-| 2025-11-21 | 1.0.0 | 初始化 AI 上下文文档，项目处于规划阶段               |
+| 日期       | 版本  | 变更内容                                              |
+| ---------- | ----- | ----------------------------------------------------- |
+| 2025-12-24 | 2.4.0 | 完成 AI Skills 统一智能架构（编排引擎 + 4 个 Skills） |
+| 2025-12-20 | 2.2.0 | 完成批量操作功能（批量标签管理 + Shift 范围选择）     |
+| 2025-12-01 | 2.1.0 | 完成浏览器书签隔离与列表视图优化功能                  |
+| 2025-12-01 | 2.0.0 | 项目进入开发阶段，完成浏览器书签导入功能 (Phase 1-3)  |
+| 2025-11-21 | 1.0.0 | 初始化 AI 上下文文档，项目处于规划阶段                |
 
 ---
 
@@ -459,6 +460,126 @@ src/components/export/
 - 策略模式：每种格式独立 Formatter，易于扩展
 - 单一职责：服务层/格式化层/UI层分离
 - 复用优先：`ExportDialogV2` 统一导出入口
+
+---
+
+### 5. AI Skills 统一智能架构 ✅
+
+**版本**: v2.4.0 (2025-12-24)
+
+全新的 AI 能力统一架构，支持原子模式（简单查询）和编排模式（复杂任务）的智能路由。
+
+**架构概览**:
+
+```
+┌────────────────────────────────────────────────────────────┐
+│                     /api/agent/unified                      │
+│                     (统一 API 入口)                          │
+└──────────────────────────┬─────────────────────────────────┘
+                           │
+┌──────────────────────────▼─────────────────────────────────┐
+│                    UnifiedEngine                            │
+│  - IntentRouter（意图路由）                                  │
+│  - 模式切换（atomic ↔ orchestration）                        │
+│  - 自动回退机制                                              │
+└──────────────────────────┬─────────────────────────────────┘
+           ┌───────────────┴───────────────┐
+           ▼                               ▼
+┌──────────────────────┐    ┌──────────────────────────────────┐
+│   Atomic Mode        │    │     Orchestration Mode           │
+│   (KnowledgeAgent)   │    │     (OrchestrationEngine)        │
+│                      │    │                                  │
+│   - 简单查询         │    │   - KnowledgeReviewSkill 📚      │
+│   - 工具调用         │    │   - DataExportSkill 📤           │
+│   - 即时响应         │    │   - InsightReportSkill 📊        │
+│                      │    │   - BatchOrganizeSkill 🗂️         │
+└──────────────────────┘    └──────────────────────────────────┘
+```
+
+**核心组件**:
+
+| 组件                 | 路径                                 | 职责                                            |
+| -------------------- | ------------------------------------ | ----------------------------------------------- |
+| IntentClassifier     | `router/intent-classifier.ts`        | 意图分类（search/manage/analyze/export/review） |
+| ComplexityEvaluator  | `router/complexity-evaluator.ts`     | 复杂度评估（simple/medium/complex）             |
+| ModeSelector         | `router/mode-selector.ts`            | 模式选择决策                                    |
+| IntentRouter         | `router/intent-router.ts`            | 意图路由整合                                    |
+| OrchestrationEngine  | `engine/orchestration-engine.ts`     | 编排执行引擎                                    |
+| UnifiedEngine        | `engine/unified-engine.ts`           | 统一入口引擎                                    |
+| UnifiedOutputAdapter | `output/adapter.ts`                  | 输出格式适配                                    |
+| ProgressReporter     | `orchestration/progress-reporter.ts` | 进度报告                                        |
+
+**已实现的编排 Skills**:
+
+| Skill ID           | 名称         | 功能                                    | 步骤数 |
+| ------------------ | ------------ | --------------------------------------- | ------ |
+| `knowledge_review` | 知识回顾助手 | 复习收藏内容、生成记忆卡片              | 5      |
+| `data_export`      | 数据导出助手 | 多格式导出（CSV/MD/JSON/HTML/Obsidian） | 4      |
+| `insight_report`   | 洞察报告助手 | 活跃度分析、内容趋势、洞察建议          | 5      |
+| `batch_organize`   | 智能整理助手 | 自动分类、标签、去重、归档              | 6      |
+
+**API 端点**:
+
+```typescript
+// POST /api/agent/unified
+// 统一 AI 能力入口，支持 SSE 流式响应
+
+interface UnifiedStreamChunk {
+  type:
+    | "text"
+    | "progress"
+    | "deliverable"
+    | "routing"
+    | "fallback"
+    | "error"
+    | "done";
+  data: {
+    text?: string; // 文本内容
+    step?: string; // 当前步骤
+    percent?: number; // 进度百分比
+    format?: string; // 交付物格式
+    content?: unknown; // 交付物内容
+    mode?: string; // 路由模式
+    reason?: string; // 路由原因
+    message?: string; // 错误信息
+  };
+}
+```
+
+**文件位置**:
+
+```
+src/lib/ai-skills/
+├── engine/                    # 执行引擎
+│   ├── unified-engine.ts      # 统一引擎
+│   ├── orchestration-engine.ts # 编排引擎
+│   └── types.ts
+├── router/                    # 意图路由
+│   ├── intent-classifier.ts   # 意图分类
+│   ├── complexity-evaluator.ts # 复杂度评估
+│   ├── mode-selector.ts       # 模式选择
+│   └── intent-router.ts       # 路由整合
+├── orchestration/             # 编排基础设施
+│   ├── base-skill.ts          # 编排 Skill 基类
+│   ├── progress-reporter.ts   # 进度报告
+│   ├── deliverable-generator.ts # 交付物生成
+│   └── types.ts
+├── output/                    # 输出层
+│   ├── adapter.ts             # 输出适配器
+│   └── types.ts
+├── skills/                    # Skill 实现
+│   ├── knowledge-review/      # 知识回顾
+│   ├── data-export/           # 数据导出
+│   ├── insight-report/        # 洞察报告
+│   └── batch-organize/        # 批量整理
+└── register.ts                # Skill 注册
+```
+
+**测试覆盖**:
+
+- 202 个单元测试全部通过
+- 包含集成测试（UnifiedEngine 端到端流程）
+- 每个 Skill 独立测试套件
 
 ---
 

@@ -26,6 +26,7 @@ const paramsSchema = z.object({
   folderId: z.number().int().positive().describe("要删除的文件夹 ID"),
   deleteBookmarks: z
     .boolean()
+    .optional()
     .default(false)
     .describe("是否同时删除文件夹内的书签，默认 false（书签移到根目录）"),
 });
