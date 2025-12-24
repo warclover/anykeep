@@ -4,14 +4,15 @@
  * 提供 AI Agent 聊天功能的可复用 Hook
  * 支持 SSE 流式响应、统一引擎、取消请求、错误处理
  *
- * @version 2.0.0
+ * @version 2.1.0
  * @since 2025-12-24
- * @updated 2025-12-24 - 支持统一智能引擎
+ * @updated 2025-12-25 - 迁移到统一确认系统 (ConfirmationService)
  */
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import type { AgentStreamChunk } from "@/lib/ai-agent/core/types";
 import type { PendingConfirmation } from "@/lib/ai-agent/tools/types";
+import { confirmationService } from "@/lib/ai-skills/effects";
 
 // ============================================
 // 类型定义
@@ -653,6 +654,7 @@ export function useAIChat(config: UseAIChatConfig = {}): UseAIChatReturn {
 
   /**
    * 处理确认操作
+   * @updated 2025-12-25 - 迁移到统一确认系统 (ConfirmationService)
    */
   const handleConfirm = useCallback(
     async (confirmationId: string) => {
@@ -662,25 +664,21 @@ export function useAIChat(config: UseAIChatConfig = {}): UseAIChatReturn {
       if (!confirmation) return;
 
       try {
-        const response = await fetch("/api/agent/confirm", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            confirmationId: confirmation.confirmationId,
-            toolName: confirmation.toolName,
-            params: confirmation.params,
-            action: "confirm",
-          }),
-        });
+        // 使用新的统一确认服务
+        const success = confirmationService.respondToConfirmation(
+          confirmationId,
+          "confirm",
+          { toolName: confirmation.toolName, params: confirmation.params },
+        );
 
-        const result = await response.json();
+        if (!success) {
+          throw new Error("确认操作失败或已过期");
+        }
 
         const resultMessage: ChatMessage = {
           id: generateMessageId(),
           role: "assistant",
-          content: result.success
-            ? `✅ 操作已完成：${result.data?.message || confirmation.description}`
-            : `❌ 操作失败：${result.error || "未知错误"}`,
+          content: `✅ 操作已确认：${confirmation.description}`,
           createdAt: new Date(),
         };
         setMessages((prev) => [...prev, resultMessage]);
@@ -708,9 +706,9 @@ export function useAIChat(config: UseAIChatConfig = {}): UseAIChatReturn {
         const errorMessage: ChatMessage = {
           id: generateMessageId(),
           role: "assistant",
-          content: `❌ 操作执行失败：${err instanceof Error ? err.message : "网络错误"}`,
+          content: `❌ 操作执行失败：${err instanceof Error ? err.message : "未知错误"}`,
           createdAt: new Date(),
-          error: err instanceof Error ? err.message : "网络错误",
+          error: err instanceof Error ? err.message : "未知错误",
         };
         setMessages((prev) => [...prev, errorMessage]);
       }
@@ -720,6 +718,7 @@ export function useAIChat(config: UseAIChatConfig = {}): UseAIChatReturn {
 
   /**
    * 处理取消确认
+   * @updated 2025-12-25 - 迁移到统一确认系统 (ConfirmationService)
    */
   const handleCancel = useCallback(
     async (confirmationId: string) => {
@@ -728,19 +727,8 @@ export function useAIChat(config: UseAIChatConfig = {}): UseAIChatReturn {
       );
       if (!confirmation) return;
 
-      // 异步发送取消请求（不等待结果）
-      fetch("/api/agent/confirm", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          confirmationId: confirmation.confirmationId,
-          toolName: confirmation.toolName,
-          params: confirmation.params,
-          action: "cancel",
-        }),
-      }).catch(() => {
-        // Intentionally ignored - cancel is best-effort
-      });
+      // 使用新的统一确认服务取消操作
+      confirmationService.cancelConfirmation(confirmationId, "用户取消");
 
       // 立即移除确认
       setPendingConfirmations((prev) =>

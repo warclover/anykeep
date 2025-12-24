@@ -25,7 +25,12 @@ export const API_AGENT = {
   unified: "/api/agent/unified",
   /** AI 聊天 */
   chat: "/api/agent/chat",
-  /** 确认操作 */
+  /**
+   * 确认操作
+   * @deprecated 2025-12-24 - 请使用 ConfirmationService 代替
+   * @see {@link @/lib/ai-skills/effects/services/confirmation.service}
+   * @sunset 2025-06-01
+   */
   confirm: "/api/agent/confirm",
   /** 使用统计 */
   stats: "/api/agent/stats",

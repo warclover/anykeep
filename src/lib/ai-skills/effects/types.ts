@@ -3,9 +3,23 @@
  *
  * 定义统一的 Effect 系统，用于适配 Tool 和 Skill 确认流程
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-24
+ * @updated 2025-12-25 - 迁移到共享类型层
  */
+
+// 从共享类型层重新导出基础类型
+export type {
+  ConfirmOption,
+  ConfirmOptionVariant,
+  ConfirmationResult,
+  ConfirmationStatus,
+  ConfirmationSource,
+  ConfirmationMode,
+} from "@/lib/shared/types";
+
+// 从共享类型层导入用于本地类型定义
+import type { ConfirmOption } from "@/lib/shared/types";
 
 // ============================================
 // Effect 上下文
@@ -53,22 +67,6 @@ export interface Effect<T = unknown> {
 // ============================================
 // 确认 Effect 类型
 // ============================================
-
-/**
- * 确认选项
- */
-export interface ConfirmOption {
-  /** 选项 ID */
-  id: string;
-  /** 选项标签 */
-  label: string;
-  /** 选项样式 */
-  variant: "default" | "destructive" | "outline";
-  /** 是否为默认选项 */
-  isDefault?: boolean;
-  /** 选项描述 */
-  description?: string;
-}
 
 /**
  * 确认载荷
@@ -131,24 +129,6 @@ export interface SkillConfirmationConfig extends ToolConfirmationConfig {
   stepIndex: number;
   /** 总步骤数 */
   totalSteps?: number;
-}
-
-// ============================================
-// 确认结果
-// ============================================
-
-/**
- * 确认结果
- */
-export interface ConfirmationResult {
-  /** 是否已确认 */
-  confirmed: boolean;
-  /** 选择的选项 ID */
-  selectedOption: string;
-  /** 额外数据 */
-  data?: unknown;
-  /** 时间戳 */
-  timestamp: string;
 }
 
 // ============================================
