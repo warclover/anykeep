@@ -14,7 +14,8 @@
 import { createClient } from "@/lib/supabase/server";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { getConfigCenter } from "@/lib/classification/v3/services/config-center.service";
+import { getConfigCenter } from "@/lib/classification/services/advanced";
+import { logger } from "@/lib/logger";
 
 /**
  * 检查用户是否为管理员
@@ -132,7 +133,7 @@ export async function GET(request: NextRequest) {
       }
     }
   } catch (error) {
-    console.error("Classification config API error:", error);
+    logger.error({ error }, "Classification config API error");
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },
@@ -195,7 +196,7 @@ export async function POST(request: NextRequest) {
         );
     }
   } catch (error) {
-    console.error("Classification config API error:", error);
+    logger.error({ error }, "Classification config API error");
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },

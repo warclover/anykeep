@@ -126,8 +126,8 @@ export const TIERED_CLASSIFICATION_DEFAULTS = {
 export const MATCHER_WEIGHTS_DEFAULTS = {
   vector: 0.35,
   tag: 0.25,
-  fingerprint: 0.20,
-  history: 0.20,
+  fingerprint: 0.2,
+  history: 0.2,
 } as const;
 
 /**

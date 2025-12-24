@@ -17,7 +17,7 @@ import type {
 } from "@/lib/classification/strategies/interfaces";
 import type { MatchResult, MatcherContext } from "@/lib/classification/types";
 import type { BookmarkRepository } from "@/lib/classification/repositories";
-import { V3_CONFIG } from "../config";
+import { V3_CONFIG } from "../../config/v3";
 import { logger } from "@/lib/logger";
 
 /**

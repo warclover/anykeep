@@ -17,7 +17,7 @@ import {
 import { logger } from "@/lib/logger";
 
 // V4.0 导入纠错缓存
-import { getCorrectionCache } from "@/lib/classification/v3/services/correction-cache.service";
+import { getCorrectionCache } from "@/lib/classification/services/advanced";
 
 // 反馈类型枚举
 const FEEDBACK_TYPES = [

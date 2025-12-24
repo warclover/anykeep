@@ -13,7 +13,7 @@ import {
   notFoundError,
 } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
-import { createLibrarianPatrolService } from "@/lib/classification/v3/services/librarian-patrol.service";
+import { createLibrarianPatrolService } from "@/lib/classification/services/advanced";
 
 // ============================================================================
 // API 处理器

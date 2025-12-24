@@ -22,7 +22,7 @@ import type {
 import type { MatchResult, MatcherContext } from "@/lib/classification/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
-import { matchCategoriesByKeyword } from "../constants/universal-categories";
+import { matchCategoriesByKeyword } from "../../constants/universal-categories";
 import { logger } from "@/lib/logger";
 import { tokenize } from "@/lib/classification/utils/text-utils";
 

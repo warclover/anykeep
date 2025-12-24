@@ -12,8 +12,8 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
-import { V3_CONFIG } from "../config";
-import { matchCategoriesByKeyword } from "../constants/universal-categories";
+import { V3_CONFIG } from "../../config/v3";
+import { matchCategoriesByKeyword } from "../../constants/universal-categories";
 import { logger } from "@/lib/logger";
 
 // ============================================================================

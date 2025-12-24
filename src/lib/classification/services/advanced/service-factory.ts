@@ -19,7 +19,10 @@ import { logger } from "@/lib/logger";
 
 // 服务导入
 import { ConfigCenterService } from "./config-center.service";
-import { CorrectionCacheService, type CorrectionCacheConfig } from "./correction-cache.service";
+import {
+  CorrectionCacheService,
+  type CorrectionCacheConfig,
+} from "./correction-cache.service";
 import { RerankerService, type RerankConfig } from "./reranker.service";
 import { TraceStorageService } from "./trace.service";
 
@@ -71,7 +74,7 @@ class ServiceFactory {
    */
   initialize(
     supabase: SupabaseClient<Database>,
-    config?: ServiceFactoryConfig
+    config?: ServiceFactoryConfig,
   ): void {
     if (this.initialized && this.supabase === supabase) {
       return; // 已初始化且客户端相同，跳过
@@ -117,7 +120,7 @@ class ServiceFactory {
     // CorrectionCache 不依赖 Supabase，可以独立使用
     if (!this.services.correctionCache) {
       this.services.correctionCache = new CorrectionCacheService(
-        this.config.correctionCache
+        this.config.correctionCache,
       );
       logger.debug("ServiceFactory: CorrectionCacheService created");
     }
@@ -134,7 +137,7 @@ class ServiceFactory {
     if (!this.services.reranker) {
       this.services.reranker = new RerankerService(
         this.supabase!,
-        this.config.reranker
+        this.config.reranker,
       );
       logger.debug("ServiceFactory: RerankerService created");
     }
@@ -217,7 +220,7 @@ class ServiceFactory {
   private ensureInitialized(): void {
     if (!this.initialized || !this.supabase) {
       throw new Error(
-        "ServiceFactory not initialized. Call initialize() first."
+        "ServiceFactory not initialized. Call initialize() first.",
       );
     }
   }
@@ -254,7 +257,7 @@ export const serviceFactory = getGlobalFactory();
  */
 export function initializeV4Services(
   supabase: SupabaseClient<Database>,
-  config?: ServiceFactoryConfig
+  config?: ServiceFactoryConfig,
 ): void {
   serviceFactory.initialize(supabase, config);
 }

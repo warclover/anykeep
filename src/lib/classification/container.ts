@@ -29,14 +29,14 @@ import {
   WeightedScoreAggregator,
 } from "./strategies";
 
-// V3 Strategies
+// V3 Strategies (moved to strategies/advanced)
 import {
   UniversalCategoryMatcher,
   KnnDirectMatcher,
   FingerprintMatcher,
   TagMatcher,
-} from "./v3/strategies";
-import { V3_CONFIG } from "./v3/config";
+} from "./strategies/advanced";
+import { V3_CONFIG } from "./config/v3";
 
 // Services
 import {

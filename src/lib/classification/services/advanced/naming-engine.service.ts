@@ -26,7 +26,7 @@ import {
   type NamingContext,
   type NamingResponse,
   type DeduplicationResponse,
-} from "../prompts/naming-prompt";
+} from "../../prompts/naming-prompt";
 
 // ============================================================================
 // 类型定义

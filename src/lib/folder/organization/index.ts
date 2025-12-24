@@ -38,7 +38,7 @@ export {
   type BookmarkChangeEvent,
   type ProfileUpdateResult,
   type IncrementalProfileConfig,
-} from "@/lib/classification/v3/services/incremental-profile.service";
+} from "@/lib/classification/services/advanced";
 
 // ============================================================================
 // Algorithms

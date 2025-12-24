@@ -53,12 +53,7 @@ describe("CorrectionCacheService", () => {
       const folderName = "测试";
 
       // 写入时使用 https://www.
-      service.set(
-        userId,
-        "https://www.example.com/page",
-        folderId,
-        folderName
-      );
+      service.set(userId, "https://www.example.com/page", folderId, folderName);
 
       // 读取时使用 http:// 无 www
       const result = service.get(userId, "http://example.com/page");
@@ -93,12 +88,12 @@ describe("CorrectionCacheService", () => {
           "user-1",
           "https://example.com/expire",
           1,
-          "folder"
+          "folder",
         );
 
         // 立即读取应该命中
         expect(
-          shortExpirationService.get("user-1", "https://example.com/expire")
+          shortExpirationService.get("user-1", "https://example.com/expire"),
         ).not.toBeNull();
 
         // 等待过期
@@ -106,7 +101,7 @@ describe("CorrectionCacheService", () => {
 
         // 过期后应该返回 null
         expect(
-          shortExpirationService.get("user-1", "https://example.com/expire")
+          shortExpirationService.get("user-1", "https://example.com/expire"),
         ).toBeNull();
       } finally {
         shortExpirationService.stop();
@@ -125,19 +120,19 @@ describe("CorrectionCacheService", () => {
         userId,
         "https://github.com/user/repo1",
         folderId,
-        folderName
+        folderName,
       );
       service.set(
         userId,
         "https://github.com/user/repo2",
         folderId,
-        folderName
+        folderName,
       );
       service.set(
         userId,
         "https://github.com/user/repo3",
         folderId,
-        folderName
+        folderName,
       );
 
       // 查询未缓存的同域名 URL
@@ -185,13 +180,13 @@ describe("CorrectionCacheService", () => {
 
         // 其他应该存在
         expect(
-          smallCacheService.get("user-1", "https://b.com/2")
+          smallCacheService.get("user-1", "https://b.com/2"),
         ).not.toBeNull();
         expect(
-          smallCacheService.get("user-1", "https://c.com/3")
+          smallCacheService.get("user-1", "https://c.com/3"),
         ).not.toBeNull();
         expect(
-          smallCacheService.get("user-1", "https://d.com/4")
+          smallCacheService.get("user-1", "https://d.com/4"),
         ).not.toBeNull();
       } finally {
         smallCacheService.stop();

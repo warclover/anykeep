@@ -23,7 +23,7 @@ import {
 import {
   IncrementalProfileService,
   type BookmarkChangeEvent,
-} from "@/lib/classification/v3/services/incremental-profile.service";
+} from "@/lib/classification/services/advanced";
 import type { CoreEdgeProfileService } from "@/lib/classification/profile";
 import { createCoreEdgeProfileService } from "@/lib/classification/profile";
 import { logger } from "@/lib/logger";

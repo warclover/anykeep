@@ -1,5 +1,14 @@
 /**
- * V3.0 / V4.0 Services 导出
+ * Advanced Classification Services
+ *
+ * 高级分类服务，包含：
+ * - AI Librarian 整理大师
+ * - 分层分类引擎
+ * - 动态权重调整
+ * - 追踪和纠错服务
+ *
+ * @since 2025-12-24 (Phase 3.1 - V3 目录重组)
+ * @module classification/services/advanced
  */
 
 export * from "./feedback-loop.service";
@@ -16,8 +25,19 @@ export * from "./trace.service";
 // V4.0 实时纠错缓存
 export * from "./correction-cache.service";
 
-// V4.0 配置中心
-export * from "./config-center.service";
+// V4.0 配置中心 (排除 ThresholdsConfig，由 config/v3 提供)
+export {
+  type UniversalCategoryConfig,
+  type ScenarioWeights,
+  // ThresholdsConfig - 由 config/v3/defaults.ts 提供，避免重复
+  type FeatureFlags,
+  type MatcherConfigItem,
+  type AIConfig,
+  type StrategyConfig,
+  ConfigCenterService,
+  getConfigCenter,
+  resetConfigCenter,
+} from "./config-center.service";
 
 // V4.0 语义重排序
 export * from "./reranker.service";

@@ -19,8 +19,8 @@ import {
   type UserAction,
   type MatcherScores,
   type CandidateFolder,
-} from "../repositories/decision.repository";
-import { V3_CONFIG } from "../config";
+} from "../../repositories/decision.repository";
+import { V3_CONFIG } from "../../config/v3";
 import { logger } from "@/lib/logger";
 import { getCorrectionCache } from "./correction-cache.service";
 

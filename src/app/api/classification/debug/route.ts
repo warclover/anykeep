@@ -17,9 +17,9 @@ import { type NextRequest } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { ClassificationContainer } from "@/lib/classification";
-import { TieredClassificationService } from "@/lib/classification/v3/services/tiered-classification.service";
+import { TieredClassificationService } from "@/lib/classification/services/advanced";
 import { WeightedScoreAggregator } from "@/lib/classification/strategies";
-import { createTraceStorageService } from "@/lib/classification/v3/services/trace.service";
+import { createTraceStorageService } from "@/lib/classification/services/advanced";
 import {
   runIntegrationTests,
   runHealthCheck,

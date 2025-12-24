@@ -8,7 +8,7 @@
 import type { IScoreAggregator, IMatcher } from "./interfaces";
 import type { MatchResult, ClassificationResult } from "../types";
 import { CLASSIFICATION_THRESHOLDS } from "../constants";
-import { V3_CONFIG } from "../v3/config";
+import { V3_CONFIG } from "../config/v3";
 import { logger } from "@/lib/logger";
 
 /**

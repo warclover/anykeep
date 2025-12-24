@@ -13,8 +13,8 @@ import type { Database } from "@/types/supabase";
 import {
   matchCategoriesByKeyword,
   type UniversalCategory,
-} from "../constants/universal-categories";
-import { V3_CONFIG } from "../config";
+} from "../../constants/universal-categories";
+import { V3_CONFIG } from "../../config/v3";
 import { FOLDER_LIMITS } from "@/lib/classification/constants/limits";
 import { logger } from "@/lib/logger";
 

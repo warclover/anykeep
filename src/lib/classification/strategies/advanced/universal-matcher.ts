@@ -20,7 +20,7 @@ import type { FolderProfileRepository } from "@/lib/classification/repositories"
 import {
   matchCategoriesByKeyword,
   type UniversalCategory,
-} from "../constants/universal-categories";
+} from "../../constants/universal-categories";
 import { logger } from "@/lib/logger";
 import { tokenize } from "@/lib/classification/utils/text-utils";
 
