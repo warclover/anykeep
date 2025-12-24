@@ -6,6 +6,9 @@
  *
  * @version 1.0.0
  * @since 2025-12-23
+ * @deprecated 此 Tool 已被简化版 list-recent、list-by-folder、list-by-platform 替代。
+ *             请使用 listRecentTool、listByFolderTool、listByPlatformTool。
+ *             计划在 2025-02 版本移除。
  */
 
 import { z } from "zod";

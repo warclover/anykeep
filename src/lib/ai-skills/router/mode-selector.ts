@@ -54,7 +54,7 @@ const DEFAULT_SKILL_MAPPINGS: Record<string, OrchestrationSkillMapping> = {
     skillId: "learning_path",
     name: "学习路径规划",
     minComplexity: "complex",
-    enabled: false, // TODO: 待实现
+    enabled: true, // 已实现
   },
   "learn:plan": {
     skillId: "reading_planner",
@@ -65,10 +65,10 @@ const DEFAULT_SKILL_MAPPINGS: Record<string, OrchestrationSkillMapping> = {
 
   // 整理类
   "organize:cleanup": {
-    skillId: "smart_organize",
+    skillId: "batch_organize",
     name: "智能整理助手",
     minComplexity: "medium",
-    enabled: false, // TODO: 待实现
+    enabled: true, // 已实现
   },
   "organize:dedupe": {
     skillId: "duplicate_cleanup",
@@ -88,13 +88,13 @@ const DEFAULT_SKILL_MAPPINGS: Record<string, OrchestrationSkillMapping> = {
     skillId: "periodic_report",
     name: "周期报告生成",
     minComplexity: "complex",
-    enabled: false, // TODO: 待实现
+    enabled: true, // 已实现
   },
   "analyze:insight": {
-    skillId: "collection_insight",
+    skillId: "insight_report",
     name: "收藏洞察分析",
     minComplexity: "medium",
-    enabled: false, // TODO: 待实现
+    enabled: true, // 已实现
   },
   "analyze:discover": {
     skillId: "related_discovery",
@@ -114,7 +114,7 @@ const DEFAULT_SKILL_MAPPINGS: Record<string, OrchestrationSkillMapping> = {
     skillId: "share_bundle",
     name: "分享包生成",
     minComplexity: "medium",
-    enabled: false, // TODO: 待实现
+    enabled: true, // 已实现
   },
 };
 

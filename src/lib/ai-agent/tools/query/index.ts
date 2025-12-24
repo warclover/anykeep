@@ -19,7 +19,10 @@ export { countByPlatformTool } from "./count-by-platform.tool";
 // 详细统计（保留）
 export { getStatsTool } from "./get-stats.tool";
 
-// 保留原版用于兼容（后续可移除）
+/**
+ * @deprecated 以下导出仅用于向后兼容，计划在 2025-02 版本移除。
+ * 请使用上方的简化版 Tools（listRecentTool、countTotalTool 等）。
+ */
 export { countBookmarksTool } from "./count-bookmarks.tool";
 export { listBookmarksTool } from "./list-bookmarks.tool";
 

@@ -250,6 +250,7 @@ export class DuplicateCleanupSkill extends OrchestrationSkill<
       const duplicateGroups = this.detectDuplicates(
         normalizedBookmarks,
         input.strategy,
+        input.semanticThreshold,
       );
 
       yield* this.reportProgress(
@@ -535,7 +536,17 @@ export class DuplicateCleanupSkill extends OrchestrationSkill<
   private detectDuplicates(
     bookmarks: Array<BookmarkRow & { normalizedUrl: string }>,
     strategy: DuplicateStrategy,
+    semanticThreshold?: number,
   ): DuplicateGroup[] {
+    // 语义模式使用特殊的相似度聚类算法
+    if (strategy === "semantic") {
+      return this.detectSemanticDuplicates(
+        bookmarks,
+        semanticThreshold ??
+          DUPLICATE_CLEANUP_CONFIG.DEFAULT_SEMANTIC_THRESHOLD,
+      );
+    }
+
     const urlMap = new Map<
       string,
       Array<BookmarkRow & { normalizedUrl: string }>
@@ -550,13 +561,6 @@ export class DuplicateCleanupSkill extends OrchestrationSkill<
           key = bookmark.url;
           break;
         case "normalized":
-          key = bookmark.normalizedUrl;
-          break;
-        case "semantic":
-          // 语义模式暂时使用规范化 URL
-          // TODO: 实现基于 embedding 的语义相似度检测
-          key = bookmark.normalizedUrl;
-          break;
         default:
           key = bookmark.normalizedUrl;
       }
@@ -585,6 +589,290 @@ export class DuplicateCleanupSkill extends OrchestrationSkill<
     }
 
     return groups;
+  }
+
+  /**
+   * 语义相似度检测 - 基于标签和标题的组合相似度
+   * 使用 Union-Find 算法进行聚类
+   */
+  private detectSemanticDuplicates(
+    bookmarks: Array<BookmarkRow & { normalizedUrl: string }>,
+    threshold: number,
+  ): DuplicateGroup[] {
+    const n = bookmarks.length;
+    if (n < 2) return [];
+
+    // Union-Find 数据结构
+    const parent = new Array(n).fill(0).map((_, i) => i);
+    const rank = new Array(n).fill(0);
+
+    const find = (x: number): number => {
+      if (parent[x] !== x) {
+        parent[x] = find(parent[x]); // 路径压缩
+      }
+      return parent[x];
+    };
+
+    const union = (x: number, y: number): void => {
+      const px = find(x);
+      const py = find(y);
+      if (px === py) return;
+
+      // 按秩合并
+      if (rank[px] < rank[py]) {
+        parent[px] = py;
+      } else if (rank[px] > rank[py]) {
+        parent[py] = px;
+      } else {
+        parent[py] = px;
+        rank[px]++;
+      }
+    };
+
+    // 记录每对书签的相似度（用于后续显示）
+    const similarityMap = new Map<string, number>();
+
+    // 计算所有书签对的相似度并合并相似组
+    for (let i = 0; i < n; i++) {
+      for (let j = i + 1; j < n; j++) {
+        const similarity = this.calculateCombinedSimilarity(
+          bookmarks[i],
+          bookmarks[j],
+        );
+
+        if (similarity >= threshold) {
+          union(i, j);
+          // 记录相似度
+          const key = `${Math.min(bookmarks[i].id, bookmarks[j].id)}-${Math.max(bookmarks[i].id, bookmarks[j].id)}`;
+          similarityMap.set(key, similarity);
+        }
+      }
+    }
+
+    // 按根节点分组
+    const groupMap = new Map<
+      number,
+      {
+        bookmarks: Array<BookmarkRow & { normalizedUrl: string }>;
+        maxSimilarity: number;
+      }
+    >();
+
+    for (let i = 0; i < n; i++) {
+      const root = find(i);
+      if (!groupMap.has(root)) {
+        groupMap.set(root, { bookmarks: [], maxSimilarity: 0 });
+      }
+      groupMap.get(root)!.bookmarks.push(bookmarks[i]);
+    }
+
+    // 计算每组的最高相似度
+    for (const [, group] of groupMap) {
+      if (group.bookmarks.length > 1) {
+        for (let i = 0; i < group.bookmarks.length; i++) {
+          for (let j = i + 1; j < group.bookmarks.length; j++) {
+            const key = `${Math.min(group.bookmarks[i].id, group.bookmarks[j].id)}-${Math.max(group.bookmarks[i].id, group.bookmarks[j].id)}`;
+            const sim = similarityMap.get(key) ?? 0;
+            if (sim > group.maxSimilarity) {
+              group.maxSimilarity = sim;
+            }
+          }
+        }
+      }
+    }
+
+    // 转换为 DuplicateGroup 格式
+    const groups: DuplicateGroup[] = [];
+    let groupIndex = 0;
+
+    for (const [, { bookmarks: items, maxSimilarity }] of groupMap) {
+      if (items.length > 1) {
+        groupIndex++;
+        // 使用第一个书签的标题作为组标识
+        const representativeTitle = items[0].title.slice(0, 50);
+
+        groups.push({
+          id: `sem-${groupIndex}`,
+          strategy: "semantic",
+          normalizedUrl: `[语义相似] ${representativeTitle}...`,
+          similarity: Math.round(maxSimilarity * 100) / 100,
+          bookmarks: items.map((b) => this.toDisplayBookmark(b)),
+          recommendedKeep: items[0].id, // 临时，后续分析会更新
+          reason: `相似度: ${Math.round(maxSimilarity * 100)}%`,
+        });
+      }
+    }
+
+    return groups;
+  }
+
+  /**
+   * 计算两个书签的组合相似度
+   * 标签相似度 60% + 标题相似度 40%
+   */
+  private calculateCombinedSimilarity(
+    a: BookmarkRow & { normalizedUrl: string },
+    b: BookmarkRow & { normalizedUrl: string },
+  ): number {
+    // 首先检查 URL 是否相同（规范化后）
+    if (a.normalizedUrl === b.normalizedUrl) {
+      return 1.0; // 完全匹配
+    }
+
+    const tagSim = this.calculateTagSimilarity(
+      [...(a.ai_tags || []), ...(a.user_tags || [])],
+      [...(b.ai_tags || []), ...(b.user_tags || [])],
+    );
+
+    const titleSim = this.calculateTitleSimilarity(a.title, b.title);
+
+    // 加权平均：标签 60%，标题 40%
+    return tagSim * 0.6 + titleSim * 0.4;
+  }
+
+  /**
+   * 计算标签的 Jaccard 相似度
+   */
+  private calculateTagSimilarity(tags1: string[], tags2: string[]): number {
+    if (!tags1.length || !tags2.length) return 0;
+
+    const set1 = new Set(tags1.map((t) => t.toLowerCase()));
+    const set2 = new Set(tags2.map((t) => t.toLowerCase()));
+
+    // Jaccard 相似度
+    const intersection = [...set1].filter((t) => set2.has(t)).length;
+    const union = new Set([...set1, ...set2]).size;
+
+    return union > 0 ? intersection / union : 0;
+  }
+
+  /**
+   * 计算标题的关键词重叠相似度
+   */
+  private calculateTitleSimilarity(title1: string, title2: string): number {
+    const words1 = this.extractKeywords(title1);
+    const words2 = this.extractKeywords(title2);
+
+    if (!words1.length || !words2.length) return 0;
+
+    const set1 = new Set(words1);
+    const set2 = new Set(words2);
+
+    const intersection = [...set1].filter((w) => set2.has(w)).length;
+    const union = new Set([...set1, ...set2]).size;
+
+    return union > 0 ? intersection / union : 0;
+  }
+
+  /**
+   * 从文本中提取关键词
+   */
+  private extractKeywords(text: string): string[] {
+    const stopWords = new Set([
+      // 英文停用词
+      "the",
+      "a",
+      "an",
+      "is",
+      "are",
+      "was",
+      "were",
+      "be",
+      "been",
+      "being",
+      "have",
+      "has",
+      "had",
+      "do",
+      "does",
+      "did",
+      "will",
+      "would",
+      "could",
+      "should",
+      "may",
+      "might",
+      "must",
+      "shall",
+      "can",
+      "need",
+      "to",
+      "of",
+      "in",
+      "for",
+      "on",
+      "with",
+      "at",
+      "by",
+      "from",
+      "as",
+      "into",
+      "through",
+      "and",
+      "but",
+      "or",
+      "nor",
+      "so",
+      "yet",
+      "both",
+      "either",
+      "neither",
+      "not",
+      "only",
+      "own",
+      "same",
+      "than",
+      "too",
+      "very",
+      "just",
+      // 中文停用词
+      "的",
+      "了",
+      "是",
+      "在",
+      "我",
+      "有",
+      "和",
+      "就",
+      "不",
+      "人",
+      "都",
+      "一",
+      "一个",
+      "上",
+      "也",
+      "很",
+      "到",
+      "说",
+      "要",
+      "去",
+      "你",
+      "会",
+      "着",
+      "没有",
+      "看",
+      "好",
+      "自己",
+      "这",
+      "那",
+      "什么",
+      "如何",
+      "为什么",
+    ]);
+
+    // 提取英文单词（至少2个字符）
+    const englishWords =
+      text
+        .toLowerCase()
+        .match(/[a-z]{2,}/g)
+        ?.filter((w) => !stopWords.has(w)) || [];
+
+    // 提取中文词汇（至少2个字符）
+    const chineseWords =
+      text.match(/[\u4e00-\u9fa5]{2,}/g)?.filter((w) => !stopWords.has(w)) ||
+      [];
+
+    return [...englishWords, ...chineseWords];
   }
 
   /**
