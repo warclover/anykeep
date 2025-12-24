@@ -256,7 +256,7 @@ export type UnifiedStreamChunkFrontend =
     }
   | {
       type: "done";
-      result: {
+      data: {
         success: boolean;
         summary?: string;
         tokensUsed?: number;
@@ -343,10 +343,10 @@ export function processUnifiedChunk(
       return {
         ...message,
         status: "completed",
-        executionMode: chunk.result.mode,
-        skillId: chunk.result.skillId,
-        content: chunk.result.content || message.content,
-        toolCalls: chunk.result.toolCalls || message.toolCalls,
+        executionMode: chunk.data.mode,
+        skillId: chunk.data.skillId,
+        content: chunk.data.content || message.content,
+        toolCalls: chunk.data.toolCalls || message.toolCalls,
       };
 
     default:

@@ -116,22 +116,24 @@ export const AIMessage = memo(function AIMessage({
         {/* 工具调用信息 - 糖果色标签 */}
         {hasToolCalls && (
           <div className="flex flex-wrap gap-1 mt-1">
-            {message.toolCalls!.map((tc) => (
-              <div
-                key={tc.id}
-                className={cn(
-                  "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium shadow-sm",
-                  tc.status === "completed"
-                    ? "bg-gradient-to-r from-emerald-100 to-teal-100 text-emerald-700 border border-emerald-200"
-                    : tc.status === "failed"
-                      ? "bg-gradient-to-r from-red-100 to-rose-100 text-red-700 border border-red-200"
-                      : "bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-700 border border-amber-200",
-                )}
-              >
-                <Wrench className="size-3" />
-                <span>{tc.toolName}</span>
-              </div>
-            ))}
+            {message
+              .toolCalls!.filter((tc) => tc != null)
+              .map((tc) => (
+                <div
+                  key={tc.id}
+                  className={cn(
+                    "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium shadow-sm",
+                    tc.status === "completed"
+                      ? "bg-gradient-to-r from-emerald-100 to-teal-100 text-emerald-700 border border-emerald-200"
+                      : tc.status === "failed"
+                        ? "bg-gradient-to-r from-red-100 to-rose-100 text-red-700 border border-red-200"
+                        : "bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-700 border border-amber-200",
+                  )}
+                >
+                  <Wrench className="size-3" />
+                  <span>{tc.toolName}</span>
+                </div>
+              ))}
           </div>
         )}
 
