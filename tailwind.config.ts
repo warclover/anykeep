@@ -70,6 +70,13 @@ export default {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      // 自定义缓动函数，避免 ease-[cubic-bezier(...)] 警告
+      transitionTimingFunction: {
+        // Material Design 标准缓动
+        smooth: "cubic-bezier(0.4, 0, 0.2, 1)",
+        // Drawer 组件专用缓动（更平滑的弹出效果）
+        drawer: "cubic-bezier(0.32, 0.72, 0, 1)",
+      },
     },
   },
   plugins: [tailwindcssAnimate],
