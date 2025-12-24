@@ -9,6 +9,7 @@ import {
   extractMainContent,
   extractWordCount,
 } from "@/lib/utils/content-extractor";
+import { logger } from "@/lib/logger";
 import {
   removeScriptsAndStyles,
   stripHtmlTags,
@@ -204,7 +205,8 @@ async function purifyHtml(
     return purified;
   } catch {
     // DOMPurify 不可用时使用基础清理
-    console.error(
+    logger.error(
+      {},
       "[ContentProcessor] DOMPurify not available, using basic sanitization",
     );
     return sanitizeWechatHtml(html, styleLevel);

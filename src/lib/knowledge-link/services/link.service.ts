@@ -458,7 +458,10 @@ export class LinkService implements ILinkService {
       if (result.status === "fulfilled") {
         allLinks.push(...result.value);
       } else {
-        console.error("[LinkService] Link discovery failed:", result.reason);
+        logger.error(
+          { error: result.reason },
+          "[LinkService] Link discovery failed",
+        );
       }
     }
 
@@ -488,7 +491,7 @@ export class LinkService implements ILinkService {
     );
 
     if (error) {
-      console.error("[LinkService] Failed to find by tags:", error);
+      logger.error({ error }, "[LinkService] Failed to find by tags");
       return [];
     }
 

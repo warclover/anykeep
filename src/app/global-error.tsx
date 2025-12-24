@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { clientLogger } from "@/lib/client-logger";
 
 /**
  * 全局错误处理组件
@@ -21,8 +22,11 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    // 仅记录到控制台，Sentry 上报由 sentry.client.config.ts 全局配置处理
-    console.error("[GlobalError]", error.message, error.digest);
+    // 仅记录到日志，Sentry 上报由 sentry.client.config.ts 全局配置处理
+    clientLogger.error(
+      { error, digest: error.digest },
+      "[GlobalError] Global error occurred",
+    );
   }, [error]);
   return (
     <html lang="zh-CN">

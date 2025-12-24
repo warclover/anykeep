@@ -16,6 +16,7 @@ import { createClient } from "@/lib/supabase/server";
 import { trustModeService } from "@/lib/trust-mode/trust-mode.service";
 import { isValidTrustMode, TRUST_MODE_INFO } from "@/types/trust-mode";
 import type { TrustMode } from "@/types/trust-mode";
+import { logger } from "@/lib/logger";
 
 // ============================================================================
 // GET - 获取托管模式
@@ -47,7 +48,7 @@ export async function GET() {
       },
     });
   } catch (error) {
-    console.error("Failed to get trust mode:", error);
+    logger.error({ error }, "Failed to get trust mode");
     return NextResponse.json(
       {
         success: false,
@@ -110,7 +111,7 @@ export async function PUT(request: NextRequest) {
       message: `已切换到「${TRUST_MODE_INFO[mode].label}」模式`,
     });
   } catch (error) {
-    console.error("Failed to update trust mode:", error);
+    logger.error({ error }, "Failed to update trust mode");
     return NextResponse.json(
       {
         success: false,

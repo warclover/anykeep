@@ -20,6 +20,7 @@ import {
   safeParseBody,
   createArticleSchema,
 } from "@/lib/wechat-article/validation";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -122,7 +123,7 @@ export async function POST(request: NextRequest) {
         .single();
 
       if (createError || !newSnapshot) {
-        console.error("[API] Failed to create snapshot:", createError);
+        logger.error({ error: createError }, "[API] Failed to create snapshot");
         return errorResponse("CREATE_FAILED", "创建快照失败", 500);
       }
 
@@ -163,7 +164,7 @@ export async function POST(request: NextRequest) {
         .eq("id", snapshotId);
 
       if (updateError) {
-        console.error("[API] Failed to update snapshot:", updateError);
+        logger.error({ error: updateError }, "[API] Failed to update snapshot");
         throw new Error("保存内容失败");
       }
 
@@ -190,11 +191,11 @@ export async function POST(request: NextRequest) {
         })
         .eq("id", snapshotId);
 
-      console.error("[API] Content fetch failed:", fetchError);
+      logger.error({ error: fetchError }, "[API] Content fetch failed");
       return errorResponse("FETCH_FAILED", errorMessage, 500);
     }
   } catch (error) {
-    console.error("[API] POST /api/wechat-article/create error:", error);
+    logger.error({ error }, "[API] POST /api/wechat-article/create error");
     return errorResponse(
       "INTERNAL_ERROR",
       error instanceof Error ? error.message : "创建失败",
@@ -304,7 +305,7 @@ function parseWechatArticle(html: string, url: string) {
       byline: article.byline || null,
     };
   } catch (error) {
-    console.error("[API] WeChat article parsing failed:", error);
+    logger.error({ error }, "[API] WeChat article parsing failed");
     return null;
   }
 }

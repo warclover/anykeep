@@ -7,6 +7,7 @@
 
 import type { WechatArticleImage } from "../wechat-article.types";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { logger } from "@/lib/logger";
 import {
   DEFAULT_CRAWL_CONFIG,
   EXCLUDE_IMAGE_PATTERNS,
@@ -264,13 +265,14 @@ async function downloadImageEnhanced(
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
 
-      console.error(
-        `[ImageProcessor] Download attempt ${attempt + 1}/${retries} failed: ${lastError.message}`,
+      logger.error(
+        { attempt: attempt + 1, retries, error: lastError.message },
+        "[ImageProcessor] Download attempt failed",
       );
 
       // 最后一次直接尝试失败，切换到代理
       if (attempt === retries - 1 && !useProxy) {
-        console.error("[ImageProcessor] Switching to proxy service...");
+        logger.error({}, "[ImageProcessor] Switching to proxy service...");
         return downloadImageEnhanced(url, {
           ...options,
           useProxy: true,
@@ -354,8 +356,9 @@ async function persistSingleImage(
     const maxSize = 5 * 1024 * 1024; // 5MB
 
     if (fileSize > maxSize) {
-      console.error(
-        `[ImageProcessor] Image too large (${fileSize} bytes), using original URL with referrerPolicy`,
+      logger.error(
+        { fileSize },
+        "[ImageProcessor] Image too large, using original URL with referrerPolicy",
       );
       return {
         ...image,
@@ -385,9 +388,9 @@ async function persistSingleImage(
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
-    console.error(
-      `[ImageProcessor] Failed to persist image: ${image.originalUrl}`,
-      errorMessage,
+    logger.error(
+      { imageUrl: image.originalUrl, error: errorMessage },
+      "[ImageProcessor] Failed to persist image",
     );
 
     // 持久化失败，保留原始 URL（前端使用 referrerPolicy="no-referrer" 访问）

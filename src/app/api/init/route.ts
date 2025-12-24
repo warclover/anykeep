@@ -260,20 +260,20 @@ export async function GET(request: NextRequest) {
     const [bookmarks, smartLists, unreadCount, folders] = await Promise.all([
       getBookmarks(supabase, userId, { platform, sort, folder }).catch(
         (err) => {
-          console.error("[Init] Failed to get bookmarks:", err);
+          logger.error({ error: err }, "[Init] Failed to get bookmarks");
           return [];
         },
       ),
       getSmartLists(supabase, userId).catch((err) => {
-        console.error("[Init] Failed to get smart lists:", err);
+        logger.error({ error: err }, "[Init] Failed to get smart lists");
         return [];
       }),
       getUnreadCount(supabase, userId).catch((err) => {
-        console.error("[Init] Failed to get unread count:", err);
+        logger.error({ error: err }, "[Init] Failed to get unread count");
         return { total: 0, silent: 0, normal: 0, important: 0 };
       }),
       getFolders(supabase, userId).catch((err) => {
-        console.error("[Init] Failed to get folders:", err);
+        logger.error({ error: err }, "[Init] Failed to get folders");
         return [];
       }),
     ]);

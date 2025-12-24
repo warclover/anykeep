@@ -7,6 +7,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { operationLogService } from "@/lib/classification/services/server";
+import { logger } from "@/lib/logger";
 
 interface RouteParams {
   params: Promise<{
@@ -80,7 +81,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       },
     });
   } catch (error) {
-    console.error("[API] folder-evolution/snapshot error:", error);
+    logger.error({ error }, "[API] folder-evolution/snapshot error");
     return NextResponse.json(
       {
         success: false,

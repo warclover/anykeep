@@ -3,6 +3,7 @@
  * 核心导出执行逻辑，支持多种格式、进度回调、取消操作
  */
 
+import { logger } from "@/lib/logger";
 import {
   CHUNK_SIZE,
   EXPORT_ERROR_MESSAGES,
@@ -221,7 +222,7 @@ export class ExportService {
         return this.createErrorResult("CANCELLED", format);
       }
 
-      console.error("[ExportService] Export failed:", error);
+      logger.error({ error }, "[ExportService] Export failed");
       return this.createErrorResult("UNKNOWN", format, error);
     } finally {
       clearTimeout(timeoutId);

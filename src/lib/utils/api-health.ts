@@ -9,6 +9,8 @@
  * - 支持多端点检查
  */
 
+import { clientLogger } from "@/lib/client-logger";
+
 /**
  * 健康状态类型
  */
@@ -296,8 +298,10 @@ export function getAPIHealthChecker(): APIHealthChecker {
       degradedThreshold: 2000,
       onStatusChange: (endpoint, newStatus, oldStatus) => {
         if (process.env.NODE_ENV === "development") {
-          // eslint-disable-next-line no-console -- API健康状态变化日志
-          console.log(`[APIHealth] ${endpoint}: ${oldStatus} -> ${newStatus}`);
+          clientLogger.info(
+            { endpoint, oldStatus, newStatus },
+            "[APIHealth] Status changed",
+          );
         }
       },
     });

@@ -9,6 +9,7 @@
 
 import { createClient } from "@/lib/supabase/client";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { logger } from "@/lib/logger";
 import type {
   KnowledgeLink,
   LinkType,
@@ -392,7 +393,7 @@ export class LinkRepository implements ILinkRepository {
       .eq("bookmark_id", bookmarkId);
 
     if (error) {
-      console.error("Failed to get bookmark entities:", error);
+      logger.error({ error }, "Failed to get bookmark entities");
       return [];
     }
 

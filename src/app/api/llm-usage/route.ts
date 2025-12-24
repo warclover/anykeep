@@ -6,6 +6,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
 
 export const runtime = "edge";
 
@@ -99,7 +100,7 @@ export async function GET(request: NextRequest) {
     };
 
     if (usageError) {
-      console.error("Failed to fetch usage data:", usageError);
+      logger.error({ error: usageError }, "Failed to fetch usage data");
       // 返回空数据而非错误
       return NextResponse.json({
         data: createEmptyStats(period, dateFormat),
@@ -149,7 +150,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ data: stats });
   } catch (error) {
-    console.error("LLM usage API error:", error);
+    logger.error({ error }, "LLM usage API error");
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },

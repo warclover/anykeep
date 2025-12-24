@@ -15,6 +15,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
 
 // ============================================================================
 // 类型定义
@@ -358,7 +359,7 @@ export async function GET(
       data: response,
     });
   } catch (error) {
-    console.error("Failed to get classification reason:", error);
+    logger.error({ error }, "Failed to get classification reason");
     return NextResponse.json(
       {
         success: false,

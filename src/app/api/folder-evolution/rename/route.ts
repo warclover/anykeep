@@ -9,6 +9,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { renameService } from "@/lib/classification/services/rename.service";
 import { safeParseJson, safeParseInt } from "@/lib/utils/api-response";
+import { logger } from "@/lib/logger";
 
 /**
  * GET - 获取文件夹重命名建议
@@ -57,7 +58,7 @@ export async function GET(request: NextRequest) {
       data: suggestions,
     });
   } catch (error) {
-    console.error("[API] folder-evolution/rename GET error:", error);
+    logger.error({ error }, "[API] folder-evolution/rename GET error");
     return NextResponse.json(
       {
         success: false,
@@ -135,7 +136,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("[API] folder-evolution/rename POST error:", error);
+    logger.error({ error }, "[API] folder-evolution/rename POST error");
     return NextResponse.json(
       {
         success: false,

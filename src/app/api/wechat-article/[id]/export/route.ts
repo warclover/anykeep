@@ -16,6 +16,7 @@ import {
   type ArticleMetadata,
 } from "@/lib/wechat-article/export";
 import { errorResponse, unauthorizedError } from "@/lib/utils/api-response";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -148,7 +149,7 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error("[ExportAPI] Export failed:", error);
+    logger.error({ error }, "[ExportAPI] Export failed");
 
     return errorResponse(
       "EXPORT_FAILED",

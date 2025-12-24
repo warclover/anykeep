@@ -7,6 +7,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { operationLogService } from "@/lib/classification/services/server";
+import { logger } from "@/lib/logger";
 
 interface RouteParams {
   params: Promise<{
@@ -55,7 +56,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       },
     });
   } catch (error) {
-    console.error("[API] folder-evolution/undo error:", error);
+    logger.error({ error }, "[API] folder-evolution/undo error");
     return NextResponse.json(
       {
         success: false,

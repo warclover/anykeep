@@ -32,8 +32,7 @@ import type {
 } from "@/types/confirmation";
 import { preferenceLearner } from "@/lib/classification/learning/preference-learner";
 import { logger } from "@/lib/logger";
-import { folderExecutorService } from "@/lib/folder-operations";
-import type { ExecutionResult } from "@/lib/folder-operations";
+import { folderExecutorService, type ExecutionResult } from "@/lib/folder";
 import { BookmarkRepository } from "@/lib/classification/repositories/bookmark.repository";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 

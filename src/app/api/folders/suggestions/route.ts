@@ -14,7 +14,7 @@ import { createClient } from "@/lib/supabase/server";
 import {
   createFolderAutoOrganizationService,
   type OrganizationSuggestion,
-} from "@/lib/folder-organization/services/auto-organization.service";
+} from "@/lib/folder";
 import { logger } from "@/lib/logger";
 
 // ============================================================================

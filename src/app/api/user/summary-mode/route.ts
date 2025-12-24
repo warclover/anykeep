@@ -19,6 +19,7 @@ import {
   getAISummaryConfig,
 } from "@/lib/classification/config/ai-summary-config";
 import type { SummaryMode } from "@/lib/classification/types/ai-summary";
+import { logger } from "@/lib/logger";
 
 // ============================================================================
 // 摘要模式信息
@@ -105,7 +106,7 @@ export async function GET() {
       },
     });
   } catch (error) {
-    console.error("Failed to get summary mode:", error);
+    logger.error({ error }, "Failed to get summary mode");
     return NextResponse.json(
       {
         success: false,
@@ -191,7 +192,7 @@ export async function PUT(request: NextRequest) {
       message: `已切换到「${SUMMARY_MODE_INFO[mode].label}」`,
     });
   } catch (error) {
-    console.error("Failed to update summary mode:", error);
+    logger.error({ error }, "Failed to update summary mode");
     return NextResponse.json(
       {
         success: false,

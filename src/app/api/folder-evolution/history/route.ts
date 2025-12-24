@@ -8,6 +8,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { operationLogService } from "@/lib/classification/services/server";
 import type { OperationSnapshotAction } from "@/types/supabase";
+import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   try {
@@ -56,7 +57,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("[API] folder-evolution/history error:", error);
+    logger.error({ error }, "[API] folder-evolution/history error");
     return NextResponse.json(
       {
         success: false,

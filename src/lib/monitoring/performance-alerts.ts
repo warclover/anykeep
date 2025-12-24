@@ -9,6 +9,7 @@
  */
 
 import { logger } from "@/lib/logger";
+import { clientLogger } from "@/lib/client-logger";
 
 // ============================================
 // 类型定义
@@ -273,8 +274,7 @@ export function handlePerformanceAlert(alert: PerformanceAlert): void {
         : alert.level === "warning"
           ? "⚠️"
           : "ℹ️";
-    // eslint-disable-next-line no-console -- 开发环境调试信息
-    console.log(`${emoji} ${message}`);
+    clientLogger.info(`${emoji} ${message}`);
   }
 
   // TODO: 可扩展为发送到外部监控服务

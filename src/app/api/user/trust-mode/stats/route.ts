@@ -13,6 +13,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { trustModeService } from "@/lib/trust-mode/trust-mode.service";
 import { TRUST_MODE_INFO } from "@/types/trust-mode";
+import { logger } from "@/lib/logger";
 
 // ============================================================================
 // 类型定义
@@ -71,7 +72,7 @@ export async function GET() {
     if (!user) {
       return NextResponse.json(
         { success: false, error: { message: "未登录" } },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -80,13 +81,12 @@ export async function GET() {
 
     // 计算效率指标
     const totalDecisions = stats.autoDecisions + stats.userCorrections;
-    const accuracyRate =
-      totalDecisions > 0 ? 1 - stats.correctionRate : 1;
+    const accuracyRate = totalDecisions > 0 ? 1 - stats.correctionRate : 1;
 
     // 估算节省的操作次数（仅自动决策中未被纠正的）
     const effectiveAutoDecisions = Math.max(
       0,
-      stats.autoDecisions - stats.userCorrections
+      stats.autoDecisions - stats.userCorrections,
     );
     // 每次手动分类估计需要 30 秒
     const savedTimeMinutes = (effectiveAutoDecisions * 30) / 60;
@@ -120,16 +120,15 @@ export async function GET() {
       data: statsResponse,
     });
   } catch (error) {
-    console.error("Failed to get trust mode stats:", error);
+    logger.error({ error }, "Failed to get trust mode stats");
     return NextResponse.json(
       {
         success: false,
         error: {
-          message:
-            error instanceof Error ? error.message : "获取统计数据失败",
+          message: error instanceof Error ? error.message : "获取统计数据失败",
         },
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

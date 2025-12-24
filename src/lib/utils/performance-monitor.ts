@@ -14,6 +14,8 @@
  * ```
  */
 
+import { clientLogger } from "@/lib/client-logger";
+
 interface PerformanceEntry {
   name: string;
   duration: number;
@@ -56,8 +58,10 @@ export class PerformanceMonitor {
 
     // 开发环境输出日志
     if (process.env.NODE_ENV === "development") {
-      // eslint-disable-next-line no-console -- 性能监控调试输出
-      console.log(`[${this.name}] ${stageName}: ${duration.toFixed(2)}ms`);
+      clientLogger.info(
+        { stageName, duration: duration.toFixed(2), metadata },
+        `[${this.name}] Mark`,
+      );
     }
   }
 
@@ -83,9 +87,9 @@ export class PerformanceMonitor {
 
       // 慢操作警告
       if (duration > this.slowThreshold) {
-        // eslint-disable-next-line no-console -- 性能监控警告输出
-        console.warn(
-          `[${this.name}] Slow operation: ${operationName} took ${duration.toFixed(2)}ms`,
+        clientLogger.warn(
+          { operationName, duration: duration.toFixed(2) },
+          `[${this.name}] Slow operation`,
         );
       }
 
@@ -162,18 +166,27 @@ export class PerformanceMonitor {
   logReport(): void {
     const report = this.getReport();
 
-    /* eslint-disable no-console -- 性能报告需要控制台输出 */
-    console.log(`\n[${this.name}] Performance Report:`);
-    console.log(`  Total Duration: ${report.totalDuration.toFixed(2)}ms`);
-    console.log(`  Stages: ${report.entries.length}`);
+    clientLogger.info(
+      {
+        name: this.name,
+        totalDuration: report.totalDuration.toFixed(2),
+        stages: report.entries.length,
+      },
+      "Performance Report",
+    );
 
     if (report.slowEntries.length > 0) {
-      console.warn(`  ⚠️ Slow operations (>${this.slowThreshold}ms):`);
-      report.slowEntries.forEach((e) => {
-        console.warn(`    - ${e.name}: ${e.duration.toFixed(2)}ms`);
-      });
+      clientLogger.warn(
+        {
+          threshold: this.slowThreshold,
+          slowOperations: report.slowEntries.map((e) => ({
+            name: e.name,
+            duration: e.duration.toFixed(2),
+          })),
+        },
+        "Slow operations detected",
+      );
     }
-    /* eslint-enable no-console */
   }
 
   /**
@@ -215,8 +228,7 @@ export function createTimer(name: string): {
     elapsed: () => performance.now() - start,
     log: () => {
       const duration = performance.now() - start;
-      // eslint-disable-next-line no-console -- 计时器调试输出
-      console.log(`[Timer] ${name}: ${duration.toFixed(2)}ms`);
+      clientLogger.info({ name, duration: duration.toFixed(2) }, "[Timer]");
     },
   };
 }
@@ -241,16 +253,23 @@ export function timed(
       const duration = performance.now() - start;
 
       if (process.env.NODE_ENV === "development") {
-        // eslint-disable-next-line no-console -- 装饰器调试输出
-        console.log(`[${className}.${propertyKey}] ${duration.toFixed(2)}ms`);
+        clientLogger.info(
+          { className, method: propertyKey, duration: duration.toFixed(2) },
+          "Method execution time",
+        );
       }
 
       return result;
     } catch (error) {
       const duration = performance.now() - start;
-      console.error(
-        `[${className}.${propertyKey}] Failed after ${duration.toFixed(2)}ms:`,
-        error,
+      clientLogger.error(
+        {
+          className,
+          method: propertyKey,
+          duration: duration.toFixed(2),
+          error: error instanceof Error ? error.message : String(error),
+        },
+        "Method execution failed",
       );
       throw error;
     }

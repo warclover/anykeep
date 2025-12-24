@@ -12,6 +12,7 @@ import type {
   CreateSnapshotRequest,
   CreateSnapshotResponse,
 } from "@/lib/snapshot";
+import { logger } from "@/lib/logger";
 
 /**
  * GET /api/snapshots?bookmarkId=xxx
@@ -79,7 +80,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("[GET /api/snapshots] Error:", error);
+    logger.error({ error }, "[GET /api/snapshots] Error");
     return NextResponse.json(
       {
         success: false,
@@ -135,7 +136,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(response, { status: 201 });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error("[POST /api/snapshots] Error:", error);
+    logger.error({ error }, "[POST /api/snapshots] Error");
 
     // 解析错误类型
     if (message.includes("BOOKMARK_NOT_FOUND")) {

@@ -11,6 +11,7 @@
 import { createClient } from "@/lib/supabase/client";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { DiscoveredLink } from "../types/link.types";
+import { logger } from "@/lib/logger";
 
 // ============================================================================
 // Types
@@ -99,7 +100,7 @@ export class EntityMatcherService implements IEntityMatcherService {
       );
 
       if (error) {
-        console.error("Failed to find bookmarks by entities:", error);
+        logger.error({ error }, "Failed to find bookmarks by entities");
         return [];
       }
 
@@ -125,7 +126,7 @@ export class EntityMatcherService implements IEntityMatcherService {
         }),
       );
     } catch (error) {
-      console.error("Error in findBySharedEntities:", error);
+      logger.error({ error }, "Error in findBySharedEntities");
       return [];
     }
   }
@@ -171,7 +172,7 @@ export class EntityMatcherService implements IEntityMatcherService {
 
       return shared;
     } catch (error) {
-      console.error("Error getting shared entities:", error);
+      logger.error({ error }, "Error getting shared entities");
       return [];
     }
   }

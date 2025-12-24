@@ -19,6 +19,7 @@ import {
   crawlArticleSchema,
 } from "@/lib/wechat-article/validation";
 import type { Platform } from "@/types/supabase";
+import { logger } from "@/lib/logger";
 
 // Supabase join 查询结果类型
 interface SnapshotWithBookmark {
@@ -133,7 +134,7 @@ export async function GET(
 
     return successResponse(processedContent);
   } catch (error) {
-    console.error("[API] GET /api/wechat-article/[id] error:", error);
+    logger.error({ error }, "[API] GET /api/wechat-article/[id] error");
     return errorResponse(
       "INTERNAL_ERROR",
       error instanceof Error ? error.message : "获取文章失败",
@@ -213,7 +214,7 @@ export async function POST(
       styleLevel: content.styleLevel,
     });
   } catch (error) {
-    console.error("[API] POST /api/wechat-article/[id] error:", error);
+    logger.error({ error }, "[API] POST /api/wechat-article/[id] error");
     return errorResponse(
       "CRAWL_FAILED",
       error instanceof Error ? error.message : "抓取失败",

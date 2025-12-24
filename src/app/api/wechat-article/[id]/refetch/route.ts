@@ -17,6 +17,7 @@ import {
   safeParseBody,
   refetchArticleSchema,
 } from "@/lib/wechat-article/validation";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -84,7 +85,10 @@ export async function POST(
 
     return successResponse(result);
   } catch (error) {
-    console.error("[API] POST /api/wechat-article/[id]/refetch error:", error);
+    logger.error(
+      { error },
+      "[API] POST /api/wechat-article/[id]/refetch error",
+    );
     return errorResponse(
       "REFETCH_FAILED",
       error instanceof Error ? error.message : "重新获取失败",

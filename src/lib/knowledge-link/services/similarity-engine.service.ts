@@ -11,6 +11,7 @@
 import { createClient } from "@/lib/supabase/client";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { DiscoveredLink } from "../types/link.types";
+import { logger } from "@/lib/logger";
 
 // ============================================================================
 // Types
@@ -92,7 +93,7 @@ export class SimilarityEngineService implements ISimilarityEngineService {
       );
 
       if (error) {
-        console.error("Failed to find similar bookmarks:", error);
+        logger.error({ error }, "Failed to find similar bookmarks");
         return [];
       }
 
@@ -113,7 +114,7 @@ export class SimilarityEngineService implements ISimilarityEngineService {
         }),
       );
     } catch (error) {
-      console.error("Error in findSimilar:", error);
+      logger.error({ error }, "Error in findSimilar");
       return [];
     }
   }
@@ -146,7 +147,7 @@ export class SimilarityEngineService implements ISimilarityEngineService {
       // 计算余弦相似度
       return this.cosineSimilarity(b1.embedding, b2.embedding);
     } catch (error) {
-      console.error("Error calculating similarity:", error);
+      logger.error({ error }, "Error calculating similarity");
       return 0;
     }
   }

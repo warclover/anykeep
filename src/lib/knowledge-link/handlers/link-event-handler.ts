@@ -192,9 +192,12 @@ export class LinkEventHandler {
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
-      console.error(
-        `[LinkEventHandler] Failed to process link discovery for bookmark ${bookmarkId}:`,
-        error,
+      logger.error(
+        {
+          bookmarkId,
+          error: error instanceof Error ? error.message : String(error),
+        },
+        `[LinkEventHandler] Failed to process link discovery for bookmark ${bookmarkId}`,
       );
     }
   }

@@ -14,6 +14,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getGraphBuilderService } from "@/lib/knowledge-link";
 import type { GraphData, GraphBuildOptions } from "@/lib/knowledge-link";
 import type { LinkType } from "@/lib/knowledge-link";
+import { logger } from "@/lib/logger";
 
 // ============================================================================
 // Types
@@ -92,7 +93,7 @@ export async function GET(
       data: graphData,
     });
   } catch (error) {
-    console.error("[API] Failed to get graph data:", error);
+    logger.error({ error }, "[API] Failed to get graph data");
     return NextResponse.json(
       {
         success: false,

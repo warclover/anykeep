@@ -10,7 +10,7 @@
  *
  * // 订阅事件
  * const unsubscribe = eventBus.on('classification:bookmark_classified', (payload) => {
- *   console.log('Bookmark classified:', payload.bookmarkId);
+ *   clientLogger.info({ bookmarkId: payload.bookmarkId }, 'Bookmark classified');
  * });
  *
  * // 发布事件

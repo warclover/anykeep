@@ -9,6 +9,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { generatePrometheusMetrics } from "@/lib/metrics/prometheus-exporter";
+import { logger } from "@/lib/logger";
 
 /**
  * 验证请求权限
@@ -67,7 +68,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("[Metrics] Failed to generate metrics:", error);
+    logger.error({ error }, "[Metrics] Failed to generate metrics");
     return new NextResponse("Internal Server Error", { status: 500 });
   }
 }

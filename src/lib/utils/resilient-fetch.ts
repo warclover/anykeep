@@ -10,6 +10,7 @@
  */
 
 import { dataCache } from "@/lib/cache/data-cache";
+import { clientLogger } from "@/lib/client-logger";
 
 /**
  * 错误类型分类
@@ -309,10 +310,9 @@ export async function resilientFetch<T>(
       onRetry?.(attempt, fetchError);
 
       if (process.env.NODE_ENV === "development") {
-        // eslint-disable-next-line no-console -- 重试日志用于调试
-        console.warn(
-          `[resilientFetch] Retry ${attempt}/${maxRetries} for ${url} after ${delayMs}ms:`,
-          fetchError.message,
+        clientLogger.warn(
+          { attempt, maxRetries, url, delayMs, error: fetchError.message },
+          "[resilientFetch] Retry",
         );
       }
 
@@ -327,8 +327,10 @@ export async function resilientFetch<T>(
       onFallback?.(cached.data);
 
       if (process.env.NODE_ENV === "development") {
-        // eslint-disable-next-line no-console -- 降级日志用于调试
-        console.warn(`[resilientFetch] Falling back to cached data for ${url}`);
+        clientLogger.warn(
+          { url },
+          "[resilientFetch] Falling back to cached data",
+        );
       }
 
       return {

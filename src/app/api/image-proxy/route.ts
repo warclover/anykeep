@@ -10,6 +10,7 @@
  */
 
 import { type NextRequest, NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -234,9 +235,9 @@ export async function GET(request: NextRequest) {
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
 
-      console.error(
-        `[ImageProxy] Attempt ${attempt + 1}/${MAX_RETRIES} failed:`,
-        lastError.message,
+      logger.error(
+        { error: lastError, attempt: attempt + 1, maxRetries: MAX_RETRIES },
+        "[ImageProxy] Attempt failed",
       );
 
       // 等待后重试（指数退避）
@@ -249,7 +250,10 @@ export async function GET(request: NextRequest) {
   }
 
   // 7. 所有重试失败，返回错误
-  console.error("[ImageProxy] All attempts failed for:", imageUrl);
+  logger.error(
+    { imageUrl, error: lastError },
+    "[ImageProxy] All attempts failed",
+  );
 
   return NextResponse.json(
     {

@@ -17,6 +17,7 @@ import {
   createBookmarkServerRepository,
   isBrowserPlatform,
 } from "@/lib/repositories/server";
+import { logger } from "@/lib/logger";
 import type {
   AnalyticsStats,
   TrendDataItem,
@@ -194,7 +195,7 @@ export class AnalyticsService {
       .gte("created_at", startDate.toISOString());
 
     if (error) {
-      console.error("Failed to fetch skills stats:", error.message);
+      logger.error({ error: error.message }, "Failed to fetch skills stats");
       // 返回空统计而不是抛出错误，保证页面正常加载
       return this.getEmptySkillsStats(periodDays);
     }
@@ -658,7 +659,7 @@ export async function getAnalyticsData(
   userId: string,
   config?: Partial<AnalyticsConfig>,
 ): Promise<AnalyticsData> {
-  console.error("[getAnalyticsData] Direct call without cache");
+  logger.error("[getAnalyticsData] Direct call without cache");
   const service = new AnalyticsService(supabase, userId, config);
   return service.getFullAnalytics();
 }

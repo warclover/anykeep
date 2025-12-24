@@ -11,6 +11,7 @@
  */
 
 import type { WechatArticleContent } from "../wechat-article.types";
+import { logger } from "@/lib/logger";
 
 // =============================================================================
 // 类型定义
@@ -351,7 +352,7 @@ export async function exportToPdf(
       )
       .catch(() => {
         // 图片加载超时，继续生成 PDF
-        console.error("[PdfExporter] Some images failed to load");
+        logger.error({}, "[PdfExporter] Some images failed to load");
       });
 
     // 生成 PDF

@@ -3,6 +3,7 @@
  * V2.1: 独立页面 + 多入口复用
  */
 
+import { clientLogger } from "@/lib/client-logger";
 import { EXPORT_ANALYTICS_EVENTS } from "./constants";
 import type {
   ExportAnalyticsParams,
@@ -16,10 +17,9 @@ import type {
  */
 function trackEvent(eventName: string, params?: Record<string, unknown>): void {
   // TODO: 集成项目的埋点系统
-  // 目前使用 console.log 作为占位
+  // 目前使用 clientLogger 作为占位
   if (process.env.NODE_ENV === "development") {
-    // eslint-disable-next-line no-console
-    console.log("[Export Analytics]", eventName, params);
+    clientLogger.debug({ eventName, params }, "[Export Analytics]");
   }
 
   // 示例：集成 Google Analytics

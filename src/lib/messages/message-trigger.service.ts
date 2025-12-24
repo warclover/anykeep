@@ -27,7 +27,7 @@ import {
   type CreateClassificationConfirmationInput,
   type CreateFolderConfirmationInput,
 } from "@/lib/confirmation";
-import { folderExecutorService } from "@/lib/folder-operations";
+import { folderExecutorService } from "@/lib/folder";
 import { logger } from "@/lib/logger";
 
 // ============================================================================

@@ -13,6 +13,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 import { checkRateLimit } from "@/lib/utils/rate-limiter";
+import { logger } from "@/lib/logger";
 
 // 需要认证保护的路由
 const protectedRoutes = [
@@ -95,7 +96,8 @@ export async function middleware(request: NextRequest) {
 
   // V4.2.27: 诊断日志 - 认证耗时
   if (process.env.NODE_ENV === "development") {
-    console.error(
+    logger.debug(
+      { pathname, authMethod, authDuration: Math.round(authDuration) },
       `[Middleware] ${pathname} | Auth: ${authMethod} | ${Math.round(authDuration)}ms`,
     );
   }

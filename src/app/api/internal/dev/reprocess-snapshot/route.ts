@@ -8,6 +8,7 @@ import { createClient } from "@supabase/supabase-js";
 import { JSDOM, VirtualConsole } from "jsdom";
 import { Readability } from "@mozilla/readability";
 import { createHash } from "crypto";
+import { logger } from "@/lib/logger";
 
 // Only available in development
 const isDev = process.env.NODE_ENV === "development";
@@ -170,7 +171,10 @@ export async function POST(request: Request) {
       .select("id, readable_word_count, captured_at");
 
     if (updateError) {
-      console.error("[Reprocess] Update error:", updateError);
+      logger.error(
+        { error: updateError, snapshotId },
+        "[Reprocess] Update error",
+      );
       return NextResponse.json(
         {
           error: `Update failed: ${updateError.message}`,
@@ -182,7 +186,7 @@ export async function POST(request: Request) {
 
     // Verify the update worked
     if (!updateResult || updateResult.length === 0) {
-      console.error("[Reprocess] No rows updated for snapshot:", snapshotId);
+      logger.error({ snapshotId }, "[Reprocess] No rows updated for snapshot");
       return NextResponse.json(
         {
           error: "No rows were updated",

@@ -5,6 +5,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse, type NextRequest } from "next/server";
+import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
@@ -15,7 +16,7 @@ export async function GET(request: NextRequest) {
 
   // 处理 OAuth 错误
   if (error) {
-    console.error("OAuth error:", error, errorDescription);
+    logger.error({ error, errorDescription }, "OAuth error");
     const errorUrl = new URL("/login", requestUrl.origin);
     errorUrl.searchParams.set("error", error);
     if (errorDescription) {
@@ -32,7 +33,7 @@ export async function GET(request: NextRequest) {
         await supabase.auth.exchangeCodeForSession(code);
 
       if (exchangeError) {
-        console.error("Code exchange error:", exchangeError);
+        logger.error({ error: exchangeError }, "Code exchange error");
         const errorUrl = new URL("/login", requestUrl.origin);
         errorUrl.searchParams.set("error", "auth_error");
         errorUrl.searchParams.set("error_description", exchangeError.message);
@@ -42,7 +43,7 @@ export async function GET(request: NextRequest) {
       // 成功，重定向到目标页面
       return NextResponse.redirect(new URL(next, requestUrl.origin));
     } catch (err) {
-      console.error("Callback error:", err);
+      logger.error({ error: err }, "Callback error");
       const errorUrl = new URL("/login", requestUrl.origin);
       errorUrl.searchParams.set("error", "unknown_error");
       return NextResponse.redirect(errorUrl);

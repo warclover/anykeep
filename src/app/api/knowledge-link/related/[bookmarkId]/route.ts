@@ -13,6 +13,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getLinkService } from "@/lib/knowledge-link";
 import type { LinkType } from "@/lib/knowledge-link";
+import { logger } from "@/lib/logger";
 
 // ============================================================================
 // Types
@@ -138,7 +139,7 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error("[API] Failed to get related bookmarks:", error);
+    logger.error({ error }, "[API] Failed to get related bookmarks");
     return NextResponse.json(
       {
         success: false,
