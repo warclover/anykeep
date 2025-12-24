@@ -4,18 +4,23 @@
  * 统一处理 Tool 确认和 Skill 确认的前端适配器
  * 解决 Agent/Skills 两套确认系统的前端统一问题
  *
- * Phase 0.3 实现：
- * - 检测确认来源（tool vs skill）
- * - 统一确认/取消操作接口
- * - 保持向后兼容
+ * ## 版本历史
+ * - v2.0.0 (2025-12-24): 集成 Effect Layer ConfirmationService
+ * - v1.0.0 (2025-12-24): Phase 0.3 初始实现
  *
- * @version 1.0.0
+ * ## 迁移说明
+ * v2.0.0 开始，确认操作通过 ConfirmationService 处理，不再直接调用
+ * `/api/agent/confirm` 端点（该端点已弃用）
+ *
+ * @version 2.0.0
  * @since 2025-12-24
  */
 
 import { useCallback } from "react";
 import type { PendingConfirmation } from "@/lib/ai-agent/tools/types";
 import type { PendingConfirmation as SkillPendingConfirmation } from "@/lib/ai-skills/orchestration/confirmation-handler";
+import { confirmationService } from "@/lib/ai-skills/effects";
+import { clientLogger } from "@/lib/client-logger";
 
 // ============================================
 // 类型定义
@@ -246,47 +251,68 @@ function normalizeToUnified(
 export function useUnifiedConfirmation(): UseUnifiedConfirmationReturn {
   /**
    * 处理 Tool 确认
+   *
+   * v2.0.0: 使用 ConfirmationService 代替直接 API 调用
    */
   const handleToolConfirmation = useCallback(
     async (
       confirmation: UnifiedConfirmation,
       response: ConfirmationResponse,
     ): Promise<ConfirmationActionResult> => {
-      const toolConfirmation = confirmation.original as PendingConfirmation;
-
       try {
-        const res = await fetch("/api/agent/confirm", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            confirmationId: toolConfirmation.confirmationId,
-            toolName: toolConfirmation.toolName,
-            params: toolConfirmation.params,
-            action: response.confirmed ? "confirm" : "cancel",
-          }),
-        });
+        clientLogger.debug(
+          { confirmationId: confirmation.id, confirmed: response.confirmed },
+          "handleToolConfirmation: Processing tool confirmation",
+        );
 
-        const result = await res.json();
+        // 使用 ConfirmationService 响应确认
+        const success = confirmationService.respondToConfirmation(
+          confirmation.id,
+          response.selectedOption,
+          {
+            confirmed: response.confirmed,
+            source: "tool",
+            originalData: response.data,
+          },
+        );
 
-        if (!res.ok) {
+        if (!success) {
+          clientLogger.warn(
+            { confirmationId: confirmation.id },
+            "handleToolConfirmation: Confirmation not found or expired",
+          );
           return {
             success: false,
-            message: "操作失败",
-            error: result.error || `HTTP ${res.status}`,
+            message: "确认请求已过期或不存在",
+            error: "CONFIRMATION_NOT_FOUND",
           };
         }
 
+        clientLogger.info(
+          {
+            confirmationId: confirmation.id,
+            selectedOption: response.selectedOption,
+          },
+          "handleToolConfirmation: Confirmation response sent",
+        );
+
         return {
-          success: result.success ?? true,
-          message: response.confirmed
-            ? result.data?.message || "操作已完成"
-            : "操作已取消",
-          data: result.data,
+          success: true,
+          message: response.confirmed ? "操作已确认" : "操作已取消",
+          data: {
+            confirmationId: confirmation.id,
+            selectedOption: response.selectedOption,
+            confirmed: response.confirmed,
+          },
         };
       } catch (err) {
+        clientLogger.error(
+          { confirmationId: confirmation.id, error: err },
+          "handleToolConfirmation: Failed to process confirmation",
+        );
         return {
           success: false,
-          message: "网络错误",
+          message: "处理确认时发生错误",
           error: err instanceof Error ? err.message : "未知错误",
         };
       }
@@ -297,28 +323,75 @@ export function useUnifiedConfirmation(): UseUnifiedConfirmationReturn {
   /**
    * 处理 Skill 确认
    *
-   * Skill 确认通过流式响应处理，前端只需返回用户选择
-   * 后续执行由 OrchestrationEngine 自动继续
+   * v2.0.0: 使用 ConfirmationService 统一处理
+   * Skill 确认通过 ConfirmationService 响应，OrchestrationEngine 会监听结果
    */
   const handleSkillConfirmation = useCallback(
     async (
       confirmation: UnifiedConfirmation,
       response: ConfirmationResponse,
     ): Promise<ConfirmationActionResult> => {
-      // Skill 确认的响应通常由调用方处理（通过回调传递）
-      // 这里返回标准化的结果供 UI 使用
-      return {
-        success: true,
-        message: response.confirmed
-          ? `已选择: ${response.selectedOption}`
-          : "操作已取消",
-        data: {
-          confirmationId: confirmation.id,
-          selectedOption: response.selectedOption,
-          confirmed: response.confirmed,
-          contextData: confirmation.contextData,
-        },
-      };
+      try {
+        clientLogger.debug(
+          { confirmationId: confirmation.id, confirmed: response.confirmed },
+          "handleSkillConfirmation: Processing skill confirmation",
+        );
+
+        // 使用 ConfirmationService 响应确认
+        const success = confirmationService.respondToConfirmation(
+          confirmation.id,
+          response.selectedOption,
+          {
+            confirmed: response.confirmed,
+            source: "skill",
+            contextData: confirmation.contextData,
+            originalData: response.data,
+          },
+        );
+
+        if (!success) {
+          clientLogger.warn(
+            { confirmationId: confirmation.id },
+            "handleSkillConfirmation: Confirmation not found or expired",
+          );
+          return {
+            success: false,
+            message: "确认请求已过期或不存在",
+            error: "CONFIRMATION_NOT_FOUND",
+          };
+        }
+
+        clientLogger.info(
+          {
+            confirmationId: confirmation.id,
+            selectedOption: response.selectedOption,
+          },
+          "handleSkillConfirmation: Confirmation response sent",
+        );
+
+        return {
+          success: true,
+          message: response.confirmed
+            ? `已选择: ${response.selectedOption}`
+            : "操作已取消",
+          data: {
+            confirmationId: confirmation.id,
+            selectedOption: response.selectedOption,
+            confirmed: response.confirmed,
+            contextData: confirmation.contextData,
+          },
+        };
+      } catch (err) {
+        clientLogger.error(
+          { confirmationId: confirmation.id, error: err },
+          "handleSkillConfirmation: Failed to process confirmation",
+        );
+        return {
+          success: false,
+          message: "处理确认时发生错误",
+          error: err instanceof Error ? err.message : "未知错误",
+        };
+      }
     },
     [],
   );

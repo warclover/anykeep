@@ -32,6 +32,7 @@ import { SidebarProvider } from "@/contexts/sidebar-context";
 import { KeepAliveProvider } from "@/lib/cache";
 import { OnboardingProvider } from "@/components/providers/onboarding-provider";
 import { MessageNotificationProvider } from "@/components/messages/message-notification-provider";
+import { NotificationProvider } from "@/contexts/notification-context";
 import { WebVitalsReporter } from "@/components/analytics/web-vitals-reporter";
 import { SessionHeartbeatProvider } from "@/components/providers/session-heartbeat-provider";
 import {
@@ -86,6 +87,8 @@ const FeatureProviders = composeProviders(
   KeepAliveProvider,
   // 消息通知
   MessageNotificationProvider,
+  // AI Effect 通知（v2.0.0 新增）
+  NotificationProvider,
 );
 
 // ============================================

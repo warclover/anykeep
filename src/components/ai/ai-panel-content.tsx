@@ -4,9 +4,12 @@
  * 提取的面板核心内容，支持在 Sheet（覆盖式）和 embedded（内嵌式）模式下复用
  * 支持统一智能引擎（原子模式 + 编排模式）
  *
- * @version 2.0.0
+ * ## 版本历史
+ * - v2.1.0 (2025-12-24): 集成 Effect Layer 统一确认处理
+ * - v2.0.0 (2025-12-24): 集成统一智能引擎
+ *
+ * @version 2.1.0
  * @since 2025-12-23
- * @updated 2025-12-24 - 集成统一智能引擎
  */
 
 "use client";
@@ -31,6 +34,8 @@ import type { DisplayMessage, SuggestionItem } from "./types";
 import { adaptBackendChunk, processUnifiedChunk } from "./types";
 import type { AgentStreamChunk } from "@/lib/ai-agent";
 import type { PendingConfirmation } from "@/lib/ai-agent/tools/types";
+import { useUnifiedConfirmation } from "@/hooks/domain/ai/use-unified-confirmation";
+import { clientLogger } from "@/lib/client-logger";
 
 interface AIPanelContentProps {
   /** 对话 ID（可选，用于继续对话） */
@@ -76,6 +81,9 @@ export function AIPanelContent({
     PendingConfirmation[]
   >([]);
   const [isConfirming, setIsConfirming] = useState(false);
+
+  // Hooks
+  const { normalizeConfirmation, confirm, cancel } = useUnifiedConfirmation();
 
   // Refs
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -218,7 +226,7 @@ export function AIPanelContent({
               }
             } catch (parseError) {
               if (process.env.NODE_ENV === "development") {
-                console.error("SSE parse error:", parseError, "Line:", line);
+                clientLogger.error({ parseError, line }, "SSE parse error");
               }
             }
           }
@@ -342,6 +350,7 @@ export function AIPanelContent({
   );
 
   // 处理确认操作
+  // v2.1.0: 使用 useUnifiedConfirmation 代替直接 API 调用
   const handleConfirm = useCallback(
     async (confirmationId: string) => {
       const confirmation = pendingConfirmations.find(
@@ -352,28 +361,32 @@ export function AIPanelContent({
       setIsConfirming(true);
 
       try {
-        const response = await fetch("/api/agent/confirm", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            confirmationId: confirmation.confirmationId,
-            toolName: confirmation.toolName,
-            params: confirmation.params,
-            action: "confirm",
-          }),
-        });
+        // 使用统一确认 Hook 处理
+        const unifiedConfirmation = normalizeConfirmation(confirmation);
+        const result = await confirm(unifiedConfirmation);
 
-        const result = await response.json();
+        clientLogger.debug(
+          { confirmationId, success: result.success },
+          "AIPanelContent: Confirmation processed",
+        );
 
-        // 处理导出操作的文件下载
+        // 特殊处理：导出操作的文件下载
+        // 注意：导出功能需要从 result.data 中获取文件内容
+        // 这个逻辑保留是为了兼容导出工具的特殊返回
         if (
           result.success &&
           confirmation.toolName === "export_bookmarks" &&
-          result.data?.content
+          result.data &&
+          typeof result.data === "object" &&
+          "content" in result.data
         ) {
-          const { content, filename, mimeType, isBase64 } = result.data;
+          const exportData = result.data as {
+            content: string;
+            filename: string;
+            mimeType: string;
+            isBase64?: boolean;
+          };
+          const { content, filename, mimeType, isBase64 } = exportData;
           let blob: Blob;
 
           if (isBase64) {
@@ -401,17 +414,19 @@ export function AIPanelContent({
           id: crypto.randomUUID(),
           role: "assistant",
           content: result.success
-            ? `✅ 操作已完成：${result.data?.message || confirmation.description}`
-            : `❌ 操作失败：${result.error || "未知错误"}`,
+            ? `✅ ${result.message}`
+            : `❌ ${result.message}`,
           status: "completed",
           createdAt: new Date(),
         };
         setMessages((prev) => [...prev, resultMessage]);
 
+        // 从待确认列表移除
         setPendingConfirmations((prev) =>
           prev.filter((c) => c.confirmationId !== confirmationId),
         );
 
+        // 从消息中的待确认列表移除
         setMessages((prev) =>
           prev.map((m) =>
             m.pendingConfirmations?.some(
@@ -427,10 +442,14 @@ export function AIPanelContent({
           ),
         );
       } catch (error) {
+        clientLogger.error(
+          { confirmationId, error },
+          "AIPanelContent: Confirmation failed",
+        );
         const errorMessage: DisplayMessage = {
           id: crypto.randomUUID(),
           role: "assistant",
-          content: `❌ 操作执行失败：${error instanceof Error ? error.message : "网络错误"}`,
+          content: `❌ 操作执行失败：${error instanceof Error ? error.message : "未知错误"}`,
           status: "error",
           createdAt: new Date(),
         };
@@ -439,10 +458,11 @@ export function AIPanelContent({
         setIsConfirming(false);
       }
     },
-    [pendingConfirmations],
+    [pendingConfirmations, normalizeConfirmation, confirm],
   );
 
   // 处理取消操作
+  // v2.1.0: 使用 useUnifiedConfirmation 代替直接 API 调用
   const handleCancel = useCallback(
     async (confirmationId: string) => {
       const confirmation = pendingConfirmations.find(
@@ -450,21 +470,24 @@ export function AIPanelContent({
       );
       if (!confirmation) return;
 
-      fetch("/api/agent/confirm", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          confirmationId: confirmation.confirmationId,
-          toolName: confirmation.toolName,
-          params: confirmation.params,
-          action: "cancel",
-        }),
-      }).catch(() => {
-        // Intentionally ignored - cancel is best-effort
-      });
+      try {
+        // 使用统一确认 Hook 处理取消
+        const unifiedConfirmation = normalizeConfirmation(confirmation);
+        await cancel(unifiedConfirmation);
 
+        clientLogger.debug(
+          { confirmationId },
+          "AIPanelContent: Confirmation cancelled",
+        );
+      } catch {
+        // 取消操作失败不影响 UI 更新
+        clientLogger.warn(
+          { confirmationId },
+          "AIPanelContent: Cancel operation failed (ignored)",
+        );
+      }
+
+      // 从待确认列表移除
       setPendingConfirmations((prev) =>
         prev.filter((c) => c.confirmationId !== confirmationId),
       );
@@ -478,6 +501,7 @@ export function AIPanelContent({
       };
       setMessages((prev) => [...prev, cancelMessage]);
 
+      // 从消息中的待确认列表移除
       setMessages((prev) =>
         prev.map((m) =>
           m.pendingConfirmations?.some(
@@ -493,7 +517,7 @@ export function AIPanelContent({
         ),
       );
     },
-    [pendingConfirmations],
+    [pendingConfirmations, normalizeConfirmation, cancel],
   );
 
   // 清除对话
