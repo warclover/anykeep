@@ -2,31 +2,31 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "crons": [
     {
-      "path": "/api/cron/classification-optimize",
+      "path": "/api/internal/cron/classification-optimize",
       "schedule": "0 2 * * *"
     },
     {
-      "path": "/api/cron/update-folder-profiles",
+      "path": "/api/internal/cron/update-folder-profiles",
       "schedule": "0 3 * * *"
     },
     {
-      "path": "/api/cron/smart-sorting",
+      "path": "/api/internal/cron/smart-sorting",
       "schedule": "0 4 * * *"
     },
     {
-      "path": "/api/cron/profile-updates",
+      "path": "/api/internal/cron/profile-updates",
       "schedule": "0 5 * * *"
     },
     {
-      "path": "/api/cron/generate-monthly-reports",
+      "path": "/api/internal/cron/generate-monthly-reports",
       "schedule": "0 5 1 * *"
     },
     {
-      "path": "/api/cron/process-job-queue",
+      "path": "/api/internal/cron/process-job-queue",
       "schedule": "*/30 * * * *"
     },
     {
-      "path": "/api/cron/cleanup-snapshots",
+      "path": "/api/internal/cron/cleanup-snapshots",
       "schedule": "0 6 * * *"
     }
   ]

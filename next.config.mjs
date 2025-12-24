@@ -86,6 +86,21 @@ const nextConfig = {
     ],
   },
 
+  // API 路径重写：向后兼容旧路径
+  // Phase 0.1: 隔离管理/调试 API 到 /internal/ 目录
+  async rewrites() {
+    return [
+      // Cron APIs: /api/cron/* → /api/internal/cron/*
+      { source: '/api/cron/:path*', destination: '/api/internal/cron/:path*' },
+      // Dev APIs: /api/dev/* → /api/internal/dev/*
+      { source: '/api/dev/:path*', destination: '/api/internal/dev/:path*' },
+      // Debug APIs: /api/debug/* → /api/internal/debug/*
+      { source: '/api/debug/:path*', destination: '/api/internal/debug/:path*' },
+      // Maintenance APIs: /api/maintenance/* → /api/internal/maintenance/*
+      { source: '/api/maintenance/:path*', destination: '/api/internal/maintenance/:path*' },
+    ];
+  },
+
   // V4.2.24: HTTP/2 预连接和缓存优化
   async headers() {
     return [

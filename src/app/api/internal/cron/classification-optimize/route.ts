@@ -62,7 +62,9 @@ export async function POST(request: NextRequest) {
     }
 
     // 去重用户 ID
-    const uniqueUserIds = [...new Set((activeUsers || []).map((u) => u.user_id))];
+    const uniqueUserIds = [
+      ...new Set((activeUsers || []).map((u) => u.user_id)),
+    ];
 
     logger.info(
       { userCount: uniqueUserIds.length },
@@ -88,7 +90,8 @@ export async function POST(request: NextRequest) {
         await fastPathCacheManager.warmupUserCache(userId);
         results.cacheWarmed++;
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
         results.errors.push(`User ${userId}: ${errorMessage}`);
         results.usersSkipped++;
       }
