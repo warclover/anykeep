@@ -135,11 +135,17 @@ interface UnifiedStreamChunk {
  * useAIChat 配置
  */
 export interface UseAIChatConfig {
-  /** API 端点（默认根据 useUnifiedEngine 自动选择） */
+  /**
+   * @deprecated 已废弃，始终使用 /api/agent/unified
+   * 保留仅为向后兼容，将在下个主版本移除
+   */
   apiEndpoint?: string;
   /** 默认请求选项 */
   defaultOptions?: ChatRequestOptions;
-  /** 是否使用统一引擎（默认 true） */
+  /**
+   * @deprecated 已废弃，统一引擎已稳定，无需切换
+   * 如需回退到 KnowledgeAgent，请在 options 中设置 enableUnified: false
+   */
   useUnifiedEngine?: boolean;
   /** 消息发送前回调 */
   onBeforeSend?: (message: string) => void;
@@ -226,6 +232,8 @@ function parseSSELine(
 /**
  * AI 聊天 Hook
  *
+ * 统一使用 /api/agent/unified 端点，支持智能路由和编排模式。
+ *
  * @param config - 配置选项
  * @returns 聊天状态和操作方法
  *
@@ -238,7 +246,6 @@ function parseSSELine(
  *   currentResponse,
  *   progress,
  * } = useAIChat({
- *   useUnifiedEngine: true,
  *   defaultOptions: { streaming: true },
  *   onProgress: (step, percent) => console.log(`${step}: ${percent}%`),
  * });
@@ -246,15 +253,19 @@ function parseSSELine(
  * // 发送消息
  * await sendMessage('帮我分析最近收藏的文章');
  *
+ * // 回退到 KnowledgeAgent（不使用智能路由）
+ * await sendMessage('简单问题', { useUnifiedEngine: false });
+ *
  * // 取消请求
  * cancel();
  * ```
  */
 export function useAIChat(config: UseAIChatConfig = {}): UseAIChatReturn {
   const {
-    apiEndpoint,
+    // @deprecated - 保留向后兼容，但不再使用
+    apiEndpoint: _apiEndpoint,
+    useUnifiedEngine: _useUnifiedEngine,
     defaultOptions = {},
-    useUnifiedEngine = true,
     onBeforeSend,
     onStream,
     onComplete,
@@ -511,13 +522,10 @@ export function useAIChat(config: UseAIChatConfig = {}): UseAIChatReturn {
 
       try {
         const mergedOptions = { ...defaultOptions, ...options };
-        const shouldUseUnified =
-          mergedOptions.useUnifiedEngine ?? useUnifiedEngine;
 
-        // 根据配置选择 API
-        const endpoint =
-          apiEndpoint ||
-          (shouldUseUnified ? "/api/agent/unified" : "/api/agent/chat");
+        // 统一使用 /api/agent/unified（支持通过 enableUnified: false 回退到 KnowledgeAgent）
+        const endpoint = "/api/agent/unified";
+        const enableUnified = mergedOptions.useUnifiedEngine ?? true;
 
         const res = await fetch(endpoint, {
           method: "POST",
@@ -530,7 +538,7 @@ export function useAIChat(config: UseAIChatConfig = {}): UseAIChatReturn {
             options: {
               streaming: mergedOptions.streaming ?? true,
               systemPrompt: mergedOptions.systemPrompt,
-              enableUnified: shouldUseUnified,
+              enableUnified,
             },
           }),
           signal: abortControllerRef.current.signal,
@@ -579,7 +587,8 @@ export function useAIChat(config: UseAIChatConfig = {}): UseAIChatReturn {
             // 回调
             onStream?.(chunk);
 
-            if (shouldUseUnified) {
+            // 统一 API 返回的 chunk 需要根据模式处理
+            if (enableUnified) {
               handleUnifiedChunk(
                 chunk as UnifiedStreamChunk,
                 assistantMessageId,
@@ -589,6 +598,7 @@ export function useAIChat(config: UseAIChatConfig = {}): UseAIChatReturn {
                 },
               );
             } else {
+              // enableUnified: false 时回退到 KnowledgeAgent 格式
               handleAgentChunk(
                 chunk as AgentStreamChunk,
                 assistantMessageId,
@@ -631,9 +641,7 @@ export function useAIChat(config: UseAIChatConfig = {}): UseAIChatReturn {
     },
     [
       status,
-      apiEndpoint,
       defaultOptions,
-      useUnifiedEngine,
       onBeforeSend,
       onStream,
       onComplete,

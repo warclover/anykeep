@@ -2,11 +2,16 @@
  * 待整理文件夹智能整理 Hook
  * 管理待整理文件夹的分析和建议处理
  *
+ * 注意：此 hook 与 AI 聊天无关，主要用于文件夹聚类分析和整理建议。
+ * 历史原因放置在 domain/ai/ 目录下，未来版本考虑迁移到 domain/folder/ 或 domain/analytics/。
+ *
  * @version V4.2.24 - 性能优化：
  * - 添加 enabled 选项支持延迟加载
  * - 添加 SWR 缓存和去重
  * - 添加 requestIdleCallback 空闲时加载
  * - 改善超时错误处理
+ *
+ * @module hooks/domain/ai/use-inbox-organization
  */
 
 "use client";

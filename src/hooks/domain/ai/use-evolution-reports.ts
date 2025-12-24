@@ -1,6 +1,11 @@
 /**
  * V4.2 Evolution Reports Hook
  * 管理月度 AI 进化报告的获取和生成
+ *
+ * 注意：此 hook 与 AI 聊天无关，主要用于文件夹分类统计和进化报告。
+ * 历史原因放置在 domain/ai/ 目录下，未来版本考虑迁移到 domain/folder/ 或 domain/analytics/。
+ *
+ * @module hooks/domain/ai/use-evolution-reports
  */
 
 import { useState, useCallback, useEffect } from "react";
