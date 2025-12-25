@@ -51,6 +51,7 @@ export {
   MemoryIndicatorExpanded,
   MemoryToast,
   type MemoryIndicatorProps,
+  type MemoryToastProps,
 } from "./memory-indicator";
 
 // 书签详情页组件
