@@ -21,7 +21,7 @@ import {
   internalError,
 } from "@/lib/utils/api-response";
 import { crawlContent } from "@/lib/utils/crawler";
-import { generateAIContent } from "@/lib/utils/ai-generator";
+import { generateAIContent } from "@/lib/ai-generator";
 import {
   smartFetchContent,
   prepareContentForAI,
@@ -31,7 +31,7 @@ import {
   generateEmbedding,
   buildEmbeddingText,
 } from "@/lib/utils/embedding-generator";
-import { recommendFolder } from "@/lib/utils/ai-generator";
+import { recommendFolder } from "@/lib/ai-generator";
 import {
   classifyBookmarkV2,
   shouldUseV2Classification,
@@ -39,6 +39,7 @@ import {
 import { logger } from "@/lib/logger";
 import type { BookmarkInsert } from "@/types/supabase";
 import { BOOKMARK, STORAGE } from "@/lib/constants/messages";
+import { BOOKMARK_LIST_FIELDS } from "@/lib/constants/query-fields";
 import { PerformanceMonitor } from "@/lib/utils/performance-monitor";
 import { bookmarkAITasks } from "@/lib/utils/async-task-retry";
 // Phase 4 升级：微信文章自动抓取
@@ -1036,37 +1037,11 @@ export async function GET(request: NextRequest) {
     });
 
     // 3. 构建查询
-    // V4.2.1: 精简字段选择，减少响应大小
-    // 排除 embedding 大字段，保留卡片显示和翻转模式所需字段
-    const listFields = `
-      id,
-      title,
-      url,
-      platform,
-      cover_url,
-      description,
-      source_name,
-      rating,
-      is_invalid,
-      is_in_trash,
-      is_read,
-      is_starred,
-      is_locked,
-      folder_id,
-      user_tags,
-      ai_summary,
-      ai_tags,
-      ai_content_type,
-      status,
-      pending_cluster,
-      created_at,
-      updated_at,
-      folders(name)
-    `.replace(/\s+/g, "");
-
+    // V4.2.1: 使用统一字段常量，确保 API 一致性
+    // V4.2.8: 排除 embedding 大字段，保留所有 UI 所需字段
     let query = supabase
       .from("bookmarks")
-      .select(listFields, { count: "exact" })
+      .select(BOOKMARK_LIST_FIELDS, { count: "exact" })
       .eq("user_id", user.id)
       .is("deleted_at", null);
 

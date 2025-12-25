@@ -18,16 +18,29 @@
  */
 
 import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { withAuth, unauthorizedResponse } from "@/lib/api/auth-middleware";
-import { successResponse, internalError } from "@/lib/utils/api-response";
+import { internalError } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
 import type { Folder, Platform } from "@/types/supabase";
 import type { SmartList } from "@/types/smart-list";
 import { toSmartListClient } from "@/types/smart-list";
+import {
+  BOOKMARK_LIST_FIELDS,
+  FOLDER_LIST_FIELDS,
+} from "@/lib/constants/query-fields";
 
 // 默认分页大小
 const DEFAULT_PAGE_SIZE = 20;
+
+/**
+ * HTTP 缓存配置
+ * - private: 仅客户端缓存（用户数据敏感）
+ * - max-age=60: 1 分钟内使用缓存
+ * - stale-while-revalidate=120: 缓存过期后 2 分钟内可后台刷新
+ */
+const CACHE_CONTROL_HEADER = "private, max-age=60, stale-while-revalidate=120";
 
 /**
  * 构建文件夹树
@@ -78,7 +91,7 @@ async function getBookmarks(
 
   let query = supabase
     .from("bookmarks")
-    .select("*, folders(name)")
+    .select(BOOKMARK_LIST_FIELDS)
     .eq("user_id", userId)
     .is("deleted_at", null);
 
@@ -189,22 +202,9 @@ async function getFolders(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
 ) {
-  const listFields = `
-    id,
-    name,
-    parent_id,
-    is_system,
-    system_type,
-    is_archived,
-    folder_group,
-    sort_order,
-    created_at,
-    updated_at
-  `.replace(/\s+/g, "");
-
   const { data: folders, error } = await supabase
     .from("folders")
-    .select(listFields)
+    .select(FOLDER_LIST_FIELDS)
     .eq("user_id", userId)
     .is("deleted_at", null)
     .order("sort_order", { ascending: true })
@@ -296,19 +296,30 @@ export async function GET(request: NextRequest) {
       "[Init] Data aggregation completed",
     );
 
-    // 6. 返回聚合数据
-    return successResponse({
-      bookmarks,
-      smartLists,
-      unreadCount,
-      folders,
-      _meta: {
-        authMethod: method,
-        authDuration: Math.round(authDuration),
-        dataDuration: Math.round(dataDuration),
-        totalDuration: Math.round(totalDuration),
+    // 6. 返回聚合数据（带缓存头）
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          bookmarks,
+          smartLists,
+          unreadCount,
+          folders,
+        },
+        _meta: {
+          authMethod: method,
+          authDuration: Math.round(authDuration),
+          dataDuration: Math.round(dataDuration),
+          totalDuration: Math.round(totalDuration),
+        },
       },
-    });
+      {
+        status: 200,
+        headers: {
+          "Cache-Control": CACHE_CONTROL_HEADER,
+        },
+      },
+    );
   } catch (error) {
     const totalDuration = performance.now() - startTime;
 

@@ -19,6 +19,7 @@ import {
 import { logger } from "@/lib/logger";
 import type { Folder } from "@/types/supabase";
 import { FOLDER } from "@/lib/constants/messages";
+import { FOLDER_LIST_FIELDS } from "@/lib/constants/query-fields";
 import { initializeFolderNameProfile } from "@/lib/classification/server";
 import { PerformanceMonitor } from "@/lib/utils/performance-monitor";
 
@@ -57,24 +58,13 @@ export async function GET(_request: NextRequest) {
 
     // 2. 查询用户的所有文件夹
     // V4.2更新：按 sort_order 升序排列（系统文件夹 sort_order=-1 会排在最前面）
-    // V4.2.1: 精简字段选择，只返回列表所需字段
-    // V4.2.2: 添加 is_archived 和 folder_group 字段，用于菜单和分组功能
-    const listFields = `
-      id,
-      name,
-      parent_id,
-      is_system,
-      is_archived,
-      folder_group,
-      sort_order,
-      created_at,
-      updated_at
-    `.replace(/\s+/g, "");
+    // V4.2.1: 使用统一字段常量，确保 API 一致性
+    // V4.2.2: 包含 is_archived, folder_group, system_type 字段
 
     const queryStart = performance.now();
     const { data: folders, error: queryError } = await supabase
       .from("folders")
-      .select(listFields)
+      .select(FOLDER_LIST_FIELDS)
       .eq("user_id", user.id)
       .is("deleted_at", null)
       .order("sort_order", { ascending: true })
