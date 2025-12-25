@@ -18,6 +18,7 @@ import type { AIMessageProps, SuggestionItem } from "./types";
 import { AIProgressIndicatorInline } from "./ai-progress-indicator";
 import { AIDeliverableCard } from "./ai-deliverable-card";
 import { AISuggestionsInline } from "./ai-suggestions-panel";
+import { MemoryIndicator } from "./memory-indicator";
 
 /**
  * AI 消息组件 - 糖果色风格
@@ -37,6 +38,10 @@ export const AIMessage = memo(function AIMessage({
   const hasDeliverables =
     message.deliverables && message.deliverables.length > 0;
   const hasSuggestions = message.suggestions && message.suggestions.length > 0;
+  const hasMemory =
+    message.memory &&
+    message.memory.resolved &&
+    message.memory.referenceCount > 0;
   const isOrchestration = message.executionMode === "orchestration";
 
   return (
@@ -155,6 +160,13 @@ export const AIMessage = memo(function AIMessage({
               <Zap className="size-3" />
               <span>原子模式</span>
             </span>
+          </div>
+        )}
+
+        {/* 记忆指示器 - 显示 AI 理解了上下文 */}
+        {!isUser && hasMemory && message.memory && (
+          <div className="flex items-center gap-1 mt-1">
+            <MemoryIndicator memory={message.memory} showDetails />
           </div>
         )}
 

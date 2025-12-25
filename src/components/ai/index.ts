@@ -46,6 +46,12 @@ export {
   AISuggestionsInline,
   AIQuickSuggestions,
 } from "./ai-suggestions-panel";
+export {
+  MemoryIndicator,
+  MemoryIndicatorExpanded,
+  MemoryToast,
+  type MemoryIndicatorProps,
+} from "./memory-indicator";
 
 // 书签详情页组件
 export { AISmartSummary, type AISmartSummaryProps } from "./ai-smart-summary";
