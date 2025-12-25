@@ -16,186 +16,22 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
 import { generateEmbedding } from "@/lib/utils/embedding-generator";
 import { logger } from "@/lib/logger";
+import { classifyEmbeddingError, runWithConcurrency } from "./helpers";
+import {
+  type MultiVectorResult,
+  type BookmarkMultiVector,
+  type BatchUpdateResult,
+  type MultiVectorConfig,
+  DEFAULT_MULTI_VECTOR_CONFIG,
+} from "./types";
 
-// ============================================================================
-// V4.2.5: 错误分类（改进异常处理）
-// ============================================================================
-
-/** 嵌入生成错误类型 */
-type EmbeddingErrorType =
-  | "api_error"
-  | "rate_limit"
-  | "timeout"
-  | "input_error"
-  | "network_error"
-  | "unknown";
-
-/**
- * V4.2.5: 分类嵌入生成错误
- * 用于改进日志和决定是否应该重试
- */
-function classifyEmbeddingError(error: unknown): {
-  type: EmbeddingErrorType;
-  retryable: boolean;
-  message: string;
-} {
-  const message = error instanceof Error ? error.message : String(error);
-  const lowerMessage = message.toLowerCase();
-
-  // API 速率限制
-  if (
-    lowerMessage.includes("rate") ||
-    lowerMessage.includes("429") ||
-    lowerMessage.includes("quota")
-  ) {
-    return { type: "rate_limit", retryable: true, message };
-  }
-
-  // 超时错误
-  if (
-    lowerMessage.includes("timeout") ||
-    lowerMessage.includes("timed out") ||
-    lowerMessage.includes("aborted")
-  ) {
-    return { type: "timeout", retryable: true, message };
-  }
-
-  // 网络错误
-  if (
-    lowerMessage.includes("network") ||
-    lowerMessage.includes("econnrefused") ||
-    lowerMessage.includes("fetch failed")
-  ) {
-    return { type: "network_error", retryable: true, message };
-  }
-
-  // 输入错误（不应重试）
-  if (
-    lowerMessage.includes("invalid") ||
-    lowerMessage.includes("empty") ||
-    lowerMessage.includes("too long")
-  ) {
-    return { type: "input_error", retryable: false, message };
-  }
-
-  // API 错误
-  if (
-    lowerMessage.includes("api") ||
-    lowerMessage.includes("401") ||
-    lowerMessage.includes("403") ||
-    lowerMessage.includes("500")
-  ) {
-    return { type: "api_error", retryable: false, message };
-  }
-
-  return { type: "unknown", retryable: false, message };
-}
-
-// ============================================================================
-// Types
-// ============================================================================
-
-/** 多向量嵌入结果 */
-export interface MultiVectorResult {
-  /** 标题向量 */
-  titleEmbedding: number[] | null;
-  /** 内容/摘要向量 */
-  contentEmbedding: number[] | null;
-  /** 标签向量 */
-  tagEmbedding: number[] | null;
-  /** 生成耗时 (ms) */
-  durationMs: number;
-}
-
-/** 书签多向量数据 */
-export interface BookmarkMultiVector {
-  bookmarkId: number;
-  title: string;
-  summary?: string | null;
-  aiTags?: string[] | null;
-  userTags?: string[] | null;
-}
-
-/** 批量更新结果 */
-export interface BatchUpdateResult {
-  /** 成功更新数量 */
-  successCount: number;
-  /** 失败数量 */
-  failedCount: number;
-  /** 跳过数量（无变化） */
-  skippedCount: number;
-  /** 失败的书签 ID */
-  failedIds: number[];
-}
-
-/** 多向量配置 */
-export interface MultiVectorConfig {
-  /** 是否生成标题向量 */
-  generateTitle: boolean;
-  /** 是否生成内容向量 */
-  generateContent: boolean;
-  /** 是否生成标签向量 */
-  generateTag: boolean;
-  /** 标题最大长度 */
-  titleMaxLength: number;
-  /** 内容最大长度 */
-  contentMaxLength: number;
-  /** 标签组合分隔符 */
-  tagSeparator: string;
-  /** 最小标签数（低于此值不生成标签向量） */
-  minTagsForEmbedding: number;
-  /** 批处理大小 */
-  batchSize: number;
-  /** V4.2.5: 最大并发数（防止 API 过载） */
-  maxConcurrency: number;
-}
-
-const DEFAULT_CONFIG: MultiVectorConfig = {
-  generateTitle: true,
-  generateContent: true,
-  generateTag: true,
-  titleMaxLength: 200,
-  contentMaxLength: 2000,
-  tagSeparator: " | ",
-  minTagsForEmbedding: 1,
-  batchSize: 10,
-  maxConcurrency: 3, // V4.2.5: 限制并发，避免 API 速率限制
+// 重新导出类型以保持 API 兼容性
+export type {
+  MultiVectorResult,
+  BookmarkMultiVector,
+  BatchUpdateResult,
+  MultiVectorConfig,
 };
-
-// ============================================================================
-// V4.2.5: 并发控制辅助函数
-// ============================================================================
-
-/**
- * 带并发限制的 Promise 执行器
- * @param tasks 异步任务数组
- * @param concurrency 最大并发数
- */
-async function runWithConcurrency<T>(
-  tasks: (() => Promise<T>)[],
-  concurrency: number,
-): Promise<T[]> {
-  const results: T[] = [];
-  const executing: Promise<void>[] = [];
-
-  for (const task of tasks) {
-    const p = task().then((result) => {
-      results.push(result);
-    });
-
-    const e = p.then(() => {
-      executing.splice(executing.indexOf(e), 1);
-    });
-    executing.push(e);
-
-    if (executing.length >= concurrency) {
-      await Promise.race(executing);
-    }
-  }
-
-  await Promise.all(executing);
-  return results;
-}
 
 // ============================================================================
 // Service Implementation
@@ -213,7 +49,7 @@ export class MultiVectorEmbeddingService {
     config?: Partial<MultiVectorConfig>,
   ) {
     this.supabase = supabase;
-    this.config = { ...DEFAULT_CONFIG, ...config };
+    this.config = { ...DEFAULT_MULTI_VECTOR_CONFIG, ...config };
   }
 
   // ==========================================================================
