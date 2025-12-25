@@ -103,6 +103,74 @@ export type Database = {
           },
         ];
       };
+      /** AI 反馈表 - 存储用户对 AI 回答的反馈 */
+      ai_feedback: {
+        Row: {
+          id: string;
+          user_id: string;
+          conversation_id: string;
+          message_id: string;
+          /** 反馈类型：positive, negative */
+          type: string;
+          /** 负面反馈原因 */
+          negative_reason: string | null;
+          /** 负面反馈评论 */
+          negative_comment: string | null;
+          /** 原始用户消息 */
+          original_message: string | null;
+          /** 分类的意图 */
+          classified_intent: string | null;
+          /** 使用的工具 */
+          tool_used: string | null;
+          /** 执行模式：atomic, orchestration */
+          execution_mode: string | null;
+          /** 关联的 Skill ID */
+          skill_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          conversation_id: string;
+          message_id: string;
+          type: string;
+          negative_reason?: string | null;
+          negative_comment?: string | null;
+          original_message?: string | null;
+          classified_intent?: string | null;
+          tool_used?: string | null;
+          execution_mode?: string | null;
+          skill_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          conversation_id?: string;
+          message_id?: string;
+          type?: string;
+          negative_reason?: string | null;
+          negative_comment?: string | null;
+          original_message?: string | null;
+          classified_intent?: string | null;
+          tool_used?: string | null;
+          execution_mode?: string | null;
+          skill_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "ai_feedback_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       /** AI 消息表 - 存储会话中的消息记录 */
       ai_messages: {
         Row: {
@@ -154,6 +222,132 @@ export type Database = {
             columns: ["conversation_id"];
             isOneToOne: false;
             referencedRelation: "ai_conversations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      /** AI 笔记表 - 存储 AI 生成的内容（总结、萃取、复习笔记等） */
+      ai_notes: {
+        Row: {
+          id: string;
+          user_id: string;
+          /** 来源类型：ai_summary, ai_extraction, ai_review, ai_report, ai_response */
+          source_type: string;
+          title: string;
+          content: string;
+          /** 内容格式：markdown, html, plain, json */
+          content_format: string;
+          /** 关联的书签 ID 列表 */
+          related_bookmark_ids: number[];
+          source_conversation_id: string | null;
+          source_message_id: string | null;
+          source_skill_id: string | null;
+          tags: string[];
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          source_type: string;
+          title: string;
+          content: string;
+          content_format?: string;
+          related_bookmark_ids?: number[];
+          source_conversation_id?: string | null;
+          source_message_id?: string | null;
+          source_skill_id?: string | null;
+          tags?: string[];
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          source_type?: string;
+          title?: string;
+          content?: string;
+          content_format?: string;
+          related_bookmark_ids?: number[];
+          source_conversation_id?: string | null;
+          source_message_id?: string | null;
+          source_skill_id?: string | null;
+          tags?: string[];
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "ai_notes_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      /** AI 操作快照表 - 支持 24 小时内撤销 AI 操作 */
+      ai_operation_snapshots: {
+        Row: {
+          id: string;
+          user_id: string;
+          /** 操作类型：organize, batch_tag, dedupe, move, archive, delete */
+          operation_type: string;
+          conversation_id: string | null;
+          skill_id: string | null;
+          /** 受影响的书签 ID 列表 */
+          bookmark_ids: number[];
+          /** 操作前状态快照 */
+          before_state: Json;
+          /** 操作后状态快照 */
+          after_state: Json;
+          /** 执行的操作列表 */
+          operations: Json;
+          summary: string | null;
+          is_reverted: boolean;
+          reverted_at: string | null;
+          created_at: string;
+          /** 过期时间（默认 24 小时后） */
+          expires_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          operation_type: string;
+          conversation_id?: string | null;
+          skill_id?: string | null;
+          bookmark_ids?: number[];
+          before_state?: Json;
+          after_state?: Json;
+          operations?: Json;
+          summary?: string | null;
+          is_reverted?: boolean;
+          reverted_at?: string | null;
+          created_at?: string;
+          expires_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          operation_type?: string;
+          conversation_id?: string | null;
+          skill_id?: string | null;
+          bookmark_ids?: number[];
+          before_state?: Json;
+          after_state?: Json;
+          operations?: Json;
+          summary?: string | null;
+          is_reverted?: boolean;
+          reverted_at?: string | null;
+          created_at?: string;
+          expires_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "ai_operation_snapshots_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
             referencedColumns: ["id"];
           },
         ];
