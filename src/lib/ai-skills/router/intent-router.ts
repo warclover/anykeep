@@ -5,9 +5,11 @@
  * - 整合意图分类、复杂度评估、模式选择
  * - 作为统一入口接收用户请求
  * - 返回完整的路由决策结果
+ * - 收集路由性能指标
  *
- * @version 1.0.0
+ * @version 2.0.0
  * @since 2025-12-24
+ * @updated 2025-12-26 - 添加性能指标收集
  */
 
 import { logger } from "@/lib/logger";
@@ -17,6 +19,13 @@ import type { ComplexityEvaluator } from "./complexity-evaluator";
 import { createComplexityEvaluator } from "./complexity-evaluator";
 import type { ModeSelector } from "./mode-selector";
 import { createModeSelector } from "./mode-selector";
+import type { RouteMetricsAggregator } from "./metrics";
+import {
+  createRouteMetricsCollector,
+  createRouteMetricsAggregator,
+  type RouteMetrics,
+  type RouteMetricsAggregation,
+} from "./metrics";
 import type {
   UserRequest,
   RouteResult,
@@ -65,18 +74,26 @@ export class IntentRouter {
   private evaluator: ComplexityEvaluator;
   private selector: ModeSelector;
   private config: IntentRouterConfig;
+  private metricsAggregator: RouteMetricsAggregator | null = null;
 
   constructor(config: IntentRouterConfig = {}) {
     this.config = {
       enableLLMClassification: false,
       ruleConfidenceThreshold: 0.8,
       debug: false,
+      includeMetrics: false,
+      enableMetricsAggregation: false,
       ...config,
     };
 
     this.classifier = createIntentClassifier(config.classifier);
     this.evaluator = createComplexityEvaluator(config.evaluator);
     this.selector = createModeSelector(config.selector);
+
+    // 初始化指标聚合器（如果启用）
+    if (this.config.enableMetricsAggregation) {
+      this.metricsAggregator = createRouteMetricsAggregator();
+    }
   }
 
   /**
@@ -86,17 +103,28 @@ export class IntentRouter {
    * @returns 路由决策结果
    */
   async route(request: UserRequest): Promise<RouteResult> {
-    const startTime = performance.now();
+    const collector = createRouteMetricsCollector();
+    collector.start();
 
     try {
       // Step 1: 意图分类
+      collector.startStage("classification");
       const intent = await this.classifier.classify(request.message);
+      collector.endStage("classification");
+
+      // 记录分类相关指标
+      collector.recordClassificationSource(intent.source);
+      collector.recordLLMFallback(intent.source === "llm");
 
       // Step 2: 复杂度评估
+      collector.startStage("complexity");
       const complexity = await this.evaluator.evaluate(intent, request.context);
+      collector.endStage("complexity");
 
       // Step 3: 模式选择
+      collector.startStage("modeSelector");
       const modeSelection = this.selector.select(intent, complexity);
+      collector.endStage("modeSelector");
 
       // Step 4: 获取建议的 Skill
       const suggestedSkill =
@@ -104,7 +132,13 @@ export class IntentRouter {
           ? this.selector.getSuggestedSkill(intent, complexity)
           : null;
 
-      const routingDurationMs = Math.round(performance.now() - startTime);
+      // 完成指标收集
+      const metrics = collector.finalize();
+
+      // 添加到聚合器
+      if (this.metricsAggregator) {
+        this.metricsAggregator.addSample(metrics);
+      }
 
       const result: RouteResult = {
         intent,
@@ -112,8 +146,22 @@ export class IntentRouter {
         mode: modeSelection.mode,
         suggestedSkill,
         reason: modeSelection.reason,
-        routingDurationMs,
+        routingDurationMs: metrics.totalDurationMs,
       };
+
+      // 在 debug 模式或明确请求时包含详细指标
+      if (this.config.debug || this.config.includeMetrics) {
+        result.metrics = {
+          classificationDurationMs: metrics.classificationDurationMs,
+          complexityDurationMs: metrics.complexityDurationMs,
+          modeSelectorDurationMs: metrics.modeSelectorDurationMs,
+          ruleMatchCount: metrics.ruleMatchCount,
+          disambiguationUsed: metrics.disambiguationUsed,
+          llmFallbackUsed: metrics.llmFallbackUsed,
+          classificationSource: metrics.classificationSource,
+          llmCacheHit: metrics.llmCacheHit,
+        };
+      }
 
       // 记录路由日志
       if (this.config.debug) {
@@ -123,12 +171,18 @@ export class IntentRouter {
             intentType: intent.type,
             intentSubType: intent.subType,
             intentConfidence: intent.confidence,
+            classificationSource: intent.source,
             complexityLevel: complexity.level,
             complexityScore: complexity.score,
             mode: modeSelection.mode,
             suggestedSkill,
             reason: modeSelection.reason,
-            durationMs: routingDurationMs,
+            metrics: {
+              total: metrics.totalDurationMs,
+              classification: metrics.classificationDurationMs,
+              complexity: metrics.complexityDurationMs,
+              modeSelector: metrics.modeSelectorDurationMs,
+            },
           },
           "IntentRouter: Route completed",
         );
@@ -138,7 +192,7 @@ export class IntentRouter {
             intentType: intent.type,
             mode: modeSelection.mode,
             skill: suggestedSkill,
-            durationMs: routingDurationMs,
+            durationMs: metrics.totalDurationMs,
           },
           "IntentRouter: Route completed",
         );
@@ -146,19 +200,19 @@ export class IntentRouter {
 
       return result;
     } catch (error) {
-      const routingDurationMs = Math.round(performance.now() - startTime);
+      const metrics = collector.finalize();
 
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
           message: request.message.substring(0, 50),
-          durationMs: routingDurationMs,
+          durationMs: metrics.totalDurationMs,
         },
         "IntentRouter: Route failed, falling back to atomic mode",
       );
 
       // 路由失败时，返回默认原子模式
-      return this.createFallbackResult(request, routingDurationMs, error);
+      return this.createFallbackResult(request, metrics.totalDurationMs, error);
     }
   }
 
@@ -233,6 +287,27 @@ export class IntentRouter {
   }
 
   /**
+   * 获取指标聚合统计
+   */
+  getMetricsAggregation(): RouteMetricsAggregation | null {
+    return this.metricsAggregator?.getAggregation() ?? null;
+  }
+
+  /**
+   * 获取最近的路由指标样本
+   */
+  getRecentMetrics(count: number = 10): RouteMetrics[] {
+    return this.metricsAggregator?.getRecentSamples(count) ?? [];
+  }
+
+  /**
+   * 清空指标聚合器
+   */
+  clearMetrics(): void {
+    this.metricsAggregator?.clear();
+  }
+
+  /**
    * 更新配置
    */
   updateConfig(config: Partial<IntentRouterConfig>): void {
@@ -240,6 +315,15 @@ export class IntentRouter {
       ...this.config,
       ...config,
     };
+
+    // 如果启用/禁用指标聚合，更新聚合器
+    if (config.enableMetricsAggregation !== undefined) {
+      if (config.enableMetricsAggregation && !this.metricsAggregator) {
+        this.metricsAggregator = createRouteMetricsAggregator();
+      } else if (!config.enableMetricsAggregation && this.metricsAggregator) {
+        this.metricsAggregator = null;
+      }
+    }
   }
 }
 

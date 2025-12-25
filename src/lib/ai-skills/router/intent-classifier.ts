@@ -9,8 +9,9 @@
  *
  * 策略：规则优先 + LLM 兜底
  *
- * @version 1.0.0
+ * @version 2.0.0
  * @since 2025-12-24
+ * @updated 2025-12-26 - 添加 LLM 分类兜底支持
  */
 
 import { logger } from "@/lib/logger";
@@ -25,6 +26,8 @@ import type {
   DisambiguationRule,
 } from "./types";
 import { DISAMBIGUATION_RULES, findMatchingRule } from "./disambiguation-rules";
+import type { LLMIntentClassifier } from "./llm-classifier";
+import { createLLMClassifier } from "./llm-classifier";
 
 /**
  * 默认意图分类规则
@@ -287,11 +290,14 @@ const ENTITY_PATTERNS: Array<{
 export class IntentClassifier {
   private rules: IntentRule[];
   private config: IntentClassifierConfig;
+  private llmClassifier: LLMIntentClassifier | null = null;
 
   constructor(config: IntentClassifierConfig = {}) {
     this.config = {
       enableEntityExtraction: true,
       llmTimeoutMs: 5000,
+      llmFallbackThreshold: 0.6,
+      debug: false,
       ...config,
     };
 
@@ -299,6 +305,15 @@ export class IntentClassifier {
     this.rules = [...(config.customRules || []), ...DEFAULT_RULES].sort(
       (a, b) => (b.weight || 0) - (a.weight || 0),
     );
+
+    // 初始化 LLM 分类器（如果启用）
+    if (config.enableLLMFallback) {
+      this.llmClassifier = createLLMClassifier({
+        timeoutMs: config.llmTimeoutMs,
+        ...config.llmClassifierConfig,
+        debug: config.debug,
+      });
+    }
   }
 
   /**
@@ -314,48 +329,121 @@ export class IntentClassifier {
     const ruleMatch = this.matchRules(message);
 
     if (ruleMatch && ruleMatch.confidence >= 0.8) {
-      logger.debug(
-        {
-          message: message.substring(0, 50),
-          intent: ruleMatch.type,
-          subType: ruleMatch.subType,
-          confidence: ruleMatch.confidence,
-          source: "rule",
-          durationMs: Math.round(performance.now() - startTime),
-        },
-        "IntentClassifier: Rule match succeeded",
-      );
+      if (this.config.debug) {
+        logger.debug(
+          {
+            message: message.substring(0, 50),
+            intent: ruleMatch.type,
+            subType: ruleMatch.subType,
+            confidence: ruleMatch.confidence,
+            source: "rule",
+            durationMs: Math.round(performance.now() - startTime),
+          },
+          "IntentClassifier: Rule match succeeded",
+        );
+      }
       return ruleMatch;
     }
 
-    // 2. 规则匹配置信度不足时，仍返回规则结果（暂不使用 LLM）
-    // TODO: 后续可添加 LLM 分类逻辑
+    // 2. 规则置信度不足，尝试 LLM 兜底
+    const llmFallbackThreshold = this.config.llmFallbackThreshold ?? 0.6;
+
+    if (
+      this.llmClassifier &&
+      (!ruleMatch || ruleMatch.confidence < llmFallbackThreshold)
+    ) {
+      const llmResult = await this.llmClassifier.classify(message);
+
+      if (llmResult && llmResult.confidence > (ruleMatch?.confidence ?? 0)) {
+        if (this.config.debug) {
+          logger.debug(
+            {
+              message: message.substring(0, 50),
+              ruleConfidence: ruleMatch?.confidence,
+              llmConfidence: llmResult.confidence,
+              llmType: llmResult.type,
+            },
+            "IntentClassifier: LLM fallback used",
+          );
+        }
+
+        const entities = this.config.enableEntityExtraction
+          ? this.extractEntities(message)
+          : [];
+
+        const classification: IntentClassification = {
+          type: llmResult.type as IntentType,
+          subType: llmResult.subType,
+          confidence: llmResult.confidence,
+          entities,
+          requiresMultiStep: this.isMultiStepByType(
+            llmResult.type as IntentType,
+          ),
+          hasDeliverableExpectation: this.expectsDeliverableByType(
+            llmResult.type as IntentType,
+            llmResult.subType,
+          ),
+          source: "llm",
+        };
+
+        return classification;
+      }
+    }
+
+    // 3. 规则匹配置信度不足但有结果，返回规则结果
     if (ruleMatch) {
-      logger.debug(
-        {
-          message: message.substring(0, 50),
-          intent: ruleMatch.type,
-          confidence: ruleMatch.confidence,
-          source: "rule",
-          note: "Low confidence, but using rule result",
-        },
-        "IntentClassifier: Using rule match with low confidence",
-      );
+      if (this.config.debug) {
+        logger.debug(
+          {
+            message: message.substring(0, 50),
+            intent: ruleMatch.type,
+            confidence: ruleMatch.confidence,
+            source: "rule",
+            note: "Low confidence, LLM unavailable or no improvement",
+          },
+          "IntentClassifier: Using rule match with low confidence",
+        );
+      }
       return ruleMatch;
     }
 
-    // 3. 无规则匹配，返回默认结果
+    // 4. 无规则匹配，返回默认结果
     const defaultResult = this.getDefaultClassification(message);
-    logger.debug(
-      {
-        message: message.substring(0, 50),
-        intent: defaultResult.type,
-        source: "default",
-      },
-      "IntentClassifier: No rule match, using default",
-    );
+    if (this.config.debug) {
+      logger.debug(
+        {
+          message: message.substring(0, 50),
+          intent: defaultResult.type,
+          source: "default",
+        },
+        "IntentClassifier: No rule match, using default",
+      );
+    }
 
     return defaultResult;
+  }
+
+  /**
+   * 根据意图类型判断是否需要多步骤
+   */
+  private isMultiStepByType(type: IntentType): boolean {
+    const multiStepTypes: IntentType[] = ["organize", "analyze", "learn"];
+    return multiStepTypes.includes(type);
+  }
+
+  /**
+   * 根据意图类型判断是否期望交付物
+   */
+  private expectsDeliverableByType(
+    type: IntentType,
+    subType?: string,
+  ): boolean {
+    const deliverableTypes: IntentType[] = ["analyze", "create", "learn"];
+    if (deliverableTypes.includes(type)) {
+      return true;
+    }
+    const deliverableSubTypes = ["report", "digest", "path", "share", "review"];
+    return subType ? deliverableSubTypes.includes(subType) : false;
   }
 
   /**
@@ -852,6 +940,38 @@ export class IntentClassifier {
    */
   getDisambiguationRules(): DisambiguationRule[] {
     return [...this.disambiguationRules];
+  }
+
+  /**
+   * 获取 LLM 分类器（用于调试和状态监控）
+   */
+  getLLMClassifier(): LLMIntentClassifier | null {
+    return this.llmClassifier;
+  }
+
+  /**
+   * 检查 LLM 分类器是否已启用
+   */
+  isLLMFallbackEnabled(): boolean {
+    return this.llmClassifier !== null;
+  }
+
+  /**
+   * 获取 LLM 分类器缓存统计（用于监控）
+   */
+  getLLMCacheStats(): {
+    size: number;
+    activeCount: number;
+    expiredCount: number;
+  } | null {
+    return this.llmClassifier?.getCacheStats() ?? null;
+  }
+
+  /**
+   * 清理 LLM 分类器缓存
+   */
+  cleanupLLMCache(): number {
+    return this.llmClassifier?.cleanupCache() ?? 0;
   }
 }
 

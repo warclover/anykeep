@@ -3,13 +3,14 @@
  *
  * 职责：
  * - 作为 AI 能力的统一入口
- * - 根据意图路由到原子模式或编排模式
- * - 提供统一的流式输出
- * - 处理模式回退
+ * - 协调 InputPreprocessor、ExecutionCoordinator、OutputEnhancer
  * - 管理 Effect Layer（确认、通知、审计）
+ * - 提供统一的流式输出
  *
- * @version 2.0.0
- * @since 2025-12-24
+ * 重构版本：将执行逻辑委托给专门的模块，遵循 SOLID 原则
+ *
+ * @version 3.0.0
+ * @since 2025-12-26
  */
 
 import { logger } from "@/lib/logger";
@@ -20,7 +21,6 @@ import { createOrchestrationEngine } from "./orchestration-engine";
 import type { UnifiedOutputAdapter } from "../output/adapter";
 import { createUnifiedOutputAdapter } from "../output/adapter";
 import type { UnifiedStreamChunk } from "../output/types";
-import type { AgentContext, AgentStreamChunk } from "../../ai-agent/core/types";
 import type {
   EngineContext,
   EngineExecuteOptions,
@@ -40,24 +40,22 @@ import {
   notificationService,
   auditLogService,
 } from "../effects";
+import { type MemoryManager, createMemoryManager } from "../../ai-memory";
+import type { InputPreprocessor } from "./input-preprocessor";
+import { createInputPreprocessor } from "./input-preprocessor";
+import type { ExecutionCoordinator } from "./execution-coordinator";
 import {
-  type MemoryManager,
-  createMemoryManager,
-  type ReferenceResolutionResult,
-} from "../../ai-memory";
-
-/**
- * 原子引擎执行函数类型
- *
- * 用于注入 KnowledgeAgent 的执行函数
- */
-type AtomicExecutor = (
-  input: string,
-  context: AgentContext,
-) => AsyncGenerator<AgentStreamChunk>;
+  createExecutionCoordinator,
+  type AtomicExecutor,
+} from "./execution-coordinator";
+import type { OutputEnhancer } from "./output-enhancer";
+import { createOutputEnhancer } from "./output-enhancer";
 
 /**
  * 统一执行引擎
+ *
+ * 通过组合 InputPreprocessor、ExecutionCoordinator、OutputEnhancer
+ * 实现清晰的关注点分离
  */
 export class UnifiedEngine {
   private router: IntentRouter;
@@ -65,7 +63,12 @@ export class UnifiedEngine {
   private outputAdapter: UnifiedOutputAdapter;
   private effectManager: EffectManager;
   private memoryManager: MemoryManager;
-  private atomicExecutor: AtomicExecutor | null = null;
+
+  // 重构后的模块
+  private inputPreprocessor: InputPreprocessor;
+  private executionCoordinator: ExecutionCoordinator;
+  private outputEnhancer: OutputEnhancer;
+
   private config: Required<UnifiedEngineConfig>;
   private effectListenerIds: string[] = [];
 
@@ -79,6 +82,7 @@ export class UnifiedEngine {
       ...config,
     };
 
+    // 初始化核心组件
     this.router = createIntentRouter({ debug: config.debug });
     this.orchestrationEngine = createOrchestrationEngine();
     this.outputAdapter = createUnifiedOutputAdapter({
@@ -91,6 +95,26 @@ export class UnifiedEngine {
       enableReferenceResolution: this.config.enableMemory,
       enableAutoRecording: this.config.enableMemory,
     });
+
+    // 初始化重构后的模块
+    this.inputPreprocessor = createInputPreprocessor(this.memoryManager);
+    this.executionCoordinator = createExecutionCoordinator(
+      this.orchestrationEngine,
+      this.outputAdapter,
+      {
+        includeRoutingInfo: this.config.includeRoutingInfo,
+        debug: this.config.debug,
+      },
+    );
+    this.outputEnhancer = createOutputEnhancer(
+      this.memoryManager,
+      this.outputAdapter,
+      {
+        enableMemory: this.config.enableMemory,
+        enableSuggestions: true,
+        debug: this.config.debug,
+      },
+    );
 
     // 初始化 Effect 处理器
     this.initEffectHandlers();
@@ -110,8 +134,6 @@ export class UnifiedEngine {
           { confirmationId: effect.payload.id },
           "UnifiedEngine: Processing confirmation effect",
         );
-        // 确认效果通过通知服务记录，不使用审计日志
-        // 因为 AuditAction 不包含 confirmation_requested
       },
     );
     this.effectListenerIds.push(confirmationListenerId);
@@ -154,7 +176,7 @@ export class UnifiedEngine {
    * 用于注入 KnowledgeAgent.executeStream
    */
   setAtomicExecutor(executor: AtomicExecutor): void {
-    this.atomicExecutor = executor;
+    this.executionCoordinator.setAtomicExecutor(executor);
   }
 
   /**
@@ -169,6 +191,12 @@ export class UnifiedEngine {
   /**
    * 执行用户请求
    *
+   * 重构后的主执行方法，职责更加清晰：
+   * 1. InputPreprocessor 处理输入预处理
+   * 2. 根据选项决定执行模式
+   * 3. ExecutionCoordinator 执行具体模式
+   * 4. OutputEnhancer 增强输出
+   *
    * @param input - 用户输入
    * @param context - 引擎上下文
    * @param options - 执行选项
@@ -181,77 +209,36 @@ export class UnifiedEngine {
   ): AsyncGenerator<UnifiedStreamChunk> {
     const mergedOptions = { ...this.config.defaultOptions, ...options };
 
-    // 0. 记忆预处理：解析指代词
-    let processedInput = input;
-    let referenceResolution: ReferenceResolutionResult | null = null;
+    // 1. 输入预处理（指代词解析、记录用户消息）
+    const preprocessResult = this.inputPreprocessor.preprocess(
+      input,
+      context,
+      this.config.enableMemory,
+    );
 
-    if (this.config.enableMemory && context.conversationId) {
-      // 确保会话存在
-      this.memoryManager.getOrCreateSession(
-        context.conversationId,
-        context.userId,
-      );
-
-      // 预处理输入（解析指代词）
-      const preprocessResult = this.memoryManager.preprocessInput(
-        input,
-        context.conversationId,
-      );
-
-      processedInput = preprocessResult.processedInput;
-      referenceResolution = preprocessResult.resolution;
-
-      if (preprocessResult.hasChanges) {
-        logger.debug(
-          {
-            original: input,
-            processed: processedInput,
-            references: referenceResolution?.references.map((r) => ({
-              type: r.type,
-              original: r.originalText,
-            })),
-          },
-          "UnifiedEngine: Reference resolution applied",
-        );
-
-        // 发送记忆块通知前端
-        yield {
-          type: "memory" as const,
-          data: {
-            resolved: true,
-            originalInput: input,
-            resolvedInput: processedInput,
-            referenceCount: referenceResolution?.references.length || 0,
-            referenceTypes:
-              referenceResolution?.references.map((r) => r.type) || [],
-          },
-        };
-      }
-
-      // 记录用户消息
-      this.memoryManager.recordUserMessage(
-        context.conversationId,
-        context.userId,
-        input,
-      );
+    // 发送记忆块（如果有变化）
+    if (preprocessResult.memoryChunk) {
+      yield preprocessResult.memoryChunk;
     }
 
-    // 如果引擎未启用，直接使用原子模式
+    const processedInput = preprocessResult.processedInput;
+
+    // 2. 如果引擎未启用，直接使用原子模式
     if (!this.config.enabled) {
-      yield* this.executeAtomic(processedInput, context);
+      yield* this.executionCoordinator.executeAtomic(processedInput, context);
       return;
     }
 
-    // 强制使用指定模式
+    // 3. 处理强制模式
     if (mergedOptions.forceMode === "atomic") {
-      if (mergedOptions.includeRoutingInfo) {
-        yield this.outputAdapter.createRoutingChunk(
-          "atomic",
-          "强制使用原子模式",
-          null,
-        );
-      }
-      yield* this.executeAtomic(processedInput, context);
+      yield* this.executeWithEnhancements(
+        this.executionCoordinator.executeForced(processedInput, context, {
+          mode: "atomic",
+          reason: "强制使用原子模式",
+        }),
+        context,
+        "query", // 默认意图类型
+      );
       return;
     }
 
@@ -259,25 +246,36 @@ export class UnifiedEngine {
       mergedOptions.forceMode === "orchestration" &&
       mergedOptions.forceSkill
     ) {
-      if (mergedOptions.includeRoutingInfo) {
-        yield this.outputAdapter.createRoutingChunk(
-          "orchestration",
-          "强制使用编排模式",
-          mergedOptions.forceSkill,
-        );
-      }
-      yield* this.executeOrchestration(
-        mergedOptions.forceSkill,
-        processedInput,
+      yield* this.executeWithEnhancements(
+        this.executionCoordinator.executeForced(processedInput, context, {
+          mode: "orchestration",
+          skillId: mergedOptions.forceSkill,
+          reason: "强制使用编排模式",
+        }),
         context,
+        "action", // 编排模式默认意图类型
       );
       return;
     }
 
+    // 4. 正常路由执行
+    yield* this.executeRouted(processedInput, context, mergedOptions);
+  }
+
+  /**
+   * 路由执行
+   *
+   * 通过 IntentRouter 决定执行模式并执行
+   */
+  private async *executeRouted(
+    input: string,
+    context: EngineContext,
+    options: EngineExecuteOptions,
+  ): AsyncGenerator<UnifiedStreamChunk> {
     try {
-      // 1. 路由决策（使用处理后的输入）
+      // 路由决策
       const routeResult = await this.router.route({
-        message: processedInput,
+        message: input,
         context: {
           userId: context.userId,
           conversationId: context.conversationId,
@@ -289,8 +287,8 @@ export class UnifiedEngine {
         },
       });
 
-      // 2. 发送路由信息（如果启用）
-      if (mergedOptions.includeRoutingInfo || this.config.includeRoutingInfo) {
+      // 发送路由信息（如果启用）
+      if (options.includeRoutingInfo || this.config.includeRoutingInfo) {
         yield this.outputAdapter.createRoutingChunk(
           routeResult.mode,
           routeResult.reason,
@@ -300,306 +298,73 @@ export class UnifiedEngine {
         );
       }
 
-      // 3. 根据模式执行（带跟进建议和记忆记录）
+      // 根据模式执行（带增强）
       if (
         routeResult.mode === "orchestration" &&
         routeResult.suggestedSkill &&
-        this.orchestrationEngine.hasSkill(routeResult.suggestedSkill)
+        this.executionCoordinator.hasSkill(routeResult.suggestedSkill)
       ) {
-        // 编排模式 - 包装以注入跟进建议和记录输出
-        yield* this.executeWithMemory(
-          this.executeWithSuggestions(
-            this.executeOrchestrationWithFallback(
-              routeResult.suggestedSkill,
-              processedInput,
-              context,
-            ),
-            routeResult.intent.type,
-            routeResult.intent.subType,
+        // 编排模式
+        yield* this.executeWithEnhancements(
+          this.executionCoordinator.executeOrchestrationWithFallback(
+            routeResult.suggestedSkill,
+            input,
+            context,
           ),
           context,
           routeResult.intent.type,
           routeResult.intent.subType,
         );
       } else {
-        // 原子模式 - 包装以注入跟进建议和记录输出
-        yield* this.executeWithMemory(
-          this.executeWithSuggestions(
-            this.executeAtomic(processedInput, context),
-            routeResult.intent.type,
-            routeResult.intent.subType,
-          ),
+        // 原子模式
+        yield* this.executeWithEnhancements(
+          this.executionCoordinator.executeAtomic(input, context),
           context,
           routeResult.intent.type,
           routeResult.intent.subType,
         );
       }
     } catch (error) {
-      // 改进的错误日志：包含堆栈信息便于调试
+      // 错误处理与回退
       const errorDetails = {
         message: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
         input: input.substring(0, 100),
         traceId: context.traceId,
-        context: {
-          userId: context.userId,
-          conversationId: context.conversationId,
-        },
       };
 
       logger.error(errorDetails, "UnifiedEngine: Execution failed");
 
-      // 路由或执行失败，回退到原子模式
       yield this.outputAdapter.createFallbackChunk(
         error instanceof Error ? error.message : "Unknown error",
       );
 
-      yield* this.executeAtomic(processedInput, context);
+      yield* this.executionCoordinator.executeAtomic(input, context);
     }
   }
 
   /**
-   * 执行原子模式（使用 KnowledgeAgent）
+   * 应用输出增强
+   *
+   * 统一应用建议注入和记忆记录
    */
-  private async *executeAtomic(
-    input: string,
+  private async *executeWithEnhancements(
+    generator: AsyncGenerator<UnifiedStreamChunk>,
     context: EngineContext,
+    intentType: string,
+    subType?: string,
   ): AsyncGenerator<UnifiedStreamChunk> {
-    if (!this.atomicExecutor) {
-      yield this.outputAdapter.createErrorChunk(
-        "Atomic executor not configured",
-        "EXECUTOR_NOT_CONFIGURED",
-        false,
-      );
-      return;
-    }
-
-    // 构建 Agent 上下文
-    const agentContext: AgentContext = {
-      userId: context.userId,
-      conversationId: context.conversationId,
-      bookmarkIds: context.bookmarkIds,
-      messageHistory: context.messageHistory,
-      traceId: context.traceId,
-    };
-
-    try {
-      for await (const chunk of this.atomicExecutor(input, agentContext)) {
-        yield this.outputAdapter.adaptAtomicChunk(chunk);
-      }
-    } catch (error) {
-      // 改进的错误日志：包含堆栈信息便于调试
-      const errorDetails = {
-        message: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        traceId: context.traceId,
-        userId: context.userId,
-      };
-
-      logger.error(errorDetails, "UnifiedEngine: Atomic execution failed");
-
-      yield this.outputAdapter.createErrorChunk(
-        error instanceof Error ? error.message : "Atomic execution failed",
-        "ATOMIC_EXECUTION_ERROR",
-        true,
-      );
-    }
-  }
-
-  /**
-   * 执行编排模式
-   */
-  private async *executeOrchestration(
-    skillId: string,
-    input: string,
-    context: EngineContext,
-  ): AsyncGenerator<UnifiedStreamChunk> {
-    for await (const chunk of this.orchestrationEngine.execute(
-      skillId,
-      input,
+    yield* this.outputEnhancer.enhance(
+      generator,
       context,
-    )) {
-      yield this.outputAdapter.adaptOrchestrationChunk(chunk);
-    }
+      intentType as IntentType,
+      subType,
+    );
   }
 
-  /**
-   * 执行编排模式（带自动回退）
-   */
-  private async *executeOrchestrationWithFallback(
-    skillId: string,
-    input: string,
-    context: EngineContext,
-  ): AsyncGenerator<UnifiedStreamChunk> {
-    let hasError = false;
-    let errorMessage = "";
-
-    try {
-      for await (const chunk of this.executeOrchestration(
-        skillId,
-        input,
-        context,
-      )) {
-        // 检查是否有错误块
-        if (chunk.type === "error" && chunk.data.retryable) {
-          hasError = true;
-          errorMessage = chunk.data.message;
-          break;
-        }
-
-        yield chunk;
-
-        // 如果已经完成，不需要回退
-        if (chunk.type === "done") {
-          return;
-        }
-      }
-    } catch (error) {
-      hasError = true;
-      errorMessage = error instanceof Error ? error.message : "Unknown error";
-    }
-
-    // 如果编排失败，回退到原子模式
-    if (hasError) {
-      logger.warn(
-        {
-          skillId,
-          error: errorMessage,
-          traceId: context.traceId,
-        },
-        "UnifiedEngine: Orchestration failed, falling back to atomic mode",
-      );
-
-      yield this.outputAdapter.createFallbackChunk(
-        `编排执行异常 (${errorMessage})，切换到原子模式`,
-      );
-
-      yield* this.executeAtomic(input, context);
-    }
-  }
-
-  /**
-   * 执行流程并在完成前注入跟进建议
-   *
-   * 在 done chunk 之前发送 suggestions chunk，基于意图类型和子类型
-   */
-  private async *executeWithSuggestions(
-    generator: AsyncGenerator<UnifiedStreamChunk>,
-    intentType: IntentType,
-    subType?: string,
-  ): AsyncGenerator<UnifiedStreamChunk> {
-    let suggestionsEmitted = false;
-
-    for await (const chunk of generator) {
-      // 在 done chunk 之前注入 suggestions
-      if (chunk.type === "done" && !suggestionsEmitted) {
-        // 只有成功完成时才发送建议
-        if (chunk.data.success) {
-          const suggestionsChunk = this.outputAdapter.createSuggestionsChunk(
-            intentType,
-            subType,
-          );
-          // 只有有建议时才发送
-          if (
-            suggestionsChunk.type === "suggestions" &&
-            suggestionsChunk.data.suggestions.length > 0
-          ) {
-            yield suggestionsChunk;
-            suggestionsEmitted = true;
-          }
-        }
-      }
-
-      yield chunk;
-    }
-  }
-
-  /**
-   * 执行流程并记录到会话记忆
-   *
-   * 收集文本内容并在完成时记录到 MemoryManager
-   */
-  private async *executeWithMemory(
-    generator: AsyncGenerator<UnifiedStreamChunk>,
-    context: EngineContext,
-    intentType: IntentType,
-    subType?: string,
-  ): AsyncGenerator<UnifiedStreamChunk> {
-    // 如果记忆功能未启用或没有会话 ID，直接透传
-    if (!this.config.enableMemory || !context.conversationId) {
-      yield* generator;
-      return;
-    }
-
-    let collectedContent = "";
-    const relatedEntityIds: number[] = [];
-
-    for await (const chunk of generator) {
-      // 收集文本内容
-      if (chunk.type === "text" && chunk.data.text) {
-        collectedContent += chunk.data.text;
-      }
-
-      // 收集相关实体 ID（从 tool-call 结果中）
-      if (chunk.type === "tool-call" && chunk.data.result) {
-        const result = chunk.data.result;
-        if (Array.isArray(result)) {
-          // 如果结果是数组，尝试提取 ID
-          for (const item of result) {
-            if (typeof item === "object" && item !== null && "id" in item) {
-              relatedEntityIds.push(item.id as number);
-            }
-          }
-        }
-      }
-
-      // 完成时记录到记忆并注入 conversationId
-      if (chunk.type === "done") {
-        if (chunk.data.success) {
-          // 记录助手消息
-          this.memoryManager.recordAssistantMessage(
-            context.conversationId,
-            collectedContent || chunk.data.summary || "",
-            intentType,
-            subType,
-          );
-
-          // 记录输出摘要
-          this.memoryManager.recordOutput(context.conversationId, {
-            type: chunk.data.mode === "orchestration" ? "deliverable" : "text",
-            summary:
-              chunk.data.summary ||
-              collectedContent.substring(0, 100) ||
-              "操作完成",
-            relatedEntityIds:
-              relatedEntityIds.length > 0 ? relatedEntityIds : undefined,
-            outputAt: Date.now(),
-          });
-
-          logger.debug(
-            {
-              conversationId: context.conversationId,
-              contentLength: collectedContent.length,
-              entityCount: relatedEntityIds.length,
-            },
-            "UnifiedEngine: Memory recorded for conversation",
-          );
-        }
-
-        // 注入 conversationId 到 done chunk
-        yield {
-          ...chunk,
-          data: {
-            ...chunk.data,
-            conversationId: context.conversationId,
-          },
-        };
-        continue;
-      }
-
-      yield chunk;
-    }
-  }
+  // ============================================================
+  // 公共 API（保持向后兼容）
+  // ============================================================
 
   /**
    * 获取路由器
@@ -635,6 +400,18 @@ export class UnifiedEngine {
       this.router.updateConfig({ debug: config.debug });
       this.outputAdapter.updateConfig({ includeDebugInfo: config.debug });
       this.effectManager.updateConfig({ debug: config.debug });
+      this.executionCoordinator.updateConfig({ debug: config.debug });
+      this.outputEnhancer.updateConfig({ debug: config.debug });
+    }
+
+    if (config.enableMemory !== undefined) {
+      this.outputEnhancer.updateConfig({ enableMemory: config.enableMemory });
+    }
+
+    if (config.includeRoutingInfo !== undefined) {
+      this.executionCoordinator.updateConfig({
+        includeRoutingInfo: config.includeRoutingInfo,
+      });
     }
   }
 
@@ -642,7 +419,7 @@ export class UnifiedEngine {
    * 检查是否已准备就绪
    */
   isReady(): boolean {
-    return this.atomicExecutor !== null;
+    return this.executionCoordinator.hasAtomicExecutor();
   }
 
   /**
@@ -665,10 +442,6 @@ export class UnifiedEngine {
 
   /**
    * 注册 Effect 监听器
-   *
-   * @param type - Effect 类型（confirmation/notification/audit/*）
-   * @param handler - 处理函数
-   * @returns 监听器 ID，用于取消监听
    */
   onEffect<T extends UnifiedEffect = UnifiedEffect>(
     type: EffectType | "*",
@@ -692,8 +465,6 @@ export class UnifiedEngine {
 
   /**
    * 发送 Effect
-   *
-   * @param effect - 统一 Effect 对象
    */
   async emitEffect(effect: UnifiedEffect): Promise<void> {
     await this.effectManager.emit(effect);
@@ -701,11 +472,6 @@ export class UnifiedEngine {
 
   /**
    * 请求用户确认
-   *
-   * 便捷方法，创建确认请求并等待用户响应
-   *
-   * @param options - 确认选项
-   * @returns 确认结果
    */
   async requestConfirmation(options: {
     title: string;
@@ -736,10 +502,6 @@ export class UnifiedEngine {
 
   /**
    * 响应确认请求
-   *
-   * @param confirmationId - 确认 ID
-   * @param selectedOption - 用户选择的选项 ID
-   * @param data - 附加数据
    */
   respondToConfirmation(
     confirmationId: string,
@@ -773,10 +535,6 @@ export class UnifiedEngine {
 
   /**
    * 记录搜索结果到会话记忆
-   *
-   * @param conversationId - 会话 ID
-   * @param query - 搜索查询
-   * @param resultIds - 结果 ID 列表
    */
   recordSearchResults(
     conversationId: string,
@@ -789,9 +547,6 @@ export class UnifiedEngine {
 
   /**
    * 记录提及的书签到会话记忆
-   *
-   * @param conversationId - 会话 ID
-   * @param bookmarks - 书签列表
    */
   recordMentionedBookmarks(
     conversationId: string,
@@ -803,9 +558,6 @@ export class UnifiedEngine {
 
   /**
    * 记录提及的文件夹到会话记忆
-   *
-   * @param conversationId - 会话 ID
-   * @param folders - 文件夹列表
    */
   recordMentionedFolders(
     conversationId: string,
@@ -817,9 +569,6 @@ export class UnifiedEngine {
 
   /**
    * 获取会话上下文摘要
-   *
-   * @param conversationId - 会话 ID
-   * @returns 上下文摘要字符串，用于注入 Prompt
    */
   getContextSummary(conversationId: string): string | null {
     if (!this.config.enableMemory) return null;
@@ -828,8 +577,6 @@ export class UnifiedEngine {
 
   /**
    * 清理资源
-   *
-   * 移除所有 Effect 监听器并销毁 MemoryManager
    */
   dispose(): void {
     // 移除所有注册的监听器
@@ -858,3 +605,6 @@ export function createUnifiedEngine(
  * 默认统一引擎实例
  */
 export const unifiedEngine = new UnifiedEngine();
+
+// 导出模块类型（供外部使用）
+export type { AtomicExecutor } from "./execution-coordinator";

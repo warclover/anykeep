@@ -2,9 +2,45 @@
  * 智能路由层模块导出
  *
  * @module ai-skills/router
- * @version 1.0.0
+ * @version 2.0.0
  * @since 2025-12-24
+ * @updated 2025-12-26 - 添加意图类型常量
  */
+
+// 常量导出
+export {
+  // 意图类型常量
+  INTENT_TYPES,
+  INTENT_SUBTYPES,
+  QUERY_SUBTYPES,
+  ACTION_SUBTYPES,
+  ORGANIZE_SUBTYPES,
+  ANALYZE_SUBTYPES,
+  LEARN_SUBTYPES,
+  CREATE_SUBTYPES,
+  CHITCHAT_SUBTYPES,
+  // 复杂度常量
+  COMPLEXITY_LEVELS,
+  // 执行模式常量
+  EXECUTION_MODES,
+  // 分类来源常量
+  CLASSIFICATION_SOURCES,
+  // 实体类型常量
+  ENTITY_TYPES,
+  // 辅助函数
+  isValidIntentType,
+  isValidComplexityLevel,
+  isValidExecutionMode,
+  getSubtypesForIntent,
+} from "./constants";
+
+export type {
+  IntentTypeValue,
+  ComplexityLevelValue,
+  ExecutionModeValue,
+  ClassificationSourceValue,
+  EntityTypeValue,
+} from "./constants";
 
 // 类型导出
 export type {
@@ -40,6 +76,17 @@ export {
   intentClassifier,
 } from "./intent-classifier";
 
+// LLM 意图分类器 (Phase 2.1)
+export {
+  LLMIntentClassifier,
+  createLLMClassifier,
+  getLLMClassifier,
+} from "./llm-classifier";
+export type {
+  LLMClassifierConfig,
+  LLMClassificationResult,
+} from "./llm-classifier";
+
 // 复杂度评估器
 export {
   ComplexityEvaluator,
@@ -61,12 +108,17 @@ export {
   intentRouter,
 } from "./intent-router";
 
-// 消歧规则 (Phase 1.2)
+// 消歧规则 (Phase 1.2 + Phase 2.3)
 export {
   DISAMBIGUATION_RULES,
   getApplicableRules,
   findMatchingRule,
+  // Phase 2.3: 可配置化
+  DisambiguationRulesManager,
+  createDisambiguationRulesManager,
+  getDefaultDisambiguationRulesManager,
 } from "./disambiguation-rules";
+export type { DisambiguationRulesConfig } from "./disambiguation-rules";
 
 // 显式工具路由器 (Phase 4)
 export {
@@ -76,3 +128,13 @@ export {
   TOOL_MAPPINGS,
 } from "./explicit-tool-router";
 export type { ToolMapping, ExplicitToolRequest } from "./explicit-tool-router";
+
+// 路由性能指标 (Phase 2.2)
+export {
+  RouteMetricsCollector,
+  RouteMetricsAggregator,
+  createRouteMetricsCollector,
+  createRouteMetricsAggregator,
+  getDefaultMetricsAggregator,
+} from "./metrics";
+export type { RouteMetrics, RouteMetricsAggregation } from "./metrics";

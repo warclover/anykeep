@@ -14,11 +14,30 @@
  * - 30-49: 场景规则（时间/语境修饰）
  * - 10-29: 默认规则
  *
- * @version 1.0.0
+ * @version 2.0.0
  * @since 2025-12-25
+ * @updated 2025-12-26 - 添加 DisambiguationRulesManager 支持可配置化
  */
 
 import type { DisambiguationRule, IntentType } from "./types";
+
+// ============================================
+// 配置类型定义
+// ============================================
+
+/**
+ * 消歧规则管理器配置
+ */
+export interface DisambiguationRulesConfig {
+  /** 是否启用内置规则 */
+  enableBuiltinRules?: boolean;
+  /** 禁用的内置规则 ID 列表 */
+  disabledRuleIds?: string[];
+  /** 自定义规则列表 */
+  customRules?: DisambiguationRule[];
+  /** 规则优先级覆盖 (规则ID -> 新优先级) */
+  priorityOverrides?: Record<string, number>;
+}
 
 /**
  * 消歧规则列表
@@ -212,4 +231,287 @@ export function findMatchingRule(
   }
 
   return null;
+}
+
+// ============================================
+// DisambiguationRulesManager 类
+// ============================================
+
+/**
+ * 消歧规则管理器
+ *
+ * 提供消歧规则的可配置化管理，支持：
+ * - 启用/禁用内置规则
+ * - 添加自定义规则
+ * - 覆盖规则优先级
+ * - 动态更新规则集
+ *
+ * @example
+ * ```typescript
+ * const manager = new DisambiguationRulesManager({
+ *   enableBuiltinRules: true,
+ *   disabledRuleIds: ['question-default-query'],
+ *   customRules: [{
+ *     id: 'my-custom-rule',
+ *     conflicts: ['query', 'action'],
+ *     pattern: /我的特殊模式/,
+ *     winner: 'query',
+ *     priority: 90,
+ *     reason: '自定义规则说明'
+ *   }],
+ *   priorityOverrides: {
+ *     'search-keyword-priority': 95
+ *   }
+ * });
+ *
+ * const rules = manager.getActiveRules();
+ * const match = manager.findMatch('帮我找一下那篇文章', ['query', 'action']);
+ * ```
+ */
+export class DisambiguationRulesManager {
+  private config: Required<DisambiguationRulesConfig>;
+  private activeRulesCache: DisambiguationRule[] | null = null;
+
+  constructor(config: DisambiguationRulesConfig = {}) {
+    this.config = {
+      enableBuiltinRules: config.enableBuiltinRules ?? true,
+      disabledRuleIds: config.disabledRuleIds ?? [],
+      customRules: config.customRules ?? [],
+      priorityOverrides: config.priorityOverrides ?? {},
+    };
+  }
+
+  /**
+   * 获取所有激活的规则（按优先级降序）
+   */
+  getActiveRules(): DisambiguationRule[] {
+    if (this.activeRulesCache) {
+      return this.activeRulesCache;
+    }
+
+    const rules: DisambiguationRule[] = [];
+
+    // 添加内置规则（如果启用）
+    if (this.config.enableBuiltinRules) {
+      for (const rule of DISAMBIGUATION_RULES) {
+        if (!this.config.disabledRuleIds.includes(rule.id)) {
+          // 应用优先级覆盖
+          const overriddenPriority = this.config.priorityOverrides[rule.id];
+          if (overriddenPriority !== undefined) {
+            rules.push({ ...rule, priority: overriddenPriority });
+          } else {
+            rules.push(rule);
+          }
+        }
+      }
+    }
+
+    // 添加自定义规则
+    for (const rule of this.config.customRules) {
+      // 检查是否与内置规则 ID 冲突
+      const existingIndex = rules.findIndex((r) => r.id === rule.id);
+      if (existingIndex >= 0) {
+        // 自定义规则覆盖同 ID 的内置规则
+        rules[existingIndex] = rule;
+      } else {
+        rules.push(rule);
+      }
+    }
+
+    // 按优先级降序排序并缓存
+    this.activeRulesCache = rules.sort((a, b) => b.priority - a.priority);
+    return this.activeRulesCache;
+  }
+
+  /**
+   * 获取适用于指定冲突类型的规则
+   */
+  getApplicableRulesFor(conflictTypes: IntentType[]): DisambiguationRule[] {
+    return this.getActiveRules().filter((rule) =>
+      conflictTypes.every((type) => rule.conflicts.includes(type)),
+    );
+  }
+
+  /**
+   * 根据消息和冲突类型找到最佳匹配规则
+   */
+  findMatch(
+    message: string,
+    conflictTypes: IntentType[],
+  ): DisambiguationRule | null {
+    const applicableRules = this.getApplicableRulesFor(conflictTypes);
+
+    for (const rule of applicableRules) {
+      if (rule.pattern.test(message)) {
+        return rule;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * 添加自定义规则
+   */
+  addRule(rule: DisambiguationRule): void {
+    this.config.customRules.push(rule);
+    this.invalidateCache();
+  }
+
+  /**
+   * 移除自定义规则
+   */
+  removeRule(ruleId: string): boolean {
+    const index = this.config.customRules.findIndex((r) => r.id === ruleId);
+    if (index >= 0) {
+      this.config.customRules.splice(index, 1);
+      this.invalidateCache();
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * 禁用内置规则
+   */
+  disableBuiltinRule(ruleId: string): void {
+    if (!this.config.disabledRuleIds.includes(ruleId)) {
+      this.config.disabledRuleIds.push(ruleId);
+      this.invalidateCache();
+    }
+  }
+
+  /**
+   * 启用内置规则
+   */
+  enableBuiltinRule(ruleId: string): void {
+    const index = this.config.disabledRuleIds.indexOf(ruleId);
+    if (index >= 0) {
+      this.config.disabledRuleIds.splice(index, 1);
+      this.invalidateCache();
+    }
+  }
+
+  /**
+   * 设置规则优先级覆盖
+   */
+  setPriorityOverride(ruleId: string, priority: number): void {
+    this.config.priorityOverrides[ruleId] = priority;
+    this.invalidateCache();
+  }
+
+  /**
+   * 清除规则优先级覆盖
+   */
+  clearPriorityOverride(ruleId: string): void {
+    delete this.config.priorityOverrides[ruleId];
+    this.invalidateCache();
+  }
+
+  /**
+   * 更新配置
+   */
+  updateConfig(config: Partial<DisambiguationRulesConfig>): void {
+    if (config.enableBuiltinRules !== undefined) {
+      this.config.enableBuiltinRules = config.enableBuiltinRules;
+    }
+    if (config.disabledRuleIds !== undefined) {
+      this.config.disabledRuleIds = config.disabledRuleIds;
+    }
+    if (config.customRules !== undefined) {
+      this.config.customRules = config.customRules;
+    }
+    if (config.priorityOverrides !== undefined) {
+      this.config.priorityOverrides = config.priorityOverrides;
+    }
+    this.invalidateCache();
+  }
+
+  /**
+   * 获取当前配置
+   */
+  getConfig(): DisambiguationRulesConfig {
+    return { ...this.config };
+  }
+
+  /**
+   * 获取规则统计信息
+   */
+  getStats(): {
+    totalRules: number;
+    builtinRules: number;
+    customRules: number;
+    disabledRules: number;
+  } {
+    const activeRules = this.getActiveRules();
+    const builtinCount = this.config.enableBuiltinRules
+      ? DISAMBIGUATION_RULES.length - this.config.disabledRuleIds.length
+      : 0;
+
+    return {
+      totalRules: activeRules.length,
+      builtinRules: builtinCount,
+      customRules: this.config.customRules.length,
+      disabledRules: this.config.disabledRuleIds.length,
+    };
+  }
+
+  /**
+   * 检查规则是否存在
+   */
+  hasRule(ruleId: string): boolean {
+    return this.getActiveRules().some((r) => r.id === ruleId);
+  }
+
+  /**
+   * 获取指定规则
+   */
+  getRule(ruleId: string): DisambiguationRule | null {
+    return this.getActiveRules().find((r) => r.id === ruleId) ?? null;
+  }
+
+  /**
+   * 重置为默认配置
+   */
+  reset(): void {
+    this.config = {
+      enableBuiltinRules: true,
+      disabledRuleIds: [],
+      customRules: [],
+      priorityOverrides: {},
+    };
+    this.invalidateCache();
+  }
+
+  /**
+   * 清除缓存
+   */
+  private invalidateCache(): void {
+    this.activeRulesCache = null;
+  }
+}
+
+// ============================================
+// 工厂函数
+// ============================================
+
+/**
+ * 创建消歧规则管理器
+ */
+export function createDisambiguationRulesManager(
+  config?: DisambiguationRulesConfig,
+): DisambiguationRulesManager {
+  return new DisambiguationRulesManager(config);
+}
+
+/**
+ * 默认消歧规则管理器（全局单例）
+ */
+let defaultManager: DisambiguationRulesManager | null = null;
+
+export function getDefaultDisambiguationRulesManager(): DisambiguationRulesManager {
+  if (!defaultManager) {
+    defaultManager = createDisambiguationRulesManager();
+  }
+  return defaultManager;
 }

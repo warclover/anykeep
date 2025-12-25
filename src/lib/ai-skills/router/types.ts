@@ -186,6 +186,25 @@ export interface RouteResult {
   reason: string;
   /** 路由耗时（毫秒） */
   routingDurationMs: number;
+  /** 详细性能指标（可选，debug 模式下返回） */
+  metrics?: {
+    /** 意图分类耗时（毫秒） */
+    classificationDurationMs: number;
+    /** 复杂度评估耗时（毫秒） */
+    complexityDurationMs: number;
+    /** 模式选择耗时（毫秒） */
+    modeSelectorDurationMs: number;
+    /** 匹配的规则数量 */
+    ruleMatchCount: number;
+    /** 是否触发了消歧 */
+    disambiguationUsed: boolean;
+    /** 是否使用了 LLM 兜底 */
+    llmFallbackUsed: boolean;
+    /** 分类来源 */
+    classificationSource: "rule" | "llm" | "default";
+    /** LLM 缓存是否命中 */
+    llmCacheHit: boolean;
+  };
 }
 
 // ============================================
@@ -202,6 +221,10 @@ export interface RouterConfig {
   ruleConfidenceThreshold?: number;
   /** 是否启用调试模式 */
   debug?: boolean;
+  /** 是否在结果中包含详细指标 */
+  includeMetrics?: boolean;
+  /** 是否启用指标聚合（用于监控） */
+  enableMetricsAggregation?: boolean;
 }
 
 /**
@@ -216,6 +239,27 @@ export interface IntentClassifierConfig {
   llmTimeoutMs?: number;
   /** 消歧置信度阈值（top1 和 top2 差值小于此值时触发消歧） */
   disambiguationThreshold?: number;
+  /** 是否启用 LLM 兜底分类（规则置信度不足时使用） */
+  enableLLMFallback?: boolean;
+  /** LLM 兜底触发阈值（规则置信度低于此值时触发 LLM） */
+  llmFallbackThreshold?: number;
+  /** LLM 分类器配置 */
+  llmClassifierConfig?: {
+    /** 模型 ID */
+    modelId?: string;
+    /** 超时时间（毫秒） */
+    timeoutMs?: number;
+    /** 最大重试次数 */
+    maxRetries?: number;
+    /** 是否启用缓存 */
+    cacheEnabled?: boolean;
+    /** 缓存 TTL（毫秒） */
+    cacheTTLMs?: number;
+    /** 温度参数 */
+    temperature?: number;
+  };
+  /** 是否启用调试模式 */
+  debug?: boolean;
 }
 
 // ============================================

@@ -2,8 +2,9 @@
  * 执行引擎层模块导出
  *
  * @module ai-skills/engine
- * @version 1.0.0
+ * @version 2.0.0
  * @since 2025-12-24
+ * @updated 2025-12-26 - 拆分为 InputPreprocessor、ExecutionCoordinator、OutputEnhancer
  */
 
 // 类型导出
@@ -27,4 +28,41 @@ export {
   UnifiedEngine,
   createUnifiedEngine,
   unifiedEngine,
+  type AtomicExecutor,
 } from "./unified-engine";
+
+// 输入预处理模块
+export {
+  InputPreprocessor,
+  createInputPreprocessor,
+  type PreprocessResult,
+  type InputPreprocessorConfig,
+} from "./input-preprocessor";
+
+// 输入验证模块
+export {
+  InputValidator,
+  createInputValidator,
+  inputValidator,
+  validateInput,
+  sanitizeInput,
+  INPUT_VALIDATOR_DEFAULTS,
+  type InputValidatorConfig,
+  type ValidationResult,
+} from "./input-validator";
+
+// 执行协调模块
+export {
+  ExecutionCoordinator,
+  createExecutionCoordinator,
+  type ExecutionCoordinatorConfig,
+  type ExecutionMode,
+  type ForceExecutionOptions,
+} from "./execution-coordinator";
+
+// 输出增强模块
+export {
+  OutputEnhancer,
+  createOutputEnhancer,
+  type OutputEnhancerConfig,
+} from "./output-enhancer";

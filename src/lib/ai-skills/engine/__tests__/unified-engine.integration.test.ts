@@ -220,10 +220,16 @@ describe("UnifiedEngine Integration Tests", () => {
         outputSchema: z.object({}),
         parseInput: jest.fn().mockResolvedValue({}),
         executeStream: jest.fn().mockImplementation(async function* () {
-          yield { type: "progress", stepId: "process", status: "running" };
-          yield { type: "text", content: "Orchestrated output" };
-          yield { type: "progress", stepId: "process", status: "completed" };
-          yield { type: "done" };
+          yield {
+            type: "progress",
+            data: { step: "process", percent: 50, timestamp: Date.now() },
+          };
+          yield { type: "text", data: { text: "Orchestrated output" } };
+          yield {
+            type: "progress",
+            data: { step: "process", percent: 100, timestamp: Date.now() },
+          };
+          yield { type: "done", data: { success: true } };
         }),
       };
 
@@ -274,8 +280,11 @@ describe("UnifiedEngine Integration Tests", () => {
         outputSchema: z.object({}),
         parseInput: jest.fn().mockResolvedValue({}),
         executeStream: jest.fn().mockImplementation(async function* () {
-          yield { type: "progress", stepId: "collect", status: "completed" };
-          yield { type: "done" };
+          yield {
+            type: "progress",
+            data: { step: "collect", percent: 100, timestamp: Date.now() },
+          };
+          yield { type: "done", data: { success: true } };
         }),
       };
       engine.registerOrchestrationSkill(asOrchestrationSkill(mockSkill));
