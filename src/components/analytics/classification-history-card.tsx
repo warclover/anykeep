@@ -81,13 +81,34 @@ export function ClassificationHistoryCard({
       const response = await fetch(
         `${API_CLASSIFICATION.analyticsHistory}&${params}`,
       );
-      if (!response.ok) throw new Error("Failed to load history");
+
+      // 对于非 OK 响应，静默处理（可能是表为空或未配置）
+      if (!response.ok) {
+        // 仅在开发模式下记录日志
+        if (process.env.NODE_ENV === "development") {
+          clientLogger.warn(
+            { status: response.status },
+            "Classification history API returned non-OK status",
+          );
+        }
+        setItems([]);
+        setStats(null);
+        return;
+      }
 
       const data = await response.json();
       setItems(data.data?.items || []);
       setStats(data.data?.stats || null);
     } catch (error) {
-      clientLogger.error({ error }, "Failed to load classification history");
+      // 网络错误时静默处理，不显示错误给用户
+      if (process.env.NODE_ENV === "development") {
+        clientLogger.warn(
+          { error },
+          "Failed to load classification history (silent)",
+        );
+      }
+      setItems([]);
+      setStats(null);
     } finally {
       setIsLoading(false);
     }
