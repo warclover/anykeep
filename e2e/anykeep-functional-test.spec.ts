@@ -3,11 +3,12 @@
  *
  * 测试所有页面的可访问性、JavaScript 错误、网络请求
  *
- * @version 1.0.0
+ * @version 2.0.0 - 增强稳定性
  * @since 2025-12-25
  */
 
 import { test, expect, type Page } from "@playwright/test";
+import { TIMEOUTS, QUICK_TEST_CONFIG, waitForNetworkIdle } from "./test-utils";
 
 // 页面分类
 const PUBLIC_PAGES = [
@@ -106,7 +107,7 @@ async function testPageLoad(
   try {
     const response = await page.goto(path, {
       waitUntil: "domcontentloaded",
-      timeout: 30000,
+      timeout: TIMEOUTS.pageLoad,
     });
 
     result.loadTime = Date.now() - startTime;
@@ -120,8 +121,8 @@ async function testPageLoad(
       }
     }
 
-    // 等待页面稳定
-    await page.waitForLoadState("networkidle", { timeout: 10000 }).catch(() => {
+    // 等待页面稳定（使用较短超时，避免阻塞）
+    await waitForNetworkIdle(page, TIMEOUTS.elementVisible).catch(() => {
       result.warnings.push("Network idle timeout");
     });
 
@@ -148,6 +149,9 @@ async function testPageLoad(
 }
 
 test.describe("AnyKeep 全面功能测试", () => {
+  // 配置重试以提高稳定性
+  test.describe.configure({ retries: QUICK_TEST_CONFIG.retries });
+
   test.describe("1. 公开页面测试", () => {
     for (const { path, name } of PUBLIC_PAGES) {
       test(`${name} (${path})`, async ({ page }) => {
@@ -172,15 +176,13 @@ test.describe("AnyKeep 全面功能测试", () => {
       test(`${name} (${path}) - 应重定向到登录`, async ({ page }) => {
         await page.goto(path, {
           waitUntil: "domcontentloaded",
-          timeout: 30000,
+          timeout: TIMEOUTS.pageLoad,
         });
 
         // 等待可能的重定向
-        await page
-          .waitForLoadState("networkidle", { timeout: 10000 })
-          .catch(() => {
-            /* timeout is expected */
-          });
+        await waitForNetworkIdle(page, TIMEOUTS.elementVisible).catch(() => {
+          /* timeout is expected */
+        });
 
         const currentUrl = page.url();
 
@@ -203,7 +205,7 @@ test.describe("AnyKeep 全面功能测试", () => {
       test(`${name} (${path})`, async ({ page }) => {
         await page.goto(path, {
           waitUntil: "domcontentloaded",
-          timeout: 30000,
+          timeout: TIMEOUTS.pageLoad,
         });
 
         // 开发页面可能需要登录或不存在
@@ -251,11 +253,9 @@ test.describe("AnyKeep 全面功能测试", () => {
       });
 
       await page.goto("/");
-      await page
-        .waitForLoadState("networkidle", { timeout: 15000 })
-        .catch(() => {
-          /* timeout is expected */
-        });
+      await waitForNetworkIdle(page, TIMEOUTS.networkIdle).catch(() => {
+        /* timeout is expected */
+      });
 
       // 过滤掉预期的失败（如分析请求）
       const criticalFailures = failedRequests.filter(

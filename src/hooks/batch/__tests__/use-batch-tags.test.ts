@@ -6,6 +6,10 @@
 import { renderHook, act, waitFor } from "@testing-library/react";
 import { useBatchTags } from "../use-batch-tags";
 
+// Configure React 18 act environment
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+
 // Mock fetch
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
@@ -65,8 +69,12 @@ describe("useBatchTags", () => {
       const onSuccess = jest.fn();
       const { result } = renderHook(() => useBatchTags({ onSuccess }));
 
+      let returnValue: unknown;
       await act(async () => {
-        await result.current.batchAddTags([1, 2, 3], ["tag1", "tag2"]);
+        returnValue = await result.current.batchAddTags(
+          [1, 2, 3],
+          ["tag1", "tag2"],
+        );
       });
 
       expect(mockFetch).toHaveBeenCalledWith("/api/bookmarks/batch-tags", {
@@ -77,48 +85,54 @@ describe("useBatchTags", () => {
           bookmarkIds: [1, 2, 3],
           tags: ["tag1", "tag2"],
         }),
+        credentials: "include",
       });
 
       expect(onSuccess).toHaveBeenCalledWith(mockResponse.data);
+      expect(returnValue).toEqual(mockResponse.data);
     });
 
     it("处理中状态正确更新", async () => {
-      mockFetch.mockImplementation(
-        () =>
-          new Promise((resolve) =>
-            setTimeout(
-              () =>
-                resolve({
-                  ok: true,
-                  json: () =>
-                    Promise.resolve({
-                      success: true,
-                      data: {
-                        affectedCount: 1,
-                        affectedIds: [1],
-                        tags: ["tag"],
-                      },
-                    }),
-                }),
-              100,
-            ),
-          ),
-      );
+      // 使用延迟 promise 来测试中间状态
+      let resolvePromise: (value: unknown) => void;
+      const delayedPromise = new Promise((resolve) => {
+        resolvePromise = resolve;
+      });
+
+      mockFetch.mockImplementationOnce(() => delayedPromise);
 
       const { result } = renderHook(() => useBatchTags());
 
       expect(result.current.isProcessing).toBe(false);
 
-      const promise = act(async () => {
-        await result.current.batchAddTags([1], ["tag"]);
+      // 启动异步操作但不等待完成
+      let batchPromise: Promise<unknown>;
+      act(() => {
+        batchPromise = result.current.batchAddTags([1], ["tag"]);
       });
 
-      // 等待状态变为处理中
+      // 等待 isProcessing 变为 true
       await waitFor(() => {
         expect(result.current.isProcessing).toBe(true);
       });
 
-      await promise;
+      // 完成 fetch 请求
+      await act(async () => {
+        resolvePromise!({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              success: true,
+              data: {
+                affectedCount: 1,
+                affectedIds: [1],
+                tags: ["tag"],
+                message: "已为 1 个书签添加 1 个标签",
+              },
+            }),
+        });
+        await batchPromise!;
+      });
 
       expect(result.current.isProcessing).toBe(false);
     });
@@ -157,6 +171,7 @@ describe("useBatchTags", () => {
           bookmarkIds: [1, 2],
           tags: ["oldTag"],
         }),
+        credentials: "include",
       });
 
       expect(onSuccess).toHaveBeenCalledWith(mockResponse.data);
@@ -170,7 +185,7 @@ describe("useBatchTags", () => {
         json: () =>
           Promise.resolve({
             success: false,
-            error: { message: "部分书签不存在或无权操作" },
+            error: "部分书签不存在或无权操作",
           }),
       });
 
@@ -182,6 +197,7 @@ describe("useBatchTags", () => {
       });
 
       expect(onError).toHaveBeenCalled();
+      expect(result.current.error).not.toBeNull();
     });
 
     it("网络错误时调用 onError", async () => {

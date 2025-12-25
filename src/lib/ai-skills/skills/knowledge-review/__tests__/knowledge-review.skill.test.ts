@@ -1,7 +1,7 @@
 /**
  * KnowledgeReviewSkill 单元测试
  *
- * @version 1.0.0
+ * @version 1.1.0 - 新增 executeStream 测试
  * @since 2025-12-24
  */
 
@@ -10,33 +10,68 @@ import {
   knowledgeReviewSkill,
 } from "../knowledge-review.skill";
 import type { OrchestrationContext } from "../../../orchestration/types";
+import type { OrchestrationStreamChunk } from "../../../output/types";
 import { EBBINGHAUS_INTERVALS } from "../types";
 import type { ReviewGroup } from "../types";
 
+// Mock 书签数据
+const mockBookmarks = [
+  {
+    id: 1,
+    title: "React 入门教程",
+    url: "https://example.com/react",
+    platform: "juejin",
+    ai_summary: "React 是一个用于构建用户界面的 JavaScript 库",
+    ai_tags: ["React", "前端"],
+    user_tags: ["学习"],
+    created_at: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(), // 10天前
+    folder_id: 1,
+    folders: { name: "技术文章" },
+  },
+  {
+    id: 2,
+    title: "TypeScript 高级特性",
+    url: "https://example.com/typescript",
+    platform: "zhihu",
+    ai_summary: "TypeScript 提供了强大的类型系统",
+    ai_tags: ["TypeScript"],
+    user_tags: ["编程"],
+    created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), // 5天前
+    folder_id: 1,
+    folders: { name: "技术文章" },
+  },
+];
+
+// Mock Supabase - 支持动态结果
+let mockQueryResult: {
+  data: unknown[] | null;
+  error: { message: string } | null;
+} = {
+  data: mockBookmarks,
+  error: null,
+};
+
 // Mock Supabase client
 jest.mock("@/lib/supabase/server", () => ({
-  createClient: jest.fn(() => ({
-    from: jest.fn(() => ({
-      select: jest.fn(() => ({
-        eq: jest.fn(() => ({
-          is: jest.fn(() => ({
-            eq: jest.fn(() => ({
-              order: jest.fn(() => ({
-                limit: jest.fn(() => ({
-                  gte: jest.fn(() =>
-                    Promise.resolve({
-                      data: [],
-                      error: null,
-                    }),
-                  ),
+  createClient: jest.fn(() =>
+    Promise.resolve({
+      from: jest.fn(() => ({
+        select: jest.fn(() => ({
+          eq: jest.fn(() => ({
+            is: jest.fn(() => ({
+              eq: jest.fn(() => ({
+                order: jest.fn(() => ({
+                  limit: jest.fn(() => ({
+                    gte: jest.fn(() => Promise.resolve(mockQueryResult)),
+                  })),
                 })),
               })),
             })),
           })),
         })),
       })),
-    })),
-  })),
+    }),
+  ),
 }));
 
 // Mock logger
@@ -54,7 +89,21 @@ describe("KnowledgeReviewSkill", () => {
 
   beforeEach(() => {
     skill = new KnowledgeReviewSkill();
+    // 重置 mock 数据
+    mockQueryResult = { data: mockBookmarks, error: null };
+    jest.clearAllMocks();
   });
+
+  // 辅助函数：收集所有流式输出
+  async function collectChunks(
+    generator: AsyncGenerator<OrchestrationStreamChunk>,
+  ): Promise<OrchestrationStreamChunk[]> {
+    const chunks: OrchestrationStreamChunk[] = [];
+    for await (const chunk of generator) {
+      chunks.push(chunk);
+    }
+    return chunks;
+  }
 
   describe("metadata", () => {
     it("should have correct metadata", () => {
@@ -148,6 +197,157 @@ describe("KnowledgeReviewSkill", () => {
     it("should export a singleton instance", () => {
       expect(knowledgeReviewSkill).toBeInstanceOf(KnowledgeReviewSkill);
       expect(knowledgeReviewSkill.metadata.id).toBe("knowledge_review");
+    });
+  });
+
+  describe("executeStream", () => {
+    const createContext = (
+      params: Record<string, unknown> = {},
+    ): OrchestrationContext => ({
+      userId: "test-user-id",
+      conversationId: "test-conv-id",
+      params: {
+        timeRange: "month",
+        mode: "spaced",
+        limit: 30,
+        includeReviewed: false,
+        ...params,
+      },
+    });
+
+    it("should emit progress chunks during execution", async () => {
+      const context = createContext();
+      const chunks = await collectChunks(skill.executeStream(context));
+
+      // 验证进度块存在
+      const progressChunks = chunks.filter((c) => c.type === "progress");
+      expect(progressChunks.length).toBeGreaterThan(0);
+
+      // 验证进度递增
+      const percentages = progressChunks
+        .map((c) => c.data.percent)
+        .filter((p): p is number => p !== undefined);
+
+      for (let i = 1; i < percentages.length; i++) {
+        expect(percentages[i]).toBeGreaterThanOrEqual(percentages[i - 1]);
+      }
+    });
+
+    it("should emit text chunks with analysis info", async () => {
+      const context = createContext();
+      const chunks = await collectChunks(skill.executeStream(context));
+
+      // 验证文本块存在
+      const textChunks = chunks.filter((c) => c.type === "text");
+      expect(textChunks.length).toBeGreaterThan(0);
+
+      // 验证包含分析信息
+      const allText = textChunks.map((c) => c.data.text || "").join("");
+      expect(allText).toContain("收藏");
+      expect(allText).toContain("复习");
+    });
+
+    it("should emit deliverable with review plan", async () => {
+      const context = createContext();
+      const chunks = await collectChunks(skill.executeStream(context));
+
+      // 验证交付物块
+      const deliverableChunk = chunks.find((c) => c.type === "deliverable");
+      expect(deliverableChunk).toBeDefined();
+      expect(deliverableChunk?.data.type).toBe("report");
+      expect(deliverableChunk?.data.format).toBe("markdown");
+      expect(deliverableChunk?.data.downloadable).toBe(true);
+    });
+
+    it("should emit done with success summary", async () => {
+      const context = createContext();
+      const chunks = await collectChunks(skill.executeStream(context));
+
+      // 验证完成块
+      const doneChunk = chunks.find((c) => c.type === "done");
+      expect(doneChunk).toBeDefined();
+      expect(doneChunk?.data.success).toBe(true);
+      expect(doneChunk?.data.summary).toContain("复习计划");
+    });
+
+    it("should handle empty bookmarks gracefully", async () => {
+      // 设置空数据
+      mockQueryResult = { data: [], error: null };
+
+      const context = createContext();
+      const chunks = await collectChunks(skill.executeStream(context));
+
+      // 验证正常完成
+      const doneChunk = chunks.find((c) => c.type === "done");
+      expect(doneChunk).toBeDefined();
+      expect(doneChunk?.data.success).toBe(true);
+      expect(doneChunk?.data.summary).toContain("没有");
+
+      // 验证没有交付物
+      const deliverableChunk = chunks.find((c) => c.type === "deliverable");
+      expect(deliverableChunk).toBeUndefined();
+    });
+
+    it("should handle database errors gracefully", async () => {
+      // 设置数据库错误
+      mockQueryResult = {
+        data: null,
+        error: { message: "Database connection failed" },
+      };
+
+      const context = createContext();
+      const chunks = await collectChunks(skill.executeStream(context));
+
+      // 验证错误块
+      const errorChunk = chunks.find((c) => c.type === "error");
+      expect(errorChunk).toBeDefined();
+      expect(errorChunk?.data.retryable).toBe(true);
+
+      // 验证失败完成
+      const doneChunk = chunks.find((c) => c.type === "done");
+      expect(doneChunk).toBeDefined();
+      expect(doneChunk?.data.success).toBe(false);
+    });
+
+    it("should emit suggestions", async () => {
+      const context = createContext();
+      const chunks = await collectChunks(skill.executeStream(context));
+
+      const suggestionsChunk = chunks.find((c) => c.type === "suggestions");
+      expect(suggestionsChunk).toBeDefined();
+      expect(Array.isArray(suggestionsChunk?.data.suggestions)).toBe(true);
+    });
+
+    it("should include review groups in text output", async () => {
+      const context = createContext();
+      const chunks = await collectChunks(skill.executeStream(context));
+
+      const textChunks = chunks.filter((c) => c.type === "text");
+      const allText = textChunks.map((c) => c.data.text || "").join("");
+
+      // 验证包含优先级分组信息
+      expect(
+        allText.includes("紧急") ||
+          allText.includes("本周") ||
+          allText.includes("巩固"),
+      ).toBe(true);
+    });
+
+    it("should include stats in deliverable content", async () => {
+      const context = createContext();
+      const chunks = await collectChunks(skill.executeStream(context));
+
+      const deliverableChunk = chunks.find((c) => c.type === "deliverable");
+      expect(deliverableChunk).toBeDefined();
+
+      const output = deliverableChunk?.data.content as {
+        stats?: { totalBookmarks?: number; needsReviewCount?: number };
+        groups?: unknown[];
+      };
+      expect(output).toBeDefined();
+      expect(output?.stats).toBeDefined();
+      expect(output?.stats?.totalBookmarks).toBe(2);
+      expect(output?.groups).toBeDefined();
     });
   });
 });

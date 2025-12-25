@@ -111,8 +111,9 @@ describe("BatchTagDialog", () => {
 
     it("显示添加和移除标签选项卡", () => {
       render(<BatchTagDialog {...defaultProps} />);
-      expect(screen.getByText("添加标签")).toBeInTheDocument();
-      expect(screen.getByText("移除标签")).toBeInTheDocument();
+      // Use getByRole to target tabs specifically (there are buttons with same text)
+      expect(screen.getByRole("tab", { name: /添加标签/ })).toBeInTheDocument();
+      expect(screen.getByRole("tab", { name: /移除标签/ })).toBeInTheDocument();
     });
   });
 

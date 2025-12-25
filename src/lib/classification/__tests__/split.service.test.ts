@@ -5,7 +5,7 @@
 
 import { SplitService } from "../services/split.service";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import * as aiGenerator from "@/lib/utils/ai-generator";
+import * as aiGenerator from "@/lib/ai-generator";
 
 // Mock logger
 jest.mock("@/lib/logger", () => ({
@@ -25,7 +25,7 @@ jest.mock("../services/operation-log.service", () => ({
 }));
 
 // Mock AI generator
-jest.mock("@/lib/utils/ai-generator", () => ({
+jest.mock("@/lib/ai-generator", () => ({
   generateFolderNameFromBookmarks: jest
     .fn()
     .mockResolvedValue({ name: "Generated Name" }),

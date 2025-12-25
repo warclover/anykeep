@@ -3,12 +3,12 @@
  *
  * 提供智能等待、重试机制和测试数据管理
  *
- * @version 1.0.0
+ * @version 2.0.0 - 增强稳定性
  * @since 2025-12-25
  */
 
-import type { Page, Locator } from "@playwright/test";
-import { expect } from "@playwright/test";
+import type { Page, Locator, TestInfo } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 // ============================================
 // 超时配置
@@ -25,7 +25,31 @@ export const TIMEOUTS = {
   animation: 3000,
   /** 网络空闲超时 */
   networkIdle: 15000,
+  /** 快速检查超时 */
+  quickCheck: 5000,
+  /** 重定向检查超时 */
+  redirectCheck: 3000,
 } as const;
+
+// ============================================
+// 测试配置预设
+// ============================================
+
+/**
+ * AI 测试配置 - 用于需要 AI 响应的测试
+ */
+export const AI_TEST_CONFIG = {
+  timeout: 90000,
+  retries: 2,
+};
+
+/**
+ * 快速测试配置 - 用于简单的 UI 测试
+ */
+export const QUICK_TEST_CONFIG = {
+  timeout: 30000,
+  retries: 1,
+};
 
 // ============================================
 // 智能等待函数
@@ -89,7 +113,7 @@ export async function waitForAIResponse(page: Page): Promise<void> {
  */
 export async function waitForNetworkIdle(
   page: Page,
-  timeout = TIMEOUTS.networkIdle,
+  timeout: number = TIMEOUTS.networkIdle,
 ): Promise<void> {
   await page.waitForLoadState("networkidle", { timeout });
 }
@@ -216,4 +240,211 @@ export function generateTestId(prefix = "test"): string {
   const timestamp = Date.now().toString(36);
   const random = Math.random().toString(36).substring(2, 8);
   return `${prefix}_${timestamp}_${random}`;
+}
+
+// ============================================
+// 登录检测辅助
+// ============================================
+
+/**
+ * 检查是否需要登录
+ *
+ * @returns true 如果当前在登录页（需要登录）
+ */
+export function isOnLoginPage(page: Page): boolean {
+  return page.url().includes("/login");
+}
+
+/**
+ * 如果需要登录则跳过测试
+ *
+ * 在 test body 开头调用，会自动检查并跳过需要认证的测试
+ */
+export async function skipIfLoginRequired(page: Page): Promise<boolean> {
+  await page.waitForLoadState("domcontentloaded");
+  await page.waitForTimeout(500); // 等待可能的重定向
+
+  if (isOnLoginPage(page)) {
+    test.skip(true, "需要登录才能测试此功能");
+    return true;
+  }
+  return false;
+}
+
+// ============================================
+// AI 助手辅助函数
+// ============================================
+
+/**
+ * AI 助手面板选择器
+ */
+const AI_SELECTORS = {
+  button:
+    '[data-testid="ai-assistant-button"], button:has-text("AI助手"), button:has-text("智能助手")',
+  panel: '[data-testid="ai-assistant-panel"], [data-testid="ai-panel"]',
+  input:
+    '[data-testid="ai-input"], textarea[placeholder*="输入"], input[placeholder*="问"]',
+  sendButton: '[data-testid="ai-send"], button:has-text("发送")',
+  loading: '[data-testid="ai-loading"], .ai-loading, [data-loading="true"]',
+  response:
+    '[data-testid="ai-message-assistant"], [data-testid="ai-response"], [data-role="assistant"]',
+};
+
+/**
+ * 打开 AI 助手面板
+ *
+ * @returns true 如果成功打开
+ */
+export async function openAIPanel(page: Page): Promise<boolean> {
+  const aiButton = page.locator(AI_SELECTORS.button);
+
+  try {
+    await aiButton.waitFor({ state: "visible", timeout: TIMEOUTS.quickCheck });
+    await aiButton.click();
+    await page.locator(AI_SELECTORS.panel).waitFor({
+      state: "visible",
+      timeout: TIMEOUTS.quickCheck,
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 发送消息给 AI 助手
+ */
+export async function sendAIMessage(
+  page: Page,
+  message: string,
+): Promise<void> {
+  const input = page.locator(AI_SELECTORS.input).first();
+  await input.waitFor({ state: "visible", timeout: TIMEOUTS.quickCheck });
+  await input.fill(message);
+
+  // 按回车或点击发送按钮
+  const sendButton = page.locator(AI_SELECTORS.sendButton);
+  if (await sendButton.isVisible({ timeout: 1000 }).catch(() => false)) {
+    await sendButton.click();
+  } else {
+    await input.press("Enter");
+  }
+}
+
+/**
+ * 等待 AI 响应完成并获取响应文本
+ *
+ * @returns 响应文本或 null
+ */
+export async function getAIResponse(page: Page): Promise<string | null> {
+  // 等待加载指示器消失
+  const loading = page.locator(AI_SELECTORS.loading);
+  try {
+    // 先等待加载指示器出现（可能已经出现）
+    await loading.waitFor({ state: "attached", timeout: 3000 }).catch(() => {});
+    // 然后等待它消失
+    await loading.waitFor({ state: "hidden", timeout: TIMEOUTS.aiResponse });
+  } catch {
+    // 加载指示器可能不存在，继续
+  }
+
+  // 获取最后一条响应消息
+  const responses = page.locator(AI_SELECTORS.response);
+  try {
+    await responses
+      .last()
+      .waitFor({ state: "visible", timeout: TIMEOUTS.aiResponse });
+    return await responses.last().textContent();
+  } catch {
+    return null;
+  }
+}
+
+// ============================================
+// 诊断和调试辅助
+// ============================================
+
+/**
+ * 捕获当前页面状态用于调试
+ */
+export async function capturePageState(
+  page: Page,
+  testInfo: TestInfo,
+  label = "state",
+): Promise<void> {
+  // 截图
+  const screenshot = await page.screenshot({ fullPage: true });
+  await testInfo.attach(`${label}-screenshot`, {
+    body: screenshot,
+    contentType: "image/png",
+  });
+
+  // 页面 URL
+  await testInfo.attach(`${label}-url`, {
+    body: page.url(),
+    contentType: "text/plain",
+  });
+
+  // 控制台日志
+  const consoleLogs: string[] = [];
+  page.on("console", (msg) =>
+    consoleLogs.push(`[${msg.type()}] ${msg.text()}`),
+  );
+
+  if (consoleLogs.length > 0) {
+    await testInfo.attach(`${label}-console`, {
+      body: consoleLogs.join("\n"),
+      contentType: "text/plain",
+    });
+  }
+}
+
+/**
+ * 带诊断信息的安全操作
+ */
+export async function safeOperation<T>(
+  operation: () => Promise<T>,
+  page: Page,
+  testInfo: TestInfo,
+  operationName: string,
+): Promise<T> {
+  try {
+    return await operation();
+  } catch (error) {
+    await capturePageState(page, testInfo, `error-${operationName}`);
+    throw error;
+  }
+}
+
+// ============================================
+// 条件测试辅助
+// ============================================
+
+/**
+ * 条件测试 - 如果条件不满足则跳过
+ */
+export async function conditionalTest(
+  condition: () => Promise<boolean>,
+  skipReason: string,
+): Promise<boolean> {
+  const shouldRun = await condition();
+  if (!shouldRun) {
+    test.skip(true, skipReason);
+  }
+  return shouldRun;
+}
+
+/**
+ * 检查元素是否存在（不抛出错误）
+ */
+export async function elementExists(
+  locator: Locator,
+  timeout: number = TIMEOUTS.quickCheck,
+): Promise<boolean> {
+  try {
+    await locator.waitFor({ state: "visible", timeout });
+    return true;
+  } catch {
+    return false;
+  }
 }

@@ -1,6 +1,11 @@
 // Learn more: https://github.com/testing-library/jest-dom
 import "@testing-library/jest-dom";
 import { randomUUID } from "crypto";
+
+// Configure React act() environment for React 18
+// This is required for async state updates in hook tests
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 import { TextEncoder, TextDecoder } from "util";
 import { TransformStream, ReadableStream, WritableStream } from "stream/web";
 

@@ -16,6 +16,20 @@ jest.mock("ai", () => ({
   stepCountIs: jest.fn().mockReturnValue(() => false),
 }));
 
+// Mock Tools - must be before importing KnowledgeAgent
+jest.mock("../tools", () => ({
+  registerDefaultTools: jest.fn(),
+  getToolsAsVercelTools: jest.fn().mockReturnValue({
+    search_bookmarks: { execute: jest.fn() },
+    list_recent: { execute: jest.fn() },
+  }),
+}));
+
+// Mock mergeToolSets
+jest.mock("../core/ai-sdk-types", () => ({
+  mergeToolSets: jest.fn((...sets) => Object.assign({}, ...sets)),
+}));
+
 // Mock AI Provider Router
 jest.mock("@/lib/ai-providers", () => ({
   aiProviderRouter: {
@@ -41,6 +55,13 @@ jest.mock("@/lib/logger", () => ({
     error: jest.fn(),
     debug: jest.fn(),
   },
+}));
+
+// Mock error messages - return original message in tests for easier debugging
+jest.mock("../core/error-messages", () => ({
+  getUserFriendlyError: jest.fn((error: unknown) =>
+    error instanceof Error ? error.message : String(error),
+  ),
 }));
 
 // Import mocked modules
@@ -242,18 +263,17 @@ describe("KnowledgeAgent", () => {
 
   describe("executeStream", () => {
     it("should stream text chunks", async () => {
-      // Mock async iterator for text stream
-      const textChunks = ["Hello", " ", "World"];
-      const mockTextStream = {
+      // Mock fullStream with text-delta chunks (actual implementation uses fullStream)
+      const mockFullStream = {
         [Symbol.asyncIterator]: async function* () {
-          for (const chunk of textChunks) {
-            yield chunk;
-          }
+          yield { type: "text-delta", text: "Hello" };
+          yield { type: "text-delta", text: " " };
+          yield { type: "text-delta", text: "World" };
         },
       };
 
       const mockStreamResult = {
-        textStream: mockTextStream,
+        fullStream: mockFullStream,
         steps: Promise.resolve([]),
         usage: Promise.resolve({
           inputTokens: 10,
@@ -300,14 +320,14 @@ describe("KnowledgeAgent", () => {
     });
 
     it("should handle stream errors", async () => {
-      const mockTextStream = {
+      const mockFullStream = {
         [Symbol.asyncIterator]: async function* () {
           throw new Error("Stream interrupted");
         },
       };
 
       const mockStreamResult = {
-        textStream: mockTextStream,
+        fullStream: mockFullStream,
         steps: Promise.resolve([]),
         usage: Promise.resolve(null),
         finishReason: Promise.resolve("error"),
@@ -326,14 +346,14 @@ describe("KnowledgeAgent", () => {
     });
 
     it("should emit tool-call chunks", async () => {
-      const mockTextStream = {
+      const mockFullStream = {
         [Symbol.asyncIterator]: async function* () {
-          yield "Searching...";
+          yield { type: "text-delta", text: "Searching..." };
         },
       };
 
       const mockStreamResult = {
-        textStream: mockTextStream,
+        fullStream: mockFullStream,
         steps: Promise.resolve([
           {
             toolCalls: [
