@@ -67,8 +67,8 @@ export function AIInputEnhanced({
 }: AIInputEnhancedProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // 启用工具快捷键
-  useToolShortcuts(enableShortcuts && !disabled ? onToolChange : undefined);
+  // 启用工具快捷键（使用第二个参数控制是否启用）
+  useToolShortcuts(onToolChange, enableShortcuts && !disabled);
 
   // 处理键盘事件
   const handleKeyDown = useCallback(

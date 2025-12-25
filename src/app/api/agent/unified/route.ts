@@ -29,6 +29,7 @@ import {
   explicitToolRouter,
 } from "@/lib/ai-skills";
 import { logger } from "@/lib/logger";
+import { checkRateLimit } from "@/lib/utils/rate-limiter";
 import type { ToolType } from "@/components/ai/phase4/types";
 
 /**
@@ -80,10 +81,10 @@ const unifiedChatRequestSchema = z.object({
   message: z.string().min(1).max(2000),
   /** 会话 ID */
   conversationId: z.string().uuid().optional(),
-  /** 前端维护的消息历史 */
-  messageHistory: z.array(messageSchema).optional(),
-  /** 关联的书签 ID */
-  bookmarkIds: z.array(z.number().int().positive()).optional(),
+  /** 前端维护的消息历史（限制最多 50 条） */
+  messageHistory: z.array(messageSchema).max(50).optional(),
+  /** 关联的书签 ID（限制最多 100 个） */
+  bookmarkIds: z.array(z.number().int().positive()).max(100).optional(),
   /** 关联的文件夹 ID */
   folderId: z.number().int().positive().optional(),
   /** Phase 4: 显式工具选择 */
@@ -132,6 +133,35 @@ export async function POST(request: NextRequest) {
       return new Response(
         JSON.stringify({ success: false, error: "请先登录" }),
         { status: 401, headers: { "Content-Type": "application/json" } },
+      );
+    }
+
+    // 1.5 速率限制检查
+    const rateLimitResult = checkRateLimit(user.id, "/api/agent/unified");
+    if (!rateLimitResult.allowed) {
+      logger.warn(
+        {
+          userId: user.id.slice(0, 8) + "...",
+          remaining: rateLimitResult.remaining,
+          resetMs: rateLimitResult.resetMs,
+        },
+        "Unified API: Rate limit exceeded",
+      );
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "请求过于频繁，请稍后再试",
+          retryAfter: Math.ceil(rateLimitResult.resetMs / 1000),
+        }),
+        {
+          status: 429,
+          headers: {
+            "Content-Type": "application/json",
+            "X-RateLimit-Limit": rateLimitResult.limit.toString(),
+            "X-RateLimit-Remaining": "0",
+            "Retry-After": Math.ceil(rateLimitResult.resetMs / 1000).toString(),
+          },
+        },
       );
     }
 

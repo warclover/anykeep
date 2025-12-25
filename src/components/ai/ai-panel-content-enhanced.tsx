@@ -15,23 +15,18 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import {
-  Sparkles,
-  Trash2,
-  RotateCcw,
-  Search,
-  FolderOpen,
-  BarChart3,
-  X,
-  BookOpen,
-  Brain,
-} from "lucide-react";
+import { Sparkles, Trash2, RotateCcw, X, Brain } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AIMessageEnhanced } from "./ai-message-enhanced";
 import { AIInputEnhanced } from "./ai-input-enhanced";
 import { ActionConfirmInline } from "./action-confirm-dialog";
-import { ContextPanel, useContextItems } from "./phase4/context-panel";
+import {
+  ContextPanel,
+  useContextItems,
+  AIWelcomeScreen,
+  AISuggestionBar,
+} from "./phase4";
 import type { ToolType, FeedbackDetails } from "./phase4/types";
 import type { DisplayMessage, SuggestionItem } from "./types";
 import { adaptBackendChunk, processUnifiedChunk } from "./types";
@@ -788,7 +783,7 @@ export function AIPanelContentEnhanced({
             items={contextItems}
             onRemove={removeContextItem}
             onClear={clearContextItems}
-            onAddMore={() => setShowContextPanel(true)}
+            onAddMore={() => _setShowContextPanel(true)}
             expanded={contextExpanded}
             onExpandedChange={setContextExpanded}
           />
@@ -801,55 +796,7 @@ export function AIPanelContentEnhanced({
         className="flex-1 overflow-y-auto bg-gradient-to-b from-pink-50/50 to-white"
       >
         {messages.length === 0 ? (
-          /* 欢迎界面 */
-          <div className="flex flex-col items-center justify-center h-full py-8 px-4">
-            <div className="w-full max-w-sm bg-gradient-to-br from-pink-50 to-purple-50 rounded-2xl p-5 border border-pink-100 shadow-sm mb-6">
-              <div className="flex items-start gap-3 mb-4">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-r from-pink-400 to-purple-400 flex items-center justify-center flex-shrink-0 shadow-md">
-                  <Sparkles className="size-5 text-white" />
-                </div>
-                <div>
-                  <p className="text-gray-700 font-medium">
-                    你好！我是你的 AI 助手 ✨
-                  </p>
-                  <p className="text-gray-500 text-sm mt-1">
-                    有什么可以帮你的吗？
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={() => setInput("搜索关于 AI 的文章")}
-                  className="px-3 py-1.5 bg-white rounded-full text-xs text-pink-600 border border-pink-200 hover:bg-pink-50 hover:border-pink-300 transition-colors flex items-center gap-1 shadow-sm"
-                >
-                  <Search className="size-3" />
-                  搜索收藏
-                </button>
-                <button
-                  onClick={() => setInput("帮我制定知识复习计划")}
-                  className="px-3 py-1.5 bg-white rounded-full text-xs text-amber-600 border border-amber-200 hover:bg-amber-50 hover:border-amber-300 transition-colors flex items-center gap-1 shadow-sm"
-                >
-                  <BookOpen className="size-3" />
-                  知识复习
-                </button>
-                <button
-                  onClick={() => setInput("我有哪些文件夹")}
-                  className="px-3 py-1.5 bg-white rounded-full text-xs text-purple-600 border border-purple-200 hover:bg-purple-50 hover:border-purple-300 transition-colors flex items-center gap-1 shadow-sm"
-                >
-                  <FolderOpen className="size-3" />
-                  查看文件夹
-                </button>
-                <button
-                  onClick={() => setInput("统计我的收藏情况")}
-                  className="px-3 py-1.5 bg-white rounded-full text-xs text-indigo-600 border border-indigo-200 hover:bg-indigo-50 hover:border-indigo-300 transition-colors flex items-center gap-1 shadow-sm"
-                >
-                  <BarChart3 className="size-3" />
-                  统计分析
-                </button>
-              </div>
-            </div>
-          </div>
+          <AIWelcomeScreen onSetInput={setInput} />
         ) : (
           <div className="py-2">
             {messages.map((message, index) => (
@@ -903,37 +850,10 @@ export function AIPanelContentEnhanced({
       </ScrollArea>
 
       {/* 快捷建议栏 */}
-      {messages.length > 0 && !isLoading && (
-        <div className="px-4 py-2 border-t border-pink-100 bg-gradient-to-r from-pink-50/50 to-purple-50/50 flex-shrink-0">
-          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-            <button
-              onClick={() => setInput("继续")}
-              className="flex-shrink-0 px-3 py-1.5 bg-white border border-pink-200 rounded-full text-xs text-pink-600 hover:bg-pink-50 hover:border-pink-300 transition-colors shadow-sm"
-            >
-              继续 →
-            </button>
-            <button
-              onClick={() => setInput("帮我制定知识复习计划")}
-              className="flex-shrink-0 px-3 py-1.5 bg-white border border-amber-200 rounded-full text-xs text-amber-600 hover:bg-amber-50 hover:border-amber-300 transition-colors shadow-sm flex items-center gap-1"
-            >
-              <BookOpen className="size-3" />
-              知识复习
-            </button>
-            <button
-              onClick={() => setInput("搜索相关内容")}
-              className="flex-shrink-0 px-3 py-1.5 bg-white border border-purple-200 rounded-full text-xs text-purple-600 hover:bg-purple-50 hover:border-purple-300 transition-colors shadow-sm"
-            >
-              🔍 搜索相关
-            </button>
-            <button
-              onClick={() => setInput("给我更多详情")}
-              className="flex-shrink-0 px-3 py-1.5 bg-white border border-indigo-200 rounded-full text-xs text-indigo-600 hover:bg-indigo-50 hover:border-indigo-300 transition-colors shadow-sm"
-            >
-              📋 更多详情
-            </button>
-          </div>
-        </div>
-      )}
+      <AISuggestionBar
+        onSetInput={setInput}
+        visible={messages.length > 0 && !isLoading}
+      />
 
       {/* 增强输入区域 - Phase 4 */}
       <AIInputEnhanced

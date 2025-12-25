@@ -1,7 +1,7 @@
 /**
  * Phase 4: 交互升级组件
  *
- * @version 1.1.0
+ * @version 1.2.0
  * @since 2025-12-25
  */
 
@@ -35,3 +35,11 @@ export type {
   ContextReferences,
   UseContextItemsOptions,
 } from "./context-panel";
+
+// 欢迎界面
+export { AIWelcomeScreen } from "./ai-welcome-screen";
+export type { AIWelcomeScreenProps } from "./ai-welcome-screen";
+
+// 建议栏
+export { AISuggestionBar } from "./ai-suggestion-bar";
+export type { AISuggestionBarProps } from "./ai-suggestion-bar";
