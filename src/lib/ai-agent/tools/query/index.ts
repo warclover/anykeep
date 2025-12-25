@@ -19,13 +19,6 @@ export { countByPlatformTool } from "./count-by-platform.tool";
 // 详细统计（保留）
 export { getStatsTool } from "./get-stats.tool";
 
-/**
- * @deprecated 以下导出仅用于向后兼容，计划在 2025-02 版本移除。
- * 请使用上方的简化版 Tools（listRecentTool、countTotalTool 等）。
- */
-export { countBookmarksTool } from "./count-bookmarks.tool";
-export { listBookmarksTool } from "./list-bookmarks.tool";
-
 // 导出所有查询 Tools 数组
 import { listRecentTool } from "./list-recent.tool";
 import { listByFolderTool } from "./list-by-folder.tool";

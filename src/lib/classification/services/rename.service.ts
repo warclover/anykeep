@@ -10,7 +10,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { operationLogService } from "./operation-log.service";
-import { generateFolderNameFromBookmarks } from "@/lib/utils/ai-generator";
+import { generateFolderNameFromBookmarks } from "@/lib/ai-generator";
 import { logger } from "@/lib/logger";
 
 // ============================================
@@ -112,7 +112,10 @@ class RenameService {
 
       return suggestion;
     } catch (error) {
-      logger.error({ error: error instanceof Error ? error.message : String(error) }, `${this.LOG_PREFIX} analyzeFolder error`);
+      logger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        `${this.LOG_PREFIX} analyzeFolder error`,
+      );
       return null;
     }
   }
@@ -167,7 +170,10 @@ class RenameService {
       // 按置信度排序
       return suggestions.sort((a, b) => b.confidence - a.confidence);
     } catch (error) {
-      logger.error({ error: error instanceof Error ? error.message : String(error) }, `${this.LOG_PREFIX} analyzeAllFolders error`);
+      logger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        `${this.LOG_PREFIX} analyzeAllFolders error`,
+      );
       return [];
     }
   }
@@ -233,7 +239,10 @@ class RenameService {
         .eq("user_id", userId);
 
       if (updateError) {
-        logger.error({ error: updateError.message }, `${this.LOG_PREFIX} Update error`);
+        logger.error(
+          { error: updateError.message },
+          `${this.LOG_PREFIX} Update error`,
+        );
         return {
           success: false,
           message: "重命名失败",
@@ -247,12 +256,24 @@ class RenameService {
           userId,
           "rename",
           { folder: { id: folderId, name: oldName } },
-          { folder: { id: folderId, name: newName }, old_name: oldName, new_name: newName },
+          {
+            folder: { id: folderId, name: newName },
+            old_name: oldName,
+            new_name: newName,
+          },
           { folderId, reason: `AI 建议将「${oldName}」重命名为「${newName}」` },
         );
         snapshotId = snapshot?.id != null ? String(snapshot.id) : undefined;
       } catch (snapshotErr) {
-        logger.warn({ error: snapshotErr instanceof Error ? snapshotErr.message : String(snapshotErr) }, `${this.LOG_PREFIX} Snapshot creation warning`);
+        logger.warn(
+          {
+            error:
+              snapshotErr instanceof Error
+                ? snapshotErr.message
+                : String(snapshotErr),
+          },
+          `${this.LOG_PREFIX} Snapshot creation warning`,
+        );
       }
 
       logger.info(
@@ -267,7 +288,10 @@ class RenameService {
         snapshotId,
       };
     } catch (error) {
-      logger.error({ error: error instanceof Error ? error.message : String(error) }, `${this.LOG_PREFIX} executeRename error`);
+      logger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        `${this.LOG_PREFIX} executeRename error`,
+      );
       return {
         success: false,
         message: error instanceof Error ? error.message : "重命名失败",
@@ -333,7 +357,9 @@ class RenameService {
       }
 
       // 生成建议原因
-      const reason = result.reason || this.generateReason(currentName, suggestedName, commonTags);
+      const reason =
+        result.reason ||
+        this.generateReason(currentName, suggestedName, commonTags);
 
       return {
         folderId: folder.id,
@@ -345,7 +371,10 @@ class RenameService {
         commonTags,
       };
     } catch (error) {
-      logger.error({ error: error instanceof Error ? error.message : String(error) }, `${this.LOG_PREFIX} generateRenameSuggestion error`);
+      logger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        `${this.LOG_PREFIX} generateRenameSuggestion error`,
+      );
       return null;
     }
   }
@@ -374,7 +403,14 @@ class RenameService {
     if (bookmarkCount >= 20) confidence += 10;
 
     // 当前名称是否过于通用
-    const genericNames = ["新文件夹", "未命名", "其他", "杂项", "临时", "待整理"];
+    const genericNames = [
+      "新文件夹",
+      "未命名",
+      "其他",
+      "杂项",
+      "临时",
+      "待整理",
+    ];
     if (genericNames.some((g) => currentName.includes(g))) {
       confidence += 15;
     }
@@ -414,7 +450,14 @@ class RenameService {
     const reasons: string[] = [];
 
     // 检查当前名称问题
-    const genericNames = ["新文件夹", "未命名", "其他", "杂项", "临时", "待整理"];
+    const genericNames = [
+      "新文件夹",
+      "未命名",
+      "其他",
+      "杂项",
+      "临时",
+      "待整理",
+    ];
     if (genericNames.some((g) => currentName.includes(g))) {
       reasons.push("当前名称过于通用");
     }

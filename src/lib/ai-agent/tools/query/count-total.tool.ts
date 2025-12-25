@@ -11,6 +11,7 @@
 import { z } from "zod";
 import type { Tool, ToolContext, ToolResult } from "../types";
 import { createClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
 
 // ============================================
 // 参数定义（无参数）
@@ -47,6 +48,7 @@ export const countTotalTool: Tool<CountTotalParams, CountTotalResult> = {
     _params: CountTotalParams,
     context: ToolContext,
   ): Promise<ToolResult<CountTotalResult>> {
+    const startTime = performance.now();
     const supabase = await createClient();
 
     const { count, error } = await supabase
@@ -56,6 +58,15 @@ export const countTotalTool: Tool<CountTotalParams, CountTotalResult> = {
       .is("deleted_at", null);
 
     if (error) {
+      logger.error(
+        {
+          toolName: "count_total",
+          userId: context.userId,
+          error: error.message,
+        },
+        "count_total: DB Error",
+      );
+
       return {
         success: false,
         error: error.message,
@@ -63,13 +74,23 @@ export const countTotalTool: Tool<CountTotalParams, CountTotalResult> = {
       };
     }
 
+    logger.info(
+      {
+        toolName: "count_total",
+        userId: context.userId,
+        total: count ?? 0,
+        executionTimeMs: Math.round(performance.now() - startTime),
+      },
+      "count_total: Success",
+    );
+
     return {
       success: true,
       data: {
         total: count ?? 0,
       },
       metadata: {
-        executionTimeMs: 0,
+        executionTimeMs: Math.round(performance.now() - startTime),
         affectedCount: count ?? 0,
       },
     };

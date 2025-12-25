@@ -11,6 +11,7 @@
 import { z } from "zod";
 import type { Tool, ToolContext, ToolResult } from "../types";
 import { createClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
 
 // ============================================
 // 常量
@@ -128,6 +129,7 @@ export const getStatsTool: Tool<StatsParams, StatsResult> = {
     params: StatsParams,
     context: ToolContext,
   ): Promise<ToolResult<StatsResult>> {
+    const startTime = performance.now();
     const supabase = await createClient();
     const {
       include_trends = true,
@@ -163,6 +165,15 @@ export const getStatsTool: Tool<StatsParams, StatsResult> = {
     ]);
 
     if (bookmarksResult.error) {
+      logger.error(
+        {
+          toolName: "get_stats",
+          userId: context.userId,
+          error: bookmarksResult.error.message,
+        },
+        "get_stats: DB Error",
+      );
+
       return {
         success: false,
         error: bookmarksResult.error.message,
@@ -279,11 +290,26 @@ export const getStatsTool: Tool<StatsParams, StatsResult> = {
         .sort((a, b) => b.count - a.count);
     }
 
+    logger.info(
+      {
+        toolName: "get_stats",
+        userId: context.userId,
+        totalBookmarks,
+        totalFolders,
+        totalTags,
+        includeTrends: include_trends,
+        includeTags: include_tags,
+        includePlatforms: include_platforms,
+        executionTimeMs: Math.round(performance.now() - startTime),
+      },
+      "get_stats: Success",
+    );
+
     return {
       success: true,
       data: result,
       metadata: {
-        executionTimeMs: 0,
+        executionTimeMs: Math.round(performance.now() - startTime),
         affectedCount: totalBookmarks,
       },
     };

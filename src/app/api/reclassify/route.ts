@@ -20,10 +20,7 @@ import {
 } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
 import type { ClassificationSuggestionInsert } from "@/types/supabase";
-import {
-  recommendFolder,
-  type FolderRecommendation,
-} from "@/lib/utils/ai-generator";
+import { recommendFolder, type FolderRecommendation } from "@/lib/ai-generator";
 import { TrustModeService } from "@/lib/trust-mode/trust-mode.service";
 import { MessageService } from "@/lib/messages/message-service";
 

@@ -10,7 +10,7 @@
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { operationLogService } from "./operation-log.service";
-import { generateFolderNameFromBookmarks } from "@/lib/utils/ai-generator";
+import { generateFolderNameFromBookmarks } from "@/lib/ai-generator";
 import { initializeFolderNameProfile } from "../integration";
 import { logger } from "@/lib/logger";
 

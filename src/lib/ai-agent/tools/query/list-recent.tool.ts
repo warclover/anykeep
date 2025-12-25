@@ -11,6 +11,7 @@
 import { z } from "zod";
 import type { Tool, ToolContext, ToolResult } from "../types";
 import { createClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
 
 // ============================================
 // 参数定义（极简）
@@ -66,6 +67,7 @@ export const listRecentTool: Tool<ListRecentParams, ListRecentResult> = {
     params: ListRecentParams,
     context: ToolContext,
   ): Promise<ToolResult<ListRecentResult>> {
+    const startTime = performance.now();
     const supabase = await createClient();
     const limit = params.limit ?? 10;
 
@@ -80,6 +82,16 @@ export const listRecentTool: Tool<ListRecentParams, ListRecentResult> = {
       .limit(limit);
 
     if (error) {
+      logger.error(
+        {
+          toolName: "list_recent",
+          userId: context.userId,
+          limit,
+          error: error.message,
+        },
+        "list_recent: DB Error",
+      );
+
       return {
         success: false,
         error: error.message,
@@ -97,6 +109,18 @@ export const listRecentTool: Tool<ListRecentParams, ListRecentResult> = {
       createdAt: item.created_at,
     }));
 
+    logger.info(
+      {
+        toolName: "list_recent",
+        userId: context.userId,
+        limit,
+        resultCount: bookmarks.length,
+        total: count ?? 0,
+        executionTimeMs: Math.round(performance.now() - startTime),
+      },
+      "list_recent: Success",
+    );
+
     return {
       success: true,
       data: {
@@ -104,7 +128,7 @@ export const listRecentTool: Tool<ListRecentParams, ListRecentResult> = {
         total: count ?? 0,
       },
       metadata: {
-        executionTimeMs: 0,
+        executionTimeMs: Math.round(performance.now() - startTime),
         affectedCount: bookmarks.length,
       },
     };

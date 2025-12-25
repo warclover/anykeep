@@ -7,7 +7,7 @@
 
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { generateAIContent } from "@/lib/utils/ai-generator";
+import { generateAIContent } from "@/lib/ai-generator";
 import { detectContentType } from "@/lib/classification/content-type-detector";
 import { logger } from "@/lib/logger";
 

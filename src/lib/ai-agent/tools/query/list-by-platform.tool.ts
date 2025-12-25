@@ -10,6 +10,7 @@
 import { z } from "zod";
 import type { Tool, ToolContext, ToolResult } from "../types";
 import { createClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
 
 // ============================================
 // 参数定义（简化）
@@ -84,6 +85,7 @@ export const listByPlatformTool: Tool<
     params: ListByPlatformParams,
     context: ToolContext,
   ): Promise<ToolResult<ListByPlatformResult>> {
+    const startTime = performance.now();
     const supabase = await createClient();
     const { platform, limit = 20 } = params;
 
@@ -99,6 +101,17 @@ export const listByPlatformTool: Tool<
       .limit(limit);
 
     if (error) {
+      logger.error(
+        {
+          toolName: "list_by_platform",
+          userId: context.userId,
+          platform,
+          limit,
+          error: error.message,
+        },
+        "list_by_platform: DB Error",
+      );
+
       return {
         success: false,
         error: error.message,
@@ -116,6 +129,19 @@ export const listByPlatformTool: Tool<
       createdAt: item.created_at,
     }));
 
+    logger.info(
+      {
+        toolName: "list_by_platform",
+        userId: context.userId,
+        platform,
+        limit,
+        resultCount: bookmarks.length,
+        total: count ?? 0,
+        executionTimeMs: Math.round(performance.now() - startTime),
+      },
+      "list_by_platform: Success",
+    );
+
     return {
       success: true,
       data: {
@@ -124,7 +150,7 @@ export const listByPlatformTool: Tool<
         total: count ?? 0,
       },
       metadata: {
-        executionTimeMs: 0,
+        executionTimeMs: Math.round(performance.now() - startTime),
         affectedCount: bookmarks.length,
       },
     };

@@ -10,6 +10,7 @@
 import { z } from "zod";
 import type { Tool, ToolContext, ToolResult } from "../types";
 import { createClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
 
 // ============================================
 // 参数定义（简化）
@@ -66,6 +67,7 @@ export const countByPlatformTool: Tool<
     params: CountByPlatformParams,
     context: ToolContext,
   ): Promise<ToolResult<CountByPlatformResult>> {
+    const startTime = performance.now();
     const supabase = await createClient();
     const { platform } = params;
 
@@ -77,12 +79,33 @@ export const countByPlatformTool: Tool<
       .is("deleted_at", null);
 
     if (error) {
+      logger.error(
+        {
+          toolName: "count_by_platform",
+          userId: context.userId,
+          platform,
+          error: error.message,
+        },
+        "count_by_platform: DB Error",
+      );
+
       return {
         success: false,
         error: error.message,
         errorCode: "DB_ERROR",
       };
     }
+
+    logger.info(
+      {
+        toolName: "count_by_platform",
+        userId: context.userId,
+        platform,
+        count: count ?? 0,
+        executionTimeMs: Math.round(performance.now() - startTime),
+      },
+      "count_by_platform: Success",
+    );
 
     return {
       success: true,
@@ -91,7 +114,7 @@ export const countByPlatformTool: Tool<
         count: count ?? 0,
       },
       metadata: {
-        executionTimeMs: 0,
+        executionTimeMs: Math.round(performance.now() - startTime),
         affectedCount: count ?? 0,
       },
     };

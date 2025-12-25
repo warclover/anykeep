@@ -10,6 +10,7 @@
 import { z } from "zod";
 import type { Tool, ToolContext, ToolResult } from "../types";
 import { createClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
 
 // ============================================
 // 参数定义（简化）
@@ -50,6 +51,7 @@ export const countByFolderTool: Tool<CountByFolderParams, CountByFolderResult> =
       params: CountByFolderParams,
       context: ToolContext,
     ): Promise<ToolResult<CountByFolderResult>> {
+      const startTime = performance.now();
       const supabase = await createClient();
       const { folder_id } = params;
 
@@ -70,12 +72,34 @@ export const countByFolderTool: Tool<CountByFolderParams, CountByFolderResult> =
         .is("deleted_at", null);
 
       if (error) {
+        logger.error(
+          {
+            toolName: "count_by_folder",
+            userId: context.userId,
+            folderId: folder_id,
+            error: error.message,
+          },
+          "count_by_folder: DB Error",
+        );
+
         return {
           success: false,
           error: error.message,
           errorCode: "DB_ERROR",
         };
       }
+
+      logger.info(
+        {
+          toolName: "count_by_folder",
+          userId: context.userId,
+          folderId: folder_id,
+          folderName: folder?.name ?? null,
+          count: count ?? 0,
+          executionTimeMs: Math.round(performance.now() - startTime),
+        },
+        "count_by_folder: Success",
+      );
 
       return {
         success: true,
@@ -84,7 +108,7 @@ export const countByFolderTool: Tool<CountByFolderParams, CountByFolderResult> =
           count: count ?? 0,
         },
         metadata: {
-          executionTimeMs: 0,
+          executionTimeMs: Math.round(performance.now() - startTime),
           affectedCount: count ?? 0,
         },
       };

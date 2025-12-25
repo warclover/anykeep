@@ -23,7 +23,7 @@ import {
   generateEmbedding,
   buildEmbeddingText,
 } from "@/lib/utils/embedding-generator";
-import { generateWithAI } from "@/lib/utils/ai-generator";
+import { generateWithAI } from "@/lib/ai-generator";
 import { logger } from "@/lib/logger";
 import { eventBus, ClassificationEvents } from "@/lib/shared/event-bus";
 

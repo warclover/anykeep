@@ -6,7 +6,7 @@
 
 import type { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { generateAIContent } from "@/lib/utils/ai-generator";
+import { generateAIContent } from "@/lib/ai-generator";
 import {
   successResponse,
   unauthorizedError,

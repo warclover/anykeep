@@ -10,6 +10,7 @@
 import { z } from "zod";
 import type { Tool, ToolContext, ToolResult } from "../types";
 import { createClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
 
 // ============================================
 // 参数定义（简化）
@@ -67,6 +68,7 @@ export const listByFolderTool: Tool<ListByFolderParams, ListByFolderResult> = {
     params: ListByFolderParams,
     context: ToolContext,
   ): Promise<ToolResult<ListByFolderResult>> {
+    const startTime = performance.now();
     const supabase = await createClient();
     const { folder_id, limit = 20 } = params;
 
@@ -91,6 +93,17 @@ export const listByFolderTool: Tool<ListByFolderParams, ListByFolderResult> = {
       .limit(limit);
 
     if (error) {
+      logger.error(
+        {
+          toolName: "list_by_folder",
+          userId: context.userId,
+          folderId: folder_id,
+          limit,
+          error: error.message,
+        },
+        "list_by_folder: DB Error",
+      );
+
       return {
         success: false,
         error: error.message,
@@ -108,6 +121,20 @@ export const listByFolderTool: Tool<ListByFolderParams, ListByFolderResult> = {
       createdAt: item.created_at,
     }));
 
+    logger.info(
+      {
+        toolName: "list_by_folder",
+        userId: context.userId,
+        folderId: folder_id,
+        folderName: folder?.name ?? null,
+        limit,
+        resultCount: bookmarks.length,
+        total: count ?? 0,
+        executionTimeMs: Math.round(performance.now() - startTime),
+      },
+      "list_by_folder: Success",
+    );
+
     return {
       success: true,
       data: {
@@ -116,7 +143,7 @@ export const listByFolderTool: Tool<ListByFolderParams, ListByFolderResult> = {
         total: count ?? 0,
       },
       metadata: {
-        executionTimeMs: 0,
+        executionTimeMs: Math.round(performance.now() - startTime),
         affectedCount: bookmarks.length,
       },
     };
