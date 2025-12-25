@@ -13,7 +13,7 @@
  */
 
 import { logger } from "@/lib/logger";
-import type { IntentRouter } from "../router";
+import type { IntentRouter, IntentType } from "../router";
 import { createIntentRouter } from "../router";
 import type { OrchestrationEngine } from "./orchestration-engine";
 import { createOrchestrationEngine } from "./orchestration-engine";
@@ -234,21 +234,29 @@ export class UnifiedEngine {
         );
       }
 
-      // 3. 根据模式执行
+      // 3. 根据模式执行（带跟进建议）
       if (
         routeResult.mode === "orchestration" &&
         routeResult.suggestedSkill &&
         this.orchestrationEngine.hasSkill(routeResult.suggestedSkill)
       ) {
-        // 编排模式
-        yield* this.executeOrchestrationWithFallback(
-          routeResult.suggestedSkill,
-          input,
-          context,
+        // 编排模式 - 包装以注入跟进建议
+        yield* this.executeWithSuggestions(
+          this.executeOrchestrationWithFallback(
+            routeResult.suggestedSkill,
+            input,
+            context,
+          ),
+          routeResult.intent.type,
+          routeResult.intent.subType,
         );
       } else {
-        // 原子模式
-        yield* this.executeAtomic(input, context);
+        // 原子模式 - 包装以注入跟进建议
+        yield* this.executeWithSuggestions(
+          this.executeAtomic(input, context),
+          routeResult.intent.type,
+          routeResult.intent.subType,
+        );
       }
     } catch (error) {
       // 改进的错误日志：包含堆栈信息便于调试
@@ -391,6 +399,42 @@ export class UnifiedEngine {
       );
 
       yield* this.executeAtomic(input, context);
+    }
+  }
+
+  /**
+   * 执行流程并在完成前注入跟进建议
+   *
+   * 在 done chunk 之前发送 suggestions chunk，基于意图类型和子类型
+   */
+  private async *executeWithSuggestions(
+    generator: AsyncGenerator<UnifiedStreamChunk>,
+    intentType: IntentType,
+    subType?: string,
+  ): AsyncGenerator<UnifiedStreamChunk> {
+    let suggestionsEmitted = false;
+
+    for await (const chunk of generator) {
+      // 在 done chunk 之前注入 suggestions
+      if (chunk.type === "done" && !suggestionsEmitted) {
+        // 只有成功完成时才发送建议
+        if (chunk.data.success) {
+          const suggestionsChunk = this.outputAdapter.createSuggestionsChunk(
+            intentType,
+            subType,
+          );
+          // 只有有建议时才发送
+          if (
+            suggestionsChunk.type === "suggestions" &&
+            suggestionsChunk.data.suggestions.length > 0
+          ) {
+            yield suggestionsChunk;
+            suggestionsEmitted = true;
+          }
+        }
+      }
+
+      yield chunk;
     }
   }
 

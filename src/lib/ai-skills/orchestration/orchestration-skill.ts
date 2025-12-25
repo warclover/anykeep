@@ -300,7 +300,7 @@ export abstract class OrchestrationSkill<TInput = unknown, TOutput = unknown>
    */
   protected *emitSuggestions(
     suggestions: Array<{
-      label: string;
+      text: string;
       action: string;
       params?: Record<string, unknown>;
       icon?: string;

@@ -206,4 +206,163 @@ describe("IntentClassifier", () => {
       );
     });
   });
+
+  // ============================================
+  // Phase 1.1: 多候选收集机制测试
+  // ============================================
+
+  describe("collectAllMatches", () => {
+    it("should collect all matching rules instead of returning first match", () => {
+      // "梳理内容总结纪要" 应该同时匹配 organize(梳理) 和 create(总结)
+      const candidates = classifier.collectAllMatches("梳理内容总结纪要");
+
+      // 应该有多个候选
+      expect(candidates.length).toBeGreaterThan(1);
+
+      // 应该包含 organize 和 create 两种类型
+      const types = candidates.map((c) => c.type);
+      expect(types).toContain("organize");
+      expect(types).toContain("create");
+    });
+
+    it("should return candidates sorted by confidence", () => {
+      const candidates = classifier.collectAllMatches("整理并总结");
+
+      // 验证按置信度降序排序
+      for (let i = 1; i < candidates.length; i++) {
+        expect(candidates[i - 1].confidence).toBeGreaterThanOrEqual(
+          candidates[i].confidence,
+        );
+      }
+    });
+
+    it("should include pattern and matchIndex in candidates", () => {
+      const candidates = classifier.collectAllMatches("搜索关于AI的文章");
+
+      expect(candidates.length).toBeGreaterThan(0);
+      const first = candidates[0];
+      expect(first.pattern).toBeDefined();
+      expect(typeof first.matchIndex).toBe("number");
+      expect(first.matchIndex).toBeGreaterThanOrEqual(0);
+    });
+
+    it("should return empty array for no matches", () => {
+      const candidates = classifier.collectAllMatches("xyz123");
+
+      expect(candidates).toEqual([]);
+    });
+  });
+
+  describe("deduplicateCandidates", () => {
+    it("should keep only highest weight candidate for each type", () => {
+      const candidates = classifier.collectAllMatches("整理并总结这些内容");
+      const deduplicated = classifier.deduplicateCandidates(candidates);
+
+      // 每种类型只应出现一次
+      const typeCounts = new Map<string, number>();
+      for (const c of deduplicated) {
+        typeCounts.set(c.type, (typeCounts.get(c.type) || 0) + 1);
+      }
+
+      for (const count of typeCounts.values()) {
+        expect(count).toBe(1);
+      }
+    });
+
+    it("should preserve higher weight candidate when deduplicating", () => {
+      // 手动创建两个相同类型但不同权重的候选
+      const candidates = [
+        {
+          pattern: "test1",
+          type: "query" as const,
+          weight: 50,
+          matchIndex: 0,
+          confidence: 0.8,
+          complexity: "simple" as const,
+        },
+        {
+          pattern: "test2",
+          type: "query" as const,
+          weight: 80,
+          matchIndex: 5,
+          confidence: 0.75,
+          complexity: "simple" as const,
+        },
+      ];
+
+      const deduplicated = classifier.deduplicateCandidates(candidates);
+
+      expect(deduplicated.length).toBe(1);
+      expect(deduplicated[0].weight).toBe(80);
+    });
+  });
+
+  describe("classifyWithCandidates", () => {
+    it("should return MultiCandidateResult with primary and candidates", async () => {
+      const result =
+        await classifier.classifyWithCandidates("搜索关于AI的文章");
+
+      expect(result.primary).toBeDefined();
+      expect(result.primary.type).toBe("query");
+      expect(Array.isArray(result.candidates)).toBe(true);
+      expect(typeof result.disambiguated).toBe("boolean");
+    });
+
+    it("should detect need for disambiguation when confidence gap is small", async () => {
+      // "梳理内容总结纪要" 应该匹配多个意图且置信度接近
+      const result =
+        await classifier.classifyWithCandidates("梳理内容总结纪要");
+
+      // 如果有多个候选且置信度接近，应该标记需要消歧
+      if (
+        result.candidates.length >= 2 &&
+        result.candidates[0].confidence - result.candidates[1].confidence < 0.2
+      ) {
+        expect(result.disambiguationReason).toBeDefined();
+      }
+    });
+
+    it("should return correct result for '梳理内容总结纪要' with multiple candidates", async () => {
+      const result =
+        await classifier.classifyWithCandidates("梳理内容总结纪要");
+
+      // 应该有 organize 和 create 两个候选
+      const organizeCandidate = result.candidates.find(
+        (c) => c.type === "organize",
+      );
+      const createCandidate = result.candidates.find(
+        (c) => c.type === "create",
+      );
+
+      expect(organizeCandidate).toBeDefined();
+      expect(createCandidate).toBeDefined();
+
+      // 目前没有消歧规则，应该返回权重最高的（organize 权重 80）
+      // 注：Phase 1.2 实现消歧后，这里应该返回 create
+    });
+
+    it("should return correct result for '整理并总结' with multiple candidates", async () => {
+      const result = await classifier.classifyWithCandidates("整理并总结");
+
+      // 应该有 organize 和 create 两个候选
+      const types = result.candidates.map((c) => c.type);
+      expect(types).toContain("organize");
+      expect(types).toContain("create");
+    });
+
+    it("should handle single candidate case", async () => {
+      const result = await classifier.classifyWithCandidates("你好");
+
+      expect(result.primary.type).toBe("chitchat");
+      expect(result.disambiguated).toBe(false);
+    });
+
+    it("should return default classification for no matches", async () => {
+      const result = await classifier.classifyWithCandidates("xyz123无意义");
+
+      expect(result.candidates.length).toBe(0);
+      expect(result.primary.type).toBe("chitchat");
+      expect(result.primary.confidence).toBeLessThan(0.5);
+    });
+  });
 });

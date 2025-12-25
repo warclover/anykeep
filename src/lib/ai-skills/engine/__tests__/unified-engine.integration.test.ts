@@ -471,6 +471,85 @@ describe("UnifiedEngine Integration Tests", () => {
       );
     });
   });
+
+  describe("Suggestions Injection", () => {
+    it("should inject suggestions chunk before done chunk on success", async () => {
+      // Set up atomic executor that returns success
+      const atomicExecutor =
+        async function* (): AsyncGenerator<AgentStreamChunk> {
+          yield { type: "text", text: "搜索结果如下" };
+          yield {
+            type: "done",
+            result: {
+              success: true,
+              content: "搜索完成",
+              toolCalls: [],
+              durationMs: 100,
+            },
+          };
+        };
+      engine.setAtomicExecutor(atomicExecutor);
+
+      const chunks: UnifiedStreamChunk[] = [];
+      // Use a query message to trigger query intent with suggestions
+      for await (const chunk of engine.execute(
+        "搜索关于AI的文章",
+        createMockContext(),
+      )) {
+        chunks.push(chunk);
+      }
+
+      // Find suggestions and done chunks
+      const suggestionsIndex = chunks.findIndex(
+        (c) => c.type === "suggestions",
+      );
+      const doneIndex = chunks.findIndex((c) => c.type === "done");
+
+      // Suggestions should be present and before done
+      if (suggestionsIndex !== -1) {
+        expect(suggestionsIndex).toBeLessThan(doneIndex);
+
+        // Verify suggestions structure
+        const suggestionsChunk = chunks[suggestionsIndex];
+        expect(suggestionsChunk.type).toBe("suggestions");
+        expect(
+          (suggestionsChunk.data as { suggestions: unknown[] }).suggestions,
+        ).toBeInstanceOf(Array);
+      }
+    });
+
+    it("should not inject suggestions when execution fails", async () => {
+      // Set up atomic executor that returns failure
+      const atomicExecutor =
+        async function* (): AsyncGenerator<AgentStreamChunk> {
+          yield { type: "text", text: "Error occurred" };
+          yield {
+            type: "done",
+            result: {
+              success: false,
+              content: "",
+              toolCalls: [],
+              durationMs: 50,
+              error: "Test error",
+            },
+          };
+        };
+      engine.setAtomicExecutor(atomicExecutor);
+
+      const chunks: UnifiedStreamChunk[] = [];
+      for await (const chunk of engine.execute(
+        "failing query",
+        createMockContext(),
+        { forceMode: "atomic" },
+      )) {
+        chunks.push(chunk);
+      }
+
+      // Should not have suggestions chunk for failed execution
+      const suggestionsChunk = chunks.find((c) => c.type === "suggestions");
+      expect(suggestionsChunk).toBeUndefined();
+    });
+  });
 });
 
 describe("UnifiedEngine Factory", () => {

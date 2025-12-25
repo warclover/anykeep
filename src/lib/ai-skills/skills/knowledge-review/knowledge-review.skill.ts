@@ -300,7 +300,7 @@ export class KnowledgeReviewSkill extends OrchestrationSkill<
       // 输出建议
       yield* this.emitSuggestions(
         suggestions.map((s, i) => ({
-          label: `建议 ${i + 1}`,
+          text: `建议 ${i + 1}`,
           action: "review",
           params: { suggestion: s },
           icon: "💡",

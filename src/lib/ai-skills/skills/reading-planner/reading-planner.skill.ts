@@ -353,12 +353,12 @@ export class ReadingPlannerSkill extends OrchestrationSkill<
       // 输出后续建议
       yield* this.emitSuggestions([
         {
-          label: "开始阅读",
+          text: "开始阅读",
           action: "start_reading",
           params: { planId: plan.plan.id },
         },
         {
-          label: "导出计划",
+          text: "导出计划",
           action: "export_plan",
           params: { planId: plan.plan.id, format: "markdown" },
         },

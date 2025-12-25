@@ -214,6 +214,70 @@ export interface IntentClassifierConfig {
   enableEntityExtraction?: boolean;
   /** LLM 调用超时时间（毫秒） */
   llmTimeoutMs?: number;
+  /** 消歧置信度阈值（top1 和 top2 差值小于此值时触发消歧） */
+  disambiguationThreshold?: number;
+}
+
+// ============================================
+// 多候选分类相关类型 (Phase 1.1)
+// ============================================
+
+/**
+ * 意图候选项
+ *
+ * 表示一个可能的意图匹配结果
+ */
+export interface IntentCandidate {
+  /** 匹配的规则模式（用于调试） */
+  pattern: string;
+  /** 意图类型 */
+  type: IntentType;
+  /** 子类型 */
+  subType?: string;
+  /** 权重（规则定义的优先级） */
+  weight: number;
+  /** 匹配位置索引 */
+  matchIndex: number;
+  /** 置信度 0-1 */
+  confidence: number;
+  /** 复杂度提示 */
+  complexity: "simple" | "medium" | "complex";
+}
+
+/**
+ * 多候选分类结果
+ *
+ * 包含主意图和所有候选项
+ */
+export interface MultiCandidateResult {
+  /** 最终选定的意图 */
+  primary: IntentClassification;
+  /** 所有候选项（按置信度排序） */
+  candidates: IntentCandidate[];
+  /** 是否触发了消歧 */
+  disambiguated: boolean;
+  /** 消歧原因（如果触发） */
+  disambiguationReason?: string;
+}
+
+/**
+ * 消歧规则
+ *
+ * 定义当多个意图冲突时如何选择
+ */
+export interface DisambiguationRule {
+  /** 规则 ID */
+  id: string;
+  /** 冲突的意图类型 */
+  conflicts: IntentType[];
+  /** 匹配模式 */
+  pattern: RegExp;
+  /** 胜出的意图类型 */
+  winner: IntentType;
+  /** 优先级（越高越先匹配） */
+  priority: number;
+  /** 解释说明 */
+  reason: string;
 }
 
 /**

@@ -426,12 +426,12 @@ export class RelatedDiscoverySkill extends OrchestrationSkill<
       // 输出后续建议
       yield* this.emitSuggestions([
         {
-          label: "查看详情",
+          text: "查看详情",
           action: "view_related",
           params: { items: relatedItems.slice(0, 5).map((i) => i.bookmarkId) },
         },
         {
-          label: "导出关系图",
+          text: "导出关系图",
           action: "export_graph",
           params: { format: "json" },
         },

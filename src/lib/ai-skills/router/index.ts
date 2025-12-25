@@ -14,6 +14,10 @@ export type {
   IntentClassification,
   IntentRule,
   IntentClassifierConfig,
+  // 多候选分类相关 (Phase 1.1)
+  IntentCandidate,
+  MultiCandidateResult,
+  DisambiguationRule,
   // 复杂度相关
   ComplexityLevel,
   ComplexityFactor,
@@ -56,3 +60,10 @@ export {
   createIntentRouter,
   intentRouter,
 } from "./intent-router";
+
+// 消歧规则 (Phase 1.2)
+export {
+  DISAMBIGUATION_RULES,
+  getApplicableRules,
+  findMatchingRule,
+} from "./disambiguation-rules";

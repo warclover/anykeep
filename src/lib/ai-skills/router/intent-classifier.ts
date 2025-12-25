@@ -20,7 +20,11 @@ import type {
   IntentRule,
   ExtractedEntity,
   IntentClassifierConfig,
+  IntentCandidate,
+  MultiCandidateResult,
+  DisambiguationRule,
 } from "./types";
+import { DISAMBIGUATION_RULES, findMatchingRule } from "./disambiguation-rules";
 
 /**
  * 默认意图分类规则
@@ -500,6 +504,354 @@ export class IntentClassifier {
    */
   getRules(): IntentRule[] {
     return [...this.rules];
+  }
+
+  // ============================================
+  // 多候选收集机制 (Phase 1.1)
+  // ============================================
+
+  /**
+   * 收集所有匹配的意图候选项
+   *
+   * 遍历所有规则，返回所有匹配结果，不立即返回
+   *
+   * @param message - 用户输入的消息
+   * @returns 所有匹配的候选项列表
+   */
+  collectAllMatches(message: string): IntentCandidate[] {
+    const candidates: IntentCandidate[] = [];
+
+    for (const rule of this.rules) {
+      const match = rule.pattern.exec(message);
+      if (match) {
+        candidates.push({
+          pattern: rule.pattern.source,
+          type: rule.type,
+          subType: rule.subType,
+          weight: rule.weight || 0,
+          matchIndex: match.index,
+          confidence: this.calculateConfidence(message, rule),
+          complexity: rule.complexity,
+        });
+      }
+    }
+
+    // 按置信度降序排序
+    return candidates.sort((a, b) => b.confidence - a.confidence);
+  }
+
+  /**
+   * 候选去重：相同意图类型只保留最高权重的候选
+   *
+   * @param candidates - 原始候选列表
+   * @returns 去重后的候选列表
+   */
+  deduplicateCandidates(candidates: IntentCandidate[]): IntentCandidate[] {
+    const typeMap = new Map<IntentType, IntentCandidate>();
+
+    for (const candidate of candidates) {
+      const existing = typeMap.get(candidate.type);
+      if (!existing || candidate.weight > existing.weight) {
+        typeMap.set(candidate.type, candidate);
+      }
+    }
+
+    // 按置信度降序排序后返回
+    return Array.from(typeMap.values()).sort(
+      (a, b) => b.confidence - a.confidence,
+    );
+  }
+
+  /**
+   * 多候选分类（完整流程）
+   *
+   * 1. 收集所有匹配
+   * 2. 去重
+   * 3. 判断是否需要消歧
+   * 4. 返回结果
+   *
+   * @param message - 用户输入的消息
+   * @returns 多候选分类结果
+   */
+  async classifyWithCandidates(message: string): Promise<MultiCandidateResult> {
+    const startTime = performance.now();
+
+    // 1. 收集所有匹配
+    const allMatches = this.collectAllMatches(message);
+
+    // 2. 去重
+    const candidates = this.deduplicateCandidates(allMatches);
+
+    // 3. 提取实体
+    const entities = this.config.enableEntityExtraction
+      ? this.extractEntities(message)
+      : [];
+
+    // 4. 无候选时返回默认结果
+    if (candidates.length === 0) {
+      const defaultResult = this.getDefaultClassification(message);
+      logger.debug(
+        {
+          message: message.substring(0, 50),
+          candidates: 0,
+          durationMs: Math.round(performance.now() - startTime),
+        },
+        "IntentClassifier: No candidates found, using default",
+      );
+      return {
+        primary: defaultResult,
+        candidates: [],
+        disambiguated: false,
+      };
+    }
+
+    // 5. 单一候选直接返回
+    if (candidates.length === 1) {
+      const primary = this.candidateToClassification(candidates[0], entities);
+      logger.debug(
+        {
+          message: message.substring(0, 50),
+          intent: primary.type,
+          candidates: 1,
+          durationMs: Math.round(performance.now() - startTime),
+        },
+        "IntentClassifier: Single candidate",
+      );
+      return {
+        primary,
+        candidates,
+        disambiguated: false,
+      };
+    }
+
+    // 6. 多候选：检查是否需要消歧
+    const threshold = this.config.disambiguationThreshold ?? 0.2;
+    const top1 = candidates[0];
+    const top2 = candidates[1];
+    const needsDisambiguation = top1.confidence - top2.confidence < threshold;
+
+    if (needsDisambiguation) {
+      logger.debug(
+        {
+          message: message.substring(0, 50),
+          top1: { type: top1.type, confidence: top1.confidence },
+          top2: { type: top2.type, confidence: top2.confidence },
+          gap: top1.confidence - top2.confidence,
+        },
+        "IntentClassifier: Disambiguation needed",
+      );
+
+      // 调用消歧规则引擎
+      const disambiguationResult = this.disambiguate(message, candidates);
+
+      if (disambiguationResult.disambiguated) {
+        const winner = candidates.find(
+          (c) => c.type === disambiguationResult.winnerType,
+        );
+
+        if (winner) {
+          const primary = this.candidateToClassification(winner, entities);
+
+          logger.debug(
+            {
+              message: message.substring(0, 50),
+              intent: primary.type,
+              rule: disambiguationResult.ruleId,
+              reason: disambiguationResult.reason,
+              durationMs: Math.round(performance.now() - startTime),
+            },
+            "IntentClassifier: Disambiguation succeeded",
+          );
+
+          return {
+            primary,
+            candidates,
+            disambiguated: true,
+            disambiguationReason: disambiguationResult.reason,
+          };
+        }
+      }
+    }
+
+    // 无消歧或消歧失败，返回 top1 作为主意图
+    const primary = this.candidateToClassification(top1, entities);
+
+    logger.debug(
+      {
+        message: message.substring(0, 50),
+        intent: primary.type,
+        candidates: candidates.length,
+        needsDisambiguation,
+        durationMs: Math.round(performance.now() - startTime),
+      },
+      "IntentClassifier: Multi-candidate result",
+    );
+
+    return {
+      primary,
+      candidates,
+      disambiguated: false,
+      disambiguationReason: needsDisambiguation
+        ? "Confidence gap below threshold"
+        : undefined,
+    };
+  }
+
+  /**
+   * 将候选项转换为完整的分类结果
+   */
+  private candidateToClassification(
+    candidate: IntentCandidate,
+    entities: ExtractedEntity[],
+  ): IntentClassification {
+    return {
+      type: candidate.type,
+      subType: candidate.subType,
+      confidence: candidate.confidence,
+      entities,
+      requiresMultiStep: this.isMultiStepByCandidate(candidate),
+      hasDeliverableExpectation: this.expectsDeliverableByCandidate(candidate),
+      source: "rule",
+    };
+  }
+
+  /**
+   * 根据候选判断是否需要多步骤
+   */
+  private isMultiStepByCandidate(candidate: IntentCandidate): boolean {
+    if (candidate.complexity === "complex") {
+      return true;
+    }
+    const multiStepTypes: IntentType[] = ["organize", "analyze", "learn"];
+    return multiStepTypes.includes(candidate.type);
+  }
+
+  /**
+   * 根据候选判断是否期望交付物
+   */
+  private expectsDeliverableByCandidate(candidate: IntentCandidate): boolean {
+    const deliverableTypes: IntentType[] = ["analyze", "create", "learn"];
+    if (deliverableTypes.includes(candidate.type)) {
+      return true;
+    }
+    const deliverableSubTypes = ["report", "digest", "path", "share", "review"];
+    return candidate.subType
+      ? deliverableSubTypes.includes(candidate.subType)
+      : false;
+  }
+
+  // ============================================
+  // 消歧规则引擎 (Phase 1.2)
+  // ============================================
+
+  /**
+   * 消歧结果类型
+   */
+  private disambiguationRules: DisambiguationRule[] = DISAMBIGUATION_RULES;
+
+  /**
+   * 执行消歧逻辑
+   *
+   * 当多个意图候选置信度接近时，使用消歧规则选择正确的意图
+   *
+   * @param message - 用户输入的消息
+   * @param candidates - 候选意图列表
+   * @returns 消歧结果
+   */
+  disambiguate(
+    message: string,
+    candidates: IntentCandidate[],
+  ): {
+    disambiguated: boolean;
+    winnerType?: IntentType;
+    ruleId?: string;
+    reason?: string;
+  } {
+    if (candidates.length < 2) {
+      return { disambiguated: false };
+    }
+
+    // 获取所有冲突的意图类型
+    const conflictTypes = candidates.map((c) => c.type);
+
+    // 查找匹配的消歧规则
+    const matchedRule = findMatchingRule(message, conflictTypes);
+
+    if (matchedRule) {
+      // 确保 winner 类型在候选列表中
+      const winnerExists = candidates.some(
+        (c) => c.type === matchedRule.winner,
+      );
+
+      if (winnerExists) {
+        logger.debug(
+          {
+            message: message.substring(0, 50),
+            ruleId: matchedRule.id,
+            winner: matchedRule.winner,
+            conflictTypes,
+          },
+          "IntentClassifier: Disambiguation rule matched",
+        );
+
+        return {
+          disambiguated: true,
+          winnerType: matchedRule.winner,
+          ruleId: matchedRule.id,
+          reason: matchedRule.reason,
+        };
+      }
+    }
+
+    // 无匹配规则，尝试基于位置消歧
+    // 规则：如果多个意图匹配，优先选择匹配位置更靠后的（通常是核心动词）
+    const sortedByPosition = [...candidates].sort(
+      (a, b) => b.matchIndex - a.matchIndex,
+    );
+
+    // 如果位置差距大于 5 个字符，使用位置消歧
+    if (
+      sortedByPosition.length >= 2 &&
+      sortedByPosition[0].matchIndex - sortedByPosition[1].matchIndex > 5
+    ) {
+      logger.debug(
+        {
+          message: message.substring(0, 50),
+          winner: sortedByPosition[0].type,
+          positions: candidates.map((c) => ({
+            type: c.type,
+            index: c.matchIndex,
+          })),
+        },
+        "IntentClassifier: Position-based disambiguation",
+      );
+
+      return {
+        disambiguated: true,
+        winnerType: sortedByPosition[0].type,
+        ruleId: "position-based",
+        reason: "后置核心动词优先",
+      };
+    }
+
+    return { disambiguated: false };
+  }
+
+  /**
+   * 添加自定义消歧规则
+   *
+   * @param rule - 消歧规则
+   */
+  addDisambiguationRule(rule: DisambiguationRule): void {
+    this.disambiguationRules.unshift(rule);
+    this.disambiguationRules.sort((a, b) => b.priority - a.priority);
+  }
+
+  /**
+   * 获取所有消歧规则（用于调试）
+   */
+  getDisambiguationRules(): DisambiguationRule[] {
+    return [...this.disambiguationRules];
   }
 }
 

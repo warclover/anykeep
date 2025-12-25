@@ -54,8 +54,8 @@ export interface ConfirmOption {
  * 后续建议
  */
 export interface Suggestion {
-  /** 建议标签 */
-  label: string;
+  /** 建议显示文本 */
+  text: string;
   /** 触发的动作 */
   action: string;
   /** 动作参数 */
