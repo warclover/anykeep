@@ -12,9 +12,12 @@ import { VectorMatcher } from "../vector-matcher";
 // Mocks
 // ============================================================================
 
-const mockSearchSimilarFolders = jest.fn();
-const mockFindByUserId = jest.fn();
-const mockSearchMatchingFolders = jest.fn();
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const mockSearchSimilarFolders = jest.fn<any, any[]>();
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const mockFindByUserId = jest.fn<any, any[]>();
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const mockSearchMatchingFolders = jest.fn<any, any[]>();
 
 // Mock FolderProfileRepository
 function createMockFolderProfileRepo() {
@@ -39,6 +42,8 @@ function createMockContext(overrides = {}) {
     url: "https://example.com",
     embedding: new Array(1024).fill(0.1),
     bookmarkId: 1,
+    summary: "",
+    tags: [],
     ...overrides,
   };
 }
@@ -349,10 +354,17 @@ describe("VectorMatcher", () => {
 
       const results = await matcher.match(context);
 
-      expect(results[0].zoneMatch).toBe("core");
-      expect(results[0].coreSimilarity).toBe(0.85);
-      expect(results[0].edgeSimilarity).toBe(0.7);
-      expect(results[0].zoneConfidenceLevel).toBe("high");
+      // Cast to extended type for zone-specific properties
+      const result = results[0] as unknown as {
+        zoneMatch: string;
+        coreSimilarity: number;
+        edgeSimilarity: number;
+        zoneConfidenceLevel: string;
+      };
+      expect(result.zoneMatch).toBe("core");
+      expect(result.coreSimilarity).toBe(0.85);
+      expect(result.edgeSimilarity).toBe(0.7);
+      expect(result.zoneConfidenceLevel).toBe("high");
     });
 
     it("should enrich zone matches with profile data", async () => {
@@ -377,8 +389,13 @@ describe("VectorMatcher", () => {
 
       const results = await matcher.match(context);
 
-      expect(results[0].topTags).toEqual(["AI", "机器学习"]);
-      expect(results[0].sampleTitles).toEqual(["深度学习入门"]);
+      // Cast to extended type for zone-specific properties
+      const result = results[0] as unknown as {
+        topTags: string[];
+        sampleTitles: string[];
+      };
+      expect(result.topTags).toEqual(["AI", "机器学习"]);
+      expect(result.sampleTitles).toEqual(["深度学习入门"]);
     });
   });
 

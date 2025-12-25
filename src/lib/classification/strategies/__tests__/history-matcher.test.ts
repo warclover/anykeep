@@ -29,6 +29,8 @@ function createMockContext(overrides = {}) {
     url: "https://example.com",
     embedding: new Array(1024).fill(0.1),
     bookmarkId: 1,
+    summary: "",
+    tags: [],
     ...overrides,
   };
 }
