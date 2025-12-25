@@ -4434,6 +4434,61 @@ export interface ImportHistoryOptions {
   [key: string]: unknown;
 }
 
+// ============================================================================
+// Classification JSON Field Types (V4.2.1)
+// ============================================================================
+
+/**
+ * 分类候选文件夹
+ * 用于: classification_decisions.candidates JSON 字段
+ */
+export interface ClassificationCandidate {
+  /** 文件夹 ID */
+  folderId: number;
+  /** 文件夹名称 */
+  folderName: string;
+  /** 匹配得分 (0-100) */
+  score: number;
+  /** 匹配原因（可选） */
+  reason?: string;
+}
+
+/**
+ * 分类候选列表类型
+ * 用于: classification_decisions.candidates JSON 字段
+ */
+export type ClassificationCandidates = ClassificationCandidate[];
+
+/**
+ * 匹配器评分记录
+ * 用于: classification_decisions.matcher_scores, classification_result.matcher_scores
+ *
+ * Key: 匹配器名称 (如 'embedding', 'keyword', 'source')
+ * Value: 匹配得分 (0-100)
+ */
+export type MatcherScores = Record<string, number>;
+
+/**
+ * 进化报告建议
+ * 用于: folder_evolution_reports.suggestions_data JSON 字段
+ */
+export interface ReportSuggestion {
+  /** 建议类型 */
+  type: "merge" | "split" | "rename" | "cleanup";
+  /** 建议描述 */
+  description: string;
+  /** 目标文件夹列表 */
+  targetFolders: Array<{ id: number; name: string }>;
+  /** 优先级 */
+  priority: "high" | "medium" | "low";
+}
+
+/**
+ * 建议数据列表类型
+ * 用于: folder_evolution_reports.suggestions_data JSON 字段
+ */
+export type SuggestionsData = ReportSuggestion[];
+
 /** 带快照的书签类型 */
 export type BookmarkWithSnapshot = Bookmark & {
   latest_snapshot?: {

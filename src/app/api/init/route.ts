@@ -281,7 +281,12 @@ export async function GET(request: NextRequest) {
     const dataDuration = performance.now() - dataStart;
     const totalDuration = performance.now() - startTime;
 
-    // 5. 记录性能日志
+    // 5. 生成数据版本号
+    // V4.2.1: 用于客户端缓存失效验证
+    // 版本号基于时间戳，确保每次请求返回唯一版本
+    const dataVersion = Date.now().toString();
+
+    // 6. 记录性能日志
     logger.info(
       {
         userId,
@@ -292,11 +297,12 @@ export async function GET(request: NextRequest) {
         bookmarkCount: bookmarks.length,
         smartListCount: smartLists.length,
         folderCount: folders.length,
+        dataVersion,
       },
       "[Init] Data aggregation completed",
     );
 
-    // 6. 返回聚合数据（带缓存头）
+    // 7. 返回聚合数据（带缓存头和数据版本）
     return NextResponse.json(
       {
         success: true,
@@ -311,6 +317,7 @@ export async function GET(request: NextRequest) {
           authDuration: Math.round(authDuration),
           dataDuration: Math.round(dataDuration),
           totalDuration: Math.round(totalDuration),
+          dataVersion, // V4.2.1: 数据版本号
         },
       },
       {

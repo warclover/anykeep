@@ -7,6 +7,7 @@
  */
 
 import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { updateBookmarkSchema, patchBookmarkSchema } from "@/lib/validation";
 import {
@@ -22,6 +23,15 @@ import { logger } from "@/lib/logger";
 import type { BookmarkUpdate } from "@/types/supabase";
 import { BOOKMARK, AUTH } from "@/lib/constants/messages";
 import { updateFolderProfilesOnBookmarkChange } from "@/lib/classification/server";
+import { BOOKMARK_DETAIL_FIELDS } from "@/lib/constants/query-fields";
+
+/**
+ * V4.2.1: HTTP 缓存配置（详情页）
+ * - private: 仅客户端缓存（用户数据敏感）
+ * - max-age=30: 30 秒内使用缓存（详情变化频率较高）
+ * - stale-while-revalidate=60: 缓存过期后 1 分钟内可后台刷新
+ */
+const DETAIL_CACHE_CONTROL = "private, max-age=30, stale-while-revalidate=60";
 
 /**
  * V4.2.7: 生成数据版本号
@@ -59,9 +69,10 @@ export async function GET(
     }
 
     // 2. 查询收藏详情
+    // V4.2.1: 使用统一字段常量
     const { data: bookmark, error: queryError } = await supabase
       .from("bookmarks")
-      .select("*, folders(name)")
+      .select(BOOKMARK_DETAIL_FIELDS)
       .eq("id", bookmarkId)
       .eq("user_id", user.id)
       .is("deleted_at", null)
@@ -74,8 +85,16 @@ export async function GET(
       return databaseError(BOOKMARK.LOAD_ERROR, queryError);
     }
 
-    // 3. 返回收藏详情
-    return successResponse(bookmark);
+    // 3. 返回收藏详情（带缓存头）
+    return NextResponse.json(
+      { success: true, data: bookmark },
+      {
+        status: 200,
+        headers: {
+          "Cache-Control": DETAIL_CACHE_CONTROL,
+        },
+      },
+    );
   } catch (error) {
     logger.error(
       {

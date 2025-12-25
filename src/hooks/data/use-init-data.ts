@@ -39,6 +39,8 @@ export interface InitData {
     authDuration: number;
     dataDuration: number;
     totalDuration: number;
+    /** V4.2.1: 数据版本号，用于客户端缓存失效验证 */
+    dataVersion?: string;
   };
 }
 
@@ -75,6 +77,8 @@ export interface UseInitDataResult {
   folders: (Folder & { children?: Folder[] })[];
   /** 性能元数据 */
   meta: InitData["_meta"] | null;
+  /** V4.2.1: 数据版本号，用于缓存失效验证 */
+  dataVersion: string | null;
   /** 是否加载中 */
   isLoading: boolean;
   /** 错误信息 */
@@ -202,6 +206,7 @@ export function useInitData(
     unreadCount: data?.unreadCount ?? DEFAULT_UNREAD_COUNT,
     folders: data?.folders ?? [],
     meta: data?._meta ?? null,
+    dataVersion: data?._meta?.dataVersion ?? null,
     isLoading,
     error: error ?? null,
     refresh,

@@ -11,17 +11,14 @@
 import { useState, useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import { clientLogger } from "@/lib/client-logger";
+import type { ReportSuggestion } from "@/types/supabase";
+
+// Re-export for backward compatibility
+export type { ReportSuggestion } from "@/types/supabase";
 
 // ============================================
 // Type Definitions
 // ============================================
-
-export interface ReportSuggestion {
-  type: "merge" | "split" | "rename" | "cleanup";
-  description: string;
-  targetFolders: Array<{ id: number; name: string }>;
-  priority: "high" | "medium" | "low";
-}
 
 export interface MonthlyReport {
   id: number;

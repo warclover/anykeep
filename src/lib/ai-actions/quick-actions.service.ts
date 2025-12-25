@@ -19,6 +19,7 @@ import { classifySkill } from "@/lib/ai-skills/skills/classify";
 import { summarySkill } from "@/lib/ai-skills/skills/summary";
 import { logger } from "@/lib/logger";
 import type { SkillContext } from "@/lib/ai-skills/core/types";
+import type { ClassificationCandidate } from "@/types/supabase";
 
 // ============================================
 // 类型定义
@@ -111,11 +112,7 @@ export interface AutoClassifyResult {
   /** 推荐原因 */
   reason: string;
   /** 候选文件夹列表 */
-  candidates: Array<{
-    folderId: number;
-    folderName: string;
-    score: number;
-  }>;
+  candidates: ClassificationCandidate[];
 }
 
 /**

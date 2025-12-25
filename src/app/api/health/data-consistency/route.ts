@@ -209,44 +209,66 @@ async function checkStuckProcessing(
 
 /**
  * 检查孤立数据
+ * 使用直接查询而非 RPC（RPC 可能未创建）
  */
 async function checkOrphanedData(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
 ): Promise<HealthCheck> {
-  // 检查引用了不存在文件夹的书签
-  const { data, error } = await supabase.rpc("check_orphaned_bookmarks", {
-    p_user_id: userId,
-  });
+  try {
+    // 方法 1: 查询 folder_id 不为 null 但对应文件夹不存在的书签
+    // 由于 Supabase 不直接支持 NOT EXISTS，我们使用 left join 并检查 null
+    const { data: orphanedBookmarks, error } = await supabase
+      .from("bookmarks")
+      .select(
+        `
+        id,
+        title,
+        folder_id,
+        folders!bookmarks_folder_id_fkey (id)
+      `,
+      )
+      .eq("user_id", userId)
+      .not("folder_id", "is", null)
+      .is("deleted_at", null)
+      .limit(100);
 
-  // 如果 RPC 不存在，跳过检查
-  if (error?.code === "42883") {
+    if (error) {
+      return {
+        name: "orphaned_data",
+        status: "warning",
+        message: `检查跳过: ${error.message}`,
+      };
+    }
+
+    // 筛选出 folder 为 null 的书签（意味着 folder_id 引用的文件夹不存在）
+    const orphaned =
+      orphanedBookmarks?.filter(
+        (b) => b.folder_id !== null && b.folders === null,
+      ) || [];
+    const orphanedCount = orphaned.length;
+
+    return {
+      name: "orphaned_data",
+      status: orphanedCount > 0 ? "warning" : "healthy",
+      message:
+        orphanedCount > 0
+          ? `${orphanedCount} 条书签引用了不存在的文件夹`
+          : "没有孤立数据",
+      details: {
+        orphanedCount,
+        samples: orphaned
+          .slice(0, 5)
+          .map((b) => ({ id: b.id, folderId: b.folder_id })),
+      },
+    };
+  } catch {
     return {
       name: "orphaned_data",
       status: "healthy",
-      message: "跳过检查 (RPC 未配置)",
+      message: "跳过检查 (查询失败)",
     };
   }
-
-  if (error) {
-    return {
-      name: "orphaned_data",
-      status: "warning",
-      message: `检查跳过: ${error.message}`,
-    };
-  }
-
-  const orphanedCount = data?.[0]?.count || 0;
-
-  return {
-    name: "orphaned_data",
-    status: orphanedCount > 0 ? "warning" : "healthy",
-    message:
-      orphanedCount > 0
-        ? `${orphanedCount} 条书签引用了不存在的文件夹`
-        : "没有孤立数据",
-    details: { orphanedCount },
-  };
 }
 
 // ============================================================================

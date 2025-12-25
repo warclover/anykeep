@@ -11,6 +11,10 @@
 import { operationLogService } from "./operation-log.service";
 import { logger } from "@/lib/logger";
 import { BaseSupabaseService } from "./base-supabase.service";
+import type { ReportSuggestion } from "@/types/supabase";
+
+// Re-export for backward compatibility
+export type { ReportSuggestion } from "@/types/supabase";
 
 // ============================================
 // Type Definitions
@@ -47,16 +51,6 @@ export interface MonthlyReport {
   // Metadata
   generatedAt: string;
   viewedAt: string | null;
-}
-
-/**
- * Report suggestion
- */
-export interface ReportSuggestion {
-  type: "merge" | "split" | "rename" | "cleanup";
-  description: string;
-  targetFolders: Array<{ id: number; name: string }>;
-  priority: "high" | "medium" | "low";
 }
 
 /**
