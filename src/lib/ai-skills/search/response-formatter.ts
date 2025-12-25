@@ -13,6 +13,7 @@ import {
   type SearchResultMeta,
   type SearchResultItem,
   type FormattedSearchResponse,
+  type FollowUpSuggestion,
 } from "./types";
 
 // ============================================
@@ -141,15 +142,20 @@ export class ResponseFormatter {
     // 生成响应文本
     const responseText = this.generateResponseText(results, query, meta);
 
-    // 生成空结果建议
+    // 生成空结果建议或跟进建议
     const suggestions =
       results.length === 0 ? this.generateSuggestions(query) : undefined;
+    const followUpSuggestions =
+      results.length > 0
+        ? this.generateFollowUpSuggestions(results, query)
+        : undefined;
 
     return {
       results,
       meta,
       responseText,
       suggestions,
+      followUpSuggestions,
     };
   }
 
@@ -245,7 +251,7 @@ export class ResponseFormatter {
   }
 
   /**
-   * 生成 AI 响应文本
+   * 生成 AI 响应文本（自然化风格）
    */
   private generateResponseText(
     results: SearchResultItem[],
@@ -258,7 +264,7 @@ export class ResponseFormatter {
 
     const lines: string[] = [];
 
-    // 开头总结
+    // 开头总结（直接给结果，不说废话）
     if (this.config.responseStyle === "detailed") {
       lines.push(this.generateDetailedIntro(results, query, meta));
     } else {
@@ -269,7 +275,7 @@ export class ResponseFormatter {
     const highRelevance = results.filter((r) => r.relevance === "high");
     if (highRelevance.length > 0) {
       lines.push("");
-      lines.push("📌 **最相关的结果：**");
+      lines.push("📌 **最相关：**");
       for (const item of highRelevance.slice(0, 3)) {
         lines.push(this.formatResultLine(item));
       }
@@ -279,7 +285,7 @@ export class ResponseFormatter {
     const mediumRelevance = results.filter((r) => r.relevance === "medium");
     if (mediumRelevance.length > 0 && highRelevance.length < 3) {
       lines.push("");
-      lines.push("📋 **其他相关结果：**");
+      lines.push("📋 **其他相关：**");
       for (const item of mediumRelevance.slice(0, 5 - highRelevance.length)) {
         lines.push(this.formatResultLine(item));
       }
@@ -289,9 +295,13 @@ export class ResponseFormatter {
     if (meta.hasMore) {
       lines.push("");
       lines.push(
-        `还有 ${meta.totalCount - meta.returnedCount} 条结果，可以进一步筛选查看。`,
+        `还有 ${meta.totalCount - meta.returnedCount} 条，可以筛选查看`,
       );
     }
+
+    // 跟进引导（简洁的下一步提示）
+    lines.push("");
+    lines.push(this.generateFollowUpPrompt(results, query));
 
     return lines.join("\n");
   }
@@ -367,28 +377,52 @@ export class ResponseFormatter {
   }
 
   /**
-   * 生成空结果响应文本
+   * 生成跟进引导提示（自然化风格）
+   */
+  private generateFollowUpPrompt(
+    results: SearchResultItem[],
+    query: ParsedQuery,
+  ): string {
+    // 根据结果数量和筛选条件，生成自然的下一步提示
+    if (results.length === 1) {
+      return "要看详情吗？";
+    }
+
+    if (results.length >= 5 && !query.timeRange && !query.platform) {
+      return "要看详情、筛选还是继续找？";
+    }
+
+    if (results.length >= 5) {
+      return "要看详情还是筛选？";
+    }
+
+    return "要看详情还是继续找？";
+  }
+
+  /**
+   * 生成空结果响应文本（自然化风格）
    */
   private generateEmptyResponseText(query: ParsedQuery): string {
     const lines: string[] = [];
 
-    lines.push("没有找到相关结果。");
+    // 直接展示未找到的查询词，避免程序化措辞
+    const searchTerms = query.keywords.join("、") || query.original;
+    lines.push(`没找到「${searchTerms}」相关的收藏`);
 
-    if (query.keywords.length > 0) {
-      lines.push("");
-      lines.push("**搜索条件：**");
-      lines.push(`- 关键词：${query.keywords.join("、")}`);
-
-      if (query.timeRange) {
-        lines.push(`- 时间范围：${query.timeRange.original}`);
-      }
-
-      if (query.platform) {
-        lines.push(`- 平台：${this.formatPlatform(query.platform)}`);
-      }
+    // 添加筛选条件说明（如果有）
+    const filters: string[] = [];
+    if (query.timeRange) {
+      filters.push(query.timeRange.original);
+    }
+    if (query.platform && query.platform !== "all") {
+      filters.push(this.formatPlatform(query.platform));
     }
 
-    return lines.join("\n");
+    if (filters.length > 0) {
+      lines.push(`（已筛选：${filters.join("、")}）`);
+    }
+
+    return lines.join("");
   }
 
   /**
@@ -419,11 +453,57 @@ export class ResponseFormatter {
 
     // 通用建议
     if (suggestions.length === 0) {
-      suggestions.push("尝试使用不同的关键词");
-      suggestions.push("检查是否有收藏相关内容");
+      suggestions.push("换几个关键词试试");
+      suggestions.push("看看全部收藏");
     }
 
     return suggestions;
+  }
+
+  /**
+   * 生成跟进建议（有结果时的下一步引导）
+   */
+  private generateFollowUpSuggestions(
+    results: SearchResultItem[],
+    query: ParsedQuery,
+  ): FollowUpSuggestion[] {
+    const suggestions: FollowUpSuggestion[] = [];
+
+    // 基础建议：查看详情
+    if (results.length > 0) {
+      suggestions.push({
+        label: "看详情",
+        type: "view_detail",
+        payload: { bookmarkId: results[0].id },
+      });
+    }
+
+    // 如果结果较多，建议筛选
+    if (results.length >= 5) {
+      suggestions.push({
+        label: "筛选",
+        type: "filter",
+      });
+    }
+
+    // 如果没有时间筛选，建议添加
+    if (!query.timeRange) {
+      suggestions.push({
+        label: "继续找",
+        type: "continue_search",
+      });
+    }
+
+    // 如果结果较多，建议整理
+    if (results.length >= 10) {
+      suggestions.push({
+        label: "整理",
+        type: "organize",
+        payload: { bookmarkIds: results.map((r) => r.id) },
+      });
+    }
+
+    return suggestions.slice(0, 3); // 最多返回 3 个建议
   }
 }
 

@@ -25,6 +25,7 @@ export type {
   SearchResultMeta,
   SearchResultItem,
   FormattedSearchResponse,
+  FollowUpSuggestion,
   // 配置类型
   QueryParserConfig,
   ResultRankerConfig,

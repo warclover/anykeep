@@ -181,6 +181,18 @@ export interface SearchResultItem {
 }
 
 /**
+ * 跟进建议类型
+ */
+export interface FollowUpSuggestion {
+  /** 建议文本 */
+  label: string;
+  /** 建议类型 */
+  type: "view_detail" | "continue_search" | "filter" | "organize" | "export";
+  /** 触发动作的参数（可选） */
+  payload?: Record<string, unknown>;
+}
+
+/**
  * 格式化的搜索响应
  */
 export interface FormattedSearchResponse {
@@ -192,6 +204,8 @@ export interface FormattedSearchResponse {
   responseText: string;
   /** 空结果建议（如果没有结果） */
   suggestions?: string[];
+  /** 跟进建议（有结果时的下一步引导） */
+  followUpSuggestions?: FollowUpSuggestion[];
 }
 
 // ============================================

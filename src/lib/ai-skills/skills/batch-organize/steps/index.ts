@@ -41,10 +41,18 @@ export {
   buildConfirmationMessage,
 } from "./report.step";
 
-// 自动执行
+// 自动执行（基础版本）
 export {
   executeCategorizeSuggestions,
   executeTagSuggestions,
   executeDuplicateCleanup,
   executeArchive,
 } from "./execute.step";
+
+// Saga 执行（带快照和撤销支持）
+export {
+  executeBatchOrganizeWithSaga,
+  undoBatchOrganize,
+  type SagaExecutionParams,
+  type SagaExecutionResult,
+} from "./saga-execute.step";

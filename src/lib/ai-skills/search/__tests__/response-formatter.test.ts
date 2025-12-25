@@ -78,7 +78,7 @@ describe("ResponseFormatter", () => {
       const response = formatter.format(rankedResults, bookmarks, query, 10);
 
       expect(response.results).toHaveLength(0);
-      expect(response.responseText).toContain("没有找到");
+      expect(response.responseText).toContain("没找到");
       expect(response.suggestions).toBeDefined();
     });
 
@@ -206,8 +206,11 @@ describe("ResponseFormatter", () => {
 
       const response = formatter.format(rankedResults, bookmarks, query, 10);
 
-      expect(response.responseText).toContain("最相关的结果");
+      expect(response.responseText).toContain("最相关");
       expect(response.responseText).toContain("高相关文章");
+      // 验证跟进建议
+      expect(response.followUpSuggestions).toBeDefined();
+      expect(response.followUpSuggestions!.length).toBeGreaterThan(0);
     });
 
     it("详细模式应包含更多信息", () => {

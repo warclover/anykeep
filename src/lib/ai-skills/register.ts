@@ -31,6 +31,7 @@ import { relatedDiscoverySkill } from "./skills/related-discovery";
 import { periodicReportSkill } from "./skills/periodic-report";
 import { shareBundleSkill } from "./skills/share-bundle";
 import { learningPathSkill } from "./skills/learning-path";
+import { knowledgeExtractSkill } from "./skills/knowledge-extract";
 import { unifiedEngine } from "./engine/unified-engine";
 import { knowledgeAgent } from "../ai-agent/core/knowledge-agent";
 import { logger } from "@/lib/logger";
@@ -154,6 +155,7 @@ export function initializeUnifiedEngine(): void {
   unifiedEngine.registerOrchestrationSkill(periodicReportSkill);
   unifiedEngine.registerOrchestrationSkill(shareBundleSkill);
   unifiedEngine.registerOrchestrationSkill(learningPathSkill);
+  unifiedEngine.registerOrchestrationSkill(knowledgeExtractSkill);
 
   unifiedEngineInitialized = true;
 

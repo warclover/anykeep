@@ -109,3 +109,32 @@ export * from "./share-bundle";
 
 // LearningPathSkill - 学习路径（编排 Skill，Phase 3）
 export * from "./learning-path";
+
+// KnowledgeExtractSkill - 知识萃取（编排 Skill，Phase 3）
+// 注意：包含 SourceInfo 类型，与 related-discovery 有冲突
+export {
+  KnowledgeExtractSkill,
+  knowledgeExtractSkill,
+} from "./knowledge-extract";
+export {
+  KnowledgeExtractor,
+  knowledgeExtractor,
+  ExtractionFormatter,
+  extractionFormatter,
+  formatExtraction,
+} from "./knowledge-extract";
+export type {
+  ExtractionFormat,
+  KnowledgeExtractInput,
+  Citation,
+  KeyPoint,
+  ConceptDefinition,
+  // 重命名冲突类型
+  SourceInfo as KnowledgeExtractSourceInfo,
+  ExtractionMetadata,
+  KnowledgeExtraction,
+  BookmarkContent,
+  RawKeyPointResponse,
+  RawConceptResponse,
+  ExtractionStepData,
+} from "./knowledge-extract/types";
