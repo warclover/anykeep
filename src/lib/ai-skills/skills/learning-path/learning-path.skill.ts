@@ -17,23 +17,25 @@ import type { OrchestrationContext } from "../../orchestration/types";
 import type { OrchestrationStreamChunk } from "../../output/types";
 import type { SkillContext } from "../../core/types";
 import type { OrchestrationSkillMetadata } from "../../orchestration/types";
-import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 import type {
   LearningPathInput,
   LearningPathOutput,
   LearningPath,
-  LearningNode,
   LearningProgress,
   LearningStats,
-  LearningSuggestion,
 } from "./types";
 import {
   DIFFICULTY_CONFIG,
   DEFAULT_LEARNING_PATH_CONFIG,
   generatePathId,
-  generateNodeId,
 } from "./types";
+import {
+  fetchBookmarks,
+  fetchRecentBookmarks,
+  organizeNodes,
+  generateSuggestions,
+} from "./helpers";
 
 // ============================================
 // Schema 定义
@@ -250,7 +252,7 @@ export class LearningPathSkill extends OrchestrationSkill<
     );
 
     // 获取书签
-    const bookmarks = await this.fetchBookmarks(context.userId, options);
+    const bookmarks = await fetchBookmarks(context.userId, options);
 
     yield* this.reportProgress(
       "分析内容",
@@ -271,7 +273,7 @@ export class LearningPathSkill extends OrchestrationSkill<
     // 组织学习路径
     yield* this.reportProgress("组织路径", 30, "正在组织学习路径...");
 
-    const nodes = this.organizeNodes(
+    const nodes = organizeNodes(
       bookmarks,
       options.difficulty || "intermediate",
     );
@@ -516,11 +518,11 @@ export class LearningPathSkill extends OrchestrationSkill<
     yield* this.emitText(`💡 正在为您生成学习建议...\n\n`);
 
     // 获取用户书签以生成建议
-    const bookmarks = await this.fetchRecentBookmarks(context.userId, 50);
+    const bookmarks = await fetchRecentBookmarks(context.userId, 50);
 
     yield* this.reportProgress("分析内容", 50, "分析书签数据...");
 
-    const suggestions = this.generateSuggestions(bookmarks);
+    const suggestions = generateSuggestions(bookmarks);
 
     yield* this.reportProgress("完成", 95, "建议生成完成");
 
@@ -553,211 +555,6 @@ export class LearningPathSkill extends OrchestrationSkill<
   }
 
   /**
-   * 获取书签
-   */
-  private async fetchBookmarks(
-    userId: string,
-    options: NonNullable<LearningPathInput["createOptions"]>,
-  ): Promise<BookmarkRow[]> {
-    const supabase = await createClient();
-
-    let query = supabase
-      .from("bookmarks")
-      .select(
-        `
-        id,
-        title,
-        url,
-        platform,
-        ai_tags,
-        ai_summary,
-        created_at
-      `,
-      )
-      .eq("user_id", userId)
-      .is("deleted_at", null);
-
-    if (options.bookmarkIds?.length) {
-      query = query.in("id", options.bookmarkIds);
-    } else if (options.folderId) {
-      query = query.eq("folder_id", options.folderId);
-    } else if (options.tag) {
-      query = query.contains("user_tags", [options.tag]);
-    } else {
-      // 根据主题搜索
-      query = query.or(
-        `title.ilike.%${options.topic}%,ai_tags.cs.{${options.topic}}`,
-      );
-    }
-
-    query = query.order("created_at", { ascending: true }).limit(30);
-
-    const { data, error } = await query;
-
-    if (error) {
-      logger.error({ error }, "LearningPathSkill: Failed to fetch bookmarks");
-      throw new Error(`获取书签失败: ${error.message}`);
-    }
-
-    return (data || []) as BookmarkRow[];
-  }
-
-  /**
-   * 获取最近书签
-   */
-  private async fetchRecentBookmarks(
-    userId: string,
-    limit: number,
-  ): Promise<BookmarkRow[]> {
-    const supabase = await createClient();
-
-    const { data, error } = await supabase
-      .from("bookmarks")
-      .select(`id, title, url, platform, ai_tags, ai_summary, created_at`)
-      .eq("user_id", userId)
-      .is("deleted_at", null)
-      .order("created_at", { ascending: false })
-      .limit(limit);
-
-    if (error) {
-      logger.error(
-        { error },
-        "LearningPathSkill: Failed to fetch recent bookmarks",
-      );
-      return [];
-    }
-
-    return (data || []) as BookmarkRow[];
-  }
-
-  /**
-   * 组织学习节点
-   */
-  private organizeNodes(
-    bookmarks: BookmarkRow[],
-    difficulty: NonNullable<LearningPathInput["createOptions"]>["difficulty"],
-  ): LearningNode[] {
-    const difficultyConfig = DIFFICULTY_CONFIG[difficulty || "intermediate"];
-    const nodes: LearningNode[] = [];
-    let order = 0;
-
-    // 每 5 个节点添加一个里程碑
-    const nodesPerMilestone = DEFAULT_LEARNING_PATH_CONFIG.nodesPerMilestone;
-
-    for (let i = 0; i < bookmarks.length; i++) {
-      // 添加里程碑
-      if (i > 0 && i % nodesPerMilestone === 0) {
-        const milestoneNum = Math.floor(i / nodesPerMilestone);
-        nodes.push({
-          id: generateNodeId(),
-          type: "milestone",
-          title: `阶段 ${milestoneNum} 完成`,
-          milestoneName: `阶段 ${milestoneNum}`,
-          estimatedMinutes: 0,
-          status: "pending",
-          order: order++,
-        });
-      }
-
-      const bookmark = bookmarks[i];
-      nodes.push({
-        id: generateNodeId(),
-        type: "bookmark",
-        title: bookmark.title,
-        description: bookmark.ai_summary || undefined,
-        bookmarkId: bookmark.id,
-        url: bookmark.url,
-        platform: bookmark.platform,
-        estimatedMinutes: difficultyConfig.estimatedMinutesPerNode,
-        status: "pending",
-        order: order++,
-      });
-    }
-
-    // 添加最终里程碑
-    if (bookmarks.length > 0) {
-      nodes.push({
-        id: generateNodeId(),
-        type: "milestone",
-        title: "学习路径完成",
-        milestoneName: "完成",
-        estimatedMinutes: 0,
-        status: "pending",
-        order: order++,
-      });
-    }
-
-    return nodes;
-  }
-
-  /**
-   * 生成学习建议
-   */
-  private generateSuggestions(bookmarks: BookmarkRow[]): LearningSuggestion[] {
-    const suggestions: LearningSuggestion[] = [];
-
-    // 分析标签频率
-    const tagCounts = new Map<string, number>();
-    for (const b of bookmarks) {
-      for (const tag of b.ai_tags || []) {
-        tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
-      }
-    }
-
-    // 找出热门主题
-    const topTags = Array.from(tagCounts.entries())
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 3);
-
-    if (topTags.length > 0) {
-      suggestions.push({
-        type: "path",
-        title: "创建学习路径",
-        description: `您收藏了很多关于「${topTags[0][0]}」的内容，建议创建一条专门的学习路径`,
-        icon: "📚",
-      });
-    }
-
-    // 学习习惯建议
-    if (bookmarks.length > 20) {
-      suggestions.push({
-        type: "habit",
-        title: "制定学习计划",
-        description: "您的收藏数量较多，建议制定每日学习计划，避免内容积压",
-        icon: "📅",
-      });
-    }
-
-    // 复习建议
-    const oldBookmarks = bookmarks.filter((b) => {
-      const days =
-        (Date.now() - new Date(b.created_at).getTime()) / (24 * 60 * 60 * 1000);
-      return days > 7;
-    });
-
-    if (oldBookmarks.length > 5) {
-      suggestions.push({
-        type: "review",
-        title: "复习旧内容",
-        description: `有 ${oldBookmarks.length} 条收藏超过一周未复习，建议安排复习时间`,
-        icon: "🔄",
-      });
-    }
-
-    // 默认建议
-    if (suggestions.length === 0) {
-      suggestions.push({
-        type: "habit",
-        title: "开始学习",
-        description: "选择一个感兴趣的主题，创建您的第一条学习路径吧！",
-        icon: "🚀",
-      });
-    }
-
-    return suggestions;
-  }
-
-  /**
    * 非流式执行
    */
   protected async executeInternal(
@@ -783,20 +580,6 @@ export class LearningPathSkill extends OrchestrationSkill<
 
     return output;
   }
-}
-
-// ============================================
-// 辅助类型
-// ============================================
-
-interface BookmarkRow {
-  id: number;
-  title: string;
-  url: string;
-  platform: string;
-  ai_tags: string[] | null;
-  ai_summary: string | null;
-  created_at: string;
 }
 
 // ============================================

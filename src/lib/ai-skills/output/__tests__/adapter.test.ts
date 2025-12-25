@@ -11,7 +11,10 @@ import {
   createUnifiedOutputAdapter,
   unifiedOutputAdapter,
 } from "../adapter";
-import type { AgentStreamChunk, AgentToolCall } from "../../../ai-agent/core/types";
+import type {
+  AgentStreamChunk,
+  AgentToolCall,
+} from "../../../ai-agent/core/types";
 import type { PendingConfirmation } from "../../../ai-agent/tools/types";
 import type { UnifiedStreamChunk, OrchestrationStreamChunk } from "../types";
 
@@ -532,7 +535,7 @@ describe("UnifiedOutputAdapter", () => {
       const instance = new UnifiedOutputAdapter();
 
       // Initially showToolCallDetails is true
-      let chunk: AgentStreamChunk = {
+      const chunk: AgentStreamChunk = {
         type: "tool-call",
         toolCall: {
           id: "id",
