@@ -7,17 +7,20 @@
 
 import { describe, it, expect, beforeEach, jest } from "@jest/globals";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyMock = jest.Mock<(...args: any[]) => any>;
+
 // ============================================================================
 // Mocks
 // ============================================================================
 
 // Mock Supabase
-const mockSupabaseFrom = jest.fn();
-const mockSupabaseSelect = jest.fn();
-const mockSupabaseEq = jest.fn();
+const mockSupabaseFrom = jest.fn() as AnyMock;
+const mockSupabaseSelect = jest.fn() as AnyMock;
+const mockSupabaseEq = jest.fn() as AnyMock;
 // Prefixed with _ since they're part of the mock chain but not directly called
-const _mockSupabaseIs = jest.fn();
-const _mockSupabaseLimit = jest.fn();
+const _mockSupabaseIs = jest.fn() as AnyMock;
+const _mockSupabaseLimit = jest.fn() as AnyMock;
 
 jest.mock("@/lib/supabase/server", () => ({
   createClient: jest.fn(() =>
@@ -74,8 +77,8 @@ jest.mock("@/lib/trust-mode/config", () => ({
 }));
 
 // Mock tag graph service
-const mockExpandTagsWithSynonyms = jest.fn();
-const mockGetSynonyms = jest.fn();
+const mockExpandTagsWithSynonyms = jest.fn() as AnyMock;
+const mockGetSynonyms = jest.fn() as AnyMock;
 
 jest.mock("@/lib/classification/services/tag-graph.service", () => ({
   tagGraphService: {

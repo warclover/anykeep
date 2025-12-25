@@ -8,11 +8,14 @@
 import { describe, it, expect, beforeEach, jest } from "@jest/globals";
 import { HistoryMatcher } from "../history-matcher";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyMock = jest.Mock<(...args: any[]) => any>;
+
 // ============================================================================
 // Mocks
 // ============================================================================
 
-const mockFindSimilarWithFolders = jest.fn();
+const mockFindSimilarWithFolders = jest.fn() as AnyMock;
 
 // Mock BookmarkRepository
 function createMockBookmarkRepo() {
@@ -236,7 +239,11 @@ describe("HistoryMatcher", () => {
 
       const results = await matcher.match(context);
 
-      expect(results[0].similarBookmarkCount).toBe(3);
+      // Access extended property through metadata (double cast for type safety)
+      const result = results[0] as unknown as {
+        metadata: { matchCount: number };
+      };
+      expect(result.metadata.matchCount).toBe(3);
     });
 
     it("should limit similar titles to 3", async () => {
@@ -253,7 +260,11 @@ describe("HistoryMatcher", () => {
 
       const results = await matcher.match(context);
 
-      expect(results[0].similarTitles).toHaveLength(3);
+      // Access extended property through metadata with double cast
+      const result = results[0] as unknown as {
+        metadata: { sampleTitles: string[] };
+      };
+      expect(result.metadata.sampleTitles).toHaveLength(3);
     });
 
     it("should pass bookmarkId to exclude self-match", async () => {
@@ -282,8 +293,12 @@ describe("HistoryMatcher", () => {
       const results = await matcher.match(context);
 
       expect(results[0].metadata).toBeDefined();
-      expect(results[0].metadata.proportion).toBeDefined();
-      expect(results[0].metadata.avgSimilarity).toBeDefined();
+      const metadata = results[0].metadata as {
+        proportion: number;
+        avgSimilarity: number;
+      };
+      expect(metadata.proportion).toBeDefined();
+      expect(metadata.avgSimilarity).toBeDefined();
     });
   });
 

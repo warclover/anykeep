@@ -7,6 +7,9 @@
 
 import { describe, it, expect, beforeEach, jest } from "@jest/globals";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyMock = jest.Mock<(...args: any[]) => any>;
+
 // ============================================================================
 // Mocks
 // ============================================================================
@@ -124,7 +127,7 @@ jest.mock("@/lib/logger", () => ({
 }));
 
 // Mock MessageService
-const mockNotifyCostAlert = jest.fn().mockResolvedValue(undefined);
+const mockNotifyCostAlert = (jest.fn() as AnyMock).mockResolvedValue(undefined);
 jest.mock("@/lib/messages/message-service", () => ({
   MessageService: {
     notifyCostAlert: (...args: unknown[]) => mockNotifyCostAlert(...args),

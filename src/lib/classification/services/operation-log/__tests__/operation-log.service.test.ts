@@ -7,26 +7,29 @@
 
 import { describe, it, expect, beforeEach, jest } from "@jest/globals";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyMock = jest.Mock<(...args: any[]) => any>;
+
 // ============================================================================
 // Mocks
 // ============================================================================
 
-const mockCreateSnapshot = jest.fn();
-const mockGetOperationHistory = jest.fn();
-const mockGetSnapshotById = jest.fn();
-const mockGetUndoableCount = jest.fn();
-const mockCleanupExpiredSnapshots = jest.fn();
-const mockUndoOperation = jest.fn();
+const mockCreateSnapshot = jest.fn() as AnyMock;
+const mockGetOperationHistory = jest.fn() as AnyMock;
+const mockGetSnapshotById = jest.fn() as AnyMock;
+const mockGetUndoableCount = jest.fn() as AnyMock;
+const mockCleanupExpiredSnapshots = jest.fn() as AnyMock;
+const mockUndoOperation = jest.fn() as AnyMock;
 
-const mockCreateFolderCreateSnapshot = jest.fn();
-const mockCreateRenameSnapshot = jest.fn();
-const mockCreateSplitSnapshot = jest.fn();
-const mockCreateMergeSnapshot = jest.fn();
-const mockCreateFolderWithNotification = jest.fn();
-const mockRenameFolderWithNotification = jest.fn();
-const mockSplitFolderWithNotification = jest.fn();
-const mockMergeFoldersWithNotification = jest.fn();
-const mockSendEvolutionReport = jest.fn();
+const mockCreateFolderCreateSnapshot = jest.fn() as AnyMock;
+const mockCreateRenameSnapshot = jest.fn() as AnyMock;
+const mockCreateSplitSnapshot = jest.fn() as AnyMock;
+const mockCreateMergeSnapshot = jest.fn() as AnyMock;
+const mockCreateFolderWithNotification = jest.fn() as AnyMock;
+const mockRenameFolderWithNotification = jest.fn() as AnyMock;
+const mockSplitFolderWithNotification = jest.fn() as AnyMock;
+const mockMergeFoldersWithNotification = jest.fn() as AnyMock;
+const mockSendEvolutionReport = jest.fn() as AnyMock;
 
 // Mock supabase
 jest.mock("@/lib/supabase/server", () => ({
@@ -79,7 +82,7 @@ function createMockSnapshot(overrides = {}) {
   return {
     id: "snapshot-123",
     userId: "user-123",
-    action: "folder_create",
+    action: "create", // Valid OperationSnapshotAction: "create" | "split" | "merge" | "rename" | "move" | "delete"
     beforeState: {},
     afterState: { folderId: 1, name: "测试文件夹" },
     createdAt: new Date().toISOString(),
@@ -93,6 +96,7 @@ function createMockFolderInfo(overrides = {}) {
   return {
     id: 1,
     name: "测试文件夹",
+    parent_id: null,
     ...overrides,
   };
 }
@@ -101,7 +105,7 @@ function createMockBookmarkInfo(overrides = {}) {
   return {
     id: 1,
     title: "测试书签",
-    url: "https://example.com",
+    folder_id: null,
     ...overrides,
   };
 }
@@ -141,7 +145,7 @@ describe("OperationLogService", () => {
 
       const result = await service.createSnapshot(
         "user-123",
-        "folder_create",
+        "create",
         {},
         { folderId: 1 },
       );
@@ -156,7 +160,7 @@ describe("OperationLogService", () => {
 
       await service.createSnapshot(
         "user-123",
-        "folder_create",
+        "create",
         {},
         { folderId: 1 },
         { folderId: 1, reason: "AI 自动创建" },
@@ -165,7 +169,7 @@ describe("OperationLogService", () => {
       expect(mockCreateSnapshot).toHaveBeenCalledWith(
         expect.anything(),
         "user-123",
-        "folder_create",
+        "create",
         {},
         { folderId: 1 },
         { folderId: 1, reason: "AI 自动创建" },
@@ -229,8 +233,8 @@ describe("OperationLogService", () => {
         createMockFolderInfo({ id: 3, name: "新文件夹2" }),
       ];
       const bookmarkMoves = [
-        { bookmarkId: 1, fromFolderId: 1, toFolderId: 2 },
-        { bookmarkId: 2, fromFolderId: 1, toFolderId: 3 },
+        { bookmark_id: 1, from_folder_id: 1, to_folder_id: 2 },
+        { bookmark_id: 2, from_folder_id: 1, to_folder_id: 3 },
       ];
 
       const result = await service.createSplitSnapshot(
@@ -304,14 +308,13 @@ describe("OperationLogService", () => {
 
       await service.getOperationHistory("user-123", {
         limit: 10,
-        offset: 5,
-        action: "folder_create",
+        includeUndone: true,
       });
 
       expect(mockGetOperationHistory).toHaveBeenCalledWith(
         expect.anything(),
         "user-123",
-        { limit: 10, offset: 5, action: "folder_create" },
+        { limit: 10, includeUndone: true },
       );
     });
   });
@@ -383,7 +386,7 @@ describe("OperationLogService", () => {
     it("should return failure for invalid undo", async () => {
       mockUndoOperation.mockResolvedValue({
         success: false,
-        error: "操作已过期",
+        message: "操作已过期",
       });
 
       const { OperationLogService } = await import("../operation-log.service");
@@ -395,7 +398,7 @@ describe("OperationLogService", () => {
       );
 
       expect(result.success).toBe(false);
-      expect(result.error).toBe("操作已过期");
+      expect(result.message).toBe("操作已过期");
     });
   });
 
@@ -459,7 +462,7 @@ describe("OperationLogService", () => {
         "user-123",
         createMockFolderInfo(),
         [createMockFolderInfo({ id: 2 })],
-        [{ bookmarkId: 1, fromFolderId: 1, toFolderId: 2 }],
+        [{ bookmark_id: 1, from_folder_id: 1, to_folder_id: 2 }],
       );
 
       expect(mockSplitFolderWithNotification).toHaveBeenCalled();

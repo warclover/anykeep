@@ -7,13 +7,16 @@
 
 import { describe, it, expect, beforeEach, jest } from "@jest/globals";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyMock = jest.Mock<(...args: any[]) => any>;
+
 // ============================================================================
 // Mocks
 // ============================================================================
 
 // Mock Supabase
-const mockSupabaseRpc = jest.fn();
-const mockSupabaseFrom = jest.fn();
+const mockSupabaseRpc = jest.fn() as AnyMock;
+const mockSupabaseFrom = jest.fn() as AnyMock;
 
 // Create a flexible mock chain for Supabase queries
 function createMockQueryChain(finalData: unknown) {
@@ -75,7 +78,7 @@ jest.mock("@/lib/trust-mode/config", () => ({
 }));
 
 // Mock embedding generator
-const mockGenerateEmbedding = jest.fn();
+const mockGenerateEmbedding = jest.fn() as AnyMock;
 
 jest.mock("@/lib/utils/embedding-generator", () => ({
   generateEmbedding: (...args: unknown[]) => mockGenerateEmbedding(...args),

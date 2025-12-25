@@ -23,8 +23,13 @@ import {
   getQuickStats,
   formatStatsForPrompt,
 } from "@/lib/ai-agent";
-import { getUnifiedEngine, type UnifiedStreamChunk } from "@/lib/ai-skills";
+import {
+  getUnifiedEngine,
+  type UnifiedStreamChunk,
+  explicitToolRouter,
+} from "@/lib/ai-skills";
 import { logger } from "@/lib/logger";
+import type { ToolType } from "@/components/ai/phase4/types";
 
 /**
  * 请求体 Schema
@@ -32,6 +37,42 @@ import { logger } from "@/lib/logger";
 const messageSchema = z.object({
   role: z.enum(["user", "assistant"]),
   content: z.string(),
+});
+
+/**
+ * Phase 4: 显式工具选择 Schema
+ */
+const explicitToolSchema = z.object({
+  /** 用户选择的工具 ID */
+  toolId: z.enum([
+    "search",
+    "stats",
+    "organize",
+    "tag",
+    "dedupe",
+    "summarize",
+    "extract",
+    "review",
+    "export",
+  ]),
+  /** 是否跳过意图分类 */
+  skipIntentClassification: z.boolean().default(true),
+});
+
+/**
+ * Phase 4: 上下文引用 Schema
+ */
+const contextReferencesSchema = z.object({
+  /** 书签 ID 列表 */
+  bookmarkIds: z.array(z.number().int().positive()).optional(),
+  /** 文件夹 ID 列表 */
+  folderIds: z.array(z.number().int().positive()).optional(),
+  /** 标签名称列表 */
+  tagNames: z.array(z.string()).optional(),
+  /** 前次输出的消息 ID */
+  previousOutputId: z.string().optional(),
+  /** 搜索查询 */
+  searchQuery: z.string().optional(),
 });
 
 const unifiedChatRequestSchema = z.object({
@@ -45,6 +86,10 @@ const unifiedChatRequestSchema = z.object({
   bookmarkIds: z.array(z.number().int().positive()).optional(),
   /** 关联的文件夹 ID */
   folderId: z.number().int().positive().optional(),
+  /** Phase 4: 显式工具选择 */
+  explicitTool: explicitToolSchema.optional(),
+  /** Phase 4: 上下文引用 */
+  contextReferences: contextReferencesSchema.optional(),
   /** 执行选项 */
   options: z
     .object({
@@ -111,6 +156,8 @@ export async function POST(request: NextRequest) {
       messageHistory,
       bookmarkIds,
       folderId,
+      explicitTool,
+      contextReferences,
       options,
     } = validation.data;
 
@@ -121,6 +168,45 @@ export async function POST(request: NextRequest) {
     const enableUnified =
       UNIFIED_ENGINE_ENABLED && (options?.enableUnified ?? true);
 
+    // Phase 4: 处理显式工具选择
+    let forceMode = options?.forceMode;
+    let forceSkill = options?.forceSkill;
+
+    if (explicitTool?.skipIntentClassification) {
+      const explicitRoute = explicitToolRouter.route({
+        tool: explicitTool.toolId as ToolType,
+        message,
+        userId: user.id,
+        conversationId,
+        contextReferences: contextReferences
+          ? {
+              bookmarkIds: contextReferences.bookmarkIds,
+              folderIds: contextReferences.folderIds,
+              previousOutputId: contextReferences.previousOutputId,
+            }
+          : undefined,
+      });
+
+      forceMode = explicitRoute.mode;
+      forceSkill = explicitRoute.suggestedSkill || undefined;
+
+      logger.info(
+        {
+          explicitTool: explicitTool.toolId,
+          routedMode: forceMode,
+          routedSkill: forceSkill,
+          routingDurationMs: explicitRoute.routingDurationMs,
+        },
+        "Unified API: Explicit tool routing applied",
+      );
+    }
+
+    // 合并上下文引用中的书签 ID
+    const allBookmarkIds = [
+      ...(bookmarkIds || []),
+      ...(contextReferences?.bookmarkIds || []),
+    ];
+
     logger.info(
       {
         userId: user.id.slice(0, 8) + "...",
@@ -128,8 +214,10 @@ export async function POST(request: NextRequest) {
         conversationId,
         enableUnified,
         isStream,
-        forceMode: options?.forceMode,
-        forceSkill: options?.forceSkill,
+        forceMode,
+        forceSkill,
+        hasExplicitTool: !!explicitTool,
+        hasContextReferences: !!contextReferences,
       },
       "Unified API: Request received",
     );
@@ -148,8 +236,8 @@ export async function POST(request: NextRequest) {
         {
           userId: user.id,
           conversationId,
-          bookmarkIds,
-          folderId,
+          bookmarkIds: allBookmarkIds.length > 0 ? allBookmarkIds : undefined,
+          folderId: folderId || contextReferences?.folderIds?.[0],
           messageHistory: messageHistory?.map((m) => ({
             role: m.role as "user" | "assistant",
             content: m.content,
@@ -160,8 +248,8 @@ export async function POST(request: NextRequest) {
         },
         {
           includeRoutingInfo: options?.includeRoutingInfo,
-          forceMode: options?.forceMode,
-          forceSkill: options?.forceSkill,
+          forceMode,
+          forceSkill,
         },
         isStream,
         user.id,
@@ -173,7 +261,7 @@ export async function POST(request: NextRequest) {
         {
           userId: user.id,
           conversationId,
-          bookmarkIds,
+          bookmarkIds: allBookmarkIds.length > 0 ? allBookmarkIds : undefined,
           messageHistory: messageHistory?.map((m) => ({
             role: m.role as "user" | "assistant",
             content: m.content,

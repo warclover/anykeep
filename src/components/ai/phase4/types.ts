@@ -1,97 +1,119 @@
 /**
- * Phase 4: AI 交互 UI 升级 - 类型定义
+ * Phase 4: 交互升级 - 类型定义
+ *
+ * 包含所有 Phase 4 组件的类型定义
+ * 支持 stub 组件和完整组件的兼容
+ *
  * @version 1.0.0
- * @description 工具选择器、快速操作、执行确认、上下文面板的类型定义
+ * @since 2025-12-25
  */
 
-import type { LucideIcon } from "lucide-react";
-
 // =============================================================================
-// 工具选择器 (ToolPicker) 类型
+// 工具选择器类型
 // =============================================================================
 
 /**
- * 工具类型枚举
+ * 工具类型（完整版 - 用于 ExplicitToolRouter）
  */
 export type ToolType =
-  | "auto" // 自动判断（默认）
-  | "search" // 搜索
-  | "organize" // 整理
-  | "summarize" // 总结
-  | "export" // 导出
-  | "extract" // 知识萃取
-  | "review" // 知识回顾
-  | "stats" // 数据统计
-  | "tag" // 批量标签
-  | "dedupe"; // 去重清理
-
-/**
- * 工具选项配置
- */
-export interface ToolOption {
-  type: ToolType;
-  label: string;
-  icon: LucideIcon;
-  description: string;
-  category: ToolCategory;
-  shortcut?: string;
-  isDisabled?: boolean;
-  disabledReason?: string;
-}
+  | "auto"
+  | "search"
+  | "stats"
+  | "organize"
+  | "tag"
+  | "dedupe"
+  | "summarize"
+  | "extract"
+  | "review"
+  | "export"
+  | "create"; // 兼容 stub 组件
 
 /**
  * 工具分类
  */
-export type ToolCategory = "auto" | "search" | "manage" | "create" | "export";
+export type ToolCategory = "query" | "manage" | "create" | "export";
 
 /**
- * 工具选择器 Props
+ * 工具定义（用于 stub ToolSelector）
+ */
+export interface ToolDefinition {
+  id: ToolType;
+  name: string;
+  icon: string;
+  description: string;
+  shortcut?: string;
+}
+
+/**
+ * 工具选项（完整版）
+ */
+export interface ToolOption {
+  id: ToolType;
+  name: string;
+  description: string;
+  icon: string;
+  shortcut?: string;
+  category: ToolCategory;
+  disabled?: boolean;
+}
+
+/**
+ * 工具选择器 Props（完整版）
  */
 export interface ToolSelectorProps {
-  value: ToolType;
-  onChange: (tool: ToolType) => void;
+  selectedTool: ToolType;
+  onToolChange: (tool: ToolType) => void;
   disabled?: boolean;
   className?: string;
 }
 
 // =============================================================================
-// 快速操作栏 (QuickActions) 类型
+// 快速操作类型
 // =============================================================================
 
 /**
  * 消息操作类型
  */
 export type MessageActionType =
-  | "copy" // 复制内容
-  | "regenerate" // 重新生成
-  | "save" // 保存到笔记
-  | "export" // 导出
-  | "like" // 有帮助
-  | "dislike"; // 无帮助
+  | "copy"
+  | "regenerate"
+  | "save"
+  | "export"
+  | "like"
+  | "dislike";
 
 /**
- * 消息操作配置
+ * 消息操作定义
  */
 export interface MessageAction {
   type: MessageActionType;
   label: string;
-  icon: LucideIcon;
-  variant?: "default" | "ghost" | "destructive";
-  requiresConfirm?: boolean;
+  icon: string;
+  disabled?: boolean;
 }
 
 /**
- * 快速操作栏 Props
+ * 反馈原因
  */
-export interface MessageActionsBarProps {
-  messageId: string;
-  content: string;
-  onRegenerate: () => void;
-  onSave: (noteId: string) => void;
-  onExport: () => void;
-  onFeedback: (type: "like" | "dislike", details?: FeedbackDetails) => void;
-  feedbackGiven?: "like" | "dislike" | null;
-  isLoading?: boolean;
+export type FeedbackReason =
+  // UI 使用的值 (quick-actions.tsx)
+  | "wrong_intent"
+  | "inaccurate_result"
+  | "bad_format"
+  | "incomplete"
+  | "other"
+  // API 使用的值 (feedback/route.ts)
+  | "inaccurate"
+  | "irrelevant"
+  | "slow"
+  | "confusing";
+
+/**
+ * 反馈原因选项
+ */
+export interface FeedbackReasonOption {
+  id: FeedbackReason;
+  label: string;
 }
 
 /**
@@ -103,25 +125,22 @@ export interface FeedbackDetails {
 }
 
 /**
- * 反馈原因
+ * 消息操作栏 Props
  */
-export type FeedbackReason =
-  | "wrong_intent" // 理解错了意图
-  | "inaccurate_result" // 结果不准确
-  | "bad_format" // 格式不好
-  | "incomplete" // 回答不完整
-  | "other"; // 其他
-
-/**
- * 反馈原因配置
- */
-export interface FeedbackReasonOption {
-  id: FeedbackReason;
-  label: string;
+export interface MessageActionsBarProps {
+  messageId: string;
+  content: string;
+  onRegenerate?: () => void;
+  onSave?: (noteId: string) => void;
+  onExport?: () => void;
+  onFeedback?: (type: "like" | "dislike", details?: FeedbackDetails) => void;
+  feedbackGiven?: "like" | "dislike" | null;
+  isLoading?: boolean;
+  className?: string;
 }
 
 // =============================================================================
-// 执行确认组件 (ActionConfirmation) 类型
+// 执行确认类型
 // =============================================================================
 
 /**
@@ -130,50 +149,38 @@ export interface FeedbackReasonOption {
 export type RiskLevel = "low" | "medium" | "high" | "critical";
 
 /**
- * 操作类型
+ * 整理操作类型
  */
 export type OrganizeActionType =
-  | "move" // 移动
-  | "tag" // 添加标签
-  | "untag" // 移除标签
-  | "merge" // 合并
-  | "archive" // 归档
-  | "delete"; // 删除
+  | "move"
+  | "tag"
+  | "untag"
+  | "merge"
+  | "archive"
+  | "delete";
 
 /**
- * 整理操作
+ * 整理操作定义
  */
 export interface OrganizeAction {
   type: OrganizeActionType;
-  targets: string[]; // 受影响的书签 ID
+  targets: number[];
   params: {
-    targetFolderId?: string;
     folderName?: string;
+    folderId?: number;
     tags?: string[];
     permanent?: boolean;
   };
 }
 
 /**
- * 操作风险评估结果
+ * 操作风险评估
  */
 export interface ActionRisk {
   level: RiskLevel;
   message: string;
   requiresConfirmation: boolean;
-  requiresInput?: string; // 需要输入的确认词
-}
-
-/**
- * 执行确认组件 Props
- */
-export interface ActionConfirmationProps {
-  title: string;
-  actions: OrganizeAction[];
-  onConfirm: () => void;
-  onAdjust: () => void;
-  onCancel: () => void;
-  isExecuting?: boolean;
+  requiresInput?: string;
 }
 
 /**
@@ -182,44 +189,58 @@ export interface ActionConfirmationProps {
 export interface ActionSummary {
   type: OrganizeActionType;
   count: number;
-  target?: string;
+  target: string;
   description: string;
 }
 
+/**
+ * 执行确认 Props
+ */
+export interface ActionConfirmationProps {
+  title: string;
+  actions: OrganizeAction[];
+  onConfirm: () => void;
+  onAdjust?: () => void;
+  onCancel: () => void;
+  isExecuting?: boolean;
+  className?: string;
+}
+
 // =============================================================================
-// 上下文面板 (ContextPanel) 类型
+// 上下文面板类型
 // =============================================================================
 
 /**
- * 上下文项类型
+ * 上下文项类型（兼容版本）
  */
 export type ContextItemType =
-  | "bookmark" // 书签
-  | "folder" // 文件夹
-  | "tag" // 标签
-  | "search_results" // 搜索结果
-  | "previous_output"; // 上一轮输出
+  | "bookmark"
+  | "folder"
+  | "tag"
+  | "selection"
+  | "conversation"
+  | "search_results"
+  | "previous_output";
 
 /**
- * 上下文项
+ * 上下文项（简化版 - stub 组件用）
  */
 export interface ContextItem {
   id: string;
   type: ContextItemType;
-  data: ContextItemData;
-  addedAt: Date;
-  addedBy: "user" | "ai";
+  title: string;
+  description?: string;
+  metadata?: Record<string, unknown>;
 }
 
 /**
- * 上下文项数据（联合类型）
+ * 上下文面板状态
  */
-export type ContextItemData =
-  | BookmarkContextData
-  | FolderContextData
-  | TagContextData
-  | SearchResultsContextData
-  | PreviousOutputContextData;
+export interface ContextPanelState {
+  isExpanded: boolean;
+  items: ContextItem[];
+  selectedItemId?: string;
+}
 
 /**
  * 书签上下文数据
@@ -263,7 +284,7 @@ export interface SearchResultsContextData {
 }
 
 /**
- * 上一轮输出上下文数据
+ * 前次输出上下文数据
  */
 export interface PreviousOutputContextData {
   type: "previous_output";
@@ -273,47 +294,33 @@ export interface PreviousOutputContextData {
 }
 
 /**
- * 上下文面板 Props
+ * 上下文项数据联合类型
  */
-export interface ContextPanelProps {
-  items: ContextItem[];
-  onRemove: (id: string) => void;
-  onClear: () => void;
-  onAddMore: () => void;
-  expanded?: boolean;
-  onExpandedChange?: (expanded: boolean) => void;
-}
-
-/**
- * 上下文面板状态
- */
-export interface ContextPanelState {
-  items: ContextItem[];
-  expanded: boolean;
-}
+export type ContextItemData =
+  | BookmarkContextData
+  | FolderContextData
+  | TagContextData
+  | SearchResultsContextData
+  | PreviousOutputContextData;
 
 // =============================================================================
 // API 请求/响应类型
 // =============================================================================
 
 /**
- * 扩展的统一请求（支持显式工具）
+ * 显式工具请求（用于 API）
  */
 export interface UnifiedRequestWithExplicitTool {
   message: string;
-  userId: string;
   conversationId?: string;
-
-  /** 显式工具选择 */
   explicitTool?: {
-    toolId: ToolType;
+    toolId: string;
     skipIntentClassification: boolean;
   };
-
-  /** 上下文引用 */
   contextReferences?: {
     bookmarkIds?: number[];
     folderIds?: number[];
+    tagNames?: string[];
     previousOutputId?: string;
   };
 }
@@ -327,11 +334,11 @@ export interface FeedbackRequest {
   type: "positive" | "negative";
   negativeReason?: FeedbackReason;
   comment?: string;
-  context: {
-    originalMessage: string;
-    classifiedIntent: string;
-    toolUsed: string;
-    executionMode?: "atomic" | "orchestration";
+  context?: {
+    originalMessage?: string;
+    classifiedIntent?: string;
+    toolUsed?: string;
+    executionMode?: string;
     skillId?: string;
   };
 }
@@ -348,8 +355,8 @@ export interface UndoRequest {
  */
 export interface UndoResponse {
   success: boolean;
-  restored: number;
-  message: string;
+  restoredCount?: number;
+  error?: string;
 }
 
 /**
@@ -381,14 +388,13 @@ export interface SaveNoteResponse {
 }
 
 /**
- * 可撤销操作
+ * 可撤销操作记录
  */
 export interface UndoableOperation {
-  id: string;
+  snapshotId: string;
   operationType: string;
-  bookmarkCount: number;
-  summary: string;
-  createdAt: string;
-  expiresAt: string;
-  timeRemaining: string;
+  description: string;
+  createdAt: Date;
+  expiresAt: Date;
+  affectedCount: number;
 }

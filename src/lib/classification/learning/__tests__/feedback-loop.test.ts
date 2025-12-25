@@ -7,6 +7,9 @@
 
 import { describe, it, expect, beforeEach, jest } from "@jest/globals";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyMock = jest.Mock<(...args: any[]) => any>;
+
 // ============================================================================
 // Mocks
 // ============================================================================
@@ -39,8 +42,10 @@ jest.mock("@/lib/logger", () => ({
 }));
 
 // Mock preference learner
-const mockRecordEvent = jest.fn().mockResolvedValue(undefined);
-const mockGetLearningStats = jest.fn().mockResolvedValue({
+const mockRecordEvent = jest.fn() as AnyMock;
+mockRecordEvent.mockResolvedValue(undefined);
+const mockGetLearningStats = jest.fn() as AnyMock;
+mockGetLearningStats.mockResolvedValue({
   totalEvents: 100,
   confirmations: 70,
   rejections: 20,
@@ -56,8 +61,10 @@ jest.mock("../preference-learner", () => ({
 }));
 
 // Mock profile updater
-const mockRunFullUpdate = jest.fn().mockResolvedValue(undefined);
-const mockGetHealthStatus = jest.fn().mockResolvedValue({
+const mockRunFullUpdate = jest.fn() as AnyMock;
+mockRunFullUpdate.mockResolvedValue(undefined);
+const mockGetHealthStatus = jest.fn() as AnyMock;
+mockGetHealthStatus.mockResolvedValue({
   recommendations: [],
 });
 
@@ -69,8 +76,10 @@ jest.mock("../profile-updater", () => ({
 }));
 
 // Mock source profile service
-const mockUpdateTrustScore = jest.fn().mockResolvedValue(undefined);
-const mockUpdateOnClassification = jest.fn().mockResolvedValue(undefined);
+const mockUpdateTrustScore = jest.fn() as AnyMock;
+mockUpdateTrustScore.mockResolvedValue(undefined);
+const mockUpdateOnClassification = jest.fn() as AnyMock;
+mockUpdateOnClassification.mockResolvedValue(undefined);
 
 jest.mock("@/lib/source-profile/source-profile.service", () => ({
   sourceProfileService: {
@@ -81,9 +90,11 @@ jest.mock("@/lib/source-profile/source-profile.service", () => ({
 }));
 
 // Mock cache manager
-const mockInvalidateUser = jest.fn();
-const mockWarmupUserCache = jest.fn().mockResolvedValue(undefined);
-const mockGetStats = jest.fn().mockReturnValue({
+const mockInvalidateUser = jest.fn() as AnyMock;
+const mockWarmupUserCache = jest.fn() as AnyMock;
+mockWarmupUserCache.mockResolvedValue(undefined);
+const mockGetStats = jest.fn() as AnyMock;
+mockGetStats.mockReturnValue({
   hitRate: 0.8,
   size: 100,
 });
@@ -100,12 +111,14 @@ jest.mock("@/lib/classification/router/cache-manager", () => ({
 // Test Utilities
 // ============================================================================
 
+import type { FeedbackSignal } from "../feedback-loop";
+
 function createFeedbackData(
   overrides: Partial<{
     userId: string;
     bookmarkId: number;
-    signal: string;
-    sourceId: string;
+    signal: FeedbackSignal;
+    sourceId: string | undefined;
     originalFolderId: number;
     newFolderId: number;
     confidence: number;
@@ -114,7 +127,7 @@ function createFeedbackData(
   return {
     userId: "user-123",
     bookmarkId: 1,
-    signal: "confirm" as const,
+    signal: "confirm" as FeedbackSignal,
     sourceId: "source-abc",
     originalFolderId: 1,
     newFolderId: 2,

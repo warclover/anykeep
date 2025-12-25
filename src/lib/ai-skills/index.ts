@@ -124,6 +124,10 @@ export {
   IntentRouter,
   createIntentRouter,
   intentRouter,
+  // Phase 4: 显式工具路由
+  ExplicitToolRouter,
+  createExplicitToolRouter,
+  explicitToolRouter,
 } from "./router";
 
 // ============================================

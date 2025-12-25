@@ -148,6 +148,16 @@ const TOOL_MAPPINGS: Record<Exclude<ToolType, "auto">, ToolMapping> = {
     complexity: "medium",
     description: "导出数据",
   },
+
+  // 创作类（通用）
+  create: {
+    intentType: "create",
+    subType: "general",
+    suggestedSkill: null,
+    mode: "atomic",
+    complexity: "medium",
+    description: "创作内容",
+  },
 };
 
 // =============================================================================

@@ -8,16 +8,16 @@
 import { describe, it, expect, beforeEach, jest } from "@jest/globals";
 import { VectorMatcher } from "../vector-matcher";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyMock = jest.Mock<(...args: any[]) => any>;
+
 // ============================================================================
 // Mocks
 // ============================================================================
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const mockSearchSimilarFolders = jest.fn<any, any[]>();
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const mockFindByUserId = jest.fn<any, any[]>();
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const mockSearchMatchingFolders = jest.fn<any, any[]>();
+const mockSearchSimilarFolders = jest.fn() as AnyMock;
+const mockFindByUserId = jest.fn() as AnyMock;
+const mockSearchMatchingFolders = jest.fn() as AnyMock;
 
 // Mock FolderProfileRepository
 function createMockFolderProfileRepo() {
@@ -210,9 +210,15 @@ describe("VectorMatcher", () => {
 
       const results = await matcher.match(context);
 
-      expect(results[0].topTags).toEqual(["前端", "React"]);
-      expect(results[0].sampleTitles).toEqual(["React 入门"]);
-      expect(results[0].metadata.matchSource).toBe("profile");
+      // Access extended properties through metadata with type assertion
+      const metadata = results[0].metadata as {
+        topTags: string[];
+        sampleTitles: string[];
+        matchSource: string;
+      };
+      expect(metadata.topTags).toEqual(["前端", "React"]);
+      expect(metadata.sampleTitles).toEqual(["React 入门"]);
+      expect(metadata.matchSource).toBe("profile");
     });
   });
 
