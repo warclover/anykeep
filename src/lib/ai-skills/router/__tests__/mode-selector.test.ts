@@ -171,7 +171,10 @@ describe("ModeSelector", () => {
     });
 
     describe("disabled skill handling", () => {
-      it("should handle organize:cleanup with partial mapping to enabled skill", () => {
+      it("should fall back to atomic when skill is explicitly disabled", () => {
+        // 禁用 batch_organize skill
+        selector.setSkillEnabled("batch_organize", false);
+
         const intent: IntentClassification = {
           type: "organize",
           subType: "cleanup",
@@ -192,9 +195,63 @@ describe("ModeSelector", () => {
 
         const result = selector.select(intent, complexity);
 
-        // organize:cleanup is disabled, should fall back to atomic for complex tasks
-        // without enabled mapping
+        // 禁用后，复杂任务应回退到 atomic 模式
         expect(result.mode).toBe("atomic");
+
+        // 恢复启用状态，避免影响其他测试
+        selector.setSkillEnabled("batch_organize", true);
+      });
+
+      it("should fall back to atomic for disabled skill in default mappings", () => {
+        // learn:interview 在默认配置中是禁用的
+        const intent: IntentClassification = {
+          type: "learn",
+          subType: "interview",
+          confidence: 0.9,
+          entities: [],
+          requiresMultiStep: true,
+          hasDeliverableExpectation: false,
+          source: "rule",
+        };
+
+        const complexity: ComplexityEvaluation = {
+          level: "complex",
+          score: 75,
+          factors: [],
+          estimatedSteps: 5,
+          estimatedDurationMs: 30000,
+        };
+
+        const result = selector.select(intent, complexity);
+
+        // learn:interview 禁用 + 复杂任务 → atomic
+        expect(result.mode).toBe("atomic");
+      });
+
+      it("should use partial mapping when deliverable expected and partial exists", () => {
+        // 禁用 learn:interview，但 learn:review 仍启用
+        const intent: IntentClassification = {
+          type: "learn",
+          subType: "interview",
+          confidence: 0.9,
+          entities: [],
+          requiresMultiStep: true,
+          hasDeliverableExpectation: true, // 期望交付物
+          source: "rule",
+        };
+
+        const complexity: ComplexityEvaluation = {
+          level: "medium",
+          score: 50,
+          factors: [],
+          estimatedSteps: 3,
+          estimatedDurationMs: 15000,
+        };
+
+        const result = selector.select(intent, complexity);
+
+        // 中等复杂度 + 期望交付物 + 有 partial mapping (learn:review) → orchestration
+        expect(result.mode).toBe("orchestration");
       });
     });
 

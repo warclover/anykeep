@@ -43,6 +43,7 @@ const config: Config = {
     "/figma1121/",
     "/browser-extension/",
     "/.backups/",
+    "/e2e/", // 排除 Playwright E2E 测试
   ],
 };
 

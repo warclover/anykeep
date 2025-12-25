@@ -134,12 +134,34 @@ const createMockSupabase = (
   return {
     from: jest.fn().mockImplementation((table: string) => {
       if (table === "bookmarks") {
-        return {
-          select: jest.fn().mockReturnThis(),
-          eq: jest.fn().mockReturnThis(),
-          is: jest.fn().mockReturnThis(),
-          order: jest.fn().mockResolvedValue({ data: bookmarks, error: null }),
+        // 创建可链式调用的查询构建器，支持所有 Supabase 查询方法
+        const createBookmarkQueryBuilder = () => {
+          const resolveData = () =>
+            Promise.resolve({ data: bookmarks, error: null });
+          const builder: Record<string, jest.Mock> = {
+            select: jest.fn().mockImplementation(() => builder),
+            eq: jest.fn().mockImplementation(() => builder),
+            is: jest.fn().mockImplementation(() => builder),
+            or: jest.fn().mockImplementation(() => builder),
+            not: jest.fn().mockImplementation(() => builder),
+            in: jest.fn().mockImplementation(() => builder),
+            order: jest.fn().mockImplementation(() => builder),
+            limit: jest.fn().mockImplementation(() => builder),
+            range: jest.fn().mockImplementation(() => resolveData()),
+            single: jest.fn().mockImplementation(() => resolveData()),
+          };
+          // 添加 then 支持直接 await builder
+          Object.defineProperty(builder, "then", {
+            value: (
+              resolve: (value: { data: typeof bookmarks; error: null }) => void,
+            ) => {
+              resolve({ data: bookmarks, error: null });
+            },
+            enumerable: false,
+          });
+          return builder;
         };
+        return createBookmarkQueryBuilder();
       }
       if (table === "folders") {
         return createFoldersQueryBuilder();

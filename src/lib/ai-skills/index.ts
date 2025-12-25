@@ -1,186 +1,156 @@
 /**
  * AI Skills 模块导出
  *
- * @version 2.0.0
+ * 精简的公共 API，仅导出必要的顶层符号
+ *
+ * @version 3.0.0 - 精简导出结构
  * @since 2025-12-22
- * @updated 2025-12-24 - 添加统一智能架构支持
+ * @updated 2025-12-25 - 模块导出优化
  */
 
 // ============================================
-// 核心层（现有）
+// 1. 核心引擎（主要入口）
 // ============================================
 
-// 核心类型
-export * from "./core/types";
-
-// BaseSkill 和错误类
 export {
+  // 统一引擎 - 主要使用入口
+  UnifiedEngine,
+  createUnifiedEngine,
+  unifiedEngine,
+  // 编排引擎 - 高级用例
+  OrchestrationEngine,
+  createOrchestrationEngine,
+  // 类型
+  type UnifiedEngineConfig,
+  type EngineContext,
+  type EngineExecuteOptions,
+} from "./engine";
+
+// ============================================
+// 2. 核心基类（扩展用）
+// ============================================
+
+export {
+  // Skill 基类
   BaseSkill,
   SkillValidationError,
   SkillTimeoutError,
   SkillExecutionError,
 } from "./core/base-skill";
 
-// SkillRegistry
+export {
+  // 编排 Skill 基类
+  OrchestrationSkill,
+  OrchestrationExecutionError,
+} from "./orchestration";
+
+// ============================================
+// 3. Skill 注册表
+// ============================================
+
 export {
   SkillRegistry,
   skillRegistry,
   type SkillRegistryStats,
-  type SkillMetadataSummary,
 } from "./core/skill-registry";
 
-// Skills 集合
-export * from "./skills";
+// ============================================
+// 4. 初始化函数
+// ============================================
 
-// 注册和初始化
 export {
   registerDefaultSkills,
-  getSkillsAsTools,
   initializeAISkills,
   isSkillsInitialized,
   initializeUnifiedEngine,
   getUnifiedEngine,
   isUnifiedEngineInitialized,
+  getSkillsAsTools,
 } from "./register";
 
 // ============================================
-// 路由层（新增）
+// 5. 核心类型（精简）
+// ============================================
+
+export type {
+  // Skill 类型
+  SkillContext,
+  SkillMetadata,
+  SkillOutput,
+  SkillCategory,
+} from "./core/types";
+
+export type {
+  // 路由类型
+  IntentType,
+  IntentClassification,
+  ComplexityLevel,
+  ComplexityEvaluation,
+  ExecutionMode,
+  ModeSelection,
+  RouteResult,
+} from "./router";
+
+export type {
+  // 编排类型
+  OrchestrationContext,
+  StepDefinition,
+  Deliverable,
+  OrchestrationResult,
+} from "./orchestration";
+
+export type {
+  // 统一输出类型
+  UnifiedStreamChunk,
+  TextChunk,
+  ProgressChunk,
+  DeliverableChunk,
+  ErrorChunk,
+  DoneChunk,
+} from "./output";
+
+// ============================================
+// 6. 路由组件（高级用例）
 // ============================================
 
 export {
-  // 类型
-  type IntentType,
-  type IntentClassification,
-  type IntentRule,
-  type ComplexityLevel,
-  type ComplexityEvaluation,
-  type ExecutionMode,
-  type ModeSelection,
-  type UserRequest,
-  type RequestContext,
-  type RouteResult,
-  // 意图分类器
   IntentClassifier,
   createIntentClassifier,
   intentClassifier,
-  // 复杂度评估器
   ComplexityEvaluator,
   createComplexityEvaluator,
-  complexityEvaluator,
-  // 模式选择器
   ModeSelector,
   createModeSelector,
-  modeSelector,
-  // 意图路由器
   IntentRouter,
   createIntentRouter,
   intentRouter,
 } from "./router";
 
 // ============================================
-// 编排层（新增）
+// 7. 已注册的 Skills（按需导出）
 // ============================================
 
-export {
-  // 类型
-  type OrchestrationContext,
-  type ConfirmationOptions,
-  type ConfirmationResult,
-  type Deliverable,
-  type StepDefinition,
-  type ProgressState,
-  type OrchestrationSkillMetadata,
-  type OrchestrationResult,
-  type IOrchestrationSkill,
-  // 编排 Skill 基类
-  OrchestrationSkill,
-  OrchestrationExecutionError,
-  // 进度报告器
-  ProgressReporter,
-  createProgressReporter,
-  createSimpleProgressReporter,
-  // 交付物生成器
-  DeliverableGenerator,
-  createDeliverableGenerator,
-  deliverableGenerator,
-  type ReportData,
-  type ListData,
-  type CardData,
-} from "./orchestration";
+// 知识管理
+export { KnowledgeReviewSkill } from "./skills/knowledge-review";
+export { LearningPathSkill } from "./skills/learning-path";
+export { ReadingPlannerSkill } from "./skills/reading-planner";
 
-// ============================================
-// 输出层（新增）
-// ============================================
+// 数据处理
+export { DataExportSkill } from "./skills/data-export";
+export { BatchOrganizeSkill } from "./skills/batch-organize";
+export { DuplicateCleanupSkill } from "./skills/duplicate-cleanup";
+export { SmartTaggingSkill } from "./skills/smart-tagging";
 
-export {
-  // 类型
-  type DeliverableType,
-  type OutputFormat,
-  type ConfirmOption,
-  type Suggestion,
-  type DeliverableAction,
-  type TextChunk,
-  type ProgressChunk,
-  type ToolCallChunk,
-  type ConfirmationChunk,
-  type DeliverableChunk,
-  type SuggestionsChunk,
-  type RoutingChunk,
-  type ErrorChunk,
-  type FallbackChunk,
-  type DoneChunk,
-  type UnifiedStreamChunk,
-  type OrchestrationStreamChunk,
-  // 输出适配器
-  UnifiedOutputAdapter,
-  createUnifiedOutputAdapter,
-  unifiedOutputAdapter,
-} from "./output";
+// 分析报告
+export { InsightReportSkill } from "./skills/insight-report";
+export { PeriodicReportSkill } from "./skills/periodic-report";
 
-// ============================================
-// 引擎层（新增）
-// ============================================
+// 内容生成
+export { QuickDigestSkill } from "./skills/quick-digest";
+export { ShareBundleSkill } from "./skills/share-bundle";
+export { RelatedDiscoverySkill } from "./skills/related-discovery";
 
-export {
-  // 类型
-  type EngineContext,
-  type EngineExecuteOptions,
-  type EngineExecutionSummary,
-  type UnifiedEngineConfig,
-  type OrchestrationEngineConfig,
-  // 编排引擎
-  OrchestrationEngine,
-  createOrchestrationEngine,
-  orchestrationEngine,
-  // 统一引擎
-  UnifiedEngine,
-  createUnifiedEngine,
-  unifiedEngine,
-} from "./engine";
-
-// ============================================
-// Effect 层（新增）
-// ============================================
-
-export {
-  // 类型
-  type EffectContext,
-  type EffectType,
-  type Effect,
-  type ConfirmationPayload,
-  type ConfirmationEffect,
-  type ToolConfirmationConfig,
-  type SkillConfirmationConfig,
-  type NotificationLevel,
-  type NotificationPayload,
-  type NotificationEffect,
-  type AuditAction,
-  type AuditPayload,
-  type AuditEffect,
-  type UnifiedEffect,
-  // 确认适配器
-  ConfirmationAdapter,
-  createConfirmationAdapter,
-  createToolConfirmationAdapter,
-  createSkillConfirmationAdapter,
-} from "./effects";
+// 工具 Skills
+export { SearchSkill } from "./skills/search";
+export { ClassifySkill } from "./skills/classify";
+export { SummarySkill } from "./skills/summary";

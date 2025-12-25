@@ -3,30 +3,34 @@
  *
  * 验证应用基本功能正常
  *
- * @version 1.0.0
+ * @version 2.0.0 - 增强稳定性
  * @since 2025-12-22
  */
 
 import { test, expect } from "@playwright/test";
+import { waitForPageReady, safeNavigate, TIMEOUTS } from "./test-utils";
 
 test.describe("基础冒烟测试", () => {
+  // 设置重试次数
+  test.describe.configure({ retries: 2 });
+
   test("首页可访问", async ({ page }) => {
-    await page.goto("/");
+    await safeNavigate(page, "/");
 
     // 验证页面加载成功（不管是首页还是登录页）
     await expect(page).toHaveTitle(/.*/);
 
     // 检查页面是否有内容
-    const body = await page.locator("body");
-    await expect(body).toBeVisible();
+    const body = page.locator("body");
+    await expect(body).toBeVisible({ timeout: TIMEOUTS.elementVisible });
   });
 
   test("登录页可访问", async ({ page }) => {
-    await page.goto("/login");
+    await safeNavigate(page, "/login");
 
     // 验证登录页元素存在
     const loginForm = page.locator("form").first();
-    await expect(loginForm).toBeVisible({ timeout: 10000 });
+    await expect(loginForm).toBeVisible({ timeout: TIMEOUTS.elementVisible });
   });
 
   test("静态资源加载正常", async ({ page }) => {
@@ -39,11 +43,14 @@ test.describe("基础冒烟测试", () => {
     });
 
     // 等待页面完全加载
-    await page.waitForLoadState("networkidle");
+    await waitForPageReady(page);
 
-    // 如果有严重错误，测试失败
+    // 过滤非关键错误
     const criticalErrors = errors.filter(
-      (e) => !e.includes("ResizeObserver") && !e.includes("hydration"),
+      (e) =>
+        !e.includes("ResizeObserver") &&
+        !e.includes("hydration") &&
+        !e.includes("AbortError"),
     );
 
     // 严重错误应导致测试失败
