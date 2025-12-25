@@ -32,11 +32,16 @@ import { Button } from "@/components/ui/button";
 import type { DeliverableData, DeliverableType } from "./types";
 import { clientLogger } from "@/lib/client-logger";
 import { SearchResultsList } from "./search-results-list";
+import { ExtractionResultCard } from "./deliverables/extraction-result-card";
 import type {
   FormattedSearchResponse,
   ParsedQuery,
   SearchResultItem,
 } from "@/lib/ai-skills/search/types";
+import type {
+  KnowledgeExtraction,
+  ExtractionFormat,
+} from "@/lib/ai-skills/skills/knowledge-extract";
 
 interface AIDeliverableCardProps {
   /** 交付物数据 */
@@ -352,6 +357,50 @@ const DocumentContent = memo(function DocumentContent({
   content: unknown;
   metadata?: Record<string, unknown>;
 }) {
+  // 检测是否为 knowledge_extract skill 的交付物
+  const isKnowledgeExtract = metadata?.skillId === "knowledge_extract";
+
+  // 如果是知识萃取结果，使用专门的组件渲染
+  if (isKnowledgeExtract && isKnowledgeExtractionData(content)) {
+    const extractionFormat = (metadata?.format as ExtractionFormat) || "memo";
+    const formattedContent = metadata?.formattedContent as string | undefined;
+
+    const handleOpenSource = (sourceId: number, url: string) => {
+      window.open(url, "_blank", "noopener,noreferrer");
+    };
+
+    const handleCopyContent = async (text: string) => {
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch (error) {
+        clientLogger.error({ error }, "Failed to copy content");
+      }
+    };
+
+    const handleDownload = (text: string, filename: string) => {
+      const blob = new Blob([text], { type: "text/markdown" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    };
+
+    return (
+      <ExtractionResultCard
+        data={content}
+        format={extractionFormat}
+        formattedContent={formattedContent}
+        onOpenSource={handleOpenSource}
+        onCopyContent={handleCopyContent}
+        onDownload={handleDownload}
+      />
+    );
+  }
+
   const textContent =
     typeof content === "string" ? content : JSON.stringify(content, null, 2);
 
@@ -381,6 +430,28 @@ const DocumentContent = memo(function DocumentContent({
     </div>
   );
 });
+
+/**
+ * 类型守卫：检查内容是否为 KnowledgeExtraction 数据
+ */
+function isKnowledgeExtractionData(
+  content: unknown,
+): content is KnowledgeExtraction {
+  if (typeof content !== "object" || content === null) {
+    return false;
+  }
+  const obj = content as Record<string, unknown>;
+  return (
+    typeof obj.id === "string" &&
+    typeof obj.title === "string" &&
+    typeof obj.topic === "string" &&
+    Array.isArray(obj.keyPoints) &&
+    Array.isArray(obj.concepts) &&
+    Array.isArray(obj.sources) &&
+    typeof obj.conclusion === "string" &&
+    typeof obj.metadata === "object"
+  );
+}
 
 /**
  * 图表类型内容（简化展示）

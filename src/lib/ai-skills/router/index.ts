@@ -67,3 +67,12 @@ export {
   getApplicableRules,
   findMatchingRule,
 } from "./disambiguation-rules";
+
+// 显式工具路由器 (Phase 4)
+export {
+  ExplicitToolRouter,
+  createExplicitToolRouter,
+  explicitToolRouter,
+  TOOL_MAPPINGS,
+} from "./explicit-tool-router";
+export type { ToolMapping, ExplicitToolRequest } from "./explicit-tool-router";
