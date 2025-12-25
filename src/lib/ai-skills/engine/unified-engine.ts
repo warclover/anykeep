@@ -40,6 +40,11 @@ import {
   notificationService,
   auditLogService,
 } from "../effects";
+import {
+  type MemoryManager,
+  createMemoryManager,
+  type ReferenceResolutionResult,
+} from "../../ai-memory";
 
 /**
  * 原子引擎执行函数类型
@@ -59,6 +64,7 @@ export class UnifiedEngine {
   private orchestrationEngine: OrchestrationEngine;
   private outputAdapter: UnifiedOutputAdapter;
   private effectManager: EffectManager;
+  private memoryManager: MemoryManager;
   private atomicExecutor: AtomicExecutor | null = null;
   private config: Required<UnifiedEngineConfig>;
   private effectListenerIds: string[] = [];
@@ -68,6 +74,7 @@ export class UnifiedEngine {
       enabled: true,
       debug: false,
       includeRoutingInfo: false,
+      enableMemory: true,
       defaultOptions: {},
       ...config,
     };
@@ -79,6 +86,10 @@ export class UnifiedEngine {
     });
     this.effectManager = createEffectManager({
       debug: config.debug,
+    });
+    this.memoryManager = createMemoryManager({
+      enableReferenceResolution: this.config.enableMemory,
+      enableAutoRecording: this.config.enableMemory,
     });
 
     // 初始化 Effect 处理器
@@ -170,9 +181,64 @@ export class UnifiedEngine {
   ): AsyncGenerator<UnifiedStreamChunk> {
     const mergedOptions = { ...this.config.defaultOptions, ...options };
 
+    // 0. 记忆预处理：解析指代词
+    let processedInput = input;
+    let referenceResolution: ReferenceResolutionResult | null = null;
+
+    if (this.config.enableMemory && context.conversationId) {
+      // 确保会话存在
+      this.memoryManager.getOrCreateSession(
+        context.conversationId,
+        context.userId,
+      );
+
+      // 预处理输入（解析指代词）
+      const preprocessResult = this.memoryManager.preprocessInput(
+        input,
+        context.conversationId,
+      );
+
+      processedInput = preprocessResult.processedInput;
+      referenceResolution = preprocessResult.resolution;
+
+      if (preprocessResult.hasChanges) {
+        logger.debug(
+          {
+            original: input,
+            processed: processedInput,
+            references: referenceResolution?.references.map((r) => ({
+              type: r.type,
+              original: r.originalText,
+            })),
+          },
+          "UnifiedEngine: Reference resolution applied",
+        );
+
+        // 发送记忆块通知前端
+        yield {
+          type: "memory" as const,
+          data: {
+            resolved: true,
+            originalInput: input,
+            resolvedInput: processedInput,
+            referenceCount: referenceResolution?.references.length || 0,
+            referenceTypes:
+              referenceResolution?.references.map((r) => r.type) || [],
+          },
+        };
+      }
+
+      // 记录用户消息
+      this.memoryManager.recordUserMessage(
+        context.conversationId,
+        context.userId,
+        input,
+      );
+    }
+
     // 如果引擎未启用，直接使用原子模式
     if (!this.config.enabled) {
-      yield* this.executeAtomic(input, context);
+      yield* this.executeAtomic(processedInput, context);
       return;
     }
 
@@ -185,7 +251,7 @@ export class UnifiedEngine {
           null,
         );
       }
-      yield* this.executeAtomic(input, context);
+      yield* this.executeAtomic(processedInput, context);
       return;
     }
 
@@ -202,16 +268,16 @@ export class UnifiedEngine {
       }
       yield* this.executeOrchestration(
         mergedOptions.forceSkill,
-        input,
+        processedInput,
         context,
       );
       return;
     }
 
     try {
-      // 1. 路由决策
+      // 1. 路由决策（使用处理后的输入）
       const routeResult = await this.router.route({
-        message: input,
+        message: processedInput,
         context: {
           userId: context.userId,
           conversationId: context.conversationId,
@@ -234,26 +300,36 @@ export class UnifiedEngine {
         );
       }
 
-      // 3. 根据模式执行（带跟进建议）
+      // 3. 根据模式执行（带跟进建议和记忆记录）
       if (
         routeResult.mode === "orchestration" &&
         routeResult.suggestedSkill &&
         this.orchestrationEngine.hasSkill(routeResult.suggestedSkill)
       ) {
-        // 编排模式 - 包装以注入跟进建议
-        yield* this.executeWithSuggestions(
-          this.executeOrchestrationWithFallback(
-            routeResult.suggestedSkill,
-            input,
-            context,
+        // 编排模式 - 包装以注入跟进建议和记录输出
+        yield* this.executeWithMemory(
+          this.executeWithSuggestions(
+            this.executeOrchestrationWithFallback(
+              routeResult.suggestedSkill,
+              processedInput,
+              context,
+            ),
+            routeResult.intent.type,
+            routeResult.intent.subType,
           ),
+          context,
           routeResult.intent.type,
           routeResult.intent.subType,
         );
       } else {
-        // 原子模式 - 包装以注入跟进建议
-        yield* this.executeWithSuggestions(
-          this.executeAtomic(input, context),
+        // 原子模式 - 包装以注入跟进建议和记录输出
+        yield* this.executeWithMemory(
+          this.executeWithSuggestions(
+            this.executeAtomic(processedInput, context),
+            routeResult.intent.type,
+            routeResult.intent.subType,
+          ),
+          context,
           routeResult.intent.type,
           routeResult.intent.subType,
         );
@@ -278,7 +354,7 @@ export class UnifiedEngine {
         error instanceof Error ? error.message : "Unknown error",
       );
 
-      yield* this.executeAtomic(input, context);
+      yield* this.executeAtomic(processedInput, context);
     }
   }
 
@@ -432,6 +508,93 @@ export class UnifiedEngine {
             suggestionsEmitted = true;
           }
         }
+      }
+
+      yield chunk;
+    }
+  }
+
+  /**
+   * 执行流程并记录到会话记忆
+   *
+   * 收集文本内容并在完成时记录到 MemoryManager
+   */
+  private async *executeWithMemory(
+    generator: AsyncGenerator<UnifiedStreamChunk>,
+    context: EngineContext,
+    intentType: IntentType,
+    subType?: string,
+  ): AsyncGenerator<UnifiedStreamChunk> {
+    // 如果记忆功能未启用或没有会话 ID，直接透传
+    if (!this.config.enableMemory || !context.conversationId) {
+      yield* generator;
+      return;
+    }
+
+    let collectedContent = "";
+    const relatedEntityIds: number[] = [];
+
+    for await (const chunk of generator) {
+      // 收集文本内容
+      if (chunk.type === "text" && chunk.data.text) {
+        collectedContent += chunk.data.text;
+      }
+
+      // 收集相关实体 ID（从 tool-call 结果中）
+      if (chunk.type === "tool-call" && chunk.data.result) {
+        const result = chunk.data.result;
+        if (Array.isArray(result)) {
+          // 如果结果是数组，尝试提取 ID
+          for (const item of result) {
+            if (typeof item === "object" && item !== null && "id" in item) {
+              relatedEntityIds.push(item.id as number);
+            }
+          }
+        }
+      }
+
+      // 完成时记录到记忆并注入 conversationId
+      if (chunk.type === "done") {
+        if (chunk.data.success) {
+          // 记录助手消息
+          this.memoryManager.recordAssistantMessage(
+            context.conversationId,
+            collectedContent || chunk.data.summary || "",
+            intentType,
+            subType,
+          );
+
+          // 记录输出摘要
+          this.memoryManager.recordOutput(context.conversationId, {
+            type: chunk.data.mode === "orchestration" ? "deliverable" : "text",
+            summary:
+              chunk.data.summary ||
+              collectedContent.substring(0, 100) ||
+              "操作完成",
+            relatedEntityIds:
+              relatedEntityIds.length > 0 ? relatedEntityIds : undefined,
+            outputAt: Date.now(),
+          });
+
+          logger.debug(
+            {
+              conversationId: context.conversationId,
+              contentLength: collectedContent.length,
+              entityCount: relatedEntityIds.length,
+            },
+            "UnifiedEngine: Memory recorded for conversation",
+          );
+        }
+
+        // 注入 conversationId 到 done chunk
+        yield {
+          ...chunk,
+          data: {
+            ...chunk.data,
+            conversationId: context.conversationId,
+          },
+        };
+        continue;
       }
 
       yield chunk;
@@ -597,10 +760,76 @@ export class UnifiedEngine {
     return this.effectManager.getStats();
   }
 
+  // ============================================================
+  // Memory Layer 方法
+  // ============================================================
+
+  /**
+   * 获取 MemoryManager 实例
+   */
+  getMemoryManager(): MemoryManager {
+    return this.memoryManager;
+  }
+
+  /**
+   * 记录搜索结果到会话记忆
+   *
+   * @param conversationId - 会话 ID
+   * @param query - 搜索查询
+   * @param resultIds - 结果 ID 列表
+   */
+  recordSearchResults(
+    conversationId: string,
+    query: string,
+    resultIds: number[],
+  ): void {
+    if (!this.config.enableMemory) return;
+    this.memoryManager.recordSearchResults(conversationId, query, resultIds);
+  }
+
+  /**
+   * 记录提及的书签到会话记忆
+   *
+   * @param conversationId - 会话 ID
+   * @param bookmarks - 书签列表
+   */
+  recordMentionedBookmarks(
+    conversationId: string,
+    bookmarks: Array<{ id: number; name: string }>,
+  ): void {
+    if (!this.config.enableMemory) return;
+    this.memoryManager.recordMentionedBookmarks(conversationId, bookmarks);
+  }
+
+  /**
+   * 记录提及的文件夹到会话记忆
+   *
+   * @param conversationId - 会话 ID
+   * @param folders - 文件夹列表
+   */
+  recordMentionedFolders(
+    conversationId: string,
+    folders: Array<{ id: number; name: string }>,
+  ): void {
+    if (!this.config.enableMemory) return;
+    this.memoryManager.recordMentionedFolders(conversationId, folders);
+  }
+
+  /**
+   * 获取会话上下文摘要
+   *
+   * @param conversationId - 会话 ID
+   * @returns 上下文摘要字符串，用于注入 Prompt
+   */
+  getContextSummary(conversationId: string): string | null {
+    if (!this.config.enableMemory) return null;
+    return this.memoryManager.generateContextSummary(conversationId);
+  }
+
   /**
    * 清理资源
    *
-   * 移除所有 Effect 监听器
+   * 移除所有 Effect 监听器并销毁 MemoryManager
    */
   dispose(): void {
     // 移除所有注册的监听器
@@ -609,7 +838,10 @@ export class UnifiedEngine {
     }
     this.effectListenerIds = [];
 
-    logger.debug("UnifiedEngine: Disposed, all effect listeners removed");
+    // 销毁 MemoryManager
+    this.memoryManager.destroy();
+
+    logger.debug("UnifiedEngine: Disposed, all resources cleaned up");
   }
 }
 

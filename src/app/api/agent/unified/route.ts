@@ -15,6 +15,7 @@
 
 import type { NextRequest } from "next/server";
 import { z } from "zod";
+import { randomUUID } from "crypto";
 import { createClient } from "@/lib/supabase/server";
 import {
   KnowledgeAgent,
@@ -106,12 +107,15 @@ export async function POST(request: NextRequest) {
 
     const {
       message,
-      conversationId,
+      conversationId: providedConversationId,
       messageHistory,
       bookmarkIds,
       folderId,
       options,
     } = validation.data;
+
+    // 确保有会话 ID（用于记忆功能）
+    const conversationId = providedConversationId || randomUUID();
 
     const isStream = options?.streaming ?? true;
     const enableUnified =

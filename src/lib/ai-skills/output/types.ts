@@ -258,6 +258,25 @@ export interface FallbackChunk {
 }
 
 /**
+ * 记忆块（指代解析成功时发送）
+ */
+export interface MemoryChunk {
+  type: "memory";
+  data: {
+    /** 指代解析是否成功 */
+    resolved: boolean;
+    /** 原始输入 */
+    originalInput: string;
+    /** 解析后的输入 */
+    resolvedInput: string;
+    /** 解析的指代词数量 */
+    referenceCount: number;
+    /** 解析的指代类型列表 */
+    referenceTypes: string[];
+  };
+}
+
+/**
  * 完成块
  */
 export interface DoneChunk {
@@ -275,6 +294,8 @@ export interface DoneChunk {
     mode?: "atomic" | "orchestration";
     /** Skill ID */
     skillId?: string;
+    /** 会话 ID（用于前端持久化） */
+    conversationId?: string;
   };
 }
 
@@ -297,6 +318,7 @@ export type UnifiedStreamChunk =
   | RoutingChunk
   | ErrorChunk
   | FallbackChunk
+  | MemoryChunk
   | DoneChunk;
 
 /**
@@ -328,6 +350,7 @@ export type ChunkTypeMap = {
   routing: RoutingChunk;
   error: ErrorChunk;
   fallback: FallbackChunk;
+  memory: MemoryChunk;
   done: DoneChunk;
 };
 

@@ -24,12 +24,19 @@ import {
   Copy,
   Check,
   ExternalLink,
+  Search,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import type { DeliverableData, DeliverableType } from "./types";
 import { clientLogger } from "@/lib/client-logger";
+import { SearchResultsList } from "./search-results-list";
+import type {
+  FormattedSearchResponse,
+  ParsedQuery,
+  SearchResultItem,
+} from "@/lib/ai-skills/search/types";
 
 interface AIDeliverableCardProps {
   /** 交付物数据 */
@@ -49,6 +56,7 @@ const DELIVERABLE_ICON_MAP: Record<DeliverableType, LucideIcon> = {
   mindmap: Network,
   graph: BarChart3,
   table: Table2,
+  search_results: Search,
 };
 
 /**
@@ -62,6 +70,7 @@ const DELIVERABLE_TYPE_NAMES: Record<DeliverableType, string> = {
   mindmap: "思维导图",
   graph: "图表",
   table: "表格",
+  search_results: "搜索结果",
 };
 
 /**
@@ -193,6 +202,8 @@ const DeliverableContent = memo(function DeliverableContent({
       return <GraphContent content={content} metadata={metadata} />;
     case "mindmap":
       return <MindmapContent content={content} />;
+    case "search_results":
+      return <SearchResultsContent content={content} metadata={metadata} />;
     default:
       return <DefaultContent content={content} />;
   }
@@ -494,6 +505,57 @@ const MindmapContent = memo(function MindmapContent({
   }
 
   return <DefaultContent content={content} />;
+});
+
+/**
+ * 搜索结果内容
+ *
+ * 使用 SearchResultsList 渲染格式化搜索响应
+ */
+const SearchResultsContent = memo(function SearchResultsContent({
+  content,
+  metadata,
+}: {
+  content: unknown;
+  metadata?: Record<string, unknown>;
+}) {
+  // 验证 content 是否为有效的搜索响应
+  if (
+    typeof content !== "object" ||
+    content === null ||
+    !("results" in content) ||
+    !("meta" in content)
+  ) {
+    return <DefaultContent content={content} />;
+  }
+
+  const searchResponse = content as FormattedSearchResponse;
+
+  // 从 metadata 中提取 parsedQuery（如果有）
+  const parsedQuery = metadata?.parsedQuery as ParsedQuery | undefined;
+
+  // 处理结果点击
+  const handleResultClick = (result: SearchResultItem) => {
+    // 打开书签链接
+    window.open(result.url, "_blank", "noopener,noreferrer");
+  };
+
+  // 处理建议点击
+  const handleSuggestionClick = (suggestion: string) => {
+    // TODO: 触发新的搜索
+    clientLogger.info({ suggestion }, "Search suggestion clicked");
+  };
+
+  return (
+    <SearchResultsList
+      response={searchResponse}
+      parsedQuery={parsedQuery}
+      onResultClick={handleResultClick}
+      onSuggestionClick={handleSuggestionClick}
+      showQueryFeedback={!!parsedQuery}
+      initialShowCount={5}
+    />
+  );
 });
 
 /**

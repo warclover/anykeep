@@ -41,7 +41,8 @@ export type DeliverableType =
   | "document"
   | "mindmap"
   | "graph"
-  | "table";
+  | "table"
+  | "search_results"; // 搜索结果（使用 FormattedSearchResponse）
 
 /**
  * 交付物数据
@@ -112,6 +113,22 @@ export interface FallbackInfo {
 }
 
 /**
+ * 记忆信息（指代解析结果）
+ */
+export interface MemoryInfo {
+  /** 是否解析成功 */
+  resolved: boolean;
+  /** 原始输入 */
+  originalInput: string;
+  /** 解析后的输入 */
+  resolvedInput: string;
+  /** 解析的指代词数量 */
+  referenceCount: number;
+  /** 解析的指代类型列表 */
+  referenceTypes: string[];
+}
+
+/**
  * 消息显示状态
  */
 export type MessageDisplayStatus =
@@ -149,6 +166,8 @@ export interface DisplayMessage {
   routing?: RoutingInfo;
   /** 回退信息 */
   fallback?: FallbackInfo;
+  /** 记忆信息（指代解析） */
+  memory?: MemoryInfo;
   /** 执行模式 */
   executionMode?: "atomic" | "orchestration";
   /** Skill ID */
@@ -248,6 +267,7 @@ export type UnifiedStreamChunkFrontend =
   | { type: "suggestions"; suggestions: SuggestionItem[] }
   | { type: "routing"; routing: RoutingInfo }
   | { type: "fallback"; fallback: FallbackInfo }
+  | { type: "memory"; memory: MemoryInfo }
   | {
       type: "error";
       error: string;
@@ -330,6 +350,12 @@ export function processUnifiedChunk(
       return {
         ...message,
         fallback: chunk.fallback,
+      };
+
+    case "memory":
+      return {
+        ...message,
+        memory: chunk.memory,
       };
 
     case "error":
@@ -459,6 +485,18 @@ export function adaptBackendChunk(
           reason: (data?.reason as string) ?? "",
           originalMode: "orchestration",
           fallbackMode: "atomic",
+        },
+      };
+
+    case "memory":
+      return {
+        type: "memory",
+        memory: {
+          resolved: (data?.resolved as boolean) ?? false,
+          originalInput: (data?.originalInput as string) ?? "",
+          resolvedInput: (data?.resolvedInput as string) ?? "",
+          referenceCount: (data?.referenceCount as number) ?? 0,
+          referenceTypes: (data?.referenceTypes as string[]) ?? [],
         },
       };
 

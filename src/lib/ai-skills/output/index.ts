@@ -25,6 +25,7 @@ export type {
   RoutingChunk,
   ErrorChunk,
   FallbackChunk,
+  MemoryChunk,
   DoneChunk,
   // 统一类型
   UnifiedStreamChunk,

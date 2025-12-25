@@ -24,6 +24,7 @@ import {
   BarChart3,
   X,
   BookOpen,
+  Brain,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -81,6 +82,8 @@ export function AIPanelContent({
     PendingConfirmation[]
   >([]);
   const [isConfirming, setIsConfirming] = useState(false);
+  // 记忆提示状态（显示"AI 记住了"）
+  const [showMemoryHint, setShowMemoryHint] = useState(false);
 
   // Hooks
   const { normalizeConfirmation, confirm, cancel } = useUnifiedConfirmation();
@@ -211,6 +214,18 @@ export function AIPanelContent({
                     ...prev,
                     chunk.confirmation,
                   ]);
+                }
+
+                // 从 done chunk 中提取 conversationId（用于记忆功能）
+                if (chunk.type === "done" && chunk.data.conversationId) {
+                  setConversationId(chunk.data.conversationId);
+                }
+
+                // 处理记忆块（显示"AI 记住了"提示）
+                if (chunk.type === "memory" && chunk.memory?.resolved) {
+                  setShowMemoryHint(true);
+                  // 3秒后自动隐藏
+                  setTimeout(() => setShowMemoryHint(false), 3000);
                 }
               } else {
                 // 使用原有 Agent API 处理（兼容模式）
@@ -582,6 +597,13 @@ export function AIPanelContent({
               <p className="text-xs text-white/80 flex items-center gap-1.5">
                 <span className="w-2 h-2 bg-green-300 rounded-full animate-pulse" />
                 在线 · 随时为您服务
+                {/* 记忆提示 */}
+                {showMemoryHint && (
+                  <span className="ml-2 px-2 py-0.5 bg-white/20 rounded-full text-white/90 flex items-center gap-1 animate-fade-in">
+                    <Brain className="size-3" />
+                    AI 记住了
+                  </span>
+                )}
               </p>
             </div>
           </div>

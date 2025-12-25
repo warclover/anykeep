@@ -72,6 +72,23 @@ export {
   type AISearchEnhancedProps,
 } from "./ai-search-enhanced";
 
+// 搜索结果组件（增强搜索体验）
+export {
+  SearchResultCard,
+  type SearchResultCardProps,
+} from "./search-result-card";
+export {
+  QueryFeedback,
+  SearchSuggestions,
+  type QueryFeedbackProps,
+  type SearchSuggestionsProps,
+} from "./query-feedback";
+export {
+  SearchResultsList,
+  SearchResultsSummary,
+  type SearchResultsListProps,
+} from "./search-results-list";
+
 // 交付物展示组件
 export { ReviewCard } from "./deliverables/review-card";
 export { CleanupPreview } from "./deliverables/cleanup-preview";

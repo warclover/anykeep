@@ -94,6 +94,8 @@ export interface UnifiedEngineConfig {
   debug?: boolean;
   /** 是否包含路由信息 */
   includeRoutingInfo?: boolean;
+  /** 是否启用上下文记忆 */
+  enableMemory?: boolean;
   /** 默认执行选项 */
   defaultOptions?: EngineExecuteOptions;
 }
