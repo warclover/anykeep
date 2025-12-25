@@ -1,6 +1,9 @@
 /**
  * Classification V2 Integration Layer
  * Integrates the V2 classification service with the existing bookmark creation flow
+ *
+ * @version 1.1.0
+ * @updated 2025-12-25 模块拆分重构
  */
 
 import { z } from "zod";
@@ -18,12 +21,19 @@ import {
 } from "./learning/learning-event-handler";
 import type { ClassificationResult, BookmarkInput } from "./types";
 import type { ClassificationSuggestion } from "@/types/confirmation";
-import type {
-  ClassificationStatus,
-  ClassificationResultData,
-} from "@/types/supabase";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
+
+// 导入提取的模块
+import { updateFolderProfileAfterClassification as updateFolderProfile } from "./folder-profile-manager";
+import { updateBookmarkClassificationStatus } from "./classification-status";
+
+// 重新导出提取的函数（保持 API 兼容性）
+export {
+  updateFolderProfileAfterClassification,
+  updateFolderProfilesOnBookmarkChange,
+  initializeFolderNameProfile,
+} from "./folder-profile-manager";
 
 // ============================================================================
 // 学习事件处理器懒初始化
@@ -300,7 +310,7 @@ export async function classifyBookmarkV2(
         // V4.2.7: 同步更新文件夹 Profile（确保后续分类使用最新数据）
         // 对于高置信度分类，同步等待 Profile 更新完成
         try {
-          await updateFolderProfileAfterClassification(result.folderId, userId);
+          await updateFolderProfile(result.folderId, userId);
           logger.debug(
             { folderId: result.folderId, bookmarkId },
             "Classification V2: Folder profile updated synchronously",
@@ -756,49 +766,6 @@ export async function classifyBookmarkV2(
 }
 
 /**
- * Update folder profile after bookmark classification
- * Should be called after a bookmark is added to a folder
- */
-export async function updateFolderProfileAfterClassification(
-  folderId: number,
-  userId: string,
-): Promise<void> {
-  try {
-    const { createClient } = await import("@/lib/supabase/server");
-    const supabase = await createClient();
-
-    // Call the SQL function to compute folder profile
-    // Note: compute_folder_profile is defined in migration but not yet in generated types
-    // Using type assertion as a workaround until types are regenerated
-    const { error } = await (supabase.rpc as CallableFunction)(
-      "compute_folder_profile",
-      { p_folder_id: folderId },
-    );
-
-    if (error) {
-      logger.error(
-        { error, folderId, userId },
-        "Classification V2: Failed to update folder profile",
-      );
-    } else {
-      logger.info(
-        { folderId, userId },
-        "Classification V2: Folder profile updated",
-      );
-    }
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        folderId,
-        userId,
-      },
-      "Classification V2: Exception updating folder profile",
-    );
-  }
-}
-
-/**
  * Check if V2 classification system should be used
  * Can be controlled via feature flag or environment variable
  */
@@ -807,207 +774,4 @@ export function shouldUseV2Classification(): boolean {
   // Can be overridden via environment variable
   const v2Enabled = process.env.CLASSIFICATION_V2_ENABLED;
   return v2Enabled !== "false";
-}
-
-/**
- * Update folder profiles when bookmarks are moved or deleted
- * Handles both source and target folder profile updates
- *
- * @param fromFolderIds - Source folder IDs (bookmarks moved from)
- * @param toFolderId - Target folder ID (bookmarks moved to, null for inbox)
- * @param userId - User ID
- */
-export async function updateFolderProfilesOnBookmarkChange(
-  fromFolderIds: (number | null)[],
-  toFolderId: number | null,
-  userId: string,
-): Promise<void> {
-  try {
-    const { createClient } = await import("@/lib/supabase/server");
-    const supabase = await createClient();
-
-    // Collect all unique folder IDs that need updating
-    const folderIdsToUpdate = new Set<number>();
-
-    // Add source folders (filter out null)
-    for (const folderId of fromFolderIds) {
-      if (folderId !== null) {
-        folderIdsToUpdate.add(folderId);
-      }
-    }
-
-    // Add target folder
-    if (toFolderId !== null) {
-      folderIdsToUpdate.add(toFolderId);
-    }
-
-    if (folderIdsToUpdate.size === 0) {
-      logger.debug(
-        { userId },
-        "updateFolderProfilesOnBookmarkChange: No folders to update",
-      );
-      return;
-    }
-
-    // Update all affected folder profiles
-    const updatePromises = Array.from(folderIdsToUpdate).map(
-      async (folderId) => {
-        try {
-          const { error } = await (supabase.rpc as CallableFunction)(
-            "compute_folder_profile",
-            { p_folder_id: folderId },
-          );
-
-          if (error) {
-            logger.error(
-              { error, folderId, userId },
-              "updateFolderProfilesOnBookmarkChange: Failed to update folder profile",
-            );
-          } else {
-            logger.debug(
-              { folderId, userId },
-              "updateFolderProfilesOnBookmarkChange: Folder profile updated",
-            );
-          }
-        } catch (error) {
-          logger.error(
-            {
-              error: error instanceof Error ? error.message : String(error),
-              folderId,
-            },
-            "updateFolderProfilesOnBookmarkChange: Exception",
-          );
-        }
-      },
-    );
-
-    await Promise.allSettled(updatePromises);
-
-    logger.info(
-      { folderCount: folderIdsToUpdate.size, userId },
-      "updateFolderProfilesOnBookmarkChange: All folder profiles updated",
-    );
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        userId,
-      },
-      "updateFolderProfilesOnBookmarkChange: Failed",
-    );
-  }
-}
-
-/**
- * Update bookmark classification status
- * V3.1: Writes classification result to bookmark record for frontend polling
- */
-async function updateBookmarkClassificationStatus(
-  supabase: SupabaseClient,
-  bookmarkId: number,
-  userId: string,
-  status: ClassificationStatus,
-  resultData: ClassificationResultData,
-): Promise<void> {
-  try {
-    const { error } = await supabase
-      .from("bookmarks")
-      .update({
-        classification_status: status,
-        classification_result: resultData,
-      })
-      .eq("id", bookmarkId)
-      .eq("user_id", userId);
-
-    if (error) {
-      logger.error(
-        { error, bookmarkId, status },
-        "Classification V2: Failed to update classification status",
-      );
-    } else {
-      logger.debug(
-        { bookmarkId, status, folderName: resultData.folderName },
-        "Classification V2: Updated classification status",
-      );
-    }
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        bookmarkId,
-      },
-      "Classification V2: Exception updating classification status",
-    );
-  }
-}
-
-/**
- * Initialize or update folder profile with name embedding
- * Called when folder is created or renamed
- *
- * This solves the "cold start" problem for new folders:
- * - New folders have no bookmarks, so no content-based profile
- * - But the folder name itself carries semantic meaning
- * - By generating an embedding for the folder name, the classification system
- *   can match bookmarks to the folder even before any bookmarks are added
- *
- * @param folderId - Folder ID
- * @param folderName - Folder name (will be used to generate embedding)
- * @param userId - User ID
- */
-export async function initializeFolderNameProfile(
-  folderId: number,
-  folderName: string,
-  userId: string,
-): Promise<void> {
-  try {
-    // Generate embedding for folder name
-    const { generateEmbedding } = await import(
-      "@/lib/utils/embedding-generator"
-    );
-
-    // Use folder name directly for embedding (short text works well)
-    const nameEmbedding = await generateEmbedding(folderName);
-
-    logger.info(
-      { folderId, folderName, userId },
-      "initializeFolderNameProfile: Generated name embedding",
-    );
-
-    // Call SQL function to update profile
-    const { createClient } = await import("@/lib/supabase/server");
-    const supabase = await createClient();
-
-    // Format embedding as PostgreSQL vector string
-    const embeddingString = `[${nameEmbedding.join(",")}]`;
-
-    const { error } = await (supabase.rpc as CallableFunction)(
-      "update_folder_name_embedding",
-      {
-        p_folder_id: folderId,
-        p_name_embedding: embeddingString,
-      },
-    );
-
-    if (error) {
-      logger.error(
-        { error, folderId, folderName },
-        "initializeFolderNameProfile: Failed to update name embedding",
-      );
-    } else {
-      logger.info(
-        { folderId, folderName },
-        "initializeFolderNameProfile: Profile initialized/updated successfully",
-      );
-    }
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        folderId,
-        folderName,
-      },
-      "initializeFolderNameProfile: Exception",
-    );
-  }
 }

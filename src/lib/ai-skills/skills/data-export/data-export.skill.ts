@@ -23,11 +23,15 @@ import type {
   DataExportInput,
   DataExportOutput,
   ExportedBookmark,
-  ExportStats,
-  ExportFormat,
-  ExportField,
 } from "./types";
 import { DEFAULT_EXPORT_FIELDS, EXPORT_FORMAT_CONFIG } from "./types";
+import { formatContent } from "./formatters";
+import {
+  calculateStats,
+  generateFilename,
+  generateSummary,
+  generateSuggestions,
+} from "./helpers";
 
 // ============================================
 // Schema 定义
@@ -240,7 +244,7 @@ export class DataExportSkill extends OrchestrationSkill<
       yield* this.reportProgress("格式化", 45, "正在格式化导出内容...");
       yield* this.emitText("🔄 正在将数据转换为目标格式...\n\n");
 
-      const content = this.formatContent(
+      const content = formatContent(
         bookmarks,
         input.format,
         fields,
@@ -252,14 +256,10 @@ export class DataExportSkill extends OrchestrationSkill<
       // Step 4: 生成导出报告
       yield* this.reportProgress("生成报告", 85, "正在生成导出报告...");
 
-      const stats = this.calculateStats(
-        bookmarks,
-        content,
-        Date.now() - startTime,
-      );
-      const filename = this.generateFilename(input, formatConfig.extension);
-      const summary = this.generateSummary(stats, input.format);
-      const suggestions = this.generateSuggestions(input, stats);
+      const stats = calculateStats(bookmarks, content, Date.now() - startTime);
+      const filename = generateFilename(input, formatConfig.extension);
+      const summary = generateSummary(stats, input.format);
+      const suggestions = generateSuggestions(input, stats);
 
       yield* this.reportProgress("生成报告", 95, "报告生成完成");
 
@@ -449,337 +449,6 @@ export class DataExportSkill extends OrchestrationSkill<
           item.updated_at || item.created_at || new Date().toISOString(),
       };
     });
-  }
-
-  /**
-   * 格式化内容
-   */
-  private formatContent(
-    bookmarks: ExportedBookmark[],
-    format: ExportFormat,
-    fields: ExportField[],
-    options?: DataExportInput["options"],
-  ): string {
-    switch (format) {
-      case "csv":
-        return this.formatCsv(bookmarks, fields);
-      case "markdown":
-        return this.formatMarkdown(bookmarks, fields, options);
-      case "json":
-        return this.formatJson(bookmarks, fields);
-      case "html":
-        return this.formatHtml(bookmarks);
-      case "obsidian":
-        return this.formatObsidian(bookmarks, options);
-      default:
-        return this.formatJson(bookmarks, fields);
-    }
-  }
-
-  /**
-   * 格式化为 CSV
-   */
-  private formatCsv(
-    bookmarks: ExportedBookmark[],
-    fields: ExportField[],
-  ): string {
-    const fieldMap: Record<ExportField, (b: ExportedBookmark) => string> = {
-      title: (b) => b.title,
-      url: (b) => b.url,
-      platform: (b) => b.platform,
-      folder: (b) => b.folderName || "",
-      tags: (b) => b.tags.join("; "),
-      aiSummary: (b) => b.aiSummary || "",
-      aiTags: (b) => b.aiTags.join("; "),
-      rating: (b) => b.rating?.toString() || "",
-      note: (b) => b.note || "",
-      createdAt: (b) => b.createdAt,
-      updatedAt: (b) => b.updatedAt,
-    };
-
-    const headers = fields.join(",");
-    const rows = bookmarks.map((b) =>
-      fields
-        .map((f) => {
-          const value = fieldMap[f](b);
-          // CSV 转义
-          if (
-            value.includes(",") ||
-            value.includes('"') ||
-            value.includes("\n")
-          ) {
-            return `"${value.replace(/"/g, '""')}"`;
-          }
-          return value;
-        })
-        .join(","),
-    );
-
-    return [headers, ...rows].join("\n");
-  }
-
-  /**
-   * 格式化为 Markdown
-   */
-  private formatMarkdown(
-    bookmarks: ExportedBookmark[],
-    _fields: ExportField[],
-    options?: DataExportInput["options"],
-  ): string {
-    const headingLevel = options?.markdownHeadingLevel || 2;
-    const heading = "#".repeat(headingLevel);
-
-    let content = `# 书签导出\n\n`;
-    content += `导出时间: ${new Date().toLocaleString("zh-CN")}\n`;
-    content += `总数量: ${bookmarks.length}\n\n---\n\n`;
-
-    for (const bookmark of bookmarks) {
-      content += `${heading} ${bookmark.title}\n\n`;
-      content += `- **URL**: [${bookmark.url}](${bookmark.url})\n`;
-      content += `- **平台**: ${bookmark.platform}\n`;
-      if (bookmark.folderName) {
-        content += `- **文件夹**: ${bookmark.folderName}\n`;
-      }
-      if (bookmark.tags.length > 0) {
-        content += `- **标签**: ${bookmark.tags.map((t) => `\`${t}\``).join(" ")}\n`;
-      }
-      if (options?.includeAiContent && bookmark.aiSummary) {
-        content += `\n> ${bookmark.aiSummary}\n`;
-      }
-      if (options?.includeNotes && bookmark.note) {
-        content += `\n**笔记**: ${bookmark.note}\n`;
-      }
-      content += `\n---\n\n`;
-    }
-
-    return content;
-  }
-
-  /**
-   * 格式化为 JSON
-   */
-  private formatJson(
-    bookmarks: ExportedBookmark[],
-    fields: ExportField[],
-  ): string {
-    const exportData = bookmarks.map((b) => {
-      const item: Record<string, unknown> = {};
-      for (const field of fields) {
-        switch (field) {
-          case "title":
-            item.title = b.title;
-            break;
-          case "url":
-            item.url = b.url;
-            break;
-          case "platform":
-            item.platform = b.platform;
-            break;
-          case "folder":
-            item.folder = b.folderName;
-            break;
-          case "tags":
-            item.tags = b.tags;
-            break;
-          case "aiSummary":
-            item.aiSummary = b.aiSummary;
-            break;
-          case "aiTags":
-            item.aiTags = b.aiTags;
-            break;
-          case "rating":
-            item.rating = b.rating;
-            break;
-          case "note":
-            item.note = b.note;
-            break;
-          case "createdAt":
-            item.createdAt = b.createdAt;
-            break;
-          case "updatedAt":
-            item.updatedAt = b.updatedAt;
-            break;
-        }
-      }
-      return item;
-    });
-
-    return JSON.stringify(
-      {
-        exportedAt: new Date().toISOString(),
-        totalCount: bookmarks.length,
-        bookmarks: exportData,
-      },
-      null,
-      2,
-    );
-  }
-
-  /**
-   * 格式化为 HTML（浏览器书签格式）
-   */
-  private formatHtml(bookmarks: ExportedBookmark[]): string {
-    let html = `<!DOCTYPE NETSCAPE-Bookmark-file-1>
-<!-- This is an automatically generated file.
-     It will be read and overwritten.
-     DO NOT EDIT! -->
-<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">
-<TITLE>Bookmarks</TITLE>
-<H1>Bookmarks</H1>
-<DL><p>\n`;
-
-    // 按文件夹分组
-    const byFolder = new Map<string, ExportedBookmark[]>();
-    for (const b of bookmarks) {
-      const folder = b.folderName || "未分类";
-      if (!byFolder.has(folder)) {
-        byFolder.set(folder, []);
-      }
-      byFolder.get(folder)!.push(b);
-    }
-
-    for (const [folder, items] of byFolder) {
-      html += `    <DT><H3>${this.escapeHtml(folder)}</H3>\n`;
-      html += `    <DL><p>\n`;
-      for (const item of items) {
-        const timestamp = Math.floor(new Date(item.createdAt).getTime() / 1000);
-        html += `        <DT><A HREF="${this.escapeHtml(item.url)}" ADD_DATE="${timestamp}">${this.escapeHtml(item.title)}</A>\n`;
-      }
-      html += `    </DL><p>\n`;
-    }
-
-    html += `</DL><p>\n`;
-    return html;
-  }
-
-  /**
-   * 格式化为 Obsidian 格式
-   */
-  private formatObsidian(
-    bookmarks: ExportedBookmark[],
-    options?: DataExportInput["options"],
-  ): string {
-    let content = `---
-type: bookmark-export
-exported: ${new Date().toISOString()}
-count: ${bookmarks.length}
----
-
-# 书签库导出
-
-`;
-
-    for (const bookmark of bookmarks) {
-      content += `## [[${bookmark.title}]]\n\n`;
-      content += `- 链接: ${bookmark.url}\n`;
-      content += `- 平台: #${bookmark.platform.replace(/\s+/g, "-")}\n`;
-      if (bookmark.folderName) {
-        content += `- 文件夹: [[${bookmark.folderName}]]\n`;
-      }
-      if (bookmark.tags.length > 0) {
-        content += `- 标签: ${bookmark.tags.map((t) => `#${t.replace(/\s+/g, "-")}`).join(" ")}\n`;
-      }
-      if (bookmark.aiSummary) {
-        content += `\n> [!summary]\n> ${bookmark.aiSummary}\n`;
-      }
-      if (options?.includeNotes && bookmark.note) {
-        content += `\n### 笔记\n${bookmark.note}\n`;
-      }
-      content += `\n---\n\n`;
-    }
-
-    return content;
-  }
-
-  /**
-   * HTML 转义
-   */
-  private escapeHtml(text: string): string {
-    return text
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
-  }
-
-  /**
-   * 计算导出统计
-   */
-  private calculateStats(
-    bookmarks: ExportedBookmark[],
-    content: string,
-    durationMs: number,
-  ): ExportStats {
-    const byPlatform: Record<string, number> = {};
-    const byFolder: Record<string, number> = {};
-
-    for (const b of bookmarks) {
-      byPlatform[b.platform] = (byPlatform[b.platform] || 0) + 1;
-      const folder = b.folderName || "未分类";
-      byFolder[folder] = (byFolder[folder] || 0) + 1;
-    }
-
-    return {
-      totalExported: bookmarks.length,
-      byPlatform,
-      byFolder,
-      fileSize: new TextEncoder().encode(content).length,
-      durationMs,
-    };
-  }
-
-  /**
-   * 生成文件名
-   */
-  private generateFilename(input: DataExportInput, extension: string): string {
-    const prefix = input.options?.filenamePrefix || "anykeep-export";
-    const timestamp = new Date()
-      .toISOString()
-      .replace(/[:.]/g, "-")
-      .slice(0, 19);
-    return `${prefix}-${timestamp}${extension}`;
-  }
-
-  /**
-   * 生成导出摘要
-   */
-  private generateSummary(stats: ExportStats, format: ExportFormat): string {
-    const formatName = EXPORT_FORMAT_CONFIG[format].name;
-    return `成功导出 **${stats.totalExported}** 条书签为 **${formatName}** 格式，文件大小 ${this.formatFileSize(stats.fileSize)}，耗时 ${stats.durationMs}ms`;
-  }
-
-  /**
-   * 格式化文件大小
-   */
-  private formatFileSize(bytes: number): string {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  }
-
-  /**
-   * 生成后续建议
-   */
-  private generateSuggestions(
-    input: DataExportInput,
-    stats: ExportStats,
-  ): string[] {
-    const suggestions: string[] = [];
-
-    if (input.format !== "html") {
-      suggestions.push("导出为 HTML 格式可直接导入浏览器");
-    }
-    if (input.format !== "obsidian" && stats.totalExported > 50) {
-      suggestions.push("使用 Obsidian 格式可以建立知识网络");
-    }
-    if (!input.options?.includeAiContent) {
-      suggestions.push("添加 AI 摘要可以让导出内容更丰富");
-    }
-    if (stats.totalExported > 100) {
-      suggestions.push("考虑按文件夹分批导出以便管理");
-    }
-
-    return suggestions;
   }
 
   /**

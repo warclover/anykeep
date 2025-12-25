@@ -16,22 +16,16 @@ import type { OrchestrationContext } from "../../orchestration/types";
 import type { OrchestrationStreamChunk } from "../../output/types";
 import type { SkillContext } from "../../core/types";
 import type { OrchestrationSkillMetadata } from "../../orchestration/types";
-import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
-import type {
-  InsightReportInput,
-  InsightReportOutput,
-  ReportType,
-  ReportTimeRange,
-  ActivityAnalysis,
-  ContentAnalysis,
-  TrendAnalysis,
-  TrendDataPoint,
-  DistributionItem,
-  TopItem,
-  Insight,
-} from "./types";
+import type { InsightReportInput, InsightReportOutput } from "./types";
 import { REPORT_TYPE_CONFIG, DEFAULT_REPORT_CONFIG } from "./types";
+import { analyzeActivity, analyzeContent, analyzeTrends } from "./analyzers";
+import {
+  generateInsights,
+  generateSummary,
+  generateSuggestions,
+} from "./generators";
+import { fetchBookmarks, getTimeRangeDescription } from "./bookmark-fetcher";
 
 // ============================================
 // Schema 定义
@@ -196,7 +190,7 @@ export class InsightReportSkill extends OrchestrationSkill<
         `${reportConfig.icon} 正在生成${reportConfig.name}，请稍候...\n\n`,
       );
 
-      const bookmarks = await this.fetchBookmarks(context.userId, input);
+      const bookmarks = await fetchBookmarks(context.userId, input);
 
       yield* this.reportProgress(
         "收集数据",
@@ -216,43 +210,43 @@ export class InsightReportSkill extends OrchestrationSkill<
       // Step 2: 活跃度分析
       yield* this.reportProgress("活跃度分析", 25, "正在分析收藏活跃度...");
 
-      const activity = this.analyzeActivity(bookmarks, input);
+      const activity = analyzeActivity(bookmarks, input);
 
       yield* this.reportProgress("活跃度分析", 40, "活跃度分析完成");
 
       // Step 3: 内容分析
       yield* this.reportProgress("内容分析", 45, "正在分析内容分布...");
 
-      const content = this.analyzeContent(bookmarks);
+      const content = analyzeContent(bookmarks);
 
       yield* this.reportProgress("内容分析", 60, "内容分析完成");
 
       // Step 4: 趋势分析
       yield* this.reportProgress("趋势分析", 65, "正在分析变化趋势...");
 
-      const trends = this.analyzeTrends(bookmarks, input);
+      const trends = analyzeTrends(bookmarks, input);
 
       yield* this.reportProgress("趋势分析", 80, "趋势分析完成");
 
       // Step 5: 生成洞察
       yield* this.reportProgress("生成洞察", 85, "正在生成洞察建议...");
 
-      const insights = this.generateInsights(activity, content, trends);
-      const summary = this.generateSummary(
+      const insights = generateInsights(activity, content, trends);
+      const summary = generateSummary(
         input.reportType,
         activity,
         content,
         trends,
       );
-      const suggestions = this.generateSuggestions(activity, content, insights);
+      const suggestions = generateSuggestions(activity, content, insights);
 
       yield* this.reportProgress("生成洞察", 95, "洞察生成完成");
 
       // 构建输出
       const output: InsightReportOutput = {
-        title: `${reportConfig.name} - ${this.getTimeRangeDescription(input.timeRange)}`,
+        title: `${reportConfig.name} - ${getTimeRangeDescription(input.timeRange)}`,
         reportType: input.reportType,
-        timeRangeDescription: this.getTimeRangeDescription(input.timeRange),
+        timeRangeDescription: getTimeRangeDescription(input.timeRange),
         activity,
         content,
         trends,
@@ -382,520 +376,6 @@ export class InsightReportSkill extends OrchestrationSkill<
   }
 
   /**
-   * 获取时间范围描述
-   */
-  private getTimeRangeDescription(timeRange: ReportTimeRange): string {
-    const now = new Date();
-    switch (timeRange) {
-      case "week": {
-        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        return `${weekAgo.toLocaleDateString("zh-CN")} - ${now.toLocaleDateString("zh-CN")}`;
-      }
-      case "month": {
-        const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-        return `${monthAgo.toLocaleDateString("zh-CN")} - ${now.toLocaleDateString("zh-CN")}`;
-      }
-      case "quarter": {
-        const quarterAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
-        return `${quarterAgo.toLocaleDateString("zh-CN")} - ${now.toLocaleDateString("zh-CN")}`;
-      }
-      case "year": {
-        return `${now.getFullYear()} 年度`;
-      }
-      case "all":
-        return "全部时间";
-    }
-  }
-
-  /**
-   * 获取收藏数据
-   */
-  private async fetchBookmarks(
-    userId: string,
-    input: InsightReportInput,
-  ): Promise<BookmarkRow[]> {
-    const supabase = await createClient();
-
-    // 计算时间范围
-    const now = new Date();
-    let startDate: Date | null = null;
-
-    switch (input.timeRange) {
-      case "week":
-        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        break;
-      case "month":
-        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-        break;
-      case "quarter":
-        startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
-        break;
-      case "year":
-        startDate = new Date(now.getFullYear(), 0, 1);
-        break;
-      case "all":
-        startDate = null;
-        break;
-    }
-
-    let query = supabase
-      .from("bookmarks")
-      .select(
-        `
-        id,
-        title,
-        url,
-        platform,
-        ai_tags,
-        user_tags,
-        rating,
-        folder_id,
-        created_at,
-        folders(name)
-      `,
-      )
-      .eq("user_id", userId)
-      .is("deleted_at", null)
-      .order("created_at", { ascending: false });
-
-    if (startDate) {
-      query = query.gte("created_at", startDate.toISOString());
-    }
-
-    if (input.filter?.folderId) {
-      query = query.eq("folder_id", input.filter.folderId);
-    }
-
-    if (input.filter?.platforms?.length) {
-      query = query.in("platform", input.filter.platforms);
-    }
-
-    const { data, error } = await query;
-
-    if (error) {
-      logger.error({ error }, "InsightReportSkill: Failed to fetch bookmarks");
-      throw new Error(`获取收藏数据失败: ${error.message}`);
-    }
-
-    return (data || []) as BookmarkRow[];
-  }
-
-  /**
-   * 分析活跃度
-   */
-  private analyzeActivity(
-    bookmarks: BookmarkRow[],
-    input: InsightReportInput,
-  ): ActivityAnalysis {
-    const now = Date.now();
-    const dayMs = 24 * 60 * 60 * 1000;
-
-    // 计算时间范围天数
-    let rangeDays = 30;
-    switch (input.timeRange) {
-      case "week":
-        rangeDays = 7;
-        break;
-      case "month":
-        rangeDays = 30;
-        break;
-      case "quarter":
-        rangeDays = 90;
-        break;
-      case "year":
-        rangeDays = 365;
-        break;
-      case "all":
-        rangeDays = Math.max(
-          1,
-          bookmarks.length > 0
-            ? Math.ceil(
-                (now -
-                  new Date(
-                    bookmarks[bookmarks.length - 1].created_at,
-                  ).getTime()) /
-                  dayMs,
-              )
-            : 1,
-        );
-        break;
-    }
-
-    // 统计每天的收藏数
-    const dailyCounts = new Map<string, number>();
-    const hourCounts = new Map<number, number>();
-
-    for (const bookmark of bookmarks) {
-      const date = new Date(bookmark.created_at);
-      const dateKey = date.toISOString().split("T")[0];
-      const hour = date.getHours();
-
-      dailyCounts.set(dateKey, (dailyCounts.get(dateKey) || 0) + 1);
-      hourCounts.set(hour, (hourCounts.get(hour) || 0) + 1);
-    }
-
-    // 找出最活跃的日期和时段
-    let mostActiveDay = "";
-    let maxDayCount = 0;
-    for (const [day, count] of dailyCounts) {
-      if (count > maxDayCount) {
-        maxDayCount = count;
-        mostActiveDay = day;
-      }
-    }
-
-    let mostActiveHour = 0;
-    let maxHourCount = 0;
-    for (const [hour, count] of hourCounts) {
-      if (count > maxHourCount) {
-        maxHourCount = count;
-        mostActiveHour = hour;
-      }
-    }
-
-    return {
-      totalBookmarks: bookmarks.length,
-      newBookmarks: bookmarks.length,
-      dailyAverage: bookmarks.length / rangeDays,
-      mostActiveDay,
-      mostActiveHour,
-      activeDays: dailyCounts.size,
-    };
-  }
-
-  /**
-   * 分析内容分布
-   */
-  private analyzeContent(bookmarks: BookmarkRow[]): ContentAnalysis {
-    const total = bookmarks.length;
-
-    // 平台分布
-    const platformCounts = new Map<string, number>();
-    for (const b of bookmarks) {
-      platformCounts.set(b.platform, (platformCounts.get(b.platform) || 0) + 1);
-    }
-
-    const byPlatform: DistributionItem[] = Array.from(platformCounts.entries())
-      .map(([name, count]) => ({
-        name,
-        count,
-        percentage: (count / total) * 100,
-      }))
-      .sort((a, b) => b.count - a.count);
-
-    // 文件夹分布
-    const folderCounts = new Map<string, number>();
-    for (const b of bookmarks) {
-      const folderName = this.getFolderName(b) || "未分类";
-      folderCounts.set(folderName, (folderCounts.get(folderName) || 0) + 1);
-    }
-
-    const byFolder: DistributionItem[] = Array.from(folderCounts.entries())
-      .map(([name, count]) => ({
-        name,
-        count,
-        percentage: (count / total) * 100,
-      }))
-      .sort((a, b) => b.count - a.count);
-
-    // 热门标签
-    const tagCounts = new Map<string, number>();
-    for (const b of bookmarks) {
-      const tags = [...(b.user_tags || [])];
-      for (const tag of tags) {
-        tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
-      }
-    }
-
-    const topTags: TopItem[] = Array.from(tagCounts.entries())
-      .map(([name, count], index) => ({
-        name,
-        count,
-        rank: index + 1,
-      }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 20)
-      .map((item, index) => ({ ...item, rank: index + 1 }));
-
-    // AI 标签分布
-    const aiTagCounts = new Map<string, number>();
-    for (const b of bookmarks) {
-      const aiTags = b.ai_tags || [];
-      for (const tag of aiTags) {
-        aiTagCounts.set(tag, (aiTagCounts.get(tag) || 0) + 1);
-      }
-    }
-
-    const topAiTags: TopItem[] = Array.from(aiTagCounts.entries())
-      .map(([name, count], index) => ({
-        name,
-        count,
-        rank: index + 1,
-      }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 20)
-      .map((item, index) => ({ ...item, rank: index + 1 }));
-
-    // 评分统计
-    const ratedBookmarks = bookmarks.filter((b) => b.rating !== null);
-    const ratedRate = ratedBookmarks.length / total;
-    const averageRating =
-      ratedBookmarks.length > 0
-        ? ratedBookmarks.reduce((sum, b) => sum + (b.rating || 0), 0) /
-          ratedBookmarks.length
-        : null;
-
-    return {
-      byPlatform,
-      byFolder,
-      topTags,
-      topAiTags,
-      summaryRate: 0, // 需要 ai_summary 字段，暂时设为 0
-      ratedRate,
-      averageRating,
-    };
-  }
-
-  /**
-   * 获取文件夹名称
-   */
-  private getFolderName(bookmark: BookmarkRow): string | null {
-    if (!bookmark.folders) return null;
-    const folder = Array.isArray(bookmark.folders)
-      ? bookmark.folders[0]
-      : bookmark.folders;
-    return folder?.name || null;
-  }
-
-  /**
-   * 分析趋势
-   */
-  private analyzeTrends(
-    bookmarks: BookmarkRow[],
-    input: InsightReportInput,
-  ): TrendAnalysis {
-    // 按时间粒度分组
-    const granularity =
-      input.timeRange === "week"
-        ? "day"
-        : input.timeRange === "month"
-          ? "day"
-          : "week";
-
-    const trendData = new Map<string, number>();
-
-    for (const b of bookmarks) {
-      const date = new Date(b.created_at);
-      let key: string;
-
-      if (granularity === "day") {
-        key = date.toISOString().split("T")[0];
-      } else {
-        // 按周分组
-        const weekStart = new Date(date);
-        weekStart.setDate(date.getDate() - date.getDay());
-        key = weekStart.toISOString().split("T")[0];
-      }
-
-      trendData.set(key, (trendData.get(key) || 0) + 1);
-    }
-
-    // 转换为趋势数据点
-    const bookmarkTrend: TrendDataPoint[] = Array.from(trendData.entries())
-      .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([label, value], index, arr) => {
-        const prevValue = index > 0 ? arr[index - 1][1] : value;
-        const changeRate =
-          prevValue > 0 ? ((value - prevValue) / prevValue) * 100 : 0;
-        return { label, value, changeRate };
-      });
-
-    // 平台趋势（简化实现）
-    const platformTrend: Record<string, TrendDataPoint[]> = {};
-
-    // 标签趋势（简化实现）
-    const tagTrend = {
-      rising: [] as TopItem[],
-      declining: [] as TopItem[],
-    };
-
-    // 生成趋势摘要
-    const totalChange =
-      bookmarkTrend.length >= 2
-        ? bookmarkTrend[bookmarkTrend.length - 1].value - bookmarkTrend[0].value
-        : 0;
-
-    const summary =
-      totalChange > 0
-        ? `收藏量呈上升趋势，期末比期初增加了 ${totalChange} 条`
-        : totalChange < 0
-          ? `收藏量有所下降，期末比期初减少了 ${Math.abs(totalChange)} 条`
-          : "收藏量保持稳定";
-
-    return {
-      bookmarkTrend,
-      platformTrend,
-      tagTrend,
-      summary,
-    };
-  }
-
-  /**
-   * 生成洞察
-   */
-  private generateInsights(
-    activity: ActivityAnalysis,
-    content: ContentAnalysis,
-    trends: TrendAnalysis,
-  ): Insight[] {
-    const insights: Insight[] = [];
-
-    // 活跃度洞察
-    if (activity.dailyAverage >= 5) {
-      insights.push({
-        type: "highlight",
-        title: "高活跃用户",
-        description: `您日均收藏 ${activity.dailyAverage.toFixed(1)} 条内容，是一位活跃的知识收藏者！`,
-        priority: "high",
-      });
-    } else if (activity.dailyAverage < 1 && activity.totalBookmarks > 0) {
-      insights.push({
-        type: "suggestion",
-        title: "提升收藏频率",
-        description:
-          "您的收藏频率较低，建议养成每日收藏优质内容的习惯，积少成多。",
-        priority: "medium",
-      });
-    }
-
-    // 平台多样性
-    if (content.byPlatform.length >= 5) {
-      insights.push({
-        type: "highlight",
-        title: "多平台收藏",
-        description: `您从 ${content.byPlatform.length} 个不同平台收藏内容，涉猎广泛！`,
-        priority: "medium",
-      });
-    } else if (
-      content.byPlatform.length === 1 &&
-      activity.totalBookmarks > 10
-    ) {
-      insights.push({
-        type: "suggestion",
-        title: "扩展内容来源",
-        description: `您的收藏主要来自 ${content.byPlatform[0].name}，可以尝试探索其他平台的优质内容。`,
-        priority: "low",
-      });
-    }
-
-    // 标签使用
-    if (content.topTags.length === 0 && activity.totalBookmarks > 10) {
-      insights.push({
-        type: "warning",
-        title: "建议添加标签",
-        description: "您的收藏暂无标签，添加标签可以帮助更好地分类和检索内容。",
-        priority: "high",
-      });
-    }
-
-    // 评分使用
-    if (content.ratedRate < 0.1 && activity.totalBookmarks > 10) {
-      insights.push({
-        type: "suggestion",
-        title: "使用评分功能",
-        description: "您很少为收藏评分，评分可以帮助区分内容的重要程度。",
-        priority: "low",
-      });
-    }
-
-    // 趋势洞察
-    if (trends.bookmarkTrend.length >= 2) {
-      const lastTrend = trends.bookmarkTrend[trends.bookmarkTrend.length - 1];
-      if (lastTrend.changeRate && lastTrend.changeRate > 50) {
-        insights.push({
-          type: "highlight",
-          title: "收藏活跃度提升",
-          description: `最近的收藏量较之前增长了 ${lastTrend.changeRate.toFixed(0)}%，学习热情高涨！`,
-          priority: "high",
-        });
-      }
-    }
-
-    return insights.sort((a, b) => {
-      const priorityOrder = { high: 0, medium: 1, low: 2 };
-      return priorityOrder[a.priority] - priorityOrder[b.priority];
-    });
-  }
-
-  /**
-   * 生成摘要
-   */
-  private generateSummary(
-    reportType: ReportType,
-    activity: ActivityAnalysis,
-    content: ContentAnalysis,
-    trends: TrendAnalysis,
-  ): string {
-    const lines: string[] = [];
-
-    lines.push(
-      `在此统计周期内，您共收藏了 **${activity.totalBookmarks}** 条内容，` +
-        `日均 **${activity.dailyAverage.toFixed(1)}** 条。`,
-    );
-
-    if (content.byPlatform.length > 0) {
-      const topPlatform = content.byPlatform[0];
-      lines.push(
-        `最常收藏的平台是 **${topPlatform.name}**（${topPlatform.percentage.toFixed(0)}%）。`,
-      );
-    }
-
-    if (content.topTags.length > 0) {
-      const topTag = content.topTags[0];
-      lines.push(
-        `最热门的标签是 **${topTag.name}**（出现 ${topTag.count} 次）。`,
-      );
-    }
-
-    lines.push(trends.summary);
-
-    return lines.join("");
-  }
-
-  /**
-   * 生成建议
-   */
-  private generateSuggestions(
-    activity: ActivityAnalysis,
-    content: ContentAnalysis,
-    insights: Insight[],
-  ): string[] {
-    const suggestions: string[] = [];
-
-    // 基于洞察生成建议
-    const warningInsights = insights.filter((i) => i.type === "warning");
-    const suggestionInsights = insights.filter((i) => i.type === "suggestion");
-
-    for (const insight of [...warningInsights, ...suggestionInsights].slice(
-      0,
-      2,
-    )) {
-      suggestions.push(insight.description);
-    }
-
-    // 通用建议
-    if (activity.totalBookmarks > 50 && content.byFolder.length < 3) {
-      suggestions.push("收藏数量较多，建议创建更多文件夹进行分类管理");
-    }
-
-    if (suggestions.length === 0) {
-      suggestions.push("继续保持良好的收藏习惯，定期回顾收藏的内容");
-    }
-
-    return suggestions;
-  }
-
-  /**
    * 非流式执行（兼容原子模式）
    */
   protected async executeInternal(
@@ -921,23 +401,6 @@ export class InsightReportSkill extends OrchestrationSkill<
 
     return output;
   }
-}
-
-// ============================================
-// 辅助类型
-// ============================================
-
-interface BookmarkRow {
-  id: number;
-  title: string;
-  url: string;
-  platform: string;
-  ai_tags: string[] | null;
-  user_tags: string[] | null;
-  rating: number | null;
-  folder_id: number | null;
-  created_at: string;
-  folders?: Array<{ name: string }> | { name: string } | null;
 }
 
 // ============================================

@@ -222,3 +222,19 @@ export const DEFAULT_REPORT_CONFIG = {
   timeRange: "month" as ReportTimeRange,
   includeDetails: true,
 };
+
+/**
+ * 数据库书签行类型
+ */
+export interface BookmarkRow {
+  id: number;
+  title: string;
+  url: string;
+  platform: string;
+  ai_tags: string[] | null;
+  user_tags: string[] | null;
+  rating: number | null;
+  folder_id: number | null;
+  created_at: string;
+  folders?: Array<{ name: string }> | { name: string } | null;
+}
