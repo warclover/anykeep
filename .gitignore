@@ -85,3 +85,5 @@ nul
 
 # Environment backups
 .env.local.backup
+playwright-report/
+test-results/
