@@ -133,20 +133,23 @@ export const AISuggestionsInline = memo(function AISuggestionsInline({
 
   return (
     <div className="flex flex-wrap gap-2">
-      {suggestions.slice(0, 3).map((suggestion, index) => (
-        <Button
-          key={index}
-          variant="outline"
-          size="sm"
-          className="h-7 px-3 text-xs border-amber-200 text-amber-700 hover:bg-amber-50 hover:border-amber-300"
-          onClick={() => onSuggestionClick?.(suggestion)}
-        >
-          <Lightbulb className="size-3 mr-1" />
-          {suggestion.text.length > 20
-            ? suggestion.text.slice(0, 20) + "..."
-            : suggestion.text}
-        </Button>
-      ))}
+      {suggestions
+        .filter((s) => s?.text)
+        .slice(0, 3)
+        .map((suggestion, index) => (
+          <Button
+            key={index}
+            variant="outline"
+            size="sm"
+            className="h-7 px-3 text-xs border-amber-200 text-amber-700 hover:bg-amber-50 hover:border-amber-300"
+            onClick={() => onSuggestionClick?.(suggestion)}
+          >
+            <Lightbulb className="size-3 mr-1" />
+            {suggestion.text.length > 20
+              ? suggestion.text.slice(0, 20) + "..."
+              : suggestion.text}
+          </Button>
+        ))}
       {suggestions.length > 3 && (
         <span className="text-xs text-gray-400 self-center">
           +{suggestions.length - 3} 更多
@@ -172,9 +175,15 @@ export const AIQuickSuggestions = memo(function AIQuickSuggestions({
     return null;
   }
 
+  const validSuggestions = suggestions.filter((s) => s?.text);
+
+  if (validSuggestions.length === 0) {
+    return null;
+  }
+
   return (
     <div className={cn("flex flex-wrap gap-1.5", className)}>
-      {suggestions.map((suggestion, index) => (
+      {validSuggestions.map((suggestion, index) => (
         <button
           key={index}
           onClick={() => onSuggestionClick?.(suggestion)}
