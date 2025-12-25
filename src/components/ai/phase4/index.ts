@@ -1,94 +1,37 @@
 /**
- * Phase 4: AI 交互 UI 升级 - 组件导出
- * @version 1.0.0
+ * Phase 4: 交互升级组件
+ *
+ * @version 1.1.0
+ * @since 2025-12-25
  */
 
-// =============================================================================
 // 类型导出
-// =============================================================================
-
 export type {
-  // 工具选择器类型
   ToolType,
-  ToolOption,
-  ToolCategory,
-  ToolSelectorProps,
-
-  // 快速操作类型
-  MessageActionType,
-  MessageAction,
-  MessageActionsBarProps,
-  FeedbackDetails,
-  FeedbackReason,
-  FeedbackReasonOption,
-
-  // 执行确认类型
-  RiskLevel,
-  OrganizeActionType,
-  OrganizeAction,
-  ActionRisk,
-  ActionConfirmationProps,
-  ActionSummary,
-
-  // 上下文面板类型
-  ContextItemType,
   ContextItem,
-  ContextItemData,
-  BookmarkContextData,
-  FolderContextData,
-  TagContextData,
-  SearchResultsContextData,
-  PreviousOutputContextData,
-  ContextPanelProps,
+  ToolDefinition,
   ContextPanelState,
-
-  // API 请求/响应类型
-  UnifiedRequestWithExplicitTool,
-  FeedbackRequest,
-  UndoRequest,
-  UndoResponse,
-  SaveNoteRequest,
-  SaveNoteResponse,
-  UndoableOperation,
 } from "./types";
 
-// =============================================================================
-// 工具选择器组件
-// =============================================================================
-
+// 工具选择器
 export {
   ToolSelector,
-  ToolSelectorWithShortcuts,
-  ToolHint,
+  ToolSelectorCompact,
+  ToolSelectorFull,
   useToolShortcuts,
-  TOOL_OPTIONS,
+  TOOLS,
 } from "./tool-selector";
+export type { ToolSelectorProps } from "./tool-selector";
 
-// =============================================================================
-// 快速操作栏组件
-// =============================================================================
-
-export { MessageActionsBar, InlineActions } from "./quick-actions";
-
-// =============================================================================
-// 执行确认组件
-// =============================================================================
-
+// 上下文面板
 export {
-  ActionConfirmation,
-  ExecutionProgress,
-  UndoToast,
-  evaluateRisk,
-  generateSummaries,
-} from "./action-confirmation";
-
-// =============================================================================
-// 上下文面板组件
-// =============================================================================
-
-export {
-  ContextPanel,
   ContextIndicator,
-  ContextSelector,
+  ContextPanel,
   useContextItems,
+} from "./context-panel";
+export type {
+  ContextIndicatorProps,
+  ContextPanelProps,
+  ContextReferences,
+  UseContextItemsOptions,
 } from "./context-panel";

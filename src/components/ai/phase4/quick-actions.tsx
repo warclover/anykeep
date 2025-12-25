@@ -17,6 +17,7 @@ import {
   Check,
   Loader2,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -90,7 +91,7 @@ export function MessageActionsBar({
 
   // 处理正面反馈
   const handlePositiveFeedback = React.useCallback(() => {
-    if (feedbackGiven !== "like") {
+    if (feedbackGiven !== "like" && onFeedback) {
       onFeedback("like");
     }
   }, [feedbackGiven, onFeedback]);
@@ -105,7 +106,9 @@ export function MessageActionsBar({
   // 提交负面反馈
   const handleSubmitNegativeFeedback = React.useCallback(
     (details: FeedbackDetails) => {
-      onFeedback("dislike", details);
+      if (onFeedback) {
+        onFeedback("dislike", details);
+      }
       setShowFeedbackDialog(false);
     },
     [onFeedback],
@@ -114,7 +117,9 @@ export function MessageActionsBar({
   // 保存到笔记
   const handleSave = React.useCallback(
     (noteId: string) => {
-      onSave(noteId);
+      if (onSave) {
+        onSave(noteId);
+      }
       setShowSaveDialog(false);
     },
     [onSave],
@@ -213,7 +218,7 @@ export function MessageActionsBar({
 interface ActionButtonProps {
   icon: React.ElementType;
   label: string;
-  onClick: () => void;
+  onClick?: () => void;
   disabled?: boolean;
   loading?: boolean;
   active?: boolean;
@@ -241,7 +246,7 @@ function ActionButton({
             !active && "text-muted-foreground hover:text-foreground",
           )}
           onClick={onClick}
-          disabled={disabled}
+          disabled={disabled || !onClick}
         >
           {loading ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -380,12 +385,14 @@ function SaveToNoteDialog({
 }: SaveToNoteDialogProps) {
   const [title, setTitle] = React.useState("");
   const [isCreating, setIsCreating] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
 
   // 重置表单
   React.useEffect(() => {
     if (!open) {
       setTitle("");
       setIsCreating(false);
+      setError(null);
     } else {
       // 自动生成标题（取前30个字符）
       const autoTitle = content.slice(0, 30).replace(/\n/g, " ").trim();
@@ -398,13 +405,30 @@ function SaveToNoteDialog({
     if (!title.trim()) return;
 
     setIsCreating(true);
+    setError(null);
     try {
-      // TODO: 调用 NoteService 创建笔记
-      // 临时生成 ID
-      const noteId = `note_${Date.now()}`;
-      onSave(noteId);
-    } catch (error) {
-      console.error("Failed to save note:", error);
+      const response = await fetch("/api/ai/notes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content,
+          title: title.trim(),
+          sourceType: "ai_response",
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "保存失败");
+      }
+
+      toast.success("笔记保存成功", { icon: "📝" });
+      onSave(data.data.id);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "保存失败";
+      setError(message);
+      toast.error(message);
     } finally {
       setIsCreating(false);
     }
@@ -449,6 +473,9 @@ function SaveToNoteDialog({
               {content.length > 200 && "..."}
             </div>
           </div>
+
+          {/* 错误提示 */}
+          {error && <div className="text-sm text-destructive">{error}</div>}
         </div>
 
         <DialogFooter>

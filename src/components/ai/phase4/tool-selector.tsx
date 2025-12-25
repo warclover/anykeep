@@ -1,439 +1,280 @@
+/**
+ * Phase 4: 工具选择器组件
+ *
+ * 功能：
+ * - 工具选择 UI（糖果色风格）
+ * - Tooltip 显示工具描述和快捷键
+ * - 键盘快捷键支持（数字键 0-4）
+ * - 选中状态动画
+ *
+ * @version 1.1.0
+ * @since 2025-12-25
+ */
+
 "use client";
 
-/**
- * Phase 4: ToolPicker - 工具选择器组件
- * @version 1.0.0
- * @description 用户可手动选择 AI 工具，绕过意图分类，实现 100% 意图准确率
- */
-
-import * as React from "react";
+import { memo, useCallback, useEffect } from "react";
 import {
-  Bot,
-  Search,
-  FolderOpen,
-  FileText,
-  Download,
-  Lightbulb,
-  BookOpen,
-  BarChart3,
-  Tag,
-  Trash2,
-  ChevronDown,
-  Sparkles,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import type {
-  ToolType,
-  ToolOption,
-  ToolCategory,
-  ToolSelectorProps,
-} from "./types";
+import type { ToolType, ToolDefinition } from "./types";
 
 // =============================================================================
-// 工具配置
+// 常量定义
 // =============================================================================
 
-/**
- * 工具选项配置
- */
-export const TOOL_OPTIONS: ToolOption[] = [
-  // 自动模式
+export const TOOLS: ToolDefinition[] = [
   {
-    type: "auto",
-    label: "自动",
-    icon: Bot,
-    description: "AI 自动判断意图",
-    category: "auto",
-    shortcut: "⌘A",
+    id: "auto",
+    name: "智能",
+    icon: "✨",
+    description: "AI 自动选择最佳工具",
+    shortcut: "0",
   },
-
-  // 搜索类
   {
-    type: "search",
-    label: "搜索",
-    icon: Search,
+    id: "search",
+    name: "搜索",
+    icon: "🔍",
     description: "搜索收藏内容",
-    category: "search",
-    shortcut: "⌘S",
+    shortcut: "1",
   },
   {
-    type: "stats",
-    label: "统计",
-    icon: BarChart3,
-    description: "查看收藏统计",
-    category: "search",
-  },
-
-  // 管理类
-  {
-    type: "organize",
-    label: "整理",
-    icon: FolderOpen,
-    description: "整理和分类",
-    category: "manage",
-    shortcut: "⌘O",
+    id: "organize",
+    name: "整理",
+    icon: "📂",
+    description: "整理和分类书签",
+    shortcut: "2",
   },
   {
-    type: "tag",
-    label: "标签",
-    icon: Tag,
-    description: "批量添加标签",
-    category: "manage",
+    id: "create",
+    name: "创作",
+    icon: "✍️",
+    description: "生成内容和摘要",
+    shortcut: "3",
   },
   {
-    type: "dedupe",
-    label: "去重",
-    icon: Trash2,
-    description: "清理重复内容",
-    category: "manage",
-  },
-
-  // 创作类
-  {
-    type: "summarize",
-    label: "总结",
-    icon: FileText,
-    description: "生成摘要",
-    category: "create",
-    shortcut: "⌘M",
-  },
-  {
-    type: "extract",
-    label: "萃取",
-    icon: Lightbulb,
-    description: "知识萃取",
-    category: "create",
-    shortcut: "⌘K",
-  },
-  {
-    type: "review",
-    label: "复习",
-    icon: BookOpen,
-    description: "知识回顾",
-    category: "create",
-  },
-
-  // 导出类
-  {
-    type: "export",
-    label: "导出",
-    icon: Download,
-    description: "导出数据",
-    category: "export",
-    shortcut: "⌘E",
+    id: "export",
+    name: "导出",
+    icon: "📤",
+    description: "导出数据到多种格式",
+    shortcut: "4",
   },
 ];
 
-/**
- * 分类标签
- */
-const CATEGORY_LABELS: Record<ToolCategory, string> = {
-  auto: "智能模式",
-  search: "🔍 搜索",
-  manage: "📁 管理",
-  create: "✍️ 创作",
-  export: "📤 导出",
-};
-
-/**
- * 按分类分组工具
- */
-const TOOLS_BY_CATEGORY = TOOL_OPTIONS.reduce(
-  (acc, tool) => {
-    if (!acc[tool.category]) {
-      acc[tool.category] = [];
-    }
-    acc[tool.category].push(tool);
-    return acc;
-  },
-  {} as Record<ToolCategory, ToolOption[]>,
-);
-
 // =============================================================================
-// 工具选择器组件
+// Props 类型
 // =============================================================================
 
-export function ToolSelector({
-  value,
-  onChange,
-  disabled = false,
-  className,
-}: ToolSelectorProps) {
-  const selectedTool = TOOL_OPTIONS.find((t) => t.type === value);
-  const isAuto = value === "auto";
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild disabled={disabled}>
-        <Button
-          variant={isAuto ? "ghost" : "outline"}
-          size="sm"
-          className={cn(
-            "gap-2 min-w-[100px] transition-colors",
-            isAuto && "text-muted-foreground hover:text-foreground",
-            !isAuto && "border-primary/50 bg-primary/5",
-            className,
-          )}
-        >
-          {selectedTool && (
-            <>
-              {isAuto ? (
-                <Sparkles className="h-4 w-4" />
-              ) : (
-                <selectedTool.icon className="h-4 w-4" />
-              )}
-              <span>{selectedTool.label}</span>
-            </>
-          )}
-          <ChevronDown className="h-3 w-3 opacity-50" />
-        </Button>
-      </DropdownMenuTrigger>
-
-      <DropdownMenuContent align="start" className="w-[220px]">
-        {/* 自动模式 */}
-        <DropdownMenuGroup>
-          <DropdownMenuLabel className="text-xs text-muted-foreground">
-            {CATEGORY_LABELS.auto}
-          </DropdownMenuLabel>
-          {TOOLS_BY_CATEGORY.auto.map((tool) => (
-            <ToolMenuItem
-              key={tool.type}
-              tool={tool}
-              isSelected={value === tool.type}
-              onClick={() => onChange(tool.type)}
-            />
-          ))}
-        </DropdownMenuGroup>
-
-        <DropdownMenuSeparator />
-
-        {/* 搜索类 */}
-        <DropdownMenuGroup>
-          <DropdownMenuLabel className="text-xs text-muted-foreground">
-            {CATEGORY_LABELS.search}
-          </DropdownMenuLabel>
-          {TOOLS_BY_CATEGORY.search.map((tool) => (
-            <ToolMenuItem
-              key={tool.type}
-              tool={tool}
-              isSelected={value === tool.type}
-              onClick={() => onChange(tool.type)}
-            />
-          ))}
-        </DropdownMenuGroup>
-
-        <DropdownMenuSeparator />
-
-        {/* 管理类 */}
-        <DropdownMenuGroup>
-          <DropdownMenuLabel className="text-xs text-muted-foreground">
-            {CATEGORY_LABELS.manage}
-          </DropdownMenuLabel>
-          {TOOLS_BY_CATEGORY.manage.map((tool) => (
-            <ToolMenuItem
-              key={tool.type}
-              tool={tool}
-              isSelected={value === tool.type}
-              onClick={() => onChange(tool.type)}
-            />
-          ))}
-        </DropdownMenuGroup>
-
-        <DropdownMenuSeparator />
-
-        {/* 创作类 */}
-        <DropdownMenuGroup>
-          <DropdownMenuLabel className="text-xs text-muted-foreground">
-            {CATEGORY_LABELS.create}
-          </DropdownMenuLabel>
-          {TOOLS_BY_CATEGORY.create.map((tool) => (
-            <ToolMenuItem
-              key={tool.type}
-              tool={tool}
-              isSelected={value === tool.type}
-              onClick={() => onChange(tool.type)}
-            />
-          ))}
-        </DropdownMenuGroup>
-
-        <DropdownMenuSeparator />
-
-        {/* 导出类 */}
-        <DropdownMenuGroup>
-          <DropdownMenuLabel className="text-xs text-muted-foreground">
-            {CATEGORY_LABELS.export}
-          </DropdownMenuLabel>
-          {TOOLS_BY_CATEGORY.export.map((tool) => (
-            <ToolMenuItem
-              key={tool.type}
-              tool={tool}
-              isSelected={value === tool.type}
-              onClick={() => onChange(tool.type)}
-            />
-          ))}
-        </DropdownMenuGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
+export interface ToolSelectorProps {
+  value: ToolType;
+  onChange: (tool: ToolType) => void;
+  disabled?: boolean;
+  className?: string;
+  /** 是否显示工具名称（默认 false，仅显示图标） */
+  showLabel?: boolean;
+  /** 是否显示快捷键提示（默认 true） */
+  showShortcut?: boolean;
 }
 
 // =============================================================================
-// 工具菜单项组件
+// Hook: 工具快捷键
 // =============================================================================
 
-interface ToolMenuItemProps {
-  tool: ToolOption;
-  isSelected: boolean;
-  onClick: () => void;
-}
-
-function ToolMenuItem({ tool, isSelected, onClick }: ToolMenuItemProps) {
-  const Icon = tool.icon;
-
-  return (
-    <DropdownMenuItem
-      onClick={onClick}
-      disabled={tool.isDisabled}
-      className={cn(
-        "flex items-center justify-between cursor-pointer",
-        isSelected && "bg-accent",
-      )}
-    >
-      <div className="flex items-center gap-2">
-        <Icon className="h-4 w-4 text-muted-foreground" />
-        <div>
-          <div className="font-medium text-sm">{tool.label}</div>
-          <div className="text-xs text-muted-foreground">
-            {tool.description}
-          </div>
-        </div>
-      </div>
-      {tool.shortcut && (
-        <kbd className="text-[10px] bg-muted px-1.5 py-0.5 rounded font-mono">
-          {tool.shortcut}
-        </kbd>
-      )}
-    </DropdownMenuItem>
-  );
-}
-
-// =============================================================================
-// 键盘快捷键 Hook
-// =============================================================================
-
-/**
- * 工具快捷键 Hook
- */
-export function useToolShortcuts(onToolChange: (tool: ToolType) => void) {
-  React.useEffect(() => {
-    const shortcutMap: Record<string, ToolType> = {
-      a: "auto",
-      s: "search",
-      o: "organize",
-      m: "summarize",
-      e: "export",
-      k: "extract",
-    };
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // 检查是否按下了 Cmd/Ctrl 键
-      if (!e.metaKey && !e.ctrlKey) return;
-
-      // 忽略输入框中的快捷键
-      const target = e.target as HTMLElement;
+export function useToolShortcuts(
+  onToolChange: (tool: ToolType) => void,
+  enabled: boolean = true,
+): void {
+  const handleKeyDown = useCallback(
+    (event: KeyboardEvent) => {
+      if (!enabled) return;
+      // 忽略组合键
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+      // 忽略输入框内的按键
       if (
-        target.tagName === "INPUT" ||
-        target.tagName === "TEXTAREA" ||
-        target.isContentEditable
+        event.target instanceof HTMLInputElement ||
+        event.target instanceof HTMLTextAreaElement
       ) {
         return;
       }
 
-      const tool = shortcutMap[e.key.toLowerCase()];
+      const tool = TOOLS.find((t) => t.shortcut === event.key);
       if (tool) {
-        e.preventDefault();
-        onToolChange(tool);
+        event.preventDefault();
+        onToolChange(tool.id);
       }
+    },
+    [onToolChange, enabled],
+  );
+
+  useEffect(() => {
+    if (!enabled) return;
+    window.addEventListener(
+      "keydown",
+      handleKeyDown as unknown as EventListener,
+    );
+    return () => {
+      window.removeEventListener(
+        "keydown",
+        handleKeyDown as unknown as EventListener,
+      );
     };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onToolChange]);
+  }, [handleKeyDown, enabled]);
 }
 
 // =============================================================================
-// 工具选择器带快捷键版本
+// 组件
 // =============================================================================
 
-export interface ToolSelectorWithShortcutsProps extends ToolSelectorProps {
-  enableShortcuts?: boolean;
-}
-
-export function ToolSelectorWithShortcuts({
+/**
+ * 工具选择器组件
+ *
+ * 糖果色风格的工具选择器，支持：
+ * - Tooltip 显示描述和快捷键
+ * - 数字键快捷切换
+ * - 选中状态动画效果
+ */
+export const ToolSelector = memo(function ToolSelector({
   value,
   onChange,
   disabled = false,
   className,
-  enableShortcuts = true,
-}: ToolSelectorWithShortcutsProps) {
-  // 启用快捷键
-  // eslint-disable-next-line @typescript-eslint/no-empty-function
-  useToolShortcuts(enableShortcuts && !disabled ? onChange : () => {});
+  showLabel = false,
+  showShortcut = true,
+}: ToolSelectorProps) {
+  return (
+    <TooltipProvider delayDuration={200}>
+      <div
+        className={cn(
+          "flex items-center gap-1 rounded-xl bg-gray-50/80 p-1",
+          "border border-gray-100",
+          className,
+        )}
+      >
+        {TOOLS.map((tool) => {
+          const isSelected = value === tool.id;
 
+          return (
+            <Tooltip key={tool.id}>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => onChange(tool.id)}
+                  className={cn(
+                    "relative flex items-center gap-1.5 rounded-lg px-2.5 py-1.5",
+                    "text-sm font-medium transition-all duration-200",
+                    "focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-300",
+                    isSelected
+                      ? "bg-gradient-to-r from-pink-100 to-rose-100 text-pink-600 shadow-sm"
+                      : "text-gray-500 hover:bg-white hover:text-gray-700 hover:shadow-sm",
+                    disabled && "opacity-50 cursor-not-allowed",
+                  )}
+                  aria-pressed={isSelected}
+                  aria-label={`${tool.name}: ${tool.description}`}
+                >
+                  {/* 图标 */}
+                  <span className="text-base" role="img" aria-hidden="true">
+                    {tool.icon}
+                  </span>
+
+                  {/* 名称（可选） */}
+                  {showLabel && <span className="text-xs">{tool.name}</span>}
+
+                  {/* 选中指示器 */}
+                  {isSelected && (
+                    <span
+                      className={cn(
+                        "absolute -bottom-0.5 left-1/2 -translate-x-1/2",
+                        "h-0.5 w-4 rounded-full bg-pink-400",
+                      )}
+                    />
+                  )}
+                </button>
+              </TooltipTrigger>
+
+              <TooltipContent
+                side="bottom"
+                sideOffset={8}
+                className="bg-gray-900 text-white border-0"
+              >
+                <div className="flex flex-col gap-0.5">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{tool.name}</span>
+                    {showShortcut && (
+                      <kbd className="px-1.5 py-0.5 text-[10px] bg-gray-700 rounded">
+                        {tool.shortcut}
+                      </kbd>
+                    )}
+                  </div>
+                  <span className="text-xs text-gray-300">
+                    {tool.description}
+                  </span>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          );
+        })}
+      </div>
+    </TooltipProvider>
+  );
+});
+
+// =============================================================================
+// 紧凑版本（仅图标）
+// =============================================================================
+
+/**
+ * 紧凑版工具选择器
+ *
+ * 用于空间受限的场景，仅显示图标
+ */
+export const ToolSelectorCompact = memo(function ToolSelectorCompact({
+  value,
+  onChange,
+  disabled = false,
+  className,
+}: Omit<ToolSelectorProps, "showLabel" | "showShortcut">) {
   return (
     <ToolSelector
       value={value}
       onChange={onChange}
       disabled={disabled}
       className={className}
+      showLabel={false}
+      showShortcut={true}
     />
   );
-}
+});
 
 // =============================================================================
-// 工具提示组件（用于显示当前选中工具的说明）
+// 完整版本（带名称）
 // =============================================================================
 
-interface ToolHintProps {
-  tool: ToolType;
-  className?: string;
-}
-
-export function ToolHint({ tool, className }: ToolHintProps) {
-  const selectedTool = TOOL_OPTIONS.find((t) => t.type === tool);
-
-  if (!selectedTool || tool === "auto") {
-    return null;
-  }
-
+/**
+ * 完整版工具选择器
+ *
+ * 显示图标和名称，适合有足够空间的场景
+ */
+export const ToolSelectorFull = memo(function ToolSelectorFull({
+  value,
+  onChange,
+  disabled = false,
+  className,
+}: Omit<ToolSelectorProps, "showLabel" | "showShortcut">) {
   return (
-    <div
-      className={cn(
-        "flex items-center gap-2 px-2 py-1 text-xs rounded-md",
-        "bg-primary/10 text-primary border border-primary/20",
-        className,
-      )}
-    >
-      <selectedTool.icon className="h-3 w-3" />
-      <span>
-        使用 <strong>{selectedTool.label}</strong> 工具
-      </span>
-    </div>
+    <ToolSelector
+      value={value}
+      onChange={onChange}
+      disabled={disabled}
+      className={className}
+      showLabel={true}
+      showShortcut={true}
+    />
   );
-}
-
-// =============================================================================
-// 导出
-// =============================================================================
+});
 
 export default ToolSelector;
