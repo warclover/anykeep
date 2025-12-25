@@ -26,15 +26,34 @@ const MAX_REFERENCE_PREVIEW_LENGTH = 10;
 /** Toast 默认显示时长（毫秒） */
 const DEFAULT_TOAST_DURATION = 3000;
 
-/** 指代类型的中文映射 */
-const REFERENCE_TYPE_LABELS: Record<string, string> = {
-  last_output: "上一次输出",
-  these_results: "这些搜索结果",
-  that_folder: "那个文件夹",
-  that_bookmark: "那篇文章",
-  previous: "上一个操作对象",
-  mentioned: "提到的内容",
-};
+/**
+ * UI 文本常量 - 集中管理所有显示文本
+ * 便于将来接入 i18n 框架（如 next-intl, react-i18next）
+ */
+const UI_TEXT = {
+  /** 指示器标题 */
+  title: "AI 记住了",
+  /** 展开版标题 */
+  expandedTitle: "AI 理解了上下文",
+  /** 解析计数模板 */
+  resolvedCount: (count: number) => `已解析 ${count} 个指代词`,
+  /** Toast 消息模板 */
+  toastMessage: (types: string) => `AI 记住了「${types}」`,
+  /** 无障碍标签 */
+  aria: {
+    indicatorLabel: (count: number) => `AI 成功解析了 ${count} 个指代词`,
+    expandedLabel: "AI 理解了上下文",
+  },
+  /** 指代类型映射 */
+  referenceTypes: {
+    last_output: "上一次输出",
+    these_results: "这些搜索结果",
+    that_folder: "那个文件夹",
+    that_bookmark: "那篇文章",
+    previous: "上一个操作对象",
+    mentioned: "提到的内容",
+  } as Record<string, string>,
+} as const;
 
 /** 预编译的指代词正则表达式 */
 const REFERENCE_PATTERNS: readonly RegExp[] = [
@@ -82,7 +101,7 @@ export interface MemoryToastProps extends BaseMemoryIndicatorProps {
  * 获取指代类型的中文显示
  */
 function getReferenceTypeLabel(type: string): string {
-  return REFERENCE_TYPE_LABELS[type] || type;
+  return UI_TEXT.referenceTypes[type] || type;
 }
 
 /**
@@ -125,7 +144,7 @@ export const MemoryIndicator = memo(function MemoryIndicator({
   return (
     <div
       role="status"
-      aria-label={`AI 成功解析了 ${memory.referenceCount} 个指代词`}
+      aria-label={UI_TEXT.aria.indicatorLabel(memory.referenceCount)}
       className={cn(
         "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium",
         "bg-gradient-to-r from-violet-100 to-purple-100 text-violet-700 border border-violet-200",
@@ -134,7 +153,7 @@ export const MemoryIndicator = memo(function MemoryIndicator({
       )}
     >
       <Brain className="size-3" aria-hidden="true" />
-      <span>AI 记住了</span>
+      <span>{UI_TEXT.title}</span>
       {showDetails && memory.referenceTypes.length > 0 && (
         <span className="text-violet-500">
           · {memory.referenceTypes.map(getReferenceTypeLabel).join("、")}
@@ -161,7 +180,7 @@ export const MemoryIndicatorExpanded = memo(function MemoryIndicatorExpanded({
   return (
     <div
       role="status"
-      aria-label="AI 理解了上下文"
+      aria-label={UI_TEXT.aria.expandedLabel}
       className={cn(
         "rounded-lg bg-gradient-to-br from-violet-50 to-purple-50 border border-violet-100 p-3",
         className,
@@ -172,7 +191,9 @@ export const MemoryIndicatorExpanded = memo(function MemoryIndicatorExpanded({
         <div className="flex items-center justify-center size-6 rounded-lg bg-gradient-to-br from-violet-400 to-purple-400 shadow-sm">
           <Brain className="size-3.5 text-white" aria-hidden="true" />
         </div>
-        <h4 className="text-sm font-medium text-violet-800">AI 理解了上下文</h4>
+        <h4 className="text-sm font-medium text-violet-800">
+          {UI_TEXT.expandedTitle}
+        </h4>
         <CheckCircle
           className="size-4 text-emerald-500 ml-auto"
           aria-hidden="true"
@@ -198,7 +219,7 @@ export const MemoryIndicatorExpanded = memo(function MemoryIndicatorExpanded({
 
         {/* 解析数量 */}
         <div className="text-xs text-gray-500">
-          已解析 {memory.referenceCount} 个指代词
+          {UI_TEXT.resolvedCount(memory.referenceCount)}
         </div>
       </div>
     </div>
@@ -250,8 +271,9 @@ export const MemoryToast = memo(function MemoryToast({
     >
       <Brain className="size-4" aria-hidden="true" />
       <span className="text-sm font-medium">
-        AI 记住了「{memory.referenceTypes.map(getReferenceTypeLabel).join("、")}
-        」
+        {UI_TEXT.toastMessage(
+          memory.referenceTypes.map(getReferenceTypeLabel).join("、"),
+        )}
       </span>
     </div>
   );
