@@ -104,196 +104,206 @@ export function AIPanelContent({
     scrollToBottom();
   }, [messages, pendingConfirmations, scrollToBottom]);
 
-  // 发送消息
-  const handleSubmit = useCallback(async () => {
-    if (!input.trim() || isLoading) return;
+  /**
+   * 核心发送消息逻辑
+   * 提取为独立函数，供 handleSubmit 和 handleSuggestionClick 复用
+   */
+  const sendMessage = useCallback(
+    async (content: string) => {
+      if (!content.trim() || isLoading) return;
 
-    const userMessage: DisplayMessage = {
-      id: crypto.randomUUID(),
-      role: "user",
-      content: input.trim(),
-      status: "sent",
-      createdAt: new Date(),
-    };
+      const userMessage: DisplayMessage = {
+        id: crypto.randomUUID(),
+        role: "user",
+        content: content.trim(),
+        status: "sent",
+        createdAt: new Date(),
+      };
 
-    // 添加用户消息
-    setMessages((prev) => [...prev, userMessage]);
-    setInput("");
-    setIsLoading(true);
+      // 添加用户消息
+      setMessages((prev) => [...prev, userMessage]);
+      setInput("");
+      setIsLoading(true);
 
-    // 创建助手消息占位
-    const assistantMessage: DisplayMessage = {
-      id: crypto.randomUUID(),
-      role: "assistant",
-      content: "",
-      status: "streaming",
-      createdAt: new Date(),
-    };
-    setMessages((prev) => [...prev, assistantMessage]);
+      // 创建助手消息占位
+      const assistantMessage: DisplayMessage = {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content: "",
+        status: "streaming",
+        createdAt: new Date(),
+      };
+      setMessages((prev) => [...prev, assistantMessage]);
 
-    // 创建 AbortController
-    abortControllerRef.current = new AbortController();
+      // 创建 AbortController
+      abortControllerRef.current = new AbortController();
 
-    try {
-      // 构建消息历史
-      const messageHistory = messages
-        .filter(
-          (m) =>
-            m.status === "completed" &&
-            (m.role === "user" || m.role === "assistant"),
-        )
-        .map((m) => ({
-          role: m.role as "user" | "assistant",
-          content: m.content,
-        }));
+      try {
+        // 构建消息历史
+        const messageHistory = messages
+          .filter(
+            (m) =>
+              m.status === "completed" &&
+              (m.role === "user" || m.role === "assistant"),
+          )
+          .map((m) => ({
+            role: m.role as "user" | "assistant",
+            content: m.content,
+          }));
 
-      // 始终使用统一 API（通过 enableUnified 参数控制模式）
-      const apiEndpoint = "/api/agent/unified";
+        // 始终使用统一 API（通过 enableUnified 参数控制模式）
+        const apiEndpoint = "/api/agent/unified";
 
-      // 调用 API
-      const response = await fetch(apiEndpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          message: userMessage.content,
-          conversationId,
-          messageHistory,
-          bookmarkIds,
-          folderId,
-          options: {
-            streaming: true,
-            enableUnified: useUnifiedEngine,
+        // 调用 API
+        const response = await fetch(apiEndpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
           },
-        }),
-        signal: abortControllerRef.current.signal,
-      });
+          body: JSON.stringify({
+            message: userMessage.content,
+            conversationId,
+            messageHistory,
+            bookmarkIds,
+            folderId,
+            options: {
+              streaming: true,
+              enableUnified: useUnifiedEngine,
+            },
+          }),
+          signal: abortControllerRef.current.signal,
+        });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "请求失败");
-      }
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "请求失败");
+        }
 
-      // 处理 SSE 流式响应
-      const reader = response.body?.getReader();
-      if (!reader) {
-        throw new Error("无法获取响应流");
-      }
+        // 处理 SSE 流式响应
+        const reader = response.body?.getReader();
+        if (!reader) {
+          throw new Error("无法获取响应流");
+        }
 
-      const decoder = new TextDecoder();
-      let currentMessage: DisplayMessage = { ...assistantMessage };
+        const decoder = new TextDecoder();
+        let currentMessage: DisplayMessage = { ...assistantMessage };
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
 
-        const text = decoder.decode(value, { stream: true });
-        const lines = text.split("\n");
+          const text = decoder.decode(value, { stream: true });
+          const lines = text.split("\n");
 
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            try {
-              const rawChunk = JSON.parse(line.slice(6));
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              try {
+                const rawChunk = JSON.parse(line.slice(6));
 
-              if (useUnifiedEngine) {
-                // 使用适配器转换后端格式为前端格式
-                const chunk = adaptBackendChunk(rawChunk);
+                if (useUnifiedEngine) {
+                  // 使用适配器转换后端格式为前端格式
+                  const chunk = adaptBackendChunk(rawChunk);
 
-                // 使用统一引擎处理
-                currentMessage = processUnifiedChunk(chunk, currentMessage);
-                setMessages((prev) =>
-                  prev.map((m) =>
-                    m.id === assistantMessage.id ? currentMessage : m,
-                  ),
-                );
+                  // 使用统一引擎处理
+                  currentMessage = processUnifiedChunk(chunk, currentMessage);
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === assistantMessage.id ? currentMessage : m,
+                    ),
+                  );
 
-                // 处理待确认操作
-                if (chunk.type === "confirmation" && chunk.confirmation) {
-                  setPendingConfirmations((prev) => [
-                    ...prev,
-                    chunk.confirmation,
-                  ]);
+                  // 处理待确认操作
+                  if (chunk.type === "confirmation" && chunk.confirmation) {
+                    setPendingConfirmations((prev) => [
+                      ...prev,
+                      chunk.confirmation,
+                    ]);
+                  }
+
+                  // 从 done chunk 中提取 conversationId（用于记忆功能）
+                  if (chunk.type === "done" && chunk.data.conversationId) {
+                    setConversationId(chunk.data.conversationId);
+                  }
+
+                  // 处理记忆块（显示"AI 记住了"提示）
+                  if (chunk.type === "memory" && chunk.memory?.resolved) {
+                    setShowMemoryHint(true);
+                    // 3秒后自动隐藏
+                    setTimeout(() => setShowMemoryHint(false), 3000);
+                  }
+                } else {
+                  // 使用原有 Agent API 处理（兼容模式）
+                  const agentChunk = rawChunk as AgentStreamChunk;
+                  handleAgentChunk(
+                    agentChunk,
+                    assistantMessage.id,
+                    currentMessage,
+                    (msg) => {
+                      currentMessage = msg;
+                    },
+                  );
                 }
-
-                // 从 done chunk 中提取 conversationId（用于记忆功能）
-                if (chunk.type === "done" && chunk.data.conversationId) {
-                  setConversationId(chunk.data.conversationId);
+              } catch (parseError) {
+                if (process.env.NODE_ENV === "development") {
+                  clientLogger.error({ parseError, line }, "SSE parse error");
                 }
-
-                // 处理记忆块（显示"AI 记住了"提示）
-                if (chunk.type === "memory" && chunk.memory?.resolved) {
-                  setShowMemoryHint(true);
-                  // 3秒后自动隐藏
-                  setTimeout(() => setShowMemoryHint(false), 3000);
-                }
-              } else {
-                // 使用原有 Agent API 处理（兼容模式）
-                const agentChunk = rawChunk as AgentStreamChunk;
-                handleAgentChunk(
-                  agentChunk,
-                  assistantMessage.id,
-                  currentMessage,
-                  (msg) => {
-                    currentMessage = msg;
-                  },
-                );
-              }
-            } catch (parseError) {
-              if (process.env.NODE_ENV === "development") {
-                clientLogger.error({ parseError, line }, "SSE parse error");
               }
             }
           }
         }
-      }
 
-      // 如果没有收到 done 事件，手动标记完成
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === assistantMessage.id && m.status === "streaming"
-            ? { ...m, status: "completed" }
-            : m,
-        ),
-      );
-    } catch (error) {
-      if (error instanceof Error && error.name === "AbortError") {
+        // 如果没有收到 done 事件，手动标记完成
         setMessages((prev) =>
           prev.map((m) =>
-            m.id === assistantMessage.id
-              ? { ...m, status: "completed", content: m.content || "已取消" }
+            m.id === assistantMessage.id && m.status === "streaming"
+              ? { ...m, status: "completed" }
               : m,
           ),
         );
-      } else {
-        const errorMessage =
-          error instanceof Error ? error.message : "Unknown error";
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === assistantMessage.id
-              ? {
-                  ...m,
-                  status: "error",
-                  error: errorMessage,
-                }
-              : m,
-          ),
-        );
+      } catch (error) {
+        if (error instanceof Error && error.name === "AbortError") {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantMessage.id
+                ? { ...m, status: "completed", content: m.content || "已取消" }
+                : m,
+            ),
+          );
+        } else {
+          const errorMessage =
+            error instanceof Error ? error.message : "Unknown error";
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantMessage.id
+                ? {
+                    ...m,
+                    status: "error",
+                    error: errorMessage,
+                  }
+                : m,
+            ),
+          );
+        }
+      } finally {
+        setIsLoading(false);
+        abortControllerRef.current = null;
       }
-    } finally {
-      setIsLoading(false);
-      abortControllerRef.current = null;
-    }
+    },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- handleAgentChunk has empty deps and is stable
-  }, [
-    input,
-    isLoading,
-    conversationId,
-    bookmarkIds,
-    folderId,
-    messages,
-    useUnifiedEngine,
-  ]);
+    [
+      isLoading,
+      conversationId,
+      bookmarkIds,
+      folderId,
+      messages,
+      useUnifiedEngine,
+    ],
+  );
+
+  // 发送消息（从输入框提交）
+  const handleSubmit = useCallback(() => {
+    sendMessage(input);
+  }, [input, sendMessage]);
 
   /**
    * 处理原有 Agent API 的流式数据块（兼容模式）
@@ -558,23 +568,14 @@ export function AIPanelContent({
   }, [messages]);
 
   // 处理建议点击
-  const handleSuggestionClick = useCallback((suggestion: SuggestionItem) => {
-    // 将建议内容设为输入，并自动提交
-    if (suggestion.action) {
-      // 如果有指定操作，直接执行
-      setInput(suggestion.action);
-    } else {
-      // 否则将建议文本作为输入
-      setInput(suggestion.text);
-    }
-    // 自动提交（延迟执行确保 input 已更新）
-    setTimeout(() => {
-      const submitButton = document.querySelector(
-        "[data-ai-submit-button]",
-      ) as HTMLButtonElement | null;
-      submitButton?.click();
-    }, 100);
-  }, []);
+  const handleSuggestionClick = useCallback(
+    (suggestion: SuggestionItem) => {
+      // 直接发送建议内容（优先使用 action，否则使用 text）
+      const messageContent = suggestion.action || suggestion.text;
+      sendMessage(messageContent);
+    },
+    [sendMessage],
+  );
 
   return (
     <div className={`flex flex-col h-full ${className || ""}`}>
