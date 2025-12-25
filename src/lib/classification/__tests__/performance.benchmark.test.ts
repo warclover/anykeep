@@ -29,7 +29,7 @@ jest.mock("@/lib/utils/embedding-generator", () => ({
 }));
 
 // Mock AI generator (fast response)
-jest.mock("@/lib/utils/ai-generator", () => ({
+jest.mock("@/lib/ai-generator", () => ({
   generateWithAI: jest.fn().mockImplementation(async () => {
     // Simulate 100ms AI response
     await new Promise((resolve) => setTimeout(resolve, 100));
@@ -188,7 +188,7 @@ describe("V4.2 Performance Benchmarks", () => {
     });
 
     it("should complete AI selection within 150ms", async () => {
-      const { generateWithAI } = await import("@/lib/utils/ai-generator");
+      const { generateWithAI } = await import("@/lib/ai-generator");
 
       const iterations = 5;
       for (let i = 0; i < iterations; i++) {

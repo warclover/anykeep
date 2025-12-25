@@ -5,8 +5,8 @@
  * 提供工具函数的集中访问点
  */
 
-// AI 相关工具
-export * from "./ai-generator";
+// AI 相关工具 - 已迁移到 @/lib/ai-generator
+// 请使用: import { ... } from "@/lib/ai-generator"
 export * from "./embedding-generator";
 // auto-classify: 使用命名导出避免与 ai-generator 的 FolderRecommendation 冲突
 export {
