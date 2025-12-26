@@ -4,6 +4,8 @@
 
 | 日期       | 版本  | 变更内容                                                                                 |
 | ---------- | ----- | ---------------------------------------------------------------------------------------- |
+| 2025-12-26 | 2.6.1 | v4.3 修复：Token 持久化、LRU 缓存、跨平台兼容性、RPC 安全增强                            |
+| 2025-12-26 | 2.6.0 | AI 能力升级 v4.3：动态上下文、模型分层、偏好学习、成本控制、Feature Flags                |
 | 2025-12-25 | 2.5.1 | Tools & Skills 优化：Query Tools 日志完善、废弃工具清理、Skills 测试覆盖、统一注册适配层 |
 | 2025-12-25 | 2.5.0 | 架构修复：日志系统统一、Classification 扁平化、测试稳定性增强                            |
 | 2025-12-24 | 2.4.0 | 完成 AI Skills 统一智能架构（编排引擎 + 4 个 Skills）                                    |
@@ -626,6 +628,86 @@ src/lib/ai-skills/
 | 生产构建       | 失败     | 成功         | ✅     |
 
 **技术债务文档**: `docs/TECH_DEBT_20251225.md`
+
+---
+
+### 7. AI 能力升级 v4.3 ✅
+
+**版本**: v2.6.0 (2025-12-26)
+
+全面升级 AI Agent 能力，提升智能化水平和用户体验。
+
+**核心特性**:
+
+| 优先级 | 功能模块       | 说明                                        |
+| ------ | -------------- | ------------------------------------------- |
+| P0-1   | 动态上下文注入 | 收藏统计、时间感知、会话状态自动注入 Prompt |
+| P0-2   | 模型分层策略   | fast/standard/deep 三层模型自动选择         |
+| P1-5   | 轻量版 ReAct   | 思考→行动→观察 循环，提升工具选择准确性     |
+| P1-6   | 智能错误恢复   | 工具调用失败自动重试、参数修正              |
+| P1-7   | reasoning 参数 | 记录 AI 决策理由，便于调试和优化            |
+| P2-8   | 偏好持久化     | 用户 AI 偏好存储到数据库 `ai_preferences`   |
+| P2-9   | 偏好自动学习   | 异步记录用户行为，自动更新常用标签/文件夹   |
+| P2-10  | 成本控制       | Token 预算管理、使用统计、自动降级          |
+
+**Feature Flags 配置**:
+
+```bash
+# .env.local - 所有功能默认启用，设为 false 可禁用
+ENABLE_DYNAMIC_CONTEXT=true     # 动态上下文注入
+ENABLE_MODEL_TIERING=true       # 模型分层策略
+ENABLE_REACT_PROMPT=true        # ReAct Prompt
+ENABLE_REASONING=true           # reasoning 参数记录
+ENABLE_ERROR_RECOVERY=true      # 智能错误恢复
+ENABLE_PREFERENCE_LEARNING=true # 偏好自动学习
+ENABLE_COST_CONTROL=true        # 成本控制
+```
+
+**成本预算配置**:
+
+| 参数               | 默认值    | 说明            |
+| ------------------ | --------- | --------------- |
+| `dailyBudget`      | 100,000   | 每日 Token 预算 |
+| `monthlyBudget`    | 3,000,000 | 每月 Token 预算 |
+| `warningThreshold` | 80%       | 预算警告阈值    |
+
+**模型层级**:
+
+| 层级       | 模型示例    | 适用场景                 |
+| ---------- | ----------- | ------------------------ |
+| `fast`     | gpt-4o-mini | 简单查询、计数、列表     |
+| `standard` | gpt-4o      | 搜索、标签管理、一般操作 |
+| `deep`     | gpt-4-turbo | 分析、报告、复杂推理     |
+
+**文件位置**:
+
+```
+src/lib/ai-agent/
+├── config/                    # 配置模块
+│   ├── feature-flags.ts       # Feature Flags
+│   └── cost-controller.ts     # 成本控制器
+├── context/                   # 上下文模块
+│   ├── dynamic-context-builder.ts  # 动态上下文构建
+│   ├── prompt-injector.ts     # Prompt 注入
+│   └── types.ts               # 类型定义
+├── preferences/               # 偏好模块
+│   ├── preferences-service.ts # 偏好服务
+│   ├── learning-service.ts    # 学习服务
+│   └── types.ts               # 类型定义
+└── __tests__/
+    └── integration/
+        └── ai-capability-upgrade.test.ts  # 集成测试
+```
+
+**数据库迁移**:
+
+- `supabase/migrations/20251226200001_add_ai_preferences.sql`
+- 添加 `profiles.ai_preferences` JSONB 字段
+- 添加 `update_ai_learned_preferences` RPC 函数
+
+**配置文档**: `docs/AI_CAPABILITY_CONFIG.md`
+
+**测试覆盖**: 16 个集成测试用例全部通过
 
 ---
 

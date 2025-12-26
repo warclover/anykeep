@@ -9,6 +9,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
+import type { Json } from "@/types/supabase";
 import type {
   AIPreferences,
   LearnedPreferences,
@@ -62,8 +63,9 @@ export class PreferenceLearningService {
     params: unknown,
     success: boolean,
   ): Promise<void> {
-    // 异步执行，不阻塞主流程
-    setImmediate(async () => {
+    // 使用 queueMicrotask 替代 setImmediate，保证跨平台兼容性
+    // queueMicrotask 是 ECMA 标准，在 Node.js 和浏览器中都可用
+    queueMicrotask(async () => {
       try {
         // 只记录成功的调用
         if (!success) return;
@@ -351,15 +353,11 @@ export class PreferenceLearningService {
     try {
       const supabase = await createClient();
 
-      // 尝试使用 JSONB 部分更新（RPC 可能不存在）
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase.rpc as any)(
-        "update_ai_learned_preferences",
-        {
-          p_user_id: userId,
-          p_learned: learned,
-        },
-      );
+      // 使用 RPC 进行 JSONB 部分更新
+      const { error } = await supabase.rpc("update_ai_learned_preferences", {
+        p_user_id: userId,
+        p_learned: learned as unknown as Json,
+      });
 
       if (error) {
         // 如果 RPC 不存在，回退到完整更新
@@ -372,8 +370,7 @@ export class PreferenceLearningService {
 
           await supabase
             .from("profiles")
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            .update({ ai_preferences: updated } as any)
+            .update({ ai_preferences: updated as unknown as Json })
             .eq("id", userId);
         } else {
           throw error;

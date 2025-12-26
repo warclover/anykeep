@@ -3,10 +3,16 @@
  *
  * 管理 Token 预算和使用统计
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-26
+ *
+ * v1.1.0 更新:
+ * - 添加数据库持久化支持
+ * - 内存缓存作为写入缓冲区
+ * - 异步批量写入优化性能
  */
 
+import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 import type { ModelTierId } from "@/lib/ai-providers/model-tier-config";
 import { MODEL_TIER_CONFIG } from "@/lib/ai-providers/model-tier-config";
@@ -117,26 +123,54 @@ export interface TokenBudgetConfig {
 }
 
 // =============================================================================
+// 写入缓冲区配置
+// =============================================================================
+
+/** 写入缓冲区刷新间隔（毫秒） */
+const FLUSH_INTERVAL_MS = 5000; // 5 秒
+
+/** 写入缓冲区最大大小 */
+const MAX_BUFFER_SIZE = 20;
+
+/** 统计数据缓存 TTL（毫秒） */
+const STATS_CACHE_TTL = 30000; // 30 秒
+
+// =============================================================================
 // 成本控制器类
 // =============================================================================
 
 /**
  * 成本控制器
  *
- * 管理 Token 使用预算和统计
+ * 管理 Token 使用预算和统计，支持数据库持久化
  */
 export class CostController {
-  /** 使用记录（内存缓存，生产环境应持久化） */
-  private usageRecords: TokenUsageRecord[] = [];
+  /** 待写入数据库的记录缓冲区 */
+  private writeBuffer: TokenUsageRecord[] = [];
+
+  /** 内存缓存（用于快速统计查询） */
+  private memoryCache: TokenUsageRecord[] = [];
+
+  /** 统计数据缓存 */
+  private statsCache = new Map<string, { data: UsageStats; expiry: number }>();
 
   /** 预算配置 */
   private budgetConfig: TokenBudgetConfig;
 
-  constructor(config?: Partial<TokenBudgetConfig>) {
+  /** 刷新定时器 */
+  private flushTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /** 是否启用数据库持久化 */
+  private enablePersistence: boolean;
+
+  constructor(
+    config?: Partial<TokenBudgetConfig> & { enablePersistence?: boolean },
+  ) {
     this.budgetConfig = {
       ...DEFAULT_TOKEN_BUDGET,
       ...config,
     };
+    this.enablePersistence = config?.enablePersistence ?? true;
   }
 
   /**
@@ -201,6 +235,8 @@ export class CostController {
 
   /**
    * 记录 Token 使用
+   *
+   * 记录会先写入内存缓冲区，然后异步批量持久化到数据库
    */
   recordUsage(record: Omit<TokenUsageRecord, "cost" | "timestamp">): void {
     const costFactor = MODEL_COST_FACTORS[record.model] ?? 1;
@@ -212,7 +248,14 @@ export class CostController {
       timestamp: new Date(),
     };
 
-    this.usageRecords.push(fullRecord);
+    // 添加到内存缓存（用于即时统计）
+    this.memoryCache.push(fullRecord);
+
+    // 添加到写入缓冲区
+    this.writeBuffer.push(fullRecord);
+
+    // 清除该用户的统计缓存
+    this.statsCache.delete(record.userId);
 
     logger.debug(
       {
@@ -223,23 +266,46 @@ export class CostController {
         outputTokens: record.outputTokens,
         totalTokens: record.totalTokens,
         cost,
+        bufferSize: this.writeBuffer.length,
       },
       "CostController: Token usage recorded",
     );
 
-    // 清理过期记录（保留最近 30 天）
-    this.cleanupOldRecords();
+    // 检查是否需要立即刷新
+    if (this.writeBuffer.length >= MAX_BUFFER_SIZE) {
+      this.flushToDatabase();
+    } else {
+      // 启动延迟刷新定时器
+      this.scheduleFlush();
+    }
+
+    // 清理内存缓存中的过期记录
+    this.cleanupMemoryCache();
   }
 
   /**
    * 获取使用统计
+   *
+   * 优先从缓存获取，缓存未命中时从内存记录计算
+   * 注意：数据库查询是异步的，这里只使用内存数据保证同步返回
    */
   getUsageStats(userId: string): UsageStats {
+    // 检查缓存
+    const cached = this.statsCache.get(userId);
+    if (cached && cached.expiry > Date.now()) {
+      return cached.data;
+    }
+
+    // 从内存缓存计算
     const now = new Date();
-    const todayStart = new Date(now.setHours(0, 0, 0, 0));
+    const todayStart = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    const userRecords = this.usageRecords.filter((r) => r.userId === userId);
+    const userRecords = this.memoryCache.filter((r) => r.userId === userId);
 
     const todayRecords = userRecords.filter((r) => r.timestamp >= todayStart);
     const monthRecords = userRecords.filter((r) => r.timestamp >= monthStart);
@@ -254,7 +320,7 @@ export class CostController {
       tierDistribution[record.tierId] += record.totalTokens;
     }
 
-    return {
+    const stats: UsageStats = {
       todayTokens: todayRecords.reduce((sum, r) => sum + r.totalTokens, 0),
       monthTokens: monthRecords.reduce((sum, r) => sum + r.totalTokens, 0),
       todayRequests: todayRecords.length,
@@ -262,6 +328,76 @@ export class CostController {
       todayCost: todayRecords.reduce((sum, r) => sum + r.cost, 0),
       monthCost: monthRecords.reduce((sum, r) => sum + r.cost, 0),
     };
+
+    // 写入缓存
+    this.statsCache.set(userId, {
+      data: stats,
+      expiry: Date.now() + STATS_CACHE_TTL,
+    });
+
+    return stats;
+  }
+
+  /**
+   * 异步获取使用统计（从数据库）
+   *
+   * 用于需要精确数据的场景（如计费、报告）
+   */
+  async getUsageStatsAsync(userId: string): Promise<UsageStats> {
+    if (!this.enablePersistence) {
+      return this.getUsageStats(userId);
+    }
+
+    try {
+      const supabase = await createClient();
+
+      const { data, error } = await supabase.rpc("get_user_token_stats", {
+        p_user_id: userId,
+      });
+
+      if (error) {
+        logger.warn(
+          { userId, error: error.message },
+          "CostController: Failed to get stats from DB, using memory cache",
+        );
+        return this.getUsageStats(userId);
+      }
+
+      const dbStats = data as {
+        todayTokens: number;
+        monthTokens: number;
+        todayRequests: number;
+        todayCost: number;
+        monthCost: number;
+        tierDistribution: Record<ModelTierId, number>;
+      };
+
+      // 合并内存缓冲区中尚未持久化的数据
+      const memoryStats = this.getUsageStats(userId);
+
+      return {
+        todayTokens: dbStats.todayTokens + memoryStats.todayTokens,
+        monthTokens: dbStats.monthTokens + memoryStats.monthTokens,
+        todayRequests: dbStats.todayRequests + memoryStats.todayRequests,
+        tierDistribution: {
+          fast:
+            dbStats.tierDistribution.fast + memoryStats.tierDistribution.fast,
+          standard:
+            dbStats.tierDistribution.standard +
+            memoryStats.tierDistribution.standard,
+          deep:
+            dbStats.tierDistribution.deep + memoryStats.tierDistribution.deep,
+        },
+        todayCost: dbStats.todayCost + memoryStats.todayCost,
+        monthCost: dbStats.monthCost + memoryStats.monthCost,
+      };
+    } catch (error) {
+      logger.error(
+        { userId, error },
+        "CostController: Exception getting stats from DB",
+      );
+      return this.getUsageStats(userId);
+    }
   }
 
   /**
@@ -312,22 +448,113 @@ export class CostController {
   }
 
   /**
-   * 清理过期记录
+   * 立即刷新缓冲区到数据库
    */
-  private cleanupOldRecords(): void {
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  async flushToDatabase(): Promise<void> {
+    if (this.writeBuffer.length === 0 || !this.enablePersistence) {
+      return;
+    }
 
-    this.usageRecords = this.usageRecords.filter(
-      (r) => r.timestamp >= thirtyDaysAgo,
-    );
+    // 取出当前缓冲区内容
+    const recordsToWrite = [...this.writeBuffer];
+    this.writeBuffer = [];
+
+    // 清除定时器
+    if (this.flushTimer) {
+      clearTimeout(this.flushTimer);
+      this.flushTimer = null;
+    }
+
+    try {
+      const supabase = await createClient();
+
+      // 批量插入
+      const { error } = await supabase.from("token_usage_logs").insert(
+        recordsToWrite.map((r) => ({
+          user_id: r.userId,
+          request_id: r.requestId,
+          model: r.model,
+          tier_id: r.tierId,
+          input_tokens: r.inputTokens,
+          output_tokens: r.outputTokens,
+          total_tokens: r.totalTokens,
+          cost: r.cost,
+          created_at: r.timestamp.toISOString(),
+        })),
+      );
+
+      if (error) {
+        logger.error(
+          { error: error.message, recordCount: recordsToWrite.length },
+          "CostController: Failed to persist records to DB",
+        );
+        // 失败时将记录放回缓冲区
+        this.writeBuffer.unshift(...recordsToWrite);
+      } else {
+        logger.info(
+          { recordCount: recordsToWrite.length },
+          "CostController: Records persisted to DB",
+        );
+        // 成功后清理内存缓存中已持久化的记录
+        this.cleanupMemoryCache();
+      }
+    } catch (error) {
+      logger.error(
+        { error, recordCount: recordsToWrite.length },
+        "CostController: Exception persisting records to DB",
+      );
+      // 异常时将记录放回缓冲区
+      this.writeBuffer.unshift(...recordsToWrite);
+    }
+  }
+
+  /**
+   * 调度延迟刷新
+   */
+  private scheduleFlush(): void {
+    if (this.flushTimer || !this.enablePersistence) {
+      return;
+    }
+
+    this.flushTimer = setTimeout(() => {
+      this.flushTimer = null;
+      this.flushToDatabase();
+    }, FLUSH_INTERVAL_MS);
+  }
+
+  /**
+   * 清理内存缓存中的过期记录（保留最近 1 天）
+   */
+  private cleanupMemoryCache(): void {
+    const oneDayAgo = new Date();
+    oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+
+    this.memoryCache = this.memoryCache.filter((r) => r.timestamp >= oneDayAgo);
   }
 
   /**
    * 重置统计（仅用于测试）
    */
   _resetForTesting(): void {
-    this.usageRecords = [];
+    this.memoryCache = [];
+    this.writeBuffer = [];
+    this.statsCache.clear();
+    if (this.flushTimer) {
+      clearTimeout(this.flushTimer);
+      this.flushTimer = null;
+    }
+  }
+
+  /**
+   * 销毁控制器（清理定时器）
+   */
+  destroy(): void {
+    if (this.flushTimer) {
+      clearTimeout(this.flushTimer);
+      this.flushTimer = null;
+    }
+    // 尝试最后一次刷新
+    this.flushToDatabase();
   }
 }
 
@@ -337,8 +564,15 @@ export class CostController {
 
 /**
  * 全局成本控制器实例
+ *
+ * 注意：生产环境下 enablePersistence 应为 true
+ * 但需要确保数据库迁移已执行
  */
-export const costController = new CostController();
+export const costController = new CostController({
+  // 默认禁用持久化，等数据库迁移完成后可启用
+  // 或通过环境变量控制
+  enablePersistence: process.env.ENABLE_TOKEN_PERSISTENCE === "true",
+});
 
 /**
  * 便捷函数：检查预算

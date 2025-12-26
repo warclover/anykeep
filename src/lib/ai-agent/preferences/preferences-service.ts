@@ -9,6 +9,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
+import type { Json } from "@/types/supabase";
 import type {
   AIPreferences,
   PreferencesUpdateRequest,
@@ -62,10 +63,9 @@ export class PreferencesService {
     try {
       const supabase = await createClient();
 
-      // 使用 select("*") 并通过类型断言处理尚未迁移的字段
       const { data, error } = await supabase
         .from("profiles")
-        .select("*")
+        .select("ai_preferences")
         .eq("id", userId)
         .single();
 
@@ -78,8 +78,7 @@ export class PreferencesService {
       }
 
       // 合并默认值（处理字段缺失）
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const preferences = this.mergeWithDefaults((data as any)?.ai_preferences);
+      const preferences = this.mergeWithDefaults(data?.ai_preferences);
 
       // 更新缓存
       preferencesCache.set(userId, {
@@ -124,11 +123,10 @@ export class PreferencesService {
         },
       };
 
-      // 保存到数据库（使用类型断言处理尚未迁移的字段）
+      // 保存到数据库
       const { error } = await supabase
         .from("profiles")
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .update({ ai_preferences: updated } as any)
+        .update({ ai_preferences: updated as unknown as Json })
         .eq("id", userId);
 
       if (error) {

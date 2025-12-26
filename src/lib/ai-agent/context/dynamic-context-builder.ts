@@ -16,7 +16,6 @@ import type {
   PreferencesContext,
   RecentActivityContext,
   DynamicContextBuildOptions,
-  CacheEntry,
   TimePeriod,
   PlatformStats,
   FolderStats,
@@ -28,6 +27,9 @@ import type {
 
 /** 统计数据缓存 TTL（5 分钟） */
 const STATS_CACHE_TTL = 5 * 60 * 1000;
+
+/** 缓存最大条目数（LRU 策略） */
+const STATS_CACHE_MAX_SIZE = 100;
 
 /** 中文星期映射 */
 const WEEKDAYS = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
@@ -61,20 +63,35 @@ const DEFAULT_PREFERENCES: PreferencesContext = {
 };
 
 // =============================================================================
-// 缓存管理
+// LRU 缓存管理
 // =============================================================================
 
-/** 统计数据缓存 */
-const statsCache = new Map<string, CacheEntry<StatsContext>>();
+/**
+ * LRU 缓存条目（包含访问顺序信息）
+ */
+interface LRUCacheEntry<T> {
+  data: T;
+  expiry: number;
+  /** 最后访问时间（用于 LRU） */
+  lastAccess: number;
+}
+
+/** 统计数据缓存（使用 Map 保持插入顺序） */
+const statsCache = new Map<string, LRUCacheEntry<StatsContext>>();
 
 /**
- * 获取缓存的统计数据
+ * 获取缓存的统计数据（LRU 策略）
  */
 function getCachedStats(userId: string): StatsContext | null {
   const cacheKey = `stats:${userId}`;
   const cached = statsCache.get(cacheKey);
 
   if (cached && cached.expiry > Date.now()) {
+    // 更新访问时间（LRU 策略核心）
+    cached.lastAccess = Date.now();
+    // 移动到 Map 末尾（最近访问）
+    statsCache.delete(cacheKey);
+    statsCache.set(cacheKey, cached);
     return cached.data;
   }
 
@@ -87,14 +104,43 @@ function getCachedStats(userId: string): StatsContext | null {
 }
 
 /**
- * 设置统计数据缓存
+ * 设置统计数据缓存（带 LRU 淘汰）
  */
 function setCachedStats(userId: string, stats: StatsContext): void {
   const cacheKey = `stats:${userId}`;
+
+  // 如果缓存已满，淘汰最久未访问的条目
+  if (statsCache.size >= STATS_CACHE_MAX_SIZE) {
+    evictLRUEntry();
+  }
+
   statsCache.set(cacheKey, {
     data: stats,
     expiry: Date.now() + STATS_CACHE_TTL,
+    lastAccess: Date.now(),
   });
+}
+
+/**
+ * 淘汰最久未访问的缓存条目
+ */
+function evictLRUEntry(): void {
+  // Map 迭代器按插入顺序返回，第一个就是最旧的
+  // 但我们需要按 lastAccess 排序
+  let oldestKey: string | null = null;
+  let oldestTime = Infinity;
+
+  for (const [key, entry] of statsCache) {
+    if (entry.lastAccess < oldestTime) {
+      oldestTime = entry.lastAccess;
+      oldestKey = key;
+    }
+  }
+
+  if (oldestKey) {
+    statsCache.delete(oldestKey);
+    logger.debug({ key: oldestKey }, "DynamicContext: LRU cache evicted");
+  }
 }
 
 /**
@@ -104,6 +150,37 @@ export function invalidateStatsCache(userId: string): void {
   const cacheKey = `stats:${userId}`;
   statsCache.delete(cacheKey);
   logger.debug({ userId }, "DynamicContext: stats cache invalidated");
+}
+
+/**
+ * 清理所有过期缓存条目
+ */
+export function cleanupExpiredCache(): number {
+  const now = Date.now();
+  let cleanedCount = 0;
+
+  for (const [key, entry] of statsCache) {
+    if (entry.expiry <= now) {
+      statsCache.delete(key);
+      cleanedCount++;
+    }
+  }
+
+  if (cleanedCount > 0) {
+    logger.debug({ cleanedCount }, "DynamicContext: expired cache cleaned");
+  }
+
+  return cleanedCount;
+}
+
+/**
+ * 获取缓存统计信息（用于监控）
+ */
+export function getCacheStats(): { size: number; maxSize: number } {
+  return {
+    size: statsCache.size,
+    maxSize: STATS_CACHE_MAX_SIZE,
+  };
 }
 
 // =============================================================================

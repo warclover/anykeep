@@ -2515,6 +2515,7 @@ export type Database = {
       };
       profiles: {
         Row: {
+          ai_preferences: Json | null;
           avatar_url: string | null;
           created_at: string | null;
           id: string;
@@ -2531,6 +2532,7 @@ export type Database = {
           updated_at: string | null;
         };
         Insert: {
+          ai_preferences?: Json | null;
           avatar_url?: string | null;
           created_at?: string | null;
           id: string;
@@ -2547,6 +2549,7 @@ export type Database = {
           updated_at?: string | null;
         };
         Update: {
+          ai_preferences?: Json | null;
           avatar_url?: string | null;
           created_at?: string | null;
           id?: string;
@@ -2780,6 +2783,74 @@ export type Database = {
           updated_at?: string;
           user_id?: string;
           weight?: number;
+        };
+        Relationships: [];
+      };
+      /** AI Token 使用记录表 */
+      token_usage_logs: {
+        Row: {
+          id: string;
+          user_id: string;
+          request_id: string;
+          model: string;
+          tier_id: string;
+          input_tokens: number;
+          output_tokens: number;
+          total_tokens: number;
+          cost: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          request_id: string;
+          model: string;
+          tier_id: string;
+          input_tokens?: number;
+          output_tokens?: number;
+          total_tokens?: number;
+          cost?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          request_id?: string;
+          model?: string;
+          tier_id?: string;
+          input_tokens?: number;
+          output_tokens?: number;
+          total_tokens?: number;
+          cost?: number;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      /** AI 偏好变更审计日志 */
+      ai_preferences_audit_log: {
+        Row: {
+          id: string;
+          user_id: string;
+          change_type: string;
+          old_value: Json | null;
+          new_value: Json | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          change_type: string;
+          old_value?: Json | null;
+          new_value?: Json | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          change_type?: string;
+          old_value?: Json | null;
+          new_value?: Json | null;
+          created_at?: string;
         };
         Relationships: [];
       };
@@ -3823,6 +3894,15 @@ export type Database = {
         Args: { p_user_id: string };
         Returns: number;
       };
+      /** 获取用户 Token 使用统计 */
+      get_user_token_stats: {
+        Args: {
+          p_user_id: string;
+          p_today_start?: string;
+          p_month_start?: string;
+        };
+        Returns: Json;
+      };
       get_user_trust_mode: { Args: { p_user_id: string }; Returns: Json };
       get_vision_tags: { Args: { vision_data: Json }; Returns: string[] };
       get_wechat_article_stats: {
@@ -4117,6 +4197,11 @@ export type Database = {
       update_ai_folder_settings: {
         Args: { p_settings: Json; p_user_id: string };
         Returns: Json;
+      };
+      /** 更新用户 AI 学习偏好（仅更新 learned 部分） */
+      update_ai_learned_preferences: {
+        Args: { p_user_id: string; p_learned: Json };
+        Returns: undefined;
       };
       update_folder_heat: { Args: { p_folder_id: number }; Returns: undefined };
       update_folder_name_embedding: {
