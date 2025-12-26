@@ -10,9 +10,11 @@
  * - FeedbackService: 反馈收集
  * - ExplicitToolRouter: 显式工具路由
  * - IntentCorrectionDialog: 意图纠正对话框
+ * - AttachmentManager: 附件管理（书签/文件）
  *
- * @version 1.1.0
+ * @version 1.2.0
  * @since 2025-12-25
+ * @updated 2025-12-26 - 添加附件管理功能
  */
 
 import { useState, useCallback, useRef, useEffect } from "react";
@@ -36,6 +38,8 @@ import { adaptBackendChunk, processUnifiedChunk } from "./types";
 import type { AgentStreamChunk } from "@/lib/ai-agent";
 import type { PendingConfirmation } from "@/lib/ai-agent/tools/types";
 import { useUnifiedConfirmation } from "@/hooks/domain/ai/use-unified-confirmation";
+import { useAttachmentManager } from "@/hooks/ai/use-attachment-manager";
+import { buildAttachmentContext } from "@/lib/ai-agent/context/attachment-context-builder";
 import { clientLogger } from "@/lib/client-logger";
 
 // =============================================================================
@@ -128,6 +132,15 @@ export function AIPanelContentEnhanced({
     hasItems: hasContextItems,
   } = useContextItems();
 
+  // 附件管理 Hook
+  const {
+    attachments,
+    addFiles: handleAddFiles,
+    setAttachments: handleAttachmentsChange,
+    clearAll: handleClearAttachments,
+    isProcessingFile,
+  } = useAttachmentManager();
+
   // Hooks
   const { normalizeConfirmation, confirm, cancel } = useUnifiedConfirmation();
 
@@ -196,6 +209,9 @@ export function AIPanelContentEnhanced({
         // 获取上下文引用
         const contextReferences = getContextReferences();
 
+        // 构建附件上下文
+        const attachmentContext = buildAttachmentContext(attachments);
+
         // 构建请求体
         const requestBody: Record<string, unknown> = {
           message: userMessage.content,
@@ -208,6 +224,11 @@ export function AIPanelContentEnhanced({
             enableUnified: useUnifiedEngine,
           },
         };
+
+        // 添加附件上下文
+        if (attachmentContext) {
+          requestBody.attachmentContext = attachmentContext;
+        }
 
         // Phase 4: 显式工具选择
         if (tool !== "auto") {
@@ -369,6 +390,7 @@ export function AIPanelContentEnhanced({
       messages,
       useUnifiedEngine,
       getContextReferences,
+      attachments,
     ],
   );
 
@@ -927,6 +949,11 @@ export function AIPanelContentEnhanced({
         contextItems={contextItems}
         onExpandContext={() => setContextExpanded(true)}
         onClearContext={clearContextItems}
+        attachments={attachments}
+        onAttachmentsChange={handleAttachmentsChange}
+        onClearAttachments={handleClearAttachments}
+        onAddFiles={handleAddFiles}
+        isProcessingFile={isProcessingFile}
       />
 
       {/* Phase 4: 意图纠正对话框 */}

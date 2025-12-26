@@ -4,20 +4,31 @@
  * Phase 4: AI 增强输入组件
  *
  * 在原有 AIInput 基础上增加：
+ * - AttachmentButton: 附件按钮（最左侧）
  * - ToolDropdown: 工具下拉菜单（YouMind 风格）
  * - ContextIndicator: 上下文引用指示器
+ * - AttachmentIndicator: 附件指示器
  *
- * @version 1.1.0
+ * @version 1.2.0
  * @since 2025-12-25
  * @updated 2025-12-26 - 使用 ToolDropdown 替换 ToolSelector
+ * @updated 2025-12-26 - 添加附件按钮和附件指示器
  */
 
-import { useRef, useCallback, type KeyboardEvent } from "react";
+import { useRef, useCallback, useState, type KeyboardEvent } from "react";
 import { Send, Loader2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { ToolDropdown, getToolDisplayName } from "./phase4/tool-dropdown";
 import { ContextIndicator } from "./phase4/context-panel";
+import {
+  AttachmentButton,
+  AttachmentPopover,
+  AttachmentIndicator,
+  type AttachmentItem,
+  ATTACHMENT_LIMITS,
+} from "./attachment";
+import { useAttachmentBookmarks } from "@/hooks/ai/use-attachment-bookmarks";
 import type { ToolType, ContextItem } from "./phase4/types";
 
 // =============================================================================
@@ -47,6 +58,16 @@ export interface AIInputEnhancedProps {
   onClearContext: () => void;
   /** 是否启用快捷键 */
   enableShortcuts?: boolean;
+  /** 附件列表 */
+  attachments: AttachmentItem[];
+  /** 附件变化回调 */
+  onAttachmentsChange: (items: AttachmentItem[]) => void;
+  /** 清除附件回调 */
+  onClearAttachments: () => void;
+  /** 添加文件附件回调 */
+  onAddFiles: (files: File[]) => Promise<void>;
+  /** 是否正在处理文件 */
+  isProcessingFile?: boolean;
 }
 
 // =============================================================================
@@ -65,8 +86,28 @@ export function AIInputEnhanced({
   onExpandContext,
   onClearContext,
   enableShortcuts: _enableShortcuts = true,
+  attachments,
+  onAttachmentsChange,
+  onClearAttachments,
+  onAddFiles,
+  isProcessingFile = false,
 }: AIInputEnhancedProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // 附件弹出面板状态
+  const [isAttachmentPopoverOpen, setIsAttachmentPopoverOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // 获取书签数据
+  const {
+    bookmarks,
+    isLoading: isLoadingBookmarks,
+    isSearching,
+    isSearchMode,
+  } = useAttachmentBookmarks({
+    searchQuery,
+    enabled: isAttachmentPopoverOpen,
+  });
 
   // 处理键盘事件
   const handleKeyDown = useCallback(
@@ -90,9 +131,19 @@ export function AIInputEnhanced({
   }, [value, disabled, onSubmit, selectedTool]);
 
   const hasContext = contextItems.length > 0;
+  const hasAttachments = attachments.length > 0;
 
   return (
     <div className="border-t border-pink-100 bg-gradient-to-t from-pink-50/30 to-white">
+      {/* 附件指示器 - 有附件时显示 */}
+      {hasAttachments && (
+        <AttachmentIndicator
+          items={attachments}
+          onClear={onClearAttachments}
+          onExpand={() => setIsAttachmentPopoverOpen(true)}
+        />
+      )}
+
       {/* 上下文引用指示器 */}
       {hasContext && (
         <ContextIndicator
@@ -105,6 +156,30 @@ export function AIInputEnhanced({
       {/* 输入区域 */}
       <div className="p-4">
         <div className="flex items-end gap-3">
+          {/* 附件按钮 - 最左侧 */}
+          <AttachmentPopover
+            open={isAttachmentPopoverOpen}
+            onOpenChange={setIsAttachmentPopoverOpen}
+            trigger={
+              <AttachmentButton
+                count={attachments.length}
+                maxCount={ATTACHMENT_LIMITS.MAX_COUNT}
+                disabled={disabled}
+              />
+            }
+            selectedItems={attachments}
+            onSelectionChange={onAttachmentsChange}
+            maxCount={ATTACHMENT_LIMITS.MAX_COUNT}
+            bookmarks={bookmarks}
+            isLoadingBookmarks={isLoadingBookmarks}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            isSearching={isSearching}
+            isSearchMode={isSearchMode}
+            isProcessingFile={isProcessingFile}
+            onFilesAdd={onAddFiles}
+          />
+
           {/* 工具下拉菜单 - YouMind 风格 */}
           <ToolDropdown
             value={selectedTool}

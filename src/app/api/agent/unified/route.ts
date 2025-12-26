@@ -91,6 +91,8 @@ const unifiedChatRequestSchema = z.object({
   explicitTool: explicitToolSchema.optional(),
   /** Phase 4: 上下文引用 */
   contextReferences: contextReferencesSchema.optional(),
+  /** 附件上下文（用户提供的收藏/文件内容） */
+  attachmentContext: z.string().max(20000).optional(),
   /** 执行选项 */
   options: z
     .object({
@@ -188,6 +190,7 @@ export async function POST(request: NextRequest) {
       folderId,
       explicitTool,
       contextReferences,
+      attachmentContext,
       options,
     } = validation.data;
 
@@ -275,6 +278,7 @@ export async function POST(request: NextRequest) {
           totalBookmarks: quickStats.totalBookmarks,
           totalFolders: quickStats.folderCount,
           debug: options?.includeRoutingInfo,
+          attachmentContext,
         },
         {
           includeRoutingInfo: options?.includeRoutingInfo,
@@ -297,6 +301,7 @@ export async function POST(request: NextRequest) {
             content: m.content,
           })),
           systemPrompt: statsContext,
+          attachmentContext,
         },
         {
           streaming: isStream,
@@ -441,6 +446,7 @@ async function handleKnowledgeAgent(
     bookmarkIds?: number[];
     messageHistory?: Array<{ role: "user" | "assistant"; content: string }>;
     systemPrompt?: string;
+    attachmentContext?: string;
   },
   options: {
     streaming: boolean;
@@ -451,15 +457,27 @@ async function handleKnowledgeAgent(
 ): Promise<Response> {
   const agent = new KnowledgeAgent({}, agentMemory);
 
+  // 构建完整的 System Prompt（包含附件上下文）
+  let fullSystemPrompt = agent.getConfig().systemPrompt;
+
+  if (context.systemPrompt) {
+    fullSystemPrompt = `${fullSystemPrompt}\n\n${context.systemPrompt}`;
+  }
+
+  if (context.attachmentContext) {
+    fullSystemPrompt = `${fullSystemPrompt}\n\n${context.attachmentContext}`;
+  }
+
   // 注入统计数据到 System Prompt
   const agentContext = {
     userId: context.userId,
     conversationId: context.conversationId,
     bookmarkIds: context.bookmarkIds,
     messageHistory: context.messageHistory,
-    systemPrompt: context.systemPrompt
-      ? `${agent.getConfig().systemPrompt}\n\n${context.systemPrompt}`
-      : undefined,
+    systemPrompt:
+      fullSystemPrompt !== agent.getConfig().systemPrompt
+        ? fullSystemPrompt
+        : undefined,
   };
 
   if (options.streaming) {

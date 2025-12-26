@@ -481,8 +481,12 @@ export class KnowledgeAgent {
   ): CoreMessage[] {
     const messages: CoreMessage[] = [];
 
-    // 系统提示语
-    const systemPrompt = context.systemPrompt || this.config.systemPrompt;
+    // 系统提示语：基础提示语 + 附加上下文（如附件内容）
+    let systemPrompt = this.config.systemPrompt;
+    if (context.systemPrompt) {
+      // 追加附加的上下文（如附件内容），而不是替换
+      systemPrompt = `${systemPrompt}\n\n${context.systemPrompt}`;
+    }
     messages.push({
       role: "system",
       content: systemPrompt,

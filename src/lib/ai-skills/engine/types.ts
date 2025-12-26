@@ -40,6 +40,8 @@ export interface EngineContext {
   debug?: boolean;
   /** 信号（用于取消） */
   signal?: AbortSignal;
+  /** 附件上下文（用户提供的收藏/文件内容） */
+  attachmentContext?: string;
 }
 
 /**

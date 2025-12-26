@@ -163,6 +163,8 @@ export class ExecutionCoordinator {
       bookmarkIds: context.bookmarkIds,
       messageHistory: context.messageHistory,
       traceId: context.traceId,
+      // 将附件上下文注入到 systemPrompt
+      systemPrompt: context.attachmentContext || undefined,
     };
 
     try {
