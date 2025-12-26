@@ -3,8 +3,9 @@
  *
  * 定义编排 Skill 执行相关的类型
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-24
+ * @updated 2025-12-26 - 添加取消令牌支持
  */
 
 import type { SkillContext, SkillMetadata } from "../core/types";
@@ -17,8 +18,56 @@ import type {
 } from "../output/types";
 
 // ============================================
+// 取消令牌相关类型
+// ============================================
+
+/**
+ * 取消令牌接口
+ *
+ * 用于在长时间运行的操作中检查取消信号
+ */
+export interface CancellationToken {
+  /** 是否已取消 */
+  readonly isCancelled: boolean;
+  /** 取消原因 */
+  readonly reason?: string;
+  /**
+   * 注册取消回调
+   * @param callback - 取消时调用的回调函数
+   */
+  onCancel(callback: () => void): void;
+  /**
+   * 抛出取消异常（如果已取消）
+   * @throws CancellationError
+   */
+  throwIfCancelled(): void;
+}
+
+/**
+ * 取消错误
+ */
+export class CancellationError extends Error {
+  constructor(reason?: string) {
+    super(reason || "操作已取消");
+    this.name = "CancellationError";
+  }
+}
+
+// ============================================
 // 编排上下文
 // ============================================
+
+/**
+ * 搜索结果摘要（用于上下文保持）
+ */
+export interface LastSearchResults {
+  /** 搜索查询词 */
+  query: string;
+  /** 结果书签 ID 列表 */
+  resultIds: number[];
+  /** 搜索时间戳 */
+  searchedAt: number;
+}
 
 /**
  * 编排执行上下文
@@ -30,12 +79,16 @@ export interface OrchestrationContext extends SkillContext {
   params: unknown;
   /** 原始用户消息 */
   originalMessage?: string;
+  /** 取消令牌（用于检测用户取消操作） */
+  cancellationToken?: CancellationToken;
   /** 进度回调 */
   onProgress?: (step: string, percent: number, message?: string) => void;
   /** 确认回调 */
   onConfirmation?: (
     options: ConfirmationOptions,
   ) => Promise<ConfirmationResponse>;
+  /** 最近的搜索结果（用于上下文保持） */
+  lastSearchResults?: LastSearchResults;
 }
 
 // ============================================

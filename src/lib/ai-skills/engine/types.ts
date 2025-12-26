@@ -1,13 +1,36 @@
 /**
  * 执行引擎层类型定义
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-24
+ * @updated 2025-12-27 - 添加取消令牌支持
  */
+
+import type { CancellationToken } from "../orchestration/types";
 
 // 注意：以下类型暂时标记为保留导入，供未来扩展使用
 // import type { AgentContext, AgentExecuteOptions } from "../../ai-agent/core/types";
 // import type { UnifiedStreamChunk } from "../output/types";
+
+/**
+ * 搜索结果记录回调
+ */
+export type OnSearchResultsCallback = (
+  query: string,
+  resultIds: number[],
+) => void;
+
+/**
+ * 最近的搜索结果（用于上下文保持）
+ */
+export interface LastSearchResults {
+  /** 搜索查询词 */
+  query: string;
+  /** 结果书签 ID 列表 */
+  resultIds: number[];
+  /** 搜索时间戳 */
+  searchedAt: number;
+}
 
 /**
  * 引擎上下文
@@ -38,14 +61,22 @@ export interface EngineContext {
   traceId?: string;
   /** 是否调试模式 */
   debug?: boolean;
-  /** 信号（用于取消） */
+  /** 信号（用于取消 - Web 标准） */
   signal?: AbortSignal;
+  /** 取消令牌（用于编排模式取消） */
+  cancellationToken?: CancellationToken;
+  /** 请求 ID（用于取消支持） */
+  requestId?: string;
   /** 附件上下文（用户提供的收藏/文件内容） */
   attachmentContext?: string;
   /** 文件夹列表（用于任务理解） */
   folders?: Array<{ id: number; name: string }>;
   /** 标签列表（用于任务理解） */
   tags?: string[];
+  /** 搜索结果记录回调（用于上下文保持） */
+  onSearchResults?: OnSearchResultsCallback;
+  /** 最近的搜索结果（用于上下文保持） */
+  lastSearchResults?: LastSearchResults;
 }
 
 /**

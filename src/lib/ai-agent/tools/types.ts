@@ -99,6 +99,21 @@ export interface ToolDefinition<TParams = unknown> {
 }
 
 /**
+ * 搜索结果信息
+ */
+export interface SearchResultInfo {
+  /** 搜索查询词 */
+  query: string;
+  /** 搜索结果书签 ID 列表 */
+  resultIds: number[];
+}
+
+/**
+ * 搜索结果记录回调
+ */
+export type OnSearchResultsCallback = (info: SearchResultInfo) => void;
+
+/**
  * Tool 执行上下文
  */
 export interface ToolContext {
@@ -112,6 +127,8 @@ export interface ToolContext {
   confirmed?: boolean;
   /** 确认 ID（用于追踪确认状态） */
   confirmationId?: string;
+  /** 搜索结果记录回调（用于上下文保持） */
+  onSearchResults?: OnSearchResultsCallback;
 }
 
 /**

@@ -243,6 +243,27 @@ export interface ErrorChunk {
 }
 
 /**
+ * 取消块
+ *
+ * 当用户取消操作时发送
+ */
+export interface CancelledChunk {
+  type: "cancelled";
+  data: {
+    /** 取消消息 */
+    message: string;
+    /** 取消原因 */
+    reason?: string;
+    /** 取消时间 */
+    timestamp: string;
+    /** 已完成的步骤 */
+    completedSteps?: number;
+    /** 总步骤数 */
+    totalSteps?: number;
+  };
+}
+
+/**
  * 回退通知块
  */
 export interface FallbackChunk {
@@ -442,6 +463,7 @@ export type OrchestrationStreamChunk =
   | DeliverableChunk
   | SuggestionsChunk
   | ErrorChunk
+  | CancelledChunk
   | DoneChunk;
 
 // ============================================

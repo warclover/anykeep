@@ -24,9 +24,12 @@ export {
 
 // 预定义模板
 export {
+  // 取消模板
+  cancelOperationTemplate,
   // 搜索模板
   searchSimpleTemplate,
   // 整理模板
+  organizeToFolderTemplate,
   organizeGeneralTemplate,
   organizeByTimeTemplate,
   // 移动模板

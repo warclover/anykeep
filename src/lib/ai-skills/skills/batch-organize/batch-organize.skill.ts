@@ -95,10 +95,13 @@ export class BatchOrganizeSkill extends OrchestrationSkill<
 
   /**
    * 解析自然语言输入
+   *
+   * 支持指代词解析：当用户说"把这些整理到..."时，
+   * 自动从上下文中获取最近的搜索结果
    */
   async parseInput(
     message: string,
-    _context: OrchestrationContext,
+    context: OrchestrationContext,
   ): Promise<BatchOrganizeInput> {
     const actions: OrganizeAction[] = [];
 
@@ -134,11 +137,55 @@ export class BatchOrganizeSkill extends OrchestrationSkill<
       scope = "untagged";
     }
 
+    // 检测指代词并解析搜索结果上下文
+    const referencePattern = /这些|那些|它们|搜索结果|刚才.*结果|上面.*结果/;
+    const hasReference = referencePattern.test(message);
+    let bookmarkIds: number[] | undefined;
+
+    if (hasReference && context.lastSearchResults) {
+      // 使用最近的搜索结果
+      bookmarkIds = context.lastSearchResults.resultIds;
+      scope = "selected"; // 切换到"选中"范围
+
+      logger.info(
+        {
+          query: context.lastSearchResults.query,
+          resultCount: bookmarkIds.length,
+          message: message.substring(0, 50),
+        },
+        "BatchOrganizeSkill: Resolved reference to search results",
+      );
+    } else if (hasReference && context.bookmarkIds?.length) {
+      // 如果没有搜索结果，但有预选的书签 ID（如用户在 UI 中选中的书签）
+      bookmarkIds = context.bookmarkIds;
+      scope = "selected";
+
+      logger.info(
+        {
+          bookmarkCount: bookmarkIds.length,
+          message: message.substring(0, 50),
+        },
+        "BatchOrganizeSkill: Resolved reference to selected bookmarks",
+      );
+    } else if (hasReference) {
+      // 有指代词但没有上下文，记录警告
+      logger.warn(
+        {
+          message: message.substring(0, 50),
+          hasLastSearchResults: !!context.lastSearchResults,
+          hasBookmarkIds: !!context.bookmarkIds?.length,
+        },
+        "BatchOrganizeSkill: Reference detected but no context available",
+      );
+    }
+
     return {
       actions,
       scope,
       requireConfirmation: DEFAULT_ORGANIZE_CONFIG.requireConfirmation,
       autoExecute: DEFAULT_ORGANIZE_CONFIG.autoExecute,
+      // 如果有指代词解析出的书签 ID，添加到筛选条件
+      filter: bookmarkIds ? { bookmarkIds } : undefined,
     };
   }
 
@@ -158,8 +205,28 @@ export class BatchOrganizeSkill extends OrchestrationSkill<
       // Step 1: 收集数据
       yield* this.collectData(context.userId, input);
 
+      // 检查取消信号
+      if (this.isCancelled(context)) {
+        yield* this.emitCancelled(
+          "整理操作已取消",
+          context.cancellationToken?.reason,
+        );
+        yield* this.emitDone(false, "用户取消了整理操作");
+        return;
+      }
+
       const bookmarks = await fetchBookmarks(context.userId, input);
       const folders = await fetchFolders(context.userId);
+
+      // 检查取消信号
+      if (this.isCancelled(context)) {
+        yield* this.emitCancelled(
+          "整理操作已取消",
+          context.cancellationToken?.reason,
+        );
+        yield* this.emitDone(false, "用户取消了整理操作");
+        return;
+      }
 
       yield* this.reportProgress(
         "收集数据",
@@ -184,6 +251,16 @@ export class BatchOrganizeSkill extends OrchestrationSkill<
       // Step 2: 分析内容
       yield* this.reportProgress("分析内容", 20, "正在分析书签内容...");
 
+      // 检查取消信号
+      if (this.isCancelled(context)) {
+        yield* this.emitCancelled(
+          "整理操作已取消",
+          context.cancellationToken?.reason,
+        );
+        yield* this.emitDone(false, "用户取消了整理操作");
+        return;
+      }
+
       // Step 3: 智能分类
       if (input.actions.includes("auto-categorize")) {
         yield* this.processCategorize(
@@ -191,11 +268,31 @@ export class BatchOrganizeSkill extends OrchestrationSkill<
           folders,
           categorizeSuggestions,
         );
+
+        // 检查取消信号
+        if (this.isCancelled(context)) {
+          yield* this.emitCancelled(
+            "整理操作已取消",
+            context.cancellationToken?.reason,
+          );
+          yield* this.emitDone(false, "用户取消了整理操作");
+          return;
+        }
       }
 
       // Step 4: 智能打标
       if (input.actions.includes("auto-tag")) {
         yield* this.processTag(bookmarks, tagSuggestions);
+
+        // 检查取消信号
+        if (this.isCancelled(context)) {
+          yield* this.emitCancelled(
+            "整理操作已取消",
+            context.cancellationToken?.reason,
+          );
+          yield* this.emitDone(false, "用户取消了整理操作");
+          return;
+        }
       }
 
       // Step 5: 清理和归档
@@ -203,10 +300,30 @@ export class BatchOrganizeSkill extends OrchestrationSkill<
 
       if (input.actions.includes("clean-duplicates")) {
         yield* this.processDuplicates(bookmarks, duplicateGroups);
+
+        // 检查取消信号
+        if (this.isCancelled(context)) {
+          yield* this.emitCancelled(
+            "整理操作已取消",
+            context.cancellationToken?.reason,
+          );
+          yield* this.emitDone(false, "用户取消了整理操作");
+          return;
+        }
       }
 
       if (input.actions.includes("archive-old")) {
         yield* this.processArchive(bookmarks, input, archiveCandidates);
+
+        // 检查取消信号
+        if (this.isCancelled(context)) {
+          yield* this.emitCancelled(
+            "整理操作已取消",
+            context.cancellationToken?.reason,
+          );
+          yield* this.emitDone(false, "用户取消了整理操作");
+          return;
+        }
       }
 
       yield* this.reportProgress("整理清理", 85, "整理检查完成");

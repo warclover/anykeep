@@ -77,6 +77,7 @@ export type TaskTemplateType =
   | "delete"
   | "query"
   | "review"
+  | "cancel"
   | "other";
 
 /**

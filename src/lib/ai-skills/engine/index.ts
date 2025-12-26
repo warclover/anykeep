@@ -2,9 +2,9 @@
  * 执行引擎层模块导出
  *
  * @module ai-skills/engine
- * @version 2.0.0
+ * @version 2.1.0
  * @since 2025-12-24
- * @updated 2025-12-26 - 拆分为 InputPreprocessor、ExecutionCoordinator、OutputEnhancer
+ * @updated 2025-12-27 - 添加请求注册表
  */
 
 // 类型导出
@@ -66,3 +66,12 @@ export {
   createOutputEnhancer,
   type OutputEnhancerConfig,
 } from "./output-enhancer";
+
+// 请求注册表（取消支持）
+export {
+  RequestRegistry,
+  getRequestRegistry,
+  createRequestRegistry,
+  type RequestInfo,
+  type RequestRegistryConfig,
+} from "./request-registry";

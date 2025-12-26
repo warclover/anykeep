@@ -2,12 +2,15 @@
  * 编排能力模块导出
  *
  * @module ai-skills/orchestration
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-24
+ * @updated 2025-12-26 - 添加取消令牌支持
  */
 
 // 类型导出
 export type {
+  // 取消令牌
+  CancellationToken,
   // 上下文
   OrchestrationContext,
   // 确认相关
@@ -28,6 +31,17 @@ export type {
   // 接口
   IOrchestrationSkill,
 } from "./types";
+
+// 取消错误
+export { CancellationError } from "./types";
+
+// 取消令牌
+export {
+  CancellationTokenSource,
+  NullCancellationToken,
+  checkCancellation,
+  throwIfCancelled,
+} from "./cancellation-token";
 
 // 编排 Skill 基类
 export {

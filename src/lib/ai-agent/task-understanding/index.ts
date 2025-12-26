@@ -107,7 +107,9 @@ export {
   type TaskTemplateEngineConfig,
   // 预定义模板
   defaultTemplates,
+  cancelOperationTemplate,
   searchSimpleTemplate,
+  organizeToFolderTemplate,
   organizeGeneralTemplate,
   organizeByTimeTemplate,
   moveToFolderTemplate,

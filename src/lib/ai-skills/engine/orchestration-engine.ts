@@ -160,6 +160,15 @@ export class OrchestrationEngine {
         ...skillContext,
         params: null, // 将在 parseInput 后设置
         originalMessage: input,
+        cancellationToken: context.cancellationToken, // 传递取消令牌
+        // 传递最近的搜索结果（用于上下文保持）
+        lastSearchResults: context.lastSearchResults
+          ? {
+              query: context.lastSearchResults.query,
+              resultIds: context.lastSearchResults.resultIds,
+              searchedAt: context.lastSearchResults.searchedAt,
+            }
+          : undefined,
       };
 
       const params = await skill.parseInput(input, orchestrationContext);

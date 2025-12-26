@@ -120,6 +120,8 @@ export interface AgentContext {
   dynamicContext?: DynamicContext;
   /** 会话上下文（选中书签、当前文件夹等） */
   sessionContext?: SessionContext;
+  /** 搜索结果记录回调（用于上下文保持） */
+  onSearchResults?: (query: string, resultIds: number[]) => void;
 }
 
 /**

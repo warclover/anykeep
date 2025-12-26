@@ -165,6 +165,8 @@ export class ExecutionCoordinator {
       traceId: context.traceId,
       // 将附件上下文注入到 systemPrompt
       systemPrompt: context.attachmentContext || undefined,
+      // 传递搜索结果记录回调（用于上下文保持）
+      onSearchResults: context.onSearchResults,
     };
 
     try {

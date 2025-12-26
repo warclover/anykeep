@@ -669,7 +669,7 @@ export function HomePageClient({
       {/* 内容区域 - V4.2.x: 添加 ref 用于虚拟滚动 */}
       <div
         ref={scrollContainerRef}
-        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 md:px-8 py-3 md:py-4"
+        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-1 md:px-2 py-0.5 md:py-1"
       >
         <Suspense fallback={null}>
           <ReclassifyBanner className="mb-4" />

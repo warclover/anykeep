@@ -341,6 +341,41 @@ export abstract class OrchestrationSkill<TInput = unknown, TOutput = unknown>
   }
 
   /**
+   * 输出取消（生成器方法）
+   *
+   * 当用户取消操作时使用
+   *
+   * @param message - 取消消息
+   * @param reason - 取消原因
+   * @yields 取消输出块
+   */
+  protected *emitCancelled(
+    message: string,
+    reason?: string,
+  ): Generator<OrchestrationStreamChunk> {
+    yield {
+      type: "cancelled",
+      data: {
+        message,
+        reason,
+        timestamp: new Date().toISOString(),
+        completedSteps: this.progressState?.currentStepIndex,
+        totalSteps: this.progressState?.steps.length,
+      },
+    };
+  }
+
+  /**
+   * 检查取消状态
+   *
+   * @param context - 编排上下文
+   * @returns 是否已取消
+   */
+  protected isCancelled(context: OrchestrationContext): boolean {
+    return context.cancellationToken?.isCancelled ?? false;
+  }
+
+  /**
    * 输出完成（生成器方法）
    *
    * @param success - 是否成功

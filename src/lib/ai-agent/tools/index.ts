@@ -102,10 +102,16 @@ export function registerDefaultTools(): void {
 
 /**
  * 获取所有 Tools 作为 Vercel AI SDK 格式
+ *
+ * @param context - 工具执行上下文
+ * @param context.userId - 用户 ID
+ * @param context.conversationId - 会话 ID（可选）
+ * @param context.onSearchResults - 搜索结果记录回调（可选，用于上下文保持）
  */
 export function getToolsAsVercelTools(context: {
   userId: string;
   conversationId?: string;
+  onSearchResults?: (info: { query: string; resultIds: number[] }) => void;
 }) {
   return toolRegistry.getAsVercelTools(context);
 }

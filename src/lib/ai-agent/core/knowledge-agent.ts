@@ -138,6 +138,10 @@ export class KnowledgeAgent {
       const dataTools = getToolsAsVercelTools({
         userId: context.userId,
         conversationId: context.conversationId,
+        // 传递搜索结果记录回调（用于上下文保持）
+        onSearchResults: context.onSearchResults
+          ? (info) => context.onSearchResults?.(info.query, info.resultIds)
+          : undefined,
       });
       // 使用类型安全的 mergeToolSets 合并 Skills 和 Tools
       const tools = mergeToolSets(skillTools, dataTools);
@@ -309,6 +313,10 @@ export class KnowledgeAgent {
       const dataTools = getToolsAsVercelTools({
         userId: context.userId,
         conversationId: context.conversationId,
+        // 传递搜索结果记录回调（用于上下文保持）
+        onSearchResults: context.onSearchResults
+          ? (info) => context.onSearchResults?.(info.query, info.resultIds)
+          : undefined,
       });
       // 使用类型安全的 mergeToolSets 合并 Skills 和 Tools
       const tools = mergeToolSets(skillTools, dataTools);

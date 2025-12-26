@@ -13,6 +13,8 @@ import {
   defaultTemplates,
   searchSimpleTemplate,
   organizeGeneralTemplate,
+  organizeToFolderTemplate,
+  cancelOperationTemplate,
   deleteBookmarksTemplate,
 } from "../templates";
 import type { TaskContext } from "../../types";
@@ -137,6 +139,120 @@ describe("TaskTemplateEngine", () => {
         expect(result.matched).toBe(true);
         // 按时间整理优先级更高
         expect(result.template?.id).toBe("organize_by_time");
+      });
+    });
+
+    describe("取消操作模板匹配", () => {
+      it("应匹配「取消整理」", () => {
+        const context = createTestContext();
+        const result = engine.match("取消整理", context);
+
+        expect(result.matched).toBe(true);
+        expect(result.template?.id).toBe("cancel_operation");
+        expect(result.template?.taskType).toBe("cancel");
+      });
+
+      it("应匹配「取消」", () => {
+        const context = createTestContext();
+        const result = engine.match("取消", context);
+
+        expect(result.matched).toBe(true);
+        expect(result.template?.id).toBe("cancel_operation");
+      });
+
+      it("应匹配「停止」", () => {
+        const context = createTestContext();
+        const result = engine.match("停止", context);
+
+        expect(result.matched).toBe(true);
+        expect(result.template?.id).toBe("cancel_operation");
+      });
+
+      it("应匹配「算了」", () => {
+        const context = createTestContext();
+        const result = engine.match("算了", context);
+
+        expect(result.matched).toBe(true);
+        expect(result.template?.id).toBe("cancel_operation");
+      });
+
+      it("应匹配「不用了」", () => {
+        const context = createTestContext();
+        const result = engine.match("不用了", context);
+
+        expect(result.matched).toBe(true);
+        expect(result.template?.id).toBe("cancel_operation");
+      });
+
+      it("应匹配「不要整理了」", () => {
+        const context = createTestContext();
+        const result = engine.match("不要整理了", context);
+
+        expect(result.matched).toBe(true);
+        expect(result.template?.id).toBe("cancel_operation");
+      });
+
+      it("取消模板应有最高优先级", () => {
+        expect(cancelOperationTemplate.priority).toBe(200);
+        expect(cancelOperationTemplate.priority).toBeGreaterThan(
+          organizeToFolderTemplate.priority,
+        );
+      });
+    });
+
+    describe("整理到文件夹模板匹配", () => {
+      it("应匹配「把这些整理到一个文件夹」", () => {
+        const context = createTestContext();
+        const result = engine.match("把这些整理到一个文件夹", context);
+
+        expect(result.matched).toBe(true);
+        expect(result.template?.id).toBe("organize_to_folder");
+        expect(result.template?.taskType).toBe("move");
+      });
+
+      it("应匹配「整理到技术文件夹」", () => {
+        const context = createTestContext();
+        const result = engine.match("整理到技术文件夹", context);
+
+        expect(result.matched).toBe(true);
+        expect(result.template?.id).toBe("organize_to_folder");
+        expect(result.extractedParams.folder).toBe("技术");
+      });
+
+      it("应匹配「归档到工作」", () => {
+        const context = createTestContext();
+        const result = engine.match("归档到工作", context);
+
+        expect(result.matched).toBe(true);
+        expect(result.template?.id).toBe("organize_to_folder");
+      });
+
+      it("应匹配「放到一个文件夹里」", () => {
+        const context = createTestContext();
+        const result = engine.match("放到一个文件夹里", context);
+
+        expect(result.matched).toBe(true);
+        expect(result.template?.id).toBe("organize_to_folder");
+      });
+
+      it("优先级应高于通用整理模板", () => {
+        expect(organizeToFolderTemplate.priority).toBeGreaterThan(
+          organizeGeneralTemplate.priority,
+        );
+      });
+
+      it("通用整理不应匹配含「到文件夹」的输入", () => {
+        // 创建只有通用整理模板的引擎
+        const limitedEngine = new TaskTemplateEngine({
+          templates: [organizeGeneralTemplate],
+          minConfidence: 0.7,
+        });
+
+        const context = createTestContext();
+        const result = limitedEngine.match("整理到技术文件夹", context);
+
+        // 通用整理的排除词应阻止匹配
+        expect(result.matched).toBe(false);
       });
     });
 
@@ -496,6 +612,57 @@ describe("预定义模板", () => {
     });
   });
 
+  describe("cancelOperationTemplate", () => {
+    it("应有正确的配置", () => {
+      expect(cancelOperationTemplate.id).toBe("cancel_operation");
+      expect(cancelOperationTemplate.taskType).toBe("cancel");
+      expect(cancelOperationTemplate.riskLevel).toBe("low");
+      expect(cancelOperationTemplate.requiresConfirmation).toBe(false);
+    });
+
+    it("应有最高优先级", () => {
+      expect(cancelOperationTemplate.priority).toBe(200);
+    });
+
+    it("应有必要的匹配模式", () => {
+      expect(cancelOperationTemplate.patterns.length).toBeGreaterThanOrEqual(4);
+      expect(cancelOperationTemplate.keywords).toContain("取消");
+      expect(cancelOperationTemplate.keywords).toContain("停止");
+    });
+  });
+
+  describe("organizeToFolderTemplate", () => {
+    it("应有正确的配置", () => {
+      expect(organizeToFolderTemplate.id).toBe("organize_to_folder");
+      expect(organizeToFolderTemplate.taskType).toBe("move");
+      expect(organizeToFolderTemplate.riskLevel).toBe("medium");
+      expect(organizeToFolderTemplate.requiresConfirmation).toBe(false);
+    });
+
+    it("优先级应高于通用整理和普通移动", () => {
+      expect(organizeToFolderTemplate.priority).toBe(105);
+      expect(organizeToFolderTemplate.priority).toBeGreaterThan(
+        organizeGeneralTemplate.priority,
+      );
+    });
+
+    it("应有必要的匹配模式", () => {
+      expect(organizeToFolderTemplate.patterns.length).toBeGreaterThanOrEqual(
+        3,
+      );
+      expect(organizeToFolderTemplate.keywords).toContain("整理到");
+      expect(organizeToFolderTemplate.keywords).toContain("归档到");
+    });
+  });
+
+  describe("organizeGeneralTemplate", () => {
+    it("应有排除词避免误匹配", () => {
+      expect(organizeGeneralTemplate.excludeKeywords).toContain("按时间");
+      expect(organizeGeneralTemplate.excludeKeywords).toContain("到文件夹");
+      expect(organizeGeneralTemplate.excludeKeywords).toContain("到目录");
+    });
+  });
+
   describe("deleteBookmarksTemplate", () => {
     it("应需要确认", () => {
       expect(deleteBookmarksTemplate.requiresConfirmation).toBe(true);
@@ -508,7 +675,9 @@ describe("预定义模板", () => {
     it("应包含所有必需的模板", () => {
       const templateIds = defaultTemplates.map((t) => t.id);
 
+      expect(templateIds).toContain("cancel_operation");
       expect(templateIds).toContain("search_simple");
+      expect(templateIds).toContain("organize_to_folder");
       expect(templateIds).toContain("organize_general");
       expect(templateIds).toContain("organize_by_time");
       expect(templateIds).toContain("move_to_folder");

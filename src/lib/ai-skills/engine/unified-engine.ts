@@ -223,20 +223,57 @@ export class UnifiedEngine {
 
     const processedInput = preprocessResult.processedInput;
 
+    // 获取最近的搜索结果（用于上下文保持）
+    const lastSearchResults =
+      this.config.enableMemory && context.conversationId
+        ? this.memoryManager.getLastSearchResults(context.conversationId)
+        : undefined;
+
+    // 自动注入搜索结果记录回调和最近搜索结果
+    const contextWithCallback: EngineContext = {
+      ...context,
+      onSearchResults:
+        context.onSearchResults ??
+        (this.config.enableMemory && context.conversationId
+          ? (query: string, resultIds: number[]) => {
+              this.memoryManager.recordSearchResults(
+                context.conversationId!,
+                query,
+                resultIds,
+              );
+            }
+          : undefined),
+      // 注入最近的搜索结果（用于指代词解析）
+      lastSearchResults: lastSearchResults
+        ? {
+            query: lastSearchResults.query,
+            resultIds: lastSearchResults.resultIds,
+            searchedAt: lastSearchResults.searchedAt,
+          }
+        : undefined,
+    };
+
     // 2. 如果引擎未启用，直接使用原子模式
     if (!this.config.enabled) {
-      yield* this.executionCoordinator.executeAtomic(processedInput, context);
+      yield* this.executionCoordinator.executeAtomic(
+        processedInput,
+        contextWithCallback,
+      );
       return;
     }
 
     // 3. 处理强制模式
     if (mergedOptions.forceMode === "atomic") {
       yield* this.executeWithEnhancements(
-        this.executionCoordinator.executeForced(processedInput, context, {
-          mode: "atomic",
-          reason: "强制使用原子模式",
-        }),
-        context,
+        this.executionCoordinator.executeForced(
+          processedInput,
+          contextWithCallback,
+          {
+            mode: "atomic",
+            reason: "强制使用原子模式",
+          },
+        ),
+        contextWithCallback,
         "query", // 默认意图类型
       );
       return;
@@ -247,19 +284,27 @@ export class UnifiedEngine {
       mergedOptions.forceSkill
     ) {
       yield* this.executeWithEnhancements(
-        this.executionCoordinator.executeForced(processedInput, context, {
-          mode: "orchestration",
-          skillId: mergedOptions.forceSkill,
-          reason: "强制使用编排模式",
-        }),
-        context,
+        this.executionCoordinator.executeForced(
+          processedInput,
+          contextWithCallback,
+          {
+            mode: "orchestration",
+            skillId: mergedOptions.forceSkill,
+            reason: "强制使用编排模式",
+          },
+        ),
+        contextWithCallback,
         "action", // 编排模式默认意图类型
       );
       return;
     }
 
     // 4. 正常路由执行
-    yield* this.executeRouted(processedInput, context, mergedOptions);
+    yield* this.executeRouted(
+      processedInput,
+      contextWithCallback,
+      mergedOptions,
+    );
   }
 
   /**

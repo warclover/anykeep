@@ -271,6 +271,31 @@ export class ToolRegistry {
             context,
           );
           if (result.success) {
+            // 检测搜索工具执行成功，记录搜索结果到会话
+            if (
+              tool.definition.category === "search" &&
+              context.onSearchResults
+            ) {
+              const searchData = result.data as {
+                query?: string;
+                results?: Array<{ id: number }>;
+              };
+              if (searchData.query && Array.isArray(searchData.results)) {
+                const resultIds = searchData.results.map((r) => r.id);
+                context.onSearchResults({
+                  query: searchData.query,
+                  resultIds,
+                });
+                logger.debug(
+                  {
+                    toolName: tool.definition.name,
+                    query: searchData.query,
+                    resultCount: resultIds.length,
+                  },
+                  "ToolRegistry: Search results recorded to session",
+                );
+              }
+            }
             return result.data;
           }
           throw new Error(result.error);

@@ -64,7 +64,14 @@ export const organizeGeneralTemplate: TaskTemplate = {
     /^整理$/i,
   ],
   keywords: ["整理收藏", "整理一下", "帮我整理"],
-  excludeKeywords: ["按时间", "按平台", "按作者"],
+  excludeKeywords: [
+    "按时间",
+    "按平台",
+    "按作者",
+    "到文件夹",
+    "到目录",
+    "到...文件夹",
+  ],
   goalTemplate: "智能整理用户的收藏内容到合适的文件夹",
   reasoningTemplate: "用户希望整理收藏，将使用智能分类将内容归档到合适的文件夹",
   executionPlanTemplate: [
@@ -124,6 +131,49 @@ export const organizeByTimeTemplate: TaskTemplate = {
   baseConfidence: 0.85,
   requiresConfirmation: false,
   priority: 95,
+  enabled: true,
+};
+
+/**
+ * 整理到文件夹模板（实际是移动操作）
+ *
+ * 用户说"把这些整理到xxx文件夹"时，实际意图是移动，而不是智能整理
+ * 注意：不匹配纯粹的 "移到/放到"，这些由 moveToFolderTemplate 处理
+ */
+export const organizeToFolderTemplate: TaskTemplate = {
+  id: "organize_to_folder",
+  name: "整理到文件夹",
+  taskType: "move", // 注意：taskType 是 move，不是 organize
+  patterns: [
+    // 含 "整理" 关键词
+    /^(?:把)?(?:这些?)?整理到\s*(?<folder>[^\s]+?)(?:文件夹)?$/i,
+    // 含 "归档/归类" 关键词
+    /^(?:把)?(?:这些?)?归(?:档|类)到\s*(?<folder>[^\s]+?)(?:文件夹)?$/i,
+    // 含 "一个/某个" + "文件夹/目录" 的模式（表示新建文件夹意图）
+    /^(?:把)?(?:这些?)?(?:放|移)到\s*(?:一个|某个)\s*(?<folder>[^\s]*?)(?:文件夹|目录)(?:里)?$/i,
+    // "这些" + "整理" 组合
+    /^这些?整理到\s*(?<folder>[^\s]+?)(?:文件夹)?$/i,
+  ],
+  keywords: ["整理到", "归档到", "归类到"],
+  goalTemplate: "将选中的书签整理到「{folder}」文件夹",
+  reasoningTemplate:
+    "用户希望将当前选中或搜索到的书签移动到指定文件夹，这是一个移动操作",
+  executionPlanTemplate: [
+    {
+      descriptionTemplate: "确认目标文件夹「{folder}」",
+      action: "find_or_create_folder",
+      paramsTemplate: { folderName: "{folder}" },
+    },
+    {
+      descriptionTemplate: "移动选中的书签",
+      action: "move_bookmarks",
+      paramsTemplate: { targetFolder: "{folder}" },
+    },
+  ],
+  riskLevel: "medium",
+  baseConfidence: 0.9,
+  requiresConfirmation: false,
+  priority: 105, // 高于 moveToFolderTemplate (100) 和 organizeGeneralTemplate (90)
   enabled: true,
 };
 
@@ -419,6 +469,41 @@ export const reviewKnowledgeTemplate: TaskTemplate = {
 };
 
 // =============================================================================
+// 取消操作模板
+// =============================================================================
+
+/**
+ * 取消操作模板
+ *
+ * 用户希望中止当前正在执行的操作
+ */
+export const cancelOperationTemplate: TaskTemplate = {
+  id: "cancel_operation",
+  name: "取消操作",
+  taskType: "cancel",
+  patterns: [
+    /^取消(?:整理|操作|执行)?$/i,
+    /^(?:不要|别)(?:整理|执行|继续)了?$/i,
+    /^停(?:止|下来)?$/i,
+    /^(?:算了|不用了)$/i,
+  ],
+  keywords: ["取消", "停止", "不要了", "算了", "不用了"],
+  goalTemplate: "取消当前正在执行的操作",
+  reasoningTemplate: "用户希望中止当前操作",
+  executionPlanTemplate: [
+    {
+      descriptionTemplate: "中止当前操作",
+      action: "cancel_current_operation",
+    },
+  ],
+  riskLevel: "low",
+  baseConfidence: 0.95,
+  requiresConfirmation: false,
+  priority: 200, // 最高优先级
+  enabled: true,
+};
+
+// =============================================================================
 // 默认模板集合
 // =============================================================================
 
@@ -426,8 +511,12 @@ export const reviewKnowledgeTemplate: TaskTemplate = {
  * 默认任务模板集合
  */
 export const defaultTemplates: TaskTemplate[] = [
+  // 取消操作（最高优先级）
+  cancelOperationTemplate,
   // 搜索
   searchSimpleTemplate,
+  // 整理到文件夹（优先于通用整理）
+  organizeToFolderTemplate,
   // 整理
   organizeGeneralTemplate,
   organizeByTimeTemplate,

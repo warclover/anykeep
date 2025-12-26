@@ -8,9 +8,11 @@
  * - 流式响应（Server-Sent Events）
  * - 统一输出协议
  * - 渐进式启用
+ * - 请求取消支持
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-24
+ * @updated 2025-12-27 - 添加请求取消支持
  */
 
 import type { NextRequest } from "next/server";
@@ -28,6 +30,7 @@ import {
   type UnifiedStreamChunk,
   explicitToolRouter,
 } from "@/lib/ai-skills";
+import { getRequestRegistry } from "@/lib/ai-skills/engine/request-registry";
 import { logger } from "@/lib/logger";
 import { checkRateLimit } from "@/lib/utils/rate-limiter";
 import type { ToolType } from "@/components/ai/phase4/types";
@@ -341,6 +344,23 @@ async function handleUnifiedEngine(
   userId: string,
 ): Promise<Response> {
   const unifiedEngine = getUnifiedEngine();
+  const registry = getRequestRegistry();
+
+  // 生成请求 ID 并注册
+  const requestId = `req-${randomUUID()}`;
+  const requestInfo = registry.register(
+    requestId,
+    userId,
+    message.slice(0, 50),
+  );
+
+  // 将取消信号和令牌添加到上下文
+  const contextWithCancellation = {
+    ...context,
+    signal: requestInfo.abortController.signal,
+    cancellationToken: requestInfo.cancellationTokenSource.token,
+    requestId,
+  };
 
   if (isStream) {
     const encoder = new TextEncoder();
@@ -348,11 +368,39 @@ async function handleUnifiedEngine(
     const stream = new ReadableStream({
       async start(controller) {
         try {
+          // 首先发送请求 ID（用于取消）
+          const initChunk: UnifiedStreamChunk = {
+            type: "init" as "text", // 使用 text 类型承载 init 信息
+            data: {
+              text: "", // 空文本
+              requestId, // 附加请求 ID
+            } as { text: string; requestId?: string },
+          };
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify(initChunk)}\n\n`),
+          );
+
           for await (const chunk of unifiedEngine.execute(
             message,
-            context,
+            contextWithCancellation,
             options,
           )) {
+            // 检查是否已取消
+            if (requestInfo.isCancelled) {
+              const cancelledChunk: UnifiedStreamChunk = {
+                type: "cancelled" as "error",
+                data: {
+                  message: "请求已取消",
+                  code: "CANCELLED",
+                  retryable: false,
+                },
+              };
+              controller.enqueue(
+                encoder.encode(`data: ${JSON.stringify(cancelledChunk)}\n\n`),
+              );
+              break;
+            }
+
             const data = JSON.stringify(chunk);
 
             // Debug: 记录 deliverable 块的大小
@@ -377,6 +425,7 @@ async function handleUnifiedEngine(
             {
               userId: userId.slice(0, 8) + "...",
               error: errorMessage,
+              requestId,
             },
             "Unified API: Stream error",
           );
@@ -392,6 +441,9 @@ async function handleUnifiedEngine(
             encoder.encode(`data: ${JSON.stringify(errorChunk)}\n\n`),
           );
           controller.close();
+        } finally {
+          // 清理请求注册
+          registry.unregister(requestId);
         }
       },
     });
@@ -401,37 +453,47 @@ async function handleUnifiedEngine(
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
         Connection: "keep-alive",
+        "X-Request-Id": requestId, // 在响应头中也返回请求 ID
       },
     });
   } else {
     // 非流式：收集所有输出
-    const chunks: UnifiedStreamChunk[] = [];
+    try {
+      const chunks: UnifiedStreamChunk[] = [];
 
-    for await (const chunk of unifiedEngine.execute(
-      message,
-      context,
-      options,
-    )) {
-      chunks.push(chunk);
-    }
+      for await (const chunk of unifiedEngine.execute(
+        message,
+        contextWithCancellation,
+        options,
+      )) {
+        chunks.push(chunk);
+      }
 
-    // 查找最后的 done 块
-    const doneChunk = chunks.find((c) => c.type === "done");
+      // 查找最后的 done 块
+      const doneChunk = chunks.find((c) => c.type === "done");
 
-    return new Response(
-      JSON.stringify({
-        success: doneChunk?.data?.success ?? false,
-        data: {
-          chunks,
-          summary: doneChunk?.data?.summary,
-          mode: doneChunk?.data?.mode,
+      return new Response(
+        JSON.stringify({
+          success: doneChunk?.data?.success ?? false,
+          requestId,
+          data: {
+            chunks,
+            summary: doneChunk?.data?.summary,
+            mode: doneChunk?.data?.mode,
+          },
+        }),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+            "X-Request-Id": requestId,
+          },
         },
-      }),
-      {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      },
-    );
+      );
+    } finally {
+      // 清理请求注册
+      registry.unregister(requestId);
+    }
   }
 }
 
