@@ -3,8 +3,9 @@
  *
  * 定义 AI 响应的风格规范，去除机械感，增加自然表达
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-25
+ * @updated 2025-12-26 增强禁用短语和替换规则
  */
 
 import type { IntentType } from "../router/types";
@@ -30,6 +31,8 @@ export const BANNED_PHRASES: string[] = [
   "请问你是否需要",
   "如您所愿",
   "如你所愿",
+  "按照您的要求",
+  "按照你的要求",
 
   // 过度礼貌
   "我来帮您",
@@ -40,18 +43,74 @@ export const BANNED_PHRASES: string[] = [
   "当然，我",
   "很高兴为您",
   "很高兴为你",
+  "非常乐意",
+  "很乐意",
 
   // 身份声明
   "作为AI助手",
   "作为AI",
   "作为人工智能",
   "作为您的助手",
+  "作为你的助手",
 
   // 冗余表达
   "让我来",
   "现在让我",
   "接下来我将",
   "首先，我需要",
+  "首先，让我",
+  "下面我来",
+  "现在我来",
+
+  // 过渡语
+  "经过处理",
+  "处理完毕后",
+  "操作完成后",
+  "执行完毕",
+  "以下是结果",
+  "结果如下",
+
+  // 结尾客套
+  "如果您有任何问题",
+  "如果你有任何问题",
+  "希望对您有帮助",
+  "希望对你有帮助",
+  "还有什么可以帮您的",
+  "还有什么可以帮你的",
+  "请随时告诉我",
+];
+
+/**
+ * 短语替换规则
+ *
+ * 将机械化表达替换为更自然的表达
+ */
+export const PHRASE_REPLACEMENTS: Array<{
+  pattern: RegExp;
+  replacement: string;
+}> = [
+  // 开场白替换
+  { pattern: /^好的[，,]\s*/i, replacement: "" },
+  { pattern: /^没问题[，,]\s*/i, replacement: "" },
+  { pattern: /^当然[，,]\s*/i, replacement: "" },
+  { pattern: /^可以[，,]\s*/i, replacement: "" },
+
+  // 身份声明替换
+  { pattern: /作为(AI|人工智能|你的)?助手[，,]?\s*/gi, replacement: "" },
+
+  // 冗余动词替换
+  { pattern: /我来(帮你|帮您)?\s*/i, replacement: "" },
+  { pattern: /让我(来)?\s*/i, replacement: "" },
+  { pattern: /现在(让我|我来)?\s*/i, replacement: "" },
+
+  // 结果描述简化
+  { pattern: /以下是(执行|处理|查询)?结果[：:]\s*/i, replacement: "" },
+  { pattern: /结果如下[：:]\s*/i, replacement: "" },
+
+  // 完成语简化
+  { pattern: /已经?成功(地)?\s*/i, replacement: "已" },
+  { pattern: /操作已?完成[，,]?\s*/i, replacement: "" },
+  { pattern: /执行完(毕|成)[，,]?\s*/i, replacement: "" },
 ];
 
 /**
@@ -65,18 +124,50 @@ export function detectBannedPhrases(text: string): string[] {
 }
 
 /**
- * 移除禁用短语
+ * 应用替换规则
+ *
+ * @param text - 原始文本
+ * @returns 替换后的文本
+ */
+export function applyReplacements(text: string): string {
+  let result = text;
+  for (const { pattern, replacement } of PHRASE_REPLACEMENTS) {
+    result = result.replace(pattern, replacement);
+  }
+  return result;
+}
+
+/**
+ * 移除禁用短语并应用替换规则
  *
  * @param text - 原始文本
  * @returns 清理后的文本
  */
 export function removeBannedPhrases(text: string): string {
   let result = text;
+
+  // 1. 移除禁用短语
   for (const phrase of BANNED_PHRASES) {
     result = result.replace(new RegExp(phrase, "g"), "");
   }
-  // 清理多余的空格和换行
-  return result.replace(/\s+/g, " ").trim();
+
+  // 2. 应用替换规则
+  result = applyReplacements(result);
+
+  // 3. 清理多余的空格和换行
+  result = result
+    .replace(/\s+/g, " ") // 多个空格合并为一个
+    .replace(/^\s+/, "") // 移除开头空格
+    .replace(/\s+$/, "") // 移除结尾空格
+    .replace(/[，,]\s*[，,]/g, "，") // 移除连续逗号
+    .replace(/^[，,。.]\s*/, ""); // 移除开头标点
+
+  // 4. 首字母大写（如果是英文）
+  if (result.length > 0 && /^[a-z]/.test(result)) {
+    result = result.charAt(0).toUpperCase() + result.slice(1);
+  }
+
+  return result.trim();
 }
 
 // ============================================
@@ -151,16 +242,79 @@ export const RESPONSE_TEMPLATES: ResponseTemplate[] = [
     template: "已将 {count} 条移动到「{folder}」",
   },
   {
+    id: "move-single",
+    intentType: "action",
+    subType: "move",
+    template: "已移动到「{folder}」",
+    condition: "count === 1",
+  },
+  {
     id: "delete-success",
     intentType: "action",
     subType: "delete",
     template: "已删除 {count} 条",
   },
   {
+    id: "delete-single",
+    intentType: "action",
+    subType: "delete",
+    template: "已删除",
+    condition: "count === 1",
+  },
+  {
     id: "tag-success",
     intentType: "action",
     subType: "tag",
     template: "已为 {count} 条添加标签「{tag}」",
+  },
+  {
+    id: "tag-single",
+    intentType: "action",
+    subType: "tag",
+    template: "已添加标签「{tag}」",
+    condition: "count === 1",
+  },
+  {
+    id: "star-success",
+    intentType: "action",
+    subType: "star",
+    template: "已收藏 {count} 条",
+  },
+  {
+    id: "unstar-success",
+    intentType: "action",
+    subType: "unstar",
+    template: "已取消收藏 {count} 条",
+  },
+  {
+    id: "archive-success",
+    intentType: "action",
+    subType: "archive",
+    template: "已归档 {count} 条",
+  },
+  {
+    id: "restore-success",
+    intentType: "action",
+    subType: "restore",
+    template: "已恢复 {count} 条",
+  },
+  {
+    id: "rename-success",
+    intentType: "action",
+    subType: "rename",
+    template: "已重命名为「{name}」",
+  },
+  {
+    id: "create-folder-success",
+    intentType: "action",
+    subType: "create_folder",
+    template: "已创建文件夹「{folder}」",
+  },
+  {
+    id: "undo-success",
+    intentType: "action",
+    subType: "undo",
+    template: "已撤销，恢复了 {count} 条",
   },
 
   // ============================================
@@ -416,6 +570,67 @@ export const FOLLOW_UP_CONFIGS: FollowUpConfig[] = [
     suggestions: [
       { text: "开始学习", action: "开始第一阶段学习", icon: "🚀" },
       { text: "调整计划", action: "调整学习计划", icon: "✏️" },
+    ],
+  },
+
+  // ============================================
+  // 操作类跟进
+  // ============================================
+  {
+    intentType: "action",
+    subType: "move",
+    suggestions: [
+      { text: "撤销", action: "撤销刚才的操作", icon: "↩️" },
+      { text: "查看文件夹", action: "查看该文件夹的内容", icon: "📁" },
+      { text: "继续整理", action: "还有其他需要移动的吗", icon: "📂" },
+    ],
+  },
+  {
+    intentType: "action",
+    subType: "delete",
+    suggestions: [
+      { text: "撤销", action: "撤销删除", icon: "↩️" },
+      { text: "查看回收站", action: "查看回收站", icon: "🗑️" },
+    ],
+  },
+  {
+    intentType: "action",
+    subType: "tag",
+    suggestions: [
+      { text: "撤销", action: "撤销标签操作", icon: "↩️" },
+      { text: "按标签查看", action: "显示带该标签的收藏", icon: "🏷️" },
+      { text: "添加更多标签", action: "继续添加其他标签", icon: "➕" },
+    ],
+  },
+  {
+    intentType: "action",
+    subType: "star",
+    suggestions: [
+      { text: "查看收藏", action: "显示所有星标收藏", icon: "⭐" },
+      { text: "撤销", action: "取消星标", icon: "↩️" },
+    ],
+  },
+  {
+    intentType: "action",
+    subType: "archive",
+    suggestions: [
+      { text: "撤销", action: "撤销归档", icon: "↩️" },
+      { text: "查看归档", action: "查看已归档内容", icon: "📦" },
+    ],
+  },
+  {
+    intentType: "action",
+    subType: "undo",
+    suggestions: [
+      { text: "查看历史", action: "查看最近的操作历史", icon: "📜" },
+      { text: "继续", action: "继续之前的任务", icon: "▶️" },
+    ],
+  },
+  {
+    intentType: "action",
+    suggestions: [
+      { text: "撤销", action: "撤销刚才的操作", icon: "↩️" },
+      { text: "继续", action: "还需要做什么", icon: "▶️" },
     ],
   },
 

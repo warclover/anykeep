@@ -2,17 +2,19 @@
  * CorrectionLearner - 纠正学习器
  *
  * 职责：
- * - 记录用户纠正到数据库
- * - 查找相似的历史纠正
+ * - 记录用户纠正到数据库（含 Embedding 向量）
+ * - 查找相似的历史纠正（向量相似度搜索）
  * - 应用学习结果到分类
  *
  * @module ai-learning
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-25
+ * @updated 2025-12-26 集成 Embedding 向量生成
  */
 
 import { createClient } from "@/lib/supabase/client";
 import { logger } from "@/lib/logger";
+import { generateEmbedding } from "@/lib/embedding";
 import type {
   CorrectionSignal,
   IntentType,
@@ -73,6 +75,22 @@ export class CorrectionLearner {
         "CorrectionLearner: Recording correction",
       );
 
+      // 生成 Embedding 向量
+      let embedding: number[] | null = null;
+      try {
+        embedding = await generateEmbedding(params.originalMessage);
+        logger.debug(
+          { embeddingDim: embedding.length },
+          "CorrectionLearner: Generated embedding",
+        );
+      } catch (embError) {
+        // Embedding 生成失败不阻塞记录，只记录警告
+        logger.warn(
+          { error: embError instanceof Error ? embError.message : "Unknown" },
+          "CorrectionLearner: Failed to generate embedding, continuing without it",
+        );
+      }
+
       // 使用类型断言绕过未生成的表类型检查
       // 注意：运行 `npm run supabase:gen:types` 后可移除
       const { data, error } = await (
@@ -93,6 +111,7 @@ export class CorrectionLearner {
         .insert({
           user_id: params.userId,
           original_input: params.originalMessage,
+          original_input_embedding: embedding,
           wrong_intent: params.wrongIntent,
           correct_intent: params.correctIntent,
           signal: params.signal.signal,
@@ -129,7 +148,8 @@ export class CorrectionLearner {
   /**
    * 查找相似的历史纠正
    *
-   * 使用简单的文本匹配（生产环境应使用向量相似度）
+   * 优先使用向量相似度搜索（如果 embedding 可用）
+   * 回退到简单文本匹配
    */
   async findSimilarCorrection(
     params: FindSimilarParams,
@@ -149,90 +169,74 @@ export class CorrectionLearner {
         "CorrectionLearner: Finding similar corrections",
       );
 
-      // 查询用户的纠正历史
-      // 注意：生产环境应使用 RPC 调用向量相似度搜索
-      const { data, error } = await (
-        supabase as unknown as {
-          from: (table: string) => {
-            select: (cols: string) => {
-              eq: (
-                col: string,
-                val: string,
-              ) => {
-                order: (
-                  col: string,
-                  opts: { ascending: boolean },
-                ) => {
-                  limit: (n: number) => Promise<{
-                    data: Array<{
-                      id: string;
-                      original_input: string;
-                      correct_intent: string;
-                      applied_count: number;
-                    }> | null;
-                    error: { message: string } | null;
-                  }>;
-                };
-              };
-            };
-          };
+      // 尝试使用向量相似度搜索
+      try {
+        const embedding = await generateEmbedding(params.input);
+
+        // 调用 RPC 函数进行向量相似度搜索
+        // 使用类型断言绕过类型检查（需要运行 supabase:gen:types 后移除）
+        const { data: rpcData, error: rpcError } = await (
+          supabase as unknown as {
+            rpc: (
+              fn: string,
+              args: Record<string, unknown>,
+            ) => Promise<{
+              data: Array<{
+                id: string;
+                original_input: string;
+                correct_intent: string;
+                similarity: number;
+              }> | null;
+              error: { message: string } | null;
+            }>;
+          }
+        ).rpc("find_similar_corrections", {
+          query_embedding: embedding,
+          target_user_id: params.userId,
+          similarity_threshold: threshold,
+          limit_count: limit,
+        });
+
+        if (rpcError) {
+          logger.warn(
+            { error: rpcError.message },
+            "CorrectionLearner: RPC search failed, falling back to text matching",
+          );
+          // 回退到文本匹配
+          return this.findSimilarByTextMatching(params, threshold, limit);
         }
-      )
-        .from("intent_corrections")
-        .select("id, original_input, correct_intent, applied_count")
-        .eq("user_id", params.userId)
-        .order("applied_count", { ascending: false })
-        .limit(limit * 5); // 获取更多候选进行相似度计算
 
-      if (error) {
-        logger.error(
-          { error },
-          "CorrectionLearner: Failed to query corrections",
+        if (!rpcData || rpcData.length === 0) {
+          return { success: true, data: null };
+        }
+
+        const best = rpcData[0];
+        logger.info(
+          {
+            correctionId: best.id,
+            similarity: best.similarity,
+            correctIntent: best.correct_intent,
+          },
+          "CorrectionLearner: Found similar correction via vector search",
         );
-        return { success: false, error: error.message };
+
+        return {
+          success: true,
+          data: {
+            id: best.id,
+            originalInput: best.original_input,
+            correctIntent: best.correct_intent as IntentType,
+            similarity: Number(best.similarity),
+          },
+        };
+      } catch (embError) {
+        logger.warn(
+          { error: embError instanceof Error ? embError.message : "Unknown" },
+          "CorrectionLearner: Embedding generation failed, falling back to text matching",
+        );
+        // 回退到文本匹配
+        return this.findSimilarByTextMatching(params, threshold, limit);
       }
-
-      if (!data || data.length === 0) {
-        return { success: true, data: null };
-      }
-
-      // 计算相似度并找到最匹配的
-      const matches = data
-        .map((record) => ({
-          id: record.id,
-          originalInput: record.original_input,
-          correctIntent: record.correct_intent as IntentType,
-          similarity: this.computeSimpleSimilarity(
-            params.input,
-            record.original_input,
-          ),
-        }))
-        .filter((m) => m.similarity >= threshold)
-        .sort((a, b) => b.similarity - a.similarity);
-
-      if (matches.length === 0) {
-        return { success: true, data: null };
-      }
-
-      const best = matches[0];
-      logger.info(
-        {
-          correctionId: best.id,
-          similarity: best.similarity,
-          correctIntent: best.correctIntent,
-        },
-        "CorrectionLearner: Found similar correction",
-      );
-
-      return {
-        success: true,
-        data: {
-          id: best.id,
-          originalInput: best.originalInput,
-          correctIntent: best.correctIntent,
-          similarity: best.similarity,
-        },
-      };
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
       logger.error(
@@ -241,6 +245,98 @@ export class CorrectionLearner {
       );
       return { success: false, error: message };
     }
+  }
+
+  /**
+   * 使用简单文本匹配查找相似纠正（回退方法）
+   */
+  private async findSimilarByTextMatching(
+    params: FindSimilarParams,
+    threshold: number,
+    limit: number,
+  ): Promise<LearningServiceResult<SimilarCorrection | null>> {
+    const supabase = createClient();
+
+    // 查询用户的纠正历史
+    const { data, error } = await (
+      supabase as unknown as {
+        from: (table: string) => {
+          select: (cols: string) => {
+            eq: (
+              col: string,
+              val: string,
+            ) => {
+              order: (
+                col: string,
+                opts: { ascending: boolean },
+              ) => {
+                limit: (n: number) => Promise<{
+                  data: Array<{
+                    id: string;
+                    original_input: string;
+                    correct_intent: string;
+                    applied_count: number;
+                  }> | null;
+                  error: { message: string } | null;
+                }>;
+              };
+            };
+          };
+        };
+      }
+    )
+      .from("intent_corrections")
+      .select("id, original_input, correct_intent, applied_count")
+      .eq("user_id", params.userId)
+      .order("applied_count", { ascending: false })
+      .limit(limit * 5); // 获取更多候选进行相似度计算
+
+    if (error) {
+      logger.error({ error }, "CorrectionLearner: Failed to query corrections");
+      return { success: false, error: error.message };
+    }
+
+    if (!data || data.length === 0) {
+      return { success: true, data: null };
+    }
+
+    // 计算相似度并找到最匹配的
+    const matches = data
+      .map((record) => ({
+        id: record.id,
+        originalInput: record.original_input,
+        correctIntent: record.correct_intent as IntentType,
+        similarity: this.computeSimpleSimilarity(
+          params.input,
+          record.original_input,
+        ),
+      }))
+      .filter((m) => m.similarity >= threshold)
+      .sort((a, b) => b.similarity - a.similarity);
+
+    if (matches.length === 0) {
+      return { success: true, data: null };
+    }
+
+    const best = matches[0];
+    logger.info(
+      {
+        correctionId: best.id,
+        similarity: best.similarity,
+        correctIntent: best.correctIntent,
+      },
+      "CorrectionLearner: Found similar correction via text matching",
+    );
+
+    return {
+      success: true,
+      data: {
+        id: best.id,
+        originalInput: best.originalInput,
+        correctIntent: best.correctIntent,
+        similarity: best.similarity,
+      },
+    };
   }
 
   /**

@@ -3,7 +3,7 @@
  *
  * 提供会话状态管理和指代解析功能
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-25
  */
 
@@ -31,3 +31,23 @@ export {
   memoryManager,
   type MemoryManagerConfig,
 } from "./memory-manager";
+
+// MemoryPersistence 导出
+export {
+  MemoryPersistence,
+  createMemoryPersistence,
+  memoryPersistence,
+  type SessionMemoryRecord,
+  type SaveStateParams,
+  type LoadStateParams,
+  type PersistenceResult,
+  type ActiveSessionInfo,
+} from "./persistence";
+
+// PersistentSessionMemory 导出
+export {
+  PersistentSessionMemory,
+  createPersistentSessionMemory,
+  persistentSessionMemory,
+  type PersistentSessionMemoryConfig,
+} from "./persistent-session-memory";
