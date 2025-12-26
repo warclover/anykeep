@@ -11,6 +11,7 @@ import { z } from "zod";
 import type { Tool, ToolContext, ToolResult } from "../types";
 import { createClient } from "@/lib/supabase/server";
 import type { BookmarkInFolderSummary, FolderBookmarksResult } from "./types";
+import { FOLDER_TOOL_DESCRIPTIONS } from "../tool-description-templates";
 
 const paramsSchema = z.object({
   folderId: z.number().describe("文件夹 ID"),
@@ -55,12 +56,7 @@ export const getFolderBookmarksTool: Tool<
 > = {
   definition: {
     name: "get_folder_bookmarks",
-    description: `获取指定文件夹内的书签列表。用于回答：
-- "显示这个文件夹里的内容"
-- "查看文件夹里有哪些书签"
-- "列出工作文件夹的书签"
-- "这个文件夹有什么未读内容"
-返回书签标题、URL、标签等信息。`,
+    description: FOLDER_TOOL_DESCRIPTIONS.get_folder_bookmarks,
     parameters: paramsSchema,
     category: "query",
   },

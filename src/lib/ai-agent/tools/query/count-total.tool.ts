@@ -4,7 +4,7 @@
  * 统计收藏总数（极简版）
  * 无参数，直接返回总数
  *
- * @version 1.0.0
+ * @version 1.1.0 - 增强描述，提升 LLM 工具选择准确性
  * @since 2025-12-23
  */
 
@@ -12,6 +12,7 @@ import { z } from "zod";
 import type { Tool, ToolContext, ToolResult } from "../types";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
+import { QUERY_TOOL_DESCRIPTIONS } from "../tool-description-templates";
 
 // ============================================
 // 参数定义（无参数）
@@ -36,8 +37,7 @@ interface CountTotalResult {
 export const countTotalTool: Tool<CountTotalParams, CountTotalResult> = {
   definition: {
     name: "count_total",
-    description:
-      "统计用户的收藏总数。用于回答「我有多少收藏」「总共收藏了多少」等问题。",
+    description: QUERY_TOOL_DESCRIPTIONS.count_total,
     parameters: paramsSchema,
     category: "query",
     requiresConfirmation: false,

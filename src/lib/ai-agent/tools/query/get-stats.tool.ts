@@ -4,7 +4,7 @@
  * 获取用户的收藏统计信息
  * 包括总览、趋势、标签分布等
  *
- * @version 1.1.0 - 修复：排除浏览器书签，与数据页面一致
+ * @version 1.2.0 - 增强描述，提升 LLM 工具选择准确性
  * @since 2025-12-23
  */
 
@@ -12,6 +12,7 @@ import { z } from "zod";
 import type { Tool, ToolContext, ToolResult } from "../types";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
+import { QUERY_TOOL_DESCRIPTIONS } from "../tool-description-templates";
 
 // ============================================
 // 常量
@@ -117,8 +118,7 @@ interface StatsResult {
 export const getStatsTool: Tool<StatsParams, StatsResult> = {
   definition: {
     name: "get_stats",
-    description:
-      "获取用户的收藏统计信息，包括总览数据、收藏趋势、热门标签、平台分布等。用于回答「我的收藏情况」「最近收藏趋势」「常用标签」等问题。",
+    description: QUERY_TOOL_DESCRIPTIONS.get_stats,
     parameters: paramsSchema,
     category: "query",
     requiresConfirmation: false,

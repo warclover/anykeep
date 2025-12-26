@@ -17,6 +17,7 @@ import type {
 import { generateConfirmationId, getConfirmationExpiryTime } from "../utils";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
+import { FOLDER_TOOL_DESCRIPTIONS } from "../tool-description-templates";
 
 // ============================================
 // 常量定义
@@ -65,19 +66,7 @@ export const moveFolderToGroupTool: Tool<
 > = {
   definition: {
     name: "move_folder_to_group",
-    description: `将文件夹移动到指定分组。
-
-使用场景：
-- 用户要求 "把'前端'文件夹放到工作分组"
-- 用户要求 "把学习资料移到学习分组里"
-- 用户要求 "把这个文件夹归类到生活分组"
-
-分组说明：
-- work: 工作相关
-- study: 学习相关
-- life: 生活相关
-- entertainment: 娱乐相关
-- other: 其他`,
+    description: FOLDER_TOOL_DESCRIPTIONS.move_folder_to_group,
     parameters: paramsSchema,
     category: "action",
     requiresConfirmation: true,

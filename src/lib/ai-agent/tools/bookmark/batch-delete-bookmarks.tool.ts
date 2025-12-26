@@ -16,6 +16,7 @@ import {
 } from "../utils";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
+import { BOOKMARK_TOOL_DESCRIPTIONS } from "../tool-description-templates";
 
 // ============================================
 // 参数和结果类型定义
@@ -56,18 +57,7 @@ export const batchDeleteBookmarksTool: Tool<
 > = {
   definition: {
     name: "batch_delete_bookmarks",
-    description: `批量删除多个书签。
-
-使用场景：
-- 用户要求 "删除这些书签"
-- 用户要求 "批量清理这些收藏"
-- 用户要求 "永久删除选中的书签"
-
-注意事项：
-- 默认为软删除，书签会移动到回收站
-- 设置 permanent=true 可永久删除，无法恢复
-- 最多一次删除 100 个书签
-- 这是危险操作，需要用户确认`,
+    description: BOOKMARK_TOOL_DESCRIPTIONS.batch_delete_bookmarks,
     parameters: paramsSchema,
     category: "action",
     requiresConfirmation: true,

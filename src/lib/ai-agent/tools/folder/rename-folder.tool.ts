@@ -17,6 +17,7 @@ import type {
 import { generateConfirmationId, getConfirmationExpiryTime } from "../utils";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
+import { FOLDER_TOOL_DESCRIPTIONS } from "../tool-description-templates";
 
 // ============================================
 // 参数和结果类型定义
@@ -49,16 +50,7 @@ interface RenameFolderResult {
 export const renameFolderTool: Tool<RenameFolderParams, RenameFolderResult> = {
   definition: {
     name: "rename_folder",
-    description: `重命名指定文件夹。
-
-使用场景：
-- 用户要求 "把'技术'文件夹改名为'技术分享'"
-- 用户要求 "重命名学习资料文件夹"
-
-注意事项：
-- 系统文件夹（如 INBOX）不能重命名
-- 新名称不能与现有文件夹重复
-- 文件夹名称不能超过 50 个字符`,
+    description: FOLDER_TOOL_DESCRIPTIONS.rename_folder,
     parameters: paramsSchema,
     category: "action",
     requiresConfirmation: true,

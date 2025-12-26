@@ -17,6 +17,7 @@ import type {
 import { generateConfirmationId, getConfirmationExpiryTime } from "../utils";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
+import { FOLDER_TOOL_DESCRIPTIONS } from "../tool-description-templates";
 
 // ============================================
 // 参数和结果类型定义
@@ -57,19 +58,7 @@ export const autoClassifyInboxTool: Tool<
 > = {
   definition: {
     name: "auto_classify_inbox",
-    description: `对待整理文件夹（INBOX）中的书签执行 AI 智能分类。
-
-使用场景：
-- 用户要求 "帮我分类一下待整理里的书签"
-- 用户要求 "执行一键分类"
-- 用户要求 "把待整理文件夹的内容分类一下"
-- AI 建议整理累积的待处理书签
-
-注意事项：
-- 只处理待整理文件夹（INBOX）中的书签
-- 根据用户的信任模式决定是直接分类还是生成建议
-- 一次最多处理 50 个书签
-- 分类结果可能需要用户确认（取决于信任模式）`,
+    description: FOLDER_TOOL_DESCRIPTIONS.auto_classify_inbox,
     parameters: paramsSchema,
     category: "action",
     requiresConfirmation: true,

@@ -17,6 +17,7 @@ import type {
 import { generateConfirmationId, getConfirmationExpiryTime } from "../utils";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
+import { FOLDER_TOOL_DESCRIPTIONS } from "../tool-description-templates";
 
 // ============================================
 // 参数和结果类型定义
@@ -49,18 +50,7 @@ export const toggleFolderArchiveTool: Tool<
 > = {
   definition: {
     name: "toggle_folder_archive",
-    description: `归档或取消归档文件夹。
-
-使用场景：
-- 用户要求 "归档'旧项目'文件夹"
-- 用户要求 "把'历史资料'文件夹停用"
-- 用户要求 "恢复被归档的文件夹"
-- 用户要求 "把这个文件夹取消归档"
-
-注意事项：
-- 归档后文件夹仍存在，只是默认不显示
-- 文件夹内的书签不受影响
-- 系统文件夹不能归档`,
+    description: FOLDER_TOOL_DESCRIPTIONS.toggle_folder_archive,
     parameters: paramsSchema,
     category: "action",
     requiresConfirmation: true,

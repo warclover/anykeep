@@ -21,6 +21,7 @@ import {
 } from "../utils";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
+import { FOLDER_TOOL_DESCRIPTIONS } from "../tool-description-templates";
 
 // ============================================
 // 参数和结果类型定义
@@ -51,17 +52,7 @@ export const deleteFolderBookmarksTool: Tool<
 > = {
   definition: {
     name: "delete_folder_bookmarks",
-    description: `删除指定文件夹内的所有书签。
-
-使用场景：
-- 用户要求 "清空'临时'文件夹里的所有书签"
-- 用户要求 "删除这个文件夹里的所有内容"
-- 用户要求 "把这个文件夹清空"
-
-注意事项：
-- 只删除书签，不删除文件夹本身
-- 系统文件夹内的书签也可以删除
-- 此操作不可逆（高风险）`,
+    description: FOLDER_TOOL_DESCRIPTIONS.delete_folder_bookmarks,
     parameters: paramsSchema,
     category: "action",
     requiresConfirmation: true,

@@ -10,6 +10,7 @@
 import { z } from "zod";
 import type { Tool, ToolResult } from "../types";
 import { EXPORT_FORMAT_CONFIG } from "@/lib/export/constants";
+import { EXPORT_TOOL_DESCRIPTIONS } from "../tool-description-templates";
 
 // ============================================
 // 参数和结果类型定义
@@ -47,13 +48,7 @@ export const listExportFormatsTool: Tool<
 > = {
   definition: {
     name: "list_export_formats",
-    description: `列出所有可用的导出格式及其说明。
-
-**使用场景：**
-- 用户问"有哪些导出格式"
-- 用户问"怎么导出到 Obsidian"
-- 用户问"哪种格式适合备份"
-- 用户问"导出格式有什么区别"`,
+    description: EXPORT_TOOL_DESCRIPTIONS.list_export_formats,
     parameters: paramsSchema,
     category: "query",
   },

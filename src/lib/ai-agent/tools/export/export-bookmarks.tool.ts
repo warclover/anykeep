@@ -25,6 +25,7 @@ import { EXPORT_FORMAT_CONFIG } from "@/lib/export/constants";
 import type { ExportFormat, BookmarkWithFolder } from "@/lib/export/types";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
+import { EXPORT_TOOL_DESCRIPTIONS } from "../tool-description-templates";
 
 // ============================================
 // 参数和结果类型定义
@@ -200,26 +201,7 @@ export const exportBookmarksTool: Tool<
 > = {
   definition: {
     name: "export_bookmarks",
-    description: `导出用户的书签收藏到指定格式。
-
-**支持的格式：**
-- csv: 适合 Excel 分析，可自定义字段
-- markdown: 适合笔记工具（Notion、Typora）
-- obsidian: 带 Frontmatter 的 Markdown，支持双链
-- obsidian-zip: 每条书签独立 .md 文件，打包成 ZIP
-- json: 结构化数据备份
-- html: 浏览器书签格式，可导入 Chrome/Edge/Firefox
-
-**使用场景：**
-- 用户说"导出我的收藏到 CSV" → format: "csv"
-- 用户说"把微信文章导出成 Markdown" → format: "markdown", filter: { platforms: ["WECHAT"] }
-- 用户说"导出最近一周的内容到 Obsidian" → format: "obsidian-zip", filter: { dateRange: 最近7天 }
-- 用户说"导出这几个书签" + 提供 bookmarkIds → bookmarkIds: [1, 2, 3]
-
-**注意事项：**
-- 这是一个导出操作，会生成文件
-- 操作前会显示确认对话框
-- 大量数据时会显示进度`,
+    description: EXPORT_TOOL_DESCRIPTIONS.export_bookmarks,
     parameters: paramsSchema,
     category: "action",
     requiresConfirmation: true,

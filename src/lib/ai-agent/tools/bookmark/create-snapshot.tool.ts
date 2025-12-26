@@ -12,6 +12,7 @@ import type { Tool, ToolResult } from "../types";
 import { snapshotService } from "@/lib/snapshot/snapshot.service";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
+import { BOOKMARK_TOOL_DESCRIPTIONS } from "../tool-description-templates";
 
 // ============================================
 // 参数和结果类型定义
@@ -52,23 +53,7 @@ export const createSnapshotTool: Tool<
 > = {
   definition: {
     name: "create_snapshot",
-    description: `为书签创建网页快照，保存内容副本。
-
-使用场景：
-- 用户要求 "保存这个网页的快照"
-- 用户要求 "备份这篇文章"
-- 用户要求 "离线保存这个页面"
-- 用户担心网页可能会消失时
-
-快照类型说明：
-- basic: 仅提取正文内容，体积小
-- standard: 正文 + 截图
-- full: 完整 HTML + 截图（PRO 会员专属）
-
-注意事项：
-- 创建快照会消耗配额
-- 免费用户仅支持 basic 类型
-- 快照创建是异步的，会返回预估等待时间`,
+    description: BOOKMARK_TOOL_DESCRIPTIONS.create_snapshot,
     parameters: paramsSchema,
     category: "action",
     requiresConfirmation: false,

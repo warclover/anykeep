@@ -17,6 +17,7 @@ import type {
 import { generateConfirmationId, getConfirmationExpiryTime } from "../utils";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
+import { FOLDER_TOOL_DESCRIPTIONS } from "../tool-description-templates";
 
 // ============================================
 // 参数和结果类型定义
@@ -60,17 +61,7 @@ interface CreateFolderResult {
 export const createFolderTool: Tool<CreateFolderParams, CreateFolderResult> = {
   definition: {
     name: "create_folder",
-    description: `创建新的文件夹。
-
-使用场景：
-- 用户要求 "帮我新建一个叫'技术文章'的文件夹"
-- 用户要求 "创建一个学习笔记文件夹"
-- 用户要求 "在工作分组下创建项目文档文件夹"
-
-注意事项：
-- 文件夹名称不能超过 50 个字符
-- 可以指定父文件夹创建子文件夹
-- 可以指定分组（工作/学习/生活等）`,
+    description: FOLDER_TOOL_DESCRIPTIONS.create_folder,
     parameters: paramsSchema,
     category: "action",
     requiresConfirmation: true,

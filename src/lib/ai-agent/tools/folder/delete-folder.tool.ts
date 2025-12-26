@@ -17,6 +17,7 @@ import type {
 import { generateConfirmationId, getConfirmationExpiryTime } from "../utils";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
+import { FOLDER_TOOL_DESCRIPTIONS } from "../tool-description-templates";
 
 // ============================================
 // 参数和结果类型定义
@@ -50,18 +51,7 @@ interface DeleteFolderResult {
 export const deleteFolderTool: Tool<DeleteFolderParams, DeleteFolderResult> = {
   definition: {
     name: "delete_folder",
-    description: `删除指定文件夹。
-
-使用场景：
-- 用户要求 "删除空的'测试'文件夹"
-- 用户要求 "删除这个文件夹，书签移到根目录"
-- 用户要求 "删除文件夹连同里面的书签"
-
-注意事项：
-- 默认情况下，书签会移到根目录而不是删除
-- 如果 deleteBookmarks=true，书签会被一并删除
-- 系统文件夹不能删除
-- 此操作不可逆（高风险）`,
+    description: FOLDER_TOOL_DESCRIPTIONS.delete_folder,
     parameters: paramsSchema,
     category: "action",
     requiresConfirmation: true,

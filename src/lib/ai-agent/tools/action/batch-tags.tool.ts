@@ -25,6 +25,7 @@ import {
 } from "../utils";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
+import { ACTION_TOOL_DESCRIPTIONS } from "../tool-description-templates";
 
 // ============================================
 // 参数和结果类型定义
@@ -68,17 +69,7 @@ interface BatchTagsResult {
 export const batchTagsTool: Tool<BatchTagsParams, BatchTagsResult> = {
   definition: {
     name: "batch_tags",
-    description: `批量为书签添加或移除标签。
-
-使用场景：
-- 用户要求 "给这些书签加上 AI 标签"
-- 用户要求 "把这5个书签都标记为技术文章"
-- 用户要求 "移除这些书签的过时标签"
-
-注意事项：
-- 这是一个批量修改操作，会影响多个书签
-- 操作不可逆，请谨慎使用
-- 单次最多操作${BATCH_LIMITS.MAX_BOOKMARKS_FOR_TAGS}个书签和${BATCH_LIMITS.MAX_TAGS}个标签`,
+    description: ACTION_TOOL_DESCRIPTIONS.batch_tags,
     parameters: paramsSchema,
     category: "action",
     requiresConfirmation: true,

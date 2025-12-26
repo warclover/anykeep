@@ -3,7 +3,7 @@
  *
  * 统计某个平台的收藏数量
  *
- * @version 1.0.0
+ * @version 1.1.0 - 增强描述，提升 LLM 工具选择准确性
  * @since 2025-12-23
  */
 
@@ -11,6 +11,7 @@ import { z } from "zod";
 import type { Tool, ToolContext, ToolResult } from "../types";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
+import { QUERY_TOOL_DESCRIPTIONS } from "../tool-description-templates";
 
 // ============================================
 // 参数定义（简化）
@@ -55,8 +56,7 @@ export const countByPlatformTool: Tool<
 > = {
   definition: {
     name: "count_by_platform",
-    description:
-      "统计某个平台的收藏数量。用于回答「微信收藏有多少」「B站收藏有多少」等问题。",
+    description: QUERY_TOOL_DESCRIPTIONS.count_by_platform,
     parameters: paramsSchema,
     category: "query",
     requiresConfirmation: false,

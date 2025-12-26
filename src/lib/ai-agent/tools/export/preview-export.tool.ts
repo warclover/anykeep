@@ -17,6 +17,7 @@ import {
 } from "@/lib/export/formatters";
 import type { ExportFormat, BookmarkWithFolder } from "@/lib/export/types";
 import { logger } from "@/lib/logger";
+import { EXPORT_TOOL_DESCRIPTIONS } from "../tool-description-templates";
 
 // ============================================
 // 参数和结果类型定义
@@ -52,12 +53,7 @@ export const previewExportTool: Tool<PreviewExportParams, PreviewExportResult> =
   {
     definition: {
       name: "preview_export",
-      description: `预览导出内容，返回格式化后的示例。
-
-**使用场景：**
-- 用户问"导出后是什么样的"
-- 用户问"CSV 格式长什么样"
-- 用户想先看看再决定导出`,
+      description: EXPORT_TOOL_DESCRIPTIONS.preview_export,
       parameters: paramsSchema,
       category: "query",
     },

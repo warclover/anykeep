@@ -12,6 +12,7 @@ import { z } from "zod";
 import type { Tool, ToolContext, ToolResult } from "../types";
 import { searchSkill } from "@/lib/ai-skills/skills/search";
 import { logger } from "@/lib/logger";
+import { SEARCH_TOOL_DESCRIPTIONS } from "../tool-description-templates";
 
 // ============================================
 // 参数定义（极简）
@@ -62,8 +63,7 @@ interface SearchResult {
 export const searchTool: Tool<SearchParams, SearchResult> = {
   definition: {
     name: "search_bookmarks",
-    description:
-      "在用户的收藏中搜索内容。用于回答「找关于 React 的文章」「有没有收藏过机器学习的内容」等问题。",
+    description: SEARCH_TOOL_DESCRIPTIONS.search,
     parameters: paramsSchema,
     category: "search",
     requiresConfirmation: false,

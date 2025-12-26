@@ -21,6 +21,7 @@ import {
 } from "../utils";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
+import { FOLDER_TOOL_DESCRIPTIONS } from "../tool-description-templates";
 
 // ============================================
 // 参数和结果类型定义
@@ -64,18 +65,7 @@ interface SplitFolderResult {
 export const splitFolderTool: Tool<SplitFolderParams, SplitFolderResult> = {
   definition: {
     name: "split_folder",
-    description: `将文件夹中的部分书签拆分到新文件夹。
-
-使用场景：
-- 用户要求 "把'技术'文件夹里的 Vue 相关文章拆分出来，新建一个'Vue'文件夹"
-- 用户要求 "这个文件夹太大了，把这些书签分出去"
-- AI 建议拆分过大的文件夹
-
-注意事项：
-- 需要指定要拆分的书签列表
-- 会创建新文件夹并移动指定书签
-- 源文件夹保留未选中的书签
-- 此操作不可逆（高风险）`,
+    description: FOLDER_TOOL_DESCRIPTIONS.split_folder,
     parameters: paramsSchema,
     category: "action",
     requiresConfirmation: true,

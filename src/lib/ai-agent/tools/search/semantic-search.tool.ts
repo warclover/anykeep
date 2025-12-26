@@ -11,6 +11,7 @@ import { z } from "zod";
 import type { Tool, ToolContext, ToolResult } from "../types";
 import { searchSkill } from "@/lib/ai-skills/skills/search";
 import { logger } from "@/lib/logger";
+import { SEARCH_TOOL_DESCRIPTIONS } from "../tool-description-templates";
 
 // ============================================
 // 参数和结果类型定义
@@ -91,23 +92,7 @@ interface SearchResult {
 export const semanticSearchTool: Tool<SearchParams, SearchResult> = {
   definition: {
     name: "semantic_search",
-    description: `在用户的书签库中进行智能搜索。
-
-使用场景：
-- 用户搜索内容："找一下关于 React 的文章"
-- 用户查找主题："有没有关于机器学习的收藏"
-- 用户探索知识："我之前收藏过什么技术文章"
-
-搜索模式说明：
-- hybrid（推荐）：结合关键词和语义，综合效果最好
-- semantic：基于含义相似度，适合模糊搜索
-- keyword：精确匹配关键词，适合查找特定内容
-
-返回结果包含：
-- 匹配的书签列表
-- 相似度分数（语义搜索模式）
-- 书签摘要和标签
-- 搜索建议（无结果时）`,
+    description: SEARCH_TOOL_DESCRIPTIONS.semantic_search,
     parameters: paramsSchema,
     category: "search",
     estimatedDurationMs: 2000,

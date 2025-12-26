@@ -17,6 +17,7 @@ import type {
 import { generateConfirmationId, getConfirmationExpiryTime } from "../utils";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
+import { FOLDER_TOOL_DESCRIPTIONS } from "../tool-description-templates";
 
 // ============================================
 // 参数和结果类型定义
@@ -56,17 +57,7 @@ export const moveBookmarkToFolderTool: Tool<
 > = {
   definition: {
     name: "move_bookmark_to_folder",
-    description: `将单个书签移动到指定文件夹。
-
-使用场景：
-- 用户要求 "把这篇文章移到'技术'文件夹"
-- 用户要求 "把这个收藏移到学习资料里"
-- 用户要求 "把这个书签移出当前文件夹"
-
-注意事项：
-- 一次只能移动一个书签
-- target_folder_id 为 null 时表示移出文件夹
-- 如需批量移动，请使用 move_bookmarks Tool`,
+    description: FOLDER_TOOL_DESCRIPTIONS.move_bookmark,
     parameters: paramsSchema,
     category: "action",
     requiresConfirmation: true,

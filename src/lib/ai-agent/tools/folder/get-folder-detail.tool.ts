@@ -12,6 +12,7 @@ import type { Tool, ToolContext, ToolResult } from "../types";
 import { createClient } from "@/lib/supabase/server";
 import type { Folder, FolderProfile } from "@/types/supabase";
 import type { FolderDetail } from "./types";
+import { FOLDER_TOOL_DESCRIPTIONS } from "../tool-description-templates";
 
 const paramsSchema = z.object({
   folderId: z.number().describe("文件夹 ID"),
@@ -35,12 +36,7 @@ type GetFolderDetailParams = z.infer<typeof paramsSchema>;
 export const getFolderDetailTool: Tool<GetFolderDetailParams, FolderDetail> = {
   definition: {
     name: "get_folder_detail",
-    description: `获取单个文件夹的详细信息，包括热度、书签数量、AI 状态等。用于回答：
-- "这个文件夹有多少书签"
-- "查看文件夹详情"
-- "这个文件夹的热度如何"
-- "这个文件夹可以合并吗"
-返回文件夹详细信息和 profile 数据。`,
+    description: FOLDER_TOOL_DESCRIPTIONS.get_folder_detail,
     parameters: paramsSchema,
     category: "query",
   },

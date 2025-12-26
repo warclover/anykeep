@@ -4,7 +4,7 @@
  * 获取最近的书签（简化版，最常用）
  * 只有 1 个参数，LLM 容易正确调用
  *
- * @version 1.0.0
+ * @version 1.1.0 - 增强描述，提升 LLM 工具选择准确性
  * @since 2025-12-23
  */
 
@@ -12,6 +12,7 @@ import { z } from "zod";
 import type { Tool, ToolContext, ToolResult } from "../types";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
+import { QUERY_TOOL_DESCRIPTIONS } from "../tool-description-templates";
 
 // ============================================
 // 参数定义（极简）
@@ -55,8 +56,7 @@ interface ListRecentResult {
 export const listRecentTool: Tool<ListRecentParams, ListRecentResult> = {
   definition: {
     name: "list_recent",
-    description:
-      "获取最近收藏的书签。用于回答「最近收藏了什么」「看看我的收藏」等问题。",
+    description: QUERY_TOOL_DESCRIPTIONS.list_recent,
     parameters: paramsSchema,
     category: "query",
     requiresConfirmation: false,

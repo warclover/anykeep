@@ -17,6 +17,7 @@ import type {
 import { generateConfirmationId, getConfirmationExpiryTime } from "../utils";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
+import { FOLDER_TOOL_DESCRIPTIONS } from "../tool-description-templates";
 
 // ============================================
 // 参数和结果类型定义
@@ -50,17 +51,7 @@ export const toggleFolderLockTool: Tool<
 > = {
   definition: {
     name: "toggle_folder_lock",
-    description: `锁定或解锁文件夹的 AI 自动管理功能。
-
-使用场景：
-- 用户要求 "锁定'重要资料'文件夹，不让 AI 自动改名"
-- 用户要求 "这个文件夹禁止 AI 修改"
-- 用户要求 "解锁文件夹，允许 AI 管理"
-
-注意事项：
-- 锁定后，AI 不会自动重命名、合并、拆分该文件夹
-- 锁定状态存储在 folder_profiles 表中
-- 系统文件夹默认锁定`,
+    description: FOLDER_TOOL_DESCRIPTIONS.toggle_folder_lock,
     parameters: paramsSchema,
     category: "action",
     requiresConfirmation: true,

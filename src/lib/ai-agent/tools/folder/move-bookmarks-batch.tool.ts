@@ -24,6 +24,7 @@ import {
 } from "../utils";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
+import { FOLDER_TOOL_DESCRIPTIONS } from "../tool-description-templates";
 
 // ============================================
 // 参数和结果类型定义
@@ -68,17 +69,7 @@ export const moveBookmarksBatchTool: Tool<
 > = {
   definition: {
     name: "move_bookmarks_batch",
-    description: `批量移动多个书签到指定文件夹。
-
-使用场景：
-- 用户要求 "把这几篇文章都移到'技术'文件夹"
-- 用户要求 "把最近收藏的 5 篇都移到学习资料里"
-- 用户要求 "把选中的书签移出当前文件夹"
-
-注意事项：
-- 单次最多移动 ${BATCH_LIMITS.MAX_BOOKMARKS_FOR_MOVE} 个书签
-- 会覆盖书签原有的文件夹设置
-- 移动数量较多时风险等级会提升`,
+    description: FOLDER_TOOL_DESCRIPTIONS.move_bookmarks_batch,
     parameters: paramsSchema,
     category: "action",
     requiresConfirmation: true,

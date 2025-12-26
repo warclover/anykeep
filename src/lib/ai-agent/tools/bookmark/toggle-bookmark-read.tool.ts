@@ -11,6 +11,7 @@ import { z } from "zod";
 import type { Tool, ToolResult } from "../types";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
+import { BOOKMARK_TOOL_DESCRIPTIONS } from "../tool-description-templates";
 
 // ============================================
 // 参数和结果类型定义
@@ -43,16 +44,7 @@ export const toggleBookmarkReadTool: Tool<
 > = {
   definition: {
     name: "toggle_bookmark_read",
-    description: `切换书签的已读/未读状态。
-
-使用场景：
-- 用户要求 "把这个书签标记为已读"
-- 用户要求 "标记为未读"
-- 用户要求 "切换已读状态"
-
-注意事项：
-- 可以明确指定目标状态，或自动切换当前状态
-- 不需要用户确认，为低风险操作`,
+    description: BOOKMARK_TOOL_DESCRIPTIONS.toggle_bookmark_read,
     parameters: paramsSchema,
     category: "action",
     requiresConfirmation: false,

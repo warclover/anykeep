@@ -11,6 +11,7 @@ import { z } from "zod";
 import type { Tool, ToolResult } from "../types";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
+import { BOOKMARK_TOOL_DESCRIPTIONS } from "../tool-description-templates";
 
 // ============================================
 // 参数和结果类型定义
@@ -43,18 +44,7 @@ export const toggleBookmarkStarredTool: Tool<
 > = {
   definition: {
     name: "toggle_bookmark_starred",
-    description: `切换书签的星标状态，用于标记重要内容。
-
-使用场景：
-- 用户要求 "给这个书签加星标"
-- 用户要求 "取消星标"
-- 用户要求 "标记为重要"
-- 用户要求 "收藏这个书签"
-
-注意事项：
-- 可以明确指定目标状态，或自动切换当前状态
-- 星标书签会在"收藏"智能列表中显示
-- 不需要用户确认，为低风险操作`,
+    description: BOOKMARK_TOOL_DESCRIPTIONS.toggle_bookmark_starred,
     parameters: paramsSchema,
     category: "action",
     requiresConfirmation: false,

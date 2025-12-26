@@ -17,6 +17,7 @@ import type {
 import { generateConfirmationId, getConfirmationExpiryTime } from "../utils";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
+import { FOLDER_TOOL_DESCRIPTIONS } from "../tool-description-templates";
 
 // ============================================
 // 参数和结果类型定义
@@ -51,17 +52,7 @@ export const reorderFolderTool: Tool<ReorderFolderParams, ReorderFolderResult> =
   {
     definition: {
       name: "reorder_folder",
-      description: `调整文件夹在列表中的位置。
-
-使用场景：
-- 用户要求 "把'技术'文件夹往上移"
-- 用户要求 "把这个文件夹移到最前面"
-- 用户要求 "把学习文件夹放到最后"
-
-注意事项：
-- up/down 移动一位
-- top/bottom 移动到最前/最后
-- 系统文件夹不能移动`,
+      description: FOLDER_TOOL_DESCRIPTIONS.reorder_folder,
       parameters: paramsSchema,
       category: "action",
       requiresConfirmation: true,

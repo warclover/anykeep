@@ -1,8 +1,12 @@
 /**
  * AI Agent Tools 模块导出
  *
- * @version 1.8.0
+ * @version 1.9.0
  * @since 2025-12-23
+ *
+ * v1.9.0 新增:
+ * - 工具描述模板: tool-description-templates.ts（增强型描述，提升 LLM 工具选择准确性）
+ * - 工具结果增强器: tool-result-enhancer.ts（结果摘要、错误分析、下一步建议）
  *
  * v1.8.0 新增:
  * - 设置: get-user-interests, update-user-interests
@@ -20,6 +24,12 @@ export * from "./types";
 
 // 共享工具函数和常量
 export * from "./utils";
+
+// 工具描述模板（v1.9.0）
+export * from "./tool-description-templates";
+
+// 工具结果增强器（v1.9.0）
+export * from "./tool-result-enhancer";
 
 // Tool 注册表
 export { ToolRegistry, toolRegistry } from "./tool-registry";

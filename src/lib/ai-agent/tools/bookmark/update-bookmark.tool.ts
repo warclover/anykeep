@@ -11,6 +11,7 @@ import { z } from "zod";
 import type { Tool, ToolResult } from "../types";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
+import { BOOKMARK_TOOL_DESCRIPTIONS } from "../tool-description-templates";
 
 // ============================================
 // 参数和结果类型定义
@@ -54,24 +55,7 @@ export const updateBookmarkTool: Tool<
 > = {
   definition: {
     name: "update_bookmark",
-    description: `更新书签的元信息。
-
-使用场景：
-- 用户要求 "修改书签标题"
-- 用户要求 "给这个书签加标签"
-- 用户要求 "把书签移到另一个文件夹"
-- 用户要求 "修改书签的描述"
-
-可更新的字段：
-- title: 标题
-- description: 描述
-- tags: 标签列表（会替换现有标签）
-- folderId: 文件夹（传 null 移出文件夹）
-- notes: 用户笔记
-
-注意事项：
-- 只更新传入的字段，未传入的字段保持不变
-- 不需要用户确认，为低风险编辑操作`,
+    description: BOOKMARK_TOOL_DESCRIPTIONS.update_bookmark,
     parameters: paramsSchema,
     category: "action",
     requiresConfirmation: false,

@@ -11,6 +11,7 @@ import { z } from "zod";
 import type { Tool, ToolResult } from "../types";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
+import { BOOKMARK_TOOL_DESCRIPTIONS } from "../tool-description-templates";
 
 // ============================================
 // 参数和结果类型定义
@@ -119,25 +120,7 @@ export const createBookmarkTool: Tool<
 > = {
   definition: {
     name: "create_bookmark",
-    description: `创建新的书签收藏。
-
-使用场景：
-- 用户要求 "帮我收藏这个链接"
-- 用户要求 "保存这个网页"
-- 用户要求 "把这个 URL 加到我的收藏"
-
-支持的参数：
-- url: 必填，要收藏的网址
-- title: 可选，书签标题
-- description: 可选，书签描述
-- folderId: 可选，指定保存到的文件夹
-- tags: 可选，用户标签
-- isStarred: 可选，是否添加星标
-
-注意事项：
-- 系统会自动检测平台类型（微信、B站、知乎等）
-- 如果 URL 已存在，会返回错误提示
-- 不需要用户确认，为低风险创建操作`,
+    description: BOOKMARK_TOOL_DESCRIPTIONS.create_bookmark,
     parameters: paramsSchema,
     category: "action",
     requiresConfirmation: false,

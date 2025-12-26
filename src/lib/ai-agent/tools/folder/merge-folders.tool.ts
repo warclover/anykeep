@@ -17,6 +17,7 @@ import type {
 import { generateConfirmationId, getConfirmationExpiryTime } from "../utils";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
+import { FOLDER_TOOL_DESCRIPTIONS } from "../tool-description-templates";
 
 // ============================================
 // 参数和结果类型定义
@@ -61,18 +62,7 @@ interface MergeFoldersResult {
 export const mergeFoldersTool: Tool<MergeFoldersParams, MergeFoldersResult> = {
   definition: {
     name: "merge_folders",
-    description: `将一个文件夹合并到另一个文件夹。
-
-使用场景：
-- 用户要求 "把'JavaScript'文件夹合并到'前端'"
-- 用户要求 "合并这两个相似的文件夹"
-- 用户要求 "把旧文件夹的内容并入新文件夹"
-
-注意事项：
-- 源文件夹的所有书签会移动到目标文件夹
-- 默认合并后删除源文件夹
-- 系统文件夹不能被合并或作为源
-- 此操作不可逆（高风险）`,
+    description: FOLDER_TOOL_DESCRIPTIONS.merge_folders,
     parameters: paramsSchema,
     category: "action",
     requiresConfirmation: true,

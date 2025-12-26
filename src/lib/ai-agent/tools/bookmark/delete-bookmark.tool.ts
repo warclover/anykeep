@@ -12,6 +12,7 @@ import type { Tool, ToolResult, PendingConfirmation } from "../types";
 import { generateConfirmationId, getConfirmationExpiryTime } from "../utils";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
+import { BOOKMARK_TOOL_DESCRIPTIONS } from "../tool-description-templates";
 
 // ============================================
 // 参数和结果类型定义
@@ -50,17 +51,7 @@ export const deleteBookmarkTool: Tool<
 > = {
   definition: {
     name: "delete_bookmark",
-    description: `删除指定的书签。
-
-使用场景：
-- 用户要求 "删除这个书签"
-- 用户要求 "把这个收藏删掉"
-- 用户要求 "永久删除这个书签"
-
-注意事项：
-- 默认为软删除，书签会移动到回收站，30天后自动清理
-- 设置 permanent=true 可永久删除，无法恢复
-- 这是危险操作，需要用户确认`,
+    description: BOOKMARK_TOOL_DESCRIPTIONS.delete_bookmark,
     parameters: paramsSchema,
     category: "action",
     requiresConfirmation: true,

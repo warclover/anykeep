@@ -12,6 +12,7 @@ import type { Tool, ToolContext, ToolResult } from "../types";
 import { createClient } from "@/lib/supabase/server";
 import type { Folder } from "@/types/supabase";
 import type { FolderSummary } from "./types";
+import { FOLDER_TOOL_DESCRIPTIONS } from "../tool-description-templates";
 
 const paramsSchema = z.object({
   group: z
@@ -41,12 +42,7 @@ type ListFoldersParams = z.infer<typeof paramsSchema>;
 export const listFoldersTool: Tool<ListFoldersParams, FolderSummary[]> = {
   definition: {
     name: "list_folders",
-    description: `获取用户的所有文件夹列表。用于回答：
-- "我有哪些文件夹"
-- "查看我的收藏夹"
-- "列出所有文件夹"
-- "显示工作相关的文件夹"
-返回文件夹名称、分组、书签数量等信息。`,
+    description: FOLDER_TOOL_DESCRIPTIONS.list_folders,
     parameters: paramsSchema,
     category: "query",
   },
