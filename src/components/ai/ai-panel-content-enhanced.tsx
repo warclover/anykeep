@@ -876,59 +876,61 @@ export function AIPanelContentEnhanced({
         ref={scrollRef}
         className="flex-1 overflow-y-auto bg-gradient-to-b from-pink-50/50 to-white"
       >
-        {messages.length === 0 ? (
-          <AIWelcomeScreen onSetInput={setInput} />
-        ) : (
-          <div className="py-2">
-            {messages.map((message, index) => (
-              <div key={message.id}>
-                <AIMessageEnhanced
-                  message={message}
-                  isLast={index === messages.length - 1}
-                  conversationId={conversationId}
-                  onSuggestionClick={handleSuggestionClick}
-                  onRegenerate={handleRegenerate}
-                  onSaveToNote={handleSaveToNote}
-                  onExport={handleExport}
-                  onFeedback={handleFeedback}
-                  onWrongIntent={handleWrongIntent}
-                  feedbackGiven={feedbackMap[message.id] || null}
-                />
+        <div className="pr-3">
+          {messages.length === 0 ? (
+            <AIWelcomeScreen onSetInput={setInput} />
+          ) : (
+            <div className="py-2">
+              {messages.map((message, index) => (
+                <div key={message.id}>
+                  <AIMessageEnhanced
+                    message={message}
+                    isLast={index === messages.length - 1}
+                    conversationId={conversationId}
+                    onSuggestionClick={handleSuggestionClick}
+                    onRegenerate={handleRegenerate}
+                    onSaveToNote={handleSaveToNote}
+                    onExport={handleExport}
+                    onFeedback={handleFeedback}
+                    onWrongIntent={handleWrongIntent}
+                    feedbackGiven={feedbackMap[message.id] || null}
+                  />
 
-                {/* 显示待确认操作 */}
-                {message.pendingConfirmations &&
-                  message.pendingConfirmations.length > 0 && (
-                    <div className="px-4 py-2 space-y-2">
-                      {message.pendingConfirmations.map((confirmation) => (
-                        <ActionConfirmInline
-                          key={confirmation.confirmationId}
-                          confirmation={confirmation}
-                          onConfirm={handleConfirm}
-                          onCancel={handleCancel}
-                          isLoading={isConfirming}
-                        />
-                      ))}
-                    </div>
-                  )}
-              </div>
-            ))}
+                  {/* 显示待确认操作 */}
+                  {message.pendingConfirmations &&
+                    message.pendingConfirmations.length > 0 && (
+                      <div className="px-4 py-2 space-y-2">
+                        {message.pendingConfirmations.map((confirmation) => (
+                          <ActionConfirmInline
+                            key={confirmation.confirmationId}
+                            confirmation={confirmation}
+                            onConfirm={handleConfirm}
+                            onCancel={handleCancel}
+                            isLoading={isConfirming}
+                          />
+                        ))}
+                      </div>
+                    )}
+                </div>
+              ))}
 
-            {/* 重试按钮 */}
-            {messages[messages.length - 1]?.status === "error" && (
-              <div className="flex justify-center py-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleRetry}
-                  className="gap-1"
-                >
-                  <RotateCcw className="size-3" />
-                  重试
-                </Button>
-              </div>
-            )}
-          </div>
-        )}
+              {/* 重试按钮 */}
+              {messages[messages.length - 1]?.status === "error" && (
+                <div className="flex justify-center py-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRetry}
+                    className="gap-1"
+                  >
+                    <RotateCcw className="size-3" />
+                    重试
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </ScrollArea>
 
       {/* 快捷建议栏 */}
@@ -943,7 +945,7 @@ export function AIPanelContentEnhanced({
         onChange={setInput}
         onSubmit={handleSubmit}
         disabled={isLoading}
-        placeholder="输入消息，按 Enter 发送..."
+        placeholder=""
         selectedTool={selectedTool}
         onToolChange={setSelectedTool}
         contextItems={contextItems}

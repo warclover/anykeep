@@ -63,7 +63,7 @@ export const AttachmentButton = forwardRef<
   // 确定按钮样式
   const buttonStyles = cn(
     // 基础样式
-    "w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-200",
+    "w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-200",
     "flex-shrink-0",
     // 状态样式
     isEmpty && [
@@ -87,7 +87,7 @@ export const AttachmentButton = forwardRef<
   // 渲染按钮内容
   const renderContent = () => {
     if (isEmpty) {
-      return <Plus className="size-5" />;
+      return <Plus className="size-4" />;
     }
 
     if (isFull) {
@@ -100,7 +100,7 @@ export const AttachmentButton = forwardRef<
 
     return (
       <span className="flex items-center gap-0.5">
-        <Plus className="size-4" />
+        <Plus className="size-3" />
         <span className="text-[10px] font-medium">{count}</span>
       </span>
     );

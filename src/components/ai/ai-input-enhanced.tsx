@@ -83,7 +83,7 @@ export function AIInputEnhanced({
   onChange,
   onSubmit,
   disabled = false,
-  placeholder = "输入消息，按 Enter 发送...",
+  placeholder = "",
   selectedTool,
   onToolChange,
   contextItems,
@@ -216,7 +216,7 @@ export function AIInputEnhanced({
           {/* 输入框容器 - 糖果色风格 */}
           <div
             className={cn(
-              "flex-1 bg-white rounded-2xl px-4 py-3 transition-all duration-200",
+              "flex-1 bg-white rounded-2xl px-4 h-9 flex items-center transition-all duration-200",
               "border-2 border-pink-100",
               "focus-within:border-pink-300 focus-within:shadow-[0_0_0_3px_rgba(244,114,182,0.15)]",
             )}
@@ -230,17 +230,11 @@ export function AIInputEnhanced({
               disabled={disabled}
               rows={1}
               className={cn(
-                "w-full bg-transparent resize-none outline-none text-gray-700 placeholder-gray-400 text-xs",
-                "min-h-[24px] max-h-[100px] border-0 p-0 focus-visible:ring-0",
+                "w-full bg-transparent resize-none outline-none text-gray-700 placeholder-gray-400 text-[10px]",
+                "h-6 min-h-[24px] max-h-[24px] border-0 p-0 focus-visible:ring-0",
               )}
               style={{
-                height: "auto",
                 overflow: "hidden",
-              }}
-              onInput={(e) => {
-                const target = e.target as HTMLTextAreaElement;
-                target.style.height = "auto";
-                target.style.height = `${Math.min(target.scrollHeight, 100)}px`;
               }}
             />
           </div>
@@ -250,16 +244,16 @@ export function AIInputEnhanced({
             onClick={handleSubmit}
             disabled={disabled || !value.trim()}
             className={cn(
-              "w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-200",
+              "w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-200",
               "bg-gradient-to-r from-pink-400 to-rose-400 text-white",
               "shadow-lg shadow-pink-200 hover:shadow-pink-300 hover:scale-105",
               "disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:shadow-none",
             )}
           >
             {disabled ? (
-              <Loader2 className="size-5 animate-spin" />
+              <Loader2 className="size-4 animate-spin" />
             ) : (
-              <Send className="size-5" />
+              <Send className="size-4" />
             )}
           </button>
         </div>

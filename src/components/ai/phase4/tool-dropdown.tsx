@@ -50,7 +50,7 @@ export interface ToolGroup {
 export const TOOL_GROUPS: ToolGroup[] = [
   {
     id: "auto",
-    name: "智能",
+    name: "Auto",
     icon: "✨",
     description: "AI 自动选择最佳工具",
     directToolId: "auto",
@@ -216,9 +216,7 @@ export const ToolDropdown = memo(function ToolDropdown({
   // 获取当前选中工具的显示信息
   const currentInfo = findToolInfo(value);
   const displayName =
-    currentInfo?.subTool?.name || currentInfo?.group.name || "智能";
-  const displayIcon =
-    currentInfo?.subTool?.icon || currentInfo?.group.icon || "✨";
+    currentInfo?.subTool?.name || currentInfo?.group.name || "Auto";
 
   // 处理工具组点击
   const handleGroupClick = useCallback(
@@ -264,7 +262,6 @@ export const ToolDropdown = memo(function ToolDropdown({
             className,
           )}
         >
-          <span className="text-base">{displayIcon}</span>
           <span>{displayName}</span>
           <ChevronDown
             className={cn(

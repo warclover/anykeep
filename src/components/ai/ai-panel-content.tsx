@@ -657,101 +657,103 @@ export function AIPanelContent({
         ref={scrollRef}
         className="flex-1 overflow-y-auto bg-gradient-to-b from-pink-50/50 to-white"
       >
-        {messages.length === 0 ? (
-          /* 欢迎界面 - 糖果风格 */
-          <div className="flex flex-col items-center justify-center h-full py-8 px-4">
-            <div className="w-full max-w-sm bg-gradient-to-br from-pink-50 to-purple-50 rounded-2xl p-5 border border-pink-100 shadow-sm mb-6">
-              <div className="flex items-start gap-2 mb-3">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-r from-pink-400 to-purple-400 flex items-center justify-center flex-shrink-0 shadow-md">
-                  <Sparkles className="size-4 text-white" />
+        <div className="pr-3">
+          {messages.length === 0 ? (
+            /* 欢迎界面 - 糖果风格 */
+            <div className="flex flex-col items-center justify-center h-full py-8 px-4">
+              <div className="w-full max-w-sm bg-gradient-to-br from-pink-50 to-purple-50 rounded-2xl p-5 border border-pink-100 shadow-sm mb-6">
+                <div className="flex items-start gap-2 mb-3">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-r from-pink-400 to-purple-400 flex items-center justify-center flex-shrink-0 shadow-md">
+                    <Sparkles className="size-4 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-gray-700 font-medium text-[10px]">
+                      你好！我是你的 AI 助手 ✨
+                    </p>
+                    <p className="text-gray-500 text-[10px] mt-0.5">
+                      有什么可以帮你的吗？
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-gray-700 font-medium text-[10px]">
-                    你好！我是你的 AI 助手 ✨
-                  </p>
-                  <p className="text-gray-500 text-[10px] mt-0.5">
-                    有什么可以帮你的吗？
-                  </p>
-                </div>
-              </div>
 
-              {/* 快捷功能按钮 */}
-              <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={() => setInput("搜索关于 AI 的文章")}
-                  className="px-2.5 py-1 bg-white rounded-full text-[10px] text-pink-600 border border-pink-200 hover:bg-pink-50 hover:border-pink-300 transition-colors flex items-center gap-0.5 shadow-sm"
-                >
-                  <Search className="size-2.5" />
-                  搜索收藏
-                </button>
-                <button
-                  onClick={() => setInput("帮我制定知识复习计划")}
-                  className="px-2.5 py-1 bg-white rounded-full text-[10px] text-amber-600 border border-amber-200 hover:bg-amber-50 hover:border-amber-300 transition-colors flex items-center gap-0.5 shadow-sm"
-                >
-                  <BookOpen className="size-2.5" />
-                  知识复习
-                </button>
-                <button
-                  onClick={() => setInput("我有哪些文件夹")}
-                  className="px-2.5 py-1 bg-white rounded-full text-[10px] text-purple-600 border border-purple-200 hover:bg-purple-50 hover:border-purple-300 transition-colors flex items-center gap-0.5 shadow-sm"
-                >
-                  <FolderOpen className="size-2.5" />
-                  查看文件夹
-                </button>
-                <button
-                  onClick={() => setInput("统计我的收藏情况")}
-                  className="px-2.5 py-1 bg-white rounded-full text-[10px] text-indigo-600 border border-indigo-200 hover:bg-indigo-50 hover:border-indigo-300 transition-colors flex items-center gap-0.5 shadow-sm"
-                >
-                  <BarChart3 className="size-2.5" />
-                  统计分析
-                </button>
+                {/* 快捷功能按钮 */}
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setInput("搜索关于 AI 的文章")}
+                    className="px-2.5 py-1 bg-white rounded-full text-[10px] text-pink-600 border border-pink-200 hover:bg-pink-50 hover:border-pink-300 transition-colors flex items-center gap-0.5 shadow-sm"
+                  >
+                    <Search className="size-2.5" />
+                    搜索收藏
+                  </button>
+                  <button
+                    onClick={() => setInput("帮我制定知识复习计划")}
+                    className="px-2.5 py-1 bg-white rounded-full text-[10px] text-amber-600 border border-amber-200 hover:bg-amber-50 hover:border-amber-300 transition-colors flex items-center gap-0.5 shadow-sm"
+                  >
+                    <BookOpen className="size-2.5" />
+                    知识复习
+                  </button>
+                  <button
+                    onClick={() => setInput("我有哪些文件夹")}
+                    className="px-2.5 py-1 bg-white rounded-full text-[10px] text-purple-600 border border-purple-200 hover:bg-purple-50 hover:border-purple-300 transition-colors flex items-center gap-0.5 shadow-sm"
+                  >
+                    <FolderOpen className="size-2.5" />
+                    查看文件夹
+                  </button>
+                  <button
+                    onClick={() => setInput("统计我的收藏情况")}
+                    className="px-2.5 py-1 bg-white rounded-full text-[10px] text-indigo-600 border border-indigo-200 hover:bg-indigo-50 hover:border-indigo-300 transition-colors flex items-center gap-0.5 shadow-sm"
+                  >
+                    <BarChart3 className="size-2.5" />
+                    统计分析
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        ) : (
-          <div className="py-2">
-            {messages.map((message, index) => (
-              <div key={message.id}>
-                <AIMessage
-                  message={message}
-                  isLast={index === messages.length - 1}
-                  onSuggestionClick={handleSuggestionClick}
-                />
+          ) : (
+            <div className="py-2">
+              {messages.map((message, index) => (
+                <div key={message.id}>
+                  <AIMessage
+                    message={message}
+                    isLast={index === messages.length - 1}
+                    onSuggestionClick={handleSuggestionClick}
+                  />
 
-                {/* 显示待确认操作 */}
-                {message.pendingConfirmations &&
-                  message.pendingConfirmations.length > 0 && (
-                    <div className="px-4 py-2 space-y-2">
-                      {message.pendingConfirmations.map((confirmation) => (
-                        <ActionConfirmInline
-                          key={confirmation.confirmationId}
-                          confirmation={confirmation}
-                          onConfirm={handleConfirm}
-                          onCancel={handleCancel}
-                          isLoading={isConfirming}
-                        />
-                      ))}
-                    </div>
-                  )}
-              </div>
-            ))}
+                  {/* 显示待确认操作 */}
+                  {message.pendingConfirmations &&
+                    message.pendingConfirmations.length > 0 && (
+                      <div className="px-4 py-2 space-y-2">
+                        {message.pendingConfirmations.map((confirmation) => (
+                          <ActionConfirmInline
+                            key={confirmation.confirmationId}
+                            confirmation={confirmation}
+                            onConfirm={handleConfirm}
+                            onCancel={handleCancel}
+                            isLoading={isConfirming}
+                          />
+                        ))}
+                      </div>
+                    )}
+                </div>
+              ))}
 
-            {/* 重试按钮 */}
-            {messages[messages.length - 1]?.status === "error" && (
-              <div className="flex justify-center py-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleRetry}
-                  className="gap-1"
-                >
-                  <RotateCcw className="size-3" />
-                  重试
-                </Button>
-              </div>
-            )}
-          </div>
-        )}
+              {/* 重试按钮 */}
+              {messages[messages.length - 1]?.status === "error" && (
+                <div className="flex justify-center py-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRetry}
+                    className="gap-1"
+                  >
+                    <RotateCcw className="size-3" />
+                    重试
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </ScrollArea>
 
       {/* 快捷建议栏 - 有消息时显示 */}
@@ -793,7 +795,7 @@ export function AIPanelContent({
         onChange={setInput}
         onSubmit={handleSubmit}
         disabled={isLoading}
-        placeholder="输入消息，按 Enter 发送..."
+        placeholder="输入消息..."
       />
     </div>
   );
