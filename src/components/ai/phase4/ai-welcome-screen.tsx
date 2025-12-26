@@ -74,15 +74,17 @@ export function AIWelcomeScreen({ onSetInput }: AIWelcomeScreenProps) {
     <div className="flex flex-col items-center justify-center h-full py-8 px-4">
       <div className="w-full max-w-sm bg-gradient-to-br from-pink-50 to-purple-50 rounded-2xl p-5 border border-pink-100 shadow-sm mb-6">
         {/* 欢迎消息 */}
-        <div className="flex items-start gap-3 mb-4">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-r from-pink-400 to-purple-400 flex items-center justify-center flex-shrink-0 shadow-md">
-            <Sparkles className="size-5 text-white" />
+        <div className="flex items-start gap-2 mb-3">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-r from-pink-400 to-purple-400 flex items-center justify-center flex-shrink-0 shadow-md">
+            <Sparkles className="size-4 text-white" />
           </div>
           <div>
-            <p className="text-gray-700 font-medium text-sm">
+            <p className="text-gray-700 font-medium text-[10px]">
               你好！我是你的 AI 助手 ✨
             </p>
-            <p className="text-gray-500 text-xs mt-1">有什么可以帮你的吗？</p>
+            <p className="text-gray-500 text-[10px] mt-0.5">
+              有什么可以帮你的吗？
+            </p>
           </div>
         </div>
 

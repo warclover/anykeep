@@ -803,31 +803,31 @@ export function AIPanelContentEnhanced({
 
   return (
     <div className={`flex flex-col h-full ${className || ""}`}>
-      {/* 头部 - 糖果色渐变背景 */}
-      <div className="relative px-5 py-4 bg-gradient-to-r from-pink-400 via-purple-400 to-indigo-400 text-white flex-shrink-0">
+      {/* 头部 - 糖果色渐变背景（紧凑版） */}
+      <div className="relative px-3 py-1.5 bg-gradient-to-r from-pink-400 via-purple-400 to-indigo-400 text-white flex-shrink-0">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <div className="relative">
               <div
                 className="absolute inset-0 bg-white/30 rounded-full animate-ping opacity-75"
                 style={{ animationDuration: "2s" }}
               />
-              <div className="relative w-11 h-11 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm border-2 border-white/40 shadow-lg">
-                <Sparkles className="size-5 text-white" />
+              <div className="relative w-7 h-7 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm border border-white/40 shadow-md">
+                <Sparkles className="size-3.5 text-white" />
               </div>
             </div>
-            <div>
-              <h3 className="text-sm font-semibold text-white">{title}</h3>
-              <p className="text-xs text-white/80 flex items-center gap-1.5">
-                <span className="w-2 h-2 bg-green-300 rounded-full animate-pulse" />
-                在线 · 随时为您服务
+            <div className="flex items-center gap-2">
+              <h3 className="text-xs font-semibold text-white">{title}</h3>
+              <span className="text-[10px] text-white/80 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 bg-green-300 rounded-full animate-pulse" />
+                在线
                 {showMemoryHint && (
-                  <span className="ml-2 px-2 py-0.5 bg-white/20 rounded-full text-white/90 flex items-center gap-1 animate-fade-in">
-                    <Brain className="size-3" />
-                    AI 记住了
+                  <span className="ml-1 px-1.5 py-0.5 bg-white/20 rounded-full text-white/90 flex items-center gap-0.5 animate-fade-in">
+                    <Brain className="size-2.5" />
+                    记住了
                   </span>
                 )}
-              </p>
+              </span>
             </div>
           </div>
           <div className="flex items-center gap-1">

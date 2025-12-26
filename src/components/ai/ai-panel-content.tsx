@@ -595,33 +595,33 @@ export function AIPanelContent({
 
   return (
     <div className={`flex flex-col h-full ${className || ""}`}>
-      {/* 头部 - 糖果色渐变背景 */}
-      <div className="relative px-5 py-4 bg-gradient-to-r from-pink-400 via-purple-400 to-indigo-400 text-white flex-shrink-0">
+      {/* 头部 - 糖果色渐变背景（紧凑版） */}
+      <div className="relative px-3 py-1.5 bg-gradient-to-r from-pink-400 via-purple-400 to-indigo-400 text-white flex-shrink-0">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             {/* AI 头像带光环动画 */}
             <div className="relative">
               <div
                 className="absolute inset-0 bg-white/30 rounded-full animate-ping opacity-75"
                 style={{ animationDuration: "2s" }}
               />
-              <div className="relative w-11 h-11 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm border-2 border-white/40 shadow-lg">
-                <Sparkles className="size-5 text-white" />
+              <div className="relative w-7 h-7 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm border border-white/40 shadow-md">
+                <Sparkles className="size-3.5 text-white" />
               </div>
             </div>
-            <div>
-              <h3 className="text-base font-semibold text-white">{title}</h3>
-              <p className="text-xs text-white/80 flex items-center gap-1.5">
-                <span className="w-2 h-2 bg-green-300 rounded-full animate-pulse" />
-                在线 · 随时为您服务
+            <div className="flex items-center gap-2">
+              <h3 className="text-xs font-semibold text-white">{title}</h3>
+              <span className="text-[10px] text-white/80 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 bg-green-300 rounded-full animate-pulse" />
+                在线
                 {/* 记忆提示 */}
                 {showMemoryHint && (
-                  <span className="ml-2 px-2 py-0.5 bg-white/20 rounded-full text-white/90 flex items-center gap-1 animate-fade-in">
-                    <Brain className="size-3" />
-                    AI 记住了
+                  <span className="ml-1 px-1.5 py-0.5 bg-white/20 rounded-full text-white/90 flex items-center gap-0.5 animate-fade-in">
+                    <Brain className="size-2.5" />
+                    记住了
                   </span>
                 )}
-              </p>
+              </span>
             </div>
           </div>
           {/* 右侧按钮区域 */}
@@ -661,15 +661,15 @@ export function AIPanelContent({
           /* 欢迎界面 - 糖果风格 */
           <div className="flex flex-col items-center justify-center h-full py-8 px-4">
             <div className="w-full max-w-sm bg-gradient-to-br from-pink-50 to-purple-50 rounded-2xl p-5 border border-pink-100 shadow-sm mb-6">
-              <div className="flex items-start gap-3 mb-4">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-r from-pink-400 to-purple-400 flex items-center justify-center flex-shrink-0 shadow-md">
-                  <Sparkles className="size-5 text-white" />
+              <div className="flex items-start gap-2 mb-3">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-r from-pink-400 to-purple-400 flex items-center justify-center flex-shrink-0 shadow-md">
+                  <Sparkles className="size-4 text-white" />
                 </div>
                 <div>
-                  <p className="text-gray-700 font-medium">
+                  <p className="text-gray-700 font-medium text-[10px]">
                     你好！我是你的 AI 助手 ✨
                   </p>
-                  <p className="text-gray-500 text-sm mt-1">
+                  <p className="text-gray-500 text-[10px] mt-0.5">
                     有什么可以帮你的吗？
                   </p>
                 </div>
@@ -679,30 +679,30 @@ export function AIPanelContent({
               <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => setInput("搜索关于 AI 的文章")}
-                  className="px-3 py-1.5 bg-white rounded-full text-xs text-pink-600 border border-pink-200 hover:bg-pink-50 hover:border-pink-300 transition-colors flex items-center gap-1 shadow-sm"
+                  className="px-2.5 py-1 bg-white rounded-full text-[10px] text-pink-600 border border-pink-200 hover:bg-pink-50 hover:border-pink-300 transition-colors flex items-center gap-0.5 shadow-sm"
                 >
-                  <Search className="size-3" />
+                  <Search className="size-2.5" />
                   搜索收藏
                 </button>
                 <button
                   onClick={() => setInput("帮我制定知识复习计划")}
-                  className="px-3 py-1.5 bg-white rounded-full text-xs text-amber-600 border border-amber-200 hover:bg-amber-50 hover:border-amber-300 transition-colors flex items-center gap-1 shadow-sm"
+                  className="px-2.5 py-1 bg-white rounded-full text-[10px] text-amber-600 border border-amber-200 hover:bg-amber-50 hover:border-amber-300 transition-colors flex items-center gap-0.5 shadow-sm"
                 >
-                  <BookOpen className="size-3" />
+                  <BookOpen className="size-2.5" />
                   知识复习
                 </button>
                 <button
                   onClick={() => setInput("我有哪些文件夹")}
-                  className="px-3 py-1.5 bg-white rounded-full text-xs text-purple-600 border border-purple-200 hover:bg-purple-50 hover:border-purple-300 transition-colors flex items-center gap-1 shadow-sm"
+                  className="px-2.5 py-1 bg-white rounded-full text-[10px] text-purple-600 border border-purple-200 hover:bg-purple-50 hover:border-purple-300 transition-colors flex items-center gap-0.5 shadow-sm"
                 >
-                  <FolderOpen className="size-3" />
+                  <FolderOpen className="size-2.5" />
                   查看文件夹
                 </button>
                 <button
                   onClick={() => setInput("统计我的收藏情况")}
-                  className="px-3 py-1.5 bg-white rounded-full text-xs text-indigo-600 border border-indigo-200 hover:bg-indigo-50 hover:border-indigo-300 transition-colors flex items-center gap-1 shadow-sm"
+                  className="px-2.5 py-1 bg-white rounded-full text-[10px] text-indigo-600 border border-indigo-200 hover:bg-indigo-50 hover:border-indigo-300 transition-colors flex items-center gap-0.5 shadow-sm"
                 >
-                  <BarChart3 className="size-3" />
+                  <BarChart3 className="size-2.5" />
                   统计分析
                 </button>
               </div>

@@ -164,11 +164,11 @@ describe("AI 能力升级 v4.3 集成测试", () => {
   describe("T3: 模型分层策略", () => {
     it("getTierByIntent 应根据意图选择合适层级", () => {
       // 简单查询应使用 fast 层
-      const countTier = getTierByIntent("query:count");
+      const countTier = getTierByIntent("query", "count");
       expect(countTier).toBe("fast");
 
       // 搜索应使用 standard 层
-      const searchTier = getTierByIntent("query:search");
+      const searchTier = getTierByIntent("query", "search");
       expect(searchTier).toBe("standard");
 
       // 分析应使用 deep 层
