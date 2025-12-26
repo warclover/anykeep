@@ -19,14 +19,22 @@ import type { CorrectionSignal, IntentType } from "../types";
 // =============================================================================
 
 // Mock 链式调用返回值
-const mockSingle = jest.fn();
-const mockSelect = jest.fn();
-const mockInsert = jest.fn();
-const mockUpdate = jest.fn();
-const mockEq = jest.fn();
-const mockOrder = jest.fn();
-const mockLimit = jest.fn();
-const mockFrom = jest.fn();
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const mockSingle = jest.fn<any>();
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const mockSelect = jest.fn<any>();
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const mockInsert = jest.fn<any>();
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const mockUpdate = jest.fn<any>();
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const mockEq = jest.fn<any>();
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const mockOrder = jest.fn<any>();
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const mockLimit = jest.fn<any>();
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const mockFrom = jest.fn<any>();
 
 // 设置 Supabase Mock
 jest.mock("@/lib/supabase/client", () => ({
