@@ -1,8 +1,9 @@
 /**
  * AI 附件系统模块导出
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-26
+ * @updated 2025-12-26 - 添加预览模态框组件
  */
 
 // 类型导出
@@ -14,6 +15,7 @@ export { AttachmentPopover } from "./attachment-popover";
 export { AttachmentPanelContent } from "./attachment-panel-content";
 export { AttachmentSearchInput } from "./attachment-search-input";
 export { AttachmentIndicator } from "./attachment-indicator";
+export { AttachmentPreviewModal } from "./attachment-preview-modal";
 export { BookmarkSelectList } from "./bookmark-select-list";
 export { FileUploadZone } from "./file-upload-zone";
 
@@ -23,5 +25,6 @@ export type { AttachmentPopoverProps } from "./attachment-popover";
 export type { AttachmentPanelContentProps } from "./attachment-panel-content";
 export type { AttachmentSearchInputProps } from "./attachment-search-input";
 export type { AttachmentIndicatorProps } from "./attachment-indicator";
+export type { AttachmentPreviewModalProps } from "./attachment-preview-modal";
 export type { BookmarkSelectListProps } from "./bookmark-select-list";
 export type { FileUploadZoneProps } from "./file-upload-zone";

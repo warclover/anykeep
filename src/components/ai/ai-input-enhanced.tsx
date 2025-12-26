@@ -25,6 +25,7 @@ import {
   AttachmentButton,
   AttachmentPopover,
   AttachmentIndicator,
+  AttachmentPreviewModal,
   type AttachmentItem,
   ATTACHMENT_LIMITS,
 } from "./attachment";
@@ -98,6 +99,10 @@ export function AIInputEnhanced({
   const [isAttachmentPopoverOpen, setIsAttachmentPopoverOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
+  // 附件预览状态
+  const [previewItem, setPreviewItem] = useState<AttachmentItem | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+
   // 获取书签数据
   const {
     bookmarks,
@@ -130,6 +135,21 @@ export function AIInputEnhanced({
     }
   }, [value, disabled, onSubmit, selectedTool]);
 
+  // 处理附件预览
+  const handlePreviewAttachment = useCallback((item: AttachmentItem) => {
+    setPreviewItem(item);
+    setIsPreviewOpen(true);
+  }, []);
+
+  // 处理移除单个附件
+  const handleRemoveAttachment = useCallback(
+    (id: string) => {
+      const newItems = attachments.filter((item) => item.id !== id);
+      onAttachmentsChange(newItems);
+    },
+    [attachments, onAttachmentsChange],
+  );
+
   const hasContext = contextItems.length > 0;
   const hasAttachments = attachments.length > 0;
 
@@ -141,6 +161,8 @@ export function AIInputEnhanced({
           items={attachments}
           onClear={onClearAttachments}
           onExpand={() => setIsAttachmentPopoverOpen(true)}
+          onPreview={handlePreviewAttachment}
+          onRemove={handleRemoveAttachment}
         />
       )}
 
@@ -249,6 +271,13 @@ export function AIInputEnhanced({
           </div>
         )}
       </div>
+
+      {/* 附件预览模态框 */}
+      <AttachmentPreviewModal
+        open={isPreviewOpen}
+        onOpenChange={setIsPreviewOpen}
+        attachment={previewItem}
+      />
     </div>
   );
 }

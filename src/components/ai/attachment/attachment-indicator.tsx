@@ -1,15 +1,16 @@
 /**
  * 附件指示器组件
  *
- * 显示已选附件摘要，支持清除操作
+ * 显示已选附件摘要，支持清除和预览操作
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-26
+ * @updated 2025-12-26 - 添加预览功能支持
  */
 
 "use client";
 
-import { Paperclip } from "lucide-react";
+import { Paperclip, Eye, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ATTACHMENT_TEXT, type AttachmentItem } from "./types";
 
@@ -24,32 +25,97 @@ export interface AttachmentIndicatorProps {
   onClear: () => void;
   /** 点击展开回调（可选） */
   onExpand?: () => void;
+  /** 预览单个附件回调（可选） */
+  onPreview?: (item: AttachmentItem) => void;
+  /** 移除单个附件回调（可选） */
+  onRemove?: (id: string) => void;
   /** 自定义类名 */
   className?: string;
 }
 
 // =============================================================================
-// 组件实现
+// 子组件：单个附件标签
+// =============================================================================
+
+interface AttachmentTagProps {
+  item: AttachmentItem;
+  onPreview?: (item: AttachmentItem) => void;
+  onRemove?: (id: string) => void;
+}
+
+function AttachmentTag({ item, onPreview, onRemove }: AttachmentTagProps) {
+  const isBookmark = item.type === "bookmark";
+
+  return (
+    <div
+      className={cn(
+        "inline-flex items-center gap-1 px-2 py-1 rounded-full",
+        "text-xs",
+        isBookmark ? "bg-pink-100 text-pink-700" : "bg-blue-100 text-blue-700",
+      )}
+    >
+      {/* 标题 - 可点击预览 */}
+      <button
+        type="button"
+        onClick={() => onPreview?.(item)}
+        className={cn(
+          "max-w-[120px] truncate",
+          onPreview && "hover:underline cursor-pointer",
+          !onPreview && "cursor-default",
+        )}
+        title={`点击预览: ${item.title}`}
+      >
+        {item.title}
+      </button>
+
+      {/* 预览按钮 */}
+      {onPreview && (
+        <button
+          type="button"
+          onClick={() => onPreview(item)}
+          className={cn(
+            "p-0.5 rounded-full",
+            isBookmark ? "hover:bg-pink-200" : "hover:bg-blue-200",
+          )}
+          title="预览"
+        >
+          <Eye className="size-3" />
+        </button>
+      )}
+
+      {/* 移除按钮 */}
+      {onRemove && (
+        <button
+          type="button"
+          onClick={() => onRemove(item.id)}
+          className={cn(
+            "p-0.5 rounded-full",
+            isBookmark ? "hover:bg-pink-200" : "hover:bg-blue-200",
+          )}
+          title="移除"
+        >
+          <X className="size-3" />
+        </button>
+      )}
+    </div>
+  );
+}
+
+// =============================================================================
+// 主组件
 // =============================================================================
 
 export function AttachmentIndicator({
   items,
   onClear,
   onExpand,
+  onPreview,
+  onRemove,
   className,
 }: AttachmentIndicatorProps) {
   if (items.length === 0) {
     return null;
   }
-
-  const firstItem = items[0];
-  const hasMore = items.length > 1;
-  const moreCount = items.length - 1;
-
-  // 构建显示文本
-  const displayText = hasMore
-    ? `${firstItem.title} · +${moreCount} ${ATTACHMENT_TEXT.INDICATOR_MORE}`
-    : firstItem.title;
 
   return (
     <div
@@ -59,13 +125,12 @@ export function AttachmentIndicator({
         className,
       )}
     >
-      {/* 图标和文本 */}
+      {/* 图标 */}
       <button
         type="button"
         onClick={onExpand}
         className={cn(
-          "flex-1 flex items-center gap-2 text-left",
-          "text-sm text-pink-700",
+          "flex items-center gap-1 text-sm text-pink-700",
           onExpand && "hover:text-pink-800 cursor-pointer",
           !onExpand && "cursor-default",
         )}
@@ -74,12 +139,21 @@ export function AttachmentIndicator({
         <span className="flex-shrink-0">
           {ATTACHMENT_TEXT.INDICATOR_PREFIX}
         </span>
-        <span className="truncate" title={displayText}>
-          {displayText}
-        </span>
       </button>
 
-      {/* 清除按钮 */}
+      {/* 附件标签列表 */}
+      <div className="flex-1 flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
+        {items.map((item) => (
+          <AttachmentTag
+            key={item.id}
+            item={item}
+            onPreview={onPreview}
+            onRemove={onRemove}
+          />
+        ))}
+      </div>
+
+      {/* 全部清除按钮 */}
       <button
         type="button"
         onClick={onClear}
