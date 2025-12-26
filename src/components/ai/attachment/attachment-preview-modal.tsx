@@ -338,7 +338,7 @@ export function AttachmentPreviewModal({
         {/* Header - 移动端减少内边距 */}
         <DialogHeader className="px-4 sm:px-6 py-3 sm:py-4 border-b">
           <div className="flex items-center justify-between">
-            <DialogTitle className="text-base sm:text-lg">{title}</DialogTitle>
+            <DialogTitle className="text-sm sm:text-base">{title}</DialogTitle>
             <Button
               variant="ghost"
               size="icon-sm"
@@ -351,7 +351,7 @@ export function AttachmentPreviewModal({
           {/* 附件标题 - 移动端支持换行 */}
           <p
             className={cn(
-              "text-sm sm:text-base font-medium text-foreground mt-1 break-words",
+              "text-xs sm:text-sm font-medium text-foreground mt-1 break-words",
               isBookmark ? "text-pink-600" : "text-blue-600",
             )}
           >

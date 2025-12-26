@@ -79,10 +79,10 @@ export function AIWelcomeScreen({ onSetInput }: AIWelcomeScreenProps) {
             <Sparkles className="size-5 text-white" />
           </div>
           <div>
-            <p className="text-gray-700 font-medium">
+            <p className="text-gray-700 font-medium text-sm">
               你好！我是你的 AI 助手 ✨
             </p>
-            <p className="text-gray-500 text-sm mt-1">有什么可以帮你的吗？</p>
+            <p className="text-gray-500 text-xs mt-1">有什么可以帮你的吗？</p>
           </div>
         </div>
 
@@ -94,9 +94,9 @@ export function AIWelcomeScreen({ onSetInput }: AIWelcomeScreenProps) {
               <button
                 key={action.id}
                 onClick={() => onSetInput(action.input)}
-                className={`px-3 py-1.5 bg-white rounded-full text-xs border transition-colors flex items-center gap-1 shadow-sm ${action.colorClass}`}
+                className={`px-2.5 py-1 bg-white rounded-full text-[10px] border transition-colors flex items-center gap-0.5 shadow-sm ${action.colorClass}`}
               >
-                <Icon className="size-3" />
+                <Icon className="size-2.5" />
                 {action.label}
               </button>
             );

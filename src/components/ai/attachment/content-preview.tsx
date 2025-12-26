@@ -96,7 +96,7 @@ export function ContentPreview({
   if (!displayContent) {
     return (
       <div className={cn("rounded-lg bg-muted/50 p-4", className)}>
-        <p className="text-sm text-muted-foreground italic">{emptyText}</p>
+        <p className="text-xs text-muted-foreground italic">{emptyText}</p>
       </div>
     );
   }
@@ -105,14 +105,14 @@ export function ContentPreview({
   return (
     <div className={cn("rounded-lg bg-muted/50 p-4", className)}>
       {monospace ? (
-        <pre className="text-sm text-foreground whitespace-pre-wrap font-mono break-words">
+        <pre className="text-xs text-foreground whitespace-pre-wrap font-mono break-words">
           {displayContent}
           {showTruncatedHint && (
             <span className="text-muted-foreground">{truncatedText}</span>
           )}
         </pre>
       ) : (
-        <p className="text-sm text-foreground whitespace-pre-wrap break-words">
+        <p className="text-xs text-foreground whitespace-pre-wrap break-words">
           {displayContent}
           {showTruncatedHint && (
             <span className="text-muted-foreground">{truncatedText}</span>

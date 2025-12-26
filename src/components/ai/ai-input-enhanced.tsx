@@ -230,7 +230,7 @@ export function AIInputEnhanced({
               disabled={disabled}
               rows={1}
               className={cn(
-                "w-full bg-transparent resize-none outline-none text-gray-700 placeholder-gray-400 text-sm",
+                "w-full bg-transparent resize-none outline-none text-gray-700 placeholder-gray-400 text-xs",
                 "min-h-[24px] max-h-[100px] border-0 p-0 focus-visible:ring-0",
               )}
               style={{

@@ -152,7 +152,7 @@ export const AIMessageEnhanced = memo(function AIMessageEnhanced({
         {/* 消息气泡 - 糖果色风格 */}
         <div
           className={cn(
-            "rounded-2xl px-4 py-2.5 text-sm shadow-sm",
+            "rounded-2xl px-4 py-2.5 text-xs shadow-sm",
             isUser
               ? "bg-gradient-to-r from-pink-400 to-rose-400 text-white rounded-tr-md"
               : "bg-white text-gray-700 border border-purple-100 rounded-tl-md",

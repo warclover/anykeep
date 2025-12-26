@@ -105,10 +105,10 @@ export class AttachmentErrorBoundary extends Component<
             className="size-10 text-amber-500 mb-3"
             aria-hidden="true"
           />
-          <h3 className="text-base font-medium text-foreground mb-1">
+          <h3 className="text-sm font-medium text-foreground mb-1">
             {ERROR_TEXT.TITLE}
           </h3>
-          <p className="text-sm text-muted-foreground mb-4 text-center">
+          <p className="text-xs text-muted-foreground mb-4 text-center">
             {ERROR_TEXT.DESCRIPTION}
           </p>
           <Button

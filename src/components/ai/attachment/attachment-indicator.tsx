@@ -137,7 +137,7 @@ export function AttachmentIndicator({
         type="button"
         onClick={onExpand}
         className={cn(
-          "flex items-center gap-1 text-sm text-pink-700",
+          "flex items-center gap-1 text-xs text-pink-700",
           onExpand && "hover:text-pink-800 cursor-pointer",
           !onExpand && "cursor-default",
         )}

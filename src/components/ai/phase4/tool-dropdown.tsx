@@ -256,7 +256,7 @@ export const ToolDropdown = memo(function ToolDropdown({
             "flex items-center gap-1.5 px-3 py-2 rounded-xl",
             "bg-gradient-to-r from-pink-50 to-rose-50",
             "border border-pink-200 hover:border-pink-300",
-            "text-sm font-medium text-pink-600",
+            "text-xs font-medium text-pink-600",
             "transition-all duration-200",
             "hover:shadow-sm hover:from-pink-100 hover:to-rose-100",
             "focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-300",
@@ -310,7 +310,7 @@ export const ToolDropdown = memo(function ToolDropdown({
                   )}
                 >
                   <span className="text-base">{group.icon}</span>
-                  <span className="flex-1 text-sm font-medium">
+                  <span className="flex-1 text-xs font-medium">
                     {group.name}
                   </span>
                   {hasSubTools && (
@@ -345,8 +345,8 @@ export const ToolDropdown = memo(function ToolDropdown({
                               : "text-gray-600 hover:bg-gray-50",
                           )}
                         >
-                          <span className="text-sm">{subTool.icon}</span>
-                          <span className="flex-1 text-sm">{subTool.name}</span>
+                          <span className="text-xs">{subTool.icon}</span>
+                          <span className="flex-1 text-xs">{subTool.name}</span>
                           {isSubSelected && (
                             <Check className="size-3.5 text-pink-500" />
                           )}

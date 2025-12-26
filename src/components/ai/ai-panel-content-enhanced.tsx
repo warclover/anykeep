@@ -817,7 +817,7 @@ export function AIPanelContentEnhanced({
               </div>
             </div>
             <div>
-              <h3 className="text-base font-semibold text-white">{title}</h3>
+              <h3 className="text-sm font-semibold text-white">{title}</h3>
               <p className="text-xs text-white/80 flex items-center gap-1.5">
                 <span className="w-2 h-2 bg-green-300 rounded-full animate-pulse" />
                 在线 · 随时为您服务

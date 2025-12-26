@@ -329,7 +329,7 @@ function FeedbackDialog({ open, onOpenChange, onSubmit }: FeedbackDialogProps) {
         <div className="space-y-4 py-4">
           {/* 反馈原因选择 */}
           <div className="space-y-3">
-            <Label className="text-sm font-medium">请选择原因（可多选）</Label>
+            <Label className="text-xs font-medium">请选择原因（可多选）</Label>
             {FEEDBACK_REASONS.map((reason) => (
               <div key={reason.id} className="flex items-center space-x-2">
                 <Checkbox
@@ -339,7 +339,7 @@ function FeedbackDialog({ open, onOpenChange, onSubmit }: FeedbackDialogProps) {
                 />
                 <Label
                   htmlFor={reason.id}
-                  className="text-sm font-normal cursor-pointer"
+                  className="text-xs font-normal cursor-pointer"
                 >
                   {reason.label}
                 </Label>
@@ -349,7 +349,7 @@ function FeedbackDialog({ open, onOpenChange, onSubmit }: FeedbackDialogProps) {
 
           {/* 补充说明 */}
           <div className="space-y-2">
-            <Label htmlFor="comment" className="text-sm font-medium">
+            <Label htmlFor="comment" className="text-xs font-medium">
               补充说明（可选）
             </Label>
             <Textarea
@@ -460,7 +460,7 @@ function SaveToNoteDialog({
         <div className="space-y-4 py-4">
           {/* 笔记标题 */}
           <div className="space-y-2">
-            <Label htmlFor="note-title" className="text-sm font-medium">
+            <Label htmlFor="note-title" className="text-xs font-medium">
               笔记标题
             </Label>
             <input
@@ -470,7 +470,7 @@ function SaveToNoteDialog({
               onChange={(e) => setTitle(e.target.value)}
               className={cn(
                 "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1",
-                "text-sm shadow-sm transition-colors",
+                "text-xs shadow-sm transition-colors",
                 "placeholder:text-muted-foreground",
                 "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
               )}
@@ -480,15 +480,15 @@ function SaveToNoteDialog({
 
           {/* 内容预览 */}
           <div className="space-y-2">
-            <Label className="text-sm font-medium">内容预览</Label>
-            <div className="max-h-32 overflow-y-auto rounded-md border bg-muted/50 p-3 text-sm">
+            <Label className="text-xs font-medium">内容预览</Label>
+            <div className="max-h-32 overflow-y-auto rounded-md border bg-muted/50 p-3 text-xs">
               {content.slice(0, 200)}
               {content.length > 200 && "..."}
             </div>
           </div>
 
           {/* 错误提示 */}
-          {error && <div className="text-sm text-destructive">{error}</div>}
+          {error && <div className="text-xs text-destructive">{error}</div>}
         </div>
 
         <DialogFooter>
