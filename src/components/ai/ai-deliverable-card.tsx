@@ -62,6 +62,8 @@ const DELIVERABLE_ICON_MAP: Record<DeliverableType, LucideIcon> = {
   graph: BarChart3,
   table: Table2,
   search_results: Search,
+  organize_plan: LayoutGrid,
+  organize_result: FileText,
 };
 
 /**
@@ -76,6 +78,8 @@ const DELIVERABLE_TYPE_NAMES: Record<DeliverableType, string> = {
   graph: "图表",
   table: "表格",
   search_results: "搜索结果",
+  organize_plan: "整理方案",
+  organize_result: "整理结果",
 };
 
 /**

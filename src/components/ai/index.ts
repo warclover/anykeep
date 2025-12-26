@@ -1,9 +1,10 @@
 /**
  * AI 组件模块导出
  *
- * @version 2.0.0
+ * @version 2.1.0
  * @since 2025-12-22
  * @updated 2025-12-24 - 添加统一输出协议相关组件
+ * @updated 2025-12-26 - 添加整理组件（批量整理前端集成）
  */
 
 // 类型
@@ -53,6 +54,22 @@ export {
   type MemoryIndicatorProps,
   type MemoryToastProps,
 } from "./memory-indicator";
+
+// 整理组件（批量整理前端集成）
+export {
+  OrganizePlanPreview,
+  type OrganizePlanPreviewProps,
+} from "./organize-plan-preview";
+export {
+  OrganizeProgress,
+  OrganizeProgressInline,
+  type OrganizeProgressProps,
+} from "./organize-progress";
+export {
+  OrganizeResult,
+  type OrganizeResultProps,
+  type UndoState,
+} from "./organize-result";
 
 // 书签详情页组件
 export { AISmartSummary, type AISmartSummaryProps } from "./ai-smart-summary";

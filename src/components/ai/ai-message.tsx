@@ -4,21 +4,26 @@
  * 显示单条对话消息，支持用户消息和助手消息
  * 糖果色风格设计，支持统一输出协议
  *
- * @version 2.0.0
+ * @version 2.1.0
  * @since 2025-12-22
  * @updated 2025-12-24 - 添加进度、交付物、建议支持
+ * @updated 2025-12-26 - 添加整理组件集成
  */
 
 "use client";
 
-import { memo } from "react";
+import { memo, useCallback } from "react";
 import { Sparkles, User, AlertCircle, Wrench, Zap, Layers } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { AIMessageProps, SuggestionItem } from "./types";
+import type { AIMessageProps, SuggestionItem, DeliverableData } from "./types";
 import { AIProgressIndicatorInline } from "./ai-progress-indicator";
 import { AIDeliverableCard } from "./ai-deliverable-card";
 import { AISuggestionsInline } from "./ai-suggestions-panel";
 import { MemoryIndicator } from "./memory-indicator";
+// 整理相关组件
+import { OrganizeProgressInline } from "./organize-progress";
+import { OrganizeResult } from "./organize-result";
+import type { OrganizeStats } from "@/lib/ai-skills/skills/batch-organize/types";
 
 /**
  * AI 消息组件 - 糖果色风格
@@ -27,8 +32,10 @@ export const AIMessage = memo(function AIMessage({
   message,
   isLast = false,
   onSuggestionClick,
+  onOrganizeUndo,
 }: AIMessageProps & {
   onSuggestionClick?: (suggestion: SuggestionItem) => void;
+  onOrganizeUndo?: (snapshotIds: string[]) => Promise<boolean>;
 }) {
   const isUser = message.role === "user";
   const isStreaming = message.status === "streaming";
@@ -43,6 +50,87 @@ export const AIMessage = memo(function AIMessage({
     message.memory.resolved &&
     message.memory.referenceCount > 0;
   const isOrchestration = message.executionMode === "orchestration";
+
+  // 检测是否是整理相关消息
+  const isOrganizeSkill = message.skillId === "batch_organize";
+  const isOrganizeInProgress = isOrganizeSkill && hasProgress;
+
+  // 处理撤销操作
+  const handleOrganizeUndo = useCallback(
+    async (snapshotIds: string[]) => {
+      if (onOrganizeUndo) {
+        return onOrganizeUndo(snapshotIds);
+      }
+      return false;
+    },
+    [onOrganizeUndo],
+  );
+
+  // 渲染交付物（区分整理结果和普通交付物）
+  const renderDeliverables = useCallback(
+    (deliverables: DeliverableData[]) => {
+      return deliverables.map((deliverable, index) => {
+        // 整理结果使用专用组件
+        if (
+          deliverable.type === "organize_result" ||
+          (deliverable.type === "report" &&
+            deliverable.metadata &&
+            "actionsExecuted" in deliverable.metadata &&
+            isOrganizeSkill)
+        ) {
+          const content = deliverable.content as {
+            stats?: OrganizeStats;
+            summary?: string;
+            suggestions?: string[];
+            snapshotIds?: string[];
+            generatedAt?: string;
+          };
+          const metadata = deliverable.metadata as {
+            actionsExecuted?: number;
+            totalProcessed?: number;
+            categorizeSuggestions?: number;
+            tagSuggestions?: number;
+            duplicatesFound?: number;
+            archiveCandidates?: number;
+            invalidUrls?: number;
+          };
+
+          // 构建 stats
+          const stats: OrganizeStats = content?.stats || {
+            totalProcessed: metadata?.totalProcessed || 0,
+            categorizeSuggestions: metadata?.categorizeSuggestions || 0,
+            tagSuggestions: metadata?.tagSuggestions || 0,
+            duplicatesFound: metadata?.duplicatesFound || 0,
+            archiveCandidates: metadata?.archiveCandidates || 0,
+            invalidUrls: metadata?.invalidUrls || 0,
+            actionsExecuted: metadata?.actionsExecuted || 0,
+          };
+
+          return (
+            <OrganizeResult
+              key={index}
+              success={true}
+              stats={stats}
+              summary={
+                content?.summary ||
+                (typeof deliverable.content === "string"
+                  ? deliverable.content
+                  : "整理完成")
+              }
+              suggestions={content?.suggestions}
+              snapshotIds={content?.snapshotIds}
+              onUndo={handleOrganizeUndo}
+              generatedAt={content?.generatedAt}
+            />
+          );
+        }
+
+        // 普通交付物使用默认卡片
+        return <AIDeliverableCard key={index} deliverable={deliverable} />;
+      });
+    },
+    [isOrganizeSkill, handleOrganizeUndo],
+  );
 
   return (
     <div
@@ -170,19 +258,24 @@ export const AIMessage = memo(function AIMessage({
           </div>
         )}
 
-        {/* 进度显示 */}
+        {/* 进度显示 - 整理任务使用专用进度组件 */}
         {hasProgress && message.progress && (
           <div className="mt-2">
-            <AIProgressIndicatorInline progress={message.progress} />
+            {isOrganizeInProgress ? (
+              <OrganizeProgressInline
+                currentStep={message.progress.step}
+                percent={message.progress.percent}
+              />
+            ) : (
+              <AIProgressIndicatorInline progress={message.progress} />
+            )}
           </div>
         )}
 
-        {/* 交付物显示 */}
+        {/* 交付物显示 - 整理结果使用专用组件 */}
         {hasDeliverables && (
           <div className="mt-3 space-y-2">
-            {message.deliverables!.map((deliverable, index) => (
-              <AIDeliverableCard key={index} deliverable={deliverable} />
-            ))}
+            {renderDeliverables(message.deliverables!)}
           </div>
         )}
 

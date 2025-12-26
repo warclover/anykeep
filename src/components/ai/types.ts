@@ -42,7 +42,10 @@ export type DeliverableType =
   | "mindmap"
   | "graph"
   | "table"
-  | "search_results"; // 搜索结果（使用 FormattedSearchResponse）
+  | "search_results" // 搜索结果（使用 FormattedSearchResponse）
+  // 整理相关交付物类型
+  | "organize_plan" // 整理方案预览
+  | "organize_result"; // 整理结果（含撤销）
 
 /**
  * 交付物数据
