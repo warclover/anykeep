@@ -241,9 +241,9 @@ describe("HistoryMatcher", () => {
 
       // Access extended property through metadata (double cast for type safety)
       const result = results[0] as unknown as {
-        metadata: { matchCount: number };
+        metadata: { similarCount: number };
       };
-      expect(result.metadata.matchCount).toBe(3);
+      expect(result.metadata.similarCount).toBe(3);
     });
 
     it("should limit similar titles to 3", async () => {
@@ -262,9 +262,9 @@ describe("HistoryMatcher", () => {
 
       // Access extended property through metadata with double cast
       const result = results[0] as unknown as {
-        metadata: { sampleTitles: string[] };
+        metadata: { similarTitles: string[] };
       };
-      expect(result.metadata.sampleTitles).toHaveLength(3);
+      expect(result.metadata.similarTitles).toHaveLength(3);
     });
 
     it("should pass bookmarkId to exclude self-match", async () => {
