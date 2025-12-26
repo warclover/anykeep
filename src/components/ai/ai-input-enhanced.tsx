@@ -8,11 +8,13 @@
  * - ToolDropdown: 工具下拉菜单（YouMind 风格）
  * - ContextIndicator: 上下文引用指示器
  * - AttachmentIndicator: 附件指示器
+ * - AttachmentErrorBoundary: 错误边界保护
  *
- * @version 1.2.0
+ * @version 1.3.0
  * @since 2025-12-25
  * @updated 2025-12-26 - 使用 ToolDropdown 替换 ToolSelector
  * @updated 2025-12-26 - 添加附件按钮和附件指示器
+ * @updated 2025-12-26 - 添加错误边界保护预览模态框
  */
 
 import { useRef, useCallback, useState, type KeyboardEvent } from "react";
@@ -26,6 +28,7 @@ import {
   AttachmentPopover,
   AttachmentIndicator,
   AttachmentPreviewModal,
+  AttachmentErrorBoundary,
   type AttachmentItem,
   ATTACHMENT_LIMITS,
 } from "./attachment";
@@ -272,12 +275,22 @@ export function AIInputEnhanced({
         )}
       </div>
 
-      {/* 附件预览模态框 */}
-      <AttachmentPreviewModal
-        open={isPreviewOpen}
-        onOpenChange={setIsPreviewOpen}
-        attachment={previewItem}
-      />
+      {/* 附件预览模态框 - 使用错误边界包装 */}
+      <AttachmentErrorBoundary
+        onError={(error, errorInfo) => {
+          console.error("AttachmentPreviewModal error:", error, errorInfo);
+        }}
+        onReset={() => {
+          setPreviewItem(null);
+          setIsPreviewOpen(false);
+        }}
+      >
+        <AttachmentPreviewModal
+          open={isPreviewOpen}
+          onOpenChange={setIsPreviewOpen}
+          attachment={previewItem}
+        />
+      </AttachmentErrorBoundary>
     </div>
   );
 }

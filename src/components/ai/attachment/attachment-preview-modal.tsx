@@ -3,8 +3,9 @@
  *
  * 支持预览书签摘要、文本内容、图片等
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-26
+ * @updated 2025-12-26 - 使用 ContentPreview 共享组件
  */
 
 "use client";
@@ -28,14 +29,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import { type AttachmentItem, ATTACHMENT_LIMITS } from "./types";
-
-// =============================================================================
-// 常量
-// =============================================================================
-
-/** 预览内容最大长度（防止性能问题） */
-const MAX_PREVIEW_LENGTH = ATTACHMENT_LIMITS.MAX_CONTENT_LENGTH;
+import { type AttachmentItem } from "./types";
+import { ContentPreview } from "./content-preview";
 
 // =============================================================================
 // 类型定义
@@ -84,25 +79,6 @@ function formatFileSize(bytes: number): string {
 }
 
 /**
- * 截断内容，防止渲染过长文本导致性能问题
- */
-function truncateContent(
-  content: string | undefined,
-  maxLength: number = MAX_PREVIEW_LENGTH,
-): { text: string; isTruncated: boolean } {
-  if (!content) {
-    return { text: "", isTruncated: false };
-  }
-  if (content.length <= maxLength) {
-    return { text: content, isTruncated: false };
-  }
-  return {
-    text: content.slice(0, maxLength),
-    isTruncated: true,
-  };
-}
-
-/**
  * 文件图标渲染组件
  */
 function FileIconRenderer({
@@ -146,29 +122,23 @@ function BookmarkPreview({ attachment }: BookmarkPreviewProps) {
     }
   }, [attachment.url]);
 
-  // 截断内容，防止性能问题
-  const { text: displayContent, isTruncated } = useMemo(
-    () => truncateContent(attachment.content),
-    [attachment.content],
-  );
-
   return (
-    <div className="space-y-4">
-      {/* 来源信息 */}
+    <div className="space-y-3 sm:space-y-4">
+      {/* 来源信息 - 移动端垂直布局 */}
       {attachment.url && (
         <div className="space-y-2">
-          <h4 className="text-sm font-medium text-muted-foreground">
+          <h4 className="text-xs sm:text-sm font-medium text-muted-foreground">
             {PREVIEW_TEXT.SOURCE}
           </h4>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-foreground truncate flex-1">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <span className="text-xs sm:text-sm text-foreground truncate flex-1 break-all">
               {attachment.url}
             </span>
             <Button
               variant="outline"
               size="sm"
               onClick={handleOpenLink}
-              className="flex-shrink-0"
+              className="flex-shrink-0 w-full sm:w-auto"
             >
               <ExternalLink className="size-4 mr-1" />
               {PREVIEW_TEXT.OPEN_LINK}
@@ -177,27 +147,17 @@ function BookmarkPreview({ attachment }: BookmarkPreviewProps) {
         </div>
       )}
 
-      {/* 内容摘要 */}
+      {/* 内容摘要 - 使用 ContentPreview 共享组件 */}
       <div className="space-y-2">
-        <h4 className="text-sm font-medium text-muted-foreground">
+        <h4 className="text-xs sm:text-sm font-medium text-muted-foreground">
           {PREVIEW_TEXT.CONTENT_SUMMARY}
         </h4>
-        <div className="rounded-lg bg-muted/50 p-4">
-          {displayContent ? (
-            <p className="text-sm text-foreground whitespace-pre-wrap break-words">
-              {displayContent}
-              {(attachment.truncated || isTruncated) && (
-                <span className="text-muted-foreground">
-                  {PREVIEW_TEXT.CONTENT_TRUNCATED}
-                </span>
-              )}
-            </p>
-          ) : (
-            <p className="text-sm text-muted-foreground italic">
-              {PREVIEW_TEXT.NO_CONTENT}
-            </p>
-          )}
-        </div>
+        <ContentPreview
+          content={attachment.content}
+          truncated={attachment.truncated}
+          emptyText={PREVIEW_TEXT.NO_CONTENT}
+          truncatedText={PREVIEW_TEXT.CONTENT_TRUNCATED}
+        />
       </div>
     </div>
   );
@@ -241,37 +201,31 @@ function FilePreview({ attachment }: FilePreviewProps) {
     return null;
   }, [isImage, attachment.content]);
 
-  // 截断内容，防止性能问题（仅用于非图片文件）
-  const { text: displayContent, isTruncated } = useMemo(
-    () =>
-      isImage
-        ? { text: "", isTruncated: false }
-        : truncateContent(attachment.content),
-    [isImage, attachment.content],
-  );
-
   return (
-    <div className="space-y-4">
-      {/* 文件信息 */}
+    <div className="space-y-3 sm:space-y-4">
+      {/* 文件信息 - 响应式布局 */}
       <div className="space-y-2">
-        <h4 className="text-sm font-medium text-muted-foreground">
+        <h4 className="text-xs sm:text-sm font-medium text-muted-foreground">
           {PREVIEW_TEXT.FILE_INFO}
         </h4>
-        <div className="flex items-center gap-4 p-3 rounded-lg bg-muted/50">
+        <div className="flex items-center gap-3 sm:gap-4 p-2 sm:p-3 rounded-lg bg-muted/50">
           <FileIconRenderer
             mimeType={attachment.mimeType}
-            className="size-8 text-muted-foreground"
+            className="size-6 sm:size-8 text-muted-foreground flex-shrink-0"
           />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">{attachment.title}</p>
-            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+            <p className="text-xs sm:text-sm font-medium truncate">
+              {attachment.title}
+            </p>
+            {/* 移动端垂直布局文件信息 */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:gap-4 text-xs text-muted-foreground">
               {attachment.size && (
                 <span>
                   {PREVIEW_TEXT.FILE_SIZE}: {formatFileSize(attachment.size)}
                 </span>
               )}
               {attachment.mimeType && (
-                <span>
+                <span className="truncate">
                   {PREVIEW_TEXT.FILE_TYPE}: {attachment.mimeType}
                 </span>
               )}
@@ -280,13 +234,13 @@ function FilePreview({ attachment }: FilePreviewProps) {
         </div>
       </div>
 
-      {/* 图片预览 */}
+      {/* 图片预览 - 移动端适配高度 */}
       {isImage && imageUrl && (
         <div className="space-y-2">
-          <h4 className="text-sm font-medium text-muted-foreground">
+          <h4 className="text-xs sm:text-sm font-medium text-muted-foreground">
             {PREVIEW_TEXT.IMAGE_PREVIEW}
           </h4>
-          <div className="rounded-lg overflow-hidden bg-muted/50 p-2 relative min-h-[100px]">
+          <div className="rounded-lg overflow-hidden bg-muted/50 p-1 sm:p-2 relative min-h-[80px] sm:min-h-[100px]">
             {/* 加载状态 */}
             {imageLoadState === "loading" && (
               <div
@@ -295,8 +249,13 @@ function FilePreview({ attachment }: FilePreviewProps) {
                 aria-live="polite"
               >
                 <div className="flex items-center gap-2 text-muted-foreground">
-                  <Loader2 className="size-5 animate-spin" aria-hidden="true" />
-                  <span className="text-sm">{PREVIEW_TEXT.IMAGE_LOADING}</span>
+                  <Loader2
+                    className="size-4 sm:size-5 animate-spin"
+                    aria-hidden="true"
+                  />
+                  <span className="text-xs sm:text-sm">
+                    {PREVIEW_TEXT.IMAGE_LOADING}
+                  </span>
                 </div>
               </div>
             )}
@@ -304,25 +263,28 @@ function FilePreview({ attachment }: FilePreviewProps) {
             {/* 错误状态 */}
             {imageLoadState === "error" && (
               <div
-                className="flex items-center justify-center h-[100px] text-muted-foreground"
+                className="flex items-center justify-center h-[80px] sm:h-[100px] text-muted-foreground"
                 role="alert"
               >
                 <div className="flex items-center gap-2">
-                  <AlertCircle className="size-5" aria-hidden="true" />
-                  <span className="text-sm">
+                  <AlertCircle
+                    className="size-4 sm:size-5"
+                    aria-hidden="true"
+                  />
+                  <span className="text-xs sm:text-sm">
                     {PREVIEW_TEXT.IMAGE_LOAD_ERROR}
                   </span>
                 </div>
               </div>
             )}
 
-            {/* 图片 */}
+            {/* 图片 - 移动端限制最大高度 */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={imageUrl}
               alt={`${attachment.title} 的预览图片`}
               className={cn(
-                "max-w-full max-h-[300px] object-contain mx-auto rounded",
+                "max-w-full max-h-[200px] sm:max-h-[300px] object-contain mx-auto rounded",
                 imageLoadState !== "loaded" && "invisible h-0",
               )}
               onLoad={() => setImageLoadState("loaded")}
@@ -332,22 +294,19 @@ function FilePreview({ attachment }: FilePreviewProps) {
         </div>
       )}
 
-      {/* 文本内容预览 */}
-      {!isImage && displayContent && (
+      {/* 文本内容预览 - 使用 ContentPreview 共享组件 */}
+      {!isImage && attachment.content && (
         <div className="space-y-2">
-          <h4 className="text-sm font-medium text-muted-foreground">
+          <h4 className="text-xs sm:text-sm font-medium text-muted-foreground">
             {PREVIEW_TEXT.CONTENT_SUMMARY}
           </h4>
-          <div className="rounded-lg bg-muted/50 p-4">
-            <pre className="text-sm text-foreground whitespace-pre-wrap font-mono break-words">
-              {displayContent}
-              {(attachment.truncated || isTruncated) && (
-                <span className="text-muted-foreground">
-                  {PREVIEW_TEXT.CONTENT_TRUNCATED}
-                </span>
-              )}
-            </pre>
-          </div>
+          <ContentPreview
+            content={attachment.content}
+            truncated={attachment.truncated}
+            emptyText={PREVIEW_TEXT.NO_CONTENT}
+            truncatedText={PREVIEW_TEXT.CONTENT_TRUNCATED}
+            monospace
+          />
         </div>
       )}
     </div>
@@ -374,10 +333,12 @@ export function AttachmentPreviewModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[80vh] p-0 gap-0">
-        <DialogHeader className="px-6 py-4 border-b">
+      {/* 响应式宽度：移动端全宽，桌面端最大 2xl */}
+      <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-2xl max-h-[85vh] sm:max-h-[80vh] p-0 gap-0">
+        {/* Header - 移动端减少内边距 */}
+        <DialogHeader className="px-4 sm:px-6 py-3 sm:py-4 border-b">
           <div className="flex items-center justify-between">
-            <DialogTitle className="text-lg">{title}</DialogTitle>
+            <DialogTitle className="text-base sm:text-lg">{title}</DialogTitle>
             <Button
               variant="ghost"
               size="icon-sm"
@@ -387,10 +348,10 @@ export function AttachmentPreviewModal({
               <X className="size-4" />
             </Button>
           </div>
-          {/* 附件标题 */}
+          {/* 附件标题 - 移动端支持换行 */}
           <p
             className={cn(
-              "text-base font-medium text-foreground mt-1",
+              "text-sm sm:text-base font-medium text-foreground mt-1 break-words",
               isBookmark ? "text-pink-600" : "text-blue-600",
             )}
           >
@@ -398,8 +359,9 @@ export function AttachmentPreviewModal({
           </p>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 max-h-[60vh]">
-          <div className="px-6 py-4">
+        {/* 内容区域 - 移动端增加高度 */}
+        <ScrollArea className="flex-1 max-h-[65vh] sm:max-h-[60vh]">
+          <div className="px-4 sm:px-6 py-3 sm:py-4">
             {isBookmark ? (
               <BookmarkPreview attachment={attachment} />
             ) : (
