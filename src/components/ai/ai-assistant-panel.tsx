@@ -18,7 +18,7 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet";
-import { AIPanelContent } from "./ai-panel-content";
+import { AIPanelContentEnhanced } from "./ai-panel-content-enhanced";
 import type { AIAssistantPanelProps } from "./types";
 
 /**
@@ -48,7 +48,7 @@ export function AIAssistantPanel({
         </SheetHeader>
 
         {/* 面板内容 */}
-        <AIPanelContent
+        <AIPanelContentEnhanced
           conversationId={conversationId}
           bookmarkIds={bookmarkIds}
           title={title}

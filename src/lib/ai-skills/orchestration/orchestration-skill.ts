@@ -263,7 +263,10 @@ export abstract class OrchestrationSkill<TInput = unknown, TOutput = unknown>
       content,
       downloadable: options.downloadable ?? true,
       shareable: options.shareable ?? true,
-      metadata: options.metadata,
+      metadata: {
+        ...options.metadata,
+        skillId: this.metadata.id, // 自动添加 skillId 便于前端识别
+      },
       createdAt: new Date(),
     };
   }

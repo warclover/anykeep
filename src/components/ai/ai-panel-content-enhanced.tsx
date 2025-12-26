@@ -245,13 +245,18 @@ export function AIPanelContentEnhanced({
 
         const decoder = new TextDecoder();
         let currentMessage: DisplayMessage = { ...assistantMessage };
+        let sseBuffer = ""; // 用于缓冲不完整的 SSE 行
 
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
 
-          const text = decoder.decode(value, { stream: true });
-          const lines = text.split("\n");
+          // 将新数据追加到缓冲区
+          sseBuffer += decoder.decode(value, { stream: true });
+
+          // 按换行符分割，保留最后一个可能不完整的行
+          const lines = sseBuffer.split("\n");
+          sseBuffer = lines.pop() || ""; // 保留最后一行（可能不完整）
 
           for (const line of lines) {
             if (line.startsWith("data: ")) {
@@ -299,7 +304,20 @@ export function AIPanelContentEnhanced({
                 }
               } catch (parseError) {
                 if (process.env.NODE_ENV === "development") {
-                  clientLogger.error({ parseError, line }, "SSE parse error");
+                  const errorMessage =
+                    parseError instanceof Error
+                      ? parseError.message
+                      : String(parseError);
+                  clientLogger.error(
+                    {
+                      error: errorMessage,
+                      lineLength: line.length,
+                      linePreview: line.slice(0, 200),
+                      lineTail:
+                        line.length > 200 ? line.slice(-100) : undefined,
+                    },
+                    "SSE parse error",
+                  );
                 }
               }
             }

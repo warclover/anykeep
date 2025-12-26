@@ -42,6 +42,10 @@ import type {
   KnowledgeExtraction,
   ExtractionFormat,
 } from "@/lib/ai-skills/skills/knowledge-extract";
+import {
+  KnowledgeReviewCard,
+  isKnowledgeReviewOutput,
+} from "./deliverables/knowledge-review-card";
 
 interface AIDeliverableCardProps {
   /** 交付物数据 */
@@ -361,6 +365,32 @@ const DocumentContent = memo(function DocumentContent({
   content: unknown;
   metadata?: Record<string, unknown>;
 }) {
+  // 检测是否为 knowledge_review skill 的交付物
+  const isKnowledgeReview = metadata?.skillId === "knowledge_review";
+
+  // Debug: 记录 content 类型和验证结果
+  if (isKnowledgeReview && process.env.NODE_ENV === "development") {
+    clientLogger.info(
+      {
+        contentType: typeof content,
+        isString: typeof content === "string",
+        isObject: typeof content === "object",
+        isNull: content === null,
+        typeGuardResult: isKnowledgeReviewOutput(content),
+        contentPreview:
+          typeof content === "string"
+            ? content.slice(0, 100)
+            : JSON.stringify(content)?.slice(0, 100),
+      },
+      "DocumentContent: Knowledge Review content debug",
+    );
+  }
+
+  // 如果是知识复习计划，使用专门的组件渲染
+  if (isKnowledgeReview && isKnowledgeReviewOutput(content)) {
+    return <KnowledgeReviewCard data={content} />;
+  }
+
   // 检测是否为 knowledge_extract skill 的交付物
   const isKnowledgeExtract = metadata?.skillId === "knowledge_extract";
 

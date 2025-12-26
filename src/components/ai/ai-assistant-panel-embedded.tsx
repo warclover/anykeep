@@ -11,7 +11,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { AIPanelContent } from "./ai-panel-content";
+import { AIPanelContentEnhanced } from "./ai-panel-content-enhanced";
 
 interface AIAssistantPanelEmbeddedProps {
   /** 是否展开 */
@@ -66,7 +66,7 @@ export function AIAssistantPanelEmbedded({
       {/* 只在展开时渲染内容，避免性能浪费 */}
       {open && (
         <div className="w-[360px] h-full">
-          <AIPanelContent
+          <AIPanelContentEnhanced
             conversationId={conversationId}
             bookmarkIds={bookmarkIds}
             title={title}

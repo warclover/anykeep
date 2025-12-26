@@ -63,6 +63,8 @@ export interface ChatMessage {
     content: unknown;
     downloadable?: boolean;
     shareable?: boolean;
+    /** 交付物元数据（包含 skillId 等） */
+    metadata?: Record<string, unknown>;
   }>;
   /** 后续建议 */
   suggestions?: Array<{
@@ -117,6 +119,8 @@ interface UnifiedStreamChunk {
     content?: unknown;
     downloadable?: boolean;
     shareable?: boolean;
+    /** 交付物元数据（包含 skillId 等） */
+    metadata?: Record<string, unknown>;
     suggestions?: Array<{
       label: string;
       action: string;
@@ -370,6 +374,7 @@ export function useAIChat(config: UseAIChatConfig = {}): UseAIChatReturn {
               content: chunk.data.content,
               downloadable: chunk.data.downloadable,
               shareable: chunk.data.shareable,
+              metadata: chunk.data.metadata,
             };
             deliverables.push(deliverable);
             const updated = {

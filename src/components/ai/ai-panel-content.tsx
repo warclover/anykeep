@@ -247,7 +247,20 @@ export function AIPanelContent({
                 }
               } catch (parseError) {
                 if (process.env.NODE_ENV === "development") {
-                  clientLogger.error({ parseError, line }, "SSE parse error");
+                  const errorMessage =
+                    parseError instanceof Error
+                      ? parseError.message
+                      : String(parseError);
+                  clientLogger.error(
+                    {
+                      error: errorMessage,
+                      lineLength: line.length,
+                      linePreview: line.slice(0, 200),
+                      lineTail:
+                        line.length > 200 ? line.slice(-100) : undefined,
+                    },
+                    "SSE parse error",
+                  );
                 }
               }
             }

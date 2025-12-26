@@ -349,6 +349,18 @@ async function handleUnifiedEngine(
             options,
           )) {
             const data = JSON.stringify(chunk);
+
+            // Debug: 记录 deliverable 块的大小
+            if (chunk.type === "deliverable") {
+              logger.info(
+                {
+                  chunkType: chunk.type,
+                  dataLength: data.length,
+                  contentPreview: data.slice(0, 300),
+                },
+                "Unified API: Sending deliverable chunk",
+              );
+            }
             controller.enqueue(encoder.encode(`data: ${data}\n\n`));
           }
           controller.close();
