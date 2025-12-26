@@ -26,7 +26,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import { type AttachmentItem } from "./types";
+import { type AttachmentItem, ATTACHMENT_LIMITS } from "./types";
+
+// =============================================================================
+// 常量
+// =============================================================================
+
+/** 预览内容最大长度（防止性能问题） */
+const MAX_PREVIEW_LENGTH = ATTACHMENT_LIMITS.MAX_CONTENT_LENGTH;
 
 // =============================================================================
 // 类型定义
@@ -72,6 +79,25 @@ function formatFileSize(bytes: number): string {
 }
 
 /**
+ * 截断内容，防止渲染过长文本导致性能问题
+ */
+function truncateContent(
+  content: string | undefined,
+  maxLength: number = MAX_PREVIEW_LENGTH,
+): { text: string; isTruncated: boolean } {
+  if (!content) {
+    return { text: "", isTruncated: false };
+  }
+  if (content.length <= maxLength) {
+    return { text: content, isTruncated: false };
+  }
+  return {
+    text: content.slice(0, maxLength),
+    isTruncated: true,
+  };
+}
+
+/**
  * 文件图标渲染组件
  */
 function FileIconRenderer({
@@ -101,9 +127,25 @@ interface BookmarkPreviewProps {
 function BookmarkPreview({ attachment }: BookmarkPreviewProps) {
   const handleOpenLink = useCallback(() => {
     if (attachment.url) {
-      window.open(attachment.url, "_blank", "noopener,noreferrer");
+      try {
+        const url = new URL(attachment.url);
+        // 只允许 http/https 协议，防止 javascript: 等危险协议
+        if (url.protocol === "http:" || url.protocol === "https:") {
+          window.open(attachment.url, "_blank", "noopener,noreferrer");
+        } else {
+          console.error("Blocked unsafe URL protocol:", url.protocol);
+        }
+      } catch (e) {
+        console.error("Invalid URL:", e);
+      }
     }
   }, [attachment.url]);
+
+  // 截断内容，防止性能问题
+  const { text: displayContent, isTruncated } = useMemo(
+    () => truncateContent(attachment.content),
+    [attachment.content],
+  );
 
   return (
     <div className="space-y-4">
@@ -136,10 +178,10 @@ function BookmarkPreview({ attachment }: BookmarkPreviewProps) {
           {PREVIEW_TEXT.CONTENT_SUMMARY}
         </h4>
         <div className="rounded-lg bg-muted/50 p-4">
-          {attachment.content ? (
-            <p className="text-sm text-foreground whitespace-pre-wrap">
-              {attachment.content}
-              {attachment.truncated && (
+          {displayContent ? (
+            <p className="text-sm text-foreground whitespace-pre-wrap break-words">
+              {displayContent}
+              {(attachment.truncated || isTruncated) && (
                 <span className="text-muted-foreground">
                   {PREVIEW_TEXT.CONTENT_TRUNCATED}
                 </span>
@@ -172,12 +214,31 @@ function FilePreview({ attachment }: FilePreviewProps) {
     if (isImage && attachment.content) {
       // content 格式: [图片: xxx]\n{base64}
       const match = attachment.content.match(/^(\[图片: [^\]]+\])\n([\s\S]+)$/);
-      if (match && match[2]) {
-        return match[2]; // base64 data URL
+      if (match?.[2]) {
+        const dataUrl = match[2].trim();
+        // 严格验证 data URL 格式，防止 XSS 攻击
+        // 只允许 image/png, image/jpeg, image/jpg, image/gif, image/webp
+        if (
+          /^data:image\/(png|jpe?g|gif|webp);base64,[A-Za-z0-9+/=]+$/.test(
+            dataUrl,
+          )
+        ) {
+          return dataUrl;
+        }
+        console.error("Blocked invalid image data URL format");
       }
     }
     return null;
   }, [isImage, attachment.content]);
+
+  // 截断内容，防止性能问题（仅用于非图片文件）
+  const { text: displayContent, isTruncated } = useMemo(
+    () =>
+      isImage
+        ? { text: "", isTruncated: false }
+        : truncateContent(attachment.content),
+    [isImage, attachment.content],
+  );
 
   return (
     <div className="space-y-4">
@@ -225,15 +286,15 @@ function FilePreview({ attachment }: FilePreviewProps) {
       )}
 
       {/* 文本内容预览 */}
-      {!isImage && attachment.content && (
+      {!isImage && displayContent && (
         <div className="space-y-2">
           <h4 className="text-sm font-medium text-muted-foreground">
             {PREVIEW_TEXT.CONTENT_SUMMARY}
           </h4>
           <div className="rounded-lg bg-muted/50 p-4">
-            <pre className="text-sm text-foreground whitespace-pre-wrap font-mono">
-              {attachment.content}
-              {attachment.truncated && (
+            <pre className="text-sm text-foreground whitespace-pre-wrap font-mono break-words">
+              {displayContent}
+              {(attachment.truncated || isTruncated) && (
                 <span className="text-muted-foreground">
                   {PREVIEW_TEXT.CONTENT_TRUNCATED}
                 </span>
