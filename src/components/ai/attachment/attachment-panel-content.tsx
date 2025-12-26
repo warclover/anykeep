@@ -132,16 +132,16 @@ export function AttachmentPanelContent({
   );
 
   return (
-    <div className={cn("flex flex-col h-full", className)}>
+    <div className={cn("flex flex-col", className)}>
       {/* 头部 */}
-      <div className="flex items-center justify-between px-4 py-3 border-b">
+      <div className="flex items-center justify-between px-3 py-2 border-b flex-shrink-0">
         <div className="flex items-center gap-2">
-          <h3 className="font-semibold text-base">
+          <h3 className="font-semibold text-[10px]">
             {ATTACHMENT_TEXT.POPOVER_TITLE}
           </h3>
           <span
             className={cn(
-              "text-sm px-2 py-0.5 rounded-full",
+              "text-[10px] px-1.5 py-0.5 rounded-full",
               canAddMore
                 ? "bg-pink-100 text-pink-600"
                 : "bg-orange-100 text-orange-600",
@@ -156,28 +156,31 @@ export function AttachmentPanelContent({
           className="text-muted-foreground hover:text-foreground transition-colors"
           aria-label="关闭"
         >
-          <X className="size-5" />
+          <X className="size-4" />
         </button>
       </div>
 
-      {/* 内容区 */}
-      <ScrollArea className="flex-1">
-        <div className="p-4 space-y-4">
-          {/* 搜索框 */}
-          <AttachmentSearchInput
-            value={searchQuery}
-            onChange={onSearchChange}
-            isSearching={isSearching}
-          />
+      {/* 搜索框 - 固定在顶部 */}
+      <div className="px-3 py-2 border-b flex-shrink-0">
+        <AttachmentSearchInput
+          value={searchQuery}
+          onChange={onSearchChange}
+          isSearching={isSearching}
+        />
+      </div>
 
-          {/* 书签列表 */}
-          <div>
-            <h4 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-1">
-              📚{" "}
-              {isSearchMode
-                ? ATTACHMENT_TEXT.SEARCH_RESULTS_TITLE
-                : ATTACHMENT_TEXT.RECENT_BOOKMARKS_TITLE}
-            </h4>
+      {/* 书签列表 - 固定高度滚动区域（约10条） */}
+      <div className="flex-shrink-0">
+        <div className="px-3 pt-2 pb-1">
+          <h4 className="text-[10px] font-medium text-muted-foreground flex items-center gap-1">
+            📚{" "}
+            {isSearchMode
+              ? ATTACHMENT_TEXT.SEARCH_RESULTS_TITLE
+              : ATTACHMENT_TEXT.RECENT_BOOKMARKS_TITLE}
+          </h4>
+        </div>
+        <ScrollArea className="h-[240px]">
+          <div className="px-3 pb-2">
             <BookmarkSelectList
               bookmarks={bookmarks}
               selectedIds={selectedBookmarkIds}
@@ -191,30 +194,31 @@ export function AttachmentPanelContent({
               }
             />
           </div>
+        </ScrollArea>
+      </div>
 
-          {/* 文件上传 */}
-          <div>
-            <h4 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-1">
-              📎 {ATTACHMENT_TEXT.FILE_UPLOAD_TITLE}
-            </h4>
-            <FileUploadZone
-              files={fileItems}
-              onFilesAdd={onFilesAdd}
-              onFileRemove={handleFileRemove}
-              remainingSlots={remainingSlots}
-              disabled={!canAddMore}
-              isProcessing={isProcessingFile}
-            />
-          </div>
-        </div>
-      </ScrollArea>
+      {/* 文件上传 - 固定在底部 */}
+      <div className="px-3 py-2 border-t flex-shrink-0">
+        <h4 className="text-[10px] font-medium text-muted-foreground mb-1.5 flex items-center gap-1">
+          📎 {ATTACHMENT_TEXT.FILE_UPLOAD_TITLE}
+        </h4>
+        <FileUploadZone
+          files={fileItems}
+          onFilesAdd={onFilesAdd}
+          onFileRemove={handleFileRemove}
+          remainingSlots={remainingSlots}
+          disabled={!canAddMore}
+          isProcessing={isProcessingFile}
+        />
+      </div>
 
       {/* 底部确认按钮 */}
-      <div className="px-4 py-3 border-t">
+      <div className="px-3 py-2 border-t flex-shrink-0">
         <Button
           onClick={onClose}
+          size="sm"
           className={cn(
-            "w-full",
+            "w-full h-7 text-[10px]",
             "bg-gradient-to-r from-pink-400 to-rose-400",
             "hover:from-pink-500 hover:to-rose-500",
           )}

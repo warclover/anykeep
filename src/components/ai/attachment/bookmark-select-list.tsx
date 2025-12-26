@@ -82,7 +82,7 @@ const BookmarkItem = memo(function BookmarkItem({
   return (
     <label
       className={cn(
-        "flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors",
+        "flex items-center gap-2 px-2.5 py-2 rounded-lg cursor-pointer transition-colors",
         "hover:bg-pink-50/50",
         isSelected && "bg-pink-50",
         isDisabled && !isSelected && "opacity-50 cursor-not-allowed",
@@ -92,14 +92,14 @@ const BookmarkItem = memo(function BookmarkItem({
         checked={isSelected}
         onCheckedChange={onToggle}
         disabled={isDisabled && !isSelected}
-        className="data-[state=checked]:bg-pink-500 data-[state=checked]:border-pink-500"
+        className="h-3.5 w-3.5 data-[state=checked]:bg-pink-500 data-[state=checked]:border-pink-500"
       />
       <span className="flex-shrink-0">
         {getPlatformIcon(bookmark.platform)}
       </span>
       <span
         className={cn(
-          "flex-1 text-sm truncate",
+          "flex-1 text-[10px] truncate",
           isSelected ? "text-foreground font-medium" : "text-muted-foreground",
         )}
         title={bookmark.title}
@@ -136,12 +136,12 @@ export function BookmarkSelectList({
     return (
       <div
         className={cn(
-          "flex items-center justify-center py-8 text-muted-foreground",
+          "flex items-center justify-center py-6 text-muted-foreground",
           className,
         )}
       >
-        <Loader2 className="size-5 animate-spin mr-2" />
-        <span className="text-sm">加载中...</span>
+        <Loader2 className="size-4 animate-spin mr-2" />
+        <span className="text-[10px]">加载中...</span>
       </div>
     );
   }
@@ -151,7 +151,7 @@ export function BookmarkSelectList({
     return (
       <div
         className={cn(
-          "flex items-center justify-center py-8 text-muted-foreground text-sm",
+          "flex items-center justify-center py-6 text-muted-foreground text-[10px]",
           className,
         )}
       >

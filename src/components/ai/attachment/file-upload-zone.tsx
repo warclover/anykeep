@@ -101,16 +101,16 @@ function UploadedFileItem({ file, onRemove }: UploadedFileItemProps) {
   return (
     <div
       className={cn(
-        "flex items-center gap-2 px-3 py-2 rounded-lg",
+        "flex items-center gap-2 px-2.5 py-1.5 rounded-lg",
         "bg-gray-50 border border-gray-200",
       )}
     >
       {getFileIcon(file.mimeType)}
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium truncate" title={file.title}>
+        <p className="text-[10px] font-medium truncate" title={file.title}>
           {file.title}
         </p>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-[10px] text-muted-foreground">
           {typeName} · {file.size ? formatFileSize(file.size) : "未知大小"}
         </p>
       </div>
@@ -120,7 +120,7 @@ function UploadedFileItem({ file, onRemove }: UploadedFileItemProps) {
         className="text-muted-foreground hover:text-destructive transition-colors"
         aria-label={`删除 ${file.title}`}
       >
-        <X className="size-4" />
+        <X className="size-3.5" />
       </button>
     </div>
   );
@@ -243,8 +243,8 @@ export function FileUploadZone({
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         className={cn(
-          "relative border-2 border-dashed rounded-xl p-6 transition-all",
-          "flex flex-col items-center justify-center gap-2",
+          "relative border-2 border-dashed rounded-xl p-4 transition-all",
+          "flex flex-col items-center justify-center gap-1.5",
           canUpload && [
             "cursor-pointer",
             "border-gray-200 hover:border-pink-300",
@@ -268,27 +268,27 @@ export function FileUploadZone({
         {/* 图标和文本 */}
         {isProcessing ? (
           <>
-            <Loader2 className="size-8 text-pink-400 animate-spin" />
-            <p className="text-sm text-muted-foreground">处理中...</p>
+            <Loader2 className="size-6 text-pink-400 animate-spin" />
+            <p className="text-[10px] text-muted-foreground">处理中...</p>
           </>
         ) : (
           <>
             <Upload
               className={cn(
-                "size-8",
+                "size-6",
                 canUpload ? "text-gray-400" : "text-gray-300",
               )}
             />
             <div className="text-center">
               <p
                 className={cn(
-                  "text-sm font-medium",
+                  "text-[10px] font-medium",
                   canUpload ? "text-gray-600" : "text-gray-400",
                 )}
               >
                 {ATTACHMENT_TEXT.FILE_UPLOAD_HINT}
               </p>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-[10px] text-muted-foreground mt-0.5">
                 {ATTACHMENT_TEXT.FILE_FORMAT_HINT}
               </p>
             </div>
@@ -297,7 +297,7 @@ export function FileUploadZone({
       </div>
 
       {/* 错误提示 */}
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error && <p className="text-[10px] text-destructive">{error}</p>}
     </div>
   );
 }

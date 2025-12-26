@@ -72,15 +72,16 @@ function DesktopPopover({
     <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>{trigger}</PopoverTrigger>
       <PopoverContent
-        className={cn("w-[360px] p-0", "max-h-[70vh]", "overflow-hidden")}
-        side="top"
-        align="start"
-        sideOffset={8}
+        className={cn("w-[300px] p-0", "overflow-hidden")}
+        side="left"
+        align="end"
+        sideOffset={12}
+        alignOffset={0}
+        collisionPadding={16}
       >
         <AttachmentPanelContent
           {...contentProps}
           onClose={() => onOpenChange(false)}
-          className="h-full max-h-[70vh]"
         />
       </PopoverContent>
     </Popover>

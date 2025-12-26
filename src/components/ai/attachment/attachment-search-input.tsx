@@ -54,11 +54,11 @@ export function AttachmentSearchInput({
   return (
     <div className={cn("relative", className)}>
       {/* 搜索图标 / 加载状态 */}
-      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+      <div className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground">
         {isSearching ? (
-          <Loader2 className="size-4 animate-spin" />
+          <Loader2 className="size-3.5 animate-spin" />
         ) : (
-          <Search className="size-4" />
+          <Search className="size-3.5" />
         )}
       </div>
 
@@ -70,9 +70,9 @@ export function AttachmentSearchInput({
         placeholder={placeholder}
         disabled={disabled}
         className={cn(
-          "pl-9 pr-9 h-10 rounded-xl",
+          "pl-8 pr-8 h-8 rounded-xl text-[10px]",
           "border-pink-100 focus-visible:ring-pink-200",
-          "placeholder:text-muted-foreground/60",
+          "placeholder:text-muted-foreground/60 placeholder:text-[10px]",
         )}
       />
 
@@ -82,13 +82,13 @@ export function AttachmentSearchInput({
           type="button"
           onClick={handleClear}
           className={cn(
-            "absolute right-3 top-1/2 -translate-y-1/2",
+            "absolute right-2.5 top-1/2 -translate-y-1/2",
             "text-muted-foreground hover:text-foreground",
             "transition-colors",
           )}
           aria-label="清空搜索"
         >
-          <X className="size-4" />
+          <X className="size-3.5" />
         </button>
       )}
     </div>

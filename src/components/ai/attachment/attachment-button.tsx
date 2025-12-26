@@ -92,7 +92,7 @@ export const AttachmentButton = forwardRef<
 
     if (isFull) {
       return (
-        <span className="text-sm font-medium">
+        <span className="text-[10px] font-medium">
           {count}/{maxCount}
         </span>
       );
@@ -101,7 +101,7 @@ export const AttachmentButton = forwardRef<
     return (
       <span className="flex items-center gap-0.5">
         <Plus className="size-4" />
-        <span className="text-sm font-medium">{count}</span>
+        <span className="text-[10px] font-medium">{count}</span>
       </span>
     );
   };
