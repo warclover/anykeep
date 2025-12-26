@@ -3625,6 +3625,52 @@ export type Database = {
         Args: { p_days?: number };
         Returns: number;
       };
+      /** 清理过期的 AI 操作快照 */
+      cleanup_expired_ai_snapshots: {
+        Args: Record<PropertyKey, never>;
+        Returns: number;
+      };
+      /** 获取用户的 AI 反馈统计 */
+      get_ai_feedback_stats: {
+        Args: { p_user_id: string };
+        Returns: {
+          total_count: number;
+          positive_count: number;
+          negative_count: number;
+          satisfaction_rate: number;
+        }[];
+      };
+      /** 获取负反馈原因分布（用于改进 AI） */
+      get_negative_feedback_reasons: {
+        Args: { p_limit?: number };
+        Returns: {
+          reason: string;
+          count: number;
+          percentage: number;
+        }[];
+      };
+      /** 获取用户可撤销的 AI 操作列表 */
+      get_undoable_ai_operations: {
+        Args: { p_user_id: string; p_limit?: number };
+        Returns: {
+          id: string;
+          operation_type: string;
+          bookmark_count: number;
+          summary: string | null;
+          created_at: string;
+          expires_at: string;
+          time_remaining: unknown;
+        }[];
+      };
+      /** 撤销指定的 AI 操作，恢复书签到操作前状态 */
+      undo_ai_operation: {
+        Args: { p_snapshot_id: string; p_user_id: string };
+        Returns: {
+          success: boolean;
+          restored_count: number;
+          message: string;
+        }[];
+      };
       get_user_classification_stage: {
         Args: { p_user_id: string };
         Returns: string;
