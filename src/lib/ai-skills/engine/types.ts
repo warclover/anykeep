@@ -42,6 +42,10 @@ export interface EngineContext {
   signal?: AbortSignal;
   /** 附件上下文（用户提供的收藏/文件内容） */
   attachmentContext?: string;
+  /** 文件夹列表（用于任务理解） */
+  folders?: Array<{ id: number; name: string }>;
+  /** 标签列表（用于任务理解） */
+  tags?: string[];
 }
 
 /**

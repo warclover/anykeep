@@ -296,6 +296,112 @@ export interface DoneChunk {
     skillId?: string;
     /** 会话 ID（用于前端持久化） */
     conversationId?: string;
+    /** 零接管模式：撤销信息 */
+    undoInfo?: {
+      undoId: string;
+      expiresAt: string;
+      canUndo: boolean;
+    };
+    /** 零接管模式：任务理解详情 */
+    understanding?: {
+      goal: string;
+      reasoning: string;
+      confidence: number;
+      appliedDefaults?: Array<{
+        field: string;
+        value: string;
+        source: string;
+        reason?: string;
+      }>;
+    };
+  };
+}
+
+// ============================================
+// 零接管模式流类型
+// ============================================
+
+/**
+ * AI 思考过程块
+ *
+ * 在零接管模式下，展示 AI 的决策过程
+ */
+export interface ThinkingChunk {
+  type: "thinking";
+  data: {
+    /** 思考阶段 */
+    phase: "understanding" | "planning" | "deciding" | "executing";
+    /** 思考内容 */
+    content: string;
+    /** 时间戳 */
+    timestamp: number;
+  };
+}
+
+/**
+ * 撤销可用通知块
+ *
+ * 操作执行完成后，通知前端撤销功能可用
+ */
+export interface UndoAvailableChunk {
+  type: "undo_available";
+  data: {
+    /** 撤销 ID */
+    undoId: string;
+    /** 操作类型 */
+    operationType: string;
+    /** 操作摘要 */
+    summary: string;
+    /** 过期时间 (ISO 字符串) */
+    expiresAt: string;
+    /** 受影响的书签数量 */
+    affectedCount: number;
+  };
+}
+
+/**
+ * 零接管确认请求块
+ *
+ * 仅用于删除等高风险操作
+ */
+export interface ZeroTakeoverConfirmChunk {
+  type: "zero_takeover_confirm";
+  data: {
+    /** 确认 ID */
+    id: string;
+    /** 操作类型 */
+    operationType: "delete" | "batch_delete" | "irreversible";
+    /** 确认标题 */
+    title: string;
+    /** 确认消息 */
+    message: string;
+    /** 受影响的书签 ID 列表 */
+    affectedBookmarkIds: number[];
+    /** 超时时间（毫秒） */
+    timeout?: number;
+    /** 默认选项 */
+    defaultAction?: "confirm" | "cancel";
+  };
+}
+
+/**
+ * 智能默认值应用块
+ *
+ * 通知前端 AI 自动应用了哪些默认值
+ */
+export interface SmartDefaultsAppliedChunk {
+  type: "smart_defaults_applied";
+  data: {
+    /** 应用的默认值列表 */
+    defaults: Array<{
+      field: string;
+      value: string;
+      source: "user_preference" | "context_infer" | "system_default";
+      confidence: number;
+      reason?: string;
+    }>;
+    /** 总置信度 */
+    overallConfidence: number;
   };
 }
 
@@ -319,7 +425,12 @@ export type UnifiedStreamChunk =
   | ErrorChunk
   | FallbackChunk
   | MemoryChunk
-  | DoneChunk;
+  | DoneChunk
+  // 零接管模式专用类型
+  | ThinkingChunk
+  | UndoAvailableChunk
+  | ZeroTakeoverConfirmChunk
+  | SmartDefaultsAppliedChunk;
 
 /**
  * 编排模式流式输出块（用于编排 Skill 内部）
@@ -352,6 +463,11 @@ export type ChunkTypeMap = {
   fallback: FallbackChunk;
   memory: MemoryChunk;
   done: DoneChunk;
+  // 零接管模式类型
+  thinking: ThinkingChunk;
+  undo_available: UndoAvailableChunk;
+  zero_takeover_confirm: ZeroTakeoverConfirmChunk;
+  smart_defaults_applied: SmartDefaultsAppliedChunk;
 };
 
 /**

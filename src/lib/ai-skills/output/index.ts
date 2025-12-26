@@ -2,8 +2,9 @@
  * 统一输出层模块导出
  *
  * @module ai-skills/output
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-24
+ * @updated 2025-12-26 - 添加零接管模式支持
  */
 
 // 类型导出
@@ -27,6 +28,11 @@ export type {
   FallbackChunk,
   MemoryChunk,
   DoneChunk,
+  // 零接管模式类型
+  ThinkingChunk,
+  UndoAvailableChunk,
+  ZeroTakeoverConfirmChunk,
+  SmartDefaultsAppliedChunk,
   // 统一类型
   UnifiedStreamChunk,
   OrchestrationStreamChunk,
@@ -41,6 +47,14 @@ export {
   createUnifiedOutputAdapter,
   unifiedOutputAdapter,
 } from "./adapter";
+
+// 零接管模式适配器
+export {
+  ZeroTakeoverAdapter,
+  createZeroTakeoverAdapter,
+  zeroTakeoverAdapter,
+  type ZeroTakeoverAdapterConfig,
+} from "./zero-takeover-adapter";
 
 // 格式化器
 export * from "./formatters";

@@ -3,8 +3,9 @@
  *
  * 通过环境变量控制各模块的启用/禁用
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-26
+ * @updated 2025-12-26 添加任务理解层相关开关
  */
 
 // =============================================================================
@@ -72,6 +73,55 @@ export const FeatureFlags = {
   get ENABLE_COST_CONTROL(): boolean {
     return process.env.ENABLE_COST_CONTROL !== "false";
   },
+
+  // ===========================================================================
+  // 任务理解层（零接管模式）相关开关
+  // ===========================================================================
+
+  /**
+   * 是否启用任务理解层
+   * @default true
+   * @description 总开关，控制是否启用深度任务理解能力
+   */
+  get ENABLE_TASK_UNDERSTANDING(): boolean {
+    return process.env.ENABLE_TASK_UNDERSTANDING !== "false";
+  },
+
+  /**
+   * 是否启用智能默认值
+   * @default true
+   * @description 不问用户，AI 自主决策参数
+   */
+  get ENABLE_SMART_DEFAULTS(): boolean {
+    return process.env.ENABLE_SMART_DEFAULTS !== "false";
+  },
+
+  /**
+   * 是否启用零接管模式
+   * @default true
+   * @description 静默理解 → 直接执行 → 事后撤销
+   */
+  get ENABLE_ZERO_TAKEOVER(): boolean {
+    return process.env.ENABLE_ZERO_TAKEOVER !== "false";
+  },
+
+  /**
+   * 是否启用撤销服务
+   * @default true
+   * @description 支持操作回滚
+   */
+  get ENABLE_UNDO_SERVICE(): boolean {
+    return process.env.ENABLE_UNDO_SERVICE !== "false";
+  },
+
+  /**
+   * 是否启用偏好学习 V2
+   * @default true
+   * @description 从用户的撤销/调整行为中学习
+   */
+  get ENABLE_PREFERENCE_LEARNING_V2(): boolean {
+    return process.env.ENABLE_PREFERENCE_LEARNING_V2 !== "false";
+  },
 } as const;
 
 // =============================================================================
@@ -99,5 +149,11 @@ export function getAllFeatureFlags(): Record<FeatureFlagKey, boolean> {
     ENABLE_ERROR_RECOVERY: FeatureFlags.ENABLE_ERROR_RECOVERY,
     ENABLE_PREFERENCE_LEARNING: FeatureFlags.ENABLE_PREFERENCE_LEARNING,
     ENABLE_COST_CONTROL: FeatureFlags.ENABLE_COST_CONTROL,
+    // 任务理解层（零接管模式）
+    ENABLE_TASK_UNDERSTANDING: FeatureFlags.ENABLE_TASK_UNDERSTANDING,
+    ENABLE_SMART_DEFAULTS: FeatureFlags.ENABLE_SMART_DEFAULTS,
+    ENABLE_ZERO_TAKEOVER: FeatureFlags.ENABLE_ZERO_TAKEOVER,
+    ENABLE_UNDO_SERVICE: FeatureFlags.ENABLE_UNDO_SERVICE,
+    ENABLE_PREFERENCE_LEARNING_V2: FeatureFlags.ENABLE_PREFERENCE_LEARNING_V2,
   };
 }

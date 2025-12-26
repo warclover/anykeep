@@ -107,6 +107,19 @@ export type {
   DeliverableChunk,
   ErrorChunk,
   DoneChunk,
+  // 零接管模式类型
+  ThinkingChunk,
+  UndoAvailableChunk,
+  ZeroTakeoverConfirmChunk,
+  SmartDefaultsAppliedChunk,
+} from "./output";
+
+// 零接管模式适配器
+export {
+  ZeroTakeoverAdapter,
+  createZeroTakeoverAdapter,
+  zeroTakeoverAdapter,
+  type ZeroTakeoverAdapterConfig,
 } from "./output";
 
 // ============================================
