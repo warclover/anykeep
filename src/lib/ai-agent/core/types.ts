@@ -7,6 +7,7 @@
 
 import type { CoreMessage, ToolResultPart } from "ai";
 import type { PendingConfirmation } from "../tools/types";
+import type { DynamicContext, SessionContext } from "../context/types";
 
 /**
  * Agent 类型枚举
@@ -115,6 +116,10 @@ export interface AgentContext {
   systemPrompt?: string;
   /** 追踪 ID */
   traceId?: string;
+  /** 动态上下文（包含时间、统计、偏好等） */
+  dynamicContext?: DynamicContext;
+  /** 会话上下文（选中书签、当前文件夹等） */
+  sessionContext?: SessionContext;
 }
 
 /**

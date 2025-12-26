@@ -17,6 +17,7 @@ import type {
   ToolContext,
   ToolResult,
 } from "./types";
+import { extractReasoning } from "./types";
 import { logger } from "@/lib/logger";
 
 /**
@@ -155,6 +156,19 @@ export class ToolRegistry {
       // 验证参数
       const validatedParams = tool.definition.parameters.parse(params);
 
+      // 提取并记录 reasoning（隐式思考链）
+      const reasoning = extractReasoning(validatedParams);
+      if (reasoning) {
+        logger.debug(
+          {
+            toolName: name,
+            userId: context.userId,
+            reasoning,
+          },
+          "ToolRegistry: Tool reasoning captured",
+        );
+      }
+
       // 执行 Tool
       const result = await tool.execute(validatedParams, context);
 
@@ -238,6 +252,19 @@ export class ToolRegistry {
         description: tool.definition.description,
         inputSchema: zodSchema(tool.definition.parameters),
         execute: async (args) => {
+          // 提取并记录 reasoning（隐式思考链）
+          const reasoning = extractReasoning(args);
+          if (reasoning) {
+            logger.debug(
+              {
+                toolName: tool.definition.name,
+                userId: context.userId,
+                reasoning,
+              },
+              "ToolRegistry (Vercel): Tool reasoning captured",
+            );
+          }
+
           const result = await this.execute(
             tool.definition.name,
             args,

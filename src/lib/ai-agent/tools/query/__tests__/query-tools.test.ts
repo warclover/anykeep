@@ -5,7 +5,11 @@
  * @description 测试查询类 Tools 的核心功能
  */
 
-import type { ToolContext, ToolSuccessResult, ToolErrorResult } from "../../types";
+import type {
+  ToolContext,
+  ToolSuccessResult,
+  ToolErrorResult,
+} from "../../types";
 
 // Mock Supabase
 const mockSelect = jest.fn();
@@ -104,10 +108,17 @@ describe("Query Tools", () => {
         const result = await listRecentTool.execute({ limit: 10 }, mockContext);
 
         expect(result.success).toBe(true);
-        const successResult = result as ToolSuccessResult<{ bookmarks: unknown[]; total: number }>;
+        const successResult = result as ToolSuccessResult<{
+          bookmarks: unknown[];
+          total: number;
+        }>;
         expect(successResult.data.bookmarks).toHaveLength(2);
-        expect((successResult.data.bookmarks[0] as { title: string }).title).toBe("React 教程");
-        expect((successResult.data.bookmarks[0] as { tags: string[] }).tags).toEqual(["react", "frontend"]);
+        expect(
+          (successResult.data.bookmarks[0] as { title: string }).title,
+        ).toBe("React 教程");
+        expect(
+          (successResult.data.bookmarks[0] as { tags: string[] }).tags,
+        ).toEqual(["react", "frontend"]);
         expect(successResult.data.total).toBe(50);
         expect(result.metadata?.executionTimeMs).toBeGreaterThanOrEqual(0);
       });
@@ -126,7 +137,10 @@ describe("Query Tools", () => {
         const result = await listRecentTool.execute({ limit: 5 }, mockContext);
 
         expect(result.success).toBe(true);
-        const successResult = result as ToolSuccessResult<{ bookmarks: unknown[]; total: number }>;
+        const successResult = result as ToolSuccessResult<{
+          bookmarks: unknown[];
+          total: number;
+        }>;
         expect(successResult.data.bookmarks).toEqual([]);
         expect(successResult.data.total).toBe(0);
       });
@@ -137,7 +151,10 @@ describe("Query Tools", () => {
         const result = await listRecentTool.execute({ limit: 5 }, mockContext);
 
         expect(result.success).toBe(true);
-        const successResult = result as ToolSuccessResult<{ bookmarks: unknown[]; total: number }>;
+        const successResult = result as ToolSuccessResult<{
+          bookmarks: unknown[];
+          total: number;
+        }>;
         expect(successResult.data.bookmarks).toEqual([]);
         expect(successResult.data.total).toBe(0);
       });
@@ -173,7 +190,10 @@ describe("Query Tools", () => {
         const result = await listRecentTool.execute({ limit: 5 }, mockContext);
 
         expect(result.success).toBe(true);
-        const successResult = result as ToolSuccessResult<{ bookmarks: Array<{ title: string; platform: string; tags: string[] }>; total: number }>;
+        const successResult = result as ToolSuccessResult<{
+          bookmarks: Array<{ title: string; platform: string; tags: string[] }>;
+          total: number;
+        }>;
         expect(successResult.data.bookmarks[0].title).toBe("");
         expect(successResult.data.bookmarks[0].platform).toBe("OTHER");
         expect(successResult.data.bookmarks[0].tags).toEqual([]);
@@ -269,7 +289,7 @@ describe("Query Tools", () => {
         expect(getStatsTool.definition.name).toBe("get_stats");
         expect(getStatsTool.definition.category).toBe("query");
         expect(getStatsTool.definition.requiresConfirmation).toBe(false);
-        expect(getStatsTool.definition.description).toContain("统计信息");
+        expect(getStatsTool.definition.description).toContain("统计报告");
       });
     });
 
@@ -423,7 +443,15 @@ describe("Query Tools", () => {
           ratedBookmarks: [],
         });
 
-        const result = await getStatsTool.execute({ include_trends: true, include_tags: true, include_platforms: true, tags_limit: 10 }, mockContext);
+        const result = await getStatsTool.execute(
+          {
+            include_trends: true,
+            include_tags: true,
+            include_platforms: true,
+            tags_limit: 10,
+          },
+          mockContext,
+        );
 
         expect(result.success).toBe(true);
         const successResult = result as ToolSuccessResult<any>;
@@ -437,7 +465,15 @@ describe("Query Tools", () => {
           error: { message: "Query timeout" },
         });
 
-        const result = await getStatsTool.execute({ include_trends: true, include_tags: true, include_platforms: true, tags_limit: 10 }, mockContext);
+        const result = await getStatsTool.execute(
+          {
+            include_trends: true,
+            include_tags: true,
+            include_platforms: true,
+            tags_limit: 10,
+          },
+          mockContext,
+        );
 
         expect(result.success).toBe(false);
         const errorResult = result as ToolErrorResult;

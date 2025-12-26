@@ -35,6 +35,11 @@ import {
   extractPendingConfirmations,
   mapFinishReason,
 } from "./helpers";
+import {
+  buildDynamicContext,
+  buildContextPrompt,
+  type DynamicContext,
+} from "../context";
 
 // 注册默认 Tools（模块加载时执行一次）
 registerDefaultTools();
@@ -137,8 +142,22 @@ export class KnowledgeAgent {
       // 使用类型安全的 mergeToolSets 合并 Skills 和 Tools
       const tools = mergeToolSets(skillTools, dataTools);
 
-      // 构建消息历史
-      const messages = this.buildMessages(conversation, context);
+      // 构建动态上下文（并行查询，带缓存）
+      const dynamicContext =
+        context.dynamicContext ??
+        (await buildDynamicContext(context.userId, {
+          session: {
+            selectedBookmarkIds: context.bookmarkIds,
+            currentFolder: context.sessionContext?.currentFolder,
+          },
+        }));
+
+      // 构建消息历史（注入动态上下文）
+      const messages = this.buildMessages(
+        conversation,
+        context,
+        dynamicContext,
+      );
 
       logger.info(
         {
@@ -294,8 +313,22 @@ export class KnowledgeAgent {
       // 使用类型安全的 mergeToolSets 合并 Skills 和 Tools
       const tools = mergeToolSets(skillTools, dataTools);
 
-      // 构建消息历史
-      const messages = this.buildMessages(conversation, context);
+      // 构建动态上下文（并行查询，带缓存）
+      const dynamicContext =
+        context.dynamicContext ??
+        (await buildDynamicContext(context.userId, {
+          session: {
+            selectedBookmarkIds: context.bookmarkIds,
+            currentFolder: context.sessionContext?.currentFolder,
+          },
+        }));
+
+      // 构建消息历史（注入动态上下文）
+      const messages = this.buildMessages(
+        conversation,
+        context,
+        dynamicContext,
+      );
 
       logger.info(
         {
@@ -474,19 +507,29 @@ export class KnowledgeAgent {
    *
    * @param conversation - 会话对象（包含已添加到内存的当前用户消息）
    * @param context - 上下文（可能包含前端提供的 messageHistory）
+   * @param dynamicContext - 动态上下文（包含时间、统计、偏好等）
    */
   private buildMessages(
     conversation: { messages: AgentMessage[] },
     context: AgentContext,
+    dynamicContext?: DynamicContext,
   ): CoreMessage[] {
     const messages: CoreMessage[] = [];
 
-    // 系统提示语：基础提示语 + 附加上下文（如附件内容）
+    // 系统提示语：基础提示语 + 动态上下文 + 附加上下文（如附件内容）
     let systemPrompt = this.config.systemPrompt;
+
+    // 注入动态上下文（时间、统计、偏好等）
+    if (dynamicContext) {
+      const contextPrompt = buildContextPrompt(dynamicContext);
+      systemPrompt = `${systemPrompt}\n\n${contextPrompt}`;
+    }
+
+    // 追加附加上下文（如附件内容）
     if (context.systemPrompt) {
-      // 追加附加的上下文（如附件内容），而不是替换
       systemPrompt = `${systemPrompt}\n\n${context.systemPrompt}`;
     }
+
     messages.push({
       role: "system",
       content: systemPrompt,

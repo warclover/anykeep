@@ -3,11 +3,73 @@
  *
  * 定义 Tool 的基础接口和类型
  *
- * @version 1.1.0
+ * @version 1.2.0
  * @since 2025-12-23
+ * @updated 2025-12-26 添加 reasoning 参数支持
  */
 
-import type { z } from "zod";
+import { z } from "zod";
+
+// ============================================
+// 基础参数 Schema（包含 reasoning）
+// ============================================
+
+/**
+ * 通用工具参数基类
+ *
+ * 所有工具参数可选择性地继承此 Schema，以支持 reasoning 参数
+ *
+ * @example
+ * ```ts
+ * const myToolParams = BaseToolParamsSchema.extend({
+ *   limit: z.number().optional(),
+ * });
+ * ```
+ */
+export const BaseToolParamsSchema = z.object({
+  reasoning: z
+    .string()
+    .optional()
+    .describe("选择此工具的理由（内部使用，不展示给用户）"),
+});
+
+/**
+ * 基础工具参数类型
+ */
+export type BaseToolParams = z.infer<typeof BaseToolParamsSchema>;
+
+/**
+ * 扩展工具参数 Schema 以包含 reasoning
+ *
+ * @param schema - 原始参数 Schema
+ * @returns 包含 reasoning 的扩展 Schema
+ */
+export function withReasoning<T extends z.ZodRawShape>(schema: z.ZodObject<T>) {
+  return schema.extend({
+    reasoning: z
+      .string()
+      .optional()
+      .describe("选择此工具的理由（内部使用，不展示给用户）"),
+  });
+}
+
+/**
+ * 提取 reasoning 参数（如果存在）
+ *
+ * @param params - 工具参数
+ * @returns reasoning 字符串或 undefined
+ */
+export function extractReasoning(params: unknown): string | undefined {
+  if (
+    params &&
+    typeof params === "object" &&
+    "reasoning" in params &&
+    typeof (params as { reasoning?: unknown }).reasoning === "string"
+  ) {
+    return (params as { reasoning: string }).reasoning;
+  }
+  return undefined;
+}
 
 // ============================================
 // Tool 定义类型
