@@ -3,8 +3,9 @@
  *
  * 提供零接管模式的任务理解能力
  *
- * @version 2.0.0
+ * @version 2.1.0
  * @since 2025-12-26
+ * @updated 2025-12-26 - 添加模板引擎支持
  */
 
 // =============================================================================
@@ -88,3 +89,33 @@ export {
   createTaskAnalyzer,
   type TaskAnalyzerConfig,
 } from "./analyzer/task-analyzer";
+
+// =============================================================================
+// 模板引擎导出
+// =============================================================================
+
+export {
+  // 引擎
+  TaskTemplateEngine,
+  createTaskTemplateEngine,
+  // 类型
+  type TaskTemplate,
+  type TaskTemplateType,
+  type ExecutionStepTemplate,
+  type TemplateMatchResult,
+  type TemplateMatchDetails,
+  type TaskTemplateEngineConfig,
+  // 预定义模板
+  defaultTemplates,
+  searchSimpleTemplate,
+  organizeGeneralTemplate,
+  organizeByTimeTemplate,
+  moveToFolderTemplate,
+  exportGeneralTemplate,
+  exportWithFormatTemplate,
+  queryStatsTemplate,
+  deleteBookmarksTemplate,
+  batchAddTagsTemplate,
+  batchRemoveTagsTemplate,
+  reviewKnowledgeTemplate,
+} from "./templates";

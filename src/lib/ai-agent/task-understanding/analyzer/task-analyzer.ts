@@ -7,8 +7,9 @@
  * - 静默理解：理解过程不打扰用户
  * - 智能默认：不确定时用智能默认值
  * - 直接执行：高置信度直接执行
+ * - 模板优先：常见模式使用模板快速响应（v2.1.0）
  *
- * @version 2.0.0
+ * @version 2.1.0
  * @since 2025-12-26
  */
 
@@ -17,6 +18,11 @@ import { z } from "zod";
 import { createLogger } from "@/lib/logger";
 import type { TaskUnderstanding, TaskContext, SmartDefault } from "../types";
 import type { SmartDefaultsService } from "../defaults/smart-defaults-service";
+import {
+  TaskTemplateEngine,
+  defaultTemplates,
+  type TaskTemplateEngineConfig,
+} from "../templates";
 
 const logger = createLogger("TaskAnalyzer");
 
@@ -39,6 +45,12 @@ export interface TaskAnalyzerConfig {
 
   /** 低温度（更稳定） */
   temperature: number;
+
+  /** 模板引擎配置（可选，启用模板快速匹配） */
+  templateEngineConfig?: Partial<TaskTemplateEngineConfig>;
+
+  /** 是否启用模板引擎（默认 true） */
+  enableTemplateEngine?: boolean;
 }
 
 // =============================================================================
@@ -52,9 +64,24 @@ export interface TaskAnalyzerConfig {
  */
 export class TaskAnalyzer {
   private config: TaskAnalyzerConfig;
+  private templateEngine: TaskTemplateEngine | null;
 
   constructor(config: TaskAnalyzerConfig) {
     this.config = config;
+
+    // 初始化模板引擎
+    const enableTemplateEngine = config.enableTemplateEngine ?? true;
+    if (enableTemplateEngine) {
+      this.templateEngine = new TaskTemplateEngine({
+        templates: config.templateEngineConfig?.templates ?? defaultTemplates,
+        minConfidence: config.templateEngineConfig?.minConfidence ?? 0.7,
+        debug: config.templateEngineConfig?.debug ?? false,
+      });
+      logger.debug("模板引擎已启用");
+    } else {
+      this.templateEngine = null;
+      logger.debug("模板引擎已禁用");
+    }
   }
 
   // ===========================================================================
@@ -75,44 +102,46 @@ export class TaskAnalyzer {
     const startTime = performance.now();
 
     try {
-      // 1. 构建分析 Prompt
-      const prompt = this.buildAnalysisPrompt(input, context);
+      // 1. 优先尝试模板匹配（快速路径）
+      if (this.templateEngine) {
+        const matchResult = this.templateEngine.match(input, context);
 
-      // 2. 调用 LLM 分析
-      const { object: analysis } = await generateObject({
-        model: this.config.model,
-        schema: TaskAnalysisSchema,
-        prompt,
-        temperature: this.config.temperature,
-      });
+        if (matchResult.matched && matchResult.template) {
+          // 获取智能默认值
+          const smartDefaults =
+            await this.config.smartDefaultsService.resolveDefaults(
+              matchResult.template.taskType,
+              context,
+            );
 
-      // 3. 获取智能默认值
-      const smartDefaults =
-        await this.config.smartDefaultsService.resolveDefaults(
-          analysis.taskType,
-          context,
-        );
+          // 使用模板生成任务理解
+          const understanding = this.templateEngine.generateUnderstanding(
+            matchResult,
+            input,
+            smartDefaults,
+          );
 
-      // 4. 构建任务理解结果
-      const understanding = this.buildTaskUnderstanding(
-        input,
-        analysis,
-        smartDefaults,
-        performance.now() - startTime,
-      );
+          // 更新处理时间
+          understanding.metadata.processingTimeMs =
+            performance.now() - startTime;
 
-      logger.info(
-        {
-          input: input.substring(0, 50),
-          goal: understanding.goal,
-          confidence: understanding.confidence,
-          riskLevel: understanding.riskLevel,
-          processingTimeMs: understanding.metadata.processingTimeMs,
-        },
-        "任务分析完成",
-      );
+          logger.info(
+            {
+              input: input.substring(0, 50),
+              templateId: matchResult.template.id,
+              goal: understanding.goal,
+              confidence: understanding.confidence,
+              processingTimeMs: understanding.metadata.processingTimeMs,
+            },
+            "模板匹配成功，跳过 LLM",
+          );
 
-      return understanding;
+          return understanding;
+        }
+      }
+
+      // 2. 模板未匹配，使用 LLM 分析
+      return await this.analyzeWithLLM(input, context, startTime);
     } catch (error) {
       logger.error({ input, error }, "任务分析失败");
 
@@ -127,6 +156,54 @@ export class TaskAnalyzer {
   // ===========================================================================
   // 私有方法
   // ===========================================================================
+
+  /**
+   * 使用 LLM 分析任务
+   */
+  private async analyzeWithLLM(
+    input: string,
+    context: TaskContext,
+    startTime: number,
+  ): Promise<TaskUnderstanding> {
+    // 1. 构建分析 Prompt
+    const prompt = this.buildAnalysisPrompt(input, context);
+
+    // 2. 调用 LLM 分析
+    const { object: analysis } = await generateObject({
+      model: this.config.model,
+      schema: TaskAnalysisSchema,
+      prompt,
+      temperature: this.config.temperature,
+    });
+
+    // 3. 获取智能默认值
+    const smartDefaults =
+      await this.config.smartDefaultsService.resolveDefaults(
+        analysis.taskType,
+        context,
+      );
+
+    // 4. 构建任务理解结果
+    const understanding = this.buildTaskUnderstanding(
+      input,
+      analysis,
+      smartDefaults,
+      performance.now() - startTime,
+    );
+
+    logger.info(
+      {
+        input: input.substring(0, 50),
+        goal: understanding.goal,
+        confidence: understanding.confidence,
+        riskLevel: understanding.riskLevel,
+        processingTimeMs: understanding.metadata.processingTimeMs,
+      },
+      "LLM 任务分析完成",
+    );
+
+    return understanding;
+  }
 
   /**
    * 构建分析 Prompt（零接管版）
