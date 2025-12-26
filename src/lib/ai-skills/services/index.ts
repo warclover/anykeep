@@ -67,3 +67,21 @@ export type {
   ContextSummary,
   ContextServiceResponse,
 } from "./context.manager";
+
+// =============================================================================
+// IntentCorrectionService - 意图纠正服务
+// =============================================================================
+
+export {
+  IntentCorrectionService,
+  createIntentCorrectionService,
+  intentCorrectionService,
+} from "./intent-correction.service";
+export type {
+  CorrectionSignal,
+  IntentCorrectionRecord,
+  CreateCorrectionRequest,
+  SimilarCorrection,
+  LearningStats,
+  IntentCorrectionResponse,
+} from "./intent-correction.service";

@@ -1,7 +1,7 @@
 /**
  * Phase 4: 交互升级组件
  *
- * @version 1.2.0
+ * @version 1.3.0
  * @since 2025-12-25
  */
 
@@ -43,3 +43,6 @@ export type { AIWelcomeScreenProps } from "./ai-welcome-screen";
 // 建议栏
 export { AISuggestionBar } from "./ai-suggestion-bar";
 export type { AISuggestionBarProps } from "./ai-suggestion-bar";
+
+// 意图纠正对话框
+export { IntentCorrectionDialog } from "./intent-correction-dialog";

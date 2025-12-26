@@ -74,8 +74,10 @@ export function AIPanelContent({
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [conversationId, setConversationId] = useState<string | undefined>(
-    initialConversationId,
+  // 2.4.1: 前端主动生成 conversationId（如未提供）
+  // 确保第一次请求就携带 conversationId，支持上下文记忆
+  const [conversationId, setConversationId] = useState<string>(
+    () => initialConversationId || crypto.randomUUID(),
   );
   // 待确认操作状态
   const [pendingConfirmations, setPendingConfirmations] = useState<
@@ -546,9 +548,10 @@ export function AIPanelContent({
   );
 
   // 清除对话
+  // 2.4.4: 新会话时重置 conversationId，确保上下文隔离
   const handleClear = useCallback(() => {
     setMessages([]);
-    setConversationId(undefined);
+    setConversationId(crypto.randomUUID()); // 生成新的会话 ID
     setPendingConfirmations([]);
   }, []);
 

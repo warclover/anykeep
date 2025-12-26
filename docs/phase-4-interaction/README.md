@@ -1,9 +1,9 @@
 # Phase 4: 交互升级 - 子方案
 
-> **版本**: 1.0.0
+> **版本**: 1.1.0
 > **父方案**: [AGENT_UPGRADE_IMPLEMENTATION_PLAN.md](../AGENT_UPGRADE_IMPLEMENTATION_PLAN.md)
-> **日期**: 2025-12-25
-> **状态**: 待开发（可与 Phase 3 并行）
+> **日期**: 2025-12-26
+> **状态**: ✅ 已完成
 
 ---
 
@@ -194,17 +194,17 @@ Week 3-4:
 
 ### Batch 7 完成标准
 
-- [ ] 工具选择器可切换工具
-- [ ] 快速操作栏功能完整
-- [ ] 危险操作显示确认对话框
-- [ ] 上下文面板显示引用内容
+- [x] 工具选择器可切换工具
+- [x] 快速操作栏功能完整
+- [x] 危险操作显示确认对话框
+- [x] 上下文面板显示引用内容
 
 ### Batch 7B 完成标准
 
-- [ ] 显式工具选择跳过意图分类
-- [ ] 反馈数据正确存储
-- [ ] 操作可撤销（24 小时内）
-- [ ] 笔记保存功能可用
+- [x] 显式工具选择跳过意图分类
+- [x] 反馈数据正确存储
+- [x] 操作可撤销（24 小时内）
+- [x] 笔记保存功能可用
 
 ---
 
@@ -213,3 +213,54 @@ Week 3-4:
 - [最佳实践参考](./best-practices.md) _(待创建)_
 - [UI 设计稿](./ui-mockups/) _(待创建)_
 - [Phase 1-3 子方案](../phase-1-foundation/README.md)
+
+---
+
+## 实现详情
+
+> 以下是 Phase 4 各任务的实际实现文件和完成时间。
+
+### Batch 7: 前端 UI 组件
+
+| 任务             | 文件路径                                           | 完成时间   |
+| ---------------- | -------------------------------------------------- | ---------- |
+| 7.1 工具选择器   | `src/components/ai/phase4/tool-selector.tsx`       | 2025-12-25 |
+| 7.2 快速操作栏   | `src/components/ai/phase4/quick-actions.tsx`       | 2025-12-25 |
+| 7.3 执行确认组件 | `src/components/ai/phase4/action-confirmation.tsx` | 2025-12-25 |
+| 7.4 上下文面板   | `src/components/ai/phase4/context-panel.tsx`       | 2025-12-25 |
+| 附加：欢迎界面   | `src/components/ai/phase4/ai-welcome-screen.tsx`   | 2025-12-25 |
+| 附加：建议栏     | `src/components/ai/phase4/ai-suggestion-bar.tsx`   | 2025-12-25 |
+
+### Batch 7B: 后端服务
+
+| 任务               | 文件路径                                                           | 完成时间   |
+| ------------------ | ------------------------------------------------------------------ | ---------- |
+| 7B.1 数据库迁移    | `supabase/migrations/20251225000001_add_ai_interaction_tables.sql` | 2025-12-25 |
+| 7B.2 显式工具路由  | `src/lib/ai-skills/router/explicit-tool-router.ts`                 | 2025-12-25 |
+| 7B.3 反馈服务      | `src/lib/ai-skills/services/feedback.service.ts`                   | 2025-12-25 |
+| 7B.3 反馈 API      | `src/app/api/agent/feedback/route.ts`                              | 2025-12-25 |
+| 7B.4 快照管理      | `src/app/api/agent/undo/route.ts`                                  | 2025-12-25 |
+| 7B.5 笔记服务      | `src/lib/ai-skills/services/note.service.ts`                       | 2025-12-25 |
+| 7B.5 笔记 API      | `src/app/api/ai/notes/route.ts`                                    | 2025-12-25 |
+| 7B.6 上下文管理    | `src/lib/ai-skills/services/context.manager.ts`                    | 2025-12-25 |
+| 7B.6 上下文 API    | `src/app/api/agent/context/route.ts`                               | 2025-12-26 |
+| 附加：重新生成 API | `src/app/api/agent/regenerate/route.ts`                            | 2025-12-26 |
+
+### 数据库表
+
+| 表名                     | 用途               | RLS |
+| ------------------------ | ------------------ | --- |
+| `ai_feedback`            | 用户反馈（👍/👎）  | ✅  |
+| `ai_operation_snapshots` | 操作快照（撤销用） | ✅  |
+| `ai_notes`               | AI 生成的笔记      | ✅  |
+
+### API 端点
+
+| 端点                    | 方法            | 功能                 |
+| ----------------------- | --------------- | -------------------- |
+| `/api/agent/unified`    | POST            | 统一 AI 入口（流式） |
+| `/api/agent/feedback`   | POST            | 提交反馈             |
+| `/api/agent/undo`       | GET/POST        | 获取/执行撤销        |
+| `/api/agent/context`    | GET/POST/DELETE | 上下文管理           |
+| `/api/agent/regenerate` | POST            | 重新生成响应         |
+| `/api/ai/notes`         | GET/POST        | 笔记 CRUD            |

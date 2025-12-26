@@ -338,11 +338,12 @@ export class CorrectionLearner {
       const records = data || [];
       const byIntent: LearningStats["byIntent"] = {
         query: { corrections: 0, applications: 0 },
+        action: { corrections: 0, applications: 0 },
         organize: { corrections: 0, applications: 0 },
+        analyze: { corrections: 0, applications: 0 },
+        learn: { corrections: 0, applications: 0 },
         create: { corrections: 0, applications: 0 },
-        export: { corrections: 0, applications: 0 },
-        review: { corrections: 0, applications: 0 },
-        unknown: { corrections: 0, applications: 0 },
+        chitchat: { corrections: 0, applications: 0 },
       };
 
       let totalCorrections = 0;

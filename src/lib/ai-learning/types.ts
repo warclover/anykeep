@@ -2,24 +2,20 @@
  * AI 自我进化模块 - 类型定义
  *
  * @module ai-learning
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-25
+ * @updated 2025-12-26 - 统一 IntentType 从 router/types 导入
  */
 
 // =============================================================================
-// 意图类型
+// 意图类型 - 从路由层统一导入
 // =============================================================================
 
 /**
- * 意图类型（与分类系统一致）
+ * 意图类型（从路由层统一导入，确保单一数据源）
+ * @see {@link @/lib/ai-skills/router/types} IntentType
  */
-export type IntentType =
-  | "query"
-  | "organize"
-  | "create"
-  | "export"
-  | "review"
-  | "unknown";
+export type { IntentType } from "@/lib/ai-skills/router/types";
 
 // =============================================================================
 // 纠正信号类型

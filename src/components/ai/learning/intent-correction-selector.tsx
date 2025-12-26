@@ -32,7 +32,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { IntentType } from "@/lib/ai-learning/types";
+import type { IntentType } from "@/lib/ai-skills/router/types";
 import type { IntentCorrectionSelectorProps } from "./types";
 import { INTENT_DISPLAY_NAMES } from "./types";
 
@@ -82,18 +82,18 @@ const INTENT_OPTIONS: IntentOption[] = [
     borderColor: "border-purple-200",
   },
   {
-    id: "export",
-    name: "数据导出",
-    description: "导出为各种格式",
+    id: "analyze",
+    name: "数据分析",
+    description: "统计分析、报告生成、洞察",
     icon: Download,
     color: "text-amber-600",
     bgColor: "bg-amber-50 hover:bg-amber-100",
     borderColor: "border-amber-200",
   },
   {
-    id: "review",
-    name: "知识回顾",
-    description: "复习、测验、记忆卡片",
+    id: "learn",
+    name: "知识学习",
+    description: "复习、学习路径、知识回顾",
     icon: BookOpen,
     color: "text-rose-600",
     bgColor: "bg-rose-50 hover:bg-rose-100",

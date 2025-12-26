@@ -20,7 +20,7 @@ import { AISuggestionsInline } from "./ai-suggestions-panel";
 import { MemoryIndicator } from "./memory-indicator";
 import { MessageActionsBar } from "./phase4/quick-actions";
 import type { FeedbackDetails } from "./phase4/types";
-import type { IntentType } from "@/lib/ai-learning/types";
+import type { IntentType } from "@/lib/ai-skills/router/types";
 
 // =============================================================================
 // 类型定义
@@ -113,9 +113,9 @@ export const AIMessageEnhanced = memo(function AIMessageEnhanced({
 
   // 处理意图纠正
   const handleWrongIntent = useCallback(() => {
-    // 从消息中获取分类的意图类型
+    // 从消息中获取分类的意图类型，默认为 chitchat
     const classifiedIntent = (message.classifiedIntent ||
-      "unknown") as IntentType;
+      "chitchat") as IntentType;
     onWrongIntent?.(message.id, classifiedIntent);
   }, [message.id, message.classifiedIntent, onWrongIntent]);
 

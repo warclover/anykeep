@@ -9,8 +9,9 @@
  * - MessageActionsBar: 消息快速操作栏
  * - FeedbackService: 反馈收集
  * - ExplicitToolRouter: 显式工具路由
+ * - IntentCorrectionDialog: 意图纠正对话框
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-25
  */
 
@@ -26,8 +27,10 @@ import {
   useContextItems,
   AIWelcomeScreen,
   AISuggestionBar,
+  IntentCorrectionDialog,
 } from "./phase4";
 import type { ToolType, FeedbackDetails } from "./phase4/types";
+import type { IntentType } from "@/lib/ai-skills/router/types";
 import type { DisplayMessage, SuggestionItem } from "./types";
 import { adaptBackendChunk, processUnifiedChunk } from "./types";
 import type { AgentStreamChunk } from "@/lib/ai-agent";
@@ -99,6 +102,19 @@ export function AIPanelContentEnhanced({
 
   // 记忆提示状态
   const [showMemoryHint, setShowMemoryHint] = useState(false);
+
+  // Phase 4: 意图纠正对话框状态
+  const [intentCorrectionState, setIntentCorrectionState] = useState<{
+    open: boolean;
+    messageId: string;
+    originalInput: string;
+    wrongIntent: IntentType;
+  }>({
+    open: false,
+    messageId: "",
+    originalInput: "",
+    wrongIntent: "chitchat",
+  });
 
   // 上下文管理 Hook
   const {
@@ -720,6 +736,31 @@ export function AIPanelContentEnhanced({
     [messages, conversationId],
   );
 
+  // Phase 4: 意图纠正回调
+  const handleWrongIntent = useCallback(
+    (messageId: string, currentIntent: IntentType) => {
+      // 找到对应的用户消息来获取原始输入
+      const messageIndex = messages.findIndex((m) => m.id === messageId);
+      let originalInput = "";
+
+      if (messageIndex > 0) {
+        const userMessage = messages[messageIndex - 1];
+        if (userMessage.role === "user") {
+          originalInput = userMessage.content;
+        }
+      }
+
+      // 打开意图纠正对话框
+      setIntentCorrectionState({
+        open: true,
+        messageId,
+        originalInput,
+        wrongIntent: currentIntent,
+      });
+    },
+    [messages],
+  );
+
   return (
     <div className={`flex flex-col h-full ${className || ""}`}>
       {/* 头部 - 糖果色渐变背景 */}
@@ -810,6 +851,7 @@ export function AIPanelContentEnhanced({
                   onSaveToNote={handleSaveToNote}
                   onExport={handleExport}
                   onFeedback={handleFeedback}
+                  onWrongIntent={handleWrongIntent}
                   feedbackGiven={feedbackMap[message.id] || null}
                 />
 
@@ -867,6 +909,17 @@ export function AIPanelContentEnhanced({
         contextItems={contextItems}
         onExpandContext={() => setContextExpanded(true)}
         onClearContext={clearContextItems}
+      />
+
+      {/* Phase 4: 意图纠正对话框 */}
+      <IntentCorrectionDialog
+        open={intentCorrectionState.open}
+        onOpenChange={(open) =>
+          setIntentCorrectionState((prev) => ({ ...prev, open }))
+        }
+        messageId={intentCorrectionState.messageId}
+        originalInput={intentCorrectionState.originalInput}
+        wrongIntent={intentCorrectionState.wrongIntent}
       />
     </div>
   );

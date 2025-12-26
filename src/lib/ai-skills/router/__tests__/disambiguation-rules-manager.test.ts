@@ -173,8 +173,9 @@ describe("DisambiguationRulesManager", () => {
 
       const config = manager.getConfig();
       expect(
-        config.disabledRuleIds.filter((id) => id === "question-default-query")
-          .length,
+        (config.disabledRuleIds ?? []).filter(
+          (id) => id === "question-default-query",
+        ).length,
       ).toBe(1);
     });
   });

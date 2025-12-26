@@ -1322,11 +1322,11 @@ describe("Correction Matching Performance", () => {
 | #     | 验证项           | 类型 | 文件                                      | 状态 |
 | ----- | ---------------- | ---- | ----------------------------------------- | ---- |
 | 6.1.1 | 纠正信号检测测试 | 单元 | `correction-detector.test.ts`             | ✅   |
-| 6.1.2 | 意图推断测试     | 单元 | `intent-inference.test.ts`                | ⬜   |
-| 6.1.3 | 纠正记录存储测试 | 单元 | `correction-learner.test.ts`              | ⬜   |
-| 6.1.4 | 相似纠正查询测试 | 单元 | `similar-correction.test.ts`              | ⬜   |
-| 6.2.1 | 增强分类器测试   | 集成 | `intent-classifier-with-learning.test.ts` | ⬜   |
-| 6.2.2 | 学习优先级测试   | 集成 | `learning-priority.test.ts`               | ⬜   |
+| 6.1.2 | 意图推断测试     | 单元 | `correction-detector.test.ts` (含推断)    | ✅   |
+| 6.1.3 | 纠正记录存储测试 | 单元 | `correction-learner.test.ts`              | ✅   |
+| 6.1.4 | 相似纠正查询测试 | 单元 | `correction-learner.test.ts` (含相似查询) | ✅   |
+| 6.2.1 | 增强分类器测试   | 集成 | `learning-aware-classifier.test.ts`       | ✅   |
+| 6.2.2 | 学习优先级测试   | 集成 | `learning-priority.test.ts`               | ✅   |
 | 6.3.1 | 纠错提示组件     | 组件 | `correction-detected-toast.tsx`           | ✅   |
 | 6.3.2 | 学习确认组件     | 组件 | `learning-confirmation.tsx`               | ✅   |
 | 6.3.3 | 意图纠正按钮     | 组件 | `wrong-intent-button.tsx`                 | ✅   |
