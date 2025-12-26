@@ -4,6 +4,7 @@
 
 | 日期       | 版本  | 变更内容                                                                                 |
 | ---------- | ----- | ---------------------------------------------------------------------------------------- |
+| 2025-12-27 | 2.7.0 | 任务理解层 v2.0：零接管模式、置信度分层、隐含意图推理、System-Reminder、请求取消功能     |
 | 2025-12-26 | 2.6.1 | v4.3 修复：Token 持久化、LRU 缓存、跨平台兼容性、RPC 安全增强                            |
 | 2025-12-26 | 2.6.0 | AI 能力升级 v4.3：动态上下文、模型分层、偏好学习、成本控制、Feature Flags                |
 | 2025-12-25 | 2.5.1 | Tools & Skills 优化：Query Tools 日志完善、废弃工具清理、Skills 测试覆盖、统一注册适配层 |
@@ -708,6 +709,128 @@ src/lib/ai-agent/
 **配置文档**: `docs/AI_CAPABILITY_CONFIG.md`
 
 **测试覆盖**: 16 个集成测试用例全部通过
+
+---
+
+### 8. 任务理解层 v2.0 零接管模式 ✅
+
+**版本**: v2.7.0 (2025-12-27)
+
+全新的任务理解层设计，实现「零接管」用户体验——用户说完需求后，AI 自动完成而无需反复确认。
+
+**核心设计原则**:
+
+> **目标**: 用户说一句话，AI 自动执行，除非真的需要澄清
+
+**置信度分层执行策略**:
+
+| 置信度 | 等级     | 执行策略                       | 用户体验                         |
+| ------ | -------- | ------------------------------ | -------------------------------- |
+| ≥85%   | 高置信度 | 静默执行，完成后简短汇报       | "已为您找到 23 条相关收藏"       |
+| 60-84% | 中置信度 | 执行 + 简要解释为什么这样做    | "按您说的'整理'，我已按日期分组" |
+| <60%   | 低置信度 | 轻量级澄清（选项式，非开放问） | "您想按平台分类还是按时间排序？" |
+
+**隐含意图推理规则**:
+
+| ID                    | 用户表达       | 隐含意图       | 默认行为              |
+| --------------------- | -------------- | -------------- | --------------------- |
+| `organize-not-delete` | "整理"、"清理" | 要有序，非删除 | 分类/标签，不建议删除 |
+| `too-many-not-delete` | "太多了"、"乱" | 要管理，非减量 | 归档/分组，非删除     |
+| `cant-find-search`    | "找不到"       | 要定位         | 语义搜索+建议优化     |
+| `recent-7days`        | "最近"         | 7天内          | 默认7天，可调         |
+| `look-at-overview`    | "看看"         | 要概览         | 统计+分布图           |
+| `that-one-context`    | "那个"         | 上文提及       | 引用上下文            |
+| `these-selected`      | "这些"         | 当前选中       | 操作选中项            |
+| `all-batch-confirm`   | "都"           | 批量但谨慎     | 确认范围后执行        |
+
+**风险分级门控**:
+
+| 风险等级 | 操作类型                        | 处理策略             |
+| -------- | ------------------------------- | -------------------- |
+| 低风险   | search, list, count, get        | 直接执行             |
+| 中风险   | add_tag, move, classify, export | 执行 + 结果确认      |
+| 高风险   | delete, batch_delete, remove    | 必须确认（显示影响） |
+| 批量阈值 | 任何操作 > 20条                 | 显示数量确认         |
+
+**System-Reminder 动态注入**:
+
+基于用户数据状态，AI 主动提供建议的触发器：
+
+| 触发器 ID              | 条件                 | 提醒内容       | 优先级 |
+| ---------------------- | -------------------- | -------------- | ------ |
+| `selected-items`       | 选中书签 > 0         | 优先操作选中项 | 90     |
+| `long-inactive`        | 本周0新增 & 总量>100 | 建议整理方案   | 80     |
+| `recent-activity-high` | 本周收藏 > 30        | 建议定期整理   | 65     |
+| `platform-dominant`    | 单平台 > 60%         | 建议按主题分类 | 70     |
+| `untagged-many`        | 无标签 > 50          | 建议打标签     | 60     |
+| `folder-empty`         | 空文件夹存在         | 建议清理或使用 | 50     |
+
+**增强置信度计算**:
+
+5 因素加权评分模型：
+
+| 因素           | 权重 | 说明                     |
+| -------------- | ---- | ------------------------ |
+| 规则匹配置信度 | 40%  | 原始意图分类置信度       |
+| 上下文相关度   | 20%  | 意图与用户数据状态匹配度 |
+| 实体完整度     | 15%  | 必需实体是否齐全         |
+| 消息清晰度     | 15%  | 消息长度、问句检测等     |
+| 历史行为匹配   | 10%  | 是否符合用户常见操作     |
+
+**请求取消功能**:
+
+- `CancellationToken`: 支持任务中止的取消令牌机制
+- `RequestRegistry`: 管理活跃请求的注册表
+- `POST /api/agent/cancel`: 取消正在执行的请求
+
+**文件位置**:
+
+```
+src/lib/ai-agent/
+├── core/prompts/                    # Prompt 模块
+│   ├── response-templates.ts        # 响应模板与风险分级
+│   ├── implicit-intent-rules.ts     # 隐含意图规则
+│   └── __tests__/                   # 测试文件
+├── context/                         # 上下文模块
+│   ├── system-reminder-injector.ts  # System-Reminder 注入
+│   ├── enhanced-confidence.ts       # 增强置信度计算
+│   ├── prompt-injector.ts           # Prompt 注入器（已集成）
+│   └── __tests__/                   # 测试文件
+└── task-understanding/              # 任务理解模块
+    ├── templates/                   # 任务模板
+    └── index.ts                     # 模块导出
+
+src/lib/ai-skills/
+├── orchestration/
+│   ├── cancellation-token.ts        # 取消令牌
+│   └── __tests__/
+└── engine/
+    └── request-registry.ts          # 请求注册表
+
+src/app/api/agent/
+└── cancel/route.ts                  # 取消 API 端点
+```
+
+**Feature Flags**:
+
+```bash
+# .env.local
+ENABLE_SYSTEM_REMINDER=true   # System-Reminder 动态注入
+```
+
+**测试覆盖**:
+
+- 64 个新增单元测试全部通过
+- response-templates.test.ts: 14 测试
+- implicit-intent-rules.test.ts: 18 测试
+- system-reminder-injector.test.ts: 15 测试
+- enhanced-confidence.test.ts: 17 测试
+
+**规范文档**:
+
+- `docs/specs/task-understanding-v2-implementation.md`: 实现规范
+- `docs/specs/context-memory-enhancement-v1.md`: 上下文增强规范
+- `docs/specs/ai-interaction-fix-plan.md`: AI 交互修复计划
 
 ---
 
