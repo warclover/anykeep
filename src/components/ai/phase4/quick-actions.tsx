@@ -16,6 +16,7 @@ import {
   ThumbsDown,
   Check,
   Loader2,
+  AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -70,6 +71,8 @@ export function MessageActionsBar({
   onSave,
   onExport,
   onFeedback,
+  onWrongIntent,
+  classifiedIntent: _classifiedIntent, // Reserved for analytics
   feedbackGiven,
   isLoading = false,
 }: MessageActionsBarProps) {
@@ -167,6 +170,16 @@ export function MessageActionsBar({
             onClick={onExport}
             disabled={isLoading}
           />
+
+          {/* 意图纠正按钮 */}
+          {onWrongIntent && (
+            <ActionButton
+              icon={AlertTriangle}
+              label="这不是我的意图"
+              onClick={onWrongIntent}
+              disabled={isLoading}
+            />
+          )}
 
           {/* 分隔线 */}
           <div className="w-px h-4 bg-border mx-1" />

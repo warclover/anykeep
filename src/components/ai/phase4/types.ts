@@ -134,6 +134,10 @@ export interface MessageActionsBarProps {
   onSave?: (noteId: string) => void;
   onExport?: () => void;
   onFeedback?: (type: "like" | "dislike", details?: FeedbackDetails) => void;
+  /** 意图纠正回调 */
+  onWrongIntent?: () => void;
+  /** 当前消息的分类意图 */
+  classifiedIntent?: string;
   feedbackGiven?: "like" | "dislike" | null;
   isLoading?: boolean;
   className?: string;

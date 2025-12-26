@@ -1321,14 +1321,19 @@ describe("Correction Matching Performance", () => {
 
 | #     | 验证项           | 类型 | 文件                                      | 状态 |
 | ----- | ---------------- | ---- | ----------------------------------------- | ---- |
-| 6.1.1 | 纠正信号检测测试 | 单元 | `correction-detector.test.ts`             | ⬜   |
+| 6.1.1 | 纠正信号检测测试 | 单元 | `correction-detector.test.ts`             | ✅   |
 | 6.1.2 | 意图推断测试     | 单元 | `intent-inference.test.ts`                | ⬜   |
 | 6.1.3 | 纠正记录存储测试 | 单元 | `correction-learner.test.ts`              | ⬜   |
 | 6.1.4 | 相似纠正查询测试 | 单元 | `similar-correction.test.ts`              | ⬜   |
 | 6.2.1 | 增强分类器测试   | 集成 | `intent-classifier-with-learning.test.ts` | ⬜   |
 | 6.2.2 | 学习优先级测试   | 集成 | `learning-priority.test.ts`               | ⬜   |
-| 6.3.1 | 纠错提示测试     | 组件 | `correction-detected-toast.test.tsx`      | ⬜   |
-| 6.3.2 | 学习确认测试     | 组件 | `learning-confirmation.test.tsx`          | ⬜   |
+| 6.3.1 | 纠错提示组件     | 组件 | `correction-detected-toast.tsx`           | ✅   |
+| 6.3.2 | 学习确认组件     | 组件 | `learning-confirmation.tsx`               | ✅   |
+| 6.3.3 | 意图纠正按钮     | 组件 | `wrong-intent-button.tsx`                 | ✅   |
+| 6.3.4 | 意图选择器       | 组件 | `intent-correction-selector.tsx`          | ✅   |
+| 6.3.5 | 学习反馈Hook     | Hook | `use-learning-feedback.ts`                | ✅   |
+| 6.3.6 | 消息组件集成     | 集成 | `ai-message-enhanced.tsx`                 | ✅   |
+| 6.3.7 | API端点          | API  | `/api/ai/learning/correction`             | ✅   |
 
 ### E2E 验证清单
 

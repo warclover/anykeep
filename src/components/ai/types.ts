@@ -164,6 +164,8 @@ export interface DisplayMessage {
   suggestions?: SuggestionItem[];
   /** 路由信息（调试用） */
   routing?: RoutingInfo;
+  /** 分类的意图类型（用于学习纠正） */
+  classifiedIntent?: string;
   /** 回退信息 */
   fallback?: FallbackInfo;
   /** 记忆信息（指代解析） */

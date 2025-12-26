@@ -20,6 +20,7 @@ import { AISuggestionsInline } from "./ai-suggestions-panel";
 import { MemoryIndicator } from "./memory-indicator";
 import { MessageActionsBar } from "./phase4/quick-actions";
 import type { FeedbackDetails } from "./phase4/types";
+import type { IntentType } from "@/lib/ai-learning/types";
 
 // =============================================================================
 // 类型定义
@@ -46,6 +47,8 @@ export interface AIMessageEnhancedProps {
     type: "like" | "dislike",
     details?: FeedbackDetails,
   ) => void;
+  /** 意图纠正回调 */
+  onWrongIntent?: (messageId: string, currentIntent: IntentType) => void;
   /** 当前反馈状态 */
   feedbackGiven?: "like" | "dislike" | null;
 }
@@ -63,6 +66,7 @@ export const AIMessageEnhanced = memo(function AIMessageEnhanced({
   onSaveToNote,
   onExport,
   onFeedback,
+  onWrongIntent,
   feedbackGiven,
 }: AIMessageEnhancedProps) {
   const isUser = message.role === "user";
@@ -106,6 +110,14 @@ export const AIMessageEnhanced = memo(function AIMessageEnhanced({
     },
     [message.id, onFeedback],
   );
+
+  // 处理意图纠正
+  const handleWrongIntent = useCallback(() => {
+    // 从消息中获取分类的意图类型
+    const classifiedIntent = (message.classifiedIntent ||
+      "unknown") as IntentType;
+    onWrongIntent?.(message.id, classifiedIntent);
+  }, [message.id, message.classifiedIntent, onWrongIntent]);
 
   return (
     <div
@@ -273,6 +285,8 @@ export const AIMessageEnhanced = memo(function AIMessageEnhanced({
             onSave={handleSave}
             onExport={handleExport}
             onFeedback={handleFeedback}
+            onWrongIntent={onWrongIntent ? handleWrongIntent : undefined}
+            classifiedIntent={message.classifiedIntent}
             feedbackGiven={feedbackGiven}
             isLoading={false}
           />
