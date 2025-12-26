@@ -111,6 +111,10 @@ interface SelectionContextActions {
 interface AIPanelContextState {
   /** AI 面板是否展开 */
   isAIPanelOpen: boolean;
+  /** 用途筛选面板是否展开 */
+  isFilterPanelOpen: boolean;
+  /** 手动创建面板是否展开 */
+  isCreatePanelOpen: boolean;
 }
 
 /**
@@ -123,6 +127,18 @@ interface AIPanelContextActions {
   closeAIPanel: () => void;
   /** 切换 AI 面板状态 */
   toggleAIPanel: () => void;
+  /** 打开用途筛选面板 */
+  openFilterPanel: () => void;
+  /** 关闭用途筛选面板 */
+  closeFilterPanel: () => void;
+  /** 切换用途筛选面板状态 */
+  toggleFilterPanel: () => void;
+  /** 打开手动创建面板 */
+  openCreatePanel: () => void;
+  /** 关闭手动创建面板 */
+  closeCreatePanel: () => void;
+  /** 切换手动创建面板状态 */
+  toggleCreatePanel: () => void;
 }
 
 /**
@@ -237,6 +253,8 @@ export function HomePageProvider({
 
   // ========== AI 面板状态 ==========
   const [isAIPanelOpen, setIsAIPanelOpen] = useState(false);
+  const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
+  const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false);
 
   // ========== 派生状态 ==========
   const isBrowserPlatform = platform === "browser";
@@ -317,6 +335,32 @@ export function HomePageProvider({
 
   const toggleAIPanel = useCallback(() => {
     setIsAIPanelOpen((prev) => !prev);
+  }, []);
+
+  // ========== 用途筛选面板操作 ==========
+  const openFilterPanel = useCallback(() => {
+    setIsFilterPanelOpen(true);
+  }, []);
+
+  const closeFilterPanel = useCallback(() => {
+    setIsFilterPanelOpen(false);
+  }, []);
+
+  const toggleFilterPanel = useCallback(() => {
+    setIsFilterPanelOpen((prev) => !prev);
+  }, []);
+
+  // ========== 手动创建面板操作 ==========
+  const openCreatePanel = useCallback(() => {
+    setIsCreatePanelOpen(true);
+  }, []);
+
+  const closeCreatePanel = useCallback(() => {
+    setIsCreatePanelOpen(false);
+  }, []);
+
+  const toggleCreatePanel = useCallback(() => {
+    setIsCreatePanelOpen((prev) => !prev);
   }, []);
 
   // ========== Event Bridge: 通过 UIEventBus 订阅外部事件 ==========
@@ -412,9 +456,17 @@ export function HomePageProvider({
       },
       aiPanel: {
         isAIPanelOpen,
+        isFilterPanelOpen,
+        isCreatePanelOpen,
         openAIPanel,
         closeAIPanel,
         toggleAIPanel,
+        openFilterPanel,
+        closeFilterPanel,
+        toggleFilterPanel,
+        openCreatePanel,
+        closeCreatePanel,
+        toggleCreatePanel,
       },
     }),
     [
@@ -440,9 +492,17 @@ export function HomePageProvider({
       setSelectionMode,
       toggleSelectionMode,
       isAIPanelOpen,
+      isFilterPanelOpen,
+      isCreatePanelOpen,
       openAIPanel,
       closeAIPanel,
       toggleAIPanel,
+      openFilterPanel,
+      closeFilterPanel,
+      toggleFilterPanel,
+      openCreatePanel,
+      closeCreatePanel,
+      toggleCreatePanel,
     ],
   );
 
