@@ -228,9 +228,9 @@ export function AppHeader() {
               <QuickAddBookmark />
             </div>
 
-            {/* 手动创建按钮 */}
+            {/* 手动创建按钮 - 糖果色风格 */}
             <Button
-              className="shrink-0 h-8 px-3 text-sm bg-[#f6e2d3] hover:bg-[#edd5c3] text-[#254f61] shadow-sm"
+              className="shrink-0 h-8 px-3 text-sm bg-gradient-to-r from-pink-400 to-rose-400 text-white shadow-lg shadow-pink-200 hover:shadow-pink-300 hover:scale-105 transition-all duration-200"
               onClick={handleOpenCreateDialog}
             >
               <Plus className="size-3.5 mr-1" />
