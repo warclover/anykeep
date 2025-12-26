@@ -122,6 +122,55 @@ export const FeatureFlags = {
   get ENABLE_PREFERENCE_LEARNING_V2(): boolean {
     return process.env.ENABLE_PREFERENCE_LEARNING_V2 !== "false";
   },
+
+  // ===========================================================================
+  // 任务理解层 v2.0 相关开关
+  // ===========================================================================
+
+  /**
+   * 是否启用 v2.0 System Prompt
+   * @default true
+   * @description 使用增强版 System Prompt（含置信度分层、隐含意图推断）
+   */
+  get ENABLE_V2_PROMPT(): boolean {
+    return process.env.ENABLE_V2_PROMPT !== "false";
+  },
+
+  /**
+   * 是否启用置信度分层执行
+   * @default true
+   * @description 根据置信度选择静默/说明/澄清策略
+   */
+  get ENABLE_CONFIDENCE_TIERING(): boolean {
+    return process.env.ENABLE_CONFIDENCE_TIERING !== "false";
+  },
+
+  /**
+   * 是否启用隐含意图推断
+   * @default true
+   * @description 从用户模糊表达推断真正目标
+   */
+  get ENABLE_IMPLICIT_INTENT(): boolean {
+    return process.env.ENABLE_IMPLICIT_INTENT !== "false";
+  },
+
+  /**
+   * 是否启用 System-Reminder 动态注入
+   * @default true
+   * @description 基于用户数据状态主动提供建议
+   */
+  get ENABLE_SYSTEM_REMINDER(): boolean {
+    return process.env.ENABLE_SYSTEM_REMINDER !== "false";
+  },
+
+  /**
+   * 是否启用增强置信度计算
+   * @default true
+   * @description 多因素综合评估意图理解置信度
+   */
+  get ENABLE_ENHANCED_CONFIDENCE(): boolean {
+    return process.env.ENABLE_ENHANCED_CONFIDENCE !== "false";
+  },
 } as const;
 
 // =============================================================================
@@ -155,5 +204,11 @@ export function getAllFeatureFlags(): Record<FeatureFlagKey, boolean> {
     ENABLE_ZERO_TAKEOVER: FeatureFlags.ENABLE_ZERO_TAKEOVER,
     ENABLE_UNDO_SERVICE: FeatureFlags.ENABLE_UNDO_SERVICE,
     ENABLE_PREFERENCE_LEARNING_V2: FeatureFlags.ENABLE_PREFERENCE_LEARNING_V2,
+    // 任务理解层 v2.0
+    ENABLE_V2_PROMPT: FeatureFlags.ENABLE_V2_PROMPT,
+    ENABLE_CONFIDENCE_TIERING: FeatureFlags.ENABLE_CONFIDENCE_TIERING,
+    ENABLE_IMPLICIT_INTENT: FeatureFlags.ENABLE_IMPLICIT_INTENT,
+    ENABLE_SYSTEM_REMINDER: FeatureFlags.ENABLE_SYSTEM_REMINDER,
+    ENABLE_ENHANCED_CONFIDENCE: FeatureFlags.ENABLE_ENHANCED_CONFIDENCE,
   };
 }

@@ -3,11 +3,17 @@
  *
  * 将动态上下文转换为可注入 System Prompt 的文本片段
  *
- * @version 1.0.0
+ * @version 2.0.0
  * @since 2025-12-26
+ * @updated 2025-12-27 - 集成 System-Reminder 动态注入
  */
 
 import type { DynamicContext } from "./types";
+import {
+  injectSystemReminders,
+  shouldInjectReminders,
+} from "./system-reminder-injector";
+import { FeatureFlags } from "../config/feature-flags";
 
 // =============================================================================
 // 时间段描述
@@ -121,6 +127,20 @@ export function buildMinimalContextPrompt(ctx: DynamicContext): string {
 }
 
 /**
+ * 合并选项
+ */
+export interface MergePromptOptions {
+  /** 使用精简版上下文 */
+  minimal?: boolean;
+  /** 启用 System-Reminder 注入 */
+  enableReminders?: boolean;
+  /** 启用主动建议（仅在 enableReminders 为 true 时有效） */
+  enableProactive?: boolean;
+  /** 最大提醒数量 */
+  maxReminders?: number;
+}
+
+/**
  * 合并基础 Prompt 和动态上下文
  *
  * @param basePrompt 基础 System Prompt
@@ -131,13 +151,30 @@ export function buildMinimalContextPrompt(ctx: DynamicContext): string {
 export function mergeSystemPrompt(
   basePrompt: string,
   ctx: DynamicContext,
-  options: { minimal?: boolean } = {},
+  options: MergePromptOptions = {},
 ): string {
-  const contextPrompt = options.minimal
+  const {
+    minimal = false,
+    enableReminders = FeatureFlags.ENABLE_SYSTEM_REMINDER,
+    enableProactive = true,
+    maxReminders = 2,
+  } = options;
+
+  const contextPrompt = minimal
     ? buildMinimalContextPrompt(ctx)
     : buildContextPrompt(ctx);
 
-  return `${basePrompt}\n\n${contextPrompt}`;
+  let result = `${basePrompt}\n\n${contextPrompt}`;
+
+  // 注入 System-Reminder（如果启用且满足条件）
+  if (enableReminders && shouldInjectReminders(ctx)) {
+    result = injectSystemReminders(result, ctx, {
+      maxReminders,
+      enableProactive,
+    });
+  }
+
+  return result;
 }
 
 // =============================================================================
