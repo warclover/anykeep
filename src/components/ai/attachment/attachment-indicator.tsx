@@ -45,6 +45,7 @@ interface AttachmentTagProps {
 
 function AttachmentTag({ item, onPreview, onRemove }: AttachmentTagProps) {
   const isBookmark = item.type === "bookmark";
+  const typeLabel = isBookmark ? "书签" : "文件";
 
   return (
     <div
@@ -53,6 +54,7 @@ function AttachmentTag({ item, onPreview, onRemove }: AttachmentTagProps) {
         "text-xs",
         isBookmark ? "bg-pink-100 text-pink-700" : "bg-blue-100 text-blue-700",
       )}
+      role="listitem"
     >
       {/* 标题 - 可点击预览 */}
       <button
@@ -64,6 +66,7 @@ function AttachmentTag({ item, onPreview, onRemove }: AttachmentTagProps) {
           !onPreview && "cursor-default",
         )}
         title={`点击预览: ${item.title}`}
+        aria-label={`预览${typeLabel}：${item.title}`}
       >
         {item.title}
       </button>
@@ -78,8 +81,9 @@ function AttachmentTag({ item, onPreview, onRemove }: AttachmentTagProps) {
             isBookmark ? "hover:bg-pink-200" : "hover:bg-blue-200",
           )}
           title="预览"
+          aria-label={`预览${typeLabel}：${item.title}`}
         >
-          <Eye className="size-3" />
+          <Eye className="size-3" aria-hidden="true" />
         </button>
       )}
 
@@ -93,8 +97,9 @@ function AttachmentTag({ item, onPreview, onRemove }: AttachmentTagProps) {
             isBookmark ? "hover:bg-pink-200" : "hover:bg-blue-200",
           )}
           title="移除"
+          aria-label={`移除${typeLabel}：${item.title}`}
         >
-          <X className="size-3" />
+          <X className="size-3" aria-hidden="true" />
         </button>
       )}
     </div>
@@ -124,6 +129,8 @@ export function AttachmentIndicator({
         "bg-pink-50/50 border-b border-pink-100",
         className,
       )}
+      role="region"
+      aria-label={`已选附件：${items.length} 个`}
     >
       {/* 图标 */}
       <button
@@ -134,15 +141,20 @@ export function AttachmentIndicator({
           onExpand && "hover:text-pink-800 cursor-pointer",
           !onExpand && "cursor-default",
         )}
+        aria-label="展开附件面板"
       >
-        <Paperclip className="size-4 flex-shrink-0" />
+        <Paperclip className="size-4 flex-shrink-0" aria-hidden="true" />
         <span className="flex-shrink-0">
           {ATTACHMENT_TEXT.INDICATOR_PREFIX}
         </span>
       </button>
 
       {/* 附件标签列表 */}
-      <div className="flex-1 flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
+      <div
+        className="flex-1 flex items-center gap-1.5 overflow-x-auto scrollbar-hide"
+        role="list"
+        aria-label="附件列表"
+      >
         {items.map((item) => (
           <AttachmentTag
             key={item.id}

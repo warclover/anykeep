@@ -9,13 +9,15 @@
 
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   X,
   ExternalLink,
   FileText,
   Image as ImageIcon,
   FileType,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
 import {
   Dialog,
@@ -63,6 +65,9 @@ const PREVIEW_TEXT = {
   FILE_TYPE: "文件类型",
   OPEN_LINK: "打开链接",
   CONTENT_TRUNCATED: "（内容已截断）",
+  IMAGE_PREVIEW: "图片预览",
+  IMAGE_LOADING: "图片加载中...",
+  IMAGE_LOAD_ERROR: "图片加载失败",
 } as const;
 
 // =============================================================================
@@ -209,6 +214,11 @@ interface FilePreviewProps {
 function FilePreview({ attachment }: FilePreviewProps) {
   const isImage = attachment.mimeType?.startsWith("image/");
 
+  // 图片加载状态
+  const [imageLoadState, setImageLoadState] = useState<
+    "loading" | "loaded" | "error"
+  >("loading");
+
   // 对于图片，尝试从 content 中提取 base64
   const imageUrl = useMemo(() => {
     if (isImage && attachment.content) {
@@ -273,13 +283,50 @@ function FilePreview({ attachment }: FilePreviewProps) {
       {/* 图片预览 */}
       {isImage && imageUrl && (
         <div className="space-y-2">
-          <h4 className="text-sm font-medium text-muted-foreground">预览</h4>
-          <div className="rounded-lg overflow-hidden bg-muted/50 p-2">
+          <h4 className="text-sm font-medium text-muted-foreground">
+            {PREVIEW_TEXT.IMAGE_PREVIEW}
+          </h4>
+          <div className="rounded-lg overflow-hidden bg-muted/50 p-2 relative min-h-[100px]">
+            {/* 加载状态 */}
+            {imageLoadState === "loading" && (
+              <div
+                className="absolute inset-0 flex items-center justify-center bg-muted/50"
+                role="status"
+                aria-live="polite"
+              >
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Loader2 className="size-5 animate-spin" aria-hidden="true" />
+                  <span className="text-sm">{PREVIEW_TEXT.IMAGE_LOADING}</span>
+                </div>
+              </div>
+            )}
+
+            {/* 错误状态 */}
+            {imageLoadState === "error" && (
+              <div
+                className="flex items-center justify-center h-[100px] text-muted-foreground"
+                role="alert"
+              >
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="size-5" aria-hidden="true" />
+                  <span className="text-sm">
+                    {PREVIEW_TEXT.IMAGE_LOAD_ERROR}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* 图片 */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={imageUrl}
-              alt={attachment.title}
-              className="max-w-full max-h-[300px] object-contain mx-auto rounded"
+              alt={`${attachment.title} 的预览图片`}
+              className={cn(
+                "max-w-full max-h-[300px] object-contain mx-auto rounded",
+                imageLoadState !== "loaded" && "invisible h-0",
+              )}
+              onLoad={() => setImageLoadState("loaded")}
+              onError={() => setImageLoadState("error")}
             />
           </div>
         </div>
