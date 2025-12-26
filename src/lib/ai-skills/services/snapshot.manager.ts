@@ -146,11 +146,11 @@ function getSnapshotsTable(supabase: ReturnType<typeof createClient>): any {
 /**
  * 调用 RPC 函数（绕过类型检查）
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function callRpc(
   supabase: ReturnType<typeof createClient>,
   fn: string,
   params: Record<string, unknown>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (supabase as any).rpc(fn, params);

@@ -1,0 +1,50 @@
+{
+  "manifest_version": 3,
+  "name": "AnyKeep - 智能收藏助手",
+  "version": "1.0.0",
+  "description": "一键收藏微信公众号文章到 AnyKeep，支持完整内容快照和离线阅读",
+  "author": "AnyKeep Team",
+  "homepage_url": "https://anykeep.app",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png"
+    },
+    "default_title": "AnyKeep"
+  },
+  "permissions": ["storage", "activeTab", "tabs", "alarms"],
+  "host_permissions": [
+    "https://mp.weixin.qq.com/*",
+    "https://*.anykeep.app/*",
+    "http://localhost:3000/*"
+  ],
+  "background": {
+    "service_worker": "background/service-worker.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://mp.weixin.qq.com/s*",
+        "https://mp.weixin.qq.com/s/*"
+      ],
+      "js": ["content/wechat-capture.js"],
+      "css": ["content/styles.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["icons/*"],
+      "matches": ["https://mp.weixin.qq.com/*"]
+    }
+  ]
+}

@@ -77,11 +77,12 @@ function inferCorrectIntentFromFeedback(
   if (reason === "wrong_intent") {
     const alternatives: Record<IntentType, IntentType> = {
       query: "organize", // 如果认为是搜索但实际不是，可能是整理
+      action: "query", // 如果认为是操作但实际不是，可能是搜索
       organize: "query", // 如果认为是整理但实际不是，可能是搜索
+      analyze: "query", // 如果认为是分析但实际不是，可能是搜索
+      learn: "query", // 如果认为是学习但实际不是，可能是搜索
       create: "query", // 如果认为是创建但实际不是，可能是搜索
-      export: "query", // 如果认为是导出但实际不是，可能是搜索
-      review: "query", // 如果认为是复习但实际不是，可能是搜索
-      unknown: "query", // 未知默认尝试搜索
+      chitchat: "query", // 闲聊默认尝试搜索
     };
     return alternatives[wrongIntent];
   }

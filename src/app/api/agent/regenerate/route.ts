@@ -373,7 +373,7 @@ async function handleNonStreamingRegenerate(
     userId,
     message,
     conversationId,
-    messageId: _messageId,
+    messageId,
     bookmarkIds,
     folderId,
     explicitTool: _explicitTool,

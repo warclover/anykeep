@@ -21,6 +21,8 @@ import {
   HelpCircle,
   ArrowRight,
   X,
+  Zap,
+  MessageCircle,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -64,6 +66,15 @@ const INTENT_OPTIONS: IntentOption[] = [
     borderColor: "border-blue-200",
   },
   {
+    id: "action",
+    name: "数据操作",
+    description: "删除、添加、编辑、修改内容",
+    icon: Zap,
+    color: "text-orange-600",
+    bgColor: "bg-orange-50 hover:bg-orange-100",
+    borderColor: "border-orange-200",
+  },
+  {
     id: "organize",
     name: "整理归类",
     description: "整理、分类、移动、标签管理",
@@ -73,18 +84,9 @@ const INTENT_OPTIONS: IntentOption[] = [
     borderColor: "border-emerald-200",
   },
   {
-    id: "create",
-    name: "内容创作",
-    description: "生成摘要、总结、报告",
-    icon: FileText,
-    color: "text-purple-600",
-    bgColor: "bg-purple-50 hover:bg-purple-100",
-    borderColor: "border-purple-200",
-  },
-  {
     id: "analyze",
     name: "数据分析",
-    description: "统计分析、报告生成、洞察",
+    description: "统计分析、导出数据、生成报告",
     icon: Download,
     color: "text-amber-600",
     bgColor: "bg-amber-50 hover:bg-amber-100",
@@ -98,6 +100,24 @@ const INTENT_OPTIONS: IntentOption[] = [
     color: "text-rose-600",
     bgColor: "bg-rose-50 hover:bg-rose-100",
     borderColor: "border-rose-200",
+  },
+  {
+    id: "create",
+    name: "内容创作",
+    description: "生成摘要、总结、提炼内容",
+    icon: FileText,
+    color: "text-purple-600",
+    bgColor: "bg-purple-50 hover:bg-purple-100",
+    borderColor: "border-purple-200",
+  },
+  {
+    id: "chitchat",
+    name: "闲聊问答",
+    description: "日常对话、问题解答、闲聊",
+    icon: MessageCircle,
+    color: "text-gray-600",
+    bgColor: "bg-gray-50 hover:bg-gray-100",
+    borderColor: "border-gray-200",
   },
 ];
 

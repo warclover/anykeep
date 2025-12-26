@@ -313,7 +313,7 @@ describe("CorrectionDetector", () => {
     it("从动作词推断正确意图 - 导出", () => {
       const intent = detector.inferCorrectIntent("我要导出数据", "query");
 
-      expect(intent).toBe("export");
+      expect(intent).toBe("analyze"); // export → analyze
     });
 
     it("从动作词推断正确意图 - 总结", () => {

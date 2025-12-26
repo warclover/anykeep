@@ -93,7 +93,7 @@ describe("LearningAwareClassifier", () => {
         userId: "user-1",
       });
 
-      expect(result.intent).toBe("export");
+      expect(result.intent).toBe("analyze"); // export → analyze
     });
 
     it("正确分类复习意图", async () => {
@@ -102,16 +102,16 @@ describe("LearningAwareClassifier", () => {
         userId: "user-1",
       });
 
-      expect(result.intent).toBe("review");
+      expect(result.intent).toBe("learn"); // review → learn
     });
 
-    it("未知意图返回 unknown", async () => {
+    it("未知意图返回 chitchat", async () => {
       const result = await classifier.classify({
         input: "随便说点什么",
         userId: "user-1",
       });
 
-      expect(result.intent).toBe("unknown");
+      expect(result.intent).toBe("chitchat"); // unknown → chitchat
       expect(result.confidence).toBeLessThan(0.5);
     });
 
@@ -134,8 +134,8 @@ describe("LearningAwareClassifier", () => {
     const queryKeywords = ["搜索", "查找", "找", "搜", "有没有"];
     const organizeKeywords = ["整理", "分类", "归类", "移动", "放到"];
     const createKeywords = ["总结", "摘要", "概括", "萃取", "提炼"];
-    const exportKeywords = ["导出", "下载", "备份"];
-    const reviewKeywords = ["复习", "回顾", "重温"];
+    const analyzeKeywords = ["导出", "下载", "备份"]; // export → analyze
+    const learnKeywords = ["复习", "回顾", "重温"]; // review → learn
 
     it.each(queryKeywords)('"%s" 应分类为 query', async (keyword) => {
       const result = await classifier.classify({
@@ -161,20 +161,20 @@ describe("LearningAwareClassifier", () => {
       expect(result.intent).toBe("create");
     });
 
-    it.each(exportKeywords)('"%s" 应分类为 export', async (keyword) => {
+    it.each(analyzeKeywords)('"%s" 应分类为 analyze', async (keyword) => {
       const result = await classifier.classify({
         input: `${keyword}我的数据`,
         userId: "user-1",
       });
-      expect(result.intent).toBe("export");
+      expect(result.intent).toBe("analyze");
     });
 
-    it.each(reviewKeywords)('"%s" 应分类为 review', async (keyword) => {
+    it.each(learnKeywords)('"%s" 应分类为 learn', async (keyword) => {
       const result = await classifier.classify({
         input: `${keyword}之前的内容`,
         userId: "user-1",
       });
-      expect(result.intent).toBe("review");
+      expect(result.intent).toBe("learn");
     });
   });
 
@@ -205,7 +205,7 @@ describe("LearningAwareClassifier", () => {
     it("外部分类器优先级高于简单分类", async () => {
       const mockOriginalClassifier = {
         classify: async (_input: string) => ({
-          intent: "export" as IntentType,
+          intent: "analyze" as IntentType, // export → analyze
           confidence: 0.88,
         }),
       };
@@ -218,7 +218,7 @@ describe("LearningAwareClassifier", () => {
         userId: "user-1",
       });
 
-      expect(result.intent).toBe("export");
+      expect(result.intent).toBe("analyze");
     });
   });
 
@@ -293,22 +293,22 @@ describe("LearningAwareClassifier", () => {
   // ===========================================================================
 
   describe("边界情况", () => {
-    it("空输入返回 unknown", async () => {
+    it("空输入返回 chitchat", async () => {
       const result = await classifier.classify({
         input: "",
         userId: "user-1",
       });
 
-      expect(result.intent).toBe("unknown");
+      expect(result.intent).toBe("chitchat"); // unknown → chitchat
     });
 
-    it("只有空格的输入返回 unknown", async () => {
+    it("只有空格的输入返回 chitchat", async () => {
       const result = await classifier.classify({
         input: "   ",
         userId: "user-1",
       });
 
-      expect(result.intent).toBe("unknown");
+      expect(result.intent).toBe("chitchat"); // unknown → chitchat
     });
 
     it("特殊字符输入不崩溃", async () => {

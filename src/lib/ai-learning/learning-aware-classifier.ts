@@ -158,7 +158,7 @@ export class LearningAwareClassifier {
     }
 
     // 2. 调用原始分类器
-    let originalIntent: IntentType = "unknown";
+    let originalIntent: IntentType = "chitchat";
     let originalConfidence = 0;
 
     if (this.originalClassifier) {
@@ -333,6 +333,9 @@ export class LearningAwareClassifier {
 
   /**
    * 简单分类（备用）
+   *
+   * 注意：IntentType 统一使用 router/types 定义
+   * 完整类型：query | action | organize | analyze | learn | create | chitchat
    */
   private simpleClassify(input: string): {
     intent: IntentType;
@@ -350,14 +353,17 @@ export class LearningAwareClassifier {
     if (/总结|摘要|概括|萃取|提炼/.test(lowerInput)) {
       return { intent: "create", confidence: 0.7 };
     }
-    if (/导出|下载|备份/.test(lowerInput)) {
-      return { intent: "export", confidence: 0.7 };
+    if (/导出|下载|备份|统计|分析/.test(lowerInput)) {
+      return { intent: "analyze", confidence: 0.7 };
     }
-    if (/复习|回顾|重温/.test(lowerInput)) {
-      return { intent: "review", confidence: 0.7 };
+    if (/复习|回顾|重温|学习/.test(lowerInput)) {
+      return { intent: "learn", confidence: 0.7 };
+    }
+    if (/删除|添加|编辑|修改/.test(lowerInput)) {
+      return { intent: "action", confidence: 0.7 };
     }
 
-    return { intent: "unknown", confidence: 0.3 };
+    return { intent: "chitchat", confidence: 0.3 };
   }
 
   /**
@@ -387,11 +393,12 @@ export class LearningAwareClassifier {
       // 返回最可能的替代意图
       const alternatives: Record<IntentType, IntentType> = {
         query: "organize",
+        action: "query",
         organize: "query",
+        analyze: "query",
+        learn: "query",
         create: "organize",
-        export: "query",
-        review: "query",
-        unknown: "query",
+        chitchat: "query",
       };
       return alternatives[wrongIntent];
     }

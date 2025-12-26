@@ -7,6 +7,8 @@
  * @updated 2025-12-26 - 统一 IntentType 从 router/types 导入
  */
 
+import type { IntentType } from "@/lib/ai-skills/router/types";
+
 // =============================================================================
 // 意图类型 - 从路由层统一导入
 // =============================================================================
@@ -15,7 +17,7 @@
  * 意图类型（从路由层统一导入，确保单一数据源）
  * @see {@link @/lib/ai-skills/router/types} IntentType
  */
-export type { IntentType } from "@/lib/ai-skills/router/types";
+export type { IntentType };
 
 // =============================================================================
 // 纠正信号类型

@@ -187,19 +187,27 @@
 - API 路由：自动生成 conversationId（UUID），响应 done chunk 携带 conversationId
 - 类型更新：DoneChunk 增加 `conversationId` 字段
 
-#### 2.4 前端集成 (4h) 📋 待实施
+#### 2.4 前端集成 (4h) ✅ 完成
+
+> **完成日期**: 2025-12-26
+> **实现说明**: 在 `ai-panel-content.tsx` 中实现
 
 **目标**: 前端维护 conversationId + 显示记忆状态
 
-| #     | 任务                              | 工时 | 文件路径                                      | 验收标准                    |
-| ----- | --------------------------------- | ---- | --------------------------------------------- | --------------------------- |
-| 2.4.1 | [ ] 前端生成并维护 conversationId | 1h   | `src/hooks/use-ai-chat.ts`                    | UUID 生成，会话级存储       |
-| 2.4.2 | [ ] API 请求携带 conversationId   | 0.5h | `src/lib/ai-chat/api.ts`                      | 所有请求带 conversationId   |
-| 2.4.3 | [ ] 显示"AI 记住了"提示           | 1h   | `src/components/ai-chat/memory-indicator.tsx` | 指代解析成功时显示          |
-| 2.4.4 | [ ] 新会话时重置 conversationId   | 0.5h | `src/components/ai-chat/chat-container.tsx`   | 点击"新对话"时重置          |
-| 2.4.5 | [ ] 前端集成测试                  | 1h   | 手动测试                                      | "把刚才的...保存"能正确工作 |
+| #     | 任务                              | 工时 | 文件路径                                 | 验收标准                    |
+| ----- | --------------------------------- | ---- | ---------------------------------------- | --------------------------- |
+| 2.4.1 | [x] 前端生成并维护 conversationId | 1h   | `src/components/ai/ai-panel-content.tsx` | UUID 生成，会话级存储       |
+| 2.4.2 | [x] API 请求携带 conversationId   | 0.5h | `src/components/ai/ai-panel-content.tsx` | 所有请求带 conversationId   |
+| 2.4.3 | [x] 显示"AI 记住了"提示           | 1h   | `src/components/ai/memory-indicator.tsx` | 指代解析成功时显示          |
+| 2.4.4 | [x] 新会话时重置 conversationId   | 0.5h | `src/components/ai/ai-panel-content.tsx` | 点击"新对话"时重置          |
+| 2.4.5 | [~] 前端集成测试                  | 1h   | 手动测试                                 | "把刚才的...保存"能正确工作 |
 
-**注意**：前端集成（2.4）可在后续迭代中完成，后端功能已完整可用。
+**实现细节**:
+
+- 2.4.1: 使用 `crypto.randomUUID()` 在组件初始化时生成 conversationId
+- 2.4.2: API 请求体已包含 `conversationId` 字段（第 164 行）
+- 2.4.3: `memory-indicator.tsx` 完整实现，支持紧凑/展开/Toast 三种样式
+- 2.4.4: `handleClear` 函数在清除对话时生成新的 conversationId
 
 ---
 

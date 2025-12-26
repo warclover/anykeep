@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>微信图片防盗链测试</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    .test-case { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 8px; }
+    .test-case h3 { margin-top: 0; }
+    img { max-width: 300px; height: auto; border: 1px solid #eee; }
+    .status { margin-top: 10px; padding: 5px 10px; border-radius: 4px; display: inline-block; }
+    .success { background: #d4edda; color: #155724; }
+    .error { background: #f8d7da; color: #721c24; }
+  </style>
+</head>
+<body>
+  <h1>微信图片防盗链测试</h1>
+  <p>测试不同方案加载微信公众号图片</p>
+
+  <!-- 测试用的微信图片 URL - 请替换为实际的微信图片 URL -->
+  <script>
+    // 从 URL 参数获取测试图片
+    const urlParams = new URLSearchParams(window.location.search);
+    const testImageUrl = urlParams.get('url') || 'https://mmbiz.qpic.cn/mmbiz_jpg/example/0';
+  </script>
+
+  <div class="test-case">
+    <h3>方案1: 普通 img 标签（无防盗链处理）</h3>
+    <p>预期: 加载失败（显示占位图或403）</p>
+    <img id="img1" alt="普通加载">
+    <div id="status1" class="status">加载中...</div>
+  </div>
+
+  <div class="test-case">
+    <h3>方案2: referrerPolicy="no-referrer"</h3>
+    <p>预期: 加载成功</p>
+    <img id="img2" referrerpolicy="no-referrer" alt="referrerPolicy方案">
+    <div id="status2" class="status">加载中...</div>
+  </div>
+
+  <div class="test-case">
+    <h3>方案3: referrerPolicy + crossOrigin</h3>
+    <p>预期: 加载成功</p>
+    <img id="img3" referrerpolicy="no-referrer" crossorigin="anonymous" alt="referrerPolicy+crossOrigin方案">
+    <div id="status3" class="status">加载中...</div>
+  </div>
+
+  <div class="test-case">
+    <h3>方案4: 本站代理 API</h3>
+    <p>预期: 加载成功（通过服务端代理）</p>
+    <img id="img4" alt="代理方案">
+    <div id="status4" class="status">加载中...</div>
+  </div>
+
+  <script>
+    function setStatus(id, success, msg) {
+      const el = document.getElementById('status' + id);
+      el.textContent = msg;
+      el.className = 'status ' + (success ? 'success' : 'error');
+    }
+
+    function setupImage(id, url, useProxy = false) {
+      const img = document.getElementById('img' + id);
+      const finalUrl = useProxy ? '/api/image-proxy?url=' + encodeURIComponent(url) : url;
+
+      img.onload = () => setStatus(id, true, '✓ 加载成功');
+      img.onerror = () => setStatus(id, false, '✗ 加载失败');
+      img.src = finalUrl;
+    }
+
+    // 设置测试图片
+    setupImage(1, testImageUrl);
+    setupImage(2, testImageUrl);
+    setupImage(3, testImageUrl);
+    setupImage(4, testImageUrl, true);
+  </script>
+
+  <hr>
+  <h2>使用方法</h2>
+  <p>访问: <code>/test-image.html?url=微信图片URL</code></p>
+  <p>例如: <code>/test-image.html?url=https://mmbiz.qpic.cn/mmbiz_jpg/xxx/0?wx_fmt=jpeg</code></p>
+
+  <h2>输入测试 URL</h2>
+  <input type="text" id="urlInput" style="width: 80%; padding: 8px;" placeholder="粘贴微信图片 URL">
+  <button onclick="testUrl()" style="padding: 8px 16px;">测试</button>
+
+  <script>
+    function testUrl() {
+      const url = document.getElementById('urlInput').value;
+      if (url) {
+        window.location.href = '?url=' + encodeURIComponent(url);
+      }
+    }
+  </script>
+</body>
+</html>

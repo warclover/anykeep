@@ -86,36 +86,55 @@ const CORRECTION_PATTERNS: CorrectionPattern[] = [
 
 /**
  * 意图否定映射
+ *
+ * 注意：IntentType 统一使用 router/types 定义
+ * - export → analyze（导出归类到分析）
+ * - review → learn（复习归类到学习）
  */
 const INTENT_NEGATIONS: Record<string, IntentType[]> = {
-  不是搜索: ["organize", "create", "export"],
-  不是整理: ["query", "create", "export"],
-  不是总结: ["query", "organize", "export"],
+  不是搜索: ["organize", "create", "analyze"],
+  不是整理: ["query", "create", "analyze"],
+  不是总结: ["query", "organize", "analyze"],
   不是导出: ["query", "organize", "create"],
-  不要搜: ["organize", "create", "export"],
-  不要整理: ["query", "create", "export"],
-  不要总结: ["query", "organize", "export"],
+  不要搜: ["organize", "create", "analyze"],
+  不要整理: ["query", "create", "analyze"],
+  不要总结: ["query", "organize", "analyze"],
 };
 
 /**
  * 动作到意图映射
+ *
+ * 注意：IntentType 统一使用 router/types 定义
+ * 完整类型：query | action | organize | analyze | learn | create | chitchat
  */
 const ACTION_TO_INTENT: Record<string, IntentType> = {
+  // organize - 整理归类
   整理: "organize",
   分类: "organize",
   归类: "organize",
   移动: "organize",
+  // query - 搜索查询
   搜索: "query",
   查找: "query",
   找: "query",
   搜: "query",
+  // create - 内容创作
   总结: "create",
   摘要: "create",
   概括: "create",
-  导出: "export",
-  下载: "export",
-  复习: "review",
-  回顾: "review",
+  // analyze - 数据分析（包含导出）
+  导出: "analyze",
+  下载: "analyze",
+  统计: "analyze",
+  分析: "analyze",
+  // learn - 知识学习（包含复习）
+  复习: "learn",
+  回顾: "learn",
+  学习: "learn",
+  // action - 操作类
+  删除: "action",
+  添加: "action",
+  编辑: "action",
 };
 
 // =============================================================================
