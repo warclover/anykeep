@@ -14,7 +14,7 @@ import Link from "next/link";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
-import { Moon, Sun, Search, Plus } from "lucide-react";
+import { Moon, Sun, Search, Plus, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -239,6 +239,17 @@ export function AppHeader() {
 
             {/* 用途筛选按钮（非浏览器书签 + 无文件夹筛选时显示） */}
             {!isBrowserPlatform && !currentFolder && <UsageTagFilterSheet />}
+
+            {/* AI 助理按钮 - 糖果色风格（青蓝色） */}
+            {homeContext && (
+              <Button
+                className="shrink-0 h-8 px-3 text-sm bg-gradient-to-r from-cyan-400 to-blue-400 text-white shadow-lg shadow-cyan-200 hover:shadow-cyan-300 hover:scale-105 transition-all duration-200"
+                onClick={() => homeContext.aiPanel.toggleAIPanel()}
+              >
+                <Sparkles className="size-3.5 mr-1" />
+                AI助理
+              </Button>
+            )}
           </div>
         </div>
       )}

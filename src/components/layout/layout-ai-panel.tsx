@@ -10,8 +10,6 @@
 
 "use client";
 
-import { Sparkles } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { AIAssistantPanelEmbedded } from "@/components/ai";
 import { useHomePageSafe } from "@/contexts/home-page-context";
 import { useOptionalUser } from "@/contexts/user-context";
@@ -33,7 +31,7 @@ export function LayoutAIPanel() {
     return null;
   }
 
-  const { isAIPanelOpen, closeAIPanel, toggleAIPanel } = homeContext.aiPanel;
+  const { isAIPanelOpen, closeAIPanel } = homeContext.aiPanel;
 
   return (
     <>
@@ -43,20 +41,6 @@ export function LayoutAIPanel() {
         onClose={closeAIPanel}
         title="AI 知识助手"
       />
-
-      {/* 悬浮触发按钮 */}
-      {!isAIPanelOpen && (
-        <div className="fixed bottom-6 right-6 z-50 max-lg:bottom-24">
-          <Button
-            size="icon"
-            onClick={toggleAIPanel}
-            className="w-14 h-14 rounded-full shadow-xl hover:shadow-2xl transition-shadow bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600"
-            title="打开 AI 助手"
-          >
-            <Sparkles className="size-6 text-white" />
-          </Button>
-        </div>
-      )}
     </>
   );
 }
