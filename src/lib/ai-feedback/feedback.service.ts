@@ -13,8 +13,8 @@
 
 import { createClient } from "@/lib/supabase/client";
 import { logger } from "@/lib/logger";
-// TODO: 集成 CorrectionLearner（负反馈触发学习）
-// import { correctionLearner } from "@/lib/ai-learning";
+import { correctionLearner } from "@/lib/ai-learning";
+import type { IntentType } from "@/lib/ai-learning";
 import type {
   FeedbackRecord,
   FeedbackType,
@@ -230,19 +230,72 @@ export class FeedbackService {
 
   /**
    * 触发学习（内部方法）
+   *
+   * 当用户提供了 correctIntent 时，调用 CorrectionLearner 记录纠正
    */
   private async triggerLearning(params: CreateFeedbackParams): Promise<void> {
     try {
-      // 调用 CorrectionLearner 记录纠正
-      // 注意：这里需要用户提供正确的意图，目前使用负反馈评论作为线索
-      if (params.negativeComment) {
+      // 如果用户指定了正确意图，记录纠正以便学习
+      if (params.correctIntent) {
+        const validIntents: IntentType[] = [
+          "query",
+          "action",
+          "organize",
+          "analyze",
+          "learn",
+          "create",
+          "chitchat",
+        ];
+
+        // 验证 correctIntent 是否为有效的 IntentType
+        if (validIntents.includes(params.correctIntent as IntentType)) {
+          logger.info(
+            {
+              wrongIntent: params.classifiedIntent,
+              correctIntent: params.correctIntent,
+              originalMessage: params.originalMessage.substring(0, 50),
+            },
+            "FeedbackService: Recording correction for learning",
+          );
+
+          const result = await correctionLearner.recordCorrection({
+            userId: params.userId,
+            originalMessage: params.originalMessage,
+            wrongIntent: params.classifiedIntent as IntentType,
+            correctIntent: params.correctIntent as IntentType,
+            signal: {
+              signal: "negative_feedback",
+              confidence: 0.9,
+              originalInput: params.originalMessage,
+              wrongIntent: params.classifiedIntent as IntentType,
+              correctionInput: params.negativeComment || "",
+              inferredCorrectIntent: params.correctIntent as IntentType,
+            },
+          });
+
+          if (result.success) {
+            logger.info(
+              { correctionId: result.data?.id },
+              "FeedbackService: Correction recorded successfully",
+            );
+          } else {
+            logger.warn(
+              { error: result.error },
+              "FeedbackService: Failed to record correction",
+            );
+          }
+        } else {
+          logger.warn(
+            { correctIntent: params.correctIntent },
+            "FeedbackService: Invalid correctIntent provided, skipping learning",
+          );
+        }
+      } else if (params.negativeComment) {
+        // 没有明确的 correctIntent，只记录日志供后续分析
         logger.info(
           { feedback: params.negativeComment },
-          "FeedbackService: Triggering learning from negative feedback",
+          "FeedbackService: Negative feedback without correctIntent, learning skipped",
         );
-
-        // 这里可以进一步解析用户的评论来推断正确意图
-        // 目前只记录日志，实际的纠正需要用户明确指定正确意图
       }
     } catch (error) {
       logger.warn(

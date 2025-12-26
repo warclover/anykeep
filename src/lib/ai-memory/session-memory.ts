@@ -29,7 +29,8 @@ import { DEFAULT_SESSION_MEMORY_CONFIG } from "./types";
  * 使用内存 Map 存储会话状态，支持过期清理
  */
 export class SessionMemory {
-  private sessions: Map<string, ConversationState> = new Map();
+  /** 会话状态 Map（子类可访问以支持持久化恢复） */
+  protected sessions: Map<string, ConversationState> = new Map();
   private config: Required<SessionMemoryConfig>;
   private cleanupTimer: ReturnType<typeof setInterval> | null = null;
 

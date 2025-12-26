@@ -91,8 +91,7 @@ export class PersistentSessionMemory extends SessionMemory {
         // 恢复到内存
         state = result.data;
 
-        // 使用 updateState 设置状态（绕过 createState 避免重复创建）
-        // @ts-expect-error - 访问私有 sessions Map
+        // 使用 protected sessions Map 恢复状态（绕过 createState 避免重复创建）
         this.sessions.set(conversationId, state);
 
         this.loadedSessions.add(conversationId);
@@ -279,6 +278,23 @@ export class PersistentSessionMemory extends SessionMemory {
     }
 
     return existed;
+  }
+
+  /**
+   * 重写清理方法，同步清理 loadedSessions 以防止内存泄漏
+   */
+  override cleanup(): number {
+    const cleanedCount = super.cleanup();
+
+    // 同步 loadedSessions：移除已不在 sessions Map 中的条目
+    const activeSessionIds = new Set(this.getAllSessionIds());
+    for (const conversationId of this.loadedSessions) {
+      if (!activeSessionIds.has(conversationId)) {
+        this.loadedSessions.delete(conversationId);
+      }
+    }
+
+    return cleanedCount;
   }
 
   // ==========================================================================

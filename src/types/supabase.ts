@@ -352,6 +352,56 @@ export type Database = {
           },
         ];
       };
+      /** AI 会话记忆表 - 持久化存储会话状态，支持服务重启后恢复上下文 */
+      ai_session_memory: {
+        Row: {
+          id: string;
+          user_id: string;
+          /** 会话 ID，用于标识不同的对话 */
+          conversation_id: string;
+          /** 完整的会话状态（ConversationState），包含消息历史、提及实体等 */
+          state: Json;
+          /** 消息数量，用于快速统计 */
+          message_count: number;
+          /** 最近的意图类型，用于快速筛选 */
+          last_intent: string | null;
+          created_at: string;
+          updated_at: string;
+          /** 过期时间，默认 7 天后过期 */
+          expires_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          conversation_id: string;
+          state?: Json;
+          message_count?: number;
+          last_intent?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          expires_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          conversation_id?: string;
+          state?: Json;
+          message_count?: number;
+          last_intent?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          expires_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "ai_session_memory_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       /** Skill 执行日志表 - 记录所有 Skill 的执行历史 */
       ai_skill_executions: {
         Row: {
@@ -3232,6 +3282,11 @@ export type Database = {
         }[];
       };
       cleanup_expired_messages: { Args: never; Returns: number };
+      /** 清理过期的会话记忆 - 仅授权 service_role */
+      cleanup_expired_session_memory: {
+        Args: Record<string, never>;
+        Returns: number;
+      };
       cleanup_old_chat_cache: { Args: { p_days?: number }; Returns: number };
       cleanup_old_patrol_reports: { Args: never; Returns: undefined };
       clear_bookmark_pending_cluster: {
@@ -3517,6 +3572,21 @@ export type Database = {
         Args: { p_user_id?: string };
         Returns: number;
       };
+      /** 获取或创建会话记忆记录 - 已授权 authenticated */
+      get_or_create_session_memory: {
+        Args: { p_user_id: string; p_conversation_id: string };
+        Returns: {
+          id: string;
+          user_id: string;
+          conversation_id: string;
+          state: Json;
+          message_count: number;
+          last_intent: string | null;
+          created_at: string;
+          updated_at: string;
+          expires_at: string;
+        };
+      };
       get_pending_cluster_bookmarks: {
         Args: { p_limit?: number; p_min_age_hours?: number; p_user_id: string };
         Returns: {
@@ -3606,6 +3676,18 @@ export type Database = {
           avg_tokens_per_chat: number;
           total_conversations: number;
           total_tokens: number;
+        }[];
+      };
+      /** 获取用户的活跃会话列表 - 已授权 authenticated */
+      get_user_active_sessions: {
+        Args: { p_user_id: string };
+        Returns: {
+          conversation_id: string;
+          message_count: number;
+          last_intent: string | null;
+          created_at: string;
+          updated_at: string;
+          expires_in: unknown;
         }[];
       };
       /** 获取用户的 AI 使用统计 */
@@ -3856,6 +3938,17 @@ export type Database = {
       reject_classification_suggestions: {
         Args: { p_suggestion_ids: number[]; p_user_id: string };
         Returns: number;
+      };
+      /** 保存会话状态到数据库 - 已授权 authenticated */
+      save_session_state: {
+        Args: {
+          p_user_id: string;
+          p_conversation_id: string;
+          p_state: Json;
+          p_message_count?: number;
+          p_last_intent?: string | null;
+        };
+        Returns: boolean;
       };
       search_bookmarks_by_embedding: {
         Args: {

@@ -50,6 +50,8 @@ export interface CreateFeedbackParams {
   type: FeedbackType;
   negativeReason?: NegativeFeedbackReason;
   negativeComment?: string;
+  /** 用户指定的正确意图（当 negativeReason 为 wrong_intent 时使用，触发学习） */
+  correctIntent?: string;
   originalMessage: string;
   classifiedIntent: string;
   toolUsed: string;

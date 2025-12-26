@@ -27,10 +27,11 @@ import type {
 
 /**
  * AI 操作快照管理器
+ *
+ * 注意：快照 TTL 由数据库 expires_at 列控制（默认 24 小时），
+ * 详见 ai_operation_snapshots 表定义
  */
 export class SnapshotManager {
-  private readonly SNAPSHOT_TTL_HOURS = 24;
-
   /**
    * 创建快照（执行操作前调用）
    */
