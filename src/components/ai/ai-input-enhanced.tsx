@@ -4,18 +4,19 @@
  * Phase 4: AI 增强输入组件
  *
  * 在原有 AIInput 基础上增加：
- * - ToolSelector: 工具选择器
+ * - ToolDropdown: 工具下拉菜单（YouMind 风格）
  * - ContextIndicator: 上下文引用指示器
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-25
+ * @updated 2025-12-26 - 使用 ToolDropdown 替换 ToolSelector
  */
 
 import { useRef, useCallback, type KeyboardEvent } from "react";
 import { Send, Loader2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { ToolSelector, useToolShortcuts } from "./phase4/tool-selector";
+import { ToolDropdown, getToolDisplayName } from "./phase4/tool-dropdown";
 import { ContextIndicator } from "./phase4/context-panel";
 import type { ToolType, ContextItem } from "./phase4/types";
 
@@ -63,12 +64,9 @@ export function AIInputEnhanced({
   contextItems,
   onExpandContext,
   onClearContext,
-  enableShortcuts = true,
+  enableShortcuts: _enableShortcuts = true,
 }: AIInputEnhancedProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  // 启用工具快捷键（使用第二个参数控制是否启用）
-  useToolShortcuts(onToolChange, enableShortcuts && !disabled);
 
   // 处理键盘事件
   const handleKeyDown = useCallback(
@@ -107,8 +105,8 @@ export function AIInputEnhanced({
       {/* 输入区域 */}
       <div className="p-4">
         <div className="flex items-end gap-3">
-          {/* 工具选择器 */}
-          <ToolSelector
+          {/* 工具下拉菜单 - YouMind 风格 */}
+          <ToolDropdown
             value={selectedTool}
             onChange={onToolChange}
             disabled={disabled}
@@ -170,37 +168,14 @@ export function AIInputEnhanced({
         {selectedTool !== "auto" && (
           <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
             <span className="px-2 py-0.5 bg-primary/10 text-primary rounded-md">
-              使用「{getToolLabel(selectedTool)}」工具
+              使用「{getToolDisplayName(selectedTool)}」工具
             </span>
-            <span className="text-muted-foreground/60">
-              按 ⌘A 切换回自动模式
-            </span>
+            <span className="text-muted-foreground/60">点击工具按钮切换</span>
           </div>
         )}
       </div>
     </div>
   );
-}
-
-// =============================================================================
-// 辅助函数
-// =============================================================================
-
-function getToolLabel(tool: ToolType): string {
-  const labels: Record<ToolType, string> = {
-    auto: "自动",
-    search: "搜索",
-    organize: "整理",
-    summarize: "总结",
-    export: "导出",
-    extract: "萃取",
-    review: "复习",
-    stats: "统计",
-    tag: "标签",
-    dedupe: "去重",
-    create: "创作",
-  };
-  return labels[tool] || tool;
 }
 
 export default AIInputEnhanced;

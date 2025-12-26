@@ -23,6 +23,16 @@ export {
 } from "./tool-selector";
 export type { ToolSelectorProps } from "./tool-selector";
 
+// 工具下拉菜单（YouMind 风格）
+export {
+  ToolDropdown,
+  TOOL_GROUPS,
+  findToolInfo,
+  getToolDisplayName,
+  getToolIcon,
+} from "./tool-dropdown";
+export type { ToolDropdownProps, ToolGroup, SubTool } from "./tool-dropdown";
+
 // 上下文面板
 export {
   ContextIndicator,
