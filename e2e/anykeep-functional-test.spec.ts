@@ -36,6 +36,7 @@ const PROTECTED_PAGES = [
   { path: "/messages/pending", name: "待处理消息" },
   { path: "/librarian", name: "知识管理" },
   { path: "/folder-health", name: "文件夹健康检查" },
+  { path: "/link-health", name: "链接健康检测" },
   { path: "/md-collections", name: "Markdown 合集" },
 ];
 
