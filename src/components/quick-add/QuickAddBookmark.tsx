@@ -42,6 +42,8 @@ export function QuickAddBookmark({
 
   // Track last successfully processed URL to prevent auto-paste repeat
   const [lastProcessedUrl, setLastProcessedUrl] = useState<string | null>(null);
+  // V4.2.21: Track submit error to prevent auto-retry infinite loop
+  const [hasSubmitError, setHasSubmitError] = useState(false);
 
   // State management
   const { state, actions } = useQuickAddState();
@@ -105,6 +107,7 @@ export function QuickAddBookmark({
   // Handle URL detected from input
   const handleUrlDetected = useCallback(
     (url: string) => {
+      setHasSubmitError(false); // V4.2.21: 重置错误状态
       actions.setExtractedUrl(url);
       fetchMetadata(url);
     },
@@ -116,6 +119,8 @@ export function QuickAddBookmark({
     if (!extractedUrl || isSubmitting) return;
 
     actions.setSubmitting(true);
+    // V4.2.21: 重置错误状态
+    setHasSubmitError(false);
 
     try {
       const response = await fetch("/api/bookmarks", {
@@ -139,11 +144,16 @@ export function QuickAddBookmark({
 
       if (!response.ok) {
         const errorData = await response.json();
-        // Fix: 正确解析错误消息
-        const errorMessage =
-          typeof errorData.error === "string"
-            ? errorData.error
-            : errorData.message || "创建失败";
+        // V4.2.21 修复：正确解析 API 错误响应格式
+        // API 返回格式: { success: false, error: { code, message, details } }
+        let errorMessage = "创建失败";
+        if (errorData.error) {
+          if (typeof errorData.error === "string") {
+            errorMessage = errorData.error;
+          } else if (typeof errorData.error.message === "string") {
+            errorMessage = errorData.error.message;
+          }
+        }
         throw new Error(errorMessage);
       }
 
@@ -172,6 +182,8 @@ export function QuickAddBookmark({
     } catch (error) {
       clientLogger.error({ error }, "Failed to create bookmark");
       toast.error(error instanceof Error ? error.message : "创建失败");
+      // V4.2.21: 设置错误状态以阻止自动重试
+      setHasSubmitError(true);
       actions.setSubmitting(false);
     }
   }, [
@@ -202,6 +214,7 @@ export function QuickAddBookmark({
 
   // Handle success dismiss
   const handleSuccessDismiss = useCallback(() => {
+    setHasSubmitError(false); // V4.2.21: 重置错误状态
     actions.reset();
   }, [actions]);
 
@@ -240,6 +253,7 @@ export function QuickAddBookmark({
             onCancel={actions.handleCancel}
             isSubmitting={isSubmitting}
             autoSubmit={true}
+            hasSubmitError={hasSubmitError}
           />
         ) : null;
 

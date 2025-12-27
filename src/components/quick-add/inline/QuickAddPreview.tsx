@@ -43,6 +43,8 @@ export interface QuickAddPreviewProps {
   isSubmitting?: boolean;
   /** 是否启用自动提交，默认 true */
   autoSubmit?: boolean;
+  /** 是否已发生提交错误（用于阻止自动重试） */
+  hasSubmitError?: boolean;
   className?: string;
 }
 
@@ -53,6 +55,7 @@ export function QuickAddPreview({
   onCancel,
   isSubmitting = false,
   autoSubmit = true,
+  hasSubmitError = false,
   className,
 }: QuickAddPreviewProps) {
   const { title, sourceName, platform } = metadata;
@@ -65,8 +68,9 @@ export function QuickAddPreview({
   const displayTitle = title.length > 35 ? `${title.slice(0, 35)}...` : title;
 
   // 自动提交倒计时
+  // V4.2.21 修复：当发生提交错误时，阻止自动重试以避免无限循环
   useEffect(() => {
-    if (!autoSubmit || isSubmitting || isPaused) return;
+    if (!autoSubmit || isSubmitting || isPaused || hasSubmitError) return;
 
     // 启动倒计时更新（每100ms更新一次进度）
     intervalRef.current = setInterval(() => {
@@ -82,7 +86,7 @@ export function QuickAddPreview({
       if (timerRef.current) clearTimeout(timerRef.current);
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [autoSubmit, isSubmitting, isPaused, onSubmit]);
+  }, [autoSubmit, isSubmitting, isPaused, hasSubmitError, onSubmit]);
 
   // 取消自动提交
   const handleCancel = useCallback(() => {
@@ -117,7 +121,7 @@ export function QuickAddPreview({
 
   // 计算进度百分比（从 0% 到 100%，实现从左到右的动画效果）
   const progress =
-    autoSubmit && !isPaused
+    autoSubmit && !isPaused && !hasSubmitError
       ? ((AUTO_SUBMIT_DELAY - countdown) / AUTO_SUBMIT_DELAY) * 100
       : 0;
 
@@ -141,7 +145,7 @@ export function QuickAddPreview({
       tabIndex={0}
     >
       {/* 自动提交进度条 */}
-      {autoSubmit && !isPaused && !isSubmitting && (
+      {autoSubmit && !isPaused && !isSubmitting && !hasSubmitError && (
         <div
           className="absolute bottom-0 left-0 h-0.5 transition-all duration-100 ease-linear"
           style={{ width: `${progress}%`, backgroundColor: "#254f61" }}
@@ -171,7 +175,7 @@ export function QuickAddPreview({
       {/* Action buttons */}
       <div className="flex items-center gap-1 flex-shrink-0">
         {/* Cancel button - 仅在自动提交倒计时中显示 */}
-        {autoSubmit && !isPaused && !isSubmitting && (
+        {autoSubmit && !isPaused && !isSubmitting && !hasSubmitError && (
           <Button
             variant="ghost"
             size="icon"
@@ -216,7 +220,7 @@ export function QuickAddPreview({
           <div className="absolute inset-0 bg-violet-600" />
 
           {/* 填充层 - 进度条颜色 #254f61，从左到右填充 */}
-          {autoSubmit && !isPaused && !isSubmitting && (
+          {autoSubmit && !isPaused && !isSubmitting && !hasSubmitError && (
             <div
               className="absolute inset-0 transition-all duration-100 ease-linear"
               style={{ width: `${progress}%`, backgroundColor: "#254f61" }}
@@ -224,7 +228,7 @@ export function QuickAddPreview({
           )}
 
           {/* 非倒计时状态的背景 */}
-          {(!autoSubmit || isPaused || isSubmitting) && (
+          {(!autoSubmit || isPaused || isSubmitting || hasSubmitError) && (
             <div className="absolute inset-0 bg-violet-600" />
           )}
 
@@ -235,7 +239,7 @@ export function QuickAddPreview({
                 <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 保存中
               </>
-            ) : autoSubmit && !isPaused ? (
+            ) : autoSubmit && !isPaused && !hasSubmitError ? (
               <>
                 收藏
                 <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-white/20 text-[10px] font-bold">
