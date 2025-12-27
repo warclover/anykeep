@@ -69,13 +69,26 @@ jest.mock("@/lib/supabase/server", () => ({
 }));
 
 jest.mock("@/lib/logger", () => {
-  const mockLogger = {
+  // 显式类型定义避免隐式 any
+  interface MockLogger {
+    info: jest.Mock;
+    error: jest.Mock;
+    debug: jest.Mock;
+    warn: jest.Mock;
+    child: jest.Mock;
+  }
+
+  const mockLogger: MockLogger = {
     info: jest.fn(),
     error: jest.fn(),
     debug: jest.fn(),
     warn: jest.fn(),
-    child: jest.fn(() => mockLogger), // child returns the same mock logger
+    child: jest.fn(),
   };
+
+  // child 返回自身（在定义后设置避免循环引用）
+  mockLogger.child.mockReturnValue(mockLogger);
+
   return { logger: mockLogger };
 });
 

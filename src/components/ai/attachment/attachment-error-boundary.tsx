@@ -13,6 +13,7 @@ import React, { Component, type ErrorInfo, type ReactNode } from "react";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { clientLogger } from "@/lib/client-logger";
 
 // =============================================================================
 // 类型定义
@@ -70,7 +71,14 @@ export class AttachmentErrorBoundary extends Component<
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
     // 记录错误日志
-    console.error("AttachmentErrorBoundary caught an error:", error, errorInfo);
+    clientLogger.error(
+      {
+        component: "AttachmentErrorBoundary",
+        error: error.message,
+        componentStack: errorInfo.componentStack,
+      },
+      "Caught an error",
+    );
 
     // 调用外部错误处理回调
     this.props.onError?.(error, errorInfo);

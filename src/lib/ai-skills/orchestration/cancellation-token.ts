@@ -8,6 +8,7 @@
  */
 
 import { CancellationError, type CancellationToken } from "./types";
+import { logger } from "@/lib/logger";
 
 /**
  * 取消令牌内部实现
@@ -98,7 +99,10 @@ export class CancellationTokenSource {
         callback();
       } catch (error) {
         // 忽略回调中的错误，继续执行其他回调
-        console.error("取消回调执行失败:", error);
+        logger.error(
+          { error: error instanceof Error ? error.message : String(error) },
+          "取消回调执行失败",
+        );
       }
     }
 

@@ -7,6 +7,7 @@
  */
 
 import * as React from "react";
+import { clientLogger } from "@/lib/client-logger";
 import {
   Copy,
   RefreshCw,
@@ -88,7 +89,10 @@ export function MessageActionsBar({
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (error) {
-      console.error("Failed to copy:", error);
+      clientLogger.error(
+        { component: "QuickActions", error },
+        "Failed to copy",
+      );
     }
   }, [content]);
 
@@ -538,7 +542,10 @@ export function InlineActions({
       setTimeout(() => setCopied(false), 2000);
       onCopy?.();
     } catch (error) {
-      console.error("Failed to copy:", error);
+      clientLogger.error(
+        { component: "QuickActions", error },
+        "Failed to copy",
+      );
     }
   }, [content, onCopy]);
 

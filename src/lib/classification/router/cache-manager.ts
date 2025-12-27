@@ -237,7 +237,15 @@ export class FastPathCacheManager {
   async batchWarmup(userIds: string[]): Promise<void> {
     const warmupPromises = userIds
       .slice(0, this.config.warmupLimit)
-      .map((userId) => this.warmupUserCache(userId).catch(() => null));
+      .map((userId) =>
+        this.warmupUserCache(userId).catch((err) => {
+          logger.warn(
+            { userId, error: err instanceof Error ? err.message : String(err) },
+            "Cache warmup failed for user",
+          );
+          return null;
+        }),
+      );
     await Promise.all(warmupPromises);
     this.stats.lastWarmup = new Date();
   }

@@ -29,6 +29,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import { clientLogger } from "@/lib/client-logger";
 import { type AttachmentItem } from "./types";
 import { ContentPreview } from "./content-preview";
 
@@ -114,10 +115,16 @@ function BookmarkPreview({ attachment }: BookmarkPreviewProps) {
         if (url.protocol === "http:" || url.protocol === "https:") {
           window.open(attachment.url, "_blank", "noopener,noreferrer");
         } else {
-          console.error("Blocked unsafe URL protocol:", url.protocol);
+          clientLogger.error(
+            { component: "AttachmentPreview", protocol: url.protocol },
+            "Blocked unsafe URL protocol",
+          );
         }
       } catch (e) {
-        console.error("Invalid URL:", e);
+        clientLogger.error(
+          { component: "AttachmentPreview", error: e },
+          "Invalid URL",
+        );
       }
     }
   }, [attachment.url]);
@@ -195,7 +202,10 @@ function FilePreview({ attachment }: FilePreviewProps) {
         ) {
           return dataUrl;
         }
-        console.error("Blocked invalid image data URL format");
+        clientLogger.error(
+          { component: "AttachmentPreview" },
+          "Blocked invalid image data URL format",
+        );
       }
     }
     return null;

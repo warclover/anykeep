@@ -21,6 +21,7 @@ import { useRef, useCallback, useState, type KeyboardEvent } from "react";
 import { Send, Loader2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { clientLogger } from "@/lib/client-logger";
 import { ToolDropdown, getToolDisplayName } from "./phase4/tool-dropdown";
 import { ContextIndicator } from "./phase4/context-panel";
 import {
@@ -272,7 +273,14 @@ export function AIInputEnhanced({
       {/* 附件预览模态框 - 使用错误边界包装 */}
       <AttachmentErrorBoundary
         onError={(error, errorInfo) => {
-          console.error("AttachmentPreviewModal error:", error, errorInfo);
+          clientLogger.error(
+            {
+              component: "AIInputEnhanced",
+              error: error.message,
+              componentStack: errorInfo.componentStack,
+            },
+            "AttachmentPreviewModal error",
+          );
         }}
         onReset={() => {
           setPreviewItem(null);
