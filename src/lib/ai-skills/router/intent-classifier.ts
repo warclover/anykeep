@@ -96,6 +96,14 @@ const DEFAULT_RULES: IntentRule[] = [
   // 分析类
   // ============================================
   {
+    pattern:
+      /微信.{0,3}(文章|阅读|收藏).{0,3}(摘要|总结|整理|报告)|公众号.{0,3}(摘要|总结)/,
+    type: "analyze",
+    subType: "wechat",
+    complexity: "medium",
+    weight: 88,
+  },
+  {
     pattern: /周报|月报|报告|统计报告/,
     type: "analyze",
     subType: "report",
@@ -121,7 +129,8 @@ const DEFAULT_RULES: IntentRule[] = [
   // 创建类
   // ============================================
   {
-    pattern: /读|朗读|播放.{0,3}摘要|听|语音|念|tts/i,
+    // 使用负向后行断言排除「阅读」中的「读」
+    pattern: /(?<!阅)读|朗读|播放.{0,3}摘要|听|语音|念|tts/i,
     type: "create",
     subType: "tts",
     complexity: "simple",
