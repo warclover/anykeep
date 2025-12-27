@@ -39,6 +39,20 @@ describe("IntentClassifier", () => {
         expect(result.type).toBe("query");
         expect(result.subType).toBe("search");
       });
+
+      it("should classify trust mode query correctly", async () => {
+        const result = await classifier.classify("当前是什么模式");
+
+        expect(result.type).toBe("query");
+        expect(result.subType).toBe("trust_mode");
+      });
+
+      it("should classify trust mode recommend correctly", async () => {
+        const result = await classifier.classify("推荐一个适合我的模式");
+
+        expect(result.type).toBe("query");
+        expect(result.subType).toBe("trust_mode_recommend");
+      });
     });
 
     describe("action intent", () => {

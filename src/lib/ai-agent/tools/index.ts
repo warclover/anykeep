@@ -1,8 +1,11 @@
 /**
  * AI Agent Tools 模块导出
  *
- * @version 2.1.0
+ * @version 2.2.0
  * @since 2025-12-23
+ *
+ * v2.2.0 新增:
+ * - 信任模式 Tools: get-trust-mode（获取信任模式）, recommend-trust-mode（智能推荐信任模式）
  *
  * v2.1.0 新增:
  * - 快照 Tools: compare-snapshots（快照对比）
@@ -79,6 +82,9 @@ export * from "./messages";
 // 快照 Tools (新增 v2.1.0)
 export * from "./snapshot";
 
+// 信任模式 Tools (新增 v2.2.0)
+export * from "./trust-mode";
+
 // 注册默认 Tools
 import { toolRegistry } from "./tool-registry";
 import { queryTools } from "./query";
@@ -94,6 +100,7 @@ import { mdCollectionTools } from "./md-collection";
 import { importTools } from "./import";
 import { messageTools } from "./messages";
 import { snapshotTools } from "./snapshot";
+import { trustModeTools } from "./trust-mode";
 
 /**
  * 注册所有默认 Tools
@@ -116,6 +123,8 @@ export function registerDefaultTools(): void {
   toolRegistry.registerAll(messageTools);
   // 新增 Tools (v2.1.0)
   toolRegistry.registerAll(snapshotTools);
+  // 新增 Tools (v2.2.0)
+  toolRegistry.registerAll(trustModeTools);
 }
 
 /**

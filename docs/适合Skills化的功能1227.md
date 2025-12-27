@@ -129,12 +129,12 @@
 | **P1** | 知识链接     | 2 个           | 2 个            | 高     | 待实现    |
 | **P2** | 微信文章     | 2 个           | 1 个            | 中     | 待实现    |
 | **P2** | 快照系统     | 1 个           | 1 个            | 中     | 待实现    |
-| **P3** | 信任模式     | 2 个           | 0 个            | 低     | 待实现    |
+| **P3** | 信任模式     | 2 个           | 0 个            | 低     | ✅ 已完成 |
 | **P3** | 兴趣档案     | 1 个           | 1 个            | 中     | 待实现    |
 | **P3** | 源档案       | 2 个           | 1 个            | 中     | 待实现    |
 
 **合计建议新增**: 17 个 Tools + 7 个 Skills
-**已完成**: 3 个 Tools + 1 个 Skill (消息系统)
+**已完成**: 5 个 Tools + 1 个 Skill (消息系统 3 + 信任模式 2)
 
 ---
 
@@ -345,11 +345,130 @@ interface GenericReportData {
 
 ---
 
+### 🎚️ 信任模式智能化 (2025-12-27 实现)
+
+#### Tool: `get_trust_mode`
+
+**功能**: 获取当前信任模式配置和核心行为
+
+**参数**:
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `includeStats` | `boolean` | 否 | 是否包含统计数据，默认 false |
+
+**返回值**:
+
+```typescript
+{
+  mode: TrustMode;              // 当前模式: full_auto | semi_auto | manual
+  label: string;                // 显示名称: 完全托管 | 半托管 | 不托管
+  description: string;          // 模式描述
+  behavior: {
+    autoClassify: boolean;      // 是否自动分类
+    requireConfirmation: boolean; // 是否需要确认
+    showReasons: boolean;       // 是否显示决策理由
+    allowAutoCorrect: boolean;  // 是否允许自动纠正
+  };
+  stats?: {                     // 可选统计数据
+    autoDecisions: number;
+    userCorrections: number;
+    correctionRate: number;
+    pendingConfirmations: number;
+  };
+}
+```
+
+---
+
+#### Tool: `recommend_trust_mode`
+
+**功能**: 基于用户使用习惯智能推荐最适合的信任模式
+
+**参数**:
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `considerHistory` | `boolean` | 否 | 是否考虑模式切换历史，默认 true |
+
+**分析指标**:
+
+- 纠正率：用户纠正 AI 决策的频率
+- 待确认积压：未处理的确认消息数量
+- 决策样本：累计自动决策次数
+- 模式稳定性：最近一次切换距今时间
+
+**推荐逻辑**:
+
+- 纠正率 > 30%: 建议降低自动化程度
+- 纠正率 < 5% 且样本充足: 建议提升自动化程度
+- 待确认积压 > 20: 建议调整以减少干扰
+- 刚切换不久 (<7天): 建议保持观察
+
+**返回值**:
+
+```typescript
+{
+  current: {
+    mode: TrustMode;
+    label: string;
+  };
+  recommendation: {
+    mode: TrustMode;
+    label: string;
+    confidence: number;         // 置信度 0-100
+    isChange: boolean;          // 是否建议切换
+  };
+  reasoning: {
+    primary: string;            // 主要原因
+    factors: {
+      name: string;
+      value: string | number;
+      impact: "positive" | "negative" | "neutral";
+      weight: number;
+      description: string;
+    }[];
+  };
+  metrics: {
+    correctionRate: number;
+    autoDecisions: number;
+    userCorrections: number;
+    pendingConfirmations: number;
+    daysSinceLastChange?: number;
+    hasSufficientData: boolean;
+  };
+  message: string;              // 人类可读的推荐消息
+}
+```
+
+**意图路由规则**:
+
+```typescript
+// intent-classifier.ts
+{
+  pattern: /推荐.{0,5}(模式|信任|托管)|适合.{0,5}(模式|信任)|哪个模式.{0,3}(好|适合)|优化.{0,5}(AI|设置)/,
+  intent: { type: "query", subType: "trust_mode_recommend" }
+},
+{
+  pattern: /(信任|托管).{0,5}模式.{0,5}(是|什么)|当前.{0,5}(模式|托管|信任)|我的.{0,5}(模式|托管|信任)/,
+  intent: { type: "query", subType: "trust_mode" }
+}
+```
+
+**用户触发示例**:
+
+- "当前是什么模式？"
+- "我用的是哪个托管模式？"
+- "推荐一个适合我的模式"
+- "帮我优化 AI 设置"
+- "哪个模式更适合我？"
+
+---
+
 ## 七、测试覆盖
 
 | 模块             | 测试文件                     | 用例数 | 状态    |
 | ---------------- | ---------------------------- | ------ | ------- |
 | Message Tools    | `message-tools.test.ts`      | 19     | ✅ 通过 |
 | InboxDigestSkill | `inbox-digest.skill.test.ts` | 38     | ✅ 通过 |
+| Trust Mode Tools | `trust-mode/*.test.ts`       | 32     | ✅ 通过 |
 
-**总计**: 57 个测试用例全部通过
+**总计**: 89 个测试用例全部通过
