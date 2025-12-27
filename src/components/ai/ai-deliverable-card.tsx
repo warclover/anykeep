@@ -29,6 +29,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AIMarkdown } from "./ai-markdown";
+import { AIReportContent } from "./ai-report-content";
 import { Button } from "@/components/ui/button";
 import type { DeliverableData, DeliverableType } from "./types";
 import { clientLogger } from "@/lib/client-logger";
@@ -210,6 +211,7 @@ const DeliverableContent = memo(function DeliverableContent({
     case "table":
       return <TableContent content={content} />;
     case "report":
+      return <AIReportContent content={content} />;
     case "document":
       return <DocumentContent content={content} metadata={metadata} />;
     case "graph":
