@@ -211,6 +211,19 @@ export const FeatureFlags = {
   get ENABLE_PENDING_INTENT_REMINDER(): boolean {
     return process.env.ENABLE_PENDING_INTENT_REMINDER !== "false";
   },
+
+  // ===========================================================================
+  // 上下文压缩相关开关
+  // ===========================================================================
+
+  /**
+   * 是否启用对话上下文压缩
+   * @default true
+   * @description 当对话过长时自动压缩历史消息为摘要
+   */
+  get ENABLE_CONVERSATION_COMPRESSION(): boolean {
+    return process.env.ENABLE_CONVERSATION_COMPRESSION !== "false";
+  },
 } as const;
 
 // =============================================================================
@@ -255,5 +268,8 @@ export function getAllFeatureFlags(): Record<FeatureFlagKey, boolean> {
     ENABLE_INTERACTION_LOGGING: FeatureFlags.ENABLE_INTERACTION_LOGGING,
     ENABLE_MEMORY_PROMPT: FeatureFlags.ENABLE_MEMORY_PROMPT,
     ENABLE_PENDING_INTENT_REMINDER: FeatureFlags.ENABLE_PENDING_INTENT_REMINDER,
+    // 上下文压缩
+    ENABLE_CONVERSATION_COMPRESSION:
+      FeatureFlags.ENABLE_CONVERSATION_COMPRESSION,
   };
 }

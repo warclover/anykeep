@@ -5,9 +5,11 @@
  * - 使用 Skills 和 Tools 进行知识管理任务
  * - 支持流式响应和非流式响应
  * - 管理会话上下文和记忆
+ * - 自动压缩过长的对话上下文
  *
- * @version 1.3.0
+ * @version 1.4.0
  * @since 2025-12-22
+ * @updated 2025-12-27 - 添加对话上下文压缩功能
  */
 
 import { generateText, streamText, stepCountIs, type CoreMessage } from "ai";
@@ -39,7 +41,11 @@ import {
   buildDynamicContext,
   buildContextPrompt,
   type DynamicContext,
+  // 压缩功能（v1.4 新增）
+  ConversationCompressor,
+  type ConversationMessage,
 } from "../context";
+import { FeatureFlags } from "../config";
 
 // 注册默认 Tools（模块加载时执行一次）
 registerDefaultTools();
@@ -74,6 +80,7 @@ const KNOWLEDGE_AGENT_CONFIG: AgentConfig = {
 export class KnowledgeAgent {
   private config: AgentConfig;
   private memory: AgentMemory;
+  private compressor: ConversationCompressor;
 
   constructor(
     config: Partial<AgentConfig> = {},
@@ -81,6 +88,7 @@ export class KnowledgeAgent {
   ) {
     this.config = { ...KNOWLEDGE_AGENT_CONFIG, ...config };
     this.memory = memory;
+    this.compressor = new ConversationCompressor();
   }
 
   /**
@@ -611,6 +619,157 @@ export class KnowledgeAgent {
    */
   getConfig(): AgentConfig {
     return this.config;
+  }
+
+  // ===========================================================================
+  // 上下文压缩（v1.4 新增）
+  // ===========================================================================
+
+  /**
+   * 检查并压缩消息历史（如果需要）
+   *
+   * 在 Serverless 环境中，前端通过 messageHistory 传递历史消息。
+   * 此方法可在调用 execute/executeStream 前调用，对历史消息进行压缩。
+   *
+   * @param messageHistory 前端传递的消息历史
+   * @param context 压缩所需的上下文
+   * @param maxContextTokens 最大上下文 Token 数（用于计算使用率）
+   * @returns 压缩结果（包含可能已压缩的消息和摘要）
+   *
+   * @example
+   * ```typescript
+   * const { messages, summary, compressed } = await agent.compressMessagesIfNeeded(
+   *   messageHistory,
+   *   { userId: 'xxx', conversationId: 'yyy', baseSystemPrompt: '...' },
+   *   8000
+   * );
+   *
+   * if (compressed) {
+   *   // 使用压缩后的消息
+   *   context.messageHistory = messages;
+   *   context.compressionSummary = summary;
+   * }
+   * ```
+   */
+  async compressMessagesIfNeeded(
+    messageHistory: Array<{ role: "user" | "assistant"; content: string }>,
+    context: {
+      userId: string;
+      conversationId?: string;
+      baseSystemPrompt?: string;
+    },
+    maxContextTokens: number = 8000,
+  ): Promise<{
+    messages: Array<{ role: "user" | "assistant"; content: string }>;
+    summary?: string;
+    compressed: boolean;
+    metrics?: {
+      originalTokens: number;
+      compressedTokens: number;
+      compressionRatio: number;
+    };
+  }> {
+    // 检查 Feature Flag
+    if (!FeatureFlags.ENABLE_CONVERSATION_COMPRESSION) {
+      return { messages: messageHistory, compressed: false };
+    }
+
+    // 转换为 ConversationMessage 格式
+    const conversationMessages: ConversationMessage[] = messageHistory.map(
+      (msg) => ({
+        role: msg.role,
+        content: msg.content,
+      }),
+    );
+
+    // 检查是否需要压缩
+    const check = this.compressor.shouldCompress(
+      conversationMessages,
+      maxContextTokens,
+    );
+
+    if (!check.needed) {
+      logger.debug(
+        {
+          userId: context.userId,
+          conversationId: context.conversationId,
+          reason: check.reason,
+          currentTurns: check.currentTurns,
+          tokenUsageRatio: check.tokenUsageRatio,
+        },
+        "KnowledgeAgent: Compression not needed",
+      );
+      return { messages: messageHistory, compressed: false };
+    }
+
+    logger.info(
+      {
+        userId: context.userId,
+        conversationId: context.conversationId,
+        reason: check.reason,
+        currentTurns: check.currentTurns,
+        tokenUsageRatio: check.tokenUsageRatio,
+      },
+      "KnowledgeAgent: Starting message compression",
+    );
+
+    // 执行压缩
+    const result = await this.compressor.compress(conversationMessages, {
+      userId: context.userId,
+      conversationId: context.conversationId || crypto.randomUUID(),
+      baseSystemPrompt: context.baseSystemPrompt || this.config.systemPrompt,
+    });
+
+    if (!result.success) {
+      logger.warn(
+        {
+          userId: context.userId,
+          conversationId: context.conversationId,
+          reason: result.reason,
+        },
+        "KnowledgeAgent: Compression failed, using original messages",
+      );
+      return { messages: messageHistory, compressed: false };
+    }
+
+    // 转换回前端消息格式（排除系统消息）
+    const compressedMessages = result.messages
+      .filter((m) => m.role !== "system")
+      .map((m) => ({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+      }));
+
+    logger.info(
+      {
+        userId: context.userId,
+        conversationId: context.conversationId,
+        originalCount: messageHistory.length,
+        compressedCount: compressedMessages.length,
+        compressionRatio: result.metrics?.compressionRatio,
+      },
+      "KnowledgeAgent: Message compression completed",
+    );
+
+    return {
+      messages: compressedMessages,
+      summary: result.summary,
+      compressed: true,
+      metrics: result.metrics
+        ? {
+            originalTokens: result.metrics.originalTokens,
+            compressedTokens: result.metrics.compressedTokens,
+            compressionRatio: result.metrics.compressionRatio,
+          }
+        : undefined,
+    };
+  }
+
+  /**
+   * 获取压缩器实例（用于高级用途）
+   */
+  getCompressor(): ConversationCompressor {
+    return this.compressor;
   }
 }
 

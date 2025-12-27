@@ -4,10 +4,11 @@
  * 提供动态上下文构建和 Prompt 注入功能
  *
  * @module ai-agent/context
- * @version 2.1.0
+ * @version 2.2.0
  * @since 2025-12-26
  * @updated 2025-12-27 - 添加 System-Reminder 注入器和增强置信度计算器
  * @updated 2025-12-27 - 添加情景记忆上下文类型和 Prompt 构建
+ * @updated 2025-12-27 - 添加对话上下文压缩功能
  */
 
 // 类型导出
@@ -80,3 +81,50 @@ export {
   calculateEnhancedConfidence,
   getEnhancedConfidence,
 } from "./enhanced-confidence";
+
+// =============================================================================
+// 对话上下文压缩（v2.2 新增）
+// =============================================================================
+
+// 压缩类型
+export type {
+  CompressionConfig,
+  CompressionTriggerConfig,
+  CompressionRetentionConfig,
+  CompressionExecutionConfig,
+  CompressionContext,
+  CompressionResult,
+  CompressionMetrics,
+  CompressionCheckResult,
+  CompressionValidationResult,
+  CompressionEvent,
+  CompressionEventType,
+  ConversationMessage,
+} from "./compression-types";
+
+// 压缩验证器
+export {
+  estimateTokens,
+  estimateMessagesTokens,
+  validateCompressionSummary,
+  validateCompressionEffect,
+  calculateTurns,
+  calculateTokenUsageRatio,
+} from "./compression-validator";
+
+// 压缩 Prompt 模板
+export {
+  ANYKEEP_COMPRESSION_PROMPT,
+  COMPRESSION_USER_PROMPT,
+  formatConversationHistory,
+  buildCompressionPrompt,
+  buildSummaryBlock,
+  mergeSystemPromptWithSummary,
+  getCompressionMessages,
+} from "./compression-prompt";
+
+// 压缩器
+export {
+  ConversationCompressor,
+  conversationCompressor,
+} from "./conversation-compressor";
