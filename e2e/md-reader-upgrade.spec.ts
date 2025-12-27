@@ -12,7 +12,7 @@
  * @since 2025-12-27
  */
 
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import {
   safeNavigate,
   waitForPageReady,
@@ -27,10 +27,7 @@ test.describe("MD 阅读器升级", () => {
   /**
    * 测试辅助：导航到 MD 收藏页面
    */
-  async function _navigateToMdCollection(
-    page: ReturnType<typeof test.info>["page"],
-    collectionId = 1,
-  ) {
+  async function _navigateToMdCollection(page: Page, collectionId = 1) {
     await safeNavigate(page, `/md-collections/${collectionId}`);
 
     // 检查是否需要登录

@@ -647,10 +647,18 @@ export class InboxDigestSkill extends OrchestrationSkill<
 
     if (unreadIds.length === 0) return;
 
-    await supabase.rpc("mark_messages_read", {
+    const { error } = await supabase.rpc("mark_messages_read", {
       p_user_id: userId,
       p_message_ids: unreadIds,
     });
+
+    if (error) {
+      logger.error(
+        { error, userId, messageCount: unreadIds.length },
+        "Failed to mark messages as read",
+      );
+      // 不抛出错误，标记已读失败不影响主流程
+    }
   }
 
   /**

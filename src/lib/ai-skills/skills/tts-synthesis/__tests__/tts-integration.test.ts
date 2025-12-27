@@ -98,14 +98,18 @@ describe("TTS Skill Agent Integration", () => {
         subType: "tts",
         complexity: "medium" as const,
         confidence: 0.9,
-        entities: {},
+        entities: [],
         hasDeliverableExpectation: true,
+        requiresMultiStep: false,
+        source: "rule" as const,
       };
 
       const complexity = {
         level: "medium" as const,
         score: 50,
         factors: [],
+        estimatedSteps: 3,
+        estimatedDurationMs: 5000,
       };
 
       const result = modeSelector.select(intent, complexity);
@@ -121,14 +125,18 @@ describe("TTS Skill Agent Integration", () => {
         subType: "tts",
         complexity: "simple" as const,
         confidence: 0.9,
-        entities: {},
+        entities: [],
         hasDeliverableExpectation: true,
+        requiresMultiStep: false,
+        source: "rule" as const,
       };
 
       const complexity = {
         level: "simple" as const,
         score: 20,
         factors: [],
+        estimatedSteps: 1,
+        estimatedDurationMs: 1000,
       };
 
       const result = modeSelector.select(intent, complexity);
@@ -148,11 +156,11 @@ describe("TTS Skill Agent Integration", () => {
 
     it("should have correct steps defined", () => {
       expect(ttsSynthesisSkill.metadata.steps).toHaveLength(5);
-      expect(ttsSynthesisSkill.metadata.steps[0].id).toBe("parse");
-      expect(ttsSynthesisSkill.metadata.steps[1].id).toBe("fetch");
-      expect(ttsSynthesisSkill.metadata.steps[2].id).toBe("prepare");
-      expect(ttsSynthesisSkill.metadata.steps[3].id).toBe("synthesize");
-      expect(ttsSynthesisSkill.metadata.steps[4].id).toBe("deliver");
+      expect(ttsSynthesisSkill.metadata.steps![0].id).toBe("parse");
+      expect(ttsSynthesisSkill.metadata.steps![1].id).toBe("fetch");
+      expect(ttsSynthesisSkill.metadata.steps![2].id).toBe("prepare");
+      expect(ttsSynthesisSkill.metadata.steps![3].id).toBe("synthesize");
+      expect(ttsSynthesisSkill.metadata.steps![4].id).toBe("deliver");
     });
   });
 

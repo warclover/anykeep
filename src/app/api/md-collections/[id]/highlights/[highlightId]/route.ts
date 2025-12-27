@@ -7,6 +7,7 @@
  */
 
 import type { NextRequest } from "next/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { z } from "zod";
 import {
@@ -20,12 +21,11 @@ import {
 } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
 import { AUTH } from "@/lib/constants/messages";
+import type { Database } from "@/types/supabase";
 
 // ============================================
 // 常量
 // ============================================
-
-const TABLE_NAME = "md_collection_highlights";
 
 const MESSAGES = {
   NOT_FOUND: "文档不存在",
@@ -45,6 +45,91 @@ const updateHighlightSchema = z.object({
 });
 
 // ============================================
+// 共享验证逻辑
+// ============================================
+
+interface ValidationResult {
+  success: true;
+  userId: string;
+  supabase: SupabaseClient<Database>;
+}
+
+interface ValidationError {
+  success: false;
+  response: Response;
+}
+
+/**
+ * 验证高亮操作权限
+ * 包含用户身份验证、collection 所有权验证、highlight 存在性验证
+ */
+async function validateHighlightAccess(
+  collectionId: number,
+  highlightId: string,
+  errorMessage: string,
+): Promise<ValidationResult | ValidationError> {
+  // 1. 验证用户身份
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return { success: false, response: unauthorizedError() };
+  }
+
+  // 2. 双重验证：先验证 collection 所有权
+  const { data: collection, error: collectionError } = await supabase
+    .from("md_collections")
+    .select("id, user_id")
+    .eq("id", collectionId)
+    .is("deleted_at", null)
+    .single();
+
+  if (collectionError) {
+    if (collectionError.code === "PGRST116") {
+      return { success: false, response: notFoundError(MESSAGES.NOT_FOUND) };
+    }
+    return {
+      success: false,
+      response: databaseError(errorMessage, collectionError),
+    };
+  }
+
+  if (collection.user_id !== user.id) {
+    return { success: false, response: forbiddenError(AUTH.FORBIDDEN) };
+  }
+
+  // 3. 验证高亮存在且属于当前用户
+  const { data: existingHighlight, error: checkError } = await supabase
+    .from("md_collection_highlights")
+    .select("id, user_id, collection_id")
+    .eq("id", highlightId)
+    .eq("collection_id", collectionId)
+    .single();
+
+  if (checkError) {
+    if (checkError.code === "PGRST116") {
+      return {
+        success: false,
+        response: notFoundError(MESSAGES.HIGHLIGHT_NOT_FOUND),
+      };
+    }
+    return {
+      success: false,
+      response: databaseError(errorMessage, checkError),
+    };
+  }
+
+  if (!existingHighlight || existingHighlight.user_id !== user.id) {
+    return { success: false, response: forbiddenError(AUTH.FORBIDDEN) };
+  }
+
+  return { success: true, userId: user.id, supabase };
+}
+
+// ============================================
 // PATCH /api/md-collections/[id]/highlights/[highlightId]
 // ============================================
 
@@ -60,111 +145,32 @@ export async function PATCH(
       return notFoundError(MESSAGES.NOT_FOUND);
     }
 
-    // 1. 验证用户身份
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return unauthorizedError();
-    }
-
-    // 2. 双重验证：先验证 collection 所有权
-    const { data: collection, error: collectionError } = await supabase
-      .from("md_collections")
-      .select("id, user_id")
-      .eq("id", collectionId)
-      .is("deleted_at", null)
-      .single();
-
-    if (collectionError) {
-      if (collectionError.code === "PGRST116") {
-        return notFoundError(MESSAGES.NOT_FOUND);
-      }
-      return databaseError(MESSAGES.UPDATE_ERROR, collectionError);
-    }
-
-    if (collection.user_id !== user.id) {
-      return forbiddenError(AUTH.FORBIDDEN);
-    }
-
-    // 3. 验证高亮存在且属于当前用户（使用类型断言）
-    const { data: existingHighlight, error: checkError } = await (
-      supabase as unknown as {
-        from: (table: string) => {
-          select: (columns: string) => {
-            eq: (
-              column: string,
-              value: string,
-            ) => {
-              eq: (
-                column: string,
-                value: number,
-              ) => {
-                single: () => Promise<{
-                  data: {
-                    id: string;
-                    user_id: string;
-                    collection_id: number;
-                  } | null;
-                  error: { message: string; code?: string } | null;
-                }>;
-              };
-            };
-          };
-        };
-      }
-    )
-      .from(TABLE_NAME)
-      .select("id, user_id, collection_id")
-      .eq("id", highlightId)
-      .eq("collection_id", collectionId)
-      .single();
-
-    if (checkError) {
-      if (checkError.code === "PGRST116") {
-        return notFoundError(MESSAGES.HIGHLIGHT_NOT_FOUND);
-      }
-      return databaseError(MESSAGES.UPDATE_ERROR, checkError);
-    }
-
-    if (!existingHighlight || existingHighlight.user_id !== user.id) {
-      return forbiddenError(AUTH.FORBIDDEN);
-    }
-
-    // 3. 解析并验证请求体
-    const body = await request.json();
-    const validation = updateHighlightSchema.safeParse(body);
+    // 验证权限
+    const validation = await validateHighlightAccess(
+      collectionId,
+      highlightId,
+      MESSAGES.UPDATE_ERROR,
+    );
 
     if (!validation.success) {
-      return handleValidationError(validation.error);
+      return validation.response;
     }
 
-    const { color } = validation.data;
+    const { userId, supabase } = validation;
 
-    // 4. 更新高亮（使用类型断言）
-    const { data: updatedHighlight, error: updateError } = await (
-      supabase as unknown as {
-        from: (table: string) => {
-          update: (values: Record<string, unknown>) => {
-            eq: (
-              column: string,
-              value: string,
-            ) => {
-              select: () => {
-                single: () => Promise<{
-                  data: unknown | null;
-                  error: { message: string; code?: string } | null;
-                }>;
-              };
-            };
-          };
-        };
-      }
-    )
-      .from(TABLE_NAME)
+    // 解析并验证请求体
+    const body = await request.json();
+    const schemaValidation = updateHighlightSchema.safeParse(body);
+
+    if (!schemaValidation.success) {
+      return handleValidationError(schemaValidation.error);
+    }
+
+    const { color } = schemaValidation.data;
+
+    // 更新高亮
+    const { data: updatedHighlight, error: updateError } = await supabase
+      .from("md_collection_highlights")
       .update({ color })
       .eq("id", highlightId)
       .select()
@@ -176,7 +182,7 @@ export async function PATCH(
 
     logger.info(
       {
-        userId: user.id,
+        userId,
         collectionId,
         highlightId,
         color,
@@ -204,7 +210,7 @@ export async function PATCH(
 // ============================================
 
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string; highlightId: string }> },
 ) {
   try {
@@ -215,96 +221,22 @@ export async function DELETE(
       return notFoundError(MESSAGES.NOT_FOUND);
     }
 
-    // 1. 验证用户身份
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    // 验证权限
+    const validation = await validateHighlightAccess(
+      collectionId,
+      highlightId,
+      MESSAGES.DELETE_ERROR,
+    );
 
-    if (authError || !user) {
-      return unauthorizedError();
+    if (!validation.success) {
+      return validation.response;
     }
 
-    // 2. 双重验证：先验证 collection 所有权
-    const { data: collection, error: collectionError } = await supabase
-      .from("md_collections")
-      .select("id, user_id")
-      .eq("id", collectionId)
-      .is("deleted_at", null)
-      .single();
+    const { userId, supabase } = validation;
 
-    if (collectionError) {
-      if (collectionError.code === "PGRST116") {
-        return notFoundError(MESSAGES.NOT_FOUND);
-      }
-      return databaseError(MESSAGES.DELETE_ERROR, collectionError);
-    }
-
-    if (collection.user_id !== user.id) {
-      return forbiddenError(AUTH.FORBIDDEN);
-    }
-
-    // 3. 验证高亮存在且属于当前用户（使用类型断言）
-    const { data: existingHighlight, error: checkError } = await (
-      supabase as unknown as {
-        from: (table: string) => {
-          select: (columns: string) => {
-            eq: (
-              column: string,
-              value: string,
-            ) => {
-              eq: (
-                column: string,
-                value: number,
-              ) => {
-                single: () => Promise<{
-                  data: {
-                    id: string;
-                    user_id: string;
-                    collection_id: number;
-                  } | null;
-                  error: { message: string; code?: string } | null;
-                }>;
-              };
-            };
-          };
-        };
-      }
-    )
-      .from(TABLE_NAME)
-      .select("id, user_id, collection_id")
-      .eq("id", highlightId)
-      .eq("collection_id", collectionId)
-      .single();
-
-    if (checkError) {
-      if (checkError.code === "PGRST116") {
-        return notFoundError(MESSAGES.HIGHLIGHT_NOT_FOUND);
-      }
-      return databaseError(MESSAGES.DELETE_ERROR, checkError);
-    }
-
-    if (!existingHighlight || existingHighlight.user_id !== user.id) {
-      return forbiddenError(AUTH.FORBIDDEN);
-    }
-
-    // 3. 删除高亮（使用类型断言）
-    const { error: deleteError } = await (
-      supabase as unknown as {
-        from: (table: string) => {
-          delete: () => {
-            eq: (
-              column: string,
-              value: string,
-            ) => Promise<{
-              error: { message: string; code?: string } | null;
-            }>;
-          };
-        };
-      }
-    )
-      .from(TABLE_NAME)
+    // 删除高亮
+    const { error: deleteError } = await supabase
+      .from("md_collection_highlights")
       .delete()
       .eq("id", highlightId);
 
@@ -314,7 +246,7 @@ export async function DELETE(
 
     logger.info(
       {
-        userId: user.id,
+        userId,
         collectionId,
         highlightId,
         action: "highlight_deleted",

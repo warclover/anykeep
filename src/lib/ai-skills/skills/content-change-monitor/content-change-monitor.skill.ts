@@ -39,6 +39,7 @@ import type {
   MonitorInfo,
   MonitorStats,
   CheckLog,
+  CheckResult,
 } from "./types";
 
 // ============================================
@@ -357,9 +358,7 @@ export class ContentChangeMonitorSkill extends OrchestrationSkill<
   /**
    * 检查用户配额
    */
-  private async checkQuota(
-    userId: string,
-  ): Promise<{
+  private async checkQuota(userId: string): Promise<{
     used: number;
     max: number;
     canCreate: boolean;
@@ -378,9 +377,8 @@ export class ContentChangeMonitorSkill extends OrchestrationSkill<
     const quotaConfig =
       membershipType === "PRO" ? MONITOR_QUOTA.PRO : MONITOR_QUOTA.FREE;
 
-    // 获取当前监控数量（表类型尚未生成，使用类型断言）
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { count } = await (supabase as any)
+    // 获取当前监控数量
+    const { count } = await supabase
       .from("page_monitors")
       .select("id", { count: "exact", head: true })
       .eq("user_id", userId)
@@ -463,9 +461,8 @@ export class ContentChangeMonitorSkill extends OrchestrationSkill<
       };
     }
 
-    // 检查是否已有监控（表类型尚未生成）
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: existingMonitor } = await (supabase as any)
+    // 检查是否已有监控
+    const { data: existingMonitor } = await supabase
       .from("page_monitors")
       .select("id, status")
       .eq("bookmark_id", input.bookmarkId)
@@ -491,9 +488,8 @@ export class ContentChangeMonitorSkill extends OrchestrationSkill<
         : CHECK_INTERVAL_HOURS[interval];
     const nextCheckAt = new Date(Date.now() + intervalHours * 60 * 60 * 1000);
 
-    // 创建监控（表类型尚未生成）
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: newMonitor, error } = await (supabase as any)
+    // 创建监控
+    const { data: newMonitor, error } = await supabase
       .from("page_monitors")
       .insert({
         user_id: userId,
@@ -540,9 +536,7 @@ export class ContentChangeMonitorSkill extends OrchestrationSkill<
   private async listMonitors(userId: string): Promise<ContentMonitorOutput> {
     const supabase = await createClient();
 
-    // 表类型尚未生成，使用类型断言
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: monitors, error } = await (supabase as any)
+    const { data: monitors, error } = await supabase
       .from("page_monitors")
       .select(
         `
@@ -576,8 +570,7 @@ export class ContentChangeMonitorSkill extends OrchestrationSkill<
 
     const quota = await this.checkQuota(userId);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const monitorList: MonitorInfo[] = (monitors || []).map((m: any) => {
+    const monitorList: MonitorInfo[] = (monitors || []).map((m) => {
       const bookmark = m.bookmarks as {
         id: number;
         title: string;
@@ -591,8 +584,8 @@ export class ContentChangeMonitorSkill extends OrchestrationSkill<
         checkInterval: m.check_interval as CheckInterval,
         status: m.status as MonitorStatus,
         changeCount: m.change_count,
-        lastCheckedAt: m.last_checked_at,
-        nextCheckAt: m.next_check_at,
+        lastCheckedAt: m.last_checked_at ?? undefined,
+        nextCheckAt: m.next_check_at ?? undefined,
         createdAt: m.created_at,
       };
     });
@@ -640,9 +633,7 @@ export class ContentChangeMonitorSkill extends OrchestrationSkill<
       };
     }
 
-    // 表类型尚未生成，使用类型断言
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let query = (supabase as any)
+    let query = supabase
       .from("page_monitors")
       .select(
         `
@@ -667,7 +658,7 @@ export class ContentChangeMonitorSkill extends OrchestrationSkill<
 
     if (input.monitorId) {
       query = query.eq("id", input.monitorId);
-    } else {
+    } else if (input.bookmarkId) {
       query = query.eq("bookmark_id", input.bookmarkId);
     }
 
@@ -681,9 +672,8 @@ export class ContentChangeMonitorSkill extends OrchestrationSkill<
       };
     }
 
-    // 获取最近的检查日志（表类型尚未生成）
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: logs } = await (supabase as any)
+    // 获取最近的检查日志
+    const { data: logs } = await supabase
       .from("monitor_check_logs")
       .select("id, check_result, checked_at, similarity_score, change_summary")
       .eq("monitor_id", monitor.id)
@@ -704,20 +694,19 @@ export class ContentChangeMonitorSkill extends OrchestrationSkill<
       checkInterval: monitor.check_interval as CheckInterval,
       status: monitor.status as MonitorStatus,
       changeCount: monitor.change_count,
-      lastCheckedAt: monitor.last_checked_at,
-      nextCheckAt: monitor.next_check_at,
+      lastCheckedAt: monitor.last_checked_at ?? undefined,
+      nextCheckAt: monitor.next_check_at ?? undefined,
       consecutiveFailures: monitor.consecutive_failures,
-      lastErrorMessage: monitor.last_error_message,
+      lastErrorMessage: monitor.last_error_message ?? undefined,
       createdAt: monitor.created_at,
     };
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const checkLogs: CheckLog[] = (logs || []).map((l: any) => ({
+    const checkLogs: CheckLog[] = (logs || []).map((l) => ({
       id: l.id,
-      result: l.check_result,
+      result: l.check_result as CheckResult,
       checkedAt: l.checked_at,
-      similarityScore: l.similarity_score,
-      changeSummary: l.change_summary,
+      similarityScore: l.similarity_score ?? undefined,
+      changeSummary: l.change_summary ?? undefined,
     }));
 
     return {
@@ -755,16 +744,14 @@ export class ContentChangeMonitorSkill extends OrchestrationSkill<
       };
     }
 
-    // 表类型尚未生成，使用类型断言
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let query = (supabase as any)
+    let query = supabase
       .from("page_monitors")
-      .update({ status: "paused" })
+      .update({ status: "paused" as const })
       .eq("user_id", userId);
 
     if (input.monitorId) {
       query = query.eq("id", input.monitorId);
-    } else {
+    } else if (input.bookmarkId) {
       query = query.eq("bookmark_id", input.bookmarkId);
     }
 
@@ -804,12 +791,10 @@ export class ContentChangeMonitorSkill extends OrchestrationSkill<
       };
     }
 
-    // 表类型尚未生成，使用类型断言
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let query = (supabase as any)
+    let query = supabase
       .from("page_monitors")
       .update({
-        status: "active",
+        status: "active" as const,
         consecutive_failures: 0,
         last_error_message: null,
       })
@@ -817,7 +802,7 @@ export class ContentChangeMonitorSkill extends OrchestrationSkill<
 
     if (input.monitorId) {
       query = query.eq("id", input.monitorId);
-    } else {
+    } else if (input.bookmarkId) {
       query = query.eq("bookmark_id", input.bookmarkId);
     }
 
@@ -857,16 +842,14 @@ export class ContentChangeMonitorSkill extends OrchestrationSkill<
       };
     }
 
-    // 表类型尚未生成，使用类型断言
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let query = (supabase as any)
+    let query = supabase
       .from("page_monitors")
-      .update({ status: "deleted" })
+      .update({ status: "deleted" as const })
       .eq("user_id", userId);
 
     if (input.monitorId) {
       query = query.eq("id", input.monitorId);
-    } else {
+    } else if (input.bookmarkId) {
       query = query.eq("bookmark_id", input.bookmarkId);
     }
 

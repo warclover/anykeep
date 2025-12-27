@@ -2258,6 +2258,73 @@ export type Database = {
           },
         ];
       };
+      /** 监控检查日志表 - 记录每次页面检查的结果 */
+      monitor_check_logs: {
+        Row: {
+          id: number;
+          monitor_id: number;
+          user_id: string;
+          /** 检查结果: no_change=无变化, changed=有变化, failed=失败, skipped=跳过 */
+          check_result: "no_change" | "changed" | "failed" | "skipped";
+          previous_hash: string | null;
+          current_hash: string | null;
+          /** 内容相似度评分 0-100 */
+          similarity_score: number | null;
+          change_summary: string | null;
+          error_message: string | null;
+          checked_at: string;
+          /** 检查耗时（毫秒） */
+          duration_ms: number | null;
+          new_snapshot_id: number | null;
+          archived_version_id: number | null;
+        };
+        Insert: {
+          id?: number;
+          monitor_id: number;
+          user_id: string;
+          check_result: "no_change" | "changed" | "failed" | "skipped";
+          previous_hash?: string | null;
+          current_hash?: string | null;
+          similarity_score?: number | null;
+          change_summary?: string | null;
+          error_message?: string | null;
+          checked_at?: string;
+          duration_ms?: number | null;
+          new_snapshot_id?: number | null;
+          archived_version_id?: number | null;
+        };
+        Update: {
+          id?: number;
+          monitor_id?: number;
+          user_id?: string;
+          check_result?: "no_change" | "changed" | "failed" | "skipped";
+          previous_hash?: string | null;
+          current_hash?: string | null;
+          similarity_score?: number | null;
+          change_summary?: string | null;
+          error_message?: string | null;
+          checked_at?: string;
+          duration_ms?: number | null;
+          new_snapshot_id?: number | null;
+          archived_version_id?: number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "monitor_check_logs_monitor_id_fkey";
+            columns: ["monitor_id"];
+            isOneToOne: false;
+            referencedRelation: "page_monitors";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "monitor_check_logs_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       notification_preferences: {
         Row: {
           created_at: string | null;
@@ -2300,6 +2367,49 @@ export type Database = {
           user_id?: string;
           web_push_enabled?: boolean | null;
           web_push_subscription?: Json | null;
+        };
+        Relationships: [];
+      };
+      /** OAuth 授权码临时存储（5分钟过期） */
+      oauth_authorization_codes: {
+        Row: {
+          /** 授权码（主键） */
+          code: string;
+          user_id: string;
+          /** PKCE code_challenge */
+          code_challenge: string;
+          code_challenge_method: string;
+          redirect_uri: string;
+          scope: string | null;
+          state: string;
+          created_at: string;
+          expires_at: string;
+          /** 授权码使用时间，防止重放攻击 */
+          used_at: string | null;
+        };
+        Insert: {
+          code: string;
+          user_id: string;
+          code_challenge: string;
+          code_challenge_method?: string;
+          redirect_uri: string;
+          scope?: string | null;
+          state: string;
+          created_at?: string;
+          expires_at: string;
+          used_at?: string | null;
+        };
+        Update: {
+          code?: string;
+          user_id?: string;
+          code_challenge?: string;
+          code_challenge_method?: string;
+          redirect_uri?: string;
+          scope?: string | null;
+          state?: string;
+          created_at?: string;
+          expires_at?: string;
+          used_at?: string | null;
         };
         Relationships: [];
       };
@@ -2465,6 +2575,110 @@ export type Database = {
         };
         Relationships: [];
       };
+      /** 页面监控配置表 - 用于追踪页面内容变化。配额: FREE=5, PRO=50 */
+      page_monitors: {
+        Row: {
+          id: number;
+          user_id: string;
+          bookmark_id: number;
+          /** 检查频率: every_6h(Pro), twice_daily(Pro), daily, weekly, custom(Pro) */
+          check_interval:
+            | "every_6h"
+            | "twice_daily"
+            | "daily"
+            | "weekly"
+            | "custom";
+          /** 仅当 check_interval = 'custom' 时使用 */
+          custom_interval_hours: number | null;
+          last_checked_at: string | null;
+          next_check_at: string | null;
+          baseline_snapshot_id: number | null;
+          baseline_content_hash: string | null;
+          baseline_captured_at: string | null;
+          status: "active" | "paused" | "failed" | "deleted";
+          /** 连续失败次数，达到 3 次自动暂停 */
+          consecutive_failures: number;
+          last_error_message: string | null;
+          change_count: number;
+          last_change_at: string | null;
+          notification_enabled: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: number;
+          user_id: string;
+          bookmark_id: number;
+          check_interval?:
+            | "every_6h"
+            | "twice_daily"
+            | "daily"
+            | "weekly"
+            | "custom";
+          custom_interval_hours?: number | null;
+          last_checked_at?: string | null;
+          next_check_at?: string | null;
+          baseline_snapshot_id?: number | null;
+          baseline_content_hash?: string | null;
+          baseline_captured_at?: string | null;
+          status?: "active" | "paused" | "failed" | "deleted";
+          consecutive_failures?: number;
+          last_error_message?: string | null;
+          change_count?: number;
+          last_change_at?: string | null;
+          notification_enabled?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: number;
+          user_id?: string;
+          bookmark_id?: number;
+          check_interval?:
+            | "every_6h"
+            | "twice_daily"
+            | "daily"
+            | "weekly"
+            | "custom";
+          custom_interval_hours?: number | null;
+          last_checked_at?: string | null;
+          next_check_at?: string | null;
+          baseline_snapshot_id?: number | null;
+          baseline_content_hash?: string | null;
+          baseline_captured_at?: string | null;
+          status?: "active" | "paused" | "failed" | "deleted";
+          consecutive_failures?: number;
+          last_error_message?: string | null;
+          change_count?: number;
+          last_change_at?: string | null;
+          notification_enabled?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "page_monitors_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "page_monitors_bookmark_id_fkey";
+            columns: ["bookmark_id"];
+            isOneToOne: false;
+            referencedRelation: "bookmarks";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "page_monitors_baseline_snapshot_id_fkey";
+            columns: ["baseline_snapshot_id"];
+            isOneToOne: false;
+            referencedRelation: "bookmark_snapshots";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       pending_confirmations: {
         Row: {
           bookmark_id: number | null;
@@ -2562,6 +2776,56 @@ export type Database = {
           status?: string | null;
           updated_at?: string | null;
           user_id?: string;
+        };
+        Relationships: [];
+      };
+      /** 浏览器插件 OAuth 授权记录表 */
+      plugin_authorizations: {
+        Row: {
+          id: string;
+          user_id: string;
+          /** Refresh Token 的 SHA256 哈希 */
+          refresh_token_hash: string;
+          /** Access Token 的 JWT ID，用于撤销验证 */
+          access_token_jti: string;
+          /** 浏览器类型: chrome/edge/firefox/other */
+          browser: string;
+          /** 插件版本号 */
+          extension_version: string | null;
+          /** 完整 UA */
+          user_agent: string | null;
+          created_at: string;
+          last_used_at: string;
+          /** Refresh Token 过期时间 */
+          expires_at: string;
+          /** 撤销时间，NULL 表示授权有效 */
+          revoked_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          refresh_token_hash: string;
+          access_token_jti: string;
+          browser: string;
+          extension_version?: string | null;
+          user_agent?: string | null;
+          created_at?: string;
+          last_used_at?: string;
+          expires_at: string;
+          revoked_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          refresh_token_hash?: string;
+          access_token_jti?: string;
+          browser?: string;
+          extension_version?: string | null;
+          user_agent?: string | null;
+          created_at?: string;
+          last_used_at?: string;
+          expires_at?: string;
+          revoked_at?: string | null;
         };
         Relationships: [];
       };
@@ -3405,6 +3669,11 @@ export type Database = {
         }[];
       };
       cleanup_expired_messages: { Args: never; Returns: number };
+      /** 清理过期的 OAuth 授权码 */
+      cleanup_expired_oauth_codes: {
+        Args: Record<string, never>;
+        Returns: number;
+      };
       /** 清理过期的会话记忆 - 仅授权 service_role */
       cleanup_expired_session_memory: {
         Args: Record<string, never>;
@@ -4071,6 +4340,11 @@ export type Database = {
         Args: { p_suggestion_ids: number[]; p_user_id: string };
         Returns: number;
       };
+      /** 撤销用户所有插件授权 */
+      revoke_all_plugin_authorizations: {
+        Args: { p_user_id: string };
+        Returns: number;
+      };
       /** 保存会话状态到数据库 - 已授权 authenticated */
       save_session_state: {
         Args: {
@@ -4290,6 +4564,19 @@ export type Database = {
           p_user_id: string;
         };
         Returns: number;
+      };
+      /** 验证 Refresh Token 并更新最后使用时间 */
+      validate_refresh_token: {
+        Args: {
+          p_token_hash: string;
+          p_user_id: string;
+        };
+        Returns: {
+          valid: boolean;
+          authorization_id: string | null;
+          browser: string | null;
+          expires_at: string | null;
+        }[];
       };
     };
     Enums: {

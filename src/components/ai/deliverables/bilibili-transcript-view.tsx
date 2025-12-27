@@ -346,7 +346,7 @@ const TranscriptContent = memo(function TranscriptContent({
                   <TranscriptSegmentItem
                     key={index}
                     segment={segment}
-                    index={index}
+                    _index={index}
                   />
                 ))}
                 {transcript.segments.length > 20 && (

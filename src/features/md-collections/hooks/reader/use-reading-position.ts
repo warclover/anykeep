@@ -150,8 +150,11 @@ export function useReadingPosition({
     try {
       localStorage.setItem(storageKey, JSON.stringify(position));
       setSavedPosition(position);
-    } catch {
-      // localStorage 不可用
+    } catch (error) {
+      // localStorage 不可用或配额已满
+      if (process.env.NODE_ENV === "development") {
+        console.error("[use-reading-position] savePosition failed:", error);
+      }
     }
   }, [storageKey, calculateProgress]);
 
@@ -176,8 +179,11 @@ export function useReadingPosition({
     try {
       localStorage.removeItem(storageKey);
       setSavedPosition(null);
-    } catch {
+    } catch (error) {
       // localStorage 不可用
+      if (process.env.NODE_ENV === "development") {
+        console.error("[use-reading-position] clearPosition failed:", error);
+      }
     }
   }, [storageKey]);
 
@@ -200,8 +206,11 @@ export function useReadingPosition({
           localStorage.removeItem(storageKey);
         }
       }
-    } catch {
+    } catch (error) {
       // localStorage 不可用或数据无效
+      if (process.env.NODE_ENV === "development") {
+        console.error("[use-reading-position] init failed:", error);
+      }
     }
   }, [storageKey]);
 

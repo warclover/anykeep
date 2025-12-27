@@ -144,13 +144,13 @@ export interface CheckLog {
 }
 
 /**
- * 检查结果类型
+ * 检查结果类型（与数据库 check_result 枚举对应）
  */
 export type CheckResult =
   | "no_change" // 无变化
   | "changed" // 有变化
-  | "error" // 检查失败
-  | "timeout"; // 超时
+  | "failed" // 检查失败
+  | "skipped"; // 跳过
 
 // ============================================
 // 配额相关类型

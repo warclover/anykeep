@@ -68,7 +68,7 @@ describe("TTSSynthesisSkill", () => {
     });
 
     it("should have all required step definitions", () => {
-      const stepNames = skill.metadata.steps.map((s) => s.name);
+      const stepNames = skill.metadata.steps!.map((s) => s.name);
       expect(stepNames).toContain("解析请求");
       expect(stepNames).toContain("获取摘要");
       expect(stepNames).toContain("准备文本");
@@ -307,14 +307,20 @@ describe("TTSSynthesisSkill", () => {
 
   describe("prepareText", () => {
     // Access private method through any type for testing
+    type PrepareTextFn = (
+      bookmark: { title: string; ai_summary: string | null },
+      contentType: string,
+    ) => string;
+
     const prepareText = (
       skill: TTSSynthesisSkill,
       bookmark: { title: string; ai_summary: string | null },
       contentType: string,
-    ) => {
-      return (
-        skill as unknown as { prepareText: typeof prepareText }
-      ).prepareText(bookmark, contentType);
+    ): string => {
+      return (skill as unknown as { prepareText: PrepareTextFn }).prepareText(
+        bookmark,
+        contentType,
+      );
     };
 
     // Valid structured summary format requires both tldr and key_points

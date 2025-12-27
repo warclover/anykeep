@@ -190,11 +190,17 @@ export class BilibiliTranscriptSkill extends OrchestrationSkill<
         return;
       }
 
-      const videoResult = await bilibiliApi.getVideoTranscript(
-        bvid,
-        page,
-        input.preferredLang,
-      );
+      // 添加超时保护（30秒）
+      const API_TIMEOUT_MS = 30000;
+      const videoResult = await Promise.race([
+        bilibiliApi.getVideoTranscript(bvid, page, input.preferredLang),
+        new Promise<never>((_, reject) =>
+          setTimeout(
+            () => reject(new Error("B站 API 请求超时，请稍后重试")),
+            API_TIMEOUT_MS,
+          ),
+        ),
+      ]);
 
       yield* this.reportProgress("获取信息", 100, "视频信息获取完成");
       yield* this.emitText(

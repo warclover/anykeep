@@ -153,8 +153,11 @@ export function getSelectionOffset(container: Element): SelectionOffset | null {
       endOffset,
       anchorText,
     };
-  } catch {
+  } catch (error) {
     // 偏移计算失败（如节点偏移超出范围）
+    if (process.env.NODE_ENV === "development") {
+      console.error("[highlight-utils] getSelectionOffset failed:", error);
+    }
     return null;
   }
 }
@@ -198,8 +201,11 @@ export function getRangeOffset(
       endOffset,
       anchorText,
     };
-  } catch {
+  } catch (error) {
     // 偏移计算失败（如节点偏移超出范围）
+    if (process.env.NODE_ENV === "development") {
+      console.error("[highlight-utils] getRangeOffset failed:", error);
+    }
     return null;
   }
 }
@@ -240,8 +246,11 @@ export function restoreRange(
     range.setStart(startResult.node, startResult.offset);
     range.setEnd(endResult.node, endResult.offset);
     return range;
-  } catch {
+  } catch (error) {
     // Range 设置失败（如偏移超出范围）
+    if (process.env.NODE_ENV === "development") {
+      console.error("[highlight-utils] restoreRange failed:", error);
+    }
     return null;
   }
 }
