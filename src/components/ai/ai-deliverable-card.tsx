@@ -286,9 +286,12 @@ const CardsContent = memo(function CardsContent({
                 </h5>
               )}
               {(card as Record<string, unknown>).description && (
-                <p className="text-sm text-gray-600">
-                  {String((card as Record<string, unknown>).description)}
-                </p>
+                <AIMarkdown
+                  content={String(
+                    (card as Record<string, unknown>).description,
+                  )}
+                  className="text-sm text-gray-600"
+                />
               )}
               {(card as Record<string, unknown>).url && (
                 <a

@@ -10,7 +10,10 @@
 
 import { UnifiedEngine, createUnifiedEngine } from "../unified-engine";
 import type { EngineContext } from "../types";
-import type { AgentStreamChunk } from "../../../ai-agent/core/types";
+import type {
+  AgentStreamChunk,
+  AgentContext,
+} from "../../../ai-agent/core/types";
 import { z } from "zod";
 
 import type { UnifiedStreamChunk } from "../../output/types";
@@ -579,5 +582,145 @@ describe("UnifiedEngine Factory", () => {
       },
     });
     expect(engine).toBeInstanceOf(UnifiedEngine);
+  });
+});
+
+describe("Refine Intent Handling", () => {
+  let engine: UnifiedEngine;
+
+  beforeEach(() => {
+    engine = createUnifiedEngine({ debug: true });
+  });
+
+  it("should detect refine intent for filter requests", async () => {
+    // Set up atomic executor
+    const atomicExecutor =
+      async function* (): AsyncGenerator<AgentStreamChunk> {
+        yield { type: "text", text: "筛选后的结果" };
+        yield { type: "done" };
+      };
+    engine.setAtomicExecutor(atomicExecutor);
+
+    const chunks: UnifiedStreamChunk[] = [];
+    for await (const chunk of engine.execute(
+      "里面有关于 API 的吗？",
+      {
+        userId: "test-user",
+        conversationId: "test-conv",
+        lastSearchResults: {
+          query: "Claude",
+          resultIds: [101, 102, 103, 104, 105],
+          searchedAt: Date.now(),
+        },
+      },
+      { includeRoutingInfo: true },
+    )) {
+      chunks.push(chunk);
+    }
+
+    // Should have routing chunk showing refine intent
+    const routingChunk = chunks.find((c) => c.type === "routing");
+    expect(routingChunk).toBeDefined();
+    if (routingChunk?.data) {
+      const data = routingChunk.data as { intentType?: string };
+      expect(data.intentType).toBe("refine");
+    }
+  });
+
+  it("should inject search results context for refine intent", async () => {
+    let capturedContext: AgentContext | undefined;
+
+    // Set up atomic executor that captures context (receives AgentContext, not EngineContext)
+    const atomicExecutor = async function* (
+      _input: string,
+      ctx: AgentContext,
+    ): AsyncGenerator<AgentStreamChunk> {
+      capturedContext = ctx;
+      yield { type: "text", text: "筛选完成" };
+      yield { type: "done" };
+    };
+    engine.setAtomicExecutor(atomicExecutor);
+
+    for await (const _chunk of engine.execute(
+      "里面有没有关于 TypeScript 的？",
+      {
+        userId: "test-user",
+        conversationId: "test-conv",
+        lastSearchResults: {
+          query: "编程语言",
+          resultIds: [1, 2, 3, 4, 5],
+          searchedAt: Date.now(),
+        },
+      },
+    )) {
+      // Just consume chunks
+    }
+
+    // Verify context was enhanced with refine information
+    // Note: attachmentContext is converted to systemPrompt in AgentContext
+    expect(capturedContext).toBeDefined();
+    expect(capturedContext?.systemPrompt).toContain(
+      "用户正在筛选之前的搜索结果",
+    );
+    expect(capturedContext?.systemPrompt).toContain("编程语言");
+    expect(capturedContext?.bookmarkIds).toEqual([1, 2, 3, 4, 5]);
+  });
+
+  it("should not inject context when no search results exist", async () => {
+    let capturedContext: EngineContext | undefined;
+
+    const atomicExecutor = async function* (
+      _input: string,
+      ctx: EngineContext,
+    ): AsyncGenerator<AgentStreamChunk> {
+      capturedContext = ctx;
+      yield { type: "text", text: "响应" };
+      yield { type: "done" };
+    };
+    engine.setAtomicExecutor(atomicExecutor);
+
+    for await (const _chunk of engine.execute("里面有关于什么的？", {
+      userId: "test-user",
+      conversationId: "test-conv",
+      // No lastSearchResults
+    })) {
+      // Just consume chunks
+    }
+
+    // Should not have refine context when no search results
+    expect(capturedContext).toBeDefined();
+    expect(capturedContext?.attachmentContext).toBeUndefined();
+  });
+
+  it("should preserve existing bookmarkIds when refining", async () => {
+    let capturedContext: EngineContext | undefined;
+
+    const atomicExecutor = async function* (
+      _input: string,
+      ctx: EngineContext,
+    ): AsyncGenerator<AgentStreamChunk> {
+      capturedContext = ctx;
+      yield { type: "text", text: "筛选完成" };
+      yield { type: "done" };
+    };
+    engine.setAtomicExecutor(atomicExecutor);
+
+    const existingBookmarkIds = [10, 20, 30];
+
+    for await (const _chunk of engine.execute("筛选一下这些", {
+      userId: "test-user",
+      conversationId: "test-conv",
+      bookmarkIds: existingBookmarkIds,
+      lastSearchResults: {
+        query: "测试",
+        resultIds: [100, 200, 300],
+        searchedAt: Date.now(),
+      },
+    })) {
+      // Just consume chunks
+    }
+
+    // Should preserve existing bookmarkIds, not replace with search results
+    expect(capturedContext?.bookmarkIds).toEqual(existingBookmarkIds);
   });
 });

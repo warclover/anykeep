@@ -93,9 +93,11 @@ export async function logSkillExecution(
     const supabase = await createClient();
 
     // 构建数据库记录
+    // 注意：conversation_id 设为 null，因为 AgentMemory 中的 conversationId
+    // 是内存临时 ID，不存在于 ai_conversations 表中，会导致 FK 约束失败
     const record: ExecutionLogRecord = {
       user_id: context.userId,
-      conversation_id: context.conversationId || null,
+      conversation_id: null, // 禁用 FK 关联，避免 23503 错误
       skill_id: metadata.id,
       skill_version: metadata.version,
       input: sanitizeForJson(input),

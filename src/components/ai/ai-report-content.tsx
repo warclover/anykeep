@@ -23,6 +23,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AIMarkdown } from "./ai-markdown";
 
 // ============================================
 // 类型定义
@@ -241,9 +242,10 @@ const InsightCard = memo(function InsightCard({
           <div className="text-sm font-medium text-gray-800">
             {insight.title}
           </div>
-          <div className="text-xs text-gray-600 mt-0.5">
-            {insight.description}
-          </div>
+          <AIMarkdown
+            content={insight.description}
+            className="text-xs text-gray-600 mt-0.5"
+          />
         </div>
       </div>
     </div>
@@ -389,7 +391,10 @@ export const AIReportContent = memo(function AIReportContent({
           ) : (
             <TrendingUp className="size-4 text-green-500 flex-shrink-0 mt-0.5" />
           )}
-          <span className="text-sm text-gray-700">{trends.summary}</span>
+          <AIMarkdown
+            content={trends.summary}
+            className="text-sm text-gray-700"
+          />
         </div>
       )}
 

@@ -25,6 +25,7 @@ import {
   Flame,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AIMarkdown } from "./ai-markdown";
 
 // ============================================
 // 类型定义（从 periodic-report types 简化）
@@ -198,9 +199,10 @@ const HighlightCard = memo(function HighlightCard({
             {highlight.reason}
           </div>
           {highlight.summary && (
-            <div className="text-xs text-gray-500 mt-1 line-clamp-2">
-              {highlight.summary}
-            </div>
+            <AIMarkdown
+              content={highlight.summary}
+              className="text-xs text-gray-500 mt-1 line-clamp-2"
+            />
           )}
         </div>
       </div>
@@ -234,9 +236,10 @@ const InsightCard = memo(function InsightCard({
       <Icon className={cn("size-4 flex-shrink-0 mt-0.5", config.colorClass)} />
       <div>
         <div className="text-sm font-medium text-gray-800">{insight.title}</div>
-        <div className="text-xs text-gray-600 mt-0.5">
-          {insight.description}
-        </div>
+        <AIMarkdown
+          content={insight.description}
+          className="text-xs text-gray-600 mt-0.5"
+        />
       </div>
     </div>
   );

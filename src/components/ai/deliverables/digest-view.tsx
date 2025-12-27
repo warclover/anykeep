@@ -342,7 +342,10 @@ const TopicGroupCard = memo(function TopicGroupCard({
           {/* 主题摘要 */}
           {group.summary && (
             <div className="p-3 bg-gray-50 border-b border-gray-100">
-              <p className="text-sm text-gray-600">{group.summary}</p>
+              <AIMarkdown
+                content={group.summary}
+                className="text-sm text-gray-600"
+              />
             </div>
           )}
 
@@ -392,7 +395,10 @@ const InsightCard = memo(function InsightCard({
         <Badge variant="outline" className={cn("text-[10px]", config.color)}>
           {config.label}
         </Badge>
-        <p className="mt-1 text-sm text-gray-700">{insight.content}</p>
+        <AIMarkdown
+          content={insight.content}
+          className="mt-1 text-sm text-gray-700"
+        />
       </div>
     </div>
   );

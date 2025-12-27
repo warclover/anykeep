@@ -244,13 +244,14 @@ export class UnifiedEngine {
             }
           : undefined),
       // 注入最近的搜索结果（用于指代词解析）
+      // 优先使用内存中的搜索结果，若无则保留传入的上下文
       lastSearchResults: lastSearchResults
         ? {
             query: lastSearchResults.query,
             resultIds: lastSearchResults.resultIds,
             searchedAt: lastSearchResults.searchedAt,
           }
-        : undefined,
+        : context.lastSearchResults,
     };
 
     // 2. 如果引擎未启用，直接使用原子模式
@@ -343,6 +344,24 @@ export class UnifiedEngine {
         );
       }
 
+      // 处理 refine 意图：注入搜索结果上下文
+      let effectiveContext = context;
+      if (routeResult.intent.type === "refine" && context.lastSearchResults) {
+        effectiveContext = this.injectRefineContext(context);
+
+        if (this.config.debug) {
+          logger.debug(
+            {
+              intentType: routeResult.intent.type,
+              subType: routeResult.intent.subType,
+              searchQuery: context.lastSearchResults.query,
+              resultCount: context.lastSearchResults.resultIds.length,
+            },
+            "UnifiedEngine: Refine intent detected, injecting search results context",
+          );
+        }
+      }
+
       // 根据模式执行（带增强）
       if (
         routeResult.mode === "orchestration" &&
@@ -354,17 +373,17 @@ export class UnifiedEngine {
           this.executionCoordinator.executeOrchestrationWithFallback(
             routeResult.suggestedSkill,
             input,
-            context,
+            effectiveContext,
           ),
-          context,
+          effectiveContext,
           routeResult.intent.type,
           routeResult.intent.subType,
         );
       } else {
         // 原子模式
         yield* this.executeWithEnhancements(
-          this.executionCoordinator.executeAtomic(input, context),
-          context,
+          this.executionCoordinator.executeAtomic(input, effectiveContext),
+          effectiveContext,
           routeResult.intent.type,
           routeResult.intent.subType,
         );
@@ -386,6 +405,51 @@ export class UnifiedEngine {
 
       yield* this.executionCoordinator.executeAtomic(input, context);
     }
+  }
+
+  /**
+   * 为 refine 意图注入搜索结果上下文
+   *
+   * 当用户请求筛选/过滤之前的搜索结果时，
+   * 将搜索结果信息注入到 System Prompt 中，
+   * 让 AI 知道用户要筛选的是哪些内容。
+   *
+   * @param context - 原始上下文
+   * @returns 注入搜索结果上下文后的上下文
+   */
+  private injectRefineContext(context: EngineContext): EngineContext {
+    const { lastSearchResults } = context;
+
+    if (!lastSearchResults || lastSearchResults.resultIds.length === 0) {
+      return context;
+    }
+
+    // 构建搜索结果上下文提示
+    const refineContextPrompt = `
+【上下文：用户正在筛选之前的搜索结果】
+
+用户之前搜索了："${lastSearchResults.query}"
+搜索到 ${lastSearchResults.resultIds.length} 条结果（书签 ID: ${lastSearchResults.resultIds.slice(0, 10).join(", ")}${lastSearchResults.resultIds.length > 10 ? "..." : ""}）
+
+用户现在想要在这些结果中进一步筛选。请：
+1. 优先在这 ${lastSearchResults.resultIds.length} 条搜索结果中进行筛选
+2. 如果需要搜索，请使用用户的筛选条件结合原搜索词进行搜索
+3. 回答时明确指出筛选后还剩多少条符合条件的结果
+`;
+
+    // 注入到 attachmentContext
+    const newAttachmentContext = context.attachmentContext
+      ? `${context.attachmentContext}\n\n${refineContextPrompt}`
+      : refineContextPrompt;
+
+    return {
+      ...context,
+      attachmentContext: newAttachmentContext,
+      // 将搜索结果 ID 作为 bookmarkIds 传递，限制搜索范围
+      bookmarkIds: context.bookmarkIds?.length
+        ? context.bookmarkIds
+        : lastSearchResults.resultIds,
+    };
   }
 
   /**
