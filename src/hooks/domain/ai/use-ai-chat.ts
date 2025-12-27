@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * AI 聊天 Hook
  *

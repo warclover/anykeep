@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * 文件夹画像 Hook
  *

@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * V4.2 Evolution Reports Hook
  * 管理月度 AI 进化报告的获取和生成

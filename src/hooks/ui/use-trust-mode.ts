@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * Trust Mode Hook
  * V4.2 托管模式状态管理 Hook

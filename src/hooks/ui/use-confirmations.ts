@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * Use Confirmations Hook
  * V4.2 待确认消息管理 Hook

@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * 导入会话管理 Hook
  * 提供 IndexedDB 缓存和暂停/恢复功能
