@@ -1,8 +1,11 @@
 /**
  * AI Agent Tools 模块导出
  *
- * @version 2.2.0
+ * @version 2.3.0
  * @since 2025-12-23
+ *
+ * v2.3.0 新增:
+ * - 插件授权 Tools: list-plugin-authorizations, revoke-plugin-authorization, revoke-all-plugin-authorizations, get-plugin-auth-stats
  *
  * v2.2.0 新增:
  * - 信任模式 Tools: get-trust-mode（获取信任模式）, recommend-trust-mode（智能推荐信任模式）
@@ -85,6 +88,9 @@ export * from "./snapshot";
 // 信任模式 Tools (新增 v2.2.0)
 export * from "./trust-mode";
 
+// 插件授权 Tools (新增 v2.3.0)
+export * from "./plugin-auth";
+
 // 注册默认 Tools
 import { toolRegistry } from "./tool-registry";
 import { queryTools } from "./query";
@@ -101,6 +107,7 @@ import { importTools } from "./import";
 import { messageTools } from "./messages";
 import { snapshotTools } from "./snapshot";
 import { trustModeTools } from "./trust-mode";
+import { pluginAuthTools } from "./plugin-auth";
 
 /**
  * 注册所有默认 Tools
@@ -125,6 +132,8 @@ export function registerDefaultTools(): void {
   toolRegistry.registerAll(snapshotTools);
   // 新增 Tools (v2.2.0)
   toolRegistry.registerAll(trustModeTools);
+  // 新增 Tools (v2.3.0)
+  toolRegistry.registerAll(pluginAuthTools);
 }
 
 /**
