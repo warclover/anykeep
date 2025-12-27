@@ -139,9 +139,10 @@ describe("Bilibili Transcript AI Enhancement Integration", () => {
     });
 
     it("should have correct steps defined", () => {
+      expect(bilibiliTranscriptSkill.metadata.steps).toBeDefined();
       expect(bilibiliTranscriptSkill.metadata.steps).toHaveLength(6);
 
-      const stepIds = bilibiliTranscriptSkill.metadata.steps.map((s) => s.id);
+      const stepIds = bilibiliTranscriptSkill.metadata.steps!.map((s) => s.id);
       expect(stepIds).toContain("parse");
       expect(stepIds).toContain("fetch_info");
       expect(stepIds).toContain("fetch_subtitle");

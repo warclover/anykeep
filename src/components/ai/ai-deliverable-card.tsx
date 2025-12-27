@@ -52,6 +52,14 @@ import {
   isKnowledgeReviewOutput,
 } from "./deliverables/knowledge-review-card";
 import { AudioPlayerCard } from "@/components/tts";
+import {
+  WechatDigestView,
+  isWechatDigestOutput,
+} from "./deliverables/wechat-digest-view";
+import {
+  BilibiliTranscriptView,
+  isBilibiliTranscriptOutput,
+} from "./deliverables/bilibili-transcript-view";
 
 interface AIDeliverableCardProps {
   /** 交付物数据 */
@@ -451,6 +459,22 @@ const DocumentContent = memo(function DocumentContent({
         onDownload={handleDownload}
       />
     );
+  }
+
+  // 检测是否为 wechat_digest skill 的交付物
+  const isWechatDigest = metadata?.skillId === "wechat_digest";
+
+  // 如果是微信阅读摘要，使用专门的组件渲染
+  if (isWechatDigest && isWechatDigestOutput(content)) {
+    return <WechatDigestView data={content} />;
+  }
+
+  // 检测是否为 bilibili_transcript skill 的交付物
+  const isBilibiliTranscript = metadata?.skillId === "bilibili_transcript";
+
+  // 如果是B站字幕提取，使用专门的组件渲染
+  if (isBilibiliTranscript && isBilibiliTranscriptOutput(content)) {
+    return <BilibiliTranscriptView data={content} />;
   }
 
   const textContent =

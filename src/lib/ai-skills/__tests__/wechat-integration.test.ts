@@ -132,9 +132,10 @@ describe("WeChat AI Enhancement Integration", () => {
     });
 
     it("should have correct steps defined", () => {
+      expect(wechatDigestSkill.metadata.steps).toBeDefined();
       expect(wechatDigestSkill.metadata.steps).toHaveLength(5);
 
-      const stepIds = wechatDigestSkill.metadata.steps.map((s) => s.id);
+      const stepIds = wechatDigestSkill.metadata.steps!.map((s) => s.id);
       expect(stepIds).toContain("analyze");
       expect(stepIds).toContain("extract");
       expect(stepIds).toContain("group");
