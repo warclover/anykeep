@@ -88,6 +88,12 @@ const DEFAULT_SKILL_MAPPINGS: Record<string, OrchestrationSkillMapping> = {
     minComplexity: "medium",
     enabled: true, // 已实现
   },
+  "organize:monitor": {
+    skillId: "content_change_monitor",
+    name: "内容变更监控",
+    minComplexity: "simple",
+    enabled: true, // 已实现
+  },
 
   // 分析类
   "analyze:report": {

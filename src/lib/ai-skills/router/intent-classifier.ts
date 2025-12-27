@@ -91,6 +91,13 @@ const DEFAULT_RULES: IntentRule[] = [
     complexity: "medium",
     weight: 70,
   },
+  {
+    pattern: /监控|变更检测|页面监控|变化检测|内容变化|监控列表|我的监控/,
+    type: "organize",
+    subType: "monitor",
+    complexity: "simple",
+    weight: 80,
+  },
 
   // ============================================
   // 分析类
