@@ -367,9 +367,9 @@ describe("AttachmentPreviewModal", () => {
         fireEvent.click(openButton);
 
         expect(mockWindowOpen).not.toHaveBeenCalled();
+        // clientLogger 会格式化输出，检查是否包含关键信息
         expect(mockConsoleError).toHaveBeenCalledWith(
-          "Blocked unsafe URL protocol:",
-          "javascript:",
+          expect.stringContaining("Blocked unsafe URL protocol"),
         );
       });
 
@@ -387,9 +387,9 @@ describe("AttachmentPreviewModal", () => {
         fireEvent.click(openButton);
 
         expect(mockWindowOpen).not.toHaveBeenCalled();
+        // clientLogger 会格式化输出，检查是否包含关键信息
         expect(mockConsoleError).toHaveBeenCalledWith(
-          "Blocked unsafe URL protocol:",
-          "data:",
+          expect.stringContaining("Blocked unsafe URL protocol"),
         );
       });
 
@@ -407,9 +407,9 @@ describe("AttachmentPreviewModal", () => {
         fireEvent.click(openButton);
 
         expect(mockWindowOpen).not.toHaveBeenCalled();
+        // clientLogger 会格式化输出，检查是否包含关键信息
         expect(mockConsoleError).toHaveBeenCalledWith(
-          "Blocked unsafe URL protocol:",
-          "file:",
+          expect.stringContaining("Blocked unsafe URL protocol"),
         );
       });
 
@@ -425,9 +425,9 @@ describe("AttachmentPreviewModal", () => {
         fireEvent.click(openButton);
 
         expect(mockWindowOpen).not.toHaveBeenCalled();
-        // console.error 被调用，第一个参数是 "Invalid URL:"
+        // clientLogger 会格式化输出，检查是否包含关键信息
         expect(mockConsoleError).toHaveBeenCalled();
-        expect(mockConsoleError.mock.calls[0][0]).toBe("Invalid URL:");
+        expect(mockConsoleError.mock.calls[0][0]).toContain("Invalid URL");
       });
     });
 
@@ -482,8 +482,9 @@ describe("AttachmentPreviewModal", () => {
 
         // 图片不应该被渲染
         expect(screen.queryByRole("img")).not.toBeInTheDocument();
+        // clientLogger 会格式化输出，检查是否包含关键信息
         expect(mockConsoleError).toHaveBeenCalledWith(
-          "Blocked invalid image data URL format",
+          expect.stringContaining("Blocked invalid image data URL format"),
         );
       });
 
@@ -499,8 +500,9 @@ describe("AttachmentPreviewModal", () => {
         );
 
         expect(screen.queryByRole("img")).not.toBeInTheDocument();
+        // clientLogger 会格式化输出，检查是否包含关键信息
         expect(mockConsoleError).toHaveBeenCalledWith(
-          "Blocked invalid image data URL format",
+          expect.stringContaining("Blocked invalid image data URL format"),
         );
       });
 
@@ -516,8 +518,9 @@ describe("AttachmentPreviewModal", () => {
         );
 
         expect(screen.queryByRole("img")).not.toBeInTheDocument();
+        // clientLogger 会格式化输出，检查是否包含关键信息
         expect(mockConsoleError).toHaveBeenCalledWith(
-          "Blocked invalid image data URL format",
+          expect.stringContaining("Blocked invalid image data URL format"),
         );
       });
     });
