@@ -37,6 +37,7 @@ import { ttsSynthesisSkill } from "./skills/tts-synthesis";
 import { wechatDigestSkill } from "./skills/wechat-digest";
 import { bilibiliTranscriptSkill } from "./skills/bilibili-transcript";
 import { inboxDigestSkill } from "./skills/inbox-digest";
+import { contentChangeMonitorSkill } from "./skills/content-change-monitor";
 import { unifiedEngine } from "./engine/unified-engine";
 import { knowledgeAgent } from "../ai-agent/core/knowledge-agent";
 import { logger } from "@/lib/logger";
@@ -190,6 +191,12 @@ export function initializeUnifiedEngine(): void {
   if (process.env.ENABLE_INBOX_DIGEST !== "false") {
     unifiedEngine.registerOrchestrationSkill(inboxDigestSkill);
     logger.debug("InboxDigestSkill registered");
+  }
+
+  // 内容变更监控（支持 Feature Flag 开关）
+  if (process.env.ENABLE_CONTENT_CHANGE_MONITOR !== "false") {
+    unifiedEngine.registerOrchestrationSkill(contentChangeMonitorSkill);
+    logger.debug("ContentChangeMonitorSkill registered");
   }
 
   unifiedEngineInitialized = true;

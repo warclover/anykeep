@@ -61,6 +61,8 @@ import { useDetailMutations } from "./hooks/use-detail-mutations";
 import { DetailActionBar } from "./detail-action-bar";
 import { DetailTagsEditor } from "./detail-tags-editor";
 import { DetailNotesEditor } from "./detail-notes-editor";
+// V4.2.3: 页面监控功能
+import { CreateMonitorDialog } from "@/components/monitor";
 
 // 懒加载微信文章区块组件
 const WechatArticleSectionLazy = lazy(() =>
@@ -95,6 +97,7 @@ export function BookmarkDetailClient({
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showMoveDialog, setShowMoveDialog] = useState(false);
   const [showAIPanel, setShowAIPanel] = useState(false);
+  const [showMonitorDialog, setShowMonitorDialog] = useState(false);
 
   // Phase 2.3.7: 使用提取的 mutations hook
   const {
@@ -386,6 +389,7 @@ export function BookmarkDetailClient({
                   onMoveToFolder={() => setShowMoveDialog(true)}
                   onDelete={handleDelete}
                   onOpenAIPanel={() => setShowAIPanel(true)}
+                  onAddMonitor={() => setShowMonitorDialog(true)}
                 />
               </div>
             </CardHeader>
@@ -608,6 +612,19 @@ export function BookmarkDetailClient({
         }}
         enableLearning={true}
       />
+
+      {/* 创建监控对话框 */}
+      {userId && (
+        <CreateMonitorDialog
+          open={showMonitorDialog}
+          onOpenChange={setShowMonitorDialog}
+          bookmark={{
+            id: bookmark.id,
+            title: bookmark.title,
+            url: bookmark.url,
+          }}
+        />
+      )}
 
       {/* AI 助手面板 */}
       {userId && (

@@ -3,9 +3,9 @@
  *
  * 书签详情页的操作按钮栏，包含返回、打开原文、分享、编辑、移动、删除等操作。
  *
- * @version 1.1.0
+ * @version 1.2.0
  * @since 2025-12-24 (Phase 2.3.7)
- * @updated 2025-12-27 - 添加 TTS 语音朗读按钮
+ * @updated 2025-12-28 - 添加页面监控按钮
  */
 
 "use client";
@@ -18,6 +18,7 @@ import {
   FolderInput,
   Share2,
   Bot,
+  Eye,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -43,6 +44,8 @@ export interface DetailActionBarProps {
   isDeleting: boolean;
   /** 用户 ID（用于判断是否显示 AI 助手按钮） */
   userId?: string;
+  /** 是否已设置监控 */
+  hasMonitor?: boolean;
   /** 返回回调 */
   onBack: () => void;
   /** 编辑回调 */
@@ -53,6 +56,8 @@ export interface DetailActionBarProps {
   onDelete: () => void;
   /** 打开 AI 助手面板回调 */
   onOpenAIPanel?: () => void;
+  /** 添加监控回调 */
+  onAddMonitor?: () => void;
 }
 
 // ============================================
@@ -67,11 +72,13 @@ export function DetailActionBar({
   isLocked,
   isDeleting,
   userId,
+  hasMonitor,
   onBack,
   onEdit,
   onMoveToFolder,
   onDelete,
   onOpenAIPanel,
+  onAddMonitor,
 }: DetailActionBarProps) {
   // 打开原文
   const handleOpenOriginal = () => {
@@ -153,6 +160,30 @@ export function DetailActionBar({
         {/* TTS 语音朗读按钮 */}
         {userId && aiSummary && (
           <TTSPlayerButton bookmarkId={bookmarkId} variant="button" size="sm" />
+        )}
+
+        {/* 页面监控按钮 */}
+        {userId && onAddMonitor && !hasMonitor && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onAddMonitor}
+            className="h-8 px-2"
+          >
+            <Eye className="size-3.5" />
+            <span className="ml-1 hidden sm:inline">监控</span>
+          </Button>
+        )}
+        {hasMonitor && (
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled
+            className="h-8 px-2 text-green-600"
+          >
+            <Eye className="size-3.5" />
+            <span className="ml-1 hidden sm:inline">已监控</span>
+          </Button>
         )}
 
         <Button variant="ghost" size="sm" onClick={onEdit} className="h-8 px-2">
