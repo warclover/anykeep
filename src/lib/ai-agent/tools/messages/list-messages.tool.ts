@@ -11,12 +11,32 @@ import { z } from "zod";
 import type { Tool, ToolContext, ToolResult } from "../types";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
-import type {
-  MessageType,
-  MessageLevel,
-  MessageStatus,
-  DateGroup,
+import {
+  MESSAGE_LEVELS,
+  type MessageType,
+  type MessageLevel,
+  type MessageStatus,
+  type DateGroup,
+  type Message,
 } from "@/lib/messages/types";
+
+// ============================================
+// 查询结果类型
+// ============================================
+
+/** Supabase 查询返回的消息记录类型 */
+type MessageQueryRow = Pick<
+  Message,
+  | "id"
+  | "type"
+  | "level"
+  | "title"
+  | "content"
+  | "status"
+  | "created_at"
+  | "read_at"
+  | "action_url"
+>;
 
 // ============================================
 // 参数定义
@@ -29,7 +49,7 @@ const paramsSchema = z.object({
     .default("all")
     .describe("消息状态筛选：unread-未读，read-已读，all-全部"),
   level: z
-    .enum(["silent", "normal", "important"])
+    .enum(MESSAGE_LEVELS)
     .optional()
     .describe("消息级别筛选：silent-静默，normal-普通，important-重要"),
   limit: z
@@ -179,19 +199,20 @@ export const listMessagesTool: Tool<ListMessagesParams, ListMessagesResult> = {
       .eq("status", "unread");
 
     // 转换结果
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const messages: MessageItem[] = (data || []).map((item: any) => ({
-      id: item.id,
-      type: item.type as MessageType,
-      level: item.level as MessageLevel,
-      title: item.title,
-      content: item.content,
-      status: item.status as MessageStatus,
-      dateGroup: calculateDateGroup(item.created_at),
-      createdAt: item.created_at,
-      readAt: item.read_at,
-      actionUrl: item.action_url,
-    }));
+    const messages: MessageItem[] = ((data || []) as MessageQueryRow[]).map(
+      (item) => ({
+        id: item.id,
+        type: item.type,
+        level: item.level,
+        title: item.title,
+        content: item.content,
+        status: item.status,
+        dateGroup: calculateDateGroup(item.created_at),
+        createdAt: item.created_at,
+        readAt: item.read_at,
+        actionUrl: item.action_url,
+      }),
+    );
 
     const total = count ?? 0;
     const hasMore = offset + messages.length < total;

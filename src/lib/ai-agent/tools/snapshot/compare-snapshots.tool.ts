@@ -241,7 +241,7 @@ export const compareSnapshotsTool: Tool<
           bookmark_id,
           content_hash,
           readable_text_content,
-          word_count,
+          readable_word_count,
           captured_at,
           bookmarks!inner (
             id,
@@ -278,22 +278,25 @@ export const compareSnapshotsTool: Tool<
       }
 
       // 2. 确定对比目标
-      let targetSnapshot: {
+      // 类型定义：允许数据库可空字段
+      type TargetSnapshotType = {
         id: number;
-        content_hash: string;
+        content_hash: string | null;
         readable_text_content: string | null;
-        word_count: number | null;
-        captured_at: string;
+        readable_word_count: number | null;
+        captured_at: string | null;
         isVersion?: boolean;
         versionNumber?: number;
-      } | null = null;
+      };
+
+      let targetSnapshot: TargetSnapshotType | null = null;
 
       if (params.compareWithSnapshotId) {
         // 与指定快照对比
         const { data: target, error: targetError } = await supabase
           .from("bookmark_snapshots")
           .select(
-            "id, content_hash, readable_text_content, word_count, captured_at",
+            "id, content_hash, readable_text_content, readable_word_count, captured_at",
           )
           .eq("id", params.compareWithSnapshotId)
           .single();
@@ -305,10 +308,11 @@ export const compareSnapshotsTool: Tool<
             errorCode: "NOT_FOUND",
           };
         }
-        targetSnapshot = target;
+        targetSnapshot = target as TargetSnapshotType;
       } else if (params.versionNumber) {
         // 与指定版本号对比
-        const { data: version, error: versionError } = await supabase
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- snapshot_versions 表类型待更新
+        const { data: version, error: versionError } = await (supabase as any)
           .from("snapshot_versions")
           .select(
             "id, content_hash, readable_text_content, word_count, original_captured_at, version_number",
@@ -328,14 +332,15 @@ export const compareSnapshotsTool: Tool<
           id: version.id,
           content_hash: version.content_hash,
           readable_text_content: version.readable_text_content,
-          word_count: version.word_count,
+          readable_word_count: version.word_count, // 版本表列名是 word_count
           captured_at: version.original_captured_at,
           isVersion: true,
           versionNumber: version.version_number,
         };
       } else {
         // 默认：与监控基线对比
-        const { data: monitor } = await supabase
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- page_monitors 表类型待更新
+        const { data: monitor } = await (supabase as any)
           .from("page_monitors")
           .select("baseline_snapshot_id, baseline_content_hash")
           .eq("bookmark_id", bookmark.id)
@@ -346,19 +351,20 @@ export const compareSnapshotsTool: Tool<
           const { data: baseline } = await supabase
             .from("bookmark_snapshots")
             .select(
-              "id, content_hash, readable_text_content, word_count, captured_at",
+              "id, content_hash, readable_text_content, readable_word_count, captured_at",
             )
             .eq("id", monitor.baseline_snapshot_id)
             .single();
 
           if (baseline) {
-            targetSnapshot = baseline;
+            targetSnapshot = baseline as TargetSnapshotType;
           }
         }
 
         // 如果没有基线，尝试获取最新的历史版本
         if (!targetSnapshot) {
-          const { data: latestVersion } = await supabase
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- snapshot_versions 表类型待更新
+          const { data: latestVersion } = await (supabase as any)
             .from("snapshot_versions")
             .select(
               "id, content_hash, readable_text_content, word_count, original_captured_at, version_number",
@@ -373,7 +379,7 @@ export const compareSnapshotsTool: Tool<
               id: latestVersion.id,
               content_hash: latestVersion.content_hash,
               readable_text_content: latestVersion.readable_text_content,
-              word_count: latestVersion.word_count,
+              readable_word_count: latestVersion.word_count, // 版本表列名是 word_count
               captured_at: latestVersion.original_captured_at,
               isVersion: true,
               versionNumber: latestVersion.version_number,
@@ -403,23 +409,32 @@ export const compareSnapshotsTool: Tool<
       // 5. 生成摘要
       const summary = generateSummary(stats, hasSignificantChanges);
 
-      // 6. 构建结果
+      // 6. 构建结果（添加 null 安全检查）
+      // 类型断言：sourceSnapshot 包含 readable_word_count 列
+      const sourceData = sourceSnapshot as unknown as {
+        id: number;
+        content_hash: string | null;
+        readable_text_content: string | null;
+        readable_word_count: number | null;
+        captured_at: string | null;
+      };
+
       const result: CompareSnapshotsResult = {
         source: {
-          id: sourceSnapshot.id,
+          id: sourceData.id,
           bookmarkId: bookmark.id,
           bookmarkTitle: bookmark.title || "未命名",
-          contentHash: sourceSnapshot.content_hash,
-          capturedAt: sourceSnapshot.captured_at,
-          wordCount: sourceSnapshot.word_count || 0,
+          contentHash: sourceData.content_hash || "",
+          capturedAt: sourceData.captured_at || new Date().toISOString(),
+          wordCount: sourceData.readable_word_count || 0,
         },
         target: {
           id: targetSnapshot.id,
           bookmarkId: bookmark.id,
           bookmarkTitle: bookmark.title || "未命名",
-          contentHash: targetSnapshot.content_hash,
-          capturedAt: targetSnapshot.captured_at,
-          wordCount: targetSnapshot.word_count || 0,
+          contentHash: targetSnapshot.content_hash || "",
+          capturedAt: targetSnapshot.captured_at || new Date().toISOString(),
+          wordCount: targetSnapshot.readable_word_count || 0,
           isVersion: targetSnapshot.isVersion,
           versionNumber: targetSnapshot.versionNumber,
         },

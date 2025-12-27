@@ -11,7 +11,7 @@ import { z } from "zod";
 import type { Tool, ToolContext, ToolResult } from "../types";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
-// MessageType/MessageLevel 类型由 Zod schema 推断，无需显式导入
+import { MESSAGE_TYPES, MESSAGE_LEVELS } from "@/lib/messages/types";
 
 // ============================================
 // 参数定义
@@ -23,51 +23,11 @@ const paramsSchema = z.object({
     .optional()
     .describe("指定消息 ID 列表（不传则根据其他条件筛选）"),
   types: z
-    .array(
-      z.enum([
-        "classification_auto",
-        "classification_batch",
-        "classification_suggest",
-        "classification_failed",
-        "reclassify_complete",
-        "import_complete",
-        "import_partial",
-        "import_failed",
-        "batch_move",
-        "batch_delete",
-        "batch_tag",
-        "batch_restore",
-        "bookmark_saved",
-        "bookmark_invalid",
-        "bookmark_expired",
-        "folder_created",
-        "folder_merged",
-        "folder_auto_created",
-        "folder_auto_split",
-        "folder_auto_merged",
-        "folder_auto_renamed",
-        "folder_operation_undone",
-        "system_announcement",
-        "system_maintenance",
-        "system_update",
-        "quota_warning",
-        "quota_critical",
-        "quota_exceeded",
-        "feedback_received",
-        "feedback_response",
-        "ai_summary_complete",
-        "ai_tags_complete",
-        "ai_processing_failed",
-        "ai_evolution_report",
-        "cost_warning",
-        "cost_critical",
-        "cost_daily_exceeded",
-      ]),
-    )
+    .array(z.enum(MESSAGE_TYPES))
     .optional()
     .describe("按消息类型筛选"),
   levels: z
-    .array(z.enum(["silent", "normal", "important"]))
+    .array(z.enum(MESSAGE_LEVELS))
     .optional()
     .describe("按消息级别筛选"),
   olderThanDays: z
@@ -326,8 +286,7 @@ export const batchMarkReadTool: Tool<BatchMarkReadParams, BatchMarkReadResult> =
         };
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const idsToMark = messagesToMark.map((m: any) => m.id);
+      const idsToMark = messagesToMark.map((m: { id: number }) => m.id);
 
       const { data: updatedCount, error: updateError } = await supabase.rpc(
         "mark_messages_read",

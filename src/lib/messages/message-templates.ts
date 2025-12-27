@@ -469,6 +469,85 @@ export const MESSAGE_TEMPLATES: Record<MessageType, MessageTemplate> = {
     actionLabel: "查看使用情况",
     defaultPriority: 8,
   },
+
+  // ========== V4.3 新增：页面监控 ==========
+  page_content_changed: {
+    title: (data) => {
+      const pageTitle = data.pageTitle as string;
+      const truncatedTitle =
+        pageTitle?.length > 25
+          ? `${pageTitle.substring(0, 25)}...`
+          : pageTitle || "监控页面";
+      return `📄 「${truncatedTitle}」内容已更新`;
+    },
+    content: (data) => {
+      const similarityScore = data.similarityScore as number;
+      const changeSummary = data.changeSummary as string;
+      const parts: string[] = [];
+      if (similarityScore !== undefined) {
+        const changePercent = Math.round(100 - similarityScore);
+        parts.push(`内容变化约 ${changePercent}%`);
+      }
+      if (changeSummary) {
+        parts.push(changeSummary);
+      }
+      return parts.length > 0 ? parts.join("，") : "检测到页面内容变更";
+    },
+    actionUrl: (data) =>
+      data.bookmarkId ? `/home?bookmark=${data.bookmarkId}` : "/monitors",
+    actionLabel: "查看变更",
+    defaultPriority: 5,
+  },
+
+  page_monitor_failed: {
+    title: (data) => {
+      const pageTitle = data.pageTitle as string;
+      const truncatedTitle =
+        pageTitle?.length > 25
+          ? `${pageTitle.substring(0, 25)}...`
+          : pageTitle || "监控页面";
+      return `⚠️ 「${truncatedTitle}」检查失败`;
+    },
+    content: (data) => {
+      const errorMessage = data.errorMessage as string;
+      const consecutiveFailures = data.consecutiveFailures as number;
+      const parts: string[] = [];
+      if (errorMessage) {
+        parts.push(errorMessage);
+      }
+      if (consecutiveFailures && consecutiveFailures >= 3) {
+        parts.push("已暂停监控");
+      } else if (consecutiveFailures) {
+        parts.push(`连续失败 ${consecutiveFailures} 次`);
+      }
+      return parts.length > 0 ? parts.join("，") : "页面检查过程中发生错误";
+    },
+    actionUrl: (data) =>
+      data.monitorId ? `/monitors/${data.monitorId}` : "/monitors",
+    actionLabel: "查看详情",
+    defaultPriority: 5,
+  },
+
+  page_monitor_quota_reached: {
+    title: (data) => {
+      const currentCount = data.currentCount as number;
+      const maxCount = data.maxCount as number;
+      return `🔔 监控配额已达上限 (${currentCount}/${maxCount})`;
+    },
+    content: (data) => {
+      const membershipType = data.membershipType as string;
+      if (membershipType === "FREE") {
+        return "免费用户最多可监控 5 个页面，升级 Pro 可监控 50 个页面";
+      }
+      return "已达到 Pro 会员的监控配额上限";
+    },
+    actionUrl: (data) => {
+      const membershipType = data.membershipType as string;
+      return membershipType === "FREE" ? "/settings/subscription" : "/monitors";
+    },
+    actionLabel: "查看详情",
+    defaultPriority: 7,
+  },
 };
 
 // ============================================

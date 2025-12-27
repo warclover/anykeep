@@ -231,7 +231,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 检查配额
+    // 早期配额检查（优化：快速失败，避免不必要的后续查询）
+    // 注意：原子函数 create_monitor_atomic 会再次检查以防止并发问题
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { count: currentCount } = await (supabase as any)
       .from("page_monitors")
@@ -264,63 +265,63 @@ export async function POST(request: NextRequest) {
       return badRequestError(urlCheck.reason || "该链接不支持监控");
     }
 
-    // 6. 检查是否已存在监控
+    // 6. 使用原子 RPC 函数创建监控（解决 TOCTOU 漏洞）
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: existing } = await (supabase as any)
-      .from("page_monitors")
-      .select("id, status")
-      .eq("user_id", user.id)
-      .eq("bookmark_id", bookmarkId)
-      .neq("status", "deleted")
-      .single();
-
-    if (existing) {
-      return badRequestError("该书签已设置监控，无需重复创建");
-    }
-
-    // 7. 计算下次检查时间
-    const intervalHours =
-      customIntervalHours || CHECK_INTERVAL_HOURS[checkInterval];
-    const nextCheckAt = new Date(Date.now() + intervalHours * 60 * 60 * 1000);
-
-    // 8. 创建监控
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: newMonitor, error: createError } = await (supabase as any)
-      .from("page_monitors")
-      .insert({
-        user_id: user.id,
-        bookmark_id: bookmarkId,
-        check_interval: checkInterval,
-        custom_interval_hours:
+    const { data: result, error: rpcError } = await (supabase as any).rpc(
+      "create_monitor_atomic",
+      {
+        p_user_id: user.id,
+        p_bookmark_id: bookmarkId,
+        p_check_interval: checkInterval,
+        p_custom_interval_hours:
           checkInterval === "custom" ? customIntervalHours : null,
-        notification_enabled: notificationEnabled,
-        status: "active",
-        next_check_at: nextCheckAt.toISOString(),
-      })
-      .select("id")
-      .single();
+        p_notification_enabled: notificationEnabled,
+        p_quota_limit: quotaConfig.maxCount,
+      },
+    );
 
-    if (createError) {
+    if (rpcError) {
       logger.error({
         operation: "create_monitor",
         userId: user.id,
         bookmarkId,
-        error: createError.message,
+        error: rpcError.message,
       });
       return databaseError("创建监控失败");
     }
 
+    // 解析 RPC 返回结果
+    const rpcResult = Array.isArray(result) ? result[0] : result;
+
+    if (!rpcResult?.success) {
+      const errorCode = rpcResult?.error_code;
+      const errorMessage = rpcResult?.error_message || "创建监控失败";
+
+      if (errorCode === "QUOTA_EXCEEDED") {
+        return quotaExceededError(errorMessage);
+      }
+      if (errorCode === "ALREADY_EXISTS") {
+        return badRequestError(errorMessage);
+      }
+      return badRequestError(errorMessage);
+    }
+
+    // 计算下次检查时间（用于返回）
+    const intervalHours =
+      customIntervalHours || CHECK_INTERVAL_HOURS[checkInterval];
+    const nextCheckAt = new Date(Date.now() + intervalHours * 60 * 60 * 1000);
+
     logger.info({
       operation: "create_monitor",
       userId: user.id,
-      monitorId: newMonitor.id,
+      monitorId: rpcResult.monitor_id,
       bookmarkId,
       checkInterval,
     });
 
     return successResponse(
       {
-        id: newMonitor.id,
+        id: rpcResult.monitor_id,
         message: "监控创建成功",
         nextCheckAt: nextCheckAt.toISOString(),
       },

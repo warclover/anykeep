@@ -11,7 +11,21 @@ import { z } from "zod";
 import type { Tool, ToolContext, ToolResult } from "../types";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
-import type { MessageType, MessageLevel } from "@/lib/messages/types";
+import type {
+  MessageType,
+  MessageLevel,
+  Message,
+} from "@/lib/messages/types";
+
+// ============================================
+// 查询结果类型
+// ============================================
+
+/** Supabase 查询返回的消息记录类型 */
+type MessageQueryRow = Pick<
+  Message,
+  "id" | "type" | "level" | "title" | "content" | "created_at"
+>;
 
 // ============================================
 // 参数定义
@@ -120,6 +134,10 @@ const MESSAGE_TYPE_LABELS: Record<string, string> = {
   cost_warning: "成本预警",
   cost_critical: "成本超限",
   cost_daily_exceeded: "日成本超限",
+  // 页面监控
+  page_content_changed: "页面内容变更",
+  page_monitor_failed: "监控失败",
+  page_monitor_quota_reached: "监控配额已满",
 };
 
 const MESSAGE_LEVEL_LABELS: Record<MessageLevel, string> = {
@@ -217,9 +235,8 @@ export const summarizeUnreadMessagesTool: Tool<
       normal: 0,
       important: 0,
     };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    messages.forEach((msg: any) => {
-      const level = msg.level as MessageLevel;
+    (messages as MessageQueryRow[]).forEach((msg) => {
+      const level = msg.level;
       if (level in levelCounts) {
         levelCounts[level]++;
       }
@@ -243,10 +260,11 @@ export const summarizeUnreadMessagesTool: Tool<
       });
 
     // 按类型统计
-    const typeGroups: Record<string, { count: number; latestMsg: unknown }> =
-      {};
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    messages.forEach((msg: any) => {
+    const typeGroups: Record<
+      string,
+      { count: number; latestMsg: MessageQueryRow }
+    > = {};
+    (messages as MessageQueryRow[]).forEach((msg) => {
       const type = msg.type as string;
       if (!typeGroups[type]) {
         typeGroups[type] = { count: 0, latestMsg: msg };
@@ -259,23 +277,19 @@ export const summarizeUnreadMessagesTool: Tool<
         type: type as MessageType,
         typeLabel: MESSAGE_TYPE_LABELS[type] ?? type,
         count,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        latestTitle: (latestMsg as any).title,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        latestAt: (latestMsg as any).created_at,
+        latestTitle: latestMsg.title,
+        latestAt: latestMsg.created_at,
       }))
       .sort((a, b) => b.count - a.count);
 
     // 获取重要消息（前 5 条）
-    const importantMessages = messages
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .filter((msg: any) => msg.level === "important")
+    const importantMessages = (messages as MessageQueryRow[])
+      .filter((msg) => msg.level === "important")
       .slice(0, 5)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .map((msg: any) => ({
+      .map((msg) => ({
         id: msg.id,
         title: msg.title,
-        type: msg.type as MessageType,
+        type: msg.type,
         createdAt: msg.created_at,
       }));
 

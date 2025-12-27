@@ -4,64 +4,84 @@
  */
 
 // ============================================
-// 消息类型枚举（27种）
+// 消息类型常量数组（单一数据源）
 // ============================================
 
-export type MessageType =
+/**
+ * 所有消息类型的常量数组
+ * 用于 Zod schema 验证和其他需要枚举的场景
+ */
+export const MESSAGE_TYPES = [
   // 分类相关
-  | "classification_auto" // 自动分类完成（静默）
-  | "classification_batch" // 批量分类完成（静默）
-  | "classification_suggest" // 分类建议待确认（普通）
-  | "classification_failed" // 分类失败（普通）
-  | "reclassify_complete" // 一键分类完成报告（普通）
+  "classification_auto",
+  "classification_batch",
+  "classification_suggest",
+  "classification_failed",
+  "reclassify_complete",
   // 导入相关
-  | "import_complete" // 导入完成（普通）
-  | "import_partial" // 部分导入成功（普通）
-  | "import_failed" // 导入失败（重要）
+  "import_complete",
+  "import_partial",
+  "import_failed",
   // 批量操作
-  | "batch_move" // 批量移动完成（静默）
-  | "batch_delete" // 批量删除完成（静默）
-  | "batch_tag" // 批量打标签完成（静默）
-  | "batch_restore" // 批量恢复完成（静默）
+  "batch_move",
+  "batch_delete",
+  "batch_tag",
+  "batch_restore",
   // 书签状态
-  | "bookmark_saved" // 书签保存成功（静默）
-  | "bookmark_invalid" // 失效链接检测（普通）
-  | "bookmark_expired" // 书签过期提醒（普通）
+  "bookmark_saved",
+  "bookmark_invalid",
+  "bookmark_expired",
   // 文件夹操作
-  | "folder_created" // 文件夹创建（静默）
-  | "folder_merged" // 文件夹合并（普通）
+  "folder_created",
+  "folder_merged",
   // 系统消息
-  | "system_announcement" // 系统公告（重要）
-  | "system_maintenance" // 系统维护通知（重要）
-  | "system_update" // 版本更新（普通）
+  "system_announcement",
+  "system_maintenance",
+  "system_update",
   // 配额相关
-  | "quota_warning" // 配额预警 80%（重要）
-  | "quota_critical" // 配额临界 95%（紧急）
-  | "quota_exceeded" // 配额超限（紧急）
+  "quota_warning",
+  "quota_critical",
+  "quota_exceeded",
   // 用户反馈
-  | "feedback_received" // 反馈已收到（静默）
-  | "feedback_response" // 反馈回复（普通）
+  "feedback_received",
+  "feedback_response",
   // AI 处理
-  | "ai_summary_complete" // AI 摘要生成完成（静默）
-  | "ai_tags_complete" // AI 标签生成完成（静默）
-  | "ai_processing_failed" // AI 处理失败（普通）
+  "ai_summary_complete",
+  "ai_tags_complete",
+  "ai_processing_failed",
   // V4.2 新增：AI 文件夹进化
-  | "folder_auto_created" // AI 自动创建文件夹（普通）
-  | "folder_auto_split" // AI 自动分拆文件夹（普通）
-  | "folder_auto_merged" // AI 自动合并文件夹（普通）
-  | "folder_auto_renamed" // AI 自动重命名文件夹（普通）
-  | "folder_operation_undone" // 操作已撤销（普通）
-  | "ai_evolution_report" // 月度进化报告（普通）
+  "folder_auto_created",
+  "folder_auto_split",
+  "folder_auto_merged",
+  "folder_auto_renamed",
+  "folder_operation_undone",
+  "ai_evolution_report",
   // V4.2 新增：成本监控
-  | "cost_warning" // 成本预警（重要）
-  | "cost_critical" // 成本超限（紧急）
-  | "cost_daily_exceeded"; // 日成本超限（重要）
+  "cost_warning",
+  "cost_critical",
+  "cost_daily_exceeded",
+  // V4.3 新增：页面监控
+  "page_content_changed",
+  "page_monitor_failed",
+  "page_monitor_quota_reached",
+] as const;
+
+/**
+ * 消息等级常量数组
+ */
+export const MESSAGE_LEVELS = ["silent", "normal", "important"] as const;
 
 // ============================================
-// 消息等级
+// 消息类型（从常量推断）
 // ============================================
 
-export type MessageLevel = "silent" | "normal" | "important";
+export type MessageType = (typeof MESSAGE_TYPES)[number];
+
+// ============================================
+// 消息等级类型（从常量推断）
+// ============================================
+
+export type MessageLevel = (typeof MESSAGE_LEVELS)[number];
 
 // ============================================
 // 消息状态

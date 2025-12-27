@@ -44,6 +44,21 @@ import { formatRelativeTime } from "@/lib/utils/date-utils";
 import type { MonitorResponse } from "@/app/api/monitors/validation";
 import { CHECK_INTERVAL_LABELS } from "@/lib/monitor/constants";
 
+/**
+ * 安全地打开外部 URL（防止 javascript: XSS）
+ */
+function safeOpenUrl(url: string) {
+  try {
+    const parsedUrl = new URL(url);
+    // 只允许 http/https 协议
+    if (parsedUrl.protocol === "http:" || parsedUrl.protocol === "https:") {
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
+  } catch {
+    // 无效 URL，忽略
+  }
+}
+
 interface MonitorCardProps {
   /** 监控数据 */
   monitor: MonitorResponse;
@@ -165,7 +180,7 @@ export const MonitorCard = memo(function MonitorCard({
                 监控设置
               </DropdownMenuItem>
               <DropdownMenuItem
-                onClick={() => window.open(monitor.bookmarkUrl, "_blank")}
+                onClick={() => safeOpenUrl(monitor.bookmarkUrl)}
               >
                 <ExternalLink className="h-4 w-4 mr-2" />
                 访问网页
