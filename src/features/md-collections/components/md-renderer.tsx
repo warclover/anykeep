@@ -1,11 +1,22 @@
 /**
  * Markdown 渲染器组件
  * P2-007: 专业阅读视图 - 支持代码高亮、GFM、目录锚点
+ * Spec: md-reader-upgrade / REQ-2 - 排版优化
+ * Spec: md-reader-upgrade / REQ-7 - 图片查看增强
+ * Spec: md-reader-upgrade / REQ-10 - 文字高亮
  */
 
 "use client";
 
-import { memo, useMemo, useState, useCallback } from "react";
+import {
+  memo,
+  useMemo,
+  useState,
+  useCallback,
+  useEffect,
+  useRef,
+  type CSSProperties,
+} from "react";
 import dynamic from "next/dynamic";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -13,7 +24,21 @@ import rehypeSanitize from "rehype-sanitize";
 import rehypeSlug from "rehype-slug";
 import rehypeAutolinkHeadings from "rehype-autolink-headings";
 import { cn } from "@/lib/utils";
-import { Copy, Check, Link as LinkIcon } from "lucide-react";
+import { Copy, Check, Link as LinkIcon, ZoomIn } from "lucide-react";
+import {
+  TYPOGRAPHY_BASE,
+  FONT_STACKS,
+  typographyToCssVariables,
+} from "../lib/reader/typography";
+import { restoreRange, fuzzyMatchAnchor } from "../lib/reader/highlight-utils";
+import { getHighlightStyle } from "../lib/reader/highlight-config";
+import type {
+  FontSizePreset,
+  ImageInfo,
+  TextHighlight,
+  HighlightColor,
+  HighlightToolbarPosition,
+} from "../types/reader";
 
 // 普鲁士蓝主题色
 const PRUSSIAN_BLUE = "#00324D";
@@ -57,6 +82,23 @@ interface MdRendererProps {
   showLineNumbers?: boolean;
   /** 代码块最大高度 */
   maxCodeHeight?: number;
+  /** 字体大小预设 */
+  fontSize?: FontSizePreset;
+  /** 是否应用阅读排版优化 */
+  enableTypography?: boolean;
+  /** 图片点击回调（用于打开 Lightbox） */
+  onImageClick?: (image: ImageInfo, index: number) => void;
+  /** 图片列表收集完成回调 */
+  onImagesCollected?: (images: ImageInfo[]) => void;
+  /** 高亮列表（REQ-10） */
+  highlights?: TextHighlight[];
+  /** 高亮点击回调（用于编辑高亮） */
+  onHighlightClick?: (
+    highlight: TextHighlight,
+    position: HighlightToolbarPosition,
+  ) => void;
+  /** 内容容器 ref（用于高亮定位） */
+  contentRef?: React.RefObject<HTMLElement>;
 }
 
 /**
@@ -167,7 +209,147 @@ export const MdRenderer = memo(function MdRenderer({
   theme = "auto",
   showLineNumbers = true,
   maxCodeHeight = 500,
+  fontSize = "medium",
+  enableTypography = true,
+  onImageClick,
+  onImagesCollected,
+  highlights = [],
+  onHighlightClick,
+  contentRef: externalContentRef,
 }: MdRendererProps) {
+  // 图片收集器
+  const imagesRef = useRef<ImageInfo[]>([]);
+  const imageIndexRef = useRef(0);
+
+  // 内部容器 ref（如果外部没有提供）
+  const internalContentRef = useRef<HTMLElement>(null);
+  const contentRef = externalContentRef || internalContentRef;
+
+  // 已应用的高亮 mark 元素
+  const highlightMarksRef = useRef<Map<string, HTMLElement>>(new Map());
+
+  // 重置图片收集器（当内容变化时）
+  useEffect(() => {
+    imagesRef.current = [];
+    imageIndexRef.current = 0;
+  }, [content]);
+
+  // ============================================
+  // 高亮应用逻辑 (REQ-10)
+  // ============================================
+
+  /**
+   * 清除所有已应用的高亮
+   */
+  const clearHighlightMarks = useCallback(() => {
+    highlightMarksRef.current.forEach((mark) => {
+      // 将 mark 内容提取出来替换 mark 元素
+      const parent = mark.parentNode;
+      if (parent) {
+        while (mark.firstChild) {
+          parent.insertBefore(mark.firstChild, mark);
+        }
+        parent.removeChild(mark);
+      }
+    });
+    highlightMarksRef.current.clear();
+  }, []);
+
+  /**
+   * 应用单个高亮
+   */
+  const applyHighlight = useCallback(
+    (highlight: TextHighlight): HTMLElement | null => {
+      const container = contentRef.current;
+      if (!container) return null;
+
+      // 尝试恢复 Range
+      let range = restoreRange(
+        container,
+        highlight.start_offset,
+        highlight.end_offset,
+      );
+
+      // 如果失败，尝试模糊匹配
+      if (!range && highlight.anchor_text) {
+        const fuzzyResult = fuzzyMatchAnchor(
+          container,
+          highlight.anchor_text,
+          highlight.start_offset,
+        );
+        if (fuzzyResult) {
+          range = restoreRange(
+            container,
+            fuzzyResult.startOffset,
+            fuzzyResult.endOffset,
+          );
+        }
+      }
+
+      if (!range) return null;
+
+      try {
+        // 创建 mark 元素
+        const mark = document.createElement("mark");
+        mark.dataset.highlightId = highlight.id;
+        mark.dataset.highlightColor = highlight.color;
+
+        // 应用样式
+        const style = getHighlightStyle(highlight.color as HighlightColor);
+        Object.assign(mark.style, style);
+
+        // 添加点击事件
+        if (onHighlightClick) {
+          mark.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const rect = mark.getBoundingClientRect();
+            onHighlightClick(highlight, {
+              x: rect.left + rect.width / 2,
+              y: rect.top,
+            });
+          });
+        }
+
+        // 包裹选中内容
+        range.surroundContents(mark);
+
+        return mark;
+      } catch {
+        // surroundContents 可能会失败（如跨多个元素）
+        // 这种情况需要更复杂的处理，暂时跳过
+        return null;
+      }
+    },
+    [contentRef, onHighlightClick],
+  );
+
+  /**
+   * 应用所有高亮
+   */
+  useEffect(() => {
+    // 延迟应用，确保 ReactMarkdown 渲染完成
+    const timer = setTimeout(() => {
+      // 先清除旧的高亮
+      clearHighlightMarks();
+
+      // 应用新的高亮（按 start_offset 排序，从后往前应用避免偏移变化）
+      const sortedHighlights = [...highlights].sort(
+        (a, b) => b.start_offset - a.start_offset,
+      );
+
+      for (const highlight of sortedHighlights) {
+        const mark = applyHighlight(highlight);
+        if (mark) {
+          highlightMarksRef.current.set(highlight.id, mark);
+        }
+      }
+    }, 100); // 等待 ReactMarkdown 渲染
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [highlights, content, applyHighlight, clearHighlightMarks]);
+
   // 解析主题
   const resolvedTheme = useMemo(() => {
     if (theme === "auto") {
@@ -181,6 +363,26 @@ export const MdRenderer = memo(function MdRenderer({
     }
     return theme;
   }, [theme]);
+
+  // 排版样式配置
+  const typographyStyles = useMemo<CSSProperties>(() => {
+    if (!enableTypography) return {};
+
+    const cssVars = typographyToCssVariables(fontSize);
+    const styles: Record<string, string> = {};
+
+    // 转换 CSS 变量为 React style 对象
+    for (const [key, value] of Object.entries(cssVars)) {
+      styles[key] = value;
+    }
+
+    return {
+      ...styles,
+      lineHeight: TYPOGRAPHY_BASE.lineHeight,
+      maxWidth: TYPOGRAPHY_BASE.maxWidth,
+      fontFamily: FONT_STACKS.readingCn,
+    } as CSSProperties;
+  }, [enableTypography, fontSize]);
 
   // Markdown 组件配置
   const components = useMemo(
@@ -338,22 +540,63 @@ export const MdRenderer = memo(function MdRenderer({
       // 1. Markdown 内容包含外部图片，域名未知无法预配置
       // 2. 图片尺寸未知，无法提供 width/height 属性
       // 3. 用户生成内容的图片 URL 不可预测
-      img: ({ src, alt }: { src?: string; alt?: string }) => (
-        <span className="block my-4">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={src}
-            alt={alt || ""}
-            className="max-w-full h-auto rounded-lg border border-gray-200 dark:border-gray-700"
-            loading="lazy"
-          />
-          {alt && (
-            <span className="block mt-2 text-center text-sm text-gray-500 dark:text-gray-400">
-              {alt}
-            </span>
-          )}
-        </span>
-      ),
+      img: ({ src, alt }: { src?: string; alt?: string }) => {
+        // 收集图片信息
+        const imageInfo: ImageInfo = { src: src || "", alt };
+        const currentIndex = imagesRef.current.findIndex(
+          (img) => img.src === src,
+        );
+        let index: number;
+
+        if (currentIndex === -1 && src) {
+          // 新图片，添加到列表
+          index = imagesRef.current.length;
+          imagesRef.current.push(imageInfo);
+
+          // 异步通知图片列表更新（避免渲染期间调用 setState）
+          if (onImagesCollected) {
+            setTimeout(() => {
+              onImagesCollected([...imagesRef.current]);
+            }, 0);
+          }
+        } else {
+          index = currentIndex;
+        }
+
+        const handleClick = () => {
+          if (onImageClick && src) {
+            onImageClick(imageInfo, index);
+          }
+        };
+
+        return (
+          <span className="group relative block my-4">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={src}
+              alt={alt || ""}
+              className={cn(
+                "max-w-full h-auto rounded-lg border border-gray-200 dark:border-gray-700",
+                onImageClick &&
+                  "cursor-zoom-in hover:opacity-90 transition-opacity",
+              )}
+              loading="lazy"
+              onClick={handleClick}
+            />
+            {alt && (
+              <span className="block mt-2 text-center text-sm text-gray-500 dark:text-gray-400">
+                {alt}
+              </span>
+            )}
+            {/* 放大图标提示 */}
+            {onImageClick && (
+              <span className="absolute top-2 right-2 p-1.5 rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                <ZoomIn className="w-4 h-4" />
+              </span>
+            )}
+          </span>
+        );
+      },
 
       // 任务列表（GFM）
       input: ({ type, checked }: { type?: string; checked?: boolean }) => {
@@ -370,16 +613,33 @@ export const MdRenderer = memo(function MdRenderer({
         return <input type={type} />;
       },
     }),
-    [showLineNumbers, maxCodeHeight, resolvedTheme],
+    [
+      showLineNumbers,
+      maxCodeHeight,
+      resolvedTheme,
+      onImageClick,
+      onImagesCollected,
+    ],
   );
 
   return (
     <article
+      ref={contentRef as React.RefObject<HTMLElement>}
       className={cn(
         "prose prose-gray dark:prose-invert max-w-none",
         "prose-headings:scroll-mt-20", // 锚点滚动偏移
+        enableTypography && [
+          // 阅读排版优化
+          "prose-p:my-[1.5em]", // 段落间距
+          "prose-p:leading-[1.8]", // 行高
+          "prose-li:leading-[1.8]", // 列表行高
+          "prose-headings:mt-[2em]", // 标题上间距
+          "prose-headings:mb-[1em]", // 标题下间距
+          "mx-auto", // 居中
+        ],
         className,
       )}
+      style={enableTypography ? typographyStyles : undefined}
     >
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}

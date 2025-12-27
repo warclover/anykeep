@@ -1,6 +1,16 @@
 /**
  * MD 专业阅读视图
  * P2-007: Markdown 内容收藏 - 沉浸式阅读体验
+ * Spec: md-reader-upgrade - 完整功能集成
+ *
+ * 集成功能：
+ * - REQ-1: 主题切换（light/dark/sepia/paper）
+ * - REQ-3: 目录同步高亮
+ * - REQ-4/5: 阅读进度与位置记忆
+ * - REQ-6: 专注模式
+ * - REQ-7: 图片放大（Lightbox）
+ * - REQ-9: 键盘导航
+ * - REQ-10: 文字高亮
  */
 
 "use client";
@@ -19,13 +29,48 @@ import {
   Minimize2,
   Type,
   GripVertical,
+  Keyboard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { MdCollection } from "../types";
+import type {
+  TOCItem,
+  KeyboardShortcut,
+  TextHighlight,
+  HighlightToolbarPosition,
+} from "../types/reader";
 import { CONTENT_TYPE_CONFIG, DEFAULT_CONTENT_TYPE_CONFIG } from "../constants";
 
-// 普鲁士蓝主题色
-const PRUSSIAN_BLUE = "#00324D";
+// 阅读器组件导入
+import {
+  ReaderThemeProvider,
+  useReaderThemeContext,
+  ThemeSwitcher,
+  FocusModeProvider,
+  FocusModeContainer,
+  FocusModeToggle,
+  FocusModeToolbar,
+  useFocusModeContext,
+  HighlightProvider,
+  HighlightToolbar,
+  useHighlightContext,
+  PositionRestorePrompt,
+  ReadingProgressCompact,
+  ImageLightbox,
+  useImageLightbox,
+  KeyboardNavHelp,
+} from "./reader";
+
+// 阅读器 Hooks 导入
+import {
+  useTOCSync,
+  useReadingPosition,
+  useKeyboardNav,
+} from "../hooks/reader";
+
+// ============================================
+// 常量
+// ============================================
 
 // 目录宽度配置
 const TOC_WIDTH = {
@@ -34,6 +79,10 @@ const TOC_WIDTH = {
   default: 256,
   storageKey: "md-reader-toc-width",
 };
+
+// ============================================
+// Props 类型
+// ============================================
 
 interface MdReaderViewProps {
   /** MD 收藏数据 */
@@ -44,11 +93,9 @@ interface MdReaderViewProps {
   className?: string;
 }
 
-interface TOCItem {
-  id: string;
-  text: string;
-  level: number;
-}
+// ============================================
+// 工具函数
+// ============================================
 
 /**
  * 解析 Markdown 目录
@@ -73,23 +120,56 @@ function parseTableOfContents(content: string): TOCItem[] {
   return items;
 }
 
+// ============================================
+// 内部阅读器组件
+// ============================================
+
+interface InternalReaderProps {
+  collection: MdCollection;
+  onBack?: () => void;
+  className?: string;
+  contentRef: React.RefObject<HTMLDivElement>;
+}
+
 /**
- * MD 专业阅读视图
+ * 内部阅读器（在所有 Provider 内部）
  */
-export function MdReaderView({
+function InternalReader({
   collection,
   onBack,
   className,
-}: MdReaderViewProps) {
-  // 阅读设置状态
+  contentRef,
+}: InternalReaderProps) {
+  // ============================================
+  // Context Hooks
+  // ============================================
+  const { theme } = useReaderThemeContext();
+  const { isFocusMode, toggleFocusMode, exitFocusMode } = useFocusModeContext();
+  const {
+    highlights,
+    toolbarPosition,
+    editingHighlightId,
+    setToolbarPosition,
+    setEditingHighlight,
+    createHighlight,
+    updateHighlight,
+    deleteHighlight,
+    selectedRange,
+    clearSelection,
+  } = useHighlightContext();
+
+  // ============================================
+  // 状态
+  // ============================================
   const [fontSize, setFontSize] = useState<"small" | "medium" | "large">(
     "medium",
   );
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [scrollProgress, setScrollProgress] = useState(0);
   const [showBackToTop, setShowBackToTop] = useState(false);
+  const [showTOC, setShowTOC] = useState(true);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
 
-  // 目录宽度状态（从 localStorage 初始化）
+  // 目录宽度状态
   const [tocWidth, setTocWidth] = useState(() => {
     if (typeof window !== "undefined") {
       const savedWidth = localStorage.getItem(TOC_WIDTH.storageKey);
@@ -103,16 +183,209 @@ export function MdReaderView({
     return TOC_WIDTH.default;
   });
   const [isResizing, setIsResizing] = useState(false);
-  const sidebarRef = useRef<HTMLElement>(null);
 
-  // 保存目录宽度到 localStorage
+  // ============================================
+  // Refs
+  // ============================================
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const sidebarRef = useRef<HTMLElement>(null);
+  const tocItemRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+
+  // ============================================
+  // 解析数据
+  // ============================================
+  const tableOfContents = useMemo(
+    () => parseTableOfContents(collection.raw_content),
+    [collection.raw_content],
+  );
+
+  const hasTOC = tableOfContents.length > 0;
+
+  const contentTypeConfig =
+    (collection.content_type && CONTENT_TYPE_CONFIG[collection.content_type]) ??
+    DEFAULT_CONTENT_TYPE_CONFIG;
+
+  // ============================================
+  // 图片灯箱
+  // ============================================
+  const {
+    images: lightboxImages,
+    isOpen: isLightboxOpen,
+    currentIndex: lightboxIndex,
+    openLightbox,
+    closeLightbox,
+    setImages: setLightboxImages,
+  } = useImageLightbox();
+
+  // ============================================
+  // 目录同步
+  // ============================================
+  const { activeId, scrollToHeading } = useTOCSync({
+    containerRef: contentRef,
+    tocItems: tableOfContents,
+  });
+
+  // ============================================
+  // 阅读位置
+  // ============================================
+  const {
+    progress,
+    remainingMinutes: _remainingMinutes,
+    savedPosition,
+    restorePosition,
+    clearPosition,
+  } = useReadingPosition({
+    collectionId: collection.id,
+    contentRef: contentRef,
+    readingTimeMinutes: collection.reading_time_minutes || 5,
+  });
+
+  // ============================================
+  // 键盘导航
+  // ============================================
+  const keyboardShortcuts: KeyboardShortcut[] = useMemo(
+    () => [
+      // 导航
+      {
+        key: "j",
+        description: "下一章节",
+        action: () => {
+          if (!tableOfContents.length) return;
+          const currentIndex = tableOfContents.findIndex(
+            (item) => item.id === activeId,
+          );
+          const nextIndex = Math.min(
+            currentIndex + 1,
+            tableOfContents.length - 1,
+          );
+          scrollToHeading(tableOfContents[nextIndex].id);
+        },
+      },
+      {
+        key: "arrowdown",
+        description: "下一章节",
+        action: () => {
+          if (!tableOfContents.length) return;
+          const currentIndex = tableOfContents.findIndex(
+            (item) => item.id === activeId,
+          );
+          const nextIndex = Math.min(
+            currentIndex + 1,
+            tableOfContents.length - 1,
+          );
+          scrollToHeading(tableOfContents[nextIndex].id);
+        },
+      },
+      {
+        key: "k",
+        description: "上一章节",
+        action: () => {
+          if (!tableOfContents.length) return;
+          const currentIndex = tableOfContents.findIndex(
+            (item) => item.id === activeId,
+          );
+          const prevIndex = Math.max(currentIndex - 1, 0);
+          scrollToHeading(tableOfContents[prevIndex].id);
+        },
+      },
+      {
+        key: "arrowup",
+        description: "上一章节",
+        action: () => {
+          if (!tableOfContents.length) return;
+          const currentIndex = tableOfContents.findIndex(
+            (item) => item.id === activeId,
+          );
+          const prevIndex = Math.max(currentIndex - 1, 0);
+          scrollToHeading(tableOfContents[prevIndex].id);
+        },
+      },
+      // 模式切换
+      {
+        key: "t",
+        description: "切换目录",
+        action: () => setShowTOC((prev) => !prev),
+      },
+      {
+        key: "f",
+        description: "切换专注模式",
+        action: toggleFocusMode,
+      },
+      {
+        key: "escape",
+        description: "退出当前模式",
+        action: () => {
+          if (isHelpOpen) {
+            setIsHelpOpen(false);
+          } else if (isLightboxOpen) {
+            closeLightbox();
+          } else if (isFocusMode) {
+            exitFocusMode();
+          } else if (toolbarPosition) {
+            setToolbarPosition(null);
+            setEditingHighlight(null);
+            clearSelection();
+          }
+        },
+      },
+      // 帮助
+      {
+        key: "?",
+        description: "快捷键帮助",
+        modifiers: { shift: true },
+        action: () => setIsHelpOpen(true),
+      },
+      // 字体大小
+      {
+        key: "1",
+        description: "小字体",
+        action: () => setFontSize("small"),
+      },
+      {
+        key: "2",
+        description: "中字体",
+        action: () => setFontSize("medium"),
+      },
+      {
+        key: "3",
+        description: "大字体",
+        action: () => setFontSize("large"),
+      },
+    ],
+    [
+      tableOfContents,
+      activeId,
+      scrollToHeading,
+      toggleFocusMode,
+      exitFocusMode,
+      isFocusMode,
+      isHelpOpen,
+      isLightboxOpen,
+      closeLightbox,
+      toolbarPosition,
+      setToolbarPosition,
+      setEditingHighlight,
+      clearSelection,
+    ],
+  );
+
+  useKeyboardNav({
+    shortcuts: keyboardShortcuts,
+    enabled: !isHelpOpen, // 帮助弹窗打开时禁用
+  });
+
+  // ============================================
+  // 副作用
+  // ============================================
+
+  // 保存目录宽度
   useEffect(() => {
     if (!isResizing) {
       localStorage.setItem(TOC_WIDTH.storageKey, tocWidth.toString());
     }
   }, [tocWidth, isResizing]);
 
-  // 处理拖拽调整宽度
+  // 目录拖拽
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     setIsResizing(true);
@@ -121,7 +394,6 @@ export function MdReaderView({
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizing) return;
-
       const newWidth = e.clientX;
       if (newWidth >= TOC_WIDTH.min && newWidth <= TOC_WIDTH.max) {
         setTocWidth(newWidth);
@@ -147,26 +419,25 @@ export function MdReaderView({
     };
   }, [isResizing]);
 
-  // 解析目录
-  const tableOfContents = useMemo(
-    () => parseTableOfContents(collection.raw_content),
-    [collection.raw_content],
-  );
+  // 目录项滚动
+  useEffect(() => {
+    if (!activeId) return;
+    const activeElement = tocItemRefs.current.get(activeId);
+    if (activeElement) {
+      activeElement.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
+    }
+  }, [activeId]);
 
-  // 滚动容器 ref（自身作为滚动容器，让 sticky header 正常工作）
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-
-  // 监听滚动进度（直接监听自身容器）
+  // 滚动进度
   useEffect(() => {
     const scrollContainer = scrollContainerRef.current;
     if (!scrollContainer) return;
 
     const handleScroll = () => {
       const scrollTop = scrollContainer.scrollTop;
-      const scrollHeight =
-        scrollContainer.scrollHeight - scrollContainer.clientHeight;
-      const progress = scrollHeight > 0 ? (scrollTop / scrollHeight) * 100 : 0;
-      setScrollProgress(progress);
       setShowBackToTop(scrollTop > 300);
     };
 
@@ -185,7 +456,6 @@ export function MdReaderView({
     }
   }, []);
 
-  // 监听全屏变化
   useEffect(() => {
     const handleFullscreenChange = () => {
       setIsFullscreen(!!document.fullscreenElement);
@@ -200,290 +470,473 @@ export function MdReaderView({
     scrollContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
-  // 滚动到锚点
-  const scrollToHeading = useCallback((id: string) => {
-    const element = document.getElementById(id);
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth", block: "start" });
+  // ============================================
+  // 高亮处理
+  // ============================================
+  const handleHighlightColorSelect = useCallback(
+    async (color: Parameters<typeof createHighlight>[1]) => {
+      if (editingHighlightId) {
+        // 编辑模式：更新颜色
+        await updateHighlight(editingHighlightId, color);
+      } else if (selectedRange) {
+        // 创建模式：创建新高亮
+        await createHighlight(selectedRange, color);
+      }
+      setToolbarPosition(null);
+      setEditingHighlight(null);
+      clearSelection();
+    },
+    [
+      editingHighlightId,
+      selectedRange,
+      createHighlight,
+      updateHighlight,
+      setToolbarPosition,
+      setEditingHighlight,
+      clearSelection,
+    ],
+  );
+
+  const handleHighlightDelete = useCallback(async () => {
+    if (editingHighlightId) {
+      await deleteHighlight(editingHighlightId);
+      setToolbarPosition(null);
+      setEditingHighlight(null);
     }
-  }, []);
+  }, [
+    editingHighlightId,
+    deleteHighlight,
+    setToolbarPosition,
+    setEditingHighlight,
+  ]);
 
-  // 内容类型配置
-  const contentTypeConfig =
-    (collection.content_type && CONTENT_TYPE_CONFIG[collection.content_type]) ??
-    DEFAULT_CONTENT_TYPE_CONFIG;
+  const handleHighlightClick = useCallback(
+    (highlight: TextHighlight, position: HighlightToolbarPosition) => {
+      // MdRenderer 传来的高亮点击
+      setEditingHighlight(highlight.id);
+      setToolbarPosition(position);
+    },
+    [setEditingHighlight, setToolbarPosition],
+  );
 
-  // 字体大小映射
+  // ============================================
+  // 字体大小
+  // ============================================
   const fontSizeClass = {
     small: "text-sm",
     medium: "text-base",
     large: "text-lg",
   };
 
-  // 是否显示左侧目录
-  const hasTOC = tableOfContents.length > 0;
+  // ============================================
+  // 主题 CSS 变量
+  // ============================================
+  const themeStyles = useMemo(
+    () =>
+      ({
+        "--reader-bg": theme.colors.background,
+        "--reader-fg": theme.colors.foreground,
+        "--reader-accent": theme.colors.accent,
+        "--reader-muted": theme.colors.muted,
+        "--reader-border": theme.colors.border,
+      }) as React.CSSProperties,
+    [theme],
+  );
+
+  // ============================================
+  // 编辑中的高亮信息
+  // ============================================
+  const editingHighlight = useMemo(
+    () => highlights.find((h) => h.id === editingHighlightId),
+    [highlights, editingHighlightId],
+  );
 
   return (
-    <div
-      ref={scrollContainerRef}
-      className={cn(
-        "relative h-full overflow-y-auto bg-white dark:bg-gray-950",
-        className,
-      )}
-    >
-      {/* 顶部工具栏 */}
-      <header className="sticky top-0 z-40 bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
-          {/* 左侧：返回按钮 */}
-          <div className="flex items-center gap-3 shrink-0">
-            {onBack && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onBack}
-                className="text-gray-600 dark:text-gray-400"
-              >
-                <ArrowLeft className="w-4 h-4 mr-1" />
-                返回
-              </Button>
-            )}
-          </div>
+    <FocusModeContainer className={cn("relative h-full", className)}>
+      <div
+        ref={scrollContainerRef}
+        className="relative h-full overflow-y-auto"
+        style={{
+          ...themeStyles,
+          backgroundColor: "var(--reader-bg)",
+          color: "var(--reader-fg)",
+        }}
+      >
+        {/* 位置恢复提示 */}
+        <PositionRestorePrompt
+          savedPosition={savedPosition}
+          onRestore={() => {
+            restorePosition();
+            clearPosition();
+          }}
+          onStartOver={clearPosition}
+        />
 
-          {/* 中间：标题 + 进度条 */}
-          <div className="flex-1 flex items-center gap-4 min-w-0">
-            {/* 标题（截断显示） */}
-            <h1
-              className="text-sm font-medium truncate dark:text-gray-200"
-              style={{ color: PRUSSIAN_BLUE }}
-              title={collection.title}
-            >
-              {collection.title}
-            </h1>
-
-            {/* 进度条 */}
-            <div className="hidden sm:flex items-center gap-2 shrink-0">
-              <div className="w-24 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all duration-150"
-                  style={{
-                    width: `${scrollProgress}%`,
-                    backgroundColor: PRUSSIAN_BLUE,
-                  }}
-                />
-              </div>
-              <span className="text-xs text-gray-500 dark:text-gray-400 w-8">
-                {Math.round(scrollProgress)}%
-              </span>
-            </div>
-          </div>
-
-          {/* 右侧：工具按钮 */}
-          <div className="flex items-center gap-1 shrink-0">
-            {/* 字体大小 */}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => {
-                const sizes: ("small" | "medium" | "large")[] = [
-                  "small",
-                  "medium",
-                  "large",
-                ];
-                const currentIndex = sizes.indexOf(fontSize);
-                setFontSize(sizes[(currentIndex + 1) % sizes.length]);
-              }}
-              title={`字体大小: ${fontSize}`}
-            >
-              <Type className="w-4 h-4" />
-            </Button>
-
-            {/* 全屏 */}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleFullscreen}
-              title={isFullscreen ? "退出全屏" : "全屏阅读"}
-            >
-              {isFullscreen ? (
-                <Minimize2 className="w-4 h-4" />
-              ) : (
-                <Maximize2 className="w-4 h-4" />
-              )}
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      {/* 内容区域 - 使用 flex 布局 */}
-      <div className="flex">
-        {/* 左侧目录 - sticky 定位，跟随内容滚动但固定在视口 */}
-        {hasTOC && (
-          <aside
-            ref={sidebarRef}
-            className="hidden lg:block sticky top-14 h-[calc(100vh-3.5rem)] shrink-0 border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950"
-            style={{ width: tocWidth }}
+        {/* 顶部工具栏 */}
+        <FocusModeToolbar className="sticky top-0 z-40">
+          <header
+            className="w-full border-b"
+            style={{
+              backgroundColor: "var(--reader-bg)",
+              borderColor: "var(--reader-border)",
+            }}
           >
-            {/* 可滚动的目录容器 */}
-            <div className="h-full overflow-y-auto md-toc-scroll">
-              <div className="p-4">
-                <h3
-                  className="font-medium mb-3 flex items-center gap-2"
-                  style={{ color: PRUSSIAN_BLUE }}
-                >
-                  <List className="w-4 h-4" />
-                  目录
-                </h3>
-                <nav className="space-y-1">
-                  {tableOfContents.map((item, index) => (
-                    <button
-                      key={`${item.id}-${index}`}
-                      onClick={() => scrollToHeading(item.id)}
-                      className={cn(
-                        "block w-full text-left px-3 py-1.5 text-sm rounded-md transition-colors",
-                        "hover:bg-[#00324D]/10 dark:hover:bg-[#00324D]/30",
-                        "text-gray-600 dark:text-gray-400",
-                      )}
-                      style={{
-                        paddingLeft: `${(item.level - 1) * 12 + 12}px`,
-                      }}
-                      onMouseEnter={(e) =>
-                        (e.currentTarget.style.color = PRUSSIAN_BLUE)
-                      }
-                      onMouseLeave={(e) => (e.currentTarget.style.color = "")}
-                    >
-                      {item.text}
-                    </button>
-                  ))}
-                </nav>
+            <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+              {/* 左侧：返回按钮 */}
+              <div className="flex items-center gap-3 shrink-0">
+                {onBack && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={onBack}
+                    style={{ color: "var(--reader-fg)" }}
+                  >
+                    <ArrowLeft className="w-4 h-4 mr-1" />
+                    返回
+                  </Button>
+                )}
               </div>
+
+              {/* 中间：标题 + 进度 */}
+              <div className="flex-1 flex items-center gap-4 min-w-0">
+                <h1
+                  className="text-sm font-medium truncate"
+                  style={{ color: "var(--reader-accent)" }}
+                  title={collection.title}
+                >
+                  {collection.title}
+                </h1>
+
+                {/* 进度组件 */}
+                <div className="hidden sm:block">
+                  <ReadingProgressCompact progress={progress} />
+                </div>
+              </div>
+
+              {/* 右侧：工具按钮 */}
+              <div className="flex items-center gap-1 shrink-0">
+                {/* 主题切换 */}
+                <ThemeSwitcher />
+
+                {/* 专注模式 */}
+                <FocusModeToggle />
+
+                {/* 字体大小 */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    const sizes: ("small" | "medium" | "large")[] = [
+                      "small",
+                      "medium",
+                      "large",
+                    ];
+                    const currentIndex = sizes.indexOf(fontSize);
+                    setFontSize(sizes[(currentIndex + 1) % sizes.length]);
+                  }}
+                  title={`字体大小: ${fontSize}`}
+                >
+                  <Type className="w-4 h-4" />
+                </Button>
+
+                {/* 键盘帮助 */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setIsHelpOpen(true)}
+                  title="键盘快捷键"
+                  className="hidden md:flex"
+                >
+                  <Keyboard className="w-4 h-4" />
+                </Button>
+
+                {/* 全屏 */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={toggleFullscreen}
+                  title={isFullscreen ? "退出全屏" : "全屏阅读"}
+                >
+                  {isFullscreen ? (
+                    <Minimize2 className="w-4 h-4" />
+                  ) : (
+                    <Maximize2 className="w-4 h-4" />
+                  )}
+                </Button>
+              </div>
+            </div>
+          </header>
+        </FocusModeToolbar>
+
+        {/* 内容区域 */}
+        <div className="flex">
+          {/* 左侧目录 */}
+          {hasTOC && showTOC && (
+            <aside
+              ref={sidebarRef}
+              className="hidden lg:block sticky top-14 h-[calc(100vh-3.5rem)] shrink-0 border-r"
+              style={{
+                width: tocWidth,
+                borderColor: "var(--reader-border)",
+                backgroundColor: "var(--reader-bg)",
+              }}
+            >
+              <div className="h-full overflow-y-auto md-toc-scroll">
+                <div className="p-4">
+                  <h3
+                    className="font-medium mb-3 flex items-center gap-2"
+                    style={{ color: "var(--reader-accent)" }}
+                  >
+                    <List className="w-4 h-4" />
+                    目录
+                  </h3>
+                  <nav className="space-y-1">
+                    {tableOfContents.map((item, index) => {
+                      const isActive = activeId === item.id;
+                      return (
+                        <button
+                          key={`${item.id}-${index}`}
+                          ref={(el) => {
+                            if (el) {
+                              tocItemRefs.current.set(item.id, el);
+                            } else {
+                              tocItemRefs.current.delete(item.id);
+                            }
+                          }}
+                          onClick={() => scrollToHeading(item.id)}
+                          className={cn(
+                            "block w-full text-left px-3 py-1.5 text-sm rounded-md transition-all duration-200",
+                            isActive && "font-medium",
+                          )}
+                          style={{
+                            paddingLeft: `${(item.level - 1) * 12 + 12}px`,
+                            backgroundColor: isActive
+                              ? "var(--reader-muted)"
+                              : "transparent",
+                            color: isActive
+                              ? "var(--reader-accent)"
+                              : "var(--reader-fg)",
+                            opacity: isActive ? 1 : 0.7,
+                          }}
+                        >
+                          {item.text}
+                        </button>
+                      );
+                    })}
+                  </nav>
+                </div>
+              </div>
+
+              {/* 拖动把手 */}
+              <div
+                className={cn(
+                  "absolute top-0 right-0 w-1 h-full cursor-col-resize group",
+                  "transition-colors",
+                  isResizing && "opacity-50",
+                )}
+                style={{
+                  backgroundColor: isResizing
+                    ? "var(--reader-accent)"
+                    : "transparent",
+                }}
+                onMouseDown={handleMouseDown}
+              >
+                <div className="absolute top-1/2 -translate-y-1/2 right-0 w-4 h-8 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <GripVertical
+                    className="w-3 h-3"
+                    style={{ color: "var(--reader-fg)" }}
+                  />
+                </div>
+              </div>
+            </aside>
+          )}
+
+          {/* 主内容区 */}
+          <main
+            ref={contentRef}
+            className="flex-1 min-w-0 px-4 py-8 max-w-4xl mx-auto"
+          >
+            {/* 文章头部 */}
+            <header className="mb-8">
+              <span
+                className={cn(
+                  "inline-block px-2 py-1 text-xs font-medium rounded mb-4",
+                  contentTypeConfig.color,
+                )}
+              >
+                {contentTypeConfig.label}
+              </span>
+
+              <h1
+                className="text-3xl md:text-4xl font-bold mb-4 leading-tight"
+                style={{ color: "var(--reader-accent)" }}
+              >
+                {collection.title}
+              </h1>
+
+              <div
+                className="flex flex-wrap items-center gap-4 text-sm"
+                style={{ color: "var(--reader-fg)", opacity: 0.6 }}
+              >
+                <span className="flex items-center gap-1">
+                  <Type className="w-4 h-4" />
+                  {collection.word_count?.toLocaleString() || 0} 字
+                </span>
+                <span className="flex items-center gap-1">
+                  <Clock className="w-4 h-4" />
+                  {collection.reading_time_minutes || 1} 分钟阅读
+                </span>
+                <span className="flex items-center gap-1">
+                  <Calendar className="w-4 h-4" />
+                  {new Date(collection.created_at).toLocaleDateString("zh-CN", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}
+                </span>
+              </div>
+
+              {collection.ai_summary && (
+                <div
+                  className="mt-6 p-4 rounded-lg border"
+                  style={{
+                    backgroundColor: "var(--reader-muted)",
+                    borderColor: "var(--reader-border)",
+                  }}
+                >
+                  <p
+                    className="text-sm font-medium mb-2"
+                    style={{ color: "var(--reader-accent)" }}
+                  >
+                    AI 摘要
+                  </p>
+                  <p className="leading-relaxed">{collection.ai_summary}</p>
+                </div>
+              )}
+
+              {collection.ai_tags && collection.ai_tags.length > 0 && (
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                  <Tag className="w-4 h-4" style={{ opacity: 0.5 }} />
+                  {collection.ai_tags.map((tag, i) => (
+                    <span
+                      key={i}
+                      className="px-2 py-1 text-xs rounded"
+                      style={{
+                        backgroundColor: "var(--reader-muted)",
+                        color: "var(--reader-fg)",
+                      }}
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </header>
+
+            <hr
+              className="mb-8"
+              style={{ borderColor: "var(--reader-border)" }}
+            />
+
+            {/* Markdown 内容 */}
+            <div className={fontSizeClass[fontSize]}>
+              <MdRenderer
+                content={collection.raw_content}
+                showLineNumbers={true}
+                theme={theme.id === "dark" ? "dark" : "light"}
+                onImageClick={(_image, index) => openLightbox(index)}
+                onImagesCollected={setLightboxImages}
+                highlights={highlights}
+                onHighlightClick={handleHighlightClick}
+                contentRef={contentRef}
+              />
             </div>
 
-            {/* 拖动调节把手 */}
-            <div
-              className={cn(
-                "absolute top-0 right-0 w-1 h-full cursor-col-resize group",
-                "hover:bg-[#00324D]/30 transition-colors",
-                isResizing && "bg-[#00324D]/50",
-              )}
-              onMouseDown={handleMouseDown}
+            <footer
+              className="mt-12 pt-8 border-t"
+              style={{ borderColor: "var(--reader-border)" }}
             >
-              <div className="absolute top-1/2 -translate-y-1/2 right-0 w-4 h-8 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                <GripVertical className="w-3 h-3 text-gray-400" />
-              </div>
-            </div>
-          </aside>
+              <p
+                className="text-center text-sm"
+                style={{ color: "var(--reader-fg)", opacity: 0.5 }}
+              >
+                — 文章结束 —
+              </p>
+            </footer>
+          </main>
+        </div>
+
+        {/* 回到顶部 */}
+        {showBackToTop && (
+          <button
+            onClick={scrollToTop}
+            className="fixed bottom-8 right-8 z-40 w-12 h-12 rounded-full text-white shadow-lg flex items-center justify-center transition-all hover:opacity-90"
+            style={{ backgroundColor: "var(--reader-accent)" }}
+            title="回到顶部"
+          >
+            <ChevronUp className="w-5 h-5" />
+          </button>
         )}
 
-        {/* 主内容区 */}
-        <main className="flex-1 min-w-0 px-4 py-8 max-w-4xl mx-auto">
-          {/* 文章头部 */}
-          <header className="mb-8">
-            {/* 内容类型标签 */}
-            <span
-              className={cn(
-                "inline-block px-2 py-1 text-xs font-medium rounded mb-4",
-                contentTypeConfig.color,
-              )}
-            >
-              {contentTypeConfig.label}
-            </span>
+        {/* 高亮工具栏 */}
+        <HighlightToolbar
+          position={toolbarPosition}
+          onColorSelect={handleHighlightColorSelect}
+          onClose={() => {
+            setToolbarPosition(null);
+            setEditingHighlight(null);
+            clearSelection();
+          }}
+          existingColor={editingHighlight?.color}
+          onDelete={editingHighlightId ? handleHighlightDelete : undefined}
+        />
 
-            {/* 标题 */}
-            <h1
-              className="text-3xl md:text-4xl font-bold mb-4 leading-tight dark:text-gray-100"
-              style={{ color: PRUSSIAN_BLUE }}
-            >
-              {collection.title}
-            </h1>
+        {/* 图片灯箱 */}
+        <ImageLightbox
+          images={lightboxImages}
+          initialIndex={lightboxIndex}
+          isOpen={isLightboxOpen}
+          onClose={closeLightbox}
+        />
 
-            {/* 元信息 */}
-            <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
-              {/* 字数 */}
-              <span className="flex items-center gap-1">
-                <Type className="w-4 h-4" />
-                {collection.word_count?.toLocaleString() || 0} 字
-              </span>
-
-              {/* 阅读时间 */}
-              <span className="flex items-center gap-1">
-                <Clock className="w-4 h-4" />
-                {collection.reading_time_minutes || 1} 分钟阅读
-              </span>
-
-              {/* 创建时间 */}
-              <span className="flex items-center gap-1">
-                <Calendar className="w-4 h-4" />
-                {new Date(collection.created_at).toLocaleDateString("zh-CN", {
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}
-              </span>
-            </div>
-
-            {/* AI 摘要 */}
-            {collection.ai_summary && (
-              <div className="mt-6 p-4 bg-gradient-to-r from-sky-50 to-cyan-50 dark:from-sky-900/20 dark:to-cyan-900/20 rounded-lg border border-sky-200 dark:border-sky-800">
-                <p
-                  className="text-sm font-medium mb-2"
-                  style={{ color: PRUSSIAN_BLUE }}
-                >
-                  AI 摘要
-                </p>
-                <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                  {collection.ai_summary}
-                </p>
-              </div>
-            )}
-
-            {/* AI 标签 */}
-            {collection.ai_tags && collection.ai_tags.length > 0 && (
-              <div className="mt-4 flex flex-wrap items-center gap-2">
-                <Tag className="w-4 h-4 text-gray-400" />
-                {collection.ai_tags.map((tag, i) => (
-                  <span
-                    key={i}
-                    className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded"
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            )}
-          </header>
-
-          {/* 分隔线 */}
-          <hr className="mb-8 border-gray-200 dark:border-gray-800" />
-
-          {/* Markdown 内容 */}
-          <div className={fontSizeClass[fontSize]}>
-            <MdRenderer
-              content={collection.raw_content}
-              showLineNumbers={true}
-            />
-          </div>
-
-          {/* 文章底部 */}
-          <footer className="mt-12 pt-8 border-t border-gray-200 dark:border-gray-800">
-            <p className="text-center text-sm text-gray-500 dark:text-gray-400">
-              — 文章结束 —
-            </p>
-          </footer>
-        </main>
+        {/* 键盘帮助 */}
+        <KeyboardNavHelp
+          isOpen={isHelpOpen}
+          onClose={() => setIsHelpOpen(false)}
+        />
       </div>
+    </FocusModeContainer>
+  );
+}
 
-      {/* 回到顶部按钮 */}
-      {showBackToTop && (
-        <button
-          onClick={scrollToTop}
-          className="fixed bottom-8 right-8 z-40 w-12 h-12 rounded-full text-white shadow-lg flex items-center justify-center transition-all hover:opacity-90"
-          style={{ backgroundColor: PRUSSIAN_BLUE }}
-          title="回到顶部"
-        >
-          <ChevronUp className="w-5 h-5" />
-        </button>
-      )}
-    </div>
+// ============================================
+// 主组件
+// ============================================
+
+/**
+ * MD 专业阅读视图
+ * 集成所有阅读增强功能
+ */
+export function MdReaderView({
+  collection,
+  onBack,
+  className,
+}: MdReaderViewProps) {
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  return (
+    <ReaderThemeProvider>
+      <FocusModeProvider>
+        <HighlightProvider collectionId={collection.id} contentRef={contentRef}>
+          <InternalReader
+            collection={collection}
+            onBack={onBack}
+            className={className}
+            contentRef={contentRef}
+          />
+        </HighlightProvider>
+      </FocusModeProvider>
+    </ReaderThemeProvider>
   );
 }
 

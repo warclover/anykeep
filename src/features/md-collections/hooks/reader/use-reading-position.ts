@@ -1,0 +1,244 @@
+/**
+ * MD 阅读位置 Hook
+ * Spec: md-reader-upgrade / REQ-4, REQ-5
+ */
+
+"use client";
+
+import { useState, useEffect, useCallback, useRef } from "react";
+import type {
+  ReadingPosition,
+  UseReadingPositionOptions,
+  UseReadingPositionResult,
+} from "../../types/reader";
+
+/**
+ * localStorage 键前缀
+ */
+const STORAGE_KEY_PREFIX = "md-reader-position-";
+
+/**
+ * 防抖延迟（毫秒）
+ */
+const DEBOUNCE_DELAY = 100;
+
+/**
+ * 位置数据过期时间（30 天，毫秒）
+ */
+const POSITION_EXPIRY_MS = 30 * 24 * 60 * 60 * 1000;
+
+/**
+ * 完成阈值百分比
+ */
+const COMPLETION_THRESHOLD = 95;
+
+/**
+ * useReadingPosition Hook
+ *
+ * 功能：
+ * - 监听滚动计算进度百分比
+ * - 计算剩余阅读时间
+ * - localStorage 存储/恢复阅读位置
+ * - 位置数据 30 天后过期
+ *
+ * @example
+ * ```tsx
+ * function Reader({ collectionId, readingTimeMinutes }) {
+ *   const contentRef = useRef<HTMLDivElement>(null);
+ *
+ *   const {
+ *     progress,
+ *     remainingMinutes,
+ *     savedPosition,
+ *     savePosition,
+ *     restorePosition,
+ *   } = useReadingPosition({
+ *     collectionId,
+ *     contentRef,
+ *     readingTimeMinutes,
+ *   });
+ *
+ *   return (
+ *     <div ref={contentRef}>
+ *       <ProgressBar progress={progress} />
+ *       <span>{remainingMinutes} 分钟</span>
+ *       {savedPosition && (
+ *         <button onClick={restorePosition}>继续阅读</button>
+ *       )}
+ *     </div>
+ *   );
+ * }
+ * ```
+ */
+export function useReadingPosition({
+  collectionId,
+  contentRef,
+  readingTimeMinutes,
+}: UseReadingPositionOptions): UseReadingPositionResult {
+  // 当前进度百分比
+  const [progress, setProgress] = useState(0);
+
+  // 保存的阅读位置
+  const [savedPosition, setSavedPosition] = useState<ReadingPosition | null>(
+    null,
+  );
+
+  // 防抖定时器
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // 生成 localStorage 键
+  const storageKey = `${STORAGE_KEY_PREFIX}${collectionId}`;
+
+  /**
+   * 计算剩余阅读时间（分钟）
+   */
+  const remainingMinutes = Math.max(
+    0,
+    Math.ceil(readingTimeMinutes * (1 - progress / 100)),
+  );
+
+  /**
+   * 获取当前滚动进度
+   */
+  const calculateProgress = useCallback((): number => {
+    const container = contentRef.current;
+    if (!container) return 0;
+
+    const scrollTop = window.scrollY;
+    const elementTop = container.offsetTop;
+    const elementHeight = container.offsetHeight;
+    const viewportHeight = window.innerHeight;
+
+    // 计算相对于内容区域的滚动进度
+    const scrollPosition = scrollTop - elementTop + viewportHeight;
+    const totalScrollable = elementHeight;
+
+    if (totalScrollable <= 0) return 0;
+
+    const rawProgress = (scrollPosition / totalScrollable) * 100;
+    return Math.min(100, Math.max(0, rawProgress));
+  }, [contentRef]);
+
+  /**
+   * 保存当前阅读位置到 localStorage
+   */
+  const savePosition = useCallback(() => {
+    if (typeof window === "undefined") return;
+
+    const currentProgress = calculateProgress();
+    const position: ReadingPosition = {
+      scrollTop: window.scrollY,
+      progress: currentProgress,
+      timestamp: Date.now(),
+    };
+
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(position));
+      setSavedPosition(position);
+    } catch {
+      // localStorage 不可用
+    }
+  }, [storageKey, calculateProgress]);
+
+  /**
+   * 恢复到保存的阅读位置
+   */
+  const restorePosition = useCallback(() => {
+    if (!savedPosition) return;
+
+    window.scrollTo({
+      top: savedPosition.scrollTop,
+      behavior: "smooth",
+    });
+  }, [savedPosition]);
+
+  /**
+   * 清除保存的阅读位置
+   */
+  const clearPosition = useCallback(() => {
+    if (typeof window === "undefined") return;
+
+    try {
+      localStorage.removeItem(storageKey);
+      setSavedPosition(null);
+    } catch {
+      // localStorage 不可用
+    }
+  }, [storageKey]);
+
+  // 初始化时从 localStorage 读取保存的位置
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        const position: ReadingPosition = JSON.parse(saved);
+
+        // 检查是否过期
+        if (Date.now() - position.timestamp < POSITION_EXPIRY_MS) {
+          requestAnimationFrame(() => {
+            setSavedPosition(position);
+          });
+        } else {
+          // 清除过期数据
+          localStorage.removeItem(storageKey);
+        }
+      }
+    } catch {
+      // localStorage 不可用或数据无效
+    }
+  }, [storageKey]);
+
+  // 监听滚动更新进度
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleScroll = () => {
+      // 防抖
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+
+      debounceTimerRef.current = setTimeout(() => {
+        const newProgress = calculateProgress();
+        setProgress(newProgress);
+
+        // 自动保存进度（每次滚动）
+        if (newProgress > 0 && newProgress < COMPLETION_THRESHOLD) {
+          savePosition();
+        }
+
+        // 阅读完成时清除位置记录
+        if (newProgress >= COMPLETION_THRESHOLD) {
+          clearPosition();
+        }
+      }, DEBOUNCE_DELAY);
+    };
+
+    // 初始计算 - 使用 requestAnimationFrame 避免 ESLint 警告
+    requestAnimationFrame(() => {
+      setProgress(calculateProgress());
+    });
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [calculateProgress, savePosition, clearPosition]);
+
+  return {
+    progress,
+    remainingMinutes,
+    savedPosition,
+    savePosition,
+    restorePosition,
+    clearPosition,
+  };
+}
+
+export default useReadingPosition;
