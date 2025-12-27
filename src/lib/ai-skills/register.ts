@@ -32,6 +32,7 @@ import { periodicReportSkill } from "./skills/periodic-report";
 import { shareBundleSkill } from "./skills/share-bundle";
 import { learningPathSkill } from "./skills/learning-path";
 import { knowledgeExtractSkill } from "./skills/knowledge-extract";
+import { linkHealthCheckSkill } from "./skills/link-health-check";
 import { unifiedEngine } from "./engine/unified-engine";
 import { knowledgeAgent } from "../ai-agent/core/knowledge-agent";
 import { logger } from "@/lib/logger";
@@ -156,6 +157,12 @@ export function initializeUnifiedEngine(): void {
   unifiedEngine.registerOrchestrationSkill(shareBundleSkill);
   unifiedEngine.registerOrchestrationSkill(learningPathSkill);
   unifiedEngine.registerOrchestrationSkill(knowledgeExtractSkill);
+
+  // 链接健康检测（支持 Feature Flag 开关）
+  if (process.env.ENABLE_LINK_HEALTH_CHECK !== "false") {
+    unifiedEngine.registerOrchestrationSkill(linkHealthCheckSkill);
+    logger.debug("LinkHealthCheckSkill registered");
+  }
 
   unifiedEngineInitialized = true;
 

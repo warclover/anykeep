@@ -102,6 +102,7 @@ export type {
 export type {
   // 统一输出类型
   UnifiedStreamChunk,
+  OrchestrationStreamChunk,
   TextChunk,
   ProgressChunk,
   DeliverableChunk,

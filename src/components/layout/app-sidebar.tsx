@@ -483,7 +483,19 @@ export function AppSidebar() {
                       )}
                     >
                       <HeartPulse className="size-5" />
-                      健康检查
+                      文件夹健康
+                    </Link>
+                    <Link
+                      href="/link-health"
+                      className={cn(
+                        "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                        pathname === "/link-health"
+                          ? "bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400"
+                          : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50",
+                      )}
+                    >
+                      <HeartPulse className="size-5" />
+                      链接健康
                     </Link>
                     <Link
                       href="/librarian"
