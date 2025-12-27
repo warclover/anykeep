@@ -34,6 +34,7 @@
     "node_modules",
     "figma1121",
     "browser-extension",
+    "extension",
     "supabase/functions",
     "scripts",
     "_backup"
