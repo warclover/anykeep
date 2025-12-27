@@ -5,13 +5,22 @@
  * - 存储和管理会话历史
  * - 上下文窗口管理（自动截断/摘要）
  * - 内存缓存 + 可选数据库持久化
+ * - 会话结束钩子（情景记忆集成）
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-22
+ * @updated 2025-12-27 - 添加会话结束钩子支持情景记忆
  */
 
 import { logger } from "@/lib/logger";
 import type { AgentConversation, AgentMessage, AgentType } from "./types";
+
+/**
+ * 会话结束回调类型
+ */
+export type SessionEndCallback = (
+  conversation: AgentConversation,
+) => Promise<void>;
 
 /**
  * Memory 配置
@@ -23,6 +32,8 @@ export interface AgentMemoryConfig {
   maxTokensEstimate: number;
   /** 是否启用数据库持久化 */
   enablePersistence: boolean;
+  /** 会话结束回调（用于生成摘要等） */
+  onSessionEnd?: SessionEndCallback;
 }
 
 /**
@@ -191,6 +202,60 @@ export class AgentMemory {
     this.cache.delete(conversationId);
     // TODO: 如果启用持久化，也从数据库删除
     logger.debug({ conversationId }, "AgentMemory: Cleared conversation");
+  }
+
+  /**
+   * 结束会话（触发回调，用于生成摘要等）
+   *
+   * 应在用户主动结束对话或会话超时时调用
+   */
+  async endSession(conversationId: string): Promise<void> {
+    const cached = this.cache.get(conversationId);
+    if (!cached) {
+      logger.warn(
+        { conversationId },
+        "AgentMemory: Conversation not found for endSession",
+      );
+      return;
+    }
+
+    // 至少需要有用户消息才触发回调
+    const userMessages = cached.messages.filter((m) => m.role === "user");
+    if (userMessages.length === 0) {
+      logger.debug(
+        { conversationId },
+        "AgentMemory: Skipping endSession - no user messages",
+      );
+      this.cache.delete(conversationId);
+      return;
+    }
+
+    // 触发会话结束回调
+    if (this.config.onSessionEnd) {
+      try {
+        const conversation = this.toConversation(cached);
+        await this.config.onSessionEnd(conversation);
+        logger.debug(
+          { conversationId, messageCount: cached.messages.length },
+          "AgentMemory: Session end callback executed",
+        );
+      } catch (error) {
+        logger.error(
+          { error, conversationId },
+          "AgentMemory: Session end callback failed",
+        );
+      }
+    }
+
+    // 从缓存中移除
+    this.cache.delete(conversationId);
+  }
+
+  /**
+   * 设置会话结束回调
+   */
+  setOnSessionEnd(callback: SessionEndCallback): void {
+    this.config.onSessionEnd = callback;
   }
 
   /**

@@ -4,9 +4,10 @@
  * 提供动态上下文构建和 Prompt 注入功能
  *
  * @module ai-agent/context
- * @version 2.0.0
+ * @version 2.1.0
  * @since 2025-12-26
  * @updated 2025-12-27 - 添加 System-Reminder 注入器和增强置信度计算器
+ * @updated 2025-12-27 - 添加情景记忆上下文类型和 Prompt 构建
  */
 
 // 类型导出
@@ -26,6 +27,10 @@ export type {
   CurrentFolder,
   DynamicContextBuildOptions,
   CacheEntry,
+  // 情景记忆类型（v2.1 新增）
+  EpisodicMemoryContext,
+  RecentSummaryContext,
+  PreferencesAnalysisContext,
 } from "./types";
 
 // 动态上下文构建器
@@ -41,6 +46,7 @@ export type { MergePromptOptions } from "./prompt-injector";
 export {
   buildContextPrompt,
   buildMinimalContextPrompt,
+  buildEpisodicMemoryPrompt,
   mergeSystemPrompt,
   estimateContextTokens,
 } from "./prompt-injector";

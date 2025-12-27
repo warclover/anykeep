@@ -3,12 +3,13 @@
  *
  * 将动态上下文转换为可注入 System Prompt 的文本片段
  *
- * @version 2.0.0
+ * @version 2.1.0
  * @since 2025-12-26
  * @updated 2025-12-27 - 集成 System-Reminder 动态注入
+ * @updated 2025-12-27 - 添加情景记忆注入支持
  */
 
-import type { DynamicContext } from "./types";
+import type { DynamicContext, EpisodicMemoryContext } from "./types";
 import {
   injectSystemReminders,
   shouldInjectReminders,
@@ -100,6 +101,94 @@ export function buildContextPrompt(ctx: DynamicContext): string {
   return lines.join("\n");
 }
 
+// =============================================================================
+// 情景记忆 Prompt 构建
+// =============================================================================
+
+/**
+ * 构建情景记忆 Prompt 段落
+ *
+ * @param memory 情景记忆上下文
+ * @returns Markdown 格式的记忆 Prompt
+ */
+export function buildEpisodicMemoryPrompt(
+  memory: EpisodicMemoryContext,
+): string {
+  const lines: string[] = ["## 情景记忆", ""];
+
+  // 最近会话摘要
+  if (memory.recentSummaries.length > 0) {
+    lines.push("### 最近对话");
+    for (const summary of memory.recentSummaries) {
+      const intentsStr =
+        summary.intents.length > 0 ? `（${summary.intents.join("、")}）` : "";
+      lines.push(`- ${summary.timeAgo}：${summary.summary}${intentsStr}`);
+    }
+    lines.push("");
+  }
+
+  // 未完成意图
+  if (memory.pendingIntents.length > 0) {
+    lines.push("### 待处理事项");
+    lines.push("用户之前提到但尚未完成的事项：");
+    for (const intent of memory.pendingIntents) {
+      lines.push(`- ${intent}`);
+    }
+    lines.push("");
+    lines.push(
+      "_提示：可以主动询问用户是否需要继续处理这些事项，但不要过于打扰。_",
+    );
+    lines.push("");
+  }
+
+  // 用户偏好（来自交互日志）
+  if (memory.preferences) {
+    lines.push("### 用户偏好");
+    const satisfactionDesc = getSatisfactionDescription(
+      memory.preferences.positiveRate,
+    );
+    lines.push(`- 历史满意度：${satisfactionDesc}`);
+
+    if (memory.preferences.commonActions.length > 0) {
+      lines.push(`- 常用功能：${memory.preferences.commonActions.join("、")}`);
+    }
+
+    if (memory.preferences.totalInteractions >= 10) {
+      lines.push(`- 累计交互：${memory.preferences.totalInteractions} 次`);
+    }
+    lines.push("");
+  }
+
+  return lines.join("\n");
+}
+
+/**
+ * 获取满意度描述
+ */
+function getSatisfactionDescription(rate: number): string {
+  if (rate >= 0.9) {
+    return "非常高（建议保持当前互动风格）";
+  } else if (rate >= 0.7) {
+    return "较高";
+  } else if (rate >= 0.5) {
+    return "一般（可适当调整建议方式）";
+  } else {
+    return "较低（建议更谨慎地提供建议，多询问确认）";
+  }
+}
+
+/**
+ * 检查情景记忆是否为空
+ */
+function isEmptyEpisodicMemory(memory?: EpisodicMemoryContext): boolean {
+  if (!memory) return true;
+  return (
+    memory.recentSummaries.length === 0 &&
+    memory.pendingIntents.length === 0 &&
+    memory.preferences === null
+  );
+}
+
 /**
  * 构建精简版上下文 Prompt（仅包含必要信息）
  *
@@ -138,6 +227,8 @@ export interface MergePromptOptions {
   enableProactive?: boolean;
   /** 最大提醒数量 */
   maxReminders?: number;
+  /** 启用情景记忆注入 */
+  enableEpisodicMemory?: boolean;
 }
 
 /**
@@ -158,6 +249,8 @@ export function mergeSystemPrompt(
     enableReminders = FeatureFlags.ENABLE_SYSTEM_REMINDER,
     enableProactive = true,
     maxReminders = 2,
+    enableEpisodicMemory = FeatureFlags.ENABLE_EPISODIC_MEMORY &&
+      FeatureFlags.ENABLE_MEMORY_PROMPT,
   } = options;
 
   const contextPrompt = minimal
@@ -165,6 +258,12 @@ export function mergeSystemPrompt(
     : buildContextPrompt(ctx);
 
   let result = `${basePrompt}\n\n${contextPrompt}`;
+
+  // 注入情景记忆（如果启用且有内容）
+  if (enableEpisodicMemory && !isEmptyEpisodicMemory(ctx.episodicMemory)) {
+    const memoryPrompt = buildEpisodicMemoryPrompt(ctx.episodicMemory!);
+    result = `${result}\n\n${memoryPrompt}`;
+  }
 
   // 注入 System-Reminder（如果启用且满足条件）
   if (enableReminders && shouldInjectReminders(ctx)) {

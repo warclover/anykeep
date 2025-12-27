@@ -14,6 +14,7 @@ export type {
   EngineExecutionSummary,
   UnifiedEngineConfig,
   OrchestrationEngineConfig,
+  EpisodicMemoryContext, // 重新导出情景记忆类型
 } from "./types";
 
 // 编排引擎

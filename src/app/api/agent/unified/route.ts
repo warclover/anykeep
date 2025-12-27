@@ -26,6 +26,11 @@ import {
   formatStatsForPrompt,
 } from "@/lib/ai-agent";
 import {
+  getEpisodicMemoryService,
+  isEmptyMemoryContext,
+} from "@/lib/ai-agent/memory";
+import { FeatureFlags } from "@/lib/ai-agent/config/feature-flags";
+import {
   getUnifiedEngine,
   type UnifiedStreamChunk,
   explicitToolRouter,
@@ -262,6 +267,36 @@ export async function POST(request: NextRequest) {
     const quickStats = await getQuickStats(user.id);
     const statsContext = formatStatsForPrompt(quickStats);
 
+    // 3.5 获取情景记忆（如果启用）
+    let episodicMemory = undefined;
+    if (FeatureFlags.ENABLE_EPISODIC_MEMORY) {
+      try {
+        const memoryService = getEpisodicMemoryService();
+        const memoryContext = await memoryService.getMemoryContext(user.id);
+        if (!isEmptyMemoryContext(memoryContext)) {
+          episodicMemory = memoryContext;
+          logger.debug(
+            {
+              userId: user.id.slice(0, 8) + "...",
+              hasSummaries: memoryContext.recentSummaries.length > 0,
+              pendingIntents: memoryContext.pendingIntents.length,
+              hasPreferences: !!memoryContext.preferences,
+            },
+            "Unified API: Loaded episodic memory",
+          );
+        }
+      } catch (error) {
+        // 情景记忆加载失败不应阻塞主流程
+        logger.warn(
+          {
+            error: error instanceof Error ? error.message : String(error),
+            userId: user.id.slice(0, 8) + "...",
+          },
+          "Unified API: Failed to load episodic memory, continuing without it",
+        );
+      }
+    }
+
     // 4. 决定使用哪种模式
     const unifiedEngine = getUnifiedEngine();
 
@@ -282,6 +317,7 @@ export async function POST(request: NextRequest) {
           totalFolders: quickStats.folderCount,
           debug: options?.includeRoutingInfo,
           attachmentContext,
+          episodicMemory, // 传递情景记忆
         },
         {
           includeRoutingInfo: options?.includeRoutingInfo,

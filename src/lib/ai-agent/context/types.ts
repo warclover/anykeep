@@ -150,6 +150,46 @@ export interface SessionContext {
 }
 
 // =============================================================================
+// 情景记忆上下文
+// =============================================================================
+
+/**
+ * 简化的会话摘要（用于 Prompt 注入）
+ */
+export interface RecentSummaryContext {
+  /** 摘要内容 */
+  summary: string;
+  /** 主要意图 */
+  intents: string[];
+  /** 时间描述（如 "2小时前"） */
+  timeAgo: string;
+}
+
+/**
+ * 用户偏好分析（来自交互日志）
+ */
+export interface PreferencesAnalysisContext {
+  /** 正面反馈率 */
+  positiveRate: number;
+  /** 最常用操作类型 */
+  commonActions: string[];
+  /** 总交互次数 */
+  totalInteractions: number;
+}
+
+/**
+ * 情景记忆上下文 - 跨会话记忆
+ */
+export interface EpisodicMemoryContext {
+  /** 最近会话摘要 */
+  recentSummaries: RecentSummaryContext[];
+  /** 未完成的意图 */
+  pendingIntents: string[];
+  /** 用户偏好（来自交互日志分析） */
+  preferences: PreferencesAnalysisContext | null;
+}
+
+// =============================================================================
 // 动态上下文（完整）
 // =============================================================================
 
@@ -167,6 +207,8 @@ export interface DynamicContext {
   recentActivity: RecentActivityContext;
   /** 当前会话上下文 */
   session: SessionContext;
+  /** 情景记忆（跨会话，可选） */
+  episodicMemory?: EpisodicMemoryContext;
 }
 
 // =============================================================================

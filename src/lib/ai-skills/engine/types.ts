@@ -7,10 +7,14 @@
  */
 
 import type { CancellationToken } from "../orchestration/types";
+import type { EpisodicMemoryContext } from "../../ai-agent/memory/types";
 
 // 注意：以下类型暂时标记为保留导入，供未来扩展使用
 // import type { AgentContext, AgentExecuteOptions } from "../../ai-agent/core/types";
 // import type { UnifiedStreamChunk } from "../output/types";
+
+// 重新导出情景记忆类型
+export type { EpisodicMemoryContext };
 
 /**
  * 搜索结果记录回调
@@ -77,6 +81,8 @@ export interface EngineContext {
   onSearchResults?: OnSearchResultsCallback;
   /** 最近的搜索结果（用于上下文保持） */
   lastSearchResults?: LastSearchResults;
+  /** 情景记忆上下文（跨会话记忆） */
+  episodicMemory?: EpisodicMemoryContext;
 }
 
 /**

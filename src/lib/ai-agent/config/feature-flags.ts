@@ -171,6 +171,46 @@ export const FeatureFlags = {
   get ENABLE_ENHANCED_CONFIDENCE(): boolean {
     return process.env.ENABLE_ENHANCED_CONFIDENCE !== "false";
   },
+
+  // ===========================================================================
+  // 情景记忆（Episodic Memory）相关开关
+  // ===========================================================================
+
+  /**
+   * 是否启用情景记忆
+   * @default true
+   * @description 总开关，控制是否启用跨会话记忆能力
+   */
+  get ENABLE_EPISODIC_MEMORY(): boolean {
+    return process.env.ENABLE_EPISODIC_MEMORY !== "false";
+  },
+
+  /**
+   * 是否启用交互日志
+   * @default true
+   * @description 记录用户与 AI 的交互行为，用于偏好学习
+   */
+  get ENABLE_INTERACTION_LOGGING(): boolean {
+    return process.env.ENABLE_INTERACTION_LOGGING !== "false";
+  },
+
+  /**
+   * 是否启用记忆 Prompt 注入
+   * @default true
+   * @description 将情景记忆注入 System Prompt
+   */
+  get ENABLE_MEMORY_PROMPT(): boolean {
+    return process.env.ENABLE_MEMORY_PROMPT !== "false";
+  },
+
+  /**
+   * 是否启用未完成意图提醒
+   * @default true
+   * @description 主动提醒用户之前未完成的意图
+   */
+  get ENABLE_PENDING_INTENT_REMINDER(): boolean {
+    return process.env.ENABLE_PENDING_INTENT_REMINDER !== "false";
+  },
 } as const;
 
 // =============================================================================
@@ -210,5 +250,10 @@ export function getAllFeatureFlags(): Record<FeatureFlagKey, boolean> {
     ENABLE_IMPLICIT_INTENT: FeatureFlags.ENABLE_IMPLICIT_INTENT,
     ENABLE_SYSTEM_REMINDER: FeatureFlags.ENABLE_SYSTEM_REMINDER,
     ENABLE_ENHANCED_CONFIDENCE: FeatureFlags.ENABLE_ENHANCED_CONFIDENCE,
+    // 情景记忆（Episodic Memory）
+    ENABLE_EPISODIC_MEMORY: FeatureFlags.ENABLE_EPISODIC_MEMORY,
+    ENABLE_INTERACTION_LOGGING: FeatureFlags.ENABLE_INTERACTION_LOGGING,
+    ENABLE_MEMORY_PROMPT: FeatureFlags.ENABLE_MEMORY_PROMPT,
+    ENABLE_PENDING_INTENT_REMINDER: FeatureFlags.ENABLE_PENDING_INTENT_REMINDER,
   };
 }

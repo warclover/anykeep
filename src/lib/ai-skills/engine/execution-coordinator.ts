@@ -18,6 +18,8 @@ import type { OrchestrationEngine } from "./orchestration-engine";
 import type { UnifiedOutputAdapter } from "../output/adapter";
 import type { UnifiedStreamChunk } from "../output/types";
 import type { EngineContext } from "./types";
+import { buildMemoryPrompt, isEmptyMemoryContext } from "../../ai-agent/memory";
+import { FeatureFlags } from "../../ai-agent/config/feature-flags";
 
 // ============================================
 // 类型定义
@@ -156,6 +158,30 @@ export class ExecutionCoordinator {
       return;
     }
 
+    // 构建 System Prompt（包含附件上下文和情景记忆）
+    let systemPrompt = context.attachmentContext || "";
+
+    // 注入情景记忆（如果启用且有内容）
+    if (
+      FeatureFlags.ENABLE_EPISODIC_MEMORY &&
+      FeatureFlags.ENABLE_MEMORY_PROMPT &&
+      context.episodicMemory &&
+      !isEmptyMemoryContext(context.episodicMemory)
+    ) {
+      const memoryPrompt = buildMemoryPrompt(context.episodicMemory);
+      systemPrompt = systemPrompt
+        ? `${systemPrompt}\n\n${memoryPrompt}`
+        : memoryPrompt;
+
+      logger.debug(
+        {
+          userId: context.userId.slice(0, 8) + "...",
+          memoryPromptLength: memoryPrompt.length,
+        },
+        "ExecutionCoordinator: Injected episodic memory into system prompt",
+      );
+    }
+
     // 构建 Agent 上下文
     const agentContext: AgentContext = {
       userId: context.userId,
@@ -163,8 +189,8 @@ export class ExecutionCoordinator {
       bookmarkIds: context.bookmarkIds,
       messageHistory: context.messageHistory,
       traceId: context.traceId,
-      // 将附件上下文注入到 systemPrompt
-      systemPrompt: context.attachmentContext || undefined,
+      // 将合并后的上下文注入到 systemPrompt
+      systemPrompt: systemPrompt || undefined,
       // 传递搜索结果记录回调（用于上下文保持）
       onSearchResults: context.onSearchResults,
     };
