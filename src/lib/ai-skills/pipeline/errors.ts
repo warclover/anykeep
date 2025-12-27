@@ -55,7 +55,7 @@ export type PipelineErrorCode =
  */
 export class PipelineError extends Error {
   /** 错误名称 */
-  readonly name = "PipelineError";
+  override readonly name: string = "PipelineError";
 
   constructor(
     message: string,
@@ -97,7 +97,7 @@ export class PipelineError extends Error {
  * Skill 未找到错误
  */
 export class SkillNotFoundError extends PipelineError {
-  readonly name = "SkillNotFoundError";
+  override readonly name = "SkillNotFoundError";
 
   constructor(skillId: string) {
     super(
@@ -114,7 +114,7 @@ export class SkillNotFoundError extends PipelineError {
  * Skill 已禁用错误
  */
 export class SkillDisabledError extends PipelineError {
-  readonly name = "SkillDisabledError";
+  override readonly name = "SkillDisabledError";
 
   constructor(skillId: string) {
     super(
@@ -131,7 +131,7 @@ export class SkillDisabledError extends PipelineError {
  * 输入验证失败错误
  */
 export class ValidationError extends PipelineError {
-  readonly name = "ValidationError";
+  override readonly name = "ValidationError";
 
   constructor(
     message: string,
@@ -149,7 +149,7 @@ export class ValidationError extends PipelineError {
  * 这不是真正的"错误"，而是表示需要用户确认才能继续
  */
 export class RiskConfirmationRequiredError extends PipelineError {
-  readonly name = "RiskConfirmationRequiredError";
+  override readonly name = "RiskConfirmationRequiredError";
 
   constructor(
     message: string,
@@ -172,7 +172,7 @@ export class RiskConfirmationRequiredError extends PipelineError {
  * 执行超时错误
  */
 export class ExecutionTimeoutError extends PipelineError {
-  readonly name = "ExecutionTimeoutError";
+  override readonly name = "ExecutionTimeoutError";
 
   constructor(timeoutMs: number) {
     super(
@@ -189,7 +189,7 @@ export class ExecutionTimeoutError extends PipelineError {
  * 执行被取消错误
  */
 export class ExecutionCancelledError extends PipelineError {
-  readonly name = "ExecutionCancelledError";
+  override readonly name = "ExecutionCancelledError";
 
   constructor(reason?: string) {
     super(
@@ -206,7 +206,7 @@ export class ExecutionCancelledError extends PipelineError {
  * 执行失败错误
  */
 export class ExecutionFailedError extends PipelineError {
-  readonly name = "ExecutionFailedError";
+  override readonly name = "ExecutionFailedError";
 
   constructor(message: string, cause?: Error, retryable: boolean = false) {
     super(

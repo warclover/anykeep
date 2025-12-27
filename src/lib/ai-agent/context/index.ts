@@ -128,3 +128,18 @@ export {
   ConversationCompressor,
   conversationCompressor,
 } from "./conversation-compressor";
+
+// 压缩降级策略（v2.2.1 新增）
+export type {
+  CompressionErrorType,
+  FallbackLevel,
+  FallbackResult,
+  FallbackConfig,
+} from "./compression-fallback";
+export {
+  DEFAULT_FALLBACK_CONFIG,
+  classifyCompressionError,
+  isCompressionRetryable,
+  simpleTruncate,
+  executeWithFallback,
+} from "./compression-fallback";

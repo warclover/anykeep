@@ -85,6 +85,30 @@ export interface LastOutputSummary {
 }
 
 // ============================================
+// 压缩摘要状态
+// ============================================
+
+/**
+ * 压缩摘要状态
+ *
+ * 存储对话上下文压缩后的摘要信息，用于长对话的上下文管理
+ */
+export interface CompressionSummaryState {
+  /** 压缩摘要内容 */
+  summary: string;
+  /** 压缩时间 */
+  compressedAt: number;
+  /** 压缩前的消息数量 */
+  originalMessageCount: number;
+  /** 压缩后保留的消息数量 */
+  retainedMessageCount: number;
+  /** 压缩比率 */
+  compressionRatio: number;
+  /** 使用的降级级别 */
+  fallbackLevel?: "full_compression" | "simple_truncation" | "original";
+}
+
+// ============================================
 // 会话状态
 // ============================================
 
@@ -116,6 +140,8 @@ export interface ConversationState {
   lastActivityAt: number;
   /** 会话元数据 */
   metadata?: Record<string, unknown>;
+  /** 压缩摘要（对话上下文压缩后的摘要，用于长对话） */
+  compressionSummary?: CompressionSummaryState;
 }
 
 /**

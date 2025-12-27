@@ -44,6 +44,9 @@ import {
   // 压缩功能（v1.4 新增）
   ConversationCompressor,
   type ConversationMessage,
+  // 压缩降级策略（v1.4.1 新增）
+  executeWithFallback,
+  type FallbackLevel,
 } from "../context";
 import { FeatureFlags } from "../config";
 
@@ -663,6 +666,10 @@ export class KnowledgeAgent {
     messages: Array<{ role: "user" | "assistant"; content: string }>;
     summary?: string;
     compressed: boolean;
+    /** 使用的降级级别 */
+    fallbackLevel?: FallbackLevel;
+    /** 降级原因（如果发生降级） */
+    fallbackReason?: string;
     metrics?: {
       originalTokens: number;
       compressedTokens: number;
@@ -710,30 +717,29 @@ export class KnowledgeAgent {
         currentTurns: check.currentTurns,
         tokenUsageRatio: check.tokenUsageRatio,
       },
-      "KnowledgeAgent: Starting message compression",
+      "KnowledgeAgent: Starting message compression with fallback support",
     );
 
-    // 执行压缩
-    const result = await this.compressor.compress(conversationMessages, {
-      userId: context.userId,
-      conversationId: context.conversationId || crypto.randomUUID(),
-      baseSystemPrompt: context.baseSystemPrompt || this.config.systemPrompt,
-    });
-
-    if (!result.success) {
-      logger.warn(
-        {
+    // 使用带降级策略的压缩执行器
+    const fallbackResult = await executeWithFallback(
+      conversationMessages,
+      async () => {
+        return this.compressor.compress(conversationMessages, {
           userId: context.userId,
-          conversationId: context.conversationId,
-          reason: result.reason,
-        },
-        "KnowledgeAgent: Compression failed, using original messages",
-      );
-      return { messages: messageHistory, compressed: false };
-    }
+          conversationId: context.conversationId || crypto.randomUUID(),
+          baseSystemPrompt:
+            context.baseSystemPrompt || this.config.systemPrompt,
+        });
+      },
+      undefined, // 使用默认降级配置
+      {
+        userId: context.userId,
+        conversationId: context.conversationId,
+      },
+    );
 
     // 转换回前端消息格式（排除系统消息）
-    const compressedMessages = result.messages
+    const resultMessages = fallbackResult.messages
       .filter((m) => m.role !== "system")
       .map((m) => ({
         role: m.role as "user" | "assistant",
@@ -745,21 +751,25 @@ export class KnowledgeAgent {
         userId: context.userId,
         conversationId: context.conversationId,
         originalCount: messageHistory.length,
-        compressedCount: compressedMessages.length,
-        compressionRatio: result.metrics?.compressionRatio,
+        resultCount: resultMessages.length,
+        fallbackLevel: fallbackResult.level,
+        compressed: fallbackResult.compressed,
+        compressionRatio: fallbackResult.metrics?.compressionRatio,
       },
       "KnowledgeAgent: Message compression completed",
     );
 
     return {
-      messages: compressedMessages,
-      summary: result.summary,
-      compressed: true,
-      metrics: result.metrics
+      messages: resultMessages,
+      summary: fallbackResult.summary,
+      compressed: fallbackResult.compressed,
+      fallbackLevel: fallbackResult.level,
+      fallbackReason: fallbackResult.fallbackReason,
+      metrics: fallbackResult.metrics
         ? {
-            originalTokens: result.metrics.originalTokens,
-            compressedTokens: result.metrics.compressedTokens,
-            compressionRatio: result.metrics.compressionRatio,
+            originalTokens: fallbackResult.metrics.originalTokens,
+            compressedTokens: fallbackResult.metrics.finalTokens,
+            compressionRatio: fallbackResult.metrics.compressionRatio,
           }
         : undefined,
     };

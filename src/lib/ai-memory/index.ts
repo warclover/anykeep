@@ -3,8 +3,9 @@
  *
  * 提供会话状态管理和指代解析功能
  *
- * @version 1.1.0
+ * @version 1.2.0
  * @since 2025-12-25
+ * @updated 2025-12-27 - 添加压缩摘要持久化
  */
 
 // 类型导出
@@ -51,3 +52,12 @@ export {
   persistentSessionMemory,
   type PersistentSessionMemoryConfig,
 } from "./persistent-session-memory";
+
+// CompressionSummaryPersistence 导出（v1.2 新增）
+export {
+  CompressionSummaryPersistence,
+  compressionSummaryPersistence,
+  createCompressionSummaryPersistence,
+  type SaveCompressionSummaryParams,
+  type CompressionPersistenceResult,
+} from "./compression-summary-persistence";
