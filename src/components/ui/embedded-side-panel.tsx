@@ -20,10 +20,18 @@ interface EmbeddedSidePanelProps {
   onClose: () => void;
   /** 面板标题 */
   title: string;
+  /** 标题图标 */
+  titleIcon?: React.ReactNode;
   /** 面板宽度，默认 360px */
   width?: number;
   /** 自定义 className */
   className?: string;
+  /** 自定义头部 className（用于渐变背景） */
+  headerClassName?: string;
+  /** 自定义标题 className（用于标题颜色） */
+  titleClassName?: string;
+  /** 自定义关闭按钮 className */
+  closeButtonClassName?: string;
   /** 头部右侧操作按钮 */
   headerAction?: React.ReactNode;
   /** 底部内容 */
@@ -45,8 +53,12 @@ export function EmbeddedSidePanel({
   open,
   onClose,
   title,
+  titleIcon,
   width = 360,
   className,
+  headerClassName,
+  titleClassName,
+  closeButtonClassName,
   headerAction,
   footer,
   children,
@@ -75,11 +87,30 @@ export function EmbeddedSidePanel({
       {open && (
         <div className="h-full flex flex-col" style={{ width: `${width}px` }}>
           {/* Header */}
-          <div className="flex-shrink-0 h-14 px-4 flex items-center justify-between border-b border-gray-100 dark:border-gray-800 bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-900">
+          <div
+            className={cn(
+              "flex-shrink-0 h-14 px-4 flex items-center justify-between border-b",
+              // 默认样式
+              "border-gray-100 dark:border-gray-800 bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-900",
+              // 自定义样式覆盖
+              headerClassName,
+            )}
+          >
             {/* 标题 */}
-            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
-              {title}
-            </h2>
+            <div className="flex items-center gap-2">
+              {titleIcon}
+              <h2
+                className={cn(
+                  "text-base font-semibold",
+                  // 默认颜色
+                  "text-gray-900 dark:text-gray-100",
+                  // 自定义颜色覆盖
+                  titleClassName,
+                )}
+              >
+                {title}
+              </h2>
+            </div>
 
             {/* 右侧操作区 */}
             <div className="flex items-center gap-2">
@@ -91,8 +122,9 @@ export function EmbeddedSidePanel({
                   "size-8 rounded-lg flex items-center justify-center",
                   "text-gray-500 hover:text-gray-700",
                   "dark:text-gray-400 dark:hover:text-gray-200",
-                  "hover:bg-gray-100 dark:hover:bg-gray-800",
+                  "hover:bg-gray-100/50 dark:hover:bg-gray-800/50",
                   "transition-colors duration-150",
+                  closeButtonClassName,
                 )}
                 aria-label="关闭"
               >

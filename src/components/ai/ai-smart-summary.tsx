@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { SummaryRenderer } from "@/components/bookmark/summary-renderer";
 import {
   Card,
   CardContent,
@@ -297,11 +298,7 @@ export function AISmartSummary({
             </div>
           </div>
         ) : hasSummary ? (
-          <div className="prose prose-sm dark:prose-invert max-w-none">
-            <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
-              {summary}
-            </p>
-          </div>
+          <SummaryRenderer summary={summary} />
         ) : (
           <div className="text-center py-6">
             <Sparkles className="size-8 mx-auto text-muted-foreground/30 mb-2" />

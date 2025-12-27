@@ -1,25 +1,28 @@
 /**
- * 布局级 AI 助手面板容器
+ * 布局级侧边面板容器
  *
- * 在 layout 层级集成 AI 面板，实现与主内容区的挤压式布局
+ * 在 layout 层级集成所有挤压式面板，实现与主内容区的挤压式布局
  * 使用 HomePageContext 管理面板状态
  *
- * @version 1.0.0
+ * @version 2.0.0 - 添加用途筛选面板和手动创建面板
  * @since 2025-12-23
  */
 
 "use client";
 
 import { AIAssistantPanelEmbedded } from "@/components/ai";
+import { FilterPanelEmbedded } from "@/components/layout/filter-panel-embedded";
+import { CreatePanelEmbedded } from "@/components/layout/create-panel-embedded";
 import { useHomePageSafe } from "@/contexts/home-page-context";
 import { useOptionalUser } from "@/contexts/user-context";
 
 /**
- * 布局级 AI 面板容器
+ * 布局级侧边面板容器
  *
  * 包含：
  * - 内嵌式 AI 面板（挤压式布局）
- * - 悬浮触发按钮
+ * - 用途筛选面板（挤压式布局）
+ * - 手动创建面板（挤压式布局）
  */
 export function LayoutAIPanel() {
   // 安全获取 Context（可能不在 Provider 内）
@@ -31,11 +34,30 @@ export function LayoutAIPanel() {
     return null;
   }
 
-  const { isAIPanelOpen, closeAIPanel } = homeContext.aiPanel;
+  const {
+    isAIPanelOpen,
+    isFilterPanelOpen,
+    isCreatePanelOpen,
+    closeAIPanel,
+    closeFilterPanel,
+    closeCreatePanel,
+  } = homeContext.aiPanel;
 
   return (
     <>
-      {/* 内嵌式 AI 面板（与 MainContentWrapper 同级，实现挤压效果） */}
+      {/* 手动创建面板（优先级最低，显示在最左） */}
+      <CreatePanelEmbedded
+        open={isCreatePanelOpen}
+        onClose={closeCreatePanel}
+      />
+
+      {/* 用途筛选面板 */}
+      <FilterPanelEmbedded
+        open={isFilterPanelOpen}
+        onClose={closeFilterPanel}
+      />
+
+      {/* AI 面板（优先级最高，显示在最右） */}
       <AIAssistantPanelEmbedded
         open={isAIPanelOpen}
         onClose={closeAIPanel}

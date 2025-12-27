@@ -14,7 +14,7 @@ import Link from "next/link";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
-import { Moon, Sun, Search, Plus, Sparkles } from "lucide-react";
+import { Moon, Sun, Search, Plus, Sparkles, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -33,7 +33,6 @@ import { useUser } from "@/contexts/user-context";
 import { useSafeNavigation } from "@/contexts/navigation-context";
 import { useHomePageSafe } from "@/contexts/home-page-context";
 import { QuickAddBookmark } from "@/components/quick-add";
-import { UsageTagFilterSheet } from "@/components/layout/usage-tag-filter-sheet";
 
 export function AppHeader() {
   const { user, profile, isLoading } = useUser();
@@ -70,11 +69,17 @@ export function AppHeader() {
   // 是否显示快速添加区域：首页 + 非回收站
   const showQuickAdd = isHomePage && !isTrashFolder;
 
-  // 手动创建按钮点击事件
-  const handleOpenCreateDialog = () => {
-    // 使用 HomePageContext 打开创建对话框
+  // 手动创建按钮点击事件 - 使用挤压式面板
+  const handleOpenCreatePanel = () => {
     if (homeContext) {
-      homeContext.dialog.openDialogAction("create");
+      homeContext.aiPanel.toggleCreatePanel();
+    }
+  };
+
+  // 用途筛选按钮点击事件 - 使用挤压式面板
+  const handleOpenFilterPanel = () => {
+    if (homeContext) {
+      homeContext.aiPanel.toggleFilterPanel();
     }
   };
 
@@ -231,14 +236,22 @@ export function AppHeader() {
             {/* 手动创建按钮 - 糖果色风格 */}
             <Button
               className="shrink-0 h-8 px-3 text-sm bg-gradient-to-r from-pink-400 to-rose-400 text-white shadow-lg shadow-pink-200 hover:shadow-pink-300 hover:scale-105 transition-all duration-200"
-              onClick={handleOpenCreateDialog}
+              onClick={handleOpenCreatePanel}
             >
               <Plus className="size-3.5 mr-1" />
               手动创建
             </Button>
 
-            {/* 用途筛选按钮（非浏览器书签 + 无文件夹筛选时显示） */}
-            {!isBrowserPlatform && !currentFolder && <UsageTagFilterSheet />}
+            {/* 用途筛选按钮（非浏览器书签 + 无文件夹筛选时显示）- 糖果色风格（紫色） */}
+            {!isBrowserPlatform && !currentFolder && homeContext && (
+              <Button
+                className="shrink-0 h-8 px-3 text-sm bg-gradient-to-r from-purple-500 to-violet-500 text-white shadow-lg shadow-purple-200 hover:shadow-purple-300 hover:scale-105 transition-all duration-200"
+                onClick={handleOpenFilterPanel}
+              >
+                <Filter className="size-3.5 mr-1" />
+                用途筛选
+              </Button>
+            )}
 
             {/* AI 助理按钮 - 糖果色风格（青蓝色） */}
             {homeContext && (
