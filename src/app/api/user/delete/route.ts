@@ -26,6 +26,7 @@ import {
   badRequestError,
   internalError,
 } from "@/lib/utils/api-response";
+import { checkRateLimit } from "@/lib/utils/rate-limiter";
 import { logger } from "@/lib/logger";
 import type { NextRequest } from "next/server";
 
@@ -48,6 +49,31 @@ export async function DELETE(request: NextRequest) {
 
     if (authError || !user) {
       return unauthorizedError();
+    }
+
+    // 1.5 速率限制检查（高风险操作：每小时 2 次）
+    const rateLimitResult = checkRateLimit(user.id, "/api/user/delete");
+    if (!rateLimitResult.allowed) {
+      logger.warn(
+        { userId: user.id, resetMs: rateLimitResult.resetMs },
+        "Account deletion rate limited",
+      );
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "操作过于频繁，请稍后再试",
+          retryAfter: Math.ceil(rateLimitResult.resetMs / 1000),
+        }),
+        {
+          status: 429,
+          headers: {
+            "Content-Type": "application/json",
+            "X-RateLimit-Limit": rateLimitResult.limit.toString(),
+            "X-RateLimit-Remaining": "0",
+            "Retry-After": Math.ceil(rateLimitResult.resetMs / 1000).toString(),
+          },
+        },
+      );
     }
 
     // 2. 解析并验证请求体

@@ -40,6 +40,8 @@ export const RATE_LIMIT_CONFIGS: Record<string, RateLimitConfig> = {
   bookmarks: { windowMs: 60_000, maxRequests: 300 },
   // 快照操作：每分钟 60 次
   snapshots: { windowMs: 60_000, maxRequests: 60 },
+  // 高风险操作：每小时 2 次（账户删除、数据导出等不可逆操作）
+  dangerous: { windowMs: 3600_000, maxRequests: 2 },
 };
 
 /**
@@ -135,6 +137,17 @@ const rateLimiterStore = new RateLimiterStore();
  * 根据路径获取速率限制配置
  */
 export function getRateLimitConfig(pathname: string): RateLimitConfig {
+  // 高风险操作（最严格：每小时 2 次）
+  if (
+    pathname.includes("/user/delete") ||
+    pathname.includes("/user/export") ||
+    pathname.includes("/batch-delete") ||
+    pathname.includes("/trash/empty") ||
+    pathname.includes("/permanent")
+  ) {
+    return RATE_LIMIT_CONFIGS.dangerous;
+  }
+
   // 认证相关（最严格）
   if (pathname.includes("/auth") || pathname.includes("/login")) {
     return RATE_LIMIT_CONFIGS.auth;
@@ -198,6 +211,15 @@ export function checkRateLimit(
  * 获取配置键名
  */
 function getConfigKey(pathname: string): string {
+  // 高风险操作优先检查
+  if (
+    pathname.includes("/user/delete") ||
+    pathname.includes("/user/export") ||
+    pathname.includes("/batch-delete") ||
+    pathname.includes("/trash/empty") ||
+    pathname.includes("/permanent")
+  )
+    return "dangerous";
   if (pathname.includes("/auth") || pathname.includes("/login")) return "auth";
   // 注意：必须在 /batch 检查之前，避免 /bookmarks/batch-status 被错误匹配
   if (pathname.includes("/bookmarks") || pathname.includes("/bookmark"))
