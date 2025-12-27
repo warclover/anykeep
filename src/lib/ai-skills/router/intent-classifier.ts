@@ -104,6 +104,15 @@ const DEFAULT_RULES: IntentRule[] = [
     weight: 88,
   },
   {
+    // 收件箱/消息摘要规则
+    pattern:
+      /消息.{0,3}(摘要|总结|概览|统计)|收件箱.{0,3}(摘要|总结|报告)|未读.{0,3}(摘要|总结)|通知.{0,3}(摘要|总结)/,
+    type: "analyze",
+    subType: "inbox_digest",
+    complexity: "medium",
+    weight: 87,
+  },
+  {
     pattern: /周报|月报|报告|统计报告/,
     type: "analyze",
     subType: "report",

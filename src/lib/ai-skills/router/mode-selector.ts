@@ -140,6 +140,12 @@ const DEFAULT_SKILL_MAPPINGS: Record<string, OrchestrationSkillMapping> = {
     minComplexity: "medium",
     enabled: true, // 已实现
   },
+  "analyze:inbox_digest": {
+    skillId: "inbox_digest",
+    name: "收件箱摘要",
+    minComplexity: "medium",
+    enabled: true, // 已实现
+  },
   "create:bilibili_transcript": {
     skillId: "bilibili_transcript",
     name: "B站字幕提取",

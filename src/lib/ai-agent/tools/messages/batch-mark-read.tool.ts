@@ -1,0 +1,410 @@
+/**
+ * batch_mark_read Tool
+ *
+ * 批量标记消息为已读，支持多种筛选方式
+ *
+ * @version 1.0.0
+ * @since 2025-12-27
+ */
+
+import { z } from "zod";
+import type { Tool, ToolContext, ToolResult } from "../types";
+import { createClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
+// MessageType/MessageLevel 类型由 Zod schema 推断，无需显式导入
+
+// ============================================
+// 参数定义
+// ============================================
+
+const paramsSchema = z.object({
+  messageIds: z
+    .array(z.number().int().positive())
+    .optional()
+    .describe("指定消息 ID 列表（不传则根据其他条件筛选）"),
+  types: z
+    .array(
+      z.enum([
+        "classification_auto",
+        "classification_batch",
+        "classification_suggest",
+        "classification_failed",
+        "reclassify_complete",
+        "import_complete",
+        "import_partial",
+        "import_failed",
+        "batch_move",
+        "batch_delete",
+        "batch_tag",
+        "batch_restore",
+        "bookmark_saved",
+        "bookmark_invalid",
+        "bookmark_expired",
+        "folder_created",
+        "folder_merged",
+        "folder_auto_created",
+        "folder_auto_split",
+        "folder_auto_merged",
+        "folder_auto_renamed",
+        "folder_operation_undone",
+        "system_announcement",
+        "system_maintenance",
+        "system_update",
+        "quota_warning",
+        "quota_critical",
+        "quota_exceeded",
+        "feedback_received",
+        "feedback_response",
+        "ai_summary_complete",
+        "ai_tags_complete",
+        "ai_processing_failed",
+        "ai_evolution_report",
+        "cost_warning",
+        "cost_critical",
+        "cost_daily_exceeded",
+      ]),
+    )
+    .optional()
+    .describe("按消息类型筛选"),
+  levels: z
+    .array(z.enum(["silent", "normal", "important"]))
+    .optional()
+    .describe("按消息级别筛选"),
+  olderThanDays: z
+    .number()
+    .int()
+    .min(1)
+    .max(365)
+    .optional()
+    .describe("标记 N 天前的消息为已读"),
+  markAll: z
+    .boolean()
+    .optional()
+    .default(false)
+    .describe("标记所有未读消息为已读（谨慎使用）"),
+});
+
+type BatchMarkReadParams = z.infer<typeof paramsSchema>;
+
+// ============================================
+// 结果类型
+// ============================================
+
+interface BatchMarkReadResult {
+  /** 成功标记的数量 */
+  markedCount: number;
+  /** 操作前未读数 */
+  previousUnreadCount: number;
+  /** 操作后未读数 */
+  remainingUnreadCount: number;
+  /** 操作描述 */
+  description: string;
+}
+
+// ============================================
+// Tool 实现
+// ============================================
+
+export const batchMarkReadTool: Tool<BatchMarkReadParams, BatchMarkReadResult> =
+  {
+    definition: {
+      name: "batch_mark_read",
+      description: `批量标记消息为已读。
+
+功能：
+- 标记指定 ID 的消息
+- 按类型批量标记（如所有"自动分类"消息）
+- 按级别批量标记（如所有"静默通知"）
+- 按时间批量标记（如 7 天前的消息）
+- 一键全部已读
+
+使用场景：
+- "把所有消息标记已读"
+- "把静默通知都标为已读"
+- "清理一周前的消息"
+- "把分类相关的消息标为已读"
+
+返回：标记数量、剩余未读数`,
+      parameters: paramsSchema,
+      category: "action",
+      requiresConfirmation: false, // 标记已读是低风险操作
+      estimatedDurationMs: 500,
+    },
+
+    async execute(
+      params: BatchMarkReadParams,
+      context: ToolContext,
+    ): Promise<ToolResult<BatchMarkReadResult>> {
+      const startTime = performance.now();
+      const supabase = await createClient();
+
+      const { messageIds, types, levels, olderThanDays, markAll } = params;
+
+      // 获取操作前的未读数
+      const { count: previousUnreadCount } = await supabase
+        .from("messages")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", context.userId)
+        .eq("status", "unread");
+
+      // 如果指定了 messageIds，直接使用 RPC
+      if (messageIds && messageIds.length > 0) {
+        const { data: updatedCount, error } = await supabase.rpc(
+          "mark_messages_read",
+          {
+            p_user_id: context.userId,
+            p_message_ids: messageIds,
+          },
+        );
+
+        if (error) {
+          logger.error(
+            {
+              toolName: "batch_mark_read",
+              userId: context.userId,
+              messageIds,
+              error: error.message,
+            },
+            "batch_mark_read: DB Error",
+          );
+
+          return {
+            success: false,
+            error: error.message,
+            errorCode: "DB_ERROR",
+          };
+        }
+
+        // 获取操作后的未读数
+        const { count: remainingUnreadCount } = await supabase
+          .from("messages")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", context.userId)
+          .eq("status", "unread");
+
+        const markedCount = updatedCount ?? 0;
+
+        logger.info(
+          {
+            toolName: "batch_mark_read",
+            userId: context.userId,
+            messageIds,
+            markedCount,
+            executionTimeMs: Math.round(performance.now() - startTime),
+          },
+          "batch_mark_read: Success (by IDs)",
+        );
+
+        return {
+          success: true,
+          data: {
+            markedCount,
+            previousUnreadCount: previousUnreadCount ?? 0,
+            remainingUnreadCount: remainingUnreadCount ?? 0,
+            description: `已标记 ${markedCount} 条指定消息为已读`,
+          },
+          metadata: {
+            executionTimeMs: Math.round(performance.now() - startTime),
+            affectedCount: markedCount,
+          },
+        };
+      }
+
+      // 如果是 markAll，调用 RPC 不传 messageIds
+      if (markAll) {
+        const { data: updatedCount, error } = await supabase.rpc(
+          "mark_messages_read",
+          {
+            p_user_id: context.userId,
+            p_message_ids: undefined,
+          },
+        );
+
+        if (error) {
+          logger.error(
+            {
+              toolName: "batch_mark_read",
+              userId: context.userId,
+              markAll,
+              error: error.message,
+            },
+            "batch_mark_read: DB Error",
+          );
+
+          return {
+            success: false,
+            error: error.message,
+            errorCode: "DB_ERROR",
+          };
+        }
+
+        const markedCount = updatedCount ?? 0;
+
+        logger.info(
+          {
+            toolName: "batch_mark_read",
+            userId: context.userId,
+            markAll,
+            markedCount,
+            executionTimeMs: Math.round(performance.now() - startTime),
+          },
+          "batch_mark_read: Success (all)",
+        );
+
+        return {
+          success: true,
+          data: {
+            markedCount,
+            previousUnreadCount: previousUnreadCount ?? 0,
+            remainingUnreadCount: 0,
+            description: `已标记所有 ${markedCount} 条消息为已读`,
+          },
+          metadata: {
+            executionTimeMs: Math.round(performance.now() - startTime),
+            affectedCount: markedCount,
+          },
+        };
+      }
+
+      // 按条件筛选消息 ID，然后调用 RPC
+      let query = supabase
+        .from("messages")
+        .select("id")
+        .eq("user_id", context.userId)
+        .eq("status", "unread");
+
+      // 类型筛选
+      if (types && types.length > 0) {
+        query = query.in("type", types);
+      }
+
+      // 级别筛选
+      if (levels && levels.length > 0) {
+        query = query.in("level", levels);
+      }
+
+      // 时间筛选
+      if (olderThanDays) {
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - olderThanDays);
+        query = query.lt("created_at", cutoffDate.toISOString());
+      }
+
+      const { data: messagesToMark, error: selectError } = await query;
+
+      if (selectError) {
+        logger.error(
+          {
+            toolName: "batch_mark_read",
+            userId: context.userId,
+            params,
+            error: selectError.message,
+          },
+          "batch_mark_read: Select Error",
+        );
+
+        return {
+          success: false,
+          error: selectError.message,
+          errorCode: "DB_ERROR",
+        };
+      }
+
+      if (!messagesToMark || messagesToMark.length === 0) {
+        return {
+          success: true,
+          data: {
+            markedCount: 0,
+            previousUnreadCount: previousUnreadCount ?? 0,
+            remainingUnreadCount: previousUnreadCount ?? 0,
+            description: "没有符合条件的未读消息",
+          },
+          metadata: {
+            executionTimeMs: Math.round(performance.now() - startTime),
+            affectedCount: 0,
+          },
+        };
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const idsToMark = messagesToMark.map((m: any) => m.id);
+
+      const { data: updatedCount, error: updateError } = await supabase.rpc(
+        "mark_messages_read",
+        {
+          p_user_id: context.userId,
+          p_message_ids: idsToMark,
+        },
+      );
+
+      if (updateError) {
+        logger.error(
+          {
+            toolName: "batch_mark_read",
+            userId: context.userId,
+            idsCount: idsToMark.length,
+            error: updateError.message,
+          },
+          "batch_mark_read: Update Error",
+        );
+
+        return {
+          success: false,
+          error: updateError.message,
+          errorCode: "DB_ERROR",
+        };
+      }
+
+      // 获取操作后的未读数
+      const { count: remainingUnreadCount } = await supabase
+        .from("messages")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", context.userId)
+        .eq("status", "unread");
+
+      const markedCount = updatedCount ?? 0;
+
+      // 生成描述
+      const descParts: string[] = [];
+      if (types && types.length > 0) {
+        descParts.push(`${types.length} 种类型`);
+      }
+      if (levels && levels.length > 0) {
+        descParts.push(`${levels.join("/")} 级别`);
+      }
+      if (olderThanDays) {
+        descParts.push(`${olderThanDays} 天前`);
+      }
+
+      const filterDesc =
+        descParts.length > 0 ? `（${descParts.join("，")}）` : "";
+      const description = `已标记 ${markedCount} 条消息为已读${filterDesc}`;
+
+      logger.info(
+        {
+          toolName: "batch_mark_read",
+          userId: context.userId,
+          types,
+          levels,
+          olderThanDays,
+          markedCount,
+          executionTimeMs: Math.round(performance.now() - startTime),
+        },
+        "batch_mark_read: Success (filtered)",
+      );
+
+      return {
+        success: true,
+        data: {
+          markedCount,
+          previousUnreadCount: previousUnreadCount ?? 0,
+          remainingUnreadCount: remainingUnreadCount ?? 0,
+          description,
+        },
+        metadata: {
+          executionTimeMs: Math.round(performance.now() - startTime),
+          affectedCount: markedCount,
+        },
+      };
+    },
+  };

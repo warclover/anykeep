@@ -3,11 +3,12 @@
  *
  * 作为报告类型交付物的 fallback 渲染器
  * 适用于 batch_organize, duplicate_cleanup, smart_tagging,
- * learning_path, quick_digest, reading_planner 等 Skills
+ * learning_path, quick_digest, reading_planner, inbox_digest 等 Skills
  *
- * 提取常见字段（summary, stats, suggestions）进行可视化
+ * 提取常见字段（summary/report, stats, suggestions）进行可视化
+ * 支持嵌套数据结构（如 InboxDigestSkill 的 data.overview/data.suggestions）
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-27
  */
 
@@ -24,6 +25,9 @@ import {
   Tag,
   Folder,
   AlertCircle,
+  Mail,
+  Bell,
+  Inbox,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AIMarkdown } from "./ai-markdown";
@@ -35,8 +39,15 @@ import { AIMarkdown } from "./ai-markdown";
 interface GenericReportData {
   // 常见字段
   summary?: string;
+  report?: string; // InboxDigestSkill 使用 report 字段
   suggestions?: string[];
   stats?: Record<string, unknown>;
+  data?: {
+    // 嵌套数据结构（如 InboxDigestSkill）
+    overview?: Record<string, unknown>;
+    suggestions?: string[];
+    [key: string]: unknown;
+  };
   // 其他可能的字段
   title?: string;
   generatedAt?: string;
@@ -199,6 +210,38 @@ function getStatConfig(key: string): {
       colorClass: "text-blue-600 bg-blue-100",
       label: "进度",
     },
+
+    // 消息相关（InboxDigestSkill）
+    totalMessages: {
+      icon: Inbox,
+      colorClass: "text-purple-600 bg-purple-100",
+      label: "总消息数",
+    },
+    unreadCount: {
+      icon: Mail,
+      colorClass: "text-blue-600 bg-blue-100",
+      label: "未读消息",
+    },
+    readCount: {
+      icon: CheckCircle2,
+      colorClass: "text-green-600 bg-green-100",
+      label: "已读消息",
+    },
+    importantCount: {
+      icon: Bell,
+      colorClass: "text-red-600 bg-red-100",
+      label: "重要消息",
+    },
+    normalCount: {
+      icon: Mail,
+      colorClass: "text-gray-600 bg-gray-100",
+      label: "普通消息",
+    },
+    silentCount: {
+      icon: Bell,
+      colorClass: "text-gray-500 bg-gray-50",
+      label: "静默通知",
+    },
   };
 
   return (
@@ -261,13 +304,22 @@ export const AIGenericReportContent = memo(function AIGenericReportContent({
 
   const data = content as GenericReportData;
 
-  // 提取 stats 中的可渲染项
+  // 提取摘要内容（优先 summary，其次 report）
+  const summaryContent = data.summary || data.report;
+
+  // 提取建议（优先顶层 suggestions，其次 data.suggestions）
+  const suggestions = data.suggestions?.length
+    ? data.suggestions
+    : data.data?.suggestions;
+
+  // 提取 stats 中的可渲染项（支持 stats 和 data.overview）
   const statsEntries: Array<{
     key: string;
     value: string | number;
     config: ReturnType<typeof getStatConfig>;
   }> = [];
 
+  // 从顶层 stats 提取
   if (data.stats && typeof data.stats === "object") {
     Object.entries(data.stats).forEach(([key, value]) => {
       const formattedValue = formatStatValue(value);
@@ -281,8 +333,24 @@ export const AIGenericReportContent = memo(function AIGenericReportContent({
     });
   }
 
+  // 从 data.overview 提取（如 InboxDigestSkill）
+  if (data.data?.overview && typeof data.data.overview === "object") {
+    Object.entries(data.data.overview).forEach(([key, value]) => {
+      // 避免重复添加
+      if (statsEntries.some((e) => e.key === key)) return;
+      const formattedValue = formatStatValue(value);
+      if (formattedValue !== null) {
+        statsEntries.push({
+          key,
+          value: formattedValue,
+          config: getStatConfig(key),
+        });
+      }
+    });
+  }
+
   // 没有任何可渲染内容时的 fallback
-  if (!data.summary && statsEntries.length === 0 && !data.suggestions?.length) {
+  if (!summaryContent && statsEntries.length === 0 && !suggestions?.length) {
     // 尝试渲染整个对象的 Markdown 表示
     const markdownContent = generateMarkdownFromObject(data);
     if (markdownContent) {
@@ -312,16 +380,16 @@ export const AIGenericReportContent = memo(function AIGenericReportContent({
         </div>
       )}
 
-      {/* 摘要 */}
-      {data.summary && (
+      {/* 摘要/报告 */}
+      {summaryContent && (
         <div className="space-y-2">
           <div className="flex items-center gap-1.5 text-xs font-medium text-gray-700">
             <FileText className="size-3.5" />
-            <span>摘要</span>
+            <span>{data.report ? "报告" : "摘要"}</span>
           </div>
           <div className="p-3 rounded-lg bg-gray-50 border border-gray-100">
             <AIMarkdown
-              content={data.summary}
+              content={summaryContent}
               className="text-sm text-gray-700"
             />
           </div>
@@ -329,14 +397,14 @@ export const AIGenericReportContent = memo(function AIGenericReportContent({
       )}
 
       {/* 建议 */}
-      {data.suggestions && data.suggestions.length > 0 && (
+      {suggestions && suggestions.length > 0 && (
         <div className="space-y-2">
           <div className="flex items-center gap-1.5 text-xs font-medium text-gray-700">
             <Lightbulb className="size-3.5" />
             <span>建议</span>
           </div>
           <div className="space-y-1.5">
-            {data.suggestions.slice(0, 5).map((suggestion, index) => (
+            {suggestions.slice(0, 5).map((suggestion, index) => (
               <div
                 key={index}
                 className="flex items-start gap-2 p-2 rounded-lg bg-amber-50/50 border border-amber-100"
@@ -345,9 +413,9 @@ export const AIGenericReportContent = memo(function AIGenericReportContent({
                 <span className="text-sm text-gray-700">{suggestion}</span>
               </div>
             ))}
-            {data.suggestions.length > 5 && (
+            {suggestions.length > 5 && (
               <div className="text-xs text-gray-400 text-center pt-1">
-                还有 {data.suggestions.length - 5} 条建议...
+                还有 {suggestions.length - 5} 条建议...
               </div>
             )}
           </div>

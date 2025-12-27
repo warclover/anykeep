@@ -90,6 +90,8 @@ export const TOOL_CATEGORIES = {
     "get_md_stats",
   ],
   import: ["import_bookmarks", "import_browser_bookmarks"],
+  message: ["list_messages", "summarize_unread_messages", "batch_mark_read"],
+  snapshot: ["compare_snapshots"],
 } as const;
 
 // ============================================
@@ -180,6 +182,29 @@ export const TOOL_COMPARISONS: Record<
     differences: `
 • delete_bookmark: 删除单个书签
 • batch_delete_bookmarks: 批量删除多个书签（需确认）`,
+  },
+
+  // Message 类工具对比
+  list_messages: {
+    similar: ["summarize_unread_messages"],
+    differences: `
+• list_messages: 获取消息列表（支持状态/级别筛选、分页）
+• summarize_unread_messages: 生成未读消息智能摘要（统计、分组、建议）
+查看具体消息用 list_messages，快速了解概况用 summarize_unread_messages`,
+  },
+  summarize_unread_messages: {
+    similar: ["list_messages"],
+    differences: `
+• summarize_unread_messages: 生成摘要报告（按类型/级别统计、趋势、建议）
+• list_messages: 获取消息详情列表
+用户问"有什么消息"优先使用 summarize_unread_messages`,
+  },
+  batch_mark_read: {
+    similar: ["list_messages"],
+    differences: `
+• batch_mark_read: 批量标记消息为已读（支持按 ID/类型/级别/时间筛选）
+• list_messages: 仅查询消息，不修改状态
+用户说"清理消息"或"标记已读"时使用 batch_mark_read`,
   },
 };
 
@@ -898,6 +923,28 @@ export const IMPORT_TOOL_DESCRIPTIONS = {
   }),
 };
 
+/**
+ * Snapshot 类工具增强描述
+ */
+export const SNAPSHOT_TOOL_DESCRIPTIONS = {
+  compare_snapshots: buildToolDescription({
+    core: "对比两个快照版本的内容差异，识别页面变更。",
+    scenarios: [
+      '"这个页面最近有什么变化"',
+      '"对比快照和上一版本"',
+      '"查看页面内容更新了什么"',
+      '"这篇文章有没有修改"',
+    ],
+    notes: [
+      "默认与监控基线对比（如果存在）",
+      "可指定特定的历史版本号进行对比",
+      "返回详细的差异统计和变更摘要",
+      "相似度低于 80% 视为显著变更",
+    ],
+    boundaries: ["notFound"],
+  }),
+};
+
 // ============================================
 // 合并所有描述
 // ============================================
@@ -916,6 +963,7 @@ export const ALL_TOOL_DESCRIPTIONS = {
   ...SMART_LIST_TOOL_DESCRIPTIONS,
   ...MD_COLLECTION_TOOL_DESCRIPTIONS,
   ...IMPORT_TOOL_DESCRIPTIONS,
+  ...SNAPSHOT_TOOL_DESCRIPTIONS,
 } as const;
 
 /**

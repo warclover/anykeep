@@ -1,8 +1,14 @@
 /**
  * AI Agent Tools 模块导出
  *
- * @version 1.9.0
+ * @version 2.1.0
  * @since 2025-12-23
+ *
+ * v2.1.0 新增:
+ * - 快照 Tools: compare-snapshots（快照对比）
+ *
+ * v2.0.0 新增:
+ * - 消息 Tools: list-messages, summarize-unread, batch-mark-read
  *
  * v1.9.0 新增:
  * - 工具描述模板: tool-description-templates.ts（增强型描述，提升 LLM 工具选择准确性）
@@ -67,6 +73,12 @@ export * from "./md-collection";
 // 导入 Tools (新增 v1.8.0)
 export * from "./import";
 
+// 消息 Tools (新增 v2.0.0)
+export * from "./messages";
+
+// 快照 Tools (新增 v2.1.0)
+export * from "./snapshot";
+
 // 注册默认 Tools
 import { toolRegistry } from "./tool-registry";
 import { queryTools } from "./query";
@@ -80,6 +92,8 @@ import { bookmarkTools } from "./bookmark";
 import { settingsTools } from "./settings";
 import { mdCollectionTools } from "./md-collection";
 import { importTools } from "./import";
+import { messageTools } from "./messages";
+import { snapshotTools } from "./snapshot";
 
 /**
  * 注册所有默认 Tools
@@ -98,6 +112,10 @@ export function registerDefaultTools(): void {
   toolRegistry.registerAll(mdCollectionTools);
   // 新增 Tools (v1.8.0)
   toolRegistry.registerAll(importTools);
+  // 新增 Tools (v2.0.0)
+  toolRegistry.registerAll(messageTools);
+  // 新增 Tools (v2.1.0)
+  toolRegistry.registerAll(snapshotTools);
 }
 
 /**
