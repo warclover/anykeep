@@ -64,6 +64,8 @@ export const TOOL_CATEGORIES = {
   export: ["export_bookmarks", "list_export_formats", "preview_export"],
   settings: [
     "get_user_settings",
+    "get_trust_mode",
+    "recommend_trust_mode",
     "update_trust_mode",
     "get_classification_settings",
     "update_classification_settings",
@@ -754,6 +756,37 @@ export const SETTINGS_TOOL_DESCRIPTIONS = {
     core: "获取用户的所有设置（信任模式、分类设置等）。",
     scenarios: ['"查看我的设置"', '"当前是什么模式"', '"显示AI设置"'],
     notes: ["包含信任模式、自动分类、文件夹管理等设置"],
+  }),
+
+  get_trust_mode: buildToolDescription({
+    core: "获取当前 AI 信任模式配置和核心行为。",
+    scenarios: [
+      '"当前是什么模式"',
+      '"我用的是哪个托管模式"',
+      '"查看信任模式"',
+      '"AI 模式设置"',
+    ],
+    notes: [
+      "返回当前模式：full_auto/semi_auto/manual",
+      "可选包含统计数据：纠正率、待确认数等",
+      "轻量级查询，快速返回",
+    ],
+  }),
+
+  recommend_trust_mode: buildToolDescription({
+    core: "基于用户使用习惯智能推荐最适合的 AI 信任模式。",
+    scenarios: [
+      '"推荐一个适合我的模式"',
+      '"哪个模式更适合我"',
+      '"帮我优化 AI 设置"',
+      '"应该用哪个托管模式"',
+    ],
+    notes: [
+      "分析纠正率、待确认积压、样本量、稳定期",
+      "纠正率 > 30%: 建议降低自动化",
+      "纠正率 < 5%: 建议提升自动化",
+      "刚切换不久 (<7天): 建议继续观察",
+    ],
   }),
 
   update_trust_mode: buildToolDescription({
