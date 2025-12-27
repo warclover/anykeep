@@ -35,6 +35,7 @@ import { knowledgeExtractSkill } from "./skills/knowledge-extract";
 import { linkHealthCheckSkill } from "./skills/link-health-check";
 import { ttsSynthesisSkill } from "./skills/tts-synthesis";
 import { wechatDigestSkill } from "./skills/wechat-digest";
+import { bilibiliTranscriptSkill } from "./skills/bilibili-transcript";
 import { unifiedEngine } from "./engine/unified-engine";
 import { knowledgeAgent } from "../ai-agent/core/knowledge-agent";
 import { logger } from "@/lib/logger";
@@ -176,6 +177,12 @@ export function initializeUnifiedEngine(): void {
   if (process.env.ENABLE_WECHAT_DIGEST !== "false") {
     unifiedEngine.registerOrchestrationSkill(wechatDigestSkill);
     logger.debug("WechatDigestSkill registered");
+  }
+
+  // B站字幕提取（支持 Feature Flag 开关）
+  if (process.env.ENABLE_BILIBILI_TRANSCRIPT !== "false") {
+    unifiedEngine.registerOrchestrationSkill(bilibiliTranscriptSkill);
+    logger.debug("BilibiliTranscriptSkill registered");
   }
 
   unifiedEngineInitialized = true;

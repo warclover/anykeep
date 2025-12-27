@@ -44,6 +44,8 @@ import { PerformanceMonitor } from "@/lib/utils/performance-monitor";
 import { bookmarkAITasks } from "@/lib/utils/async-task-retry";
 // Phase 4 升级：微信文章自动抓取
 import { autoFetchWechatArticle } from "@/lib/wechat-article";
+// Phase 5 升级：B站视频字幕自动提取
+import { autoFetchBilibiliTranscript } from "@/lib/bilibili-transcript";
 
 /**
  * V4.2.3: HTTP 缓存配置（优化）
@@ -938,7 +940,17 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 14. 返回创建的收藏对象
+    // 14. Phase 5 升级：B站视频字幕自动提取（异步，不阻塞响应）
+    if (platform === "BILIBILI") {
+      autoFetchBilibiliTranscript(bookmark.id, user.id, url).catch((err) => {
+        logger.warn(
+          { error: err, bookmarkId: bookmark.id },
+          "Bilibili transcript auto-fetch failed (non-blocking)",
+        );
+      });
+    }
+
+    // 15. 返回创建的收藏对象
     // 注意：分类信息现在是异步处理，前端可通过轮询或 WebSocket 获取更新
     return successResponse(bookmark, 201);
   } catch (error) {
