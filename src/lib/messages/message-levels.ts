@@ -110,6 +110,10 @@ export const MESSAGE_TYPE_LEVELS: Record<MessageType, MessageLevel> = {
   cost_warning: "important",
   cost_critical: "important",
   cost_daily_exceeded: "important",
+  // V4.3 新增：页面监控
+  page_content_changed: "normal",
+  page_monitor_failed: "normal",
+  page_monitor_quota_reached: "important",
 };
 
 // ============================================

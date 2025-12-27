@@ -42,6 +42,11 @@ function* walkTextNodes(container: Node): Generator<Text> {
 
 /**
  * 获取节点在容器内的文本偏移
+ * @param container - 容器节点
+ * @param targetNode - 目标文本节点
+ * @param nodeOffset - 节点内偏移
+ * @returns 容器内的文本偏移，找不到目标节点时返回 -1
+ * @throws 当 nodeOffset 超出文本节点长度时抛出错误
  */
 function getTextOffset(
   container: Node,
@@ -52,12 +57,20 @@ function getTextOffset(
 
   for (const textNode of walkTextNodes(container)) {
     if (textNode === targetNode) {
+      const maxOffset = textNode.textContent?.length || 0;
+      // 边界检查：确保 nodeOffset 不超出文本长度
+      if (nodeOffset > maxOffset) {
+        throw new Error(
+          `Node offset ${nodeOffset} exceeds text node length ${maxOffset}`,
+        );
+      }
       return offset + nodeOffset;
     }
     offset += textNode.textContent?.length || 0;
   }
 
-  return offset;
+  // 未找到目标节点，返回 -1 表示失败
+  return -1;
 }
 
 /**
@@ -115,25 +128,35 @@ export function getSelectionOffset(container: Element): SelectionOffset | null {
     return null;
   }
 
-  const startOffset = getTextOffset(
-    container,
-    range.startContainer,
-    range.startOffset,
-  );
-  const endOffset = getTextOffset(
-    container,
-    range.endContainer,
-    range.endOffset,
-  );
+  try {
+    const startOffset = getTextOffset(
+      container,
+      range.startContainer,
+      range.startOffset,
+    );
+    const endOffset = getTextOffset(
+      container,
+      range.endContainer,
+      range.endOffset,
+    );
 
-  // 获取选中的文本作为锚定文本
-  const anchorText = range.toString().slice(0, 100); // 限制长度
+    // 边界检查：如果未找到目标节点，返回 null
+    if (startOffset === -1 || endOffset === -1) {
+      return null;
+    }
 
-  return {
-    startOffset,
-    endOffset,
-    anchorText,
-  };
+    // 获取选中的文本作为锚定文本
+    const anchorText = range.toString().slice(0, 100); // 限制长度
+
+    return {
+      startOffset,
+      endOffset,
+      anchorText,
+    };
+  } catch {
+    // 偏移计算失败（如节点偏移超出范围）
+    return null;
+  }
 }
 
 /**
@@ -151,23 +174,34 @@ export function getRangeOffset(
     return null;
   }
 
-  const startOffset = getTextOffset(
-    container,
-    range.startContainer,
-    range.startOffset,
-  );
-  const endOffset = getTextOffset(
-    container,
-    range.endContainer,
-    range.endOffset,
-  );
-  const anchorText = range.toString().slice(0, 100);
+  try {
+    const startOffset = getTextOffset(
+      container,
+      range.startContainer,
+      range.startOffset,
+    );
+    const endOffset = getTextOffset(
+      container,
+      range.endContainer,
+      range.endOffset,
+    );
 
-  return {
-    startOffset,
-    endOffset,
-    anchorText,
-  };
+    // 边界检查：如果未找到目标节点，返回 null
+    if (startOffset === -1 || endOffset === -1) {
+      return null;
+    }
+
+    const anchorText = range.toString().slice(0, 100);
+
+    return {
+      startOffset,
+      endOffset,
+      anchorText,
+    };
+  } catch {
+    // 偏移计算失败（如节点偏移超出范围）
+    return null;
+  }
 }
 
 /**
@@ -309,43 +343,6 @@ export function fuzzyMatchAnchor(
   }
 
   return null;
-}
-
-/**
- * 计算两个字符串的相似度（Levenshtein 距离）
- * 返回 0-1 之间的值，1 表示完全相同
- */
-export function stringSimilarity(str1: string, str2: string): number {
-  if (str1 === str2) return 1;
-  if (str1.length === 0 || str2.length === 0) return 0;
-
-  const len1 = str1.length;
-  const len2 = str2.length;
-
-  // 创建距离矩阵
-  const matrix: number[][] = Array(len1 + 1)
-    .fill(null)
-    .map(() => Array(len2 + 1).fill(0));
-
-  // 初始化第一行和第一列
-  for (let i = 0; i <= len1; i++) matrix[i][0] = i;
-  for (let j = 0; j <= len2; j++) matrix[0][j] = j;
-
-  // 填充矩阵
-  for (let i = 1; i <= len1; i++) {
-    for (let j = 1; j <= len2; j++) {
-      const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
-      matrix[i][j] = Math.min(
-        matrix[i - 1][j] + 1, // 删除
-        matrix[i][j - 1] + 1, // 插入
-        matrix[i - 1][j - 1] + cost, // 替换
-      );
-    }
-  }
-
-  // 计算相似度
-  const distance = matrix[len1][len2];
-  return 1 - distance / Math.max(len1, len2);
 }
 
 /**

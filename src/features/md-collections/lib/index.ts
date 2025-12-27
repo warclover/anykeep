@@ -24,6 +24,13 @@ export {
   generateSnippet,
 } from "./md-processor";
 
+// 权限验证工具（服务端使用）
+export {
+  verifyCollectionOwnership,
+  verifyHighlightOwnership,
+  type OwnershipResult,
+} from "./permission-utils";
+
 // Server-only exports - 请直接从 './ai-processor' 导入
 // export {
 //   processMdCollectionAI,

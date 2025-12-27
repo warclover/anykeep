@@ -2117,6 +2117,58 @@ export type Database = {
           },
         ];
       };
+      /** MD 收藏高亮标记表 */
+      md_collection_highlights: {
+        Row: {
+          id: string;
+          collection_id: number;
+          user_id: string;
+          start_offset: number;
+          end_offset: number;
+          anchor_text: string;
+          color: "yellow" | "green" | "blue" | "pink" | "purple";
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          collection_id: number;
+          user_id: string;
+          start_offset: number;
+          end_offset: number;
+          anchor_text: string;
+          color: "yellow" | "green" | "blue" | "pink" | "purple";
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          collection_id?: number;
+          user_id?: string;
+          start_offset?: number;
+          end_offset?: number;
+          anchor_text?: string;
+          color?: "yellow" | "green" | "blue" | "pink" | "purple";
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "md_collection_highlights_collection_id_fkey";
+            columns: ["collection_id"];
+            isOneToOne: false;
+            referencedRelation: "md_collections";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "md_collection_highlights_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       messages: {
         Row: {
           action_label: string | null;

@@ -99,23 +99,38 @@ export function useReadingPosition({
 
   /**
    * 获取当前滚动进度
+   * 使用 getBoundingClientRect 获取准确的视口相对位置
    */
   const calculateProgress = useCallback((): number => {
     const container = contentRef.current;
     if (!container) return 0;
 
-    const scrollTop = window.scrollY;
-    const elementTop = container.offsetTop;
-    const elementHeight = container.offsetHeight;
+    const rect = container.getBoundingClientRect();
     const viewportHeight = window.innerHeight;
+    const contentHeight = container.scrollHeight || container.offsetHeight;
 
-    // 计算相对于内容区域的滚动进度
-    const scrollPosition = scrollTop - elementTop + viewportHeight;
-    const totalScrollable = elementHeight;
+    if (contentHeight <= 0) return 0;
 
-    if (totalScrollable <= 0) return 0;
+    // 计算已阅读的内容高度
+    // rect.top < 0 表示内容顶部已滚出视口
+    // rect.top >= viewportHeight 表示内容还未进入视口
+    if (rect.top >= viewportHeight) {
+      return 0; // 内容还未进入视口
+    }
 
-    const rawProgress = (scrollPosition / totalScrollable) * 100;
+    if (rect.bottom <= 0) {
+      return 100; // 内容已完全滚出视口
+    }
+
+    // 已滚过的内容高度 = 内容顶部滚出视口的部分
+    const scrolledHeight = Math.max(0, -rect.top);
+    // 可见的内容高度
+    const visibleHeight =
+      Math.min(rect.bottom, viewportHeight) - Math.max(rect.top, 0);
+    // 总阅读进度 = 已滚过 + 当前可见
+    const readHeight = scrolledHeight + visibleHeight;
+    const rawProgress = (readHeight / contentHeight) * 100;
+
     return Math.min(100, Math.max(0, rawProgress));
   }, [contentRef]);
 

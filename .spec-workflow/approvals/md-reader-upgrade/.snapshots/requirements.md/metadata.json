@@ -1,0 +1,14 @@
+{
+  "filePath": ".spec-workflow/specs/md-reader-upgrade/requirements.md",
+  "currentVersion": 1,
+  "snapshots": [
+    {
+      "version": 1,
+      "filename": "snapshot-001.json",
+      "timestamp": "2025-12-27T12:49:18.932Z",
+      "trigger": "initial",
+      "approvalId": "approval_1766839758923_ujakoqgy8",
+      "approvalTitle": "MD Reader Upgrade - Requirements Document"
+    }
+  ]
+}

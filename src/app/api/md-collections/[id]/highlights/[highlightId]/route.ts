@@ -71,7 +71,26 @@ export async function PATCH(
       return unauthorizedError();
     }
 
-    // 2. 验证高亮存在且属于当前用户（使用类型断言）
+    // 2. 双重验证：先验证 collection 所有权
+    const { data: collection, error: collectionError } = await supabase
+      .from("md_collections")
+      .select("id, user_id")
+      .eq("id", collectionId)
+      .is("deleted_at", null)
+      .single();
+
+    if (collectionError) {
+      if (collectionError.code === "PGRST116") {
+        return notFoundError(MESSAGES.NOT_FOUND);
+      }
+      return databaseError(MESSAGES.UPDATE_ERROR, collectionError);
+    }
+
+    if (collection.user_id !== user.id) {
+      return forbiddenError(AUTH.FORBIDDEN);
+    }
+
+    // 3. 验证高亮存在且属于当前用户（使用类型断言）
     const { data: existingHighlight, error: checkError } = await (
       supabase as unknown as {
         from: (table: string) => {
@@ -207,7 +226,26 @@ export async function DELETE(
       return unauthorizedError();
     }
 
-    // 2. 验证高亮存在且属于当前用户（使用类型断言）
+    // 2. 双重验证：先验证 collection 所有权
+    const { data: collection, error: collectionError } = await supabase
+      .from("md_collections")
+      .select("id, user_id")
+      .eq("id", collectionId)
+      .is("deleted_at", null)
+      .single();
+
+    if (collectionError) {
+      if (collectionError.code === "PGRST116") {
+        return notFoundError(MESSAGES.NOT_FOUND);
+      }
+      return databaseError(MESSAGES.DELETE_ERROR, collectionError);
+    }
+
+    if (collection.user_id !== user.id) {
+      return forbiddenError(AUTH.FORBIDDEN);
+    }
+
+    // 3. 验证高亮存在且属于当前用户（使用类型断言）
     const { data: existingHighlight, error: checkError } = await (
       supabase as unknown as {
         from: (table: string) => {
