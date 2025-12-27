@@ -48,7 +48,128 @@ chrome.runtime.onInstalled.addListener((details) => {
       url: "https://anykeep.com/extension/welcome",
     });
   }
+
+  // 创建右键菜单
+  createContextMenus();
 });
+
+// ============================================
+// 右键菜单
+// ============================================
+
+/**
+ * 创建右键菜单
+ */
+function createContextMenus(): void {
+  // 清除现有菜单
+  chrome.contextMenus.removeAll(() => {
+    // 保存页面
+    chrome.contextMenus.create({
+      id: "save-page",
+      title: "保存此页面到 AnyKeep",
+      contexts: ["page"],
+    });
+
+    // 保存链接
+    chrome.contextMenus.create({
+      id: "save-link",
+      title: "保存此链接到 AnyKeep",
+      contexts: ["link"],
+    });
+
+    // 保存选中文本
+    chrome.contextMenus.create({
+      id: "save-selection",
+      title: "保存选中内容到 AnyKeep",
+      contexts: ["selection"],
+    });
+  });
+}
+
+// 右键菜单点击处理
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+  if (!tab?.id || !tab?.url) return;
+
+  try {
+    switch (info.menuItemId) {
+      case "save-page": {
+        const result = await quickSaveBookmark(tab.url, tab.title || tab.url);
+        if (result.success) {
+          notifyContentScript(tab.id, "SHOW_SAVE_SUCCESS");
+          updateBadge("saved");
+          setTimeout(() => updateBadge("default"), 3000);
+        } else {
+          notifyContentScript(tab.id, "SHOW_SAVE_ERROR", {
+            message: result.error,
+          });
+          updateBadge("error");
+        }
+        break;
+      }
+
+      case "save-link": {
+        if (info.linkUrl) {
+          const result = await quickSaveBookmark(
+            info.linkUrl,
+            info.linkUrl, // 使用 URL 作为标题
+            { description: `来自: ${tab.url}` },
+          );
+          if (result.success) {
+            notifyContentScript(tab.id, "SHOW_SAVE_SUCCESS");
+            updateBadge("saved");
+            setTimeout(() => updateBadge("default"), 3000);
+          } else {
+            notifyContentScript(tab.id, "SHOW_SAVE_ERROR", {
+              message: result.error,
+            });
+            updateBadge("error");
+          }
+        }
+        break;
+      }
+
+      case "save-selection": {
+        if (info.selectionText) {
+          const result = await quickSaveBookmark(tab.url, tab.title || tab.url, {
+            description: info.selectionText.slice(0, 500), // 限制长度
+          });
+          if (result.success) {
+            notifyContentScript(tab.id, "SHOW_SAVE_SUCCESS");
+            updateBadge("saved");
+            setTimeout(() => updateBadge("default"), 3000);
+          } else {
+            notifyContentScript(tab.id, "SHOW_SAVE_ERROR", {
+              message: result.error,
+            });
+            updateBadge("error");
+          }
+        }
+        break;
+      }
+    }
+  } catch (error) {
+    console.error("[AnyKeep] Context menu action failed:", error);
+    if (tab?.id) {
+      notifyContentScript(tab.id, "SHOW_SAVE_ERROR", {
+        message: error instanceof Error ? error.message : "保存失败",
+      });
+    }
+    updateBadge("error");
+  }
+});
+
+/**
+ * 通知 Content Script
+ */
+function notifyContentScript(
+  tabId: number,
+  type: string,
+  payload?: unknown,
+): void {
+  chrome.tabs.sendMessage(tabId, { type, payload }).catch(() => {
+    // Content script 可能未加载，忽略错误
+  });
+}
 
 // ============================================
 // 扩展图标点击事件
@@ -192,6 +313,25 @@ async function handleMessage(
     case "GET_SELECTION": {
       const selection = await getSelection();
       return { success: true, data: selection };
+    }
+
+    case "SAVE_SELECTION": {
+      // 来自 Content Script 的保存选中内容请求
+      const payload = message.payload as {
+        text: string;
+        html?: string;
+        url: string;
+        title: string;
+      };
+
+      if (!payload?.text || !payload?.url) {
+        return { success: false, error: "Invalid selection data" };
+      }
+
+      const result = await quickSaveBookmark(payload.url, payload.title, {
+        description: payload.text.slice(0, 500), // 限制描述长度
+      });
+      return result;
     }
 
     default:

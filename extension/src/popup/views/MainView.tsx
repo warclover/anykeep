@@ -11,6 +11,7 @@ import { QuickSaveTab } from "./tabs/QuickSaveTab";
 import { RecentTab } from "./tabs/RecentTab";
 import { SearchTab } from "./tabs/SearchTab";
 import { ChatTab } from "./tabs/ChatTab";
+import { SettingsTab } from "./tabs/SettingsTab";
 
 interface MainViewProps {
   onLogout: () => void;
@@ -35,6 +36,11 @@ export function MainView({ onLogout }: MainViewProps) {
   const [activeTab, setActiveTab] = useState<TabId>("save");
   const [showSettings, setShowSettings] = useState(false);
 
+  // 显示设置面板
+  if (showSettings) {
+    return <SettingsTab onBack={() => setShowSettings(false)} />;
+  }
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -48,7 +54,7 @@ export function MainView({ onLogout }: MainViewProps) {
 
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setShowSettings(!showSettings)}
+            onClick={() => setShowSettings(true)}
             className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
             title="设置"
           >

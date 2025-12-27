@@ -11,12 +11,18 @@
 
 import { getApiBaseUrl } from "./api";
 
-// Token 存储 Keys
+// Token 存储 Keys（持久化存储）
 const STORAGE_KEYS = {
   ACCESS_TOKEN: "anykeep_access_token",
   REFRESH_TOKEN: "anykeep_refresh_token",
   TOKEN_EXPIRES_AT: "anykeep_token_expires_at",
   USER_INFO: "anykeep_user_info",
+} as const;
+
+// OAuth 临时状态 Keys（会话存储，Service Worker 重启后保留）
+const SESSION_KEYS = {
+  CODE_VERIFIER: "anykeep_code_verifier",
+  OAUTH_STATE: "anykeep_oauth_state",
 } as const;
 
 // Token 类型
@@ -32,7 +38,13 @@ interface UserInfo {
   nickname?: string;
 }
 
+// ============================================
 // PKCE 工具函数
+// ============================================
+
+/**
+ * 生成随机字符串
+ */
 function generateRandomString(length: number): string {
   const array = new Uint8Array(length);
   crypto.getRandomValues(array);
@@ -41,6 +53,9 @@ function generateRandomString(length: number): string {
   );
 }
 
+/**
+ * 生成 PKCE code_challenge
+ */
 async function generateCodeChallenge(verifier: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(verifier);
@@ -51,8 +66,9 @@ async function generateCodeChallenge(verifier: string): Promise<string> {
     .replace(/=+$/, "");
 }
 
-// 存储 PKCE verifier（临时，用于 OAuth 回调）
-let pendingCodeVerifier: string | null = null;
+// ============================================
+// OAuth 流程
+// ============================================
 
 /**
  * 启动 OAuth 授权流程
@@ -62,9 +78,11 @@ export async function startOAuthFlow(): Promise<void> {
   const codeChallenge = await generateCodeChallenge(codeVerifier);
   const state = generateRandomString(32);
 
-  // 保存 verifier 用于后续交换
-  pendingCodeVerifier = codeVerifier;
-  await chrome.storage.local.set({ pending_oauth_state: state });
+  // 使用 session storage 存储临时状态（Service Worker 重启后保留）
+  await chrome.storage.session.set({
+    [SESSION_KEYS.CODE_VERIFIER]: codeVerifier,
+    [SESSION_KEYS.OAUTH_STATE]: state,
+  });
 
   const baseUrl = getApiBaseUrl();
   const authUrl = new URL(`${baseUrl}/api/auth/plugin/authorize`);
@@ -88,7 +106,8 @@ export async function startOAuthFlow(): Promise<void> {
     }
   } catch (error) {
     console.error("[Auth] OAuth flow error:", error);
-    pendingCodeVerifier = null;
+    // 清理临时状态
+    await clearOAuthSession();
     throw error;
   }
 }
@@ -103,27 +122,45 @@ async function handleOAuthCallback(redirectUrl: string): Promise<void> {
   const error = url.searchParams.get("error");
 
   if (error) {
+    await clearOAuthSession();
     throw new Error(`OAuth error: ${error}`);
   }
 
-  if (!code || !pendingCodeVerifier) {
+  // 获取保存的临时状态
+  const sessionData = await chrome.storage.session.get([
+    SESSION_KEYS.CODE_VERIFIER,
+    SESSION_KEYS.OAUTH_STATE,
+  ]);
+
+  const savedVerifier = sessionData[SESSION_KEYS.CODE_VERIFIER];
+  const savedState = sessionData[SESSION_KEYS.OAUTH_STATE];
+
+  if (!code || !savedVerifier) {
+    await clearOAuthSession();
     throw new Error("Missing authorization code or verifier");
   }
 
   // 验证 state
-  const { pending_oauth_state: savedState } = await chrome.storage.local.get(
-    "pending_oauth_state",
-  );
   if (state !== savedState) {
+    await clearOAuthSession();
     throw new Error("State mismatch");
   }
 
   // 交换 code 获取 tokens
-  await exchangeCodeForTokens(code, pendingCodeVerifier);
+  await exchangeCodeForTokens(code, savedVerifier);
 
-  // 清理
-  pendingCodeVerifier = null;
-  await chrome.storage.local.remove("pending_oauth_state");
+  // 清理临时状态
+  await clearOAuthSession();
+}
+
+/**
+ * 清理 OAuth 会话状态
+ */
+async function clearOAuthSession(): Promise<void> {
+  await chrome.storage.session.remove([
+    SESSION_KEYS.CODE_VERIFIER,
+    SESSION_KEYS.OAUTH_STATE,
+  ]);
 }
 
 /**
@@ -163,6 +200,10 @@ async function exchangeCodeForTokens(
     await saveUserInfo(data.user);
   }
 }
+
+// ============================================
+// Token 管理
+// ============================================
 
 /**
  * 刷新 Access Token
@@ -244,6 +285,10 @@ async function saveTokens(tokens: TokenPair): Promise<void> {
   });
 }
 
+// ============================================
+// 用户信息
+// ============================================
+
 /**
  * 保存用户信息
  */
@@ -260,6 +305,10 @@ export async function getUserInfo(): Promise<UserInfo | null> {
   const result = await chrome.storage.local.get(STORAGE_KEYS.USER_INFO);
   return result[STORAGE_KEYS.USER_INFO] || null;
 }
+
+// ============================================
+// 认证状态
+// ============================================
 
 /**
  * 检查认证状态
@@ -310,7 +359,7 @@ export async function logout(): Promise<void> {
 }
 
 /**
- * 清除认证状态（登出）
+ * 清除认证状态
  */
 export async function clearAuth(): Promise<void> {
   await chrome.storage.local.remove([

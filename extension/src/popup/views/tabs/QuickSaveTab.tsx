@@ -28,9 +28,9 @@ export function QuickSaveTab() {
         // 检查是否已保存
         setSaveStatus("checking");
         chrome.runtime.sendMessage(
-          { type: "CHECK_URL_SAVED", payload: { url: tabs[0].url } },
-          (response) => {
-            if (response?.saved) {
+          { type: "CHECK_URL", payload: { url: tabs[0].url } },
+          (response: { success?: boolean; data?: { saved: boolean } }) => {
+            if (response?.success && response?.data?.saved) {
               setSaveStatus("saved");
             } else {
               setSaveStatus("idle");

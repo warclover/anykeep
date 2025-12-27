@@ -20,10 +20,14 @@ export function RecentTab() {
 
     chrome.runtime.sendMessage(
       { type: "GET_RECENT", payload: { limit: 10 } },
-      (response) => {
+      (response: {
+        success?: boolean;
+        data?: Bookmark[];
+        error?: string;
+      }) => {
         setLoading(false);
-        if (response?.bookmarks) {
-          setBookmarks(response.bookmarks);
+        if (response?.success && response?.data) {
+          setBookmarks(response.data);
         } else if (response?.error) {
           setError(response.error);
         }

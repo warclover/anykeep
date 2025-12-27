@@ -31,12 +31,23 @@ const manifest: ManifestV3Export = {
     type: "module",
   },
 
+  // Content Script
+  content_scripts: [
+    {
+      matches: ["<all_urls>"],
+      js: ["src/content/index.ts"],
+      run_at: "document_idle",
+    },
+  ],
+
   // 权限
   permissions: [
     "storage", // 本地存储
     "tabs", // 访问标签页信息
     "activeTab", // 访问当前活动标签页
     "identity", // OAuth 认证
+    "contextMenus", // 右键菜单
+    "scripting", // 脚本注入
   ],
 
   // 主机权限 - AnyKeep API

@@ -116,6 +116,12 @@ const DEFAULT_SKILL_MAPPINGS: Record<string, OrchestrationSkillMapping> = {
     minComplexity: "medium",
     enabled: true, // 已实现
   },
+  "create:tts": {
+    skillId: "tts_synthesis",
+    name: "语音朗读助手",
+    minComplexity: "simple",
+    enabled: true, // 已实现
+  },
 };
 
 /**

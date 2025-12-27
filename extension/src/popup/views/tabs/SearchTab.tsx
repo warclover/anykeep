@@ -9,11 +9,6 @@ interface Bookmark {
   tags?: string[];
 }
 
-interface SearchResult {
-  bookmarks: Bookmark[];
-  total: number;
-}
-
 export function SearchTab() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Bookmark[]>([]);
@@ -33,11 +28,15 @@ export function SearchTab() {
 
     chrome.runtime.sendMessage(
       { type: "SEARCH", payload: { query: searchQuery.trim(), limit: 20 } },
-      (response: { results?: SearchResult; error?: string }) => {
+      (response: {
+        success?: boolean;
+        data?: { bookmarks: Bookmark[]; total: number };
+        error?: string;
+      }) => {
         setLoading(false);
-        if (response?.results) {
-          setResults(response.results.bookmarks);
-          setTotal(response.results.total);
+        if (response?.success && response?.data) {
+          setResults(response.data.bookmarks);
+          setTotal(response.data.total);
         } else {
           setResults([]);
           setTotal(0);
