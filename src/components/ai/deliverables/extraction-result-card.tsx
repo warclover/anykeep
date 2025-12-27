@@ -32,6 +32,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { AIMarkdown } from "../ai-markdown";
 import type {
   KnowledgeExtraction,
   KeyPoint,
@@ -496,9 +497,7 @@ const FormattedContentPreview = memo(function FormattedContentPreview({
         </div>
       </div>
       <div className="p-4 max-h-80 overflow-y-auto">
-        <pre className="whitespace-pre-wrap text-sm text-gray-600 font-sans leading-relaxed">
-          {previewContent}
-        </pre>
+        <AIMarkdown content={previewContent} className="text-sm" />
       </div>
     </div>
   );

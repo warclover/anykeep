@@ -28,6 +28,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AIMarkdown } from "../ai-markdown";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type {
@@ -473,9 +474,14 @@ const DigestContentCard = memo(function DigestContentCard({
       {/* 内容 */}
       {isExpanded && (
         <div className="p-4">
-          <pre className="whitespace-pre-wrap text-sm text-gray-600 font-sans leading-relaxed max-h-96 overflow-y-auto">
-            {isExpanded && content.length > 500 ? content : previewContent}
-          </pre>
+          <div className="max-h-96 overflow-y-auto">
+            <AIMarkdown
+              content={
+                isExpanded && content.length > 500 ? content : previewContent
+              }
+              className="text-sm"
+            />
+          </div>
         </div>
       )}
     </div>

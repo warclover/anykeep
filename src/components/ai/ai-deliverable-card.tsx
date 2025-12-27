@@ -244,8 +244,12 @@ const ListContent = memo(function ListContent({
           <span className="flex-shrink-0 size-5 flex items-center justify-center rounded-full bg-purple-100 text-purple-600 text-xs font-medium">
             {index + 1}
           </span>
-          <span className="text-sm text-gray-700">
-            {typeof item === "string" ? item : JSON.stringify(item)}
+          <span className="text-sm text-gray-700 flex-1">
+            {typeof item === "string" ? (
+              <AIMarkdown content={item} />
+            ) : (
+              JSON.stringify(item)
+            )}
           </span>
         </li>
       ))}
