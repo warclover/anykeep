@@ -1,8 +1,9 @@
 /**
  * 数据查询 Tools 导出
  *
- * @version 2.0.0
+ * @version 2.1.0
  * @since 2025-12-23
+ * @updated 2025-12-27 添加 list_wechat_articles Tool
  * @description 简化版 Tools，每个 Tool 只做一件事，参数尽量少
  */
 
@@ -10,6 +11,7 @@
 export { listRecentTool } from "./list-recent.tool";
 export { listByFolderTool } from "./list-by-folder.tool";
 export { listByPlatformTool } from "./list-by-platform.tool";
+export { listWechatArticlesTool } from "./list-wechat-articles.tool";
 
 // 统计类（简化版）
 export { countTotalTool } from "./count-total.tool";
@@ -23,6 +25,7 @@ export { getStatsTool } from "./get-stats.tool";
 import { listRecentTool } from "./list-recent.tool";
 import { listByFolderTool } from "./list-by-folder.tool";
 import { listByPlatformTool } from "./list-by-platform.tool";
+import { listWechatArticlesTool } from "./list-wechat-articles.tool";
 import { countTotalTool } from "./count-total.tool";
 import { countByFolderTool } from "./count-by-folder.tool";
 import { countByPlatformTool } from "./count-by-platform.tool";
@@ -36,6 +39,7 @@ export const queryTools = [
   // 按条件筛选（1-2参数）
   listByFolderTool,
   listByPlatformTool,
+  listWechatArticlesTool,
   countByFolderTool,
   countByPlatformTool,
   // 详细统计概览

@@ -1,9 +1,9 @@
 /**
  * AI Skills 集合导出
  *
- * @version 1.4.0
+ * @version 1.5.0
  * @since 2025-12-22
- * @updated 2025-12-24 - 修复类型导出冲突（DuplicateGroup, TagSuggestion）
+ * @updated 2025-12-27 - 添加 WechatDigestSkill
  */
 
 // SearchSkill - 书签搜索
@@ -138,3 +138,6 @@ export type {
   RawConceptResponse,
   ExtractionStepData,
 } from "./knowledge-extract/types";
+
+// WechatDigestSkill - 微信阅读摘要（编排 Skill）
+export * from "./wechat-digest";
