@@ -34,7 +34,7 @@ export interface CorrectionDetection {
  * 意图显示名称映射
  *
  * 注意：IntentType 统一使用 router/types 定义
- * 完整类型：query | action | organize | analyze | learn | create | chitchat
+ * 完整类型：query | action | organize | analyze | learn | create | refine | chitchat
  */
 export const INTENT_DISPLAY_NAMES: Record<IntentType, string> = {
   query: "搜索查询",
@@ -43,6 +43,7 @@ export const INTENT_DISPLAY_NAMES: Record<IntentType, string> = {
   analyze: "数据分析",
   learn: "知识学习",
   create: "内容创作",
+  refine: "结果筛选",
   chitchat: "闲聊问答",
 };
 

@@ -51,6 +51,18 @@ export interface MentionedEntity {
 }
 
 /**
+ * 搜索结果项摘要（用于序数引用）
+ */
+export interface SearchResultItemSummary {
+  /** 书签 ID */
+  id: number;
+  /** 标题 */
+  title: string;
+  /** 摘要（截取前 100 字符） */
+  summary?: string;
+}
+
+/**
  * 搜索结果摘要
  */
 export interface SearchResultSummary {
@@ -64,6 +76,8 @@ export interface SearchResultSummary {
   searchedAt: number;
   /** 来源消息 ID */
   sourceMessageId?: string;
+  /** 结果摘要（前 10 条，用于序数引用时提供上下文） */
+  resultSummaries?: SearchResultItemSummary[];
 }
 
 /**
@@ -169,7 +183,10 @@ export type ReferenceType =
   | "that_folder" // 那个文件夹
   | "that_bookmark" // 那篇文章、那个链接
   | "previous" // 上一个
-  | "mentioned"; // 提到的
+  | "mentioned" // 提到的
+  | "ordinal_result" // 第N个（新增）
+  | "last_result" // 最后一个（新增）
+  | "range_result"; // 前N个/后N个（新增）
 
 /**
  * 解析后的指代

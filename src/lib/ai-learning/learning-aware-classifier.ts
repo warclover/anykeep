@@ -398,6 +398,7 @@ export class LearningAwareClassifier {
         analyze: "query",
         learn: "query",
         create: "organize",
+        refine: "query",
         chitchat: "query",
       };
       return alternatives[wrongIntent];

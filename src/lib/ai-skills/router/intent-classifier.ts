@@ -143,6 +143,38 @@ const DEFAULT_RULES: IntentRule[] = [
   },
 
   // ============================================
+  // 过滤/筛选类（需要上下文有搜索结果）
+  // ============================================
+  {
+    pattern: /里面|其中|当中/,
+    type: "refine",
+    subType: "filter",
+    complexity: "simple",
+    weight: 75,
+  },
+  {
+    pattern: /有没有.{1,10}的|有.{1,10}的吗/,
+    type: "refine",
+    subType: "check",
+    complexity: "simple",
+    weight: 70,
+  },
+  {
+    pattern: /哪[几个篇条]+.{0,5}是.{0,10}的|哪[几个篇条]+.{0,5}关于/,
+    type: "refine",
+    subType: "filter",
+    complexity: "simple",
+    weight: 72,
+  },
+  {
+    pattern: /筛选|过滤|只看|只要/,
+    type: "refine",
+    subType: "filter",
+    complexity: "simple",
+    weight: 68,
+  },
+
+  // ============================================
   // 查询类（简单任务）
   // ============================================
   {

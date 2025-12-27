@@ -4,8 +4,9 @@
  * 搜索书签（极简版）
  * 只需提供搜索词，自动使用混合搜索模式
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-23
+ * @updated 2025-12-27 - 添加搜索结果持久化到会话状态
  */
 
 import { z } from "zod";
@@ -13,6 +14,7 @@ import type { Tool, ToolContext, ToolResult } from "../types";
 import { searchSkill } from "@/lib/ai-skills/skills/search";
 import { logger } from "@/lib/logger";
 import { SEARCH_TOOL_DESCRIPTIONS } from "../tool-description-templates";
+import { sessionMemory } from "@/lib/ai-memory";
 
 // ============================================
 // 参数定义（极简）
@@ -114,6 +116,47 @@ export const searchTool: Tool<SearchParams, SearchResult> = {
         })),
         total: skillResult.data.totalCount,
       };
+
+      // 更新会话状态：记录搜索结果（用于后续序数引用）
+      if (context.conversationId && result.results.length > 0) {
+        const state = sessionMemory.getOrCreateState(
+          context.conversationId,
+          context.userId,
+        );
+
+        if (state) {
+          // 记录搜索结果
+          sessionMemory.recordSearchResults(context.conversationId, {
+            query: params.query,
+            resultCount: result.total,
+            resultIds: result.results.map((r) => r.id),
+            searchedAt: Date.now(),
+            // 存储前 10 条结果摘要，用于序数引用时提供上下文
+            resultSummaries: result.results.slice(0, 10).map((r) => ({
+              id: r.id,
+              title: r.title,
+              summary: r.summary?.substring(0, 100),
+            })),
+          });
+
+          // 记录输出摘要
+          sessionMemory.recordOutput(context.conversationId, {
+            type: "list",
+            summary: `搜索"${params.query}"找到 ${result.total} 条结果`,
+            relatedEntityIds: result.results.map((r) => r.id),
+            outputAt: Date.now(),
+          });
+
+          logger.debug(
+            {
+              conversationId: context.conversationId,
+              query: params.query.substring(0, 30),
+              resultCount: result.results.length,
+            },
+            "search_bookmarks: Updated session memory",
+          );
+        }
+      }
 
       logger.info(
         {

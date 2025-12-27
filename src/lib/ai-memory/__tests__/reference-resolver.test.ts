@@ -386,4 +386,212 @@ describe("ReferenceResolver", () => {
       expect(result.references.length).toBe(2);
     });
   });
+
+  // ==========================================================================
+  // 序数指代解析测试（v1.1.0 新增）
+  // ==========================================================================
+
+  describe("resolve - 序数指代（第N篇）", () => {
+    const createStateWithSearchResults = (count: number) => {
+      const resultIds = Array.from({ length: count }, (_, i) => 100 + i);
+      const resultSummaries = resultIds.map((id, i) => ({
+        id,
+        title: `搜索结果标题 ${i + 1}`,
+        summary: `这是第 ${i + 1} 篇文章的摘要`,
+      }));
+
+      return createState({
+        lastSearchResults: {
+          query: "Claude",
+          resultCount: count,
+          resultIds,
+          searchedAt: Date.now(),
+          resultSummaries,
+        },
+      });
+    };
+
+    it("should resolve '第一篇' to first search result", () => {
+      const state = createStateWithSearchResults(5);
+      const result = resolver.resolve("第一篇是什么？", state);
+
+      expect(result.references.length).toBe(1);
+      expect(result.references[0].type).toBe("ordinal_result");
+      expect(result.references[0].resolvedEntities[0].id).toBe(100);
+      expect(result.references[0].resolvedEntities[0].name).toBe(
+        "搜索结果标题 1",
+      );
+    });
+
+    it("should resolve '第三个' to third search result", () => {
+      const state = createStateWithSearchResults(5);
+      const result = resolver.resolve("第三个讲了什么？", state);
+
+      expect(result.references.length).toBe(1);
+      expect(result.references[0].type).toBe("ordinal_result");
+      expect(result.references[0].resolvedEntities[0].id).toBe(102);
+    });
+
+    it("should resolve '第5篇文章' with Arabic numeral", () => {
+      const state = createStateWithSearchResults(10);
+      const result = resolver.resolve("第5篇文章怎么样？", state);
+
+      expect(result.references.length).toBe(1);
+      expect(result.references[0].resolvedEntities[0].id).toBe(104);
+    });
+
+    it("should resolve '第二条' variant", () => {
+      const state = createStateWithSearchResults(5);
+      const result = resolver.resolve("第二条结果", state);
+
+      expect(result.references.length).toBe(1);
+      expect(result.references[0].resolvedEntities[0].id).toBe(101);
+    });
+
+    it("should handle ordinal out of range", () => {
+      const state = createStateWithSearchResults(3);
+      const result = resolver.resolve("第十篇是什么？", state);
+
+      // 超出范围应该无法解析
+      expect(result.hasUnresolvedReferences).toBe(true);
+    });
+
+    it("should handle missing search results", () => {
+      const state = createState(); // 无搜索结果
+      const result = resolver.resolve("第一篇是什么？", state);
+
+      expect(result.hasUnresolvedReferences).toBe(true);
+    });
+  });
+
+  describe("resolve - 最后一篇", () => {
+    it("should resolve '最后一篇' to last search result", () => {
+      const state = createState({
+        lastSearchResults: {
+          query: "test",
+          resultCount: 5,
+          resultIds: [101, 102, 103, 104, 105],
+          searchedAt: Date.now(),
+          resultSummaries: [
+            { id: 101, title: "第一篇" },
+            { id: 105, title: "最后一篇标题" },
+          ],
+        },
+      });
+
+      const result = resolver.resolve("最后一篇是关于什么的？", state);
+
+      expect(result.references.length).toBe(1);
+      expect(result.references[0].type).toBe("last_result");
+      expect(result.references[0].resolvedEntities[0].id).toBe(105);
+    });
+
+    it("should resolve '最后一个' variant", () => {
+      const state = createState({
+        lastSearchResults: {
+          query: "test",
+          resultCount: 3,
+          resultIds: [1, 2, 3],
+          searchedAt: Date.now(),
+        },
+      });
+
+      const result = resolver.resolve("最后一个结果", state);
+
+      expect(result.references.length).toBe(1);
+      expect(result.references[0].resolvedEntities[0].id).toBe(3);
+    });
+
+    it("should resolve '最后条' without 一", () => {
+      const state = createState({
+        lastSearchResults: {
+          query: "test",
+          resultCount: 2,
+          resultIds: [10, 20],
+          searchedAt: Date.now(),
+        },
+      });
+
+      const result = resolver.resolve("最后条", state);
+
+      expect(result.references.length).toBe(1);
+      expect(result.references[0].resolvedEntities[0].id).toBe(20);
+    });
+  });
+
+  describe("resolve - 范围指代（前N篇/后N篇）", () => {
+    const createStateWithResults = () =>
+      createState({
+        lastSearchResults: {
+          query: "Claude",
+          resultCount: 10,
+          resultIds: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+          searchedAt: Date.now(),
+          resultSummaries: Array.from({ length: 10 }, (_, i) => ({
+            id: i + 1,
+            title: `文章 ${i + 1}`,
+          })),
+        },
+      });
+
+    it("should resolve '前三篇' to first three results", () => {
+      const state = createStateWithResults();
+      const result = resolver.resolve("前三篇有什么共同点？", state);
+
+      expect(result.references.length).toBe(1);
+      expect(result.references[0].type).toBe("range_result");
+      expect(result.references[0].resolvedEntities.length).toBe(3);
+      expect(result.references[0].resolvedEntities.map((e) => e.id)).toEqual([
+        1, 2, 3,
+      ]);
+    });
+
+    it("should resolve '前5个' with Arabic numeral", () => {
+      const state = createStateWithResults();
+      const result = resolver.resolve("看看前5个", state);
+
+      expect(result.references.length).toBe(1);
+      expect(result.references[0].resolvedEntities.length).toBe(5);
+    });
+
+    it("should resolve '后两篇' to last two results", () => {
+      const state = createStateWithResults();
+      const result = resolver.resolve("后两篇讲了什么？", state);
+
+      expect(result.references.length).toBe(1);
+      expect(result.references[0].type).toBe("range_result");
+      expect(result.references[0].resolvedEntities.length).toBe(2);
+      expect(result.references[0].resolvedEntities.map((e) => e.id)).toEqual([
+        9, 10,
+      ]);
+    });
+
+    it("should resolve '后3条' with Arabic numeral", () => {
+      const state = createStateWithResults();
+      const result = resolver.resolve("后3条结果", state);
+
+      expect(result.references.length).toBe(1);
+      expect(result.references[0].resolvedEntities.map((e) => e.id)).toEqual([
+        8, 9, 10,
+      ]);
+    });
+  });
+
+  describe("hasReferences - 序数检测", () => {
+    it("should detect '第一篇' reference", () => {
+      expect(resolver.hasReferences("第一篇是什么")).toBe(true);
+    });
+
+    it("should detect '最后一个' reference", () => {
+      expect(resolver.hasReferences("最后一个讲了什么")).toBe(true);
+    });
+
+    it("should detect '前三篇' reference", () => {
+      expect(resolver.hasReferences("看看前三篇")).toBe(true);
+    });
+
+    it("should detect '后5条' reference", () => {
+      expect(resolver.hasReferences("后5条怎么样")).toBe(true);
+    });
+  });
 });

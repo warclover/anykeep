@@ -6,8 +6,9 @@
  * - 基于会话状态解析指代词的实际指向
  * - 生成解析后的输入供后续处理
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-25
+ * @updated 2025-12-27 - 添加序数指代解析（第N篇、最后一篇等）
  */
 
 import { logger } from "@/lib/logger";
@@ -20,6 +21,61 @@ import type {
   ReferenceResolverConfig,
 } from "./types";
 import { DEFAULT_REFERENCE_RESOLVER_CONFIG } from "./types";
+
+// ============================================
+// 辅助函数
+// ============================================
+
+/**
+ * 中文数字映射表
+ */
+const CHINESE_NUMBERS: Record<string, number> = {
+  一: 1,
+  二: 2,
+  三: 3,
+  四: 4,
+  五: 5,
+  六: 6,
+  七: 7,
+  八: 8,
+  九: 9,
+  十: 10,
+  两: 2,
+};
+
+/**
+ * 从匹配文本中提取序数
+ *
+ * @param match - 匹配的文本，如"第一篇"、"第3个"
+ * @returns 序数值，无法解析返回 0
+ */
+function extractOrdinal(match: string): number {
+  // 匹配阿拉伯数字
+  const arabicMatch = match.match(/\d+/);
+  if (arabicMatch) {
+    return parseInt(arabicMatch[0], 10);
+  }
+
+  // 匹配中文数字
+  const chineseMatch = match.match(/[一二三四五六七八九十两]/);
+  if (chineseMatch) {
+    return CHINESE_NUMBERS[chineseMatch[0]] || 0;
+  }
+
+  return 0;
+}
+
+/**
+ * 从匹配文本中提取范围
+ *
+ * @param match - 匹配的文本，如"前三篇"、"后5个"
+ * @returns { count: 数量, isFromEnd: 是否从末尾开始 }
+ */
+function extractRange(match: string): { count: number; isFromEnd: boolean } {
+  const isFromEnd = match.startsWith("后");
+  const count = extractOrdinal(match);
+  return { count, isFromEnd };
+}
 
 // ============================================
 // 指代词模式定义
@@ -46,6 +102,111 @@ interface ReferencePattern {
  * 指代词模式列表
  */
 const REFERENCE_PATTERNS: ReferencePattern[] = [
+  // ============================================
+  // 序数指代（最高优先级）
+  // ============================================
+
+  // 第N篇/个 → lastSearchResults[N-1]
+  {
+    patterns: [/第[一二三四五六七八九十两\d]+(?:篇|个|条)(?:文章|内容|结果)?/g],
+    type: "ordinal_result",
+    resolve: (match, state) => {
+      if (
+        !state.lastSearchResults ||
+        state.lastSearchResults.resultIds.length === 0
+      ) {
+        return null;
+      }
+
+      const ordinal = extractOrdinal(match);
+      const ids = state.lastSearchResults.resultIds;
+      const summaries = state.lastSearchResults.resultSummaries;
+
+      if (ordinal > 0 && ordinal <= ids.length) {
+        const id = ids[ordinal - 1];
+        const summary = summaries?.find((s) => s.id === id);
+
+        return [
+          {
+            type: "bookmark" as const,
+            id,
+            name: summary?.title || `搜索结果第 ${ordinal} 篇`,
+            mentionedAt: Date.now(),
+          },
+        ];
+      }
+      return null;
+    },
+    priority: 0, // 最高优先级
+  },
+
+  // 最后一篇/个
+  {
+    patterns: [/最后(?:一)?(?:篇|个|条)(?:文章|内容|结果)?/g],
+    type: "last_result",
+    resolve: (match, state) => {
+      if (
+        !state.lastSearchResults ||
+        state.lastSearchResults.resultIds.length === 0
+      ) {
+        return null;
+      }
+
+      const ids = state.lastSearchResults.resultIds;
+      const summaries = state.lastSearchResults.resultSummaries;
+      const lastId = ids[ids.length - 1];
+      const summary = summaries?.find((s) => s.id === lastId);
+
+      return [
+        {
+          type: "bookmark" as const,
+          id: lastId,
+          name: summary?.title || "搜索结果最后一篇",
+          mentionedAt: Date.now(),
+        },
+      ];
+    },
+    priority: 0,
+  },
+
+  // 前N篇/后N篇
+  // 注意：后N篇需要排除"最后一篇"的情况，使用负向后行断言
+  {
+    patterns: [
+      /前[一二三四五六七八九十两\d]+(?:篇|个|条)/g,
+      /(?<!最)后[一二三四五六七八九十两\d]+(?:篇|个|条)/g,
+    ],
+    type: "range_result",
+    resolve: (match, state) => {
+      if (!state.lastSearchResults) return null;
+
+      const { count, isFromEnd } = extractRange(match);
+      if (count <= 0) return null;
+
+      const ids = state.lastSearchResults.resultIds;
+      const summaries = state.lastSearchResults.resultSummaries;
+
+      const selectedIds = isFromEnd ? ids.slice(-count) : ids.slice(0, count);
+
+      return selectedIds.map((id, i) => {
+        const summary = summaries?.find((s) => s.id === id);
+        const position = isFromEnd ? ids.length - count + i + 1 : i + 1;
+
+        return {
+          type: "bookmark" as const,
+          id,
+          name: summary?.title || `搜索结果第 ${position} 篇`,
+          mentionedAt: Date.now(),
+        };
+      });
+    },
+    priority: 1,
+  },
+
+  // ============================================
+  // 原有指代模式
+  // ============================================
+
   // 刚才/刚刚 → lastOutput
   {
     patterns: [
@@ -389,6 +550,12 @@ export class ReferenceResolver {
         return `指代上一个操作对象：${entityNames}`;
       case "mentioned":
         return `指代之前提到的：${entityNames}`;
+      case "ordinal_result":
+        return `指代搜索结果中的特定项：${entityNames}`;
+      case "last_result":
+        return `指代搜索结果最后一项：${entityNames}`;
+      case "range_result":
+        return `指代搜索结果范围（${resolved.length} 项）：${entityNames}`;
       default:
         return `解析为：${entityNames}`;
     }

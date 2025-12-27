@@ -110,6 +110,7 @@ const INTENT_LABEL_MAP: Record<IntentType, string> = {
   analyze: "分析",
   learn: "学习",
   create: "创建",
+  refine: "筛选",
   chitchat: "闲聊",
 };
 

@@ -160,6 +160,43 @@ describe("IntentClassifier", () => {
         expect(result.type).toBe("chitchat");
       });
     });
+
+    describe("refine intent", () => {
+      it("should classify '里面' as refine filter", async () => {
+        const result = await classifier.classify("里面有没有关于 AI 的");
+
+        expect(result.type).toBe("refine");
+        expect(result.subType).toBe("filter");
+      });
+
+      it("should classify '其中' as refine filter", async () => {
+        const result = await classifier.classify("其中哪些是关于编程的");
+
+        expect(result.type).toBe("refine");
+        expect(result.subType).toBe("filter");
+      });
+
+      it("should classify '筛选' as refine filter", async () => {
+        const result = await classifier.classify("筛选出技术文章");
+
+        expect(result.type).toBe("refine");
+        expect(result.subType).toBe("filter");
+      });
+
+      it("should classify '有没有X的' as refine check", async () => {
+        const result = await classifier.classify("有没有 Python 的教程");
+
+        expect(result.type).toBe("refine");
+        expect(result.subType).toBe("check");
+      });
+
+      it("should classify '哪几篇是关于' as refine filter", async () => {
+        const result = await classifier.classify("哪几篇是关于机器学习的");
+
+        expect(result.type).toBe("refine");
+        expect(result.subType).toBe("filter");
+      });
+    });
   });
 
   describe("entity extraction", () => {

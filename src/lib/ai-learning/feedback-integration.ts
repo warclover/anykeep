@@ -82,6 +82,7 @@ function inferCorrectIntentFromFeedback(
       analyze: "query", // 如果认为是分析但实际不是，可能是搜索
       learn: "query", // 如果认为是学习但实际不是，可能是搜索
       create: "query", // 如果认为是创建但实际不是，可能是搜索
+      refine: "query", // 如果认为是筛选但实际不是，可能是搜索
       chitchat: "query", // 闲聊默认尝试搜索
     };
     return alternatives[wrongIntent];

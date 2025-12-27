@@ -439,6 +439,7 @@ export class CorrectionLearner {
         analyze: { corrections: 0, applications: 0 },
         learn: { corrections: 0, applications: 0 },
         create: { corrections: 0, applications: 0 },
+        refine: { corrections: 0, applications: 0 },
         chitchat: { corrections: 0, applications: 0 },
       };
 

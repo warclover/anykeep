@@ -21,6 +21,7 @@ export type IntentType =
   | "analyze" // 分析类：统计、报告、洞察
   | "learn" // 学习类：复习、路径、面试准备
   | "create" // 创建类：摘要、笔记、文档
+  | "refine" // 过滤类：筛选、过滤搜索结果（需要上下文有搜索结果）
   | "chitchat"; // 闲聊类：问候、帮助
 
 /**

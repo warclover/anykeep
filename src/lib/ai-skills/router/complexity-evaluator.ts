@@ -27,6 +27,7 @@ import type {
 const INTENT_COMPLEXITY_SCORES: Record<IntentType, number> = {
   chitchat: 10,
   query: 20,
+  refine: 25, // 筛选类比查询稍复杂
   action: 30,
   create: 50,
   organize: 70,
