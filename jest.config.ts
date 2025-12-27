@@ -19,11 +19,14 @@ const config: Config = {
     "^lucide-react/dist/esm/icons/(.*)$": "<rootDir>/__mocks__/lucide-react.js",
     "^lucide-react/dist/cjs/icons/(.*)$": "<rootDir>/__mocks__/lucide-react.js",
     "^lucide-react/dist/(.*)$": "<rootDir>/__mocks__/lucide-react.js",
+    // Mock react-markdown and remark-gfm to avoid ESM issues
+    "^react-markdown$": "<rootDir>/__mocks__/react-markdown.js",
+    "^remark-gfm$": "<rootDir>/__mocks__/remark-gfm.js",
   },
   // Transform ESM modules that Jest can't handle natively
   // Note: lucide-react is handled by moduleNameMapper, so not included here
   transformIgnorePatterns: [
-    "/node_modules/(?!(react-virtuoso|sonner|@radix-ui)/)",
+    "/node_modules/(?!(react-virtuoso|sonner|@radix-ui|react-markdown|remark-gfm|remark-parse|unified|unist-.*|bail|is-plain-obj|trough|vfile|vfile-message|micromark|micromark-.*|mdast-.*|hast-util-.*|property-information|space-separated-tokens|comma-separated-tokens|decode-named-character-reference|character-entities|devlop|html-url-attributes|ccount|escape-string-regexp|markdown-table|zwitch)/)",
   ],
   testMatch: [
     "**/__tests__/**/*.(test|spec).[jt]s?(x)",
