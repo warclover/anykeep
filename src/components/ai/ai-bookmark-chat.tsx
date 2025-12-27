@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import type { AgentStreamChunk } from "@/lib/ai-agent";
+import { AIMarkdown } from "./ai-markdown";
 
 // ============================================
 // 类型定义
@@ -355,7 +356,7 @@ export function AIBookmarkChat({
 
                   {response && (
                     <div className="prose prose-sm dark:prose-invert max-w-none">
-                      <p className="whitespace-pre-wrap m-0">{response}</p>
+                      <AIMarkdown content={response} />
                     </div>
                   )}
 

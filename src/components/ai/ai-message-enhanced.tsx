@@ -18,6 +18,7 @@ import { AIProgressIndicatorInline } from "./ai-progress-indicator";
 import { AIDeliverableCard } from "./ai-deliverable-card";
 import { AISuggestionsInline } from "./ai-suggestions-panel";
 import { MemoryIndicator } from "./memory-indicator";
+import { AIMarkdown } from "./ai-markdown";
 import { MessageActionsBar } from "./phase4/quick-actions";
 import type { FeedbackDetails } from "./phase4/types";
 import type { IntentType } from "@/lib/ai-skills/router/types";
@@ -159,10 +160,12 @@ export const AIMessageEnhanced = memo(function AIMessageEnhanced({
             hasError && "bg-red-50 border-red-200 text-red-600",
           )}
         >
-          {/* 消息文本 */}
-          <div className="whitespace-pre-wrap break-words leading-relaxed">
-            {message.content || (isStreaming && !message.content && "...")}
-          </div>
+          {/* 消息文本 - 使用 Markdown 渲染 */}
+          {message.content ? (
+            <AIMarkdown content={message.content} isUser={isUser} />
+          ) : (
+            isStreaming && !message.content && "..."
+          )}
 
           {/* 流式加载指示器 - 打字动画 */}
           {isStreaming && isLast && (
@@ -256,7 +259,10 @@ export const AIMessageEnhanced = memo(function AIMessageEnhanced({
         {hasDeliverables && (
           <div className="mt-3 space-y-2">
             {message.deliverables!.map((deliverable, index) => (
-              <AIDeliverableCard key={index} deliverable={deliverable} />
+              <AIDeliverableCard
+                key={deliverable.id || `deliverable-${index}`}
+                deliverable={deliverable}
+              />
             ))}
           </div>
         )}

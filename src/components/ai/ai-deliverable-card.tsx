@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AIMarkdown } from "./ai-markdown";
 import { Button } from "@/components/ui/button";
 import type { DeliverableData, DeliverableType } from "./types";
 import { clientLogger } from "@/lib/client-logger";
@@ -455,11 +456,9 @@ const DocumentContent = memo(function DocumentContent({
         </div>
       )}
 
-      {/* 文档内容 */}
+      {/* 文档内容 - 使用 Markdown 渲染 */}
       <div className="prose prose-sm prose-purple max-w-none">
-        <div className="whitespace-pre-wrap text-gray-700 leading-relaxed">
-          {textContent}
-        </div>
+        <AIMarkdown content={textContent} />
       </div>
     </div>
   );
@@ -664,19 +663,22 @@ const SearchResultsContent = memo(function SearchResultsContent({
 });
 
 /**
- * 默认内容渲染
+ * 默认内容渲染 - 支持 Markdown
  */
 const DefaultContent = memo(function DefaultContent({
   content,
 }: {
   content: unknown;
 }) {
-  const textContent =
-    typeof content === "string" ? content : JSON.stringify(content, null, 2);
+  // JSON 对象保持格式化显示
+  if (typeof content !== "string") {
+    return (
+      <pre className="whitespace-pre-wrap text-sm text-gray-700 leading-relaxed font-mono bg-gray-50 p-3 rounded-lg overflow-x-auto">
+        {JSON.stringify(content, null, 2)}
+      </pre>
+    );
+  }
 
-  return (
-    <div className="whitespace-pre-wrap text-sm text-gray-700 leading-relaxed">
-      {textContent}
-    </div>
-  );
+  // 纯文本使用 Markdown 渲染
+  return <AIMarkdown content={content} className="text-sm" />;
 });

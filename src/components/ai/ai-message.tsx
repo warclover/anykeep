@@ -20,6 +20,7 @@ import { AIProgressIndicatorInline } from "./ai-progress-indicator";
 import { AIDeliverableCard } from "./ai-deliverable-card";
 import { AISuggestionsInline } from "./ai-suggestions-panel";
 import { MemoryIndicator } from "./memory-indicator";
+import { AIMarkdown } from "./ai-markdown";
 // 整理相关组件
 import { OrganizeProgressInline } from "./organize-progress";
 import { OrganizeResult } from "./organize-result";
@@ -108,7 +109,7 @@ export const AIMessage = memo(function AIMessage({
 
           return (
             <OrganizeResult
-              key={index}
+              key={deliverable.id || `organize-${index}`}
               success={true}
               stats={stats}
               summary={
@@ -126,7 +127,12 @@ export const AIMessage = memo(function AIMessage({
         }
 
         // 普通交付物使用默认卡片
-        return <AIDeliverableCard key={index} deliverable={deliverable} />;
+        return (
+          <AIDeliverableCard
+            key={deliverable.id || `deliverable-${index}`}
+            deliverable={deliverable}
+          />
+        );
       });
     },
     [isOrganizeSkill, handleOrganizeUndo],
@@ -172,10 +178,12 @@ export const AIMessage = memo(function AIMessage({
             hasError && "bg-red-50 border-red-200 text-red-600",
           )}
         >
-          {/* 消息文本 */}
-          <div className="whitespace-pre-wrap break-words leading-relaxed">
-            {message.content || (isStreaming && !message.content && "...")}
-          </div>
+          {/* 消息文本 - 使用 Markdown 渲染 */}
+          {message.content ? (
+            <AIMarkdown content={message.content} isUser={isUser} />
+          ) : (
+            isStreaming && !message.content && "..."
+          )}
 
           {/* 流式加载指示器 - 打字动画 */}
           {isStreaming && isLast && (
