@@ -34,8 +34,8 @@ describe("response-templates", () => {
   });
 
   describe("BATCH_CONFIRMATION_THRESHOLD", () => {
-    it("should be 20", () => {
-      expect(BATCH_CONFIRMATION_THRESHOLD).toBe(20);
+    it("should be 50", () => {
+      expect(BATCH_CONFIRMATION_THRESHOLD).toBe(50);
     });
   });
 
@@ -100,8 +100,8 @@ describe("response-templates", () => {
     });
 
     it("should return true for batch operations exceeding threshold", () => {
-      expect(requiresConfirmation("add_tag", 21)).toBe(true);
-      expect(requiresConfirmation("move", 50)).toBe(true);
+      expect(requiresConfirmation("add_tag", 51)).toBe(true);
+      expect(requiresConfirmation("move", 60)).toBe(true);
       expect(requiresConfirmation("search", 100)).toBe(true);
     });
 

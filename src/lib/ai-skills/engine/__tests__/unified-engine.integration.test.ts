@@ -65,14 +65,16 @@ jest.mock("@/lib/supabase/server", () => ({
   })),
 }));
 
-jest.mock("@/lib/logger", () => ({
-  logger: {
+jest.mock("@/lib/logger", () => {
+  const mockLogger = {
     info: jest.fn(),
     error: jest.fn(),
     debug: jest.fn(),
     warn: jest.fn(),
-  },
-}));
+    child: jest.fn(() => mockLogger), // child returns the same mock logger
+  };
+  return { logger: mockLogger };
+});
 
 describe("UnifiedEngine Integration Tests", () => {
   let engine: UnifiedEngine;
