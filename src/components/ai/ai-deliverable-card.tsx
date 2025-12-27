@@ -30,6 +30,7 @@ import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AIMarkdown } from "./ai-markdown";
 import { AIReportContent } from "./ai-report-content";
+import { AIPeriodicReportContent } from "./ai-periodic-report-content";
 import { Button } from "@/components/ui/button";
 import type { DeliverableData, DeliverableType } from "./types";
 import { clientLogger } from "@/lib/client-logger";
@@ -211,7 +212,7 @@ const DeliverableContent = memo(function DeliverableContent({
     case "table":
       return <TableContent content={content} />;
     case "report":
-      return <AIReportContent content={content} />;
+      return <ReportContent content={content} metadata={metadata} />;
     case "document":
       return <DocumentContent content={content} metadata={metadata} />;
     case "graph":
@@ -666,6 +667,40 @@ const SearchResultsContent = memo(function SearchResultsContent({
       initialShowCount={5}
     />
   );
+});
+
+/**
+ * 报告内容渲染 - 智能选择报告组件
+ */
+const ReportContent = memo(function ReportContent({
+  content,
+  metadata,
+}: {
+  content: unknown;
+  metadata?: Record<string, unknown>;
+}) {
+  // 根据 skillId 或内容结构判断报告类型
+  const skillId = metadata?.skillId as string | undefined;
+
+  // 周期报告：periodic_report skill 或含有 stats + highlights 结构
+  if (skillId === "periodic_report") {
+    return <AIPeriodicReportContent content={content} />;
+  }
+
+  // 检测周期报告的数据结构
+  if (typeof content === "object" && content !== null) {
+    const obj = content as Record<string, unknown>;
+    if (
+      typeof obj.stats === "object" &&
+      Array.isArray(obj.highlights) &&
+      Array.isArray(obj.insights)
+    ) {
+      return <AIPeriodicReportContent content={content} />;
+    }
+  }
+
+  // 默认使用趋势分析报告组件
+  return <AIReportContent content={content} />;
 });
 
 /**
