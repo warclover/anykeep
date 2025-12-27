@@ -43,8 +43,11 @@ export const RISK_OPERATIONS = {
 
 /**
  * 批量操作确认阈值
+ *
+ * 超过此数量的批量操作需要用户确认
+ * 设置为 50 以减少对用户的干扰
  */
-export const BATCH_CONFIRMATION_THRESHOLD = 20;
+export const BATCH_CONFIRMATION_THRESHOLD = 50;
 
 /**
  * 响应模板 - Prompt 注入部分
