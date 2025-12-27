@@ -61,6 +61,8 @@ import "./bookmark-card-flip.css"; // 复用卡片优化样式
 import { getDisplaySummary } from "@/lib/classification/types/ai-summary";
 // V4.2.1: 快照功能（功能开关 + 菜单项组件）
 import { SnapshotMenuItem, useSnapshotFeature } from "@/components/snapshot";
+// TTS 语音朗读
+import { TTSPlayerButton } from "@/components/tts";
 
 type ViewVariant = "card" | "list" | "compact";
 
@@ -272,6 +274,14 @@ export const BookmarkCard = memo(function BookmarkCard({
           <ExternalLink className="mr-2 h-4 w-4" />
           打开原文
         </DropdownMenuItem>
+        {/* TTS 语音朗读 */}
+        {bookmark.ai_summary && (
+          <TTSPlayerButton
+            bookmarkId={bookmark.id}
+            variant="menu-item"
+            disabled={!bookmark.ai_summary}
+          />
+        )}
         {/* V4.2.1: 快照功能入口 */}
         {isSnapshotEnabled && (
           <SnapshotMenuItem

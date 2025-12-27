@@ -5,6 +5,7 @@
  * - use-ai-chat: AI 对话 Hook（核心）
  * - use-vision-analysis: 图像分析 Hook
  * - use-unified-confirmation: 统一确认处理 Hook（Tool/Skill 适配器）
+ * - use-tts-player: TTS 播放器 Hook
  *
  * 历史遗留（与 AI 分类相关，建议未来迁移到 domain/folder/）：
  * - use-evolution-reports: 月度 AI 进化报告（文件夹分类统计）
@@ -21,6 +22,9 @@ export * from "./use-vision-analysis";
 
 // 统一确认处理（Phase 0.3）
 export * from "./use-unified-confirmation";
+
+// TTS 播放器
+export * from "./use-tts-player";
 
 // AI 分类相关（历史遗留，与 AI Chat 无关）
 // TODO: 未来版本考虑迁移到 domain/folder/ 或 domain/analytics/

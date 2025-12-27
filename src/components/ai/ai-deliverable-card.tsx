@@ -25,6 +25,7 @@ import {
   Check,
   ExternalLink,
   Search,
+  Volume2,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -50,6 +51,7 @@ import {
   KnowledgeReviewCard,
   isKnowledgeReviewOutput,
 } from "./deliverables/knowledge-review-card";
+import { AudioPlayerCard } from "@/components/tts";
 
 interface AIDeliverableCardProps {
   /** 交付物数据 */
@@ -72,6 +74,7 @@ const DELIVERABLE_ICON_MAP: Record<DeliverableType, LucideIcon> = {
   search_results: Search,
   organize_plan: LayoutGrid,
   organize_result: FileText,
+  audio: Volume2,
 };
 
 /**
@@ -88,6 +91,7 @@ const DELIVERABLE_TYPE_NAMES: Record<DeliverableType, string> = {
   search_results: "搜索结果",
   organize_plan: "整理方案",
   organize_result: "整理结果",
+  audio: "语音朗读",
 };
 
 /**
@@ -222,6 +226,8 @@ const DeliverableContent = memo(function DeliverableContent({
       return <MindmapContent content={content} />;
     case "search_results":
       return <SearchResultsContent content={content} metadata={metadata} />;
+    case "audio":
+      return <AudioContent content={content} title={deliverable.title} />;
     default:
       return <DefaultContent content={content} />;
   }
@@ -730,6 +736,46 @@ const ReportContent = memo(function ReportContent({
   // 包括：batch_organize, duplicate_cleanup, smart_tagging,
   // learning_path, quick_digest, reading_planner 等
   return <AIGenericReportContent content={content} />;
+});
+
+/**
+ * 音频类型内容
+ *
+ * 用于渲染 TTS 语音朗读交付物
+ */
+const AudioContent = memo(function AudioContent({
+  content,
+  title,
+}: {
+  content: unknown;
+  title: string;
+}) {
+  // 验证 content 是否为有效的音频数据
+  if (
+    typeof content !== "object" ||
+    content === null ||
+    !("audioBase64" in content) ||
+    !("format" in content)
+  ) {
+    return <DefaultContent content={content} />;
+  }
+
+  const audioData = content as {
+    audioBase64: string;
+    format: string;
+    durationSec: number;
+    charCount?: number;
+  };
+
+  return (
+    <AudioPlayerCard
+      audioBase64={audioData.audioBase64}
+      format={audioData.format}
+      duration={audioData.durationSec}
+      title={title}
+      charCount={audioData.charCount}
+    />
+  );
 });
 
 /**

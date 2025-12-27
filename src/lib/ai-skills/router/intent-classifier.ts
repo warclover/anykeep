@@ -121,6 +121,13 @@ const DEFAULT_RULES: IntentRule[] = [
   // 创建类
   // ============================================
   {
+    pattern: /读|朗读|播放.{0,3}摘要|听|语音|念|tts/i,
+    type: "create",
+    subType: "tts",
+    complexity: "simple",
+    weight: 85,
+  },
+  {
     pattern: /摘要|总结|概括|速览/,
     type: "create",
     subType: "digest",

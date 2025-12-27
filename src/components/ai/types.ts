@@ -45,7 +45,9 @@ export type DeliverableType =
   | "search_results" // 搜索结果（使用 FormattedSearchResponse）
   // 整理相关交付物类型
   | "organize_plan" // 整理方案预览
-  | "organize_result"; // 整理结果（含撤销）
+  | "organize_result" // 整理结果（含撤销）
+  // 音频相关交付物类型
+  | "audio"; // 音频 (TTS)
 
 /**
  * 交付物数据
@@ -58,7 +60,14 @@ export interface DeliverableData {
   /** 交付物标题 */
   title: string;
   /** 输出格式 */
-  format: "markdown" | "html" | "json" | "cards" | "mindmap" | "plain";
+  format:
+    | "markdown"
+    | "html"
+    | "json"
+    | "cards"
+    | "mindmap"
+    | "plain"
+    | "audio";
   /** 交付物内容 */
   content: unknown;
   /** 是否可下载 */

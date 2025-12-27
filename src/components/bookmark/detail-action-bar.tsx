@@ -3,8 +3,9 @@
  *
  * 书签详情页的操作按钮栏，包含返回、打开原文、分享、编辑、移动、删除等操作。
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-24 (Phase 2.3.7)
+ * @updated 2025-12-27 - 添加 TTS 语音朗读按钮
  */
 
 "use client";
@@ -21,12 +22,15 @@ import {
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { TTSPlayerButton } from "@/components/tts";
 
 // ============================================
 // 类型定义
 // ============================================
 
 export interface DetailActionBarProps {
+  /** 书签 ID */
+  bookmarkId: number;
   /** 书签标题 */
   title: string;
   /** 书签 URL */
@@ -56,6 +60,7 @@ export interface DetailActionBarProps {
 // ============================================
 
 export function DetailActionBar({
+  bookmarkId,
   title,
   url,
   aiSummary,
@@ -143,6 +148,11 @@ export function DetailActionBar({
             <Bot className="size-3.5" />
             <span className="ml-1 hidden sm:inline">AI 助手</span>
           </Button>
+        )}
+
+        {/* TTS 语音朗读按钮 */}
+        {userId && aiSummary && (
+          <TTSPlayerButton bookmarkId={bookmarkId} variant="button" size="sm" />
         )}
 
         <Button variant="ghost" size="sm" onClick={onEdit} className="h-8 px-2">

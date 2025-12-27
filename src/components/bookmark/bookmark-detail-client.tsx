@@ -374,6 +374,7 @@ export function BookmarkDetailClient({
 
                 {/* === 行3：操作栏 === */}
                 <DetailActionBar
+                  bookmarkId={bookmark.id}
                   title={bookmark.title}
                   url={bookmark.url}
                   aiSummary={localSummary}

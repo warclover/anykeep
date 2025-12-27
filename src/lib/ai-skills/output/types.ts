@@ -3,8 +3,9 @@
  *
  * 定义所有流式输出块的类型，包括原子模式和编排模式
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-24
+ * @updated 2025-12-27 - 添加 audio 类型支持 TTS 功能
  */
 
 // ============================================
@@ -21,7 +22,8 @@ export type DeliverableType =
   | "document" // 文档
   | "mindmap" // 思维导图
   | "graph" // 图表
-  | "table"; // 表格
+  | "table" // 表格
+  | "audio"; // 音频 (TTS)
 
 /**
  * 输出格式
@@ -32,7 +34,8 @@ export type OutputFormat =
   | "json"
   | "cards"
   | "mindmap"
-  | "plain";
+  | "plain"
+  | "audio"; // 音频格式 (mp3/wav)
 
 /**
  * 确认选项

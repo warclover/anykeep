@@ -156,6 +156,15 @@ export const SKILL_MAPPINGS: SkillMapping[] = [
   // 创建类 → 混合模式
   // ============================================
   {
+    key: "create:tts",
+    skillId: "tts_synthesis",
+    name: "语音朗读助手",
+    mode: "orchestration",
+    minComplexity: "simple",
+    enabled: true,
+    priority: 90,
+  },
+  {
     key: "create:digest",
     skillId: "quick_digest",
     name: "快速摘要生成",
@@ -356,6 +365,12 @@ export const EXPLICIT_TOOL_MAPPINGS: ExplicitToolMapping[] = [
     skillId: "periodic_report",
     mode: "orchestration",
     icon: "FileBarChart",
+  },
+  {
+    toolId: "tts",
+    skillId: "tts_synthesis",
+    mode: "orchestration",
+    icon: "Volume2",
   },
 ];
 
