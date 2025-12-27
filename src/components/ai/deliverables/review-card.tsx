@@ -28,6 +28,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { AIMarkdown } from "../ai-markdown";
 import type {
   KnowledgeReviewOutput,
   ReviewBookmark,
@@ -369,7 +370,10 @@ const ReviewGroupSection = memo(function ReviewGroupSection({
           </div>
           <div>
             <h3 className="font-medium text-gray-800">{group.name}</h3>
-            <p className="text-xs text-gray-500">{group.description}</p>
+            <AIMarkdown
+              content={group.description}
+              className="text-xs text-gray-500"
+            />
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -429,7 +433,10 @@ export const ReviewCard = memo(function ReviewCard({
           <BookOpen className="size-5" />
           <h2 className="font-semibold">知识复习计划</h2>
         </div>
-        <p className="mt-1 text-sm text-purple-100">{data.summary}</p>
+        <AIMarkdown
+          content={data.summary}
+          className="mt-1 text-sm text-purple-100"
+        />
       </div>
 
       {/* 统计信息 */}

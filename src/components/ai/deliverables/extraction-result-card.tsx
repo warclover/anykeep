@@ -212,9 +212,10 @@ const KeyPointCard = memo(function KeyPointCard({
 
         {/* 内容 */}
         <div className="flex-1 min-w-0">
-          <p className="text-sm text-gray-700 leading-relaxed">
-            {keyPoint.content}
-          </p>
+          <AIMarkdown
+            content={keyPoint.content}
+            className="text-sm text-gray-700 leading-relaxed"
+          />
 
           {/* 引用标注 */}
           <div className="mt-2 flex flex-wrap items-center gap-1.5">

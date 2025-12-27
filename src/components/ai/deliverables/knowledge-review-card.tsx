@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { AIMarkdown } from "../ai-markdown";
 
 // ============================================
 // 类型定义
@@ -305,7 +306,10 @@ const ReviewGroupCard = memo(function ReviewGroupCard({
 
       {expanded && (
         <div className="px-3 pb-3 space-y-2">
-          <p className="text-xs text-gray-600 pl-7">{group.description}</p>
+          <AIMarkdown
+            content={group.description}
+            className="text-xs text-gray-600 pl-7"
+          />
 
           <div className="space-y-2 mt-3">
             {group.items.slice(0, 10).map((item) => (
@@ -452,9 +456,10 @@ export const KnowledgeReviewCard = memo(function KnowledgeReviewCard({
       {/* 摘要 */}
       <div className="p-3 rounded-lg bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-100">
         <div className="prose prose-sm prose-purple max-w-none">
-          <div className="text-sm text-gray-700 whitespace-pre-line">
-            {data.summary}
-          </div>
+          <AIMarkdown
+            content={data.summary}
+            className="text-sm text-gray-700"
+          />
         </div>
       </div>
 

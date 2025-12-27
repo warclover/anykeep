@@ -30,6 +30,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { AIMarkdown } from "../ai-markdown";
 import type {
   DuplicateCleanupOutput,
   DuplicateGroup,
@@ -553,7 +554,10 @@ export const CleanupPreview = memo(function CleanupPreview({
           <Trash2 className="size-5" />
           <h2 className="font-semibold">重复书签清理</h2>
         </div>
-        <p className="mt-1 text-sm text-orange-100">{data.summary}</p>
+        <AIMarkdown
+          content={data.summary}
+          className="mt-1 text-sm text-orange-100"
+        />
       </div>
 
       {/* 统计信息 */}
