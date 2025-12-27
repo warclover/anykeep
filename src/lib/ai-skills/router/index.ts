@@ -138,3 +138,16 @@ export {
   getDefaultMetricsAggregator,
 } from "./metrics";
 export type { RouteMetrics, RouteMetricsAggregation } from "./metrics";
+
+// 统一意图→Skill 路由器 (v2.0)
+export {
+  IntentSkillRouter,
+  createIntentSkillRouter,
+  getDefaultRouter,
+  resetDefaultRouter,
+} from "./intent-skill-router";
+export type {
+  RouteResult as IntentSkillRouteResult,
+  RouteContext as IntentSkillRouteContext,
+  IntentSkillRouterConfig,
+} from "./intent-skill-router";
