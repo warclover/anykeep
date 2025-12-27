@@ -225,8 +225,10 @@ export const MdRenderer = memo(function MdRenderer({
   const internalContentRef = useRef<HTMLElement>(null);
   const contentRef = externalContentRef || internalContentRef;
 
-  // 已应用的高亮 mark 元素
+  // 已应用的高亮 mark 元素及其事件监听器
   const highlightMarksRef = useRef<Map<string, HTMLElement>>(new Map());
+  // 存储事件监听器引用以便清理
+  const highlightListenersRef = useRef<Map<string, () => void>>(new Map());
 
   // 重置图片收集器（当内容变化时）
   useEffect(() => {
@@ -239,11 +241,20 @@ export const MdRenderer = memo(function MdRenderer({
   // ============================================
 
   /**
-   * 清除所有已应用的高亮
+   * 清除所有已应用的高亮（包括事件监听器）
    */
   const clearHighlightMarks = useCallback(() => {
+    // 移除所有事件监听器
+    highlightListenersRef.current.forEach((listener, id) => {
+      const mark = highlightMarksRef.current.get(id);
+      if (mark) {
+        mark.removeEventListener("click", listener);
+      }
+    });
+    highlightListenersRef.current.clear();
+
+    // 移除所有 mark 元素
     highlightMarksRef.current.forEach((mark) => {
-      // 将 mark 内容提取出来替换 mark 元素
       const parent = mark.parentNode;
       if (parent) {
         while (mark.firstChild) {
@@ -257,7 +268,9 @@ export const MdRenderer = memo(function MdRenderer({
 
   /**
    * 应用单个高亮
+   * @returns 创建的 mark 元素，失败返回 null
    */
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization -- ref.current 访问模式是正确的
   const applyHighlight = useCallback(
     (highlight: TextHighlight): HTMLElement | null => {
       const container = contentRef.current;
@@ -298,16 +311,19 @@ export const MdRenderer = memo(function MdRenderer({
         const style = getHighlightStyle(highlight.color as HighlightColor);
         Object.assign(mark.style, style);
 
-        // 添加点击事件
+        // 添加点击事件（保存引用以便清理）
         if (onHighlightClick) {
-          mark.addEventListener("click", (e) => {
+          const clickHandler = (e: Event) => {
             e.stopPropagation();
             const rect = mark.getBoundingClientRect();
             onHighlightClick(highlight, {
               x: rect.left + rect.width / 2,
               y: rect.top,
             });
-          });
+          };
+          mark.addEventListener("click", clickHandler);
+          // 保存事件监听器引用
+          highlightListenersRef.current.set(highlight.id, clickHandler as () => void);
         }
 
         // 包裹选中内容
@@ -324,31 +340,107 @@ export const MdRenderer = memo(function MdRenderer({
   );
 
   /**
-   * 应用所有高亮
+   * 应用所有高亮的核心逻辑
+   */
+  const applyAllHighlights = useCallback(() => {
+    // 先清除旧的高亮
+    clearHighlightMarks();
+
+    // 应用新的高亮（按 start_offset 排序，从后往前应用避免偏移变化）
+    const sortedHighlights = [...highlights].sort(
+      (a, b) => b.start_offset - a.start_offset,
+    );
+
+    for (const highlight of sortedHighlights) {
+      const mark = applyHighlight(highlight);
+      if (mark) {
+        highlightMarksRef.current.set(highlight.id, mark);
+      }
+    }
+  }, [highlights, applyHighlight, clearHighlightMarks]);
+
+  /**
+   * 使用 MutationObserver 监听 DOM 渲染完成后应用高亮
+   * 替代不可靠的硬编码延迟
    */
   useEffect(() => {
-    // 延迟应用，确保 ReactMarkdown 渲染完成
-    const timer = setTimeout(() => {
-      // 先清除旧的高亮
-      clearHighlightMarks();
+    const container = contentRef.current;
+    if (!container) return;
 
-      // 应用新的高亮（按 start_offset 排序，从后往前应用避免偏移变化）
-      const sortedHighlights = [...highlights].sort(
-        (a, b) => b.start_offset - a.start_offset,
+    // 如果没有高亮需要应用，直接返回
+    if (highlights.length === 0) {
+      clearHighlightMarks();
+      return;
+    }
+
+    // 标记是否已经应用过高亮
+    let hasApplied = false;
+    let applyTimer: NodeJS.Timeout | null = null;
+
+    /**
+     * 防抖应用高亮
+     * 等待 DOM 稳定后再应用，避免频繁触发
+     */
+    const debouncedApply = () => {
+      if (applyTimer) {
+        clearTimeout(applyTimer);
+      }
+      applyTimer = setTimeout(() => {
+        if (!hasApplied) {
+          hasApplied = true;
+          applyAllHighlights();
+        }
+      }, 50); // 短暂防抖，等待批量 DOM 更新完成
+    };
+
+    // 创建 MutationObserver 监听 DOM 变化
+    const observer = new MutationObserver((mutations) => {
+      // 检查是否有实质性的内容变化
+      const hasContentChange = mutations.some(
+        (mutation) =>
+          mutation.type === "childList" &&
+          (mutation.addedNodes.length > 0 || mutation.removedNodes.length > 0),
       );
 
-      for (const highlight of sortedHighlights) {
-        const mark = applyHighlight(highlight);
-        if (mark) {
-          highlightMarksRef.current.set(highlight.id, mark);
-        }
+      if (hasContentChange) {
+        // 重置已应用标记，允许重新应用
+        hasApplied = false;
+        debouncedApply();
       }
-    }, 100); // 等待 ReactMarkdown 渲染
+    });
 
+    // 监听容器内的 DOM 变化
+    observer.observe(container, {
+      childList: true,
+      subtree: true,
+    });
+
+    // 初始应用（使用 requestIdleCallback 或 setTimeout 回退）
+    if (typeof requestIdleCallback !== "undefined") {
+      requestIdleCallback(() => {
+        if (!hasApplied) {
+          hasApplied = true;
+          applyAllHighlights();
+        }
+      });
+    } else {
+      // 浏览器不支持 requestIdleCallback 时使用 setTimeout 回退
+      setTimeout(() => {
+        if (!hasApplied) {
+          hasApplied = true;
+          applyAllHighlights();
+        }
+      }, 100);
+    }
+
+    // 清理函数
     return () => {
-      clearTimeout(timer);
+      observer.disconnect();
+      if (applyTimer) {
+        clearTimeout(applyTimer);
+      }
     };
-  }, [highlights, content, applyHighlight, clearHighlightMarks]);
+  }, [highlights, content, applyAllHighlights, clearHighlightMarks, contentRef]);
 
   // 解析主题
   const resolvedTheme = useMemo(() => {
