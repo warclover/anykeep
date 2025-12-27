@@ -34,6 +34,7 @@ import { learningPathSkill } from "./skills/learning-path";
 import { knowledgeExtractSkill } from "./skills/knowledge-extract";
 import { linkHealthCheckSkill } from "./skills/link-health-check";
 import { ttsSynthesisSkill } from "./skills/tts-synthesis";
+import { wechatDigestSkill } from "./skills/wechat-digest";
 import { unifiedEngine } from "./engine/unified-engine";
 import { knowledgeAgent } from "../ai-agent/core/knowledge-agent";
 import { logger } from "@/lib/logger";
@@ -169,6 +170,12 @@ export function initializeUnifiedEngine(): void {
   if (process.env.ENABLE_TTS_SYNTHESIS !== "false") {
     unifiedEngine.registerOrchestrationSkill(ttsSynthesisSkill);
     logger.debug("TTSSynthesisSkill registered");
+  }
+
+  // 微信阅读摘要（支持 Feature Flag 开关）
+  if (process.env.ENABLE_WECHAT_DIGEST !== "false") {
+    unifiedEngine.registerOrchestrationSkill(wechatDigestSkill);
+    logger.debug("WechatDigestSkill registered");
   }
 
   unifiedEngineInitialized = true;

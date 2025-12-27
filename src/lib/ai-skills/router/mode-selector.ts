@@ -122,6 +122,18 @@ const DEFAULT_SKILL_MAPPINGS: Record<string, OrchestrationSkillMapping> = {
     minComplexity: "simple",
     enabled: true, // 已实现
   },
+  "create:wechat_digest": {
+    skillId: "wechat_digest",
+    name: "微信阅读摘要",
+    minComplexity: "medium",
+    enabled: true, // 已实现
+  },
+  "analyze:wechat": {
+    skillId: "wechat_digest",
+    name: "微信阅读摘要",
+    minComplexity: "medium",
+    enabled: true, // 已实现
+  },
 };
 
 /**
