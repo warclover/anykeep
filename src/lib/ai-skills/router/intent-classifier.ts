@@ -137,6 +137,15 @@ const DEFAULT_RULES: IntentRule[] = [
     weight: 85,
   },
   {
+    // B站字幕提取规则
+    pattern:
+      /B站|bilibili.{0,5}(字幕|文字稿|转文字)|视频.{0,3}(字幕|文字稿)|提取.{0,3}字幕/i,
+    type: "create",
+    subType: "bilibili_transcript",
+    complexity: "medium",
+    weight: 86,
+  },
+  {
     pattern: /摘要|总结|概括|速览/,
     type: "create",
     subType: "digest",

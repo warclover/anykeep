@@ -82,6 +82,12 @@ const DEFAULT_SKILL_MAPPINGS: Record<string, OrchestrationSkillMapping> = {
     minComplexity: "medium",
     enabled: true,
   },
+  "organize:expire": {
+    skillId: "link_health_check",
+    name: "链接健康检测",
+    minComplexity: "medium",
+    enabled: true, // 已实现
+  },
 
   // 分析类
   "analyze:report": {
@@ -131,6 +137,12 @@ const DEFAULT_SKILL_MAPPINGS: Record<string, OrchestrationSkillMapping> = {
   "analyze:wechat": {
     skillId: "wechat_digest",
     name: "微信阅读摘要",
+    minComplexity: "medium",
+    enabled: true, // 已实现
+  },
+  "create:bilibili_transcript": {
+    skillId: "bilibili_transcript",
+    name: "B站字幕提取",
     minComplexity: "medium",
     enabled: true, // 已实现
   },
