@@ -4,6 +4,7 @@
 
 | 日期       | 版本  | 变更内容                                                                                 |
 | ---------- | ----- | ---------------------------------------------------------------------------------------- |
+| 2025-12-27 | 2.7.1 | 对话上下文压缩：三级降级策略、摘要持久化、记忆增强系统、测试修复                         |
 | 2025-12-27 | 2.7.0 | 任务理解层 v2.0：零接管模式、置信度分层、隐含意图推理、System-Reminder、请求取消功能     |
 | 2025-12-26 | 2.6.1 | v4.3 修复：Token 持久化、LRU 缓存、跨平台兼容性、RPC 安全增强                            |
 | 2025-12-26 | 2.6.0 | AI 能力升级 v4.3：动态上下文、模型分层、偏好学习、成本控制、Feature Flags                |
@@ -831,6 +832,76 @@ ENABLE_SYSTEM_REMINDER=true   # System-Reminder 动态注入
 - `docs/specs/task-understanding-v2-implementation.md`: 实现规范
 - `docs/specs/context-memory-enhancement-v1.md`: 上下文增强规范
 - `docs/specs/ai-interaction-fix-plan.md`: AI 交互修复计划
+
+---
+
+### 9. 对话上下文压缩系统 ✅
+
+**版本**: v2.7.1 (2025-12-27)
+
+智能对话上下文压缩系统，支持长对话场景下的 Token 优化和记忆保持。
+
+**核心功能**:
+
+- ✅ LLM 驱动的智能摘要压缩
+- ✅ 三级降级策略（full_compression → simple_truncation → original）
+- ✅ 压缩摘要持久化到数据库
+- ✅ 瞬态错误自动重试机制
+
+**三级降级策略**:
+
+| 级别 | 策略                | 触发条件     | 说明                             |
+| ---- | ------------------- | ------------ | -------------------------------- |
+| 1    | `full_compression`  | 默认         | LLM 生成智能摘要，保留关键上下文 |
+| 2    | `simple_truncation` | LLM 失败     | 简单截断，保留最近 N 轮对话      |
+| 3    | `original`          | 所有策略失败 | 返回原始消息，确保不丢失         |
+
+**错误分类与重试**:
+
+| 错误类型     | 示例                        | 可重试 |
+| ------------ | --------------------------- | ------ |
+| `transient`  | 超时、网络错误、429/502/503 | ✅     |
+| `validation` | 摘要过短/过长、格式无效     | ❌     |
+| `model`      | API Key 无效、模型不可用    | ❌     |
+| `unknown`    | 其他未知错误                | ❌     |
+
+**文件位置**:
+
+```
+src/lib/ai-agent/context/
+├── compression-types.ts           # 压缩类型定义
+├── compression-validator.ts       # 验证器（Token 估算、轮次计算）
+├── compression-prompt.ts          # 压缩 Prompt 模板
+├── conversation-compressor.ts     # 压缩器主类
+├── compression-fallback.ts        # 降级策略（v2.7.1 新增）
+└── __tests__/
+    ├── compression-validator.test.ts
+    ├── compression-prompt.test.ts
+    ├── conversation-compressor.test.ts
+    └── compression-fallback.test.ts
+
+src/lib/ai-memory/
+├── compression-summary-persistence.ts  # 压缩摘要持久化（v2.7.1 新增）
+└── types.ts                            # CompressionSummaryState 类型
+```
+
+**配置参数**:
+
+```typescript
+interface FallbackConfig {
+  enableRetry: boolean; // 是否启用重试（默认 true）
+  maxRetries: number; // 最大重试次数（默认 1）
+  retryDelayMs: number; // 重试延迟毫秒（默认 1000）
+  truncationKeepTurns: number; // 简单截断保留轮次（默认 8）
+  enableTruncationFallback: boolean; // 是否启用截断降级（默认 true）
+}
+```
+
+**测试覆盖**:
+
+- 22 个 compression-fallback 测试
+- 41 个 conversation-compressor 测试
+- 81 个 AI 测试套件全部通过
 
 ---
 
