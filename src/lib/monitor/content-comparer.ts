@@ -9,6 +9,11 @@
 
 import * as Diff from "diff";
 import type { ContentCompareResult } from "./types";
+import {
+  SIMILARITY_THRESHOLDS,
+  CHANGE_LEVEL_LABELS,
+  type ChangeLevel,
+} from "./constants";
 
 /**
  * 对比两个文本内容的差异
@@ -113,10 +118,17 @@ function generateChangeSummary(
  * 根据相似度获取变更等级
  */
 function getChangeLevel(similarityScore: number): string {
-  if (similarityScore >= 95) return "微小变更";
-  if (similarityScore >= 80) return "轻微变更";
-  if (similarityScore >= 50) return "显著变更";
-  return "重大变更";
+  let level: ChangeLevel;
+  if (similarityScore >= SIMILARITY_THRESHOLDS.MINIMAL) {
+    level = "minimal";
+  } else if (similarityScore >= SIMILARITY_THRESHOLDS.SLIGHT) {
+    level = "slight";
+  } else if (similarityScore >= SIMILARITY_THRESHOLDS.SIGNIFICANT) {
+    level = "significant";
+  } else {
+    level = "major";
+  }
+  return CHANGE_LEVEL_LABELS[level];
 }
 
 /**
@@ -126,7 +138,7 @@ function getChangeLevel(similarityScore: number): string {
  * @returns 是否显著变更
  */
 export function isSignificantChange(similarityScore: number): boolean {
-  return similarityScore < 80;
+  return similarityScore < SIMILARITY_THRESHOLDS.SLIGHT;
 }
 
 /**

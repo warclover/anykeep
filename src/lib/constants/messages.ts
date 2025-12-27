@@ -398,6 +398,216 @@ export const MD_COLLECTION = {
 } as const;
 
 /**
+ * 页面监控相关文案
+ */
+export const MONITOR = {
+  // 状态标签
+  STATUS: {
+    ACTIVE: "监控中",
+    PAUSED: "已暂停",
+    FAILED: "检查失败",
+    UNKNOWN: "未知",
+  },
+
+  // 操作
+  START: "开始监控",
+  PAUSE: "暂停监控",
+  RESUME: "恢复监控",
+  DELETE: "删除监控",
+  SAVE_SETTINGS: "保存设置",
+
+  // 提示
+  EMPTY: "在书签详情页添加页面监控，追踪内容变化",
+  EMPTY_FILTERED: (status: string) => `没有${status}的监控`,
+
+  // 结果
+  CREATE_SUCCESS: "监控创建成功",
+  CREATE_ERROR: "创建失败",
+  UPDATE_SUCCESS: "设置保存成功",
+  UPDATE_ERROR: "更新失败",
+  DELETE_SUCCESS: "监控删除成功",
+  DELETE_ERROR: "删除失败",
+} as const;
+
+/**
+ * 链接健康检测相关文案
+ */
+export const LINK_HEALTH = {
+  // 页面
+  TITLE: "链接健康检测",
+  DESCRIPTION: "检测收藏链接的可访问性，发现失效链接并提供修复建议",
+
+  // 检测范围
+  SCOPE_LABEL: "检测范围",
+  FOLDER_LABEL: "选择文件夹",
+  SCOPE_ALL: "全部书签",
+  SCOPE_FOLDER: "指定文件夹",
+  SELECT_FOLDER: "选择文件夹",
+
+  // 操作按钮
+  START: "开始检测",
+  STOP: "停止检测",
+  REFRESH: "刷新",
+
+  // 空状态
+  EMPTY_TITLE: "尚未运行检测",
+  EMPTY_DESCRIPTION: "选择检测范围后点击「开始检测」按钮",
+
+  // 统计标签
+  STATS: {
+    TOTAL: "已检测",
+    HEALTHY: "健康",
+    SLOW: "缓慢",
+    REDIRECT: "已重定向",
+    FAILED: "失效",
+  },
+
+  // 状态标签
+  STATUS: {
+    UNKNOWN: "未知",
+    HEALTHY: "健康",
+    SLOW: "缓慢",
+    REDIRECT: "重定向",
+    FAILED: "失效",
+    IGNORED: "已忽略",
+    CHECKED: "已检测",
+  },
+
+  // 修复选项
+  FIX_OPTIONS: {
+    DELETE: {
+      LABEL: "删除书签",
+      DESCRIPTION: "永久删除此书签",
+    },
+    ARCHIVE: {
+      LABEL: "归档书签",
+      DESCRIPTION: "移至归档文件夹，保留记录",
+    },
+    UPDATE: {
+      LABEL: "更新链接",
+      DESCRIPTION: "替换为新的有效链接",
+    },
+    IGNORE: {
+      LABEL: "忽略问题",
+      DESCRIPTION: "标记为已忽略，下次检测跳过",
+    },
+  },
+
+  // 进度
+  PROGRESS: {
+    INITIALIZING: "初始化...",
+    CHECKING: "正在检测...",
+    COMPLETED: "完成",
+    CANCELLED: "已取消",
+    SUBMITTING: "处理中...",
+    CONFIRM_FIX: "确认修复",
+  },
+
+  // 结果提示
+  COMPLETE_SUCCESS: "链接健康检测完成",
+  FIX_SUCCESS: "修复成功",
+  FIX_ERROR: "修复操作失败",
+  NO_FOLDER_SELECTED: "请选择要检测的文件夹",
+  STREAM_ERROR: "无法读取响应流",
+  CANCELLED: "检测已取消",
+} as const;
+
+/**
+ * TTS 语音朗读相关文案
+ */
+export const TTS = {
+  // 内容类型
+  CONTENT_TYPES: {
+    ONE_LINER: {
+      LABEL: "一句话总结",
+      DESCRIPTION: "快速了解核心内容",
+    },
+    SUMMARY: {
+      LABEL: "完整摘要",
+      DESCRIPTION: "详细的内容概述",
+    },
+    KEY_POINTS: {
+      LABEL: "关键要点",
+      DESCRIPTION: "逐条朗读要点",
+    },
+    FULL: {
+      LABEL: "全部内容",
+      DESCRIPTION: "完整朗读所有摘要",
+    },
+  },
+
+  // 按钮状态
+  LOADING: "加载中...",
+  PAUSE: "暂停",
+  RESUME: "继续",
+  PLAY: "朗读",
+
+  // 工具提示
+  DOWNLOAD: "下载音频",
+  REPLAY: "重播",
+  SPEED: "播放速度",
+  MUTE: "静音",
+  UNMUTE: "取消静音",
+} as const;
+
+/**
+ * MD 阅读器相关文案
+ */
+export const MD_READER = {
+  // 阅读进度
+  PROGRESS: {
+    COMPLETED: "阅读完成",
+    ALMOST_DONE: "即将读完",
+    COMPLETED_CHECK: "阅读完成 ✓",
+    REMAINING_MINUTES: (minutes: number) => `约 ${minutes} 分钟`,
+  },
+
+  // 专注模式
+  FOCUS_MODE: {
+    ENTER: "专注阅读",
+    EXIT: "退出专注",
+    ENTER_TIP: "进入专注模式",
+    EXIT_TIP: "按 Esc 退出专注模式",
+  },
+
+  // 位置恢复
+  POSITION: {
+    JUST_NOW: "刚刚",
+    MINUTES_AGO: (minutes: number) => `${minutes} 分钟前`,
+    HOURS_AGO: (hours: number) => `${hours} 小时前`,
+    DAYS_AGO: (days: number) => `${days} 天前`,
+    DIALOG_TITLE: "继续上次阅读？",
+    DIALOG_READ_TO: "您上次阅读到",
+    DIALOG_CONFIRM: "是否恢复到上次阅读位置？",
+    START_OVER: "从头开始",
+    CONTINUE: "继续阅读",
+  },
+
+  // 高亮工具栏
+  HIGHLIGHT: {
+    DELETE: "删除高亮",
+    TOOLBAR_LABEL: "高亮工具栏",
+  },
+
+  // 代码块
+  CODE: {
+    COPY: "复制代码",
+  },
+
+  // 主题
+  THEME: {
+    SWITCH_LABEL: "切换阅读主题",
+  },
+
+  // 键盘快捷键帮助
+  KEYBOARD: {
+    TITLE: "键盘快捷键",
+    DESCRIPTION: "使用键盘快捷键快速控制阅读器",
+    CLOSE_TIP: "按 Esc 或点击外部关闭",
+  },
+} as const;
+
+/**
  * 所有文案的聚合导出
  */
 export const MESSAGES = {
@@ -414,6 +624,10 @@ export const MESSAGES = {
   TRASH,
   CLASSIFICATION,
   MD_COLLECTION,
+  MONITOR,
+  LINK_HEALTH,
+  TTS,
+  MD_READER,
 } as const;
 
 /**

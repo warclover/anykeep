@@ -16,6 +16,7 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
+import { MD_READER } from "@/lib/constants/messages";
 import type { ReadingPosition } from "../../types/reader";
 
 /**
@@ -119,13 +120,13 @@ export function PositionRestorePrompt({
 
     let timeStr: string;
     if (minutes < 1) {
-      timeStr = "刚刚";
+      timeStr = MD_READER.POSITION.JUST_NOW;
     } else if (minutes < 60) {
-      timeStr = `${minutes} 分钟前`;
+      timeStr = MD_READER.POSITION.MINUTES_AGO(minutes);
     } else if (hours < 24) {
-      timeStr = `${hours} 小时前`;
+      timeStr = MD_READER.POSITION.HOURS_AGO(hours);
     } else if (days < 30) {
-      timeStr = `${days} 天前`;
+      timeStr = MD_READER.POSITION.DAYS_AGO(days);
     } else {
       // 超过 30 天显示具体日期
       timeStr = new Date(timestamp).toLocaleDateString("zh-CN", {
@@ -165,11 +166,11 @@ export function PositionRestorePrompt({
                 d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
               />
             </svg>
-            继续上次阅读？
+            {MD_READER.POSITION.DIALOG_TITLE}
           </AlertDialogTitle>
           <AlertDialogDescription className="space-y-2">
             <p>
-              您上次阅读到{" "}
+              {MD_READER.POSITION.DIALOG_READ_TO}{" "}
               <span className="font-semibold text-foreground">
                 {progressPercent}%
               </span>
@@ -178,16 +179,16 @@ export function PositionRestorePrompt({
               </span>
             </p>
             <p className="text-xs text-muted-foreground">
-              是否恢复到上次阅读位置？
+              {MD_READER.POSITION.DIALOG_CONFIRM}
             </p>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter className="flex-row gap-2 sm:flex-row">
           <AlertDialogCancel onClick={handleStartOver} className="flex-1 mt-0">
-            从头开始
+            {MD_READER.POSITION.START_OVER}
           </AlertDialogCancel>
           <AlertDialogAction onClick={handleRestore} className="flex-1">
-            继续阅读
+            {MD_READER.POSITION.CONTINUE}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

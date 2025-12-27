@@ -17,6 +17,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { MD_READER } from "@/lib/constants/messages";
 import {
   KEYBOARD_SHORTCUTS_HELP,
   SHORTCUT_CATEGORY_LABELS,
@@ -159,10 +160,10 @@ export function KeyboardNavHelp({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Keyboard className="size-5" />
-            键盘快捷键
+            {MD_READER.KEYBOARD.TITLE}
           </DialogTitle>
           <DialogDescription id="keyboard-shortcuts-description">
-            使用键盘快捷键快速控制阅读器
+            {MD_READER.KEYBOARD.DESCRIPTION}
           </DialogDescription>
         </DialogHeader>
 
@@ -184,7 +185,7 @@ export function KeyboardNavHelp({
         {/* 底部提示 */}
         <div className="pt-4 border-t border-border">
           <p className="text-xs text-muted-foreground text-center">
-            按 <KeyBadge>Esc</KeyBadge> 或点击外部关闭
+            {MD_READER.KEYBOARD.CLOSE_TIP}
           </p>
         </div>
       </DialogContent>

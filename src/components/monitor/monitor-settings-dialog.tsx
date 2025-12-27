@@ -35,6 +35,7 @@ import {
   CHECK_INTERVAL_LABELS,
   type CheckInterval,
 } from "@/lib/monitor/constants";
+import { MONITOR } from "@/lib/constants/messages";
 
 interface MonitorSettingsDialogProps {
   /** 对话框开关状态 */
@@ -100,7 +101,7 @@ export function MonitorSettingsDialog({
       });
       onOpenChange(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "更新失败");
+      setError(err instanceof Error ? err.message : MONITOR.UPDATE_ERROR);
     }
   };
 
@@ -224,7 +225,7 @@ export function MonitorSettingsDialog({
                 保存中...
               </>
             ) : (
-              "保存设置"
+              MONITOR.SAVE_SETTINGS
             )}
           </Button>
         </DialogFooter>

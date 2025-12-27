@@ -35,6 +35,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useTTSPlayer } from "@/hooks/domain/ai";
 import type { TTSContentType } from "@/lib/tts";
+import { TTS } from "@/lib/constants/messages";
 
 // ============================================
 // 类型定义
@@ -80,27 +81,27 @@ const CONTENT_TYPE_OPTIONS: Array<{
 }> = [
   {
     type: "tldr",
-    label: "一句话总结",
+    label: TTS.CONTENT_TYPES.ONE_LINER.LABEL,
     icon: Zap,
-    description: "快速了解核心内容",
+    description: TTS.CONTENT_TYPES.ONE_LINER.DESCRIPTION,
   },
   {
     type: "summary",
-    label: "完整摘要",
+    label: TTS.CONTENT_TYPES.SUMMARY.LABEL,
     icon: FileText,
-    description: "详细的内容概述",
+    description: TTS.CONTENT_TYPES.SUMMARY.DESCRIPTION,
   },
   {
     type: "keypoints",
-    label: "关键要点",
+    label: TTS.CONTENT_TYPES.KEY_POINTS.LABEL,
     icon: List,
-    description: "逐条朗读要点",
+    description: TTS.CONTENT_TYPES.KEY_POINTS.DESCRIPTION,
   },
   {
     type: "all",
-    label: "全部内容",
+    label: TTS.CONTENT_TYPES.FULL.LABEL,
     icon: BookOpen,
-    description: "完整朗读所有摘要",
+    description: TTS.CONTENT_TYPES.FULL.DESCRIPTION,
   },
 ];
 

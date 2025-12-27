@@ -7,6 +7,7 @@
 
 import { createContext, useContext, useMemo, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { MD_READER } from "@/lib/constants/messages";
 import {
   useFocusMode,
   type UseFocusModeOptions,
@@ -228,7 +229,10 @@ export interface FocusModeToggleProps {
  */
 export function FocusModeToggle({
   className,
-  labels = { enter: "专注阅读", exit: "退出专注" },
+  labels = {
+    enter: MD_READER.FOCUS_MODE.ENTER,
+    exit: MD_READER.FOCUS_MODE.EXIT,
+  },
 }: FocusModeToggleProps) {
   const { isFocusMode, toggleFocusMode } = useFocusModeContext();
 
@@ -244,7 +248,11 @@ export function FocusModeToggle({
         "transition-colors",
         className,
       )}
-      title={isFocusMode ? "按 Esc 退出专注模式" : "进入专注模式"}
+      title={
+        isFocusMode
+          ? MD_READER.FOCUS_MODE.EXIT_TIP
+          : MD_READER.FOCUS_MODE.ENTER_TIP
+      }
     >
       {isFocusMode ? (
         <>

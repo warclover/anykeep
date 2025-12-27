@@ -13,6 +13,7 @@
 import { useEffect, useState, useRef } from "react";
 import { Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { MD_READER } from "@/lib/constants/messages";
 import {
   HIGHLIGHT_COLOR_LIST,
   HIGHLIGHT_TOOLBAR_CONFIG,
@@ -164,7 +165,7 @@ export function HighlightToolbar({
         "select-none",
       )}
       role="toolbar"
-      aria-label="高亮工具栏"
+      aria-label={MD_READER.HIGHLIGHT.TOOLBAR_LABEL}
     >
       {/* 颜色选择 */}
       <div className="flex items-center gap-1">
@@ -219,8 +220,8 @@ export function HighlightToolbar({
               "hover:bg-red-50 dark:hover:bg-red-900/20",
               "focus:outline-none focus:ring-2 focus:ring-red-500",
             )}
-            title="删除高亮"
-            aria-label="删除高亮"
+            title={MD_READER.HIGHLIGHT.DELETE}
+            aria-label={MD_READER.HIGHLIGHT.DELETE}
           >
             <Trash2 className="w-4 h-4" />
           </button>

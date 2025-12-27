@@ -34,6 +34,7 @@ import {
   CHECK_INTERVAL_LABELS,
   type CheckInterval,
 } from "@/lib/monitor/constants";
+import { MONITOR } from "@/lib/constants/messages";
 
 interface CreateMonitorDialogProps {
   /** 对话框开关状态 */
@@ -113,7 +114,7 @@ export function CreateMonitorDialog({
       onSuccess?.();
       onOpenChange(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "创建失败");
+      setError(err instanceof Error ? err.message : MONITOR.CREATE_ERROR);
     }
   };
 
@@ -239,7 +240,7 @@ export function CreateMonitorDialog({
                 创建中...
               </>
             ) : (
-              "开始监控"
+              MONITOR.START
             )}
           </Button>
         </DialogFooter>

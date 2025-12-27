@@ -43,6 +43,7 @@ import { cn } from "@/lib/utils";
 import { formatRelativeTime } from "@/lib/utils/date-utils";
 import type { MonitorResponse } from "@/app/api/monitors/validation";
 import { CHECK_INTERVAL_LABELS } from "@/lib/monitor/constants";
+import { MONITOR } from "@/lib/constants/messages";
 
 /**
  * 安全地打开外部 URL（防止 javascript: XSS）
@@ -83,25 +84,25 @@ function getStatusConfig(status: MonitorResponse["status"]) {
   switch (status) {
     case "active":
       return {
-        label: "监控中",
+        label: MONITOR.STATUS.ACTIVE,
         color: "bg-green-500/10 text-green-600 border-green-500/20",
         icon: CheckCircle2,
       };
     case "paused":
       return {
-        label: "已暂停",
+        label: MONITOR.STATUS.PAUSED,
         color: "bg-gray-500/10 text-gray-600 border-gray-500/20",
         icon: Pause,
       };
     case "failed":
       return {
-        label: "检查失败",
+        label: MONITOR.STATUS.FAILED,
         color: "bg-red-500/10 text-red-600 border-red-500/20",
         icon: AlertCircle,
       };
     default:
       return {
-        label: "未知",
+        label: MONITOR.STATUS.UNKNOWN,
         color: "bg-gray-500/10 text-gray-600 border-gray-500/20",
         icon: Clock,
       };

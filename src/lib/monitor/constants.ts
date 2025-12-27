@@ -72,3 +72,24 @@ export const VERSION_RETENTION = {
   FREE: 1,
   PRO: 3,
 } as const;
+
+// 内容相似度阈值
+export const SIMILARITY_THRESHOLDS = {
+  /** 微小变更阈值 (>=95% 相似度) */
+  MINIMAL: 95,
+  /** 轻微变更阈值 (>=80% 相似度) */
+  SLIGHT: 80,
+  /** 显著变更阈值 (>=50% 相似度) */
+  SIGNIFICANT: 50,
+} as const;
+
+// 变更等级类型
+export type ChangeLevel = "minimal" | "slight" | "significant" | "major";
+
+// 变更等级标签
+export const CHANGE_LEVEL_LABELS: Record<ChangeLevel, string> = {
+  minimal: "微小变更",
+  slight: "轻微变更",
+  significant: "显著变更",
+  major: "重大变更",
+};

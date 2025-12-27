@@ -35,31 +35,26 @@ import type {
   LinkCheckResult,
   FixAction,
 } from "@/lib/ai-skills/skills/link-health-check/types";
+import { LINK_HEALTH } from "@/lib/constants/messages";
 
-/** 页面文本常量 */
+/** 页面文本常量 - 使用全局常量 */
 const PAGE_TEXT = {
-  title: "链接健康检测",
-  description: "检测收藏链接的可访问性，发现失效链接并提供修复建议",
-  scopeLabel: "检测范围",
-  folderLabel: "选择文件夹",
+  title: LINK_HEALTH.TITLE,
+  description: LINK_HEALTH.DESCRIPTION,
+  scopeLabel: LINK_HEALTH.SCOPE_LABEL,
+  folderLabel: LINK_HEALTH.FOLDER_LABEL,
   scopeOptions: {
-    all: "全部书签",
-    folder: "指定文件夹",
+    all: LINK_HEALTH.SCOPE_ALL,
+    folder: LINK_HEALTH.SCOPE_FOLDER,
   },
-  startButton: "开始检测",
-  stopButton: "停止检测",
-  refreshButton: "刷新",
+  startButton: LINK_HEALTH.START,
+  stopButton: LINK_HEALTH.STOP,
+  refreshButton: LINK_HEALTH.REFRESH,
   emptyState: {
-    title: "尚未运行检测",
-    description: "选择检测范围后点击「开始检测」按钮",
+    title: LINK_HEALTH.EMPTY_TITLE,
+    description: LINK_HEALTH.EMPTY_DESCRIPTION,
   },
-  stats: {
-    total: "已检测",
-    healthy: "健康",
-    slow: "缓慢",
-    redirect: "已重定向",
-    failed: "失效",
-  },
+  stats: LINK_HEALTH.STATS,
 };
 
 /** 检测运行状态 */
@@ -139,10 +134,10 @@ export function LinkHealthPageClient() {
             ...prev,
             status: chunk.data.success ? "completed" : "failed",
             progress: 100,
-            currentStep: "完成",
+            currentStep: LINK_HEALTH.PROGRESS.COMPLETED,
           }));
           if (chunk.data.success) {
-            toast.success("链接健康检测完成");
+            toast.success(LINK_HEALTH.COMPLETE_SUCCESS);
           }
           break;
 
@@ -159,7 +154,7 @@ export function LinkHealthPageClient() {
           setRunState((prev) => ({
             ...prev,
             status: "cancelled",
-            currentStep: "已取消",
+            currentStep: LINK_HEALTH.PROGRESS.CANCELLED,
           }));
           break;
       }
@@ -171,7 +166,7 @@ export function LinkHealthPageClient() {
   const handleStartCheck = useCallback(async () => {
     // 验证文件夹选择
     if (scope === "folder" && !selectedFolderId) {
-      toast.error("请选择要检测的文件夹");
+      toast.error(LINK_HEALTH.NO_FOLDER_SELECTED);
       return;
     }
 
@@ -181,7 +176,7 @@ export function LinkHealthPageClient() {
       progress: 0,
       stats: null,
       problems: [],
-      currentStep: "初始化...",
+      currentStep: LINK_HEALTH.PROGRESS.INITIALIZING,
     });
 
     // 创建 AbortController
@@ -212,7 +207,7 @@ export function LinkHealthPageClient() {
 
       const reader = response.body?.getReader();
       if (!reader) {
-        throw new Error("无法读取响应流");
+        throw new Error(LINK_HEALTH.STREAM_ERROR);
       }
 
       const decoder = new TextDecoder();
@@ -243,9 +238,9 @@ export function LinkHealthPageClient() {
         setRunState((prev) => ({
           ...prev,
           status: "cancelled",
-          currentStep: "已取消",
+          currentStep: LINK_HEALTH.PROGRESS.CANCELLED,
         }));
-        toast.info("检测已取消");
+        toast.info(LINK_HEALTH.CANCELLED);
       } else {
         setRunState((prev) => ({
           ...prev,
@@ -304,7 +299,7 @@ export function LinkHealthPageClient() {
         });
 
         if (!response.ok) {
-          throw new Error("修复操作失败");
+          throw new Error(LINK_HEALTH.FIX_ERROR);
         }
 
         // 从问题列表中移除已修复的项
@@ -315,7 +310,7 @@ export function LinkHealthPageClient() {
           ),
         }));
 
-        toast.success("修复成功");
+        toast.success(LINK_HEALTH.FIX_SUCCESS);
         setFixDialogOpen(false);
         setSelectedProblem(null);
       } catch (error) {

@@ -34,6 +34,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useMonitors, useMonitorActions } from "@/hooks/monitor";
 import { MonitorCard } from "./monitor-card";
 import { MonitorSettingsDialog } from "./monitor-settings-dialog";
+import { MONITOR } from "@/lib/constants/messages";
 
 type StatusFilter = "all" | "active" | "paused" | "failed";
 
@@ -181,8 +182,14 @@ export function MonitorList({ onViewDetail }: MonitorListProps) {
           <h3 className="text-lg font-medium mb-2">暂无监控</h3>
           <p className="text-sm text-muted-foreground mb-4">
             {statusFilter === "all"
-              ? "在书签详情页添加页面监控，追踪内容变化"
-              : `没有${statusFilter === "active" ? "活跃" : statusFilter === "paused" ? "暂停" : "失败"}的监控`}
+              ? MONITOR.EMPTY
+              : MONITOR.EMPTY_FILTERED(
+                  statusFilter === "active"
+                    ? "活跃"
+                    : statusFilter === "paused"
+                      ? "暂停"
+                      : "失败",
+                )}
           </p>
         </div>
       )}

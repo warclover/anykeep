@@ -8,6 +8,7 @@
 import { memo, useCallback } from "react";
 import { Clock, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { MD_READER } from "@/lib/constants/messages";
 import type { WithClassName } from "../../types/reader";
 
 /**
@@ -36,12 +37,12 @@ export interface ReadingProgressProps extends WithClassName {
  */
 function formatRemainingTime(minutes: number): string {
   if (minutes <= 0) {
-    return "阅读完成";
+    return MD_READER.PROGRESS.COMPLETED;
   }
   if (minutes < 1) {
-    return "即将读完";
+    return MD_READER.PROGRESS.ALMOST_DONE;
   }
-  return `约 ${minutes} 分钟`;
+  return MD_READER.PROGRESS.REMAINING_MINUTES(minutes);
 }
 
 /**
@@ -54,7 +55,7 @@ function formatProgressText(
   const percent = Math.round(progress);
 
   if (percent >= COMPLETION_THRESHOLD) {
-    return "阅读完成 ✓";
+    return MD_READER.PROGRESS.COMPLETED_CHECK;
   }
 
   const timeText = formatRemainingTime(remainingMinutes);
