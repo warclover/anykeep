@@ -21,7 +21,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { useInboxOrganization } from "@/hooks/use-inbox-organization";
+import { useInboxOrganization } from "@/hooks/domain/ai";
 
 interface InboxOrganizationBannerProps {
   className?: string;

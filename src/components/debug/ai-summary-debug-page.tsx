@@ -43,7 +43,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useDebugConfig } from "@/hooks/use-debug-config";
+import { useDebugConfig } from "@/hooks/core";
 import {
   exportConfigAsJson,
   importConfigFromJson,
@@ -532,7 +532,7 @@ function TestPanel({ config }: { config: AIDebugConfig }) {
     const startTime = Date.now();
 
     try {
-      const response = await fetch("/api/debug/ai-summary", {
+      const response = await fetch("/api/internal/debug/ai-summary", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

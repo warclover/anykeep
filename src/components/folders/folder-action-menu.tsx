@@ -48,7 +48,7 @@ import {
 import { RenameFolderDialog } from "./rename-folder-dialog";
 import { MergeFolderDialog } from "./merge-folder-dialog";
 import { DeleteFolderDialog } from "./delete-folder-dialog";
-import { useAbortableFetch } from "@/hooks/use-abortable-fetch";
+import { useAbortableFetch } from "@/hooks/core";
 import { useUser } from "@/contexts/user-context";
 import { folderCacheInvalidation } from "@/lib/cache";
 import type {

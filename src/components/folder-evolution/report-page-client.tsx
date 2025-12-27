@@ -5,7 +5,7 @@
  * AI 进化报告页面客户端组件
  */
 
-import { useEvolutionReports } from "@/hooks/use-evolution-reports";
+import { useEvolutionReports } from "@/hooks/domain/ai";
 import { Button } from "@/components/ui/button";
 import {
   Card,

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { RootProviders } from "@/components/providers/root-providers";
-import { COLOR_THEME_INIT_SCRIPT } from "@/hooks/use-color-theme";
+import { COLOR_THEME_INIT_SCRIPT } from "@/hooks/core";
 import "./globals.css";
 
 // 强制动态渲染以避免预渲染时的 Context 问题

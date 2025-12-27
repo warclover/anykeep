@@ -44,8 +44,8 @@ const ICON_MAP: Record<string, LucideIcon> = {
 };
 import type { CustomUsageTag, Platform } from "@/types/supabase";
 import { AddCustomUsageTagDialog } from "./add-custom-usage-tag-dialog";
-import { useCustomUsageTags } from "@/hooks/use-custom-usage-tags";
-import { useAutoSnapshot } from "@/hooks/use-auto-snapshot";
+import { useCustomUsageTags } from "@/hooks/data";
+import { useAutoSnapshot } from "@/hooks/domain/bookmark";
 import { clientLogger } from "@/lib/client-logger";
 
 interface UsageTagInlineEditorProps {

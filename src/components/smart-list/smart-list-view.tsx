@@ -26,8 +26,8 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BookmarkCard } from "@/components/bookmark/bookmark-card";
 import { SMART_LIST_COLORS } from "@/lib/smart-list/presets";
-import { useSmartListBookmarks } from "@/hooks/use-smart-list-bookmarks";
-import { useSmartLists } from "@/hooks/use-smart-lists";
+import { useSmartListBookmarks } from "@/hooks/data";
+import { useSmartLists } from "@/hooks/data";
 import { SmartListEditorDialog } from "./smart-list-editor-dialog";
 import type {
   SmartListColor,

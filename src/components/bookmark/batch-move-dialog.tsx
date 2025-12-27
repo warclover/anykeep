@@ -4,14 +4,14 @@
  * V4.2.24: 使用 useFolders Hook 统一缓存
  */
 
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { Loader2, Folder, FolderOpen, Check } from 'lucide-react'
-import { toast } from 'sonner'
-import { useAbortableFetch } from '@/hooks/use-abortable-fetch'
-import { useFolders } from '@/hooks/use-folders'
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Loader2, Folder, FolderOpen, Check } from "lucide-react";
+import { toast } from "sonner";
+import { useAbortableFetch } from "@/hooks/core";
+import { useFolders } from "@/hooks/data";
 import {
   Dialog,
   DialogContent,
@@ -19,20 +19,20 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
-import type { Folder as FolderType } from '@/types/supabase'
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import type { Folder as FolderType } from "@/types/supabase";
 
 interface FolderTreeNode extends FolderType {
-  children: FolderTreeNode[]
+  children: FolderTreeNode[];
 }
 
 interface BatchMoveDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  selectedIds: Set<number>
-  onSuccess?: () => void
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  selectedIds: Set<number>;
+  onSuccess?: () => void;
 }
 
 export function BatchMoveDialog({
@@ -41,97 +41,100 @@ export function BatchMoveDialog({
   selectedIds,
   onSuccess,
 }: BatchMoveDialogProps) {
-  const router = useRouter()
-  const { fetchWithAbort } = useAbortableFetch()
+  const router = useRouter();
+  const { fetchWithAbort } = useAbortableFetch();
 
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [selectedFolderId, setSelectedFolderId] = useState<number | null>(null)
-  const [expandedFolders, setExpandedFolders] = useState<Set<number>>(new Set())
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedFolderId, setSelectedFolderId] = useState<number | null>(null);
+  const [expandedFolders, setExpandedFolders] = useState<Set<number>>(
+    new Set(),
+  );
 
   // V4.2.24: 使用统一的文件夹缓存 Hook（仅在对话框打开时获取）
   const {
     folders: rawFolders,
     isLoading,
     error: loadError,
-  } = useFolders({ enabled: open })
+  } = useFolders({ enabled: open });
 
   // 转换为树形结构类型
-  const folders = (rawFolders || []) as FolderTreeNode[]
+  const folders = (rawFolders || []) as FolderTreeNode[];
 
   const handleSubmit = async () => {
-    if (selectedIds.size === 0) return
+    if (selectedIds.size === 0) return;
 
-    setIsSubmitting(true)
+    setIsSubmitting(true);
     try {
-      const res = await fetchWithAbort('/api/bookmarks/batch-move', {
-        method: 'POST',
+      const res = await fetchWithAbort("/api/bookmarks/batch-move", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           ids: Array.from(selectedIds),
           folderId: selectedFolderId,
         }),
-      })
+      });
 
-      const data = await res.json()
+      const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error?.message || '移动失败')
+        throw new Error(data.error?.message || "移动失败");
       }
 
-      const movedCount = data.data?.movedCount || 0
-      const targetName = selectedFolderId === null
-        ? '根目录'
-        : findFolderName(folders, selectedFolderId)
+      const movedCount = data.data?.movedCount || 0;
+      const targetName =
+        selectedFolderId === null
+          ? "根目录"
+          : findFolderName(folders, selectedFolderId);
 
-      toast.success(`成功将 ${movedCount} 条收藏移动到「${targetName}」`)
-      onOpenChange(false)
-      onSuccess?.()
+      toast.success(`成功将 ${movedCount} 条收藏移动到「${targetName}」`);
+      onOpenChange(false);
+      onSuccess?.();
 
       // 刷新页面数据
-      router.refresh()
+      router.refresh();
     } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') {
-        return
+      if (error instanceof Error && error.name === "AbortError") {
+        return;
       }
-      toast.error(error instanceof Error ? error.message : '移动失败')
+      toast.error(error instanceof Error ? error.message : "移动失败");
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   // 递归查找文件夹名称
   const findFolderName = (folders: FolderTreeNode[], id: number): string => {
     for (const folder of folders) {
-      if (folder.id === id) return folder.name
+      if (folder.id === id) return folder.name;
       if (folder.children.length > 0) {
-        const found = findFolderName(folder.children, id)
-        if (found) return found
+        const found = findFolderName(folder.children, id);
+        if (found) return found;
       }
     }
-    return '未知文件夹'
-  }
+    return "未知文件夹";
+  };
 
   // 切换文件夹展开状态
   const toggleExpand = (folderId: number) => {
     setExpandedFolders((prev) => {
-      const newSet = new Set(prev)
+      const newSet = new Set(prev);
       if (newSet.has(folderId)) {
-        newSet.delete(folderId)
+        newSet.delete(folderId);
       } else {
-        newSet.add(folderId)
+        newSet.add(folderId);
       }
-      return newSet
-    })
-  }
+      return newSet;
+    });
+  };
 
   // 递归渲染文件夹树
   const renderFolderTree = (folders: FolderTreeNode[], level = 0) => {
     return folders.map((folder) => {
-      const hasChildren = folder.children.length > 0
-      const isExpanded = expandedFolders.has(folder.id)
-      const isSelected = selectedFolderId === folder.id
+      const hasChildren = folder.children.length > 0;
+      const isExpanded = expandedFolders.has(folder.id);
+      const isSelected = selectedFolderId === folder.id;
 
       return (
         <div key={folder.id}>
@@ -139,10 +142,10 @@ export function BatchMoveDialog({
             type="button"
             onClick={() => setSelectedFolderId(folder.id)}
             className={cn(
-              'w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left transition-colors',
+              "w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left transition-colors",
               isSelected
-                ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-900 dark:text-blue-100'
-                : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                ? "bg-blue-100 dark:bg-blue-900/30 text-blue-900 dark:text-blue-100"
+                : "hover:bg-gray-100 dark:hover:bg-gray-700",
             )}
             style={{ paddingLeft: `${level * 16 + 12}px` }}
           >
@@ -150,15 +153,15 @@ export function BatchMoveDialog({
               <button
                 type="button"
                 onClick={(e) => {
-                  e.stopPropagation()
-                  toggleExpand(folder.id)
+                  e.stopPropagation();
+                  toggleExpand(folder.id);
                 }}
                 className="p-0.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded"
               >
                 <svg
                   className={cn(
-                    'w-4 h-4 transition-transform',
-                    isExpanded && 'rotate-90'
+                    "w-4 h-4 transition-transform",
+                    isExpanded && "rotate-90",
                   )}
                   fill="none"
                   stroke="currentColor"
@@ -192,9 +195,9 @@ export function BatchMoveDialog({
             <div>{renderFolderTree(folder.children, level + 1)}</div>
           )}
         </div>
-      )
-    })
-  }
+      );
+    });
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -214,7 +217,7 @@ export function BatchMoveDialog({
             </div>
           ) : loadError ? (
             <div className="flex items-center justify-center py-8 text-red-500">
-              {loadError.message || '加载文件夹失败'}
+              {loadError.message || "加载文件夹失败"}
             </div>
           ) : (
             <div className="h-[300px] border rounded-lg overflow-y-auto">
@@ -224,10 +227,10 @@ export function BatchMoveDialog({
                   type="button"
                   onClick={() => setSelectedFolderId(null)}
                   className={cn(
-                    'w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left transition-colors',
+                    "w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left transition-colors",
                     selectedFolderId === null
-                      ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-900 dark:text-blue-100'
-                      : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                      ? "bg-blue-100 dark:bg-blue-900/30 text-blue-900 dark:text-blue-100"
+                      : "hover:bg-gray-100 dark:hover:bg-gray-700",
                   )}
                 >
                   <span className="w-5" />
@@ -260,10 +263,7 @@ export function BatchMoveDialog({
           >
             取消
           </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={isSubmitting || isLoading}
-          >
+          <Button onClick={handleSubmit} disabled={isSubmitting || isLoading}>
             {isSubmitting ? (
               <>
                 <Loader2 className="size-4 mr-2 animate-spin" />
@@ -276,5 +276,5 @@ export function BatchMoveDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

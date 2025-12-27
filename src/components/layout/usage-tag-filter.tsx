@@ -13,7 +13,7 @@ import { Filter, X, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { USAGE_TAG_PRESETS, getAllUsageTags } from "@/lib/constants/usage-tags";
 import { useSafeNavigation } from "@/contexts/navigation-context";
-import { useCustomUsageTags } from "@/hooks/use-custom-usage-tags";
+import { useCustomUsageTags } from "@/hooks/data";
 import { UsageTagButton } from "@/components/bookmark/usage-tag-button";
 import { SmartListQuickSave } from "@/components/smart-list";
 import { uiEventBus, UIEvents } from "@/lib/shared/event-bus";

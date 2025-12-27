@@ -23,7 +23,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { OperationHistoryList } from "@/components/folder-evolution";
-import { useOperationHistory } from "@/hooks/use-operation-history";
+import { useOperationHistory } from "@/hooks/domain/folder";
 
 interface AIOperationHistoryCardProps {
   defaultExpanded?: boolean;

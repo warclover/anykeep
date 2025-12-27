@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useReclassify } from "@/hooks/use-reclassify";
+import { useReclassify } from "@/hooks/domain/bookmark";
 
 interface ReclassifyBannerProps {
   className?: string;

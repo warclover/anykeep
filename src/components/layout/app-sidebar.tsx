@@ -31,7 +31,7 @@ import {
   HeartPulse,
   Wand2,
 } from "lucide-react";
-import { useUnreadCount } from "@/hooks/use-unread-count";
+import { useUnreadCount } from "@/hooks/data";
 import { MessageBadge } from "@/components/messages";
 import { SmartListDropdown } from "@/components/smart-list";
 import { cn } from "@/lib/utils";

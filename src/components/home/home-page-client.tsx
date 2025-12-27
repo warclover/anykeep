@@ -22,8 +22,8 @@ import {
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { useAbortableFetch } from "@/hooks/use-abortable-fetch";
-import { useInitData } from "@/hooks/use-init-data";
+import { useAbortableFetch } from "@/hooks/core";
+import { useInitData } from "@/hooks/data";
 import { useBookmarksSWR, cachePerformanceTracker } from "@/lib/cache";
 import { Button } from "@/components/ui/button";
 import { BrowserBookmarkVirtualList } from "@/components/bookmark/browser-bookmark-virtual-list";
@@ -36,7 +36,7 @@ import { EmptyState } from "@/components/bookmark/empty-state";
 // Phase 3.4: 使用 HomePageContext 替代 Event 监听
 import { useHomePageContext } from "@/contexts/home-page-context";
 import { useSnapshotFeature } from "@/components/snapshot";
-import { prefetchCustomUsageTags } from "@/hooks/use-custom-usage-tags";
+import { prefetchCustomUsageTags } from "@/hooks/data";
 import { uiEventBus, UIEvents } from "@/lib/shared/event-bus";
 
 // 懒加载 ReclassifyBanner（非首屏关键组件）
@@ -60,10 +60,9 @@ const PendingConfirmationsSection = lazy(() =>
   })),
 );
 // V3.1: 替换 V1 的 useFolderRecommendation 为 V3 的分类轮询
-import { useClassificationPolling } from "@/hooks/use-classification-polling";
-import { useDialogs } from "@/hooks/use-dialogs";
-import { useSelectionMode } from "@/hooks/use-selection-mode";
-import { useProcessingPoller } from "@/hooks/use-processing-poller";
+import { useClassificationPolling } from "@/hooks/ui";
+import { useDialogs, useSelectionMode } from "@/hooks/core";
+import { useProcessingPoller } from "@/hooks/ui";
 import { ErrorMessage } from "@/components/ui/error-message";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Bookmark } from "@/types/supabase";

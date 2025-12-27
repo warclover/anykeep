@@ -57,8 +57,8 @@ export {
   useMessageNotification,
   registerGlobalModalHandler,
   unregisterGlobalModalHandler,
-} from "@/hooks/use-message-notification";
+} from "@/hooks/ui";
 export type {
   UseMessageNotificationOptions,
   UseMessageNotificationResult,
-} from "@/hooks/use-message-notification";
+} from "@/hooks/ui";

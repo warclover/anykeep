@@ -10,7 +10,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { Loader2, Folder, Check } from "lucide-react";
 import { toast } from "sonner";
-import { useFolders } from "@/hooks/use-folders";
+import { useFolders } from "@/hooks/data";
 import {
   Dialog,
   DialogContent,

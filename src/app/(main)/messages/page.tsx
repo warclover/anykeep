@@ -9,7 +9,7 @@ import { useState, useCallback } from "react";
 import { CheckCheck, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MessageList, MessageFilter } from "@/components/messages";
-import { useMessages } from "@/hooks/use-messages";
+import { useMessages } from "@/hooks/data";
 import { toast } from "sonner";
 import type { MessageStatus, MessageLevel } from "@/lib/messages";
 

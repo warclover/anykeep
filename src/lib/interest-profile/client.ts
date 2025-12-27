@@ -85,6 +85,7 @@ export async function updateManualDescription(
 /**
  * 触发导入后分析
  * 浏览器书签导入完成后调用
+ * 使用 PATCH /api/classification/interest-profile with action: "analyze_imported"
  */
 export async function analyzeImportedBookmarks(
   importSource: string = "browser",
@@ -100,10 +101,14 @@ export async function analyzeImportedBookmarks(
   stageUpdated: boolean;
   newStage: UserStage | null;
 }> {
-  const response = await fetch(API_CLASSIFICATION.interestProfileAnalyze, {
-    method: "POST",
+  const response = await fetch(API_CLASSIFICATION.interestProfile, {
+    method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ importSource, triggerStageUpdate }),
+    body: JSON.stringify({
+      action: "analyze_imported",
+      importSource,
+      triggerStageUpdate,
+    }),
   });
 
   if (!response.ok) {

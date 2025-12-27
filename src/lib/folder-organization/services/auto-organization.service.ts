@@ -16,7 +16,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
 import { DBSCANCluster, cosineDistance } from "../algorithms/dbscan-cluster";
-import { folderExecutorService } from "@/lib/folder-operations";
+import { folderExecutorService } from "@/lib/folder";
 import { logger } from "@/lib/logger";
 
 // ============================================================================

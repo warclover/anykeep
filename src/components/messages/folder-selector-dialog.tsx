@@ -25,7 +25,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useFolders } from "@/hooks/use-folders";
+import { useFolders } from "@/hooks/data";
 import {
   Dialog,
   DialogContent,

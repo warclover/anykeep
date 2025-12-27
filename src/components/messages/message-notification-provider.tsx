@@ -10,7 +10,7 @@ import { MessageModal } from "./message-modal";
 import {
   registerGlobalModalHandler,
   unregisterGlobalModalHandler,
-} from "@/hooks/use-message-notification";
+} from "@/hooks/ui";
 import type { Message } from "@/lib/messages";
 
 // ============================================

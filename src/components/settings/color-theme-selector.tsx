@@ -12,7 +12,7 @@
 
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useColorTheme, COLOR_THEME_INFO } from "@/hooks/use-color-theme";
+import { useColorTheme, COLOR_THEME_INFO } from "@/hooks/core";
 import type { ColorTheme } from "@/types/user-settings";
 
 const THEMES: ColorTheme[] = ["blue", "purple", "orange"];

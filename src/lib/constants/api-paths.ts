@@ -23,15 +23,10 @@
 export const API_AGENT = {
   /** 统一 AI 入口（推荐） */
   unified: "/api/agent/unified",
-  /** AI 聊天 */
-  chat: "/api/agent/chat",
-  /**
-   * 确认操作
-   * @deprecated 2025-12-24 - 请使用 ConfirmationService 代替
-   * @see {@link @/lib/ai-skills/effects/services/confirmation.service}
-   * @sunset 2025-06-01
-   */
-  confirm: "/api/agent/confirm",
+  /** 取消请求 */
+  cancel: "/api/agent/cancel",
+  /** 重新生成 */
+  regenerate: "/api/agent/regenerate",
   /** 使用统计 */
   stats: "/api/agent/stats",
 } as const;
@@ -166,30 +161,19 @@ export const API_CLASSIFICATION = {
   feedback: "/api/classification/feedback",
   /** 文件夹健康度 */
   folderHealth: "/api/classification/folder-health",
-  /** 文件夹健康度摘要 */
-  folderHealthSummary: "/api/classification/folder-health/summary",
   /** 文件夹画像列表 */
   foldersProfiles: "/api/classification/folders/profiles",
   /** 文件夹画像详情 */
   folderProfileDetail: (id: number) =>
     `/api/classification/folders/profiles/${id}`,
-  /** 文件夹画像摘要 */
-  folderProfilesSummary: "/api/classification/folders/profiles/summary",
   /** 兴趣画像 */
   interestProfile: "/api/classification/interest-profile",
-  /** 兴趣分析 */
-  interestProfileAnalyze: "/api/classification/interest-profile/analyze",
   /** 兴趣列表 */
   interests: "/api/classification/interests",
-  /** 自定义兴趣 */
-  interestsCustom: "/api/classification/interests/custom",
   /** 分类设置 */
   settings: "/api/classification/settings",
   /** 来源画像列表 */
   sourceProfiles: "/api/classification/source-profiles",
-  /** 来源画像详情 */
-  sourceProfileDetail: (id: string) =>
-    `/api/classification/source-profiles/${id}`,
   /** 分类阶段 */
   stage: "/api/classification/stage",
 

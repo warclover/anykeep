@@ -24,7 +24,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useSmartLists } from "@/hooks/use-smart-lists";
+import { useSmartLists } from "@/hooks/data";
 import { SMART_LIST_COLORS } from "@/lib/smart-list/presets";
 import { SmartListEditorDialog } from "./smart-list-editor-dialog";
 import type {

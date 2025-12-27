@@ -31,7 +31,7 @@ import {
 import { DEFAULT_CSV_FIELDS, EXPORT_PAGE_TEXT } from "@/lib/export/constants";
 import { exportAnalytics } from "@/lib/export/analytics";
 import { useBookmarksSWR } from "@/lib/cache/hooks/use-bookmarks-swr";
-import { useFolders } from "@/hooks/use-folders";
+import { useFolders } from "@/hooks/data";
 import type {
   BookmarkWithFolder,
   ExportFormat,

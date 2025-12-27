@@ -14,7 +14,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
-import { useAbortableFetch } from "@/hooks/use-abortable-fetch";
+import { useAbortableFetch } from "@/hooks/core";
 import type {
   ConfirmationMessageDisplay,
   ConfirmationStatus,

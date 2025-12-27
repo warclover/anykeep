@@ -10,7 +10,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { useAbortableFetch } from "@/hooks/use-abortable-fetch";
+import { useAbortableFetch } from "@/hooks/core";
 import { toast } from "sonner";
 import { clientLogger } from "@/lib/client-logger";
 import type { Bookmark } from "@/types/supabase";

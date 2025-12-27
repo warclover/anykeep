@@ -31,7 +31,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
-import { useAutoSnapshotSettings } from "@/hooks/use-auto-snapshot-settings";
+import { useAutoSnapshotSettings } from "@/hooks/domain/bookmark";
 import { useSnapshotFeature } from "@/lib/feature-flags";
 import { USAGE_TAG_PRESETS } from "@/lib/constants/usage-tags";
 import {

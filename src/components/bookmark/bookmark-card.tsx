@@ -48,7 +48,7 @@ import { getPlatformHexColor } from "@/lib/constants/platforms";
 import { generatePlaceholderImage } from "@/lib/utils/placeholder-image";
 import { getProxiedImageUrl } from "@/lib/utils/image-proxy";
 import { PlatformBadge } from "@/components/ui/platform-badge";
-import { prefetchCustomUsageTags } from "@/hooks/use-custom-usage-tags";
+import { prefetchCustomUsageTags } from "@/hooks/data";
 import { BookmarkRatingDisplay } from "@/components/bookmark/bookmark-rating-display";
 import { ContentTypeBadge } from "@/components/bookmark/content-type-badge";
 import type { ContentType } from "@/lib/classification/content-type-detector";

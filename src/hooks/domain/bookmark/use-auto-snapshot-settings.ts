@@ -6,7 +6,7 @@
 "use client";
 
 import { useCallback, useMemo } from "react";
-import { useUser } from "@/hooks/use-user";
+import { useUser } from "@/hooks/data";
 import { createClient } from "@/lib/supabase/client";
 import {
   DEFAULT_AUTO_SNAPSHOT_SETTINGS,

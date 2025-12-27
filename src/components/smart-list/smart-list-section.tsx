@@ -44,7 +44,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { SmartListEditorDialog } from "./smart-list-editor-dialog";
-import { useSmartLists } from "@/hooks/use-smart-lists";
+import { useSmartLists } from "@/hooks/data";
 import type {
   SmartListClient,
   CreateSmartListRequest,

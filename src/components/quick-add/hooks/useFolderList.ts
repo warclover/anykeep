@@ -13,7 +13,7 @@
  */
 
 import { useMemo } from "react";
-import { useFolders } from "@/hooks/use-folders";
+import { useFolders } from "@/hooks/data";
 
 /** 文件夹选项类型 */
 export interface FolderOption {

@@ -25,10 +25,7 @@ import {
   Plus,
 } from "lucide-react";
 import { toast } from "sonner";
-import {
-  useAbortableFetch,
-  useDebouncedAbortableFetch,
-} from "@/hooks/use-abortable-fetch";
+import { useAbortableFetch, useDebouncedAbortableFetch } from "@/hooks/core";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,7 +42,7 @@ import { extractUrlFromShareText } from "@/lib/utils/url-extractor";
 import { UsageTagSelector } from "@/components/bookmark/usage-tag-selector";
 import { EmbeddedSidePanel } from "@/components/ui/embedded-side-panel";
 import { uiEventBus, UIEvents } from "@/lib/shared/event-bus";
-import { useFolders } from "@/hooks/use-folders";
+import { useFolders } from "@/hooks/data";
 import type { CustomUsageTag } from "@/types/supabase";
 
 // ============================================================================

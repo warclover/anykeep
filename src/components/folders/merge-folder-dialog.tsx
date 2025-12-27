@@ -9,7 +9,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
-import { useAbortableFetch } from "@/hooks/use-abortable-fetch";
+import { useAbortableFetch } from "@/hooks/core";
 import {
   Dialog,
   DialogContent,

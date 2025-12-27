@@ -10,7 +10,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { useAbortableFetch } from "@/hooks/use-abortable-fetch";
+import { useAbortableFetch } from "@/hooks/core";
 
 // ============================================
 // 类型定义

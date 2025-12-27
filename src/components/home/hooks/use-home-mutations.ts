@@ -11,7 +11,7 @@
 
 import { useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { useAbortableFetch } from "@/hooks/use-abortable-fetch";
+import { useAbortableFetch } from "@/hooks/core";
 import { toast } from "sonner";
 import type { Bookmark } from "@/types/supabase";
 

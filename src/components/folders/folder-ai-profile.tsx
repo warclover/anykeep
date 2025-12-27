@@ -42,10 +42,7 @@ import {
   HelpCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import {
-  useFolderProfile,
-  type FolderProfile,
-} from "@/hooks/use-folder-profile";
+import { useFolderProfile, type FolderProfile } from "@/hooks/data";
 import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
 

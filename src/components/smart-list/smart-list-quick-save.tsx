@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useSmartLists } from "@/hooks/use-smart-lists";
+import { useSmartLists } from "@/hooks/data";
 import type { SmartListFilters } from "@/types/smart-list";
 
 // ============================================

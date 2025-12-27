@@ -22,10 +22,7 @@ import {
   Eye,
 } from "lucide-react";
 import { toast } from "sonner";
-import {
-  useAbortableFetch,
-  useDebouncedAbortableFetch,
-} from "@/hooks/use-abortable-fetch";
+import { useAbortableFetch, useDebouncedAbortableFetch } from "@/hooks/core";
 import {
   Dialog,
   DialogContent,

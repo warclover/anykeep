@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 import { USAGE_TAG_PRESETS, getAllUsageTags } from "@/lib/constants/usage-tags";
 import { useSafeNavigation } from "@/contexts/navigation-context";
 import { useHomePageSafe } from "@/contexts/home-page-context";
-import { useCustomUsageTags } from "@/hooks/use-custom-usage-tags";
+import { useCustomUsageTags } from "@/hooks/data";
 import { UsageTagButton } from "@/components/bookmark/usage-tag-button";
 import { SmartListQuickSave } from "@/components/smart-list";
 import { Button } from "@/components/ui/button";

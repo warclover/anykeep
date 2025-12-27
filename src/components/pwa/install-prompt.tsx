@@ -3,61 +3,63 @@
  * 引导用户将应用添加到主屏幕
  */
 
-'use client'
+"use client";
 
-import { useState, useEffect } from 'react'
-import { X, Download, Smartphone, Share2 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { useInstallPrompt, usePlatform } from '@/hooks/use-capacitor'
+import { useState, useEffect } from "react";
+import { X, Download, Smartphone, Share2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useInstallPrompt, usePlatform } from "@/hooks/domain/platform";
 
 export function InstallPrompt() {
-  const { canInstall, isInstalled, promptInstall } = useInstallPrompt()
-  const { isNative } = usePlatform()
-  const [showPrompt, setShowPrompt] = useState(false)
-  const [dismissed, setDismissed] = useState(false)
+  const { canInstall, isInstalled, promptInstall } = useInstallPrompt();
+  const { isNative } = usePlatform();
+  const [showPrompt, setShowPrompt] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
 
   // 检查是否应该显示提示
   useEffect(() => {
     // 已安装或原生应用中不显示
-    if (isInstalled || isNative) return
+    if (isInstalled || isNative) return;
 
     // 检查是否之前已关闭
-    const dismissedTime = localStorage.getItem('pwa-prompt-dismissed')
+    const dismissedTime = localStorage.getItem("pwa-prompt-dismissed");
     if (dismissedTime) {
-      const dismissedDate = new Date(parseInt(dismissedTime))
-      const daysSinceDismissed = (Date.now() - dismissedDate.getTime()) / (1000 * 60 * 60 * 24)
+      const dismissedDate = new Date(parseInt(dismissedTime));
+      const daysSinceDismissed =
+        (Date.now() - dismissedDate.getTime()) / (1000 * 60 * 60 * 24);
       // 7 天内不再显示
-      if (daysSinceDismissed < 7) return
+      if (daysSinceDismissed < 7) return;
     }
 
     // 延迟显示提示
     const timer = setTimeout(() => {
-      setShowPrompt(true)
-    }, 3000)
+      setShowPrompt(true);
+    }, 3000);
 
-    return () => clearTimeout(timer)
-  }, [isInstalled, isNative])
+    return () => clearTimeout(timer);
+  }, [isInstalled, isNative]);
 
   const handleDismiss = () => {
-    setDismissed(true)
-    setShowPrompt(false)
-    localStorage.setItem('pwa-prompt-dismissed', Date.now().toString())
-  }
+    setDismissed(true);
+    setShowPrompt(false);
+    localStorage.setItem("pwa-prompt-dismissed", Date.now().toString());
+  };
 
   const handleInstall = async () => {
-    const success = await promptInstall()
+    const success = await promptInstall();
     if (success) {
-      setShowPrompt(false)
+      setShowPrompt(false);
     }
-  }
+  };
 
   // 不显示的情况
   if (!showPrompt || dismissed || isInstalled || isNative) {
-    return null
+    return null;
   }
 
   // iOS Safari 特殊处理（不支持自动安装提示）
-  const isIOSSafari = /iPad|iPhone|iPod/.test(navigator.userAgent) && !('MSStream' in window)
+  const isIOSSafari =
+    /iPad|iPhone|iPod/.test(navigator.userAgent) && !("MSStream" in window);
 
   return (
     <div className="fixed bottom-20 left-4 right-4 md:left-auto md:right-4 md:w-80 z-50 animate-in slide-in-from-bottom-4">
@@ -107,7 +109,8 @@ export function InstallPrompt() {
             // iOS Safari 手动安装指引
             <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
               <p className="text-xs text-gray-600 dark:text-gray-300 mb-2">
-                点击底部分享按钮 <Share2 className="w-3 h-3 inline" />，然后选择「添加到主屏幕」
+                点击底部分享按钮 <Share2 className="w-3 h-3 inline" />
+                ，然后选择「添加到主屏幕」
               </p>
               <Button
                 variant="ghost"
@@ -157,5 +160,5 @@ export function InstallPrompt() {
         </div>
       </div>
     </div>
-  )
+  );
 }

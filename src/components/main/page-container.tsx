@@ -33,7 +33,7 @@ import {
   useFoldersData,
   useAnalyticsData,
   useSettingsData,
-} from "@/hooks/use-page-data";
+} from "@/hooks/data";
 import { clientLogger } from "@/lib/client-logger";
 
 // ==================== 错误边界组件 ====================

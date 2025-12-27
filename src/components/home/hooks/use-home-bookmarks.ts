@@ -13,10 +13,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
-import { useInitData } from "@/hooks/use-init-data";
+import { useInitData } from "@/hooks/data";
 import { useBookmarksSWR, cachePerformanceTracker } from "@/lib/cache";
-import { useProcessingPoller } from "@/hooks/use-processing-poller";
-import { useClassificationPolling } from "@/hooks/use-classification-polling";
+import { useProcessingPoller, useClassificationPolling } from "@/hooks/ui";
 import { getPageSizeByView } from "../constants";
 import type { BookmarkWithFolder, ReadonlyBookmarks } from "../types";
 

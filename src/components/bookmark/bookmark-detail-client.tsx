@@ -30,14 +30,14 @@ import {
   VisionAnalysisTrigger,
 } from "@/components/bookmark/vision-insights";
 import { RelatedBookmarksV2Lazy } from "@/components/bookmark/related-bookmarks-lazy";
-import { useVisionAnalysis } from "@/hooks/use-vision-analysis";
+import { useVisionAnalysis } from "@/hooks/domain/ai";
 import type { BookmarkVisionData } from "@/types/vision";
 import { hasVisionData } from "@/types/vision";
 import { UnifiedTagsSection } from "@/components/bookmark/unified-tags-section";
 import { ContentTypeBadge } from "@/components/bookmark/content-type-badge";
 import type { ContentType } from "@/lib/classification/content-type-detector";
 import type { Bookmark, CustomUsageTag, Platform } from "@/types/supabase";
-import { useCustomUsageTags } from "@/hooks/use-custom-usage-tags";
+import { useCustomUsageTags } from "@/hooks/data";
 import { cn } from "@/lib/utils";
 import { getPlatformConfig } from "@/lib/platform-utils";
 import { formatFriendlyDate } from "@/lib/utils/date-utils";

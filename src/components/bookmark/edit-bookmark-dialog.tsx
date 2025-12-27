@@ -10,7 +10,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { useAbortableFetch } from "@/hooks/use-abortable-fetch";
+import { useAbortableFetch } from "@/hooks/core";
 import {
   Dialog,
   DialogContent,
@@ -34,7 +34,7 @@ import { updateBookmarkSchema } from "@/lib/validation";
 import type { Bookmark, CustomUsageTag } from "@/types/supabase";
 import { UsageTagSelector } from "./usage-tag-selector";
 import { separateUserTagsExtended } from "@/lib/constants/usage-tags";
-import { useAutoSnapshot } from "@/hooks/use-auto-snapshot";
+import { useAutoSnapshot } from "@/hooks/domain/bookmark";
 
 interface EditBookmarkDialogProps {
   open: boolean;

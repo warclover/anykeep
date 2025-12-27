@@ -18,8 +18,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Folder, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
-import { useAbortableFetch } from "@/hooks/use-abortable-fetch";
-import { useFolders } from "@/hooks/use-folders";
+import { useAbortableFetch } from "@/hooks/core";
+import { useFolders } from "@/hooks/data";
 import { useLearningFeedback } from "./learning-feedback-toast";
 import {
   Dialog,

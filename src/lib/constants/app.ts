@@ -31,6 +31,7 @@ export const ANALYTICS = {
 
 /**
  * 验证相关常量
+ * 与数据库 VARCHAR 约束保持一致
  */
 export const VALIDATION = {
   /** 搜索关键词最小长度 */
@@ -39,12 +40,20 @@ export const VALIDATION = {
   SEARCH_QUERY_MAX_LENGTH: 200,
   /** 文件夹名称最小长度 */
   FOLDER_NAME_MIN_LENGTH: 1,
-  /** 文件夹名称最大长度 */
+  /** 文件夹名称最大长度 (DB: VARCHAR(100)) */
   FOLDER_NAME_MAX_LENGTH: 50,
-  /** 收藏标题最大长度 */
+  /** 收藏标题最大长度 (DB: VARCHAR(500)) */
   BOOKMARK_TITLE_MAX_LENGTH: 500,
   /** 摘要最大长度 */
   SUMMARY_MAX_LENGTH: 2000,
+  /** 用户昵称最大长度 (DB: VARCHAR(50)) */
+  NICKNAME_MAX_LENGTH: 50,
+  /** 手机号最大长度 (DB: VARCHAR(20)) */
+  PHONE_MAX_LENGTH: 20,
+  /** 来源名称最大长度 (DB: VARCHAR(200)) */
+  SOURCE_NAME_MAX_LENGTH: 200,
+  /** 平台标识最大长度 (DB: VARCHAR(50)) */
+  PLATFORM_MAX_LENGTH: 50,
 } as const;
 
 /**

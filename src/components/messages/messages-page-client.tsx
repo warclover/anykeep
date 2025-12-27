@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MessageList } from "./message-list";
 import { MessageFilter } from "./message-filter";
-import { useMessages } from "@/hooks/use-messages";
+import { useMessages } from "@/hooks/data";
 import { toast } from "sonner";
 import type { MessageStatus, MessageLevel } from "@/lib/messages";
 

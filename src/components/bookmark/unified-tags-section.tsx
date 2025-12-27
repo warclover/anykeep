@@ -32,8 +32,8 @@ import { cn } from "@/lib/utils";
 import { USAGE_TAG_PRESETS, getAllUsageTags } from "@/lib/constants/usage-tags";
 import type { CustomUsageTag, Platform } from "@/types/supabase";
 import { AddCustomUsageTagDialog } from "./add-custom-usage-tag-dialog";
-import { useCustomUsageTags } from "@/hooks/use-custom-usage-tags";
-import { useAutoSnapshot } from "@/hooks/use-auto-snapshot";
+import { useCustomUsageTags } from "@/hooks/data";
+import { useAutoSnapshot } from "@/hooks/domain/bookmark";
 import { clientLogger } from "@/lib/client-logger";
 
 // 图标名称到组件的映射

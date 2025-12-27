@@ -64,7 +64,7 @@ import {
   type PoorlyNamedFolder,
   type MissingCategory,
   type Folder as FolderType,
-} from "@/hooks/use-librarian-analysis";
+} from "@/hooks/domain/folder";
 
 // ============================================================================
 // 辅助组件

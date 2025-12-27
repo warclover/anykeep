@@ -16,7 +16,7 @@ import {
 } from "@/lib/constants/usage-tags";
 import type { CustomUsageTag } from "@/types/supabase";
 import { AddCustomUsageTagDialog } from "./add-custom-usage-tag-dialog";
-import { useCustomUsageTags } from "@/hooks/use-custom-usage-tags";
+import { useCustomUsageTags } from "@/hooks/data";
 import { UsageTagButton } from "./usage-tag-button";
 import { clientLogger } from "@/lib/client-logger";
 

@@ -32,7 +32,7 @@ import {
 } from "./confirmation-message-card";
 import { cn } from "@/lib/utils";
 import { fetchWithRetry } from "@/lib/utils/fetch-with-retry";
-import { useFolders } from "@/hooks/use-folders";
+import { useFolders } from "@/hooks/data";
 import { clientLogger } from "@/lib/client-logger";
 import { API_CLASSIFICATION } from "@/lib/constants/api-paths";
 

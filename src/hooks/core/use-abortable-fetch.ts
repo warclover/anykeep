@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * 可取消请求的 Hook
  *

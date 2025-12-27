@@ -19,7 +19,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { clientLogger } from "@/lib/client-logger";
-import { useAutoSnapshotSettings } from "@/hooks/use-auto-snapshot-settings";
+import { useAutoSnapshotSettings } from "./use-auto-snapshot-settings";
 import {
   useSnapshotFeature,
   useWechatArticleFeature,
