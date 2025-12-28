@@ -1,8 +1,12 @@
 /**
  * AI Agent Tools 模块导出
  *
- * @version 2.3.0
+ * @version 2.4.0
  * @since 2025-12-23
+ *
+ * v2.4.0 新增:
+ * - 知识图谱 Tools: get-knowledge-graph（知识图谱数据）, find-related-by-topic（主题关联查找）
+ * - 微信文章 Tools: list-wechat-articles（微信文章列表）, get-wechat-article-stats（微信文章统计）
  *
  * v2.3.0 新增:
  * - 插件授权 Tools: list-plugin-authorizations, revoke-plugin-authorization, revoke-all-plugin-authorizations, get-plugin-auth-stats
@@ -91,6 +95,12 @@ export * from "./trust-mode";
 // 插件授权 Tools (新增 v2.3.0)
 export * from "./plugin-auth";
 
+// 知识图谱 Tools (新增 v2.4.0)
+export * from "./knowledge-link";
+
+// 微信文章 Tools (新增 v2.4.0)
+export * from "./wechat-article";
+
 // 注册默认 Tools
 import { toolRegistry } from "./tool-registry";
 import { queryTools } from "./query";
@@ -108,6 +118,8 @@ import { messageTools } from "./messages";
 import { snapshotTools } from "./snapshot";
 import { trustModeTools } from "./trust-mode";
 import { pluginAuthTools } from "./plugin-auth";
+import { knowledgeLinkTools } from "./knowledge-link";
+import { wechatArticleTools } from "./wechat-article";
 
 /**
  * 注册所有默认 Tools
@@ -134,6 +146,9 @@ export function registerDefaultTools(): void {
   toolRegistry.registerAll(trustModeTools);
   // 新增 Tools (v2.3.0)
   toolRegistry.registerAll(pluginAuthTools);
+  // 新增 Tools (v2.4.0)
+  toolRegistry.registerAll(knowledgeLinkTools);
+  toolRegistry.registerAll(wechatArticleTools);
 }
 
 /**
