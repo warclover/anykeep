@@ -89,7 +89,7 @@ export const getPluginAuthStatsTool: Tool<
 
         return {
           success: false,
-          error: `获取授权统计失败: ${error.message}`,
+          error: "获取授权统计失败，请稍后重试",
           errorCode: "DB_ERROR",
         };
       }
@@ -239,7 +239,7 @@ export const getPluginAuthStatsTool: Tool<
 
       return {
         success: false,
-        error: `获取授权统计失败: ${errorMessage}`,
+        error: "获取授权统计失败，请稍后重试",
         errorCode: "EXECUTION_ERROR",
         metadata: {
           executionTimeMs,

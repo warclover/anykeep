@@ -113,23 +113,56 @@ export interface PluginAuthStatsResult {
 
 /**
  * 计算授权状态
+ * 支持无效日期处理
  */
 export function calculateAuthStatus(
   expiresAt: string,
   revokedAt: string | null,
 ): AuthorizationStatus {
   if (revokedAt) return "revoked";
-  if (new Date(expiresAt) <= new Date()) return "expired";
+
+  const expiresDate = new Date(expiresAt);
+  // 处理无效日期 - 视为已过期
+  if (isNaN(expiresDate.getTime())) return "expired";
+
+  if (expiresDate <= new Date()) return "expired";
   return "active";
 }
 
 /**
  * 格式化相对时间
+ * 支持：过去时间、未来时间、无效日期处理
  */
 export function formatRelativeTime(dateStr: string): string {
   const date = new Date(dateStr);
+
+  // 处理无效日期
+  if (isNaN(date.getTime())) {
+    return "未知时间";
+  }
+
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
+
+  // 处理未来时间
+  if (diffMs < 0) {
+    const futureDiffMs = Math.abs(diffMs);
+    const futureDiffSeconds = Math.floor(futureDiffMs / 1000);
+    const futureDiffMinutes = Math.floor(futureDiffSeconds / 60);
+    const futureDiffHours = Math.floor(futureDiffMinutes / 60);
+    const futureDiffDays = Math.floor(futureDiffHours / 24);
+
+    if (futureDiffSeconds < 60) return "即将";
+    if (futureDiffMinutes < 60) return `${futureDiffMinutes} 分钟后`;
+    if (futureDiffHours < 24) return `${futureDiffHours} 小时后`;
+    if (futureDiffDays < 7) return `${futureDiffDays} 天后`;
+    if (futureDiffDays < 30) return `${Math.floor(futureDiffDays / 7)} 周后`;
+    if (futureDiffDays < 365)
+      return `${Math.floor(futureDiffDays / 30)} 个月后`;
+    return `${Math.floor(futureDiffDays / 365)} 年后`;
+  }
+
+  // 处理过去时间
   const diffSeconds = Math.floor(diffMs / 1000);
   const diffMinutes = Math.floor(diffSeconds / 60);
   const diffHours = Math.floor(diffMinutes / 60);

@@ -90,7 +90,7 @@ export const revokeAllPluginAuthorizationsTool: Tool<
 
           return {
             success: false,
-            error: `撤销所有授权失败: ${error.message}`,
+            error: "撤销所有授权失败，请稍后重试",
             errorCode: "DB_ERROR",
           };
         }
@@ -119,7 +119,7 @@ export const revokeAllPluginAuthorizationsTool: Tool<
 
           return {
             success: false,
-            error: `撤销 ${BROWSER_DISPLAY_NAMES[browser]} 授权失败: ${error.message}`,
+            error: `撤销 ${BROWSER_DISPLAY_NAMES[browser]} 授权失败，请稍后重试`,
             errorCode: "DB_ERROR",
           };
         }
@@ -188,7 +188,7 @@ export const revokeAllPluginAuthorizationsTool: Tool<
 
       return {
         success: false,
-        error: `撤销授权失败: ${errorMessage}`,
+        error: "撤销授权失败，请稍后重试",
         errorCode: "EXECUTION_ERROR",
         metadata: {
           executionTimeMs,

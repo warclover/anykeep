@@ -102,27 +102,30 @@ export const revokePluginAuthorizationTool: Tool<
         };
       }
 
-      // 3. 执行撤销
-      const { error: updateError } = await supabase
+      // 3. 执行撤销（带结果验证）
+      const { data: updated, error: updateError } = await supabase
         .from("plugin_authorizations")
         .update({ revoked_at: new Date().toISOString() })
         .eq("id", authorizationId)
-        .eq("user_id", context.userId);
+        .eq("user_id", context.userId)
+        .select("id")
+        .single();
 
-      if (updateError) {
+      if (updateError || !updated) {
         logger.error(
           {
             toolName: "revoke_plugin_authorization",
             userId: context.userId,
             authorizationId,
-            error: updateError.message,
+            error: updateError?.message,
+            updated: !!updated,
           },
           "revoke_plugin_authorization: Update Error",
         );
 
         return {
           success: false,
-          error: `撤销授权失败: ${updateError.message}`,
+          error: "撤销授权失败，请稍后重试",
           errorCode: "DB_ERROR",
         };
       }
@@ -174,7 +177,7 @@ export const revokePluginAuthorizationTool: Tool<
 
       return {
         success: false,
-        error: `撤销授权失败: ${errorMessage}`,
+        error: "撤销授权失败，请稍后重试",
         errorCode: "EXECUTION_ERROR",
         metadata: {
           executionTimeMs,

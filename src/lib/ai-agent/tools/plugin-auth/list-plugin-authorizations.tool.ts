@@ -127,7 +127,7 @@ export const listPluginAuthorizationsTool: Tool<
 
         return {
           success: false,
-          error: `查询授权列表失败: ${error.message}`,
+          error: "查询授权列表失败，请稍后重试",
           errorCode: "DB_ERROR",
         };
       }
@@ -204,7 +204,7 @@ export const listPluginAuthorizationsTool: Tool<
 
       return {
         success: false,
-        error: `查询授权列表失败: ${errorMessage}`,
+        error: "查询授权列表失败，请稍后重试",
         errorCode: "EXECUTION_ERROR",
         metadata: {
           executionTimeMs,
