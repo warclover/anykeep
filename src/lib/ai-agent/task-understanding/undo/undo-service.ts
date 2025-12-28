@@ -1,7 +1,16 @@
 /**
- * 撤销服务
+ * 撤销服务 (已弃用)
  *
- * 支持操作回滚，是零接管模式的核心组件
+ * @deprecated 请使用数据库版本的撤销功能：
+ * - API: `/api/agent/undo` (GET 获取列表, POST 执行撤销)
+ * - 数据库表: `ai_operation_snapshots`
+ * - RPC: `revert_ai_operation_snapshot`
+ *
+ * 此内存版本仅用于兼容旧代码，不再维护。
+ * 新功能应直接调用 API 端点。
+ *
+ * @see /api/agent/undo/route.ts
+ * @see supabase/migrations/20251225000001_add_ai_interaction_tables.sql
  *
  * 设计原则：
  * - 快照式撤销：记录操作前状态，撤销时恢复
@@ -53,6 +62,8 @@ const DEFAULT_CONFIG: UndoServiceConfig = {
  * 撤销服务
  *
  * 提供操作回滚能力
+ *
+ * @deprecated 请使用 `/api/agent/undo` API 代替此类
  */
 export class UndoService {
   private config: UndoServiceConfig;
@@ -525,6 +536,8 @@ let undoServiceInstance: UndoService | null = null;
 
 /**
  * 获取撤销服务实例
+ *
+ * @deprecated 请使用 `/api/agent/undo` API 代替
  */
 export function getUndoService(
   config?: Partial<UndoServiceConfig>,

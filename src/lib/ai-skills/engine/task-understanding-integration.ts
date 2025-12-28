@@ -51,7 +51,10 @@ export interface TaskUnderstandingIntegrationConfig {
   /** 偏好学习服务 */
   preferenceLearningService?: PreferenceLearningServiceV2;
 
-  /** 撤销服务 */
+  /**
+   * 撤销服务
+   * @deprecated 内存版撤销服务已弃用，请使用 /api/agent/undo API
+   */
   undoService?: UndoService;
 
   /** 零接管适配器 */
@@ -88,6 +91,7 @@ export class TaskUnderstandingIntegration {
   private taskAnalyzer?: TaskAnalyzer;
   private smartDefaultsService?: SmartDefaultsService;
   private preferenceLearningService?: PreferenceLearningServiceV2;
+  /** @deprecated 使用 /api/agent/undo API 代替 */
   private undoService?: UndoService;
   private zeroTakeoverAdapter: ZeroTakeoverAdapter;
   private debug: boolean;

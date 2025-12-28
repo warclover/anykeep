@@ -4145,6 +4145,15 @@ export type Database = {
           message: string;
         }[];
       };
+      /** 撤销 AI 操作快照，恢复书签到操作前状态（底层函数） */
+      revert_ai_operation_snapshot: {
+        Args: { p_snapshot_id: string; p_user_id: string };
+        Returns: {
+          success: boolean;
+          restored_count: number;
+          error_message: string | null;
+        }[];
+      };
       get_user_classification_stage: {
         Args: { p_user_id: string };
         Returns: string;

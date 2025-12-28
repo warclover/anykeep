@@ -105,9 +105,8 @@ export async function POST(request: NextRequest) {
       "Agent Feedback: Request received",
     );
 
-    // 3. 使用类型断言插入反馈（表类型待生成）
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase as any)
+    // 3. 插入反馈
+    const { data, error } = await supabase
       .from("ai_feedback")
       .upsert(
         {
@@ -190,11 +189,9 @@ export async function GET(request: NextRequest) {
 
     if (action === "stats") {
       // 获取统计数据
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase as any).rpc(
-        "get_ai_feedback_stats",
-        { p_user_id: user.id },
-      );
+      const { data, error } = await supabase.rpc("get_ai_feedback_stats", {
+        p_user_id: user.id,
+      });
 
       if (error) {
         logger.error({ error }, "Agent Feedback: Failed to get stats");
@@ -224,8 +221,7 @@ export async function GET(request: NextRequest) {
 
     if (action === "reasons") {
       // 获取负反馈原因分布
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase as any).rpc(
+      const { data, error } = await supabase.rpc(
         "get_negative_feedback_reasons",
         { p_limit: 100 },
       );

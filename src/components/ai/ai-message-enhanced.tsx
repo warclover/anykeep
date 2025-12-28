@@ -20,8 +20,11 @@ import { AISuggestionsInline } from "./ai-suggestions-panel";
 import { MemoryIndicator } from "./memory-indicator";
 import { AIMarkdown } from "./ai-markdown";
 import { MessageActionsBar } from "./phase4/quick-actions";
+import { ReactThinkingDisplay } from "./react-thinking-display";
+import { CitationList } from "./citation-reference";
 import type { FeedbackDetails } from "./phase4/types";
 import type { IntentType } from "@/lib/ai-skills/router/types";
+import type { ThinkingRecord } from "@/hooks/domain/ai/use-ai-chat";
 
 // =============================================================================
 // 类型定义
@@ -50,6 +53,8 @@ export interface AIMessageEnhancedProps {
   ) => void;
   /** 意图纠正回调 */
   onWrongIntent?: (messageId: string, currentIntent: IntentType) => void;
+  /** 引用点击回调 */
+  onCitationClick?: (bookmarkId: number) => void;
   /** 当前反馈状态 */
   feedbackGiven?: "like" | "dislike" | null;
 }
@@ -68,6 +73,7 @@ export const AIMessageEnhanced = memo(function AIMessageEnhanced({
   onExport,
   onFeedback,
   onWrongIntent,
+  onCitationClick,
   feedbackGiven,
 }: AIMessageEnhancedProps) {
   const isUser = message.role === "user";
@@ -82,6 +88,11 @@ export const AIMessageEnhanced = memo(function AIMessageEnhanced({
     message.memory &&
     message.memory.resolved &&
     message.memory.referenceCount > 0;
+  const hasThinking = message.thinking && message.thinking.length > 0;
+  const hasCitations =
+    message.citation &&
+    message.citation.citationSummary &&
+    message.citation.citationSummary.length > 0;
   const isOrchestration = message.executionMode === "orchestration";
   const isCompleted = message.status === "completed";
 
@@ -248,6 +259,17 @@ export const AIMessageEnhanced = memo(function AIMessageEnhanced({
           </div>
         )}
 
+        {/* ReAct 思考过程展示（零接管/ReAct 模式） */}
+        {!isUser && hasThinking && message.thinking && (
+          <div className="mt-2 w-full">
+            <ReactThinkingDisplay
+              thinking={message.thinking as ThinkingRecord[]}
+              isThinking={isStreaming}
+              defaultExpanded={false}
+            />
+          </div>
+        )}
+
         {/* 进度显示 */}
         {hasProgress && message.progress && (
           <div className="mt-2">
@@ -275,6 +297,14 @@ export const AIMessageEnhanced = memo(function AIMessageEnhanced({
               onSuggestionClick={onSuggestionClick}
             />
           </div>
+        )}
+
+        {/* 引用来源列表 */}
+        {!isUser && hasCitations && message.citation && (
+          <CitationList
+            citations={message.citation.citationSummary}
+            onCitationClick={onCitationClick}
+          />
         )}
 
         {/* 时间戳 */}

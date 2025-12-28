@@ -57,7 +57,11 @@ export type {
 // 服务导出
 // =============================================================================
 
-// 撤销服务
+/**
+ * 撤销服务 (已弃用)
+ * @deprecated 请使用 /api/agent/undo API 代替
+ * @see /api/agent/undo - GET 获取列表, POST 执行撤销
+ */
 export {
   UndoService,
   getUndoService,

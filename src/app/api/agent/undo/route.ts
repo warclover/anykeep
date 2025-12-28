@@ -73,14 +73,10 @@ export async function POST(request: NextRequest) {
     );
 
     // 3. 调用 RPC 执行撤销
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase as any).rpc(
-      "revert_ai_operation_snapshot",
-      {
-        p_snapshot_id: snapshotId,
-        p_user_id: user.id,
-      },
-    );
+    const { data, error } = await supabase.rpc("revert_ai_operation_snapshot", {
+      p_snapshot_id: snapshotId,
+      p_user_id: user.id,
+    });
 
     if (error) {
       logger.error({ error }, "Agent Undo: RPC failed");
@@ -161,8 +157,7 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "10", 10);
 
     // 查询未过期、未撤销的快照
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from("ai_operation_snapshots")
       .select(
         "id, operation_type, summary, created_at, expires_at, bookmark_ids",
