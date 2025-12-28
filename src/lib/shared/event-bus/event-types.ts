@@ -311,6 +311,75 @@ export interface KnowledgeLinkEventTypes {
 }
 
 // ============================================================================
+// 画像分析事件 (Phase 4)
+// ============================================================================
+
+/** 画像推断事件 */
+export interface PersonaInferredEvent {
+  userId: string;
+  personaType: string;
+  personaGroup: string;
+  confidence: number;
+  alternativesCount: number;
+  bookmarkCount: number;
+  inferenceTimeMs: number;
+  timestamp: string;
+}
+
+/** 画像设置变更事件 */
+export interface PersonaSettingsChangedEvent {
+  userId: string;
+  changeType: "set_manual" | "reset_to_inferred" | "update_preferences";
+  previousType: string | null;
+  newType: string | null;
+  previousSource: "inferred" | "manual" | null;
+  newSource: "inferred" | "manual";
+  timestamp: string;
+}
+
+/** 画像意图路由事件 */
+export interface PersonaIntentRoutedEvent {
+  userId: string;
+  personaType: string;
+  intentType: string;
+  intentSubType?: string;
+  boostApplied: boolean;
+  originalConfidence: number;
+  boostedConfidence: number;
+  timestamp: string;
+}
+
+/** 画像功能错误事件 */
+export interface PersonaErrorEvent {
+  userId: string;
+  errorType:
+    | "inference_failed"
+    | "settings_save_failed"
+    | "prompt_inject_failed";
+  errorMessage: string;
+  context?: Record<string, unknown>;
+  timestamp: string;
+}
+
+/** 画像灰度发布检查事件 */
+export interface PersonaRolloutCheckEvent {
+  userId: string;
+  inRollout: boolean;
+  rolloutPercentage: number;
+  userHash: number;
+  timestamp: string;
+}
+
+/** 画像分析事件类型映射 */
+export interface PersonaEventTypes {
+  "persona:inferred": PersonaInferredEvent;
+  "persona:settings_changed": PersonaSettingsChangedEvent;
+  "persona:intent_routed": PersonaIntentRoutedEvent;
+  "persona:error": PersonaErrorEvent;
+  "persona:rollout_check": PersonaRolloutCheckEvent;
+}
+
+// ============================================================================
 // 聚合所有事件类型
 // ============================================================================
 
@@ -320,7 +389,8 @@ export type EventTypes = ClassificationEventTypes &
   SummaryEventTypes &
   JobQueueEventTypes &
   CostMonitorEventTypes &
-  KnowledgeLinkEventTypes;
+  KnowledgeLinkEventTypes &
+  PersonaEventTypes;
 
 /** 事件名称联合类型 */
 export type EventName = keyof EventTypes;
@@ -370,4 +440,13 @@ export const SummaryEvents = {
 export const KnowledgeLinkEvents = {
   DISCOVERED: "link:discovered",
   REBUILT: "link:rebuilt",
+} as const;
+
+/** 画像分析事件名称 (Phase 4) */
+export const PersonaEvents = {
+  INFERRED: "persona:inferred",
+  SETTINGS_CHANGED: "persona:settings_changed",
+  INTENT_ROUTED: "persona:intent_routed",
+  ERROR: "persona:error",
+  ROLLOUT_CHECK: "persona:rollout_check",
 } as const;

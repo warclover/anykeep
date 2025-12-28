@@ -80,6 +80,13 @@ export type {
   // Cost monitor events
   CostMonitorEventTypes,
   CostAlertEvent,
+  // Persona events (Phase 4)
+  PersonaEventTypes,
+  PersonaInferredEvent,
+  PersonaSettingsChangedEvent,
+  PersonaIntentRoutedEvent,
+  PersonaErrorEvent,
+  PersonaRolloutCheckEvent,
 } from "./event-types";
 
 // UI Event Types (V4.2 Phase 1)
@@ -113,6 +120,7 @@ export {
   CostMonitorEvents,
   SummaryEvents,
   KnowledgeLinkEvents,
+  PersonaEvents,
 } from "./event-types";
 
 /** UI 事件名称 (V4.2 Phase 1) */

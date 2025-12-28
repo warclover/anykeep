@@ -9,11 +9,13 @@
  * @version 2.1.0
  * @since 2025-12-24
  * @updated 2025-12-25 - 迁移到统一确认系统 (ConfirmationService)
+ * @updated 2025-12-28 - 移除重复类型定义，导入统一类型
  */
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import type { AgentStreamChunk } from "@/lib/ai-agent/core/types";
 import type { PendingConfirmation } from "@/lib/ai-agent/tools/types";
+import type { UnifiedStreamChunk } from "@/lib/ai-skills/output/types";
 import { confirmationService } from "@/lib/ai-skills/effects";
 
 // ============================================
@@ -139,65 +141,8 @@ export interface ChatRequestOptions {
   useUnifiedEngine?: boolean;
 }
 
-/**
- * 统一引擎流式数据块
- */
-interface UnifiedStreamChunk {
-  type:
-    | "text"
-    | "progress"
-    | "deliverable"
-    | "suggestions"
-    | "routing"
-    | "fallback"
-    | "error"
-    | "done"
-    | "confirmation"
-    | "thinking"
-    | "citation";
-  data?: {
-    text?: string;
-    isPartial?: boolean;
-    step?: string;
-    percent?: number;
-    message?: string;
-    id?: string;
-    type?: string;
-    title?: string;
-    format?: string;
-    content?: unknown;
-    downloadable?: boolean;
-    shareable?: boolean;
-    /** 交付物元数据（包含 skillId 等） */
-    metadata?: Record<string, unknown>;
-    suggestions?: Array<{
-      label: string;
-      action: string;
-      params?: Record<string, unknown>;
-    }>;
-    mode?: string;
-    reason?: string;
-    success?: boolean;
-    summary?: string;
-    skillId?: string;
-    durationMs?: number;
-    confirmation?: PendingConfirmation;
-    // thinking 块字段
-    phase?: ThinkingPhase;
-    timestamp?: number;
-    round?: number;
-    isFinal?: boolean;
-    // citation 块字段
-    indexed?: boolean;
-    totalCitations?: number;
-    citationSummary?: Array<{
-      index: number;
-      title: string;
-      bookmarkId: number;
-    }>;
-    query?: string;
-  };
-}
+// UnifiedStreamChunk 现在从 @/lib/ai-skills/output/types 导入
+// 移除了本地重复定义以确保类型一致性
 
 /**
  * useAIChat 配置
@@ -459,9 +404,15 @@ export function useAIChat(config: UseAIChatConfig = {}): UseAIChatReturn {
 
         case "suggestions":
           if (chunk.data?.suggestions) {
+            // 将 Suggestion 类型映射到 ChatMessage.suggestions 格式
+            const mappedSuggestions = chunk.data.suggestions.map((s) => ({
+              label: s.text,
+              action: s.action,
+              params: s.params,
+            }));
             const updated = {
               ...currentMessage,
-              suggestions: chunk.data.suggestions,
+              suggestions: mappedSuggestions,
             };
             updateMessage(updated);
             setMessages((prev) =>
@@ -471,8 +422,24 @@ export function useAIChat(config: UseAIChatConfig = {}): UseAIChatReturn {
           break;
 
         case "confirmation":
-          if (chunk.data?.confirmation) {
-            confirmations.push(chunk.data.confirmation);
+          // ConfirmationChunk.data 包含确认数据，需要映射到 PendingConfirmation 格式
+          if (chunk.data?.id && chunk.data?.title) {
+            // 从 ConfirmationChunk 映射到 PendingConfirmation
+            const confirmation: PendingConfirmation = {
+              confirmationId: chunk.data.id as string,
+              toolName: "confirmation",
+              description: chunk.data.title as string,
+              impactSummary: chunk.data.message as string,
+              params: {
+                options: chunk.data.options,
+                preview: chunk.data.preview,
+              },
+              expiresAt: new Date(
+                Date.now() + ((chunk.data.timeout as number) ?? 300000),
+              ),
+              riskLevel: "medium",
+            };
+            confirmations.push(confirmation);
             const updated = {
               ...currentMessage,
               pendingConfirmations: [...confirmations],
@@ -481,11 +448,8 @@ export function useAIChat(config: UseAIChatConfig = {}): UseAIChatReturn {
             setMessages((prev) =>
               prev.map((m) => (m.id === messageId ? updated : m)),
             );
-            setPendingConfirmations((prev) => [
-              ...prev,
-              chunk.data!.confirmation!,
-            ]);
-            onConfirmation?.(chunk.data.confirmation);
+            setPendingConfirmations((prev) => [...prev, confirmation]);
+            onConfirmation?.(confirmation);
           }
           break;
 

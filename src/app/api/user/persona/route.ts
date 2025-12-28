@@ -14,7 +14,7 @@ import {
   successResponse,
   unauthorizedError,
   databaseError,
-  validationError,
+  badRequestError,
   internalError,
 } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
@@ -95,10 +95,10 @@ const UpdatePersonaSchema = z.object({
  */
 function buildBehaviorData(
   bookmarks: Array<{
-    tags: string[] | null;
+    ai_tags: string[] | null;
     platform: string | null;
     url: string | null;
-    created_at: string;
+    created_at: string | null;
   }>,
 ): UserBehaviorData {
   const tags: string[] = [];
@@ -108,8 +108,8 @@ function buildBehaviorData(
 
   for (const bookmark of bookmarks) {
     // 处理标签
-    if (bookmark.tags) {
-      for (const tag of bookmark.tags) {
+    if (bookmark.ai_tags) {
+      for (const tag of bookmark.ai_tags) {
         tags.push(tag);
         tagCounts[tag] = (tagCounts[tag] || 0) + 1;
       }
@@ -138,11 +138,11 @@ function buildBehaviorData(
   const oneMonthAgo = now - 30 * 24 * 60 * 60 * 1000;
 
   const recentWeekCount = bookmarks.filter(
-    (b) => new Date(b.created_at).getTime() > oneWeekAgo,
+    (b) => b.created_at && new Date(b.created_at).getTime() > oneWeekAgo,
   ).length;
 
   const recentMonthCount = bookmarks.filter(
-    (b) => new Date(b.created_at).getTime() > oneMonthAgo,
+    (b) => b.created_at && new Date(b.created_at).getTime() > oneMonthAgo,
   ).length;
 
   return {
@@ -198,11 +198,17 @@ export async function GET(): Promise<Response> {
     const supabase = await createClient();
 
     // 获取存储的设置
-    const { data: profile, error: profileError } = await supabase
+    // 类型断言：persona_settings 是新增字段，尚未在类型定义中
+    const profileResult = await supabase
       .from("profiles")
       .select("persona_settings")
       .eq("id", user.id)
       .single();
+
+    const profileError = profileResult.error;
+    const profile = profileResult.data as {
+      persona_settings: Json | null;
+    } | null;
 
     if (profileError && profileError.code !== "PGRST116") {
       return databaseError("获取画像设置失败", profileError);
@@ -224,7 +230,7 @@ export async function GET(): Promise<Response> {
     // 获取收藏数据用于推断
     const { data: bookmarks, error: bookmarksError } = await supabase
       .from("bookmarks")
-      .select("tags, platform, url, created_at")
+      .select("ai_tags, platform, url, created_at")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(500);
@@ -294,7 +300,7 @@ export async function PUT(request: NextRequest): Promise<Response> {
 
     // 检查功能是否启用
     if (!isPersonaFeatureEnabled(user.id, "settingsUI")) {
-      return validationError("画像设置功能未启用");
+      return badRequestError("画像设置功能未启用");
     }
 
     // 解析请求体
@@ -302,7 +308,9 @@ export async function PUT(request: NextRequest): Promise<Response> {
     const validation = UpdatePersonaSchema.safeParse(body);
 
     if (!validation.success) {
-      return validationError("请求参数无效", validation.error.errors);
+      return badRequestError(
+        `请求参数无效: ${validation.error.issues.map((i) => i.message).join(", ")}`,
+      );
     }
 
     const { primaryType, group, preferences, source } = validation.data;
@@ -310,7 +318,7 @@ export async function PUT(request: NextRequest): Promise<Response> {
     // 验证画像类型和分组匹配
     const expectedGroup = PERSONA_GROUP_MAP[primaryType as PersonaType];
     if (expectedGroup && expectedGroup !== group) {
-      return validationError(
+      return badRequestError(
         `画像类型 ${primaryType} 应属于分组 ${expectedGroup}，而非 ${group}`,
       );
     }
