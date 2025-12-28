@@ -40,3 +40,30 @@ export {
   getMaxIntentBoost,
   isIntentBoosted,
 } from "./persona-intent-boosts";
+
+// Analytics (Phase 4)
+export {
+  PersonaEvents,
+  trackPersonaInferred,
+  trackPersonaSettingsChanged,
+  trackPersonaIntentRouted,
+  trackPersonaError,
+  trackPersonaRolloutCheck,
+  createInferenceMetrics,
+  inferenceMetrics,
+  hashUserIdForAnalytics,
+} from "./analytics";
+
+export type {
+  PersonaInferredEvent,
+  PersonaSettingsChangedEvent,
+  PersonaIntentRoutedEvent,
+  PersonaErrorEvent,
+  PersonaRolloutCheckEvent,
+  PersonaEventTypes,
+  PersonaEventName,
+  PersonaEventPayload,
+  PersonaDistributionStats,
+  PersonaInferenceStats,
+  PersonaBoostStats,
+} from "./analytics";

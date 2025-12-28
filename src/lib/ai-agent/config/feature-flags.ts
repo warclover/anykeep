@@ -344,17 +344,26 @@ export const FeatureFlags = {
 
 export type FeatureFlagKey = keyof typeof FeatureFlags;
 
+/** 布尔类型的功能开关键（排除数值型配置） */
+export type BooleanFeatureFlagKey = Exclude<
+  FeatureFlagKey,
+  "PERSONA_ROLLOUT_PERCENTAGE"
+>;
+
 /**
  * 检查功能是否启用
+ * @note 仅适用于布尔类型的功能开关
  */
-export function isFeatureEnabled(flag: FeatureFlagKey): boolean {
-  return FeatureFlags[flag];
+export function isFeatureEnabled(flag: BooleanFeatureFlagKey): boolean {
+  return FeatureFlags[flag] as boolean;
 }
 
 /**
  * 获取所有功能开关状态
  */
-export function getAllFeatureFlags(): Record<FeatureFlagKey, boolean> {
+export function getAllFeatureFlags(): Record<BooleanFeatureFlagKey, boolean> & {
+  PERSONA_ROLLOUT_PERCENTAGE: number;
+} {
   return {
     ENABLE_DYNAMIC_CONTEXT: FeatureFlags.ENABLE_DYNAMIC_CONTEXT,
     ENABLE_MODEL_TIERING: FeatureFlags.ENABLE_MODEL_TIERING,
