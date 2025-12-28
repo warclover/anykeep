@@ -365,7 +365,8 @@ export class UndoService {
     >;
 
     // 批量恢复原文件夹
-    // TODO: 调用实际的数据库操作
+    // NOTE: 此内存版本已废弃，数据库版本在 /api/agent/undo 中使用 RPC 实现
+    // @see supabase/migrations/20251225000001_add_ai_interaction_tables.sql
     logger.debug(
       {
         bookmarkIds,
@@ -373,9 +374,6 @@ export class UndoService {
       },
       "撤销移动书签",
     );
-
-    // 这里需要实现实际的数据库操作
-    // await this.bookmarkService.batchUpdateFolder(bookmarkIds, originalFolders);
   }
 
   /**
@@ -388,7 +386,7 @@ export class UndoService {
     const addedTags = data.addedTags as string[];
 
     // 移除添加的标签
-    // TODO: 调用实际的数据库操作
+    // NOTE: 此内存版本已废弃，数据库版本在 /api/agent/undo 中使用 RPC 实现
     logger.debug(
       {
         bookmarkIds,
@@ -408,7 +406,7 @@ export class UndoService {
     const removedTags = data.removedTags as string[];
 
     // 恢复移除的标签
-    // TODO: 调用实际的数据库操作
+    // NOTE: 此内存版本已废弃，数据库版本在 /api/agent/undo 中使用 RPC 实现
     logger.debug(
       {
         bookmarkIds,
@@ -432,7 +430,7 @@ export class UndoService {
     }>;
 
     // 恢复原始状态
-    // TODO: 调用实际的数据库操作
+    // NOTE: 此内存版本已废弃，数据库版本在 /api/agent/undo 中使用 RPC 实现
     logger.debug(
       {
         bookmarkIds,
@@ -450,7 +448,7 @@ export class UndoService {
     const originalFolder = data.originalFolder as string | null;
 
     // 恢复原文件夹
-    // TODO: 调用实际的数据库操作
+    // NOTE: 此内存版本已废弃，数据库版本在 /api/agent/undo 中使用 RPC 实现
     logger.debug(
       {
         bookmarkIds,

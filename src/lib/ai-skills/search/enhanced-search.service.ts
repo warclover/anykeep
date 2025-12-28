@@ -13,16 +13,14 @@ import { searchBookmarksHybrid } from "@/lib/utils/semantic-search";
 import { searchBookmarksFulltext } from "@/lib/utils/fulltext-search";
 import { logger } from "@/lib/logger";
 
-import {
-  QueryParser,
-  ResultRanker,
-  ResponseFormatter,
-  type ParsedQuery,
-  type BookmarkForRanking,
-  type BookmarkData,
-  type FormattedSearchResponse,
-  type RankedResult,
-} from "./index";
+import { QueryParser } from "./query-parser";
+import { ResultRanker, type BookmarkForRanking } from "./result-ranker";
+import { ResponseFormatter, type BookmarkData } from "./response-formatter";
+import type {
+  ParsedQuery,
+  RankedResult,
+  FormattedSearchResponse,
+} from "./types";
 
 // ============================================
 // 类型定义

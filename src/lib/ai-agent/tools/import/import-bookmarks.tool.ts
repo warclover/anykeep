@@ -87,6 +87,7 @@ function detectPlatform(url: string): string {
 
     return "web";
   } catch {
+    // 静默失败：URL 解析失败时返回默认平台 "web"
     return "web";
   }
 }

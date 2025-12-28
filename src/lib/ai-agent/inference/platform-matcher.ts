@@ -198,6 +198,7 @@ export class PlatformMatcher {
       // 移除 www. 前缀
       return urlObj.hostname.replace(/^www\./, "");
     } catch {
+      // 静默失败：URL 格式无效时返回 null，调用方需处理
       return null;
     }
   }

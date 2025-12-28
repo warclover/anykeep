@@ -95,6 +95,7 @@ function parseAccountInfo(
     }
     return undefined;
   } catch {
+    // 静默失败：URL 解析失败时返回 undefined，调用方使用默认值
     return undefined;
   }
 }

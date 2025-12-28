@@ -110,6 +110,25 @@ interface ArticleWithAccount extends ArticleSummary {
 }
 
 /**
+ * 数据库查询返回的书签行类型
+ */
+interface WechatBookmarkRow {
+  id: number;
+  title: string;
+  url: string;
+  created_at: string;
+  user_tags: string[] | null;
+  bookmark_snapshots: Array<{
+    id: string;
+    readable_text_content: string | null;
+    readable_word_count: number | null;
+    readable_excerpt: string | null;
+    readable_byline: string | null;
+    images_status: string | null;
+  }> | null;
+}
+
+/**
  * 从 URL 和 byline 提取公众号信息
  */
 function extractAccountInfo(
@@ -127,6 +146,7 @@ function extractAccountInfo(
 
     return { name, id: biz || undefined };
   } catch {
+    // 静默失败：URL 解析失败时返回默认公众号名称
     return { name: "未知公众号" };
   }
 }
@@ -319,9 +339,9 @@ export const listWechatArticlesTool: Tool<
       }
 
       // 5. 解析公众号信息
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const articlesWithAccount: ArticleWithAccount[] = (bookmarks || []).map(
-        (bookmark: any) => {
+        (bookmark: WechatBookmarkRow) => {
           const snapshot = bookmark.bookmark_snapshots?.[0];
           const accountInfo = extractAccountInfo(
             bookmark.url,

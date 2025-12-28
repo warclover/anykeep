@@ -11,6 +11,8 @@
 
 import { z } from "zod";
 import type { Tool, ToolContext, ToolResult } from "../types";
+// 注意：这里有意地导入 SearchSkill，因为 Tool 是 Skill 的简化包装器
+// 未来可考虑通过依赖注入解耦
 import { searchSkill } from "@/lib/ai-skills/skills/search";
 import { logger } from "@/lib/logger";
 import { SEARCH_TOOL_DESCRIPTIONS } from "../tool-description-templates";

@@ -185,6 +185,7 @@ export class UrlChecker {
       }
       return true;
     } catch {
+      // 静默失败：URL 格式无效时返回 false，跳过检测
       return false;
     }
   }

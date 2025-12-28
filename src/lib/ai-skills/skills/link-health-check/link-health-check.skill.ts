@@ -482,6 +482,7 @@ export class LinkHealthCheckSkill extends OrchestrationSkill<
           (p) => url.protocol === p,
         );
       } catch {
+        // 静默失败：URL 解析失败时跳过该书签
         return false;
       }
     });

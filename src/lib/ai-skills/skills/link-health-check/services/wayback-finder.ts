@@ -185,6 +185,7 @@ export class WaybackFinder {
 
       return `${year}-${month}-${day} ${hour}:${minute}`;
     } catch {
+      // 静默失败：时间戳格式无效时返回原始字符串
       return timestamp;
     }
   }

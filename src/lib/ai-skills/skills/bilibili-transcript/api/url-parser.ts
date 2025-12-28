@@ -58,6 +58,7 @@ export function parseBilibiliUrl(url: string): ParsedBilibiliUrl | null {
 
     return null;
   } catch {
+    // 静默失败：URL 格式无效时返回 null，调用方需处理此情况
     return null;
   }
 }
@@ -92,6 +93,7 @@ export async function resolveShortLink(
 
     return null;
   } catch {
+    // 静默失败：网络请求或重定向解析失败时返回 null，不影响主流程
     return null;
   }
 }
