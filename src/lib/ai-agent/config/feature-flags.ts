@@ -336,6 +336,81 @@ export const FeatureFlags = {
     const value = parseInt(process.env.PERSONA_ROLLOUT_PERCENTAGE || "0", 10);
     return isNaN(value) ? 0 : Math.min(100, Math.max(0, value));
   },
+
+  // ===========================================================================
+  // RAG 能力增强 [Phase 1 新增]
+  // ===========================================================================
+
+  /**
+   * 是否启用 LLM 查询改写
+   * @default false
+   * @description 使用 LLM 对用户查询进行语义扩展和同义词补充
+   */
+  get ENABLE_QUERY_REWRITE(): boolean {
+    return process.env.ENABLE_QUERY_REWRITE === "true";
+  },
+
+  /**
+   * 是否启用 Rerank 重排序
+   * @default false
+   * @description 使用交叉编码器对搜索结果进行语义重排序
+   */
+  get ENABLE_RERANK(): boolean {
+    return process.env.ENABLE_RERANK === "true";
+  },
+
+  /**
+   * 是否启用向量缓存
+   * @default false
+   * @description 缓存常用查询的向量表示，提升搜索速度
+   */
+  get ENABLE_VECTOR_CACHE(): boolean {
+    return process.env.ENABLE_VECTOR_CACHE === "true";
+  },
+
+  // ===========================================================================
+  // RAG 能力增强 [Phase 2 新增]
+  // ===========================================================================
+
+  /**
+   * 是否启用 Parent-Child 切片策略
+   * @default false
+   * @description 长文档切片为 Parent-Child 结构，提升精准检索能力
+   */
+  get ENABLE_PARENT_CHILD_CHUNKING(): boolean {
+    return process.env.ENABLE_PARENT_CHILD_CHUNKING === "true";
+  },
+
+  /**
+   * 是否启用 RRF 融合算法
+   * @default false
+   * @description Reciprocal Rank Fusion 合并多来源搜索结果
+   */
+  get ENABLE_RRF_FUSION(): boolean {
+    return process.env.ENABLE_RRF_FUSION === "true";
+  },
+
+  // ===========================================================================
+  // RAG 能力增强 [Phase 3 新增]
+  // ===========================================================================
+
+  /**
+   * 是否启用 RAG 监控
+   * @default false
+   * @description 启用 RAG 系统指标收集和告警
+   */
+  get ENABLE_RAG_MONITORING(): boolean {
+    return process.env.ENABLE_RAG_MONITORING === "true";
+  },
+
+  /**
+   * 是否启用 RAG 评估
+   * @default false
+   * @description 启用 RAGAS 风格的 RAG 质量评估
+   */
+  get ENABLE_RAG_EVALUATION(): boolean {
+    return process.env.ENABLE_RAG_EVALUATION === "true";
+  },
 } as const;
 
 // =============================================================================
@@ -406,5 +481,15 @@ export function getAllFeatureFlags(): Record<BooleanFeatureFlagKey, boolean> & {
     ENABLE_TEACHER_PERSONA: FeatureFlags.ENABLE_TEACHER_PERSONA,
     // 灰度发布控制 [Phase 4 新增]
     PERSONA_ROLLOUT_PERCENTAGE: FeatureFlags.PERSONA_ROLLOUT_PERCENTAGE,
+    // RAG 能力增强 [Phase 1 新增]
+    ENABLE_QUERY_REWRITE: FeatureFlags.ENABLE_QUERY_REWRITE,
+    ENABLE_RERANK: FeatureFlags.ENABLE_RERANK,
+    ENABLE_VECTOR_CACHE: FeatureFlags.ENABLE_VECTOR_CACHE,
+    // RAG 能力增强 [Phase 2 新增]
+    ENABLE_PARENT_CHILD_CHUNKING: FeatureFlags.ENABLE_PARENT_CHILD_CHUNKING,
+    ENABLE_RRF_FUSION: FeatureFlags.ENABLE_RRF_FUSION,
+    // RAG 能力增强 [Phase 3 新增]
+    ENABLE_RAG_MONITORING: FeatureFlags.ENABLE_RAG_MONITORING,
+    ENABLE_RAG_EVALUATION: FeatureFlags.ENABLE_RAG_EVALUATION,
   };
 }

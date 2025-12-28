@@ -4,14 +4,20 @@
  * 整合 QueryParser、ResultRanker、ResponseFormatter
  * 提供智能查询理解和结果排序
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-25
+ * @updated 2025-12-28 添加 RRF 融合和切片搜索支持
  */
 
 import { createClient } from "@/lib/supabase/server";
 import { searchBookmarksHybrid } from "@/lib/utils/semantic-search";
 import { searchBookmarksFulltext } from "@/lib/utils/fulltext-search";
 import { logger } from "@/lib/logger";
+import { FeatureFlags } from "@/lib/ai-agent/config/feature-flags";
+import { getQueryRewriter } from "@/lib/ai-agent/query";
+import { getDashScopeReranker, RRFFusion } from "@/lib/ai-agent/rerank";
+import { getChunkSearchService } from "@/lib/chunking";
+import { generateEmbedding } from "@/lib/utils/embedding-generator";
 
 import { QueryParser } from "./query-parser";
 import { ResultRanker, type BookmarkForRanking } from "./result-ranker";
@@ -52,6 +58,23 @@ export interface EnhancedSearchOutput {
   parsedQuery?: ParsedQuery;
   /** 排序后的结果（调试用） */
   rankedResults?: RankedResult[];
+  /** 查询改写信息（调试用） */
+  queryRewrite?: {
+    original: string;
+    rewritten: string;
+    synonyms: string[];
+  };
+  /** RRF 融合信息（调试用） */
+  rrfFusion?: {
+    enabled: boolean;
+    sources: string[];
+    topScore?: number;
+  };
+  /** 切片搜索信息（调试用） */
+  chunkSearch?: {
+    enabled: boolean;
+    chunkCount: number;
+  };
   /** 错误信息 */
   error?: string;
   /** 执行时间 (ms) */
@@ -112,10 +135,51 @@ export class EnhancedSearchService {
    */
   async search(input: EnhancedSearchInput): Promise<EnhancedSearchOutput> {
     const startTime = performance.now();
+    let queryRewriteInfo:
+      | { original: string; rewritten: string; synonyms: string[] }
+      | undefined;
 
     try {
-      // 1. 解析查询
-      const parsedQuery = this.queryParser.parse(input.query);
+      // 0. 查询改写 (Feature Flag 控制)
+      let searchQuery = input.query;
+      if (FeatureFlags.ENABLE_QUERY_REWRITE) {
+        try {
+          const rewriter = getQueryRewriter();
+          const rewriteResult = await rewriter.rewrite(input.query);
+          searchQuery = rewriteResult.rewritten;
+          queryRewriteInfo = {
+            original: rewriteResult.original,
+            rewritten: rewriteResult.rewritten,
+            synonyms: rewriteResult.synonyms,
+          };
+
+          logger.debug(
+            {
+              original: input.query,
+              rewritten: searchQuery,
+              synonyms: rewriteResult.synonyms,
+              cached: rewriteResult.cached,
+              latencyMs: rewriteResult.latencyMs,
+            },
+            "EnhancedSearchService: Query rewritten",
+          );
+        } catch (rewriteError) {
+          // 查询改写失败，降级使用原始查询
+          logger.warn(
+            {
+              error:
+                rewriteError instanceof Error
+                  ? rewriteError.message
+                  : String(rewriteError),
+              query: input.query.substring(0, 50),
+            },
+            "EnhancedSearchService: Query rewrite failed, fallback to original",
+          );
+        }
+      }
+
+      // 1. 解析查询 (使用可能已改写的查询)
+      const parsedQuery = this.queryParser.parse(searchQuery);
 
       logger.debug(
         {
@@ -129,11 +193,231 @@ export class EnhancedSearchService {
       );
 
       // 2. 执行数据库搜索
-      const rawResults = await this.executeSearch(
+      let rawResults = await this.executeSearch(
         input.userId,
         parsedQuery,
         (input.limit ?? 10) * 2, // 多获取一些用于排序
       );
+
+      // 2.1 切片搜索 (Feature Flag 控制)
+      let chunkSearchInfo: { enabled: boolean; chunkCount: number } | undefined;
+      let chunkBookmarkIds: Set<number> = new Set();
+
+      if (FeatureFlags.ENABLE_PARENT_CHILD_CHUNKING) {
+        try {
+          const queryEmbedding = await generateEmbedding(input.query);
+          const chunkService = getChunkSearchService();
+          const chunkResults = await chunkService.search(
+            queryEmbedding,
+            input.userId,
+            {
+              matchThreshold: 0.6,
+              matchCount: 20,
+              includeParentContext: true,
+            },
+          );
+
+          // 收集切片搜索命中的书签 ID
+          chunkBookmarkIds = new Set(chunkResults.map((c) => c.bookmarkId));
+          chunkSearchInfo = {
+            enabled: true,
+            chunkCount: chunkResults.length,
+          };
+
+          logger.debug(
+            {
+              chunkCount: chunkResults.length,
+              uniqueBookmarks: chunkBookmarkIds.size,
+              topSimilarity: chunkResults[0]?.similarity,
+            },
+            "EnhancedSearchService: Chunk search completed",
+          );
+        } catch (chunkError) {
+          logger.warn(
+            {
+              error:
+                chunkError instanceof Error
+                  ? chunkError.message
+                  : String(chunkError),
+            },
+            "EnhancedSearchService: Chunk search failed, continuing with bookmark search",
+          );
+          chunkSearchInfo = { enabled: false, chunkCount: 0 };
+        }
+      }
+
+      // 2.2 RRF 融合 (Feature Flag 控制)
+      let rrfFusionInfo:
+        | { enabled: boolean; sources: string[]; topScore?: number }
+        | undefined;
+
+      if (FeatureFlags.ENABLE_RRF_FUSION && chunkBookmarkIds.size > 0) {
+        try {
+          const rrfFusion = new RRFFusion({
+            k: 60,
+            sourceWeights: {
+              bookmark: 1.0,
+              chunk: 1.2, // 切片搜索稍微加权（更精准）
+            },
+          });
+
+          // 构建书签搜索排名列表
+          const bookmarkRankList = RRFFusion.createRankList(
+            rawResults,
+            "bookmark",
+            (r) => r.id,
+            (r) => r.similarity,
+          );
+
+          // 构建切片搜索排名列表（按书签 ID）
+          const chunkRankList = Array.from(chunkBookmarkIds).map((id, idx) => ({
+            id,
+            rank: idx + 1,
+            source: "chunk",
+            score: 1 - idx * 0.05, // 简单的衰减分数
+          }));
+
+          // 融合两个排名列表
+          const fusedResults = rrfFusion.fuseTwoLists(
+            bookmarkRankList,
+            chunkRankList,
+          );
+
+          // 根据融合分数重新排序 rawResults
+          const idToRRFScore = new Map<number, number>();
+          for (const r of fusedResults) {
+            idToRRFScore.set(r.id as number, r.rrfScore);
+          }
+
+          // 添加仅在切片搜索中出现的书签（需要额外获取）
+          const existingIds = new Set(rawResults.map((r) => r.id));
+          const missingIds = Array.from(chunkBookmarkIds).filter(
+            (id) => !existingIds.has(id),
+          );
+
+          // 如果有遗漏的书签，从数据库获取
+          if (missingIds.length > 0) {
+            const supabase = await createClient();
+            const { data: missingBookmarks } = await supabase
+              .from("bookmarks")
+              .select(
+                `
+                id, title, url, description, cover_url, platform,
+                ai_summary, ai_tags, user_tags, folder_id,
+                folders:folder_id(name),
+                author, publish_time, created_at
+              `,
+              )
+              .in("id", missingIds);
+
+            if (missingBookmarks) {
+              rawResults.push(...(missingBookmarks as DatabaseBookmark[]));
+            }
+          }
+
+          // 按 RRF 分数排序
+          rawResults.sort((a, b) => {
+            const scoreA = idToRRFScore.get(a.id) ?? 0;
+            const scoreB = idToRRFScore.get(b.id) ?? 0;
+            return scoreB - scoreA;
+          });
+
+          // 将 RRF 分数注入到 similarity 字段
+          for (const r of rawResults) {
+            const rrfScore = idToRRFScore.get(r.id);
+            if (rrfScore !== undefined) {
+              r.similarity = rrfScore;
+            }
+          }
+
+          rrfFusionInfo = {
+            enabled: true,
+            sources: ["bookmark", "chunk"],
+            topScore: fusedResults[0]?.rrfScore,
+          };
+
+          logger.debug(
+            {
+              bookmarkCount: bookmarkRankList.length,
+              chunkBookmarkCount: chunkRankList.length,
+              fusedCount: fusedResults.length,
+              topScore: fusedResults[0]?.rrfScore,
+            },
+            "EnhancedSearchService: RRF fusion completed",
+          );
+        } catch (rrfError) {
+          logger.warn(
+            {
+              error:
+                rrfError instanceof Error ? rrfError.message : String(rrfError),
+            },
+            "EnhancedSearchService: RRF fusion failed, using original order",
+          );
+          rrfFusionInfo = { enabled: false, sources: [] };
+        }
+      }
+
+      // 2.5 交叉编码器重排序 (Feature Flag 控制)
+      if (FeatureFlags.ENABLE_RERANK && rawResults.length > 1) {
+        try {
+          const reranker = getDashScopeReranker();
+
+          // 构建文档列表（标题 + 摘要）
+          const documents = rawResults.map((r) =>
+            `${r.title || ""} ${r.ai_summary || r.description || ""}`.trim(),
+          );
+
+          const rerankResults = await reranker.rerank(
+            input.query, // 使用原始查询进行重排序
+            documents,
+            Math.min(rawResults.length, input.limit ?? 10),
+          );
+
+          // 按重排序分数重新排列结果
+          if (rerankResults.length > 0) {
+            const rerankedRawResults: typeof rawResults = [];
+            for (const rr of rerankResults) {
+              if (rr.index < rawResults.length) {
+                // 将重排序分数注入到 similarity 字段
+                const result = { ...rawResults[rr.index] };
+                result.similarity =
+                  (result.similarity ?? 0) * 0.5 + rr.relevanceScore * 0.5;
+                rerankedRawResults.push(result);
+              }
+            }
+
+            // 补充未被重排序的结果
+            const rerankedIds = new Set(rerankResults.map((r) => r.index));
+            for (let i = 0; i < rawResults.length; i++) {
+              if (!rerankedIds.has(i)) {
+                rerankedRawResults.push(rawResults[i]);
+              }
+            }
+
+            rawResults = rerankedRawResults;
+
+            logger.debug(
+              {
+                originalCount: documents.length,
+                rerankedCount: rerankResults.length,
+                topScore: rerankResults[0]?.relevanceScore,
+              },
+              "EnhancedSearchService: Results reranked",
+            );
+          }
+        } catch (rerankError) {
+          // 重排序失败，降级使用原始排序
+          logger.warn(
+            {
+              error:
+                rerankError instanceof Error
+                  ? rerankError.message
+                  : String(rerankError),
+            },
+            "EnhancedSearchService: Rerank failed, fallback to original order",
+          );
+        }
+      }
 
       // 3. 转换为排序输入格式
       const bookmarksForRanking = rawResults.map((b) =>
@@ -176,6 +460,9 @@ export class EnhancedSearchService {
         response,
         parsedQuery: input.debug ? parsedQuery : undefined,
         rankedResults: input.debug ? rankedResults : undefined,
+        queryRewrite: input.debug ? queryRewriteInfo : undefined,
+        rrfFusion: input.debug ? rrfFusionInfo : undefined,
+        chunkSearch: input.debug ? chunkSearchInfo : undefined,
         executionTimeMs: queryTimeMs,
       };
     } catch (error) {

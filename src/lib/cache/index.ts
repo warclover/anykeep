@@ -1,5 +1,9 @@
 /**
  * 缓存系统统一导出
+ *
+ * @version 5.4.0
+ * @since 2025-12-22
+ * @updated 2025-12-28 - 添加 UnifiedCacheFacade
  */
 
 // 配置
@@ -57,3 +61,21 @@ export {
   subscribeFolderCacheInvalidation,
   folderCacheInvalidation,
 } from "./folder-cache-invalidation";
+
+// V5.3: 向量缓存 (RAG 优化)
+export {
+  VectorCache,
+  getVectorCache,
+  DEFAULT_VECTOR_CACHE_CONFIG,
+  type VectorCacheConfig,
+  type VectorCacheStats,
+} from "./vector-cache";
+
+// V5.4: 统一缓存门面
+export {
+  unifiedCache,
+  createNamespacedCache,
+  type CacheLayer,
+  type UnifiedCacheOptions,
+  type UnifiedCacheStats,
+} from "./unified-cache";
