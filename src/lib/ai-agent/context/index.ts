@@ -43,12 +43,17 @@ export {
 } from "./dynamic-context-builder";
 
 // Prompt 注入
-export type { MergePromptOptions } from "./prompt-injector";
+export type {
+  MergePromptOptions,
+  MergePromptOptionsAsync,
+} from "./prompt-injector";
 export {
   buildContextPrompt,
   buildMinimalContextPrompt,
   buildEpisodicMemoryPrompt,
   mergeSystemPrompt,
+  mergeSystemPromptAsync, // v3.1: 画像推断集成
+  buildPersonaPrompt, // v3.1: 画像推断集成
   estimateContextTokens,
 } from "./prompt-injector";
 

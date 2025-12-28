@@ -198,7 +198,6 @@ export async function GET(): Promise<Response> {
     const supabase = await createClient();
 
     // 获取存储的设置
-    // 类型断言：persona_settings 是新增字段，尚未在类型定义中
     const profileResult = await supabase
       .from("profiles")
       .select("persona_settings")
@@ -206,9 +205,7 @@ export async function GET(): Promise<Response> {
       .single();
 
     const profileError = profileResult.error;
-    const profile = profileResult.data as {
-      persona_settings: Json | null;
-    } | null;
+    const profile = profileResult.data;
 
     if (profileError && profileError.code !== "PGRST116") {
       return databaseError("获取画像设置失败", profileError);

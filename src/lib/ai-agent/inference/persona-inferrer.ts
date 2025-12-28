@@ -55,7 +55,7 @@ export class PersonaInferrer {
       if (cached) {
         logger.debug(
           { userId: this.maskUserId(stats.userId) },
-          "Persona inference cache hit",
+          "[Persona] Cache hit",
         );
         return cached;
       }
@@ -69,7 +69,7 @@ export class PersonaInferrer {
           totalBookmarks: stats.totalBookmarks,
           minRequired: this.config.minSampleSize,
         },
-        "Insufficient sample size for inference",
+        "[Persona] Insufficient sample size",
       );
       return this.getDefaultResult(stats.userId, stats.totalBookmarks);
     }
@@ -95,7 +95,7 @@ export class PersonaInferrer {
             confidence: result.confidence,
             threshold: this.config.minConfidenceThreshold,
           },
-          "Low confidence inference, falling back to general",
+          "[Persona] Low confidence, fallback to general",
         );
         return this.getDefaultResult(
           stats.userId,
@@ -114,7 +114,7 @@ export class PersonaInferrer {
           confidence: result.confidence,
           signalCount: signals.length,
         },
-        "Persona inferred successfully",
+        "[Persona] Inferred successfully",
       );
 
       return result;
@@ -124,7 +124,7 @@ export class PersonaInferrer {
           userId: this.maskUserId(stats.userId),
           error: error instanceof Error ? error.message : String(error),
         },
-        "Persona inference failed",
+        "[Persona] Inference failed",
       );
       return this.getDefaultResult(stats.userId, stats.totalBookmarks);
     }
@@ -156,7 +156,7 @@ export class PersonaInferrer {
     personaCache.delete(userId);
     logger.debug(
       { userId: this.maskUserId(userId) },
-      "Persona cache invalidated",
+      "[Persona] Cache invalidated",
     );
   }
 
@@ -165,7 +165,7 @@ export class PersonaInferrer {
    */
   clearAllCache(): void {
     personaCache.clear();
-    logger.info("All persona cache cleared");
+    logger.info("[Persona] All cache cleared");
   }
 
   /**

@@ -64,13 +64,10 @@ export function trackPersonaInferred(params: {
         confidence: params.confidence,
         bookmarkCount: params.bookmarkCount,
       },
-      "[PersonaAnalytics] Persona inferred",
+      "[Persona] Inferred",
     );
   } catch (error) {
-    logger.error(
-      { error, params },
-      "[PersonaAnalytics] Failed to track persona inferred event",
-    );
+    logger.error({ error, params }, "[Persona] Track inferred event failed");
   }
 }
 
@@ -100,12 +97,12 @@ export function trackPersonaSettingsChanged(params: {
         previousType: params.previousType,
         newType: params.newType,
       },
-      "[PersonaAnalytics] Persona settings changed",
+      "[Persona] Settings changed",
     );
   } catch (error) {
     logger.error(
       { error, params },
-      "[PersonaAnalytics] Failed to track settings changed event",
+      "[Persona] Track settings changed event failed",
     );
   }
 }
@@ -139,13 +136,13 @@ export function trackPersonaIntentRouted(params: {
           intentType: params.intentType,
           boostDelta: params.boostedConfidence - params.originalConfidence,
         },
-        "[PersonaAnalytics] Intent routed with persona boost",
+        "[Persona] Intent routed with boost",
       );
     }
   } catch (error) {
     logger.error(
       { error, params },
-      "[PersonaAnalytics] Failed to track intent routed event",
+      "[Persona] Track intent routed event failed",
     );
   }
 }
@@ -176,13 +173,10 @@ export function trackPersonaError(params: {
         errorType: params.errorType,
         errorMessage: params.errorMessage,
       },
-      "[PersonaAnalytics] Persona error occurred",
+      "[Persona] Error occurred",
     );
   } catch (error) {
-    logger.error(
-      { error, params },
-      "[PersonaAnalytics] Failed to track error event",
-    );
+    logger.error({ error, params }, "[Persona] Track error event failed");
   }
 }
 
@@ -210,12 +204,12 @@ export function trackPersonaRolloutCheck(params: {
         inRollout: params.inRollout,
         rolloutPercentage: params.rolloutPercentage,
       },
-      "[PersonaAnalytics] Rollout check performed",
+      "[Persona] Rollout check performed",
     );
   } catch (error) {
     logger.error(
       { error, params },
-      "[PersonaAnalytics] Failed to track rollout check event",
+      "[Persona] Track rollout check event failed",
     );
   }
 }

@@ -7,9 +7,10 @@
  * - 管理会话上下文和记忆
  * - 自动压缩过长的对话上下文
  *
- * @version 1.4.0
+ * @version 1.5.0
  * @since 2025-12-22
  * @updated 2025-12-27 - 添加对话上下文压缩功能
+ * @updated 2025-12-28 - 集成画像推断到 System Prompt [P1 修复]
  */
 
 import { generateText, streamText, stepCountIs, type CoreMessage } from "ai";
@@ -39,7 +40,7 @@ import {
 } from "./helpers";
 import {
   buildDynamicContext,
-  buildContextPrompt,
+  mergeSystemPromptAsync, // v3.1: 画像推断集成
   type DynamicContext,
   // 压缩功能（v1.4 新增）
   ConversationCompressor,
@@ -167,11 +168,12 @@ export class KnowledgeAgent {
           },
         }));
 
-      // 构建消息历史（注入动态上下文）
-      const messages = this.buildMessages(
+      // 构建消息历史（注入动态上下文和画像）
+      const messages = await this.buildMessagesAsync(
         conversation,
         context,
         dynamicContext,
+        context.userId,
       );
 
       logger.info(
@@ -342,11 +344,12 @@ export class KnowledgeAgent {
           },
         }));
 
-      // 构建消息历史（注入动态上下文）
-      const messages = this.buildMessages(
+      // 构建消息历史（注入动态上下文和画像）
+      const messages = await this.buildMessagesAsync(
         conversation,
         context,
         dynamicContext,
+        context.userId,
       );
 
       logger.info(
@@ -527,21 +530,30 @@ export class KnowledgeAgent {
    * @param conversation - 会话对象（包含已添加到内存的当前用户消息）
    * @param context - 上下文（可能包含前端提供的 messageHistory）
    * @param dynamicContext - 动态上下文（包含时间、统计、偏好等）
+   * @param userId - 用户 ID（用于画像推断）
    */
-  private buildMessages(
+  private async buildMessagesAsync(
     conversation: { messages: AgentMessage[] },
     context: AgentContext,
-    dynamicContext?: DynamicContext,
-  ): CoreMessage[] {
+    dynamicContext: DynamicContext | undefined,
+    userId: string,
+  ): Promise<CoreMessage[]> {
     const messages: CoreMessage[] = [];
 
-    // 系统提示语：基础提示语 + 动态上下文 + 附加上下文（如附件内容）
+    // 系统提示语：基础提示语 + 动态上下文（含画像） + 附加上下文（如附件内容）
     let systemPrompt = this.config.systemPrompt;
 
-    // 注入动态上下文（时间、统计、偏好等）
+    // 注入动态上下文（时间、统计、偏好、画像等）
     if (dynamicContext) {
-      const contextPrompt = buildContextPrompt(dynamicContext);
-      systemPrompt = `${systemPrompt}\n\n${contextPrompt}`;
+      // 使用异步版本，支持画像推断注入
+      systemPrompt = await mergeSystemPromptAsync(
+        systemPrompt,
+        dynamicContext,
+        {
+          enablePersonaInference: true,
+          userId,
+        },
+      );
     }
 
     // 追加附加上下文（如附件内容）

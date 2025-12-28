@@ -2841,6 +2841,7 @@ export type Database = {
           nickname: string | null;
           patrol_frequency: string | null;
           patrol_notification_enabled: boolean | null;
+          persona_settings: Json | null;
           phone: string | null;
           settings: Json | null;
           storage_quota: number | null;
@@ -2858,6 +2859,7 @@ export type Database = {
           nickname?: string | null;
           patrol_frequency?: string | null;
           patrol_notification_enabled?: boolean | null;
+          persona_settings?: Json | null;
           phone?: string | null;
           settings?: Json | null;
           storage_quota?: number | null;
@@ -2875,6 +2877,7 @@ export type Database = {
           nickname?: string | null;
           patrol_frequency?: string | null;
           patrol_notification_enabled?: boolean | null;
+          persona_settings?: Json | null;
           phone?: string | null;
           settings?: Json | null;
           storage_quota?: number | null;
