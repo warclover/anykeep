@@ -104,6 +104,23 @@ export const getKnowledgeGraphTool: Tool<
         includeIsolated,
       });
 
+      // 验证服务返回的数据结构
+      if (
+        !graphData ||
+        !Array.isArray(graphData.nodes) ||
+        !Array.isArray(graphData.edges)
+      ) {
+        logger.warn(
+          { userId: context.userId, graphData: typeof graphData },
+          "get_knowledge_graph: Invalid graph data structure",
+        );
+        return {
+          success: false,
+          error: "知识图谱服务返回的数据格式异常",
+          errorCode: "INVALID_RESPONSE",
+        };
+      }
+
       // 转换为 Tool 返回格式
       const nodes = graphData.nodes.map(transformGraphNode);
       const edges = graphData.edges.map(transformGraphEdge);

@@ -571,10 +571,19 @@ export class WechatDigestSkill extends OrchestrationSkill<
       }[depth];
 
       try {
+        // 验证 API Key
+        const apiKey = process.env.DEEPSEEK_API_KEY;
+        if (!apiKey) {
+          logger.warn(
+            { group: group.name },
+            "WechatDigestSkill: DEEPSEEK_API_KEY not configured, using fallback",
+          );
+          summaries.push(this.generateFallbackSummary(group, depth));
+          continue;
+        }
+
         // 创建 DeepSeek 模型实例
-        const deepseek = createDeepSeek({
-          apiKey: process.env.DEEPSEEK_API_KEY ?? "",
-        });
+        const deepseek = createDeepSeek({ apiKey });
 
         // 调用 LLM 生成摘要
         const result = await generateText({

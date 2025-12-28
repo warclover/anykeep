@@ -18,12 +18,34 @@ import type {
   CheckResult,
 } from "./types";
 import { MONITOR_PROTECTION, CHECK_INTERVAL_HOURS } from "./constants";
+import type { CheckInterval } from "./constants";
 import { fetchPageContent } from "./page-fetcher";
 import {
   compareContent,
   hasContentChanged,
   shouldSendNotification,
 } from "./content-comparer";
+import { logger } from "@/lib/logger";
+
+/**
+ * 监控查询结果类型（含关联的书签信息）
+ */
+interface MonitorWithBookmark {
+  id: number;
+  user_id: string;
+  bookmark_id: number;
+  check_interval: CheckInterval;
+  custom_interval_hours: number | null;
+  baseline_snapshot_id: number | null;
+  baseline_content_hash: string | null;
+  consecutive_failures: number;
+  last_checked_at: string | null;
+  bookmarks: {
+    id: number;
+    url: string;
+    title: string;
+  } | null;
+}
 
 /**
  * 默认任务配置
@@ -91,14 +113,15 @@ export class MonitorScheduler {
 
     if (!data) return [];
 
-    return data.map((row) => ({
+    // 使用类型断言确保类型安全
+    const typedData = data as unknown as MonitorWithBookmark[];
+
+    return typedData.map((row) => ({
       id: row.id,
       userId: row.user_id,
       bookmarkId: row.bookmark_id,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      bookmarkUrl: (row as any).bookmarks?.url ?? "",
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      bookmarkTitle: (row as any).bookmarks?.title ?? "",
+      bookmarkUrl: row.bookmarks?.url ?? "",
+      bookmarkTitle: row.bookmarks?.title ?? "",
       checkInterval: row.check_interval,
       customIntervalHours: row.custom_interval_hours,
       baselineSnapshotId: row.baseline_snapshot_id,
@@ -252,7 +275,7 @@ export class MonitorScheduler {
       .single();
 
     if (error) {
-      console.error("创建快照失败:", error);
+      logger.error({ error }, "MonitorScheduler: 创建快照失败");
       return null;
     }
 
@@ -488,7 +511,10 @@ export class MonitorScheduler {
           }
         } else {
           stats.errorCount++;
-          console.error("检查任务失败:", promiseResult.reason);
+          logger.error(
+            { error: promiseResult.reason },
+            "MonitorScheduler: 检查任务失败",
+          );
         }
       }
     }

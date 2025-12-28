@@ -96,6 +96,9 @@ export class CitationAnnotator {
 
     // 按模式匹配并替换
     for (const patternDef of CHINESE_ORDINAL_PATTERNS) {
+      // 重置正则状态，避免多次调用时 lastIndex 保持旧值
+      patternDef.pattern.lastIndex = 0;
+
       annotatedText = annotatedText.replace(
         patternDef.pattern,
         (match, ...args) => {
