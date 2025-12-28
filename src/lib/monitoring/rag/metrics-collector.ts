@@ -307,30 +307,44 @@ export class RAGMetricsCollector {
   private cleanupOldRecords(): void {
     const cutoff = Date.now() - this.windowMs;
 
-    // 清理搜索记录
-    if (this.searchRecords.length > this.maxRecords) {
-      this.searchRecords = this.searchRecords.filter(
-        (r) => r.timestamp >= cutoff,
-      );
-    }
+    // H6: 修复内存泄漏 - 无论记录数量，都清理过期记录
+    // 同时限制最大记录数防止极端情况
 
-    // 清理 API 调用记录
-    if (this.apiCallRecords.length > this.maxRecords) {
-      this.apiCallRecords = this.apiCallRecords.filter(
-        (r) => r.timestamp >= cutoff,
-      );
+    // 清理过期的搜索记录
+    const validSearchRecords = this.searchRecords.filter(
+      (r) => r.timestamp >= cutoff,
+    );
+    // 如果仍超过限制，只保留最新的
+    this.searchRecords =
+      validSearchRecords.length > this.maxRecords
+        ? validSearchRecords.slice(-this.maxRecords)
+        : validSearchRecords;
+
+    // 清理过期的 API 调用记录
+    const validApiCallRecords = this.apiCallRecords.filter(
+      (r) => r.timestamp >= cutoff,
+    );
+    this.apiCallRecords =
+      validApiCallRecords.length > this.maxRecords
+        ? validApiCallRecords.slice(-this.maxRecords)
+        : validApiCallRecords;
+
+    // 清理过期的告警（保留最近 24 小时）
+    const alertCutoff = Date.now() - this.windowMs;
+    this.alerts = this.alerts.filter((a) => {
+      const alertTime = new Date(a.timestamp).getTime();
+      return alertTime >= alertCutoff;
+    });
+    // 同时限制告警数量
+    if (this.alerts.length > 1000) {
+      this.alerts = this.alerts.slice(-1000);
     }
   }
 
   private addAlert(alert: RAGAlert): void {
     this.alerts.push(alert);
 
-    // 保留最近 1000 条告警
-    if (this.alerts.length > 1000) {
-      this.alerts = this.alerts.slice(-1000);
-    }
-
-    // 记录日志
+    // H6: 告警清理已移至 cleanupOldRecords()，这里只记录日志
     if (alert.level === "critical") {
       logger.error({ alert }, "RAGMetricsCollector: Critical alert");
     } else if (alert.level === "warning") {

@@ -140,6 +140,7 @@ describe("QueryRewriter", () => {
       });
 
       const result = await rewriter.rewrite("React教程", {
+        userId: "test-user-123",
         topTags: ["前端", "JavaScript"],
         topPlatforms: ["wechat", "zhihu"],
         totalBookmarks: 100,

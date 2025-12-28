@@ -5,23 +5,47 @@
  * @since 2025-12-28
  */
 
-import { describe, it, expect, beforeEach, vi } from "vitest";
-
 // Mock logger
-vi.mock("@/lib/logger", () => ({
+jest.mock("@/lib/logger", () => ({
   logger: {
     child: () => ({
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
+      debug: jest.fn(),
+      info: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
     }),
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
+    debug: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
   },
 }));
+
+// Mock NextRequest for Jest environment
+jest.mock("next/server", () => {
+  class MockNextRequest {
+    url: string;
+    headers: Map<string, string>;
+    nextUrl: { searchParams: URLSearchParams; pathname: string };
+
+    constructor(url: string, init?: { headers?: Record<string, string> }) {
+      this.url = url;
+      this.headers = new Map(Object.entries(init?.headers || {}));
+      const urlObj = new URL(url);
+      this.nextUrl = {
+        searchParams: urlObj.searchParams,
+        pathname: urlObj.pathname,
+      };
+    }
+  }
+
+  return {
+    NextRequest: MockNextRequest,
+    NextResponse: {
+      json: jest.fn((data) => ({ json: () => data })),
+    },
+  };
+});
 import {
   rpcRegistry,
   defineRPCFunction,

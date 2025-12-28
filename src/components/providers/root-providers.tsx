@@ -35,6 +35,7 @@ import { MessageNotificationProvider } from "@/components/messages/message-notif
 import { NotificationProvider } from "@/contexts/notification-context";
 import { WebVitalsReporter } from "@/components/analytics/web-vitals-reporter";
 import { SessionHeartbeatProvider } from "@/components/providers/session-heartbeat-provider";
+import { GlobalErrorBoundary } from "@/components/error-boundary";
 import {
   composeProviders,
   withProps,
@@ -103,16 +104,23 @@ interface RootProvidersProps {
  * 根 Providers 组件
  *
  * 包含所有客户端 Context Provider，按优化后的结构组织
+ *
+ * 架构改进 v1.0 (2025-12-28):
+ * - 添加 GlobalErrorBoundary 作为最外层错误边界
+ * - 捕获所有未处理的 React 渲染错误
+ * - 自动上报到 Sentry
  */
 export function RootProviders({ children }: RootProvidersProps) {
   return (
-    <CoreProviders>
-      <FeatureProviders>{children}</FeatureProviders>
-      {/* 全局组件（在 Provider 树内但不影响嵌套结构） */}
-      <Toaster position="top-center" offset={16} />
-      <ServiceWorkerRegister />
-      {/* Web Vitals 性能监控 */}
-      <WebVitalsReporter debug={process.env.NODE_ENV === "development"} />
-    </CoreProviders>
+    <GlobalErrorBoundary feature="global">
+      <CoreProviders>
+        <FeatureProviders>{children}</FeatureProviders>
+        {/* 全局组件（在 Provider 树内但不影响嵌套结构） */}
+        <Toaster position="top-center" offset={16} />
+        <ServiceWorkerRegister />
+        {/* Web Vitals 性能监控 */}
+        <WebVitalsReporter debug={process.env.NODE_ENV === "development"} />
+      </CoreProviders>
+    </GlobalErrorBoundary>
   );
 }

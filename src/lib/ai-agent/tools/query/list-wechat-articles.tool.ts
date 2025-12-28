@@ -116,10 +116,10 @@ interface WechatBookmarkRow {
   id: number;
   title: string;
   url: string;
-  created_at: string;
+  created_at: string | null;
   user_tags: string[] | null;
   bookmark_snapshots: Array<{
-    id: string;
+    id: number;
     readable_text_content: string | null;
     readable_word_count: number | null;
     readable_excerpt: string | null;
@@ -353,7 +353,7 @@ export const listWechatArticlesTool: Tool<
             title: bookmark.title,
             url: bookmark.url,
             wordCount: snapshot?.readable_word_count || undefined,
-            createdAt: bookmark.created_at,
+            createdAt: bookmark.created_at || new Date().toISOString(),
             hasFullContent: !!snapshot?.readable_text_content,
             excerpt: snapshot?.readable_excerpt?.substring(0, 100) || undefined,
             tags: bookmark.user_tags || [],

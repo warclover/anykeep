@@ -406,11 +406,11 @@ async function handleUnifiedEngine(
         try {
           // 首先发送请求 ID（用于取消）
           const initChunk: UnifiedStreamChunk = {
-            type: "init" as "text", // 使用 text 类型承载 init 信息
+            type: "init",
             data: {
-              text: "", // 空文本
-              requestId, // 附加请求 ID
-            } as { text: string; requestId?: string },
+              requestId,
+              timestamp: Date.now(),
+            },
           };
           controller.enqueue(
             encoder.encode(`data: ${JSON.stringify(initChunk)}\n\n`),
@@ -424,11 +424,11 @@ async function handleUnifiedEngine(
             // 检查是否已取消
             if (requestInfo.isCancelled) {
               const cancelledChunk: UnifiedStreamChunk = {
-                type: "cancelled" as "error",
+                type: "cancelled",
                 data: {
                   message: "请求已取消",
-                  code: "CANCELLED",
-                  retryable: false,
+                  reason: "用户取消",
+                  timestamp: new Date().toISOString(),
                 },
               };
               controller.enqueue(

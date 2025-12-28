@@ -5,26 +5,24 @@
  * @since 2025-12-28
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
-
 // Mock logger
-vi.mock("@/lib/logger", () => ({
+jest.mock("@/lib/logger", () => ({
   logger: {
     child: () => ({
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
+      debug: jest.fn(),
+      info: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
     }),
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
+    debug: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
   },
 }));
 
 // Mock crypto for consistent test results
-vi.mock("crypto", () => ({
+jest.mock("crypto", () => ({
   randomBytes: (size: number) => ({
     toString: () => "0".repeat(size * 2),
   }),
@@ -149,30 +147,30 @@ describe("telemetry", () => {
 
     it("should auto-set OK status on success", async () => {
       const tracer = getTracer();
-      let capturedSpan: Span | null = null;
+      const spanRef = { current: null as Span | null };
 
       await tracer.startActiveSpan("test.success", async (span) => {
-        capturedSpan = span;
+        spanRef.current = span;
         return "success";
       });
 
-      expect(capturedSpan?.status.code).toBe(SpanStatusCode.OK);
+      expect(spanRef.current?.status.code).toBe(SpanStatusCode.OK);
     });
 
     it("should auto-set ERROR status on exception", async () => {
       const tracer = getTracer();
-      let capturedSpan: Span | null = null;
+      const spanRef = { current: null as Span | null };
 
       try {
         await tracer.startActiveSpan("test.error", async (span) => {
-          capturedSpan = span;
+          spanRef.current = span;
           throw new Error("Test error");
         });
       } catch {
         // 预期的错误
       }
 
-      expect(capturedSpan?.status.code).toBe(SpanStatusCode.ERROR);
+      expect(spanRef.current?.status.code).toBe(SpanStatusCode.ERROR);
     });
   });
 
@@ -186,18 +184,18 @@ describe("telemetry", () => {
     });
 
     it("should include attributes in span", async () => {
-      let capturedSpan: Span | null = null;
+      const spanRef = { current: null as Span | null };
 
       await withSpan(
         "test.with.attrs",
         async (span) => {
-          capturedSpan = span;
+          spanRef.current = span;
           return true;
         },
         { custom: "value" },
       );
 
-      expect(capturedSpan?.attributes.custom).toBe("value");
+      expect(spanRef.current?.attributes.custom).toBe("value");
     });
 
     it("should propagate errors", async () => {
@@ -221,49 +219,57 @@ describe("telemetry", () => {
 
   describe("withAIToolSpan", () => {
     it("should create span with AI tool attributes", async () => {
-      let capturedSpan: Span | null = null;
+      const spanRef = { current: null as Span | null };
 
       await withAIToolSpan("search_bookmarks", async (span) => {
-        capturedSpan = span;
+        spanRef.current = span;
         return [];
       });
 
-      expect(capturedSpan?.name).toBe(`${SPAN_NAMES.AI_TOOL}.search_bookmarks`);
-      expect(capturedSpan?.attributes[ATTR_KEYS.AI_TOOL_NAME]).toBe(
+      expect(spanRef.current?.name).toBe(
+        `${SPAN_NAMES.AI_TOOL}.search_bookmarks`,
+      );
+      expect(spanRef.current?.attributes[ATTR_KEYS.AI_TOOL_NAME]).toBe(
         "search_bookmarks",
       );
-      expect(capturedSpan?.attributes[ATTR_KEYS.AI_TOOL_SUCCESS]).toBe(true);
+      expect(spanRef.current?.attributes[ATTR_KEYS.AI_TOOL_SUCCESS]).toBe(true);
     });
 
     it("should mark success as false on error", async () => {
-      let capturedSpan: Span | null = null;
+      const spanRef = { current: null as Span | null };
 
       try {
         await withAIToolSpan("failing_tool", async (span) => {
-          capturedSpan = span;
+          spanRef.current = span;
           throw new Error("Tool failed");
         });
       } catch {
         // 预期的错误
       }
 
-      expect(capturedSpan?.attributes[ATTR_KEYS.AI_TOOL_SUCCESS]).toBe(false);
+      expect(spanRef.current?.attributes[ATTR_KEYS.AI_TOOL_SUCCESS]).toBe(
+        false,
+      );
     });
   });
 
   describe("withDBSpan", () => {
     it("should create span with DB attributes", async () => {
-      let capturedSpan: Span | null = null;
+      const spanRef = { current: null as Span | null };
 
       await withDBSpan("select", "bookmarks", async (span) => {
-        capturedSpan = span;
+        spanRef.current = span;
         return [];
       });
 
-      expect(capturedSpan?.name).toBe(`${SPAN_NAMES.DB}.select`);
-      expect(capturedSpan?.attributes[ATTR_KEYS.DB_SYSTEM]).toBe("postgresql");
-      expect(capturedSpan?.attributes[ATTR_KEYS.DB_OPERATION]).toBe("select");
-      expect(capturedSpan?.attributes[ATTR_KEYS.DB_TABLE]).toBe("bookmarks");
+      expect(spanRef.current?.name).toBe(`${SPAN_NAMES.DB}.select`);
+      expect(spanRef.current?.attributes[ATTR_KEYS.DB_SYSTEM]).toBe(
+        "postgresql",
+      );
+      expect(spanRef.current?.attributes[ATTR_KEYS.DB_OPERATION]).toBe(
+        "select",
+      );
+      expect(spanRef.current?.attributes[ATTR_KEYS.DB_TABLE]).toBe("bookmarks");
     });
   });
 

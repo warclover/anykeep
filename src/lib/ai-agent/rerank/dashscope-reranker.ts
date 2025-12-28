@@ -45,6 +45,16 @@ export class DashScopeReranker {
       dailyRequests: 0,
       lastResetDate: new Date().toISOString().split("T")[0],
     };
+
+    // C3: 安全日志 - 仅记录 API Key 是否存在，不记录实际值
+    logger.debug(
+      {
+        apiKeyPresent: !!this.apiKey,
+        model: this.config.model,
+        topK: this.config.topK,
+      },
+      "DashScopeReranker: Initialized",
+    );
   }
 
   /**

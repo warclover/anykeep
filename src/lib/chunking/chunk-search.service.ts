@@ -86,13 +86,26 @@ export class ChunkSearchService {
   ): Promise<ChunkSearchResultWithContext[]> {
     const opts = { ...DEFAULT_SEARCH_OPTIONS, ...options };
 
+    // C2: 验证向量维度
+    const expectedDim = 1024;
+    if (queryEmbedding.length !== expectedDim) {
+      logger.error(
+        { actual: queryEmbedding.length, expected: expectedDim },
+        "ChunkSearchService: Invalid embedding dimension",
+      );
+      throw new Error(
+        `Invalid embedding dimension: expected ${expectedDim}, got ${queryEmbedding.length}`,
+      );
+    }
+
     try {
       // 调用数据库函数
+      // C1: 直接传递数组，Supabase 会自动处理 VECTOR 类型转换
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await (this.supabase.rpc as any)(
         "search_bookmark_chunks",
         {
-          query_embedding: JSON.stringify(queryEmbedding),
+          query_embedding: queryEmbedding,
           match_threshold: opts.matchThreshold,
           match_count: opts.matchCount,
           p_user_id: userId,
@@ -192,7 +205,9 @@ export class ChunkSearchService {
   }
 
   /**
-   * 保存书签切片
+   * 保存书签切片（事务化）
+   *
+   * H8: 使用数据库函数确保原子性操作
    *
    * @param bookmarkId - 书签 ID
    * @param chunks - 切片数组
@@ -217,90 +232,55 @@ export class ChunkSearchService {
     if (chunks.length === 0) return;
 
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const supabase = this.supabase as any;
-
-      // 先删除旧的切片
-      await supabase
-        .from("bookmark_chunks")
-        .delete()
-        .eq("bookmark_id", bookmarkId);
-
-      // 创建 Parent 切片记录（用于关联）
-      const parentChunks = chunks.filter((c) => c.type === "parent");
-      const childChunks = chunks.filter((c) => c.type === "child");
-
-      // 先插入 Parent 切片
-      const parentRecords = parentChunks.map((chunk) => ({
-        bookmark_id: bookmarkId,
+      // H8: 使用事务化数据库函数
+      // 将切片转换为数据库函数期望的格式
+      const chunkInputs = chunks.map((chunk) => ({
         chunk_index: chunk.index,
         content: chunk.content,
         content_hash: chunk.contentHash,
-        chunk_type: "parent" as const,
+        chunk_type: chunk.type,
         token_count: chunk.tokenCount,
         start_offset: chunk.startOffset,
         end_offset: chunk.endOffset,
+        parent_index: chunk.parentIndex ?? null,
         embedding: embeddings[chunk.index]
           ? JSON.stringify(embeddings[chunk.index])
-          : null, // Parent 切片不需要嵌入
-        embedding_version: embeddingVersion,
+          : null,
       }));
 
-      const parentIdMap: Map<number, string> = new Map();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (this.supabase.rpc as any)(
+        "save_bookmark_chunks_atomic",
+        {
+          p_bookmark_id: bookmarkId,
+          p_chunks: chunkInputs,
+          p_embedding_version: embeddingVersion,
+        },
+      );
 
-      if (parentRecords.length > 0) {
-        const { data: insertedParents, error: parentError } = await supabase
-          .from("bookmark_chunks")
-          .insert(parentRecords)
-          .select("id, chunk_index");
-
-        if (parentError) {
-          throw parentError;
-        }
-
-        // 建立 index -> id 映射
-        insertedParents?.forEach((p: { id: string; chunk_index: number }) => {
-          parentIdMap.set(p.chunk_index, p.id);
-        });
+      if (error) {
+        logger.error(
+          { error, bookmarkId },
+          "ChunkSearchService: Atomic save RPC error",
+        );
+        throw error;
       }
 
-      // 插入 Child 切片（带 parent_chunk_id）
-      if (childChunks.length > 0) {
-        const childRecords = childChunks.map((chunk) => ({
-          bookmark_id: bookmarkId,
-          parent_chunk_id:
-            chunk.parentIndex !== undefined
-              ? parentIdMap.get(chunk.parentIndex) || null
-              : null,
-          chunk_index: chunk.index,
-          content: chunk.content,
-          content_hash: chunk.contentHash,
-          chunk_type: "child" as const,
-          token_count: chunk.tokenCount,
-          start_offset: chunk.startOffset,
-          end_offset: chunk.endOffset,
-          embedding: embeddings[chunk.index]
-            ? JSON.stringify(embeddings[chunk.index])
-            : null,
-          embedding_version: embeddingVersion,
-        }));
-
-        const { error: childError } = await supabase
-          .from("bookmark_chunks")
-          .insert(childRecords);
-
-        if (childError) {
-          throw childError;
-        }
+      // 检查函数返回结果
+      const result = data?.[0];
+      if (!result?.success) {
+        throw new Error(
+          result?.error_message || "Atomic save failed without error message",
+        );
       }
 
       logger.debug(
         {
           bookmarkId,
-          parentCount: parentChunks.length,
-          childCount: childChunks.length,
+          parentCount: result.parent_count,
+          childCount: result.child_count,
         },
-        "ChunkSearchService: Chunks saved",
+        "ChunkSearchService: Chunks saved atomically",
       );
     } catch (err) {
       logger.error(

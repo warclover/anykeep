@@ -270,7 +270,6 @@ export const MdRenderer = memo(function MdRenderer({
    * 应用单个高亮
    * @returns 创建的 mark 元素，失败返回 null
    */
-  // eslint-disable-next-line react-hooks/preserve-manual-memoization -- ref.current 访问模式是正确的
   const applyHighlight = useCallback(
     (highlight: TextHighlight): HTMLElement | null => {
       const container = contentRef.current;
@@ -323,7 +322,10 @@ export const MdRenderer = memo(function MdRenderer({
           };
           mark.addEventListener("click", clickHandler);
           // 保存事件监听器引用
-          highlightListenersRef.current.set(highlight.id, clickHandler as () => void);
+          highlightListenersRef.current.set(
+            highlight.id,
+            clickHandler as () => void,
+          );
         }
 
         // 包裹选中内容
@@ -440,7 +442,13 @@ export const MdRenderer = memo(function MdRenderer({
         clearTimeout(applyTimer);
       }
     };
-  }, [highlights, content, applyAllHighlights, clearHighlightMarks, contentRef]);
+  }, [
+    highlights,
+    content,
+    applyAllHighlights,
+    clearHighlightMarks,
+    contentRef,
+  ]);
 
   // 解析主题
   const resolvedTheme = useMemo(() => {

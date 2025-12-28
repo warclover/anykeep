@@ -10,6 +10,9 @@
  * Phase 4: 集成 AI 对话功能
  * Phase 5: 可折叠侧边栏，内容区联动
  * V4.3: AI 面板挤压式布局（与 MainContentWrapper 同级）
+ *
+ * 架构改进 v1.0 (2025-12-28):
+ * - 添加 FeatureErrorBoundary 实现局部错误隔离
  */
 
 export const dynamic = "force-dynamic";
@@ -20,6 +23,7 @@ import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
 import { MainContent } from "@/components/main/main-content";
 import { MainContentWrapper } from "@/components/layout/main-content-wrapper";
 import { LayoutAIPanel } from "@/components/layout/layout-ai-panel";
+import { MainLayoutErrorBoundary } from "@/components/layout/main-layout-error-boundary";
 
 export default function MainLayout({
   children,
@@ -39,10 +43,12 @@ export default function MainLayout({
         {/* 侧边栏（桌面端） */}
         <AppSidebar />
 
-        {/* 主内容区 - 使用客户端导航管理，响应侧边栏折叠 */}
-        <MainContentWrapper>
-          <MainContent>{children}</MainContent>
-        </MainContentWrapper>
+        {/* 主内容区 - 使用 FeatureErrorBoundary 隔离错误 */}
+        <MainLayoutErrorBoundary>
+          <MainContentWrapper>
+            <MainContent>{children}</MainContent>
+          </MainContentWrapper>
+        </MainLayoutErrorBoundary>
 
         {/* V4.3: AI 助手面板（挤压式布局，与主内容区同级） */}
         <LayoutAIPanel />

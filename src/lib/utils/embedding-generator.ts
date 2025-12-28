@@ -13,6 +13,8 @@
  */
 
 import { logger } from "@/lib/logger";
+import { FeatureFlags } from "@/lib/ai-agent/config/feature-flags";
+import { getVectorCache } from "@/lib/cache/vector-cache";
 import {
   getEmbeddingConfig,
   getActiveModelConfig,
@@ -71,6 +73,15 @@ export async function generateEmbedding(
 ): Promise<number[]> {
   // 使用全局配置的活跃模型
   const modelConfig = getActiveModelConfig();
+
+  // V5.3: 向量缓存 (Feature Flag 控制)
+  if (FeatureFlags.ENABLE_VECTOR_CACHE) {
+    const cache = getVectorCache();
+    return cache.getOrGenerate(text, async (t) =>
+      generateEmbeddingWithModel(t, modelConfig, config?.dimensions),
+    );
+  }
+
   return generateEmbeddingWithModel(text, modelConfig, config?.dimensions);
 }
 
@@ -102,6 +113,15 @@ export async function generateEmbeddingForUser(
   } else {
     // 使用默认活跃模型
     modelConfig = getActiveModelConfig();
+  }
+
+  // V5.3: 向量缓存 (Feature Flag 控制)
+  if (FeatureFlags.ENABLE_VECTOR_CACHE) {
+    const cache = getVectorCache();
+    const embedding = await cache.getOrGenerate(text, async (t) =>
+      generateEmbeddingWithModel(t, modelConfig, options.dimensions),
+    );
+    return { embedding, modelId: modelConfig.id };
   }
 
   const embedding = await generateEmbeddingWithModel(

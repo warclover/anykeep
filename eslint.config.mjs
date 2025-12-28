@@ -36,9 +36,10 @@ const eslintConfig = defineConfig([
       "@typescript-eslint/no-explicit-any": "error",
 
       // 限制 console 使用 - 推荐使用 logger 或 clientLogger
-      // 生产代码禁止 console.log，允许 console.error（便于调试）
+      // 生产代码禁止 console.log，允许 console.error/info（便于调试和测试输出）
+      // 测试文件允许所有 console 方法（见下方 overrides）
       "no-console": ["error", {
-        allow: ["error"]
+        allow: ["error", "info"]
       }],
 
       // 强制使用类型导入
@@ -73,6 +74,10 @@ const eslintConfig = defineConfig([
 
       // 强制使用 === 和 !==
       "eqeqeq": ["error", "always", { null: "ignore" }],
+
+      // React Compiler 规则 - 关闭 memoization 保留检查（兼容性问题）
+      // eslint-disable-next-line 对此规则无效，需要在配置中关闭
+      "react-hooks/preserve-manual-memoization": "off",
     }
   }
 ]);

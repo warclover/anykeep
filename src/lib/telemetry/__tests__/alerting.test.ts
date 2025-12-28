@@ -5,26 +5,24 @@
  * @since 2025-12-28
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
-
 // Mock logger
-vi.mock("@/lib/logger", () => ({
+jest.mock("@/lib/logger", () => ({
   logger: {
     child: () => ({
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
+      debug: jest.fn(),
+      info: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
     }),
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
+    debug: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
   },
 }));
 
 // Mock fetch
-global.fetch = vi.fn();
+global.fetch = jest.fn();
 
 import {
   alertManager,
@@ -48,7 +46,7 @@ describe("alerting", () => {
     initMetrics({ enabled: true, consoleExport: false });
     alertManager.shutdown();
     initAlertManager({ enabled: true, evaluationInterval: 0 }); // 禁用自动评估
-    vi.clearAllMocks();
+    jest.clearAllMocks();
   });
 
   describe("AlertManager", () => {
@@ -260,7 +258,7 @@ describe("alerting", () => {
 
     describe("event listeners", () => {
       it("should emit events to listeners", () => {
-        const listener = vi.fn();
+        const listener = jest.fn();
         const unsubscribe = alertManager.onEvent(listener);
 
         const rule = createAlertRule("test-listener", "Test Listener", {
@@ -280,7 +278,7 @@ describe("alerting", () => {
       });
 
       it("should unsubscribe correctly", () => {
-        const listener = vi.fn();
+        const listener = jest.fn();
         const unsubscribe = alertManager.onEvent(listener);
         unsubscribe();
 
