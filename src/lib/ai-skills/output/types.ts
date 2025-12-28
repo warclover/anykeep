@@ -349,16 +349,30 @@ export interface DoneChunk {
  * AI 思考过程块
  *
  * 在零接管模式下，展示 AI 的决策过程
+ * 在 ReAct 模式下，展示 Think → Act → Observe 循环
  */
 export interface ThinkingChunk {
   type: "thinking";
   data: {
     /** 思考阶段 */
-    phase: "understanding" | "planning" | "deciding" | "executing";
+    phase:
+      | "understanding"
+      | "planning"
+      | "deciding"
+      | "executing"
+      // ReAct 循环阶段
+      | "react_think"
+      | "react_act"
+      | "react_observe"
+      | "react_complete";
     /** 思考内容 */
     content: string;
     /** 时间戳 */
     timestamp: number;
+    /** ReAct 轮次（仅 ReAct 模式） */
+    round?: number;
+    /** 是否为最终状态（仅 ReAct 模式） */
+    isFinal?: boolean;
   };
 }
 
@@ -430,6 +444,43 @@ export interface SmartDefaultsAppliedChunk {
 }
 
 // ============================================
+// 引用追踪相关类型
+// ============================================
+
+/**
+ * 引用摘要项
+ */
+export interface CitationSummaryItem {
+  /** 引用编号 (1-based) */
+  index: number;
+  /** 引用标题 */
+  title: string;
+  /** 书签 ID */
+  bookmarkId: number;
+}
+
+/**
+ * 引用追踪块
+ *
+ * 当搜索结果被索引为引用时发送
+ */
+export interface CitationChunk {
+  type: "citation";
+  data: {
+    /** 是否已建立索引 */
+    indexed: boolean;
+    /** 引用总数 */
+    totalCitations: number;
+    /** 引用摘要列表 */
+    citationSummary: CitationSummaryItem[];
+    /** 会话 ID */
+    conversationId?: string;
+    /** 关联的查询 */
+    query?: string;
+  };
+}
+
+// ============================================
 // 统一流式输出类型
 // ============================================
 
@@ -454,7 +505,9 @@ export type UnifiedStreamChunk =
   | ThinkingChunk
   | UndoAvailableChunk
   | ZeroTakeoverConfirmChunk
-  | SmartDefaultsAppliedChunk;
+  | SmartDefaultsAppliedChunk
+  // 引用追踪类型
+  | CitationChunk;
 
 /**
  * 编排模式流式输出块（用于编排 Skill 内部）
@@ -493,6 +546,8 @@ export type ChunkTypeMap = {
   undo_available: UndoAvailableChunk;
   zero_takeover_confirm: ZeroTakeoverConfirmChunk;
   smart_defaults_applied: SmartDefaultsAppliedChunk;
+  // 引用追踪类型
+  citation: CitationChunk;
 };
 
 /**

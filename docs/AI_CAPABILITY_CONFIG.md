@@ -4,15 +4,17 @@
 
 所有功能默认启用，通过设置环境变量为 `"false"` 可禁用特定功能。
 
-| 环境变量                     | 默认值 | 说明                        |
-| ---------------------------- | ------ | --------------------------- |
-| `ENABLE_DYNAMIC_CONTEXT`     | `true` | 动态上下文注入（P0-1）      |
-| `ENABLE_MODEL_TIERING`       | `true` | 模型分层策略（P0-2）        |
-| `ENABLE_REACT_PROMPT`        | `true` | 轻量版 ReAct Prompt（P1-5） |
-| `ENABLE_REASONING`           | `true` | reasoning 参数记录（P1-7）  |
-| `ENABLE_ERROR_RECOVERY`      | `true` | 智能错误恢复（P1-6）        |
-| `ENABLE_PREFERENCE_LEARNING` | `true` | 偏好自动学习（P2-9）        |
-| `ENABLE_COST_CONTROL`        | `true` | 成本控制（P2-10）           |
+| 环境变量                     | 默认值  | 说明                             |
+| ---------------------------- | ------- | -------------------------------- |
+| `ENABLE_DYNAMIC_CONTEXT`     | `true`  | 动态上下文注入（P0-1）           |
+| `ENABLE_MODEL_TIERING`       | `true`  | 模型分层策略（P0-2）             |
+| `ENABLE_REACT_PROMPT`        | `true`  | 轻量版 ReAct Prompt（P1-5）      |
+| `ENABLE_REASONING`           | `true`  | reasoning 参数记录（P1-7）       |
+| `ENABLE_ERROR_RECOVERY`      | `true`  | 智能错误恢复（P1-6）             |
+| `ENABLE_PREFERENCE_LEARNING` | `true`  | 偏好自动学习（P2-9）             |
+| `ENABLE_COST_CONTROL`        | `true`  | 成本控制（P2-10）                |
+| `ENABLE_REACT_LOOP`          | `false` | ReAct 循环执行（灰度发布中）     |
+| `ENABLE_CITATION_TRACKING`   | `true`  | 引用追踪系统（搜索结果自动引用） |
 
 ### 使用示例
 
@@ -42,6 +44,43 @@ ENABLE_REASONING=false
 ENABLE_ERROR_RECOVERY=false
 ENABLE_PREFERENCE_LEARNING=false
 ENABLE_COST_CONTROL=false
+ENABLE_REACT_LOOP=false
+ENABLE_CITATION_TRACKING=false
+```
+
+## ReAct 循环配置
+
+ReAct (Reasoning + Acting) 循环让 AI 在执行任务时进行多轮思考-行动-观察。
+
+| 参数                | 默认值 | 说明             |
+| ------------------- | ------ | ---------------- |
+| `maxRounds`         | 5      | 最大循环轮次     |
+| `showThinking`      | true   | 是否输出思考过程 |
+| `thinkingTimeoutMs` | 5000   | 思考阶段超时时间 |
+
+### 启用 ReAct 循环
+
+```bash
+# .env.local
+ENABLE_REACT_LOOP=true
+```
+
+## 引用追踪配置
+
+引用追踪系统自动为搜索结果建立引用索引，在 AI 回答中插入脚注。
+
+| 参数               | 默认值   | 说明                   |
+| ------------------ | -------- | ---------------------- |
+| `autoAnnotate`     | true     | 自动标注序数引用       |
+| `appendReferences` | true     | 追加引用列表到响应末尾 |
+| `referencesTitle`  | 参考来源 | 引用列表标题           |
+| `minConfidence`    | 0.3      | 最低置信度阈值         |
+
+### 禁用引用追踪
+
+```bash
+# .env.local
+ENABLE_CITATION_TRACKING=false
 ```
 
 ## Token 预算配置

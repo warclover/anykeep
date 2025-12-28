@@ -4,10 +4,52 @@
  * 包含轻量版 ReAct 思维模式，提升工具选择准确率
  *
  * @module ai-agent/core/prompts/knowledge-agent.prompt
- * @version 2.0.0
+ * @version 2.1.0
  * @since 2025-12-25
  * @updated 2025-12-26 添加轻量版 ReAct 思维模式
+ * @updated 2025-12-28 添加引用追踪指导
  */
+
+/**
+ * 引用追踪指导
+ *
+ * 指导 AI 在回答中使用序数引用，系统会自动转换为脚注格式
+ *
+ * @since 2025-12-28
+ */
+export const CITATION_GUIDANCE_PROMPT = `## 引用规范
+
+当回答基于搜索结果时，使用序数词引用来源，系统会自动转换为脚注格式：
+
+### 引用方式
+- "根据**第一篇**文章..." → 系统自动转换为 "根据第一篇文章[^1]..."
+- "**第二条**收藏提到..." → 系统自动转换为 "第二条收藏提到[^2]..."
+- "参考**第3篇**内容..." → 系统自动转换为 "参考第3篇内容[^3]..."
+
+### 使用场景
+- 引用搜索结果中的具体内容时
+- 需要让用户知道信息来源时
+- 回答涉及多个来源的综合性问题时
+
+### 示例
+
+用户: "找一下关于 React 的收藏"
+
+搜索返回3条结果后，回答：
+"找到 3 条关于 React 的收藏：
+
+1. **第一篇**介绍了 React 18 的新特性，包括并发渲染和自动批处理
+2. **第二篇**是 React Hooks 的最佳实践指南
+3. **第三篇**讲解了 React 性能优化技巧
+
+综合来看，**第一篇**和**第三篇**对性能优化帮助较大。"
+
+系统会自动追加引用列表：
+---
+**参考来源**
+[^1]: [React 18 新特性详解](url1)
+[^2]: [React Hooks 最佳实践](url2)
+[^3]: [React 性能优化指南](url3)`;
 
 /**
  * KnowledgeAgent 默认系统提示语
@@ -373,3 +415,45 @@ WECHAT / BILIBILI / XIAOHONGSHU / ZHIHU / WEIBO / DOUYIN / BROWSER_* / OTHER
 - 用中文回复
 - 优先使用简单工具
 - 批量操作调用后，界面会自动显示确认按钮`;
+
+// ============================================
+// Prompt 构建函数
+// ============================================
+
+import { FeatureFlags } from "../../config/feature-flags";
+
+/**
+ * 构建 KnowledgeAgent 系统提示语
+ *
+ * 根据 Feature Flags 动态组合 Prompt 内容
+ *
+ * @param useV2 - 是否使用 v2.0 零接管模式 Prompt
+ * @returns 完整的系统提示语
+ */
+export function buildKnowledgeAgentPrompt(useV2: boolean = true): string {
+  // 选择基础 Prompt
+  const basePrompt = useV2
+    ? KNOWLEDGE_AGENT_SYSTEM_PROMPT_V2
+    : KNOWLEDGE_AGENT_SYSTEM_PROMPT;
+
+  // 如果启用引用追踪，追加引用指导
+  if (FeatureFlags.ENABLE_CITATION_TRACKING) {
+    return `${basePrompt}
+
+${CITATION_GUIDANCE_PROMPT}`;
+  }
+
+  return basePrompt;
+}
+
+/**
+ * 获取当前应使用的系统提示语
+ *
+ * 根据所有相关 Feature Flags 动态构建
+ *
+ * @returns 完整的系统提示语
+ */
+export function getCurrentSystemPrompt(): string {
+  const useV2 = FeatureFlags.ENABLE_V2_PROMPT;
+  return buildKnowledgeAgentPrompt(useV2);
+}

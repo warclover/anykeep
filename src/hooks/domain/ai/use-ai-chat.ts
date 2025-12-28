@@ -31,6 +31,47 @@ export type ChatStatus =
   | "cancelled";
 
 /**
+ * 思考阶段类型
+ */
+export type ThinkingPhase =
+  | "understanding"
+  | "planning"
+  | "deciding"
+  | "executing"
+  | "react_think"
+  | "react_act"
+  | "react_observe"
+  | "react_complete";
+
+/**
+ * 思考过程记录
+ */
+export interface ThinkingRecord {
+  /** 思考阶段 */
+  phase: ThinkingPhase;
+  /** 思考内容 */
+  content: string;
+  /** 时间戳 */
+  timestamp: number;
+  /** ReAct 轮次（仅 ReAct 模式） */
+  round?: number;
+  /** 是否为最终状态（仅 ReAct 模式） */
+  isFinal?: boolean;
+}
+
+/**
+ * 引用信息
+ */
+export interface Citation {
+  /** 引用编号 (1-based) */
+  index: number;
+  /** 引用标题 */
+  title: string;
+  /** 书签 ID */
+  bookmarkId: number;
+}
+
+/**
  * 聊天消息
  */
 export interface ChatMessage {
@@ -74,6 +115,10 @@ export interface ChatMessage {
     action: string;
     params?: Record<string, unknown>;
   }>;
+  /** 思考过程记录（ReAct/零接管模式） */
+  thinking?: ThinkingRecord[];
+  /** 引用列表（引用追踪系统） */
+  citations?: Citation[];
 }
 
 /**
@@ -107,7 +152,9 @@ interface UnifiedStreamChunk {
     | "fallback"
     | "error"
     | "done"
-    | "confirmation";
+    | "confirmation"
+    | "thinking"
+    | "citation";
   data?: {
     text?: string;
     isPartial?: boolean;
@@ -135,6 +182,20 @@ interface UnifiedStreamChunk {
     skillId?: string;
     durationMs?: number;
     confirmation?: PendingConfirmation;
+    // thinking 块字段
+    phase?: ThinkingPhase;
+    timestamp?: number;
+    round?: number;
+    isFinal?: boolean;
+    // citation 块字段
+    indexed?: boolean;
+    totalCitations?: number;
+    citationSummary?: Array<{
+      index: number;
+      title: string;
+      bookmarkId: number;
+    }>;
+    query?: string;
   };
 }
 
@@ -168,6 +229,10 @@ export interface UseAIChatConfig {
   onProgress?: (step: string, percent: number, message?: string) => void;
   /** 消息变化回调 */
   onMessagesChange?: (messages: ChatMessage[]) => void;
+  /** 思考过程回调（ReAct/零接管模式） */
+  onThinking?: (thinking: ThinkingRecord) => void;
+  /** 引用建立回调（引用追踪系统） */
+  onCitation?: (citations: Citation[], query?: string) => void;
 }
 
 /**
@@ -280,6 +345,8 @@ export function useAIChat(config: UseAIChatConfig = {}): UseAIChatReturn {
     onConfirmation,
     onProgress,
     onMessagesChange,
+    onThinking,
+    onCitation,
   } = config;
 
   // 状态
@@ -427,6 +494,50 @@ export function useAIChat(config: UseAIChatConfig = {}): UseAIChatReturn {
           setStatus("error");
           break;
 
+        case "thinking":
+          if (chunk.data?.phase && chunk.data?.content !== undefined) {
+            const thinkingRecords = currentMessage.thinking || [];
+            const newThinking: ThinkingRecord = {
+              phase: chunk.data.phase,
+              content: String(chunk.data.content || ""),
+              timestamp: chunk.data.timestamp || Date.now(),
+              round: chunk.data.round,
+              isFinal: chunk.data.isFinal,
+            };
+            thinkingRecords.push(newThinking);
+            const updated = {
+              ...currentMessage,
+              thinking: [...thinkingRecords],
+            };
+            updateMessage(updated);
+            setMessages((prev) =>
+              prev.map((m) => (m.id === messageId ? updated : m)),
+            );
+            onThinking?.(newThinking);
+          }
+          break;
+
+        case "citation":
+          if (chunk.data?.indexed && chunk.data?.citationSummary) {
+            const citations: Citation[] = chunk.data.citationSummary.map(
+              (item) => ({
+                index: item.index,
+                title: item.title,
+                bookmarkId: item.bookmarkId,
+              }),
+            );
+            const updated = {
+              ...currentMessage,
+              citations,
+            };
+            updateMessage(updated);
+            setMessages((prev) =>
+              prev.map((m) => (m.id === messageId ? updated : m)),
+            );
+            onCitation?.(citations, chunk.data.query);
+          }
+          break;
+
         case "done":
           const finalMessage: ChatMessage = {
             ...currentMessage,
@@ -439,7 +550,7 @@ export function useAIChat(config: UseAIChatConfig = {}): UseAIChatReturn {
           break;
       }
     },
-    [onConfirmation, onProgress],
+    [onConfirmation, onProgress, onThinking, onCitation],
   );
 
   /**

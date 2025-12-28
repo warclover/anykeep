@@ -224,6 +224,28 @@ export const FeatureFlags = {
   get ENABLE_CONVERSATION_COMPRESSION(): boolean {
     return process.env.ENABLE_CONVERSATION_COMPRESSION !== "false";
   },
+
+  // ===========================================================================
+  // ReAct 循环相关开关
+  // ===========================================================================
+
+  /**
+   * 是否启用 ReAct 循环
+   * @default false
+   * @description Think → Act → Observe 循环，提升工具选择准确性
+   */
+  get ENABLE_REACT_LOOP(): boolean {
+    return process.env.ENABLE_REACT_LOOP === "true";
+  },
+
+  /**
+   * 是否启用引用追踪
+   * @default true
+   * @description 自动为搜索结果建立引用索引，生成 [^N] 格式引用
+   */
+  get ENABLE_CITATION_TRACKING(): boolean {
+    return process.env.ENABLE_CITATION_TRACKING !== "false";
+  },
 } as const;
 
 // =============================================================================
@@ -271,5 +293,8 @@ export function getAllFeatureFlags(): Record<FeatureFlagKey, boolean> {
     // 上下文压缩
     ENABLE_CONVERSATION_COMPRESSION:
       FeatureFlags.ENABLE_CONVERSATION_COMPRESSION,
+    // ReAct 循环与引用追踪
+    ENABLE_REACT_LOOP: FeatureFlags.ENABLE_REACT_LOOP,
+    ENABLE_CITATION_TRACKING: FeatureFlags.ENABLE_CITATION_TRACKING,
   };
 }

@@ -5,11 +5,13 @@
  * - 协调原子模式和编排模式的执行
  * - 处理强制模式执行
  * - 管理编排模式的自动回退
+ * - 集成 ReAct 循环执行器（可选）
  *
  * 从 UnifiedEngine 中拆分，遵循单一职责原则
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-26
+ * @updated 2025-12-28 - 集成 ReAct 循环执行器
  */
 
 import { logger } from "@/lib/logger";
@@ -20,6 +22,7 @@ import type { UnifiedStreamChunk } from "../output/types";
 import type { EngineContext } from "./types";
 import { buildMemoryPrompt, isEmptyMemoryContext } from "../../ai-agent/memory";
 import { FeatureFlags } from "../../ai-agent/config/feature-flags";
+import { ReactLoopExecutor, type ReactLoopConfig } from "../../ai-agent/react";
 
 // ============================================
 // 类型定义
@@ -43,6 +46,8 @@ export interface ExecutionCoordinatorConfig {
   includeRoutingInfo?: boolean;
   /** 是否启用调试模式 */
   debug?: boolean;
+  /** ReAct 循环配置 */
+  reactConfig?: ReactLoopConfig;
 }
 
 /**
@@ -70,7 +75,10 @@ export interface ForceExecutionOptions {
  */
 export class ExecutionCoordinator {
   private atomicExecutor: AtomicExecutor | null = null;
-  private config: Required<ExecutionCoordinatorConfig>;
+  private reactExecutor: ReactLoopExecutor | null = null;
+  private config: Required<Omit<ExecutionCoordinatorConfig, "reactConfig">> & {
+    reactConfig?: ReactLoopConfig;
+  };
 
   constructor(
     private orchestrationEngine: OrchestrationEngine,
@@ -82,6 +90,12 @@ export class ExecutionCoordinator {
       debug: false,
       ...config,
     };
+
+    // 初始化 ReAct 执行器（如果启用）
+    if (FeatureFlags.ENABLE_REACT_LOOP) {
+      this.reactExecutor = new ReactLoopExecutor(config.reactConfig);
+      logger.info("ExecutionCoordinator: ReAct loop executor initialized");
+    }
   }
 
   /**
@@ -196,8 +210,28 @@ export class ExecutionCoordinator {
     };
 
     try {
-      for await (const chunk of this.atomicExecutor(input, agentContext)) {
-        yield this.outputAdapter.adaptAtomicChunk(chunk);
+      // 如果启用 ReAct 循环，使用 ReactLoopExecutor
+      if (FeatureFlags.ENABLE_REACT_LOOP && this.reactExecutor) {
+        logger.debug(
+          {
+            userId: context.userId?.slice(0, 8),
+            traceId: context.traceId,
+          },
+          "ExecutionCoordinator: Using ReAct loop executor",
+        );
+
+        for await (const chunk of this.reactExecutor.executeWithReact(
+          input,
+          agentContext,
+          this.atomicExecutor,
+        )) {
+          yield chunk;
+        }
+      } else {
+        // 标准原子模式执行
+        for await (const chunk of this.atomicExecutor(input, agentContext)) {
+          yield this.outputAdapter.adaptAtomicChunk(chunk);
+        }
       }
     } catch (error) {
       // 改进的错误日志：包含堆栈信息便于调试

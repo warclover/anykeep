@@ -5,19 +5,27 @@
  * - 在流式输出完成前注入跟进建议
  * - 将输出记录到会话记忆
  * - 增强 done chunk（注入 conversationId 等）
+ * - 引用追踪：检测搜索结果并自动添加引用标注
  *
  * 从 UnifiedEngine 中拆分，遵循单一职责原则
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-26
+ * @updated 2025-12-28 - 集成引用追踪系统
  */
 
 import { logger } from "@/lib/logger";
 import type { IntentType } from "../router";
 import type { MemoryManager } from "../../ai-memory";
 import type { UnifiedOutputAdapter } from "../output/adapter";
-import type { UnifiedStreamChunk } from "../output/types";
+import type { UnifiedStreamChunk, CitationChunk } from "../output/types";
 import type { EngineContext } from "./types";
+import type { CitationEnricher } from "../../ai-agent/citation";
+import {
+  getCitationEnricher,
+  type SearchResultItem,
+} from "../../ai-agent/citation";
+import { FeatureFlags } from "../../ai-agent/config/feature-flags";
 
 // ============================================
 // 类型定义
@@ -31,9 +39,14 @@ export interface OutputEnhancerConfig {
   enableMemory?: boolean;
   /** 是否启用建议注入 */
   enableSuggestions?: boolean;
+  /** 是否启用引用追踪 */
+  enableCitations?: boolean;
   /** 是否启用调试模式 */
   debug?: boolean;
 }
+
+/** 搜索相关的工具名称 */
+const SEARCH_TOOL_NAMES = ["search", "semantic_search"] as const;
 
 // ============================================
 // OutputEnhancer 类
@@ -42,10 +55,11 @@ export interface OutputEnhancerConfig {
 /**
  * 输出增强器
  *
- * 负责增强流式输出，包括注入跟进建议和记录到会话记忆
+ * 负责增强流式输出，包括注入跟进建议、记录到会话记忆和引用追踪
  */
 export class OutputEnhancer {
   private config: Required<OutputEnhancerConfig>;
+  private citationEnricher: CitationEnricher;
 
   constructor(
     private memoryManager: MemoryManager,
@@ -55,15 +69,17 @@ export class OutputEnhancer {
     this.config = {
       enableMemory: true,
       enableSuggestions: true,
+      enableCitations: true,
       debug: false,
       ...config,
     };
+    this.citationEnricher = getCitationEnricher();
   }
 
   /**
    * 增强输出流
    *
-   * 组合应用建议注入和记忆记录
+   * 组合应用引用追踪、建议注入和记忆记录
    *
    * @param generator - 原始输出生成器
    * @param context - 引擎上下文
@@ -77,8 +93,17 @@ export class OutputEnhancer {
     intentType: IntentType,
     subType?: string,
   ): AsyncGenerator<UnifiedStreamChunk> {
-    // 按顺序应用增强：先建议，再记忆
+    // 按顺序应用增强：先引用追踪，再建议，最后记忆
     let enhanced = generator;
+
+    // 引用追踪需要在建议之前处理，以便在 done 之前增强文本
+    if (
+      this.config.enableCitations &&
+      FeatureFlags.ENABLE_CITATION_TRACKING &&
+      context.conversationId
+    ) {
+      enhanced = this.withCitations(enhanced, context);
+    }
 
     if (this.config.enableSuggestions) {
       enhanced = this.withSuggestions(enhanced, intentType, subType);
@@ -228,6 +253,191 @@ export class OutputEnhancer {
 
       yield chunk;
     }
+  }
+
+  /**
+   * 引用追踪增强
+   *
+   * 检测搜索工具调用结果，建立引用索引，并在完成时增强响应文本
+   *
+   * @param generator - 输出生成器
+   * @param context - 引擎上下文
+   * @yields 带引用追踪的统一流式输出块
+   */
+  async *withCitations(
+    generator: AsyncGenerator<UnifiedStreamChunk>,
+    context: EngineContext,
+  ): AsyncGenerator<UnifiedStreamChunk> {
+    if (!context.conversationId) {
+      yield* generator;
+      return;
+    }
+
+    const conversationId = context.conversationId;
+    let collectedText = "";
+    let citationChunkEmitted = false;
+    let lastSearchQuery: string | undefined;
+
+    for await (const chunk of generator) {
+      // 检测搜索工具调用，建立引用索引
+      if (chunk.type === "tool-call") {
+        const { toolName, args, result, status } = chunk.data;
+
+        // 只处理已完成的搜索工具调用
+        if (
+          status === "completed" &&
+          SEARCH_TOOL_NAMES.includes(
+            toolName as (typeof SEARCH_TOOL_NAMES)[number],
+          ) &&
+          result
+        ) {
+          // 提取查询参数
+          const queryArg = args as { query?: string; keyword?: string };
+          lastSearchQuery = queryArg.query || queryArg.keyword;
+
+          // 从结果中提取搜索结果项
+          const searchResults = this.extractSearchResults(result);
+
+          if (searchResults.length > 0) {
+            // 处理搜索结果，建立引用索引
+            const citationData = this.citationEnricher.processSearchResults(
+              conversationId,
+              searchResults,
+              lastSearchQuery,
+            );
+
+            // 发送引用块
+            if (!citationChunkEmitted && citationData.totalCitations > 0) {
+              const citationChunk: CitationChunk = {
+                type: "citation",
+                data: {
+                  indexed: citationData.indexed,
+                  totalCitations: citationData.totalCitations,
+                  citationSummary: citationData.citationSummary,
+                  conversationId,
+                  query: lastSearchQuery,
+                },
+              };
+              yield citationChunk;
+              citationChunkEmitted = true;
+
+              if (this.config.debug) {
+                logger.debug(
+                  {
+                    conversationId: conversationId.slice(0, 8) + "...",
+                    totalCitations: citationData.totalCitations,
+                    query: lastSearchQuery?.slice(0, 30),
+                  },
+                  "OutputEnhancer: Citation index created",
+                );
+              }
+            }
+          }
+        }
+      }
+
+      // 收集文本内容用于增强
+      if (chunk.type === "text") {
+        const textData = chunk.data as { text?: string };
+        if (textData.text) {
+          collectedText += textData.text;
+        }
+      }
+
+      // 在 done chunk 之前增强文本（如果有引用）
+      if (chunk.type === "done") {
+        // 只有在有引用时才增强
+        if (
+          this.citationEnricher.hasCitations(conversationId) &&
+          collectedText
+        ) {
+          const enrichResult = this.citationEnricher.enrichResponse(
+            collectedText,
+            conversationId,
+          );
+
+          // 如果增强后文本有变化，更新 summary
+          if (
+            enrichResult.hasCitations &&
+            enrichResult.enrichedText !== collectedText
+          ) {
+            if (this.config.debug) {
+              logger.debug(
+                {
+                  conversationId: conversationId.slice(0, 8) + "...",
+                  originalLength: collectedText.length,
+                  enrichedLength: enrichResult.enrichedText.length,
+                  citationsUsed: enrichResult.stats.total,
+                },
+                "OutputEnhancer: Response enriched with citations",
+              );
+            }
+
+            // 将增强后的摘要注入到 done chunk
+            yield {
+              ...chunk,
+              data: {
+                ...chunk.data,
+                summary: enrichResult.enrichedText,
+              },
+            };
+            continue;
+          }
+        }
+      }
+
+      yield chunk;
+    }
+  }
+
+  /**
+   * 从工具调用结果中提取搜索结果项
+   *
+   * @param result - 工具调用结果
+   * @returns 搜索结果项数组
+   */
+  private extractSearchResults(result: unknown): SearchResultItem[] {
+    if (!result || typeof result !== "object") {
+      return [];
+    }
+
+    const resultObj = result as Record<string, unknown>;
+
+    // 尝试从 results 字段提取
+    if (Array.isArray(resultObj.results)) {
+      return resultObj.results
+        .filter(
+          (item): item is Record<string, unknown> =>
+            typeof item === "object" && item !== null && "id" in item,
+        )
+        .map((item) => ({
+          bookmarkId: Number(item.id),
+          title: String(item.title || ""),
+          url: String(item.url || ""),
+          summary: item.summary ? String(item.summary) : undefined,
+          platform: item.platform ? String(item.platform) : undefined,
+          score: typeof item.score === "number" ? item.score : undefined,
+        }));
+    }
+
+    // 尝试从 bookmarks 字段提取
+    if (Array.isArray(resultObj.bookmarks)) {
+      return resultObj.bookmarks
+        .filter(
+          (item): item is Record<string, unknown> =>
+            typeof item === "object" && item !== null && "id" in item,
+        )
+        .map((item) => ({
+          bookmarkId: Number(item.id),
+          title: String(item.title || ""),
+          url: String(item.url || ""),
+          summary: item.summary ? String(item.summary) : undefined,
+          platform: item.platform ? String(item.platform) : undefined,
+          score: typeof item.score === "number" ? item.score : undefined,
+        }));
+    }
+
+    return [];
   }
 
   /**

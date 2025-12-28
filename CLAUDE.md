@@ -4,6 +4,7 @@
 
 | 日期       | 版本  | 变更内容                                                                                 |
 | ---------- | ----- | ---------------------------------------------------------------------------------------- |
+| 2025-12-28 | 2.7.5 | ReAct 循环和引用追踪：Think→Act→Observe 循环、搜索结果自动引用[^N]、78 个测试用例        |
 | 2025-12-27 | 2.7.4 | 信任模式智能化：get-trust-mode、recommend-trust-mode Tools，意图分类规则集成             |
 | 2025-12-27 | 2.7.3 | 代码质量清理：空 catch 修复、console → logger 迁移、高风险 API 速率限制（5 个端点）      |
 | 2025-12-27 | 2.7.2 | AI 上下文增强 v2.0：序数引用解析、refine 意图类型、搜索结果持久化、负向后行断言修复      |
@@ -666,6 +667,8 @@ ENABLE_REASONING=true           # reasoning 参数记录
 ENABLE_ERROR_RECOVERY=true      # 智能错误恢复
 ENABLE_PREFERENCE_LEARNING=true # 偏好自动学习
 ENABLE_COST_CONTROL=true        # 成本控制
+ENABLE_REACT_LOOP=false         # ReAct 循环执行（灰度发布中）
+ENABLE_CITATION_TRACKING=true   # 引用追踪系统
 ```
 
 **成本预算配置**:
@@ -699,6 +702,18 @@ src/lib/ai-agent/
 │   ├── preferences-service.ts # 偏好服务
 │   ├── learning-service.ts    # 学习服务
 │   └── types.ts               # 类型定义
+├── react/                     # ReAct 循环模块 (v2.7.5)
+│   ├── types.ts               # ReAct 类型定义
+│   ├── react-prompt-builder.ts # Prompt 构建器
+│   ├── react-loop-executor.ts # 循环执行器
+│   └── index.ts               # 模块导出
+├── citation/                  # 引用追踪模块 (v2.7.5)
+│   ├── types.ts               # 引用类型定义
+│   ├── citation-indexer.ts    # 引用索引器
+│   ├── citation-annotator.ts  # 引用标注器
+│   ├── citation-renderer.ts   # 引用渲染器
+│   ├── citation-enricher.ts   # 引用增强器
+│   └── index.ts               # 模块导出
 └── __tests__/
     └── integration/
         └── ai-capability-upgrade.test.ts  # 集成测试
