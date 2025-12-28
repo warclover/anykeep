@@ -1,7 +1,7 @@
 /**
  * 画像 Prompts 单元测试
  *
- * @version 1.0.0
+ * @version 2.0.0 - Phase 3 更新为内容检查
  * @since 2025-12-28
  */
 
@@ -16,7 +16,7 @@ import {
 } from "../persona-prompts";
 
 describe("Persona Prompts", () => {
-  describe("PM_PERSONA_PROMPT", () => {
+  describe("PM_PERSONA_PROMPT (legacy constant)", () => {
     it("should contain PM-specific keywords", () => {
       expect(PM_PERSONA_PROMPT).toContain("产品");
       expect(PM_PERSONA_PROMPT.length).toBeGreaterThan(100);
@@ -27,7 +27,7 @@ describe("Persona Prompts", () => {
     });
   });
 
-  describe("CONSULTANT_PERSONA_PROMPT", () => {
+  describe("CONSULTANT_PERSONA_PROMPT (legacy constant)", () => {
     it("should contain consulting-specific keywords", () => {
       expect(CONSULTANT_PERSONA_PROMPT).toContain("咨询");
       expect(CONSULTANT_PERSONA_PROMPT.length).toBeGreaterThan(100);
@@ -38,7 +38,7 @@ describe("Persona Prompts", () => {
     });
   });
 
-  describe("TEACHER_PERSONA_PROMPT", () => {
+  describe("TEACHER_PERSONA_PROMPT (legacy constant)", () => {
     it("should contain teaching-specific keywords", () => {
       expect(TEACHER_PERSONA_PROMPT).toContain("教");
       expect(TEACHER_PERSONA_PROMPT.length).toBeGreaterThan(100);
@@ -49,7 +49,7 @@ describe("Persona Prompts", () => {
     });
   });
 
-  describe("GENERAL_PERSONA_PROMPT", () => {
+  describe("GENERAL_PERSONA_PROMPT (legacy constant)", () => {
     it("should exist and be valid", () => {
       expect(GENERAL_PERSONA_PROMPT).toBeDefined();
       expect(GENERAL_PERSONA_PROMPT.length).toBeGreaterThan(50);
@@ -57,30 +57,51 @@ describe("Persona Prompts", () => {
   });
 
   describe("getPersonaPrompt", () => {
-    it("should return PM prompt for pm persona", () => {
+    it("should return prompt containing PM keywords for pm persona", () => {
       const prompt = getPersonaPrompt("pm");
-      expect(prompt).toBe(PM_PERSONA_PROMPT);
+      expect(prompt).toContain("产品");
+      expect(prompt.length).toBeGreaterThan(100);
     });
 
-    it("should return CONSULTANT prompt for consultant persona", () => {
+    it("should return prompt containing consultant keywords for consultant persona", () => {
       const prompt = getPersonaPrompt("consultant");
-      expect(prompt).toBe(CONSULTANT_PERSONA_PROMPT);
+      expect(prompt).toContain("咨询");
+      expect(prompt.length).toBeGreaterThan(100);
     });
 
-    it("should return TEACHER prompt for teacher persona", () => {
+    it("should return prompt containing teacher keywords for teacher persona", () => {
       const prompt = getPersonaPrompt("teacher");
-      expect(prompt).toBe(TEACHER_PERSONA_PROMPT);
+      expect(prompt).toContain("教");
+      expect(prompt.length).toBeGreaterThan(100);
     });
 
-    it("should return GENERAL prompt for general persona", () => {
+    it("should return prompt for general persona", () => {
       const prompt = getPersonaPrompt("general");
-      expect(prompt).toBe(GENERAL_PERSONA_PROMPT);
+      expect(prompt).toContain("AnyKeep");
+      expect(prompt.length).toBeGreaterThan(50);
     });
 
-    it("should return undefined for unknown persona", () => {
+    it("should return valid prompt for Phase 3 personas", () => {
+      // Test Phase 3 personas with structured prompts
+      const phase3Personas = [
+        "security_researcher",
+        "architect",
+        "game_planner",
+        "medical",
+        "journalist",
+      ] as const;
+
+      for (const persona of phase3Personas) {
+        const prompt = getPersonaPrompt(persona);
+        expect(prompt).toContain("AnyKeep");
+        expect(prompt.length).toBeGreaterThan(50);
+      }
+    });
+
+    it("should return valid string for any persona", () => {
       const prompt = getPersonaPrompt("student");
-      // Student may or may not have a prompt in Phase 1
-      expect(prompt === undefined || typeof prompt === "string").toBe(true);
+      expect(typeof prompt).toBe("string");
+      expect(prompt.length).toBeGreaterThan(0);
     });
   });
 

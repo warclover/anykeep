@@ -3,11 +3,15 @@
  *
  * 为不同画像类型提供定制化的 System Prompt
  *
- * @version 1.1.0 - Phase 2 新增 analyst, cert_seeker, ux_researcher
+ * @version 2.0.0 - Phase 3 集成结构化 System Prompt 模板
  * @since 2025-12-28
  */
 
 import type { PersonaType } from "./types";
+import {
+  generatePersonaSystemPrompt,
+  hasPersonaPrompt as hasStructuredPrompt,
+} from "./prompts/persona-system-prompts";
 
 // =============================================================================
 // 画像 Prompt 定义
@@ -446,18 +450,28 @@ const PERSONA_PROMPTS: Partial<Record<PersonaType, string>> = {
 /**
  * 获取画像对应的 System Prompt
  *
+ * 优先使用结构化 Prompt 模板（Phase 3），回退到原有 Prompt
+ *
  * @param type 画像类型
  * @returns 对应的 Prompt，如果没有则返回通用 Prompt
  */
 export function getPersonaPrompt(type: PersonaType): string {
+  // Phase 3: 优先使用结构化 Prompt 模板
+  if (hasStructuredPrompt(type)) {
+    return generatePersonaSystemPrompt(type);
+  }
+
+  // 回退到原有 Prompt 定义
   return PERSONA_PROMPTS[type] || GENERAL_PERSONA_PROMPT;
 }
 
 /**
  * 检查画像是否有专属 Prompt
+ *
+ * 检查结构化模板和原有 Prompt 定义
  */
 export function hasPersonaPrompt(type: PersonaType): boolean {
-  return type in PERSONA_PROMPTS;
+  return hasStructuredPrompt(type) || type in PERSONA_PROMPTS;
 }
 
 /**
