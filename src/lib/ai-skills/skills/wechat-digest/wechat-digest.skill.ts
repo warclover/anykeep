@@ -24,6 +24,8 @@ import type { SkillContext } from "../../core/types";
 import type { OrchestrationSkillMetadata } from "../../orchestration/types";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
+import { generateText } from "ai";
+import { createDeepSeek } from "@ai-sdk/deepseek";
 import type {
   WechatDigestInput,
   WechatDigestOutput,
@@ -544,47 +546,161 @@ export class WechatDigestSkill extends OrchestrationSkill<
   }
 
   /**
-   * 生成分组摘要
+   * 生成分组摘要（使用 LLM）
    */
   private async generateSummaries(
     groups: ArticleGroup[],
     depth: "brief" | "standard" | "detailed",
   ): Promise<GroupSummary[]> {
-    return groups.map((group) => {
-      // 基于文章标题和摘要生成组摘要
-      const titles = group.articles.map((a) => a.title).join("；");
-      const excerpts = group.articles
-        .slice(0, 3)
-        .map((a) => a.excerpt)
-        .filter(Boolean)
-        .join(" ");
+    const summaries: GroupSummary[] = [];
 
-      // 简单的摘要生成（实际可以接入 LLM）
-      let summary: string;
-      if (depth === "brief") {
-        summary = `该分组包含 ${group.articles.length} 篇文章，主要涉及：${titles.substring(0, 100)}...`;
-      } else if (depth === "detailed") {
-        summary = `「${group.name}」分组共收录 ${group.articles.length} 篇文章，约 ${Math.round(group.wordCount / 1000)}k 字。主要内容包括：${titles.substring(0, 200)}... ${excerpts.substring(0, 200)}`;
-      } else {
-        summary = `该分组收录 ${group.articles.length} 篇文章，约 ${Math.round(group.wordCount / 1000)}k 字。${excerpts.substring(0, 150)}`;
+    for (const group of groups) {
+      // 构建文章信息用于 LLM
+      const articlesInfo = group.articles
+        .slice(0, 10) // 限制数量避免 token 过长
+        .map(
+          (a, i) => `${i + 1}. ${a.title}\n   ${a.excerpt.substring(0, 150)}`,
+        )
+        .join("\n\n");
+
+      // 根据深度设置生成参数
+      const depthConfig = {
+        brief: { maxLength: 100, keyPointsCount: 2 },
+        standard: { maxLength: 200, keyPointsCount: 3 },
+        detailed: { maxLength: 400, keyPointsCount: 5 },
+      }[depth];
+
+      try {
+        // 创建 DeepSeek 模型实例
+        const deepseek = createDeepSeek({
+          apiKey: process.env.DEEPSEEK_API_KEY ?? "",
+        });
+
+        // 调用 LLM 生成摘要
+        const result = await generateText({
+          model: deepseek("deepseek-chat"), // 使用 DeepSeek 控制成本
+          system: `你是一个专业的内容摘要助手。请根据提供的文章列表生成简洁、有洞察的摘要。
+要求：
+1. 摘要应概括文章的共同主题和核心观点
+2. 提取 ${depthConfig.keyPointsCount} 个关键要点
+3. 使用中文，语言精炼专业
+4. 摘要控制在 ${depthConfig.maxLength} 字以内`,
+          prompt: `请为以下来自「${group.name}」的 ${group.articles.length} 篇文章（约 ${Math.round(group.wordCount / 1000)}k 字）生成摘要：
+
+${articlesInfo}
+
+请输出：
+1. 一段概括性摘要
+2. ${depthConfig.keyPointsCount} 个关键要点（每个要点一行，用 - 开头）`,
+          temperature: 0.3,
+          maxOutputTokens: 500,
+        });
+
+        // 解析 LLM 响应
+        const { summary, keyPoints } = this.parseSummaryResponse(
+          result.text,
+          group,
+          depth,
+        );
+
+        summaries.push({
+          name: group.name,
+          articleCount: group.articles.length,
+          wordCount: group.wordCount,
+          summary,
+          keyPoints,
+          articles: group.articles.slice(0, 5).map((a) => ({
+            title: a.title,
+            url: a.url,
+            excerpt: a.excerpt.substring(0, 100),
+          })),
+        });
+      } catch (error) {
+        // LLM 调用失败时使用降级策略
+        logger.warn(
+          {
+            group: group.name,
+            error: error instanceof Error ? error.message : String(error),
+          },
+          "WechatDigestSkill: LLM summary generation failed, using fallback",
+        );
+
+        summaries.push(this.generateFallbackSummary(group, depth));
       }
+    }
 
-      // 提取关键点
-      const keyPoints = group.articles.slice(0, 3).map((a) => a.title);
+    return summaries;
+  }
 
-      return {
-        name: group.name,
-        articleCount: group.articles.length,
-        wordCount: group.wordCount,
-        summary,
-        keyPoints,
-        articles: group.articles.slice(0, 5).map((a) => ({
-          title: a.title,
-          url: a.url,
-          excerpt: a.excerpt.substring(0, 100),
-        })),
-      };
-    });
+  /**
+   * 解析 LLM 摘要响应
+   */
+  private parseSummaryResponse(
+    response: string,
+    group: ArticleGroup,
+    depth: "brief" | "standard" | "detailed",
+  ): { summary: string; keyPoints: string[] } {
+    const lines = response.split("\n").filter((line) => line.trim());
+
+    // 提取关键要点（以 - 或 * 开头的行）
+    const keyPoints = lines
+      .filter((line) => /^[-*•]\s*/.test(line.trim()))
+      .map((line) => line.trim().replace(/^[-*•]\s*/, ""))
+      .slice(0, depth === "brief" ? 2 : depth === "standard" ? 3 : 5);
+
+    // 摘要是非要点的部分
+    const summaryLines = lines.filter((line) => !/^[-*•]\s*/.test(line.trim()));
+    let summary = summaryLines.join(" ").trim();
+
+    // 如果解析失败，使用整个响应作为摘要
+    if (!summary) {
+      summary = response.substring(0, 300);
+    }
+
+    // 如果没有提取到关键要点，使用文章标题
+    const finalKeyPoints =
+      keyPoints.length > 0
+        ? keyPoints
+        : group.articles.slice(0, 3).map((a) => a.title);
+
+    return { summary, keyPoints: finalKeyPoints };
+  }
+
+  /**
+   * 降级摘要生成（LLM 失败时使用）
+   */
+  private generateFallbackSummary(
+    group: ArticleGroup,
+    depth: "brief" | "standard" | "detailed",
+  ): GroupSummary {
+    const titles = group.articles.map((a) => a.title).join("；");
+    const excerpts = group.articles
+      .slice(0, 3)
+      .map((a) => a.excerpt)
+      .filter(Boolean)
+      .join(" ");
+
+    let summary: string;
+    if (depth === "brief") {
+      summary = `该分组包含 ${group.articles.length} 篇文章，主要涉及：${titles.substring(0, 100)}...`;
+    } else if (depth === "detailed") {
+      summary = `「${group.name}」分组共收录 ${group.articles.length} 篇文章，约 ${Math.round(group.wordCount / 1000)}k 字。主要内容包括：${titles.substring(0, 200)}... ${excerpts.substring(0, 200)}`;
+    } else {
+      summary = `该分组收录 ${group.articles.length} 篇文章，约 ${Math.round(group.wordCount / 1000)}k 字。${excerpts.substring(0, 150)}`;
+    }
+
+    return {
+      name: group.name,
+      articleCount: group.articles.length,
+      wordCount: group.wordCount,
+      summary,
+      keyPoints: group.articles.slice(0, 3).map((a) => a.title),
+      articles: group.articles.slice(0, 5).map((a) => ({
+        title: a.title,
+        url: a.url,
+        excerpt: a.excerpt.substring(0, 100),
+      })),
+    };
   }
 
   /**

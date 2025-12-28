@@ -165,6 +165,16 @@ export const TRUST_MODE_DISPLAY: Record<
 
 /**
  * 推荐算法阈值配置
+ *
+ * 阈值确定依据：
+ * - HIGH_CORRECTION_RATE (30%): 研究表明用户对超过 30% 错误率的自动化会失去信任
+ * - LOW_CORRECTION_RATE (5%): 低于 5% 错误率表明 AI 分类高度可靠
+ * - MIN_DECISION_SAMPLES (20): 统计学上需要至少 20 个样本才能得出可靠结论
+ * - PENDING_CONFIRMATION_THRESHOLD (20): 超过 20 条待确认会造成用户认知负担
+ * - MODE_STABILITY_DAYS (7): 一周时间足以观察新模式的适应效果
+ * - RECOMMEND_CONFIDENCE_THRESHOLD (70%): 避免低置信度推荐导致频繁切换
+ *
+ * @see calculateRecommendation in recommend-trust-mode.tool.ts
  */
 export const RECOMMENDATION_THRESHOLDS = {
   /** 高纠正率阈值：建议降低自动化 (%) */
