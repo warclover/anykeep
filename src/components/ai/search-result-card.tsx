@@ -148,9 +148,9 @@ export const SearchResultCard = memo(function SearchResultCard({
               {result.folderName}
             </span>
           )}
-          {result.tags?.slice(0, 3).map((tag, index) => (
+          {result.tags?.slice(0, 3).map((tag) => (
             <Badge
-              key={index}
+              key={`tag-${tag}`}
               variant="secondary"
               className="text-xs bg-purple-50 text-purple-700 border-purple-100"
             >
@@ -199,14 +199,14 @@ function HighlightedText({ text }: { text: string }) {
           const highlighted = part.slice(2, -2);
           return (
             <mark
-              key={index}
+              key={`hl-${index}-${highlighted.slice(0, 10)}`}
               className="bg-yellow-200 text-yellow-900 px-0.5 rounded"
             >
               {highlighted}
             </mark>
           );
         }
-        return <span key={index}>{part}</span>;
+        return <span key={`txt-${index}`}>{part}</span>;
       })}
     </>
   );

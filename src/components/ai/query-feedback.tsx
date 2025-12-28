@@ -117,9 +117,9 @@ export const QueryFeedback = memo(function QueryFeedback({
         <div className="mt-3">
           <div className="text-xs text-gray-500 mb-1.5">关键词</div>
           <div className="flex flex-wrap gap-1.5">
-            {parsedQuery.keywords.map((keyword, index) => (
+            {parsedQuery.keywords.map((keyword) => (
               <Badge
-                key={index}
+                key={`kw-${keyword}`}
                 variant="secondary"
                 className="bg-white border border-purple-200 text-purple-700"
               >
@@ -221,7 +221,10 @@ function QueryFeedbackCompact({
     >
       <Search className="size-3 text-purple-500" />
       {parts.map((part, index) => (
-        <span key={index} className="flex items-center gap-1">
+        <span
+          key={`part-${part.slice(0, 15)}-${index}`}
+          className="flex items-center gap-1"
+        >
           {index > 0 && <ChevronRight className="size-3 text-gray-300" />}
           <span>{part}</span>
         </span>
@@ -256,7 +259,7 @@ export const SearchSuggestions = memo(function SearchSuggestions({
       <ul className="space-y-2">
         {suggestions.map((suggestion, index) => (
           <li
-            key={index}
+            key={`sug-${suggestion.slice(0, 20)}-${index}`}
             className={cn(
               "flex items-start gap-2 text-sm text-gray-600",
               onSuggestionClick && "cursor-pointer hover:text-amber-700",

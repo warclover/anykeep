@@ -13,6 +13,14 @@ const nextConfig = {
   // Turbopack 编译优化：优化大型包的导入（减少首次编译时间 30-50%）
   experimental: {
     optimizePackageImports: [
+      // AI SDK 相关（减少 AI API 路由首次编译时间）
+      'ai',
+      '@ai-sdk/anthropic',
+      '@ai-sdk/openai',
+      '@ai-sdk/deepseek',
+      '@ai-sdk/react',
+      '@ai-sdk/provider-utils',
+      '@ai-sdk/provider',
       // UI 图标库
       'lucide-react',
       // Radix UI 组件（全系列）

@@ -60,7 +60,7 @@ export const AISuggestionsPanel = memo(function AISuggestionsPanel({
       <div className="space-y-2">
         {suggestions.map((suggestion, index) => (
           <SuggestionCard
-            key={index}
+            key={`${suggestion.text}-${suggestion.action || ""}-${index}`}
             suggestion={suggestion}
             onClick={() => onSuggestionClick?.(suggestion)}
           />
@@ -138,7 +138,7 @@ export const AISuggestionsInline = memo(function AISuggestionsInline({
         .slice(0, 3)
         .map((suggestion, index) => (
           <Button
-            key={index}
+            key={`inline-${suggestion.text}-${suggestion.action || ""}-${index}`}
             variant="outline"
             size="sm"
             className="h-7 px-3 text-xs border-amber-200 text-amber-700 hover:bg-amber-50 hover:border-amber-300"
@@ -185,7 +185,7 @@ export const AIQuickSuggestions = memo(function AIQuickSuggestions({
     <div className={cn("flex flex-wrap gap-1.5", className)}>
       {validSuggestions.map((suggestion, index) => (
         <button
-          key={index}
+          key={`quick-${suggestion.text}-${suggestion.action || ""}-${index}`}
           onClick={() => onSuggestionClick?.(suggestion)}
           className={cn(
             "inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-medium",
