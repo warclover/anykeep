@@ -153,16 +153,18 @@ const DEFAULT_RULES: IntentRule[] = [
     weight: 85,
   },
   {
-    // B站字幕提取规则
+    // B站字幕提取规则 - 需要明确包含字幕相关词汇
+    // 修复 NLU-11: 避免"找B站收藏"被误识别为字幕提取
     pattern:
-      /B站|bilibili.{0,5}(字幕|文字稿|转文字)|视频.{0,3}(字幕|文字稿)|提取.{0,3}字幕/i,
+      /B站.{0,3}(字幕|文字稿|转文字)|bilibili.{0,3}(字幕|文字稿|转文字)|视频.{0,3}(字幕|文字稿)|提取.{0,3}字幕/i,
     type: "create",
     subType: "bilibili_transcript",
     complexity: "medium",
     weight: 86,
   },
   {
-    pattern: /摘要|总结|概括|速览/,
+    // 摘要/总结规则 - 修复 NLU-06: 添加英文 summarize/summary 支持
+    pattern: /摘要|总结|概括|速览|summarize|summary/i,
     type: "create",
     subType: "digest",
     complexity: "medium",
@@ -324,6 +326,16 @@ const DEFAULT_RULES: IntentRule[] = [
   // 操作类
   // ============================================
   {
+    // 修复 NLU-01: 添加收藏/保存操作规则
+    // 使用更精确的模式，避免匹配到"删除收藏"、"找收藏"等场景
+    pattern:
+      /收藏.{0,2}(一下|下|它|这|起来)|保存.{0,2}(一下|下|它|这)|存下来?|加入收藏|添加到收藏|把.{0,5}收藏/,
+    type: "action",
+    subType: "save",
+    complexity: "simple",
+    weight: 55,
+  },
+  {
     pattern: /移动|转移|放到/,
     type: "action",
     subType: "move",
@@ -338,11 +350,12 @@ const DEFAULT_RULES: IntentRule[] = [
     weight: 50,
   },
   {
-    pattern: /添加.{0,3}标签|打标签|标记/,
+    // 修复 NLU-02: 提高标签规则权重，优先于摘要（weight 70）
+    pattern: /添加.{0,3}标签|打标签|标记|标为|设为.{0,3}标签/,
     type: "action",
     subType: "tag",
     complexity: "simple",
-    weight: 50,
+    weight: 75,
   },
   {
     pattern: /重命名|改名/,
