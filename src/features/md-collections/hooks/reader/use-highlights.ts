@@ -293,7 +293,21 @@ export function useHighlights(
       // 计算偏移
       const offset = getRangeOffset(container, range);
       if (!offset) {
-        throw new Error("Failed to calculate offset");
+        // 提供更详细的调试信息
+        if (process.env.NODE_ENV === "development") {
+          console.error("[useHighlights] Failed to calculate offset:", {
+            rangeText: range.toString(),
+            startContainer: range.startContainer,
+            startOffset: range.startOffset,
+            endContainer: range.endContainer,
+            endOffset: range.endOffset,
+            containerContainsStart: container.contains(range.startContainer),
+            containerContainsEnd: container.contains(range.endContainer),
+          });
+        }
+        // 尝试清除选区并提示用户重新选择
+        clearSelection();
+        throw new Error("无法处理当前选区，请重新选择文本");
       }
 
       // 创建快照用于回滚

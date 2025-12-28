@@ -23,8 +23,14 @@ export interface SelectionOffset {
 /**
  * 文本节点遍历器
  * 遍历容器内的所有文本节点
+ *
+ * @param container - 容器节点
+ * @param includeWhitespace - 是否包括纯空白文本节点（默认 false）
  */
-function* walkTextNodes(container: Node): Generator<Text> {
+function* walkTextNodes(
+  container: Node,
+  includeWhitespace: boolean = false,
+): Generator<Text> {
   const walker = document.createTreeWalker(
     container,
     NodeFilter.SHOW_TEXT,
@@ -33,8 +39,8 @@ function* walkTextNodes(container: Node): Generator<Text> {
 
   let node: Text | null;
   while ((node = walker.nextNode() as Text | null)) {
-    // 跳过空白文本节点
-    if (node.textContent && node.textContent.trim()) {
+    // 根据参数决定是否跳过空白文本节点
+    if (includeWhitespace || (node.textContent && node.textContent.trim())) {
       yield node;
     }
   }
@@ -42,35 +48,41 @@ function* walkTextNodes(container: Node): Generator<Text> {
 
 /**
  * 获取节点在容器内的文本偏移
+ *
+ * 使用 Range API 计算从容器开始到目标位置的文本长度。
+ * 这种方法更可靠，能正确处理 Element 和 Text 节点。
+ *
  * @param container - 容器节点
- * @param targetNode - 目标文本节点
+ * @param targetNode - 目标节点（可以是 Text 或 Element）
  * @param nodeOffset - 节点内偏移
- * @returns 容器内的文本偏移，找不到目标节点时返回 -1
- * @throws 当 nodeOffset 超出文本节点长度时抛出错误
+ * @returns 容器内的文本偏移，失败时返回 -1
  */
 function getTextOffset(
   container: Node,
   targetNode: Node,
   nodeOffset: number,
 ): number {
-  let offset = 0;
-
-  for (const textNode of walkTextNodes(container)) {
-    if (textNode === targetNode) {
-      const maxOffset = textNode.textContent?.length || 0;
-      // 边界检查：确保 nodeOffset 不超出文本长度
-      if (nodeOffset > maxOffset) {
-        throw new Error(
-          `Node offset ${nodeOffset} exceeds text node length ${maxOffset}`,
-        );
-      }
-      return offset + nodeOffset;
+  try {
+    // 检查目标节点是否在容器内
+    if (!container.contains(targetNode)) {
+      return -1;
     }
-    offset += textNode.textContent?.length || 0;
-  }
 
-  // 未找到目标节点，返回 -1 表示失败
-  return -1;
+    // 创建一个临时 Range，从容器开始到目标位置
+    const tempRange = document.createRange();
+    tempRange.setStart(container, 0);
+    tempRange.setEnd(targetNode, nodeOffset);
+
+    // 使用 Range 的 toString() 获取文本长度
+    // 这会正确处理所有节点类型
+    return tempRange.toString().length;
+  } catch (error) {
+    // Range 设置失败（如偏移超出范围）
+    if (process.env.NODE_ENV === "development") {
+      console.error("[highlight-utils] getTextOffset failed:", error);
+    }
+    return -1;
+  }
 }
 
 /**
