@@ -86,6 +86,11 @@ export function useReadingPosition({
   // 防抖定时器
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // 使用 ref 存储最新函数引用，避免 effect 依赖导致频繁重渲染
+  const calculateProgressRef = useRef<() => number>(() => 0);
+  const savePositionRef = useRef<() => void>(() => {});
+  const clearPositionRef = useRef<() => void>(() => {});
+
   // 生成 localStorage 键
   const storageKey = `${STORAGE_KEY_PREFIX}${collectionId}`;
 
@@ -187,6 +192,13 @@ export function useReadingPosition({
     }
   }, [storageKey]);
 
+  // 同步 refs 到最新函数引用
+  useEffect(() => {
+    calculateProgressRef.current = calculateProgress;
+    savePositionRef.current = savePosition;
+    clearPositionRef.current = clearPosition;
+  });
+
   // 初始化时从 localStorage 读取保存的位置
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -225,24 +237,24 @@ export function useReadingPosition({
       }
 
       debounceTimerRef.current = setTimeout(() => {
-        const newProgress = calculateProgress();
+        const newProgress = calculateProgressRef.current();
         setProgress(newProgress);
 
         // 自动保存进度（每次滚动）
         if (newProgress > 0 && newProgress < COMPLETION_THRESHOLD) {
-          savePosition();
+          savePositionRef.current();
         }
 
         // 阅读完成时清除位置记录
         if (newProgress >= COMPLETION_THRESHOLD) {
-          clearPosition();
+          clearPositionRef.current();
         }
       }, DEBOUNCE_DELAY);
     };
 
     // 初始计算 - 使用 requestAnimationFrame 避免 ESLint 警告
     requestAnimationFrame(() => {
-      setProgress(calculateProgress());
+      setProgress(calculateProgressRef.current());
     });
 
     window.addEventListener("scroll", handleScroll, { passive: true });
@@ -253,7 +265,7 @@ export function useReadingPosition({
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [calculateProgress, savePosition, clearPosition]);
+  }, []); // 空依赖数组 - 使用 refs 避免重新订阅
 
   return {
     progress,

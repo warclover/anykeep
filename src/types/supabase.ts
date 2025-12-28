@@ -4250,6 +4250,11 @@ export type Database = {
         Args: { p_date: string; p_tokens?: number; p_user_id: string };
         Returns: undefined;
       };
+      /** 递增监控变更计数 */
+      increment_monitor_change_count: {
+        Args: { monitor_id: number };
+        Returns: undefined;
+      };
       increment_storage_used: {
         Args: { target_user_id: string };
         Returns: undefined;

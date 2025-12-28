@@ -8,6 +8,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/types/supabase";
 import type {
   PendingMonitor,
   MonitorCheckResult,
@@ -39,10 +40,13 @@ const DEFAULT_CONFIG: CheckTaskConfig = {
  * 监控调度器
  */
 export class MonitorScheduler {
-  private supabase: SupabaseClient;
+  private supabase: SupabaseClient<Database>;
   private config: CheckTaskConfig;
 
-  constructor(supabase: SupabaseClient, config?: Partial<CheckTaskConfig>) {
+  constructor(
+    supabase: SupabaseClient<Database>,
+    config?: Partial<CheckTaskConfig>,
+  ) {
     this.supabase = supabase;
     this.config = { ...DEFAULT_CONFIG, ...config };
   }
@@ -56,8 +60,7 @@ export class MonitorScheduler {
   async getPendingMonitors(limit: number = 100): Promise<PendingMonitor[]> {
     const now = new Date().toISOString();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (this.supabase as any)
+    const { data, error } = await this.supabase
       .from("page_monitors")
       .select(
         `
@@ -88,13 +91,14 @@ export class MonitorScheduler {
 
     if (!data) return [];
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return data.map((row: any) => ({
+    return data.map((row) => ({
       id: row.id,
       userId: row.user_id,
       bookmarkId: row.bookmark_id,
-      bookmarkUrl: row.bookmarks.url,
-      bookmarkTitle: row.bookmarks.title,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      bookmarkUrl: (row as any).bookmarks?.url ?? "",
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      bookmarkTitle: (row as any).bookmarks?.title ?? "",
       checkInterval: row.check_interval,
       customIntervalHours: row.custom_interval_hours,
       baselineSnapshotId: row.baseline_snapshot_id,
@@ -237,8 +241,12 @@ export class MonitorScheduler {
         bookmark_id: bookmarkId,
         readable_text_content: content,
         content_hash: contentHash,
-        word_count: wordCount,
+        readable_word_count: wordCount,
         captured_at: new Date().toISOString(),
+        original_url: "", // 必填字段
+        snapshot_type: "monitor", // 必填字段
+        status: "completed", // 必填字段
+        user_id: "", // 将由触发器填充
       })
       .select("id")
       .single();
@@ -269,7 +277,7 @@ export class MonitorScheduler {
 
     let nextCheckAt: Date;
     let newConsecutiveFailures: number;
-    let newStatus: string = "active";
+    let newStatus: "active" | "paused" | "failed" | "deleted" = "active";
 
     if (isError) {
       // 错误情况：增加连续失败计数
@@ -292,15 +300,14 @@ export class MonitorScheduler {
     }
 
     // 构建更新数据
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const updateData: any = {
-      last_checked_at: now.toISOString(),
-      next_check_at: nextCheckAt.toISOString(),
-      consecutive_failures: newConsecutiveFailures,
-      last_error_message: result.errorMessage,
-      status: newStatus,
-      updated_at: now.toISOString(),
-    };
+    const updateData: Database["public"]["Tables"]["page_monitors"]["Update"] =
+      {
+        last_checked_at: now.toISOString(),
+        next_check_at: nextCheckAt.toISOString(),
+        consecutive_failures: newConsecutiveFailures,
+        last_error_message: result.errorMessage,
+        status: newStatus,
+      };
 
     // 如果有变化，更新基线和变更计数
     if (result.result === "changed" && result.newSnapshotId) {
@@ -309,16 +316,14 @@ export class MonitorScheduler {
       // 使用 SQL 递增 change_count
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (this.supabase as any)
+    await this.supabase
       .from("page_monitors")
       .update(updateData)
       .eq("id", monitor.id);
 
     // 如果有变化，递增变更计数
     if (result.result === "changed") {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (this.supabase as any).rpc("increment_monitor_change_count", {
+      await this.supabase.rpc("increment_monitor_change_count", {
         monitor_id: monitor.id,
       });
     }
@@ -333,13 +338,12 @@ export class MonitorScheduler {
     result: MonitorCheckResult,
   ): Promise<void> {
     // 将 error/timeout 映射到数据库支持的类型
-    const dbCheckResult =
+    const dbCheckResult: Database["public"]["Tables"]["monitor_check_logs"]["Row"]["check_result"] =
       result.result === "error" || result.result === "timeout"
         ? "failed"
-        : result.result;
+        : (result.result as "no_change" | "changed" | "skipped");
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (this.supabase as any).from("monitor_check_logs").insert({
+    await this.supabase.from("monitor_check_logs").insert({
       monitor_id: monitorId,
       user_id: userId,
       check_result: dbCheckResult,
@@ -446,8 +450,7 @@ export class MonitorScheduler {
           // 发送通知（如果需要）
           if (result.result === "changed") {
             // 获取通知设置
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const { data: monitorData } = await (this.supabase as any)
+            const { data: monitorData } = await this.supabase
               .from("page_monitors")
               .select("notification_enabled")
               .eq("id", monitor.id)
