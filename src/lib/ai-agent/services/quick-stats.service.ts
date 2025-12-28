@@ -57,6 +57,8 @@ export interface QuickStats {
   platformDistribution: PlatformStat[];
   /** 常用文件夹（前 5 个） */
   topFolders: FolderStat[];
+  /** 标签频率 [v3.1 新增] */
+  tagFrequency: Record<string, number>;
   /** 统计生成时间 */
   generatedAt: string;
 }
@@ -118,6 +120,7 @@ export async function getQuickStats(
       recentAdded,
       platformCounts,
       folderCounts,
+      tagFrequency,
     ] = await Promise.all([
       // 1. 书签基础统计（使用聚合查询）
       getBookmarkAggregates(supabase, userId),
@@ -133,6 +136,9 @@ export async function getQuickStats(
 
       // 5. 文件夹分布
       getFolderDistribution(supabase, userId),
+
+      // 6. 标签频率 [v3.1 新增]
+      getTagFrequency(supabase, userId),
     ]);
 
     const stats: QuickStats = {
@@ -145,6 +151,7 @@ export async function getQuickStats(
       starredCount: bookmarkStats.starredCount,
       platformDistribution: platformCounts,
       topFolders: folderCounts,
+      tagFrequency,
       generatedAt: new Date().toISOString(),
     };
 
@@ -383,6 +390,53 @@ async function getFolderDistribution(
 }
 
 /**
+ * 获取标签使用频率
+ * 用于画像推断的标签信号
+ * [v3.1 新增]
+ */
+async function getTagFrequency(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+): Promise<Record<string, number>> {
+  // 同时查询 ai_tags 和 user_tags
+  const { data, error } = await supabase
+    .from("bookmarks")
+    .select("ai_tags, user_tags")
+    .eq("user_id", userId)
+    .is("deleted_at", null);
+
+  if (error) {
+    logger.error({ userId, error: error.message }, "getTagFrequency failed");
+    return {};
+  }
+
+  // 统计标签频率（合并 ai_tags 和 user_tags）
+  const tagMap: Record<string, number> = {};
+  for (const b of data || []) {
+    // 处理 ai_tags
+    if (Array.isArray(b.ai_tags)) {
+      for (const tag of b.ai_tags) {
+        if (typeof tag === "string" && tag.trim()) {
+          const normalizedTag = tag.trim().toLowerCase();
+          tagMap[normalizedTag] = (tagMap[normalizedTag] || 0) + 1;
+        }
+      }
+    }
+    // 处理 user_tags
+    if (Array.isArray(b.user_tags)) {
+      for (const tag of b.user_tags) {
+        if (typeof tag === "string" && tag.trim()) {
+          const normalizedTag = tag.trim().toLowerCase();
+          tagMap[normalizedTag] = (tagMap[normalizedTag] || 0) + 1;
+        }
+      }
+    }
+  }
+
+  return tagMap;
+}
+
+/**
  * 创建空统计对象
  */
 function createEmptyStats(): QuickStats {
@@ -396,6 +450,7 @@ function createEmptyStats(): QuickStats {
     starredCount: 0,
     platformDistribution: [],
     topFolders: [],
+    tagFrequency: {},
     generatedAt: new Date().toISOString(),
   };
 }

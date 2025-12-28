@@ -141,6 +141,136 @@ export interface MemoryInfo {
 }
 
 /**
+ * 取消信息
+ */
+export interface CancelledInfo {
+  /** 取消消息 */
+  message: string;
+  /** 取消原因 */
+  reason?: string;
+  /** 取消时间 */
+  timestamp: string;
+  /** 已完成步骤 */
+  completedSteps?: number;
+  /** 总步骤数 */
+  totalSteps?: number;
+}
+
+/**
+ * 初始化信息
+ */
+export interface InitInfo {
+  /** 请求 ID */
+  requestId: string;
+  /** 时间戳 */
+  timestamp: number;
+}
+
+/**
+ * 撤销可用信息
+ */
+export interface UndoAvailableInfo {
+  /** 撤销 ID */
+  undoId: string;
+  /** 操作类型 */
+  operationType: string;
+  /** 操作摘要 */
+  summary: string;
+  /** 过期时间 (ISO 字符串) */
+  expiresAt: string;
+  /** 受影响的书签数量 */
+  affectedCount: number;
+}
+
+/**
+ * 零接管确认请求信息
+ */
+export interface ZeroTakeoverConfirmInfo {
+  /** 确认 ID */
+  id: string;
+  /** 操作类型 */
+  operationType: "delete" | "batch_delete" | "irreversible";
+  /** 确认标题 */
+  title: string;
+  /** 确认消息 */
+  message: string;
+  /** 受影响的书签 ID 列表 */
+  affectedBookmarkIds: number[];
+  /** 超时时间（毫秒） */
+  timeout?: number;
+  /** 默认选项 */
+  defaultAction?: "confirm" | "cancel";
+}
+
+/**
+ * 智能默认值信息
+ */
+export interface SmartDefaultsInfo {
+  /** 应用的默认值列表 */
+  defaults: Array<{
+    field: string;
+    value: string;
+    source: "user_preference" | "context_infer" | "system_default";
+    confidence: number;
+    reason?: string;
+  }>;
+  /** 总置信度 */
+  overallConfidence: number;
+}
+
+/**
+ * AI 思考过程信息
+ */
+export interface ThinkingInfo {
+  /** 思考阶段 */
+  phase:
+    | "understanding"
+    | "planning"
+    | "deciding"
+    | "executing"
+    | "react_think"
+    | "react_act"
+    | "react_observe"
+    | "react_complete";
+  /** 思考内容 */
+  content: string;
+  /** 时间戳 */
+  timestamp: number;
+  /** ReAct 轮次 */
+  round?: number;
+  /** 是否为最终状态 */
+  isFinal?: boolean;
+}
+
+/**
+ * 引用摘要项
+ */
+export interface CitationSummaryItem {
+  /** 引用编号 (1-based) */
+  index: number;
+  /** 引用标题 */
+  title: string;
+  /** 书签 ID */
+  bookmarkId: number;
+}
+
+/**
+ * 引用追踪信息
+ */
+export interface CitationInfo {
+  /** 是否已建立索引 */
+  indexed: boolean;
+  /** 引用总数 */
+  totalCitations: number;
+  /** 引用摘要列表 */
+  citationSummary: CitationSummaryItem[];
+  /** 会话 ID */
+  conversationId?: string;
+  /** 关联的查询 */
+  query?: string;
+}
+
+/**
  * 消息显示状态
  */
 export type MessageDisplayStatus =
@@ -186,6 +316,25 @@ export interface DisplayMessage {
   executionMode?: "atomic" | "orchestration";
   /** Skill ID */
   skillId?: string;
+
+  // ============================================
+  // 零接管模式扩展字段
+  // ============================================
+
+  /** 请求 ID（用于取消操作） */
+  requestId?: string;
+  /** AI 思考过程 */
+  thinking?: ThinkingInfo[];
+  /** 撤销信息 */
+  undoAvailable?: UndoAvailableInfo;
+  /** 零接管确认请求 */
+  zeroTakeoverConfirm?: ZeroTakeoverConfirmInfo;
+  /** 智能默认值 */
+  smartDefaults?: SmartDefaultsInfo;
+  /** 引用追踪信息 */
+  citation?: CitationInfo;
+  /** 是否已取消 */
+  isCancelled?: boolean;
 }
 
 /**
@@ -301,7 +450,18 @@ export type UnifiedStreamChunkFrontend =
         content?: string;
         toolCalls?: AgentToolCall[];
       };
-    };
+    }
+  // 新增：零接管模式块类型
+  | { type: "init"; init: InitInfo }
+  | { type: "cancelled"; cancelled: CancelledInfo }
+  | { type: "thinking"; thinking: ThinkingInfo }
+  | { type: "undo_available"; undoAvailable: UndoAvailableInfo }
+  | {
+      type: "zero_takeover_confirm";
+      zeroTakeoverConfirm: ZeroTakeoverConfirmInfo;
+    }
+  | { type: "smart_defaults_applied"; smartDefaults: SmartDefaultsInfo }
+  | { type: "citation"; citation: CitationInfo };
 
 /**
  * 处理统一流式块，更新 DisplayMessage
@@ -387,6 +547,53 @@ export function processUnifiedChunk(
         skillId: chunk.data.skillId,
         content: chunk.data.content || message.content,
         toolCalls: chunk.data.toolCalls || message.toolCalls,
+      };
+
+    // 新增：零接管模式块类型处理
+    case "init":
+      return {
+        ...message,
+        requestId: chunk.init.requestId,
+      };
+
+    case "cancelled":
+      return {
+        ...message,
+        status: "completed",
+        isCancelled: true,
+        content:
+          message.content +
+          `\n\n_${chunk.cancelled.message}${chunk.cancelled.reason ? ` (${chunk.cancelled.reason})` : ""}_`,
+      };
+
+    case "thinking":
+      return {
+        ...message,
+        thinking: [...(message.thinking || []), chunk.thinking],
+      };
+
+    case "undo_available":
+      return {
+        ...message,
+        undoAvailable: chunk.undoAvailable,
+      };
+
+    case "zero_takeover_confirm":
+      return {
+        ...message,
+        zeroTakeoverConfirm: chunk.zeroTakeoverConfirm,
+      };
+
+    case "smart_defaults_applied":
+      return {
+        ...message,
+        smartDefaults: chunk.smartDefaults,
+      };
+
+    case "citation":
+      return {
+        ...message,
+        citation: chunk.citation,
       };
 
     default:
@@ -535,6 +742,93 @@ export function adaptBackendChunk(
           conversationId: data?.conversationId as string | undefined,
           content: data?.content as string | undefined,
           toolCalls: data?.toolCalls as AgentToolCall[] | undefined,
+        },
+      };
+
+    // 新增：零接管模式块类型适配
+    case "init":
+      return {
+        type: "init",
+        init: {
+          requestId: (data?.requestId as string) ?? "",
+          timestamp: (data?.timestamp as number) ?? Date.now(),
+        },
+      };
+
+    case "cancelled":
+      return {
+        type: "cancelled",
+        cancelled: {
+          message: (data?.message as string) ?? "请求已取消",
+          reason: data?.reason as string | undefined,
+          timestamp: (data?.timestamp as string) ?? new Date().toISOString(),
+          completedSteps: data?.completedSteps as number | undefined,
+          totalSteps: data?.totalSteps as number | undefined,
+        },
+      };
+
+    case "thinking":
+      return {
+        type: "thinking",
+        thinking: {
+          phase: (data?.phase as ThinkingInfo["phase"]) ?? "understanding",
+          content: (data?.content as string) ?? "",
+          timestamp: (data?.timestamp as number) ?? Date.now(),
+          round: data?.round as number | undefined,
+          isFinal: data?.isFinal as boolean | undefined,
+        },
+      };
+
+    case "undo_available":
+      return {
+        type: "undo_available",
+        undoAvailable: {
+          undoId: (data?.undoId as string) ?? "",
+          operationType: (data?.operationType as string) ?? "",
+          summary: (data?.summary as string) ?? "",
+          expiresAt: (data?.expiresAt as string) ?? "",
+          affectedCount: (data?.affectedCount as number) ?? 0,
+        },
+      };
+
+    case "zero_takeover_confirm":
+      return {
+        type: "zero_takeover_confirm",
+        zeroTakeoverConfirm: {
+          id: (data?.id as string) ?? "",
+          operationType:
+            (data?.operationType as ZeroTakeoverConfirmInfo["operationType"]) ??
+            "delete",
+          title: (data?.title as string) ?? "",
+          message: (data?.message as string) ?? "",
+          affectedBookmarkIds: (data?.affectedBookmarkIds as number[]) ?? [],
+          timeout: data?.timeout as number | undefined,
+          defaultAction: data?.defaultAction as
+            | "confirm"
+            | "cancel"
+            | undefined,
+        },
+      };
+
+    case "smart_defaults_applied":
+      return {
+        type: "smart_defaults_applied",
+        smartDefaults: {
+          defaults: (data?.defaults as SmartDefaultsInfo["defaults"]) ?? [],
+          overallConfidence: (data?.overallConfidence as number) ?? 0,
+        },
+      };
+
+    case "citation":
+      return {
+        type: "citation",
+        citation: {
+          indexed: (data?.indexed as boolean) ?? false,
+          totalCitations: (data?.totalCitations as number) ?? 0,
+          citationSummary:
+            (data?.citationSummary as CitationSummaryItem[]) ?? [],
+          conversationId: data?.conversationId as string | undefined,
+          query: data?.query as string | undefined,
         },
       };
 

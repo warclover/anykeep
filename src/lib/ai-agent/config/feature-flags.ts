@@ -246,6 +246,96 @@ export const FeatureFlags = {
   get ENABLE_CITATION_TRACKING(): boolean {
     return process.env.ENABLE_CITATION_TRACKING !== "false";
   },
+
+  // ===========================================================================
+  // 多用户画像推断相关开关 [v3.1 新增]
+  // ===========================================================================
+
+  /**
+   * 是否启用多用户画像功能（主开关）
+   * @default false
+   * @description 控制整个多画像功能的启用/禁用，用于灰度发布
+   */
+  get ENABLE_MULTI_PERSONA(): boolean {
+    return process.env.ENABLE_MULTI_PERSONA === "true";
+  },
+
+  /**
+   * 是否启用画像推断引擎
+   * @default true
+   * @description 基于用户行为自动推断画像类型
+   */
+  get ENABLE_PERSONA_INFERENCE(): boolean {
+    return process.env.ENABLE_PERSONA_INFERENCE !== "false";
+  },
+
+  /**
+   * 是否启用画像专属 Prompt
+   * @default true
+   * @description 根据画像类型注入专属 System Prompt
+   */
+  get ENABLE_PERSONA_PROMPTS(): boolean {
+    return process.env.ENABLE_PERSONA_PROMPTS !== "false";
+  },
+
+  /**
+   * 是否启用画像意图权重加成
+   * @default true
+   * @description 根据画像类型调整意图识别权重
+   */
+  get ENABLE_PERSONA_INTENT_BOOST(): boolean {
+    return process.env.ENABLE_PERSONA_INTENT_BOOST !== "false";
+  },
+
+  /**
+   * 是否启用画像设置 UI
+   * @default false
+   * @description 在设置页面显示画像配置入口
+   */
+  get ENABLE_PERSONA_SETTINGS_UI(): boolean {
+    return process.env.ENABLE_PERSONA_SETTINGS_UI === "true";
+  },
+
+  /**
+   * 是否启用产品经理画像
+   * @default true
+   * @description PM 专属 Prompt 和意图权重
+   */
+  get ENABLE_PM_PERSONA(): boolean {
+    return process.env.ENABLE_PM_PERSONA !== "false";
+  },
+
+  /**
+   * 是否启用咨询顾问画像
+   * @default true
+   * @description 咨询顾问专属 Prompt 和意图权重
+   */
+  get ENABLE_CONSULTANT_PERSONA(): boolean {
+    return process.env.ENABLE_CONSULTANT_PERSONA !== "false";
+  },
+
+  /**
+   * 是否启用大学教师画像
+   * @default true
+   * @description 大学教师专属 Prompt 和意图权重
+   */
+  get ENABLE_TEACHER_PERSONA(): boolean {
+    return process.env.ENABLE_TEACHER_PERSONA !== "false";
+  },
+
+  // ===========================================================================
+  // 灰度发布控制 [Phase 4 新增]
+  // ===========================================================================
+
+  /**
+   * 画像功能灰度发布百分比
+   * @default 0
+   * @description 控制多少百分比的用户可以使用画像功能（0-100）
+   */
+  get PERSONA_ROLLOUT_PERCENTAGE(): number {
+    const value = parseInt(process.env.PERSONA_ROLLOUT_PERCENTAGE || "0", 10);
+    return isNaN(value) ? 0 : Math.min(100, Math.max(0, value));
+  },
 } as const;
 
 // =============================================================================
@@ -296,5 +386,16 @@ export function getAllFeatureFlags(): Record<FeatureFlagKey, boolean> {
     // ReAct 循环与引用追踪
     ENABLE_REACT_LOOP: FeatureFlags.ENABLE_REACT_LOOP,
     ENABLE_CITATION_TRACKING: FeatureFlags.ENABLE_CITATION_TRACKING,
+    // 多用户画像推断 [v3.1 新增]
+    ENABLE_MULTI_PERSONA: FeatureFlags.ENABLE_MULTI_PERSONA,
+    ENABLE_PERSONA_INFERENCE: FeatureFlags.ENABLE_PERSONA_INFERENCE,
+    ENABLE_PERSONA_PROMPTS: FeatureFlags.ENABLE_PERSONA_PROMPTS,
+    ENABLE_PERSONA_INTENT_BOOST: FeatureFlags.ENABLE_PERSONA_INTENT_BOOST,
+    ENABLE_PERSONA_SETTINGS_UI: FeatureFlags.ENABLE_PERSONA_SETTINGS_UI,
+    ENABLE_PM_PERSONA: FeatureFlags.ENABLE_PM_PERSONA,
+    ENABLE_CONSULTANT_PERSONA: FeatureFlags.ENABLE_CONSULTANT_PERSONA,
+    ENABLE_TEACHER_PERSONA: FeatureFlags.ENABLE_TEACHER_PERSONA,
+    // 灰度发布控制 [Phase 4 新增]
+    PERSONA_ROLLOUT_PERCENTAGE: FeatureFlags.PERSONA_ROLLOUT_PERCENTAGE,
   };
 }

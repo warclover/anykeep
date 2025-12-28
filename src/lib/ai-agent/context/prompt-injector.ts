@@ -3,10 +3,11 @@
  *
  * 将动态上下文转换为可注入 System Prompt 的文本片段
  *
- * @version 2.1.0
+ * @version 2.2.0
  * @since 2025-12-26
  * @updated 2025-12-27 - 集成 System-Reminder 动态注入
  * @updated 2025-12-27 - 添加情景记忆注入支持
+ * @updated 2025-12-28 - 添加画像推断集成 [v3.1]
  */
 
 import type { DynamicContext, EpisodicMemoryContext } from "./types";
@@ -15,6 +16,10 @@ import {
   shouldInjectReminders,
 } from "./system-reminder-injector";
 import { FeatureFlags } from "../config/feature-flags";
+import { personaInferrer, adaptQuickStatsToInference } from "../inference";
+import { getPersonaPrompt } from "../personas";
+import { getQuickStats } from "../services/quick-stats.service";
+import { logger } from "@/lib/logger";
 
 // =============================================================================
 // 时间段描述
@@ -232,6 +237,16 @@ export interface MergePromptOptions {
 }
 
 /**
+ * 异步合并选项（扩展同步选项）
+ */
+export interface MergePromptOptionsAsync extends MergePromptOptions {
+  /** 启用画像推断注入 */
+  enablePersonaInference?: boolean;
+  /** 用户 ID（画像推断必需） */
+  userId?: string;
+}
+
+/**
  * 合并基础 Prompt 和动态上下文
  *
  * @param basePrompt 基础 System Prompt
@@ -292,4 +307,132 @@ export function estimateContextTokens(ctx: DynamicContext): number {
   const prompt = buildContextPrompt(ctx);
   // 中英混合文本，取平均值约 3 字符/token
   return Math.ceil(prompt.length / 3);
+}
+
+// =============================================================================
+// 画像推断集成 [v3.1 新增]
+// =============================================================================
+
+/**
+ * 构建画像 Prompt 段落
+ *
+ * 基于用户行为数据推断画像类型，返回对应的专属 Prompt
+ *
+ * @param userId 用户 ID
+ * @returns 画像 Prompt 文本，如果无法推断则返回 null
+ */
+export async function buildPersonaPrompt(
+  userId: string,
+): Promise<string | null> {
+  // 检查 Feature Flag
+  if (!FeatureFlags.ENABLE_PERSONA_INFERENCE) {
+    return null;
+  }
+
+  try {
+    // 获取用户统计数据
+    const quickStats = await getQuickStats(userId);
+
+    // 转换为推断引擎所需格式
+    const userStats = adaptQuickStatsToInference(userId, quickStats);
+
+    // 执行画像推断
+    const result = await personaInferrer.infer(userStats);
+
+    // 检查置信度是否足够（置信度 0-100，阈值 60%）
+    if (!result.primaryPersona || result.confidence < 60) {
+      logger.debug(
+        {
+          userId: userId.slice(0, 8) + "...",
+          confidence: result.confidence,
+          persona: result.primaryPersona,
+        },
+        "PersonaPrompt: Confidence too low, skipping",
+      );
+      return null;
+    }
+
+    // 获取画像专属 Prompt
+    const prompt = getPersonaPrompt(result.primaryPersona);
+    if (!prompt) {
+      return null;
+    }
+
+    logger.info(
+      {
+        userId: userId.slice(0, 8) + "...",
+        persona: result.primaryPersona,
+        confidence: result.confidence,
+      },
+      "PersonaPrompt: Injected",
+    );
+
+    return `## 用户画像\n\n${prompt}`;
+  } catch (error) {
+    logger.error(
+      {
+        userId: userId.slice(0, 8) + "...",
+        error: error instanceof Error ? error.message : String(error),
+      },
+      "PersonaPrompt: Failed to build",
+    );
+    return null;
+  }
+}
+
+/**
+ * 异步合并基础 Prompt 和动态上下文
+ *
+ * 支持画像推断注入（需要异步获取用户数据）
+ *
+ * @param basePrompt 基础 System Prompt
+ * @param ctx 动态上下文
+ * @param options 合并选项
+ * @returns 完整的 System Prompt
+ */
+export async function mergeSystemPromptAsync(
+  basePrompt: string,
+  ctx: DynamicContext,
+  options: MergePromptOptionsAsync = {},
+): Promise<string> {
+  const {
+    minimal = false,
+    enableReminders = FeatureFlags.ENABLE_SYSTEM_REMINDER,
+    enableProactive = true,
+    maxReminders = 2,
+    enableEpisodicMemory = FeatureFlags.ENABLE_EPISODIC_MEMORY &&
+      FeatureFlags.ENABLE_MEMORY_PROMPT,
+    enablePersonaInference = FeatureFlags.ENABLE_PERSONA_INFERENCE,
+    userId,
+  } = options;
+
+  const contextPrompt = minimal
+    ? buildMinimalContextPrompt(ctx)
+    : buildContextPrompt(ctx);
+
+  let result = `${basePrompt}\n\n${contextPrompt}`;
+
+  // 注入画像 Prompt（如果启用且有 userId）
+  if (enablePersonaInference && userId) {
+    const personaPrompt = await buildPersonaPrompt(userId);
+    if (personaPrompt) {
+      result = `${result}\n\n${personaPrompt}`;
+    }
+  }
+
+  // 注入情景记忆（如果启用且有内容）
+  if (enableEpisodicMemory && !isEmptyEpisodicMemory(ctx.episodicMemory)) {
+    const memoryPrompt = buildEpisodicMemoryPrompt(ctx.episodicMemory!);
+    result = `${result}\n\n${memoryPrompt}`;
+  }
+
+  // 注入 System-Reminder（如果启用且满足条件）
+  if (enableReminders && shouldInjectReminders(ctx)) {
+    result = injectSystemReminders(result, ctx, {
+      maxReminders,
+      enableProactive,
+    });
+  }
+
+  return result;
 }

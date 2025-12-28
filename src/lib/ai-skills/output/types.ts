@@ -267,6 +267,21 @@ export interface CancelledChunk {
 }
 
 /**
+ * 初始化块
+ *
+ * 流式响应开始时发送，包含请求 ID 用于取消
+ */
+export interface InitChunk {
+  type: "init";
+  data: {
+    /** 请求 ID，用于取消操作 */
+    requestId: string;
+    /** 时间戳 */
+    timestamp: number;
+  };
+}
+
+/**
  * 回退通知块
  */
 export interface FallbackChunk {
@@ -498,6 +513,8 @@ export type UnifiedStreamChunk =
   | SuggestionsChunk
   | RoutingChunk
   | ErrorChunk
+  | CancelledChunk
+  | InitChunk
   | FallbackChunk
   | MemoryChunk
   | DoneChunk
@@ -538,6 +555,8 @@ export type ChunkTypeMap = {
   suggestions: SuggestionsChunk;
   routing: RoutingChunk;
   error: ErrorChunk;
+  cancelled: CancelledChunk;
+  init: InitChunk;
   fallback: FallbackChunk;
   memory: MemoryChunk;
   done: DoneChunk;
