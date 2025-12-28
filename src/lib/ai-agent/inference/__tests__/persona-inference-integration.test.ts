@@ -16,6 +16,7 @@ import {
   getPersonaPrompt,
   hasPersonaPrompt,
 } from "../../personas/persona-prompts";
+import type { PersonaType } from "../../personas/types";
 import type { UserBookmarkStats } from "../types";
 
 // Mock feature flags
@@ -317,11 +318,16 @@ describe("Persona Inference Integration", () => {
 
   describe("Prompt Integration", () => {
     it("should have prompts for all Phase 1 personas", () => {
-      const phase1Personas = ["pm", "consultant", "teacher", "general"];
+      const phase1Personas = [
+        "pm",
+        "consultant",
+        "teacher",
+        "general",
+      ] as const;
 
       for (const persona of phase1Personas) {
-        expect(hasPersonaPrompt(persona)).toBe(true);
-        const prompt = getPersonaPrompt(persona);
+        expect(hasPersonaPrompt(persona as PersonaType)).toBe(true);
+        const prompt = getPersonaPrompt(persona as PersonaType);
         expect(prompt).toBeDefined();
         expect(prompt!.length).toBeGreaterThan(50);
       }

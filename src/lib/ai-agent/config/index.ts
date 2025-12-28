@@ -42,7 +42,27 @@ export {
 
 // 画像灰度发布 [Phase 4 新增]
 export {
+  // 灰度检查
   isUserInPersonaRollout,
   isPersonaFeatureEnabled,
   getPersonaRolloutStatus,
+  getCurrentPersonaStage,
+  // 回滚监控
+  recordPersonaRequest,
+  recordPersonaError,
+  recordInferenceFailure,
+  shouldTriggerRollback,
+  executeRollback,
+  getRollbackMonitorState,
+  resetRollbackState,
+  isInRollbackState,
+  // 配置常量
+  DEFAULT_STAGE_CONFIGS,
+  DEFAULT_ROLLBACK_CONFIG,
+  DEFAULT_PERSONA_ROLLOUT_CONFIG,
+  // 类型
+  type PersonaRolloutStage,
+  type PersonaStageConfig,
+  type PersonaRollbackConfig,
+  type PersonaRolloutConfig,
 } from "./persona-rollout";
