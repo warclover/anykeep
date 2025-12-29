@@ -390,7 +390,8 @@ export type EventTypes = ClassificationEventTypes &
   JobQueueEventTypes &
   CostMonitorEventTypes &
   KnowledgeLinkEventTypes &
-  PersonaEventTypes;
+  PersonaEventTypes &
+  MdCollectionEventTypes;
 
 /** 事件名称联合类型 */
 export type EventName = keyof EventTypes;
@@ -449,4 +450,76 @@ export const PersonaEvents = {
   INTENT_ROUTED: "persona:intent_routed",
   ERROR: "persona:error",
   ROLLOUT_CHECK: "persona:rollout_check",
+} as const;
+
+// ============================================================================
+// MD 收藏 AI 处理事件 (v2.8)
+// ============================================================================
+
+/** MD 处理开始事件 */
+export interface MdProcessingStartedEvent {
+  collectionId: number;
+  userId: string;
+  /** 处理选项 */
+  options: {
+    generateSummary?: boolean;
+    generateTags?: boolean;
+    generateEmbedding?: boolean;
+  };
+  timestamp: string;
+}
+
+/** MD 处理完成事件 */
+export interface MdProcessingCompletedEvent {
+  collectionId: number;
+  userId: string;
+  /** 是否成功 */
+  success: boolean;
+  /** 是否有摘要 */
+  hasSummary: boolean;
+  /** 是否有标签 */
+  hasTags: boolean;
+  /** 是否有向量嵌入 */
+  hasEmbedding: boolean;
+  /** 处理耗时 (ms) */
+  durationMs: number;
+  timestamp: string;
+}
+
+/** MD 处理失败事件 */
+export interface MdProcessingFailedEvent {
+  collectionId: number;
+  userId: string;
+  /** 错误信息 */
+  error: string;
+  /** 错误代码 */
+  errorCode: string;
+  /** 是否可重试 */
+  retryable: boolean;
+  timestamp: string;
+}
+
+/** MD 标签生成事件 */
+export interface MdTagsGeneratedEvent {
+  collectionId: number;
+  userId: string;
+  /** 生成的标签 */
+  tags: string[];
+  timestamp: string;
+}
+
+/** MD 收藏事件类型映射 */
+export interface MdCollectionEventTypes {
+  "md:processing_started": MdProcessingStartedEvent;
+  "md:processing_completed": MdProcessingCompletedEvent;
+  "md:processing_failed": MdProcessingFailedEvent;
+  "md:tags_generated": MdTagsGeneratedEvent;
+}
+
+/** MD 收藏事件名称 */
+export const MdCollectionEvents = {
+  PROCESSING_STARTED: "md:processing_started",
+  PROCESSING_COMPLETED: "md:processing_completed",
+  PROCESSING_FAILED: "md:processing_failed",
+  TAGS_GENERATED: "md:tags_generated",
 } as const;

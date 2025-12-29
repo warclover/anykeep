@@ -153,9 +153,13 @@ export function getRateLimitConfig(pathname: string): RateLimitConfig {
     return RATE_LIMIT_CONFIGS.auth;
   }
 
-  // 书签操作（核心用户功能，宽松限制）
-  // 注意：必须在 /batch 检查之前，避免 /bookmarks/batch-status 被错误匹配
-  if (pathname.includes("/bookmarks") || pathname.includes("/bookmark")) {
+  // 书签/MD收藏操作（核心用户功能，宽松限制）
+  // 注意：必须在 /batch 检查之前，避免 batch-status 端点被错误匹配到严格的 batch 限制
+  if (
+    pathname.includes("/bookmarks") ||
+    pathname.includes("/bookmark") ||
+    pathname.includes("/md-collections")
+  ) {
     return RATE_LIMIT_CONFIGS.bookmarks;
   }
 
@@ -221,8 +225,12 @@ function getConfigKey(pathname: string): string {
   )
     return "dangerous";
   if (pathname.includes("/auth") || pathname.includes("/login")) return "auth";
-  // 注意：必须在 /batch 检查之前，避免 /bookmarks/batch-status 被错误匹配
-  if (pathname.includes("/bookmarks") || pathname.includes("/bookmark"))
+  // 注意：必须在 /batch 检查之前，避免 batch-status 端点被错误匹配
+  if (
+    pathname.includes("/bookmarks") ||
+    pathname.includes("/bookmark") ||
+    pathname.includes("/md-collections")
+  )
     return "bookmarks";
   if (pathname.includes("/batch")) return "batch";
   if (
