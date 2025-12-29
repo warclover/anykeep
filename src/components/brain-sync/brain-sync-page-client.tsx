@@ -435,9 +435,9 @@ export function BrainSyncPageClient() {
             <CardContent>
               {queueItems.length > 0 ? (
                 <div className="space-y-3">
-                  {queueItems.map((item) => (
+                  {queueItems.map((item, index) => (
                     <div
-                      key={item.flashcardId}
+                      key={`flashcard-${item.flashcardId}-${index}`}
                       className={cn(
                         "flex items-center gap-4 p-3 rounded-lg border",
                         item.daysOverdue > 0
