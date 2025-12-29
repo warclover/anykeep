@@ -3981,6 +3981,51 @@ export type Database = {
           affected_count: number;
         };
       };
+      /** North Star P0: 原子切换书签收藏状态，解决竞态条件 */
+      toggle_bookmark_starred: {
+        Args: {
+          p_bookmark_id: number;
+          p_user_id: string;
+        };
+        Returns: {
+          id: number;
+          url: string;
+          title: string;
+          description: string | null;
+          platform: string;
+          cover_url: string | null;
+          folder_id: number | null;
+          ai_summary: string | null;
+          ai_tags: string[] | null;
+          user_tags: string[] | null;
+          is_read: boolean;
+          is_starred: boolean;
+          is_in_trash: boolean;
+          status: string;
+          created_at: string;
+          updated_at: string;
+          starred_at: string | null;
+        }[];
+      };
+      /** North Star P0: 级联删除文件夹（事务性），移动书签到根目录 */
+      cascade_delete_folder: {
+        Args: {
+          p_folder_id: number;
+          p_user_id: string;
+        };
+        Returns: {
+          deleted_folder_count: number;
+          moved_bookmark_count: number;
+        }[];
+      };
+      /** North Star P0: 获取文件夹所有后代 ID（用于循环引用检测） */
+      get_folder_descendant_ids: {
+        Args: {
+          p_folder_id: number;
+          p_user_id: string;
+        };
+        Returns: number[];
+      };
       assign_cluster_id: {
         Args: {
           p_bookmark_ids: number[];
