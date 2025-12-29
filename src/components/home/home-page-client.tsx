@@ -84,6 +84,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { SynthesisRecommendBubble } from "@/components/synthesis/synthesis-recommend-bubble";
+import { useSynthesisRecommend } from "@/hooks/synthesis/use-synthesis-recommend";
 
 // 扩展的书签类型（包含文件夹信息）
 type BookmarkWithFolder = Bookmark & {
@@ -369,6 +371,18 @@ export function HomePageClient({
   // 综述确认对话框状态
   const [showSynthesisDialog, setShowSynthesisDialog] = useState(false);
   const [isCreatingSynthesis, setIsCreatingSynthesis] = useState(false);
+
+  // E8: 综述智能推荐
+  const {
+    currentRecommend,
+    shouldShowBubble,
+    acceptRecommend,
+    dismissRecommend,
+    closeBubble,
+  } = useSynthesisRecommend({
+    autoFetch: true,
+    autoShowBubble: true,
+  });
 
   // 批量选择模式
   const {
@@ -927,6 +941,15 @@ export function HomePageClient({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* E8: 综述智能推荐气泡 */}
+      <SynthesisRecommendBubble
+        recommend={currentRecommend}
+        visible={shouldShowBubble}
+        onAccept={acceptRecommend}
+        onDismiss={dismissRecommend}
+        onClose={closeBubble}
+      />
     </div>
   );
 }

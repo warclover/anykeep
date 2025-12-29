@@ -3,8 +3,9 @@
  *
  * GET /api/synthesis/recommend - 获取 AI 推荐的可合成主题
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-29
+ * @updated 2025-12-29 - 添加用户偏好返回和代表书签
  */
 
 import type { NextRequest } from "next/server";
@@ -13,6 +14,7 @@ import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 import { type SynthesisSourceType, SynthesisErrorCode } from "@/lib/synthesis";
 import { MIN_BOOKMARKS_COUNT } from "@/lib/synthesis/constants";
+import type { SynthesisRecommendPreferences } from "@/lib/synthesis/types/recommend";
 
 interface RecommendedTopic {
   id: string;
@@ -24,6 +26,8 @@ interface RecommendedTopic {
   bookmarkCount: number;
   relevanceScore: number;
   suggestedDepthMode: "quick" | "standard" | "academic";
+  reason?: string;
+  sampleBookmarks?: Array<{ id: string; title: string }>;
 }
 
 interface RecommendResponse {
@@ -32,6 +36,7 @@ interface RecommendResponse {
     recommendations: RecommendedTopic[];
     totalBookmarks: number;
     eligibleForSynthesis: boolean;
+    preferences?: SynthesisRecommendPreferences;
   };
 }
 
@@ -55,6 +60,21 @@ export async function GET(_request: NextRequest) {
       );
     }
 
+    // 获取用户偏好
+    const { data: prefsData } = await supabase.rpc(
+      "get_synthesis_recommend_preferences",
+      { p_user_id: user.id },
+    );
+
+    const preferences: SynthesisRecommendPreferences =
+      (prefsData as unknown as SynthesisRecommendPreferences) || {
+        enabled: false,
+        dismissedTopics: [],
+        lastShownAt: null,
+        dailyShowCount: 0,
+        dailyShowDate: null,
+      };
+
     // 获取用户书签统计
     const { count: totalBookmarks } = await supabase
       .from("bookmarks")
@@ -71,6 +91,7 @@ export async function GET(_request: NextRequest) {
           recommendations: [],
           totalBookmarks: bookmarkCount,
           eligibleForSynthesis: false,
+          preferences,
         },
       } as RecommendResponse);
     }
@@ -85,24 +106,39 @@ export async function GET(_request: NextRequest) {
 
     if (folders) {
       for (const folder of folders) {
-        const { count } = await supabase
+        // 获取文件夹内书签数量和代表书签
+        const { data: folderBookmarks, count } = await supabase
           .from("bookmarks")
-          .select("*", { count: "exact", head: true })
+          .select("id, title", { count: "exact" })
           .eq("user_id", user.id)
-          .eq("folder_id", folder.id);
+          .eq("folder_id", folder.id)
+          .order("created_at", { ascending: false })
+          .limit(3);
 
         const folderBookmarkCount = count || 0;
 
         if (folderBookmarkCount >= MIN_BOOKMARKS_COUNT) {
+          const topicId = `folder-${folder.id}`;
+
+          // 跳过已忽略的主题
+          if (preferences.dismissedTopics.includes(topicId)) {
+            continue;
+          }
+
           recommendations.push({
-            id: `folder-${folder.id}`,
+            id: topicId,
             title: `${folder.name} 主题综述`,
             description: `基于「${folder.name}」文件夹中的 ${folderBookmarkCount} 篇收藏生成综述`,
             sourceType: "folder",
             sourceId: String(folder.id),
             bookmarkCount: folderBookmarkCount,
-            relevanceScore: Math.min(1, folderBookmarkCount / 20), // 20篇满分
+            relevanceScore: Math.min(1, folderBookmarkCount / 20),
             suggestedDepthMode: folderBookmarkCount > 30 ? "standard" : "quick",
+            reason: `文件夹「${folder.name}」包含 ${folderBookmarkCount} 篇相关收藏`,
+            sampleBookmarks: folderBookmarks?.map((b) => ({
+              id: String(b.id),
+              title: b.title || "无标题",
+            })),
           });
         }
       }
@@ -111,38 +147,60 @@ export async function GET(_request: NextRequest) {
     // 2. 基于标签推荐
     const { data: tagStats } = await supabase
       .from("bookmarks")
-      .select("ai_tags")
+      .select("id, title, ai_tags")
       .eq("user_id", user.id)
       .not("ai_tags", "is", null);
 
     if (tagStats) {
-      // 统计标签频率
-      const tagCounts: Record<string, number> = {};
+      // 统计标签频率和收集代表书签
+      const tagData: Record<
+        string,
+        { count: number; samples: Array<{ id: string; title: string }> }
+      > = {};
+
       for (const bookmark of tagStats) {
         const tags = bookmark.ai_tags as string[] | null;
         if (tags && Array.isArray(tags)) {
           for (const tag of tags) {
-            tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+            if (!tagData[tag]) {
+              tagData[tag] = { count: 0, samples: [] };
+            }
+            tagData[tag].count += 1;
+            if (tagData[tag].samples.length < 3) {
+              tagData[tag].samples.push({
+                id: String(bookmark.id),
+                title: bookmark.title || "无标题",
+              });
+            }
           }
         }
       }
 
       // 筛选出满足条件的标签
-      const eligibleTags = Object.entries(tagCounts)
-        .filter(([, count]) => count >= MIN_BOOKMARKS_COUNT)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 5); // 最多推荐 5 个标签主题
+      const eligibleTags = Object.entries(tagData)
+        .filter(([, data]) => data.count >= MIN_BOOKMARKS_COUNT)
+        .sort((a, b) => b[1].count - a[1].count)
+        .slice(0, 5);
 
-      for (const [tag, tagCount] of eligibleTags) {
+      for (const [tag, data] of eligibleTags) {
+        const topicId = `tag-${tag}`;
+
+        // 跳过已忽略的主题
+        if (preferences.dismissedTopics.includes(topicId)) {
+          continue;
+        }
+
         recommendations.push({
-          id: `tag-${tag}`,
+          id: topicId,
           title: `#${tag} 主题综述`,
-          description: `基于标签「${tag}」下的 ${tagCount} 篇收藏生成综述`,
+          description: `基于标签「${tag}」下的 ${data.count} 篇收藏生成综述`,
           sourceType: "tag",
           sourceId: tag,
-          bookmarkCount: tagCount,
-          relevanceScore: Math.min(1, tagCount / 15), // 15篇满分
-          suggestedDepthMode: tagCount > 25 ? "standard" : "quick",
+          bookmarkCount: data.count,
+          relevanceScore: Math.min(1, data.count / 15),
+          suggestedDepthMode: data.count > 25 ? "standard" : "quick",
+          reason: `标签「${tag}」下有 ${data.count} 篇相关内容`,
+          sampleBookmarks: data.samples,
         });
       }
     }
@@ -153,21 +211,33 @@ export async function GET(_request: NextRequest) {
 
     const { data: recentBookmarks, count: recentCount } = await supabase
       .from("bookmarks")
-      .select("id", { count: "exact" })
+      .select("id, title", { count: "exact" })
       .eq("user_id", user.id)
-      .gte("created_at", oneWeekAgo.toISOString());
+      .gte("created_at", oneWeekAgo.toISOString())
+      .order("created_at", { ascending: false })
+      .limit(3);
 
     if (recentCount && recentCount >= MIN_BOOKMARKS_COUNT) {
-      recommendations.push({
-        id: "recent-week",
-        title: "本周收藏综述",
-        description: `基于最近 7 天内收藏的 ${recentCount} 篇内容生成综述`,
-        sourceType: "selection",
-        bookmarkIds: recentBookmarks?.map((b) => String(b.id)),
-        bookmarkCount: recentCount,
-        relevanceScore: 0.9, // 时间相关性高
-        suggestedDepthMode: "quick",
-      });
+      const topicId = "recent-week";
+
+      // 跳过已忽略的主题
+      if (!preferences.dismissedTopics.includes(topicId)) {
+        recommendations.push({
+          id: topicId,
+          title: "本周收藏综述",
+          description: `基于最近 7 天内收藏的 ${recentCount} 篇内容生成综述`,
+          sourceType: "selection",
+          bookmarkIds: recentBookmarks?.map((b) => String(b.id)),
+          bookmarkCount: recentCount,
+          relevanceScore: 0.9,
+          suggestedDepthMode: "quick",
+          reason: `本周新增 ${recentCount} 篇收藏，可以整合回顾`,
+          sampleBookmarks: recentBookmarks?.map((b) => ({
+            id: String(b.id),
+            title: b.title || "无标题",
+          })),
+        });
+      }
     }
 
     // 按相关性排序
@@ -191,6 +261,7 @@ export async function GET(_request: NextRequest) {
         recommendations: topRecommendations,
         totalBookmarks: bookmarkCount,
         eligibleForSynthesis: bookmarkCount >= MIN_BOOKMARKS_COUNT,
+        preferences,
       },
     } as RecommendResponse);
   } catch (error) {

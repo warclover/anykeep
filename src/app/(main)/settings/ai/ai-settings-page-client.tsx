@@ -36,6 +36,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { AIProviderSettingsCard } from "@/components/settings/ai-provider-settings-card";
+import { SynthesisRecommendSettingsCard } from "@/components/settings/synthesis-recommend-settings-card";
 
 // ============================================
 // 类型定义
@@ -433,6 +434,7 @@ export function AISettingsPageClient({ userId }: AISettingsPageClientProps) {
 
         {/* 偏好设置 */}
         <TabsContent value="preferences" className="space-y-4">
+          <SynthesisRecommendSettingsCard />
           <AIPreferencesCard />
         </TabsContent>
       </Tabs>
