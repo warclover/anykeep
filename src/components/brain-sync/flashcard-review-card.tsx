@@ -23,10 +23,6 @@ import {
   Clock,
   Archive,
 } from "lucide-react";
-import type {
-  ReviewResponse,
-  FlashcardStatus,
-} from "@/lib/ai-skills/shared/review/types";
 
 // ============================================
 // 类型定义
@@ -40,11 +36,13 @@ export interface FlashcardData {
   question: string;
   answer: string;
   sourceParagraph?: string;
-  status: FlashcardStatus;
+  status: "pending" | "learning" | "mastered" | "archived";
   daysOverdue: number;
   intervalDays: number;
   easeFactor: number;
 }
+
+type ReviewResponse = "mastered" | "fuzzy" | "forgotten" | "archived";
 
 interface FlashcardReviewCardProps {
   flashcard: FlashcardData;

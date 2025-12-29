@@ -3690,153 +3690,6 @@ export type Database = {
         ];
       };
       /**
-       * 综述用户标注表 - 存储用户在综述内容上的高亮和备注
-       */
-      synthesis_highlights: {
-        Row: {
-          id: string;
-          report_id: string;
-          user_id: string;
-          /** 标注的文字内容 */
-          content: string;
-          /** 用户备注（可选） */
-          note: string | null;
-          /** 标注颜色: yellow, green, blue, pink */
-          color: string;
-          /** 位置信息: {start: number, end: number, section: string, itemIndex?: number} */
-          position: Json;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          report_id: string;
-          user_id: string;
-          content: string;
-          note?: string | null;
-          color?: string;
-          position: Json;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          id?: string;
-          report_id?: string;
-          user_id?: string;
-          content?: string;
-          note?: string | null;
-          color?: string;
-          position?: Json;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "synthesis_highlights_report_id_fkey";
-            columns: ["report_id"];
-            isOneToOne: false;
-            referencedRelation: "synthesis_reports";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "synthesis_highlights_user_id_fkey";
-            columns: ["user_id"];
-            isOneToOne: false;
-            referencedRelation: "users";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      /**
-       * 系统任务队列表 - 异步任务处理队列
-       * Phase 2: North Star Architecture
-       */
-      system_jobs: {
-        Row: {
-          id: string;
-          type: string;
-          status: string;
-          payload: Json;
-          result: Json | null;
-          error: string | null;
-          priority: number;
-          retry_count: number;
-          max_retries: number;
-          depends_on: string | null;
-          locked_by: string | null;
-          locked_at: string | null;
-          scheduled_for: string;
-          created_at: string;
-          started_at: string | null;
-          completed_at: string | null;
-          user_id: string;
-          bookmark_id: number | null;
-        };
-        Insert: {
-          id?: string;
-          type: string;
-          status?: string;
-          payload?: Json;
-          result?: Json | null;
-          error?: string | null;
-          priority?: number;
-          retry_count?: number;
-          max_retries?: number;
-          depends_on?: string | null;
-          locked_by?: string | null;
-          locked_at?: string | null;
-          scheduled_for?: string;
-          created_at?: string;
-          started_at?: string | null;
-          completed_at?: string | null;
-          user_id: string;
-          bookmark_id?: number | null;
-        };
-        Update: {
-          id?: string;
-          type?: string;
-          status?: string;
-          payload?: Json;
-          result?: Json | null;
-          error?: string | null;
-          priority?: number;
-          retry_count?: number;
-          max_retries?: number;
-          depends_on?: string | null;
-          locked_by?: string | null;
-          locked_at?: string | null;
-          scheduled_for?: string;
-          created_at?: string;
-          started_at?: string | null;
-          completed_at?: string | null;
-          user_id?: string;
-          bookmark_id?: number | null;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "system_jobs_user_id_fkey";
-            columns: ["user_id"];
-            isOneToOne: false;
-            referencedRelation: "users";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "system_jobs_bookmark_id_fkey";
-            columns: ["bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "system_jobs_depends_on_fkey";
-            columns: ["depends_on"];
-            isOneToOne: false;
-            referencedRelation: "system_jobs";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      /**
        * 每周复习队列快照表 - 追踪本周待复习和已完成的 Flashcards
        */
       weekly_review_queue: {
@@ -4070,51 +3923,6 @@ export type Database = {
           affected_count: number;
         };
       };
-      /** North Star P0: 原子切换书签收藏状态，解决竞态条件 */
-      toggle_bookmark_starred: {
-        Args: {
-          p_bookmark_id: number;
-          p_user_id: string;
-        };
-        Returns: {
-          id: number;
-          url: string;
-          title: string;
-          description: string | null;
-          platform: string;
-          cover_url: string | null;
-          folder_id: number | null;
-          ai_summary: string | null;
-          ai_tags: string[] | null;
-          user_tags: string[] | null;
-          is_read: boolean;
-          is_starred: boolean;
-          is_in_trash: boolean;
-          status: string;
-          created_at: string;
-          updated_at: string;
-          starred_at: string | null;
-        }[];
-      };
-      /** North Star P0: 级联删除文件夹（事务性），移动书签到根目录 */
-      cascade_delete_folder: {
-        Args: {
-          p_folder_id: number;
-          p_user_id: string;
-        };
-        Returns: {
-          deleted_folder_count: number;
-          moved_bookmark_count: number;
-        }[];
-      };
-      /** North Star P0: 获取文件夹所有后代 ID（用于循环引用检测） */
-      get_folder_descendant_ids: {
-        Args: {
-          p_folder_id: number;
-          p_user_id: string;
-        };
-        Returns: number[];
-      };
       assign_cluster_id: {
         Args: {
           p_bookmark_ids: number[];
@@ -4190,65 +3998,9 @@ export type Database = {
         Args: { p_bookmark_id: number; p_user_id: string };
         Returns: boolean;
       };
-      /** 完成任务 - 标记任务成功或失败（支持新旧两种签名） */
-      complete_job:
-        | {
-            // 新签名 (system_jobs)
-            Args: {
-              p_job_id: string;
-              p_success: boolean;
-              p_error?: string | null;
-              p_result?: Json | null;
-            };
-            Returns: boolean;
-          }
-        | {
-            // 旧签名 (job_queue) - 向后兼容
-            Args: { p_job_id: string; p_result?: Json };
-            Returns: boolean;
-          };
-      /** 取消任务 - 仅 PENDING 状态可取消 */
-      cancel_job: {
-        Args: {
-          p_job_id: string;
-          p_user_id: string;
-        };
+      complete_job: {
+        Args: { p_job_id: string; p_result?: Json };
         Returns: boolean;
-      };
-      /** 批量获取任务 - 带锁定 */
-      claim_jobs_batch: {
-        Args: {
-          p_worker_id: string;
-          p_job_types: string[];
-          p_limit: number;
-          p_lock_duration?: unknown;
-        };
-        Returns: {
-          id: string;
-          type: string;
-          payload: Json;
-          user_id: string;
-          bookmark_id: number | null;
-          retry_count: number;
-        }[];
-      };
-      /** 获取任务统计 */
-      get_job_stats: {
-        Args: {
-          p_user_id?: string | null;
-        };
-        Returns: {
-          type: string;
-          status: string;
-          count: number;
-        }[];
-      };
-      /** 清理旧任务 */
-      cleanup_old_jobs: {
-        Args: {
-          p_days_to_keep: number;
-        };
-        Returns: number;
       };
       compute_folder_heat: { Args: { p_folder_id: number }; Returns: number };
       compute_folder_profile: {
@@ -4795,11 +4547,6 @@ export type Database = {
         Returns: Json;
       };
       get_user_trust_mode: { Args: { p_user_id: string }; Returns: Json };
-      /** 获取用户综述推荐偏好 */
-      get_synthesis_recommend_preferences: {
-        Args: { p_user_id: string };
-        Returns: Json;
-      };
       get_vision_tags: { Args: { vision_data: Json }; Returns: string[] };
       get_wechat_article_stats: {
         Args: { p_user_id: string };
@@ -5120,16 +4867,6 @@ export type Database = {
       };
       update_user_trust_mode: {
         Args: { p_reason?: string; p_trust_mode: string; p_user_id: string };
-        Returns: Json;
-      };
-      /** 更新用户综述推荐偏好 */
-      update_synthesis_recommend_preferences: {
-        Args: {
-          p_user_id: string;
-          p_enabled?: boolean | null;
-          p_dismissed_topic?: string | null;
-          p_increment_daily_count?: boolean;
-        };
         Returns: Json;
       };
       upsert_knowledge_link: {

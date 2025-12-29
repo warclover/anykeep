@@ -93,12 +93,12 @@ export function useHomeBatch(options: UseHomeBatchOptions): UseHomeBatchReturn {
     setIsBatchDeleting(true);
 
     try {
-      const response = await fetchWithAbort("/api/bookmarks/batch-delete", {
+      // 使用 v1 API
+      const response = await fetchWithAbort("/api/v1/bookmarks/batch/delete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ids: Array.from(selectedIds),
-          permanent: false,
         }),
       });
 
@@ -149,7 +149,8 @@ export function useHomeBatch(options: UseHomeBatchOptions): UseHomeBatchReturn {
       // 乐观更新：从列表移除
       setBookmarks((prev) => prev.filter((b) => !selectedIds.has(b.id)));
 
-      const res = await fetchWithAbort("/api/bookmarks/batch-restore", {
+      // 使用 v1 API
+      const res = await fetchWithAbort("/api/v1/bookmarks/batch/restore", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids }),

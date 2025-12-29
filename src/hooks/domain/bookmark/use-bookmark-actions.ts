@@ -152,10 +152,11 @@ export function useBookmarkActions() {
       }
 
       try {
-        const res = await fetchWithAbort("/api/bookmarks/batch-restore", {
+        // 使用 v1 API
+        const res = await fetchWithAbort("/api/v1/bookmarks/batch/restore", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ bookmarkIds: ids }),
+          body: JSON.stringify({ ids }),
         });
 
         if (!res.ok) {

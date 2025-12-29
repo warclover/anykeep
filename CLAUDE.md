@@ -2,24 +2,25 @@
 
 ## 变更记录 (Changelog)
 
-| 日期       | 版本  | 变更内容                                                                                  |
-| ---------- | ----- | ----------------------------------------------------------------------------------------- |
-| 2025-12-28 | 2.8.0 | RAG 能力补全 Phase 1-3：查询改写、Rerank、向量缓存、Parent-Child 切片、RRF 融合、监控评估 |
-| 2025-12-28 | 2.7.5 | ReAct 循环和引用追踪：Think→Act→Observe 循环、搜索结果自动引用[^N]、78 个测试用例         |
-| 2025-12-27 | 2.7.4 | 信任模式智能化：get-trust-mode、recommend-trust-mode Tools，意图分类规则集成              |
-| 2025-12-27 | 2.7.3 | 代码质量清理：空 catch 修复、console → logger 迁移、高风险 API 速率限制（5 个端点）       |
-| 2025-12-27 | 2.7.2 | AI 上下文增强 v2.0：序数引用解析、refine 意图类型、搜索结果持久化、负向后行断言修复       |
-| 2025-12-27 | 2.7.1 | 对话上下文压缩：三级降级策略、摘要持久化、记忆增强系统、测试修复                          |
-| 2025-12-27 | 2.7.0 | 任务理解层 v2.0：零接管模式、置信度分层、隐含意图推理、System-Reminder、请求取消功能      |
-| 2025-12-26 | 2.6.1 | v4.3 修复：Token 持久化、LRU 缓存、跨平台兼容性、RPC 安全增强                             |
-| 2025-12-26 | 2.6.0 | AI 能力升级 v4.3：动态上下文、模型分层、偏好学习、成本控制、Feature Flags                 |
-| 2025-12-25 | 2.5.1 | Tools & Skills 优化：Query Tools 日志完善、废弃工具清理、Skills 测试覆盖、统一注册适配层  |
-| 2025-12-25 | 2.5.0 | 架构修复：日志系统统一、Classification 扁平化、测试稳定性增强                             |
-| 2025-12-24 | 2.4.0 | 完成 AI Skills 统一智能架构（编排引擎 + 4 个 Skills）                                     |
-| 2025-12-20 | 2.2.0 | 完成批量操作功能（批量标签管理 + Shift 范围选择）                                         |
-| 2025-12-01 | 2.1.0 | 完成浏览器书签隔离与列表视图优化功能                                                      |
-| 2025-12-01 | 2.0.0 | 项目进入开发阶段，完成浏览器书签导入功能 (Phase 1-3)                                      |
-| 2025-11-21 | 1.0.0 | 初始化 AI 上下文文档，项目处于规划阶段                                                    |
+| 日期       | 版本  | 变更内容                                                                                          |
+| ---------- | ----- | ------------------------------------------------------------------------------------------------- |
+| 2025-12-29 | 2.8.1 | 文档校正：修正项目统计（2004文件/159迁移），补全21个Skills列表，添加TTS/Brain-Sync/主题合成器描述 |
+| 2025-12-28 | 2.8.0 | RAG 能力补全 Phase 1-3：查询改写、Rerank、向量缓存、Parent-Child 切片、RRF 融合、监控评估         |
+| 2025-12-28 | 2.7.5 | ReAct 循环和引用追踪：Think→Act→Observe 循环、搜索结果自动引用[^N]、78 个测试用例                 |
+| 2025-12-27 | 2.7.4 | 信任模式智能化：get-trust-mode、recommend-trust-mode Tools，意图分类规则集成                      |
+| 2025-12-27 | 2.7.3 | 代码质量清理：空 catch 修复、console → logger 迁移、高风险 API 速率限制（5 个端点）               |
+| 2025-12-27 | 2.7.2 | AI 上下文增强 v2.0：序数引用解析、refine 意图类型、搜索结果持久化、负向后行断言修复               |
+| 2025-12-27 | 2.7.1 | 对话上下文压缩：三级降级策略、摘要持久化、记忆增强系统、测试修复                                  |
+| 2025-12-27 | 2.7.0 | 任务理解层 v2.0：零接管模式、置信度分层、隐含意图推理、System-Reminder、请求取消功能              |
+| 2025-12-26 | 2.6.1 | v4.3 修复：Token 持久化、LRU 缓存、跨平台兼容性、RPC 安全增强                                     |
+| 2025-12-26 | 2.6.0 | AI 能力升级 v4.3：动态上下文、模型分层、偏好学习、成本控制、Feature Flags                         |
+| 2025-12-25 | 2.5.1 | Tools & Skills 优化：Query Tools 日志完善、废弃工具清理、Skills 测试覆盖、统一注册适配层          |
+| 2025-12-25 | 2.5.0 | 架构修复：日志系统统一、Classification 扁平化、测试稳定性增强                                     |
+| 2025-12-24 | 2.4.0 | 完成 AI Skills 统一智能架构（编排引擎 + 4 个 Skills）                                             |
+| 2025-12-20 | 2.2.0 | 完成批量操作功能（批量标签管理 + Shift 范围选择）                                                 |
+| 2025-12-01 | 2.1.0 | 完成浏览器书签隔离与列表视图优化功能                                                              |
+| 2025-12-01 | 2.0.0 | 项目进入开发阶段，完成浏览器书签导入功能 (Phase 1-3)                                              |
+| 2025-11-21 | 1.0.0 | 初始化 AI 上下文文档，项目处于规划阶段                                                            |
 
 ---
 
@@ -94,31 +95,39 @@ graph TD
 ```
 anykeep/                    # 项目根目录
 ├── src/
-│   ├── app/               # Next.js App Router (44 文件)
+│   ├── app/               # Next.js App Router (58+ 文件)
 │   │   ├── (auth)/       # 认证相关页面
 │   │   ├── (main)/       # 主应用页面
 │   │   ├── api/          # API Routes
 │   │   └── layout.tsx
-│   ├── components/        # React 组件 (69 文件)
+│   ├── components/        # React 组件 (150+ 文件)
 │   │   ├── ui/           # Shadcn UI 组件
+│   │   ├── ai/           # AI 交互组件
 │   │   ├── bookmark/     # 收藏相关组件
 │   │   ├── browser-bookmark/  # 浏览器书签导入组件
+│   │   ├── synthesis/    # 主题合成组件
+│   │   ├── tts/          # TTS 语音播放组件
 │   │   └── layout/       # 布局组件
-│   ├── hooks/            # React Hooks (8 文件)
-│   ├── lib/              # 工具函数 (44 文件)
+│   ├── hooks/            # React Hooks (30+ 文件)
+│   ├── lib/              # 工具函数与核心逻辑
+│   │   ├── ai-agent/     # AI Agent 核心
+│   │   ├── ai-skills/    # AI Skills 系统 (24 Skills)
+│   │   ├── classification/ # 智能分类系统
+│   │   ├── embedding/    # 向量嵌入服务
+│   │   ├── tts/          # TTS 语音服务
 │   │   ├── supabase/     # Supabase 客户端
 │   │   └── browser-bookmark/  # 浏览器书签导入逻辑
-│   ├── types/            # TypeScript 类型 (2 文件)
+│   ├── types/            # TypeScript 类型
 │   ├── styles/           # 样式文件
 │   └── middleware.ts     # Next.js 中间件
 ├── supabase/             # Supabase 配置
-│   ├── migrations/       # 数据库迁移 (24 文件)
+│   ├── migrations/       # 数据库迁移 (159 文件)
 │   └── functions/        # Edge Functions
 ├── .spec-workflow/       # 规范工作流模板
 ├── anykeep1121.md        # 产品需求文档
 └── CLAUDE.md             # AI 上下文文档
 
-总计：169 个 TypeScript 文件，33,451 行代码
+总计：2,004 个 TypeScript 文件
 ```
 
 ---
@@ -215,7 +224,7 @@ SUPABASE_SERVICE_ROLE_KEY=服务角色密钥
 | `import_history`           | 导入历史记录     | id, user_id, import_source, total_count      | ✅ 已实现 |
 | `platform_authorizations`  | 平台授权         | id, user_id, platform, access_token          | 📝 规划中 |
 
-**数据库迁移**: 24 个迁移文件，包含完整的表结构、索引、RLS 策略
+**数据库迁移**: 159 个迁移文件，包含完整的表结构、索引、RLS 策略
 
 ---
 
@@ -522,12 +531,29 @@ src/components/export/
 
 **已实现的编排 Skills**:
 
-| Skill ID           | 名称         | 功能                                    | 步骤数 |
-| ------------------ | ------------ | --------------------------------------- | ------ |
-| `knowledge_review` | 知识回顾助手 | 复习收藏内容、生成记忆卡片              | 5      |
-| `data_export`      | 数据导出助手 | 多格式导出（CSV/MD/JSON/HTML/Obsidian） | 4      |
-| `insight_report`   | 洞察报告助手 | 活跃度分析、内容趋势、洞察建议          | 5      |
-| `batch_organize`   | 智能整理助手 | 自动分类、标签、去重、归档              | 6      |
+| Skill ID                 | 名称            | 功能                                    | 步骤数 | Feature Flag                    |
+| ------------------------ | --------------- | --------------------------------------- | ------ | ------------------------------- |
+| `knowledge_review`       | 知识回顾助手    | 复习收藏内容、生成记忆卡片              | 5      | -                               |
+| `data_export`            | 数据导出助手    | 多格式导出（CSV/MD/JSON/HTML/Obsidian） | 4      | -                               |
+| `insight_report`         | 洞察报告助手    | 活跃度分析、内容趋势、洞察建议          | 5      | -                               |
+| `batch_organize`         | 智能整理助手    | 自动分类、标签、去重、归档              | 6      | -                               |
+| `duplicate_cleanup`      | 重复清理助手    | 检测重复书签、智能合并                  | 4      | -                               |
+| `quick_digest`           | 快速摘要助手    | 生成书签内容摘要                        | 3      | -                               |
+| `smart_tagging`          | 智能标签助手    | 自动生成和推荐标签                      | 4      | -                               |
+| `reading_planner`        | 阅读规划助手    | 制定阅读计划和时间安排                  | 5      | -                               |
+| `related_discovery`      | 相关发现助手    | 发现相关内容和推荐                      | 4      | -                               |
+| `periodic_report`        | 周期报告助手    | 生成周报/月报                           | 5      | -                               |
+| `share_bundle`           | 分享包助手      | 生成可分享的内容包                      | 4      | -                               |
+| `learning_path`          | 学习路径助手    | 规划学习路径和进度                      | 5      | -                               |
+| `knowledge_extract`      | 知识提取助手    | 提取关键知识点和概念                    | 4      | -                               |
+| `link_health_check`      | 链接健康检测    | 检测失效链接、更新状态                  | 4      | `ENABLE_LINK_HEALTH_CHECK`      |
+| `tts_synthesis`          | 语音朗读助手    | 将书签摘要转换为语音                    | 5      | `ENABLE_TTS_SYNTHESIS`          |
+| `wechat_digest`          | 微信阅读摘要    | 生成微信文章摘要报告                    | 4      | `ENABLE_WECHAT_DIGEST`          |
+| `bilibili_transcript`    | B站字幕提取     | 提取视频字幕和文字稿                    | 4      | `ENABLE_BILIBILI_TRANSCRIPT`    |
+| `inbox_digest`           | 收件箱摘要      | 生成未读/通知摘要                       | 4      | `ENABLE_INBOX_DIGEST`           |
+| `content_change_monitor` | 内容变更监控    | 监控页面变化、通知更新                  | 5      | `ENABLE_CONTENT_CHANGE_MONITOR` |
+| `active_recall`          | Brain-Sync 复习 | SM-2 算法主动复习、记忆曲线优化         | 5      | `ENABLE_ACTIVE_RECALL`          |
+| `thematic_synthesis`     | 主题合成器      | 多书签主题合成、生成综合报告            | 6      | `ENABLE_THEMATIC_SYNTHESIS`     |
 
 **API 端点**:
 
@@ -578,11 +604,31 @@ src/lib/ai-skills/
 ├── output/                    # 输出层
 │   ├── adapter.ts             # 输出适配器
 │   └── types.ts
-├── skills/                    # Skill 实现
-│   ├── knowledge-review/      # 知识回顾
-│   ├── data-export/           # 数据导出
-│   ├── insight-report/        # 洞察报告
-│   └── batch-organize/        # 批量整理
+├── skills/                    # Skill 实现 (24 个)
+│   ├── search/               # 搜索
+│   ├── classify/             # 分类
+│   ├── summary/              # 摘要
+│   ├── knowledge-review/     # 知识回顾
+│   ├── data-export/          # 数据导出
+│   ├── insight-report/       # 洞察报告
+│   ├── batch-organize/       # 批量整理
+│   ├── duplicate-cleanup/    # 重复清理
+│   ├── quick-digest/         # 快速摘要
+│   ├── smart-tagging/        # 智能标签
+│   ├── reading-planner/      # 阅读规划
+│   ├── related-discovery/    # 相关发现
+│   ├── periodic-report/      # 周期报告
+│   ├── share-bundle/         # 分享包
+│   ├── learning-path/        # 学习路径
+│   ├── knowledge-extract/    # 知识提取
+│   ├── link-health-check/    # 链接健康检测
+│   ├── tts-synthesis/        # TTS 语音朗读
+│   ├── wechat-digest/        # 微信阅读摘要
+│   ├── bilibili-transcript/  # B站字幕提取
+│   ├── inbox-digest/         # 收件箱摘要
+│   ├── content-change-monitor/ # 内容变更监控
+│   ├── active-recall/        # Brain-Sync 主动复习
+│   └── thematic-synthesis/   # 主题合成器
 └── register.ts                # Skill 注册
 ```
 
@@ -670,6 +716,17 @@ ENABLE_PREFERENCE_LEARNING=true # 偏好自动学习
 ENABLE_COST_CONTROL=true        # 成本控制
 ENABLE_REACT_LOOP=false         # ReAct 循环执行（灰度发布中）
 ENABLE_CITATION_TRACKING=true   # 引用追踪系统
+ENABLE_SYSTEM_REMINDER=true     # System-Reminder 动态注入
+
+# AI Skills Feature Flags
+ENABLE_LINK_HEALTH_CHECK=true   # 链接健康检测
+ENABLE_TTS_SYNTHESIS=true       # TTS 语音朗读
+ENABLE_WECHAT_DIGEST=true       # 微信阅读摘要
+ENABLE_BILIBILI_TRANSCRIPT=true # B站字幕提取
+ENABLE_INBOX_DIGEST=true        # 收件箱摘要
+ENABLE_CONTENT_CHANGE_MONITOR=true # 内容变更监控
+ENABLE_ACTIVE_RECALL=true       # Brain-Sync 主动复习
+ENABLE_THEMATIC_SYNTHESIS=true  # 主题合成器
 ```
 
 **成本预算配置**:
@@ -977,6 +1034,132 @@ src/lib/ai-agent/tools/trust-mode/
 - 8 个集成测试
 - 2 个意图分类测试
 - 共 34 个测试全部通过
+
+---
+
+### 11. TTS 语音朗读功能 ✅
+
+**版本**: v2.7.0+ (2025-12-27)
+
+将书签摘要内容转换为语音朗读，支持多种内容类型和语音配置。
+
+**核心功能**:
+
+- ✅ 阿里云 TTS 服务集成
+- ✅ 支持 TLDR / 摘要 / 要点 / 全部 四种朗读模式
+- ✅ 语速调节（0.5x ~ 2.0x）
+- ✅ 男声/女声选择
+- ✅ 流式进度反馈
+- ✅ 音频 Base64 输出
+
+**触发词**:
+
+| 用户表达                                | 意图类型 | 子类型 |
+| --------------------------------------- | -------- | ------ |
+| "读"、"朗读"、"听"、"语音"、"念"、"TTS" | create   | tts    |
+| "播放摘要"                              | create   | tts    |
+
+**文件位置**:
+
+```
+src/lib/tts/                          # TTS 服务层
+├── aliyun-tts.service.ts             # 阿里云 TTS 服务
+├── types.ts                          # 类型定义
+└── index.ts                          # 模块导出
+
+src/lib/ai-skills/skills/tts-synthesis/  # TTS Skill
+├── tts-synthesis.skill.ts            # 核心 Skill 实现
+├── types.ts                          # 类型定义
+└── index.ts                          # 模块导出
+
+src/components/tts/                   # UI 组件
+├── tts-player-button.tsx             # 播放按钮
+├── audio-player-card.tsx             # 音频播放卡片
+└── index.ts                          # 模块导出
+
+src/hooks/domain/ai/use-tts-player.ts # 播放 Hook
+src/app/api/tts/route.ts              # API 端点
+```
+
+**Feature Flag**: `ENABLE_TTS_SYNTHESIS`（默认启用）
+
+---
+
+### 12. Brain-Sync 主动复习 ✅
+
+**版本**: v2.8.0 (2025-12-28)
+
+基于 SM-2 间隔重复算法的主动复习系统，帮助用户内化收藏内容。
+
+**核心功能**:
+
+- ✅ SM-2 间隔重复算法
+- ✅ 复习队列管理（今日待复习/已过期）
+- ✅ 掌握度评分（0-5 级）
+- ✅ 记忆曲线可视化
+- ✅ 复习偏好配置
+- ✅ 复习历史统计
+
+**意图分类规则**:
+
+| 用户表达                           | 意图类型 | 子类型              |
+| ---------------------------------- | -------- | ------------------- |
+| "开始复习"、"今日复习"、"知识同步" | learn    | active_recall_start |
+| "复习进度"、"掌握了多少"、"内化率" | query    | mastery_stats       |
+| "设置复习"、"复习偏好"             | action   | review_preferences  |
+
+**文件位置**:
+
+```
+src/lib/ai-skills/skills/active-recall/  # Active Recall Skill
+├── active-recall.skill.ts              # 核心 Skill 实现
+├── sm2-algorithm.ts                    # SM-2 算法实现
+├── types.ts                            # 类型定义
+└── index.ts                            # 模块导出
+
+src/app/(main)/brain-sync/page.tsx      # Brain-Sync 页面
+```
+
+**Feature Flag**: `ENABLE_ACTIVE_RECALL`（默认启用）
+
+**测试覆盖**: 87 个用例（SM-2 算法 + API 端点）
+
+---
+
+### 13. 主题合成器 ✅
+
+**版本**: v2.8.0 (2025-12-28)
+
+将多个相关书签合成为主题报告，支持 AI 智能推荐和自定义主题。
+
+**核心功能**:
+
+- ✅ 多书签主题合成
+- ✅ AI 智能推荐合成主题
+- ✅ 合成报告生成（Markdown/HTML）
+- ✅ 合成历史管理
+- ✅ 报告分享功能
+
+**文件位置**:
+
+```
+src/lib/ai-skills/skills/thematic-synthesis/  # 主题合成 Skill
+├── thematic-synthesis.skill.ts              # 核心 Skill 实现
+├── types.ts                                 # 类型定义
+└── index.ts                                 # 模块导出
+
+src/app/(main)/synthesis/                    # 合成页面
+├── page.tsx                                 # 合成列表页
+├── new/page.tsx                             # 新建合成页
+└── [id]/page.tsx                            # 合成详情页
+
+src/components/synthesis/                    # 合成组件
+├── synthesis-form.tsx                       # 合成表单
+├── synthesis-preview.tsx                    # 预览组件
+└── synthesis-report-card.tsx                # 报告卡片
+```
+
+**Feature Flag**: `ENABLE_THEMATIC_SYNTHESIS`（默认启用）
 
 ---
 

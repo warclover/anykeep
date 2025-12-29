@@ -3,10 +3,11 @@
  *
  * Phase 3: Hook 重组
  * 将 40 个 hooks 按职责分类到 4 个子目录：
- * - core/   : 6 个通用工具类
- * - data/   : 12 个数据获取类
- * - ui/     : 5 个 UI 状态类
- * - domain/ : 17 个业务逻辑类
+ * - core/    : 6 个通用工具类
+ * - data/    : 12 个数据获取类
+ * - ui/      : 5 个 UI 状态类
+ * - domain/  : 17 个业务逻辑类
+ * - queries/ : TanStack Query Hooks (Phase 4)
  *
  * 兼容性说明：
  * 旧路径 `@/hooks/use-xxx` 通过此文件重新导出继续可用
@@ -24,3 +25,6 @@ export * from "./ui";
 
 // Domain - 业务逻辑类
 export * from "./domain";
+
+// Queries - TanStack Query Hooks (Phase 4 North Star)
+export * from "./queries";

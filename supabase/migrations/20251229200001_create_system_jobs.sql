@@ -328,6 +328,11 @@ $$;
 
 ALTER TABLE system_jobs ENABLE ROW LEVEL SECURITY;
 
+-- 删除已存在的策略（使迁移幂等）
+DROP POLICY IF EXISTS "Users can view own jobs" ON system_jobs;
+DROP POLICY IF EXISTS "Users can insert own jobs" ON system_jobs;
+DROP POLICY IF EXISTS "Service role full access" ON system_jobs;
+
 -- 用户只能查看自己的任务
 CREATE POLICY "Users can view own jobs"
   ON system_jobs FOR SELECT

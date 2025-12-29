@@ -14,11 +14,12 @@
  *
  * ## 变更记录
  *
+ * - V2.1.0 (2025-12-29): 添加 QueryProvider (TanStack Query) - Phase 4
  * - V2.0.0 (2025-12-24): 使用 composeProviders 重构，减少嵌套层级
  * - V1.3.0 (V4.2.30): 添加 SessionHeartbeatProvider 解决长时间操作会话过期问题
  * - V1.2.0 (Phase 3.5): HomePageProvider 移出 Suspense 边界
  *
- * @version 2.0.0
+ * @version 2.1.0
  * @since 2025-12-24
  */
 
@@ -36,6 +37,7 @@ import { NotificationProvider } from "@/contexts/notification-context";
 import { WebVitalsReporter } from "@/components/analytics/web-vitals-reporter";
 import { SessionHeartbeatProvider } from "@/components/providers/session-heartbeat-provider";
 import { GlobalErrorBoundary } from "@/components/error-boundary";
+import { QueryProvider } from "@/lib/query";
 import {
   composeProviders,
   withProps,
@@ -50,10 +52,12 @@ import {
  * 核心 Providers
  *
  * 基础设施类 Provider，提供主题、用户、会话等核心功能
- * 必须按顺序执行：Theme → Sidebar → User → SessionHeartbeat
+ * 必须按顺序执行：Query → Theme → Sidebar → User → SessionHeartbeat
  */
 const CoreProviders = composeProviders(
-  // 主题管理（最外层）
+  // TanStack Query (最外层，供其他 Provider 使用)
+  QueryProvider,
+  // 主题管理
   withProps(ThemeProvider, {
     attribute: "class",
     defaultTheme: "system",

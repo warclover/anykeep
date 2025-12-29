@@ -38,3 +38,6 @@ export type {
   EmbeddingModelId,
   EmbeddingModelConfig,
 } from "@/lib/utils/embedding-generator";
+
+// Re-export dimension constant for database migrations
+export { EMBEDDING_DIMENSION } from "@/lib/classification/config/embedding-config";

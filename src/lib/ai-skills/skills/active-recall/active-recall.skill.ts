@@ -91,9 +91,9 @@ const ActiveRecallInputSchema = z.object({
     .optional()
     .describe("卡片ID（提交反馈时需要）"),
   response: z
-    .enum(["mastered", "fuzzy", "forgotten", "archived"])
+    .enum(["mastered", "fuzzy", "forgotten"])
     .optional()
-    .describe("复习反馈：mastered-掌握、fuzzy-模糊、forgotten-遗忘、archived-永久归档"),
+    .describe("复习反馈"),
   count: z
     .number()
     .int()
@@ -421,63 +421,39 @@ export class ActiveRecallSkill extends OrchestrationSkill<
     if (input.flashcardId && input.response) {
       yield* this.reportProgress("执行操作", 50, "正在处理您的反馈...");
 
-      const responseEmojis: Record<ReviewResponse, string> = {
-        mastered: "🌟",
-        fuzzy: "🤔",
-        forgotten: "😅",
-        archived: "🎉",
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: updateResult, error: updateError } = (await (
+        supabase as any
+      ).rpc("update_flashcard_review", {
+        p_user_id: context.userId,
+        p_flashcard_id: input.flashcardId,
+        p_response: input.response,
+        p_response_time_ms: null,
+        p_session_type: "chat",
+      })) as {
+        data: UpdateFlashcardReviewResult | null;
+        error: { message: string } | null;
       };
-      const responseLabels: Record<ReviewResponse, string> = {
-        mastered: "太棒了！完全掌握",
-        fuzzy: "有点模糊，需要巩固",
-        forgotten: "没关系，我们再来",
-        archived: "已永久归档，不再复习",
-      };
 
-      // 特殊处理：归档请求
-      if (input.response === "archived") {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: archiveResult, error: archiveError } = (await (
-          supabase as any
-        ).rpc("archive_flashcard", {
-          p_flashcard_id: input.flashcardId,
-          p_user_id: context.userId,
-        })) as {
-          data: { success: boolean; message?: string; error?: string } | null;
-          error: { message: string } | null;
+      if (updateError) {
+        yield* this.emitText(`❌ 更新失败：${updateError.message}\n\n`);
+      } else if (updateResult) {
+        const responseEmojis: Record<ReviewResponse, string> = {
+          mastered: "🌟",
+          fuzzy: "🤔",
+          forgotten: "😅",
+          archived: "🎉",
         };
-
-        if (archiveError || !archiveResult?.success) {
-          yield* this.emitText(`❌ 归档失败：${archiveError?.message || archiveResult?.error || "未知错误"}\n\n`);
-        } else {
-          yield* this.emitText(
-            `${responseEmojis.archived} ${responseLabels.archived}\n\n`,
-          );
-        }
-      } else {
-        // 非归档响应：调用 update_flashcard_review
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: updateResult, error: updateError } = (await (
-          supabase as any
-        ).rpc("update_flashcard_review", {
-          p_user_id: context.userId,
-          p_flashcard_id: input.flashcardId,
-          p_response: input.response,
-          p_response_time_ms: null,
-          p_session_type: "chat",
-        })) as {
-          data: UpdateFlashcardReviewResult | null;
-          error: { message: string } | null;
+        const responseLabels: Record<ReviewResponse, string> = {
+          mastered: "太棒了！完全掌握",
+          fuzzy: "有点模糊，需要巩固",
+          forgotten: "没关系，我们再来",
+          archived: "已永久归档，不再复习",
         };
-
-        if (updateError) {
-          yield* this.emitText(`❌ 更新失败：${updateError.message}\n\n`);
-        } else if (updateResult) {
-          yield* this.emitText(
-            `${responseEmojis[input.response]} ${responseLabels[input.response]}\n` +
-              `下次复习：${updateResult.new_interval} 天后\n\n`,
-          );
-        }
+        yield* this.emitText(
+          `${responseEmojis[input.response]} ${responseLabels[input.response]}\n` +
+            `下次复习：${updateResult.new_interval} 天后\n\n`,
+        );
       }
     }
 

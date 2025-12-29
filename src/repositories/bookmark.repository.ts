@@ -423,6 +423,73 @@ export class BookmarkRepository extends BaseRepository<
   }
 
   /**
+   * 批量移除标签
+   */
+  async batchRemoveTags(ids: number[], tags: string[]): Promise<number> {
+    // 使用 RPC 函数来移除标签
+    const { data, error } = await this.supabase.rpc("batch_remove_tags", {
+      p_bookmark_ids: ids,
+      p_tags: tags,
+    });
+
+    if (error) {
+      this.logger.error({ error, ids, tags }, "Failed to batch remove tags");
+      throw error;
+    }
+
+    // RPC 返回的是 { affected_ids, affected_count } 对象
+    if (typeof data === "object" && data !== null && "affected_count" in data) {
+      return (data as { affected_count: number }).affected_count;
+    }
+    return typeof data === "number" ? data : 0;
+  }
+
+  /**
+   * 批量从回收站恢复
+   */
+  async batchRestoreFromTrash(ids: number[]): Promise<number> {
+    const { error, count } = await this.supabase
+      .from(this.tableName)
+      .update({
+        is_in_trash: false,
+        trashed_at: null,
+      })
+      .in("id", ids)
+      .eq("user_id", this.userId)
+      .eq("is_in_trash", true)
+      .is("deleted_at", null);
+
+    if (error) {
+      this.logger.error({ error, ids }, "Failed to batch restore from trash");
+      throw error;
+    }
+
+    return count ?? 0;
+  }
+
+  /**
+   * 批量移到回收站
+   */
+  async batchMoveToTrash(ids: number[]): Promise<number> {
+    const { error, count } = await this.supabase
+      .from(this.tableName)
+      .update({
+        is_in_trash: true,
+        trashed_at: new Date().toISOString(),
+      })
+      .in("id", ids)
+      .eq("user_id", this.userId)
+      .is("deleted_at", null);
+
+    if (error) {
+      this.logger.error({ error, ids }, "Failed to batch move to trash");
+      throw error;
+    }
+
+    return count ?? 0;
+  }
+
+  /**
    * 获取用户的所有标签
    */
   async getAllUserTags(): Promise<string[]> {

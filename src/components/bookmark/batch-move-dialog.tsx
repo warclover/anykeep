@@ -65,7 +65,8 @@ export function BatchMoveDialog({
 
     setIsSubmitting(true);
     try {
-      const res = await fetchWithAbort("/api/bookmarks/batch-move", {
+      // 使用 v1 API
+      const res = await fetchWithAbort("/api/v1/bookmarks/batch/move", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -1,11 +1,14 @@
 /**
  * AnyKeep Service Worker
  * 提供离线支持和缓存功能
+ *
+ * @version 2.0.0 - 添加 API 缓存支持 (Phase 4 North Star)
  */
 
-const CACHE_NAME = 'anykeep-v3'
-const STATIC_CACHE = 'anykeep-static-v3'
-const DYNAMIC_CACHE = 'anykeep-dynamic-v3'
+const CACHE_NAME = 'anykeep-v4'
+const STATIC_CACHE = 'anykeep-static-v4'
+const DYNAMIC_CACHE = 'anykeep-dynamic-v4'
+const API_CACHE = 'anykeep-api-v1'
 
 // 预缓存的静态资源
 const PRECACHE_ASSETS = [
@@ -15,6 +18,29 @@ const PRECACHE_ASSETS = [
   '/icons/icon-192x192.png',
   '/icons/icon-512x512.png',
 ]
+
+// 可缓存的 API 路径（只缓存读取操作）
+const CACHEABLE_API_PATTERNS = [
+  // Legacy API
+  /^\/api\/bookmarks(\?|$)/,           // 书签列表
+  /^\/api\/bookmarks\/\d+$/,           // 书签详情
+  /^\/api\/bookmarks\/stats$/,         // 书签统计
+  /^\/api\/bookmarks\/tags$/,          // 用户标签
+  /^\/api\/folders(\?|$)/,             // 文件夹列表
+  /^\/api\/folders\/\d+$/,             // 文件夹详情
+  // v1 API
+  /^\/api\/v1\/bookmarks(\?|$)/,       // v1 书签列表
+  /^\/api\/v1\/bookmarks\/\d+$/,       // v1 书签详情
+  /^\/api\/v1\/bookmarks\/stats$/,     // v1 书签统计
+  /^\/api\/v1\/bookmarks\/tags$/,      // v1 用户标签
+  /^\/api\/v1\/folders(\?|$)/,         // v1 文件夹列表
+  /^\/api\/v1\/folders\/\d+$/,         // v1 文件夹详情
+  /^\/api\/v1\/folders\/\d+\/path$/,   // v1 文件夹路径
+  /^\/api\/v1\/search(\?|$)/,          // v1 搜索
+]
+
+// API 缓存过期时间（5 分钟）
+const API_CACHE_MAX_AGE = 5 * 60 * 1000
 
 // 安装事件 - 预缓存静态资源
 self.addEventListener('install', (event) => {
@@ -32,11 +58,12 @@ self.addEventListener('install', (event) => {
 // 激活事件 - 清理旧缓存
 self.addEventListener('activate', (event) => {
   console.log('[SW] Activating Service Worker')
+  const currentCaches = [STATIC_CACHE, DYNAMIC_CACHE, API_CACHE]
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames
-          .filter((name) => name !== STATIC_CACHE && name !== DYNAMIC_CACHE)
+          .filter((name) => !currentCaches.includes(name))
           .map((name) => {
             console.log('[SW] Deleting old cache:', name)
             return caches.delete(name)
@@ -59,8 +86,17 @@ self.addEventListener('fetch', (event) => {
   // 跳过 Chrome 扩展请求
   if (url.protocol === 'chrome-extension:') return
 
-  // 跳过 API 请求（需要实时数据）
-  if (url.pathname.startsWith('/api/')) return
+  // API 请求：网络优先，离线回退缓存
+  if (url.pathname.startsWith('/api/')) {
+    // 检查是否是可缓存的 API
+    const isCacheable = CACHEABLE_API_PATTERNS.some(pattern => pattern.test(url.pathname))
+    if (isCacheable) {
+      event.respondWith(apiNetworkFirst(request))
+      return
+    }
+    // 不可缓存的 API 直接跳过
+    return
+  }
 
   // 跳过 Supabase 请求
   if (url.hostname.includes('supabase')) return
@@ -147,6 +183,61 @@ async function networkFirst(request) {
     }
     // 返回离线页面
     return caches.match('/') || new Response('Offline', { status: 503 })
+  }
+}
+
+// API Network First 策略（带缓存时间戳）
+async function apiNetworkFirst(request) {
+  try {
+    const response = await fetch(request)
+    if (response.ok) {
+      // 克隆响应以添加缓存时间戳
+      const responseToCache = response.clone()
+      const cache = await caches.open(API_CACHE)
+
+      // 创建带时间戳的响应头
+      const headers = new Headers(responseToCache.headers)
+      headers.set('sw-cached-at', Date.now().toString())
+
+      const cachedResponse = new Response(await responseToCache.blob(), {
+        status: responseToCache.status,
+        statusText: responseToCache.statusText,
+        headers: headers,
+      })
+
+      cache.put(request, cachedResponse)
+      console.log('[SW] API cached:', request.url)
+    }
+    return response
+  } catch (error) {
+    console.log('[SW] API network failed, trying cache:', request.url)
+
+    const cached = await caches.match(request)
+    if (cached) {
+      // 检查缓存是否过期
+      const cachedAt = cached.headers.get('sw-cached-at')
+      if (cachedAt) {
+        const age = Date.now() - parseInt(cachedAt, 10)
+        if (age > API_CACHE_MAX_AGE) {
+          console.log('[SW] API cache expired:', request.url)
+          // 缓存过期，但仍然返回（离线场景）
+        }
+      }
+      console.log('[SW] Returning cached API response:', request.url)
+      return cached
+    }
+
+    // 返回离线错误响应
+    return new Response(
+      JSON.stringify({
+        error: 'offline',
+        message: '网络不可用，请检查连接',
+      }),
+      {
+        status: 503,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    )
   }
 }
 

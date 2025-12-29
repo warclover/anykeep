@@ -67,14 +67,15 @@ export function useBatchTags(
       setError(null);
 
       try {
-        const response = await fetch("/api/bookmarks/batch-tags", {
+        // 使用 v1 API
+        const response = await fetch("/api/v1/bookmarks/batch/tags", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
             action,
-            bookmarkIds,
+            ids: bookmarkIds,
             tags,
           }),
           credentials: "include",

@@ -14,6 +14,22 @@
 import { logger } from "@/lib/logger";
 
 /**
+ * ⚠️ 项目标准向量维度
+ *
+ * 重要提醒：
+ * - 所有数据库 vector 字段必须使用此维度
+ * - 新建表时请使用 vector(1024)
+ * - 修改此值需要迁移所有现有向量数据
+ *
+ * 历史：
+ * - 初始版本使用 1536 维 (OpenAI text-embedding-ada-002)
+ * - 2025-11-26 迁移到 1024 维 (阿里云 DashScope text-embedding-v3)
+ *
+ * @see supabase/migrations/20251126000002_fix_embedding_dimensions.sql
+ */
+export const EMBEDDING_DIMENSION = 1024 as const;
+
+/**
  * 支持的嵌入模型类型
  */
 export type EmbeddingModelId = "dashscope-v3" | "dashscope-v4" | "bge-large-zh"; // 开源备选
