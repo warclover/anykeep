@@ -5,4 +5,5 @@
 export * from "./use-auto-snapshot";
 export * from "./use-auto-snapshot-settings";
 export * from "./use-bookmark-actions";
+export * from "./use-bookmark-realtime";
 export * from "./use-reclassify";
