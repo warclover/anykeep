@@ -323,7 +323,7 @@ async function generateWeeklyQueueIfNeeded(
   }
 
   // 创建本周队列
-  const flashcardIds = typedPendingFlashcards.map((f) => f.id);
+  const flashcardIds = typedPendingFlashcards.map((f) => f.flashcard_id);
 
   await supabase.from("weekly_review_queue").insert({
     user_id: userId,

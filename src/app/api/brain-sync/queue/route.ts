@@ -119,7 +119,7 @@ export async function GET(request: NextRequest) {
           : 0;
 
         return {
-          flashcardId: item.id,
+          flashcardId: item.flashcard_id,
           bookmarkId: item.bookmark_id,
           bookmarkTitle: item.bookmark_title,
           bookmarkUrl: item.bookmark_url,

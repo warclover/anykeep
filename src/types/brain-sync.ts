@@ -98,10 +98,10 @@ export interface WeeklyReviewQueueRow {
 
 /**
  * get_pending_flashcards RPC 返回类型
- * 注意：与 supabase.ts 中的类型定义保持同步
+ * 注意：字段名与 PostgreSQL RPC 函数定义保持一致（snake_case）
  */
 export interface PendingFlashcardRow {
-  id: number; // flashcard ID
+  flashcard_id: number; // 对应 RPC 返回的 flashcard_id BIGINT
   bookmark_id: number;
   bookmark_title: string;
   bookmark_url: string;
