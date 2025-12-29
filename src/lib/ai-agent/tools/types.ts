@@ -2,10 +2,12 @@
  * AI Agent Tools 类型定义
  *
  * 定义 Tool 的基础接口和类型
+ * 遵循 MCP (Model Context Protocol) 标准
  *
- * @version 1.2.0
+ * @version 2.0.0 - Phase 3: MCP 标准化
  * @since 2025-12-23
  * @updated 2025-12-26 添加 reasoning 参数支持
+ * @updated 2025-12-29 添加 MCP 标准特性 (riskLevel, outputSchema, 扩展分类)
  */
 
 import { z } from "zod";
@@ -76,23 +78,44 @@ export function extractReasoning(params: unknown): string | undefined {
 // ============================================
 
 /**
- * Tool 分类
+ * Tool 分类 (MCP 标准扩展)
+ *
+ * 原有分类: query, read, action, search
+ * 新增分类: analysis, export, system
  */
-export type ToolCategory = "query" | "read" | "action" | "search";
+export type ToolCategory =
+  | "query" // 查询类 (只读，快速)
+  | "read" // 读取类 (获取详情)
+  | "action" // 操作类 (写入，可能需要确认)
+  | "search" // 搜索类 (向量/全文搜索)
+  | "analysis" // 分析类 (统计、报告)
+  | "export" // 导出类 (数据导出)
+  | "system"; // 系统类 (设置、配置)
+
+/**
+ * Tool 风险等级 (MCP 标准)
+ *
+ * 用于决定是否需要用户确认
+ */
+export type ToolRiskLevel = "low" | "medium" | "high";
 
 /**
  * Tool 定义
  */
-export interface ToolDefinition<TParams = unknown> {
+export interface ToolDefinition<TParams = unknown, TOutput = unknown> {
   /** Tool 名称（唯一标识） */
   name: string;
   /** Tool 描述（供 AI 理解用途） */
   description: string;
   /** 参数 Schema */
   parameters: z.ZodSchema<TParams>;
+  /** 输出 Schema（可选，用于类型安全） */
+  outputSchema?: z.ZodSchema<TOutput>;
   /** 分类 */
   category: ToolCategory;
-  /** 是否需要用户确认 */
+  /** 风险等级 (MCP 标准) */
+  riskLevel?: ToolRiskLevel;
+  /** 是否需要用户确认 (向后兼容，优先使用 riskLevel) */
   requiresConfirmation?: boolean;
   /** 预估执行时间（毫秒） */
   estimatedDurationMs?: number;
@@ -228,7 +251,7 @@ export type ToolResultWithConfirmation<T = unknown> =
  */
 export interface Tool<TParams = unknown, TResult = unknown> {
   /** Tool 定义 */
-  definition: ToolDefinition<TParams>;
+  definition: ToolDefinition<TParams, TResult>;
   /** 执行函数 */
   execute: (
     params: TParams,
@@ -246,6 +269,7 @@ export interface Tool<TParams = unknown, TResult = unknown> {
 export interface ToolRegistryStats {
   totalTools: number;
   byCategory: Record<ToolCategory, number>;
+  byRiskLevel?: Record<ToolRiskLevel, number>;
 }
 
 /**
@@ -255,6 +279,7 @@ export interface ToolSummary {
   name: string;
   description: string;
   category: ToolCategory;
+  riskLevel: ToolRiskLevel;
   requiresConfirmation: boolean;
 }
 
@@ -271,4 +296,73 @@ export interface VercelAITool {
   description: string;
   parameters: z.ZodSchema;
   execute?: (args: unknown) => Promise<unknown>;
+}
+
+// ============================================
+// MCP 标准辅助函数
+// ============================================
+
+/**
+ * 根据 Tool 定义推断风险等级
+ *
+ * 规则：
+ * - 如果显式指定 riskLevel，使用它
+ * - 如果 requiresConfirmation 为 true，返回 "high"
+ * - 根据 category 推断默认风险等级
+ */
+export function inferRiskLevel(definition: ToolDefinition): ToolRiskLevel {
+  // 显式指定
+  if (definition.riskLevel) {
+    return definition.riskLevel;
+  }
+
+  // 向后兼容
+  if (definition.requiresConfirmation) {
+    return "high";
+  }
+
+  // 根据分类推断
+  const categoryRisk: Record<ToolCategory, ToolRiskLevel> = {
+    query: "low",
+    read: "low",
+    search: "low",
+    analysis: "low",
+    export: "medium",
+    action: "medium",
+    system: "medium",
+  };
+
+  return categoryRisk[definition.category] || "low";
+}
+
+/**
+ * 判断 Tool 是否需要用户确认
+ *
+ * 规则：
+ * - 如果显式指定 requiresConfirmation，使用它
+ * - 如果 riskLevel 为 "high"，需要确认
+ */
+export function toolRequiresConfirmation(definition: ToolDefinition): boolean {
+  if (definition.requiresConfirmation !== undefined) {
+    return definition.requiresConfirmation;
+  }
+
+  return inferRiskLevel(definition) === "high";
+}
+
+/**
+ * 获取分类的默认风险等级
+ */
+export function getCategoryDefaultRisk(category: ToolCategory): ToolRiskLevel {
+  const defaults: Record<ToolCategory, ToolRiskLevel> = {
+    query: "low",
+    read: "low",
+    search: "low",
+    analysis: "low",
+    export: "medium",
+    action: "medium",
+    system: "medium",
+  };
+
+  return defaults[category];
 }

@@ -3,8 +3,9 @@
  *
  * 管理所有 AI Tools 的注册、查询和导出
  *
- * @version 1.0.0
+ * @version 2.0.0 - MCP 标准化升级
  * @since 2025-12-23
+ * @updated 2025-12-29 添加 riskLevel 统计和扩展分类支持
  */
 
 import { z } from "zod";
@@ -12,12 +13,13 @@ import { tool as createAITool, zodSchema, type ToolSet } from "ai";
 import type {
   Tool,
   ToolCategory,
+  ToolRiskLevel,
   ToolRegistryStats,
   ToolSummary,
   ToolContext,
   ToolResult,
 } from "./types";
-import { extractReasoning } from "./types";
+import { extractReasoning, inferRiskLevel } from "./types";
 import { logger } from "@/lib/logger";
 
 /**
@@ -107,6 +109,7 @@ export class ToolRegistry {
       name: tool.definition.name,
       description: tool.definition.description,
       category: tool.definition.category,
+      riskLevel: inferRiskLevel(tool.definition),
       requiresConfirmation: tool.definition.requiresConfirmation ?? false,
     }));
   }
@@ -120,15 +123,26 @@ export class ToolRegistry {
       read: 0,
       action: 0,
       search: 0,
+      analysis: 0,
+      export: 0,
+      system: 0,
+    };
+
+    const byRiskLevel: Record<ToolRiskLevel, number> = {
+      low: 0,
+      medium: 0,
+      high: 0,
     };
 
     for (const tool of this.tools.values()) {
       byCategory[tool.definition.category]++;
+      byRiskLevel[inferRiskLevel(tool.definition)]++;
     }
 
     return {
       totalTools: this.tools.size,
       byCategory,
+      byRiskLevel,
     };
   }
 
