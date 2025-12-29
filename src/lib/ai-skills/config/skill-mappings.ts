@@ -21,6 +21,35 @@ import type { SkillMapping, ExplicitToolMapping, MappingIndex } from "./types";
  */
 export const SKILL_MAPPINGS: SkillMapping[] = [
   // ============================================
+  // Active Recall 主动复习类（v2.5.0 新增）
+  // ============================================
+  {
+    key: "learn:active_recall_start",
+    skillId: "active_recall",
+    name: "Brain-Sync 主动复习",
+    mode: "orchestration",
+    minComplexity: "medium",
+    enabled: true,
+    priority: 105,
+  },
+  {
+    key: "query:mastery_stats",
+    skillId: "get_mastery_stats",
+    name: "复习掌握度统计",
+    mode: "atomic",
+    enabled: true,
+    priority: 85,
+  },
+  {
+    key: "action:review_preferences",
+    skillId: "update_review_preferences",
+    name: "复习偏好设置",
+    mode: "atomic",
+    enabled: true,
+    priority: 82,
+  },
+
+  // ============================================
   // 学习类 → 编排模式
   // ============================================
   {
@@ -371,6 +400,19 @@ export const EXPLICIT_TOOL_MAPPINGS: ExplicitToolMapping[] = [
     skillId: "tts_synthesis",
     mode: "orchestration",
     icon: "Volume2",
+  },
+  // Active Recall / Brain-Sync 显式工具（v2.5.0 新增）
+  {
+    toolId: "brain-sync",
+    skillId: "active_recall",
+    mode: "orchestration",
+    icon: "Brain",
+  },
+  {
+    toolId: "active-recall",
+    skillId: "active_recall",
+    mode: "orchestration",
+    icon: "Brain",
   },
 ];
 

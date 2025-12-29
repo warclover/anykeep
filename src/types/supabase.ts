@@ -3417,6 +3417,233 @@ export type Database = {
           },
         ];
       };
+      /**
+       * Brain-Sync Flashcard 表 - 存储 AI 生成的复习卡片
+       * 支持 SM-2 间隔重复算法
+       */
+      flashcards: {
+        Row: {
+          id: number;
+          user_id: string;
+          bookmark_id: number;
+          question: string;
+          answer: string;
+          source_paragraph: string | null;
+          /** 状态: pending | learning | mastered | paused */
+          status: string;
+          /** SM-2 难度因子 (1.3-2.5) */
+          ease_factor: number;
+          /** 当前间隔天数 */
+          interval_days: number;
+          /** 连续正确复习次数 */
+          repetitions: number;
+          next_review_at: string | null;
+          last_reviewed_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: number;
+          user_id: string;
+          bookmark_id: number;
+          question: string;
+          answer: string;
+          source_paragraph?: string | null;
+          status?: string;
+          ease_factor?: number;
+          interval_days?: number;
+          repetitions?: number;
+          next_review_at?: string | null;
+          last_reviewed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: number;
+          user_id?: string;
+          bookmark_id?: number;
+          question?: string;
+          answer?: string;
+          source_paragraph?: string | null;
+          status?: string;
+          ease_factor?: number;
+          interval_days?: number;
+          repetitions?: number;
+          next_review_at?: string | null;
+          last_reviewed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "flashcards_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "flashcards_bookmark_id_fkey";
+            columns: ["bookmark_id"];
+            isOneToOne: false;
+            referencedRelation: "bookmarks";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      /**
+       * 复习会话记录表 - 追踪每次复习的用户反馈和 SM-2 参数变化
+       */
+      review_sessions: {
+        Row: {
+          id: number;
+          user_id: string;
+          flashcard_id: number;
+          /** 用户反馈: mastered | fuzzy | forgotten */
+          response: string;
+          /** 思考时间（毫秒） */
+          response_time_ms: number | null;
+          prev_interval: number | null;
+          new_interval: number | null;
+          prev_ease: number | null;
+          new_ease: number | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: number;
+          user_id: string;
+          flashcard_id: number;
+          response: string;
+          response_time_ms?: number | null;
+          prev_interval?: number | null;
+          new_interval?: number | null;
+          prev_ease?: number | null;
+          new_ease?: number | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: number;
+          user_id?: string;
+          flashcard_id?: number;
+          response?: string;
+          response_time_ms?: number | null;
+          prev_interval?: number | null;
+          new_interval?: number | null;
+          prev_ease?: number | null;
+          new_ease?: number | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "review_sessions_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "review_sessions_flashcard_id_fkey";
+            columns: ["flashcard_id"];
+            isOneToOne: false;
+            referencedRelation: "flashcards";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      /**
+       * 用户复习偏好设置表 - 存储 Brain-Sync 功能配置
+       */
+      review_preferences: {
+        Row: {
+          user_id: string;
+          enabled: boolean;
+          /** 每周复习日: monday-sunday */
+          preferred_day: string;
+          preferred_time: string;
+          timezone: string;
+          /** 每周复习上限 */
+          weekly_limit: number;
+          included_folder_ids: number[] | null;
+          excluded_folder_ids: number[] | null;
+          /** 通知渠道: sidebar | push | both */
+          notification_channel: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          enabled?: boolean;
+          preferred_day?: string;
+          preferred_time?: string;
+          timezone?: string;
+          weekly_limit?: number;
+          included_folder_ids?: number[] | null;
+          excluded_folder_ids?: number[] | null;
+          notification_channel?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          enabled?: boolean;
+          preferred_day?: string;
+          preferred_time?: string;
+          timezone?: string;
+          weekly_limit?: number;
+          included_folder_ids?: number[] | null;
+          excluded_folder_ids?: number[] | null;
+          notification_channel?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "review_preferences_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: true;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      /**
+       * 每周复习队列快照表 - 追踪本周待复习和已完成的 Flashcards
+       */
+      weekly_review_queue: {
+        Row: {
+          id: number;
+          user_id: string;
+          week_start: string;
+          flashcard_ids: number[];
+          completed_ids: number[];
+          created_at: string;
+        };
+        Insert: {
+          id?: number;
+          user_id: string;
+          week_start: string;
+          flashcard_ids?: number[];
+          completed_ids?: number[];
+          created_at?: string;
+        };
+        Update: {
+          id?: number;
+          user_id?: string;
+          week_start?: string;
+          flashcard_ids?: number[];
+          completed_ids?: number[];
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "weekly_review_queue_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: {
       classification_metrics_daily: {
@@ -4594,6 +4821,90 @@ export type Database = {
           browser: string | null;
           expires_at: string | null;
         }[];
+      };
+      // ============================================
+      // Brain-Sync Active Recall RPC 函数
+      // ============================================
+      /** 批量创建 Flashcards */
+      batch_create_flashcards: {
+        Args: {
+          p_user_id: string;
+          p_bookmark_id: number;
+          p_flashcards: Json;
+        };
+        Returns: {
+          id: number;
+          question: string;
+          answer: string;
+        }[];
+      };
+      /** 获取待复习的 Flashcards */
+      get_pending_flashcards: {
+        Args: {
+          p_user_id: string;
+          p_limit?: number;
+        };
+        Returns: {
+          id: number;
+          bookmark_id: number;
+          question: string;
+          answer: string;
+          source_paragraph: string | null;
+          status: string;
+          ease_factor: number;
+          interval_days: number;
+          repetitions: number;
+          next_review_at: string | null;
+          bookmark_title: string;
+          bookmark_url: string;
+        }[];
+      };
+      /** 更新 Flashcard 复习结果 */
+      update_flashcard_review: {
+        Args: {
+          p_flashcard_id: number;
+          p_user_id: string;
+          p_response: string;
+          p_response_time_ms?: number;
+        };
+        Returns: {
+          success: boolean;
+          new_interval: number;
+          new_ease_factor: number;
+          next_review_at: string;
+        };
+      };
+      /** 获取复习统计数据 */
+      get_review_stats: {
+        Args: {
+          p_user_id: string;
+        };
+        Returns: {
+          total_flashcards: number;
+          pending_count: number;
+          learning_count: number;
+          mastered_count: number;
+          due_today: number;
+          overdue_count: number;
+          avg_ease_factor: number;
+          weekly_reviews: number;
+          streak_days: number;
+        };
+      };
+      /** 获取或创建用户复习偏好 */
+      get_or_create_review_preferences: {
+        Args: {
+          p_user_id: string;
+        };
+        Returns: {
+          user_id: string;
+          enabled: boolean;
+          preferred_day: string;
+          preferred_time: string;
+          timezone: string;
+          weekly_limit: number;
+          notification_channel: string;
+        };
       };
     };
     Enums: {

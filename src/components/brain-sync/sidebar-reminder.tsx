@@ -1,0 +1,270 @@
+/**
+ * 侧边栏复习提醒组件
+ *
+ * 在侧边栏显示待复习提醒，点击后打开复习会话
+ *
+ * @version 1.0.0
+ * @since 2025-12-29
+ */
+
+"use client";
+
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Brain, Sparkles, AlertCircle } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { ReviewSession } from "./review-session";
+import { clientLogger } from "@/lib/client-logger";
+
+// ============================================
+// 类型定义
+// ============================================
+
+interface QueueStats {
+  total: number;
+  overdue: number;
+  dueToday: number;
+}
+
+interface SidebarReminderProps {
+  className?: string;
+  collapsed?: boolean;
+}
+
+// ============================================
+// 组件实现
+// ============================================
+
+export function SidebarReminder({
+  className,
+  collapsed = false,
+}: SidebarReminderProps) {
+  const [stats, setStats] = useState<QueueStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [enabled, setEnabled] = useState(false);
+
+  // 加载复习队列统计
+  useEffect(() => {
+    async function loadStats() {
+      try {
+        // 先检查是否启用
+        const prefsResponse = await fetch("/api/brain-sync/preferences");
+        const prefsData = await prefsResponse.json();
+
+        if (!prefsData.success || !prefsData.data.preferences?.enabled) {
+          setEnabled(false);
+          setLoading(false);
+          return;
+        }
+
+        setEnabled(true);
+
+        // 获取队列统计
+        const queueResponse = await fetch("/api/brain-sync/queue?limit=100");
+        const queueData = await queueResponse.json();
+
+        if (queueData.success && queueData.data.stats) {
+          setStats({
+            total: queueData.data.stats.total,
+            overdue: queueData.data.stats.overdue,
+            dueToday: queueData.data.stats.dueToday,
+          });
+        }
+      } catch (err) {
+        clientLogger.error(
+          { error: err instanceof Error ? err.message : String(err) },
+          "Failed to load Brain-Sync stats",
+        );
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadStats();
+
+    // 定期刷新（每 5 分钟）
+    const interval = setInterval(loadStats, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // 不启用或加载中时不显示
+  if (loading || !enabled) {
+    return null;
+  }
+
+  // 没有待复习的卡片时不显示
+  if (!stats || stats.total === 0) {
+    return null;
+  }
+
+  // 确定显示状态
+  const hasOverdue = stats.overdue > 0;
+  const hasDueToday = stats.dueToday > 0;
+
+  // 会话完成后刷新统计
+  const handleSessionComplete = () => {
+    // 延迟刷新，等待数据库更新
+    setTimeout(async () => {
+      try {
+        const response = await fetch("/api/brain-sync/queue?limit=100");
+        const data = await response.json();
+
+        if (data.success && data.data.stats) {
+          setStats({
+            total: data.data.stats.total,
+            overdue: data.data.stats.overdue,
+            dueToday: data.data.stats.dueToday,
+          });
+        }
+      } catch (err) {
+        clientLogger.error(
+          { error: err instanceof Error ? err.message : String(err) },
+          "Failed to refresh Brain-Sync stats",
+        );
+      }
+    }, 1000);
+  };
+
+  if (collapsed) {
+    // 折叠状态：只显示图标和徽章
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn(
+                "relative",
+                hasOverdue && "text-red-500 hover:text-red-600",
+                hasDueToday &&
+                  !hasOverdue &&
+                  "text-yellow-500 hover:text-yellow-600",
+                className,
+              )}
+              onClick={() => setReviewOpen(true)}
+            >
+              <Brain className="h-5 w-5" />
+              {stats.total > 0 && (
+                <Badge
+                  variant={hasOverdue ? "destructive" : "secondary"}
+                  className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs"
+                >
+                  {stats.total > 99 ? "99+" : stats.total}
+                </Badge>
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="right">
+            <div className="text-sm">
+              <div className="font-medium mb-1">待复习卡片</div>
+              <div className="text-muted-foreground">
+                {hasOverdue && (
+                  <div className="text-red-500">🔴 {stats.overdue} 张逾期</div>
+                )}
+                {hasDueToday && (
+                  <div className="text-yellow-500">
+                    🟡 {stats.dueToday} 张今日到期
+                  </div>
+                )}
+                <div>共 {stats.total} 张待复习</div>
+              </div>
+            </div>
+          </TooltipContent>
+        </Tooltip>
+
+        <ReviewSession
+          open={reviewOpen}
+          onOpenChange={setReviewOpen}
+          onSessionComplete={handleSessionComplete}
+        />
+      </TooltipProvider>
+    );
+  }
+
+  // 展开状态：显示完整卡片
+  return (
+    <>
+      <div
+        className={cn(
+          "p-3 rounded-lg cursor-pointer transition-colors",
+          hasOverdue
+            ? "bg-red-50 hover:bg-red-100 border border-red-200"
+            : hasDueToday
+              ? "bg-yellow-50 hover:bg-yellow-100 border border-yellow-200"
+              : "bg-purple-50 hover:bg-purple-100 border border-purple-200",
+          className,
+        )}
+        onClick={() => setReviewOpen(true)}
+      >
+        <div className="flex items-center gap-3">
+          <div
+            className={cn(
+              "p-2 rounded-full",
+              hasOverdue
+                ? "bg-red-100"
+                : hasDueToday
+                  ? "bg-yellow-100"
+                  : "bg-purple-100",
+            )}
+          >
+            {hasOverdue ? (
+              <AlertCircle className="h-5 w-5 text-red-600" />
+            ) : (
+              <Brain
+                className={cn(
+                  "h-5 w-5",
+                  hasDueToday ? "text-yellow-600" : "text-purple-600",
+                )}
+              />
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span
+                className={cn(
+                  "font-medium text-sm",
+                  hasOverdue
+                    ? "text-red-700"
+                    : hasDueToday
+                      ? "text-yellow-700"
+                      : "text-purple-700",
+                )}
+              >
+                复习提醒
+              </span>
+              <Sparkles className="h-3 w-3 text-purple-500" />
+            </div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              {hasOverdue
+                ? `${stats.overdue} 张卡片已逾期`
+                : hasDueToday
+                  ? `${stats.dueToday} 张今日到期`
+                  : `${stats.total} 张待复习`}
+            </div>
+          </div>
+          <Badge
+            variant={hasOverdue ? "destructive" : "secondary"}
+            className="shrink-0"
+          >
+            {stats.total}
+          </Badge>
+        </div>
+      </div>
+
+      <ReviewSession
+        open={reviewOpen}
+        onOpenChange={setReviewOpen}
+        onSessionComplete={handleSessionComplete}
+      />
+    </>
+  );
+}

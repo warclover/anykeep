@@ -1,8 +1,11 @@
 /**
  * AI Agent Tools 模块导出
  *
- * @version 2.4.0
+ * @version 2.5.0
  * @since 2025-12-23
+ *
+ * v2.5.0 新增:
+ * - Active Recall Tools: generate-flashcards, get-review-queue, submit-review-response, get-mastery-stats, update-review-preferences
  *
  * v2.4.0 新增:
  * - 知识图谱 Tools: get-knowledge-graph（知识图谱数据）, find-related-by-topic（主题关联查找）
@@ -101,6 +104,9 @@ export * from "./knowledge-link";
 // 微信文章 Tools (新增 v2.4.0)
 export * from "./wechat-article";
 
+// Active Recall Tools (新增 v2.5.0)
+export * from "./active-recall";
+
 // 注册默认 Tools
 import { toolRegistry } from "./tool-registry";
 import { queryTools } from "./query";
@@ -120,6 +126,7 @@ import { trustModeTools } from "./trust-mode";
 import { pluginAuthTools } from "./plugin-auth";
 import { knowledgeLinkTools } from "./knowledge-link";
 import { wechatArticleTools } from "./wechat-article";
+import { activeRecallTools } from "./active-recall";
 
 /**
  * 注册所有默认 Tools
@@ -149,6 +156,8 @@ export function registerDefaultTools(): void {
   // 新增 Tools (v2.4.0)
   toolRegistry.registerAll(knowledgeLinkTools);
   toolRegistry.registerAll(wechatArticleTools);
+  // 新增 Tools (v2.5.0)
+  toolRegistry.registerAll(activeRecallTools);
 }
 
 /**

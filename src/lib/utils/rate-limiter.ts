@@ -34,6 +34,8 @@ export const RATE_LIMIT_CONFIGS: Record<string, RateLimitConfig> = {
   search: { windowMs: 60_000, maxRequests: 60 },
   // AI 相关 API：每分钟 30 次（成本考虑）
   ai: { windowMs: 60_000, maxRequests: 30 },
+  // Brain-Sync 复习系统：每分钟 20 次（涉及 AI 生成和数据库写入）
+  brain_sync: { windowMs: 60_000, maxRequests: 20 },
   // 批量操作：每分钟 10 次
   batch: { windowMs: 60_000, maxRequests: 10 },
   // 书签操作：每分钟 300 次（核心用户操作，需要宽松限制）
@@ -177,6 +179,11 @@ export function getRateLimitConfig(pathname: string): RateLimitConfig {
     return RATE_LIMIT_CONFIGS.ai;
   }
 
+  // Brain-Sync 复习系统
+  if (pathname.includes("/brain-sync") || pathname.includes("/active-recall")) {
+    return RATE_LIMIT_CONFIGS.brain_sync;
+  }
+
   // 搜索相关
   if (pathname.includes("/search") || pathname.includes("/semantic")) {
     return RATE_LIMIT_CONFIGS.search;
@@ -239,6 +246,8 @@ function getConfigKey(pathname: string): string {
     pathname.includes("/embedding")
   )
     return "ai";
+  if (pathname.includes("/brain-sync") || pathname.includes("/active-recall"))
+    return "brain_sync";
   if (pathname.includes("/search") || pathname.includes("/semantic"))
     return "search";
   if (pathname.includes("/snapshots")) return "snapshots";

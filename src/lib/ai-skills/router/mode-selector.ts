@@ -37,6 +37,24 @@ interface OrchestrationSkillMapping {
  * 默认编排 Skill 映射
  */
 const DEFAULT_SKILL_MAPPINGS: Record<string, OrchestrationSkillMapping> = {
+  // Active Recall 主动复习类（v2.5.0 新增）
+  "learn:active_recall_start": {
+    skillId: "active_recall",
+    name: "Brain-Sync 主动复习",
+    minComplexity: "medium",
+    enabled: true,
+  },
+  "query:mastery_stats": {
+    skillId: "get_mastery_stats",
+    name: "复习掌握度统计",
+    enabled: true,
+  },
+  "action:review_preferences": {
+    skillId: "update_review_preferences",
+    name: "复习偏好设置",
+    enabled: true,
+  },
+
   // 学习类
   "learn:review": {
     skillId: "knowledge_review",

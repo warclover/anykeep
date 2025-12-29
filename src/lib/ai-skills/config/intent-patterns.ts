@@ -16,12 +16,42 @@ import type { IntentPattern } from "./types";
  * 从 intent-classifier.ts 的 DEFAULT_RULES 提取并优化
  *
  * 权重分布：
+ * - 90-95: Active Recall 类（Brain-Sync 主动复习）
  * - 85-90: 学习类（高价值、明确意图）
  * - 75-85: 整理/分析类（中高复杂度）
  * - 60-75: 创建类（中等复杂度）
  * - 40-55: 查询/操作类（简单任务）
  */
 export const INTENT_PATTERNS: IntentPattern[] = [
+  // ============================================
+  // Active Recall 主动复习类（权重 90-95，v2.5.0 新增）
+  // ============================================
+  {
+    type: "learn",
+    subType: "active_recall_start",
+    pattern:
+      "开始复习|今日复习|知识同步|脑回路同步|看看要复习什么|有什么要复习",
+    weight: 95,
+    complexity: "complex",
+    description: "开始 Brain-Sync 主动复习会话",
+  },
+  {
+    type: "query",
+    subType: "mastery_stats",
+    pattern: "复习进度|我学了什么|掌握了多少|内化率|记忆曲线|复习统计|掌握度",
+    weight: 85,
+    complexity: "simple",
+    description: "查看复习掌握度统计",
+  },
+  {
+    type: "action",
+    subType: "review_preferences",
+    pattern: "设置复习|复习偏好|调整复习频率|关闭复习|开启复习|复习设置",
+    weight: 82,
+    complexity: "simple",
+    description: "配置复习偏好设置",
+  },
+
   // ============================================
   // 学习类（权重 80-90）
   // ============================================
