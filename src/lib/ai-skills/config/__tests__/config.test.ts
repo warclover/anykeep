@@ -158,7 +158,8 @@ describe("Skill Mappings", () => {
 
     it("should have valid key format", () => {
       for (const mapping of SKILL_MAPPINGS) {
-        expect(mapping.key).toMatch(/^[a-z]+:[a-z*]+$/);
+        // 格式: intent:subtype, 允许字母、下划线和星号
+        expect(mapping.key).toMatch(/^[a-z]+:[a-z_*]+$/);
       }
     });
 

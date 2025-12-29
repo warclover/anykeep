@@ -77,12 +77,12 @@ describe("useBatchTags", () => {
         );
       });
 
-      expect(mockFetch).toHaveBeenCalledWith("/api/bookmarks/batch-tags", {
+      expect(mockFetch).toHaveBeenCalledWith("/api/v1/bookmarks/batch/tags", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "add",
-          bookmarkIds: [1, 2, 3],
+          ids: [1, 2, 3],
           tags: ["tag1", "tag2"],
         }),
         credentials: "include",
@@ -163,12 +163,12 @@ describe("useBatchTags", () => {
         await result.current.batchRemoveTags([1, 2], ["oldTag"]);
       });
 
-      expect(mockFetch).toHaveBeenCalledWith("/api/bookmarks/batch-tags", {
+      expect(mockFetch).toHaveBeenCalledWith("/api/v1/bookmarks/batch/tags", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "remove",
-          bookmarkIds: [1, 2],
+          ids: [1, 2],
           tags: ["oldTag"],
         }),
         credentials: "include",

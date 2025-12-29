@@ -3,9 +3,13 @@
  * Spec: md-reader-upgrade / REQ-4, REQ-5
  */
 
-import { renderHook, act } from "@testing-library/react";
+import { renderHook, act, waitFor } from "@testing-library/react";
 import { useReadingPosition } from "../use-reading-position";
 import type { ReadingPosition } from "../../../types/reader";
+
+// Configure React 18 act environment
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
 // Mock localStorage
 const mockLocalStorage = (() => {
@@ -81,7 +85,7 @@ describe("useReadingPosition", () => {
       expect(result.current.savedPosition).toBeNull();
     });
 
-    it("从 localStorage 加载保存的位置", () => {
+    it("从 localStorage 加载保存的位置", async () => {
       const savedPosition: ReadingPosition = {
         scrollTop: 500,
         progress: 50,
@@ -94,10 +98,13 @@ describe("useReadingPosition", () => {
 
       const { result } = renderHook(() => useReadingPosition(defaultOptions));
 
-      expect(result.current.savedPosition).toEqual(savedPosition);
+      // Hook 使用 requestAnimationFrame 异步设置 savedPosition，需要等待
+      await waitFor(() => {
+        expect(result.current.savedPosition).toEqual(savedPosition);
+      });
     });
 
-    it("clearPosition 清除保存位置", () => {
+    it("clearPosition 清除保存位置", async () => {
       const savedPosition: ReadingPosition = {
         scrollTop: 500,
         progress: 50,
@@ -109,6 +116,11 @@ describe("useReadingPosition", () => {
       );
 
       const { result } = renderHook(() => useReadingPosition(defaultOptions));
+
+      // 等待 localStorage 数据加载完成
+      await waitFor(() => {
+        expect(result.current.savedPosition).not.toBeNull();
+      });
 
       act(() => {
         result.current.clearPosition();
