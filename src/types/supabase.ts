@@ -3607,6 +3607,147 @@ export type Database = {
         ];
       };
       /**
+       * 综述报告表 - 存储主题合成器生成的综述报告
+       */
+      synthesis_reports: {
+        Row: {
+          id: string;
+          user_id: string;
+          title: string;
+          /** 来源类型: folder, tag, selection, ai_recommend */
+          source_type: string;
+          source_id: string | null;
+          source_bookmark_ids: string[] | null;
+          /** 深度模式: quick, standard, academic */
+          depth_mode: string;
+          overview: string | null;
+          consensus: Json | null;
+          divergence: Json | null;
+          blind_spots: Json | null;
+          full_markdown: string | null;
+          embedding: number[] | null;
+          /** 状态: pending, generating, completed, failed, cancelled */
+          status: string;
+          error_message: string | null;
+          source_count: number;
+          word_count: number;
+          created_at: string;
+          updated_at: string;
+          completed_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          title: string;
+          source_type: string;
+          source_id?: string | null;
+          source_bookmark_ids?: string[] | null;
+          depth_mode: string;
+          overview?: string | null;
+          consensus?: Json | null;
+          divergence?: Json | null;
+          blind_spots?: Json | null;
+          full_markdown?: string | null;
+          embedding?: number[] | null;
+          status?: string;
+          error_message?: string | null;
+          source_count?: number;
+          word_count?: number;
+          created_at?: string;
+          updated_at?: string;
+          completed_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          title?: string;
+          source_type?: string;
+          source_id?: string | null;
+          source_bookmark_ids?: string[] | null;
+          depth_mode?: string;
+          overview?: string | null;
+          consensus?: Json | null;
+          divergence?: Json | null;
+          blind_spots?: Json | null;
+          full_markdown?: string | null;
+          embedding?: number[] | null;
+          status?: string;
+          error_message?: string | null;
+          source_count?: number;
+          word_count?: number;
+          created_at?: string;
+          updated_at?: string;
+          completed_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "synthesis_reports_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      /**
+       * 综述用户标注表 - 存储用户在综述内容上的高亮和备注
+       */
+      synthesis_highlights: {
+        Row: {
+          id: string;
+          report_id: string;
+          user_id: string;
+          /** 标注的文字内容 */
+          content: string;
+          /** 用户备注（可选） */
+          note: string | null;
+          /** 标注颜色: yellow, green, blue, pink */
+          color: string;
+          /** 位置信息: {start: number, end: number, section: string, itemIndex?: number} */
+          position: Json;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          report_id: string;
+          user_id: string;
+          content: string;
+          note?: string | null;
+          color?: string;
+          position: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          report_id?: string;
+          user_id?: string;
+          content?: string;
+          note?: string | null;
+          color?: string;
+          position?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "synthesis_highlights_report_id_fkey";
+            columns: ["report_id"];
+            isOneToOne: false;
+            referencedRelation: "synthesis_reports";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "synthesis_highlights_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      /**
        * 每周复习队列快照表 - 追踪本周待复习和已完成的 Flashcards
        */
       weekly_review_queue: {
@@ -4464,6 +4605,11 @@ export type Database = {
         Returns: Json;
       };
       get_user_trust_mode: { Args: { p_user_id: string }; Returns: Json };
+      /** 获取用户综述推荐偏好 */
+      get_synthesis_recommend_preferences: {
+        Args: { p_user_id: string };
+        Returns: Json;
+      };
       get_vision_tags: { Args: { vision_data: Json }; Returns: string[] };
       get_wechat_article_stats: {
         Args: { p_user_id: string };
@@ -4784,6 +4930,16 @@ export type Database = {
       };
       update_user_trust_mode: {
         Args: { p_reason?: string; p_trust_mode: string; p_user_id: string };
+        Returns: Json;
+      };
+      /** 更新用户综述推荐偏好 */
+      update_synthesis_recommend_preferences: {
+        Args: {
+          p_user_id: string;
+          p_enabled?: boolean | null;
+          p_dismissed_topic?: string | null;
+          p_increment_daily_count?: boolean;
+        };
         Returns: Json;
       };
       upsert_knowledge_link: {

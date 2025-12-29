@@ -22,7 +22,7 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-type ExportFormat = "markdown" | "html" | "json" | "pdf";
+type ExportFormat = "markdown" | "html" | "json";
 
 /**
  * 生成 Markdown 格式导出内容
@@ -197,7 +197,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const searchParams = request.nextUrl.searchParams;
     const format = (searchParams.get("format") || "markdown") as ExportFormat;
 
-    if (!["markdown", "html", "json", "pdf"].includes(format)) {
+    if (!["markdown", "html", "json"].includes(format)) {
       return NextResponse.json(
         {
           error: "Invalid export format",
@@ -256,13 +256,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         contentType = "application/json; charset=utf-8";
         extension = "json";
         break;
-
-      case "pdf":
-        // PDF 导出需要额外的库支持，暂时返回不支持
-        return NextResponse.json(
-          { error: "PDF export not yet implemented", code: "NOT_IMPLEMENTED" },
-          { status: 501 },
-        );
 
       default:
         content = generateMarkdown(report);

@@ -7,6 +7,8 @@
  * @since 2025-12-29
  */
 
+import { OVERVIEW_PREVIEW_MAX_LENGTH } from "./constants";
+
 // ============================================
 // 枚举类型
 // ============================================
@@ -617,7 +619,7 @@ export function mapRowToReport(row: SynthesisReportRow): SynthesisReport {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     completedAt: row.completed_at,
-    overviewPreview: (row.overview || "").slice(0, 200),
+    overviewPreview: (row.overview || "").slice(0, OVERVIEW_PREVIEW_MAX_LENGTH),
     consensusCount: row.consensus?.length || 0,
     divergenceCount: row.divergence?.length || 0,
     blindSpotCount: row.blind_spots?.length || 0,
@@ -640,7 +642,7 @@ export function mapRowToSummary(
     status: row.status as SynthesisStatus,
     createdAt: row.created_at,
     completedAt: row.completed_at,
-    overviewPreview: (row.overview || "").slice(0, 200),
+    overviewPreview: (row.overview || "").slice(0, OVERVIEW_PREVIEW_MAX_LENGTH),
     consensusCount: row.consensus?.length || 0,
     divergenceCount: row.divergence?.length || 0,
     blindSpotCount: row.blind_spots?.length || 0,

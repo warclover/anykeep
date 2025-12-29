@@ -12,6 +12,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
 import {
   toHighlight,
   type UpdateHighlightRequest,
@@ -42,9 +43,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     }
 
     // 查询标注
-    // Note: synthesis_highlights 表类型待重新生成，使用类型断言
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from("synthesis_highlights")
       .select("*")
       .eq("id", highlightId)
@@ -59,7 +58,10 @@ export async function GET(_request: NextRequest, context: RouteContext) {
 
     return NextResponse.json({ data: highlight });
   } catch (error) {
-    console.error("[Highlight API] Unexpected error:", error);
+    logger.error(
+      { error: error instanceof Error ? error.message : String(error) },
+      "Highlight API: Unexpected error in GET",
+    );
     return NextResponse.json({ error: "服务器错误" }, { status: 500 });
   }
 }
@@ -103,9 +105,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     }
 
     // 更新标注
-    // Note: synthesis_highlights 表类型待重新生成，使用 any 类型断言
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from("synthesis_highlights")
       .update(updateData)
       .eq("id", highlightId)
@@ -117,7 +117,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       if (error.code === "PGRST116") {
         return NextResponse.json({ error: "标注不存在" }, { status: 404 });
       }
-      console.error("[Highlight API] Update error:", error);
+      logger.error({ error, highlightId }, "Highlight API: Update error");
       return NextResponse.json({ error: "更新失败" }, { status: 500 });
     }
 
@@ -125,7 +125,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
     return NextResponse.json({ data: highlight });
   } catch (error) {
-    console.error("[Highlight API] Unexpected error:", error);
+    logger.error(
+      { error: error instanceof Error ? error.message : String(error) },
+      "Highlight API: Unexpected error in PATCH",
+    );
     return NextResponse.json({ error: "服务器错误" }, { status: 500 });
   }
 }
@@ -150,22 +153,23 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
     }
 
     // 删除标注
-    // Note: synthesis_highlights 表类型待重新生成，使用 any 类型断言
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from("synthesis_highlights")
       .delete()
       .eq("id", highlightId)
       .eq("user_id", user.id);
 
     if (error) {
-      console.error("[Highlight API] Delete error:", error);
+      logger.error({ error, highlightId }, "Highlight API: Delete error");
       return NextResponse.json({ error: "删除失败" }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("[Highlight API] Unexpected error:", error);
+    logger.error(
+      { error: error instanceof Error ? error.message : String(error) },
+      "Highlight API: Unexpected error in DELETE",
+    );
     return NextResponse.json({ error: "服务器错误" }, { status: 500 });
   }
 }

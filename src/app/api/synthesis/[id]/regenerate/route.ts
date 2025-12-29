@@ -55,20 +55,9 @@ export async function POST(_request: NextRequest, context: RouteContext) {
       );
     }
 
-    // 检查状态
-    const allowedStatuses = ["failed", "cancelled"];
-    if (!allowedStatuses.includes(report.status)) {
-      return NextResponse.json(
-        {
-          error: "Only failed or cancelled reports can be regenerated",
-          code: "INVALID_STATUS",
-        },
-        { status: 400 },
-      );
-    }
-
-    // 重置状态为 pending
-    const { error: updateError } = await supabase
+    // 使用乐观锁更新状态：将状态检查放入 WHERE 子句
+    // 这样可以避免 TOCTOU 竞态条件
+    const { data: updated, error: updateError } = await supabase
       .from("synthesis_reports")
       .update({
         status: "pending",
@@ -76,13 +65,35 @@ export async function POST(_request: NextRequest, context: RouteContext) {
         updated_at: new Date().toISOString(),
       })
       .eq("id", id)
-      .eq("user_id", user.id);
+      .eq("user_id", user.id)
+      .in("status", ["failed", "cancelled"]) // 乐观锁：只更新符合条件的记录
+      .select("id")
+      .maybeSingle();
 
     if (updateError) {
       logger.error({ error: updateError }, "Failed to reset synthesis status");
       return NextResponse.json(
         { error: "Failed to reset status", code: "UPDATE_ERROR" },
         { status: 500 },
+      );
+    }
+
+    // 如果没有更新任何记录，说明状态已变更
+    if (!updated) {
+      // 重新获取当前状态
+      const { data: currentReport } = await supabase
+        .from("synthesis_reports")
+        .select("status")
+        .eq("id", id)
+        .single();
+
+      return NextResponse.json(
+        {
+          error: "Only failed or cancelled reports can be regenerated",
+          code: "INVALID_STATUS",
+          currentStatus: currentReport?.status || report.status,
+        },
+        { status: 400 },
       );
     }
 

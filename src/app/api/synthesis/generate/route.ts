@@ -236,11 +236,28 @@ export async function POST(request: NextRequest) {
           return;
         }
 
-        // 更新状态为 generating
-        await supabase
+        // 使用乐观锁更新状态：只有 pending 状态才能开始生成
+        // 这样可以避免 TOCTOU 竞态条件
+        const { data: updated } = await supabase
           .from("synthesis_reports")
           .update({ status: "generating" })
-          .eq("id", reportId);
+          .eq("id", reportId)
+          .eq("status", "pending") // 乐观锁：只更新 pending 状态的记录
+          .select("id")
+          .maybeSingle();
+
+        // 如果没有更新任何记录，说明状态已变更（可能被另一个请求抢占）
+        if (!updated) {
+          sendSSEEvent(controller, encoder, {
+            type: "error",
+            data: {
+              code: "ALREADY_GENERATING",
+              message: "Report generation was started by another request",
+            },
+          });
+          controller.close();
+          return;
+        }
 
         logger.info(
           { reportId, userId: user.id, depthMode: report.depth_mode },

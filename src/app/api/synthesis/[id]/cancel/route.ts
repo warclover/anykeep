@@ -53,34 +53,44 @@ export async function POST(_request: NextRequest, context: RouteContext) {
       );
     }
 
-    // 只能取消进行中的任务
-    const cancellableStatuses = ["pending", "generating"];
-    if (!cancellableStatuses.includes(report.status)) {
-      return NextResponse.json(
-        {
-          error: "Only pending or generating reports can be cancelled",
-          code: "INVALID_STATUS",
-          currentStatus: report.status,
-        },
-        { status: 400 },
-      );
-    }
-
-    // 更新状态为已取消
-    const { error: updateError } = await supabase
+    // 使用乐观锁更新状态：将状态检查放入 WHERE 子句
+    // 这样可以避免 TOCTOU 竞态条件
+    const { data: updated, error: updateError } = await supabase
       .from("synthesis_reports")
       .update({
         status: "cancelled",
         updated_at: new Date().toISOString(),
       })
       .eq("id", id)
-      .eq("user_id", user.id);
+      .eq("user_id", user.id)
+      .in("status", ["pending", "generating"]) // 乐观锁：只更新符合条件的记录
+      .select("id")
+      .maybeSingle();
 
     if (updateError) {
       logger.error({ error: updateError }, "Failed to cancel synthesis");
       return NextResponse.json(
         { error: "Failed to cancel", code: "UPDATE_ERROR" },
         { status: 500 },
+      );
+    }
+
+    // 如果没有更新任何记录，说明状态已变更
+    if (!updated) {
+      // 重新获取当前状态
+      const { data: currentReport } = await supabase
+        .from("synthesis_reports")
+        .select("status")
+        .eq("id", id)
+        .single();
+
+      return NextResponse.json(
+        {
+          error: "Only pending or generating reports can be cancelled",
+          code: "INVALID_STATUS",
+          currentStatus: currentReport?.status || report.status,
+        },
+        { status: 400 },
       );
     }
 

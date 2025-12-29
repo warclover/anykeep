@@ -11,6 +11,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
 import {
   toHighlight,
   toHighlightRow,
@@ -42,9 +43,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     }
 
     // 查询标注
-    // Note: synthesis_highlights 表类型待重新生成，使用 any 类型断言
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from("synthesis_highlights")
       .select("*")
       .eq("report_id", reportId)
@@ -52,7 +51,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       .order("created_at", { ascending: true });
 
     if (error) {
-      console.error("[Highlights API] Query error:", error);
+      logger.error({ error, reportId }, "Highlights API: Query error");
       return NextResponse.json({ error: "查询失败" }, { status: 500 });
     }
 
@@ -63,7 +62,10 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       total: highlights.length,
     });
   } catch (error) {
-    console.error("[Highlights API] Unexpected error:", error);
+    logger.error(
+      { error: error instanceof Error ? error.message : String(error) },
+      "Highlights API: Unexpected error in GET",
+    );
     return NextResponse.json({ error: "服务器错误" }, { status: 500 });
   }
 }
@@ -114,17 +116,15 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
 
     // 创建标注
-    // Note: synthesis_highlights 表类型待重新生成，使用 any 类型断言
     const row = toHighlightRow(body, reportId, user.id);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from("synthesis_highlights")
       .insert(row)
       .select()
       .single();
 
     if (error) {
-      console.error("[Highlights API] Insert error:", error);
+      logger.error({ error, reportId }, "Highlights API: Insert error");
       return NextResponse.json({ error: "创建失败" }, { status: 500 });
     }
 
@@ -132,7 +132,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     return NextResponse.json({ data: highlight }, { status: 201 });
   } catch (error) {
-    console.error("[Highlights API] Unexpected error:", error);
+    logger.error(
+      { error: error instanceof Error ? error.message : String(error) },
+      "Highlights API: Unexpected error in POST",
+    );
     return NextResponse.json({ error: "服务器错误" }, { status: 500 });
   }
 }

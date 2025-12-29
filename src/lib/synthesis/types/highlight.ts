@@ -5,6 +5,8 @@
  * @since 2025-12-29
  */
 
+import type { Json } from "@/types/supabase";
+
 // ============================================================================
 // 标注颜色
 // ============================================================================
@@ -118,7 +120,7 @@ export interface SynthesisHighlightRow {
   content: string;
   note: string | null;
   color: string;
-  position: Record<string, unknown>;
+  position: Json;
   created_at: string;
   updated_at: string;
 }
@@ -141,17 +143,27 @@ export function toHighlight(row: SynthesisHighlightRow): SynthesisHighlight {
   };
 }
 
+/**
+ * 创建标注行数据（用于插入数据库）
+ */
 export function toHighlightRow(
   highlight: CreateHighlightRequest,
   reportId: string,
   userId: string,
-): Omit<SynthesisHighlightRow, "id" | "created_at" | "updated_at"> {
+): {
+  report_id: string;
+  user_id: string;
+  content: string;
+  note: string | null;
+  color: string;
+  position: Json;
+} {
   return {
     report_id: reportId,
     user_id: userId,
     content: highlight.content,
     note: highlight.note || null,
     color: highlight.color || "yellow",
-    position: highlight.position as unknown as Record<string, unknown>,
+    position: highlight.position as unknown as Json,
   };
 }
