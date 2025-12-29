@@ -31,6 +31,7 @@ import {
   Pin,
   Download,
   Sparkles,
+  FileText,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -82,6 +83,8 @@ interface FolderActionMenuProps {
   ) => void;
   /** 导出文件夹内书签回调 */
   onExportFolder?: (folderId: number) => void;
+  /** 生成综述回调 */
+  onCreateSynthesis?: (folderId: number, folderName: string) => void;
   /** 打开 AI 助手回调（传入当前文件夹上下文） */
   onOpenAIAssistant?: (folder: FolderWithCount) => void;
   /**
@@ -147,6 +150,7 @@ export function FolderActionMenu({
   onFolderRenamed,
   onFolderMerged,
   onExportFolder,
+  onCreateSynthesis,
   onOpenAIAssistant,
   initialLockStatus,
 }: FolderActionMenuProps) {
@@ -518,6 +522,21 @@ export function FolderActionMenu({
             >
               <Download className="size-4 mr-2" />
               导出
+              <span className="ml-auto text-xs">({folder.bookmark_count})</span>
+            </DropdownMenuItem>
+          )}
+
+          {/* 生成综述 */}
+          {onCreateSynthesis && hasBookmarks && !isSystemFolder && (
+            <DropdownMenuItem
+              onClick={(e) => {
+                e.stopPropagation();
+                onCreateSynthesis(folder.id, folder.name);
+              }}
+              className="text-indigo-600 dark:text-indigo-400"
+            >
+              <FileText className="size-4 mr-2" />
+              生成综述
               <span className="ml-auto text-xs">({folder.bookmark_count})</span>
             </DropdownMenuItem>
           )}

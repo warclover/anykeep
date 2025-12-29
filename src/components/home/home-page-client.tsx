@@ -74,6 +74,16 @@ import { HomeToolbar } from "./home-toolbar";
 import { HomeDialogs } from "./home-dialogs";
 import { SmartListView } from "@/components/smart-list";
 import { BatchTagDialog } from "@/components/batch/batch-tag-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // 扩展的书签类型（包含文件夹信息）
 type BookmarkWithFolder = Bookmark & {
@@ -356,6 +366,10 @@ export function HomePageClient({
   // 批量标签对话框状态
   const [showBatchTagDialog, setShowBatchTagDialog] = useState(false);
 
+  // 综述确认对话框状态
+  const [showSynthesisDialog, setShowSynthesisDialog] = useState(false);
+  const [isCreatingSynthesis, setIsCreatingSynthesis] = useState(false);
+
   // 批量选择模式
   const {
     isSelectionMode,
@@ -455,6 +469,38 @@ export function HomePageClient({
     selectedIds,
     exitSelectionMode,
   });
+
+  // 创建综述
+  const handleCreateSynthesis = useCallback(async () => {
+    if (selectedIds.size < 3) return;
+
+    setIsCreatingSynthesis(true);
+    try {
+      const response = await fetch("/api/synthesis", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceType: "selection",
+          bookmarkIds: Array.from(selectedIds),
+          depthMode: "standard",
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("创建失败");
+      }
+
+      const { data } = await response.json();
+      // 跳转到生成页面
+      router.push(`/synthesis/${data.id}?generate=true`);
+    } catch (error) {
+      console.error("Create synthesis error:", error);
+      toast.error("创建综述失败");
+    } finally {
+      setIsCreatingSynthesis(false);
+      setShowSynthesisDialog(false);
+    }
+  }, [selectedIds, router]);
 
   // ===== SSR 数据同步 =====
   // 当 initialBookmarks 更新时（URL 参数变化导致 SSR 重新获取），同步到 SWR state
@@ -658,6 +704,7 @@ export function HomePageClient({
         onOpenBrowserImportDialog={openBrowserImportDialog}
         onOpenExportDialog={openExportDialog}
         onOpenTagDialog={() => setShowBatchTagDialog(true)}
+        onOpenSynthesisDialog={() => setShowSynthesisDialog(true)}
         isBrowserPlatform={isBrowserPlatform}
         isTrashFolder={isTrashFolder}
         isSnapshotEnabled={isSnapshotEnabled}
@@ -845,6 +892,41 @@ export function HomePageClient({
           });
         }}
       />
+
+      {/* 综述确认对话框 */}
+      <AlertDialog
+        open={showSynthesisDialog}
+        onOpenChange={setShowSynthesisDialog}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>生成主题综述</AlertDialogTitle>
+            <AlertDialogDescription>
+              将为选中的 {selectedIds.size} 个书签生成 AI 综述报告。
+              报告将包含概述、共识、分歧点和知识盲区分析。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isCreatingSynthesis}>
+              取消
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleCreateSynthesis}
+              disabled={isCreatingSynthesis}
+              className="bg-indigo-600 hover:bg-indigo-700"
+            >
+              {isCreatingSynthesis ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  创建中...
+                </>
+              ) : (
+                "开始生成"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

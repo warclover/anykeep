@@ -17,6 +17,7 @@ import {
   Loader2,
   Tag,
   Download,
+  FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -47,6 +48,8 @@ export interface HomeBatchToolbarProps {
   onOpenTagDialog?: () => void;
   /** 打开导出对话框回调 */
   onOpenExportDialog?: () => void;
+  /** 打开综述对话框回调 */
+  onOpenSynthesisDialog?: () => void;
   /** 批量创建快照回调 */
   onBatchCreateSnapshot?: () => void;
 }
@@ -67,6 +70,7 @@ export const HomeBatchToolbar = memo(function HomeBatchToolbar({
   onOpenMoveDialog,
   onOpenTagDialog,
   onOpenExportDialog,
+  onOpenSynthesisDialog,
   onBatchCreateSnapshot,
 }: HomeBatchToolbarProps) {
   // 无选中项时不渲染
@@ -156,6 +160,23 @@ export const HomeBatchToolbar = memo(function HomeBatchToolbar({
           >
             <Download className="size-4 mr-1.5" />
             导出
+          </Button>
+        )}
+
+        {/* 综述按钮 */}
+        {onOpenSynthesisDialog && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onOpenSynthesisDialog}
+            disabled={selectedCount < 3}
+            title={
+              selectedCount < 3 ? "至少选择 3 个书签才能生成综述" : undefined
+            }
+            className="text-indigo-600 hover:text-indigo-700 border-indigo-200 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:text-indigo-300 dark:border-indigo-800 dark:hover:bg-indigo-900/20"
+          >
+            <FileText className="size-4 mr-1.5" />
+            综述
           </Button>
         )}
 

@@ -7,7 +7,7 @@
 
 import { useState, useCallback, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, CheckSquare, Filter } from "lucide-react";
+import { ArrowLeft, CheckSquare, Filter, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -20,6 +20,16 @@ import { BatchToolbar } from "./batch-toolbar";
 import { BatchBookmarkList } from "./batch-bookmark-list";
 import { BatchTagDialog } from "./batch-tag-dialog";
 import { ExportDialogV2 } from "@/components/export";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useSelectionMode } from "@/hooks/core/use-selection-mode";
 import { useBookmarksSWR } from "@/lib/cache/hooks/use-bookmarks-swr";
 import { BATCH_TEXT } from "./constants";
@@ -73,6 +83,10 @@ export function BatchPageClient() {
 
   // 导出对话框
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+
+  // 综述确认对话框
+  const [isSynthesisDialogOpen, setIsSynthesisDialogOpen] = useState(false);
+  const [isCreatingSynthesis, setIsCreatingSynthesis] = useState(false);
 
   // 书签数据
   const {
@@ -134,6 +148,38 @@ export function BatchPageClient() {
     },
     [updateCacheItem],
   );
+
+  // 创建综述
+  const handleCreateSynthesis = useCallback(async () => {
+    if (selectedIds.size < 3) return;
+
+    setIsCreatingSynthesis(true);
+    try {
+      const response = await fetch("/api/synthesis", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceType: "selection",
+          bookmarkIds: Array.from(selectedIds),
+          depthMode: "standard",
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("创建失败");
+      }
+
+      const { data } = await response.json();
+      // 跳转到生成页面
+      router.push(`/synthesis/${data.id}?generate=true`);
+    } catch (error) {
+      console.error("Create synthesis error:", error);
+      // TODO: 显示错误提示
+    } finally {
+      setIsCreatingSynthesis(false);
+      setIsSynthesisDialogOpen(false);
+    }
+  }, [selectedIds, router]);
 
   // 监听 Esc 键清空选择
   useEffect(() => {
@@ -205,6 +251,7 @@ export function BatchPageClient() {
           onClearSelection={deselectAll}
           onOpenTagDialog={() => setIsTagDialogOpen(true)}
           onOpenExportDialog={() => setIsExportDialogOpen(true)}
+          onOpenSynthesisDialog={() => setIsSynthesisDialogOpen(true)}
         />
       )}
 
@@ -259,6 +306,41 @@ export function BatchPageClient() {
         bookmarks={selectedBookmarks as BookmarkWithFolder[]}
         onSuccess={() => setIsExportDialogOpen(false)}
       />
+
+      {/* 综述确认对话框 */}
+      <AlertDialog
+        open={isSynthesisDialogOpen}
+        onOpenChange={setIsSynthesisDialogOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>生成主题综述</AlertDialogTitle>
+            <AlertDialogDescription>
+              将为选中的 {selectedIds.size} 个书签生成 AI 综述报告。
+              报告将包含概述、共识、分歧点和知识盲区分析。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isCreatingSynthesis}>
+              取消
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleCreateSynthesis}
+              disabled={isCreatingSynthesis}
+              className="bg-indigo-600 hover:bg-indigo-700"
+            >
+              {isCreatingSynthesis ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  创建中...
+                </>
+              ) : (
+                "开始生成"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

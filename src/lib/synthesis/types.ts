@@ -1,0 +1,648 @@
+/**
+ * 主题合成器 (Thematic Synthesizer) 类型定义
+ *
+ * 定义综述报告、四维结构化输出、SSE 事件等核心类型
+ *
+ * @version 1.0.0
+ * @since 2025-12-29
+ */
+
+// ============================================
+// 枚举类型
+// ============================================
+
+/**
+ * 综述来源类型
+ */
+export type SynthesisSourceType =
+  | "folder" // 文件夹
+  | "tag" // 标签
+  | "selection" // 手动选择
+  | "ai_recommend"; // AI 推荐
+
+/**
+ * 综述深度模式
+ */
+export type SynthesisDepthMode =
+  | "quick" // 快读模式：1-2 分钟, 3-5 句概述
+  | "standard" // 标准模式：3-5 分钟, 完整四维输出
+  | "academic"; // 学术模式：5-8 分钟, 深度分析
+
+/**
+ * 综述状态
+ */
+export type SynthesisStatus =
+  | "pending" // 等待中
+  | "generating" // 生成中
+  | "completed" // 已完成
+  | "failed" // 失败
+  | "cancelled"; // 已取消
+
+// ============================================
+// 核心结构类型
+// ============================================
+
+/**
+ * 来源书签引用
+ */
+export interface SourceReference {
+  /** 书签 ID */
+  id: string;
+  /** 书签标题 */
+  title: string;
+  /** 支持引文（可选） */
+  quote?: string;
+}
+
+/**
+ * 共识点结构
+ *
+ * 表示多个来源都认同的观点
+ */
+export interface ConsensusPoint {
+  /** 共识观点内容 */
+  point: string;
+  /** 置信度 (0-1) */
+  confidence: number;
+  /** 支持此观点的来源 */
+  sources: SourceReference[];
+}
+
+/**
+ * 分歧点结构
+ *
+ * 表示不同来源之间的观点冲突
+ */
+export interface DivergencePoint {
+  /** 分歧主题 */
+  topic: string;
+  /** 观点 A */
+  point_a: string;
+  /** 支持观点 A 的来源 */
+  sources_a: SourceReference[];
+  /** 观点 B */
+  point_b: string;
+  /** 支持观点 B 的来源 */
+  sources_b: SourceReference[];
+  /** AI 客观分析（不做价值判断） */
+  analysis: string;
+}
+
+/**
+ * 知识盲区结构
+ *
+ * 表示用户收藏中尚未覆盖但相关的领域
+ */
+export interface BlindSpot {
+  /** 盲区主题 */
+  topic: string;
+  /** 建议补充方向 */
+  suggestion: string;
+  /** 建议搜索关键词 */
+  search_keywords: string[];
+  /** 相关书签（可选） */
+  related_bookmarks?: SourceReference[];
+}
+
+// ============================================
+// 综述报告类型
+// ============================================
+
+/**
+ * 综述报告摘要（列表页使用）
+ */
+export interface SynthesisReportSummary {
+  /** 报告 ID */
+  id: string;
+  /** 报告标题 */
+  title: string;
+  /** 来源类型 */
+  sourceType: SynthesisSourceType;
+  /** 深度模式 */
+  depthMode: SynthesisDepthMode;
+  /** 来源书签数量 */
+  sourceCount: number;
+  /** 生成字数 */
+  wordCount: number;
+  /** 状态 */
+  status: SynthesisStatus;
+  /** 创建时间 */
+  createdAt: string;
+  /** 完成时间 */
+  completedAt: string | null;
+  /** 概述预览（前 200 字） */
+  overviewPreview: string;
+  /** 共识点数量 */
+  consensusCount: number;
+  /** 分歧点数量 */
+  divergenceCount: number;
+  /** 盲区数量 */
+  blindSpotCount: number;
+}
+
+/**
+ * 综述报告完整数据
+ */
+export interface SynthesisReport extends SynthesisReportSummary {
+  /** 用户 ID */
+  userId: string;
+  /** 来源 ID（文件夹 ID 或标签 ID） */
+  sourceId: string | null;
+  /** 来源书签 ID 列表（手动选择时使用） */
+  sourceBookmarkIds: string[] | null;
+  /** 概述内容 */
+  overview: string;
+  /** 核心共识列表 */
+  consensus: ConsensusPoint[];
+  /** 观点分歧列表 */
+  divergence: DivergencePoint[];
+  /** 知识盲区列表 */
+  blindSpots: BlindSpot[];
+  /** 完整 Markdown 文本 */
+  fullMarkdown: string;
+  /** 错误信息（失败时） */
+  errorMessage: string | null;
+  /** 更新时间 */
+  updatedAt: string;
+  /** 来源书签详情 */
+  sourceBookmarks?: BookmarkSource[];
+}
+
+/**
+ * 书签来源（用于综述生成）
+ */
+export interface BookmarkSource {
+  /** 书签 ID */
+  id: string;
+  /** 书签标题 */
+  title: string;
+  /** 书签 URL */
+  url: string;
+  /** 书签内容/摘要 */
+  content: string;
+  /** AI 生成的摘要 */
+  aiSummary?: string;
+  /** 平台 */
+  platform: string;
+  /** 创建时间 */
+  createdAt: string;
+}
+
+// ============================================
+// SSE 事件类型
+// ============================================
+
+/**
+ * 进度事件数据
+ */
+export interface SynthesisProgressData {
+  /** 当前步骤 ID */
+  step: string;
+  /** 进度百分比 (0-100) */
+  percent: number;
+  /** 进度消息 */
+  message: string;
+}
+
+/**
+ * 概述事件数据
+ */
+export interface SynthesisOverviewData {
+  /** 概述内容 */
+  content: string;
+  /** 是否完成 */
+  isComplete: boolean;
+}
+
+/**
+ * 共识事件数据
+ */
+export interface SynthesisConsensusData {
+  /** 共识点列表 */
+  items: ConsensusPoint[];
+  /** 是否完成 */
+  isComplete: boolean;
+}
+
+/**
+ * 分歧事件数据
+ */
+export interface SynthesisDivergenceData {
+  /** 分歧点列表 */
+  items: DivergencePoint[];
+  /** 是否完成 */
+  isComplete: boolean;
+}
+
+/**
+ * 盲区事件数据
+ */
+export interface SynthesisBlindSpotData {
+  /** 盲区列表 */
+  items: BlindSpot[];
+  /** 是否完成 */
+  isComplete: boolean;
+}
+
+/**
+ * 完成事件数据
+ */
+export interface SynthesisCompleteData {
+  /** 报告 ID */
+  reportId: string;
+  /** 生成字数 */
+  wordCount: number;
+}
+
+/**
+ * 错误事件数据
+ */
+export interface SynthesisErrorData {
+  /** 错误消息 */
+  message: string;
+  /** 错误代码 */
+  code: string;
+}
+
+/**
+ * SSE 事件联合类型
+ */
+export type SynthesisSSEEvent =
+  | { type: "progress"; data: SynthesisProgressData }
+  | { type: "overview"; data: SynthesisOverviewData }
+  | { type: "consensus"; data: SynthesisConsensusData }
+  | { type: "divergence"; data: SynthesisDivergenceData }
+  | { type: "blindspot"; data: SynthesisBlindSpotData }
+  | { type: "complete"; data: SynthesisCompleteData }
+  | { type: "error"; data: SynthesisErrorData };
+
+// ============================================
+// API 请求/响应类型
+// ============================================
+
+/**
+ * 创建综述请求
+ */
+export interface CreateSynthesisRequest {
+  /** 来源类型 */
+  sourceType: SynthesisSourceType;
+  /** 来源 ID（文件夹 ID 或标签 ID） */
+  sourceId?: string;
+  /** 书签 ID 列表（手动选择时使用） */
+  bookmarkIds?: string[];
+  /** 深度模式 */
+  depthMode: SynthesisDepthMode;
+  /** 自定义标题（可选） */
+  title?: string;
+}
+
+/**
+ * 综述列表响应
+ */
+export interface SynthesisListResponse {
+  /** 综述报告列表 */
+  data: SynthesisReportSummary[];
+  /** 分页信息 */
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    hasMore: boolean;
+  };
+}
+
+/**
+ * 综述详情响应
+ */
+export interface SynthesisDetailResponse {
+  /** 综述报告完整数据 */
+  data: SynthesisReport;
+}
+
+/**
+ * 综述列表查询参数
+ */
+export interface SynthesisListQuery {
+  /** 来源类型筛选 */
+  sourceType?: SynthesisSourceType | "all";
+  /** 深度模式筛选 */
+  depthMode?: SynthesisDepthMode | "all";
+  /** 状态筛选 */
+  status?: SynthesisStatus | "all";
+  /** 搜索关键词 */
+  search?: string;
+  /** 排序字段 */
+  sort?: "createdAt" | "updatedAt" | "wordCount";
+  /** 排序方向 */
+  order?: "asc" | "desc";
+  /** 页码 */
+  page?: number;
+  /** 每页数量 */
+  pageSize?: number;
+}
+
+/**
+ * 导出格式
+ */
+export type SynthesisExportFormat = "markdown" | "obsidian" | "json" | "html";
+
+/**
+ * 导出请求
+ */
+export interface SynthesisExportRequest {
+  /** 导出格式 */
+  format: SynthesisExportFormat;
+  /** 是否包含来源列表 */
+  includeSources?: boolean;
+  /** 是否包含元数据 */
+  includeMetadata?: boolean;
+}
+
+// ============================================
+// AI 推荐类型
+// ============================================
+
+/**
+ * 综述推荐候选
+ */
+export interface SynthesisRecommendation {
+  /** 推荐 ID */
+  id: string;
+  /** 主题名称 */
+  topic: string;
+  /** 书签数量 */
+  bookmarkCount: number;
+  /** 示例书签 */
+  sampleBookmarks: Array<{ id: string; title: string }>;
+  /** 推荐原因 */
+  reason: string;
+  /** 推荐置信度 (0-1) */
+  confidence: number;
+  /** 推荐来源类型 */
+  sourceType: SynthesisSourceType;
+  /** 来源 ID */
+  sourceId?: string;
+}
+
+// ============================================
+// 合成步骤类型
+// ============================================
+
+/**
+ * 合成步骤 ID
+ */
+export type SynthesisStepId =
+  | "prepare" // 准备阶段：收集源书签、提取内容
+  | "analyze" // 分析阶段：内容聚类、主题提取
+  | "synthesize" // 合成阶段：生成概述和共识
+  | "conflict" // 冲突检测：识别观点分歧
+  | "blindspot"; // 盲区发现：识别知识空白
+
+/**
+ * 合成步骤定义
+ */
+export interface SynthesisStepDefinition {
+  /** 步骤 ID */
+  id: SynthesisStepId;
+  /** 步骤名称 */
+  name: string;
+  /** 步骤描述 */
+  description: string;
+  /** 权重（用于计算进度） */
+  weight: number;
+}
+
+/**
+ * 预定义的合成步骤
+ */
+export const SYNTHESIS_STEPS: SynthesisStepDefinition[] = [
+  {
+    id: "prepare",
+    name: "准备阶段",
+    description: "收集源书签、提取内容、预处理",
+    weight: 15,
+  },
+  {
+    id: "analyze",
+    name: "分析阶段",
+    description: "内容聚类、主题提取、关系建立",
+    weight: 20,
+  },
+  {
+    id: "synthesize",
+    name: "合成阶段",
+    description: "生成概述和共识点",
+    weight: 30,
+  },
+  {
+    id: "conflict",
+    name: "冲突检测",
+    description: "识别观点分歧、对抗性分析",
+    weight: 20,
+  },
+  {
+    id: "blindspot",
+    name: "盲区发现",
+    description: "识别知识缺口、生成建议",
+    weight: 15,
+  },
+] as const;
+
+// ============================================
+// 错误类型
+// ============================================
+
+/**
+ * 综述错误代码
+ */
+export enum SynthesisErrorCode {
+  /** 来源未找到 */
+  SOURCE_NOT_FOUND = "SOURCE_NOT_FOUND",
+  /** 内容不足 */
+  INSUFFICIENT_CONTENT = "INSUFFICIENT_CONTENT",
+  /** Token 超限 */
+  TOKEN_LIMIT_EXCEEDED = "TOKEN_LIMIT_EXCEEDED",
+  /** LLM 错误 */
+  LLM_ERROR = "LLM_ERROR",
+  /** 生成超时 */
+  GENERATION_TIMEOUT = "GENERATION_TIMEOUT",
+  /** 用户取消 */
+  USER_CANCELLED = "USER_CANCELLED",
+  /** 无效参数 */
+  INVALID_PARAMS = "INVALID_PARAMS",
+  /** 未授权 */
+  UNAUTHORIZED = "UNAUTHORIZED",
+  /** 报告未找到 */
+  REPORT_NOT_FOUND = "REPORT_NOT_FOUND",
+  /** 通用未找到 */
+  NOT_FOUND = "NOT_FOUND",
+  /** 生成失败 */
+  GENERATION_FAILED = "GENERATION_FAILED",
+}
+
+/**
+ * 综述错误类
+ */
+export class SynthesisError extends Error {
+  constructor(
+    message: string,
+    public readonly code: SynthesisErrorCode,
+    public readonly details?: Record<string, unknown>,
+  ) {
+    super(message);
+    this.name = "SynthesisError";
+  }
+}
+
+// ============================================
+// 配置类型
+// ============================================
+
+/**
+ * 深度模式配置
+ */
+export interface DepthModeConfig {
+  /** 模式 ID */
+  id: SynthesisDepthMode;
+  /** 显示名称 */
+  name: string;
+  /** 描述 */
+  description: string;
+  /** 图标 */
+  icon: string;
+  /** 预估时间（分钟） */
+  estimatedMinutes: [number, number];
+  /** 预估成本（元） */
+  estimatedCost: number;
+  /** 概述字数范围 */
+  overviewWords: [number, number];
+  /** 模型层级 */
+  modelTier: "fast" | "standard" | "deep";
+  /** 是否需要付费 */
+  isPaid: boolean;
+}
+
+/**
+ * 预定义的深度模式配置
+ */
+export const DEPTH_MODE_CONFIGS: Record<SynthesisDepthMode, DepthModeConfig> = {
+  quick: {
+    id: "quick",
+    name: "快读模式",
+    description: "3-5 句概要",
+    icon: "⚡",
+    estimatedMinutes: [1, 2],
+    estimatedCost: 0.02,
+    overviewWords: [50, 150],
+    modelTier: "fast",
+    isPaid: false,
+  },
+  standard: {
+    id: "standard",
+    name: "标准模式",
+    description: "完整四维输出",
+    icon: "📖",
+    estimatedMinutes: [3, 5],
+    estimatedCost: 0.05,
+    overviewWords: [300, 500],
+    modelTier: "standard",
+    isPaid: false,
+  },
+  academic: {
+    id: "academic",
+    name: "学术模式",
+    description: "深度分析",
+    icon: "🎓",
+    estimatedMinutes: [5, 8],
+    estimatedCost: 0.15,
+    overviewWords: [800, 1200],
+    modelTier: "deep",
+    isPaid: true,
+  },
+} as const;
+
+// ============================================
+// 数据库类型映射
+// ============================================
+
+/**
+ * 数据库行类型（与 Supabase 表结构对应）
+ *
+ * 注意：Supabase 返回 string 类型，需要在 mapRowToReport 中进行类型断言
+ */
+export interface SynthesisReportRow {
+  id: string;
+  user_id: string;
+  title: string;
+  source_type: string; // SynthesisSourceType 的字符串形式
+  source_id: string | null;
+  source_bookmark_ids: string[] | null;
+  depth_mode: string; // SynthesisDepthMode 的字符串形式
+  overview: string | null;
+  consensus: ConsensusPoint[] | null;
+  divergence: DivergencePoint[] | null;
+  blind_spots: BlindSpot[] | null;
+  full_markdown: string | null;
+  embedding: number[] | null;
+  status: string; // SynthesisStatus 的字符串形式
+  error_message: string | null;
+  source_count: number;
+  word_count: number;
+  created_at: string;
+  updated_at: string;
+  completed_at: string | null;
+}
+
+/**
+ * 将数据库行转换为 API 响应格式
+ */
+export function mapRowToReport(row: SynthesisReportRow): SynthesisReport {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    title: row.title,
+    sourceType: row.source_type as SynthesisSourceType,
+    sourceId: row.source_id,
+    sourceBookmarkIds: row.source_bookmark_ids,
+    depthMode: row.depth_mode as SynthesisDepthMode,
+    overview: row.overview || "",
+    consensus: row.consensus || [],
+    divergence: row.divergence || [],
+    blindSpots: row.blind_spots || [],
+    fullMarkdown: row.full_markdown || "",
+    status: row.status as SynthesisStatus,
+    errorMessage: row.error_message,
+    sourceCount: row.source_count,
+    wordCount: row.word_count,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    completedAt: row.completed_at,
+    overviewPreview: (row.overview || "").slice(0, 200),
+    consensusCount: row.consensus?.length || 0,
+    divergenceCount: row.divergence?.length || 0,
+    blindSpotCount: row.blind_spots?.length || 0,
+  };
+}
+
+/**
+ * 将数据库行转换为摘要格式
+ */
+export function mapRowToSummary(
+  row: SynthesisReportRow,
+): SynthesisReportSummary {
+  return {
+    id: row.id,
+    title: row.title,
+    sourceType: row.source_type as SynthesisSourceType,
+    depthMode: row.depth_mode as SynthesisDepthMode,
+    sourceCount: row.source_count,
+    wordCount: row.word_count,
+    status: row.status as SynthesisStatus,
+    createdAt: row.created_at,
+    completedAt: row.completed_at,
+    overviewPreview: (row.overview || "").slice(0, 200),
+    consensusCount: row.consensus?.length || 0,
+    divergenceCount: row.divergence?.length || 0,
+    blindSpotCount: row.blind_spots?.length || 0,
+  };
+}

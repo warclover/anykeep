@@ -30,6 +30,7 @@ import {
   Download,
   HeartPulse,
   Wand2,
+  BookOpen,
 } from "lucide-react";
 import { useUnreadCount } from "@/hooks/data";
 import { MessageBadge } from "@/components/messages";
@@ -387,6 +388,19 @@ export function AppSidebar() {
                     <BrainCircuit className="size-5" />
                     复习实验室
                   </Link>
+                  <Link
+                    href="/synthesis"
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                      pathname === "/synthesis" ||
+                        pathname?.startsWith("/synthesis/")
+                        ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400"
+                        : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50",
+                    )}
+                  >
+                    <BookOpen className="size-5" />
+                    主题综述
+                  </Link>
                   <SidebarReminder collapsed={false} className="mx-2" />
                 </div>
               </div>
@@ -408,6 +422,25 @@ export function AppSidebar() {
                   </TooltipTrigger>
                   <TooltipContent side="right" sideOffset={8}>
                     <p>复习实验室</p>
+                  </TooltipContent>
+                </Tooltip>
+                <Tooltip delayDuration={100}>
+                  <TooltipTrigger asChild>
+                    <Link
+                      href="/synthesis"
+                      className={cn(
+                        "flex items-center justify-center px-2 py-2 text-sm font-medium rounded-lg transition-colors",
+                        pathname === "/synthesis" ||
+                          pathname?.startsWith("/synthesis/")
+                          ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400"
+                          : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50",
+                      )}
+                    >
+                      <BookOpen className="size-5" />
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" sideOffset={8}>
+                    <p>主题综述</p>
                   </TooltipContent>
                 </Tooltip>
                 <SidebarReminder collapsed={true} />

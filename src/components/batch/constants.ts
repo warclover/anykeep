@@ -36,6 +36,8 @@ export const BATCH_TEXT = {
   MOVE_TO: "移动到",
   /** 导出 */
   EXPORT: "导出",
+  /** 生成综述 */
+  SYNTHESIS: "综述",
   /** 已选择 */
   SELECTED_COUNT: (count: number) => `已选择 ${count} 个`,
   /** 共 N 个书签 */

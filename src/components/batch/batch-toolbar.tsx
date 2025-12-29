@@ -6,7 +6,15 @@
 "use client";
 
 import { memo } from "react";
-import { CheckSquare, Tag, Trash2, X, Loader2, Download } from "lucide-react";
+import {
+  CheckSquare,
+  Tag,
+  Trash2,
+  X,
+  Loader2,
+  Download,
+  FileText,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BATCH_TEXT } from "./constants";
 
@@ -23,6 +31,8 @@ interface BatchToolbarProps {
   onOpenTagDialog: () => void;
   /** 打开导出对话框回调 */
   onOpenExportDialog?: () => void;
+  /** 打开综述对话框回调 */
+  onOpenSynthesisDialog?: () => void;
   /** 批量删除回调 */
   onBatchDelete?: () => void;
   /** 是否正在处理 */
@@ -39,6 +49,7 @@ export const BatchToolbar = memo(function BatchToolbar({
   onClearSelection,
   onOpenTagDialog,
   onOpenExportDialog,
+  onOpenSynthesisDialog,
   onBatchDelete,
   isProcessing = false,
 }: BatchToolbarProps) {
@@ -89,6 +100,23 @@ export const BatchToolbar = memo(function BatchToolbar({
           >
             <Download className="h-4 w-4 mr-1" />
             {BATCH_TEXT.EXPORT}
+          </Button>
+        )}
+
+        {/* 生成综述操作 */}
+        {onOpenSynthesisDialog && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onOpenSynthesisDialog}
+            disabled={selectedCount < 3 || isProcessing}
+            className="h-8 px-2 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
+            title={
+              selectedCount < 3 ? "至少选择 3 个书签才能生成综述" : undefined
+            }
+          >
+            <FileText className="h-4 w-4 mr-1" />
+            {BATCH_TEXT.SYNTHESIS}
           </Button>
         )}
 

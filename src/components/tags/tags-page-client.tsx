@@ -1,12 +1,23 @@
 /**
  * 标签浏览页面客户端组件
+ *
+ * @version 1.1.0
+ * @since 2025-12-29
  */
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Tag, Search, Sparkles, User, TrendingUp, SortAsc } from "lucide-react";
+import {
+  Tag,
+  Search,
+  Sparkles,
+  User,
+  TrendingUp,
+  SortAsc,
+  FileText,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -16,6 +27,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
 import { ErrorMessage } from "@/components/ui/error-message";
 import type { TagWithCount } from "@/app/(main)/tags/page";
 import { cn } from "@/lib/utils";
@@ -54,6 +72,17 @@ export function TagsPageClient({ tags, error }: TagsPageClientProps) {
   const handleTagClick = (tag: string) => {
     router.push(`/search?q=${encodeURIComponent(tag)}`);
   };
+
+  // 基于标签创建综述
+  const handleCreateSynthesis = useCallback(
+    (tag: string) => {
+      // 跳转到综述创建页，带上标签参数
+      router.push(
+        `/synthesis/new?sourceType=tag&tag=${encodeURIComponent(tag)}`,
+      );
+    },
+    [router],
+  );
 
   // 获取标签的徽章样式
   const getTagBadgeClass = (type: TagWithCount["type"]) => {
@@ -147,22 +176,40 @@ export function TagsPageClient({ tags, error }: TagsPageClientProps) {
           {filteredAndSortedTags.length > 0 ? (
             <div className="flex flex-wrap gap-3">
               {filteredAndSortedTags.map((item) => (
-                <Button
-                  key={item.tag}
-                  variant="outline"
-                  size="lg"
-                  onClick={() => handleTagClick(item.tag)}
-                  className={cn(
-                    "h-auto py-3 px-4 flex flex-col items-start gap-1 transition-all",
-                    getTagBadgeClass(item.type),
-                  )}
-                >
-                  <div className="flex items-center gap-2 text-sm font-medium">
-                    {getTagIcon(item.type)}
-                    <span>{item.tag}</span>
-                  </div>
-                  <div className="text-xs opacity-75">{item.count} 个收藏</div>
-                </Button>
+                <ContextMenu key={item.tag}>
+                  <ContextMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      onClick={() => handleTagClick(item.tag)}
+                      className={cn(
+                        "h-auto py-3 px-4 flex flex-col items-start gap-1 transition-all",
+                        getTagBadgeClass(item.type),
+                      )}
+                    >
+                      <div className="flex items-center gap-2 text-sm font-medium">
+                        {getTagIcon(item.type)}
+                        <span>{item.tag}</span>
+                      </div>
+                      <div className="text-xs opacity-75">
+                        {item.count} 个收藏
+                      </div>
+                    </Button>
+                  </ContextMenuTrigger>
+                  <ContextMenuContent>
+                    <ContextMenuItem onClick={() => handleTagClick(item.tag)}>
+                      <Search className="mr-2 h-4 w-4" />
+                      搜索该标签
+                    </ContextMenuItem>
+                    <ContextMenuSeparator />
+                    <ContextMenuItem
+                      onClick={() => handleCreateSynthesis(item.tag)}
+                    >
+                      <FileText className="mr-2 h-4 w-4" />
+                      生成综述
+                    </ContextMenuItem>
+                  </ContextMenuContent>
+                </ContextMenu>
               ))}
             </div>
           ) : (
