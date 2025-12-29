@@ -3,13 +3,14 @@
  *
  * 管理完整的 Flashcard 复习会话流程
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-29
+ * @updated 2025-12-29 - 添加 429 错误处理和自动重试
  */
 
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -26,6 +27,16 @@ import {
   type FlashcardData,
 } from "./flashcard-review-card";
 import { clientLogger } from "@/lib/client-logger";
+
+// ============================================
+// 常量配置
+// ============================================
+
+/** 429 错误重试延迟（毫秒） */
+const RATE_LIMIT_RETRY_DELAY_MS = 2000;
+
+/** 最大重试次数 */
+const MAX_RETRY_COUNT = 3;
 
 // ============================================
 // 类型定义
@@ -69,14 +80,37 @@ export function ReviewSession({
   const [results, setResults] = useState<ReviewResult[]>([]);
   const [sessionComplete, setSessionComplete] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const retryCountRef = useRef(0);
 
-  // 加载复习队列
+  // 加载复习队列（带 429 重试）
   const loadQueue = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
       const response = await fetch("/api/brain-sync/queue?limit=10");
+
+      // 处理 429 错误：自动重试
+      if (response.status === 429) {
+        if (retryCountRef.current < MAX_RETRY_COUNT) {
+          retryCountRef.current++;
+          clientLogger.warn(
+            { retryCount: retryCountRef.current },
+            "Brain-Sync queue rate limited, retrying...",
+          );
+          // 延迟后重试
+          setTimeout(() => {
+            loadQueue();
+          }, RATE_LIMIT_RETRY_DELAY_MS);
+          return;
+        } else {
+          throw new Error("请求过于频繁，请稍后再试");
+        }
+      }
+
+      // 重置重试计数
+      retryCountRef.current = 0;
+
       const data = await response.json();
 
       if (!data.success) {
@@ -199,6 +233,7 @@ export function ReviewSession({
 
   // 重新开始会话
   const handleRestart = () => {
+    retryCountRef.current = 0; // 重置重试计数
     loadQueue();
   };
 

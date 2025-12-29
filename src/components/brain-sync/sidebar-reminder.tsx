@@ -3,9 +3,10 @@
  *
  * 在侧边栏显示待复习提醒，点击后打开复习会话
  *
- * @version 1.1.0
+ * @version 1.2.0
  * @since 2025-12-29
  * @updated 2025-12-29 - 优化轮询性能：标签页不可见时暂停轮询
+ * @updated 2025-12-29 - 修复 429 限流问题：添加请求去重和短期缓存
  */
 
 "use client";
@@ -33,6 +34,25 @@ const POLLING_INTERVAL_MS = 5 * 60 * 1000;
 
 /** 会话完成后刷新延迟（毫秒） */
 const REFRESH_DELAY_MS = 1500;
+
+/** 偏好数据缓存时间（毫秒）：30 秒 - 防止 429 限流 */
+const PREFERENCES_CACHE_TTL_MS = 30_000;
+
+/** 请求最小间隔（毫秒）：5 秒 - 防止快速重复请求 */
+const MIN_REQUEST_INTERVAL_MS = 5_000;
+
+// ============================================
+// 模块级缓存（跨组件实例共享）
+// ============================================
+
+interface PreferencesCache {
+  data: { enabled: boolean } | null;
+  timestamp: number;
+}
+
+let preferencesCache: PreferencesCache = { data: null, timestamp: 0 };
+let lastRequestTime = 0;
+let pendingRequest: Promise<{ enabled: boolean } | null> | null = null;
 
 // ============================================
 // 类型定义
@@ -64,14 +84,82 @@ export function SidebarReminder({
   const [isPageVisible, setIsPageVisible] = useState(true);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  /**
+   * 获取偏好数据（带缓存和请求去重）
+   * 解决 429 限流问题
+   */
+  const fetchPreferencesWithCache = useCallback(async (): Promise<{
+    enabled: boolean;
+  } | null> => {
+    const now = Date.now();
+
+    // 1. 检查缓存是否有效
+    if (
+      preferencesCache.data &&
+      now - preferencesCache.timestamp < PREFERENCES_CACHE_TTL_MS
+    ) {
+      return preferencesCache.data;
+    }
+
+    // 2. 检查请求间隔，防止快速重复请求
+    if (now - lastRequestTime < MIN_REQUEST_INTERVAL_MS) {
+      // 如果有正在进行的请求，等待它完成
+      if (pendingRequest) {
+        return pendingRequest;
+      }
+      // 否则返回旧缓存（即使过期）或 null
+      return preferencesCache.data;
+    }
+
+    // 3. 如果有正在进行的请求，复用它
+    if (pendingRequest) {
+      return pendingRequest;
+    }
+
+    // 4. 发起新请求
+    lastRequestTime = now;
+    pendingRequest = (async () => {
+      try {
+        const response = await fetch("/api/brain-sync/preferences");
+
+        // 处理 429 错误
+        if (response.status === 429) {
+          clientLogger.warn(
+            { status: 429 },
+            "Brain-Sync preferences rate limited, using cache",
+          );
+          return preferencesCache.data;
+        }
+
+        const data = await response.json();
+        const result = {
+          enabled: data.success && data.data.preferences?.enabled === true,
+        };
+
+        // 更新缓存
+        preferencesCache = { data: result, timestamp: Date.now() };
+        return result;
+      } catch (err) {
+        clientLogger.error(
+          { error: err instanceof Error ? err.message : String(err) },
+          "Failed to fetch Brain-Sync preferences",
+        );
+        return preferencesCache.data; // 出错时返回旧缓存
+      } finally {
+        pendingRequest = null;
+      }
+    })();
+
+    return pendingRequest;
+  }, []);
+
   // 加载复习队列统计
   const loadStats = useCallback(async () => {
     try {
-      // 先检查是否启用
-      const prefsResponse = await fetch("/api/brain-sync/preferences");
-      const prefsData = await prefsResponse.json();
+      // 先检查是否启用（使用缓存机制）
+      const prefsResult = await fetchPreferencesWithCache();
 
-      if (!prefsData.success || !prefsData.data.preferences?.enabled) {
+      if (!prefsResult?.enabled) {
         setEnabled(false);
         setLoading(false);
         return;
@@ -98,7 +186,7 @@ export function SidebarReminder({
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [fetchPreferencesWithCache]);
 
   // 初始加载
   useEffect(() => {

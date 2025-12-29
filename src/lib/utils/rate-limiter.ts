@@ -34,8 +34,8 @@ export const RATE_LIMIT_CONFIGS: Record<string, RateLimitConfig> = {
   search: { windowMs: 60_000, maxRequests: 60 },
   // AI 相关 API：每分钟 30 次（成本考虑）
   ai: { windowMs: 60_000, maxRequests: 30 },
-  // Brain-Sync 复习系统：每分钟 20 次（涉及 AI 生成和数据库写入）
-  brain_sync: { windowMs: 60_000, maxRequests: 20 },
+  // Brain-Sync 复习系统：每分钟 60 次（多组件共享，需要宽松限制）
+  brain_sync: { windowMs: 60_000, maxRequests: 60 },
   // 批量操作：每分钟 10 次
   batch: { windowMs: 60_000, maxRequests: 10 },
   // 书签操作：每分钟 300 次（核心用户操作，需要宽松限制）
