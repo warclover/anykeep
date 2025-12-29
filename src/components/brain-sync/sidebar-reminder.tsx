@@ -3,13 +3,14 @@
  *
  * 在侧边栏显示待复习提醒，点击后打开复习会话
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-29
+ * @updated 2025-12-29 - 优化轮询性能：标签页不可见时暂停轮询
  */
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -22,6 +23,16 @@ import { Brain, Sparkles, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ReviewSession } from "./review-session";
 import { clientLogger } from "@/lib/client-logger";
+
+// ============================================
+// 常量配置
+// ============================================
+
+/** 轮询间隔（毫秒）：5 分钟 */
+const POLLING_INTERVAL_MS = 5 * 60 * 1000;
+
+/** 会话完成后刷新延迟（毫秒） */
+const REFRESH_DELAY_MS = 1500;
 
 // ============================================
 // 类型定义
@@ -50,50 +61,88 @@ export function SidebarReminder({
   const [loading, setLoading] = useState(true);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [enabled, setEnabled] = useState(false);
+  const [isPageVisible, setIsPageVisible] = useState(true);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // 加载复习队列统计
-  useEffect(() => {
-    async function loadStats() {
-      try {
-        // 先检查是否启用
-        const prefsResponse = await fetch("/api/brain-sync/preferences");
-        const prefsData = await prefsResponse.json();
+  const loadStats = useCallback(async () => {
+    try {
+      // 先检查是否启用
+      const prefsResponse = await fetch("/api/brain-sync/preferences");
+      const prefsData = await prefsResponse.json();
 
-        if (!prefsData.success || !prefsData.data.preferences?.enabled) {
-          setEnabled(false);
-          setLoading(false);
-          return;
-        }
-
-        setEnabled(true);
-
-        // 获取队列统计
-        const queueResponse = await fetch("/api/brain-sync/queue?limit=100");
-        const queueData = await queueResponse.json();
-
-        if (queueData.success && queueData.data.stats) {
-          setStats({
-            total: queueData.data.stats.total,
-            overdue: queueData.data.stats.overdue,
-            dueToday: queueData.data.stats.dueToday,
-          });
-        }
-      } catch (err) {
-        clientLogger.error(
-          { error: err instanceof Error ? err.message : String(err) },
-          "Failed to load Brain-Sync stats",
-        );
-      } finally {
+      if (!prefsData.success || !prefsData.data.preferences?.enabled) {
+        setEnabled(false);
         setLoading(false);
+        return;
       }
+
+      setEnabled(true);
+
+      // 获取队列统计
+      const queueResponse = await fetch("/api/brain-sync/queue?limit=100");
+      const queueData = await queueResponse.json();
+
+      if (queueData.success && queueData.data.stats) {
+        setStats({
+          total: queueData.data.stats.total,
+          overdue: queueData.data.stats.overdue,
+          dueToday: queueData.data.stats.dueToday,
+        });
+      }
+    } catch (err) {
+      clientLogger.error(
+        { error: err instanceof Error ? err.message : String(err) },
+        "Failed to load Brain-Sync stats",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // 初始加载
+  useEffect(() => {
+    loadStats();
+  }, [loadStats]);
+
+  // Page Visibility API：监听标签页可见性
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      const visible = document.visibilityState === "visible";
+      setIsPageVisible(visible);
+
+      // 标签页变为可见时立即刷新数据
+      if (visible && enabled) {
+        loadStats();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [enabled, loadStats]);
+
+  // 定期轮询：仅在启用且页面可见时运行
+  useEffect(() => {
+    // 清理之前的定时器
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
     }
 
-    loadStats();
+    // 仅在启用且页面可见时创建定时器
+    if (enabled && isPageVisible) {
+      intervalRef.current = setInterval(loadStats, POLLING_INTERVAL_MS);
+    }
 
-    // 定期刷新（每 5 分钟）
-    const interval = setInterval(loadStats, 5 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, []);
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, [enabled, isPageVisible, loadStats]);
 
   // 不启用或加载中时不显示
   if (loading || !enabled) {
@@ -130,7 +179,7 @@ export function SidebarReminder({
           "Failed to refresh Brain-Sync stats",
         );
       }
-    }, 1000);
+    }, REFRESH_DELAY_MS);
   };
 
   if (collapsed) {

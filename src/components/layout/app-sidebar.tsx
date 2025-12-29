@@ -34,6 +34,7 @@ import {
 import { useUnreadCount } from "@/hooks/data";
 import { MessageBadge } from "@/components/messages";
 import { SmartListDropdown } from "@/components/smart-list";
+import { SidebarReminder } from "@/components/brain-sync";
 import { cn } from "@/lib/utils";
 import {
   useSafeNavigation,
@@ -363,6 +364,54 @@ export function AppSidebar() {
                   <p>MD 收藏 (Pro)</p>
                 </TooltipContent>
               </Tooltip>
+            )}
+
+            {/* 学习助手 - Brain-Sync 复习提醒 */}
+            {isVisuallyExpanded ? (
+              <div>
+                <div className="px-3 mb-2">
+                  <p className="text-xs font-semibold text-purple-500 dark:text-purple-400 uppercase">
+                    学习助手
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <Link
+                    href="/brain-sync"
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                      pathname === "/brain-sync"
+                        ? "bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
+                        : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50",
+                    )}
+                  >
+                    <BrainCircuit className="size-5" />
+                    复习实验室
+                  </Link>
+                  <SidebarReminder collapsed={false} className="mx-2" />
+                </div>
+              </div>
+            ) : (
+              <div className="px-2 space-y-1">
+                <Tooltip delayDuration={100}>
+                  <TooltipTrigger asChild>
+                    <Link
+                      href="/brain-sync"
+                      className={cn(
+                        "flex items-center justify-center px-2 py-2 text-sm font-medium rounded-lg transition-colors",
+                        pathname === "/brain-sync"
+                          ? "bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
+                          : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50",
+                      )}
+                    >
+                      <BrainCircuit className="size-5" />
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" sideOffset={8}>
+                    <p>复习实验室</p>
+                  </TooltipContent>
+                </Tooltip>
+                <SidebarReminder collapsed={true} />
+              </div>
             )}
 
             {/* 智能列表下拉选择器 - 仅展开时显示 */}

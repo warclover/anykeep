@@ -6,6 +6,9 @@
  * @since 2025-12-29
  */
 
+// 页面组件
+export { BrainSyncPageClient } from "./brain-sync-page-client";
+
 // 设置组件
 export { BrainSyncSettingsCard } from "./brain-sync-settings-card";
 
