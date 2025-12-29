@@ -3,8 +3,9 @@
  *
  * 在设置页面中显示 Brain-Sync 相关配置选项
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-29
+ * @updated 2025-12-29 - 启用开关自动保存，无需手动点击保存按钮
  */
 
 "use client";
@@ -88,6 +89,7 @@ const NOTIFICATION_OPTIONS = [
 export function BrainSyncSettingsCard({ userId }: BrainSyncSettingsCardProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [togglingEnabled, setTogglingEnabled] = useState(false);
   const [preferences, setPreferences] = useState<BrainSyncPreferences>({
     enabled: false,
     preferredDay: "monday",
@@ -145,7 +147,7 @@ export function BrainSyncSettingsCard({ userId }: BrainSyncSettingsCardProps) {
     loadPreferences();
   }, [userId]);
 
-  // 保存偏好设置
+  // 保存偏好设置（不包含 enabled，因为它自动保存）
   const handleSave = async () => {
     setSaving(true);
     setError(null);
@@ -156,7 +158,7 @@ export function BrainSyncSettingsCard({ userId }: BrainSyncSettingsCardProps) {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          enabled: preferences.enabled,
+          // 注意：不包含 enabled，因为它在切换时自动保存
           preferredDay: preferences.preferredDay,
           preferredTime: preferences.preferredTime,
           weeklyLimit: preferences.weeklyLimit,
@@ -190,6 +192,47 @@ export function BrainSyncSettingsCard({ userId }: BrainSyncSettingsCardProps) {
   ) => {
     setPreferences((prev) => ({ ...prev, [key]: value }));
     setSaveSuccess(false);
+  };
+
+  /**
+   * 切换启用状态（自动保存）
+   * 用户体验优化：启用开关切换后立即保存，无需手动点击保存按钮
+   */
+  const handleToggleEnabled = async (checked: boolean) => {
+    setTogglingEnabled(true);
+    setError(null);
+
+    // 乐观更新 UI
+    setPreferences((prev) => ({ ...prev, enabled: checked }));
+
+    try {
+      const response = await fetch("/api/brain-sync/preferences", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled: checked }),
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        // 回滚状态
+        setPreferences((prev) => ({ ...prev, enabled: !checked }));
+        throw new Error(data.error || "切换失败");
+      }
+
+      clientLogger.info(
+        { enabled: checked },
+        "Brain-Sync enabled toggle saved",
+      );
+    } catch (err) {
+      clientLogger.error(
+        { error: err instanceof Error ? err.message : String(err) },
+        "Failed to toggle Brain-Sync enabled",
+      );
+      setError(err instanceof Error ? err.message : "切换失败");
+    } finally {
+      setTogglingEnabled(false);
+    }
   };
 
   if (loading) {
@@ -242,7 +285,8 @@ export function BrainSyncSettingsCard({ userId }: BrainSyncSettingsCardProps) {
           <Switch
             id="brain-sync-enabled"
             checked={preferences.enabled}
-            onCheckedChange={(checked) => updatePreference("enabled", checked)}
+            onCheckedChange={handleToggleEnabled}
+            disabled={togglingEnabled}
           />
         </div>
 
