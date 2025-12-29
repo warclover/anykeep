@@ -140,21 +140,79 @@ export function withErrorHandler<
 }
 
 /**
+ * 请求体大小限制配置
+ */
+export const BODY_SIZE_LIMITS = {
+  /** 默认最大请求体大小（1MB） */
+  DEFAULT: 1 * 1024 * 1024,
+  /** 批量操作最大请求体大小（5MB） */
+  BATCH: 5 * 1024 * 1024,
+  /** 大文件上传最大请求体大小（10MB） */
+  LARGE: 10 * 1024 * 1024,
+} as const;
+
+/**
+ * 请求体过大错误
+ */
+export class PayloadTooLargeError extends Error {
+  readonly statusCode = 413;
+  constructor(
+    public readonly actualSize: number,
+    public readonly maxSize: number,
+  ) {
+    super(
+      `Request body too large: ${Math.round(actualSize / 1024)}KB exceeds limit of ${Math.round(maxSize / 1024)}KB`,
+    );
+    this.name = "PayloadTooLargeError";
+  }
+}
+
+/**
+ * 请求体验证选项
+ */
+export interface ValidateBodyOptions {
+  /** 最大请求体大小（字节），默认 1MB */
+  maxSize?: number;
+}
+
+/**
  * 请求体验证中间件
  *
- * 验证并解析请求体
+ * 验证并解析请求体，包含大小限制检查
  *
  * @example
  * export const POST = withAuthMiddleware(async (request, { userId }) => {
  *   const body = await validateBody(request, CreateBookmarkSchema);
  *   // body 已验证并类型安全
  * });
+ *
+ * @example
+ * // 批量操作允许更大请求体
+ * const body = await validateBody(request, BatchSchema, { maxSize: BODY_SIZE_LIMITS.BATCH });
  */
 export async function validateBody<T extends z.ZodSchema>(
   request: NextRequest,
   schema: T,
+  options?: ValidateBodyOptions,
 ): Promise<z.infer<T>> {
-  const body = await request.json();
+  const maxSize = options?.maxSize ?? BODY_SIZE_LIMITS.DEFAULT;
+
+  // 检查 Content-Length 头
+  const contentLength = request.headers.get("content-length");
+  if (contentLength) {
+    const size = parseInt(contentLength, 10);
+    if (!isNaN(size) && size > maxSize) {
+      throw new PayloadTooLargeError(size, maxSize);
+    }
+  }
+
+  // 解析 JSON 并检查实际大小
+  const text = await request.text();
+  if (text.length > maxSize) {
+    throw new PayloadTooLargeError(text.length, maxSize);
+  }
+
+  const body = JSON.parse(text);
   return schema.parse(body);
 }
 
@@ -186,6 +244,31 @@ function handleError(
   context: { method: string; url: string; startTime: number },
 ): NextResponse {
   const duration = Date.now() - context.startTime;
+
+  // 处理请求体过大错误
+  if (error instanceof PayloadTooLargeError) {
+    logger.warn(
+      {
+        method: context.method,
+        url: context.url,
+        duration,
+        actualSize: error.actualSize,
+        maxSize: error.maxSize,
+      },
+      "Payload too large",
+    );
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          code: "PAYLOAD_TOO_LARGE",
+          message: error.message,
+        },
+      },
+      { status: 413 },
+    );
+  }
 
   // 处理 ServiceError
   if (error instanceof ServiceError) {

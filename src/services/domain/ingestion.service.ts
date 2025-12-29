@@ -118,6 +118,8 @@ export class IngestionService extends BaseService {
 
   /**
    * 单条摄入
+   *
+   * 使用「先创建，捕获重复错误」模式，避免「检查 → 创建」的竞态条件
    */
   async ingest(request: IngestionRequestInput): Promise<IngestionResult> {
     return this.withLogging(
@@ -126,48 +128,66 @@ export class IngestionService extends BaseService {
         // Step 1: Normalize URL
         const normalizedUrl = this.normalizeUrl(request.url);
 
-        // Step 2: Check duplicate
-        const existing = await this.bookmarkRepository.findByUrl(normalizedUrl);
-        if (existing) {
-          return {
-            bookmarkId: existing.id,
-            url: normalizedUrl,
-            status: "duplicate" as const,
-            message: "Bookmark already exists",
-          };
-        }
-
-        // Step 3: Detect platform
+        // Step 2: Detect platform
         const platform = this.detectPlatform(normalizedUrl);
 
-        // Step 4: Create bookmark with PENDING status
-        const bookmark = await this.bookmarkRepository.create({
-          url: normalizedUrl,
-          title: request.title || this.extractDomainTitle(normalizedUrl),
-          description: request.description,
-          folder_id: request.folderId,
-          user_tags: request.tags,
-          notes: request.notes,
-          platform,
-          user_id: this.userId,
-          is_starred: false,
-          // 标记来源（需要在 Phase 2 的数据库迁移中添加 source 字段）
-          // source: request.source,
-          // status: "PENDING", // 等待 AI 处理
-        });
+        // Step 3: 尝试创建书签（数据库唯一约束保证原子性）
+        try {
+          const bookmark = await this.bookmarkRepository.create({
+            url: normalizedUrl,
+            title: request.title || this.extractDomainTitle(normalizedUrl),
+            description: request.description,
+            folder_id: request.folderId,
+            user_tags: request.tags,
+            notes: request.notes,
+            platform,
+            user_id: this.userId,
+            is_starred: false,
+          });
 
-        // Step 5: TODO (Phase 2) - Enqueue async tasks
-        // await this.enqueueProcessingTasks(bookmark.id, request.source);
-
-        return {
-          bookmarkId: bookmark.id,
-          url: normalizedUrl,
-          status: "created" as const,
-          message: "Bookmark created successfully",
-        };
+          return {
+            bookmarkId: bookmark.id,
+            url: normalizedUrl,
+            status: "created" as const,
+            message: "Bookmark created successfully",
+          };
+        } catch (error) {
+          // Step 4: 处理唯一约束冲突 (PostgreSQL 错误码 23505)
+          if (this.isDuplicateError(error)) {
+            const existing =
+              await this.bookmarkRepository.findByUrl(normalizedUrl);
+            return {
+              bookmarkId: existing?.id ?? 0,
+              url: normalizedUrl,
+              status: "duplicate" as const,
+              message: "Bookmark already exists",
+            };
+          }
+          throw error;
+        }
       },
       { url: request.url, source: request.source },
     );
+  }
+
+  /**
+   * 检查是否为重复键错误
+   */
+  private isDuplicateError(error: unknown): boolean {
+    if (error && typeof error === "object") {
+      // Supabase/PostgreSQL 错误格式
+      const pgError = error as { code?: string; message?: string };
+      // 23505 = unique_violation
+      if (pgError.code === "23505") return true;
+      // 备用：检查错误消息
+      if (
+        pgError.message?.includes("duplicate key") ||
+        pgError.message?.includes("unique constraint")
+      ) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**

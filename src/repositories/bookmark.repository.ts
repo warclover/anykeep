@@ -328,7 +328,10 @@ export class BookmarkRepository extends BaseRepository<
   /**
    * 切换收藏状态（回退方法）
    *
-   * 注意：此方法存在竞态条件风险，仅作为 RPC 不可用时的回退
+   * 使用乐观锁模式避免竞态条件：
+   * - 在 update 中添加 is_starred 条件检查
+   * - 只有当状态与读取时相同才更新
+   * - 如果无更新行，说明有并发修改，返回最新状态
    */
   private async toggleStarredFallback(id: number): Promise<BookmarkRow | null> {
     // 先获取当前状态
@@ -337,8 +340,11 @@ export class BookmarkRepository extends BaseRepository<
       return null;
     }
 
-    const newIsStarred = !bookmark.is_starred;
-    const { data, error } = await this.supabase
+    const currentIsStarred = bookmark.is_starred;
+    const newIsStarred = !currentIsStarred;
+
+    // 乐观锁：添加 is_starred 条件，确保状态未被并发修改
+    const { data, error, count } = await this.supabase
       .from(this.tableName)
       .update({
         is_starred: newIsStarred,
@@ -346,12 +352,31 @@ export class BookmarkRepository extends BaseRepository<
       })
       .eq("id", id)
       .eq("user_id", this.userId)
+      .eq("is_starred", currentIsStarred) // 乐观锁条件
       .select()
       .single();
 
     if (error) {
+      // PGRST116: 无匹配行（可能是并发修改导致条件不匹配）
+      if (error.code === "PGRST116") {
+        this.logger.warn(
+          { id, currentIsStarred },
+          "Concurrent toggle detected, returning latest state",
+        );
+        // 返回最新状态而非抛错
+        return this.findById(id);
+      }
       this.logger.error({ error, id }, "Failed to toggle starred");
       throw error;
+    }
+
+    // 额外检查：如果 count 为 0，说明乐观锁条件不匹配
+    if (count === 0) {
+      this.logger.warn(
+        { id, currentIsStarred },
+        "Optimistic lock failed, returning latest state",
+      );
+      return this.findById(id);
     }
 
     return data;
@@ -520,6 +545,10 @@ export class BookmarkRepository extends BaseRepository<
 
   /**
    * 获取书签统计
+   *
+   * 优化：使用单次查询 + 客户端聚合，避免 N+1 查询问题
+   * 原实现：5 次独立数据库查询
+   * 优化后：1 次查询 + O(n) 客户端聚合
    */
   async getStats(): Promise<{
     total: number;
@@ -528,59 +557,33 @@ export class BookmarkRepository extends BaseRepository<
     inTrash: number;
     byPlatform: Record<string, number>;
   }> {
-    // 总数
-    const { count: total } = await this.supabase
+    // 单次查询获取所有需要的字段
+    const { data } = await this.supabase
       .from(this.tableName)
-      .select("id", { count: "exact", head: true })
+      .select("is_read, is_starred, is_in_trash, platform")
       .eq("user_id", this.userId)
-      .is("deleted_at", null)
-      .eq("is_in_trash", false);
+      .is("deleted_at", null);
 
-    // 未读
-    const { count: unread } = await this.supabase
-      .from(this.tableName)
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", this.userId)
-      .is("deleted_at", null)
-      .eq("is_in_trash", false)
-      .eq("is_read", false);
-
-    // 收藏
-    const { count: starred } = await this.supabase
-      .from(this.tableName)
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", this.userId)
-      .is("deleted_at", null)
-      .eq("is_in_trash", false)
-      .eq("is_starred", true);
-
-    // 回收站
-    const { count: inTrash } = await this.supabase
-      .from(this.tableName)
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", this.userId)
-      .is("deleted_at", null)
-      .eq("is_in_trash", true);
-
-    // 按平台统计
-    const { data: platformData } = await this.supabase
-      .from(this.tableName)
-      .select("platform")
-      .eq("user_id", this.userId)
-      .is("deleted_at", null)
-      .eq("is_in_trash", false);
-
+    // 客户端聚合统计
+    let total = 0;
+    let unread = 0;
+    let starred = 0;
+    let inTrash = 0;
     const byPlatform: Record<string, number> = {};
-    for (const row of platformData || []) {
-      byPlatform[row.platform] = (byPlatform[row.platform] || 0) + 1;
+
+    for (const row of data || []) {
+      if (row.is_in_trash) {
+        inTrash++;
+      } else {
+        total++;
+        if (!row.is_read) unread++;
+        if (row.is_starred) starred++;
+        if (row.platform) {
+          byPlatform[row.platform] = (byPlatform[row.platform] || 0) + 1;
+        }
+      }
     }
 
-    return {
-      total: total || 0,
-      unread: unread || 0,
-      starred: starred || 0,
-      inTrash: inTrash || 0,
-      byPlatform,
-    };
+    return { total, unread, starred, inTrash, byPlatform };
   }
 }

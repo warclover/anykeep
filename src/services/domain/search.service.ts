@@ -235,16 +235,16 @@ export class SearchService extends BaseService {
     // });
 
     // 暂时回退到关键词搜索
-    this.logger.info(
+    this.logger.warn(
       { searchQuery },
       "Semantic search not implemented, falling back to keyword search",
     );
     const results = await this.keywordSearch(searchQuery, options);
 
-    // 将 matchType 标记为 semantic（虽然实际是关键词搜索）
+    // 正确标记为关键词搜索（而非语义搜索）
     return results.map((item) => ({
       ...item,
-      matchType: "semantic" as const,
+      matchType: "keyword" as const, // 正确标记实际使用的搜索类型
     }));
   }
 

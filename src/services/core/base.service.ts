@@ -23,6 +23,11 @@ export class ServiceError extends Error {
   ) {
     super(message);
     this.name = "ServiceError";
+
+    // 保留原始错误的堆栈信息，便于调试
+    if (cause instanceof Error && cause.stack) {
+      this.stack = `${this.stack}\nCaused by: ${cause.stack}`;
+    }
   }
 
   /**

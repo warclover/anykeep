@@ -6,6 +6,7 @@
  * @module api/v1/folders/evolution/undo/[id]
  */
 
+import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 import { withAuthMiddleware } from "@/lib/api/middleware";
