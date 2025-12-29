@@ -84,18 +84,17 @@ export async function GET(request: NextRequest) {
     const _includeCompleted = searchParams.get("includeCompleted") === "true";
 
     // 4. 调用数据库函数获取待复习队列
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: pendingFlashcards, error: queueError } = (await (
-      supabase as any
-    ).rpc("get_pending_flashcards", {
-      p_user_id: user.id,
-      p_limit: Math.min(limit, preferences.weekly_limit || 10),
-      p_included_folders: preferences.included_folder_ids || null,
-      p_excluded_folders: preferences.excluded_folder_ids || null,
-    })) as {
-      data: PendingFlashcardRow[] | null;
-      error: { message: string } | null;
-    };
+    const { data: pendingFlashcards, error: queueError } =
+      (await // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (supabase as any).rpc("get_pending_flashcards", {
+        p_user_id: user.id,
+        p_limit: Math.min(limit, preferences.weekly_limit || 10),
+        p_included_folders: preferences.included_folder_ids || null,
+        p_excluded_folders: preferences.excluded_folder_ids || null,
+      })) as {
+        data: PendingFlashcardRow[] | null;
+        error: { message: string } | null;
+      };
 
     if (queueError) {
       logger.error(
@@ -126,7 +125,11 @@ export async function GET(request: NextRequest) {
           question: item.question,
           answer: item.answer,
           sourceParagraph: item.source_paragraph || undefined,
-          status: item.status as "pending" | "learning" | "mastered",
+          status: item.status as
+            | "pending"
+            | "learning"
+            | "mastered"
+            | "archived",
           nextReviewAt,
           daysOverdue,
           easeFactor: item.ease_factor || 2.5,

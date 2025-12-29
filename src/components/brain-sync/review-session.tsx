@@ -27,6 +27,7 @@ import {
   type FlashcardData,
 } from "./flashcard-review-card";
 import { clientLogger } from "@/lib/client-logger";
+import type { ReviewResponse } from "@/lib/ai-skills/shared/review/types";
 
 // ============================================
 // 常量配置
@@ -37,12 +38,6 @@ const RATE_LIMIT_RETRY_DELAY_MS = 2000;
 
 /** 最大重试次数 */
 const MAX_RETRY_COUNT = 3;
-
-// ============================================
-// 类型定义
-// ============================================
-
-type ReviewResponse = "mastered" | "fuzzy" | "forgotten" | "archived";
 
 interface ReviewResult {
   flashcardId: number;
