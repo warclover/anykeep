@@ -442,11 +442,13 @@ export class ActiveRecallSkill extends OrchestrationSkill<
           mastered: "🌟",
           fuzzy: "🤔",
           forgotten: "😅",
+          archived: "🎉",
         };
         const responseLabels: Record<ReviewResponse, string> = {
           mastered: "太棒了！完全掌握",
           fuzzy: "有点模糊，需要巩固",
           forgotten: "没关系，我们再来",
+          archived: "已永久归档，不再复习",
         };
         yield* this.emitText(
           `${responseEmojis[input.response]} ${responseLabels[input.response]}\n` +

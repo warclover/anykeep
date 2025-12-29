@@ -139,20 +139,23 @@ export const submitReviewResponseTool: Tool<
         mastered: "太棒了！下次复习时间已延长",
         fuzzy: "继续加油！下次复习时间已调整",
         forgotten: "没关系！明天会再次复习",
+        archived: "🎉 已永久归档，不再出现在复习队列",
       };
       message = responseMessages[response];
 
-      // 添加下次复习时间说明
-      const nextReviewDate = new Date(result.next_review_at);
-      const daysUntil = Math.ceil(
-        (nextReviewDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
-      );
-      if (daysUntil === 0) {
-        message += "（今天稍后）";
-      } else if (daysUntil === 1) {
-        message += "（明天）";
-      } else {
-        message += `（${daysUntil} 天后）`;
+      // 添加下次复习时间说明（归档响应没有下次复习时间）
+      if (response !== "archived" && result.next_review_at) {
+        const nextReviewDate = new Date(result.next_review_at);
+        const daysUntil = Math.ceil(
+          (nextReviewDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
+        );
+        if (daysUntil === 0) {
+          message += "（今天稍后）";
+        } else if (daysUntil === 1) {
+          message += "（明天）";
+        } else {
+          message += `（${daysUntil} 天后）`;
+        }
       }
 
       logger.info(

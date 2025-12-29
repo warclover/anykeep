@@ -32,7 +32,7 @@ import type {
  */
 const submitResponseSchema = z.object({
   flashcardId: z.number().int().positive(),
-  response: z.enum(["mastered", "fuzzy", "forgotten"]),
+  response: z.enum(["mastered", "fuzzy", "forgotten", "archived"]),
   responseTimeMs: z.number().int().positive().optional(),
 });
 
@@ -47,6 +47,8 @@ function getQualityFromResponse(response: ReviewResponse): number {
       return 3; // 模糊回忆，但能想起来
     case "forgotten":
       return 1; // 完全忘记
+    case "archived":
+      return 5; // 归档也视为完美掌握
     default:
       return 3;
   }
@@ -69,6 +71,8 @@ function getGuidance(response: ReviewResponse, newInterval: number): string {
       return "没关系，模糊记忆是正常的。明天再复习一次会更清晰。";
     case "forgotten":
       return "别担心，遗忘是记忆的一部分。今天再看一遍，明天继续复习。";
+    case "archived":
+      return "🎉 恭喜！这个知识点已永久归档，不再出现在复习队列中。如需恢复，可在卡片管理中操作。";
     default:
       return "";
   }
@@ -122,7 +126,42 @@ export async function POST(request: NextRequest) {
       return notFoundError("Flashcard 不存在或无权限访问");
     }
 
-    // 4. 计算 SM-2 算法结果
+    // 4. 特殊处理：归档请求
+    if (response === "archived") {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: archiveResult, error: archiveError } = (await (supabase as any).rpc("archive_flashcard", {
+        p_flashcard_id: flashcardId,
+        p_user_id: user.id,
+      })) as {
+        data: { success: boolean; message?: string; error?: string } | null;
+        error: { message: string } | null;
+      };
+
+      if (archiveError || !archiveResult?.success) {
+        logger.error(
+          { error: archiveError || archiveResult?.error, flashcardId, userId: user.id },
+          "Brain-Sync: Failed to archive flashcard",
+        );
+        return databaseError("归档卡片失败");
+      }
+
+      logger.info(
+        { userId: user.id, flashcardId, response: "archived" },
+        "Brain-Sync: Flashcard archived",
+      );
+
+      return successResponse({
+        success: true,
+        flashcardId,
+        response: "archived",
+        newStatus: "archived",
+        nextReviewAt: null,
+        sm2Result: null,
+        guidance: getGuidance("archived", 0),
+      });
+    }
+
+    // 5. 计算 SM-2 算法结果（非归档情况）
     const quality = getQualityFromResponse(response);
     const sm2Input: SM2Input = {
       quality,
@@ -133,7 +172,7 @@ export async function POST(request: NextRequest) {
 
     const sm2Result = SM2Algorithm.calculate(sm2Input);
 
-    // 5. 调用数据库函数更新 Flashcard
+    // 6. 调用数据库函数更新 Flashcard
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: updateResult, error: updateError } = (await (
       supabase as any
@@ -158,7 +197,7 @@ export async function POST(request: NextRequest) {
       return databaseError("更新复习状态失败");
     }
 
-    // 6. 更新本周队列进度（如果存在）
+    // 7. 更新本周队列进度（如果存在）
     // 使用专用函数标记 flashcard 已完成
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase as any).rpc("mark_flashcard_completed_in_queue", {

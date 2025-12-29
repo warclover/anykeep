@@ -42,12 +42,12 @@ const MAX_RETRY_COUNT = 3;
 // 类型定义
 // ============================================
 
-type ReviewResponse = "mastered" | "fuzzy" | "forgotten";
+type ReviewResponse = "mastered" | "fuzzy" | "forgotten" | "archived";
 
 interface ReviewResult {
   flashcardId: number;
   response: ReviewResponse;
-  newInterval: number;
+  newInterval: number | null;
 }
 
 interface SessionStats {
@@ -56,6 +56,7 @@ interface SessionStats {
   mastered: number;
   fuzzy: number;
   forgotten: number;
+  archived: number;
 }
 
 interface ReviewSessionProps {
@@ -195,7 +196,7 @@ export function ReviewSession({
       const result: ReviewResult = {
         flashcardId,
         response,
-        newInterval: data.data.newInterval,
+        newInterval: data.data.sm2Result?.newInterval ?? null,
       };
       setResults((prev) => [...prev, result]);
 
@@ -228,6 +229,7 @@ export function ReviewSession({
       fuzzy: sessionResults.filter((r) => r.response === "fuzzy").length,
       forgotten: sessionResults.filter((r) => r.response === "forgotten")
         .length,
+      archived: sessionResults.filter((r) => r.response === "archived").length,
     };
   };
 
@@ -327,29 +329,37 @@ export function ReviewSession({
               </p>
 
               {/* 统计卡片 */}
-              <div className="grid grid-cols-3 gap-4 w-full max-w-md mb-6">
+              <div className="grid grid-cols-4 gap-3 w-full max-w-lg mb-6">
                 <Card className="bg-green-50 border-green-200">
-                  <CardContent className="p-4 text-center">
-                    <div className="text-2xl font-bold text-green-600">
+                  <CardContent className="p-3 text-center">
+                    <div className="text-xl font-bold text-green-600">
                       {results.filter((r) => r.response === "mastered").length}
                     </div>
                     <div className="text-xs text-green-700">掌握</div>
                   </CardContent>
                 </Card>
                 <Card className="bg-yellow-50 border-yellow-200">
-                  <CardContent className="p-4 text-center">
-                    <div className="text-2xl font-bold text-yellow-600">
+                  <CardContent className="p-3 text-center">
+                    <div className="text-xl font-bold text-yellow-600">
                       {results.filter((r) => r.response === "fuzzy").length}
                     </div>
                     <div className="text-xs text-yellow-700">模糊</div>
                   </CardContent>
                 </Card>
                 <Card className="bg-red-50 border-red-200">
-                  <CardContent className="p-4 text-center">
-                    <div className="text-2xl font-bold text-red-600">
+                  <CardContent className="p-3 text-center">
+                    <div className="text-xl font-bold text-red-600">
                       {results.filter((r) => r.response === "forgotten").length}
                     </div>
                     <div className="text-xs text-red-700">遗忘</div>
+                  </CardContent>
+                </Card>
+                <Card className="bg-purple-50 border-purple-200">
+                  <CardContent className="p-3 text-center">
+                    <div className="text-xl font-bold text-purple-600">
+                      {results.filter((r) => r.response === "archived").length}
+                    </div>
+                    <div className="text-xs text-purple-700">归档</div>
                   </CardContent>
                 </Card>
               </div>

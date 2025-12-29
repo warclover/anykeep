@@ -86,6 +86,7 @@ export class SM2Algorithm {
       mastered: 5, // 完美回忆
       fuzzy: 3, // 勉强回忆
       forgotten: 0, // 完全遗忘
+      archived: 5, // 归档视为完全掌握
     };
     return mapping[response];
   }

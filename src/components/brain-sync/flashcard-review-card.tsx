@@ -21,6 +21,7 @@ import {
   XCircle,
   ExternalLink,
   Clock,
+  Archive,
 } from "lucide-react";
 
 // ============================================
@@ -35,13 +36,13 @@ export interface FlashcardData {
   question: string;
   answer: string;
   sourceParagraph?: string;
-  status: "pending" | "learning" | "mastered";
+  status: "pending" | "learning" | "mastered" | "archived";
   daysOverdue: number;
   intervalDays: number;
   easeFactor: number;
 }
 
-type ReviewResponse = "mastered" | "fuzzy" | "forgotten";
+type ReviewResponse = "mastered" | "fuzzy" | "forgotten" | "archived";
 
 interface FlashcardReviewCardProps {
   flashcard: FlashcardData;
@@ -203,11 +204,11 @@ export function FlashcardReviewCard({
           <div className="text-center text-sm text-muted-foreground mb-2">
             你记住了吗？
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-4 gap-2">
             <Button
               variant="outline"
               className={cn(
-                "h-20 flex-col gap-2 transition-colors",
+                "h-20 flex-col gap-1 transition-colors",
                 "hover:bg-red-50 hover:border-red-300 hover:text-red-700",
                 selectedResponse === "forgotten" &&
                   "bg-red-50 border-red-300 text-red-700",
@@ -215,16 +216,16 @@ export function FlashcardReviewCard({
               onClick={() => handleResponse("forgotten")}
               disabled={isSubmitting}
             >
-              <XCircle className="h-6 w-6" />
+              <XCircle className="h-5 w-5" />
               <div>
-                <div className="font-medium">遗忘</div>
+                <div className="font-medium text-sm">遗忘</div>
                 <div className="text-xs opacity-70">明天复习</div>
               </div>
             </Button>
             <Button
               variant="outline"
               className={cn(
-                "h-20 flex-col gap-2 transition-colors",
+                "h-20 flex-col gap-1 transition-colors",
                 "hover:bg-yellow-50 hover:border-yellow-300 hover:text-yellow-700",
                 selectedResponse === "fuzzy" &&
                   "bg-yellow-50 border-yellow-300 text-yellow-700",
@@ -232,16 +233,16 @@ export function FlashcardReviewCard({
               onClick={() => handleResponse("fuzzy")}
               disabled={isSubmitting}
             >
-              <HelpCircle className="h-6 w-6" />
+              <HelpCircle className="h-5 w-5" />
               <div>
-                <div className="font-medium">模糊</div>
+                <div className="font-medium text-sm">模糊</div>
                 <div className="text-xs opacity-70">需要巩固</div>
               </div>
             </Button>
             <Button
               variant="outline"
               className={cn(
-                "h-20 flex-col gap-2 transition-colors",
+                "h-20 flex-col gap-1 transition-colors",
                 "hover:bg-green-50 hover:border-green-300 hover:text-green-700",
                 selectedResponse === "mastered" &&
                   "bg-green-50 border-green-300 text-green-700",
@@ -249,10 +250,27 @@ export function FlashcardReviewCard({
               onClick={() => handleResponse("mastered")}
               disabled={isSubmitting}
             >
-              <CheckCircle2 className="h-6 w-6" />
+              <CheckCircle2 className="h-5 w-5" />
               <div>
-                <div className="font-medium">掌握</div>
+                <div className="font-medium text-sm">掌握</div>
                 <div className="text-xs opacity-70">间隔延长</div>
+              </div>
+            </Button>
+            <Button
+              variant="outline"
+              className={cn(
+                "h-20 flex-col gap-1 transition-colors",
+                "hover:bg-purple-50 hover:border-purple-300 hover:text-purple-700",
+                selectedResponse === "archived" &&
+                  "bg-purple-50 border-purple-300 text-purple-700",
+              )}
+              onClick={() => handleResponse("archived")}
+              disabled={isSubmitting}
+            >
+              <Archive className="h-5 w-5" />
+              <div>
+                <div className="font-medium text-sm">永久掌握</div>
+                <div className="text-xs opacity-70">不再复习</div>
               </div>
             </Button>
           </div>

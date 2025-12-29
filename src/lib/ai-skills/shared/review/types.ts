@@ -7,8 +7,8 @@
 // Flashcard 相关类型
 // ============================================
 
-export type FlashcardStatus = "pending" | "learning" | "mastered";
-export type ReviewResponse = "mastered" | "fuzzy" | "forgotten";
+export type FlashcardStatus = "pending" | "learning" | "mastered" | "archived";
+export type ReviewResponse = "mastered" | "fuzzy" | "forgotten" | "archived";
 export type FlashcardDifficulty = "easy" | "medium" | "hard";
 
 export interface Flashcard {
@@ -129,6 +129,7 @@ export interface ReviewStats {
   masteredCount: number;
   learningCount: number;
   pendingCount: number;
+  archivedCount: number;
   masteredRate: number;
   sessionsInPeriod: number;
   masteredSessions: number;

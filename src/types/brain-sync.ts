@@ -19,7 +19,7 @@ export interface FlashcardRow {
   question: string;
   answer: string;
   source_paragraph: string | null;
-  status: "pending" | "learning" | "mastered";
+  status: "pending" | "learning" | "mastered" | "archived";
   ease_factor: number;
   interval_days: number;
   repetitions: number;
