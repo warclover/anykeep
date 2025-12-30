@@ -316,10 +316,12 @@ export class SimilarityFinder {
       // 使用第一个共享主题作为聚类键
       const clusterKey = item.sharedTopics[0] || item.aiTags?.[0] || "其他";
 
-      if (!topicGroups.has(clusterKey)) {
-        topicGroups.set(clusterKey, []);
+      const existingItems = topicGroups.get(clusterKey);
+      if (existingItems) {
+        existingItems.push(item);
+      } else {
+        topicGroups.set(clusterKey, [item]);
       }
-      topicGroups.get(clusterKey)!.push(item);
     }
 
     // 转换为 Cluster 数组

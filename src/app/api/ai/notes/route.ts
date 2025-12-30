@@ -169,16 +169,14 @@ export async function GET(request: NextRequest) {
 
     // 解析查询参数
     const searchParams = request.nextUrl.searchParams;
+    const limitParam = searchParams.get("limit");
+    const offsetParam = searchParams.get("offset");
     const params = {
       sourceType: searchParams.get("sourceType") || undefined,
       tags: searchParams.get("tags")?.split(",").filter(Boolean) || undefined,
       search: searchParams.get("search") || undefined,
-      limit: searchParams.get("limit")
-        ? parseInt(searchParams.get("limit")!, 10)
-        : undefined,
-      offset: searchParams.get("offset")
-        ? parseInt(searchParams.get("offset")!, 10)
-        : undefined,
+      limit: limitParam ? parseInt(limitParam, 10) : undefined,
+      offset: offsetParam ? parseInt(offsetParam, 10) : undefined,
     };
 
     const validation = listNotesRequestSchema.safeParse(params);

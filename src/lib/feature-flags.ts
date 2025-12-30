@@ -65,8 +65,9 @@ class FeatureFlagService {
    */
   isEnabled(flag: FeatureFlag): boolean {
     // 检查缓存
-    if (this.cache.has(flag)) {
-      return this.cache.get(flag)!;
+    const cached = this.cache.get(flag);
+    if (cached !== undefined) {
+      return cached;
     }
 
     // 从静态映射读取环境变量（Next.js 要求静态访问）

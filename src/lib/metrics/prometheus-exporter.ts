@@ -267,14 +267,15 @@ function processMetricEvent(event: MetricEvent): void {
       break;
     case "histogram":
     case "timing":
-      if (!aggregated.histograms.has(key)) {
-        aggregated.histograms.set(key, []);
-      }
-      aggregated.histograms.get(key)!.push(event.value);
-      // 保留最近 1000 个值
-      const values = aggregated.histograms.get(key)!;
-      if (values.length > 1000) {
-        aggregated.histograms.set(key, values.slice(-1000));
+      const existingValues = aggregated.histograms.get(key);
+      if (existingValues) {
+        existingValues.push(event.value);
+        // 保留最近 1000 个值
+        if (existingValues.length > 1000) {
+          aggregated.histograms.set(key, existingValues.slice(-1000));
+        }
+      } else {
+        aggregated.histograms.set(key, [event.value]);
       }
       break;
   }

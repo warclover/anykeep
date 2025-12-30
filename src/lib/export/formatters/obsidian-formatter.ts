@@ -233,10 +233,12 @@ export class ObsidianFormatter implements ExportFormatter {
 
     bookmarks.forEach((bookmark) => {
       const folderName = bookmark.folders?.name || "未分类";
-      if (!grouped.has(folderName)) {
-        grouped.set(folderName, []);
+      const folderBookmarks = grouped.get(folderName);
+      if (folderBookmarks) {
+        folderBookmarks.push(bookmark);
+      } else {
+        grouped.set(folderName, [bookmark]);
       }
-      grouped.get(folderName)!.push(bookmark);
     });
 
     // 遍历每个文件夹
@@ -332,11 +334,16 @@ export class ObsidianFormatter implements ExportFormatter {
       const folderName = bookmark.folders?.name || "未分类";
 
       // 获取或创建文件夹
-      if (!folders.has(folderName)) {
-        folders.set(folderName, zip.folder(sanitizeFilename(folderName))!);
+      let folder = folders.get(folderName);
+      if (!folder) {
+        const newFolder = zip.folder(sanitizeFilename(folderName));
+        if (newFolder) {
+          folders.set(folderName, newFolder);
+          folder = newFolder;
+        }
       }
 
-      const folder = folders.get(folderName)!;
+      if (!folder) return; // 跳过无法创建文件夹的情况
       let filename = this.generateFilename(bookmark);
 
       // 检查并处理文件名冲突
@@ -388,10 +395,12 @@ export class ObsidianFormatter implements ExportFormatter {
 
     bookmarks.forEach((bookmark) => {
       const folderName = bookmark.folders?.name || "未分类";
-      if (!grouped.has(folderName)) {
-        grouped.set(folderName, []);
+      const folderBookmarks = grouped.get(folderName);
+      if (folderBookmarks) {
+        folderBookmarks.push(bookmark);
+      } else {
+        grouped.set(folderName, [bookmark]);
       }
-      grouped.get(folderName)!.push(bookmark);
     });
 
     grouped.forEach((items, folderName) => {

@@ -210,11 +210,12 @@ export class DBSCANCluster<T> {
     for (const result of results) {
       if (result.clusterId < 0) continue; // 跳过噪声
 
-      if (!clusters.has(result.clusterId)) {
-        clusters.set(result.clusterId, { items: [], coreCount: 0 });
+      let cluster = clusters.get(result.clusterId);
+      if (!cluster) {
+        cluster = { items: [], coreCount: 0 };
+        clusters.set(result.clusterId, cluster);
       }
 
-      const cluster = clusters.get(result.clusterId)!;
       cluster.items.push(result.item);
       if (result.isCore) {
         cluster.coreCount++;

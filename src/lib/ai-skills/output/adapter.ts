@@ -112,9 +112,13 @@ export class UnifiedOutputAdapter {
         };
 
       case "confirmation":
+        // confirmation 在此 case 中必定存在，但 TypeScript 无法推断
+        if (!chunk.confirmation) {
+          throw new Error("Confirmation data missing in confirmation chunk");
+        }
         return {
           type: "confirmation",
-          data: this.adaptConfirmation(chunk.confirmation!),
+          data: this.adaptConfirmation(chunk.confirmation),
         };
 
       case "error":
@@ -242,6 +246,44 @@ export class UnifiedOutputAdapter {
         message,
         code,
         retryable,
+      },
+    };
+  }
+
+  /**
+   * 创建思考过程块
+   *
+   * 用于展示 AI 的深度思考过程（慢思考层）
+   *
+   * @param phase - 思考阶段
+   * @param content - 思考内容
+   * @param options - 可选参数
+   */
+  createThinkingChunk(
+    phase:
+      | "understanding"
+      | "planning"
+      | "deciding"
+      | "executing"
+      | "slow_thinking"
+      | "react_think"
+      | "react_act"
+      | "react_observe"
+      | "react_complete",
+    content: string,
+    options?: {
+      round?: number;
+      isFinal?: boolean;
+    },
+  ): UnifiedStreamChunk {
+    return {
+      type: "thinking",
+      data: {
+        phase,
+        content,
+        timestamp: Date.now(),
+        round: options?.round,
+        isFinal: options?.isFinal,
       },
     };
   }

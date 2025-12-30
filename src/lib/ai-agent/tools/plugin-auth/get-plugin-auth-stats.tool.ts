@@ -137,15 +137,15 @@ export const getPluginAuthStatsTool: Tool<
         }
 
         // 更新浏览器分组
-        if (!browserMap.has(browser)) {
-          browserMap.set(browser, {
+        let browserStats = browserMap.get(browser);
+        if (!browserStats) {
+          browserStats = {
             count: 0,
             activeCount: 0,
             lastUsed: null,
-          });
+          };
+          browserMap.set(browser, browserStats);
         }
-
-        const browserStats = browserMap.get(browser)!;
         browserStats.count++;
 
         if (status === "active") {

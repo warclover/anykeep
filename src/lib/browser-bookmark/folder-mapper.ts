@@ -212,8 +212,9 @@ export function buildFolderMapping(
     // 检查是否已存在同名文件夹
     // 对于第一级，检查 existingByName
     // 对于更深层级，假设需要创建（因为结构可能不同）
-    if (depth === 1 && existingByName.has(name)) {
-      pathToFolderId.set(pathKey, existingByName.get(name)!);
+    const existingFolderId = depth === 1 ? existingByName.get(name) : undefined;
+    if (existingFolderId !== undefined) {
+      pathToFolderId.set(pathKey, existingFolderId);
     } else {
       // 需要创建，先用临时 ID（负数）
       const tempId = -(foldersToCreate.length + 1);

@@ -237,11 +237,11 @@ export class EventBus {
     handler: EventHandler<EventPayload<K>>,
     once: boolean,
   ): () => void {
-    if (!this.handlers.has(event)) {
-      this.handlers.set(event, new Set());
+    let eventHandlers = this.handlers.get(event);
+    if (!eventHandlers) {
+      eventHandlers = new Set();
+      this.handlers.set(event, eventHandlers);
     }
-
-    const eventHandlers = this.handlers.get(event)!;
 
     // 检查监听器数量限制
     if (eventHandlers.size >= this.options.maxListeners) {

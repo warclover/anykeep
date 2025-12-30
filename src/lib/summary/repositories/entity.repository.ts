@@ -405,8 +405,9 @@ export class EntityRepository {
       type EntityRow = { name: string; type: string; normalized_name: string };
       for (const row of data as EntityRow[]) {
         const key = row.normalized_name;
-        if (countMap.has(key)) {
-          countMap.get(key)!.count++;
+        const existing = countMap.get(key);
+        if (existing) {
+          existing.count++;
         } else {
           countMap.set(key, {
             name: row.name,

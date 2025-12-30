@@ -55,9 +55,9 @@ export class RRFFusion {
         const id = item.id;
         const rrfContribution = weight / (this.config.k + item.rank);
 
-        if (itemMap.has(id)) {
+        const existing = itemMap.get(id);
+        if (existing) {
           // 已存在，累加 RRF 分数
-          const existing = itemMap.get(id)!;
           existing.rrfScore += rrfContribution;
           existing.sources.push(item.source);
           existing.sourceRanks[item.source] = item.rank;

@@ -142,11 +142,16 @@ export class FolderRepository extends BaseRepository<
 
     // 构建树
     for (const folder of folders) {
-      const node = nodeMap.get(folder.id)!;
+      const node = nodeMap.get(folder.id);
+      if (!node) continue;
 
-      if (folder.parent_id && nodeMap.has(folder.parent_id)) {
-        const parent = nodeMap.get(folder.parent_id)!;
-        parent.children.push(node);
+      if (folder.parent_id) {
+        const parent = nodeMap.get(folder.parent_id);
+        if (parent) {
+          parent.children.push(node);
+        } else {
+          roots.push(node);
+        }
       } else {
         roots.push(node);
       }
@@ -293,7 +298,8 @@ export class FolderRepository extends BaseRepository<
     const queue = [folderId];
 
     while (queue.length > 0) {
-      const currentId = queue.shift()!;
+      const currentId = queue.shift();
+      if (currentId === undefined) break;
       const children = await this.getChildren(currentId);
 
       for (const child of children) {

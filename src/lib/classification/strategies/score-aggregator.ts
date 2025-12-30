@@ -113,16 +113,16 @@ export class WeightedScoreAggregator implements IScoreAggregator {
         // 跳过特殊文件夹 ID（如建议创建新文件夹）
         if (result.folderId < 0) continue;
 
-        if (!folderScores.has(result.folderId)) {
-          folderScores.set(result.folderId, {
+        let entry = folderScores.get(result.folderId);
+        if (!entry) {
+          entry = {
             folderName: result.folderName,
             matcherScores: new Map(),
             reasons: [],
             skipAI: false,
-          });
+          };
+          folderScores.set(result.folderId, entry);
         }
-
-        const entry = folderScores.get(result.folderId)!;
         entry.matcherScores.set(matcherName, result.score);
 
         // 生成可读的原因

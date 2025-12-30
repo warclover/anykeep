@@ -203,23 +203,25 @@ export async function GET(request: NextRequest) {
     // 2. 解析查询参数
     const searchParams = request.nextUrl.searchParams;
 
+    const bookmarkIdsParam = searchParams.get("bookmarkIds");
+    const folderIdsParam = searchParams.get("folderIds");
+    const tagNamesParam = searchParams.get("tagNames");
+
     const references = {
-      bookmarkIds: searchParams.get("bookmarkIds")
-        ? searchParams
-            .get("bookmarkIds")!
+      bookmarkIds: bookmarkIdsParam
+        ? bookmarkIdsParam
             .split(",")
             .map((id) => parseInt(id, 10))
             .filter((id) => !isNaN(id))
         : undefined,
-      folderIds: searchParams.get("folderIds")
-        ? searchParams
-            .get("folderIds")!
+      folderIds: folderIdsParam
+        ? folderIdsParam
             .split(",")
             .map((id) => parseInt(id, 10))
             .filter((id) => !isNaN(id))
         : undefined,
-      tagNames: searchParams.get("tagNames")
-        ? searchParams.get("tagNames")!.split(",").filter(Boolean)
+      tagNames: tagNamesParam
+        ? tagNamesParam.split(",").filter(Boolean)
         : undefined,
       previousOutputId: searchParams.get("previousOutputId") || undefined,
       searchQuery: searchParams.get("searchQuery") || undefined,

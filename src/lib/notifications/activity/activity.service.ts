@@ -365,10 +365,6 @@ class ActivityService {
       const date = new Date(msg.created_at);
       const dateKey = date.toISOString().split("T")[0];
 
-      if (!groupMap.has(dateKey)) {
-        groupMap.set(dateKey, []);
-      }
-
       // 转换 Message 为 ActivityLogItem
       const item: ActivityLogItem = {
         id: msg.id,
@@ -387,7 +383,12 @@ class ActivityService {
           : null,
       };
 
-      groupMap.get(dateKey)!.push(item);
+      const existingItems = groupMap.get(dateKey);
+      if (existingItems) {
+        existingItems.push(item);
+      } else {
+        groupMap.set(dateKey, [item]);
+      }
     });
 
     // 转换为数组并添加标签

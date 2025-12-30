@@ -122,13 +122,11 @@ async function handleSingleProfile(userId: string, sourceId: string) {
  * 处理来源画像列表请求
  */
 async function handleList(userId: string, searchParams: URLSearchParams) {
+  const limitParam = searchParams.get("limit");
+  const offsetParam = searchParams.get("offset");
   const params: SourceProfilesQueryParams = {
-    limit: searchParams.get("limit")
-      ? parseInt(searchParams.get("limit")!, 10)
-      : 50,
-    offset: searchParams.get("offset")
-      ? parseInt(searchParams.get("offset")!, 10)
-      : 0,
+    limit: limitParam ? parseInt(limitParam, 10) : 50,
+    offset: offsetParam ? parseInt(offsetParam, 10) : 0,
     sortBy:
       (searchParams.get("sortBy") as SourceProfilesQueryParams["sortBy"]) ||
       "sample_count",
@@ -160,11 +158,10 @@ async function handleList(userId: string, searchParams: URLSearchParams) {
     return params.sortOrder === "desc" ? -comparison : comparison;
   });
 
-  // 应用分页
-  const paginatedProfiles = sortedProfiles.slice(
-    params.offset!,
-    params.offset! + params.limit!,
-  );
+  // 应用分页 - offset 和 limit 都有默认值，使用 ?? 确保类型安全
+  const offset = params.offset ?? 0;
+  const limit = params.limit ?? 50;
+  const paginatedProfiles = sortedProfiles.slice(offset, offset + limit);
 
   return successResponse({
     profiles: paginatedProfiles,

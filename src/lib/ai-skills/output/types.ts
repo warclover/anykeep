@@ -365,6 +365,7 @@ export interface DoneChunk {
  *
  * 在零接管模式下，展示 AI 的决策过程
  * 在 ReAct 模式下，展示 Think → Act → Observe 循环
+ * 在慢思考模式下，展示深度推理过程
  */
 export interface ThinkingChunk {
   type: "thinking";
@@ -379,7 +380,9 @@ export interface ThinkingChunk {
       | "react_think"
       | "react_act"
       | "react_observe"
-      | "react_complete";
+      | "react_complete"
+      // 慢思考阶段
+      | "slow_thinking";
     /** 思考内容 */
     content: string;
     /** 时间戳 */

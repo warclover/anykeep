@@ -370,11 +370,10 @@ export class ConfidenceCalibrationService {
     const now = Date.now();
 
     // 检查缓存
-    if (
-      this.bucketCache.has(cacheKey) &&
-      (this.cacheExpiry.get(cacheKey) || 0) > now
-    ) {
-      return this.bucketCache.get(cacheKey)!;
+    const cachedBuckets = this.bucketCache.get(cacheKey);
+    const cacheExpiryTime = this.cacheExpiry.get(cacheKey) || 0;
+    if (cachedBuckets && cacheExpiryTime > now) {
+      return cachedBuckets;
     }
 
     try {
@@ -424,12 +423,10 @@ export class ConfidenceCalibrationService {
     const now = Date.now();
 
     // 检查缓存
-    if (
-      this.folderCache.has(cacheKey) &&
-      (this.cacheExpiry.get(cacheKey) || 0) > now
-    ) {
-      const cache = this.folderCache.get(cacheKey)!;
-      return cache.get(folderId) || null;
+    const cachedFolders = this.folderCache.get(cacheKey);
+    const cacheExpiryTime = this.cacheExpiry.get(cacheKey) || 0;
+    if (cachedFolders && cacheExpiryTime > now) {
+      return cachedFolders.get(folderId) || null;
     }
 
     try {

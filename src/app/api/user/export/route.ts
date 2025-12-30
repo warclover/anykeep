@@ -208,7 +208,8 @@ export async function POST() {
     const folderMap = new Map<number, string>();
     const buildFolderPath = (folderId: number | null): string | null => {
       if (!folderId) return null;
-      if (folderMap.has(folderId)) return folderMap.get(folderId)!;
+      const cached = folderMap.get(folderId);
+      if (cached) return cached;
 
       const folder = folders?.find((f) => f.id === folderId);
       if (!folder) return null;

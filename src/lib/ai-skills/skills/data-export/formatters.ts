@@ -197,10 +197,12 @@ export function formatHtml(bookmarks: ExportedBookmark[]): string {
   const byFolder = new Map<string, ExportedBookmark[]>();
   for (const b of bookmarks) {
     const folder = b.folderName || "未分类";
-    if (!byFolder.has(folder)) {
-      byFolder.set(folder, []);
+    const folderBookmarks = byFolder.get(folder);
+    if (folderBookmarks) {
+      folderBookmarks.push(b);
+    } else {
+      byFolder.set(folder, [b]);
     }
-    byFolder.get(folder)!.push(b);
   }
 
   for (const [folder, items] of byFolder) {

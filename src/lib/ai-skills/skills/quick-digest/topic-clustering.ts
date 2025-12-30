@@ -467,16 +467,17 @@ export function groupByPlatform(
     const platform = bookmark.platform || "other";
     const displayName = getPlatformDisplayName(platform);
 
-    if (!platformGroups.has(platform)) {
-      platformGroups.set(platform, {
+    let group = platformGroups.get(platform);
+    if (!group) {
+      group = {
         name: displayName,
         count: 0,
         keywords: [platform],
         bookmarks: [],
-      });
+      };
+      platformGroups.set(platform, group);
     }
 
-    const group = platformGroups.get(platform)!;
     group.count++;
     group.bookmarks.push({
       id: bookmark.id,
@@ -511,16 +512,17 @@ export function groupByDate(
     const dateKey = date.toISOString().split("T")[0]; // YYYY-MM-DD
     const displayName = formatDate(date);
 
-    if (!dateGroups.has(dateKey)) {
-      dateGroups.set(dateKey, {
+    let group = dateGroups.get(dateKey);
+    if (!group) {
+      group = {
         name: displayName,
         count: 0,
         keywords: [dateKey],
         bookmarks: [],
-      });
+      };
+      dateGroups.set(dateKey, group);
     }
 
-    const group = dateGroups.get(dateKey)!;
     group.count++;
     group.bookmarks.push({
       id: bookmark.id,

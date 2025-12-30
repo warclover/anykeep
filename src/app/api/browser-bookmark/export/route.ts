@@ -115,8 +115,9 @@ export async function GET(request: NextRequest) {
       const folderMap = new Map(allFolders.map((f) => [f.id, f]));
 
       function getFolderPath(folderId: number): string[] {
-        if (folderPathMap.has(folderId)) {
-          return folderPathMap.get(folderId)!;
+        const cached = folderPathMap.get(folderId);
+        if (cached) {
+          return cached;
         }
 
         const folder = folderMap.get(folderId);

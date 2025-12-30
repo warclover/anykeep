@@ -121,9 +121,9 @@ export async function GET(request: NextRequest) {
 
     if (type === "all" || type === "ai") {
       for (const [name, count] of aiTagCounts) {
-        if (tagMap.has(name)) {
-          // 已存在的标签，累加计数
-          const existing = tagMap.get(name)!;
+        // 已存在的标签，累加计数
+        const existing = tagMap.get(name);
+        if (existing) {
           existing.count += count;
           existing.type = "mixed";
         } else {

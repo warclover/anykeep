@@ -91,10 +91,12 @@ export function generateBookmarkHtml(
 
     for (const bookmark of bookmarks) {
       const platform = bookmark.platform || "UNKNOWN";
-      if (!platformGroups.has(platform)) {
-        platformGroups.set(platform, []);
+      const platformBookmarks = platformGroups.get(platform);
+      if (platformBookmarks) {
+        platformBookmarks.push(bookmark);
+      } else {
+        platformGroups.set(platform, [bookmark]);
       }
-      platformGroups.get(platform)!.push(bookmark);
     }
 
     // 为每个平台创建文件夹

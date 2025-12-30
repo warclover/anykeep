@@ -76,9 +76,8 @@ export async function GET(request: NextRequest) {
     // 2. 解析查询参数
     const { searchParams } = new URL(request.url);
     const isMatrix = searchParams.get("matrix") === "true";
-    const folderId = searchParams.get("folderId")
-      ? parseInt(searchParams.get("folderId")!, 10)
-      : null;
+    const folderIdParam = searchParams.get("folderId");
+    const folderId = folderIdParam ? parseInt(folderIdParam, 10) : null;
     const limit = Math.min(parseInt(searchParams.get("limit") || "20", 10), 50); // 最大 50
     const minSimilarity = parseFloat(
       searchParams.get("minSimilarity") || "0.7",

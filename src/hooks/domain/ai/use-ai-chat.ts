@@ -43,7 +43,8 @@ export type ThinkingPhase =
   | "react_think"
   | "react_act"
   | "react_observe"
-  | "react_complete";
+  | "react_complete"
+  | "slow_thinking";
 
 /**
  * 思考过程记录

@@ -102,10 +102,12 @@ class UnifiedCacheFacade {
 
     // 更新标签索引
     for (const tag of tags) {
-      if (!this.tagIndex.has(tag)) {
-        this.tagIndex.set(tag, new Set());
+      const tagKeys = this.tagIndex.get(tag);
+      if (tagKeys) {
+        tagKeys.add(key);
+      } else {
+        this.tagIndex.set(tag, new Set([key]));
       }
-      this.tagIndex.get(tag)!.add(key);
     }
 
     dataCache.setCache(key, value);
@@ -141,10 +143,12 @@ class UnifiedCacheFacade {
 
     // 更新标签索引
     for (const tag of tags) {
-      if (!this.tagIndex.has(tag)) {
-        this.tagIndex.set(tag, new Set());
+      const tagKeys = this.tagIndex.get(tag);
+      if (tagKeys) {
+        tagKeys.add(key);
+      } else {
+        this.tagIndex.set(tag, new Set([key]));
       }
-      this.tagIndex.get(tag)!.add(key);
     }
 
     // 使用 dataCache 的 SWR 模式

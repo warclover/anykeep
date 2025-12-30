@@ -161,16 +161,16 @@ function groupArticlesByAccount(
 
   for (const article of articles) {
     const key = article.accountName;
-    if (!groupMap.has(key)) {
-      groupMap.set(key, {
+    let group = groupMap.get(key);
+    if (!group) {
+      group = {
         accountName: article.accountName,
         accountId: article.accountId,
         articleCount: 0,
         articles: [],
-      });
+      };
+      groupMap.set(key, group);
     }
-
-    const group = groupMap.get(key)!;
     // 移除内部字段
     const { accountName: _, accountId: __, ...rest } = article;
     group.articles.push(rest);

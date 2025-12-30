@@ -146,6 +146,13 @@ export class TaskUnderstandingIntegration {
       return;
     }
 
+    // 类型安全：确保 taskAnalyzer 存在（isEnabled() 已验证）
+    const analyzer = this.taskAnalyzer;
+    if (!analyzer) {
+      yield* engine.execute(input, context);
+      return;
+    }
+
     const startTime = Date.now();
 
     try {
@@ -159,10 +166,7 @@ export class TaskUnderstandingIntegration {
       );
 
       // 3. 分析任务
-      const understanding = await this.taskAnalyzer!.analyze(
-        input,
-        taskContext,
-      );
+      const understanding = await analyzer.analyze(input, taskContext);
 
       if (this.debug) {
         logger.debug(

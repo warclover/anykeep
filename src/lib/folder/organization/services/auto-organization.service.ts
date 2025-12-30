@@ -243,13 +243,13 @@ export class FolderAutoOrganizationService {
         if (processedPairs.has(pairKey)) continue;
         processedPairs.add(pairKey);
 
+        // 安全检查：虽然已筛选，但 TypeScript 无法推断
+        if (!folderA.profile_embedding || !folderB.profile_embedding) continue;
+
         // 计算相似度
         const similarity =
           1 -
-          cosineDistance(
-            folderA.profile_embedding!,
-            folderB.profile_embedding!,
-          );
+          cosineDistance(folderA.profile_embedding, folderB.profile_embedding);
 
         if (similarity >= this.config.similarityThreshold) {
           // 选择书签更多的作为目标文件夹
@@ -314,10 +314,12 @@ export class FolderAutoOrganizationService {
     const byParent = new Map<number | null, FolderWithProfile[]>();
     for (const folder of smallFolders) {
       const parentId = folder.parent_id;
-      if (!byParent.has(parentId)) {
-        byParent.set(parentId, []);
+      const parentFolders = byParent.get(parentId);
+      if (parentFolders) {
+        parentFolders.push(folder);
+      } else {
+        byParent.set(parentId, [folder]);
       }
-      byParent.get(parentId)!.push(folder);
     }
 
     // 为每组生成合并建议

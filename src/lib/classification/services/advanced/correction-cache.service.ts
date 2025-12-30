@@ -200,10 +200,12 @@ export class CorrectionCacheService {
     // 写入域名级缓存（用于相似匹配）
     if (this.config.enableSimilarUrlMatching) {
       const domainKey = generateDomainKey(userId, url);
-      if (!this.domainCache.has(domainKey)) {
-        this.domainCache.set(domainKey, new Map());
+      const domainEntries = this.domainCache.get(domainKey);
+      if (domainEntries) {
+        domainEntries.set(normalizeUrl(url), entry);
+      } else {
+        this.domainCache.set(domainKey, new Map([[normalizeUrl(url), entry]]));
       }
-      this.domainCache.get(domainKey)!.set(normalizeUrl(url), entry);
     }
 
     this.stats.writes++;

@@ -297,10 +297,13 @@ const patternCache = new Map<string, RegExp>();
  * 获取编译后的正则表达式
  */
 export function getCompiledPattern(pattern: string): RegExp {
-  if (!patternCache.has(pattern)) {
-    patternCache.set(pattern, new RegExp(pattern, "i"));
+  const cached = patternCache.get(pattern);
+  if (cached) {
+    return cached;
   }
-  return patternCache.get(pattern)!;
+  const compiled = new RegExp(pattern, "i");
+  patternCache.set(pattern, compiled);
+  return compiled;
 }
 
 /**

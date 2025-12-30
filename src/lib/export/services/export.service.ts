@@ -437,10 +437,12 @@ export class ExportService {
 
     bookmarks.forEach((bookmark) => {
       const folderName = bookmark.folders?.name || "未分类";
-      if (!grouped.has(folderName)) {
-        grouped.set(folderName, []);
+      const folderBookmarks = grouped.get(folderName);
+      if (folderBookmarks) {
+        folderBookmarks.push(bookmark);
+      } else {
+        grouped.set(folderName, [bookmark]);
       }
-      grouped.get(folderName)!.push(bookmark);
     });
 
     grouped.forEach((items, folderName) => {

@@ -224,7 +224,8 @@ function buildFolderTree(folders: Folder[]): FolderTreeNode[] {
 
   // 第二遍遍历：构建树形关系
   folders.forEach((folder) => {
-    const folderNode = folderMap.get(folder.id)!;
+    const folderNode = folderMap.get(folder.id);
+    if (!folderNode) return;
 
     if (folder.parent_id === null) {
       // 根文件夹

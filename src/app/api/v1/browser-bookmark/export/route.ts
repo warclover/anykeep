@@ -111,8 +111,9 @@ export const GET = withAuthMiddleware(
       const folderMap = new Map(allFolders.map((f) => [f.id, f]));
 
       function getFolderPath(folderId: number): string[] {
-        if (folderPathMap.has(folderId)) {
-          return folderPathMap.get(folderId)!;
+        const cachedPath = folderPathMap.get(folderId);
+        if (cachedPath) {
+          return cachedPath;
         }
 
         const folder = folderMap.get(folderId);

@@ -39,6 +39,10 @@ const eslintConfig = defineConfig([
       // 禁止使用 any 类型
       "@typescript-eslint/no-explicit-any": "error",
 
+      // 禁止使用非空断言 (!) - 防止运行时 undefined 错误
+      // 应该使用类型守卫或可选链代替
+      "@typescript-eslint/no-non-null-assertion": "warn",
+
       // 限制 console 使用 - 推荐使用 logger 或 clientLogger
       // 生产代码禁止 console.log，允许 console.error/info（便于调试和测试输出）
       // 测试文件允许所有 console 方法（见下方 overrides）

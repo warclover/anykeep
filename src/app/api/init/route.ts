@@ -56,11 +56,17 @@ function buildFolderTree(folders: Folder[]): Folder[] {
 
   // 第二遍：建立父子关系
   folders.forEach((folder) => {
-    const node = folderMap.get(folder.id)!;
-    if (folder.parent_id !== null && folderMap.has(folder.parent_id)) {
-      const parent = folderMap.get(folder.parent_id)!;
-      parent.children = parent.children || [];
-      parent.children.push(node);
+    const node = folderMap.get(folder.id);
+    if (!node) return;
+
+    if (folder.parent_id !== null) {
+      const parent = folderMap.get(folder.parent_id);
+      if (parent) {
+        parent.children = parent.children || [];
+        parent.children.push(node);
+      } else {
+        rootFolders.push(node);
+      }
     } else {
       rootFolders.push(node);
     }

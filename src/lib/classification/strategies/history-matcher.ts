@@ -68,19 +68,29 @@ export class HistoryMatcher implements IMatcher {
     >();
 
     for (const bookmark of classifiedBookmarks) {
-      const folderId = bookmark.folderId!;
-      const folderName = bookmark.folderName!;
+      const folderId = bookmark.folderId;
+      const folderName = bookmark.folderName;
+      // TypeScript guard - should be impossible due to filter above
+      if (
+        folderId === null ||
+        folderId === undefined ||
+        folderName === null ||
+        folderName === undefined
+      ) {
+        continue;
+      }
 
-      if (!folderCounts.has(folderId)) {
-        folderCounts.set(folderId, {
+      let entry = folderCounts.get(folderId);
+      if (!entry) {
+        entry = {
           name: folderName,
           count: 0,
           titles: [],
           totalSimilarity: 0,
-        });
+        };
+        folderCounts.set(folderId, entry);
       }
 
-      const entry = folderCounts.get(folderId)!;
       entry.count++;
       entry.totalSimilarity += bookmark.similarity;
       if (entry.titles.length < 3) {

@@ -267,8 +267,9 @@ export class WechatDigestSkill extends OrchestrationSkill<
       // 输出摘要文本
       yield* this.emitText("---\n\n");
       yield* this.emitText("## 📊 阅读摘要报告\n\n");
+      const totalWordCount = skillContext.stats?.totalWordCount ?? 0;
       yield* this.emitText(
-        `在分析的 **${articles.length}** 篇文章中，共计约 **${Math.round(skillContext.stats!.totalWordCount / 1000)}k** 字。\n\n`,
+        `在分析的 **${articles.length}** 篇文章中，共计约 **${Math.round(totalWordCount / 1000)}k** 字。\n\n`,
       );
 
       // 输出各分组摘要
@@ -308,7 +309,7 @@ export class WechatDigestSkill extends OrchestrationSkill<
           shareable: true,
           metadata: {
             totalArticles: articles.length,
-            totalAccounts: skillContext.stats!.totalAccounts,
+            totalAccounts: skillContext.stats?.totalAccounts ?? 0,
             generatedAt: new Date().toISOString(),
           },
         },
@@ -530,10 +531,12 @@ export class WechatDigestSkill extends OrchestrationSkill<
           break;
       }
 
-      if (!groupMap.has(key)) {
-        groupMap.set(key, []);
+      const existingArticles = groupMap.get(key);
+      if (existingArticles) {
+        existingArticles.push(article);
+      } else {
+        groupMap.set(key, [article]);
       }
-      groupMap.get(key)!.push(article);
     }
 
     return Array.from(groupMap.entries())

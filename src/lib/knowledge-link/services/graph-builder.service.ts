@@ -478,7 +478,8 @@ export class GraphBuilderService implements IGraphBuilderService {
         const community: number[] = [];
 
         while (queue.length > 0) {
-          const current = queue.shift()!;
+          const current = queue.shift();
+          if (current === undefined) continue;
           if (labels.has(current)) continue;
 
           labels.set(current, communityId);
@@ -499,10 +500,12 @@ export class GraphBuilderService implements IGraphBuilderService {
     // 按社区分组
     const communities = new Map<number, number[]>();
     for (const [nodeId, cId] of labels) {
-      if (!communities.has(cId)) {
-        communities.set(cId, []);
+      const communityNodes = communities.get(cId);
+      if (communityNodes) {
+        communityNodes.push(nodeId);
+      } else {
+        communities.set(cId, [nodeId]);
       }
-      communities.get(cId)!.push(nodeId);
     }
 
     logger.info(

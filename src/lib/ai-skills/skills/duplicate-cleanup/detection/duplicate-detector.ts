@@ -180,10 +180,12 @@ export function detectSemanticDuplicates(
 
   for (let i = 0; i < n; i++) {
     const root = find(i);
-    if (!groupMap.has(root)) {
-      groupMap.set(root, { bookmarks: [], maxSimilarity: 0 });
+    let group = groupMap.get(root);
+    if (!group) {
+      group = { bookmarks: [], maxSimilarity: 0 };
+      groupMap.set(root, group);
     }
-    groupMap.get(root)!.bookmarks.push(bookmarks[i]);
+    group.bookmarks.push(bookmarks[i]);
   }
 
   // 计算每组的最高相似度

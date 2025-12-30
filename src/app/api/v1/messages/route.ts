@@ -143,10 +143,12 @@ function groupMessagesByDate(messages: MessageWithGroup[]): MessageGroup[] {
 
   for (const message of messages) {
     const group = message.date_group;
-    if (!groupMap.has(group)) {
-      groupMap.set(group, []);
+    const groupMessages = groupMap.get(group);
+    if (groupMessages) {
+      groupMessages.push(message);
+    } else {
+      groupMap.set(group, [message]);
     }
-    groupMap.get(group)!.push(message);
   }
 
   const orderedGroups: DateGroup[] = [

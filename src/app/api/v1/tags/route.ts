@@ -135,8 +135,8 @@ export const GET = withAuthMiddleware(
 
     if (type === "all" || type === "ai") {
       for (const [name, count] of aiTagCounts) {
-        if (tagMap.has(name)) {
-          const existing = tagMap.get(name)!;
+        const existing = tagMap.get(name);
+        if (existing) {
           existing.count += count;
           existing.type = "mixed";
         } else {

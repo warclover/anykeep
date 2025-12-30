@@ -95,6 +95,11 @@ const PHASE_CONFIG: Record<
     icon: CheckCircle2,
     color: "text-green-600",
   },
+  slow_thinking: {
+    label: "深度思考",
+    icon: Brain,
+    color: "text-violet-500",
+  },
 };
 
 // ============================================
@@ -206,10 +211,12 @@ export const ReactThinkingDisplay = memo(function ReactThinkingDisplay({
 
     for (const record of thinking) {
       const round = record.round || currentRound;
-      if (!rounds.has(round)) {
-        rounds.set(round, []);
+      let roundRecords = rounds.get(round);
+      if (!roundRecords) {
+        roundRecords = [];
+        rounds.set(round, roundRecords);
       }
-      rounds.get(round)!.push(record);
+      roundRecords.push(record);
       currentRound = round;
     }
 

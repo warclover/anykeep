@@ -455,14 +455,16 @@ export function findMapping(
 ): SkillMapping | null {
   // 1. 精确匹配
   const exactKey = `${intentType}:${subType}`;
-  if (index.has(exactKey)) {
-    return index.get(exactKey)!;
+  const exactMatch = index.get(exactKey);
+  if (exactMatch) {
+    return exactMatch;
   }
 
   // 2. 通配符匹配
   const wildcardKey = `${intentType}:*`;
-  if (index.has(wildcardKey)) {
-    return index.get(wildcardKey)!;
+  const wildcardMatch = index.get(wildcardKey);
+  if (wildcardMatch) {
+    return wildcardMatch;
   }
 
   // 3. 无匹配

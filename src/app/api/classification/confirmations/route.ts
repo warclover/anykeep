@@ -86,15 +86,13 @@ export async function GET(request: NextRequest) {
 
     // 解析查询参数
     const { searchParams } = new URL(request.url);
+    const limitParam = searchParams.get("limit");
+    const offsetParam = searchParams.get("offset");
     const params: ConfirmationsQueryParams = {
       status: searchParams.get("status") as ConfirmationStatus | undefined,
       type: searchParams.get("type") as ConfirmationType | undefined,
-      limit: searchParams.get("limit")
-        ? parseInt(searchParams.get("limit")!, 10)
-        : 50,
-      offset: searchParams.get("offset")
-        ? parseInt(searchParams.get("offset")!, 10)
-        : 0,
+      limit: limitParam ? parseInt(limitParam, 10) : 50,
+      offset: offsetParam ? parseInt(offsetParam, 10) : 0,
     };
 
     // 构建查询 - 关联 bookmarks 表获取标题和 URL
@@ -127,8 +125,10 @@ export async function GET(request: NextRequest) {
       query = query.eq("confirmation_type", params.type);
     }
 
-    // 分页
-    query = query.range(params.offset!, params.offset! + params.limit! - 1);
+    // 分页 - offset 和 limit 都有默认值，使用 ?? 确保类型安全
+    const offset = params.offset ?? 0;
+    const limit = params.limit ?? 50;
+    query = query.range(offset, offset + limit - 1);
 
     const { data, count, error } = await query;
 

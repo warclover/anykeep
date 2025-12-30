@@ -79,8 +79,41 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 3. 解析请求体
-    const body = await request.json();
+    // 3. 解析请求参数（支持 query string 和 body 两种方式）
+    const searchParams = request.nextUrl.searchParams;
+    let body: Record<string, unknown> = {};
+
+    // 优先从 query string 读取参数
+    const queryScope = searchParams.get("scope");
+    const queryFolderId = searchParams.get("folderId");
+    const queryIncludeWayback = searchParams.get("includeWayback");
+    const queryBookmarkIds = searchParams.get("bookmarkIds");
+
+    if (
+      queryScope ||
+      queryFolderId ||
+      queryIncludeWayback ||
+      queryBookmarkIds
+    ) {
+      // 使用 query string 参数
+      body = {
+        scope: queryScope || undefined,
+        folderId: queryFolderId ? parseInt(queryFolderId, 10) : undefined,
+        includeWayback: queryIncludeWayback === "true",
+        bookmarkIds: queryBookmarkIds
+          ? queryBookmarkIds.split(",").map((id) => parseInt(id.trim(), 10))
+          : undefined,
+      };
+    } else {
+      // 尝试从 body 读取参数
+      try {
+        body = await request.json();
+      } catch {
+        // 空 body 时使用空对象
+        body = {};
+      }
+    }
+
     const parseResult = CheckRequestSchema.safeParse(body);
 
     if (!parseResult.success) {

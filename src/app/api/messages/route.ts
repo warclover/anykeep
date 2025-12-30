@@ -126,10 +126,12 @@ function groupMessagesByDate(messages: MessageWithGroup[]): MessageGroup[] {
   // 按 date_group 分组
   for (const message of messages) {
     const group = message.date_group;
-    if (!groupMap.has(group)) {
-      groupMap.set(group, []);
+    const groupMessages = groupMap.get(group);
+    if (groupMessages) {
+      groupMessages.push(message);
+    } else {
+      groupMap.set(group, [message]);
     }
-    groupMap.get(group)!.push(message);
   }
 
   // 转换为数组，保持顺序

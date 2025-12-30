@@ -50,6 +50,12 @@ import {
 } from "./execution-coordinator";
 import type { OutputEnhancer } from "./output-enhancer";
 import { createOutputEnhancer } from "./output-enhancer";
+import {
+  createSlowThinkingService,
+  type SlowThinkingService,
+  type SlowThinkingRouteResult,
+  type SlowThinkingDynamicContext,
+} from "../../ai-agent/slow-thinking";
 
 /**
  * 统一执行引擎
@@ -68,6 +74,7 @@ export class UnifiedEngine {
   private inputPreprocessor: InputPreprocessor;
   private executionCoordinator: ExecutionCoordinator;
   private outputEnhancer: OutputEnhancer;
+  private slowThinkingService: SlowThinkingService;
 
   private config: Required<UnifiedEngineConfig>;
   private effectListenerIds: string[] = [];
@@ -115,6 +122,7 @@ export class UnifiedEngine {
         debug: this.config.debug,
       },
     );
+    this.slowThinkingService = createSlowThinkingService();
 
     // 初始化 Effect 处理器
     this.initEffectHandlers();
@@ -236,11 +244,15 @@ export class UnifiedEngine {
         context.onSearchResults ??
         (this.config.enableMemory && context.conversationId
           ? (query: string, resultIds: number[]) => {
-              this.memoryManager.recordSearchResults(
-                context.conversationId!,
-                query,
-                resultIds,
-              );
+              // conversationId 已在条件中检查，此处安全使用
+              const convId = context.conversationId;
+              if (convId) {
+                this.memoryManager.recordSearchResults(
+                  convId,
+                  query,
+                  resultIds,
+                );
+              }
             }
           : undefined),
       // 注入最近的搜索结果（用于指代词解析）
@@ -343,6 +355,78 @@ export class UnifiedEngine {
           routeResult.complexity.level,
         );
       }
+
+      // ========== 慢思考层集成 ==========
+      // 转换路由结果为慢思考接口格式
+      const slowThinkingRouteResult: SlowThinkingRouteResult = {
+        intent: {
+          type: routeResult.intent.type,
+          subType: routeResult.intent.subType,
+        },
+        complexity: {
+          level: routeResult.complexity.level as
+            | "simple"
+            | "medium"
+            | "complex",
+          score: routeResult.complexity.score,
+        },
+        mode: routeResult.mode,
+      };
+
+      // 构建动态上下文（从 EngineContext 提取）
+      const slowThinkingContext: SlowThinkingDynamicContext = {
+        stats: {
+          totalBookmarks: context.totalBookmarks,
+        },
+        // 注意：完整的动态上下文需要从 DynamicContextBuilder 获取
+        // 这里只提供 EngineContext 中可用的数据
+      };
+
+      // 调用慢思考服务
+      const monologue = await this.slowThinkingService.generateMonologue(
+        input,
+        slowThinkingRouteResult,
+        slowThinkingContext,
+      );
+
+      // 如果有慢思考结果且应该展示给用户
+      if (monologue && this.slowThinkingService.shouldShowToUser()) {
+        // 构建思考内容展示
+        const thinkingContent = monologue.conclusion
+          ? `${monologue.thinking}\n\n**结论**: ${monologue.conclusion}`
+          : monologue.thinking;
+
+        yield this.outputAdapter.createThinkingChunk(
+          "slow_thinking",
+          thinkingContent,
+          { isFinal: true },
+        );
+
+        logger.debug(
+          {
+            userMessage: input.slice(0, 50),
+            inferredIntent: monologue.inferredIntent,
+            suggestRouteChange: monologue.suggestRouteChange,
+            confidence: monologue.confidence,
+            durationMs: monologue.thinkingDurationMs,
+          },
+          "UnifiedEngine: Slow thinking completed",
+        );
+      }
+
+      // TODO: 如果 monologue.suggestRouteChange 为 true，可以在这里修改路由决策
+      // 目前暂时只记录日志，未来可以根据 monologue.suggestedStrategy 调整执行
+      if (monologue?.suggestRouteChange) {
+        logger.info(
+          {
+            originalMode: routeResult.mode,
+            suggestedStrategy: monologue.suggestedStrategy.type,
+            confidence: monologue.confidence,
+          },
+          "UnifiedEngine: Slow thinking suggests route change (not implemented yet)",
+        );
+      }
+      // ========== 慢思考层集成结束 ==========
 
       // 处理 refine 意图：注入搜索结果上下文
       let effectiveContext = context;
