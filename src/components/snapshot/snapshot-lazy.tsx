@@ -12,6 +12,7 @@ import { lazy, Suspense } from "react";
 import { Loader2, Camera } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSnapshotFeature } from "@/lib/feature-flags";
+import { SilentErrorBoundary } from "@/components/ui/lazy-error-boundary";
 import type { SnapshotButtonProps } from "./snapshot-button";
 import type { SnapshotSectionProps } from "./snapshot-section";
 import type { SnapshotQuotaBarProps } from "./snapshot-quota-bar";
@@ -103,9 +104,11 @@ export function SnapshotButtonLazy(props: SnapshotButtonProps) {
   }
 
   return (
-    <Suspense fallback={<ButtonFallback />}>
-      <LazySnapshotButton {...props} />
-    </Suspense>
+    <SilentErrorBoundary>
+      <Suspense fallback={<ButtonFallback />}>
+        <LazySnapshotButton {...props} />
+      </Suspense>
+    </SilentErrorBoundary>
   );
 }
 
@@ -120,9 +123,11 @@ export function SnapshotSectionLazy(props: SnapshotSectionProps) {
   }
 
   return (
-    <Suspense fallback={<SectionFallback />}>
-      <LazySnapshotSection {...props} />
-    </Suspense>
+    <SilentErrorBoundary>
+      <Suspense fallback={<SectionFallback />}>
+        <LazySnapshotSection {...props} />
+      </Suspense>
+    </SilentErrorBoundary>
   );
 }
 
@@ -137,9 +142,11 @@ export function SnapshotQuotaBarLazy(props: SnapshotQuotaBarProps) {
   }
 
   return (
-    <Suspense fallback={<QuotaBarFallback />}>
-      <LazySnapshotQuotaBar {...props} />
-    </Suspense>
+    <SilentErrorBoundary>
+      <Suspense fallback={<QuotaBarFallback />}>
+        <LazySnapshotQuotaBar {...props} />
+      </Suspense>
+    </SilentErrorBoundary>
   );
 }
 
@@ -155,9 +162,11 @@ export function SnapshotQuotaSectionLazy(props: { className?: string }) {
   }
 
   return (
-    <Suspense fallback={<QuotaSectionFallback />}>
-      <LazySnapshotQuotaSection {...props} />
-    </Suspense>
+    <SilentErrorBoundary>
+      <Suspense fallback={<QuotaSectionFallback />}>
+        <LazySnapshotQuotaSection {...props} />
+      </Suspense>
+    </SilentErrorBoundary>
   );
 }
 

@@ -16,6 +16,7 @@
 import { lazy, Suspense, useTransition, memo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import type { Bookmark } from "@/types/supabase";
+import { LazyErrorBoundary } from "@/components/ui/lazy-error-boundary";
 
 // 懒加载 Dialog/Drawer 组件（按需显示，非首屏必需）
 const CreateBookmarkDrawer = lazy(() =>
@@ -118,57 +119,59 @@ export const HomeDialogs = memo(function HomeDialogs({
   }
 
   return (
-    <Suspense fallback={null}>
-      {/* 批量导入对话框（URL导入） */}
-      {showImportDialog && (
-        <BatchImportDialog
-          open={showImportDialog}
-          onOpenChange={setShowImportDialog}
-        />
-      )}
+    <LazyErrorBoundary errorMessage="对话框加载失败" showRetry>
+      <Suspense fallback={null}>
+        {/* 批量导入对话框（URL导入） */}
+        {showImportDialog && (
+          <BatchImportDialog
+            open={showImportDialog}
+            onOpenChange={setShowImportDialog}
+          />
+        )}
 
-      {/* 浏览器书签导入对话框 */}
-      {showBrowserImportDialog && (
-        <BrowserBookmarkImportDialog
-          open={showBrowserImportDialog}
-          onOpenChange={setShowBrowserImportDialog}
-          onSuccess={() => {
-            startTransition(() => {
-              router.refresh();
-            });
-          }}
-        />
-      )}
+        {/* 浏览器书签导入对话框 */}
+        {showBrowserImportDialog && (
+          <BrowserBookmarkImportDialog
+            open={showBrowserImportDialog}
+            onOpenChange={setShowBrowserImportDialog}
+            onSuccess={() => {
+              startTransition(() => {
+                router.refresh();
+              });
+            }}
+          />
+        )}
 
-      {/* 导出对话框 */}
-      {showExportDialog && (
-        <ExportDialog
-          open={showExportDialog}
-          onOpenChange={setShowExportDialog}
-          bookmarks={bookmarks}
-          selectedIds={selectedIds}
-        />
-      )}
+        {/* 导出对话框 */}
+        {showExportDialog && (
+          <ExportDialog
+            open={showExportDialog}
+            onOpenChange={setShowExportDialog}
+            bookmarks={bookmarks}
+            selectedIds={selectedIds}
+          />
+        )}
 
-      {/* 批量移动对话框 */}
-      {showMoveDialog && (
-        <BatchMoveDialog
-          open={showMoveDialog}
-          onOpenChange={setShowMoveDialog}
-          selectedIds={selectedIds}
-          onSuccess={onMoveSuccess}
-        />
-      )}
+        {/* 批量移动对话框 */}
+        {showMoveDialog && (
+          <BatchMoveDialog
+            open={showMoveDialog}
+            onOpenChange={setShowMoveDialog}
+            selectedIds={selectedIds}
+            onSuccess={onMoveSuccess}
+          />
+        )}
 
-      {/* 创建收藏抽屉 - 使用 ref 保持组件挂载以支持退出动画 */}
-      {/* eslint-disable-next-line react-hooks/refs */}
-      {hasShownCreateRef.current && (
-        <CreateBookmarkDrawer
-          open={showCreateDialog}
-          onOpenChange={setShowCreateDialog}
-          onSuccess={onBookmarkCreated}
-        />
-      )}
-    </Suspense>
+        {/* 创建收藏抽屉 - 使用 ref 保持组件挂载以支持退出动画 */}
+        {/* eslint-disable-next-line react-hooks/refs */}
+        {hasShownCreateRef.current && (
+          <CreateBookmarkDrawer
+            open={showCreateDialog}
+            onOpenChange={setShowCreateDialog}
+            onSuccess={onBookmarkCreated}
+          />
+        )}
+      </Suspense>
+    </LazyErrorBoundary>
   );
 });
