@@ -190,7 +190,7 @@ describe("V4.2 Confidence Calibration Tests", () => {
 
   afterAll(() => {
     // 输出校准报告 (测试环境使用 console.info 输出结果)
-    /* eslint-disable no-console */
+
     console.info("\n" + "=".repeat(60));
     console.info("📊 CONFIDENCE CALIBRATION TEST RESULTS");
     console.info("=".repeat(60));
@@ -213,7 +213,6 @@ describe("V4.2 Confidence Calibration Tests", () => {
     }
 
     console.info("\n" + "=".repeat(60) + "\n");
-    /* eslint-enable no-console */
   });
 
   // ============================================================================

@@ -88,8 +88,12 @@ export function useReadingPosition({
 
   // 使用 ref 存储最新函数引用，避免 effect 依赖导致频繁重渲染
   const calculateProgressRef = useRef<() => number>(() => 0);
-  const savePositionRef = useRef<() => void>(() => {});
-  const clearPositionRef = useRef<() => void>(() => {});
+  const savePositionRef = useRef<() => void>(() => {
+    /* noop - initialized later */
+  });
+  const clearPositionRef = useRef<() => void>(() => {
+    /* noop - initialized later */
+  });
 
   // 生成 localStorage 键
   const storageKey = `${STORAGE_KEY_PREFIX}${collectionId}`;

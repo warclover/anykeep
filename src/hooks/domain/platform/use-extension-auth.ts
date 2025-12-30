@@ -10,7 +10,7 @@ import { useCallback, useEffect, useState } from "react";
 
 // 开发环境调试日志
 const DEBUG = process.env.NODE_ENV === "development";
-// eslint-disable-next-line no-console, @typescript-eslint/no-empty-function
+// eslint-disable-next-line @typescript-eslint/no-empty-function
 const debugLog = DEBUG ? console.info.bind(console, "[Extension]") : () => {};
 
 // 扩展 ID（开发时自动生成，发布后固定）

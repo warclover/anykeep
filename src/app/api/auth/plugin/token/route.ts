@@ -279,15 +279,14 @@ async function handleRefreshTokenGrant(
   const tokenHash = hashToken(refreshToken);
 
   // 查找并验证 refresh token
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: authorization, error: fetchError } = (await (
-    serviceClient as any
-  )
-    .from("plugin_authorizations")
-    .select("*")
-    .eq("refresh_token_hash", tokenHash)
-    .is("revoked_at", null)
-    .single()) as { data: PluginAuthorization | null; error: Error | null };
+  const { data: authorization, error: fetchError } =
+    (await // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase 类型推断限制
+    (serviceClient as any)
+      .from("plugin_authorizations")
+      .select("*")
+      .eq("refresh_token_hash", tokenHash)
+      .is("revoked_at", null)
+      .single()) as { data: PluginAuthorization | null; error: Error | null };
 
   if (fetchError || !authorization) {
     logger.warn(

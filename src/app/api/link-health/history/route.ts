@@ -56,11 +56,11 @@ export async function GET(request: NextRequest) {
     }
 
     // 3. 查询历史记录
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const {
       data: records,
       error: queryError,
       count,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase 类型推断限制
     } = await (supabase as any)
       .from("link_health_checks")
       .select(

@@ -89,18 +89,17 @@ export async function verifyPluginAuth(
 
     // 验证 JTI 是否有效（未被撤销）
     const serviceClient = await createServiceClient();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: authorization, error: fetchError } = (await (
-      serviceClient as any
-    )
-      .from("plugin_authorizations")
-      .select("id, revoked_at")
-      .eq("access_token_jti", pluginPayload.jti)
-      .eq("user_id", pluginPayload.sub)
-      .single()) as {
-      data: { id: string; revoked_at: string | null } | null;
-      error: Error | null;
-    };
+    const { data: authorization, error: fetchError } =
+      (await // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase 类型推断限制
+      (serviceClient as any)
+        .from("plugin_authorizations")
+        .select("id, revoked_at")
+        .eq("access_token_jti", pluginPayload.jti)
+        .eq("user_id", pluginPayload.sub)
+        .single()) as {
+        data: { id: string; revoked_at: string | null } | null;
+        error: Error | null;
+      };
 
     if (fetchError || !authorization) {
       logger.warn(

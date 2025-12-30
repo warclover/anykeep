@@ -42,6 +42,8 @@ export const RATE_LIMIT_CONFIGS: Record<string, RateLimitConfig> = {
   bookmarks: { windowMs: 60_000, maxRequests: 300 },
   // 快照操作：每分钟 60 次
   snapshots: { windowMs: 60_000, maxRequests: 60 },
+  // 内容监控：每分钟 20 次
+  monitors: { windowMs: 60_000, maxRequests: 20 },
   // 高风险操作：每小时 2 次（账户删除、数据导出等不可逆操作）
   dangerous: { windowMs: 3600_000, maxRequests: 2 },
 };
@@ -174,7 +176,9 @@ export function getRateLimitConfig(pathname: string): RateLimitConfig {
   if (
     pathname.includes("/classification") ||
     pathname.includes("/ai") ||
-    pathname.includes("/embedding")
+    pathname.includes("/embedding") ||
+    pathname.includes("/synthesis") ||
+    pathname.includes("/agent")
   ) {
     return RATE_LIMIT_CONFIGS.ai;
   }
@@ -192,6 +196,11 @@ export function getRateLimitConfig(pathname: string): RateLimitConfig {
   // 快照操作
   if (pathname.includes("/snapshots")) {
     return RATE_LIMIT_CONFIGS.snapshots;
+  }
+
+  // 内容监控
+  if (pathname.includes("/monitors")) {
+    return RATE_LIMIT_CONFIGS.monitors;
   }
 
   // 默认
@@ -243,7 +252,9 @@ function getConfigKey(pathname: string): string {
   if (
     pathname.includes("/classification") ||
     pathname.includes("/ai") ||
-    pathname.includes("/embedding")
+    pathname.includes("/embedding") ||
+    pathname.includes("/synthesis") ||
+    pathname.includes("/agent")
   )
     return "ai";
   if (pathname.includes("/brain-sync") || pathname.includes("/active-recall"))
@@ -251,6 +262,7 @@ function getConfigKey(pathname: string): string {
   if (pathname.includes("/search") || pathname.includes("/semantic"))
     return "search";
   if (pathname.includes("/snapshots")) return "snapshots";
+  if (pathname.includes("/monitors")) return "monitors";
   return "default";
 }
 

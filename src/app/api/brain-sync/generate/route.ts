@@ -152,13 +152,12 @@ export async function POST(request: NextRequest) {
       next_review_at: new Date().toISOString(), // 立即可复习
     }));
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: insertedFlashcards, error: insertError } = await (
-      supabase as any
-    )
-      .from("flashcards")
-      .insert(flashcardsToInsert)
-      .select("id, question, answer, difficulty, status");
+    const { data: insertedFlashcards, error: insertError } =
+      await // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase 类型推断限制
+      (supabase as any)
+        .from("flashcards")
+        .insert(flashcardsToInsert)
+        .select("id, question, answer, difficulty, status");
 
     if (insertError) {
       // 检查是否是重复问题

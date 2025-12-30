@@ -129,7 +129,9 @@ export async function POST(request: NextRequest) {
     // 4. 特殊处理：归档请求
     if (response === "archived") {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: archiveResult, error: archiveError } = (await (supabase as any).rpc("archive_flashcard", {
+      const { data: archiveResult, error: archiveError } = (await (
+        supabase as any
+      ).rpc("archive_flashcard", {
         p_flashcard_id: flashcardId,
         p_user_id: user.id,
       })) as {
@@ -139,7 +141,11 @@ export async function POST(request: NextRequest) {
 
       if (archiveError || !archiveResult?.success) {
         logger.error(
-          { error: archiveError || archiveResult?.error, flashcardId, userId: user.id },
+          {
+            error: archiveError || archiveResult?.error,
+            flashcardId,
+            userId: user.id,
+          },
           "Brain-Sync: Failed to archive flashcard",
         );
         return databaseError("归档卡片失败");
@@ -173,21 +179,20 @@ export async function POST(request: NextRequest) {
     const sm2Result = SM2Algorithm.calculate(sm2Input);
 
     // 6. 调用数据库函数更新 Flashcard
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: updateResult, error: updateError } = (await (
-      supabase as any
-    ).rpc("update_flashcard_review", {
-      p_flashcard_id: flashcardId,
-      p_user_id: user.id,
-      p_response: response,
-      p_new_interval: sm2Result.interval,
-      p_new_ease: sm2Result.easeFactor,
-      p_new_repetitions: sm2Result.repetitions,
-      p_response_time_ms: responseTimeMs || null,
-    })) as {
-      data: UpdateFlashcardReviewResult | null;
-      error: { message: string } | null;
-    };
+    const { data: updateResult, error: updateError } =
+      (await // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase 类型推断限制
+      (supabase as any).rpc("update_flashcard_review", {
+        p_flashcard_id: flashcardId,
+        p_user_id: user.id,
+        p_response: response,
+        p_new_interval: sm2Result.interval,
+        p_new_ease: sm2Result.easeFactor,
+        p_new_repetitions: sm2Result.repetitions,
+        p_response_time_ms: responseTimeMs || null,
+      })) as {
+        data: UpdateFlashcardReviewResult | null;
+        error: { message: string } | null;
+      };
 
     if (updateError) {
       logger.error(

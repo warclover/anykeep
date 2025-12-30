@@ -158,12 +158,10 @@ test.describe("AnyKeep 全面功能测试", () => {
       test(`${name} (${path})`, async ({ page }) => {
         const result = await testPageLoad(page, path, name);
 
-        // eslint-disable-next-line no-console
         console.info(
           `[${result.status.toUpperCase()}] ${name}: ${result.loadTime}ms`,
         );
         if (result.errors.length > 0) {
-          // eslint-disable-next-line no-console
           console.info(`  Errors: ${result.errors.join(", ")}`);
         }
 
@@ -193,7 +191,6 @@ test.describe("AnyKeep 全面功能测试", () => {
 
         expect(isLoginPage || hasContent).toBe(true);
 
-        // eslint-disable-next-line no-console
         console.info(
           `[INFO] ${name}: ${isLoginPage ? "重定向到登录页" : "页面可访问"}`,
         );
@@ -232,10 +229,9 @@ test.describe("AnyKeep 全面功能测试", () => {
           const status = response.status();
           // API 应该返回有效状态（200-299 或 401/403 需要认证）
           expect(status).toBeLessThan(500);
-          // eslint-disable-next-line no-console
+
           console.info(`[API] ${name}: HTTP ${status}`);
         } else {
-          // eslint-disable-next-line no-console
           console.info(`[API] ${name}: No response`);
         }
       });
@@ -267,7 +263,6 @@ test.describe("AnyKeep 全面功能测试", () => {
       );
 
       if (criticalFailures.length > 0) {
-        // eslint-disable-next-line no-console
         console.info("Failed requests:", criticalFailures);
       }
 

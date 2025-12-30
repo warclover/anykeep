@@ -421,19 +421,18 @@ export class ActiveRecallSkill extends OrchestrationSkill<
     if (input.flashcardId && input.response) {
       yield* this.reportProgress("执行操作", 50, "正在处理您的反馈...");
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: updateResult, error: updateError } = (await (
-        supabase as any
-      ).rpc("update_flashcard_review", {
-        p_user_id: context.userId,
-        p_flashcard_id: input.flashcardId,
-        p_response: input.response,
-        p_response_time_ms: null,
-        p_session_type: "chat",
-      })) as {
-        data: UpdateFlashcardReviewResult | null;
-        error: { message: string } | null;
-      };
+      const { data: updateResult, error: updateError } =
+        (await // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase RPC 类型推断限制
+        (supabase as any).rpc("update_flashcard_review", {
+          p_user_id: context.userId,
+          p_flashcard_id: input.flashcardId,
+          p_response: input.response,
+          p_response_time_ms: null,
+          p_session_type: "chat",
+        })) as {
+          data: UpdateFlashcardReviewResult | null;
+          error: { message: string } | null;
+        };
 
       if (updateError) {
         yield* this.emitText(`❌ 更新失败：${updateError.message}\n\n`);
@@ -458,16 +457,15 @@ export class ActiveRecallSkill extends OrchestrationSkill<
     }
 
     // 获取待复习队列
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: pendingCards, error: fetchError } = (await (
-      supabase as any
-    ).rpc("get_pending_flashcards", {
-      p_user_id: context.userId,
-      p_limit: 20,
-    })) as {
-      data: PendingFlashcardRow[] | null;
-      error: { message: string } | null;
-    };
+    const { data: pendingCards, error: fetchError } =
+      (await // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase RPC 类型推断限制
+      (supabase as any).rpc("get_pending_flashcards", {
+        p_user_id: context.userId,
+        p_limit: 20,
+      })) as {
+        data: PendingFlashcardRow[] | null;
+        error: { message: string } | null;
+      };
 
     if (fetchError) {
       yield* this.emitText(`❌ 获取队列失败：${fetchError.message}`);

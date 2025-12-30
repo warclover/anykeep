@@ -142,8 +142,8 @@ export async function GET(request: NextRequest) {
     };
 
     // 6. 转换响应格式
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const formattedMonitors: MonitorResponse[] = (monitors || []).map(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase JOIN 类型复杂
       (m: any) => ({
         id: m.id,
         bookmarkId: m.bookmark_id,
