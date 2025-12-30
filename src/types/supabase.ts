@@ -369,6 +369,10 @@ export type Database = {
           updated_at: string;
           /** 过期时间，默认 7 天后过期 */
           expires_at: string;
+          /** Phase 1: 上次会话摘要 */
+          previous_session_summary: Json | null;
+          /** Phase 1: 当前关注点 */
+          current_focus: Json | null;
         };
         Insert: {
           id?: string;
@@ -380,6 +384,8 @@ export type Database = {
           created_at?: string;
           updated_at?: string;
           expires_at?: string;
+          previous_session_summary?: Json | null;
+          current_focus?: Json | null;
         };
         Update: {
           id?: string;
@@ -391,10 +397,60 @@ export type Database = {
           created_at?: string;
           updated_at?: string;
           expires_at?: string;
+          previous_session_summary?: Json | null;
+          current_focus?: Json | null;
         };
         Relationships: [
           {
             foreignKeyName: "ai_session_memory_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      /** AI 意图历史表 - 记录用户意图历史，支持意图预测 */
+      ai_intent_history: {
+        Row: {
+          id: string;
+          user_id: string;
+          intent_type: string;
+          intent_sub_type: string | null;
+          confidence: number | null;
+          success: boolean;
+          satisfaction: number | null;
+          message_preview: string | null;
+          context: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          intent_type: string;
+          intent_sub_type?: string | null;
+          confidence?: number | null;
+          success?: boolean;
+          satisfaction?: number | null;
+          message_preview?: string | null;
+          context?: Json;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          intent_type?: string;
+          intent_sub_type?: string | null;
+          confidence?: number | null;
+          success?: boolean;
+          satisfaction?: number | null;
+          message_preview?: string | null;
+          context?: Json;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "ai_intent_history_user_id_fkey";
             columns: ["user_id"];
             isOneToOne: false;
             referencedRelation: "users";
@@ -5401,6 +5457,79 @@ export type Database = {
           p_user_id: string;
         };
         Returns: undefined;
+      };
+      // ========== Phase 1: AI Secretary Evolution ==========
+      /** 获取用户全局洞察 */
+      get_ai_global_insight: {
+        Args: {
+          p_user_id: string;
+        };
+        Returns: Json | null;
+      };
+      /** 更新用户全局洞察 */
+      update_ai_global_insight: {
+        Args: {
+          p_user_id: string;
+          p_insight: Json;
+        };
+        Returns: undefined;
+      };
+      /** 获取上次会话摘要 */
+      get_last_session_summary: {
+        Args: {
+          p_user_id: string;
+          p_exclude_conversation_id?: string | null;
+        };
+        Returns: {
+          conversation_id: string;
+          previous_session_summary: Json | null;
+          current_focus: Json | null;
+          updated_at: string;
+        }[];
+      };
+      /** 更新会话跨会话记忆 */
+      update_session_cross_memory: {
+        Args: {
+          p_user_id: string;
+          p_conversation_id: string;
+          p_previous_summary: Json | null;
+          p_current_focus?: Json | null;
+        };
+        Returns: undefined;
+      };
+      /** 记录意图历史 */
+      record_intent_history: {
+        Args: {
+          p_user_id: string;
+          p_intent_type: string;
+          p_intent_sub_type?: string | null;
+          p_confidence?: number | null;
+          p_success?: boolean;
+          p_message_preview?: string | null;
+          p_context?: Json;
+        };
+        Returns: string;
+      };
+      /** 获取意图统计 */
+      get_intent_stats: {
+        Args: {
+          p_user_id: string;
+          p_days?: number;
+        };
+        Returns: {
+          intent_type: string;
+          intent_sub_type: string | null;
+          count: number;
+          success_count: number;
+          avg_confidence: number | null;
+        }[];
+      };
+      /** 清理过期意图历史 */
+      cleanup_old_intent_history: {
+        Args: {
+          p_days?: number;
+        };
+        Returns: number;
       };
     };
     Enums: {

@@ -3,12 +3,14 @@
  *
  * 构建每次对话的动态上下文，包含时间、统计、偏好、最近活动等
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-26
+ * @updated 2025-12-30 - 添加 GlobalInsight、CrossSessionMemory、ProactiveBriefing (Phase 1)
  */
 
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
+import { isFeatureEnabled } from "../config/feature-flags";
 import type {
   DynamicContext,
   TimeContext,
@@ -20,6 +22,8 @@ import type {
   PlatformStats,
   FolderStats,
 } from "./types";
+import type { GlobalInsight } from "../global-insight/types";
+import type { CrossSessionMemory } from "@/lib/ai-memory/types";
 
 // =============================================================================
 // 常量配置
@@ -201,7 +205,7 @@ export class DynamicContextBuilder {
     const startTime = performance.now();
 
     try {
-      // 并行获取各部分上下文
+      // 并行获取各部分上下文（基础部分）
       const [stats, preferences, recentActivity] = await Promise.all([
         options.skipStats ? this.getDefaultStats() : this.getStats(userId),
         this.getPreferences(userId),
@@ -218,11 +222,40 @@ export class DynamicContextBuilder {
         session: options.session ?? {},
       };
 
+      // ========== Phase 1 新增：可选加载全局洞察和跨会话记忆 ==========
+
+      // 全局洞察（仅当显式请求且 Feature Flag 启用时）
+      if (
+        options.includeGlobalInsight &&
+        isFeatureEnabled("ENABLE_GLOBAL_INSIGHT")
+      ) {
+        context.globalInsight = await this.getGlobalInsight(userId);
+      }
+
+      // 跨会话记忆（仅当显式请求时）
+      if (options.includeCrossSessionMemory && options.conversationId) {
+        context.crossSessionMemory = await this.getCrossSessionMemory(
+          userId,
+          options.conversationId,
+        );
+      }
+
+      // 主动简报（仅当显式请求且 Feature Flag 启用时）
+      if (
+        options.includeProactiveBriefing &&
+        isFeatureEnabled("ENABLE_PROACTIVE_BRIEFING")
+      ) {
+        context.proactiveBriefing = await this.getProactiveBriefing(userId);
+      }
+
       logger.debug(
         {
           userId,
           durationMs: Math.round(performance.now() - startTime),
           totalBookmarks: stats.totalBookmarks,
+          hasGlobalInsight: !!context.globalInsight,
+          hasCrossSessionMemory: !!context.crossSessionMemory,
+          hasProactiveBriefing: !!context.proactiveBriefing,
         },
         "DynamicContext: built successfully",
       );
@@ -242,6 +275,75 @@ export class DynamicContextBuilder {
         recentActivity: {},
         session: options.session ?? {},
       };
+    }
+  }
+
+  // ========== Phase 1 新增方法 ==========
+
+  /**
+   * 获取全局洞察（延迟加载）
+   */
+  private async getGlobalInsight(
+    userId: string,
+  ): Promise<GlobalInsight | undefined> {
+    try {
+      const { GlobalInsightService } = await import(
+        "../global-insight/global-insight-service"
+      );
+      const service = new GlobalInsightService();
+      const insight = await service.getInsight(userId);
+      return insight || undefined;
+    } catch (error) {
+      logger.warn({ userId, error }, "DynamicContext: getGlobalInsight failed");
+      return undefined;
+    }
+  }
+
+  /**
+   * 获取跨会话记忆（延迟加载）
+   */
+  private async getCrossSessionMemory(
+    userId: string,
+    conversationId: string,
+  ): Promise<CrossSessionMemory | undefined> {
+    try {
+      const { CrossSessionMemoryService } = await import(
+        "@/lib/ai-memory/cross-session-memory-service"
+      );
+      const service = new CrossSessionMemoryService();
+      const memory = await service.getCrossSessionMemory(
+        userId,
+        conversationId,
+      );
+      return Object.keys(memory).length > 0 ? memory : undefined;
+    } catch (error) {
+      logger.warn(
+        { userId, error },
+        "DynamicContext: getCrossSessionMemory failed",
+      );
+      return undefined;
+    }
+  }
+
+  /**
+   * 获取主动简报（延迟加载）
+   */
+  private async getProactiveBriefing(
+    userId: string,
+  ): Promise<DynamicContext["proactiveBriefing"]> {
+    try {
+      const { ProactiveBriefingService } = await import(
+        "../proactive-briefing/proactive-briefing-service"
+      );
+      const service = new ProactiveBriefingService();
+      const briefing = await service.generateBriefing(userId);
+      return briefing || undefined;
+    } catch (error) {
+      logger.warn(
+        { userId, error },
+        "DynamicContext: getProactiveBriefing failed",
+      );
+      return undefined;
     }
   }
 

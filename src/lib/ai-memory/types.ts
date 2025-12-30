@@ -270,3 +270,132 @@ export const DEFAULT_REFERENCE_RESOLVER_CONFIG: Required<ReferenceResolverConfig
     minConfidence: 0.6,
     enableFuzzyMatch: true,
   };
+
+// ============================================
+// 跨会话记忆类型 (Phase 1)
+// ============================================
+
+/**
+ * 上次会话摘要
+ *
+ * 存储上一次会话的核心信息，用于跨会话记忆
+ */
+export interface PreviousSessionSummary {
+  /** 会话 ID */
+  conversationId: string;
+  /** 摘要内容 */
+  summary: string;
+  /** 主要讨论的主题 */
+  mainTopics: string[];
+  /** 关键实体（书签、标签、文件夹） */
+  keyEntities: {
+    bookmarkIds: number[];
+    tagNames: string[];
+    folderIds: number[];
+  };
+  /** 未完成的任务/意图 */
+  pendingTasks?: string[];
+  /** 用户偏好洞察（可选） */
+  userPreferenceInsights?: string[];
+  /** 会话结束时间 */
+  endedAt: string;
+  /** 消息数量 */
+  messageCount: number;
+}
+
+/**
+ * 当前关注点
+ *
+ * 存储用户当前会话的关注焦点
+ */
+export interface CurrentFocus {
+  /** 主要关注的主题 */
+  primaryTopic?: string;
+  /** 次要主题 */
+  secondaryTopics: string[];
+  /** 当前任务类型 */
+  taskType?: string;
+  /** 关注的实体 ID */
+  focusedEntityIds: number[];
+  /** 时间范围（如"最近一周"） */
+  timeScope?: string;
+  /** 更新时间 */
+  updatedAt: string;
+}
+
+/**
+ * 跨会话记忆
+ *
+ * 整合上次会话摘要和当前关注点
+ */
+export interface CrossSessionMemory {
+  /** 上次会话摘要 */
+  previousSessionSummary?: PreviousSessionSummary;
+  /** 当前关注点 */
+  currentFocus?: CurrentFocus;
+}
+
+/**
+ * 意图历史记录
+ */
+export interface IntentHistoryEntry {
+  /** 记录 ID */
+  id: string;
+  /** 意图类型 */
+  intentType: string;
+  /** 子类型 */
+  intentSubType?: string;
+  /** 置信度 (0-1) */
+  confidence?: number;
+  /** 执行是否成功 */
+  success: boolean;
+  /** 用户满意度 (1-5) */
+  satisfaction?: number;
+  /** 消息预览 */
+  messagePreview?: string;
+  /** 上下文 */
+  context?: Record<string, unknown>;
+  /** 创建时间 */
+  createdAt: string;
+}
+
+/**
+ * 意图统计
+ */
+export interface IntentStats {
+  /** 意图类型 */
+  intentType: string;
+  /** 子类型 */
+  intentSubType?: string;
+  /** 次数 */
+  count: number;
+  /** 成功次数 */
+  successCount: number;
+  /** 平均置信度 */
+  avgConfidence?: number;
+}
+
+/**
+ * CrossSessionMemory 配置
+ */
+export interface CrossSessionMemoryConfig {
+  /** 摘要最大长度（字符） */
+  maxSummaryLength?: number;
+  /** 主题最大数量 */
+  maxTopics?: number;
+  /** 实体最大数量（每种类型） */
+  maxEntities?: number;
+  /** 是否启用 LLM 摘要生成 */
+  enableLLMSummary?: boolean;
+}
+
+/**
+ * 默认 CrossSessionMemory 配置
+ */
+export const DEFAULT_CROSS_SESSION_CONFIG: Required<CrossSessionMemoryConfig> =
+  {
+    maxSummaryLength: 500,
+    maxTopics: 5,
+    maxEntities: 10,
+    enableLLMSummary: false, // Phase 1 不启用
+  };

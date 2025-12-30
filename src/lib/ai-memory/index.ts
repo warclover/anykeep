@@ -3,9 +3,10 @@
  *
  * 提供会话状态管理和指代解析功能
  *
- * @version 1.2.0
+ * @version 1.3.0
  * @since 2025-12-25
  * @updated 2025-12-27 - 添加压缩摘要持久化
+ * @updated 2025-12-30 - 添加跨会话记忆服务 (Phase 1)
  */
 
 // 类型导出
@@ -61,3 +62,9 @@ export {
   type SaveCompressionSummaryParams,
   type CompressionPersistenceResult,
 } from "./compression-summary-persistence";
+
+// CrossSessionMemoryService 导出（v1.3 新增 - Phase 1）
+export {
+  CrossSessionMemoryService,
+  createCrossSessionMemoryService,
+} from "./cross-session-memory-service";

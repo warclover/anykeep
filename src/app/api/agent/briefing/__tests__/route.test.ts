@@ -297,7 +297,7 @@ describe("PostBriefingBodySchema", () => {
       const result = PostBriefingBodySchema.safeParse(input);
 
       expect(result.success).toBe(true);
-      if (result.success) {
+      if (result.success && result.data.action === "markRead") {
         expect(result.data.action).toBe("markRead");
         expect(result.data.insightId).toBe("insight-123");
       }
@@ -339,7 +339,7 @@ describe("PostBriefingBodySchema", () => {
       const result = PostBriefingBodySchema.safeParse(input);
 
       expect(result.success).toBe(true);
-      if (result.success) {
+      if (result.success && result.data.action === "dismiss") {
         expect(result.data.action).toBe("dismiss");
         expect(result.data.insightId).toBe("insight-456");
       }

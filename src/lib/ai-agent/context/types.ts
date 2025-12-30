@@ -3,9 +3,14 @@
  *
  * 为 AI Agent 提供每次对话的动态上下文数据
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-26
+ * @updated 2025-12-30 - 添加 GlobalInsight、CrossSessionMemory、ProactiveBriefing (Phase 1)
  */
+
+import type { GlobalInsight } from "../global-insight/types";
+import type { CrossSessionMemory } from "@/lib/ai-memory/types";
+import type { ProactiveBriefing } from "../proactive-briefing/types";
 
 // =============================================================================
 // 时间上下文
@@ -209,6 +214,15 @@ export interface DynamicContext {
   session: SessionContext;
   /** 情景记忆（跨会话，可选） */
   episodicMemory?: EpisodicMemoryContext;
+
+  // ========== Phase 1 新增字段 ==========
+
+  /** 全局洞察（用户知识画像，可选） */
+  globalInsight?: GlobalInsight;
+  /** 跨会话记忆（上次会话摘要 + 当前关注点，可选） */
+  crossSessionMemory?: CrossSessionMemory;
+  /** 主动简报（离线期间变化摘要，可选） */
+  proactiveBriefing?: ProactiveBriefing;
 }
 
 // =============================================================================
@@ -225,6 +239,17 @@ export interface DynamicContextBuildOptions {
   skipRecentActivity?: boolean;
   /** 会话上下文 */
   session?: Partial<SessionContext>;
+
+  // ========== Phase 1 新增选项 ==========
+
+  /** 是否包含全局洞察 */
+  includeGlobalInsight?: boolean;
+  /** 是否包含跨会话记忆 */
+  includeCrossSessionMemory?: boolean;
+  /** 是否包含主动简报 */
+  includeProactiveBriefing?: boolean;
+  /** 当前会话 ID（用于跨会话记忆） */
+  conversationId?: string;
 }
 
 /**
