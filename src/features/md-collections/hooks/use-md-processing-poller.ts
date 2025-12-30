@@ -21,6 +21,7 @@ const MAX_POLL_COUNT = 60; // 最多轮询 60 次（3 分钟）
 const STUCK_PENDING_THRESHOLD = 10000; // pending 超过 10 秒视为卡住
 const STUCK_PROCESSING_THRESHOLD = 120000; // processing 超过 2 分钟视为卡住
 const MAX_RETRY_COUNT = 2; // 每个 item 最多重试 2 次
+const RETRY_STAGGER_INTERVAL = 2000; // 重试请求间隔 2 秒，避免并发冲突
 
 /**
  * 轮询追踪条目
@@ -185,6 +186,7 @@ export function useMdProcessingPoller({
         }
 
         // 处理每个返回的收藏
+        const retryQueue: number[] = []; // 收集需要重试的 ID
         for (const updated of updatedItems) {
           // 更新数据
           onUpdate(updated.id, {
@@ -211,8 +213,8 @@ export function useMdProcessingPoller({
               isStuck(updated.processing_status, entry) &&
               entry.retryCount < MAX_RETRY_COUNT
             ) {
-              // 异步触发重试，不阻塞轮询
-              triggerRetry(updated.id);
+              // 收集需要重试的 ID，稍后错开执行
+              retryQueue.push(updated.id);
             }
 
             // 超过最大轮询次数，停止轮询
@@ -221,6 +223,13 @@ export function useMdProcessingPoller({
             }
           }
         }
+
+        // 错开执行重试请求，避免并发冲突
+        retryQueue.forEach((id, index) => {
+          setTimeout(() => {
+            triggerRetry(id);
+          }, index * RETRY_STAGGER_INTERVAL);
+        });
       } catch {
         // 静默处理错误，不影响用户体验
       }

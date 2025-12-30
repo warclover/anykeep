@@ -177,13 +177,26 @@ export class MdAIProcessor {
       }
 
       // 4. 原子更新状态为 processing
-      const statusUpdated = await this.updateStatus(
-        collectionId,
-        "processing",
+      // 当强制重处理且状态已经是 processing 时，跳过状态更新（避免并发冲突）
+      let statusUpdated = true;
+      if (
+        opts.forceReprocess &&
         collection.processing_status === "processing"
-          ? undefined
-          : (collection.processing_status as MdProcessingStatus),
-      );
+      ) {
+        // 强制重处理卡住的任务，直接继续而不更新状态
+        logger.info(
+          { collectionId },
+          "MdAIProcessor: Skipping status update for force reprocess",
+        );
+      } else {
+        statusUpdated = await this.updateStatus(
+          collectionId,
+          "processing",
+          collection.processing_status === "processing"
+            ? undefined
+            : (collection.processing_status as MdProcessingStatus),
+        );
+      }
 
       if (!statusUpdated) {
         return this.createErrorResult(
