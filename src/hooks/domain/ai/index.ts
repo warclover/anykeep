@@ -27,6 +27,9 @@ export * from "./use-unified-confirmation";
 // TTS 播放器
 export * from "./use-tts-player";
 
+// 主动简报（AI Secretary Evolution Phase 0）
+export * from "./use-briefing";
+
 // 用户画像（Phase 4 新增）
 export * from "./use-persona";
 

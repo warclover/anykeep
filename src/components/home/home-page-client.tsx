@@ -59,6 +59,13 @@ const PendingConfirmationsSection = lazy(() =>
     default: mod.PendingConfirmationsSection,
   })),
 );
+
+// 懒加载 ProactiveBriefingCard（AI Secretary Evolution Phase 0）
+const ProactiveBriefingCard = lazy(() =>
+  import("@/components/ai/briefing").then((mod) => ({
+    default: mod.ProactiveBriefingCard,
+  })),
+);
 // V3.1: 替换 V1 的 useFolderRecommendation 为 V3 的分类轮询
 import { useClassificationPolling } from "@/hooks/ui";
 import { useDialogs, useSelectionMode } from "@/hooks/core";
@@ -749,6 +756,13 @@ export function HomePageClient({
         <SilentErrorBoundary>
           <Suspense fallback={null}>
             <PendingConfirmationsSection className="mb-4" />
+          </Suspense>
+        </SilentErrorBoundary>
+
+        {/* AI Secretary Evolution Phase 0: 主动简报卡片（懒加载） */}
+        <SilentErrorBoundary>
+          <Suspense fallback={null}>
+            <ProactiveBriefingCard className="mb-4" />
           </Suspense>
         </SilentErrorBoundary>
 

@@ -411,6 +411,82 @@ export const FeatureFlags = {
   get ENABLE_RAG_EVALUATION(): boolean {
     return process.env.ENABLE_RAG_EVALUATION === "true";
   },
+
+  // ===========================================================================
+  // AI 秘书进化 [Phase 0 新增]
+  // ===========================================================================
+
+  /**
+   * 是否启用主动简报
+   * @default true
+   * @description 用户上线后主动推送离线期间的变化摘要和建议操作
+   */
+  get ENABLE_PROACTIVE_BRIEFING(): boolean {
+    return process.env.ENABLE_PROACTIVE_BRIEFING !== "false";
+  },
+
+  /**
+   * 是否启用全局洞察
+   * @default false
+   * @description 生成用户知识库的宏观画像
+   */
+  get ENABLE_GLOBAL_INSIGHT(): boolean {
+    return process.env.ENABLE_GLOBAL_INSIGHT === "true";
+  },
+
+  /**
+   * 是否启用跨会话记忆
+   * @default false
+   * @description 跨会话保持对话上下文
+   */
+  get ENABLE_CROSS_SESSION_MEMORY(): boolean {
+    return process.env.ENABLE_CROSS_SESSION_MEMORY === "true";
+  },
+
+  /**
+   * 是否启用慢思考
+   * @default false
+   * @description System 2 深度推理，生成内心独白
+   */
+  get ENABLE_SLOW_THINKING(): boolean {
+    return process.env.ENABLE_SLOW_THINKING === "true";
+  },
+
+  /**
+   * 是否向用户展示思考过程
+   * @default true
+   * @description 当慢思考启用时，是否在 UI 展示思考过程
+   */
+  get ENABLE_SLOW_THINKING_VISIBLE(): boolean {
+    return process.env.ENABLE_SLOW_THINKING_VISIBLE !== "false";
+  },
+
+  /**
+   * 是否启用意图预测
+   * @default false
+   * @description 基于历史行为预测用户下一步意图
+   */
+  get ENABLE_INTENT_PREDICTION(): boolean {
+    return process.env.ENABLE_INTENT_PREDICTION === "true";
+  },
+
+  /**
+   * 是否启用规则学习
+   * @default false
+   * @description 从用户纠正行为中自动学习规则
+   */
+  get ENABLE_RULE_LEARNING(): boolean {
+    return process.env.ENABLE_RULE_LEARNING === "true";
+  },
+
+  /**
+   * 是否启用异步分析
+   * @default false
+   * @description 后台异步执行分析任务
+   */
+  get ENABLE_ASYNC_ANALYSIS(): boolean {
+    return process.env.ENABLE_ASYNC_ANALYSIS === "true";
+  },
 } as const;
 
 // =============================================================================
@@ -491,5 +567,14 @@ export function getAllFeatureFlags(): Record<BooleanFeatureFlagKey, boolean> & {
     // RAG 能力增强 [Phase 3 新增]
     ENABLE_RAG_MONITORING: FeatureFlags.ENABLE_RAG_MONITORING,
     ENABLE_RAG_EVALUATION: FeatureFlags.ENABLE_RAG_EVALUATION,
+    // AI 秘书进化 [Phase 0 新增]
+    ENABLE_PROACTIVE_BRIEFING: FeatureFlags.ENABLE_PROACTIVE_BRIEFING,
+    ENABLE_GLOBAL_INSIGHT: FeatureFlags.ENABLE_GLOBAL_INSIGHT,
+    ENABLE_CROSS_SESSION_MEMORY: FeatureFlags.ENABLE_CROSS_SESSION_MEMORY,
+    ENABLE_SLOW_THINKING: FeatureFlags.ENABLE_SLOW_THINKING,
+    ENABLE_SLOW_THINKING_VISIBLE: FeatureFlags.ENABLE_SLOW_THINKING_VISIBLE,
+    ENABLE_INTENT_PREDICTION: FeatureFlags.ENABLE_INTENT_PREDICTION,
+    ENABLE_RULE_LEARNING: FeatureFlags.ENABLE_RULE_LEARNING,
+    ENABLE_ASYNC_ANALYSIS: FeatureFlags.ENABLE_ASYNC_ANALYSIS,
   };
 }
