@@ -408,5 +408,5 @@ document.addEventListener("scroll", hideFloatingButton, { passive: true });
 
 // 确保不在 iframe 中重复初始化
 if (window === window.top) {
-  console.log("[AnyKeep] Content script loaded");
+  console.info("[AnyKeep] Content script loaded");
 }

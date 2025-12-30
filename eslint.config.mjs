@@ -28,6 +28,10 @@ const eslintConfig = defineConfig([
     "__mocks__/**",  // Jest 测试 mocks
     "_bmad/**",  // BMAD 模块模板文件
     "anykeep-extension/**",  // 旧版浏览器扩展（独立项目）
+    // Extension 目录
+    "extension/dist/**",  // 浏览器扩展编译输出
+    "extension/scripts/**",  // 扩展构建脚本（CommonJS）
+    "extension/*.config.js",  // 扩展配置文件
   ]),
   // Custom rules for code quality
   {
