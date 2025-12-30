@@ -128,16 +128,15 @@ export async function POST(request: NextRequest) {
 
     // 4. 特殊处理：归档请求
     if (response === "archived") {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: archiveResult, error: archiveError } = (await (
-        supabase as any
-      ).rpc("archive_flashcard", {
-        p_flashcard_id: flashcardId,
-        p_user_id: user.id,
-      })) as {
-        data: { success: boolean; message?: string; error?: string } | null;
-        error: { message: string } | null;
-      };
+      const { data: archiveResult, error: archiveError } =
+        (await // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase 类型推断限制
+        (supabase as any).rpc("archive_flashcard", {
+          p_flashcard_id: flashcardId,
+          p_user_id: user.id,
+        })) as {
+          data: { success: boolean; message?: string; error?: string } | null;
+          error: { message: string } | null;
+        };
 
       if (archiveError || !archiveResult?.success) {
         logger.error(
