@@ -156,11 +156,15 @@ export function BrainSyncPageClient() {
       if (queueData.success && queueData.data) {
         if (queueData.data.stats) {
           setQueueStats({
-            total: queueData.data.stats.total,
-            overdue: queueData.data.stats.overdue,
-            dueToday: queueData.data.stats.dueToday,
-            dueTomorrow: queueData.data.stats.dueTomorrow,
-            dueThisWeek: queueData.data.stats.dueThisWeek,
+            total: queueData.data.stats.total ?? 0,
+            overdue: queueData.data.stats.overdue ?? 0,
+            dueToday: queueData.data.stats.dueToday ?? 0,
+            dueTomorrow: queueData.data.stats.dueTomorrow ?? 0,
+            // API 返回 upcoming (即将到期)，映射为 dueThisWeek
+            dueThisWeek:
+              queueData.data.stats.dueThisWeek ??
+              queueData.data.stats.upcoming ??
+              0,
           });
         }
         if (queueData.data.queue) {
@@ -428,7 +432,7 @@ export function BrainSyncPageClient() {
               </div>
               <CardDescription>
                 {queueStats
-                  ? `今日 ${queueStats.dueToday} 张 · 本周 ${queueStats.dueThisWeek} 张`
+                  ? `今日 ${queueStats.dueToday ?? 0} 张 · 本周 ${queueStats.dueThisWeek ?? 0} 张`
                   : "暂无待复习卡片"}
               </CardDescription>
             </CardHeader>
