@@ -121,8 +121,8 @@ export async function generateAIContent(
       return await generateWithNewService(
         request,
         contentTypeResult,
-        options.bookmarkId!,
-        options.userId!,
+        options.bookmarkId as number,
+        options.userId as string,
       );
     } catch (error) {
       logger.warn(

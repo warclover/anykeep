@@ -221,7 +221,7 @@ export function useSmartListBookmarks(
   // SWR 获取数据
   const { data, error, isLoading, mutate } = useSWR<SmartListBookmarksData>(
     cacheKey,
-    () => fetcher(smartListId!),
+    () => fetcher(smartListId as number),
     {
       revalidateOnFocus: true,
       dedupingInterval: 5000,

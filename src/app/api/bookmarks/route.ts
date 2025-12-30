@@ -704,7 +704,9 @@ export async function POST(request: NextRequest) {
     // 判断是否需要异步补充标题
     const needsAsyncTitleFetch = !title || title.trim() === "";
     // 使用临时占位符或用户提供的标题
-    const finalTitle = needsAsyncTitleFetch ? "正在获取标题..." : title!;
+    const finalTitle = needsAsyncTitleFetch
+      ? "正在获取标题..."
+      : (title as string);
     let finalDescription: string | null | undefined = description;
 
     // 仅当有描述需求且用户没有提供时，才同步爬取（快速返回）

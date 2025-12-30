@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * V4.2 Trust Mode Performance Benchmark Tests
  * 验证 Trust Mode 决策流程的性能指标
@@ -12,8 +11,6 @@
  * @version 1.0.0
  * @since 2025-12-11
  */
-
-/* eslint-disable no-console */
 
 import { TrustModeService } from "../trust-mode.service";
 import { TrustModeRepository } from "../trust-mode.repository";

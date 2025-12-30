@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Trust Mode Integration Tests
  * V4.2 托管模式端到端集成测试

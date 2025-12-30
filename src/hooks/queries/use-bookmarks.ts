@@ -188,8 +188,8 @@ export function useBookmarks(filters: BookmarkFilters = {}) {
  */
 export function useBookmark(id: number | null) {
   return useQuery({
-    queryKey: bookmarkKeys.detail(id!),
-    queryFn: () => fetchBookmark(id!),
+    queryKey: bookmarkKeys.detail(id as number),
+    queryFn: () => fetchBookmark(id as number),
     enabled: id !== null && id !== undefined,
   });
 }

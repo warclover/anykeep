@@ -18,7 +18,7 @@ jest.mock("@/lib/logger", () => ({
 }));
 
 // Mock repositories
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 const mockFolderProfileRepo: any = {
   findByUserId: jest.fn(),
   findByFolderId: jest.fn(),
@@ -29,7 +29,6 @@ const mockFolderProfileRepo: any = {
   delete: jest.fn(),
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockSuggestionRepo: any = {
   create: jest.fn(),
   getUserSuggestions: jest.fn(),
@@ -37,7 +36,6 @@ const mockSuggestionRepo: any = {
   updateStatus: jest.fn(),
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockSupabase: any = {};
 
 // Helper: create test folder profile

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * import_wechat_article Tool 单元测试
  *
@@ -46,14 +45,12 @@ const createMockFromChain = (responses: {
   // Insert returns different chain
   chain.insert = jest.fn().mockReturnValue({
     select: jest.fn().mockReturnValue({
-      single: jest
-        .fn()
-        .mockResolvedValue(
-          responses.insertResponse || {
-            data: null,
-            error: { message: "No insert response" },
-          },
-        ),
+      single: jest.fn().mockResolvedValue(
+        responses.insertResponse || {
+          data: null,
+          error: { message: "No insert response" },
+        },
+      ),
     }),
   });
 

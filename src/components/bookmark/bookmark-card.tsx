@@ -862,7 +862,7 @@ export const BookmarkCard = memo(function BookmarkCard({
             const allTags: { tag: string; type: "ai" | "usage" | "regular" }[] =
               [];
             if (hasAiTags) {
-              bookmark.ai_tags!.forEach((tag) =>
+              (bookmark.ai_tags ?? []).forEach((tag) =>
                 allTags.push({ tag, type: "ai" }),
               );
             }

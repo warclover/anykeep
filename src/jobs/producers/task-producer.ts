@@ -272,7 +272,8 @@ export class TaskProducer {
     const queue = tasks.filter((t) => (inDegree.get(t.type) || 0) === 0);
 
     while (queue.length > 0) {
-      const task = queue.shift()!;
+      const task = queue.shift();
+      if (!task) break;
       result.push(task);
 
       for (const t of tasks) {

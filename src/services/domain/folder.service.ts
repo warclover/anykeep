@@ -388,7 +388,13 @@ export class FolderService extends BaseService {
         }
 
         const folder = await this.repository.findById(id);
-        return this.toResponse(folder!);
+        if (!folder) {
+          throw new ServiceError(
+            "NOT_FOUND",
+            `Folder ${id} not found after archive`,
+          );
+        }
+        return this.toResponse(folder);
       },
       { id },
     );
@@ -408,7 +414,13 @@ export class FolderService extends BaseService {
         }
 
         const folder = await this.repository.findById(id);
-        return this.toResponse(folder!);
+        if (!folder) {
+          throw new ServiceError(
+            "NOT_FOUND",
+            `Folder ${id} not found after unarchive`,
+          );
+        }
+        return this.toResponse(folder);
       },
       { id },
     );

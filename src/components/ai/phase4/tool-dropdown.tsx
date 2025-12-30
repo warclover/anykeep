@@ -326,7 +326,7 @@ export const ToolDropdown = memo(function ToolDropdown({
                 {/* 子工具列表 - 紧凑版 */}
                 {hasSubTools && isExpanded && (
                   <div className="ml-3 mt-0.5 space-y-0.5 border-l-2 border-pink-100 pl-2">
-                    {group.subTools!.map((subTool) => {
+                    {(group.subTools ?? []).map((subTool) => {
                       const isSubSelected = subTool.id === value;
 
                       return (

@@ -110,7 +110,10 @@ class AliyunTTSService {
     // 检查服务可用性
     const status = this.isAvailable();
     if (!status.available) {
-      throw new TTSError(TTS_ERROR_CODES.API_KEY_MISSING, status.reason!);
+      throw new TTSError(
+        TTS_ERROR_CODES.API_KEY_MISSING,
+        status.reason ?? "Service unavailable",
+      );
     }
 
     // 预处理文本
@@ -143,7 +146,7 @@ class AliyunTTSService {
 
     // 构建请求体
     const requestBody: DashScopeTTSRequest = {
-      model: mergedOptions.model!,
+      model: mergedOptions.model,
       input: {
         text: processedText,
       },
@@ -217,7 +220,7 @@ class AliyunTTSService {
       // 估算音频时长（基于字符数和语速）
       const estimatedDuration = this.estimateDuration(
         processedText.length,
-        mergedOptions.speed!,
+        mergedOptions.speed,
       );
 
       const latencyMs = Date.now() - startTime;
@@ -236,7 +239,7 @@ class AliyunTTSService {
 
       return {
         audio: audioBuffer,
-        format: mergedOptions.format!,
+        format: mergedOptions.format,
         durationSec: estimatedDuration,
         requestId: data.request_id,
         charCount: data.usage?.characters || processedText.length,

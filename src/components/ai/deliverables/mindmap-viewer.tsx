@@ -301,7 +301,9 @@ const MindmapNodeItem = memo(function MindmapNodeItem({
                 className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100"
                 onClick={(e) => {
                   e.stopPropagation();
-                  onOpenLink?.(node.data!.url!);
+                  if (node.data?.url) {
+                    onOpenLink?.(node.data.url);
+                  }
                 }}
               >
                 <ExternalLink className="size-3" />
@@ -321,7 +323,7 @@ const MindmapNodeItem = memo(function MindmapNodeItem({
       {/* 子节点 */}
       {hasChildren && isExpanded && (
         <div className="relative">
-          {node.children!.map((child) => (
+          {(node.children ?? []).map((child) => (
             <MindmapNodeItem
               key={child.id}
               node={child}
@@ -543,7 +545,7 @@ export function convertDigestToMindmap(
 
     // 添加书签节点
     for (const bookmark of topic.bookmarks) {
-      topicNode.children!.push({
+      topicNode.children.push({
         id: `bookmark-${bookmark.id}`,
         label: bookmark.title,
         type: "bookmark",
@@ -567,10 +569,10 @@ export function convertDigestToMindmap(
           type: "tag",
         })),
       };
-      topicNode.children!.push(tagsNode);
+      topicNode.children.push(tagsNode);
     }
 
-    root.children!.push(topicNode);
+    root.children.push(topicNode);
   }
 
   // 添加洞察节点
@@ -585,7 +587,7 @@ export function convertDigestToMindmap(
         type: "insight",
       })),
     };
-    root.children!.push(insightsNode);
+    root.children.push(insightsNode);
   }
 
   return root;

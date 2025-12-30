@@ -162,9 +162,8 @@ describe("UnifiedCapabilityRegistry", () => {
     mockToolReg = createMockToolRegistry();
     mockSkillReg = createMockSkillRegistry();
     registry = new UnifiedCapabilityRegistry(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       mockToolReg as any,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       mockSkillReg as any,
     );
     jest.clearAllMocks();

@@ -276,7 +276,9 @@ export function mergeSystemPrompt(
 
   // 注入情景记忆（如果启用且有内容）
   if (enableEpisodicMemory && !isEmptyEpisodicMemory(ctx.episodicMemory)) {
-    const memoryPrompt = buildEpisodicMemoryPrompt(ctx.episodicMemory!);
+    const memoryPrompt = buildEpisodicMemoryPrompt(
+      ctx.episodicMemory as EpisodicMemoryContext,
+    );
     result = `${result}\n\n${memoryPrompt}`;
   }
 
@@ -422,7 +424,9 @@ export async function mergeSystemPromptAsync(
 
   // 注入情景记忆（如果启用且有内容）
   if (enableEpisodicMemory && !isEmptyEpisodicMemory(ctx.episodicMemory)) {
-    const memoryPrompt = buildEpisodicMemoryPrompt(ctx.episodicMemory!);
+    const memoryPrompt = buildEpisodicMemoryPrompt(
+      ctx.episodicMemory as EpisodicMemoryContext,
+    );
     result = `${result}\n\n${memoryPrompt}`;
   }
 

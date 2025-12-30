@@ -210,7 +210,10 @@ class TracerImpl implements Tracer {
     fn?: (span: Span) => T | Promise<T>,
   ): T | Promise<T> {
     const options = typeof optionsOrFn === "function" ? {} : optionsOrFn;
-    const callback = typeof optionsOrFn === "function" ? optionsOrFn : fn!;
+    const callback =
+      typeof optionsOrFn === "function"
+        ? optionsOrFn
+        : (fn as (span: Span) => T | Promise<T>);
 
     const span = this.startSpan(name, options);
     const previousSpan = setActiveSpan(span);

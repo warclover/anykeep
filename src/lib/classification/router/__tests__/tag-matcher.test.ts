@@ -7,7 +7,6 @@
 
 import { describe, it, expect, beforeEach, jest } from "@jest/globals";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyMock = jest.Mock<(...args: any[]) => any>;
 
 // ============================================================================

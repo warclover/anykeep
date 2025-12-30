@@ -8,7 +8,7 @@ import { useReadingPosition } from "../use-reading-position";
 import type { ReadingPosition } from "../../../types/reader";
 
 // Configure React 18 act environment
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
 // Mock localStorage

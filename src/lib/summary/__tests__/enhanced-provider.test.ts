@@ -105,8 +105,7 @@ describe("Enhanced Prompts", () => {
     });
 
     it("should use default for unknown type", () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const config = getEnhancedPromptConfig("unknown" as any);
+      const config = getEnhancedPromptConfig("unknown" as never);
       expect(config).toBeDefined();
       expect(config.temperature).toBeGreaterThan(0);
     });

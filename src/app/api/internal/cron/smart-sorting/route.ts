@@ -344,7 +344,8 @@ function performClustering(
       const queue = [...neighbors];
 
       while (queue.length > 0) {
-        const current = queue.shift()!;
+        const current = queue.shift();
+        if (current === undefined) break;
         if (!visited.has(current)) {
           visited.add(current);
           const currentNeighbors = findNeighbors(

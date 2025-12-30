@@ -19,21 +19,21 @@ import type { CorrectionSignal, IntentType } from "../types";
 // =============================================================================
 
 // Mock 链式调用返回值
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 const mockSingle = jest.fn<any>();
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 const mockSelect = jest.fn<any>();
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 const mockInsert = jest.fn<any>();
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 const mockUpdate = jest.fn<any>();
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 const mockEq = jest.fn<any>();
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 const mockOrder = jest.fn<any>();
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 const mockLimit = jest.fn<any>();
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 const mockFrom = jest.fn<any>();
 
 // 设置 Supabase Mock
@@ -59,9 +59,9 @@ jest.mock("@/lib/logger", () => ({
 
 describe("CorrectionLearner", () => {
   // 延迟导入以确保 mock 生效 - 使用 any 避免 import() 类型限制
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   let createCorrectionLearner: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   let learner: any;
 
   beforeEach(async () => {

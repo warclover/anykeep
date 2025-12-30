@@ -554,7 +554,7 @@ export function useAIChat(config: UseAIChatConfig = {}): UseAIChatReturn {
             setMessages((prev) =>
               prev.map((m) => (m.id === messageId ? updated : m)),
             );
-            setPendingConfirmations((prev) => [...prev, chunk.confirmation!]);
+            setPendingConfirmations((prev) => [...prev, chunk.confirmation]);
             onConfirmation?.(chunk.confirmation);
           }
           break;

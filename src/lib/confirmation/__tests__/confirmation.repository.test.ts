@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Confirmation Repository Unit Tests
  * V4.2 待确认消息数据访问层测试

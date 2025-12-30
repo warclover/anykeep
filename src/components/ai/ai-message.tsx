@@ -217,8 +217,8 @@ export const AIMessage = memo(function AIMessage({
         {/* 工具调用信息 - 糖果色标签 */}
         {hasToolCalls && (
           <div className="flex flex-wrap gap-1 mt-1">
-            {message
-              .toolCalls!.filter((tc) => tc != null)
+            {(message.toolCalls ?? [])
+              .filter((tc) => tc != null)
               .map((tc) => (
                 <div
                   key={tc.id}
@@ -283,7 +283,7 @@ export const AIMessage = memo(function AIMessage({
         {/* 交付物显示 - 整理结果使用专用组件 */}
         {hasDeliverables && (
           <div className="mt-3 space-y-2">
-            {renderDeliverables(message.deliverables!)}
+            {renderDeliverables(message.deliverables ?? [])}
           </div>
         )}
 
@@ -291,7 +291,7 @@ export const AIMessage = memo(function AIMessage({
         {hasSuggestions && !isStreaming && (
           <div className="mt-3">
             <AISuggestionsInline
-              suggestions={message.suggestions!}
+              suggestions={message.suggestions ?? []}
               onSuggestionClick={onSuggestionClick}
             />
           </div>

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * get-plugin-auth-stats.tool.ts 单元测试
  *

@@ -4,8 +4,6 @@
  * @description 测试统一输出适配器的核心功能
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 import {
   UnifiedOutputAdapter,
   createUnifiedOutputAdapter,

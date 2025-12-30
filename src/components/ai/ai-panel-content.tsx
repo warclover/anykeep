@@ -357,7 +357,7 @@ export function AIPanelContent({
         setMessages((prev) =>
           prev.map((m) => (m.id === messageId ? updatedMessage : m)),
         );
-        setPendingConfirmations((prev) => [...prev, chunk.confirmation!]);
+        setPendingConfirmations((prev) => [...prev, chunk.confirmation]);
       } else if (chunk.type === "done" && chunk.result) {
         if (chunk.result.conversationId) {
           setConversationId(chunk.result.conversationId);

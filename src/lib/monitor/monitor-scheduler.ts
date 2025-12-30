@@ -197,12 +197,16 @@ export class MonitorScheduler {
         }
 
         // 4. 创建新快照
-        if (result === "changed") {
+        if (
+          result === "changed" &&
+          fetchResult.contentHash &&
+          fetchResult.wordCount !== undefined
+        ) {
           newSnapshotId = await this.createSnapshot(
             monitor.bookmarkId,
             fetchResult.content,
-            fetchResult.contentHash!,
-            fetchResult.wordCount!,
+            fetchResult.contentHash,
+            fetchResult.wordCount,
           );
         }
       }

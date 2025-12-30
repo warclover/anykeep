@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * recommend-trust-mode.tool.ts 单元测试
  *

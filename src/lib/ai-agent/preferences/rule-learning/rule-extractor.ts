@@ -274,7 +274,7 @@ export class RuleExtractor implements IRuleExtractor {
         });
       }
 
-      const pattern = patternMap.get(key)!;
+      const pattern = patternMap.get(key) as CorrectionPattern;
       pattern.count++;
       pattern.lastSeen = Math.max(pattern.lastSeen, correction.timestamp);
 

@@ -50,7 +50,7 @@ function extractNestedTagContent(
     if (openIndex < closeIndex) {
       // 先遇到开标签，深度+1
       depth++;
-      currentIndex = openIndex + openMatch!.length;
+      currentIndex = openIndex + (openMatch?.length ?? 0);
     } else {
       // 先遇到闭标签，深度-1
       depth--;
@@ -58,7 +58,7 @@ function extractNestedTagContent(
         // 找到匹配的闭标签
         return html.substring(startIndex, closeIndex);
       }
-      currentIndex = closeIndex + closeMatch!.length;
+      currentIndex = closeIndex + (closeMatch?.length ?? 0);
     }
   }
 
@@ -77,22 +77,22 @@ export function extractMainContent(html: string): string {
 
   // 微信公众号正文 - 使用嵌套匹配算法
   const wechatMatch = text.match(/<div[^>]*id=["']?js_content["']?[^>]*>/i);
-  if (wechatMatch) {
-    const startIndex = wechatMatch.index! + wechatMatch[0].length;
+  if (wechatMatch && wechatMatch.index !== undefined) {
+    const startIndex = wechatMatch.index + wechatMatch[0].length;
     return extractNestedTagContent(text, startIndex, "div");
   }
 
   // article 标签 - 使用嵌套匹配算法
   const articleMatch = text.match(/<article[^>]*>/i);
-  if (articleMatch) {
-    const startIndex = articleMatch.index! + articleMatch[0].length;
+  if (articleMatch && articleMatch.index !== undefined) {
+    const startIndex = articleMatch.index + articleMatch[0].length;
     return extractNestedTagContent(text, startIndex, "article");
   }
 
   // main 标签 - 使用嵌套匹配算法
   const mainMatch = text.match(/<main[^>]*>/i);
-  if (mainMatch) {
-    const startIndex = mainMatch.index! + mainMatch[0].length;
+  if (mainMatch && mainMatch.index !== undefined) {
+    const startIndex = mainMatch.index + mainMatch[0].length;
     return extractNestedTagContent(text, startIndex, "main");
   }
 

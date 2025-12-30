@@ -269,7 +269,8 @@ export function densityClustering(
     // Expand cluster
     const seedSet = [...neighbors];
     while (seedSet.length > 0) {
-      const j = seedSet.pop()!;
+      const j = seedSet.pop();
+      if (j === undefined) break;
       if (!visited[j]) {
         visited[j] = true;
         const jNeighbors = findNeighbors(items, j, similarityThreshold);

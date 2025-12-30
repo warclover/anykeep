@@ -7,7 +7,7 @@ import { UserStageService } from "../services/user-stage.service";
 import { USER_LIFECYCLE_THRESHOLDS } from "../constants";
 
 // Mock Supabase client
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 const mockSupabase: any = {
   rpc: jest.fn(),
 };

@@ -53,7 +53,7 @@ export function OnboardingOverlay({
     }
 
     const updatePosition = () => {
-      const element = document.querySelector(step.target!);
+      const element = step.target ? document.querySelector(step.target) : null;
       if (element) {
         const rect = element.getBoundingClientRect();
         const padding = 8;

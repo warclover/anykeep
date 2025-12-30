@@ -271,14 +271,13 @@ export default function ClassificationComparePage() {
   ) => {
     setResults((prev) => {
       const updated = [...prev];
-      if (!updated[index].userVerdict) {
-        updated[index].userVerdict = {};
-      }
+      const verdict = updated[index].userVerdict ?? {};
       if (version === "v4.2") {
-        updated[index].userVerdict!.v42Correct = isCorrect;
+        verdict.v42Correct = isCorrect;
       } else {
-        updated[index].userVerdict!.liteCorrect = isCorrect;
+        verdict.liteCorrect = isCorrect;
       }
+      updated[index].userVerdict = verdict;
       return updated;
     });
   };
@@ -302,11 +301,15 @@ export default function ClassificationComparePage() {
     );
 
     const confidences = relevantResults.map((r) =>
-      version === "v4.2" ? r.v42Result!.confidence : r.liteResult!.confidence,
+      version === "v4.2"
+        ? (r.v42Result?.confidence ?? 0)
+        : (r.liteResult?.confidence ?? 0),
     );
 
     const latencies = relevantResults.map((r) =>
-      version === "v4.2" ? r.v42Result!.latencyMs : r.liteResult!.latencyMs,
+      version === "v4.2"
+        ? (r.v42Result?.latencyMs ?? 0)
+        : (r.liteResult?.latencyMs ?? 0),
     );
 
     return {

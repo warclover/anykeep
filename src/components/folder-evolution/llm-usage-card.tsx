@@ -401,7 +401,9 @@ export function LLMUsageCard({ className }: LLMUsageCardProps) {
                       <div className="flex items-end gap-1 h-20">
                         {currentStats.trends.map((t, _i) => {
                           const maxCost = Math.max(
-                            ...currentStats.trends!.map((x) => x.costCents),
+                            ...(currentStats.trends ?? []).map(
+                              (x) => x.costCents,
+                            ),
                           );
                           const height =
                             maxCost > 0 ? (t.costCents / maxCost) * 100 : 0;

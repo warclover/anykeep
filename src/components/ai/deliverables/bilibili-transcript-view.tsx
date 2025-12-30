@@ -445,7 +445,9 @@ export const BilibiliTranscriptView = memo(function BilibiliTranscriptView({
           {/* 字幕内容 */}
           <div className="p-4 border-b border-gray-100">
             <TranscriptContent
-              transcript={data.transcript!}
+              transcript={
+                data.transcript ?? { segments: [], text: "", wordCount: 0 }
+              }
               onCopyContent={onCopyContent}
               onDownload={onDownload}
             />

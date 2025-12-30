@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * revoke-plugin-authorization.tool.ts 单元测试
  *

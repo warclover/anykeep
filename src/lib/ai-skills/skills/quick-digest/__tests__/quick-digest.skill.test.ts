@@ -410,7 +410,6 @@ describe("Formatters", () => {
     });
 
     it("should default to MarkdownFormatter", () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       expect(createFormatter("unknown" as any)).toBeInstanceOf(
         MarkdownFormatter,
       );

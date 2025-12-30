@@ -648,10 +648,13 @@ export function useSearchData(query: string, aiMode: boolean) {
   // 初始加载热门标签
   useEffect(() => {
     fetchHotTags().then((hotTags) => {
-      setState((prev) => ({
-        ...prev,
-        data: { ...prev.data!, hotTags },
-      }));
+      setState((prev) => {
+        if (!prev.data) return prev;
+        return {
+          ...prev,
+          data: { ...prev.data, hotTags },
+        };
+      });
     });
   }, [fetchHotTags]);
 

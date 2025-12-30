@@ -8,8 +8,6 @@
  * - 内存计算（标签增强）< 10ms
  */
 
-/* eslint-disable no-console */
-
 import { describe, it, expect, beforeAll, afterAll } from "@jest/globals";
 
 // ============================================

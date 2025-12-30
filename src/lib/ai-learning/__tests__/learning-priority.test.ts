@@ -18,19 +18,19 @@ import type { IntentType, CorrectionSignal } from "../types";
 // =============================================================================
 
 // Mock Supabase
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 const mockSingle = jest.fn<any>();
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 const mockSelect = jest.fn<any>();
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 const mockInsert = jest.fn<any>();
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 const mockEq = jest.fn<any>();
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 const mockOrder = jest.fn<any>();
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 const mockLimit = jest.fn<any>();
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 const mockFrom = jest.fn<any>();
 
 jest.mock("@/lib/supabase/client", () => ({
@@ -55,11 +55,11 @@ jest.mock("@/lib/logger", () => ({
 
 describe("Learning Application Priority", () => {
   // 延迟导入以确保 mock 生效
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   let _LearningAwareClassifier: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   let createLearningAwareClassifier: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   let classifier: any;
 
   beforeEach(async () => {

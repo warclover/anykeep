@@ -282,7 +282,7 @@ function parseWithExplicitMarkers(
   let leadingContent = "";
 
   matches.forEach((match, idx) => {
-    const matchStart = match.index!;
+    const matchStart = match.index ?? 0;
     const title = match[1];
     const isCore = title.includes("核心") || title.includes("主旨");
 
@@ -310,7 +310,9 @@ function parseWithExplicitMarkers(
     // 提取内容
     const contentStart = matchStart + match[0].length;
     const nextMatch = matches[idx + 1];
-    const contentEnd = nextMatch ? nextMatch.index! : summary.length;
+    const contentEnd = nextMatch
+      ? (nextMatch.index ?? summary.length)
+      : summary.length;
     let content = summary.substring(contentStart, contentEnd).trim();
 
     if (isCore && leadingContent) {

@@ -12,8 +12,6 @@
  * @since 2025-12-12
  */
 
-/* eslint-disable no-console */
-
 import { describe, it, expect, afterAll } from "@jest/globals";
 
 // ============================================================================

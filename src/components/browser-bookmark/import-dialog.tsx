@@ -451,7 +451,7 @@ export function BrowserBookmarkImportDialog({
           importSource: string;
           importBatchId: string;
         } = {
-          url: bookmark.url!,
+          url: bookmark.url ?? "",
           title: bookmark.title,
           description: bookmark.description,
           platform,

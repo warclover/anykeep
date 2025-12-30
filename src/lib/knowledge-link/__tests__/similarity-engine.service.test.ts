@@ -7,6 +7,7 @@
  * @since 2025-12-15
  */
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   SimilarityEngineService,
   getSimilarityEngineService,
@@ -58,8 +59,9 @@ describe("SimilarityEngineService", () => {
   beforeEach(() => {
     resetSimilarityEngineService();
     mockSupabase = createMockSupabase();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    service = new SimilarityEngineService(mockSupabase as any);
+    service = new SimilarityEngineService(
+      mockSupabase as unknown as SupabaseClient,
+    );
   });
 
   afterEach(() => {
@@ -242,8 +244,9 @@ describe("Cosine Similarity Algorithm", () => {
         }),
       }),
     };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const testService = new SimilarityEngineService(mockSupabase as any);
+    const testService = new SimilarityEngineService(
+      mockSupabase as unknown as SupabaseClient,
+    );
 
     const result = await testService.calculateSimilarity(1, 2);
 
@@ -265,8 +268,9 @@ describe("Cosine Similarity Algorithm", () => {
         }),
       }),
     };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const testService = new SimilarityEngineService(mockSupabase as any);
+    const testService = new SimilarityEngineService(
+      mockSupabase as unknown as SupabaseClient,
+    );
 
     const result = await testService.calculateSimilarity(1, 2);
 

@@ -446,7 +446,6 @@ describe("useBookmarksSWR", () => {
 
       // 追加数据
       act(() => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         result.current.appendToCache([mockBookmarks[2]] as any, false);
       });
 

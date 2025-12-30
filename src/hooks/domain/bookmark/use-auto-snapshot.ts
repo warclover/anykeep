@@ -361,7 +361,9 @@ export function useAutoSnapshot({
                 onClick: () => router.push(`/bookmark/${bookmarkId}`),
               },
             });
-            onSuccess?.(result.snapshotId!);
+            if (result.snapshotId) {
+              onSuccess?.(result.snapshotId);
+            }
           } else {
             // 静默处理某些错误
             if (

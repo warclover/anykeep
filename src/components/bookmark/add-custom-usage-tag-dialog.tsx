@@ -265,7 +265,7 @@ function PreviewTag({
   value: string;
   color: CustomTagColor;
 }) {
-  const style = CUSTOM_TAG_COLOR_STYLES[color] || CUSTOM_TAG_COLOR_STYLES.blue!;
+  const style = CUSTOM_TAG_COLOR_STYLES[color] ?? CUSTOM_TAG_COLOR_STYLES.blue;
 
   return (
     <span

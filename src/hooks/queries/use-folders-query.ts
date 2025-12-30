@@ -188,8 +188,8 @@ export function useFolderTree() {
  */
 export function useFolderDetail(id: number | null) {
   return useQuery({
-    queryKey: folderKeys.detail(id!),
-    queryFn: () => fetchFolder(id!),
+    queryKey: folderKeys.detail(id as number),
+    queryFn: () => fetchFolder(id as number),
     enabled: id !== null && id !== undefined,
   });
 }
@@ -199,8 +199,8 @@ export function useFolderDetail(id: number | null) {
  */
 export function useFolderPath(id: number | null) {
   return useQuery({
-    queryKey: folderKeys.path(id!),
-    queryFn: () => fetchFolderPath(id!),
+    queryKey: folderKeys.path(id as number),
+    queryFn: () => fetchFolderPath(id as number),
     enabled: id !== null && id !== undefined,
   });
 }

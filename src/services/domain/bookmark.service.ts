@@ -228,7 +228,13 @@ export class BookmarkService extends BaseService {
         }
 
         const bookmark = await this.repository.findByIdWithDetails(id);
-        return this.toDetailResponse(bookmark!);
+        if (!bookmark) {
+          throw new ServiceError(
+            "NOT_FOUND",
+            `Bookmark ${id} not found after restore`,
+          );
+        }
+        return this.toDetailResponse(bookmark);
       },
       { id },
     );

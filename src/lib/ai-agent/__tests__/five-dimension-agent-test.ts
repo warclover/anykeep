@@ -12,8 +12,6 @@
  * @since 2025-12-28
  */
 
-/* eslint-disable no-console */
-
 import { createIntentClassifier } from "@/lib/ai-skills/router/intent-classifier";
 import { matchImplicitIntent } from "@/lib/ai-agent/core/prompts/implicit-intent-rules";
 import {

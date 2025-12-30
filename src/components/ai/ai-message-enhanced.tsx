@@ -210,8 +210,8 @@ export const AIMessageEnhanced = memo(function AIMessageEnhanced({
         {/* 工具调用信息 - 糖果色标签 */}
         {hasToolCalls && (
           <div className="flex flex-wrap gap-1 mt-1">
-            {message
-              .toolCalls!.filter((tc) => tc != null)
+            {(message.toolCalls ?? [])
+              .filter((tc) => tc != null)
               .map((tc) => (
                 <div
                   key={tc.id}
@@ -280,7 +280,7 @@ export const AIMessageEnhanced = memo(function AIMessageEnhanced({
         {/* 交付物显示 */}
         {hasDeliverables && (
           <div className="mt-3 space-y-2">
-            {message.deliverables!.map((deliverable, index) => (
+            {(message.deliverables ?? []).map((deliverable, index) => (
               <AIDeliverableCard
                 key={deliverable.id || `deliverable-${index}`}
                 deliverable={deliverable}
@@ -293,7 +293,7 @@ export const AIMessageEnhanced = memo(function AIMessageEnhanced({
         {hasSuggestions && !isStreaming && (
           <div className="mt-3">
             <AISuggestionsInline
-              suggestions={message.suggestions!}
+              suggestions={message.suggestions ?? []}
               onSuggestionClick={onSuggestionClick}
             />
           </div>

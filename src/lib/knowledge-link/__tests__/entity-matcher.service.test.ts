@@ -7,6 +7,7 @@
  * @since 2025-12-15
  */
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   EntityMatcherService,
   getEntityMatcherService,
@@ -76,8 +77,9 @@ describe("EntityMatcherService", () => {
   beforeEach(() => {
     resetEntityMatcherService();
     mockSupabase = createMockSupabase();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    service = new EntityMatcherService(mockSupabase as any);
+    service = new EntityMatcherService(
+      mockSupabase as unknown as SupabaseClient,
+    );
   });
 
   afterEach(() => {
@@ -193,8 +195,7 @@ describe("EntityMatcherService", () => {
     it("should return empty array when entityNames is null/undefined", async () => {
       const result = await service.findBySharedEntities(
         mockUserId,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        null as any,
+        null as unknown as string[],
         mockBookmarkId,
       );
 
@@ -261,8 +262,9 @@ describe("EntityMatcherService", () => {
         });
 
       mockSupabase.from = fromMock;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const testService = new EntityMatcherService(mockSupabase as any);
+      const testService = new EntityMatcherService(
+        mockSupabase as unknown as SupabaseClient,
+      );
 
       const result = await testService.getSharedEntities(123, 456);
 

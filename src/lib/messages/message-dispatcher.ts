@@ -98,7 +98,9 @@ export class MessageDispatcher {
           ? {
               label: message.actionLabel || "查看",
               onClick: () => {
-                window.location.href = message.actionUrl!;
+                if (message.actionUrl) {
+                  window.location.href = message.actionUrl;
+                }
               },
             }
           : undefined,
@@ -112,7 +114,9 @@ export class MessageDispatcher {
           ? {
               label: message.actionLabel || "查看",
               onClick: () => {
-                window.location.href = message.actionUrl!;
+                if (message.actionUrl) {
+                  window.location.href = message.actionUrl;
+                }
               },
             }
           : undefined,
