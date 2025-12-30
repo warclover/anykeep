@@ -48,6 +48,7 @@ import { SnapshotSectionLazy } from "@/components/snapshot";
 import { lazy, Suspense } from "react";
 import { useWechatArticleFeature } from "@/lib/feature-flags";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SilentErrorBoundary } from "@/components/ui/lazy-error-boundary";
 import {
   AIAssistantPanel,
   AISmartSummary,
@@ -557,15 +558,17 @@ export function BookmarkDetailClient({
 
               {/* V4.2.2: 微信文章完整内容（仅微信公众号平台 + Feature Flag 启用时显示） */}
               {showWechatArticle && (
-                <Suspense
-                  fallback={<Skeleton className="h-64 w-full rounded-lg" />}
-                >
-                  <WechatArticleSectionLazy
-                    bookmarkId={bookmark.id}
-                    bookmarkUrl={bookmark.url}
-                    defaultExpanded={false}
-                  />
-                </Suspense>
+                <SilentErrorBoundary>
+                  <Suspense
+                    fallback={<Skeleton className="h-64 w-full rounded-lg" />}
+                  >
+                    <WechatArticleSectionLazy
+                      bookmarkId={bookmark.id}
+                      bookmarkUrl={bookmark.url}
+                      defaultExpanded={false}
+                    />
+                  </Suspense>
+                </SilentErrorBoundary>
               )}
 
               {/* 处理状态：仅当状态为 PROCESSING 且 AI 内容尚未生成时显示 */}

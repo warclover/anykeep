@@ -65,6 +65,7 @@ import { useDialogs, useSelectionMode } from "@/hooks/core";
 import { useProcessingPoller } from "@/hooks/ui";
 import { ErrorMessage } from "@/components/ui/error-message";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SilentErrorBoundary } from "@/components/ui/lazy-error-boundary";
 import type { Bookmark } from "@/types/supabase";
 import { DEFAULT_PAGE_SIZE, getPageSizeByView } from "./constants";
 import { useHomeViewMode } from "./hooks/use-home-view-mode";
@@ -731,19 +732,25 @@ export function HomePageClient({
         ref={scrollContainerRef}
         className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-1 md:px-2 py-0.5 md:py-1"
       >
-        <Suspense fallback={null}>
-          <ReclassifyBanner className="mb-4" />
-        </Suspense>
+        <SilentErrorBoundary>
+          <Suspense fallback={null}>
+            <ReclassifyBanner className="mb-4" />
+          </Suspense>
+        </SilentErrorBoundary>
 
         {/* V2 整理建议横幅（懒加载） */}
-        <Suspense fallback={null}>
-          <InboxOrganizationBanner className="mb-4" />
-        </Suspense>
+        <SilentErrorBoundary>
+          <Suspense fallback={null}>
+            <InboxOrganizationBanner className="mb-4" />
+          </Suspense>
+        </SilentErrorBoundary>
 
         {/* V4.2 待确认消息区域（懒加载） */}
-        <Suspense fallback={null}>
-          <PendingConfirmationsSection className="mb-4" />
-        </Suspense>
+        <SilentErrorBoundary>
+          <Suspense fallback={null}>
+            <PendingConfirmationsSection className="mb-4" />
+          </Suspense>
+        </SilentErrorBoundary>
 
         {/* 初始加载骨架屏 */}
         {isInitialLoading ? (

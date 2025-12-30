@@ -14,6 +14,7 @@
 import { lazy, Suspense, useState, useEffect, useRef } from "react";
 import { Brain } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SilentErrorBoundary } from "@/components/ui/lazy-error-boundary";
 import { Card, CardContent } from "@/components/ui/card";
 import type { LinkType } from "@/lib/knowledge-link";
 
@@ -160,9 +161,11 @@ export function RelatedBookmarksV2Lazy(props: RelatedBookmarksV2LazyProps) {
   return (
     <div ref={containerRef}>
       {isInViewport ? (
-        <Suspense fallback={<RelatedBookmarksFallback />}>
-          <LazyRelatedBookmarksV2 {...props} />
-        </Suspense>
+        <SilentErrorBoundary>
+          <Suspense fallback={<RelatedBookmarksFallback />}>
+            <LazyRelatedBookmarksV2 {...props} />
+          </Suspense>
+        </SilentErrorBoundary>
       ) : (
         <RelatedBookmarksPlaceholder />
       )}
