@@ -9,10 +9,24 @@ import { KnowledgeAgent } from "../core/knowledge-agent";
 import { AgentMemory } from "../core/agent-memory";
 import type { AgentContext, AgentStreamChunk } from "../core/types";
 
-// Mock AI SDK
+// Mock AI SDK with default implementations
 jest.mock("ai", () => ({
-  generateText: jest.fn(),
-  streamText: jest.fn(),
+  generateText: jest.fn().mockResolvedValue({
+    text: "",
+    steps: [],
+    finishReason: "stop",
+    usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
+  }),
+  streamText: jest.fn().mockReturnValue({
+    fullStream: {
+      [Symbol.asyncIterator]: async function* () {
+        yield { type: "text-delta", text: "" };
+      },
+    },
+    steps: Promise.resolve([]),
+    usage: Promise.resolve({ inputTokens: 0, outputTokens: 0 }),
+    finishReason: Promise.resolve("stop"),
+  }),
   stepCountIs: jest.fn().mockReturnValue(() => false),
 }));
 
@@ -70,9 +84,19 @@ jest.mock("../core/error-messages", () => ({
   ),
 }));
 
-// Import mocked modules
+// Import mocked modules with proper typing
 import { generateText, streamText } from "ai";
 import { aiProviderRouter } from "@/lib/ai-providers";
+
+// Properly typed mock references
+const mockGenerateText = generateText as jest.MockedFunction<
+  typeof generateText
+>;
+const mockStreamText = streamText as jest.MockedFunction<typeof streamText>;
+const mockSelectProvider =
+  aiProviderRouter.selectProvider as jest.MockedFunction<
+    typeof aiProviderRouter.selectProvider
+  >;
 
 describe("KnowledgeAgent", () => {
   let agent: KnowledgeAgent;
@@ -96,9 +120,7 @@ describe("KnowledgeAgent", () => {
     };
 
     // Default mock for provider selection
-    (aiProviderRouter.selectProvider as jest.Mock).mockReturnValue(
-      mockSelection,
-    );
+    mockSelectProvider.mockReturnValue(mockSelection);
   });
 
   describe("constructor", () => {
@@ -137,7 +159,7 @@ describe("KnowledgeAgent", () => {
         finishReason: "stop",
       };
 
-      (generateText as jest.Mock).mockResolvedValue(mockResult);
+      mockGenerateText.mockResolvedValue(mockResult);
 
       const result = await agent.execute("搜索书签", mockContext);
 
@@ -154,7 +176,7 @@ describe("KnowledgeAgent", () => {
         finishReason: "stop",
       };
 
-      (generateText as jest.Mock).mockResolvedValue(mockResult);
+      mockGenerateText.mockResolvedValue(mockResult);
 
       await agent.execute("Hello", mockContext);
 
@@ -178,7 +200,7 @@ describe("KnowledgeAgent", () => {
         finishReason: "stop",
       };
 
-      (generateText as jest.Mock).mockResolvedValue(mockResult);
+      mockGenerateText.mockResolvedValue(mockResult);
 
       await agent.execute("Hello", contextWithConv);
 
@@ -211,7 +233,7 @@ describe("KnowledgeAgent", () => {
         finishReason: "tool-calls",
       };
 
-      (generateText as jest.Mock).mockResolvedValue(mockResult);
+      mockGenerateText.mockResolvedValue(mockResult);
 
       const result = await agent.execute("搜索test", mockContext);
 
@@ -222,7 +244,7 @@ describe("KnowledgeAgent", () => {
     });
 
     it("should handle provider unavailable", async () => {
-      (aiProviderRouter.selectProvider as jest.Mock).mockReturnValue(null);
+      mockSelectProvider.mockReturnValue(null);
 
       const result = await agent.execute("Hello", mockContext);
 
@@ -232,9 +254,7 @@ describe("KnowledgeAgent", () => {
     });
 
     it("should handle execution errors", async () => {
-      (generateText as jest.Mock).mockRejectedValue(
-        new Error("API rate limited"),
-      );
+      mockGenerateText.mockRejectedValue(new Error("API rate limited"));
 
       const result = await agent.execute("Hello", mockContext);
 
@@ -250,7 +270,7 @@ describe("KnowledgeAgent", () => {
         finishReason: "stop",
       };
 
-      (generateText as jest.Mock).mockResolvedValue(mockResult);
+      mockGenerateText.mockResolvedValue(mockResult);
 
       await agent.execute("Hello", mockContext, {
         temperature: 0.5,
@@ -289,7 +309,7 @@ describe("KnowledgeAgent", () => {
         finishReason: Promise.resolve("stop"),
       };
 
-      (streamText as jest.Mock).mockReturnValue(mockStreamResult);
+      mockStreamText.mockReturnValue(mockStreamResult);
 
       const chunks: AgentStreamChunk[] = [];
       for await (const chunk of agent.executeStream("Hello", mockContext)) {
@@ -311,7 +331,7 @@ describe("KnowledgeAgent", () => {
     });
 
     it("should handle provider unavailable in stream", async () => {
-      (aiProviderRouter.selectProvider as jest.Mock).mockReturnValue(null);
+      mockSelectProvider.mockReturnValue(null);
 
       const chunks: AgentStreamChunk[] = [];
       for await (const chunk of agent.executeStream("Hello", mockContext)) {
@@ -339,7 +359,7 @@ describe("KnowledgeAgent", () => {
         finishReason: Promise.resolve("error"),
       };
 
-      (streamText as jest.Mock).mockReturnValue(mockStreamResult);
+      mockStreamText.mockReturnValue(mockStreamResult);
 
       const chunks: AgentStreamChunk[] = [];
       for await (const chunk of agent.executeStream("Hello", mockContext)) {
@@ -381,7 +401,7 @@ describe("KnowledgeAgent", () => {
         finishReason: Promise.resolve("tool-calls"),
       };
 
-      (streamText as jest.Mock).mockReturnValue(mockStreamResult);
+      mockStreamText.mockReturnValue(mockStreamResult);
 
       const chunks: AgentStreamChunk[] = [];
       for await (const chunk of agent.executeStream("Search", mockContext)) {
@@ -444,7 +464,7 @@ describe("KnowledgeAgent", () => {
         finishReason: "stop",
       };
 
-      (generateText as jest.Mock).mockResolvedValue(mockResult);
+      mockGenerateText.mockResolvedValue(mockResult);
 
       const result = await agent.execute("Hello", mockContext);
       expect(result.finishReason).toBe("stop");
@@ -457,7 +477,7 @@ describe("KnowledgeAgent", () => {
         finishReason: "length",
       };
 
-      (generateText as jest.Mock).mockResolvedValue(mockResult);
+      mockGenerateText.mockResolvedValue(mockResult);
 
       const result = await agent.execute("Hello", mockContext);
       expect(result.finishReason).toBe("length");
@@ -470,7 +490,7 @@ describe("KnowledgeAgent", () => {
         finishReason: "tool-calls",
       };
 
-      (generateText as jest.Mock).mockResolvedValue(mockResult);
+      mockGenerateText.mockResolvedValue(mockResult);
 
       const result = await agent.execute("Hello", mockContext);
       expect(result.finishReason).toBe("tool-calls");
@@ -483,7 +503,7 @@ describe("KnowledgeAgent", () => {
         finishReason: "unknown-reason",
       };
 
-      (generateText as jest.Mock).mockResolvedValue(mockResult);
+      mockGenerateText.mockResolvedValue(mockResult);
 
       const result = await agent.execute("Hello", mockContext);
       expect(result.finishReason).toBe("stop");

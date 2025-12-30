@@ -12,10 +12,24 @@ import type {
   SlowThinkingRouteResult,
   SlowThinkingDynamicContext,
 } from "../types";
+import { createGenerateTextMock } from "@/lib/test-utils/ai-sdk-mocks";
 
 // Mock dependencies
 jest.mock("ai", () => ({
-  generateText: jest.fn(),
+  generateText: jest.fn().mockResolvedValue(
+    // 默认返回空文本，具体测试会覆盖
+    {
+      text: "",
+      finishReason: "stop",
+      usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
+      response: {
+        id: "default",
+        timestamp: new Date(),
+        modelId: "mock",
+        headers: {},
+      },
+    },
+  ),
 }));
 
 jest.mock("@ai-sdk/deepseek", () => ({
@@ -191,17 +205,19 @@ describe("SlowThinkingService", () => {
     `;
 
     beforeEach(() => {
-      mockGenerateText.mockResolvedValue({
-        text: validLLMResponse,
-        finishReason: "stop",
-        usage: { promptTokens: 100, completionTokens: 50, totalTokens: 150 },
-        response: {
-          id: "test-id",
-          timestamp: new Date(),
-          modelId: "mock-model",
-          headers: {},
-        },
-      } as unknown as Awaited<ReturnType<typeof generateText>>);
+      mockGenerateText.mockResolvedValue(
+        createGenerateTextMock({
+          text: validLLMResponse,
+          finishReason: "stop",
+          usage: { inputTokens: 100, outputTokens: 50, totalTokens: 150 },
+          response: {
+            id: "test-id",
+            timestamp: new Date(),
+            modelId: "mock-model",
+            headers: {},
+          },
+        }),
+      );
     });
 
     it("should return null when feature flag is disabled", async () => {
@@ -215,8 +231,8 @@ describe("SlowThinkingService", () => {
       const disabledFlagService = new SlowThinkingService({ enabled: true });
 
       // Mock the feature flag directly in the test
-      // eslint-disable-next-line @typescript-eslint/no-require-imports -- Jest test needs dynamic require
       const originalFeatureFlags =
+        // eslint-disable-next-line @typescript-eslint/no-require-imports -- Jest test needs dynamic require
         require("@/lib/ai-agent/config/feature-flags").FeatureFlags;
       originalFeatureFlags.ENABLE_SLOW_THINKING = false;
 
@@ -288,17 +304,19 @@ describe("SlowThinkingService", () => {
     });
 
     it("should return default monologue on invalid LLM output", async () => {
-      mockGenerateText.mockResolvedValueOnce({
-        text: "invalid output without proper tags",
-        finishReason: "stop",
-        usage: { promptTokens: 100, completionTokens: 50, totalTokens: 150 },
-        response: {
-          id: "test-id",
-          timestamp: new Date(),
-          modelId: "mock-model",
-          headers: {},
-        },
-      } as unknown as Awaited<ReturnType<typeof generateText>>);
+      mockGenerateText.mockResolvedValueOnce(
+        createGenerateTextMock({
+          text: "invalid output without proper tags",
+          finishReason: "stop",
+          usage: { inputTokens: 100, outputTokens: 50, totalTokens: 150 },
+          response: {
+            id: "test-id",
+            timestamp: new Date(),
+            modelId: "mock-model",
+            headers: {},
+          },
+        }),
+      );
 
       const result = await service.generateMonologue(
         "test message",
@@ -323,21 +341,23 @@ describe("SlowThinkingService", () => {
           new Promise((resolve) =>
             setTimeout(
               () =>
-                resolve({
-                  text: validLLMResponse,
-                  finishReason: "stop",
-                  usage: {
-                    promptTokens: 100,
-                    completionTokens: 50,
-                    totalTokens: 150,
-                  },
-                  response: {
-                    id: "test-id",
-                    timestamp: new Date(),
-                    modelId: "mock-model",
-                    headers: {},
-                  },
-                } as unknown as Awaited<ReturnType<typeof generateText>>),
+                resolve(
+                  createGenerateTextMock({
+                    text: validLLMResponse,
+                    finishReason: "stop",
+                    usage: {
+                      inputTokens: 100,
+                      outputTokens: 50,
+                      totalTokens: 150,
+                    },
+                    response: {
+                      id: "test-id",
+                      timestamp: new Date(),
+                      modelId: "mock-model",
+                      headers: {},
+                    },
+                  }),
+                ),
               100,
             ),
           ),
