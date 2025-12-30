@@ -1706,6 +1706,84 @@ export type Database = {
           },
         ];
       };
+      /**
+       * 文件夹排除规则表 - 负样本学习机制
+       * 记录用户明确表示不属于某文件夹的内容特征
+       */
+      folder_exclusions: {
+        Row: {
+          id: number;
+          user_id: string;
+          folder_id: number;
+          /** 排除类型: tag | source | embedding | keyword */
+          exclusion_type: string;
+          excluded_tag: string | null;
+          excluded_source_id: string | null;
+          excluded_keyword: string | null;
+          /** 向量类型，需要 pgvector 扩展 */
+          excluded_embedding: number[] | null;
+          /** 权重 (0-1)，影响负样本匹配时的惩罚力度 */
+          weight: number;
+          /** 创建来源: user_move | user_reject | bulk_move | auto_learn */
+          created_from: string;
+          original_bookmark_id: number | null;
+          expires_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: number;
+          user_id: string;
+          folder_id: number;
+          exclusion_type: string;
+          excluded_tag?: string | null;
+          excluded_source_id?: string | null;
+          excluded_keyword?: string | null;
+          excluded_embedding?: number[] | null;
+          weight?: number;
+          created_from: string;
+          original_bookmark_id?: number | null;
+          expires_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: number;
+          user_id?: string;
+          folder_id?: number;
+          exclusion_type?: string;
+          excluded_tag?: string | null;
+          excluded_source_id?: string | null;
+          excluded_keyword?: string | null;
+          excluded_embedding?: number[] | null;
+          weight?: number;
+          created_from?: string;
+          original_bookmark_id?: number | null;
+          expires_at?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "folder_exclusions_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "folder_exclusions_folder_id_fkey";
+            columns: ["folder_id"];
+            isOneToOne: false;
+            referencedRelation: "folders";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "folder_exclusions_original_bookmark_id_fkey";
+            columns: ["original_bookmark_id"];
+            isOneToOne: false;
+            referencedRelation: "bookmarks";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       folders: {
         Row: {
           created_at: string | null;
@@ -2837,6 +2915,8 @@ export type Database = {
           id: string;
           last_trash_cleanup_at: string | null;
           last_validation_at: string | null;
+          /** 最后访问时间 - 用于主动洞察功能 */
+          last_visit_at: string | null;
           membership_type: string | null;
           nickname: string | null;
           patrol_frequency: string | null;
@@ -2855,6 +2935,7 @@ export type Database = {
           id: string;
           last_trash_cleanup_at?: string | null;
           last_validation_at?: string | null;
+          last_visit_at?: string | null;
           membership_type?: string | null;
           nickname?: string | null;
           patrol_frequency?: string | null;
@@ -2873,6 +2954,7 @@ export type Database = {
           id?: string;
           last_trash_cleanup_at?: string | null;
           last_validation_at?: string | null;
+          last_visit_at?: string | null;
           membership_type?: string | null;
           nickname?: string | null;
           patrol_frequency?: string | null;
@@ -2885,6 +2967,67 @@ export type Database = {
           updated_at?: string | null;
         };
         Relationships: [];
+      };
+      /**
+       * 主动洞察表 - 存储 AI 主动生成的洞察和建议
+       */
+      proactive_insights: {
+        Row: {
+          id: string;
+          user_id: string;
+          /** 洞察类型: knowledge_gap | connection | reading_habit | learning_opportunity */
+          type: string;
+          title: string;
+          summary: string;
+          related_bookmark_ids: number[] | null;
+          /** 优先级 0-10 */
+          priority: number;
+          is_read: boolean;
+          is_dismissed: boolean;
+          read_at: string | null;
+          metadata: Json | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          type: string;
+          title: string;
+          summary: string;
+          related_bookmark_ids?: number[] | null;
+          priority?: number;
+          is_read?: boolean;
+          is_dismissed?: boolean;
+          read_at?: string | null;
+          metadata?: Json | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          type?: string;
+          title?: string;
+          summary?: string;
+          related_bookmark_ids?: number[] | null;
+          priority?: number;
+          is_read?: boolean;
+          is_dismissed?: boolean;
+          read_at?: string | null;
+          metadata?: Json | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "proactive_insights_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       scenario_weight_configs: {
         Row: {
@@ -5241,6 +5384,23 @@ export type Database = {
           p_user_id: string;
         };
         Returns: boolean;
+      };
+      /** 清理过期的文件夹排除规则 */
+      cleanup_expired_folder_exclusions: {
+        Args: Record<PropertyKey, never>;
+        Returns: number;
+      };
+      /** 清理 30 天前的监控检查日志 */
+      cleanup_expired_check_logs: {
+        Args: Record<PropertyKey, never>;
+        Returns: number;
+      };
+      /** 更新用户最后访问时间 */
+      update_last_visit_time: {
+        Args: {
+          p_user_id: string;
+        };
+        Returns: undefined;
       };
     };
     Enums: {
