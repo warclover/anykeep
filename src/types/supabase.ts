@@ -3727,6 +3727,141 @@ export type Database = {
           },
         ];
       };
+      /**
+       * 综述标注表 - 存储用户在综述报告中的标注
+       */
+      synthesis_highlights: {
+        Row: {
+          id: string;
+          report_id: string;
+          user_id: string;
+          content: string;
+          note: string | null;
+          color: string;
+          position: Json;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          report_id: string;
+          user_id: string;
+          content: string;
+          note?: string | null;
+          color?: string;
+          position: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          report_id?: string;
+          user_id?: string;
+          content?: string;
+          note?: string | null;
+          color?: string;
+          position?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "synthesis_highlights_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      /**
+       * 系统任务队列表 - 存储异步任务
+       */
+      system_jobs: {
+        Row: {
+          id: string;
+          type: string;
+          payload: Json;
+          status: string;
+          priority: number;
+          retry_count: number;
+          max_retries: number;
+          last_error: string | null;
+          depends_on: string | null;
+          user_id: string;
+          bookmark_id: number | null;
+          created_at: string;
+          started_at: string | null;
+          completed_at: string | null;
+          scheduled_for: string;
+          locked_by: string | null;
+          locked_at: string | null;
+          result: Json | null;
+        };
+        Insert: {
+          id?: string;
+          type: string;
+          payload: Json;
+          status?: string;
+          priority?: number;
+          retry_count?: number;
+          max_retries?: number;
+          last_error?: string | null;
+          depends_on?: string | null;
+          user_id: string;
+          bookmark_id?: number | null;
+          created_at?: string;
+          started_at?: string | null;
+          completed_at?: string | null;
+          scheduled_for?: string;
+          locked_by?: string | null;
+          locked_at?: string | null;
+          result?: Json | null;
+        };
+        Update: {
+          id?: string;
+          type?: string;
+          payload?: Json;
+          status?: string;
+          priority?: number;
+          retry_count?: number;
+          max_retries?: number;
+          last_error?: string | null;
+          depends_on?: string | null;
+          user_id?: string;
+          bookmark_id?: number | null;
+          created_at?: string;
+          started_at?: string | null;
+          completed_at?: string | null;
+          scheduled_for?: string;
+          locked_by?: string | null;
+          locked_at?: string | null;
+          result?: Json | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "system_jobs_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "system_jobs_bookmark_id_fkey";
+            columns: ["bookmark_id"];
+            isOneToOne: false;
+            referencedRelation: "bookmarks";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "system_jobs_depends_on_fkey";
+            columns: ["depends_on"];
+            isOneToOne: false;
+            referencedRelation: "system_jobs";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: {
       classification_metrics_daily: {
@@ -3999,7 +4134,12 @@ export type Database = {
         Returns: boolean;
       };
       complete_job: {
-        Args: { p_job_id: string; p_result?: Json };
+        Args: {
+          p_job_id: string;
+          p_success?: boolean;
+          p_error?: string | null;
+          p_result?: Json | null;
+        };
         Returns: boolean;
       };
       compute_folder_heat: { Args: { p_folder_id: number }; Returns: number };
@@ -4988,6 +5128,119 @@ export type Database = {
           weekly_limit: number;
           notification_channel: string;
         };
+      };
+      /** 清理过期任务 */
+      cleanup_old_jobs: {
+        Args: {
+          p_days_to_keep: number;
+        };
+        Returns: number;
+      };
+      /** 更新综述推荐偏好 */
+      update_synthesis_recommend_preferences: {
+        Args: {
+          p_user_id: string;
+          p_enabled?: boolean | null;
+          p_dismissed_topic?: string | null;
+          p_increment_daily_count?: boolean;
+          p_clear_dismissed?: boolean;
+        };
+        Returns: undefined;
+      };
+      /** 获取综述推荐偏好 */
+      get_synthesis_recommend_preferences: {
+        Args: {
+          p_user_id: string;
+        };
+        Returns: {
+          enabled: boolean;
+          daily_limit: number;
+          daily_count: number;
+          dismissed_topics: string[];
+          last_reset_date: string;
+        };
+      };
+      /** 批量获取任务 */
+      claim_jobs_batch: {
+        Args: {
+          p_worker_id: string;
+          p_job_types: string[];
+          p_limit: number;
+          p_lock_duration: string;
+        };
+        Returns: {
+          id: string;
+          type: string;
+          payload: Json;
+          status: string;
+          priority: number;
+          retry_count: number;
+          max_retries: number;
+          last_error: string | null;
+          depends_on: string | null;
+          user_id: string;
+          bookmark_id: number | null;
+          created_at: string;
+          started_at: string | null;
+          completed_at: string | null;
+          scheduled_for: string;
+          locked_by: string | null;
+          locked_at: string | null;
+          result: Json | null;
+        }[];
+      };
+      /** 切换书签收藏状态 */
+      toggle_bookmark_starred: {
+        Args: {
+          p_bookmark_id: number;
+          p_user_id: string;
+        };
+        Returns: {
+          id: number;
+          url: string;
+          title: string | null;
+          description: string | null;
+          platform: string | null;
+          cover_url: string | null;
+          folder_id: number | null;
+          ai_summary: string | null;
+          ai_tags: string[] | null;
+          user_tags: string[] | null;
+          is_read: boolean;
+          is_starred: boolean;
+          is_in_trash: boolean;
+          status: string;
+          created_at: string;
+          updated_at: string;
+          starred_at: string | null;
+        }[];
+      };
+      /** 获取文件夹后代 ID */
+      get_folder_descendant_ids: {
+        Args: {
+          p_folder_id: number;
+          p_user_id: string;
+        };
+        Returns: number[];
+      };
+      /** 级联删除文件夹 */
+      cascade_delete_folder: {
+        Args: {
+          p_folder_id: number;
+          p_user_id: string;
+        };
+        Returns: {
+          deleted_folder_count: number;
+          moved_bookmark_count: number;
+        };
+      };
+      /** 取消任务 */
+      cancel_job: {
+        Args: {
+          p_job_id: string;
+          p_user_id: string;
+        };
+        Returns: boolean;
       };
     };
     Enums: {

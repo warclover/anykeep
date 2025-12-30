@@ -1,6 +1,13 @@
 /**
- * 应用侧边栏 - 可折叠版本
+ * 应用侧边栏 - 分组导航版本
  * 支持折叠/展开、悬停自动展开、锁定功能
+ *
+ * 导航结构：
+ * - 内容中心：我的收藏、我的搜索、我的分类、我的标签、我的笔记
+ * - 整理工具：等待分类、智能列表、批量操作、内容导出、整理大师、链接检测
+ * - 学习中心：自习工坊、知识萃取
+ * - 洞察中心：数据分析、活动日志、消息通知
+ * - 系统：设置、开发者工具
  */
 
 "use client";
@@ -9,41 +16,43 @@ import { useCallback, useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
-  Home,
+  BookOpen,
   Search,
-  Folder,
-  BarChart3,
-  Settings,
-  Trash2,
-  AlertCircle,
-  Star,
-  Inbox,
-  Sparkles,
-  Bell,
-  BrainCircuit,
-  FlaskConical,
+  FolderOpen,
+  Tags,
   FileText,
-  ChevronRight,
-  PanelLeftClose,
-  PanelLeft,
+  Inbox,
+  ListFilter,
   CheckSquare,
   Download,
-  HeartPulse,
   Wand2,
-  BookOpen,
+  LinkIcon,
+  GraduationCap,
+  FlaskConical,
+  BarChart3,
+  Activity,
+  Bell,
+  Settings,
+  Wrench,
+  Trash2,
+  Star,
+  AlertCircle,
+  Clock,
+  BookMarked,
+  ChevronRight,
+  ChevronDown,
+  PanelLeftClose,
+  PanelLeft,
+  BrainCircuit,
+  HeartPulse,
+  Sparkles,
 } from "lucide-react";
 import { useUnreadCount } from "@/hooks/data";
 import { MessageBadge } from "@/components/messages";
-import { SmartListDropdown } from "@/components/smart-list";
 import { SidebarReminder } from "@/components/brain-sync";
 import { cn } from "@/lib/utils";
-import {
-  useSafeNavigation,
-  type PageId,
-  PAGE_ROUTES,
-} from "@/contexts/navigation-context";
+import { useSafeNavigation, type PageId } from "@/contexts/navigation-context";
 import { useSafeSidebar, SIDEBAR_WIDTH } from "@/contexts/sidebar-context";
-import { NAV_ICON_COLORS, NAV_ACTIVE_STYLES } from "@/lib/constants/app";
 import {
   Tooltip,
   TooltipContent,
@@ -51,36 +60,104 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-// 主导航配置
-const navigation: {
+// ==================== 类型定义 ====================
+
+interface NavItem {
   name: string;
-  pageId: PageId;
-  icon: typeof Home;
-  colorKey: keyof typeof NAV_ICON_COLORS;
-  showBadge?: boolean;
-}[] = [
-  { name: "首页", pageId: "home", icon: Home, colorKey: "home" },
-  { name: "搜索", pageId: "search", icon: Search, colorKey: "search" },
-  { name: "收藏夹", pageId: "folders", icon: Folder, colorKey: "folders" },
-  {
-    name: "消息",
-    pageId: "messages",
-    icon: Bell,
-    colorKey: "messages",
-    showBadge: true,
-  },
-  { name: "数据", pageId: "analytics", icon: BarChart3, colorKey: "analytics" },
-  { name: "批量", pageId: "batch", icon: CheckSquare, colorKey: "batch" },
-  { name: "导出", pageId: "export", icon: Download, colorKey: "export" },
-  { name: "设置", pageId: "settings", icon: Settings, colorKey: "settings" },
+  href: string;
+  icon: typeof BookOpen;
+  pageId?: PageId;
+  badge?: number | "unread";
+  isPro?: boolean;
+}
+
+// 保留接口定义供未来使用
+interface _NavGroup {
+  title: string;
+  titleColor: string;
+  items: NavItem[];
+  collapsible?: boolean;
+  defaultExpanded?: boolean;
+}
+
+// ==================== 导航配置 ====================
+
+/**
+ * 内容中心导航项
+ */
+const contentCenterItems: NavItem[] = [
+  { name: "我的收藏", href: "/home", icon: BookOpen, pageId: "home" },
+  { name: "我的搜索", href: "/search", icon: Search, pageId: "search" },
+  { name: "我的分类", href: "/folders", icon: FolderOpen, pageId: "folders" },
+  { name: "我的标签", href: "/tags", icon: Tags },
+  { name: "我的笔记", href: "/md-collections", icon: FileText, isPro: true },
 ];
 
-// 系统文件夹（虚拟）
-const systemFolders = [
-  { name: "高价值", param: "high-value", icon: Star },
-  { name: "已失效", param: "invalid", icon: AlertCircle },
-  { name: "垃圾箱", param: "trash", icon: Trash2 },
+/**
+ * 整理工具导航项
+ */
+const organizeToolsItems: NavItem[] = [
+  { name: "等待分类", href: "/inbox", icon: Inbox },
+  { name: "批量操作", href: "/batch", icon: CheckSquare, pageId: "batch" },
+  { name: "内容导出", href: "/export", icon: Download, pageId: "export" },
+  { name: "整理大师", href: "/librarian", icon: Wand2 },
+  { name: "链接检测", href: "/link-health", icon: LinkIcon },
 ];
+
+/**
+ * 智能列表配置
+ */
+const smartListItems: NavItem[] = [
+  { name: "全部书签", href: "/home", icon: BookOpen },
+  { name: "高价值", href: "/home?folder=high-value", icon: Star },
+  { name: "已失效", href: "/home?folder=invalid", icon: AlertCircle },
+  { name: "最近添加", href: "/home?folder=recent", icon: Clock },
+  { name: "未读内容", href: "/home?folder=unread", icon: BookMarked },
+];
+
+/**
+ * 学习中心导航项
+ */
+const learningCenterItems: NavItem[] = [
+  { name: "自习工坊", href: "/brain-sync", icon: GraduationCap },
+  { name: "知识萃取", href: "/synthesis", icon: FlaskConical },
+];
+
+/**
+ * 洞察中心导航项
+ */
+const insightCenterItems: NavItem[] = [
+  {
+    name: "数据分析",
+    href: "/analytics",
+    icon: BarChart3,
+    pageId: "analytics",
+  },
+  { name: "活动日志", href: "/activity", icon: Activity },
+  {
+    name: "消息通知",
+    href: "/messages",
+    icon: Bell,
+    pageId: "messages",
+    badge: "unread",
+  },
+];
+
+/**
+ * 开发者工具导航项
+ */
+const devToolsItems: NavItem[] = [
+  { name: "智能分类", href: "/classification-debugger", icon: BrainCircuit },
+  {
+    name: "分类对比",
+    href: "/dev/classification-debugger",
+    icon: FlaskConical,
+  },
+  { name: "文件夹健康", href: "/folder-health", icon: HeartPulse },
+  { name: "摘要调试", href: "/debug/ai-summary", icon: Sparkles },
+];
+
+// ==================== 组件 ====================
 
 export function AppSidebar() {
   const pathname = usePathname();
@@ -99,18 +176,16 @@ export function AppSidebar() {
   };
 
   // 安全获取侧边栏上下文
-  // 注意：默认值必须与 SidebarProvider 的初始状态一致，避免 hydration 不匹配
   const sidebarContext = useSafeSidebar();
 
-  // 客户端挂载状态 - 防止 hydration 不匹配
-  // 首次渲染使用默认值（与服务端一致），挂载后使用实际值
+  // 客户端挂载状态 - 用于避免 SSR/CSR hydration 不匹配
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- 必须用于 hydration 同步
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 必要的 SSR 挂载检测模式
     setIsMounted(true);
   }, []);
 
-  // 在客户端挂载前使用默认值，确保与服务端渲染一致
+  // 侧边栏状态
   const {
     isCollapsed = true,
     isLocked = false,
@@ -122,37 +197,34 @@ export function AppSidebar() {
     handleMouseLeave,
   } = sidebarContext || {};
 
-  // hydration 安全：首次渲染使用默认值
   const isVisuallyExpanded = isMounted ? contextVisuallyExpanded : false;
   const displayWidth = isMounted
     ? contextDisplayWidth
     : SIDEBAR_WIDTH.collapsed;
 
-  // 折叠状态（子菜单）
-  const [isSystemFoldersExpanded, setIsSystemFoldersExpanded] = useState(false);
-  const [isDevToolsExpanded, setIsDevToolsExpanded] = useState(false);
-
-  /**
-   * 处理主导航点击
-   */
-  const handleNavClick = useCallback(
-    (pageId: PageId, e: React.MouseEvent) => {
-      if (isClientNavEnabled && navigateTo) {
-        e.preventDefault();
-        navigateTo(pageId);
-      }
+  // 折叠状态管理
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
+    {
+      smartList: false,
+      devTools: false,
     },
-    [isClientNavEnabled, navigateTo],
   );
 
+  const toggleGroup = (groupId: string) => {
+    setExpandedGroups((prev) => ({
+      ...prev,
+      [groupId]: !prev[groupId],
+    }));
+  };
+
   /**
-   * 处理系统文件夹点击
+   * 处理导航点击
    */
-  const handleSystemFolderClick = useCallback(
-    (folderParam: string, e: React.MouseEvent) => {
-      if (isClientNavEnabled && navigateTo) {
+  const handleNavClick = useCallback(
+    (pageId: PageId | undefined, e: React.MouseEvent) => {
+      if (pageId && isClientNavEnabled && navigateTo) {
         e.preventDefault();
-        navigateTo("home", { folder: folderParam });
+        navigateTo(pageId);
       }
     },
     [isClientNavEnabled, navigateTo],
@@ -163,51 +235,73 @@ export function AppSidebar() {
    */
   const handleToggleClick = useCallback(() => {
     if (!sidebarContext) return;
-
     if (isCollapsed || !isLocked) {
-      // 当前折叠或未锁定 -> 锁定展开
       lockExpanded?.();
     } else {
-      // 当前展开且已锁定 -> 解锁并折叠
       unlockAndCollapse?.();
     }
   }, [sidebarContext, isCollapsed, isLocked, lockExpanded, unlockAndCollapse]);
 
-  // 导航项渲染函数
-  const renderNavItem = (
-    item: (typeof navigation)[0],
-    isActive: boolean,
-    onClick: (e: React.MouseEvent) => void,
-  ) => {
+  /**
+   * 检查链接是否激活
+   */
+  const isLinkActive = (href: string, pageId?: PageId): boolean => {
+    // 如果有 pageId，优先使用客户端导航状态
+    if (pageId && isClientNavEnabled && activePage) {
+      return activePage === pageId;
+    }
+
+    // 处理带参数的 URL
+    if (href.includes("?")) {
+      const [path, query] = href.split("?");
+      if (pathname !== path) return false;
+      const params = new URLSearchParams(query);
+      const folderParam = params.get("folder");
+      return folderParam === currentFolder;
+    }
+
+    // 普通路径匹配
+    return pathname === href || (pathname?.startsWith(href + "/") ?? false);
+  };
+
+  /**
+   * 渲染单个导航项
+   */
+  const renderNavItem = (item: NavItem, isNested = false) => {
     const Icon = item.icon;
-    // 防御性检查：确保 href 永不为 undefined
-    const href = PAGE_ROUTES[item.pageId] ?? "/home";
-    const iconColor = NAV_ICON_COLORS[item.colorKey] ?? NAV_ICON_COLORS.home;
-    const activeStyles = NAV_ACTIVE_STYLES.default;
+    const isActive = isLinkActive(item.href, item.pageId);
+    const showBadge = item.badge === "unread" && unreadCount > 0;
 
     const content = (
       <Link
-        href={href}
-        onClick={onClick}
+        href={item.href}
+        onClick={(e) => handleNavClick(item.pageId, e)}
         className={cn(
           "group flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-150",
           isActive
-            ? cn(activeStyles.light, activeStyles.dark)
+            ? "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300"
             : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50",
           !isVisuallyExpanded && "justify-center px-2",
+          isNested && isVisuallyExpanded && "pl-8",
         )}
       >
         <Icon
           className={cn(
             "size-5 shrink-0 transition-transform duration-150 group-hover:scale-110",
-            // 激活时图标保持对应颜色，非激活时显示彩色
-            isActive ? "" : cn(iconColor.light, iconColor.dark),
+            isActive
+              ? "text-blue-600 dark:text-blue-400"
+              : "text-gray-400 dark:text-gray-500",
           )}
         />
         {isVisuallyExpanded && (
           <>
             <span className="flex-1 truncate">{item.name}</span>
-            {item.showBadge && (
+            {item.isPro && (
+              <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300">
+                Pro
+              </span>
+            )}
+            {showBadge && (
               <MessageBadge
                 count={unreadCount}
                 hasImportant={importantCount > 0}
@@ -224,13 +318,81 @@ export function AppSidebar() {
         <Tooltip key={item.name} delayDuration={100}>
           <TooltipTrigger asChild>{content}</TooltipTrigger>
           <TooltipContent side="right" sideOffset={8}>
-            <p>{item.name}</p>
+            <p>
+              {item.name}
+              {item.isPro ? " (Pro)" : ""}
+            </p>
           </TooltipContent>
         </Tooltip>
       );
     }
 
     return <div key={item.name}>{content}</div>;
+  };
+
+  /**
+   * 渲染分组标题
+   */
+  const renderGroupTitle = (title: string, color: string) => {
+    if (!isVisuallyExpanded) return null;
+    return (
+      <div className="px-3 mb-2">
+        <p className={cn("text-xs font-semibold uppercase", color)}>{title}</p>
+      </div>
+    );
+  };
+
+  /**
+   * 渲染可折叠子菜单
+   */
+  const renderCollapsibleMenu = (
+    id: string,
+    title: string,
+    icon: typeof BookOpen,
+    items: NavItem[],
+  ) => {
+    const isExpanded = expandedGroups[id];
+    const Icon = icon;
+
+    if (!isVisuallyExpanded) {
+      return (
+        <Tooltip key={id} delayDuration={100}>
+          <TooltipTrigger asChild>
+            <button
+              onClick={() => toggleGroup(id)}
+              className="flex items-center justify-center px-2 py-2 w-full text-sm font-medium rounded-lg text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50"
+            >
+              <Icon className="size-5 text-gray-400" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="right" sideOffset={8}>
+            <p>{title}</p>
+          </TooltipContent>
+        </Tooltip>
+      );
+    }
+
+    return (
+      <div key={id}>
+        <button
+          onClick={() => toggleGroup(id)}
+          className="flex items-center gap-3 px-3 py-2 w-full text-sm font-medium rounded-lg text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50 transition-colors"
+        >
+          <Icon className="size-5 text-gray-400" />
+          <span className="flex-1 text-left">{title}</span>
+          {isExpanded ? (
+            <ChevronDown className="size-4 text-gray-400" />
+          ) : (
+            <ChevronRight className="size-4 text-gray-400" />
+          )}
+        </button>
+        {isExpanded && (
+          <div className="mt-1 space-y-1">
+            {items.map((item) => renderNavItem(item, true))}
+          </div>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -240,8 +402,8 @@ export function AppSidebar() {
         onMouseLeave={handleMouseLeave}
         style={{
           width: displayWidth,
-          willChange: "width", // GPU 优化提示
-          transform: "translateZ(0)", // 触发 GPU 层
+          willChange: "width",
+          transform: "translateZ(0)",
         }}
         className={cn(
           "fixed left-0 top-[6.25rem] z-40 hidden lg:block h-[calc(100vh-6.25rem)] border-r bg-white dark:bg-gray-950 dark:border-gray-800",
@@ -271,7 +433,7 @@ export function AppSidebar() {
                     <button
                       onClick={handleToggleClick}
                       className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                      aria-label={isLocked ? "折叠侧边栏" : "锁定展开"}
+                      aria-label="折叠侧边栏"
                     >
                       <PanelLeftClose className="size-4 text-gray-500" />
                     </button>
@@ -299,337 +461,117 @@ export function AppSidebar() {
             )}
           </div>
 
-          {/* 主导航 */}
-          <nav className="flex-1 space-y-4 overflow-y-auto scrollbar-hide px-2">
-            <div className="space-y-1">
-              {navigation.map((item) => {
-                // 防御性检查：确保 href 永不为 undefined
-                const href = PAGE_ROUTES[item.pageId] ?? "/home";
-                const isActive = isClientNavEnabled
-                  ? activePage === item.pageId
-                  : pathname === href ||
-                    (pathname?.startsWith(href + "/") ?? false);
+          {/* 主导航区域 */}
+          <nav className="flex-1 space-y-6 overflow-y-auto scrollbar-hide px-2 pb-4">
+            {/* 内容中心 */}
+            <div>
+              {renderGroupTitle("内容中心", "text-blue-500 dark:text-blue-400")}
+              <div className="space-y-1">
+                {contentCenterItems.map((item) => renderNavItem(item))}
+              </div>
+            </div>
 
-                return renderNavItem(item, isActive, (e) =>
-                  handleNavClick(item.pageId, e),
-                );
+            {/* 整理工具 */}
+            <div>
+              {renderGroupTitle(
+                "整理工具",
+                "text-amber-500 dark:text-amber-400",
+              )}
+              <div className="space-y-1">
+                {/* 待分类 */}
+                {renderNavItem(organizeToolsItems[0])}
+
+                {/* 智能列表（可折叠） */}
+                {renderCollapsibleMenu(
+                  "smartList",
+                  "智能列表",
+                  ListFilter,
+                  smartListItems,
+                )}
+
+                {/* 其他整理工具 */}
+                {organizeToolsItems.slice(1).map((item) => renderNavItem(item))}
+              </div>
+            </div>
+
+            {/* 学习中心 */}
+            <div>
+              {renderGroupTitle(
+                "学习中心",
+                "text-purple-500 dark:text-purple-400",
+              )}
+              <div className="space-y-1">
+                {learningCenterItems.map((item) => renderNavItem(item))}
+                {/* Brain-Sync 复习提醒 */}
+                {isVisuallyExpanded ? (
+                  <SidebarReminder collapsed={false} className="mx-2" />
+                ) : (
+                  <SidebarReminder collapsed={true} />
+                )}
+              </div>
+            </div>
+
+            {/* 洞察中心 */}
+            <div>
+              {renderGroupTitle("洞察中心", "text-rose-500 dark:text-rose-400")}
+              <div className="space-y-1">
+                {insightCenterItems.map((item) => renderNavItem(item))}
+              </div>
+            </div>
+
+            {/* 系统 */}
+            <div>
+              {renderGroupTitle("系统", "text-gray-400 dark:text-gray-500")}
+              <div className="space-y-1">
+                {renderNavItem({
+                  name: "设置",
+                  href: "/settings",
+                  icon: Settings,
+                  pageId: "settings",
+                })}
+
+                {/* 开发者工具（可折叠） */}
+                {renderCollapsibleMenu(
+                  "devTools",
+                  "开发者工具",
+                  Wrench,
+                  devToolsItems,
+                )}
+              </div>
+            </div>
+          </nav>
+
+          {/* 底部固定区域 */}
+          <div className="border-t dark:border-gray-800">
+            {/* 垃圾箱 */}
+            <div className={cn("px-2 py-2", !isVisuallyExpanded && "px-2")}>
+              {renderNavItem({
+                name: "垃圾箱",
+                href: "/home?folder=trash",
+                icon: Trash2,
               })}
             </div>
 
-            {/* 内容收藏 (Pro) */}
-            {isVisuallyExpanded ? (
-              <div>
-                <div className="px-3 mb-2">
-                  <p className="text-xs font-semibold text-emerald-500 dark:text-emerald-400 uppercase">
-                    内容收藏
-                  </p>
-                </div>
-                <div className="space-y-1">
-                  <Link
-                    href="/md-collections"
-                    prefetch={true}
-                    className={cn(
-                      "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                      pathname === "/md-collections" ||
-                        pathname?.startsWith("/md-collections/")
-                        ? "bg-gradient-to-r from-emerald-50 to-teal-50 text-emerald-700 dark:from-emerald-900/30 dark:to-teal-900/30 dark:text-emerald-400"
-                        : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50",
-                    )}
-                  >
-                    <FileText className="size-5" />
-                    <span className="flex-1 whitespace-nowrap">MD 收藏</span>
-                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300">
-                      Pro
-                    </span>
-                  </Link>
-                </div>
-              </div>
-            ) : (
-              <Tooltip delayDuration={100}>
-                <TooltipTrigger asChild>
-                  <Link
-                    href="/md-collections"
-                    prefetch={true}
-                    className={cn(
-                      "flex items-center justify-center px-2 py-2 text-sm font-medium rounded-lg transition-colors",
-                      pathname === "/md-collections" ||
-                        pathname?.startsWith("/md-collections/")
-                        ? "bg-gradient-to-r from-emerald-50 to-teal-50 text-emerald-700 dark:from-emerald-900/30 dark:to-teal-900/30 dark:text-emerald-400"
-                        : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50",
-                    )}
-                  >
-                    <FileText className="size-5" />
-                  </Link>
-                </TooltipTrigger>
-                <TooltipContent side="right" sideOffset={8}>
-                  <p>MD 收藏 (Pro)</p>
-                </TooltipContent>
-              </Tooltip>
-            )}
-
-            {/* 学习助手 - Brain-Sync 复习提醒 */}
-            {isVisuallyExpanded ? (
-              <div>
-                <div className="px-3 mb-2">
-                  <p className="text-xs font-semibold text-purple-500 dark:text-purple-400 uppercase">
-                    学习助手
-                  </p>
-                </div>
-                <div className="space-y-1">
-                  <Link
-                    href="/brain-sync"
-                    className={cn(
-                      "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                      pathname === "/brain-sync"
-                        ? "bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
-                        : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50",
-                    )}
-                  >
-                    <BrainCircuit className="size-5" />
-                    复习实验室
-                  </Link>
-                  <Link
-                    href="/synthesis"
-                    className={cn(
-                      "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                      pathname === "/synthesis" ||
-                        pathname?.startsWith("/synthesis/")
-                        ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400"
-                        : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50",
-                    )}
-                  >
-                    <BookOpen className="size-5" />
-                    主题综述
-                  </Link>
-                  <SidebarReminder collapsed={false} className="mx-2" />
-                </div>
-              </div>
-            ) : (
-              <div className="px-2 space-y-1">
+            {/* 版本信息 */}
+            <div
+              className={cn(
+                "pt-2 pb-4 border-t dark:border-gray-800",
+                isVisuallyExpanded ? "px-4" : "px-2",
+              )}
+            >
+              {isVisuallyExpanded ? (
+                <p className="px-1 text-xs text-gray-400">AnyKeep v1.0.0</p>
+              ) : (
                 <Tooltip delayDuration={100}>
                   <TooltipTrigger asChild>
-                    <Link
-                      href="/brain-sync"
-                      className={cn(
-                        "flex items-center justify-center px-2 py-2 text-sm font-medium rounded-lg transition-colors",
-                        pathname === "/brain-sync"
-                          ? "bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
-                          : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50",
-                      )}
-                    >
-                      <BrainCircuit className="size-5" />
-                    </Link>
+                    <p className="text-xs text-gray-400 text-center">v1</p>
                   </TooltipTrigger>
                   <TooltipContent side="right" sideOffset={8}>
-                    <p>复习实验室</p>
+                    <p>AnyKeep v1.0.0</p>
                   </TooltipContent>
                 </Tooltip>
-                <Tooltip delayDuration={100}>
-                  <TooltipTrigger asChild>
-                    <Link
-                      href="/synthesis"
-                      className={cn(
-                        "flex items-center justify-center px-2 py-2 text-sm font-medium rounded-lg transition-colors",
-                        pathname === "/synthesis" ||
-                          pathname?.startsWith("/synthesis/")
-                          ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400"
-                          : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50",
-                      )}
-                    >
-                      <BookOpen className="size-5" />
-                    </Link>
-                  </TooltipTrigger>
-                  <TooltipContent side="right" sideOffset={8}>
-                    <p>主题综述</p>
-                  </TooltipContent>
-                </Tooltip>
-                <SidebarReminder collapsed={true} />
-              </div>
-            )}
-
-            {/* 智能列表下拉选择器 - 仅展开时显示 */}
-            {isVisuallyExpanded && <SmartListDropdown />}
-
-            {/* 系统文件夹（可折叠）- 仅展开时显示 */}
-            {isVisuallyExpanded && (
-              <div>
-                <button
-                  onClick={() =>
-                    setIsSystemFoldersExpanded(!isSystemFoldersExpanded)
-                  }
-                  className="flex items-center justify-between w-full px-3 mb-2 group"
-                >
-                  <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase">
-                    系统文件夹
-                  </p>
-                  <ChevronRight
-                    className={cn(
-                      "size-3.5 text-gray-400 transition-transform duration-200",
-                      isSystemFoldersExpanded && "rotate-90",
-                    )}
-                  />
-                </button>
-                {isSystemFoldersExpanded && (
-                  <div className="space-y-1">
-                    <Link
-                      href="/inbox"
-                      className={cn(
-                        "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                        pathname === "/inbox"
-                          ? "bg-gradient-to-r from-amber-50 to-orange-50 text-amber-700 dark:from-amber-900/30 dark:to-orange-900/30 dark:text-amber-400"
-                          : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50",
-                      )}
-                    >
-                      <Inbox className="size-5" />
-                      待整理
-                    </Link>
-                    {systemFolders.map((item) => {
-                      const Icon = item.icon;
-                      const href = `/home?folder=${item.param}`;
-                      const isActive = currentFolder === item.param;
-
-                      return (
-                        <Link
-                          key={item.name}
-                          href={href}
-                          onClick={(e) =>
-                            handleSystemFolderClick(item.param, e)
-                          }
-                          className={cn(
-                            "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                            isActive
-                              ? "bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-white"
-                              : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50",
-                          )}
-                        >
-                          <Icon className="size-5" />
-                          {item.name}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* 开发者工具（可折叠）- 仅展开时显示 */}
-            {isVisuallyExpanded && (
-              <div>
-                <button
-                  onClick={() => setIsDevToolsExpanded(!isDevToolsExpanded)}
-                  className="flex items-center justify-between w-full px-3 mb-2 group"
-                >
-                  <p className="text-xs font-semibold text-purple-400 dark:text-purple-500 uppercase">
-                    开发者工具
-                  </p>
-                  <ChevronRight
-                    className={cn(
-                      "size-3.5 text-purple-400 transition-transform duration-200",
-                      isDevToolsExpanded && "rotate-90",
-                    )}
-                  />
-                </button>
-                {isDevToolsExpanded && (
-                  <div className="space-y-1">
-                    <Link
-                      href="/classification-debugger"
-                      className={cn(
-                        "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                        pathname === "/classification-debugger"
-                          ? "bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
-                          : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50",
-                      )}
-                    >
-                      <BrainCircuit className="size-5" />
-                      智能分类
-                    </Link>
-                    <Link
-                      href="/dev/classification-debugger"
-                      className={cn(
-                        "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                        pathname === "/dev/classification-debugger"
-                          ? "bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
-                          : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50",
-                      )}
-                    >
-                      <FlaskConical className="size-5" />
-                      分类对比
-                    </Link>
-                    <Link
-                      href="/folder-health"
-                      className={cn(
-                        "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                        pathname === "/folder-health"
-                          ? "bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
-                          : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50",
-                      )}
-                    >
-                      <HeartPulse className="size-5" />
-                      文件夹健康
-                    </Link>
-                    <Link
-                      href="/link-health"
-                      className={cn(
-                        "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                        pathname === "/link-health"
-                          ? "bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400"
-                          : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50",
-                      )}
-                    >
-                      <HeartPulse className="size-5" />
-                      链接健康
-                    </Link>
-                    <Link
-                      href="/librarian"
-                      className={cn(
-                        "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                        pathname === "/librarian"
-                          ? "bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
-                          : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50",
-                      )}
-                    >
-                      <Wand2 className="size-5" />
-                      整理大师
-                    </Link>
-                    {process.env.NODE_ENV === "development" && (
-                      <Link
-                        href="/debug/ai-summary"
-                        className={cn(
-                          "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                          pathname === "/debug/ai-summary"
-                            ? "bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
-                            : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50",
-                        )}
-                      >
-                        <Sparkles className="size-5" />
-                        摘要调试
-                      </Link>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-          </nav>
-
-          {/* 底部信息 */}
-          <div
-            className={cn(
-              "pt-4 border-t dark:border-gray-800",
-              isVisuallyExpanded ? "px-4 pb-4" : "px-2 pb-4",
-            )}
-          >
-            {isVisuallyExpanded ? (
-              <p className="px-1 text-xs text-gray-400">AnyKeep v1.0.0</p>
-            ) : (
-              <Tooltip delayDuration={100}>
-                <TooltipTrigger asChild>
-                  <p className="text-xs text-gray-400 text-center">v1</p>
-                </TooltipTrigger>
-                <TooltipContent side="right" sideOffset={8}>
-                  <p>AnyKeep v1.0.0</p>
-                </TooltipContent>
-              </Tooltip>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </aside>

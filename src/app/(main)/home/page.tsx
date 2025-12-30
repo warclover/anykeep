@@ -1,5 +1,5 @@
 /**
- * 首页 - 收藏列表
+ * 我的收藏 - 收藏列表
  *
  * 性能优化 V3 (Streaming SSR + Request Cache):
  * - 使用 Suspense 边界实现流式 SSR，首屏立即返回骨架屏

@@ -8,7 +8,13 @@
 import { useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Search, Folder, BarChart3, Settings } from "lucide-react";
+import {
+  BookOpen,
+  Search,
+  FolderOpen,
+  BarChart3,
+  Settings,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   useSafeNavigation,
@@ -16,15 +22,15 @@ import {
   PAGE_ROUTES,
 } from "@/contexts/navigation-context";
 
-// 主导航配置
+// 主导航配置（移动端使用简短名称）
 const navigation: {
   name: string;
   pageId: PageId;
-  icon: typeof Home;
+  icon: typeof BookOpen;
 }[] = [
-  { name: "首页", pageId: "home", icon: Home },
+  { name: "收藏", pageId: "home", icon: BookOpen },
   { name: "搜索", pageId: "search", icon: Search },
-  { name: "收藏夹", pageId: "folders", icon: Folder },
+  { name: "分类", pageId: "folders", icon: FolderOpen },
   { name: "数据", pageId: "analytics", icon: BarChart3 },
   { name: "设置", pageId: "settings", icon: Settings },
 ];

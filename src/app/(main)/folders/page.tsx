@@ -2,7 +2,7 @@
 export const dynamic = "force-dynamic";
 
 /**
- * 收藏夹管理页面
+ * 我的分类页面
  * 展示所有文件夹和最近添加的收藏
  */
 
