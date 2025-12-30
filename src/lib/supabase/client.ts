@@ -7,6 +7,7 @@
 
 import { createBrowserClient } from "@supabase/ssr";
 import type { Database } from "@/types/supabase";
+import { supabaseEnv } from "@/lib/env";
 
 // ============================================
 // 连接配置常量
@@ -44,21 +45,17 @@ function createFetchWithTimeout(timeout: number) {
  * - 禁用自动 Realtime 连接（按需启用）
  */
 export function createClient() {
-  return createBrowserClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      // V4.2.24: 性能优化配置
-      global: {
-        fetch: createFetchWithTimeout(REQUEST_TIMEOUT),
-      },
-      realtime: {
-        // 禁用心跳以减少不必要的连接
-        // 如需实时功能，可手动调用 channel.subscribe()
-        heartbeatIntervalMs: 30_000,
-      },
+  return createBrowserClient<Database>(supabaseEnv.url, supabaseEnv.anonKey, {
+    // V4.2.24: 性能优化配置
+    global: {
+      fetch: createFetchWithTimeout(REQUEST_TIMEOUT),
     },
-  );
+    realtime: {
+      // 禁用心跳以减少不必要的连接
+      // 如需实时功能，可手动调用 channel.subscribe()
+      heartbeatIntervalMs: 30_000,
+    },
+  });
 }
 
 // 导出默认客户端实例（用于简单场景）

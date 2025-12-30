@@ -9,6 +9,7 @@ import { createServerClient } from "@supabase/ssr";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import type { Database } from "@/types/supabase";
+import { supabaseEnv } from "@/lib/env";
 
 // ============================================
 // 连接配置常量
@@ -52,39 +53,35 @@ function createFetchWithTimeout(timeout: number) {
 export async function createClient() {
   const cookieStore = await cookies();
 
-  return createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options),
-            );
-          } catch {
-            // 在 Server Component 中调用时可能会抛出错误
-            // 这是正常的，因为 Server Component 无法设置 cookies
-          }
-        },
+  return createServerClient<Database>(supabaseEnv.url, supabaseEnv.anonKey, {
+    cookies: {
+      getAll() {
+        return cookieStore.getAll();
       },
-      // V4.2.24: 性能优化配置
-      global: {
-        fetch: createFetchWithTimeout(REQUEST_TIMEOUT),
-      },
-      auth: {
-        // 服务端不需要自动刷新 token
-        autoRefreshToken: false,
-        // 服务端不持久化会话
-        persistSession: false,
-        // 不自动检测会话变化
-        detectSessionInUrl: false,
+      setAll(cookiesToSet) {
+        try {
+          cookiesToSet.forEach(({ name, value, options }) =>
+            cookieStore.set(name, value, options),
+          );
+        } catch {
+          // 在 Server Component 中调用时可能会抛出错误
+          // 这是正常的，因为 Server Component 无法设置 cookies
+        }
       },
     },
-  );
+    // V4.2.24: 性能优化配置
+    global: {
+      fetch: createFetchWithTimeout(REQUEST_TIMEOUT),
+    },
+    auth: {
+      // 服务端不需要自动刷新 token
+      autoRefreshToken: false,
+      // 服务端不持久化会话
+      persistSession: false,
+      // 不自动检测会话变化
+      detectSessionInUrl: false,
+    },
+  });
 }
 
 /**
@@ -100,8 +97,8 @@ export async function createClient() {
  */
 export async function createServiceClient() {
   return createSupabaseClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    supabaseEnv.url,
+    supabaseEnv.serviceRoleKey,
     {
       auth: {
         autoRefreshToken: false,

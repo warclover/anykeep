@@ -9,15 +9,13 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { logger } from "@/lib/logger";
 import { getCurrentEmbeddingVersion } from "@/lib/utils/embedding-generator";
+import { supabaseEnv, appEnv } from "@/lib/env";
 
 // 使用 Service Role Key 以绕过 RLS
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const supabaseAdmin = createClient(supabaseEnv.url, supabaseEnv.serviceRoleKey);
 
 // Cron secret for authentication
-const CRON_SECRET = process.env.CRON_SECRET;
+const CRON_SECRET = appEnv.cronSecret;
 
 /**
  * GET /api/cron/update-folder-profiles

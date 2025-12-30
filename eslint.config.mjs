@@ -87,6 +87,32 @@ const eslintConfig = defineConfig([
       // eslint-disable-next-line 对此规则无效，需要在配置中关闭
       "react-hooks/preserve-manual-memoization": "off",
     }
+  },
+  // 测试文件规则豁免
+  {
+    files: [
+      "**/*.test.ts",
+      "**/*.test.tsx",
+      "**/__tests__/**/*.ts",
+      "**/__tests__/**/*.tsx",
+      "**/test-utils/**/*.ts",
+    ],
+    rules: {
+      // 测试文件允许非空断言 - Mock 对象常需要断言
+      "@typescript-eslint/no-non-null-assertion": "off",
+      // 测试文件允许所有 console 方法
+      "no-console": "off",
+      // 测试文件允许 any 类型 - Mock 对象灵活性需要
+      "@typescript-eslint/no-explicit-any": "off",
+    }
+  },
+  // browser-extension 目录使用独立 ESLint 配置
+  {
+    files: ["browser-extension/**/*.ts", "browser-extension/**/*.tsx"],
+    rules: {
+      // 浏览器扩展可能需要不同的规则集
+      "@typescript-eslint/no-non-null-assertion": "off",
+    }
   }
 ]);
 
