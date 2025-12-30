@@ -275,20 +275,10 @@ export const DEFAULT_PREDICTIONS: Record<IntentType, PredictedIntent[]> = {
   ],
   analyze: [
     {
-      intent: "export",
+      intent: "action",
       probability: 0.35,
       triggerCondition: "分析后可能需要导出",
       suggestedAction: "导出分析报告",
-      shouldPush: false,
-    },
-  ],
-  export: [
-    {
-      intent: "query",
-      subType: "search",
-      probability: 0.3,
-      triggerCondition: "导出后继续浏览",
-      suggestedAction: "继续搜索内容",
       shouldPush: false,
     },
   ],
@@ -322,6 +312,16 @@ export const DEFAULT_PREDICTIONS: Record<IntentType, PredictedIntent[]> = {
       shouldPush: false,
     },
   ],
+  chitchat: [
+    {
+      intent: "query",
+      subType: "search",
+      probability: 0.5,
+      triggerCondition: "闲聊后可能需要搜索",
+      suggestedAction: "搜索收藏内容",
+      shouldPush: false,
+    },
+  ],
 };
 
 /**
@@ -332,8 +332,8 @@ export const QUICK_ACTION_ICONS: Record<IntentType, string> = {
   action: "Settings",
   organize: "FolderTree",
   analyze: "BarChart",
-  export: "Download",
   learn: "BookOpen",
   create: "Plus",
   refine: "Filter",
+  chitchat: "MessageCircle",
 };

@@ -255,7 +255,8 @@ export class IntentPredictor implements IIntentPredictor {
       if (!transitionCounts.has(fromKey)) {
         transitionCounts.set(fromKey, new Map());
       }
-      const transitions = transitionCounts.get(fromKey)!;
+      const transitions =
+        transitionCounts.get(fromKey) ?? new Map<string, number>();
       transitions.set(toKey, (transitions.get(toKey) || 0) + 1);
 
       // 更新源计数
@@ -428,13 +429,13 @@ export class IntentPredictor implements IIntentPredictor {
   ): PredictedIntent[] {
     const keywords: Record<IntentType, string[]> = {
       query: ["查找", "搜索", "哪些", "多少", "统计"],
-      action: ["添加", "删除", "修改", "移动", "标签"],
+      action: ["添加", "删除", "修改", "移动", "标签", "导出", "下载", "备份"],
       organize: ["整理", "分类", "归档", "清理"],
       analyze: ["分析", "洞察", "趋势", "报告"],
-      export: ["导出", "下载", "分享", "备份"],
       learn: ["学习", "复习", "记忆", "理解"],
-      create: ["创建", "新建", "保存", "收藏"],
+      create: ["创建", "新建", "保存", "收藏", "分享"],
       refine: ["细化", "筛选", "过滤", "精确"],
+      chitchat: ["你好", "帮助", "谢谢"],
     };
 
     return predictions.map((pred) => {
@@ -536,20 +537,20 @@ export class IntentPredictor implements IIntentPredictor {
         action: "查询后操作",
         organize: "查询后整理",
         analyze: "查询后分析",
-        export: "查询后导出",
         learn: "查询后学习",
         create: "查询后创建",
         refine: "查询后细化",
+        chitchat: "查询后帮助",
       },
       action: {
         query: "操作后验证",
         action: "连续操作",
         organize: "操作后整理",
         analyze: "操作后分析",
-        export: "操作后导出",
         learn: "操作后学习",
         create: "操作后创建",
         refine: "操作后细化",
+        chitchat: "操作后帮助",
       },
     };
 

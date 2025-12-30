@@ -139,6 +139,8 @@ export interface UnifiedEngineConfig {
   includeRoutingInfo?: boolean;
   /** 是否启用上下文记忆 */
   enableMemory?: boolean;
+  /** 是否启用智能预测（IntentPredictor + RuleExtractor） */
+  enablePrediction?: boolean;
   /** 默认执行选项 */
   defaultOptions?: EngineExecuteOptions;
 }

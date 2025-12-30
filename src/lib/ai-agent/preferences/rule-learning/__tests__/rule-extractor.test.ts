@@ -281,19 +281,19 @@ function createCorrection(
     | "action"
     | "organize"
     | "analyze"
-    | "export"
     | "learn"
     | "create"
-    | "refine",
+    | "refine"
+    | "chitchat",
   correctedIntent:
     | "query"
     | "action"
     | "organize"
     | "analyze"
-    | "export"
     | "learn"
     | "create"
-    | "refine",
+    | "refine"
+    | "chitchat",
   message = "test message",
 ): CorrectionRecord {
   return {

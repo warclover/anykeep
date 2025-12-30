@@ -56,6 +56,16 @@ import {
   type SlowThinkingRouteResult,
   type SlowThinkingDynamicContext,
 } from "../../ai-agent/slow-thinking";
+import {
+  type IntentPredictor,
+  createIntentPredictor,
+  type PredictedIntent,
+  type QuickAction,
+} from "../router/intent-predictor";
+import {
+  type RuleExtractor,
+  createRuleExtractor,
+} from "../../ai-agent/preferences/rule-learning";
 
 /**
  * 统一执行引擎
@@ -76,6 +86,10 @@ export class UnifiedEngine {
   private outputEnhancer: OutputEnhancer;
   private slowThinkingService: SlowThinkingService;
 
+  // Phase 3: 智能预测模块
+  private intentPredictor: IntentPredictor;
+  private ruleExtractor: RuleExtractor;
+
   private config: Required<UnifiedEngineConfig>;
   private effectListenerIds: string[] = [];
 
@@ -85,6 +99,7 @@ export class UnifiedEngine {
       debug: false,
       includeRoutingInfo: false,
       enableMemory: true,
+      enablePrediction: true,
       defaultOptions: {},
       ...config,
     };
@@ -123,6 +138,10 @@ export class UnifiedEngine {
       },
     );
     this.slowThinkingService = createSlowThinkingService();
+
+    // 初始化智能预测模块（Phase 3）
+    this.intentPredictor = createIntentPredictor();
+    this.ruleExtractor = createRuleExtractor();
 
     // 初始化 Effect 处理器
     this.initEffectHandlers();
@@ -428,16 +447,49 @@ export class UnifiedEngine {
       }
       // ========== 慢思考层集成结束 ==========
 
+      // ========== 智能预测模块集成（Phase 3）==========
+      // 应用用户学习到的规则调整意图
+      let effectiveIntent = routeResult.intent;
+      if (this.config.enablePrediction) {
+        const ruleResult = await this.ruleExtractor.applyRules(
+          context.userId,
+          {
+            type: routeResult.intent.type,
+            subType: routeResult.intent.subType,
+          },
+          input,
+        );
+
+        if (ruleResult.applied && ruleResult.modifiedIntent) {
+          logger.info(
+            {
+              originalIntent: routeResult.intent.type,
+              modifiedIntent: ruleResult.modifiedIntent.type,
+              appliedRules: ruleResult.appliedRules.length,
+            },
+            "UnifiedEngine: Rule applied, intent modified",
+          );
+
+          // 更新有效意图
+          effectiveIntent = {
+            ...routeResult.intent,
+            type: ruleResult.modifiedIntent.type as IntentType,
+            subType: ruleResult.modifiedIntent.subType,
+          };
+        }
+      }
+      // ========== 智能预测模块集成结束 ==========
+
       // 处理 refine 意图：注入搜索结果上下文
       let effectiveContext = context;
-      if (routeResult.intent.type === "refine" && context.lastSearchResults) {
+      if (effectiveIntent.type === "refine" && context.lastSearchResults) {
         effectiveContext = this.injectRefineContext(context);
 
         if (this.config.debug) {
           logger.debug(
             {
-              intentType: routeResult.intent.type,
-              subType: routeResult.intent.subType,
+              intentType: effectiveIntent.type,
+              subType: effectiveIntent.subType,
               searchQuery: context.lastSearchResults.query,
               resultCount: context.lastSearchResults.resultIds.length,
             },
@@ -445,6 +497,9 @@ export class UnifiedEngine {
           );
         }
       }
+
+      // 执行成功标志（用于意图记录）
+      const executionSuccess = true;
 
       // 根据模式执行（带增强）
       if (
@@ -460,18 +515,28 @@ export class UnifiedEngine {
             effectiveContext,
           ),
           effectiveContext,
-          routeResult.intent.type,
-          routeResult.intent.subType,
+          effectiveIntent.type,
+          effectiveIntent.subType,
         );
       } else {
         // 原子模式
         yield* this.executeWithEnhancements(
           this.executionCoordinator.executeAtomic(input, effectiveContext),
           effectiveContext,
-          routeResult.intent.type,
-          routeResult.intent.subType,
+          effectiveIntent.type,
+          effectiveIntent.subType,
         );
       }
+
+      // ========== 记录意图历史（Phase 3）==========
+      if (this.config.enablePrediction) {
+        await this.intentPredictor.recordIntent(context.userId, {
+          intent: effectiveIntent.type,
+          subType: effectiveIntent.subType,
+          success: executionSuccess,
+        });
+      }
+      // ========== 意图历史记录结束 ==========
     } catch (error) {
       // 错误处理与回退
       const errorDetails = {
@@ -768,6 +833,144 @@ export class UnifiedEngine {
     return this.memoryManager.generateContextSummary(conversationId);
   }
 
+  // ============================================================
+  // Prediction Layer 方法（Phase 3）
+  // ============================================================
+
+  /**
+   * 获取 IntentPredictor 实例
+   */
+  getIntentPredictor(): IntentPredictor {
+    return this.intentPredictor;
+  }
+
+  /**
+   * 获取 RuleExtractor 实例
+   */
+  getRuleExtractor(): RuleExtractor {
+    return this.ruleExtractor;
+  }
+
+  /**
+   * 获取预测的下一步意图
+   *
+   * 基于用户历史行为，预测用户可能的下一步操作
+   *
+   * @param userId - 用户 ID
+   * @param currentMessage - 当前消息
+   * @param currentIntent - 当前意图
+   * @returns 预测的意图列表
+   */
+  async getPredictions(
+    userId: string,
+    currentMessage: string,
+    currentIntent: { type: IntentType; subType?: string },
+  ): Promise<PredictedIntent[]> {
+    if (!this.config.enablePrediction) return [];
+    return this.intentPredictor.predict(userId, currentMessage, currentIntent);
+  }
+
+  /**
+   * 获取快捷操作按钮
+   *
+   * 返回基于预测的快捷操作列表，供前端渲染
+   *
+   * @param userId - 用户 ID
+   * @param currentIntent - 当前意图（可选）
+   * @returns 快捷操作列表
+   */
+  async getQuickActions(
+    userId: string,
+    currentIntent?: { type: IntentType; subType?: string },
+  ): Promise<QuickAction[]> {
+    if (!this.config.enablePrediction) return [];
+    return this.intentPredictor.getQuickActions(userId, currentIntent);
+  }
+
+  /**
+   * 记录用户纠正
+   *
+   * 当用户纠正 AI 的意图判断时调用，用于规则学习
+   *
+   * @param userId - 用户 ID
+   * @param correction - 纠正信息
+   */
+  async recordCorrection(
+    userId: string,
+    correction: {
+      originalIntent: IntentType;
+      correctedIntent: IntentType;
+      originalMessage: string;
+    },
+  ): Promise<void> {
+    if (!this.config.enablePrediction) return;
+
+    // 记录到 IntentPredictor
+    await this.intentPredictor.recordCorrection(userId, correction);
+
+    // 记录到 RuleExtractor 用于规则学习
+    this.ruleExtractor.addCorrection(userId, {
+      id: `corr-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      userId,
+      originalIntent: correction.originalIntent,
+      correctedIntent: correction.correctedIntent,
+      originalMessage: correction.originalMessage,
+      timestamp: Date.now(),
+    });
+
+    // 异步触发规则分析（不阻塞）
+    this.ruleExtractor.analyzeCorrections(userId).catch((error) => {
+      logger.warn(
+        { error: error instanceof Error ? error.message : String(error) },
+        "UnifiedEngine: Failed to analyze corrections",
+      );
+    });
+
+    logger.debug(
+      {
+        userId,
+        originalIntent: correction.originalIntent,
+        correctedIntent: correction.correctedIntent,
+      },
+      "UnifiedEngine: Correction recorded",
+    );
+  }
+
+  /**
+   * 获取用户的活跃规则
+   *
+   * 返回从用户行为学习到的已激活规则
+   *
+   * @param userId - 用户 ID
+   * @returns 活跃规则列表
+   */
+  async getActiveRules(userId: string) {
+    if (!this.config.enablePrediction) return [];
+    return this.ruleExtractor.getActiveRules(userId);
+  }
+
+  /**
+   * 激活规则
+   *
+   * @param userId - 用户 ID
+   * @param ruleId - 规则 ID
+   */
+  async activateRule(userId: string, ruleId: string): Promise<void> {
+    if (!this.config.enablePrediction) return;
+    await this.ruleExtractor.activateRule(userId, ruleId);
+  }
+
+  /**
+   * 停用规则
+   *
+   * @param userId - 用户 ID
+   * @param ruleId - 规则 ID
+   */
+  async deactivateRule(userId: string, ruleId: string): Promise<void> {
+    if (!this.config.enablePrediction) return;
+    await this.ruleExtractor.deactivateRule(userId, ruleId);
+  }
+
   /**
    * 清理资源
    */
@@ -801,3 +1004,4 @@ export const unifiedEngine = new UnifiedEngine();
 
 // 导出模块类型（供外部使用）
 export type { AtomicExecutor } from "./execution-coordinator";
+export type { PredictedIntent, QuickAction } from "../router/intent-predictor";
