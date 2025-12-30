@@ -1,18 +1,23 @@
 /**
  * 错误上报服务
  *
- * 统一处理错误上报到 Sentry 和本地日志
+ * 统一处理错误本地日志存储
+ * Sentry 错误上报通过全局配置 (sentry.client.config.ts) 自动处理
  *
- * @version 1.0.0
+ * @version 1.2.0
  * @since 2025-12-28
+ * @updated 2025-12-30 - 移除 Sentry 手动导入，避免客户端 hydration 错误
+ *                       Sentry 通过全局配置自动捕获错误，无需手动调用
  */
 
-import * as Sentry from "@sentry/nextjs";
 import type { ErrorInfo } from "react";
 import type { ErrorReportData } from "./types";
 
 /**
- * 上报错误到 Sentry
+ * 上报错误
+ *
+ * Sentry 通过全局配置 (sentry.client.config.ts) 自动捕获 React 错误
+ * 此函数仅负责本地日志和存储
  */
 export function reportError(
   error: Error,
@@ -45,35 +50,8 @@ export function reportError(
     });
   }
 
-  // 生产环境上报到 Sentry
-  if (process.env.NODE_ENV === "production") {
-    Sentry.withScope((scope) => {
-      // 设置标签
-      if (context?.feature) {
-        scope.setTag("feature", context.feature);
-      }
-
-      // 设置用户
-      if (context?.userId) {
-        scope.setUser({ id: context.userId });
-      }
-
-      // 设置额外数据
-      scope.setExtras({
-        componentStack: errorInfo?.componentStack,
-        url: reportData.url,
-        ...context?.extra,
-      });
-
-      // 设置错误级别
-      scope.setLevel("error");
-
-      // 捕获异常
-      Sentry.captureException(error);
-    });
-  }
-
   // 本地存储最近错误（用于调试）
+  // 生产环境错误由 Sentry 全局配置自动捕获
   storeRecentError(reportData);
 }
 
