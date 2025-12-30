@@ -21,7 +21,11 @@ jest.mock("@/lib/ai-providers", () => ({
 }));
 
 jest.mock("ai", () => ({
-  generateText: jest.fn(),
+  generateText: jest.fn().mockResolvedValue({
+    text: "",
+    usage: { inputTokens: 0, outputTokens: 0 },
+    finishReason: "stop",
+  }),
 }));
 
 jest.mock("@/lib/logger", () => ({
@@ -35,6 +39,14 @@ jest.mock("@/lib/logger", () => ({
 
 import { generateText } from "ai";
 import { aiProviderRouter } from "@/lib/ai-providers";
+
+// Properly typed mock references
+const mockGenerateText = generateText as jest.MockedFunction<
+  typeof generateText
+>;
+const mockGetModel = aiProviderRouter.getModel as jest.MockedFunction<
+  typeof aiProviderRouter.getModel
+>;
 
 describe("ConversationCompressor", () => {
   let compressor: ConversationCompressor;
@@ -151,7 +163,7 @@ describe("ConversationCompressor", () => {
 - 继续整理`;
 
     beforeEach(() => {
-      (aiProviderRouter.getModel as jest.Mock).mockReturnValue({});
+      mockGetModel.mockReturnValue({});
     });
 
     it("should return failure when disabled", async () => {
@@ -173,7 +185,7 @@ describe("ConversationCompressor", () => {
     });
 
     it("should call LLM and return compressed messages on success", async () => {
-      (generateText as jest.Mock).mockResolvedValue({
+      mockGenerateText.mockResolvedValue({
         text: validSummary,
         usage: { inputTokens: 100, outputTokens: 50 },
         finishReason: "stop",
@@ -191,7 +203,7 @@ describe("ConversationCompressor", () => {
     });
 
     it("should return failure when summary validation fails", async () => {
-      (generateText as jest.Mock).mockResolvedValue({
+      mockGenerateText.mockResolvedValue({
         text: "太短", // Too short summary
         usage: { inputTokens: 100, outputTokens: 5 },
         finishReason: "stop",
@@ -205,7 +217,7 @@ describe("ConversationCompressor", () => {
     });
 
     it("should return failure when LLM call fails", async () => {
-      (generateText as jest.Mock).mockRejectedValue(new Error("API error"));
+      mockGenerateText.mockRejectedValue(new Error("API error"));
 
       const messages = createMessages(30);
       const result = await compressor.compress(messages, mockContext);
@@ -216,7 +228,7 @@ describe("ConversationCompressor", () => {
     });
 
     it("should return failure when model not available", async () => {
-      (aiProviderRouter.getModel as jest.Mock).mockReturnValue(null);
+      mockGetModel.mockReturnValue(null);
 
       const messages = createMessages(30);
       const result = await compressor.compress(messages, mockContext);
@@ -226,7 +238,7 @@ describe("ConversationCompressor", () => {
     });
 
     it("should include metrics on successful compression", async () => {
-      (generateText as jest.Mock).mockResolvedValue({
+      mockGenerateText.mockResolvedValue({
         text: validSummary,
         usage: { inputTokens: 500, outputTokens: 100 },
         finishReason: "stop",

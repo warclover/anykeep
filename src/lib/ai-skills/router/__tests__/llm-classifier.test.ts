@@ -9,7 +9,11 @@ import { LLMIntentClassifier, createLLMClassifier } from "../llm-classifier";
 
 // Mock the AI SDK and provider router
 jest.mock("ai", () => ({
-  generateObject: jest.fn(),
+  generateObject: jest.fn().mockResolvedValue({
+    object: {},
+    finishReason: "stop",
+    usage: { inputTokens: 0, outputTokens: 0 },
+  }),
 }));
 
 jest.mock("@/lib/ai-providers", () => ({
