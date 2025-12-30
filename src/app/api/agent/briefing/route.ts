@@ -37,26 +37,26 @@ const GetBriefingQuerySchema = z.object({
   // 可选：只获取洞察列表
   insightsOnly: z
     .string()
-    .optional()
+    .nullish()
     .transform((v) => v === "true"),
   // 可选：只获取未读
   unreadOnly: z
     .string()
-    .optional()
+    .nullish()
     .transform((v) => v === "true"),
   // 可选：类型过滤
   types: z
     .string()
-    .optional()
+    .nullish()
     .transform((v) => (v ? v.split(",") : undefined)),
   // 分页
   limit: z
     .string()
-    .optional()
+    .nullish()
     .transform((v) => (v ? parseInt(v, 10) : 10)),
   offset: z
     .string()
-    .optional()
+    .nullish()
     .transform((v) => (v ? parseInt(v, 10) : 0)),
 });
 
