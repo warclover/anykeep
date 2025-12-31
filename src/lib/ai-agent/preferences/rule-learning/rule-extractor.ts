@@ -486,8 +486,16 @@ export class RuleExtractor implements IRuleExtractor {
         if (!regex.test(message)) {
           return false;
         }
-      } catch {
-        // 无效正则，跳过
+      } catch (error) {
+        // 无效正则表达式，记录警告并跳过此条件
+        logger.warn(
+          {
+            module: LOG_MODULE,
+            pattern: condition.pattern,
+            error: error instanceof Error ? error.message : String(error),
+          },
+          "Invalid regex pattern in rule condition",
+        );
       }
     }
 

@@ -217,9 +217,19 @@ export class LazyTrigger {
     );
 
     // 延迟触发
-    const timer = setTimeout(async () => {
+    const timer = setTimeout(() => {
       this.pendingTimers.delete(userId);
-      await this.executeTrigger(userId);
+      // 使用 void 表达式处理 Promise，避免未捕获的 rejection
+      void this.executeTrigger(userId).catch((error) => {
+        logger.error(
+          {
+            module: "AsyncAnalysis",
+            userId,
+            error: error instanceof Error ? error.message : String(error),
+          },
+          "Delayed trigger execution failed unexpectedly",
+        );
+      });
     }, this.config.triggerDelayMs);
 
     this.pendingTimers.set(userId, timer);

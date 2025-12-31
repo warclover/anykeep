@@ -97,15 +97,34 @@ export class LinkHealthCheckAnalyzer extends BaseAnalyzer {
     );
 
     for (const batch of batches) {
-      const batchResults = await Promise.all(
+      // 使用 Promise.allSettled 确保单个检查失败不影响整个批次
+      const batchResults = await Promise.allSettled(
         batch.map((bookmark) => this.checkSingleLink(bookmark)),
       );
 
-      for (const result of batchResults) {
-        if (result.healthy) {
-          healthyCount++;
-        } else if (result.issue) {
-          issues.push(result.issue);
+      for (let i = 0; i < batchResults.length; i++) {
+        const settledResult = batchResults[i];
+
+        if (settledResult.status === "fulfilled") {
+          const result = settledResult.value;
+          if (result.healthy) {
+            healthyCount++;
+          } else if (result.issue) {
+            issues.push(result.issue);
+          }
+        } else {
+          // Promise rejected - 将其视为超时问题
+          const bookmark = batch[i];
+          issues.push({
+            bookmarkId: bookmark.id,
+            url: bookmark.url,
+            issueType: "timeout",
+            errorMessage:
+              settledResult.reason instanceof Error
+                ? settledResult.reason.message
+                : String(settledResult.reason),
+            suggestedAction: "retry",
+          });
         }
       }
 
@@ -127,21 +146,19 @@ export class LinkHealthCheckAnalyzer extends BaseAnalyzer {
   private async checkSingleLink(
     bookmark: BookmarkForHealthCheck,
   ): Promise<{ healthy: boolean; issue?: LinkHealthIssue }> {
-    try {
-      // 使用 HEAD 请求检查链接
-      const controller = new AbortController();
-      const timeoutId = setTimeout(
-        () => controller.abort(),
-        LINK_HEALTH_THRESHOLDS.RETRY_INTERVAL_MS * 3,
-      );
+    // 使用 HEAD 请求检查链接
+    const controller = new AbortController();
+    const timeoutId = setTimeout(
+      () => controller.abort(),
+      LINK_HEALTH_THRESHOLDS.RETRY_INTERVAL_MS * 3,
+    );
 
+    try {
       const response = await fetch(bookmark.url, {
         method: "HEAD",
         signal: controller.signal,
         redirect: "follow",
       });
-
-      clearTimeout(timeoutId);
 
       if (response.ok) {
         return { healthy: true };
@@ -183,6 +200,9 @@ export class LinkHealthCheckAnalyzer extends BaseAnalyzer {
           suggestedAction: this.getSuggestedAction(issueType),
         },
       };
+    } finally {
+      // 确保在任何情况下都清理 timeout，防止内存泄漏
+      clearTimeout(timeoutId);
     }
   }
 

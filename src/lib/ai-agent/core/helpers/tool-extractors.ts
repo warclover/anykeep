@@ -12,6 +12,54 @@ import type { AgentToolCall } from "../types";
 import type { PendingConfirmation } from "../../tools/types";
 
 // ============================================
+// AI SDK 类型定义（兼容 v4 和 v5）
+// ============================================
+
+/**
+ * AI SDK 工具调用结构
+ */
+interface AISDKToolCall {
+  toolCallId: string;
+  toolName: string;
+  args?: Record<string, unknown>;
+  input?: unknown; // v5: args → input，使用 unknown 兼容 AI SDK 类型
+}
+
+/**
+ * AI SDK 工具结果结构
+ */
+interface AISDKToolResult {
+  toolCallId: string;
+  result?: unknown; // v4
+  output?: unknown; // v5
+}
+
+/**
+ * AI SDK Step 结构
+ */
+export interface AISDKStep {
+  toolCalls?: AISDKToolCall[];
+  toolResults?: AISDKToolResult[];
+}
+
+/**
+ * AI SDK 结果结构
+ */
+export interface AISDKResult {
+  steps?: AISDKStep[];
+}
+
+/**
+ * 将 unknown 安全转换为 Record<string, unknown>
+ */
+function toRecord(value: unknown): Record<string, unknown> {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  return {};
+}
+
+// ============================================
 // 工具调用提取
 // ============================================
 
@@ -20,8 +68,7 @@ import type { PendingConfirmation } from "../../tools/types";
  *
  * 注意：AI SDK v5.0 中，toolResults 的 result 属性已重命名为 output
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function extractToolCalls(result: any): AgentToolCall[] {
+export function extractToolCalls(result: AISDKResult): AgentToolCall[] {
   const toolCalls: AgentToolCall[] = [];
 
   if (result.steps) {
@@ -29,8 +76,7 @@ export function extractToolCalls(result: any): AgentToolCall[] {
       if (step.toolCalls) {
         for (const tc of step.toolCalls) {
           const toolResult = step.toolResults?.find(
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (r: any) => r.toolCallId === tc.toolCallId,
+            (r) => r.toolCallId === tc.toolCallId,
           );
           // 兼容 v4 (result) 和 v5 (output)
           const resultData = toolResult?.output ?? toolResult?.result;
@@ -38,7 +84,7 @@ export function extractToolCalls(result: any): AgentToolCall[] {
           toolCalls.push({
             id: tc.toolCallId,
             toolName: tc.toolName,
-            args: tc.args ?? tc.input, // v5: args → input
+            args: tc.args ?? toRecord(tc.input), // v5: args → input
             status: "completed",
             result: resultData,
           });
@@ -55,8 +101,7 @@ export function extractToolCalls(result: any): AgentToolCall[] {
  *
  * 注意：AI SDK v5.0 中，toolResults 的 result 属性已重命名为 output
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function extractToolCallsFromSteps(steps: any[]): AgentToolCall[] {
+export function extractToolCallsFromSteps(steps: AISDKStep[]): AgentToolCall[] {
   const toolCalls: AgentToolCall[] = [];
 
   if (!steps) return toolCalls;
@@ -66,8 +111,7 @@ export function extractToolCallsFromSteps(steps: any[]): AgentToolCall[] {
       for (const tc of step.toolCalls) {
         // AI SDK v5.0: result → output
         const toolResult = step.toolResults?.find(
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (r: any) => r.toolCallId === tc.toolCallId,
+          (r) => r.toolCallId === tc.toolCallId,
         );
 
         // 兼容 v4 (result) 和 v5 (output)
@@ -76,7 +120,7 @@ export function extractToolCallsFromSteps(steps: any[]): AgentToolCall[] {
         toolCalls.push({
           id: tc.toolCallId,
           toolName: tc.toolName,
-          args: tc.args ?? tc.input, // v5: args → input
+          args: tc.args ?? toRecord(tc.input), // v5: args → input
           status: "completed",
           result,
         });
