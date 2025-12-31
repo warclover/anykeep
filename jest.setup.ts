@@ -41,3 +41,18 @@ if (typeof globalThis.WritableStream === "undefined") {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   globalThis.WritableStream = WritableStream as any;
 }
+
+// Set test environment variables
+// These are required by env.ts but don't need real values in tests
+if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+  process.env.NEXT_PUBLIC_SUPABASE_URL = "https://test.supabase.co";
+}
+if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "test-anon-key";
+}
+if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  process.env.SUPABASE_SERVICE_ROLE_KEY = "test-service-role-key";
+}
+if (!process.env.NODE_ENV) {
+  process.env.NODE_ENV = "test";
+}

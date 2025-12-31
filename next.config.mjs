@@ -131,27 +131,35 @@ const nextConfig = {
 
   // V4.2.24: HTTP/2 预连接和缓存优化
   async headers() {
+    // 构建预连接头数组
+    const preconnectHeaders = [];
+    
+    // 预连接 Supabase（减少 DNS + TLS 握手时间）
+    // 仅在环境变量存在时添加
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
+      preconnectHeaders.push({
+        key: 'Link',
+        value: `<${process.env.NEXT_PUBLIC_SUPABASE_URL}>; rel=preconnect`,
+      });
+    }
+    
+    // 预连接 Google Fonts（favicon 服务）
+    preconnectHeaders.push({
+      key: 'Link',
+      value: '<https://www.google.com>; rel=preconnect',
+    });
+    
+    // DNS 预解析
+    preconnectHeaders.push({
+      key: 'Link',
+      value: '<https://fonts.googleapis.com>; rel=dns-prefetch',
+    });
+    
     return [
       {
         // 所有页面添加预连接头
         source: '/(.*)',
-        headers: [
-          // 预连接 Supabase（减少 DNS + TLS 握手时间）
-          {
-            key: 'Link',
-            value: `<${process.env.NEXT_PUBLIC_SUPABASE_URL}>; rel=preconnect`,
-          },
-          // 预连接 Google Fonts（favicon 服务）
-          {
-            key: 'Link',
-            value: '<https://www.google.com>; rel=preconnect',
-          },
-          // DNS 预解析
-          {
-            key: 'Link',
-            value: '<https://fonts.googleapis.com>; rel=dns-prefetch',
-          },
-        ],
+        headers: preconnectHeaders,
       },
       {
         // 静态资源缓存优化

@@ -86,6 +86,9 @@ function hasEnvVar(key: string): boolean {
 // Supabase 环境变量
 // ============================================
 
+// 警告标志，避免重复输出警告
+let hasWarnedAboutSupabaseEnv = false;
+
 /**
  * Supabase 相关环境变量
  * 用于数据库连接和认证
@@ -93,17 +96,80 @@ function hasEnvVar(key: string): boolean {
 export const supabaseEnv = {
   /** Supabase 项目 URL（公开） */
   get url(): string {
-    return getEnvVar("NEXT_PUBLIC_SUPABASE_URL");
+    const value = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    if (!value || value === "") {
+      // 在开发环境中提供默认值并输出警告
+      if (
+        process.env.NODE_ENV === "development" ||
+        process.env.NODE_ENV === "test"
+      ) {
+        if (!hasWarnedAboutSupabaseEnv) {
+          console.info(
+            "⚠️  Missing NEXT_PUBLIC_SUPABASE_URL. Using placeholder value.",
+            "\nPlease create .env.local with your Supabase configuration.",
+            "\nSee README.md for setup instructions.",
+          );
+          hasWarnedAboutSupabaseEnv = true;
+        }
+        return "https://placeholder.supabase.co";
+      }
+      throw new Error(
+        "Missing required environment variable: NEXT_PUBLIC_SUPABASE_URL",
+      );
+    }
+    return value;
   },
 
   /** Supabase 匿名密钥（公开，用于客户端） */
   get anonKey(): string {
-    return getEnvVar("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+    const value = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!value || value === "") {
+      // 在开发环境中提供默认值并输出警告
+      if (
+        process.env.NODE_ENV === "development" ||
+        process.env.NODE_ENV === "test"
+      ) {
+        if (!hasWarnedAboutSupabaseEnv) {
+          console.info(
+            "⚠️  Missing NEXT_PUBLIC_SUPABASE_ANON_KEY. Using placeholder value.",
+            "\nPlease create .env.local with your Supabase configuration.",
+            "\nSee README.md for setup instructions.",
+          );
+          hasWarnedAboutSupabaseEnv = true;
+        }
+        return "placeholder-anon-key";
+      }
+      throw new Error(
+        "Missing required environment variable: NEXT_PUBLIC_SUPABASE_ANON_KEY",
+      );
+    }
+    return value;
   },
 
   /** Supabase 服务角色密钥（私密，仅服务端） */
   get serviceRoleKey(): string {
-    return getEnvVar("SUPABASE_SERVICE_ROLE_KEY");
+    const value = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!value || value === "") {
+      // 在开发环境中提供默认值并输出警告
+      if (
+        process.env.NODE_ENV === "development" ||
+        process.env.NODE_ENV === "test"
+      ) {
+        if (!hasWarnedAboutSupabaseEnv) {
+          console.info(
+            "⚠️  Missing SUPABASE_SERVICE_ROLE_KEY. Using placeholder value.",
+            "\nPlease create .env.local with your Supabase configuration.",
+            "\nSee README.md for setup instructions.",
+          );
+          hasWarnedAboutSupabaseEnv = true;
+        }
+        return "placeholder-service-role-key";
+      }
+      throw new Error(
+        "Missing required environment variable: SUPABASE_SERVICE_ROLE_KEY",
+      );
+    }
+    return value;
   },
 
   /** 检查服务角色密钥是否可用 */

@@ -57,6 +57,3 @@ export function createClient() {
     },
   });
 }
-
-// 导出默认客户端实例（用于简单场景）
-export const supabase = createClient();
