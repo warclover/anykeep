@@ -47,5 +47,8 @@ export {
   generateSimpleSummary,
 } from "./utils";
 
-// 服务导出（待实现）
-export { ProactiveBriefingService } from "./proactive-briefing-service";
+// 服务导出
+export {
+  ProactiveBriefingService,
+  createProactiveBriefingService,
+} from "./proactive-briefing-service";

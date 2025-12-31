@@ -34,6 +34,7 @@ import type {
   GetInsightsOptions,
   InsightType,
   ActionType,
+  InsightGenerator,
 } from "./types";
 
 // =============================================================================
@@ -50,9 +51,22 @@ import type {
  */
 export class ProactiveBriefingService {
   private config: ProactiveBriefingConfig;
+  private insightGenerators: InsightGenerator[] = [];
 
   constructor(config: Partial<ProactiveBriefingConfig> = {}) {
     this.config = { ...PROACTIVE_BRIEFING_DEFAULTS, ...config };
+  }
+
+  /**
+   * 添加自定义洞察生成器
+   * @param generator - 洞察生成器
+   */
+  addInsightGenerator(generator: InsightGenerator): void {
+    this.insightGenerators.push(generator);
+    logger.debug(
+      { module: LOG_MODULE, generatorName: generator.name },
+      "Insight generator added",
+    );
   }
 
   // ===========================================================================
@@ -640,4 +654,27 @@ export class ProactiveBriefingService {
   private shouldGenerateBriefing(offlineDuration: number): boolean {
     return offlineDuration >= this.config.minOfflineDuration;
   }
+
+  /**
+   * 释放服务资源
+   */
+  dispose(): void {
+    // 目前无需清理资源
+    logger.debug({ module: LOG_MODULE }, "ProactiveBriefingService disposed");
+  }
+}
+
+// =============================================================================
+// 工厂函数
+// =============================================================================
+
+/**
+ * 创建主动简报服务实例
+ * @param config - 可选配置
+ * @returns ProactiveBriefingService 实例
+ */
+export function createProactiveBriefingService(
+  config: Partial<ProactiveBriefingConfig> = {},
+): ProactiveBriefingService {
+  return new ProactiveBriefingService(config);
 }

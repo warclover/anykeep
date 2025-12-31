@@ -1,0 +1,364 @@
+
+C:\anykeep\src\app\(main)\dev\classification-compare\page.tsx
+  278:9   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  280:9   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  305:28  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  305:54  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  309:28  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  309:53  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\app\api\bookmarks\route.ts
+  707:61  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\app\api\internal\cron\smart-sorting\route.ts
+  347:25  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\components\ai\ai-message-enhanced.tsx
+  213:14  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  283:14  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  296:28  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\components\ai\ai-message.tsx
+  220:14  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  286:33  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  294:28  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\components\ai\ai-panel-content-enhanced.tsx
+  442:53  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\components\ai\ai-panel-content.tsx
+  360:53  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\components\ai\deliverables\bilibili-transcript-view.tsx
+  448:27  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\components\ai\deliverables\mindmap-viewer.tsx
+  304:32  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  304:32  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  324:12  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  546:7   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  570:7   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  573:5   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  588:5   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\components\ai\phase4\tool-dropdown.tsx
+  329:22  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\components\bookmark\add-custom-usage-tag-dialog.tsx
+  268:51  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\components\bookmark\bookmark-card.tsx
+  865:15  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\components\bookmark\summary-renderer.tsx
+  285:24  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  313:36  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\components\browser-bookmark\import-dialog.tsx
+  454:16  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\components\folder-evolution\llm-usage-card.tsx
+  404:32  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\components\quick-add\onboarding\OnboardingOverlay.tsx
+  56:46  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\components\settings\persona-settings-card.tsx
+  440:49  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\features\md-collections\hooks\reader\__tests__\use-reading-position.test.ts
+  11:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+C:\anykeep\src\hooks\batch\__tests__\use-batch-tags.test.ts
+  10:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+C:\anykeep\src\hooks\data\use-page-data.ts
+  653:20  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\hooks\data\use-smart-list-bookmarks.ts
+  224:19  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\hooks\domain\ai\use-ai-chat.ts
+  557:57  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\hooks\domain\bookmark\use-auto-snapshot.ts
+  364:25  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\hooks\queries\use-bookmarks.ts
+  191:35  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  192:34  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\hooks\queries\use-folders-query.ts
+  191:33  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  192:32  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  202:31  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  203:36  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\jobs\producers\task-producer.ts
+  275:20  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\lib\ai-agent\__tests__\five-dimension-agent-test.ts
+  15:1  warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+
+C:\anykeep\src\lib\ai-agent\context\prompt-injector.ts
+  279:52  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  425:52  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\lib\ai-agent\preferences\rule-learning\rule-extractor.ts
+  277:23  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\lib\ai-agent\tools\import\__tests__\import-wechat-article.tool.test.ts
+  1:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+C:\anykeep\src\lib\ai-agent\tools\messages\__tests__\message-tools.test.ts
+  1:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+C:\anykeep\src\lib\ai-agent\tools\plugin-auth\__tests__\get-plugin-auth-stats.tool.test.ts
+  1:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+C:\anykeep\src\lib\ai-agent\tools\plugin-auth\__tests__\list-plugin-authorizations.tool.test.ts
+  1:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+C:\anykeep\src\lib\ai-agent\tools\plugin-auth\__tests__\revoke-all-plugin-authorizations.tool.test.ts
+  1:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+C:\anykeep\src\lib\ai-agent\tools\plugin-auth\__tests__\revoke-plugin-authorization.tool.test.ts
+  1:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+C:\anykeep\src\lib\ai-agent\tools\query\__tests__\list-wechat-articles.tool.test.ts
+  1:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+C:\anykeep\src\lib\ai-agent\tools\query\__tests__\query-tools.test.ts
+  1:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+C:\anykeep\src\lib\ai-agent\tools\snapshot\__tests__\compare-snapshots.tool.test.ts
+  1:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+C:\anykeep\src\lib\ai-agent\tools\trust-mode\__tests__\get-trust-mode.tool.test.ts
+  1:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+C:\anykeep\src\lib\ai-agent\tools\trust-mode\__tests__\recommend-trust-mode.tool.test.ts
+  1:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+C:\anykeep\src\lib\ai-common\__tests__\unified-registry.test.ts
+  165:7  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+  167:7  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+C:\anykeep\src\lib\ai-generator\content\summary-generator.ts
+  124:9  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  125:9  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\lib\ai-learning\__tests__\correction-learner.test.ts
+  22:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+  24:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+  26:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+  28:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+  30:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+  32:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+  34:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+  36:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+  62:3  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+  64:3  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+C:\anykeep\src\lib\ai-learning\__tests__\learning-priority.test.ts
+  21:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+  23:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+  25:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+  27:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+  29:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+  31:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+  33:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+  58:3  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+  60:3  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+  62:3  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+C:\anykeep\src\lib\ai-learning\learning-aware-classifier.ts
+  184:9   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  185:9   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  188:27  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\lib\ai-skills\effects\services\audit-log.service.ts
+  327:54  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  330:54  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\lib\ai-skills\engine\unified-engine.ts
+  499:11  error  'executionSuccess' is never reassigned. Use 'const' instead  prefer-const
+
+C:\anykeep\src\lib\ai-skills\output\__tests__\adapter.test.ts
+  7:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+C:\anykeep\src\lib\ai-skills\output\zero-takeover-adapter.ts
+  224:34  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\lib\ai-skills\router\intent-predictor\intent-predictor.ts
+  258:27  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\lib\ai-skills\skills\batch-organize\steps\execute.step.ts
+  50:22  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\lib\ai-skills\skills\learning-path\learning-path.skill.ts
+  245:21  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\lib\ai-skills\skills\quick-digest\__tests__\quick-digest.skill.test.ts
+  413:7  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+C:\anykeep\src\lib\browser-bookmark\import-session-manager.ts
+  239:21  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\lib\cache\cache-performance-tracker.ts
+  279:19  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  282:19  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  285:19  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\lib\cache\hooks\__tests__\use-bookmarks-swr.test.ts
+  449:9  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+C:\anykeep\src\lib\classification\__tests__\folder-health.test.ts
+  21:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+  32:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+  40:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+C:\anykeep\src\lib\classification\__tests__\performance.benchmark.test.ts
+  11:1  warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+
+C:\anykeep\src\lib\classification\__tests__\user-stage.test.ts
+  10:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+C:\anykeep\src\lib\classification\learning\__tests__\feedback-loop.test.ts
+  10:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+C:\anykeep\src\lib\classification\learning\feedback-loop.ts
+  374:42  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  375:28  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\lib\classification\router\__tests__\fast-path.benchmark.test.ts
+  15:1  warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+
+C:\anykeep\src\lib\classification\router\__tests__\tag-matcher.test.ts
+  10:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+C:\anykeep\src\lib\classification\router\__tests__\title-matcher.test.ts
+  10:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+C:\anykeep\src\lib\classification\services\__tests__\cost-monitor.service.test.ts
+  10:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+C:\anykeep\src\lib\classification\services\advanced\auto-create-evaluator.service.ts
+  221:26  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  222:48  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  242:32  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  248:29  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\lib\classification\services\advanced\service-factory.ts
+  109:60  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  139:9   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  155:60  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\lib\classification\services\advanced\trace.service.ts
+  454:22  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  454:22  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\lib\classification\services\embedding-ab-test.service.ts
+  316:37  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\lib\classification\services\folder-health.service.ts
+  174:11  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  175:11  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\lib\classification\services\inbox-organizer.service.ts
+  222:20  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  382:45  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  438:23  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\lib\classification\services\merge.service.ts
+  297:13  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  298:13  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\lib\classification\services\operation-log\__tests__\operation-log.service.test.ts
+  10:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+C:\anykeep\src\lib\classification\services\report.service.ts
+  421:21  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\lib\classification\services\smart-sorting\clustering\dbscan.ts
+  125:21  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\lib\classification\services\trust-mode-classification.service.ts
+  339:24  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\lib\classification\strategies\__tests__\history-matcher.test.ts
+  11:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+C:\anykeep\src\lib\classification\strategies\__tests__\vector-matcher.test.ts
+  11:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+C:\anykeep\src\lib\classification\utils\clustering.ts
+  272:17  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\lib\confirmation\__tests__\confirmation.repository.test.ts
+  1:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+C:\anykeep\src\lib\constants\usage-tags.ts
+  295:7  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  360:7  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\lib\knowledge-link\__tests__\entity-matcher.service.test.ts
+   79:5  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+  196:9  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+  264:7  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+C:\anykeep\src\lib\knowledge-link\__tests__\similarity-engine.service.test.ts
+   61:5  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+  245:5  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+  268:5  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+C:\anykeep\src\lib\messages\message-dispatcher.ts
+  101:40  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  115:40  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\lib\monitor\monitor-scheduler.ts
+  204:13  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  205:13  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\lib\summary\__tests__\enhanced-provider.test.ts
+  108:7  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+C:\anykeep\src\lib\telemetry\tracer.ts
+  213:72  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\lib\trust-mode\__tests__\integration.test.ts
+  1:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+C:\anykeep\src\lib\trust-mode\__tests__\performance.benchmark.test.ts
+   1:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+  16:1  warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+
+C:\anykeep\src\lib\trust-mode\__tests__\trust-mode.repository.test.ts
+  1:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+C:\anykeep\src\lib\trust-mode\__tests__\trust-mode.service.test.ts
+  1:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+C:\anykeep\src\lib\tts\aliyun-tts.service.ts
+  113:59  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  146:14  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  220:9   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  239:17  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\lib\utils\content-extractor.ts
+  53:34  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  61:35  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  81:24  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  88:24  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  95:24  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\services\domain\bookmark.service.ts
+  231:38  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+C:\anykeep\src\services\domain\folder.service.ts
+  391:32  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  411:32  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+✖ 170 problems (1 error, 169 warnings)
+  1 error and 65 warnings potentially fixable with the `--fix` option.
+

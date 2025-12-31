@@ -239,6 +239,65 @@ export class RuleExtractor implements IRuleExtractor {
   }
 
   /**
+   * 记录用户纠正行为（用于规则学习）
+   * @param userId - 用户 ID
+   * @param correction - 纠正记录
+   */
+  recordCorrection(
+    userId: string,
+    correction: {
+      originalIntent: string;
+      correctedIntent: string;
+      context?: Record<string, unknown>;
+      timestamp?: Date;
+      originalMessage?: string;
+    },
+  ): void {
+    if (!FeatureFlags.ENABLE_RULE_LEARNING) {
+      return;
+    }
+
+    const record: CorrectionRecord = {
+      id: `corr_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      userId,
+      originalIntent: correction.originalIntent as IntentType,
+      correctedIntent: correction.correctedIntent as IntentType,
+      originalMessage: correction.originalMessage || "",
+      timestamp: correction.timestamp?.getTime() || Date.now(),
+    };
+
+    // 添加到缓存
+    const existing = this.correctionsCache.get(userId) || [];
+    existing.push(record);
+
+    // 限制缓存大小
+    if (existing.length > 100) {
+      existing.splice(0, existing.length - 100);
+    }
+
+    this.correctionsCache.set(userId, existing);
+
+    logger.debug(
+      {
+        module: LOG_MODULE,
+        userId,
+        originalIntent: record.originalIntent,
+        correctedIntent: record.correctedIntent,
+      },
+      "Correction recorded",
+    );
+  }
+
+  /**
+   * 从纠正记录中提取规则（别名 analyzeCorrections）
+   * @param userId - 用户 ID
+   * @returns 提取的规则候选列表
+   */
+  async extractRules(userId: string): Promise<RuleCandidate[]> {
+    return this.analyzeCorrections(userId);
+  }
+
+  /**
    * 添加纠正记录（由 IntentPredictor 调用）
    */
   addCorrection(userId: string, correction: CorrectionRecord): void {
