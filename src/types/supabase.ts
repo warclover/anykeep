@@ -4061,6 +4061,53 @@ export type Database = {
           },
         ];
       };
+      /** 用户纠正记录表 - 记录用户对 AI 决策的纠正，用于规则学习 */
+      user_corrections: {
+        Row: {
+          id: string;
+          user_id: string;
+          /** 原始操作 */
+          original_action: Json;
+          /** 纠正后的操作 */
+          corrected_action: Json;
+          /** 上下文信息 */
+          context: Json;
+          /** 是否已提取规则 */
+          rule_extracted: boolean;
+          /** 提取的规则 ID */
+          extracted_rule_id: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          original_action: Json;
+          corrected_action: Json;
+          context?: Json;
+          rule_extracted?: boolean;
+          extracted_rule_id?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          original_action?: Json;
+          corrected_action?: Json;
+          context?: Json;
+          rule_extracted?: boolean;
+          extracted_rule_id?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "user_corrections_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: {
       classification_metrics_daily: {
@@ -4236,6 +4283,14 @@ export type Database = {
           updated_at: string;
           user_id: string;
         }[];
+      };
+      /** 添加 AI 自定义规则到用户偏好 */
+      add_ai_custom_rule: {
+        Args: {
+          p_user_id: string;
+          p_rule: Json;
+        };
+        Returns: undefined;
       };
       batch_add_tags: {
         Args: {
@@ -5005,6 +5060,14 @@ export type Database = {
       reject_classification_suggestions: {
         Args: { p_suggestion_ids: number[]; p_user_id: string };
         Returns: number;
+      };
+      /** 从用户偏好中删除 AI 自定义规则 */
+      remove_ai_custom_rule: {
+        Args: {
+          p_user_id: string;
+          p_rule_id: string;
+        };
+        Returns: undefined;
       };
       /** 撤销用户所有插件授权 */
       revoke_all_plugin_authorizations: {
