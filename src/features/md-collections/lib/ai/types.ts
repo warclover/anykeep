@@ -81,6 +81,8 @@ export interface MdSummaryInput {
  * MD 摘要结果 - 结构化输出
  */
 export interface MdSummaryResult {
+  /** AI 建议的标题（15字以内） */
+  suggestedTitle?: string;
   /** 一句话总结（50字以内） */
   tldr: string;
   /** 核心要点（3-5个） */
@@ -210,6 +212,8 @@ export interface MdAIProcessResult {
   success: boolean;
   /** 收藏 ID */
   collectionId: number;
+  /** AI 生成的标题 */
+  aiTitle?: string;
   /** 摘要 */
   summary?: string;
   /** AI 生成的标签 */
@@ -241,6 +245,8 @@ export interface MdAIProcessResult {
  */
 export interface StatusUpdateData {
   status: MdProcessingStatus;
+  /** AI 生成的标题（用于更新 title 字段） */
+  aiTitle?: string;
   aiSummary?: string;
   aiTags?: string[];
   contentType?: MdContentType;

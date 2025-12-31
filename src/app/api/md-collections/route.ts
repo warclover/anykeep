@@ -30,7 +30,7 @@ import {
   extractTitle,
   canCreateMdCollection,
 } from "@/features/md-collections/lib";
-import { triggerMdAIProcessing } from "@/features/md-collections/lib/ai-processor";
+import { triggerMdAIProcessing } from "@/features/md-collections/lib/ai";
 
 /**
  * GET /api/md-collections

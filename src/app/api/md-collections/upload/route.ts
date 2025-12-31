@@ -25,7 +25,7 @@ import {
   extractTitle,
   canCreateMdCollection,
 } from "@/features/md-collections/lib";
-import { triggerMdAIProcessing } from "@/features/md-collections/lib/ai-processor";
+import { triggerMdAIProcessing } from "@/features/md-collections/lib/ai";
 import {
   ALLOWED_EXTENSIONS,
   ALLOWED_MIME_TYPES,

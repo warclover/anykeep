@@ -583,6 +583,9 @@ export class MdSummaryService {
       }
 
       const result: MdSummaryResult = {
+        suggestedTitle: parsed.suggested_title
+          ? String(parsed.suggested_title).trim()
+          : undefined,
         tldr: String(parsed.tldr),
         keyPoints: Array.isArray(parsed.key_points) ? parsed.key_points : [],
         codeHighlights: Array.isArray(parsed.code_highlights)

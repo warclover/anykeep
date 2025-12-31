@@ -281,6 +281,17 @@ export class MdAIProcessor {
             if (opts.generateTags) {
               result.aiTags = summaryResult.tags;
             }
+
+            // 获取 AI 建议的标题
+            if (summaryResult.suggestedTitle) {
+              // 仅当当前标题是文件名或默认值时才使用 AI 标题
+              const shouldUpdateTitle = this.shouldUpdateTitle(
+                collection.title,
+              );
+              if (shouldUpdateTitle) {
+                result.aiTitle = summaryResult.suggestedTitle;
+              }
+            }
           } catch (summaryError) {
             logger.warn(
               {
@@ -326,6 +337,7 @@ export class MdAIProcessor {
         // 10. 更新数据库
         await this.updateStatusWithData(collectionId, {
           status: "completed",
+          aiTitle: result.aiTitle,
           aiSummary: result.summary,
           aiTags: result.aiTags,
           contentType: result.contentType,
@@ -490,6 +502,11 @@ export class MdAIProcessor {
       updated_at: new Date().toISOString(),
     };
 
+    // AI 生成的标题（更新 title 字段）
+    if (data.aiTitle !== undefined) {
+      updateData.title = data.aiTitle;
+    }
+
     if (data.aiSummary !== undefined) {
       updateData.ai_summary = data.aiSummary;
     }
@@ -553,6 +570,46 @@ export class MdAIProcessor {
       { eventType: event.type, collectionId: event.collectionId },
       "MdAIProcessor: Event emitted",
     );
+  }
+
+  /**
+   * 判断是否应该用 AI 标题更新当前标题
+   *
+   * 返回 true 的条件：
+   * - 标题是默认值（"无标题"）
+   * - 标题是文件名（包含常见扩展名模式）
+   * - 标题非常短（<= 3 字符）
+   */
+  private shouldUpdateTitle(currentTitle: string): boolean {
+    if (!currentTitle) {
+      return true;
+    }
+
+    const title = currentTitle.trim();
+
+    // 默认标题
+    if (title === "无标题" || title === "Untitled" || title === "") {
+      return true;
+    }
+
+    // 标题太短
+    if (title.length <= 3) {
+      return true;
+    }
+
+    // 看起来像文件名（包含常见扩展名）
+    const fileNamePattern = /\.(md|txt|markdown|doc|docx|pdf|html|rtf)$/i;
+    if (fileNamePattern.test(title)) {
+      return true;
+    }
+
+    // 纯数字或日期格式的标题
+    const numericPattern = /^[\d\-_./\\]+$/;
+    if (numericPattern.test(title)) {
+      return true;
+    }
+
+    return false;
   }
 
   /**
