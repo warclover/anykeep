@@ -22,6 +22,7 @@ function createMockReport(
     sourceId: "folder-789",
     sourceBookmarkIds: null,
     depthMode: "standard",
+    outputStyle: "narrative", // [S1] 添加默认风格
     overview:
       "本报告综合分析了多篇关于 AI 技术发展的文章，涵盖了机器学习、深度学习和大语言模型等领域。",
     consensus: [

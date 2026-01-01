@@ -166,7 +166,8 @@ export async function POST(request: NextRequest) {
 
     // 解析请求体
     const body: CreateSynthesisRequest = await request.json();
-    const { sourceType, sourceId, bookmarkIds, depthMode, title } = body;
+    const { sourceType, sourceId, bookmarkIds, depthMode, outputStyle, title } =
+      body;
 
     // 验证参数
     if (!sourceType || !depthMode) {
@@ -231,6 +232,7 @@ export async function POST(request: NextRequest) {
         source_id: sourceId || null,
         source_bookmark_ids: bookmarkIds || null,
         depth_mode: depthMode,
+        output_style: outputStyle || "narrative", // [S1] 输出风格
         status: "pending",
         source_count: bookmarkIds?.length || 0,
       })
@@ -251,6 +253,7 @@ export async function POST(request: NextRequest) {
         userId: user.id,
         sourceType,
         depthMode,
+        outputStyle: outputStyle || "narrative",
       },
       "Synthesis report created",
     );

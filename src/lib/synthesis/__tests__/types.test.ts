@@ -31,6 +31,7 @@ function createMockReportRow(
     source_id: "folder-789",
     source_bookmark_ids: null,
     depth_mode: "standard",
+    output_style: "narrative", // [S1] 添加默认风格
     overview: "这是一段概述内容。",
     consensus: [
       {

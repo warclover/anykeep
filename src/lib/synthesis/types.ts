@@ -31,6 +31,17 @@ export type SynthesisDepthMode =
   | "academic"; // 学术模式：5-8 分钟, 深度分析
 
 /**
+ * 综述输出风格
+ *
+ * @since 2026-01-01 [S1]
+ */
+export type SynthesisOutputStyle =
+  | "summary" // 概要式：简洁要点列表
+  | "narrative" // 叙事式：自然段落，有起承转合
+  | "comparison" // 对比式：突出共识与分歧
+  | "critical"; // 批判式：更多分歧和盲区分析
+
+/**
  * 综述状态
  */
 export type SynthesisStatus =
@@ -122,6 +133,8 @@ export interface SynthesisReportSummary {
   sourceType: SynthesisSourceType;
   /** 深度模式 */
   depthMode: SynthesisDepthMode;
+  /** 输出风格 @since 2026-01-01 [S1] */
+  outputStyle: SynthesisOutputStyle;
   /** 来源书签数量 */
   sourceCount: number;
   /** 生成字数 */
@@ -294,6 +307,8 @@ export interface CreateSynthesisRequest {
   bookmarkIds?: string[];
   /** 深度模式 */
   depthMode: SynthesisDepthMode;
+  /** 输出风格 @since 2026-01-01 [S1] */
+  outputStyle?: SynthesisOutputStyle;
   /** 自定义标题（可选） */
   title?: string;
 }
@@ -501,6 +516,79 @@ export class SynthesisError extends Error {
 // ============================================
 
 /**
+ * 综述输出风格配置
+ *
+ * @since 2026-01-01 [S1]
+ */
+export interface SynthesisStyleConfig {
+  /** 风格 ID */
+  id: SynthesisOutputStyle;
+  /** 显示名称 */
+  name: string;
+  /** 描述 */
+  description: string;
+  /** 图标 */
+  icon: string;
+  /** 示例输出（用于预览） */
+  example: string;
+  /** 推荐场景 */
+  recommendedFor: string;
+  /** Prompt 修饰词 */
+  promptModifier: string;
+}
+
+/**
+ * 预定义的输出风格配置
+ *
+ * @since 2026-01-01 [S1]
+ */
+export const SYNTHESIS_STYLE_CONFIGS: Record<
+  SynthesisOutputStyle,
+  SynthesisStyleConfig
+> = {
+  summary: {
+    id: "summary",
+    name: "概要式",
+    description: "简洁要点列表，快速获取核心信息",
+    icon: "📋",
+    example: "• 要点一：...\n• 要点二：...\n• 要点三：...",
+    recommendedFor: "快速了解、会议准备、信息检索",
+    promptModifier:
+      "以简洁的要点列表形式输出，每个要点不超过一句话，突出核心信息",
+  },
+  narrative: {
+    id: "narrative",
+    name: "叙事式",
+    description: "自然段落，有起承转合",
+    icon: "📖",
+    example: "在探讨这个主题时，我们首先需要理解...随后...最终...",
+    recommendedFor: "深度阅读、知识内化、分享给他人",
+    promptModifier:
+      "以自然流畅的叙事方式输出，形成有起承转合的段落，便于阅读理解",
+  },
+  comparison: {
+    id: "comparison",
+    name: "对比式",
+    description: "突出共识与分歧，多角度呈现",
+    icon: "⚖️",
+    example: "【共识】各来源普遍认为...\n【分歧】然而在...方面存在不同观点...",
+    recommendedFor: "决策参考、辩论准备、多元视角",
+    promptModifier:
+      "重点突出不同来源之间的共识与分歧，明确标注观点来源，便于对比分析",
+  },
+  critical: {
+    id: "critical",
+    name: "批判式",
+    description: "更多分歧和盲区分析",
+    icon: "🔍",
+    example: "【存疑】这一论点缺乏充分证据...\n【盲区】目前缺少对...的讨论...",
+    recommendedFor: "学术研究、深度思考、发现问题",
+    promptModifier:
+      "以批判性思维分析内容，着重指出论证不足、逻辑漏洞和知识盲区，鼓励独立思考",
+  },
+} as const;
+
+/**
  * 深度模式配置
  */
 export interface DepthModeConfig {
@@ -580,6 +668,7 @@ export interface SynthesisReportRow {
   source_id: string | null;
   source_bookmark_ids: string[] | null;
   depth_mode: string; // SynthesisDepthMode 的字符串形式
+  output_style: string; // SynthesisOutputStyle 的字符串形式 [S1]
   overview: string | null;
   consensus: ConsensusPoint[] | null;
   divergence: DivergencePoint[] | null;
@@ -607,6 +696,7 @@ export function mapRowToReport(row: SynthesisReportRow): SynthesisReport {
     sourceId: row.source_id,
     sourceBookmarkIds: row.source_bookmark_ids,
     depthMode: row.depth_mode as SynthesisDepthMode,
+    outputStyle: (row.output_style || "narrative") as SynthesisOutputStyle, // [S1]
     overview: row.overview || "",
     consensus: row.consensus || [],
     divergence: row.divergence || [],
@@ -637,6 +727,7 @@ export function mapRowToSummary(
     title: row.title,
     sourceType: row.source_type as SynthesisSourceType,
     depthMode: row.depth_mode as SynthesisDepthMode,
+    outputStyle: (row.output_style || "narrative") as SynthesisOutputStyle, // [S1]
     sourceCount: row.source_count,
     wordCount: row.word_count,
     status: row.status as SynthesisStatus,
