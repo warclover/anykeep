@@ -55,6 +55,7 @@ import {
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useUnreadCount } from "@/hooks/data";
+import { useBrainSyncStats } from "@/hooks/domain/brain-sync";
 import { MessageBadge } from "@/components/messages";
 
 // ==================== 类型定义 ====================
@@ -65,7 +66,7 @@ interface NavItem {
   icon: typeof BookOpen;
   description?: string;
   isPro?: boolean;
-  badge?: "unread";
+  badge?: "unread" | "brain-sync";
 }
 
 interface NavGroup {
@@ -166,6 +167,7 @@ const navigationGroups: NavGroup[] = [
         href: "/brain-sync",
         icon: GraduationCap,
         description: "知识复习",
+        badge: "brain-sync",
       },
       {
         name: "知识萃取",
@@ -234,6 +236,9 @@ export function MobileMenu() {
   // 获取未读消息数量
   const { total: unreadCount, important: importantCount } = useUnreadCount();
 
+  // 获取 Brain-Sync 待复习数量
+  const { stats: brainSyncStats } = useBrainSyncStats();
+
   /**
    * 检查链接是否激活
    */
@@ -290,7 +295,14 @@ export function MobileMenu() {
                 {group.items.map((item) => {
                   const Icon = item.icon;
                   const isActive = isLinkActive(item.href);
-                  const showBadge = item.badge === "unread" && unreadCount > 0;
+                  const showUnreadBadge =
+                    item.badge === "unread" && unreadCount > 0;
+                  const showBrainSyncBadge =
+                    item.badge === "brain-sync" &&
+                    brainSyncStats &&
+                    brainSyncStats.total > 0;
+                  const brainSyncCount = brainSyncStats?.total ?? 0;
+                  const hasOverdue = (brainSyncStats?.overdue ?? 0) > 0;
 
                   return (
                     <Link
@@ -325,11 +337,23 @@ export function MobileMenu() {
                               Pro
                             </span>
                           )}
-                          {showBadge && (
+                          {showUnreadBadge && (
                             <MessageBadge
                               count={unreadCount}
                               hasImportant={importantCount > 0}
                             />
+                          )}
+                          {showBrainSyncBadge && (
+                            <span
+                              className={cn(
+                                "text-xs font-medium px-1.5 py-0.5 rounded-full min-w-[20px] text-center",
+                                hasOverdue
+                                  ? "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300"
+                                  : "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300",
+                              )}
+                            >
+                              {brainSyncCount > 99 ? "99+" : brainSyncCount}
+                            </span>
                           )}
                         </div>
                         {item.description && (

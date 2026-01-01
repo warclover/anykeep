@@ -49,8 +49,8 @@ import {
   Share2,
 } from "lucide-react";
 import { useUnreadCount } from "@/hooks/data";
+import { useBrainSyncStats } from "@/hooks/domain/brain-sync";
 import { MessageBadge } from "@/components/messages";
-import { SidebarReminder } from "@/components/brain-sync";
 import { cn } from "@/lib/utils";
 import { useSafeNavigation, type PageId } from "@/contexts/navigation-context";
 import { useSafeSidebar, SIDEBAR_WIDTH } from "@/contexts/sidebar-context";
@@ -68,7 +68,7 @@ interface NavItem {
   href: string;
   icon: typeof BookOpen;
   pageId?: PageId;
-  badge?: number | "unread";
+  badge?: number | "unread" | "brain-sync";
   isPro?: boolean;
 }
 
@@ -121,7 +121,12 @@ const smartListItems: NavItem[] = [
  * 学习中心导航项
  */
 const learningCenterItems: NavItem[] = [
-  { name: "自习工坊", href: "/brain-sync", icon: GraduationCap },
+  {
+    name: "自习工坊",
+    href: "/brain-sync",
+    icon: GraduationCap,
+    badge: "brain-sync",
+  },
   { name: "知识萃取", href: "/synthesis", icon: FlaskConical },
 ];
 
@@ -217,6 +222,9 @@ export function AppSidebar() {
 
   // 获取未读消息数量
   const { total: unreadCount, important: importantCount } = useUnreadCount();
+
+  // 获取 Brain-Sync 待复习数量
+  const { stats: brainSyncStats } = useBrainSyncStats();
 
   // 安全获取导航上下文
   const navigationContext = useSafeNavigation();
@@ -328,7 +336,11 @@ export function AppSidebar() {
   ) => {
     const Icon = item.icon;
     const isActive = isLinkActive(item.href, item.pageId);
-    const showBadge = item.badge === "unread" && unreadCount > 0;
+    const showUnreadBadge = item.badge === "unread" && unreadCount > 0;
+    const showBrainSyncBadge =
+      item.badge === "brain-sync" && brainSyncStats && brainSyncStats.total > 0;
+    const brainSyncCount = brainSyncStats?.total ?? 0;
+    const hasOverdue = brainSyncStats?.overdue ?? 0 > 0;
 
     // 使用分组糖果色，如无则回退默认蓝色
     const colors = groupColor || groupCandyColors.content;
@@ -360,11 +372,23 @@ export function AppSidebar() {
                 Pro
               </span>
             )}
-            {showBadge && (
+            {showUnreadBadge && (
               <MessageBadge
                 count={unreadCount}
                 hasImportant={importantCount > 0}
               />
+            )}
+            {showBrainSyncBadge && (
+              <span
+                className={cn(
+                  "text-xs font-medium px-1.5 py-0.5 rounded-full min-w-[20px] text-center",
+                  hasOverdue
+                    ? "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300"
+                    : "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300",
+                )}
+              >
+                {brainSyncCount > 99 ? "99+" : brainSyncCount}
+              </span>
             )}
           </>
         )}
@@ -380,6 +404,7 @@ export function AppSidebar() {
             <p>
               {item.name}
               {item.isPro ? " (Pro)" : ""}
+              {showBrainSyncBadge ? ` (${brainSyncCount})` : ""}
             </p>
           </TooltipContent>
         </Tooltip>
@@ -582,12 +607,6 @@ export function AppSidebar() {
               <div className="space-y-1">
                 {learningCenterItems.map((item) =>
                   renderNavItem(item, groupCandyColors.learning),
-                )}
-                {/* Brain-Sync 复习提醒 */}
-                {isVisuallyExpanded ? (
-                  <SidebarReminder collapsed={false} className="mx-2" />
-                ) : (
-                  <SidebarReminder collapsed={true} />
                 )}
               </div>
             </div>
