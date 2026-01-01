@@ -4,9 +4,10 @@
  * 整合 QueryParser、ResultRanker、ResponseFormatter
  * 提供智能查询理解和结果排序
  *
- * @version 1.1.0
+ * @version 1.2.0
  * @since 2025-12-25
  * @updated 2025-12-28 添加 RRF 融合和切片搜索支持
+ * @updated 2026-01-02 添加智能过滤器提取
  */
 
 import { createClient } from "@/lib/supabase/server";
@@ -22,6 +23,8 @@ import { generateEmbedding } from "@/lib/utils/embedding-generator";
 import { QueryParser } from "./query-parser";
 import { ResultRanker, type BookmarkForRanking } from "./result-ranker";
 import { ResponseFormatter, type BookmarkData } from "./response-formatter";
+import { getFilterExtractor } from "./filter-extractor";
+import type { ExtractedFilter } from "./filter-extractor.types";
 import type {
   ParsedQuery,
   RankedResult,
@@ -63,6 +66,14 @@ export interface EnhancedSearchOutput {
     original: string;
     rewritten: string;
     synonyms: string[];
+  };
+  /** 智能过滤器提取信息（调试用） */
+  filterExtraction?: {
+    enabled: boolean;
+    filters: ExtractedFilter[];
+    cleanedQuery: string;
+    confidence: number;
+    latencyMs: number;
   };
   /** RRF 融合信息（调试用） */
   rrfFusion?: {
@@ -138,6 +149,16 @@ export class EnhancedSearchService {
     let queryRewriteInfo:
       | { original: string; rewritten: string; synonyms: string[] }
       | undefined;
+    let filterExtractionInfo:
+      | {
+          enabled: boolean;
+          filters: ExtractedFilter[];
+          cleanedQuery: string;
+          confidence: number;
+          latencyMs: number;
+        }
+      | undefined;
+    let extractedFilters: ExtractedFilter[] = [];
 
     try {
       // 0. 查询改写 (Feature Flag 控制)
@@ -178,7 +199,66 @@ export class EnhancedSearchService {
         }
       }
 
-      // 1. 解析查询 (使用可能已改写的查询)
+      // 0.5 智能过滤器提取 (Feature Flag 控制)
+      if (FeatureFlags.ENABLE_SMART_FILTER_EXTRACTION) {
+        try {
+          const filterExtractor = getFilterExtractor({ debug: input.debug });
+          const filterResult = await filterExtractor.extract(searchQuery);
+
+          if (filterResult.success && filterResult.filters.length > 0) {
+            extractedFilters = filterResult.filters;
+            // 使用清理后的查询进行后续处理
+            searchQuery = filterResult.cleanedQuery || searchQuery;
+
+            filterExtractionInfo = {
+              enabled: true,
+              filters: filterResult.filters,
+              cleanedQuery: filterResult.cleanedQuery,
+              confidence: filterResult.confidence,
+              latencyMs: filterResult.latencyMs,
+            };
+
+            logger.debug(
+              {
+                filterCount: filterResult.filters.length,
+                filterTypes: filterResult.filters.map((f) => f.type),
+                cleanedQuery: filterResult.cleanedQuery,
+                confidence: filterResult.confidence,
+                latencyMs: filterResult.latencyMs,
+              },
+              "EnhancedSearchService: Filters extracted",
+            );
+          } else {
+            filterExtractionInfo = {
+              enabled: true,
+              filters: [],
+              cleanedQuery: searchQuery,
+              confidence: filterResult.confidence,
+              latencyMs: filterResult.latencyMs,
+            };
+          }
+        } catch (filterError) {
+          logger.warn(
+            {
+              error:
+                filterError instanceof Error
+                  ? filterError.message
+                  : String(filterError),
+              query: input.query.substring(0, 50),
+            },
+            "EnhancedSearchService: Filter extraction failed, continuing without filters",
+          );
+          filterExtractionInfo = {
+            enabled: false,
+            filters: [],
+            cleanedQuery: searchQuery,
+            confidence: 0,
+            latencyMs: 0,
+          };
+        }
+      }
+
+      // 1. 解析查询 (使用可能已改写和清理的查询)
       const parsedQuery = this.queryParser.parse(searchQuery);
 
       logger.debug(
@@ -196,6 +276,7 @@ export class EnhancedSearchService {
       let rawResults = await this.executeSearch(
         input.userId,
         parsedQuery,
+        extractedFilters,
         (input.limit ?? 10) * 2, // 多获取一些用于排序
       );
 
@@ -461,6 +542,7 @@ export class EnhancedSearchService {
         parsedQuery: input.debug ? parsedQuery : undefined,
         rankedResults: input.debug ? rankedResults : undefined,
         queryRewrite: input.debug ? queryRewriteInfo : undefined,
+        filterExtraction: input.debug ? filterExtractionInfo : undefined,
         rrfFusion: input.debug ? rrfFusionInfo : undefined,
         chunkSearch: input.debug ? chunkSearchInfo : undefined,
         executionTimeMs: queryTimeMs,
@@ -492,6 +574,7 @@ export class EnhancedSearchService {
   private async executeSearch(
     userId: string,
     parsedQuery: ParsedQuery,
+    extractedFilters: ExtractedFilter[],
     limit: number,
   ): Promise<DatabaseBookmark[]> {
     const supabase = await createClient();
@@ -516,6 +599,7 @@ export class EnhancedSearchService {
       return this.applyQueryFilters(
         data || [],
         parsedQuery,
+        extractedFilters,
       ) as DatabaseBookmark[];
     } else {
       // 短语/模糊匹配：使用混合搜索
@@ -533,20 +617,24 @@ export class EnhancedSearchService {
       return this.applyQueryFilters(
         data || [],
         parsedQuery,
+        extractedFilters,
       ) as DatabaseBookmark[];
     }
   }
 
   /**
-   * 应用查询过滤器（时间范围、平台）
+   * 应用查询过滤器（ParsedQuery + ExtractedFilter）
    */
   private applyQueryFilters(
     results: DatabaseBookmark[],
     parsedQuery: ParsedQuery,
+    extractedFilters: ExtractedFilter[],
   ): DatabaseBookmark[] {
     let filtered = results;
 
-    // 时间范围过滤
+    // === ParsedQuery 的过滤器（向后兼容） ===
+
+    // 时间范围过滤（ParsedQuery）
     if (parsedQuery.timeRange) {
       const { start, end } = parsedQuery.timeRange;
       filtered = filtered.filter((r) => {
@@ -555,7 +643,7 @@ export class EnhancedSearchService {
       });
     }
 
-    // 平台过滤
+    // 平台过滤（ParsedQuery）
     if (parsedQuery.platform && parsedQuery.platform !== "all") {
       const platformLower = parsedQuery.platform.toLowerCase();
       filtered = filtered.filter((r) => {
@@ -568,6 +656,144 @@ export class EnhancedSearchService {
         }
         return platform === platformLower;
       });
+    }
+
+    // === ExtractedFilter 的过滤器（新增） ===
+
+    for (const filter of extractedFilters) {
+      switch (filter.type) {
+        case "time_range":
+          // 时间范围过滤（如果 ParsedQuery 没有提取到）
+          if (!parsedQuery.timeRange) {
+            filtered = filtered.filter((r) => {
+              const createdAt = new Date(r.created_at);
+              return createdAt >= filter.start && createdAt <= filter.end;
+            });
+          }
+          break;
+
+        case "platform":
+          // 平台过滤（如果 ParsedQuery 没有提取到）
+          if (!parsedQuery.platform || parsedQuery.platform === "all") {
+            const platformLower = filter.platform.toLowerCase();
+            filtered = filtered.filter((r) => {
+              const platform = (r.platform || "").toLowerCase();
+              if (platformLower === "browser") {
+                return [
+                  "browser",
+                  "chrome",
+                  "edge",
+                  "firefox",
+                  "safari",
+                ].includes(platform);
+              }
+              return platform === platformLower;
+            });
+          }
+          break;
+
+        case "tag":
+          // 标签过滤
+          if (filter.matchMode === "all") {
+            // 所有标签都必须匹配
+            filtered = filtered.filter((r) => {
+              const allTags = [
+                ...(r.ai_tags || []),
+                ...(r.user_tags || []),
+              ].map((t) => t.toLowerCase());
+              return filter.tags.every((tag) =>
+                allTags.some(
+                  (t) =>
+                    t.includes(tag.toLowerCase()) ||
+                    tag.toLowerCase().includes(t),
+                ),
+              );
+            });
+          } else {
+            // 任意标签匹配
+            filtered = filtered.filter((r) => {
+              const allTags = [
+                ...(r.ai_tags || []),
+                ...(r.user_tags || []),
+              ].map((t) => t.toLowerCase());
+              return filter.tags.some((tag) =>
+                allTags.some(
+                  (t) =>
+                    t.includes(tag.toLowerCase()) ||
+                    tag.toLowerCase().includes(t),
+                ),
+              );
+            });
+          }
+          break;
+
+        case "starred":
+          // 星标过滤
+          filtered = filtered.filter(
+            (r) => (r.is_starred ?? false) === filter.isStarred,
+          );
+          break;
+
+        case "read_status":
+          // 已读状态过滤（需要数据库支持 is_read 字段）
+          // 目前假设有 is_read 字段，如果没有则跳过
+          if ("is_read" in filtered[0] || filtered.length === 0) {
+            filtered = filtered.filter((r) => {
+              const isRead = (r as DatabaseBookmark & { is_read?: boolean })
+                .is_read;
+              return isRead === filter.isRead;
+            });
+          }
+          break;
+
+        case "folder":
+          // 文件夹过滤（按名称匹配）
+          if (filter.folderName) {
+            const folderNameLower = filter.folderName.toLowerCase();
+            filtered = filtered.filter((r) => {
+              const folder = Array.isArray(r.folders)
+                ? r.folders[0]
+                : r.folders;
+              const folderName = folder?.name?.toLowerCase() || "";
+              return folderName.includes(folderNameLower);
+            });
+          }
+          break;
+
+        case "sort":
+          // 排序在这里应用
+          filtered = [...filtered].sort((a, b) => {
+            let comparison = 0;
+            switch (filter.field) {
+              case "time":
+                comparison =
+                  new Date(b.created_at).getTime() -
+                  new Date(a.created_at).getTime();
+                break;
+              case "title":
+                comparison = (a.title || "").localeCompare(b.title || "");
+                break;
+              case "visits":
+                comparison = (b.access_count || 0) - (a.access_count || 0);
+                break;
+              case "relevance":
+                comparison = (b.similarity || 0) - (a.similarity || 0);
+                break;
+            }
+            return filter.direction === "asc" ? -comparison : comparison;
+          });
+          break;
+
+        case "limit":
+          // 数量限制（在最后应用）
+          // 注意：这里不直接应用，由调用方控制
+          break;
+
+        case "content_type":
+          // 内容类型过滤（需要数据库支持 content_type 字段）
+          // 暂时跳过，后续可扩展
+          break;
+      }
     }
 
     return filtered;

@@ -343,29 +343,38 @@ export const FeatureFlags = {
 
   /**
    * 是否启用 LLM 查询改写
-   * @default false
+   * @default true
    * @description 使用 LLM 对用户查询进行语义扩展和同义词补充
    */
   get ENABLE_QUERY_REWRITE(): boolean {
-    return process.env.ENABLE_QUERY_REWRITE === "true";
+    return process.env.ENABLE_QUERY_REWRITE !== "false";
   },
 
   /**
    * 是否启用 Rerank 重排序
-   * @default false
+   * @default true
    * @description 使用交叉编码器对搜索结果进行语义重排序
    */
   get ENABLE_RERANK(): boolean {
-    return process.env.ENABLE_RERANK === "true";
+    return process.env.ENABLE_RERANK !== "false";
   },
 
   /**
    * 是否启用向量缓存
-   * @default false
+   * @default true
    * @description 缓存常用查询的向量表示，提升搜索速度
    */
   get ENABLE_VECTOR_CACHE(): boolean {
-    return process.env.ENABLE_VECTOR_CACHE === "true";
+    return process.env.ENABLE_VECTOR_CACHE !== "false";
+  },
+
+  /**
+   * 是否启用智能过滤器提取
+   * @default true
+   * @description 从自然语言查询中自动提取结构化过滤条件（时间、平台、标签等）
+   */
+  get ENABLE_SMART_FILTER_EXTRACTION(): boolean {
+    return process.env.ENABLE_SMART_FILTER_EXTRACTION !== "false";
   },
 
   // ===========================================================================
@@ -561,6 +570,7 @@ export function getAllFeatureFlags(): Record<BooleanFeatureFlagKey, boolean> & {
     ENABLE_QUERY_REWRITE: FeatureFlags.ENABLE_QUERY_REWRITE,
     ENABLE_RERANK: FeatureFlags.ENABLE_RERANK,
     ENABLE_VECTOR_CACHE: FeatureFlags.ENABLE_VECTOR_CACHE,
+    ENABLE_SMART_FILTER_EXTRACTION: FeatureFlags.ENABLE_SMART_FILTER_EXTRACTION,
     // RAG 能力增强 [Phase 2 新增]
     ENABLE_PARENT_CHILD_CHUNKING: FeatureFlags.ENABLE_PARENT_CHILD_CHUNKING,
     ENABLE_RRF_FUSION: FeatureFlags.ENABLE_RRF_FUSION,
