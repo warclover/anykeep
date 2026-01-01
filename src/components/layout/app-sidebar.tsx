@@ -157,6 +157,55 @@ const devToolsItems: NavItem[] = [
   { name: "摘要调试", href: "/debug/ai-summary", icon: Sparkles },
 ];
 
+// ==================== 糖果色配色 ====================
+
+type GroupColorKey = "content" | "organize" | "learning" | "insight" | "system";
+
+interface GroupColorScheme {
+  active: string;
+  icon: string;
+  hover: string;
+}
+
+/**
+ * 分组糖果色配色方案
+ * 每个分组使用独特的颜色，提供视觉区分和愉悦感
+ */
+const groupCandyColors: Record<GroupColorKey, GroupColorScheme> = {
+  // 内容中心 - 粉红色（与首页"手动创建"按钮一致）
+  content: {
+    active: "bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300",
+    icon: "text-pink-500 dark:text-pink-400",
+    hover: "hover:bg-pink-50 dark:hover:bg-pink-900/20",
+  },
+  // 整理工具 - 天蓝色（与首页"AI助理"按钮一致）
+  organize: {
+    active: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300",
+    icon: "text-cyan-500 dark:text-cyan-400",
+    hover: "hover:bg-cyan-50 dark:hover:bg-cyan-900/20",
+  },
+  // 学习中心 - 紫色（智慧与创造的象征）
+  learning: {
+    active:
+      "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
+    icon: "text-purple-600 dark:text-purple-400",
+    hover: "hover:bg-purple-50 dark:hover:bg-purple-900/20",
+  },
+  // 洞察中心 - 玫瑰色（洞察与发现的象征）
+  insight: {
+    active: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300",
+    icon: "text-rose-600 dark:text-rose-400",
+    hover: "hover:bg-rose-50 dark:hover:bg-rose-900/20",
+  },
+  // 系统 - 石板灰（稳定与可靠的象征）
+  system: {
+    active:
+      "bg-slate-200 text-slate-700 dark:bg-slate-800/50 dark:text-slate-300",
+    icon: "text-slate-600 dark:text-slate-400",
+    hover: "hover:bg-slate-100 dark:hover:bg-slate-800/30",
+  },
+};
+
 // ==================== 组件 ====================
 
 export function AppSidebar() {
@@ -266,11 +315,21 @@ export function AppSidebar() {
 
   /**
    * 渲染单个导航项
+   * @param item 导航项配置
+   * @param groupColor 分组糖果色（可选）
+   * @param isNested 是否嵌套项
    */
-  const renderNavItem = (item: NavItem, isNested = false) => {
+  const renderNavItem = (
+    item: NavItem,
+    groupColor?: GroupColorScheme,
+    isNested = false,
+  ) => {
     const Icon = item.icon;
     const isActive = isLinkActive(item.href, item.pageId);
     const showBadge = item.badge === "unread" && unreadCount > 0;
+
+    // 使用分组糖果色，如无则回退默认蓝色
+    const colors = groupColor || groupCandyColors.content;
 
     const content = (
       <Link
@@ -279,8 +338,8 @@ export function AppSidebar() {
         className={cn(
           "group flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-150",
           isActive
-            ? "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300"
-            : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50",
+            ? colors.active
+            : cn("text-gray-700 dark:text-gray-300", colors.hover),
           !isVisuallyExpanded && "justify-center px-2",
           isNested && isVisuallyExpanded && "pl-8",
         )}
@@ -288,9 +347,7 @@ export function AppSidebar() {
         <Icon
           className={cn(
             "size-5 shrink-0 transition-transform duration-150 group-hover:scale-110",
-            isActive
-              ? "text-blue-600 dark:text-blue-400"
-              : "text-gray-400 dark:text-gray-500",
+            isActive ? colors.icon : "text-gray-400 dark:text-gray-500",
           )}
         />
         {isVisuallyExpanded && (
@@ -337,22 +394,29 @@ export function AppSidebar() {
     if (!isVisuallyExpanded) return null;
     return (
       <div className="px-3 mb-2">
-        <p className={cn("text-xs font-semibold uppercase", color)}>{title}</p>
+        <p className={cn("text-sm font-semibold uppercase", color)}>{title}</p>
       </div>
     );
   };
 
   /**
    * 渲染可折叠子菜单
+   * @param id 菜单ID
+   * @param title 菜单标题
+   * @param icon 菜单图标
+   * @param items 子项列表
+   * @param groupColor 分组糖果色
    */
   const renderCollapsibleMenu = (
     id: string,
     title: string,
     icon: typeof BookOpen,
     items: NavItem[],
+    groupColor?: GroupColorScheme,
   ) => {
     const isExpanded = expandedGroups[id];
     const Icon = icon;
+    const colors = groupColor || groupCandyColors.content;
 
     if (!isVisuallyExpanded) {
       return (
@@ -360,7 +424,10 @@ export function AppSidebar() {
           <TooltipTrigger asChild>
             <button
               onClick={() => toggleGroup(id)}
-              className="flex items-center justify-center px-2 py-2 w-full text-sm font-medium rounded-lg text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50"
+              className={cn(
+                "flex items-center justify-center px-2 py-2 w-full text-sm font-medium rounded-lg text-gray-700 dark:text-gray-300",
+                colors.hover,
+              )}
             >
               <Icon className="size-5 text-gray-400" />
             </button>
@@ -376,7 +443,10 @@ export function AppSidebar() {
       <div key={id}>
         <button
           onClick={() => toggleGroup(id)}
-          className="flex items-center gap-3 px-3 py-2 w-full text-sm font-medium rounded-lg text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50 transition-colors"
+          className={cn(
+            "flex items-center gap-3 px-3 py-2 w-full text-sm font-medium rounded-lg text-gray-700 dark:text-gray-300 transition-colors",
+            colors.hover,
+          )}
         >
           <Icon className="size-5 text-gray-400" />
           <span className="flex-1 text-left">{title}</span>
@@ -388,7 +458,7 @@ export function AppSidebar() {
         </button>
         {isExpanded && (
           <div className="mt-1 space-y-1">
-            {items.map((item) => renderNavItem(item, true))}
+            {items.map((item) => renderNavItem(item, groupColor, true))}
           </div>
         )}
       </div>
@@ -465,21 +535,23 @@ export function AppSidebar() {
           <nav className="flex-1 space-y-6 overflow-y-auto scrollbar-hide px-2 pb-4">
             {/* 内容中心 */}
             <div>
-              {renderGroupTitle("内容中心", "text-blue-500 dark:text-blue-400")}
+              {renderGroupTitle("内容中心", "text-pink-500 dark:text-pink-400")}
               <div className="space-y-1">
-                {contentCenterItems.map((item) => renderNavItem(item))}
+                {contentCenterItems.map((item) =>
+                  renderNavItem(item, groupCandyColors.content),
+                )}
               </div>
             </div>
 
             {/* 整理工具 */}
             <div>
-              {renderGroupTitle(
-                "整理工具",
-                "text-amber-500 dark:text-amber-400",
-              )}
+              {renderGroupTitle("整理工具", "text-cyan-500 dark:text-cyan-400")}
               <div className="space-y-1">
                 {/* 待分类 */}
-                {renderNavItem(organizeToolsItems[0])}
+                {renderNavItem(
+                  organizeToolsItems[0],
+                  groupCandyColors.organize,
+                )}
 
                 {/* 智能列表（可折叠） */}
                 {renderCollapsibleMenu(
@@ -487,10 +559,15 @@ export function AppSidebar() {
                   "智能列表",
                   ListFilter,
                   smartListItems,
+                  groupCandyColors.organize,
                 )}
 
                 {/* 其他整理工具 */}
-                {organizeToolsItems.slice(1).map((item) => renderNavItem(item))}
+                {organizeToolsItems
+                  .slice(1)
+                  .map((item) =>
+                    renderNavItem(item, groupCandyColors.organize),
+                  )}
               </div>
             </div>
 
@@ -501,7 +578,9 @@ export function AppSidebar() {
                 "text-purple-500 dark:text-purple-400",
               )}
               <div className="space-y-1">
-                {learningCenterItems.map((item) => renderNavItem(item))}
+                {learningCenterItems.map((item) =>
+                  renderNavItem(item, groupCandyColors.learning),
+                )}
                 {/* Brain-Sync 复习提醒 */}
                 {isVisuallyExpanded ? (
                   <SidebarReminder collapsed={false} className="mx-2" />
@@ -515,20 +594,25 @@ export function AppSidebar() {
             <div>
               {renderGroupTitle("洞察中心", "text-rose-500 dark:text-rose-400")}
               <div className="space-y-1">
-                {insightCenterItems.map((item) => renderNavItem(item))}
+                {insightCenterItems.map((item) =>
+                  renderNavItem(item, groupCandyColors.insight),
+                )}
               </div>
             </div>
 
             {/* 系统 */}
             <div>
-              {renderGroupTitle("系统", "text-gray-400 dark:text-gray-500")}
+              {renderGroupTitle("系统", "text-slate-400 dark:text-slate-500")}
               <div className="space-y-1">
-                {renderNavItem({
-                  name: "设置",
-                  href: "/settings",
-                  icon: Settings,
-                  pageId: "settings",
-                })}
+                {renderNavItem(
+                  {
+                    name: "设置",
+                    href: "/settings",
+                    icon: Settings,
+                    pageId: "settings",
+                  },
+                  groupCandyColors.system,
+                )}
 
                 {/* 开发者工具（可折叠） */}
                 {renderCollapsibleMenu(
@@ -536,6 +620,7 @@ export function AppSidebar() {
                   "开发者工具",
                   Wrench,
                   devToolsItems,
+                  groupCandyColors.system,
                 )}
               </div>
             </div>
@@ -545,11 +630,14 @@ export function AppSidebar() {
           <div className="border-t dark:border-gray-800">
             {/* 垃圾箱 */}
             <div className={cn("px-2 py-2", !isVisuallyExpanded && "px-2")}>
-              {renderNavItem({
-                name: "垃圾箱",
-                href: "/home?folder=trash",
-                icon: Trash2,
-              })}
+              {renderNavItem(
+                {
+                  name: "垃圾箱",
+                  href: "/home?folder=trash",
+                  icon: Trash2,
+                },
+                groupCandyColors.system,
+              )}
             </div>
 
             {/* 版本信息 */}
