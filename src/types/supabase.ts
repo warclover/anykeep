@@ -1762,6 +1762,52 @@ export type Database = {
           },
         ];
       };
+      /** 分发服务 OAuth Token 加密存储表 */
+      distribution_oauth_tokens: {
+        Row: {
+          id: string;
+          user_id: string;
+          provider: string;
+          access_token: string;
+          refresh_token: string | null;
+          workspace_id: string | null;
+          workspace_name: string | null;
+          workspace_icon: string | null;
+          bot_id: string | null;
+          expires_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          provider: string;
+          access_token: string;
+          refresh_token?: string | null;
+          workspace_id?: string | null;
+          workspace_name?: string | null;
+          workspace_icon?: string | null;
+          bot_id?: string | null;
+          expires_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          provider?: string;
+          access_token?: string;
+          refresh_token?: string | null;
+          workspace_id?: string | null;
+          workspace_name?: string | null;
+          workspace_icon?: string | null;
+          bot_id?: string | null;
+          expires_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       /**
        * 文件夹排除规则表 - 负样本学习机制
        * 记录用户明确表示不属于某文件夹的内容特征
@@ -2960,6 +3006,34 @@ export type Database = {
           last_used_at?: string;
           expires_at?: string;
           revoked_at?: string | null;
+        };
+        Relationships: [];
+      };
+      /** OAuth 授权状态表，用于 CSRF 防护 */
+      oauth_states: {
+        Row: {
+          id: string;
+          state: string;
+          user_id: string;
+          provider: string;
+          expires_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          state: string;
+          user_id: string;
+          provider: string;
+          expires_at: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          state?: string;
+          user_id?: string;
+          provider?: string;
+          expires_at?: string;
+          created_at?: string;
         };
         Relationships: [];
       };

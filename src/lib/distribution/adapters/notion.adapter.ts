@@ -312,14 +312,15 @@ export class NotionAdapter implements IDistributionAdapter {
     }
 
     const database = await response.json();
+    const rawProperties = database.properties as
+      | Record<string, { id: string; type: string }>
+      | undefined;
 
-    return Object.entries(database.properties || {}).map(
-      ([name, prop]: [string, { id: string; type: string }]) => ({
-        id: prop.id,
-        name,
-        type: prop.type,
-      }),
-    );
+    return Object.entries(rawProperties || {}).map(([name, prop]) => ({
+      id: prop.id,
+      name,
+      type: prop.type,
+    }));
   }
 
   // ==================== 私有方法 ====================
