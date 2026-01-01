@@ -303,7 +303,7 @@ export function SynthesisNewPageClient() {
   ]);
 
   return (
-    <div className="container max-w-2xl py-6 space-y-6">
+    <div className="w-full px-4 md:px-8 lg:px-12 xl:px-16 py-6 space-y-6">
       {/* 顶部导航 */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild>
@@ -321,7 +321,7 @@ export function SynthesisNewPageClient() {
 
       {/* 步骤 1: 选择来源类型 */}
       {step === 1 && (
-        <Card>
+        <Card className="w-full">
           <CardHeader>
             <CardTitle>选择书签来源</CardTitle>
             <CardDescription>选择要合成的书签来源</CardDescription>
@@ -355,7 +355,7 @@ export function SynthesisNewPageClient() {
 
       {/* 步骤 1.5: 选择具体来源 */}
       {step === 1.5 && sourceType && (
-        <Card>
+        <Card className="w-full">
           <CardHeader>
             <CardTitle>
               {sourceType === "folder" && "选择文件夹"}
@@ -395,7 +395,7 @@ export function SynthesisNewPageClient() {
 
       {/* 步骤 2: 预览书签并选择深度 */}
       {step === 2 && sourceSelection && (
-        <Card>
+        <Card className="w-full">
           <CardHeader>
             <CardTitle>预览与设置</CardTitle>
             <CardDescription>
@@ -496,7 +496,7 @@ export function SynthesisNewPageClient() {
 
       {/* 步骤 3: 确认并生成 */}
       {step === 3 && sourceSelection && (
-        <Card>
+        <Card className="w-full">
           <CardHeader>
             <CardTitle>确认生成</CardTitle>
             <CardDescription>检查设置并开始生成综述</CardDescription>
