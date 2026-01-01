@@ -60,36 +60,36 @@ export function LinkHealthProgress({
 }: LinkHealthProgressProps) {
   return (
     <Card>
-      <CardContent className="pt-6 space-y-4">
+      <CardContent className="pt-4 space-y-3">
         {/* 进度条 */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground flex items-center gap-2">
-              <Loader2 className="size-4 animate-spin" />
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-muted-foreground flex items-center gap-1.5">
+              <Loader2 className="size-3.5 animate-spin" />
               {currentStep || "正在检测..."}
             </span>
             <span className="font-medium">{Math.round(progress)}%</span>
           </div>
-          <Progress value={progress} className="h-2" />
+          <Progress value={progress} className="h-1.5" />
         </div>
 
         {/* 实时统计 */}
         {stats && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {STAT_ITEMS.map((item) => {
               const Icon = item.icon;
               const value = stats[item.key] || 0;
               return (
                 <div
                   key={item.key}
-                  className="flex items-center gap-2 p-3 rounded-lg bg-muted/50"
+                  className="flex items-center gap-1.5 p-2 rounded-lg bg-muted/50"
                 >
-                  <Icon className={`size-5 ${item.color}`} />
+                  <Icon className={`size-4 ${item.color}`} />
                   <div>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-[10px] text-muted-foreground">
                       {item.label}
                     </p>
-                    <p className="text-lg font-semibold">{value}</p>
+                    <p className="text-sm font-semibold">{value}</p>
                   </div>
                 </div>
               );
@@ -99,7 +99,7 @@ export function LinkHealthProgress({
 
         {/* 已检测总数 */}
         {stats && (
-          <div className="text-center text-sm text-muted-foreground pt-2">
+          <div className="text-center text-xs text-muted-foreground">
             已检测 <span className="font-medium">{stats.totalChecked}</span>{" "}
             个链接
           </div>

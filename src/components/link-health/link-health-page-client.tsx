@@ -345,14 +345,14 @@ export function LinkHealthPageClient() {
   // ==================== 渲染 ====================
 
   return (
-    <div className="container max-w-4xl mx-auto px-4 py-6">
+    <div className="container max-w-4xl mx-auto px-4 py-4">
       {/* 页面标题 */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <HeartPulse className="size-7 text-rose-500" />
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <HeartPulse className="size-5 text-rose-500" />
           <div>
-            <h1 className="text-2xl font-bold">{PAGE_TEXT.title}</h1>
-            <p className="text-sm text-muted-foreground">
+            <h1 className="text-lg font-bold">{PAGE_TEXT.title}</h1>
+            <p className="text-xs text-muted-foreground">
               {PAGE_TEXT.description}
             </p>
           </div>
@@ -365,25 +365,27 @@ export function LinkHealthPageClient() {
         )}
       </div>
 
-      <div className="space-y-6">
+      <div className="space-y-4">
         {/* 检测配置 */}
         <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              🔍 检测配置
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <CardContent className="py-4">
+            <div className="flex flex-wrap items-center gap-4">
+              {/* 标题 */}
+              <div className="flex items-center gap-2 text-sm font-medium">
+                🔍 检测配置
+              </div>
+
               {/* 范围选择 */}
-              <div className="space-y-2">
-                <Label>{PAGE_TEXT.scopeLabel}</Label>
+              <div className="flex items-center gap-2">
+                <Label className="text-xs text-muted-foreground whitespace-nowrap">
+                  {PAGE_TEXT.scopeLabel}
+                </Label>
                 <Select
                   value={scope}
                   onValueChange={(v) => setScope(v as CheckScope)}
                   disabled={isRunning}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="w-[120px] h-9">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -399,14 +401,16 @@ export function LinkHealthPageClient() {
 
               {/* 文件夹选择 */}
               {scope === "folder" && (
-                <div className="space-y-2">
-                  <Label>{PAGE_TEXT.folderLabel}</Label>
+                <div className="flex items-center gap-2">
+                  <Label className="text-xs text-muted-foreground whitespace-nowrap">
+                    {PAGE_TEXT.folderLabel}
+                  </Label>
                   <Select
                     value={selectedFolderId}
                     onValueChange={setSelectedFolderId}
                     disabled={isRunning || isLoadingFolders}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="w-[140px] h-9">
                       <SelectValue placeholder="选择文件夹" />
                     </SelectTrigger>
                     <SelectContent>
@@ -422,21 +426,25 @@ export function LinkHealthPageClient() {
                   </Select>
                 </div>
               )}
-            </div>
 
-            {/* 操作按钮 */}
-            <div className="flex justify-end gap-2 pt-2">
-              {isRunning ? (
-                <Button variant="destructive" onClick={handleStopCheck}>
-                  <StopCircle className="size-4 mr-2" />
-                  {PAGE_TEXT.stopButton}
-                </Button>
-              ) : (
-                <Button onClick={handleStartCheck}>
-                  <Play className="size-4 mr-2" />
-                  {PAGE_TEXT.startButton}
-                </Button>
-              )}
+              {/* 操作按钮 - 右对齐 */}
+              <div className="ml-auto">
+                {isRunning ? (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={handleStopCheck}
+                  >
+                    <StopCircle className="size-4 mr-1.5" />
+                    {PAGE_TEXT.stopButton}
+                  </Button>
+                ) : (
+                  <Button size="sm" onClick={handleStartCheck}>
+                    <Play className="size-4 mr-1.5" />
+                    {PAGE_TEXT.startButton}
+                  </Button>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -453,13 +461,13 @@ export function LinkHealthPageClient() {
         {/* 检测结果 */}
         {hasResults && (
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
+            <CardHeader className="py-3">
+              <CardTitle className="text-sm flex items-center gap-2">
                 <FileWarning className="size-4 text-amber-500" />
                 检测结果
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0">
               <LinkHealthResultList
                 stats={runState.stats}
                 problems={runState.problems}
@@ -472,13 +480,13 @@ export function LinkHealthPageClient() {
         {/* 空状态 */}
         {!isRunning && !hasResults && runState.status === "pending" && (
           <Card>
-            <CardContent className="py-12">
+            <CardContent className="py-8">
               <div className="text-center text-muted-foreground">
-                <HeartPulse className="size-12 mx-auto mb-4 opacity-50" />
-                <p className="text-lg font-medium">
+                <HeartPulse className="size-10 mx-auto mb-3 opacity-50" />
+                <p className="text-base font-medium">
                   {PAGE_TEXT.emptyState.title}
                 </p>
-                <p className="text-sm">{PAGE_TEXT.emptyState.description}</p>
+                <p className="text-xs">{PAGE_TEXT.emptyState.description}</p>
               </div>
             </CardContent>
           </Card>

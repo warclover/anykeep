@@ -133,18 +133,18 @@ export function LinkHealthResultList({
     : 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* 统计摘要 */}
       {stats && (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {/* 健康率 */}
-          <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
+          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
             <div>
-              <p className="text-sm text-muted-foreground">链接健康率</p>
-              <p className="text-3xl font-bold">{healthRate}%</p>
+              <p className="text-xs text-muted-foreground">链接健康率</p>
+              <p className="text-2xl font-bold">{healthRate}%</p>
             </div>
             <div
-              className={`size-16 rounded-full flex items-center justify-center ${
+              className={`size-12 rounded-full flex items-center justify-center ${
                 healthRate >= 80
                   ? "bg-green-100 text-green-600"
                   : healthRate >= 60
@@ -153,27 +153,29 @@ export function LinkHealthResultList({
               }`}
             >
               {healthRate >= 80 ? (
-                <CheckCircle2 className="size-8" />
+                <CheckCircle2 className="size-6" />
               ) : healthRate >= 60 ? (
-                <Clock className="size-8" />
+                <Clock className="size-6" />
               ) : (
-                <XCircle className="size-8" />
+                <XCircle className="size-6" />
               )}
             </div>
           </div>
 
           {/* 统计卡片 */}
-          <div className="grid grid-cols-5 gap-2">
+          <div className="grid grid-cols-5 gap-1.5">
             {STAT_CARDS.map((card) => (
               <div
                 key={card.key}
-                className="text-center p-3 rounded-lg bg-muted/30"
+                className="text-center p-2 rounded-lg bg-muted/30"
               >
                 <div
-                  className={`size-3 rounded-full ${card.color} mx-auto mb-1`}
+                  className={`size-2.5 rounded-full ${card.color} mx-auto mb-0.5`}
                 />
-                <p className="text-xs text-muted-foreground">{card.label}</p>
-                <p className="text-lg font-semibold">{stats[card.key] || 0}</p>
+                <p className="text-[10px] text-muted-foreground">
+                  {card.label}
+                </p>
+                <p className="text-sm font-semibold">{stats[card.key] || 0}</p>
               </div>
             ))}
           </div>
@@ -182,26 +184,28 @@ export function LinkHealthResultList({
 
       {/* 问题列表 */}
       {problems.length > 0 && (
-        <div className="space-y-4">
+        <div className="space-y-3">
           <Tabs
             value={filter}
             onValueChange={(v) => setFilter(v as ProblemFilter)}
           >
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="all">全部 ({problems.length})</TabsTrigger>
-              <TabsTrigger value="failed">
+            <TabsList className="grid w-full grid-cols-4 h-8">
+              <TabsTrigger value="all" className="text-xs">
+                全部 ({problems.length})
+              </TabsTrigger>
+              <TabsTrigger value="failed" className="text-xs">
                 失效 ({problems.filter((p) => p.status === "failed").length})
               </TabsTrigger>
-              <TabsTrigger value="slow">
+              <TabsTrigger value="slow" className="text-xs">
                 缓慢 ({problems.filter((p) => p.status === "slow").length})
               </TabsTrigger>
-              <TabsTrigger value="redirect">
+              <TabsTrigger value="redirect" className="text-xs">
                 重定向 ({problems.filter((p) => p.status === "redirect").length}
                 )
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value={filter} className="mt-4">
+            <TabsContent value={filter} className="mt-3">
               <div className="border rounded-lg">
                 <Table>
                   <TableHeader>
@@ -273,8 +277,8 @@ export function LinkHealthResultList({
                     })}
                     {filteredProblems.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={4} className="text-center py-8">
-                          <p className="text-muted-foreground">
+                        <TableCell colSpan={4} className="text-center py-6">
+                          <p className="text-muted-foreground text-sm">
                             没有符合条件的问题链接
                           </p>
                         </TableCell>
@@ -290,10 +294,10 @@ export function LinkHealthResultList({
 
       {/* 空状态 */}
       {problems.length === 0 && stats && (
-        <div className="text-center py-8">
-          <CheckCircle2 className="size-12 mx-auto mb-4 text-green-500" />
-          <p className="text-lg font-medium">太棒了！所有链接都是健康的</p>
-          <p className="text-sm text-muted-foreground">
+        <div className="text-center py-6">
+          <CheckCircle2 className="size-10 mx-auto mb-3 text-green-500" />
+          <p className="text-base font-medium">太棒了！所有链接都是健康的</p>
+          <p className="text-xs text-muted-foreground">
             共检测 {stats.totalChecked} 个链接，未发现问题
           </p>
         </div>
