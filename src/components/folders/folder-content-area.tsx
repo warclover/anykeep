@@ -18,6 +18,7 @@ import {
   Folder,
   FolderTree,
   Inbox,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -49,6 +50,7 @@ interface FolderContentAreaProps extends FolderActionCallbacks {
   recentBookmarks: BookmarkWithFolder[];
   lockStatusMap: LockStatusMap;
   onCreateFolder: () => void;
+  onOpenAIAssistant?: () => void;
   className?: string;
 }
 
@@ -69,6 +71,7 @@ export function FolderContentArea({
   recentBookmarks,
   lockStatusMap,
   onCreateFolder,
+  onOpenAIAssistant,
   onActionComplete,
   onFolderDeleted,
   onFolderRenamed,
@@ -176,12 +179,13 @@ export function FolderContentArea({
 
   return (
     <div className={cn("flex flex-col h-full overflow-hidden", className)}>
-      {/* 分组标题 */}
-      <div className="flex-shrink-0 px-6 py-4 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-        <div className="flex items-center gap-4">
+      {/* 单行标题栏 */}
+      <div className="flex-shrink-0 px-6 py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+        <div className="flex items-center gap-3">
+          {/* 左侧：图标 + 标题 + 统计 */}
           <div
             className={cn(
-              "w-12 h-12 rounded-xl flex items-center justify-center shadow-sm",
+              "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0",
               selectedGroup !== "all" && selectedGroup !== "system"
                 ? `bg-gradient-to-br ${FOLDER_GROUPS[selectedGroup]?.colors.gradient.from} ${FOLDER_GROUPS[selectedGroup]?.colors.gradient.to}`
                 : "bg-gray-100 dark:bg-gray-800",
@@ -189,28 +193,38 @@ export function FolderContentArea({
           >
             <GroupIcon
               className={cn(
-                "size-6",
+                "size-4",
                 selectedGroup !== "all" && selectedGroup !== "system"
                   ? "text-white"
                   : "text-gray-600 dark:text-gray-400",
               )}
             />
           </div>
-          <div className="flex-1">
-            <h2 className="text-base font-semibold text-gray-900 dark:text-white">
-              {groupConfig.label}
-            </h2>
-            <p className="text-[10px] text-muted-foreground">
-              {stats.folderCount} 个文件夹 · {stats.bookmarkCount} 篇收藏
-              {stats.todayCount > 0 && (
-                <span className="text-green-500 ml-1">
-                  +{stats.todayCount} 今日
-                </span>
-              )}
-            </p>
-          </div>
-          <Button onClick={onCreateFolder}>
-            <Plus className="size-4 mr-2" />
+          <h2 className="text-sm font-semibold text-gray-900 dark:text-white">
+            {groupConfig.label}
+          </h2>
+          <span className="text-xs text-muted-foreground">
+            {stats.folderCount} 个文件夹 · {stats.bookmarkCount} 篇收藏
+            {stats.todayCount > 0 && (
+              <span className="text-green-500 ml-1">+{stats.todayCount}</span>
+            )}
+          </span>
+
+          {/* 右侧：按钮组 */}
+          <div className="flex-1" />
+          {onOpenAIAssistant && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onOpenAIAssistant}
+              className="hidden lg:flex gap-1.5 text-violet-600 border-violet-200 hover:bg-violet-50 hover:border-violet-300 dark:text-violet-400 dark:border-violet-800 dark:hover:bg-violet-950"
+            >
+              <Sparkles className="size-4" />
+              AI 助手
+            </Button>
+          )}
+          <Button size="sm" onClick={onCreateFolder}>
+            <Plus className="size-4 mr-1" />
             新建文件夹
           </Button>
         </div>

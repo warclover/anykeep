@@ -273,27 +273,13 @@ export function FoldersPageClient({
 
         {/* 内容区域 */}
         <div className="flex-1 flex flex-col min-h-0">
-          {/* 桌面端顶部操作栏 */}
-          <div className="hidden lg:flex items-center justify-between px-6 py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-            <h1 className="text-lg font-semibold">收藏夹</h1>
-            {/* AI 助手按钮 */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsAIAssistantOpen(true)}
-              className="gap-2 text-violet-600 border-violet-200 hover:bg-violet-50 hover:border-violet-300 dark:text-violet-400 dark:border-violet-800 dark:hover:bg-violet-950"
-            >
-              <Sparkles className="size-4" />
-              AI 助手
-            </Button>
-          </div>
-
           <FolderContentArea
             folders={localFolders}
             selectedGroup={selectedGroup}
             recentBookmarks={recentBookmarks}
             lockStatusMap={lockStatusMap}
             onCreateFolder={handleCreateClick}
+            onOpenAIAssistant={() => setIsAIAssistantOpen(true)}
             onActionComplete={() => router.refresh()}
             onFolderDeleted={handleFolderDeleted}
             onFolderRenamed={handleFolderRenamed}
