@@ -294,10 +294,10 @@ export function InboxPageClient({
             <Inbox className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            <h1 className="text-sm font-bold text-gray-900 dark:text-white">
               待整理
             </h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
               {bookmarks.length > 0
                 ? `${bookmarks.length} 个书签等待整理`
                 : "暂无待整理的书签"}
@@ -430,10 +430,10 @@ function TrustModeBanner({
     return (
       <Alert className="border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30">
         <Zap className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-        <AlertTitle className="text-emerald-800 dark:text-emerald-300">
+        <AlertTitle className="text-xs text-emerald-800 dark:text-emerald-300">
           全自动模式
         </AlertTitle>
-        <AlertDescription className="text-emerald-700 dark:text-emerald-400">
+        <AlertDescription className="text-xs text-emerald-700 dark:text-emerald-400">
           <span>新书签会被 AI 自动分类到合适的文件夹。</span>
           <span className="ml-1">
             这里的书签正在等待 AI 处理或置信度较低待聚类分析。
@@ -457,15 +457,15 @@ function TrustModeBanner({
     return (
       <Alert className="border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30">
         <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-        <AlertTitle className="text-blue-800 dark:text-blue-300 flex items-center gap-2">
+        <AlertTitle className="text-xs text-blue-800 dark:text-blue-300 flex items-center gap-2">
           半自动模式
           {pendingCount > 0 && (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300">
               {pendingCount} 个待确认
             </span>
           )}
         </AlertTitle>
-        <AlertDescription className="text-blue-700 dark:text-blue-400">
+        <AlertDescription className="text-xs text-blue-700 dark:text-blue-400">
           <span>AI 会为新书签建议分类，但需要您确认后才会执行。</span>
           {pendingCount > 0 && (
             <Button
@@ -497,10 +497,10 @@ function TrustModeBanner({
     return (
       <Alert className="border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30">
         <Hand className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-        <AlertTitle className="text-amber-800 dark:text-amber-300">
+        <AlertTitle className="text-xs text-amber-800 dark:text-amber-300">
           手动模式
         </AlertTitle>
-        <AlertDescription className="text-amber-700 dark:text-amber-400">
+        <AlertDescription className="text-xs text-amber-700 dark:text-amber-400">
           <span>AI 分类已关闭，请手动将书签整理到文件夹。</span>
           <span className="ml-1">左侧面板提供智能建议供参考。</span>
           <Button

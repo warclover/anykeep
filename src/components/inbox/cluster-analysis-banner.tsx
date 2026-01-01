@@ -117,7 +117,7 @@ export function ClusterAnalysisBanner({
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h4 className="font-semibold text-gray-900 dark:text-white">
+                  <h4 className="text-xs font-semibold text-gray-900 dark:text-white">
                     AI 正在分析 {stats.totalPending} 个书签
                   </h4>
                   <Tooltip>
@@ -134,7 +134,7 @@ export function ClusterAnalysisBanner({
                   </Tooltip>
                 </div>
 
-                <div className="flex items-center gap-3 mt-1 text-sm text-gray-600 dark:text-gray-400">
+                <div className="flex items-center gap-3 mt-1 text-xs text-gray-600 dark:text-gray-400">
                   <span className="flex items-center gap-1">
                     <Clock className="w-3.5 h-3.5" />
                     {waitingTime}
