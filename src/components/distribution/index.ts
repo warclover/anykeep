@@ -5,4 +5,6 @@
 export { ObsidianConfigForm } from "./obsidian-config-form";
 export type { ObsidianConfigFormProps } from "./obsidian-config-form";
 
+export { NotionConnectButton } from "./notion-connect-button";
+
 export { DistributionPageClient } from "./distribution-page-client";

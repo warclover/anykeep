@@ -7,8 +7,8 @@
 
 export { ManualExportAdapter } from "./manual-export.adapter";
 export { ObsidianAdapter } from "./obsidian.adapter";
+export { NotionAdapter } from "./notion.adapter";
 
 // 后续 Story 实现后添加
-// export { NotionAdapter } from './notion.adapter';
 // export { WebhookAdapter } from './webhook.adapter';
 // export { RssFeedAdapter } from './rss.adapter';
