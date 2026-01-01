@@ -163,7 +163,7 @@ const navigationGroups: NavGroup[] = [
       "bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400",
     items: [
       {
-        name: "自习工坊",
+        name: "知识回顾",
         href: "/brain-sync",
         icon: GraduationCap,
         description: "知识复习",

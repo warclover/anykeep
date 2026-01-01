@@ -122,7 +122,7 @@ const smartListItems: NavItem[] = [
  */
 const learningCenterItems: NavItem[] = [
   {
-    name: "自习工坊",
+    name: "知识回顾",
     href: "/brain-sync",
     icon: GraduationCap,
     badge: "brain-sync",
