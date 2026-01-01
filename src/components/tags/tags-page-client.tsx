@@ -1,13 +1,14 @@
 /**
- * 标签浏览页面客户端组件
+ * 标签浏览页面客户端组件 - 分组卡片视图
  *
- * @version 1.1.0
+ * @version 2.0.0
  * @since 2025-12-29
+ * @description 重构为分组卡片视图，支持热门标签区和类型分组折叠
  */
 
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   Tag,
@@ -16,7 +17,9 @@ import {
   User,
   TrendingUp,
   SortAsc,
-  FileText,
+  ChevronDown,
+  ChevronRight,
+  Flame,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,15 +31,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuSeparator,
-  ContextMenuTrigger,
-} from "@/components/ui/context-menu";
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { ErrorMessage } from "@/components/ui/error-message";
 import type { TagWithCount } from "@/app/(main)/tags/page";
 import { cn } from "@/lib/utils";
+
+// ============================================================================
+// Types
+// ============================================================================
 
 interface TagsPageClientProps {
   tags: TagWithCount[];
@@ -45,46 +50,64 @@ interface TagsPageClientProps {
 
 type SortMode = "frequency" | "alphabetical";
 
-export function TagsPageClient({ tags, error }: TagsPageClientProps) {
-  const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [sortMode, setSortMode] = useState<SortMode>("frequency");
+interface TagGroupConfig {
+  type: TagWithCount["type"];
+  title: string;
+  icon: React.ReactNode;
+  colorClass: string;
+  bgClass: string;
+  borderClass: string;
+}
 
-  // 筛选和排序标签
-  const filteredAndSortedTags = useMemo(() => {
-    let result = tags;
+// ============================================================================
+// Constants
+// ============================================================================
 
-    // 搜索筛选
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter((item) => item.tag.toLowerCase().includes(query));
-    }
+const TOP_TAGS_COUNT = 10;
 
-    // 排序
-    if (sortMode === "alphabetical") {
-      result = [...result].sort((a, b) => a.tag.localeCompare(b.tag, "zh-CN"));
-    }
+const TAG_GROUP_CONFIGS: TagGroupConfig[] = [
+  {
+    type: "ai",
+    title: "AI 标签",
+    icon: <Sparkles className="size-4" />,
+    colorClass: "text-pink-600 dark:text-pink-400",
+    bgClass: "bg-pink-50 dark:bg-pink-900/20",
+    borderClass: "border-pink-200 dark:border-pink-800",
+  },
+  {
+    type: "user",
+    title: "用户标签",
+    icon: <User className="size-4" />,
+    colorClass: "text-blue-600 dark:text-blue-400",
+    bgClass: "bg-blue-50 dark:bg-blue-900/20",
+    borderClass: "border-blue-200 dark:border-blue-800",
+  },
+  {
+    type: "both",
+    title: "混合标签",
+    icon: <Tag className="size-4" />,
+    colorClass: "text-purple-600 dark:text-purple-400",
+    bgClass: "bg-purple-50 dark:bg-purple-900/20",
+    borderClass: "border-purple-200 dark:border-purple-800",
+  },
+];
 
-    return result;
-  }, [tags, searchQuery, sortMode]);
+// ============================================================================
+// Components
+// ============================================================================
 
-  // 点击标签跳转到搜索页面
-  const handleTagClick = (tag: string) => {
-    router.push(`/search?q=${encodeURIComponent(tag)}`);
-  };
-
-  // 基于标签创建综述
-  const handleCreateSynthesis = useCallback(
-    (tag: string) => {
-      // 跳转到综述创建页，带上标签参数
-      router.push(
-        `/synthesis/new?sourceType=tag&tag=${encodeURIComponent(tag)}`,
-      );
-    },
-    [router],
-  );
-
-  // 获取标签的徽章样式
+/**
+ * 单个标签按钮
+ */
+function TagButton({
+  item,
+  onClick,
+  size = "default",
+}: {
+  item: TagWithCount;
+  onClick: () => void;
+  size?: "default" | "large";
+}) {
   const getTagBadgeClass = (type: TagWithCount["type"]) => {
     switch (type) {
       case "ai":
@@ -96,7 +119,6 @@ export function TagsPageClient({ tags, error }: TagsPageClientProps) {
     }
   };
 
-  // 获取标签图标
   const getTagIcon = (type: TagWithCount["type"]) => {
     switch (type) {
       case "ai":
@@ -106,6 +128,186 @@ export function TagsPageClient({ tags, error }: TagsPageClientProps) {
       case "both":
         return <Tag className="size-3" />;
     }
+  };
+
+  return (
+    <Button
+      variant="outline"
+      size={size === "large" ? "lg" : "default"}
+      onClick={onClick}
+      className={cn(
+        "h-auto transition-all border",
+        size === "large"
+          ? "py-2.5 px-3 flex flex-col items-start gap-0.5"
+          : "py-1.5 px-2.5 flex items-center gap-1.5",
+        getTagBadgeClass(item.type),
+      )}
+    >
+      {size === "large" ? (
+        <>
+          <div className="flex items-center gap-1.5 text-xs font-medium">
+            {getTagIcon(item.type)}
+            <span>{item.tag}</span>
+          </div>
+          <div className="text-[10px] opacity-75">{item.count} 个收藏</div>
+        </>
+      ) : (
+        <>
+          {getTagIcon(item.type)}
+          <span className="text-xs">{item.tag}</span>
+          <span className="text-[10px] opacity-60">({item.count})</span>
+        </>
+      )}
+    </Button>
+  );
+}
+
+/**
+ * 热门标签区
+ */
+function HotTagsSection({
+  tags,
+  onTagClick,
+}: {
+  tags: TagWithCount[];
+  onTagClick: (tag: string) => void;
+}) {
+  if (tags.length === 0) return null;
+
+  return (
+    <section className="mb-6">
+      <div className="flex items-center gap-2 mb-4">
+        <Flame className="size-5 text-orange-500" />
+        <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+          热门标签
+        </h3>
+        <span className="text-xs text-gray-500 dark:text-gray-400">
+          Top {tags.length}
+        </span>
+      </div>
+      <div className="flex flex-wrap gap-3">
+        {tags.map((item) => (
+          <TagButton
+            key={item.tag}
+            item={item}
+            onClick={() => onTagClick(item.tag)}
+            size="large"
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/**
+ * 标签分组（可折叠）
+ */
+function TagGroup({
+  config,
+  tags,
+  onTagClick,
+  defaultOpen = false,
+}: {
+  config: TagGroupConfig;
+  tags: TagWithCount[];
+  onTagClick: (tag: string) => void;
+  defaultOpen?: boolean;
+}) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
+  if (tags.length === 0) return null;
+
+  return (
+    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="mb-4">
+      <CollapsibleTrigger asChild>
+        <button
+          className={cn(
+            "w-full flex items-center justify-between p-4 rounded-lg border transition-colors",
+            "hover:bg-gray-50 dark:hover:bg-gray-800/50",
+            config.bgClass,
+            config.borderClass,
+          )}
+        >
+          <div className="flex items-center gap-3">
+            <span className={config.colorClass}>{config.icon}</span>
+            <span className={cn("text-sm font-medium", config.colorClass)}>
+              {config.title}
+            </span>
+            <span className="text-xs text-gray-500 dark:text-gray-400">
+              ({tags.length})
+            </span>
+          </div>
+          {isOpen ? (
+            <ChevronDown className="size-5 text-gray-400" />
+          ) : (
+            <ChevronRight className="size-5 text-gray-400" />
+          )}
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="mt-3 ml-4 flex flex-wrap gap-2">
+          {tags.map((item) => (
+            <TagButton
+              key={item.tag}
+              item={item}
+              onClick={() => onTagClick(item.tag)}
+            />
+          ))}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
+// ============================================================================
+// Main Component
+// ============================================================================
+
+export function TagsPageClient({ tags, error }: TagsPageClientProps) {
+  const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortMode, setSortMode] = useState<SortMode>("frequency");
+
+  // 筛选和排序标签
+  const filteredTags = useMemo(() => {
+    let result = tags;
+
+    // 搜索筛选
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter((item) => item.tag.toLowerCase().includes(query));
+    }
+
+    // 排序
+    if (sortMode === "alphabetical") {
+      result = [...result].sort((a, b) => a.tag.localeCompare(b.tag, "zh-CN"));
+    } else {
+      result = [...result].sort((a, b) => b.count - a.count);
+    }
+
+    return result;
+  }, [tags, searchQuery, sortMode]);
+
+  // 热门标签（Top N，仅在无搜索时显示）
+  const hotTags = useMemo(() => {
+    if (searchQuery.trim()) return [];
+    return [...tags].sort((a, b) => b.count - a.count).slice(0, TOP_TAGS_COUNT);
+  }, [tags, searchQuery]);
+
+  // 按类型分组（排除热门标签）
+  const groupedTags = useMemo(() => {
+    const hotTagSet = new Set(hotTags.map((t) => t.tag));
+    const filtered = filteredTags.filter((t) => !hotTagSet.has(t.tag));
+
+    return TAG_GROUP_CONFIGS.map((config) => ({
+      config,
+      tags: filtered.filter((t) => t.type === config.type),
+    }));
+  }, [filteredTags, hotTags]);
+
+  // 点击标签跳转到搜索页面
+  const handleTagClick = (tag: string) => {
+    router.push(`/search?q=${encodeURIComponent(tag)}`);
   };
 
   if (error) {
@@ -123,17 +325,17 @@ export function TagsPageClient({ tags, error }: TagsPageClientProps) {
     <div className="h-full flex flex-col">
       {/* Header */}
       <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 md:px-8 py-4 md:py-6">
-        <h2 className="text-gray-900 dark:text-white text-xl md:text-2xl font-semibold mb-2">
+        <h2 className="text-gray-900 dark:text-white text-lg md:text-xl font-semibold mb-1">
           标签浏览
         </h2>
-        <p className="text-gray-500 dark:text-gray-400 text-sm">
+        <p className="text-gray-500 dark:text-gray-400 text-xs">
           共 {totalTags} 个标签，使用 {totalUsage} 次
         </p>
       </header>
 
       {/* Content */}
       <div className="flex-1 overflow-auto px-4 md:px-8 py-6">
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-4xl mx-auto">
           {/* 工具栏 */}
           <div className="flex flex-col sm:flex-row gap-4 mb-6">
             {/* 搜索框 */}
@@ -152,7 +354,7 @@ export function TagsPageClient({ tags, error }: TagsPageClientProps) {
               value={sortMode}
               onValueChange={(value) => setSortMode(value as SortMode)}
             >
-              <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectTrigger className="w-full sm:w-[160px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -172,46 +374,37 @@ export function TagsPageClient({ tags, error }: TagsPageClientProps) {
             </Select>
           </div>
 
-          {/* 标签网格 */}
-          {filteredAndSortedTags.length > 0 ? (
-            <div className="flex flex-wrap gap-3">
-              {filteredAndSortedTags.map((item) => (
-                <ContextMenu key={item.tag}>
-                  <ContextMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="lg"
-                      onClick={() => handleTagClick(item.tag)}
-                      className={cn(
-                        "h-auto py-3 px-4 flex flex-col items-start gap-1 transition-all",
-                        getTagBadgeClass(item.type),
-                      )}
-                    >
-                      <div className="flex items-center gap-2 text-sm font-medium">
-                        {getTagIcon(item.type)}
-                        <span>{item.tag}</span>
-                      </div>
-                      <div className="text-xs opacity-75">
-                        {item.count} 个收藏
-                      </div>
-                    </Button>
-                  </ContextMenuTrigger>
-                  <ContextMenuContent>
-                    <ContextMenuItem onClick={() => handleTagClick(item.tag)}>
-                      <Search className="mr-2 h-4 w-4" />
-                      搜索该标签
-                    </ContextMenuItem>
-                    <ContextMenuSeparator />
-                    <ContextMenuItem
-                      onClick={() => handleCreateSynthesis(item.tag)}
-                    >
-                      <FileText className="mr-2 h-4 w-4" />
-                      生成综述
-                    </ContextMenuItem>
-                  </ContextMenuContent>
-                </ContextMenu>
-              ))}
-            </div>
+          {/* 内容区 */}
+          {filteredTags.length > 0 ? (
+            <>
+              {/* 热门标签区（搜索时隐藏） */}
+              {!searchQuery.trim() && (
+                <HotTagsSection tags={hotTags} onTagClick={handleTagClick} />
+              )}
+
+              {/* 分隔线 */}
+              {!searchQuery.trim() && hotTags.length > 0 && (
+                <div className="border-t border-gray-200 dark:border-gray-700 my-6" />
+              )}
+
+              {/* 分组标签 */}
+              <section>
+                {!searchQuery.trim() && (
+                  <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-3">
+                    按类型浏览
+                  </h3>
+                )}
+                {groupedTags.map(({ config, tags: groupTags }) => (
+                  <TagGroup
+                    key={config.type}
+                    config={config}
+                    tags={groupTags}
+                    onTagClick={handleTagClick}
+                    defaultOpen={searchQuery.trim().length > 0}
+                  />
+                ))}
+              </section>
+            </>
           ) : (
             <div className="text-center py-16">
               <Tag className="size-12 mx-auto text-gray-300 dark:text-gray-600 mb-4" />
@@ -220,47 +413,6 @@ export function TagsPageClient({ tags, error }: TagsPageClientProps) {
                   ? "没有找到匹配的标签"
                   : "还没有标签，去创建第一个收藏吧"}
               </p>
-            </div>
-          )}
-
-          {/* 说明卡片 */}
-          {tags.length > 0 && (
-            <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="p-4 bg-pink-50 dark:bg-pink-900/20 rounded-lg border border-pink-200 dark:border-pink-800">
-                <div className="flex items-center gap-2 mb-2">
-                  <Sparkles className="size-4 text-pink-600 dark:text-pink-400" />
-                  <span className="font-medium text-pink-900 dark:text-pink-100">
-                    AI 标签
-                  </span>
-                </div>
-                <p className="text-xs text-pink-700 dark:text-pink-300">
-                  由 AI 自动生成的内容标签
-                </p>
-              </div>
-
-              <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                <div className="flex items-center gap-2 mb-2">
-                  <User className="size-4 text-blue-600 dark:text-blue-400" />
-                  <span className="font-medium text-blue-900 dark:text-blue-100">
-                    用户标签
-                  </span>
-                </div>
-                <p className="text-xs text-blue-700 dark:text-blue-300">
-                  由你手动添加的自定义标签
-                </p>
-              </div>
-
-              <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
-                <div className="flex items-center gap-2 mb-2">
-                  <Tag className="size-4 text-purple-600 dark:text-purple-400" />
-                  <span className="font-medium text-purple-900 dark:text-purple-100">
-                    混合标签
-                  </span>
-                </div>
-                <p className="text-xs text-purple-700 dark:text-purple-300">
-                  同时作为 AI 标签和用户标签
-                </p>
-              </div>
             </div>
           )}
         </div>
