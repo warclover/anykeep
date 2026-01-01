@@ -217,51 +217,51 @@ export function BrainSyncPageClient() {
   if (!loading && preferences && !preferences.enabled) {
     return (
       <div className="h-full flex flex-col">
-        {/* Header */}
-        <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 md:px-8 py-4 md:py-6">
+        {/* Header - 单行紧凑布局 */}
+        <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 md:px-6 py-3">
           <div className="flex items-center gap-3">
-            <Brain className="h-6 w-6 text-purple-500" />
-            <div>
-              <h2 className="text-gray-900 dark:text-white text-xl md:text-2xl font-semibold">
-                复习实验室
-              </h2>
-              <p className="text-gray-500 dark:text-gray-400 text-sm">
-                Brain-Sync 智能间隔复习系统
-              </p>
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-500 flex items-center justify-center flex-shrink-0">
+              <Brain className="size-4 text-white" />
             </div>
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-white">
+              复习实验室
+            </h2>
+            <span className="text-xs text-muted-foreground">
+              Brain-Sync 智能间隔复习系统
+            </span>
           </div>
         </header>
 
         {/* 未启用提示 */}
-        <div className="flex-1 flex items-center justify-center p-8">
-          <Card className="max-w-md w-full">
-            <CardHeader className="text-center">
-              <div className="mx-auto w-16 h-16 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center mb-4">
-                <Brain className="h-8 w-8 text-purple-500" />
+        <div className="flex-1 flex items-center justify-center p-6">
+          <Card className="max-w-sm w-full">
+            <CardHeader className="text-center pb-2">
+              <div className="mx-auto w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center mb-3">
+                <Brain className="size-6 text-purple-500" />
               </div>
-              <CardTitle>开启 Brain-Sync</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-base">开启 Brain-Sync</CardTitle>
+              <CardDescription className="text-xs">
                 使用 SM-2 间隔重复算法，科学安排复习计划，帮助您牢固记忆收藏内容
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2 text-sm text-muted-foreground">
+            <CardContent className="space-y-3 pt-0">
+              <div className="space-y-1.5 text-xs text-muted-foreground">
                 <div className="flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-purple-500" />
+                  <Sparkles className="size-3.5 text-purple-500" />
                   <span>AI 自动生成复习卡片</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-purple-500" />
+                  <Calendar className="size-3.5 text-purple-500" />
                   <span>智能安排复习时间</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4 text-purple-500" />
+                  <TrendingUp className="size-3.5 text-purple-500" />
                   <span>追踪学习进度</span>
                 </div>
               </div>
-              <Button asChild className="w-full">
+              <Button asChild className="w-full h-8" size="sm">
                 <Link href="/settings#brain-sync">
-                  <Settings className="mr-2 h-4 w-4" />
+                  <Settings className="mr-1.5 size-4" />
                   前往设置启用
                 </Link>
               </Button>
@@ -304,162 +304,153 @@ export function BrainSyncPageClient() {
 
   return (
     <div className="h-full flex flex-col">
-      {/* Header */}
-      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 md:px-8 py-4 md:py-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Brain className="h-6 w-6 text-purple-500" />
-            <div>
-              <h2 className="text-gray-900 dark:text-white text-xl md:text-2xl font-semibold">
-                复习实验室
-              </h2>
-              <p className="text-gray-500 dark:text-gray-400 text-sm">
-                Brain-Sync 智能间隔复习系统
-              </p>
-            </div>
+      {/* Header - 单行紧凑布局 */}
+      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 md:px-6 py-3">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-500 flex items-center justify-center flex-shrink-0">
+            <Brain className="size-4 text-white" />
           </div>
-          <div className="flex items-center gap-3">
-            <Button variant="outline" size="sm" asChild>
-              <Link href="/settings#brain-sync">
-                <Settings className="h-4 w-4" />
-              </Link>
-            </Button>
-            <Button onClick={() => setReviewOpen(true)}>
-              <BookOpen className="mr-2 h-4 w-4" />
-              开始复习
-            </Button>
-          </div>
+          <h2 className="text-sm font-semibold text-gray-900 dark:text-white">
+            复习实验室
+          </h2>
+          <span className="text-xs text-muted-foreground">
+            Brain-Sync 智能间隔复习系统
+          </span>
+          <div className="flex-1" />
+          <Button variant="outline" size="sm" asChild className="h-8">
+            <Link href="/settings#brain-sync">
+              <Settings className="size-4" />
+            </Link>
+          </Button>
+          <Button size="sm" onClick={() => setReviewOpen(true)} className="h-8">
+            <BookOpen className="mr-1.5 size-4" />
+            开始复习
+          </Button>
         </div>
       </header>
 
       {/* Content */}
-      <div className="flex-1 overflow-auto px-4 md:px-8 py-6">
-        <div className="max-w-6xl mx-auto space-y-6">
-          {/* 统计概览 */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">总卡片</p>
-                    <p className="text-2xl font-bold">
-                      {stats?.totalFlashcards ?? 0}
-                    </p>
-                  </div>
-                  <BookOpen className="h-8 w-8 text-purple-500 opacity-50" />
+      <div className="flex-1 overflow-auto px-4 md:px-6 py-4">
+        <div className="max-w-6xl mx-auto space-y-4">
+          {/* 统计概览 - 紧凑单行布局 */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <Card className="py-2 px-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground">总卡片</p>
+                  <p className="text-lg font-bold">
+                    {stats?.totalFlashcards ?? 0}
+                  </p>
                 </div>
-              </CardContent>
+                <BookOpen className="size-5 text-purple-500 opacity-50" />
+              </div>
             </Card>
 
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">已掌握</p>
-                    <p className="text-2xl font-bold text-green-600">
-                      {stats?.masteredCount ?? 0}
-                    </p>
-                  </div>
-                  <Trophy className="h-8 w-8 text-green-500 opacity-50" />
+            <Card className="py-2 px-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground">已掌握</p>
+                  <p className="text-lg font-bold text-green-600">
+                    {stats?.masteredCount ?? 0}
+                  </p>
                 </div>
-              </CardContent>
+                <Trophy className="size-5 text-green-500 opacity-50" />
+              </div>
             </Card>
 
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">待复习</p>
-                    <p className="text-2xl font-bold text-yellow-600">
-                      {queueStats?.total ?? 0}
-                    </p>
-                  </div>
-                  <Clock className="h-8 w-8 text-yellow-500 opacity-50" />
+            <Card className="py-2 px-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground">待复习</p>
+                  <p className="text-lg font-bold text-yellow-600">
+                    {queueStats?.total ?? 0}
+                  </p>
                 </div>
-              </CardContent>
+                <Clock className="size-5 text-yellow-500 opacity-50" />
+              </div>
             </Card>
 
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">连续天数</p>
-                    <p className="text-2xl font-bold text-blue-600">
-                      {stats?.streakDays ?? 0}
-                    </p>
-                  </div>
-                  <TrendingUp className="h-8 w-8 text-blue-500 opacity-50" />
+            <Card className="py-2 px-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground">连续天数</p>
+                  <p className="text-lg font-bold text-blue-600">
+                    {stats?.streakDays ?? 0}
+                  </p>
                 </div>
-              </CardContent>
+                <TrendingUp className="size-5 text-blue-500 opacity-50" />
+              </div>
             </Card>
           </div>
 
-          {/* 掌握进度 */}
+          {/* 掌握进度 - 紧凑布局 */}
           {stats && stats.totalFlashcards > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">学习进度</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">掌握率</span>
-                    <span className="font-medium">
-                      {Math.round(stats.masteredRate * 100)}%
-                    </span>
-                  </div>
-                  <Progress value={stats.masteredRate * 100} className="h-3" />
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>待学习 {stats.pendingCount}</span>
-                    <span>学习中 {stats.learningCount}</span>
-                    <span>已掌握 {stats.masteredCount}</span>
-                  </div>
+            <Card className="p-3">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-medium text-gray-900 dark:text-white">
+                    学习进度
+                  </span>
+                  <span className="text-muted-foreground">
+                    掌握率 {Math.round(stats.masteredRate * 100)}%
+                  </span>
                 </div>
-              </CardContent>
+                <Progress value={stats.masteredRate * 100} className="h-2" />
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>待学习 {stats.pendingCount}</span>
+                  <span>学习中 {stats.learningCount}</span>
+                  <span>已掌握 {stats.masteredCount}</span>
+                </div>
+              </div>
             </Card>
           )}
 
-          {/* 待复习队列 */}
+          {/* 待复习队列 - 单行标题 */}
           <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">待复习队列</CardTitle>
+            <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-800">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-gray-900 dark:text-white">
+                  待复习队列
+                </span>
                 {queueStats && queueStats.overdue > 0 && (
-                  <Badge variant="destructive">
+                  <Badge variant="destructive" className="text-[10px] h-5">
                     {queueStats.overdue} 张逾期
                   </Badge>
                 )}
+                <span className="text-xs text-muted-foreground">
+                  {queueStats
+                    ? `今日 ${queueStats.dueToday ?? 0} 张 · 本周 ${queueStats.dueThisWeek ?? 0} 张`
+                    : "暂无待复习卡片"}
+                </span>
               </div>
-              <CardDescription>
-                {queueStats
-                  ? `今日 ${queueStats.dueToday ?? 0} 张 · 本周 ${queueStats.dueThisWeek ?? 0} 张`
-                  : "暂无待复习卡片"}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+            </div>
+            <div className="p-3">
               {queueItems.length > 0 ? (
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {queueItems.map((item, index) => (
                     <div
                       key={`flashcard-${item.flashcardId}-${index}`}
                       className={cn(
-                        "flex items-center gap-4 p-3 rounded-lg border",
+                        "flex items-center gap-3 p-2 rounded-lg border",
                         item.daysOverdue > 0
                           ? "bg-red-50 border-red-200 dark:bg-red-900/10 dark:border-red-800"
                           : "bg-muted/50",
                       )}
                     >
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">
+                        <p className="text-xs font-medium truncate">
                           {item.bookmarkTitle}
                         </p>
-                        <p className="text-sm text-muted-foreground truncate">
+                        <p className="text-xs text-muted-foreground truncate">
                           {item.question}
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
                         {item.daysOverdue > 0 && (
-                          <Badge variant="destructive" className="shrink-0">
+                          <Badge
+                            variant="destructive"
+                            className="shrink-0 text-[10px] h-5"
+                          >
                             逾期 {item.daysOverdue} 天
                           </Badge>
                         )}
@@ -467,13 +458,13 @@ export function BrainSyncPageClient() {
                           variant="ghost"
                           size="icon"
                           asChild
-                          className="shrink-0"
+                          className="shrink-0 h-7 w-7"
                         >
                           <Link
                             href={`/bookmark/${item.bookmarkId}`}
                             target="_blank"
                           >
-                            <ExternalLink className="h-4 w-4" />
+                            <ExternalLink className="size-3.5" />
                           </Link>
                         </Button>
                       </div>
@@ -481,61 +472,62 @@ export function BrainSyncPageClient() {
                   ))}
 
                   {queueStats && queueStats.total > 5 && (
-                    <p className="text-center text-sm text-muted-foreground pt-2">
+                    <p className="text-center text-xs text-muted-foreground pt-1">
                       还有 {queueStats.total - 5} 张卡片待复习
                     </p>
                   )}
 
                   <Button
-                    className="w-full mt-4"
+                    className="w-full mt-2 h-8"
+                    size="sm"
                     onClick={() => setReviewOpen(true)}
                   >
-                    <BookOpen className="mr-2 h-4 w-4" />
+                    <BookOpen className="mr-1.5 size-4" />
                     开始复习
                   </Button>
                 </div>
               ) : (
-                <div className="text-center py-8">
-                  <Trophy className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
-                  <p className="text-muted-foreground">
+                <div className="text-center py-6">
+                  <Trophy className="size-10 text-yellow-500 mx-auto mb-3" />
+                  <p className="text-xs text-muted-foreground">
                     太棒了！当前没有需要复习的卡片
                   </p>
                 </div>
               )}
-            </CardContent>
+            </div>
           </Card>
 
-          {/* 复习计划 */}
+          {/* 复习计划 - 紧凑布局 */}
           {preferences && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">复习计划</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                  <div>
-                    <p className="text-muted-foreground">首选复习日</p>
-                    <p className="font-medium">
-                      {DAY_LABELS[preferences.preferredDay] ||
-                        preferences.preferredDay}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">首选时间</p>
-                    <p className="font-medium">{preferences.preferredTime}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">每周上限</p>
-                    <p className="font-medium">{preferences.weeklyLimit} 张</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">本周已复习</p>
-                    <p className="font-medium">
-                      {stats?.sessionsInPeriod ?? 0} 次
-                    </p>
-                  </div>
+            <Card className="p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xs font-medium text-gray-900 dark:text-white">
+                  复习计划
+                </span>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                <div>
+                  <p className="text-muted-foreground">首选复习日</p>
+                  <p className="font-medium">
+                    {DAY_LABELS[preferences.preferredDay] ||
+                      preferences.preferredDay}
+                  </p>
                 </div>
-              </CardContent>
+                <div>
+                  <p className="text-muted-foreground">首选时间</p>
+                  <p className="font-medium">{preferences.preferredTime}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">每周上限</p>
+                  <p className="font-medium">{preferences.weeklyLimit} 张</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">本周已复习</p>
+                  <p className="font-medium">
+                    {stats?.sessionsInPeriod ?? 0} 次
+                  </p>
+                </div>
+              </div>
             </Card>
           )}
         </div>
