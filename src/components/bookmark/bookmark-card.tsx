@@ -546,6 +546,8 @@ export const BookmarkCard = memo(function BookmarkCard({
                 src={coverImage}
                 alt={bookmark.title}
                 className="w-full h-full object-cover"
+                loading="lazy"
+                decoding="async"
               />
             </div>
             {/* 平台标识 */}
@@ -581,6 +583,8 @@ export const BookmarkCard = memo(function BookmarkCard({
                 src={coverImage}
                 alt={bookmark.title}
                 className="w-full h-full object-cover"
+                loading="lazy"
+                decoding="async"
               />
             </div>
             <div className="absolute bottom-2 left-2">
@@ -770,6 +774,8 @@ export const BookmarkCard = memo(function BookmarkCard({
             src={coverImage}
             alt={bookmark.title}
             className="w-full h-full object-cover card-cover-top card-cover-zoom"
+            loading="lazy"
+            decoding="async"
           />
           {/* 平台标识 - P0.5: 放大 + 固定左上角 */}
           <div className="absolute top-3 left-3">

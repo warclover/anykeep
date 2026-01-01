@@ -195,6 +195,8 @@ export const TrashBookmarkCard = memo(function TrashBookmarkCard({
               src={coverImage}
               alt={bookmark.title}
               className="w-full h-full object-cover"
+              loading="lazy"
+              decoding="async"
             />
           </div>
         )}

@@ -168,6 +168,8 @@ export const FlipBookmarkCard = memo(function FlipBookmarkCard({
               src={coverImage}
               alt={bookmark.title}
               className="w-full h-full object-cover"
+              loading="lazy"
+              decoding="async"
             />
             <div className="absolute top-2 left-2">
               <PlatformBadge platform={bookmark.platform} size="md" showName />
@@ -226,6 +228,8 @@ export const FlipBookmarkCard = memo(function FlipBookmarkCard({
                 src={coverImage}
                 alt={bookmark.title}
                 className="w-full h-full object-cover card-cover-top card-cover-zoom"
+                loading="lazy"
+                decoding="async"
               />
 
               {/* 平台标识 - P0.5: 放大 + 固定左上角 */}

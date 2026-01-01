@@ -380,17 +380,56 @@ export function HomePageClient({
   const [showSynthesisDialog, setShowSynthesisDialog] = useState(false);
   const [isCreatingSynthesis, setIsCreatingSynthesis] = useState(false);
 
-  // E8: 综述智能推荐
+  // E8: 综述智能推荐 - 延迟加载优化 (FCP 性能修复)
+  // 延迟 AI 功能加载，避免阻塞首屏渲染
+  const [deferredAIReady, setDeferredAIReady] = useState(false);
+
   const {
     currentRecommend,
     shouldShowBubble,
     acceptRecommend,
     dismissRecommend,
     closeBubble,
+    refresh: refreshSynthesisRecommend,
   } = useSynthesisRecommend({
-    autoFetch: true,
+    autoFetch: false, // 禁用自动获取，延迟到首屏渲染完成后
     autoShowBubble: true,
   });
+
+  // 延迟触发 AI 功能（首屏渲染完成后）
+  useEffect(() => {
+    // 使用 requestIdleCallback 在浏览器空闲时加载
+    // 如果不支持则使用 setTimeout 降级
+    const scheduleAILoad = () => {
+      if ("requestIdleCallback" in window) {
+        (
+          window as Window & {
+            requestIdleCallback: (
+              cb: () => void,
+              opts?: { timeout: number },
+            ) => number;
+          }
+        ).requestIdleCallback(
+          () => {
+            setDeferredAIReady(true);
+            refreshSynthesisRecommend();
+          },
+          { timeout: 3000 }, // 最多延迟 3 秒
+        );
+      } else {
+        // Safari 等不支持 requestIdleCallback 的浏览器
+        setTimeout(() => {
+          setDeferredAIReady(true);
+          refreshSynthesisRecommend();
+        }, 1500); // 延迟 1.5 秒
+      }
+    };
+
+    // 确保首屏渲染完成后再触发
+    if (typeof window !== "undefined") {
+      scheduleAILoad();
+    }
+  }, [refreshSynthesisRecommend]);
 
   // 批量选择模式
   const {
@@ -759,12 +798,15 @@ export function HomePageClient({
           </Suspense>
         </SilentErrorBoundary>
 
-        {/* AI Secretary Evolution Phase 0: 主动简报卡片（懒加载） */}
-        <SilentErrorBoundary>
-          <Suspense fallback={null}>
-            <ProactiveBriefingCard className="mb-4" />
-          </Suspense>
-        </SilentErrorBoundary>
+        {/* AI Secretary Evolution Phase 0: 主动简报卡片（懒加载 + 延迟渲染） */}
+        {/* FCP 性能优化：仅在首屏渲染完成后才加载 AI 简报组件 */}
+        {deferredAIReady && (
+          <SilentErrorBoundary>
+            <Suspense fallback={null}>
+              <ProactiveBriefingCard className="mb-4" />
+            </Suspense>
+          </SilentErrorBoundary>
+        )}
 
         {/* 初始加载骨架屏 */}
         {isInitialLoading ? (
