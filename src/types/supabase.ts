@@ -4017,6 +4017,8 @@ export type Database = {
           source_bookmark_ids: string[] | null;
           /** 深度模式: quick, standard, academic */
           depth_mode: string;
+          /** 输出风格: summary, narrative, comparison, critical @since 2026-01-01 [S1] */
+          output_style: string;
           overview: string | null;
           consensus: Json | null;
           divergence: Json | null;
@@ -4040,6 +4042,8 @@ export type Database = {
           source_id?: string | null;
           source_bookmark_ids?: string[] | null;
           depth_mode: string;
+          /** 输出风格，默认 narrative @since 2026-01-01 [S1] */
+          output_style?: string;
           overview?: string | null;
           consensus?: Json | null;
           divergence?: Json | null;
@@ -4062,6 +4066,8 @@ export type Database = {
           source_id?: string | null;
           source_bookmark_ids?: string[] | null;
           depth_mode?: string;
+          /** 输出风格 @since 2026-01-01 [S1] */
+          output_style?: string;
           overview?: string | null;
           consensus?: Json | null;
           divergence?: Json | null;
