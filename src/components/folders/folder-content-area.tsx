@@ -197,10 +197,10 @@ export function FolderContentArea({
             />
           </div>
           <div className="flex-1">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white">
               {groupConfig.label}
             </h2>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-[10px] text-muted-foreground">
               {stats.folderCount} 个文件夹 · {stats.bookmarkCount} 篇收藏
               {stats.todayCount > 0 && (
                 <span className="text-green-500 ml-1">

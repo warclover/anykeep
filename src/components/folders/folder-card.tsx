@@ -105,7 +105,7 @@ export function FolderCard({
                 <div className="flex items-center gap-2 flex-wrap">
                   <h3
                     className={cn(
-                      "text-base font-semibold truncate max-w-[140px]",
+                      "text-xs font-semibold truncate max-w-[140px]",
                       "text-gray-800 dark:text-gray-100",
                     )}
                   >

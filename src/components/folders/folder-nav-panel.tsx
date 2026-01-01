@@ -73,7 +73,7 @@ function NavItem({
       aria-selected={isSelected}
       aria-level={indent + 1}
       className={cn(
-        "w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors",
+        "w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-colors",
         "hover:bg-gray-100 dark:hover:bg-gray-800",
         isSelected && "bg-primary/10 text-primary font-medium",
         isSystem && "bg-blue-50 dark:bg-blue-900/20",
@@ -153,7 +153,7 @@ function GroupHeader({
         </div>
         <span
           className={cn(
-            "flex-1 text-left text-sm font-medium truncate",
+            "flex-1 text-left text-xs font-medium truncate",
             isSelected && "text-primary",
           )}
         >
