@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -461,13 +461,12 @@ export function LinkHealthPageClient() {
         {/* 检测结果 */}
         {hasResults && (
           <Card>
-            <CardHeader className="py-3">
-              <CardTitle className="text-sm flex items-center gap-2">
+            <CardContent className="py-3 px-4">
+              {/* 标题行 - 与成功消息合并显示 */}
+              <div className="flex items-center gap-2 mb-2">
                 <FileWarning className="size-4 text-amber-500" />
-                检测结果
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
+                <span className="text-sm font-medium">检测结果</span>
+              </div>
               <LinkHealthResultList
                 stats={runState.stats}
                 problems={runState.problems}

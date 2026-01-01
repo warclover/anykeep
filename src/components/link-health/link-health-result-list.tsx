@@ -127,24 +127,84 @@ export function LinkHealthResultList({
     return p.status === filter;
   });
 
-  // 计算健康率
+  // 计算健康率 - 修正：当没有问题链接时，所有链接都是健康的
+  const effectiveHealthyCount =
+    problems.length === 0 && stats
+      ? stats.totalChecked
+      : stats?.healthyCount || 0;
+
   const healthRate = stats
-    ? Math.round((stats.healthyCount / stats.totalChecked) * 100)
+    ? Math.round((effectiveHealthyCount / stats.totalChecked) * 100)
     : 0;
 
+  // 获取修正后的统计值
+  const getStatValue = (key: keyof HealthCheckStats) => {
+    if (!stats) return 0;
+    // 当没有问题链接时，健康数等于已检测数
+    if (key === "healthyCount" && problems.length === 0) {
+      return stats.totalChecked;
+    }
+    return stats[key] || 0;
+  };
+
   return (
-    <div className="space-y-4">
-      {/* 统计摘要 */}
-      {stats && (
-        <div className="space-y-3">
-          {/* 健康率 */}
-          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+    <div className="space-y-2">
+      {/* 空状态 - 所有链接健康时显示简洁成功消息 */}
+      {problems.length === 0 && stats && (
+        <div className="space-y-2">
+          {/* 成功消息行 */}
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="size-5 text-green-500" />
             <div>
-              <p className="text-xs text-muted-foreground">链接健康率</p>
-              <p className="text-2xl font-bold">{healthRate}%</p>
+              <span className="text-sm font-medium">
+                太棒了！所有链接都是健康的
+              </span>
+              <span className="text-xs text-muted-foreground ml-2">
+                共检测 {stats.totalChecked} 个链接，未发现问题
+              </span>
             </div>
+          </div>
+
+          {/* 统计行 */}
+          <div className="flex items-center gap-4 p-2 rounded-lg bg-muted/30">
+            {/* 健康率 */}
+            <div className="flex items-center gap-1.5">
+              <div className="size-6 rounded-full flex items-center justify-center bg-green-100 text-green-600">
+                <CheckCircle2 className="size-3.5" />
+              </div>
+              <div className="flex items-baseline gap-1">
+                <span className="text-[10px] text-muted-foreground">
+                  健康率
+                </span>
+                <span className="text-base font-bold">{healthRate}%</span>
+              </div>
+            </div>
+
+            {/* 统计卡片 - 横向排列 */}
+            <div className="flex-1 flex justify-around">
+              {STAT_CARDS.map((card) => (
+                <div key={card.key} className="flex items-center gap-1">
+                  <div className={`size-2 rounded-full ${card.color}`} />
+                  <span className="text-[10px] text-muted-foreground">
+                    {card.label}
+                  </span>
+                  <span className="text-sm font-semibold">
+                    {getStatValue(card.key)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 有问题时显示统计摘要 */}
+      {problems.length > 0 && stats && (
+        <div className="flex items-center gap-4 p-2 rounded-lg bg-muted/30">
+          {/* 健康率 */}
+          <div className="flex items-center gap-1.5">
             <div
-              className={`size-12 rounded-full flex items-center justify-center ${
+              className={`size-6 rounded-full flex items-center justify-center ${
                 healthRate >= 80
                   ? "bg-green-100 text-green-600"
                   : healthRate >= 60
@@ -153,29 +213,30 @@ export function LinkHealthResultList({
               }`}
             >
               {healthRate >= 80 ? (
-                <CheckCircle2 className="size-6" />
+                <CheckCircle2 className="size-3.5" />
               ) : healthRate >= 60 ? (
-                <Clock className="size-6" />
+                <Clock className="size-3.5" />
               ) : (
-                <XCircle className="size-6" />
+                <XCircle className="size-3.5" />
               )}
+            </div>
+            <div className="flex items-baseline gap-1">
+              <span className="text-[10px] text-muted-foreground">健康率</span>
+              <span className="text-base font-bold">{healthRate}%</span>
             </div>
           </div>
 
-          {/* 统计卡片 */}
-          <div className="grid grid-cols-5 gap-1.5">
+          {/* 统计卡片 - 横向排列 */}
+          <div className="flex-1 flex justify-around">
             {STAT_CARDS.map((card) => (
-              <div
-                key={card.key}
-                className="text-center p-2 rounded-lg bg-muted/30"
-              >
-                <div
-                  className={`size-2.5 rounded-full ${card.color} mx-auto mb-0.5`}
-                />
-                <p className="text-[10px] text-muted-foreground">
+              <div key={card.key} className="flex items-center gap-1">
+                <div className={`size-2 rounded-full ${card.color}`} />
+                <span className="text-[10px] text-muted-foreground">
                   {card.label}
-                </p>
-                <p className="text-sm font-semibold">{stats[card.key] || 0}</p>
+                </span>
+                <span className="text-sm font-semibold">
+                  {getStatValue(card.key)}
+                </span>
               </div>
             ))}
           </div>
@@ -184,36 +245,40 @@ export function LinkHealthResultList({
 
       {/* 问题列表 */}
       {problems.length > 0 && (
-        <div className="space-y-3">
+        <div className="space-y-2">
           <Tabs
             value={filter}
             onValueChange={(v) => setFilter(v as ProblemFilter)}
           >
-            <TabsList className="grid w-full grid-cols-4 h-8">
-              <TabsTrigger value="all" className="text-xs">
+            <TabsList className="grid w-full grid-cols-4 h-7">
+              <TabsTrigger value="all" className="text-[11px] py-1">
                 全部 ({problems.length})
               </TabsTrigger>
-              <TabsTrigger value="failed" className="text-xs">
+              <TabsTrigger value="failed" className="text-[11px] py-1">
                 失效 ({problems.filter((p) => p.status === "failed").length})
               </TabsTrigger>
-              <TabsTrigger value="slow" className="text-xs">
+              <TabsTrigger value="slow" className="text-[11px] py-1">
                 缓慢 ({problems.filter((p) => p.status === "slow").length})
               </TabsTrigger>
-              <TabsTrigger value="redirect" className="text-xs">
+              <TabsTrigger value="redirect" className="text-[11px] py-1">
                 重定向 ({problems.filter((p) => p.status === "redirect").length}
                 )
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value={filter} className="mt-3">
+            <TabsContent value={filter} className="mt-2">
               <div className="border rounded-lg">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[50%]">链接</TableHead>
-                      <TableHead>状态</TableHead>
-                      <TableHead>响应时间</TableHead>
-                      <TableHead className="text-right">操作</TableHead>
+                    <TableRow className="h-8">
+                      <TableHead className="w-[50%] py-1.5 text-xs">
+                        链接
+                      </TableHead>
+                      <TableHead className="py-1.5 text-xs">状态</TableHead>
+                      <TableHead className="py-1.5 text-xs">响应</TableHead>
+                      <TableHead className="text-right py-1.5 text-xs">
+                        操作
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -221,20 +286,20 @@ export function LinkHealthResultList({
                       const statusConfig = STATUS_CONFIG[problem.status];
                       const StatusIcon = statusConfig.icon;
                       return (
-                        <TableRow key={problem.bookmarkId}>
-                          <TableCell>
-                            <div className="space-y-1">
+                        <TableRow key={problem.bookmarkId} className="h-10">
+                          <TableCell className="py-1.5">
+                            <div className="space-y-0.5">
                               <a
                                 href={problem.url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-sm font-medium hover:underline flex items-center gap-1 truncate max-w-[300px]"
+                                className="text-xs font-medium hover:underline flex items-center gap-1 truncate max-w-[280px]"
                               >
                                 {problem.url}
-                                <ExternalLink className="size-3 flex-shrink-0" />
+                                <ExternalLink className="size-2.5 flex-shrink-0" />
                               </a>
                               {problem.errorMessage && (
-                                <p className="text-xs text-muted-foreground">
+                                <p className="text-[10px] text-muted-foreground truncate max-w-[280px]">
                                   {problem.errorMessage}
                                 </p>
                               )}
@@ -243,32 +308,36 @@ export function LinkHealthResultList({
                                   href={problem.waybackUrl}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="text-xs text-blue-500 hover:underline"
+                                  className="text-[10px] text-blue-500 hover:underline"
                                 >
-                                  📚 查看归档版本
+                                  📚 归档
                                 </a>
                               )}
                             </div>
                           </TableCell>
-                          <TableCell>
-                            <Badge variant={statusConfig.variant}>
-                              <StatusIcon className="size-3 mr-1" />
+                          <TableCell className="py-1.5">
+                            <Badge
+                              variant={statusConfig.variant}
+                              className="text-[10px] px-1.5 py-0"
+                            >
+                              <StatusIcon className="size-2.5 mr-0.5" />
                               {statusConfig.label}
-                              {problem.httpStatus && ` (${problem.httpStatus})`}
+                              {problem.httpStatus && ` ${problem.httpStatus}`}
                             </Badge>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="py-1.5 text-xs">
                             {problem.responseTimeMs
                               ? `${problem.responseTimeMs}ms`
                               : "-"}
                           </TableCell>
-                          <TableCell className="text-right">
+                          <TableCell className="text-right py-1.5">
                             <Button
                               variant="ghost"
                               size="sm"
+                              className="h-6 px-2 text-xs"
                               onClick={() => onFixProblem(problem)}
                             >
-                              <Wrench className="size-4 mr-1" />
+                              <Wrench className="size-3 mr-1" />
                               修复
                             </Button>
                           </TableCell>
@@ -277,8 +346,8 @@ export function LinkHealthResultList({
                     })}
                     {filteredProblems.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={4} className="text-center py-6">
-                          <p className="text-muted-foreground text-sm">
+                        <TableCell colSpan={4} className="text-center py-4">
+                          <p className="text-muted-foreground text-xs">
                             没有符合条件的问题链接
                           </p>
                         </TableCell>
@@ -289,17 +358,6 @@ export function LinkHealthResultList({
               </div>
             </TabsContent>
           </Tabs>
-        </div>
-      )}
-
-      {/* 空状态 */}
-      {problems.length === 0 && stats && (
-        <div className="text-center py-6">
-          <CheckCircle2 className="size-10 mx-auto mb-3 text-green-500" />
-          <p className="text-base font-medium">太棒了！所有链接都是健康的</p>
-          <p className="text-xs text-muted-foreground">
-            共检测 {stats.totalChecked} 个链接，未发现问题
-          </p>
         </div>
       )}
     </div>
