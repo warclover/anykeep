@@ -877,6 +877,112 @@ export const ALL_PERSONA_INTENT_RULES: PersonaIntentRule[] = [
   ...COMMON_PERSONA_RULES,
 ];
 
+// =============================================================================
+// 综述意图规则 [S2]
+// =============================================================================
+
+/**
+ * 综述意图规则
+ *
+ * 适用于触发主题综述生成的自然语言表达
+ *
+ * @since 2026-01-01
+ */
+export const SYNTHESIS_INTENT_RULES: PersonaIntentRule[] = [
+  {
+    id: "synthesis-create",
+    personas: [
+      "pm",
+      "consultant",
+      "teacher",
+      "analyst",
+      "researcher",
+      "lifelong_learner",
+      "curator",
+    ],
+    pattern:
+      /综述|合成|整合|归纳|总结.*(收藏|文章|内容|书签)|把.*(综合|整理|汇总)|生成.*报告/,
+    intentType: "create",
+    intentSubtype: "synthesis",
+    confidenceBoost: 1.6,
+    contextHint: "用户希望生成多书签综述报告，需要识别目标书签范围",
+    responseStyle: "structured",
+    priority: 95,
+  },
+  {
+    id: "synthesis-folder",
+    personas: [
+      "pm",
+      "consultant",
+      "teacher",
+      "analyst",
+      "researcher",
+      "lifelong_learner",
+    ],
+    pattern: /(综述|总结|归纳).*(文件夹|目录)|(文件夹|目录).*(综述|总结|归纳)/,
+    intentType: "create",
+    intentSubtype: "synthesis_folder",
+    confidenceBoost: 1.7,
+    contextHint: "用户希望对指定文件夹内容生成综述",
+    responseStyle: "structured",
+    priority: 96,
+  },
+  {
+    id: "synthesis-tag",
+    personas: [
+      "pm",
+      "consultant",
+      "teacher",
+      "analyst",
+      "researcher",
+      "lifelong_learner",
+    ],
+    pattern: /(综述|总结|归纳).*(标签|主题)|(标签|主题).*(综述|总结|归纳)/,
+    intentType: "create",
+    intentSubtype: "synthesis_tag",
+    confidenceBoost: 1.7,
+    contextHint: "用户希望对指定标签内容生成综述",
+    responseStyle: "structured",
+    priority: 96,
+  },
+  {
+    id: "synthesis-recent",
+    personas: [
+      "pm",
+      "consultant",
+      "teacher",
+      "analyst",
+      "researcher",
+      "lifelong_learner",
+    ],
+    pattern: /(综述|总结|归纳).*(最近|近期|这周|今天|昨天)/,
+    intentType: "create",
+    intentSubtype: "synthesis_recent",
+    confidenceBoost: 1.5,
+    contextHint: "用户希望对最近收藏的内容生成综述",
+    responseStyle: "structured",
+    priority: 94,
+  },
+  {
+    id: "synthesis-topic",
+    personas: [
+      "pm",
+      "consultant",
+      "teacher",
+      "analyst",
+      "researcher",
+      "lifelong_learner",
+    ],
+    pattern: /(综述|总结|归纳).*(关于|有关)|关于.*(综述|总结|归纳)/,
+    intentType: "create",
+    intentSubtype: "synthesis_topic",
+    confidenceBoost: 1.6,
+    contextHint: "用户希望对特定主题内容生成综述",
+    responseStyle: "structured",
+    priority: 95,
+  },
+];
+
 /**
  * 按画像分组的规则
  */
@@ -887,19 +993,23 @@ export const INTENT_RULES_BY_PERSONA: Partial<
   pm: [
     ...PM_INTENT_RULES,
     ...COMMON_PERSONA_RULES.filter((r) => r.personas.includes("pm")),
+    ...SYNTHESIS_INTENT_RULES.filter((r) => r.personas.includes("pm")),
   ],
   consultant: [
     ...CONSULTANT_INTENT_RULES,
     ...COMMON_PERSONA_RULES.filter((r) => r.personas.includes("consultant")),
+    ...SYNTHESIS_INTENT_RULES.filter((r) => r.personas.includes("consultant")),
   ],
   teacher: [
     ...TEACHER_INTENT_RULES,
     ...COMMON_PERSONA_RULES.filter((r) => r.personas.includes("teacher")),
+    ...SYNTHESIS_INTENT_RULES.filter((r) => r.personas.includes("teacher")),
   ],
   // Phase 2
   analyst: [
     ...ANALYST_INTENT_RULES,
     ...COMMON_PERSONA_RULES.filter((r) => r.personas.includes("analyst")),
+    ...SYNTHESIS_INTENT_RULES.filter((r) => r.personas.includes("analyst")),
   ],
   cert_seeker: CERT_SEEKER_INTENT_RULES,
   ux_researcher: [
@@ -916,12 +1026,23 @@ export const INTENT_RULES_BY_PERSONA: Partial<
   game_planner: GAME_PLANNER_INTENT_RULES,
   trainer: TRAINER_INTENT_RULES,
   // Phase 3 - 学术研究型
-  researcher: RESEARCHER_INTENT_RULES,
+  researcher: [
+    ...RESEARCHER_INTENT_RULES,
+    ...SYNTHESIS_INTENT_RULES.filter((r) => r.personas.includes("researcher")),
+  ],
   // Phase 3 - 内容创作型
   online_teacher: ONLINE_TEACHER_INTENT_RULES,
-  curator: CURATOR_INTENT_RULES,
+  curator: [
+    ...CURATOR_INTENT_RULES,
+    ...SYNTHESIS_INTENT_RULES.filter((r) => r.personas.includes("curator")),
+  ],
   // Phase 3 - 自我提升型
-  lifelong_learner: LIFELONG_LEARNER_INTENT_RULES,
+  lifelong_learner: [
+    ...LIFELONG_LEARNER_INTENT_RULES,
+    ...SYNTHESIS_INTENT_RULES.filter((r) =>
+      r.personas.includes("lifelong_learner"),
+    ),
+  ],
   career_changer: [
     ...CAREER_CHANGER_INTENT_RULES,
     ...LIFELONG_LEARNER_INTENT_RULES.filter((r) =>

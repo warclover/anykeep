@@ -215,6 +215,52 @@ const DEFAULT_RULES: IntentRule[] = [
   },
 
   // ============================================
+  // 综述类（v2.8.0 新增 - 主题合成器）
+  // ============================================
+  {
+    // 通用综述请求
+    pattern:
+      /综述|合成|整合.{0,5}(收藏|文章)|归纳.{0,5}(收藏|文章)|生成.{0,3}(综述|报告|合成)/,
+    type: "create",
+    subType: "synthesis",
+    complexity: "complex",
+    weight: 90,
+  },
+  {
+    // 按文件夹综述
+    pattern: /(综述|合成|整合|归纳).{0,5}(文件夹|目录)|文件夹.{0,5}(综述|合成)/,
+    type: "create",
+    subType: "synthesis_folder",
+    complexity: "complex",
+    weight: 92,
+  },
+  {
+    // 按标签综述
+    pattern: /(综述|合成|整合|归纳).{0,5}标签|标签.{0,5}(综述|合成)/,
+    type: "create",
+    subType: "synthesis_tag",
+    complexity: "complex",
+    weight: 92,
+  },
+  {
+    // 最近收藏综述
+    pattern: /(综述|合成|整合|归纳).{0,5}(最近|近期|这周|今天|昨天)/,
+    type: "create",
+    subType: "synthesis_recent",
+    complexity: "complex",
+    weight: 91,
+  },
+  {
+    // 特定主题综述
+    pattern:
+      /(综述|合成|整合|归纳).{0,5}(关于|有关)|关于.{0,5}(综述|合成|整合)/,
+    type: "create",
+    subType: "synthesis_topic",
+    complexity: "complex",
+    weight: 93,
+  },
+
+  // ============================================
   // 过滤/筛选类（需要上下文有搜索结果）
   // ============================================
   {

@@ -176,6 +176,38 @@ const DEFAULT_SKILL_MAPPINGS: Record<string, OrchestrationSkillMapping> = {
     minComplexity: "medium",
     enabled: true, // 已实现
   },
+
+  // 综述类（v2.8.0 新增 - 主题合成器）
+  "create:synthesis": {
+    skillId: "thematic_synthesis",
+    name: "主题合成器",
+    minComplexity: "medium",
+    enabled: true, // 已实现
+  },
+  "create:synthesis_folder": {
+    skillId: "thematic_synthesis",
+    name: "主题合成器（文件夹）",
+    minComplexity: "medium",
+    enabled: true,
+  },
+  "create:synthesis_tag": {
+    skillId: "thematic_synthesis",
+    name: "主题合成器（标签）",
+    minComplexity: "medium",
+    enabled: true,
+  },
+  "create:synthesis_recent": {
+    skillId: "thematic_synthesis",
+    name: "主题合成器（最近）",
+    minComplexity: "medium",
+    enabled: true,
+  },
+  "create:synthesis_topic": {
+    skillId: "thematic_synthesis",
+    name: "主题合成器（主题）",
+    minComplexity: "medium",
+    enabled: true,
+  },
 };
 
 /**
