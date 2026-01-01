@@ -305,7 +305,9 @@ export function SidebarReminder({
               <div className="font-medium mb-1">待复习卡片</div>
               <div className="text-muted-foreground">
                 {hasOverdue && (
-                  <div className="text-red-500">🔴 {stats.overdue} 张逾期</div>
+                  <div className="text-red-500">
+                    🔴 {stats.overdue} 张待回顾
+                  </div>
                 )}
                 {hasDueToday && (
                   <div className="text-yellow-500">
@@ -376,13 +378,13 @@ export function SidebarReminder({
                       : "text-purple-700",
                 )}
               >
-                复习提醒
+                灵感回顾
               </span>
               <Sparkles className="h-3 w-3 text-purple-500" />
             </div>
             <div className="text-xs text-muted-foreground mt-0.5">
               {hasOverdue
-                ? `${stats.overdue} 张卡片已逾期`
+                ? `${stats.overdue} 张卡片待回顾`
                 : hasDueToday
                   ? `${stats.dueToday} 张今日到期`
                   : `${stats.total} 张待复习`}

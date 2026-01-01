@@ -1,7 +1,7 @@
 /**
  * Supabase Edge Function: send-review-reminder
  *
- * 根据用户偏好时间发送复习提醒
+ * 根据用户偏好时间发送灵感回顾提醒（免打扰模式）
  *
  * 触发方式:
  * - Supabase Cron Job (每小时运行一次，检查是否有用户需要提醒)
@@ -10,10 +10,11 @@
  * 功能:
  * 1. 查询在当前小时需要提醒的用户
  * 2. 检查用户是否有待复习的卡片
- * 3. 发送推送通知 (通过 Web Push 或第三方服务)
+ * 3. 发送免打扰提醒 (silent_mode: true)
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-29
+ * @updated 2026-01-02 - 改为"灵感回顾"，启用免打扰模式
  */
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -140,20 +141,21 @@ async function sendNotification(
 ): Promise<NotificationResult> {
   const channel = prefs.notification_channel;
 
-  // 构建通知内容
-  const title = "📚 复习提醒";
+  // 构建通知内容（免打扰模式）
+  const title = "💡 灵感回顾";
   let body = "";
 
   if (info.overdueCount > 0) {
-    body = `你有 ${info.overdueCount} 张卡片已逾期，${info.pendingCount} 张待复习。快来复习吧！`;
+    body = `有 ${info.overdueCount} 张卡片待回顾，${info.pendingCount} 张待复习。抽空看看吧~`;
   } else {
-    body = `你有 ${info.pendingCount} 张卡片待复习。保持学习节奏！`;
+    body = `有 ${info.pendingCount} 张卡片待复习。保持学习节奏！`;
   }
 
   try {
     if (channel === "sidebar" || channel === "both") {
       // 侧边栏提醒：插入到 notifications 表 (如果存在)
       // 这里使用 profiles 表的扩展字段记录
+      // silent_mode: true - 免打扰模式，不弹出通知
       await supabase
         .from("profiles")
         .update({
@@ -163,6 +165,7 @@ async function sendNotification(
             reminder_at: new Date().toISOString(),
             title,
             body,
+            silent_mode: true, // 免打扰模式
           },
         })
         .eq("id", userId);
@@ -173,7 +176,8 @@ async function sendNotification(
       // 当前仅记录日志，实际实现需要：
       // 1. 从 profiles 获取用户的 push subscription
       // 2. 使用 web-push 库发送通知
-      console.log(`[Push] Would send to ${userId}: ${title} - ${body}`);
+      // 注意：即使启用 push，也使用免打扰方式（低优先级）
+      console.log(`[Push:Silent] Would send to ${userId}: ${title} - ${body}`);
 
       // TODO: 实现 Web Push
       // const pushSubscription = await getUserPushSubscription(supabase, userId);

@@ -414,7 +414,7 @@ export function BrainSyncPageClient() {
                 </span>
                 {queueStats && queueStats.overdue > 0 && (
                   <Badge variant="destructive" className="text-[10px] h-5">
-                    {queueStats.overdue} 张逾期
+                    {queueStats.overdue} 张待回顾
                   </Badge>
                 )}
                 <span className="text-xs text-muted-foreground">
@@ -451,7 +451,7 @@ export function BrainSyncPageClient() {
                             variant="destructive"
                             className="shrink-0 text-[10px] h-5"
                           >
-                            逾期 {item.daysOverdue} 天
+                            待回顾 {item.daysOverdue} 天
                           </Badge>
                         )}
                         <Button

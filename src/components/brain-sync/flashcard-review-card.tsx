@@ -80,7 +80,7 @@ export function FlashcardReviewCard({
     if (flashcard.daysOverdue > 0) {
       return (
         <Badge variant="destructive" className="text-xs">
-          逾期 {flashcard.daysOverdue} 天
+          待回顾 {flashcard.daysOverdue} 天
         </Badge>
       );
     }
