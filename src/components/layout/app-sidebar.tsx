@@ -46,6 +46,7 @@ import {
   BrainCircuit,
   HeartPulse,
   Sparkles,
+  Share2,
 } from "lucide-react";
 import { useUnreadCount } from "@/hooks/data";
 import { MessageBadge } from "@/components/messages";
@@ -100,6 +101,7 @@ const organizeToolsItems: NavItem[] = [
   { name: "等待分类", href: "/inbox", icon: Inbox },
   { name: "批量操作", href: "/batch", icon: CheckSquare, pageId: "batch" },
   { name: "内容导出", href: "/export", icon: Download, pageId: "export" },
+  { name: "分发中心", href: "/distribution", icon: Share2 },
   { name: "整理大师", href: "/librarian", icon: Wand2 },
   { name: "链接检测", href: "/link-health", icon: LinkIcon },
 ];
