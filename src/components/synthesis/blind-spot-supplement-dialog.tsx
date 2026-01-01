@@ -15,6 +15,7 @@
 
 import { useState, useCallback } from "react";
 import { toast } from "sonner";
+import { logger } from "@/lib/logger";
 import {
   Dialog,
   DialogContent,
@@ -71,9 +72,11 @@ export function BlindSpotSupplementDialog({
   open,
   onOpenChange,
   blindSpot,
-  reportId: _reportId,
+  reportId,
   onRegenerate,
 }: BlindSpotSupplementDialogProps) {
+  // TODO: [P2] reportId 可用于将补充的书签关联到综述报告，便于追踪来源
+  void reportId; // 暂时标记为已使用，避免 ESLint unused 警告
   const [url, setUrl] = useState("");
   const [title, setTitle] = useState("");
   const [isFetchingMetadata, setIsFetchingMetadata] = useState(false);
@@ -142,8 +145,12 @@ export function BlindSpotSupplementDialog({
           setTitle(data.data.title);
         }
       }
-    } catch {
-      // 元数据获取失败不影响后续操作
+    } catch (error) {
+      // 元数据获取失败不阻塞收藏流程，但记录日志便于监控
+      logger.warn(
+        { error, url: inputUrl },
+        "Metadata fetch failed, continuing without metadata",
+      );
     } finally {
       setIsFetchingMetadata(false);
     }

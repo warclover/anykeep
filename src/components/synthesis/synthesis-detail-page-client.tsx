@@ -19,6 +19,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
+import { logger } from "@/lib/logger";
 import {
   ArrowLeft,
   Share2,
@@ -709,35 +710,6 @@ export function SynthesisDetailPageClient({
     [deleteHighlight],
   );
 
-  // 创建带区块信息的高亮回调工厂
-
-  const _createSectionHighlightHandler = useCallback(
-    (section: string, itemIndex?: number) => {
-      return async (
-        content: string,
-        start: number,
-        end: number,
-        color: HighlightColor,
-      ) => {
-        await createHighlight(
-          content,
-          {
-            start,
-            end,
-            section: section as
-              | "overview"
-              | "consensus"
-              | "divergence"
-              | "blindspot",
-            itemIndex,
-          },
-          { color },
-        );
-      };
-    },
-    [createHighlight],
-  );
-
   // 高亮处理器
   const highlightHandlers: HighlightHandlers = {
     highlights,
@@ -762,7 +734,7 @@ export function SynthesisDetailPageClient({
       // 刷新数据
       refetch();
     } catch (error) {
-      console.error("Retry synthesis error:", error);
+      logger.error({ error, reportId }, "Retry synthesis error");
       toast.error("重新生成失败，请重试");
     } finally {
       setIsRetrying(false);
@@ -792,7 +764,7 @@ export function SynthesisDetailPageClient({
       toast.success("已复制到剪贴板");
       setTimeout(() => setIsCopied(false), 2000);
     } catch (error) {
-      console.error("Copy markdown error:", error);
+      logger.error({ error }, "Copy markdown error");
       toast.error("复制失败，请重试");
     }
   }, [report?.fullMarkdown]);
