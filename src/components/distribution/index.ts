@@ -12,4 +12,10 @@ export type { NotionConfigFormProps } from "./notion-config-form";
 
 export { DatabaseSelector } from "./database-selector";
 
+export { WebhookConfigForm } from "./webhook-config-form";
+export type { WebhookConfigFormProps } from "./webhook-config-form";
+
+export { RssConfigForm } from "./rss-config-form";
+export type { RssConfigFormProps } from "./rss-config-form";
+
 export { DistributionPageClient } from "./distribution-page-client";
