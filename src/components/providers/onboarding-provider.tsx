@@ -3,6 +3,9 @@
 /**
  * 新用户引导 Provider
  * 检测用户是否完成引导，未完成则展示引导对话框
+ *
+ * v2: 适配 UserProvider 性能优化版
+ * - profile 现在是 SWR 异步加载，需要等待加载完成后再检查
  */
 
 import {
@@ -11,6 +14,7 @@ import {
   useState,
   useEffect,
   useCallback,
+  useRef,
   type ReactNode,
 } from "react";
 import { useUser } from "@/contexts/user-context";
@@ -45,26 +49,46 @@ function checkOnboardingCompleted(settings: Json | null | undefined): boolean {
 }
 
 export function OnboardingProvider({ children }: OnboardingProviderProps) {
-  const { user, profile, isLoading: isUserLoading } = useUser();
+  const {
+    user,
+    profile,
+    isLoading: isProfileLoading,
+    isInitialized,
+  } = useUser();
   const [showDialog, setShowDialog] = useState(false);
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(true); // 默认 true 避免闪烁
   const [isChecking, setIsChecking] = useState(true);
 
+  // 用于跟踪是否已经检查过（避免重复检查）
+  const hasCheckedRef = useRef(false);
+
   // 检查引导状态
   useEffect(() => {
-    if (isUserLoading) {
+    // 等待用户认证初始化完成
+    if (!isInitialized) {
       return;
     }
 
     // 未登录用户不显示引导
     if (!user) {
-      // 使用 setTimeout 避免 effect 中同步 setState 警告
       const timer = setTimeout(() => {
         setIsChecking(false);
         setHasCompletedOnboarding(true);
       }, 0);
       return () => clearTimeout(timer);
     }
+
+    // 等待 profile 加载完成（SWR 异步加载）
+    // isProfileLoading 为 true 表示正在加载
+    if (isProfileLoading) {
+      return;
+    }
+
+    // 避免重复检查（profile 加载完成后只检查一次）
+    if (hasCheckedRef.current) {
+      return;
+    }
+    hasCheckedRef.current = true;
 
     // 检查 profile.settings 中的 onboarding_completed_at
     const completed = checkOnboardingCompleted(profile?.settings);
@@ -82,7 +106,7 @@ export function OnboardingProvider({ children }: OnboardingProviderProps) {
     }, 0);
 
     return () => clearTimeout(timer);
-  }, [user, profile, isUserLoading]);
+  }, [user, profile, isProfileLoading, isInitialized]);
 
   // 完成引导
   const handleComplete = useCallback(() => {

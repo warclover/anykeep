@@ -15,7 +15,8 @@
  * - 添加 FeatureErrorBoundary 实现局部错误隔离
  */
 
-export const dynamic = "force-dynamic";
+// v2 性能优化：移除 force-dynamic，让 Next.js 自动决定渲染模式
+// UserProvider 已优化为非阻塞式加载
 
 import { AppHeader } from "@/components/layout/app-header";
 import { AppSidebar } from "@/components/layout/app-sidebar";

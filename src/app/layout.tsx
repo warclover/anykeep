@@ -4,9 +4,9 @@ import { RootProviders } from "@/components/providers/root-providers";
 import { COLOR_THEME_INIT_SCRIPT } from "@/hooks/core";
 import "./globals.css";
 
-// 强制动态渲染以避免预渲染时的 Context 问题
-// 子布局和页面会继承此配置
-export const dynamic = "force-dynamic";
+// v2 性能优化：移除 force-dynamic
+// UserProvider 现在使用 getSession()（同步）+ SWR（异步），不再阻塞渲染
+// Next.js 会根据页面使用的 API 自动决定渲染模式
 
 const inter = Inter({
   subsets: ["latin"],
