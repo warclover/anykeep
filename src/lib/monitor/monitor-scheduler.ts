@@ -200,7 +200,8 @@ export class MonitorScheduler {
         if (
           result === "changed" &&
           fetchResult.contentHash &&
-          fetchResult.wordCount !== undefined
+          fetchResult.wordCount !== undefined &&
+          fetchResult.wordCount !== null
         ) {
           newSnapshotId = await this.createSnapshot(
             monitor.bookmarkId,

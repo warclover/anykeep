@@ -60,7 +60,7 @@ const cardVariants = {
     scale: 1,
     transition: {
       duration: 0.3,
-      ease: "easeOut",
+      ease: "easeOut" as const,
     },
   },
   exit: {
@@ -69,7 +69,7 @@ const cardVariants = {
     scale: 0.95,
     transition: {
       duration: 0.2,
-      ease: "easeIn",
+      ease: "easeIn" as const,
     },
   },
 };
@@ -81,7 +81,7 @@ const contentVariants = {
     height: "auto",
     transition: {
       duration: 0.2,
-      ease: "easeOut",
+      ease: "easeOut" as const,
     },
   },
   exit: {

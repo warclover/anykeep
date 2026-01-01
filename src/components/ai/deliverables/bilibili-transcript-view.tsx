@@ -446,7 +446,15 @@ export const BilibiliTranscriptView = memo(function BilibiliTranscriptView({
           <div className="p-4 border-b border-gray-100">
             <TranscriptContent
               transcript={
-                data.transcript ?? { segments: [], text: "", wordCount: 0 }
+                data.transcript ??
+                ({
+                  language: "",
+                  languageLabel: "",
+                  segments: [],
+                  fullText: "",
+                  formattedContent: "",
+                  wordCount: 0,
+                } as NonNullable<BilibiliTranscriptOutput["transcript"]>)
               }
               onCopyContent={onCopyContent}
               onDownload={onDownload}

@@ -545,7 +545,8 @@ export function useAIChat(config: UseAIChatConfig = {}): UseAIChatReturn {
 
         case "confirmation":
           if (chunk.confirmation) {
-            confirmations.push(chunk.confirmation);
+            const confirmation = chunk.confirmation;
+            confirmations.push(confirmation);
             const updated = {
               ...currentMessage,
               pendingConfirmations: [...confirmations],
@@ -554,8 +555,8 @@ export function useAIChat(config: UseAIChatConfig = {}): UseAIChatReturn {
             setMessages((prev) =>
               prev.map((m) => (m.id === messageId ? updated : m)),
             );
-            setPendingConfirmations((prev) => [...prev, chunk.confirmation]);
-            onConfirmation?.(chunk.confirmation);
+            setPendingConfirmations((prev) => [...prev, confirmation]);
+            onConfirmation?.(confirmation);
           }
           break;
 

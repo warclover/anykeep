@@ -54,5 +54,6 @@ if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
   process.env.SUPABASE_SERVICE_ROLE_KEY = "test-service-role-key";
 }
 if (!process.env.NODE_ENV) {
-  process.env.NODE_ENV = "test";
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (process.env as any).NODE_ENV = "test";
 }

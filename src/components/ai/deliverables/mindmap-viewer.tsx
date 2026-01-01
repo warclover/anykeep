@@ -545,7 +545,7 @@ export function convertDigestToMindmap(
 
     // 添加书签节点
     for (const bookmark of topic.bookmarks) {
-      topicNode.children.push({
+      (topicNode.children ??= []).push({
         id: `bookmark-${bookmark.id}`,
         label: bookmark.title,
         type: "bookmark",
@@ -569,10 +569,10 @@ export function convertDigestToMindmap(
           type: "tag",
         })),
       };
-      topicNode.children.push(tagsNode);
+      (topicNode.children ??= []).push(tagsNode);
     }
 
-    root.children.push(topicNode);
+    (root.children ??= []).push(topicNode);
   }
 
   // 添加洞察节点
@@ -587,7 +587,7 @@ export function convertDigestToMindmap(
         type: "insight",
       })),
     };
-    root.children.push(insightsNode);
+    (root.children ??= []).push(insightsNode);
   }
 
   return root;

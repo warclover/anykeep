@@ -348,7 +348,8 @@ export function AIPanelContent({
           prev.map((m) => (m.id === messageId ? updatedMessage : m)),
         );
       } else if (chunk.type === "confirmation" && chunk.confirmation) {
-        confirmations.push(chunk.confirmation);
+        const confirmation = chunk.confirmation;
+        confirmations.push(confirmation);
         const updatedMessage = {
           ...currentMessage,
           pendingConfirmations: [...confirmations],
@@ -357,7 +358,7 @@ export function AIPanelContent({
         setMessages((prev) =>
           prev.map((m) => (m.id === messageId ? updatedMessage : m)),
         );
-        setPendingConfirmations((prev) => [...prev, chunk.confirmation]);
+        setPendingConfirmations((prev) => [...prev, confirmation]);
       } else if (chunk.type === "done" && chunk.result) {
         if (chunk.result.conversationId) {
           setConversationId(chunk.result.conversationId);

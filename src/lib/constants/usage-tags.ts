@@ -292,7 +292,7 @@ export function getAllUsageTags(
   const customUnifiedTags: UnifiedUsageTag[] = customTags.map((tag) => {
     const colorStyle =
       CUSTOM_TAG_COLOR_STYLES[tag.color as CustomTagColor] ??
-      CUSTOM_TAG_COLOR_STYLES.blue;
+      CUSTOM_TAG_COLOR_STYLES.blue!;
     return {
       value: tag.value,
       label: tag.label || tag.value, // 如果没有 label，使用 value 作为默认
@@ -357,7 +357,7 @@ export function getUsageTagStyleExtended(
   if (customTag) {
     const colorStyle =
       CUSTOM_TAG_COLOR_STYLES[customTag.color as CustomTagColor] ??
-      CUSTOM_TAG_COLOR_STYLES.blue;
+      CUSTOM_TAG_COLOR_STYLES.blue!;
     return {
       value: customTag.value,
       label: customTag.label || customTag.value, // 如果没有 label，使用 value 作为默认

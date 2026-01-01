@@ -265,7 +265,16 @@ function PreviewTag({
   value: string;
   color: CustomTagColor;
 }) {
-  const style = CUSTOM_TAG_COLOR_STYLES[color] ?? CUSTOM_TAG_COLOR_STYLES.blue;
+  // 获取颜色样式，使用 blue 作为默认值
+  const style = CUSTOM_TAG_COLOR_STYLES[color] ??
+    CUSTOM_TAG_COLOR_STYLES.blue ?? {
+      bgLight: "bg-blue-50",
+      bgDark: "dark:bg-blue-900/30",
+      borderLight: "border-blue-200",
+      borderDark: "dark:border-blue-700",
+      textLight: "text-blue-700",
+      textDark: "dark:text-blue-300",
+    };
 
   return (
     <span

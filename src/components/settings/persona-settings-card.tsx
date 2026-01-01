@@ -437,7 +437,7 @@ export function PersonaSettingsCard({ className }: PersonaSettingsCardProps) {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   {(() => {
-                    const Icon = getPersonaIcon(inferredGroup ?? "curious");
+                    const Icon = getPersonaIcon(inferredGroup ?? "academic");
                     return <Icon className="size-6 text-purple-500" />;
                   })()}
                   <div>
