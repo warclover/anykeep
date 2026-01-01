@@ -3,8 +3,9 @@
  * POST /api/brain-sync/generate - 手动生成 Flashcards
  *
  * @module api/brain-sync/generate
- * @version 1.0.0
+ * @version 2.0.0
  * @since 2025-12-29
+ * @updated 2026-01-01 - 添加 v2 深度问题生成
  */
 
 import type { NextRequest } from "next/server";
@@ -23,6 +24,7 @@ import {
 import { logger } from "@/lib/logger";
 import {
   generateFlashcards,
+  generateFlashcardsV2,
   filterValidFlashcards,
 } from "@/lib/ai-skills/shared/review";
 import type { FlashcardDifficulty } from "@/lib/ai-skills/shared/review";
@@ -34,6 +36,7 @@ const generateFlashcardsSchema = z.object({
   bookmarkId: z.number().int().positive(),
   count: z.number().int().min(1).max(10).default(3),
   difficulty: z.enum(["easy", "medium", "hard"]).default("medium"),
+  version: z.enum(["v1", "v2"]).default("v2"), // v2 为默认
 });
 
 /**
@@ -57,7 +60,7 @@ export async function POST(request: NextRequest) {
       return handleValidationError(validation.error);
     }
 
-    const { bookmarkId, count, difficulty } = validation.data;
+    const { bookmarkId, count, difficulty, version } = validation.data;
 
     const supabase = await createClient();
 
@@ -102,17 +105,111 @@ export async function POST(request: NextRequest) {
 
     // 6. 生成 Flashcards
     logger.info(
-      { bookmarkId, count, difficulty, userId: user.id },
+      { bookmarkId, count, difficulty, version, userId: user.id },
       "Brain-Sync: Generating flashcards",
     );
 
-    const generationResult = await generateFlashcards({
+    const generationInput = {
       title: bookmark.title,
       summary: bookmark.ai_summary || "",
       content: content,
       count: Math.min(count, 10 - (existingCount || 0)), // 不超过上限
       difficulty: difficulty as FlashcardDifficulty,
-    });
+    };
+
+    // 根据版本选择生成器
+    if (version === "v2") {
+      // v2 深度问题生成
+      const generationResult = await generateFlashcardsV2(generationInput);
+
+      if (
+        !generationResult.success ||
+        generationResult.flashcards.length === 0
+      ) {
+        logger.warn(
+          {
+            bookmarkId,
+            error: generationResult.error,
+            userId: user.id,
+          },
+          "Brain-Sync: Flashcard v2 generation failed",
+        );
+        return badRequestError(
+          generationResult.error || "生成 Flashcards 失败，请稍后重试",
+        );
+      }
+
+      // v2 卡片直接使用，无需额外过滤（已在生成时验证）
+      const flashcardsToInsert = generationResult.flashcards.map((fc) => ({
+        user_id: user.id,
+        bookmark_id: bookmarkId,
+        question: fc.question,
+        answer: "", // v2 无直接答案，改用 keyPoints
+        source_paragraph: fc.sourceParagraph || null,
+        difficulty,
+        status: "pending",
+        ease_factor: 2.5,
+        interval_days: 1,
+        repetitions: 0,
+        next_review_at: new Date().toISOString(),
+        // v2 新增字段
+        question_depth: fc.questionDepth,
+        thinking_hint: fc.thinkingHint,
+        key_points: fc.keyPoints,
+      }));
+
+      const { data: insertedFlashcards, error: insertError } =
+        await // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase 类型推断限制
+        (supabase as any)
+          .from("flashcards")
+          .insert(flashcardsToInsert)
+          .select(
+            "id, question, question_depth, thinking_hint, key_points, difficulty, status",
+          );
+
+      if (insertError) {
+        if (insertError.code === "23505") {
+          logger.warn(
+            { bookmarkId, error: insertError, userId: user.id },
+            "Brain-Sync: Duplicate flashcard questions",
+          );
+          return badRequestError(
+            "部分问题已存在，请删除重复的 Flashcards 后重试",
+          );
+        }
+
+        logger.error(
+          { bookmarkId, error: insertError, userId: user.id },
+          "Brain-Sync: Failed to insert flashcards v2",
+        );
+        return databaseError("保存 Flashcards 失败");
+      }
+
+      logger.info(
+        {
+          bookmarkId,
+          generatedCount: generationResult.flashcards.length,
+          insertedCount: insertedFlashcards?.length,
+          version: "v2",
+          userId: user.id,
+        },
+        "Brain-Sync: Flashcards v2 generated successfully",
+      );
+
+      return successResponse(
+        {
+          success: true,
+          bookmarkId,
+          version: "v2",
+          flashcards: insertedFlashcards || [],
+          message: `成功生成 ${insertedFlashcards?.length || 0} 个深度复习卡片`,
+        },
+        201,
+      );
+    }
+
+    // v1 经典模式（保留兼容）
+    const generationResult = await generateFlashcards(generationInput);
 
     if (!generationResult.success || generationResult.flashcards.length === 0) {
       logger.warn(

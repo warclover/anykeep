@@ -3,8 +3,9 @@
  * GET /api/brain-sync/queue - 获取待复习的 Flashcards
  *
  * @module api/brain-sync/queue
- * @version 1.0.0
+ * @version 2.0.0
  * @since 2025-12-29
+ * @updated 2026-01-01 - 添加 v2 字段支持
  */
 
 import type { NextRequest } from "next/server";
@@ -136,6 +137,10 @@ export async function GET(request: NextRequest) {
           intervalDays: item.interval_days || 1,
           repetitions: item.repetitions || 0,
           priorityScore: 0, // 后续计算
+          // v2 新增字段
+          questionDepth: item.question_depth || undefined,
+          thinkingHint: item.thinking_hint || undefined,
+          keyPoints: item.key_points || undefined,
         };
       },
     );

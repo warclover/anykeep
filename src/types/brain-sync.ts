@@ -5,9 +5,68 @@
  * 注意：当 Supabase 类型重新生成后，这些类型可能需要同步更新
  *
  * @module types/brain-sync
- * @version 1.0.0
+ * @version 2.0.0
  * @since 2025-12-29
+ * @updated 2026-01-01 - 添加 v2 深度问题和延伸阅读类型
  */
+
+// ============================================================================
+// Brain-Sync v2.0 新增类型
+// ============================================================================
+
+/**
+ * 问题认知层次
+ * 基于布鲁姆认知分类法
+ */
+export type QuestionDepth =
+  | "understand" // 理解层：用自己的话解释
+  | "apply" // 应用层：场景应用
+  | "analyze" // 分析层：假设/局限分析
+  | "evaluate"; // 评价层：比较评价
+
+/**
+ * 理解深度反馈
+ */
+export type ComprehensionLevel =
+  | "new_insight" // 有新理解
+  | "reinforced" // 巩固已知
+  | "still_confused" // 仍不清楚
+  | "skipped"; // 跳过
+
+/**
+ * 相关书签推荐
+ */
+export interface RelatedBookmark {
+  id: number;
+  title: string;
+  relevanceReason: string; // "共同标签：React, 性能" | "内容相似" | "同一文件夹"
+  similarity: number; // 0-1
+}
+
+/**
+ * 复习响应请求 v2
+ */
+export interface ReviewResponseRequestV2 {
+  flashcardId: number;
+  response: "mastered" | "fuzzy" | "forgotten";
+  comprehension?: ComprehensionLevel;
+  userNote?: string;
+}
+
+/**
+ * 生成的 Flashcard v2（LLM 输出）
+ */
+export interface GeneratedFlashcardV2 {
+  questionDepth: QuestionDepth;
+  question: string;
+  thinkingHint: string;
+  keyPoints: string[];
+  sourceParagraph: string;
+}
+
+// ============================================================================
+// 原有类型定义（v1 兼容）
+// ============================================================================
 
 /**
  * Flashcard 记录类型
@@ -28,6 +87,10 @@ export interface FlashcardRow {
   difficulty: "easy" | "medium" | "hard";
   created_at: string;
   updated_at: string;
+  // v2 新增字段
+  question_depth: QuestionDepth | null;
+  thinking_hint: string | null;
+  key_points: string[] | null;
 }
 
 /**
@@ -45,6 +108,10 @@ export interface FlashcardInsert {
   repetitions?: number;
   next_review_at?: string | null;
   difficulty?: "easy" | "medium" | "hard";
+  // v2 新增字段
+  question_depth?: QuestionDepth;
+  thinking_hint?: string;
+  key_points?: string[];
 }
 
 /**
@@ -62,6 +129,9 @@ export interface ReviewSessionRow {
   new_ease: number;
   session_type: "scheduled" | "manual" | "chat";
   created_at: string;
+  // v2 新增字段
+  comprehension: ComprehensionLevel | null;
+  user_note: string | null;
 }
 
 /**
@@ -113,6 +183,10 @@ export interface PendingFlashcardRow {
   interval_days: number;
   repetitions: number;
   next_review_at: string | null;
+  // v2 新增字段
+  question_depth: QuestionDepth | null;
+  thinking_hint: string | null;
+  key_points: string[] | null;
 }
 
 /**
@@ -187,6 +261,10 @@ export interface FormattedFlashcard {
   nextReviewAt: string | null;
   lastReviewedAt: string | null;
   createdAt: string;
+  // v2 新增字段
+  questionDepth: QuestionDepth | null;
+  thinkingHint: string | null;
+  keyPoints: string[] | null;
 }
 
 /**

@@ -3,9 +3,9 @@
  *
  * 管理完整的 Flashcard 复习会话流程
  *
- * @version 1.1.0
+ * @version 2.0.0
  * @since 2025-12-29
- * @updated 2025-12-29 - 添加 429 错误处理和自动重试
+ * @updated 2026-01-01 - 支持 v2 深度问题和理解评估
  */
 
 "use client";
@@ -23,10 +23,11 @@ import {
 } from "@/components/ui/dialog";
 import { Loader2, Brain, Trophy, ArrowRight, RefreshCw, X } from "lucide-react";
 import {
-  FlashcardReviewCard,
-  type FlashcardData,
-} from "./flashcard-review-card";
+  FlashcardReviewCardV2,
+  type FlashcardDataV2,
+} from "./flashcard-review-card-v2";
 import { clientLogger } from "@/lib/client-logger";
+import type { ComprehensionLevel, QuestionDepth } from "@/types/brain-sync";
 
 // ============================================
 // 常量配置
@@ -76,7 +77,7 @@ export function ReviewSession({
 }: ReviewSessionProps) {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [flashcards, setFlashcards] = useState<FlashcardData[]>([]);
+  const [flashcards, setFlashcards] = useState<FlashcardDataV2[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [results, setResults] = useState<ReviewResult[]>([]);
   const [sessionComplete, setSessionComplete] = useState(false);
@@ -133,6 +134,10 @@ export function ReviewSession({
             daysOverdue: number;
             intervalDays: number;
             easeFactor: number;
+            // v2 新增字段
+            questionDepth?: QuestionDepth;
+            thinkingHint?: string;
+            keyPoints?: string[];
           }) => ({
             flashcardId: item.flashcardId,
             bookmarkId: item.bookmarkId,
@@ -141,10 +146,14 @@ export function ReviewSession({
             question: item.question,
             answer: item.answer,
             sourceParagraph: item.sourceParagraph,
-            status: item.status as FlashcardData["status"],
+            status: item.status as FlashcardDataV2["status"],
             daysOverdue: item.daysOverdue,
             intervalDays: item.intervalDays,
             easeFactor: item.easeFactor,
+            // v2 新增字段
+            questionDepth: item.questionDepth,
+            thinkingHint: item.thinkingHint,
+            keyPoints: item.keyPoints,
           }),
         ),
       );
@@ -169,10 +178,12 @@ export function ReviewSession({
     }
   }, [open, loadQueue]);
 
-  // 处理复习反馈
+  // 处理复习反馈（支持 v2 理解评估）
   const handleResponse = async (
     flashcardId: number,
     response: ReviewResponse,
+    comprehension?: ComprehensionLevel,
+    userNote?: string,
   ) => {
     setSubmitting(true);
 
@@ -183,6 +194,9 @@ export function ReviewSession({
         body: JSON.stringify({
           flashcardId,
           response,
+          // v2 新增字段
+          comprehension,
+          userNote,
         }),
       });
 
@@ -308,14 +322,15 @@ export function ReviewSession({
             </div>
           )}
 
-          {/* 复习卡片 */}
+          {/* 复习卡片（使用 v2 组件） */}
           {!loading && !error && flashcards.length > 0 && !sessionComplete && (
-            <FlashcardReviewCard
+            <FlashcardReviewCardV2
               flashcard={flashcards[currentIndex]}
               onResponse={handleResponse}
               isSubmitting={submitting}
               currentIndex={currentIndex}
               totalCount={flashcards.length}
+              showRelatedBookmarks={true}
             />
           )}
 

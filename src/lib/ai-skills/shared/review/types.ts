@@ -1,10 +1,54 @@
 /**
  * Brain-Sync 共享类型定义
  * @module shared/review/types
+ * @version 2.0.0
+ * @updated 2026-01-01 - 添加 v2 深度问题类型
  */
 
 // ============================================
-// Flashcard 相关类型
+// v2 新增类型
+// ============================================
+
+/**
+ * 问题认知层次（基于布鲁姆认知分类）
+ */
+export type QuestionDepth =
+  | "understand" // 理解层：用自己的话解释
+  | "apply" // 应用层：场景应用
+  | "analyze" // 分析层：假设/局限分析
+  | "evaluate"; // 评价层：比较评价
+
+/**
+ * 理解深度反馈
+ */
+export type ComprehensionLevel =
+  | "new_insight" // 有新理解
+  | "reinforced" // 巩固已知
+  | "still_confused" // 仍不清楚
+  | "skipped"; // 跳过
+
+/**
+ * v2 生成的 Flashcard（LLM 输出）
+ */
+export interface GeneratedFlashcardV2 {
+  questionDepth: QuestionDepth;
+  question: string;
+  thinkingHint: string;
+  keyPoints: string[];
+  sourceParagraph: string;
+}
+
+/**
+ * v2 生成结果
+ */
+export interface FlashcardGenerationResultV2 {
+  success: boolean;
+  flashcards: GeneratedFlashcardV2[];
+  error?: string;
+}
+
+// ============================================
+// Flashcard 相关类型（v1 兼容）
 // ============================================
 
 export type FlashcardStatus = "pending" | "learning" | "mastered" | "archived";
@@ -105,6 +149,10 @@ export interface ReviewQueueItem {
   nextReviewAt: Date | null;
   daysOverdue: number;
   priorityScore: number;
+  // v2 新增字段
+  questionDepth?: QuestionDepth;
+  thinkingHint?: string;
+  keyPoints?: string[];
 }
 
 export interface WeeklyReviewQueue {

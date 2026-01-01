@@ -3,8 +3,9 @@
  * POST /api/brain-sync/response - 提交复习反馈
  *
  * @module api/brain-sync/response
- * @version 1.0.0
+ * @version 2.0.0
  * @since 2025-12-29
+ * @updated 2026-01-01 - 添加 v2 理解深度评估
  */
 
 import type { NextRequest } from "next/server";
@@ -34,6 +35,11 @@ const submitResponseSchema = z.object({
   flashcardId: z.number().int().positive(),
   response: z.enum(["mastered", "fuzzy", "forgotten", "archived"]),
   responseTimeMs: z.number().int().positive().optional(),
+  // v2 新增字段
+  comprehension: z
+    .enum(["new_insight", "reinforced", "still_confused", "skipped"])
+    .optional(),
+  userNote: z.string().max(1000).optional(),
 });
 
 /**
@@ -99,7 +105,8 @@ export async function POST(request: NextRequest) {
       return handleValidationError(validation.error);
     }
 
-    const { flashcardId, response, responseTimeMs } = validation.data;
+    const { flashcardId, response, responseTimeMs, comprehension, userNote } =
+      validation.data;
 
     const supabase = await createClient();
 
@@ -188,6 +195,9 @@ export async function POST(request: NextRequest) {
         p_new_ease: sm2Result.easeFactor,
         p_new_repetitions: sm2Result.repetitions,
         p_response_time_ms: responseTimeMs || null,
+        // v2 新增参数
+        p_comprehension: comprehension || null,
+        p_user_note: userNote || null,
       })) as {
         data: UpdateFlashcardReviewResult | null;
         error: { message: string } | null;
@@ -216,6 +226,7 @@ export async function POST(request: NextRequest) {
         userId: user.id,
         flashcardId,
         response,
+        comprehension: comprehension || null,
         newInterval: sm2Result.interval,
         newEase: sm2Result.easeFactor,
       },
@@ -226,6 +237,7 @@ export async function POST(request: NextRequest) {
       success: true,
       flashcardId,
       response,
+      comprehension: comprehension || null,
       newStatus: updateResult?.new_status || "learning",
       nextReviewAt: updateResult?.next_review_at,
       sm2Result: {
