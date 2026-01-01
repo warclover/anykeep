@@ -52,7 +52,15 @@ export async function GET(_request: NextRequest, context: RouteContext) {
 
     if (error) {
       logger.error({ error, reportId }, "Highlights API: Query error");
-      return NextResponse.json({ error: "查询失败" }, { status: 500 });
+      return NextResponse.json(
+        {
+          error: "查询失败",
+          details: error.message,
+          code: error.code,
+          hint: error.hint,
+        },
+        { status: 500 },
+      );
     }
 
     const highlights = (data as SynthesisHighlightRow[]).map(toHighlight);

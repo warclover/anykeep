@@ -80,7 +80,8 @@ export function useSynthesisHighlights({
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "加载失败");
+        console.error("[useSynthesisHighlights] API error details:", data);
+        throw new Error(data.details || data.error || "查询失败");
       }
 
       const { data } = await response.json();
