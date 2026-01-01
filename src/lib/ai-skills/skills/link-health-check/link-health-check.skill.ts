@@ -256,7 +256,10 @@ export class LinkHealthCheckSkill extends OrchestrationSkill<
       yield* this.reportProgress("分类问题", 65, "正在分析检测结果...");
 
       const stats = this.calculateStats(results);
-      const problems = results.filter((r) => r.status !== "healthy");
+      // 问题列表不包含 healthy 和 ignored 状态
+      const problems = results.filter(
+        (r) => r.status !== "healthy" && r.status !== "ignored",
+      );
 
       yield* this.emitText(`\n## 📊 检测结果\n\n`);
       yield* this.emitText(`| 状态 | 数量 | 占比 |\n`);
@@ -271,8 +274,14 @@ export class LinkHealthCheckSkill extends OrchestrationSkill<
         `| 🐢 缓慢 | ${stats.slowCount} | ${this.percent(stats.slowCount, stats.totalChecked)} |\n`,
       );
       yield* this.emitText(
-        `| 🔀 重定向 | ${stats.redirectCount} | ${this.percent(stats.redirectCount, stats.totalChecked)} |\n\n`,
+        `| 🔀 重定向 | ${stats.redirectCount} | ${this.percent(stats.redirectCount, stats.totalChecked)} |\n`,
       );
+      if (stats.ignoredCount && stats.ignoredCount > 0) {
+        yield* this.emitText(
+          `| 🙈 已跳过 | ${stats.ignoredCount} | ${this.percent(stats.ignoredCount, stats.totalChecked)} |\n`,
+        );
+      }
+      yield* this.emitText(`\n`);
 
       // ========================================
       // Step 4: 查找 Wayback 归档
@@ -605,6 +614,7 @@ export class LinkHealthCheckSkill extends OrchestrationSkill<
       failedCount: results.filter((r) => r.status === "failed").length,
       slowCount: results.filter((r) => r.status === "slow").length,
       redirectCount: results.filter((r) => r.status === "redirect").length,
+      ignoredCount: results.filter((r) => r.status === "ignored").length,
     };
   }
 

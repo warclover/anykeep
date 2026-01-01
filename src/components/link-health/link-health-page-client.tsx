@@ -198,6 +198,9 @@ export function LinkHealthPageClient() {
       // 创建 SSE 连接
       const response = await fetch(url, {
         method: "POST",
+        headers: {
+          Accept: "text/event-stream",
+        },
         signal: abortControllerRef.current.signal,
       });
 

@@ -109,6 +109,8 @@ export interface HealthCheckStats {
   slowCount: number;
   /** 重定向链接数 */
   redirectCount: number;
+  /** 已忽略数（反爬虫平台） */
+  ignoredCount?: number;
 }
 
 /**
@@ -271,6 +273,28 @@ export const LINK_HEALTH_CONFIG = {
 
   /** Wayback 最大查找数量 */
   WAYBACK_MAX_LOOKUP: 20,
+
+  /**
+   * 跳过检测的域名列表（反爬虫平台）
+   * 这些平台有严格的反爬虫机制，服务端请求会被拒绝
+   * 应标记为 "ignored" 而非 "failed"
+   */
+  SKIP_DOMAINS: [
+    // 小红书
+    "xiaohongshu.com",
+    "xhslink.com",
+    // 微信
+    "mp.weixin.qq.com",
+    "weixin.qq.com",
+    // 抖音/TikTok
+    "douyin.com",
+    "tiktok.com",
+    // 淘宝/天猫
+    "taobao.com",
+    "tmall.com",
+    // 其他需要登录的平台
+    "zhihu.com", // 知乎部分内容需要登录
+  ],
 } as const;
 
 /**

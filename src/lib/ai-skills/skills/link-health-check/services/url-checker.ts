@@ -95,6 +95,18 @@ export class UrlChecker {
       };
     }
 
+    // 检查是否在跳过域名列表中（反爬虫平台）
+    if (this.shouldSkipDomain(bookmark.url)) {
+      return {
+        bookmarkId: bookmark.id,
+        url: bookmark.url,
+        status: "ignored",
+        errorType: "login_required",
+        errorMessage: "该平台有反爬虫限制，需在浏览器中访问",
+        checkedAt: new Date(),
+      };
+    }
+
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeout);
@@ -186,6 +198,22 @@ export class UrlChecker {
       return true;
     } catch {
       // 静默失败：URL 格式无效时返回 false，跳过检测
+      return false;
+    }
+  }
+
+  /**
+   * 检查 URL 是否在跳过域名列表中
+   * 这些平台有严格的反爬虫机制，服务端请求会被拒绝
+   */
+  private shouldSkipDomain(url: string): boolean {
+    try {
+      const parsed = new URL(url);
+      const hostname = parsed.hostname.toLowerCase();
+      return LINK_HEALTH_CONFIG.SKIP_DOMAINS.some(
+        (domain) => hostname === domain || hostname.endsWith(`.${domain}`),
+      );
+    } catch {
       return false;
     }
   }
