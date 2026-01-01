@@ -9,6 +9,13 @@
  * - p_comprehension: 理解深度反馈 (new_insight/reinforced/still_confused/skipped)
  * - p_user_note: 用户的思考记录
  */
+
+-- 先删除旧版本函数（v1 签名）
+DROP FUNCTION IF EXISTS update_flashcard_review(
+  BIGINT, UUID, VARCHAR(20), INT, DECIMAL(4,2), INT, INT, VARCHAR(20)
+);
+
+-- 创建新版本函数（v2 签名，包含理解深度评估）
 CREATE OR REPLACE FUNCTION update_flashcard_review(
   p_flashcard_id BIGINT,
   p_user_id UUID,
@@ -119,6 +126,7 @@ EXCEPTION
 END;
 $$;
 
--- 更新函数注释
-COMMENT ON FUNCTION update_flashcard_review IS
-  '更新 Flashcard 复习状态，应用 SM-2 算法结果并记录复习会话（v2 支持理解深度评估）';
+-- 更新函数注释（指定完整参数签名）
+COMMENT ON FUNCTION update_flashcard_review(
+  BIGINT, UUID, VARCHAR(20), INT, DECIMAL(4,2), INT, INT, VARCHAR(20), VARCHAR(20), TEXT
+) IS '更新 Flashcard 复习状态，应用 SM-2 算法结果并记录复习会话（v2 支持理解深度评估）';
