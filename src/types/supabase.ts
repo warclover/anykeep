@@ -1762,6 +1762,130 @@ export type Database = {
           },
         ];
       };
+      /** 知识分发目标表 - 存储分发目标配置（Obsidian, Notion, Webhook, RSS 等） */
+      distribution_targets: {
+        Row: {
+          id: string;
+          user_id: string;
+          target_type: string;
+          name: string;
+          enabled: boolean;
+          trigger_mode: string;
+          schedule_interval_minutes: number | null;
+          filter_platforms: string[] | null;
+          filter_folders: string[] | null;
+          filter_tags: string[] | null;
+          include_ai_summary: boolean | null;
+          target_config: Json;
+          status: string;
+          last_sync_at: string | null;
+          last_error: string | null;
+          synced_count: number;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          target_type: string;
+          name: string;
+          enabled?: boolean;
+          trigger_mode?: string;
+          schedule_interval_minutes?: number | null;
+          filter_platforms?: string[] | null;
+          filter_folders?: string[] | null;
+          filter_tags?: string[] | null;
+          include_ai_summary?: boolean | null;
+          target_config?: Json;
+          status?: string;
+          last_sync_at?: string | null;
+          last_error?: string | null;
+          synced_count?: number;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          target_type?: string;
+          name?: string;
+          enabled?: boolean;
+          trigger_mode?: string;
+          schedule_interval_minutes?: number | null;
+          filter_platforms?: string[] | null;
+          filter_folders?: string[] | null;
+          filter_tags?: string[] | null;
+          include_ai_summary?: boolean | null;
+          target_config?: Json;
+          status?: string;
+          last_sync_at?: string | null;
+          last_error?: string | null;
+          synced_count?: number;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "distribution_targets_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      /** 知识分发记录表 - 存储每条书签的分发历史 */
+      distribution_records: {
+        Row: {
+          id: string;
+          target_id: string;
+          bookmark_id: string;
+          status: string;
+          distributed_at: string | null;
+          external_id: string | null;
+          error_message: string | null;
+          retry_count: number;
+          created_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          target_id: string;
+          bookmark_id: string;
+          status?: string;
+          distributed_at?: string | null;
+          external_id?: string | null;
+          error_message?: string | null;
+          retry_count?: number;
+          created_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          target_id?: string;
+          bookmark_id?: string;
+          status?: string;
+          distributed_at?: string | null;
+          external_id?: string | null;
+          error_message?: string | null;
+          retry_count?: number;
+          created_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "distribution_records_target_id_fkey";
+            columns: ["target_id"];
+            isOneToOne: false;
+            referencedRelation: "distribution_targets";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "distribution_records_bookmark_id_fkey";
+            columns: ["bookmark_id"];
+            isOneToOne: false;
+            referencedRelation: "bookmarks";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       /** 分发服务 OAuth Token 加密存储表 */
       distribution_oauth_tokens: {
         Row: {
