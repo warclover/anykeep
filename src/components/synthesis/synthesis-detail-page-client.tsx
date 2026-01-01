@@ -37,6 +37,9 @@ import {
   XCircle,
   AlertCircle,
   Loader2,
+  Copy,
+  Check,
+  Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -59,12 +62,18 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 import { useSynthesisDetail } from "@/hooks/synthesis/use-synthesis-detail";
 import { useSynthesisHighlights } from "@/hooks/synthesis/use-synthesis-highlights";
 import { HighlightableText } from "./highlightable-text";
 import { SynthesisExportDialog } from "./synthesis-export-dialog";
 import { SynthesisShareDialog } from "./synthesis-share-dialog";
 import { SynthesisProgress } from "./synthesis-progress";
+import { SourceBookmarksPanel } from "./source-bookmarks-panel";
 import type {
   ConsensusPoint,
   DivergencePoint,
@@ -101,12 +110,13 @@ interface HighlightHandlers {
 }
 
 // ============================================================================
-// 来源 Badge 组件（可点击跳转到原书签）
+// 来源 Badge 组件（可点击跳转到原书签）[I3] 增强悬停预览
 // ============================================================================
 
 /**
  * 可点击的来源标签
  * 点击后跳转到书签详情页
+ * 悬停显示预览卡片
  */
 function SourceBadge({
   source,
@@ -121,30 +131,51 @@ function SourceBadge({
       : source.title;
 
   return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Link href={`/bookmarks/${source.id}`} className="inline-block">
-            <Badge
-              variant="outline"
-              className="text-xs cursor-pointer hover:bg-primary/10 hover:border-primary transition-colors group"
-            >
-              {displayTitle}
-              <ExternalLink className="ml-1 h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-            </Badge>
-          </Link>
-        </TooltipTrigger>
-        <TooltipContent side="top" className="max-w-xs">
-          <p className="text-sm">{source.title}</p>
+    <HoverCard openDelay={300} closeDelay={100}>
+      <HoverCardTrigger asChild>
+        <Link href={`/bookmarks/${source.id}`} className="inline-block">
+          <Badge
+            variant="outline"
+            className="text-xs cursor-pointer hover:bg-primary/10 hover:border-primary transition-colors group"
+          >
+            {displayTitle}
+            <ExternalLink className="ml-1 h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+          </Badge>
+        </Link>
+      </HoverCardTrigger>
+      <HoverCardContent
+        side="top"
+        align="start"
+        className="w-80 p-4"
+        sideOffset={8}
+      >
+        <div className="space-y-3">
+          {/* 标题 */}
+          <div className="flex items-start gap-2">
+            <BookOpen className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+            <p className="text-sm font-medium leading-tight">{source.title}</p>
+          </div>
+
+          {/* 引文（如果有） */}
           {source.quote && (
-            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-              &quot;{source.quote}&quot;
-            </p>
+            <blockquote className="border-l-2 border-primary/30 pl-3 italic text-xs text-muted-foreground">
+              &ldquo;{source.quote}&rdquo;
+            </blockquote>
           )}
-          <p className="text-xs text-muted-foreground mt-1">点击查看原书签</p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+
+          {/* 底部操作提示 */}
+          <div className="flex items-center justify-between pt-2 border-t">
+            <span className="text-xs text-muted-foreground">
+              ID: {source.id}
+            </span>
+            <span className="text-xs text-primary flex items-center gap-1">
+              点击查看详情
+              <ExternalLink className="h-3 w-3" />
+            </span>
+          </div>
+        </div>
+      </HoverCardContent>
+    </HoverCard>
   );
 }
 
@@ -461,9 +492,19 @@ function BlindSpotSection({
                 {item.search_keywords.length > 0 && (
                   <div className="flex flex-wrap gap-1">
                     {item.search_keywords.map((keyword, i) => (
-                      <Badge key={i} variant="secondary" className="text-xs">
-                        {keyword}
-                      </Badge>
+                      <Link
+                        key={i}
+                        href={`/search?q=${encodeURIComponent(keyword)}`}
+                        className="inline-block"
+                      >
+                        <Badge
+                          variant="secondary"
+                          className="text-xs cursor-pointer hover:bg-primary/10 hover:border-primary transition-colors group"
+                        >
+                          <Search className="h-3 w-3 mr-1 opacity-50 group-hover:opacity-100" />
+                          {keyword}
+                        </Badge>
+                      </Link>
                     ))}
                   </div>
                 )}
@@ -602,6 +643,7 @@ export function SynthesisDetailPageClient({
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
+  const [isCopied, setIsCopied] = useState(false); // [I2] 复制状态
 
   // 标注功能
   const { highlights, createHighlight, updateHighlight, deleteHighlight } =
@@ -713,6 +755,24 @@ export function SynthesisDetailPageClient({
     refetch();
   }, [refetch]);
 
+  // [I2] 复制 Markdown
+  const handleCopyMarkdown = useCallback(async () => {
+    if (!report?.fullMarkdown) {
+      toast.error("暂无可复制的内容");
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(report.fullMarkdown);
+      setIsCopied(true);
+      toast.success("已复制到剪贴板");
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch (error) {
+      console.error("Copy markdown error:", error);
+      toast.error("复制失败，请重试");
+    }
+  }, [report?.fullMarkdown]);
+
   if (isLoading) {
     return (
       <div className="container max-w-4xl py-6 space-y-6">
@@ -757,6 +817,29 @@ export function SynthesisDetailPageClient({
               <Highlighter className="h-3 w-3" />
               {highlights.length}
             </Badge>
+          )}
+          {/* [I2] 复制 Markdown 按钮 */}
+          {report.status === "completed" && report.fullMarkdown && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCopyMarkdown}
+                    disabled={isCopied}
+                  >
+                    {isCopied ? (
+                      <Check className="mr-2 h-4 w-4 text-green-500" />
+                    ) : (
+                      <Copy className="mr-2 h-4 w-4" />
+                    )}
+                    {isCopied ? "已复制" : "复制"}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>复制完整 Markdown 内容</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           )}
           <Button
             variant="outline"
@@ -862,6 +945,16 @@ export function SynthesisDetailPageClient({
               handlers={highlightHandlers}
             />
           </div>
+
+          {/* [E4] 来源书签面板 */}
+          <SourceBookmarksPanel
+            reportId={reportId}
+            sourceType={report.sourceType}
+            sourceId={report.sourceId}
+            sourceBookmarkIds={report.sourceBookmarkIds}
+            sourceCount={report.sourceCount}
+            defaultOpen={false}
+          />
         </>
       )}
 
