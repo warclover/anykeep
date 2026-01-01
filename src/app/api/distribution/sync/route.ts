@@ -11,6 +11,9 @@ import { DistributionRegistry, DistributionService } from "@/lib/distribution";
 import {
   ObsidianAdapter,
   ManualExportAdapter,
+  NotionAdapter,
+  WebhookAdapter,
+  RssFeedAdapter,
 } from "@/lib/distribution/adapters";
 import {
   getDistributionTargetsTable,
@@ -79,6 +82,9 @@ export async function POST(request: NextRequest) {
     registry.register(
       new ManualExportAdapter() as unknown as IDistributionAdapter,
     );
+    registry.register(new NotionAdapter() as unknown as IDistributionAdapter);
+    registry.register(new WebhookAdapter() as unknown as IDistributionAdapter);
+    registry.register(new RssFeedAdapter() as unknown as IDistributionAdapter);
 
     // 创建服务
     const service = new DistributionService(registry, supabase);

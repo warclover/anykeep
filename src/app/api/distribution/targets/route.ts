@@ -19,7 +19,7 @@ import {
  * 创建目标请求验证 Schema
  */
 const createTargetSchema = z.object({
-  targetType: z.enum(["obsidian", "manual_export", "notion"]),
+  targetType: z.enum(["obsidian", "manual_export", "notion", "webhook", "rss"]),
   name: z.string().min(1).max(100),
   targetConfig: z.record(z.string(), z.unknown()),
   trigger: z.object({
