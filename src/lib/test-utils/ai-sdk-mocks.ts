@@ -8,7 +8,7 @@
  * @version 1.0.0
  */
 
-import type { generateText, streamText, generateObject } from "ai";
+import type { generateText, streamText } from "ai";
 
 /**
  * AI SDK v5.x 正确的 usage 类型
@@ -106,7 +106,14 @@ export function createGenerateTextMock(
     },
     responseMessages: [],
     roundtrips: [],
-  } as Awaited<ReturnType<typeof generateText>>;
+    // AI SDK 5.x 新增字段
+    content: [],
+    reasoning: undefined,
+    reasoningText: undefined,
+    files: [],
+    sources: [],
+    providerMetadata: undefined,
+  } as unknown as Awaited<ReturnType<typeof generateText>>;
 }
 
 /**
@@ -238,7 +245,7 @@ export interface GenerateObjectMockOptions<T> {
  */
 export function createGenerateObjectMock<T>(
   options: GenerateObjectMockOptions<T>,
-): Awaited<ReturnType<typeof generateObject<T>>> {
+) {
   const {
     object,
     finishReason = "stop",
@@ -266,7 +273,11 @@ export function createGenerateObjectMock<T>(
     },
     experimental_providerMetadata: undefined,
     logprobs: undefined,
-  } as Awaited<ReturnType<typeof generateObject<T>>>;
+    // AI SDK 5.x 新增字段
+    reasoning: undefined,
+    providerMetadata: undefined,
+    toJsonResponse: () => new Response(JSON.stringify(object)),
+  };
 }
 
 /**

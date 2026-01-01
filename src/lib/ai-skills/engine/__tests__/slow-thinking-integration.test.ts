@@ -24,13 +24,23 @@ jest.mock("ai", () => ({
       <conclusion>执行默认整理策略</conclusion>
     `,
     finishReason: "stop",
-    usage: { promptTokens: 100, completionTokens: 50, totalTokens: 150 },
+    usage: { inputTokens: 100, outputTokens: 50, totalTokens: 150 },
     response: {
       id: "test-id",
       timestamp: new Date(),
       modelId: "mock-model",
       headers: {},
     },
+    toolCalls: [],
+    toolResults: [],
+    steps: [],
+    warnings: [],
+    rawResponse: undefined,
+    request: { body: undefined },
+    responseMessages: [],
+    content: [],
+    reasoning: undefined,
+    providerMetadata: undefined,
   }),
 }));
 
@@ -102,7 +112,12 @@ describe("SlowThinking Integration with UnifiedEngine", () => {
       yield { type: "text", text: "测试响应" };
       yield {
         type: "done",
-        result: { success: true, content: "完成" },
+        result: {
+          success: true,
+          content: "完成",
+          toolCalls: [],
+          durationMs: 100,
+        },
       };
     });
   });

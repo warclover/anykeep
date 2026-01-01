@@ -4,6 +4,7 @@
  * @since 2025-12-27
  */
 
+import type { LanguageModel } from "ai";
 import { ConversationCompressor } from "../conversation-compressor";
 import type { ConversationMessage } from "../compression-types";
 
@@ -23,8 +24,24 @@ jest.mock("@/lib/ai-providers", () => ({
 jest.mock("ai", () => ({
   generateText: jest.fn().mockResolvedValue({
     text: "",
-    usage: { inputTokens: 0, outputTokens: 0 },
+    usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
     finishReason: "stop",
+    response: {
+      id: "mock-response-id",
+      timestamp: new Date(),
+      modelId: "mock-model",
+      headers: {},
+    },
+    toolCalls: [],
+    toolResults: [],
+    steps: [],
+    warnings: [],
+    rawResponse: undefined,
+    request: { body: undefined },
+    responseMessages: [],
+    content: [],
+    reasoning: undefined,
+    providerMetadata: undefined,
   }),
 }));
 
@@ -163,7 +180,9 @@ describe("ConversationCompressor", () => {
 - 继续整理`;
 
     beforeEach(() => {
-      mockGetModel.mockReturnValue({});
+      mockGetModel.mockReturnValue({
+        id: "mock-model",
+      } as unknown as LanguageModel);
     });
 
     it("should return failure when disabled", async () => {
@@ -187,9 +206,9 @@ describe("ConversationCompressor", () => {
     it("should call LLM and return compressed messages on success", async () => {
       mockGenerateText.mockResolvedValue({
         text: validSummary,
-        usage: { inputTokens: 100, outputTokens: 50 },
+        usage: { inputTokens: 100, outputTokens: 50, totalTokens: 150 },
         finishReason: "stop",
-      });
+      } as Awaited<ReturnType<typeof generateText>>);
 
       // 使用长消息以确保压缩后确实更短
       const messages = createLongMessages(30, 200); // 15 turns, long content
@@ -205,9 +224,9 @@ describe("ConversationCompressor", () => {
     it("should return failure when summary validation fails", async () => {
       mockGenerateText.mockResolvedValue({
         text: "太短", // Too short summary
-        usage: { inputTokens: 100, outputTokens: 5 },
+        usage: { inputTokens: 100, outputTokens: 5, totalTokens: 105 },
         finishReason: "stop",
-      });
+      } as Awaited<ReturnType<typeof generateText>>);
 
       const messages = createMessages(30);
       const result = await compressor.compress(messages, mockContext);
@@ -240,9 +259,9 @@ describe("ConversationCompressor", () => {
     it("should include metrics on successful compression", async () => {
       mockGenerateText.mockResolvedValue({
         text: validSummary,
-        usage: { inputTokens: 500, outputTokens: 100 },
+        usage: { inputTokens: 500, outputTokens: 100, totalTokens: 600 },
         finishReason: "stop",
-      });
+      } as Awaited<ReturnType<typeof generateText>>);
 
       // 使用长消息以确保压缩后确实更短
       const messages = createLongMessages(30, 200);

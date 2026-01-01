@@ -16,6 +16,27 @@ jest.mock("ai", () => ({
     steps: [],
     finishReason: "stop",
     usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
+    response: {
+      id: "mock-response-id",
+      timestamp: new Date(),
+      modelId: "mock-model",
+      headers: {},
+    },
+    toolCalls: [],
+    toolResults: [],
+    warnings: [],
+    rawResponse: undefined,
+    experimental_providerMetadata: undefined,
+    logprobs: undefined,
+    request: { body: undefined },
+    responseMessages: [],
+    roundtrips: [],
+    content: [],
+    reasoning: undefined,
+    reasoningText: undefined,
+    files: [],
+    sources: [],
+    providerMetadata: undefined,
   }),
   streamText: jest.fn().mockReturnValue({
     fullStream: {
@@ -24,7 +45,7 @@ jest.mock("ai", () => ({
       },
     },
     steps: Promise.resolve([]),
-    usage: Promise.resolve({ inputTokens: 0, outputTokens: 0 }),
+    usage: Promise.resolve({ inputTokens: 0, outputTokens: 0, totalTokens: 0 }),
     finishReason: Promise.resolve("stop"),
   }),
   stepCountIs: jest.fn().mockReturnValue(() => false),
@@ -88,15 +109,10 @@ jest.mock("../core/error-messages", () => ({
 import { generateText, streamText } from "ai";
 import { aiProviderRouter } from "@/lib/ai-providers";
 
-// Properly typed mock references
-const mockGenerateText = generateText as jest.MockedFunction<
-  typeof generateText
->;
-const mockStreamText = streamText as jest.MockedFunction<typeof streamText>;
-const mockSelectProvider =
-  aiProviderRouter.selectProvider as jest.MockedFunction<
-    typeof aiProviderRouter.selectProvider
-  >;
+// Using jest.Mock for flexible mock typing in tests
+const mockGenerateText = generateText as jest.Mock;
+const mockStreamText = streamText as jest.Mock;
+const mockSelectProvider = aiProviderRouter.selectProvider as jest.Mock;
 
 describe("KnowledgeAgent", () => {
   let agent: KnowledgeAgent;
@@ -106,7 +122,11 @@ describe("KnowledgeAgent", () => {
   // Mock model for provider selection
   const mockModel = { id: "gpt-4" };
   const mockProvider = { name: "openai", isConfigured: true };
-  const mockSelection = { provider: mockProvider, model: mockModel };
+  const mockSelection = {
+    provider: mockProvider,
+    model: mockModel,
+    reason: "default",
+  } as unknown;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -157,7 +177,7 @@ describe("KnowledgeAgent", () => {
           totalTokens: 150,
         },
         finishReason: "stop",
-      };
+      } as unknown;
 
       mockGenerateText.mockResolvedValue(mockResult);
 
@@ -174,7 +194,7 @@ describe("KnowledgeAgent", () => {
         text: "Response",
         steps: [],
         finishReason: "stop",
-      };
+      } as unknown;
 
       mockGenerateText.mockResolvedValue(mockResult);
 
@@ -198,7 +218,7 @@ describe("KnowledgeAgent", () => {
         text: "Response",
         steps: [],
         finishReason: "stop",
-      };
+      } as unknown;
 
       mockGenerateText.mockResolvedValue(mockResult);
 
@@ -231,7 +251,7 @@ describe("KnowledgeAgent", () => {
           },
         ],
         finishReason: "tool-calls",
-      };
+      } as unknown;
 
       mockGenerateText.mockResolvedValue(mockResult);
 
@@ -268,7 +288,7 @@ describe("KnowledgeAgent", () => {
         text: "Response",
         steps: [],
         finishReason: "stop",
-      };
+      } as unknown;
 
       mockGenerateText.mockResolvedValue(mockResult);
 
@@ -277,7 +297,7 @@ describe("KnowledgeAgent", () => {
         maxTokens: 1000,
       });
 
-      expect(generateText).toHaveBeenCalledWith(
+      expect(mockGenerateText).toHaveBeenCalledWith(
         expect.objectContaining({
           model: mockModel,
           temperature: 0.5,
@@ -307,7 +327,7 @@ describe("KnowledgeAgent", () => {
           totalTokens: 15,
         }),
         finishReason: Promise.resolve("stop"),
-      };
+      } as unknown;
 
       mockStreamText.mockReturnValue(mockStreamResult);
 
@@ -357,7 +377,7 @@ describe("KnowledgeAgent", () => {
         steps: Promise.resolve([]),
         usage: Promise.resolve(null),
         finishReason: Promise.resolve("error"),
-      };
+      } as unknown;
 
       mockStreamText.mockReturnValue(mockStreamResult);
 
@@ -397,9 +417,13 @@ describe("KnowledgeAgent", () => {
             ],
           },
         ]),
-        usage: Promise.resolve({ inputTokens: 10, outputTokens: 5 }),
+        usage: Promise.resolve({
+          inputTokens: 10,
+          outputTokens: 5,
+          totalTokens: 15,
+        }),
         finishReason: Promise.resolve("tool-calls"),
-      };
+      } as unknown;
 
       mockStreamText.mockReturnValue(mockStreamResult);
 
@@ -462,7 +486,7 @@ describe("KnowledgeAgent", () => {
         text: "Done",
         steps: [],
         finishReason: "stop",
-      };
+      } as unknown;
 
       mockGenerateText.mockResolvedValue(mockResult);
 
@@ -475,7 +499,7 @@ describe("KnowledgeAgent", () => {
         text: "Truncated...",
         steps: [],
         finishReason: "length",
-      };
+      } as unknown;
 
       mockGenerateText.mockResolvedValue(mockResult);
 
@@ -488,7 +512,7 @@ describe("KnowledgeAgent", () => {
         text: "Using tools",
         steps: [],
         finishReason: "tool-calls",
-      };
+      } as unknown;
 
       mockGenerateText.mockResolvedValue(mockResult);
 
@@ -501,7 +525,7 @@ describe("KnowledgeAgent", () => {
         text: "Done",
         steps: [],
         finishReason: "unknown-reason",
-      };
+      } as unknown;
 
       mockGenerateText.mockResolvedValue(mockResult);
 

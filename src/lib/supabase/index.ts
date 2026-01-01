@@ -3,7 +3,7 @@
  */
 
 // 浏览器客户端
-export { createClient, supabase } from "./client";
+export { createClient } from "./client";
 
 // 服务端客户端
 export {
