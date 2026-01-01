@@ -25,6 +25,8 @@ import {
   Zap,
   Timer,
   Hand,
+  Webhook,
+  Rss,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -64,7 +66,16 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ObsidianConfigForm } from "./obsidian-config-form";
-import type { DistributionTarget, TriggerMode } from "@/lib/distribution/types";
+import { NotionConfigForm } from "./notion-config-form";
+import { WebhookConfigForm } from "./webhook-config-form";
+import { RssConfigForm } from "./rss-config-form";
+import type {
+  DistributionTarget,
+  TriggerMode,
+  NotionTargetConfig,
+  WebhookTargetConfig,
+  RssTargetConfig,
+} from "@/lib/distribution/types";
 
 /**
  * 目标类型配置
@@ -85,17 +96,31 @@ const TARGET_TYPE_CONFIG: Record<
     color:
       "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
   },
-  manual_export: {
-    icon: Download,
-    label: "手动导出",
-    description: "下载为文件",
-    color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
-  },
   notion: {
     icon: Cloud,
     label: "Notion",
     description: "云端数据库同步",
     color: "bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300",
+  },
+  webhook: {
+    icon: Webhook,
+    label: "Webhook",
+    description: "推送到自定义 URL",
+    color:
+      "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
+  },
+  rss: {
+    icon: Rss,
+    label: "RSS Feed",
+    description: "生成可订阅的 Feed",
+    color:
+      "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
+  },
+  manual_export: {
+    icon: Download,
+    label: "手动导出",
+    description: "下载为文件",
+    color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
   },
 };
 
@@ -400,32 +425,30 @@ export function DistributionPageClient() {
    */
   const renderAddTargetTypeSelector = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {Object.entries(TARGET_TYPE_CONFIG)
-        .filter(([key]) => key !== "notion") // Notion 暂未实现
-        .map(([key, config]) => {
-          const Icon = config.icon;
-          return (
-            <button
-              key={key}
-              onClick={() => setAddTargetType(key)}
-              className={cn(
-                "flex items-center gap-4 p-4 rounded-lg border-2 border-dashed",
-                "hover:border-primary hover:bg-muted/50 transition-colors",
-                "text-left",
-              )}
-            >
-              <div className={cn("p-3 rounded-lg", config.color)}>
-                <Icon className="h-6 w-6" />
-              </div>
-              <div>
-                <p className="font-medium">{config.label}</p>
-                <p className="text-sm text-muted-foreground">
-                  {config.description}
-                </p>
-              </div>
-            </button>
-          );
-        })}
+      {Object.entries(TARGET_TYPE_CONFIG).map(([key, config]) => {
+        const Icon = config.icon;
+        return (
+          <button
+            key={key}
+            onClick={() => setAddTargetType(key)}
+            className={cn(
+              "flex items-center gap-4 p-4 rounded-lg border-2 border-dashed",
+              "hover:border-primary hover:bg-muted/50 transition-colors",
+              "text-left",
+            )}
+          >
+            <div className={cn("p-3 rounded-lg", config.color)}>
+              <Icon className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="font-medium">{config.label}</p>
+              <p className="text-sm text-muted-foreground">
+                {config.description}
+              </p>
+            </div>
+          </button>
+        );
+      })}
     </div>
   );
 
@@ -520,6 +543,35 @@ export function DistributionPageClient() {
               onSubmit={handleSubmit}
               onCancel={() => setAddTargetType(null)}
             />
+          ) : addTargetType === "notion" ? (
+            <NotionConfigForm
+              onSave={async (config) => {
+                await handleSubmit(
+                  config as unknown as Record<string, unknown>,
+                );
+              }}
+              onCancel={() => setAddTargetType(null)}
+            />
+          ) : addTargetType === "webhook" ? (
+            <WebhookConfigForm
+              onSave={async (config) => {
+                await handleSubmit(
+                  config as unknown as Record<string, unknown>,
+                );
+              }}
+              onCancel={() => setAddTargetType(null)}
+              showCard={false}
+            />
+          ) : addTargetType === "rss" ? (
+            <RssConfigForm
+              onSave={async (config) => {
+                await handleSubmit(
+                  config as unknown as Record<string, unknown>,
+                );
+              }}
+              onCancel={() => setAddTargetType(null)}
+              showCard={false}
+            />
           ) : addTargetType === "manual_export" ? (
             <div className="py-8 text-center">
               <p className="text-muted-foreground">
@@ -567,6 +619,50 @@ export function DistributionPageClient() {
               }}
               onSubmit={handleSubmit}
               onCancel={() => setEditTarget(null)}
+            />
+          )}
+
+          {editTarget?.targetType === "notion" && (
+            <NotionConfigForm
+              initialConfig={
+                editTarget.targetConfig as unknown as NotionTargetConfig
+              }
+              onSave={async (config) => {
+                await handleSubmit(
+                  config as unknown as Record<string, unknown>,
+                );
+              }}
+              onCancel={() => setEditTarget(null)}
+            />
+          )}
+
+          {editTarget?.targetType === "webhook" && (
+            <WebhookConfigForm
+              initialConfig={
+                editTarget.targetConfig as unknown as WebhookTargetConfig
+              }
+              onSave={async (config) => {
+                await handleSubmit(
+                  config as unknown as Record<string, unknown>,
+                );
+              }}
+              onCancel={() => setEditTarget(null)}
+              showCard={false}
+            />
+          )}
+
+          {editTarget?.targetType === "rss" && (
+            <RssConfigForm
+              initialConfig={
+                editTarget.targetConfig as unknown as RssTargetConfig
+              }
+              onSave={async (config) => {
+                await handleSubmit(
+                  config as unknown as Record<string, unknown>,
+                );
+              }}
+              onCancel={() => setEditTarget(null)}
+              showCard={false}
             />
           )}
         </DialogContent>

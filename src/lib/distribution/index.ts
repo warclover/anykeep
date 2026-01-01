@@ -49,12 +49,13 @@ export {
 // export { DistributionScheduler } from './core/distribution.scheduler';
 
 // ==================== 适配器导出 ====================
-export { ManualExportAdapter, ObsidianAdapter } from "./adapters";
-
-// 后续 Story 实现后添加
-// export { NotionAdapter } from './adapters/notion.adapter';
-// export { WebhookAdapter } from './adapters/webhook.adapter';
-// export { RssFeedAdapter } from './adapters/rss.adapter';
+export {
+  ManualExportAdapter,
+  ObsidianAdapter,
+  NotionAdapter,
+  WebhookAdapter,
+  RssFeedAdapter,
+} from "./adapters";
 
 // ==================== 错误类型 ====================
 export * from "./errors";
