@@ -50,6 +50,9 @@ const updatePreferencesSchema = z.object({
   includedFolderIds: z.array(z.number().int()).optional(),
   excludedFolderIds: z.array(z.number().int()).optional(),
   notificationChannel: z.enum(["sidebar", "push", "both", "none"]).optional(),
+  // v1.1.0: 显示控制选项（默认关闭）
+  showMenuBadge: z.boolean().optional(),
+  showSidebarReminder: z.boolean().optional(),
 });
 
 /**
@@ -89,6 +92,8 @@ export async function GET() {
           includedFolderIds: [],
           excludedFolderIds: [],
           notificationChannel: "sidebar",
+          showMenuBadge: false,
+          showSidebarReminder: false,
         },
         isDefault: true,
       });
@@ -127,6 +132,8 @@ export async function GET() {
         excludedFolderIds: typedPreferences?.excluded_folder_ids || [],
         notificationChannel:
           typedPreferences?.notification_channel ?? "sidebar",
+        showMenuBadge: typedPreferences?.show_menu_badge ?? false,
+        showSidebarReminder: typedPreferences?.show_sidebar_reminder ?? false,
       },
       folders: folders || [],
       isDefault: false,
@@ -194,6 +201,12 @@ export async function PUT(request: NextRequest) {
     if (updates.notificationChannel !== undefined) {
       dbUpdates.notification_channel = updates.notificationChannel;
     }
+    if (updates.showMenuBadge !== undefined) {
+      dbUpdates.show_menu_badge = updates.showMenuBadge;
+    }
+    if (updates.showSidebarReminder !== undefined) {
+      dbUpdates.show_sidebar_reminder = updates.showSidebarReminder;
+    }
 
     // 4. Upsert 偏好设置
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -248,6 +261,8 @@ export async function PUT(request: NextRequest) {
         excludedFolderIds: typedPreferences?.excluded_folder_ids || [],
         notificationChannel:
           typedPreferences?.notification_channel ?? "sidebar",
+        showMenuBadge: typedPreferences?.show_menu_badge ?? false,
+        showSidebarReminder: typedPreferences?.show_sidebar_reminder ?? false,
       },
     });
   } catch (error) {

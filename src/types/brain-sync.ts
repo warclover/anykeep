@@ -147,6 +147,9 @@ export interface ReviewPreferencesRow {
   included_folder_ids: number[] | null;
   excluded_folder_ids: number[] | null;
   notification_channel: "sidebar" | "push" | "both" | "none";
+  // v1.1.0: 显示偏好（默认关闭）
+  show_menu_badge: boolean;
+  show_sidebar_reminder: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -279,4 +282,7 @@ export interface FormattedPreferences {
   includedFolderIds: number[];
   excludedFolderIds: number[];
   notificationChannel: string;
+  // v1.1.0: 显示偏好（默认关闭）
+  showMenuBadge: boolean;
+  showSidebarReminder: boolean;
 }

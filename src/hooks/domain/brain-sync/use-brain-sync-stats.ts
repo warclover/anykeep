@@ -30,7 +30,11 @@ const MIN_REQUEST_INTERVAL_MS = 5_000;
 // ============================================
 
 interface PreferencesCache {
-  data: { enabled: boolean } | null;
+  data: {
+    enabled: boolean;
+    showMenuBadge: boolean;
+    showSidebarReminder: boolean;
+  } | null;
   timestamp: number;
 }
 
@@ -43,7 +47,11 @@ let preferencesCache: PreferencesCache = { data: null, timestamp: 0 };
 let statsCache: StatsCache = { data: null, timestamp: 0 };
 let lastPrefsRequestTime = 0;
 let lastStatsRequestTime = 0;
-let pendingPrefsRequest: Promise<{ enabled: boolean } | null> | null = null;
+let pendingPrefsRequest: Promise<{
+  enabled: boolean;
+  showMenuBadge: boolean;
+  showSidebarReminder: boolean;
+} | null> | null = null;
 let pendingStatsRequest: Promise<BrainSyncStats | null> | null = null;
 
 // ============================================
@@ -60,6 +68,10 @@ export interface UseBrainSyncStatsReturn {
   stats: BrainSyncStats | null;
   loading: boolean;
   enabled: boolean;
+  /** 是否显示菜单徽章（默认关闭） */
+  showMenuBadge: boolean;
+  /** 是否显示侧边栏提醒（默认关闭） */
+  showSidebarReminder: boolean;
   refresh: () => Promise<void>;
 }
 
@@ -73,6 +85,12 @@ export function useBrainSyncStats(): UseBrainSyncStatsReturn {
   const [enabled, setEnabled] = useState(
     preferencesCache.data?.enabled ?? false,
   );
+  const [showMenuBadge, setShowMenuBadge] = useState(
+    preferencesCache.data?.showMenuBadge ?? false,
+  );
+  const [showSidebarReminder, setShowSidebarReminder] = useState(
+    preferencesCache.data?.showSidebarReminder ?? false,
+  );
   const [isPageVisible, setIsPageVisible] = useState(true);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -81,6 +99,8 @@ export function useBrainSyncStats(): UseBrainSyncStatsReturn {
    */
   const fetchPreferences = useCallback(async (): Promise<{
     enabled: boolean;
+    showMenuBadge: boolean;
+    showSidebarReminder: boolean;
   } | null> => {
     const now = Date.now();
 
@@ -109,8 +129,11 @@ export function useBrainSyncStats(): UseBrainSyncStatsReturn {
         if (response.status === 429) return preferencesCache.data;
 
         const data = await response.json();
+        const prefs = data.data?.preferences;
         const result = {
-          enabled: data.success && data.data.preferences?.enabled === true,
+          enabled: data.success && prefs?.enabled === true,
+          showMenuBadge: prefs?.showMenuBadge ?? false,
+          showSidebarReminder: prefs?.showSidebarReminder ?? false,
         };
         preferencesCache = { data: result, timestamp: Date.now() };
         return result;
@@ -175,11 +198,16 @@ export function useBrainSyncStats(): UseBrainSyncStatsReturn {
       const prefs = await fetchPreferences();
       if (!prefs?.enabled) {
         setEnabled(false);
+        setShowMenuBadge(false);
+        setShowSidebarReminder(false);
         setLoading(false);
         return;
       }
 
       setEnabled(true);
+      setShowMenuBadge(prefs.showMenuBadge);
+      setShowSidebarReminder(prefs.showSidebarReminder);
+
       const statsData = await fetchStats();
       if (statsData) {
         setStats(statsData);
@@ -237,6 +265,8 @@ export function useBrainSyncStats(): UseBrainSyncStatsReturn {
     stats,
     loading,
     enabled,
+    showMenuBadge,
+    showSidebarReminder,
     refresh: loadData,
   };
 }

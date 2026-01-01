@@ -30,7 +30,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Brain, Calendar, Clock, Bell, Sparkles } from "lucide-react";
+import {
+  Loader2,
+  Brain,
+  Calendar,
+  Clock,
+  Bell,
+  Sparkles,
+  Eye,
+} from "lucide-react";
 import { clientLogger } from "@/lib/client-logger";
 
 // ============================================
@@ -43,6 +51,9 @@ interface BrainSyncPreferences {
   preferredTime: string;
   weeklyLimit: number;
   notificationChannel: "sidebar" | "push" | "both" | "none";
+  // v1.1.0: 显示控制选项（默认关闭）
+  showMenuBadge: boolean;
+  showSidebarReminder: boolean;
 }
 
 interface BrainSyncStats {
@@ -96,6 +107,8 @@ export function BrainSyncSettingsCard({ userId }: BrainSyncSettingsCardProps) {
     preferredTime: "09:00",
     weeklyLimit: 10,
     notificationChannel: "sidebar",
+    showMenuBadge: false,
+    showSidebarReminder: false,
   });
   const [stats, setStats] = useState<BrainSyncStats | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -116,6 +129,8 @@ export function BrainSyncSettingsCard({ userId }: BrainSyncSettingsCardProps) {
             preferredTime: prefs.preferredTime,
             weeklyLimit: prefs.weeklyLimit,
             notificationChannel: prefs.notificationChannel,
+            showMenuBadge: prefs.showMenuBadge ?? false,
+            showSidebarReminder: prefs.showSidebarReminder ?? false,
           });
         }
 
@@ -232,6 +247,46 @@ export function BrainSyncSettingsCard({ userId }: BrainSyncSettingsCardProps) {
       setError(err instanceof Error ? err.message : "切换失败");
     } finally {
       setTogglingEnabled(false);
+    }
+  };
+
+  /**
+   * 切换显示偏好（自动保存）
+   * @param key 偏好键名：showMenuBadge 或 showSidebarReminder
+   * @param checked 新状态
+   */
+  const handleToggleDisplayPreference = async (
+    key: "showMenuBadge" | "showSidebarReminder",
+    checked: boolean,
+  ) => {
+    setError(null);
+
+    // 乐观更新 UI
+    const oldValue = preferences[key];
+    setPreferences((prev) => ({ ...prev, [key]: checked }));
+
+    try {
+      const response = await fetch("/api/brain-sync/preferences", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [key]: checked }),
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        // 回滚状态
+        setPreferences((prev) => ({ ...prev, [key]: oldValue }));
+        throw new Error(data.error || "切换失败");
+      }
+
+      clientLogger.info({ [key]: checked }, `Brain-Sync ${key} toggle saved`);
+    } catch (err) {
+      clientLogger.error(
+        { error: err instanceof Error ? err.message : String(err) },
+        `Failed to toggle Brain-Sync ${key}`,
+      );
+      setError(err instanceof Error ? err.message : "切换失败");
     }
   };
 
@@ -419,6 +474,55 @@ export function BrainSyncSettingsCard({ userId }: BrainSyncSettingsCardProps) {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* 显示偏好 */}
+            <div className="space-y-4 pt-2 border-t">
+              <Label className="flex items-center gap-2 text-sm font-medium">
+                <Eye className="h-4 w-4" />
+                显示偏好
+              </Label>
+
+              {/* 菜单徽章开关 */}
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="show-menu-badge" className="text-sm">
+                    显示菜单徽章
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    在侧边栏「知识回顾」菜单旁显示待复习数量
+                  </p>
+                </div>
+                <Switch
+                  id="show-menu-badge"
+                  checked={preferences.showMenuBadge}
+                  onCheckedChange={(checked) =>
+                    handleToggleDisplayPreference("showMenuBadge", checked)
+                  }
+                />
+              </div>
+
+              {/* 侧边栏提醒开关 */}
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="show-sidebar-reminder" className="text-sm">
+                    显示灵感提醒
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    在侧边栏底部显示「灵感回顾」提醒卡片
+                  </p>
+                </div>
+                <Switch
+                  id="show-sidebar-reminder"
+                  checked={preferences.showSidebarReminder}
+                  onCheckedChange={(checked) =>
+                    handleToggleDisplayPreference(
+                      "showSidebarReminder",
+                      checked,
+                    )
+                  }
+                />
+              </div>
             </div>
           </>
         )}

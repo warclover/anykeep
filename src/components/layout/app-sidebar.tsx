@@ -223,8 +223,9 @@ export function AppSidebar() {
   // 获取未读消息数量
   const { total: unreadCount, important: importantCount } = useUnreadCount();
 
-  // 获取 Brain-Sync 待复习数量
-  const { stats: brainSyncStats } = useBrainSyncStats();
+  // 获取 Brain-Sync 待复习数量和显示偏好
+  const { stats: brainSyncStats, showMenuBadge: brainSyncShowBadge } =
+    useBrainSyncStats();
 
   // 安全获取导航上下文
   const navigationContext = useSafeNavigation();
@@ -337,8 +338,12 @@ export function AppSidebar() {
     const Icon = item.icon;
     const isActive = isLinkActive(item.href, item.pageId);
     const showUnreadBadge = item.badge === "unread" && unreadCount > 0;
+    // Brain-Sync 徽章仅在用户设置中开启时显示
     const showBrainSyncBadge =
-      item.badge === "brain-sync" && brainSyncStats && brainSyncStats.total > 0;
+      item.badge === "brain-sync" &&
+      brainSyncShowBadge &&
+      brainSyncStats &&
+      brainSyncStats.total > 0;
     const brainSyncCount = brainSyncStats?.total ?? 0;
     const hasOverdue = brainSyncStats?.overdue ?? 0 > 0;
 

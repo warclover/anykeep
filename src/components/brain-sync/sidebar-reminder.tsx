@@ -46,13 +46,16 @@ const MIN_REQUEST_INTERVAL_MS = 5_000;
 // ============================================
 
 interface PreferencesCache {
-  data: { enabled: boolean } | null;
+  data: { enabled: boolean; showSidebarReminder: boolean } | null;
   timestamp: number;
 }
 
 let preferencesCache: PreferencesCache = { data: null, timestamp: 0 };
 let lastRequestTime = 0;
-let pendingRequest: Promise<{ enabled: boolean } | null> | null = null;
+let pendingRequest: Promise<{
+  enabled: boolean;
+  showSidebarReminder: boolean;
+} | null> | null = null;
 
 // ============================================
 // 类型定义
@@ -81,6 +84,7 @@ export function SidebarReminder({
   const [loading, setLoading] = useState(true);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [enabled, setEnabled] = useState(false);
+  const [showReminder, setShowReminder] = useState(false);
   const [isPageVisible, setIsPageVisible] = useState(true);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -90,6 +94,7 @@ export function SidebarReminder({
    */
   const fetchPreferencesWithCache = useCallback(async (): Promise<{
     enabled: boolean;
+    showSidebarReminder: boolean;
   } | null> => {
     const now = Date.now();
 
@@ -132,8 +137,10 @@ export function SidebarReminder({
         }
 
         const data = await response.json();
+        const prefs = data.data?.preferences;
         const result = {
-          enabled: data.success && data.data.preferences?.enabled === true,
+          enabled: data.success && prefs?.enabled === true,
+          showSidebarReminder: prefs?.showSidebarReminder ?? false,
         };
 
         // 更新缓存
@@ -161,11 +168,19 @@ export function SidebarReminder({
 
       if (!prefsResult?.enabled) {
         setEnabled(false);
+        setShowReminder(false);
         setLoading(false);
         return;
       }
 
       setEnabled(true);
+      setShowReminder(prefsResult.showSidebarReminder);
+
+      // 如果用户关闭了侧边栏提醒，跳过队列统计请求
+      if (!prefsResult.showSidebarReminder) {
+        setLoading(false);
+        return;
+      }
 
       // 获取队列统计
       const queueResponse = await fetch("/api/brain-sync/queue?limit=100");
@@ -232,8 +247,8 @@ export function SidebarReminder({
     };
   }, [enabled, isPageVisible, loadStats]);
 
-  // 不启用或加载中时不显示
-  if (loading || !enabled) {
+  // 不启用、未开启提醒或加载中时不显示
+  if (loading || !enabled || !showReminder) {
     return null;
   }
 
