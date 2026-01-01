@@ -254,21 +254,32 @@ export function SearchPageClient({
   const hasQuery = initialQuery.trim().length > 0;
 
   return (
-    <div className="h-full flex flex-col">
-      {/* Header */}
-      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 md:px-8 py-4 md:py-6">
-        <h2 className="text-gray-900 dark:text-white text-xl md:text-2xl font-semibold mb-2">
-          搜索
-        </h2>
-        <p className="text-gray-500 dark:text-gray-400 text-sm">
-          在你的收藏中搜索内容，支持 AI 语义搜索
-        </p>
-      </header>
-
+    <div className="h-full flex flex-col overflow-auto">
       {/* Content */}
-      <div className="flex-1 overflow-auto px-4 md:px-8 py-6 md:py-8">
+      <div className="flex-1 px-4 md:px-8 py-6 md:py-8">
         {/* 搜索框区域 */}
-        <div className="max-w-3xl mx-auto">
+        <div className="max-w-2xl mx-auto">
+          {/* 空状态标题区域 - 仅在无搜索时显示 */}
+          {!hasQuery && (
+            <div className="flex flex-col items-center text-center mb-6 pt-4">
+              {/* 紫色大图标 */}
+              <div className="w-20 h-20 bg-gradient-to-br from-purple-100 to-purple-50 dark:from-purple-900/40 dark:to-purple-800/20 rounded-full flex items-center justify-center mb-4">
+                <Search className="size-10 text-purple-500 dark:text-purple-400" />
+              </div>
+              {/* 标题 */}
+              <h2 className="text-gray-900 dark:text-white text-xl md:text-2xl font-semibold mb-2">
+                开始搜索你的收藏
+              </h2>
+              {/* 副标题 */}
+              <p className="text-gray-500 dark:text-gray-400 text-sm max-w-md">
+                输入关键词搜索标题、作者或摘要，或点击下方热门标签快速开始
+              </p>
+              <p className="text-purple-500 dark:text-purple-400 text-sm mt-1">
+                在你的收藏中搜索内容，支持 AI 语义搜索
+              </p>
+            </div>
+          )}
+
           {/* 大搜索框 */}
           <div className="relative mb-4">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-gray-400" />
@@ -315,12 +326,12 @@ export function SearchPageClient({
           <SemanticSearchToggle
             mode={searchMode}
             onModeChange={handleSearchModeChange}
-            className="mb-8"
+            className="mb-6"
           />
 
           {/* 搜索历史（仅在聚焦且有历史时显示） */}
           {showHistory && searchHistory.length > 0 && !hasQuery && (
-            <div className="mb-8">
+            <div className="mb-6">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
                   <Clock className="size-4" />
@@ -426,23 +437,6 @@ export function SearchPageClient({
                 )}
               </>
             )}
-          </div>
-        )}
-
-        {/* 空状态（无搜索） */}
-        {!hasQuery && (
-          <div className="max-w-3xl mx-auto mt-12">
-            <div className="flex flex-col items-center justify-center py-16">
-              <div className="w-20 h-20 bg-gradient-to-br from-purple-100 to-blue-100 dark:from-purple-900/30 dark:to-blue-900/30 rounded-full flex items-center justify-center mb-4">
-                <Search className="size-10 text-purple-600 dark:text-purple-400" />
-              </div>
-              <h3 className="text-gray-900 dark:text-white text-xl font-semibold mb-2">
-                开始搜索你的收藏
-              </h3>
-              <p className="text-gray-500 dark:text-gray-400 text-sm text-center max-w-md">
-                输入关键词搜索标题、作者或摘要，或点击下方热门标签快速开始
-              </p>
-            </div>
           </div>
         )}
       </div>

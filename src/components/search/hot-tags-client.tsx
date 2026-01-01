@@ -22,8 +22,8 @@ export function HotTagsClient({ tags }: HotTagsClientProps) {
   };
 
   return (
-    <div className="mb-8">
-      <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+    <div className="mb-4">
+      <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
         🔥 热门标签
       </h3>
       <div className="flex flex-wrap gap-2">
@@ -31,7 +31,7 @@ export function HotTagsClient({ tags }: HotTagsClientProps) {
           <Badge
             key={tag}
             variant="secondary"
-            className="cursor-pointer hover:bg-purple-100 dark:hover:bg-purple-900/50"
+            className="cursor-pointer hover:bg-purple-100 dark:hover:bg-purple-900/50 text-sm"
             onClick={() => handleTagClick(tag)}
           >
             {tag}
