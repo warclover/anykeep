@@ -74,6 +74,7 @@ import { SynthesisExportDialog } from "./synthesis-export-dialog";
 import { SynthesisShareDialog } from "./synthesis-share-dialog";
 import { SynthesisProgress } from "./synthesis-progress";
 import { SourceBookmarksPanel } from "./source-bookmarks-panel";
+import { SynthesisQAPanel } from "./synthesis-qa-panel";
 import type {
   ConsensusPoint,
   DivergencePoint,
@@ -597,14 +598,18 @@ function FailedRecoveryCard({
 }
 
 /**
- * 生成中状态卡片
+ * 生成中状态卡片 [I4] 增强生成体验
  */
 function GeneratingCard({
   reportId,
+  depthMode,
+  sourceCount,
   onComplete,
   onCancel,
 }: {
   reportId: string;
+  depthMode?: "quick" | "standard" | "academic";
+  sourceCount?: number;
   onComplete: () => void;
   onCancel: () => void;
 }) {
@@ -617,6 +622,8 @@ function GeneratingCard({
       <CardContent>
         <SynthesisProgress
           reportId={reportId}
+          depthMode={depthMode}
+          sourceCount={sourceCount}
           onComplete={onComplete}
           onCancel={onCancel}
         />
@@ -912,6 +919,8 @@ export function SynthesisDetailPageClient({
       {report.status === "pending" || report.status === "generating" ? (
         <GeneratingCard
           reportId={reportId}
+          depthMode={report.depthMode}
+          sourceCount={report.sourceCount}
           onComplete={handleGenerationComplete}
           onCancel={handleGenerationCancel}
         />
@@ -954,6 +963,13 @@ export function SynthesisDetailPageClient({
             sourceBookmarkIds={report.sourceBookmarkIds}
             sourceCount={report.sourceCount}
             defaultOpen={false}
+          />
+
+          {/* [S3] 实时问答面板 */}
+          <SynthesisQAPanel
+            reportId={reportId}
+            reportTitle={report.title}
+            overview={report.overview}
           />
         </>
       )}

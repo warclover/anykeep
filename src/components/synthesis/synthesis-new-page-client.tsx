@@ -58,6 +58,10 @@ import {
 } from "./source-selector";
 import { BookmarkPreviewList } from "./bookmark-preview-list";
 import { StyleSelector } from "./style-selector";
+import {
+  ContentQualityCard,
+  calculateQualityAssessment,
+} from "./content-quality-card";
 
 // 来源类型配置
 const SOURCE_TYPES = [
@@ -188,6 +192,12 @@ export function SynthesisNewPageClient() {
     }
     return (contentStats?.totalCount || 0) - excludedIds.length;
   }, [sourceSelection, contentStats, excludedIds]);
+
+  // [E2] 计算质量评估
+  const qualityAssessment = useMemo(() => {
+    if (!contentStats) return null;
+    return calculateQualityAssessment(contentStats, excludedIds.length);
+  }, [contentStats, excludedIds.length]);
 
   // 获取步骤显示
   const getStepDisplay = useCallback(() => {
@@ -408,6 +418,12 @@ export function SynthesisNewPageClient() {
               maxHeight={200}
             />
 
+            {/* [E2] 内容质量评估卡片 */}
+            <ContentQualityCard
+              stats={contentStats}
+              excludedCount={excludedIds.length}
+            />
+
             {/* 深度选择 */}
             <div className="space-y-3">
               <div className="text-sm font-medium">选择综述深度</div>
@@ -469,7 +485,7 @@ export function SynthesisNewPageClient() {
               </Button>
               <Button
                 onClick={() => setStep(3)}
-                disabled={effectiveBookmarkCount < 3}
+                disabled={!qualityAssessment?.canGenerate}
               >
                 下一步
               </Button>
