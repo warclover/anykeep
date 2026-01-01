@@ -5,9 +5,9 @@
  * @version 2.0.0 - 添加 API 缓存支持 (Phase 4 North Star)
  */
 
-const CACHE_NAME = 'anykeep-v4'
-const STATIC_CACHE = 'anykeep-static-v4'
-const DYNAMIC_CACHE = 'anykeep-dynamic-v4'
+const CACHE_NAME = 'anykeep-v5'
+const STATIC_CACHE = 'anykeep-static-v5'
+const DYNAMIC_CACHE = 'anykeep-dynamic-v5'
 const API_CACHE = 'anykeep-api-v1'
 
 // 预缓存的静态资源
@@ -246,10 +246,12 @@ async function staleWhileRevalidate(request) {
   const cached = await caches.match(request)
 
   const fetchPromise = fetch(request)
-    .then((response) => {
+    .then(async (response) => {
       if (response.ok) {
-        const cache = caches.open(DYNAMIC_CACHE)
-        cache.then((c) => c.put(request, response.clone()))
+        // 先克隆再缓存，避免 body 被消费后无法 clone
+        const responseToCache = response.clone()
+        const cache = await caches.open(DYNAMIC_CACHE)
+        cache.put(request, responseToCache)
       }
       return response
     })
