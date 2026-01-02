@@ -1,9 +1,9 @@
 /**
  * Knowledge Studio - 内化率追踪模块
  * @module knowledge-studio/mastery
- * @description Phase 3 存根 - Brain-Sync 学习效果统计
- * @version 0.1.0 (Stub)
- * @since 2025-01-02
+ * @description P4 实现 - Brain-Sync 学习效果统计
+ * @version 1.0.0
+ * @since 2026-01-02
  */
 
 // 类型导出
@@ -27,8 +27,14 @@ export type {
 } from "./types";
 
 // 服务导出
-export { MasteryTrackerStub, createMasteryTracker } from "./mastery-tracker";
 export {
-  KnowledgeExtractorStub,
+  MasteryTracker,
+  MasteryTrackerStub, // 兼容别名
+  createMasteryTracker,
+} from "./mastery-tracker";
+
+export {
+  KnowledgeExtractor,
+  KnowledgeExtractorStub, // 兼容别名
   createKnowledgeExtractor,
 } from "./knowledge-extractor";

@@ -1,17 +1,12 @@
 /**
  * Knowledge Studio - 使用量追踪服务
  * @module knowledge-studio/billing
- * @description Phase 3 存根 - 使用量追踪与配额管理
- * @version 0.1.0 (Stub)
- * @since 2025-01-02
- *
- * TODO Phase 3: 完整实现
- * - 使用量持久化
- * - 配额实时检查
- * - 使用量聚合统计
- * - 超额预警
+ * @description P4 实现 - 使用量追踪与配额管理
+ * @version 1.0.0
+ * @since 2026-01-02
  */
 
+import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 import type {
   IUsageTracker,
@@ -22,15 +17,37 @@ import type {
 } from "./types";
 
 // ============================================================================
-// 存根实现
+// 配额配置
+// ============================================================================
+
+/** 会员配额限制 */
+const QUOTA_LIMITS: Record<string, Record<UsageType, number>> = {
+  free: {
+    generation: 3,
+    chat_edit: 0,
+    ai_recommendation: 5,
+    export: 10,
+    storage: 100, // MB
+  },
+  pro: {
+    generation: -1, // 无限
+    chat_edit: 50,
+    ai_recommendation: -1,
+    export: -1,
+    storage: 10000, // MB
+  },
+};
+
+// ============================================================================
+// 使用量追踪服务实现
 // ============================================================================
 
 /**
- * 使用量追踪服务（Phase 3 存根）
+ * 使用量追踪服务
  *
  * @example
  * ```typescript
- * const tracker = new UsageTrackerStub();
+ * const tracker = new UsageTracker();
  *
  * // 记录使用量
  * await tracker.trackUsage({
@@ -48,56 +65,94 @@ import type {
  * }
  * ```
  */
-export class UsageTrackerStub implements IUsageTracker {
+export class UsageTracker implements IUsageTracker {
   /**
    * 记录使用量
-   * @stub 仅记录日志，Phase 3 实现持久化
    */
   async trackUsage(record: Omit<UsageRecord, "id">): Promise<void> {
+    const supabase = await createClient();
+
+    const { error } = await supabase.from("ks_usage_records").insert({
+      user_id: record.userId,
+      usage_type: record.type,
+      amount: record.amount,
+      unit: record.unit,
+      resource_id: record.resourceId,
+      metadata: record.metadata ?? {},
+      created_at: record.timestamp.toISOString(),
+    });
+
+    if (error) {
+      logger.error({ error: error.message }, "Failed to track usage");
+      throw new Error(`记录使用量失败: ${error.message}`);
+    }
+
     logger.info(
-      `[UsageTracker] trackUsage - Phase 3 存根: ${record.type} x ${record.amount}`,
+      { userId: record.userId, type: record.type, amount: record.amount },
+      "Usage tracked",
     );
   }
 
   /**
    * 获取使用统计
-   * @stub 返回空统计，Phase 3 实现聚合查询
    */
   async getStatistics(
     userId: string,
     period: UsagePeriod,
   ): Promise<UsageStatistics> {
-    logger.info(
-      `[UsageTracker] getStatistics(${userId}, ${period}) - Phase 3 存根`,
+    const supabase = await createClient();
+
+    // 调用 RPC 函数
+    const { data, error } = await supabase.rpc("get_user_usage_stats", {
+      p_user_id: userId,
+      p_period: period,
+    });
+
+    if (error) {
+      logger.error({ error: error.message }, "Failed to get usage stats");
+      throw new Error(`获取使用统计失败: ${error.message}`);
+    }
+
+    // 获取用户会员类型
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("membership_type")
+      .eq("id", userId)
+      .single();
+
+    const membershipType = profile?.membership_type ?? "free";
+    const quotaLimits = QUOTA_LIMITS[membershipType] ?? QUOTA_LIMITS.free;
+
+    // 计算总配额
+    const totalQuota = Object.values(quotaLimits).reduce(
+      (sum, val) => (val === -1 ? sum : sum + val),
+      0,
     );
 
-    const now = new Date();
-    const periodStart = new Date(now);
-    periodStart.setDate(
-      now.getDate() - (period === "daily" ? 1 : period === "weekly" ? 7 : 30),
-    );
+    const usageByType: Record<UsageType, number> = {
+      generation: data?.usageByType?.generation ?? 0,
+      chat_edit: data?.usageByType?.chat_edit ?? 0,
+      ai_recommendation: data?.usageByType?.ai_recommendation ?? 0,
+      export: data?.usageByType?.export ?? 0,
+      storage: data?.usageByType?.storage ?? 0,
+    };
+
+    const totalUsage = data?.totalUsage ?? 0;
 
     return {
       userId,
       period,
-      periodStart,
-      periodEnd: now,
-      usageByType: {
-        generation: 0,
-        chat_edit: 0,
-        ai_recommendation: 0,
-        export: 0,
-        storage: 0,
-      },
-      totalUsage: 0,
-      quotaLimit: 100,
-      usageRate: 0,
+      periodStart: new Date(data?.periodStart ?? new Date()),
+      periodEnd: new Date(data?.periodEnd ?? new Date()),
+      usageByType,
+      totalUsage,
+      quotaLimit: totalQuota,
+      usageRate: totalQuota > 0 ? (totalUsage / totalQuota) * 100 : 0,
     };
   }
 
   /**
    * 获取使用历史
-   * @stub 返回空数组，Phase 3 实现历史查询
    */
   async getHistory(
     userId: string,
@@ -108,15 +163,51 @@ export class UsageTrackerStub implements IUsageTracker {
       limit?: number;
     },
   ): Promise<UsageRecord[]> {
-    logger.info(
-      `[UsageTracker] getHistory(${userId}) - Phase 3 存根, options: ${JSON.stringify(options)}`,
-    );
-    return [];
+    const supabase = await createClient();
+
+    let query = supabase
+      .from("ks_usage_records")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
+
+    if (options?.type) {
+      query = query.eq("usage_type", options.type);
+    }
+
+    if (options?.startDate) {
+      query = query.gte("created_at", options.startDate.toISOString());
+    }
+
+    if (options?.endDate) {
+      query = query.lte("created_at", options.endDate.toISOString());
+    }
+
+    if (options?.limit) {
+      query = query.limit(options.limit);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      logger.error({ error: error.message }, "Failed to get usage history");
+      throw new Error(`获取使用历史失败: ${error.message}`);
+    }
+
+    return (data ?? []).map((row) => ({
+      id: row.id,
+      userId: row.user_id,
+      type: row.usage_type as UsageType,
+      amount: row.amount,
+      unit: row.unit,
+      timestamp: new Date(row.created_at),
+      resourceId: row.resource_id,
+      metadata: row.metadata as Record<string, unknown>,
+    }));
   }
 
   /**
    * 检查配额
-   * @stub 返回未超额，Phase 3 实现实时检查
    */
   async checkQuota(
     userId: string,
@@ -126,13 +217,52 @@ export class UsageTrackerStub implements IUsageTracker {
     limit: number;
     isExceeded: boolean;
   }> {
-    logger.info(`[UsageTracker] checkQuota(${userId}, ${type}) - Phase 3 存根`);
+    const supabase = await createClient();
 
-    // Pro 用户无限制
+    // 获取用户会员类型
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("membership_type")
+      .eq("id", userId)
+      .single();
+
+    const membershipType = profile?.membership_type ?? "free";
+    const quotaLimits = QUOTA_LIMITS[membershipType] ?? QUOTA_LIMITS.free;
+    const limit = quotaLimits[type] ?? 0;
+
+    // 无限配额
+    if (limit === -1) {
+      return {
+        remaining: 999999,
+        limit: -1,
+        isExceeded: false,
+      };
+    }
+
+    // 获取本月使用量
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const { data, error } = await supabase
+      .from("ks_usage_records")
+      .select("amount")
+      .eq("user_id", userId)
+      .eq("usage_type", type)
+      .gte("created_at", startOfMonth.toISOString());
+
+    if (error) {
+      logger.error({ error: error.message }, "Failed to check quota");
+      // 默认返回未超额，避免阻塞用户
+      return { remaining: limit, limit, isExceeded: false };
+    }
+
+    const used = (data ?? []).reduce((sum, row) => sum + row.amount, 0);
+    const remaining = Math.max(0, limit - used);
+
     return {
-      remaining: 100,
-      limit: 100,
-      isExceeded: false,
+      remaining,
+      limit,
+      isExceeded: remaining <= 0,
     };
   }
 }
@@ -143,8 +273,7 @@ export class UsageTrackerStub implements IUsageTracker {
 
 /**
  * 创建使用量追踪服务实例
- * @stub Phase 3 实现完整服务
  */
 export function createUsageTracker(): IUsageTracker {
-  return new UsageTrackerStub();
+  return new UsageTracker();
 }

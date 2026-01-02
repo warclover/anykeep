@@ -1,17 +1,23 @@
 /**
  * Knowledge Studio - 转化自动化模块
  * @module knowledge-studio/conversion
- * @description Phase 3 存根 - 7天试用期转化自动化
- * @version 0.1.0 (Stub)
- * @since 2025-01-02
+ * @description P4 实现 - 7天试用期转化自动化
+ * @version 1.0.0
+ * @since 2026-01-02
  *
- * Phase 3 功能规划:
- * - 试用期状态管理
- * - 转化事件追踪
- * - 智能升级提示
- * - 转化漏斗分析
- * - ML 转化预测
- * - A/B 测试框架
+ * 已实现功能:
+ * - 试用期状态管理 (ConversionTracker)
+ * - 转化事件追踪 (trackEvent, recordPromptResponse)
+ * - 智能升级提示 (shouldShowUpgradePrompt)
+ * - 转化漏斗分析 (ConversionAnalytics)
+ * - 转化概率预测 (calculateConversionProbability)
+ * - 流失风险评估 (evaluateChurnRisk)
+ *
+ * API 端点:
+ * - GET/POST /api/knowledge-studio/conversion/trial
+ * - POST /api/knowledge-studio/conversion/events
+ * - GET/POST /api/knowledge-studio/conversion/prompts
+ * - GET /api/knowledge-studio/conversion/analytics
  */
 
 // ============================================================================
@@ -45,7 +51,8 @@ export { DEFAULT_TRIAL_CONFIG } from "./types";
 // ============================================================================
 
 export {
-  ConversionTrackerStub,
+  ConversionTracker,
+  ConversionTrackerStub, // 兼容别名
   createConversionTracker,
   // 辅助函数
   calculateRemainingDays,
@@ -55,9 +62,10 @@ export {
 } from "./conversion-tracker";
 
 export {
-  ConversionAnalyticsStub,
+  ConversionAnalytics,
+  ConversionAnalyticsStub, // 兼容别名
   createConversionAnalytics,
-  // 预留算法
+  // 预测算法
   calculateConversionProbability,
   evaluateChurnRisk,
 } from "./conversion-analytics";

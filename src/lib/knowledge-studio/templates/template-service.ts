@@ -1,35 +1,104 @@
 /**
  * Knowledge Studio - 模板管理服务
  * @module knowledge-studio/templates
- * @description Phase 3 存根 - 用户自建蓝图模板管理
- * @version 0.1.0 (Stub)
- * @since 2025-01-02
- *
- * TODO Phase 3: 完整实现
- * - 模板 CRUD
- * - 版本管理
- * - 权限控制
- * - 搜索索引
+ * @description P4 实现 - 用户自建蓝图模板管理
+ * @version 1.0.0
+ * @since 2026-01-02
  */
 
+import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 import type {
   ITemplateService,
   CustomTemplate,
   TemplateVersion,
   TemplateUsage,
+  TemplateVariable,
+  TemplatePromptSection,
 } from "./types";
 
 // ============================================================================
-// 存根实现
+// 数据库行类型
+// ============================================================================
+
+interface TemplateRow {
+  id: string;
+  user_id: string;
+  name: string;
+  description: string;
+  icon: string | null;
+  base_blueprint: string | null;
+  variables: TemplateVariable[];
+  prompt_sections: TemplatePromptSection[];
+  output_format: string | null;
+  visibility: "private" | "shared" | "public";
+  status: "draft" | "active" | "archived";
+  version: number;
+  usage_count: number;
+  tags: string[] | null;
+  created_at: string;
+  updated_at: string;
+}
+
+interface VersionRow {
+  id: string;
+  template_id: string;
+  version: number;
+  changelog: string;
+  variables: TemplateVariable[];
+  prompt_sections: TemplatePromptSection[];
+  created_at: string;
+  created_by: string;
+}
+
+// ============================================================================
+// 类型转换工具
+// ============================================================================
+
+function rowToTemplate(row: TemplateRow): CustomTemplate {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    name: row.name,
+    description: row.description,
+    icon: row.icon ?? undefined,
+    baseBlueprint: row.base_blueprint ?? undefined,
+    variables: row.variables ?? [],
+    promptSections: row.prompt_sections ?? [],
+    outputFormat: row.output_format ?? undefined,
+    visibility: row.visibility,
+    status: row.status,
+    version: row.version,
+    usageCount: row.usage_count,
+    tags: row.tags ?? undefined,
+    createdAt: new Date(row.created_at),
+    updatedAt: new Date(row.updated_at),
+  };
+}
+
+function rowToVersion(row: VersionRow): TemplateVersion {
+  return {
+    id: row.id,
+    templateId: row.template_id,
+    version: row.version,
+    changelog: row.changelog,
+    variables: row.variables ?? [],
+    promptSections: row.prompt_sections ?? [],
+    createdAt: new Date(row.created_at),
+    createdBy: row.created_by,
+  };
+}
+
+// ============================================================================
+// 模板管理服务实现
 // ============================================================================
 
 /**
- * 模板管理服务（Phase 3 存根）
+ * 模板管理服务
  *
  * @example
  * ```typescript
- * const service = new TemplateServiceStub();
+ * const service = new TemplateService();
  *
  * // 创建模板
  * const template = await service.createTemplate({
@@ -46,10 +115,9 @@ import type {
  * const templates = await service.getUserTemplates('user-123');
  * ```
  */
-export class TemplateServiceStub implements ITemplateService {
+export class TemplateService implements ITemplateService {
   /**
    * 创建模板
-   * @stub 返回模拟模板，Phase 3 实现持久化
    */
   async createTemplate(
     template: Omit<
@@ -57,162 +125,414 @@ export class TemplateServiceStub implements ITemplateService {
       "id" | "createdAt" | "updatedAt" | "version" | "usageCount"
     >,
   ): Promise<CustomTemplate> {
+    const supabase = await createClient();
+
+    // 插入模板
+    const { data, error } = await supabase
+      .from("ks_custom_templates")
+      .insert({
+        user_id: template.userId,
+        name: template.name,
+        description: template.description,
+        icon: template.icon ?? null,
+        base_blueprint: template.baseBlueprint ?? null,
+        variables: template.variables,
+        prompt_sections: template.promptSections,
+        output_format: template.outputFormat ?? null,
+        visibility: template.visibility,
+        status: template.status,
+        tags: template.tags ?? null,
+        version: 1,
+        usage_count: 0,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      logger.error({ error: error.message }, "Failed to create template");
+      throw new Error(`创建模板失败: ${error.message}`);
+    }
+
+    // 创建初始版本记录
+    await supabase.from("ks_template_versions").insert({
+      template_id: data.id,
+      version: 1,
+      changelog: "初始版本",
+      variables: template.variables,
+      prompt_sections: template.promptSections,
+      created_by: template.userId,
+    });
+
     logger.info(
-      `[TemplateService] createTemplate(${template.name}) - Phase 3 存根`,
+      { templateId: data.id, name: template.name },
+      "Template created",
     );
 
-    return {
-      ...template,
-      id: `tpl_${Date.now()}`,
-      version: 1,
-      usageCount: 0,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    return rowToTemplate(data as TemplateRow);
   }
 
   /**
    * 更新模板
-   * @stub 返回合并后的模板，Phase 3 实现持久化
    */
   async updateTemplate(
     templateId: string,
     updates: Partial<CustomTemplate>,
   ): Promise<CustomTemplate> {
-    logger.info(
-      `[TemplateService] updateTemplate(${templateId}) - Phase 3 存根`,
-    );
+    const supabase = await createClient();
 
-    // 模拟返回更新后的模板
-    return {
-      id: templateId,
-      userId: "stub-user",
-      name: updates.name ?? "Stub Template",
-      description: updates.description ?? "",
-      variables: updates.variables ?? [],
-      promptSections: updates.promptSections ?? [],
-      visibility: updates.visibility ?? "private",
-      status: updates.status ?? "draft",
-      version: (updates.version ?? 1) + 1,
-      usageCount: updates.usageCount ?? 0,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+    // 获取当前模板
+    const { data: current, error: fetchError } = await supabase
+      .from("ks_custom_templates")
+      .select("*")
+      .eq("id", templateId)
+      .single();
+
+    if (fetchError || !current) {
+      throw new Error(`模板不存在: ${templateId}`);
+    }
+
+    // 检查是否有内容变更需要新版本
+    const contentChanged =
+      (updates.variables &&
+        JSON.stringify(updates.variables) !==
+          JSON.stringify(current.variables)) ||
+      (updates.promptSections &&
+        JSON.stringify(updates.promptSections) !==
+          JSON.stringify(current.prompt_sections));
+
+    const newVersion = contentChanged ? current.version + 1 : current.version;
+
+    // 构建更新数据
+    const updateData: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
     };
+
+    if (updates.name !== undefined) updateData.name = updates.name;
+    if (updates.description !== undefined)
+      updateData.description = updates.description;
+    if (updates.icon !== undefined) updateData.icon = updates.icon;
+    if (updates.baseBlueprint !== undefined)
+      updateData.base_blueprint = updates.baseBlueprint;
+    if (updates.variables !== undefined)
+      updateData.variables = updates.variables;
+    if (updates.promptSections !== undefined)
+      updateData.prompt_sections = updates.promptSections;
+    if (updates.outputFormat !== undefined)
+      updateData.output_format = updates.outputFormat;
+    if (updates.visibility !== undefined)
+      updateData.visibility = updates.visibility;
+    if (updates.status !== undefined) updateData.status = updates.status;
+    if (updates.tags !== undefined) updateData.tags = updates.tags;
+    if (contentChanged) updateData.version = newVersion;
+
+    // 执行更新
+    const { data, error } = await supabase
+      .from("ks_custom_templates")
+      .update(updateData)
+      .eq("id", templateId)
+      .select()
+      .single();
+
+    if (error) {
+      logger.error({ error: error.message }, "Failed to update template");
+      throw new Error(`更新模板失败: ${error.message}`);
+    }
+
+    // 如果内容变更，创建新版本记录
+    if (contentChanged) {
+      await supabase.from("ks_template_versions").insert({
+        template_id: templateId,
+        version: newVersion,
+        changelog: updates.name ? `更新: ${updates.name}` : "内容更新",
+        variables: updates.variables ?? current.variables,
+        prompt_sections: updates.promptSections ?? current.prompt_sections,
+        created_by: current.user_id,
+      });
+    }
+
+    logger.info({ templateId, newVersion, contentChanged }, "Template updated");
+
+    return rowToTemplate(data as TemplateRow);
   }
 
   /**
    * 删除模板
-   * @stub 仅记录日志，Phase 3 实现删除
    */
   async deleteTemplate(templateId: string): Promise<void> {
-    logger.info(
-      `[TemplateService] deleteTemplate(${templateId}) - Phase 3 存根`,
-    );
+    const supabase = await createClient();
+
+    const { error } = await supabase
+      .from("ks_custom_templates")
+      .delete()
+      .eq("id", templateId);
+
+    if (error) {
+      logger.error({ error: error.message }, "Failed to delete template");
+      throw new Error(`删除模板失败: ${error.message}`);
+    }
+
+    logger.info({ templateId }, "Template deleted");
   }
 
   /**
    * 获取模板
-   * @stub 返回 null，Phase 3 实现查询
    */
   async getTemplate(templateId: string): Promise<CustomTemplate | null> {
-    logger.info(`[TemplateService] getTemplate(${templateId}) - Phase 3 存根`);
-    return null;
+    const supabase = await createClient();
+
+    const { data, error } = await supabase
+      .from("ks_custom_templates")
+      .select("*")
+      .eq("id", templateId)
+      .single();
+
+    if (error) {
+      if (error.code === "PGRST116") {
+        return null; // 未找到
+      }
+      logger.error({ error: error.message }, "Failed to get template");
+      throw new Error(`获取模板失败: ${error.message}`);
+    }
+
+    return rowToTemplate(data as TemplateRow);
   }
 
   /**
    * 获取用户模板列表
-   * @stub 返回空数组，Phase 3 实现列表查询
    */
   async getUserTemplates(userId: string): Promise<CustomTemplate[]> {
-    logger.info(`[TemplateService] getUserTemplates(${userId}) - Phase 3 存根`);
-    return [];
+    const supabase = await createClient();
+
+    const { data, error } = await supabase
+      .from("ks_custom_templates")
+      .select("*")
+      .eq("user_id", userId)
+      .order("updated_at", { ascending: false });
+
+    if (error) {
+      logger.error({ error: error.message }, "Failed to get user templates");
+      throw new Error(`获取用户模板失败: ${error.message}`);
+    }
+
+    return (data ?? []).map((row) => rowToTemplate(row as TemplateRow));
   }
 
   /**
    * 搜索公开模板
-   * @stub 返回空数组，Phase 3 实现全文搜索
    */
   async searchPublicTemplates(query: string): Promise<CustomTemplate[]> {
-    logger.info(
-      `[TemplateService] searchPublicTemplates(${query}) - Phase 3 存根`,
-    );
-    return [];
+    const supabase = await createClient();
+
+    // 使用 RPC 函数进行全文搜索
+    const { data, error } = await supabase.rpc("search_public_templates", {
+      p_query: query,
+      p_limit: 50,
+    });
+
+    if (error) {
+      // 回退到简单搜索
+      logger.warn(
+        { error: error.message },
+        "RPC search failed, falling back to simple search",
+      );
+
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from("ks_custom_templates")
+        .select("*")
+        .eq("visibility", "public")
+        .eq("status", "active")
+        .or(`name.ilike.%${query}%,description.ilike.%${query}%`)
+        .order("usage_count", { ascending: false })
+        .limit(50);
+
+      if (fallbackError) {
+        throw new Error(`搜索模板失败: ${fallbackError.message}`);
+      }
+
+      return (fallbackData ?? []).map((row) =>
+        rowToTemplate(row as TemplateRow),
+      );
+    }
+
+    return (data ?? []).map((row: TemplateRow) => rowToTemplate(row));
   }
 
   /**
    * 复制模板
-   * @stub 返回空模板，Phase 3 实现完整复制
    */
   async cloneTemplate(
     templateId: string,
     userId: string,
   ): Promise<CustomTemplate> {
+    const supabase = await createClient();
+
+    // 尝试使用 RPC 函数
+    const { data, error } = await supabase.rpc("clone_template", {
+      p_template_id: templateId,
+      p_user_id: userId,
+    });
+
+    if (error) {
+      // 回退到手动克隆
+      logger.warn(
+        { error: error.message },
+        "RPC clone failed, falling back to manual clone",
+      );
+
+      const original = await this.getTemplate(templateId);
+      if (!original) {
+        throw new Error(`原模板不存在: ${templateId}`);
+      }
+
+      return this.createTemplate({
+        userId,
+        name: `${original.name} (副本)`,
+        description: original.description,
+        icon: original.icon,
+        baseBlueprint: original.baseBlueprint,
+        variables: original.variables,
+        promptSections: original.promptSections,
+        outputFormat: original.outputFormat,
+        visibility: "private",
+        status: "draft",
+        tags: original.tags,
+      });
+    }
+
+    // 增加原模板使用计数
+    await supabase
+      .from("ks_custom_templates")
+      .update({ usage_count: supabase.rpc("increment_usage_count") })
+      .eq("id", templateId);
+
     logger.info(
-      `[TemplateService] cloneTemplate(${templateId}, ${userId}) - Phase 3 存根`,
+      { originalId: templateId, newId: data.id, userId },
+      "Template cloned",
     );
 
-    return {
-      id: `tpl_${Date.now()}`,
-      userId,
-      name: "Cloned Template",
-      description: "",
-      variables: [],
-      promptSections: [],
-      visibility: "private",
-      status: "draft",
-      version: 1,
-      usageCount: 0,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    return rowToTemplate(data as TemplateRow);
   }
 
   /**
    * 获取模板版本历史
-   * @stub 返回空数组，Phase 3 实现版本追踪
    */
   async getVersionHistory(templateId: string): Promise<TemplateVersion[]> {
-    logger.info(
-      `[TemplateService] getVersionHistory(${templateId}) - Phase 3 存根`,
-    );
-    return [];
+    const supabase = await createClient();
+
+    const { data, error } = await supabase
+      .from("ks_template_versions")
+      .select("*")
+      .eq("template_id", templateId)
+      .order("version", { ascending: false });
+
+    if (error) {
+      logger.error({ error: error.message }, "Failed to get version history");
+      throw new Error(`获取版本历史失败: ${error.message}`);
+    }
+
+    return (data ?? []).map((row) => rowToVersion(row as VersionRow));
   }
 
   /**
    * 回滚到指定版本
-   * @stub 返回空模板，Phase 3 实现版本回滚
    */
   async rollbackToVersion(
     templateId: string,
     version: number,
   ): Promise<CustomTemplate> {
+    const supabase = await createClient();
+
+    // 获取目标版本
+    const { data: versionData, error: versionError } = await supabase
+      .from("ks_template_versions")
+      .select("*")
+      .eq("template_id", templateId)
+      .eq("version", version)
+      .single();
+
+    if (versionError || !versionData) {
+      throw new Error(`版本不存在: ${templateId} v${version}`);
+    }
+
+    // 获取当前模板信息
+    const { data: current } = await supabase
+      .from("ks_custom_templates")
+      .select("version, user_id")
+      .eq("id", templateId)
+      .single();
+
+    if (!current) {
+      throw new Error(`模板不存在: ${templateId}`);
+    }
+
+    const newVersion = current.version + 1;
+
+    // 更新模板内容
+    const { data, error } = await supabase
+      .from("ks_custom_templates")
+      .update({
+        variables: versionData.variables,
+        prompt_sections: versionData.prompt_sections,
+        version: newVersion,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", templateId)
+      .select()
+      .single();
+
+    if (error) {
+      logger.error({ error: error.message }, "Failed to rollback template");
+      throw new Error(`回滚模板失败: ${error.message}`);
+    }
+
+    // 创建新版本记录
+    await supabase.from("ks_template_versions").insert({
+      template_id: templateId,
+      version: newVersion,
+      changelog: `回滚到版本 ${version}`,
+      variables: versionData.variables,
+      prompt_sections: versionData.prompt_sections,
+      created_by: current.user_id,
+    });
+
     logger.info(
-      `[TemplateService] rollbackToVersion(${templateId}, ${version}) - Phase 3 存根`,
+      { templateId, fromVersion: version, toVersion: newVersion },
+      "Template rolled back",
     );
 
-    return {
-      id: templateId,
-      userId: "stub-user",
-      name: "Rolled Back Template",
-      description: "",
-      variables: [],
-      promptSections: [],
-      visibility: "private",
-      status: "draft",
-      version,
-      usageCount: 0,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    return rowToTemplate(data as TemplateRow);
   }
 
   /**
    * 记录模板使用
-   * @stub 仅记录日志，Phase 3 实现使用统计
    */
   async recordUsage(usage: Omit<TemplateUsage, "id">): Promise<void> {
+    const supabase = await createClient();
+
+    // 插入使用记录
+    const { error } = await supabase.from("ks_template_usages").insert({
+      template_id: usage.templateId,
+      user_id: usage.userId,
+      variable_values: usage.variableValues,
+      report_id: usage.reportId ?? null,
+      rating: usage.rating ?? null,
+      feedback: usage.feedback ?? null,
+      created_at: usage.timestamp.toISOString(),
+    });
+
+    if (error) {
+      logger.error({ error: error.message }, "Failed to record template usage");
+      throw new Error(`记录模板使用失败: ${error.message}`);
+    }
+
+    // 更新使用计数
+    await supabase.rpc("increment_template_usage_count", {
+      p_template_id: usage.templateId,
+    });
+
     logger.info(
-      `[TemplateService] recordUsage(${usage.templateId}) - Phase 3 存根`,
+      { templateId: usage.templateId, userId: usage.userId },
+      "Template usage recorded",
     );
   }
 }
@@ -223,8 +543,10 @@ export class TemplateServiceStub implements ITemplateService {
 
 /**
  * 创建模板管理服务实例
- * @stub Phase 3 实现完整服务
  */
 export function createTemplateService(): ITemplateService {
-  return new TemplateServiceStub();
+  return new TemplateService();
 }
+
+// 保留旧名称以兼容
+export { TemplateService as TemplateServiceStub };

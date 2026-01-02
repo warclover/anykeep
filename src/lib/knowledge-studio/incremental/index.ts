@@ -1,9 +1,9 @@
 /**
  * Knowledge Studio - 增量更新模块
  * @module knowledge-studio/incremental
- * @description Phase 3 存根 - 书签变更后局部重新生成
- * @version 0.1.0 (Stub)
- * @since 2025-01-02
+ * @description P4 实现 - 书签变更后局部重新生成
+ * @version 1.0.0
+ * @since 2026-01-02
  */
 
 // 类型导出
@@ -26,8 +26,14 @@ export type {
 } from "./types";
 
 // 服务导出
-export { ChangeDetectorStub, createChangeDetector } from "./change-detector";
 export {
-  IncrementalUpdaterStub,
+  ChangeDetector,
+  ChangeDetectorStub, // 兼容别名
+  createChangeDetector,
+} from "./change-detector";
+
+export {
+  IncrementalUpdater,
+  IncrementalUpdaterStub, // 兼容别名
   createIncrementalUpdater,
 } from "./incremental-updater";

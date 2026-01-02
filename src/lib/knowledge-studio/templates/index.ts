@@ -1,9 +1,9 @@
 /**
  * Knowledge Studio - 模板自定义模块
  * @module knowledge-studio/templates
- * @description Phase 3 存根 - 用户自建蓝图 Prompt 模板
- * @version 0.1.0 (Stub)
- * @since 2025-01-02
+ * @description P4 实现 - 用户自建蓝图 Prompt 模板
+ * @version 1.0.0
+ * @since 2026-01-02
  */
 
 // 类型导出
@@ -24,5 +24,14 @@ export type {
 } from "./types";
 
 // 服务导出
-export { TemplateServiceStub, createTemplateService } from "./template-service";
-export { PromptCompilerStub, createPromptCompiler } from "./prompt-compiler";
+export {
+  TemplateService,
+  TemplateServiceStub, // 兼容别名
+  createTemplateService,
+} from "./template-service";
+
+export {
+  PromptCompiler,
+  PromptCompilerStub, // 兼容别名
+  createPromptCompiler,
+} from "./prompt-compiler";
