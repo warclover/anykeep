@@ -4312,6 +4312,683 @@ export type Database = {
           },
         ];
       };
+      /** Knowledge Studio - 使用量记录表 */
+      ks_usage_records: {
+        Row: {
+          id: string;
+          user_id: string;
+          usage_type: string;
+          amount: number;
+          unit: string;
+          resource_id: string | null;
+          metadata: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          usage_type: string;
+          amount?: number;
+          unit?: string;
+          resource_id?: string | null;
+          metadata?: Json;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          usage_type?: string;
+          amount?: number;
+          unit?: string;
+          resource_id?: string | null;
+          metadata?: Json;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      /** Knowledge Studio - 账单表 */
+      ks_bills: {
+        Row: {
+          id: string;
+          user_id: string;
+          period_start: string;
+          period_end: string;
+          subtotal: number;
+          discount: number;
+          tax: number;
+          total: number;
+          currency: string;
+          status: string;
+          due_at: string;
+          paid_at: string | null;
+          metadata: Json;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          period_start: string;
+          period_end: string;
+          subtotal?: number;
+          discount?: number;
+          tax?: number;
+          total?: number;
+          currency?: string;
+          status?: string;
+          due_at: string;
+          paid_at?: string | null;
+          metadata?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          period_start?: string;
+          period_end?: string;
+          subtotal?: number;
+          discount?: number;
+          tax?: number;
+          total?: number;
+          currency?: string;
+          status?: string;
+          due_at?: string;
+          paid_at?: string | null;
+          metadata?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      /** Knowledge Studio - 账单项目表 */
+      ks_bill_line_items: {
+        Row: {
+          id: string;
+          bill_id: string;
+          description: string;
+          usage_type: string;
+          quantity: number;
+          unit_price: number;
+          total_price: number;
+          discount: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          bill_id: string;
+          description: string;
+          usage_type: string;
+          quantity?: number;
+          unit_price?: number;
+          total_price?: number;
+          discount?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          bill_id?: string;
+          description?: string;
+          usage_type?: string;
+          quantity?: number;
+          unit_price?: number;
+          total_price?: number;
+          discount?: number;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      /** Knowledge Studio - 消费记录表 */
+      ks_consumption_records: {
+        Row: {
+          id: string;
+          user_id: string;
+          usage_type: string;
+          description: string;
+          amount: number;
+          cost: number;
+          report_id: string | null;
+          blueprint_type: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          usage_type: string;
+          description: string;
+          amount?: number;
+          cost?: number;
+          report_id?: string | null;
+          blueprint_type?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          usage_type?: string;
+          description?: string;
+          amount?: number;
+          cost?: number;
+          report_id?: string | null;
+          blueprint_type?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      /** Knowledge Studio - 自定义模板表 */
+      ks_custom_templates: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          description: string;
+          icon: string | null;
+          base_blueprint: string | null;
+          variables: Json;
+          prompt_sections: Json;
+          output_format: string | null;
+          visibility: string;
+          status: string;
+          version: number;
+          usage_count: number;
+          tags: string[] | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          name: string;
+          description?: string;
+          icon?: string | null;
+          base_blueprint?: string | null;
+          variables?: Json;
+          prompt_sections?: Json;
+          output_format?: string | null;
+          visibility?: string;
+          status?: string;
+          version?: number;
+          usage_count?: number;
+          tags?: string[] | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          name?: string;
+          description?: string;
+          icon?: string | null;
+          base_blueprint?: string | null;
+          variables?: Json;
+          prompt_sections?: Json;
+          output_format?: string | null;
+          visibility?: string;
+          status?: string;
+          version?: number;
+          usage_count?: number;
+          tags?: string[] | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      /** Knowledge Studio - 模板版本历史表 */
+      ks_template_versions: {
+        Row: {
+          id: string;
+          template_id: string;
+          version: number;
+          changelog: string;
+          variables: Json;
+          prompt_sections: Json;
+          created_at: string;
+          created_by: string;
+        };
+        Insert: {
+          id?: string;
+          template_id: string;
+          version: number;
+          changelog?: string;
+          variables?: Json;
+          prompt_sections?: Json;
+          created_at?: string;
+          created_by: string;
+        };
+        Update: {
+          id?: string;
+          template_id?: string;
+          version?: number;
+          changelog?: string;
+          variables?: Json;
+          prompt_sections?: Json;
+          created_at?: string;
+          created_by?: string;
+        };
+        Relationships: [];
+      };
+      /** Knowledge Studio - 模板使用记录表 */
+      ks_template_usages: {
+        Row: {
+          id: string;
+          template_id: string;
+          user_id: string;
+          variable_values: Json;
+          report_id: string | null;
+          rating: number | null;
+          feedback: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          template_id: string;
+          user_id: string;
+          variable_values?: Json;
+          report_id?: string | null;
+          rating?: number | null;
+          feedback?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          template_id?: string;
+          user_id?: string;
+          variable_values?: Json;
+          report_id?: string | null;
+          rating?: number | null;
+          feedback?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      /** Knowledge Studio - 模板分享表 */
+      ks_template_shares: {
+        Row: {
+          id: string;
+          template_id: string;
+          shared_with_user_id: string;
+          permission: string;
+          shared_by: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          template_id: string;
+          shared_with_user_id: string;
+          permission?: string;
+          shared_by: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          template_id?: string;
+          shared_with_user_id?: string;
+          permission?: string;
+          shared_by?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      /** Knowledge Studio - 知识点表 */
+      ks_knowledge_points: {
+        Row: {
+          id: string;
+          report_id: string;
+          content: string;
+          keywords: string[];
+          paragraph_index: number;
+          source_bookmark_ids: string[];
+          difficulty: number;
+          importance: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          report_id: string;
+          content: string;
+          keywords?: string[];
+          paragraph_index?: number;
+          source_bookmark_ids?: string[];
+          difficulty?: number;
+          importance?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          report_id?: string;
+          content?: string;
+          keywords?: string[];
+          paragraph_index?: number;
+          source_bookmark_ids?: string[];
+          difficulty?: number;
+          importance?: number;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      /** Knowledge Studio - 知识点掌握状态表 */
+      ks_knowledge_point_mastery: {
+        Row: {
+          id: string;
+          user_id: string;
+          knowledge_point_id: string;
+          mastery_level: string;
+          review_count: number;
+          correct_count: number;
+          accuracy: number;
+          last_reviewed_at: string | null;
+          next_review_at: string | null;
+          interval_days: number;
+          ease_factor: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          knowledge_point_id: string;
+          mastery_level?: string;
+          review_count?: number;
+          correct_count?: number;
+          accuracy?: number;
+          last_reviewed_at?: string | null;
+          next_review_at?: string | null;
+          interval_days?: number;
+          ease_factor?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          knowledge_point_id?: string;
+          mastery_level?: string;
+          review_count?: number;
+          correct_count?: number;
+          accuracy?: number;
+          last_reviewed_at?: string | null;
+          next_review_at?: string | null;
+          interval_days?: number;
+          ease_factor?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      /** Knowledge Studio - 学习会话表 */
+      ks_learning_sessions: {
+        Row: {
+          id: string;
+          user_id: string;
+          report_id: string;
+          started_at: string;
+          ended_at: string | null;
+          points_studied: number;
+          points_reviewed: number;
+          correct_answers: number;
+          total_answers: number;
+          duration_minutes: number;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          report_id: string;
+          started_at?: string;
+          ended_at?: string | null;
+          points_studied?: number;
+          points_reviewed?: number;
+          correct_answers?: number;
+          total_answers?: number;
+          duration_minutes?: number;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          report_id?: string;
+          started_at?: string;
+          ended_at?: string | null;
+          points_studied?: number;
+          points_reviewed?: number;
+          correct_answers?: number;
+          total_answers?: number;
+          duration_minutes?: number;
+        };
+        Relationships: [];
+      };
+      /** Knowledge Studio - 复习记录表 */
+      ks_review_records: {
+        Row: {
+          id: string;
+          user_id: string;
+          knowledge_point_id: string;
+          session_id: string | null;
+          rating: number;
+          response_time_ms: number;
+          previous_interval: number;
+          new_interval: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          knowledge_point_id: string;
+          session_id?: string | null;
+          rating: number;
+          response_time_ms?: number;
+          previous_interval?: number;
+          new_interval?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          knowledge_point_id?: string;
+          session_id?: string | null;
+          rating?: number;
+          response_time_ms?: number;
+          previous_interval?: number;
+          new_interval?: number;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      /** Knowledge Studio - 报告变更集表 */
+      ks_report_change_sets: {
+        Row: {
+          id: string;
+          report_id: string;
+          user_id: string;
+          changes: Json;
+          impact_level: string;
+          processed: boolean;
+          processed_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          report_id: string;
+          user_id: string;
+          changes?: Json;
+          impact_level?: string;
+          processed?: boolean;
+          processed_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          report_id?: string;
+          user_id?: string;
+          changes?: Json;
+          impact_level?: string;
+          processed?: boolean;
+          processed_at?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      /** Knowledge Studio - 增量更新任务表 */
+      ks_incremental_update_tasks: {
+        Row: {
+          id: string;
+          report_id: string;
+          user_id: string;
+          change_set_id: string;
+          impact_analysis: Json;
+          status: string;
+          error: string | null;
+          new_version: number | null;
+          created_at: string;
+          started_at: string | null;
+          completed_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          report_id: string;
+          user_id: string;
+          change_set_id: string;
+          impact_analysis?: Json;
+          status?: string;
+          error?: string | null;
+          new_version?: number | null;
+          created_at?: string;
+          started_at?: string | null;
+          completed_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          report_id?: string;
+          user_id?: string;
+          change_set_id?: string;
+          impact_analysis?: Json;
+          status?: string;
+          error?: string | null;
+          new_version?: number | null;
+          created_at?: string;
+          started_at?: string | null;
+          completed_at?: string | null;
+        };
+        Relationships: [];
+      };
+      /** Knowledge Studio - 更新结果表 */
+      ks_update_results: {
+        Row: {
+          id: string;
+          task_id: string;
+          report_id: string;
+          user_id: string;
+          success: boolean;
+          new_version: number;
+          paragraphs_updated: number;
+          paragraphs_regenerated: number;
+          processing_time_ms: number;
+          tokens_used: number;
+          change_summary: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          task_id: string;
+          report_id: string;
+          user_id: string;
+          success?: boolean;
+          new_version: number;
+          paragraphs_updated?: number;
+          paragraphs_regenerated?: number;
+          processing_time_ms?: number;
+          tokens_used?: number;
+          change_summary?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          task_id?: string;
+          report_id?: string;
+          user_id?: string;
+          success?: boolean;
+          new_version?: number;
+          paragraphs_updated?: number;
+          paragraphs_regenerated?: number;
+          processing_time_ms?: number;
+          tokens_used?: number;
+          change_summary?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      /** Knowledge Studio - 报告版本历史表 */
+      ks_report_versions: {
+        Row: {
+          id: string;
+          report_id: string;
+          user_id: string;
+          version: number;
+          content: Json;
+          bookmark_ids: string[];
+          change_summary: string | null;
+          source: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          report_id: string;
+          user_id: string;
+          version: number;
+          content: Json;
+          bookmark_ids?: string[];
+          change_summary?: string | null;
+          source?: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          report_id?: string;
+          user_id?: string;
+          version?: number;
+          content?: Json;
+          bookmark_ids?: string[];
+          change_summary?: string | null;
+          source?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      /** Knowledge Studio - 增量更新配置表 */
+      ks_incremental_update_config: {
+        Row: {
+          id: string;
+          user_id: string;
+          auto_detect: boolean;
+          auto_update_threshold: string;
+          keep_history: boolean;
+          max_history_versions: number;
+          detection_interval_minutes: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          auto_detect?: boolean;
+          auto_update_threshold?: string;
+          keep_history?: boolean;
+          max_history_versions?: number;
+          detection_interval_minutes?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          auto_detect?: boolean;
+          auto_update_threshold?: string;
+          keep_history?: boolean;
+          max_history_versions?: number;
+          detection_interval_minutes?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       classification_metrics_daily: {
@@ -5797,6 +6474,147 @@ export type Database = {
           p_days?: number;
         };
         Returns: number;
+      };
+      /** Knowledge Studio - 获取用户使用统计 */
+      get_user_usage_stats: {
+        Args: {
+          p_user_id: string;
+          p_period?: string;
+          p_start_date?: string | null;
+          p_end_date?: string | null;
+        };
+        Returns: Json;
+      };
+      /** Knowledge Studio - 获取消费汇总 */
+      get_consumption_summary: {
+        Args: {
+          p_user_id: string;
+          p_start_date: string;
+          p_end_date: string;
+        };
+        Returns: Json;
+      };
+      /** Knowledge Studio - 搜索公开模板 */
+      search_public_templates: {
+        Args: {
+          p_query: string;
+          p_limit?: number;
+          p_offset?: number;
+        };
+        Returns: {
+          id: string;
+          name: string;
+          description: string;
+          icon: string | null;
+          base_blueprint: string | null;
+          usage_count: number;
+          tags: string[] | null;
+          user_id: string;
+          created_at: string;
+        }[];
+      };
+      /** Knowledge Studio - 克隆模板 */
+      clone_template: {
+        Args: {
+          p_template_id: string;
+          p_new_name?: string | null;
+        };
+        Returns: string;
+      };
+      /** Knowledge Studio - SM-2 算法计算下次复习 */
+      calculate_sm2_next_review: {
+        Args: {
+          p_rating: number;
+          p_current_interval: number;
+          p_current_ease_factor: number;
+        };
+        Returns: {
+          new_interval: number;
+          new_ease_factor: number;
+          new_mastery_level: string;
+        }[];
+      };
+      /** Knowledge Studio - 记录复习并更新掌握度 */
+      record_review_and_update_mastery: {
+        Args: {
+          p_user_id: string;
+          p_knowledge_point_id: string;
+          p_session_id?: string | null;
+          p_rating: number;
+          p_response_time_ms?: number;
+        };
+        Returns: Json;
+      };
+      /** Knowledge Studio - 获取待复习知识点 */
+      get_due_for_review: {
+        Args: {
+          p_user_id: string;
+          p_limit?: number;
+        };
+        Returns: {
+          knowledge_point_id: string;
+          content: string;
+          mastery_level: string;
+          interval_days: number;
+          last_reviewed_at: string | null;
+          next_review_at: string | null;
+          overdue_days: number;
+        }[];
+      };
+      /** Knowledge Studio - 获取用户内化率统计 */
+      get_user_mastery_stats: {
+        Args: {
+          p_user_id: string;
+        };
+        Returns: Json;
+      };
+      /** Knowledge Studio - 获取待处理变更 */
+      get_pending_change_sets: {
+        Args: {
+          p_user_id: string;
+          p_limit?: number;
+        };
+        Returns: {
+          id: string;
+          report_id: string;
+          changes: Json;
+          impact_level: string;
+          created_at: string;
+        }[];
+      };
+      /** Knowledge Studio - 创建增量更新任务 */
+      create_incremental_update_task: {
+        Args: {
+          p_report_id: string;
+          p_change_set_id: string;
+          p_impact_analysis: Json;
+        };
+        Returns: string;
+      };
+      /** Knowledge Studio - 获取报告更新历史 */
+      get_report_update_history: {
+        Args: {
+          p_report_id: string;
+          p_limit?: number;
+        };
+        Returns: {
+          id: string;
+          version: number;
+          source: string;
+          change_summary: string | null;
+          paragraphs_updated: number;
+          paragraphs_regenerated: number;
+          tokens_used: number;
+          created_at: string;
+        }[];
+      };
+      /** Knowledge Studio - 回滚到指定版本 */
+      rollback_report_to_version: {
+        Args: {
+          p_report_id: string;
+          p_target_version: number;
+        };
+        Returns: Json;
       };
     };
     Enums: {
