@@ -27,6 +27,10 @@ import {
   AISearchEnhanced,
   type SearchMode,
 } from "@/components/ai";
+import {
+  FilterExtractionDisplay,
+  type FilterExtractionInfo,
+} from "./filter-extraction-display";
 import type { Bookmark } from "@/types/supabase";
 import { clientLogger } from "@/lib/client-logger";
 
@@ -78,30 +82,36 @@ export function SearchPageClient({
   >(null);
   const [isClientSearching, setIsClientSearching] = useState(false);
   const [clientError, setClientError] = useState<string | null>(null);
+  // V4.3.1: 存储过滤器提取信息
+  const [filterExtraction, setFilterExtraction] =
+    useState<FilterExtractionInfo | null>(null);
 
   // 合并 SSR 结果和客户端获取的结果
   const searchResults = clientSearchResults ?? ssrSearchResults;
   const error = clientError ?? ssrError;
 
   // V4.2.17: 客户端搜索函数
+  // V4.3.1: 升级使用 enhanced 模式，支持智能过滤器提取
   const fetchSearchResults = useCallback(
     async (searchQuery: string, isAI: boolean) => {
       if (!searchQuery.trim()) return;
 
       setIsClientSearching(true);
       setClientError(null);
+      setFilterExtraction(null);
 
       try {
         const params = new URLSearchParams({
           q: searchQuery,
-          mode: isAI ? "hybrid" : "keyword",
+          // 使用 enhanced 模式以启用智能过滤器提取
+          mode: isAI ? "enhanced" : "keyword",
           limit: "50",
         });
 
         const response = await fetch(`/api/search?${params.toString()}`);
         const responseData = await response.json();
 
-        // API 响应格式: { success: boolean, data?: { results: [...] }, error?: { message: string } }
+        // API 响应格式: { success: boolean, data?: { results: [...], filterExtraction?: {...} }, error?: { message: string } }
         if (!response.ok || !responseData.success) {
           throw new Error(responseData.error?.message || "搜索失败");
         }
@@ -109,12 +119,18 @@ export function SearchPageClient({
         // 正确访问嵌套的 results 数组
         const results = responseData.data?.results || [];
         setClientSearchResults(results);
+
+        // V4.3.1: 存储过滤器提取信息
+        if (responseData.data?.filterExtraction) {
+          setFilterExtraction(responseData.data.filterExtraction);
+        }
       } catch (err) {
         clientLogger.error({ err }, "[SearchPageClient] Client search error");
         setClientError(
           err instanceof Error ? err.message : "搜索时出错，请稍后重试",
         );
         setClientSearchResults([]);
+        setFilterExtraction(null);
       } finally {
         setIsClientSearching(false);
       }
@@ -403,6 +419,15 @@ export function SearchPageClient({
                     )}
                   </p>
                 </div>
+
+                {/* V4.3.1: 智能过滤器提取展示 */}
+                {filterExtraction && filterExtraction.filters.length > 0 && (
+                  <FilterExtractionDisplay
+                    filterExtraction={filterExtraction}
+                    originalQuery={initialQuery}
+                    className="mb-4"
+                  />
+                )}
 
                 {/* 结果列表 */}
                 {hasResults ? (
