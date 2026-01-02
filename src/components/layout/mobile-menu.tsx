@@ -36,6 +36,7 @@ import {
   // 学习中心
   GraduationCap,
   FlaskConical,
+  Sparkles,
   // 洞察中心
   BarChart3,
   Activity,
@@ -177,8 +178,8 @@ const navigationGroups: NavGroup[] = [
       },
       {
         name: "知识工坊",
-        href: "/knowledge-studio/templates",
-        icon: BookOpen,
+        href: "/knowledge-studio",
+        icon: Sparkles,
         description: "AI 报告生成",
         isPro: true,
       },

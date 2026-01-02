@@ -131,8 +131,8 @@ const learningCenterItems: NavItem[] = [
   { name: "知识萃取", href: "/synthesis", icon: FlaskConical },
   {
     name: "知识工坊",
-    href: "/knowledge-studio/templates",
-    icon: BookOpen,
+    href: "/knowledge-studio",
+    icon: Sparkles,
     isPro: true,
   },
 ];
