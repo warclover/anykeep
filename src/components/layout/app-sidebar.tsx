@@ -5,7 +5,7 @@
  * 导航结构：
  * - 内容中心：我的收藏、我的搜索、我的分类、我的标签、我的笔记
  * - 整理工具：等待分类、智能列表、批量操作、内容导出、整理大师、链接检测
- * - 学习中心：自习工坊、知识萃取
+ * - 学习中心：知识回顾、知识萃取、知识工坊
  * - 洞察中心：数据分析、活动日志、消息通知
  * - 系统：设置、开发者工具
  */
@@ -129,6 +129,12 @@ const learningCenterItems: NavItem[] = [
     badge: "brain-sync",
   },
   { name: "知识萃取", href: "/synthesis", icon: FlaskConical },
+  {
+    name: "知识工坊",
+    href: "/knowledge-studio/templates",
+    icon: BookOpen,
+    isPro: true,
+  },
 ];
 
 /**
