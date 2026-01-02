@@ -42,7 +42,6 @@ describe("ConversionTracker", () => {
       const customConfig = {
         ...DEFAULT_TRIAL_CONFIG,
         durationDays: 14,
-        freeGenerationLimit: 10,
       };
       const instance = new ConversionTracker(customConfig);
       expect(instance).toBeInstanceOf(ConversionTracker);
