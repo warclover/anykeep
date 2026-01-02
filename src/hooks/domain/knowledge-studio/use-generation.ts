@@ -7,6 +7,7 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from "react";
+import { clientLogger } from "@/lib/client-logger";
 import type {
   BlueprintType,
   StreamChunk,
@@ -168,8 +169,11 @@ export function useGeneration(
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ requestId: requestIdRef.current }),
         });
-      } catch {
-        // 忽略取消请求的错误
+      } catch (error) {
+        clientLogger.debug(
+          { error },
+          "Cancel request failed (expected during cleanup)",
+        );
       }
     }
 
