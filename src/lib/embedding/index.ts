@@ -7,6 +7,7 @@
  * - 标题向量（快速路径）
  * - 内容向量（深度语义）
  * - 标签向量（标签语义）
+ * - 增量索引更新（事件驱动）
  */
 
 export {
@@ -20,6 +21,13 @@ export type {
   BatchUpdateResult,
   MultiVectorConfig,
 } from "./multi-vector-embedding.service";
+
+// 增量索引服务
+export {
+  IncrementalIndexService,
+  getIncrementalIndexService,
+  resetIncrementalIndexService,
+} from "./incremental-index.service";
 
 // Re-export existing embedding utilities
 export {

@@ -383,20 +383,20 @@ export const FeatureFlags = {
 
   /**
    * 是否启用 Parent-Child 切片策略
-   * @default false
+   * @default true
    * @description 长文档切片为 Parent-Child 结构，提升精准检索能力
    */
   get ENABLE_PARENT_CHILD_CHUNKING(): boolean {
-    return process.env.ENABLE_PARENT_CHILD_CHUNKING === "true";
+    return process.env.ENABLE_PARENT_CHILD_CHUNKING !== "false";
   },
 
   /**
    * 是否启用 RRF 融合算法
-   * @default false
+   * @default true
    * @description Reciprocal Rank Fusion 合并多来源搜索结果
    */
   get ENABLE_RRF_FUSION(): boolean {
-    return process.env.ENABLE_RRF_FUSION === "true";
+    return process.env.ENABLE_RRF_FUSION !== "false";
   },
 
   // ===========================================================================
@@ -405,20 +405,20 @@ export const FeatureFlags = {
 
   /**
    * 是否启用 RAG 监控
-   * @default false
+   * @default true
    * @description 启用 RAG 系统指标收集和告警
    */
   get ENABLE_RAG_MONITORING(): boolean {
-    return process.env.ENABLE_RAG_MONITORING === "true";
+    return process.env.ENABLE_RAG_MONITORING !== "false";
   },
 
   /**
    * 是否启用 RAG 评估
-   * @default false
+   * @default true
    * @description 启用 RAGAS 风格的 RAG 质量评估
    */
   get ENABLE_RAG_EVALUATION(): boolean {
-    return process.env.ENABLE_RAG_EVALUATION === "true";
+    return process.env.ENABLE_RAG_EVALUATION !== "false";
   },
 
   // ===========================================================================

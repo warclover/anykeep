@@ -47,6 +47,7 @@ import {
   HeartPulse,
   Sparkles,
   Share2,
+  Gauge,
 } from "lucide-react";
 import { useUnreadCount } from "@/hooks/data";
 import { useBrainSyncStats } from "@/hooks/domain/brain-sync";
@@ -154,6 +155,7 @@ const insightCenterItems: NavItem[] = [
  * 开发者工具导航项
  */
 const devToolsItems: NavItem[] = [
+  { name: "RAG 监控", href: "/settings/rag-dashboard", icon: Gauge },
   { name: "智能分类", href: "/classification-debugger", icon: BrainCircuit },
   {
     name: "分类对比",
