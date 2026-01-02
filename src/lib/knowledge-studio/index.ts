@@ -192,3 +192,91 @@ export type {
  * ```
  */
 export * as Conversion from "./conversion";
+
+// ============================================================================
+// Billing & Usage (Phase 3 Stub)
+// ============================================================================
+
+/**
+ * 账单与使用统计模块（Phase 3 存根）
+ *
+ * @example
+ * ```typescript
+ * import { Billing } from '@/lib/knowledge-studio';
+ *
+ * // 创建使用量追踪器
+ * const tracker = Billing.createUsageTracker();
+ * await tracker.trackUsage({ userId, type: 'generation', amount: 1 });
+ *
+ * // 创建账单服务
+ * const billing = Billing.createBillingService();
+ * const summary = await billing.getConsumptionSummary(userId, start, end);
+ * ```
+ */
+export * as Billing from "./billing";
+
+// ============================================================================
+// Custom Templates (Phase 3 Stub)
+// ============================================================================
+
+/**
+ * 模板自定义模块（Phase 3 存根）
+ *
+ * @example
+ * ```typescript
+ * import { Templates } from '@/lib/knowledge-studio';
+ *
+ * // 创建模板服务
+ * const service = Templates.createTemplateService();
+ * const template = await service.createTemplate({ ... });
+ *
+ * // 编译 Prompt
+ * const compiler = Templates.createPromptCompiler();
+ * const prompt = compiler.compile(template, variables);
+ * ```
+ */
+export * as Templates from "./templates";
+
+// ============================================================================
+// Incremental Update (Phase 3 Stub)
+// ============================================================================
+
+/**
+ * 增量更新模块（Phase 3 存根）
+ *
+ * @example
+ * ```typescript
+ * import { Incremental } from '@/lib/knowledge-studio';
+ *
+ * // 检测变更
+ * const detector = Incremental.createChangeDetector();
+ * const changes = await detector.detectChanges(reportId);
+ *
+ * // 执行增量更新
+ * const updater = Incremental.createIncrementalUpdater();
+ * const result = await updater.executeTask(taskId);
+ * ```
+ */
+export * as Incremental from "./incremental";
+
+// ============================================================================
+// Mastery Tracking (Phase 3 Stub)
+// ============================================================================
+
+/**
+ * 内化率追踪模块（Phase 3 存根）
+ *
+ * @example
+ * ```typescript
+ * import { Mastery } from '@/lib/knowledge-studio';
+ *
+ * // 创建内化率追踪器
+ * const tracker = Mastery.createMasteryTracker();
+ * const stats = await tracker.getUserMasteryStats(userId);
+ *
+ * // 提取知识点
+ * const extractor = Mastery.createKnowledgeExtractor();
+ * const points = await extractor.extractFromReport(reportId);
+ * ```
+ */
+export * as Mastery from "./mastery";
