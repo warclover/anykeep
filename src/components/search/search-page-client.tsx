@@ -31,6 +31,12 @@ import {
   FilterExtractionDisplay,
   type FilterExtractionInfo,
 } from "./filter-extraction-display";
+import {
+  SearchMetadataPanel,
+  type QueryRewriteInfo,
+  type ChunkSearchInfo,
+  type RRFFusionInfo,
+} from "./search-metadata-panel";
 import type { Bookmark } from "@/types/supabase";
 import { clientLogger } from "@/lib/client-logger";
 
@@ -85,6 +91,13 @@ export function SearchPageClient({
   // V4.3.1: 存储过滤器提取信息
   const [filterExtraction, setFilterExtraction] =
     useState<FilterExtractionInfo | null>(null);
+  // V4.3.2: 存储增强搜索元数据
+  const [queryRewrite, setQueryRewrite] = useState<QueryRewriteInfo | null>(
+    null,
+  );
+  const [chunkSearch, setChunkSearch] = useState<ChunkSearchInfo | null>(null);
+  const [rrfFusion, setRRFFusion] = useState<RRFFusionInfo | null>(null);
+  const [executionTimeMs, setExecutionTimeMs] = useState<number | null>(null);
 
   // 合并 SSR 结果和客户端获取的结果
   const searchResults = clientSearchResults ?? ssrSearchResults;
@@ -99,6 +112,11 @@ export function SearchPageClient({
       setIsClientSearching(true);
       setClientError(null);
       setFilterExtraction(null);
+      // V4.3.2: 重置增强搜索元数据
+      setQueryRewrite(null);
+      setChunkSearch(null);
+      setRRFFusion(null);
+      setExecutionTimeMs(null);
 
       try {
         const params = new URLSearchParams({
@@ -106,6 +124,8 @@ export function SearchPageClient({
           // 使用 enhanced 模式以启用智能过滤器提取
           mode: isAI ? "enhanced" : "keyword",
           limit: "50",
+          // V4.3.2: 启用 debug 以获取 chunkSearch 和 rrfFusion 信息
+          debug: isAI ? "true" : "false",
         });
 
         const response = await fetch(`/api/search?${params.toString()}`);
@@ -124,6 +144,20 @@ export function SearchPageClient({
         if (responseData.data?.filterExtraction) {
           setFilterExtraction(responseData.data.filterExtraction);
         }
+
+        // V4.3.2: 存储增强搜索元数据
+        if (responseData.data?.queryRewrite) {
+          setQueryRewrite(responseData.data.queryRewrite);
+        }
+        if (responseData.data?.debug?.chunkSearch) {
+          setChunkSearch(responseData.data.debug.chunkSearch);
+        }
+        if (responseData.data?.debug?.rrfFusion) {
+          setRRFFusion(responseData.data.debug.rrfFusion);
+        }
+        if (typeof responseData.data?.executionTimeMs === "number") {
+          setExecutionTimeMs(responseData.data.executionTimeMs);
+        }
       } catch (err) {
         clientLogger.error({ err }, "[SearchPageClient] Client search error");
         setClientError(
@@ -131,6 +165,11 @@ export function SearchPageClient({
         );
         setClientSearchResults([]);
         setFilterExtraction(null);
+        // V4.3.2: 重置增强搜索元数据
+        setQueryRewrite(null);
+        setChunkSearch(null);
+        setRRFFusion(null);
+        setExecutionTimeMs(null);
       } finally {
         setIsClientSearching(false);
       }
@@ -428,6 +467,21 @@ export function SearchPageClient({
                     className="mb-4"
                   />
                 )}
+
+                {/* V4.3.2: 增强搜索元数据展示 */}
+                {aiMode &&
+                  (queryRewrite ||
+                    chunkSearch ||
+                    rrfFusion ||
+                    executionTimeMs) && (
+                    <SearchMetadataPanel
+                      queryRewrite={queryRewrite ?? undefined}
+                      chunkSearch={chunkSearch ?? undefined}
+                      rrfFusion={rrfFusion ?? undefined}
+                      executionTimeMs={executionTimeMs ?? undefined}
+                      className="mb-4"
+                    />
+                  )}
 
                 {/* 结果列表 */}
                 {hasResults ? (
