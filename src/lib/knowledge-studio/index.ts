@@ -42,6 +42,12 @@
 export * from "./types";
 
 // ============================================================================
+// Constants
+// ============================================================================
+
+export * from "./constants";
+
+// ============================================================================
 // Blueprint Engine
 // ============================================================================
 
@@ -142,3 +148,47 @@ export type {
 export { StreamEmitter, createSSEResponse, parseSSEEvent } from "./streaming";
 
 export type { StreamEmitterConfig } from "./streaming";
+
+// ============================================================================
+// Analytics
+// ============================================================================
+
+export {
+  UsageTracker,
+  createUsageTracker,
+  DEFAULT_KS_ANALYTICS_CONFIG,
+} from "./analytics";
+
+export type {
+  KSUsageStats,
+  KSAnalyticsConfig,
+  OperationStat,
+  BlueprintTypeStat,
+  DailyUsageTrend,
+  TrialStatus,
+  UserTrialInfo,
+  ConversionFunnel,
+} from "./analytics";
+
+// ============================================================================
+// Conversion Automation (Phase 3 Stub)
+// ============================================================================
+
+/**
+ * 转化自动化模块（Phase 3 存根）
+ * 使用命名空间导出以避免与 analytics 模块的 TrialStatus 冲突
+ *
+ * @example
+ * ```typescript
+ * import { Conversion } from '@/lib/knowledge-studio';
+ *
+ * // 创建追踪器
+ * const tracker = Conversion.createConversionTracker();
+ * const state = await tracker.getTrialState(userId);
+ *
+ * // 创建分析器
+ * const analytics = Conversion.createConversionAnalytics();
+ * const metrics = await analytics.getFunnelMetrics(start, end);
+ * ```
+ */
+export * as Conversion from "./conversion";

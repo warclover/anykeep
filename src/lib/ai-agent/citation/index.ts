@@ -49,3 +49,16 @@ export {
   getCitationEnricher,
   resetCitationEnricher,
 } from "./citation-enricher";
+
+// Knowledge Studio 引用适配器导出
+export {
+  toKSCitation,
+  toAgentCitation,
+  toKSCitations,
+  toAgentCitations,
+  formatCitationAsFootnote,
+  generateReferencesSection,
+  extractUsedCitationIndices,
+  validateCitations,
+  mergeCitations,
+} from "./ks-citation-adapter";

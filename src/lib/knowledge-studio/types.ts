@@ -87,6 +87,7 @@ export type GenerationStage =
  */
 export type StreamEventType =
   | "text"
+  | "content"
   | "progress"
   | "citation"
   | "stage"
@@ -242,6 +243,9 @@ export interface QuotaUsageSummary {
 // Chat-to-Edit Types (Decision 4.3)
 // ============================================================================
 
+// Note: EditMode, ParagraphInfo, ChatTurn are defined in ./chat-edit/types.ts
+// and re-exported from the main module
+
 /**
  * 编辑上下文 - 滑动窗口
  */
@@ -296,6 +300,11 @@ export interface EditResponse {
 // ============================================================================
 // Material Scorer Types
 // ============================================================================
+
+/**
+ * 素材质量等级
+ */
+export type MaterialQuality = "excellent" | "good" | "fair" | "poor";
 
 /**
  * 素材健康度评分

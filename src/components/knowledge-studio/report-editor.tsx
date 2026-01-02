@@ -17,10 +17,11 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Edit2, Copy, Download, Share2, ExternalLink } from "lucide-react";
-import type { SynthesisReport, Citation } from "@/lib/knowledge-studio";
+import { Edit2, Copy, Download, Share2 } from "lucide-react";
+import type { SynthesisReport } from "@/lib/knowledge-studio";
 import { BLUEPRINT_DISPLAY_CONFIG } from "@/lib/knowledge-studio";
 import { ChatEditPanel } from "./chat-edit-panel";
+import { CitationCard } from "./citation-card";
 import type { ChatTurn, EditMode, EditDiff } from "@/lib/knowledge-studio";
 
 interface ReportEditorProps {
@@ -287,41 +288,5 @@ export function ReportEditor({
         )}
       </div>
     </div>
-  );
-}
-
-// Citation Card Component
-function CitationCard({
-  citation,
-  index,
-}: {
-  citation: Citation;
-  index: number;
-}) {
-  return (
-    <a
-      href={citation.url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="block rounded-lg border p-2 text-sm transition-colors hover:bg-accent"
-    >
-      <div className="flex items-start gap-2">
-        <Badge variant="outline" className="shrink-0">
-          [{index + 1}]
-        </Badge>
-        <div className="flex-1 space-y-1">
-          <div className="font-medium line-clamp-2">{citation.title}</div>
-          {citation.excerpt && (
-            <p className="text-xs text-muted-foreground line-clamp-2">
-              {citation.excerpt}
-            </p>
-          )}
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <ExternalLink className="h-3 w-3" />
-            <span className="truncate">{new URL(citation.url).hostname}</span>
-          </div>
-        </div>
-      </div>
-    </a>
   );
 }

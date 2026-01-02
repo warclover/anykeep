@@ -9,3 +9,4 @@ export * from "./brain-sync";
 export * from "./folder";
 export * from "./import";
 export * from "./platform";
+export * from "./knowledge-studio";
