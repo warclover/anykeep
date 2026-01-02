@@ -257,21 +257,24 @@ export class TemplateService implements ITemplateService {
 
   /**
    * 删除模板
+   * @param templateId 模板 ID
+   * @param userId 用户 ID（用于所有权验证）
    */
-  async deleteTemplate(templateId: string): Promise<void> {
+  async deleteTemplate(templateId: string, userId: string): Promise<void> {
     const supabase = await createClient();
 
     const { error } = await supabase
       .from("ks_custom_templates")
       .delete()
-      .eq("id", templateId);
+      .eq("id", templateId)
+      .eq("user_id", userId); // 添加用户所有权验证
 
     if (error) {
       logger.error({ error: error.message }, "Failed to delete template");
       throw new Error(`删除模板失败: ${error.message}`);
     }
 
-    logger.info({ templateId }, "Template deleted");
+    logger.info({ templateId, userId }, "Template deleted");
   }
 
   /**
@@ -323,14 +326,17 @@ export class TemplateService implements ITemplateService {
   async searchPublicTemplates(query: string): Promise<CustomTemplate[]> {
     const supabase = await createClient();
 
+    // 转义特殊字符防止 SQL 注入
+    const escapedQuery = query.replace(/[%_\\]/g, "\\$&");
+
     // 使用 RPC 函数进行全文搜索
     const { data, error } = await supabase.rpc("search_public_templates", {
-      p_query: query,
+      p_query: escapedQuery,
       p_limit: 50,
     });
 
     if (error) {
-      // 回退到简单搜索
+      // 回退到简单搜索，使用转义后的查询
       logger.warn(
         { error: error.message },
         "RPC search failed, falling back to simple search",
@@ -341,7 +347,7 @@ export class TemplateService implements ITemplateService {
         .select("*")
         .eq("visibility", "public")
         .eq("status", "active")
-        .or(`name.ilike.%${query}%,description.ilike.%${query}%`)
+        .or(`name.ilike.%${escapedQuery}%,description.ilike.%${escapedQuery}%`)
         .order("usage_count", { ascending: false })
         .limit(50);
 
@@ -399,11 +405,10 @@ export class TemplateService implements ITemplateService {
       });
     }
 
-    // 增加原模板使用计数
-    await supabase
-      .from("ks_custom_templates")
-      .update({ usage_count: supabase.rpc("increment_usage_count") })
-      .eq("id", templateId);
+    // 增加原模板使用计数（使用 RPC 保证原子性）
+    await supabase.rpc("increment_template_usage_count", {
+      p_template_id: templateId,
+    });
 
     logger.info(
       { originalId: templateId, newId: data.id, userId },

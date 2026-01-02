@@ -4989,6 +4989,212 @@ export type Database = {
         };
         Relationships: [];
       };
+      /** Knowledge Studio - 用户试用状态表 */
+      ks_user_trial_states: {
+        Row: {
+          id: string;
+          user_id: string;
+          status: string;
+          started_at: string;
+          expires_at: string;
+          generations_used: number;
+          features_experienced: string[];
+          conversion_stage: string;
+          last_active_at: string;
+          converted_at: string | null;
+          metadata: Json;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          status?: string;
+          started_at?: string;
+          expires_at: string;
+          generations_used?: number;
+          features_experienced?: string[];
+          conversion_stage?: string;
+          last_active_at?: string;
+          converted_at?: string | null;
+          metadata?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          status?: string;
+          started_at?: string;
+          expires_at?: string;
+          generations_used?: number;
+          features_experienced?: string[];
+          conversion_stage?: string;
+          last_active_at?: string;
+          converted_at?: string | null;
+          metadata?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      /** Knowledge Studio - 转化事件表 */
+      ks_conversion_events: {
+        Row: {
+          id: string;
+          user_id: string;
+          trigger_type: string;
+          source_page: string | null;
+          feature_id: string | null;
+          remaining_days: number | null;
+          remaining_quota: number | null;
+          user_response: string | null;
+          responded_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          trigger_type: string;
+          source_page?: string | null;
+          feature_id?: string | null;
+          remaining_days?: number | null;
+          remaining_quota?: number | null;
+          user_response?: string | null;
+          responded_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          trigger_type?: string;
+          source_page?: string | null;
+          feature_id?: string | null;
+          remaining_days?: number | null;
+          remaining_quota?: number | null;
+          user_response?: string | null;
+          responded_at?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      /** Knowledge Studio - 升级提示记录表 */
+      ks_upgrade_prompts: {
+        Row: {
+          id: string;
+          user_id: string;
+          prompt_type: string;
+          trigger_type: string;
+          shown_at: string;
+          response: string | null;
+          responded_at: string | null;
+          cooldown_until: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          prompt_type: string;
+          trigger_type: string;
+          shown_at?: string;
+          response?: string | null;
+          responded_at?: string | null;
+          cooldown_until?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          prompt_type?: string;
+          trigger_type?: string;
+          shown_at?: string;
+          response?: string | null;
+          responded_at?: string | null;
+          cooldown_until?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      /** Knowledge Studio - 折扣优惠表 */
+      ks_discount_offers: {
+        Row: {
+          id: string;
+          user_id: string;
+          offer_type: string;
+          discount_percent: number;
+          valid_from: string;
+          valid_until: string;
+          redeemed_at: string | null;
+          promo_code: string | null;
+          metadata: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          offer_type: string;
+          discount_percent: number;
+          valid_from?: string;
+          valid_until: string;
+          redeemed_at?: string | null;
+          promo_code?: string | null;
+          metadata?: Json;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          offer_type?: string;
+          discount_percent?: number;
+          valid_from?: string;
+          valid_until?: string;
+          redeemed_at?: string | null;
+          promo_code?: string | null;
+          metadata?: Json;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      /** Knowledge Studio - 邮件提醒记录表 */
+      ks_email_reminders: {
+        Row: {
+          id: string;
+          user_id: string;
+          reminder_type: string;
+          scheduled_at: string;
+          sent_at: string | null;
+          opened_at: string | null;
+          clicked_at: string | null;
+          email_id: string | null;
+          metadata: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          reminder_type: string;
+          scheduled_at: string;
+          sent_at?: string | null;
+          opened_at?: string | null;
+          clicked_at?: string | null;
+          email_id?: string | null;
+          metadata?: Json;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          reminder_type?: string;
+          scheduled_at?: string;
+          sent_at?: string | null;
+          opened_at?: string | null;
+          clicked_at?: string | null;
+          email_id?: string | null;
+          metadata?: Json;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       classification_metrics_daily: {
@@ -6615,6 +6821,67 @@ export type Database = {
           p_target_version: number;
         };
         Returns: Json;
+      };
+      /** Knowledge Studio - 开始用户试用 */
+      start_user_trial: {
+        Args: {
+          p_user_id: string;
+          p_duration_days?: number;
+        };
+        Returns: Json;
+      };
+      /** Knowledge Studio - 获取即将过期的试用用户 */
+      get_expiring_trials: {
+        Args: {
+          p_within_days?: number;
+        };
+        Returns: {
+          id: string;
+          user_id: string;
+          status: string;
+          started_at: string;
+          expires_at: string;
+          generations_used: number;
+          features_experienced: string[];
+          conversion_stage: string;
+          last_active_at: string;
+          converted_at: string | null;
+          metadata: Json;
+          created_at: string;
+          updated_at: string;
+        }[];
+      };
+      /** Knowledge Studio - 获取转化漏斗指标 */
+      get_conversion_funnel_metrics: {
+        Args: {
+          p_start_date: string;
+          p_end_date: string;
+        };
+        Returns: Json;
+      };
+      /** Knowledge Studio - 创建试用折扣优惠 */
+      create_trial_discount_offer: {
+        Args: {
+          p_user_id: string;
+          p_offer_type: string;
+          p_discount_percent?: number;
+          p_valid_days?: number;
+        };
+        Returns: Json;
+      };
+      /** Knowledge Studio - 更新试用状态 */
+      update_trial_status: {
+        Args: Record<PropertyKey, never>;
+        Returns: number;
+      };
+      /** 通用递增计数器函数 */
+      increment: {
+        Args: {
+          table_name: string;
+          row_id: string;
+          column_name: string;
+        };
+        Returns: number;
       };
     };
     Enums: {

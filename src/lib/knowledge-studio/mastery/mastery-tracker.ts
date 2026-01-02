@@ -578,19 +578,25 @@ export class MasteryTracker implements IMasteryTracker {
 
   /**
    * 结束学习会话
+   * @param sessionId 会话 ID
+   * @param userId 用户 ID（用于所有权验证）
    */
-  async endSession(sessionId: string): Promise<LearningSession> {
+  async endSession(
+    sessionId: string,
+    userId: string,
+  ): Promise<LearningSession> {
     const supabase = await createClient();
 
-    // 获取会话
+    // 获取会话并验证所有权
     const { data: session, error: fetchError } = await supabase
       .from("ks_learning_sessions")
       .select("*")
       .eq("id", sessionId)
+      .eq("user_id", userId) // 添加用户所有权验证
       .single();
 
     if (fetchError || !session) {
-      throw new Error(`会话不存在: ${sessionId}`);
+      throw new Error(`会话不存在或无权访问: ${sessionId}`);
     }
 
     // 计算时长

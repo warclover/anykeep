@@ -86,9 +86,8 @@ export class ConversionAnalytics implements IConversionAnalytics {
   ): Promise<ConversionFunnelMetrics> {
     const supabase = await createClient();
 
-    // 调用 RPC 函数获取指标 (RPC 尚未在生成的类型中)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase as any).rpc(
+    // 调用 RPC 函数获取指标
+    const { data, error } = await supabase.rpc(
       "get_conversion_funnel_metrics",
       {
         p_start_date: startDate.toISOString(),
@@ -147,9 +146,8 @@ export class ConversionAnalytics implements IConversionAnalytics {
   async getUserInsight(userId: string): Promise<UserConversionInsight> {
     const supabase = await createClient();
 
-    // 获取用户试用状态 (表尚未在生成的类型中)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: trialData, error: trialError } = await (supabase as any)
+    // 获取用户试用状态
+    const { data: trialData, error: trialError } = await supabase
       .from("ks_user_trial_states")
       .select("*")
       .eq("user_id", userId)
@@ -163,8 +161,7 @@ export class ConversionAnalytics implements IConversionAnalytics {
     const trial = trialData as TrialStateRow;
 
     // 获取用户提示统计
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: promptStats } = await (supabase as any)
+    const { data: promptStats } = await supabase
       .from("ks_upgrade_prompts")
       .select("prompt_type, response")
       .eq("user_id", userId);
@@ -243,9 +240,8 @@ export class ConversionAnalytics implements IConversionAnalytics {
   async getExpiringTrials(withinDays: number): Promise<UserTrialState[]> {
     const supabase = await createClient();
 
-    // 调用 RPC 函数 (RPC 尚未在生成的类型中)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase as any).rpc("get_expiring_trials", {
+    // 调用 RPC 函数
+    const { data, error } = await supabase.rpc("get_expiring_trials", {
       p_within_days: withinDays,
     });
 
@@ -273,9 +269,8 @@ export class ConversionAnalytics implements IConversionAnalytics {
   async getHighValueProspects(limit: number): Promise<UserConversionInsight[]> {
     const supabase = await createClient();
 
-    // 获取所有活跃试用用户 (表尚未在生成的类型中)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase as any)
+    // 获取所有活跃试用用户
+    const { data, error } = await supabase
       .from("ks_user_trial_states")
       .select("*")
       .eq("status", "active")
@@ -332,8 +327,7 @@ export class ConversionAnalytics implements IConversionAnalytics {
     const futureDate = new Date(now);
     futureDate.setDate(futureDate.getDate() + withinDays);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from("ks_user_trial_states")
       .select("*")
       .eq("status", "active")

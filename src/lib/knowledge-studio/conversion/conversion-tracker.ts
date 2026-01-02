@@ -168,8 +168,7 @@ export class ConversionTracker implements IConversionTracker {
   async getTrialState(userId: string): Promise<UserTrialState | null> {
     const supabase = await createClient();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from("ks_user_trial_states")
       .select("*")
       .eq("user_id", userId)
@@ -192,9 +191,8 @@ export class ConversionTracker implements IConversionTracker {
   async startTrial(userId: string): Promise<UserTrialState> {
     const supabase = await createClient();
 
-    // 调用 RPC 函数 (表/RPC 尚未在生成的类型中)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase as any).rpc("start_user_trial", {
+    // 调用 RPC 函数
+    const { data, error } = await supabase.rpc("start_user_trial", {
       p_user_id: userId,
       p_duration_days: this.config.durationDays,
     });
@@ -258,19 +256,16 @@ export class ConversionTracker implements IConversionTracker {
   async trackEvent(event: Omit<ConversionEvent, "id">): Promise<void> {
     const supabase = await createClient();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase as any)
-      .from("ks_conversion_events")
-      .insert({
-        user_id: event.userId,
-        trigger_type: event.trigger,
-        source_page: event.context.sourcePage,
-        feature_id: event.context.featureId,
-        remaining_days: event.context.remainingDays,
-        remaining_quota: event.context.remainingQuota,
-        user_response: event.userResponse,
-        responded_at: event.userResponse ? new Date().toISOString() : null,
-      });
+    const { error } = await supabase.from("ks_conversion_events").insert({
+      user_id: event.userId,
+      trigger_type: event.trigger,
+      source_page: event.context.sourcePage,
+      feature_id: event.context.featureId,
+      remaining_days: event.context.remainingDays,
+      remaining_quota: event.context.remainingQuota,
+      user_response: event.userResponse,
+      responded_at: event.userResponse ? new Date().toISOString() : null,
+    });
 
     if (error) {
       // 表不存在时仅记录日志
@@ -297,8 +292,7 @@ export class ConversionTracker implements IConversionTracker {
   async updateStage(userId: string, stage: ConversionStage): Promise<void> {
     const supabase = await createClient();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from("ks_user_trial_states")
       .update({
         conversion_stage: stage,
@@ -365,8 +359,7 @@ export class ConversionTracker implements IConversionTracker {
     }
 
     // 检查冷却时间
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: recentPrompts } = await (supabase as any)
+    const { data: recentPrompts } = await supabase
       .from("ks_upgrade_prompts")
       .select("*")
       .eq("user_id", userId)
@@ -390,8 +383,7 @@ export class ConversionTracker implements IConversionTracker {
       cooldownUntil.getHours() + promptConfig.cooldownHours,
     );
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any).from("ks_upgrade_prompts").insert({
+    await supabase.from("ks_upgrade_prompts").insert({
       user_id: userId,
       prompt_type: promptConfig.type,
       trigger_type: promptConfig.trigger,
@@ -413,8 +405,7 @@ export class ConversionTracker implements IConversionTracker {
     const supabase = await createClient();
 
     // 更新最近的提示记录
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from("ks_upgrade_prompts")
       .update({
         response,
@@ -422,9 +413,7 @@ export class ConversionTracker implements IConversionTracker {
       })
       .eq("user_id", userId)
       .eq("prompt_type", promptType)
-      .is("response", null)
-      .order("shown_at", { ascending: false })
-      .limit(1);
+      .is("response", null);
 
     if (error) {
       if (error.code === "42P01") {
@@ -461,8 +450,7 @@ export class ConversionTracker implements IConversionTracker {
   async updateLastActive(userId: string): Promise<void> {
     const supabase = await createClient();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any)
+    await supabase
       .from("ks_user_trial_states")
       .update({
         last_active_at: new Date().toISOString(),
@@ -490,8 +478,7 @@ export class ConversionTracker implements IConversionTracker {
     // 更新体验列表
     const newFeatures = [...trialState.featuresExperienced, featureId];
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any)
+    await supabase
       .from("ks_user_trial_states")
       .update({
         features_experienced: newFeatures,
@@ -513,27 +500,25 @@ export class ConversionTracker implements IConversionTracker {
   async incrementGenerations(userId: string): Promise<void> {
     const supabase = await createClient();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase as any).rpc("increment", {
-      table_name: "ks_user_trial_states",
-      row_id: userId,
-      column_name: "generations_used",
-    });
+    // 先获取当前值，再更新（原子性由数据库保证）
+    const trialState = await this.getTrialState(userId);
+    if (!trialState) {
+      logger.warn({ userId }, "No trial state found for increment");
+      return;
+    }
+
+    const { error } = await supabase
+      .from("ks_user_trial_states")
+      .update({
+        generations_used: trialState.generationsUsed + 1,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("user_id", userId);
 
     if (error) {
-      // 如果 RPC 不存在，使用直接更新
-      if (error.code === "42883") {
-        const trialState = await this.getTrialState(userId);
-        if (trialState) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (supabase as any)
-            .from("ks_user_trial_states")
-            .update({
-              generations_used: trialState.generationsUsed + 1,
-              updated_at: new Date().toISOString(),
-            })
-            .eq("user_id", userId);
-        }
+      // 表不存在时仅记录日志
+      if (error.code === "42P01") {
+        logger.warn({ userId }, "Trial states table not found, skipping");
         return;
       }
       logger.error({ error: error.message }, "Failed to increment generations");

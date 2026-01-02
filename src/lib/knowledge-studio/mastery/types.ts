@@ -271,5 +271,5 @@ export interface IMasteryTracker {
   /** 创建学习会话 */
   createSession(userId: string, reportId: string): Promise<LearningSession>;
   /** 结束学习会话 */
-  endSession(sessionId: string): Promise<LearningSession>;
+  endSession(sessionId: string, userId: string): Promise<LearningSession>;
 }

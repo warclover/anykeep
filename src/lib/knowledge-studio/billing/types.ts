@@ -245,7 +245,7 @@ export interface IBillingService {
     },
   ): Promise<Bill[]>;
   /** 获取账单详情 */
-  getBill(billId: string): Promise<Bill | null>;
+  getBill(billId: string, userId: string): Promise<Bill | null>;
   /** 获取消费汇总 */
   getConsumptionSummary(
     userId: string,

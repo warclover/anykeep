@@ -201,7 +201,7 @@ export interface ITemplateService {
     updates: Partial<CustomTemplate>,
   ): Promise<CustomTemplate>;
   /** 删除模板 */
-  deleteTemplate(templateId: string): Promise<void>;
+  deleteTemplate(templateId: string, userId: string): Promise<void>;
   /** 获取模板 */
   getTemplate(templateId: string): Promise<CustomTemplate | null>;
   /** 获取用户模板列表 */

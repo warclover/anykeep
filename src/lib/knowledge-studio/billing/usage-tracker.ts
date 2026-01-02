@@ -220,11 +220,20 @@ export class UsageTracker implements IUsageTracker {
     const supabase = await createClient();
 
     // 获取用户会员类型
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("membership_type")
       .eq("id", userId)
       .single();
+
+    if (profileError) {
+      logger.error(
+        { error: profileError.message, userId },
+        "Failed to get user membership for quota check",
+      );
+      // Fail-secure: 无法验证会员状态时，默认拒绝
+      return { remaining: 0, limit: 0, isExceeded: true };
+    }
 
     const membershipType = profile?.membership_type ?? "free";
     const quotaLimits = QUOTA_LIMITS[membershipType] ?? QUOTA_LIMITS.free;
@@ -251,9 +260,12 @@ export class UsageTracker implements IUsageTracker {
       .gte("created_at", startOfMonth.toISOString());
 
     if (error) {
-      logger.error({ error: error.message }, "Failed to check quota");
-      // 默认返回未超额，避免阻塞用户
-      return { remaining: limit, limit, isExceeded: false };
+      logger.error(
+        { error: error.message, userId, type },
+        "Failed to check quota",
+      );
+      // Fail-secure: 无法验证配额时，默认拒绝以防止滥用
+      return { remaining: 0, limit, isExceeded: true };
     }
 
     const used = (data ?? []).reduce((sum, row) => sum + row.amount, 0);

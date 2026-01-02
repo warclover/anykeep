@@ -107,8 +107,10 @@ export class BillingService implements IBillingService {
 
   /**
    * 获取账单详情
+   * @param billId 账单 ID
+   * @param userId 用户 ID（用于所有权验证）
    */
-  async getBill(billId: string): Promise<Bill | null> {
+  async getBill(billId: string, userId: string): Promise<Bill | null> {
     const supabase = await createClient();
 
     const { data, error } = await supabase
@@ -120,6 +122,7 @@ export class BillingService implements IBillingService {
       `,
       )
       .eq("id", billId)
+      .eq("user_id", userId) // 添加用户所有权验证
       .single();
 
     if (error) {
