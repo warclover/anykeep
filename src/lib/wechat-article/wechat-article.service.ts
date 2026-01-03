@@ -373,51 +373,99 @@ export class WechatArticleService {
   async getArticleContent(
     snapshotId: number,
   ): Promise<WechatArticleContent | null> {
-    const supabase = await createServerSupabaseClient();
+    try {
+      const supabase = await createServerSupabaseClient();
 
-    const { data: snapshot, error } = await supabase
-      .from("bookmark_snapshots")
-      .select(
-        `
-        readable_content,
-        readable_text_content,
-        readable_word_count,
-        content_markdown,
-        processed_html,
-        article_images,
-        images_status,
-        style_preserve_level
-      `,
-      )
-      .eq("id", snapshotId)
-      .single();
+      const { data: snapshot, error } = await supabase
+        .from("bookmark_snapshots")
+        .select(
+          `
+          id,
+          bookmark_id,
+          readable_content,
+          readable_text_content,
+          readable_word_count,
+          content_markdown,
+          processed_html,
+          article_images,
+          images_status,
+          style_preserve_level,
+          original_url,
+          original_html
+        `,
+        )
+        .eq("id", snapshotId)
+        .single();
 
-    if (error || !snapshot) {
+      if (error) {
+        logger.error(
+          { snapshotId, error },
+          "[WechatArticleService] Failed to fetch snapshot",
+        );
+        return null;
+      }
+
+      if (!snapshot) {
+        logger.warn(
+          { snapshotId },
+          "[WechatArticleService] Snapshot not found",
+        );
+        return null;
+      }
+
+      // 使用类型安全的转换函数
+      // Note: 使用 unknown 中间转换是因为 Supabase 类型定义尚未包含新列
+      let snapshotData: ReturnType<typeof toWechatArticleSnapshot>;
+      try {
+        snapshotData = toWechatArticleSnapshot(
+          snapshot as unknown as Record<string, unknown>,
+        );
+      } catch (conversionError) {
+        logger.error(
+          { snapshotId, error: conversionError, snapshot },
+          "[WechatArticleService] Failed to convert snapshot data",
+        );
+        // 如果转换失败，尝试直接使用原始数据
+        const rawSnapshot = snapshot as Record<string, unknown>;
+        return {
+          html: (rawSnapshot.readable_content as string) || "",
+          text: (rawSnapshot.readable_text_content as string) || "",
+          markdown: (rawSnapshot.content_markdown as string) || null,
+          images: (Array.isArray(rawSnapshot.article_images)
+            ? rawSnapshot.article_images
+            : []) as WechatArticleImage[],
+          wordCount: (rawSnapshot.readable_word_count as number) || 0,
+          styleLevel:
+            (rawSnapshot.style_preserve_level as
+              | "text-only"
+              | "full-snapshot"
+              | undefined) || undefined,
+        };
+      }
+
+      // 优先使用处理后的 HTML，其次使用原始 readable_content
+      const htmlContent =
+        snapshotData.processed_html || snapshotData.readable_content || "";
+
+      return {
+        html: htmlContent,
+        text: snapshotData.readable_text_content || "",
+        markdown: snapshotData.content_markdown || null,
+        images: (snapshotData.article_images as WechatArticleImage[]) || [],
+        wordCount: snapshotData.readable_word_count || 0,
+        styleLevel:
+          (snapshotData.style_preserve_level as
+            | "text-only"
+            | "full-snapshot"
+            | undefined) || undefined,
+      };
+    } catch (error) {
+      logger.error(
+        { snapshotId, error },
+        "[WechatArticleService] getArticleContent error",
+      );
       return null;
     }
-
-    // 使用类型安全的转换函数
-    // Note: 使用 unknown 中间转换是因为 Supabase 类型定义尚未包含新列
-    const snapshotData = toWechatArticleSnapshot(
-      snapshot as unknown as Record<string, unknown>,
-    );
-
-    // 优先使用处理后的 HTML，其次使用原始 readable_content
-    const htmlContent =
-      snapshotData.processed_html || snapshotData.readable_content || "";
-
-    return {
-      html: htmlContent,
-      text: snapshotData.readable_text_content || "",
-      markdown: snapshotData.content_markdown || null,
-      images: (snapshotData.article_images as WechatArticleImage[]) || [],
-      wordCount: snapshotData.readable_word_count || 0,
-      styleLevel:
-        (snapshotData.style_preserve_level as
-          | "text-only"
-          | "full-snapshot"
-          | undefined) || undefined,
-    };
   }
 
   /**

@@ -10,7 +10,35 @@
  * - 保持与 Supabase 查询结果的兼容性
  */
 
-import type { WechatArticleSnapshot } from "@/types/supabase";
+// ============================================================================
+// 类型定义
+// ============================================================================
+
+/**
+ * 微信文章快照类型
+ * 基于 bookmark_snapshots 表的扩展字段
+ */
+export interface WechatArticleSnapshot {
+  id: number;
+  bookmark_id: number;
+  readable_content: string | null;
+  readable_text_content: string | null;
+  readable_title?: string | null;
+  readable_word_count: number | null;
+  original_url: string | null;
+  original_html?: string | null;
+  processed_html?: string | null;
+  content_version?: number;
+  content_markdown?: string | null;
+  article_images?: unknown[];
+  images_status?: "pending" | "processing" | "completed" | "partial" | "failed";
+  images_stats?: Record<string, number>;
+  style_preserve_level?: "text-only" | "full-snapshot";
+  bookmarks?: {
+    url: string;
+    platform: string;
+  };
+}
 
 /**
  * Supabase 查询返回的原始数据类型
@@ -55,17 +83,30 @@ export function isWechatArticleSnapshot(
 export function toWechatArticleSnapshot(
   data: SupabaseQueryResult,
 ): WechatArticleSnapshot {
-  // 验证必需字段
-  if (typeof data.id !== "number") {
+  // 验证必需字段 - 如果 id 不存在，尝试从其他字段推断或使用默认值
+  let id: number;
+  if (typeof data.id === "number") {
+    id = data.id;
+  } else if (typeof data.id === "string") {
+    const parsedId = parseInt(data.id, 10);
+    if (isNaN(parsedId)) {
+      throw new Error("Invalid snapshot data: 'id' must be a valid number");
+    }
+    id = parsedId;
+  } else {
     throw new Error("Invalid snapshot data: missing or invalid 'id'");
   }
 
   // 安全转换 - 利用 TypeScript 的类型推断
   // 显式构造对象而非断言，编译器会检查类型兼容性
   const snapshot: WechatArticleSnapshot = {
-    id: data.id,
+    id,
     bookmark_id:
-      typeof data.bookmark_id === "number" ? data.bookmark_id : data.id,
+      typeof data.bookmark_id === "number"
+        ? data.bookmark_id
+        : typeof data.bookmark_id === "string"
+          ? parseInt(data.bookmark_id, 10) || id
+          : id,
     readable_content:
       typeof data.readable_content === "string" ? data.readable_content : null,
     readable_text_content:
