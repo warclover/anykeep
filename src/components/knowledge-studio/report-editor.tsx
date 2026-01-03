@@ -5,7 +5,7 @@
  * @module components/knowledge-studio
  */
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -22,7 +22,9 @@ import type { SynthesisReport } from "@/lib/knowledge-studio/client";
 import { BLUEPRINT_DISPLAY_CONFIG } from "@/lib/knowledge-studio/client";
 import { ChatEditPanel } from "./chat-edit-panel";
 import { CitationCard } from "./citation-card";
-import type { ChatTurn, EditMode, EditDiff } from "@/lib/knowledge-studio/client";
+import type { ChatTurn, EditMode } from "@/lib/knowledge-studio/client";
+import { useChatEdit } from "@/hooks/domain/knowledge-studio/use-chat-edit";
+import { toast } from "sonner";
 
 interface ReportEditorProps {
   report: SynthesisReport;
@@ -40,12 +42,6 @@ export function ReportEditor({
   const [editingParagraphIndex, setEditingParagraphIndex] = useState<
     number | null
   >(null);
-  const [chatTurns, setChatTurns] = useState<ChatTurn[]>([]);
-  const [pendingEdit, setPendingEdit] = useState<{
-    content: string;
-    diff: EditDiff;
-  } | null>(null);
-  const [isEditLoading, setIsEditLoading] = useState(false);
 
   const blueprintConfig = BLUEPRINT_DISPLAY_CONFIG[report.blueprintType];
 
@@ -54,95 +50,118 @@ export function ReportEditor({
     return report.content.split("\n\n").filter((p) => p.trim());
   }, [report.content]);
 
-  // Handle paragraph click for editing
-  const handleParagraphClick = useCallback((index: number) => {
-    setEditingParagraphIndex(index);
-    setChatTurns([]);
-    setPendingEdit(null);
-  }, []);
+  // 使用 useChatEdit Hook
+  const {
+    status: editStatus,
+    chatHistory,
+    result: editResult,
+    error: editError,
+    selectParagraph,
+    sendEdit,
+    applyEdit,
+    revertEdit,
+  } = useChatEdit({
+    reportId: report.id,
+    fullContent: report.content,
+    onEditComplete: (result) => {
+      if (
+        result.success &&
+        result.newContent &&
+        editingParagraphIndex !== null
+      ) {
+        // 更新段落内容
+        const newParagraphs = [...paragraphs];
+        newParagraphs[editingParagraphIndex] = result.newContent;
+        const newFullContent = newParagraphs.join("\n\n");
+        onUpdate?.(newFullContent);
+        toast.success("编辑已应用");
+      }
+    },
+    onError: (error) => {
+      toast.error(`编辑失败: ${error}`);
+    },
+  });
+
+  // 当选择段落时，同步到 Hook
+  const handleParagraphClick = useCallback(
+    (index: number) => {
+      setEditingParagraphIndex(index);
+      selectParagraph(index);
+    },
+    [selectParagraph],
+  );
+
+  // 当编辑完成时，关闭编辑面板
+  useEffect(() => {
+    if (editStatus === "completed" && editResult?.success) {
+      // 延迟关闭，让用户看到结果
+      const timer = setTimeout(() => {
+        setEditingParagraphIndex(null);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [editStatus, editResult]);
 
   // Handle send message in chat edit
   const handleSendMessage = useCallback(
-    async (message: string, _mode: EditMode) => {
+    async (message: string, mode: EditMode) => {
       if (editingParagraphIndex === null) return;
-
-      // Add user message
-      const userTurn: ChatTurn = {
-        id: crypto.randomUUID(),
-        role: "user",
-        content: message,
-        timestamp: new Date(),
-      };
-      setChatTurns((prev) => [...prev, userTurn]);
-
-      setIsEditLoading(true);
-
-      try {
-        // TODO: Call actual edit API
-        // Simulate API response
-        await new Promise((resolve) => setTimeout(resolve, 1500));
-
-        const originalContent = paragraphs[editingParagraphIndex];
-        const newContent = `[已按「${message}」修改] ${originalContent}`;
-
-        // Create diff
-        const diff: EditDiff = {
-          before: originalContent,
-          after: newContent,
-          changes: [
-            { type: "add", value: `[已按「${message}」修改] ` },
-            { type: "unchanged", value: originalContent },
-          ],
-          stats: { added: 1, removed: 0, unchanged: 1 },
-        };
-
-        setPendingEdit({ content: newContent, diff });
-
-        // Add assistant response
-        const assistantTurn: ChatTurn = {
-          id: crypto.randomUUID(),
-          role: "assistant",
-          content: "已根据您的指示生成修改建议，请查看上方预览。",
-          timestamp: new Date(),
-        };
-        setChatTurns((prev) => [...prev, assistantTurn]);
-      } catch {
-        // Handle error
-        const errorTurn: ChatTurn = {
-          id: crypto.randomUUID(),
-          role: "assistant",
-          content: "抱歉，修改失败。请稍后重试。",
-          timestamp: new Date(),
-        };
-        setChatTurns((prev) => [...prev, errorTurn]);
-      } finally {
-        setIsEditLoading(false);
-      }
+      await sendEdit(message, mode);
     },
-    [editingParagraphIndex, paragraphs],
+    [editingParagraphIndex, sendEdit],
   );
 
   // Accept edit
   const handleAcceptEdit = useCallback(
     (newContent: string) => {
-      if (editingParagraphIndex === null) return;
+      if (editingParagraphIndex === null || !editResult?.success) return;
 
       const newParagraphs = [...paragraphs];
       newParagraphs[editingParagraphIndex] = newContent;
       const newFullContent = newParagraphs.join("\n\n");
 
       onUpdate?.(newFullContent);
-      setPendingEdit(null);
+      applyEdit();
       setEditingParagraphIndex(null);
-      setChatTurns([]);
+      toast.success("编辑已应用");
     },
-    [editingParagraphIndex, paragraphs, onUpdate],
+    [editingParagraphIndex, paragraphs, onUpdate, editResult, applyEdit],
   );
 
   // Reject edit
   const handleRejectEdit = useCallback(() => {
-    setPendingEdit(null);
-  }, []);
+    revertEdit();
+  }, [revertEdit]);
+
+  // 转换 chatHistory 为 ChatTurn 格式
+  const chatTurns: ChatTurn[] = useMemo(() => {
+    return chatHistory.map((turn) => ({
+      id: turn.id,
+      role: turn.role,
+      content: turn.content,
+      timestamp: turn.timestamp,
+    }));
+  }, [chatHistory]);
+
+  // 转换 editResult 为 pendingEdit 格式
+  const pendingEdit = useMemo(() => {
+    if (editResult?.success && editResult.newContent && editResult.diff) {
+      return {
+        content: editResult.newContent,
+        diff: editResult.diff,
+      };
+    }
+    return null;
+  }, [editResult]);
+
+  const isEditLoading = editStatus === "loading" || editStatus === "streaming";
+
+  // 显示错误信息
+  useEffect(() => {
+    if (editError) {
+      toast.error(`编辑失败: ${editError}`);
+    }
+  }, [editError]);
 
   // Copy to clipboard
   const handleCopy = useCallback(async () => {

@@ -72,6 +72,8 @@ export interface GenerationResult {
   citations?: Citation[];
   /** 错误信息 */
   error?: string;
+  /** 错误码 */
+  errorCode?: string;
 }
 
 export interface UseGenerationOptions {
@@ -231,7 +233,10 @@ export function useGeneration(
           const { done, value } = await reader.read();
 
           if (done) {
-            console.log("SSE stream ended, receivedDoneEvent:", receivedDoneEvent);
+            console.info(
+              "SSE stream ended, receivedDoneEvent:",
+              receivedDoneEvent,
+            );
             break;
           }
 
@@ -243,13 +248,14 @@ export function useGeneration(
             if (line.startsWith("data: ")) {
               const data = line.slice(6);
               if (data === "[DONE]") {
-                console.log("Received [DONE] marker");
+                console.info("Received [DONE] marker");
                 continue;
               }
 
               try {
                 const chunk: StreamChunk = JSON.parse(data);
-                console.log("Received SSE chunk:", chunk.type, chunk.data);
+
+                console.info("Received SSE chunk:", chunk.type, chunk.data);
 
                 // 处理进度更新
                 if (chunk.type === "progress" && chunk.data.stage) {
@@ -273,11 +279,20 @@ export function useGeneration(
                 if (chunk.type === "done") {
                   receivedDoneEvent = true;
                   const reportId = chunk.data.reportId;
-                  console.log("Received done event, reportId:", reportId, "hasReportId:", !!reportId);
-                  
+
+                  console.info(
+                    "Received done event, reportId:",
+                    reportId,
+                    "hasReportId:",
+                    !!reportId,
+                  );
+
                   // 检查 reportId 是否存在
                   if (!reportId) {
-                    console.error("Done event received but reportId is missing:", chunk.data);
+                    console.error(
+                      "Done event received but reportId is missing:",
+                      chunk.data,
+                    );
                     const errorResult: GenerationResult = {
                       success: false,
                       error: "生成完成但缺少报告 ID",
@@ -302,7 +317,13 @@ export function useGeneration(
 
                 // 处理错误事件
                 if (chunk.type === "error") {
-                  throw new Error(chunk.data.error?.message || "生成失败");
+                  const errorCode = chunk.data.error?.code;
+                  const errorMessage = chunk.data.error?.message || "生成失败";
+                  const error = new Error(errorMessage) as Error & {
+                    code?: string;
+                  };
+                  error.code = errorCode;
+                  throw error;
                 }
               } catch (parseError) {
                 // JSON 解析错误，可能是不完整的数据，继续处理
@@ -316,11 +337,17 @@ export function useGeneration(
         // 如果没有收到完成事件但流已结束
         // 注意：使用 receivedDoneEvent 标志而不是 status，因为状态更新是异步的
         if (!receivedDoneEvent) {
-          console.warn("Stream ended without done event, status:", status, "receivedDoneEvent:", receivedDoneEvent);
+          console.info(
+            "Stream ended without done event, status:",
+            status,
+            "receivedDoneEvent:",
+            receivedDoneEvent,
+          );
           // 如果流结束了但没有收到完成事件，可能是错误
           const generationResult: GenerationResult = {
             success: false,
             error: "生成未完成：流已结束但未收到完成事件",
+            errorCode: "GENERATION_FAILED",
             content: fullContent || undefined,
           };
           setResult(generationResult);
@@ -335,8 +362,18 @@ export function useGeneration(
         }
 
         const errorMessage = err instanceof Error ? err.message : "未知错误";
+        const errorCode = (err as Error & { code?: string }).code;
         setError(errorMessage);
         setStatus("error");
+
+        // 创建错误结果并传递给 onComplete
+        const errorResult: GenerationResult = {
+          success: false,
+          error: errorMessage,
+          errorCode,
+        };
+        setResult(errorResult);
+        onComplete?.(errorResult);
         onError?.(errorMessage);
       } finally {
         abortControllerRef.current = null;

@@ -77,7 +77,6 @@ import { SynthesisProgress } from "./synthesis-progress";
 import { SourceBookmarksPanel } from "./source-bookmarks-panel";
 import { SynthesisQAPanel } from "./synthesis-qa-panel";
 import { BlindSpotSupplementDialog } from "./blind-spot-supplement-dialog";
-import { AIMarkdown } from "@/components/ai/ai-markdown";
 import type {
   ConsensusPoint,
   DivergencePoint,
@@ -89,6 +88,8 @@ import type {
   SynthesisHighlight,
 } from "@/lib/synthesis/types/highlight";
 import { cn } from "@/lib/utils";
+import { ReportEditor } from "@/components/knowledge-studio/report-editor";
+import type { SynthesisReport as KSSynthesisReport } from "@/lib/knowledge-studio/client";
 
 interface SynthesisDetailPageClientProps {
   reportId: string;
@@ -667,7 +668,7 @@ export function SynthesisDetailPageClient({
 
   // 调试：打印报告数据
   if (report && process.env.NODE_ENV === "development") {
-    console.log("Report data:", {
+    console.info("Report data:", {
       id: report.id,
       title: report.title,
       overview: report.overview?.slice(0, 100),
@@ -940,49 +941,76 @@ export function SynthesisDetailPageClient({
         />
       ) : (
         <>
-          {/* 检测是否是知识工坊报告（没有四维结构数据） */}
-          {report.consensusCount === 0 && report.divergenceCount === 0 && report.blindSpotCount === 0 && (report.overview || report.fullMarkdown) ? (
-            /* 知识工坊报告：显示 Markdown 内容 */
+          {/* 检测是否是知识工坊报告（没有四维结构数据，且有 blueprintType） */}
+          {report.consensusCount === 0 &&
+          report.divergenceCount === 0 &&
+          report.blindSpotCount === 0 &&
+          report.blueprintType &&
+          (report.overview || report.fullMarkdown) ? (
+            /* 知识工坊报告：使用 ReportEditor 组件（支持聊天式编辑） */
             <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <FileText className="h-5 w-5" />
-                    报告内容
-                  </CardTitle>
-                  <CardDescription>
-                    这是由知识工坊生成的 {report.title || "报告"}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="prose prose-slate max-w-none dark:prose-invert">
-                    {report.overview || report.fullMarkdown ? (
-                      <AIMarkdown content={report.overview || report.fullMarkdown || ""} />
-                    ) : (
-                      <div className="text-muted-foreground">
-                        <p>报告内容为空</p>
-                        {process.env.NODE_ENV === "development" && (
-                          <pre className="mt-4 text-xs bg-muted p-4 rounded overflow-auto">
-                            Debug Info:
-                            {JSON.stringify(
-                              {
-                                hasOverview: !!report.overview,
-                                overviewLength: report.overview?.length,
-                                hasFullMarkdown: !!report.fullMarkdown,
-                                fullMarkdownLength: report.fullMarkdown?.length,
-                                overviewPreview: report.overview?.slice(0, 100),
-                                fullMarkdownPreview: report.fullMarkdown?.slice(0, 100),
-                              },
-                              null,
-                              2,
-                            )}
-                          </pre>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+              {(() => {
+                // 转换为 Knowledge Studio 的 SynthesisReport 类型
+                const ksReport: KSSynthesisReport = {
+                  id: report.id,
+                  userId: report.userId,
+                  blueprintType:
+                    report.blueprintType as KSSynthesisReport["blueprintType"],
+                  title: report.title,
+                  content: report.overview || report.fullMarkdown || "",
+                  citations: report.citations || [],
+                  generationMetadata: {
+                    model: report.generationMetadata?.model as
+                      | string
+                      | undefined,
+                    tokens: {
+                      input:
+                        (report.generationMetadata?.tokens_used as number) || 0,
+                      output: 0,
+                      total:
+                        (report.generationMetadata?.tokens_used as number) || 0,
+                    },
+                    durationMs:
+                      (report.generationMetadata?.duration_ms as number) || 0,
+                    stagesTiming: {},
+                  },
+                  version: report.version || 1,
+                  createdAt: new Date(report.createdAt),
+                  updatedAt: new Date(report.updatedAt),
+                };
+
+                return (
+                  <ReportEditor
+                    report={ksReport}
+                    onUpdate={async (newContent) => {
+                      // 更新报告内容
+                      try {
+                        const response = await fetch(
+                          `/api/knowledge-studio/reports/${report.id}`,
+                          {
+                            method: "PUT",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ content: newContent }),
+                          },
+                        );
+
+                        if (!response.ok) {
+                          throw new Error("更新失败");
+                        }
+
+                        toast.success("报告已更新");
+                        refetch();
+                      } catch (error) {
+                        logger.error(
+                          { error, reportId: report.id },
+                          "Failed to update report",
+                        );
+                        toast.error("更新失败，请重试");
+                      }
+                    }}
+                  />
+                );
+              })()}
             </div>
           ) : (
             /* 主题合成器报告：显示四维内容 */

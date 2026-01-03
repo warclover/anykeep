@@ -8,6 +8,7 @@
 
 import { useState, useCallback } from "react";
 import type { MaterialQuality } from "@/lib/knowledge-studio";
+import { getQualityLevel } from "@/lib/knowledge-studio/client";
 
 // ============================================================================
 // 类型定义
@@ -80,16 +81,26 @@ export function useMaterialHealth(): UseMaterialHealthReturn {
         }
 
         const result = await response.json();
-        const newScores = new Map(scores);
+        const newScores = new Map<string, MaterialHealthScore>();
 
-        for (const item of result.data) {
-          newScores.set(item.bookmarkId, {
-            bookmarkId: item.bookmarkId,
-            totalScore: item.totalScore,
-            quality: item.quality,
-            dimensions: item.dimensions,
-            suggestions: item.suggestions || [],
-          });
+        // API 返回的数据结构: result.data.scores
+        if (result.data?.scores && Array.isArray(result.data.scores)) {
+          for (const item of result.data.scores) {
+            const overallScore = item.overallScore || 0;
+            const quality = item.quality || getQualityLevel(overallScore);
+            newScores.set(item.bookmarkId, {
+              bookmarkId: item.bookmarkId,
+              totalScore: overallScore,
+              quality,
+              dimensions: item.dimensions || {
+                freshness: 0,
+                relevance: 0,
+                depth: 0,
+                credibility: 0,
+              },
+              suggestions: item.recommendations || [],
+            });
+          }
         }
 
         setScores(newScores);
@@ -100,7 +111,8 @@ export function useMaterialHealth(): UseMaterialHealthReturn {
         setIsLoading(false);
       }
     },
-    [scores],
+
+    [],
   );
 
   // 获取单个素材得分

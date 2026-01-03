@@ -181,6 +181,20 @@ export interface SynthesisReport extends SynthesisReportSummary {
   updatedAt: string;
   /** 来源书签详情 */
   sourceBookmarks?: BookmarkSource[];
+  /** 知识工坊蓝图类型（仅 Knowledge Studio 报告） */
+  blueprintType?: string;
+  /** 知识工坊引用列表（仅 Knowledge Studio 报告） */
+  citations?: Array<{
+    bookmarkId: string;
+    title: string;
+    url: string;
+    excerpt?: string;
+    position?: number;
+  }>;
+  /** 知识工坊生成元数据（仅 Knowledge Studio 报告） */
+  generationMetadata?: Record<string, unknown>;
+  /** 版本号（仅 Knowledge Studio 报告） */
+  version?: number;
 }
 
 /**
@@ -700,15 +714,18 @@ export interface SynthesisReportRow {
 export function mapRowToReport(row: SynthesisReportRow): SynthesisReport {
   // 检测是否是知识工坊报告（有 blueprint_type 或 content 字段）
   // 注意：知识工坊的表结构可能没有 status 字段，所以需要检查 blueprint_type
-  const isKnowledgeStudioReport = !!(row.blueprint_type || (row.content && !row.overview && !row.source_type));
-  
+  const isKnowledgeStudioReport = !!(
+    row.blueprint_type ||
+    (row.content && !row.overview && !row.source_type)
+  );
+
   if (isKnowledgeStudioReport) {
     // 知识工坊报告：使用 content 作为 fullMarkdown，设置默认的四维结构
     const content = row.content || row.full_markdown || "";
-    
+
     // 调试日志
     if (process.env.NODE_ENV === "development") {
-      console.log("Mapping Knowledge Studio report:", {
+      console.info("Mapping Knowledge Studio report:", {
         id: row.id,
         hasContent: !!row.content,
         contentLength: row.content?.length,
@@ -720,16 +737,20 @@ export function mapRowToReport(row: SynthesisReportRow): SynthesisReport {
         rowKeys: Object.keys(row),
       });
     }
-    
+
     // 从 generation_metadata 中获取 source_bookmark_ids
     // 注意：知识工坊保存的是字符串数组，需要转换为字符串格式以便 API 使用
-    const metadataBookmarkIds = row.generation_metadata?.source_bookmark_ids as string[] | number[] | undefined;
-    const rawBookmarkIds = row.source_bookmark_ids || metadataBookmarkIds || null;
+    const metadataBookmarkIds = row.generation_metadata?.source_bookmark_ids as
+      | string[]
+      | number[]
+      | undefined;
+    const rawBookmarkIds =
+      row.source_bookmark_ids || metadataBookmarkIds || null;
     // 确保所有 ID 都是字符串格式（API 期望字符串）
-    const sourceBookmarkIds = rawBookmarkIds 
-      ? rawBookmarkIds.map(id => String(id))
+    const sourceBookmarkIds = rawBookmarkIds
+      ? rawBookmarkIds.map((id) => String(id))
       : null;
-    
+
     return {
       id: row.id,
       userId: row.user_id,
@@ -756,9 +777,14 @@ export function mapRowToReport(row: SynthesisReportRow): SynthesisReport {
       consensusCount: row.consensus?.length || 0,
       divergenceCount: row.divergence?.length || 0,
       blindSpotCount: row.blind_spots?.length || 0,
+      // 知识工坊特有字段
+      blueprintType: row.blueprint_type || undefined,
+      citations: row.citations || undefined,
+      generationMetadata: row.generation_metadata || undefined,
+      version: (row as { version?: number }).version || undefined,
     };
   }
-  
+
   // 主题合成器报告：使用原有的映射逻辑
   return {
     id: row.id,

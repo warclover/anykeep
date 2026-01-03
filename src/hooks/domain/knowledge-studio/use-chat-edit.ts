@@ -204,9 +204,14 @@ export function useChatEdit(options: UseChatEditOptions): UseChatEditReturn {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               paragraphIndex: selectedParagraph.index,
-              userMessage: message,
-              editMode: mode,
-              chatHistory: chatHistory.slice(-6), // 保留最近 3 轮
+              instruction: message, // API 期望 instruction 而不是 userMessage
+              mode: mode, // API 期望 mode 而不是 editMode
+              conversationHistory: chatHistory.slice(-6).map((turn) => ({
+                id: turn.id,
+                role: turn.role,
+                content: turn.content,
+                timestamp: turn.timestamp.toISOString(), // API 期望字符串格式的时间戳
+              })), // API 期望 conversationHistory 而不是 chatHistory
             }),
             signal: abortControllerRef.current.signal,
           },
@@ -246,9 +251,9 @@ export function useChatEdit(options: UseChatEditOptions): UseChatEditReturn {
               try {
                 const chunk = JSON.parse(data);
 
-                // 处理内容流
-                if (chunk.type === "content" && chunk.data.content) {
-                  assistantContent += chunk.data.content;
+                // 处理文本流（API 返回的是 text 类型）
+                if (chunk.type === "text" && chunk.data.newContent) {
+                  assistantContent = chunk.data.newContent;
                   setStreamResponse(assistantContent);
                 }
 
@@ -256,7 +261,7 @@ export function useChatEdit(options: UseChatEditOptions): UseChatEditReturn {
                 if (chunk.type === "done") {
                   const editResult: ChatEditResult = {
                     success: chunk.data.success ?? true,
-                    newContent: chunk.data.newContent,
+                    newContent: chunk.data.newContent || assistantContent,
                     diff: chunk.data.diff,
                   };
                   setResult(editResult);
@@ -266,7 +271,8 @@ export function useChatEdit(options: UseChatEditOptions): UseChatEditReturn {
                   const assistantTurn: ChatTurn = {
                     id: crypto.randomUUID(),
                     role: "assistant",
-                    content: assistantContent,
+                    content:
+                      chunk.data.newContent || assistantContent || "编辑完成",
                     timestamp: new Date(),
                   };
                   setChatHistory((prev) => [...prev, assistantTurn]);

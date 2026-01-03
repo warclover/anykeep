@@ -6,7 +6,7 @@
  * @description 整合素材选择、蓝图选择、报告生成的完整工作流
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -37,7 +37,9 @@ import type { BlueprintType } from "@/lib/knowledge-studio/client";
 import { BLUEPRINT_DISPLAY_CONFIG } from "@/lib/knowledge-studio/client";
 import { useBookmarks } from "@/hooks/queries/use-bookmarks";
 import { useGeneration } from "@/hooks/domain/knowledge-studio/use-generation";
+import { useMaterialHealth } from "@/hooks/domain/knowledge-studio/use-material-health";
 import { toast } from "sonner";
+import { useEffect } from "react";
 
 // 工作流步骤
 type WorkflowStep =
@@ -58,7 +60,7 @@ const LENGTH_OPTIONS: { value: TargetLength; label: string; desc: string }[] = [
 
 export function KnowledgeStudioPageClient() {
   const router = useRouter();
-  
+
   // 工作流状态
   const [currentStep, setCurrentStep] = useState<WorkflowStep>("materials");
   const [selectedMaterials, setSelectedMaterials] = useState<string[]>([]);
@@ -67,13 +69,22 @@ export function KnowledgeStudioPageClient() {
   >();
   const [targetLength, setTargetLength] = useState<TargetLength>("medium");
   const [customPrompt, setCustomPrompt] = useState("");
-  
+
   // 生成的报告 ID
-  const [generatedReportId, setGeneratedReportId] = useState<string | null>(null);
+  const [generatedReportId, setGeneratedReportId] = useState<string | null>(
+    null,
+  );
 
   // 获取书签数据
   const { data, isLoading } = useBookmarks({ limit: 100 });
-  const bookmarks = data?.items || [];
+  const bookmarks = useMemo(() => data?.items || [], [data?.items]);
+
+  // 素材评分 Hook
+  const {
+    scores: materialScores,
+    isLoading: isLoadingScores,
+    analyzeHealth,
+  } = useMaterialHealth();
 
   // 转换书签为素材格式
   const materials = bookmarks.map((b) => ({
@@ -85,6 +96,15 @@ export function KnowledgeStudioPageClient() {
     createdAt: new Date(b.createdAt),
   }));
 
+  // 当素材列表加载完成且数量 > 0 时，自动分析前 20 个素材的评分
+  useEffect(() => {
+    if (!isLoading && materials.length > 0 && materialScores.size === 0) {
+      // 只分析前 20 个素材，避免一次性分析太多
+      const bookmarkIdsToAnalyze = materials.slice(0, 20).map((m) => m.id);
+      analyzeHealth(bookmarkIdsToAnalyze);
+    }
+  }, [isLoading, materials, materialScores.size, analyzeHealth]);
+
   // 使用生成 Hook
   const {
     progress: generationProgress,
@@ -95,12 +115,10 @@ export function KnowledgeStudioPageClient() {
   } = useGeneration({
     onComplete: (result) => {
       if (process.env.NODE_ENV === "development") {
-        // eslint-disable-next-line no-console
         console.info("Generation complete:", result);
       }
       if (result.success && result.reportId) {
         if (process.env.NODE_ENV === "development") {
-          // eslint-disable-next-line no-console
           console.info("Setting reportId:", result.reportId);
         }
         setGeneratedReportId(result.reportId);
@@ -112,9 +130,26 @@ export function KnowledgeStudioPageClient() {
           console.error("Generation succeeded but no reportId:", result);
           toast.error("报告生成成功，但保存失败，请重试");
         } else {
-          // 生成失败
+          // 生成失败 - 检查是否是配额不足
           console.error("Generation failed:", result.error);
-          toast.error(result.error || "生成失败，请重试");
+          const errorMessage = result.error || "生成失败，请重试";
+
+          // 检查错误信息中是否包含配额相关关键词
+          if (
+            errorMessage.includes("配额") ||
+            errorMessage.includes("QUOTA") ||
+            errorMessage.toLowerCase().includes("quota")
+          ) {
+            toast.error(errorMessage, {
+              duration: 5000,
+              action: {
+                label: "查看配额",
+                onClick: () => router.push("/knowledge-studio/billing"),
+              },
+            });
+          } else {
+            toast.error(errorMessage);
+          }
         }
         setCurrentStep("config");
       }
@@ -180,8 +215,8 @@ export function KnowledgeStudioPageClient() {
     selectedBlueprint,
     selectedMaterials,
     targetLength,
-    bookmarks,
     startGeneration,
+    bookmarks,
   ]);
 
   // 下一步
@@ -217,12 +252,9 @@ export function KnowledgeStudioPageClient() {
 
   // 查看报告
   const handleViewReport = useCallback(() => {
-    console.log("View report clicked, reportId:", generatedReportId);
     if (generatedReportId) {
-      console.log("Navigating to:", `/synthesis/${generatedReportId}`);
       router.push(`/synthesis/${generatedReportId}`);
     } else {
-      console.error("No reportId available");
       toast.error("报告 ID 不存在，请重新生成");
     }
   }, [generatedReportId, router]);
@@ -337,6 +369,8 @@ export function KnowledgeStudioPageClient() {
                   selected={selectedMaterials}
                   onChange={setSelectedMaterials}
                   maxSelection={10}
+                  scores={materialScores}
+                  isLoadingScores={isLoadingScores}
                 />
               )}
             </div>
@@ -482,7 +516,11 @@ export function KnowledgeStudioPageClient() {
                 <Button
                   onClick={handleViewReport}
                   disabled={!generatedReportId}
-                  title={generatedReportId ? `查看报告 ${generatedReportId}` : "报告 ID 不存在"}
+                  title={
+                    generatedReportId
+                      ? `查看报告 ${generatedReportId}`
+                      : "报告 ID 不存在"
+                  }
                 >
                   查看报告
                   {generatedReportId && (
@@ -496,7 +534,10 @@ export function KnowledgeStudioPageClient() {
               {process.env.NODE_ENV === "development" && (
                 <div className="mt-4 p-2 bg-muted rounded text-xs">
                   <p>Debug: reportId = {generatedReportId || "null"}</p>
-                  <p>Debug: generationResult = {JSON.stringify(generationResult?.reportId || "null")}</p>
+                  <p>
+                    Debug: generationResult ={" "}
+                    {JSON.stringify(generationResult?.reportId || "null")}
+                  </p>
                 </div>
               )}
             </div>
