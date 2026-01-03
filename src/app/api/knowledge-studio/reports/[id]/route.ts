@@ -9,6 +9,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createLogger } from "@/lib/logger";
 import { z } from "zod";
+import type { Database } from "@/types/supabase";
 
 const logger = createLogger("api:knowledge-studio:reports:[id]");
 
@@ -119,11 +120,27 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     }
 
     // 检查报告是否存在且属于当前用户
-    const { data: existing } = await (
-      supabase
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .from("synthesis_reports") as any
-    )
+    type SynthesisReportRow =
+      Database["public"]["Tables"]["synthesis_reports"]["Row"];
+    const supabaseQuery = supabase.from("synthesis_reports") as unknown as {
+      select: (columns: string) => {
+        eq: (
+          column: string,
+          value: string,
+        ) => {
+          eq: (
+            column: string,
+            value: string,
+          ) => {
+            single: () => Promise<{
+              data: Pick<SynthesisReportRow, "id" | "version"> | null;
+              error: { message: string } | null;
+            }>;
+          };
+        };
+      };
+    };
+    const { data: existing } = await supabaseQuery
       .select("id, version")
       .eq("id", reportId)
       .eq("user_id", user.id)
@@ -137,17 +154,35 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     }
 
     // 更新报告，版本号 +1
-    const updateData: Record<string, unknown> = {
+    type SynthesisReportUpdate =
+      Database["public"]["Tables"]["synthesis_reports"]["Update"];
+    const updateData: SynthesisReportUpdate = {
       ...parseResult.data,
       version: (existing.version || 1) + 1,
       updated_at: new Date().toISOString(),
     };
 
-    const { data: report, error } = await (
-      supabase
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .from("synthesis_reports") as any
-    )
+    const supabaseQuery = supabase.from("synthesis_reports") as unknown as {
+      update: (values: SynthesisReportUpdate) => {
+        eq: (
+          column: string,
+          value: string,
+        ) => {
+          eq: (
+            column: string,
+            value: string,
+          ) => {
+            select: () => {
+              single: () => Promise<{
+                data: SynthesisReportRow | null;
+                error: { message: string } | null;
+              }>;
+            };
+          };
+        };
+      };
+    };
+    const { data: report, error } = await supabaseQuery
       .update(updateData)
       .eq("id", reportId)
       .eq("user_id", user.id)

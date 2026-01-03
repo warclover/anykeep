@@ -16,6 +16,7 @@ import type {
   ParagraphImpact,
   ImpactLevel,
 } from "./types";
+import type { Database, Json } from "@/types/supabase";
 
 // ============================================================================
 // 数据库行类型
@@ -152,19 +153,41 @@ export class ChangeDetector implements IChangeDetector {
     const supabase = await createClient();
 
     // 查询未处理的变更集
-    // 类型断言: 手动维护类型文件时需要此断言
-    type ChangeSetQueryResult = {
-      id: string;
-      changes: BookmarkChange[] | null;
-    };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase.from("ks_report_change_sets") as any)
+    type ChangeSetRow =
+      Database["public"]["Tables"]["ks_report_change_sets"]["Row"];
+    const { data, error } = await (
+      supabase.from("ks_report_change_sets") as {
+        select: (columns: string) => {
+          eq: (
+            column: string,
+            value: string,
+          ) => {
+            eq: (
+              column: string,
+              value: boolean,
+            ) => {
+              order: (
+                column: string,
+                options: { ascending: boolean },
+              ) => {
+                limit: (count: number) => {
+                  single: () => Promise<{
+                    data: ChangeSetRow | null;
+                    error: { code?: string; message: string } | null;
+                  }>;
+                };
+              };
+            };
+          };
+        };
+      }
+    )
       .select("*")
       .eq("report_id", reportId)
       .eq("processed", false)
       .order("created_at", { ascending: false })
       .limit(1)
-      .single() as { data: ChangeSetQueryResult | null; error: { code?: string; message: string } | null };
+      .single();
 
     if (error) {
       if (error.code === "PGRST116") {
@@ -212,15 +235,30 @@ export class ChangeDetector implements IChangeDetector {
 
     // 获取报告内容以分析段落影响
     // 类型断言: 手动维护类型文件时需要此断言
-    type ReportContentType = {
-      content: string | null;
-      source_bookmark_ids: string[] | null;
-    };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: report, error: reportError } = await (supabase.from("ks_reports") as any)
-      .select("content, source_bookmark_ids")
+    // 注意：这里使用的是 synthesis_reports 表，不是 ks_reports
+    type SynthesisReportRow =
+      Database["public"]["Tables"]["synthesis_reports"]["Row"];
+    const { data: report, error: reportError } = await (
+      supabase.from("synthesis_reports") as {
+        select: (columns: string) => {
+          eq: (
+            column: string,
+            value: string,
+          ) => {
+            single: () => Promise<{
+              data: Pick<
+                SynthesisReportRow,
+                "content" | "generation_metadata"
+              > | null;
+              error: { message: string } | null;
+            }>;
+          };
+        };
+      }
+    )
+      .select("content, generation_metadata")
       .eq("id", changeSet.reportId)
-      .single() as { data: ReportContentType | null; error: { message: string } | null };
+      .single();
 
     const paragraphImpacts: ParagraphImpact[] = [];
     let paragraphsToUpdate = 0;
@@ -232,7 +270,10 @@ export class ChangeDetector implements IChangeDetector {
       const paragraphs = content
         .split(/\n\n+/)
         .filter((p: string) => p.trim().length > 0);
-      const sourceBookmarkIds = report.source_bookmark_ids || [];
+      const metadata = report.generation_metadata as
+        | { source_bookmark_ids?: string[] }
+        | undefined;
+      const sourceBookmarkIds = metadata?.source_bookmark_ids || [];
 
       // 分析每个变更对段落的影响
       for (let i = 0; i < paragraphs.length; i++) {
@@ -329,11 +370,31 @@ export class ChangeDetector implements IChangeDetector {
     const supabase = await createClient();
 
     // 调用 RPC 函数
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase.rpc as any)("get_pending_change_sets", {
+    type GetPendingChangeSetsParams = {
+      p_user_id: string;
+      p_limit: number;
+    };
+    type PendingChangeSetRow = {
+      id: string;
+      report_id: string;
+      changes: Json;
+      impact_level: string;
+      created_at: string;
+    };
+    const { data, error } = await (
+      supabase.rpc as {
+        (
+          fnName: "get_pending_change_sets",
+          params: GetPendingChangeSetsParams,
+        ): Promise<{
+          data: PendingChangeSetRow[] | null;
+          error: { message: string } | null;
+        }>;
+      }
+    )("get_pending_change_sets", {
       p_user_id: userId,
       p_limit: 50,
-    }) as { data: PendingChangeSetRow[] | null; error: { message: string } | null };
+    });
 
     if (error) {
       logger.error(
@@ -343,9 +404,7 @@ export class ChangeDetector implements IChangeDetector {
       throw new Error(`获取待处理变更失败: ${error.message}`);
     }
 
-    const changeSets = (data ?? []).map((row: PendingChangeSetRow) =>
-      pendingRowToChangeSet(row),
-    );
+    const changeSets = (data ?? []).map((row) => pendingRowToChangeSet(row));
 
     logger.info(
       { userId, count: changeSets.length },
@@ -361,12 +420,26 @@ export class ChangeDetector implements IChangeDetector {
   async markProcessed(changeSetId: string): Promise<void> {
     const supabase = await createClient();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase.from("ks_report_change_sets") as any)
-      .update({
-        processed: true,
-        processed_at: new Date().toISOString(),
-      })
+    type ChangeSetUpdate =
+      Database["public"]["Tables"]["ks_report_change_sets"]["Update"];
+    const updateData: ChangeSetUpdate = {
+      processed: true,
+      processed_at: new Date().toISOString(),
+    };
+
+    const { error } = await (
+      supabase.from("ks_report_change_sets") as {
+        update: (values: ChangeSetUpdate) => {
+          eq: (
+            column: string,
+            value: string,
+          ) => Promise<{
+            error: { message: string } | null;
+          }>;
+        };
+      }
+    )
+      .update(updateData)
       .eq("id", changeSetId);
 
     if (error) {
@@ -394,18 +467,32 @@ export class ChangeDetector implements IChangeDetector {
 
     const impactLevel = calculateImpactLevel(changes);
 
-    // 类型断言: 手动维护类型文件时需要此断言
-    type InsertedChangeSetType = { id: string };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase.from("ks_report_change_sets") as any)
-      .insert({
-        report_id: reportId,
-        user_id: userId,
-        changes,
-        impact_level: impactLevel,
-      })
+    type ChangeSetInsert =
+      Database["public"]["Tables"]["ks_report_change_sets"]["Insert"];
+    type ChangeSetRow =
+      Database["public"]["Tables"]["ks_report_change_sets"]["Row"];
+    const insertData: ChangeSetInsert = {
+      report_id: reportId,
+      user_id: userId,
+      changes: changes as Json,
+      impact_level: impactLevel,
+    };
+
+    const { data, error } = await (
+      supabase.from("ks_report_change_sets") as {
+        insert: (values: ChangeSetInsert) => {
+          select: () => {
+            single: () => Promise<{
+              data: ChangeSetRow | null;
+              error: { message: string } | null;
+            }>;
+          };
+        };
+      }
+    )
+      .insert(insertData)
       .select()
-      .single() as { data: InsertedChangeSetType | null; error: { message: string } | null };
+      .single();
 
     if (error) {
       logger.error(

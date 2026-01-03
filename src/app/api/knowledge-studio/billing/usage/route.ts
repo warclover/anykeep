@@ -8,6 +8,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createLogger } from "@/lib/logger";
+import type { Database, Json } from "@/types/supabase";
 
 const logger = createLogger("api:knowledge-studio:billing:usage");
 
@@ -60,8 +61,24 @@ export async function GET(request: NextRequest) {
     );
 
     // 调用 RPC 获取使用统计
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase.rpc as any)("get_user_usage_stats", {
+    // 注意：RPC 函数类型可能未在 Database 类型中定义，使用类型断言
+    type GetUsageStatsParams = {
+      p_user_id: string;
+      p_period: string;
+      p_start_date: string | null;
+      p_end_date: string | null;
+    };
+    const { data, error } = await (
+      supabase.rpc as {
+        (
+          fnName: "get_user_usage_stats",
+          params: GetUsageStatsParams,
+        ): Promise<{
+          data: unknown;
+          error: { message: string } | null;
+        }>;
+      }
+    )("get_user_usage_stats", {
       p_user_id: user.id,
       p_period: period,
       p_start_date: startDate || null,
@@ -136,15 +153,33 @@ export async function POST(request: NextRequest) {
       "Recording usage",
     );
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase.from("ks_usage_records") as any)
-      .insert({
-        user_id: user.id,
-        usage_type: usageType,
-        amount,
-        resource_id: resourceId,
-        metadata,
-      })
+    // 类型安全的插入操作
+    type UsageRecordInsert =
+      Database["public"]["Tables"]["ks_usage_records"]["Insert"];
+    type UsageRecordRow =
+      Database["public"]["Tables"]["ks_usage_records"]["Row"];
+
+    const insertData: UsageRecordInsert = {
+      user_id: user.id,
+      usage_type: usageType,
+      amount,
+      resource_id: resourceId || null,
+      metadata: metadata as Json,
+    };
+
+    const { data, error } = await (
+      supabase.from("ks_usage_records") as {
+        insert: (values: UsageRecordInsert) => {
+          select: () => {
+            single: () => Promise<{
+              data: UsageRecordRow | null;
+              error: { message: string } | null;
+            }>;
+          };
+        };
+      }
+    )
+      .insert(insertData)
       .select()
       .single();
 

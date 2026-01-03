@@ -163,7 +163,7 @@ export async function POST(request: NextRequest) {
         try {
           // 5.1 配额检查和扣除
           let savedReportId: string | undefined;
-          
+
           const quotaResult = await quotaManager.executeWithQuota(
             user.id,
             "blueprint_generation",
@@ -199,40 +199,74 @@ export async function POST(request: NextRequest) {
               onSuccess: async (result, _reqId) => {
                 // 5.4 生成成功后保存报告
                 if (result.success && result.content) {
-                  logger.info({ requestId, hasContent: !!result.content }, "Saving report to database");
-                  const { data: report, error: insertError } = await (
-                    supabase
-                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                      .from("synthesis_reports") as any
-                  )
-                    .insert({
-                      user_id: user.id,
-                      blueprint_type: blueprintType,
-                      title: title || `${blueprintType} 报告`,
-                      content: result.content,
-                      citations: result.citations || [],
-                      generation_metadata: {
-                        model: result.metadata?.model,
-                        tokens_used: result.metadata?.tokens?.total,
-                        duration_ms: result.metadata?.durationMs,
-                        source_bookmark_ids: bookmarkIds,
-                        blueprint_prompt_version: "1.0",
-                      },
-                    })
-                    .select("id")
-                    .single();
+                  logger.info(
+                    { requestId, hasContent: !!result.content },
+                    "Saving report to database",
+                  );
+
+                  // 类型安全的插入操作
+                  // 定义类型以确保插入数据符合数据库 schema
+                  type SynthesisReportInsert =
+                    Database["public"]["Tables"]["synthesis_reports"]["Insert"];
+                  type SynthesisReportRow =
+                    Database["public"]["Tables"]["synthesis_reports"]["Row"];
+
+                  // 确保插入数据符合类型定义（编译时类型检查）
+                  const insertData: SynthesisReportInsert = {
+                    user_id: user.id,
+                    blueprint_type: blueprintType,
+                    title: title || `${blueprintType} 报告`,
+                    content: result.content,
+                    citations: result.citations || [],
+                    generation_metadata: {
+                      model: result.metadata?.model,
+                      tokens_used: result.metadata?.tokens?.total,
+                      duration_ms: result.metadata?.durationMs,
+                      source_bookmark_ids: bookmarkIds,
+                      blueprint_prompt_version: "1.0",
+                    },
+                  };
+
+                  // 注意：由于 Supabase 客户端类型系统限制，需要使用类型断言
+                  // 但 insertData 已通过类型定义确保类型安全
+                  const supabaseQuery = supabase.from(
+                    "synthesis_reports",
+                  ) as unknown as {
+                    insert: (values: SynthesisReportInsert) => {
+                      select: (columns: string) => {
+                        single: () => Promise<{
+                          data: Pick<SynthesisReportRow, "id"> | null;
+                          error: { message: string; code?: string } | null;
+                        }>;
+                      };
+                    };
+                  };
+                  const { data: report, error: insertError } =
+                    await supabaseQuery
+                      .insert(insertData)
+                      .select("id")
+                      .single();
 
                   if (insertError) {
-                    logger.error({ requestId, error: insertError }, "Failed to save report");
+                    logger.error(
+                      { requestId, error: insertError },
+                      "Failed to save report",
+                    );
                     throw insertError;
                   }
 
                   // 保存 reportId 以便后续使用
                   savedReportId = report?.id;
-                  logger.info({ requestId, reportId: savedReportId }, "Report saved successfully");
+                  logger.info(
+                    { requestId, reportId: savedReportId },
+                    "Report saved successfully",
+                  );
                   return report?.id;
                 }
-                logger.warn({ requestId, success: result.success }, "Report generation not successful, skipping save");
+                logger.warn(
+                  { requestId, success: result.success },
+                  "Report generation not successful, skipping save",
+                );
                 return undefined;
               },
             },
@@ -251,9 +285,12 @@ export async function POST(request: NextRequest) {
               timestamp: new Date().toISOString(),
               requestId,
             });
-            
+
             if (!savedReportId) {
-              logger.warn({ requestId }, "Done event sent but reportId is missing");
+              logger.warn(
+                { requestId },
+                "Done event sent but reportId is missing",
+              );
             }
           } else {
             // 发送错误事件

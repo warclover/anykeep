@@ -17,6 +17,7 @@ import type {
   ConversionTrigger,
   UpgradePromptType,
 } from "./types";
+import type { Database, Json } from "@/types/supabase";
 
 // ============================================================================
 // 数据库行类型
@@ -87,14 +88,24 @@ export class ConversionAnalytics implements IConversionAnalytics {
     const supabase = await createClient();
 
     // 调用 RPC 函数获取指标
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase.rpc as any)(
-      "get_conversion_funnel_metrics",
-      {
-        p_start_date: startDate.toISOString(),
-        p_end_date: endDate.toISOString(),
-      },
-    );
+    type GetConversionFunnelMetricsParams = {
+      p_start_date: string;
+      p_end_date: string;
+    };
+    const { data, error } = await (
+      supabase.rpc as {
+        (
+          fnName: "get_conversion_funnel_metrics",
+          params: GetConversionFunnelMetricsParams,
+        ): Promise<{
+          data: Json | null;
+          error: { code?: string; message: string } | null;
+        }>;
+      }
+    )("get_conversion_funnel_metrics", {
+      p_start_date: startDate.toISOString(),
+      p_end_date: endDate.toISOString(),
+    });
 
     if (error) {
       // 如果 RPC 不存在，返回空指标
@@ -148,8 +159,23 @@ export class ConversionAnalytics implements IConversionAnalytics {
     const supabase = await createClient();
 
     // 获取用户试用状态
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: trialData, error: trialError } = await (supabase.from("ks_user_trial_states") as any)
+    type TrialStateRow =
+      Database["public"]["Tables"]["ks_user_trial_states"]["Row"];
+    const { data: trialData, error: trialError } = await (
+      supabase.from("ks_user_trial_states") as {
+        select: (columns: string) => {
+          eq: (
+            column: string,
+            value: string,
+          ) => {
+            single: () => Promise<{
+              data: TrialStateRow | null;
+              error: { message: string } | null;
+            }>;
+          };
+        };
+      }
+    )
       .select("*")
       .eq("user_id", userId)
       .single();
@@ -242,8 +268,22 @@ export class ConversionAnalytics implements IConversionAnalytics {
     const supabase = await createClient();
 
     // 调用 RPC 函数
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase.rpc as any)("get_expiring_trials", {
+    type GetExpiringTrialsParams = {
+      p_within_days: number;
+    };
+    type TrialStateRow =
+      Database["public"]["Tables"]["ks_user_trial_states"]["Row"];
+    const { data, error } = await (
+      supabase.rpc as {
+        (
+          fnName: "get_expiring_trials",
+          params: GetExpiringTrialsParams,
+        ): Promise<{
+          data: TrialStateRow[] | null;
+          error: { code?: string; message: string } | null;
+        }>;
+      }
+    )("get_expiring_trials", {
       p_within_days: withinDays,
     });
 
@@ -272,8 +312,28 @@ export class ConversionAnalytics implements IConversionAnalytics {
     const supabase = await createClient();
 
     // 获取所有活跃试用用户
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase.from("ks_user_trial_states") as any)
+    type TrialStateRow =
+      Database["public"]["Tables"]["ks_user_trial_states"]["Row"];
+    const { data, error } = await (
+      supabase.from("ks_user_trial_states") as {
+        select: (columns: string) => {
+          eq: (
+            column: string,
+            value: string,
+          ) => {
+            order: (
+              column: string,
+              options: { ascending: boolean },
+            ) => {
+              limit: (count: number) => Promise<{
+                data: TrialStateRow[] | null;
+                error: { code?: string; message: string } | null;
+              }>;
+            };
+          };
+        };
+      }
+    )
       .select("*")
       .eq("status", "active")
       .order("generations_used", { ascending: false })
@@ -329,8 +389,36 @@ export class ConversionAnalytics implements IConversionAnalytics {
     const futureDate = new Date(now);
     futureDate.setDate(futureDate.getDate() + withinDays);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase.from("ks_user_trial_states") as any)
+    type TrialStateRow =
+      Database["public"]["Tables"]["ks_user_trial_states"]["Row"];
+    const { data, error } = await (
+      supabase.from("ks_user_trial_states") as {
+        select: (columns: string) => {
+          eq: (
+            column: string,
+            value: string,
+          ) => {
+            gt: (
+              column: string,
+              value: string,
+            ) => {
+              lte: (
+                column: string,
+                value: string,
+              ) => {
+                order: (
+                  column: string,
+                  options: { ascending: boolean },
+                ) => Promise<{
+                  data: TrialStateRow[] | null;
+                  error: { message: string } | null;
+                }>;
+              };
+            };
+          };
+        };
+      }
+    )
       .select("*")
       .eq("status", "active")
       .gt("expires_at", now.toISOString())

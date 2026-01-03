@@ -8,6 +8,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createLogger } from "@/lib/logger";
+import type { Database } from "@/types/supabase";
 
 const logger = createLogger("api:knowledge-studio:templates:[id]");
 
@@ -37,8 +38,26 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     logger.info({ userId: user.id, templateId: id }, "Fetching template");
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase.from("ks_custom_templates") as any)
+    // 类型安全的查询
+    type TemplateRow =
+      Database["public"]["Tables"]["ks_custom_templates"]["Row"];
+    const { data, error } = await (
+      supabase.from("ks_custom_templates") as {
+        select: (columns: string) => {
+          eq: (
+            column: string,
+            value: string,
+          ) => {
+            or: (filter: string) => {
+              single: () => Promise<{
+                data: TemplateRow | null;
+                error: { message: string; code?: string } | null;
+              }>;
+            };
+          };
+        };
+      }
+    )
       .select("*")
       .eq("id", id)
       .or(`user_id.eq.${user.id},visibility.eq.public`)
@@ -112,14 +131,33 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     );
 
     // 检查所有权
-    // 类型断言: 手动维护类型文件时需要此断言
-    type TemplateExistingType = { id: string; version: number };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: existing, error: checkError } = await (supabase.from("ks_custom_templates") as any)
+    type TemplateRow =
+      Database["public"]["Tables"]["ks_custom_templates"]["Row"];
+    type TemplateExistingType = Pick<TemplateRow, "id" | "version">;
+    const { data: existing, error: checkError } = await (
+      supabase.from("ks_custom_templates") as {
+        select: (columns: string) => {
+          eq: (
+            column: string,
+            value: string,
+          ) => {
+            eq: (
+              column: string,
+              value: string,
+            ) => {
+              single: () => Promise<{
+                data: TemplateExistingType | null;
+                error: { message: string } | null;
+              }>;
+            };
+          };
+        };
+      }
+    )
       .select("id, version")
       .eq("id", id)
       .eq("user_id", user.id)
-      .single() as { data: TemplateExistingType | null; error: { message: string } | null };
+      .single();
 
     if (checkError || !existing) {
       return NextResponse.json(
@@ -129,7 +167,9 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     }
 
     // 构建更新对象
-    const updates: Record<string, unknown> = {
+    type TemplateUpdate =
+      Database["public"]["Tables"]["ks_custom_templates"]["Update"];
+    const updates: TemplateUpdate = {
       updated_at: new Date().toISOString(),
     };
 
@@ -137,16 +177,37 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     if (description !== undefined) updates.description = description;
     if (icon !== undefined) updates.icon = icon;
     if (baseBlueprint !== undefined) updates.base_blueprint = baseBlueprint;
-    if (variables !== undefined) updates.variables = variables;
-    if (promptSections !== undefined) updates.prompt_sections = promptSections;
+    if (variables !== undefined) updates.variables = variables as Json;
+    if (promptSections !== undefined)
+      updates.prompt_sections = promptSections as Json;
     if (outputFormat !== undefined) updates.output_format = outputFormat;
     if (visibility !== undefined) updates.visibility = visibility;
     if (status !== undefined) updates.status = status;
     if (tags !== undefined) updates.tags = tags;
     if (incrementVersion) updates.version = existing.version + 1;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase.from("ks_custom_templates") as any)
+    const { data, error } = await (
+      supabase.from("ks_custom_templates") as {
+        update: (values: TemplateUpdate) => {
+          eq: (
+            column: string,
+            value: string,
+          ) => {
+            eq: (
+              column: string,
+              value: string,
+            ) => {
+              select: () => {
+                single: () => Promise<{
+                  data: TemplateRow | null;
+                  error: { message: string } | null;
+                }>;
+              };
+            };
+          };
+        };
+      }
+    )
       .update(updates)
       .eq("id", id)
       .eq("user_id", user.id)
@@ -196,8 +257,23 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     logger.info({ userId: user.id, templateId: id }, "Deleting template");
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase.from("ks_custom_templates") as any)
+    const { error } = await (
+      supabase.from("ks_custom_templates") as {
+        delete: () => {
+          eq: (
+            column: string,
+            value: string,
+          ) => {
+            eq: (
+              column: string,
+              value: string,
+            ) => Promise<{
+              error: { message: string } | null;
+            }>;
+          };
+        };
+      }
+    )
       .delete()
       .eq("id", id)
       .eq("user_id", user.id);

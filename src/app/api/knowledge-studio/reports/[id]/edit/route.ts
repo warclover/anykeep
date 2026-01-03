@@ -10,6 +10,7 @@ import { createLogger } from "@/lib/logger";
 import { z } from "zod";
 import { chatEditEngine, quotaManager } from "@/lib/knowledge-studio";
 import type { EditMode, StreamChunk, ToneType } from "@/lib/knowledge-studio";
+import type { Database } from "@/types/supabase";
 
 const logger = createLogger("api:knowledge-studio:reports:[id]:edit");
 
@@ -67,13 +68,13 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
 
     // 2. Pro 功能检查（Chat-to-Edit 为 Pro 功能）
-    // 类型断言: 手动维护类型文件时需要此断言
-    type ProfileMembershipType = { membership_type: string | null };
+    // 类型安全的查询
+    type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
     const { data: profile } = await supabase
       .from("profiles")
       .select("membership_type")
       .eq("id", user.id)
-      .single() as unknown as { data: ProfileMembershipType | null };
+      .single<Pick<ProfileRow, "membership_type">>();
 
     const isPro =
       profile?.membership_type === "PRO" || profile?.membership_type === "pro";
@@ -116,11 +117,30 @@ export async function POST(request: NextRequest, context: RouteContext) {
     } = parseResult.data;
 
     // 4. 获取报告内容
-    const { data: report, error: reportError } = await (
-      supabase
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .from("synthesis_reports") as any
-    )
+    type SynthesisReportRow =
+      Database["public"]["Tables"]["synthesis_reports"]["Row"];
+    const supabaseQuery = supabase.from("synthesis_reports") as unknown as {
+      select: (columns: string) => {
+        eq: (
+          column: string,
+          value: string,
+        ) => {
+          eq: (
+            column: string,
+            value: string,
+          ) => {
+            single: () => Promise<{
+              data: Pick<
+                SynthesisReportRow,
+                "id" | "content" | "blueprint_type"
+              > | null;
+              error: { message: string } | null;
+            }>;
+          };
+        };
+      };
+    };
+    const { data: report, error: reportError } = await supabaseQuery
       .select("id, content, blueprint_type")
       .eq("id", reportId)
       .eq("user_id", user.id)

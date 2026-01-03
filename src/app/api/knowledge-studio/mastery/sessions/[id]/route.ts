@@ -8,6 +8,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createLogger } from "@/lib/logger";
+import type { Database } from "@/types/supabase";
 
 const logger = createLogger("api:knowledge-studio:mastery:sessions:[id]");
 
@@ -51,14 +52,33 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     );
 
     // 检查所有权
-    // 类型断言: 手动维护类型文件时需要此断言
-    type SessionExistingType = { id: string; started_at: string };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: existing, error: checkError } = await (supabase.from("ks_learning_sessions") as any)
+    type SessionRow =
+      Database["public"]["Tables"]["ks_learning_sessions"]["Row"];
+    type SessionExistingType = Pick<SessionRow, "id" | "started_at">;
+    const { data: existing, error: checkError } = await (
+      supabase.from("ks_learning_sessions") as {
+        select: (columns: string) => {
+          eq: (
+            column: string,
+            value: string,
+          ) => {
+            eq: (
+              column: string,
+              value: string,
+            ) => {
+              single: () => Promise<{
+                data: SessionExistingType | null;
+                error: { message: string } | null;
+              }>;
+            };
+          };
+        };
+      }
+    )
       .select("id, started_at")
       .eq("id", id)
       .eq("user_id", user.id)
-      .single() as { data: SessionExistingType | null; error: { message: string } | null };
+      .single();
 
     if (checkError || !existing) {
       return NextResponse.json(
@@ -68,7 +88,9 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     }
 
     // 构建更新对象
-    const updates: Record<string, unknown> = {};
+    type SessionUpdate =
+      Database["public"]["Tables"]["ks_learning_sessions"]["Update"];
+    const updates: SessionUpdate = {};
 
     if (endSession) {
       updates.ended_at = new Date().toISOString();
@@ -88,8 +110,28 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     if (durationMinutes !== undefined)
       updates.duration_minutes = durationMinutes;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase.from("ks_learning_sessions") as any)
+    const { data, error } = await (
+      supabase.from("ks_learning_sessions") as {
+        update: (values: SessionUpdate) => {
+          eq: (
+            column: string,
+            value: string,
+          ) => {
+            eq: (
+              column: string,
+              value: string,
+            ) => {
+              select: () => {
+                single: () => Promise<{
+                  data: SessionRow | null;
+                  error: { message: string } | null;
+                }>;
+              };
+            };
+          };
+        };
+      }
+    )
       .update(updates)
       .eq("id", id)
       .eq("user_id", user.id)

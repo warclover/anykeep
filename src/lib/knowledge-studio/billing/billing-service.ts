@@ -17,6 +17,7 @@ import type {
   ConsumptionRecord,
   UsageType,
 } from "./types";
+import type { Database, Json } from "@/types/supabase";
 
 // ============================================================================
 // 价格配置（分）
@@ -76,8 +77,42 @@ export class BillingService implements IBillingService {
   ): Promise<Bill[]> {
     const supabase = await createClient();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let query = (supabase.from("ks_bills") as any)
+    type BillRow = Database["public"]["Tables"]["ks_bills"]["Row"];
+    type BillLineItemRow =
+      Database["public"]["Tables"]["ks_bill_line_items"]["Row"];
+    type BillWithLineItems = BillRow & {
+      line_items: BillLineItemRow[];
+    };
+
+    let query = (
+      supabase.from("ks_bills") as {
+        select: (columns: string) => {
+          eq: (
+            column: string,
+            value: string,
+          ) => {
+            order: (
+              column: string,
+              options: { ascending: boolean },
+            ) => {
+              eq?: (
+                column: string,
+                value: string,
+              ) => {
+                limit?: (count: number) => Promise<{
+                  data: BillWithLineItems[] | null;
+                  error: { message: string } | null;
+                }>;
+              };
+              limit?: (count: number) => Promise<{
+                data: BillWithLineItems[] | null;
+                error: { message: string } | null;
+              }>;
+            };
+          };
+        };
+      }
+    )
       .select(
         `
         *,
@@ -98,14 +133,17 @@ export class BillingService implements IBillingService {
     // 类型断言: 手动维护类型文件时需要此断言
     type BillQueryResult = Record<string, unknown>[];
 
-    const { data, error } = await query as { data: BillQueryResult | null; error: { message: string } | null };
+    const { data, error } = (await query) as {
+      data: BillQueryResult | null;
+      error: { message: string } | null;
+    };
 
     if (error) {
       logger.error({ error: error.message }, "Failed to get bills");
       throw new Error(`获取账单列表失败: ${error.message}`);
     }
 
-    return (data ?? []).map((row: Record<string, unknown>) => this.mapBillFromRow(row));
+    return (data ?? []).map((row) => this.mapBillFromRow(row));
   }
 
   /**
@@ -116,8 +154,33 @@ export class BillingService implements IBillingService {
   async getBill(billId: string, userId: string): Promise<Bill | null> {
     const supabase = await createClient();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase.from("ks_bills") as any)
+    type BillRow = Database["public"]["Tables"]["ks_bills"]["Row"];
+    type BillLineItemRow =
+      Database["public"]["Tables"]["ks_bill_line_items"]["Row"];
+    type BillWithLineItems = BillRow & {
+      line_items: BillLineItemRow[];
+    };
+
+    const { data, error } = await (
+      supabase.from("ks_bills") as {
+        select: (columns: string) => {
+          eq: (
+            column: string,
+            value: string,
+          ) => {
+            eq: (
+              column: string,
+              value: string,
+            ) => {
+              single: () => Promise<{
+                data: BillWithLineItems | null;
+                error: { message: string } | null;
+              }>;
+            };
+          };
+        };
+      }
+    )
       .select(
         `
         *,
@@ -150,6 +213,35 @@ export class BillingService implements IBillingService {
     const supabase = await createClient();
 
     // 调用 RPC 函数
+    type GetConsumptionSummaryParams = {
+      p_user_id: string;
+      p_start_date: string;
+      p_end_date: string;
+    };
+    const { data, error } = await (
+      supabase.rpc as {
+        (
+          fnName: "get_consumption_summary",
+          params: GetConsumptionSummaryParams,
+        ): Promise<{
+          data: Json | null;
+          error: { message: string } | null;
+        }>;
+      }
+    )("get_consumption_summary", {
+      p_user_id: userId,
+      p_start_date: startDate.toISOString(),
+      p_end_date: endDate.toISOString(),
+    });
+
+    if (error) {
+      logger.error(
+        { error: error.message },
+        "Failed to get consumption summary",
+      );
+      throw new Error(`获取消费汇总失败: ${error.message}`);
+    }
+
     // 类型断言: 手动维护类型文件时需要此断言
     type ConsumptionSummaryRpcResult = {
       consumptionByType?: Record<string, { amount: number; cost: number }>;
@@ -159,12 +251,8 @@ export class BillingService implements IBillingService {
       trend?: string;
       trendPercent?: number;
     };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase.rpc as any)("get_consumption_summary", {
-      p_user_id: userId,
-      p_start_date: startDate.toISOString(),
-      p_end_date: endDate.toISOString(),
-    }) as { data: ConsumptionSummaryRpcResult | null; error: { message: string } | null };
+
+    const summaryData = data as ConsumptionSummaryRpcResult | null;
 
     if (error) {
       logger.error(
@@ -187,8 +275,10 @@ export class BillingService implements IBillingService {
     };
 
     // 合并 RPC 返回的数据
-    if (data?.consumptionByType) {
-      for (const [key, value] of Object.entries(data.consumptionByType)) {
+    if (summaryData?.consumptionByType) {
+      for (const [key, value] of Object.entries(
+        summaryData.consumptionByType,
+      )) {
         if (key in consumptionByType) {
           consumptionByType[key as UsageType] = value as {
             amount: number;
@@ -205,11 +295,11 @@ export class BillingService implements IBillingService {
         end: endDate,
       },
       consumptionByType,
-      totalAmount: data?.totalAmount ?? 0,
-      totalCost: data?.totalCost ?? 0,
-      dailyAverage: Math.round(data?.dailyAverage ?? 0),
-      trend: (data?.trend as "up" | "down" | "stable") ?? "stable",
-      trendPercent: data?.trendPercent ?? 0,
+      totalAmount: summaryData?.totalAmount ?? 0,
+      totalCost: summaryData?.totalCost ?? 0,
+      dailyAverage: Math.round(summaryData?.dailyAverage ?? 0),
+      trend: (summaryData?.trend as "up" | "down" | "stable") ?? "stable",
+      trendPercent: summaryData?.trendPercent ?? 0,
     };
   }
 
@@ -227,26 +317,97 @@ export class BillingService implements IBillingService {
   ): Promise<ConsumptionRecord[]> {
     const supabase = await createClient();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let query = (supabase.from("ks_consumption_records") as any)
+    type ConsumptionRecordRow =
+      Database["public"]["Tables"]["ks_consumption_records"]["Row"];
+    let query = (
+      supabase.from("ks_consumption_records") as {
+        select: (columns: string) => {
+          eq: (
+            column: string,
+            value: string,
+          ) => {
+            order: (
+              column: string,
+              options: { ascending: boolean },
+            ) => {
+              eq?: (
+                column: string,
+                value: string,
+              ) => {
+                gte?: (
+                  column: string,
+                  value: string,
+                ) => {
+                  lte?: (
+                    column: string,
+                    value: string,
+                  ) => {
+                    limit?: (count: number) => Promise<{
+                      data: ConsumptionRecordRow[] | null;
+                      error: { message: string } | null;
+                    }>;
+                  };
+                  limit?: (count: number) => Promise<{
+                    data: ConsumptionRecordRow[] | null;
+                    error: { message: string } | null;
+                  }>;
+                };
+                limit?: (count: number) => Promise<{
+                  data: ConsumptionRecordRow[] | null;
+                  error: { message: string } | null;
+                }>;
+              };
+              gte?: (
+                column: string,
+                value: string,
+              ) => {
+                lte?: (
+                  column: string,
+                  value: string,
+                ) => {
+                  limit?: (count: number) => Promise<{
+                    data: ConsumptionRecordRow[] | null;
+                    error: { message: string } | null;
+                  }>;
+                };
+                limit?: (count: number) => Promise<{
+                  data: ConsumptionRecordRow[] | null;
+                  error: { message: string } | null;
+                }>;
+              };
+              limit?: (count: number) => Promise<{
+                data: ConsumptionRecordRow[] | null;
+                error: { message: string } | null;
+              }>;
+            };
+          };
+        };
+      }
+    )
       .select("*")
       .eq("user_id", userId)
       .order("created_at", { ascending: false });
 
     if (options?.type) {
-      query = query.eq("usage_type", options.type);
+      query = query.eq("usage_type", options.type) as typeof query;
     }
 
     if (options?.startDate) {
-      query = query.gte("created_at", options.startDate.toISOString());
+      query = query.gte(
+        "created_at",
+        options.startDate.toISOString(),
+      ) as typeof query;
     }
 
     if (options?.endDate) {
-      query = query.lte("created_at", options.endDate.toISOString());
+      query = query.lte(
+        "created_at",
+        options.endDate.toISOString(),
+      ) as typeof query;
     }
 
     if (options?.limit) {
-      query = query.limit(options.limit);
+      query = query.limit(options.limit) as typeof query;
     }
 
     const { data, error } = await query;
@@ -259,19 +420,7 @@ export class BillingService implements IBillingService {
       throw new Error(`获取消费明细失败: ${error.message}`);
     }
 
-    // 类型断言: 手动维护类型文件时需要此断言
-    type ConsumptionRecordRow = {
-      id: string;
-      user_id: string;
-      created_at: string;
-      usage_type: string;
-      description: string;
-      amount: number;
-      cost: number;
-      report_id?: string;
-      blueprint_type?: string;
-    };
-    return ((data ?? []) as ConsumptionRecordRow[]).map((row) => ({
+    return (data ?? []).map((row) => ({
       id: row.id,
       userId: row.user_id,
       timestamp: new Date(row.created_at),
@@ -304,16 +453,25 @@ export class BillingService implements IBillingService {
     const description =
       options?.description ?? `${USAGE_TYPE_DESCRIPTIONS[type]} x ${amount}`;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase.from("ks_consumption_records") as any).insert({
+    type ConsumptionRecordInsert =
+      Database["public"]["Tables"]["ks_consumption_records"]["Insert"];
+    const recordInsertData: ConsumptionRecordInsert = {
       user_id: userId,
       usage_type: type,
       description,
       amount,
       cost,
-      report_id: options?.reportId,
-      blueprint_type: options?.blueprintType,
-    });
+      report_id: options?.reportId ?? null,
+      blueprint_type: options?.blueprintType ?? null,
+    };
+
+    const { error } = await (
+      supabase.from("ks_consumption_records") as {
+        insert: (values: ConsumptionRecordInsert) => Promise<{
+          error: { message: string } | null;
+        }>;
+      }
+    ).insert(recordInsertData);
 
     if (error) {
       logger.error({ error: error.message }, "Failed to record consumption");

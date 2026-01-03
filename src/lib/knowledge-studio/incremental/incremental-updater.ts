@@ -15,6 +15,7 @@ import type {
   ReportImpactAnalysis,
   ImpactLevel,
 } from "./types";
+import type { Database, Json } from "@/types/supabase";
 
 // ============================================================================
 // 数据库行类型
@@ -136,13 +137,26 @@ export class IncrementalUpdater implements IIncrementalUpdater {
     const supabase = await createClient();
 
     // 先分析影响（简单版本）
-    // 类型断言: 手动维护类型文件时需要此断言
-    type ChangeSetRow = { id: string; impact_level: string };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: changeSet, error: changeSetError } = await (supabase.from("ks_report_change_sets") as any)
+    type ChangeSetRow =
+      Database["public"]["Tables"]["ks_report_change_sets"]["Row"];
+    const { data: changeSet, error: changeSetError } = await (
+      supabase.from("ks_report_change_sets") as {
+        select: (columns: string) => {
+          eq: (
+            column: string,
+            value: string,
+          ) => {
+            single: () => Promise<{
+              data: ChangeSetRow | null;
+              error: { message: string } | null;
+            }>;
+          };
+        };
+      }
+    )
       .select("*")
       .eq("id", changeSetId)
-      .single() as { data: ChangeSetRow | null; error: { message: string } | null };
+      .single();
 
     if (changeSetError) {
       throw new Error(`变更集不存在: ${changeSetError.message}`);
@@ -161,15 +175,26 @@ export class IncrementalUpdater implements IIncrementalUpdater {
     };
 
     // 调用 RPC 创建任务
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: taskId, error } = await (supabase.rpc as any)(
-      "create_incremental_update_task",
-      {
-        p_report_id: reportId,
-        p_change_set_id: changeSetId,
-        p_impact_analysis: impactAnalysis,
-      },
-    ) as { data: string | null; error: { message: string } | null };
+    type CreateIncrementalUpdateTaskParams = {
+      p_report_id: string;
+      p_change_set_id: string;
+      p_impact_analysis: Json;
+    };
+    const { data: taskId, error } = await (
+      supabase.rpc as {
+        (
+          fnName: "create_incremental_update_task",
+          params: CreateIncrementalUpdateTaskParams,
+        ): Promise<{
+          data: string | null;
+          error: { message: string } | null;
+        }>;
+      }
+    )("create_incremental_update_task", {
+      p_report_id: reportId,
+      p_change_set_id: changeSetId,
+      p_impact_analysis: impactAnalysis as Json,
+    });
 
     if (error) {
       logger.error(
@@ -180,11 +205,26 @@ export class IncrementalUpdater implements IIncrementalUpdater {
     }
 
     // 获取创建的任务
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: task, error: fetchError } = await (supabase.from("ks_incremental_update_tasks") as any)
+    type TaskRow =
+      Database["public"]["Tables"]["ks_incremental_update_tasks"]["Row"];
+    const { data: task, error: fetchError } = await (
+      supabase.from("ks_incremental_update_tasks") as {
+        select: (columns: string) => {
+          eq: (
+            column: string,
+            value: string,
+          ) => {
+            single: () => Promise<{
+              data: TaskRow | null;
+              error: { message: string } | null;
+            }>;
+          };
+        };
+      }
+    )
       .select("*")
       .eq("id", taskId)
-      .single() as { data: TaskRow | null; error: { message: string } | null };
+      .single();
 
     if (fetchError || !task) {
       throw new Error(`获取任务失败: ${fetchError?.message}`);
@@ -208,47 +248,109 @@ export class IncrementalUpdater implements IIncrementalUpdater {
     const startTime = Date.now();
 
     // 获取任务信息
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: task, error: taskError } = await (supabase.from("ks_incremental_update_tasks") as any)
+    type TaskRow =
+      Database["public"]["Tables"]["ks_incremental_update_tasks"]["Row"];
+    const { data: task, error: taskError } = await (
+      supabase.from("ks_incremental_update_tasks") as {
+        select: (columns: string) => {
+          eq: (
+            column: string,
+            value: string,
+          ) => {
+            single: () => Promise<{
+              data: TaskRow | null;
+              error: { message: string } | null;
+            }>;
+          };
+        };
+      }
+    )
       .select("*")
       .eq("id", taskId)
-      .single() as { data: TaskRow | null; error: { message: string } | null };
+      .single();
 
     if (taskError || !task) {
       throw new Error(`任务不存在: ${taskError?.message}`);
     }
 
     // 更新任务状态为处理中
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase.from("ks_incremental_update_tasks") as any)
-      .update({
-        status: "processing",
-        started_at: new Date().toISOString(),
-      })
+    type TaskUpdate =
+      Database["public"]["Tables"]["ks_incremental_update_tasks"]["Update"];
+    const updateData: TaskUpdate = {
+      status: "processing",
+      started_at: new Date().toISOString(),
+    };
+
+    await (
+      supabase.from("ks_incremental_update_tasks") as {
+        update: (values: TaskUpdate) => {
+          eq: (
+            column: string,
+            value: string,
+          ) => Promise<{
+            error: { message: string } | null;
+          }>;
+        };
+      }
+    )
+      .update(updateData)
       .eq("id", taskId);
 
     try {
       // 获取报告当前版本
-      // 类型断言: 手动维护类型文件时需要此断言
-      type VersionRow = { version: number };
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: versions } = await (supabase.from("ks_report_versions") as any)
+      type VersionRow =
+        Database["public"]["Tables"]["ks_report_versions"]["Row"];
+      const { data: versions } = await (
+        supabase.from("ks_report_versions") as {
+          select: (columns: string) => {
+            eq: (
+              column: string,
+              value: string,
+            ) => {
+              order: (
+                column: string,
+                options: { ascending: boolean },
+              ) => {
+                limit: (count: number) => Promise<{
+                  data: Pick<VersionRow, "version">[] | null;
+                }>;
+              };
+            };
+          };
+        }
+      )
         .select("version")
         .eq("report_id", task.report_id)
         .order("version", { ascending: false })
-        .limit(1) as { data: VersionRow[] | null };
+        .limit(1);
 
       const currentVersion = versions?.[0]?.version ?? 0;
       const newVersion = currentVersion + 1;
 
       // 获取报告内容
-      // 类型断言: 手动维护类型文件时需要此断言
-      type ReportContentRow = { content: Record<string, unknown>; source_bookmark_ids: string[] };
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: report } = await (supabase.from("ks_reports") as any)
-        .select("content, source_bookmark_ids")
+      // 注意：这里使用的是 synthesis_reports 表，不是 ks_reports
+      type SynthesisReportRow =
+        Database["public"]["Tables"]["synthesis_reports"]["Row"];
+      const { data: report } = await (
+        supabase.from("synthesis_reports") as {
+          select: (columns: string) => {
+            eq: (
+              column: string,
+              value: string,
+            ) => {
+              single: () => Promise<{
+                data: Pick<
+                  SynthesisReportRow,
+                  "content" | "generation_metadata"
+                > | null;
+              }>;
+            };
+          };
+        }
+      )
+        .select("content, generation_metadata")
         .eq("id", task.report_id)
-        .single() as { data: ReportContentRow | null };
+        .single();
 
       // 模拟增量更新处理（实际需要调用 AI 服务）
       // TODO: 集成 AI 服务进行实际的段落更新和重生成
@@ -257,17 +359,28 @@ export class IncrementalUpdater implements IIncrementalUpdater {
       const paragraphsRegenerated = impactAnalysis.paragraphsToRegenerate;
 
       // 创建新版本
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: versionError } = await (supabase.from("ks_report_versions") as any)
-        .insert({
-          report_id: task.report_id,
-          user_id: task.user_id,
-          version: newVersion,
-          content: report?.content ?? {},
-          bookmark_ids: report?.source_bookmark_ids ?? [],
-          change_summary: `增量更新: 更新 ${paragraphsUpdated} 段，重生成 ${paragraphsRegenerated} 段`,
-          source: "incremental",
-        });
+      type VersionInsert =
+        Database["public"]["Tables"]["ks_report_versions"]["Insert"];
+      const metadata = report?.generation_metadata as
+        | { source_bookmark_ids?: string[] }
+        | undefined;
+      const versionInsertData: VersionInsert = {
+        report_id: task.report_id,
+        user_id: task.user_id,
+        version: newVersion,
+        content: (report?.content ?? {}) as Json,
+        bookmark_ids: metadata?.source_bookmark_ids ?? [],
+        change_summary: `增量更新: 更新 ${paragraphsUpdated} 段，重生成 ${paragraphsRegenerated} 段`,
+        source: "incremental",
+      };
+
+      const { error: versionError } = await (
+        supabase.from("ks_report_versions") as {
+          insert: (values: VersionInsert) => Promise<{
+            error: { message: string } | null;
+          }>;
+        }
+      ).insert(versionInsertData);
 
       if (versionError) {
         throw new Error(`创建版本失败: ${versionError.message}`);
@@ -277,20 +390,28 @@ export class IncrementalUpdater implements IIncrementalUpdater {
       const tokensUsed = paragraphsUpdated * 200 + paragraphsRegenerated * 500;
 
       // 记录更新结果
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: resultError } = await (supabase.from("ks_update_results") as any)
-        .insert({
-          task_id: taskId,
-          report_id: task.report_id,
-          user_id: task.user_id,
-          success: true,
-          new_version: newVersion,
-          paragraphs_updated: paragraphsUpdated,
-          paragraphs_regenerated: paragraphsRegenerated,
-          processing_time_ms: processingTimeMs,
-          tokens_used: tokensUsed,
-          change_summary: `增量更新完成`,
-        });
+      type UpdateResultInsert =
+        Database["public"]["Tables"]["ks_update_results"]["Insert"];
+      const resultInsertData: UpdateResultInsert = {
+        task_id: taskId,
+        report_id: task.report_id,
+        user_id: task.user_id,
+        success: true,
+        new_version: newVersion,
+        paragraphs_updated: paragraphsUpdated,
+        paragraphs_regenerated: paragraphsRegenerated,
+        processing_time_ms: processingTimeMs,
+        tokens_used: tokensUsed,
+        change_summary: `增量更新完成`,
+      };
+
+      const { error: resultError } = await (
+        supabase.from("ks_update_results") as {
+          insert: (values: UpdateResultInsert) => Promise<{
+            error: { message: string } | null;
+          }>;
+        }
+      ).insert(resultInsertData);
 
       if (resultError) {
         logger.warn(
@@ -300,22 +421,50 @@ export class IncrementalUpdater implements IIncrementalUpdater {
       }
 
       // 更新任务状态
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase.from("ks_incremental_update_tasks") as any)
-        .update({
-          status: "completed",
-          completed_at: new Date().toISOString(),
-          new_version: newVersion,
-        })
+      type TaskUpdate =
+        Database["public"]["Tables"]["ks_incremental_update_tasks"]["Update"];
+      const taskUpdateData: TaskUpdate = {
+        status: "completed",
+        completed_at: new Date().toISOString(),
+        new_version: newVersion,
+      };
+
+      await (
+        supabase.from("ks_incremental_update_tasks") as {
+          update: (values: TaskUpdate) => {
+            eq: (
+              column: string,
+              value: string,
+            ) => Promise<{
+              error: { message: string } | null;
+            }>;
+          };
+        }
+      )
+        .update(taskUpdateData)
         .eq("id", taskId);
 
       // 标记变更集已处理
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase.from("ks_report_change_sets") as any)
-        .update({
-          processed: true,
-          processed_at: new Date().toISOString(),
-        })
+      type ChangeSetUpdate =
+        Database["public"]["Tables"]["ks_report_change_sets"]["Update"];
+      const changeSetUpdateData: ChangeSetUpdate = {
+        processed: true,
+        processed_at: new Date().toISOString(),
+      };
+
+      await (
+        supabase.from("ks_report_change_sets") as {
+          update: (values: ChangeSetUpdate) => {
+            eq: (
+              column: string,
+              value: string,
+            ) => Promise<{
+              error: { message: string } | null;
+            }>;
+          };
+        }
+      )
+        .update(changeSetUpdateData)
         .eq("id", task.change_set_id);
 
       logger.info(
@@ -337,13 +486,27 @@ export class IncrementalUpdater implements IIncrementalUpdater {
       // 更新任务状态为失败
       const errorMessage =
         error instanceof Error ? error.message : String(error);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase.from("ks_incremental_update_tasks") as any)
-        .update({
-          status: "failed",
-          completed_at: new Date().toISOString(),
-          error: errorMessage,
-        })
+      type TaskUpdate =
+        Database["public"]["Tables"]["ks_incremental_update_tasks"]["Update"];
+      const taskUpdateData: TaskUpdate = {
+        status: "failed",
+        completed_at: new Date().toISOString(),
+        error: errorMessage,
+      };
+
+      await (
+        supabase.from("ks_incremental_update_tasks") as {
+          update: (values: TaskUpdate) => {
+            eq: (
+              column: string,
+              value: string,
+            ) => Promise<{
+              error: { message: string } | null;
+            }>;
+          };
+        }
+      )
+        .update(taskUpdateData)
         .eq("id", taskId);
 
       logger.error(
@@ -370,11 +533,26 @@ export class IncrementalUpdater implements IIncrementalUpdater {
   async getTaskStatus(taskId: string): Promise<IncrementalUpdateTask | null> {
     const supabase = await createClient();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase.from("ks_incremental_update_tasks") as any)
+    type TaskRow =
+      Database["public"]["Tables"]["ks_incremental_update_tasks"]["Row"];
+    const { data, error } = await (
+      supabase.from("ks_incremental_update_tasks") as {
+        select: (columns: string) => {
+          eq: (
+            column: string,
+            value: string,
+          ) => {
+            single: () => Promise<{
+              data: TaskRow | null;
+              error: { code?: string; message: string } | null;
+            }>;
+          };
+        };
+      }
+    )
       .select("*")
       .eq("id", taskId)
-      .single() as { data: TaskRow | null; error: { code?: string; message: string } | null };
+      .single();
 
     if (error) {
       if (error.code === "PGRST116") {
@@ -397,13 +575,25 @@ export class IncrementalUpdater implements IIncrementalUpdater {
     const supabase = await createClient();
 
     // 只能取消待处理的任务
-    // 类型断言: 手动维护类型文件时需要此断言
-    type TaskStatusRow = { status: string };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: task } = await (supabase.from("ks_incremental_update_tasks") as any)
+    type TaskRow =
+      Database["public"]["Tables"]["ks_incremental_update_tasks"]["Row"];
+    const { data: task } = await (
+      supabase.from("ks_incremental_update_tasks") as {
+        select: (columns: string) => {
+          eq: (
+            column: string,
+            value: string,
+          ) => {
+            single: () => Promise<{
+              data: Pick<TaskRow, "status"> | null;
+            }>;
+          };
+        };
+      }
+    )
       .select("status")
       .eq("id", taskId)
-      .single() as { data: TaskStatusRow | null };
+      .single();
 
     if (!task) {
       throw new Error(`任务不存在: ${taskId}`);
@@ -413,13 +603,27 @@ export class IncrementalUpdater implements IIncrementalUpdater {
       throw new Error(`只能取消待处理的任务，当前状态: ${task.status}`);
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase.from("ks_incremental_update_tasks") as any)
-      .update({
-        status: "cancelled",
-        completed_at: new Date().toISOString(),
-        error: "用户取消",
-      })
+    type TaskUpdate =
+      Database["public"]["Tables"]["ks_incremental_update_tasks"]["Update"];
+    const taskUpdateData: TaskUpdate = {
+      status: "cancelled",
+      completed_at: new Date().toISOString(),
+      error: "用户取消",
+    };
+
+    const { error } = await (
+      supabase.from("ks_incremental_update_tasks") as {
+        update: (values: TaskUpdate) => {
+          eq: (
+            column: string,
+            value: string,
+          ) => Promise<{
+            error: { message: string } | null;
+          }>;
+        };
+      }
+    )
+      .update(taskUpdateData)
       .eq("id", taskId);
 
     if (error) {
@@ -439,11 +643,34 @@ export class IncrementalUpdater implements IIncrementalUpdater {
     const supabase = await createClient();
 
     // 调用 RPC 函数
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase.rpc as any)("get_report_update_history", {
+    type GetReportUpdateHistoryParams = {
+      p_report_id: string;
+      p_limit: number;
+    };
+    type UpdateHistoryRow = {
+      id: string;
+      version: number;
+      source: string;
+      change_summary: string | null;
+      paragraphs_updated: number;
+      paragraphs_regenerated: number;
+      tokens_used: number;
+      created_at: string;
+    };
+    const { data, error } = await (
+      supabase.rpc as {
+        (
+          fnName: "get_report_update_history",
+          params: GetReportUpdateHistoryParams,
+        ): Promise<{
+          data: UpdateHistoryRow[] | null;
+          error: { message: string } | null;
+        }>;
+      }
+    )("get_report_update_history", {
       p_report_id: reportId,
       p_limit: 20,
-    }) as { data: UpdateHistoryRow[] | null; error: { message: string } | null };
+    });
 
     if (error) {
       logger.error(
@@ -476,18 +703,30 @@ export class IncrementalUpdater implements IIncrementalUpdater {
     const supabase = await createClient();
 
     // 调用 RPC 函数
-    // 类型断言: 手动维护类型文件时需要此断言
+    type RollbackReportToVersionParams = {
+      p_report_id: string;
+      p_target_version: number;
+    };
     type RollbackResult = {
       success: boolean;
       newVersion: number;
       rolledBackFrom: number;
       rolledBackTo: number;
     };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase.rpc as any)("rollback_report_to_version", {
+    const { data, error } = await (
+      supabase.rpc as {
+        (
+          fnName: "rollback_report_to_version",
+          params: RollbackReportToVersionParams,
+        ): Promise<{
+          data: Json | null;
+          error: { message: string } | null;
+        }>;
+      }
+    )("rollback_report_to_version", {
       p_report_id: reportId,
       p_target_version: version,
-    }) as { data: RollbackResult | null; error: { message: string } | null };
+    });
 
     if (error) {
       logger.error(
@@ -527,12 +766,35 @@ export class IncrementalUpdater implements IIncrementalUpdater {
   async getPendingTasks(userId: string): Promise<IncrementalUpdateTask[]> {
     const supabase = await createClient();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase.from("ks_incremental_update_tasks") as any)
+    type TaskRow =
+      Database["public"]["Tables"]["ks_incremental_update_tasks"]["Row"];
+    const { data, error } = await (
+      supabase.from("ks_incremental_update_tasks") as {
+        select: (columns: string) => {
+          eq: (
+            column: string,
+            value: string,
+          ) => {
+            in: (
+              column: string,
+              values: string[],
+            ) => {
+              order: (
+                column: string,
+                options: { ascending: boolean },
+              ) => Promise<{
+                data: TaskRow[] | null;
+                error: { message: string } | null;
+              }>;
+            };
+          };
+        };
+      }
+    )
       .select("*")
       .eq("user_id", userId)
       .in("status", ["pending", "processing"])
-      .order("created_at", { ascending: false }) as { data: TaskRow[] | null; error: { message: string } | null };
+      .order("created_at", { ascending: false });
 
     if (error) {
       logger.error(

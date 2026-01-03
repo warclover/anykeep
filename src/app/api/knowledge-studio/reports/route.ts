@@ -9,6 +9,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createLogger } from "@/lib/logger";
 import { z } from "zod";
+import type { Database } from "@/types/supabase";
 
 const logger = createLogger("api:knowledge-studio:reports");
 
@@ -172,19 +173,33 @@ export async function POST(request: NextRequest) {
     const { blueprintType, title, content, citations, generationMetadata } =
       parseResult.data;
 
-    const { data: report, error } = await (
-      supabase
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .from("synthesis_reports") as any
-    )
-      .insert({
-        user_id: user.id,
-        blueprint_type: blueprintType,
-        title,
-        content,
-        citations,
-        generation_metadata: generationMetadata || {},
-      })
+    // 类型安全的插入操作
+    type SynthesisReportInsert =
+      Database["public"]["Tables"]["synthesis_reports"]["Insert"];
+    type SynthesisReportRow =
+      Database["public"]["Tables"]["synthesis_reports"]["Row"];
+
+    const insertData: SynthesisReportInsert = {
+      user_id: user.id,
+      blueprint_type: blueprintType,
+      title,
+      content,
+      citations: citations || [],
+      generation_metadata: generationMetadata || {},
+    };
+
+    const supabaseQuery = supabase.from("synthesis_reports") as unknown as {
+      insert: (values: SynthesisReportInsert) => {
+        select: () => {
+          single: () => Promise<{
+            data: SynthesisReportRow | null;
+            error: { message: string } | null;
+          }>;
+        };
+      };
+    };
+    const { data: report, error } = await supabaseQuery
+      .insert(insertData)
       .select()
       .single();
 

@@ -39,11 +39,25 @@ export async function GET(request: NextRequest) {
     logger.info({ userId: user.id, limit }, "Fetching due for review");
 
     // 调用 RPC 获取待复习知识点
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase.rpc as any)("get_due_for_review", {
+    // 注意：RPC 函数类型可能未在 Database 类型中定义，使用类型断言
+    type GetDueForReviewParams = {
+      p_user_id: string;
+      p_limit: number;
+    };
+    const { data, error } = await (
+      supabase.rpc as {
+        (
+          fnName: "get_due_for_review",
+          params: GetDueForReviewParams,
+        ): Promise<{
+          data: unknown[] | null;
+          error: { message: string } | null;
+        }>;
+      }
+    )("get_due_for_review", {
       p_user_id: user.id,
       p_limit: limit,
-    }) as { data: unknown[] | null; error: { message: string } | null };
+    });
 
     if (error) {
       logger.error({ error: error.message }, "Get due for review failed");
@@ -117,17 +131,31 @@ export async function POST(request: NextRequest) {
     );
 
     // 调用 RPC 记录复习并更新掌握度
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase.rpc as any)(
-      "record_review_and_update_mastery",
-      {
-        p_user_id: user.id,
-        p_knowledge_point_id: knowledgePointId,
-        p_session_id: sessionId || null,
-        p_rating: rating,
-        p_response_time_ms: responseTimeMs,
-      },
-    );
+    // 注意：RPC 函数类型可能未在 Database 类型中定义，使用类型断言
+    type RecordReviewParams = {
+      p_user_id: string;
+      p_knowledge_point_id: string;
+      p_session_id: string | null;
+      p_rating: number;
+      p_response_time_ms: number;
+    };
+    const { data, error } = await (
+      supabase.rpc as {
+        (
+          fnName: "record_review_and_update_mastery",
+          params: RecordReviewParams,
+        ): Promise<{
+          data: unknown;
+          error: { message: string } | null;
+        }>;
+      }
+    )("record_review_and_update_mastery", {
+      p_user_id: user.id,
+      p_knowledge_point_id: knowledgePointId,
+      p_session_id: sessionId || null,
+      p_rating: rating,
+      p_response_time_ms: responseTimeMs,
+    });
 
     if (error) {
       logger.error({ error: error.message }, "Record review failed");

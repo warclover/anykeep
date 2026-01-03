@@ -8,6 +8,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createLogger } from "@/lib/logger";
+import type { Database, Json } from "@/types/supabase";
 
 const logger = createLogger("api:knowledge-studio:templates");
 
@@ -106,8 +107,79 @@ export async function GET(request: NextRequest) {
     );
 
     // 构建查询
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let query = (supabase.from("ks_custom_templates") as any)
+    // 注意：由于 Supabase 查询链的复杂性，使用类型断言
+    // 但通过类型定义确保返回数据的类型安全
+    type TemplateRow =
+      Database["public"]["Tables"]["ks_custom_templates"]["Row"];
+    type TemplateQueryResult = {
+      data: TemplateRow[] | null;
+      error: { message: string } | null;
+      count: number | null;
+    };
+
+    type TemplateRow =
+      Database["public"]["Tables"]["ks_custom_templates"]["Row"];
+    let query = (
+      supabase.from("ks_custom_templates") as {
+        select: (
+          columns: string,
+          options?: { count?: "exact" },
+        ) => {
+          order: (
+            column: string,
+            options: { ascending: boolean },
+          ) => {
+            range: (
+              from: number,
+              to: number,
+            ) => {
+              or?: (filter: string) => {
+                eq?: (
+                  column: string,
+                  value: string,
+                ) => {
+                  or?: (filter: string) => Promise<{
+                    data: TemplateRow[] | null;
+                    count: number | null;
+                    error: { message: string } | null;
+                  }>;
+                };
+                or?: (filter: string) => Promise<{
+                  data: TemplateRow[] | null;
+                  count: number | null;
+                  error: { message: string } | null;
+                }>;
+              };
+            };
+            eq?: (
+              column: string,
+              value: string,
+            ) => {
+              eq?: (
+                column: string,
+                value: string,
+              ) => {
+                or?: (filter: string) => Promise<{
+                  data: TemplateRow[] | null;
+                  count: number | null;
+                  error: { message: string } | null;
+                }>;
+              };
+              or?: (filter: string) => Promise<{
+                data: TemplateRow[] | null;
+                count: number | null;
+                error: { message: string } | null;
+              }>;
+            };
+            or?: (filter: string) => Promise<{
+              data: TemplateRow[] | null;
+              count: number | null;
+              error: { message: string } | null;
+            }>;
+          };
+        };
+      }
+    )
       .select("*", { count: "exact" })
       .order("updated_at", { ascending: false })
       .range(offset, offset + limit - 1);
@@ -135,7 +207,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const { data, error, count } = await query;
+    const { data, error, count } = (await query) as TemplateQueryResult;
 
     if (error) {
       logger.error({ error: error.message }, "Get templates failed");
@@ -271,21 +343,39 @@ export async function POST(request: NextRequest) {
       "Creating template",
     );
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase.from("ks_custom_templates") as any)
-      .insert({
-        user_id: user.id,
-        name: name.trim(),
-        description,
-        icon,
-        base_blueprint: baseBlueprint,
-        variables,
-        prompt_sections: promptSections,
-        output_format: outputFormat,
-        visibility,
-        status: "draft",
-        tags,
-      })
+    // 类型安全的插入操作
+    type TemplateInsert =
+      Database["public"]["Tables"]["ks_custom_templates"]["Insert"];
+    type TemplateRow =
+      Database["public"]["Tables"]["ks_custom_templates"]["Row"];
+
+    const insertData: TemplateInsert = {
+      user_id: user.id,
+      name: name.trim(),
+      description,
+      icon,
+      base_blueprint: baseBlueprint,
+      variables: variables as Json,
+      prompt_sections: promptSections as Json,
+      output_format: outputFormat,
+      visibility,
+      status: "draft",
+      tags,
+    };
+
+    const { data, error } = await (
+      supabase.from("ks_custom_templates") as {
+        insert: (values: TemplateInsert) => {
+          select: () => {
+            single: () => Promise<{
+              data: TemplateRow | null;
+              error: { message: string } | null;
+            }>;
+          };
+        };
+      }
+    )
+      .insert(insertData)
       .select()
       .single();
 

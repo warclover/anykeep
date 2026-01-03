@@ -105,7 +105,12 @@ export class BlueprintEngine {
       this.emitProgress(context, "outline", 0, onProgress);
       const outlineStart = Date.now();
 
-      const outline = await this.generateOutline(context, parsedMaterials);
+      const outlineResult = await this.generateOutline(
+        context,
+        parsedMaterials,
+      );
+      const outline = outlineResult.text;
+      const outlineUsage = outlineResult.usage;
       stagesTiming.outline = Date.now() - outlineStart;
       this.emitProgress(context, "outline", 100, onProgress);
 
@@ -113,12 +118,14 @@ export class BlueprintEngine {
       this.emitProgress(context, "content", 0, onProgress);
       const contentStart = Date.now();
 
-      const content = await this.generateContent(
+      const contentResult = await this.generateContent(
         context,
         outline,
         parsedMaterials,
         onProgress,
       );
+      const content = contentResult.text;
+      const contentUsage = contentResult.usage;
       stagesTiming.content = Date.now() - contentStart;
       this.emitProgress(context, "content", 100, onProgress);
 
@@ -142,16 +149,38 @@ export class BlueprintEngine {
       const selection = aiProviderRouter.selectProvider({ taskType: "chat" });
       const actualModel = selection?.model?.modelId || "deepseek-chat";
 
+      // 累加 Token 使用情况
+      let totalInputTokens = 0;
+      let totalOutputTokens = 0;
+      if (outlineUsage) {
+        totalInputTokens += outlineUsage.promptTokens;
+        totalOutputTokens += outlineUsage.completionTokens;
+      }
+      if (contentUsage) {
+        totalInputTokens += contentUsage.promptTokens;
+        totalOutputTokens += contentUsage.completionTokens;
+      }
+
       const metadata: BlueprintMetadata = {
         model: actualModel,
         tokens: {
-          input: 0, // TODO: 从实际调用结果获取
-          output: 0, // TODO: 从实际调用结果获取
-          total: 0, // TODO: 从实际调用结果获取
+          input: totalInputTokens,
+          output: totalOutputTokens,
+          total: totalInputTokens + totalOutputTokens,
         },
         durationMs: Date.now() - startTime,
         stagesTiming,
       };
+
+      logger.info(
+        {
+          requestId: context.requestId,
+          tokens: metadata.tokens,
+          outlineUsage,
+          contentUsage,
+        },
+        "Token usage calculated",
+      );
 
       logger.info(
         {
@@ -199,11 +228,19 @@ export class BlueprintEngine {
 
   /**
    * 生成大纲
+   * @returns 大纲文本和 Token 使用情况
    */
   private async generateOutline(
     context: GenerationContext,
     materials: ParsedMaterial[],
-  ): Promise<string> {
+  ): Promise<{
+    text: string;
+    usage?: {
+      promptTokens: number;
+      completionTokens: number;
+      totalTokens: number;
+    };
+  }> {
     const prompt = buildPromptForBlueprint(context.config.type, "outline", {
       materials,
       customPrompt: context.customPrompt,
@@ -234,7 +271,10 @@ export class BlueprintEngine {
         { requestId: context.requestId },
         "No AI model available for outline generation, using fallback",
       );
-      return `# ${BLUEPRINT_DISPLAY_CONFIG[context.config.type].name}风格大纲\n\n## 引言\n\n## 主体\n\n## 结论`;
+      return {
+        text: `# ${BLUEPRINT_DISPLAY_CONFIG[context.config.type].name}风格大纲\n\n## 引言\n\n## 主体\n\n## 结论`,
+        usage: undefined,
+      };
     }
 
     try {
@@ -243,8 +283,16 @@ export class BlueprintEngine {
           requestId: context.requestId,
           modelId: selection.model.modelId,
           promptType: typeof prompt,
-          promptSystem: typeof prompt === "object" ? prompt.system?.slice(0, 100) : undefined,
-          promptUser: typeof prompt === "object" ? prompt.user?.slice(0, 100) : typeof prompt === "string" ? prompt.slice(0, 100) : undefined,
+          promptSystem:
+            typeof prompt === "object"
+              ? prompt.system?.slice(0, 100)
+              : undefined,
+          promptUser:
+            typeof prompt === "object"
+              ? prompt.user?.slice(0, 100)
+              : typeof prompt === "string"
+                ? prompt.slice(0, 100)
+                : undefined,
         },
         "Calling AI model for outline generation",
       );
@@ -264,7 +312,12 @@ export class BlueprintEngine {
           textLength: text?.length || 0,
           hasText: !!text,
           textPreview: text?.slice(0, 200),
-          usage: usage ? { promptTokens: usage.promptTokens, completionTokens: usage.completionTokens } : undefined,
+          usage: usage
+            ? {
+                promptTokens: usage.promptTokens,
+                completionTokens: usage.completionTokens,
+              }
+            : undefined,
         },
         "Outline generation AI call completed",
       );
@@ -278,11 +331,15 @@ export class BlueprintEngine {
           },
           "Outline generation returned empty or whitespace-only text",
         );
-        return `# ${BLUEPRINT_DISPLAY_CONFIG[context.config.type].name}风格大纲\n\n## 引言\n\n## 主体\n\n## 结论`;
+        return {
+          text: `# ${BLUEPRINT_DISPLAY_CONFIG[context.config.type].name}风格大纲\n\n## 引言\n\n## 主体\n\n## 结论`,
+          usage: undefined,
+        };
       }
 
       // 检查是否是占位文本（简单启发式检查）
-      const isPlaceholder = text.includes("这是基于") && text.includes("个素材生成");
+      const isPlaceholder =
+        text.includes("这是基于") && text.includes("个素材生成");
       if (isPlaceholder) {
         logger.warn(
           {
@@ -293,7 +350,20 @@ export class BlueprintEngine {
         );
       }
 
-      return text;
+      // 返回文本和 Token 使用情况
+      const tokenUsage = usage
+        ? {
+            promptTokens: usage.promptTokens || 0,
+            completionTokens: usage.completionTokens || 0,
+            totalTokens:
+              (usage.promptTokens || 0) + (usage.completionTokens || 0),
+          }
+        : undefined;
+
+      return {
+        text,
+        usage: tokenUsage,
+      };
     } catch (error) {
       logger.error(
         {
@@ -303,19 +373,30 @@ export class BlueprintEngine {
         },
         "Outline generation failed, using fallback",
       );
-      return `# ${BLUEPRINT_DISPLAY_CONFIG[context.config.type].name}风格大纲\n\n## 引言\n\n## 主体\n\n## 结论`;
+      return {
+        text: `# ${BLUEPRINT_DISPLAY_CONFIG[context.config.type].name}风格大纲\n\n## 引言\n\n## 主体\n\n## 结论`,
+        usage: undefined,
+      };
     }
   }
 
   /**
    * 生成正文内容
+   * @returns 正文文本和 Token 使用情况
    */
   private async generateContent(
     context: GenerationContext,
     outline: string,
     materials: ParsedMaterial[],
     onProgress?: ProgressCallback,
-  ): Promise<string> {
+  ): Promise<{
+    text: string;
+    usage?: {
+      promptTokens: number;
+      completionTokens: number;
+      totalTokens: number;
+    };
+  }> {
     const prompt = buildPromptForBlueprint(context.config.type, "content", {
       outline,
       materials,
@@ -348,7 +429,10 @@ export class BlueprintEngine {
         { requestId: context.requestId },
         "No AI model available for content generation, using fallback",
       );
-      return `这是基于 ${materials.length} 个素材生成的${BLUEPRINT_DISPLAY_CONFIG[context.config.type].name}风格内容。\n\n${outline}`;
+      return {
+        text: `这是基于 ${materials.length} 个素材生成的${BLUEPRINT_DISPLAY_CONFIG[context.config.type].name}风格内容。\n\n${outline}`,
+        usage: undefined,
+      };
     }
 
     try {
@@ -365,8 +449,16 @@ export class BlueprintEngine {
           requestId: context.requestId,
           modelId: selection.model.modelId,
           promptType: typeof prompt,
-          promptSystem: typeof prompt === "object" ? prompt.system?.slice(0, 100) : undefined,
-          promptUser: typeof prompt === "object" ? prompt.user?.slice(0, 100) : typeof prompt === "string" ? prompt.slice(0, 100) : undefined,
+          promptSystem:
+            typeof prompt === "object"
+              ? prompt.system?.slice(0, 100)
+              : undefined,
+          promptUser:
+            typeof prompt === "object"
+              ? prompt.user?.slice(0, 100)
+              : typeof prompt === "string"
+                ? prompt.slice(0, 100)
+                : undefined,
           maxTokens,
           targetLength: context.config.targetLength,
         },
@@ -394,14 +486,14 @@ export class BlueprintEngine {
       let fullContent = "";
       let chunkCount = 0;
       let hasReceivedChunks = false;
-      
+
       // 流式读取内容
       try {
         for await (const chunk of result.textStream) {
           fullContent += chunk;
           chunkCount++;
           hasReceivedChunks = true;
-          
+
           logger.debug(
             {
               requestId: context.requestId,
@@ -411,7 +503,7 @@ export class BlueprintEngine {
             },
             "Received content chunk",
           );
-          
+
           // 发送内容更新事件
           if (onProgress) {
             const contentChunk: StreamChunk = {
@@ -429,8 +521,12 @@ export class BlueprintEngine {
         logger.error(
           {
             requestId: context.requestId,
-            error: streamError instanceof Error ? streamError.message : String(streamError),
-            errorStack: streamError instanceof Error ? streamError.stack : undefined,
+            error:
+              streamError instanceof Error
+                ? streamError.message
+                : String(streamError),
+            errorStack:
+              streamError instanceof Error ? streamError.stack : undefined,
             chunkCount,
             contentLength: fullContent.length,
           },
@@ -448,7 +544,7 @@ export class BlueprintEngine {
           { requestId: context.requestId, chunkCount, hasReceivedChunks },
           "Text stream produced no content, trying to get full text",
         );
-        
+
         try {
           // 等待流完成并获取完整文本
           const fullText = await result.text;
@@ -472,8 +568,12 @@ export class BlueprintEngine {
           logger.error(
             {
               requestId: context.requestId,
-              error: textError instanceof Error ? textError.message : String(textError),
-              errorStack: textError instanceof Error ? textError.stack : undefined,
+              error:
+                textError instanceof Error
+                  ? textError.message
+                  : String(textError),
+              errorStack:
+                textError instanceof Error ? textError.stack : undefined,
             },
             "Failed to get full text from result",
           );
@@ -502,10 +602,12 @@ export class BlueprintEngine {
           },
           "Content generation returned empty text, using fallback",
         );
-        
+
         // 如果完全没有收到任何内容，抛出错误而不是使用 fallback
         if (!hasReceivedChunks && chunkCount === 0) {
-          const error = new Error("AI 模型调用失败：未收到任何内容。请检查 API Key 配置和网络连接。");
+          const error = new Error(
+            "AI 模型调用失败：未收到任何内容。请检查 API Key 配置和网络连接。",
+          );
           logger.error(
             {
               requestId: context.requestId,
@@ -515,12 +617,16 @@ export class BlueprintEngine {
           );
           throw error;
         }
-        
-        return `这是基于 ${materials.length} 个素材生成的${BLUEPRINT_DISPLAY_CONFIG[context.config.type].name}风格内容。\n\n${outline}`;
+
+        return {
+          text: `这是基于 ${materials.length} 个素材生成的${BLUEPRINT_DISPLAY_CONFIG[context.config.type].name}风格内容。\n\n${outline}`,
+          usage: undefined,
+        };
       }
 
       // 检查是否是占位文本（简单启发式检查）
-      const isPlaceholder = fullContent.includes("这是基于") && fullContent.includes("个素材生成");
+      const isPlaceholder =
+        fullContent.includes("这是基于") && fullContent.includes("个素材生成");
       if (isPlaceholder) {
         logger.warn(
           {
@@ -531,7 +637,48 @@ export class BlueprintEngine {
         );
       }
 
-      return fullContent;
+      // 获取 Token 使用情况（从 result.usage 获取）
+      let tokenUsage:
+        | {
+            promptTokens: number;
+            completionTokens: number;
+            totalTokens: number;
+          }
+        | undefined;
+      try {
+        const usage = await result.usage;
+        if (usage) {
+          tokenUsage = {
+            promptTokens: usage.promptTokens || 0,
+            completionTokens: usage.completionTokens || 0,
+            totalTokens:
+              (usage.promptTokens || 0) + (usage.completionTokens || 0),
+          };
+          logger.info(
+            {
+              requestId: context.requestId,
+              usage: tokenUsage,
+            },
+            "Content generation token usage",
+          );
+        }
+      } catch (usageError) {
+        logger.warn(
+          {
+            requestId: context.requestId,
+            error:
+              usageError instanceof Error
+                ? usageError.message
+                : String(usageError),
+          },
+          "Failed to get token usage from stream result",
+        );
+      }
+
+      return {
+        text: fullContent,
+        usage: tokenUsage,
+      };
     } catch (error) {
       logger.error(
         {
@@ -541,30 +688,131 @@ export class BlueprintEngine {
         },
         "Content generation failed, using fallback",
       );
-      return `这是基于 ${materials.length} 个素材生成的${BLUEPRINT_DISPLAY_CONFIG[context.config.type].name}风格内容。\n\n${outline}`;
+      return {
+        text: `这是基于 ${materials.length} 个素材生成的${BLUEPRINT_DISPLAY_CONFIG[context.config.type].name}风格内容。\n\n${outline}`,
+        usage: undefined,
+      };
     }
   }
 
   /**
    * 提取引用
+   * 基于规则和内容匹配提取引用位置
    */
   private async extractCitations(
     content: string,
     materials: MaterialInput[],
   ): Promise<Citation[]> {
     const citations: Citation[] = [];
+    const usedBookmarkIds = new Set<string>();
 
-    // TODO: 使用 AI 或规则提取引用位置
-    // 临时为每个素材生成一个引用
-    materials.forEach((m, index) => {
-      citations.push({
-        bookmarkId: m.bookmarkId,
-        title: m.title,
-        url: m.url,
-        excerpt: m.content.slice(0, 100) + "...",
-        position: index + 1,
-      });
-    });
+    // 策略 1: 基于标题匹配
+    // 在内容中查找素材标题，如果找到则标记为已使用
+    for (const material of materials) {
+      // 清理标题（移除特殊字符，用于匹配）
+      const cleanTitle = material.title.replace(/[【】\[\]()（）]/g, "").trim();
+
+      // 检查内容中是否包含标题（支持部分匹配）
+      const titlePatterns = [
+        cleanTitle, // 完整标题
+        cleanTitle.slice(0, Math.max(10, Math.floor(cleanTitle.length * 0.6))), // 标题前60%或至少10个字符
+      ];
+
+      let foundInContent = false;
+      for (const pattern of titlePatterns) {
+        if (pattern.length >= 5 && content.includes(pattern)) {
+          foundInContent = true;
+          break;
+        }
+      }
+
+      // 策略 2: 基于 URL 域名匹配
+      if (!foundInContent) {
+        try {
+          const urlObj = new URL(material.url);
+          const domain = urlObj.hostname.replace(/^www\./, "");
+          // 检查内容中是否提到域名
+          if (content.includes(domain)) {
+            foundInContent = true;
+          }
+        } catch {
+          // URL 解析失败，跳过
+        }
+      }
+
+      // 策略 3: 基于内容摘要匹配（关键词提取）
+      if (!foundInContent && material.content) {
+        // 提取素材内容的前几个关键词（简单实现：取前50个字符中的关键词）
+        const materialKeywords = material.content
+          .slice(0, 200)
+          .split(/[，。、\s\n]/)
+          .filter((word) => word.length >= 2)
+          .slice(0, 5); // 取前5个关键词
+
+        // 检查内容中是否包含这些关键词
+        const keywordMatches = materialKeywords.filter((keyword) =>
+          content.includes(keyword),
+        ).length;
+
+        // 如果匹配到至少2个关键词，认为相关
+        if (keywordMatches >= 2) {
+          foundInContent = true;
+        }
+      }
+
+      // 如果找到匹配，添加到引用列表
+      if (foundInContent || citations.length < materials.length) {
+        // 提取内容中相关的片段作为 excerpt
+        let excerpt = material.content.slice(0, 100) + "...";
+
+        // 尝试从内容中找到包含标题的段落作为 excerpt
+        if (cleanTitle.length >= 5) {
+          const titleIndex = content.indexOf(cleanTitle);
+          if (titleIndex >= 0) {
+            // 提取标题前后各50个字符
+            const start = Math.max(0, titleIndex - 50);
+            const end = Math.min(
+              content.length,
+              titleIndex + cleanTitle.length + 50,
+            );
+            const contextExcerpt = content.slice(start, end).trim();
+            if (contextExcerpt.length > 0) {
+              excerpt = contextExcerpt;
+            }
+          }
+        }
+
+        citations.push({
+          bookmarkId: material.bookmarkId,
+          title: material.title,
+          url: material.url,
+          excerpt,
+          position: citations.length + 1,
+        });
+        usedBookmarkIds.add(material.bookmarkId);
+      }
+    }
+
+    // 确保所有素材都有引用（如果还没有）
+    for (const material of materials) {
+      if (!usedBookmarkIds.has(material.bookmarkId)) {
+        citations.push({
+          bookmarkId: material.bookmarkId,
+          title: material.title,
+          url: material.url,
+          excerpt: material.content.slice(0, 100) + "...",
+          position: citations.length + 1,
+        });
+      }
+    }
+
+    logger.info(
+      {
+        totalMaterials: materials.length,
+        extractedCitations: citations.length,
+      },
+      "Citations extracted",
+    );
 
     return citations;
   }
@@ -579,7 +827,11 @@ export class BlueprintEngine {
     // 添加引用标记
     let finalContent = content;
 
-    // TODO: 在内容中插入引用标记 [^1], [^2] 等
+    // 在内容中插入引用标记 [^1], [^2] 等
+    // 使用智能匹配算法将引用插入到最相关的段落
+    if (citations.length > 0) {
+      finalContent = this.insertCitationMarkers(finalContent, citations);
+    }
 
     // 添加引用脚注
     if (citations.length > 0) {
@@ -590,6 +842,170 @@ export class BlueprintEngine {
     }
 
     return finalContent;
+  }
+
+  /**
+   * 在内容中插入引用标记
+   * 使用简单的关键词匹配和位置策略
+   */
+  private insertCitationMarkers(
+    content: string,
+    citations: Citation[],
+  ): string {
+    if (citations.length === 0) {
+      return content;
+    }
+
+    // 按段落分割内容（保留分隔符）
+    const paragraphs = content.split(/(\n\n+)/);
+    const processedParagraphs: string[] = [];
+    const usedCitations = new Set<number>();
+
+    for (let i = 0; i < paragraphs.length; i++) {
+      const paragraph = paragraphs[i];
+
+      // 跳过空段落和分隔符
+      if (!paragraph.trim() || paragraph.match(/^\n+$/)) {
+        processedParagraphs.push(paragraph);
+        continue;
+      }
+
+      // 为每个段落找到最相关的引用
+      const bestCitation = this.findBestCitationForParagraph(
+        paragraph,
+        citations,
+        usedCitations,
+      );
+
+      if (bestCitation !== null) {
+        const citationIndex = bestCitation + 1; // 引用编号从 1 开始
+        usedCitations.add(bestCitation);
+
+        // 在段落末尾插入引用标记（如果还没有）
+        if (!paragraph.includes(`[^${citationIndex}]`)) {
+          // 移除末尾的标点符号（如果有），然后添加引用标记
+          const trimmed = paragraph.trimEnd();
+          const lastChar = trimmed[trimmed.length - 1];
+          const needsPunctuation = !/[。！？.!?]$/.test(lastChar);
+
+          if (needsPunctuation) {
+            processedParagraphs.push(trimmed + `[^${citationIndex}]`);
+          } else {
+            // 在最后一个标点符号前插入引用标记
+            processedParagraphs.push(
+              trimmed.slice(0, -1) + `[^${citationIndex}]` + lastChar,
+            );
+          }
+        } else {
+          processedParagraphs.push(paragraph);
+        }
+      } else {
+        processedParagraphs.push(paragraph);
+      }
+    }
+
+    // 确保每个引用至少被使用一次（如果内容中没有匹配，在适当位置插入）
+    for (let i = 0; i < citations.length; i++) {
+      if (!usedCitations.has(i)) {
+        const citationIndex = i + 1;
+        // 在第一个非空段落末尾添加引用标记
+        for (let j = 0; j < processedParagraphs.length; j++) {
+          const para = processedParagraphs[j];
+          if (para.trim() && !para.match(/^\n+$/)) {
+            if (!para.includes(`[^${citationIndex}]`)) {
+              const trimmed = para.trimEnd();
+              const lastChar = trimmed[trimmed.length - 1];
+              if (/[。！？.!?]$/.test(lastChar)) {
+                processedParagraphs[j] =
+                  trimmed.slice(0, -1) + `[^${citationIndex}]` + lastChar;
+              } else {
+                processedParagraphs[j] = trimmed + `[^${citationIndex}]`;
+              }
+              usedCitations.add(i);
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    return processedParagraphs.join("");
+  }
+
+  /**
+   * 为段落找到最相关的引用
+   * 使用简单的关键词匹配算法
+   */
+  private findBestCitationForParagraph(
+    paragraph: string,
+    citations: Citation[],
+    usedCitations: Set<number>,
+  ): number | null {
+    let bestMatch: { index: number; score: number } | null = null;
+
+    for (let i = 0; i < citations.length; i++) {
+      // 跳过已使用的引用（优先使用未使用的）
+      if (usedCitations.has(i)) {
+        continue;
+      }
+
+      const citation = citations[i];
+      let score = 0;
+
+      // 1. 检查标题关键词匹配
+      const titleWords = citation.title
+        .toLowerCase()
+        .split(/\s+/)
+        .filter((w) => w.length > 2);
+      const paragraphLower = paragraph.toLowerCase();
+      for (const word of titleWords) {
+        if (paragraphLower.includes(word)) {
+          score += 2;
+        }
+      }
+
+      // 2. 检查摘要关键词匹配
+      const excerptWords = citation.excerpt
+        .toLowerCase()
+        .split(/\s+/)
+        .filter((w) => w.length > 2);
+      for (const word of excerptWords) {
+        if (paragraphLower.includes(word)) {
+          score += 1;
+        }
+      }
+
+      // 3. 检查 URL 域名匹配（简单提取）
+      try {
+        const urlDomain = new URL(citation.url).hostname
+          .replace(/^www\./, "")
+          .split(".")[0]
+          .toLowerCase();
+        if (paragraphLower.includes(urlDomain)) {
+          score += 1;
+        }
+      } catch {
+        // URL 解析失败，忽略
+      }
+
+      if (score > 0 && (!bestMatch || score > bestMatch.score)) {
+        bestMatch = { index: i, score };
+      }
+    }
+
+    // 如果找到匹配且分数足够高，返回引用索引
+    if (bestMatch && bestMatch.score >= 2) {
+      return bestMatch.index;
+    }
+
+    // 如果没有找到好的匹配，返回第一个未使用的引用
+    for (let i = 0; i < citations.length; i++) {
+      if (!usedCitations.has(i)) {
+        return i;
+      }
+    }
+
+    return null;
   }
 
   /**

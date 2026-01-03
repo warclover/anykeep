@@ -15,6 +15,7 @@ import type {
   UsagePeriod,
   UsageType,
 } from "./types";
+import type { Database, Json } from "@/types/supabase";
 
 // ============================================================================
 // 配额配置
@@ -72,16 +73,25 @@ export class UsageTracker implements IUsageTracker {
   async trackUsage(record: Omit<UsageRecord, "id">): Promise<void> {
     const supabase = await createClient();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase.from("ks_usage_records") as any).insert({
+    type UsageRecordInsert =
+      Database["public"]["Tables"]["ks_usage_records"]["Insert"];
+    const recordInsertData: UsageRecordInsert = {
       user_id: record.userId,
       usage_type: record.type,
       amount: record.amount,
       unit: record.unit,
-      resource_id: record.resourceId,
-      metadata: record.metadata ?? {},
+      resource_id: record.resourceId ?? null,
+      metadata: (record.metadata ?? {}) as Json,
       created_at: record.timestamp.toISOString(),
-    });
+    };
+
+    const { error } = await (
+      supabase.from("ks_usage_records") as {
+        insert: (values: UsageRecordInsert) => Promise<{
+          error: { message: string } | null;
+        }>;
+      }
+    ).insert(recordInsertData);
 
     if (error) {
       logger.error({ error: error.message }, "Failed to track usage");
@@ -104,6 +114,25 @@ export class UsageTracker implements IUsageTracker {
     const supabase = await createClient();
 
     // 调用 RPC 函数
+    type GetUserUsageStatsParams = {
+      p_user_id: string;
+      p_period: string;
+    };
+    const { data, error } = await (
+      supabase.rpc as {
+        (
+          fnName: "get_user_usage_stats",
+          params: GetUserUsageStatsParams,
+        ): Promise<{
+          data: Json | null;
+          error: { message: string } | null;
+        }>;
+      }
+    )("get_user_usage_stats", {
+      p_user_id: userId,
+      p_period: period,
+    });
+
     // 类型断言: 手动维护类型文件时需要此断言
     type UsageStatsRpcResult = {
       usageByType?: Record<string, number>;
@@ -111,11 +140,7 @@ export class UsageTracker implements IUsageTracker {
       periodStart?: string;
       periodEnd?: string;
     };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase.rpc as any)("get_user_usage_stats", {
-      p_user_id: userId,
-      p_period: period,
-    }) as { data: UsageStatsRpcResult | null; error: { message: string } | null };
+    const statsData = data as UsageStatsRpcResult | null;
 
     if (error) {
       logger.error({ error: error.message }, "Failed to get usage stats");
@@ -123,13 +148,13 @@ export class UsageTracker implements IUsageTracker {
     }
 
     // 获取用户会员类型
-    // 类型断言: 手动维护类型文件时需要此断言
-    type ProfileMembershipType = { membership_type: string | null };
+    // 类型安全的查询
+    type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
     const { data: profile } = await supabase
       .from("profiles")
       .select("membership_type")
       .eq("id", userId)
-      .single() as unknown as { data: ProfileMembershipType | null };
+      .single<Pick<ProfileRow, "membership_type">>();
 
     const membershipType = profile?.membership_type ?? "free";
     const quotaLimits = QUOTA_LIMITS[membershipType] ?? QUOTA_LIMITS.free;
@@ -141,20 +166,20 @@ export class UsageTracker implements IUsageTracker {
     );
 
     const usageByType: Record<UsageType, number> = {
-      generation: data?.usageByType?.generation ?? 0,
-      chat_edit: data?.usageByType?.chat_edit ?? 0,
-      ai_recommendation: data?.usageByType?.ai_recommendation ?? 0,
-      export: data?.usageByType?.export ?? 0,
-      storage: data?.usageByType?.storage ?? 0,
+      generation: statsData?.usageByType?.generation ?? 0,
+      chat_edit: statsData?.usageByType?.chat_edit ?? 0,
+      ai_recommendation: statsData?.usageByType?.ai_recommendation ?? 0,
+      export: statsData?.usageByType?.export ?? 0,
+      storage: statsData?.usageByType?.storage ?? 0,
     };
 
-    const totalUsage = data?.totalUsage ?? 0;
+    const totalUsage = statsData?.totalUsage ?? 0;
 
     return {
       userId,
       period,
-      periodStart: new Date(data?.periodStart ?? new Date()),
-      periodEnd: new Date(data?.periodEnd ?? new Date()),
+      periodStart: new Date(statsData?.periodStart ?? new Date()),
+      periodEnd: new Date(statsData?.periodEnd ?? new Date()),
       usageByType,
       totalUsage,
       quotaLimit: totalQuota,
@@ -176,26 +201,97 @@ export class UsageTracker implements IUsageTracker {
   ): Promise<UsageRecord[]> {
     const supabase = await createClient();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let query = (supabase.from("ks_usage_records") as any)
+    type UsageRecordRow =
+      Database["public"]["Tables"]["ks_usage_records"]["Row"];
+    let query = (
+      supabase.from("ks_usage_records") as {
+        select: (columns: string) => {
+          eq: (
+            column: string,
+            value: string,
+          ) => {
+            order: (
+              column: string,
+              options: { ascending: boolean },
+            ) => {
+              eq?: (
+                column: string,
+                value: string,
+              ) => {
+                gte?: (
+                  column: string,
+                  value: string,
+                ) => {
+                  lte?: (
+                    column: string,
+                    value: string,
+                  ) => {
+                    limit?: (count: number) => Promise<{
+                      data: UsageRecordRow[] | null;
+                      error: { message: string } | null;
+                    }>;
+                  };
+                  limit?: (count: number) => Promise<{
+                    data: UsageRecordRow[] | null;
+                    error: { message: string } | null;
+                  }>;
+                };
+                limit?: (count: number) => Promise<{
+                  data: UsageRecordRow[] | null;
+                  error: { message: string } | null;
+                }>;
+              };
+              gte?: (
+                column: string,
+                value: string,
+              ) => {
+                lte?: (
+                  column: string,
+                  value: string,
+                ) => {
+                  limit?: (count: number) => Promise<{
+                    data: UsageRecordRow[] | null;
+                    error: { message: string } | null;
+                  }>;
+                };
+                limit?: (count: number) => Promise<{
+                  data: UsageRecordRow[] | null;
+                  error: { message: string } | null;
+                }>;
+              };
+              limit?: (count: number) => Promise<{
+                data: UsageRecordRow[] | null;
+                error: { message: string } | null;
+              }>;
+            };
+          };
+        };
+      }
+    )
       .select("*")
       .eq("user_id", userId)
       .order("created_at", { ascending: false });
 
     if (options?.type) {
-      query = query.eq("usage_type", options.type);
+      query = query.eq("usage_type", options.type) as typeof query;
     }
 
     if (options?.startDate) {
-      query = query.gte("created_at", options.startDate.toISOString());
+      query = query.gte(
+        "created_at",
+        options.startDate.toISOString(),
+      ) as typeof query;
     }
 
     if (options?.endDate) {
-      query = query.lte("created_at", options.endDate.toISOString());
+      query = query.lte(
+        "created_at",
+        options.endDate.toISOString(),
+      ) as typeof query;
     }
 
     if (options?.limit) {
-      query = query.limit(options.limit);
+      query = query.limit(options.limit) as typeof query;
     }
 
     const { data, error } = await query;
@@ -205,18 +301,7 @@ export class UsageTracker implements IUsageTracker {
       throw new Error(`获取使用历史失败: ${error.message}`);
     }
 
-    // 类型断言: 手动维护类型文件时需要此断言
-    type UsageRecordRow = {
-      id: string;
-      user_id: string;
-      usage_type: string;
-      amount: number;
-      unit: string;
-      created_at: string;
-      resource_id?: string;
-      metadata?: Record<string, unknown>;
-    };
-    return ((data ?? []) as UsageRecordRow[]).map((row) => ({
+    return (data ?? []).map((row) => ({
       id: row.id,
       userId: row.user_id,
       type: row.usage_type as UsageType,
@@ -242,13 +327,13 @@ export class UsageTracker implements IUsageTracker {
     const supabase = await createClient();
 
     // 获取用户会员类型
-    // 类型断言: 手动维护类型文件时需要此断言
-    type ProfileMembershipType2 = { membership_type: string | null };
+    // 类型安全的查询
+    type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("membership_type")
       .eq("id", userId)
-      .single() as unknown as { data: ProfileMembershipType2 | null; error: { message: string } | null };
+      .single<Pick<ProfileRow, "membership_type">>();
 
     if (profileError) {
       logger.error(
@@ -276,14 +361,35 @@ export class UsageTracker implements IUsageTracker {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    // 类型断言: 手动维护类型文件时需要此断言
-    type UsageAmountRow = { amount: number };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase.from("ks_usage_records") as any)
+    type UsageRecordRow =
+      Database["public"]["Tables"]["ks_usage_records"]["Row"];
+    const { data, error } = await (
+      supabase.from("ks_usage_records") as {
+        select: (columns: string) => {
+          eq: (
+            column: string,
+            value: string,
+          ) => {
+            eq: (
+              column: string,
+              value: string,
+            ) => {
+              gte: (
+                column: string,
+                value: string,
+              ) => Promise<{
+                data: Pick<UsageRecordRow, "amount">[] | null;
+                error: { message: string } | null;
+              }>;
+            };
+          };
+        };
+      }
+    )
       .select("amount")
       .eq("user_id", userId)
       .eq("usage_type", type)
-      .gte("created_at", startOfMonth.toISOString()) as { data: UsageAmountRow[] | null; error: { message: string } | null };
+      .gte("created_at", startOfMonth.toISOString());
 
     if (error) {
       logger.error(

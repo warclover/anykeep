@@ -8,6 +8,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createLogger } from "@/lib/logger";
+import type { Database } from "@/types/supabase";
 
 const logger = createLogger("api:knowledge-studio:mastery:sessions");
 
@@ -45,15 +46,56 @@ export async function GET(request: NextRequest) {
       "Fetching learning sessions",
     );
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let query = (supabase.from("ks_learning_sessions") as any)
+    // 类型安全的查询
+    type SessionRow =
+      Database["public"]["Tables"]["ks_learning_sessions"]["Row"];
+    let query = (
+      supabase.from("ks_learning_sessions") as {
+        select: (
+          columns: string,
+          options?: { count?: "exact" },
+        ) => {
+          eq: (
+            column: string,
+            value: string,
+          ) => {
+            order: (
+              column: string,
+              options: { ascending: boolean },
+            ) => {
+              range: (
+                from: number,
+                to: number,
+              ) => Promise<{
+                data: SessionRow[] | null;
+                count: number | null;
+                error: { message: string } | null;
+              }>;
+              eq?: (
+                column: string,
+                value: string,
+              ) => {
+                range: (
+                  from: number,
+                  to: number,
+                ) => Promise<{
+                  data: SessionRow[] | null;
+                  count: number | null;
+                  error: { message: string } | null;
+                }>;
+              };
+            };
+          };
+        };
+      }
+    )
       .select("*", { count: "exact" })
       .eq("user_id", user.id)
       .order("started_at", { ascending: false })
       .range(offset, offset + limit - 1);
 
     if (reportId) {
-      query = query.eq("report_id", reportId);
+      query = query.eq("report_id", reportId) as typeof query;
     }
 
     const { data, error, count } = await query;
@@ -118,12 +160,28 @@ export async function POST(request: NextRequest) {
 
     logger.info({ userId: user.id, reportId }, "Creating learning session");
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase.from("ks_learning_sessions") as any)
-      .insert({
-        user_id: user.id,
-        report_id: reportId,
-      })
+    type SessionInsert =
+      Database["public"]["Tables"]["ks_learning_sessions"]["Insert"];
+    type SessionRow =
+      Database["public"]["Tables"]["ks_learning_sessions"]["Row"];
+    const sessionInsertData: SessionInsert = {
+      user_id: user.id,
+      report_id: reportId,
+    };
+
+    const { data, error } = await (
+      supabase.from("ks_learning_sessions") as {
+        insert: (values: SessionInsert) => {
+          select: () => {
+            single: () => Promise<{
+              data: SessionRow | null;
+              error: { message: string } | null;
+            }>;
+          };
+        };
+      }
+    )
+      .insert(sessionInsertData)
       .select()
       .single();
 

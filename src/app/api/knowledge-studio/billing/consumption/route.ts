@@ -8,6 +8,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createLogger } from "@/lib/logger";
+import type { Database } from "@/types/supabase";
 
 const logger = createLogger("api:knowledge-studio:billing:consumption");
 
@@ -57,8 +58,23 @@ export async function GET(request: NextRequest) {
     );
 
     // 调用 RPC 获取消费汇总
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase.rpc as any)("get_consumption_summary", {
+    // 注意：RPC 函数类型可能未在 Database 类型中定义，使用类型断言
+    type GetConsumptionSummaryParams = {
+      p_user_id: string;
+      p_start_date: string;
+      p_end_date: string;
+    };
+    const { data, error } = await (
+      supabase.rpc as {
+        (
+          fnName: "get_consumption_summary",
+          params: GetConsumptionSummaryParams,
+        ): Promise<{
+          data: unknown;
+          error: { message: string } | null;
+        }>;
+      }
+    )("get_consumption_summary", {
       p_user_id: user.id,
       p_start_date: startDate,
       p_end_date: endDate,
@@ -132,17 +148,35 @@ export async function POST(request: NextRequest) {
       "Recording consumption",
     );
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase.from("ks_consumption_records") as any)
-      .insert({
-        user_id: user.id,
-        usage_type: usageType,
-        description,
-        amount,
-        cost,
-        report_id: reportId,
-        blueprint_type: blueprintType,
-      })
+    // 类型安全的插入操作
+    type ConsumptionRecordInsert =
+      Database["public"]["Tables"]["ks_consumption_records"]["Insert"];
+    type ConsumptionRecordRow =
+      Database["public"]["Tables"]["ks_consumption_records"]["Row"];
+
+    const insertData: ConsumptionRecordInsert = {
+      user_id: user.id,
+      usage_type: usageType,
+      description,
+      amount,
+      cost,
+      report_id: reportId || null,
+      blueprint_type: blueprintType || null,
+    };
+
+    const { data, error } = await (
+      supabase.from("ks_consumption_records") as {
+        insert: (values: ConsumptionRecordInsert) => {
+          select: () => {
+            single: () => Promise<{
+              data: ConsumptionRecordRow | null;
+              error: { message: string } | null;
+            }>;
+          };
+        };
+      }
+    )
+      .insert(insertData)
       .select()
       .single();
 

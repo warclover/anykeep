@@ -8,6 +8,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createLogger } from "@/lib/logger";
+import type { Database } from "@/types/supabase";
 
 const logger = createLogger("api:knowledge-studio:templates:[id]:clone");
 
@@ -44,8 +45,23 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     );
 
     // 调用 RPC 克隆模板
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase.rpc as any)("clone_template", {
+    // 注意：RPC 函数类型可能未在 Database 类型中定义，使用类型断言
+    // 但确保参数类型安全
+    type CloneTemplateParams = {
+      p_template_id: string;
+      p_new_name: string | null;
+    };
+    const { data, error } = await (
+      supabase.rpc as {
+        (
+          fnName: "clone_template",
+          params: CloneTemplateParams,
+        ): Promise<{
+          data: string | null; // 返回新模板 ID
+          error: { message: string } | null;
+        }>;
+      }
+    )("clone_template", {
       p_template_id: id,
       p_new_name: newName || null,
     });
@@ -65,10 +81,25 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     // 获取克隆后的模板详情
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: clonedTemplate, error: fetchError } = await (supabase.from("ks_custom_templates") as any)
+    type TemplateRow =
+      Database["public"]["Tables"]["ks_custom_templates"]["Row"];
+    const { data: clonedTemplate, error: fetchError } = await (
+      supabase.from("ks_custom_templates") as {
+        select: (columns: string) => {
+          eq: (
+            column: string,
+            value: string,
+          ) => {
+            single: () => Promise<{
+              data: TemplateRow | null;
+              error: { message: string } | null;
+            }>;
+          };
+        };
+      }
+    )
       .select("*")
-      .eq("id", data)
+      .eq("id", data as string)
       .single();
 
     if (fetchError) {

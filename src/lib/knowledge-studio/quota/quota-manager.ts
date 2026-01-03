@@ -12,6 +12,7 @@ import type {
   RecoverableError,
 } from "../types";
 import { ERROR_CODES } from "../types";
+import type { Database } from "@/types/supabase";
 import type {
   QuotaManagerConfig,
   DeductQuotaRequest,
@@ -26,6 +27,16 @@ import {
   DEFAULT_OPERATION_COSTS,
   MEMBERSHIP_QUOTA_LIMITS,
 } from "./types";
+import type {
+  DeductQuotaParams,
+  DeductQuotaResult as RpcDeductQuotaResult,
+  ConfirmQuotaParams,
+  ConfirmQuotaResult as RpcConfirmQuotaResult,
+  RefundQuotaParams,
+  RefundQuotaResult as RpcRefundQuotaResult,
+  GetQuotaUsageSummaryParams,
+  GetQuotaUsageSummaryResult,
+} from "./rpc-types";
 
 const logger = createLogger("quota-manager");
 
@@ -78,13 +89,16 @@ export class QuotaManager {
 
       // 2. 调用 RPC 函数扣除配额
       const supabase = createClient();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase.rpc as any)("deduct_quota", {
+      const params: DeductQuotaParams = {
         p_user_id: request.userId,
         p_operation_type: request.operationType,
         p_request_id: requestId,
         p_cost: request.cost,
-      });
+      };
+      const { data, error } = await supabase.rpc<
+        RpcDeductQuotaResult,
+        DeductQuotaParams
+      >("deduct_quota", params);
 
       if (error) {
         logger.error({ error, requestId }, "Failed to deduct quota");
@@ -136,11 +150,14 @@ export class QuotaManager {
 
     try {
       const supabase = createClient();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase.rpc as any)("confirm_quota", {
+      const params: ConfirmQuotaParams = {
         p_request_id: request.requestId,
         p_synthesis_report_id: request.synthesisReportId || null,
-      });
+      };
+      const { data, error } = await supabase.rpc<
+        RpcConfirmQuotaResult,
+        ConfirmQuotaParams
+      >("confirm_quota", params);
 
       if (error) {
         logger.error(
@@ -181,11 +198,14 @@ export class QuotaManager {
 
     try {
       const supabase = createClient();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase.rpc as any)("refund_quota", {
+      const params: RefundQuotaParams = {
         p_request_id: request.requestId,
         p_error_message: request.reason,
-      });
+      };
+      const { data, error } = await supabase.rpc<
+        RpcRefundQuotaResult,
+        RefundQuotaParams
+      >("refund_quota", params);
 
       if (error) {
         logger.error(
@@ -265,15 +285,14 @@ export class QuotaManager {
   async getUserQuotaInfo(userId: string): Promise<UserQuotaInfo> {
     const supabase = createClient();
 
-    // 类型断言: 手动维护类型文件时需要此断言
-    type ProfileRow = { membership_type: string | null };
-
     // 1. 获取用户会员类型
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: profile, error: profileError } = await (supabase.from("profiles") as any)
+    // 类型安全的查询
+    type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
       .select("membership_type")
       .eq("id", userId)
-      .single() as { data: ProfileRow | null; error: { message: string } | null };
+      .single<Pick<ProfileRow, "membership_type">>();
 
     if (profileError) {
       logger.error(
@@ -290,13 +309,13 @@ export class QuotaManager {
     const totalQuota = MEMBERSHIP_QUOTA_LIMITS[membershipType];
 
     // 2. 获取本月配额使用情况
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: usage, error: usageError } = await (supabase.rpc as any)(
-      "get_quota_usage_summary",
-      {
-        p_user_id: userId,
-      },
-    );
+    const params: GetQuotaUsageSummaryParams = {
+      p_user_id: userId,
+    };
+    const { data: usage, error: usageError } = await supabase.rpc<
+      GetQuotaUsageSummaryResult[],
+      GetQuotaUsageSummaryParams
+    >("get_quota_usage_summary", params);
 
     if (usageError) {
       logger.error({ userId, error: usageError }, "Failed to get quota usage");
@@ -325,13 +344,13 @@ export class QuotaManager {
   async getUsageSummary(userId: string): Promise<QuotaUsageSummary> {
     const supabase = createClient();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase.rpc as any)(
-      "get_quota_usage_summary",
-      {
-        p_user_id: userId,
-      },
-    );
+    const params: GetQuotaUsageSummaryParams = {
+      p_user_id: userId,
+    };
+    const { data, error } = await supabase.rpc<
+      GetQuotaUsageSummaryResult[],
+      GetQuotaUsageSummaryParams
+    >("get_quota_usage_summary", params);
 
     if (error) {
       logger.error({ userId, error }, "Failed to get usage summary");

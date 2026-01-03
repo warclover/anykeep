@@ -18,6 +18,7 @@ import type {
   TrialConfig,
 } from "./types";
 import { DEFAULT_TRIAL_CONFIG } from "./types";
+import type { Database, Json } from "@/types/supabase";
 
 // ============================================================================
 // 数据库行类型
@@ -37,15 +38,7 @@ interface TrialStateRow {
   metadata: Record<string, unknown>;
 }
 
-interface UpgradePromptRow {
-  id: string;
-  user_id: string;
-  prompt_type: UpgradePromptType;
-  trigger_type: string;
-  shown_at: string;
-  cooldown_until: string | null;
-  response: string | null;
-}
+// UpgradePromptRow 类型已从 Database 类型中获取，不再需要单独定义
 
 // ============================================================================
 // 类型转换工具
@@ -168,8 +161,23 @@ export class ConversionTracker implements IConversionTracker {
   async getTrialState(userId: string): Promise<UserTrialState | null> {
     const supabase = await createClient();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase.from("ks_user_trial_states") as any)
+    type TrialStateRow =
+      Database["public"]["Tables"]["ks_user_trial_states"]["Row"];
+    const { data, error } = await (
+      supabase.from("ks_user_trial_states") as {
+        select: (columns: string) => {
+          eq: (
+            column: string,
+            value: string,
+          ) => {
+            single: () => Promise<{
+              data: TrialStateRow | null;
+              error: { code?: string; message: string } | null;
+            }>;
+          };
+        };
+      }
+    )
       .select("*")
       .eq("user_id", userId)
       .single();
@@ -182,7 +190,7 @@ export class ConversionTracker implements IConversionTracker {
       return null;
     }
 
-    return rowToTrialState(data as TrialStateRow);
+    return rowToTrialState(data);
   }
 
   /**
@@ -192,8 +200,21 @@ export class ConversionTracker implements IConversionTracker {
     const supabase = await createClient();
 
     // 调用 RPC 函数
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase.rpc as any)("start_user_trial", {
+    type StartUserTrialParams = {
+      p_user_id: string;
+      p_duration_days: number;
+    };
+    const { data, error } = await (
+      supabase.rpc as {
+        (
+          fnName: "start_user_trial",
+          params: StartUserTrialParams,
+        ): Promise<{
+          data: Json | null;
+          error: { code?: string; message: string } | null;
+        }>;
+      }
+    )("start_user_trial", {
       p_user_id: userId,
       p_duration_days: this.config.durationDays,
     });
@@ -257,17 +278,26 @@ export class ConversionTracker implements IConversionTracker {
   async trackEvent(event: Omit<ConversionEvent, "id">): Promise<void> {
     const supabase = await createClient();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase.from("ks_conversion_events") as any).insert({
+    type ConversionEventInsert =
+      Database["public"]["Tables"]["ks_conversion_events"]["Insert"];
+    const eventInsertData: ConversionEventInsert = {
       user_id: event.userId,
       trigger_type: event.trigger,
-      source_page: event.context.sourcePage,
-      feature_id: event.context.featureId,
-      remaining_days: event.context.remainingDays,
-      remaining_quota: event.context.remainingQuota,
-      user_response: event.userResponse,
+      source_page: event.context.sourcePage ?? null,
+      feature_id: event.context.featureId ?? null,
+      remaining_days: event.context.remainingDays ?? null,
+      remaining_quota: event.context.remainingQuota ?? null,
+      user_response: event.userResponse ?? null,
       responded_at: event.userResponse ? new Date().toISOString() : null,
-    });
+    };
+
+    const { error } = await (
+      supabase.from("ks_conversion_events") as {
+        insert: (values: ConversionEventInsert) => Promise<{
+          error: { code?: string; message: string } | null;
+        }>;
+      }
+    ).insert(eventInsertData);
 
     if (error) {
       // 表不存在时仅记录日志
@@ -294,12 +324,26 @@ export class ConversionTracker implements IConversionTracker {
   async updateStage(userId: string, stage: ConversionStage): Promise<void> {
     const supabase = await createClient();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase.from("ks_user_trial_states") as any)
-      .update({
-        conversion_stage: stage,
-        updated_at: new Date().toISOString(),
-      })
+    type TrialStateUpdate =
+      Database["public"]["Tables"]["ks_user_trial_states"]["Update"];
+    const updateData: TrialStateUpdate = {
+      conversion_stage: stage,
+      updated_at: new Date().toISOString(),
+    };
+
+    const { error } = await (
+      supabase.from("ks_user_trial_states") as {
+        update: (values: TrialStateUpdate) => {
+          eq: (
+            column: string,
+            value: string,
+          ) => Promise<{
+            error: { code?: string; message: string } | null;
+          }>;
+        };
+      }
+    )
+      .update(updateData)
       .eq("user_id", userId);
 
     if (error) {
@@ -361,8 +405,32 @@ export class ConversionTracker implements IConversionTracker {
     }
 
     // 检查冷却时间
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: recentPrompts } = await (supabase.from("ks_upgrade_prompts") as any)
+    type UpgradePromptRow =
+      Database["public"]["Tables"]["ks_upgrade_prompts"]["Row"];
+    const { data: recentPrompts } = await (
+      supabase.from("ks_upgrade_prompts") as {
+        select: (columns: string) => {
+          eq: (
+            column: string,
+            value: string,
+          ) => {
+            eq: (
+              column: string,
+              value: string,
+            ) => {
+              order: (
+                column: string,
+                options: { ascending: boolean },
+              ) => {
+                limit: (count: number) => Promise<{
+                  data: UpgradePromptRow[] | null;
+                }>;
+              };
+            };
+          };
+        };
+      }
+    )
       .select("*")
       .eq("user_id", userId)
       .eq("prompt_type", promptConfig.type)
@@ -370,7 +438,7 @@ export class ConversionTracker implements IConversionTracker {
       .limit(1);
 
     if (recentPrompts && recentPrompts.length > 0) {
-      const lastPrompt = recentPrompts[0] as UpgradePromptRow;
+      const lastPrompt = recentPrompts[0];
       if (
         lastPrompt.cooldown_until &&
         new Date(lastPrompt.cooldown_until) > now
@@ -385,14 +453,23 @@ export class ConversionTracker implements IConversionTracker {
       cooldownUntil.getHours() + promptConfig.cooldownHours,
     );
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase.from("ks_upgrade_prompts") as any).insert({
+    type UpgradePromptInsert =
+      Database["public"]["Tables"]["ks_upgrade_prompts"]["Insert"];
+    const promptInsertData: UpgradePromptInsert = {
       user_id: userId,
       prompt_type: promptConfig.type,
       trigger_type: promptConfig.trigger,
       shown_at: now.toISOString(),
       cooldown_until: cooldownUntil.toISOString(),
-    });
+    };
+
+    await (
+      supabase.from("ks_upgrade_prompts") as {
+        insert: (values: UpgradePromptInsert) => Promise<{
+          error: { message: string } | null;
+        }>;
+      }
+    ).insert(promptInsertData);
 
     return promptConfig;
   }
@@ -408,12 +485,36 @@ export class ConversionTracker implements IConversionTracker {
     const supabase = await createClient();
 
     // 更新最近的提示记录
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase.from("ks_upgrade_prompts") as any)
-      .update({
-        response,
-        responded_at: new Date().toISOString(),
-      })
+    type UpgradePromptUpdate =
+      Database["public"]["Tables"]["ks_upgrade_prompts"]["Update"];
+    const updateData: UpgradePromptUpdate = {
+      response: response ?? null,
+      responded_at: new Date().toISOString(),
+    };
+
+    const { error } = await (
+      supabase.from("ks_upgrade_prompts") as {
+        update: (values: UpgradePromptUpdate) => {
+          eq: (
+            column: string,
+            value: string,
+          ) => {
+            eq: (
+              column: string,
+              value: string,
+            ) => {
+              is: (
+                column: string,
+                value: null,
+              ) => Promise<{
+                error: { code?: string; message: string } | null;
+              }>;
+            };
+          };
+        };
+      }
+    )
+      .update(updateData)
       .eq("user_id", userId)
       .eq("prompt_type", promptType)
       .is("response", null);
@@ -453,12 +554,26 @@ export class ConversionTracker implements IConversionTracker {
   async updateLastActive(userId: string): Promise<void> {
     const supabase = await createClient();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase.from("ks_user_trial_states") as any)
-      .update({
-        last_active_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
+    type TrialStateUpdate =
+      Database["public"]["Tables"]["ks_user_trial_states"]["Update"];
+    const updateData: TrialStateUpdate = {
+      last_active_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    await (
+      supabase.from("ks_user_trial_states") as {
+        update: (values: TrialStateUpdate) => {
+          eq: (
+            column: string,
+            value: string,
+          ) => Promise<{
+            error: { message: string } | null;
+          }>;
+        };
+      }
+    )
+      .update(updateData)
       .eq("user_id", userId);
   }
 
@@ -481,12 +596,26 @@ export class ConversionTracker implements IConversionTracker {
     // 更新体验列表
     const newFeatures = [...trialState.featuresExperienced, featureId];
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase.from("ks_user_trial_states") as any)
-      .update({
-        features_experienced: newFeatures,
-        updated_at: new Date().toISOString(),
-      })
+    type TrialStateUpdate =
+      Database["public"]["Tables"]["ks_user_trial_states"]["Update"];
+    const updateData: TrialStateUpdate = {
+      features_experienced: newFeatures,
+      updated_at: new Date().toISOString(),
+    };
+
+    await (
+      supabase.from("ks_user_trial_states") as {
+        update: (values: TrialStateUpdate) => {
+          eq: (
+            column: string,
+            value: string,
+          ) => Promise<{
+            error: { message: string } | null;
+          }>;
+        };
+      }
+    )
+      .update(updateData)
       .eq("user_id", userId);
 
     // 如果首次使用功能，更新阶段为 activation
@@ -510,12 +639,26 @@ export class ConversionTracker implements IConversionTracker {
       return;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase.from("ks_user_trial_states") as any)
-      .update({
-        generations_used: trialState.generationsUsed + 1,
-        updated_at: new Date().toISOString(),
-      })
+    type TrialStateUpdate =
+      Database["public"]["Tables"]["ks_user_trial_states"]["Update"];
+    const updateData: TrialStateUpdate = {
+      generations_used: trialState.generationsUsed + 1,
+      updated_at: new Date().toISOString(),
+    };
+
+    const { error } = await (
+      supabase.from("ks_user_trial_states") as {
+        update: (values: TrialStateUpdate) => {
+          eq: (
+            column: string,
+            value: string,
+          ) => Promise<{
+            error: { code?: string; message: string } | null;
+          }>;
+        };
+      }
+    )
+      .update(updateData)
       .eq("user_id", userId);
 
     if (error) {

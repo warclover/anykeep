@@ -633,6 +633,846 @@ export interface Database {
         };
       };
 
+      synthesis_reports: {
+        Row: {
+          id: string;
+          user_id: string;
+          blueprint_type: string;
+          title: string | null;
+          content: string;
+          citations: Json;
+          generation_metadata: Json;
+          version: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          blueprint_type: string;
+          title?: string | null;
+          content: string;
+          citations?: Json;
+          generation_metadata?: Json;
+          version?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          blueprint_type?: string;
+          title?: string | null;
+          content?: string;
+          citations?: Json;
+          generation_metadata?: Json;
+          version?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+
+      ks_custom_templates: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          description: string;
+          icon: string | null;
+          base_blueprint: string | null;
+          variables: Json;
+          prompt_sections: Json;
+          output_format: string | null;
+          visibility: "private" | "shared" | "public";
+          status: "draft" | "active" | "archived";
+          version: number;
+          usage_count: number;
+          tags: string[] | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          name: string;
+          description?: string;
+          icon?: string | null;
+          base_blueprint?: string | null;
+          variables?: Json;
+          prompt_sections?: Json;
+          output_format?: string | null;
+          visibility?: "private" | "shared" | "public";
+          status?: "draft" | "active" | "archived";
+          version?: number;
+          usage_count?: number;
+          tags?: string[] | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          name?: string;
+          description?: string;
+          icon?: string | null;
+          base_blueprint?: string | null;
+          variables?: Json;
+          prompt_sections?: Json;
+          output_format?: string | null;
+          visibility?: "private" | "shared" | "public";
+          status?: "draft" | "active" | "archived";
+          version?: number;
+          usage_count?: number;
+          tags?: string[] | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+
+      ks_template_versions: {
+        Row: {
+          id: string;
+          template_id: string;
+          version: number;
+          changelog: string;
+          variables: Json;
+          prompt_sections: Json;
+          created_at: string;
+          created_by: string;
+        };
+        Insert: {
+          id?: string;
+          template_id: string;
+          version: number;
+          changelog?: string;
+          variables?: Json;
+          prompt_sections?: Json;
+          created_at?: string;
+          created_by: string;
+        };
+        Update: {
+          id?: string;
+          template_id?: string;
+          version?: number;
+          changelog?: string;
+          variables?: Json;
+          prompt_sections?: Json;
+          created_at?: string;
+          created_by?: string;
+        };
+      };
+
+      ks_template_usages: {
+        Row: {
+          id: string;
+          template_id: string;
+          user_id: string;
+          variable_values: Json;
+          report_id: string | null;
+          rating: number | null;
+          feedback: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          template_id: string;
+          user_id: string;
+          variable_values?: Json;
+          report_id?: string | null;
+          rating?: number | null;
+          feedback?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          template_id?: string;
+          user_id?: string;
+          variable_values?: Json;
+          report_id?: string | null;
+          rating?: number | null;
+          feedback?: string | null;
+          created_at?: string;
+        };
+      };
+
+      ks_learning_sessions: {
+        Row: {
+          id: string;
+          user_id: string;
+          report_id: string;
+          started_at: string;
+          ended_at: string | null;
+          points_studied: number;
+          points_reviewed: number;
+          correct_answers: number;
+          total_answers: number;
+          duration_minutes: number;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          report_id: string;
+          started_at?: string;
+          ended_at?: string | null;
+          points_studied?: number;
+          points_reviewed?: number;
+          correct_answers?: number;
+          total_answers?: number;
+          duration_minutes?: number;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          report_id?: string;
+          started_at?: string;
+          ended_at?: string | null;
+          points_studied?: number;
+          points_reviewed?: number;
+          correct_answers?: number;
+          total_answers?: number;
+          duration_minutes?: number;
+        };
+      };
+
+      ks_knowledge_points: {
+        Row: {
+          id: string;
+          report_id: string;
+          content: string;
+          keywords: string[] | null;
+          paragraph_index: number;
+          source_bookmark_ids: string[] | null;
+          difficulty: number;
+          importance: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          report_id: string;
+          content: string;
+          keywords?: string[] | null;
+          paragraph_index?: number;
+          source_bookmark_ids?: string[] | null;
+          difficulty?: number;
+          importance?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          report_id?: string;
+          content?: string;
+          keywords?: string[] | null;
+          paragraph_index?: number;
+          source_bookmark_ids?: string[] | null;
+          difficulty?: number;
+          importance?: number;
+          created_at?: string;
+        };
+      };
+
+      ks_knowledge_point_mastery: {
+        Row: {
+          id: string;
+          user_id: string;
+          knowledge_point_id: string;
+          mastery_level:
+            | "unknown"
+            | "learning"
+            | "familiar"
+            | "proficient"
+            | "mastered";
+          review_count: number;
+          correct_count: number;
+          accuracy: number;
+          last_reviewed_at: string | null;
+          next_review_at: string | null;
+          interval_days: number;
+          ease_factor: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          knowledge_point_id: string;
+          mastery_level?:
+            | "unknown"
+            | "learning"
+            | "familiar"
+            | "proficient"
+            | "mastered";
+          review_count?: number;
+          correct_count?: number;
+          accuracy?: number;
+          last_reviewed_at?: string | null;
+          next_review_at?: string | null;
+          interval_days?: number;
+          ease_factor?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          knowledge_point_id?: string;
+          mastery_level?:
+            | "unknown"
+            | "learning"
+            | "familiar"
+            | "proficient"
+            | "mastered";
+          review_count?: number;
+          correct_count?: number;
+          accuracy?: number;
+          last_reviewed_at?: string | null;
+          next_review_at?: string | null;
+          interval_days?: number;
+          ease_factor?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+
+      ks_review_records: {
+        Row: {
+          id: string;
+          user_id: string;
+          knowledge_point_id: string;
+          session_id: string | null;
+          rating: number;
+          response_time_ms: number;
+          previous_interval: number;
+          new_interval: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          knowledge_point_id: string;
+          session_id?: string | null;
+          rating: number;
+          response_time_ms?: number;
+          previous_interval?: number;
+          new_interval?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          knowledge_point_id?: string;
+          session_id?: string | null;
+          rating?: number;
+          response_time_ms?: number;
+          previous_interval?: number;
+          new_interval?: number;
+          created_at?: string;
+        };
+      };
+
+      ks_report_change_sets: {
+        Row: {
+          id: string;
+          report_id: string;
+          user_id: string;
+          changes: Json;
+          impact_level: "none" | "minor" | "moderate" | "major";
+          processed: boolean;
+          processed_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          report_id: string;
+          user_id: string;
+          changes?: Json;
+          impact_level?: "none" | "minor" | "moderate" | "major";
+          processed?: boolean;
+          processed_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          report_id?: string;
+          user_id?: string;
+          changes?: Json;
+          impact_level?: "none" | "minor" | "moderate" | "major";
+          processed?: boolean;
+          processed_at?: string | null;
+          created_at?: string;
+        };
+      };
+
+      ks_incremental_update_tasks: {
+        Row: {
+          id: string;
+          report_id: string;
+          user_id: string;
+          change_set_id: string;
+          impact_analysis: Json;
+          status:
+            | "pending"
+            | "processing"
+            | "completed"
+            | "failed"
+            | "cancelled";
+          error: string | null;
+          new_version: number | null;
+          created_at: string;
+          started_at: string | null;
+          completed_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          report_id: string;
+          user_id: string;
+          change_set_id: string;
+          impact_analysis?: Json;
+          status?:
+            | "pending"
+            | "processing"
+            | "completed"
+            | "failed"
+            | "cancelled";
+          error?: string | null;
+          new_version?: number | null;
+          created_at?: string;
+          started_at?: string | null;
+          completed_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          report_id?: string;
+          user_id?: string;
+          change_set_id?: string;
+          impact_analysis?: Json;
+          status?:
+            | "pending"
+            | "processing"
+            | "completed"
+            | "failed"
+            | "cancelled";
+          error?: string | null;
+          new_version?: number | null;
+          created_at?: string;
+          started_at?: string | null;
+          completed_at?: string | null;
+        };
+      };
+
+      ks_update_results: {
+        Row: {
+          id: string;
+          task_id: string;
+          report_id: string;
+          user_id: string;
+          success: boolean;
+          new_version: number;
+          paragraphs_updated: number;
+          paragraphs_regenerated: number;
+          processing_time_ms: number;
+          tokens_used: number;
+          change_summary: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          task_id: string;
+          report_id: string;
+          user_id: string;
+          success?: boolean;
+          new_version: number;
+          paragraphs_updated?: number;
+          paragraphs_regenerated?: number;
+          processing_time_ms?: number;
+          tokens_used?: number;
+          change_summary?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          task_id?: string;
+          report_id?: string;
+          user_id?: string;
+          success?: boolean;
+          new_version?: number;
+          paragraphs_updated?: number;
+          paragraphs_regenerated?: number;
+          processing_time_ms?: number;
+          tokens_used?: number;
+          change_summary?: string | null;
+          created_at?: string;
+        };
+      };
+
+      ks_report_versions: {
+        Row: {
+          id: string;
+          report_id: string;
+          user_id: string;
+          version: number;
+          content: Json;
+          bookmark_ids: string[] | null;
+          change_summary: string | null;
+          source: "manual" | "incremental" | "full_regen" | "rollback";
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          report_id: string;
+          user_id: string;
+          version: number;
+          content: Json;
+          bookmark_ids?: string[] | null;
+          change_summary?: string | null;
+          source?: "manual" | "incremental" | "full_regen" | "rollback";
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          report_id?: string;
+          user_id?: string;
+          version?: number;
+          content?: Json;
+          bookmark_ids?: string[] | null;
+          change_summary?: string | null;
+          source?: "manual" | "incremental" | "full_regen" | "rollback";
+          created_at?: string;
+        };
+      };
+
+      ks_user_trial_states: {
+        Row: {
+          id: string;
+          user_id: string;
+          status: "active" | "expired" | "converted" | "cancelled";
+          started_at: string;
+          expires_at: string;
+          generations_used: number;
+          features_experienced: string[];
+          conversion_stage:
+            | "awareness"
+            | "activation"
+            | "engagement"
+            | "consideration"
+            | "conversion"
+            | "retention";
+          last_active_at: string;
+          converted_at: string | null;
+          metadata: Json;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          status?: "active" | "expired" | "converted" | "cancelled";
+          started_at?: string;
+          expires_at: string;
+          generations_used?: number;
+          features_experienced?: string[];
+          conversion_stage?:
+            | "awareness"
+            | "activation"
+            | "engagement"
+            | "consideration"
+            | "conversion"
+            | "retention";
+          last_active_at?: string;
+          converted_at?: string | null;
+          metadata?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          status?: "active" | "expired" | "converted" | "cancelled";
+          started_at?: string;
+          expires_at?: string;
+          generations_used?: number;
+          features_experienced?: string[];
+          conversion_stage?:
+            | "awareness"
+            | "activation"
+            | "engagement"
+            | "consideration"
+            | "conversion"
+            | "retention";
+          last_active_at?: string;
+          converted_at?: string | null;
+          metadata?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+
+      ks_conversion_events: {
+        Row: {
+          id: string;
+          user_id: string;
+          trigger_type:
+            | "quota_exhausted"
+            | "feature_locked"
+            | "trial_ending"
+            | "trial_expired"
+            | "manual_upgrade"
+            | "promo_offer";
+          source_page: string | null;
+          feature_id: string | null;
+          remaining_days: number | null;
+          remaining_quota: number | null;
+          user_response:
+            | "dismissed"
+            | "clicked"
+            | "converted"
+            | "delayed"
+            | null;
+          responded_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          trigger_type:
+            | "quota_exhausted"
+            | "feature_locked"
+            | "trial_ending"
+            | "trial_expired"
+            | "manual_upgrade"
+            | "promo_offer";
+          source_page?: string | null;
+          feature_id?: string | null;
+          remaining_days?: number | null;
+          remaining_quota?: number | null;
+          user_response?:
+            | "dismissed"
+            | "clicked"
+            | "converted"
+            | "delayed"
+            | null;
+          responded_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          trigger_type?:
+            | "quota_exhausted"
+            | "feature_locked"
+            | "trial_ending"
+            | "trial_expired"
+            | "manual_upgrade"
+            | "promo_offer";
+          source_page?: string | null;
+          feature_id?: string | null;
+          remaining_days?: number | null;
+          remaining_quota?: number | null;
+          user_response?:
+            | "dismissed"
+            | "clicked"
+            | "converted"
+            | "delayed"
+            | null;
+          responded_at?: string | null;
+          created_at?: string;
+        };
+      };
+
+      ks_upgrade_prompts: {
+        Row: {
+          id: string;
+          user_id: string;
+          prompt_type: "modal" | "banner" | "inline" | "tooltip";
+          trigger_type: string;
+          shown_at: string;
+          response: "dismissed" | "clicked" | "converted" | "delayed" | null;
+          responded_at: string | null;
+          cooldown_until: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          prompt_type: "modal" | "banner" | "inline" | "tooltip";
+          trigger_type: string;
+          shown_at?: string;
+          response?: "dismissed" | "clicked" | "converted" | "delayed" | null;
+          responded_at?: string | null;
+          cooldown_until?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          prompt_type?: "modal" | "banner" | "inline" | "tooltip";
+          trigger_type?: string;
+          shown_at?: string;
+          response?: "dismissed" | "clicked" | "converted" | "delayed" | null;
+          responded_at?: string | null;
+          cooldown_until?: string | null;
+          created_at?: string;
+        };
+      };
+
+      ks_bills: {
+        Row: {
+          id: string;
+          user_id: string;
+          period_start: string;
+          period_end: string;
+          subtotal: number;
+          discount: number;
+          tax: number;
+          total: number;
+          currency: string;
+          status: "pending" | "paid" | "overdue" | "cancelled" | "refunded";
+          due_at: string;
+          paid_at: string | null;
+          metadata: Json;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          period_start: string;
+          period_end: string;
+          subtotal?: number;
+          discount?: number;
+          tax?: number;
+          total?: number;
+          currency?: string;
+          status?: "pending" | "paid" | "overdue" | "cancelled" | "refunded";
+          due_at: string;
+          paid_at?: string | null;
+          metadata?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          period_start?: string;
+          period_end?: string;
+          subtotal?: number;
+          discount?: number;
+          tax?: number;
+          total?: number;
+          currency?: string;
+          status?: "pending" | "paid" | "overdue" | "cancelled" | "refunded";
+          due_at?: string;
+          paid_at?: string | null;
+          metadata?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+
+      ks_bill_line_items: {
+        Row: {
+          id: string;
+          bill_id: string;
+          description: string;
+          usage_type: string;
+          quantity: number;
+          unit_price: number;
+          total_price: number;
+          discount: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          bill_id: string;
+          description: string;
+          usage_type: string;
+          quantity?: number;
+          unit_price?: number;
+          total_price?: number;
+          discount?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          bill_id?: string;
+          description?: string;
+          usage_type?: string;
+          quantity?: number;
+          unit_price?: number;
+          total_price?: number;
+          discount?: number;
+          created_at?: string;
+        };
+      };
+
+      ks_usage_records: {
+        Row: {
+          id: string;
+          user_id: string;
+          usage_type: string;
+          amount: number;
+          unit: string;
+          resource_id: string | null;
+          metadata: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          usage_type: string;
+          amount?: number;
+          unit?: string;
+          resource_id?: string | null;
+          metadata?: Json;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          usage_type?: string;
+          amount?: number;
+          unit?: string;
+          resource_id?: string | null;
+          metadata?: Json;
+          created_at?: string;
+        };
+      };
+
+      ks_consumption_records: {
+        Row: {
+          id: string;
+          user_id: string;
+          usage_type: string;
+          description: string;
+          amount: number;
+          cost: number;
+          report_id: string | null;
+          blueprint_type: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          usage_type: string;
+          description: string;
+          amount?: number;
+          cost?: number;
+          report_id?: string | null;
+          blueprint_type?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          usage_type?: string;
+          description?: string;
+          amount?: number;
+          cost?: number;
+          report_id?: string | null;
+          blueprint_type?: string | null;
+          created_at?: string;
+        };
+      };
+
       bookmark_tags: {
         Row: Record<string, unknown>;
         Insert: Record<string, unknown>;
@@ -949,7 +1789,11 @@ export interface ReportSuggestion {
 }
 
 /** 集群处理状态 */
-export type ClusterProcessingStatus = "pending" | "processing" | "completed" | "failed";
+export type ClusterProcessingStatus =
+  | "pending"
+  | "processing"
+  | "completed"
+  | "failed";
 
 /** 分类建议类型 */
 export interface ClassificationSuggestion {
