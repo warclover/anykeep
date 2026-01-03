@@ -169,12 +169,13 @@ describe("Type guards and interfaces", () => {
     it("should accept valid trial config", () => {
       const config: TrialConfig = {
         durationDays: 14,
-        freeGenerationLimit: 5,
-        proFeaturesAvailable: ["feature1", "feature2"],
+        generationQuota: 5,
+        unlockedFeatures: ["feature1", "feature2"],
         reminderDays: [7, 3, 1],
-        cooldownHours: 12,
+        enableFeatureGating: true,
       };
       expect(config.durationDays).toBe(14);
+      expect(config.generationQuota).toBe(5);
     });
   });
 

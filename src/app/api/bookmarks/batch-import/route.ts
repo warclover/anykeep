@@ -68,14 +68,22 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. 检查存储配额
+    // 类型断言: 手动维护类型文件时需要此断言
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("storage_quota, storage_used")
       .eq("id", user.id)
-      .single();
+      .single() as unknown as {
+      data: { storage_quota: number | null; storage_used: number | null } | null;
+      error: { message: string } | null;
+    };
 
     if (profileError) {
       return databaseError(BOOKMARK.LOAD_ERROR, profileError);
+    }
+
+    if (!profile) {
+      return databaseError(BOOKMARK.LOAD_ERROR, { message: "用户信息不存在" });
     }
 
     const remainingQuota =
@@ -103,7 +111,10 @@ export async function POST(request: NextRequest) {
       .select("url")
       .eq("user_id", user.id)
       .in("url", urls)
-      .is("deleted_at", null);
+      .is("deleted_at", null) as unknown as {
+      data: { url: string }[] | null;
+      error: unknown;
+    };
 
     // 构建 URL 去重 Set（O(1) 查找复杂度）
     const existingUrls = new Set(existingBookmarks?.map((b) => b.url) || []);
@@ -189,10 +200,11 @@ export async function POST(request: NextRequest) {
 
     // 5. 批量插入数据库
     if (bookmarkInserts.length > 0) {
-      const { data: inserted, error: insertError } = await supabase
-        .from("bookmarks")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: inserted, error: insertError } = await (supabase
+        .from("bookmarks") as any)
         .insert(bookmarkInserts)
-        .select();
+        .select() as { data: unknown[] | null; error: { message?: string; code?: string } | null };
 
       if (insertError) {
         // 提取详细错误信息
@@ -215,7 +227,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      result.success = inserted.length;
+      result.success = inserted?.length ?? 0;
 
       logger.info(
         {

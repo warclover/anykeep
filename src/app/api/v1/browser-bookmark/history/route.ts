@@ -152,8 +152,10 @@ export const POST = withAuthMiddleware(
     const data = validation.data;
 
     // 插入数据库
-    const { data: created, error } = await supabase
-      .from("import_history")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type ImportHistoryRow = { id: number };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: created, error } = await (supabase.from("import_history") as any)
       .insert({
         user_id: userId,
         import_source: data.import_source,
@@ -168,11 +170,11 @@ export const POST = withAuthMiddleware(
         options: (data.options || null) as Json,
       })
       .select()
-      .single();
+      .single() as { data: ImportHistoryRow | null; error: { message: string } | null };
 
-    if (error) {
+    if (error || !created) {
       logger.error(
-        { error: error.message, userId },
+        { error: error?.message, userId },
         "[v1] Failed to create import history",
       );
       return NextResponse.json(

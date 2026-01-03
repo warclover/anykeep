@@ -14,6 +14,7 @@ import type {
   StreamChunk,
   ToneType,
 } from "@/lib/knowledge-studio";
+import type { Database } from "@/types/supabase";
 
 const logger = createLogger("api:knowledge-studio:generate");
 
@@ -103,7 +104,7 @@ export async function POST(request: NextRequest) {
         .from("profiles")
         .select("membership_type")
         .eq("id", user.id)
-        .single();
+        .single<Database["public"]["Tables"]["profiles"]["Row"]>();
 
       const isPro =
         profile?.membership_type === "PRO" ||
@@ -130,7 +131,13 @@ export async function POST(request: NextRequest) {
       .from("bookmarks")
       .select("id, title, url, ai_summary, platform")
       .eq("user_id", user.id)
-      .in("id", numericIds);
+      .in("id", numericIds)
+      .returns<
+        Pick<
+          Database["public"]["Tables"]["bookmarks"]["Row"],
+          "id" | "title" | "url" | "ai_summary" | "platform"
+        >[]
+      >();
 
     if (bookmarkError || !bookmarks?.length) {
       return new Response(
@@ -155,6 +162,8 @@ export async function POST(request: NextRequest) {
 
         try {
           // 5.1 配额检查和扣除
+          let savedReportId: string | undefined;
+          
           const quotaResult = await quotaManager.executeWithQuota(
             user.id,
             "blueprint_generation",
@@ -162,8 +171,8 @@ export async function POST(request: NextRequest) {
               // 5.2 准备素材
               const materials = bookmarks.map((b) => ({
                 bookmarkId: String(b.id),
-                title: b.title,
-                url: b.url,
+                title: b.title ?? "",
+                url: b.url ?? "",
                 content: b.ai_summary || "",
                 platform: b.platform || undefined,
               }));
@@ -190,7 +199,8 @@ export async function POST(request: NextRequest) {
               onSuccess: async (result, _reqId) => {
                 // 5.4 生成成功后保存报告
                 if (result.success && result.content) {
-                  const { data: report } = await (
+                  logger.info({ requestId, hasContent: !!result.content }, "Saving report to database");
+                  const { data: report, error: insertError } = await (
                     supabase
                       // eslint-disable-next-line @typescript-eslint/no-explicit-any
                       .from("synthesis_reports") as any
@@ -212,25 +222,39 @@ export async function POST(request: NextRequest) {
                     .select("id")
                     .single();
 
+                  if (insertError) {
+                    logger.error({ requestId, error: insertError }, "Failed to save report");
+                    throw insertError;
+                  }
+
+                  // 保存 reportId 以便后续使用
+                  savedReportId = report?.id;
+                  logger.info({ requestId, reportId: savedReportId }, "Report saved successfully");
                   return report?.id;
                 }
+                logger.warn({ requestId, success: result.success }, "Report generation not successful, skipping save");
                 return undefined;
               },
             },
           );
 
           if (quotaResult.success && quotaResult.data) {
+            logger.info({ requestId, savedReportId }, "Sending done event");
             // 发送完成事件
             sendEvent({
               type: "done",
               data: {
-                reportId: quotaResult.data.metadata?.reportId,
+                reportId: savedReportId,
                 content: quotaResult.data.content,
                 citations: quotaResult.data.citations,
               },
               timestamp: new Date().toISOString(),
               requestId,
             });
+            
+            if (!savedReportId) {
+              logger.warn({ requestId }, "Done event sent but reportId is missing");
+            }
           } else {
             // 发送错误事件
             sendEvent({

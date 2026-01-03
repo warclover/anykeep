@@ -169,7 +169,7 @@ function ErrorDetails({ errors }: { errors: ImportErrorDetail[] }) {
                 <div className="truncate font-medium">
                   {error.title || error.url}
                 </div>
-                <div className="text-red-600">{error.reason}</div>
+                <div className="text-red-600">{error.error}</div>
               </div>
             </div>
           ))}
@@ -190,7 +190,7 @@ function HistoryItem({
   onDelete,
 }: {
   history: ImportHistory;
-  onDelete: (id: number) => void;
+  onDelete: (id: string) => void;
 }) {
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -249,7 +249,7 @@ function HistoryItem({
             <StatItem
               icon={CheckCircle2}
               label="成功"
-              value={history.success_count}
+              value={history.success_count ?? 0}
               className="text-green-600"
             />
             {history.skipped_count > 0 && (
@@ -268,11 +268,11 @@ function HistoryItem({
                 className="text-red-600"
               />
             )}
-            {history.folders_created > 0 && (
+            {(history.folders_created ?? 0) > 0 && (
               <StatItem
                 icon={FolderPlus}
                 label="文件夹"
-                value={history.folders_created}
+                value={history.folders_created ?? 0}
               />
             )}
           </div>
@@ -347,7 +347,7 @@ export function ImportHistoryList({
   }, [loadHistory]);
 
   // 删除处理
-  const handleDelete = (id: number) => {
+  const handleDelete = (id: string) => {
     setHistory((prev) => prev.filter((h) => h.id !== id));
     onDelete?.();
   };

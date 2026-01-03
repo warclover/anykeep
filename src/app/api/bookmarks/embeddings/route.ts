@@ -58,8 +58,10 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. 查询需要生成向量的书签
-    let query = supabase
-      .from("bookmarks")
+    // 类型断言: 手动维护类型文件时需要此断言
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let query = (supabase
+      .from("bookmarks") as any)
       .select("id, title, ai_summary, ai_tags")
       .eq("user_id", user.id)
       .is("deleted_at", null)
@@ -72,7 +74,16 @@ export async function POST(request: NextRequest) {
 
     query = query.limit(limit);
 
-    const { data: bookmarks, error: queryError } = await query;
+    type BookmarkEmbedding = {
+      id: number;
+      title: string | null;
+      ai_summary: string | null;
+      ai_tags: string[] | null;
+    };
+    const { data: bookmarks, error: queryError } = await query as {
+      data: BookmarkEmbedding[] | null;
+      error: { message: string } | null;
+    };
 
     if (queryError) {
       return databaseError("查询书签失败", queryError);
@@ -113,9 +124,9 @@ export async function POST(request: NextRequest) {
         try {
           // 构建向量文本
           const text = buildEmbeddingText(
-            bookmark.title,
-            bookmark.ai_summary,
-            bookmark.ai_tags,
+            bookmark.title ?? "",
+            bookmark.ai_summary ?? "",
+            bookmark.ai_tags ?? [],
           );
 
           if (!text || text.trim().length < 5) {
@@ -131,14 +142,15 @@ export async function POST(request: NextRequest) {
 
           // 更新数据库（pgvector 接受 number[] 格式，TypeScript 类型为 string）
           // V4.2.7: 同时保存 embedding_version 用于版本追踪
-          const { error: updateError } = await supabase
-            .from("bookmarks")
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { error: updateError } = await (supabase
+            .from("bookmarks") as any)
             .update({
               embedding: embedding as unknown as string,
               embedding_version: getCurrentEmbeddingVersion(),
             })
             .eq("id", bookmark.id)
-            .eq("user_id", user.id);
+            .eq("user_id", user.id) as { error: { message: string } | null };
 
           if (updateError) {
             throw new Error(updateError.message);
@@ -225,11 +237,15 @@ export async function GET(_request: NextRequest) {
     }
 
     // 2. 查询统计数据
+    // 类型断言: 手动维护类型文件时需要此断言
     const { data: stats, error: statsError } = await supabase
       .from("bookmarks")
       .select("id, embedding")
       .eq("user_id", user.id)
-      .is("deleted_at", null);
+      .is("deleted_at", null) as unknown as {
+      data: { id: number; embedding: unknown }[] | null;
+      error: { message: string } | null;
+    };
 
     if (statsError) {
       return databaseError("查询统计失败", statsError);

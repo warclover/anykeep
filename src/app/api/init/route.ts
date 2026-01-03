@@ -186,9 +186,10 @@ async function getUnreadCount(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
 ) {
-  const { data, error } = await supabase.rpc("get_unread_message_counts", {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase.rpc as any)("get_unread_message_counts", {
     p_user_id: userId,
-  });
+  }) as { data: unknown; error: { message: string } | null };
 
   if (error) {
     // 非关键数据，返回默认值

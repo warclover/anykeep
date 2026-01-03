@@ -64,8 +64,8 @@ export function useAutoSnapshotSettings(): UseAutoSnapshotSettingsResult {
         autoSnapshot: newAutoSnapshot as unknown as Json,
       };
 
-      const { error } = await supabase
-        .from("profiles")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase.from("profiles") as any)
         .update({ settings: updatedSettings })
         .eq("id", user.id);
 

@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { BookmarkDetailClient } from "@/components/bookmark/bookmark-detail-client";
-import type { CustomUsageTag, ProfileSettings } from "@/types/supabase";
+import type { CustomUsageTag, ProfileSettings, Bookmark } from "@/types/supabase";
 
 interface BookmarkDetailPageProps {
   params: Promise<{
@@ -44,14 +44,22 @@ export default async function BookmarkDetailPage({
 
   // V4.2.22: 并行获取书签详情和用途标签，消除客户端延迟
   const [bookmarkResult, profileResult] = await Promise.all([
+    // 类型断言: 手动维护类型文件时需要此断言
     supabase
       .from("bookmarks")
       .select("*, folders(id, name, parent_id)")
       .eq("id", bookmarkId)
       .eq("user_id", user.id)
       .is("deleted_at", null)
-      .single(),
-    supabase.from("profiles").select("settings").eq("id", user.id).single(),
+      .single() as unknown as Promise<{
+        data: (Bookmark & { folders?: { id: number; name: string; parent_id: number | null } | null }) | null;
+        error: unknown;
+      }>,
+    // 类型断言: 手动维护类型文件时需要此断言
+    supabase.from("profiles").select("settings").eq("id", user.id).single() as unknown as Promise<{
+      data: { settings: unknown } | null;
+      error: unknown;
+    }>,
   ]);
 
   const { data: bookmark, error } = bookmarkResult;

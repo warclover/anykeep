@@ -29,12 +29,17 @@ export async function GET(
   }
 
   // 获取加密的 Token
+  // 类型断言: 手动维护类型文件时需要此断言
+  type TokenRecordType = { access_token: string };
   const { data: tokenRecord, error: tokenError } = await supabase
     .from("distribution_oauth_tokens")
     .select("access_token")
     .eq("user_id", user.id)
     .eq("provider", "notion")
-    .single();
+    .single() as unknown as {
+    data: TokenRecordType | null;
+    error: { message: string } | null;
+  };
 
   if (tokenError || !tokenRecord) {
     return NextResponse.json({ error: "Notion 未授权" }, { status: 401 });

@@ -22,12 +22,22 @@ export async function GET() {
   }
 
   // 查询 Notion Token
+  // 类型断言: 手动维护类型文件时需要此断言
+  type TokenRecordType = {
+    workspace_id: string;
+    workspace_name: string;
+    workspace_icon: string | null;
+    updated_at: string;
+  };
   const { data: tokenRecord, error: tokenError } = await supabase
     .from("distribution_oauth_tokens")
     .select("workspace_id, workspace_name, workspace_icon, updated_at")
     .eq("user_id", user.id)
     .eq("provider", "notion")
-    .single();
+    .single() as unknown as {
+    data: TokenRecordType | null;
+    error: { message: string } | null;
+  };
 
   if (tokenError || !tokenRecord) {
     return NextResponse.json({

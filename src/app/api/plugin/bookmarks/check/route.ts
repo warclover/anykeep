@@ -55,13 +55,23 @@ export async function GET(request: NextRequest) {
 
     const serviceClient = await createServiceClient();
 
+    // 类型断言: 手动维护类型文件时需要此断言
+    type BookmarkCheckRow = {
+      id: number;
+      url: string;
+      title: string;
+      description: string | null;
+      platform: string;
+      created_at: string;
+    };
+
     // 查找收藏（简化查询）
-    const { data: bookmark, error: fetchError } = await serviceClient
-      .from("bookmarks")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: bookmark, error: fetchError } = await (serviceClient.from("bookmarks") as any)
       .select("id, url, title, description, platform, created_at")
       .eq("user_id", authResult.userId)
       .eq("url", url)
-      .single();
+      .single() as { data: BookmarkCheckRow | null; error: { code?: string; message: string } | null };
 
     if (fetchError && fetchError.code !== "PGRST116") {
       // PGRST116 = no rows returned
@@ -82,10 +92,10 @@ export async function GET(request: NextRequest) {
     }
 
     // 获取标签
-    const { data: tagRelations } = await serviceClient
-      .from("bookmark_tags")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: tagRelations } = await (serviceClient.from("bookmark_tags") as any)
       .select("tags(name)")
-      .eq("bookmark_id", bookmark.id);
+      .eq("bookmark_id", bookmark.id) as { data: Array<{ tags: { name: string } | null }> | null };
 
     const tags: string[] = [];
     if (tagRelations) {

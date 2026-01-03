@@ -38,11 +38,13 @@ export async function GET() {
     const supabase = await createClient();
 
     // 从 profiles 表获取设置
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type ProfileSettingsRow = { settings: Json | null };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: profile, error: profileError } = await (supabase.from("profiles") as any)
       .select("settings")
       .eq("id", user.id)
-      .single();
+      .single() as { data: ProfileSettingsRow | null; error: { code?: string; message: string } | null };
 
     if (profileError) {
       // 如果是新用户，profiles 可能不存在
@@ -85,11 +87,13 @@ export async function PUT(request: NextRequest) {
     const body = (await request.json()) as Partial<UserSettings>;
 
     // 先获取现有设置
-    const { data: profile } = await supabase
-      .from("profiles")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type ProfileSettingsRow = { settings: Json | null };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: profile } = await (supabase.from("profiles") as any)
       .select("settings")
       .eq("id", user.id)
-      .single();
+      .single() as { data: ProfileSettingsRow | null };
 
     // 合并设置
     const currentSettings = mergeWithDefaults(
@@ -106,7 +110,9 @@ export async function PUT(request: NextRequest) {
     };
 
     // 更新或插入设置（将 UserSettings 转换为 Json 类型）
-    const { error: upsertError } = await supabase.from("profiles").upsert(
+    // 类型断言: 手动维护类型文件时需要此断言
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: upsertError } = await (supabase.from("profiles") as any).upsert(
       {
         id: user.id,
         settings: newSettings as unknown as Json,

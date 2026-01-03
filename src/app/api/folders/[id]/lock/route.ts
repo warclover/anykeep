@@ -56,12 +56,22 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 
     // 验证文件夹存在且属于当前用户
+    // 类型断言: 手动维护类型文件时需要此断言
+    type FolderType = {
+      id: number;
+      name: string;
+      is_system: boolean;
+      user_id: string;
+    };
     const { data: folder, error: folderError } = await supabase
       .from("folders")
       .select("id, name, is_system, user_id")
       .eq("id", folderId)
       .eq("user_id", user.id)
-      .single();
+      .single() as unknown as {
+      data: FolderType | null;
+      error: { message: string } | null;
+    };
 
     if (folderError || !folder) {
       return NextResponse.json(
@@ -82,8 +92,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     // Note: folder_profiles 是 V4.2 新增表
     // P1-2 修复：使用 upsert 避免并发请求导致的竞态条件
     // 替代原来的 update + insert 两步操作
-    const { error: upsertError } = await supabase
-      .from("folder_profiles")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: upsertError } = await (supabase
+      .from("folder_profiles") as any)
       .upsert(
         {
           folder_id: folderId,
@@ -95,7 +106,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         {
           onConflict: "folder_id,user_id",
         },
-      );
+      ) as { error: { message: string } | null };
 
     if (upsertError) {
       logger.error(

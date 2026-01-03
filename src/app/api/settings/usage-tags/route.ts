@@ -177,7 +177,8 @@ export async function PUT(request: NextRequest) {
     const { settings, customUsageTags: existingTags } = settingsResult;
 
     // 查找要更新的标签
-    const tagIndex = existingTags.findIndex((tag) => tag.id === id);
+    // 类型断言: CustomUsageTag 运行时包含 id 属性
+    const tagIndex = existingTags.findIndex((tag) => (tag as CustomUsageTag & { id: string }).id === id);
     if (tagIndex === -1) {
       return badRequestError(MESSAGES.TAG_NOT_FOUND);
     }
@@ -258,13 +259,14 @@ export async function DELETE(request: NextRequest) {
     const { settings, customUsageTags: existingTags } = settingsResult;
 
     // 查找要删除的标签
-    const tagIndex = existingTags.findIndex((tag) => tag.id === id);
+    // 类型断言: CustomUsageTag 运行时包含 id 属性
+    const tagIndex = existingTags.findIndex((tag) => (tag as CustomUsageTag & { id: string }).id === id);
     if (tagIndex === -1) {
       return badRequestError(MESSAGES.TAG_NOT_FOUND);
     }
 
     // 删除标签
-    const updatedTags = existingTags.filter((tag) => tag.id !== id);
+    const updatedTags = existingTags.filter((tag) => (tag as CustomUsageTag & { id: string }).id !== id);
 
     // 更新设置
     const updateResult = await updateUserCustomTags(

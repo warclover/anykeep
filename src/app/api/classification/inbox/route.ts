@@ -178,12 +178,16 @@ async function handleAnalyze() {
 
     // 输出性能报告
     const perfReport = monitor.getReport();
+    // 类型断言: clusterStatus 可能是字符串（pending状态）或对象
+    const pendingClusterCount = typeof clusterStatus === "object" && clusterStatus !== null
+      ? (clusterStatus as { pendingClusterCount?: number }).pendingClusterCount ?? 0
+      : 0;
     logger.info(
       {
         userId: user.id,
         inboxCount: analysis.inboxCount,
         suggestionCount: analysis.suggestions.length,
-        pendingClusterCount: clusterStatus.pendingClusterCount,
+        pendingClusterCount,
         performance: {
           totalMs: Math.round(perfReport.totalDuration),
           stages: perfReport.entries.map((e) => ({
@@ -249,6 +253,18 @@ async function handleSuggestions() {
     }
 
     // 2. 获取待确认的聚类建议
+    // 类型断言: 手动维护类型文件时需要此断言
+    type SuggestionRow = {
+      id: number;
+      suggested_folder_name: string | null;
+      bookmark_id: number | null;
+      bookmark_ids: number[] | null;
+      suggested_action: string | null;
+      confidence: number | null;
+      reason: string | null;
+      metadata: unknown;
+      created_at: string;
+    };
     const { data: suggestions, error: fetchError } = await supabase
       .from("classification_suggestions")
       .select(
@@ -267,7 +283,10 @@ async function handleSuggestions() {
       .eq("user_id", user.id)
       .eq("status", "pending")
       .order("created_at", { ascending: false })
-      .limit(20);
+      .limit(20) as unknown as {
+      data: SuggestionRow[] | null;
+      error: { message: string } | null;
+    };
 
     if (fetchError) {
       logger.error(
@@ -278,7 +297,7 @@ async function handleSuggestions() {
     }
 
     // 3. 获取书签标题
-    const getBookmarkIds = (s: (typeof suggestions)[number]): number[] => {
+    const getBookmarkIds = (s: SuggestionRow): number[] => {
       if (s.bookmark_ids && s.bookmark_ids.length > 0) {
         return s.bookmark_ids;
       }
@@ -289,14 +308,18 @@ async function handleSuggestions() {
 
     let bookmarkTitles: Record<number, string> = {};
     if (allBookmarkIds.length > 0) {
+      type BookmarkIdTitle = { id: number; title: string | null };
       const { data: bookmarks } = await supabase
         .from("bookmarks")
         .select("id, title")
-        .in("id", allBookmarkIds);
+        .in("id", allBookmarkIds) as unknown as {
+        data: BookmarkIdTitle[] | null;
+        error: unknown;
+      };
 
       bookmarkTitles = (bookmarks || []).reduce(
         (acc, b) => {
-          acc[b.id] = b.title;
+          acc[b.id] = b.title ?? `书签 #${b.id}`;
           return acc;
         },
         {} as Record<number, string>,
@@ -407,9 +430,17 @@ async function handleStats() {
     }
 
     // 使用 RPC 获取聚类统计
-    const { data, error } = await supabase.rpc("get_user_cluster_stats", {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    type ClusterStats = {
+      total_pending: number;
+      clustered_count: number;
+      unclustered_count: number;
+      cluster_count: number;
+      oldest_pending: string | null;
+    };
+    const { data, error } = await (supabase.rpc as any)("get_user_cluster_stats", {
       p_user_id: user.id,
-    });
+    }) as { data: ClusterStats[] | null; error: { message: string } | null };
 
     if (error) {
       logger.warn({ error }, "cluster-stats RPC error, using fallback");

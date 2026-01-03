@@ -56,7 +56,7 @@ export function EditBookmarkDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // 表单状态
-  const [title, setTitle] = useState(bookmark.title);
+  const [title, setTitle] = useState(bookmark.title ?? "");
   const [description, setDescription] = useState(bookmark.ai_summary || "");
   const [folderId, setFolderId] = useState<string>(
     bookmark.folders?.id?.toString() || "",
@@ -82,7 +82,7 @@ export function EditBookmarkDialog({
 
   // 当 bookmark 变化时重置表单
   useEffect(() => {
-    setTitle(bookmark.title);
+    setTitle(bookmark.title ?? "");
     setDescription(bookmark.ai_summary || "");
     setFolderId(bookmark.folders?.id?.toString() || "");
     setNotes(bookmark.notes || "");

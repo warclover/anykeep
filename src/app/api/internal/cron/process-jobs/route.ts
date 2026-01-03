@@ -128,9 +128,10 @@ export async function GET(request: Request) {
     stats.total = stats.metadata + stats.embedding + stats.classification;
 
     // Cleanup old jobs (keep 7 days of completed/failed jobs)
-    const { error: cleanupError } = await supabase.rpc("cleanup_old_jobs", {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: cleanupError } = await (supabase.rpc as any)("cleanup_old_jobs", {
       p_days_to_keep: 7,
-    });
+    }) as { error: { message: string } | null };
 
     if (cleanupError) {
       logger.warn({ error: cleanupError }, "Failed to cleanup old jobs");
@@ -138,8 +139,9 @@ export async function GET(request: Request) {
 
     // Reset stuck jobs (locked for more than 10 minutes)
     const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
-    const { data: stuckJobs, error: stuckError } = await supabase
-      .from("system_jobs")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: stuckJobs, error: stuckError } = await (supabase
+      .from("system_jobs") as any)
       .update({
         status: "PENDING",
         locked_by: null,
@@ -147,7 +149,7 @@ export async function GET(request: Request) {
       })
       .eq("status", "RUNNING")
       .lt("locked_at", tenMinutesAgo)
-      .select("id");
+      .select("id") as { data: { id: string }[] | null; error: { message: string } | null };
 
     const resetCount = stuckJobs?.length ?? 0;
     if (resetCount > 0) {

@@ -61,10 +61,12 @@ const SubmitFeedbackSchema = z.object({
 export const GET = withAuthMiddleware(async (_request, { userId }) => {
   const supabase = await createClient();
 
-  const { data: feedbacks, error: fetchError } = await supabase
-    .from("classification_feedback")
+  // 类型断言: 手动维护类型文件时需要此断言
+  type FeedbackRow = { feedback_type: string };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: feedbacks, error: fetchError } = await (supabase.from("classification_feedback") as any)
     .select("feedback_type")
-    .eq("user_id", userId);
+    .eq("user_id", userId) as { data: FeedbackRow[] | null; error: { message: string } | null };
 
   if (fetchError) {
     logger.error(
@@ -164,8 +166,10 @@ export const POST = withAuthMiddleware(
       rejectReason,
     };
 
-    const { data: feedback, error: createError } = await supabase
-      .from("classification_feedback")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type FeedbackInsertRow = { id: number };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: feedback, error: createError } = await (supabase.from("classification_feedback") as any)
       .insert({
         user_id: userId,
         feedback_type: feedbackType as
@@ -184,9 +188,9 @@ export const POST = withAuthMiddleware(
         folder_id: suggestedCorrectFolderId || originalFolderId || null,
       })
       .select("id")
-      .single();
+      .single() as { data: FeedbackInsertRow | null; error: { message: string } | null };
 
-    if (createError) {
+    if (createError || !feedback) {
       logger.error(
         { error: createError, userId },
         "[v1] Failed to create feedback",

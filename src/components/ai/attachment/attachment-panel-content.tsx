@@ -112,10 +112,10 @@ export function AttachmentPanelContent({
         const newItem: AttachmentItem = {
           id: bookmarkId,
           type: "bookmark",
-          title: bookmark.title,
+          title: bookmark.title ?? "",
           url: bookmark.url,
           content: bookmark.ai_summary || bookmark.description || undefined,
-          platform: bookmark.platform,
+          platform: bookmark.platform ?? undefined,
         };
         onSelectionChange([...selectedItems, newItem]);
       }

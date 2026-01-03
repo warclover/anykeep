@@ -30,11 +30,15 @@ export default async function TagsPage() {
   }
 
   // 获取所有收藏的标签
+  // 类型断言: 手动维护类型文件时需要此断言
   const { data: bookmarks, error } = await supabase
     .from("bookmarks")
     .select("ai_tags, user_tags")
     .eq("user_id", user.id)
-    .is("deleted_at", null);
+    .is("deleted_at", null) as unknown as {
+    data: { ai_tags: string[] | null; user_tags: string[] | null }[] | null;
+    error: unknown;
+  };
 
   if (error) {
     return <TagsPageClient tags={[]} error="加载标签失败，请稍后重试" />;

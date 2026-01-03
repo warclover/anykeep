@@ -75,8 +75,10 @@ export async function POST(request: NextRequest) {
     }
 
     // 去重用户 ID
+    // 类型断言: 手动维护类型文件时需要此断言
+    type UserIdRow = { user_id: string };
     const uniqueUserIds = [
-      ...new Set(activeUsers?.map((b) => b.user_id) || []),
+      ...new Set((activeUsers as UserIdRow[] | null)?.map((b) => b.user_id) || []),
     ];
 
     // 限制每次执行的用户数

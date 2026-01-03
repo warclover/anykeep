@@ -72,13 +72,18 @@ export async function GET(request: NextRequest) {
   const supabase = await createClient();
 
   // 验证 state（防止 CSRF）
+  // 类型断言: 手动维护类型文件时需要此断言
+  type StateRecordType = { state: string; user_id: string; provider: string };
   const { data: stateRecord, error: stateError } = await supabase
     .from("oauth_states")
     .select("*")
     .eq("state", state)
     .eq("provider", "notion")
     .gt("expires_at", new Date().toISOString())
-    .single();
+    .single() as unknown as {
+    data: StateRecordType | null;
+    error: { message: string } | null;
+  };
 
   if (stateError || !stateRecord) {
     return NextResponse.redirect(
@@ -116,8 +121,9 @@ export async function GET(request: NextRequest) {
   const encryptedToken = await encryptToken(tokenData.access_token);
 
   // 存储/更新 Token
-  const { error: upsertError } = await supabase
-    .from("distribution_oauth_tokens")
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: upsertError } = await (supabase
+    .from("distribution_oauth_tokens") as any)
     .upsert(
       {
         user_id: stateRecord.user_id,
@@ -133,7 +139,7 @@ export async function GET(request: NextRequest) {
       {
         onConflict: "user_id,provider",
       },
-    );
+    ) as { error: { message: string } | null };
 
   if (upsertError) {
     console.error("Failed to save Notion token:", upsertError);

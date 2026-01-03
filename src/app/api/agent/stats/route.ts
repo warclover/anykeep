@@ -75,12 +75,24 @@ export async function GET(request: NextRequest) {
     startDate.setDate(startDate.getDate() - days);
 
     // 3. 获取总体统计
+    // 类型断言: 手动维护类型文件时需要此断言
+    type SkillExecution = {
+      id: string;
+      skill_id: string;
+      status: string;
+      latency_ms: number | null;
+      tokens_used: number | null;
+      created_at: string;
+    };
     const { data: executions, error: execError } = await supabase
       .from("ai_skill_executions")
       .select("id, skill_id, status, latency_ms, tokens_used, created_at")
       .eq("user_id", user.id)
       .gte("created_at", startDate.toISOString())
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false }) as unknown as {
+      data: SkillExecution[] | null;
+      error: { message: string; code?: string } | null;
+    };
 
     if (execError) {
       // 如果表不存在，返回空统计

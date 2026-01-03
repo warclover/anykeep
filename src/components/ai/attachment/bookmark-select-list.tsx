@@ -74,10 +74,9 @@ const BookmarkItem = memo(function BookmarkItem({
   onToggle,
 }: BookmarkItemProps) {
   // 截断标题
+  const title = bookmark.title ?? "";
   const truncatedTitle =
-    bookmark.title.length > 30
-      ? `${bookmark.title.slice(0, 30)}...`
-      : bookmark.title;
+    title.length > 30 ? `${title.slice(0, 30)}...` : title;
 
   return (
     <label
@@ -95,14 +94,14 @@ const BookmarkItem = memo(function BookmarkItem({
         className="h-3.5 w-3.5 data-[state=checked]:bg-pink-500 data-[state=checked]:border-pink-500"
       />
       <span className="flex-shrink-0">
-        {getPlatformIcon(bookmark.platform)}
+        {getPlatformIcon(bookmark.platform ?? "")}
       </span>
       <span
         className={cn(
           "flex-1 text-[10px] truncate",
           isSelected ? "text-foreground font-medium" : "text-muted-foreground",
         )}
-        title={bookmark.title}
+        title={title ?? undefined}
       >
         {truncatedTitle}
       </span>

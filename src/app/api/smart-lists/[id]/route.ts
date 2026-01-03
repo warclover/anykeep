@@ -67,8 +67,8 @@ export async function GET(request: NextRequest, context: RouteContext) {
     }
 
     // 4. 更新最后访问时间
-    await supabase
-      .from("smart_lists")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.from("smart_lists") as any)
       .update({ last_accessed_at: new Date().toISOString() })
       .eq("id", id)
       .eq("user_id", user.id);
@@ -124,13 +124,15 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const updates = validation.data;
 
     // 4. 检查智能列表是否存在
-    const { data: existing, error: checkError } = await supabase
-      .from("smart_lists")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type ExistingSmartListRow = { id: string; is_preset: boolean };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: existing, error: checkError } = await (supabase.from("smart_lists") as any)
       .select("id, is_preset")
       .eq("id", id)
       .eq("user_id", user.id)
       .is("deleted_at", null)
-      .single();
+      .single() as { data: ExistingSmartListRow | null; error: { message: string } | null };
 
     if (checkError || !existing) {
       return notFoundError("智能列表不存在");
@@ -147,13 +149,13 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         return successResponse({ error: "预设智能列表只能修改置顶状态" }, 400);
       }
 
-      const { data: updatedPreset, error: updateError } = await supabase
-        .from("smart_lists")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: updatedPreset, error: updateError } = await (supabase.from("smart_lists") as any)
         .update(allowedUpdates)
         .eq("id", id)
         .eq("user_id", user.id)
         .select()
-        .single();
+        .single() as { data: SmartList | null; error: { message: string } | null };
 
       if (updateError) {
         return databaseError("更新智能列表失败", updateError);
@@ -191,13 +193,13 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     if (updates.isPinned !== undefined) updateData.is_pinned = updates.isPinned;
 
     // 8. 执行更新
-    const { data: smartList, error: updateError } = await supabase
-      .from("smart_lists")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: smartList, error: updateError } = await (supabase.from("smart_lists") as any)
       .update(updateData)
       .eq("id", id)
       .eq("user_id", user.id)
       .select()
-      .single();
+      .single() as { data: SmartList | null; error: { message: string } | null };
 
     if (updateError) {
       return databaseError("更新智能列表失败", updateError);
@@ -254,13 +256,15 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     const { id } = paramValidation.data;
 
     // 3. 检查智能列表是否存在
-    const { data: existing, error: checkError } = await supabase
-      .from("smart_lists")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type ExistingSmartListDeleteRow = { id: string; is_preset: boolean; name: string };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: existing, error: checkError } = await (supabase.from("smart_lists") as any)
       .select("id, is_preset, name")
       .eq("id", id)
       .eq("user_id", user.id)
       .is("deleted_at", null)
-      .single();
+      .single() as { data: ExistingSmartListDeleteRow | null; error: { message: string } | null };
 
     if (checkError || !existing) {
       return notFoundError("智能列表不存在");
@@ -272,11 +276,11 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     }
 
     // 5. 软删除
-    const { error: deleteError } = await supabase
-      .from("smart_lists")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: deleteError } = await (supabase.from("smart_lists") as any)
       .update({ deleted_at: new Date().toISOString() })
       .eq("id", id)
-      .eq("user_id", user.id);
+      .eq("user_id", user.id) as { error: { message: string } | null };
 
     if (deleteError) {
       return databaseError("删除智能列表失败", deleteError);

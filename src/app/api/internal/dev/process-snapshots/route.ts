@@ -63,9 +63,18 @@ export async function GET() {
     };
 
     // Process up to 10 jobs
+    // 类型断言: 手动维护类型文件时需要此断言
+    type ClaimedJobType = {
+      job_id: string;
+      job_type: string;
+      job_payload: unknown;
+      job_user_id: string;
+      job_attempts: number;
+    };
     for (let i = 0; i < 10; i++) {
       // Claim next snapshot job
-      const { data: claimedJobs, error: claimError } = await getAdmin().rpc(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: claimedJobs, error: claimError } = await (getAdmin().rpc as any)(
         "claim_next_job",
         {
           p_worker_id: WORKER_ID,
@@ -77,7 +86,7 @@ export async function GET() {
           ],
           p_lock_duration: "5 minutes",
         },
-      );
+      ) as { data: ClaimedJobType[] | null; error: { message: string } | null };
 
       if (claimError) {
         logger.error({ error: claimError }, "[DEV] Failed to claim job");
@@ -132,7 +141,8 @@ export async function GET() {
         }
 
         // Mark as completed
-        await getAdmin().rpc("complete_job", {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (getAdmin().rpc as any)("complete_job", {
           p_job_id: job.job_id,
           p_result: { processedAt: new Date().toISOString() },
         });
@@ -147,7 +157,8 @@ export async function GET() {
         stats.failed++;
 
         // Mark as failed
-        await getAdmin().rpc("fail_job", {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (getAdmin().rpc as any)("fail_job", {
           p_job_id: job.job_id,
           p_error: error instanceof Error ? error.message : String(error),
           p_retry: true,

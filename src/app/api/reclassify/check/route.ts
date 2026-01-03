@@ -36,43 +36,48 @@ export async function GET(_request: NextRequest) {
     }
 
     // 2. 获取用户的重分类配置
-    const { data: profile } = await supabase
-      .from('profiles')
+    // 类型断言: 手动维护类型文件时需要此断言
+    type ProfileRow = { settings: Record<string, unknown> | null };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: profile } = await (supabase.from('profiles') as any)
       .select('settings')
       .eq('id', user.id)
-      .single()
+      .single() as { data: ProfileRow | null };
 
     const settings = (profile?.settings as Record<string, unknown>)?.reclassify as ReclassifySettings | undefined
-    const inboxThreshold = settings?.inbox_threshold ?? DEFAULT_INBOX_THRESHOLD
-    const lastRunAt = settings?.last_run_at ? new Date(settings.last_run_at) : null
+    const inboxThreshold = (settings?.inbox_threshold as number | undefined) ?? DEFAULT_INBOX_THRESHOLD
+    const lastRunAt = settings?.last_run_at ? new Date(settings.last_run_at as string) : null
     const autoRunWeekly = settings?.auto_run_weekly ?? true
 
     // 3. 获取待整理文件夹中的书签数量
-    const { data: inboxFolder } = await supabase
-      .from('folders')
+    // 类型断言: 手动维护类型文件时需要此断言
+    type FolderIdRow = { id: number };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: inboxFolder } = await (supabase.from('folders') as any)
       .select('id')
       .eq('user_id', user.id)
       .eq('is_system', true)
       .eq('system_type', 'INBOX')
       .is('deleted_at', null)
-      .single()
+      .single() as { data: FolderIdRow | null };
 
     let inboxCount = 0
     if (inboxFolder) {
-      const { count } = await supabase
-        .from('bookmarks')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { count } = await (supabase.from('bookmarks') as any)
         .select('*', { count: 'exact', head: true })
         .eq('user_id', user.id)
         .eq('folder_id', inboxFolder.id)
-        .is('deleted_at', null)
+        .is('deleted_at', null) as { count: number | null };
 
       inboxCount = count ?? 0
     }
 
     // 4. 获取待处理建议数量
-    const { data: pendingCount } = await supabase.rpc('get_pending_suggestions_count', {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: pendingCount } = await (supabase.rpc as any)('get_pending_suggestions_count', {
       p_user_id: user.id,
-    })
+    }) as { data: number | null };
 
     // 5. 判断触发条件
     const now = new Date()

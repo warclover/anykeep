@@ -40,7 +40,8 @@ export async function GET() {
     }
 
     // 调用 RPC 获取偏好
-    const { data, error } = await supabase.rpc(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.rpc as any)(
       "get_synthesis_recommend_preferences",
       {
         p_user_id: user.id,
@@ -106,7 +107,8 @@ export async function PATCH(request: Request) {
     const body: UpdatePreferencesRequest = await request.json();
 
     // 调用 RPC 更新偏好
-    const { data, error } = await supabase.rpc(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.rpc as any)(
       "update_synthesis_recommend_preferences",
       {
         p_user_id: user.id,

@@ -158,11 +158,12 @@ export async function POST(request: NextRequest) {
     };
 
     // 5. 插入数据库
-    const { data: created, error: insertError } = await supabase
-      .from("import_history")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: created, error: insertError } = await (supabase
+      .from("import_history") as any)
       .insert(insertData)
       .select()
-      .single();
+      .single() as { data: { id: number; [key: string]: unknown } | null; error: { message: string } | null };
 
     if (insertError) {
       logger.error(
@@ -170,6 +171,10 @@ export async function POST(request: NextRequest) {
         "Import history: Failed to create record",
       );
       return databaseError("创建导入历史记录失败", insertError);
+    }
+
+    if (!created) {
+      return databaseError("创建导入历史记录失败", { message: "返回数据为空" });
     }
 
     logger.info(

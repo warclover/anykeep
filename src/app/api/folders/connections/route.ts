@@ -91,13 +91,25 @@ export async function GET(request: NextRequest) {
       );
 
       // V4.2 RPC
-      const { data: matrixData, error: matrixError } = await supabase.rpc(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      type MatrixRow = {
+        folder1_id: number;
+        folder1_name: string;
+        folder1_count: number;
+        folder2_id: number;
+        folder2_name: string;
+        folder2_count: number;
+        avg_similarity: number;
+        max_similarity: number;
+        connection_count: number;
+      };
+      const { data: matrixData, error: matrixError } = await (supabase.rpc as any)(
         "get_folder_similarity_matrix",
         {
           p_user_id: user.id,
           p_min_bookmarks: minBookmarks,
         },
-      );
+      ) as { data: MatrixRow[] | null; error: { message: string } | null };
 
       if (matrixError) {
         logger.error(
@@ -109,17 +121,7 @@ export async function GET(request: NextRequest) {
 
       // 格式化响应
       const matrix: FolderSimilarityItem[] = (matrixData || []).map(
-        (item: {
-          folder1_id: number;
-          folder1_name: string;
-          folder1_count: number;
-          folder2_id: number;
-          folder2_name: string;
-          folder2_count: number;
-          avg_similarity: number;
-          max_similarity: number;
-          connection_count: number;
-        }) => ({
+        (item) => ({
           folder1: {
             id: item.folder1_id,
             name: item.folder1_name,
@@ -166,13 +168,25 @@ export async function GET(request: NextRequest) {
       });
     } else {
       // 3b. 获取跨文件夹连接 - V4.2 RPC
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      type ConnectionRow = {
+        source_bookmark_id: number;
+        source_title: string;
+        source_folder_id: number | null;
+        source_folder_name: string | null;
+        target_bookmark_id: number;
+        target_title: string;
+        target_folder_id: number | null;
+        target_folder_name: string | null;
+        similarity: number;
+      };
       const { data: connectionsData, error: connectionsError } =
-        await supabase.rpc("find_cross_folder_connections", {
+        await (supabase.rpc as any)("find_cross_folder_connections", {
           p_user_id: user.id,
           p_folder_id: folderId ?? undefined,
           p_min_similarity: minSimilarity,
           p_limit: limit,
-        });
+        }) as { data: ConnectionRow[] | null; error: { message: string } | null };
 
       if (connectionsError) {
         logger.error(
@@ -184,17 +198,7 @@ export async function GET(request: NextRequest) {
 
       // 格式化响应
       const connections: CrossFolderConnection[] = (connectionsData || []).map(
-        (item: {
-          source_bookmark_id: number;
-          source_title: string;
-          source_folder_id: number | null;
-          source_folder_name: string | null;
-          target_bookmark_id: number;
-          target_title: string;
-          target_folder_id: number | null;
-          target_folder_name: string | null;
-          similarity: number;
-        }) => ({
+        (item) => ({
           sourceBookmark: {
             id: item.source_bookmark_id,
             title: item.source_title,

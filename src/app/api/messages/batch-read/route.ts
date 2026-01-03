@@ -44,13 +44,14 @@ export async function POST(request: NextRequest) {
     const { messageIds } = validation.data;
 
     // 3. 调用数据库函数批量标记已读
-    const { data: updatedCount, error } = await supabase.rpc(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: updatedCount, error } = await (supabase.rpc as any)(
       "mark_messages_read",
       {
         p_user_id: user.id,
         p_message_ids: messageIds || undefined,
       },
-    );
+    ) as { data: number | null; error: { message: string } | null };
 
     if (error) {
       logger.error(

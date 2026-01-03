@@ -60,7 +60,7 @@ export interface ImportResult {
   success: number;
   failed: number;
   skipped: number;
-  errors: Array<{ url: string; title: string; reason: string }>;
+  errors: Array<{ url: string; title: string; error: string }>;
   durationMs: number;
   wasResumed: boolean;
 }
@@ -183,7 +183,7 @@ export function useImportSession(
         let totalSuccess = session.progress.totalSuccess;
         let totalFailed = session.progress.totalFailed;
         let totalSkipped = session.progress.totalSkipped;
-        const allErrors: Array<{ url: string; title: string; reason: string }> =
+        const allErrors: Array<{ url: string; title: string; error: string }> =
           [];
 
         // 初始化进度
@@ -315,7 +315,7 @@ export function useImportSession(
             allErrors.push({
               url: `批次 ${batch.batchNumber + 1}`,
               title: `批次 ${batch.batchNumber + 1}`,
-              reason: errorMsg,
+              error: errorMsg,
             });
           }
 

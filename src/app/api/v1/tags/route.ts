@@ -68,11 +68,13 @@ export const GET = withAuthMiddleware(
     const { limit, sort, type, search } = params.data;
 
     // 查询用户书签中的标签
-    const { data: bookmarks, error } = await supabase
-      .from("bookmarks")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type BookmarkTagsRow = { user_tags: string[] | null; ai_tags: string[] | null };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: bookmarks, error } = await (supabase.from("bookmarks") as any)
       .select("user_tags, ai_tags")
       .eq("user_id", userId)
-      .eq("is_deleted", false);
+      .eq("is_deleted", false) as { data: BookmarkTagsRow[] | null; error: { message: string } | null };
 
     if (error) {
       logger.error(
@@ -207,11 +209,13 @@ export const POST = withAuthMiddleware(
     const { action, sourceTags, targetTag } = validation.data;
 
     // 获取包含源标签的书签
-    const { data: bookmarks, error: fetchError } = await supabase
-      .from("bookmarks")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type BookmarkUserTagsRow = { id: number; user_tags: string[] | null };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: bookmarks, error: fetchError } = await (supabase.from("bookmarks") as any)
       .select("id, user_tags")
       .eq("user_id", userId)
-      .eq("is_deleted", false);
+      .eq("is_deleted", false) as { data: BookmarkUserTagsRow[] | null; error: { message: string } | null };
 
     if (fetchError) {
       logger.error(
@@ -257,8 +261,8 @@ export const POST = withAuthMiddleware(
       }
 
       // 更新书签
-      const { error: updateError } = await supabase
-        .from("bookmarks")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: updateError } = await (supabase.from("bookmarks") as any)
         .update({ user_tags: newTags, updated_at: new Date().toISOString() })
         .eq("id", bookmark.id)
         .eq("user_id", userId);

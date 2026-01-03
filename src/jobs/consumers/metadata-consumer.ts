@@ -11,6 +11,14 @@ import type { Database } from "@/types/supabase";
 import { BaseConsumer } from "./base-consumer";
 import type { JobContext, JobResult, FetchMetadataPayload } from "../types";
 
+// 本地类型定义
+interface BookmarkMetadataRow {
+  id: number;
+  title: string | null;
+  description: string | null;
+  cover_url: string | null;
+}
+
 /**
  * 元数据获取消费者
  *
@@ -44,11 +52,13 @@ export class MetadataConsumer extends BaseConsumer {
 
     try {
       // 检查书签是否存在
-      const { data: bookmark, error: fetchError } = await context.supabase
-        .from("bookmarks")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: bookmark, error: fetchError } = (await (
+        context.supabase.from("bookmarks") as any
+      )
         .select("id, title, description, cover_url")
         .eq("id", bookmarkId)
-        .single();
+        .single()) as { data: BookmarkMetadataRow | null; error: Error | null };
 
       if (fetchError || !bookmark) {
         return {
@@ -70,8 +80,10 @@ export class MetadataConsumer extends BaseConsumer {
       const metadata = await this.fetchMetadata(url, context.abortSignal);
 
       // 更新书签（不包含 metadata 字段，因为表中没有该列）
-      const { error: updateError } = await context.supabase
-        .from("bookmarks")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: updateError } = await (
+        context.supabase.from("bookmarks") as any
+      )
         .update({
           title: metadata.title || bookmark.title,
           description: metadata.description || bookmark.description,

@@ -52,13 +52,14 @@ export async function POST(request: NextRequest) {
 
     // 3. 调用数据库函数处理建议
     if (body.action === "accept") {
-      const { data: processed, error: acceptError } = await supabase.rpc(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: processed, error: acceptError } = await (supabase.rpc as any)(
         "accept_classification_suggestions",
         {
           p_user_id: user.id,
           p_suggestion_ids: [body.suggestionId],
         },
-      );
+      ) as { data: unknown; error: { message: string } | null };
 
       if (acceptError) {
         logger.error(
@@ -88,13 +89,14 @@ export async function POST(request: NextRequest) {
       });
     } else {
       // reject
-      const { data: rejected, error: rejectError } = await supabase.rpc(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: rejected, error: rejectError } = await (supabase.rpc as any)(
         "reject_classification_suggestions",
         {
           p_user_id: user.id,
           p_suggestion_ids: [body.suggestionId],
         },
-      );
+      ) as { data: unknown; error: { message: string } | null };
 
       if (rejectError) {
         logger.error(

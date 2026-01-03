@@ -11,8 +11,12 @@ import type { UIFolderGroup } from "./constants";
 export type FolderWithStats = Folder & {
   bookmark_count: number;
   today_count: number;
-  is_archived?: boolean;
-  is_locked?: boolean;
+  is_archived?: boolean | null;
+  is_locked?: boolean | null;
+  folder_group?: string | null;
+  sort_order?: number | null;
+  is_system?: boolean;
+  system_type?: string | null;
 };
 
 // ==================== 锁定状态类型 ====================

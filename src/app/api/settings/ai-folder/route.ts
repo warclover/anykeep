@@ -46,9 +46,10 @@ export async function GET() {
     }
 
     // Get settings using RPC function (with defaults) - V4.2 RPC
-    const { data, error } = await supabase.rpc("get_ai_folder_settings", {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.rpc as any)("get_ai_folder_settings", {
       p_user_id: user.id,
-    });
+    }) as { data: Record<string, unknown> | null; error: { message: string } | null };
 
     if (error) {
       logger.error(
@@ -95,10 +96,11 @@ export async function PUT(request: NextRequest) {
     }
 
     // Update settings using RPC function - V4.2 RPC
-    const { data, error } = await supabase.rpc("update_ai_folder_settings", {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.rpc as any)("update_ai_folder_settings", {
       p_user_id: user.id,
       p_settings: validation.data,
-    });
+    }) as { data: Record<string, unknown> | null; error: { message: string } | null };
 
     if (error) {
       logger.error(

@@ -46,11 +46,20 @@ async function checkEmbeddingCoverage(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
 ): Promise<HealthCheck> {
+  // 类型断言: 手动维护类型文件时需要此断言
+  type BookmarkEmbeddingType = {
+    id: number;
+    embedding: unknown;
+    status: string;
+  };
   const { data, error } = await supabase
     .from("bookmarks")
     .select("id, embedding, status", { count: "exact" })
     .eq("user_id", userId)
-    .is("deleted_at", null);
+    .is("deleted_at", null) as unknown as {
+    data: BookmarkEmbeddingType[] | null;
+    error: { message: string } | null;
+  };
 
   if (error) {
     return {
@@ -103,6 +112,12 @@ async function checkFolderProfiles(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
 ): Promise<HealthCheck> {
+  // 类型断言: 手动维护类型文件时需要此断言
+  type FolderWithProfileType = {
+    id: number;
+    name: string;
+    folder_profiles: { name_embedding: unknown } | null;
+  };
   const { data, error } = await supabase
     .from("folders")
     .select(
@@ -116,7 +131,10 @@ async function checkFolderProfiles(
     )
     .eq("user_id", userId)
     .eq("is_system", false)
-    .is("deleted_at", null);
+    .is("deleted_at", null) as unknown as {
+    data: FolderWithProfileType[] | null;
+    error: { message: string } | null;
+  };
 
   if (error) {
     return {
@@ -169,6 +187,8 @@ async function checkStuckProcessing(
   // 超过 1 小时还在 PROCESSING 状态视为卡住
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
 
+  // 类型断言: 手动维护类型文件时需要此断言
+  type StuckBookmarkType = { id: number; title: string | null; created_at: string };
   const { data, error, count } = await supabase
     .from("bookmarks")
     .select("id, title, created_at", { count: "exact" })
@@ -176,7 +196,11 @@ async function checkStuckProcessing(
     .eq("status", "PROCESSING")
     .lt("created_at", oneHourAgo)
     .is("deleted_at", null)
-    .limit(10);
+    .limit(10) as unknown as {
+    data: StuckBookmarkType[] | null;
+    error: { message: string } | null;
+    count: number | null;
+  };
 
   if (error) {
     return {
@@ -218,6 +242,13 @@ async function checkOrphanedData(
   try {
     // 方法 1: 查询 folder_id 不为 null 但对应文件夹不存在的书签
     // 由于 Supabase 不直接支持 NOT EXISTS，我们使用 left join 并检查 null
+    // 类型断言: 手动维护类型文件时需要此断言
+    type OrphanedBookmarkType = {
+      id: number;
+      title: string | null;
+      folder_id: number | null;
+      folders: { id: number } | null;
+    };
     const { data: orphanedBookmarks, error } = await supabase
       .from("bookmarks")
       .select(
@@ -231,7 +262,10 @@ async function checkOrphanedData(
       .eq("user_id", userId)
       .not("folder_id", "is", null)
       .is("deleted_at", null)
-      .limit(100);
+      .limit(100) as unknown as {
+      data: OrphanedBookmarkType[] | null;
+      error: { message: string } | null;
+    };
 
     if (error) {
       return {

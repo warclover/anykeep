@@ -121,7 +121,7 @@ export default function ClassificationComparePage() {
         .eq("user_id", user.user.id)
         .eq("is_system", true)
         .eq("name", "待分类")
-        .single();
+        .single() as unknown as { data: { id: number } | null };
 
       if (!inboxFolder) return;
 

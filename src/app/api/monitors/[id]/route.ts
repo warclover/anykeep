@@ -196,11 +196,13 @@ export async function PUT(request: NextRequest, context: RouteContext) {
 
     // 4. 检查会员权限（如果更改检查间隔）
     if (checkInterval) {
-      const { data: profile } = await supabase
-        .from("profiles")
+      // 类型断言: 手动维护类型文件时需要此断言
+      type ProfileRow = { membership_type: string | null };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: profile } = await (supabase.from("profiles") as any)
         .select("membership_type")
         .eq("id", user.id)
-        .single();
+        .single() as { data: ProfileRow | null };
 
       const membershipType =
         (profile?.membership_type as "FREE" | "PRO") || "FREE";

@@ -33,7 +33,8 @@ export async function POST() {
     }
 
     // 调用 RPC 更新显示计数
-    const { data, error } = await supabase.rpc(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.rpc as any)(
       "update_synthesis_recommend_preferences",
       {
         p_user_id: user.id,

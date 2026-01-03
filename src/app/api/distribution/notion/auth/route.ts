@@ -35,12 +35,13 @@ export async function GET(_request: NextRequest) {
   const state = crypto.randomUUID();
 
   // 存储 state 到数据库（5 分钟有效）
-  const { error: stateError } = await supabase.from("oauth_states").insert({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: stateError } = await (supabase.from("oauth_states") as any).insert({
     state,
     user_id: user.id,
     provider: "notion",
     expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
-  });
+  }) as { error: { message: string } | null };
 
   if (stateError) {
     console.error("Failed to save OAuth state:", stateError);

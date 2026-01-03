@@ -253,13 +253,15 @@ async function handleTrends(
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - days);
 
-  const { data: bookmarks } = await supabase
-    .from("bookmarks")
+  // 类型断言: 手动维护类型文件时需要此断言
+  type BookmarkTrendsRow = { created_at: string | null; folder_id: number | null };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: bookmarks } = await (supabase.from("bookmarks") as any)
     .select("created_at, folder_id")
     .eq("user_id", userId)
     .is("deleted_at", null)
     .gte("created_at", startDate.toISOString())
-    .order("created_at", { ascending: true });
+    .order("created_at", { ascending: true }) as { data: BookmarkTrendsRow[] | null };
 
   const dailyStats = new Map<string, { total: number; classified: number }>();
 
@@ -428,12 +430,14 @@ async function getBookmarkStats(
   userId: string,
   startDate: Date,
 ) {
-  const { data: bookmarks, count } = await supabase
-    .from("bookmarks")
+  // 类型断言: 手动维护类型文件时需要此断言
+  type BookmarkStatsRow = { folder_id: number | null };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: bookmarks, count } = await (supabase.from("bookmarks") as any)
     .select("folder_id", { count: "exact" })
     .eq("user_id", userId)
     .is("deleted_at", null)
-    .gte("created_at", startDate.toISOString());
+    .gte("created_at", startDate.toISOString()) as { data: BookmarkStatsRow[] | null; count: number | null };
 
   const classified = bookmarks?.filter((b) => b.folder_id).length || 0;
 

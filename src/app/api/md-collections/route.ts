@@ -78,8 +78,9 @@ export async function GET(request: NextRequest) {
     } = validation.data;
 
     // 3. 构建查询
-    let query = supabase
-      .from("md_collections")
+    // 类型断言: 手动维护类型文件时需要此断言
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let query = (supabase.from("md_collections") as any)
       .select("*")
       .eq("user_id", user.id)
       .is("deleted_at", null);
@@ -135,16 +136,23 @@ export async function GET(request: NextRequest) {
 
     query = query.limit(limit + 1); // 多取一条用于判断是否还有更多
 
+    // 类型断言: 手动维护类型文件时需要此断言
+    type MdCollectionRow = { id: string; title: string; [key: string]: unknown };
+
     // 4. 执行查询
-    const { data: items, error: queryError } = await query;
+    const { data: items, error: queryError } = await query as {
+      data: MdCollectionRow[] | null;
+      error: { message: string } | null;
+    };
 
     if (queryError) {
       return databaseError(MD_COLLECTION.LOAD_ERROR, queryError);
     }
 
     // 5. 处理分页
-    const hasMore = items.length > limit;
-    const results = hasMore ? items.slice(0, limit) : items;
+    const itemList = items ?? [];
+    const hasMore = itemList.length > limit;
+    const results = hasMore ? itemList.slice(0, limit) : itemList;
     const nextCursor =
       hasMore && results.length > 0 ? results[results.length - 1].id : null;
 
@@ -184,11 +192,13 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. 检查用户会员类型和功能权限
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type ProfileRow = { membership_type: string | null };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: profile, error: profileError } = await (supabase.from("profiles") as any)
       .select("membership_type")
       .eq("id", user.id)
-      .single();
+      .single() as { data: ProfileRow | null; error: { message: string } | null };
 
     if (profileError) {
       logger.warn({ error: profileError }, "Failed to get user profile");
@@ -198,11 +208,11 @@ export async function POST(request: NextRequest) {
     const membershipType = profile?.membership_type || "FREE";
 
     // 3. 获取当前 MD 收藏数量并检查权限
-    const { count: currentCount, error: countError } = await supabase
-      .from("md_collections")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { count: currentCount, error: countError } = await (supabase.from("md_collections") as any)
       .select("*", { count: "exact", head: true })
       .eq("user_id", user.id)
-      .is("deleted_at", null);
+      .is("deleted_at", null) as { count: number | null; error: { message: string } | null };
 
     if (countError) {
       return databaseError(MD_COLLECTION.LOAD_ERROR, countError);
@@ -241,13 +251,15 @@ export async function POST(request: NextRequest) {
     const contentHash = computeContentHash(sanitizedContent);
 
     // 8. 检查重复
-    const { data: existingCollection, error: dupError } = await supabase
-      .from("md_collections")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type ExistingCollectionRow = { id: string; title: string };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: existingCollection, error: dupError } = await (supabase.from("md_collections") as any)
       .select("id, title")
       .eq("user_id", user.id)
       .eq("content_hash", contentHash)
       .is("deleted_at", null)
-      .maybeSingle();
+      .maybeSingle() as { data: ExistingCollectionRow | null; error: { message: string } | null };
 
     if (dupError) {
       logger.warn({ error: dupError }, "Failed to check duplicate");
@@ -266,8 +278,10 @@ export async function POST(request: NextRequest) {
     const finalTitle = title || extractTitle(sanitizedContent) || "无标题";
 
     // 11. 创建记录
-    const { data: newCollection, error: createError } = await supabase
-      .from("md_collections")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type NewCollectionRow = { id: number; [key: string]: unknown };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: newCollection, error: createError } = await (supabase.from("md_collections") as any)
       .insert({
         user_id: user.id,
         title: finalTitle,
@@ -282,9 +296,9 @@ export async function POST(request: NextRequest) {
         processing_status: "pending",
       })
       .select()
-      .single();
+      .single() as { data: NewCollectionRow | null; error: { message: string } | null };
 
-    if (createError) {
+    if (createError || !newCollection) {
       return databaseError(MD_COLLECTION.CREATE_ERROR, createError);
     }
 

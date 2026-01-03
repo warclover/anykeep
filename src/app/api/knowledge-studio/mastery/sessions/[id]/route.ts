@@ -51,12 +51,14 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     );
 
     // 检查所有权
-    const { data: existing, error: checkError } = await supabase
-      .from("ks_learning_sessions")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type SessionExistingType = { id: string; started_at: string };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: existing, error: checkError } = await (supabase.from("ks_learning_sessions") as any)
       .select("id, started_at")
       .eq("id", id)
       .eq("user_id", user.id)
-      .single();
+      .single() as { data: SessionExistingType | null; error: { message: string } | null };
 
     if (checkError || !existing) {
       return NextResponse.json(
@@ -86,8 +88,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     if (durationMinutes !== undefined)
       updates.duration_minutes = durationMinutes;
 
-    const { data, error } = await supabase
-      .from("ks_learning_sessions")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.from("ks_learning_sessions") as any)
       .update(updates)
       .eq("id", id)
       .eq("user_id", user.id)

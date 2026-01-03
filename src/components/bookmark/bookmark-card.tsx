@@ -194,12 +194,12 @@ export const BookmarkCard = memo(function BookmarkCard({
   const isSnapshotEnabled = useSnapshotFeature();
 
   // 判断标题是否正在加载
-  const titleLoading = isLoadingTitle(bookmark.title);
+  const titleLoading = isLoadingTitle(bookmark.title ?? "");
 
   // 生成封面图（真实封面或占位符，微信图片使用代理）
   const coverImage =
     getProxiedImageUrl(bookmark.cover_url) ||
-    generatePlaceholderImage(bookmark.title, bookmark.platform as Platform);
+    generatePlaceholderImage(bookmark.title ?? "", bookmark.platform as Platform);
 
   const handleEdit = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -435,7 +435,7 @@ export const BookmarkCard = memo(function BookmarkCard({
         {isSelectionMode && <SelectionCheckbox />}
 
         {/* 平台标识 */}
-        <PlatformBadge platform={bookmark.platform} size="sm" />
+        <PlatformBadge platform={bookmark.platform ?? "UNKNOWN"} size="sm" />
 
         {/* 标题和元信息 */}
         <div className="flex-1 min-w-0">
@@ -448,7 +448,7 @@ export const BookmarkCard = memo(function BookmarkCard({
                   : "text-gray-900 dark:text-white",
               )}
             >
-              {bookmark.title}
+              {bookmark.title ?? ""}
             </h3>
             {/* V12.0: AI 整理中状态指示器（compact视图） */}
             {bookmark.pending_cluster && (
@@ -544,7 +544,7 @@ export const BookmarkCard = memo(function BookmarkCard({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={coverImage}
-                alt={bookmark.title}
+                alt={bookmark.title ?? ""}
                 className="w-full h-full object-cover"
                 loading="lazy"
                 decoding="async"
@@ -552,7 +552,7 @@ export const BookmarkCard = memo(function BookmarkCard({
             </div>
             {/* 平台标识 */}
             <div className="absolute bottom-2 left-2">
-              <PlatformBadge platform={bookmark.platform} size="sm" />
+              <PlatformBadge platform={bookmark.platform ?? "UNKNOWN"} size="sm" />
             </div>
             {/* 选择复选框 - 移动端右上角 */}
             {isSelectionMode && (
@@ -581,14 +581,14 @@ export const BookmarkCard = memo(function BookmarkCard({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={coverImage}
-                alt={bookmark.title}
+                alt={bookmark.title ?? ""}
                 className="w-full h-full object-cover"
                 loading="lazy"
                 decoding="async"
               />
             </div>
             <div className="absolute bottom-2 left-2">
-              <PlatformBadge platform={bookmark.platform} size="sm" showName />
+              <PlatformBadge platform={bookmark.platform ?? "UNKNOWN"} size="sm" showName />
             </div>
           </div>
 
@@ -603,7 +603,7 @@ export const BookmarkCard = memo(function BookmarkCard({
                     : "text-gray-900 dark:text-white",
                 )}
               >
-                {bookmark.title}
+                {bookmark.title ?? ""}
               </h3>
               {(() => {
                 const displaySummary = getDisplaySummary(bookmark.ai_summary);
@@ -772,14 +772,14 @@ export const BookmarkCard = memo(function BookmarkCard({
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={coverImage}
-            alt={bookmark.title}
+            alt={bookmark.title ?? ""}
             className="w-full h-full object-cover card-cover-top card-cover-zoom"
             loading="lazy"
             decoding="async"
           />
           {/* 平台标识 - P0.5: 放大 + 固定左上角 */}
           <div className="absolute top-3 left-3">
-            <PlatformBadge platform={bookmark.platform} size="lg" showName />
+            <PlatformBadge platform={bookmark.platform ?? "UNKNOWN"} size="lg" showName />
           </div>
 
           {/* V6.0新增：锁定图标 - 右上角（优先级高于选择和操作按钮） */}
@@ -841,7 +841,7 @@ export const BookmarkCard = memo(function BookmarkCard({
                     : "",
               )}
             >
-              {bookmark.title}
+              {bookmark.title ?? ""}
             </CardTitle>
           </div>
           {/* V4.2.24: 摘要固定两行高度，保持卡片对齐 */}
@@ -1000,7 +1000,7 @@ export const BookmarkCard = memo(function BookmarkCard({
         {/* P1.4: 平台主色底部条 */}
         <div
           className="h-1 w-full rounded-b-lg"
-          style={{ backgroundColor: getPlatformHexColor(bookmark.platform) }}
+          style={{ backgroundColor: getPlatformHexColor(bookmark.platform ?? "UNKNOWN") }}
         />
       </Card>
     </div>

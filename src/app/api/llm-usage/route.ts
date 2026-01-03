@@ -114,11 +114,13 @@ export async function GET(request: NextRequest) {
 
     // 获取每日配额 (仅日度)
     if (period === "daily") {
-      const { data: profileData } = await supabase
-        .from("profiles")
+      // 类型断言: 手动维护类型文件时需要此断言
+      type ProfileMembershipRow = { membership_type: string | null };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: profileData } = await (supabase.from("profiles") as any)
         .select("membership_type")
         .eq("id", user.id)
-        .single();
+        .single() as { data: ProfileMembershipRow | null };
 
       // PRO 用户 500 次，FREE 用户 100 次
       const dailyLimit = profileData?.membership_type === "PRO" ? 500 : 100;

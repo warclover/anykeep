@@ -62,8 +62,9 @@ export async function POST(request: NextRequest) {
 
     // 3. 批量恢复（仅恢复属于当前用户且在垃圾箱中的收藏）
     const serviceClient = await createServiceClient();
-    const { data: restoredBookmarks, error: restoreError } = await serviceClient
-      .from("bookmarks")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: restoredBookmarks, error: restoreError } = await (serviceClient
+      .from("bookmarks") as any)
       .update({
         is_in_trash: false,
         trashed_at: null,
@@ -72,7 +73,7 @@ export async function POST(request: NextRequest) {
       .eq("user_id", user.id)
       .eq("is_in_trash", true)
       .is("deleted_at", null)
-      .select("id");
+      .select("id") as { data: { id: number }[] | null; error: { message: string } | null };
 
     logger.debug(
       {

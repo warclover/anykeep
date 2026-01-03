@@ -102,10 +102,12 @@ export async function GET(request: NextRequest) {
     }
 
     // 4. 获取统计信息
-    const { data: stats } = await supabase
-      .from("classification_suggestions")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type StatusRow = { status: string };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: stats } = await (supabase.from("classification_suggestions") as any)
       .select("status")
-      .eq("user_id", user.id);
+      .eq("user_id", user.id) as { data: StatusRow[] | null };
 
     const statusCounts = {
       pending: 0,
@@ -178,13 +180,14 @@ export async function POST(request: NextRequest) {
           return badRequestError("请指定要接受的建议ID");
         }
 
-        const { data: count } = await supabase.rpc(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: count } = await (supabase.rpc as any)(
           "accept_classification_suggestions",
           {
             p_user_id: user.id,
             p_suggestion_ids: suggestionIds,
           },
-        );
+        ) as { data: number | null };
         processedCount = count ?? 0;
         break;
       }
@@ -194,34 +197,38 @@ export async function POST(request: NextRequest) {
           return badRequestError("请指定要拒绝的建议ID");
         }
 
-        const { data: count } = await supabase.rpc(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: count } = await (supabase.rpc as any)(
           "reject_classification_suggestions",
           {
             p_user_id: user.id,
             p_suggestion_ids: suggestionIds,
           },
-        );
+        ) as { data: number | null };
         processedCount = count ?? 0;
         break;
       }
 
       case "accept_all": {
         // 获取所有待处理建议
-        const { data: pending } = await supabase
-          .from("classification_suggestions")
+        // 类型断言: 手动维护类型文件时需要此断言
+        type IdRow = { id: number };
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: pending } = await (supabase.from("classification_suggestions") as any)
           .select("id")
           .eq("user_id", user.id)
-          .eq("status", "pending");
+          .eq("status", "pending") as { data: IdRow[] | null };
 
         if (pending && pending.length > 0) {
           const ids = pending.map((s) => s.id);
-          const { data: count } = await supabase.rpc(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { data: count } = await (supabase.rpc as any)(
             "accept_classification_suggestions",
             {
               p_user_id: user.id,
               p_suggestion_ids: ids,
             },
-          );
+          ) as { data: number | null };
           processedCount = count ?? 0;
         }
         break;
@@ -229,21 +236,24 @@ export async function POST(request: NextRequest) {
 
       case "reject_all": {
         // 获取所有待处理建议
-        const { data: pending } = await supabase
-          .from("classification_suggestions")
+        // 类型断言: 手动维护类型文件时需要此断言
+        type IdRowReject = { id: number };
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: pending } = await (supabase.from("classification_suggestions") as any)
           .select("id")
           .eq("user_id", user.id)
-          .eq("status", "pending");
+          .eq("status", "pending") as { data: IdRowReject[] | null };
 
         if (pending && pending.length > 0) {
           const ids = pending.map((s) => s.id);
-          const { data: count } = await supabase.rpc(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { data: count } = await (supabase.rpc as any)(
             "reject_classification_suggestions",
             {
               p_user_id: user.id,
               p_suggestion_ids: ids,
             },
-          );
+          ) as { data: number | null };
           processedCount = count ?? 0;
         }
         break;

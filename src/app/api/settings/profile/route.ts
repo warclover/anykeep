@@ -116,11 +116,13 @@ export async function POST(request: Request) {
     }
 
     // Get current profile settings
-    const { data: profile, error: fetchError } = await supabase
-      .from("profiles")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type ProfileSettingsRow = { settings: Record<string, unknown> | null };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: profile, error: fetchError } = await (supabase.from("profiles") as any)
       .select("settings")
       .eq("id", user.id)
-      .single();
+      .single() as { data: ProfileSettingsRow | null; error: { code?: string; message: string } | null };
 
     if (fetchError && fetchError.code !== "PGRST116") {
       throw new Error(`Failed to fetch profile: ${fetchError.message}`);
@@ -143,10 +145,10 @@ export async function POST(request: Request) {
     };
 
     // Update profile
-    const { error: updateError } = await supabase
-      .from("profiles")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: updateError } = await (supabase.from("profiles") as any)
       .update({ settings: updatedSettings })
-      .eq("id", user.id);
+      .eq("id", user.id) as { error: { message: string } | null };
 
     if (updateError) {
       throw new Error(`Failed to update profile: ${updateError.message}`);

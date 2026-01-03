@@ -44,7 +44,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     );
 
     // 调用 RPC 克隆模板
-    const { data, error } = await supabase.rpc("clone_template", {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.rpc as any)("clone_template", {
       p_template_id: id,
       p_new_name: newName || null,
     });
@@ -64,8 +65,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     // 获取克隆后的模板详情
-    const { data: clonedTemplate, error: fetchError } = await supabase
-      .from("ks_custom_templates")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: clonedTemplate, error: fetchError } = await (supabase.from("ks_custom_templates") as any)
       .select("*")
       .eq("id", data)
       .single();

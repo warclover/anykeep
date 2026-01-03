@@ -56,13 +56,25 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     // 3. 获取书签信息
-    const { data: bookmark, error: bookmarkError } = await supabase
-      .from("bookmarks")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type BookmarkSummaryRow = {
+      id: number;
+      user_id: string;
+      title: string;
+      url: string;
+      ai_summary: string | null;
+      ai_tags: string[] | null;
+      content_type: string | null;
+      created_at: string;
+      updated_at: string;
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: bookmark, error: bookmarkError } = await (supabase.from("bookmarks") as any)
       .select(
         "id, user_id, title, url, ai_summary, ai_tags, content_type, created_at, updated_at",
       )
       .eq("id", bookmarkId)
-      .single();
+      .single() as { data: BookmarkSummaryRow | null; error: { message: string } | null };
 
     if (bookmarkError || !bookmark) {
       return notFoundError("书签不存在");

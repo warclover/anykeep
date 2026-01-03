@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+// import { Inter } from "next/font/google";
 import { RootProviders } from "@/components/providers/root-providers";
 import { COLOR_THEME_INIT_SCRIPT } from "@/hooks/core";
 import "./globals.css";
@@ -8,10 +8,11 @@ import "./globals.css";
 // UserProvider 现在使用 getSession()（同步）+ SWR（异步），不再阻塞渲染
 // Next.js 会根据页面使用的 API 自动决定渲染模式
 
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-sans",
-});
+// 临时使用系统字体，避免 Google Fonts 网络超时
+// const inter = Inter({
+//   subsets: ["latin"],
+//   variable: "--font-sans",
+// });
 
 export const metadata: Metadata = {
   title: "AnyKeep - 跨平台智能内容聚合",
@@ -38,7 +39,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="zh-CN" suppressHydrationWarning className={inter.variable}>
+    <html lang="zh-CN" suppressHydrationWarning>
       <head>
         {/* 防闪烁：在 React 水合前设置颜色主题 */}
         <script dangerouslySetInnerHTML={{ __html: COLOR_THEME_INIT_SCRIPT }} />

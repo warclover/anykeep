@@ -58,7 +58,38 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       );
     }
 
+    // 调试：记录原始数据
+    logger.info(
+      {
+        reportId: id,
+        hasContent: !!data.content,
+        contentLength: data.content?.length,
+        hasBlueprintType: !!data.blueprint_type,
+        blueprintType: data.blueprint_type,
+        hasOverview: !!data.overview,
+        overviewLength: data.overview?.length,
+        hasStatus: !!data.status,
+        status: data.status,
+        columns: Object.keys(data),
+      },
+      "Raw report data from database",
+    );
+
     const report = mapRowToReport(data as unknown as SynthesisReportRow);
+
+    // 调试：记录映射后的数据
+    logger.info(
+      {
+        reportId: id,
+        hasOverview: !!report.overview,
+        overviewLength: report.overview?.length,
+        overviewPreview: report.overview?.slice(0, 200),
+        hasFullMarkdown: !!report.fullMarkdown,
+        fullMarkdownLength: report.fullMarkdown?.length,
+        status: report.status,
+      },
+      "Mapped report data",
+    );
 
     return NextResponse.json({ data: report });
   } catch (error) {

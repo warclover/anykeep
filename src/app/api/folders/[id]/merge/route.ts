@@ -76,18 +76,32 @@ export async function POST(
     }
 
     // 3. 检查源文件夹
+    // 类型断言: 手动维护类型文件时需要此断言
+    type FolderType = {
+      id: number;
+      user_id: string;
+      name: string;
+      is_system: boolean;
+    };
     const { data: sourceFolder, error: sourceError } = await supabase
       .from("folders")
       .select("id, user_id, name, is_system")
       .eq("id", sourceFolderId)
       .is("deleted_at", null)
-      .single();
+      .single() as unknown as {
+      data: FolderType | null;
+      error: { code?: string; message: string } | null;
+    };
 
     if (sourceError) {
       if (sourceError.code === "PGRST116") {
         return notFoundError("源文件夹不存在");
       }
       return databaseError(FOLDER.LOAD_ERROR, sourceError);
+    }
+
+    if (!sourceFolder) {
+      return notFoundError("源文件夹不存在");
     }
 
     if (sourceFolder.user_id !== user.id) {
@@ -104,13 +118,20 @@ export async function POST(
       .select("id, user_id, name, is_system")
       .eq("id", targetFolderId)
       .is("deleted_at", null)
-      .single();
+      .single() as unknown as {
+      data: FolderType | null;
+      error: { code?: string; message: string } | null;
+    };
 
     if (targetError) {
       if (targetError.code === "PGRST116") {
         return notFoundError("目标文件夹不存在");
       }
       return databaseError(FOLDER.LOAD_ERROR, targetError);
+    }
+
+    if (!targetFolder) {
+      return notFoundError("目标文件夹不存在");
     }
 
     if (targetFolder.user_id !== user.id) {
@@ -121,14 +142,15 @@ export async function POST(
     // 安全说明：已验证用户身份、源/目标文件夹所有权
     const serviceClient = await createServiceClient();
 
-    const { data: rpcResult, error: rpcError } = await serviceClient.rpc(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: rpcResult, error: rpcError } = await (serviceClient.rpc as any)(
       "merge_folders_atomic",
       {
         p_source_folder_id: sourceFolderId,
         p_target_folder_id: targetFolderId,
         p_user_id: user.id,
       },
-    );
+    ) as { data: unknown; error: { message: string } | null };
 
     if (rpcError) {
       logger.error(

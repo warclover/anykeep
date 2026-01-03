@@ -312,33 +312,37 @@ export async function POST(request: NextRequest) {
       validation.data;
 
     // 3. 检查名称是否已存在
-    const { data: existing } = await supabase
-      .from("smart_lists")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type SmartListExistingRow = { id: string };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: existing } = await (supabase.from("smart_lists") as any)
       .select("id")
       .eq("user_id", user.id)
       .eq("name", name)
       .is("deleted_at", null)
-      .single();
+      .single() as { data: SmartListExistingRow | null };
 
     if (existing) {
       return successResponse({ error: "智能列表名称已存在" }, 400);
     }
 
     // 4. 获取当前最大排序顺序
-    const { data: maxOrder } = await supabase
-      .from("smart_lists")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type SortOrderRow = { sort_order: number };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: maxOrder } = await (supabase.from("smart_lists") as any)
       .select("sort_order")
       .eq("user_id", user.id)
       .is("deleted_at", null)
       .order("sort_order", { ascending: false })
       .limit(1)
-      .single();
+      .single() as { data: SortOrderRow | null };
 
     const newSortOrder = (maxOrder?.sort_order ?? -1) + 1;
 
     // 5. 插入新智能列表
-    const { data: smartList, error: insertError } = await supabase
-      .from("smart_lists")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: smartList, error: insertError } = await (supabase.from("smart_lists") as any)
       .insert({
         user_id: user.id,
         name,
@@ -352,9 +356,9 @@ export async function POST(request: NextRequest) {
         is_preset: false,
       })
       .select()
-      .single();
+      .single() as { data: SmartList | null; error: { message: string } | null };
 
-    if (insertError) {
+    if (insertError || !smartList) {
       logger.error(
         {
           error: insertError,

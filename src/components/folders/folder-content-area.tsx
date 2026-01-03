@@ -353,7 +353,7 @@ export function FolderContentArea({
                             /* eslint-disable-next-line @next/next/no-img-element */
                             <img
                               src={bookmark.cover_url}
-                              alt={bookmark.title}
+                              alt={bookmark.title ?? ""}
                               className="w-12 h-12 object-cover rounded flex-shrink-0"
                             />
                           ) : (

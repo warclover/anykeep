@@ -38,7 +38,7 @@ export default async function FoldersPage() {
     .select("*")
     .eq("user_id", user.id)
     .is("deleted_at", null)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false }) as unknown as { data: Folder[] | null; error: unknown };
 
   // 计算每个文件夹的书签数量和当日新增
   let foldersWithStats: FolderWithStats[] = [];
@@ -52,19 +52,27 @@ export default async function FoldersPage() {
 
     // V4.2.26: 并行查询 - SQL 聚合统计 + 锁定状态
     // 优化效果：10,000+ 书签场景从 ~2000ms 优化到 ~100ms
+    // 类型断言: 手动维护类型文件时需要此断言
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [statsResult, profilesResult] = await Promise.all([
       // SQL 聚合统计（替代内存遍历）
-      supabase.rpc("get_folder_bookmark_stats", {
+      (supabase.rpc as any)("get_folder_bookmark_stats", {
         p_user_id: user.id,
         p_folder_ids: folderIds,
         p_today_start: today.toISOString(),
-      }),
+      }) as Promise<{
+        data: { folder_id: number; bookmark_count: number; today_count: number }[] | null;
+        error: unknown;
+      }>,
       // 锁定状态
       supabase
         .from("folder_profiles")
         .select("folder_id, is_system_locked")
         .eq("user_id", user.id)
-        .in("folder_id", folderIds),
+        .in("folder_id", folderIds) as unknown as Promise<{
+        data: { folder_id: number; is_system_locked: boolean | null }[] | null;
+        error: unknown;
+      }>,
     ]);
 
     // 构建统计映射
@@ -81,10 +89,7 @@ export default async function FoldersPage() {
     // 构建锁定状态映射
     const lockedMap = new Map<number, boolean>();
     if (profilesResult.data) {
-      for (const profile of profilesResult.data as unknown as Array<{
-        folder_id: number;
-        is_system_locked: boolean | null;
-      }>) {
+      for (const profile of profilesResult.data) {
         lockedMap.set(profile.folder_id, profile.is_system_locked === true);
       }
     }

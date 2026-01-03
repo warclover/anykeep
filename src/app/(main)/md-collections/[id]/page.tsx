@@ -59,11 +59,12 @@ async function checkUserAccess(): Promise<boolean> {
       return false;
     }
 
+    // 类型断言: 手动维护类型文件时需要此断言
     const { data: profile } = await supabase
       .from("profiles")
       .select("membership_type")
       .eq("id", user.id)
-      .single();
+      .single() as unknown as { data: { membership_type: string | null } | null };
 
     return profile?.membership_type === "PRO";
   } catch {

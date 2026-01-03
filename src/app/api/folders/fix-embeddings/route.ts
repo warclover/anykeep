@@ -67,6 +67,13 @@ export async function GET(): Promise<NextResponse> {
 
     // 查询缺失 name_embedding 的文件夹
     // 使用 LEFT JOIN 检查 folder_profiles 表
+    // 类型断言: 手动维护类型文件时需要此断言
+    type FolderWithProfile = {
+      id: number;
+      name: string;
+      created_at: string | null;
+      folder_profiles: { name_embedding: unknown } | null;
+    };
     const { data: missingFolders, error: missingError } = await supabase
       .from("folders")
       .select(
@@ -82,7 +89,10 @@ export async function GET(): Promise<NextResponse> {
       .eq("user_id", user.id)
       .eq("is_system", false)
       .is("deleted_at", null)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false }) as unknown as {
+      data: FolderWithProfile[] | null;
+      error: { message: string } | null;
+    };
 
     if (missingError) {
       logger.error(
@@ -97,18 +107,12 @@ export async function GET(): Promise<NextResponse> {
 
     // 过滤出缺失向量的文件夹
     const foldersWithoutEmbedding = (missingFolders || []).filter((f) => {
-      const profile = f.folder_profiles as
-        | { name_embedding: unknown }
-        | null
-        | undefined;
+      const profile = f.folder_profiles;
       return !profile || profile.name_embedding === null;
     });
 
     const foldersWithEmbedding = (missingFolders || []).filter((f) => {
-      const profile = f.folder_profiles as
-        | { name_embedding: unknown }
-        | null
-        | undefined;
+      const profile = f.folder_profiles;
       return profile && profile.name_embedding !== null;
     });
 
@@ -158,6 +162,12 @@ export async function POST(request: Request): Promise<NextResponse> {
     const startTime = Date.now();
 
     // 查询缺失 name_embedding 的文件夹
+    // 类型断言: 手动维护类型文件时需要此断言
+    type FolderWithProfile = {
+      id: number;
+      name: string;
+      folder_profiles: { name_embedding: unknown } | null;
+    };
     const { data: folders, error: queryError } = await supabase
       .from("folders")
       .select(
@@ -173,7 +183,10 @@ export async function POST(request: Request): Promise<NextResponse> {
       .eq("is_system", false)
       .is("deleted_at", null)
       .order("created_at", { ascending: true })
-      .limit(batchSize * 2); // 查询更多，因为部分可能已有 embedding
+      .limit(batchSize * 2) as unknown as {
+      data: FolderWithProfile[] | null;
+      error: { message: string } | null;
+    }; // 查询更多，因为部分可能已有 embedding
 
     if (queryError) {
       logger.error(
@@ -189,10 +202,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     // 过滤出缺失向量的文件夹
     const foldersToFix = (folders || [])
       .filter((f) => {
-        const profile = f.folder_profiles as
-          | { name_embedding: unknown }
-          | null
-          | undefined;
+        const profile = f.folder_profiles;
         return !profile || profile.name_embedding === null;
       })
       .slice(0, batchSize);

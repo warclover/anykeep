@@ -67,10 +67,19 @@ export async function POST(request: NextRequest) {
     const { bookmarkIds, forceProvider, forceRegenerate } = validation.data;
 
     // 3. 获取所有书签信息
-    const { data: bookmarks, error: bookmarksError } = await supabase
-      .from("bookmarks")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type BookmarkBatchRow = {
+      id: number;
+      user_id: string;
+      title: string;
+      url: string | null;
+      description: string | null;
+      ai_summary: string | null;
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: bookmarks, error: bookmarksError } = await (supabase.from("bookmarks") as any)
       .select("id, user_id, title, url, description, ai_summary")
-      .in("id", bookmarkIds);
+      .in("id", bookmarkIds) as { data: BookmarkBatchRow[] | null; error: { message: string } | null };
 
     if (bookmarksError) {
       logger.error(
@@ -154,14 +163,14 @@ export async function POST(request: NextRequest) {
       }
 
       // 更新数据库
-      const { error: updateError } = await supabase
-        .from("bookmarks")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: updateError } = await (supabase.from("bookmarks") as any)
         .update({
           ai_summary: result.summary,
           ai_tags: result.tags,
           updated_at: new Date().toISOString(),
         })
-        .eq("id", bookmarkId);
+        .eq("id", bookmarkId) as { error: { message: string } | null };
 
       // V4.2.4: 修复数据库更新错误被忽略的问题
       // 在结果中包含保存状态

@@ -83,6 +83,35 @@ export type GenerationStage =
   | "finalizing";
 
 /**
+ * 生成进度信息
+ */
+export interface GenerationProgress {
+  stage: GenerationStage;
+  percent: number;
+  message?: string;
+}
+
+/**
+ * 报告章节
+ */
+export interface ReportSection {
+  id: string;
+  title: string;
+  content: string;
+  citations?: Citation[];
+}
+
+/**
+ * 生成完成事件
+ */
+export interface GenerationCompleteEvent {
+  reportId: string;
+  title: string;
+  sections: ReportSection[];
+  citations: Citation[];
+}
+
+/**
  * SSE 事件类型
  */
 export type StreamEventType =

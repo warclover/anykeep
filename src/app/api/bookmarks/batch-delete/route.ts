@@ -73,13 +73,14 @@ export async function POST(request: NextRequest) {
     const { ids } = validation.data;
 
     // 3. 批量软删除收藏（单次事务）
-    const { data: deletedBookmarks, error: deleteError } = await supabase
-      .from("bookmarks")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: deletedBookmarks, error: deleteError } = await (supabase
+      .from("bookmarks") as any)
       .update({ deleted_at: new Date().toISOString() })
       .in("id", ids)
       .eq("user_id", user.id)
       .is("deleted_at", null) // 只删除未删除的记录
-      .select("id");
+      .select("id") as { data: { id: number }[] | null; error: { message: string } | null };
 
     if (deleteError) {
       return databaseError("批量删除收藏失败", deleteError);
@@ -89,13 +90,14 @@ export async function POST(request: NextRequest) {
 
     // 4. 批量减少用户存储计数
     if (deletedCount > 0) {
-      const { error: decrementError } = await supabase.rpc(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: decrementError } = await (supabase.rpc as any)(
         "decrement_storage_used",
         {
           target_user_id: user.id,
           decrement_by: deletedCount,
         },
-      );
+      ) as { error: { message: string } | null };
 
       if (decrementError) {
         // 存储计数更新失败，但收藏已删除，记录错误但不影响返回

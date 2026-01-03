@@ -41,12 +41,14 @@ export async function POST(_request: NextRequest, context: RouteContext) {
     }
 
     // 获取报告
-    const { data: report, error: fetchError } = await supabase
-      .from("synthesis_reports")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type ReportStatusRow = { id: string; status: string; user_id: string };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: report, error: fetchError } = await (supabase.from("synthesis_reports") as any)
       .select("id, status, user_id")
       .eq("id", id)
       .eq("user_id", user.id)
-      .single();
+      .single() as { data: ReportStatusRow | null; error: { message: string } | null };
 
     if (fetchError || !report) {
       return NextResponse.json(
@@ -57,8 +59,8 @@ export async function POST(_request: NextRequest, context: RouteContext) {
 
     // 使用乐观锁更新状态：将状态检查放入 WHERE 子句
     // 这样可以避免 TOCTOU 竞态条件
-    const { data: updated, error: updateError } = await supabase
-      .from("synthesis_reports")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: updated, error: updateError } = await (supabase.from("synthesis_reports") as any)
       .update({
         status: "pending",
         error_message: null,
@@ -68,7 +70,7 @@ export async function POST(_request: NextRequest, context: RouteContext) {
       .eq("user_id", user.id)
       .in("status", ["failed", "cancelled"]) // 乐观锁：只更新符合条件的记录
       .select("id")
-      .maybeSingle();
+      .maybeSingle() as { data: { id: string } | null; error: { message: string } | null };
 
     if (updateError) {
       logger.error({ error: updateError }, "Failed to reset synthesis status");
@@ -81,11 +83,11 @@ export async function POST(_request: NextRequest, context: RouteContext) {
     // 如果没有更新任何记录，说明状态已变更
     if (!updated) {
       // 重新获取当前状态
-      const { data: currentReport } = await supabase
-        .from("synthesis_reports")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: currentReport } = await (supabase.from("synthesis_reports") as any)
         .select("status")
         .eq("id", id)
-        .single();
+        .single() as { data: { status: string } | null };
 
       return NextResponse.json(
         {

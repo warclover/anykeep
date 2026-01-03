@@ -65,13 +65,17 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient();
 
     // 3. 获取书签内容
+    // 类型断言: 手动维护类型文件时需要此断言
     const { data: bookmark, error: bookmarkError } = await supabase
       .from("bookmarks")
       .select("id, title, ai_summary, description, url")
       .eq("id", bookmarkId)
       .eq("user_id", user.id)
       .is("deleted_at", null)
-      .single();
+      .single() as unknown as {
+      data: { id: number; title: string | null; ai_summary: string | null; description: string | null; url: string } | null;
+      error: { message: string } | null;
+    };
 
     if (bookmarkError || !bookmark) {
       logger.warn(
@@ -110,7 +114,7 @@ export async function POST(request: NextRequest) {
     );
 
     const generationInput = {
-      title: bookmark.title,
+      title: bookmark.title ?? "",
       summary: bookmark.ai_summary || "",
       content: content,
       count: Math.min(count, 10 - (existingCount || 0)), // 不超过上限

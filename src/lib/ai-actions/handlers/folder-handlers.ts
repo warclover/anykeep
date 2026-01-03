@@ -16,6 +16,24 @@ import type { AIActionResult, BookmarkBrief, FolderBrief } from "../types";
 
 type SupabaseClientType = SupabaseClient<Database>;
 
+// 本地类型定义
+interface FolderRow {
+  id: number;
+  name: string;
+  parent_id: number | null;
+}
+
+interface BookmarkRow {
+  id: number;
+  title: string | null;
+  url: string;
+  description: string | null;
+  user_tags: string[] | null;
+  platform: string | null;
+  rating: number | null;
+  created_at: string | null;
+}
+
 // ============================================================================
 // 文件夹读取操作
 // ============================================================================
@@ -27,8 +45,7 @@ export async function folderList(
 ): Promise<AIActionResult<FolderBrief[]>> {
   const { parentId } = params as { parentId?: number };
 
-  let queryBuilder = supabase
-    .from("folders")
+  let queryBuilder = (supabase.from("folders") as any)
     .select("id, name, parent_id")
     .eq("user_id", userId)
     .order("order", { ascending: true });
@@ -65,8 +82,7 @@ export async function folderGet(
 ): Promise<AIActionResult<FolderBrief>> {
   const { id } = params as { id: number };
 
-  const { data, error } = await supabase
-    .from("folders")
+  const { data, error } = await (supabase.from("folders") as any)
     .select("id, name, parent_id")
     .eq("id", id)
     .eq("user_id", userId)
@@ -101,8 +117,7 @@ export async function folderBookmarks(
     limit?: number;
   };
 
-  const { data, error } = await supabase
-    .from("bookmarks")
+  const { data, error } = await (supabase.from("bookmarks") as any)
     .select(
       "id, title, url, description, user_tags, platform, rating, created_at",
     )
@@ -153,8 +168,7 @@ export async function folderCreate(
     description?: string;
   };
 
-  const { data, error } = await supabase
-    .from("folders")
+  const { data, error } = await (supabase.from("folders") as any)
     .insert({
       user_id: userId,
       name,
@@ -198,8 +212,7 @@ export async function folderUpdate(
   if (name !== undefined) updateData.name = name;
   if (parentId !== undefined) updateData.parent_id = parentId;
 
-  const { data, error } = await supabase
-    .from("folders")
+  const { data, error } = await (supabase.from("folders") as any)
     .update(updateData)
     .eq("id", id)
     .eq("user_id", userId)
@@ -233,8 +246,7 @@ export async function folderDelete(
 ): Promise<AIActionResult<{ deletedId: number }>> {
   const { id } = params as { id: number };
 
-  const { error } = await supabase
-    .from("folders")
+  const { error } = await (supabase.from("folders") as any)
     .delete()
     .eq("id", id)
     .eq("user_id", userId);

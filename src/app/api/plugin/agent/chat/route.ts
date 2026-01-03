@@ -133,13 +133,16 @@ async function handleQuickSave(
   const url = browserContext.page.url;
   const title = browserContext.page.title;
 
+  // 类型断言: 手动维护类型文件时需要此断言
+  type BookmarkIdRow = { id: number };
+
   // 检查是否已存在
-  const { data: existing } = await serviceClient
-    .from("bookmarks")
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: existing } = await (serviceClient.from("bookmarks") as any)
     .select("id")
     .eq("user_id", userId)
     .eq("url", url)
-    .single();
+    .single() as { data: BookmarkIdRow | null };
 
   if (existing) {
     return {
@@ -152,8 +155,8 @@ async function handleQuickSave(
   const platform = detectPlatformFromUrl(url);
 
   // 创建收藏
-  const { data: bookmark, error } = await serviceClient
-    .from("bookmarks")
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: bookmark, error } = await (serviceClient.from("bookmarks") as any)
     .insert({
       user_id: userId,
       url,
@@ -165,13 +168,17 @@ async function handleQuickSave(
       source_name: browserContext.page.siteName || null,
     })
     .select("id")
-    .single();
+    .single() as { data: BookmarkIdRow | null; error: { message: string } | null };
 
   if (error) {
     logger.error(
       { error: error.message, userId },
       "Plugin Agent: Failed to save bookmark",
     );
+    return { success: false, error: "保存失败" };
+  }
+
+  if (!bookmark) {
     return { success: false, error: "保存失败" };
   }
 

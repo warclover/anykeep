@@ -127,12 +127,12 @@ export class MasteryTracker implements IMasteryTracker {
   ): Promise<KnowledgePointMastery | null> {
     const supabase = await createClient();
 
-    const { data, error } = await supabase
-      .from("ks_knowledge_point_mastery")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.from("ks_knowledge_point_mastery") as any)
       .select("*")
       .eq("user_id", userId)
       .eq("knowledge_point_id", pointId)
-      .single();
+      .single() as { data: MasteryRow | null; error: { code?: string; message: string } | null };
 
     if (error) {
       if (error.code === "PGRST116") {
@@ -142,7 +142,7 @@ export class MasteryTracker implements IMasteryTracker {
       throw new Error(`获取知识点掌握状态失败: ${error.message}`);
     }
 
-    return rowToMastery(data as MasteryRow);
+    return data ? rowToMastery(data) : null;
   }
 
   /**
@@ -152,7 +152,8 @@ export class MasteryTracker implements IMasteryTracker {
     const supabase = await createClient();
 
     // 调用 RPC 函数记录复习并更新掌握度
-    const { data, error } = await supabase.rpc(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.rpc as any)(
       "record_review_and_update_mastery",
       {
         p_user_id: record.userId,
@@ -189,10 +190,12 @@ export class MasteryTracker implements IMasteryTracker {
     const supabase = await createClient();
 
     // 获取报告的所有知识点
-    const { data: points, error: pointsError } = await supabase
-      .from("ks_knowledge_points")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type PointIdRow = { id: string };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: points, error: pointsError } = await (supabase.from("ks_knowledge_points") as any)
       .select("id")
-      .eq("report_id", reportId);
+      .eq("report_id", reportId) as { data: PointIdRow[] | null; error: { message: string } | null };
 
     if (pointsError) {
       logger.error(
@@ -226,11 +229,11 @@ export class MasteryTracker implements IMasteryTracker {
     }
 
     // 获取用户对这些知识点的掌握度
-    const { data: masteryData, error: masteryError } = await supabase
-      .from("ks_knowledge_point_mastery")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: masteryData, error: masteryError } = await (supabase.from("ks_knowledge_point_mastery") as any)
       .select("*")
       .eq("user_id", userId)
-      .in("knowledge_point_id", pointIds);
+      .in("knowledge_point_id", pointIds) as { data: MasteryRow[] | null; error: { message: string } | null };
 
     if (masteryError) {
       logger.error(
@@ -241,11 +244,13 @@ export class MasteryTracker implements IMasteryTracker {
     }
 
     // 获取学习会话统计
-    const { data: sessions } = await supabase
-      .from("ks_learning_sessions")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type SessionStatsRow = { duration_minutes: number; started_at: string };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: sessions } = await (supabase.from("ks_learning_sessions") as any)
       .select("duration_minutes, started_at")
       .eq("user_id", userId)
-      .eq("report_id", reportId);
+      .eq("report_id", reportId) as { data: SessionStatsRow[] | null };
 
     // 计算统计数据
     const levelCounts: Record<MasteryLevel, number> = {
@@ -333,9 +338,19 @@ export class MasteryTracker implements IMasteryTracker {
     const supabase = await createClient();
 
     // 调用 RPC 函数
-    const { data, error } = await supabase.rpc("get_user_mastery_stats", {
+    // 类型断言: 手动维护类型文件时需要此断言
+    type UserMasteryRpcResult = {
+      masteredPoints?: number;
+      proficientPoints?: number;
+      totalPoints?: number;
+      overallMasteryRate?: number;
+      dueForReview?: number;
+      weeklyStudyMinutes?: number;
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.rpc as any)("get_user_mastery_stats", {
       p_user_id: userId,
-    });
+    }) as { data: UserMasteryRpcResult | null; error: { message: string } | null };
 
     if (error) {
       logger.error(
@@ -346,15 +361,17 @@ export class MasteryTracker implements IMasteryTracker {
     }
 
     // 计算连续学习天数
-    const { data: recentSessions } = await supabase
-      .from("ks_learning_sessions")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type SessionStartRow = { started_at: string };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: recentSessions } = await (supabase.from("ks_learning_sessions") as any)
       .select("started_at")
       .eq("user_id", userId)
       .gte(
         "started_at",
         new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
       )
-      .order("started_at", { ascending: false });
+      .order("started_at", { ascending: false }) as { data: SessionStartRow[] | null };
 
     let streakDays = 0;
     if (recentSessions && recentSessions.length > 0) {
@@ -378,8 +395,10 @@ export class MasteryTracker implements IMasteryTracker {
 
     // 计算学习趋势
     const currentWeekMinutes = data?.weeklyStudyMinutes ?? 0;
-    const { data: lastWeekData } = await supabase
-      .from("ks_learning_sessions")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type DurationRow = { duration_minutes: number };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: lastWeekData } = await (supabase.from("ks_learning_sessions") as any)
       .select("duration_minutes")
       .eq("user_id", userId)
       .gte(
@@ -389,7 +408,7 @@ export class MasteryTracker implements IMasteryTracker {
       .lt(
         "started_at",
         new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-      );
+      ) as { data: DurationRow[] | null };
 
     const lastWeekMinutes = (lastWeekData ?? []).reduce(
       (sum, s) => sum + s.duration_minutes,
@@ -404,10 +423,10 @@ export class MasteryTracker implements IMasteryTracker {
     }
 
     // 获取学习的报告数
-    const { count: reportsStudied } = await supabase
-      .from("ks_learning_sessions")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { count: reportsStudied } = await (supabase.from("ks_learning_sessions") as any)
       .select("report_id", { count: "exact", head: true })
-      .eq("user_id", userId);
+      .eq("user_id", userId) as { count: number | null };
 
     return {
       userId,
@@ -434,10 +453,11 @@ export class MasteryTracker implements IMasteryTracker {
     const supabase = await createClient();
 
     // 调用 RPC 函数
-    const { data, error } = await supabase.rpc("get_due_for_review", {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.rpc as any)("get_due_for_review", {
       p_user_id: userId,
       p_limit: limit,
-    });
+    }) as { data: DueReviewRow[] | null; error: { message: string } | null };
 
     if (error) {
       logger.error({ error: error.message }, "Failed to get due for review");
@@ -478,19 +498,21 @@ export class MasteryTracker implements IMasteryTracker {
     startDate.setHours(0, 0, 0, 0);
 
     // 获取会话数据
-    const { data: sessions } = await supabase
-      .from("ks_learning_sessions")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: sessions } = await (supabase.from("ks_learning_sessions") as any)
       .select("*")
       .eq("user_id", userId)
       .gte("started_at", startDate.toISOString())
-      .order("started_at", { ascending: true });
+      .order("started_at", { ascending: true }) as { data: SessionRow[] | null };
 
     // 获取复习记录
-    const { data: reviews } = await supabase
-      .from("ks_review_records")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type ReviewRow = { created_at: string; knowledge_point_id: string };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: reviews } = await (supabase.from("ks_review_records") as any)
       .select("created_at, knowledge_point_id")
       .eq("user_id", userId)
-      .gte("created_at", startDate.toISOString());
+      .gte("created_at", startDate.toISOString()) as { data: ReviewRow[] | null };
 
     // 按日期聚合
     const timelineMap = new Map<string, LearningTimeline>();
@@ -553,19 +575,19 @@ export class MasteryTracker implements IMasteryTracker {
   ): Promise<LearningSession> {
     const supabase = await createClient();
 
-    const { data, error } = await supabase
-      .from("ks_learning_sessions")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.from("ks_learning_sessions") as any)
       .insert({
         user_id: userId,
         report_id: reportId,
         started_at: new Date().toISOString(),
       })
       .select()
-      .single();
+      .single() as { data: SessionRow | null; error: { message: string } | null };
 
-    if (error) {
-      logger.error({ error: error.message }, "Failed to create session");
-      throw new Error(`创建学习会话失败: ${error.message}`);
+    if (error || !data) {
+      logger.error({ error: error?.message }, "Failed to create session");
+      throw new Error(`创建学习会话失败: ${error?.message}`);
     }
 
     logger.info(
@@ -573,7 +595,7 @@ export class MasteryTracker implements IMasteryTracker {
       "Learning session created",
     );
 
-    return rowToSession(data as SessionRow);
+    return rowToSession(data);
   }
 
   /**
@@ -588,12 +610,12 @@ export class MasteryTracker implements IMasteryTracker {
     const supabase = await createClient();
 
     // 获取会话并验证所有权
-    const { data: session, error: fetchError } = await supabase
-      .from("ks_learning_sessions")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: session, error: fetchError } = await (supabase.from("ks_learning_sessions") as any)
       .select("*")
       .eq("id", sessionId)
       .eq("user_id", userId) // 添加用户所有权验证
-      .single();
+      .single() as { data: SessionRow | null; error: { message: string } | null };
 
     if (fetchError || !session) {
       throw new Error(`会话不存在或无权访问: ${sessionId}`);
@@ -607,17 +629,19 @@ export class MasteryTracker implements IMasteryTracker {
     );
 
     // 获取本次会话的复习统计
-    const { data: reviews } = await supabase
-      .from("ks_review_records")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type ReviewRatingRow = { rating: number };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: reviews } = await (supabase.from("ks_review_records") as any)
       .select("rating")
-      .eq("session_id", sessionId);
+      .eq("session_id", sessionId) as { data: ReviewRatingRow[] | null };
 
     const totalAnswers = reviews?.length ?? 0;
     const correctAnswers = (reviews ?? []).filter((r) => r.rating >= 3).length;
 
     // 更新会话
-    const { data, error } = await supabase
-      .from("ks_learning_sessions")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.from("ks_learning_sessions") as any)
       .update({
         ended_at: endedAt.toISOString(),
         duration_minutes: durationMinutes,
@@ -627,11 +651,11 @@ export class MasteryTracker implements IMasteryTracker {
       })
       .eq("id", sessionId)
       .select()
-      .single();
+      .single() as { data: SessionRow | null; error: { message: string } | null };
 
-    if (error) {
-      logger.error({ error: error.message }, "Failed to end session");
-      throw new Error(`结束学习会话失败: ${error.message}`);
+    if (error || !data) {
+      logger.error({ error: error?.message }, "Failed to end session");
+      throw new Error(`结束学习会话失败: ${error?.message}`);
     }
 
     logger.info(
@@ -639,7 +663,7 @@ export class MasteryTracker implements IMasteryTracker {
       "Learning session ended",
     );
 
-    return rowToSession(data as SessionRow);
+    return rowToSession(data);
   }
 }
 

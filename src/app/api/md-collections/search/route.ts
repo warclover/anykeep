@@ -158,11 +158,13 @@ export async function GET(request: NextRequest) {
     }
 
     // 2. 检查 PRO 权限
-    const { data: profile } = await supabase
-      .from("profiles")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type ProfileRow = { membership_type: string | null };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: profile } = await (supabase.from("profiles") as any)
       .select("membership_type")
       .eq("id", user.id)
-      .single();
+      .single() as { data: ProfileRow | null };
 
     if (profile?.membership_type !== "PRO") {
       return forbiddenError("MD 收藏搜索功能仅限 Pro 用户使用");

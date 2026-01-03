@@ -7,6 +7,7 @@
  */
 
 import { useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   BookOpen,
@@ -31,9 +32,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { BlueprintSelector } from "@/components/knowledge-studio/blueprint-selector";
 import { MaterialSelector } from "@/components/knowledge-studio/material-selector";
 import { GenerationProgress } from "@/components/knowledge-studio/generation-progress";
-import type { BlueprintType, GenerationStage } from "@/lib/knowledge-studio";
-import { BLUEPRINT_DISPLAY_CONFIG } from "@/lib/knowledge-studio";
+// 从客户端安全导出导入，避免导入包含服务端代码的主 index.ts
+import type { BlueprintType, GenerationStage } from "@/lib/knowledge-studio/client";
+import { BLUEPRINT_DISPLAY_CONFIG } from "@/lib/knowledge-studio/client";
 import { useBookmarks } from "@/hooks/queries/use-bookmarks";
+import { useGeneration } from "@/hooks/domain/knowledge-studio/use-generation";
+import { toast } from "sonner";
 
 // 工作流步骤
 type WorkflowStep =
@@ -53,6 +57,8 @@ const LENGTH_OPTIONS: { value: TargetLength; label: string; desc: string }[] = [
 ];
 
 export function KnowledgeStudioPageClient() {
+  const router = useRouter();
+  
   // 工作流状态
   const [currentStep, setCurrentStep] = useState<WorkflowStep>("materials");
   const [selectedMaterials, setSelectedMaterials] = useState<string[]>([]);
@@ -61,12 +67,9 @@ export function KnowledgeStudioPageClient() {
   >();
   const [targetLength, setTargetLength] = useState<TargetLength>("medium");
   const [customPrompt, setCustomPrompt] = useState("");
-
-  // 生成状态
-  const [generationStage, setGenerationStage] =
-    useState<GenerationStage>("parsing");
-  const [stageProgress, setStageProgress] = useState(0);
-  const [totalProgress, setTotalProgress] = useState(0);
+  
+  // 生成的报告 ID
+  const [generatedReportId, setGeneratedReportId] = useState<string | null>(null);
 
   // 获取书签数据
   const { data, isLoading } = useBookmarks({ limit: 100 });
@@ -81,6 +84,45 @@ export function KnowledgeStudioPageClient() {
     summary: b.aiSummary || undefined,
     createdAt: new Date(b.createdAt),
   }));
+
+  // 使用生成 Hook
+  const {
+    status: generationStatus,
+    progress: generationProgress,
+    result: generationResult,
+    error: generationError,
+    generate: startGeneration,
+    reset: resetGeneration,
+  } = useGeneration({
+    onComplete: (result) => {
+      console.log("Generation complete:", result);
+      if (result.success && result.reportId) {
+        console.log("Setting reportId:", result.reportId);
+        setGeneratedReportId(result.reportId);
+        setCurrentStep("result");
+        toast.success("报告生成完成！");
+      } else {
+        // 如果成功但没有 reportId，说明保存失败
+        if (result.success && !result.reportId) {
+          console.error("Generation succeeded but no reportId:", result);
+          toast.error("报告生成成功，但保存失败，请重试");
+        } else {
+          // 生成失败
+          console.error("Generation failed:", result.error);
+          toast.error(result.error || "生成失败，请重试");
+        }
+        setCurrentStep("config");
+      }
+    },
+    onError: (error) => {
+      console.error("Generation error:", error);
+      toast.error(error);
+      setCurrentStep("config");
+    },
+    onProgress: (progress) => {
+      // 进度更新已在 GenerationProgress 组件中处理
+    },
+  });
 
   // 步骤导航
   const steps = [
@@ -99,31 +141,43 @@ export function KnowledgeStudioPageClient() {
 
   // 开始生成（需要在 handleNext 之前定义）
   const handleGenerate = useCallback(async () => {
-    setCurrentStep("generating");
-
-    // 模拟生成过程
-    const stages: GenerationStage[] = [
-      "parsing",
-      "outline",
-      "content",
-      "citations",
-      "finalizing",
-    ];
-
-    for (let i = 0; i < stages.length; i++) {
-      setGenerationStage(stages[i]);
-      setTotalProgress(Math.round((i / stages.length) * 100));
-
-      // 模拟每个阶段的进度
-      for (let p = 0; p <= 100; p += 10) {
-        setStageProgress(p);
-        await new Promise((r) => setTimeout(r, 200));
-      }
+    if (!selectedBlueprint || selectedMaterials.length < 2) {
+      toast.error("请选择蓝图和至少 2 个素材");
+      return;
     }
 
-    setTotalProgress(100);
-    setCurrentStep("result");
-  }, []);
+    setCurrentStep("generating");
+    setGeneratedReportId(null);
+
+    // 准备素材数据
+    const selectedBookmarks = bookmarks.filter((b) =>
+      selectedMaterials.includes(String(b.id)),
+    );
+
+    const materialItems = selectedBookmarks.map((b) => ({
+      bookmarkId: String(b.id),
+      title: b.title || "无标题",
+      content: b.aiSummary || b.description || "",
+      url: b.url,
+      platform: b.platform || undefined,
+    }));
+
+    // 开始生成
+    await startGeneration(
+      {
+        type: selectedBlueprint,
+        targetLength,
+        tone: undefined,
+      },
+      materialItems,
+    );
+  }, [
+    selectedBlueprint,
+    selectedMaterials,
+    targetLength,
+    bookmarks,
+    startGeneration,
+  ]);
 
   // 下一步
   const handleNext = useCallback(() => {
@@ -152,11 +206,21 @@ export function KnowledgeStudioPageClient() {
     setSelectedBlueprint(undefined);
     setTargetLength("medium");
     setCustomPrompt("");
-    setIsGenerating(false);
-    setGenerationStage("parsing");
-    setStageProgress(0);
-    setTotalProgress(0);
-  }, []);
+    setGeneratedReportId(null);
+    resetGeneration();
+  }, [resetGeneration]);
+
+  // 查看报告
+  const handleViewReport = useCallback(() => {
+    console.log("View report clicked, reportId:", generatedReportId);
+    if (generatedReportId) {
+      console.log("Navigating to:", `/synthesis/${generatedReportId}`);
+      router.push(`/synthesis/${generatedReportId}`);
+    } else {
+      console.error("No reportId available");
+      toast.error("报告 ID 不存在，请重新生成");
+    }
+  }, [generatedReportId, router]);
 
   return (
     <div className="container mx-auto max-w-5xl py-6 space-y-6">
@@ -375,11 +439,22 @@ export function KnowledgeStudioPageClient() {
                 </p>
               </div>
 
-              <GenerationProgress
-                stage={generationStage}
-                stageProgress={stageProgress}
-                totalProgress={totalProgress}
-              />
+              {generationProgress ? (
+                <GenerationProgress
+                  stage={generationProgress.stage}
+                  stageProgress={generationProgress.stageProgress}
+                  totalProgress={generationProgress.totalProgress}
+                />
+              ) : (
+                <div className="py-12 text-center text-muted-foreground">
+                  正在准备生成...
+                </div>
+              )}
+              {generationError && (
+                <div className="rounded-lg border border-destructive bg-destructive/10 p-4">
+                  <p className="text-sm text-destructive">{generationError}</p>
+                </div>
+              )}
             </div>
           )}
 
@@ -399,8 +474,26 @@ export function KnowledgeStudioPageClient() {
                 <Button variant="outline" onClick={handleReset}>
                   生成新报告
                 </Button>
-                <Button>查看报告</Button>
+                <Button
+                  onClick={handleViewReport}
+                  disabled={!generatedReportId}
+                  title={generatedReportId ? `查看报告 ${generatedReportId}` : "报告 ID 不存在"}
+                >
+                  查看报告
+                  {generatedReportId && (
+                    <span className="ml-2 text-xs opacity-70">
+                      (ID: {generatedReportId.slice(0, 8)}...)
+                    </span>
+                  )}
+                </Button>
               </div>
+              {/* 调试信息 */}
+              {process.env.NODE_ENV === "development" && (
+                <div className="mt-4 p-2 bg-muted rounded text-xs">
+                  <p>Debug: reportId = {generatedReportId || "null"}</p>
+                  <p>Debug: generationResult = {JSON.stringify(generationResult?.reportId || "null")}</p>
+                </div>
+              )}
             </div>
           )}
         </CardContent>

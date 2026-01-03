@@ -81,11 +81,13 @@ export class KnowledgeExtractor implements IKnowledgeExtractor {
     }
 
     // 获取报告内容（假设报告存储在 ks_reports 表）
-    const { data: report, error: reportError } = await supabase
-      .from("ks_reports")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type ReportRow = { content: string; source_bookmark_ids: string[] };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: report, error: reportError } = await (supabase.from("ks_reports") as any)
       .select("content, source_bookmark_ids")
       .eq("id", reportId)
-      .single();
+      .single() as { data: ReportRow | null; error: { code?: string; message: string } | null };
 
     if (reportError) {
       // 如果报告表不存在，返回空数组
@@ -102,9 +104,9 @@ export class KnowledgeExtractor implements IKnowledgeExtractor {
 
     // 解析报告内容提取知识点
     const extractedPoints = this.parseReportContent(
-      report.content,
+      report?.content ?? "",
       reportId,
-      report.source_bookmark_ids ?? [],
+      report?.source_bookmark_ids ?? [],
     );
 
     if (extractedPoints.length === 0) {
@@ -113,8 +115,8 @@ export class KnowledgeExtractor implements IKnowledgeExtractor {
     }
 
     // 批量插入知识点
-    const { data, error } = await supabase
-      .from("ks_knowledge_points")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.from("ks_knowledge_points") as any)
       .insert(
         extractedPoints.map((point) => ({
           report_id: point.reportId,
@@ -126,7 +128,7 @@ export class KnowledgeExtractor implements IKnowledgeExtractor {
           importance: point.importance,
         })),
       )
-      .select();
+      .select() as { data: KnowledgePointRow[] | null; error: { message: string } | null };
 
     if (error) {
       logger.error(
@@ -136,12 +138,14 @@ export class KnowledgeExtractor implements IKnowledgeExtractor {
       throw new Error(`保存知识点失败: ${error.message}`);
     }
 
+    const resultData = data ?? [];
+
     logger.info(
-      { reportId, count: data.length },
+      { reportId, count: resultData.length },
       "Knowledge points extracted and saved",
     );
 
-    return (data ?? []).map((row) =>
+    return resultData.map((row) =>
       rowToKnowledgePoint(row as KnowledgePointRow),
     );
   }
@@ -315,8 +319,8 @@ export class KnowledgeExtractor implements IKnowledgeExtractor {
       return;
     }
 
-    const { error } = await supabase
-      .from("ks_knowledge_points")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase.from("ks_knowledge_points") as any)
       .update(updateData)
       .eq("id", pointId);
 

@@ -62,12 +62,14 @@ export async function POST(request: NextRequest) {
     const { bookmarkId } = bodyResult.data;
 
     // 验证书签所有权和平台
-    const { data: bookmark, error: bookmarkError } = await supabase
-      .from("bookmarks")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type BookmarkWechatRow = { id: number; url: string; platform: string | null };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: bookmark, error: bookmarkError } = await (supabase.from("bookmarks") as any)
       .select("id, url, platform")
       .eq("id", bookmarkId)
       .eq("user_id", user.id)
-      .single();
+      .single() as { data: BookmarkWechatRow | null; error: { message: string } | null };
 
     if (bookmarkError || !bookmark) {
       return errorResponse("NOT_FOUND", "书签不存在或无权访问", 404);
@@ -82,12 +84,14 @@ export async function POST(request: NextRequest) {
     const serviceClient = await createServiceClient();
 
     // 检查是否已有快照
-    const { data: existingSnapshot } = await supabase
-      .from("bookmark_snapshots")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type SnapshotExistingRow = { id: number; status: string; readable_content: string | null };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: existingSnapshot } = await (supabase.from("bookmark_snapshots") as any)
       .select("id, status, readable_content")
       .eq("bookmark_id", bookmarkId)
       .eq("user_id", user.id)
-      .maybeSingle();
+      .maybeSingle() as { data: SnapshotExistingRow | null };
 
     // 如果已有已完成的快照，直接返回
     if (existingSnapshot && existingSnapshot.status === "completed") {
@@ -104,14 +108,16 @@ export async function POST(request: NextRequest) {
     if (existingSnapshot) {
       snapshotId = existingSnapshot.id;
       // 更新状态为处理中
-      await serviceClient
-        .from("bookmark_snapshots")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (serviceClient.from("bookmark_snapshots") as any)
         .update({ status: "processing" })
         .eq("id", snapshotId);
     } else {
       // 创建新快照记录
-      const { data: newSnapshot, error: createError } = await serviceClient
-        .from("bookmark_snapshots")
+      // 类型断言: 手动维护类型文件时需要此断言
+      type NewSnapshotRow = { id: number };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: newSnapshot, error: createError } = await (serviceClient.from("bookmark_snapshots") as any)
         .insert({
           bookmark_id: bookmarkId,
           user_id: user.id,
@@ -120,7 +126,7 @@ export async function POST(request: NextRequest) {
           status: "processing",
         })
         .select("id")
-        .single();
+        .single() as { data: NewSnapshotRow | null; error: { message: string } | null };
 
       if (createError || !newSnapshot) {
         logger.error({ error: createError }, "[API] Failed to create snapshot");
@@ -147,8 +153,8 @@ export async function POST(request: NextRequest) {
       const originalHtml = extractBodyHtml(html);
 
       // 更新快照记录
-      const { error: updateError } = await serviceClient
-        .from("bookmark_snapshots")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: updateError } = await (serviceClient.from("bookmark_snapshots") as any)
         .update({
           status: "completed",
           readable_title: readability.title || null,
@@ -183,8 +189,8 @@ export async function POST(request: NextRequest) {
       const errorMessage =
         fetchError instanceof Error ? fetchError.message : "抓取失败";
 
-      await serviceClient
-        .from("bookmark_snapshots")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (serviceClient.from("bookmark_snapshots") as any)
         .update({
           status: "failed",
           error_message: errorMessage,

@@ -55,11 +55,26 @@ import { folderCacheInvalidation } from "@/lib/cache";
 import type {
   Folder as FolderType,
   FolderGroup,
-  FolderDisplayGroup,
 } from "@/types/supabase";
+
+/** UI 显示用的文件夹分组键类型 */
+type UIFolderDisplayGroup =
+  | "default"
+  | "pinned"
+  | "archived"
+  | "work"
+  | "study"
+  | "life"
+  | "entertainment"
+  | "other";
 
 type FolderWithCount = FolderType & {
   bookmark_count?: number;
+  system_type?: string | null;
+  is_system?: boolean;
+  is_archived?: boolean | null;
+  folder_group?: string | null;
+  sort_order?: number | null;
 };
 
 /**
@@ -96,7 +111,7 @@ interface FolderActionMenuProps {
 
 // 文件夹分组配置（包含 UI 显示用的虚拟分组）
 const FOLDER_GROUPS: Record<
-  FolderDisplayGroup,
+  UIFolderDisplayGroup,
   { label: string; icon: typeof Folder }
 > = {
   default: {
@@ -206,7 +221,7 @@ export function FolderActionMenu({
         throw new Error(data.error?.message || "移动失败");
       }
 
-      toast.success(`已移至「${FOLDER_GROUPS[newGroup].label}」`);
+      toast.success(`已移至「${FOLDER_GROUPS[newGroup as UIFolderDisplayGroup]?.label ?? newGroup}」`);
       // 清除文件夹缓存
       if (user?.id) {
         folderCacheInvalidation.onFolderGroupChange(user.id);
@@ -637,7 +652,8 @@ export function FolderActionMenu({
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent>
               {VALID_FOLDER_GROUPS.map((groupKey) => {
-                const groupConfig = FOLDER_GROUPS[groupKey];
+                const groupConfig = FOLDER_GROUPS[groupKey as UIFolderDisplayGroup];
+                if (!groupConfig) return null;
                 const GroupIcon = groupConfig.icon;
                 const isCurrent = folder.folder_group === groupKey;
                 return (

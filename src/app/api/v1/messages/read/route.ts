@@ -47,7 +47,9 @@ export const POST = withAuthMiddleware(
     const { messageIds } = validation.data;
 
     // 使用 RPC 函数批量标记已读
-    const { data: updatedCount, error } = await supabase.rpc(
+    // 类型断言: 手动维护类型文件时需要此断言
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: updatedCount, error } = await (supabase.rpc as any)(
       "mark_messages_read",
       {
         p_user_id: userId,

@@ -77,6 +77,7 @@ import { SynthesisProgress } from "./synthesis-progress";
 import { SourceBookmarksPanel } from "./source-bookmarks-panel";
 import { SynthesisQAPanel } from "./synthesis-qa-panel";
 import { BlindSpotSupplementDialog } from "./blind-spot-supplement-dialog";
+import { AIMarkdown } from "@/components/ai/ai-markdown";
 import type {
   ConsensusPoint,
   DivergencePoint,
@@ -664,6 +665,23 @@ export function SynthesisDetailPageClient({
     refetch,
   } = useSynthesisDetail(reportId);
 
+  // 调试：打印报告数据
+  if (report && process.env.NODE_ENV === "development") {
+    console.log("Report data:", {
+      id: report.id,
+      title: report.title,
+      overview: report.overview?.slice(0, 100),
+      overviewLength: report.overview?.length,
+      fullMarkdown: report.fullMarkdown?.slice(0, 100),
+      fullMarkdownLength: report.fullMarkdown?.length,
+      consensusCount: report.consensusCount,
+      divergenceCount: report.divergenceCount,
+      blindSpotCount: report.blindSpotCount,
+      sourceType: report.sourceType,
+      sourceBookmarkIds: report.sourceBookmarkIds,
+    });
+  }
+
   // 对话框状态
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
@@ -922,29 +940,75 @@ export function SynthesisDetailPageClient({
         />
       ) : (
         <>
-          {/* 四维内容 */}
-          <div className="space-y-6">
-            {report.overview && (
-              <OverviewSection
-                content={report.overview}
+          {/* 检测是否是知识工坊报告（没有四维结构数据） */}
+          {report.consensusCount === 0 && report.divergenceCount === 0 && report.blindSpotCount === 0 && (report.overview || report.fullMarkdown) ? (
+            /* 知识工坊报告：显示 Markdown 内容 */
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    报告内容
+                  </CardTitle>
+                  <CardDescription>
+                    这是由知识工坊生成的 {report.title || "报告"}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="prose prose-slate max-w-none dark:prose-invert">
+                    {report.overview || report.fullMarkdown ? (
+                      <AIMarkdown content={report.overview || report.fullMarkdown || ""} />
+                    ) : (
+                      <div className="text-muted-foreground">
+                        <p>报告内容为空</p>
+                        {process.env.NODE_ENV === "development" && (
+                          <pre className="mt-4 text-xs bg-muted p-4 rounded overflow-auto">
+                            Debug Info:
+                            {JSON.stringify(
+                              {
+                                hasOverview: !!report.overview,
+                                overviewLength: report.overview?.length,
+                                hasFullMarkdown: !!report.fullMarkdown,
+                                fullMarkdownLength: report.fullMarkdown?.length,
+                                overviewPreview: report.overview?.slice(0, 100),
+                                fullMarkdownPreview: report.fullMarkdown?.slice(0, 100),
+                              },
+                              null,
+                              2,
+                            )}
+                          </pre>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          ) : (
+            /* 主题合成器报告：显示四维内容 */
+            <div className="space-y-6">
+              {report.overview && (
+                <OverviewSection
+                  content={report.overview}
+                  handlers={highlightHandlers}
+                />
+              )}
+              <ConsensusSection
+                items={report.consensus}
                 handlers={highlightHandlers}
               />
-            )}
-            <ConsensusSection
-              items={report.consensus}
-              handlers={highlightHandlers}
-            />
-            <DivergenceSection
-              items={report.divergence}
-              handlers={highlightHandlers}
-            />
-            <BlindSpotSection
-              items={report.blindSpots}
-              handlers={highlightHandlers}
-              reportId={reportId}
-              onRegenerate={handleRetry}
-            />
-          </div>
+              <DivergenceSection
+                items={report.divergence}
+                handlers={highlightHandlers}
+              />
+              <BlindSpotSection
+                items={report.blindSpots}
+                handlers={highlightHandlers}
+                reportId={reportId}
+                onRegenerate={handleRetry}
+              />
+            </div>
+          )}
 
           {/* [E4] 来源书签面板 */}
           <SourceBookmarksPanel

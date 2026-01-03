@@ -67,12 +67,14 @@ export async function POST(_request: NextRequest) {
     }
 
     // 2. 获取垃圾箱中的所有收藏（用于计数）
-    const { data: trashItems, error: fetchError } = await supabase
-      .from("bookmarks")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type TrashItemRow = { id: number };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: trashItems, error: fetchError } = await (supabase.from("bookmarks") as any)
       .select("id")
       .eq("user_id", user.id)
       .eq("is_in_trash", true)
-      .is("deleted_at", null);
+      .is("deleted_at", null) as { data: TrashItemRow[] | null; error: { message: string } | null };
 
     logger.debug(
       {
@@ -96,11 +98,11 @@ export async function POST(_request: NextRequest) {
 
     // 3. 批量永久删除（使用普通客户端 + 显式 user_id 检查，不绕过 RLS）
     const itemIds = trashItems.map((item) => item.id);
-    const { error: deleteError } = await supabase
-      .from("bookmarks")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: deleteError } = await (supabase.from("bookmarks") as any)
       .update({ deleted_at: new Date().toISOString() })
       .in("id", itemIds)
-      .eq("user_id", user.id); // 显式验证所有权，配合 RLS 双重保护
+      .eq("user_id", user.id) as { error: { message: string } | null }; // 显式验证所有权，配合 RLS 双重保护
 
     logger.debug(
       {
@@ -116,7 +118,8 @@ export async function POST(_request: NextRequest) {
     }
 
     // 4. 减少用户存储计数（使用普通客户端，RPC 内部应有权限检查）
-    const { error: decrementError } = await supabase.rpc(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: decrementError } = await (supabase.rpc as any)(
       "decrement_storage_used",
       {
         target_user_id: user.id,

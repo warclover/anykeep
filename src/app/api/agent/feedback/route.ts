@@ -106,8 +106,9 @@ export async function POST(request: NextRequest) {
     );
 
     // 3. 插入反馈
-    const { data, error } = await supabase
-      .from("ai_feedback")
+    // 类型断言: 手动维护类型文件时需要此断言
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.from("ai_feedback") as any)
       .upsert(
         {
           user_id: user.id,
@@ -127,7 +128,7 @@ export async function POST(request: NextRequest) {
         },
       )
       .select("id")
-      .single();
+      .single() as { data: { id: string } | null; error: { message: string } | null };
 
     if (error) {
       logger.error({ error }, "Agent Feedback: Failed to save");
@@ -189,9 +190,13 @@ export async function GET(request: NextRequest) {
 
     if (action === "stats") {
       // 获取统计数据
-      const { data, error } = await supabase.rpc("get_ai_feedback_stats", {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase.rpc as any)("get_ai_feedback_stats", {
         p_user_id: user.id,
-      });
+      }) as {
+        data: { total_count: number; positive_count: number; negative_count: number; satisfaction_rate: number }[] | null;
+        error: { message: string } | null;
+      };
 
       if (error) {
         logger.error({ error }, "Agent Feedback: Failed to get stats");
@@ -221,10 +226,14 @@ export async function GET(request: NextRequest) {
 
     if (action === "reasons") {
       // 获取负反馈原因分布
-      const { data, error } = await supabase.rpc(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase.rpc as any)(
         "get_negative_feedback_reasons",
         { p_limit: 100 },
-      );
+      ) as {
+        data: { reason: string; count: number; percentage: number }[] | null;
+        error: { message: string } | null;
+      };
 
       if (error) {
         logger.error({ error }, "Agent Feedback: Failed to get reasons");

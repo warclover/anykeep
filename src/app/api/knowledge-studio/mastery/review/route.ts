@@ -39,10 +39,11 @@ export async function GET(request: NextRequest) {
     logger.info({ userId: user.id, limit }, "Fetching due for review");
 
     // 调用 RPC 获取待复习知识点
-    const { data, error } = await supabase.rpc("get_due_for_review", {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.rpc as any)("get_due_for_review", {
       p_user_id: user.id,
       p_limit: limit,
-    });
+    }) as { data: unknown[] | null; error: { message: string } | null };
 
     if (error) {
       logger.error({ error: error.message }, "Get due for review failed");
@@ -116,7 +117,8 @@ export async function POST(request: NextRequest) {
     );
 
     // 调用 RPC 记录复习并更新掌握度
-    const { data, error } = await supabase.rpc(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.rpc as any)(
       "record_review_and_update_mastery",
       {
         p_user_id: user.id,

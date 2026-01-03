@@ -29,6 +29,46 @@ interface DataState<T> {
   lastFetched: number;
 }
 
+// 本地类型定义（绕过 Supabase 类型推断问题）
+interface FolderRow {
+  id: number;
+  user_id: string;
+  name: string;
+  parent_id: number | null;
+  is_system: boolean;
+  deleted_at: string | null;
+  created_at: string;
+  updated_at: string;
+  is_archived: boolean | null;
+  is_locked?: boolean | null;
+  folder_group: string | null;
+  sort_order: number | null;
+  system_type: string | null;
+}
+
+interface BookmarkCountRow {
+  folder_id: number | null;
+  created_at: string | null;
+}
+
+interface RecentBookmarkRow {
+  id: number;
+  title: string | null;
+  url: string | null;
+  platform: string | null;
+  created_at: string | null;
+  folders: { name: string } | null;
+}
+
+interface AnalyticsBookmarkRow {
+  id: number;
+  platform: string | null;
+  folder_id: number | null;
+  created_at: string | null;
+  source_url?: string | null;
+  ai_tags?: string[] | null;
+}
+
 // ==================== 收藏夹页面数据 ====================
 
 export type FolderWithStats = Folder & {
@@ -95,12 +135,17 @@ export function useFoldersData() {
       const supabase = createClient();
 
       // 获取文件夹
-      const { data: folders, error: foldersError } = await supabase
-        .from("folders")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: folders, error: foldersError } = (await (
+        supabase.from("folders") as any
+      )
         .select("*")
         .eq("user_id", user.id)
         .is("deleted_at", null)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })) as {
+        data: FolderRow[] | null;
+        error: Error | null;
+      };
 
       if (foldersError) throw foldersError;
 
@@ -113,12 +158,17 @@ export function useFoldersData() {
         const todayISO = today.toISOString();
 
         const folderIds = folders.map((f) => f.id);
-        const { data: allBookmarks } = await supabase
-          .from("bookmarks")
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: allBookmarks } = (await (
+          supabase.from("bookmarks") as any
+        )
           .select("folder_id, created_at")
           .eq("user_id", user.id)
           .is("deleted_at", null)
-          .in("folder_id", folderIds);
+          .in("folder_id", folderIds)) as {
+          data: BookmarkCountRow[] | null;
+          error: Error | null;
+        };
 
         const countMap = new Map<number, number>();
         const todayCountMap = new Map<number, number>();
@@ -153,13 +203,18 @@ export function useFoldersData() {
       }
 
       // 获取最近书签
-      const { data: recentBookmarks, error: bookmarksError } = await supabase
-        .from("bookmarks")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: recentBookmarks, error: bookmarksError } = (await (
+        supabase.from("bookmarks") as any
+      )
         .select("*, folders(name)")
         .eq("user_id", user.id)
         .is("deleted_at", null)
         .order("created_at", { ascending: false })
-        .limit(6);
+        .limit(6)) as {
+        data: (Bookmark & { folders?: { name: string } | null })[] | null;
+        error: Error | null;
+      };
 
       if (bookmarksError) throw bookmarksError;
 
@@ -257,12 +312,17 @@ export function useAnalyticsData() {
       const supabase = createClient();
 
       // 获取所有书签
-      const { data: bookmarks, error } = await supabase
-        .from("bookmarks")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: bookmarks, error } = (await (
+        supabase.from("bookmarks") as any
+      )
         .select("*")
         .eq("user_id", user.id)
         .is("deleted_at", null)
-        .order("created_at", { ascending: true });
+        .order("created_at", { ascending: true })) as {
+        data: AnalyticsBookmarkRow[] | null;
+        error: Error | null;
+      };
 
       if (error) throw error;
 
@@ -563,13 +623,16 @@ export function useSearchData(query: string, aiMode: boolean) {
 
     try {
       const supabase = createClient();
-      const { data: bookmarks } = await supabase
-        .from("bookmarks")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: bookmarks } = (await (supabase.from("bookmarks") as any)
         .select("ai_tags")
         .eq("user_id", user.id)
         .is("deleted_at", null)
         .not("ai_tags", "is", null)
-        .limit(100);
+        .limit(100)) as {
+        data: { ai_tags: string[] | null }[] | null;
+        error: Error | null;
+      };
 
       if (!bookmarks) return [];
 

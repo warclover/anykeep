@@ -265,12 +265,15 @@ export class QuotaManager {
   async getUserQuotaInfo(userId: string): Promise<UserQuotaInfo> {
     const supabase = createClient();
 
+    // 类型断言: 手动维护类型文件时需要此断言
+    type ProfileRow = { membership_type: string | null };
+
     // 1. 获取用户会员类型
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: profile, error: profileError } = await (supabase.from("profiles") as any)
       .select("membership_type")
       .eq("id", userId)
-      .single();
+      .single() as { data: ProfileRow | null; error: { message: string } | null };
 
     if (profileError) {
       logger.error(

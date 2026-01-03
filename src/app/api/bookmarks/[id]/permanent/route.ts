@@ -81,12 +81,16 @@ export async function DELETE(
     }
 
     // 2. 检查收藏是否存在于垃圾箱中
+    // 类型断言: 手动维护类型文件时需要此断言
     const { data: existingBookmark, error: checkError } = await supabase
       .from("bookmarks")
       .select("id, user_id, is_in_trash, is_locked")
       .eq("id", bookmarkId)
       .is("deleted_at", null)
-      .single();
+      .single() as unknown as {
+      data: { id: number; user_id: string; is_in_trash: boolean; is_locked: boolean } | null;
+      error: { code?: string; message: string } | null;
+    };
 
     logger.debug(
       {
@@ -104,6 +108,10 @@ export async function DELETE(
       return databaseError(BOOKMARK.LOAD_ERROR, checkError);
     }
 
+    if (!existingBookmark) {
+      return notFoundError(BOOKMARK.NOT_FOUND);
+    }
+
     if (existingBookmark.user_id !== user.id) {
       return forbiddenError(AUTH.FORBIDDEN);
     }
@@ -118,10 +126,10 @@ export async function DELETE(
 
     // 4. 永久删除（设置 deleted_at）
     const serviceClient = await createServiceClient();
-    const { error: deleteError } = await serviceClient
-      .from("bookmarks")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: deleteError } = await (serviceClient.from("bookmarks") as any)
       .update({ deleted_at: new Date().toISOString() })
-      .eq("id", bookmarkId);
+      .eq("id", bookmarkId) as { error: { message: string } | null };
 
     logger.debug(
       {
@@ -136,12 +144,13 @@ export async function DELETE(
     }
 
     // 5. 减少用户存储计数
-    const { error: decrementError } = await serviceClient.rpc(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: decrementError } = await (serviceClient.rpc as any)(
       "decrement_storage_used",
       {
         target_user_id: user.id,
       },
-    );
+    ) as { error: { message: string } | null };
 
     logger.debug(
       {

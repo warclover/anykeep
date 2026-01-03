@@ -106,8 +106,8 @@ export async function GET(request: NextRequest) {
     );
 
     // 构建查询
-    let query = supabase
-      .from("ks_custom_templates")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let query = (supabase.from("ks_custom_templates") as any)
       .select("*", { count: "exact" })
       .order("updated_at", { ascending: false })
       .range(offset, offset + limit - 1);
@@ -271,8 +271,8 @@ export async function POST(request: NextRequest) {
       "Creating template",
     );
 
-    const { data, error } = await supabase
-      .from("ks_custom_templates")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.from("ks_custom_templates") as any)
       .insert({
         user_id: user.id,
         name: name.trim(),

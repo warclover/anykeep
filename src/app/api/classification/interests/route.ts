@@ -195,16 +195,18 @@ async function handleSetPresetInterests(
   if (createFolders && presetInterests.length > 0) {
     createdFolders = await interestService.createInitialFolders(userId);
   } else {
+    // 类型断言: 手动维护类型文件时需要此断言
+    type ProfileSettingsType = { settings: Record<string, unknown> | null };
     const { data: profile } = await supabase
       .from("profiles")
       .select("settings")
       .eq("id", userId)
-      .single();
+      .single() as unknown as { data: ProfileSettingsType | null; error: unknown };
 
     const currentSettings =
       (profile?.settings as Record<string, unknown>) || {};
-    await supabase
-      .from("profiles")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.from("profiles") as any)
       .update({
         settings: {
           ...currentSettings,

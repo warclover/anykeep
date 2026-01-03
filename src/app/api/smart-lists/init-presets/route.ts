@@ -32,11 +32,12 @@ export async function POST(_request: NextRequest) {
     }
 
     // 2. 调用存储过程初始化预设
-    // 使用类型断言因为 RPC 函数在迁移后才会被添加到类型定义
-    const { data: insertedCount, error: initError } = await supabase.rpc(
-      "init_smart_list_presets" as "get_or_create_inbox_folder", // 类型断言，迁移后更新
-      { p_user_id: user.id } as { p_user_id: string },
-    );
+    // 类型断言: 手动维护类型文件时需要此断言
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: insertedCount, error: initError } = await (supabase.rpc as any)(
+      "init_smart_list_presets",
+      { p_user_id: user.id },
+    ) as { data: number | null; error: { message: string } | null };
 
     if (initError) {
       logger.error(
@@ -51,13 +52,13 @@ export async function POST(_request: NextRequest) {
     }
 
     // 3. 查询所有预设列表返回给前端
-    const { data: presets, error: queryError } = await supabase
-      .from("smart_lists")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: presets, error: queryError } = await (supabase.from("smart_lists") as any)
       .select("*")
       .eq("user_id", user.id)
       .eq("is_preset", true)
       .is("deleted_at", null)
-      .order("sort_order", { ascending: true });
+      .order("sort_order", { ascending: true }) as { data: Record<string, unknown>[] | null; error: { message: string } | null };
 
     if (queryError) {
       return databaseError("查询预设列表失败", queryError);

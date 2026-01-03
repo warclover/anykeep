@@ -65,13 +65,15 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       updateData.read_at = new Date().toISOString();
     }
 
-    const { data: message, error } = await supabase
-      .from("messages")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type MessageUpdateRow = { id: number; status: string };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: message, error } = await (supabase.from("messages") as any)
       .update(updateData)
       .eq("id", messageId)
       .eq("user_id", user.id)
       .select("id, status")
-      .single();
+      .single() as { data: MessageUpdateRow | null; error: { code?: string; message: string } | null };
 
     if (error) {
       if (error.code === "PGRST116") {
@@ -82,6 +84,10 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         "Failed to update message",
       );
       return internalError("更新消息失败");
+    }
+
+    if (!message) {
+      return notFoundError("消息不存在");
     }
 
     logger.info(

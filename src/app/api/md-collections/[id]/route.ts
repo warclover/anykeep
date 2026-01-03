@@ -131,12 +131,14 @@ export async function PATCH(
     } = validation.data;
 
     // 3. 检查 MD 收藏是否存在且属于当前用户
-    const { data: existingCollection, error: checkError } = await supabase
-      .from("md_collections")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type CollectionCheckRow = { id: number; user_id: string };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: existingCollection, error: checkError } = await (supabase.from("md_collections") as any)
       .select("id, user_id")
       .eq("id", collectionId)
       .is("deleted_at", null)
-      .single();
+      .single() as { data: CollectionCheckRow | null; error: { code?: string; message: string } | null };
 
     if (checkError) {
       if (checkError.code === "PGRST116") {
@@ -145,7 +147,7 @@ export async function PATCH(
       return databaseError(MD_COLLECTION.LOAD_ERROR, checkError);
     }
 
-    if (existingCollection.user_id !== user.id) {
+    if (!existingCollection || existingCollection.user_id !== user.id) {
       return forbiddenError(AUTH.FORBIDDEN);
     }
 
@@ -200,12 +202,12 @@ export async function PATCH(
     }
 
     // 5. 更新记录
-    const { data: updatedCollection, error: updateError } = await supabase
-      .from("md_collections")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: updatedCollection, error: updateError } = await (supabase.from("md_collections") as any)
       .update(updateData)
       .eq("id", collectionId)
       .select("*, folders(name)")
-      .single();
+      .single() as { data: Record<string, unknown> | null; error: { message: string } | null };
 
     if (updateError) {
       return databaseError(MD_COLLECTION.UPDATE_ERROR, updateError);
@@ -263,12 +265,14 @@ export async function DELETE(
     }
 
     // 2. 检查 MD 收藏是否存在且属于当前用户
-    const { data: existingCollection, error: checkError } = await supabase
-      .from("md_collections")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type CollectionDeleteRow = { id: number; user_id: string; title: string };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: existingCollection, error: checkError } = await (supabase.from("md_collections") as any)
       .select("id, user_id, title")
       .eq("id", collectionId)
       .is("deleted_at", null)
-      .single();
+      .single() as { data: CollectionDeleteRow | null; error: { code?: string; message: string } | null };
 
     if (checkError) {
       if (checkError.code === "PGRST116") {
@@ -277,17 +281,17 @@ export async function DELETE(
       return databaseError(MD_COLLECTION.LOAD_ERROR, checkError);
     }
 
-    if (existingCollection.user_id !== user.id) {
+    if (!existingCollection || existingCollection.user_id !== user.id) {
       return forbiddenError(AUTH.FORBIDDEN);
     }
 
     // 3. 软删除记录
-    const { error: deleteError } = await supabase
-      .from("md_collections")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: deleteError } = await (supabase.from("md_collections") as any)
       .update({
         deleted_at: new Date().toISOString(),
       })
-      .eq("id", collectionId);
+      .eq("id", collectionId) as { error: { message: string } | null };
 
     if (deleteError) {
       return databaseError(MD_COLLECTION.DELETE_ERROR, deleteError);

@@ -152,14 +152,19 @@ export class ChangeDetector implements IChangeDetector {
     const supabase = await createClient();
 
     // 查询未处理的变更集
-    const { data, error } = await supabase
-      .from("ks_report_change_sets")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type ChangeSetQueryResult = {
+      id: string;
+      changes: BookmarkChange[] | null;
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.from("ks_report_change_sets") as any)
       .select("*")
       .eq("report_id", reportId)
       .eq("processed", false)
       .order("created_at", { ascending: false })
       .limit(1)
-      .single();
+      .single() as { data: ChangeSetQueryResult | null; error: { code?: string; message: string } | null };
 
     if (error) {
       if (error.code === "PGRST116") {
@@ -177,6 +182,10 @@ export class ChangeDetector implements IChangeDetector {
         "Failed to detect changes",
       );
       throw new Error(`检测变更失败: ${error.message}`);
+    }
+
+    if (!data) {
+      return null;
     }
 
     logger.info(
@@ -202,11 +211,16 @@ export class ChangeDetector implements IChangeDetector {
     const supabase = await createClient();
 
     // 获取报告内容以分析段落影响
-    const { data: report, error: reportError } = await supabase
-      .from("ks_reports")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type ReportContentType = {
+      content: string | null;
+      source_bookmark_ids: string[] | null;
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: report, error: reportError } = await (supabase.from("ks_reports") as any)
       .select("content, source_bookmark_ids")
       .eq("id", changeSet.reportId)
-      .single();
+      .single() as { data: ReportContentType | null; error: { message: string } | null };
 
     const paragraphImpacts: ParagraphImpact[] = [];
     let paragraphsToUpdate = 0;
@@ -315,10 +329,11 @@ export class ChangeDetector implements IChangeDetector {
     const supabase = await createClient();
 
     // 调用 RPC 函数
-    const { data, error } = await supabase.rpc("get_pending_change_sets", {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.rpc as any)("get_pending_change_sets", {
       p_user_id: userId,
       p_limit: 50,
-    });
+    }) as { data: PendingChangeSetRow[] | null; error: { message: string } | null };
 
     if (error) {
       logger.error(
@@ -346,8 +361,8 @@ export class ChangeDetector implements IChangeDetector {
   async markProcessed(changeSetId: string): Promise<void> {
     const supabase = await createClient();
 
-    const { error } = await supabase
-      .from("ks_report_change_sets")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase.from("ks_report_change_sets") as any)
       .update({
         processed: true,
         processed_at: new Date().toISOString(),
@@ -379,8 +394,10 @@ export class ChangeDetector implements IChangeDetector {
 
     const impactLevel = calculateImpactLevel(changes);
 
-    const { data, error } = await supabase
-      .from("ks_report_change_sets")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type InsertedChangeSetType = { id: string };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.from("ks_report_change_sets") as any)
       .insert({
         report_id: reportId,
         user_id: userId,
@@ -388,7 +405,7 @@ export class ChangeDetector implements IChangeDetector {
         impact_level: impactLevel,
       })
       .select()
-      .single();
+      .single() as { data: InsertedChangeSetType | null; error: { message: string } | null };
 
     if (error) {
       logger.error(
@@ -396,6 +413,10 @@ export class ChangeDetector implements IChangeDetector {
         "Failed to create change set",
       );
       throw new Error(`创建变更集失败: ${error.message}`);
+    }
+
+    if (!data) {
+      throw new Error(`创建变更集失败: 未返回数据`);
     }
 
     logger.info(

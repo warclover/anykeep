@@ -208,12 +208,17 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     // 获取综述详情
-    const { data, error } = await supabase
-      .from("synthesis_reports")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type SynthesisReportSelectRow = {
+      status: string;
+      [key: string]: unknown;
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.from("synthesis_reports") as any)
       .select("*")
       .eq("id", id)
       .eq("user_id", user.id)
-      .single();
+      .single() as { data: SynthesisReportSelectRow | null; error: { message: string } | null };
 
     if (error || !data) {
       return NextResponse.json(

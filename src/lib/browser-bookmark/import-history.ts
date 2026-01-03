@@ -150,7 +150,7 @@ export async function getImportHistory(
  * 删除导入历史记录
  */
 export async function deleteImportHistory(
-  id?: number,
+  id?: string | number,
   batchId?: string,
 ): Promise<void> {
   const searchParams = new URLSearchParams();

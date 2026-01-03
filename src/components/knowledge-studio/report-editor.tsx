@@ -18,11 +18,11 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Edit2, Copy, Download, Share2 } from "lucide-react";
-import type { SynthesisReport } from "@/lib/knowledge-studio";
-import { BLUEPRINT_DISPLAY_CONFIG } from "@/lib/knowledge-studio";
+import type { SynthesisReport } from "@/lib/knowledge-studio/client";
+import { BLUEPRINT_DISPLAY_CONFIG } from "@/lib/knowledge-studio/client";
 import { ChatEditPanel } from "./chat-edit-panel";
 import { CitationCard } from "./citation-card";
-import type { ChatTurn, EditMode, EditDiff } from "@/lib/knowledge-studio";
+import type { ChatTurn, EditMode, EditDiff } from "@/lib/knowledge-studio/client";
 
 interface ReportEditorProps {
   report: SynthesisReport;

@@ -124,11 +124,12 @@ export async function GET(_request: NextRequest) {
     }
 
     // 2. 获取用户偏好设置
+    // 类型断言: 手动维护类型文件时需要此断言
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("ai_preferences")
       .eq("id", user.id)
-      .single();
+      .single() as unknown as { data: { ai_preferences: unknown } | null; error: { message: string } | null };
 
     if (profileError) {
       logger.error(
@@ -214,10 +215,11 @@ export async function POST(request: NextRequest) {
     };
 
     // 5. 调用 RPC 函数添加规则
-    const { error: rpcError } = await supabase.rpc("add_ai_custom_rule", {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: rpcError } = await (supabase.rpc as any)("add_ai_custom_rule", {
       p_user_id: user.id,
       p_rule: newRule as unknown as Json,
-    });
+    }) as { error: { message: string } | null };
 
     if (rpcError) {
       logger.error(
@@ -283,11 +285,12 @@ export async function DELETE(request: NextRequest) {
     const { ruleId } = parseResult.data;
 
     // 3. 先检查规则是否存在
+    // 类型断言: 手动维护类型文件时需要此断言
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("ai_preferences")
       .eq("id", user.id)
-      .single();
+      .single() as unknown as { data: { ai_preferences: unknown } | null; error: { message: string } | null };
 
     if (profileError) {
       logger.error(
@@ -308,10 +311,11 @@ export async function DELETE(request: NextRequest) {
     }
 
     // 4. 调用 RPC 函数删除规则
-    const { error: rpcError } = await supabase.rpc("remove_ai_custom_rule", {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: rpcError } = await (supabase.rpc as any)("remove_ai_custom_rule", {
       p_user_id: user.id,
       p_rule_id: ruleId,
-    });
+    }) as { error: { message: string } | null };
 
     if (rpcError) {
       logger.error(

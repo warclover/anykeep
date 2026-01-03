@@ -113,12 +113,20 @@ export async function POST() {
     const supabase = await createClient();
 
     // 2. 获取用户文件夹
-    const { data: folders, error: foldersError } = await supabase
-      .from("folders")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type FolderExportRow = {
+      id: number;
+      name: string;
+      parent_id: number | null;
+      is_system: boolean | null;
+      created_at: string | null;
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: folders, error: foldersError } = await (supabase.from("folders") as any)
       .select("id, name, parent_id, is_system, created_at")
       .eq("user_id", user.id)
       .is("deleted_at", null)
-      .order("created_at", { ascending: true });
+      .order("created_at", { ascending: true }) as { data: FolderExportRow[] | null; error: { message: string } | null };
 
     if (foldersError) {
       logger.error(
@@ -129,8 +137,22 @@ export async function POST() {
     }
 
     // 3. 获取用户书签（含文件夹名称）
-    const { data: bookmarks, error: bookmarksError } = await supabase
-      .from("bookmarks")
+    type BookmarkExportRow = {
+      id: number;
+      title: string;
+      url: string;
+      description: string | null;
+      platform: string | null;
+      folder_id: number | null;
+      ai_tags: unknown;
+      ai_summary: string | null;
+      user_tags: unknown;
+      created_at: string | null;
+      updated_at: string | null;
+      folders: { name: string }[] | null;
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: bookmarks, error: bookmarksError } = await (supabase.from("bookmarks") as any)
       .select(
         `
         id, title, url, description, platform, folder_id,
@@ -140,7 +162,7 @@ export async function POST() {
       )
       .eq("user_id", user.id)
       .is("deleted_at", null)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false }) as { data: BookmarkExportRow[] | null; error: { message: string } | null };
 
     if (bookmarksError) {
       logger.error(
@@ -198,11 +220,13 @@ export async function POST() {
     }
 
     // 5. 获取用户设置
-    const { data: profile } = await supabase
-      .from("profiles")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type ProfileSettingsRow = { settings: Record<string, unknown> | null };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: profile } = await (supabase.from("profiles") as any)
       .select("settings")
       .eq("id", user.id)
-      .single();
+      .single() as { data: ProfileSettingsRow | null };
 
     // 6. 构建文件夹路径映射
     const folderMap = new Map<number, string>();

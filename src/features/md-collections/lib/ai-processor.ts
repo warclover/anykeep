@@ -60,16 +60,24 @@ export async function processMdCollectionAI(
 ): Promise<MdAIProcessResult> {
   const startTime = Date.now();
 
+  // 本地类型定义
+  interface MdCollectionRow {
+    id: number;
+    title: string | null;
+    raw_content: string | null;
+    processing_status: string | null;
+  }
+
   try {
     // 1. 获取 MD 收藏内容
     const supabase = await createServiceClient();
-    const { data: collection, error: fetchError } = await supabase
-      .from("md_collections")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: collection, error: fetchError } = await (supabase.from("md_collections") as any)
       .select("id, title, raw_content, processing_status")
       .eq("id", collectionId)
       .eq("user_id", userId)
       .is("deleted_at", null)
-      .single();
+      .single() as { data: MdCollectionRow | null; error: Error | null };
 
     if (fetchError || !collection) {
       logger.error(
@@ -80,13 +88,13 @@ export async function processMdCollectionAI(
     }
 
     // 2. 更新处理状态为 processing
-    await supabase
-      .from("md_collections")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.from("md_collections") as any)
       .update({ processing_status: "processing" })
       .eq("id", collectionId);
 
     // 3. 预处理 Markdown 内容
-    const preprocessResult = preprocessMarkdownForAI(collection.raw_content);
+    const preprocessResult = preprocessMarkdownForAI(collection.raw_content ?? "");
     const contentForAI = preprocessResult.processedText;
 
     const result: MdAIProcessResult = { success: true };
@@ -98,7 +106,7 @@ export async function processMdCollectionAI(
         const summaryResult = await summaryService.generate({
           bookmarkId: collectionId, // 复用 bookmarkId 字段
           userId,
-          title: collection.title,
+          title: collection.title ?? "",
           content: contentForAI,
           contentType: "article", // MD 收藏默认视为文章类型
         });
@@ -130,7 +138,7 @@ export async function processMdCollectionAI(
       try {
         // 构建用于嵌入的文本
         const embeddingText = buildEmbeddingText(
-          collection.title,
+          collection.title ?? "",
           result.summary || contentForAI.substring(0, 500), // 优先使用摘要
           result.aiTags,
         );
@@ -174,8 +182,8 @@ export async function processMdCollectionAI(
       updateData.embedding_version = result.embeddingVersion;
     }
 
-    const { error: updateError } = await supabase
-      .from("md_collections")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: updateError } = await (supabase.from("md_collections") as any)
       .update(updateData)
       .eq("id", collectionId);
 
@@ -208,8 +216,8 @@ export async function processMdCollectionAI(
     // 更新状态为失败
     try {
       const supabase = await createServiceClient();
-      await supabase
-        .from("md_collections")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase.from("md_collections") as any)
         .update({
           processing_status: "failed",
           processing_error: errorMessage,

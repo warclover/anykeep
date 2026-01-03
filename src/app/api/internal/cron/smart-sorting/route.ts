@@ -488,8 +488,11 @@ async function autoCreateFolder(
     // const _snapshotId = crypto.randomUUID();
 
     // 4. 创建文件夹
-    const { data: newFolder, error: createError } = await getAdmin()
-      .from("folders")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type CreatedFolderType = { id: number; name: string };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: newFolder, error: createError } = await (getAdmin()
+      .from("folders") as any)
       .insert({
         user_id: userId,
         name: folderName.name,
@@ -498,7 +501,7 @@ async function autoCreateFolder(
         ai_reason: folderName.reason,
       })
       .select("id, name")
-      .single();
+      .single() as { data: CreatedFolderType | null; error: { message: string } | null };
 
     if (createError || !newFolder) {
       throw new Error(`Failed to create folder: ${createError?.message}`);
@@ -507,15 +510,15 @@ async function autoCreateFolder(
     // 5. 移动书签到新文件夹
     // Note: pending_cluster, pending_since, cluster_id 是 V4.2 新增字段
     const bookmarkIds = cluster.bookmarks.map((b) => b.id);
-    const { error: moveError } = await getAdmin()
-      .from("bookmarks")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: moveError } = await (getAdmin().from("bookmarks") as any)
       .update({
         folder_id: newFolder.id,
         pending_cluster: false,
         pending_since: null,
         cluster_id: null,
       })
-      .in("id", bookmarkIds);
+      .in("id", bookmarkIds) as { error: { message: string } | null };
 
     if (moveError) {
       throw new Error(`Failed to move bookmarks: ${moveError.message}`);
@@ -523,8 +526,8 @@ async function autoCreateFolder(
 
     // 6. 记录操作快照
     // Note: operation_snapshots 是 V4.2 新增表
-    await getAdmin()
-      .from("operation_snapshots")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (getAdmin().from("operation_snapshots") as any)
       .insert({
         user_id: userId,
         operation_type: "folder_evolution",
@@ -545,8 +548,8 @@ async function autoCreateFolder(
       });
 
     // 7. 创建消息通知
-    await getAdmin()
-      .from("messages")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (getAdmin().from("messages") as any)
       .insert({
         user_id: userId,
         type: "folder_auto_created",
@@ -604,8 +607,8 @@ async function createSuggestion(
 
     // 3. 更新书签的聚类 ID
     // Note: cluster_id, cluster_confidence 是 V4.2 新增字段
-    await getAdmin()
-      .from("bookmarks")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (getAdmin().from("bookmarks") as any)
       .update({
         cluster_id: clusterId,
         cluster_confidence: 0.8, // 初始置信度
@@ -614,8 +617,8 @@ async function createSuggestion(
 
     // 4. 创建建议记录
     // Note: bookmark_ids, suggested_action, metadata 是 V4.2 待添加字段，当前使用现有 schema
-    await getAdmin()
-      .from("classification_suggestions")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (getAdmin().from("classification_suggestions") as any)
       .insert({
         user_id: userId,
         batch_id: clusterId, // 使用聚类 ID 作为批次标识

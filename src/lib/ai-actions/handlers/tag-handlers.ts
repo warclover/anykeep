@@ -16,6 +16,23 @@ import type { AIActionResult, BookmarkBrief, TagBrief } from "../types";
 
 type SupabaseClientType = SupabaseClient<Database>;
 
+// 本地类型定义
+interface BookmarkTagsRow {
+  user_tags: string[] | null;
+}
+
+interface BookmarkRow {
+  id: number;
+  title: string | null;
+  url: string;
+  description: string | null;
+  user_tags: string[] | null;
+  platform: string | null;
+  rating: number | null;
+  created_at: string | null;
+  folders?: { name: string } | null;
+}
+
 // ============================================================================
 // 标签读取操作
 // ============================================================================
@@ -28,11 +45,10 @@ export async function tagList(
   const { limit = 50 } = params as { limit?: number };
 
   // 使用聚合查询获取标签和计数
-  const { data, error } = await supabase
-    .from("bookmarks")
+  const { data, error } = (await (supabase.from("bookmarks") as any)
     .select("user_tags")
     .eq("user_id", userId)
-    .is("deleted_at", null);
+    .is("deleted_at", null)) as { data: BookmarkTagsRow[] | null; error: Error | null };
 
   if (error) {
     return { success: false, error: error.message, errorCode: "DB_ERROR" };
@@ -65,8 +81,7 @@ export async function tagBookmarks(
 ): Promise<AIActionResult<BookmarkBrief[]>> {
   const { tag, limit = 20 } = params as { tag: string; limit?: number };
 
-  const { data, error } = await supabase
-    .from("bookmarks")
+  const { data, error } = (await (supabase.from("bookmarks") as any)
     .select(
       "id, title, url, description, user_tags, platform, rating, created_at, folders(name)",
     )
@@ -74,7 +89,7 @@ export async function tagBookmarks(
     .is("deleted_at", null)
     .contains("user_tags", [tag])
     .order("created_at", { ascending: false })
-    .limit(limit);
+    .limit(limit)) as { data: BookmarkRow[] | null; error: Error | null };
 
   if (error) {
     return { success: false, error: error.message, errorCode: "DB_ERROR" };
@@ -114,12 +129,11 @@ export async function tagAdd(
   };
 
   // 先获取现有标签
-  const { data: existing, error: fetchError } = await supabase
-    .from("bookmarks")
+  const { data: existing, error: fetchError } = (await (supabase.from("bookmarks") as any)
     .select("user_tags")
     .eq("id", bookmarkId)
     .eq("user_id", userId)
-    .single();
+    .single()) as { data: BookmarkTagsRow | null; error: Error | null };
 
   if (fetchError) {
     return {
@@ -133,8 +147,7 @@ export async function tagAdd(
   const existingTags = existing?.user_tags || [];
   const newTags = [...new Set([...existingTags, ...tags])];
 
-  const { error } = await supabase
-    .from("bookmarks")
+  const { error } = await (supabase.from("bookmarks") as any)
     .update({ user_tags: newTags })
     .eq("id", bookmarkId)
     .eq("user_id", userId);
@@ -162,12 +175,11 @@ export async function tagRemove(
   };
 
   // 先获取现有标签
-  const { data: existing, error: fetchError } = await supabase
-    .from("bookmarks")
+  const { data: existing, error: fetchError } = (await (supabase.from("bookmarks") as any)
     .select("user_tags")
     .eq("id", bookmarkId)
     .eq("user_id", userId)
-    .single();
+    .single()) as { data: BookmarkTagsRow | null; error: Error | null };
 
   if (fetchError) {
     return {
@@ -181,8 +193,7 @@ export async function tagRemove(
   const existingTags = existing?.user_tags || [];
   const newTags = existingTags.filter((t: string) => !tags.includes(t));
 
-  const { error } = await supabase
-    .from("bookmarks")
+  const { error } = await (supabase.from("bookmarks") as any)
     .update({ user_tags: newTags })
     .eq("id", bookmarkId)
     .eq("user_id", userId);
@@ -210,7 +221,7 @@ export async function tagBatchAdd(
   };
 
   // 使用 RPC 函数批量添加
-  const { error } = await supabase.rpc("batch_add_tags", {
+  const { error } = await (supabase.rpc as any)("batch_add_tags", {
     p_bookmark_ids: bookmarkIds,
     p_tags: tags,
   });
@@ -238,7 +249,7 @@ export async function tagBatchRemove(
   };
 
   // 使用 RPC 函数批量移除
-  const { error } = await supabase.rpc("batch_remove_tags", {
+  const { error } = await (supabase.rpc as any)("batch_remove_tags", {
     p_bookmark_ids: bookmarkIds,
     p_tags: tags,
   });

@@ -73,11 +73,12 @@ const getPageData = cache(
       const supabase = await createClient();
 
       // 2. 先检查权限（单独查询，快速返回）
+      // 类型断言: 手动维护类型文件时需要此断言
       const { data: profile } = await supabase
         .from("profiles")
         .select("membership_type")
         .eq("id", userId)
-        .single();
+        .single() as unknown as { data: { membership_type: string | null } | null };
 
       const membershipType = profile?.membership_type || "FREE";
       const hasAccess = membershipType === "PRO";

@@ -8,7 +8,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import { ExternalLink } from "lucide-react";
-import type { Citation } from "@/lib/knowledge-studio";
+import type { Citation } from "@/lib/knowledge-studio/client";
 
 interface CitationCardProps {
   /** 引用信息 */

@@ -240,8 +240,9 @@ export const PUT = withAuthMiddleware<RouteParams>(
       const targetFolderId = selectedFolderId || existing.suggestion?.folderId;
 
       if (targetFolderId) {
-        const { error: moveError } = await supabase
-          .from("bookmarks")
+        // 类型断言: 手动维护类型文件时需要此断言
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error: moveError } = await (supabase.from("bookmarks") as any)
           .update({
             folder_id: targetFolderId,
             updated_at: new Date().toISOString(),

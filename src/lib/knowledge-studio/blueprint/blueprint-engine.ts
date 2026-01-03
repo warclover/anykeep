@@ -5,6 +5,8 @@
  */
 
 import { createLogger } from "@/lib/logger";
+import { generateText, streamText } from "ai";
+import { aiProviderRouter } from "@/lib/ai-providers";
 import type {
   BlueprintMetadata,
   Citation,
@@ -136,12 +138,16 @@ export class BlueprintEngine {
       stagesTiming.finalizing = Date.now() - finalizingStart;
       this.emitProgress(context, "finalizing", 100, onProgress);
 
+      // 获取实际使用的模型（从最后一次调用获取）
+      const selection = aiProviderRouter.selectProvider({ taskType: "chat" });
+      const actualModel = selection?.model?.modelId || "deepseek-chat";
+
       const metadata: BlueprintMetadata = {
-        model: "deepseek-chat", // TODO: 从实际调用获取
+        model: actualModel,
         tokens: {
-          input: 0,
-          output: 0,
-          total: 0,
+          input: 0, // TODO: 从实际调用结果获取
+          output: 0, // TODO: 从实际调用结果获取
+          total: 0, // TODO: 从实际调用结果获取
         },
         durationMs: Date.now() - startTime,
         stagesTiming,
@@ -198,16 +204,107 @@ export class BlueprintEngine {
     context: GenerationContext,
     materials: ParsedMaterial[],
   ): Promise<string> {
-    const _prompt = buildPromptForBlueprint(context.config.type, "outline", {
+    const prompt = buildPromptForBlueprint(context.config.type, "outline", {
       materials,
       customPrompt: context.customPrompt,
     });
 
-    // TODO: 调用 AI 模型
-    // const response = await this.callModel(prompt);
+    // 获取 AI 模型
+    const selection = aiProviderRouter.selectProvider({ taskType: "chat" });
 
-    // 临时返回占位大纲
-    return `# ${BLUEPRINT_DISPLAY_CONFIG[context.config.type].name}风格大纲\n\n## 引言\n\n## 主体\n\n## 结论`;
+    logger.info(
+      {
+        requestId: context.requestId,
+        hasSelection: !!selection,
+        hasModel: !!selection?.model,
+        provider: selection?.provider?.name,
+        providerEnabled: selection?.provider?.enabled,
+        modelId: selection?.model?.modelId,
+        selectionReason: selection?.reason,
+        envCheck: {
+          hasDeepSeekKey: !!process.env.DEEPSEEK_API_KEY,
+          deepSeekKeyLength: process.env.DEEPSEEK_API_KEY?.length || 0,
+        },
+      },
+      "Selecting AI model for outline generation",
+    );
+
+    if (!selection?.model) {
+      logger.warn(
+        { requestId: context.requestId },
+        "No AI model available for outline generation, using fallback",
+      );
+      return `# ${BLUEPRINT_DISPLAY_CONFIG[context.config.type].name}风格大纲\n\n## 引言\n\n## 主体\n\n## 结论`;
+    }
+
+    try {
+      logger.info(
+        {
+          requestId: context.requestId,
+          modelId: selection.model.modelId,
+          promptType: typeof prompt,
+          promptSystem: typeof prompt === "object" ? prompt.system?.slice(0, 100) : undefined,
+          promptUser: typeof prompt === "object" ? prompt.user?.slice(0, 100) : typeof prompt === "string" ? prompt.slice(0, 100) : undefined,
+        },
+        "Calling AI model for outline generation",
+      );
+
+      // buildPromptForBlueprint 返回 { system, user }，需要直接传递
+      const { text, usage } = await generateText({
+        model: selection.model,
+        system: prompt.system,
+        prompt: prompt.user,
+        maxTokens: 1000,
+        temperature: 0.7,
+      });
+
+      logger.info(
+        {
+          requestId: context.requestId,
+          textLength: text?.length || 0,
+          hasText: !!text,
+          textPreview: text?.slice(0, 200),
+          usage: usage ? { promptTokens: usage.promptTokens, completionTokens: usage.completionTokens } : undefined,
+        },
+        "Outline generation AI call completed",
+      );
+
+      if (!text || text.trim().length === 0) {
+        logger.error(
+          {
+            requestId: context.requestId,
+            textLength: text?.length || 0,
+            textValue: text,
+          },
+          "Outline generation returned empty or whitespace-only text",
+        );
+        return `# ${BLUEPRINT_DISPLAY_CONFIG[context.config.type].name}风格大纲\n\n## 引言\n\n## 主体\n\n## 结论`;
+      }
+
+      // 检查是否是占位文本（简单启发式检查）
+      const isPlaceholder = text.includes("这是基于") && text.includes("个素材生成");
+      if (isPlaceholder) {
+        logger.warn(
+          {
+            requestId: context.requestId,
+            textPreview: text.slice(0, 100),
+          },
+          "Outline generation returned placeholder-like text, may indicate AI call issue",
+        );
+      }
+
+      return text;
+    } catch (error) {
+      logger.error(
+        {
+          requestId: context.requestId,
+          error: error instanceof Error ? error.message : String(error),
+          errorStack: error instanceof Error ? error.stack : undefined,
+        },
+        "Outline generation failed, using fallback",
+      );
+      return `# ${BLUEPRINT_DISPLAY_CONFIG[context.config.type].name}风格大纲\n\n## 引言\n\n## 主体\n\n## 结论`;
+    }
   }
 
   /**
@@ -217,20 +314,235 @@ export class BlueprintEngine {
     context: GenerationContext,
     outline: string,
     materials: ParsedMaterial[],
-    _onProgress?: ProgressCallback,
+    onProgress?: ProgressCallback,
   ): Promise<string> {
-    const _prompt = buildPromptForBlueprint(context.config.type, "content", {
+    const prompt = buildPromptForBlueprint(context.config.type, "content", {
       outline,
       materials,
       targetLength: context.config.targetLength,
       tone: context.config.tone,
     });
 
-    // TODO: 调用 AI 模型，流式输出
-    // 这里需要实现流式生成，每生成一部分就通过 onProgress 回调
+    // 获取 AI 模型
+    const selection = aiProviderRouter.selectProvider({ taskType: "chat" });
 
-    // 临时返回占位内容
-    return `这是基于 ${materials.length} 个素材生成的${BLUEPRINT_DISPLAY_CONFIG[context.config.type].name}风格内容。\n\n${outline}`;
+    logger.info(
+      {
+        requestId: context.requestId,
+        hasSelection: !!selection,
+        hasModel: !!selection?.model,
+        provider: selection?.provider?.name,
+        providerEnabled: selection?.provider?.enabled,
+        modelId: selection?.model?.modelId,
+        selectionReason: selection?.reason,
+        envCheck: {
+          hasDeepSeekKey: !!process.env.DEEPSEEK_API_KEY,
+          deepSeekKeyLength: process.env.DEEPSEEK_API_KEY?.length || 0,
+        },
+      },
+      "Selecting AI model for content generation",
+    );
+
+    if (!selection?.model) {
+      logger.warn(
+        { requestId: context.requestId },
+        "No AI model available for content generation, using fallback",
+      );
+      return `这是基于 ${materials.length} 个素材生成的${BLUEPRINT_DISPLAY_CONFIG[context.config.type].name}风格内容。\n\n${outline}`;
+    }
+
+    try {
+      // 根据目标长度设置输出 token 数
+      const maxTokensMap = {
+        short: 1500,
+        medium: 3000,
+        long: 5000,
+      };
+      const maxTokens = maxTokensMap[context.config.targetLength || "medium"];
+
+      logger.info(
+        {
+          requestId: context.requestId,
+          modelId: selection.model.modelId,
+          promptType: typeof prompt,
+          promptSystem: typeof prompt === "object" ? prompt.system?.slice(0, 100) : undefined,
+          promptUser: typeof prompt === "object" ? prompt.user?.slice(0, 100) : typeof prompt === "string" ? prompt.slice(0, 100) : undefined,
+          maxTokens,
+          targetLength: context.config.targetLength,
+        },
+        "Calling AI model for content generation (streaming)",
+      );
+
+      // buildPromptForBlueprint 返回 { system, user }，需要直接传递
+      const result = streamText({
+        model: selection.model,
+        system: prompt.system,
+        prompt: prompt.user,
+        maxTokens,
+        temperature: 0.7,
+      });
+
+      logger.info(
+        {
+          requestId: context.requestId,
+          hasResult: !!result,
+          hasTextStream: !!result.textStream,
+        },
+        "StreamText result created, starting to read stream",
+      );
+
+      let fullContent = "";
+      let chunkCount = 0;
+      let hasReceivedChunks = false;
+      
+      // 流式读取内容
+      try {
+        for await (const chunk of result.textStream) {
+          fullContent += chunk;
+          chunkCount++;
+          hasReceivedChunks = true;
+          
+          logger.debug(
+            {
+              requestId: context.requestId,
+              chunkLength: chunk.length,
+              totalLength: fullContent.length,
+              chunkCount,
+            },
+            "Received content chunk",
+          );
+          
+          // 发送内容更新事件
+          if (onProgress) {
+            const contentChunk: StreamChunk = {
+              type: "content",
+              data: {
+                content: chunk,
+              },
+              timestamp: new Date().toISOString(),
+              requestId: context.requestId,
+            };
+            onProgress(contentChunk);
+          }
+        }
+      } catch (streamError) {
+        logger.error(
+          {
+            requestId: context.requestId,
+            error: streamError instanceof Error ? streamError.message : String(streamError),
+            errorStack: streamError instanceof Error ? streamError.stack : undefined,
+            chunkCount,
+            contentLength: fullContent.length,
+          },
+          "Error reading text stream",
+        );
+        // 如果已经收到一些内容，继续使用；否则抛出错误
+        if (!hasReceivedChunks) {
+          throw streamError;
+        }
+      }
+
+      // 如果流式读取没有产生内容，尝试获取完整文本
+      if (!fullContent || fullContent.trim().length === 0) {
+        logger.warn(
+          { requestId: context.requestId, chunkCount, hasReceivedChunks },
+          "Text stream produced no content, trying to get full text",
+        );
+        
+        try {
+          // 等待流完成并获取完整文本
+          const fullText = await result.text;
+          if (fullText && fullText.trim().length > 0) {
+            fullContent = fullText;
+            logger.info(
+              { requestId: context.requestId, textLength: fullText.length },
+              "Retrieved full text from result",
+            );
+          } else {
+            logger.warn(
+              {
+                requestId: context.requestId,
+                textLength: fullText?.length || 0,
+                textPreview: fullText?.slice(0, 100),
+              },
+              "Full text from result is also empty",
+            );
+          }
+        } catch (textError) {
+          logger.error(
+            {
+              requestId: context.requestId,
+              error: textError instanceof Error ? textError.message : String(textError),
+              errorStack: textError instanceof Error ? textError.stack : undefined,
+            },
+            "Failed to get full text from result",
+          );
+        }
+      }
+
+      logger.info(
+        {
+          requestId: context.requestId,
+          contentLength: fullContent.length,
+          chunkCount,
+          hasContent: !!fullContent,
+          hasReceivedChunks,
+        },
+        "Content generation completed",
+      );
+
+      if (!fullContent || fullContent.trim().length === 0) {
+        logger.error(
+          {
+            requestId: context.requestId,
+            chunkCount,
+            hasReceivedChunks,
+            contentLength: fullContent.length,
+            resultKeys: result ? Object.keys(result) : [],
+          },
+          "Content generation returned empty text, using fallback",
+        );
+        
+        // 如果完全没有收到任何内容，抛出错误而不是使用 fallback
+        if (!hasReceivedChunks && chunkCount === 0) {
+          const error = new Error("AI 模型调用失败：未收到任何内容。请检查 API Key 配置和网络连接。");
+          logger.error(
+            {
+              requestId: context.requestId,
+              error: error.message,
+            },
+            "Throwing error for empty content generation",
+          );
+          throw error;
+        }
+        
+        return `这是基于 ${materials.length} 个素材生成的${BLUEPRINT_DISPLAY_CONFIG[context.config.type].name}风格内容。\n\n${outline}`;
+      }
+
+      // 检查是否是占位文本（简单启发式检查）
+      const isPlaceholder = fullContent.includes("这是基于") && fullContent.includes("个素材生成");
+      if (isPlaceholder) {
+        logger.warn(
+          {
+            requestId: context.requestId,
+            contentPreview: fullContent.slice(0, 200),
+          },
+          "Content generation returned placeholder-like text, may indicate AI call issue",
+        );
+      }
+
+      return fullContent;
+    } catch (error) {
+      logger.error(
+        {
+          requestId: context.requestId,
+          error: error instanceof Error ? error.message : String(error),
+          errorStack: error instanceof Error ? error.stack : undefined,
+        },
+        "Content generation failed, using fallback",
+      );
+      return `这是基于 ${materials.length} 个素材生成的${BLUEPRINT_DISPLAY_CONFIG[context.config.type].name}风格内容。\n\n${outline}`;
+    }
   }
 
   /**

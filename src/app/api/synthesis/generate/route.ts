@@ -192,12 +192,21 @@ export async function POST(request: NextRequest) {
         }
 
         // 获取报告信息
-        const { data: report, error: fetchError } = await supabase
-          .from("synthesis_reports")
+        // 类型断言: 手动维护类型文件时需要此断言
+        type SynthesisReportGenerateRow = {
+          status: string;
+          depth_mode: string;
+          source_type: string;
+          source_id: string | null;
+          source_bookmark_ids: string[] | null;
+          title: string;
+        };
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: report, error: fetchError } = await (supabase.from("synthesis_reports") as any)
           .select("*")
           .eq("id", reportId)
           .eq("user_id", user.id)
-          .single();
+          .single() as { data: SynthesisReportGenerateRow | null; error: { message: string } | null };
 
         if (fetchError || !report) {
           sendSSEEvent(controller, encoder, {
@@ -238,13 +247,13 @@ export async function POST(request: NextRequest) {
 
         // 使用乐观锁更新状态：只有 pending 状态才能开始生成
         // 这样可以避免 TOCTOU 竞态条件
-        const { data: updated } = await supabase
-          .from("synthesis_reports")
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: updated } = await (supabase.from("synthesis_reports") as any)
           .update({ status: "generating" })
           .eq("id", reportId)
           .eq("status", "pending") // 乐观锁：只更新 pending 状态的记录
           .select("id")
-          .maybeSingle();
+          .maybeSingle() as { data: { id: string } | null };
 
         // 如果没有更新任何记录，说明状态已变更（可能被另一个请求抢占）
         if (!updated) {

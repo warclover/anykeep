@@ -69,11 +69,24 @@ export interface InboxAnalysis {
 }
 
 /**
- * V4.2 聚类处理状态
+ * V4.2 聚类处理状态（字符串枚举）
  * 导入并重新导出自 supabase.ts 以保持一致性
  */
-import type { ClusterProcessingStatus } from "@/types/supabase";
-export type { ClusterProcessingStatus };
+import type { ClusterProcessingStatus as ClusterStatus } from "@/types/supabase";
+export type { ClusterStatus as ClusterProcessingStatusEnum };
+
+/**
+ * V4.2 聚类处理状态信息（对象接口）
+ * 包含处理进度和相关统计数据
+ */
+export interface ClusterProcessingStatus {
+  pendingClusterCount: number;
+  clusterCount: number;
+  lastProcessedAt: Date | null;
+  nextScheduledAt: Date | null;
+  hasPendingSuggestions: boolean;
+  status?: ClusterStatus;
+}
 
 /**
  * Organization analysis result for UI

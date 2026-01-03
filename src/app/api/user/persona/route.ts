@@ -198,11 +198,13 @@ export async function GET(): Promise<Response> {
     const supabase = await createClient();
 
     // 获取存储的设置
-    const profileResult = await supabase
-      .from("profiles")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type ProfilePersonaRow = { persona_settings: Json | null };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const profileResult = await (supabase.from("profiles") as any)
       .select("persona_settings")
       .eq("id", user.id)
-      .single();
+      .single() as { data: ProfilePersonaRow | null; error: { code?: string; message: string } | null };
 
     const profileError = profileResult.error;
     const profile = profileResult.data;
@@ -335,7 +337,9 @@ export async function PUT(request: NextRequest): Promise<Response> {
     };
 
     // 更新或插入设置
-    const { error: upsertError } = await supabase.from("profiles").upsert(
+    // 类型断言: 手动维护类型文件时需要此断言
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: upsertError } = await (supabase.from("profiles") as any).upsert(
       {
         id: user.id,
         persona_settings: settings as unknown as Json,
@@ -388,8 +392,9 @@ export async function DELETE(): Promise<Response> {
     const supabase = await createClient();
 
     // 清除设置
-    const { error: updateError } = await supabase
-      .from("profiles")
+    // 类型断言: 手动维护类型文件时需要此断言
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: updateError } = await (supabase.from("profiles") as any)
       .update({
         persona_settings: null,
         updated_at: new Date().toISOString(),

@@ -73,8 +73,19 @@ export async function POST(request: NextRequest) {
     }
 
     // 获取综述详情
-    const { data: report, error: reportError } = await supabase
-      .from("synthesis_reports")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type SynthesisReportQARow = {
+      id: string;
+      title: string;
+      overview: string | null;
+      consensus: unknown;
+      divergence: unknown;
+      blind_spots: unknown;
+      source_count: number;
+      depth_mode: string;
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: report, error: reportError } = await (supabase.from("synthesis_reports") as any)
       .select(
         `
         id,
@@ -89,7 +100,7 @@ export async function POST(request: NextRequest) {
       )
       .eq("id", reportId)
       .eq("user_id", user.id)
-      .single();
+      .single() as { data: SynthesisReportQARow | null; error: { message: string } | null };
 
     if (reportError || !report) {
       return NextResponse.json({ error: "Report not found" }, { status: 404 });

@@ -80,12 +80,14 @@ async function validateHighlightAccess(
   }
 
   // 2. 双重验证：先验证 collection 所有权
-  const { data: collection, error: collectionError } = await supabase
-    .from("md_collections")
+  // 类型断言: 手动维护类型文件时需要此断言
+  type CollectionCheckRow = { id: number; user_id: string };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: collection, error: collectionError } = await (supabase.from("md_collections") as any)
     .select("id, user_id")
     .eq("id", collectionId)
     .is("deleted_at", null)
-    .single();
+    .single() as { data: CollectionCheckRow | null; error: { code?: string; message: string } | null };
 
   if (collectionError) {
     if (collectionError.code === "PGRST116") {
@@ -97,17 +99,19 @@ async function validateHighlightAccess(
     };
   }
 
-  if (collection.user_id !== user.id) {
+  if (!collection || collection.user_id !== user.id) {
     return { success: false, response: forbiddenError(AUTH.FORBIDDEN) };
   }
 
   // 3. 验证高亮存在且属于当前用户
-  const { data: existingHighlight, error: checkError } = await supabase
-    .from("md_collection_highlights")
+  // 类型断言: 手动维护类型文件时需要此断言
+  type HighlightCheckRow = { id: string; user_id: string; collection_id: number };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: existingHighlight, error: checkError } = await (supabase.from("md_collection_highlights") as any)
     .select("id, user_id, collection_id")
     .eq("id", highlightId)
     .eq("collection_id", collectionId)
-    .single();
+    .single() as { data: HighlightCheckRow | null; error: { code?: string; message: string } | null };
 
   if (checkError) {
     if (checkError.code === "PGRST116") {
@@ -169,12 +173,12 @@ export async function PATCH(
     const { color } = schemaValidation.data;
 
     // 更新高亮
-    const { data: updatedHighlight, error: updateError } = await supabase
-      .from("md_collection_highlights")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: updatedHighlight, error: updateError } = await (supabase.from("md_collection_highlights") as any)
       .update({ color })
       .eq("id", highlightId)
       .select()
-      .single();
+      .single() as { data: Record<string, unknown> | null; error: { message: string } | null };
 
     if (updateError) {
       return databaseError(MESSAGES.UPDATE_ERROR, updateError);

@@ -79,11 +79,16 @@ export async function GET(_request: NextRequest) {
     }
 
     // 2. 获取用户的维护任务时间戳
+    // 类型断言: 手动维护类型文件时需要此断言
+    type ProfileMaintenanceType = {
+      last_trash_cleanup_at: string | null;
+      last_validation_at: string | null;
+    };
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("last_trash_cleanup_at, last_validation_at")
       .eq("id", user.id)
-      .single();
+      .single() as unknown as { data: ProfileMaintenanceType | null; error: { message: string } | null };
 
     logger.debug(
       {

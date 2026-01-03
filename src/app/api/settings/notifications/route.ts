@@ -45,11 +45,22 @@ export async function GET() {
     const supabase = await createClient();
 
     // 查询用户的通知偏好
-    const { data: preferences, error: queryError } = await supabase
-      .from("notification_preferences")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type NotificationPrefRow = {
+      silent_toast: boolean | null;
+      normal_toast: boolean | null;
+      important_toast: boolean | null;
+      web_push_enabled: boolean | null;
+      web_push_subscription: string | null;
+      do_not_disturb: boolean | null;
+      dnd_start_time: string | null;
+      dnd_end_time: string | null;
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: preferences, error: queryError } = await (supabase.from("notification_preferences") as any)
       .select("*")
       .eq("user_id", user.id)
-      .single();
+      .single() as { data: NotificationPrefRow | null; error: { code?: string; message: string } | null };
 
     if (queryError && queryError.code !== "PGRST116") {
       // PGRST116 = no rows returned
@@ -148,8 +159,19 @@ export async function PATCH(request: NextRequest) {
     }
 
     // 使用 upsert 确保记录存在
-    const { data: updated, error: upsertError } = await supabase
-      .from("notification_preferences")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type NotificationPrefUpdateRow = {
+      silent_toast: boolean | null;
+      normal_toast: boolean | null;
+      important_toast: boolean | null;
+      web_push_enabled: boolean | null;
+      web_push_subscription: string | null;
+      do_not_disturb: boolean | null;
+      dnd_start_time: string | null;
+      dnd_end_time: string | null;
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: updated, error: upsertError } = await (supabase.from("notification_preferences") as any)
       .upsert(
         {
           user_id: user.id,
@@ -160,7 +182,7 @@ export async function PATCH(request: NextRequest) {
         },
       )
       .select()
-      .single();
+      .single() as { data: NotificationPrefUpdateRow | null; error: { message: string } | null };
 
     if (upsertError) {
       logger.error(
@@ -168,6 +190,10 @@ export async function PATCH(request: NextRequest) {
         "Failed to update notification preferences",
       );
       return databaseError("更新通知偏好失败", upsertError);
+    }
+
+    if (!updated) {
+      return databaseError("更新通知偏好失败");
     }
 
     logger.info(

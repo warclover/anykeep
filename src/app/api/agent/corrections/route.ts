@@ -144,8 +144,10 @@ export async function POST(request: NextRequest) {
     const contextData = context ?? {};
 
     // 4. 插入纠正记录到数据库
-    const { data: correction, error: insertError } = await supabase
-      .from("user_corrections")
+    // 类型断言: 手动维护类型文件时需要此断言
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: correction, error: insertError } = await (supabase
+      .from("user_corrections") as any)
       .insert({
         user_id: user.id,
         original_action: originalActionData as unknown as Json,
@@ -154,7 +156,7 @@ export async function POST(request: NextRequest) {
         rule_extracted: false,
       })
       .select("id")
-      .single();
+      .single() as { data: { id: string } | null; error: { message: string } | null };
 
     if (insertError) {
       logger.error(
@@ -166,11 +168,12 @@ export async function POST(request: NextRequest) {
 
     // 5. 检查是否需要触发规则提取
     // 获取未处理的纠正记录数量
-    const { count: unprocessedCount } = await supabase
-      .from("user_corrections")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { count: unprocessedCount } = await (supabase
+      .from("user_corrections") as any)
       .select("*", { count: "exact", head: true })
       .eq("user_id", user.id)
-      .eq("rule_extracted", false);
+      .eq("rule_extracted", false) as { count: number | null };
 
     let ruleExtractionTriggered = false;
 
@@ -216,7 +219,7 @@ export async function POST(request: NextRequest) {
 
     const response: RecordCorrectionResponse = {
       success: true,
-      correctionId: correction.id,
+      correctionId: correction?.id ?? "",
       message: "纠正已记录",
       ruleExtractionTriggered,
     };
@@ -224,7 +227,7 @@ export async function POST(request: NextRequest) {
     logger.info(
       {
         userId: user.id,
-        correctionId: correction.id,
+        correctionId: correction?.id,
         originalTool: originalActionData.tool,
         correctedTool: correctedActionData.tool,
         ruleExtractionTriggered,
@@ -279,8 +282,9 @@ export async function GET(request: NextRequest) {
     const { limit, unprocessedOnly } = parseResult.data;
 
     // 3. 构建查询
-    let query = supabase
-      .from("user_corrections")
+    // 类型断言: 手动维护类型文件时需要此断言
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let query = (supabase.from("user_corrections") as any)
       .select("*", { count: "exact" })
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
@@ -291,7 +295,20 @@ export async function GET(request: NextRequest) {
     }
 
     // 4. 执行查询
-    const { data: corrections, count, error: queryError } = await query;
+    type CorrectionRow = {
+      id: string;
+      original_action: unknown;
+      corrected_action: unknown;
+      context: unknown;
+      rule_extracted: boolean;
+      extracted_rule_id: string | null;
+      created_at: string;
+    };
+    const { data: corrections, count, error: queryError } = await query as {
+      data: CorrectionRow[] | null;
+      count: number | null;
+      error: { message: string } | null;
+    };
 
     if (queryError) {
       logger.error(

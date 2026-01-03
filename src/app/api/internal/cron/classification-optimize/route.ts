@@ -51,11 +51,16 @@ export async function POST(request: NextRequest) {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
+    // 类型断言: 手动维护类型文件时需要此断言
+    type UserIdType = { user_id: string };
     const { data: activeUsers, error: usersError } = await supabase
       .from("bookmarks")
       .select("user_id")
       .gte("created_at", sevenDaysAgo.toISOString())
-      .limit(100);
+      .limit(100) as unknown as {
+      data: UserIdType[] | null;
+      error: { message: string } | null;
+    };
 
     if (usersError) {
       throw new Error(`Failed to fetch active users: ${usersError.message}`);

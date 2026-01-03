@@ -12,6 +12,16 @@ import { BaseConsumer } from "./base-consumer";
 import type { JobContext, JobResult, GenerateEmbeddingPayload } from "../types";
 import { generateEmbedding } from "@/lib/embedding";
 
+// 本地类型定义
+interface BookmarkEmbeddingRow {
+  id: number;
+  title: string | null;
+  description: string | null;
+  ai_summary: string | null;
+  user_tags: string[] | null;
+  ai_tags: string[] | null;
+}
+
 /**
  * 向量生成消费者
  *
@@ -44,11 +54,13 @@ export class EmbeddingConsumer extends BaseConsumer {
 
     try {
       // 获取书签内容（不含 content 列，因为表中没有该字段）
-      const { data: bookmark, error: fetchError } = await context.supabase
-        .from("bookmarks")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: bookmark, error: fetchError } = (await (
+        context.supabase.from("bookmarks") as any
+      )
         .select("id, title, description, ai_summary, user_tags, ai_tags")
         .eq("id", bookmarkId)
-        .single();
+        .single()) as { data: BookmarkEmbeddingRow | null; error: Error | null };
 
       if (fetchError || !bookmark) {
         return {
@@ -86,8 +98,10 @@ export class EmbeddingConsumer extends BaseConsumer {
       const embeddingStr = `[${embedding.join(",")}]`;
 
       // 更新书签
-      const { error: updateError } = await context.supabase
-        .from("bookmarks")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: updateError } = await (
+        context.supabase.from("bookmarks") as any
+      )
         .update({
           embedding: embeddingStr,
           status: "EMBEDDING_DONE",

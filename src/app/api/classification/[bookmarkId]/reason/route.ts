@@ -155,6 +155,19 @@ export async function GET(
     }
 
     // 获取书签信息（使用存在的字段）
+    // 类型断言: 手动维护类型文件时需要此断言
+    type ClassificationBookmark = {
+      id: number;
+      title: string | null;
+      folder_id: number | null;
+      classification_result: unknown;
+      classification_status: string | null;
+      cluster_confidence: number | null;
+      pending_cluster: string | null;
+      created_at: string;
+      updated_at: string;
+      folders: { id: number; name: string; is_system: boolean } | null;
+    };
     const { data: bookmark, error: bookmarkError } = await supabase
       .from("bookmarks")
       .select(
@@ -178,7 +191,10 @@ export async function GET(
       .eq("id", id)
       .eq("user_id", user.id)
       .is("deleted_at", null)
-      .single();
+      .single() as unknown as {
+      data: ClassificationBookmark | null;
+      error: { message: string } | null;
+    };
 
     if (bookmarkError || !bookmark) {
       return NextResponse.json(
@@ -188,13 +204,24 @@ export async function GET(
     }
 
     // 获取分类历史（最近的建议记录）
+    // 类型断言: 手动维护类型文件时需要此断言
+    type SuggestionType = {
+      confidence: number | null;
+      suggested_folder_name: string | null;
+      reason: string | null;
+      status: string | null;
+      created_at: string;
+    };
     const { data: recentSuggestion } = await supabase
       .from("classification_suggestions")
       .select("confidence, suggested_folder_name, reason, status, created_at")
       .eq("bookmark_id", id)
       .order("created_at", { ascending: false })
       .limit(1)
-      .single();
+      .single() as unknown as {
+      data: SuggestionType | null;
+      error: unknown;
+    };
 
     // 解析分类结果 JSON
     const classificationResult =
@@ -333,7 +360,7 @@ export async function GET(
     } | null;
     const response: ClassificationReason = {
       bookmarkId: bookmark.id,
-      title: bookmark.title,
+      title: bookmark.title ?? "无标题",
       currentFolder: folderData
         ? {
             id: folderData.id || null,

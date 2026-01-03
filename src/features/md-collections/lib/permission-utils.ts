@@ -8,6 +8,12 @@
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 
+// 本地类型定义（绕过 Supabase 类型推断问题）
+interface CollectionOwnerRow {
+  id: number;
+  user_id: string;
+}
+
 /**
  * 验证结果
  */
@@ -45,26 +51,30 @@ export async function verifyCollectionOwnership(
   try {
     const supabase = await createClient();
 
-    const { data: collection, error } = await supabase
-      .from("md_collections")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: collection, error } = (await (
+      supabase.from("md_collections") as any
+    )
       .select("id, user_id")
       .eq("id", collectionId)
       .is("deleted_at", null)
-      .single();
+      .single()) as { data: CollectionOwnerRow | null; error: Error | null };
 
     if (error) {
-      if (error.code === "PGRST116") {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ((error as any).code === "PGRST116") {
         return { isOwner: false, exists: false };
       }
       return {
         isOwner: false,
         exists: false,
-        error: { code: error.code, message: error.message },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        error: { code: (error as any).code, message: error.message },
       };
     }
 
     return {
-      isOwner: collection.user_id === userId,
+      isOwner: collection?.user_id === userId,
       exists: true,
     };
   } catch (err) {

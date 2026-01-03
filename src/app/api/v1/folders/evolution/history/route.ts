@@ -29,12 +29,15 @@ const QuerySchema = z.object({
 
 // 有效的操作类型
 const VALID_ACTIONS: OperationSnapshotAction[] = [
-  "create",
-  "split",
-  "merge",
-  "rename",
   "move",
-  "delete",
+  "batch_move",
+  "batch_tag",
+  "batch_delete",
+  "merge_folder",
+  "create_folder",
+  "rename_folder",
+  "delete_folder",
+  "undo",
 ];
 
 /**

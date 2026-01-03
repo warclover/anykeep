@@ -59,11 +59,13 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient();
 
     // 构建查询 - 获取用户的书签中所有标签
-    const { data: bookmarks, error: queryError } = await supabase
-      .from("bookmarks")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type BookmarkTagsRow = { user_tags: string[] | null; ai_tags: string[] | null };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: bookmarks, error: queryError } = await (supabase.from("bookmarks") as any)
       .select("user_tags, ai_tags")
       .eq("user_id", user.id)
-      .eq("is_deleted", false);
+      .eq("is_deleted", false) as { data: BookmarkTagsRow[] | null; error: { message: string } | null };
 
     if (queryError) {
       logger.error({ error: queryError.message }, "Failed to fetch tags");

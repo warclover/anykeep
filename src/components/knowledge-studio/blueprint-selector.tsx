@@ -7,8 +7,8 @@
 
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import type { BlueprintType } from "@/lib/knowledge-studio";
-import { BLUEPRINT_DISPLAY_CONFIG } from "@/lib/knowledge-studio";
+import type { BlueprintType } from "@/lib/knowledge-studio/client";
+import { BLUEPRINT_DISPLAY_CONFIG } from "@/lib/knowledge-studio/client";
 
 interface BlueprintSelectorProps {
   value?: BlueprintType;

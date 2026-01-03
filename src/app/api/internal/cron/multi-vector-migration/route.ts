@@ -71,7 +71,9 @@ export async function GET(request: Request) {
 
     // 统计每个用户的待迁移数量
     const userPendingCounts = new Map<string, number>();
-    for (const row of usersWithPending || []) {
+    // 类型断言: 手动维护类型文件时需要此断言
+    type UserIdRow = { user_id: string };
+    for (const row of (usersWithPending as UserIdRow[] | null) || []) {
       const count = userPendingCounts.get(row.user_id) || 0;
       userPendingCounts.set(row.user_id, count + 1);
     }

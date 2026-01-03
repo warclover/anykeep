@@ -64,7 +64,7 @@ export const FlipBookmarkCard = memo(function FlipBookmarkCard({
   // 生成封面图
   const coverImage =
     getProxiedImageUrl(bookmark.cover_url) ||
-    generatePlaceholderImage(bookmark.title, bookmark.platform as Platform);
+    generatePlaceholderImage(bookmark.title ?? "", bookmark.platform as Platform);
 
   // 平台色彩映射
   const getPlatformColor = (platform: string): string => {
@@ -166,18 +166,18 @@ export const FlipBookmarkCard = memo(function FlipBookmarkCard({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={coverImage}
-              alt={bookmark.title}
+              alt={bookmark.title ?? ""}
               className="w-full h-full object-cover"
               loading="lazy"
               decoding="async"
             />
             <div className="absolute top-2 left-2">
-              <PlatformBadge platform={bookmark.platform} size="md" showName />
+              <PlatformBadge platform={bookmark.platform ?? "UNKNOWN"} size="md" showName />
             </div>
           </div>
           <div className="p-4 flex-1">
             <h3 className="font-semibold text-gray-900 dark:text-white line-clamp-2 mb-2">
-              {bookmark.title}
+              {bookmark.title ?? ""}
             </h3>
             {getDisplaySummary(bookmark.ai_summary) && (
               <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2">
@@ -204,7 +204,7 @@ export const FlipBookmarkCard = memo(function FlipBookmarkCard({
         onMouseLeave={handleMouseLeave}
         role="button"
         tabIndex={0}
-        aria-label={`收藏卡片: ${bookmark.title}。${isMobile ? "点击" : "悬停"}翻转查看详情`}
+        aria-label={`收藏卡片: ${bookmark.title ?? ""}。${isMobile ? "点击" : "悬停"}翻转查看详情`}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
@@ -218,7 +218,7 @@ export const FlipBookmarkCard = memo(function FlipBookmarkCard({
             {/* 平台色条 */}
             <div
               className="h-1 w-full"
-              style={{ backgroundColor: getPlatformColor(bookmark.platform) }}
+              style={{ backgroundColor: getPlatformColor(bookmark.platform ?? "UNKNOWN") }}
             />
 
             {/* 封面图 - P0.1: 16:9 + 顶部对齐 */}
@@ -226,7 +226,7 @@ export const FlipBookmarkCard = memo(function FlipBookmarkCard({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={coverImage}
-                alt={bookmark.title}
+                alt={bookmark.title ?? ""}
                 className="w-full h-full object-cover card-cover-top card-cover-zoom"
                 loading="lazy"
                 decoding="async"
@@ -235,7 +235,7 @@ export const FlipBookmarkCard = memo(function FlipBookmarkCard({
               {/* 平台标识 - P0.5: 放大 + 固定左上角 */}
               <div className="absolute top-3 left-3">
                 <PlatformBadge
-                  platform={bookmark.platform}
+                  platform={bookmark.platform ?? "UNKNOWN"}
                   size="lg"
                   showName
                 />
@@ -272,7 +272,7 @@ export const FlipBookmarkCard = memo(function FlipBookmarkCard({
             <div className="p-4 pt-3 flex-1 flex flex-col card-content-spacing">
               {/* 标题 - 固定2行高度，单行时留白 */}
               <h3 className="font-semibold text-gray-900 dark:text-white line-clamp-2 mb-3 text-lg leading-snug min-h-[3.25rem]">
-                {bookmark.title}
+                {bookmark.title ?? ""}
               </h3>
 
               {/* 标签 - 单行显示，超出用+N */}

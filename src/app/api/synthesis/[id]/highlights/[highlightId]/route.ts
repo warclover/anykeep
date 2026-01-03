@@ -105,13 +105,13 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     }
 
     // 更新标注
-    const { data, error } = await supabase
-      .from("synthesis_highlights")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.from("synthesis_highlights") as any)
       .update(updateData)
       .eq("id", highlightId)
       .eq("user_id", user.id)
       .select()
-      .single();
+      .single() as { data: SynthesisHighlightRow | null; error: { code?: string; message: string } | null };
 
     if (error) {
       if (error.code === "PGRST116") {

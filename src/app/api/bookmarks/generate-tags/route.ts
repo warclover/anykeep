@@ -47,12 +47,16 @@ export async function POST(request: NextRequest) {
     const { title, url, description } = validation.data;
 
     // 3. 获取用户现有文件夹（用于标签参考）
+    // 类型断言: 手动维护类型文件时需要此断言
     const { data: folders } = await supabase
       .from("folders")
       .select("name")
       .eq("user_id", user.id)
       .eq("is_system", false)
-      .is("deleted_at", null);
+      .is("deleted_at", null) as unknown as {
+      data: { name: string }[] | null;
+      error: unknown;
+    };
 
     const folderNames = folders?.map((f) => f.name) || [];
 

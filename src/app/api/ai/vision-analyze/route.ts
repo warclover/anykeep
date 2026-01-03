@@ -103,13 +103,22 @@ export async function POST(request: NextRequest): Promise<Response> {
     } = validation.data;
 
     // 4. 获取书签信息
+    // 类型断言: 手动维护类型文件时需要此断言
+    type BookmarkVision = {
+      id: number;
+      title: string | null;
+      url: string;
+      cover_url: string | null;
+      description: string | null;
+      ai_vision_data: unknown;
+    };
     const { data: bookmark, error: bookmarkError } = await supabase
       .from("bookmarks")
       .select("id, title, url, cover_url, description, ai_vision_data")
       .eq("id", bookmarkId)
       .eq("user_id", user.id)
       .is("deleted_at", null)
-      .single();
+      .single() as unknown as { data: BookmarkVision | null; error: unknown };
 
     if (bookmarkError || !bookmark) {
       return notFoundError("书签不存在或已删除");
@@ -168,14 +177,14 @@ export async function POST(request: NextRequest): Promise<Response> {
     });
 
     // 7. 保存分析结果到数据库
-    const { error: updateError } = await supabase
-      .from("bookmarks")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: updateError } = await (supabase.from("bookmarks") as any)
       .update({
         ai_vision_data: JSON.parse(JSON.stringify(visionData)),
         updated_at: new Date().toISOString(),
       })
       .eq("id", bookmarkId)
-      .eq("user_id", user.id);
+      .eq("user_id", user.id) as { error: { message: string } | null };
 
     if (updateError) {
       logger.error(
@@ -276,13 +285,14 @@ export async function GET(request: NextRequest): Promise<Response> {
     }
 
     // 3. 获取视觉分析数据
+    // 类型断言: 手动维护类型文件时需要此断言
     const { data: bookmark, error: bookmarkError } = await supabase
       .from("bookmarks")
       .select("ai_vision_data")
       .eq("id", bookmarkId)
       .eq("user_id", user.id)
       .is("deleted_at", null)
-      .single();
+      .single() as unknown as { data: { ai_vision_data: unknown } | null; error: unknown };
 
     if (bookmarkError || !bookmark) {
       return notFoundError("书签不存在或已删除");

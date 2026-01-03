@@ -19,8 +19,10 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import useSWR from "swr";
 import { toast } from "sonner";
-import type { OrganizationAnalysis } from "@/lib/classification";
-import type { ClusterProcessingStatus } from "@/types/supabase";
+import type {
+  OrganizationAnalysis,
+  ClusterProcessingStatus,
+} from "@/lib/classification";
 import { API_CLASSIFICATION } from "@/lib/constants/api-paths";
 
 // ============================================

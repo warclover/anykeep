@@ -216,14 +216,15 @@ export async function PUT(
 
       if (targetFolderId) {
         // 更新书签的文件夹
-        const { error: moveError } = await supabase
-          .from("bookmarks")
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error: moveError } = await (supabase
+          .from("bookmarks") as any)
           .update({
             folder_id: targetFolderId,
             updated_at: new Date().toISOString(),
           })
           .eq("id", existing.bookmark_id)
-          .eq("user_id", user.id);
+          .eq("user_id", user.id) as { error: { message: string } | null };
 
         if (moveError) {
           logger.warn(

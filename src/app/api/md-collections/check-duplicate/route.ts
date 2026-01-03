@@ -46,13 +46,15 @@ export async function POST(request: NextRequest) {
     const { contentHash } = validation.data;
 
     // 3. 检查是否存在相同哈希的记录
-    const { data: existingCollection, error: queryError } = await supabase
-      .from("md_collections")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type DuplicateCheckRow = { id: number; title: string; created_at: string };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: existingCollection, error: queryError } = await (supabase.from("md_collections") as any)
       .select("id, title, created_at")
       .eq("user_id", user.id)
       .eq("content_hash", contentHash)
       .is("deleted_at", null)
-      .maybeSingle();
+      .maybeSingle() as { data: DuplicateCheckRow | null; error: { message: string } | null };
 
     if (queryError) {
       return databaseError(MD_COLLECTION.LOAD_ERROR, queryError);

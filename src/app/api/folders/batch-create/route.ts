@@ -108,7 +108,12 @@ export async function POST(request: NextRequest) {
           query = query.eq("parent_id", actualParentId);
         }
 
-        const { data: existing } = await query.single();
+        // 类型断言: 手动维护类型文件时需要此断言
+        type ExistingFolderType = { id: number };
+        const { data: existing } = await query.single() as unknown as {
+          data: ExistingFolderType | null;
+          error: unknown;
+        };
 
         if (existing) {
           // 已存在，使用现有文件夹
@@ -124,15 +129,19 @@ export async function POST(request: NextRequest) {
         }
 
         // 创建新文件夹
-        const { data: created, error: createError } = await supabase
-          .from("folders")
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: created, error: createError } = await (supabase
+          .from("folders") as any)
           .insert({
             user_id: user.id,
             name: folder.name,
             parent_id: actualParentId,
           })
           .select("id, name")
-          .single();
+          .single() as {
+          data: { id: number; name: string } | null;
+          error: { message: string } | null;
+        };
 
         if (createError) {
           logger.error(
@@ -147,6 +156,15 @@ export async function POST(request: NextRequest) {
           result.errors.push({
             name: folder.name,
             reason: createError.message || "创建失败",
+          });
+          continue;
+        }
+
+        if (!created) {
+          result.failed++;
+          result.errors.push({
+            name: folder.name,
+            reason: "创建失败",
           });
           continue;
         }

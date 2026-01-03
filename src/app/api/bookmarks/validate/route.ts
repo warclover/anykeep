@@ -115,8 +115,10 @@ export async function POST(request: NextRequest) {
     );
 
     // 3. 获取要检测的收藏
-    let query = supabase
-      .from("bookmarks")
+    // 类型断言: 手动维护类型文件时需要此断言
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let query = (supabase
+      .from("bookmarks") as any)
       .select("id, url, platform")
       .eq("user_id", user.id)
       .is("deleted_at", null)
@@ -128,7 +130,15 @@ export async function POST(request: NextRequest) {
 
     query = query.limit(limit);
 
-    const { data: bookmarks, error: fetchError } = await query;
+    type BookmarkToValidate = {
+      id: number;
+      url: string;
+      platform: string | null;
+    };
+    const { data: bookmarks, error: fetchError } = await query as {
+      data: BookmarkToValidate[] | null;
+      error: { message: string } | null;
+    };
 
     logger.debug(
       {
@@ -234,14 +244,15 @@ export async function POST(request: NextRequest) {
     if (invalidBookmarks.length > 0) {
       const invalidIds = invalidBookmarks.map((b) => b.bookmarkId);
 
-      const { error: updateError } = await serviceClient
-        .from("bookmarks")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: updateError } = await (serviceClient
+        .from("bookmarks") as any)
         .update({
           is_invalid: true,
           invalidated_at: new Date().toISOString(),
           last_validation_at: new Date().toISOString(),
         })
-        .in("id", invalidIds);
+        .in("id", invalidIds) as { error: { message: string } | null };
 
       if (updateError) {
         logger.error(
@@ -261,14 +272,15 @@ export async function POST(request: NextRequest) {
     if (validBookmarks.length > 0) {
       const validIds = validBookmarks.map((b) => b.bookmarkId);
 
-      const { error: updateError } = await serviceClient
-        .from("bookmarks")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: updateError } = await (serviceClient
+        .from("bookmarks") as any)
         .update({
           is_invalid: false,
           invalidated_at: null,
           last_validation_at: new Date().toISOString(),
         })
-        .in("id", validIds);
+        .in("id", validIds) as { error: { message: string } | null };
 
       if (updateError) {
         logger.error(
@@ -284,8 +296,9 @@ export async function POST(request: NextRequest) {
 
     // 9. 记录验证历史
     const endTime = new Date();
-    const { error: historyError } = await serviceClient
-      .from("validation_history")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: historyError } = await (serviceClient
+      .from("validation_history") as any)
       .insert({
         user_id: user.id,
         total_bookmarks: bookmarks.length,
@@ -315,7 +328,7 @@ export async function POST(request: NextRequest) {
         ),
         started_at: new Date(startTime).toISOString(),
         completed_at: endTime.toISOString(),
-      });
+      }) as { error: { message: string } | null };
 
     if (historyError) {
       logger.error(

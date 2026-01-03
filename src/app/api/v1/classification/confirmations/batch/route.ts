@@ -133,8 +133,8 @@ export const POST = withAuthMiddleware(
     if (action === "confirm") {
       for (const confirmation of confirmations) {
         if (confirmation.bookmark_id && confirmation.suggestion?.folderId) {
-          const { error: moveError } = await supabase
-            .from("bookmarks")
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { error: moveError } = await (supabase.from("bookmarks") as any)
             .update({
               folder_id: confirmation.suggestion.folderId,
               updated_at: new Date().toISOString(),

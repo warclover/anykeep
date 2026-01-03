@@ -100,13 +100,23 @@ async function handleSummary(
   userId: string,
 ) {
   // 获取所有非系统文件夹
+  // 类型断言: 手动维护类型文件时需要此断言
+  type FolderWithGroup = {
+    id: number;
+    name: string;
+    folder_group: string | null;
+    created_at: string;
+  };
   const { data: folders, error: foldersError } = await supabase
     .from("folders")
     .select("id, name, folder_group, created_at")
     .eq("user_id", userId)
     .eq("is_system", false)
     .is("deleted_at", null)
-    .order("name");
+    .order("name") as unknown as {
+    data: FolderWithGroup[] | null;
+    error: { message: string } | null;
+  };
 
   if (foldersError) {
     throw new Error(`Failed to fetch folders: ${foldersError.message}`);
@@ -126,11 +136,16 @@ async function handleSummary(
   const profileMap = new Map(profiles.map((p) => [p.folderId, p]));
 
   // 获取每个文件夹的书签数量
+  // 类型断言: 手动维护类型文件时需要此断言
+  type BookmarkFolderId = { folder_id: number | null };
   const { data: bookmarkCounts } = await supabase
     .from("bookmarks")
     .select("folder_id")
     .eq("user_id", userId)
-    .is("deleted_at", null);
+    .is("deleted_at", null) as unknown as {
+    data: BookmarkFolderId[] | null;
+    error: unknown;
+  };
 
   const countMap = new Map<number, number>();
   for (const b of bookmarkCounts || []) {
@@ -140,12 +155,16 @@ async function handleSummary(
   }
 
   // 获取每个文件夹的最近书签时间
+  type BookmarkActivity = { folder_id: number | null; created_at: string };
   const { data: recentBookmarks } = await supabase
     .from("bookmarks")
     .select("folder_id, created_at")
     .eq("user_id", userId)
     .is("deleted_at", null)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false }) as unknown as {
+    data: BookmarkActivity[] | null;
+    error: unknown;
+  };
 
   const lastActivityMap = new Map<number, string>();
   for (const b of recentBookmarks || []) {
@@ -265,13 +284,24 @@ async function handleSingleFolder(
   }
 
   // 验证文件夹属于当前用户
+  // 类型断言: 手动维护类型文件时需要此断言
+  type SingleFolderType = {
+    id: number;
+    name: string;
+    created_at: string;
+    is_system: boolean;
+    folder_group: string | null;
+  };
   const { data: folder, error: folderError } = await supabase
     .from("folders")
     .select("id, name, created_at, is_system, folder_group")
     .eq("id", folderId)
     .eq("user_id", userId)
     .is("deleted_at", null)
-    .single();
+    .single() as unknown as {
+    data: SingleFolderType | null;
+    error: { message: string } | null;
+  };
 
   if (folderError || !folder) {
     return notFoundError("文件夹不存在或无权访问");

@@ -76,8 +76,8 @@ export class BillingService implements IBillingService {
   ): Promise<Bill[]> {
     const supabase = await createClient();
 
-    let query = supabase
-      .from("ks_bills")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let query = (supabase.from("ks_bills") as any)
       .select(
         `
         *,
@@ -95,14 +95,17 @@ export class BillingService implements IBillingService {
       query = query.limit(options.limit);
     }
 
-    const { data, error } = await query;
+    // 类型断言: 手动维护类型文件时需要此断言
+    type BillQueryResult = Record<string, unknown>[];
+
+    const { data, error } = await query as { data: BillQueryResult | null; error: { message: string } | null };
 
     if (error) {
       logger.error({ error: error.message }, "Failed to get bills");
       throw new Error(`获取账单列表失败: ${error.message}`);
     }
 
-    return (data ?? []).map((row) => this.mapBillFromRow(row));
+    return (data ?? []).map((row: Record<string, unknown>) => this.mapBillFromRow(row));
   }
 
   /**
@@ -113,8 +116,8 @@ export class BillingService implements IBillingService {
   async getBill(billId: string, userId: string): Promise<Bill | null> {
     const supabase = await createClient();
 
-    const { data, error } = await supabase
-      .from("ks_bills")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.from("ks_bills") as any)
       .select(
         `
         *,
@@ -147,11 +150,21 @@ export class BillingService implements IBillingService {
     const supabase = await createClient();
 
     // 调用 RPC 函数
-    const { data, error } = await supabase.rpc("get_consumption_summary", {
+    // 类型断言: 手动维护类型文件时需要此断言
+    type ConsumptionSummaryRpcResult = {
+      consumptionByType?: Record<string, { amount: number; cost: number }>;
+      totalAmount?: number;
+      totalCost?: number;
+      dailyAverage?: number;
+      trend?: string;
+      trendPercent?: number;
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.rpc as any)("get_consumption_summary", {
       p_user_id: userId,
       p_start_date: startDate.toISOString(),
       p_end_date: endDate.toISOString(),
-    });
+    }) as { data: ConsumptionSummaryRpcResult | null; error: { message: string } | null };
 
     if (error) {
       logger.error(
@@ -214,8 +227,8 @@ export class BillingService implements IBillingService {
   ): Promise<ConsumptionRecord[]> {
     const supabase = await createClient();
 
-    let query = supabase
-      .from("ks_consumption_records")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let query = (supabase.from("ks_consumption_records") as any)
       .select("*")
       .eq("user_id", userId)
       .order("created_at", { ascending: false });
@@ -246,7 +259,19 @@ export class BillingService implements IBillingService {
       throw new Error(`获取消费明细失败: ${error.message}`);
     }
 
-    return (data ?? []).map((row) => ({
+    // 类型断言: 手动维护类型文件时需要此断言
+    type ConsumptionRecordRow = {
+      id: string;
+      user_id: string;
+      created_at: string;
+      usage_type: string;
+      description: string;
+      amount: number;
+      cost: number;
+      report_id?: string;
+      blueprint_type?: string;
+    };
+    return ((data ?? []) as ConsumptionRecordRow[]).map((row) => ({
       id: row.id,
       userId: row.user_id,
       timestamp: new Date(row.created_at),
@@ -279,7 +304,8 @@ export class BillingService implements IBillingService {
     const description =
       options?.description ?? `${USAGE_TYPE_DESCRIPTIONS[type]} x ${amount}`;
 
-    const { error } = await supabase.from("ks_consumption_records").insert({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase.from("ks_consumption_records") as any).insert({
       user_id: userId,
       usage_type: type,
       description,
@@ -301,9 +327,12 @@ export class BillingService implements IBillingService {
    * 映射数据库行到 Bill 对象
    */
   private mapBillFromRow(row: Record<string, unknown>): Bill {
+    // 类型断言: 手动维护类型文件时需要此断言
+    type LineItemRow = Record<string, unknown>;
+
     const lineItems: BillingLineItem[] = (
-      (row.line_items as unknown[]) ?? []
-    ).map((item: Record<string, unknown>) => ({
+      (row.line_items as LineItemRow[]) ?? []
+    ).map((item: LineItemRow) => ({
       id: item.id as string,
       description: item.description as string,
       usageType: item.usage_type as UsageType,

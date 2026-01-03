@@ -91,11 +91,13 @@ export async function GET(
     }
 
     // 3. 验证书签所有权
-    const { data: bookmark, error: bookmarkError } = await supabase
-      .from("bookmarks")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type BookmarkOwnerRow = { id: number; user_id: string };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: bookmark, error: bookmarkError } = await (supabase.from("bookmarks") as any)
       .select("id, user_id")
       .eq("id", bookmarkId)
-      .single();
+      .single() as { data: BookmarkOwnerRow | null; error: { message: string } | null };
 
     if (bookmarkError || !bookmark) {
       return NextResponse.json(

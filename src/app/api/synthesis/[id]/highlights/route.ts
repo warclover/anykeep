@@ -125,11 +125,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     // 创建标注
     const row = toHighlightRow(body, reportId, user.id);
-    const { data, error } = await supabase
-      .from("synthesis_highlights")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.from("synthesis_highlights") as any)
       .insert(row)
       .select()
-      .single();
+      .single() as { data: SynthesisHighlightRow | null; error: { message: string } | null };
 
     if (error) {
       logger.error({ error, reportId }, "Highlights API: Insert error");

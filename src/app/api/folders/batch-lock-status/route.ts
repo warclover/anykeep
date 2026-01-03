@@ -91,12 +91,21 @@ export async function POST(request: NextRequest) {
     monitor.mark("ParamsParsed", { folderCount: folderIds.length });
 
     // 3. 批量查询 folder_profiles 表
+    // 类型断言: 手动维护类型文件时需要此断言
+    type ProfileRow = {
+      folder_id: number;
+      is_system_locked: boolean | null;
+      is_ai_renamable: boolean | null;
+    };
     const queryStart = performance.now();
     const { data: profiles, error: queryError } = await supabase
       .from("folder_profiles")
       .select("folder_id, is_system_locked, is_ai_renamable")
       .eq("user_id", user.id)
-      .in("folder_id", folderIds);
+      .in("folder_id", folderIds) as unknown as {
+      data: ProfileRow[] | null;
+      error: { message: string } | null;
+    };
 
     monitor.mark("DatabaseQuery", {
       durationMs: Math.round(performance.now() - queryStart),

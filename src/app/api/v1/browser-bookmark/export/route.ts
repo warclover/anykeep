@@ -39,8 +39,19 @@ export const GET = withAuthMiddleware(
       : null;
 
     // 构建查询
-    let query = supabase
-      .from("bookmarks")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type BookmarkExportRow = {
+      id: number;
+      title: string | null;
+      url: string;
+      description: string | null;
+      platform: string | null;
+      created_at: string | null;
+      folder_id: number | null;
+      folders: { id: number; name: string; parent_id: number | null } | null;
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let query = (supabase.from("bookmarks") as any)
       .select(
         `
       id,
@@ -72,7 +83,10 @@ export const GET = withAuthMiddleware(
       }
     }
 
-    const { data: bookmarks, error: queryError } = await query;
+    const { data: bookmarks, error: queryError } = await query as {
+      data: BookmarkExportRow[] | null;
+      error: { message: string } | null
+    };
 
     if (queryError) {
       logger.error(
@@ -99,11 +113,13 @@ export const GET = withAuthMiddleware(
     }
 
     // 获取所有文件夹
-    const { data: allFolders } = await supabase
-      .from("folders")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type FolderRow = { id: number; name: string; parent_id: number | null };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: allFolders } = await (supabase.from("folders") as any)
       .select("id, name, parent_id")
       .eq("user_id", userId)
-      .is("deleted_at", null);
+      .is("deleted_at", null) as { data: FolderRow[] | null };
 
     // 构建文件夹路径映射
     const folderPathMap = new Map<number, string[]>();

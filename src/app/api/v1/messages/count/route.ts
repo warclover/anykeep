@@ -26,7 +26,9 @@ export const GET = withAuthMiddleware(async (_request, { userId }) => {
   const supabase = await createClient();
 
   // 使用 RPC 函数获取未读数量
-  const { data, error } = await supabase.rpc("get_unread_message_counts", {
+  // 类型断言: 手动维护类型文件时需要此断言
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase.rpc as any)("get_unread_message_counts", {
     p_user_id: userId,
   });
 

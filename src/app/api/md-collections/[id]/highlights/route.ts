@@ -74,12 +74,14 @@ export async function GET(
     }
 
     // 2. 验证文档存在且属于当前用户
-    const { data: collection, error: collectionError } = await supabase
-      .from("md_collections")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type CollectionCheckRow = { id: number; user_id: string };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: collection, error: collectionError } = await (supabase.from("md_collections") as any)
       .select("id, user_id")
       .eq("id", collectionId)
       .is("deleted_at", null)
-      .single();
+      .single() as { data: CollectionCheckRow | null; error: { code?: string; message: string } | null };
 
     if (collectionError) {
       if (collectionError.code === "PGRST116") {
@@ -88,7 +90,7 @@ export async function GET(
       return databaseError(MESSAGES.LOAD_ERROR, collectionError);
     }
 
-    if (collection.user_id !== user.id) {
+    if (!collection || collection.user_id !== user.id) {
       return forbiddenError(AUTH.FORBIDDEN);
     }
 
@@ -164,12 +166,14 @@ export async function POST(
     }
 
     // 2. 验证文档存在且属于当前用户
-    const { data: collection, error: collectionError } = await supabase
-      .from("md_collections")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type CollectionCheckRowPost = { id: number; user_id: string };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: collection, error: collectionError } = await (supabase.from("md_collections") as any)
       .select("id, user_id")
       .eq("id", collectionId)
       .is("deleted_at", null)
-      .single();
+      .single() as { data: CollectionCheckRowPost | null; error: { code?: string; message: string } | null };
 
     if (collectionError) {
       if (collectionError.code === "PGRST116") {
@@ -178,7 +182,7 @@ export async function POST(
       return databaseError(MESSAGES.LOAD_ERROR, collectionError);
     }
 
-    if (collection.user_id !== user.id) {
+    if (!collection || collection.user_id !== user.id) {
       return forbiddenError(AUTH.FORBIDDEN);
     }
 

@@ -104,12 +104,18 @@ export async function DELETE(request: NextRequest) {
     // 4. 删除 Storage 中的快照文件
     try {
       // 获取用户的所有快照存储路径
-      const { data: snapshots } = await supabase
-        .from("bookmark_snapshots")
+      // 类型断言: 手动维护类型文件时需要此断言
+      type SnapshotPathsRow = {
+        screenshot_storage_path: string | null;
+        html_storage_path: string | null;
+        mhtml_storage_path: string | null;
+      };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: snapshots } = await (supabase.from("bookmark_snapshots") as any)
         .select(
           "screenshot_storage_path, html_storage_path, mhtml_storage_path",
         )
-        .eq("user_id", user.id);
+        .eq("user_id", user.id) as { data: SnapshotPathsRow[] | null };
 
       if (snapshots && snapshots.length > 0) {
         const pathsToDelete: string[] = [];

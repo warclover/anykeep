@@ -56,18 +56,33 @@ export async function PATCH(
     }
 
     // 3. 检查文件夹是否存在且属于当前用户
+    // 类型断言: 手动维护类型文件时需要此断言
+    type ArchiveFolderType = {
+      id: number;
+      user_id: string;
+      name: string;
+      is_system: boolean;
+      is_archived: boolean;
+    };
     const { data: folder, error: checkError } = await supabase
       .from("folders")
       .select("id, user_id, name, is_system, is_archived")
       .eq("id", folderId)
       .is("deleted_at", null)
-      .single();
+      .single() as unknown as {
+      data: ArchiveFolderType | null;
+      error: { code?: string; message: string } | null;
+    };
 
     if (checkError) {
       if (checkError.code === "PGRST116") {
         return notFoundError(FOLDER.NOT_FOUND);
       }
       return databaseError(FOLDER.LOAD_ERROR, checkError);
+    }
+
+    if (!folder) {
+      return notFoundError(FOLDER.NOT_FOUND);
     }
 
     if (folder.user_id !== user.id) {
@@ -90,10 +105,11 @@ export async function PATCH(
     }
 
     // 6. 更新停用状态
-    const { error: updateError } = await supabase
-      .from("folders")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: updateError } = await (supabase
+      .from("folders") as any)
       .update({ is_archived: archived })
-      .eq("id", folderId);
+      .eq("id", folderId) as { error: { message: string } | null };
 
     if (updateError) {
       return databaseError(FOLDER.UPDATE_ERROR, updateError);

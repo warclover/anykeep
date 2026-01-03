@@ -56,6 +56,21 @@ const DEFAULT_OPTIONS: Required<MdAIProcessOptions> = {
 };
 
 // ============================================================================
+// 本地类型定义（绕过 Supabase 类型推断问题）
+// ============================================================================
+
+interface MdCollectionRow {
+  id: number;
+  title: string | null;
+  raw_content: string | null;
+  word_count: number | null;
+  code_block_count: number | null;
+  reading_time_minutes: number | null;
+  processing_status: string | null;
+  created_at: string;
+}
+
+// ============================================================================
 // 取消令牌实现
 // ============================================================================
 
@@ -217,7 +232,9 @@ export class MdAIProcessor {
       });
 
       // 6. 预处理内容
-      const preprocessResult = preprocessMarkdownForAI(collection.raw_content);
+      const preprocessResult = preprocessMarkdownForAI(
+        collection.raw_content ?? "",
+      );
       const contentForAI = preprocessResult.processedText;
 
       if (contentForAI.length < MIN_CONTENT_LENGTH) {
@@ -256,13 +273,14 @@ export class MdAIProcessor {
               {
                 collectionId,
                 userId,
-                title: collection.title,
+                title: collection.title ?? "",
                 content: contentForAI,
-                rawContent: collection.raw_content,
+                rawContent: collection.raw_content ?? undefined,
                 metadata: {
-                  wordCount: collection.word_count,
-                  codeBlockCount: collection.code_block_count,
-                  readingTimeMinutes: collection.reading_time_minutes,
+                  wordCount: collection.word_count ?? undefined,
+                  codeBlockCount: collection.code_block_count ?? undefined,
+                  readingTimeMinutes:
+                    collection.reading_time_minutes ?? undefined,
                 },
               },
               {
@@ -286,7 +304,7 @@ export class MdAIProcessor {
             if (summaryResult.suggestedTitle) {
               // 仅当当前标题是文件名或默认值时才使用 AI 标题
               const shouldUpdateTitle = this.shouldUpdateTitle(
-                collection.title,
+                collection.title ?? "",
               );
               if (shouldUpdateTitle) {
                 result.aiTitle = summaryResult.suggestedTitle;
@@ -312,7 +330,7 @@ export class MdAIProcessor {
 
           try {
             const embeddingText = buildEmbeddingText(
-              collection.title,
+              collection.title ?? "",
               result.summary || contentForAI.substring(0, 500),
               result.aiTags,
             );
@@ -426,17 +444,20 @@ export class MdAIProcessor {
   /**
    * 获取 MD 收藏内容
    */
-  private async fetchCollection(collectionId: number, userId: string) {
+  private async fetchCollection(
+    collectionId: number,
+    userId: string,
+  ): Promise<MdCollectionRow | null> {
     const supabase = await createServiceClient();
-    const { data, error } = await supabase
-      .from("md_collections")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = (await (supabase.from("md_collections") as any)
       .select(
         "id, title, raw_content, word_count, code_block_count, reading_time_minutes, processing_status, created_at",
       )
       .eq("id", collectionId)
       .eq("user_id", userId)
       .is("deleted_at", null)
-      .single();
+      .single()) as { data: MdCollectionRow | null; error: Error | null };
 
     if (error) {
       logger.error(
@@ -459,9 +480,8 @@ export class MdAIProcessor {
   ): Promise<boolean> {
     const supabase = await createServiceClient();
 
-    // 构建查询条件
-    let query = supabase
-      .from("md_collections")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let query = (supabase.from("md_collections") as any)
       .update({
         processing_status: newStatus,
         updated_at: new Date().toISOString(),
@@ -540,8 +560,8 @@ export class MdAIProcessor {
       updateData.processed_at = data.processedAt;
     }
 
-    const { error } = await supabase
-      .from("md_collections")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase.from("md_collections") as any)
       .update(updateData)
       .eq("id", collectionId);
 

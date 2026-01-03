@@ -1,4 +1,4 @@
-/* eslint-disable no-console */
+ 
 /**
  * V4.0 智能分类回归测试
  *

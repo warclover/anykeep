@@ -58,12 +58,14 @@ export async function POST(
     }
 
     // 2. 检查 MD 收藏是否存在且属于当前用户
-    const { data: collection, error: checkError } = await supabase
-      .from("md_collections")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type CollectionProcessRow = { id: number; user_id: string; processing_status: string; created_at: string };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: collection, error: checkError } = await (supabase.from("md_collections") as any)
       .select("id, user_id, processing_status, created_at")
       .eq("id", collectionId)
       .is("deleted_at", null)
-      .single();
+      .single() as { data: CollectionProcessRow | null; error: { code?: string; message: string } | null };
 
     if (checkError) {
       if (checkError.code === "PGRST116") {
@@ -72,7 +74,7 @@ export async function POST(
       return databaseError(MD_COLLECTION.LOAD_ERROR, checkError);
     }
 
-    if (collection.user_id !== user.id) {
+    if (!collection || collection.user_id !== user.id) {
       return forbiddenError(AUTH.FORBIDDEN);
     }
 

@@ -168,8 +168,8 @@ export class ConversionTracker implements IConversionTracker {
   async getTrialState(userId: string): Promise<UserTrialState | null> {
     const supabase = await createClient();
 
-    const { data, error } = await supabase
-      .from("ks_user_trial_states")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.from("ks_user_trial_states") as any)
       .select("*")
       .eq("user_id", userId)
       .single();
@@ -192,7 +192,8 @@ export class ConversionTracker implements IConversionTracker {
     const supabase = await createClient();
 
     // 调用 RPC 函数
-    const { data, error } = await supabase.rpc("start_user_trial", {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.rpc as any)("start_user_trial", {
       p_user_id: userId,
       p_duration_days: this.config.durationDays,
     });
@@ -256,7 +257,8 @@ export class ConversionTracker implements IConversionTracker {
   async trackEvent(event: Omit<ConversionEvent, "id">): Promise<void> {
     const supabase = await createClient();
 
-    const { error } = await supabase.from("ks_conversion_events").insert({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase.from("ks_conversion_events") as any).insert({
       user_id: event.userId,
       trigger_type: event.trigger,
       source_page: event.context.sourcePage,
@@ -292,8 +294,8 @@ export class ConversionTracker implements IConversionTracker {
   async updateStage(userId: string, stage: ConversionStage): Promise<void> {
     const supabase = await createClient();
 
-    const { error } = await supabase
-      .from("ks_user_trial_states")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase.from("ks_user_trial_states") as any)
       .update({
         conversion_stage: stage,
         updated_at: new Date().toISOString(),
@@ -359,8 +361,8 @@ export class ConversionTracker implements IConversionTracker {
     }
 
     // 检查冷却时间
-    const { data: recentPrompts } = await supabase
-      .from("ks_upgrade_prompts")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: recentPrompts } = await (supabase.from("ks_upgrade_prompts") as any)
       .select("*")
       .eq("user_id", userId)
       .eq("prompt_type", promptConfig.type)
@@ -383,7 +385,8 @@ export class ConversionTracker implements IConversionTracker {
       cooldownUntil.getHours() + promptConfig.cooldownHours,
     );
 
-    await supabase.from("ks_upgrade_prompts").insert({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.from("ks_upgrade_prompts") as any).insert({
       user_id: userId,
       prompt_type: promptConfig.type,
       trigger_type: promptConfig.trigger,
@@ -405,8 +408,8 @@ export class ConversionTracker implements IConversionTracker {
     const supabase = await createClient();
 
     // 更新最近的提示记录
-    const { error } = await supabase
-      .from("ks_upgrade_prompts")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase.from("ks_upgrade_prompts") as any)
       .update({
         response,
         responded_at: new Date().toISOString(),
@@ -450,8 +453,8 @@ export class ConversionTracker implements IConversionTracker {
   async updateLastActive(userId: string): Promise<void> {
     const supabase = await createClient();
 
-    await supabase
-      .from("ks_user_trial_states")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.from("ks_user_trial_states") as any)
       .update({
         last_active_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -478,8 +481,8 @@ export class ConversionTracker implements IConversionTracker {
     // 更新体验列表
     const newFeatures = [...trialState.featuresExperienced, featureId];
 
-    await supabase
-      .from("ks_user_trial_states")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.from("ks_user_trial_states") as any)
       .update({
         features_experienced: newFeatures,
         updated_at: new Date().toISOString(),
@@ -507,8 +510,8 @@ export class ConversionTracker implements IConversionTracker {
       return;
     }
 
-    const { error } = await supabase
-      .from("ks_user_trial_states")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase.from("ks_user_trial_states") as any)
       .update({
         generations_used: trialState.generationsUsed + 1,
         updated_at: new Date().toISOString(),

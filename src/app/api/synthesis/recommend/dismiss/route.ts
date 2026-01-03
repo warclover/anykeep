@@ -47,7 +47,8 @@ export async function POST(request: Request) {
     }
 
     // 调用 RPC 添加忽略的主题
-    const { data, error } = await supabase.rpc(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.rpc as any)(
       "update_synthesis_recommend_preferences",
       {
         p_user_id: user.id,

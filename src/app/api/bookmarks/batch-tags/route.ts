@@ -78,17 +78,19 @@ export async function POST(request: NextRequest) {
     let result: { affected_ids: number[]; affected_count: number };
 
     if (action === "add") {
-      const { data, error } = await supabase.rpc("batch_add_tags", {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase.rpc as any)("batch_add_tags", {
         p_bookmark_ids: bookmarkIds,
         p_tags: uniqueTags,
-      });
+      }) as { data: { affected_ids: number[]; affected_count: number }; error: { message: string } | null };
       if (error) throw error;
       result = data;
     } else {
-      const { data, error } = await supabase.rpc("batch_remove_tags", {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase.rpc as any)("batch_remove_tags", {
         p_bookmark_ids: bookmarkIds,
         p_tags: uniqueTags,
-      });
+      }) as { data: { affected_ids: number[]; affected_count: number }; error: { message: string } | null };
       if (error) throw error;
       result = data;
     }

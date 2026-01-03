@@ -64,13 +64,16 @@ export async function POST(request: NextRequest) {
 
     const serviceClient = await createServiceClient();
 
+    // 类型断言: 手动维护类型文件时需要此断言
+    type BookmarkIdRow = { id: number };
+
     // 检查是否已存在
-    const { data: existing } = await serviceClient
-      .from("bookmarks")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: existing } = await (serviceClient.from("bookmarks") as any)
       .select("id")
       .eq("user_id", authResult.userId)
       .eq("url", url)
-      .single();
+      .single() as { data: BookmarkIdRow | null };
 
     if (existing) {
       return NextResponse.json(
@@ -94,8 +97,11 @@ export async function POST(request: NextRequest) {
     const validFolderId =
       parsedFolderId && !isNaN(parsedFolderId) ? parsedFolderId : null;
 
-    const { data: bookmark, error: insertError } = await serviceClient
-      .from("bookmarks")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type BookmarkRow = { id: number; [key: string]: unknown };
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: bookmark, error: insertError } = await (serviceClient.from("bookmarks") as any)
       .insert({
         user_id: authResult.userId,
         url,
@@ -105,11 +111,11 @@ export async function POST(request: NextRequest) {
         folder_id: validFolderId,
       })
       .select()
-      .single();
+      .single() as { data: BookmarkRow | null; error: { message: string } | null };
 
-    if (insertError) {
+    if (insertError || !bookmark) {
       logger.error(
-        { error: insertError.message, userId: authResult.userId },
+        { error: insertError?.message, userId: authResult.userId },
         "Plugin Bookmarks: Failed to create bookmark",
       );
       return NextResponse.json(
@@ -119,36 +125,40 @@ export async function POST(request: NextRequest) {
     }
 
     // 添加标签（如果有）
-    if (tags && tags.length > 0) {
+    if (tags && tags.length > 0 && bookmark) {
       const validTags = tags
         .slice(0, 20) // 最多 20 个标签
         .map((t) => t.trim().substring(0, 50)) // 每个标签最多 50 字符
         .filter(Boolean);
 
       if (validTags.length > 0) {
+        // 类型断言: 手动维护类型文件时需要此断言
+        type TagIdRow = { id: number };
+
         // 获取或创建标签
         for (const tagName of validTags) {
           // 查找现有标签
-          let { data: tag } = await serviceClient
-            .from("tags")
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          let { data: tag } = await (serviceClient.from("tags") as any)
             .select("id")
             .eq("user_id", authResult.userId)
             .eq("name", tagName)
-            .single();
+            .single() as { data: TagIdRow | null };
 
           // 如果不存在，创建新标签
           if (!tag) {
-            const { data: newTag } = await serviceClient
-              .from("tags")
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const { data: newTag } = await (serviceClient.from("tags") as any)
               .insert({ user_id: authResult.userId, name: tagName })
               .select("id")
-              .single();
+              .single() as { data: TagIdRow | null };
             tag = newTag;
           }
 
           // 关联标签到收藏
           if (tag) {
-            await serviceClient.from("bookmark_tags").insert({
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            await (serviceClient.from("bookmark_tags") as any).insert({
               bookmark_id: bookmark.id,
               tag_id: tag.id,
             });

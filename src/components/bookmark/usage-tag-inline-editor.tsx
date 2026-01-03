@@ -155,7 +155,7 @@ export function UsageTagInlineEditor({
   const updateLastUsedAt = useCallback(
     async (tagValue: string) => {
       const customTag = customTags.find((t) => t.value === tagValue);
-      if (!customTag) return;
+      if (!customTag || !customTag.id) return;
 
       const now = new Date().toISOString();
       updateTag(customTag.id, { lastUsedAt: now });

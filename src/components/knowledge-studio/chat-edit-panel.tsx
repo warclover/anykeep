@@ -11,8 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Send, Check, X } from "lucide-react";
-import type { EditMode, ChatTurn, EditDiff } from "@/lib/knowledge-studio";
-import { EDIT_MODE_CONFIG } from "@/lib/knowledge-studio";
+import type { EditMode, ChatTurn, EditDiff } from "@/lib/knowledge-studio/client";
+import { EDIT_MODE_CONFIG } from "@/lib/knowledge-studio/client";
 
 interface ChatEditPanelProps {
   paragraphContent: string;

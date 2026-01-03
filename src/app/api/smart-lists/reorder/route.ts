@@ -43,19 +43,22 @@ export async function POST(request: NextRequest) {
     const { ids } = validation.data;
 
     // 3. 验证所有 ID 都属于当前用户
-    const { data: existingLists, error: checkError } = await supabase
-      .from("smart_lists")
+    // 类型断言: 手动维护类型文件时需要此断言
+    // 注意: ids 来自验证层，可能为 string[] 或 number[]，需统一处理
+    type SmartListIdRow = { id: string };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: existingLists, error: checkError } = await (supabase.from("smart_lists") as any)
       .select("id")
       .eq("user_id", user.id)
       .in("id", ids)
-      .is("deleted_at", null);
+      .is("deleted_at", null) as { data: SmartListIdRow[] | null; error: { message: string } | null };
 
     if (checkError) {
       return databaseError("验证智能列表失败", checkError);
     }
 
-    const existingIds = new Set(existingLists?.map((l) => l.id) ?? []);
-    const invalidIds = ids.filter((id) => !existingIds.has(id));
+    const existingIds = new Set((existingLists ?? []).map((l) => String(l.id)));
+    const invalidIds = ids.filter((id) => !existingIds.has(String(id)));
 
     if (invalidIds.length > 0) {
       return successResponse(
@@ -70,11 +73,11 @@ export async function POST(request: NextRequest) {
     let updateError: { message: string } | null = null;
 
     for (let i = 0; i < ids.length; i++) {
-      const { error } = await supabase
-        .from("smart_lists")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase.from("smart_lists") as any)
         .update({ sort_order: i })
         .eq("id", ids[i])
-        .eq("user_id", user.id);
+        .eq("user_id", user.id) as { error: { message: string } | null };
 
       if (error) {
         updateError = error;

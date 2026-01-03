@@ -73,10 +73,14 @@ export async function POST(request: NextRequest) {
     );
 
     // 3. 调用 RPC 执行撤销
-    const { data, error } = await supabase.rpc("revert_ai_operation_snapshot", {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.rpc as any)("revert_ai_operation_snapshot", {
       p_snapshot_id: snapshotId,
       p_user_id: user.id,
-    });
+    }) as {
+      data: { success: boolean; restored_count: number; error_message: string }[] | null;
+      error: { message: string } | null;
+    };
 
     if (error) {
       logger.error({ error }, "Agent Undo: RPC failed");

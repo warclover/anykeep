@@ -60,7 +60,8 @@ export async function GET(request: NextRequest) {
     );
 
     // 调用 RPC 获取使用统计
-    const { data, error } = await supabase.rpc("get_user_usage_stats", {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.rpc as any)("get_user_usage_stats", {
       p_user_id: user.id,
       p_period: period,
       p_start_date: startDate || null,
@@ -135,8 +136,8 @@ export async function POST(request: NextRequest) {
       "Recording usage",
     );
 
-    const { data, error } = await supabase
-      .from("ks_usage_records")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.from("ks_usage_records") as any)
       .insert({
         user_id: user.id,
         usage_type: usageType,

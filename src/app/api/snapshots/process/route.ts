@@ -86,8 +86,17 @@ export async function POST(request: Request) {
 
     // 4. 查找待处理的快照任务
     // 注意：job_queue 表的字段是 "type"，不是 "job_type"
-    const jobsQuery = getAdmin()
-      .from("job_queue")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type JobQueueRow = {
+      id: number;
+      user_id: string;
+      type: string;
+      status: string;
+      payload: Record<string, unknown>;
+      created_at: string;
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const jobsQuery = (getAdmin().from("job_queue") as any)
       .select("*")
       .eq("user_id", user.id)
       .eq("status", "pending")
@@ -106,7 +115,7 @@ export async function POST(request: Request) {
       // 由于 JSONB 过滤较复杂，先获取所有然后在内存中过滤
     }
 
-    const { data: pendingJobs, error: jobsError } = await jobsQuery;
+    const { data: pendingJobs, error: jobsError } = await jobsQuery as { data: JobQueueRow[] | null; error: { message: string } | null };
 
     if (jobsError) {
       logger.error(
@@ -147,18 +156,26 @@ export async function POST(request: Request) {
     }
 
     // 6. 处理每个任务
+    // 类型断言: 手动维护类型文件时需要此断言
+    type ClaimedJobRow = {
+      job_id: number;
+      job_type: string;
+      job_payload: Record<string, unknown>;
+      job_user_id: string;
+    };
     for (const job of jobsToProcess) {
       try {
         // 尝试认领任务
         // 注意：job 对象中的字段是 "type"，不是 "job_type"
-        const { data: claimedJobs, error: claimError } = await getAdmin().rpc(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: claimedJobs, error: claimError } = await (getAdmin().rpc as any)(
           "claim_next_job",
           {
             p_worker_id: WORKER_ID,
             p_job_types: [job.type],
             p_lock_duration: "2 minutes",
           },
-        );
+        ) as { data: ClaimedJobRow[] | null; error: { message: string } | null };
 
         if (claimError || !claimedJobs || claimedJobs.length === 0) {
           // 任务可能已被其他 worker 处理
@@ -185,7 +202,7 @@ export async function POST(request: Request) {
             "@/lib/snapshot/processors"
           );
           await processSnapshotJob({
-            id: claimedJob.job_id,
+            id: String(claimedJob.job_id),
             type: claimedJob.job_type,
             payload,
             userId: claimedJob.job_user_id,
@@ -199,7 +216,7 @@ export async function POST(request: Request) {
             "@/lib/snapshot/processors"
           );
           await processStandardSnapshot({
-            id: claimedJob.job_id,
+            id: String(claimedJob.job_id),
             type: claimedJob.job_type,
             payload,
             userId: claimedJob.job_user_id,
@@ -208,7 +225,8 @@ export async function POST(request: Request) {
         }
 
         // 标记完成
-        await getAdmin().rpc("complete_job", {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (getAdmin().rpc as any)("complete_job", {
           p_job_id: claimedJob.job_id,
           p_result: {
             processedAt: new Date().toISOString(),
@@ -231,7 +249,8 @@ export async function POST(request: Request) {
         );
 
         // 标记失败
-        await getAdmin().rpc("fail_job", {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (getAdmin().rpc as any)("fail_job", {
           p_job_id: job.id,
           p_error: error instanceof Error ? error.message : String(error),
           p_retry: true,

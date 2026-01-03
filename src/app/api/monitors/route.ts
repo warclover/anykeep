@@ -58,11 +58,13 @@ export async function GET(request: NextRequest) {
     const { status, limit, offset } = queryResult.data;
 
     // 3. 获取用户会员信息
-    const { data: profile } = await supabase
-      .from("profiles")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type ProfileRow = { membership_type: string | null };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: profile } = await (supabase.from("profiles") as any)
       .select("membership_type")
       .eq("id", user.id)
-      .single();
+      .single() as { data: ProfileRow | null };
 
     const membershipType =
       (profile?.membership_type as "FREE" | "PRO") || "FREE";
@@ -214,11 +216,13 @@ export async function POST(request: NextRequest) {
     } = parseResult.data;
 
     // 3. 获取用户会员信息和配额检查
-    const { data: profile } = await supabase
-      .from("profiles")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type ProfileRowPost = { membership_type: string | null };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: profile } = await (supabase.from("profiles") as any)
       .select("membership_type")
       .eq("id", user.id)
-      .single();
+      .single() as { data: ProfileRowPost | null };
 
     const membershipType =
       (profile?.membership_type as "FREE" | "PRO") || "FREE";
@@ -247,13 +251,15 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. 验证书签所有权
-    const { data: bookmark, error: bookmarkError } = await supabase
-      .from("bookmarks")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type BookmarkRow = { id: number; url: string; title: string };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: bookmark, error: bookmarkError } = await (supabase.from("bookmarks") as any)
       .select("id, url, title")
       .eq("id", bookmarkId)
       .eq("user_id", user.id)
       .is("deleted_at", null)
-      .single();
+      .single() as { data: BookmarkRow | null; error: { message: string } | null };
 
     if (bookmarkError || !bookmark) {
       return badRequestError("书签不存在或无权操作");

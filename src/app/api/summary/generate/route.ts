@@ -73,11 +73,20 @@ export async function POST(request: NextRequest) {
       validation.data;
 
     // 3. 获取书签信息
-    const { data: bookmark, error: bookmarkError } = await supabase
-      .from("bookmarks")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type BookmarkGenerateRow = {
+      id: number;
+      user_id: string;
+      title: string;
+      url: string | null;
+      description: string | null;
+      ai_summary: string | null;
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: bookmark, error: bookmarkError } = await (supabase.from("bookmarks") as any)
       .select("id, user_id, title, url, description, ai_summary")
       .eq("id", bookmarkId)
-      .single();
+      .single() as { data: BookmarkGenerateRow | null; error: { message: string } | null };
 
     if (bookmarkError || !bookmark) {
       return notFoundError("书签不存在");
@@ -118,14 +127,14 @@ export async function POST(request: NextRequest) {
     const result = await summaryService.generate(summaryInput, options);
 
     // 8. 更新书签摘要
-    const { error: updateError } = await supabase
-      .from("bookmarks")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: updateError } = await (supabase.from("bookmarks") as any)
       .update({
         ai_summary: result.summary,
         ai_tags: result.tags,
         updated_at: new Date().toISOString(),
       })
-      .eq("id", bookmarkId);
+      .eq("id", bookmarkId) as { error: { message: string } | null };
 
     // V4.2.4: 修复数据库更新错误被忽略的问题
     // 在响应中包含保存状态，让客户端知道是否需要重试

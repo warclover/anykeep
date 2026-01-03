@@ -52,8 +52,10 @@ export async function GET(request: NextRequest) {
       : null;
 
     // 3. 构建查询
-    let query = supabase
-      .from("bookmarks")
+    // 类型断言: 手动维护类型文件时需要此断言
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let query = (supabase
+      .from("bookmarks") as any)
       .select(
         `
         id,
@@ -88,7 +90,20 @@ export async function GET(request: NextRequest) {
     }
 
     // 4. 执行查询
-    const { data: bookmarks, error: queryError } = await query;
+    type ExportedBookmark = {
+      id: number;
+      title: string | null;
+      url: string;
+      description: string | null;
+      platform: string | null;
+      created_at: string | null;
+      folder_id: number | null;
+      folders: { id: number; name: string; parent_id: number | null } | null;
+    };
+    const { data: bookmarks, error: queryError } = await query as {
+      data: ExportedBookmark[] | null;
+      error: { message: string } | null;
+    };
 
     if (queryError) {
       logger.error(
@@ -103,11 +118,15 @@ export async function GET(request: NextRequest) {
     }
 
     // 5. 获取所有文件夹用于构建路径
+    // 类型断言: 手动维护类型文件时需要此断言
     const { data: allFolders } = await supabase
       .from("folders")
       .select("id, name, parent_id")
       .eq("user_id", user.id)
-      .is("deleted_at", null);
+      .is("deleted_at", null) as unknown as {
+      data: { id: number; name: string; parent_id: number | null }[] | null;
+      error: unknown;
+    };
 
     // 构建文件夹 ID 到路径的映射
     const folderPathMap = new Map<number, string[]>();

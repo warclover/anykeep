@@ -63,19 +63,37 @@ export async function GET(
     }
 
     // 2. 查询文件夹详情
+    // 类型断言: 手动维护类型文件时需要此断言
+    type FolderRow = {
+      id: number;
+      user_id: string;
+      name: string;
+      parent_id: number | null;
+      is_system: boolean;
+      deleted_at: string | null;
+      created_at: string;
+      updated_at: string;
+    };
     const { data: folder, error: queryError } = await supabase
       .from("folders")
       .select("*")
       .eq("id", folderId)
       .eq("user_id", user.id)
       .is("deleted_at", null)
-      .single();
+      .single() as unknown as {
+      data: FolderRow | null;
+      error: { code?: string; message: string } | null;
+    };
 
     if (queryError) {
       if (queryError.code === "PGRST116") {
         return notFoundError(FOLDER.NOT_FOUND);
       }
       return databaseError(FOLDER.LOAD_ERROR, queryError);
+    }
+
+    if (!folder) {
+      return notFoundError(FOLDER.NOT_FOUND);
     }
 
     // 3. 统计收藏数量
@@ -153,18 +171,33 @@ export async function PUT(
     const { name, parentId, color: _color, icon: _icon } = validation.data;
 
     // 3. 检查文件夹是否存在且属于当前用户
+    // 类型断言: 手动维护类型文件时需要此断言
+    type ExistingFolderType = {
+      id: number;
+      user_id: string;
+      parent_id: number | null;
+      is_system: boolean;
+      system_type: string | null;
+    };
     const { data: existingFolder, error: checkError } = await supabase
       .from("folders")
       .select("id, user_id, parent_id, is_system, system_type")
       .eq("id", folderId)
       .is("deleted_at", null)
-      .single();
+      .single() as unknown as {
+      data: ExistingFolderType | null;
+      error: { code?: string; message: string } | null;
+    };
 
     if (checkError) {
       if (checkError.code === "PGRST116") {
         return notFoundError(FOLDER.NOT_FOUND);
       }
       return databaseError(FOLDER.LOAD_ERROR, checkError);
+    }
+
+    if (!existingFolder) {
+      return notFoundError(FOLDER.NOT_FOUND);
     }
 
     if (existingFolder.user_id !== user.id) {
@@ -198,12 +231,13 @@ export async function PUT(
     // Note: color and icon are not in the database schema yet, removing for now
 
     // 6. 更新文件夹
-    const { data: updatedFolder, error: updateError } = await supabase
-      .from("folders")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: updatedFolder, error: updateError } = await (supabase
+      .from("folders") as any)
       .update(updateData)
       .eq("id", folderId)
       .select()
-      .single();
+      .single() as { data: Record<string, unknown> | null; error: { message: string } | null };
 
     if (updateError) {
       return databaseError(FOLDER.UPDATE_ERROR, updateError);
@@ -261,18 +295,31 @@ export async function DELETE(
     }
 
     // 2. 检查文件夹是否存在且属于当前用户
+    // 类型断言: 手动维护类型文件时需要此断言
+    type DeleteFolderType = {
+      id: number;
+      user_id: string;
+      is_system: boolean;
+    };
     const { data: existingFolder, error: checkError } = await supabase
       .from("folders")
       .select("id, user_id, is_system")
       .eq("id", folderId)
       .is("deleted_at", null)
-      .single();
+      .single() as unknown as {
+      data: DeleteFolderType | null;
+      error: { code?: string; message: string } | null;
+    };
 
     if (checkError) {
       if (checkError.code === "PGRST116") {
         return notFoundError(FOLDER.NOT_FOUND);
       }
       return databaseError(FOLDER.LOAD_ERROR, checkError);
+    }
+
+    if (!existingFolder) {
+      return notFoundError(FOLDER.NOT_FOUND);
     }
 
     if (existingFolder.user_id !== user.id) {
@@ -302,14 +349,15 @@ export async function DELETE(
 
     // 5. 使用事务函数执行原子删除操作
     // 安全说明：已验证用户身份、文件夹所有权、非系统文件夹、无书签
-    const { data: rpcResult, error: rpcError } = await supabase.rpc(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: rpcResult, error: rpcError } = await (supabase.rpc as any)(
       "delete_folder_cascade",
       {
         p_folder_id: folderId,
         p_user_id: user.id,
         p_delete_bookmarks: false, // 已验证文件夹为空
       },
-    );
+    ) as { data: unknown; error: { message: string } | null };
 
     if (rpcError) {
       logger.error(
@@ -385,12 +433,16 @@ async function checkCircularReference(
   }
 
   // 获取当前文件夹的所有子文件夹
+  type FolderIdOnly = { id: number };
   const { data: children, error } = await supabase
     .from("folders")
     .select("id")
     .eq("parent_id", folderId)
     .eq("user_id", userId)
-    .is("deleted_at", null);
+    .is("deleted_at", null) as unknown as {
+    data: FolderIdOnly[] | null;
+    error: unknown;
+  };
 
   if (error || !children) {
     return false;

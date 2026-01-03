@@ -70,7 +70,8 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
           );
 
           if (error) throw error;
-          searchResults = (data as SearchResult[]) || [];
+          // 类型断言: 手动维护类型文件时需要 unknown 中转
+          searchResults = (data as unknown as SearchResult[]) || [];
         } else {
           // PostgreSQL 全文搜索（使用 ts_vector + GIN 索引）
           const { data, error } = await searchBookmarksFulltext(

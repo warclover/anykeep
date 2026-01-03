@@ -160,7 +160,8 @@ export abstract class BaseConsumer {
    * 获取任务
    */
   private async claimJobs(limit: number): Promise<JobRecord[]> {
-    const { data, error } = await this.supabase.rpc("claim_jobs_batch", {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (this.supabase.rpc as any)("claim_jobs_batch", {
       p_worker_id: this.workerId,
       p_job_types: this.config.jobTypes,
       p_limit: limit,
@@ -264,7 +265,8 @@ export abstract class BaseConsumer {
     error?: string,
     result?: unknown,
   ): Promise<void> {
-    const { error: rpcError } = await this.supabase.rpc("complete_job", {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: rpcError } = await (this.supabase.rpc as any)("complete_job", {
       p_job_id: jobId,
       p_success: success,
       p_error: error ?? null,

@@ -39,10 +39,10 @@ interface OperationDetailDialogProps {
 /**
  * 操作类型对应的图标映射（静态定义，避免在渲染期间创建组件）
  */
-const ACTION_ICONS: Record<
+const ACTION_ICONS: Partial<Record<
   OperationSnapshotAction,
   React.ComponentType<{ className?: string }>
-> = {
+>> = {
   create: FolderPlus,
   split: Scissors,
   merge: Merge,
@@ -238,19 +238,20 @@ export function OperationDetailDialog({
   if (!operation) return null;
 
   // 使用静态映射获取图标组件，避免在渲染期间动态创建
-  const IconComponent = ACTION_ICONS[operation.action] || FolderPlus;
-  const actionLabel = getActionLabel(operation.action);
+  const action = operation.action ?? operation.operation_type;
+  const IconComponent = (action ? ACTION_ICONS[action] : undefined) || FolderPlus;
+  const actionLabel = action ? getActionLabel(action) : "操作";
   const createdAt = new Date(operation.created_at);
-  const expiresAt = new Date(operation.expires_at);
+  const expiresAt = operation.expires_at ? new Date(operation.expires_at) : null;
   const now = new Date();
-  const isExpired = expiresAt < now;
+  const isExpired = expiresAt ? expiresAt < now : false;
 
   const timeAgo = formatDistanceToNow(createdAt, {
     addSuffix: true,
     locale: zhCN,
   });
 
-  const remainingTime = !isExpired
+  const remainingTime = !isExpired && expiresAt
     ? formatDistanceToNow(expiresAt, { locale: zhCN })
     : null;
 
@@ -310,14 +311,18 @@ export function OperationDetailDialog({
           )}
 
           {/* 时间信息 */}
-          <Separator />
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Clock className="w-3 h-3" />
-            <span>
-              撤销窗口截止：
-              {format(expiresAt, "yyyy-MM-dd HH:mm", { locale: zhCN })}
-            </span>
-          </div>
+          {expiresAt && (
+            <>
+              <Separator />
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Clock className="w-3 h-3" />
+                <span>
+                  撤销窗口截止：
+                  {format(expiresAt, "yyyy-MM-dd HH:mm", { locale: zhCN })}
+                </span>
+              </div>
+            </>
+          )}
         </div>
       </DialogContent>
     </Dialog>

@@ -100,10 +100,10 @@ export function useAttachmentManager({
       const newItem: AttachmentItem = {
         id: bookmarkId,
         type: "bookmark",
-        title: bookmark.title,
-        url: bookmark.url,
+        title: bookmark.title ?? "",
+        url: bookmark.url ?? undefined,
         content: bookmark.ai_summary || bookmark.description || undefined,
-        platform: bookmark.platform,
+        platform: bookmark.platform ?? undefined,
       };
 
       setAttachments((prev) => [...prev, newItem]);

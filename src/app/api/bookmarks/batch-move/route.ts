@@ -46,12 +46,16 @@ export async function POST(request: NextRequest) {
     const { ids, folderId } = validation.data;
 
     // 2.5 获取要移动的书签的当前文件夹（用于更新源文件夹 profile）
+    // 类型断言: 手动维护类型文件时需要此断言
     const { data: bookmarksToMove } = await supabase
       .from("bookmarks")
       .select("id, folder_id")
       .in("id", ids)
       .eq("user_id", user.id)
-      .is("deleted_at", null);
+      .is("deleted_at", null) as unknown as {
+      data: { id: number; folder_id: number | null }[] | null;
+      error: unknown;
+    };
 
     const sourceFolderIds =
       bookmarksToMove
@@ -67,7 +71,10 @@ export async function POST(request: NextRequest) {
         .eq("id", folderId)
         .eq("user_id", user.id)
         .is("deleted_at", null)
-        .single();
+        .single() as unknown as {
+        data: { id: number; name: string } | null;
+        error: unknown;
+      };
 
       if (folderError || !folder) {
         return notFoundError("文件夹不存在或无权访问");
@@ -76,8 +83,9 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. 批量更新收藏的 folder_id
-    const { data: movedBookmarks, error: moveError } = await supabase
-      .from("bookmarks")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: movedBookmarks, error: moveError } = await (supabase
+      .from("bookmarks") as any)
       .update({
         folder_id: folderId,
         updated_at: new Date().toISOString(),
@@ -85,7 +93,7 @@ export async function POST(request: NextRequest) {
       .in("id", ids)
       .eq("user_id", user.id)
       .is("deleted_at", null)
-      .select("id");
+      .select("id") as { data: { id: number }[] | null; error: { message: string } | null };
 
     if (moveError) {
       return databaseError("批量移动收藏失败", moveError);

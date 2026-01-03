@@ -61,7 +61,8 @@ export async function GET(_request: NextRequest) {
     }
 
     // 获取用户偏好
-    const { data: prefsData } = await supabase.rpc(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: prefsData } = await (supabase.rpc as any)(
       "get_synthesis_recommend_preferences",
       { p_user_id: user.id },
     );
@@ -99,21 +100,24 @@ export async function GET(_request: NextRequest) {
     const recommendations: RecommendedTopic[] = [];
 
     // 1. 基于文件夹推荐
-    const { data: folders } = await supabase
-      .from("folders")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type FolderRow = { id: number; name: string };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: folders } = await (supabase.from("folders") as any)
       .select("id, name")
-      .eq("user_id", user.id);
+      .eq("user_id", user.id) as { data: FolderRow[] | null };
 
     if (folders) {
       for (const folder of folders) {
         // 获取文件夹内书签数量和代表书签
-        const { data: folderBookmarks, count } = await supabase
-          .from("bookmarks")
+        type FolderBookmarkRow = { id: number; title: string | null };
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: folderBookmarks, count } = await (supabase.from("bookmarks") as any)
           .select("id, title", { count: "exact" })
           .eq("user_id", user.id)
           .eq("folder_id", folder.id)
           .order("created_at", { ascending: false })
-          .limit(3);
+          .limit(3) as { data: FolderBookmarkRow[] | null; count: number | null };
 
         const folderBookmarkCount = count || 0;
 
@@ -145,11 +149,12 @@ export async function GET(_request: NextRequest) {
     }
 
     // 2. 基于标签推荐
-    const { data: tagStats } = await supabase
-      .from("bookmarks")
+    type TagStatsRow = { id: number; title: string | null; ai_tags: string[] | null };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: tagStats } = await (supabase.from("bookmarks") as any)
       .select("id, title, ai_tags")
       .eq("user_id", user.id)
-      .not("ai_tags", "is", null);
+      .not("ai_tags", "is", null) as { data: TagStatsRow[] | null };
 
     if (tagStats) {
       // 统计标签频率和收集代表书签
@@ -209,13 +214,14 @@ export async function GET(_request: NextRequest) {
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
-    const { data: recentBookmarks, count: recentCount } = await supabase
-      .from("bookmarks")
+    type RecentBookmarkRow = { id: number; title: string | null };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: recentBookmarks, count: recentCount } = await (supabase.from("bookmarks") as any)
       .select("id, title", { count: "exact" })
       .eq("user_id", user.id)
       .gte("created_at", oneWeekAgo.toISOString())
       .order("created_at", { ascending: false })
-      .limit(3);
+      .limit(3) as { data: RecentBookmarkRow[] | null; count: number | null };
 
     if (recentCount && recentCount >= MIN_BOOKMARKS_COUNT) {
       const topicId = "recent-week";

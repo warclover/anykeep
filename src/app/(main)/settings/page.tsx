@@ -25,11 +25,12 @@ export default async function SettingsPage() {
   }
 
   // 从数据库获取用户设置
+  // 类型断言: 手动维护类型文件时需要此断言
   const { data: profile } = await supabase
     .from("profiles")
     .select("settings")
     .eq("id", user.id)
-    .single();
+    .single() as unknown as { data: { settings: unknown } | null };
 
   // 合并默认值（处理旧版设置或新用户）
   const userSettings = mergeWithDefaults(

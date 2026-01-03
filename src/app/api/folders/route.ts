@@ -167,18 +167,30 @@ export async function POST(request: NextRequest) {
     // 3. 创建文件夹
     // 注意：数据库 folders 表目前只有基础字段（name, parent_id 等）
     // color 和 icon 字段需要通过数据库迁移添加后才能使用
-    const { data: folder, error: createError } = await supabase
-      .from("folders")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type CreatedFolderType = {
+      id: number;
+      user_id: string;
+      name: string;
+      parent_id: number | null;
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: folder, error: createError } = await (supabase
+      .from("folders") as any)
       .insert({
         user_id: user.id,
         name,
         parent_id: parentId || null,
       })
       .select()
-      .single();
+      .single() as { data: CreatedFolderType | null; error: { message: string } | null };
 
     if (createError) {
       return databaseError(FOLDER.CREATE_ERROR, createError);
+    }
+
+    if (!folder) {
+      return databaseError(FOLDER.CREATE_ERROR);
     }
 
     // 4. 异步初始化文件夹名称 Profile（不阻塞响应）

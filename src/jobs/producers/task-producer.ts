@@ -47,8 +47,8 @@ export class TaskProducer {
    * 生产单个任务
    */
   async produce(task: TaskDefinition, userId: string): Promise<string> {
-    const { data, error } = await this.supabase
-      .from("system_jobs")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (this.supabase.from("system_jobs") as any)
       .insert({
         type: task.type,
         payload: task.payload,
@@ -97,8 +97,8 @@ export class TaskProducer {
         dependsOnId = typeToJobId.get(task.dependsOn);
       }
 
-      const { data, error } = await this.supabase
-        .from("system_jobs")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (this.supabase.from("system_jobs") as any)
         .insert({
           type: task.type,
           payload: task.payload,
@@ -189,8 +189,8 @@ export class TaskProducer {
    * 获取用户的待处理任务数
    */
   async getPendingCount(userId: string): Promise<number> {
-    const { count, error } = await this.supabase
-      .from("system_jobs")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { count, error } = await (this.supabase.from("system_jobs") as any)
       .select("*", { count: "exact", head: true })
       .eq("user_id", userId)
       .eq("status", "PENDING");
@@ -210,8 +210,8 @@ export class TaskProducer {
     bookmarkId: number,
     userId: string,
   ): Promise<JobRecord[]> {
-    const { data, error } = await this.supabase
-      .from("system_jobs")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (this.supabase.from("system_jobs") as any)
       .select("*")
       .eq("bookmark_id", bookmarkId)
       .eq("user_id", userId)
@@ -232,7 +232,8 @@ export class TaskProducer {
    * 取消任务
    */
   async cancelTask(jobId: string, userId: string): Promise<boolean> {
-    const { data, error } = await this.supabase.rpc("cancel_job", {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (this.supabase.rpc as any)("cancel_job", {
       p_job_id: jobId,
       p_user_id: userId,
     });

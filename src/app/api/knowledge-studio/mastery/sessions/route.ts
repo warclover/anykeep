@@ -45,8 +45,8 @@ export async function GET(request: NextRequest) {
       "Fetching learning sessions",
     );
 
-    let query = supabase
-      .from("ks_learning_sessions")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let query = (supabase.from("ks_learning_sessions") as any)
       .select("*", { count: "exact" })
       .eq("user_id", user.id)
       .order("started_at", { ascending: false })
@@ -118,8 +118,8 @@ export async function POST(request: NextRequest) {
 
     logger.info({ userId: user.id, reportId }, "Creating learning session");
 
-    const { data, error } = await supabase
-      .from("ks_learning_sessions")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.from("ks_learning_sessions") as any)
       .insert({
         user_id: user.id,
         report_id: reportId,

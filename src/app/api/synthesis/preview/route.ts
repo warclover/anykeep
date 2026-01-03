@@ -123,11 +123,13 @@ export async function GET(request: NextRequest) {
       query = query.eq("folder_id", parseInt(sourceId, 10));
     } else if (sourceType === "tag" && sourceId) {
       // 标签查询需要关联 bookmark_tags 表
-      const { data: taggedBookmarkIds } = await supabase
-        .from("bookmark_tags")
+      // 类型断言: 手动维护类型文件时需要此断言
+      type TaggedBookmarkRow = { bookmark_id: number };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: taggedBookmarkIds } = await (supabase.from("bookmark_tags") as any)
         .select("bookmark_id")
         .eq("user_id", user.id)
-        .eq("tag_name", sourceId);
+        .eq("tag_name", sourceId) as { data: TaggedBookmarkRow[] | null };
 
       if (!taggedBookmarkIds || taggedBookmarkIds.length === 0) {
         return NextResponse.json({

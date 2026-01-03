@@ -53,7 +53,7 @@ export interface UseImportHistoryReturn {
   /** 加载更多 */
   loadMore: () => Promise<void>;
   /** 删除记录 */
-  remove: (id: number) => Promise<void>;
+  remove: (id: string) => Promise<void>;
   /** 按批次 ID 删除 */
   removeByBatchId: (batchId: string) => Promise<void>;
 }
@@ -118,7 +118,7 @@ export function useImportHistory(
   }, [isLoading, history.length, total, loadHistory]);
 
   // 删除记录
-  const remove = useCallback(async (id: number) => {
+  const remove = useCallback(async (id: string) => {
     try {
       await deleteImportHistory(id);
       setHistory((prev) => prev.filter((h) => h.id !== id));

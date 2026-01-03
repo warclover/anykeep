@@ -68,13 +68,14 @@ export async function PUT(request: NextRequest) {
 
     // 3. 使用事务函数执行原子批量排序
     // 注意：直接传送数组对象，Supabase 会自动序列化为 JSONB
-    const { data: rpcResult, error: rpcError } = await supabase.rpc(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: rpcResult, error: rpcError } = await (supabase.rpc as any)(
       "batch_reorder_folders",
       {
         p_user_id: user.id,
         p_updates: body.updates,
       },
-    );
+    ) as { data: unknown; error: { message: string } | null };
 
     if (rpcError) {
       logger.error(

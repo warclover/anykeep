@@ -11,7 +11,7 @@
  * @since 2025-01-02
  */
 
-import { describe, it, expect } from "vitest";
+// Jest provides describe, it, expect as globals
 import {
   PRO_FEATURES,
   FREE_BLUEPRINTS,

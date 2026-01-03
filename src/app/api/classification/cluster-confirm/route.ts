@@ -86,13 +86,28 @@ export async function POST(request: NextRequest) {
 
     // 3. 获取建议记录
     // Note: bookmark_ids, suggested_action, metadata 是 V4.2 新增字段
+    // 类型断言: 手动维护类型文件时需要此断言
+    type SuggestionType = {
+      id: number;
+      user_id: string;
+      status: string;
+      suggested_action: string | null;
+      suggested_folder_name: string | null;
+      reason: string | null;
+      bookmark_ids: number[] | null;
+      bookmark_id: number | null;
+      metadata: unknown;
+    };
     const { data: suggestion, error: fetchError } = await supabase
       .from("classification_suggestions")
       .select("*")
       .eq("id", suggestionId)
       .eq("user_id", user.id)
       .eq("status", "pending")
-      .single();
+      .single() as unknown as {
+      data: SuggestionType | null;
+      error: { message: string } | null;
+    };
 
     if (fetchError || !suggestion) {
       return notFoundError("建议不存在或已处理");
@@ -111,8 +126,9 @@ export async function POST(request: NextRequest) {
       return internalError("建议中没有有效的文件夹名称");
     }
 
-    const { data: newFolder, error: createError } = await supabase
-      .from("folders")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: newFolder, error: createError } = await (supabase
+      .from("folders") as any)
       .insert({
         user_id: user.id,
         name: folderName,
@@ -121,7 +137,7 @@ export async function POST(request: NextRequest) {
         ai_reason: suggestion.reason,
       })
       .select("id, name")
-      .single();
+      .single() as { data: { id: number; name: string } | null; error: { message: string } | null };
 
     if (createError || !newFolder) {
       logger.error(
@@ -146,8 +162,9 @@ export async function POST(request: NextRequest) {
 
     // 7. 移动书签到新文件夹并清除聚类状态
     // Note: pending_cluster, pending_since, cluster_id, cluster_confidence 是 V4.2 新增字段
-    const { error: moveError } = await supabase
-      .from("bookmarks")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: moveError } = await (supabase
+      .from("bookmarks") as any)
       .update({
         folder_id: newFolder.id,
         pending_cluster: false,
@@ -156,7 +173,7 @@ export async function POST(request: NextRequest) {
         cluster_confidence: null,
       })
       .in("id", bookmarkIds)
-      .eq("user_id", user.id);
+      .eq("user_id", user.id) as { error: { message: string } | null };
 
     if (moveError) {
       logger.error(
@@ -167,8 +184,9 @@ export async function POST(request: NextRequest) {
     }
 
     // 8. 更新建议状态
-    await supabase
-      .from("classification_suggestions")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase
+      .from("classification_suggestions") as any)
       .update({
         status: "accepted",
         processed_at: new Date().toISOString(),
@@ -254,21 +272,32 @@ export async function DELETE(request: NextRequest) {
 
     // 3. 获取建议记录
     // Note: bookmark_ids, metadata 是 V4.2 新增字段
+    // 类型断言: 手动维护类型文件时需要此断言
+    type DeleteSuggestionType = {
+      id: number;
+      bookmark_ids: number[] | null;
+      bookmark_id: number | null;
+      metadata: unknown;
+    };
     const { data: suggestion, error: fetchError } = await supabase
       .from("classification_suggestions")
       .select("*")
       .eq("id", suggestionId)
       .eq("user_id", user.id)
       .eq("status", "pending")
-      .single();
+      .single() as unknown as {
+      data: DeleteSuggestionType | null;
+      error: { message: string } | null;
+    };
 
     if (fetchError || !suggestion) {
       return notFoundError("建议不存在或已处理");
     }
 
     // 4. 更新建议状态为拒绝
-    await supabase
-      .from("classification_suggestions")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase
+      .from("classification_suggestions") as any)
       .update({
         status: "rejected",
         processed_at: new Date().toISOString(),
@@ -289,8 +318,9 @@ export async function DELETE(request: NextRequest) {
           ? [suggestion.bookmark_id]
           : [];
     if (bookmarkIds.length > 0) {
-      await supabase
-        .from("bookmarks")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase
+        .from("bookmarks") as any)
         .update({
           cluster_id: null,
           cluster_confidence: null,

@@ -85,6 +85,7 @@ export type {
   BookmarkCluster,
   InboxAnalysis,
   OrganizationAnalysis,
+  ClusterProcessingStatus,
 } from "./types";
 
 // Constants

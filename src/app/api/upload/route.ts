@@ -75,11 +75,13 @@ export async function POST(request: NextRequest) {
     }
 
     // 5. 检查用户存储配额
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type ProfileStorageRow = { storage_quota: number | null; storage_used: number | null };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: profile, error: profileError } = await (supabase.from("profiles") as any)
       .select("storage_quota, storage_used")
       .eq("id", user.id)
-      .single();
+      .single() as { data: ProfileStorageRow | null; error: { message: string } | null };
 
     if (profileError) {
       logger.error(
@@ -91,6 +93,10 @@ export async function POST(request: NextRequest) {
         "Get profile error",
       );
       return internalError("获取用户信息失败");
+    }
+
+    if (!profile) {
+      return internalError("用户配置不存在");
     }
 
     // 计算文件大小（字节转为 MB）
@@ -143,12 +149,12 @@ export async function POST(request: NextRequest) {
       .getPublicUrl(filePath);
 
     // 9. 更新用户存储使用量
-    const { error: updateError } = await supabase
-      .from("profiles")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: updateError } = await (supabase.from("profiles") as any)
       .update({
-        storage_used: (profile.storage_used ?? 0) + fileSizeInMB,
+        storage_used: (profile?.storage_used ?? 0) + fileSizeInMB,
       })
-      .eq("id", user.id);
+      .eq("id", user.id) as { error: { message: string } | null };
 
     if (updateError) {
       logger.error(

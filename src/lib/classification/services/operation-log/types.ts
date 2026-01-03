@@ -34,7 +34,7 @@ export interface OperationHistoryOptions {
 }
 
 /**
- * 操作快照动作类型（从主类型模块引用）
+ * 操作快照动作类型（从数据库模式同步）
  */
 export type OperationSnapshotAction =
   | "create"
@@ -42,7 +42,15 @@ export type OperationSnapshotAction =
   | "merge"
   | "rename"
   | "move"
-  | "delete";
+  | "delete"
+  | "batch_move"
+  | "batch_tag"
+  | "batch_delete"
+  | "merge_folder"
+  | "create_folder"
+  | "rename_folder"
+  | "delete_folder"
+  | "undo";
 
 /**
  * 快照行类型（数据库返回）

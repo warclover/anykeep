@@ -326,13 +326,17 @@ async function handleTrends(userId: string, searchParams: URLSearchParams) {
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - days);
 
+  // 类型断言: 手动维护类型文件时需要此断言
   const { data: bookmarks } = await supabase
     .from("bookmarks")
     .select("created_at, folder_id")
     .eq("user_id", userId)
     .is("deleted_at", null)
     .gte("created_at", startDate.toISOString())
-    .order("created_at", { ascending: true });
+    .order("created_at", { ascending: true }) as unknown as {
+    data: { created_at: string | null; folder_id: number | null }[] | null;
+    error: unknown;
+  };
 
   const dailyStats = new Map<
     string,
@@ -641,10 +645,14 @@ async function handleHistory(userId: string, searchParams: URLSearchParams) {
     return internalError("获取分类历史失败");
   }
 
+  // 类型断言: 手动维护类型文件时需要此断言
   const { data: stats } = await supabase
     .from("classification_suggestions")
     .select("status")
-    .eq("user_id", userId);
+    .eq("user_id", userId) as unknown as {
+    data: { status: string | null }[] | null;
+    error: unknown;
+  };
 
   const historyStats = {
     total: stats?.length || 0,
@@ -822,12 +830,17 @@ async function getBookmarkStats(
   userId: string,
   startDate: Date,
 ) {
+  // 类型断言: 手动维护类型文件时需要此断言
   const { data: bookmarks, count } = await supabase
     .from("bookmarks")
     .select("folder_id, created_at", { count: "exact" })
     .eq("user_id", userId)
     .is("deleted_at", null)
-    .gte("created_at", startDate.toISOString());
+    .gte("created_at", startDate.toISOString()) as unknown as {
+    data: { folder_id: number | null; created_at: string }[] | null;
+    count: number | null;
+    error: unknown;
+  };
 
   const classified = bookmarks?.filter((b) => b.folder_id).length || 0;
   const unclassified = (bookmarks?.length || 0) - classified;
@@ -851,11 +864,16 @@ async function getFolderStats(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
 ) {
+  // 类型断言: 手动维护类型文件时需要此断言
   const { data: folders, count } = await supabase
     .from("folders")
     .select("id, name", { count: "exact" })
     .eq("user_id", userId)
-    .eq("is_archived", false);
+    .eq("is_archived", false) as unknown as {
+    data: { id: number; name: string }[] | null;
+    count: number | null;
+    error: unknown;
+  };
 
   const folderBookmarkCounts: Array<{
     folderId: number;
@@ -911,12 +929,16 @@ async function getFolderDistribution(
   userId: string,
   startDate: Date,
 ): Promise<FolderDistribution[]> {
+  // 类型断言: 手动维护类型文件时需要此断言
   const { data: bookmarks } = await supabase
     .from("bookmarks")
     .select("folder_id")
     .eq("user_id", userId)
     .is("deleted_at", null)
-    .gte("created_at", startDate.toISOString());
+    .gte("created_at", startDate.toISOString()) as unknown as {
+    data: { folder_id: number | null }[] | null;
+    error: unknown;
+  };
 
   if (!bookmarks || bookmarks.length === 0) {
     return [];
@@ -933,10 +955,14 @@ async function getFolderDistribution(
   }
 
   const folderIds = [...folderCounts.keys()];
+  // 类型断言: 手动维护类型文件时需要此断言
   const { data: folders } = await supabase
     .from("folders")
     .select("id, name")
-    .in("id", folderIds);
+    .in("id", folderIds) as unknown as {
+    data: { id: number; name: string }[] | null;
+    error: unknown;
+  };
 
   const folderNameMap = new Map<number, string>();
   for (const folder of folders || []) {

@@ -37,8 +37,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     logger.info({ userId: user.id, templateId: id }, "Fetching template");
 
-    const { data, error } = await supabase
-      .from("ks_custom_templates")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.from("ks_custom_templates") as any)
       .select("*")
       .eq("id", id)
       .or(`user_id.eq.${user.id},visibility.eq.public`)
@@ -112,12 +112,14 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     );
 
     // 检查所有权
-    const { data: existing, error: checkError } = await supabase
-      .from("ks_custom_templates")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type TemplateExistingType = { id: string; version: number };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: existing, error: checkError } = await (supabase.from("ks_custom_templates") as any)
       .select("id, version")
       .eq("id", id)
       .eq("user_id", user.id)
-      .single();
+      .single() as { data: TemplateExistingType | null; error: { message: string } | null };
 
     if (checkError || !existing) {
       return NextResponse.json(
@@ -143,8 +145,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     if (tags !== undefined) updates.tags = tags;
     if (incrementVersion) updates.version = existing.version + 1;
 
-    const { data, error } = await supabase
-      .from("ks_custom_templates")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.from("ks_custom_templates") as any)
       .update(updates)
       .eq("id", id)
       .eq("user_id", user.id)
@@ -194,8 +196,8 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     logger.info({ userId: user.id, templateId: id }, "Deleting template");
 
-    const { error } = await supabase
-      .from("ks_custom_templates")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase.from("ks_custom_templates") as any)
       .delete()
       .eq("id", id)
       .eq("user_id", user.id);

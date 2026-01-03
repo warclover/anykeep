@@ -22,10 +22,10 @@ import { cn } from "@/lib/utils";
 // ============================================
 
 export interface ReportSuggestion {
-  type: "merge" | "split" | "rename" | "cleanup";
-  description: string;
-  targetFolders: Array<{ id: number; name: string }>;
-  priority: "high" | "medium" | "low";
+  type?: "merge" | "split" | "rename" | "cleanup";
+  description?: string;
+  targetFolders?: Array<{ id: number; name: string }>;
+  priority?: "high" | "medium" | "low";
 }
 
 interface ReportSuggestionsListProps {
@@ -135,6 +135,7 @@ export function ReportSuggestionsList({
         {suggestions.map((suggestion, index) => {
           const Icon = getSuggestionIcon(suggestion.type);
           const iconColor = getSuggestionColor(suggestion.type);
+          const targetFolders = suggestion.targetFolders ?? [];
 
           return (
             <div
@@ -163,10 +164,10 @@ export function ReportSuggestionsList({
                   <div className="flex items-center gap-2 mb-1">
                     {getPriorityBadge(suggestion.priority)}
                   </div>
-                  <p className="text-sm">{suggestion.description}</p>
-                  {suggestion.targetFolders.length > 0 && (
+                  <p className="text-sm">{suggestion.description ?? ""}</p>
+                  {targetFolders.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-2">
-                      {suggestion.targetFolders.map((folder) => (
+                      {targetFolders.map((folder) => (
                         <Badge
                           key={folder.id}
                           variant="secondary"

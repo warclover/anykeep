@@ -128,8 +128,8 @@ export class TemplateService implements ITemplateService {
     const supabase = await createClient();
 
     // 插入模板
-    const { data, error } = await supabase
-      .from("ks_custom_templates")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.from("ks_custom_templates") as any)
       .insert({
         user_id: template.userId,
         name: template.name,
@@ -146,15 +146,16 @@ export class TemplateService implements ITemplateService {
         usage_count: 0,
       })
       .select()
-      .single();
+      .single() as { data: TemplateRow | null; error: { message: string } | null };
 
-    if (error) {
-      logger.error({ error: error.message }, "Failed to create template");
-      throw new Error(`创建模板失败: ${error.message}`);
+    if (error || !data) {
+      logger.error({ error: error?.message }, "Failed to create template");
+      throw new Error(`创建模板失败: ${error?.message}`);
     }
 
     // 创建初始版本记录
-    await supabase.from("ks_template_versions").insert({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.from("ks_template_versions") as any).insert({
       template_id: data.id,
       version: 1,
       changelog: "初始版本",
@@ -168,7 +169,7 @@ export class TemplateService implements ITemplateService {
       "Template created",
     );
 
-    return rowToTemplate(data as TemplateRow);
+    return rowToTemplate(data);
   }
 
   /**
@@ -181,11 +182,11 @@ export class TemplateService implements ITemplateService {
     const supabase = await createClient();
 
     // 获取当前模板
-    const { data: current, error: fetchError } = await supabase
-      .from("ks_custom_templates")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: current, error: fetchError } = await (supabase.from("ks_custom_templates") as any)
       .select("*")
       .eq("id", templateId)
-      .single();
+      .single() as { data: TemplateRow | null; error: { message: string } | null };
 
     if (fetchError || !current) {
       throw new Error(`模板不存在: ${templateId}`);
@@ -226,21 +227,22 @@ export class TemplateService implements ITemplateService {
     if (contentChanged) updateData.version = newVersion;
 
     // 执行更新
-    const { data, error } = await supabase
-      .from("ks_custom_templates")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.from("ks_custom_templates") as any)
       .update(updateData)
       .eq("id", templateId)
       .select()
-      .single();
+      .single() as { data: TemplateRow | null; error: { message: string } | null };
 
-    if (error) {
-      logger.error({ error: error.message }, "Failed to update template");
-      throw new Error(`更新模板失败: ${error.message}`);
+    if (error || !data) {
+      logger.error({ error: error?.message }, "Failed to update template");
+      throw new Error(`更新模板失败: ${error?.message}`);
     }
 
     // 如果内容变更，创建新版本记录
     if (contentChanged) {
-      await supabase.from("ks_template_versions").insert({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase.from("ks_template_versions") as any).insert({
         template_id: templateId,
         version: newVersion,
         changelog: updates.name ? `更新: ${updates.name}` : "内容更新",
@@ -252,7 +254,7 @@ export class TemplateService implements ITemplateService {
 
     logger.info({ templateId, newVersion, contentChanged }, "Template updated");
 
-    return rowToTemplate(data as TemplateRow);
+    return rowToTemplate(data);
   }
 
   /**
@@ -263,11 +265,11 @@ export class TemplateService implements ITemplateService {
   async deleteTemplate(templateId: string, userId: string): Promise<void> {
     const supabase = await createClient();
 
-    const { error } = await supabase
-      .from("ks_custom_templates")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase.from("ks_custom_templates") as any)
       .delete()
       .eq("id", templateId)
-      .eq("user_id", userId); // 添加用户所有权验证
+      .eq("user_id", userId) as { error: { message: string } | null };
 
     if (error) {
       logger.error({ error: error.message }, "Failed to delete template");
@@ -283,11 +285,11 @@ export class TemplateService implements ITemplateService {
   async getTemplate(templateId: string): Promise<CustomTemplate | null> {
     const supabase = await createClient();
 
-    const { data, error } = await supabase
-      .from("ks_custom_templates")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.from("ks_custom_templates") as any)
       .select("*")
       .eq("id", templateId)
-      .single();
+      .single() as { data: TemplateRow | null; error: { code?: string; message: string } | null };
 
     if (error) {
       if (error.code === "PGRST116") {
@@ -306,11 +308,11 @@ export class TemplateService implements ITemplateService {
   async getUserTemplates(userId: string): Promise<CustomTemplate[]> {
     const supabase = await createClient();
 
-    const { data, error } = await supabase
-      .from("ks_custom_templates")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.from("ks_custom_templates") as any)
       .select("*")
       .eq("user_id", userId)
-      .order("updated_at", { ascending: false });
+      .order("updated_at", { ascending: false }) as { data: TemplateRow[] | null; error: { message: string } | null };
 
     if (error) {
       logger.error({ error: error.message }, "Failed to get user templates");
@@ -330,10 +332,11 @@ export class TemplateService implements ITemplateService {
     const escapedQuery = query.replace(/[%_\\]/g, "\\$&");
 
     // 使用 RPC 函数进行全文搜索
-    const { data, error } = await supabase.rpc("search_public_templates", {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.rpc as any)("search_public_templates", {
       p_query: escapedQuery,
       p_limit: 50,
-    });
+    }) as { data: TemplateRow[] | null; error: { message: string } | null };
 
     if (error) {
       // 回退到简单搜索，使用转义后的查询
@@ -342,14 +345,14 @@ export class TemplateService implements ITemplateService {
         "RPC search failed, falling back to simple search",
       );
 
-      const { data: fallbackData, error: fallbackError } = await supabase
-        .from("ks_custom_templates")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: fallbackData, error: fallbackError } = await (supabase.from("ks_custom_templates") as any)
         .select("*")
         .eq("visibility", "public")
         .eq("status", "active")
         .or(`name.ilike.%${escapedQuery}%,description.ilike.%${escapedQuery}%`)
         .order("usage_count", { ascending: false })
-        .limit(50);
+        .limit(50) as { data: TemplateRow[] | null; error: { message: string } | null };
 
       if (fallbackError) {
         throw new Error(`搜索模板失败: ${fallbackError.message}`);
@@ -372,11 +375,15 @@ export class TemplateService implements ITemplateService {
   ): Promise<CustomTemplate> {
     const supabase = await createClient();
 
+    // 类型断言: 手动维护类型文件时需要此断言
+    type CloneResult = TemplateRow & { id: string };
+
     // 尝试使用 RPC 函数
-    const { data, error } = await supabase.rpc("clone_template", {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.rpc as any)("clone_template", {
       p_template_id: templateId,
       p_user_id: userId,
-    });
+    }) as { data: CloneResult | null; error: { message: string } | null };
 
     if (error) {
       // 回退到手动克隆
@@ -406,12 +413,13 @@ export class TemplateService implements ITemplateService {
     }
 
     // 增加原模板使用计数（使用 RPC 保证原子性）
-    await supabase.rpc("increment_template_usage_count", {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.rpc as any)("increment_template_usage_count", {
       p_template_id: templateId,
     });
 
     logger.info(
-      { originalId: templateId, newId: data.id, userId },
+      { originalId: templateId, newId: data?.id, userId },
       "Template cloned",
     );
 
@@ -424,11 +432,11 @@ export class TemplateService implements ITemplateService {
   async getVersionHistory(templateId: string): Promise<TemplateVersion[]> {
     const supabase = await createClient();
 
-    const { data, error } = await supabase
-      .from("ks_template_versions")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.from("ks_template_versions") as any)
       .select("*")
       .eq("template_id", templateId)
-      .order("version", { ascending: false });
+      .order("version", { ascending: false }) as { data: VersionRow[] | null; error: { message: string } | null };
 
     if (error) {
       logger.error({ error: error.message }, "Failed to get version history");
@@ -447,24 +455,33 @@ export class TemplateService implements ITemplateService {
   ): Promise<CustomTemplate> {
     const supabase = await createClient();
 
+    // 类型断言: 手动维护类型文件时需要此断言
+    type VersionDataRow = {
+      variables: TemplateVariable[];
+      prompt_sections: TemplatePromptSection[];
+    };
+
     // 获取目标版本
-    const { data: versionData, error: versionError } = await supabase
-      .from("ks_template_versions")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: versionData, error: versionError } = await (supabase.from("ks_template_versions") as any)
       .select("*")
       .eq("template_id", templateId)
       .eq("version", version)
-      .single();
+      .single() as { data: VersionDataRow | null; error: { message: string } | null };
 
     if (versionError || !versionData) {
       throw new Error(`版本不存在: ${templateId} v${version}`);
     }
 
+    // 类型断言: 手动维护类型文件时需要此断言
+    type CurrentTemplateRow = { version: number; user_id: string };
+
     // 获取当前模板信息
-    const { data: current } = await supabase
-      .from("ks_custom_templates")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: current } = await (supabase.from("ks_custom_templates") as any)
       .select("version, user_id")
       .eq("id", templateId)
-      .single();
+      .single() as { data: CurrentTemplateRow | null; error: { message: string } | null };
 
     if (!current) {
       throw new Error(`模板不存在: ${templateId}`);
@@ -473,8 +490,8 @@ export class TemplateService implements ITemplateService {
     const newVersion = current.version + 1;
 
     // 更新模板内容
-    const { data, error } = await supabase
-      .from("ks_custom_templates")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.from("ks_custom_templates") as any)
       .update({
         variables: versionData.variables,
         prompt_sections: versionData.prompt_sections,
@@ -483,7 +500,7 @@ export class TemplateService implements ITemplateService {
       })
       .eq("id", templateId)
       .select()
-      .single();
+      .single() as { data: TemplateRow | null; error: { message: string } | null };
 
     if (error) {
       logger.error({ error: error.message }, "Failed to rollback template");
@@ -491,7 +508,8 @@ export class TemplateService implements ITemplateService {
     }
 
     // 创建新版本记录
-    await supabase.from("ks_template_versions").insert({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.from("ks_template_versions") as any).insert({
       template_id: templateId,
       version: newVersion,
       changelog: `回滚到版本 ${version}`,
@@ -515,7 +533,8 @@ export class TemplateService implements ITemplateService {
     const supabase = await createClient();
 
     // 插入使用记录
-    const { error } = await supabase.from("ks_template_usages").insert({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase.from("ks_template_usages") as any).insert({
       template_id: usage.templateId,
       user_id: usage.userId,
       variable_values: usage.variableValues,
@@ -531,7 +550,8 @@ export class TemplateService implements ITemplateService {
     }
 
     // 更新使用计数
-    await supabase.rpc("increment_template_usage_count", {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.rpc as any)("increment_template_usage_count", {
       p_template_id: usage.templateId,
     });
 

@@ -33,7 +33,8 @@ export async function GET(_request: NextRequest) {
     logger.info({ userId: user.id }, "Fetching mastery stats");
 
     // 调用 RPC 获取内化率统计
-    const { data, error } = await supabase.rpc("get_user_mastery_stats", {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.rpc as any)("get_user_mastery_stats", {
       p_user_id: user.id,
     });
 

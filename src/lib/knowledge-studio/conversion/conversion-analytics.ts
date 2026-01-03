@@ -87,7 +87,8 @@ export class ConversionAnalytics implements IConversionAnalytics {
     const supabase = await createClient();
 
     // 调用 RPC 函数获取指标
-    const { data, error } = await supabase.rpc(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.rpc as any)(
       "get_conversion_funnel_metrics",
       {
         p_start_date: startDate.toISOString(),
@@ -147,8 +148,8 @@ export class ConversionAnalytics implements IConversionAnalytics {
     const supabase = await createClient();
 
     // 获取用户试用状态
-    const { data: trialData, error: trialError } = await supabase
-      .from("ks_user_trial_states")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: trialData, error: trialError } = await (supabase.from("ks_user_trial_states") as any)
       .select("*")
       .eq("user_id", userId)
       .single();
@@ -241,7 +242,8 @@ export class ConversionAnalytics implements IConversionAnalytics {
     const supabase = await createClient();
 
     // 调用 RPC 函数
-    const { data, error } = await supabase.rpc("get_expiring_trials", {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.rpc as any)("get_expiring_trials", {
       p_within_days: withinDays,
     });
 
@@ -270,8 +272,8 @@ export class ConversionAnalytics implements IConversionAnalytics {
     const supabase = await createClient();
 
     // 获取所有活跃试用用户
-    const { data, error } = await supabase
-      .from("ks_user_trial_states")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.from("ks_user_trial_states") as any)
       .select("*")
       .eq("status", "active")
       .order("generations_used", { ascending: false })
@@ -327,8 +329,8 @@ export class ConversionAnalytics implements IConversionAnalytics {
     const futureDate = new Date(now);
     futureDate.setDate(futureDate.getDate() + withinDays);
 
-    const { data, error } = await supabase
-      .from("ks_user_trial_states")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.from("ks_user_trial_states") as any)
       .select("*")
       .eq("status", "active")
       .gt("expires_at", now.toISOString())

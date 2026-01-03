@@ -66,18 +66,31 @@ export async function PATCH(
     }
 
     // P0-4 修复：显式验证文件夹存在且属于当前用户
+    // 类型断言: 手动维护类型文件时需要此断言
+    type ExistingFolderType = {
+      id: number;
+      user_id: string;
+      is_system: boolean;
+    };
     const { data: existingFolder, error: checkError } = await supabase
       .from("folders")
       .select("id, user_id, is_system")
       .eq("id", folderId)
       .is("deleted_at", null)
-      .single();
+      .single() as unknown as {
+      data: ExistingFolderType | null;
+      error: { code?: string; message: string } | null;
+    };
 
     if (checkError) {
       if (checkError.code === "PGRST116") {
         return badRequestError("文件夹不存在");
       }
       return databaseError("查询失败", checkError);
+    }
+
+    if (!existingFolder) {
+      return badRequestError("文件夹不存在");
     }
 
     if (existingFolder.user_id !== user.id) {
@@ -91,8 +104,9 @@ export async function PATCH(
     // 4. 更新文件夹分组
     // 注意：移动到新类别后，sort_order 设为 0（移到新类别的顶部）
     // 已在上方验证所有权和系统文件夹状态，这里仅需基本条件
-    const { error: updateError } = await supabase
-      .from("folders")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: updateError } = await (supabase
+      .from("folders") as any)
       .update({
         folder_group: body.folder_group,
         sort_order: 0,
@@ -100,7 +114,7 @@ export async function PATCH(
       })
       .eq("id", folderId)
       .eq("user_id", user.id)
-      .is("deleted_at", null);
+      .is("deleted_at", null) as { error: { message: string } | null };
 
     if (updateError) {
       logger.error(

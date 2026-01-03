@@ -67,11 +67,13 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
 
     // 2. Pro 功能检查（Chat-to-Edit 为 Pro 功能）
+    // 类型断言: 手动维护类型文件时需要此断言
+    type ProfileMembershipType = { membership_type: string | null };
     const { data: profile } = await supabase
       .from("profiles")
       .select("membership_type")
       .eq("id", user.id)
-      .single();
+      .single() as unknown as { data: ProfileMembershipType | null };
 
     const isPro =
       profile?.membership_type === "PRO" || profile?.membership_type === "pro";

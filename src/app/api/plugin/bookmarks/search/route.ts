@@ -51,13 +51,24 @@ export async function GET(request: NextRequest) {
     const serviceClient = await createServiceClient();
     const searchTerm = query.trim();
 
+    // 类型断言: 手动维护类型文件时需要此断言
+    type BookmarkSearchRow = {
+      id: number;
+      url: string;
+      title: string;
+      description: string | null;
+      platform: string;
+      created_at: string;
+      updated_at: string;
+    };
+
     // 全文搜索（简化查询）
     const {
       data: bookmarks,
       error: fetchError,
       count,
-    } = await serviceClient
-      .from("bookmarks")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } = await (serviceClient.from("bookmarks") as any)
       .select("id, url, title, description, platform, created_at, updated_at", {
         count: "exact",
       })
@@ -66,7 +77,11 @@ export async function GET(request: NextRequest) {
         `title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,url.ilike.%${searchTerm}%`,
       )
       .order("created_at", { ascending: false })
-      .range(offset, offset + limit - 1);
+      .range(offset, offset + limit - 1) as {
+        data: BookmarkSearchRow[] | null;
+        error: { message: string } | null;
+        count: number | null;
+      };
 
     if (fetchError) {
       logger.error(
@@ -83,12 +98,14 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const bookmarkList = bookmarks ?? [];
+
     // 批量获取标签
-    const bookmarkIds = bookmarks.map((b) => b.id);
-    const { data: tagRelations } = await serviceClient
-      .from("bookmark_tags")
+    const bookmarkIds = bookmarkList.map((b) => b.id);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: tagRelations } = await (serviceClient.from("bookmark_tags") as any)
       .select("bookmark_id, tags(name)")
-      .in("bookmark_id", bookmarkIds);
+      .in("bookmark_id", bookmarkIds) as { data: Array<{ bookmark_id: number; tags: { name: string } | null }> | null };
 
     // 构建书签ID到标签的映射
     const tagMap = new Map<number, string[]>();
@@ -105,7 +122,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 格式化响应
-    const formattedBookmarks = bookmarks.map((bookmark) => ({
+    const formattedBookmarks = bookmarkList.map((bookmark) => ({
       id: bookmark.id,
       url: bookmark.url,
       title: bookmark.title,

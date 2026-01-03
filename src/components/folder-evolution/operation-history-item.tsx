@@ -40,10 +40,10 @@ interface OperationHistoryItemProps {
 /**
  * 操作类型对应的图标映射（静态定义，避免在渲染期间创建组件）
  */
-const ACTION_ICONS: Record<
+const ACTION_ICONS: Partial<Record<
   OperationSnapshotAction,
   React.ComponentType<{ className?: string }>
-> = {
+>> = {
   create: FolderPlus,
   split: Scissors,
   merge: Merge,
@@ -128,11 +128,14 @@ function getOperationDescription(operation: OperationDetail): string {
 /**
  * 计算剩余可撤销时间
  */
-function getRemainingTime(expiresAt: string): {
+function getRemainingTime(expiresAt?: string): {
   hours: number;
   minutes: number;
   expired: boolean;
 } {
+  if (!expiresAt) {
+    return { hours: 0, minutes: 0, expired: true };
+  }
   const now = new Date();
   const expires = new Date(expiresAt);
   const diff = expires.getTime() - now.getTime();
@@ -154,8 +157,9 @@ export function OperationHistoryItem({
   isUndoing = false,
 }: OperationHistoryItemProps) {
   // 使用静态映射获取图标组件，避免在渲染期间动态创建
-  const IconComponent = ACTION_ICONS[operation.action] || FolderPlus;
-  const actionLabel = getActionLabel(operation.action);
+  const action = operation.action ?? operation.operation_type;
+  const IconComponent = (action ? ACTION_ICONS[action] : undefined) || FolderPlus;
+  const actionLabel = action ? getActionLabel(action) : "操作";
   const description = getOperationDescription(operation);
   const remaining = getRemainingTime(operation.expires_at);
 

@@ -207,11 +207,13 @@ export async function POST(request: NextRequest) {
     let reportTitle = title;
     if (!reportTitle) {
       if (sourceType === "folder" && sourceId) {
-        const { data: folder } = await supabase
-          .from("folders")
+        // 类型断言: 手动维护类型文件时需要此断言
+        type FolderNameRow = { name: string };
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: folder } = await (supabase.from("folders") as any)
           .select("name")
           .eq("id", parseInt(sourceId, 10))
-          .single();
+          .single() as { data: FolderNameRow | null };
         reportTitle = folder?.name ? `${folder.name} 综述` : "主题综述";
       } else if (sourceType === "tag" && sourceId) {
         reportTitle = `#${sourceId} 综述`;
@@ -223,8 +225,14 @@ export async function POST(request: NextRequest) {
     }
 
     // 创建报告记录（pending 状态）
-    const { data: report, error: insertError } = await supabase
-      .from("synthesis_reports")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type SynthesisReportInsertRow = {
+      id: string;
+      title: string;
+      status: string;
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: report, error: insertError } = await (supabase.from("synthesis_reports") as any)
       .insert({
         user_id: user.id,
         title: reportTitle,
@@ -237,9 +245,9 @@ export async function POST(request: NextRequest) {
         source_count: bookmarkIds?.length || 0,
       })
       .select()
-      .single();
+      .single() as { data: SynthesisReportInsertRow | null; error: { message: string } | null };
 
-    if (insertError) {
+    if (insertError || !report) {
       logger.error({ error: insertError }, "Failed to create synthesis report");
       return NextResponse.json(
         { error: "Failed to create report", code: "CREATE_ERROR" },

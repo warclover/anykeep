@@ -89,7 +89,7 @@ export function BookmarkDetailClient({
   initialCustomUsageTags = [],
 }: BookmarkDetailClientProps) {
   const router = useRouter();
-  const platformConfig = getPlatformConfig(bookmark.platform);
+  const platformConfig = getPlatformConfig(bookmark.platform ?? "UNKNOWN");
   // 获取用户信息（用于 AI 助手）
   const userContext = useOptionalUser();
   const userId = userContext?.user?.id;
@@ -181,7 +181,7 @@ export function BookmarkDetailClient({
     "BROWSER_EDGE",
     "BROWSER_FIREFOX",
     "BROWSER_SAFARI",
-  ].includes(bookmark.platform);
+  ].includes(bookmark.platform ?? "");
 
   // V4.2.2: 判断是否为微信公众号文章并且功能开关已启用
   const isWechatArticleEnabled = useWechatArticleFeature();
@@ -250,7 +250,7 @@ export function BookmarkDetailClient({
                   {/* 上排：标题 + 平台/类型徽章 */}
                   <div className="flex items-start justify-between gap-3">
                     <h1 className="text-lg md:text-xl font-bold text-gray-900 dark:text-white leading-tight">
-                      {bookmark.title}
+                      {bookmark.title ?? ""}
                     </h1>
                     <div className="flex items-center gap-1.5 flex-shrink-0">
                       {/* 平台徽章 */}
@@ -364,7 +364,7 @@ export function BookmarkDetailClient({
                   aiTags={bookmark.ai_tags || []}
                   bookmarkId={bookmark.id}
                   bookmarkUrl={bookmark.url}
-                  platform={bookmark.platform as Platform}
+                  platform={(bookmark.platform ?? undefined) as Platform | undefined}
                   selectedUsageTags={usageTags}
                   regularTags={regularTags}
                   onSaveSuccess={(newUsageTags) => {
@@ -379,7 +379,7 @@ export function BookmarkDetailClient({
                 {/* === 行3：操作栏 === */}
                 <DetailActionBar
                   bookmarkId={bookmark.id}
-                  title={bookmark.title}
+                  title={bookmark.title ?? ""}
                   url={bookmark.url}
                   aiSummary={localSummary}
                   isLocked={isLocked}
@@ -404,7 +404,7 @@ export function BookmarkDetailClient({
                   <AISmartSummary
                     bookmarkId={bookmark.id}
                     existingSummary={localSummary}
-                    bookmarkTitle={bookmark.title}
+                    bookmarkTitle={bookmark.title ?? ""}
                     onSummaryUpdate={(newSummary) =>
                       setLocalSummary(newSummary)
                     }
@@ -427,7 +427,7 @@ export function BookmarkDetailClient({
                 <>
                   <AIQuickActions
                     bookmarkId={bookmark.id}
-                    bookmarkTitle={bookmark.title}
+                    bookmarkTitle={bookmark.title ?? ""}
                     currentTags={localUserTags ?? undefined}
                     currentFolderId={bookmark.folder_id ?? undefined}
                     onActionComplete={(action, result) => {
@@ -452,7 +452,7 @@ export function BookmarkDetailClient({
                   <AIBookmarkChat
                     userId={userId}
                     bookmarkId={bookmark.id}
-                    bookmarkTitle={bookmark.title}
+                    bookmarkTitle={bookmark.title ?? ""}
                     bookmarkUrl={bookmark.url}
                     defaultExpanded={false}
                     onOpenFullChat={() => setShowAIPanel(true)}
@@ -539,7 +539,7 @@ export function BookmarkDetailClient({
               {userId && (
                 <AIRelatedContent
                   bookmarkId={bookmark.id}
-                  bookmarkTitle={bookmark.title}
+                  bookmarkTitle={bookmark.title ?? ""}
                   maxItems={5}
                   onBookmarkClick={(relatedId) => {
                     router.push(`/bookmark/${relatedId}`);
@@ -607,7 +607,7 @@ export function BookmarkDetailClient({
           ...bookmark,
           // V4.2: 传递学习所需的额外信息
           // V4.2.30: 使用本地状态 localUserTags
-          title: bookmark.title,
+          title: bookmark.title ?? "",
           tags: localUserTags || bookmark.ai_tags || undefined,
           source_id: bookmark.source_id || sourceInfo?.sourceId || undefined,
           source_name:
@@ -623,7 +623,7 @@ export function BookmarkDetailClient({
           onOpenChange={setShowMonitorDialog}
           bookmark={{
             id: bookmark.id,
-            title: bookmark.title,
+            title: bookmark.title ?? "",
             url: bookmark.url,
           }}
         />
@@ -637,7 +637,7 @@ export function BookmarkDetailClient({
           userId={userId}
           bookmarkIds={[bookmark.id]}
           title="AI 知识助手"
-          description={`关于「${bookmark.title?.slice(0, 20)}${bookmark.title && bookmark.title.length > 20 ? "..." : ""}」`}
+          description={`关于「${(bookmark.title ?? "").slice(0, 20)}${bookmark.title && bookmark.title.length > 20 ? "..." : ""}」`}
         />
       )}
     </div>

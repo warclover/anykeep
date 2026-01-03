@@ -11,6 +11,29 @@ import type { Database } from "@/types/supabase";
 import { BaseConsumer } from "./base-consumer";
 import type { JobContext, JobResult, AutoClassifyPayload } from "../types";
 
+// 本地类型定义
+interface BookmarkClassifyRow {
+  id: number;
+  title: string | null;
+  description: string | null;
+  ai_summary: string | null;
+  url: string;
+  platform: string | null;
+  user_tags: string[] | null;
+  ai_tags: string[] | null;
+}
+
+interface FolderRow {
+  id: number;
+  name: string;
+}
+
+interface RecentClassificationRow {
+  folder_id: number | null;
+  user_tags: string[] | null;
+  platform: string | null;
+}
+
 /**
  * 自动分类消费者
  *
@@ -43,20 +66,25 @@ export class ClassificationConsumer extends BaseConsumer {
 
     try {
       // 获取书签和用户文件夹
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const [bookmarkResult, foldersResult] = await Promise.all([
-        context.supabase
-          .from("bookmarks")
+        (context.supabase.from("bookmarks") as any)
           .select(
             "id, title, description, ai_summary, url, platform, user_tags, ai_tags",
           )
           .eq("id", bookmarkId)
-          .single(),
-        context.supabase
-          .from("folders")
+          .single() as Promise<{
+          data: BookmarkClassifyRow | null;
+          error: Error | null;
+        }>,
+        (context.supabase.from("folders") as any)
           .select("id, name")
           .eq("user_id", context.userId)
           .is("deleted_at", null)
-          .order("name"),
+          .order("name") as Promise<{
+          data: FolderRow[] | null;
+          error: Error | null;
+        }>,
       ]);
 
       if (bookmarkResult.error || !bookmarkResult.data) {
@@ -81,19 +109,20 @@ export class ClassificationConsumer extends BaseConsumer {
       const batchId = `auto-classify-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
       // 保存分类建议（使用 insert 而非 upsert）
-      const { error: suggestionError } = await context.supabase
-        .from("classification_suggestions")
-        .insert({
-          batch_id: batchId,
-          bookmark_id: bookmarkId,
-          user_id: context.userId,
-          suggested_folder_id: classification.suggestedFolderId,
-          suggested_folder_name: classification.suggestedFolderName || "未分类",
-          confidence: classification.confidence,
-          reason: classification.reasoning,
-          status: autoApply ? "applied" : "pending",
-          created_at: new Date().toISOString(),
-        });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: suggestionError } = await (
+        context.supabase.from("classification_suggestions") as any
+      ).insert({
+        batch_id: batchId,
+        bookmark_id: bookmarkId,
+        user_id: context.userId,
+        suggested_folder_id: classification.suggestedFolderId,
+        suggested_folder_name: classification.suggestedFolderName || "未分类",
+        confidence: classification.confidence,
+        reason: classification.reasoning,
+        status: autoApply ? "applied" : "pending",
+        created_at: new Date().toISOString(),
+      });
 
       if (suggestionError) {
         this.logger.warn(
@@ -112,8 +141,10 @@ export class ClassificationConsumer extends BaseConsumer {
       }
 
       // 更新书签状态
-      const { error: updateError } = await context.supabase
-        .from("bookmarks")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: updateError } = await (
+        context.supabase.from("bookmarks") as any
+      )
         .update({
           status: "COMPLETED",
           ai_tags: classification.suggestedTags,
@@ -178,14 +209,14 @@ export class ClassificationConsumer extends BaseConsumer {
       .join("\n");
 
     // 获取用户历史分类偏好
-    const { data: recentClassifications } = await supabase
-      .from("bookmarks")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: recentClassifications } = (await (supabase.from("bookmarks") as any)
       .select("folder_id, user_tags, platform")
       .eq("user_id", userId)
       .is("deleted_at", null)
       .not("folder_id", "is", null)
       .order("created_at", { ascending: false })
-      .limit(50);
+      .limit(50)) as { data: RecentClassificationRow[] | null };
 
     // 简单的基于规则的分类（可替换为 AI 调用）
     const result = this.ruleBasedClassification(
@@ -330,7 +361,8 @@ export class ClassificationConsumer extends BaseConsumer {
     }
 
     if (Object.keys(updates).length > 1) {
-      await supabase.from("bookmarks").update(updates).eq("id", bookmarkId);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase.from("bookmarks") as any).update(updates).eq("id", bookmarkId);
     }
   }
 }

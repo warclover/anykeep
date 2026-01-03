@@ -74,12 +74,16 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const excludeSameFolder = searchParams.get("excludeSameFolder") === "true";
 
     // 4. 验证书签存在且属于当前用户
+    // 类型断言: 手动维护类型文件时需要此断言
     const { data: bookmark, error: bookmarkError } = await supabase
       .from("bookmarks")
       .select("id, title, embedding")
       .eq("id", bookmarkId)
       .eq("user_id", user.id)
-      .single();
+      .single() as unknown as {
+      data: { id: number; title: string | null; embedding: number[] | null } | null;
+      error: unknown;
+    };
 
     if (bookmarkError || !bookmark) {
       return notFoundError("书签不存在");
@@ -94,7 +98,20 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     // 5. 调用 RPC 函数查询相关书签 (V4.2 RPC)
-    const { data: relatedData, error: rpcError } = await supabase.rpc(
+    // 类型断言: 手动维护类型文件时需要此断言
+    type RelatedBookmarkRow = {
+      id: number;
+      title: string;
+      url: string;
+      description: string | null;
+      similarity: number;
+      folder_id: number | null;
+      folder_name: string | null;
+      platform: string | null;
+      created_at: string;
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: relatedData, error: rpcError } = await (supabase.rpc as any)(
       "find_related_bookmarks",
       {
         p_bookmark_id: bookmarkId,
@@ -103,7 +120,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         p_min_similarity: minSimilarity,
         p_exclude_same_folder: excludeSameFolder,
       },
-    );
+    ) as { data: RelatedBookmarkRow[] | null; error: { message?: string; code?: string } | null };
 
     if (rpcError) {
       logger.error(
@@ -119,18 +136,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     // 6. 格式化响应
-    const related: RelatedBookmark[] = (relatedData || []).map(
-      (item: {
-        id: number;
-        title: string;
-        url: string;
-        description: string | null;
-        similarity: number;
-        folder_id: number | null;
-        folder_name: string | null;
-        platform: string | null;
-        created_at: string;
-      }) => ({
+    const related: RelatedBookmark[] = (relatedData || []).map((item) => ({
         id: item.id,
         title: item.title,
         url: item.url,

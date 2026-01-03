@@ -38,13 +38,24 @@ export async function GET(request: NextRequest) {
 
     const serviceClient = await createServiceClient();
 
+    // 类型断言: 手动维护类型文件时需要此断言
+    type BookmarkRecentRow = {
+      id: number;
+      url: string;
+      title: string;
+      description: string | null;
+      platform: string;
+      created_at: string;
+      updated_at: string;
+    };
+
     // 获取最近收藏（简化查询，避免复杂关联）
-    const { data: bookmarks, error: fetchError } = await serviceClient
-      .from("bookmarks")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: bookmarks, error: fetchError } = await (serviceClient.from("bookmarks") as any)
       .select("id, url, title, description, platform, created_at, updated_at")
       .eq("user_id", authResult.userId)
       .order("created_at", { ascending: false })
-      .limit(limit);
+      .limit(limit) as { data: BookmarkRecentRow[] | null; error: { message: string } | null };
 
     if (fetchError) {
       logger.error(
@@ -57,12 +68,14 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const bookmarkList = bookmarks ?? [];
+
     // 批量获取标签
-    const bookmarkIds = bookmarks.map((b) => b.id);
-    const { data: tagRelations } = await serviceClient
-      .from("bookmark_tags")
+    const bookmarkIds = bookmarkList.map((b) => b.id);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: tagRelations } = await (serviceClient.from("bookmark_tags") as any)
       .select("bookmark_id, tags(name)")
-      .in("bookmark_id", bookmarkIds);
+      .in("bookmark_id", bookmarkIds) as { data: Array<{ bookmark_id: number; tags: { name: string } | null }> | null };
 
     // 构建书签ID到标签的映射
     const tagMap = new Map<number, string[]>();
@@ -79,7 +92,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 格式化响应
-    const formattedBookmarks = bookmarks.map((bookmark) => ({
+    const formattedBookmarks = bookmarkList.map((bookmark) => ({
       id: bookmark.id,
       url: bookmark.url,
       title: bookmark.title,

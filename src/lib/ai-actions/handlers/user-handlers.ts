@@ -8,11 +8,22 @@
  * @since 2025-12-25
  */
 
+/* eslint-disable @typescript-eslint/no-explicit-any -- Supabase query result types require any for nested joins */
+
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
 import type { AIActionResult, UserStatsBrief } from "../types";
 
 type SupabaseClientType = SupabaseClient<Database>;
+
+// 本地类型定义
+interface BookmarkTagsRow {
+  user_tags: string[] | null;
+}
+
+interface BookmarkCreatedAtRow {
+  created_at: string | null;
+}
 
 // ============================================================================
 // 用户操作
@@ -22,8 +33,7 @@ export async function userPreferences(
   supabase: SupabaseClientType,
   userId: string,
 ): Promise<AIActionResult<Record<string, unknown>>> {
-  const { data, error } = await supabase
-    .from("profiles")
+  const { data, error } = await (supabase.from("profiles") as any)
     .select("*")
     .eq("id", userId)
     .single();
@@ -49,29 +59,25 @@ export async function userStats(
   // 并行获取统计数据
   const [bookmarkCount, folderCount, tagResult, recentBookmarks] =
     await Promise.all([
-      supabase
-        .from("bookmarks")
+      (supabase.from("bookmarks") as any)
         .select("id", { count: "exact", head: true })
         .eq("user_id", userId)
         .is("deleted_at", null),
-      supabase
-        .from("folders")
+      (supabase.from("folders") as any)
         .select("id", { count: "exact", head: true })
         .eq("user_id", userId),
-      supabase
-        .from("bookmarks")
+      (supabase.from("bookmarks") as any)
         .select("user_tags")
         .eq("user_id", userId)
-        .is("deleted_at", null),
-      supabase
-        .from("bookmarks")
+        .is("deleted_at", null) as Promise<{ data: BookmarkTagsRow[] | null; error: Error | null }>,
+      (supabase.from("bookmarks") as any)
         .select("created_at")
         .eq("user_id", userId)
         .is("deleted_at", null)
         .gte(
           "created_at",
           new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString(),
-        ),
+        ) as Promise<{ data: BookmarkCreatedAtRow[] | null; error: Error | null }>,
     ]);
 
   // 统计唯一标签数

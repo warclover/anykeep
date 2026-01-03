@@ -157,7 +157,8 @@ export function UndoConfirmDialog({
 }: UndoConfirmDialogProps) {
   if (!operation) return null;
 
-  const _Icon = getActionIcon(operation.action);
+  const action = operation.action ?? operation.operation_type;
+  const _Icon = action ? getActionIcon(action) : null;
   const description = getUndoDescription(operation);
   const impacts = getUndoImpact(operation);
 

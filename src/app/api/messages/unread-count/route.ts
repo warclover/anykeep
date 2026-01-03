@@ -26,9 +26,10 @@ export async function GET() {
     const supabase = await createClient();
 
     // 2. 获取未读数量（使用数据库函数）
-    const { data, error } = await supabase.rpc("get_unread_message_counts", {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.rpc as any)("get_unread_message_counts", {
       p_user_id: user.id,
-    });
+    }) as { data: UnreadCounts[] | null; error: { message: string } | null };
 
     if (error) {
       logger.error(
@@ -39,9 +40,10 @@ export async function GET() {
     }
 
     // 数据库函数返回单行结果（作为数组的第一个元素）
+    const dataArray = data ?? [];
     const counts: UnreadCounts =
-      Array.isArray(data) && data.length > 0
-        ? data[0]
+      dataArray.length > 0
+        ? dataArray[0]
         : {
             total: 0,
             silent: 0,

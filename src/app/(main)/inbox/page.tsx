@@ -43,12 +43,13 @@ async function getInboxData(): Promise<{
     }
 
     // 获取待整理文件夹
+    // 类型断言: 手动维护类型文件时需要此断言
     const { data: inboxFolder } = await supabase
       .from("folders")
       .select("id")
       .eq("user_id", user.id)
       .eq("system_type", "INBOX")
-      .single();
+      .single() as unknown as { data: { id: number } | null };
 
     const inboxFolderId = inboxFolder?.id || null;
 

@@ -67,11 +67,13 @@ export async function POST(request: NextRequest) {
     const { bookmarkId, forceProvider } = validation.data;
 
     // 3. 验证书签存在且属于当前用户
-    const { data: bookmark, error: bookmarkError } = await supabase
-      .from("bookmarks")
+    // 类型断言: 手动维护类型文件时需要此断言
+    type BookmarkRegenRow = { id: number; user_id: string; title: string };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: bookmark, error: bookmarkError } = await (supabase.from("bookmarks") as any)
       .select("id, user_id, title")
       .eq("id", bookmarkId)
-      .single();
+      .single() as { data: BookmarkRegenRow | null; error: { message: string } | null };
 
     if (bookmarkError || !bookmark) {
       return notFoundError("书签不存在");
@@ -96,14 +98,14 @@ export async function POST(request: NextRequest) {
     );
 
     // 6. 更新书签摘要
-    const { error: updateError } = await supabase
-      .from("bookmarks")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: updateError } = await (supabase.from("bookmarks") as any)
       .update({
         ai_summary: result.summary,
         ai_tags: result.tags,
         updated_at: new Date().toISOString(),
       })
-      .eq("id", bookmarkId);
+      .eq("id", bookmarkId) as { error: { message: string } | null };
 
     // V4.2.4: 修复数据库更新错误被忽略的问题
     let saveStatus: "success" | "failed" = "success";

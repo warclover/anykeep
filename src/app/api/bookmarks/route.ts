@@ -115,8 +115,9 @@ async function fetchAndUpdateTitle(
 
     // 更新标题、平台和其他爬取到的信息
     // 关键：platform 在此处更新，确保异步爬取完成后平台标签正确
-    const { error } = await supabase
-      .from("bookmarks")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase
+      .from("bookmarks") as any)
       .update({
         title,
         platform: crawlResult.platform, // 防御性更新：基于爬取结果校正平台
@@ -129,7 +130,7 @@ async function fetchAndUpdateTitle(
         publish_time: crawlResult.publishTime || null,
       })
       .eq("id", bookmarkId)
-      .eq("user_id", userId);
+      .eq("user_id", userId) as { error: { message: string } | null };
 
     if (error) {
       throw error;
@@ -161,8 +162,9 @@ async function fetchAndUpdateTitle(
       const { createClient } = await import("@/lib/supabase/server");
       const supabase = await createClient();
 
-      await supabase
-        .from("bookmarks")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase
+        .from("bookmarks") as any)
         .update({ title: url })
         .eq("id", bookmarkId)
         .eq("user_id", userId);
@@ -208,11 +210,12 @@ async function generateBookmarkEmbedding(
     const supabase = await createClient();
 
     // pgvector 接受 number[] 格式，TypeScript 类型为 string
-    const { error } = await supabase
-      .from("bookmarks")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase
+      .from("bookmarks") as any)
       .update({ embedding: embedding as unknown as string })
       .eq("id", bookmarkId)
-      .eq("user_id", userId);
+      .eq("user_id", userId) as { error: { message: string } | null };
 
     if (error) {
       throw error;
@@ -357,8 +360,9 @@ async function generateBookmarkAIContent(
     const supabase = await createClient();
 
     // 2. 更新书签记录（包括状态更新为 ACTIVE + V2 内容类型）
-    const { error: updateError } = await supabase
-      .from("bookmarks")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: updateError } = await (supabase
+      .from("bookmarks") as any)
       .update({
         ai_summary: aiResult.summary,
         ai_tags: aiResult.tags,
@@ -367,7 +371,7 @@ async function generateBookmarkAIContent(
         status: "COMPLETED", // AI 内容生成完成
       })
       .eq("id", bookmarkId)
-      .eq("user_id", userId);
+      .eq("user_id", userId) as { error: { message: string } | null };
 
     if (updateError) {
       throw updateError;
@@ -390,7 +394,10 @@ async function generateBookmarkAIContent(
       .from("bookmarks")
       .select("folder_id")
       .eq("id", bookmarkId)
-      .single();
+      .single() as unknown as {
+      data: { folder_id: number | null } | null;
+      error: unknown;
+    };
 
     const currentFolderId = bookmarkData?.folder_id ?? null;
 
@@ -476,6 +483,12 @@ async function processAIFolderRecommendation(
     const supabase = await createClient();
 
     // 获取用户文件夹（包含 folder_profiles 用于 AI 上下文增强）
+    // 类型断言: 手动维护类型文件时需要此断言
+    type FolderWithProfile = {
+      id: number;
+      name: string;
+      folder_profiles: { top_tags: unknown; bookmark_count: number }[] | { top_tags: unknown; bookmark_count: number } | null;
+    };
     const { data: userFolders } = await supabase
       .from("folders")
       .select(
@@ -487,7 +500,10 @@ async function processAIFolderRecommendation(
       )
       .eq("user_id", userId)
       .eq("is_system", false)
-      .is("deleted_at", null);
+      .is("deleted_at", null) as unknown as {
+      data: FolderWithProfile[] | null;
+      error: unknown;
+    };
 
     if (!userFolders || userFolders.length === 0) {
       logger.info(
@@ -548,15 +564,16 @@ async function processAIFolderRecommendation(
 
       if (aiRecommendation.suggestNew) {
         // 创建新文件夹
-        const { data: newFolder, error: createError } = await supabase
-          .from("folders")
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: newFolder, error: createError } = await (supabase
+          .from("folders") as any)
           .insert({
             user_id: userId,
             name: aiRecommendation.folderName,
             sort_order: 0,
           })
           .select("id")
-          .single();
+          .single() as { data: { id: number } | null; error: { message: string } | null };
 
         if (!createError && newFolder) {
           targetFolderId = newFolder.id;
@@ -574,11 +591,12 @@ async function processAIFolderRecommendation(
 
       if (targetFolderId) {
         // 移动收藏到推荐文件夹
-        const { error: moveError } = await supabase
-          .from("bookmarks")
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error: moveError } = await (supabase
+          .from("bookmarks") as any)
           .update({ folder_id: targetFolderId })
           .eq("id", bookmarkId)
-          .eq("user_id", userId);
+          .eq("user_id", userId) as { error: { message: string } | null };
 
         if (!moveError) {
           logger.info(
@@ -595,8 +613,9 @@ async function processAIFolderRecommendation(
       }
     } else if (aiRecommendation.confidence >= 60) {
       // 中置信度：保存建议
-      const { error: suggestionError } = await supabase
-        .from("classification_suggestions")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: suggestionError } = await (supabase
+        .from("classification_suggestions") as any)
         .insert({
           user_id: userId,
           bookmark_id: bookmarkId,
@@ -607,7 +626,7 @@ async function processAIFolderRecommendation(
           reason: aiRecommendation.reason,
           status: "pending",
           batch_id: crypto.randomUUID(),
-        });
+        }) as { error: { message: string } | null };
 
       if (!suggestionError) {
         logger.info(
@@ -675,14 +694,22 @@ export async function POST(request: NextRequest) {
     } = validation.data;
 
     // 3. 检查存储配额
+    // 类型断言: 手动维护类型文件时需要此断言
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("storage_quota, storage_used")
       .eq("id", user.id)
-      .single();
+      .single() as unknown as {
+      data: { storage_quota: number | null; storage_used: number | null } | null;
+      error: { message: string } | null;
+    };
 
     if (profileError) {
       return databaseError(BOOKMARK.LOAD_ERROR, profileError);
+    }
+
+    if (!profile) {
+      return databaseError(BOOKMARK.LOAD_ERROR, { message: "用户信息不存在" });
     }
 
     if ((profile.storage_used ?? 0) >= (profile.storage_quota ?? 0)) {
@@ -758,12 +785,16 @@ export async function POST(request: NextRequest) {
     }
 
     // 6. 获取用户文件夹（用于 AI 标签参考和后续文件夹推荐）
+    // 类型断言: 手动维护类型文件时需要此断言
     const { data: userFolders } = await supabase
       .from("folders")
       .select("id, name")
       .eq("user_id", user.id)
       .eq("is_system", false)
-      .is("deleted_at", null);
+      .is("deleted_at", null) as unknown as {
+      data: { id: number; name: string }[] | null;
+      error: unknown;
+    };
 
     const folderNames = userFolders?.map((f) => f.name) || [];
 
@@ -785,10 +816,11 @@ export async function POST(request: NextRequest) {
     if (!finalFolderId) {
       // 用户未指定文件夹，使用待整理文件夹
       try {
-        const { data: inboxFolderId, error: inboxError } = await supabase.rpc(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: inboxFolderId, error: inboxError } = await (supabase.rpc as any)(
           "get_or_create_inbox_folder",
           { p_user_id: user.id },
-        );
+        ) as { data: number | null; error: { message: string } | null };
 
         if (!inboxError && inboxFolderId) {
           finalFolderId = inboxFolderId;
@@ -837,23 +869,29 @@ export async function POST(request: NextRequest) {
     };
 
     // 10. 插入收藏记录
-    const { data: bookmark, error: insertError } = await supabase
-      .from("bookmarks")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: bookmark, error: insertError } = await (supabase
+      .from("bookmarks") as any)
       .insert(bookmarkData)
       .select("*, folders(name)")
-      .single();
+      .single() as { data: { id: number; [key: string]: unknown } | null; error: { message: string } | null };
 
     if (insertError) {
       return databaseError(BOOKMARK.CREATE_ERROR, insertError);
     }
 
+    if (!bookmark) {
+      return databaseError(BOOKMARK.CREATE_ERROR, { message: "创建书签失败" });
+    }
+
     // 11. 增加用户存储计数
-    const { error: incrementError } = await supabase.rpc(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: incrementError } = await (supabase.rpc as any)(
       "increment_storage_used",
       {
         target_user_id: user.id,
       },
-    );
+    ) as { error: { message: string } | null };
 
     if (incrementError) {
       // 存储计数更新失败，但收藏已创建，记录错误但不影响返回

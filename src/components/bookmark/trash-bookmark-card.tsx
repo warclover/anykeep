@@ -66,7 +66,7 @@ export const TrashBookmarkCard = memo(function TrashBookmarkCard({
   // 生成封面图
   const coverImage =
     getProxiedImageUrl(bookmark.cover_url) ||
-    generatePlaceholderImage(bookmark.title, bookmark.platform as Platform);
+    generatePlaceholderImage(bookmark.title ?? "", bookmark.platform as Platform);
 
   // 计算剩余天数
   const remainingDays = calculateRemainingDays(bookmark.trashed_at);
@@ -159,7 +159,7 @@ export const TrashBookmarkCard = memo(function TrashBookmarkCard({
                 href={`/bookmark/${bookmark.id}`}
                 className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
               >
-                {bookmark.title}
+                {bookmark.title ?? ""}
               </Link>
             </CardTitle>
 
@@ -193,7 +193,7 @@ export const TrashBookmarkCard = memo(function TrashBookmarkCard({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={coverImage}
-              alt={bookmark.title}
+              alt={bookmark.title ?? ""}
               className="w-full h-full object-cover"
               loading="lazy"
               decoding="async"
@@ -203,7 +203,7 @@ export const TrashBookmarkCard = memo(function TrashBookmarkCard({
 
         {/* 元信息 */}
         <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-          <PlatformBadge platform={bookmark.platform} />
+          <PlatformBadge platform={bookmark.platform ?? "UNKNOWN"} />
           <span className="flex items-center gap-1">
             <Calendar className="size-3" />
             删除于{" "}

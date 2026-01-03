@@ -78,7 +78,7 @@ export function UsageTagSelector({
     async (tagValue: string) => {
       // 检查是否是自定义标签
       const customTag = internalCustomTags.find((t) => t.value === tagValue);
-      if (!customTag) return;
+      if (!customTag || !customTag.id) return;
 
       const now = new Date().toISOString();
 
