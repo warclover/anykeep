@@ -98,12 +98,19 @@ export function KnowledgeStudioPageClient() {
 
   // 当素材列表加载完成且数量 > 0 时，自动分析前 20 个素材的评分
   useEffect(() => {
+    // 只在首次加载且没有评分时执行，避免重复请求
     if (!isLoading && materials.length > 0 && materialScores.size === 0) {
       // 只分析前 20 个素材，避免一次性分析太多
       const bookmarkIdsToAnalyze = materials.slice(0, 20).map((m) => m.id);
-      analyzeHealth(bookmarkIdsToAnalyze);
+      // 延迟执行，避免与其他初始化逻辑冲突
+      const timer = setTimeout(() => {
+        analyzeHealth(bookmarkIdsToAnalyze);
+      }, 500);
+      return () => clearTimeout(timer);
     }
-  }, [isLoading, materials, materialScores.size, analyzeHealth]);
+    // 注意：只依赖 materials.length 而不是整个 materials 数组，避免因数组引用变化导致重复请求
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, materials.length, materialScores.size]);
 
   // 使用生成 Hook
   const {

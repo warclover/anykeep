@@ -44,9 +44,17 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
+
+    // 记录请求体以便调试
+    logger.info({ body }, "Received material analysis request");
+
     const parseResult = AnalyzeRequestSchema.safeParse(body);
 
     if (!parseResult.success) {
+      logger.warn(
+        { body, errors: parseResult.error.flatten() },
+        "Invalid request parameters",
+      );
       return NextResponse.json(
         {
           error: {
@@ -61,6 +69,49 @@ export async function POST(request: NextRequest) {
 
     const { bookmarkIds, targetBlueprintType } = parseResult.data;
 
+    // 验证 bookmarkIds 不为空
+    if (!bookmarkIds || bookmarkIds.length === 0) {
+      logger.warn({ userId: user.id }, "Empty bookmarkIds array");
+      return NextResponse.json(
+        {
+          error: {
+            code: "INVALID_REQUEST",
+            message: "bookmarkIds 不能为空",
+          },
+        },
+        { status: 400 },
+      );
+    }
+
+    // 验证所有 ID 都是有效的字符串
+    const invalidIds = bookmarkIds.filter(
+      (id) => typeof id !== "string" || id.trim() === "",
+    );
+    if (invalidIds.length > 0) {
+      logger.warn(
+        { userId: user.id, invalidIds },
+        "Invalid bookmark IDs found",
+      );
+      return NextResponse.json(
+        {
+          error: {
+            code: "INVALID_REQUEST",
+            message: `无效的书签 ID: ${invalidIds.join(", ")}`,
+          },
+        },
+        { status: 400 },
+      );
+    }
+
+    logger.info(
+      {
+        userId: user.id,
+        bookmarkCount: bookmarkIds.length,
+        targetBlueprintType,
+      },
+      "Starting material analysis",
+    );
+
     // 执行素材分析
     const result = await materialScorer.analyze({
       userId: user.id,
@@ -69,6 +120,14 @@ export async function POST(request: NextRequest) {
     });
 
     if (!result.success) {
+      logger.error(
+        {
+          userId: user.id,
+          error: result.error,
+          bookmarkCount: bookmarkIds.length,
+        },
+        "Material analysis failed",
+      );
       return NextResponse.json(
         {
           error: {

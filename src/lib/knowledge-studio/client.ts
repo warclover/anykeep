@@ -67,7 +67,12 @@ export type {
 // Material Types & Constants
 // ============================================================================
 
-export { QUALITY_THRESHOLDS, DIMENSION_WEIGHTS, QUALITY_DISPLAY } from "./material";
+export {
+  QUALITY_THRESHOLDS,
+  DIMENSION_WEIGHTS,
+  QUALITY_DISPLAY,
+  getQualityLevel,
+} from "./material";
 
 export type {
   ScoreDimensions,
