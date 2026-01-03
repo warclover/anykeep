@@ -33,7 +33,7 @@ import { BlueprintSelector } from "@/components/knowledge-studio/blueprint-selec
 import { MaterialSelector } from "@/components/knowledge-studio/material-selector";
 import { GenerationProgress } from "@/components/knowledge-studio/generation-progress";
 // 从客户端安全导出导入，避免导入包含服务端代码的主 index.ts
-import type { BlueprintType, GenerationStage } from "@/lib/knowledge-studio/client";
+import type { BlueprintType } from "@/lib/knowledge-studio/client";
 import { BLUEPRINT_DISPLAY_CONFIG } from "@/lib/knowledge-studio/client";
 import { useBookmarks } from "@/hooks/queries/use-bookmarks";
 import { useGeneration } from "@/hooks/domain/knowledge-studio/use-generation";
@@ -87,7 +87,6 @@ export function KnowledgeStudioPageClient() {
 
   // 使用生成 Hook
   const {
-    status: generationStatus,
     progress: generationProgress,
     result: generationResult,
     error: generationError,
@@ -95,9 +94,15 @@ export function KnowledgeStudioPageClient() {
     reset: resetGeneration,
   } = useGeneration({
     onComplete: (result) => {
-      console.log("Generation complete:", result);
+      if (process.env.NODE_ENV === "development") {
+        // eslint-disable-next-line no-console
+        console.info("Generation complete:", result);
+      }
       if (result.success && result.reportId) {
-        console.log("Setting reportId:", result.reportId);
+        if (process.env.NODE_ENV === "development") {
+          // eslint-disable-next-line no-console
+          console.info("Setting reportId:", result.reportId);
+        }
         setGeneratedReportId(result.reportId);
         setCurrentStep("result");
         toast.success("报告生成完成！");
@@ -119,7 +124,7 @@ export function KnowledgeStudioPageClient() {
       toast.error(error);
       setCurrentStep("config");
     },
-    onProgress: (progress) => {
+    onProgress: (_progress) => {
       // 进度更新已在 GenerationProgress 组件中处理
     },
   });
