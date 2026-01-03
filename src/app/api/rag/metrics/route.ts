@@ -36,9 +36,32 @@ export async function GET() {
 
     // 3. 收集指标
     const collector = getRAGMetricsCollector();
+
+    // 调试信息：检查收集器状态
+    logger.info(
+      {
+        searchRecordsCount: collector._debugSearchRecordsCount,
+        apiCallRecordsCount: collector._debugApiCallRecordsCount,
+        featureFlagsEnabled: FeatureFlags.ENABLE_RAG_MONITORING,
+      },
+      "RAG Metrics: Collector state before collection",
+    );
+
     const metrics = collector.collectMetrics();
     const dailyStats = collector.getDailyStats();
     const alerts = collector.getAlerts(50);
+
+    // 调试日志：记录收集到的指标
+    logger.info(
+      {
+        metrics,
+        dailyStats,
+        alertsCount: alerts.length,
+        searchRecordsCount: collector._debugSearchRecordsCount,
+        apiCallRecordsCount: collector._debugApiCallRecordsCount,
+      },
+      "RAG Metrics: Collected",
+    );
 
     // 4. 获取 Feature Flags 状态
     const featureFlags = {

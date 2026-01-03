@@ -48,6 +48,15 @@ export class RAGMetricsCollector {
   private thresholds: RAGMetricThresholds;
   private alerts: RAGAlert[] = [];
 
+  // 公开访问器用于调试（仅开发环境）
+  get _debugSearchRecordsCount(): number {
+    return this.searchRecords.length;
+  }
+
+  get _debugApiCallRecordsCount(): number {
+    return this.apiCallRecords.length;
+  }
+
   // 滑动窗口配置
   private readonly maxRecords = 10000;
   private readonly windowMs = 24 * 60 * 60 * 1000; // 24 小时
@@ -85,6 +94,17 @@ export class RAGMetricsCollector {
 
     this.searchRecords.push(record);
     this.cleanupOldRecords();
+
+    // 调试日志：记录指标收集情况
+    logger.debug(
+      {
+        searchRecordsCount: this.searchRecords.length,
+        latencyMs,
+        resultCount,
+        maxSimilarity,
+      },
+      "RAGMetricsCollector: Search recorded",
+    );
 
     // 检查延迟告警
     if (latencyMs > this.thresholds.searchLatencyP95Critical) {
@@ -140,6 +160,17 @@ export class RAGMetricsCollector {
 
     this.cleanupOldRecords();
     this.checkCostAlert();
+
+    // 调试日志：记录 API 调用收集情况
+    logger.debug(
+      {
+        apiCallRecordsCount: this.apiCallRecords.length,
+        type,
+        tokensUsed,
+        costCNY,
+      },
+      "RAGMetricsCollector: API call recorded",
+    );
   }
 
   /**
@@ -155,6 +186,20 @@ export class RAGMetricsCollector {
     );
     const recentApiCalls = this.apiCallRecords.filter(
       (r) => r.timestamp >= windowStart,
+    );
+
+    // 调试日志：记录收集情况
+    logger.debug(
+      {
+        totalSearchRecords: this.searchRecords.length,
+        recentSearches: recentSearches.length,
+        totalApiCallRecords: this.apiCallRecords.length,
+        recentApiCalls: recentApiCalls.length,
+        windowMs: this.windowMs,
+        windowStart: new Date(windowStart).toISOString(),
+        now: new Date(now).toISOString(),
+      },
+      "RAGMetricsCollector: Collecting metrics",
     );
 
     // 搜索性能指标
@@ -440,12 +485,31 @@ let collectorInstance: RAGMetricsCollector | null = null;
 
 /**
  * 获取 RAG 指标收集器单例
+ *
+ * 注意：在 Next.js 服务器端，如果使用多个 worker 或边缘运行时，
+ * 单例实例可能不会在请求之间共享。这可能导致指标数据丢失。
+ * 如果需要跨请求持久化，应该使用数据库或 Redis。
  */
 export function getRAGMetricsCollector(
   thresholds?: Partial<RAGMetricThresholds>,
 ): RAGMetricsCollector {
   if (!collectorInstance) {
     collectorInstance = new RAGMetricsCollector(thresholds);
+    logger.info(
+      {
+        instanceId: collectorInstance.constructor.name,
+        timestamp: new Date().toISOString(),
+      },
+      "RAGMetricsCollector: New instance created",
+    );
+  } else {
+    logger.debug(
+      {
+        searchRecordsCount: collectorInstance.searchRecords.length,
+        apiCallRecordsCount: collectorInstance.apiCallRecords.length,
+      },
+      "RAGMetricsCollector: Using existing instance",
+    );
   }
   return collectorInstance;
 }
