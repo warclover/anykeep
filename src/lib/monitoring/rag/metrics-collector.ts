@@ -480,35 +480,63 @@ export class RAGMetricsCollector {
   }
 }
 
-// 单例实例
-let collectorInstance: RAGMetricsCollector | null = null;
+// 单例实例 - 使用 globalThis 确保在 Next.js 服务器端跨请求共享
+// 在 Node.js 环境中，globalThis 是全局对象，可以跨模块共享
+declare global {
+  var __ragMetricsCollector: RAGMetricsCollector | undefined;
+}
 
 /**
  * 获取 RAG 指标收集器单例
  *
- * 注意：在 Next.js 服务器端，如果使用多个 worker 或边缘运行时，
- * 单例实例可能不会在请求之间共享。这可能导致指标数据丢失。
- * 如果需要跨请求持久化，应该使用数据库或 Redis。
+ * 使用 globalThis 存储单例实例，确保在 Next.js 服务器端跨请求共享。
+ * 在开发模式下，Next.js 可能会热重载导致实例重置，这是正常的。
  */
 export function getRAGMetricsCollector(
   thresholds?: Partial<RAGMetricThresholds>,
 ): RAGMetricsCollector {
+  // 使用 globalThis 确保跨请求共享（在 Node.js 环境中）
+  if (typeof globalThis !== "undefined") {
+    if (!globalThis.__ragMetricsCollector) {
+      globalThis.__ragMetricsCollector = new RAGMetricsCollector(thresholds);
+      logger.info(
+        {
+          instanceId: globalThis.__ragMetricsCollector.constructor.name,
+          timestamp: new Date().toISOString(),
+          storage: "globalThis",
+        },
+        "RAGMetricsCollector: New instance created (globalThis)",
+      );
+    } else {
+      logger.debug(
+        {
+          searchRecordsCount:
+            globalThis.__ragMetricsCollector.searchRecords.length,
+          apiCallRecordsCount:
+            globalThis.__ragMetricsCollector.apiCallRecords.length,
+          storage: "globalThis",
+        },
+        "RAGMetricsCollector: Using existing instance (globalThis)",
+      );
+    }
+    return globalThis.__ragMetricsCollector;
+  }
+
+  // 降级方案：如果 globalThis 不可用（边缘运行时），使用模块级变量
+  // 注意：这在边缘运行时中可能不会跨请求共享
+
+  let collectorInstance: RAGMetricsCollector | null = null;
   if (!collectorInstance) {
     collectorInstance = new RAGMetricsCollector(thresholds);
-    logger.info(
+    logger.warn(
       {
         instanceId: collectorInstance.constructor.name,
         timestamp: new Date().toISOString(),
+        storage: "module-level",
+        warning:
+          "Using module-level singleton - may not persist across requests in edge runtime",
       },
-      "RAGMetricsCollector: New instance created",
-    );
-  } else {
-    logger.debug(
-      {
-        searchRecordsCount: collectorInstance.searchRecords.length,
-        apiCallRecordsCount: collectorInstance.apiCallRecords.length,
-      },
-      "RAGMetricsCollector: Using existing instance",
+      "RAGMetricsCollector: New instance created (module-level fallback)",
     );
   }
   return collectorInstance;
@@ -518,5 +546,7 @@ export function getRAGMetricsCollector(
  * 重置收集器（用于测试）
  */
 export function resetRAGMetricsCollector(): void {
-  collectorInstance = null;
+  if (typeof globalThis !== "undefined") {
+    globalThis.__ragMetricsCollector = undefined;
+  }
 }
