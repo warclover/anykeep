@@ -12,6 +12,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { generateText } from "ai";
 import { deepseek } from "@ai-sdk/deepseek";
+import type { Database } from "@/types/supabase";
 
 // ============================================================================
 // 类型定义
@@ -73,52 +74,104 @@ export async function POST(request: NextRequest) {
     }
 
     // 获取综述详情
-    // 类型断言: 手动维护类型文件时需要此断言
-    type SynthesisReportQARow = {
-      id: string;
-      title: string;
-      overview: string | null;
-      consensus: unknown;
-      divergence: unknown;
-      blind_spots: unknown;
-      source_count: number;
-      depth_mode: string;
+    // 支持两种报告类型：主题合成器报告（有 consensus/divergence/blind_spots）和知识工坊报告（只有 content）
+    type SynthesisReportRow =
+      Database["public"]["Tables"]["synthesis_reports"]["Row"];
+
+    // 先获取基本字段，判断报告类型
+    const basicQuery = supabase.from("synthesis_reports") as unknown as {
+      select: (columns: string) => {
+        eq: (
+          column: string,
+          value: string,
+        ) => {
+          eq: (
+            column: string,
+            value: string,
+          ) => {
+            single: () => Promise<{
+              data: Pick<
+                SynthesisReportRow,
+                "id" | "title" | "content" | "blueprint_type"
+              > | null;
+              error: { message: string } | null;
+            }>;
+          };
+        };
+      };
     };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: report, error: reportError } = await (supabase.from("synthesis_reports") as any)
-      .select(
-        `
-        id,
-        title,
-        overview,
-        consensus,
-        divergence,
-        blind_spots,
-        source_count,
-        depth_mode
-      `,
-      )
+
+    const { data: basicReport, error: basicError } = await basicQuery
+      .select("id, title, content, blueprint_type")
       .eq("id", reportId)
       .eq("user_id", user.id)
-      .single() as { data: SynthesisReportQARow | null; error: { message: string } | null };
+      .single();
 
-    if (reportError || !report) {
+    if (basicError || !basicReport) {
       return NextResponse.json({ error: "Report not found" }, { status: 404 });
     }
 
-    // 类型转换（Supabase 返回 Json 类型）
-    const typedReport = {
-      title: report.title,
-      overview: report.overview,
-      consensus: report.consensus as ConsensusPoint[] | null,
-      divergence: report.divergence as DivergencePoint[] | null,
-      blind_spots: report.blind_spots as BlindSpot[] | null,
-      source_count: report.source_count,
-      depth_mode: report.depth_mode,
-    };
+    // 判断报告类型：知识工坊报告（有 blueprint_type）或主题合成器报告
+    const isKnowledgeStudioReport = !!basicReport.blueprint_type;
 
-    // 构建上下文
-    const synthesisContext = buildContext(typedReport, context);
+    let synthesisContext: string;
+
+    if (isKnowledgeStudioReport) {
+      // 知识工坊报告：使用 content 字段
+      synthesisContext = buildKnowledgeStudioContext(
+        {
+          title: basicReport.title,
+          content: basicReport.content,
+        },
+        context,
+      );
+    } else {
+      // 主题合成器报告：需要获取完整字段
+      const fullQuery = supabase.from("synthesis_reports") as unknown as {
+        select: (columns: string) => {
+          eq: (
+            column: string,
+            value: string,
+          ) => {
+            eq: (
+              column: string,
+              value: string,
+            ) => {
+              single: () => Promise<{
+                data: {
+                  id: string;
+                  title: string | null;
+                  overview: string | null;
+                  consensus: unknown;
+                  divergence: unknown;
+                  blind_spots: unknown;
+                  source_count: number | null;
+                  depth_mode: string | null;
+                } | null;
+                error: { message: string } | null;
+              }>;
+            };
+          };
+        };
+      };
+
+      const { data: fullReport, error: fullError } = await fullQuery
+        .select(
+          "id, title, overview, consensus, divergence, blind_spots, source_count, depth_mode",
+        )
+        .eq("id", reportId)
+        .eq("user_id", user.id)
+        .single();
+
+      if (fullError || !fullReport) {
+        return NextResponse.json(
+          { error: "Report not found" },
+          { status: 404 },
+        );
+      }
+
+      synthesisContext = buildThematicSynthesisContext(fullReport, context);
+    }
 
     // 生成回答
     const answer = await generateAnswer(question, synthesisContext);
@@ -138,17 +191,43 @@ export async function POST(request: NextRequest) {
 // ============================================================================
 
 /**
- * 构建综述上下文
+ * 构建知识工坊报告上下文
  */
-function buildContext(
+function buildKnowledgeStudioContext(
   report: {
-    title: string;
+    title: string | null;
+    content: string | null;
+  },
+  additionalContext?: { title?: string; overview?: string },
+): string {
+  const parts: string[] = [];
+
+  // 标题
+  parts.push(
+    `## 报告标题\n${report.title || additionalContext?.title || "未命名报告"}`,
+  );
+
+  // 内容
+  const content = report.content || additionalContext?.overview;
+  if (content) {
+    parts.push(`## 报告内容\n${content}`);
+  }
+
+  return parts.join("\n\n");
+}
+
+/**
+ * 构建主题合成器报告上下文
+ */
+function buildThematicSynthesisContext(
+  report: {
+    title: string | null;
     overview: string | null;
-    consensus: ConsensusPoint[] | null;
-    divergence: DivergencePoint[] | null;
-    blind_spots: BlindSpot[] | null;
-    source_count: number;
-    depth_mode: string;
+    consensus: unknown;
+    divergence: unknown;
+    blind_spots: unknown;
+    source_count: number | null;
+    depth_mode: string | null;
   },
   additionalContext?: { title?: string; overview?: string },
 ): string {
@@ -165,8 +244,9 @@ function buildContext(
   }
 
   // 共识点
-  if (report.consensus && report.consensus.length > 0) {
-    const consensusText = report.consensus
+  const consensus = report.consensus as ConsensusPoint[] | null;
+  if (consensus && Array.isArray(consensus) && consensus.length > 0) {
+    const consensusText = consensus
       .map(
         (c, i) =>
           `${i + 1}. ${c.point} (置信度: ${Math.round(c.confidence * 100)}%)`,
@@ -176,8 +256,9 @@ function buildContext(
   }
 
   // 分歧点
-  if (report.divergence && report.divergence.length > 0) {
-    const divergenceText = report.divergence
+  const divergence = report.divergence as DivergencePoint[] | null;
+  if (divergence && Array.isArray(divergence) && divergence.length > 0) {
+    const divergenceText = divergence
       .map(
         (d, i) =>
           `${i + 1}. **${d.topic}**\n   - 观点A: ${d.point_a}\n   - 观点B: ${d.point_b}\n   - 分析: ${d.analysis}`,
@@ -187,17 +268,27 @@ function buildContext(
   }
 
   // 盲区
-  if (report.blind_spots && report.blind_spots.length > 0) {
-    const blindSpotText = report.blind_spots
+  const blindSpots = report.blind_spots as BlindSpot[] | null;
+  if (blindSpots && Array.isArray(blindSpots) && blindSpots.length > 0) {
+    const blindSpotText = blindSpots
       .map((b, i) => `${i + 1}. **${b.topic}**: ${b.suggestion}`)
       .join("\n");
     parts.push(`## 知识盲区\n${blindSpotText}`);
   }
 
   // 元信息
-  parts.push(
-    `## 元信息\n- 来源数量: ${report.source_count} 篇\n- 深度模式: ${report.depth_mode}`,
-  );
+  if (report.source_count || report.depth_mode) {
+    const metaParts: string[] = [];
+    if (report.source_count) {
+      metaParts.push(`来源数量: ${report.source_count} 篇`);
+    }
+    if (report.depth_mode) {
+      metaParts.push(`深度模式: ${report.depth_mode}`);
+    }
+    if (metaParts.length > 0) {
+      parts.push(`## 元信息\n- ${metaParts.join("\n- ")}`);
+    }
+  }
 
   return parts.join("\n\n");
 }
