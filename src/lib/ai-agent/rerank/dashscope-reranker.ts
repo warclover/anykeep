@@ -17,6 +17,8 @@ import type {
   RerankUsageStats,
 } from "./types";
 import { DEFAULT_DASHSCOPE_RERANK_CONFIG, DAILY_TOKEN_LIMIT } from "./types";
+import { getRAGMetricsCollector } from "@/lib/monitoring/rag/metrics-collector";
+import { FeatureFlags } from "@/lib/ai-agent/config/feature-flags";
 
 const DASHSCOPE_RERANK_URL =
   "https://dashscope.aliyuncs.com/api/v1/services/rerank/text-rerank/rerank";
@@ -198,6 +200,25 @@ export class DashScopeReranker {
   private trackUsage(tokensUsed: number): void {
     this.usageStats.dailyTokens += tokensUsed;
     this.usageStats.dailyRequests++;
+
+    // 记录 RAG 指标
+    if (FeatureFlags.ENABLE_RAG_MONITORING) {
+      try {
+        const collector = getRAGMetricsCollector();
+        collector.recordApiCall("rerank", tokensUsed, "dashscope");
+      } catch (metricsError) {
+        // 指标记录失败不影响 rerank 功能
+        logger.warn(
+          {
+            error:
+              metricsError instanceof Error
+                ? metricsError.message
+                : String(metricsError),
+          },
+          "DashScopeReranker: Failed to record RAG metrics",
+        );
+      }
+    }
 
     // 警告阈值：80%
     if (this.usageStats.dailyTokens >= DAILY_TOKEN_LIMIT * 0.8) {

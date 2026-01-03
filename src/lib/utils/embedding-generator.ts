@@ -232,6 +232,44 @@ async function generateEmbeddingWithModel(
       throw new Error("向量数据包含无效值（NaN 或 Infinity）");
     }
 
+    // 记录 RAG 指标
+    if (data.usage?.total_tokens) {
+      try {
+        const { getRAGMetricsCollector } = await import(
+          "@/lib/monitoring/rag/metrics-collector"
+        );
+        const { FeatureFlags } = await import(
+          "@/lib/ai-agent/config/feature-flags"
+        );
+
+        if (FeatureFlags.ENABLE_RAG_MONITORING) {
+          const collector = getRAGMetricsCollector();
+          // 判断 provider：dashscope 或 openai
+          const provider =
+            modelConfig.id.includes("dashscope") ||
+            modelConfig.id.includes("qwen")
+              ? "dashscope"
+              : "deepseek";
+          collector.recordApiCall(
+            "embedding",
+            data.usage.total_tokens,
+            provider,
+          );
+        }
+      } catch (metricsError) {
+        // 指标记录失败不影响 embedding 生成
+        logger.warn(
+          {
+            error:
+              metricsError instanceof Error
+                ? metricsError.message
+                : String(metricsError),
+          },
+          "Embedding: Failed to record RAG metrics",
+        );
+      }
+    }
+
     logger.info(
       {
         modelId: modelConfig.id,
@@ -433,6 +471,44 @@ async function generateEmbeddingsBatchWithModel(
         { invalidCount, total: embeddings.length, modelId: modelConfig.id },
         "Embedding Batch: Some vectors had invalid values and were sanitized",
       );
+    }
+
+    // 记录 RAG 指标
+    if (data.usage?.total_tokens) {
+      try {
+        const { getRAGMetricsCollector } = await import(
+          "@/lib/monitoring/rag/metrics-collector"
+        );
+        const { FeatureFlags } = await import(
+          "@/lib/ai-agent/config/feature-flags"
+        );
+
+        if (FeatureFlags.ENABLE_RAG_MONITORING) {
+          const collector = getRAGMetricsCollector();
+          // 判断 provider：dashscope 或 openai
+          const provider =
+            modelConfig.id.includes("dashscope") ||
+            modelConfig.id.includes("qwen")
+              ? "dashscope"
+              : "deepseek";
+          collector.recordApiCall(
+            "embedding",
+            data.usage.total_tokens,
+            provider,
+          );
+        }
+      } catch (metricsError) {
+        // 指标记录失败不影响 embedding 生成
+        logger.warn(
+          {
+            error:
+              metricsError instanceof Error
+                ? metricsError.message
+                : String(metricsError),
+          },
+          "Embedding Batch: Failed to record RAG metrics",
+        );
+      }
     }
 
     logger.info(

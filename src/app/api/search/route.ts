@@ -22,6 +22,8 @@ import { searchBookmarksFulltext } from "@/lib/utils/fulltext-search";
 import { EnhancedSearchService } from "@/lib/ai-skills/search/enhanced-search.service";
 import type { ExtractedFilter } from "@/lib/ai-skills/search/filter-extractor.types";
 import { logger } from "@/lib/logger";
+import { getRAGMetricsCollector } from "@/lib/monitoring/rag/metrics-collector";
+import { FeatureFlags } from "@/lib/ai-agent/config/feature-flags";
 
 /**
  * 搜索模式
@@ -94,6 +96,7 @@ export async function GET(request: NextRequest) {
     // 3. 执行搜索
     // 增强模式使用 EnhancedSearchService
     if (mode === "enhanced") {
+      const searchStartTime = performance.now();
       const enhancedSearch = new EnhancedSearchService();
       const output = await enhancedSearch.search({
         query,
@@ -101,6 +104,32 @@ export async function GET(request: NextRequest) {
         limit,
         debug,
       });
+      const searchLatencyMs = Math.round(performance.now() - searchStartTime);
+
+      // 记录 RAG 指标
+      if (FeatureFlags.ENABLE_RAG_MONITORING) {
+        try {
+          const collector = getRAGMetricsCollector();
+          const maxSimilarity = output.response?.results[0]?.similarity ?? 0;
+          collector.recordSearch(
+            searchLatencyMs,
+            output.response?.results.length ?? 0,
+            maxSimilarity,
+            user.id,
+          );
+        } catch (metricsError) {
+          // 指标记录失败不影响搜索结果
+          logger.warn(
+            {
+              error:
+                metricsError instanceof Error
+                  ? metricsError.message
+                  : String(metricsError),
+            },
+            "Search: Failed to record RAG metrics",
+          );
+        }
+      }
 
       logger.info(
         {
@@ -153,6 +182,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 其他模式使用原有逻辑
+    const searchStartTime = performance.now();
     let results: unknown[] = [];
     let searchType = mode;
     let error: Error | null = null;
@@ -214,6 +244,34 @@ export async function GET(request: NextRequest) {
       );
       // 搜索失败时返回空结果而不是错误，提升用户体验
       results = [];
+    }
+
+    // 记录 RAG 指标（非增强模式）
+    const searchLatencyMs = Math.round(performance.now() - searchStartTime);
+    if (FeatureFlags.ENABLE_RAG_MONITORING) {
+      try {
+        const collector = getRAGMetricsCollector();
+        // 对于非增强模式，相似度分数可能不可用，使用默认值
+        const maxSimilarity =
+          (results[0] as { similarity?: number })?.similarity ?? 0.5;
+        collector.recordSearch(
+          searchLatencyMs,
+          results.length,
+          maxSimilarity,
+          user.id,
+        );
+      } catch (metricsError) {
+        // 指标记录失败不影响搜索结果
+        logger.warn(
+          {
+            error:
+              metricsError instanceof Error
+                ? metricsError.message
+                : String(metricsError),
+          },
+          "Search: Failed to record RAG metrics",
+        );
+      }
     }
 
     logger.info(
