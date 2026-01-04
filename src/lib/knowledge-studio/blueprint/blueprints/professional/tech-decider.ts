@@ -349,7 +349,7 @@ export class TechDeciderBlueprint extends EnhancedBlueprintEngine<TechDeciderOut
   ): AsyncGenerator<OrchestrationStreamChunk, BlueprintOutline, unknown> {
     yield* this.reportProgress("outline", 10, "分析技术文章...");
 
-    const _briefingPrompt = input.briefingContext
+    const briefingPrompt = input.briefingContext
       ? injectBriefingToPrompt(
           "",
           input.briefingContext,

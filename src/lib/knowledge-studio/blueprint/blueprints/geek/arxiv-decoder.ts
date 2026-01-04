@@ -232,7 +232,7 @@ export class ArxivDecoderBlueprint extends EnhancedBlueprintEngine<ArxivDecoderO
     yield* this.reportProgress("outline", 10, "分析论文结构...");
 
     // 构建大纲生成配置
-    const _briefingPrompt = input.briefingContext
+    const briefingPrompt = input.briefingContext
       ? injectBriefingToPrompt(
           "",
           input.briefingContext,

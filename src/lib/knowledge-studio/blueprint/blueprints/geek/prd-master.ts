@@ -345,7 +345,7 @@ export class PrdMasterBlueprint extends EnhancedBlueprintEngine<PrdMasterOutput>
     yield* this.reportProgress("outline", 10, "分析需求素材...");
 
     // 构建大纲生成配置
-    const _briefingPrompt = input.briefingContext
+    const briefingPrompt = input.briefingContext
       ? injectBriefingToPrompt(
           "",
           input.briefingContext,

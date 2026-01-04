@@ -266,7 +266,7 @@ export class InterviewPrepBlueprint extends EnhancedBlueprintEngine<InterviewPre
   ): AsyncGenerator<OrchestrationStreamChunk, BlueprintOutline, unknown> {
     yield* this.reportProgress("outline", 10, "分析嘉宾资料...");
 
-    const _briefingPrompt = input.briefingContext
+    const briefingPrompt = input.briefingContext
       ? injectBriefingToPrompt(
           "",
           input.briefingContext,

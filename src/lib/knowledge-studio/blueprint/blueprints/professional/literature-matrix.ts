@@ -335,7 +335,7 @@ export class LiteratureMatrixBlueprint extends EnhancedBlueprintEngine<Literatur
   ): AsyncGenerator<OrchestrationStreamChunk, BlueprintOutline, unknown> {
     yield* this.reportProgress("outline", 10, "分析论文集合...");
 
-    const _briefingPrompt = input.briefingContext
+    const briefingPrompt = input.briefingContext
       ? injectBriefingToPrompt(
           "",
           input.briefingContext,

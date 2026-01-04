@@ -291,7 +291,7 @@ export class CompetitorScoutBlueprint extends EnhancedBlueprintEngine<Competitor
   ): AsyncGenerator<OrchestrationStreamChunk, BlueprintOutline, unknown> {
     yield* this.reportProgress("outline", 10, "分析竞品资料...");
 
-    const _briefingPrompt = input.briefingContext
+    const briefingPrompt = input.briefingContext
       ? injectBriefingToPrompt(
           "",
           input.briefingContext,

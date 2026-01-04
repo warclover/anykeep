@@ -357,7 +357,7 @@ export class WorkshopDesignerBlueprint extends EnhancedBlueprintEngine<WorkshopD
   ): AsyncGenerator<OrchestrationStreamChunk, BlueprintOutline, unknown> {
     yield* this.reportProgress("outline", 10, "分析学习材料...");
 
-    const _briefingPrompt = input.briefingContext
+    const briefingPrompt = input.briefingContext
       ? injectBriefingToPrompt(
           "",
           input.briefingContext,

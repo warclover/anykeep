@@ -17,7 +17,10 @@ import {
   Settings,
   History,
   CreditCard,
+  ArrowRight,
+  X,
 } from "lucide-react";
+import { useBlueprintV2Feature } from "@/lib/feature-flags";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -60,6 +63,10 @@ const LENGTH_OPTIONS: { value: TargetLength; label: string; desc: string }[] = [
 
 export function KnowledgeStudioPageClient() {
   const router = useRouter();
+
+  // v2 Beta 横幅状态
+  const isV2Enabled = useBlueprintV2Feature();
+  const [showV2Banner, setShowV2Banner] = useState(true);
 
   // 工作流状态
   const [currentStep, setCurrentStep] = useState<WorkflowStep>("materials");
@@ -268,6 +275,44 @@ export function KnowledgeStudioPageClient() {
 
   return (
     <div className="container mx-auto max-w-5xl py-6 space-y-6">
+      {/* v2 Beta 横幅 */}
+      {isV2Enabled && showV2Banner && (
+        <div className="relative rounded-lg bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20 p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/20">
+                <Sparkles className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-sm">
+                  知识工坊 v2 Beta 已上线！
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  全新 14 种专业蓝图、智能问答引导、大纲预览编辑
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button asChild size="sm">
+                <Link href="/knowledge-studio/v2">
+                  试用新版
+                  <ArrowRight className="ml-1 h-3 w-3" />
+                </Link>
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setShowV2Banner(false)}
+              >
+                <X className="h-4 w-4" />
+                <span className="sr-only">关闭</span>
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 页面头部 */}
       <div className="flex items-center justify-between">
         <div>

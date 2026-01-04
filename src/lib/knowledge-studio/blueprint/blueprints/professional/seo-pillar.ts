@@ -350,7 +350,7 @@ export class SeoPillarBlueprint extends EnhancedBlueprintEngine<SeoPillarOutput>
   ): AsyncGenerator<OrchestrationStreamChunk, BlueprintOutline, unknown> {
     yield* this.reportProgress("outline", 10, "分析内容素材...");
 
-    const _briefingPrompt = input.briefingContext
+    const briefingPrompt = input.briefingContext
       ? injectBriefingToPrompt(
           "",
           input.briefingContext,

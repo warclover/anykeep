@@ -339,7 +339,7 @@ export class SystemDesignReviewBlueprint extends EnhancedBlueprintEngine<SystemD
     yield* this.reportProgress("outline", 10, "分析架构文档...");
 
     // 构建大纲生成配置
-    const _briefingPrompt = input.briefingContext
+    const briefingPrompt = input.briefingContext
       ? injectBriefingToPrompt(
           "",
           input.briefingContext,

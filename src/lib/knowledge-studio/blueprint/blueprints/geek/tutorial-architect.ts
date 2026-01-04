@@ -309,7 +309,7 @@ export class TutorialArchitectBlueprint extends EnhancedBlueprintEngine<Tutorial
     yield* this.reportProgress("outline", 10, "分析素材结构...");
 
     // 构建大纲生成配置
-    const _briefingPrompt = input.briefingContext
+    const briefingPrompt = input.briefingContext
       ? injectBriefingToPrompt(
           "",
           input.briefingContext,

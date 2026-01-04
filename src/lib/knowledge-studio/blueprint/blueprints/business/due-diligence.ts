@@ -326,7 +326,7 @@ export class DueDiligenceBlueprint extends EnhancedBlueprintEngine<DueDiligenceO
   ): AsyncGenerator<OrchestrationStreamChunk, BlueprintOutline, unknown> {
     yield* this.reportProgress("outline", 10, "分析财务资料...");
 
-    const _briefingPrompt = input.briefingContext
+    const briefingPrompt = input.briefingContext
       ? injectBriefingToPrompt(
           "",
           input.briefingContext,

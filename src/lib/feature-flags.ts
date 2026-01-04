@@ -19,7 +19,9 @@ export type FeatureFlag =
   | "home_use_context" // 首页使用新 Context 系统
   | "home_use_new_bookmarks_hook" // 首页使用新书签数据 Hook
   // V4.2.2: 微信文章功能
-  | "wechat_article"; // 微信公众号文章完整内容抓取
+  | "wechat_article" // 微信公众号文章完整内容抓取
+  // V4.3.0: 知识工坊 v2
+  | "blueprint_v2"; // 增强蓝图系统 v2
 
 // 功能开关默认值（生产环境）
 const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
@@ -32,6 +34,8 @@ const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   home_use_new_bookmarks_hook: false,
   // V4.2.2: 微信文章功能
   wechat_article: false, // 默认关闭，通过环境变量启用
+  // V4.3.0: 知识工坊 v2
+  blueprint_v2: true, // 默认启用增强蓝图系统
 };
 
 // ============================================================================
@@ -51,6 +55,8 @@ const ENV_VAR_MAP: Record<FeatureFlag, string | undefined> = {
     process.env.NEXT_PUBLIC_FEATURE_HOME_USE_NEW_BOOKMARKS_HOOK,
   // V4.2.2: 微信文章功能
   wechat_article: process.env.NEXT_PUBLIC_FEATURE_WECHAT_ARTICLE,
+  // V4.3.0: 知识工坊 v2
+  blueprint_v2: process.env.NEXT_PUBLIC_FEATURE_BLUEPRINT_V2,
 };
 
 // ============================================================================
@@ -161,4 +167,15 @@ export function useHomeBookmarksHookFeature(): boolean {
  */
 export function useWechatArticleFeature(): boolean {
   return useFeatureFlag("wechat_article");
+}
+
+// ============================================================================
+// V4.3.0: 知识工坊 v2 Feature Flags
+// ============================================================================
+
+/**
+ * 增强蓝图系统 v2 是否启用
+ */
+export function useBlueprintV2Feature(): boolean {
+  return useFeatureFlag("blueprint_v2");
 }

@@ -312,7 +312,7 @@ export class PitchNarrativeBlueprint extends EnhancedBlueprintEngine<PitchNarrat
   ): AsyncGenerator<OrchestrationStreamChunk, BlueprintOutline, unknown> {
     yield* this.reportProgress("outline", 10, "分析创业素材...");
 
-    const _briefingPrompt = input.briefingContext
+    const briefingPrompt = input.briefingContext
       ? injectBriefingToPrompt(
           "",
           input.briefingContext,

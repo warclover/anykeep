@@ -251,7 +251,7 @@ export class ScriptwriterBlueprint extends EnhancedBlueprintEngine<ScriptwriterO
   ): AsyncGenerator<OrchestrationStreamChunk, BlueprintOutline, unknown> {
     yield* this.reportProgress("outline", 10, "分析素材内容...");
 
-    const _briefingPrompt = input.briefingContext
+    const briefingPrompt = input.briefingContext
       ? injectBriefingToPrompt(
           "",
           input.briefingContext,

@@ -135,6 +135,12 @@ const learningCenterItems: NavItem[] = [
     icon: Sparkles,
     isPro: true,
   },
+  {
+    name: "工坊 Beta",
+    href: "/knowledge-studio/v2",
+    icon: Sparkles,
+    isPro: true,
+  },
 ];
 
 /**
