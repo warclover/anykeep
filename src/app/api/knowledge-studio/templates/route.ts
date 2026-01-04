@@ -12,6 +12,11 @@ import type { Database, Json } from "@/types/supabase";
 
 const logger = createLogger("api:knowledge-studio:templates");
 
+// 类型定义
+type TemplateRow = Database["public"]["Tables"]["ks_custom_templates"]["Row"];
+type TemplateInsert =
+  Database["public"]["Tables"]["ks_custom_templates"]["Insert"];
+
 /**
  * GET /api/knowledge-studio/templates
  * 获取用户模板列表
@@ -106,80 +111,9 @@ export async function GET(request: NextRequest) {
       "Fetching templates",
     );
 
-    // 构建查询
-    // 注意：由于 Supabase 查询链的复杂性，使用类型断言
-    // 但通过类型定义确保返回数据的类型安全
-    type TemplateRow =
-      Database["public"]["Tables"]["ks_custom_templates"]["Row"];
-    type TemplateQueryResult = {
-      data: TemplateRow[] | null;
-      error: { message: string } | null;
-      count: number | null;
-    };
-
-    type TemplateRow =
-      Database["public"]["Tables"]["ks_custom_templates"]["Row"];
-    let query = (
-      supabase.from("ks_custom_templates") as {
-        select: (
-          columns: string,
-          options?: { count?: "exact" },
-        ) => {
-          order: (
-            column: string,
-            options: { ascending: boolean },
-          ) => {
-            range: (
-              from: number,
-              to: number,
-            ) => {
-              or?: (filter: string) => {
-                eq?: (
-                  column: string,
-                  value: string,
-                ) => {
-                  or?: (filter: string) => Promise<{
-                    data: TemplateRow[] | null;
-                    count: number | null;
-                    error: { message: string } | null;
-                  }>;
-                };
-                or?: (filter: string) => Promise<{
-                  data: TemplateRow[] | null;
-                  count: number | null;
-                  error: { message: string } | null;
-                }>;
-              };
-            };
-            eq?: (
-              column: string,
-              value: string,
-            ) => {
-              eq?: (
-                column: string,
-                value: string,
-              ) => {
-                or?: (filter: string) => Promise<{
-                  data: TemplateRow[] | null;
-                  count: number | null;
-                  error: { message: string } | null;
-                }>;
-              };
-              or?: (filter: string) => Promise<{
-                data: TemplateRow[] | null;
-                count: number | null;
-                error: { message: string } | null;
-              }>;
-            };
-            or?: (filter: string) => Promise<{
-              data: TemplateRow[] | null;
-              count: number | null;
-              error: { message: string } | null;
-            }>;
-          };
-        };
-      }
-    )
+    // 使用标准 Supabase 查询模式
+    let query = supabase
+      .from("ks_custom_templates")
       .select("*", { count: "exact" })
       .order("updated_at", { ascending: false })
       .range(offset, offset + limit - 1);
@@ -207,7 +141,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const { data, error, count } = (await query) as TemplateQueryResult;
+    const { data, error, count } = await query;
 
     if (error) {
       logger.error({ error: error.message }, "Get templates failed");
@@ -217,8 +151,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // 类型断言在结果层
+    const templates = data as TemplateRow[] | null;
+
     return NextResponse.json({
-      data,
+      data: templates,
       pagination: {
         total: count || 0,
         limit,
@@ -343,12 +280,6 @@ export async function POST(request: NextRequest) {
       "Creating template",
     );
 
-    // 类型安全的插入操作
-    type TemplateInsert =
-      Database["public"]["Tables"]["ks_custom_templates"]["Insert"];
-    type TemplateRow =
-      Database["public"]["Tables"]["ks_custom_templates"]["Row"];
-
     const insertData: TemplateInsert = {
       user_id: user.id,
       name: name.trim(),
@@ -363,18 +294,9 @@ export async function POST(request: NextRequest) {
       tags,
     };
 
-    const { data, error } = await (
-      supabase.from("ks_custom_templates") as {
-        insert: (values: TemplateInsert) => {
-          select: () => {
-            single: () => Promise<{
-              data: TemplateRow | null;
-              error: { message: string } | null;
-            }>;
-          };
-        };
-      }
-    )
+    // 使用标准 Supabase 插入模式
+    const { data, error } = await supabase
+      .from("ks_custom_templates")
       .insert(insertData)
       .select()
       .single();
@@ -387,7 +309,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({ data }, { status: 201 });
+    // 类型断言在结果层
+    const template = data as TemplateRow | null;
+
+    return NextResponse.json({ data: template }, { status: 201 });
   } catch (error) {
     logger.error(
       { error: error instanceof Error ? error.message : String(error) },

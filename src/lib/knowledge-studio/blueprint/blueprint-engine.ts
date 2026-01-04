@@ -147,18 +147,18 @@ export class BlueprintEngine {
 
       // 获取实际使用的模型（从最后一次调用获取）
       const selection = aiProviderRouter.selectProvider({ taskType: "chat" });
-      const actualModel = selection?.model?.modelId || "deepseek-chat";
+      const actualModel = selection?.provider?.defaultModel || "deepseek-chat";
 
       // 累加 Token 使用情况
       let totalInputTokens = 0;
       let totalOutputTokens = 0;
       if (outlineUsage) {
-        totalInputTokens += outlineUsage.promptTokens;
-        totalOutputTokens += outlineUsage.completionTokens;
+        totalInputTokens += outlineUsage.inputTokens;
+        totalOutputTokens += outlineUsage.outputTokens;
       }
       if (contentUsage) {
-        totalInputTokens += contentUsage.promptTokens;
-        totalOutputTokens += contentUsage.completionTokens;
+        totalInputTokens += contentUsage.inputTokens;
+        totalOutputTokens += contentUsage.outputTokens;
       }
 
       const metadata: BlueprintMetadata = {
@@ -236,8 +236,8 @@ export class BlueprintEngine {
   ): Promise<{
     text: string;
     usage?: {
-      promptTokens: number;
-      completionTokens: number;
+      inputTokens: number;
+      outputTokens: number;
       totalTokens: number;
     };
   }> {
@@ -256,7 +256,7 @@ export class BlueprintEngine {
         hasModel: !!selection?.model,
         provider: selection?.provider?.name,
         providerEnabled: selection?.provider?.enabled,
-        modelId: selection?.model?.modelId,
+        modelId: selection?.provider?.defaultModel,
         selectionReason: selection?.reason,
         envCheck: {
           hasDeepSeekKey: !!process.env.DEEPSEEK_API_KEY,
@@ -281,18 +281,10 @@ export class BlueprintEngine {
       logger.info(
         {
           requestId: context.requestId,
-          modelId: selection.model.modelId,
-          promptType: typeof prompt,
-          promptSystem:
-            typeof prompt === "object"
-              ? prompt.system?.slice(0, 100)
-              : undefined,
-          promptUser:
-            typeof prompt === "object"
-              ? prompt.user?.slice(0, 100)
-              : typeof prompt === "string"
-                ? prompt.slice(0, 100)
-                : undefined,
+          modelId: selection.provider.defaultModel,
+          promptType: "object",
+          promptSystem: prompt.system?.slice(0, 100),
+          promptUser: prompt.user?.slice(0, 100),
         },
         "Calling AI model for outline generation",
       );
@@ -302,7 +294,7 @@ export class BlueprintEngine {
         model: selection.model,
         system: prompt.system,
         prompt: prompt.user,
-        maxTokens: 1000,
+        maxOutputTokens: 1000,
         temperature: 0.7,
       });
 
@@ -314,8 +306,8 @@ export class BlueprintEngine {
           textPreview: text?.slice(0, 200),
           usage: usage
             ? {
-                promptTokens: usage.promptTokens,
-                completionTokens: usage.completionTokens,
+                inputTokens: usage.inputTokens,
+                outputTokens: usage.outputTokens,
               }
             : undefined,
         },
@@ -353,10 +345,9 @@ export class BlueprintEngine {
       // 返回文本和 Token 使用情况
       const tokenUsage = usage
         ? {
-            promptTokens: usage.promptTokens || 0,
-            completionTokens: usage.completionTokens || 0,
-            totalTokens:
-              (usage.promptTokens || 0) + (usage.completionTokens || 0),
+            inputTokens: usage.inputTokens || 0,
+            outputTokens: usage.outputTokens || 0,
+            totalTokens: (usage.inputTokens || 0) + (usage.outputTokens || 0),
           }
         : undefined;
 
@@ -392,8 +383,8 @@ export class BlueprintEngine {
   ): Promise<{
     text: string;
     usage?: {
-      promptTokens: number;
-      completionTokens: number;
+      inputTokens: number;
+      outputTokens: number;
       totalTokens: number;
     };
   }> {
@@ -414,7 +405,7 @@ export class BlueprintEngine {
         hasModel: !!selection?.model,
         provider: selection?.provider?.name,
         providerEnabled: selection?.provider?.enabled,
-        modelId: selection?.model?.modelId,
+        modelId: selection?.provider?.defaultModel,
         selectionReason: selection?.reason,
         envCheck: {
           hasDeepSeekKey: !!process.env.DEEPSEEK_API_KEY,
@@ -447,18 +438,10 @@ export class BlueprintEngine {
       logger.info(
         {
           requestId: context.requestId,
-          modelId: selection.model.modelId,
-          promptType: typeof prompt,
-          promptSystem:
-            typeof prompt === "object"
-              ? prompt.system?.slice(0, 100)
-              : undefined,
-          promptUser:
-            typeof prompt === "object"
-              ? prompt.user?.slice(0, 100)
-              : typeof prompt === "string"
-                ? prompt.slice(0, 100)
-                : undefined,
+          modelId: selection.provider.defaultModel,
+          promptType: "object",
+          promptSystem: prompt.system?.slice(0, 100),
+          promptUser: prompt.user?.slice(0, 100),
           maxTokens,
           targetLength: context.config.targetLength,
         },
@@ -470,7 +453,7 @@ export class BlueprintEngine {
         model: selection.model,
         system: prompt.system,
         prompt: prompt.user,
-        maxTokens,
+        maxOutputTokens: maxTokens,
         temperature: 0.7,
       });
 
@@ -640,8 +623,8 @@ export class BlueprintEngine {
       // 获取 Token 使用情况（从 result.usage 获取）
       let tokenUsage:
         | {
-            promptTokens: number;
-            completionTokens: number;
+            inputTokens: number;
+            outputTokens: number;
             totalTokens: number;
           }
         | undefined;
@@ -649,10 +632,9 @@ export class BlueprintEngine {
         const usage = await result.usage;
         if (usage) {
           tokenUsage = {
-            promptTokens: usage.promptTokens || 0,
-            completionTokens: usage.completionTokens || 0,
-            totalTokens:
-              (usage.promptTokens || 0) + (usage.completionTokens || 0),
+            inputTokens: usage.inputTokens || 0,
+            outputTokens: usage.outputTokens || 0,
+            totalTokens: (usage.inputTokens || 0) + (usage.outputTokens || 0),
           };
           logger.info(
             {

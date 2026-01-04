@@ -17,7 +17,19 @@ import type {
   ConsumptionRecord,
   UsageType,
 } from "./types";
-import type { Database, Json } from "@/types/supabase";
+import type { Database } from "@/types/supabase";
+
+// ============================================================================
+// 数据库类型别名（使用 Database 类型）
+// ============================================================================
+
+type BillRow = Database["public"]["Tables"]["ks_bills"]["Row"];
+type BillLineItemRow =
+  Database["public"]["Tables"]["ks_bill_line_items"]["Row"];
+type ConsumptionRecordRow =
+  Database["public"]["Tables"]["ks_consumption_records"]["Row"];
+type ConsumptionRecordInsert =
+  Database["public"]["Tables"]["ks_consumption_records"]["Insert"];
 
 // ============================================================================
 // 价格配置（分）
@@ -77,42 +89,8 @@ export class BillingService implements IBillingService {
   ): Promise<Bill[]> {
     const supabase = await createClient();
 
-    type BillRow = Database["public"]["Tables"]["ks_bills"]["Row"];
-    type BillLineItemRow =
-      Database["public"]["Tables"]["ks_bill_line_items"]["Row"];
-    type BillWithLineItems = BillRow & {
-      line_items: BillLineItemRow[];
-    };
-
-    let query = (
-      supabase.from("ks_bills") as {
-        select: (columns: string) => {
-          eq: (
-            column: string,
-            value: string,
-          ) => {
-            order: (
-              column: string,
-              options: { ascending: boolean },
-            ) => {
-              eq?: (
-                column: string,
-                value: string,
-              ) => {
-                limit?: (count: number) => Promise<{
-                  data: BillWithLineItems[] | null;
-                  error: { message: string } | null;
-                }>;
-              };
-              limit?: (count: number) => Promise<{
-                data: BillWithLineItems[] | null;
-                error: { message: string } | null;
-              }>;
-            };
-          };
-        };
-      }
-    )
+    let query = supabase
+      .from("ks_bills")
       .select(
         `
         *,
@@ -130,20 +108,18 @@ export class BillingService implements IBillingService {
       query = query.limit(options.limit);
     }
 
-    // 类型断言: 手动维护类型文件时需要此断言
-    type BillQueryResult = Record<string, unknown>[];
-
-    const { data, error } = (await query) as {
-      data: BillQueryResult | null;
-      error: { message: string } | null;
-    };
+    const { data, error } = await query;
 
     if (error) {
       logger.error({ error: error.message }, "Failed to get bills");
       throw new Error(`获取账单列表失败: ${error.message}`);
     }
 
-    return (data ?? []).map((row) => this.mapBillFromRow(row));
+    // 类型断言处理嵌套关联查询结果
+    type BillWithLineItems = BillRow & { line_items: BillLineItemRow[] };
+    const typedData = data as unknown as BillWithLineItems[] | null;
+
+    return (typedData ?? []).map((row) => this.mapBillFromRow(row));
   }
 
   /**
@@ -154,33 +130,8 @@ export class BillingService implements IBillingService {
   async getBill(billId: string, userId: string): Promise<Bill | null> {
     const supabase = await createClient();
 
-    type BillRow = Database["public"]["Tables"]["ks_bills"]["Row"];
-    type BillLineItemRow =
-      Database["public"]["Tables"]["ks_bill_line_items"]["Row"];
-    type BillWithLineItems = BillRow & {
-      line_items: BillLineItemRow[];
-    };
-
-    const { data, error } = await (
-      supabase.from("ks_bills") as {
-        select: (columns: string) => {
-          eq: (
-            column: string,
-            value: string,
-          ) => {
-            eq: (
-              column: string,
-              value: string,
-            ) => {
-              single: () => Promise<{
-                data: BillWithLineItems | null;
-                error: { message: string } | null;
-              }>;
-            };
-          };
-        };
-      }
-    )
+    const { data, error } = await supabase
+      .from("ks_bills")
       .select(
         `
         *,
@@ -188,7 +139,7 @@ export class BillingService implements IBillingService {
       `,
       )
       .eq("id", billId)
-      .eq("user_id", userId) // 添加用户所有权验证
+      .eq("user_id", userId)
       .single();
 
     if (error) {
@@ -199,7 +150,11 @@ export class BillingService implements IBillingService {
       throw new Error(`获取账单详情失败: ${error.message}`);
     }
 
-    return this.mapBillFromRow(data);
+    // 类型断言处理嵌套关联查询结果
+    type BillWithLineItems = BillRow & { line_items: BillLineItemRow[] };
+    const typedData = data as unknown as BillWithLineItems | null;
+
+    return typedData ? this.mapBillFromRow(typedData) : null;
   }
 
   /**
@@ -213,22 +168,7 @@ export class BillingService implements IBillingService {
     const supabase = await createClient();
 
     // 调用 RPC 函数
-    type GetConsumptionSummaryParams = {
-      p_user_id: string;
-      p_start_date: string;
-      p_end_date: string;
-    };
-    const { data, error } = await (
-      supabase.rpc as {
-        (
-          fnName: "get_consumption_summary",
-          params: GetConsumptionSummaryParams,
-        ): Promise<{
-          data: Json | null;
-          error: { message: string } | null;
-        }>;
-      }
-    )("get_consumption_summary", {
+    const { data, error } = await supabase.rpc("get_consumption_summary", {
       p_user_id: userId,
       p_start_date: startDate.toISOString(),
       p_end_date: endDate.toISOString(),
@@ -242,25 +182,17 @@ export class BillingService implements IBillingService {
       throw new Error(`获取消费汇总失败: ${error.message}`);
     }
 
-    // 类型断言: 手动维护类型文件时需要此断言
-    type ConsumptionSummaryRpcResult = {
+    // RPC 返回 Json 类型，需要类型断言
+    interface ConsumptionSummaryRpcResult {
       consumptionByType?: Record<string, { amount: number; cost: number }>;
       totalAmount?: number;
       totalCost?: number;
       dailyAverage?: number;
       trend?: string;
       trendPercent?: number;
-    };
-
-    const summaryData = data as ConsumptionSummaryRpcResult | null;
-
-    if (error) {
-      logger.error(
-        { error: error.message },
-        "Failed to get consumption summary",
-      );
-      throw new Error(`获取消费汇总失败: ${error.message}`);
     }
+
+    const summaryData = data as unknown as ConsumptionSummaryRpcResult | null;
 
     // 确保所有类型都有值
     const consumptionByType: Record<
@@ -317,97 +249,26 @@ export class BillingService implements IBillingService {
   ): Promise<ConsumptionRecord[]> {
     const supabase = await createClient();
 
-    type ConsumptionRecordRow =
-      Database["public"]["Tables"]["ks_consumption_records"]["Row"];
-    let query = (
-      supabase.from("ks_consumption_records") as {
-        select: (columns: string) => {
-          eq: (
-            column: string,
-            value: string,
-          ) => {
-            order: (
-              column: string,
-              options: { ascending: boolean },
-            ) => {
-              eq?: (
-                column: string,
-                value: string,
-              ) => {
-                gte?: (
-                  column: string,
-                  value: string,
-                ) => {
-                  lte?: (
-                    column: string,
-                    value: string,
-                  ) => {
-                    limit?: (count: number) => Promise<{
-                      data: ConsumptionRecordRow[] | null;
-                      error: { message: string } | null;
-                    }>;
-                  };
-                  limit?: (count: number) => Promise<{
-                    data: ConsumptionRecordRow[] | null;
-                    error: { message: string } | null;
-                  }>;
-                };
-                limit?: (count: number) => Promise<{
-                  data: ConsumptionRecordRow[] | null;
-                  error: { message: string } | null;
-                }>;
-              };
-              gte?: (
-                column: string,
-                value: string,
-              ) => {
-                lte?: (
-                  column: string,
-                  value: string,
-                ) => {
-                  limit?: (count: number) => Promise<{
-                    data: ConsumptionRecordRow[] | null;
-                    error: { message: string } | null;
-                  }>;
-                };
-                limit?: (count: number) => Promise<{
-                  data: ConsumptionRecordRow[] | null;
-                  error: { message: string } | null;
-                }>;
-              };
-              limit?: (count: number) => Promise<{
-                data: ConsumptionRecordRow[] | null;
-                error: { message: string } | null;
-              }>;
-            };
-          };
-        };
-      }
-    )
+    let query = supabase
+      .from("ks_consumption_records")
       .select("*")
       .eq("user_id", userId)
       .order("created_at", { ascending: false });
 
     if (options?.type) {
-      query = query.eq("usage_type", options.type) as typeof query;
+      query = query.eq("usage_type", options.type);
     }
 
     if (options?.startDate) {
-      query = query.gte(
-        "created_at",
-        options.startDate.toISOString(),
-      ) as typeof query;
+      query = query.gte("created_at", options.startDate.toISOString());
     }
 
     if (options?.endDate) {
-      query = query.lte(
-        "created_at",
-        options.endDate.toISOString(),
-      ) as typeof query;
+      query = query.lte("created_at", options.endDate.toISOString());
     }
 
     if (options?.limit) {
-      query = query.limit(options.limit) as typeof query;
+      query = query.limit(options.limit);
     }
 
     const { data, error } = await query;
@@ -420,7 +281,9 @@ export class BillingService implements IBillingService {
       throw new Error(`获取消费明细失败: ${error.message}`);
     }
 
-    return (data ?? []).map((row) => ({
+    const typedData = data as ConsumptionRecordRow[] | null;
+
+    return (typedData ?? []).map((row) => ({
       id: row.id,
       userId: row.user_id,
       timestamp: new Date(row.created_at),
@@ -428,8 +291,8 @@ export class BillingService implements IBillingService {
       description: row.description,
       amount: row.amount,
       cost: row.cost,
-      reportId: row.report_id,
-      blueprintType: row.blueprint_type,
+      reportId: row.report_id ?? undefined,
+      blueprintType: row.blueprint_type ?? undefined,
     }));
   }
 
@@ -453,8 +316,6 @@ export class BillingService implements IBillingService {
     const description =
       options?.description ?? `${USAGE_TYPE_DESCRIPTIONS[type]} x ${amount}`;
 
-    type ConsumptionRecordInsert =
-      Database["public"]["Tables"]["ks_consumption_records"]["Insert"];
     const recordInsertData: ConsumptionRecordInsert = {
       user_id: userId,
       usage_type: type,
@@ -465,13 +326,9 @@ export class BillingService implements IBillingService {
       blueprint_type: options?.blueprintType ?? null,
     };
 
-    const { error } = await (
-      supabase.from("ks_consumption_records") as {
-        insert: (values: ConsumptionRecordInsert) => Promise<{
-          error: { message: string } | null;
-        }>;
-      }
-    ).insert(recordInsertData);
+    const { error } = await supabase
+      .from("ks_consumption_records")
+      .insert(recordInsertData);
 
     if (error) {
       logger.error({ error: error.message }, "Failed to record consumption");
@@ -484,39 +341,36 @@ export class BillingService implements IBillingService {
   /**
    * 映射数据库行到 Bill 对象
    */
-  private mapBillFromRow(row: Record<string, unknown>): Bill {
-    // 类型断言: 手动维护类型文件时需要此断言
-    type LineItemRow = Record<string, unknown>;
-
-    const lineItems: BillingLineItem[] = (
-      (row.line_items as LineItemRow[]) ?? []
-    ).map((item: LineItemRow) => ({
-      id: item.id as string,
-      description: item.description as string,
+  private mapBillFromRow(
+    row: BillRow & { line_items?: BillLineItemRow[] },
+  ): Bill {
+    const lineItems: BillingLineItem[] = (row.line_items ?? []).map((item) => ({
+      id: item.id,
+      description: item.description,
       usageType: item.usage_type as UsageType,
-      quantity: item.quantity as number,
-      unitPrice: item.unit_price as number,
-      totalPrice: item.total_price as number,
-      discount: (item.discount as number) ?? 0,
+      quantity: item.quantity,
+      unitPrice: item.unit_price,
+      totalPrice: item.total_price,
+      discount: item.discount ?? 0,
     }));
 
     return {
-      id: row.id as string,
-      userId: row.user_id as string,
+      id: row.id,
+      userId: row.user_id,
       period: {
-        start: new Date(row.period_start as string),
-        end: new Date(row.period_end as string),
+        start: new Date(row.period_start),
+        end: new Date(row.period_end),
       },
       lineItems,
-      subtotal: row.subtotal as number,
-      discount: row.discount as number,
-      tax: row.tax as number,
-      total: row.total as number,
-      currency: row.currency as string,
+      subtotal: row.subtotal,
+      discount: row.discount,
+      tax: row.tax,
+      total: row.total,
+      currency: row.currency,
       status: row.status as BillingStatus,
-      createdAt: new Date(row.created_at as string),
-      paidAt: row.paid_at ? new Date(row.paid_at as string) : undefined,
-      dueAt: new Date(row.due_at as string),
+      createdAt: new Date(row.created_at),
+      paidAt: row.paid_at ? new Date(row.paid_at) : undefined,
+      dueAt: new Date(row.due_at),
     };
   }
 }

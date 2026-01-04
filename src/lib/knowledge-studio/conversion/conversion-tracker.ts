@@ -18,27 +18,24 @@ import type {
   TrialConfig,
 } from "./types";
 import { DEFAULT_TRIAL_CONFIG } from "./types";
-import type { Database, Json } from "@/types/supabase";
+import type { Database } from "@/types/supabase";
 
 // ============================================================================
-// 数据库行类型
+// 数据库类型别名
 // ============================================================================
 
-interface TrialStateRow {
-  id: string;
-  user_id: string;
-  status: "active" | "expired" | "converted" | "cancelled";
-  started_at: string;
-  expires_at: string;
-  generations_used: number;
-  features_experienced: string[];
-  conversion_stage: ConversionStage;
-  last_active_at: string;
-  converted_at: string | null;
-  metadata: Record<string, unknown>;
-}
-
-// UpgradePromptRow 类型已从 Database 类型中获取，不再需要单独定义
+type TrialStateRow =
+  Database["public"]["Tables"]["ks_user_trial_states"]["Row"];
+type TrialStateUpdate =
+  Database["public"]["Tables"]["ks_user_trial_states"]["Update"];
+type ConversionEventInsert =
+  Database["public"]["Tables"]["ks_conversion_events"]["Insert"];
+type UpgradePromptRow =
+  Database["public"]["Tables"]["ks_upgrade_prompts"]["Row"];
+type UpgradePromptInsert =
+  Database["public"]["Tables"]["ks_upgrade_prompts"]["Insert"];
+type UpgradePromptUpdate =
+  Database["public"]["Tables"]["ks_upgrade_prompts"]["Update"];
 
 // ============================================================================
 // 类型转换工具
@@ -47,14 +44,14 @@ interface TrialStateRow {
 function rowToTrialState(row: TrialStateRow): UserTrialState {
   return {
     userId: row.user_id,
-    status: row.status,
+    status: row.status as UserTrialState["status"],
     startedAt: new Date(row.started_at),
     expiresAt: new Date(row.expires_at),
     generationsUsed: row.generations_used,
     featuresExperienced: row.features_experienced ?? [],
-    conversionStage: row.conversion_stage,
+    conversionStage: row.conversion_stage as ConversionStage,
     lastActiveAt: new Date(row.last_active_at),
-    metadata: row.metadata,
+    metadata: (row.metadata as Record<string, unknown>) ?? {},
   };
 }
 
@@ -161,23 +158,8 @@ export class ConversionTracker implements IConversionTracker {
   async getTrialState(userId: string): Promise<UserTrialState | null> {
     const supabase = await createClient();
 
-    type TrialStateRow =
-      Database["public"]["Tables"]["ks_user_trial_states"]["Row"];
-    const { data, error } = await (
-      supabase.from("ks_user_trial_states") as {
-        select: (columns: string) => {
-          eq: (
-            column: string,
-            value: string,
-          ) => {
-            single: () => Promise<{
-              data: TrialStateRow | null;
-              error: { code?: string; message: string } | null;
-            }>;
-          };
-        };
-      }
-    )
+    const { data, error } = await supabase
+      .from("ks_user_trial_states")
       .select("*")
       .eq("user_id", userId)
       .single();
@@ -190,7 +172,8 @@ export class ConversionTracker implements IConversionTracker {
       return null;
     }
 
-    return rowToTrialState(data);
+    const typedData = data as TrialStateRow | null;
+    return typedData ? rowToTrialState(typedData) : null;
   }
 
   /**
@@ -200,21 +183,7 @@ export class ConversionTracker implements IConversionTracker {
     const supabase = await createClient();
 
     // 调用 RPC 函数
-    type StartUserTrialParams = {
-      p_user_id: string;
-      p_duration_days: number;
-    };
-    const { data, error } = await (
-      supabase.rpc as {
-        (
-          fnName: "start_user_trial",
-          params: StartUserTrialParams,
-        ): Promise<{
-          data: Json | null;
-          error: { code?: string; message: string } | null;
-        }>;
-      }
-    )("start_user_trial", {
+    const { data, error } = await supabase.rpc("start_user_trial", {
       p_user_id: userId,
       p_duration_days: this.config.durationDays,
     });
@@ -249,7 +218,7 @@ export class ConversionTracker implements IConversionTracker {
     );
 
     // 解析 RPC 返回的 JSONB
-    const result = data as {
+    const result = data as unknown as {
       userId: string;
       status: string;
       startedAt: string;
@@ -278,8 +247,6 @@ export class ConversionTracker implements IConversionTracker {
   async trackEvent(event: Omit<ConversionEvent, "id">): Promise<void> {
     const supabase = await createClient();
 
-    type ConversionEventInsert =
-      Database["public"]["Tables"]["ks_conversion_events"]["Insert"];
     const eventInsertData: ConversionEventInsert = {
       user_id: event.userId,
       trigger_type: event.trigger,
@@ -291,13 +258,9 @@ export class ConversionTracker implements IConversionTracker {
       responded_at: event.userResponse ? new Date().toISOString() : null,
     };
 
-    const { error } = await (
-      supabase.from("ks_conversion_events") as {
-        insert: (values: ConversionEventInsert) => Promise<{
-          error: { code?: string; message: string } | null;
-        }>;
-      }
-    ).insert(eventInsertData);
+    const { error } = await supabase
+      .from("ks_conversion_events")
+      .insert(eventInsertData);
 
     if (error) {
       // 表不存在时仅记录日志
@@ -324,25 +287,13 @@ export class ConversionTracker implements IConversionTracker {
   async updateStage(userId: string, stage: ConversionStage): Promise<void> {
     const supabase = await createClient();
 
-    type TrialStateUpdate =
-      Database["public"]["Tables"]["ks_user_trial_states"]["Update"];
     const updateData: TrialStateUpdate = {
       conversion_stage: stage,
       updated_at: new Date().toISOString(),
     };
 
-    const { error } = await (
-      supabase.from("ks_user_trial_states") as {
-        update: (values: TrialStateUpdate) => {
-          eq: (
-            column: string,
-            value: string,
-          ) => Promise<{
-            error: { code?: string; message: string } | null;
-          }>;
-        };
-      }
-    )
+    const { error } = await supabase
+      .from("ks_user_trial_states")
       .update(updateData)
       .eq("user_id", userId);
 
@@ -405,40 +356,18 @@ export class ConversionTracker implements IConversionTracker {
     }
 
     // 检查冷却时间
-    type UpgradePromptRow =
-      Database["public"]["Tables"]["ks_upgrade_prompts"]["Row"];
-    const { data: recentPrompts } = await (
-      supabase.from("ks_upgrade_prompts") as {
-        select: (columns: string) => {
-          eq: (
-            column: string,
-            value: string,
-          ) => {
-            eq: (
-              column: string,
-              value: string,
-            ) => {
-              order: (
-                column: string,
-                options: { ascending: boolean },
-              ) => {
-                limit: (count: number) => Promise<{
-                  data: UpgradePromptRow[] | null;
-                }>;
-              };
-            };
-          };
-        };
-      }
-    )
+    const { data: recentPrompts } = await supabase
+      .from("ks_upgrade_prompts")
       .select("*")
       .eq("user_id", userId)
       .eq("prompt_type", promptConfig.type)
       .order("shown_at", { ascending: false })
       .limit(1);
 
-    if (recentPrompts && recentPrompts.length > 0) {
-      const lastPrompt = recentPrompts[0];
+    const typedRecentPrompts = recentPrompts as UpgradePromptRow[] | null;
+
+    if (typedRecentPrompts && typedRecentPrompts.length > 0) {
+      const lastPrompt = typedRecentPrompts[0];
       if (
         lastPrompt.cooldown_until &&
         new Date(lastPrompt.cooldown_until) > now
@@ -453,8 +382,6 @@ export class ConversionTracker implements IConversionTracker {
       cooldownUntil.getHours() + promptConfig.cooldownHours,
     );
 
-    type UpgradePromptInsert =
-      Database["public"]["Tables"]["ks_upgrade_prompts"]["Insert"];
     const promptInsertData: UpgradePromptInsert = {
       user_id: userId,
       prompt_type: promptConfig.type,
@@ -463,13 +390,7 @@ export class ConversionTracker implements IConversionTracker {
       cooldown_until: cooldownUntil.toISOString(),
     };
 
-    await (
-      supabase.from("ks_upgrade_prompts") as {
-        insert: (values: UpgradePromptInsert) => Promise<{
-          error: { message: string } | null;
-        }>;
-      }
-    ).insert(promptInsertData);
+    await supabase.from("ks_upgrade_prompts").insert(promptInsertData);
 
     return promptConfig;
   }
@@ -485,35 +406,13 @@ export class ConversionTracker implements IConversionTracker {
     const supabase = await createClient();
 
     // 更新最近的提示记录
-    type UpgradePromptUpdate =
-      Database["public"]["Tables"]["ks_upgrade_prompts"]["Update"];
     const updateData: UpgradePromptUpdate = {
       response: response ?? null,
       responded_at: new Date().toISOString(),
     };
 
-    const { error } = await (
-      supabase.from("ks_upgrade_prompts") as {
-        update: (values: UpgradePromptUpdate) => {
-          eq: (
-            column: string,
-            value: string,
-          ) => {
-            eq: (
-              column: string,
-              value: string,
-            ) => {
-              is: (
-                column: string,
-                value: null,
-              ) => Promise<{
-                error: { code?: string; message: string } | null;
-              }>;
-            };
-          };
-        };
-      }
-    )
+    const { error } = await supabase
+      .from("ks_upgrade_prompts")
       .update(updateData)
       .eq("user_id", userId)
       .eq("prompt_type", promptType)
@@ -554,25 +453,13 @@ export class ConversionTracker implements IConversionTracker {
   async updateLastActive(userId: string): Promise<void> {
     const supabase = await createClient();
 
-    type TrialStateUpdate =
-      Database["public"]["Tables"]["ks_user_trial_states"]["Update"];
     const updateData: TrialStateUpdate = {
       last_active_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
 
-    await (
-      supabase.from("ks_user_trial_states") as {
-        update: (values: TrialStateUpdate) => {
-          eq: (
-            column: string,
-            value: string,
-          ) => Promise<{
-            error: { message: string } | null;
-          }>;
-        };
-      }
-    )
+    await supabase
+      .from("ks_user_trial_states")
       .update(updateData)
       .eq("user_id", userId);
   }
@@ -596,25 +483,13 @@ export class ConversionTracker implements IConversionTracker {
     // 更新体验列表
     const newFeatures = [...trialState.featuresExperienced, featureId];
 
-    type TrialStateUpdate =
-      Database["public"]["Tables"]["ks_user_trial_states"]["Update"];
     const updateData: TrialStateUpdate = {
       features_experienced: newFeatures,
       updated_at: new Date().toISOString(),
     };
 
-    await (
-      supabase.from("ks_user_trial_states") as {
-        update: (values: TrialStateUpdate) => {
-          eq: (
-            column: string,
-            value: string,
-          ) => Promise<{
-            error: { message: string } | null;
-          }>;
-        };
-      }
-    )
+    await supabase
+      .from("ks_user_trial_states")
       .update(updateData)
       .eq("user_id", userId);
 
@@ -639,25 +514,13 @@ export class ConversionTracker implements IConversionTracker {
       return;
     }
 
-    type TrialStateUpdate =
-      Database["public"]["Tables"]["ks_user_trial_states"]["Update"];
     const updateData: TrialStateUpdate = {
       generations_used: trialState.generationsUsed + 1,
       updated_at: new Date().toISOString(),
     };
 
-    const { error } = await (
-      supabase.from("ks_user_trial_states") as {
-        update: (values: TrialStateUpdate) => {
-          eq: (
-            column: string,
-            value: string,
-          ) => Promise<{
-            error: { code?: string; message: string } | null;
-          }>;
-        };
-      }
-    )
+    const { error } = await supabase
+      .from("ks_user_trial_states")
       .update(updateData)
       .eq("user_id", userId);
 

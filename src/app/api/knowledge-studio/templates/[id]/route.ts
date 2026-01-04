@@ -8,9 +8,14 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createLogger } from "@/lib/logger";
-import type { Database } from "@/types/supabase";
+import type { Database, Json } from "@/types/supabase";
 
 const logger = createLogger("api:knowledge-studio:templates:[id]");
+
+// 类型定义
+type TemplateRow = Database["public"]["Tables"]["ks_custom_templates"]["Row"];
+type TemplateUpdate =
+  Database["public"]["Tables"]["ks_custom_templates"]["Update"];
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -38,26 +43,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     logger.info({ userId: user.id, templateId: id }, "Fetching template");
 
-    // 类型安全的查询
-    type TemplateRow =
-      Database["public"]["Tables"]["ks_custom_templates"]["Row"];
-    const { data, error } = await (
-      supabase.from("ks_custom_templates") as {
-        select: (columns: string) => {
-          eq: (
-            column: string,
-            value: string,
-          ) => {
-            or: (filter: string) => {
-              single: () => Promise<{
-                data: TemplateRow | null;
-                error: { message: string; code?: string } | null;
-              }>;
-            };
-          };
-        };
-      }
-    )
+    // 使用标准 Supabase 查询模式
+    const { data, error } = await supabase
+      .from("ks_custom_templates")
       .select("*")
       .eq("id", id)
       .or(`user_id.eq.${user.id},visibility.eq.public`)
@@ -77,7 +65,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    return NextResponse.json({ data });
+    // 类型断言在结果层
+    const template = data as TemplateRow | null;
+
+    return NextResponse.json({ data: template });
   } catch (error) {
     logger.error(
       { error: error instanceof Error ? error.message : String(error) },
@@ -130,30 +121,9 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       "Updating template",
     );
 
-    // 检查所有权
-    type TemplateRow =
-      Database["public"]["Tables"]["ks_custom_templates"]["Row"];
-    type TemplateExistingType = Pick<TemplateRow, "id" | "version">;
-    const { data: existing, error: checkError } = await (
-      supabase.from("ks_custom_templates") as {
-        select: (columns: string) => {
-          eq: (
-            column: string,
-            value: string,
-          ) => {
-            eq: (
-              column: string,
-              value: string,
-            ) => {
-              single: () => Promise<{
-                data: TemplateExistingType | null;
-                error: { message: string } | null;
-              }>;
-            };
-          };
-        };
-      }
-    )
+    // 检查所有权 - 使用标准 Supabase 模式
+    const { data: existing, error: checkError } = await supabase
+      .from("ks_custom_templates")
       .select("id, version")
       .eq("id", id)
       .eq("user_id", user.id)
@@ -166,9 +136,10 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    // 类型断言
+    const existingTemplate = existing as { id: string; version: number };
+
     // 构建更新对象
-    type TemplateUpdate =
-      Database["public"]["Tables"]["ks_custom_templates"]["Update"];
     const updates: TemplateUpdate = {
       updated_at: new Date().toISOString(),
     };
@@ -184,30 +155,11 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     if (visibility !== undefined) updates.visibility = visibility;
     if (status !== undefined) updates.status = status;
     if (tags !== undefined) updates.tags = tags;
-    if (incrementVersion) updates.version = existing.version + 1;
+    if (incrementVersion) updates.version = existingTemplate.version + 1;
 
-    const { data, error } = await (
-      supabase.from("ks_custom_templates") as {
-        update: (values: TemplateUpdate) => {
-          eq: (
-            column: string,
-            value: string,
-          ) => {
-            eq: (
-              column: string,
-              value: string,
-            ) => {
-              select: () => {
-                single: () => Promise<{
-                  data: TemplateRow | null;
-                  error: { message: string } | null;
-                }>;
-              };
-            };
-          };
-        };
-      }
-    )
+    // 使用标准 Supabase 更新模式
+    const { data, error } = await supabase
+      .from("ks_custom_templates")
       .update(updates)
       .eq("id", id)
       .eq("user_id", user.id)
@@ -222,7 +174,10 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    return NextResponse.json({ data });
+    // 类型断言在结果层
+    const template = data as TemplateRow | null;
+
+    return NextResponse.json({ data: template });
   } catch (error) {
     logger.error(
       { error: error instanceof Error ? error.message : String(error) },
@@ -257,23 +212,9 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     logger.info({ userId: user.id, templateId: id }, "Deleting template");
 
-    const { error } = await (
-      supabase.from("ks_custom_templates") as {
-        delete: () => {
-          eq: (
-            column: string,
-            value: string,
-          ) => {
-            eq: (
-              column: string,
-              value: string,
-            ) => Promise<{
-              error: { message: string } | null;
-            }>;
-          };
-        };
-      }
-    )
+    // 使用标准 Supabase 删除模式
+    const { error } = await supabase
+      .from("ks_custom_templates")
       .delete()
       .eq("id", id)
       .eq("user_id", user.id);

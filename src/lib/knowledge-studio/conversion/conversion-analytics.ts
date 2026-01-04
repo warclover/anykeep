@@ -17,13 +17,21 @@ import type {
   ConversionTrigger,
   UpgradePromptType,
 } from "./types";
-import type { Database, Json } from "@/types/supabase";
+import type { Database } from "@/types/supabase";
 
 // ============================================================================
-// 数据库行类型
+// 数据库类型别名（保留用于类型安全参考，暂未使用）
 // ============================================================================
 
-interface TrialStateRow {
+type _TrialStateRow =
+  Database["public"]["Tables"]["ks_user_trial_states"]["Row"];
+void _TrialStateRow; // suppress unused warning - reserved for future type-safe refactoring
+
+// ============================================================================
+// 内部接口（用于类型映射）
+// ============================================================================
+
+interface TrialStateRowInternal {
   id: string;
   user_id: string;
   status: "active" | "expired" | "converted" | "cancelled";
@@ -37,11 +45,21 @@ interface TrialStateRow {
   metadata: Record<string, unknown>;
 }
 
+interface FunnelMetricsRpcResult {
+  period?: { start: string; end: string };
+  stageCounts?: Record<ConversionStage, number>;
+  triggerDistribution?: Record<ConversionTrigger, number>;
+  totalTrials?: number;
+  totalConverted?: number;
+  overallConversionRate?: number;
+  averageConversionDays?: number;
+}
+
 // ============================================================================
 // 类型转换工具
 // ============================================================================
 
-function rowToTrialState(row: TrialStateRow): UserTrialState {
+function rowToTrialState(row: TrialStateRowInternal): UserTrialState {
   return {
     userId: row.user_id,
     status: row.status,
@@ -88,24 +106,13 @@ export class ConversionAnalytics implements IConversionAnalytics {
     const supabase = await createClient();
 
     // 调用 RPC 函数获取指标
-    type GetConversionFunnelMetricsParams = {
-      p_start_date: string;
-      p_end_date: string;
-    };
-    const { data, error } = await (
-      supabase.rpc as {
-        (
-          fnName: "get_conversion_funnel_metrics",
-          params: GetConversionFunnelMetricsParams,
-        ): Promise<{
-          data: Json | null;
-          error: { code?: string; message: string } | null;
-        }>;
-      }
-    )("get_conversion_funnel_metrics", {
-      p_start_date: startDate.toISOString(),
-      p_end_date: endDate.toISOString(),
-    });
+    const { data, error } = await supabase.rpc(
+      "get_conversion_funnel_metrics",
+      {
+        p_start_date: startDate.toISOString(),
+        p_end_date: endDate.toISOString(),
+      },
+    );
 
     if (error) {
       // 如果 RPC 不存在，返回空指标
@@ -120,35 +127,27 @@ export class ConversionAnalytics implements IConversionAnalytics {
     }
 
     // 解析 RPC 返回的 JSONB 数据
-    const metrics = data as {
-      period: { start: string; end: string };
-      stageCounts: Record<ConversionStage, number>;
-      triggerDistribution: Record<ConversionTrigger, number>;
-      totalTrials: number;
-      totalConverted: number;
-      overallConversionRate: number;
-      averageConversionDays: number;
-    };
+    const metrics = data as unknown as FunnelMetricsRpcResult | null;
 
     // 计算各阶段转化率
     const stageConversionRates = this.calculateStageConversionRates(
-      metrics.stageCounts,
-      metrics.totalTrials,
+      metrics?.stageCounts ?? this.getEmptyStageCounts(),
+      metrics?.totalTrials ?? 0,
     );
 
     logger.info(
-      { startDate, endDate, totalTrials: metrics.totalTrials },
+      { startDate, endDate, totalTrials: metrics?.totalTrials ?? 0 },
       "Funnel metrics retrieved",
     );
 
     return {
       period: { start: startDate, end: endDate },
-      stageCounts: metrics.stageCounts || this.getEmptyStageCounts(),
+      stageCounts: metrics?.stageCounts || this.getEmptyStageCounts(),
       stageConversionRates,
-      overallConversionRate: metrics.overallConversionRate || 0,
-      averageConversionDays: metrics.averageConversionDays || 0,
+      overallConversionRate: metrics?.overallConversionRate || 0,
+      averageConversionDays: metrics?.averageConversionDays || 0,
       triggerDistribution:
-        metrics.triggerDistribution || this.getEmptyTriggerCounts(),
+        metrics?.triggerDistribution || this.getEmptyTriggerCounts(),
     };
   }
 
@@ -159,23 +158,8 @@ export class ConversionAnalytics implements IConversionAnalytics {
     const supabase = await createClient();
 
     // 获取用户试用状态
-    type TrialStateRow =
-      Database["public"]["Tables"]["ks_user_trial_states"]["Row"];
-    const { data: trialData, error: trialError } = await (
-      supabase.from("ks_user_trial_states") as {
-        select: (columns: string) => {
-          eq: (
-            column: string,
-            value: string,
-          ) => {
-            single: () => Promise<{
-              data: TrialStateRow | null;
-              error: { message: string } | null;
-            }>;
-          };
-        };
-      }
-    )
+    const { data: trialData, error: trialError } = await supabase
+      .from("ks_user_trial_states")
       .select("*")
       .eq("user_id", userId)
       .single();
@@ -185,7 +169,7 @@ export class ConversionAnalytics implements IConversionAnalytics {
       return this.getDefaultInsight(userId);
     }
 
-    const trial = trialData as TrialStateRow;
+    const trial = trialData as unknown as TrialStateRowInternal;
 
     // 获取用户提示统计
     const { data: promptStats } = await supabase
@@ -197,12 +181,12 @@ export class ConversionAnalytics implements IConversionAnalytics {
     let promptsShown = 0;
     let promptsClicked = 0;
     if (promptStats) {
-      promptsShown = (
-        promptStats as { prompt_type: string; response: string | null }[]
-      ).length;
-      promptsClicked = (
-        promptStats as { prompt_type: string; response: string | null }[]
-      ).filter(
+      const typedPromptStats = promptStats as {
+        prompt_type: string;
+        response: string | null;
+      }[];
+      promptsShown = typedPromptStats.length;
+      promptsClicked = typedPromptStats.filter(
         (p) => p.response === "clicked" || p.response === "converted",
       ).length;
     }
@@ -268,22 +252,7 @@ export class ConversionAnalytics implements IConversionAnalytics {
     const supabase = await createClient();
 
     // 调用 RPC 函数
-    type GetExpiringTrialsParams = {
-      p_within_days: number;
-    };
-    type TrialStateRow =
-      Database["public"]["Tables"]["ks_user_trial_states"]["Row"];
-    const { data, error } = await (
-      supabase.rpc as {
-        (
-          fnName: "get_expiring_trials",
-          params: GetExpiringTrialsParams,
-        ): Promise<{
-          data: TrialStateRow[] | null;
-          error: { code?: string; message: string } | null;
-        }>;
-      }
-    )("get_expiring_trials", {
+    const { data, error } = await supabase.rpc("get_expiring_trials", {
       p_within_days: withinDays,
     });
 
@@ -296,13 +265,13 @@ export class ConversionAnalytics implements IConversionAnalytics {
       return [];
     }
 
-    const rows = data as TrialStateRow[];
+    const rows = data as unknown as TrialStateRowInternal[] | null;
     logger.info(
-      { withinDays, count: rows.length },
+      { withinDays, count: rows?.length ?? 0 },
       "Expiring trials retrieved",
     );
 
-    return rows.map(rowToTrialState);
+    return (rows ?? []).map(rowToTrialState);
   }
 
   /**
@@ -312,28 +281,8 @@ export class ConversionAnalytics implements IConversionAnalytics {
     const supabase = await createClient();
 
     // 获取所有活跃试用用户
-    type TrialStateRow =
-      Database["public"]["Tables"]["ks_user_trial_states"]["Row"];
-    const { data, error } = await (
-      supabase.from("ks_user_trial_states") as {
-        select: (columns: string) => {
-          eq: (
-            column: string,
-            value: string,
-          ) => {
-            order: (
-              column: string,
-              options: { ascending: boolean },
-            ) => {
-              limit: (count: number) => Promise<{
-                data: TrialStateRow[] | null;
-                error: { code?: string; message: string } | null;
-              }>;
-            };
-          };
-        };
-      }
-    )
+    const { data, error } = await supabase
+      .from("ks_user_trial_states")
       .select("*")
       .eq("status", "active")
       .order("generations_used", { ascending: false })
@@ -355,9 +304,11 @@ export class ConversionAnalytics implements IConversionAnalytics {
       return [];
     }
 
+    const typedData = data as unknown as TrialStateRowInternal[];
+
     // 计算每个用户的洞察
     const insights: UserConversionInsight[] = [];
-    for (const row of data as TrialStateRow[]) {
+    for (const row of typedData) {
       const insight = await this.getUserInsight(row.user_id);
       insights.push(insight);
     }
@@ -389,36 +340,8 @@ export class ConversionAnalytics implements IConversionAnalytics {
     const futureDate = new Date(now);
     futureDate.setDate(futureDate.getDate() + withinDays);
 
-    type TrialStateRow =
-      Database["public"]["Tables"]["ks_user_trial_states"]["Row"];
-    const { data, error } = await (
-      supabase.from("ks_user_trial_states") as {
-        select: (columns: string) => {
-          eq: (
-            column: string,
-            value: string,
-          ) => {
-            gt: (
-              column: string,
-              value: string,
-            ) => {
-              lte: (
-                column: string,
-                value: string,
-              ) => {
-                order: (
-                  column: string,
-                  options: { ascending: boolean },
-                ) => Promise<{
-                  data: TrialStateRow[] | null;
-                  error: { message: string } | null;
-                }>;
-              };
-            };
-          };
-        };
-      }
-    )
+    const { data, error } = await supabase
+      .from("ks_user_trial_states")
       .select("*")
       .eq("status", "active")
       .gt("expires_at", now.toISOString())
@@ -430,7 +353,8 @@ export class ConversionAnalytics implements IConversionAnalytics {
       return [];
     }
 
-    return (data as TrialStateRow[]).map(rowToTrialState);
+    const typedData = data as unknown as TrialStateRowInternal[] | null;
+    return (typedData ?? []).map(rowToTrialState);
   }
 
   /**
@@ -473,7 +397,7 @@ export class ConversionAnalytics implements IConversionAnalytics {
    * 推荐触发器和提示类型
    */
   private recommendTriggerAndPrompt(
-    trial: TrialStateRow,
+    trial: TrialStateRowInternal,
     factors: ConversionProbabilityFactors,
     churnRisk: "low" | "medium" | "high",
   ): { trigger: ConversionTrigger; promptType: UpgradePromptType } {
@@ -507,7 +431,7 @@ export class ConversionAnalytics implements IConversionAnalytics {
    * 计算价值评分
    */
   private calculateValueScore(
-    trial: TrialStateRow,
+    trial: TrialStateRowInternal,
     factors: ConversionProbabilityFactors,
   ): number {
     let score = 0;

@@ -162,7 +162,9 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       updated_at: new Date().toISOString(),
     };
 
-    const supabaseQuery = supabase.from("synthesis_reports") as unknown as {
+    const supabaseUpdateQuery = supabase.from(
+      "synthesis_reports",
+    ) as unknown as {
       update: (values: SynthesisReportUpdate) => {
         eq: (
           column: string,
@@ -182,7 +184,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
         };
       };
     };
-    const { data: report, error } = await supabaseQuery
+    const { data: report, error } = await supabaseUpdateQuery
       .update(updateData)
       .eq("id", reportId)
       .eq("user_id", user.id)

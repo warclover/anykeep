@@ -74,10 +74,25 @@ export const getMasteryStatsTool: Tool<
     try {
       const supabase = await createClient();
 
+      // RPC 返回类型
+      interface ReviewStatsRpcResult {
+        total_flashcards?: number;
+        mastered_count?: number;
+        learning_count?: number;
+        pending_count?: number;
+        due_today?: number;
+        overdue_count?: number;
+        weekly_reviews?: number;
+        streak_days?: number;
+        avg_ease_factor?: number;
+      }
+
       // 调用 RPC 获取统计数据
-      const { data: stats, error } = await supabase.rpc("get_review_stats", {
+      const { data, error } = await supabase.rpc("get_review_stats", {
         p_user_id: context.userId,
       });
+
+      const stats = data as unknown as ReviewStatsRpcResult | null;
 
       if (error) {
         logger.error(

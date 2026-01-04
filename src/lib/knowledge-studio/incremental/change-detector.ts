@@ -16,13 +16,27 @@ import type {
   ParagraphImpact,
   ImpactLevel,
 } from "./types";
-import type { Database, Json } from "@/types/supabase";
+import type { Database } from "@/types/supabase";
 
 // ============================================================================
-// 数据库行类型
+// 数据库类型别名（保留用于类型安全参考，暂未使用）
 // ============================================================================
 
-interface ChangeSetRow {
+type _ChangeSetRow =
+  Database["public"]["Tables"]["ks_report_change_sets"]["Row"];
+void _ChangeSetRow; // suppress unused warning - reserved for future type-safe refactoring
+type ChangeSetInsert =
+  Database["public"]["Tables"]["ks_report_change_sets"]["Insert"];
+type ChangeSetUpdate =
+  Database["public"]["Tables"]["ks_report_change_sets"]["Update"];
+type SynthesisReportRow =
+  Database["public"]["Tables"]["synthesis_reports"]["Row"];
+
+// ============================================================================
+// 内部接口（用于 RPC 返回和行映射）
+// ============================================================================
+
+interface ChangeSetRowInternal {
   id: string;
   report_id: string;
   user_id: string;
@@ -33,11 +47,11 @@ interface ChangeSetRow {
   created_at: string;
 }
 
-interface PendingChangeSetRow {
+interface PendingChangeSetRpcResult {
   id: string;
   report_id: string;
-  changes: BookmarkChange[];
-  impact_level: ImpactLevel;
+  changes: Json;
+  impact_level: string;
   created_at: string;
 }
 
@@ -45,7 +59,7 @@ interface PendingChangeSetRow {
 // 类型转换工具
 // ============================================================================
 
-function rowToChangeSet(row: ChangeSetRow): ReportChangeSet {
+function rowToChangeSet(row: ChangeSetRowInternal): ReportChangeSet {
   return {
     id: row.id,
     reportId: row.report_id,
@@ -57,11 +71,13 @@ function rowToChangeSet(row: ChangeSetRow): ReportChangeSet {
   };
 }
 
-function pendingRowToChangeSet(row: PendingChangeSetRow): ReportChangeSet {
+function pendingRpcToChangeSet(
+  row: PendingChangeSetRpcResult,
+): ReportChangeSet {
   return {
     id: row.id,
     reportId: row.report_id,
-    changes: row.changes ?? [],
+    changes: (row.changes as unknown as BookmarkChange[]) ?? [],
     createdAt: new Date(row.created_at),
     impactLevel: row.impact_level as ImpactLevel,
     processed: false,
@@ -153,35 +169,8 @@ export class ChangeDetector implements IChangeDetector {
     const supabase = await createClient();
 
     // 查询未处理的变更集
-    type ChangeSetRow =
-      Database["public"]["Tables"]["ks_report_change_sets"]["Row"];
-    const { data, error } = await (
-      supabase.from("ks_report_change_sets") as {
-        select: (columns: string) => {
-          eq: (
-            column: string,
-            value: string,
-          ) => {
-            eq: (
-              column: string,
-              value: boolean,
-            ) => {
-              order: (
-                column: string,
-                options: { ascending: boolean },
-              ) => {
-                limit: (count: number) => {
-                  single: () => Promise<{
-                    data: ChangeSetRow | null;
-                    error: { code?: string; message: string } | null;
-                  }>;
-                };
-              };
-            };
-          };
-        };
-      }
-    )
+    const { data, error } = await supabase
+      .from("ks_report_change_sets")
       .select("*")
       .eq("report_id", reportId)
       .eq("processed", false)
@@ -211,16 +200,18 @@ export class ChangeDetector implements IChangeDetector {
       return null;
     }
 
+    const typedData = data as unknown as ChangeSetRowInternal;
+
     logger.info(
       {
         reportId,
-        changeSetId: data.id,
-        changesCount: data.changes?.length ?? 0,
+        changeSetId: typedData.id,
+        changesCount: typedData.changes?.length ?? 0,
       },
       "Changes detected for report",
     );
 
-    return rowToChangeSet(data as ChangeSetRow);
+    return rowToChangeSet(typedData);
   }
 
   /**
@@ -234,28 +225,8 @@ export class ChangeDetector implements IChangeDetector {
     const supabase = await createClient();
 
     // 获取报告内容以分析段落影响
-    // 类型断言: 手动维护类型文件时需要此断言
-    // 注意：这里使用的是 synthesis_reports 表，不是 ks_reports
-    type SynthesisReportRow =
-      Database["public"]["Tables"]["synthesis_reports"]["Row"];
-    const { data: report, error: reportError } = await (
-      supabase.from("synthesis_reports") as {
-        select: (columns: string) => {
-          eq: (
-            column: string,
-            value: string,
-          ) => {
-            single: () => Promise<{
-              data: Pick<
-                SynthesisReportRow,
-                "content" | "generation_metadata"
-              > | null;
-              error: { message: string } | null;
-            }>;
-          };
-        };
-      }
-    )
+    const { data: report, error: reportError } = await supabase
+      .from("synthesis_reports")
       .select("content, generation_metadata")
       .eq("id", changeSet.reportId)
       .single();
@@ -264,20 +235,24 @@ export class ChangeDetector implements IChangeDetector {
     let paragraphsToUpdate = 0;
     let paragraphsToRegenerate = 0;
 
-    if (!reportError && report) {
+    const typedReport = report as Pick<
+      SynthesisReportRow,
+      "content" | "generation_metadata"
+    > | null;
+
+    if (!reportError && typedReport) {
       // 解析报告内容，分析每个段落
-      const content = report.content || "";
+      const content = (typedReport.content as string) || "";
       const paragraphs = content
         .split(/\n\n+/)
         .filter((p: string) => p.trim().length > 0);
-      const metadata = report.generation_metadata as
+      const metadata = typedReport.generation_metadata as
         | { source_bookmark_ids?: string[] }
         | undefined;
       const sourceBookmarkIds = metadata?.source_bookmark_ids || [];
 
       // 分析每个变更对段落的影响
       for (let i = 0; i < paragraphs.length; i++) {
-        const paragraph = paragraphs[i];
         const affectedBookmarkIds: string[] = [];
 
         // 检查变更的书签是否影响此段落
@@ -319,7 +294,7 @@ export class ChangeDetector implements IChangeDetector {
 
           paragraphImpacts.push({
             paragraphIndex: i,
-            contentPreview: paragraph.substring(0, 100),
+            contentPreview: paragraphs[i].substring(0, 100),
             impactLevel,
             affectedBookmarkIds,
             suggestedAction,
@@ -370,28 +345,7 @@ export class ChangeDetector implements IChangeDetector {
     const supabase = await createClient();
 
     // 调用 RPC 函数
-    type GetPendingChangeSetsParams = {
-      p_user_id: string;
-      p_limit: number;
-    };
-    type PendingChangeSetRow = {
-      id: string;
-      report_id: string;
-      changes: Json;
-      impact_level: string;
-      created_at: string;
-    };
-    const { data, error } = await (
-      supabase.rpc as {
-        (
-          fnName: "get_pending_change_sets",
-          params: GetPendingChangeSetsParams,
-        ): Promise<{
-          data: PendingChangeSetRow[] | null;
-          error: { message: string } | null;
-        }>;
-      }
-    )("get_pending_change_sets", {
+    const { data, error } = await supabase.rpc("get_pending_change_sets", {
       p_user_id: userId,
       p_limit: 50,
     });
@@ -404,7 +358,8 @@ export class ChangeDetector implements IChangeDetector {
       throw new Error(`获取待处理变更失败: ${error.message}`);
     }
 
-    const changeSets = (data ?? []).map((row) => pendingRowToChangeSet(row));
+    const rpcData = data as unknown as PendingChangeSetRpcResult[] | null;
+    const changeSets = (rpcData ?? []).map((row) => pendingRpcToChangeSet(row));
 
     logger.info(
       { userId, count: changeSets.length },
@@ -420,25 +375,13 @@ export class ChangeDetector implements IChangeDetector {
   async markProcessed(changeSetId: string): Promise<void> {
     const supabase = await createClient();
 
-    type ChangeSetUpdate =
-      Database["public"]["Tables"]["ks_report_change_sets"]["Update"];
     const updateData: ChangeSetUpdate = {
       processed: true,
       processed_at: new Date().toISOString(),
     };
 
-    const { error } = await (
-      supabase.from("ks_report_change_sets") as {
-        update: (values: ChangeSetUpdate) => {
-          eq: (
-            column: string,
-            value: string,
-          ) => Promise<{
-            error: { message: string } | null;
-          }>;
-        };
-      }
-    )
+    const { error } = await supabase
+      .from("ks_report_change_sets")
       .update(updateData)
       .eq("id", changeSetId);
 
@@ -467,29 +410,15 @@ export class ChangeDetector implements IChangeDetector {
 
     const impactLevel = calculateImpactLevel(changes);
 
-    type ChangeSetInsert =
-      Database["public"]["Tables"]["ks_report_change_sets"]["Insert"];
-    type ChangeSetRow =
-      Database["public"]["Tables"]["ks_report_change_sets"]["Row"];
     const insertData: ChangeSetInsert = {
       report_id: reportId,
       user_id: userId,
-      changes: changes as Json,
+      changes: changes as unknown as Json,
       impact_level: impactLevel,
     };
 
-    const { data, error } = await (
-      supabase.from("ks_report_change_sets") as {
-        insert: (values: ChangeSetInsert) => {
-          select: () => {
-            single: () => Promise<{
-              data: ChangeSetRow | null;
-              error: { message: string } | null;
-            }>;
-          };
-        };
-      }
-    )
+    const { data, error } = await supabase
+      .from("ks_report_change_sets")
       .insert(insertData)
       .select()
       .single();
@@ -506,17 +435,19 @@ export class ChangeDetector implements IChangeDetector {
       throw new Error(`创建变更集失败: 未返回数据`);
     }
 
+    const typedData = data as unknown as ChangeSetRowInternal;
+
     logger.info(
       {
         reportId,
-        changeSetId: data.id,
+        changeSetId: typedData.id,
         changesCount: changes.length,
         impactLevel,
       },
       "Change set created",
     );
 
-    return rowToChangeSet(data as ChangeSetRow);
+    return rowToChangeSet(typedData);
   }
 }
 

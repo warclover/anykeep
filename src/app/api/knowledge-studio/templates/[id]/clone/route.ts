@@ -12,6 +12,9 @@ import type { Database } from "@/types/supabase";
 
 const logger = createLogger("api:knowledge-studio:templates:[id]:clone");
 
+// 类型定义
+type TemplateRow = Database["public"]["Tables"]["ks_custom_templates"]["Row"];
+
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
@@ -44,24 +47,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       "Cloning template",
     );
 
-    // 调用 RPC 克隆模板
-    // 注意：RPC 函数类型可能未在 Database 类型中定义，使用类型断言
-    // 但确保参数类型安全
-    type CloneTemplateParams = {
-      p_template_id: string;
-      p_new_name: string | null;
-    };
-    const { data, error } = await (
-      supabase.rpc as {
-        (
-          fnName: "clone_template",
-          params: CloneTemplateParams,
-        ): Promise<{
-          data: string | null; // 返回新模板 ID
-          error: { message: string } | null;
-        }>;
-      }
-    )("clone_template", {
+    // 调用 RPC 克隆模板 - 使用标准 Supabase 模式
+    const { data, error } = await supabase.rpc("clone_template", {
       p_template_id: id,
       p_new_name: newName || null,
     });
@@ -80,24 +67,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // 获取克隆后的模板详情
-    type TemplateRow =
-      Database["public"]["Tables"]["ks_custom_templates"]["Row"];
-    const { data: clonedTemplate, error: fetchError } = await (
-      supabase.from("ks_custom_templates") as {
-        select: (columns: string) => {
-          eq: (
-            column: string,
-            value: string,
-          ) => {
-            single: () => Promise<{
-              data: TemplateRow | null;
-              error: { message: string } | null;
-            }>;
-          };
-        };
-      }
-    )
+    // 获取克隆后的模板详情 - 使用标准 Supabase 模式
+    const { data: clonedTemplate, error: fetchError } = await supabase
+      .from("ks_custom_templates")
       .select("*")
       .eq("id", data as string)
       .single();
@@ -113,7 +85,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    return NextResponse.json({ data: clonedTemplate }, { status: 201 });
+    // 类型断言在结果层
+    const template = clonedTemplate as TemplateRow | null;
+
+    return NextResponse.json({ data: template }, { status: 201 });
   } catch (error) {
     logger.error(
       { error: error instanceof Error ? error.message : String(error) },

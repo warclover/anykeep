@@ -299,6 +299,19 @@ export class RAGMetricsCollector {
   }
 
   /**
+   * 获取调试信息（记录数量等）
+   */
+  getDebugInfo(): {
+    searchRecordsCount: number;
+    apiCallRecordsCount: number;
+  } {
+    return {
+      searchRecordsCount: this.searchRecords.length,
+      apiCallRecordsCount: this.apiCallRecords.length,
+    };
+  }
+
+  /**
    * 获取每日统计
    */
   getDailyStats(): {
@@ -508,12 +521,10 @@ export function getRAGMetricsCollector(
         "RAGMetricsCollector: New instance created (globalThis)",
       );
     } else {
+      const debugInfo = globalThis.__ragMetricsCollector.getDebugInfo();
       logger.debug(
         {
-          searchRecordsCount:
-            globalThis.__ragMetricsCollector.searchRecords.length,
-          apiCallRecordsCount:
-            globalThis.__ragMetricsCollector.apiCallRecords.length,
+          ...debugInfo,
           storage: "globalThis",
         },
         "RAGMetricsCollector: Using existing instance (globalThis)",

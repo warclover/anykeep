@@ -33,21 +33,7 @@ export async function GET(_request: NextRequest) {
     logger.info({ userId: user.id }, "Fetching mastery stats");
 
     // 调用 RPC 获取内化率统计
-    // 注意：RPC 函数类型可能未在 Database 类型中定义，使用类型断言
-    type GetMasteryStatsParams = {
-      p_user_id: string;
-    };
-    const { data, error } = await (
-      supabase.rpc as {
-        (
-          fnName: "get_user_mastery_stats",
-          params: GetMasteryStatsParams,
-        ): Promise<{
-          data: unknown;
-          error: { message: string } | null;
-        }>;
-      }
-    )("get_user_mastery_stats", {
+    const { data, error } = await supabase.rpc("get_user_mastery_stats", {
       p_user_id: user.id,
     });
 

@@ -18,40 +18,22 @@ import type {
   LearningSession,
   MasteryLevel,
 } from "./types";
-import type { Database, Json } from "@/types/supabase";
+import type { Database } from "@/types/supabase";
 
 // ============================================================================
-// 数据库行类型
+// 数据库类型别名（使用 Database 类型）
 // ============================================================================
 
-interface MasteryRow {
-  id: string;
-  user_id: string;
-  knowledge_point_id: string;
-  mastery_level: MasteryLevel;
-  review_count: number;
-  correct_count: number;
-  accuracy: number;
-  last_reviewed_at: string | null;
-  next_review_at: string | null;
-  interval_days: number;
-  ease_factor: number;
-}
-
-interface SessionRow {
-  id: string;
-  user_id: string;
-  report_id: string;
-  started_at: string;
-  ended_at: string | null;
-  points_studied: number;
-  points_reviewed: number;
-  correct_answers: number;
-  total_answers: number;
-  duration_minutes: number;
-}
-
-// DueReviewRow 类型在函数内部定义，此处不再需要
+type MasteryRow =
+  Database["public"]["Tables"]["ks_knowledge_point_mastery"]["Row"];
+type SessionRow = Database["public"]["Tables"]["ks_learning_sessions"]["Row"];
+type SessionInsert =
+  Database["public"]["Tables"]["ks_learning_sessions"]["Insert"];
+type SessionUpdate =
+  Database["public"]["Tables"]["ks_learning_sessions"]["Update"];
+type KnowledgePointRow =
+  Database["public"]["Tables"]["ks_knowledge_points"]["Row"];
+type ReviewRow = Database["public"]["Tables"]["ks_review_records"]["Row"];
 
 // ============================================================================
 // 类型转换工具
@@ -62,7 +44,7 @@ function rowToMastery(row: MasteryRow): KnowledgePointMastery {
     id: row.id,
     userId: row.user_id,
     knowledgePointId: row.knowledge_point_id,
-    masteryLevel: row.mastery_level,
+    masteryLevel: row.mastery_level as MasteryLevel,
     reviewCount: row.review_count,
     correctCount: row.correct_count,
     accuracy: row.accuracy,
@@ -120,28 +102,8 @@ export class MasteryTracker implements IMasteryTracker {
   ): Promise<KnowledgePointMastery | null> {
     const supabase = await createClient();
 
-    type MasteryRow =
-      Database["public"]["Tables"]["ks_knowledge_point_mastery"]["Row"];
-    const { data, error } = await (
-      supabase.from("ks_knowledge_point_mastery") as {
-        select: (columns: string) => {
-          eq: (
-            column: string,
-            value: string,
-          ) => {
-            eq: (
-              column: string,
-              value: string,
-            ) => {
-              single: () => Promise<{
-                data: MasteryRow | null;
-                error: { code?: string; message: string } | null;
-              }>;
-            };
-          };
-        };
-      }
-    )
+    const { data, error } = await supabase
+      .from("ks_knowledge_point_mastery")
       .select("*")
       .eq("user_id", userId)
       .eq("knowledge_point_id", pointId)
@@ -155,7 +117,7 @@ export class MasteryTracker implements IMasteryTracker {
       throw new Error(`获取知识点掌握状态失败: ${error.message}`);
     }
 
-    return data ? rowToMastery(data) : null;
+    return data ? rowToMastery(data as MasteryRow) : null;
   }
 
   /**
@@ -165,30 +127,16 @@ export class MasteryTracker implements IMasteryTracker {
     const supabase = await createClient();
 
     // 调用 RPC 函数记录复习并更新掌握度
-    type RecordReviewParams = {
-      p_user_id: string;
-      p_knowledge_point_id: string;
-      p_session_id: string | null;
-      p_rating: number;
-      p_response_time_ms: number;
-    };
-    const { data, error } = await (
-      supabase.rpc as {
-        (
-          fnName: "record_review_and_update_mastery",
-          params: RecordReviewParams,
-        ): Promise<{
-          data: Json | null;
-          error: { message: string } | null;
-        }>;
-      }
-    )("record_review_and_update_mastery", {
-      p_user_id: record.userId,
-      p_knowledge_point_id: record.knowledgePointId,
-      p_session_id: record.sessionId,
-      p_rating: record.rating,
-      p_response_time_ms: record.responseTimeMs,
-    });
+    const { data, error } = await supabase.rpc(
+      "record_review_and_update_mastery",
+      {
+        p_user_id: record.userId,
+        p_knowledge_point_id: record.knowledgePointId,
+        p_session_id: record.sessionId,
+        p_rating: record.rating,
+        p_response_time_ms: record.responseTimeMs,
+      },
+    );
 
     if (error) {
       logger.error({ error: error.message }, "Failed to record review");
@@ -216,21 +164,8 @@ export class MasteryTracker implements IMasteryTracker {
     const supabase = await createClient();
 
     // 获取报告的所有知识点
-    type KnowledgePointRow =
-      Database["public"]["Tables"]["ks_knowledge_points"]["Row"];
-    const { data: points, error: pointsError } = await (
-      supabase.from("ks_knowledge_points") as {
-        select: (columns: string) => {
-          eq: (
-            column: string,
-            value: string,
-          ) => Promise<{
-            data: Pick<KnowledgePointRow, "id">[] | null;
-            error: { message: string } | null;
-          }>;
-        };
-      }
-    )
+    const { data: points, error: pointsError } = await supabase
+      .from("ks_knowledge_points")
       .select("id")
       .eq("report_id", reportId);
 
@@ -242,7 +177,9 @@ export class MasteryTracker implements IMasteryTracker {
       throw new Error(`获取报告知识点失败: ${pointsError.message}`);
     }
 
-    const pointIds = (points ?? []).map((p) => p.id);
+    const pointIds = (points ?? []).map(
+      (p: Pick<KnowledgePointRow, "id">) => p.id,
+    );
 
     if (pointIds.length === 0) {
       return {
@@ -266,26 +203,8 @@ export class MasteryTracker implements IMasteryTracker {
     }
 
     // 获取用户对这些知识点的掌握度
-    type MasteryRow =
-      Database["public"]["Tables"]["ks_knowledge_point_mastery"]["Row"];
-    const { data: masteryData, error: masteryError } = await (
-      supabase.from("ks_knowledge_point_mastery") as {
-        select: (columns: string) => {
-          eq: (
-            column: string,
-            value: string,
-          ) => {
-            in: (
-              column: string,
-              values: string[],
-            ) => Promise<{
-              data: MasteryRow[] | null;
-              error: { message: string } | null;
-            }>;
-          };
-        };
-      }
-    )
+    const { data: masteryData, error: masteryError } = await supabase
+      .from("ks_knowledge_point_mastery")
       .select("*")
       .eq("user_id", userId)
       .in("knowledge_point_id", pointIds);
@@ -299,27 +218,8 @@ export class MasteryTracker implements IMasteryTracker {
     }
 
     // 获取学习会话统计
-    type SessionRow =
-      Database["public"]["Tables"]["ks_learning_sessions"]["Row"];
-    const { data: sessions } = await (
-      supabase.from("ks_learning_sessions") as {
-        select: (columns: string) => {
-          eq: (
-            column: string,
-            value: string,
-          ) => {
-            eq: (
-              column: string,
-              value: string,
-            ) => Promise<{
-              data:
-                | Pick<SessionRow, "duration_minutes" | "started_at">[]
-                | null;
-            }>;
-          };
-        };
-      }
-    )
+    const { data: sessions } = await supabase
+      .from("ks_learning_sessions")
       .select("duration_minutes, started_at")
       .eq("user_id", userId)
       .eq("report_id", reportId);
@@ -337,7 +237,8 @@ export class MasteryTracker implements IMasteryTracker {
     let totalAccuracy = 0;
     let lastStudiedAt: Date | undefined;
 
-    for (const mastery of masteryData ?? []) {
+    const typedMasteryData = masteryData as MasteryRow[] | null;
+    for (const mastery of typedMasteryData ?? []) {
       const level = mastery.mastery_level as MasteryLevel;
       levelCounts[level] = (levelCounts[level] || 0) + 1;
       totalReviews += mastery.review_count;
@@ -352,7 +253,7 @@ export class MasteryTracker implements IMasteryTracker {
     }
 
     // 未学习的知识点计入 unknown
-    levelCounts.unknown += pointIds.length - (masteryData?.length ?? 0);
+    levelCounts.unknown += pointIds.length - (typedMasteryData?.length ?? 0);
 
     // 计算内化率（加权平均）
     const masteredCount = levelCounts.mastered + levelCounts.proficient * 0.75;
@@ -361,24 +262,26 @@ export class MasteryTracker implements IMasteryTracker {
 
     // 计算平均正确率
     const averageAccuracy =
-      masteryData && masteryData.length > 0
-        ? totalAccuracy / masteryData.length
+      typedMasteryData && typedMasteryData.length > 0
+        ? totalAccuracy / typedMasteryData.length
         : 0;
 
     // 计算学习时间和天数
-    const totalStudyMinutes = (sessions ?? []).reduce(
+    type SessionDuration = Pick<SessionRow, "duration_minutes" | "started_at">;
+    const typedSessions = sessions as SessionDuration[] | null;
+    const totalStudyMinutes = (typedSessions ?? []).reduce(
       (sum, s) => sum + s.duration_minutes,
       0,
     );
     const uniqueDays = new Set(
-      (sessions ?? []).map(
+      (typedSessions ?? []).map(
         (s) => new Date(s.started_at).toISOString().split("T")[0],
       ),
     ).size;
 
     // 判断学习状态
     let status: ReportMasteryStats["status"];
-    if (masteryData?.length === 0) {
+    if (typedMasteryData?.length === 0) {
       status = "not_started";
     } else if (levelCounts.mastered === pointIds.length) {
       status = "completed";
@@ -410,20 +313,7 @@ export class MasteryTracker implements IMasteryTracker {
     const supabase = await createClient();
 
     // 调用 RPC 函数
-    type GetUserMasteryStatsParams = {
-      p_user_id: string;
-    };
-    const { data, error } = await (
-      supabase.rpc as {
-        (
-          fnName: "get_user_mastery_stats",
-          params: GetUserMasteryStatsParams,
-        ): Promise<{
-          data: Json | null;
-          error: { message: string } | null;
-        }>;
-      }
-    )("get_user_mastery_stats", {
+    const { data, error } = await supabase.rpc("get_user_mastery_stats", {
       p_user_id: userId,
     });
 
@@ -436,30 +326,8 @@ export class MasteryTracker implements IMasteryTracker {
     }
 
     // 计算连续学习天数
-    type SessionRow =
-      Database["public"]["Tables"]["ks_learning_sessions"]["Row"];
-    const { data: recentSessions } = await (
-      supabase.from("ks_learning_sessions") as {
-        select: (columns: string) => {
-          eq: (
-            column: string,
-            value: string,
-          ) => {
-            gte: (
-              column: string,
-              value: string,
-            ) => {
-              order: (
-                column: string,
-                options: { ascending: boolean },
-              ) => Promise<{
-                data: Pick<SessionRow, "started_at">[] | null;
-              }>;
-            };
-          };
-        };
-      }
-    )
+    const { data: recentSessions } = await supabase
+      .from("ks_learning_sessions")
       .select("started_at")
       .eq("user_id", userId)
       .gte(
@@ -469,12 +337,14 @@ export class MasteryTracker implements IMasteryTracker {
       .order("started_at", { ascending: false });
 
     let streakDays = 0;
-    if (recentSessions && recentSessions.length > 0) {
+    type SessionStarted = Pick<SessionRow, "started_at">;
+    const typedRecentSessions = recentSessions as SessionStarted[] | null;
+    if (typedRecentSessions && typedRecentSessions.length > 0) {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
       const studyDates = new Set(
-        recentSessions.map((s) => {
+        typedRecentSessions.map((s) => {
           const d = new Date(s.started_at);
           d.setHours(0, 0, 0, 0);
           return d.getTime();
@@ -489,26 +359,12 @@ export class MasteryTracker implements IMasteryTracker {
     }
 
     // 计算学习趋势
-    const currentWeekMinutes = data?.weeklyStudyMinutes ?? 0;
-    type SessionRow =
-      Database["public"]["Tables"]["ks_learning_sessions"]["Row"];
-    const { data: lastWeekData } = (await (
-      supabase.from("ks_learning_sessions") as {
-        select: (columns: string) => {
-          eq: (
-            column: string,
-            value: string,
-          ) => {
-            gte: (
-              column: string,
-              value: string,
-            ) => Promise<{
-              data: Pick<SessionRow, "duration_minutes">[] | null;
-            }>;
-          };
-        };
-      }
-    )
+    // RPC 返回 Json 类型，需要类型断言
+    const rpcData = data as Record<string, number> | null;
+    const currentWeekMinutes = rpcData?.weeklyStudyMinutes ?? 0;
+
+    const { data: lastWeekData } = await supabase
+      .from("ks_learning_sessions")
       .select("duration_minutes")
       .eq("user_id", userId)
       .gte(
@@ -518,9 +374,11 @@ export class MasteryTracker implements IMasteryTracker {
       .lt(
         "started_at",
         new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-      )) as { data: DurationRow[] | null };
+      );
 
-    const lastWeekMinutes = (lastWeekData ?? []).reduce(
+    type DurationRow = Pick<SessionRow, "duration_minutes">;
+    const typedLastWeekData = lastWeekData as DurationRow[] | null;
+    const lastWeekMinutes = (typedLastWeekData ?? []).reduce(
       (sum, s) => sum + s.duration_minutes,
       0,
     );
@@ -533,21 +391,8 @@ export class MasteryTracker implements IMasteryTracker {
     }
 
     // 获取学习的报告数
-    const { count: reportsStudied } = await (
-      supabase.from("ks_learning_sessions") as {
-        select: (
-          columns: string,
-          options?: { count?: "exact"; head?: boolean },
-        ) => {
-          eq: (
-            column: string,
-            value: string,
-          ) => Promise<{
-            count: number | null;
-          }>;
-        };
-      }
-    )
+    const { count: reportsStudied } = await supabase
+      .from("ks_learning_sessions")
       .select("report_id", { count: "exact", head: true })
       .eq("user_id", userId);
 
@@ -555,12 +400,12 @@ export class MasteryTracker implements IMasteryTracker {
       userId,
       reportsStudied: reportsStudied ?? 0,
       pointsMastered:
-        (data?.masteredPoints ?? 0) + (data?.proficientPoints ?? 0),
-      totalPoints: data?.totalPoints ?? 0,
-      overallMasteryRate: data?.overallMasteryRate ?? 0,
+        (rpcData?.masteredPoints ?? 0) + (rpcData?.proficientPoints ?? 0),
+      totalPoints: rpcData?.totalPoints ?? 0,
+      overallMasteryRate: rpcData?.overallMasteryRate ?? 0,
       streakDays,
       longestStreak: streakDays, // 需要额外计算历史最长连续
-      dueForReview: data?.dueForReview ?? 0,
+      dueForReview: rpcData?.dueForReview ?? 0,
       weeklyStudyMinutes: currentWeekMinutes,
       trend,
     };
@@ -576,30 +421,7 @@ export class MasteryTracker implements IMasteryTracker {
     const supabase = await createClient();
 
     // 调用 RPC 函数
-    type GetDueForReviewParams = {
-      p_user_id: string;
-      p_limit: number;
-    };
-    type DueReviewRow = {
-      knowledge_point_id: string;
-      content: string;
-      mastery_level: string;
-      interval_days: number;
-      last_reviewed_at: string | null;
-      next_review_at: string;
-      overdue_days: number;
-    };
-    const { data, error } = await (
-      supabase.rpc as {
-        (
-          fnName: "get_due_for_review",
-          params: GetDueForReviewParams,
-        ): Promise<{
-          data: DueReviewRow[] | null;
-          error: { message: string } | null;
-        }>;
-      }
-    )("get_due_for_review", {
+    const { data, error } = await supabase.rpc("get_due_for_review", {
       p_user_id: userId,
       p_limit: limit,
     });
@@ -609,12 +431,24 @@ export class MasteryTracker implements IMasteryTracker {
       throw new Error(`获取待复习知识点失败: ${error.message}`);
     }
 
+    // 定义 RPC 返回类型
+    interface DueReviewRow {
+      knowledge_point_id: string;
+      content: string;
+      mastery_level: string;
+      interval_days: number;
+      last_reviewed_at: string | null;
+      next_review_at: string;
+      overdue_days: number;
+    }
+
     // 转换为 KnowledgePointMastery 格式
-    return (data ?? []).map((row: DueReviewRow) => ({
+    const typedData = data as DueReviewRow[] | null;
+    return (typedData ?? []).map((row: DueReviewRow) => ({
       id: row.knowledge_point_id,
       userId,
       knowledgePointId: row.knowledge_point_id,
-      masteryLevel: row.mastery_level,
+      masteryLevel: row.mastery_level as MasteryLevel,
       reviewCount: 0, // RPC 不返回这些字段
       correctCount: 0,
       accuracy: 0,
@@ -643,56 +477,16 @@ export class MasteryTracker implements IMasteryTracker {
     startDate.setHours(0, 0, 0, 0);
 
     // 获取会话数据
-    type SessionRow =
-      Database["public"]["Tables"]["ks_learning_sessions"]["Row"];
-    const { data: sessions } = await (
-      supabase.from("ks_learning_sessions") as {
-        select: (columns: string) => {
-          eq: (
-            column: string,
-            value: string,
-          ) => {
-            gte: (
-              column: string,
-              value: string,
-            ) => {
-              order: (
-                column: string,
-                options: { ascending: boolean },
-              ) => Promise<{
-                data: SessionRow[] | null;
-              }>;
-            };
-          };
-        };
-      }
-    )
+    const { data: sessions } = await supabase
+      .from("ks_learning_sessions")
       .select("*")
       .eq("user_id", userId)
       .gte("started_at", startDate.toISOString())
       .order("started_at", { ascending: true });
 
     // 获取复习记录
-    type ReviewRow = Database["public"]["Tables"]["ks_review_records"]["Row"];
-    const { data: reviews } = await (
-      supabase.from("ks_review_records") as {
-        select: (columns: string) => {
-          eq: (
-            column: string,
-            value: string,
-          ) => {
-            gte: (
-              column: string,
-              value: string,
-            ) => Promise<{
-              data:
-                | Pick<ReviewRow, "created_at" | "knowledge_point_id">[]
-                | null;
-            }>;
-          };
-        };
-      }
-    )
+    const { data: reviews } = await supabase
+      .from("ks_review_records")
       .select("created_at, knowledge_point_id")
       .eq("user_id", userId)
       .gte("created_at", startDate.toISOString());
@@ -715,7 +509,8 @@ export class MasteryTracker implements IMasteryTracker {
     }
 
     // 聚合会话数据
-    for (const session of sessions ?? []) {
+    const typedSessions = sessions as SessionRow[] | null;
+    for (const session of typedSessions ?? []) {
       const dateStr = new Date(session.started_at).toISOString().split("T")[0];
       const entry = timelineMap.get(dateStr);
       if (entry) {
@@ -726,8 +521,10 @@ export class MasteryTracker implements IMasteryTracker {
     }
 
     // 聚合复习记录
+    type ReviewCreated = Pick<ReviewRow, "created_at" | "knowledge_point_id">;
+    const typedReviews = reviews as ReviewCreated[] | null;
     const reviewsByDate = new Map<string, Set<string>>();
-    for (const review of reviews ?? []) {
+    for (const review of typedReviews ?? []) {
       const dateStr = new Date(review.created_at).toISOString().split("T")[0];
       if (!reviewsByDate.has(dateStr)) {
         reviewsByDate.set(dateStr, new Set());
@@ -758,28 +555,14 @@ export class MasteryTracker implements IMasteryTracker {
   ): Promise<LearningSession> {
     const supabase = await createClient();
 
-    type SessionInsert =
-      Database["public"]["Tables"]["ks_learning_sessions"]["Insert"];
-    type SessionRow =
-      Database["public"]["Tables"]["ks_learning_sessions"]["Row"];
     const insertData: SessionInsert = {
       user_id: userId,
       report_id: reportId,
       started_at: new Date().toISOString(),
     };
 
-    const { data, error } = await (
-      supabase.from("ks_learning_sessions") as {
-        insert: (values: SessionInsert) => {
-          select: () => {
-            single: () => Promise<{
-              data: SessionRow | null;
-              error: { message: string } | null;
-            }>;
-          };
-        };
-      }
-    )
+    const { data, error } = await supabase
+      .from("ks_learning_sessions")
       .insert(insertData)
       .select()
       .single();
@@ -794,7 +577,7 @@ export class MasteryTracker implements IMasteryTracker {
       "Learning session created",
     );
 
-    return rowToSession(data);
+    return rowToSession(data as SessionRow);
   }
 
   /**
@@ -809,28 +592,8 @@ export class MasteryTracker implements IMasteryTracker {
     const supabase = await createClient();
 
     // 获取会话并验证所有权
-    type SessionRow =
-      Database["public"]["Tables"]["ks_learning_sessions"]["Row"];
-    const { data: session, error: fetchError } = await (
-      supabase.from("ks_learning_sessions") as {
-        select: (columns: string) => {
-          eq: (
-            column: string,
-            value: string,
-          ) => {
-            eq: (
-              column: string,
-              value: string,
-            ) => {
-              single: () => Promise<{
-                data: SessionRow | null;
-                error: { message: string } | null;
-              }>;
-            };
-          };
-        };
-      }
-    )
+    const { data: session, error: fetchError } = await supabase
+      .from("ks_learning_sessions")
       .select("*")
       .eq("id", sessionId)
       .eq("user_id", userId) // 添加用户所有权验证
@@ -840,38 +603,29 @@ export class MasteryTracker implements IMasteryTracker {
       throw new Error(`会话不存在或无权访问: ${sessionId}`);
     }
 
+    const typedSession = session as SessionRow;
+
     // 计算时长
-    const startedAt = new Date(session.started_at);
+    const startedAt = new Date(typedSession.started_at);
     const endedAt = new Date();
     const durationMinutes = Math.round(
       (endedAt.getTime() - startedAt.getTime()) / 60000,
     );
 
     // 获取本次会话的复习统计
-    type ReviewRow = Database["public"]["Tables"]["ks_review_records"]["Row"];
-    const { data: reviews } = await (
-      supabase.from("ks_review_records") as {
-        select: (columns: string) => {
-          eq: (
-            column: string,
-            value: string,
-          ) => Promise<{
-            data: Pick<ReviewRow, "rating">[] | null;
-          }>;
-        };
-      }
-    )
+    const { data: reviews } = await supabase
+      .from("ks_review_records")
       .select("rating")
       .eq("session_id", sessionId);
 
-    const totalAnswers = reviews?.length ?? 0;
-    const correctAnswers = (reviews ?? []).filter((r) => r.rating >= 3).length;
+    type ReviewRating = Pick<ReviewRow, "rating">;
+    const typedReviews = reviews as ReviewRating[] | null;
+    const totalAnswers = typedReviews?.length ?? 0;
+    const correctAnswers = (typedReviews ?? []).filter(
+      (r) => r.rating >= 3,
+    ).length;
 
     // 更新会话
-    type SessionUpdate =
-      Database["public"]["Tables"]["ks_learning_sessions"]["Update"];
-    type SessionRow =
-      Database["public"]["Tables"]["ks_learning_sessions"]["Row"];
     const updateData: SessionUpdate = {
       ended_at: endedAt.toISOString(),
       duration_minutes: durationMinutes,
@@ -880,23 +634,8 @@ export class MasteryTracker implements IMasteryTracker {
       correct_answers: correctAnswers,
     };
 
-    const { data, error } = await (
-      supabase.from("ks_learning_sessions") as {
-        update: (values: SessionUpdate) => {
-          eq: (
-            column: string,
-            value: string,
-          ) => {
-            select: () => {
-              single: () => Promise<{
-                data: SessionRow | null;
-                error: { message: string } | null;
-              }>;
-            };
-          };
-        };
-      }
-    )
+    const { data, error } = await supabase
+      .from("ks_learning_sessions")
       .update(updateData)
       .eq("id", sessionId)
       .select()
@@ -912,7 +651,7 @@ export class MasteryTracker implements IMasteryTracker {
       "Learning session ended",
     );
 
-    return rowToSession(data);
+    return rowToSession(data as SessionRow);
   }
 }
 

@@ -12,6 +12,11 @@ import type { Database, Json } from "@/types/supabase";
 
 const logger = createLogger("api:knowledge-studio:billing:usage");
 
+// 类型定义
+type UsageRecordInsert =
+  Database["public"]["Tables"]["ks_usage_records"]["Insert"];
+type UsageRecordRow = Database["public"]["Tables"]["ks_usage_records"]["Row"];
+
 /**
  * GET /api/knowledge-studio/billing/usage
  * 获取用户使用量统计
@@ -60,25 +65,8 @@ export async function GET(request: NextRequest) {
       "Fetching usage stats",
     );
 
-    // 调用 RPC 获取使用统计
-    // 注意：RPC 函数类型可能未在 Database 类型中定义，使用类型断言
-    type GetUsageStatsParams = {
-      p_user_id: string;
-      p_period: string;
-      p_start_date: string | null;
-      p_end_date: string | null;
-    };
-    const { data, error } = await (
-      supabase.rpc as {
-        (
-          fnName: "get_user_usage_stats",
-          params: GetUsageStatsParams,
-        ): Promise<{
-          data: unknown;
-          error: { message: string } | null;
-        }>;
-      }
-    )("get_user_usage_stats", {
+    // 调用 RPC 获取使用统计 - 使用标准 Supabase 模式
+    const { data, error } = await supabase.rpc("get_user_usage_stats", {
       p_user_id: user.id,
       p_period: period,
       p_start_date: startDate || null,
@@ -153,12 +141,6 @@ export async function POST(request: NextRequest) {
       "Recording usage",
     );
 
-    // 类型安全的插入操作
-    type UsageRecordInsert =
-      Database["public"]["Tables"]["ks_usage_records"]["Insert"];
-    type UsageRecordRow =
-      Database["public"]["Tables"]["ks_usage_records"]["Row"];
-
     const insertData: UsageRecordInsert = {
       user_id: user.id,
       usage_type: usageType,
@@ -167,18 +149,9 @@ export async function POST(request: NextRequest) {
       metadata: metadata as Json,
     };
 
-    const { data, error } = await (
-      supabase.from("ks_usage_records") as {
-        insert: (values: UsageRecordInsert) => {
-          select: () => {
-            single: () => Promise<{
-              data: UsageRecordRow | null;
-              error: { message: string } | null;
-            }>;
-          };
-        };
-      }
-    )
+    // 使用标准 Supabase 插入模式
+    const { data, error } = await supabase
+      .from("ks_usage_records")
       .insert(insertData)
       .select()
       .single();
@@ -191,7 +164,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({ data }, { status: 201 });
+    // 类型断言在结果层
+    const record = data as UsageRecordRow | null;
+
+    return NextResponse.json({ data: record }, { status: 201 });
   } catch (error) {
     logger.error(
       { error: error instanceof Error ? error.message : String(error) },

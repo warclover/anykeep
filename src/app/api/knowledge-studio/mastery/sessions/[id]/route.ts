@@ -12,6 +12,11 @@ import type { Database } from "@/types/supabase";
 
 const logger = createLogger("api:knowledge-studio:mastery:sessions:[id]");
 
+// 类型定义
+type SessionRow = Database["public"]["Tables"]["ks_learning_sessions"]["Row"];
+type SessionUpdate =
+  Database["public"]["Tables"]["ks_learning_sessions"]["Update"];
+
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
@@ -51,30 +56,9 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       "Updating session",
     );
 
-    // 检查所有权
-    type SessionRow =
-      Database["public"]["Tables"]["ks_learning_sessions"]["Row"];
-    type SessionExistingType = Pick<SessionRow, "id" | "started_at">;
-    const { data: existing, error: checkError } = await (
-      supabase.from("ks_learning_sessions") as {
-        select: (columns: string) => {
-          eq: (
-            column: string,
-            value: string,
-          ) => {
-            eq: (
-              column: string,
-              value: string,
-            ) => {
-              single: () => Promise<{
-                data: SessionExistingType | null;
-                error: { message: string } | null;
-              }>;
-            };
-          };
-        };
-      }
-    )
+    // 检查所有权 - 使用标准 Supabase 模式
+    const { data: existing, error: checkError } = await supabase
+      .from("ks_learning_sessions")
       .select("id, started_at")
       .eq("id", id)
       .eq("user_id", user.id)
@@ -87,16 +71,17 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    // 类型断言
+    const existingSession = existing as { id: string; started_at: string };
+
     // 构建更新对象
-    type SessionUpdate =
-      Database["public"]["Tables"]["ks_learning_sessions"]["Update"];
     const updates: SessionUpdate = {};
 
     if (endSession) {
       updates.ended_at = new Date().toISOString();
       // 计算实际时长（如果未提供）
       if (durationMinutes === undefined) {
-        const startedAt = new Date(existing.started_at);
+        const startedAt = new Date(existingSession.started_at);
         updates.duration_minutes = Math.round(
           (Date.now() - startedAt.getTime()) / 60000,
         );
@@ -110,28 +95,9 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     if (durationMinutes !== undefined)
       updates.duration_minutes = durationMinutes;
 
-    const { data, error } = await (
-      supabase.from("ks_learning_sessions") as {
-        update: (values: SessionUpdate) => {
-          eq: (
-            column: string,
-            value: string,
-          ) => {
-            eq: (
-              column: string,
-              value: string,
-            ) => {
-              select: () => {
-                single: () => Promise<{
-                  data: SessionRow | null;
-                  error: { message: string } | null;
-                }>;
-              };
-            };
-          };
-        };
-      }
-    )
+    // 使用标准 Supabase 更新模式
+    const { data, error } = await supabase
+      .from("ks_learning_sessions")
       .update(updates)
       .eq("id", id)
       .eq("user_id", user.id)
@@ -146,7 +112,10 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    return NextResponse.json({ data });
+    // 类型断言在结果层
+    const session = data as SessionRow | null;
+
+    return NextResponse.json({ data: session });
   } catch (error) {
     logger.error(
       { error: error instanceof Error ? error.message : String(error) },

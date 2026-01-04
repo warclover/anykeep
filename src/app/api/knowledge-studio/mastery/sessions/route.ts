@@ -12,6 +12,10 @@ import type { Database } from "@/types/supabase";
 
 const logger = createLogger("api:knowledge-studio:mastery:sessions");
 
+type SessionRow = Database["public"]["Tables"]["ks_learning_sessions"]["Row"];
+type SessionInsert =
+  Database["public"]["Tables"]["ks_learning_sessions"]["Insert"];
+
 /**
  * GET /api/knowledge-studio/mastery/sessions
  * 获取学习会话列表
@@ -46,56 +50,16 @@ export async function GET(request: NextRequest) {
       "Fetching learning sessions",
     );
 
-    // 类型安全的查询
-    type SessionRow =
-      Database["public"]["Tables"]["ks_learning_sessions"]["Row"];
-    let query = (
-      supabase.from("ks_learning_sessions") as {
-        select: (
-          columns: string,
-          options?: { count?: "exact" },
-        ) => {
-          eq: (
-            column: string,
-            value: string,
-          ) => {
-            order: (
-              column: string,
-              options: { ascending: boolean },
-            ) => {
-              range: (
-                from: number,
-                to: number,
-              ) => Promise<{
-                data: SessionRow[] | null;
-                count: number | null;
-                error: { message: string } | null;
-              }>;
-              eq?: (
-                column: string,
-                value: string,
-              ) => {
-                range: (
-                  from: number,
-                  to: number,
-                ) => Promise<{
-                  data: SessionRow[] | null;
-                  count: number | null;
-                  error: { message: string } | null;
-                }>;
-              };
-            };
-          };
-        };
-      }
-    )
+    // 构建基础查询
+    let query = supabase
+      .from("ks_learning_sessions")
       .select("*", { count: "exact" })
       .eq("user_id", user.id)
       .order("started_at", { ascending: false })
       .range(offset, offset + limit - 1);
 
     if (reportId) {
-      query = query.eq("report_id", reportId) as typeof query;
+      query = query.eq("report_id", reportId);
     }
 
     const { data, error, count } = await query;
@@ -109,7 +73,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({
-      data,
+      data: data as SessionRow[],
       pagination: {
         total: count || 0,
         limit,
@@ -160,28 +124,14 @@ export async function POST(request: NextRequest) {
 
     logger.info({ userId: user.id, reportId }, "Creating learning session");
 
-    type SessionInsert =
-      Database["public"]["Tables"]["ks_learning_sessions"]["Insert"];
-    type SessionRow =
-      Database["public"]["Tables"]["ks_learning_sessions"]["Row"];
-    const sessionInsertData: SessionInsert = {
+    const sessionInsertData = {
       user_id: user.id,
       report_id: reportId,
     };
 
-    const { data, error } = await (
-      supabase.from("ks_learning_sessions") as {
-        insert: (values: SessionInsert) => {
-          select: () => {
-            single: () => Promise<{
-              data: SessionRow | null;
-              error: { message: string } | null;
-            }>;
-          };
-        };
-      }
-    )
-      .insert(sessionInsertData)
+    const { data, error } = await supabase
+      .from("ks_learning_sessions")
+      .insert(sessionInsertData as SessionInsert)
       .select()
       .single();
 
@@ -193,7 +143,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({ data }, { status: 201 });
+    return NextResponse.json({ data: data as SessionRow }, { status: 201 });
   } catch (error) {
     logger.error(
       { error: error instanceof Error ? error.message : String(error) },

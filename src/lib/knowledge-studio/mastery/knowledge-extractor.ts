@@ -9,22 +9,20 @@
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 import type { IKnowledgeExtractor, KnowledgePoint } from "./types";
+import type { Database } from "@/types/supabase";
 
 // ============================================================================
-// 数据库行类型
+// 数据库类型别名（使用 Database 类型）
 // ============================================================================
 
-interface KnowledgePointRow {
-  id: string;
-  report_id: string;
-  content: string;
-  keywords: string[];
-  paragraph_index: number;
-  source_bookmark_ids: string[];
-  difficulty: number;
-  importance: number;
-  created_at: string;
-}
+type KnowledgePointRow =
+  Database["public"]["Tables"]["ks_knowledge_points"]["Row"];
+type KnowledgePointInsert =
+  Database["public"]["Tables"]["ks_knowledge_points"]["Insert"];
+type KnowledgePointUpdate =
+  Database["public"]["Tables"]["ks_knowledge_points"]["Update"];
+type SynthesisReportRow =
+  Database["public"]["Tables"]["synthesis_reports"]["Row"];
 
 // ============================================================================
 // 类型转换工具
@@ -81,26 +79,8 @@ export class KnowledgeExtractor implements IKnowledgeExtractor {
     }
 
     // 获取报告内容（使用 synthesis_reports 表）
-    type SynthesisReportRow =
-      Database["public"]["Tables"]["synthesis_reports"]["Row"];
-    const { data: report, error: reportError } = await (
-      supabase.from("synthesis_reports") as {
-        select: (columns: string) => {
-          eq: (
-            column: string,
-            value: string,
-          ) => {
-            single: () => Promise<{
-              data: Pick<
-                SynthesisReportRow,
-                "content" | "generation_metadata"
-              > | null;
-              error: { code?: string; message: string } | null;
-            }>;
-          };
-        };
-      }
-    )
+    const { data: report, error: reportError } = await supabase
+      .from("synthesis_reports")
       .select("content, generation_metadata")
       .eq("id", reportId)
       .single();
@@ -118,11 +98,23 @@ export class KnowledgeExtractor implements IKnowledgeExtractor {
       throw new Error(`获取报告失败: ${reportError.message}`);
     }
 
+    type ReportPick = Pick<
+      SynthesisReportRow,
+      "content" | "generation_metadata"
+    >;
+    const typedReport = report as ReportPick | null;
+
+    // 解析 generation_metadata 获取 source_bookmark_ids
+    const metadata = typedReport?.generation_metadata as
+      | { source_bookmark_ids?: string[] }
+      | undefined;
+    const sourceBookmarkIds = metadata?.source_bookmark_ids ?? [];
+
     // 解析报告内容提取知识点
     const extractedPoints = this.parseReportContent(
-      report?.content ?? "",
+      (typedReport?.content as string) ?? "",
       reportId,
-      report?.source_bookmark_ids ?? [],
+      sourceBookmarkIds,
     );
 
     if (extractedPoints.length === 0) {
@@ -131,10 +123,6 @@ export class KnowledgeExtractor implements IKnowledgeExtractor {
     }
 
     // 批量插入知识点
-    type KnowledgePointInsert =
-      Database["public"]["Tables"]["ks_knowledge_points"]["Insert"];
-    type KnowledgePointRow =
-      Database["public"]["Tables"]["ks_knowledge_points"]["Row"];
     const pointsToInsert: KnowledgePointInsert[] = extractedPoints.map(
       (point) => ({
         report_id: point.reportId,
@@ -147,16 +135,8 @@ export class KnowledgeExtractor implements IKnowledgeExtractor {
       }),
     );
 
-    const { data, error } = await (
-      supabase.from("ks_knowledge_points") as {
-        insert: (values: KnowledgePointInsert[]) => {
-          select: () => Promise<{
-            data: KnowledgePointRow[] | null;
-            error: { message: string } | null;
-          }>;
-        };
-      }
-    )
+    const { data, error } = await supabase
+      .from("ks_knowledge_points")
       .insert(pointsToInsert)
       .select();
 
@@ -168,16 +148,14 @@ export class KnowledgeExtractor implements IKnowledgeExtractor {
       throw new Error(`保存知识点失败: ${error.message}`);
     }
 
-    const resultData = data ?? [];
+    const resultData = data as KnowledgePointRow[] | null;
 
     logger.info(
-      { reportId, count: resultData.length },
+      { reportId, count: resultData?.length ?? 0 },
       "Knowledge points extracted and saved",
     );
 
-    return resultData.map((row) =>
-      rowToKnowledgePoint(row as KnowledgePointRow),
-    );
+    return (resultData ?? []).map((row) => rowToKnowledgePoint(row));
   }
 
   /**
@@ -322,9 +300,8 @@ export class KnowledgeExtractor implements IKnowledgeExtractor {
       throw new Error(`获取知识点失败: ${error.message}`);
     }
 
-    return (data ?? []).map((row) =>
-      rowToKnowledgePoint(row as KnowledgePointRow),
-    );
+    const typedData = data as KnowledgePointRow[] | null;
+    return (typedData ?? []).map((row) => rowToKnowledgePoint(row));
   }
 
   /**
@@ -336,7 +313,7 @@ export class KnowledgeExtractor implements IKnowledgeExtractor {
   ): Promise<void> {
     const supabase = await createClient();
 
-    const updateData: Record<string, unknown> = {};
+    const updateData: KnowledgePointUpdate = {};
 
     if (updates.content !== undefined) updateData.content = updates.content;
     if (updates.keywords !== undefined) updateData.keywords = updates.keywords;
@@ -349,21 +326,9 @@ export class KnowledgeExtractor implements IKnowledgeExtractor {
       return;
     }
 
-    type KnowledgePointUpdate =
-      Database["public"]["Tables"]["ks_knowledge_points"]["Update"];
-    const { error } = await (
-      supabase.from("ks_knowledge_points") as {
-        update: (values: KnowledgePointUpdate) => {
-          eq: (
-            column: string,
-            value: string,
-          ) => Promise<{
-            error: { message: string } | null;
-          }>;
-        };
-      }
-    )
-      .update(updateData as KnowledgePointUpdate)
+    const { error } = await supabase
+      .from("ks_knowledge_points")
+      .update(updateData)
       .eq("id", pointId);
 
     if (error) {

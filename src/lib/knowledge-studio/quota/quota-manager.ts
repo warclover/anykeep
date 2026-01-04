@@ -29,13 +29,9 @@ import {
 } from "./types";
 import type {
   DeductQuotaParams,
-  DeductQuotaResult as RpcDeductQuotaResult,
   ConfirmQuotaParams,
-  ConfirmQuotaResult as RpcConfirmQuotaResult,
   RefundQuotaParams,
-  RefundQuotaResult as RpcRefundQuotaResult,
   GetQuotaUsageSummaryParams,
-  GetQuotaUsageSummaryResult,
 } from "./rpc-types";
 
 const logger = createLogger("quota-manager");
@@ -95,10 +91,7 @@ export class QuotaManager {
         p_request_id: requestId,
         p_cost: request.cost,
       };
-      const { data, error } = await supabase.rpc<
-        RpcDeductQuotaResult,
-        DeductQuotaParams
-      >("deduct_quota", params);
+      const { data, error } = await supabase.rpc("deduct_quota", params);
 
       if (error) {
         logger.error({ error, requestId }, "Failed to deduct quota");
@@ -154,10 +147,7 @@ export class QuotaManager {
         p_request_id: request.requestId,
         p_synthesis_report_id: request.synthesisReportId || null,
       };
-      const { data, error } = await supabase.rpc<
-        RpcConfirmQuotaResult,
-        ConfirmQuotaParams
-      >("confirm_quota", params);
+      const { data, error } = await supabase.rpc("confirm_quota", params);
 
       if (error) {
         logger.error(
@@ -202,10 +192,7 @@ export class QuotaManager {
         p_request_id: request.requestId,
         p_error_message: request.reason,
       };
-      const { data, error } = await supabase.rpc<
-        RpcRefundQuotaResult,
-        RefundQuotaParams
-      >("refund_quota", params);
+      const { data, error } = await supabase.rpc("refund_quota", params);
 
       if (error) {
         logger.error(
@@ -312,10 +299,10 @@ export class QuotaManager {
     const params: GetQuotaUsageSummaryParams = {
       p_user_id: userId,
     };
-    const { data: usage, error: usageError } = await supabase.rpc<
-      GetQuotaUsageSummaryResult[],
-      GetQuotaUsageSummaryParams
-    >("get_quota_usage_summary", params);
+    const { data: usage, error: usageError } = await supabase.rpc(
+      "get_quota_usage_summary",
+      params,
+    );
 
     if (usageError) {
       logger.error({ userId, error: usageError }, "Failed to get quota usage");
@@ -347,10 +334,10 @@ export class QuotaManager {
     const params: GetQuotaUsageSummaryParams = {
       p_user_id: userId,
     };
-    const { data, error } = await supabase.rpc<
-      GetQuotaUsageSummaryResult[],
-      GetQuotaUsageSummaryParams
-    >("get_quota_usage_summary", params);
+    const { data, error } = await supabase.rpc(
+      "get_quota_usage_summary",
+      params,
+    );
 
     if (error) {
       logger.error({ userId, error }, "Failed to get usage summary");

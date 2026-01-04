@@ -152,7 +152,7 @@ export const getReviewQueueTool: Tool<
             : 0;
 
           return {
-            flashcardId: fc.id,
+            flashcardId: fc.flashcard_id,
             bookmarkId: fc.bookmark_id,
             bookmarkTitle: fc.bookmark_title,
             bookmarkUrl: fc.bookmark_url,
