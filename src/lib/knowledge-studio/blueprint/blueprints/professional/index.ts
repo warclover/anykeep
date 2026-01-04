@@ -11,6 +11,12 @@
  * - workshop_designer: 课程设计师
  */
 
+// Import for local use
+import { createTechDeciderBlueprint } from "./tech-decider";
+import { createLiteratureMatrixBlueprint } from "./literature-matrix";
+import { createSeoPillarBlueprint } from "./seo-pillar";
+import { createWorkshopDesignerBlueprint } from "./workshop-designer";
+
 // TechDecider (Story 7.1)
 export {
   TechDeciderBlueprint,

@@ -10,6 +10,11 @@
  * - interview_prep: 访谈准备官
  */
 
+// Import for local use
+import { createScriptwriterBlueprint } from "./scriptwriter";
+import { createNewsletterBlueprint } from "./newsletter";
+import { createInterviewPrepBlueprint } from "./interview-prep";
+
 // Scriptwriter (Story 5.1)
 export {
   ScriptwriterBlueprint,

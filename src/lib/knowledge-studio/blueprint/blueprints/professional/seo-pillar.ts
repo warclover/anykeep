@@ -350,7 +350,7 @@ export class SeoPillarBlueprint extends EnhancedBlueprintEngine<SeoPillarOutput>
   ): AsyncGenerator<OrchestrationStreamChunk, BlueprintOutline, unknown> {
     yield* this.reportProgress("outline", 10, "分析内容素材...");
 
-    const briefingPrompt = input.briefingContext
+    const _briefingPrompt = input.briefingContext
       ? injectBriefingToPrompt(
           "",
           input.briefingContext,
@@ -375,12 +375,16 @@ ${briefingPrompt}
 
     yield* this.reportProgress("outline", 30, "生成 SEO 架构...");
 
-    const materialContents = input.materials.map((m) => m.content).join("\n\n");
-    const result = await generateOutline({
-      materialContent: materialContents,
-      customPrompt: outlinePrompt,
-      blueprintType: "seo_pillar",
-    });
+    const result = await generateOutline(
+      input.materials,
+      {
+        blueprintId: this.blueprintId,
+        blueprintName: this.displayName,
+        blueprintInstructions: outlinePrompt,
+        targetLength: input.targetLength ?? "medium",
+      },
+      input.briefingContext,
+    );
 
     yield* this.reportProgress("outline", 100, "大纲生成完成");
 
@@ -401,7 +405,7 @@ ${briefingPrompt}
       throw new Error("缺少大纲信息");
     }
 
-    const briefingPrompt = input.briefingContext
+    const _briefingPrompt = input.briefingContext
       ? injectBriefingToPrompt(
           "",
           input.briefingContext,
@@ -409,15 +413,17 @@ ${briefingPrompt}
         )
       : "";
 
-    const materialContents = input.materials.map((m) => m.content).join("\n\n");
-
     let fullContent = "";
-    const stream = generateContentStream({
-      outline,
-      materialContent: materialContents,
-      briefingContext: briefingPrompt,
-      blueprintType: "seo_pillar",
-    });
+    const stream = generateContentStream(
+      input.materials,
+      {
+        blueprintId: this.blueprintId,
+        blueprintName: this.displayName,
+        outline,
+        targetLength: input.targetLength ?? "medium",
+      },
+      input.briefingContext,
+    );
 
     for await (const chunk of stream) {
       if (chunk.type === "text" && chunk.data.text) {

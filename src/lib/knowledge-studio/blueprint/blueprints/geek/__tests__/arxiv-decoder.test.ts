@@ -13,6 +13,7 @@ import type { EnhancedBlueprintInput, BriefingContext } from "../../../types";
 
 const mockMaterial = {
   id: "paper-1",
+  bookmarkId: "paper-1",
   type: "document" as const,
   title: "Attention Is All You Need",
   content: `
@@ -53,6 +54,7 @@ The Transformer can be trained significantly faster than architectures based on 
 - 优化注意力计算效率
 - 添加梯度检查点
 `,
+  url: "https://arxiv.org/abs/1706.03762",
   sourceUrl: "https://arxiv.org/abs/1706.03762",
 };
 

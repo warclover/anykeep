@@ -268,6 +268,19 @@ export type TargetUserGroup =
   | "content_creator" // 内容创作者
   | "marketer" // 营销人员
   | "analyst" // 分析师
+  | "entrepreneur" // 创业者
+  | "investor" // 投资人
+  | "journalist" // 记者
+  | "podcaster" // 播客主持人
+  | "writer" // 作者
+  | "video_creator" // 视频创作者
+  | "educator" // 教育者/培训师
+  | "academic" // 学术研究者
+  | "student" // 学生
+  | "blogger" // 博主
+  | "tech_lead" // 技术负责人
+  | "trainer" // 培训师
+  | "facilitator" // 引导师
   | "general"; // 通用
 
 /**
@@ -292,7 +305,14 @@ export interface EnhancedBlueprintMetadata {
   // ========== 可选字段 (Story 1.2 AC) ==========
 
   /** 蓝图分类 */
-  category?: "geek" | "creator" | "business" | "tech" | "classic" | "custom";
+  category?:
+    | "geek"
+    | "creator"
+    | "business"
+    | "tech"
+    | "classic"
+    | "professional"
+    | "custom";
   /** 优先级排序 (数字越小越靠前) */
   priority?: number;
   /** 是否为新蓝图 (用于标记 NEW 徽章) */

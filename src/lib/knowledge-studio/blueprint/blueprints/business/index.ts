@@ -10,6 +10,11 @@
  * - pitch_narrative: 故事线专家
  */
 
+// Import for local use
+import { createCompetitorScoutBlueprint } from "./competitor-scout";
+import { createDueDiligenceBlueprint } from "./due-diligence";
+import { createPitchNarrativeBlueprint } from "./pitch-narrative";
+
 // CompetitorScout (Story 6.1)
 export {
   CompetitorScoutBlueprint,

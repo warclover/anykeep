@@ -15,6 +15,7 @@ import { z } from "zod";
 import type { OrchestrationStreamChunk } from "../../../ai-skills/output/types";
 import {
   EnhancedBlueprintEngine,
+  EnhancedBlueprintInputSchema,
   type BlueprintExecutionContext,
 } from "../enhanced-blueprint-engine";
 import { BlueprintRegistry, getBlueprintRegistry } from "../blueprint-registry";
@@ -58,13 +59,8 @@ class MockBlueprint extends EnhancedBlueprintEngine<TestOutput> {
   readonly priority?: number;
   readonly isNew?: boolean;
 
-  readonly inputSchema = z.object({
-    materials: z.array(z.any()),
-    briefingContext: z.any().optional(),
-    customPrompt: z.string().optional(),
-    targetLength: z.enum(["short", "medium", "long"]).optional(),
-    requestMetadata: z.any().optional(),
-  });
+  // Use the base class schema for compatibility
+  readonly inputSchema = EnhancedBlueprintInputSchema;
 
   readonly outputSchema = z.object({
     version: z.string(),

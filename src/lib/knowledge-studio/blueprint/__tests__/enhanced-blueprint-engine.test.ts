@@ -15,6 +15,7 @@ import type { OrchestrationStreamChunk } from "../../../ai-skills/output/types";
 import type { OrchestrationContext } from "../../../ai-skills/orchestration";
 import {
   EnhancedBlueprintEngine,
+  EnhancedBlueprintInputSchema,
   type BlueprintExecutionContext,
 } from "../enhanced-blueprint-engine";
 import type {
@@ -48,14 +49,8 @@ class TestBlueprint extends EnhancedBlueprintEngine<TestOutput> {
   readonly targetUsers: TargetUserGroup[] = ["developer", "general"];
   readonly creditsCost = 2; // Story 8.1: Default credits cost
 
-  // BaseSkill required schemas
-  readonly inputSchema = z.object({
-    materials: z.array(z.any()),
-    briefingContext: z.any().optional(),
-    customPrompt: z.string().optional(),
-    targetLength: z.enum(["short", "medium", "long"]).optional(),
-    requestMetadata: z.any().optional(),
-  });
+  // BaseSkill required schemas - use EnhancedBlueprintInputSchema from base
+  readonly inputSchema = EnhancedBlueprintInputSchema;
 
   readonly outputSchema = z.object({
     version: z.string(),

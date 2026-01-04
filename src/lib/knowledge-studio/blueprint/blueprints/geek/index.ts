@@ -11,28 +11,31 @@
  * - system_design_review: 系统架构评审官
  */
 
-// ArxivDecoder (Story 4.1)
+// Import for local use
+import { createArxivDecoderBlueprint } from "./arxiv-decoder";
+import { createTutorialArchitectBlueprint } from "./tutorial-architect";
+import { createPrdMasterBlueprint } from "./prd-master";
+import { createSystemDesignReviewBlueprint } from "./system-design-review";
+
+// Re-export everything
 export {
   ArxivDecoderBlueprint,
   createArxivDecoderBlueprint,
   type ArxivDecoderOutput,
 } from "./arxiv-decoder";
 
-// TutorialArchitect (Story 4.2)
 export {
   TutorialArchitectBlueprint,
   createTutorialArchitectBlueprint,
   type TutorialArchitectOutput,
 } from "./tutorial-architect";
 
-// PrdMaster (Story 4.3)
 export {
   PrdMasterBlueprint,
   createPrdMasterBlueprint,
   type PrdMasterOutput,
 } from "./prd-master";
 
-// SystemDesignReview (Story 4.4)
 export {
   SystemDesignReviewBlueprint,
   createSystemDesignReviewBlueprint,

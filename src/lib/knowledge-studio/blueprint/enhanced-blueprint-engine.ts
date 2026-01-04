@@ -11,6 +11,7 @@
  */
 
 import type { JSONSchema7 } from "json-schema";
+import { z } from "zod";
 import {
   OrchestrationSkill,
   type OrchestrationContext,
@@ -30,6 +31,63 @@ import type {
   BlueprintTier,
   TargetUserGroup,
 } from "./types";
+
+// ============================================================
+// Zod Schemas for BaseSkill compatibility
+// ============================================================
+
+/**
+ * 蓝图输入 Zod Schema
+ * 用于 BaseSkill.inputSchema 兼容
+ */
+export const EnhancedBlueprintInputSchema = z.object({
+  materials: z.array(
+    z.object({
+      bookmarkId: z.string(),
+      title: z.string(),
+      content: z.string(),
+      url: z.string(),
+      platform: z.string().optional(),
+    }),
+  ),
+  briefingContext: z
+    .object({
+      // Use any() for answers to avoid complex union type issues
+      answers: z.record(z.string(), z.any()),
+      answeredAt: z.date(),
+    })
+    .optional(),
+  customPrompt: z.string().optional(),
+  targetLength: z.enum(["short", "medium", "long"]).optional(),
+  requestMetadata: z
+    .object({
+      requestId: z.string(),
+      userId: z.string(),
+      sessionId: z.string().optional(),
+    })
+    .optional(),
+});
+
+/**
+ * 蓝图输出 Zod Schema
+ * 用于 BaseSkill.outputSchema 兼容
+ */
+export const StructuredOutputSchema = z.object({
+  version: z.string(),
+  generatedAt: z.date(),
+  blueprintId: z.string(),
+  citations: z
+    .array(
+      z.object({
+        id: z.string(),
+        text: z.string(),
+        sourceId: z.string(),
+        sourceTitle: z.string().optional(),
+      }),
+    )
+    .optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+});
 
 /**
  * 蓝图执行阶段
@@ -75,6 +133,23 @@ export interface BlueprintExecutionContext extends OrchestrationContext {
 export abstract class EnhancedBlueprintEngine<
   TOutput extends StructuredOutput = StructuredOutput,
 > extends OrchestrationSkill<EnhancedBlueprintInput, TOutput> {
+  // ============================================================
+  // BaseSkill Required Properties - 提供默认实现
+  // ============================================================
+
+  /**
+   * 输入 Schema (来自 BaseSkill)
+   * 所有蓝图共享相同的输入结构
+   */
+  readonly inputSchema = EnhancedBlueprintInputSchema;
+
+  /**
+   * 输出 Schema (来自 BaseSkill)
+   * 子类可覆盖以提供更具体的 Schema
+   */
+  readonly outputSchema =
+    StructuredOutputSchema as unknown as z.ZodSchema<TOutput>;
+
   // ============================================================
   // Abstract Properties - 必须由子类实现
   // ============================================================
