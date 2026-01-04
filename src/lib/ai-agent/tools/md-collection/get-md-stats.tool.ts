@@ -128,7 +128,7 @@ export const getMdStatsTool: Tool<GetMdStatsParams, MdStatsResult> = {
         }
 
         // 最近一周
-        if (new Date(item.created_at) > oneWeekAgo) {
+        if (item.created_at && new Date(item.created_at) > oneWeekAgo) {
           recentWeekCount++;
         }
       }

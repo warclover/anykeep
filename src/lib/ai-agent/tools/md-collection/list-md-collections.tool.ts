@@ -195,17 +195,17 @@ export const listMdCollectionsTool: Tool<
       const items: MdCollectionItem[] = (data || []).map((item) => ({
         id: item.id,
         title: item.title,
-        wordCount: item.word_count,
-        codeBlockCount: item.code_block_count,
-        readingTimeMinutes: item.reading_time_minutes,
+        wordCount: item.word_count ?? 0,
+        codeBlockCount: item.code_block_count ?? 0,
+        readingTimeMinutes: item.reading_time_minutes ?? 0,
         contentType: item.content_type,
         aiSummary: item.ai_summary,
         aiTags: item.ai_tags,
-        isRead: item.is_read,
-        isStarred: item.is_starred,
-        processingStatus: item.processing_status,
-        createdAt: item.created_at,
-        updatedAt: item.updated_at,
+        isRead: item.is_read ?? false,
+        isStarred: item.is_starred ?? false,
+        processingStatus: item.processing_status ?? "pending",
+        createdAt: item.created_at ?? new Date().toISOString(),
+        updatedAt: item.updated_at ?? new Date().toISOString(),
       }));
 
       // 7. 构建消息

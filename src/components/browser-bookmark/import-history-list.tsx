@@ -190,7 +190,7 @@ function HistoryItem({
   onDelete,
 }: {
   history: ImportHistory;
-  onDelete: (id: string) => void;
+  onDelete: (id: number) => void;
 }) {
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -347,7 +347,7 @@ export function ImportHistoryList({
   }, [loadHistory]);
 
   // 删除处理
-  const handleDelete = (id: string) => {
+  const handleDelete = (id: number) => {
     setHistory((prev) => prev.filter((h) => h.id !== id));
     onDelete?.();
   };

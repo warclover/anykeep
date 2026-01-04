@@ -174,7 +174,7 @@ export function MaterialSelector({
                       {material.title}
                     </span>
                     <div className="flex items-center gap-2 shrink-0">
-                      {score && (
+                      {score && quality && (
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>

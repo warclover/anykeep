@@ -74,11 +74,16 @@ export async function POST(request: NextRequest) {
 
     // 3. 调用 RPC 执行撤销
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase.rpc as any)("revert_ai_operation_snapshot", {
-      p_snapshot_id: snapshotId,
-      p_user_id: user.id,
-    }) as {
-      data: { success: boolean; restored_count: number; error_message: string }[] | null;
+    const { data, error } = (await (supabase.rpc as any)(
+      "revert_ai_operation_snapshot",
+      {
+        p_snapshot_id: snapshotId,
+        p_user_id: user.id,
+      },
+    )) as {
+      data:
+        | { success: boolean; restored_count: number; error_message: string }[]
+        | null;
       error: { message: string } | null;
     };
 
@@ -187,7 +192,7 @@ export async function GET(request: NextRequest) {
         summary: string | null;
         created_at: string;
         expires_at: string;
-        bookmark_ids: number[];
+        bookmark_ids: number[] | null;
       }) => ({
         snapshotId: item.id,
         operationType: item.operation_type,

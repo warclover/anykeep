@@ -110,7 +110,11 @@ export async function GET(request: NextRequest) {
       if (FeatureFlags.ENABLE_RAG_MONITORING) {
         try {
           const collector = getRAGMetricsCollector();
-          const maxSimilarity = output.response?.results[0]?.similarity ?? 0;
+          // 从搜索结果中获取最高相似度分数（如果存在）
+          const firstResult = output.response?.results[0] as
+            | { similarity?: number }
+            | undefined;
+          const maxSimilarity = firstResult?.similarity ?? 0;
           collector.recordSearch(
             searchLatencyMs,
             output.response?.results.length ?? 0,

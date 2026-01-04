@@ -208,7 +208,7 @@ describe("ActiveRecallSkill", () => {
   describe("parseInput", () => {
     const mockContext: OrchestrationContext = {
       userId: "test-user",
-      message: "",
+      originalMessage: "",
       params: {},
     };
 
@@ -263,7 +263,7 @@ describe("ActiveRecallSkill", () => {
     it("should emit progress and text chunks", async () => {
       const context: OrchestrationContext = {
         userId: "test-user",
-        message: "开始复习",
+        originalMessage: "开始复习",
         params: { action: "review" },
       };
 
@@ -283,7 +283,7 @@ describe("ActiveRecallSkill", () => {
 
       const context: OrchestrationContext = {
         userId: "test-user",
-        message: "开始复习",
+        originalMessage: "开始复习",
         params: { action: "review" },
       };
 
@@ -300,7 +300,7 @@ describe("ActiveRecallSkill", () => {
     it("should display current card and options", async () => {
       const context: OrchestrationContext = {
         userId: "test-user",
-        message: "开始复习",
+        originalMessage: "开始复习",
         params: { action: "review" },
       };
 
@@ -319,7 +319,7 @@ describe("ActiveRecallSkill", () => {
     it("should emit deliverable with queue data", async () => {
       const context: OrchestrationContext = {
         userId: "test-user",
-        message: "开始复习",
+        originalMessage: "开始复习",
         params: { action: "review" },
       };
 
@@ -336,7 +336,7 @@ describe("ActiveRecallSkill", () => {
     it("should display mastery statistics", async () => {
       const context: OrchestrationContext = {
         userId: "test-user",
-        message: "查看统计",
+        originalMessage: "查看统计",
         params: { action: "stats", timeRange: "week" },
       };
 
@@ -355,7 +355,7 @@ describe("ActiveRecallSkill", () => {
     it("should display streak information", async () => {
       const context: OrchestrationContext = {
         userId: "test-user",
-        message: "查看统计",
+        originalMessage: "查看统计",
         params: { action: "stats", timeRange: "week" },
       };
 
@@ -374,7 +374,7 @@ describe("ActiveRecallSkill", () => {
 
       const context: OrchestrationContext = {
         userId: "test-user",
-        message: "查看统计",
+        originalMessage: "查看统计",
         params: { action: "stats" },
       };
 
@@ -392,7 +392,7 @@ describe("ActiveRecallSkill", () => {
     it("should display current preferences", async () => {
       const context: OrchestrationContext = {
         userId: "test-user",
-        message: "查看复习设置",
+        originalMessage: "查看复习设置",
         params: { action: "preferences" },
       };
 
@@ -413,7 +413,7 @@ describe("ActiveRecallSkill", () => {
 
       const context: OrchestrationContext = {
         userId: "test-user",
-        message: "查看复习设置",
+        originalMessage: "查看复习设置",
         params: { action: "preferences" },
       };
 
@@ -431,7 +431,7 @@ describe("ActiveRecallSkill", () => {
     it("should require bookmarkId for generate action", async () => {
       const context: OrchestrationContext = {
         userId: "test-user",
-        message: "生成卡片",
+        originalMessage: "生成卡片",
         params: { action: "generate" },
       };
 
@@ -449,7 +449,7 @@ describe("ActiveRecallSkill", () => {
 
       const context: OrchestrationContext = {
         userId: "test-user",
-        message: "生成卡片",
+        originalMessage: "生成卡片",
         params: { action: "generate", bookmarkId: 999 },
       };
 
@@ -470,7 +470,7 @@ describe("ActiveRecallSkill", () => {
 
       const context: OrchestrationContext = {
         userId: "test-user",
-        message: "生成卡片",
+        originalMessage: "生成卡片",
         params: { action: "generate", bookmarkId: 1 },
       };
 

@@ -16,15 +16,15 @@ import type {
   ParagraphImpact,
   ImpactLevel,
 } from "./types";
-import type { Database } from "@/types/supabase";
+import type { Database, Json } from "@/types/supabase";
 
 // ============================================================================
 // 数据库类型别名（保留用于类型安全参考，暂未使用）
 // ============================================================================
 
+// 使用下划线前缀标记暂未使用的类型别名
 type _ChangeSetRow =
   Database["public"]["Tables"]["ks_report_change_sets"]["Row"];
-void _ChangeSetRow; // suppress unused warning - reserved for future type-safe refactoring
 type ChangeSetInsert =
   Database["public"]["Tables"]["ks_report_change_sets"]["Insert"];
 type ChangeSetUpdate =

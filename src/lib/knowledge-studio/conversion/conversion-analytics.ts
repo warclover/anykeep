@@ -23,9 +23,9 @@ import type { Database } from "@/types/supabase";
 // 数据库类型别名（保留用于类型安全参考，暂未使用）
 // ============================================================================
 
+// 使用下划线前缀标记暂未使用的类型别名
 type _TrialStateRow =
   Database["public"]["Tables"]["ks_user_trial_states"]["Row"];
-void _TrialStateRow; // suppress unused warning - reserved for future type-safe refactoring
 
 // ============================================================================
 // 内部接口（用于类型映射）

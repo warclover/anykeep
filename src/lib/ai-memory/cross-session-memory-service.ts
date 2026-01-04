@@ -67,7 +67,7 @@ export class CrossSessionMemoryService {
         "get_last_session_summary",
         {
           p_user_id: userId,
-          p_exclude_conversation_id: currentConversationId || null,
+          p_exclude_conversation_id: currentConversationId ?? undefined,
         },
       );
 
@@ -312,10 +312,10 @@ export class CrossSessionMemoryService {
       const { data, error } = await this.supabase.rpc("record_intent_history", {
         p_user_id: userId,
         p_intent_type: intentType,
-        p_intent_sub_type: options?.subType || null,
-        p_confidence: options?.confidence || null,
+        p_intent_sub_type: options?.subType ?? undefined,
+        p_confidence: options?.confidence ?? undefined,
         p_success: options?.success ?? true,
-        p_message_preview: options?.messagePreview || null,
+        p_message_preview: options?.messagePreview ?? undefined,
         p_context: (options?.context || {}) as unknown as Json,
       });
 

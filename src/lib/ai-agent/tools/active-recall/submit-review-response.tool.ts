@@ -125,12 +125,18 @@ export const submitReviewResponseTool: Tool<
       }
 
       // 转换结果类型
+      // RPC 返回类型断言
+      interface ReviewResponseResult {
+        new_interval?: number;
+        next_review_at?: string;
+      }
+      const typedData = data as ReviewResponseResult | null;
       // 注意：RPC 不返回 previous_interval，使用 new_interval 估算
-      const newInterval = data?.new_interval || 1;
+      const newInterval = typedData?.new_interval || 1;
       const result = {
         prev_interval: Math.max(1, Math.floor(newInterval / 2)), // 估算上一次间隔
         new_interval: newInterval,
-        next_review_at: data?.next_review_at || new Date().toISOString(),
+        next_review_at: typedData?.next_review_at || new Date().toISOString(),
       };
 
       // 生成用户友好的消息

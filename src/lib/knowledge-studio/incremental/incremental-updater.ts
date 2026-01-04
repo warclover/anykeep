@@ -61,12 +61,23 @@ interface RollbackResult {
 // ============================================================================
 
 function rowToTask(row: TaskRow): IncrementalUpdateTask {
+  // Map database status to domain status
+  type TaskStatus = "pending" | "processing" | "completed" | "failed";
+  const statusMap: Record<string, TaskStatus> = {
+    pending: "pending",
+    processing: "processing",
+    completed: "completed",
+    failed: "failed",
+    cancelled: "failed", // Map cancelled to failed
+  };
+  const mappedStatus = statusMap[row.status] ?? "pending";
+
   return {
     id: row.id,
     reportId: row.report_id,
     changeSetId: row.change_set_id,
     impactAnalysis: row.impact_analysis as unknown as ReportImpactAnalysis,
-    status: row.status === "cancelled" ? "failed" : row.status,
+    status: mappedStatus,
     createdAt: new Date(row.created_at),
     startedAt: row.started_at ? new Date(row.started_at) : undefined,
     completedAt: row.completed_at ? new Date(row.completed_at) : undefined,

@@ -69,8 +69,8 @@ export async function GET(request: NextRequest) {
     const { data, error } = await supabase.rpc("get_user_usage_stats", {
       p_user_id: user.id,
       p_period: period,
-      p_start_date: startDate || null,
-      p_end_date: endDate || null,
+      p_start_date: startDate ?? undefined,
+      p_end_date: endDate ?? undefined,
     });
 
     if (error) {

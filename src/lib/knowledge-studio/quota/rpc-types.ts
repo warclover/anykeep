@@ -24,7 +24,7 @@ export type DeductQuotaResult = string;
  */
 export interface ConfirmQuotaParams {
   p_request_id: string;
-  p_synthesis_report_id?: string | null;
+  p_synthesis_report_id?: string;
 }
 
 /**
@@ -37,7 +37,7 @@ export type ConfirmQuotaResult = boolean;
  */
 export interface RefundQuotaParams {
   p_request_id: string;
-  p_error_message?: string | null;
+  p_error_message?: string;
 }
 
 /**

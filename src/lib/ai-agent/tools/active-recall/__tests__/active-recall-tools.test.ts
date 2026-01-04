@@ -175,8 +175,7 @@ jest.mock("@/lib/ai-skills/shared/review", () => ({
 describe("Active Recall Tools", () => {
   const mockContext: ToolContext = {
     userId: "test-user-id",
-    sessionId: "test-session",
-    timestamp: new Date().toISOString(),
+    conversationId: "test-session",
   };
 
   beforeEach(() => {
@@ -211,6 +210,7 @@ describe("Active Recall Tools", () => {
         );
 
         expect(result.success).toBe(true);
+        if (!result.success) return;
         expect(result.data).toHaveProperty("flashcards");
       });
 
@@ -279,8 +279,9 @@ describe("Active Recall Tools", () => {
         const result = await getReviewQueueTool.execute({}, mockContext);
 
         expect(result.success).toBe(true);
-        expect(result.data).toHaveProperty("queue");
-        expect(Array.isArray(result.data?.queue)).toBe(true);
+        if (!result.success) return;
+        expect(result.data).toHaveProperty("items");
+        expect(Array.isArray(result.data.items)).toBe(true);
       });
 
       it.skip("should respect limit parameter", async () => {
@@ -296,6 +297,7 @@ describe("Active Recall Tools", () => {
         const result = await getReviewQueueTool.execute({}, mockContext);
 
         expect(result.success).toBe(true);
+        if (!result.success) return;
         expect(result.data).toHaveProperty("stats");
       });
 
@@ -333,6 +335,7 @@ describe("Active Recall Tools", () => {
         );
 
         expect(result.success).toBe(true);
+        if (!result.success) return;
         expect(result.data).toHaveProperty("newInterval");
       });
 
@@ -396,6 +399,7 @@ describe("Active Recall Tools", () => {
         const result = await getMasteryStatsTool.execute({}, mockContext);
 
         expect(result.success).toBe(true);
+        if (!result.success) return;
         expect(result.data).toHaveProperty("totalFlashcards");
         expect(result.data).toHaveProperty("masteredCount");
       });
@@ -413,6 +417,7 @@ describe("Active Recall Tools", () => {
         const result = await getMasteryStatsTool.execute({}, mockContext);
 
         expect(result.success).toBe(true);
+        if (!result.success) return;
         expect(result.data).toHaveProperty("masteredRate");
       });
     });

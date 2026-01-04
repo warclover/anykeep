@@ -468,6 +468,7 @@ export class QuickActionsService {
           folderId: c.folderId,
           folderName: c.folderName,
           score: c.score,
+          matchType: c.matchType,
         })),
       },
       applied,

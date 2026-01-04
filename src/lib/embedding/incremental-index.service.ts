@@ -220,13 +220,42 @@ export class IncrementalIndexService {
       return;
     }
 
-    // 否则按类型分别更新
-    if (updateTypes.has("title")) {
-      await multiVectorService.updateTitleEmbeddingOnly(bookmarkId);
+    // 否则按类型分别更新，需要先获取书签数据
+    const needsBookmark = updateTypes.has("title") || updateTypes.has("tags");
+    let bookmark: {
+      title: string | null;
+      ai_tags: string[] | null;
+      user_tags: string[] | null;
+    } | null = null;
+
+    if (needsBookmark) {
+      const { data, error } = await this.supabase
+        .from("bookmarks")
+        .select("title, ai_tags, user_tags")
+        .eq("id", bookmarkId)
+        .single();
+
+      if (error || !data) {
+        throw new Error(
+          `Bookmark ${bookmarkId} not found for embedding update`,
+        );
+      }
+      bookmark = data;
     }
 
-    if (updateTypes.has("tags")) {
-      await multiVectorService.updateTagEmbeddingOnly(bookmarkId);
+    if (updateTypes.has("title") && bookmark) {
+      await multiVectorService.updateTitleEmbeddingOnly(
+        bookmarkId,
+        bookmark.title ?? "",
+      );
+    }
+
+    if (updateTypes.has("tags") && bookmark) {
+      await multiVectorService.updateTagEmbeddingOnly(
+        bookmarkId,
+        bookmark.ai_tags,
+        bookmark.user_tags,
+      );
     }
 
     if (updateTypes.has("content")) {

@@ -145,7 +145,7 @@ export class QuotaManager {
       const supabase = createClient();
       const params: ConfirmQuotaParams = {
         p_request_id: request.requestId,
-        p_synthesis_report_id: request.synthesisReportId || null,
+        p_synthesis_report_id: request.synthesisReportId ?? undefined,
       };
       const { data, error } = await supabase.rpc("confirm_quota", params);
 

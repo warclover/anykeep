@@ -58,6 +58,10 @@ function createMockReportRow(
       },
     ],
     full_markdown: "# 完整 Markdown",
+    content: null, // 知识工坊报告内容
+    blueprint_type: null, // 知识工坊蓝图类型
+    citations: null, // 知识工坊报告引用
+    generation_metadata: null, // 生成元数据
     embedding: null,
     status: "completed",
     error_message: null,

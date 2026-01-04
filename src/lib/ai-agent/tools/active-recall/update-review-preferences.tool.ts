@@ -132,10 +132,19 @@ export const updateReviewPreferencesTool: Tool<
       const supabase = await createClient();
 
       // 1. 获取或创建当前偏好
-      const { data: currentPrefs, error: getError } = await supabase.rpc(
+      // RPC 返回类型定义
+      interface ReviewPreferencesResult {
+        enabled?: boolean;
+        preferred_day?: string;
+        preferred_time?: string;
+        weekly_limit?: number;
+        notification_channel?: string;
+      }
+      const { data: rawPrefs, error: getError } = await supabase.rpc(
         "get_or_create_review_preferences",
         { p_user_id: context.userId },
       );
+      const currentPrefs = rawPrefs as ReviewPreferencesResult | null;
 
       if (getError) {
         logger.error(
@@ -163,14 +172,17 @@ export const updateReviewPreferencesTool: Tool<
         };
       }
 
-      // 2. 合并更新
+      // 2. 合并更新（添加默认值确保类型安全）
       const updatedPrefs = {
-        enabled: enabled ?? currentPrefs.enabled,
-        preferred_day: preferred_day ?? currentPrefs.preferred_day,
-        preferred_time: preferred_time ?? currentPrefs.preferred_time,
-        weekly_limit: weekly_limit ?? currentPrefs.weekly_limit,
+        enabled: enabled ?? currentPrefs.enabled ?? true,
+        preferred_day: preferred_day ?? currentPrefs.preferred_day ?? "monday",
+        preferred_time:
+          preferred_time ?? currentPrefs.preferred_time ?? "09:00",
+        weekly_limit: weekly_limit ?? currentPrefs.weekly_limit ?? 10,
         notification_channel:
-          notification_channel ?? currentPrefs.notification_channel,
+          notification_channel ??
+          currentPrefs.notification_channel ??
+          "sidebar",
         updated_at: new Date().toISOString(),
       };
 

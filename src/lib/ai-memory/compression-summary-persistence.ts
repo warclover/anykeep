@@ -110,7 +110,7 @@ export class CompressionSummaryPersistence {
         p_conversation_id: conversationId,
         p_state: updatedState as unknown as Json,
         p_message_count: retainedMessageCount,
-        p_last_intent: null,
+        p_last_intent: undefined,
       });
 
       if (saveError) {
@@ -250,7 +250,7 @@ export class CompressionSummaryPersistence {
         p_conversation_id: conversationId,
         p_state: updatedState as unknown as Json,
         p_message_count: data?.message_count || 0,
-        p_last_intent: data?.last_intent || null,
+        p_last_intent: data?.last_intent ?? undefined,
       });
 
       if (saveError) {

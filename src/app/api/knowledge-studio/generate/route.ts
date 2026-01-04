@@ -217,7 +217,8 @@ export async function POST(request: NextRequest) {
                     blueprint_type: blueprintType,
                     title: title || `${blueprintType} 报告`,
                     content: result.content,
-                    citations: result.citations || [],
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    citations: (result.citations || []) as any,
                     generation_metadata: {
                       model: result.metadata?.model,
                       tokens_used: result.metadata?.tokens?.total,

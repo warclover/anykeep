@@ -141,8 +141,7 @@ jest.mock("@/lib/logger", () => ({
 describe("Smart List Tools", () => {
   const mockContext: ToolContext = {
     userId: "test-user-id",
-    sessionId: "test-session",
-    timestamp: new Date().toISOString(),
+    conversationId: "test-session",
   };
 
   beforeEach(() => {
@@ -174,15 +173,19 @@ describe("Smart List Tools", () => {
     describe("execute", () => {
       // 跳过需要复杂 mock 链的测试
       it.skip("should list smart lists", async () => {
-        const result = await listSmartListsTool.execute({}, mockContext);
+        const result = await listSmartListsTool.execute(
+          { includePresets: false, pinnedOnly: false },
+          mockContext,
+        );
 
         expect(result.success).toBe(true);
-        expect(result.data).toHaveProperty("lists");
+        if (!result.success) return;
+        expect(result.data).toBeDefined();
       });
 
       it.skip("should filter by pinned status", async () => {
         const result = await listSmartListsTool.execute(
-          { pinnedOnly: true },
+          { includePresets: false, pinnedOnly: true },
           mockContext,
         );
 
@@ -211,7 +214,7 @@ describe("Smart List Tools", () => {
       // 跳过需要复杂 mock 链的测试
       it.skip("should get items from smart list", async () => {
         const result = await getSmartListItemsTool.execute(
-          { listId: 1 },
+          { smartListId: 1, limit: 10, offset: 0 },
           mockContext,
         );
 
@@ -220,7 +223,7 @@ describe("Smart List Tools", () => {
 
       it.skip("should respect page and limit params", async () => {
         const result = await getSmartListItemsTool.execute(
-          { listId: 1, page: 2, limit: 10 },
+          { smartListId: 1, limit: 10, offset: 10 },
           mockContext,
         );
 
@@ -231,7 +234,7 @@ describe("Smart List Tools", () => {
         mockSelectResult = { data: null, error: { message: "Not found" } };
 
         const result = await getSmartListItemsTool.execute(
-          { listId: 999 },
+          { smartListId: 999, limit: 10, offset: 0 },
           mockContext,
         );
 
@@ -260,7 +263,7 @@ describe("Smart List Tools", () => {
       // 跳过需要复杂 RPC mock 的测试
       it.skip("should get smart list count", async () => {
         const result = await getSmartListCountTool.execute(
-          { listId: 1 },
+          { smartListId: 1 },
           mockContext,
         );
 
@@ -271,7 +274,7 @@ describe("Smart List Tools", () => {
         mockSelectResult = { data: null, error: { message: "Not found" } };
 
         const result = await getSmartListCountTool.execute(
-          { listId: 999 },
+          { smartListId: 999 },
           mockContext,
         );
 
@@ -311,12 +314,13 @@ describe("Smart List Tools", () => {
         };
 
         const result = await toggleSmartListPinTool.execute(
-          { listId: 1 },
+          { smartListId: 1 },
           mockContext,
         );
 
         expect(result.success).toBe(true);
-        expect(result.data?.isPinned).toBe(true);
+        if (!result.success) return;
+        expect(result.data.isPinned).toBe(true);
       });
 
       it.skip("should toggle pin status from true to false", async () => {
@@ -326,12 +330,13 @@ describe("Smart List Tools", () => {
         };
 
         const result = await toggleSmartListPinTool.execute(
-          { listId: 1 },
+          { smartListId: 1 },
           mockContext,
         );
 
         expect(result.success).toBe(true);
-        expect(result.data?.isPinned).toBe(false);
+        if (!result.success) return;
+        expect(result.data.isPinned).toBe(false);
       });
 
       it.skip("should set explicit pin status when provided", async () => {
@@ -341,19 +346,20 @@ describe("Smart List Tools", () => {
         };
 
         const result = await toggleSmartListPinTool.execute(
-          { listId: 1, isPinned: true },
+          { smartListId: 1, isPinned: true },
           mockContext,
         );
 
         expect(result.success).toBe(true);
-        expect(result.data?.isPinned).toBe(true);
+        if (!result.success) return;
+        expect(result.data.isPinned).toBe(true);
       });
 
       it.skip("should return error if list not found", async () => {
         mockSelectResult = { data: null, error: { message: "Not found" } };
 
         const result = await toggleSmartListPinTool.execute(
-          { listId: 999 },
+          { smartListId: 999 },
           mockContext,
         );
 
@@ -380,7 +386,7 @@ describe("Smart List Tools", () => {
       // 跳过需要复杂 mock 链的测试
       it.skip("should update smart list name", async () => {
         const result = await updateSmartListTool.execute(
-          { listId: 1, name: "New Name" },
+          { smartListId: 1, name: "New Name" },
           mockContext,
         );
 
@@ -389,7 +395,7 @@ describe("Smart List Tools", () => {
 
       it.skip("should update smart list description", async () => {
         const result = await updateSmartListTool.execute(
-          { listId: 1, description: "New description" },
+          { smartListId: 1, description: "New description" },
           mockContext,
         );
 
@@ -400,7 +406,7 @@ describe("Smart List Tools", () => {
         mockSelectResult = { data: null, error: { message: "Not found" } };
 
         const result = await updateSmartListTool.execute(
-          { listId: 999, name: "New Name" },
+          { smartListId: 999, name: "New Name" },
           mockContext,
         );
 
@@ -456,7 +462,14 @@ describe("Smart List Tools", () => {
       // 跳过需要复杂 mock 链的测试
       it.skip("should create smart list with name", async () => {
         const result = await createSmartListTool.execute(
-          { name: "New Smart List" },
+          {
+            name: "New Smart List",
+            icon: "📋",
+            color: "default",
+            filters: {},
+            sortBy: "created_desc",
+            viewMode: "inherit",
+          },
           mockContext,
         );
 
@@ -467,7 +480,11 @@ describe("Smart List Tools", () => {
         const result = await createSmartListTool.execute(
           {
             name: "Filtered List",
-            filterConfig: { is_read: false },
+            icon: "📋",
+            color: "blue",
+            filters: { isRead: false },
+            sortBy: "created_desc",
+            viewMode: "inherit",
           },
           mockContext,
         );

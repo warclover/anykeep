@@ -208,6 +208,11 @@ export async function POST(request: NextRequest) {
       throw error;
     }
 
+    if (!report) {
+      logger.error({ userId: user.id }, "No report returned from insert");
+      throw new Error("Failed to create report: no data returned");
+    }
+
     logger.info({ userId: user.id, reportId: report.id }, "Report created");
 
     return NextResponse.json({ data: report }, { status: 201 });

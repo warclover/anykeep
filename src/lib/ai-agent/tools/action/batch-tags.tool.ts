@@ -149,7 +149,9 @@ export const batchTagsTool: Tool<BatchTagsParams, BatchTagsResult> = {
       const supabase = await createClient();
       const uniqueTags = [...new Set(params.tags.map((t) => t.trim()))];
 
-      let result: { affected_ids: number[]; affected_count: number };
+      // RPC 返回类型
+      type BatchTagResult = { affected_ids: number[]; affected_count: number };
+      let result: BatchTagResult;
 
       if (params.action === "add") {
         const { data, error } = await supabase.rpc("batch_add_tags", {
@@ -157,14 +159,14 @@ export const batchTagsTool: Tool<BatchTagsParams, BatchTagsResult> = {
           p_tags: uniqueTags,
         });
         if (error) throw error;
-        result = data;
+        result = data as BatchTagResult;
       } else {
         const { data, error } = await supabase.rpc("batch_remove_tags", {
           p_bookmark_ids: params.bookmark_ids,
           p_tags: uniqueTags,
         });
         if (error) throw error;
-        result = data;
+        result = data as BatchTagResult;
       }
 
       const actionText = params.action === "add" ? "添加" : "移除";

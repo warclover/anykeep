@@ -103,8 +103,7 @@ jest.mock("@/lib/logger", () => ({
 describe("Bookmark Tools", () => {
   const mockContext: ToolContext = {
     userId: "test-user-id",
-    sessionId: "test-session",
-    timestamp: new Date().toISOString(),
+    conversationId: "test-session",
   };
 
   beforeEach(() => {
@@ -150,7 +149,8 @@ describe("Bookmark Tools", () => {
         );
 
         expect(result.success).toBe(true);
-        expect(result.data?.isRead).toBe(true);
+        if (!result.success) return;
+        expect(result.data.isRead).toBe(true);
       });
 
       it("should toggle read status from true to false", async () => {
@@ -165,7 +165,8 @@ describe("Bookmark Tools", () => {
         );
 
         expect(result.success).toBe(true);
-        expect(result.data?.isRead).toBe(false);
+        if (!result.success) return;
+        expect(result.data.isRead).toBe(false);
       });
 
       it("should set explicit read status when provided", async () => {
@@ -180,7 +181,8 @@ describe("Bookmark Tools", () => {
         );
 
         expect(result.success).toBe(true);
-        expect(result.data?.isRead).toBe(true);
+        if (!result.success) return;
+        expect(result.data.isRead).toBe(true);
       });
 
       it("should return success if already in target state", async () => {
@@ -195,7 +197,8 @@ describe("Bookmark Tools", () => {
         );
 
         expect(result.success).toBe(true);
-        expect(result.data?.message).toContain("已是");
+        if (!result.success) return;
+        expect(result.data.message).toContain("已是");
       });
 
       it("should return error if bookmark not found", async () => {
@@ -207,6 +210,7 @@ describe("Bookmark Tools", () => {
         );
 
         expect(result.success).toBe(false);
+        if (result.success) return;
         expect(result.errorCode).toBe("NOT_FOUND");
       });
 
@@ -219,6 +223,7 @@ describe("Bookmark Tools", () => {
         );
 
         expect(result.success).toBe(false);
+        if (result.success) return;
         expect(result.errorCode).toBe("EXECUTION_ERROR");
       });
     });
@@ -249,7 +254,8 @@ describe("Bookmark Tools", () => {
         );
 
         expect(result.success).toBe(true);
-        expect(result.data?.isStarred).toBe(true);
+        if (!result.success) return;
+        expect(result.data.isStarred).toBe(true);
       });
 
       it("should return error if bookmark not found", async () => {
@@ -281,12 +287,13 @@ describe("Bookmark Tools", () => {
         mockInsertResult = { data: { ...mockBookmark, id: 2 }, error: null };
 
         const result = await createBookmarkTool.execute(
-          { url: "https://example.com/new" },
+          { url: "https://example.com/new", isStarred: false },
           mockContext,
         );
 
         expect(result.success).toBe(true);
-        expect(result.data?.url).toBeDefined();
+        if (!result.success) return;
+        expect(result.data.url).toBeDefined();
       });
 
       // Note: This test requires more sophisticated mock for folder query chain
@@ -306,6 +313,7 @@ describe("Bookmark Tools", () => {
         const result = await createBookmarkTool.execute(
           {
             url: "https://example.com/new",
+            isStarred: false,
             title: "New Bookmark",
             description: "Test description",
             folderId: 1,
@@ -321,11 +329,12 @@ describe("Bookmark Tools", () => {
         mockSelectResult = { data: { id: 1, title: "Existing" }, error: null };
 
         const result = await createBookmarkTool.execute(
-          { url: "https://example.com/existing" },
+          { url: "https://example.com/existing", isStarred: false },
           mockContext,
         );
 
         expect(result.success).toBe(false);
+        if (result.success) return;
         expect(result.errorCode).toBe("DUPLICATE_URL");
       });
 
@@ -334,23 +343,25 @@ describe("Bookmark Tools", () => {
         mockInsertResult = { data: { ...mockBookmark, id: 2 }, error: null };
 
         const result = await createBookmarkTool.execute(
-          { url: "https://mp.weixin.qq.com/s/abc123" },
+          { url: "https://mp.weixin.qq.com/s/abc123", isStarred: false },
           mockContext,
         );
 
         expect(result.success).toBe(true);
-        expect(result.data?.platform).toBe("wechat");
+        if (!result.success) return;
+        expect(result.data.platform).toBe("wechat");
       });
 
       it("should return error if folder not found", async () => {
         mockSelectResult = { data: null, error: null };
 
         const result = await createBookmarkTool.execute(
-          { url: "https://example.com/new", folderId: 999 },
+          { url: "https://example.com/new", isStarred: false, folderId: 999 },
           mockContext,
         );
 
         expect(result.success).toBe(false);
+        if (result.success) return;
         expect(result.errorCode).toBe("FOLDER_NOT_FOUND");
       });
     });
@@ -420,7 +431,7 @@ describe("Bookmark Tools", () => {
     describe("execute", () => {
       it("should soft delete bookmark", async () => {
         const result = await deleteBookmarkTool.execute(
-          { bookmarkId: 1 },
+          { bookmarkId: 1, permanent: false },
           mockContext,
         );
 
@@ -431,7 +442,7 @@ describe("Bookmark Tools", () => {
         mockSelectResult = { data: null, error: { message: "Not found" } };
 
         const result = await deleteBookmarkTool.execute(
-          { bookmarkId: 999 },
+          { bookmarkId: 999, permanent: false },
           mockContext,
         );
 
@@ -462,7 +473,7 @@ describe("Bookmark Tools", () => {
       // Note: This test requires confirmation flow mock
       it.skip("should batch delete bookmarks", async () => {
         const result = await batchDeleteBookmarksTool.execute(
-          { bookmarkIds: [1, 2, 3] },
+          { bookmarkIds: [1, 2, 3], permanent: false },
           mockContext,
         );
 
@@ -475,7 +486,7 @@ describe("Bookmark Tools", () => {
 
       it("should handle empty array", async () => {
         const result = await batchDeleteBookmarksTool.execute(
-          { bookmarkIds: [] },
+          { bookmarkIds: [], permanent: false },
           mockContext,
         );
 
@@ -507,7 +518,7 @@ describe("Bookmark Tools", () => {
         };
 
         const result = await createSnapshotTool.execute(
-          { bookmarkId: 1 },
+          { bookmarkId: 1, snapshotType: "basic", priority: "normal" },
           mockContext,
         );
 
@@ -522,7 +533,7 @@ describe("Bookmark Tools", () => {
         mockSelectResult = { data: null, error: { message: "Not found" } };
 
         const result = await createSnapshotTool.execute(
-          { bookmarkId: 999 },
+          { bookmarkId: 999, snapshotType: "basic", priority: "normal" },
           mockContext,
         );
 

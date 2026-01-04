@@ -118,8 +118,7 @@ jest.mock("@/lib/logger", () => ({
 describe("MD Collection Tools", () => {
   const mockContext: ToolContext = {
     userId: "test-user-id",
-    sessionId: "test-session",
-    timestamp: new Date().toISOString(),
+    conversationId: "test-session",
   };
 
   beforeEach(() => {
@@ -154,16 +153,20 @@ describe("MD Collection Tools", () => {
     describe("execute", () => {
       // 跳过需要复杂 mock 链的测试
       it.skip("should list md collections with default params", async () => {
-        const result = await listMdCollectionsTool.execute({}, mockContext);
+        const result = await listMdCollectionsTool.execute(
+          { page: 1, limit: 20, sort: "created_desc" },
+          mockContext,
+        );
 
         expect(result.success).toBe(true);
+        if (!result.success) return;
         expect(result.data).toHaveProperty("items");
         expect(result.data).toHaveProperty("pagination");
       });
 
       it.skip("should respect page and limit params", async () => {
         const result = await listMdCollectionsTool.execute(
-          { page: 2, limit: 10 },
+          { page: 2, limit: 10, sort: "created_desc" },
           mockContext,
         );
 
@@ -172,7 +175,7 @@ describe("MD Collection Tools", () => {
 
       it.skip("should filter by contentType", async () => {
         const result = await listMdCollectionsTool.execute(
-          { contentType: "TUTORIAL" },
+          { page: 1, limit: 20, sort: "created_desc", contentType: "TUTORIAL" },
           mockContext,
         );
 
@@ -181,7 +184,7 @@ describe("MD Collection Tools", () => {
 
       it.skip("should filter by isRead status", async () => {
         const result = await listMdCollectionsTool.execute(
-          { isRead: true },
+          { page: 1, limit: 20, sort: "created_desc", isRead: true },
           mockContext,
         );
 
@@ -208,7 +211,7 @@ describe("MD Collection Tools", () => {
       // 跳过需要复杂 mock 链的测试
       it.skip("should get md collection by id", async () => {
         const result = await getMdCollectionTool.execute(
-          { collectionId: 1 },
+          { id: 1, includeContent: false },
           mockContext,
         );
 
@@ -219,7 +222,7 @@ describe("MD Collection Tools", () => {
         mockSelectResult = { data: null, error: { message: "Not found" } };
 
         const result = await getMdCollectionTool.execute(
-          { collectionId: 999 },
+          { id: 999, includeContent: false },
           mockContext,
         );
 
@@ -248,7 +251,7 @@ describe("MD Collection Tools", () => {
       // 跳过需要复杂 mock 链的测试
       it.skip("should search md collections by keyword", async () => {
         const result = await searchMdCollectionsTool.execute(
-          { query: "React 性能" },
+          { query: "React 性能", mode: "hybrid", limit: 10, threshold: 0.5 },
           mockContext,
         );
 
@@ -257,7 +260,7 @@ describe("MD Collection Tools", () => {
 
       it.skip("should respect limit parameter", async () => {
         const result = await searchMdCollectionsTool.execute(
-          { query: "React", limit: 5 },
+          { query: "React", mode: "hybrid", limit: 5, threshold: 0.5 },
           mockContext,
         );
 
@@ -322,7 +325,8 @@ describe("MD Collection Tools", () => {
         );
 
         expect(result.success).toBe(true);
-        expect(result.data?.isRead).toBe(true);
+        if (!result.success) return;
+        expect(result.data.isRead).toBe(true);
       });
 
       it.skip("should toggle read status from true to false", async () => {
@@ -337,7 +341,8 @@ describe("MD Collection Tools", () => {
         );
 
         expect(result.success).toBe(true);
-        expect(result.data?.isRead).toBe(false);
+        if (!result.success) return;
+        expect(result.data.isRead).toBe(false);
       });
 
       it.skip("should set explicit read status when provided", async () => {
@@ -352,7 +357,8 @@ describe("MD Collection Tools", () => {
         );
 
         expect(result.success).toBe(true);
-        expect(result.data?.isRead).toBe(true);
+        if (!result.success) return;
+        expect(result.data.isRead).toBe(true);
       });
 
       it.skip("should return success if already in target state", async () => {
@@ -367,7 +373,8 @@ describe("MD Collection Tools", () => {
         );
 
         expect(result.success).toBe(true);
-        expect(result.data?.message).toContain("已经是");
+        if (!result.success) return;
+        expect(result.data.message).toContain("已经是");
       });
 
       it.skip("should return error if collection not found", async () => {
@@ -411,7 +418,8 @@ describe("MD Collection Tools", () => {
         );
 
         expect(result.success).toBe(true);
-        expect(result.data?.isStarred).toBe(true);
+        if (!result.success) return;
+        expect(result.data.isStarred).toBe(true);
       });
 
       it.skip("should return error if collection not found", async () => {

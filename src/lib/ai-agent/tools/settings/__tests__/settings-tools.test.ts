@@ -18,7 +18,7 @@ import type { ToolContext } from "../../types";
 // Mock 数据
 const mockUserSettings = {
   id: "test-user-id",
-  trust_mode: "balanced",
+  trust_mode: "semi_auto",
   classification_enabled: true,
   auto_tagging_enabled: true,
   theme: "system",
@@ -108,8 +108,7 @@ jest.mock("@/lib/logger", () => ({
 describe("Settings Tools", () => {
   const mockContext: ToolContext = {
     userId: "test-user-id",
-    sessionId: "test-session",
-    timestamp: new Date().toISOString(),
+    conversationId: "test-session",
   };
 
   beforeEach(() => {
@@ -203,27 +202,27 @@ describe("Settings Tools", () => {
 
     describe("execute", () => {
       // 跳过需要复杂 RPC mock 的测试
-      it.skip("should update enabled status", async () => {
+      it.skip("should update learnFromManualMoves setting", async () => {
         const result = await updateClassificationSettingsTool.execute(
-          { enabled: false },
+          { learnFromManualMoves: false },
           mockContext,
         );
 
         expect(result.success).toBe(true);
       });
 
-      it.skip("should update auto classify setting", async () => {
+      it.skip("should update learnFromDeletions setting", async () => {
         const result = await updateClassificationSettingsTool.execute(
-          { autoClassify: true },
+          { learnFromDeletions: true },
           mockContext,
         );
 
         expect(result.success).toBe(true);
       });
 
-      it.skip("should update min confidence", async () => {
+      it.skip("should update confirmationThreshold", async () => {
         const result = await updateClassificationSettingsTool.execute(
-          { minConfidence: 0.8 },
+          { confirmationThreshold: 0.8 },
           mockContext,
         );
 
@@ -276,7 +275,7 @@ describe("Settings Tools", () => {
       // 跳过需要复杂 RPC mock 的测试
       it.skip("should add interest", async () => {
         const result = await updateUserInterestsTool.execute(
-          { action: "add", interest: "Vue" },
+          { action: "add", presetInterests: ["tech_frontend"] },
           mockContext,
         );
 
@@ -285,7 +284,7 @@ describe("Settings Tools", () => {
 
       it.skip("should remove interest", async () => {
         const result = await updateUserInterestsTool.execute(
-          { action: "remove", interest: "React" },
+          { action: "remove", presetInterests: ["tech_frontend"] },
           mockContext,
         );
 
@@ -294,7 +293,10 @@ describe("Settings Tools", () => {
 
       it.skip("should replace all interests", async () => {
         const result = await updateUserInterestsTool.execute(
-          { action: "replace", interests: ["技术", "设计"] },
+          {
+            action: "replace",
+            presetInterests: ["tech_frontend", "design_ui"],
+          },
           mockContext,
         );
 
@@ -323,27 +325,27 @@ describe("Settings Tools", () => {
 
     describe("execute", () => {
       // 跳过需要复杂 mock 链的测试
-      it.skip("should update trust mode to cautious", async () => {
+      it.skip("should update trust mode to manual", async () => {
         const result = await updateTrustModeTool.execute(
-          { mode: "cautious" },
+          { mode: "manual" },
           mockContext,
         );
 
         expect(result.success).toBe(true);
       });
 
-      it.skip("should update trust mode to balanced", async () => {
+      it.skip("should update trust mode to semi_auto", async () => {
         const result = await updateTrustModeTool.execute(
-          { mode: "balanced" },
+          { mode: "semi_auto" },
           mockContext,
         );
 
         expect(result.success).toBe(true);
       });
 
-      it.skip("should update trust mode to autonomous", async () => {
+      it.skip("should update trust mode to full_auto", async () => {
         const result = await updateTrustModeTool.execute(
-          { mode: "autonomous" },
+          { mode: "full_auto" },
           mockContext,
         );
 

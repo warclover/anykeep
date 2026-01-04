@@ -72,8 +72,11 @@ export class SnapshotManager {
       }));
 
       // 创建快照
-      const { data, error } = await supabase
-        .from("ai_operation_snapshots")
+      const { data, error } = await (
+        supabase
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .from("ai_operation_snapshots") as any
+      )
         .insert({
           user_id: params.userId,
           operation_type: params.operationType,
@@ -234,7 +237,7 @@ export class SnapshotManager {
         data: {
           success: true,
           restoredCount: row.restored_count,
-          message: row.message,
+          message: row.message ?? "Operation undone successfully",
         },
       };
     } catch (error) {
@@ -279,7 +282,7 @@ export class SnapshotManager {
         operationType: data.operation_type as OperationType,
         conversationId: data.conversation_id ?? undefined,
         skillId: data.skill_id ?? undefined,
-        bookmarkIds: data.bookmark_ids,
+        bookmarkIds: data.bookmark_ids ?? [],
         beforeState: (data.before_state || []) as unknown as BookmarkState[],
         afterState: (data.after_state || []) as unknown as BookmarkState[],
         operations: (data.operations || []) as unknown as OperationRecord[],

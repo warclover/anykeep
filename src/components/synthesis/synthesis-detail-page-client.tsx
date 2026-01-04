@@ -958,11 +958,16 @@ export function SynthesisDetailPageClient({
                     report.blueprintType as KSSynthesisReport["blueprintType"],
                   title: report.title,
                   content: report.overview || report.fullMarkdown || "",
-                  citations: report.citations || [],
+                  // Transform citations to ensure required fields have default values
+                  citations: (report.citations || []).map((c) => ({
+                    bookmarkId: c.bookmarkId,
+                    title: c.title,
+                    url: c.url,
+                    excerpt: c.excerpt || "",
+                    position: c.position || 0,
+                  })),
                   generationMetadata: {
-                    model: report.generationMetadata?.model as
-                      | string
-                      | undefined,
+                    model: (report.generationMetadata?.model as string) || "",
                     tokens: {
                       input:
                         (report.generationMetadata?.tokens_used as number) || 0,
@@ -972,7 +977,13 @@ export function SynthesisDetailPageClient({
                     },
                     durationMs:
                       (report.generationMetadata?.duration_ms as number) || 0,
-                    stagesTiming: {},
+                    stagesTiming: {
+                      parsing: 0,
+                      outline: 0,
+                      content: 0,
+                      citations: 0,
+                      finalizing: 0,
+                    },
                   },
                   version: report.version || 1,
                   createdAt: new Date(report.createdAt),

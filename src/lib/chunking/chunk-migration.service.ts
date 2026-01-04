@@ -375,8 +375,11 @@ export class ChunkMigrationService {
     const parentIdMap = new Map<number, string>(); // index -> id
 
     for (const parent of parentChunks) {
-      const { data, error } = await this.supabase
-        .from("bookmark_chunks")
+      const { data, error } = await (
+        this.supabase
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .from("bookmark_chunks") as any
+      )
         .insert({
           bookmark_id: bookmarkId,
           chunk_index: parent.index,
@@ -422,9 +425,11 @@ export class ChunkMigrationService {
             : null,
       }));
 
-      const { error } = await this.supabase
-        .from("bookmark_chunks")
-        .insert(childRecords);
+      const { error } = await (
+        this.supabase
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .from("bookmark_chunks") as any
+      ).insert(childRecords);
 
       if (error) {
         logger.error(

@@ -47,6 +47,7 @@ export async function executeCategorizeSuggestions(
   // 按目标文件夹分组，批量更新
   const folderGroups = new Map<number, number[]>();
   for (const suggestion of validSuggestions) {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const folderId = suggestion.suggestedFolderId!;
     const bookmarkIds = folderGroups.get(folderId) || [];
     bookmarkIds.push(suggestion.bookmarkId);
@@ -121,7 +122,10 @@ export async function executeTagSuggestions(
           "BatchOrganize: Failed to add tags",
         );
         failed++;
-      } else if (data?.affected_count > 0) {
+      } else if (
+        (data as { affected_count?: number })?.affected_count ??
+        0 > 0
+      ) {
         success++;
       } else {
         failed++;

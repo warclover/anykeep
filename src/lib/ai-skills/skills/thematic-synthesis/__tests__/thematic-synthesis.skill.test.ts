@@ -235,7 +235,7 @@ describe("ThematicSynthesisSkill", () => {
   describe("parseInput", () => {
     const mockContext: OrchestrationContext = {
       userId: "test-user",
-      message: "",
+      originalMessage: "",
       params: {},
     };
 
@@ -264,7 +264,7 @@ describe("ThematicSynthesisSkill", () => {
     it("should emit progress chunks", async () => {
       const context: OrchestrationContext = {
         userId: "test-user",
-        message: "生成综述",
+        originalMessage: "生成综述",
         params: {
           sourceType: "folder",
           sourceId: "1",
@@ -281,7 +281,7 @@ describe("ThematicSynthesisSkill", () => {
     it("should emit text chunks with content", async () => {
       const context: OrchestrationContext = {
         userId: "test-user",
-        message: "生成综述",
+        originalMessage: "生成综述",
         params: {
           sourceType: "folder",
           sourceId: "1",
@@ -298,7 +298,7 @@ describe("ThematicSynthesisSkill", () => {
     it("should emit overview in text output", async () => {
       const context: OrchestrationContext = {
         userId: "test-user",
-        message: "生成综述",
+        originalMessage: "生成综述",
         params: {
           sourceType: "folder",
           sourceId: "1",
@@ -322,7 +322,7 @@ describe("ThematicSynthesisSkill", () => {
 
       const context: OrchestrationContext = {
         userId: "test-user",
-        message: "生成综述",
+        originalMessage: "生成综述",
         params: {
           sourceType: "folder",
           sourceId: "1",
@@ -344,7 +344,7 @@ describe("ThematicSynthesisSkill", () => {
     it("should process selected bookmarks", async () => {
       const context: OrchestrationContext = {
         userId: "test-user",
-        message: "生成综述",
+        originalMessage: "生成综述",
         params: {
           sourceType: "selection",
           bookmarkIds: ["1", "2"],
@@ -364,7 +364,7 @@ describe("ThematicSynthesisSkill", () => {
     it("should emit deliverable with report data", async () => {
       const context: OrchestrationContext = {
         userId: "test-user",
-        message: "生成综述",
+        originalMessage: "生成综述",
         params: {
           sourceType: "folder",
           sourceId: "1",
@@ -382,7 +382,7 @@ describe("ThematicSynthesisSkill", () => {
     it("should include overview in deliverable", async () => {
       const context: OrchestrationContext = {
         userId: "test-user",
-        message: "生成综述",
+        originalMessage: "生成综述",
         params: {
           sourceType: "folder",
           sourceId: "1",
@@ -399,7 +399,7 @@ describe("ThematicSynthesisSkill", () => {
     it("should include consensus in deliverable", async () => {
       const context: OrchestrationContext = {
         userId: "test-user",
-        message: "生成综述",
+        originalMessage: "生成综述",
         params: {
           sourceType: "folder",
           sourceId: "1",
@@ -416,7 +416,7 @@ describe("ThematicSynthesisSkill", () => {
     it("should include divergence in deliverable", async () => {
       const context: OrchestrationContext = {
         userId: "test-user",
-        message: "生成综述",
+        originalMessage: "生成综述",
         params: {
           sourceType: "folder",
           sourceId: "1",
@@ -433,7 +433,7 @@ describe("ThematicSynthesisSkill", () => {
     it("should include blindSpots in deliverable", async () => {
       const context: OrchestrationContext = {
         userId: "test-user",
-        message: "生成综述",
+        originalMessage: "生成综述",
         params: {
           sourceType: "folder",
           sourceId: "1",
@@ -452,7 +452,7 @@ describe("ThematicSynthesisSkill", () => {
     it("should save report when reportId is provided", async () => {
       const context: OrchestrationContext = {
         userId: "test-user",
-        message: "生成综述",
+        originalMessage: "生成综述",
         params: {
           sourceType: "folder",
           sourceId: "1",
