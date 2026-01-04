@@ -46,6 +46,7 @@ class TestBlueprint extends EnhancedBlueprintEngine<TestOutput> {
   readonly icon = "🧪";
   readonly tier: BlueprintTier = "free";
   readonly targetUsers: TargetUserGroup[] = ["developer", "general"];
+  readonly creditsCost = 2; // Story 8.1: Default credits cost
 
   // BaseSkill required schemas
   readonly inputSchema = z.object({

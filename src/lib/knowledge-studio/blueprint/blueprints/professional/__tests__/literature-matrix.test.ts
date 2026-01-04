@@ -69,6 +69,10 @@ describe("LiteratureMatrixBlueprint", () => {
       expect(blueprint.tags).toContain("学术研究");
       expect(blueprint.tags).toContain("研究缺口");
     });
+
+    it("should have creditsCost of 3 - high complexity (Story 8.1)", () => {
+      expect(blueprint.creditsCost).toBe(3);
+    });
   });
 
   // ============================================================

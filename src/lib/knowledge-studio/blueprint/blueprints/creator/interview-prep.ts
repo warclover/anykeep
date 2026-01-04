@@ -154,6 +154,7 @@ export class InterviewPrepBlueprint extends EnhancedBlueprintEngine<InterviewPre
     "journalist",
     "podcaster",
   ];
+  readonly creditsCost = 2; // Standard complexity blueprint
 
   // ============================================================
   // Optional Properties

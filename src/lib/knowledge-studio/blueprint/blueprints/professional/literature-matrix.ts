@@ -206,6 +206,7 @@ export class LiteratureMatrixBlueprint extends EnhancedBlueprintEngine<Literatur
     "academic",
     "student",
   ];
+  readonly creditsCost = 3; // High complexity: multi-paper academic analysis
 
   // ============================================================
   // Optional Properties

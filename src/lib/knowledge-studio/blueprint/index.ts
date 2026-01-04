@@ -180,6 +180,21 @@ export type {
 } from "./structured-output";
 
 // ============================================================
+// Services (Story 8.2)
+// ============================================================
+
+export {
+  EnhancedBlueprintBillingService,
+  createEnhancedBlueprintBillingService,
+  getEnhancedBlueprintBillingService,
+} from "./services";
+export type {
+  QuotaCheckResult,
+  ExecutionResult,
+  EnhancedBlueprintBillingConfig,
+} from "./services";
+
+// ============================================================
 // Types
 // ============================================================
 

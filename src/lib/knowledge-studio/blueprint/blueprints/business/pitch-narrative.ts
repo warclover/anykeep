@@ -183,6 +183,7 @@ export class PitchNarrativeBlueprint extends EnhancedBlueprintEngine<PitchNarrat
     "investor",
     "marketer",
   ];
+  readonly creditsCost = 2; // Standard complexity blueprint
 
   // ============================================================
   // Optional Properties

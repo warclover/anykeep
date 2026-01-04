@@ -196,6 +196,7 @@ export class TutorialArchitectBlueprint extends EnhancedBlueprintEngine<Tutorial
     "developer",
     "content_creator",
   ];
+  readonly creditsCost = 2; // Standard complexity blueprint
 
   // ============================================================
   // Optional Properties

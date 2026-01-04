@@ -134,6 +134,7 @@ export class ScriptwriterBlueprint extends EnhancedBlueprintEngine<ScriptwriterO
     "content_creator",
     "marketer",
   ];
+  readonly creditsCost = 2; // Standard complexity blueprint
 
   // ============================================================
   // Optional Properties

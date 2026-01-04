@@ -553,6 +553,46 @@ export const TTS = {
 /**
  * MD 阅读器相关文案
  */
+/**
+ * Story 8.3: 知识工坊配额相关文案
+ */
+export const KS_QUOTA = {
+  // 配额状态
+  REMAINING: (remaining: number, limit: number) =>
+    limit === -1 ? "无限" : `${remaining} / ${limit}`,
+  CREDITS_COST: (cost: number) => `消耗 ${cost} 点配额`,
+  RESET_DATE: (date: string) => `配额将于 ${date} 重置`,
+
+  // 警告
+  WARNING_TITLE: "配额不足",
+  WARNING_80: "配额使用已超过 80%",
+  WARNING_95: "配额即将用尽",
+  WARNING_MESSAGE: (remaining: number, required: number) =>
+    `当前剩余 ${remaining} 点配额，该蓝图需要 ${required} 点`,
+
+  // 用尽
+  EXHAUSTED_TITLE: "本月免费额度已用完",
+  EXHAUSTED_MESSAGE: "升级到专业版享受无限制使用",
+  EXHAUSTED_BUTTON: "查看升级方案",
+
+  // Free 用户
+  FREE_TRIAL_INFO: (used: number, limit: number) =>
+    `本月已使用 ${used}/${limit} 次免费试用`,
+  FREE_TRIAL_EXHAUSTED: "本月免费试用次数已用完",
+  FREE_TRIAL_RESET: "下月 1 日自动重置",
+
+  // Pro 用户
+  PRO_UNLIMITED: "专业版 · 无限使用",
+  ENTERPRISE_UNLIMITED: "企业版 · 无限使用",
+
+  // 操作
+  UPGRADE: "升级会员",
+  UPGRADE_PRO: "升级到专业版",
+  UPGRADE_HINT: "解锁无限蓝图生成",
+  CLOSE: "关闭",
+  VIEW_PLANS: "查看方案",
+} as const;
+
 export const MD_READER = {
   // 阅读进度
   PROGRESS: {
@@ -628,6 +668,7 @@ export const MESSAGES = {
   LINK_HEALTH,
   TTS,
   MD_READER,
+  KS_QUOTA,
 } as const;
 
 /**

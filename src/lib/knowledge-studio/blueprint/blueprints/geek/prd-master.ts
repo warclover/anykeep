@@ -223,6 +223,7 @@ export class PrdMasterBlueprint extends EnhancedBlueprintEngine<PrdMasterOutput>
     "developer",
     "architect",
   ];
+  readonly creditsCost = 2; // Standard complexity blueprint
 
   // ============================================================
   // Optional Properties

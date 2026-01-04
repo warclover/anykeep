@@ -127,6 +127,7 @@ export class ArxivDecoderBlueprint extends EnhancedBlueprintEngine<ArxivDecoderO
     "developer",
     "researcher",
   ];
+  readonly creditsCost = 2; // Standard complexity blueprint
 
   // ============================================================
   // Optional Properties

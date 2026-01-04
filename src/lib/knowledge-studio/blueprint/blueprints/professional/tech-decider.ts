@@ -215,6 +215,7 @@ export class TechDeciderBlueprint extends EnhancedBlueprintEngine<TechDeciderOut
     "architect",
     "developer",
   ];
+  readonly creditsCost = 2; // Standard complexity blueprint
 
   // ============================================================
   // Optional Properties

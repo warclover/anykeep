@@ -27,3 +27,17 @@ export type { OutlineConfirmationPanelProps } from "./outline-confirmation-panel
 // Outline Version History (Story 2.5)
 export { OutlineVersionHistory } from "./outline-version-history";
 export type { OutlineVersionHistoryProps } from "./outline-version-history";
+
+// Quota UI Components (Story 8.3)
+export {
+  BlueprintQuotaBar,
+  BlueprintQuotaExhaustedDialog,
+  BlueprintQuotaWarning,
+  CreditCostBadge,
+} from "./quota";
+export type {
+  BlueprintQuotaBarProps,
+  BlueprintQuotaExhaustedDialogProps,
+  BlueprintQuotaWarningProps,
+  CreditCostBadgeProps,
+} from "./quota";

@@ -298,6 +298,15 @@ export interface EnhancedBlueprintMetadata {
   /** 是否为新蓝图 (用于标记 NEW 徽章) */
   isNew?: boolean;
 
+  // ========== 配额字段 (Story 8.1) ==========
+
+  /**
+   * 蓝图消耗配额点数
+   * 增强蓝图每次生成消耗 2-3 个配额点数
+   * 根据蓝图复杂度和输出质量设定
+   */
+  creditsCost: number;
+
   // ========== 扩展字段 ==========
 
   /** 是否为 Geek 蓝图 (P0) */

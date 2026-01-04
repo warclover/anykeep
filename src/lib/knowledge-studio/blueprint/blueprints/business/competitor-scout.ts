@@ -179,6 +179,7 @@ export class CompetitorScoutBlueprint extends EnhancedBlueprintEngine<Competitor
     "marketer",
     "entrepreneur",
   ];
+  readonly creditsCost = 2; // Standard complexity blueprint
 
   // ============================================================
   // Optional Properties

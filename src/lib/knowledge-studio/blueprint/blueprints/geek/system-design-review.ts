@@ -233,6 +233,7 @@ export class SystemDesignReviewBlueprint extends EnhancedBlueprintEngine<SystemD
     "developer",
     "product_manager",
   ];
+  readonly creditsCost = 3; // High complexity: deep architecture analysis
 
   // ============================================================
   // Optional Properties

@@ -47,6 +47,7 @@ class MockBlueprint extends EnhancedBlueprintEngine<TestOutput> {
   readonly icon = "🧪";
   readonly tier: BlueprintTier;
   readonly targetUsers: TargetUserGroup[] = ["developer"];
+  readonly creditsCost = 2; // Story 8.1: Default credits cost
   readonly category:
     | "geek"
     | "creator"

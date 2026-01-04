@@ -116,6 +116,14 @@ export abstract class EnhancedBlueprintEngine<
   abstract readonly targetUsers: TargetUserGroup[];
 
   /**
+   * 配额消耗点数 (Story 8.1)
+   * 增强蓝图每次生成消耗 2-3 个配额点数
+   * - 2 点：标准复杂度蓝图
+   * - 3 点：高复杂度蓝图（如多维度分析、综合报告）
+   */
+  abstract readonly creditsCost: number;
+
+  /**
    * Briefing 配置
    * 定义预生成问题，最多 3 个问题
    */
@@ -532,6 +540,9 @@ export abstract class EnhancedBlueprintEngine<
       isNew: this.isNew,
       tags: this.tags,
       examplePrompts: this.examplePrompts,
+
+      // 配额字段 (Story 8.1)
+      creditsCost: this.creditsCost,
 
       // 扩展字段
       isGeek: this.blueprintId.startsWith("geek-"),

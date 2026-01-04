@@ -228,6 +228,7 @@ export class WorkshopDesignerBlueprint extends EnhancedBlueprintEngine<WorkshopD
     "educator",
     "facilitator",
   ];
+  readonly creditsCost = 2; // Standard complexity blueprint
 
   // ============================================================
   // Optional Properties

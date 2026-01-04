@@ -221,6 +221,7 @@ export class SeoPillarBlueprint extends EnhancedBlueprintEngine<SeoPillarOutput>
     "content_creator",
     "blogger",
   ];
+  readonly creditsCost = 2; // Standard complexity blueprint
 
   // ============================================================
   // Optional Properties

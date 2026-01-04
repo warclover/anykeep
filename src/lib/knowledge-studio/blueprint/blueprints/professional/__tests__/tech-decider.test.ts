@@ -69,6 +69,10 @@ describe("TechDeciderBlueprint", () => {
       expect(blueprint.tags).toContain("架构决策");
       expect(blueprint.tags).toContain("技术选型");
     });
+
+    it("should have creditsCost of 2 (Story 8.1)", () => {
+      expect(blueprint.creditsCost).toBe(2);
+    });
   });
 
   // ============================================================

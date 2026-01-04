@@ -131,6 +131,7 @@ export class NewsletterBlueprint extends EnhancedBlueprintEngine<NewsletterOutpu
     "marketer",
     "writer",
   ];
+  readonly creditsCost = 2; // Standard complexity blueprint
 
   // ============================================================
   // Optional Properties

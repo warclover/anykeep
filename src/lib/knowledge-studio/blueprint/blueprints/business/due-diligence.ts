@@ -201,6 +201,7 @@ export class DueDiligenceBlueprint extends EnhancedBlueprintEngine<DueDiligenceO
     "analyst",
     "entrepreneur",
   ];
+  readonly creditsCost = 3; // High complexity: enterprise-grade risk analysis
 
   // ============================================================
   // Optional Properties
