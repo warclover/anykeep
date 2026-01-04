@@ -133,6 +133,53 @@ export type {
 } from "./outline-version-manager";
 
 // ============================================================
+// Structured Output (Story 3.1)
+// ============================================================
+
+export {
+  // Validator
+  validateOutput,
+  validateOutputAuto,
+  validateOutputBatch,
+  isValidOutput,
+  inferOutputType,
+  createEmptyMeta,
+  createFallbackMeta,
+  getSupportedOutputTypes,
+  isOutputTypeSupported,
+  // Schemas
+  schemaRegistry,
+  getSchemaForType,
+  featureMatrixSchema,
+  swotSchema,
+  scriptTimelineSchema,
+  sectionsSchema,
+  checklistSchema,
+  markdownSchema,
+} from "./structured-output";
+export type {
+  StructuredOutputType,
+  StructuredOutputMeta,
+  FeatureSupportLevel,
+  FeatureMatrixRow,
+  FeatureMatrixOutput,
+  SwotQuadrant,
+  SwotItem,
+  SwotOutput,
+  ScriptTimelineShot,
+  ScriptTimelineOutput,
+  SectionContent,
+  SectionsOutput,
+  ChecklistItemStatus,
+  ChecklistItem,
+  ChecklistOutput,
+  MarkdownOutput,
+  AnyStructuredOutput,
+  SchemaValidationError,
+  SchemaValidationResult,
+} from "./structured-output";
+
+// ============================================================
 // Types
 // ============================================================
 
