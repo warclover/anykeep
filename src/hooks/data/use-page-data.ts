@@ -12,13 +12,14 @@ import { createClient } from "@/lib/supabase/client";
 import { useUser } from "@/contexts/user-context";
 import { clientLogger } from "@/lib/client-logger";
 import { dataCache, CACHE_KEYS } from "@/lib/cache";
-import type { Bookmark, Folder, Platform } from "@/types/supabase";
+import type { Bookmark, Platform } from "@/types/supabase";
 import type { UserSettings } from "@/types/user-settings";
 import { DEFAULT_USER_SETTINGS } from "@/types/user-settings";
 import {
   getPlatformName,
   getPlatformHexColor,
 } from "@/lib/constants/platforms";
+import type { FolderWithStats } from "@/types/domain";
 
 // ==================== 通用类型 ====================
 
@@ -44,6 +45,7 @@ interface FolderRow {
   folder_group: string | null;
   sort_order: number | null;
   system_type: string | null;
+  source?: string | null;
 }
 
 interface BookmarkCountRow {
@@ -51,7 +53,7 @@ interface BookmarkCountRow {
   created_at: string | null;
 }
 
-interface RecentBookmarkRow {
+interface _RecentBookmarkRow {
   id: number;
   title: string | null;
   url: string | null;
@@ -71,10 +73,8 @@ interface AnalyticsBookmarkRow {
 
 // ==================== 收藏夹页面数据 ====================
 
-export type FolderWithStats = Folder & {
-  bookmark_count: number;
-  today_count: number;
-};
+// 重新导出 FolderWithStats 以保持向后兼容
+export type { FolderWithStats } from "@/types/domain";
 
 interface FoldersData {
   folders: FolderWithStats[];
@@ -135,17 +135,16 @@ export function useFoldersData() {
       const supabase = createClient();
 
       // 获取文件夹
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: folders, error: foldersError } = (await (
-        supabase.from("folders") as any
-      )
-        .select("*")
-        .eq("user_id", user.id)
-        .is("deleted_at", null)
-        .order("created_at", { ascending: false })) as {
-        data: FolderRow[] | null;
-        error: Error | null;
-      };
+      const { data: folders, error: foldersError } =
+        (await // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (supabase.from("folders") as any)
+          .select("*")
+          .eq("user_id", user.id)
+          .is("deleted_at", null)
+          .order("created_at", { ascending: false })) as {
+          data: FolderRow[] | null;
+          error: Error | null;
+        };
 
       if (foldersError) throw foldersError;
 
@@ -158,17 +157,16 @@ export function useFoldersData() {
         const todayISO = today.toISOString();
 
         const folderIds = folders.map((f) => f.id);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: allBookmarks } = (await (
-          supabase.from("bookmarks") as any
-        )
-          .select("folder_id, created_at")
-          .eq("user_id", user.id)
-          .is("deleted_at", null)
-          .in("folder_id", folderIds)) as {
-          data: BookmarkCountRow[] | null;
-          error: Error | null;
-        };
+        const { data: allBookmarks } =
+          (await // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (supabase.from("bookmarks") as any)
+            .select("folder_id, created_at")
+            .eq("user_id", user.id)
+            .is("deleted_at", null)
+            .in("folder_id", folderIds)) as {
+            data: BookmarkCountRow[] | null;
+            error: Error | null;
+          };
 
         const countMap = new Map<number, number>();
         const todayCountMap = new Map<number, number>();
@@ -194,8 +192,20 @@ export function useFoldersData() {
         const normalFolders = folders.filter((f) => !f.is_system);
 
         foldersWithStats = [...systemFolders, ...normalFolders].map(
-          (folder) => ({
-            ...folder,
+          (folder): FolderWithStats => ({
+            id: folder.id,
+            user_id: folder.user_id,
+            name: folder.name,
+            parent_id: folder.parent_id,
+            created_at: folder.created_at,
+            updated_at: folder.updated_at,
+            deleted_at: folder.deleted_at,
+            folder_group: folder.folder_group,
+            sort_order: folder.sort_order,
+            source: folder.source ?? null,
+            system_type: folder.system_type,
+            is_system: folder.is_system ?? false,
+            is_archived: folder.is_archived ?? false,
             bookmark_count: countMap.get(folder.id) || 0,
             today_count: todayCountMap.get(folder.id) || 0,
           }),
@@ -203,18 +213,17 @@ export function useFoldersData() {
       }
 
       // 获取最近书签
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: recentBookmarks, error: bookmarksError } = (await (
-        supabase.from("bookmarks") as any
-      )
-        .select("*, folders(name)")
-        .eq("user_id", user.id)
-        .is("deleted_at", null)
-        .order("created_at", { ascending: false })
-        .limit(6)) as {
-        data: (Bookmark & { folders?: { name: string } | null })[] | null;
-        error: Error | null;
-      };
+      const { data: recentBookmarks, error: bookmarksError } =
+        (await // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (supabase.from("bookmarks") as any)
+          .select("*, folders(name)")
+          .eq("user_id", user.id)
+          .is("deleted_at", null)
+          .order("created_at", { ascending: false })
+          .limit(6)) as {
+          data: (Bookmark & { folders?: { name: string } | null })[] | null;
+          error: Error | null;
+        };
 
       if (bookmarksError) throw bookmarksError;
 
@@ -312,17 +321,16 @@ export function useAnalyticsData() {
       const supabase = createClient();
 
       // 获取所有书签
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: bookmarks, error } = (await (
-        supabase.from("bookmarks") as any
-      )
-        .select("*")
-        .eq("user_id", user.id)
-        .is("deleted_at", null)
-        .order("created_at", { ascending: true })) as {
-        data: AnalyticsBookmarkRow[] | null;
-        error: Error | null;
-      };
+      const { data: bookmarks, error } =
+        (await // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (supabase.from("bookmarks") as any)
+          .select("*")
+          .eq("user_id", user.id)
+          .is("deleted_at", null)
+          .order("created_at", { ascending: true })) as {
+          data: AnalyticsBookmarkRow[] | null;
+          error: Error | null;
+        };
 
       if (error) throw error;
 

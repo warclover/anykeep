@@ -2,22 +2,19 @@
  * 收藏夹组件共享类型定义
  */
 
-import type { Folder, Bookmark } from "@/types/supabase";
+import type { Bookmark } from "@/types/supabase";
 import type { UIFolderGroup } from "./constants";
+import type { FolderWithStats } from "@/types/domain";
 
 // ==================== 文件夹类型 ====================
 
-/** 带统计信息的文件夹类型 */
-export type FolderWithStats = Folder & {
-  bookmark_count: number;
-  today_count: number;
-  is_archived?: boolean | null;
-  is_locked?: boolean | null;
-  folder_group?: string | null;
-  sort_order?: number | null;
-  is_system?: boolean;
-  system_type?: string | null;
-};
+/**
+ * 带统计信息的文件夹类型
+ *
+ * @deprecated 请从 "@/types/domain" 导入 FolderWithStats
+ * 保留此导出是为了向后兼容
+ */
+export type { FolderWithStats } from "@/types/domain";
 
 // ==================== 锁定状态类型 ====================
 

@@ -414,11 +414,17 @@ export class ReportService extends BaseSupabaseService {
           id: number;
           name: string;
         };
+        const similarity = candidate.internal_similarity ?? 0;
+        const isHighPriority = similarity < 0.4;
         suggestions.push({
+          id: `split-${folder.id}-${Date.now()}`,
           type: "split",
           description: `文件夹「${folder.name}」内容较杂，建议分拆`,
-          targetFolders: [{ id: folder.id, name: folder.name }],
-          priority: candidate.internal_similarity! < 0.4 ? "high" : "medium",
+          folderId: folder.id,
+          folderName: folder.name,
+          reason: `内部相似度仅 ${Math.round(similarity * 100)}%`,
+          confidence: isHighPriority ? 0.9 : 0.7,
+          status: "pending",
         });
       }
     }
@@ -442,10 +448,14 @@ export class ReportService extends BaseSupabaseService {
 
         if (count !== null && count < 2) {
           suggestions.push({
+            id: `cleanup-${folder.id}-${Date.now()}`,
             type: "cleanup",
             description: `文件夹「${folder.name}」只有 ${count} 条内容，建议整理`,
-            targetFolders: [{ id: folder.id, name: folder.name }],
-            priority: "low",
+            folderId: folder.id,
+            folderName: folder.name,
+            reason: `仅包含 ${count} 条书签，内容过少`,
+            confidence: 0.5,
+            status: "pending",
           });
         }
       }

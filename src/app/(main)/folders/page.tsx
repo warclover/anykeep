@@ -11,13 +11,7 @@ import { createClient } from "@/lib/supabase/server";
 import { FoldersPageClient } from "@/components/folders/folders-page-client";
 import { QUERY_LIMITS } from "@/lib/constants/app";
 import type { Folder } from "@/types/supabase";
-
-// 扩展 Folder 类型，包含统计字段
-type FolderWithStats = Folder & {
-  bookmark_count: number;
-  today_count: number;
-  is_locked?: boolean;
-};
+import type { FolderWithStats } from "@/types/domain";
 
 export default async function FoldersPage() {
   const supabase = await createClient();
@@ -33,12 +27,15 @@ export default async function FoldersPage() {
   }
 
   // 获取用户的所有文件夹
-  const { data: folders, error: foldersError } = await supabase
+  const { data: folders, error: foldersError } = (await supabase
     .from("folders")
     .select("*")
     .eq("user_id", user.id)
     .is("deleted_at", null)
-    .order("created_at", { ascending: false }) as unknown as { data: Folder[] | null; error: unknown };
+    .order("created_at", { ascending: false })) as unknown as {
+    data: Folder[] | null;
+    error: unknown;
+  };
 
   // 计算每个文件夹的书签数量和当日新增
   let foldersWithStats: FolderWithStats[] = [];
@@ -52,16 +49,18 @@ export default async function FoldersPage() {
 
     // V4.2.26: 并行查询 - SQL 聚合统计 + 锁定状态
     // 优化效果：10,000+ 书签场景从 ~2000ms 优化到 ~100ms
-    // 类型断言: 手动维护类型文件时需要此断言
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [statsResult, profilesResult] = await Promise.all([
       // SQL 聚合统计（替代内存遍历）
+      // 类型断言: 手动维护类型文件时需要此断言
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (supabase.rpc as any)("get_folder_bookmark_stats", {
         p_user_id: user.id,
         p_folder_ids: folderIds,
         p_today_start: today.toISOString(),
       }) as Promise<{
-        data: { folder_id: number; bookmark_count: number; today_count: number }[] | null;
+        data:
+          | { folder_id: number; bookmark_count: number; today_count: number }[]
+          | null;
         error: unknown;
       }>,
       // 锁定状态
@@ -98,12 +97,26 @@ export default async function FoldersPage() {
     const systemFolders = folders.filter((f) => f.is_system);
     const normalFolders = folders.filter((f) => !f.is_system);
 
-    foldersWithStats = [...systemFolders, ...normalFolders].map((folder) => ({
-      ...folder,
-      bookmark_count: countMap.get(folder.id) || 0,
-      today_count: todayCountMap.get(folder.id) || 0,
-      is_locked: lockedMap.get(folder.id) || false,
-    }));
+    foldersWithStats = [...systemFolders, ...normalFolders].map(
+      (folder): FolderWithStats => ({
+        id: folder.id,
+        user_id: folder.user_id,
+        name: folder.name,
+        parent_id: folder.parent_id,
+        created_at: folder.created_at,
+        updated_at: folder.updated_at,
+        deleted_at: folder.deleted_at,
+        folder_group: folder.folder_group,
+        sort_order: folder.sort_order,
+        source: folder.source ?? null,
+        system_type: folder.system_type,
+        is_system: folder.is_system ?? false,
+        is_archived: folder.is_archived ?? false,
+        bookmark_count: countMap.get(folder.id) || 0,
+        today_count: todayCountMap.get(folder.id) || 0,
+        is_locked: lockedMap.get(folder.id) || false,
+      }),
+    );
   }
 
   // 获取最近添加的收藏

@@ -16,21 +16,20 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { UISuggestion } from "@/types/domain";
 
 // ============================================
 // Type Definitions
 // ============================================
 
-export interface ReportSuggestion {
-  type?: "merge" | "split" | "rename" | "cleanup";
-  description?: string;
-  targetFolders?: Array<{ id: number; name: string }>;
-  priority?: "high" | "medium" | "low";
-}
+/**
+ * @deprecated 请使用 UISuggestion from "@/types/domain"
+ */
+export type ReportSuggestion = UISuggestion;
 
 interface ReportSuggestionsListProps {
-  suggestions: ReportSuggestion[];
-  onSuggestionClick?: (suggestion: ReportSuggestion) => void;
+  suggestions: UISuggestion[];
+  onSuggestionClick?: (suggestion: UISuggestion) => void;
   className?: string;
 }
 
@@ -38,7 +37,7 @@ interface ReportSuggestionsListProps {
 // Helper Functions
 // ============================================
 
-function getSuggestionIcon(type: ReportSuggestion["type"]) {
+function getSuggestionIcon(type: UISuggestion["type"]) {
   switch (type) {
     case "split":
       return Scissors;
@@ -53,7 +52,7 @@ function getSuggestionIcon(type: ReportSuggestion["type"]) {
   }
 }
 
-function getSuggestionColor(type: ReportSuggestion["type"]) {
+function getSuggestionColor(type: UISuggestion["type"]) {
   switch (type) {
     case "split":
       return "text-amber-500";
@@ -68,7 +67,7 @@ function getSuggestionColor(type: ReportSuggestion["type"]) {
   }
 }
 
-function getPriorityBadge(priority: ReportSuggestion["priority"]) {
+function getPriorityBadge(priority: UISuggestion["priority"]) {
   switch (priority) {
     case "high":
       return (

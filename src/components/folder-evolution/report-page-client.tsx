@@ -41,8 +41,9 @@ import { format } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import Link from "next/link";
 import { ReportChangesList } from "./report-changes-list";
-import type { ReportSuggestion } from "./report-suggestions-list";
 import { ReportSuggestionsList } from "./report-suggestions-list";
+import type { UISuggestion } from "@/types/domain";
+import { toUISuggestionList } from "@/types/domain";
 
 // ============================================
 // Helper Functions
@@ -101,7 +102,7 @@ export function ReportPageClient() {
   } = useEvolutionReports();
 
   // Handle suggestion click (navigate to relevant page)
-  const handleSuggestionClick = (_suggestion: ReportSuggestion) => {
+  const handleSuggestionClick = (_suggestion: UISuggestion) => {
     // In a full implementation, this would navigate to the appropriate action
     // Currently no-op: navigation logic to be implemented
   };
@@ -374,7 +375,7 @@ export function ReportPageClient() {
 
               {/* Suggestions */}
               <ReportSuggestionsList
-                suggestions={currentReport.suggestions}
+                suggestions={toUISuggestionList(currentReport.suggestions)}
                 onSuggestionClick={handleSuggestionClick}
               />
             </CardContent>
