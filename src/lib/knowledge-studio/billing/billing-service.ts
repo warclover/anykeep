@@ -17,6 +17,7 @@ import type {
   ConsumptionRecord,
   UsageType,
 } from "./types";
+import { parseConsumptionSummaryRpc } from "./types";
 import type { Database } from "@/types/supabase";
 
 // ============================================================================
@@ -182,17 +183,11 @@ export class BillingService implements IBillingService {
       throw new Error(`获取消费汇总失败: ${error.message}`);
     }
 
-    // RPC 返回 Json 类型，需要类型断言
-    interface ConsumptionSummaryRpcResult {
-      consumptionByType?: Record<string, { amount: number; cost: number }>;
-      totalAmount?: number;
-      totalCost?: number;
-      dailyAverage?: number;
-      trend?: string;
-      trendPercent?: number;
-    }
-
-    const summaryData = data as unknown as ConsumptionSummaryRpcResult | null;
+    // 使用 Zod 验证 RPC 返回值
+    const summaryData = parseConsumptionSummaryRpc(
+      data,
+      `consumption_summary:${userId}`,
+    );
 
     // 确保所有类型都有值
     const consumptionByType: Record<
@@ -207,14 +202,14 @@ export class BillingService implements IBillingService {
     };
 
     // 合并 RPC 返回的数据
-    if (summaryData?.consumptionByType) {
+    if (summaryData.consumptionByType) {
       for (const [key, value] of Object.entries(
         summaryData.consumptionByType,
       )) {
-        if (key in consumptionByType) {
-          consumptionByType[key as UsageType] = value as {
-            amount: number;
-            cost: number;
+        if (key in consumptionByType && value) {
+          consumptionByType[key as UsageType] = {
+            amount: value.amount,
+            cost: value.cost,
           };
         }
       }
@@ -227,11 +222,11 @@ export class BillingService implements IBillingService {
         end: endDate,
       },
       consumptionByType,
-      totalAmount: summaryData?.totalAmount ?? 0,
-      totalCost: summaryData?.totalCost ?? 0,
-      dailyAverage: Math.round(summaryData?.dailyAverage ?? 0),
-      trend: (summaryData?.trend as "up" | "down" | "stable") ?? "stable",
-      trendPercent: summaryData?.trendPercent ?? 0,
+      totalAmount: summaryData.totalAmount ?? 0,
+      totalCost: summaryData.totalCost ?? 0,
+      dailyAverage: Math.round(summaryData.dailyAverage ?? 0),
+      trend: summaryData.trend ?? "stable",
+      trendPercent: summaryData.trendPercent ?? 0,
     };
   }
 

@@ -12,6 +12,9 @@
  * - 模板分享
  */
 
+import { z } from "zod";
+import { logger } from "@/lib/logger";
+
 // ============================================================================
 // 模板基础类型
 // ============================================================================
@@ -24,6 +27,22 @@ export type TemplateVisibility =
   | "shared" // 指定用户可见
   | "public"; // 公开
 
+/** TemplateVisibility 类型守卫 */
+const TEMPLATE_VISIBILITIES: TemplateVisibility[] = [
+  "private",
+  "shared",
+  "public",
+];
+
+export function isTemplateVisibility(
+  value: unknown,
+): value is TemplateVisibility {
+  return (
+    typeof value === "string" &&
+    TEMPLATE_VISIBILITIES.includes(value as TemplateVisibility)
+  );
+}
+
 /**
  * 模板状态
  */
@@ -31,6 +50,16 @@ export type TemplateStatus =
   | "draft" // 草稿
   | "active" // 启用
   | "archived"; // 归档
+
+/** TemplateStatus 类型守卫 */
+const TEMPLATE_STATUSES: TemplateStatus[] = ["draft", "active", "archived"];
+
+export function isTemplateStatus(value: unknown): value is TemplateStatus {
+  return (
+    typeof value === "string" &&
+    TEMPLATE_STATUSES.includes(value as TemplateStatus)
+  );
+}
 
 /**
  * 模板变量类型
@@ -241,4 +270,94 @@ export interface IPromptCompiler {
     template: CustomTemplate,
     variableValues: Record<string, unknown>,
   ): { prompt: string; estimatedTokens: number };
+}
+
+// ============================================================================
+// Zod Schemas for Runtime Validation (P1 类型安全修复)
+// ============================================================================
+
+/**
+ * TemplateVariable 运行时验证 Schema
+ */
+export const TemplateVariableSchema = z.object({
+  name: z.string(),
+  label: z.string(),
+  type: z.enum(["text", "number", "select", "multiselect", "boolean"]),
+  defaultValue: z.union([z.string(), z.number(), z.boolean()]).optional(),
+  required: z.boolean(),
+  placeholder: z.string().optional(),
+  options: z
+    .array(
+      z.object({
+        value: z.string(),
+        label: z.string(),
+      }),
+    )
+    .optional(),
+  validation: z
+    .object({
+      minLength: z.number().optional(),
+      maxLength: z.number().optional(),
+      min: z.number().optional(),
+      max: z.number().optional(),
+      pattern: z.string().optional(),
+    })
+    .optional(),
+});
+
+/**
+ * TemplatePromptSection 运行时验证 Schema
+ */
+export const TemplatePromptSectionSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  content: z.string(),
+  required: z.boolean(),
+  order: z.number(),
+});
+
+/**
+ * 安全解析 JSON 列为 TemplateVariable[]
+ * @param json - 数据库 JSON 列值
+ * @param context - 调用上下文（用于日志）
+ * @returns 解析后的变量数组，无效时返回空数组
+ */
+export function parseTemplateVariables(
+  json: unknown,
+  context?: string,
+): TemplateVariable[] {
+  if (!json) return [];
+
+  const result = z.array(TemplateVariableSchema).safeParse(json);
+  if (!result.success) {
+    logger.warn(
+      { context, error: result.error.message },
+      "Invalid template variables JSON, returning empty array",
+    );
+    return [];
+  }
+  return result.data;
+}
+
+/**
+ * 安全解析 JSON 列为 TemplatePromptSection[]
+ * @param json - 数据库 JSON 列值
+ * @param context - 调用上下文（用于日志）
+ * @returns 解析后的 Prompt 部分数组，无效时返回空数组
+ */
+export function parsePromptSections(
+  json: unknown,
+  context?: string,
+): TemplatePromptSection[] {
+  if (!json) return [];
+
+  const result = z.array(TemplatePromptSectionSchema).safeParse(json);
+  if (!result.success) {
+    logger.warn(
+      { context, error: result.error.message },
+      "Invalid prompt sections JSON, returning empty array",
+    );
+    return [];
+  }
+  return result.data;
 }

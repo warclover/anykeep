@@ -228,25 +228,11 @@ export async function POST(request: NextRequest) {
                     },
                   };
 
-                  // 注意：由于 Supabase 客户端类型系统限制，需要使用类型断言
-                  // 但 insertData 已通过类型定义确保类型安全
-                  const supabaseQuery = supabase.from(
-                    "synthesis_reports",
-                  ) as unknown as {
-                    insert: (values: SynthesisReportInsert) => {
-                      select: (columns: string) => {
-                        single: () => Promise<{
-                          data: Pick<SynthesisReportRow, "id"> | null;
-                          error: { message: string; code?: string } | null;
-                        }>;
-                      };
-                    };
-                  };
-                  const { data: report, error: insertError } =
-                    await supabaseQuery
-                      .insert(insertData)
-                      .select("id")
-                      .single();
+                  const { data: report, error: insertError } = await supabase
+                    .from("synthesis_reports")
+                    .insert(insertData)
+                    .select("id")
+                    .single<Pick<SynthesisReportRow, "id">>();
 
                   if (insertError) {
                     logger.error(

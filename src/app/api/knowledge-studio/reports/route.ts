@@ -182,20 +182,11 @@ export async function POST(request: NextRequest) {
       generation_metadata: generationMetadata || {},
     };
 
-    const supabaseQuery = supabase.from("synthesis_reports") as unknown as {
-      insert: (values: SynthesisReportInsert) => {
-        select: () => {
-          single: () => Promise<{
-            data: SynthesisReportRow | null;
-            error: { message: string } | null;
-          }>;
-        };
-      };
-    };
-    const { data: report, error } = await supabaseQuery
+    const { data: report, error } = await supabase
+      .from("synthesis_reports")
       .insert(insertData)
       .select()
-      .single();
+      .single<SynthesisReportRow>();
 
     if (error) {
       logger.error({ userId: user.id, error }, "Failed to create report");

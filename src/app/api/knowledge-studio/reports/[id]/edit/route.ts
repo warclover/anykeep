@@ -119,32 +119,12 @@ export async function POST(request: NextRequest, context: RouteContext) {
     // 4. 获取报告内容
     type SynthesisReportRow =
       Database["public"]["Tables"]["synthesis_reports"]["Row"];
-    const supabaseQuery = supabase.from("synthesis_reports") as unknown as {
-      select: (columns: string) => {
-        eq: (
-          column: string,
-          value: string,
-        ) => {
-          eq: (
-            column: string,
-            value: string,
-          ) => {
-            single: () => Promise<{
-              data: Pick<
-                SynthesisReportRow,
-                "id" | "content" | "blueprint_type"
-              > | null;
-              error: { message: string } | null;
-            }>;
-          };
-        };
-      };
-    };
-    const { data: report, error: reportError } = await supabaseQuery
+    const { data: report, error: reportError } = await supabase
+      .from("synthesis_reports")
       .select("id, content, blueprint_type")
       .eq("id", reportId)
       .eq("user_id", user.id)
-      .single();
+      .single<Pick<SynthesisReportRow, "id" | "content" | "blueprint_type">>();
 
     if (reportError || !report) {
       return new Response(

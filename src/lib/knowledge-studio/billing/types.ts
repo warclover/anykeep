@@ -12,6 +12,9 @@
  * - 费用计算
  */
 
+import { z } from "zod";
+import { logger } from "@/lib/logger";
+
 // ============================================================================
 // 使用量类型
 // ============================================================================
@@ -25,6 +28,19 @@ export type UsageType =
   | "ai_recommendation" // AI 推荐
   | "export" // 导出
   | "storage"; // 存储
+
+/** UsageType 类型守卫 */
+const USAGE_TYPES: UsageType[] = [
+  "generation",
+  "chat_edit",
+  "ai_recommendation",
+  "export",
+  "storage",
+];
+
+export function isUsageType(value: unknown): value is UsageType {
+  return typeof value === "string" && USAGE_TYPES.includes(value as UsageType);
+}
 
 /**
  * 使用量周期
@@ -88,6 +104,22 @@ export type BillingStatus =
   | "overdue" // 逾期
   | "cancelled" // 已取消
   | "refunded"; // 已退款
+
+/** BillingStatus 类型守卫 */
+const BILLING_STATUSES: BillingStatus[] = [
+  "pending",
+  "paid",
+  "overdue",
+  "cancelled",
+  "refunded",
+];
+
+export function isBillingStatus(value: unknown): value is BillingStatus {
+  return (
+    typeof value === "string" &&
+    BILLING_STATUSES.includes(value as BillingStatus)
+  );
+}
 
 /**
  * 账单项目
@@ -262,4 +294,87 @@ export interface IBillingService {
       limit?: number;
     },
   ): Promise<ConsumptionRecord[]>;
+}
+
+// ============================================================================
+// Zod Schemas for RPC Runtime Validation (P1 类型安全修复)
+// ============================================================================
+
+/**
+ * ConsumptionSummary RPC 返回值验证 Schema
+ */
+export const ConsumptionSummaryRpcSchema = z.object({
+  consumptionByType: z
+    .record(
+      z.string(),
+      z.object({
+        amount: z.number(),
+        cost: z.number(),
+      }),
+    )
+    .optional(),
+  totalAmount: z.number().optional(),
+  totalCost: z.number().optional(),
+  dailyAverage: z.number().optional(),
+  trend: z.enum(["up", "down", "stable"]).optional(),
+  trendPercent: z.number().optional(),
+});
+
+export type ConsumptionSummaryRpcResult = z.infer<
+  typeof ConsumptionSummaryRpcSchema
+>;
+
+/**
+ * 安全解析消费汇总 RPC 返回值
+ * @param data - RPC 返回数据
+ * @param context - 调用上下文
+ * @returns 解析后的数据，无效时返回空对象
+ */
+export function parseConsumptionSummaryRpc(
+  data: unknown,
+  context?: string,
+): ConsumptionSummaryRpcResult {
+  if (!data) return {};
+
+  const result = ConsumptionSummaryRpcSchema.safeParse(data);
+  if (!result.success) {
+    logger.warn(
+      { context, error: result.error.message },
+      "Invalid consumption summary RPC response",
+    );
+    return {};
+  }
+  return result.data;
+}
+
+/**
+ * UsageStats RPC 返回值验证 Schema
+ */
+export const UsageStatsRpcSchema = z.object({
+  usageByType: z.record(z.string(), z.number()).optional(),
+  totalUsage: z.number().optional(),
+  quotaLimit: z.number().optional(),
+  usageRate: z.number().optional(),
+});
+
+export type UsageStatsRpcResult = z.infer<typeof UsageStatsRpcSchema>;
+
+/**
+ * 安全解析使用统计 RPC 返回值
+ */
+export function parseUsageStatsRpc(
+  data: unknown,
+  context?: string,
+): UsageStatsRpcResult {
+  if (!data) return {};
+
+  const result = UsageStatsRpcSchema.safeParse(data);
+  if (!result.success) {
+    logger.warn(
+      { context, error: result.error.message },
+      "Invalid usage stats RPC response",
+    );
+    return {};
+  }
+  return result.data;
 }

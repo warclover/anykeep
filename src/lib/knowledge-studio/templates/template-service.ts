@@ -13,9 +13,8 @@ import type {
   CustomTemplate,
   TemplateVersion,
   TemplateUsage,
-  TemplateVariable,
-  TemplatePromptSection,
 } from "./types";
+import { parseTemplateVariables, parsePromptSections } from "./types";
 import type { Database, Json } from "@/types/supabase";
 
 // ============================================================================
@@ -54,9 +53,11 @@ function rowToTemplate(row: TemplateRow): CustomTemplate {
     description: row.description,
     icon: row.icon ?? undefined,
     baseBlueprint: row.base_blueprint ?? undefined,
-    variables: (row.variables as unknown as TemplateVariable[]) ?? [],
-    promptSections:
-      (row.prompt_sections as unknown as TemplatePromptSection[]) ?? [],
+    variables: parseTemplateVariables(row.variables, `template:${row.id}`),
+    promptSections: parsePromptSections(
+      row.prompt_sections,
+      `template:${row.id}`,
+    ),
     outputFormat: row.output_format ?? undefined,
     visibility: row.visibility as "private" | "shared" | "public",
     status: row.status as "draft" | "active" | "archived",
@@ -74,9 +75,14 @@ function rowToVersion(row: VersionRow): TemplateVersion {
     templateId: row.template_id,
     version: row.version,
     changelog: row.changelog,
-    variables: (row.variables as unknown as TemplateVariable[]) ?? [],
-    promptSections:
-      (row.prompt_sections as unknown as TemplatePromptSection[]) ?? [],
+    variables: parseTemplateVariables(
+      row.variables,
+      `version:${row.template_id}:${row.version}`,
+    ),
+    promptSections: parsePromptSections(
+      row.prompt_sections,
+      `version:${row.template_id}:${row.version}`,
+    ),
     createdAt: new Date(row.created_at),
     createdBy: row.created_by,
   };

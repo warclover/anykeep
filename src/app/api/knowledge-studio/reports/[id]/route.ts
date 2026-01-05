@@ -122,29 +122,12 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     // 检查报告是否存在且属于当前用户
     type SynthesisReportRow =
       Database["public"]["Tables"]["synthesis_reports"]["Row"];
-    const supabaseQuery = supabase.from("synthesis_reports") as unknown as {
-      select: (columns: string) => {
-        eq: (
-          column: string,
-          value: string,
-        ) => {
-          eq: (
-            column: string,
-            value: string,
-          ) => {
-            single: () => Promise<{
-              data: Pick<SynthesisReportRow, "id" | "version"> | null;
-              error: { message: string } | null;
-            }>;
-          };
-        };
-      };
-    };
-    const { data: existing } = await supabaseQuery
+    const { data: existing } = await supabase
+      .from("synthesis_reports")
       .select("id, version")
       .eq("id", reportId)
       .eq("user_id", user.id)
-      .single();
+      .single<Pick<SynthesisReportRow, "id" | "version">>();
 
     if (!existing) {
       return NextResponse.json(
@@ -162,34 +145,13 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       updated_at: new Date().toISOString(),
     };
 
-    const supabaseUpdateQuery = supabase.from(
-      "synthesis_reports",
-    ) as unknown as {
-      update: (values: SynthesisReportUpdate) => {
-        eq: (
-          column: string,
-          value: string,
-        ) => {
-          eq: (
-            column: string,
-            value: string,
-          ) => {
-            select: () => {
-              single: () => Promise<{
-                data: SynthesisReportRow | null;
-                error: { message: string } | null;
-              }>;
-            };
-          };
-        };
-      };
-    };
-    const { data: report, error } = await supabaseUpdateQuery
+    const { data: report, error } = await supabase
+      .from("synthesis_reports")
       .update(updateData)
       .eq("id", reportId)
       .eq("user_id", user.id)
       .select()
-      .single();
+      .single<SynthesisReportRow>();
 
     if (error) {
       logger.error(
