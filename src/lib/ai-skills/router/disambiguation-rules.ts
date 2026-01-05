@@ -56,6 +56,9 @@ export interface DisambiguationRulesConfig {
  * 消歧规则列表
  *
  * 按优先级降序排列
+ *
+ * @deprecated 使用 IntentAnalyzer 内置规则替代
+ * @see {@link ./intent-analyzer.ts} - 统一意图分析器（推荐）
  */
 export const DISAMBIGUATION_RULES: DisambiguationRule[] = [
   // ============================================
@@ -214,6 +217,9 @@ export const DISAMBIGUATION_RULES: DisambiguationRule[] = [
  *
  * @param conflictTypes - 冲突的意图类型列表
  * @returns 适用的消歧规则列表（按优先级降序）
+ *
+ * @deprecated 使用 IntentAnalyzer 内置逻辑替代
+ * @see {@link ./intent-analyzer.ts} - 统一意图分析器（推荐）
  */
 export function getApplicableRules(
   conflictTypes: IntentType[],
@@ -230,6 +236,9 @@ export function getApplicableRules(
  * @param message - 用户输入的消息
  * @param conflictTypes - 冲突的意图类型列表
  * @returns 匹配的规则，如果无匹配返回 null
+ *
+ * @deprecated 使用 IntentAnalyzer 内置逻辑替代
+ * @see {@link ./intent-analyzer.ts} - 统一意图分析器（推荐）
  */
 export function findMatchingRule(
   message: string,
@@ -259,26 +268,17 @@ export function findMatchingRule(
  * - 覆盖规则优先级
  * - 动态更新规则集
  *
+ * @deprecated 使用 IntentAnalyzer.addRule() 替代
+ * @see {@link ./intent-analyzer.ts} - 统一意图分析器（推荐）
+ *
  * @example
  * ```typescript
- * const manager = new DisambiguationRulesManager({
- *   enableBuiltinRules: true,
- *   disabledRuleIds: ['question-default-query'],
- *   customRules: [{
- *     id: 'my-custom-rule',
- *     conflicts: ['query', 'action'],
- *     pattern: /我的特殊模式/,
- *     winner: 'query',
- *     priority: 90,
- *     reason: '自定义规则说明'
- *   }],
- *   priorityOverrides: {
- *     'search-keyword-priority': 95
- *   }
- * });
+ * // 旧代码
+ * const manager = new DisambiguationRulesManager({...});
  *
- * const rules = manager.getActiveRules();
- * const match = manager.findMatch('帮我找一下那篇文章', ['query', 'action']);
+ * // 新代码
+ * const analyzer = new IntentAnalyzer();
+ * analyzer.addRule({ pattern: /.../, type: '...', ... });
  * ```
  */
 export class DisambiguationRulesManager {

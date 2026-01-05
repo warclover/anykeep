@@ -29,6 +29,146 @@ import type { LLMIntentClassifier } from "./llm-classifier";
 import { createLLMClassifier } from "./llm-classifier";
 
 // ============================================
+// 配置常量（提取自魔法数字）
+// ============================================
+
+/**
+ * 置信度相关阈值
+ */
+export const CONFIDENCE_THRESHOLDS = {
+  /** 规则匹配高置信度阈值，高于此值直接使用规则结果 */
+  RULE_HIGH_CONFIDENCE: 0.8,
+  /** LLM 兜底阈值，低于此值触发 LLM 分类 */
+  LLM_FALLBACK_DEFAULT: 0.6,
+  /** 基础置信度（规则匹配默认值） */
+  BASE_CONFIDENCE: 0.85,
+  /** 实体提取置信度 */
+  ENTITY_CONFIDENCE: 0.9,
+  /** 问句默认置信度 */
+  QUESTION_DEFAULT: 0.5,
+  /** 闲聊默认置信度 */
+  CHITCHAT_DEFAULT: 0.4,
+  /** 置信度下限 */
+  MIN_CONFIDENCE: 0.5,
+  /** 置信度上限 */
+  MAX_CONFIDENCE: 1.0,
+} as const;
+
+/**
+ * 置信度调整值
+ */
+export const CONFIDENCE_ADJUSTMENTS = {
+  /** 短消息惩罚 */
+  SHORT_MESSAGE_PENALTY: 0.1,
+  /** 长消息惩罚 */
+  LONG_MESSAGE_PENALTY: 0.05,
+  /** 高权重规则加分 */
+  HIGH_WEIGHT_BONUS: 0.05,
+} as const;
+
+/**
+ * 消息长度阈值
+ */
+export const MESSAGE_LENGTH_THRESHOLDS = {
+  /** 短消息阈值（字符数） */
+  SHORT_MESSAGE: 5,
+  /** 长消息阈值（字符数） */
+  LONG_MESSAGE: 50,
+} as const;
+
+/**
+ * 规则权重阈值
+ */
+export const RULE_WEIGHT_THRESHOLDS = {
+  /** 高权重阈值，高于此值视为高权重规则 */
+  HIGH_WEIGHT: 80,
+} as const;
+
+/**
+ * 复杂度阈值默认值
+ */
+export const COMPLEXITY_THRESHOLD_DEFAULTS = {
+  /** 简单任务分数上限 */
+  SIMPLE: 35,
+  /** 复杂任务分数下限 */
+  COMPLEX: 60,
+} as const;
+
+/**
+ * 数据规模阈值
+ */
+export const DATA_SCALE_THRESHOLDS = {
+  /** 大规模数据阈值 */
+  LARGE: 100,
+  /** 中等规模数据阈值 */
+  MEDIUM: 50,
+  /** 小规模数据阈值 */
+  SMALL: 20,
+  /** 默认数据规模 */
+  DEFAULT: 20,
+  /** 单条数据规模（action 类型） */
+  SINGLE: 1,
+  /** 通用默认规模 */
+  FALLBACK: 10,
+} as const;
+
+/**
+ * 复杂度因子权重（总和应为 1.0）
+ */
+export const COMPLEXITY_FACTOR_WEIGHTS = {
+  /** 意图复杂度权重 */
+  INTENT_COMPLEXITY: 0.3,
+  /** 多步骤需求权重 */
+  MULTI_STEP: 0.25,
+  /** 交付物期望权重 */
+  DELIVERABLE: 0.2,
+  /** 数据规模权重 */
+  DATA_SCALE: 0.15,
+  /** 确认需求权重 */
+  CONFIRMATION: 0.1,
+} as const;
+
+/**
+ * 复杂度因子分值
+ */
+export const COMPLEXITY_FACTOR_VALUES = {
+  /** 多步骤 - 高值 */
+  MULTI_STEP_HIGH: 80,
+  /** 多步骤 - 低值 */
+  MULTI_STEP_LOW: 20,
+  /** 交付物 - 高值 */
+  DELIVERABLE_HIGH: 70,
+  /** 交付物 - 低值 */
+  DELIVERABLE_LOW: 10,
+  /** 数据规模 - 大规模 */
+  SCALE_LARGE: 80,
+  /** 数据规模 - 中等 */
+  SCALE_MEDIUM: 60,
+  /** 数据规模 - 小规模 */
+  SCALE_SMALL: 40,
+  /** 数据规模 - 默认 */
+  SCALE_DEFAULT: 20,
+  /** 确认需求 - 高值 */
+  CONFIRMATION_HIGH: 50,
+  /** 确认需求 - 低值 */
+  CONFIRMATION_LOW: 10,
+  /** 分数下限 */
+  MIN_SCORE: 0,
+  /** 分数上限 */
+  MAX_SCORE: 100,
+} as const;
+
+/**
+ * 默认配置值
+ */
+export const DEFAULT_CONFIG_VALUES = {
+  /** LLM 超时时间（毫秒） */
+  LLM_TIMEOUT_MS: 5000,
+  /** 默认意图复杂度分数 */
+  DEFAULT_INTENT_SCORE: 50,
+} as const;
+
+// ============================================
 // 输出类型定义
 // ============================================
 
@@ -606,56 +746,71 @@ const SKILL_MAPPINGS: Record<string, SkillMapping> = {
 // 实体提取模式
 // ============================================
 
-const ENTITY_PATTERNS: Array<{
+/**
+ * 实体提取模式定义
+ *
+ * 注意：pattern 和 globalPattern 分开定义，
+ * globalPattern 是带 'g' 标志的预编译版本，用于 matchAll
+ */
+interface EntityPattern {
   type: ExtractedEntity["type"];
   pattern: RegExp;
+  /** 预编译的全局匹配正则 (带 'g' 标志) */
+  globalPattern: RegExp;
   extractor: (match: RegExpMatchArray) => string;
-}> = [
+}
+
+/**
+ * 创建实体模式的辅助函数
+ * 自动生成带 'g' 标志的预编译正则
+ */
+function createEntityPattern(
+  type: ExtractedEntity["type"],
+  pattern: RegExp,
+  extractor: (match: RegExpMatchArray) => string,
+): EntityPattern {
+  // 提取 flags 并添加 'g'
+  const flags = pattern.flags.includes("g")
+    ? pattern.flags
+    : pattern.flags + "g";
+  return {
+    type,
+    pattern,
+    globalPattern: new RegExp(pattern.source, flags),
+    extractor,
+  };
+}
+
+const ENTITY_PATTERNS: EntityPattern[] = [
   // 时间实体
-  {
-    type: "time",
-    pattern: /今[天日]|昨[天日]|前[天日]|本周|上周|这周|本月|上月|这个月/,
-    extractor: (m) => m[0],
-  },
-  {
-    type: "time",
-    pattern: /最近(\d+)[天日周月]/,
-    extractor: (m) => m[0],
-  },
-  {
-    type: "time",
-    pattern: /(\d+)[天日周月][前内以]?来?/,
-    extractor: (m) => m[0],
-  },
+  createEntityPattern(
+    "time",
+    /今[天日]|昨[天日]|前[天日]|本周|上周|这周|本月|上月|这个月/,
+    (m) => m[0],
+  ),
+  createEntityPattern("time", /最近(\d+)[天日周月]/, (m) => m[0]),
+  createEntityPattern("time", /(\d+)[天日周月][前内以]?来?/, (m) => m[0]),
   // 数量实体
-  {
-    type: "quantity",
-    pattern: /(\d+)\s*[条个篇份]/,
-    extractor: (m) => m[1],
-  },
-  {
-    type: "quantity",
-    pattern: /前\s*(\d+)/,
-    extractor: (m) => m[1],
-  },
+  createEntityPattern("quantity", /(\d+)\s*[条个篇份]/, (m) => m[1]),
+  createEntityPattern("quantity", /前\s*(\d+)/, (m) => m[1]),
   // 主题实体
-  {
-    type: "topic",
-    pattern: /关于(.+?)的|(.+?)相关|(.+?)方面/,
-    extractor: (m) => m[1] || m[2] || m[3],
-  },
+  createEntityPattern(
+    "topic",
+    /关于(.+?)的|(.+?)相关|(.+?)方面/,
+    (m) => m[1] || m[2] || m[3],
+  ),
   // 平台实体
-  {
-    type: "platform",
-    pattern: /微信|公众号|B站|bilibili|小红书|知乎|掘金|GitHub|twitter|x\.com/i,
-    extractor: (m) => m[0].toLowerCase(),
-  },
+  createEntityPattern(
+    "platform",
+    /微信|公众号|B站|bilibili|小红书|知乎|掘金|GitHub|twitter|x\.com/i,
+    (m) => m[0].toLowerCase(),
+  ),
   // 文件夹实体
-  {
-    type: "folder",
-    pattern: /[「「【\[](.+?)[」」】\]]|"(.+?)"|'(.+?)'/,
-    extractor: (m) => m[1] || m[2] || m[3],
-  },
+  createEntityPattern(
+    "folder",
+    /[「「【\[](.+?)[」」】\]]|"(.+?)"|'(.+?)'/,
+    (m) => m[1] || m[2] || m[3],
+  ),
 ];
 
 // ============================================
@@ -710,12 +865,16 @@ export class IntentAnalyzer {
   constructor(config: IntentAnalyzerConfig = {}) {
     this.config = {
       enableEntityExtraction: config.enableEntityExtraction ?? true,
-      llmTimeoutMs: config.llmTimeoutMs ?? 5000,
-      llmFallbackThreshold: config.llmFallbackThreshold ?? 0.6,
+      llmTimeoutMs: config.llmTimeoutMs ?? DEFAULT_CONFIG_VALUES.LLM_TIMEOUT_MS,
+      llmFallbackThreshold:
+        config.llmFallbackThreshold ??
+        CONFIDENCE_THRESHOLDS.LLM_FALLBACK_DEFAULT,
       enableLLMFallback: config.enableLLMFallback ?? false,
       llmClassifierConfig: config.llmClassifierConfig ?? {},
-      simpleThreshold: config.simpleThreshold ?? 35,
-      complexThreshold: config.complexThreshold ?? 60,
+      simpleThreshold:
+        config.simpleThreshold ?? COMPLEXITY_THRESHOLD_DEFAULTS.SIMPLE,
+      complexThreshold:
+        config.complexThreshold ?? COMPLEXITY_THRESHOLD_DEFAULTS.COMPLEX,
       forceAtomicMode: config.forceAtomicMode ?? false,
       debug: config.debug ?? false,
     };
@@ -796,7 +955,10 @@ export class IntentAnalyzer {
     // 1. 规则匹配
     const ruleMatch = this.matchRules(message);
 
-    if (ruleMatch && ruleMatch.confidence >= 0.8) {
+    if (
+      ruleMatch &&
+      ruleMatch.confidence >= CONFIDENCE_THRESHOLDS.RULE_HIGH_CONFIDENCE
+    ) {
       return ruleMatch;
     }
 
@@ -858,8 +1020,9 @@ export class IntentAnalyzer {
   private extractEntities(message: string): ExtractedEntity[] {
     const entities: ExtractedEntity[] = [];
 
-    for (const { type, pattern, extractor } of ENTITY_PATTERNS) {
-      const matches = message.matchAll(new RegExp(pattern, "g"));
+    for (const { type, globalPattern, extractor } of ENTITY_PATTERNS) {
+      // 使用预编译的全局正则（避免每次调用创建新 RegExp）
+      const matches = message.matchAll(globalPattern);
       for (const match of matches) {
         const value = extractor(match);
         if (value) {
@@ -867,7 +1030,7 @@ export class IntentAnalyzer {
             type,
             value: value.trim(),
             raw: match[0],
-            confidence: 0.9,
+            confidence: CONFIDENCE_THRESHOLDS.ENTITY_CONFIDENCE,
           });
         }
       }
@@ -877,19 +1040,22 @@ export class IntentAnalyzer {
   }
 
   private calculateConfidence(message: string, rule: IntentRule): number {
-    let confidence = 0.85;
+    let confidence = CONFIDENCE_THRESHOLDS.BASE_CONFIDENCE;
 
-    if (message.length < 5) {
-      confidence -= 0.1;
-    } else if (message.length > 50) {
-      confidence -= 0.05;
+    if (message.length < MESSAGE_LENGTH_THRESHOLDS.SHORT_MESSAGE) {
+      confidence -= CONFIDENCE_ADJUSTMENTS.SHORT_MESSAGE_PENALTY;
+    } else if (message.length > MESSAGE_LENGTH_THRESHOLDS.LONG_MESSAGE) {
+      confidence -= CONFIDENCE_ADJUSTMENTS.LONG_MESSAGE_PENALTY;
     }
 
-    if (rule.weight && rule.weight >= 80) {
-      confidence += 0.05;
+    if (rule.weight && rule.weight >= RULE_WEIGHT_THRESHOLDS.HIGH_WEIGHT) {
+      confidence += CONFIDENCE_ADJUSTMENTS.HIGH_WEIGHT_BONUS;
     }
 
-    return Math.max(0.5, Math.min(1, confidence));
+    return Math.max(
+      CONFIDENCE_THRESHOLDS.MIN_CONFIDENCE,
+      Math.min(CONFIDENCE_THRESHOLDS.MAX_CONFIDENCE, confidence),
+    );
   }
 
   private isMultiStepType(type: IntentType): boolean {
@@ -913,7 +1079,7 @@ export class IntentAnalyzer {
       return {
         type: "query",
         subType: "general",
-        confidence: 0.5,
+        confidence: CONFIDENCE_THRESHOLDS.QUESTION_DEFAULT,
         entities,
         requiresMultiStep: false,
         hasDeliverableExpectation: false,
@@ -924,7 +1090,7 @@ export class IntentAnalyzer {
     return {
       type: "chitchat",
       subType: "general",
-      confidence: 0.4,
+      confidence: CONFIDENCE_THRESHOLDS.CHITCHAT_DEFAULT,
       entities,
       requiresMultiStep: false,
       hasDeliverableExpectation: false,
@@ -943,14 +1109,19 @@ export class IntentAnalyzer {
     const factors: ComplexityFactor[] = [];
 
     // 因素 1: 意图复杂度
-    let intentScore = INTENT_COMPLEXITY_SCORES[intent.type] ?? 50;
+    let intentScore =
+      INTENT_COMPLEXITY_SCORES[intent.type] ??
+      DEFAULT_CONFIG_VALUES.DEFAULT_INTENT_SCORE;
     if (intent.subType && SUBTYPE_ADJUSTMENTS[intent.subType]) {
       intentScore += SUBTYPE_ADJUSTMENTS[intent.subType];
     }
-    intentScore = Math.max(0, Math.min(100, intentScore));
+    intentScore = Math.max(
+      COMPLEXITY_FACTOR_VALUES.MIN_SCORE,
+      Math.min(COMPLEXITY_FACTOR_VALUES.MAX_SCORE, intentScore),
+    );
     factors.push({
       name: "intent_complexity",
-      weight: 0.3,
+      weight: COMPLEXITY_FACTOR_WEIGHTS.INTENT_COMPLEXITY,
       value: intentScore,
       reason: `${intent.type}${intent.subType ? `:${intent.subType}` : ""} 类型`,
     });
@@ -958,28 +1129,36 @@ export class IntentAnalyzer {
     // 因素 2: 多步骤需求
     factors.push({
       name: "multi_step",
-      weight: 0.25,
-      value: intent.requiresMultiStep ? 80 : 20,
+      weight: COMPLEXITY_FACTOR_WEIGHTS.MULTI_STEP,
+      value: intent.requiresMultiStep
+        ? COMPLEXITY_FACTOR_VALUES.MULTI_STEP_HIGH
+        : COMPLEXITY_FACTOR_VALUES.MULTI_STEP_LOW,
       reason: intent.requiresMultiStep ? "需要多步骤" : "单步完成",
     });
 
     // 因素 3: 交付物期望
     factors.push({
       name: "deliverable",
-      weight: 0.2,
-      value: intent.hasDeliverableExpectation ? 70 : 10,
+      weight: COMPLEXITY_FACTOR_WEIGHTS.DELIVERABLE,
+      value: intent.hasDeliverableExpectation
+        ? COMPLEXITY_FACTOR_VALUES.DELIVERABLE_HIGH
+        : COMPLEXITY_FACTOR_VALUES.DELIVERABLE_LOW,
       reason: intent.hasDeliverableExpectation ? "期望交付物" : "仅数据",
     });
 
     // 因素 4: 数据规模
     const dataScale = this.estimateDataScale(intent, context);
-    let scaleScore = 20;
-    if (dataScale > 100) scaleScore = 80;
-    else if (dataScale > 50) scaleScore = 60;
-    else if (dataScale > 20) scaleScore = 40;
+    let scaleScore: number = COMPLEXITY_FACTOR_VALUES.SCALE_DEFAULT;
+    if (dataScale > DATA_SCALE_THRESHOLDS.LARGE) {
+      scaleScore = COMPLEXITY_FACTOR_VALUES.SCALE_LARGE;
+    } else if (dataScale > DATA_SCALE_THRESHOLDS.MEDIUM) {
+      scaleScore = COMPLEXITY_FACTOR_VALUES.SCALE_MEDIUM;
+    } else if (dataScale > DATA_SCALE_THRESHOLDS.SMALL) {
+      scaleScore = COMPLEXITY_FACTOR_VALUES.SCALE_SMALL;
+    }
     factors.push({
       name: "data_scale",
-      weight: 0.15,
+      weight: COMPLEXITY_FACTOR_WEIGHTS.DATA_SCALE,
       value: scaleScore,
       reason: `约 ${dataScale} 条数据`,
     });
@@ -990,8 +1169,10 @@ export class IntentAnalyzer {
       ["delete", "move", "cleanup", "dedupe"].includes(intent.subType);
     factors.push({
       name: "confirmation",
-      weight: 0.1,
-      value: needsConfirm ? 50 : 10,
+      weight: COMPLEXITY_FACTOR_WEIGHTS.CONFIRMATION,
+      value: needsConfirm
+        ? COMPLEXITY_FACTOR_VALUES.CONFIRMATION_HIGH
+        : COMPLEXITY_FACTOR_VALUES.CONFIRMATION_LOW,
       reason: needsConfirm ? "需确认" : "自动完成",
     });
 
@@ -1021,19 +1202,19 @@ export class IntentAnalyzer {
     if (context.totalBookmarks) {
       switch (intent.type) {
         case "query":
-          return Math.min(context.totalBookmarks, 20);
+          return Math.min(context.totalBookmarks, DATA_SCALE_THRESHOLDS.SMALL);
         case "action":
-          return 1;
+          return DATA_SCALE_THRESHOLDS.SINGLE;
         case "organize":
         case "analyze":
           return context.totalBookmarks;
         case "learn":
-          return Math.min(context.totalBookmarks, 50);
+          return Math.min(context.totalBookmarks, DATA_SCALE_THRESHOLDS.MEDIUM);
         default:
-          return 10;
+          return DATA_SCALE_THRESHOLDS.FALLBACK;
       }
     }
-    return 20;
+    return DATA_SCALE_THRESHOLDS.DEFAULT;
   }
 
   // ============================================
@@ -1163,9 +1344,105 @@ export const intentAnalyzer = new IntentAnalyzer();
 // 向后兼容导出（@deprecated）
 // ============================================
 
-/** @deprecated 使用 IntentAnalyzer 替代 */
+/**
+ * @deprecated 使用 IntentAnalyzer 替代
+ *
+ * 迁移示例:
+ * ```typescript
+ * // 旧代码
+ * import { IntentClassifier } from '@/lib/ai-skills/router';
+ * const classifier = new IntentClassifier({ debug: true });
+ * const result = await classifier.classify('搜索AI');
+ *
+ * // 新代码
+ * import { IntentAnalyzer } from '@/lib/ai-skills/router';
+ * const analyzer = new IntentAnalyzer({ debug: true });
+ * const analysis = await analyzer.analyze('搜索AI');
+ * // analysis.intent 等同于旧的 result.type
+ * ```
+ */
 export const IntentClassifier = IntentAnalyzer;
 /** @deprecated 使用 createIntentAnalyzer 替代 */
 export const createIntentClassifier = createIntentAnalyzer;
 /** @deprecated 使用 intentAnalyzer 替代 */
 export const intentClassifier = intentAnalyzer;
+
+/**
+ * @deprecated ComplexityEvaluator 已合并到 IntentAnalyzer.analyze().complexity
+ *
+ * 迁移示例:
+ * ```typescript
+ * // 旧代码
+ * import { ComplexityEvaluator } from '@/lib/ai-skills/router';
+ * const evaluator = new ComplexityEvaluator();
+ * const complexity = evaluator.evaluate(classification, context);
+ *
+ * // 新代码
+ * import { IntentAnalyzer } from '@/lib/ai-skills/router';
+ * const analyzer = new IntentAnalyzer();
+ * const analysis = await analyzer.analyze(message, context);
+ * const complexity = analysis.complexity; // { level, score, factors }
+ * ```
+ */
+export class ComplexityEvaluator {
+  constructor() {
+    logger.warn(
+      "ComplexityEvaluator 已废弃，请使用 IntentAnalyzer.analyze().complexity",
+    );
+  }
+
+  evaluate(): {
+    level: ComplexityLevel;
+    score: number;
+    factors: ComplexityFactor[];
+  } {
+    throw new Error(
+      "ComplexityEvaluator 已废弃，请使用 IntentAnalyzer.analyze().complexity",
+    );
+  }
+}
+
+/**
+ * @deprecated ModeSelector 已合并到 IntentAnalyzer.analyze().execution
+ *
+ * 迁移示例:
+ * ```typescript
+ * // 旧代码
+ * import { ModeSelector } from '@/lib/ai-skills/router';
+ * const selector = new ModeSelector();
+ * const mode = selector.select(classification, complexity);
+ *
+ * // 新代码
+ * import { IntentAnalyzer } from '@/lib/ai-skills/router';
+ * const analyzer = new IntentAnalyzer();
+ * const analysis = await analyzer.analyze(message, context);
+ * const execution = analysis.execution; // { mode, suggestedSkill, reason }
+ * ```
+ */
+export class ModeSelector {
+  constructor() {
+    logger.warn(
+      "ModeSelector 已废弃，请使用 IntentAnalyzer.analyze().execution",
+    );
+  }
+
+  select(): {
+    mode: "atomic" | "orchestration";
+    suggestedSkill?: string;
+    reason: string;
+  } {
+    throw new Error(
+      "ModeSelector 已废弃，请使用 IntentAnalyzer.analyze().execution",
+    );
+  }
+}
+
+/** @deprecated 使用 createIntentAnalyzer 替代 */
+export function createComplexityEvaluator(): ComplexityEvaluator {
+  return new ComplexityEvaluator();
+}
+
+/** @deprecated 使用 createIntentAnalyzer 替代 */
+export function createModeSelector(): ModeSelector {
+  return new ModeSelector();
+}
