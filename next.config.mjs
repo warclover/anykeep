@@ -10,6 +10,23 @@ const nextConfig = {
   // V5.3: Webpack 编译优化（Next.js 14+ 自动启用文件系统缓存）
   // 注意：Next.js 不允许修改 devtool，会自动恢复为 eval-source-map
 
+  // V4.2.28: 将 ws 包排除在 webpack 打包外，解决 bufferUtil.mask 兼容性问题
+  serverExternalPackages: ['ws', 'bufferutil', 'utf-8-validate'],
+
+  // V4.2.28: Webpack 配置 - 确保 ws 相关包在服务端不被打包
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      // 将 ws 及其原生依赖标记为外部模块
+      config.externals = config.externals || [];
+      config.externals.push({
+        'ws': 'commonjs ws',
+        'bufferutil': 'commonjs bufferutil',
+        'utf-8-validate': 'commonjs utf-8-validate',
+      });
+    }
+    return config;
+  },
+
   // Turbopack 编译优化：优化大型包的导入（减少首次编译时间 30-50%）
   experimental: {
     optimizePackageImports: [

@@ -38,6 +38,7 @@ import { WebVitalsReporter } from "@/components/analytics/web-vitals-reporter";
 import { SessionHeartbeatProvider } from "@/components/providers/session-heartbeat-provider";
 import { GlobalErrorBoundary } from "@/components/error-boundary";
 import { QueryProvider } from "@/lib/query";
+import { TTSPlayerProvider } from "@/components/tts";
 import {
   composeProviders,
   withProps,
@@ -94,6 +95,8 @@ const FeatureProviders = composeProviders(
   MessageNotificationProvider,
   // AI Effect 通知（v2.0.0 新增）
   NotificationProvider,
+  // TTS 全局播放器（V4.2.27 新增，修复组件卸载导致请求中止的问题）
+  TTSPlayerProvider,
 );
 
 // ============================================

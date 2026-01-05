@@ -13,6 +13,8 @@
 
 /**
  * TTS 模型类型
+ *
+ * V4.2.28: 推荐使用 cosyvoice-v2（更好的音质和自然度）
  */
 export type TTSModel = "cosyvoice-v1" | "cosyvoice-v2";
 
@@ -218,10 +220,12 @@ export interface TTSAPIError {
 
 /**
  * TTS 服务默认配置
+ *
+ * V4.2.28: 更新为 CosyVoice v2 模型（WebSocket API）
  */
 export const TTS_DEFAULT_CONFIG = {
-  /** 默认模型 */
-  model: "cosyvoice-v1" as TTSModel,
+  /** 默认模型 - CosyVoice v2 */
+  model: "cosyvoice-v2" as TTSModel,
   /** 默认采样率 */
   sampleRate: 22050 as TTSSampleRate,
   /** 默认格式 */
@@ -230,10 +234,10 @@ export const TTS_DEFAULT_CONFIG = {
   speed: 1.0,
   /** 默认音量 */
   volume: 50,
-  /** 默认语音 */
+  /** 默认语音 - v2 版本语音 */
   voices: {
-    female: "longxiaochun", // 龙小淳 - 温柔女声
-    male: "longhua_v2", // 龙华 - 标准男声
+    female: "longxiaochun_v2", // 龙小淳 v2 - 温柔女声
+    male: "longhua_v2", // 龙华 v2 - 标准男声
   } as TTSDefaultVoices,
   /** 最大文本长度（字符） */
   maxTextLength: 5000,

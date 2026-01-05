@@ -33,7 +33,7 @@ import {
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { useTTSPlayer } from "@/hooks/domain/ai";
+import { useTTSPlayerContext } from "./tts-player-context";
 import type { TTSContentType } from "@/lib/tts";
 import { TTS } from "@/lib/constants/messages";
 
@@ -120,7 +120,8 @@ export function TTSPlayerButton({
   className,
   defaultContentType = "summary",
 }: TTSPlayerButtonProps) {
-  const { state, controls } = useTTSPlayer();
+  // V4.2.27: 使用全局 Context，避免组件卸载时中止请求
+  const { state, controls } = useTTSPlayerContext();
   const [selectedType, setSelectedType] =
     useState<TTSContentType>(defaultContentType);
 
