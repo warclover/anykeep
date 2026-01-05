@@ -24,12 +24,25 @@ export type {
   BlueprintExecutionContext,
 } from "./enhanced-blueprint-engine";
 
-export { BlueprintRegistry, getBlueprintRegistry } from "./blueprint-registry";
+export {
+  BlueprintRegistry,
+  getBlueprintRegistry,
+  resetLazyInitialization,
+} from "./blueprint-registry";
 export type {
   BlueprintCategory,
   BlueprintAccessInfo,
   BlueprintWithAccessInfo,
 } from "./blueprint-registry";
+
+// Blueprint Initializer
+export {
+  initializeBlueprints,
+  ensureBlueprintsInitialized,
+  resetBlueprintInitialization,
+  isBlueprintsInitialized,
+  getBlueprintStats,
+} from "./blueprint-initializer";
 
 // ============================================================
 // Outline Generator (Story 2.1)

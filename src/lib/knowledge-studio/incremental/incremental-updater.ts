@@ -2,18 +2,22 @@
  * Knowledge Studio - 增量更新服务
  * @module knowledge-studio/incremental
  * @description P4 实现 - 局部重生成与版本管理
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2026-01-02
+ * @updated 2026-01-05 - 集成 AI 服务进行段落更新
  */
 
+import { generateText } from "ai";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
+import { aiProviderRouter } from "@/lib/ai-providers";
 import type {
   IIncrementalUpdater,
   IncrementalUpdateTask,
   UpdateResult,
   ReportImpactAnalysis,
   ImpactLevel,
+  ParagraphImpact,
 } from "./types";
 import type { Database, Json } from "@/types/supabase";
 
@@ -119,6 +123,167 @@ function historyRowToUpdateResult(row: UpdateHistoryRow): UpdateResult {
  * ```
  */
 export class IncrementalUpdater implements IIncrementalUpdater {
+  // ============================================================================
+  // AI 集成方法
+  // ============================================================================
+
+  /**
+   * 使用 AI 重生成/更新段落
+   *
+   * @param paragraphImpact - 段落影响分析
+   * @param currentContent - 当前段落内容
+   * @param bookmarkContents - 关联书签的内容
+   * @returns 重生成的段落内容和消耗的 Token 数
+   */
+  private async regenerateParagraphWithAI(
+    paragraphImpact: ParagraphImpact,
+    currentContent: string,
+    bookmarkContents: string[],
+  ): Promise<{ newContent: string; tokensUsed: number }> {
+    const selection = aiProviderRouter.selectProvider({
+      taskType: "chat",
+      preferredProvider: "deepseek",
+    });
+
+    if (!selection) {
+      throw new Error("没有可用的 AI 服务");
+    }
+
+    const isRegenerate = paragraphImpact.suggestedAction === "regenerate";
+    const systemPrompt = this.buildRegenerationSystemPrompt(isRegenerate);
+    const userPrompt = this.buildRegenerationUserPrompt(
+      paragraphImpact,
+      currentContent,
+      bookmarkContents,
+      isRegenerate,
+    );
+
+    logger.debug(
+      {
+        paragraphIndex: paragraphImpact.paragraphIndex,
+        action: paragraphImpact.suggestedAction,
+        provider: selection.provider.name,
+      },
+      "Regenerating paragraph with AI",
+    );
+
+    const result = await generateText({
+      model: selection.model,
+      system: systemPrompt,
+      prompt: userPrompt,
+      maxOutputTokens: 1024,
+      temperature: 0.7,
+    });
+
+    const newContent = result.text.trim();
+    const tokensUsed = result.usage?.totalTokens ?? 500;
+
+    return { newContent, tokensUsed };
+  }
+
+  /**
+   * 构建重生成系统提示
+   */
+  private buildRegenerationSystemPrompt(isFullRegenerate: boolean): string {
+    if (isFullRegenerate) {
+      return `你是一个专业的内容编辑助手。你的任务是根据提供的书签内容，重新生成一个段落。
+
+要求：
+1. 保持与原段落相似的风格和长度
+2. 准确反映书签内容的核心信息
+3. 保持流畅的中文表达
+4. 只输出新段落内容，不要添加任何解释`;
+    }
+
+    return `你是一个专业的内容编辑助手。你的任务是更新一个段落，整合新的书签信息。
+
+要求：
+1. 保持原段落的大部分结构
+2. 准确整合变更的书签信息
+3. 确保更新后的段落连贯通顺
+4. 只输出更新后的段落内容，不要添加任何解释`;
+  }
+
+  /**
+   * 构建重生成用户提示
+   */
+  private buildRegenerationUserPrompt(
+    paragraphImpact: ParagraphImpact,
+    currentContent: string,
+    bookmarkContents: string[],
+    isFullRegenerate: boolean,
+  ): string {
+    const bookmarkSection = bookmarkContents
+      .map((content, i) => `【书签 ${i + 1}】\n${content}`)
+      .join("\n\n");
+
+    if (isFullRegenerate) {
+      return `请根据以下书签内容重新生成段落：
+
+${bookmarkSection}
+
+原段落供参考（风格和长度）：
+${currentContent}
+
+请生成新段落：`;
+    }
+
+    return `请更新以下段落，整合变更的书签信息：
+
+原段落：
+${currentContent}
+
+相关书签内容：
+${bookmarkSection}
+
+影响级别：${paragraphImpact.impactLevel}
+
+请输出更新后的段落：`;
+  }
+
+  /**
+   * 获取书签内容
+   */
+  private async getBookmarkContents(
+    bookmarkIds: string[],
+  ): Promise<Map<string, string>> {
+    if (bookmarkIds.length === 0) {
+      return new Map();
+    }
+
+    const supabase = await createClient();
+
+    // 将字符串 ID 转换为数字 ID
+    const numericIds = bookmarkIds
+      .map((id) => parseInt(id, 10))
+      .filter((id) => !isNaN(id));
+
+    if (numericIds.length === 0) {
+      return new Map();
+    }
+
+    const { data, error } = await supabase
+      .from("bookmarks")
+      .select("id, title, ai_summary, full_content")
+      .in("id", numericIds);
+
+    if (error) {
+      logger.warn(
+        { error: error.message, bookmarkIds },
+        "Failed to fetch bookmark contents",
+      );
+      return new Map();
+    }
+
+    const contentMap = new Map<string, string>();
+    for (const bookmark of data || []) {
+      const content =
+        bookmark.ai_summary || bookmark.full_content || bookmark.title || "";
+      contentMap.set(String(bookmark.id), content);
+    }
+
+    return contentMap;
+  }
   /**
    * 创建更新任务
    *
@@ -251,14 +416,127 @@ export class IncrementalUpdater implements IIncrementalUpdater {
         "content" | "generation_metadata"
       > | null;
 
-      // 模拟增量更新处理（实际需要调用 AI 服务）
-      // TODO: 集成 AI 服务进行实际的段落更新和重生成
+      // 执行 AI 驱动的增量更新
       const impactAnalysis =
         typedTask.impact_analysis as unknown as ReportImpactAnalysis;
-      const paragraphsUpdated = impactAnalysis.paragraphsToUpdate;
-      const paragraphsRegenerated = impactAnalysis.paragraphsToRegenerate;
 
-      // 创建新版本
+      // 解析报告内容（假设 content 是 JSON 格式包含 paragraphs 数组）
+      let paragraphs: string[] = [];
+      try {
+        const contentData = typedReport?.content as
+          | { paragraphs?: string[] }
+          | string
+          | null;
+        if (typeof contentData === "string") {
+          paragraphs = contentData.split("\n\n").filter(Boolean);
+        } else if (contentData?.paragraphs) {
+          paragraphs = contentData.paragraphs;
+        }
+      } catch {
+        logger.warn(
+          { reportId: typedTask.report_id },
+          "Failed to parse report content",
+        );
+      }
+
+      // 收集所有受影响的书签 ID
+      const allAffectedBookmarkIds = new Set<string>();
+      for (const impact of impactAnalysis.paragraphImpacts) {
+        for (const bookmarkId of impact.affectedBookmarkIds) {
+          allAffectedBookmarkIds.add(bookmarkId);
+        }
+      }
+
+      // 批量获取书签内容
+      const bookmarkContentMap = await this.getBookmarkContents(
+        Array.from(allAffectedBookmarkIds),
+      );
+
+      // 处理每个受影响的段落
+      let paragraphsUpdated = 0;
+      let paragraphsRegenerated = 0;
+      let totalTokensUsed = 0;
+      const updatedParagraphs = [...paragraphs];
+
+      for (const paragraphImpact of impactAnalysis.paragraphImpacts) {
+        // 跳过不需要处理的段落
+        if (paragraphImpact.suggestedAction === "keep") {
+          continue;
+        }
+
+        // 跳过需要删除的段落（标记为空）
+        if (paragraphImpact.suggestedAction === "remove") {
+          if (paragraphImpact.paragraphIndex < updatedParagraphs.length) {
+            updatedParagraphs[paragraphImpact.paragraphIndex] = "";
+          }
+          continue;
+        }
+
+        // 获取当前段落内容
+        const currentContent =
+          paragraphs[paragraphImpact.paragraphIndex] ||
+          paragraphImpact.contentPreview;
+
+        // 获取关联书签内容
+        const relatedBookmarkContents = paragraphImpact.affectedBookmarkIds
+          .map((id) => bookmarkContentMap.get(id))
+          .filter((content): content is string => !!content);
+
+        try {
+          // 调用 AI 重生成段落
+          const { newContent, tokensUsed } =
+            await this.regenerateParagraphWithAI(
+              paragraphImpact,
+              currentContent,
+              relatedBookmarkContents,
+            );
+
+          // 更新段落
+          if (paragraphImpact.paragraphIndex < updatedParagraphs.length) {
+            updatedParagraphs[paragraphImpact.paragraphIndex] = newContent;
+          }
+
+          totalTokensUsed += tokensUsed;
+
+          if (paragraphImpact.suggestedAction === "regenerate") {
+            paragraphsRegenerated++;
+          } else {
+            paragraphsUpdated++;
+          }
+
+          logger.debug(
+            {
+              paragraphIndex: paragraphImpact.paragraphIndex,
+              action: paragraphImpact.suggestedAction,
+              tokensUsed,
+            },
+            "Paragraph processed",
+          );
+        } catch (aiError) {
+          logger.error(
+            {
+              paragraphIndex: paragraphImpact.paragraphIndex,
+              error:
+                aiError instanceof Error ? aiError.message : String(aiError),
+            },
+            "Failed to regenerate paragraph with AI",
+          );
+          // 继续处理其他段落，不中断整个任务
+        }
+      }
+
+      // 过滤空段落并重新组装内容
+      const filteredParagraphs = updatedParagraphs.filter(Boolean);
+      const updatedContent = { paragraphs: filteredParagraphs };
+      const updatedContentString = JSON.stringify(updatedContent);
+
+      // 更新报告内容
+      await supabase
+        .from("synthesis_reports")
+        .update({ content: updatedContentString })
+        .eq("id", typedTask.report_id);
+
+      // 创建新版本（使用更新后的内容）
       const metadata = typedReport?.generation_metadata as
         | { source_bookmark_ids?: string[] }
         | undefined;
@@ -266,7 +544,7 @@ export class IncrementalUpdater implements IIncrementalUpdater {
         report_id: typedTask.report_id,
         user_id: typedTask.user_id,
         version: newVersion,
-        content: (typedReport?.content ?? {}) as unknown as Json,
+        content: updatedContent as Json,
         bookmark_ids: metadata?.source_bookmark_ids ?? [],
         change_summary: `增量更新: 更新 ${paragraphsUpdated} 段，重生成 ${paragraphsRegenerated} 段`,
         source: "incremental",
@@ -281,7 +559,9 @@ export class IncrementalUpdater implements IIncrementalUpdater {
       }
 
       const processingTimeMs = Date.now() - startTime;
-      const tokensUsed = paragraphsUpdated * 200 + paragraphsRegenerated * 500;
+      const tokensUsed =
+        totalTokensUsed ||
+        paragraphsUpdated * 200 + paragraphsRegenerated * 500;
 
       // 记录更新结果
       const resultInsertData: UpdateResultInsert = {

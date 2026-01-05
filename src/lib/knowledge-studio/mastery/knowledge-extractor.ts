@@ -2,12 +2,15 @@
  * Knowledge Studio - 知识点提取服务
  * @module knowledge-studio/mastery
  * @description P4 实现 - 从报告提取知识点
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2026-01-02
+ * @updated 2026-01-05 - 集成 AI 服务进行智能知识点提取
  */
 
+import { generateText } from "ai";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
+import { aiProviderRouter } from "@/lib/ai-providers";
 import type { IKnowledgeExtractor, KnowledgePoint } from "./types";
 import type { Database } from "@/types/supabase";
 
@@ -110,8 +113,8 @@ export class KnowledgeExtractor implements IKnowledgeExtractor {
       | undefined;
     const sourceBookmarkIds = metadata?.source_bookmark_ids ?? [];
 
-    // 解析报告内容提取知识点
-    const extractedPoints = this.parseReportContent(
+    // 解析报告内容提取知识点（使用 AI）
+    const extractedPoints = await this.parseReportContentWithAI(
       (typedReport?.content as string) ?? "",
       reportId,
       sourceBookmarkIds,
@@ -159,10 +162,113 @@ export class KnowledgeExtractor implements IKnowledgeExtractor {
   }
 
   /**
-   * 解析报告内容提取知识点
+   * 解析报告内容提取知识点（AI 增强版）
+   *
+   * 使用 AI 智能提取知识点，包含关键词、难度和重要性评估。
+   * 如果 AI 调用失败，回退到规则提取。
+   */
+  private async parseReportContentWithAI(
+    content: string,
+    reportId: string,
+    sourceBookmarkIds: string[],
+  ): Promise<Omit<KnowledgePoint, "id" | "createdAt">[]> {
+    const selection = aiProviderRouter.selectProvider({
+      taskType: "chat",
+      preferredProvider: "deepseek",
+    });
+
+    if (!selection) {
+      logger.warn(
+        { reportId },
+        "No AI provider available, using rule-based extraction",
+      );
+      return this.parseReportContent(content, reportId, sourceBookmarkIds);
+    }
+
+    try {
+      const systemPrompt = `你是一个专业的知识提取助手。请从给定的报告内容中提取关键知识点。
+
+对于每个知识点，请提供：
+1. content: 知识点的核心内容（50-200字）
+2. keywords: 3-5个关键词（数组）
+3. difficulty: 难度评分（1-5，1最简单，5最难）
+4. importance: 重要性评分（1-5，1最低，5最高）
+
+请以 JSON 数组格式输出，例如：
+[
+  {
+    "content": "知识点内容...",
+    "keywords": ["关键词1", "关键词2"],
+    "difficulty": 3,
+    "importance": 4
+  }
+]
+
+只输出 JSON，不要添加任何解释。`;
+
+      const userPrompt = `请从以下报告内容中提取知识点：
+
+${content.slice(0, 8000)}`; // 限制长度
+
+      logger.debug(
+        { reportId, provider: selection.provider.name },
+        "Extracting knowledge points with AI",
+      );
+
+      const result = await generateText({
+        model: selection.model,
+        system: systemPrompt,
+        prompt: userPrompt,
+        maxOutputTokens: 2048,
+        temperature: 0.5,
+      });
+
+      const responseText = result.text.trim();
+
+      // 解析 JSON 响应
+      const jsonMatch = responseText.match(/\[[\s\S]*\]/);
+      if (!jsonMatch) {
+        throw new Error("AI response is not valid JSON array");
+      }
+
+      const extractedPoints = JSON.parse(jsonMatch[0]) as Array<{
+        content: string;
+        keywords: string[];
+        difficulty: number;
+        importance: number;
+      }>;
+
+      logger.info(
+        { reportId, count: extractedPoints.length },
+        "AI extracted knowledge points",
+      );
+
+      return extractedPoints.map((point, index) => ({
+        reportId,
+        content: point.content,
+        keywords: point.keywords || [],
+        paragraphIndex: index,
+        sourceBookmarkIds,
+        difficulty: Math.min(5, Math.max(1, point.difficulty || 3)),
+        importance: Math.min(5, Math.max(1, point.importance || 3)),
+      }));
+    } catch (error) {
+      logger.error(
+        {
+          reportId,
+          error: error instanceof Error ? error.message : String(error),
+        },
+        "AI extraction failed, falling back to rule-based",
+      );
+      return this.parseReportContent(content, reportId, sourceBookmarkIds);
+    }
+  }
+
+  /**
+   * 解析报告内容提取知识点（规则版）
    *
    * 简单实现：按段落分割，每个有意义的段落作为一个知识点
-   * 实际生产中应该调用 LLM API 进行智能提取
+   * 作为 AI 提取失败时的回退方案
    */
   private parseReportContent(
     content: string,

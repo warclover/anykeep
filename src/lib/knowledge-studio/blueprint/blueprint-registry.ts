@@ -308,10 +308,17 @@ export class BlueprintRegistry {
   public getAllWithAccessInfo(
     userTier: BlueprintTier,
   ): BlueprintWithAccessInfo[] {
-    return this.getAll().map((blueprint) => ({
-      blueprint,
-      accessInfo: this.getAccessInfo(blueprint.blueprintId, userTier)!,
-    }));
+    return this.getAll().map((blueprint) => {
+      const accessInfo = this.getAccessInfo(blueprint.blueprintId, userTier);
+      return {
+        blueprint,
+        accessInfo: accessInfo ?? {
+          hasAccess: false,
+          requiredTier: "pro" as BlueprintTier,
+          upgradeMessage: "需要升级才能使用此蓝图",
+        },
+      };
+    });
   }
 
   /**
@@ -431,8 +438,38 @@ export class BlueprintRegistry {
 // ============================================================
 
 /**
+ * 懒加载初始化标记
+ * 用于确保蓝图只被初始化一次
+ */
+let lazyInitialized = false;
+
+/**
  * 获取蓝图注册表实例的快捷方式
+ *
+ * 此函数会自动确保蓝图已初始化（懒加载模式）。
+ * 首次调用时会注册所有蓝图，后续调用直接返回实例。
+ *
+ * @returns BlueprintRegistry 实例（已填充蓝图）
  */
 export function getBlueprintRegistry(): BlueprintRegistry {
-  return BlueprintRegistry.getInstance();
+  const registry = BlueprintRegistry.getInstance();
+
+  // 懒加载初始化：确保蓝图已注册
+  if (!lazyInitialized && registry.size === 0) {
+    // 动态导入避免循环依赖
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { initializeBlueprints } = require("./blueprint-initializer");
+    initializeBlueprints();
+    lazyInitialized = true;
+  }
+
+  return registry;
+}
+
+/**
+ * 重置懒加载状态（仅用于测试）
+ * @internal
+ */
+export function resetLazyInitialization(): void {
+  lazyInitialized = false;
 }

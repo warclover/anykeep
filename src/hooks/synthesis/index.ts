@@ -9,3 +9,4 @@ export { useSynthesisList } from "./use-synthesis-list";
 export { useSynthesisDetail } from "./use-synthesis-detail";
 export { useSynthesisStream } from "./use-synthesis-stream";
 export { useSynthesisRecommend } from "./use-synthesis-recommend";
+export { useSynthesisHighlights } from "./use-synthesis-highlights";

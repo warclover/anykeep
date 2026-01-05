@@ -4,7 +4,10 @@
  * @description 段落级聊天编辑，支持滑动窗口上下文管理
  */
 
+import { generateText } from "ai";
+import * as Diff from "diff";
 import { createLogger } from "@/lib/logger";
+import { aiProviderRouter } from "@/lib/ai-providers";
 import type { RecoverableError } from "../types";
 import { ERROR_CODES } from "../types";
 import type {
@@ -17,7 +20,7 @@ import type {
   ChatEditResponse,
   SlidingWindowConfig,
 } from "./types";
-import { DEFAULT_SLIDING_WINDOW_CONFIG, EDIT_MODE_CONFIG } from "./types";
+import { DEFAULT_SLIDING_WINDOW_CONFIG } from "./types";
 import { buildEditPrompt } from "./prompt-builder";
 
 const logger = createLogger("chat-edit-engine");
@@ -57,14 +60,10 @@ export class ChatEditEngine {
       this.validateRequest(request);
 
       // 2. 构建编辑 Prompt
-      const _prompt = buildEditPrompt(request.intent, request.context);
+      const prompt = buildEditPrompt(request.intent, request.context);
 
       // 3. 调用 AI 模型
-      // TODO: 实际调用 AI 模型
-      // const response = await this.callModel(prompt);
-
-      // 临时模拟响应
-      const newContent = await this.simulateEdit(request);
+      const newContent = await this.callAIModel(prompt);
 
       // 4. 生成差异
       const diff = this.generateDiff(
@@ -101,6 +100,48 @@ export class ChatEditEngine {
         error: this.handleError(error),
       };
     }
+  }
+
+  /**
+   * 调用 AI 模型生成编辑内容
+   */
+  private async callAIModel(prompt: {
+    system: string;
+    user: string;
+  }): Promise<string> {
+    // 获取模型配置
+    const selection = aiProviderRouter.selectProvider({
+      taskType: "chat",
+      preferredProvider: "deepseek",
+    });
+
+    if (!selection) {
+      throw new Error("没有可用的 AI 服务");
+    }
+
+    logger.debug(
+      {
+        provider: selection.provider.name,
+        model: selection.provider.defaultModel,
+      },
+      "Using AI model for edit",
+    );
+
+    const result = await generateText({
+      model: selection.model,
+      system: prompt.system,
+      prompt: prompt.user,
+      maxOutputTokens: 2048, // 编辑任务通常不需要太长输出
+      temperature: 0.7,
+    });
+
+    const text = result.text.trim();
+
+    if (!text) {
+      throw new Error("AI 返回空内容");
+    }
+
+    return text;
   }
 
   /**
@@ -178,6 +219,9 @@ export class ChatEditEngine {
 
   /**
    * 生成差异对比
+   *
+   * 使用 Myers diff 算法（基于最长公共子序列），
+   * 与 git diff 相同的算法，提供更精确的变更检测。
    */
   generateDiff(before: string, after: string): EditDiff {
     const changes: DiffChange[] = [];
@@ -185,39 +229,42 @@ export class ChatEditEngine {
     let removed = 0;
     let unchanged = 0;
 
-    // 简单的按行差异对比
-    // TODO: 使用更精细的 diff 算法
-    const beforeLines = before.split("\n");
-    const afterLines = after.split("\n");
+    // 使用 diff 库的行级 diff（Myers 算法）
+    const diffResult = Diff.diffLines(before, after);
+    let lineNumber = 1;
 
-    const maxLen = Math.max(beforeLines.length, afterLines.length);
+    for (const part of diffResult) {
+      // 分割成单独的行来处理
+      const lines = part.value.split("\n");
+      // 移除最后一个空元素（如果存在）
+      if (lines[lines.length - 1] === "") {
+        lines.pop();
+      }
 
-    for (let i = 0; i < maxLen; i++) {
-      const beforeLine = beforeLines[i];
-      const afterLine = afterLines[i];
-
-      if (beforeLine === afterLine) {
-        if (beforeLine !== undefined) {
+      for (const line of lines) {
+        if (part.added) {
+          changes.push({
+            type: "add",
+            value: line,
+            lineNumber,
+          });
+          added++;
+        } else if (part.removed) {
+          changes.push({
+            type: "remove",
+            value: line,
+            lineNumber,
+          });
+          removed++;
+        } else {
           changes.push({
             type: "unchanged",
-            value: beforeLine,
-            lineNumber: i + 1,
+            value: line,
+            lineNumber,
           });
           unchanged++;
         }
-      } else {
-        if (beforeLine !== undefined) {
-          changes.push({
-            type: "remove",
-            value: beforeLine,
-            lineNumber: i + 1,
-          });
-          removed++;
-        }
-        if (afterLine !== undefined) {
-          changes.push({ type: "add", value: afterLine, lineNumber: i + 1 });
-          added++;
-        }
+        lineNumber++;
       }
     }
 
@@ -247,47 +294,67 @@ export class ChatEditEngine {
   }
 
   /**
-   * 模拟编辑（临时实现）
+   * 生成对话摘要（使用 AI）
    */
-  private async simulateEdit(request: ChatEditRequest): Promise<string> {
-    const { paragraph } = request.context;
-    const { mode, instruction } = request.intent;
+  private async generateTurnsSummaryWithAI(turns: ChatTurn[]): Promise<string> {
+    if (turns.length === 0) {
+      return "";
+    }
 
-    const _modeConfig = EDIT_MODE_CONFIG[mode];
+    try {
+      // 获取模型配置（摘要生成任务）
+      const selection = aiProviderRouter.selectProvider({
+        taskType: "summary",
+        preferredProvider: "deepseek",
+      });
 
-    // 模拟不同编辑模式的效果
-    switch (mode) {
-      case "expand":
-        return `${paragraph.content}\n\n[扩展内容] 根据「${instruction}」添加的详细解释和示例。`;
+      if (!selection) {
+        throw new Error("没有可用的 AI 服务");
+      }
 
-      case "simplify":
-        return (
-          paragraph.content
-            .split("。")
-            .slice(0, Math.ceil(paragraph.content.split("。").length / 2))
-            .join("。") + "。"
-        );
+      const turnsText = turns
+        .map(
+          (t) =>
+            `${t.role === "user" ? "用户" : "助手"}: ${t.content.slice(0, 200)}${t.content.length > 200 ? "..." : ""}`,
+        )
+        .join("\n");
 
-      case "tone":
-        return `[${request.intent.targetTone || "调整后"}语气] ${paragraph.content}`;
+      const result = await generateText({
+        model: selection.model,
+        system:
+          "你是一位助手，负责将对话历史压缩成简洁的摘要。保留关键编辑意图和决策，去除冗余信息。输出控制在 100 字以内。",
+        prompt: `请将以下编辑对话历史压缩成摘要：\n\n${turnsText}`,
+        maxOutputTokens: 200,
+        temperature: 0.3,
+      });
 
-      case "rewrite":
-      case "custom":
-      default:
-        return `[已按「${instruction}」修改] ${paragraph.content}`;
+      return result.text.trim();
+    } catch (error) {
+      // AI 失败时回退到简单截取
+      logger.warn(
+        { error: error instanceof Error ? error.message : String(error) },
+        "AI summary generation failed, using fallback",
+      );
+      return this.generateTurnsSummaryFallback(turns);
     }
   }
 
   /**
-   * 生成对话摘要
+   * 生成对话摘要（简单回退方案）
    */
-  private generateTurnsSummary(turns: ChatTurn[]): string {
-    // 简单实现：截取关键信息
-    // TODO: 使用 AI 生成真正的摘要
+  private generateTurnsSummaryFallback(turns: ChatTurn[]): string {
     return turns
       .map((t) => `${t.role}: ${t.content.slice(0, 50)}...`)
       .join("\n")
-      .slice(0, this.config.maxSummaryTokens * 2); // 粗略估算 token
+      .slice(0, this.config.maxSummaryTokens * 2);
+  }
+
+  /**
+   * 同步生成对话摘要（用于 buildContext）
+   * 注意：这是同步方法，使用简单截取。如需 AI 摘要，请使用 generateTurnsSummaryWithAI
+   */
+  private generateTurnsSummary(turns: ChatTurn[]): string {
+    return this.generateTurnsSummaryFallback(turns);
   }
 
   /**

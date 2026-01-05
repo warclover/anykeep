@@ -9,6 +9,7 @@ export { MaterialSelector } from "./material-selector";
 export { ChatEditPanel } from "./chat-edit-panel";
 export { ReportEditor } from "./report-editor";
 export { CitationCard } from "./citation-card";
+export { BrainSyncButton } from "./brain-sync-button";
 export { BriefingDialog } from "./briefing-dialog";
 export type { BriefingDialogProps } from "./briefing-dialog";
 export { EnhancedBlueprintSelector } from "./enhanced-blueprint-selector";

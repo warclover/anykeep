@@ -17,20 +17,36 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Edit2, Copy, Download, Share2 } from "lucide-react";
+import {
+  Edit2,
+  Copy,
+  Download,
+  Share2,
+  FileText,
+  FileCode,
+  FileJson,
+} from "lucide-react";
 import type { SynthesisReport } from "@/lib/knowledge-studio/client";
 import { BLUEPRINT_DISPLAY_CONFIG } from "@/lib/knowledge-studio/client";
+import type { KSExportFormat } from "@/lib/knowledge-studio/export";
 import { ChatEditPanel } from "./chat-edit-panel";
 import { CitationCard } from "./citation-card";
+import { BrainSyncButton } from "./brain-sync-button";
 import type { ChatTurn, EditMode } from "@/lib/knowledge-studio/client";
 import { useChatEdit } from "@/hooks/domain/knowledge-studio/use-chat-edit";
 import { toast } from "sonner";
 import { AIMarkdown } from "@/components/ai/ai-markdown";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface ReportEditorProps {
   report: SynthesisReport;
   onUpdate?: (content: string) => void;
-  onExport?: (format: "markdown" | "html" | "pdf") => void;
+  onExport?: (format: KSExportFormat) => void;
   className?: string;
 }
 
@@ -225,8 +241,12 @@ export function ReportEditor({
 
   // Copy to clipboard
   const handleCopy = useCallback(async () => {
-    await navigator.clipboard.writeText(report.content);
-    // TODO: Show toast notification
+    try {
+      await navigator.clipboard.writeText(report.content);
+      toast.success("已复制到剪贴板");
+    } catch {
+      toast.error("复制失败，请重试");
+    }
   }, [report.content]);
 
   return (
@@ -248,18 +268,33 @@ export function ReportEditor({
 
         {/* Actions */}
         <div className="flex gap-2">
+          <BrainSyncButton report={report} />
           <Button variant="outline" size="sm" onClick={handleCopy}>
             <Copy className="mr-1 h-4 w-4" />
             复制
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onExport?.("markdown")}
-          >
-            <Download className="mr-1 h-4 w-4" />
-            导出
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Download className="mr-1 h-4 w-4" />
+                导出
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => onExport?.("markdown")}>
+                <FileText className="mr-2 h-4 w-4" />
+                Markdown (.md)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onExport?.("html")}>
+                <FileCode className="mr-2 h-4 w-4" />
+                HTML (.html)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onExport?.("json")}>
+                <FileJson className="mr-2 h-4 w-4" />
+                JSON (.json)
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button variant="outline" size="sm">
             <Share2 className="mr-1 h-4 w-4" />
             分享

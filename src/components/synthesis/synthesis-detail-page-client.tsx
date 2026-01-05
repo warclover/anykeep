@@ -90,6 +90,7 @@ import type {
 import { cn } from "@/lib/utils";
 import { ReportEditor } from "@/components/knowledge-studio/report-editor";
 import type { SynthesisReport as KSSynthesisReport } from "@/lib/knowledge-studio/client";
+import { downloadKSReport } from "@/lib/knowledge-studio";
 
 interface SynthesisDetailPageClientProps {
   reportId: string;
@@ -1017,6 +1018,18 @@ export function SynthesisDetailPageClient({
                           "Failed to update report",
                         );
                         toast.error("更新失败，请重试");
+                      }
+                    }}
+                    onExport={(format) => {
+                      try {
+                        downloadKSReport(ksReport, format);
+                        toast.success(`已导出为 ${format.toUpperCase()} 格式`);
+                      } catch (error) {
+                        logger.error(
+                          { error, format, reportId: report.id },
+                          "Failed to export report",
+                        );
+                        toast.error("导出失败，请重试");
                       }
                     }}
                   />

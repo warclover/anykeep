@@ -280,3 +280,11 @@ export * as Incremental from "./incremental";
  * ```
  */
 export * as Mastery from "./mastery";
+
+// ============================================================================
+// Export (Knowledge Studio Reports)
+// ============================================================================
+
+export { exportKSReport, downloadKSReport, KS_EXPORT_FORMATS } from "./export";
+
+export type { KSExportFormat, KSExportOptions, KSExportResult } from "./export";
