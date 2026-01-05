@@ -17,6 +17,19 @@
  * @version 2.0.0
  * @since 2025-12-25
  * @updated 2025-12-26 - 添加 DisambiguationRulesManager 支持可配置化
+ *
+ * @deprecated 自 2025-01-05 起废弃。
+ *
+ * 消歧规则已合并到 IntentAnalyzer 中（见 intent-analyzer.ts 第 130-240 行）。
+ *
+ * **迁移指南**：
+ * 1. IntentRouter 应迁移为使用 IntentAnalyzer，而非旧的三层架构
+ *    （IntentClassifier + ComplexityEvaluator + ModeSelector）
+ * 2. 直接使用本模块的代码应迁移到 IntentAnalyzer
+ *
+ * **迁移后可删除此文件**
+ *
+ * @see {@link ./intent-analyzer.ts} - 统一意图分析器（推荐）
  */
 
 import type { DisambiguationRule, IntentType } from "./types";
