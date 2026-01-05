@@ -299,6 +299,17 @@ export function BlueprintSelectorV2({
                   disabled && "cursor-not-allowed opacity-50",
                 )}
                 onClick={() => handleSelect(blueprint)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    handleSelect(blueprint);
+                  }
+                }}
+                tabIndex={disabled ? -1 : 0}
+                role="button"
+                aria-pressed={isSelected}
+                aria-disabled={disabled}
+                aria-label={`${blueprint.displayName}${isLocked ? " (需升级)" : ""}`}
               >
                 <CardContent className="p-4">
                   {/* 顶部标记区域 */}

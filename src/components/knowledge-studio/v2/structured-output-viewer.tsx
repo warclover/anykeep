@@ -131,6 +131,83 @@ interface ChecklistData {
 }
 
 // ============================================================
+// Type Guards
+// ============================================================
+
+function isFeatureMatrixData(data: unknown): data is FeatureMatrixData {
+  if (typeof data !== "object" || data === null) return false;
+  const obj = data as Record<string, unknown>;
+  return (
+    Array.isArray(obj.headers) &&
+    Array.isArray(obj.rows) &&
+    obj.rows.every(
+      (row: unknown) =>
+        typeof row === "object" &&
+        row !== null &&
+        "feature" in row &&
+        "values" in row,
+    )
+  );
+}
+
+function isSwotData(data: unknown): data is SwotData {
+  if (typeof data !== "object" || data === null) return false;
+  const obj = data as Record<string, unknown>;
+  return (
+    Array.isArray(obj.strengths) &&
+    Array.isArray(obj.weaknesses) &&
+    Array.isArray(obj.opportunities) &&
+    Array.isArray(obj.threats)
+  );
+}
+
+function isScriptTimelineData(data: unknown): data is ScriptTimelineData {
+  if (typeof data !== "object" || data === null) return false;
+  const obj = data as Record<string, unknown>;
+  return (
+    Array.isArray(obj.scenes) &&
+    obj.scenes.every(
+      (scene: unknown) =>
+        typeof scene === "object" &&
+        scene !== null &&
+        "id" in scene &&
+        "title" in scene,
+    )
+  );
+}
+
+function isSectionsData(data: unknown): data is SectionsData {
+  if (typeof data !== "object" || data === null) return false;
+  const obj = data as Record<string, unknown>;
+  return (
+    Array.isArray(obj.sections) &&
+    obj.sections.every(
+      (section: unknown) =>
+        typeof section === "object" &&
+        section !== null &&
+        "id" in section &&
+        "title" in section &&
+        "content" in section,
+    )
+  );
+}
+
+function isChecklistData(data: unknown): data is ChecklistData {
+  if (typeof data !== "object" || data === null) return false;
+  const obj = data as Record<string, unknown>;
+  return (
+    Array.isArray(obj.items) &&
+    obj.items.every(
+      (item: unknown) =>
+        typeof item === "object" &&
+        item !== null &&
+        "id" in item &&
+        "text" in item,
+    )
+  );
+}
+
+// ============================================================
 // Sub-Components
 // ============================================================
 
@@ -506,17 +583,35 @@ export function StructuredOutputViewer({
   const renderContent = () => {
     switch (type) {
       case "feature_matrix":
-        return <FeatureMatrixRenderer data={data as FeatureMatrixData} />;
+        if (!isFeatureMatrixData(data)) {
+          return <JsonRenderer data={data} />;
+        }
+        return <FeatureMatrixRenderer data={data} />;
       case "swot":
-        return <SwotRenderer data={data as SwotData} />;
+        if (!isSwotData(data)) {
+          return <JsonRenderer data={data} />;
+        }
+        return <SwotRenderer data={data} />;
       case "script_timeline":
-        return <ScriptTimelineRenderer data={data as ScriptTimelineData} />;
+        if (!isScriptTimelineData(data)) {
+          return <JsonRenderer data={data} />;
+        }
+        return <ScriptTimelineRenderer data={data} />;
       case "sections":
-        return <SectionsRenderer data={data as SectionsData} />;
+        if (!isSectionsData(data)) {
+          return <JsonRenderer data={data} />;
+        }
+        return <SectionsRenderer data={data} />;
       case "checklist":
-        return <ChecklistRenderer data={data as ChecklistData} />;
+        if (!isChecklistData(data)) {
+          return <JsonRenderer data={data} />;
+        }
+        return <ChecklistRenderer data={data} />;
       case "markdown":
-        return <MarkdownRenderer content={data as string} />;
+        if (typeof data !== "string") {
+          return <JsonRenderer data={data} />;
+        }
+        return <MarkdownRenderer content={data} />;
       case "json":
         return <JsonRenderer data={data} />;
       default:

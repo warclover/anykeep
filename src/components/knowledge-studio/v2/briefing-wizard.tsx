@@ -12,7 +12,7 @@
 
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -79,7 +79,10 @@ interface QuestionRendererProps {
   onChange: (value: AnswerValue) => void;
 }
 
-function QuestionRenderer({
+/**
+ * Question Renderer - memoized to prevent unnecessary re-renders
+ */
+const QuestionRenderer = React.memo(function QuestionRenderer({
   question,
   value,
   onChange,
@@ -240,7 +243,7 @@ function QuestionRenderer({
     default:
       return null;
   }
-}
+});
 
 // ============================================================
 // BriefingWizard Component

@@ -88,6 +88,16 @@ export function BlueprintWorkflowClient({
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
+  // Cleanup AbortController on unmount
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+    };
+  }, []);
+
   // Load blueprint info and briefing questions
   useEffect(() => {
     async function loadData() {
@@ -229,8 +239,12 @@ export function BlueprintWorkflowClient({
                     message: data.data.message,
                   });
                 }
-              } catch {
-                // Ignore parse errors
+              } catch (parseError) {
+                // Non-critical SSE parse errors - log only in development
+                if (process.env.NODE_ENV === "development") {
+                  // eslint-disable-next-line no-console
+                  console.debug("[SSE Parse Error]", line, parseError);
+                }
               }
             }
           }
@@ -337,8 +351,12 @@ export function BlueprintWorkflowClient({
                       data.data.error?.message || "Generation error",
                     );
                 }
-              } catch {
-                // Continue on parse errors
+              } catch (parseError) {
+                // Non-critical SSE parse errors - log only in development
+                if (process.env.NODE_ENV === "development") {
+                  // eslint-disable-next-line no-console
+                  console.debug("[SSE Parse Error]", line, parseError);
+                }
               }
             }
           }

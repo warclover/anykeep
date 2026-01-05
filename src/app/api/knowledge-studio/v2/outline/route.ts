@@ -16,6 +16,10 @@ import type {
   BlueprintOutline,
 } from "@/lib/knowledge-studio/blueprint/types";
 import type { Database } from "@/types/supabase";
+import {
+  MAX_MATERIALS_ALLOWED,
+  SSE_CHUNK_DELAY_MS,
+} from "@/lib/knowledge-studio/v2/constants";
 
 const logger = createLogger("api:knowledge-studio:v2:outline");
 
@@ -34,7 +38,8 @@ const OutlineRequestSchema = z.object({
         platform: z.string().optional(),
       }),
     )
-    .min(1, "至少需要一个素材"),
+    .min(1, "至少需要一个素材")
+    .max(MAX_MATERIALS_ALLOWED, `最多支持 ${MAX_MATERIALS_ALLOWED} 个素材`),
   briefingContext: z
     .object({
       answers: z.record(
@@ -234,6 +239,10 @@ export async function POST(request: NextRequest) {
                   timestamp: new Date().toISOString(),
                   requestId,
                 });
+                // Backpressure control: add small delay between chunks
+                await new Promise((resolve) =>
+                  setTimeout(resolve, SSE_CHUNK_DELAY_MS),
+                );
               }
             }
           } while (!generatorResult.done);

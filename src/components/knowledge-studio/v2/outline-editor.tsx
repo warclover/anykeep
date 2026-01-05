@@ -13,7 +13,7 @@
 
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import {
   DndContext,
   closestCenter,
@@ -208,6 +208,17 @@ function calculateTotalWords(nodes: OutlineNode[]): number {
   return total;
 }
 
+/**
+ * Sanitize user input to prevent XSS
+ * Removes HTML tags and dangerous characters
+ */
+function sanitizeInput(input: string): string {
+  return input
+    .trim()
+    .replace(/<[^>]*>/g, "") // Remove HTML tags
+    .replace(/[<>'"&]/g, ""); // Remove dangerous characters
+}
+
 // ============================================================
 // Sortable Tree Item
 // ============================================================
@@ -222,7 +233,10 @@ interface SortableTreeItemProps {
   disabled?: boolean;
 }
 
-function SortableTreeItem({
+/**
+ * SortableTreeItem - memoized to prevent unnecessary re-renders during drag operations
+ */
+const SortableTreeItem = React.memo(function SortableTreeItem({
   node,
   isExpanded,
   hasChildren,
@@ -249,8 +263,9 @@ function SortableTreeItem({
   };
 
   const handleSave = () => {
-    if (editTitle.trim()) {
-      onUpdate({ title: editTitle.trim() });
+    const sanitized = sanitizeInput(editTitle);
+    if (sanitized) {
+      onUpdate({ title: sanitized });
     }
     setIsEditing(false);
   };
@@ -370,7 +385,7 @@ function SortableTreeItem({
       )}
     </div>
   );
-}
+});
 
 // ============================================================
 // Main Component
