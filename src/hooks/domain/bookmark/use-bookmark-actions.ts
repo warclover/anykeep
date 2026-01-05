@@ -238,12 +238,45 @@ export function useBookmarkActions() {
     [fetchWithAbort],
   );
 
+  /**
+   * 切换星标状态
+   */
+  const toggleStarredStatus = useCallback(
+    async (id: number, isStarred: boolean): Promise<BookmarkActionResult> => {
+      try {
+        const res = await fetchWithAbort(`/api/bookmarks/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ isStarred }),
+        });
+
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error?.message || "更新失败");
+        }
+
+        toast.success(isStarred ? "已添加星标" : "已取消星标");
+        return { success: true };
+      } catch (error) {
+        if (error instanceof Error && error.name === "AbortError") {
+          return { success: false, error: "请求已取消" };
+        }
+
+        const message = error instanceof Error ? error.message : "更新失败";
+        toast.error(message);
+        return { success: false, error: message };
+      }
+    },
+    [fetchWithAbort],
+  );
+
   return {
     // 单个操作
     deleteBookmark,
     restoreBookmark,
     permanentDeleteBookmark,
     toggleReadStatus,
+    toggleStarredStatus,
 
     // 批量操作
     batchRestoreBookmarks,

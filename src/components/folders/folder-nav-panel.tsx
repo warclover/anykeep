@@ -333,16 +333,21 @@ export function FolderNavPanel({
                 系统
               </p>
               {groupedFolders.system.map((folder) => (
-                <NavItem
+                <DroppableFolder
                   key={folder.id}
-                  icon={<Inbox className="size-4 text-slate-600" />}
-                  label={folder.name}
-                  count={folder.bookmark_count}
-                  todayCount={folder.today_count}
-                  isSystem
-                  isSelected={isFolderSelected(folder.id)}
-                  onClick={() => onSelectSystem(folder.id)}
-                />
+                  folderId={folder.id}
+                  folderName={folder.name}
+                >
+                  <NavItem
+                    icon={<Inbox className="size-4 text-slate-600" />}
+                    label={folder.name}
+                    count={folder.bookmark_count}
+                    todayCount={folder.today_count}
+                    isSystem
+                    isSelected={isFolderSelected(folder.id)}
+                    onClick={() => onSelectSystem(folder.id)}
+                  />
+                </DroppableFolder>
               ))}
             </div>
           )}
@@ -399,9 +404,7 @@ export function FolderNavPanel({
                                 <FolderActionMenu
                                   folder={folder}
                                   allFolders={folders}
-                                  initialLockStatus={
-                                    lockStatusMap[folder.id.toString()]
-                                  }
+                                  initialLockStatus={lockStatusMap[folder.id]}
                                   onFolderDeleted={onFolderDeleted}
                                   onFolderRenamed={onFolderRenamed}
                                   onFolderMerged={onFolderMerged}
@@ -438,7 +441,7 @@ export function FolderNavPanel({
                 </CollapsibleTrigger>
 
                 <CollapsibleContent>
-                  <div className="ml-4 space-y-0.5 opacity-60">
+                  <div className="ml-4 space-y-0.5">
                     {groupedFolders.archived.map((folder) => (
                       <NavItem
                         key={folder.id}
@@ -449,6 +452,8 @@ export function FolderNavPanel({
                         }
                         label={folder.name}
                         count={folder.bookmark_count}
+                        isSelected={isFolderSelected(folder.id)}
+                        onClick={() => onSelectFolder(folder.id)}
                       />
                     ))}
                   </div>

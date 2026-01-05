@@ -20,6 +20,7 @@ import { Folder, Plus, Menu, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ErrorMessage } from "@/components/ui/error-message";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { FeatureErrorBoundary } from "@/components/error-boundary/feature-error-boundary";
 import { CreateFolderDialog } from "@/components/folders/create-folder-dialog";
 import { FolderNavPanel } from "@/components/folders/folder-nav-panel";
 import { FolderBookmarkArea } from "@/components/folders/folder-bookmark-area";
@@ -32,6 +33,7 @@ import {
 } from "@/components/folders/constants";
 import { setFoldersCache, clearFoldersCache } from "@/lib/folder/cache";
 import { useFolderBookmarks } from "@/hooks/data/use-folder-bookmarks";
+import { useBookmarkActions } from "@/hooks/domain/bookmark/use-bookmark-actions";
 import type {
   FolderWithStats,
   BookmarkWithFolder,
@@ -44,7 +46,7 @@ import type {
 interface FoldersPageClientProps {
   folders: FolderWithStats[];
   /** @deprecated 暂未使用，保留接口兼容性 */
-  _recentBookmarks?: BookmarkWithFolder[];
+  recentBookmarks?: BookmarkWithFolder[];
   error?: string;
 }
 
@@ -106,7 +108,7 @@ function parseSelectionFromUrl(
 
 export function FoldersPageClient({
   folders,
-  _recentBookmarks,
+  recentBookmarks: _recentBookmarks,
   error,
 }: FoldersPageClientProps) {
   const router = useRouter();
@@ -152,16 +154,24 @@ export function FoldersPageClient({
     return map;
   });
 
-  // 使用 Hook 获取书签数据
+  // 使用 Hook 获取书签数据（支持分页）
   const {
     bookmarks,
     isLoading: isLoadingBookmarks,
+    isLoadingMore: _isLoadingMore,
+    hasMore,
+    loadMore,
     refresh: refreshBookmarks,
+    mutate: mutateBookmarks,
   } = useFolderBookmarks({
     selection,
     folders: localFolders,
     enabled: !!selection,
   });
+
+  // 书签操作 Hook
+  const { deleteBookmark, toggleReadStatus, toggleStarredStatus } =
+    useBookmarkActions();
 
   // ==================== 同步 folders 到 localFolders ====================
   // 这个 useEffect 用于同步 props 到本地状态，实现乐观更新
@@ -204,10 +214,34 @@ export function FoldersPageClient({
       if (!exists) {
         setSelection(getDefaultSelection(localFolders));
       }
+    } else if (selection.type === "group") {
+      // P1-5: 验证分组是否有文件夹
+      const grouped = groupFolders(localFolders);
+      const foldersInGroup = grouped.groups[selection.groupId];
+      if (!foldersInGroup || foldersInGroup.length === 0) {
+        // 分组为空，切换到默认选择
+        setSelection(getDefaultSelection(localFolders));
+      }
     }
   }, [localFolders, selection]);
 
   // ==================== 回调函数 ====================
+
+  /**
+   * 更新 URL 状态（浅路由，不触发页面刷新）
+   */
+  const updateUrlState = useCallback((newSelection: FolderSelection) => {
+    const params = new URLSearchParams();
+
+    if (newSelection.type === "group") {
+      params.set("group", newSelection.groupId);
+    } else {
+      params.set("id", newSelection.folderId.toString());
+    }
+
+    const newUrl = `${window.location.pathname}?${params.toString()}`;
+    window.history.replaceState(null, "", newUrl);
+  }, []);
 
   const handleRetry = () => {
     router.refresh();
@@ -218,10 +252,15 @@ export function FoldersPageClient({
   };
 
   // 分组选择
-  const handleSelectGroup = useCallback((groupId: UIFolderGroup) => {
-    setSelection({ type: "group", groupId });
-    setIsMobileNavOpen(false);
-  }, []);
+  const handleSelectGroup = useCallback(
+    (groupId: UIFolderGroup) => {
+      const newSelection: FolderSelection = { type: "group", groupId };
+      setSelection(newSelection);
+      updateUrlState(newSelection);
+      setIsMobileNavOpen(false);
+    },
+    [updateUrlState],
+  );
 
   // 文件夹选择
   const handleSelectFolder = useCallback(
@@ -229,21 +268,27 @@ export function FoldersPageClient({
       const folder = localFolders.find((f) => f.id === folderId);
       if (!folder) return;
 
-      setSelection(
-        folder.is_system
-          ? { type: "system", folderId }
-          : { type: "folder", folderId },
-      );
+      const newSelection: FolderSelection = folder.is_system
+        ? { type: "system", folderId }
+        : { type: "folder", folderId };
+
+      setSelection(newSelection);
+      updateUrlState(newSelection);
       setIsMobileNavOpen(false);
     },
-    [localFolders],
+    [localFolders, updateUrlState],
   );
 
   // 系统文件夹选择
-  const handleSelectSystem = useCallback((folderId: number) => {
-    setSelection({ type: "system", folderId });
-    setIsMobileNavOpen(false);
-  }, []);
+  const handleSelectSystem = useCallback(
+    (folderId: number) => {
+      const newSelection: FolderSelection = { type: "system", folderId };
+      setSelection(newSelection);
+      updateUrlState(newSelection);
+      setIsMobileNavOpen(false);
+    },
+    [updateUrlState],
+  );
 
   // 文件夹删除后的乐观更新
   const handleFolderDeleted = useCallback(
@@ -296,23 +341,104 @@ export function FoldersPageClient({
   );
 
   // 书签操作回调
-  const handleEditBookmark = useCallback((_id: number) => {
-    // TODO: 打开编辑对话框
-  }, []);
+  const handleEditBookmark = useCallback(
+    (id: number) => {
+      // 跳转到书签编辑页面
+      router.push(`/bookmark/${id}/edit`);
+    },
+    [router],
+  );
 
-  const handleDeleteBookmark = useCallback(async (_id: number) => {
-    // TODO: 实现删除逻辑
-  }, []);
+  const handleDeleteBookmark = useCallback(
+    async (id: number) => {
+      // 保存快照用于回滚
+      const snapshot = bookmarks;
 
-  const handleToggleRead = useCallback((_id: number, _isRead: boolean) => {
-    // TODO: 实现切换已读
-  }, []);
+      // 乐观更新 - 从列表移除
+      mutateBookmarks(
+        bookmarks.filter((b) => b.id !== id),
+        false,
+      );
+
+      // 更新文件夹书签计数
+      if (selection?.type === "folder" || selection?.type === "system") {
+        setLocalFolders((prev) =>
+          prev.map((f) =>
+            f.id === selection.folderId
+              ? {
+                  ...f,
+                  bookmark_count: Math.max(0, (f.bookmark_count || 0) - 1),
+                }
+              : f,
+          ),
+        );
+      }
+
+      // 调用 API
+      const result = await deleteBookmark(id);
+
+      // 失败时回滚
+      if (!result.success) {
+        mutateBookmarks(snapshot, false);
+        // 回滚文件夹计数
+        if (selection?.type === "folder" || selection?.type === "system") {
+          setLocalFolders((prev) =>
+            prev.map((f) =>
+              f.id === selection.folderId
+                ? { ...f, bookmark_count: (f.bookmark_count || 0) + 1 }
+                : f,
+            ),
+          );
+        }
+      }
+    },
+    [bookmarks, mutateBookmarks, deleteBookmark, selection],
+  );
+
+  const handleToggleRead = useCallback(
+    async (id: number, isRead: boolean) => {
+      // 保存快照用于回滚
+      const snapshot = bookmarks;
+
+      // 乐观更新
+      mutateBookmarks(
+        bookmarks.map((b) => (b.id === id ? { ...b, is_read: isRead } : b)),
+        false,
+      );
+
+      // 调用 API
+      const result = await toggleReadStatus(id, isRead);
+
+      // 失败时回滚
+      if (!result.success) {
+        mutateBookmarks(snapshot, false);
+      }
+    },
+    [bookmarks, mutateBookmarks, toggleReadStatus],
+  );
 
   const handleToggleStarred = useCallback(
-    (_id: number, _isStarred: boolean) => {
-      // TODO: 实现切换星标
+    async (id: number, isStarred: boolean) => {
+      // 保存快照用于回滚
+      const snapshot = bookmarks;
+
+      // 乐观更新
+      mutateBookmarks(
+        bookmarks.map((b) =>
+          b.id === id ? { ...b, is_starred: isStarred } : b,
+        ),
+        false,
+      );
+
+      // 调用 API
+      const result = await toggleStarredStatus(id, isStarred);
+
+      // 失败时回滚
+      if (!result.success) {
+        mutateBookmarks(snapshot, false);
+      }
     },
-    [],
+    [bookmarks, mutateBookmarks, toggleStarredStatus],
   );
 
   // ==================== 渲染 ====================
@@ -353,21 +479,23 @@ export function FoldersPageClient({
     );
   }
 
-  // 导航面板组件
+  // 导航面板组件（带错误边界）
   const navPanel = (
-    <FolderNavPanel
-      folders={localFolders}
-      selection={selection}
-      onSelectGroup={handleSelectGroup}
-      onSelectFolder={handleSelectFolder}
-      onSelectSystem={handleSelectSystem}
-      onCreateFolder={handleCreateClick}
-      onFolderDeleted={handleFolderDeleted}
-      onFolderRenamed={handleFolderRenamed}
-      onFolderMerged={handleFolderMerged}
-      lockStatusMap={lockStatusMap}
-      className="h-full"
-    />
+    <FeatureErrorBoundary feature="folder-nav" compact>
+      <FolderNavPanel
+        folders={localFolders}
+        selection={selection}
+        onSelectGroup={handleSelectGroup}
+        onSelectFolder={handleSelectFolder}
+        onSelectSystem={handleSelectSystem}
+        onCreateFolder={handleCreateClick}
+        onFolderDeleted={handleFolderDeleted}
+        onFolderRenamed={handleFolderRenamed}
+        onFolderMerged={handleFolderMerged}
+        lockStatusMap={lockStatusMap}
+        className="h-full"
+      />
+    </FeatureErrorBoundary>
   );
 
   return (
@@ -410,18 +538,22 @@ export function FoldersPageClient({
 
           {/* 书签内容区域 */}
           {selection && (
-            <FolderBookmarkArea
-              selection={selection}
-              folders={localFolders}
-              bookmarks={bookmarks}
-              isLoading={isLoadingBookmarks}
-              onOpenAIAssistant={() => setIsAIAssistantOpen(true)}
-              onEditBookmark={handleEditBookmark}
-              onDeleteBookmark={handleDeleteBookmark}
-              onToggleRead={handleToggleRead}
-              onToggleStarred={handleToggleStarred}
-              className="flex-1"
-            />
+            <FeatureErrorBoundary feature="folder-bookmarks">
+              <FolderBookmarkArea
+                selection={selection}
+                folders={localFolders}
+                bookmarks={bookmarks}
+                isLoading={isLoadingBookmarks}
+                hasMore={hasMore}
+                onLoadMore={loadMore}
+                onOpenAIAssistant={() => setIsAIAssistantOpen(true)}
+                onEditBookmark={handleEditBookmark}
+                onDeleteBookmark={handleDeleteBookmark}
+                onToggleRead={handleToggleRead}
+                onToggleStarred={handleToggleStarred}
+                className="flex-1"
+              />
+            </FeatureErrorBoundary>
           )}
         </main>
 

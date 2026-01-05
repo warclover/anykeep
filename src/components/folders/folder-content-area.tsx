@@ -325,7 +325,7 @@ export function FolderContentArea({
                   key={folder.id}
                   folder={folder}
                   allFolders={folders}
-                  lockStatus={lockStatusMap[folder.id.toString()]}
+                  lockStatus={lockStatusMap[folder.id]}
                   onActionComplete={onActionComplete}
                   onFolderDeleted={onFolderDeleted}
                   onFolderRenamed={onFolderRenamed}

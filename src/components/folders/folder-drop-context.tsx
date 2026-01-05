@@ -27,6 +27,7 @@ import {
 } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
 import { useBookmarkMove } from "@/hooks/data/use-bookmark-move";
+import { toast } from "sonner";
 
 // ==================== 类型定义 ====================
 
@@ -159,9 +160,13 @@ export function FolderDropProvider({
 
   // 拖拽取消
   const handleDragCancel = useCallback(() => {
+    // 只有正在拖拽时才显示取消提示
+    if (draggedBookmark) {
+      toast.info("已取消移动", { duration: 1500 });
+    }
     setDraggedBookmark(null);
     setActiveDropFolderId(null);
-  }, []);
+  }, [draggedBookmark]);
 
   const contextValue: FolderDropContextValue = {
     draggedBookmark,

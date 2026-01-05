@@ -1,20 +1,21 @@
 /**
- * 文件夹书签获取 Hook
+ * 文件夹书签获取 Hook (v2.1 分页加载)
  *
  * 根据 FolderSelection 状态获取对应的书签列表
  * 支持分组选择（获取多个文件夹的书签）和单文件夹选择
+ * 支持无限滚动分页加载
  */
 
-import useSWR from "swr";
+import useSWRInfinite from "swr/infinite";
+import { useCallback, useMemo } from "react";
 import type {
   FolderSelection,
   FolderWithStats,
+  BookmarkWithFolder,
 } from "@/components/folders/types";
-import type { Bookmark } from "@/types/supabase";
 
-type BookmarkWithFolder = Bookmark & {
-  folders?: { name: string } | null;
-};
+/** 每页书签数量 */
+const PAGE_SIZE = 50;
 
 interface UseFolderBookmarksOptions {
   /** 当前选择状态 */
@@ -28,19 +29,25 @@ interface UseFolderBookmarksOptions {
 interface UseFolderBookmarksResult {
   /** 书签列表 */
   bookmarks: BookmarkWithFolder[];
-  /** 是否正在加载 */
+  /** 是否正在加载首页 */
   isLoading: boolean;
+  /** 是否正在加载更多 */
+  isLoadingMore: boolean;
   /** 是否正在验证（后台刷新） */
   isValidating: boolean;
+  /** 是否有更多数据 */
+  hasMore: boolean;
   /** 错误信息 */
   error: Error | null;
+  /** 加载更多 */
+  loadMore: () => void;
   /** 刷新数据 */
   refresh: () => Promise<void>;
   /** 手动更新数据 */
   mutate: (
     data?: BookmarkWithFolder[],
     shouldRevalidate?: boolean,
-  ) => Promise<BookmarkWithFolder[] | undefined>;
+  ) => Promise<BookmarkWithFolder[][] | undefined>;
 }
 
 /**
@@ -69,78 +76,34 @@ function getFolderIds(
 }
 
 /**
- * 生成 SWR 缓存 Key
+ * 获取书签数据（分页版本）
  */
-function generateCacheKey(
-  selection: FolderSelection | null,
-  folders: FolderWithStats[],
-): string | null {
-  if (!selection) return null;
-
-  const folderIds = getFolderIds(selection, folders);
-  if (folderIds.length === 0) return null;
-
-  // 使用选择类型和文件夹 IDs 生成唯一 Key
-  return `/api/bookmarks?folderIds=${folderIds.sort().join(",")}`;
-}
-
-/**
- * 获取书签数据
- */
-async function fetchBookmarks(
-  selection: FolderSelection,
-  folders: FolderWithStats[],
+async function fetchBookmarksPage(
+  folderIds: number[],
+  offset: number,
 ): Promise<BookmarkWithFolder[]> {
-  const folderIds = getFolderIds(selection, folders);
-
   if (folderIds.length === 0) {
     return [];
   }
 
-  // 单文件夹：使用现有 API
-  if (folderIds.length === 1) {
-    const response = await fetch(
-      `/api/bookmarks?folderId=${folderIds[0]}&limit=100`,
-    );
-    if (!response.ok) {
-      throw new Error("Failed to fetch bookmarks");
-    }
-    const result = await response.json();
-    return result.data || [];
-  }
-
-  // 多文件夹（分组选择）：并行请求然后合并
-  // 注意：这是临时方案，后续可以优化 API 支持批量查询
-  const results = await Promise.all(
-    folderIds.map(async (folderId) => {
-      const response = await fetch(
-        `/api/bookmarks?folderId=${folderId}&limit=100`,
-      );
-      if (!response.ok) {
-        return [];
-      }
-      const result = await response.json();
-      return result.data || [];
-    }),
+  const response = await fetch(
+    `/api/bookmarks?folderIds=${folderIds.join(",")}&limit=${PAGE_SIZE}&offset=${offset}`,
   );
 
-  // 合并结果并按创建时间排序
-  const allBookmarks = results.flat();
-  allBookmarks.sort((a, b) => {
-    const aTime = new Date(a.created_at || 0).getTime();
-    const bTime = new Date(b.created_at || 0).getTime();
-    return bTime - aTime;
-  });
+  if (!response.ok) {
+    throw new Error("Failed to fetch bookmarks");
+  }
 
-  return allBookmarks;
+  const result = await response.json();
+  return result.data?.bookmarks || result.data || [];
 }
 
 /**
- * 文件夹书签获取 Hook
+ * 文件夹书签获取 Hook（支持分页）
  *
  * @example
  * ```tsx
- * const { bookmarks, isLoading } = useFolderBookmarks({
+ * const { bookmarks, isLoading, hasMore, loadMore } = useFolderBookmarks({
  *   selection: { type: "folder", folderId: 123 },
  *   folders: allFolders,
  * });
@@ -151,34 +114,103 @@ export function useFolderBookmarks({
   folders,
   enabled = true,
 }: UseFolderBookmarksOptions): UseFolderBookmarksResult {
-  const cacheKey = enabled ? generateCacheKey(selection, folders) : null;
+  // 计算 folderIds（用于缓存 key 和请求）
+  const folderIds = useMemo(
+    () => (selection ? getFolderIds(selection, folders) : []),
+    [selection, folders],
+  );
+  const folderIdsKey = useMemo(
+    () => [...folderIds].sort().join(","),
+    [folderIds],
+  );
 
-  const { data, error, isLoading, isValidating, mutate } = useSWR<
-    BookmarkWithFolder[]
-  >(
-    cacheKey,
-    () => {
-      if (!selection) return Promise.resolve([]);
-      return fetchBookmarks(selection, folders);
+  // 生成分页 key
+  const getKey = useCallback(
+    (pageIndex: number, previousPageData: BookmarkWithFolder[] | null) => {
+      // 禁用时返回 null
+      if (!enabled || !selection || folderIds.length === 0) return null;
+
+      // 上一页没有数据或数据不足一页，说明没有更多了
+      if (previousPageData && previousPageData.length < PAGE_SIZE) return null;
+
+      // 返回缓存 key（包含 offset）
+      return `/api/bookmarks?folderIds=${folderIdsKey}&page=${pageIndex}`;
     },
-    {
+    [enabled, selection, folderIds.length, folderIdsKey],
+  );
+
+  // 请求函数
+  const fetcher = useCallback(
+    async (key: string) => {
+      // 从 key 中提取页码
+      const match = key.match(/page=(\d+)/);
+      const pageIndex = match ? parseInt(match[1], 10) : 0;
+      const offset = pageIndex * PAGE_SIZE;
+
+      return fetchBookmarksPage(folderIds, offset);
+    },
+    [folderIds],
+  );
+
+  const { data, error, isLoading, isValidating, size, setSize, mutate } =
+    useSWRInfinite<BookmarkWithFolder[]>(getKey, fetcher, {
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
-      dedupingInterval: 30000, // 30 秒内相同请求去重
+      revalidateFirstPage: false,
+      dedupingInterval: 30000,
       errorRetryCount: 2,
+    });
+
+  // 展平分页数据
+  const bookmarks = data ? data.flat() : [];
+
+  // 判断是否有更多数据
+  const lastPage = data ? data[data.length - 1] : null;
+  const hasMore = lastPage ? lastPage.length >= PAGE_SIZE : false;
+
+  // 是否正在加载更多
+  const isLoadingMore =
+    isLoading || (size > 0 && data && typeof data[size - 1] === "undefined");
+
+  // 加载更多
+  const loadMore = useCallback(() => {
+    if (!isLoadingMore && hasMore) {
+      setSize(size + 1);
+    }
+  }, [isLoadingMore, hasMore, setSize, size]);
+
+  // 刷新数据（重置分页）
+  const refresh = useCallback(async () => {
+    await mutate();
+  }, [mutate]);
+
+  // 手动更新数据（用于乐观更新）
+  const updateData = useCallback(
+    async (newData?: BookmarkWithFolder[], shouldRevalidate = true) => {
+      if (newData) {
+        // 将展平的数据分页存储
+        const pages: BookmarkWithFolder[][] = [];
+        for (let i = 0; i < newData.length; i += PAGE_SIZE) {
+          pages.push(newData.slice(i, i + PAGE_SIZE));
+        }
+        // 确保至少有一页
+        if (pages.length === 0) pages.push([]);
+        return mutate(pages, shouldRevalidate);
+      }
+      return mutate(undefined, shouldRevalidate);
     },
+    [mutate],
   );
 
   return {
-    bookmarks: data || [],
+    bookmarks,
     isLoading,
+    isLoadingMore: !!isLoadingMore,
     isValidating,
+    hasMore,
     error: error || null,
-    refresh: async () => {
-      await mutate();
-    },
-    mutate: async (newData, shouldRevalidate = true) => {
-      return mutate(newData, shouldRevalidate);
-    },
+    loadMore,
+    refresh,
+    mutate: updateData,
   };
 }

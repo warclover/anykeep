@@ -30,17 +30,16 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { VirtualBookmarkList } from "@/components/bookmark/virtual-bookmark-list";
 import { FOLDER_GROUPS } from "./constants";
-import type { FolderSelection, FolderWithStats } from "./types";
-import type { Bookmark } from "@/types/supabase";
+import type {
+  FolderSelection,
+  FolderWithStats,
+  BookmarkWithFolder,
+} from "./types";
 
 // ==================== 类型定义 ====================
 
 type SortOption = "created" | "title" | "updated";
 type ViewMode = "card" | "list" | "compact";
-
-type BookmarkWithFolder = Bookmark & {
-  folders?: { name: string } | null;
-};
 
 interface FolderBookmarkAreaProps {
   /** 当前选择状态 */
@@ -150,7 +149,22 @@ export function FolderBookmarkArea({
   const [searchQuery, setSearchQuery] = useState("");
   const deferredSearch = useDeferredValue(searchQuery);
   const [sortBy, setSortBy] = useState<SortOption>("created");
-  const [viewMode, setViewMode] = useState<ViewMode>("list");
+
+  // 视图模式（从 localStorage 恢复）
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("folder-bookmark-view-mode");
+      if (saved === "card" || saved === "list" || saved === "compact") {
+        return saved;
+      }
+    }
+    return "list";
+  });
+
+  // 持久化视图模式
+  useEffect(() => {
+    localStorage.setItem("folder-bookmark-view-mode", viewMode);
+  }, [viewMode]);
 
   // 滚动容器引用
   const scrollContainerRef = useRef<HTMLDivElement>(null);

@@ -341,7 +341,7 @@ export function FolderCardGrid({
           key={folder.id}
           folder={folder}
           allFolders={allFolders}
-          lockStatus={lockStatusMap[folder.id.toString()]}
+          lockStatus={lockStatusMap[folder.id]}
           onActionComplete={onActionComplete}
           onFolderDeleted={onFolderDeleted}
           onFolderRenamed={onFolderRenamed}

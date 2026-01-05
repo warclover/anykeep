@@ -288,6 +288,19 @@ export const getBookmarksQuerySchema = z.object({
     .optional()
     .transform((val) => val === "true"), // 排除浏览器平台（用于"全部"）
   folderId: z.coerce.number().int().positive().nullable().optional(),
+  // V2.0 新增：批量文件夹 ID 查询（逗号分隔，用于分组选择）
+  folderIds: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((val) => {
+      if (!val) return undefined;
+      const ids = val
+        .split(",")
+        .map((id) => parseInt(id.trim(), 10))
+        .filter((id) => !isNaN(id) && id > 0);
+      return ids.length > 0 ? ids : undefined;
+    }),
   folder: z
     .enum(["trash", "invalid", "high-value"])
     .nullable()
@@ -305,6 +318,7 @@ export const getBookmarksQuerySchema = z.object({
     .transform((val) => val ?? undefined),
   cursor: z.coerce.number().int().positive().nullable().optional(),
   limit: z.coerce.number().int().min(1).max(500).default(24), // V4.2.x: 默认与 constants.DEFAULT_PAGE_SIZE 保持一致，批量操作支持最多 500
+  offset: z.coerce.number().int().min(0).default(0), // V2.1: 分页偏移量
   sort: z
     .enum(["created_desc", "created_asc", "title_asc", "title_desc"])
     .nullable()

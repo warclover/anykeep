@@ -24,8 +24,8 @@ export interface LockStatus {
   isAiRenamable: boolean;
 }
 
-/** 锁定状态映射 */
-export type LockStatusMap = Record<string, LockStatus>;
+/** 锁定状态映射（Key 为文件夹 ID） */
+export type LockStatusMap = Record<number, LockStatus>;
 
 // ==================== 书签类型 ====================
 
