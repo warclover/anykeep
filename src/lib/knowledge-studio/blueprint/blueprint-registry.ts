@@ -313,7 +313,9 @@ export class BlueprintRegistry {
       return {
         blueprint,
         accessInfo: accessInfo ?? {
-          hasAccess: false,
+          blueprintId: blueprint.blueprintId,
+          canAccess: false,
+          currentTier: userTier,
           requiredTier: "pro" as BlueprintTier,
           upgradeMessage: "需要升级才能使用此蓝图",
         },

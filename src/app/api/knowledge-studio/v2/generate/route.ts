@@ -318,6 +318,8 @@ export async function POST(request: NextRequest) {
 
                   const insertData: SynthesisReportInsert = {
                     user_id: user.id,
+                    // Knowledge Studio v2 报告使用 "selection" 作为 source_type
+                    source_type: "selection",
                     blueprint_type: blueprintId,
                     title: `${metadata.displayName} 报告`,
                     content: result.content,

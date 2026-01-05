@@ -5682,46 +5682,105 @@ export type Database = {
       };
       synthesis_reports: {
         Row: {
-          blueprint_type: string;
-          citations: Json;
-          content: string;
-          created_at: string;
-          generation_metadata: Json;
           id: string;
-          overview: string | null;
-          status: string;
-          title: string | null;
-          updated_at: string;
           user_id: string;
-          version: number;
+          title: string | null;
+          /** 来源类型: folder, tag, selection, ai_recommend */
+          source_type: string;
+          /** 来源 ID（文件夹或标签 ID） */
+          source_id: string | null;
+          /** 手动选择的书签 ID 列表 */
+          source_bookmark_ids: string[] | null;
+          /** 综述深度: quick, standard, academic */
+          depth_mode: string;
+          /** 输出风格: narrative, bullet, hybrid */
+          output_style: string | null;
+          /** 概述内容 */
+          overview: string | null;
+          /** 核心共识 JSONB 数组 */
+          consensus: Json | null;
+          /** 观点分歧 JSONB 数组 */
+          divergence: Json | null;
+          /** 知识盲区 JSONB 数组 */
+          blind_spots: Json | null;
+          /** 完整 Markdown 文本 */
+          full_markdown: string | null;
+          /** 状态: pending, generating, completed, failed, cancelled */
+          status: string;
+          /** 错误信息 */
+          error_message: string | null;
+          /** 来源书签数量 */
+          source_count: number;
+          /** 生成字数 */
+          word_count: number;
+          created_at: string;
+          updated_at: string;
+          /** 完成时间 */
+          completed_at: string | null;
+          /** Knowledge Studio v1: 蓝图类型 */
+          blueprint_type: string | null;
+          /** Knowledge Studio v1: 生成内容 */
+          content: string | null;
+          /** Knowledge Studio v1: 引用来源 JSONB */
+          citations: Json | null;
+          /** Knowledge Studio v1: 生成元数据 */
+          generation_metadata: Json | null;
+          /** Knowledge Studio v1: 版本号 */
+          version: number | null;
         };
         Insert: {
-          blueprint_type: string;
-          citations?: Json;
-          content: string;
-          created_at?: string;
-          generation_metadata?: Json;
           id?: string;
-          overview?: string | null;
-          status?: string;
-          title?: string | null;
-          updated_at?: string;
           user_id: string;
-          version?: number;
+          title: string;
+          source_type: string;
+          source_id?: string | null;
+          source_bookmark_ids?: string[] | null;
+          depth_mode?: string;
+          output_style?: string | null;
+          overview?: string | null;
+          consensus?: Json | null;
+          divergence?: Json | null;
+          blind_spots?: Json | null;
+          full_markdown?: string | null;
+          status?: string;
+          error_message?: string | null;
+          source_count?: number;
+          word_count?: number;
+          created_at?: string;
+          updated_at?: string;
+          completed_at?: string | null;
+          blueprint_type?: string | null;
+          content?: string | null;
+          citations?: Json | null;
+          generation_metadata?: Json | null;
+          version?: number | null;
         };
         Update: {
-          blueprint_type?: string;
-          citations?: Json;
-          content?: string;
-          created_at?: string;
-          generation_metadata?: Json;
           id?: string;
-          overview?: string | null;
-          status?: string;
-          title?: string | null;
-          updated_at?: string;
           user_id?: string;
-          version?: number;
+          title?: string | null;
+          source_type?: string;
+          source_id?: string | null;
+          source_bookmark_ids?: string[] | null;
+          depth_mode?: string;
+          output_style?: string | null;
+          overview?: string | null;
+          consensus?: Json | null;
+          divergence?: Json | null;
+          blind_spots?: Json | null;
+          full_markdown?: string | null;
+          status?: string;
+          error_message?: string | null;
+          source_count?: number;
+          word_count?: number;
+          created_at?: string;
+          updated_at?: string;
+          completed_at?: string | null;
+          blueprint_type?: string | null;
+          content?: string | null;
+          citations?: Json | null;
+          generation_metadata?: Json | null;
+          version?: number | null;
         };
         Relationships: [];
       };

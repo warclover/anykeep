@@ -214,6 +214,8 @@ export async function POST(request: NextRequest) {
                   // 确保插入数据符合类型定义（编译时类型检查）
                   const insertData: SynthesisReportInsert = {
                     user_id: user.id,
+                    // Knowledge Studio 报告使用 "selection" 作为 source_type
+                    source_type: "selection",
                     blueprint_type: blueprintType,
                     title: title || `${blueprintType} 报告`,
                     content: result.content,

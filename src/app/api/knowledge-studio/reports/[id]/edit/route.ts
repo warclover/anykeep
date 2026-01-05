@@ -133,6 +133,16 @@ export async function POST(request: NextRequest, context: RouteContext) {
       );
     }
 
+    // 检查 content 是否存在
+    if (!report.content) {
+      return new Response(
+        JSON.stringify({
+          error: { code: "NO_CONTENT", message: "报告内容为空" },
+        }),
+        { status: 400, headers: { "Content-Type": "application/json" } },
+      );
+    }
+
     // 5. 解析段落
     const paragraphs = report.content
       .split("\n\n")
@@ -172,7 +182,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
               );
 
               // 填充报告上下文
-              editContext.reportContext.blueprintType = report.blueprint_type;
+              editContext.reportContext.blueprintType =
+                report.blueprint_type ?? "";
 
               // 发送开始事件
               sendEvent({
