@@ -17,6 +17,36 @@ import type {
 // Enhanced Blueprint System Types (v2.0)
 // ============================================================
 
+// ============================================================
+// Blueprint ID Naming Convention (P2 #7)
+// ============================================================
+/**
+ * Blueprint ID 命名规范
+ *
+ * 格式: `{category}-{name}`
+ *
+ * - category: 蓝图分类，小写字母 (geek, creator, business, professional)
+ * - name: 蓝图名称，小写字母和下划线
+ *   - 单词蓝图: 直接使用 (newsletter, scriptwriter)
+ *   - 多词蓝图: 用下划线连接 (arxiv_decoder, system_design_review)
+ *
+ * 示例:
+ *   ✓ geek-arxiv_decoder
+ *   ✓ creator-newsletter
+ *   ✓ business-due_diligence
+ *   ✓ professional-tech_decider
+ *
+ * 正则验证: /^[a-z]+-[a-z]+(_[a-z]+)*$/
+ */
+export const BLUEPRINT_ID_PATTERN = /^[a-z]+-[a-z]+(_[a-z]+)*$/;
+
+/**
+ * 验证蓝图 ID 是否符合命名规范
+ */
+export function isValidBlueprintId(id: string): boolean {
+  return BLUEPRINT_ID_PATTERN.test(id);
+}
+
 /**
  * Briefing 问题输入类型
  */

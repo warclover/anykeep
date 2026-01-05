@@ -7,6 +7,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { z } from "zod";
 import {
   ArrowLeft,
   Sparkles,
@@ -15,6 +16,10 @@ import {
   Loader2,
   FileText,
 } from "lucide-react";
+import {
+  SSE_REQUEST_TIMEOUT_MS,
+  SSE_PARSE_ERROR_THRESHOLD,
+} from "@/lib/knowledge-studio/v2/constants";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -39,6 +44,23 @@ import type {
   BlueprintOutline,
   MaterialInput,
 } from "@/lib/knowledge-studio/blueprint/types";
+
+// ============================================================
+// Zod Schema for sessionStorage Validation (P1 #5)
+// ============================================================
+
+/**
+ * MaterialInput schema matching src/lib/knowledge-studio/blueprint/types.ts
+ */
+const MaterialInputSchema = z.object({
+  bookmarkId: z.string().min(1),
+  title: z.string(),
+  content: z.string(),
+  url: z.string().url(),
+  platform: z.string().optional(),
+});
+
+const StoredMaterialsSchema = z.array(MaterialInputSchema).min(1);
 
 // ============================================================
 // Types
@@ -102,14 +124,34 @@ export function BlueprintWorkflowClient({
   useEffect(() => {
     async function loadData() {
       try {
-        // Load materials from sessionStorage
+        // Load and validate materials from sessionStorage (P1 #5)
         const storedMaterials = sessionStorage.getItem("ks-v2-materials");
         if (!storedMaterials) {
           router.push("/knowledge-studio/v2");
           return;
         }
-        const parsedMaterials = JSON.parse(storedMaterials);
-        setMaterials(parsedMaterials);
+
+        // Validate sessionStorage data with Zod schema
+        let parsedMaterials: unknown;
+        try {
+          parsedMaterials = JSON.parse(storedMaterials);
+        } catch {
+          // Invalid JSON - redirect to material selection
+          sessionStorage.removeItem("ks-v2-materials");
+          router.push("/knowledge-studio/v2");
+          return;
+        }
+
+        const validationResult =
+          StoredMaterialsSchema.safeParse(parsedMaterials);
+        if (!validationResult.success) {
+          // Invalid data structure - clear and redirect
+          sessionStorage.removeItem("ks-v2-materials");
+          router.push("/knowledge-studio/v2");
+          return;
+        }
+
+        setMaterials(validationResult.data);
 
         // Get blueprint list to find current blueprint
         const blueprintsRes = await fetch(
@@ -196,6 +238,11 @@ export function BlueprintWorkflowClient({
       try {
         abortControllerRef.current = new AbortController();
 
+        // P2 #6: Add request timeout
+        const timeoutId = setTimeout(() => {
+          abortControllerRef.current?.abort();
+        }, SSE_REQUEST_TIMEOUT_MS);
+
         const response = await fetch("/api/knowledge-studio/v2/outline", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -210,14 +257,20 @@ export function BlueprintWorkflowClient({
           signal: abortControllerRef.current.signal,
         });
 
+        clearTimeout(timeoutId);
+
         if (!response.ok) {
-          throw new Error("Outline generation failed");
+          const errorText = await response.text().catch(() => "");
+          throw new Error(
+            `大纲生成失败 (${response.status})${errorText ? `: ${errorText}` : ""}`,
+          );
         }
 
         const reader = response.body?.getReader();
         if (!reader) throw new Error("No response body");
 
         const decoder = new TextDecoder();
+        let sseParseErrorCount = 0; // P2 #4: Track SSE parse errors
 
         while (true) {
           const { done, value } = await reader.read();
@@ -238,8 +291,16 @@ export function BlueprintWorkflowClient({
                     percent: data.data.percent || 0,
                     message: data.data.message,
                   });
+                } else if (data.type === "error") {
+                  // Handle server-sent error events
+                  throw new Error(data.data.error?.message || "大纲生成错误");
                 }
               } catch (parseError) {
+                // P2 #4: Count SSE parse errors and fail if threshold exceeded
+                sseParseErrorCount++;
+                if (sseParseErrorCount >= SSE_PARSE_ERROR_THRESHOLD) {
+                  throw new Error("数据流解析错误过多，请重试");
+                }
                 // Non-critical SSE parse errors - log only in development
                 if (process.env.NODE_ENV === "development") {
                   // eslint-disable-next-line no-console
@@ -250,8 +311,12 @@ export function BlueprintWorkflowClient({
           }
         }
       } catch (err) {
-        if (err instanceof Error && err.name !== "AbortError") {
-          setError(err.message);
+        if (err instanceof Error) {
+          if (err.name === "AbortError") {
+            setError("请求超时，请检查网络连接后重试");
+          } else {
+            setError(err.message);
+          }
         }
       } finally {
         setIsRegenerating(false);
@@ -285,6 +350,11 @@ export function BlueprintWorkflowClient({
       try {
         abortControllerRef.current = new AbortController();
 
+        // P2 #6: Add request timeout
+        const timeoutId = setTimeout(() => {
+          abortControllerRef.current?.abort();
+        }, SSE_REQUEST_TIMEOUT_MS);
+
         const response = await fetch("/api/knowledge-studio/v2/generate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -300,9 +370,13 @@ export function BlueprintWorkflowClient({
           signal: abortControllerRef.current.signal,
         });
 
+        clearTimeout(timeoutId);
+
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error?.message || "Generation failed");
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(
+            errorData.error?.message || `内容生成失败 (${response.status})`,
+          );
         }
 
         const reader = response.body?.getReader();
@@ -310,6 +384,7 @@ export function BlueprintWorkflowClient({
 
         const decoder = new TextDecoder();
         let contentBuffer = "";
+        let sseParseErrorCount = 0; // P2 #4: Track SSE parse errors
 
         while (true) {
           const { done, value } = await reader.read();
@@ -347,11 +422,14 @@ export function BlueprintWorkflowClient({
                     break;
 
                   case "error":
-                    throw new Error(
-                      data.data.error?.message || "Generation error",
-                    );
+                    throw new Error(data.data.error?.message || "内容生成错误");
                 }
               } catch (parseError) {
+                // P2 #4: Count SSE parse errors and fail if threshold exceeded
+                sseParseErrorCount++;
+                if (sseParseErrorCount >= SSE_PARSE_ERROR_THRESHOLD) {
+                  throw new Error("数据流解析错误过多，请重试");
+                }
                 // Non-critical SSE parse errors - log only in development
                 if (process.env.NODE_ENV === "development") {
                   // eslint-disable-next-line no-console
@@ -362,8 +440,12 @@ export function BlueprintWorkflowClient({
           }
         }
       } catch (err) {
-        if (err instanceof Error && err.name !== "AbortError") {
-          setError(err.message);
+        if (err instanceof Error) {
+          if (err.name === "AbortError") {
+            setError("请求超时，请检查网络连接后重试");
+          } else {
+            setError(err.message);
+          }
         }
       }
     },
@@ -391,18 +473,27 @@ export function BlueprintWorkflowClient({
 
   /**
    * Determine output type from structured output
+   * Uses type guards instead of type assertions (P3 #11)
    */
   const getOutputType = (): OutputType => {
     if (!structuredOutput) return "markdown";
     if (typeof structuredOutput === "string") return "markdown";
+    if (typeof structuredOutput !== "object") return "json";
 
-    const output = structuredOutput as Record<string, unknown>;
+    // Type-safe property checks using 'in' operator
+    const output = structuredOutput as object;
 
-    if (output.swotAnalysis || output.strengths) return "swot";
-    if (output.featureMatrix || output.headers) return "feature_matrix";
-    if (output.scenes) return "script_timeline";
-    if (output.sections) return "sections";
-    if (output.items && Array.isArray(output.items)) return "checklist";
+    if ("swotAnalysis" in output || "strengths" in output) return "swot";
+    if ("featureMatrix" in output || "headers" in output)
+      return "feature_matrix";
+    if ("scenes" in output) return "script_timeline";
+    if ("sections" in output) return "sections";
+    if (
+      "items" in output &&
+      Array.isArray((output as { items: unknown }).items)
+    ) {
+      return "checklist";
+    }
 
     return "json";
   };

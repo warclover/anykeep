@@ -23,6 +23,12 @@ export const MAX_MATERIALS_ALLOWED = 10;
 /** SSE chunk 发送间隔（毫秒），用于背压控制 */
 export const SSE_CHUNK_DELAY_MS = 30;
 
+/** SSE 请求超时时间（毫秒）(P2 #6) */
+export const SSE_REQUEST_TIMEOUT_MS = 120_000; // 2 minutes
+
+/** SSE 解析错误阈值，超过此数量视为流损坏 (P2 #4) */
+export const SSE_PARSE_ERROR_THRESHOLD = 10;
+
 // ============================================================
 // Error Codes
 // ============================================================

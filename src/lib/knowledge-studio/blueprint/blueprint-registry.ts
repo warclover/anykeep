@@ -17,6 +17,7 @@ import type {
   EnhancedBlueprintMetadata,
   StructuredOutput,
 } from "./types";
+import { isValidBlueprintId } from "./types";
 
 // ============================================================
 // Types
@@ -134,11 +135,20 @@ export class BlueprintRegistry {
    *
    * @param blueprint - 要注册的蓝图实例
    * @throws 如果蓝图 ID 已存在则抛出错误
+   * @throws 如果蓝图 ID 不符合命名规范则抛出错误 (P2 #7)
    */
   public register<T extends StructuredOutput>(
     blueprint: EnhancedBlueprintEngine<T>,
   ): void {
     const id = blueprint.blueprintId;
+
+    // P2 #7: Validate blueprint ID naming convention
+    if (!isValidBlueprintId(id)) {
+      throw new Error(
+        `Blueprint ID "${id}" does not match naming convention. ` +
+          `Expected format: {category}-{name} (e.g., geek-arxiv_decoder)`,
+      );
+    }
 
     if (this.blueprints.has(id)) {
       throw new Error(`Blueprint with ID "${id}" is already registered`);

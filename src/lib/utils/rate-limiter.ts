@@ -44,6 +44,8 @@ export const RATE_LIMIT_CONFIGS: Record<string, RateLimitConfig> = {
   snapshots: { windowMs: 60_000, maxRequests: 60 },
   // 内容监控：每分钟 20 次
   monitors: { windowMs: 60_000, maxRequests: 20 },
+  // Knowledge Studio 生成：每分钟 5 次（AI 生成成本高）
+  knowledge_studio: { windowMs: 60_000, maxRequests: 5 },
   // 高风险操作：每小时 2 次（账户删除、数据导出等不可逆操作）
   dangerous: { windowMs: 3600_000, maxRequests: 2 },
 };
@@ -203,6 +205,11 @@ export function getRateLimitConfig(pathname: string): RateLimitConfig {
     return RATE_LIMIT_CONFIGS.monitors;
   }
 
+  // Knowledge Studio 生成（成本高，严格限制）
+  if (pathname.includes("/knowledge-studio")) {
+    return RATE_LIMIT_CONFIGS.knowledge_studio;
+  }
+
   // 默认
   return RATE_LIMIT_CONFIGS.default;
 }
@@ -263,6 +270,7 @@ function getConfigKey(pathname: string): string {
     return "search";
   if (pathname.includes("/snapshots")) return "snapshots";
   if (pathname.includes("/monitors")) return "monitors";
+  if (pathname.includes("/knowledge-studio")) return "knowledge_studio";
   return "default";
 }
 

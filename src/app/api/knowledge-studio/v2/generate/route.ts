@@ -389,12 +389,17 @@ export async function POST(request: NextRequest) {
             });
           }
         } catch (error) {
+          // NOTE: This catch block handles edge cases where quotaManager.executeWithQuota
+          // itself throws an unhandled error. The quota should already be refunded by
+          // executeWithQuota's internal error handling, but we log a warning just in case.
           logger.error(
             {
               requestId,
               error: error instanceof Error ? error.message : String(error),
+              warning:
+                "Potential quota leak - verify quota status for this requestId",
             },
-            "Generation stream error",
+            "Generation stream error (outer catch)",
           );
 
           sendEvent({
