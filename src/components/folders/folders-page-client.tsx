@@ -1,55 +1,116 @@
 /**
- * 收藏夹页面客户端组件（升级版 - 双栏布局）
+ * 收藏夹页面客户端组件 (v2.0 重构)
  *
  * 布局结构：
- * - 左侧：文件夹导航面板（树形结构）
- * - 右侧：文件夹卡片网格 + 快捷操作 + 最近活动
+ * - 左侧：文件夹导航面板（树形结构 + 分组/文件夹选择）
+ * - 右侧：书签内容列表（显示选中分组/文件夹的书签）
  *
- * 功能保留：
- * - 创建/重命名/合并/删除文件夹
- * - 分组折叠展开
- * - 锁状态（从服务端数据直接获取）
- * - 乐观更新
- * - localStorage 缓存（V4.2.26）
+ * 核心变更 (v2.0)：
+ * - 右侧从文件夹卡片改为书签列表
+ * - 支持分组级别选择（显示分组内所有书签）
+ * - 支持单文件夹选择（显示文件夹内书签）
+ * - 移除「全部收藏」入口
  */
 
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Folder, Plus, Menu, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ErrorMessage } from "@/components/ui/error-message";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { CreateFolderDialog } from "@/components/folders/create-folder-dialog";
 import { FolderNavPanel } from "@/components/folders/folder-nav-panel";
-import { FolderContentArea } from "@/components/folders/folder-content-area";
+import { FolderBookmarkArea } from "@/components/folders/folder-bookmark-area";
+import { FolderDropProvider } from "@/components/folders/folder-drop-context";
 import { AIAssistantPanel } from "@/components/ai/ai-assistant-panel";
-import { type UIFolderGroup } from "@/components/folders/constants";
-// V4.2.28: 直接从 cache 子模块导入，避免引入服务端代码
+import {
+  UI_GROUP_KEYS,
+  groupFolders,
+  type UIFolderGroup,
+} from "@/components/folders/constants";
 import { setFoldersCache, clearFoldersCache } from "@/lib/folder/cache";
+import { useFolderBookmarks } from "@/hooks/data/use-folder-bookmarks";
 import type {
   FolderWithStats,
   BookmarkWithFolder,
   LockStatusMap,
+  FolderSelection,
 } from "@/components/folders/types";
 
 // ==================== 组件 Props ====================
 
 interface FoldersPageClientProps {
   folders: FolderWithStats[];
-  recentBookmarks: BookmarkWithFolder[];
+  /** @deprecated 暂未使用，保留接口兼容性 */
+  _recentBookmarks?: BookmarkWithFolder[];
   error?: string;
+}
+
+// ==================== 工具函数 ====================
+
+/**
+ * 获取默认选择状态（第一个非空分组）
+ */
+function getDefaultSelection(
+  folders: FolderWithStats[],
+): FolderSelection | null {
+  const grouped = groupFolders(folders);
+
+  // 优先选中第一个非空分组
+  for (const groupKey of UI_GROUP_KEYS) {
+    if (grouped.groups[groupKey].length > 0) {
+      return { type: "group", groupId: groupKey };
+    }
+  }
+
+  // 如果没有分组有文件夹，尝试系统文件夹
+  if (grouped.system.length > 0) {
+    return { type: "system", folderId: grouped.system[0].id };
+  }
+
+  return null;
+}
+
+/**
+ * 从 URL 参数解析选择状态
+ */
+function parseSelectionFromUrl(
+  searchParams: URLSearchParams,
+  folders: FolderWithStats[],
+): FolderSelection | null {
+  const groupParam = searchParams.get("group");
+  const folderIdParam = searchParams.get("id");
+
+  // 分组参数
+  if (groupParam && UI_GROUP_KEYS.includes(groupParam as UIFolderGroup)) {
+    return { type: "group", groupId: groupParam as UIFolderGroup };
+  }
+
+  // 文件夹 ID 参数
+  if (folderIdParam) {
+    const folderId = parseInt(folderIdParam, 10);
+    const folder = folders.find((f) => f.id === folderId);
+    if (folder) {
+      return folder.is_system
+        ? { type: "system", folderId }
+        : { type: "folder", folderId };
+    }
+  }
+
+  return null;
 }
 
 // ==================== 主组件 ====================
 
 export function FoldersPageClient({
   folders,
-  recentBookmarks,
+  _recentBookmarks,
   error,
 }: FoldersPageClientProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   // ==================== 状态管理 ====================
 
@@ -59,10 +120,17 @@ export function FoldersPageClient({
   // 本地文件夹状态（用于乐观更新）
   const [localFolders, setLocalFolders] = useState(folders);
 
-  // 选中的分组
-  const [selectedGroup, setSelectedGroup] = useState<
-    UIFolderGroup | "all" | "system"
-  >("all");
+  // 选择状态（v2.0 核心变更）
+  const [selection, setSelection] = useState<FolderSelection | null>(() => {
+    // 尝试从 URL 解析（searchParams 可能为 null）
+    if (searchParams) {
+      const urlSelection = parseSelectionFromUrl(searchParams, folders);
+      if (urlSelection) return urlSelection;
+    }
+
+    // 使用默认选择
+    return getDefaultSelection(folders);
+  });
 
   // 移动端导航抽屉状态
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
@@ -70,8 +138,7 @@ export function FoldersPageClient({
   // AI 助手面板状态
   const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(false);
 
-  // V4.2.26: 从服务端数据直接提取锁状态（消除重复请求）
-  // 服务端 page.tsx 已查询 folder_profiles，无需客户端再次请求
+  // 锁状态映射
   const [lockStatusMap, setLockStatusMap] = useState<LockStatusMap>(() => {
     const map: LockStatusMap = {};
     for (const folder of folders) {
@@ -85,11 +152,22 @@ export function FoldersPageClient({
     return map;
   });
 
-  // ==================== 同步 folders 到 localFolders + 更新缓存 ====================
+  // 使用 Hook 获取书签数据
+  const {
+    bookmarks,
+    isLoading: isLoadingBookmarks,
+    refresh: refreshBookmarks,
+  } = useFolderBookmarks({
+    selection,
+    folders: localFolders,
+    enabled: !!selection,
+  });
 
-  // 乐观更新模式：需要将 props 同步到 local state 以支持本地修改
-  /* eslint-disable react-hooks/set-state-in-effect */
+  // ==================== 同步 folders 到 localFolders ====================
+  // 这个 useEffect 用于同步 props 到本地状态，实现乐观更新
+
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 同步 props 到本地状态
     setLocalFolders(folders);
 
     // 同步更新锁状态
@@ -102,14 +180,32 @@ export function FoldersPageClient({
         };
       }
     }
+
     setLockStatusMap(map);
 
-    // V4.2.26: 更新 localStorage 缓存
+    // 更新 localStorage 缓存
     if (folders.length > 0) {
       setFoldersCache(folders);
     }
   }, [folders]);
-  /* eslint-enable react-hooks/set-state-in-effect */
+
+  // 当 folders 变化时，检查当前选择是否仍有效
+  // 这里的 setState 是必要的 - 用于同步派生状态
+  useEffect(() => {
+    if (!selection) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- 同步派生状态
+      setSelection(getDefaultSelection(localFolders));
+      return;
+    }
+
+    // 验证选择有效性
+    if (selection.type === "folder" || selection.type === "system") {
+      const exists = localFolders.some((f) => f.id === selection.folderId);
+      if (!exists) {
+        setSelection(getDefaultSelection(localFolders));
+      }
+    }
+  }, [localFolders, selection]);
 
   // ==================== 回调函数 ====================
 
@@ -121,14 +217,53 @@ export function FoldersPageClient({
     setShowCreateDialog(true);
   };
 
+  // 分组选择
+  const handleSelectGroup = useCallback((groupId: UIFolderGroup) => {
+    setSelection({ type: "group", groupId });
+    setIsMobileNavOpen(false);
+  }, []);
+
+  // 文件夹选择
+  const handleSelectFolder = useCallback(
+    (folderId: number) => {
+      const folder = localFolders.find((f) => f.id === folderId);
+      if (!folder) return;
+
+      setSelection(
+        folder.is_system
+          ? { type: "system", folderId }
+          : { type: "folder", folderId },
+      );
+      setIsMobileNavOpen(false);
+    },
+    [localFolders],
+  );
+
+  // 系统文件夹选择
+  const handleSelectSystem = useCallback((folderId: number) => {
+    setSelection({ type: "system", folderId });
+    setIsMobileNavOpen(false);
+  }, []);
+
   // 文件夹删除后的乐观更新
   const handleFolderDeleted = useCallback(
     (deletedFolderId: number) => {
       setLocalFolders((prev) => prev.filter((f) => f.id !== deletedFolderId));
-      clearFoldersCache(); // V4.2.26: 清除缓存保证一致性
+      clearFoldersCache();
+
+      // 如果删除的是当前选中的文件夹，切换到默认选择
+      if (
+        selection &&
+        (selection.type === "folder" || selection.type === "system") &&
+        selection.folderId === deletedFolderId
+      ) {
+        const remaining = localFolders.filter((f) => f.id !== deletedFolderId);
+        setSelection(getDefaultSelection(remaining));
+      }
+
       router.refresh();
     },
-    [router],
+    [router, selection, localFolders],
   );
 
   // 文件夹重命名后的乐观更新
@@ -137,7 +272,7 @@ export function FoldersPageClient({
       setLocalFolders((prev) =>
         prev.map((f) => (f.id === folderId ? { ...f, name: newName } : f)),
       );
-      clearFoldersCache(); // V4.2.26: 清除缓存保证一致性
+      clearFoldersCache();
     },
     [],
   );
@@ -154,33 +289,30 @@ export function FoldersPageClient({
               : f,
           ),
       );
-      clearFoldersCache(); // V4.2.26: 清除缓存保证一致性
+      clearFoldersCache();
+      refreshBookmarks();
+    },
+    [refreshBookmarks],
+  );
+
+  // 书签操作回调
+  const handleEditBookmark = useCallback((_id: number) => {
+    // TODO: 打开编辑对话框
+  }, []);
+
+  const handleDeleteBookmark = useCallback(async (_id: number) => {
+    // TODO: 实现删除逻辑
+  }, []);
+
+  const handleToggleRead = useCallback((_id: number, _isRead: boolean) => {
+    // TODO: 实现切换已读
+  }, []);
+
+  const handleToggleStarred = useCallback(
+    (_id: number, _isStarred: boolean) => {
+      // TODO: 实现切换星标
     },
     [],
-  );
-
-  // 选择分组时关闭移动端导航
-  const handleSelectGroup = (group: UIFolderGroup | "all" | "system") => {
-    setSelectedGroup(group);
-    setIsMobileNavOpen(false);
-  };
-
-  // 点击文件夹导航项时跳转到该文件夹
-  const handleSelectFolder = useCallback(
-    (folderId: number) => {
-      setIsMobileNavOpen(false);
-      router.push(`/home?folder=${folderId}`);
-    },
-    [router],
-  );
-
-  // 导出文件夹内书签
-  const handleExportFolder = useCallback(
-    (folderId: number) => {
-      // 跳转到导出页面，带上文件夹参数
-      router.push(`/export?folder=${folderId}`);
-    },
-    [router],
   );
 
   // ==================== 渲染 ====================
@@ -225,84 +357,88 @@ export function FoldersPageClient({
   const navPanel = (
     <FolderNavPanel
       folders={localFolders}
-      selectedGroup={selectedGroup}
+      selection={selection}
       onSelectGroup={handleSelectGroup}
       onSelectFolder={handleSelectFolder}
+      onSelectSystem={handleSelectSystem}
       onCreateFolder={handleCreateClick}
+      onFolderDeleted={handleFolderDeleted}
+      onFolderRenamed={handleFolderRenamed}
+      onFolderMerged={handleFolderMerged}
+      lockStatusMap={lockStatusMap}
       className="h-full"
     />
   );
 
   return (
-    <div className="h-full flex overflow-hidden">
-      {/* 桌面端：左侧导航面板 */}
-      <aside className="hidden lg:block w-[280px] flex-shrink-0 border-r border-gray-200 dark:border-gray-800 overflow-hidden">
-        {navPanel}
-      </aside>
-
-      {/* 移动端：导航抽屉 */}
-      <Sheet open={isMobileNavOpen} onOpenChange={setIsMobileNavOpen}>
-        <SheetContent side="left" className="p-0 w-[300px]">
+    <FolderDropProvider onMoveSuccess={refreshBookmarks}>
+      <div className="h-full flex overflow-hidden">
+        {/* 桌面端：左侧导航面板 */}
+        <aside className="hidden lg:block w-[280px] flex-shrink-0 border-r border-gray-200 dark:border-gray-800 overflow-hidden">
           {navPanel}
-        </SheetContent>
-      </Sheet>
+        </aside>
 
-      {/* 右侧内容区域 */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* 移动端顶部栏 */}
-        <div className="lg:hidden flex items-center gap-3 px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsMobileNavOpen(true)}
-          >
-            <Menu className="size-5" />
-          </Button>
-          <h1 className="text-lg font-semibold flex-1">收藏夹</h1>
-          {/* AI 助手按钮 */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsAIAssistantOpen(true)}
-            className="gap-1.5 text-violet-600 border-violet-200 hover:bg-violet-50 hover:border-violet-300 dark:text-violet-400 dark:border-violet-800 dark:hover:bg-violet-950"
-          >
-            <Sparkles className="size-4" />
-            <span className="hidden sm:inline">AI 助手</span>
-          </Button>
-        </div>
+        {/* 移动端：导航抽屉 */}
+        <Sheet open={isMobileNavOpen} onOpenChange={setIsMobileNavOpen}>
+          <SheetContent side="left" className="p-0 w-[300px]">
+            {navPanel}
+          </SheetContent>
+        </Sheet>
 
-        {/* 内容区域 */}
-        <div className="flex-1 flex flex-col min-h-0">
-          <FolderContentArea
-            folders={localFolders}
-            selectedGroup={selectedGroup}
-            recentBookmarks={recentBookmarks}
-            lockStatusMap={lockStatusMap}
-            onCreateFolder={handleCreateClick}
-            onOpenAIAssistant={() => setIsAIAssistantOpen(true)}
-            onActionComplete={() => router.refresh()}
-            onFolderDeleted={handleFolderDeleted}
-            onFolderRenamed={handleFolderRenamed}
-            onFolderMerged={handleFolderMerged}
-            onExportFolder={handleExportFolder}
-            className="flex-1"
-          />
-        </div>
-      </main>
+        {/* 右侧内容区域 */}
+        <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+          {/* 移动端顶部栏 */}
+          <div className="lg:hidden flex items-center gap-3 px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsMobileNavOpen(true)}
+            >
+              <Menu className="size-5" />
+            </Button>
+            <h1 className="text-lg font-semibold flex-1">收藏夹</h1>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsAIAssistantOpen(true)}
+              className="gap-1.5 text-violet-600 border-violet-200 hover:bg-violet-50 hover:border-violet-300 dark:text-violet-400 dark:border-violet-800 dark:hover:bg-violet-950"
+            >
+              <Sparkles className="size-4" />
+              <span className="hidden sm:inline">AI 助手</span>
+            </Button>
+          </div>
 
-      {/* 创建文件夹对话框 */}
-      <CreateFolderDialog
-        open={showCreateDialog}
-        onOpenChange={setShowCreateDialog}
-        folders={localFolders}
-      />
+          {/* 书签内容区域 */}
+          {selection && (
+            <FolderBookmarkArea
+              selection={selection}
+              folders={localFolders}
+              bookmarks={bookmarks}
+              isLoading={isLoadingBookmarks}
+              onOpenAIAssistant={() => setIsAIAssistantOpen(true)}
+              onEditBookmark={handleEditBookmark}
+              onDeleteBookmark={handleDeleteBookmark}
+              onToggleRead={handleToggleRead}
+              onToggleStarred={handleToggleStarred}
+              className="flex-1"
+            />
+          )}
+        </main>
 
-      {/* AI 助手面板 */}
-      <AIAssistantPanel
-        open={isAIAssistantOpen}
-        onOpenChange={setIsAIAssistantOpen}
-        title="AI 文件夹助手"
-      />
-    </div>
+        {/* 创建文件夹对话框 */}
+        <CreateFolderDialog
+          open={showCreateDialog}
+          onOpenChange={setShowCreateDialog}
+          folders={localFolders}
+        />
+
+        {/* AI 助手面板 */}
+        <AIAssistantPanel
+          open={isAIAssistantOpen}
+          onOpenChange={setIsAIAssistantOpen}
+          title="AI 文件夹助手"
+        />
+      </div>
+    </FolderDropProvider>
   );
 }

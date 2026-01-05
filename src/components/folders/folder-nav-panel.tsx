@@ -1,19 +1,18 @@
 /**
- * 左侧文件夹导航面板
+ * 左侧文件夹导航面板 (v2.0 重构)
+ *
  * 树形结构展示文件夹层级，支持分组折叠
+ * 核心变更：
+ * - 使用 FolderSelection 统一选择状态
+ * - 分组可点击选中（显示分组内所有书签）
+ * - 移除「全部文件夹」入口
+ * - 添加文件夹操作菜单
  */
 
 "use client";
 
-import { useState, useMemo } from "react";
-import {
-  ChevronDown,
-  ChevronRight,
-  Inbox,
-  Plus,
-  Archive,
-  FolderTree,
-} from "lucide-react";
+import { useState, useMemo, useCallback } from "react";
+import { ChevronDown, ChevronRight, Inbox, Plus, Archive } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,6 +21,8 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { FolderActionMenu } from "./folder-action-menu";
+import { DroppableFolder } from "./droppable-folder";
 import {
   FOLDER_GROUPS,
   UI_GROUP_KEYS,
@@ -29,17 +30,34 @@ import {
   groupFolders,
   type UIFolderGroup,
 } from "./constants";
-import type { FolderWithStats } from "./types";
+import type { FolderWithStats, FolderSelection, LockStatusMap } from "./types";
 
 // ==================== 组件 Props ====================
 
 interface FolderNavPanelProps {
   folders: FolderWithStats[];
-  selectedGroup: UIFolderGroup | "all" | "system";
-  selectedFolderId?: number;
-  onSelectGroup: (group: UIFolderGroup | "all" | "system") => void;
-  onSelectFolder?: (folderId: number) => void;
+  /** 当前选择状态 */
+  selection: FolderSelection | null;
+  /** 选择分组回调 */
+  onSelectGroup: (groupId: UIFolderGroup) => void;
+  /** 选择文件夹回调 */
+  onSelectFolder: (folderId: number) => void;
+  /** 选择系统文件夹回调 */
+  onSelectSystem: (folderId: number) => void;
+  /** 创建文件夹回调 */
   onCreateFolder: () => void;
+  /** 文件夹删除回调 */
+  onFolderDeleted?: (folderId: number) => void;
+  /** 文件夹重命名回调 */
+  onFolderRenamed?: (folderId: number, newName: string) => void;
+  /** 文件夹合并回调 */
+  onFolderMerged?: (
+    sourceFolderId: number,
+    targetFolderId: number,
+    movedCount: number,
+  ) => void;
+  /** 锁状态映射 */
+  lockStatusMap?: LockStatusMap;
   className?: string;
 }
 
@@ -54,6 +72,7 @@ interface NavItemProps {
   isSystem?: boolean;
   indent?: number;
   onClick?: () => void;
+  actionMenu?: React.ReactNode;
 }
 
 function NavItem({
@@ -65,36 +84,44 @@ function NavItem({
   isSystem,
   indent = 0,
   onClick,
+  actionMenu,
 }: NavItemProps) {
   return (
-    <button
-      onClick={onClick}
-      role="treeitem"
-      aria-selected={isSelected}
-      aria-level={indent + 1}
-      className={cn(
-        "w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-colors",
-        "hover:bg-gray-100 dark:hover:bg-gray-800",
-        isSelected && "bg-primary/10 text-primary font-medium",
-        isSystem && "bg-blue-50 dark:bg-blue-900/20",
-      )}
-      style={{ paddingLeft: `${12 + indent * 16}px` }}
-    >
-      <span className="flex-shrink-0 w-5 h-5 flex items-center justify-center">
-        {icon}
-      </span>
-      <span className="flex-1 text-left truncate">{label}</span>
-      {count !== undefined && count > 0 && (
-        <span className="text-xs text-muted-foreground tabular-nums">
-          {count}
+    <div className="group flex items-center">
+      <button
+        onClick={onClick}
+        role="treeitem"
+        aria-selected={isSelected}
+        aria-level={indent + 1}
+        className={cn(
+          "flex-1 flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-colors",
+          "hover:bg-gray-100 dark:hover:bg-gray-800",
+          isSelected && "bg-primary/10 text-primary font-medium",
+          isSystem && !isSelected && "bg-blue-50/50 dark:bg-blue-900/10",
+        )}
+        style={{ paddingLeft: `${12 + indent * 16}px` }}
+      >
+        <span className="flex-shrink-0 w-5 h-5 flex items-center justify-center">
+          {icon}
         </span>
+        <span className="flex-1 text-left truncate">{label}</span>
+        {count !== undefined && count > 0 && (
+          <span className="text-xs text-muted-foreground tabular-nums">
+            {count}
+          </span>
+        )}
+        {todayCount !== undefined && todayCount > 0 && (
+          <span className="text-xs text-green-500 tabular-nums">
+            +{todayCount}
+          </span>
+        )}
+      </button>
+      {actionMenu && (
+        <div className="opacity-0 group-hover:opacity-100 transition-opacity pr-1">
+          {actionMenu}
+        </div>
       )}
-      {todayCount !== undefined && todayCount > 0 && (
-        <span className="text-xs text-green-500 tabular-nums">
-          +{todayCount}
-        </span>
-      )}
-    </button>
+    </div>
   );
 }
 
@@ -102,7 +129,8 @@ function NavItem({
 
 interface GroupHeaderProps {
   groupKey: UIFolderGroup;
-  folderCount: number;
+  bookmarkCount: number;
+  _folderCount: number;
   isExpanded: boolean;
   isSelected: boolean;
   onToggle: () => void;
@@ -111,7 +139,8 @@ interface GroupHeaderProps {
 
 function GroupHeader({
   groupKey,
-  folderCount,
+  bookmarkCount,
+  _folderCount,
   isExpanded,
   isSelected,
   onToggle,
@@ -125,12 +154,16 @@ function GroupHeader({
       className={cn(
         "flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors",
         "hover:bg-gray-100 dark:hover:bg-gray-800",
-        isSelected && "bg-primary/5",
+        isSelected && "bg-primary/10",
       )}
     >
       <button
-        onClick={onToggle}
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggle();
+        }}
         className="flex-shrink-0 p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
+        aria-label={isExpanded ? "收起" : "展开"}
       >
         {isExpanded ? (
           <ChevronDown className="size-4 text-muted-foreground" />
@@ -160,7 +193,7 @@ function GroupHeader({
           {config.label}
         </span>
         <span className="text-xs text-muted-foreground tabular-nums">
-          ({folderCount})
+          {bookmarkCount}
         </span>
       </button>
     </div>
@@ -171,11 +204,15 @@ function GroupHeader({
 
 export function FolderNavPanel({
   folders,
-  selectedGroup,
-  selectedFolderId,
+  selection,
   onSelectGroup,
   onSelectFolder,
+  onSelectSystem,
   onCreateFolder,
+  onFolderDeleted,
+  onFolderRenamed,
+  onFolderMerged,
+  lockStatusMap = {},
   className,
 }: FolderNavPanelProps) {
   // 分组展开状态
@@ -211,10 +248,48 @@ export function FolderNavPanel({
     };
   }, [folders]);
 
+  // 计算每个分组的书签总数
+  const groupBookmarkCounts = useMemo(() => {
+    const counts: Record<UIFolderGroup, number> = {
+      work: 0,
+      study: 0,
+      life: 0,
+      entertainment: 0,
+      other: 0,
+    };
+
+    for (const groupKey of UI_GROUP_KEYS) {
+      counts[groupKey] = groupedFolders.groups[groupKey].reduce(
+        (sum, f) => sum + (f.bookmark_count || 0),
+        0,
+      );
+    }
+
+    return counts;
+  }, [groupedFolders]);
+
   // 切换分组展开状态
-  const toggleGroup = (group: UIFolderGroup) => {
+  const toggleGroup = useCallback((group: UIFolderGroup) => {
     setExpandedGroups((prev) => ({ ...prev, [group]: !prev[group] }));
-  };
+  }, []);
+
+  // 判断选择状态
+  const isGroupSelected = useCallback(
+    (groupId: UIFolderGroup) => {
+      return selection?.type === "group" && selection.groupId === groupId;
+    },
+    [selection],
+  );
+
+  const isFolderSelected = useCallback(
+    (folderId: number) => {
+      return (
+        (selection?.type === "folder" || selection?.type === "system") &&
+        selection.folderId === folderId
+      );
+    },
+    [selection],
+  );
 
   // 获取非空分组
   const nonEmptyGroups = UI_GROUP_KEYS.filter(
@@ -251,18 +326,9 @@ export function FolderNavPanel({
       {/* 导航内容 */}
       <div className="flex-1 overflow-y-auto">
         <div className="p-2 space-y-1">
-          {/* 全部 */}
-          <NavItem
-            icon={<FolderTree className="size-4 text-primary" />}
-            label="全部文件夹"
-            count={totalStats.bookmarkCount}
-            isSelected={selectedGroup === "all"}
-            onClick={() => onSelectGroup("all")}
-          />
-
           {/* 系统文件夹 */}
           {groupedFolders.system.length > 0 && (
-            <div className="pt-2">
+            <div className="pb-2">
               <p className="px-3 py-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">
                 系统
               </p>
@@ -274,8 +340,8 @@ export function FolderNavPanel({
                   count={folder.bookmark_count}
                   todayCount={folder.today_count}
                   isSystem
-                  isSelected={selectedGroup === "system"}
-                  onClick={() => onSelectGroup("system")}
+                  isSelected={isFolderSelected(folder.id)}
+                  onClick={() => onSelectSystem(folder.id)}
                 />
               ))}
             </div>
@@ -291,6 +357,7 @@ export function FolderNavPanel({
               {nonEmptyGroups.map((groupKey) => {
                 const foldersInGroup = groupedFolders.groups[groupKey];
                 const isExpanded = expandedGroups[groupKey];
+                const bookmarkCount = groupBookmarkCounts[groupKey];
 
                 return (
                   <Collapsible
@@ -300,9 +367,10 @@ export function FolderNavPanel({
                   >
                     <GroupHeader
                       groupKey={groupKey}
-                      folderCount={foldersInGroup.length}
+                      bookmarkCount={bookmarkCount}
+                      _folderCount={foldersInGroup.length}
                       isExpanded={isExpanded}
-                      isSelected={selectedGroup === groupKey}
+                      isSelected={isGroupSelected(groupKey)}
                       onToggle={() => toggleGroup(groupKey)}
                       onSelect={() => onSelectGroup(groupKey)}
                     />
@@ -310,20 +378,37 @@ export function FolderNavPanel({
                     <CollapsibleContent>
                       <div className="ml-2 border-l border-gray-200 dark:border-gray-700">
                         {foldersInGroup.map((folder) => (
-                          <NavItem
+                          <DroppableFolder
                             key={folder.id}
-                            icon={
-                              <span className="text-base">
-                                {getFolderEmoji(folder.name)}
-                              </span>
-                            }
-                            label={folder.name}
-                            count={folder.bookmark_count}
-                            todayCount={folder.today_count}
-                            indent={1}
-                            isSelected={selectedFolderId === folder.id}
-                            onClick={() => onSelectFolder?.(folder.id)}
-                          />
+                            folderId={folder.id}
+                            folderName={folder.name}
+                          >
+                            <NavItem
+                              icon={
+                                <span className="text-base">
+                                  {getFolderEmoji(folder.name)}
+                                </span>
+                              }
+                              label={folder.name}
+                              count={folder.bookmark_count}
+                              todayCount={folder.today_count}
+                              indent={1}
+                              isSelected={isFolderSelected(folder.id)}
+                              onClick={() => onSelectFolder(folder.id)}
+                              actionMenu={
+                                <FolderActionMenu
+                                  folder={folder}
+                                  allFolders={folders}
+                                  initialLockStatus={
+                                    lockStatusMap[folder.id.toString()]
+                                  }
+                                  onFolderDeleted={onFolderDeleted}
+                                  onFolderRenamed={onFolderRenamed}
+                                  onFolderMerged={onFolderMerged}
+                                />
+                              }
+                            />
+                          </DroppableFolder>
                         ))}
                       </div>
                     </CollapsibleContent>

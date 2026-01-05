@@ -16,6 +16,7 @@ import { Virtuoso, type VirtuosoHandle } from "react-virtuoso";
 import { Loader2 } from "lucide-react";
 import { BookmarkCard } from "./bookmark-card";
 import { FlipBookmarkCard } from "./bookmark-card-flip";
+import { DraggableBookmark } from "@/components/folders/draggable-bookmark";
 import type { Bookmark, CustomUsageTag } from "@/types/supabase";
 import type { BookmarkV42Fields } from "@/lib/classification/types";
 import { cn } from "@/lib/utils";
@@ -64,6 +65,8 @@ interface VirtualBookmarkListProps {
   prefetchThreshold?: number;
   /** 自定义滚动父元素（用于嵌套滚动容器场景） */
   customScrollParent?: HTMLElement | null;
+  /** 是否启用拖拽到文件夹功能 */
+  draggable?: boolean;
 }
 
 /**
@@ -82,6 +85,7 @@ const BookmarkItem = memo(function BookmarkItem({
   onToggleSelect,
   customUsageTags,
   layoutMode,
+  draggable,
 }: {
   bookmark: BookmarkWithFolder;
   viewMode: ViewVariant;
@@ -95,61 +99,79 @@ const BookmarkItem = memo(function BookmarkItem({
   onToggleSelect?: (id: number) => void;
   customUsageTags?: CustomUsageTag[];
   layoutMode?: "row" | "column";
+  draggable?: boolean;
 }) {
-  // Card 视图
-  if (viewMode === "card") {
+  // 渲染书签卡片内容
+  const renderContent = () => {
+    // Card 视图
+    if (viewMode === "card") {
+      return (
+        <div
+          className={cn(
+            "masonry-item",
+            layoutMode === "row" && "layout-row",
+            layoutMode === "column" && "layout-column",
+          )}
+        >
+          {enableFlipCard ? (
+            <FlipBookmarkCard
+              bookmark={bookmark}
+              onEdit={onEdit}
+              onDelete={onDelete}
+              onToggleRead={onToggleRead}
+              isSelectionMode={isSelectionMode}
+              isSelected={isSelected}
+              onToggleSelect={onToggleSelect}
+              enableFlip={true}
+            />
+          ) : (
+            <BookmarkCard
+              bookmark={bookmark}
+              onEdit={onEdit}
+              onDelete={onDelete}
+              onToggleRead={onToggleRead}
+              onToggleStarred={onToggleStarred}
+              isSelectionMode={isSelectionMode}
+              isSelected={isSelected}
+              onToggleSelect={onToggleSelect}
+              customUsageTags={customUsageTags}
+              variant="card"
+            />
+          )}
+        </div>
+      );
+    }
+
+    // List 或 Compact 视图
     return (
-      <div
-        className={cn(
-          "masonry-item",
-          layoutMode === "row" && "layout-row",
-          layoutMode === "column" && "layout-column",
-        )}
+      <BookmarkCard
+        bookmark={bookmark}
+        onEdit={onEdit}
+        onDelete={onDelete}
+        onToggleRead={onToggleRead}
+        onToggleStarred={onToggleStarred}
+        isSelectionMode={isSelectionMode}
+        isSelected={isSelected}
+        onToggleSelect={onToggleSelect}
+        customUsageTags={customUsageTags}
+        variant={viewMode}
+      />
+    );
+  };
+
+  // 如果启用拖拽，包装 DraggableBookmark
+  if (draggable) {
+    return (
+      <DraggableBookmark
+        bookmarkId={bookmark.id}
+        bookmarkTitle={bookmark.title || "无标题"}
       >
-        {enableFlipCard ? (
-          <FlipBookmarkCard
-            bookmark={bookmark}
-            onEdit={onEdit}
-            onDelete={onDelete}
-            onToggleRead={onToggleRead}
-            isSelectionMode={isSelectionMode}
-            isSelected={isSelected}
-            onToggleSelect={onToggleSelect}
-            enableFlip={true}
-          />
-        ) : (
-          <BookmarkCard
-            bookmark={bookmark}
-            onEdit={onEdit}
-            onDelete={onDelete}
-            onToggleRead={onToggleRead}
-            onToggleStarred={onToggleStarred}
-            isSelectionMode={isSelectionMode}
-            isSelected={isSelected}
-            onToggleSelect={onToggleSelect}
-            customUsageTags={customUsageTags}
-            variant="card"
-          />
-        )}
-      </div>
+        {renderContent()}
+      </DraggableBookmark>
     );
   }
 
-  // List 或 Compact 视图
-  return (
-    <BookmarkCard
-      bookmark={bookmark}
-      onEdit={onEdit}
-      onDelete={onDelete}
-      onToggleRead={onToggleRead}
-      onToggleStarred={onToggleStarred}
-      isSelectionMode={isSelectionMode}
-      isSelected={isSelected}
-      onToggleSelect={onToggleSelect}
-      customUsageTags={customUsageTags}
-      variant={viewMode}
-    />
-  );
+  return renderContent();
 });
 
 /**
@@ -186,6 +208,7 @@ export function VirtualBookmarkList({
   height = "calc(100vh - 280px)",
   prefetchThreshold = 0.8,
   customScrollParent,
+  draggable = false,
 }: VirtualBookmarkListProps) {
   const virtuosoRef = useRef<VirtuosoHandle>(null);
   const prefetchTriggered = useRef(false);
@@ -246,6 +269,7 @@ export function VirtualBookmarkList({
         onToggleSelect={onToggleSelect}
         customUsageTags={customUsageTags}
         layoutMode={layoutMode}
+        draggable={draggable}
       />
     ),
     [
@@ -259,6 +283,7 @@ export function VirtualBookmarkList({
       onToggleSelect,
       customUsageTags,
       layoutMode,
+      draggable,
     ],
   );
 
