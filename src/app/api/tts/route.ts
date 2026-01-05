@@ -219,14 +219,23 @@ export async function POST(request: NextRequest) {
 
     // 3. 获取书签数据（验证所有权）
     // 类型断言: 手动维护类型文件时需要此断言
-    type BookmarkTTSRow = { id: number; title: string; ai_summary: string | null };
+    type BookmarkTTSRow = {
+      id: number;
+      title: string;
+      ai_summary: string | null;
+    };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: bookmark, error: bookmarkError } = await (supabase.from("bookmarks") as any)
+    const { data: bookmark, error: bookmarkError } = (await (
+      supabase.from("bookmarks") as any
+    )
       .select("id, title, ai_summary")
       .eq("id", bookmarkId)
       .eq("user_id", user.id)
       .is("deleted_at", null)
-      .single() as { data: BookmarkTTSRow | null; error: { message: string } | null };
+      .single()) as {
+      data: BookmarkTTSRow | null;
+      error: { message: string } | null;
+    };
 
     if (bookmarkError || !bookmark) {
       logger.warn(
@@ -266,6 +275,19 @@ export async function POST(request: NextRequest) {
 
     // 5. 准备朗读文本
     const text = prepareText(bookmark, contentType);
+
+    // 调试日志
+    logger.info(
+      {
+        module: MODULE_NAME,
+        bookmarkId,
+        contentType,
+        textLength: text?.length || 0,
+        hasStructured: !!parseStructuredSummary(bookmark.ai_summary || ""),
+        aiSummaryPreview: bookmark.ai_summary?.slice(0, 100),
+      },
+      "Prepared TTS text",
+    );
 
     if (!text || text.trim().length === 0) {
       return NextResponse.json(
