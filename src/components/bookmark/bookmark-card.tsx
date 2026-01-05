@@ -188,6 +188,8 @@ export const BookmarkCard = memo(function BookmarkCard({
 }: BookmarkCardProps) {
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
+  // V4.2.27: 图片加载失败状态（用于 CDN 防盗链等场景的兜底处理）
+  const [imageLoadError, setImageLoadError] = useState(false);
   // V4.2.24: 预加载防抖 timer ref
   const prefetchTimerRef = useRef<NodeJS.Timeout | null>(null);
   // V4.2.1: 快照功能状态
@@ -196,10 +198,22 @@ export const BookmarkCard = memo(function BookmarkCard({
   // 判断标题是否正在加载
   const titleLoading = isLoadingTitle(bookmark.title ?? "");
 
+  // 生成占位图（用于无封面或加载失败时）
+  const placeholderImage = generatePlaceholderImage(
+    bookmark.title ?? "",
+    bookmark.platform as Platform,
+  );
+
   // 生成封面图（真实封面或占位符，微信图片使用代理）
-  const coverImage =
-    getProxiedImageUrl(bookmark.cover_url) ||
-    generatePlaceholderImage(bookmark.title ?? "", bookmark.platform as Platform);
+  // V4.2.27: 图片加载失败时回退到占位图
+  const coverImage = imageLoadError
+    ? placeholderImage
+    : getProxiedImageUrl(bookmark.cover_url) || placeholderImage;
+
+  // V4.2.27: 图片加载失败处理（如 CDN 防盗链 403）
+  const handleImageError = useCallback(() => {
+    setImageLoadError(true);
+  }, []);
 
   const handleEdit = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -548,11 +562,15 @@ export const BookmarkCard = memo(function BookmarkCard({
                 className="w-full h-full object-cover"
                 loading="lazy"
                 decoding="async"
+                onError={handleImageError}
               />
             </div>
             {/* 平台标识 */}
             <div className="absolute bottom-2 left-2">
-              <PlatformBadge platform={bookmark.platform ?? "UNKNOWN"} size="sm" />
+              <PlatformBadge
+                platform={bookmark.platform ?? "UNKNOWN"}
+                size="sm"
+              />
             </div>
             {/* 选择复选框 - 移动端右上角 */}
             {isSelectionMode && (
@@ -585,10 +603,15 @@ export const BookmarkCard = memo(function BookmarkCard({
                 className="w-full h-full object-cover"
                 loading="lazy"
                 decoding="async"
+                onError={handleImageError}
               />
             </div>
             <div className="absolute bottom-2 left-2">
-              <PlatformBadge platform={bookmark.platform ?? "UNKNOWN"} size="sm" showName />
+              <PlatformBadge
+                platform={bookmark.platform ?? "UNKNOWN"}
+                size="sm"
+                showName
+              />
             </div>
           </div>
 
@@ -776,10 +799,15 @@ export const BookmarkCard = memo(function BookmarkCard({
             className="w-full h-full object-cover card-cover-top card-cover-zoom"
             loading="lazy"
             decoding="async"
+            onError={handleImageError}
           />
           {/* 平台标识 - P0.5: 放大 + 固定左上角 */}
           <div className="absolute top-3 left-3">
-            <PlatformBadge platform={bookmark.platform ?? "UNKNOWN"} size="lg" showName />
+            <PlatformBadge
+              platform={bookmark.platform ?? "UNKNOWN"}
+              size="lg"
+              showName
+            />
           </div>
 
           {/* V6.0新增：锁定图标 - 右上角（优先级高于选择和操作按钮） */}
@@ -1000,7 +1028,11 @@ export const BookmarkCard = memo(function BookmarkCard({
         {/* P1.4: 平台主色底部条 */}
         <div
           className="h-1 w-full rounded-b-lg"
-          style={{ backgroundColor: getPlatformHexColor(bookmark.platform ?? "UNKNOWN") }}
+          style={{
+            backgroundColor: getPlatformHexColor(
+              bookmark.platform ?? "UNKNOWN",
+            ),
+          }}
         />
       </Card>
     </div>
