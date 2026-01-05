@@ -216,6 +216,26 @@ export async function POST(request: NextRequest) {
           controller.enqueue(encoder.encode(`data: ${data}\n\n`));
         };
 
+        // Heartbeat to prevent connection timeout during long generation
+        let heartbeatPercent = 10;
+        let lastProgressTime = Date.now();
+        const heartbeatInterval = setInterval(() => {
+          // Only send heartbeat if no progress was sent in the last 5 seconds
+          if (Date.now() - lastProgressTime > 5000) {
+            heartbeatPercent = Math.min(heartbeatPercent + 3, 85);
+            sendEvent({
+              type: "progress",
+              data: {
+                step: "generating",
+                percent: heartbeatPercent,
+                message: "AI 正在生成中...",
+              },
+              timestamp: new Date().toISOString(),
+              requestId,
+            });
+          }
+        }, 5000); // Send heartbeat every 5 seconds if no other progress
+
         try {
           let savedReportId: string | undefined;
 
@@ -256,6 +276,7 @@ export async function POST(request: NextRequest) {
                 timestamp: new Date().toISOString(),
                 requestId,
               });
+              lastProgressTime = Date.now();
 
               // Execute blueprint stream (takes only context, input is in context.params)
               const resultStream = blueprint.executeStream(executionContext);
@@ -263,8 +284,13 @@ export async function POST(request: NextRequest) {
               let contentBuffer = "";
 
               for await (const chunk of resultStream) {
+                lastProgressTime = Date.now(); // Update last progress time on any chunk
                 switch (chunk.type) {
                   case "progress":
+                    heartbeatPercent = Math.max(
+                      heartbeatPercent,
+                      chunk.data.percent || 0,
+                    );
                     sendEvent({
                       type: "progress",
                       data: {
@@ -394,22 +420,32 @@ export async function POST(request: NextRequest) {
           // NOTE: This catch block handles edge cases where quotaManager.executeWithQuota
           // itself throws an unhandled error. The quota should already be refunded by
           // executeWithQuota's internal error handling, but we log a warning just in case.
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
+
           logger.error(
             {
               requestId,
-              error: error instanceof Error ? error.message : String(error),
+              error: errorMessage,
+              errorName: error instanceof Error ? error.name : "Unknown",
               warning:
                 "Potential quota leak - verify quota status for this requestId",
             },
             "Generation stream error (outer catch)",
           );
 
+          // 检测是否为超时错误
+          const isTimeout =
+            errorMessage.includes("超时") ||
+            errorMessage.includes("timeout") ||
+            errorMessage.includes("aborted");
+
           sendEvent({
             type: "error",
             data: {
               error: {
-                code: "STREAM_ERROR",
-                message: "生成过程中发生错误",
+                code: isTimeout ? "TIMEOUT_ERROR" : "STREAM_ERROR",
+                message: errorMessage || "生成过程中发生错误",
                 recoverable: true,
               },
             },
@@ -417,6 +453,7 @@ export async function POST(request: NextRequest) {
             requestId,
           });
         } finally {
+          clearInterval(heartbeatInterval);
           controller.close();
         }
       },

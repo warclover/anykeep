@@ -10,7 +10,12 @@ import type { LanguageModel } from "ai";
 /**
  * Provider 名称枚举
  */
-export type ProviderName = "deepseek" | "openai" | "anthropic" | "local";
+export type ProviderName =
+  | "deepseek"
+  | "aliyun-bailian"
+  | "openai"
+  | "anthropic"
+  | "local";
 
 /**
  * 任务类型（用于路由决策）

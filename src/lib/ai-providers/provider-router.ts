@@ -38,6 +38,18 @@ import type {
 type ModelCreatorFn = (apiKey: string) => (modelId: string) => LanguageModel;
 
 /**
+ * 阿里百炼云模型创建器
+ * 使用 OpenAI 兼容接口
+ */
+const createAliyunBailian: ModelCreatorFn = (apiKey) => {
+  const provider = createOpenAI({
+    apiKey,
+    baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+  });
+  return (modelId: string) => provider(modelId);
+};
+
+/**
  * 模型创建器映射表
  * 将 provider 名称映射到对应的创建函数，避免冗长的 switch 语句
  *
@@ -45,10 +57,9 @@ type ModelCreatorFn = (apiKey: string) => (modelId: string) => LanguageModel;
  */
 const MODEL_CREATORS: Partial<Record<ProviderName, ModelCreatorFn | null>> = {
   deepseek: (apiKey) => createDeepSeek({ apiKey }),
+  "aliyun-bailian": createAliyunBailian,
   openai: (apiKey) => createOpenAI({ apiKey }),
   anthropic: (apiKey) => createAnthropic({ apiKey }),
-  // TODO: 添加阿里云百炼支持
-  // "aliyun-bailian": (apiKey) => createAliyunBailian({ apiKey }),
   // TODO: 添加 Ollama 支持（本地模型）
   // ollama: () => createOllama({}),
   local: null, // 本地模型暂不支持
@@ -105,6 +116,24 @@ const DEFAULT_PROVIDER_CONFIGS: ProviderConfig[] = [
     supportsStreaming: true,
   },
   {
+    name: "aliyun-bailian",
+    apiKeyEnv: "DASHSCOPE_API_KEY",
+    defaultModel: "qwen-turbo",
+    supportedTasks: [
+      "chat",
+      "summary",
+      "classify",
+      "reasoning",
+      "tool_calling",
+    ],
+    priority: 2, // DeepSeek 备选
+    enabled: true,
+    costFactor: 3, // 成本约为 DeepSeek 的 3 倍
+    maxTokens: 8192,
+    supportsToolCalling: true,
+    supportsStreaming: true,
+  },
+  {
     name: "openai",
     apiKeyEnv: "OPENAI_API_KEY",
     defaultModel: "gpt-4o-mini",
@@ -116,7 +145,7 @@ const DEFAULT_PROVIDER_CONFIGS: ProviderConfig[] = [
       "vision",
       "tool_calling",
     ],
-    priority: 2, // 备选
+    priority: 3, // 第三备选
     enabled: true,
     costFactor: 5, // OpenAI 成本约为 DeepSeek 的 5 倍
     maxTokens: 128000,
@@ -135,7 +164,7 @@ const DEFAULT_PROVIDER_CONFIGS: ProviderConfig[] = [
       "vision",
       "tool_calling",
     ],
-    priority: 3, // 最后备选
+    priority: 4, // 最后备选
     enabled: true,
     costFactor: 8, // Claude 成本较高
     maxTokens: 200000,

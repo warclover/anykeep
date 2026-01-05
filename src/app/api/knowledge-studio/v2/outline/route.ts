@@ -169,6 +169,22 @@ export async function POST(request: NextRequest) {
           controller.enqueue(encoder.encode(`data: ${data}\n\n`));
         };
 
+        // Heartbeat to prevent connection timeout
+        let heartbeatPercent = 40;
+        const heartbeatInterval = setInterval(() => {
+          heartbeatPercent = Math.min(heartbeatPercent + 5, 85);
+          sendEvent({
+            type: "progress",
+            data: {
+              step: "generating",
+              percent: heartbeatPercent,
+              message: "AI 正在思考中...",
+            },
+            timestamp: new Date().toISOString(),
+            requestId,
+          });
+        }, 3000); // Send heartbeat every 3 seconds
+
         try {
           // Send initial progress
           sendEvent({
@@ -289,26 +305,38 @@ export async function POST(request: NextRequest) {
             "Outline generated successfully",
           );
         } catch (error) {
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
+
           logger.error(
             {
               requestId,
-              error: error instanceof Error ? error.message : String(error),
+              error: errorMessage,
+              errorName: error instanceof Error ? error.name : "Unknown",
+              stack: error instanceof Error ? error.stack : undefined,
             },
             "Outline generation stream error",
           );
+
+          // 检测是否为超时错误
+          const isTimeout =
+            errorMessage.includes("超时") ||
+            errorMessage.includes("timeout") ||
+            errorMessage.includes("aborted");
 
           sendEvent({
             type: "error",
             data: {
               error: {
-                code: "STREAM_ERROR",
-                message: "大纲生成过程中发生错误",
+                code: isTimeout ? "TIMEOUT_ERROR" : "STREAM_ERROR",
+                message: errorMessage || "大纲生成过程中发生错误",
               },
             },
             timestamp: new Date().toISOString(),
             requestId,
           });
         } finally {
+          clearInterval(heartbeatInterval);
           controller.close();
         }
       },

@@ -90,7 +90,7 @@ import type {
 import { cn } from "@/lib/utils";
 import { ReportEditor } from "@/components/knowledge-studio/report-editor";
 import type { SynthesisReport as KSSynthesisReport } from "@/lib/knowledge-studio/client";
-import { downloadKSReport } from "@/lib/knowledge-studio";
+import { downloadKSReport } from "@/lib/knowledge-studio/export";
 
 interface SynthesisDetailPageClientProps {
   reportId: string;

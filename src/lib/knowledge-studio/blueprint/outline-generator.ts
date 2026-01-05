@@ -36,6 +36,56 @@ const logger = createLogger("blueprint:outline-generator");
 // ============================================================
 
 /**
+ * 429 速率限制错误
+ */
+export class RateLimitError extends Error {
+  constructor(
+    message: string,
+    public retryAfter?: number,
+    public provider?: string,
+  ) {
+    super(message);
+    this.name = "RateLimitError";
+  }
+}
+
+/**
+ * 检测是否为 429 速率限制错误
+ */
+function isRateLimitError(error: unknown): {
+  isRateLimit: boolean;
+  retryAfter?: number;
+} {
+  if (!(error instanceof Error)) {
+    return { isRateLimit: false };
+  }
+
+  const message = error.message.toLowerCase();
+
+  // 检测 429 状态码或速率限制关键词
+  if (
+    message.includes("429") ||
+    message.includes("rate limit") ||
+    message.includes("too many requests") ||
+    message.includes("请求过于频繁")
+  ) {
+    // 尝试从错误消息中提取 retryAfter
+    const retryAfterMatch = message.match(/retryafter["\s:]+(\d+)/i);
+    const retryAfter = retryAfterMatch
+      ? parseInt(retryAfterMatch[1], 10)
+      : undefined;
+
+    return { isRateLimit: true, retryAfter };
+  }
+
+  return { isRateLimit: false };
+}
+
+// ============================================================
+// Types
+// ============================================================
+
+/**
  * 大纲生成选项
  */
 export interface OutlineGeneratorOptions {
@@ -267,7 +317,7 @@ export async function generateOutline(
   briefingContext?: BriefingContext,
 ): Promise<OutlineGenerationResult> {
   const startTime = performance.now();
-  const timeoutMs = options.timeoutMs ?? 10000; // 默认 10 秒超时
+  const timeoutMs = options.timeoutMs ?? 60000; // 默认 60 秒超时（复杂大纲需要更长时间）
 
   logger.info(
     {
@@ -292,100 +342,193 @@ export async function generateOutline(
   // 构建 Prompt
   const prompt = buildOutlinePrompt(config, materials, briefingContext);
 
-  // 获取 DeepSeek 模型（优先使用 DeepSeek）
-  const selection = aiProviderRouter.selectProvider({
-    taskType: "reasoning",
-    preferredProvider: "deepseek",
-    requiresStreaming: false,
-  });
+  // 获取可用的 Provider 列表（按优先级排序）
+  const availableProviders = aiProviderRouter.getAvailableProviders();
 
-  if (!selection) {
-    throw new Error("No AI provider available for outline generation");
+  if (availableProviders.length === 0) {
+    throw new Error("没有可用的 AI 服务，请检查 API Key 配置");
   }
 
-  logger.debug(
+  let lastError: Error | null = null;
+  const attemptedProviders: string[] = [];
+
+  // 尝试每个可用的 Provider
+  for (const providerConfig of availableProviders) {
+    const providerName = providerConfig.name;
+    attemptedProviders.push(providerName);
+
+    // 获取模型
+    const model = aiProviderRouter.getModel(providerName);
+    if (!model) {
+      logger.warn({ provider: providerName }, "Failed to get model, skipping");
+      continue;
+    }
+
+    logger.info(
+      {
+        provider: providerName,
+        model: providerConfig.defaultModel,
+        attempt: attemptedProviders.length,
+        totalAvailable: availableProviders.length,
+      },
+      "Attempting outline generation with provider",
+    );
+
+    try {
+      // 创建超时信号
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        logger.warn(
+          {
+            blueprintId: options.blueprintId,
+            timeoutMs,
+            provider: providerName,
+          },
+          "Outline generation timeout - aborting request",
+        );
+        controller.abort();
+      }, timeoutMs);
+
+      logger.debug(
+        {
+          blueprintId: options.blueprintId,
+          provider: providerName,
+          model: providerConfig.defaultModel,
+          promptLength: prompt.user.length,
+          timeoutMs,
+        },
+        "Starting AI model call for outline generation",
+      );
+
+      // 调用模型
+      const result = await generateText({
+        model,
+        system: prompt.system,
+        prompt: prompt.user,
+        maxOutputTokens: 2048,
+        temperature: 0.7,
+        abortSignal: controller.signal,
+      });
+
+      // 清除超时
+      clearTimeout(timeoutId);
+
+      const durationMs = Math.round(performance.now() - startTime);
+
+      // 记录成功
+      aiProviderRouter.recordSuccess(providerName, durationMs);
+
+      logger.info(
+        {
+          durationMs,
+          textLength: result.text.length,
+          tokensUsed: result.usage?.totalTokens,
+          provider: providerName,
+        },
+        "LLM response received",
+      );
+
+      // 解析 JSON
+      const jsonStr = extractJson(result.text);
+      const outline = parseOutlineJson(jsonStr);
+
+      // 验证大纲
+      validateOutline(outline);
+
+      logger.info(
+        {
+          title: outline.title,
+          nodesCount: outline.nodes.length,
+          totalWords: outline.totalEstimatedWords,
+          durationMs,
+          provider: providerName,
+          attemptedProviders,
+        },
+        "Outline generation completed",
+      );
+
+      return {
+        outline,
+        durationMs,
+        tokensUsed: result.usage?.totalTokens,
+        modelUsed: providerConfig.defaultModel,
+      };
+    } catch (error) {
+      const durationMs = Math.round(performance.now() - startTime);
+
+      // 记录失败
+      aiProviderRouter.recordFailure(
+        providerName,
+        error instanceof Error ? error.message : "Unknown error",
+      );
+
+      // 检测是否为 429 速率限制错误
+      const rateLimitInfo = isRateLimitError(error);
+
+      // 检测是否为超时/中止错误
+      const isAbortError =
+        error instanceof Error &&
+        (error.name === "AbortError" ||
+          error.message.includes("aborted") ||
+          error.message.includes("timeout"));
+
+      logger.warn(
+        {
+          error: error instanceof Error ? error.message : "Unknown error",
+          errorName: error instanceof Error ? error.name : "Unknown",
+          isRateLimitError: rateLimitInfo.isRateLimit,
+          retryAfter: rateLimitInfo.retryAfter,
+          isAbortError,
+          durationMs,
+          provider: providerName,
+          attemptedProviders,
+          remainingProviders:
+            availableProviders.length - attemptedProviders.length,
+        },
+        rateLimitInfo.isRateLimit
+          ? "Rate limited, trying next provider"
+          : isAbortError
+            ? "Request timed out, trying next provider"
+            : "Provider failed, trying next provider",
+      );
+
+      lastError = error instanceof Error ? error : new Error(String(error));
+
+      // 继续尝试下一个 Provider
+      continue;
+    }
+  }
+
+  // 所有 Provider 都失败了
+  const durationMs = Math.round(performance.now() - startTime);
+  const rateLimitInfo = lastError
+    ? isRateLimitError(lastError)
+    : { isRateLimit: false };
+
+  logger.error(
     {
-      provider: selection.provider.name,
-      model: selection.provider.defaultModel,
+      attemptedProviders,
+      durationMs,
+      blueprintId: options.blueprintId,
+      lastError: lastError?.message,
+      isRateLimitError: rateLimitInfo.isRateLimit,
     },
-    "Using AI provider",
+    "All providers failed for outline generation",
   );
 
-  try {
-    // 创建超时信号（兼容低版本 Node.js）
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-    // 调用模型
-    const result = await generateText({
-      model: selection.model,
-      system: prompt.system,
-      prompt: prompt.user,
-      maxOutputTokens: 2048,
-      temperature: 0.7,
-      abortSignal: controller.signal,
-    });
-
-    // 清除超时
-    clearTimeout(timeoutId);
-
-    const durationMs = Math.round(performance.now() - startTime);
-
-    // 记录成功
-    aiProviderRouter.recordSuccess(selection.provider.name, durationMs);
-
-    logger.info(
-      {
-        durationMs,
-        textLength: result.text.length,
-        tokensUsed: result.usage?.totalTokens,
-      },
-      "LLM response received",
+  // 构建友好的错误消息
+  if (rateLimitInfo.isRateLimit) {
+    const retryMsg = rateLimitInfo.retryAfter
+      ? `请等待 ${rateLimitInfo.retryAfter} 秒后重试`
+      : "请稍后重试";
+    throw new RateLimitError(
+      `AI 服务繁忙（已尝试 ${attemptedProviders.join("、")}）。${retryMsg}`,
+      rateLimitInfo.retryAfter,
+      attemptedProviders[attemptedProviders.length - 1],
     );
-
-    // 解析 JSON
-    const jsonStr = extractJson(result.text);
-    const outline = parseOutlineJson(jsonStr);
-
-    // 验证大纲
-    validateOutline(outline);
-
-    logger.info(
-      {
-        title: outline.title,
-        nodesCount: outline.nodes.length,
-        totalWords: outline.totalEstimatedWords,
-        durationMs,
-      },
-      "Outline generation completed",
-    );
-
-    return {
-      outline,
-      durationMs,
-      tokensUsed: result.usage?.totalTokens,
-      modelUsed: selection.provider.defaultModel,
-    };
-  } catch (error) {
-    const durationMs = Math.round(performance.now() - startTime);
-
-    // 记录失败
-    aiProviderRouter.recordFailure(
-      selection.provider.name,
-      error instanceof Error ? error.message : "Unknown error",
-    );
-
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : "Unknown error",
-        durationMs,
-        blueprintId: options.blueprintId,
-      },
-      "Outline generation failed",
-    );
-
-    throw error;
   }
+
+  throw lastError || new Error("大纲生成失败，请稍后重试");
 }
 
 /**

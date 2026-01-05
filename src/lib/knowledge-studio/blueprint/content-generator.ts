@@ -32,6 +32,56 @@ const logger = createLogger("blueprint:content-generator");
 // ============================================================
 
 /**
+ * 429 速率限制错误
+ */
+export class RateLimitError extends Error {
+  constructor(
+    message: string,
+    public retryAfter?: number,
+    public provider?: string,
+  ) {
+    super(message);
+    this.name = "RateLimitError";
+  }
+}
+
+/**
+ * 检测是否为 429 速率限制错误
+ */
+function isRateLimitError(error: unknown): {
+  isRateLimit: boolean;
+  retryAfter?: number;
+} {
+  if (!(error instanceof Error)) {
+    return { isRateLimit: false };
+  }
+
+  const message = error.message.toLowerCase();
+
+  // 检测 429 状态码或速率限制关键词
+  if (
+    message.includes("429") ||
+    message.includes("rate limit") ||
+    message.includes("too many requests") ||
+    message.includes("请求过于频繁")
+  ) {
+    // 尝试从错误消息中提取 retryAfter
+    const retryAfterMatch = message.match(/retryafter["\s:]+(\d+)/i);
+    const retryAfter = retryAfterMatch
+      ? parseInt(retryAfterMatch[1], 10)
+      : undefined;
+
+    return { isRateLimit: true, retryAfter };
+  }
+
+  return { isRateLimit: false };
+}
+
+// ============================================================
+// Types
+// ============================================================
+
+/**
  * 内容生成选项
  */
 export interface ContentGeneratorOptions {
@@ -89,6 +139,7 @@ export interface ContentStreamChunk {
  * 生成内容（流式）
  *
  * 基于确认的大纲结构，使用 LLM 生成完整内容。
+ * 支持多 Provider 自动故障转移（429 速率限制、超时等）。
  *
  * @param materials - 素材列表
  * @param options - 生成选项
@@ -174,165 +225,279 @@ export async function* generateContentStream(
     },
   };
 
-  // 获取 DeepSeek 模型（优先使用 DeepSeek）
-  const selection = aiProviderRouter.selectProvider({
-    taskType: "chat",
-    preferredProvider: "deepseek",
-    requiresStreaming: true,
-  });
+  // 获取可用的 Provider 列表（按优先级排序）
+  const availableProviders = aiProviderRouter.getAvailableProviders();
 
-  if (!selection) {
+  if (availableProviders.length === 0) {
     yield {
       type: "error",
       data: {
-        message: "没有可用的 AI 服务",
-        retryable: true,
-        suggestion: "请检查 AI 服务配置",
+        message: "没有可用的 AI 服务，请检查 API Key 配置",
+        retryable: false,
+        suggestion: "请配置至少一个 AI 服务的 API Key",
       },
     };
-    throw new Error("No AI provider available for content generation");
+    throw new Error("没有可用的 AI 服务，请检查 API Key 配置");
   }
 
-  logger.debug(
-    {
-      provider: selection.provider.name,
-      model: selection.provider.defaultModel,
-    },
-    "Using AI provider",
-  );
+  let lastError: Error | null = null;
+  const attemptedProviders: string[] = [];
 
-  try {
-    // 创建超时控制器
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  // 尝试每个可用的 Provider
+  for (const providerConfig of availableProviders) {
+    const providerName = providerConfig.name;
+    attemptedProviders.push(providerName);
 
-    // 调用模型（流式）
-    const stream = await streamText({
-      model: selection.model,
-      system: prompt.system,
-      prompt: prompt.user,
-      maxOutputTokens: 8192, // 内容生成需要更多 Token
-      temperature: 0.7,
-      abortSignal: controller.signal,
-    });
+    // 获取模型
+    const model = aiProviderRouter.getModel(providerName);
+    if (!model) {
+      logger.warn({ provider: providerName }, "Failed to get model, skipping");
+      continue;
+    }
 
-    let fullContent = "";
-    let chunkCount = 0;
-    const estimatedChunks = estimateTotalWords(options.outline) / 10; // 估算 chunk 数量
+    logger.info(
+      {
+        provider: providerName,
+        model: providerConfig.defaultModel,
+        attempt: attemptedProviders.length,
+        totalAvailable: availableProviders.length,
+      },
+      "Attempting content generation with provider",
+    );
 
-    // 流式输出
-    for await (const chunk of stream.textStream) {
-      fullContent += chunk;
-      chunkCount++;
-
-      // 计算进度（10% - 90%）
-      const progress = Math.min(
-        10 + Math.floor((chunkCount / estimatedChunks) * 80),
-        90,
-      );
-
-      // 每隔一定数量的 chunk 发送进度更新
-      if (chunkCount % 20 === 0) {
-        yield {
-          type: "progress",
-          data: {
-            step: "content",
-            percent: progress,
-            message: `正在生成内容... (${Math.floor(fullContent.length / 2)}字)`,
-            timestamp: Date.now(),
-          },
-        };
-      }
-
-      // 发送文本块
+    // 如果不是第一个 Provider，发送切换通知
+    if (attemptedProviders.length > 1) {
       yield {
-        type: "text",
+        type: "progress",
         data: {
-          text: chunk,
+          step: "content",
+          percent: 10,
+          message: `切换到 ${providerName}，继续生成...`,
+          timestamp: Date.now(),
         },
       };
     }
 
-    // 清除超时
-    clearTimeout(timeoutId);
+    try {
+      // 创建超时控制器
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        logger.warn(
+          {
+            blueprintId: options.blueprintId,
+            timeoutMs,
+            provider: providerName,
+          },
+          "Content generation timeout - aborting request",
+        );
+        controller.abort();
+      }, timeoutMs);
 
-    const durationMs = Math.round(performance.now() - startTime);
+      logger.debug(
+        {
+          blueprintId: options.blueprintId,
+          provider: providerName,
+          model: providerConfig.defaultModel,
+          promptLength: prompt.user.length,
+          timeoutMs,
+        },
+        "Starting AI model call for content generation",
+      );
 
-    // 获取使用统计
-    const usage = await stream.usage;
+      // 调用模型（流式）
+      const stream = await streamText({
+        model,
+        system: prompt.system,
+        prompt: prompt.user,
+        maxOutputTokens: 8192, // 内容生成需要更多 Token
+        temperature: 0.7,
+        abortSignal: controller.signal,
+      });
 
-    // 记录成功
-    aiProviderRouter.recordSuccess(selection.provider.name, durationMs);
+      let fullContent = "";
+      let chunkCount = 0;
+      const estimatedChunks = estimateTotalWords(options.outline) / 10; // 估算 chunk 数量
 
-    logger.info(
-      {
+      // 流式输出
+      for await (const chunk of stream.textStream) {
+        fullContent += chunk;
+        chunkCount++;
+
+        // 计算进度（10% - 90%）
+        const progress = Math.min(
+          10 + Math.floor((chunkCount / estimatedChunks) * 80),
+          90,
+        );
+
+        // 每隔一定数量的 chunk 发送进度更新
+        if (chunkCount % 20 === 0) {
+          yield {
+            type: "progress",
+            data: {
+              step: "content",
+              percent: progress,
+              message: `正在生成内容... (${Math.floor(fullContent.length / 2)}字)`,
+              timestamp: Date.now(),
+            },
+          };
+        }
+
+        // 发送文本块
+        yield {
+          type: "text",
+          data: {
+            text: chunk,
+          },
+        };
+      }
+
+      // 清除超时
+      clearTimeout(timeoutId);
+
+      const durationMs = Math.round(performance.now() - startTime);
+
+      // 获取使用统计
+      const usage = await stream.usage;
+
+      // 记录成功
+      aiProviderRouter.recordSuccess(providerName, durationMs);
+
+      logger.info(
+        {
+          durationMs,
+          contentLength: fullContent.length,
+          tokensUsed: usage?.totalTokens,
+          chunkCount,
+          provider: providerName,
+          attemptedProviders,
+        },
+        "Content generation completed",
+      );
+
+      // 进度 95%：内容生成完成
+      yield {
+        type: "progress",
+        data: {
+          step: "content",
+          percent: 95,
+          message: "内容生成完成，正在整理...",
+          timestamp: Date.now(),
+        },
+      };
+
+      // 进度 100%：完成
+      yield {
+        type: "progress",
+        data: {
+          step: "content",
+          percent: 100,
+          message: `内容生成完成（${durationMs}ms, ${Math.floor(fullContent.length / 2)}字）`,
+          timestamp: Date.now(),
+        },
+      };
+
+      return {
+        content: fullContent,
         durationMs,
-        contentLength: fullContent.length,
         tokensUsed: usage?.totalTokens,
-        chunkCount,
-      },
-      "Content generation completed",
-    );
+        modelUsed: providerConfig.defaultModel,
+        outline: options.outline,
+      };
+    } catch (error) {
+      const durationMs = Math.round(performance.now() - startTime);
 
-    // 进度 95%：内容生成完成
-    yield {
-      type: "progress",
-      data: {
-        step: "content",
-        percent: 95,
-        message: "内容生成完成，正在整理...",
-        timestamp: Date.now(),
-      },
-    };
+      // 记录失败
+      aiProviderRouter.recordFailure(
+        providerName,
+        error instanceof Error ? error.message : "Unknown error",
+      );
 
-    // 进度 100%：完成
-    yield {
-      type: "progress",
-      data: {
-        step: "content",
-        percent: 100,
-        message: `内容生成完成（${durationMs}ms, ${Math.floor(fullContent.length / 2)}字）`,
-        timestamp: Date.now(),
-      },
-    };
+      // 检测是否为 429 速率限制错误
+      const rateLimitInfo = isRateLimitError(error);
 
-    return {
-      content: fullContent,
-      durationMs,
-      tokensUsed: usage?.totalTokens,
-      modelUsed: selection.provider.defaultModel,
-      outline: options.outline,
-    };
-  } catch (error) {
-    const durationMs = Math.round(performance.now() - startTime);
+      // 检测是否为超时/中止错误
+      const isAbortError =
+        error instanceof Error &&
+        (error.name === "AbortError" ||
+          error.message.includes("aborted") ||
+          error.message.includes("timeout"));
 
-    // 记录失败
-    aiProviderRouter.recordFailure(
-      selection.provider.name,
-      error instanceof Error ? error.message : "Unknown error",
-    );
+      logger.warn(
+        {
+          error: error instanceof Error ? error.message : "Unknown error",
+          errorName: error instanceof Error ? error.name : "Unknown",
+          isRateLimitError: rateLimitInfo.isRateLimit,
+          retryAfter: rateLimitInfo.retryAfter,
+          isAbortError,
+          durationMs,
+          provider: providerName,
+          attemptedProviders,
+          remainingProviders:
+            availableProviders.length - attemptedProviders.length,
+        },
+        rateLimitInfo.isRateLimit
+          ? "Rate limited, trying next provider"
+          : isAbortError
+            ? "Request timed out, trying next provider"
+            : "Provider failed, trying next provider",
+      );
 
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : "Unknown error",
-        durationMs,
-        blueprintId: options.blueprintId,
-      },
-      "Content generation failed",
-    );
+      lastError = error instanceof Error ? error : new Error(String(error));
 
-    // 发送错误
-    yield {
-      type: "error",
-      data: {
-        message: error instanceof Error ? error.message : "内容生成失败",
-        retryable: true,
-        suggestion: "请重试或检查网络连接",
-      },
-    };
-
-    throw error;
+      // 继续尝试下一个 Provider
+      continue;
+    }
   }
+
+  // 所有 Provider 都失败了
+  const durationMs = Math.round(performance.now() - startTime);
+  const rateLimitInfo = lastError
+    ? isRateLimitError(lastError)
+    : { isRateLimit: false };
+
+  logger.error(
+    {
+      attemptedProviders,
+      durationMs,
+      blueprintId: options.blueprintId,
+      lastError: lastError?.message,
+      isRateLimitError: rateLimitInfo.isRateLimit,
+    },
+    "All providers failed for content generation",
+  );
+
+  // 构建友好的错误消息
+  let friendlyMessage: string;
+  if (rateLimitInfo.isRateLimit) {
+    const retryMsg = rateLimitInfo.retryAfter
+      ? `请等待 ${rateLimitInfo.retryAfter} 秒后重试`
+      : "请稍后重试";
+    friendlyMessage = `AI 服务繁忙（已尝试 ${attemptedProviders.join("、")}）。${retryMsg}`;
+  } else {
+    friendlyMessage = lastError?.message || "内容生成失败，请稍后重试";
+  }
+
+  // 发送错误
+  yield {
+    type: "error",
+    data: {
+      message: friendlyMessage,
+      retryable: true,
+      suggestion: rateLimitInfo.isRateLimit
+        ? "AI 服务访问频率过高，请稍后重试"
+        : "请重试或检查网络连接",
+    },
+  };
+
+  if (rateLimitInfo.isRateLimit) {
+    throw new RateLimitError(
+      friendlyMessage,
+      rateLimitInfo.retryAfter,
+      attemptedProviders[attemptedProviders.length - 1],
+    );
+  }
+
+  throw lastError || new Error("内容生成失败，请稍后重试");
 }
 
 /**

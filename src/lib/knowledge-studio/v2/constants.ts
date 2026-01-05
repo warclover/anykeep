@@ -13,8 +13,8 @@ export const MATERIAL_SELECTOR_LIMIT = 100;
 /** 最少需要的素材数量 */
 export const MIN_MATERIALS_REQUIRED = 2;
 
-/** 最多允许的素材数量 */
-export const MAX_MATERIALS_ALLOWED = 10;
+/** 最多允许的素材数量（限制为5篇以确保生成稳定性） */
+export const MAX_MATERIALS_ALLOWED = 5;
 
 // ============================================================
 // SSE Configuration
