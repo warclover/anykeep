@@ -151,3 +151,11 @@ export type {
   RouteContext as IntentSkillRouteContext,
   IntentSkillRouterConfig,
 } from "./intent-skill-router";
+
+// 统一意图分析器 (v3.0 - 合并 IntentClassifier + ComplexityEvaluator + ModeSelector)
+export {
+  IntentAnalyzer,
+  createIntentAnalyzer,
+  intentAnalyzer,
+} from "./intent-analyzer";
+export type { AnalysisResult, IntentAnalyzerConfig } from "./intent-analyzer";

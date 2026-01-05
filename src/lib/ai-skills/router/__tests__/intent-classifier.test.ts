@@ -115,7 +115,9 @@ describe("IntentClassifier", () => {
       });
 
       it("should classify report correctly", async () => {
-        const result = await classifier.classify("生成阅读报告");
+        // 报告规则：/周报|月报|报告|统计报告/ → type: "analyze", subType: "report"
+        // 注意：避免使用"生成报告"，因为"生成.{0,3}报告"会匹配 synthesis 规则（weight 90）
+        const result = await classifier.classify("我的阅读报告");
 
         expect(result.type).toBe("analyze");
         expect(result.subType).toBe("report");

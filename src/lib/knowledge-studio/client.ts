@@ -32,7 +32,7 @@ export type {
 // Blueprint Types & Constants
 // ============================================================================
 
-export { BLUEPRINT_DISPLAY_CONFIG } from "./blueprint";
+export { BLUEPRINT_DISPLAY_CONFIG } from "./blueprint/types";
 
 export type {
   GenerationContext,

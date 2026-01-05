@@ -9,7 +9,7 @@ import type {
   Citation,
   BlueprintType,
 } from "@/lib/knowledge-studio/types";
-import { BLUEPRINT_DISPLAY_CONFIG } from "@/lib/knowledge-studio/blueprint";
+import { BLUEPRINT_DISPLAY_CONFIG } from "@/lib/knowledge-studio/blueprint/types";
 
 // ============================================================================
 // 类型定义
