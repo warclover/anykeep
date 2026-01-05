@@ -15,15 +15,10 @@ const logger = createLogger("api:knowledge-studio:reports");
 
 /**
  * 创建报告 Schema
+ * 支持 v1 类型（debater, blogger 等）和 v2 ID 格式（category-name，如 geek-arxiv_decoder）
  */
 const CreateReportSchema = z.object({
-  blueprintType: z.enum([
-    "debater",
-    "blogger",
-    "thread",
-    "tutorial",
-    "feynman",
-  ]),
+  blueprintType: z.string().min(1, "蓝图类型不能为空"),
   title: z.string().min(1, "标题不能为空"),
   content: z.string().min(1, "内容不能为空"),
   citations: z
@@ -49,11 +44,10 @@ const CreateReportSchema = z.object({
 
 /**
  * 查询参数 Schema
+ * blueprintType 支持 v1 类型和 v2 ID 格式
  */
 const QueryParamsSchema = z.object({
-  blueprintType: z
-    .enum(["debater", "blogger", "thread", "tutorial", "feynman"])
-    .optional(),
+  blueprintType: z.string().optional(),
   page: z.coerce.number().min(1).default(1),
   pageSize: z.coerce.number().min(1).max(100).default(20),
   sortBy: z.enum(["created_at", "updated_at", "title"]).default("created_at"),

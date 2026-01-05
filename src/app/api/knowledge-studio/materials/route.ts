@@ -16,12 +16,11 @@ const logger = createLogger("api:knowledge-studio:materials");
 
 /**
  * 分析请求 Schema
+ * targetBlueprintType 支持 v1 类型和 v2 ID 格式
  */
 const AnalyzeRequestSchema = z.object({
   bookmarkIds: z.array(z.string()).min(1, "至少选择一个书签"),
-  targetBlueprintType: z
-    .enum(["debater", "blogger", "thread", "tutorial", "feynman"])
-    .optional(),
+  targetBlueprintType: z.string().optional(),
 });
 
 /**
