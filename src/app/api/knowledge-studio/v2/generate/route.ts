@@ -68,6 +68,8 @@ const GenerateV2RequestSchema = z.object({
     })
     .optional(),
   targetLength: z.enum(["short", "medium", "long"]).default("medium"),
+  /** Phase 3.1: 平台风格 */
+  platformStyle: z.enum(["wechat", "xiaohongshu", "general"]).optional(),
   customPrompt: z.string().optional(),
 });
 
@@ -141,6 +143,7 @@ export async function POST(request: NextRequest) {
       briefingContext,
       outline,
       targetLength,
+      platformStyle,
       customPrompt,
     } = parseResult.data;
 
@@ -255,6 +258,7 @@ export async function POST(request: NextRequest) {
                     | BriefingContext
                     | undefined,
                   targetLength,
+                  platformStyle, // Phase 3.1: 平台风格
                   customPrompt,
                   requestMetadata: {
                     requestId,

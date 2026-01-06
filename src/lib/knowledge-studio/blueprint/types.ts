@@ -221,6 +221,8 @@ export interface EnhancedBlueprintInput {
   customPrompt?: string;
   /** 目标长度 */
   targetLength?: "short" | "medium" | "long";
+  /** Phase 3.1: 平台风格 */
+  platformStyle?: "wechat" | "xiaohongshu" | "general";
   /** 请求元数据 */
   requestMetadata?: {
     requestId: string;

@@ -19,3 +19,7 @@ export {
   GenerationEstimatePanel,
   type GenerationEstimatePanelProps,
 } from "./generation-estimate-panel";
+export {
+  PlatformStyleSelector,
+  type PlatformStyleSelectorProps,
+} from "./platform-style-selector";

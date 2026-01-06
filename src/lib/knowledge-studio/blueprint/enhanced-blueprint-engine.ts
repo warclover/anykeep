@@ -59,6 +59,8 @@ export const EnhancedBlueprintInputSchema = z.object({
     .optional(),
   customPrompt: z.string().optional(),
   targetLength: z.enum(["short", "medium", "long"]).optional(),
+  /** Phase 3.1: 平台风格 */
+  platformStyle: z.enum(["wechat", "xiaohongshu", "general"]).optional(),
   requestMetadata: z
     .object({
       requestId: z.string(),
@@ -405,6 +407,7 @@ export abstract class EnhancedBlueprintEngine<
       briefingContext: existingInput?.briefingContext,
       customPrompt: existingInput?.customPrompt ?? message,
       targetLength: existingInput?.targetLength ?? "medium",
+      platformStyle: existingInput?.platformStyle, // Phase 3.1
       requestMetadata: existingInput?.requestMetadata,
     };
   }
@@ -447,25 +450,32 @@ export abstract class EnhancedBlueprintEngine<
       // 记录 Briefing 上下文
       blueprintContext.briefingContext = input.briefingContext;
 
-      // 阶段 2: 生成大纲
+      // 阶段 2: 生成大纲（如果未提供）
       blueprintContext.stage = "outline";
-      yield* this.reportProgress("outline", 0, "开始生成大纲...");
 
-      const outlineGenerator = this.generateOutline(blueprintContext, input);
-      let outlineResult: IteratorResult<
-        OrchestrationStreamChunk,
-        BlueprintOutline
-      >;
+      if (blueprintContext.outline) {
+        // 使用已提供的大纲，跳过大纲生成阶段
+        yield* this.reportProgress("outline", 100, "使用已确认的大纲");
+      } else {
+        // 需要生成大纲
+        yield* this.reportProgress("outline", 0, "开始生成大纲...");
 
-      do {
-        outlineResult = await outlineGenerator.next();
-        if (!outlineResult.done && outlineResult.value) {
-          yield outlineResult.value;
-        }
-      } while (!outlineResult.done);
+        const outlineGenerator = this.generateOutline(blueprintContext, input);
+        let outlineResult: IteratorResult<
+          OrchestrationStreamChunk,
+          BlueprintOutline
+        >;
 
-      blueprintContext.outline = outlineResult.value;
-      yield* this.reportProgress("outline", 100, "大纲生成完成");
+        do {
+          outlineResult = await outlineGenerator.next();
+          if (!outlineResult.done && outlineResult.value) {
+            yield outlineResult.value;
+          }
+        } while (!outlineResult.done);
+
+        blueprintContext.outline = outlineResult.value;
+        yield* this.reportProgress("outline", 100, "大纲生成完成");
+      }
 
       // 阶段 3: 生成内容
       blueprintContext.stage = "content";

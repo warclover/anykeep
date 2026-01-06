@@ -20,6 +20,7 @@ import {
   countSections,
   type ContentGenerationConfig,
 } from "./prompts/content.prompt";
+import { LENGTH_MODE_CONFIG } from "../v2/constants";
 
 // ============================================================
 // Logger
@@ -99,6 +100,8 @@ export interface ContentGeneratorOptions {
   outputLanguage?: "zh" | "en" | "auto";
   /** 写作风格 */
   writingStyle?: "formal" | "casual" | "academic" | "creative";
+  /** Phase 3.1: 平台风格 */
+  platformStyle?: "wechat" | "xiaohongshu" | "general";
   /** 生成超时（毫秒） */
   timeoutMs?: number;
 }
@@ -209,6 +212,7 @@ export async function* generateContentStream(
     targetLength: options.targetLength,
     outputLanguage: options.outputLanguage,
     writingStyle: options.writingStyle,
+    platformStyle: options.platformStyle, // Phase 3.1
   };
 
   // 构建 Prompt
@@ -306,11 +310,14 @@ export async function* generateContentStream(
       );
 
       // 调用模型（流式）
+      // 使用 LENGTH_MODE_CONFIG 中的 maxOutputTokens（Phase 1.2）
+      const maxTokens =
+        LENGTH_MODE_CONFIG[options.targetLength].maxOutputTokens;
       const stream = await streamText({
         model,
         system: prompt.system,
         prompt: prompt.user,
-        maxOutputTokens: 8192, // 内容生成需要更多 Token
+        maxOutputTokens: maxTokens,
         temperature: 0.7,
         abortSignal: controller.signal,
       });

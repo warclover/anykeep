@@ -37,6 +37,7 @@ import {
   OutlineEditorV2,
   StructuredOutputViewer,
   GenerationEstimatePanel,
+  PlatformStyleSelector,
   type BlueprintListItem,
   type OutputType,
 } from "@/components/knowledge-studio/v2";
@@ -46,6 +47,7 @@ import type {
   BlueprintOutline,
   MaterialInput,
 } from "@/lib/knowledge-studio/blueprint/types";
+import type { PlatformStyle } from "@/lib/knowledge-studio/v2/constants";
 
 // ============================================================
 // Zod Schema for sessionStorage Validation (P1 #5)
@@ -194,6 +196,8 @@ export function BlueprintWorkflowClient({
   const [generationStartTime, setGenerationStartTime] = useState<number | null>(
     null,
   );
+  /** Phase 3.1: 平台风格 */
+  const [platformStyle, setPlatformStyle] = useState<PlatformStyle>("general");
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -494,6 +498,7 @@ export function BlueprintWorkflowClient({
               : undefined,
             outline: outlineData,
             targetLength: "medium",
+            platformStyle, // Phase 3.1: 平台风格
           }),
           signal: abortControllerRef.current.signal,
         });
@@ -605,7 +610,7 @@ export function BlueprintWorkflowClient({
         }
       }
     },
-    [blueprintId, materials],
+    [blueprintId, materials, platformStyle],
   );
 
   /**
@@ -782,6 +787,11 @@ export function BlueprintWorkflowClient({
                 onConfirm={handleOutlineConfirm}
                 onRegenerate={() => generateOutline(briefingContext)}
                 isRegenerating={isRegenerating}
+              />
+              {/* Phase 3.1: 平台风格选择器 */}
+              <PlatformStyleSelector
+                value={platformStyle}
+                onChange={setPlatformStyle}
               />
               {/* Phase 2.1: 生成预估面板 */}
               <GenerationEstimatePanel
