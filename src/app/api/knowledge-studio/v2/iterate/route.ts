@@ -12,11 +12,15 @@ import { createLogger } from "@/lib/logger";
 import { z } from "zod";
 import { streamText } from "ai";
 import { AIProviderRouter } from "@/lib/ai-providers/provider-router";
+import { quotaManager } from "@/lib/knowledge-studio";
 import {
   generateIterationInstruction,
   FEEDBACK_TYPES,
   type DraftFeedback,
 } from "@/lib/knowledge-studio/iteration";
+
+// 迭代操作的配额成本（比生成便宜，因为基于已有内容）
+const ITERATE_QUOTA_COST = 1;
 
 const logger = createLogger("api:knowledge-studio:v2:iterate");
 
@@ -186,6 +190,23 @@ export async function POST(request: NextRequest) {
       outlineJson,
       materialsSummary,
     } = parseResult.data;
+
+    // 3. Check quota before iteration
+    const quotaCheck = await quotaManager.checkQuota(
+      user.id,
+      ITERATE_QUOTA_COST,
+    );
+    if (!quotaCheck.allowed) {
+      return new Response(
+        JSON.stringify({
+          error: {
+            code: "QUOTA_EXCEEDED",
+            message: quotaCheck.reason || "配额不足，请升级会员或等待配额重置",
+          },
+        }),
+        { status: 402, headers: { "Content-Type": "application/json" } },
+      );
+    }
 
     const originalWords = countWords(originalContent);
 

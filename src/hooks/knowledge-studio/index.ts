@@ -25,3 +25,6 @@ export type {
 
 export { useQuota } from "./use-quota";
 export type { QuotaInfo, UseQuotaReturn } from "./use-quota";
+
+export { useUsageTracking, recordBlueprintUsage } from "./use-usage-tracking";
+export type { UsageRecordParams } from "./use-usage-tracking";

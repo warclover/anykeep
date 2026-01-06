@@ -25,6 +25,27 @@ import {
 const logger = createLogger("api:knowledge-studio:v2:generate");
 
 /**
+ * OutlineNode schema (recursive)
+ */
+const OutlineNodeSchema: z.ZodType<{
+  id: string;
+  title: string;
+  level: 1 | 2 | 3;
+  description?: string;
+  children?: unknown[];
+  estimatedWords?: number;
+}> = z.lazy(() =>
+  z.object({
+    id: z.string(),
+    title: z.string(),
+    level: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+    description: z.string().optional(),
+    children: z.array(OutlineNodeSchema).optional(),
+    estimatedWords: z.number().optional(),
+  }),
+);
+
+/**
  * Request schema
  */
 const GenerateV2RequestSchema = z.object({
@@ -62,7 +83,7 @@ const GenerateV2RequestSchema = z.object({
     .object({
       title: z.string(),
       summary: z.string(),
-      nodes: z.array(z.any()),
+      nodes: z.array(OutlineNodeSchema),
       totalEstimatedWords: z.number(),
       generatedBy: z.string(),
     })

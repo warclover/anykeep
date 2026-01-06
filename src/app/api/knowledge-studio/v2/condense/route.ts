@@ -8,12 +8,16 @@ import type { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createLogger } from "@/lib/logger";
 import { z } from "zod";
+import { quotaManager } from "@/lib/knowledge-studio";
 import {
   condenseContentStream,
   countWords,
   CONDENSE_PRESETS,
   type CondensePreset,
 } from "@/lib/knowledge-studio/refinement/condense-service";
+
+// 精简操作的配额成本
+const CONDENSE_QUOTA_COST = 1;
 
 const logger = createLogger("api:knowledge-studio:v2:condense");
 
@@ -81,7 +85,24 @@ export async function POST(request: NextRequest) {
     const { content, targetWords, preset, contentType, preserveKeyPoints } =
       parseResult.data;
 
-    // 3. Determine target word count
+    // 3. Check quota before condensation
+    const quotaCheck = await quotaManager.checkQuota(
+      user.id,
+      CONDENSE_QUOTA_COST,
+    );
+    if (!quotaCheck.allowed) {
+      return new Response(
+        JSON.stringify({
+          error: {
+            code: "QUOTA_EXCEEDED",
+            message: quotaCheck.reason || "配额不足，请升级会员或等待配额重置",
+          },
+        }),
+        { status: 402, headers: { "Content-Type": "application/json" } },
+      );
+    }
+
+    // 4. Determine target word count
     let finalTargetWords = targetWords;
     if (!finalTargetWords && preset) {
       finalTargetWords = CONDENSE_PRESETS[preset as CondensePreset].targetWords;
@@ -227,6 +248,8 @@ export async function POST(request: NextRequest) {
  * GET /api/knowledge-studio/v2/condense
  *
  * 获取精简预设列表
+ *
+ * @security 无需认证 - 预设列表是公开静态数据
  */
 export async function GET() {
   return new Response(

@@ -7,7 +7,6 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { z } from "zod";
 import {
   ArrowLeft,
   Sparkles,
@@ -58,23 +57,15 @@ import {
   type DraftVersion,
 } from "@/lib/knowledge-studio/iteration";
 import { useSoundEffect } from "@/hooks/use-sound-effect";
-
-// ============================================================
-// Zod Schema for sessionStorage Validation (P1 #5)
-// ============================================================
-
-/**
- * MaterialInput schema matching src/lib/knowledge-studio/blueprint/types.ts
- */
-const MaterialInputSchema = z.object({
-  bookmarkId: z.string().min(1),
-  title: z.string(),
-  content: z.string(),
-  url: z.string().url(),
-  platform: z.string().optional(),
-});
-
-const StoredMaterialsSchema = z.array(MaterialInputSchema).min(1);
+import { useUsageTracking } from "@/hooks/knowledge-studio";
+// Import shared utilities from workflow hook module
+import {
+  type WorkflowStep,
+  type GenerationProgress,
+  StoredMaterialsSchema,
+  saveToCache,
+  loadFromCache,
+} from "./hooks";
 
 // ============================================================
 // Session Storage Keys for Caching
@@ -98,44 +89,6 @@ function clearAllCache() {
   Object.values(CACHE_KEYS).forEach((key) => {
     sessionStorage.removeItem(key);
   });
-}
-
-/**
- * 保存数据到 sessionStorage
- */
-function saveToCache(key: string, data: unknown) {
-  try {
-    sessionStorage.setItem(key, JSON.stringify(data));
-  } catch (err) {
-    console.info(`Failed to save to cache: ${key}`, err);
-  }
-}
-
-/**
- * 从 sessionStorage 加载数据
- */
-function loadFromCache<T>(key: string): T | null {
-  try {
-    const data = sessionStorage.getItem(key);
-    if (!data) return null;
-    return JSON.parse(data) as T;
-  } catch {
-    return null;
-  }
-}
-
-// ============================================================
-// Types
-// ============================================================
-
-type WorkflowStep = "briefing" | "outline" | "generating" | "result";
-
-interface GenerationProgress {
-  step: string;
-  percent: number;
-  message?: string;
-  /** Phase 2.3: 已生成字数 */
-  generatedWords?: number;
 }
 
 // ============================================================
@@ -183,6 +136,7 @@ export function BlueprintWorkflowClient({
 }: BlueprintWorkflowClientProps) {
   const router = useRouter();
   const { playSuccess, playError } = useSoundEffect();
+  const { recordUsage } = useUsageTracking();
 
   // State
   const [blueprint, setBlueprint] = useState<BlueprintListItem | null>(null);
@@ -462,9 +416,6 @@ export function BlueprintWorkflowClient({
                 });
               } else if (data.type === "error") {
                 // 服务端错误事件 - 立即中止并抛出
-                // DEBUG: 确认收到错误事件
-                // eslint-disable-next-line no-console
-                console.log("[SSE DEBUG] Received error event:", data);
                 await reader.cancel();
                 throw new Error(data.data.error?.message || "大纲生成错误");
               } else if (data.type === "done") {
@@ -481,9 +432,6 @@ export function BlueprintWorkflowClient({
           throw new Error("大纲生成失败，请重试");
         }
       } catch (err) {
-        // DEBUG: 确认错误被捕获
-        // eslint-disable-next-line no-console
-        console.log("[SSE DEBUG] Error caught in generateOutline:", err);
         if (err instanceof Error) {
           if (err.name === "AbortError") {
             setError("请求超时，请检查网络连接后重试");
@@ -625,17 +573,11 @@ export function BlueprintWorkflowClient({
                   saveToCache(CACHE_KEYS.CURRENT_STEP, "result");
 
                   // Phase 2: 记录成功使用统计
-                  fetch("/api/knowledge-studio/v2/usage/record", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      blueprintId,
-                      success: true,
-                      platformStyle,
-                      lengthMode: "medium",
-                    }),
-                  }).catch(() => {
-                    // Silently ignore usage tracking errors
+                  recordUsage({
+                    blueprintId,
+                    success: true,
+                    platformStyle,
+                    lengthMode: "medium",
                   });
 
                   // Phase 5: 播放生成完成音效
@@ -660,17 +602,11 @@ export function BlueprintWorkflowClient({
         }
       } catch (err) {
         // Phase 2: 记录失败使用统计
-        fetch("/api/knowledge-studio/v2/usage/record", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            blueprintId,
-            success: false,
-            platformStyle,
-            lengthMode: "medium",
-          }),
-        }).catch(() => {
-          // Silently ignore usage tracking errors
+        recordUsage({
+          blueprintId,
+          success: false,
+          platformStyle,
+          lengthMode: "medium",
         });
 
         // Phase 5: 播放错误音效
@@ -685,7 +621,14 @@ export function BlueprintWorkflowClient({
         }
       }
     },
-    [blueprintId, materials, platformStyle, playSuccess, playError],
+    [
+      blueprintId,
+      materials,
+      platformStyle,
+      playSuccess,
+      playError,
+      recordUsage,
+    ],
   );
 
   /**
@@ -758,21 +701,16 @@ export function BlueprintWorkflowClient({
     setGenerationStartTime(null);
 
     // Record cancelled usage for analytics
-    try {
-      await fetch("/api/knowledge-studio/v2/usage/record", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          blueprintId,
-          success: false,
-          platformStyle,
-          lengthMode: "medium",
-        }),
-      });
-    } catch {
-      // Silently ignore usage tracking errors
-    }
-  }, [blueprintId, platformStyle]);
+    await recordUsage(
+      {
+        blueprintId,
+        success: false,
+        platformStyle,
+        lengthMode: "medium",
+      },
+      { await: true },
+    );
+  }, [blueprintId, platformStyle, recordUsage]);
 
   /**
    * Phase 3.2: Handle content condensation

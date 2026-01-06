@@ -24,62 +24,25 @@ import {
   buildOutlinePrompt,
   type OutlineGenerationConfig,
 } from "./prompts/outline.prompt";
+import {
+  RateLimitError,
+  isRateLimitError,
+  OutlineParseError,
+  OutlineValidationError,
+} from "./errors";
+
+// Re-export error classes for backwards compatibility
+export {
+  RateLimitError,
+  OutlineParseError,
+  OutlineValidationError,
+} from "./errors";
 
 // ============================================================
 // Logger
 // ============================================================
 
 const logger = createLogger("blueprint:outline-generator");
-
-// ============================================================
-// Types
-// ============================================================
-
-/**
- * 429 速率限制错误
- */
-export class RateLimitError extends Error {
-  constructor(
-    message: string,
-    public retryAfter?: number,
-    public provider?: string,
-  ) {
-    super(message);
-    this.name = "RateLimitError";
-  }
-}
-
-/**
- * 检测是否为 429 速率限制错误
- */
-function isRateLimitError(error: unknown): {
-  isRateLimit: boolean;
-  retryAfter?: number;
-} {
-  if (!(error instanceof Error)) {
-    return { isRateLimit: false };
-  }
-
-  const message = error.message.toLowerCase();
-
-  // 检测 429 状态码或速率限制关键词
-  if (
-    message.includes("429") ||
-    message.includes("rate limit") ||
-    message.includes("too many requests") ||
-    message.includes("请求过于频繁")
-  ) {
-    // 尝试从错误消息中提取 retryAfter
-    const retryAfterMatch = message.match(/retryafter["\s:]+(\d+)/i);
-    const retryAfter = retryAfterMatch
-      ? parseInt(retryAfterMatch[1], 10)
-      : undefined;
-
-    return { isRateLimit: true, retryAfter };
-  }
-
-  return { isRateLimit: false };
-}
 
 // ============================================================
 // Types
@@ -119,32 +82,6 @@ export interface OutlineGenerationResult {
   tokensUsed?: number;
   /** 使用的模型 */
   modelUsed: string;
-}
-
-/**
- * 大纲解析错误
- */
-export class OutlineParseError extends Error {
-  constructor(
-    message: string,
-    public rawContent: string,
-  ) {
-    super(message);
-    this.name = "OutlineParseError";
-  }
-}
-
-/**
- * 大纲验证错误
- */
-export class OutlineValidationError extends Error {
-  constructor(
-    message: string,
-    public outline: Partial<BlueprintOutline>,
-  ) {
-    super(message);
-    this.name = "OutlineValidationError";
-  }
 }
 
 // ============================================================
