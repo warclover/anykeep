@@ -27,7 +27,7 @@ import {
   FileJson,
 } from "lucide-react";
 import type { SynthesisReport } from "@/lib/knowledge-studio/client";
-import { BLUEPRINT_DISPLAY_CONFIG } from "@/lib/knowledge-studio/client";
+import { getBlueprintDisplayConfig } from "@/lib/knowledge-studio/blueprint/unified-display-config";
 import type { KSExportFormat } from "@/lib/knowledge-studio/export";
 import { ChatEditPanel } from "./chat-edit-panel";
 import { CitationCard } from "./citation-card";
@@ -60,7 +60,7 @@ export function ReportEditor({
     number | null
   >(null);
 
-  const blueprintConfig = BLUEPRINT_DISPLAY_CONFIG[report.blueprintType];
+  const blueprintConfig = getBlueprintDisplayConfig(report.blueprintType);
 
   // 优化排版：不再分割段落，直接渲染完整内容以保持排版一致性
   // 这样 Markdown 结构不会被破坏，排版更加整齐
