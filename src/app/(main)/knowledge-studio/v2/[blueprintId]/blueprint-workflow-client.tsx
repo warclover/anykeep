@@ -200,6 +200,11 @@ export function BlueprintWorkflowClient({
    */
   const generateOutline = useCallback(
     async (context?: BriefingContext) => {
+      // 防止重复请求：如果已有正在进行的请求，先取消它
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+
       setIsRegenerating(true);
 
       try {
@@ -281,7 +286,8 @@ export function BlueprintWorkflowClient({
                 await reader.cancel();
                 throw new Error(data.data.error?.message || "大纲生成错误");
               } else if (data.type === "done") {
-                // 显式完成信号
+                // 显式完成信号 - 取消读取以跳出外层 while 循环
+                await reader.cancel();
                 break;
               }
             }
@@ -312,6 +318,11 @@ export function BlueprintWorkflowClient({
    */
   const startGeneration = useCallback(
     async (context?: BriefingContext, outlineData?: BlueprintOutline) => {
+      // 防止重复请求：如果已有正在进行的请求，先取消它
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+
       setProgress({ step: "preparing", percent: 0, message: "准备生成..." });
       setGeneratedContent("");
       setStructuredOutput(null);
@@ -405,6 +416,8 @@ export function BlueprintWorkflowClient({
                   setReportId(data.data.reportId);
                   setCurrentStep("result");
                   generationCompleted = true;
+                  // 取消读取以跳出外层 while 循环
+                  await reader.cancel();
                   break;
 
                 case "error":
