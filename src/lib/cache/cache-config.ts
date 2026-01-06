@@ -90,8 +90,11 @@ export const CACHE_KEYS = {
   bookmarks: (userId: string, platform?: string) =>
     `bookmarks:${userId}:${platform || "all"}`,
 
-  // 单个书签
-  bookmark: (bookmarkId: string) => `bookmark:${bookmarkId}`,
+  // 单个书签（支持两种调用方式）
+  bookmark: (userIdOrBookmarkId: string, bookmarkId?: string | number) =>
+    bookmarkId !== undefined
+      ? `bookmark:${userIdOrBookmarkId}:${bookmarkId}`
+      : `bookmark:${userIdOrBookmarkId}`,
 
   // 文件夹列表
   folders: (userId: string) => `folders:${userId}`,
@@ -111,6 +114,16 @@ export const CACHE_KEYS = {
 
   // 浏览器书签
   browserBookmarks: (userId: string) => `browser-bookmarks:${userId}`,
+
+  // 用户偏好
+  preferences: (userId: string) => `preferences:${userId}`,
+
+  // AI 相关缓存
+  aiContext: (userId: string) => `ai:context:${userId}`,
+  aiHistory: (userId: string, conversationId?: string) =>
+    conversationId
+      ? `ai:history:${userId}:${conversationId}`
+      : `ai:history:${userId}`,
 } as const;
 
 /**

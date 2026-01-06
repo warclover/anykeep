@@ -7,14 +7,16 @@
  * - 确认请求
  * - 交付物生成
  * - 原子 Skill 和 Tool 调用
+ * - 事件发布（P2 增强）
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-24
  */
 
 import { BaseSkill } from "../core/base-skill";
 import type { SkillContext, ISkill } from "../core/types";
 import { logger } from "@/lib/logger";
+import { SkillEventEmitter } from "../events/skill-event-emitter";
 import type {
   OrchestrationStreamChunk,
   DeliverableType,
@@ -73,6 +75,25 @@ export abstract class OrchestrationSkill<TInput = unknown, TOutput = unknown>
   /** 交付物 ID 计数器 */
   private deliverableIdCounter = 0;
 
+  /** 事件发射器（P2 增强） */
+  protected eventEmitter: SkillEventEmitter | null = null;
+
+  /** 当前执行上下文的用户 ID（用于事件发射） */
+  private currentUserId: string | null = null;
+
+  /**
+   * 初始化事件发射器
+   *
+   * 子类可在 executeStream 开始时调用，启用事件发布
+   */
+  protected initEventEmitter(userId: string): void {
+    this.currentUserId = userId;
+    this.eventEmitter = new SkillEventEmitter(
+      this.metadata.id,
+      this.metadata.name,
+    );
+  }
+
   /**
    * 解析自然语言输入为结构化参数
    *
@@ -112,6 +133,15 @@ export abstract class OrchestrationSkill<TInput = unknown, TOutput = unknown>
       steps,
       startTime: Date.now(),
     };
+
+    // 发射执行开始事件（P2 增强）
+    if (this.eventEmitter && this.currentUserId) {
+      this.eventEmitter.emitExecutionStarted({
+        userId: this.currentUserId,
+        mode: "orchestration",
+        estimatedSteps: steps.length,
+      });
+    }
   }
 
   /**
@@ -128,16 +158,55 @@ export abstract class OrchestrationSkill<TInput = unknown, TOutput = unknown>
     message?: string,
   ): Generator<OrchestrationStreamChunk> {
     // 更新进度状态
+    const previousStepIndex = this.progressState?.currentStepIndex ?? -1;
+    let newStepIndex = -1;
+
     if (this.progressState) {
       const stepIndex = this.progressState.steps.findIndex(
         (s) => s.name === step || s.id === step,
       );
       if (stepIndex >= 0) {
+        newStepIndex = stepIndex;
         this.progressState.currentStepIndex = stepIndex;
       }
       this.progressState.currentStep = step;
       this.progressState.percent = percent;
       this.progressState.message = message;
+    }
+
+    // 发射步骤事件（P2 增强）
+    if (this.eventEmitter && this.currentUserId && this.progressState) {
+      const totalSteps = this.progressState.steps.length;
+
+      // 如果步骤索引变化，说明进入了新步骤
+      if (newStepIndex >= 0 && newStepIndex !== previousStepIndex) {
+        // 先完成上一个步骤（如果有）
+        if (previousStepIndex >= 0) {
+          const prevStep = this.progressState.steps[previousStepIndex];
+          if (prevStep) {
+            this.eventEmitter.emitStepCompleted({
+              userId: this.currentUserId,
+              stepIndex: previousStepIndex,
+              stepId: prevStep.id || `step-${previousStepIndex}`,
+              stepName: prevStep.name,
+              success: true,
+              progressPercent: percent,
+            });
+          }
+        }
+
+        // 开始新步骤
+        const currentStep = this.progressState.steps[newStepIndex];
+        if (currentStep) {
+          this.eventEmitter.emitStepStarted({
+            userId: this.currentUserId,
+            stepIndex: newStepIndex,
+            stepId: currentStep.id || `step-${newStepIndex}`,
+            stepName: currentStep.name,
+            totalSteps,
+          });
+        }
+      }
     }
 
     yield {
@@ -280,6 +349,18 @@ export abstract class OrchestrationSkill<TInput = unknown, TOutput = unknown>
   protected *emitDeliverable(
     deliverable: Deliverable,
   ): Generator<OrchestrationStreamChunk> {
+    // 发射交付物创建事件（P2 增强）
+    if (this.eventEmitter && this.currentUserId) {
+      this.eventEmitter.emitDeliverableCreated({
+        userId: this.currentUserId,
+        deliverableId: deliverable.id,
+        deliverableType: deliverable.type,
+        format: deliverable.format,
+        downloadable: deliverable.downloadable ?? true,
+        shareable: deliverable.shareable ?? true,
+      });
+    }
+
     yield {
       type: "deliverable",
       data: {
@@ -353,14 +434,27 @@ export abstract class OrchestrationSkill<TInput = unknown, TOutput = unknown>
     message: string,
     reason?: string,
   ): Generator<OrchestrationStreamChunk> {
+    const completedSteps = this.progressState?.currentStepIndex ?? 0;
+    const totalSteps = this.progressState?.steps.length ?? 0;
+
+    // 发射取消事件（P2 增强）
+    if (this.eventEmitter && this.currentUserId) {
+      this.eventEmitter.emitCancelled({
+        userId: this.currentUserId,
+        reason: reason === "user" ? "user_requested" : "system",
+        completedSteps,
+        totalSteps,
+      });
+    }
+
     yield {
       type: "cancelled",
       data: {
         message,
         reason,
         timestamp: new Date().toISOString(),
-        completedSteps: this.progressState?.currentStepIndex,
-        totalSteps: this.progressState?.steps.length,
+        completedSteps,
+        totalSteps,
       },
     };
   }
@@ -380,15 +474,42 @@ export abstract class OrchestrationSkill<TInput = unknown, TOutput = unknown>
    *
    * @param success - 是否成功
    * @param summary - 完成摘要
+   * @param hasDeliverable - 是否有交付物
    * @yields 完成输出块
    */
   protected *emitDone(
     success: boolean,
     summary?: string,
+    hasDeliverable = false,
   ): Generator<OrchestrationStreamChunk> {
     const durationMs = this.progressState
       ? Date.now() - this.progressState.startTime
       : 0;
+
+    // 完成最后一个步骤（P2 增强）
+    if (this.eventEmitter && this.currentUserId && this.progressState) {
+      const lastStepIndex = this.progressState.currentStepIndex;
+      const lastStep = this.progressState.steps[lastStepIndex];
+      if (lastStep) {
+        this.eventEmitter.emitStepCompleted({
+          userId: this.currentUserId,
+          stepIndex: lastStepIndex,
+          stepId: lastStep.id || `step-${lastStepIndex}`,
+          stepName: lastStep.name,
+          success,
+          progressPercent: 100,
+        });
+      }
+
+      // 发射执行完成事件
+      this.eventEmitter.emitExecutionCompleted({
+        userId: this.currentUserId,
+        mode: "orchestration",
+        success,
+        completedSteps: lastStepIndex + 1,
+        hasDeliverable,
+      });
+    }
 
     yield {
       type: "done",
@@ -400,6 +521,10 @@ export abstract class OrchestrationSkill<TInput = unknown, TOutput = unknown>
         skillId: this.metadata.id,
       },
     };
+
+    // 重置状态
+    this.eventEmitter = null;
+    this.currentUserId = null;
   }
 
   /**

@@ -39,8 +39,22 @@ export class SkillRegistry {
   private static instance: SkillRegistry;
   private skills: Map<string, SkillRegistration> = new Map();
 
+  /**
+   * 私有构造函数
+   * 使用 getInstance() 获取单例，或 createInstance() 创建新实例
+   */
   private constructor() {
-    // 私有构造函数，确保单例
+    // 构造函数保持私有，通过工厂方法创建实例
+  }
+
+  /**
+   * 创建新实例（用于依赖注入容器）
+   *
+   * 注意：此方法创建独立实例，不影响单例
+   * 主要用于测试和容器管理场景
+   */
+  static createInstance(): SkillRegistry {
+    return new SkillRegistry();
   }
 
   /**
@@ -307,3 +321,13 @@ export interface SkillMetadataSummary {
  * 导出单例实例
  */
 export const skillRegistry = SkillRegistry.getInstance();
+
+/**
+ * 创建 SkillRegistry 实例（用于依赖注入容器）
+ *
+ * 向后兼容：现有代码继续使用 skillRegistry 单例
+ * 容器场景：使用此函数创建可管理的实例
+ */
+export function createSkillRegistryInstance(): SkillRegistry {
+  return SkillRegistry.createInstance();
+}

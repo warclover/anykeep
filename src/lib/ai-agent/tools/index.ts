@@ -1,8 +1,11 @@
 /**
  * AI Agent Tools 模块导出
  *
- * @version 2.5.0
+ * @version 2.6.0
  * @since 2025-12-23
+ *
+ * v2.6.0 新增:
+ * - 工具调用事件: tool-event-emitter（工具执行事件发射，P2-3）
  *
  * v2.5.0 新增:
  * - Active Recall Tools: generate-flashcards, get-review-queue, submit-review-response, get-mastery-stats, update-review-preferences
@@ -49,6 +52,9 @@ export * from "./tool-description-templates";
 
 // 工具结果增强器（v1.9.0）
 export * from "./tool-result-enhancer";
+
+// 工具调用事件（v2.6.0 P2-3）
+export * from "./events";
 
 // Tool 注册表
 export { ToolRegistry, toolRegistry } from "./tool-registry";

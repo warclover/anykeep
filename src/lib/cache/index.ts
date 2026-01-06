@@ -1,9 +1,10 @@
 /**
  * 缓存系统统一导出
  *
- * @version 5.4.0
+ * @version 5.5.0
  * @since 2025-12-22
  * @updated 2025-12-28 - 添加 UnifiedCacheFacade
+ * @updated 2026-01-06 - 添加事件驱动缓存失效服务 (P2)
  */
 
 // 配置
@@ -79,3 +80,11 @@ export {
   type UnifiedCacheOptions,
   type UnifiedCacheStats,
 } from "./unified-cache";
+
+// V5.5: 事件驱动缓存失效 (P2)
+export {
+  cacheInvalidationService,
+  createCacheInvalidationService,
+  type CacheInvalidationRule,
+  type CacheInvalidationServiceConfig,
+} from "./event-driven-cache-invalidation";

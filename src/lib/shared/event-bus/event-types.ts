@@ -391,7 +391,9 @@ export type EventTypes = ClassificationEventTypes &
   CostMonitorEventTypes &
   KnowledgeLinkEventTypes &
   PersonaEventTypes &
-  MdCollectionEventTypes;
+  MdCollectionEventTypes &
+  AISkillsEventTypes &
+  AIAgentToolEventTypes;
 
 /** 事件名称联合类型 */
 export type EventName = keyof EventTypes;
@@ -522,4 +524,268 @@ export const MdCollectionEvents = {
   PROCESSING_COMPLETED: "md:processing_completed",
   PROCESSING_FAILED: "md:processing_failed",
   TAGS_GENERATED: "md:tags_generated",
+} as const;
+
+// ============================================================================
+// AI Skills 事件 (P2 - v2.9)
+// ============================================================================
+
+/** Skill 执行开始事件 */
+export interface SkillExecutionStartedEvent {
+  userId: string;
+  skillId: string;
+  skillName: string;
+  mode: "atomic" | "orchestration";
+  /** 执行请求 ID */
+  requestId?: string;
+  /** 预估步骤数 */
+  estimatedSteps?: number;
+  timestamp: string;
+}
+
+/** Skill 执行完成事件 */
+export interface SkillExecutionCompletedEvent {
+  userId: string;
+  skillId: string;
+  skillName: string;
+  mode: "atomic" | "orchestration";
+  /** 是否成功 */
+  success: boolean;
+  /** 执行时长 (ms) */
+  durationMs: number;
+  /** 完成的步骤数 */
+  completedSteps?: number;
+  /** 是否有交付物 */
+  hasDeliverable: boolean;
+  /** 错误信息（如果失败） */
+  errorMessage?: string;
+  /** 错误代码（如果失败） */
+  errorCode?: string;
+  timestamp: string;
+}
+
+/** Skill 步骤开始事件 */
+export interface SkillStepStartedEvent {
+  userId: string;
+  skillId: string;
+  /** 步骤索引 (0-based) */
+  stepIndex: number;
+  /** 步骤 ID */
+  stepId: string;
+  /** 步骤名称 */
+  stepName: string;
+  /** 总步骤数 */
+  totalSteps: number;
+  timestamp: string;
+}
+
+/** Skill 步骤完成事件 */
+export interface SkillStepCompletedEvent {
+  userId: string;
+  skillId: string;
+  /** 步骤索引 (0-based) */
+  stepIndex: number;
+  /** 步骤 ID */
+  stepId: string;
+  /** 步骤名称 */
+  stepName: string;
+  /** 是否成功 */
+  success: boolean;
+  /** 步骤执行时长 (ms) */
+  durationMs: number;
+  /** 进度百分比 */
+  progressPercent: number;
+  timestamp: string;
+}
+
+/** Skill 交付物生成事件 */
+export interface SkillDeliverableCreatedEvent {
+  userId: string;
+  skillId: string;
+  /** 交付物 ID */
+  deliverableId: string;
+  /** 交付物类型 */
+  deliverableType: string;
+  /** 交付物格式 */
+  format: string;
+  /** 是否可下载 */
+  downloadable: boolean;
+  /** 是否可分享 */
+  shareable: boolean;
+  timestamp: string;
+}
+
+/** Skill 确认请求事件 */
+export interface SkillConfirmationRequestedEvent {
+  userId: string;
+  skillId: string;
+  /** 确认 ID */
+  confirmationId: string;
+  /** 确认类型 */
+  confirmationType: "proceed" | "select" | "custom";
+  /** 选项数量 */
+  optionCount: number;
+  timestamp: string;
+}
+
+/** Skill 确认响应事件 */
+export interface SkillConfirmationRespondedEvent {
+  userId: string;
+  skillId: string;
+  /** 确认 ID */
+  confirmationId: string;
+  /** 用户选择 */
+  selectedOption: string;
+  /** 是否确认继续 */
+  confirmed: boolean;
+  /** 响应时长 (ms) */
+  responseTimeMs: number;
+  timestamp: string;
+}
+
+/** Skill 取消事件 */
+export interface SkillCancelledEvent {
+  userId: string;
+  skillId: string;
+  /** 取消原因 */
+  reason: "user_requested" | "timeout" | "error" | "system";
+  /** 已完成的步骤数 */
+  completedSteps: number;
+  /** 总步骤数 */
+  totalSteps: number;
+  /** 已执行时长 (ms) */
+  elapsedMs: number;
+  timestamp: string;
+}
+
+/** AI Skills 事件类型映射 */
+export interface AISkillsEventTypes {
+  "skill:execution_started": SkillExecutionStartedEvent;
+  "skill:execution_completed": SkillExecutionCompletedEvent;
+  "skill:step_started": SkillStepStartedEvent;
+  "skill:step_completed": SkillStepCompletedEvent;
+  "skill:deliverable_created": SkillDeliverableCreatedEvent;
+  "skill:confirmation_requested": SkillConfirmationRequestedEvent;
+  "skill:confirmation_responded": SkillConfirmationRespondedEvent;
+  "skill:cancelled": SkillCancelledEvent;
+}
+
+/** AI Skills 事件名称常量 */
+export const AISkillsEvents = {
+  EXECUTION_STARTED: "skill:execution_started",
+  EXECUTION_COMPLETED: "skill:execution_completed",
+  STEP_STARTED: "skill:step_started",
+  STEP_COMPLETED: "skill:step_completed",
+  DELIVERABLE_CREATED: "skill:deliverable_created",
+  CONFIRMATION_REQUESTED: "skill:confirmation_requested",
+  CONFIRMATION_RESPONDED: "skill:confirmation_responded",
+  CANCELLED: "skill:cancelled",
+} as const;
+
+// ============================================================================
+// AI Agent 工具调用事件 (P2-3 - v2.9)
+// ============================================================================
+
+/** 工具调用开始事件 */
+export interface ToolCallStartedEvent {
+  userId: string;
+  /** 工具名称 */
+  toolName: string;
+  /** 工具分类 */
+  toolCategory: string;
+  /** 调用请求 ID */
+  requestId?: string;
+  /** 是否需要确认 */
+  requiresConfirmation: boolean;
+  /** 风险等级 */
+  riskLevel: "low" | "medium" | "high";
+  /** 参数摘要（隐藏敏感信息） */
+  paramsSummary?: Record<string, unknown>;
+  timestamp: string;
+}
+
+/** 工具调用完成事件 */
+export interface ToolCallCompletedEvent {
+  userId: string;
+  /** 工具名称 */
+  toolName: string;
+  /** 工具分类 */
+  toolCategory: string;
+  /** 是否成功 */
+  success: boolean;
+  /** 执行时长 (ms) */
+  durationMs: number;
+  /** 结果摘要 */
+  resultSummary?: string;
+  /** 错误信息（如果失败） */
+  errorMessage?: string;
+  /** 错误代码（如果失败） */
+  errorCode?: string;
+  /** 是否可重试 */
+  retryable?: boolean;
+  timestamp: string;
+}
+
+/** 工具调用重试事件 */
+export interface ToolCallRetryEvent {
+  userId: string;
+  /** 工具名称 */
+  toolName: string;
+  /** 重试次数 */
+  retryCount: number;
+  /** 最大重试次数 */
+  maxRetries: number;
+  /** 上次错误信息 */
+  lastError: string;
+  /** 重试延迟 (ms) */
+  retryDelayMs: number;
+  timestamp: string;
+}
+
+/** 工具调用确认请求事件 */
+export interface ToolConfirmationRequestedEvent {
+  userId: string;
+  /** 工具名称 */
+  toolName: string;
+  /** 确认 ID */
+  confirmationId: string;
+  /** 操作描述 */
+  operationDescription: string;
+  /** 影响范围描述 */
+  impactDescription?: string;
+  /** 预估影响数量 */
+  estimatedAffectedCount?: number;
+  timestamp: string;
+}
+
+/** 工具调用确认响应事件 */
+export interface ToolConfirmationRespondedEvent {
+  userId: string;
+  /** 工具名称 */
+  toolName: string;
+  /** 确认 ID */
+  confirmationId: string;
+  /** 用户是否确认 */
+  confirmed: boolean;
+  /** 响应时长 (ms) */
+  responseTimeMs: number;
+  timestamp: string;
+}
+
+/** AI Agent 工具调用事件类型映射 */
+export interface AIAgentToolEventTypes {
+  "tool:call_started": ToolCallStartedEvent;
+  "tool:call_completed": ToolCallCompletedEvent;
+  "tool:call_retry": ToolCallRetryEvent;
+  "tool:confirmation_requested": ToolConfirmationRequestedEvent;
+  "tool:confirmation_responded": ToolConfirmationRespondedEvent;
+}
+
+/** AI Agent 工具调用事件名称常量 */
+export const AIAgentToolEvents = {
+  CALL_STARTED: "tool:call_started",
+  CALL_COMPLETED: "tool:call_completed",
+  CALL_RETRY: "tool:call_retry",
+  CONFIRMATION_REQUESTED: "tool:confirmation_requested",
+  CONFIRMATION_RESPONDED: "tool:confirmation_responded",
 } as const;

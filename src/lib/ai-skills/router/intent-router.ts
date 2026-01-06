@@ -37,7 +37,7 @@ import type {
 /**
  * 完整路由器配置
  */
-interface IntentRouterConfig extends RouterConfig {
+export interface IntentRouterConfig extends RouterConfig {
   /** 意图分类器配置 */
   classifier?: IntentClassifierConfig;
   /** 复杂度评估器配置 */

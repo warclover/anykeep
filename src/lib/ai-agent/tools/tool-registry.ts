@@ -6,6 +6,7 @@
  * @version 2.0.0 - MCP 标准化升级
  * @since 2025-12-23
  * @updated 2025-12-29 添加 riskLevel 统计和扩展分类支持
+ * @updated 2026-01-06 添加工具调用事件发射 (P2-3)
  */
 
 import { z } from "zod";
@@ -21,6 +22,7 @@ import type {
 } from "./types";
 import { extractReasoning, inferRiskLevel } from "./types";
 import { logger } from "@/lib/logger";
+import { toolEventEmitter } from "./events/tool-event-emitter";
 
 /**
  * Tool 注册表类
@@ -165,6 +167,19 @@ export class ToolRegistry {
     }
 
     const startTime = performance.now();
+    const toolCategory = tool.definition.category;
+    const riskLevel = inferRiskLevel(tool.definition);
+    const requiresConfirmation = tool.definition.requiresConfirmation ?? false;
+
+    // 发射工具调用开始事件
+    toolEventEmitter.emitCallStarted({
+      userId: context.userId,
+      toolName: name,
+      toolCategory,
+      requiresConfirmation,
+      riskLevel,
+      params: params as Record<string, unknown> | undefined,
+    });
 
     try {
       // 验证参数
@@ -196,6 +211,23 @@ export class ToolRegistry {
         };
       }
 
+      // 发射工具调用完成事件
+      toolEventEmitter.emitCallCompleted({
+        userId: context.userId,
+        toolName: name,
+        toolCategory,
+        success: result.success,
+        durationMs: executionTimeMs,
+        resultSummary: result.success
+          ? this.generateResultSummary(name, result.data)
+          : undefined,
+        errorMessage: result.success ? undefined : result.error,
+        errorCode: result.success ? undefined : result.errorCode,
+        retryable: result.success
+          ? undefined
+          : this.isRetryableError(result.errorCode),
+      });
+
       logger.info(
         {
           toolName: name,
@@ -221,6 +253,18 @@ export class ToolRegistry {
           "ToolRegistry: Parameter validation failed",
         );
 
+        // 发射工具调用完成事件（验证失败）
+        toolEventEmitter.emitCallCompleted({
+          userId: context.userId,
+          toolName: name,
+          toolCategory,
+          success: false,
+          durationMs: executionTimeMs,
+          errorMessage: `参数验证失败: ${error.issues.map((e) => e.message).join(", ")}`,
+          errorCode: "VALIDATION_ERROR",
+          retryable: false,
+        });
+
         return {
           success: false,
           error: `参数验证失败: ${error.issues.map((e) => e.message).join(", ")}`,
@@ -242,6 +286,18 @@ export class ToolRegistry {
         "ToolRegistry: Tool execution failed",
       );
 
+      // 发射工具调用完成事件（执行失败）
+      toolEventEmitter.emitCallCompleted({
+        userId: context.userId,
+        toolName: name,
+        toolCategory,
+        success: false,
+        durationMs: executionTimeMs,
+        errorMessage,
+        errorCode: "EXECUTION_ERROR",
+        retryable: true,
+      });
+
       return {
         success: false,
         error: errorMessage,
@@ -249,6 +305,51 @@ export class ToolRegistry {
         metadata: { executionTimeMs },
       };
     }
+  }
+
+  /**
+   * 生成结果摘要
+   */
+  private generateResultSummary(toolName: string, data: unknown): string {
+    if (!data) return "操作成功";
+
+    // 尝试从常见字段提取摘要
+    if (typeof data === "object" && data !== null) {
+      const obj = data as Record<string, unknown>;
+
+      if (Array.isArray(obj)) {
+        return `返回 ${obj.length} 条结果`;
+      }
+      if ("count" in obj && typeof obj.count === "number") {
+        return `统计: ${obj.count} 条`;
+      }
+      if ("total" in obj && typeof obj.total === "number") {
+        return `共 ${obj.total} 条`;
+      }
+      if ("message" in obj && typeof obj.message === "string") {
+        return obj.message;
+      }
+      if ("name" in obj && typeof obj.name === "string") {
+        return `操作对象: ${obj.name}`;
+      }
+    }
+
+    return `${toolName} 执行成功`;
+  }
+
+  /**
+   * 判断错误是否可重试
+   */
+  private isRetryableError(errorCode?: string): boolean {
+    const retryableCodes = [
+      "RATE_LIMIT",
+      "TOO_MANY_REQUESTS",
+      "NETWORK_ERROR",
+      "DB_ERROR",
+      "TIMEOUT",
+      "EXECUTION_ERROR",
+    ];
+    return errorCode ? retryableCodes.includes(errorCode) : true;
   }
 
   /**
