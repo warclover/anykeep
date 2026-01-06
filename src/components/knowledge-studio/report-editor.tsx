@@ -18,6 +18,15 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
+import {
   Edit2,
   Copy,
   Download,
@@ -25,6 +34,8 @@ import {
   FileText,
   FileCode,
   FileJson,
+  Scissors,
+  Loader2,
 } from "lucide-react";
 import type { SynthesisReport } from "@/lib/knowledge-studio/client";
 import { getBlueprintDisplayConfig } from "@/lib/knowledge-studio/blueprint/unified-display-config";
@@ -42,6 +53,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  countWords,
+  condenseContentStream,
+  CONDENSE_PRESETS,
+  type CondensePreset,
+} from "@/lib/knowledge-studio/refinement";
 
 interface ReportEditorProps {
   report: SynthesisReport;
@@ -61,6 +78,61 @@ export function ReportEditor({
   >(null);
 
   const blueprintConfig = getBlueprintDisplayConfig(report.blueprintType);
+
+  // Phase 3.2: 字数统计
+  const wordCount = useMemo(() => countWords(report.content), [report.content]);
+
+  // Phase 3.2: 精简状态
+  const [condenseDialogOpen, setCondenseDialogOpen] = useState(false);
+  const [isCondensing, setIsCondensing] = useState(false);
+  const [condenseProgress, setCondenseProgress] = useState(0);
+  const [condensedPreview, setCondensedPreview] = useState<string>("");
+
+  // Phase 3.2: 处理精简
+  const handleCondense = useCallback(
+    async (preset: CondensePreset) => {
+      const targetWords = CONDENSE_PRESETS[preset].targetWords;
+
+      // 如果已经低于目标字数，无需精简
+      if (wordCount <= targetWords * 1.1) {
+        toast.info("当前内容已低于目标字数，无需精简");
+        return;
+      }
+
+      setIsCondensing(true);
+      setCondenseProgress(0);
+      setCondensedPreview("");
+
+      await condenseContentStream(
+        {
+          content: report.content,
+          targetWords,
+          contentType: "article",
+        },
+        {
+          onContent: (chunk) => {
+            setCondensedPreview((prev) => prev + chunk);
+          },
+          onProgress: (percent) => {
+            setCondenseProgress(percent);
+          },
+          onComplete: (result) => {
+            setIsCondensing(false);
+            onUpdate?.(result.condensedContent);
+            setCondenseDialogOpen(false);
+            toast.success(
+              `已精简至 ${result.finalWords.toLocaleString()} 字（压缩 ${Math.round((1 - result.compressionRatio) * 100)}%）`,
+            );
+          },
+          onError: (error) => {
+            setIsCondensing(false);
+            toast.error(`精简失败: ${error.message}`);
+          },
+        },
+      );
+    },
+    [report.content, wordCount, onUpdate],
+  );
 
   // 优化排版：不再分割段落，直接渲染完整内容以保持排版一致性
   // 这样 Markdown 结构不会被破坏，排版更加整齐
@@ -261,6 +333,8 @@ export function ReportEditor({
               <Badge variant="secondary">{blueprintConfig.name}</Badge>
               <span>版本 {report.version}</span>
               <span>·</span>
+              <span>{wordCount.toLocaleString()} 字</span>
+              <span>·</span>
               <span>{report.citations.length} 个引用</span>
             </div>
           </div>
@@ -273,6 +347,77 @@ export function ReportEditor({
             <Copy className="mr-1 h-4 w-4" />
             复制
           </Button>
+
+          {/* Phase 3.2: 一键精简 */}
+          <Dialog
+            open={condenseDialogOpen}
+            onOpenChange={setCondenseDialogOpen}
+          >
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Scissors className="mr-1 h-4 w-4" />
+                精简
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle>一键精简内容</DialogTitle>
+                <DialogDescription>
+                  当前字数：{wordCount.toLocaleString()}{" "}
+                  字，选择目标字数进行精简
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-3 py-4">
+                {isCondensing ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span className="text-sm">正在精简...</span>
+                    </div>
+                    <Progress value={condenseProgress} className="h-2" />
+                    {condensedPreview && (
+                      <div className="max-h-[200px] overflow-y-auto rounded border p-3 text-sm">
+                        <pre className="whitespace-pre-wrap">
+                          {condensedPreview.slice(0, 500)}...
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="grid gap-2">
+                    {(Object.keys(CONDENSE_PRESETS) as CondensePreset[]).map(
+                      (preset) => {
+                        const config = CONDENSE_PRESETS[preset];
+                        const isDisabled =
+                          wordCount <= config.targetWords * 1.1;
+                        return (
+                          <Button
+                            key={preset}
+                            variant="outline"
+                            className="justify-start h-auto py-3"
+                            disabled={isDisabled}
+                            onClick={() => handleCondense(preset)}
+                          >
+                            <div className="flex flex-col items-start">
+                              <span className="font-medium">
+                                {config.label}（约{" "}
+                                {config.targetWords.toLocaleString()} 字）
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {config.description}
+                                {isDisabled && " · 已低于目标字数"}
+                              </span>
+                            </div>
+                          </Button>
+                        );
+                      },
+                    )}
+                  </div>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">

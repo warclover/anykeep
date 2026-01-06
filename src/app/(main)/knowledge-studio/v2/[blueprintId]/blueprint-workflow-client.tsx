@@ -15,6 +15,7 @@ import {
   CheckCircle2,
   Loader2,
   FileText,
+  Clock,
 } from "lucide-react";
 import {
   SSE_REQUEST_TIMEOUT_MS,
@@ -35,6 +36,7 @@ import {
   BriefingWizard,
   OutlineEditorV2,
   StructuredOutputViewer,
+  GenerationEstimatePanel,
   type BlueprintListItem,
   type OutputType,
 } from "@/components/knowledge-studio/v2";
@@ -119,6 +121,40 @@ interface GenerationProgress {
   step: string;
   percent: number;
   message?: string;
+  /** Phase 2.3: 已生成字数 */
+  generatedWords?: number;
+}
+
+// ============================================================
+// Phase 2.3: Elapsed Time Display Component
+// ============================================================
+
+/**
+ * 格式化已用时间
+ */
+function formatElapsedTime(seconds: number): string {
+  if (seconds < 60) {
+    return `${seconds} 秒`;
+  }
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
+}
+
+/**
+ * 实时显示已用时间的组件
+ */
+function ElapsedTimeDisplay({ startTime }: { startTime: number }) {
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setElapsed(Math.floor((Date.now() - startTime) / 1000));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [startTime]);
+
+  return <span>已用时 {formatElapsedTime(elapsed)}</span>;
 }
 
 // ============================================================
@@ -154,6 +190,10 @@ export function BlueprintWorkflowClient({
   const [structuredOutput, setStructuredOutput] = useState<unknown>(null);
   const [reportId, setReportId] = useState<string | undefined>();
   const [isRegenerating, setIsRegenerating] = useState(false);
+  /** Phase 2.3: 生成开始时间戳 */
+  const [generationStartTime, setGenerationStartTime] = useState<number | null>(
+    null,
+  );
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -424,7 +464,14 @@ export function BlueprintWorkflowClient({
         abortControllerRef.current.abort();
       }
 
-      setProgress({ step: "preparing", percent: 0, message: "准备生成..." });
+      // Phase 2.3: 记录开始时间
+      setGenerationStartTime(Date.now());
+      setProgress({
+        step: "preparing",
+        percent: 0,
+        message: "准备生成...",
+        generatedWords: 0,
+      });
       setGeneratedContent("");
       setStructuredOutput(null);
 
@@ -507,6 +554,11 @@ export function BlueprintWorkflowClient({
                 case "content":
                   contentBuffer += data.data.text || "";
                   setGeneratedContent(contentBuffer);
+                  // Phase 2.3: 更新已生成字数
+                  setProgress((prev) => ({
+                    ...prev,
+                    generatedWords: contentBuffer.length,
+                  }));
                   break;
 
                 case "structured_output":
@@ -723,13 +775,21 @@ export function BlueprintWorkflowClient({
       {currentStep === "outline" && (
         <>
           {outline ? (
-            <OutlineEditorV2
-              outline={outline}
-              onChange={setOutline}
-              onConfirm={handleOutlineConfirm}
-              onRegenerate={() => generateOutline(briefingContext)}
-              isRegenerating={isRegenerating}
-            />
+            <div className="space-y-6">
+              <OutlineEditorV2
+                outline={outline}
+                onChange={setOutline}
+                onConfirm={handleOutlineConfirm}
+                onRegenerate={() => generateOutline(briefingContext)}
+                isRegenerating={isRegenerating}
+              />
+              {/* Phase 2.1: 生成预估面板 */}
+              <GenerationEstimatePanel
+                outline={outline}
+                targetLength="medium"
+                materialCount={materials.length}
+              />
+            </div>
           ) : (
             <Card>
               <CardContent className="flex items-center justify-center py-12">
@@ -760,6 +820,25 @@ export function BlueprintWorkflowClient({
             <div className="flex items-center justify-between text-sm text-muted-foreground">
               <span>{progress.step}</span>
               <span>{progress.percent}%</span>
+            </div>
+
+            {/* Phase 2.3: 增强进度信息 */}
+            <div className="flex items-center gap-4 text-sm text-muted-foreground border-t pt-3">
+              {generationStartTime && (
+                <div className="flex items-center gap-1.5">
+                  <Clock className="h-4 w-4" />
+                  <ElapsedTimeDisplay startTime={generationStartTime} />
+                </div>
+              )}
+              {progress.generatedWords !== undefined &&
+                progress.generatedWords > 0 && (
+                  <div className="flex items-center gap-1.5">
+                    <FileText className="h-4 w-4" />
+                    <span>
+                      已生成 {progress.generatedWords.toLocaleString()} 字
+                    </span>
+                  </div>
+                )}
             </div>
 
             {generatedContent && (

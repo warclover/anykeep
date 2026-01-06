@@ -13,17 +13,22 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Search, X, Info } from "lucide-react";
+import { Search, X, Info, AlertTriangle } from "lucide-react";
 import {
   QUALITY_DISPLAY,
   getQualityLevel,
 } from "@/lib/knowledge-studio/client";
+import {
+  MATERIAL_LIMITS,
+  MATERIAL_SELECTOR_TEXT,
+} from "@/lib/knowledge-studio/v2/constants";
 import type { MaterialHealthScore } from "@/hooks/domain/knowledge-studio/use-material-health";
 
 interface MaterialItem {
@@ -89,7 +94,7 @@ export function MaterialSelector({
       {/* Header */}
       <div className="flex items-center justify-between border-b pb-3">
         <div className="flex items-center gap-2">
-          <span className="font-medium">选择素材</span>
+          <span className="font-medium">{MATERIAL_SELECTOR_TEXT.LABEL}</span>
           <Badge variant="secondary">
             {selected.length} / {maxSelection}
           </Badge>
@@ -118,6 +123,24 @@ export function MaterialSelector({
           </Button>
         </div>
       </div>
+
+      {/* Hint */}
+      <p className="text-sm text-muted-foreground mt-2">
+        {MATERIAL_SELECTOR_TEXT.HINT}
+      </p>
+
+      {/* Warning for 4+ materials */}
+      {selected.length >= MATERIAL_LIMITS.WARNING_THRESHOLD && (
+        <Alert
+          variant="default"
+          className="mt-3 border-yellow-500/50 bg-yellow-50 dark:bg-yellow-950/20"
+        >
+          <AlertTriangle className="h-4 w-4 text-yellow-600" />
+          <AlertDescription className="text-yellow-700 dark:text-yellow-400">
+            {MATERIAL_SELECTOR_TEXT.WARNING_TOO_MANY}
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Search */}
       <div className="relative my-3">

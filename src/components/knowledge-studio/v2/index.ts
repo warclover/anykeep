@@ -15,3 +15,7 @@ export {
   type StructuredOutputViewerProps,
   type OutputType,
 } from "./structured-output-viewer";
+export {
+  GenerationEstimatePanel,
+  type GenerationEstimatePanelProps,
+} from "./generation-estimate-panel";

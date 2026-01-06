@@ -48,6 +48,7 @@ import {
   X,
   RefreshCw,
   History,
+  Lightbulb,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -61,6 +62,7 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -580,8 +582,19 @@ export function OutlineEditorV2({
               {stats.h1Count} 个主章节
             </span>
             <span>{stats.totalNodes} 个节点</span>
-            <span>~{stats.totalWords.toLocaleString()} 字</span>
+            <span>预估生成 ~{stats.totalWords.toLocaleString()} 字</span>
           </div>
+
+          {/* Phase 2.2: 字数估算提示 */}
+          <Alert
+            variant="default"
+            className="mt-3 border-amber-500/30 bg-amber-50/50 dark:bg-amber-950/20"
+          >
+            <Lightbulb className="h-4 w-4 text-amber-600" />
+            <AlertDescription className="text-amber-700 dark:text-amber-400">
+              删减章节可缩短最终字数
+            </AlertDescription>
+          </Alert>
         </CardHeader>
 
         <CardContent className="pt-0">

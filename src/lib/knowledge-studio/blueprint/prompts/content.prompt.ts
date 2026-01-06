@@ -15,6 +15,11 @@ import type {
   BlueprintOutline,
   OutlineNode,
 } from "../types";
+import {
+  LENGTH_MODE_CONFIG,
+  PLATFORM_STYLE_CONFIG,
+  type PlatformStyle,
+} from "../../v2/constants";
 
 // ============================================================
 // Types
@@ -38,25 +43,62 @@ export interface ContentGenerationConfig {
   outputLanguage?: "zh" | "en" | "auto";
   /** 写作风格 */
   writingStyle?: "formal" | "casual" | "academic" | "creative";
+  /** 平台风格（Phase 3.1） */
+  platformStyle?: PlatformStyle;
 }
 
 /**
- * 长度配置映射
+ * 长度配置映射（基于 LENGTH_MODE_CONFIG）
  */
 const LENGTH_CONFIG = {
   short: {
-    wordRange: "500-1000字",
+    wordRange: `${LENGTH_MODE_CONFIG.short.minWords}-${LENGTH_MODE_CONFIG.short.maxWords}字`,
     sectionDepth: "精简展开",
   },
   medium: {
-    wordRange: "1500-3000字",
+    wordRange: `${LENGTH_MODE_CONFIG.medium.minWords}-${LENGTH_MODE_CONFIG.medium.maxWords}字`,
     sectionDepth: "适度展开",
   },
   long: {
-    wordRange: "4000-8000字",
+    wordRange: `${LENGTH_MODE_CONFIG.long.minWords}-${LENGTH_MODE_CONFIG.long.maxWords}字`,
     sectionDepth: "充分展开",
   },
 };
+
+/**
+ * 字数限制指令（Phase 1.2）
+ */
+const WORD_LIMIT_INSTRUCTIONS = {
+  short: `请控制总字数在 ${LENGTH_MODE_CONFIG.short.minWords}-${LENGTH_MODE_CONFIG.short.maxWords} 字之间，语言简洁有力。`,
+  medium: `请控制总字数在 ${LENGTH_MODE_CONFIG.medium.minWords}-${LENGTH_MODE_CONFIG.medium.maxWords} 字之间，内容充实但不冗长。`,
+  long: `请控制总字数在 ${LENGTH_MODE_CONFIG.long.minWords}-${LENGTH_MODE_CONFIG.long.maxWords} 字之间，可以深入展开论述。`,
+} as const;
+
+/**
+ * 平台风格指令（Phase 3.1）
+ */
+const PLATFORM_STYLE_INSTRUCTIONS = {
+  wechat: `【公众号风格要求】
+- 使用吸引眼球的标题，可适当运用数字、疑问句式
+- 段落间适当留白，每段 3-5 行为宜
+- 使用分隔线或小标题增强结构感
+- 语言专业但不晦涩，适合大众阅读
+- 结尾可以引导互动（欢迎留言讨论）`,
+
+  xiaohongshu: `【小红书风格要求】
+- 段落要短！每段 1-3 行即可
+- 适当使用 emoji 点缀 🌟✨💡，让内容更活泼
+- 语言口语化、亲切感强，像朋友分享
+- 重点内容可用【】或「」框起来
+- 多用"宝子们"、"姐妹们"、"真的很绝"等小红书热门表达
+- 结尾用话题标签风格（#话题1 #话题2）`,
+
+  general: `【通用风格要求】
+- 使用正式、规范的书面语言
+- 结构完整，逻辑清晰
+- 适合多平台发布
+- 不使用过于口语化或平台特色的表达`,
+} as const;
 
 /**
  * 写作风格配置
@@ -149,6 +191,9 @@ export function buildContentUserPrompt(
 ): string {
   const lengthConfig = LENGTH_CONFIG[config.targetLength];
   const styleConfig = STYLE_CONFIG[config.writingStyle ?? "casual"];
+  const platformStyleConfig = config.platformStyle
+    ? PLATFORM_STYLE_CONFIG[config.platformStyle]
+    : null;
 
   const parts: string[] = [];
 
@@ -160,7 +205,20 @@ export function buildContentUserPrompt(
 ### 要求
 - 目标长度: ${lengthConfig.wordRange}
 - 展开程度: ${lengthConfig.sectionDepth}
-- 写作风格: ${styleConfig.name} - ${styleConfig.hint}`);
+- 写作风格: ${styleConfig.name} - ${styleConfig.hint}${platformStyleConfig ? `\n- 平台风格: ${platformStyleConfig.label}` : ""}
+
+### 字数要求（重要）
+${WORD_LIMIT_INSTRUCTIONS[config.targetLength]}`);
+
+  // Phase 3.1: 平台风格指令
+  if (
+    config.platformStyle &&
+    PLATFORM_STYLE_INSTRUCTIONS[config.platformStyle]
+  ) {
+    parts.push(`\n## 平台风格（必须遵循）
+
+${PLATFORM_STYLE_INSTRUCTIONS[config.platformStyle]}`);
+  }
 
   // 大纲结构
   parts.push(`\n## 大纲结构（必须严格遵循）
