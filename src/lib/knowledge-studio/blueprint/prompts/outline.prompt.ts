@@ -166,8 +166,9 @@ function formatMaterials(materials: MaterialInput[]): string {
 
   return materials
     .map((m, i) => {
+      // 限制每条素材内容长度，减少 Prompt 大小以加快 API 响应速度
       const content =
-        m.content.length > 2000 ? m.content.slice(0, 2000) + "..." : m.content;
+        m.content.length > 1200 ? m.content.slice(0, 1200) + "..." : m.content;
       return `### 素材 ${i + 1}: ${m.title}
 
 来源: ${m.url}

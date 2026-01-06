@@ -122,9 +122,11 @@ export class KnowledgeExtractor {
   private readonly openai;
   private readonly model: string;
 
-  constructor(apiKey?: string, model: string = "gpt-4o-mini") {
+  constructor(apiKey?: string, model: string = "qwen-turbo") {
+    // 使用阿里云百炼 (DashScope) 替代 OpenAI
     this.openai = createOpenAI({
-      apiKey: apiKey || process.env.OPENAI_API_KEY,
+      apiKey: apiKey || process.env.DASHSCOPE_API_KEY,
+      baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1",
     });
     this.model = model;
   }
@@ -266,7 +268,8 @@ export class KnowledgeExtractor {
     const prompt = TOPIC_IDENTIFICATION_PROMPT.replace("{articles}", articles);
 
     const { text } = await generateText({
-      model: this.openai(this.model),
+      // 使用 .chat() 强制使用 Chat Completions API
+      model: this.openai.chat(this.model),
       prompt,
       maxOutputTokens: 50,
     });
@@ -303,7 +306,8 @@ ${c.content || c.summary || "（内容不可用）"}
       .replace("{maxPoints}", String(maxPoints));
 
     const { text } = await generateText({
-      model: this.openai(this.model),
+      // 使用 .chat() 强制使用 Chat Completions API
+      model: this.openai.chat(this.model),
       prompt,
       maxOutputTokens: 2000,
     });
@@ -365,7 +369,8 @@ ${c.content || c.summary || "（内容不可用）"}
     );
 
     const { text } = await generateText({
-      model: this.openai(this.model),
+      // 使用 .chat() 强制使用 Chat Completions API
+      model: this.openai.chat(this.model),
       prompt,
       maxOutputTokens: 1500,
     });
@@ -407,7 +412,8 @@ ${c.content || c.summary || "（内容不可用）"}
       .replace("{concepts}", conceptsStr || "（无概念提取）");
 
     const { text } = await generateText({
-      model: this.openai(this.model),
+      // 使用 .chat() 强制使用 Chat Completions API
+      model: this.openai.chat(this.model),
       prompt,
       maxOutputTokens: 300,
     });
@@ -430,7 +436,8 @@ ${c.content || c.summary || "（内容不可用）"}
     );
 
     const { text } = await generateText({
-      model: this.openai(this.model),
+      // 使用 .chat() 强制使用 Chat Completions API
+      model: this.openai.chat(this.model),
       prompt,
       maxOutputTokens: 500,
     });

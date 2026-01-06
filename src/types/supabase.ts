@@ -2887,6 +2887,30 @@ export type Database = {
         };
         Relationships: [];
       };
+      ks_blueprint_popularity: {
+        Row: {
+          blueprint_id: string;
+          daily_uses: number;
+          total_uses: number;
+          updated_at: string;
+          weekly_uses: number;
+        };
+        Insert: {
+          blueprint_id: string;
+          daily_uses?: number;
+          total_uses?: number;
+          updated_at?: string;
+          weekly_uses?: number;
+        };
+        Update: {
+          blueprint_id?: string;
+          daily_uses?: number;
+          total_uses?: number;
+          updated_at?: string;
+          weekly_uses?: number;
+        };
+        Relationships: [];
+      };
       ks_consumption_records: {
         Row: {
           amount: number;
@@ -3669,6 +3693,48 @@ export type Database = {
           resource_id?: string | null;
           unit?: string;
           usage_type?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
+      ks_usage_stats: {
+        Row: {
+          blueprint_id: string;
+          cancel_count: number;
+          created_at: string;
+          id: string;
+          last_used_at: string | null;
+          preferred_length_mode: string | null;
+          preferred_platform_style: string | null;
+          success_count: number;
+          updated_at: string;
+          use_count: number;
+          user_id: string;
+        };
+        Insert: {
+          blueprint_id: string;
+          cancel_count?: number;
+          created_at?: string;
+          id?: string;
+          last_used_at?: string | null;
+          preferred_length_mode?: string | null;
+          preferred_platform_style?: string | null;
+          success_count?: number;
+          updated_at?: string;
+          use_count?: number;
+          user_id: string;
+        };
+        Update: {
+          blueprint_id?: string;
+          cancel_count?: number;
+          created_at?: string;
+          id?: string;
+          last_used_at?: string | null;
+          preferred_length_mode?: string | null;
+          preferred_platform_style?: string | null;
+          success_count?: number;
+          updated_at?: string;
+          use_count?: number;
           user_id?: string;
         };
         Relationships: [];
@@ -7445,6 +7511,19 @@ export type Database = {
       };
       get_ai_folder_settings: { Args: { p_user_id: string }; Returns: Json };
       get_ai_global_insight: { Args: { p_user_id: string }; Returns: Json };
+      get_blueprint_recommendations: {
+        Args: {
+          p_limit?: number;
+          p_user_id: string;
+        };
+        Returns: {
+          blueprint_id: string;
+          last_used_at: string | null;
+          recommendation_type: string;
+          score: number;
+          use_count: number;
+        }[];
+      };
       get_bookmark_links: {
         Args: {
           p_bookmark_id: number;
@@ -8186,6 +8265,16 @@ export type Database = {
         };
         Returns: undefined;
       };
+      record_blueprint_usage: {
+        Args: {
+          p_blueprint_id: string;
+          p_length_mode?: string;
+          p_platform_style?: string;
+          p_success?: boolean;
+          p_user_id: string;
+        };
+        Returns: undefined;
+      };
       record_classification_metrics: {
         Args: {
           p_action?: string;
@@ -8263,6 +8352,14 @@ export type Database = {
       reset_stuck_md_collections: {
         Args: { p_stuck_threshold_minutes?: number; p_user_id: string };
         Returns: Json;
+      };
+      reset_ks_daily_counts: {
+        Args: Record<string, never>;
+        Returns: undefined;
+      };
+      reset_ks_weekly_counts: {
+        Args: Record<string, never>;
+        Returns: undefined;
       };
       revert_ai_operation_snapshot: {
         Args: { p_snapshot_id: string; p_user_id: string };

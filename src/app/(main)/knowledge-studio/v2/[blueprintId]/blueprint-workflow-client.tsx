@@ -16,6 +16,8 @@ import {
   Loader2,
   FileText,
   Clock,
+  Scissors,
+  MessageSquare,
 } from "lucide-react";
 import {
   SSE_REQUEST_TIMEOUT_MS,
@@ -38,6 +40,8 @@ import {
   StructuredOutputViewer,
   GenerationEstimatePanel,
   PlatformStyleSelector,
+  FeedbackDialog,
+  DraftVersionPanel,
   type BlueprintListItem,
   type OutputType,
 } from "@/components/knowledge-studio/v2";
@@ -48,6 +52,12 @@ import type {
   MaterialInput,
 } from "@/lib/knowledge-studio/blueprint/types";
 import type { PlatformStyle } from "@/lib/knowledge-studio/v2/constants";
+import {
+  DraftVersionManager,
+  type DraftFeedback,
+  type DraftVersion,
+} from "@/lib/knowledge-studio/iteration";
+import { useSoundEffect } from "@/hooks/use-sound-effect";
 
 // ============================================================
 // Zod Schema for sessionStorage Validation (P1 #5)
@@ -78,6 +88,7 @@ const CACHE_KEYS = {
   REPORT_ID: "ks-v2-report-id",
   CURRENT_STEP: "ks-v2-current-step",
   BRIEFING_CONTEXT: "ks-v2-briefing-context",
+  PLATFORM_STYLE: "ks-v2-platform-style",
 } as const;
 
 /**
@@ -171,6 +182,7 @@ export function BlueprintWorkflowClient({
   blueprintId,
 }: BlueprintWorkflowClientProps) {
   const router = useRouter();
+  const { playSuccess, playError } = useSoundEffect();
 
   // State
   const [blueprint, setBlueprint] = useState<BlueprintListItem | null>(null);
@@ -196,8 +208,26 @@ export function BlueprintWorkflowClient({
   const [generationStartTime, setGenerationStartTime] = useState<number | null>(
     null,
   );
-  /** Phase 3.1: 平台风格 */
-  const [platformStyle, setPlatformStyle] = useState<PlatformStyle>("general");
+  /** Phase 3.1: 平台风格（支持缓存恢复） */
+  const [platformStyle, setPlatformStyle] = useState<PlatformStyle>(() => {
+    const cached = loadFromCache<PlatformStyle>(CACHE_KEYS.PLATFORM_STYLE);
+    return cached ?? "general";
+  });
+
+  /** Phase 3.2: 精简功能状态 */
+  const [isCondensing, setIsCondensing] = useState(false);
+  const [condensedContent, setCondensedContent] = useState<string>("");
+  const [condenseProgress, setCondenseProgress] = useState(0);
+  const condenseAbortRef = useRef<AbortController | null>(null);
+
+  /** Phase 4: 草稿迭代与反馈驱动优化 */
+  const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false);
+  const [isIterating, setIsIterating] = useState(false);
+  const [iterationProgress, setIterationProgress] = useState(0);
+  const [draftVersions, setDraftVersions] = useState<DraftVersion[]>([]);
+  const [currentVersionIndex, setCurrentVersionIndex] = useState(0);
+  const draftVersionManagerRef = useRef<DraftVersionManager | null>(null);
+  const iterateAbortRef = useRef<AbortController | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -207,6 +237,16 @@ export function BlueprintWorkflowClient({
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
         abortControllerRef.current = null;
+      }
+      // Phase 3.2: 清理精简请求
+      if (condenseAbortRef.current) {
+        condenseAbortRef.current.abort();
+        condenseAbortRef.current = null;
+      }
+      // Phase 4: 清理迭代请求
+      if (iterateAbortRef.current) {
+        iterateAbortRef.current.abort();
+        iterateAbortRef.current = null;
       }
     };
   }, []);
@@ -583,6 +623,24 @@ export function BlueprintWorkflowClient({
                   saveToCache(CACHE_KEYS.CONTENT, contentBuffer);
                   saveToCache(CACHE_KEYS.REPORT_ID, data.data.reportId);
                   saveToCache(CACHE_KEYS.CURRENT_STEP, "result");
+
+                  // Phase 2: 记录成功使用统计
+                  fetch("/api/knowledge-studio/v2/usage/record", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      blueprintId,
+                      success: true,
+                      platformStyle,
+                      lengthMode: "medium",
+                    }),
+                  }).catch(() => {
+                    // Silently ignore usage tracking errors
+                  });
+
+                  // Phase 5: 播放生成完成音效
+                  playSuccess();
+
                   // 取消读取以跳出外层 while 循环
                   await reader.cancel();
                   break;
@@ -601,6 +659,23 @@ export function BlueprintWorkflowClient({
           throw new Error("内容生成未完成，请重试");
         }
       } catch (err) {
+        // Phase 2: 记录失败使用统计
+        fetch("/api/knowledge-studio/v2/usage/record", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            blueprintId,
+            success: false,
+            platformStyle,
+            lengthMode: "medium",
+          }),
+        }).catch(() => {
+          // Silently ignore usage tracking errors
+        });
+
+        // Phase 5: 播放错误音效
+        playError();
+
         if (err instanceof Error) {
           if (err.name === "AbortError") {
             setError("请求超时，请检查网络连接后重试");
@@ -610,7 +685,7 @@ export function BlueprintWorkflowClient({
         }
       }
     },
-    [blueprintId, materials, platformStyle],
+    [blueprintId, materials, platformStyle, playSuccess, playError],
   );
 
   /**
@@ -660,6 +735,316 @@ export function BlueprintWorkflowClient({
     },
     [briefingContext, startGeneration],
   );
+
+  /**
+   * Handle platform style change with cache persistence
+   */
+  const handlePlatformStyleChange = useCallback((style: PlatformStyle) => {
+    setPlatformStyle(style);
+    saveToCache(CACHE_KEYS.PLATFORM_STYLE, style);
+  }, []);
+
+  /**
+   * Handle cancel generation
+   */
+  const handleCancelGeneration = useCallback(async () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setCurrentStep("outline");
+    setProgress({ step: "", percent: 0 });
+    setGeneratedContent("");
+    setGenerationStartTime(null);
+
+    // Record cancelled usage for analytics
+    try {
+      await fetch("/api/knowledge-studio/v2/usage/record", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          blueprintId,
+          success: false,
+          platformStyle,
+          lengthMode: "medium",
+        }),
+      });
+    } catch {
+      // Silently ignore usage tracking errors
+    }
+  }, [blueprintId, platformStyle]);
+
+  /**
+   * Phase 3.2: Handle content condensation
+   * 一键精简内容到目标字数
+   */
+  const handleCondense = useCallback(
+    async (targetWords: number = 1500) => {
+      // 获取需要精简的内容
+      const contentToCondense = generatedContent || "";
+      if (!contentToCondense) {
+        return;
+      }
+
+      // 防止重复请求
+      if (condenseAbortRef.current) {
+        condenseAbortRef.current.abort();
+      }
+
+      setIsCondensing(true);
+      setCondenseProgress(0);
+      setCondensedContent("");
+
+      try {
+        condenseAbortRef.current = new AbortController();
+
+        const response = await fetch("/api/knowledge-studio/v2/condense", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            content: contentToCondense,
+            targetWords,
+            contentType: "article",
+          }),
+          signal: condenseAbortRef.current.signal,
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(
+            errorData.error?.message || `精简失败 (${response.status})`,
+          );
+        }
+
+        // 检查是否返回非流式响应（内容已在目标范围内）
+        const contentType = response.headers.get("Content-Type") || "";
+        if (contentType.includes("application/json")) {
+          const data = await response.json();
+          if (data.condensedContent) {
+            setCondensedContent(data.condensedContent);
+            setCondenseProgress(100);
+          }
+          return;
+        }
+
+        // 流式响应处理
+        const reader = response.body?.getReader();
+        if (!reader) throw new Error("No response body");
+
+        const decoder = new TextDecoder();
+        let contentBuffer = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const text = decoder.decode(value);
+          const lines = text.split("\n");
+
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              try {
+                const data = JSON.parse(line.slice(6));
+
+                switch (data.type) {
+                  case "progress":
+                    setCondenseProgress(data.percent || 0);
+                    break;
+
+                  case "content":
+                    contentBuffer += data.text || "";
+                    setCondensedContent(contentBuffer);
+                    break;
+
+                  case "done":
+                    setCondenseProgress(100);
+                    await reader.cancel();
+                    break;
+
+                  case "error":
+                    await reader.cancel();
+                    throw new Error(data.message || "精简失败");
+                }
+              } catch (parseError) {
+                // 跳过解析错误的行
+                if (process.env.NODE_ENV === "development") {
+                  // eslint-disable-next-line no-console
+                  console.debug("[Condense SSE Parse Error]", line, parseError);
+                }
+              }
+            }
+          }
+        }
+      } catch (err) {
+        if (err instanceof Error && err.name !== "AbortError") {
+          setError(err.message);
+        }
+      } finally {
+        setIsCondensing(false);
+      }
+    },
+    [generatedContent],
+  );
+
+  /**
+   * Phase 4: Initialize draft version manager when content is generated
+   */
+  useEffect(() => {
+    if (generatedContent && reportId && !draftVersionManagerRef.current) {
+      draftVersionManagerRef.current = new DraftVersionManager({
+        sessionId: reportId,
+      });
+      // Save initial version
+      const initialVersion = draftVersionManagerRef.current.saveVersion(
+        generatedContent,
+        "initial",
+        "首次生成",
+      );
+      setDraftVersions([initialVersion]);
+      setCurrentVersionIndex(0);
+    }
+  }, [generatedContent, reportId]);
+
+  /**
+   * Phase 4: Handle feedback submission and start iteration
+   */
+  const handleFeedbackSubmit = useCallback(
+    async (feedback: DraftFeedback) => {
+      const contentToIterate = generatedContent || "";
+      if (!contentToIterate || !blueprintId) {
+        return;
+      }
+
+      // Abort previous iteration if any
+      if (iterateAbortRef.current) {
+        iterateAbortRef.current.abort();
+      }
+
+      setIsIterating(true);
+      setIterationProgress(0);
+      setIsFeedbackDialogOpen(false);
+
+      // Add feedback to current version
+      if (draftVersionManagerRef.current) {
+        draftVersionManagerRef.current.addFeedbackToCurrentVersion(feedback);
+        setDraftVersions(draftVersionManagerRef.current.getVersionHistory());
+      }
+
+      try {
+        iterateAbortRef.current = new AbortController();
+
+        const response = await fetch("/api/knowledge-studio/v2/iterate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            originalContent: contentToIterate,
+            feedback,
+            blueprintId,
+            platformStyle,
+            outlineJson: outline ? JSON.stringify(outline) : undefined,
+          }),
+          signal: iterateAbortRef.current.signal,
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(
+            errorData.error?.message || `迭代失败 (${response.status})`,
+          );
+        }
+
+        // Handle SSE stream
+        const reader = response.body?.getReader();
+        if (!reader) throw new Error("No response body");
+
+        const decoder = new TextDecoder();
+        let iteratedContent = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const text = decoder.decode(value);
+          const lines = text.split("\n");
+
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              try {
+                const data = JSON.parse(line.slice(6));
+
+                switch (data.type) {
+                  case "progress":
+                    setIterationProgress(data.data?.percent || 0);
+                    break;
+
+                  case "content":
+                    iteratedContent += data.data?.text || "";
+                    break;
+
+                  case "done":
+                    setIterationProgress(100);
+                    // Update generated content
+                    setGeneratedContent(iteratedContent);
+                    // Save new version
+                    if (draftVersionManagerRef.current) {
+                      draftVersionManagerRef.current.saveVersion(
+                        iteratedContent,
+                        "iteration",
+                        `基于反馈优化`,
+                        feedback,
+                      );
+                      setDraftVersions(
+                        draftVersionManagerRef.current.getVersionHistory(),
+                      );
+                      setCurrentVersionIndex(0);
+                    }
+                    // Clear condensed content
+                    setCondensedContent("");
+                    await reader.cancel();
+                    break;
+
+                  case "error":
+                    await reader.cancel();
+                    throw new Error(data.data?.message || "迭代失败");
+                }
+              } catch (parseError) {
+                if (process.env.NODE_ENV === "development") {
+                  // eslint-disable-next-line no-console
+                  console.debug("[Iterate SSE Parse Error]", line, parseError);
+                }
+              }
+            }
+          }
+        }
+      } catch (err) {
+        if (err instanceof Error && err.name !== "AbortError") {
+          setError(err.message);
+        }
+      } finally {
+        setIsIterating(false);
+      }
+    },
+    [generatedContent, blueprintId, platformStyle, outline],
+  );
+
+  /**
+   * Phase 4: Handle restoring a previous version
+   */
+  const handleRestoreVersion = useCallback((versionId: string) => {
+    if (!draftVersionManagerRef.current) return;
+
+    const restoredContent =
+      draftVersionManagerRef.current.restoreVersion(versionId);
+    if (restoredContent) {
+      setGeneratedContent(restoredContent);
+      setCondensedContent("");
+      // Update version list to reflect current index change
+      const history = draftVersionManagerRef.current.getVersionHistory();
+      const newIndex = history.findIndex((v) => v.id === versionId);
+      setDraftVersions(history);
+      setCurrentVersionIndex(newIndex >= 0 ? newIndex : 0);
+    }
+  }, []);
 
   /**
    * Handle back button
@@ -788,10 +1173,10 @@ export function BlueprintWorkflowClient({
                 onRegenerate={() => generateOutline(briefingContext)}
                 isRegenerating={isRegenerating}
               />
-              {/* Phase 3.1: 平台风格选择器 */}
+              {/* Phase 3.1: 平台风格选择器（支持缓存） */}
               <PlatformStyleSelector
                 value={platformStyle}
-                onChange={setPlatformStyle}
+                onChange={handlePlatformStyleChange}
               />
               {/* Phase 2.1: 生成预估面板 */}
               <GenerationEstimatePanel
@@ -819,11 +1204,25 @@ export function BlueprintWorkflowClient({
       {currentStep === "generating" && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 animate-pulse" />
-              正在生成内容
-            </CardTitle>
-            <CardDescription>{progress.message || "请稍候..."}</CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 animate-pulse" />
+                  正在生成内容
+                </CardTitle>
+                <CardDescription>
+                  {progress.message || "请稍候..."}
+                </CardDescription>
+              </div>
+              {/* Phase 2: 取消按钮 */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCancelGeneration}
+              >
+                取消生成
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
             <Progress value={progress.percent} className="h-2" />
@@ -881,6 +1280,106 @@ export function BlueprintWorkflowClient({
             </AlertDescription>
           </Alert>
 
+          {/* Phase 3.2: 精简操作栏 */}
+          {generatedContent && !condensedContent && (
+            <Card>
+              <CardContent className="py-4">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm text-muted-foreground">
+                    当前内容约 {generatedContent.length.toLocaleString()} 字
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleCondense(800)}
+                      disabled={isCondensing}
+                    >
+                      <Scissors className="mr-1.5 h-4 w-4" />
+                      精简到 800 字
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleCondense(1500)}
+                      disabled={isCondensing}
+                    >
+                      <Scissors className="mr-1.5 h-4 w-4" />
+                      精简到 1500 字
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleCondense(2000)}
+                      disabled={isCondensing}
+                    >
+                      <Scissors className="mr-1.5 h-4 w-4" />
+                      精简到 2000 字
+                    </Button>
+                    {/* Phase 4: 反馈优化按钮 */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsFeedbackDialogOpen(true)}
+                      disabled={isCondensing || isIterating}
+                    >
+                      <MessageSquare className="mr-1.5 h-4 w-4" />
+                      反馈优化
+                    </Button>
+                  </div>
+                </div>
+                {isCondensing && (
+                  <div className="mt-4 space-y-2">
+                    <Progress value={condenseProgress} className="h-2" />
+                    <div className="text-sm text-muted-foreground text-center">
+                      正在精简内容... {condenseProgress}%
+                    </div>
+                  </div>
+                )}
+                {/* Phase 4: 迭代进度条 */}
+                {isIterating && (
+                  <div className="mt-4 space-y-2">
+                    <Progress value={iterationProgress} className="h-2" />
+                    <div className="text-sm text-muted-foreground text-center">
+                      正在优化内容... {iterationProgress}%
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Phase 3.2: 精简后内容展示 */}
+          {condensedContent && (
+            <Card className="border-primary/50">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <Scissors className="h-5 w-5 text-primary" />
+                    精简版内容
+                  </CardTitle>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary">
+                      {condensedContent.length.toLocaleString()} 字
+                    </Badge>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setCondensedContent("")}
+                    >
+                      查看原文
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="prose prose-sm dark:prose-invert max-w-none">
+                  <pre className="whitespace-pre-wrap">{condensedContent}</pre>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {structuredOutput ? (
             <StructuredOutputViewer
               type={getOutputType()}
@@ -903,6 +1402,22 @@ export function BlueprintWorkflowClient({
             </Card>
           ) : null}
 
+          {/* Phase 4: 版本历史面板 */}
+          {draftVersions.length > 0 && (
+            <Card>
+              <CardContent className="pt-4">
+                <DraftVersionPanel
+                  versions={draftVersions}
+                  currentIndex={currentVersionIndex}
+                  onRestore={handleRestoreVersion}
+                  isRestoring={false}
+                  collapsible={true}
+                  defaultOpen={false}
+                />
+              </CardContent>
+            </Card>
+          )}
+
           <div className="flex justify-between">
             <Button variant="outline" onClick={handleBack}>
               返回知识工坊
@@ -913,6 +1428,15 @@ export function BlueprintWorkflowClient({
           </div>
         </div>
       )}
+
+      {/* Phase 4: 反馈对话框 */}
+      <FeedbackDialog
+        open={isFeedbackDialogOpen}
+        onOpenChange={setIsFeedbackDialogOpen}
+        onSubmit={handleFeedbackSubmit}
+        isSubmitting={isIterating}
+        wordCount={generatedContent?.length}
+      />
     </div>
   );
 }

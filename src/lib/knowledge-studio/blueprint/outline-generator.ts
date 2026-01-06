@@ -317,7 +317,7 @@ export async function generateOutline(
   briefingContext?: BriefingContext,
 ): Promise<OutlineGenerationResult> {
   const startTime = performance.now();
-  const timeoutMs = options.timeoutMs ?? 60000; // 默认 60 秒超时（复杂大纲需要更长时间）
+  const timeoutMs = options.timeoutMs ?? 120000; // 默认 120 秒超时（大 Prompt 需要更长时间）
 
   logger.info(
     {
@@ -401,11 +401,15 @@ export async function generateOutline(
       );
 
       // 调用模型
+      // 使用 messages 数组替代 system/prompt 参数
+      // 避免 AI SDK 5.0 将 system 转换为 "developer" 角色（DashScope 不支持）
       const result = await generateText({
         model,
-        system: prompt.system,
-        prompt: prompt.user,
-        maxOutputTokens: 2048,
+        messages: [
+          { role: "system", content: prompt.system },
+          { role: "user", content: prompt.user },
+        ],
+        maxOutputTokens: 4096, // 从 2048 增加到 4096，避免大纲 JSON 被截断
         temperature: 0.7,
         abortSignal: controller.signal,
       });

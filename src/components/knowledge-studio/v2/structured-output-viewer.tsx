@@ -25,7 +25,11 @@ import {
   List,
   Table2,
   Grid3X3,
+  Copy,
+  CheckCheck,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -208,6 +212,76 @@ function isChecklistData(data: unknown): data is ChecklistData {
 }
 
 // ============================================================
+// Copy Button Component
+// ============================================================
+
+interface CopyButtonProps {
+  text: string;
+  label?: string;
+  variant?: "icon" | "button";
+  className?: string;
+}
+
+function CopyButton({
+  text,
+  label = "复制",
+  variant = "icon",
+  className,
+}: CopyButtonProps) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      toast.success("已复制到剪贴板");
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("复制失败");
+    }
+  };
+
+  if (variant === "icon") {
+    return (
+      <Button
+        variant="ghost"
+        size="icon"
+        className={cn("h-7 w-7", className)}
+        onClick={handleCopy}
+        title={label}
+      >
+        {copied ? (
+          <CheckCheck className="h-3.5 w-3.5 text-green-500" />
+        ) : (
+          <Copy className="h-3.5 w-3.5" />
+        )}
+      </Button>
+    );
+  }
+
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      className={className}
+      onClick={handleCopy}
+    >
+      {copied ? (
+        <>
+          <CheckCheck className="h-3.5 w-3.5 mr-1.5 text-green-500" />
+          已复制
+        </>
+      ) : (
+        <>
+          <Copy className="h-3.5 w-3.5 mr-1.5" />
+          {label}
+        </>
+      )}
+    </Button>
+  );
+}
+
+// ============================================================
 // Sub-Components
 // ============================================================
 
@@ -383,6 +457,18 @@ function SectionsRenderer({ data }: { data: SectionsData }) {
     );
   };
 
+  /** 生成章节的完整文本内容（用于复制） */
+  const getSectionText = (section: SectionsData["sections"][0]) => {
+    let text = `## ${section.title}\n\n${section.content}`;
+    if (section.subsections && section.subsections.length > 0) {
+      text += "\n\n";
+      text += section.subsections
+        .map((sub) => `### ${sub.title}\n\n${sub.content}`)
+        .join("\n\n");
+    }
+    return text;
+  };
+
   return (
     <div className="space-y-2">
       {data.sections.map((section) => (
@@ -392,18 +478,22 @@ function SectionsRenderer({ data }: { data: SectionsData }) {
           onOpenChange={() => toggleSection(section.id)}
         >
           <Card>
-            <CollapsibleTrigger asChild>
-              <CardHeader className="cursor-pointer hover:bg-accent/50 transition-colors py-3">
-                <div className="flex items-center gap-2">
-                  {openSections.includes(section.id) ? (
-                    <ChevronDown className="h-4 w-4" />
-                  ) : (
-                    <ChevronRight className="h-4 w-4" />
-                  )}
-                  <CardTitle className="text-base">{section.title}</CardTitle>
-                </div>
-              </CardHeader>
-            </CollapsibleTrigger>
+            <CardHeader className="py-3">
+              <div className="flex items-center gap-2">
+                <CollapsibleTrigger asChild>
+                  <div className="flex items-center gap-2 flex-1 cursor-pointer hover:text-primary transition-colors">
+                    {openSections.includes(section.id) ? (
+                      <ChevronDown className="h-4 w-4" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4" />
+                    )}
+                    <CardTitle className="text-base">{section.title}</CardTitle>
+                  </div>
+                </CollapsibleTrigger>
+                {/* Phase 2: 分段复制按钮 */}
+                <CopyButton text={getSectionText(section)} label="复制本章节" />
+              </div>
+            </CardHeader>
             <CollapsibleContent>
               <CardContent className="pt-0">
                 <div className="prose prose-sm dark:prose-invert max-w-none">
@@ -414,10 +504,16 @@ function SectionsRenderer({ data }: { data: SectionsData }) {
                 {section.subsections && section.subsections.length > 0 && (
                   <div className="mt-4 space-y-3 pl-4 border-l-2">
                     {section.subsections.map((sub) => (
-                      <div key={sub.id}>
-                        <h4 className="font-medium text-sm mb-1">
-                          {sub.title}
-                        </h4>
+                      <div key={sub.id} className="relative group">
+                        <div className="flex items-center justify-between mb-1">
+                          <h4 className="font-medium text-sm">{sub.title}</h4>
+                          {/* Phase 2: 子章节复制按钮 */}
+                          <CopyButton
+                            text={`### ${sub.title}\n\n${sub.content}`}
+                            label="复制子章节"
+                            className="opacity-0 group-hover:opacity-100 transition-opacity"
+                          />
+                        </div>
                         <div className="prose prose-sm dark:prose-invert max-w-none">
                           <ReactMarkdown remarkPlugins={[remarkGfm]}>
                             {sub.content}
@@ -573,6 +669,80 @@ const TYPE_LABELS: Record<OutputType, string> = {
 // Main Component
 // ============================================================
 
+/** 将数据转换为可复制的文本格式 */
+function dataToText(type: OutputType, data: unknown): string {
+  switch (type) {
+    case "sections":
+      if (isSectionsData(data)) {
+        return data.sections
+          .map((section) => {
+            let text = `## ${section.title}\n\n${section.content}`;
+            if (section.subsections && section.subsections.length > 0) {
+              text += "\n\n";
+              text += section.subsections
+                .map((sub) => `### ${sub.title}\n\n${sub.content}`)
+                .join("\n\n");
+            }
+            return text;
+          })
+          .join("\n\n---\n\n");
+      }
+      break;
+    case "swot":
+      if (isSwotData(data)) {
+        return [
+          "## SWOT 分析\n",
+          "### 优势 (Strengths)",
+          data.strengths.map((s) => `- ${s}`).join("\n"),
+          "\n### 劣势 (Weaknesses)",
+          data.weaknesses.map((s) => `- ${s}`).join("\n"),
+          "\n### 机会 (Opportunities)",
+          data.opportunities.map((s) => `- ${s}`).join("\n"),
+          "\n### 威胁 (Threats)",
+          data.threats.map((s) => `- ${s}`).join("\n"),
+        ].join("\n");
+      }
+      break;
+    case "checklist":
+      if (isChecklistData(data)) {
+        return data.items.map((item) => `- [ ] ${item.text}`).join("\n");
+      }
+      break;
+    case "script_timeline":
+      if (isScriptTimelineData(data)) {
+        return data.scenes
+          .map(
+            (scene, idx) =>
+              `## 场景 ${idx + 1}: ${scene.title}\n\n` +
+              `**时间**: ${scene.timestamp}${scene.duration ? ` (${scene.duration})` : ""}\n\n` +
+              `${scene.description}` +
+              (scene.visualNotes ? `\n\n**画面**: ${scene.visualNotes}` : "") +
+              (scene.audioNotes ? `\n\n**音效**: ${scene.audioNotes}` : ""),
+          )
+          .join("\n\n---\n\n");
+      }
+      break;
+    case "feature_matrix":
+      if (isFeatureMatrixData(data)) {
+        const header = `| 功能 | ${data.headers.join(" | ")} |`;
+        const separator = `| --- | ${data.headers.map(() => "---").join(" | ")} |`;
+        const rows = data.rows.map(
+          (row) =>
+            `| ${row.feature} | ${row.values.map((v) => (typeof v === "boolean" ? (v ? "✓" : "✗") : String(v))).join(" | ")} |`,
+        );
+        return [header, separator, ...rows].join("\n");
+      }
+      break;
+    case "markdown":
+      if (typeof data === "string") {
+        return data;
+      }
+      break;
+  }
+  // Default: JSON
+  return JSON.stringify(data, null, 2);
+}
+
 export function StructuredOutputViewer({
   type,
   data,
@@ -580,6 +750,9 @@ export function StructuredOutputViewer({
   maxHeight = "600px",
   className,
 }: StructuredOutputViewerProps) {
+  /** 获取可复制的完整文本 */
+  const fullText = useMemo(() => dataToText(type, data), [type, data]);
+
   const renderContent = () => {
     switch (type) {
       case "feature_matrix":
@@ -631,6 +804,8 @@ export function StructuredOutputViewer({
           <Badge variant="secondary" className="ml-auto">
             {TYPE_LABELS[type]}
           </Badge>
+          {/* Phase 2: 复制全部按钮 */}
+          <CopyButton text={fullText} label="复制全部" variant="button" />
         </div>
       </CardHeader>
       <CardContent>

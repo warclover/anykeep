@@ -8,7 +8,7 @@
  */
 
 import { generateObject } from "ai";
-import { openai } from "@ai-sdk/openai";
+import { createOpenAI } from "@ai-sdk/openai";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
 import type { AgentConversation, AgentMessage } from "../core/types";
@@ -83,7 +83,7 @@ export interface SummaryGeneratorConfig {
  * 默认配置
  */
 const DEFAULT_CONFIG: Required<SummaryGeneratorConfig> = {
-  model: "gpt-4o-mini", // 使用较便宜的模型
+  model: "qwen-turbo", // 阿里云百炼模型
   maxMessages: 20,
   maxTokens: 2000,
   enabled: true,
@@ -191,8 +191,14 @@ export class SummaryGenerator {
     }
 
     try {
+      // 使用阿里云百炼 (DashScope) 替代 OpenAI
+      // DashScope 使用 OpenAI 兼容 API，需要自定义 baseURL
+      const dashscopeProvider = createOpenAI({
+        apiKey: process.env.DASHSCOPE_API_KEY,
+        baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      });
       const result = await generateObject({
-        model: openai(this.config.model),
+        model: dashscopeProvider.chat(this.config.model),
         schema: summarySchema,
         system: SUMMARY_SYSTEM_PROMPT,
         prompt: `请分析以下对话并生成摘要：\n\n${conversationText}`,

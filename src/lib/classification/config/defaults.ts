@@ -72,8 +72,8 @@ export const THRESHOLDS_DEFAULTS = {
 export const AI_CONFIG_DEFAULTS = {
   /** 是否启用 AI */
   enabled: true,
-  /** 模型名称 */
-  model: "gpt-4o-mini",
+  /** 模型名称 - 阿里云百炼 */
+  model: "qwen-turbo",
   /** 最大 Token 数 */
   maxTokens: 500,
   /** 温度参数 */

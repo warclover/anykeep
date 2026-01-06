@@ -266,6 +266,16 @@ export async function POST(request: NextRequest) {
           // Get the final outline from the generator's return value
           outline = generatorResult.value;
 
+          logger.info(
+            {
+              requestId,
+              hasOutline: !!outline,
+              outlineType: typeof outline,
+              outlineKeys: outline ? Object.keys(outline) : [],
+            },
+            "Generator completed, checking outline",
+          );
+
           if (!outline) {
             // If outline not in context, try to get return value
             // This is a simplified flow - in production, we'd properly handle the generator return
@@ -324,17 +334,45 @@ export async function POST(request: NextRequest) {
             errorMessage.includes("timeout") ||
             errorMessage.includes("aborted");
 
-          sendEvent({
-            type: "error",
-            data: {
-              error: {
-                code: isTimeout ? "TIMEOUT_ERROR" : "STREAM_ERROR",
-                message: errorMessage || "大纲生成过程中发生错误",
-              },
+          // DEBUG: 确认错误事件正在发送
+          logger.info(
+            {
+              requestId,
+              isTimeout,
+              errorCode: isTimeout ? "TIMEOUT_ERROR" : "STREAM_ERROR",
+              willSendMessage: errorMessage || "大纲生成过程中发生错误",
             },
-            timestamp: new Date().toISOString(),
-            requestId,
-          });
+            "[SSE DEBUG] Sending error event to client",
+          );
+
+          try {
+            sendEvent({
+              type: "error",
+              data: {
+                error: {
+                  code: isTimeout ? "TIMEOUT_ERROR" : "STREAM_ERROR",
+                  message: errorMessage || "大纲生成过程中发生错误",
+                },
+              },
+              timestamp: new Date().toISOString(),
+              requestId,
+            });
+            logger.info(
+              { requestId },
+              "[SSE DEBUG] Error event sent successfully",
+            );
+          } catch (sendError) {
+            logger.error(
+              {
+                requestId,
+                sendError:
+                  sendError instanceof Error
+                    ? sendError.message
+                    : String(sendError),
+              },
+              "[SSE DEBUG] Failed to send error event!",
+            );
+          }
         } finally {
           clearInterval(heartbeatInterval);
           controller.close();

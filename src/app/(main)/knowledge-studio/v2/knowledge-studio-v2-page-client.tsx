@@ -20,10 +20,17 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import {
   BlueprintSelectorV2,
+  ScenarioQuickEntry,
+  BlueprintRecommendations,
+  MaterialRecommendations,
   type BlueprintListItem,
 } from "@/components/knowledge-studio/v2";
 import { MaterialSelector } from "@/components/knowledge-studio/material-selector";
 import { useBookmarks } from "@/hooks/queries/use-bookmarks";
+import {
+  MATERIAL_LIMITS,
+  MATERIAL_SELECTOR_TEXT,
+} from "@/lib/knowledge-studio/v2/constants";
 
 // ============================================================
 // Types
@@ -124,6 +131,21 @@ export function KnowledgeStudioV2PageClient() {
   const handleMaterialsChange = useCallback((selectedIds: string[]) => {
     setSelectedMaterialIds(selectedIds);
   }, []);
+
+  /**
+   * 处理从推荐中添加素材
+   */
+  const handleAddMaterial = useCallback(
+    (materialId: string) => {
+      if (
+        !selectedMaterialIds.includes(materialId) &&
+        selectedMaterialIds.length < MATERIAL_LIMITS.HARD_MAX
+      ) {
+        setSelectedMaterialIds((prev) => [...prev, materialId]);
+      }
+    },
+    [selectedMaterialIds],
+  );
 
   /**
    * 进入下一步
@@ -254,76 +276,109 @@ export function KnowledgeStudioV2PageClient() {
 
       {/* 主内容区 */}
       {step === "blueprint" && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5" />
-              选择蓝图
-            </CardTitle>
-            <CardDescription>
-              选择一个增强蓝图来定义生成内容的类型和格式
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <BlueprintSelectorV2
-              blueprints={blueprints}
-              value={selectedBlueprintId}
-              onChange={handleBlueprintSelect}
-              userTier={userTier}
-              onUpgradeClick={handleUpgrade}
-              isLoading={isLoading}
-            />
-          </CardContent>
-        </Card>
+        <div className="space-y-6">
+          {/* Phase 2: 场景快速入口 */}
+          <ScenarioQuickEntry onSelect={handleBlueprintSelect} />
+
+          {/* 蓝图选择区域（左侧推荐 + 右侧网格） */}
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            {/* 左侧推荐栏 */}
+            <div className="lg:col-span-1">
+              <BlueprintRecommendations
+                onSelect={handleBlueprintSelect}
+                selectedBlueprintId={selectedBlueprintId}
+              />
+            </div>
+
+            {/* 右侧蓝图网格 */}
+            <div className="lg:col-span-3">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Sparkles className="h-5 w-5" />
+                    选择蓝图
+                  </CardTitle>
+                  <CardDescription>
+                    选择一个增强蓝图来定义生成内容的类型和格式
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <BlueprintSelectorV2
+                    blueprints={blueprints}
+                    value={selectedBlueprintId}
+                    onChange={handleBlueprintSelect}
+                    userTier={userTier}
+                    onUpgradeClick={handleUpgrade}
+                    isLoading={isLoading}
+                  />
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
       )}
 
       {step === "materials" && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <BookOpen className="h-5 w-5" />
-                  选择素材
-                </CardTitle>
-                <CardDescription>
-                  选择用于生成内容的书签素材（2-10个）
-                </CardDescription>
-              </div>
-              {selectedBlueprint && (
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="text-2xl">{selectedBlueprint.icon}</span>
-                  <span className="font-medium">
-                    {selectedBlueprint.displayName}
-                  </span>
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* 左侧推荐栏 */}
+          <div className="lg:col-span-1 order-2 lg:order-1">
+            <MaterialRecommendations
+              selectedMaterialIds={selectedMaterialIds}
+              onAddMaterial={handleAddMaterial}
+              maxSelection={MATERIAL_LIMITS.HARD_MAX}
+            />
+          </div>
+
+          {/* 右侧素材选择 */}
+          <div className="lg:col-span-3 order-1 lg:order-2">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <BookOpen className="h-5 w-5" />
+                      选择素材
+                    </CardTitle>
+                    <CardDescription>
+                      {MATERIAL_SELECTOR_TEXT.LABEL}
+                    </CardDescription>
+                  </div>
+                  {selectedBlueprint && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="text-2xl">{selectedBlueprint.icon}</span>
+                      <span className="font-medium">
+                        {selectedBlueprint.displayName}
+                      </span>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent>
-            {isLoadingBookmarks ? (
-              <div className="py-12 text-center text-muted-foreground">
-                加载中...
-              </div>
-            ) : materials.length === 0 ? (
-              <div className="py-12 text-center">
-                <p className="text-muted-foreground mb-4">
-                  暂无收藏内容，请先添加一些收藏
-                </p>
-                <Button asChild variant="outline">
-                  <a href="/home">去添加收藏</a>
-                </Button>
-              </div>
-            ) : (
-              <MaterialSelector
-                materials={materials}
-                selected={selectedMaterialIds}
-                onChange={handleMaterialsChange}
-                maxSelection={10}
-              />
-            )}
-          </CardContent>
-        </Card>
+              </CardHeader>
+              <CardContent>
+                {isLoadingBookmarks ? (
+                  <div className="py-12 text-center text-muted-foreground">
+                    加载中...
+                  </div>
+                ) : materials.length === 0 ? (
+                  <div className="py-12 text-center">
+                    <p className="text-muted-foreground mb-4">
+                      暂无收藏内容，请先添加一些收藏
+                    </p>
+                    <Button asChild variant="outline">
+                      <a href="/home">去添加收藏</a>
+                    </Button>
+                  </div>
+                ) : (
+                  <MaterialSelector
+                    materials={materials}
+                    selected={selectedMaterialIds}
+                    onChange={handleMaterialsChange}
+                    maxSelection={MATERIAL_LIMITS.HARD_MAX}
+                  />
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       )}
 
       {/* 操作按钮 */}

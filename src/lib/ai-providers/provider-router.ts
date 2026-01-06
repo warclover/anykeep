@@ -46,7 +46,9 @@ const createAliyunBailian: ModelCreatorFn = (apiKey) => {
     apiKey,
     baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1",
   });
-  return (modelId: string) => provider(modelId);
+  // 使用 .chat() 强制使用 Chat Completions API
+  // DashScope 不支持 OpenAI Responses API (/v1/responses)
+  return (modelId: string) => provider.chat(modelId);
 };
 
 /**
@@ -55,10 +57,19 @@ const createAliyunBailian: ModelCreatorFn = (apiKey) => {
  *
  * null 表示该 provider 尚未实现或不适用
  */
+/**
+ * OpenAI 模型创建器
+ * 强制使用 Chat Completions API，避免 Responses API 兼容性问题
+ */
+const createOpenAIChat: ModelCreatorFn = (apiKey) => {
+  const provider = createOpenAI({ apiKey });
+  return (modelId: string) => provider.chat(modelId);
+};
+
 const MODEL_CREATORS: Partial<Record<ProviderName, ModelCreatorFn | null>> = {
   deepseek: (apiKey) => createDeepSeek({ apiKey }),
   "aliyun-bailian": createAliyunBailian,
-  openai: (apiKey) => createOpenAI({ apiKey }),
+  openai: createOpenAIChat,
   anthropic: (apiKey) => createAnthropic({ apiKey }),
   // TODO: 添加 Ollama 支持（本地模型）
   // ollama: () => createOllama({}),
@@ -74,6 +85,13 @@ const MODEL_CREATORS: Partial<Record<ProviderName, ModelCreatorFn | null>> = {
  * 默认 30 分钟，避免长时间持有可能过期的模型实例
  */
 const MODEL_CACHE_TTL_MS = 30 * 60 * 1000;
+
+/**
+ * 模型缓存版本
+ * 修改此值会使所有旧缓存失效
+ * v2: 2026-01-06 修复 DashScope .chat() 方法强制使用 Chat Completions API
+ */
+const MODEL_CACHE_VERSION = "v2";
 
 /**
  * 带 TTL 的缓存条目
@@ -320,7 +338,7 @@ export class AIProviderRouter {
     }
 
     const actualModelId = modelId || config.defaultModel;
-    const cacheKey = `${providerName}:${actualModelId}`;
+    const cacheKey = `${MODEL_CACHE_VERSION}:${providerName}:${actualModelId}`;
 
     // 检查缓存（带 TTL 验证）
     const cached = this.modelCache.get(cacheKey);

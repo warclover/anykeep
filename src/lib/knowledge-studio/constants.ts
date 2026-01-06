@@ -298,12 +298,12 @@ export const EXPORT_FORMATS = {
 export const MODEL_CONFIG = {
   /** 主力模型 */
   PRIMARY_MODEL: "deepseek-chat",
-  /** 备用模型 */
-  FALLBACK_MODEL: "gpt-4o-mini",
-  /** API 超时（毫秒） */
-  API_TIMEOUT_MS: 60000,
+  /** 备用模型 - 阿里云百炼 */
+  FALLBACK_MODEL: "qwen-turbo",
+  /** API 超时（毫秒）- 长内容生成需要更多时间 */
+  API_TIMEOUT_MS: 300000,
   /** 故障转移触发：连续超时次数 */
   FAILOVER_TIMEOUT_COUNT: 2,
   /** 故障转移触发：超时阈值（毫秒） */
-  FAILOVER_TIMEOUT_THRESHOLD_MS: 30000,
+  FAILOVER_TIMEOUT_THRESHOLD_MS: 60000,
 } as const;

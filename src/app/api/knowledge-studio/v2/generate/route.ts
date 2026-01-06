@@ -363,6 +363,7 @@ export async function POST(request: NextRequest) {
                       has_briefing: !!briefingContext,
                       has_outline: !!outline,
                       target_length: targetLength,
+                      platform_style: platformStyle ?? "general",
                     },
                   };
 

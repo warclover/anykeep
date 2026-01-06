@@ -23,3 +23,12 @@ export {
   PlatformStyleSelector,
   type PlatformStyleSelectorProps,
 } from "./platform-style-selector";
+// Phase 2: 智能引导系统组件
+export { ScenarioQuickEntry } from "./scenario-quick-entry";
+export { BlueprintRecommendations } from "./blueprint-recommendations";
+export { MaterialRecommendations } from "./material-recommendations";
+// Phase 4: 草稿迭代与反馈驱动优化
+export { FeedbackDialog } from "./feedback-dialog";
+export { DraftVersionPanel } from "./draft-version-panel";
+// Phase 6: 历史记录
+export { HistoryPageClient } from "./history-page-client";
