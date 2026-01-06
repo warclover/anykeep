@@ -44,8 +44,10 @@ export const RATE_LIMIT_CONFIGS: Record<string, RateLimitConfig> = {
   snapshots: { windowMs: 60_000, maxRequests: 60 },
   // 内容监控：每分钟 20 次
   monitors: { windowMs: 60_000, maxRequests: 20 },
-  // Knowledge Studio 生成：每分钟 5 次（AI 生成成本高）
-  knowledge_studio: { windowMs: 60_000, maxRequests: 5 },
+  // Knowledge Studio 读取操作：每分钟 60 次（列表、详情、简报表单等）
+  knowledge_studio_read: { windowMs: 60_000, maxRequests: 60 },
+  // Knowledge Studio 生成操作：每分钟 10 次（大纲、内容生成，成本较高）
+  knowledge_studio_generate: { windowMs: 60_000, maxRequests: 10 },
   // 高风险操作：每小时 2 次（账户删除、数据导出等不可逆操作）
   dangerous: { windowMs: 3600_000, maxRequests: 2 },
 };
@@ -205,9 +207,19 @@ export function getRateLimitConfig(pathname: string): RateLimitConfig {
     return RATE_LIMIT_CONFIGS.monitors;
   }
 
-  // Knowledge Studio 生成（成本高，严格限制）
+  // Knowledge Studio（区分读取和生成操作）
   if (pathname.includes("/knowledge-studio")) {
-    return RATE_LIMIT_CONFIGS.knowledge_studio;
+    // 生成操作（成本高，限制严格）
+    if (
+      pathname.includes("/outline") ||
+      pathname.includes("/generate") ||
+      pathname.includes("/v2/outline") ||
+      pathname.includes("/v2/generate")
+    ) {
+      return RATE_LIMIT_CONFIGS.knowledge_studio_generate;
+    }
+    // 读取操作（列表、详情、简报表单等）
+    return RATE_LIMIT_CONFIGS.knowledge_studio_read;
   }
 
   // 默认
@@ -270,7 +282,17 @@ function getConfigKey(pathname: string): string {
     return "search";
   if (pathname.includes("/snapshots")) return "snapshots";
   if (pathname.includes("/monitors")) return "monitors";
-  if (pathname.includes("/knowledge-studio")) return "knowledge_studio";
+  if (pathname.includes("/knowledge-studio")) {
+    if (
+      pathname.includes("/outline") ||
+      pathname.includes("/generate") ||
+      pathname.includes("/v2/outline") ||
+      pathname.includes("/v2/generate")
+    ) {
+      return "knowledge_studio_generate";
+    }
+    return "knowledge_studio_read";
+  }
   return "default";
 }
 
