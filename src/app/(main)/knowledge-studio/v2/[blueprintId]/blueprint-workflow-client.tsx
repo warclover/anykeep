@@ -196,39 +196,6 @@ export function BlueprintWorkflowClient({
   }, [blueprintId, router]);
 
   /**
-   * Handle briefing submission
-   */
-  const handleBriefingSubmit = useCallback(
-    (context: BriefingContext) => {
-      setBriefingContext(context);
-      if (blueprint?.supportsOutline) {
-        setCurrentStep("outline");
-        // Generate outline
-        generateOutline(context);
-      } else {
-        setCurrentStep("generating");
-        startGeneration(context);
-      }
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [blueprint],
-  );
-
-  /**
-   * Handle briefing skip
-   */
-  const handleBriefingSkip = useCallback(() => {
-    if (blueprint?.supportsOutline) {
-      setCurrentStep("outline");
-      generateOutline();
-    } else {
-      setCurrentStep("generating");
-      startGeneration();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [blueprint]);
-
-  /**
    * Generate outline
    */
   const generateOutline = useCallback(
@@ -271,6 +238,7 @@ export function BlueprintWorkflowClient({
 
         const decoder = new TextDecoder();
         let sseParseErrorCount = 0; // P2 #4: Track SSE parse errors
+        let receivedOutline = false; // 追踪是否收到大纲
 
         while (true) {
           const { done, value } = await reader.read();
@@ -281,34 +249,48 @@ export function BlueprintWorkflowClient({
 
           for (const line of lines) {
             if (line.startsWith("data: ")) {
+              // 分离 JSON 解析和事件处理，避免错误事件被静默吞没
+              let data;
               try {
-                const data = JSON.parse(line.slice(6));
-                if (data.type === "outline" && data.data.outline) {
-                  setOutline(data.data.outline);
-                } else if (data.type === "progress") {
-                  setProgress({
-                    step: data.data.step || "",
-                    percent: data.data.percent || 0,
-                    message: data.data.message,
-                  });
-                } else if (data.type === "error") {
-                  // Handle server-sent error events
-                  throw new Error(data.data.error?.message || "大纲生成错误");
-                }
+                data = JSON.parse(line.slice(6));
               } catch (parseError) {
-                // P2 #4: Count SSE parse errors and fail if threshold exceeded
+                // 仅捕获 JSON 解析错误
                 sseParseErrorCount++;
                 if (sseParseErrorCount >= SSE_PARSE_ERROR_THRESHOLD) {
                   throw new Error("数据流解析错误过多，请重试");
                 }
-                // Non-critical SSE parse errors - log only in development
                 if (process.env.NODE_ENV === "development") {
                   // eslint-disable-next-line no-console
                   console.debug("[SSE Parse Error]", line, parseError);
                 }
+                continue; // 跳过此行，尝试下一行
+              }
+
+              // 事件处理在 try-catch 外部，确保错误能正确传播
+              if (data.type === "outline" && data.data.outline) {
+                setOutline(data.data.outline);
+                receivedOutline = true;
+              } else if (data.type === "progress") {
+                setProgress({
+                  step: data.data.step || "",
+                  percent: data.data.percent || 0,
+                  message: data.data.message,
+                });
+              } else if (data.type === "error") {
+                // 服务端错误事件 - 立即中止并抛出
+                await reader.cancel();
+                throw new Error(data.data.error?.message || "大纲生成错误");
+              } else if (data.type === "done") {
+                // 显式完成信号
+                break;
               }
             }
           }
+        }
+
+        // 兜底检查：如果流正常结束但未收到大纲，说明生成失败
+        if (!receivedOutline) {
+          throw new Error("大纲生成失败，请重试");
         }
       } catch (err) {
         if (err instanceof Error) {
@@ -323,19 +305,6 @@ export function BlueprintWorkflowClient({
       }
     },
     [blueprintId, materials],
-  );
-
-  /**
-   * Handle outline confirmation
-   */
-  const handleOutlineConfirm = useCallback(
-    (confirmedOutline: BlueprintOutline) => {
-      setOutline(confirmedOutline);
-      setCurrentStep("generating");
-      startGeneration(briefingContext, confirmedOutline);
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [briefingContext],
   );
 
   /**
@@ -385,6 +354,7 @@ export function BlueprintWorkflowClient({
         const decoder = new TextDecoder();
         let contentBuffer = "";
         let sseParseErrorCount = 0; // P2 #4: Track SSE parse errors
+        let generationCompleted = false; // 追踪是否收到完成信号
 
         while (true) {
           const { done, value } = await reader.read();
@@ -395,49 +365,60 @@ export function BlueprintWorkflowClient({
 
           for (const line of lines) {
             if (line.startsWith("data: ")) {
+              // 分离 JSON 解析和事件处理，避免错误事件被静默吞没
+              let data;
               try {
-                const data = JSON.parse(line.slice(6));
-
-                switch (data.type) {
-                  case "progress":
-                    setProgress({
-                      step: data.data.step || "",
-                      percent: data.data.percent || 0,
-                      message: data.data.message,
-                    });
-                    break;
-
-                  case "content":
-                    contentBuffer += data.data.text || "";
-                    setGeneratedContent(contentBuffer);
-                    break;
-
-                  case "structured_output":
-                    setStructuredOutput(data.data.structuredOutput);
-                    break;
-
-                  case "done":
-                    setReportId(data.data.reportId);
-                    setCurrentStep("result");
-                    break;
-
-                  case "error":
-                    throw new Error(data.data.error?.message || "内容生成错误");
-                }
+                data = JSON.parse(line.slice(6));
               } catch (parseError) {
-                // P2 #4: Count SSE parse errors and fail if threshold exceeded
+                // 仅捕获 JSON 解析错误
                 sseParseErrorCount++;
                 if (sseParseErrorCount >= SSE_PARSE_ERROR_THRESHOLD) {
                   throw new Error("数据流解析错误过多，请重试");
                 }
-                // Non-critical SSE parse errors - log only in development
                 if (process.env.NODE_ENV === "development") {
                   // eslint-disable-next-line no-console
                   console.debug("[SSE Parse Error]", line, parseError);
                 }
+                continue; // 跳过此行，尝试下一行
+              }
+
+              // 事件处理在 try-catch 外部，确保错误能正确传播
+              switch (data.type) {
+                case "progress":
+                  setProgress({
+                    step: data.data.step || "",
+                    percent: data.data.percent || 0,
+                    message: data.data.message,
+                  });
+                  break;
+
+                case "content":
+                  contentBuffer += data.data.text || "";
+                  setGeneratedContent(contentBuffer);
+                  break;
+
+                case "structured_output":
+                  setStructuredOutput(data.data.structuredOutput);
+                  break;
+
+                case "done":
+                  setReportId(data.data.reportId);
+                  setCurrentStep("result");
+                  generationCompleted = true;
+                  break;
+
+                case "error":
+                  // 服务端错误事件 - 立即中止并抛出
+                  await reader.cancel();
+                  throw new Error(data.data.error?.message || "内容生成错误");
               }
             }
           }
+        }
+
+        // 兜底检查：如果流正常结束但未收到完成信号，说明生成失败
+        if (!generationCompleted) {
+          throw new Error("内容生成未完成，请重试");
         }
       } catch (err) {
         if (err instanceof Error) {
@@ -450,6 +431,49 @@ export function BlueprintWorkflowClient({
       }
     },
     [blueprintId, materials],
+  );
+
+  /**
+   * Handle briefing submission
+   */
+  const handleBriefingSubmit = useCallback(
+    (context: BriefingContext) => {
+      setBriefingContext(context);
+      if (blueprint?.supportsOutline) {
+        setCurrentStep("outline");
+        // Generate outline
+        generateOutline(context);
+      } else {
+        setCurrentStep("generating");
+        startGeneration(context);
+      }
+    },
+    [blueprint, generateOutline, startGeneration],
+  );
+
+  /**
+   * Handle briefing skip
+   */
+  const handleBriefingSkip = useCallback(() => {
+    if (blueprint?.supportsOutline) {
+      setCurrentStep("outline");
+      generateOutline();
+    } else {
+      setCurrentStep("generating");
+      startGeneration();
+    }
+  }, [blueprint, generateOutline, startGeneration]);
+
+  /**
+   * Handle outline confirmation
+   */
+  const handleOutlineConfirm = useCallback(
+    (confirmedOutline: BlueprintOutline) => {
+      setOutline(confirmedOutline);
+      setCurrentStep("generating");
+      startGeneration(briefingContext, confirmedOutline);
+    },
+    [briefingContext, startGeneration],
   );
 
   /**
