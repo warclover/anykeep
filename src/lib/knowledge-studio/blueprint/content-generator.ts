@@ -175,7 +175,7 @@ export async function* generateContentStream(
   briefingContext?: BriefingContext,
 ): AsyncGenerator<OrchestrationStreamChunk, ContentGenerationResult, unknown> {
   const startTime = performance.now();
-  const timeoutMs = options.timeoutMs ?? 120000; // 默认 2 分钟超时（内容生成较慢）
+  const timeoutMs = options.timeoutMs ?? 300000; // 默认 5 分钟超时（长内容生成需要更多时间）
 
   logger.info(
     {
@@ -242,6 +242,7 @@ export async function* generateContentStream(
 
   let lastError: Error | null = null;
   const attemptedProviders: string[] = [];
+  const rateLimitRetryAfters: number[] = []; // 记录所有 Provider 的 retryAfter 时间
 
   // 尝试每个可用的 Provider
   for (const providerConfig of availableProviders) {
@@ -316,21 +317,22 @@ export async function* generateContentStream(
 
       let fullContent = "";
       let chunkCount = 0;
-      const estimatedChunks = estimateTotalWords(options.outline) / 10; // 估算 chunk 数量
+      // 使用预估总字数计算进度（中文字符约等于字数，英文单词×2）
+      const estimatedChars = estimateTotalWords(options.outline) * 2; // 字数→字符数
+      let lastProgressPercent = 10;
 
       // 流式输出
       for await (const chunk of stream.textStream) {
         fullContent += chunk;
         chunkCount++;
 
-        // 计算进度（10% - 90%）
-        const progress = Math.min(
-          10 + Math.floor((chunkCount / estimatedChunks) * 80),
-          90,
-        );
+        // 基于已生成字符数与预估字符数的比例计算进度（10% - 90%）
+        const rawProgress = (fullContent.length / estimatedChars) * 80;
+        const progress = Math.min(10 + Math.floor(rawProgress), 90);
 
-        // 每隔一定数量的 chunk 发送进度更新
-        if (chunkCount % 20 === 0) {
+        // 每增加 5% 发送进度更新，或每 50 个 chunks 发送一次
+        if (progress >= lastProgressPercent + 5 || chunkCount % 50 === 0) {
+          lastProgressPercent = progress;
           yield {
             type: "progress",
             data: {
@@ -422,6 +424,11 @@ export async function* generateContentStream(
           error.message.includes("aborted") ||
           error.message.includes("timeout"));
 
+      // 如果是速率限制，记录 retryAfter 时间
+      if (rateLimitInfo.isRateLimit && rateLimitInfo.retryAfter) {
+        rateLimitRetryAfters.push(rateLimitInfo.retryAfter);
+      }
+
       logger.warn(
         {
           error: error instanceof Error ? error.message : "Unknown error",
@@ -444,7 +451,26 @@ export async function* generateContentStream(
 
       lastError = error instanceof Error ? error : new Error(String(error));
 
-      // 继续尝试下一个 Provider
+      // 如果所有 Provider 都遇到速率限制，不再继续尝试
+      if (
+        rateLimitInfo.isRateLimit &&
+        attemptedProviders.length === availableProviders.length &&
+        rateLimitRetryAfters.length === availableProviders.length
+      ) {
+        // 所有 Provider 都遇到速率限制，等待最长的 retryAfter 时间
+        const maxRetryAfter = Math.max(...rateLimitRetryAfters);
+        logger.warn(
+          {
+            attemptedProviders,
+            maxRetryAfter,
+            rateLimitRetryAfters,
+          },
+          "All providers rate limited, stopping retry attempts",
+        );
+        break; // 停止尝试，直接抛出错误
+      }
+
+      // 继续尝试下一个 Provider（非速率限制错误，或还有未尝试的 Provider）
       continue;
     }
   }
