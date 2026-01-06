@@ -9,7 +9,7 @@ import { TemplatesPageClient } from "./templates-page-client";
 
 export const metadata: Metadata = {
   title: "模板管理 - Knowledge Studio",
-  description: "创建和管理自定义报告模板",
+  description: "创建和管理自定义草稿模板",
 };
 
 export default function TemplatesPage() {

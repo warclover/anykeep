@@ -347,8 +347,11 @@ export async function POST(request: NextRequest) {
                     // Knowledge Studio v2 报告使用 "selection" 作为 source_type
                     source_type: "selection",
                     blueprint_type: blueprintId,
-                    title: `${metadata.displayName} 报告`,
+                    title: `${metadata.displayName} 草稿`,
                     content: result.content,
+                    // Knowledge Studio v2 报告生成完成后直接设置为 completed
+                    // 避免 /synthesis/[id] 页面误判为 pending 而触发重新生成
+                    status: "completed",
                     generation_metadata: {
                       blueprint_version: "v2",
                       blueprint_id: blueprintId,

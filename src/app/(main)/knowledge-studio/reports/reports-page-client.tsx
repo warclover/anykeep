@@ -1,9 +1,9 @@
 "use client";
 
 /**
- * Knowledge Studio - 报告列表页面客户端组件
+ * Knowledge Studio - 草稿列表页面客户端组件
  * @module app/(main)/knowledge-studio/reports
- * @description 显示用户生成的所有报告列表
+ * @description 显示用户生成的所有草稿列表
  */
 
 import { useState, useEffect, useCallback } from "react";
@@ -41,8 +41,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { BLUEPRINT_DISPLAY_CONFIG } from "@/lib/knowledge-studio/client";
-import type { BlueprintType } from "@/lib/knowledge-studio/client";
+import {
+  UNIFIED_BLUEPRINT_DISPLAY_CONFIG,
+  getBlueprintDisplayConfig,
+  getBlueprintsByCategory,
+} from "@/lib/knowledge-studio/blueprint/unified-display-config";
 
 interface Report {
   id: string;
@@ -57,9 +60,7 @@ export function KnowledgeStudioReportsPageClient() {
   const [reports, setReports] = useState<Report[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [blueprintFilter, setBlueprintFilter] = useState<BlueprintType | "all">(
-    "all",
-  );
+  const [blueprintFilter, setBlueprintFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<"created_at" | "updated_at" | "title">(
     "created_at",
   );
@@ -68,7 +69,7 @@ export function KnowledgeStudioReportsPageClient() {
   const [pageSize] = useState(20);
   const [total, setTotal] = useState(0);
 
-  // 加载报告列表
+  // 加载草稿列表
   const loadReports = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -92,7 +93,7 @@ export function KnowledgeStudioReportsPageClient() {
       setReports(data.data || []);
       setTotal(data.meta?.total || data.total || 0);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "加载报告列表失败");
+      toast.error(error instanceof Error ? error.message : "加载草稿列表失败");
     } finally {
       setIsLoading(false);
     }
@@ -102,10 +103,10 @@ export function KnowledgeStudioReportsPageClient() {
     loadReports();
   }, [loadReports]);
 
-  // 删除报告
+  // 删除草稿
   const handleDelete = useCallback(
     async (reportId: string) => {
-      if (!confirm("确定要删除这个报告吗？此操作不可恢复。")) {
+      if (!confirm("确定要删除这个草稿吗？此操作不可恢复。")) {
         return;
       }
 
@@ -121,7 +122,7 @@ export function KnowledgeStudioReportsPageClient() {
           throw new Error("删除失败");
         }
 
-        toast.success("报告已删除");
+        toast.success("草稿已删除");
         loadReports();
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "删除失败");
@@ -130,7 +131,7 @@ export function KnowledgeStudioReportsPageClient() {
     [loadReports],
   );
 
-  // 过滤报告
+  // 过滤草稿
   const filteredReports = reports.filter((report) => {
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
@@ -151,16 +152,16 @@ export function KnowledgeStudioReportsPageClient() {
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Sparkles className="h-6 w-6 text-primary" />
-            我的报告
+            我的草稿
           </h1>
           <p className="text-muted-foreground mt-1">
-            查看和管理您生成的所有知识报告
+            查看和管理您生成的所有知识草稿
           </p>
         </div>
         <Button asChild>
           <Link href="/knowledge-studio">
             <Sparkles className="h-4 w-4 mr-2" />
-            新建报告
+            新建草稿
           </Link>
         </Button>
       </div>
@@ -173,7 +174,7 @@ export function KnowledgeStudioReportsPageClient() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="搜索报告标题或 ID..."
+                placeholder="搜索草稿标题或 ID..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9"
@@ -183,9 +184,7 @@ export function KnowledgeStudioReportsPageClient() {
             {/* 蓝图筛选 */}
             <Select
               value={blueprintFilter}
-              onValueChange={(v) =>
-                setBlueprintFilter(v as BlueprintType | "all")
-              }
+              onValueChange={(v) => setBlueprintFilter(v)}
             >
               <SelectTrigger className="w-[180px]">
                 <Filter className="h-4 w-4 mr-2" />
@@ -193,11 +192,47 @@ export function KnowledgeStudioReportsPageClient() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">全部蓝图</SelectItem>
-                {Object.keys(BLUEPRINT_DISPLAY_CONFIG).map((type) => (
-                  <SelectItem key={type} value={type}>
-                    {BLUEPRINT_DISPLAY_CONFIG[type as BlueprintType].name}
-                  </SelectItem>
-                ))}
+                {/* V1 蓝图 */}
+                <SelectItem
+                  value="__v1_header"
+                  disabled
+                  className="font-semibold text-xs uppercase text-muted-foreground"
+                >
+                  经典蓝图 (v1)
+                </SelectItem>
+                {Object.entries(UNIFIED_BLUEPRINT_DISPLAY_CONFIG)
+                  .filter(([, config]) => config.version === "v1")
+                  .map(([type, config]) => (
+                    <SelectItem key={type} value={type}>
+                      {config.icon} {config.name}
+                    </SelectItem>
+                  ))}
+                {/* V2 蓝图 - 按分类分组 */}
+                {Object.entries(getBlueprintsByCategory())
+                  .filter(([category]) => category !== "v1")
+                  .map(
+                    ([category, blueprints]) =>
+                      blueprints.length > 0 && (
+                        <>
+                          <SelectItem
+                            key={`header-${category}`}
+                            value={`__${category}_header`}
+                            disabled
+                            className="font-semibold text-xs uppercase text-muted-foreground"
+                          >
+                            {category === "geek" && "极客蓝图"}
+                            {category === "creator" && "创作者蓝图"}
+                            {category === "business" && "商业蓝图"}
+                            {category === "professional" && "专业蓝图"}
+                          </SelectItem>
+                          {blueprints.map(({ id, config }) => (
+                            <SelectItem key={id} value={id}>
+                              {config.icon} {config.name}
+                            </SelectItem>
+                          ))}
+                        </>
+                      ),
+                  )}
               </SelectContent>
             </Select>
 
@@ -226,7 +261,7 @@ export function KnowledgeStudioReportsPageClient() {
         </CardContent>
       </Card>
 
-      {/* 报告列表 */}
+      {/* 草稿列表 */}
       <div className="grid gap-4">
         {isLoading ? (
           // 加载骨架
@@ -250,21 +285,22 @@ export function KnowledgeStudioReportsPageClient() {
               <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
               <p className="text-muted-foreground mb-4">
                 {searchQuery || blueprintFilter !== "all"
-                  ? "没有找到匹配的报告"
-                  : "还没有生成任何报告"}
+                  ? "没有找到匹配的草稿"
+                  : "还没有生成任何草稿"}
               </p>
               {!searchQuery && blueprintFilter === "all" && (
                 <Button asChild>
-                  <Link href="/knowledge-studio">创建第一个报告</Link>
+                  <Link href="/knowledge-studio">创建第一个草稿</Link>
                 </Button>
               )}
             </CardContent>
           </Card>
         ) : (
-          // 报告卡片
+          // 草稿卡片
           filteredReports.map((report) => {
-            const blueprintConfig =
-              BLUEPRINT_DISPLAY_CONFIG[report.blueprint_type as BlueprintType];
+            const blueprintConfig = getBlueprintDisplayConfig(
+              report.blueprint_type,
+            );
 
             return (
               <Card
@@ -277,13 +313,18 @@ export function KnowledgeStudioReportsPageClient() {
                       <div className="flex items-center gap-2">
                         <span className="text-2xl">{blueprintConfig.icon}</span>
                         <h3 className="text-lg font-semibold line-clamp-1">
-                          {report.title || "未命名报告"}
+                          {report.title || "未命名草稿"}
                         </h3>
-                        <Badge variant="outline">
-                          {blueprintConfig?.name || report.blueprint_type}
-                        </Badge>
+                        <Badge variant="outline">{blueprintConfig.name}</Badge>
+                        {blueprintConfig.version === "v2" && (
+                          <Badge variant="secondary" className="text-xs">
+                            v2
+                          </Badge>
+                        )}
                         {report.version > 1 && (
-                          <Badge variant="secondary">v{report.version}</Badge>
+                          <Badge variant="secondary">
+                            修订 {report.version}
+                          </Badge>
                         )}
                       </div>
                       <div className="flex items-center gap-4 text-sm text-muted-foreground">
@@ -323,13 +364,13 @@ export function KnowledgeStudioReportsPageClient() {
                           <DropdownMenuItem asChild>
                             <Link href={`/synthesis/${report.id}`}>
                               <Eye className="h-4 w-4 mr-2" />
-                              查看报告
+                              查看草稿
                             </Link>
                           </DropdownMenuItem>
                           <DropdownMenuItem asChild>
                             <Link href={`/synthesis/${report.id}`}>
                               <Edit className="h-4 w-4 mr-2" />
-                              编辑报告
+                              编辑草稿
                             </Link>
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
@@ -338,7 +379,7 @@ export function KnowledgeStudioReportsPageClient() {
                             onClick={() => handleDelete(report.id)}
                           >
                             <Trash2 className="h-4 w-4 mr-2" />
-                            删除报告
+                            删除草稿
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -355,7 +396,7 @@ export function KnowledgeStudioReportsPageClient() {
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
           <div className="text-sm text-muted-foreground">
-            共 {total} 个报告，第 {page} / {totalPages} 页
+            共 {total} 个草稿，第 {page} / {totalPages} 页
           </div>
           <div className="flex gap-2">
             <Button

@@ -63,6 +63,53 @@ const MaterialInputSchema = z.object({
 const StoredMaterialsSchema = z.array(MaterialInputSchema).min(1);
 
 // ============================================================
+// Session Storage Keys for Caching
+// ============================================================
+
+const CACHE_KEYS = {
+  MATERIALS: "ks-v2-materials",
+  OUTLINE: "ks-v2-outline",
+  CONTENT: "ks-v2-content",
+  STRUCTURED_OUTPUT: "ks-v2-structured-output",
+  REPORT_ID: "ks-v2-report-id",
+  CURRENT_STEP: "ks-v2-current-step",
+  BRIEFING_CONTEXT: "ks-v2-briefing-context",
+} as const;
+
+/**
+ * 清理所有缓存数据
+ */
+function clearAllCache() {
+  Object.values(CACHE_KEYS).forEach((key) => {
+    sessionStorage.removeItem(key);
+  });
+}
+
+/**
+ * 保存数据到 sessionStorage
+ */
+function saveToCache(key: string, data: unknown) {
+  try {
+    sessionStorage.setItem(key, JSON.stringify(data));
+  } catch (err) {
+    console.info(`Failed to save to cache: ${key}`, err);
+  }
+}
+
+/**
+ * 从 sessionStorage 加载数据
+ */
+function loadFromCache<T>(key: string): T | null {
+  try {
+    const data = sessionStorage.getItem(key);
+    if (!data) return null;
+    return JSON.parse(data) as T;
+  } catch {
+    return null;
+  }
+}
+
+// ============================================================
 // Types
 // ============================================================
 
@@ -167,6 +214,51 @@ export function BlueprintWorkflowClient({
           throw new Error("Blueprint not found");
         }
         setBlueprint(foundBlueprint);
+
+        // 尝试恢复缓存的工作流状态
+        const cachedStep = loadFromCache<WorkflowStep>(CACHE_KEYS.CURRENT_STEP);
+        const cachedOutline = loadFromCache<BlueprintOutline>(
+          CACHE_KEYS.OUTLINE,
+        );
+        const cachedContent = loadFromCache<string>(CACHE_KEYS.CONTENT);
+        const cachedStructuredOutput = loadFromCache<unknown>(
+          CACHE_KEYS.STRUCTURED_OUTPUT,
+        );
+        const cachedReportId = loadFromCache<string>(CACHE_KEYS.REPORT_ID);
+        const cachedBriefingContext = loadFromCache<
+          BriefingContext & { answeredAt: string }
+        >(CACHE_KEYS.BRIEFING_CONTEXT);
+
+        // 如果有缓存的结果，恢复到结果页面
+        if (cachedStep === "result" && cachedReportId) {
+          setOutline(cachedOutline || undefined);
+          setGeneratedContent(cachedContent || "");
+          setStructuredOutput(cachedStructuredOutput);
+          setReportId(cachedReportId);
+          if (cachedBriefingContext) {
+            setBriefingContext({
+              ...cachedBriefingContext,
+              answeredAt: new Date(cachedBriefingContext.answeredAt),
+            });
+          }
+          setCurrentStep("result");
+          setIsLoading(false);
+          return;
+        }
+
+        // 如果有缓存的大纲，恢复到大纲编辑页面
+        if (cachedOutline && foundBlueprint.supportsOutline) {
+          setOutline(cachedOutline);
+          if (cachedBriefingContext) {
+            setBriefingContext({
+              ...cachedBriefingContext,
+              answeredAt: new Date(cachedBriefingContext.answeredAt),
+            });
+          }
+          setCurrentStep("outline");
+          setIsLoading(false);
+          return;
+        }
 
         // Get briefing questions if enabled
         if (foundBlueprint.briefingEnabled) {
@@ -274,6 +366,9 @@ export function BlueprintWorkflowClient({
               // 事件处理在 try-catch 外部，确保错误能正确传播
               if (data.type === "outline" && data.data.outline) {
                 setOutline(data.data.outline);
+                // 缓存大纲数据
+                saveToCache(CACHE_KEYS.OUTLINE, data.data.outline);
+                saveToCache(CACHE_KEYS.CURRENT_STEP, "outline");
                 receivedOutline = true;
               } else if (data.type === "progress") {
                 setProgress({
@@ -283,6 +378,9 @@ export function BlueprintWorkflowClient({
                 });
               } else if (data.type === "error") {
                 // 服务端错误事件 - 立即中止并抛出
+                // DEBUG: 确认收到错误事件
+                // eslint-disable-next-line no-console
+                console.log("[SSE DEBUG] Received error event:", data);
                 await reader.cancel();
                 throw new Error(data.data.error?.message || "大纲生成错误");
               } else if (data.type === "done") {
@@ -299,6 +397,9 @@ export function BlueprintWorkflowClient({
           throw new Error("大纲生成失败，请重试");
         }
       } catch (err) {
+        // DEBUG: 确认错误被捕获
+        // eslint-disable-next-line no-console
+        console.log("[SSE DEBUG] Error caught in generateOutline:", err);
         if (err instanceof Error) {
           if (err.name === "AbortError") {
             setError("请求超时，请检查网络连接后重试");
@@ -410,12 +511,21 @@ export function BlueprintWorkflowClient({
 
                 case "structured_output":
                   setStructuredOutput(data.data.structuredOutput);
+                  // 缓存结构化输出
+                  saveToCache(
+                    CACHE_KEYS.STRUCTURED_OUTPUT,
+                    data.data.structuredOutput,
+                  );
                   break;
 
                 case "done":
                   setReportId(data.data.reportId);
                   setCurrentStep("result");
                   generationCompleted = true;
+                  // 缓存生成结果
+                  saveToCache(CACHE_KEYS.CONTENT, contentBuffer);
+                  saveToCache(CACHE_KEYS.REPORT_ID, data.data.reportId);
+                  saveToCache(CACHE_KEYS.CURRENT_STEP, "result");
                   // 取消读取以跳出外层 while 循环
                   await reader.cancel();
                   break;
@@ -452,6 +562,11 @@ export function BlueprintWorkflowClient({
   const handleBriefingSubmit = useCallback(
     (context: BriefingContext) => {
       setBriefingContext(context);
+      // 缓存 briefing 上下文
+      saveToCache(CACHE_KEYS.BRIEFING_CONTEXT, {
+        ...context,
+        answeredAt: context.answeredAt.toISOString(),
+      });
       if (blueprint?.supportsOutline) {
         setCurrentStep("outline");
         // Generate outline
@@ -496,6 +611,8 @@ export function BlueprintWorkflowClient({
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
+    // 返回时清理缓存（用户主动放弃）
+    clearAllCache();
     router.push("/knowledge-studio/v2");
   }, [router]);
 
@@ -504,7 +621,9 @@ export function BlueprintWorkflowClient({
    */
   const handleViewReport = useCallback(() => {
     if (reportId) {
-      router.push(`/knowledge-studio/reports/${reportId}`);
+      // 查看草稿后清理缓存（工作流完成）
+      clearAllCache();
+      router.push(`/synthesis/${reportId}`);
     }
   }, [reportId, router]);
 
@@ -658,7 +777,7 @@ export function BlueprintWorkflowClient({
         <div className="space-y-6">
           <Alert>
             <CheckCircle2 className="h-4 w-4 text-green-500" />
-            <AlertTitle>生成完成</AlertTitle>
+            <AlertTitle>草稿生成完成</AlertTitle>
             <AlertDescription>
               内容已成功生成并保存。
               {reportId && (
@@ -667,7 +786,7 @@ export function BlueprintWorkflowClient({
                   onClick={handleViewReport}
                   className="p-0 h-auto ml-1"
                 >
-                  查看报告 →
+                  查看草稿 →
                 </Button>
               )}
             </AlertDescription>
@@ -700,7 +819,7 @@ export function BlueprintWorkflowClient({
               返回知识工坊
             </Button>
             <Button onClick={handleViewReport} disabled={!reportId}>
-              查看完整报告
+              查看完整草稿
             </Button>
           </div>
         </div>

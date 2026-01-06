@@ -519,7 +519,7 @@ export function LearningPageClient() {
             <StatCard
               title="本周学习"
               value={`${stats?.weeklyStudyMinutes || 0} 分钟`}
-              subtitle={`已学习 ${stats?.reportsStudied || 0} 篇报告`}
+              subtitle={`已学习 ${stats?.reportsStudied || 0} 篇草稿`}
               icon={<Clock className="h-4 w-4 text-muted-foreground" />}
             />
           </>
@@ -563,7 +563,7 @@ export function LearningPageClient() {
             </Button>
             <Button variant="outline">
               <BookOpen className="h-4 w-4 mr-2" />
-              查看报告
+              查看草稿
             </Button>
             <Button variant="outline">
               <TrendingUp className="h-4 w-4 mr-2" />

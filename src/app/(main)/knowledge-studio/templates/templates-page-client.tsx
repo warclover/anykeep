@@ -485,7 +485,7 @@ export function TemplatesPageClient() {
         <div>
           <h1 className="text-2xl font-bold">模板管理</h1>
           <p className="text-muted-foreground">
-            创建和管理自定义报告模板，定制专属的知识生成流程
+            创建和管理自定义草稿模板，定制专属的知识生成流程
           </p>
         </div>
         <Button onClick={() => setCreateDialogOpen(true)}>

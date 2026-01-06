@@ -3,7 +3,7 @@
 /**
  * Knowledge Studio - 主页面客户端组件
  * @module app/(main)/knowledge-studio
- * @description 整合素材选择、蓝图选择、报告生成的完整工作流
+ * @description 整合素材选择、蓝图选择、草稿生成的完整工作流
  */
 
 import { useState, useCallback, useMemo } from "react";
@@ -77,7 +77,7 @@ export function KnowledgeStudioPageClient() {
   const [targetLength, setTargetLength] = useState<TargetLength>("medium");
   const [customPrompt, setCustomPrompt] = useState("");
 
-  // 生成的报告 ID
+  // 生成的草稿 ID
   const [generatedReportId, setGeneratedReportId] = useState<string | null>(
     null,
   );
@@ -137,12 +137,12 @@ export function KnowledgeStudioPageClient() {
         }
         setGeneratedReportId(result.reportId);
         setCurrentStep("result");
-        toast.success("报告生成完成！");
+        toast.success("草稿生成完成！");
       } else {
         // 如果成功但没有 reportId，说明保存失败
         if (result.success && !result.reportId) {
           console.error("Generation succeeded but no reportId:", result);
-          toast.error("报告生成成功，但保存失败，请重试");
+          toast.error("草稿生成成功，但保存失败，请重试");
         } else {
           // 生成失败 - 检查是否是配额不足
           console.error("Generation failed:", result.error);
@@ -264,12 +264,12 @@ export function KnowledgeStudioPageClient() {
     resetGeneration();
   }, [resetGeneration]);
 
-  // 查看报告
+  // 查看草稿
   const handleViewReport = useCallback(() => {
     if (generatedReportId) {
       router.push(`/synthesis/${generatedReportId}`);
     } else {
-      toast.error("报告 ID 不存在，请重新生成");
+      toast.error("草稿 ID 不存在，请重新生成");
     }
   }, [generatedReportId, router]);
 
@@ -321,7 +321,7 @@ export function KnowledgeStudioPageClient() {
             知识工坊
           </h1>
           <p className="text-muted-foreground mt-1">
-            将收藏内容转化为结构化的知识报告
+            将收藏内容转化为结构化的知识草稿
           </p>
         </div>
         <div className="flex gap-2">
@@ -392,7 +392,7 @@ export function KnowledgeStudioPageClient() {
                 <div>
                   <h2 className="text-lg font-semibold">选择素材</h2>
                   <p className="text-sm text-muted-foreground">
-                    从收藏中选择 2-10 个相关内容作为报告素材
+                    从收藏中选择 2-10 个相关内容作为草稿素材
                   </p>
                 </div>
                 {selectedMaterials.length > 0 && (
@@ -432,9 +432,9 @@ export function KnowledgeStudioPageClient() {
           {currentStep === "blueprint" && (
             <div className="space-y-4">
               <div>
-                <h2 className="text-lg font-semibold">选择报告蓝图</h2>
+                <h2 className="text-lg font-semibold">选择草稿蓝图</h2>
                 <p className="text-sm text-muted-foreground">
-                  选择一种写作风格，AI 将按此风格生成报告
+                  选择一种写作风格，AI 将按此风格生成草稿
                 </p>
               </div>
 
@@ -451,7 +451,7 @@ export function KnowledgeStudioPageClient() {
               <div>
                 <h2 className="text-lg font-semibold">生成配置</h2>
                 <p className="text-sm text-muted-foreground">
-                  调整报告参数，自定义生成效果
+                  调整草稿参数，自定义生成效果
                 </p>
               </div>
 
@@ -524,9 +524,9 @@ export function KnowledgeStudioPageClient() {
           {currentStep === "generating" && (
             <div className="py-8 space-y-6">
               <div className="text-center">
-                <h2 className="text-lg font-semibold">正在生成报告</h2>
+                <h2 className="text-lg font-semibold">正在生成草稿</h2>
                 <p className="text-sm text-muted-foreground">
-                  AI 正在处理素材并生成报告，请稍候...
+                  AI 正在处理素材并生成草稿，请稍候...
                 </p>
               </div>
 
@@ -556,25 +556,25 @@ export function KnowledgeStudioPageClient() {
                 <span className="text-3xl">✨</span>
               </div>
               <div>
-                <h2 className="text-lg font-semibold">报告生成完成！</h2>
+                <h2 className="text-lg font-semibold">草稿生成完成！</h2>
                 <p className="text-sm text-muted-foreground">
-                  您的知识报告已生成，可以查看和编辑
+                  您的知识草稿已生成，可以查看和编辑
                 </p>
               </div>
               <div className="flex justify-center gap-3">
                 <Button variant="outline" onClick={handleReset}>
-                  生成新报告
+                  生成新草稿
                 </Button>
                 <Button
                   onClick={handleViewReport}
                   disabled={!generatedReportId}
                   title={
                     generatedReportId
-                      ? `查看报告 ${generatedReportId}`
-                      : "报告 ID 不存在"
+                      ? `查看草稿 ${generatedReportId}`
+                      : "草稿 ID 不存在"
                   }
                 >
-                  查看报告
+                  查看草稿
                   {generatedReportId && (
                     <span className="ml-2 text-xs opacity-70">
                       (ID: {generatedReportId.slice(0, 8)}...)
