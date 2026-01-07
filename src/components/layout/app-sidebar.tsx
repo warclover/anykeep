@@ -162,6 +162,7 @@ const insightCenterItems: NavItem[] = [
  * 开发者工具导航项
  */
 const devToolsItems: NavItem[] = [
+  { name: "Skills 浏览器", href: "/skills-browser", icon: Sparkles },
   { name: "RAG 监控", href: "/settings/rag-dashboard", icon: Gauge },
   { name: "智能分类", href: "/classification-debugger", icon: BrainCircuit },
   {
