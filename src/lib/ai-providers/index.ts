@@ -50,3 +50,12 @@ export {
   selectTier,
   getModelConfigForTier,
 } from "./tier-selector";
+
+// 任务模型选择器
+export {
+  type AITaskType,
+  getModelByTask,
+  getTierConfigByTask,
+  getTierByTask,
+  requiresDeepReasoning,
+} from "./get-model-by-task";

@@ -127,7 +127,7 @@ export function ReaderThemeProvider({
       <ReaderThemeContext.Provider value={contextValue}>
         <div
           className={cn(
-            "reader-theme-container transition-colors duration-200",
+            "reader-theme-container transition-colors duration-200 h-full flex flex-col",
             className,
           )}
           data-theme="light"
@@ -146,7 +146,7 @@ export function ReaderThemeProvider({
     <ReaderThemeContext.Provider value={contextValue}>
       <div
         className={cn(
-          "reader-theme-container transition-colors duration-200",
+          "reader-theme-container transition-colors duration-200 h-full flex flex-col",
           className,
         )}
         data-theme={theme.id}

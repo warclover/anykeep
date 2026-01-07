@@ -5,13 +5,15 @@
  * 支持 Perplexity 风格的来源标注
  *
  * @module ai-skills/skills/knowledge-extract
- * @version 1.0.0
+ * @version 1.1.0
+ * @since 2025-12-28
+ * @updated 2026-01-07 - 切换到 DeepSeek reasoner 模型
  */
 
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 import { generateText } from "ai";
-import { createOpenAI } from "@ai-sdk/openai";
+import { getModelByTask, getTierConfigByTask } from "@/lib/ai-providers";
 import type {
   KnowledgeExtractInput,
   KnowledgeExtraction,
@@ -119,16 +121,16 @@ const ACTION_ITEMS_PROMPT = `基于以下关于「{topic}」的知识要点，�
 // ============================================
 
 export class KnowledgeExtractor {
-  private readonly openai;
-  private readonly model: string;
-
-  constructor(apiKey?: string, model: string = "qwen-turbo") {
-    // 使用阿里云百炼 (DashScope) 替代 OpenAI
-    this.openai = createOpenAI({
-      apiKey: apiKey || process.env.DASHSCOPE_API_KEY,
-      baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1",
-    });
-    this.model = model;
+  /**
+   * 获取模型实例
+   * 使用 DeepSeek reasoner 模型进行知识萃取（深度推理任务）
+   */
+  private getModel() {
+    const model = getModelByTask("knowledge-extract");
+    if (!model) {
+      throw new Error("Failed to get model for knowledge extraction");
+    }
+    return model;
   }
 
   /**
@@ -199,7 +201,7 @@ export class KnowledgeExtractor {
         sourceCount: contents.length,
         extractedAt: new Date(),
         format: input.format,
-        llmModel: this.model,
+        llmModel: getTierConfigByTask("knowledge-extract").provider.model,
         processingTimeMs: Date.now() - startTime,
       },
     };
@@ -269,7 +271,7 @@ export class KnowledgeExtractor {
 
     const { text } = await generateText({
       // 使用 .chat() 强制使用 Chat Completions API
-      model: this.openai.chat(this.model),
+      model: this.getModel(),
       prompt,
       maxOutputTokens: 50,
     });
@@ -307,7 +309,7 @@ ${c.content || c.summary || "（内容不可用）"}
 
     const { text } = await generateText({
       // 使用 .chat() 强制使用 Chat Completions API
-      model: this.openai.chat(this.model),
+      model: this.getModel(),
       prompt,
       maxOutputTokens: 2000,
     });
@@ -370,7 +372,7 @@ ${c.content || c.summary || "（内容不可用）"}
 
     const { text } = await generateText({
       // 使用 .chat() 强制使用 Chat Completions API
-      model: this.openai.chat(this.model),
+      model: this.getModel(),
       prompt,
       maxOutputTokens: 1500,
     });
@@ -413,7 +415,7 @@ ${c.content || c.summary || "（内容不可用）"}
 
     const { text } = await generateText({
       // 使用 .chat() 强制使用 Chat Completions API
-      model: this.openai.chat(this.model),
+      model: this.getModel(),
       prompt,
       maxOutputTokens: 300,
     });
@@ -437,7 +439,7 @@ ${c.content || c.summary || "（内容不可用）"}
 
     const { text } = await generateText({
       // 使用 .chat() 强制使用 Chat Completions API
-      model: this.openai.chat(this.model),
+      model: this.getModel(),
       prompt,
       maxOutputTokens: 500,
     });

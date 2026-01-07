@@ -9,7 +9,7 @@
 
 import { generateText } from "ai";
 import { logger } from "@/lib/logger";
-import { aiProviderRouter } from "@/lib/ai-providers";
+import { getModelByTask } from "@/lib/ai-providers";
 import type {
   FlashcardGenerationInput,
   FlashcardGenerationResult,
@@ -134,9 +134,10 @@ export async function generateFlashcardsV2(
     .replace("{content}", truncatedContent);
 
   try {
-    const selection = aiProviderRouter.selectProvider({ taskType: "chat" });
+    // 使用 knowledge-review 任务类型获取 deep 层模型
+    const model = getModelByTask("knowledge-review");
 
-    if (!selection?.model) {
+    if (!model) {
       logger.error(
         { title },
         "Flashcard v2 generation failed: No model available",
@@ -149,7 +150,7 @@ export async function generateFlashcardsV2(
     }
 
     const { text } = await generateText({
-      model: selection.model,
+      model,
       prompt,
       temperature: 0.7,
     });
@@ -381,10 +382,10 @@ export async function generateFlashcards(
     .replace("{content}", truncatedContent);
 
   try {
-    // 使用 AI Provider Router 获取模型
-    const selection = aiProviderRouter.selectProvider({ taskType: "chat" });
+    // 使用 knowledge-review 任务类型获取 deep 层模型
+    const model = getModelByTask("knowledge-review");
 
-    if (!selection || !selection.model) {
+    if (!model) {
       logger.error(
         { title },
         "Flashcard generation failed: No model available",
@@ -397,7 +398,7 @@ export async function generateFlashcards(
     }
 
     const { text } = await generateText({
-      model: selection.model,
+      model,
       prompt,
       temperature: 0.7,
     });

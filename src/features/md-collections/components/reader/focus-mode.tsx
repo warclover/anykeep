@@ -126,6 +126,8 @@ export function FocusModeContainer({
       <div
         className={cn(
           "transition-all duration-300 ease-out",
+          // 非专注模式时继承父容器高度
+          !isFocusMode && "h-full flex flex-col",
           isFocusMode && ["max-w-4xl mx-auto", "px-4 py-8"],
         )}
       >

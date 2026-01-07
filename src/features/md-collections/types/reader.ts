@@ -146,6 +146,8 @@ export interface UseReadingPositionOptions {
   contentRef: React.RefObject<HTMLElement>;
   /** 预估阅读时间（分钟） */
   readingTimeMinutes: number;
+  /** 可选的滚动容器 Ref（默认使用 window） */
+  scrollContainerRef?: React.RefObject<HTMLElement>;
 }
 
 /**

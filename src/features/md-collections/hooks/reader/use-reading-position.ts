@@ -74,6 +74,7 @@ export function useReadingPosition({
   collectionId,
   contentRef,
   readingTimeMinutes,
+  scrollContainerRef,
 }: UseReadingPositionOptions): UseReadingPositionResult {
   // 当前进度百分比
   const [progress, setProgress] = useState(0);
@@ -108,40 +109,48 @@ export function useReadingPosition({
 
   /**
    * 获取当前滚动进度
-   * 使用 getBoundingClientRect 获取准确的视口相对位置
+   * 支持自定义滚动容器或 window
    */
   const calculateProgress = useCallback((): number => {
     const container = contentRef.current;
     if (!container) return 0;
 
+    const scrollContainer = scrollContainerRef?.current;
+
+    if (scrollContainer) {
+      // 使用自定义滚动容器计算进度
+      const scrollTop = scrollContainer.scrollTop;
+      const scrollHeight = scrollContainer.scrollHeight;
+      const clientHeight = scrollContainer.clientHeight;
+      const maxScroll = scrollHeight - clientHeight;
+
+      if (maxScroll <= 0) return 100;
+      return Math.min(100, Math.max(0, (scrollTop / maxScroll) * 100));
+    }
+
+    // 使用 window 滚动计算进度（原有逻辑）
     const rect = container.getBoundingClientRect();
     const viewportHeight = window.innerHeight;
     const contentHeight = container.scrollHeight || container.offsetHeight;
 
     if (contentHeight <= 0) return 0;
 
-    // 计算已阅读的内容高度
-    // rect.top < 0 表示内容顶部已滚出视口
-    // rect.top >= viewportHeight 表示内容还未进入视口
     if (rect.top >= viewportHeight) {
-      return 0; // 内容还未进入视口
+      return 0;
     }
 
     if (rect.bottom <= 0) {
-      return 100; // 内容已完全滚出视口
+      return 100;
     }
 
-    // 已滚过的内容高度 = 内容顶部滚出视口的部分
     const scrolledHeight = Math.max(0, -rect.top);
-    // 可见的内容高度
     const visibleHeight =
       Math.min(rect.bottom, viewportHeight) - Math.max(rect.top, 0);
-    // 总阅读进度 = 已滚过 + 当前可见
     const readHeight = scrolledHeight + visibleHeight;
     const rawProgress = (readHeight / contentHeight) * 100;
 
     return Math.min(100, Math.max(0, rawProgress));
-  }, [contentRef]);
+  }, [contentRef, scrollContainerRef]);
 
   /**
    * 保存当前阅读位置到 localStorage
@@ -149,9 +158,14 @@ export function useReadingPosition({
   const savePosition = useCallback(() => {
     if (typeof window === "undefined") return;
 
+    const scrollContainer = scrollContainerRef?.current;
     const currentProgress = calculateProgress();
+    const scrollTop = scrollContainer
+      ? scrollContainer.scrollTop
+      : window.scrollY;
+
     const position: ReadingPosition = {
-      scrollTop: window.scrollY,
+      scrollTop,
       progress: currentProgress,
       timestamp: Date.now(),
     };
@@ -160,12 +174,11 @@ export function useReadingPosition({
       localStorage.setItem(storageKey, JSON.stringify(position));
       setSavedPosition(position);
     } catch (error) {
-      // localStorage 不可用或配额已满
       if (process.env.NODE_ENV === "development") {
         console.error("[use-reading-position] savePosition failed:", error);
       }
     }
-  }, [storageKey, calculateProgress]);
+  }, [storageKey, calculateProgress, scrollContainerRef]);
 
   /**
    * 恢复到保存的阅读位置
@@ -173,11 +186,20 @@ export function useReadingPosition({
   const restorePosition = useCallback(() => {
     if (!savedPosition) return;
 
-    window.scrollTo({
-      top: savedPosition.scrollTop,
-      behavior: "smooth",
-    });
-  }, [savedPosition]);
+    const scrollContainer = scrollContainerRef?.current;
+
+    if (scrollContainer) {
+      scrollContainer.scrollTo({
+        top: savedPosition.scrollTop,
+        behavior: "smooth",
+      });
+    } else {
+      window.scrollTo({
+        top: savedPosition.scrollTop,
+        behavior: "smooth",
+      });
+    }
+  }, [savedPosition, scrollContainerRef]);
 
   /**
    * 清除保存的阅读位置
@@ -234,6 +256,8 @@ export function useReadingPosition({
   useEffect(() => {
     if (typeof window === "undefined") return;
 
+    const scrollContainer = scrollContainerRef?.current;
+
     const handleScroll = () => {
       // 防抖
       if (debounceTimerRef.current) {
@@ -261,15 +285,26 @@ export function useReadingPosition({
       setProgress(calculateProgressRef.current());
     });
 
-    window.addEventListener("scroll", handleScroll, { passive: true });
+    // 根据是否有自定义滚动容器选择监听目标
+    if (scrollContainer) {
+      scrollContainer.addEventListener("scroll", handleScroll, {
+        passive: true,
+      });
+    } else {
+      window.addEventListener("scroll", handleScroll, { passive: true });
+    }
 
     return () => {
-      window.removeEventListener("scroll", handleScroll);
+      if (scrollContainer) {
+        scrollContainer.removeEventListener("scroll", handleScroll);
+      } else {
+        window.removeEventListener("scroll", handleScroll);
+      }
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, []); // 空依赖数组 - 使用 refs 避免重新订阅
+  }, [scrollContainerRef]); // 依赖 scrollContainerRef
 
   return {
     progress,

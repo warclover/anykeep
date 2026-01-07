@@ -27,7 +27,7 @@ import type {
 import type { OrchestrationStreamChunk } from "../../output/types";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
-import { aiProviderRouter } from "@/lib/ai-providers";
+import { getModelByTask } from "@/lib/ai-providers";
 import type {
   ThematicSynthesisInput,
   ThematicSynthesisOutput,
@@ -438,17 +438,17 @@ export class ThematicSynthesisSkill extends OrchestrationSkill<
     // 构建 Prompt
     const prompt = buildTopicAnalysisPrompt(bookmarksForPrompt);
 
-    // 获取 AI 模型
-    const selection = aiProviderRouter.selectProvider({ taskType: "chat" });
+    // 获取 AI 模型 - 使用深度推理模型进行主题分析
+    const model = getModelByTask("theme-discovery");
 
-    if (!selection?.model) {
+    if (!model) {
       logger.warn("No AI model available for topic analysis, using fallback");
       return this.buildFallbackAnalyzeResult(bookmarks);
     }
 
     try {
       const { text } = await generateText({
-        model: selection.model,
+        model,
         prompt,
         maxOutputTokens: 2000,
         temperature: 0.3,
@@ -570,17 +570,17 @@ export class ThematicSynthesisSkill extends OrchestrationSkill<
       depthMode,
     );
 
-    // 获取 AI 模型
-    const selection = aiProviderRouter.selectProvider({ taskType: "chat" });
+    // 获取 AI 模型 - 使用深度推理模型进行合成
+    const model = getModelByTask("theme-discovery");
 
-    if (!selection?.model) {
+    if (!model) {
       logger.warn("No AI model available for synthesis, using fallback");
       return this.buildFallbackSynthesisResult(bookmarks, analyzeResult);
     }
 
     try {
       const { text } = await generateText({
-        model: selection.model,
+        model,
         prompt,
         maxOutputTokens: 3000,
         temperature: 0.5,
@@ -691,17 +691,17 @@ export class ThematicSynthesisSkill extends OrchestrationSkill<
       depthMode,
     );
 
-    // 获取 AI 模型
-    const selection = aiProviderRouter.selectProvider({ taskType: "chat" });
+    // 获取 AI 模型 - 使用深度推理模型进行分歧检测
+    const model = getModelByTask("theme-discovery");
 
-    if (!selection?.model) {
+    if (!model) {
       logger.warn("No AI model available for divergence detection");
       return [];
     }
 
     try {
       const { text } = await generateText({
-        model: selection.model,
+        model,
         prompt,
         maxOutputTokens: 2000,
         temperature: 0.4,
@@ -796,17 +796,17 @@ export class ThematicSynthesisSkill extends OrchestrationSkill<
       depthMode,
     );
 
-    // 获取 AI 模型
-    const selection = aiProviderRouter.selectProvider({ taskType: "chat" });
+    // 获取 AI 模型 - 使用深度推理模型进行盲区检测
+    const model = getModelByTask("theme-discovery");
 
-    if (!selection?.model) {
+    if (!model) {
       logger.warn("No AI model available for blindspot detection");
       return [];
     }
 
     try {
       const { text } = await generateText({
-        model: selection.model,
+        model,
         prompt,
         maxOutputTokens: 1500,
         temperature: 0.5,

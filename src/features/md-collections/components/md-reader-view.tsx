@@ -220,10 +220,24 @@ function InternalReader({
   // ============================================
   // 目录同步
   // ============================================
-  const { activeId, scrollToHeading } = useTOCSync({
+  const { activeId, scrollToHeading: _originalScrollToHeading } = useTOCSync({
     containerRef: contentRef,
     tocItems: tableOfContents,
   });
+
+  // 自定义滚动函数 - 滚动到 scrollContainerRef 而不是 window
+  const scrollToHeading = useCallback((id: string) => {
+    const element = document.getElementById(id);
+    const scrollContainer = scrollContainerRef.current;
+    if (element && scrollContainer) {
+      const offset = 24; // 顶部间距
+      const elementTop = element.offsetTop - offset;
+      scrollContainer.scrollTo({
+        top: elementTop,
+        behavior: "smooth",
+      });
+    }
+  }, []);
 
   // ============================================
   // 阅读位置
@@ -238,6 +252,7 @@ function InternalReader({
     collectionId: collection.id,
     contentRef: contentRef,
     readingTimeMinutes: collection.reading_time_minutes || 5,
+    scrollContainerRef: scrollContainerRef,
   });
 
   // ============================================
@@ -552,210 +567,211 @@ function InternalReader({
   );
 
   return (
-    <FocusModeContainer className={cn("relative h-full", className)}>
+    <FocusModeContainer
+      className={cn("relative h-full flex flex-col overflow-hidden", className)}
+    >
+      {/* 位置恢复提示 - 浮动在顶部 */}
+      <PositionRestorePrompt
+        savedPosition={savedPosition}
+        onRestore={() => {
+          restorePosition();
+          clearPosition();
+        }}
+        onStartOver={clearPosition}
+      />
+
+      {/* 顶部工具栏 - 固定不滚动 */}
+      <FocusModeToolbar className="shrink-0 z-40">
+        <header
+          className="w-full border-b"
+          style={{
+            backgroundColor: "var(--reader-bg)",
+            borderColor: "var(--reader-border)",
+          }}
+        >
+          <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+            {/* 左侧：返回按钮 */}
+            <div className="flex items-center gap-3 shrink-0">
+              {onBack && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onBack}
+                  style={{ color: "var(--reader-fg)" }}
+                >
+                  <ArrowLeft className="w-4 h-4 mr-1" />
+                  返回
+                </Button>
+              )}
+            </div>
+
+            {/* 中间：标题 + 进度 */}
+            <div className="flex-1 flex items-center gap-4 min-w-0">
+              <h1
+                className="text-sm font-medium truncate"
+                style={{ color: "var(--reader-accent)" }}
+                title={collection.title}
+              >
+                {collection.title}
+              </h1>
+
+              {/* 进度组件 */}
+              <div className="hidden sm:block">
+                <ReadingProgressCompact progress={progress} />
+              </div>
+            </div>
+
+            {/* 右侧：工具按钮 */}
+            <div className="flex items-center gap-1 shrink-0">
+              {/* 主题切换 */}
+              <ThemeSwitcher />
+
+              {/* 专注模式 */}
+              <FocusModeToggle />
+
+              {/* 字体大小 */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  const sizes: ("small" | "medium" | "large")[] = [
+                    "small",
+                    "medium",
+                    "large",
+                  ];
+                  const currentIndex = sizes.indexOf(fontSize);
+                  setFontSize(sizes[(currentIndex + 1) % sizes.length]);
+                }}
+                title={`字体大小: ${fontSize}`}
+              >
+                <Type className="w-4 h-4" />
+              </Button>
+
+              {/* 键盘帮助 */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsHelpOpen(true)}
+                title="键盘快捷键"
+                className="hidden md:flex"
+              >
+                <Keyboard className="w-4 h-4" />
+              </Button>
+
+              {/* 全屏 */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleFullscreen}
+                title={isFullscreen ? "退出全屏" : "全屏阅读"}
+              >
+                {isFullscreen ? (
+                  <Minimize2 className="w-4 h-4" />
+                ) : (
+                  <Maximize2 className="w-4 h-4" />
+                )}
+              </Button>
+            </div>
+          </div>
+        </header>
+      </FocusModeToolbar>
+
+      {/* 内容区域 - flex-1 填充剩余空间 */}
       <div
-        ref={scrollContainerRef}
-        className="relative h-full overflow-y-auto"
+        className="flex-1 flex min-h-0 overflow-hidden"
         style={{
           ...themeStyles,
           backgroundColor: "var(--reader-bg)",
           color: "var(--reader-fg)",
         }}
       >
-        {/* 位置恢复提示 */}
-        <PositionRestorePrompt
-          savedPosition={savedPosition}
-          onRestore={() => {
-            restorePosition();
-            clearPosition();
-          }}
-          onStartOver={clearPosition}
-        />
-
-        {/* 顶部工具栏 */}
-        <FocusModeToolbar className="sticky top-0 z-40">
-          <header
-            className="w-full border-b"
+        {/* 左侧目录 - 固定宽度，独立滚动 */}
+        {hasTOC && showTOC && (
+          <aside
+            ref={sidebarRef}
+            className="hidden lg:flex flex-col shrink-0 border-r relative"
             style={{
-              backgroundColor: "var(--reader-bg)",
+              width: tocWidth,
               borderColor: "var(--reader-border)",
+              backgroundColor: "var(--reader-bg)",
             }}
           >
-            <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
-              {/* 左侧：返回按钮 */}
-              <div className="flex items-center gap-3 shrink-0">
-                {onBack && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={onBack}
-                    style={{ color: "var(--reader-fg)" }}
-                  >
-                    <ArrowLeft className="w-4 h-4 mr-1" />
-                    返回
-                  </Button>
-                )}
-              </div>
-
-              {/* 中间：标题 + 进度 */}
-              <div className="flex-1 flex items-center gap-4 min-w-0">
-                <h1
-                  className="text-sm font-medium truncate"
+            <div className="flex-1 overflow-y-auto md-toc-scroll">
+              <div className="p-4">
+                <h3
+                  className="font-medium mb-3 flex items-center gap-2"
                   style={{ color: "var(--reader-accent)" }}
-                  title={collection.title}
                 >
-                  {collection.title}
-                </h1>
-
-                {/* 进度组件 */}
-                <div className="hidden sm:block">
-                  <ReadingProgressCompact progress={progress} />
-                </div>
-              </div>
-
-              {/* 右侧：工具按钮 */}
-              <div className="flex items-center gap-1 shrink-0">
-                {/* 主题切换 */}
-                <ThemeSwitcher />
-
-                {/* 专注模式 */}
-                <FocusModeToggle />
-
-                {/* 字体大小 */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => {
-                    const sizes: ("small" | "medium" | "large")[] = [
-                      "small",
-                      "medium",
-                      "large",
-                    ];
-                    const currentIndex = sizes.indexOf(fontSize);
-                    setFontSize(sizes[(currentIndex + 1) % sizes.length]);
-                  }}
-                  title={`字体大小: ${fontSize}`}
-                >
-                  <Type className="w-4 h-4" />
-                </Button>
-
-                {/* 键盘帮助 */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setIsHelpOpen(true)}
-                  title="键盘快捷键"
-                  className="hidden md:flex"
-                >
-                  <Keyboard className="w-4 h-4" />
-                </Button>
-
-                {/* 全屏 */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={toggleFullscreen}
-                  title={isFullscreen ? "退出全屏" : "全屏阅读"}
-                >
-                  {isFullscreen ? (
-                    <Minimize2 className="w-4 h-4" />
-                  ) : (
-                    <Maximize2 className="w-4 h-4" />
-                  )}
-                </Button>
+                  <List className="w-4 h-4" />
+                  目录
+                </h3>
+                <nav className="space-y-1">
+                  {tableOfContents.map((item, index) => {
+                    const isActive = activeId === item.id;
+                    return (
+                      <button
+                        key={`${item.id}-${index}`}
+                        ref={(el) => {
+                          if (el) {
+                            tocItemRefs.current.set(item.id, el);
+                          } else {
+                            tocItemRefs.current.delete(item.id);
+                          }
+                        }}
+                        onClick={() => scrollToHeading(item.id)}
+                        className={cn(
+                          "block w-full text-left px-3 py-1.5 text-sm rounded-md transition-all duration-200",
+                          isActive && "font-medium",
+                        )}
+                        style={{
+                          paddingLeft: `${(item.level - 1) * 12 + 12}px`,
+                          backgroundColor: isActive
+                            ? "var(--reader-muted)"
+                            : "transparent",
+                          color: isActive
+                            ? "var(--reader-accent)"
+                            : "var(--reader-fg)",
+                          opacity: isActive ? 1 : 0.7,
+                        }}
+                      >
+                        {item.text}
+                      </button>
+                    );
+                  })}
+                </nav>
               </div>
             </div>
-          </header>
-        </FocusModeToolbar>
 
-        {/* 内容区域 */}
-        <div className="flex">
-          {/* 左侧目录 */}
-          {hasTOC && showTOC && (
-            <aside
-              ref={sidebarRef}
-              className="hidden lg:block sticky top-14 h-[calc(100vh-3.5rem)] shrink-0 border-r"
+            {/* 拖动把手 */}
+            <div
+              className={cn(
+                "absolute top-0 right-0 w-1 h-full cursor-col-resize group",
+                "transition-colors",
+                isResizing && "opacity-50",
+              )}
               style={{
-                width: tocWidth,
-                borderColor: "var(--reader-border)",
-                backgroundColor: "var(--reader-bg)",
+                backgroundColor: isResizing
+                  ? "var(--reader-accent)"
+                  : "transparent",
               }}
+              onMouseDown={handleMouseDown}
             >
-              <div className="h-full overflow-y-auto md-toc-scroll">
-                <div className="p-4">
-                  <h3
-                    className="font-medium mb-3 flex items-center gap-2"
-                    style={{ color: "var(--reader-accent)" }}
-                  >
-                    <List className="w-4 h-4" />
-                    目录
-                  </h3>
-                  <nav className="space-y-1">
-                    {tableOfContents.map((item, index) => {
-                      const isActive = activeId === item.id;
-                      return (
-                        <button
-                          key={`${item.id}-${index}`}
-                          ref={(el) => {
-                            if (el) {
-                              tocItemRefs.current.set(item.id, el);
-                            } else {
-                              tocItemRefs.current.delete(item.id);
-                            }
-                          }}
-                          onClick={() => scrollToHeading(item.id)}
-                          className={cn(
-                            "block w-full text-left px-3 py-1.5 text-sm rounded-md transition-all duration-200",
-                            isActive && "font-medium",
-                          )}
-                          style={{
-                            paddingLeft: `${(item.level - 1) * 12 + 12}px`,
-                            backgroundColor: isActive
-                              ? "var(--reader-muted)"
-                              : "transparent",
-                            color: isActive
-                              ? "var(--reader-accent)"
-                              : "var(--reader-fg)",
-                            opacity: isActive ? 1 : 0.7,
-                          }}
-                        >
-                          {item.text}
-                        </button>
-                      );
-                    })}
-                  </nav>
-                </div>
+              <div className="absolute top-1/2 -translate-y-1/2 right-0 w-4 h-8 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <GripVertical
+                  className="w-3 h-3"
+                  style={{ color: "var(--reader-fg)" }}
+                />
               </div>
+            </div>
+          </aside>
+        )}
 
-              {/* 拖动把手 */}
-              <div
-                className={cn(
-                  "absolute top-0 right-0 w-1 h-full cursor-col-resize group",
-                  "transition-colors",
-                  isResizing && "opacity-50",
-                )}
-                style={{
-                  backgroundColor: isResizing
-                    ? "var(--reader-accent)"
-                    : "transparent",
-                }}
-                onMouseDown={handleMouseDown}
-              >
-                <div className="absolute top-1/2 -translate-y-1/2 right-0 w-4 h-8 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  <GripVertical
-                    className="w-3 h-3"
-                    style={{ color: "var(--reader-fg)" }}
-                  />
-                </div>
-              </div>
-            </aside>
-          )}
-
-          {/* 主内容区 */}
-          <main
-            ref={contentRef}
-            className="flex-1 min-w-0 px-4 py-8 max-w-4xl mx-auto"
-          >
+        {/* 主内容区 - 独立滚动 */}
+        <main
+          ref={scrollContainerRef}
+          className="flex-1 min-w-0 overflow-y-auto"
+        >
+          <div ref={contentRef} className="px-4 py-8 max-w-4xl mx-auto">
             {/* 文章头部 */}
             <header className="mb-8">
               <span
@@ -863,48 +879,48 @@ function InternalReader({
                 — 文章结束 —
               </p>
             </footer>
-          </main>
-        </div>
-
-        {/* 回到顶部 */}
-        {showBackToTop && (
-          <button
-            onClick={scrollToTop}
-            className="fixed bottom-8 right-8 z-40 w-12 h-12 rounded-full text-white shadow-lg flex items-center justify-center transition-all hover:opacity-90"
-            style={{ backgroundColor: "var(--reader-accent)" }}
-            title="回到顶部"
-          >
-            <ChevronUp className="w-5 h-5" />
-          </button>
-        )}
-
-        {/* 高亮工具栏 */}
-        <HighlightToolbar
-          position={toolbarPosition}
-          onColorSelect={handleHighlightColorSelect}
-          onClose={() => {
-            setToolbarPosition(null);
-            setEditingHighlight(null);
-            clearSelection();
-          }}
-          existingColor={editingHighlight?.color}
-          onDelete={editingHighlightId ? handleHighlightDelete : undefined}
-        />
-
-        {/* 图片灯箱 */}
-        <ImageLightbox
-          images={lightboxImages}
-          initialIndex={lightboxIndex}
-          isOpen={isLightboxOpen}
-          onClose={closeLightbox}
-        />
-
-        {/* 键盘帮助 */}
-        <KeyboardNavHelp
-          isOpen={isHelpOpen}
-          onClose={() => setIsHelpOpen(false)}
-        />
+          </div>
+        </main>
       </div>
+
+      {/* 回到顶部 */}
+      {showBackToTop && (
+        <button
+          onClick={scrollToTop}
+          className="fixed bottom-8 right-8 z-40 w-12 h-12 rounded-full text-white shadow-lg flex items-center justify-center transition-all hover:opacity-90"
+          style={{ backgroundColor: "var(--reader-accent)" }}
+          title="回到顶部"
+        >
+          <ChevronUp className="w-5 h-5" />
+        </button>
+      )}
+
+      {/* 高亮工具栏 */}
+      <HighlightToolbar
+        position={toolbarPosition}
+        onColorSelect={handleHighlightColorSelect}
+        onClose={() => {
+          setToolbarPosition(null);
+          setEditingHighlight(null);
+          clearSelection();
+        }}
+        existingColor={editingHighlight?.color}
+        onDelete={editingHighlightId ? handleHighlightDelete : undefined}
+      />
+
+      {/* 图片灯箱 */}
+      <ImageLightbox
+        images={lightboxImages}
+        initialIndex={lightboxIndex}
+        isOpen={isLightboxOpen}
+        onClose={closeLightbox}
+      />
+
+      {/* 键盘帮助 */}
+      <KeyboardNavHelp
+        isOpen={isHelpOpen}
+        onClose={() => setIsHelpOpen(false)}
+      />
     </FocusModeContainer>
   );
 }
