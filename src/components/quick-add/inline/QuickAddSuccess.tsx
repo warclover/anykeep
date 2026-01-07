@@ -45,8 +45,8 @@ export function QuickAddSuccess({
         "flex items-center gap-3 w-full h-11 px-4",
         "rounded-full border-none transition-all",
 
-        // Success state - green gradient
-        "bg-gradient-to-r from-emerald-500 to-emerald-600",
+        // Success state - candy pink gradient (与手动创建按钮一致)
+        "bg-gradient-to-r from-pink-400 to-rose-400",
         "text-white",
 
         // Pulse animation
@@ -62,7 +62,7 @@ export function QuickAddSuccess({
       <div className="flex-1 flex items-center gap-2">
         <span className="text-sm font-medium">{message}</span>
         {folderName && (
-          <span className="text-xs text-emerald-100">→ {folderName}</span>
+          <span className="text-xs text-rose-100">→ {folderName}</span>
         )}
       </div>
 
@@ -94,15 +94,15 @@ const successPulseKeyframes = `
 @keyframes success-pulse {
   0% {
     transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+    box-shadow: 0 0 0 0 rgba(251, 113, 133, 0.4);
   }
   50% {
     transform: scale(1.02);
-    box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
+    box-shadow: 0 0 0 10px rgba(251, 113, 133, 0);
   }
   100% {
     transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+    box-shadow: 0 0 0 0 rgba(251, 113, 133, 0);
   }
 }
 
