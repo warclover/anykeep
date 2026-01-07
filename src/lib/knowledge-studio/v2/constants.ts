@@ -7,8 +7,8 @@
 // Material Limits
 // ============================================================
 
-/** 素材选择器默认加载数量 */
-export const MATERIAL_SELECTOR_LIMIT = 100;
+/** 素材选择器默认加载数量 (P0-1: 从100改为50，避免选择困难) */
+export const MATERIAL_SELECTOR_LIMIT = 50;
 
 /** 最少需要的素材数量 */
 export const MIN_MATERIALS_REQUIRED = 2;
