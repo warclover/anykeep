@@ -477,11 +477,15 @@ export function KnowledgeStudioV2PageClient() {
                     )}
                   </div>
 
-                  {isLoadingBookmarks ? (
+                  {/* 初始加载状态（非搜索时） */}
+                  {isLoadingBookmarks && !materialSearchQuery ? (
                     <div className="py-12 text-center text-muted-foreground">
                       加载中...
                     </div>
-                  ) : materials.length === 0 ? (
+                  ) : /* 仅在非搜索、非请求中时显示空状态 */
+                  materials.length === 0 &&
+                    !materialSearchQuery &&
+                    !isFetchingBookmarks ? (
                     <div className="py-12 text-center">
                       <p className="text-muted-foreground mb-4">
                         暂无收藏内容，请先添加一些收藏
