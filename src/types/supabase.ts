@@ -5548,6 +5548,42 @@ export type Database = {
         };
         Relationships: [];
       };
+      search_history: {
+        Row: {
+          id: string;
+          user_id: string;
+          query: string;
+          keywords: string[];
+          result_count: number;
+          clicked_bookmark_ids: number[];
+          platform_filter: string | null;
+          time_filter: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          query: string;
+          keywords?: string[];
+          result_count?: number;
+          clicked_bookmark_ids?: number[];
+          platform_filter?: string | null;
+          time_filter?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          query?: string;
+          keywords?: string[];
+          result_count?: number;
+          clicked_bookmark_ids?: number[];
+          platform_filter?: string | null;
+          time_filter?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       share_bundles: {
         Row: {
           bookmark_ids: number[];
@@ -7910,6 +7946,15 @@ export type Database = {
           total_refunded: number;
         }[];
       };
+      get_recent_searches: {
+        Args: { p_user_id: string; p_limit?: number };
+        Returns: {
+          id: string;
+          query: string;
+          result_count: number;
+          created_at: string;
+        }[];
+      };
       get_recent_summaries: {
         Args: { p_limit?: number; p_user_id: string };
         Returns: {
@@ -8085,6 +8130,13 @@ export type Database = {
         }[];
       };
       get_user_health_stats: { Args: { p_user_id: string }; Returns: Json };
+      get_user_hot_keywords: {
+        Args: { p_user_id: string; p_limit?: number; p_days?: number };
+        Returns: {
+          keyword: string;
+          count: number;
+        }[];
+      };
       get_user_hot_tags: {
         Args: { p_limit?: number; p_user_id: string };
         Returns: {
@@ -8336,6 +8388,10 @@ export type Database = {
           p_user_id: string;
         };
         Returns: Json;
+      };
+      record_search_click: {
+        Args: { p_search_id: string; p_bookmark_id: number };
+        Returns: undefined;
       };
       refund_quota: {
         Args: { p_error_message?: string; p_request_id: string };

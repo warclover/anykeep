@@ -19,7 +19,7 @@ import { Search, Sparkles, Clock, X, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { BookmarkCard } from "@/components/bookmark/bookmark-card";
+import { SearchResultCard } from "@/components/search/search-result-card";
 import { ErrorMessage } from "@/components/ui/error-message";
 import {
   SemanticSearchToggle,
@@ -37,6 +37,14 @@ import {
   type ChunkSearchInfo,
   type RRFFusionInfo,
 } from "./search-metadata-panel";
+import { SearchFilterPanel, type SearchFilters } from "./search-filter-panel";
+import {
+  SearchResultGroupView,
+  type GroupByOption,
+  type ViewMode,
+} from "./search-result-group-view";
+import { SearchKeyboardHints } from "./search-keyboard-hints";
+import { useSearchKeyboard } from "@/hooks/search/use-search-keyboard";
 import type { Bookmark } from "@/types/supabase";
 import { clientLogger } from "@/lib/client-logger";
 
@@ -98,10 +106,50 @@ export function SearchPageClient({
   const [chunkSearch, setChunkSearch] = useState<ChunkSearchInfo | null>(null);
   const [rrfFusion, setRRFFusion] = useState<RRFFusionInfo | null>(null);
   const [executionTimeMs, setExecutionTimeMs] = useState<number | null>(null);
+  // V4.4.0: 手动过滤器状态
+  const [manualFilters, setManualFilters] = useState<SearchFilters>({
+    platform: "",
+    timeRange: "all",
+    contentType: "",
+    readStatus: "all",
+    starredOnly: false,
+    sortBy: "relevance",
+    sortOrder: "desc",
+  });
+  // V4.4.1: 分组视图状态
+  const [groupBy, setGroupBy] = useState<GroupByOption>("none");
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  // V4.4.2: 输入框聚焦状态
+  const [isInputFocused, setIsInputFocused] = useState(false);
 
   // 合并 SSR 结果和客户端获取的结果
   const searchResults = clientSearchResults ?? ssrSearchResults;
   const error = clientError ?? ssrError;
+
+  // V4.4.2: 键盘快捷键支持
+  const {
+    selectedIndex: _selectedIndex,
+    setSelectedIndex: _setSelectedIndex,
+    shortcuts,
+  } = useSearchKeyboard({
+    resultCount: searchResults.length,
+    inputRef,
+    isInputFocused,
+    enabled: true,
+    onOpenResult: (index) => {
+      const bookmark = searchResults[index];
+      if (bookmark) {
+        router.push(`/bookmark/${bookmark.id}`);
+      }
+    },
+    onClearSearch: () => {
+      setQuery("");
+    },
+    onClosePopup: () => {
+      setShowSuggestions(false);
+      setShowHistory(false);
+    },
+  });
 
   // V4.2.17: 客户端搜索函数
   // V4.3.1: 升级使用 enhanced 模式，支持智能过滤器提取
@@ -346,12 +394,14 @@ export function SearchPageClient({
               onFocus={() => {
                 setShowHistory(true);
                 setShowSuggestions(true);
+                setIsInputFocused(true);
               }}
               onBlur={() => {
                 // 延迟关闭，允许点击建议
                 setTimeout(() => {
                   setShowSuggestions(false);
                   setShowHistory(false);
+                  setIsInputFocused(false);
                 }, 200);
               }}
               placeholder="搜索标题、作者、摘要..."
@@ -381,6 +431,13 @@ export function SearchPageClient({
           <SemanticSearchToggle
             mode={searchMode}
             onModeChange={handleSearchModeChange}
+            className="mb-4"
+          />
+
+          {/* V4.4.2: 键盘快捷键提示 */}
+          <SearchKeyboardHints
+            shortcuts={shortcuts}
+            visible={!hasQuery}
             className="mb-6"
           />
 
@@ -459,6 +516,13 @@ export function SearchPageClient({
                   </p>
                 </div>
 
+                {/* V4.4.0: 手动过滤器面板 */}
+                <SearchFilterPanel
+                  filters={manualFilters}
+                  onFiltersChange={setManualFilters}
+                  className="mb-4 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg"
+                />
+
                 {/* V4.3.1: 智能过滤器提取展示 */}
                 {filterExtraction && filterExtraction.filters.length > 0 && (
                   <FilterExtractionDisplay
@@ -485,11 +549,22 @@ export function SearchPageClient({
 
                 {/* 结果列表 */}
                 {hasResults ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {searchResults.map((bookmark) => (
-                      <BookmarkCard key={bookmark.id} bookmark={bookmark} />
-                    ))}
-                  </div>
+                  <SearchResultGroupView
+                    results={searchResults}
+                    groupBy={groupBy}
+                    onGroupByChange={setGroupBy}
+                    viewMode={viewMode}
+                    onViewModeChange={setViewMode}
+                    renderItem={(bookmark) => (
+                      <SearchResultCard
+                        key={bookmark.id}
+                        bookmark={bookmark}
+                        enablePreview={true}
+                        previewPosition="auto"
+                        onViewDetail={(b) => router.push(`/bookmark/${b.id}`)}
+                      />
+                    )}
+                  />
                 ) : (
                   <div className="flex flex-col items-center justify-center py-16">
                     <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">

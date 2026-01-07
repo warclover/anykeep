@@ -65,9 +65,21 @@ describe("ResponseFormatter", () => {
       const response = formatter.format(rankedResults, bookmarks, query, 50);
 
       expect(response.results).toHaveLength(1);
-      expect(response.results[0].title).toBe("React 教程");
+      // 标题中的关键词应该被高亮
+      expect(response.results[0].title).toBe("**React** 教程");
       expect(response.meta.totalCount).toBe(1);
       expect(response.meta.queryTimeMs).toBe(50);
+    });
+
+    it("标题无关键词时不应添加高亮标记", () => {
+      const rankedResults = [createRankedResult(1, 80, "high")];
+      const bookmarks = new Map([[1, createBookmark(1, "前端开发教程")]]);
+      const query = createQuery(["Vue"]);
+
+      const response = formatter.format(rankedResults, bookmarks, query, 50);
+
+      // 标题中没有关键词，不应有 ** 标记
+      expect(response.results[0].title).toBe("前端开发教程");
     });
 
     it("应该处理空结果", () => {

@@ -2,8 +2,8 @@
  * 搜索 API 路由
  * GET /api/search - 搜索书签（支持关键词、语义、混合搜索）
  *
- * @version 2.0.0
- * @updated 2026-01-02 升级使用 EnhancedSearchService，支持智能过滤器提取
+ * @version 2.1.0
+ * @updated 2026-01-07 集成搜索历史记录
  */
 
 import type { NextRequest } from "next/server";
@@ -24,6 +24,7 @@ import type { ExtractedFilter } from "@/lib/ai-skills/search/filter-extractor.ty
 import { logger } from "@/lib/logger";
 import { getRAGMetricsCollector } from "@/lib/monitoring/rag/metrics-collector";
 import { FeatureFlags } from "@/lib/ai-agent/config/feature-flags";
+import { createSearchHistoryService } from "@/lib/ai-skills/search/search-history.service";
 
 /**
  * 搜索模式
@@ -146,6 +147,32 @@ export async function GET(request: NextRequest) {
           action: "search_complete",
         },
         "Search: Enhanced search complete",
+      );
+
+      // 异步记录搜索历史（不阻塞返回）
+      const resultCount = output.response?.results.length ?? 0;
+      recordSearchHistoryAsync(
+        supabase,
+        user.id,
+        query,
+        output.parsedQuery?.keywords ?? [query],
+        resultCount,
+        output.filterExtraction?.filters.find((f) => f.type === "platform")
+          ? String(
+              (
+                output.filterExtraction.filters.find(
+                  (f) => f.type === "platform",
+                ) as { platform?: string } | undefined
+              )?.platform,
+            )
+          : undefined,
+        output.filterExtraction?.filters.find((f) => f.type === "time_range")
+          ? (
+              output.filterExtraction.filters.find(
+                (f) => f.type === "time_range",
+              ) as { expression?: string } | undefined
+            )?.expression
+          : undefined,
       );
 
       // 返回增强搜索结果
@@ -290,6 +317,15 @@ export async function GET(request: NextRequest) {
       "Search: Complete",
     );
 
+    // 异步记录搜索历史（不阻塞返回）
+    recordSearchHistoryAsync(
+      supabase,
+      user.id,
+      query,
+      [query], // 非增强模式使用原始查询作为关键词
+      results.length,
+    );
+
     // 4. 返回结果
     return successResponse({
       query,
@@ -345,4 +381,45 @@ function serializeFilter(filter: ExtractedFilter): Record<string, unknown> {
     default:
       return {};
   }
+}
+
+/**
+ * 异步记录搜索历史（fire-and-forget）
+ * 不阻塞搜索结果返回，失败时仅记录日志
+ */
+function recordSearchHistoryAsync(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  query: string,
+  keywords: string[],
+  resultCount: number,
+  platformFilter?: string,
+  timeFilter?: string,
+): void {
+  // 使用 setImmediate 或 Promise 延迟执行，避免阻塞响应
+  Promise.resolve().then(async () => {
+    try {
+      const historyService = createSearchHistoryService(supabase, userId);
+      await historyService.recordSearch({
+        query,
+        keywords,
+        resultCount,
+        platformFilter,
+        timeFilter,
+      });
+      logger.debug(
+        { userId, query: query.substring(0, 30) },
+        "Search history recorded",
+      );
+    } catch (error) {
+      // 记录失败不影响搜索功能
+      logger.warn(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          userId,
+        },
+        "Failed to record search history",
+      );
+    }
+  });
 }

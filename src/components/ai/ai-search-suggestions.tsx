@@ -2,9 +2,11 @@
  * AI 搜索建议组件
  *
  * 提供智能搜索建议，包括热门搜索、相关建议、历史记录
+ * v2.0: 集成服务端搜索历史 API
  *
- * @version 1.0.0
+ * @version 2.0.0
  * @since 2025-12-22
+ * @updated 2026-01-07 集成服务端搜索历史
  */
 
 "use client";
@@ -41,6 +43,18 @@ interface SearchSuggestion {
   score?: number;
 }
 
+interface RecentSearchFromAPI {
+  id: string;
+  query: string;
+  resultCount: number;
+  createdAt: string;
+}
+
+interface HotKeywordFromAPI {
+  keyword: string;
+  count: number;
+}
+
 // ============================================
 // 常量配置
 // ============================================
@@ -59,8 +73,14 @@ const SUGGESTION_COLORS: Record<string, string> = {
   tag: "text-blue-600 bg-blue-100 dark:bg-blue-900/30",
 };
 
-// 模拟热门搜索
-const MOCK_TRENDING = ["AI 技术", "产品设计", "前端开发", "创业", "效率工具"];
+// 默认热门搜索（API 失败时的回退）
+const DEFAULT_TRENDING = [
+  "AI 技术",
+  "产品设计",
+  "前端开发",
+  "创业",
+  "效率工具",
+];
 
 // ============================================
 // 组件
@@ -70,52 +90,89 @@ export function AISearchSuggestions({
   query,
   onSuggestionSelect,
   onClearHistory,
-  userId: _userId,
+  userId,
   visible = true,
   className,
 }: AISearchSuggestionsProps) {
-  const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
-  const [searchHistory, setSearchHistory] = useState<string[]>([]);
+  const [aiSuggestions, setAiSuggestions] = useState<SearchSuggestion[]>([]);
+  const [searchHistory, setSearchHistory] = useState<RecentSearchFromAPI[]>([]);
+  const [hotKeywords, setHotKeywords] = useState<HotKeywordFromAPI[]>([]);
   const [_loading, setLoading] = useState(false);
 
-  // 加载搜索历史
+  // 从 API 加载搜索历史和热门关键词
   useEffect(() => {
-    const history = localStorage.getItem("search_history");
-    if (history) {
+    if (!userId) return;
+
+    const loadHistoryFromAPI = async () => {
       try {
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- Initializing state from localStorage on mount
-        setSearchHistory(JSON.parse(history).slice(0, 5));
+        const response = await fetch("/api/search/history?type=all&limit=10");
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            setSearchHistory(data.data.recentSearches || []);
+            setHotKeywords(data.data.hotKeywords || []);
+          }
+        }
       } catch {
-        setSearchHistory([]);
+        // API 失败时使用本地存储回退
+        const history = localStorage.getItem("search_history");
+        if (history) {
+          try {
+            const localHistory = JSON.parse(history).slice(0, 5);
+            setSearchHistory(
+              localHistory.map((q: string, i: number) => ({
+                id: `local-${i}`,
+                query: q,
+                resultCount: 0,
+                createdAt: new Date().toISOString(),
+              })),
+            );
+          } catch {
+            setSearchHistory([]);
+          }
+        }
       }
-    }
-  }, []);
+    };
 
-  // 根据输入生成建议
-  useEffect(() => {
-    if (!query.trim()) {
-      // 无输入时显示历史和热门
-      const historySuggestions: SearchSuggestion[] = searchHistory
-        .slice(0, 3)
-        .map((text, index) => ({
-          id: `history-${index}`,
-          text,
-          type: "history",
-        }));
+    loadHistoryFromAPI();
+  }, [userId]);
 
-      const trendingSuggestions: SearchSuggestion[] = MOCK_TRENDING.slice(
-        0,
-        3,
-      ).map((text, index) => ({
+  // 计算无查询时的默认建议（历史 + 热门）
+  const defaultSuggestions = useMemo(() => {
+    const historySuggestions: SearchSuggestion[] = searchHistory
+      .slice(0, 5)
+      .map((item) => ({
+        id: `history-${item.id}`,
+        text: item.query,
+        type: "history",
+      }));
+
+    // 使用 API 返回的热门关键词，或使用默认值
+    const trendingData =
+      hotKeywords.length > 0
+        ? hotKeywords.slice(0, 5).map((k) => k.keyword)
+        : DEFAULT_TRENDING.slice(0, 3);
+
+    const trendingSuggestions: SearchSuggestion[] = trendingData.map(
+      (text, index) => ({
         id: `trending-${index}`,
         text,
         type: "trending",
-      }));
+      }),
+    );
 
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- Initializing state based on search history
-      setSuggestions([...historySuggestions, ...trendingSuggestions]);
+    return [...historySuggestions, ...trendingSuggestions];
+  }, [searchHistory, hotKeywords]);
+
+  // 根据输入生成 AI 建议
+  useEffect(() => {
+    // 无输入时不生成 AI 建议，displaySuggestions 会使用 defaultSuggestions
+    if (!query.trim()) {
       return;
     }
+
+    // 标记需要清空之前的 AI 建议
+    let isCancelled = false;
 
     // 有输入时生成 AI 建议
     const generateSuggestions = async () => {
@@ -124,7 +181,10 @@ export function AISearchSuggestions({
       // 模拟 AI 建议生成
       await new Promise((resolve) => setTimeout(resolve, 300));
 
-      const aiSuggestions: SearchSuggestion[] = [
+      // 检查是否已取消
+      if (isCancelled) return;
+
+      const newAiSuggestions: SearchSuggestion[] = [
         {
           id: "ai-1",
           text: `${query} 相关文章`,
@@ -147,21 +207,29 @@ export function AISearchSuggestions({
 
       // 匹配的历史记录
       const matchingHistory = searchHistory
-        .filter((h) => h.toLowerCase().includes(query.toLowerCase()))
+        .filter((h) => h.query.toLowerCase().includes(query.toLowerCase()))
         .slice(0, 2)
-        .map((text, index) => ({
-          id: `history-match-${index}`,
-          text,
+        .map((item) => ({
+          id: `history-match-${item.id}`,
+          text: item.query,
           type: "history" as const,
         }));
 
-      setSuggestions([...matchingHistory, ...aiSuggestions]);
+      setAiSuggestions([...matchingHistory, ...newAiSuggestions]);
       setLoading(false);
     };
 
     const debounce = setTimeout(generateSuggestions, 200);
-    return () => clearTimeout(debounce);
-  }, [query, searchHistory]);
+    return () => {
+      isCancelled = true;
+      clearTimeout(debounce);
+    };
+  }, [query, searchHistory, hotKeywords]);
+
+  // 计算最终显示的建议：无查询时用默认建议，有查询时用 AI 建议
+  const displaySuggestions = useMemo(() => {
+    return query.trim() ? aiSuggestions : defaultSuggestions;
+  }, [query, aiSuggestions, defaultSuggestions]);
 
   /**
    * 处理建议选择
@@ -170,21 +238,30 @@ export function AISearchSuggestions({
     (suggestion: SearchSuggestion) => {
       onSuggestionSelect(suggestion.text);
 
-      // 更新搜索历史
+      // 更新本地存储（作为回退）
+      const localHistory = localStorage.getItem("search_history");
+      const history = localHistory ? JSON.parse(localHistory) : [];
       const newHistory = [
         suggestion.text,
-        ...searchHistory.filter((h) => h !== suggestion.text),
+        ...history.filter((h: string) => h !== suggestion.text),
       ].slice(0, 10);
-      setSearchHistory(newHistory);
       localStorage.setItem("search_history", JSON.stringify(newHistory));
     },
-    [onSuggestionSelect, searchHistory],
+    [onSuggestionSelect],
   );
 
   /**
-   * 清除历史
+   * 清除历史（调用 API）
    */
-  const handleClearHistory = useCallback(() => {
+  const handleClearHistory = useCallback(async () => {
+    try {
+      // 清空服务端历史
+      await fetch("/api/search/history", { method: "DELETE" });
+    } catch {
+      // 忽略 API 错误
+    }
+
+    // 清空本地状态和存储
     setSearchHistory([]);
     localStorage.removeItem("search_history");
     onClearHistory?.();
@@ -194,13 +271,28 @@ export function AISearchSuggestions({
    * 删除单条历史
    */
   const handleRemoveHistory = useCallback(
-    (text: string, e: React.MouseEvent) => {
+    async (item: RecentSearchFromAPI, e: React.MouseEvent) => {
       e.stopPropagation();
-      const newHistory = searchHistory.filter((h) => h !== text);
-      setSearchHistory(newHistory);
-      localStorage.setItem("search_history", JSON.stringify(newHistory));
+
+      try {
+        // 删除服务端记录
+        await fetch(`/api/search/history?id=${item.id}`, { method: "DELETE" });
+      } catch {
+        // 忽略 API 错误
+      }
+
+      // 更新本地状态
+      setSearchHistory((prev) => prev.filter((h) => h.id !== item.id));
+
+      // 更新本地存储
+      const localHistory = localStorage.getItem("search_history");
+      if (localHistory) {
+        const history = JSON.parse(localHistory);
+        const newHistory = history.filter((h: string) => h !== item.query);
+        localStorage.setItem("search_history", JSON.stringify(newHistory));
+      }
     },
-    [searchHistory],
+    [],
   );
 
   // 按类型分组 (必须在条件返回之前调用，以遵守 Hooks 规则)
@@ -212,14 +304,14 @@ export function AISearchSuggestions({
       tag: [],
     };
 
-    suggestions.forEach((s) => {
+    displaySuggestions.forEach((s) => {
       groups[s.type].push(s);
     });
 
     return groups;
-  }, [suggestions]);
+  }, [displaySuggestions]);
 
-  if (!visible || suggestions.length === 0) {
+  if (!visible || displaySuggestions.length === 0) {
     return null;
   }
 
@@ -264,15 +356,25 @@ export function AISearchSuggestions({
               清除
             </Button>
           </div>
-          {groupedSuggestions.history.map((suggestion) => (
-            <SuggestionItem
-              key={suggestion.id}
-              suggestion={suggestion}
-              onClick={() => handleSelect(suggestion)}
-              onRemove={(e) => handleRemoveHistory(suggestion.text, e)}
-              removable
-            />
-          ))}
+          {groupedSuggestions.history.map((suggestion) => {
+            // 找到对应的历史记录
+            const historyItem = searchHistory.find(
+              (h) => h.query === suggestion.text,
+            );
+            return (
+              <SuggestionItem
+                key={suggestion.id}
+                suggestion={suggestion}
+                onClick={() => handleSelect(suggestion)}
+                onRemove={
+                  historyItem
+                    ? (e) => handleRemoveHistory(historyItem, e)
+                    : undefined
+                }
+                removable={!!historyItem}
+              />
+            );
+          })}
         </div>
       )}
 

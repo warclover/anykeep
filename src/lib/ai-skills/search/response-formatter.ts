@@ -169,7 +169,7 @@ export class ResponseFormatter {
   ): SearchResultItem {
     return {
       id: bookmark.id,
-      title: bookmark.title,
+      title: this.formatTitle(bookmark.title, query),
       url: bookmark.url,
       summary: this.formatSummary(bookmark.summary, query),
       platform: this.formatPlatform(bookmark.platform),
@@ -178,6 +178,21 @@ export class ResponseFormatter {
       tags: bookmark.tags,
       folderName: bookmark.folderName,
     };
+  }
+
+  /**
+   * 格式化标题（高亮关键词）
+   */
+  private formatTitle(title: string, query: ParsedQuery): string {
+    let formatted = title;
+
+    // 高亮关键词（使用 **keyword** 格式）
+    for (const keyword of query.keywords) {
+      const regex = new RegExp(`(${this.escapeRegex(keyword)})`, "gi");
+      formatted = formatted.replace(regex, "**$1**");
+    }
+
+    return formatted;
   }
 
   /**
