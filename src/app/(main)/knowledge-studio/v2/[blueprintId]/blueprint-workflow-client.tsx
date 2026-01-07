@@ -18,6 +18,8 @@ import {
   Scissors,
   MessageSquare,
   Download,
+  Volume2,
+  Pause,
 } from "lucide-react";
 import {
   SSE_REQUEST_TIMEOUT_MS,
@@ -59,7 +61,7 @@ import {
   type DraftVersion,
 } from "@/lib/knowledge-studio/iteration";
 import { useSoundEffect } from "@/hooks/use-sound-effect";
-import { useUsageTracking } from "@/hooks/knowledge-studio";
+import { useUsageTracking, useKSTTSPlayer } from "@/hooks/knowledge-studio";
 // Import shared utilities from workflow hook module
 import {
   type WorkflowStep,
@@ -123,6 +125,13 @@ export function BlueprintWorkflowClient({
   const router = useRouter();
   const { playSuccess, playError } = useSoundEffect();
   const { recordUsage } = useUsageTracking();
+  /** P0-3: TTS 播放器 */
+  const {
+    isLoading: isTTSLoading,
+    isPlaying,
+    play: playTTS,
+    pause: pauseTTS,
+  } = useKSTTSPlayer();
 
   // State
   const [blueprint, setBlueprint] = useState<BlueprintListItem | null>(null);
@@ -1276,6 +1285,37 @@ export function BlueprintWorkflowClient({
                     >
                       <Download className="mr-1.5 h-4 w-4" />
                       导出
+                    </Button>
+                    {/* P0-3: TTS 朗读按钮 */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        if (isPlaying) {
+                          pauseTTS();
+                        } else {
+                          // 截取前 2000 字（优先使用精简版）
+                          const textToRead = (
+                            condensedContent || generatedContent
+                          ).slice(0, 2000);
+                          playTTS(textToRead);
+                        }
+                      }}
+                      disabled={
+                        isTTSLoading ||
+                        isCondensing ||
+                        isIterating ||
+                        !generatedContent
+                      }
+                    >
+                      {isTTSLoading ? (
+                        <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                      ) : isPlaying ? (
+                        <Pause className="mr-1.5 h-4 w-4" />
+                      ) : (
+                        <Volume2 className="mr-1.5 h-4 w-4" />
+                      )}
+                      {isPlaying ? "暂停" : "朗读"}
                     </Button>
                   </div>
                 </div>

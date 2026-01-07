@@ -28,3 +28,10 @@ export type { QuotaInfo, UseQuotaReturn } from "./use-quota";
 
 export { useUsageTracking, recordBlueprintUsage } from "./use-usage-tracking";
 export type { UsageRecordParams } from "./use-usage-tracking";
+
+// P0-3: TTS 播放器
+export { useKSTTSPlayer } from "./use-ks-tts-player";
+export type {
+  KSTTSPlayerState,
+  KSTTSPlayerStateValue,
+} from "./use-ks-tts-player";
