@@ -5,7 +5,8 @@
 
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -80,6 +81,44 @@ import {
 const MATERIALS_CACHE_KEY = "ks-v2-materials";
 
 // ============================================================
+// P0-6: Waiting Messages for Generation Progress
+// ============================================================
+
+const WAITING_MESSAGES = [
+  "正在分析素材内容...",
+  "正在构建文章结构...",
+  "正在生成精彩内容...",
+  "AI 正在思考最佳表达...",
+  "即将完成，请稍候...",
+] as const;
+
+// ============================================================
+// P0-6: Reduced Motion Hook
+// ============================================================
+
+function useReducedMotion(): boolean {
+  // 初始化时直接检测（SSR 安全）
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  });
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+    // 仅在事件回调中更新状态
+    const handler = (event: MediaQueryListEvent) => {
+      setPrefersReducedMotion(event.matches);
+    };
+
+    mediaQuery.addEventListener("change", handler);
+    return () => mediaQuery.removeEventListener("change", handler);
+  }, []);
+
+  return prefersReducedMotion;
+}
+
+// ============================================================
 // Phase 2.3: Elapsed Time Display Component
 // ============================================================
 
@@ -132,6 +171,8 @@ export function BlueprintWorkflowClient({
     play: playTTS,
     pause: pauseTTS,
   } = useKSTTSPlayer();
+  /** P0-6: reduced-motion 偏好检测 */
+  const prefersReducedMotion = useReducedMotion();
 
   // State
   const [blueprint, setBlueprint] = useState<BlueprintListItem | null>(null);
@@ -183,6 +224,27 @@ export function BlueprintWorkflowClient({
   const iterateAbortRef = useRef<AbortController | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  /** P0-6: 等待文案轮播索引 */
+  const [waitingMessageIndex, setWaitingMessageIndex] = useState(0);
+
+  /** 判断是否正在生成（用于等待文案轮播） */
+  const isGenerating = useMemo(
+    () => currentStep === "generating" && progress.percent < 100,
+    [currentStep, progress.percent],
+  );
+
+  // P0-6: 等待文案轮播效果
+  useEffect(() => {
+    if (isGenerating) {
+      const interval = setInterval(() => {
+        setWaitingMessageIndex((i) => (i + 1) % WAITING_MESSAGES.length);
+      }, 3000);
+      return () => clearInterval(interval);
+    } else {
+      setWaitingMessageIndex(0);
+    }
+  }, [isGenerating]);
 
   // Cleanup AbortController on unmount
   useEffect(() => {
@@ -591,6 +653,12 @@ export function BlueprintWorkflowClient({
                   // Phase 5: 播放生成完成音效
                   playSuccess();
 
+                  // P0-6: 成功 toast 反馈
+                  toast.success("生成完成！🎉", {
+                    description: `共 ${contentBuffer.length.toLocaleString()} 字，可以开始编辑了`,
+                    duration: 5000,
+                  });
+
                   // 取消读取以跳出外层 while 循环
                   await reader.cancel();
                   break;
@@ -623,8 +691,18 @@ export function BlueprintWorkflowClient({
         if (err instanceof Error) {
           if (err.name === "AbortError") {
             setError("请求超时，请检查网络连接后重试");
+            // P0-6: 超时错误 toast
+            toast.error("生成超时", {
+              description: "请检查网络连接后重试",
+              duration: 5000,
+            });
           } else {
             setError(err.message);
+            // P0-6: 失败 toast 反馈
+            toast.error("生成失败", {
+              description: err.message || "请稍后重试",
+              duration: 5000,
+            });
           }
         }
       }
@@ -1051,7 +1129,9 @@ export function BlueprintWorkflowClient({
     return (
       <div className="container max-w-4xl py-8">
         <div className="flex items-center justify-center min-h-[400px]">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <Loader2
+            className={`h-8 w-8 text-muted-foreground ${prefersReducedMotion ? "" : "animate-spin"}`}
+          />
         </div>
       </div>
     );
@@ -1139,7 +1219,9 @@ export function BlueprintWorkflowClient({
             <Card>
               <CardContent className="flex items-center justify-center py-12">
                 <div className="text-center space-y-4">
-                  <Loader2 className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
+                  <Loader2
+                    className={`h-8 w-8 mx-auto text-muted-foreground ${prefersReducedMotion ? "" : "animate-spin"}`}
+                  />
                   <p className="text-muted-foreground">
                     {progress.message || "正在生成大纲..."}
                   </p>
@@ -1157,11 +1239,16 @@ export function BlueprintWorkflowClient({
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="flex items-center gap-2">
-                  <Sparkles className="h-5 w-5 animate-pulse" />
+                  <Sparkles
+                    className={`h-5 w-5 ${prefersReducedMotion ? "" : "animate-pulse"}`}
+                  />
                   正在生成内容
                 </CardTitle>
-                <CardDescription>
-                  {progress.message || "请稍候..."}
+                {/* P0-6: 等待文案轮播 */}
+                <CardDescription
+                  className={prefersReducedMotion ? "" : "animate-pulse"}
+                >
+                  {WAITING_MESSAGES[waitingMessageIndex]}
                 </CardDescription>
               </div>
               {/* Phase 2: 取消按钮 */}
@@ -1309,7 +1396,9 @@ export function BlueprintWorkflowClient({
                       }
                     >
                       {isTTSLoading ? (
-                        <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                        <Loader2
+                          className={`mr-1.5 h-4 w-4 ${prefersReducedMotion ? "" : "animate-spin"}`}
+                        />
                       ) : isPlaying ? (
                         <Pause className="mr-1.5 h-4 w-4" />
                       ) : (
