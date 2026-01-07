@@ -73,6 +73,8 @@ interface BlueprintRecommendationsProps {
   selectedBlueprintId?: string;
   /** P1-3: 素材列表（提供后启用智能推荐） */
   materials?: MaterialInput[];
+  /** 布局模式：vertical 垂直堆叠（默认）| horizontal 水平并排 */
+  layout?: "vertical" | "horizontal";
   /** 自定义样式类名 */
   className?: string;
 }
@@ -85,6 +87,7 @@ export function BlueprintRecommendations({
   onSelect,
   selectedBlueprintId,
   materials,
+  layout = "vertical",
   className,
 }: BlueprintRecommendationsProps) {
   const [historyRecommendations, setHistoryRecommendations] =
@@ -269,7 +272,13 @@ export function BlueprintRecommendations({
           为你推荐
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent
+        className={cn(
+          layout === "horizontal"
+            ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+            : "space-y-4",
+        )}
+      >
         {/* Recently Used */}
         {hasRecentlyUsed && (
           <RecommendationSection
@@ -278,6 +287,7 @@ export function BlueprintRecommendations({
             items={historyRecommendations.recentlyUsed}
             onSelect={handleSelect}
             selectedId={selectedBlueprintId}
+            layout={layout}
           />
         )}
 
@@ -289,6 +299,7 @@ export function BlueprintRecommendations({
             items={historyRecommendations.popular}
             onSelect={handleSelect}
             selectedId={selectedBlueprintId}
+            layout={layout}
           />
         )}
 
@@ -300,6 +311,7 @@ export function BlueprintRecommendations({
             items={historyRecommendations.suggested}
             onSelect={handleSelect}
             selectedId={selectedBlueprintId}
+            layout={layout}
           />
         )}
       </CardContent>
@@ -317,6 +329,7 @@ interface RecommendationSectionProps {
   items: BlueprintRecommendation[];
   onSelect: (blueprintId: string) => void;
   selectedId?: string;
+  layout?: "vertical" | "horizontal";
 }
 
 function RecommendationSection({
@@ -325,6 +338,7 @@ function RecommendationSection({
   items,
   onSelect,
   selectedId,
+  layout = "vertical",
 }: RecommendationSectionProps) {
   return (
     <div className="space-y-2">
@@ -332,7 +346,7 @@ function RecommendationSection({
         {icon}
         <span>{title}</span>
       </div>
-      <div className="space-y-1">
+      <div className={cn(layout === "horizontal" ? "space-y-1" : "space-y-1")}>
         {items.map((item) => (
           <button
             key={item.blueprintId}

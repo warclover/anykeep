@@ -339,40 +339,37 @@ export function KnowledgeStudioV2PageClient() {
             {/* Phase 2: 场景快速入口 */}
             <ScenarioQuickEntry onSelect={handleBlueprintSelect} />
 
-            {/* 蓝图选择区域（左侧推荐 + 右侧网格） */}
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-              {/* 左侧推荐栏 */}
-              <div className="lg:col-span-2 order-2 lg:order-1">
-                <BlueprintRecommendations
-                  onSelect={handleBlueprintSelect}
-                  selectedBlueprintId={selectedBlueprintId}
-                />
-              </div>
+            {/* 蓝图选择区域（上下布局，全宽适配） */}
+            <div className="flex flex-col gap-6">
+              {/* 上方：为你推荐 */}
+              <BlueprintRecommendations
+                onSelect={handleBlueprintSelect}
+                selectedBlueprintId={selectedBlueprintId}
+                layout="horizontal"
+              />
 
-              {/* 右侧蓝图网格 */}
-              <div className="lg:col-span-3 order-1 lg:order-2">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Sparkles className="h-5 w-5" />
-                      选择蓝图
-                    </CardTitle>
-                    <CardDescription>
-                      选择一个增强蓝图来定义生成内容的类型和格式
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <BlueprintSelectorV2
-                      blueprints={blueprints}
-                      value={selectedBlueprintId}
-                      onChange={handleBlueprintSelect}
-                      userTier={userTier}
-                      onUpgradeClick={handleUpgrade}
-                      isLoading={isLoading}
-                    />
-                  </CardContent>
-                </Card>
-              </div>
+              {/* 下方：选择蓝图 */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Sparkles className="h-5 w-5" />
+                    选择蓝图
+                  </CardTitle>
+                  <CardDescription>
+                    选择一个增强蓝图来定义生成内容的类型和格式
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <BlueprintSelectorV2
+                    blueprints={blueprints}
+                    value={selectedBlueprintId}
+                    onChange={handleBlueprintSelect}
+                    userTier={userTier}
+                    onUpgradeClick={handleUpgrade}
+                    isLoading={isLoading}
+                  />
+                </CardContent>
+              </Card>
             </div>
           </motion.div>
         )}
