@@ -36,34 +36,46 @@ export const MATERIAL_SELECTOR_TEXT = {
 } as const;
 
 // ============================================================
-// Output Length Configuration（Phase 1.2 优化）
+// Output Length Configuration（Phase 1.2 优化 + P3 字数选择）
 // ============================================================
 
 /** 输出长度模式配置 */
 export const LENGTH_MODE_CONFIG = {
   short: {
     label: "简洁",
-    description: "适合小红书、公众号短文",
-    minWords: 1200,
-    maxWords: 1800,
-    maxOutputTokens: 3000,
+    description: "适合小红书、快速阅读",
+    minWords: 800,
+    maxWords: 1500,
+    recommendedWords: 1200,
+    maxOutputTokens: 2500,
     visible: true,
   },
   medium: {
-    label: "标准",
+    label: "标准（推荐）",
     description: "适合公众号标准文章",
-    minWords: 2000,
-    maxWords: 2800,
-    maxOutputTokens: 5000,
+    minWords: 1500,
+    maxWords: 2500,
+    recommendedWords: 1800,
+    maxOutputTokens: 4000,
     visible: true,
   },
   long: {
     label: "详细",
-    description: "适合深度长文（专业用户）",
-    minWords: 3500,
-    maxWords: 5000,
+    description: "适合深度分析长文",
+    minWords: 2500,
+    maxWords: 4000,
+    recommendedWords: 3000,
+    maxOutputTokens: 6000,
+    visible: true,
+  },
+  extended: {
+    label: "超长",
+    description: "适合专业报告（最多6000字）",
+    minWords: 4000,
+    maxWords: 6000,
+    recommendedWords: 5000,
     maxOutputTokens: 8192,
-    visible: false, // 默认隐藏，需展开高级选项
+    visible: false, // 高级选项
   },
 } as const;
 

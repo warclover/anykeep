@@ -241,8 +241,8 @@ export const TTS_DEFAULT_CONFIG = {
   } as TTSDefaultVoices,
   /** 最大文本长度（字符） */
   maxTextLength: 5000,
-  /** API 超时时间（毫秒） */
-  timeoutMs: 30000,
+  /** API 超时时间（毫秒）- 增加到 60 秒以应对网络波动 */
+  timeoutMs: 60000,
 } as const;
 
 /**

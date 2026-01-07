@@ -49,6 +49,7 @@ const WORDS_PER_SECTION = {
   short: 300,
   medium: 450,
   long: 600,
+  extended: 750,
 } as const;
 
 /** 基础生成时间（秒） */

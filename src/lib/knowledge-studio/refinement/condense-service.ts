@@ -96,16 +96,37 @@ const CONDENSE_SYSTEM_PROMPT = `你是一位专业的内容编辑，擅长在保
 - 使用 Markdown 格式
 - 保持原有的标题层级结构
 - 段落清晰、重点突出
-- 严格控制在目标字数范围内`;
+
+## ⚠️ 字数限制（最重要）
+
+你必须严格遵守用户指定的目标字数。这是硬性要求，不可超出。
+- 如果内容过长，必须删减更多内容
+- 如果原文信息密度高，优先保留核心观点，删除次要细节
+- 宁可略少于目标字数，也不可大幅超出`;
 
 function buildCondenseUserPrompt(options: CondenseOptions): string {
   const { content, targetWords, preserveKeyPoints, contentType } = options;
+
+  // 计算允许的字数范围
+  const minWords = Math.floor(targetWords * 0.85);
+  const maxWords = Math.floor(targetWords * 1.1);
 
   const parts: string[] = [];
 
   parts.push(`## 任务
 
-请将以下内容精简到约 **${targetWords} 字**（允许 ±10% 浮动）。`);
+请将以下内容精简到 **${targetWords} 字左右**。
+
+⚠️ **硬性字数限制**：
+- 最少 ${minWords} 字
+- 最多 ${maxWords} 字
+- 超出上限将被视为任务失败
+
+如果无法在字数限制内保留所有信息，请优先删减：
+1. 重复的论述
+2. 过渡性语句
+3. 详细的例子（可简化为一句话）
+4. 次要观点`);
 
   if (contentType) {
     const typeHint = {
@@ -128,7 +149,7 @@ ${content}`);
 
   parts.push(`\n## 开始精简
 
-请现在输出精简后的内容，目标字数约 ${targetWords} 字。直接输出 Markdown 格式的精简内容，无需额外说明。`);
+请输出精简后的内容。记住：目标 ${targetWords} 字，最多不超过 ${maxWords} 字。直接输出 Markdown 内容，无需说明。`);
 
   return parts.join("\n");
 }
