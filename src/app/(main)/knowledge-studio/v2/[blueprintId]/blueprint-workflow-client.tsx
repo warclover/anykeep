@@ -835,6 +835,7 @@ export function BlueprintWorkflowClient({
         const response = await fetch("/api/knowledge-studio/v2/condense", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "include", // 确保 cookies 被传递
           body: JSON.stringify({
             content: contentToCondense,
             targetWords,
@@ -1386,10 +1387,17 @@ export function BlueprintWorkflowClient({
                         if (isPlaying) {
                           pauseTTS();
                         } else {
-                          // 截取前 2000 字（优先使用精简版）
-                          const textToRead = (
-                            condensedContent || generatedContent
-                          ).slice(0, 2000);
+                          // 优先朗读精简版，否则提取前几段（限制 500 字避免超时）
+                          const content = condensedContent || generatedContent;
+                          // 提取前几段落（以双换行分隔），最多 500 字
+                          const paragraphs = content.split(/\n\n+/);
+                          let textToRead = "";
+                          for (const p of paragraphs) {
+                            if (textToRead.length + p.length > 500) break;
+                            textToRead += (textToRead ? "\n\n" : "") + p;
+                          }
+                          // 如果第一段就超过 500 字，截取前 500 字
+                          if (!textToRead) textToRead = content.slice(0, 500);
                           playTTS(textToRead);
                         }
                       }}

@@ -425,14 +425,16 @@ export function KnowledgeStudioV2PageClient() {
                   {/* P0-1: 平台筛选器 */}
                   <div className="flex items-center gap-2 mb-4">
                     <Select
-                      value={platformFilter ?? ""}
-                      onValueChange={(v) => setPlatformFilter(v || null)}
+                      value={platformFilter ?? "all"}
+                      onValueChange={(v) =>
+                        setPlatformFilter(v === "all" ? null : v)
+                      }
                     >
                       <SelectTrigger className="w-[140px]">
                         <SelectValue placeholder="全部平台" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">全部平台</SelectItem>
+                        <SelectItem value="all">全部平台</SelectItem>
                         <SelectItem value="wechat">微信公众号</SelectItem>
                         <SelectItem value="bilibili">B站</SelectItem>
                         <SelectItem value="zhihu">知乎</SelectItem>

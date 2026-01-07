@@ -119,6 +119,7 @@ export function useKSTTSPlayer() {
         const response = await fetch("/api/knowledge-studio/v2/tts", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "include", // 确保 cookies 被传递
           body: JSON.stringify({
             text,
             speed: options?.speed ?? 1.0,
