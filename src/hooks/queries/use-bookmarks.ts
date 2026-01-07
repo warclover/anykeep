@@ -10,7 +10,12 @@
 
 "use client";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  keepPreviousData,
+} from "@tanstack/react-query";
 import { bookmarkKeys, type BookmarkFilters } from "./keys";
 import type {
   BookmarkListResponse,
@@ -175,6 +180,7 @@ export function useBookmarks(filters: BookmarkFilters = {}) {
     queryKey: bookmarkKeys.list(filters),
     queryFn: () => fetchBookmarks(filters),
     staleTime: 5 * 60 * 1000, // 5 分钟
+    placeholderData: keepPreviousData, // 搜索时保持之前数据，避免闪烁
   });
 }
 

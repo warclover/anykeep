@@ -20,7 +20,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Search, X, Info, AlertTriangle } from "lucide-react";
+import { Search, X, Info, AlertTriangle, Loader2 } from "lucide-react";
 import {
   QUALITY_DISPLAY,
   getQualityLevel,
@@ -48,6 +48,12 @@ interface MaterialSelectorProps {
   className?: string;
   scores?: Map<string, MaterialHealthScore>;
   isLoadingScores?: boolean;
+  /** 受控搜索值（后端搜索模式） */
+  searchQuery?: string;
+  /** 搜索变更回调（后端搜索模式） */
+  onSearchChange?: (query: string) => void;
+  /** 是否正在搜索中（显示加载指示器） */
+  isSearching?: boolean;
 }
 
 export function MaterialSelector({
@@ -58,14 +64,30 @@ export function MaterialSelector({
   className,
   scores,
   isLoadingScores = false,
+  searchQuery: controlledSearchQuery,
+  onSearchChange,
+  isSearching = false,
 }: MaterialSelectorProps) {
-  const [searchQuery, setSearchQuery] = useState("");
+  // 内部搜索状态（非受控模式备用）
+  const [internalSearchQuery, setInternalSearchQuery] = useState("");
 
-  const filteredMaterials = materials.filter(
-    (m) =>
-      m.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      m.summary?.toLowerCase().includes(searchQuery.toLowerCase()),
-  );
+  // 判断是否为受控模式
+  const isControlled = onSearchChange !== undefined;
+  const searchQuery = isControlled
+    ? (controlledSearchQuery ?? "")
+    : internalSearchQuery;
+  const handleSearchChange = isControlled
+    ? onSearchChange
+    : setInternalSearchQuery;
+
+  // 仅在非受控模式下进行前端过滤
+  const filteredMaterials = isControlled
+    ? materials // 受控模式：后端已过滤，直接使用
+    : materials.filter(
+        (m) =>
+          m.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          m.summary?.toLowerCase().includes(searchQuery.toLowerCase()),
+      );
 
   const handleToggle = useCallback(
     (id: string) => {
@@ -146,19 +168,23 @@ export function MaterialSelector({
       <div className="relative my-3">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder="搜索素材..."
+          placeholder="搜索全部收藏..."
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-9"
+          onChange={(e) => handleSearchChange(e.target.value)}
+          className="pl-9 pr-9"
         />
-        {searchQuery && (
-          <button
-            type="button"
-            onClick={() => setSearchQuery("")}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-          >
-            <X className="h-4 w-4" />
-          </button>
+        {isSearching ? (
+          <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+        ) : (
+          searchQuery && (
+            <button
+              type="button"
+              onClick={() => handleSearchChange("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )
         )}
       </div>
 

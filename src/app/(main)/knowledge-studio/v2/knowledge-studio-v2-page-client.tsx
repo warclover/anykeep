@@ -51,6 +51,20 @@ type Step = "blueprint" | "materials";
 // ============================================================
 
 /**
+ * Debounce hook - 延迟更新值
+ */
+function useDebouncedValue<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
+/**
  * 获取蓝图列表
  */
 function useBlueprintList() {
@@ -99,11 +113,24 @@ export function KnowledgeStudioV2PageClient() {
   // 平台筛选状态
   const [platformFilter, setPlatformFilter] = useState<string | null>(null);
 
-  // 获取书签数据
-  const { data: bookmarksData, isLoading: isLoadingBookmarks } = useBookmarks({
-    limit: 50, // P0-1: 避免选择困难，从100改为50
+  // 素材搜索状态（后端搜索）
+  const [materialSearchQuery, setMaterialSearchQuery] = useState("");
+  const debouncedSearchQuery = useDebouncedValue(materialSearchQuery, 300);
+
+  // 获取书签数据（搜索时不限制数量，否则只加载 50 条）
+  const {
+    data: bookmarksData,
+    isLoading: isLoadingBookmarks,
+    isFetching: isFetchingBookmarks,
+  } = useBookmarks({
+    limit: debouncedSearchQuery ? 100 : 50, // 搜索时增加限制
     platform: platformFilter || undefined,
+    search: debouncedSearchQuery || undefined, // 后端搜索
   });
+
+  // 判断是否正在搜索（输入与 debounced 不同，或正在请求）
+  const isSearching =
+    materialSearchQuery !== debouncedSearchQuery || isFetchingBookmarks;
   const bookmarks = useMemo(
     () => bookmarksData?.items || [],
     [bookmarksData?.items],
@@ -469,6 +496,9 @@ export function KnowledgeStudioV2PageClient() {
                       selected={selectedMaterialIds}
                       onChange={handleMaterialsChange}
                       maxSelection={MATERIAL_LIMITS.HARD_MAX}
+                      searchQuery={materialSearchQuery}
+                      onSearchChange={setMaterialSearchQuery}
+                      isSearching={isSearching}
                     />
                   )}
                 </CardContent>
