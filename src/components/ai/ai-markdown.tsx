@@ -12,10 +12,11 @@
 
 "use client";
 
-import { memo, useMemo } from "react";
+import { memo, useMemo, isValidElement, Children } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
+import { CollapsibleCodeBlock } from "./collapsible-code-block";
 
 interface AIMarkdownProps {
   /** Markdown 内容 */
@@ -154,17 +155,39 @@ export const AIMarkdown = memo(function AIMarkdown({
         );
       },
 
-      // 代码块
-      pre: ({ children }) => (
-        <pre
-          className={cn(
-            "my-2 first:mt-0 last:mb-0 rounded-lg overflow-hidden",
-            isUser ? "bg-white/10" : "bg-gray-50 border border-gray-200",
-          )}
-        >
-          {children}
-        </pre>
-      ),
+      // 代码块 - 使用可折叠组件处理长内容
+      pre: ({ children }) => {
+        // 提取语言类型
+        let language: string | undefined;
+        let codeContent: React.ReactNode = children;
+
+        // 检查是否有 code 子元素并提取语言
+        Children.forEach(children, (child) => {
+          if (isValidElement(child) && child.type === "code") {
+            const className = (child.props as { className?: string }).className;
+            if (className) {
+              const match = /language-(\w+)/.exec(className);
+              if (match) {
+                language = match[1];
+              }
+            }
+            codeContent = (child.props as { children?: React.ReactNode })
+              .children;
+          }
+        });
+
+        return (
+          <CollapsibleCodeBlock
+            language={language}
+            isUser={isUser}
+            collapseThreshold={15}
+            visibleLines={10}
+            className="my-2 first:mt-0 last:mb-0"
+          >
+            {codeContent}
+          </CollapsibleCodeBlock>
+        );
+      },
 
       // 引用块
       blockquote: ({ children }) => (

@@ -50,6 +50,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { CollapsibleCodeBlock } from "@/components/ai/collapsible-code-block";
 
 // ============================================================
 // Types
@@ -629,13 +630,18 @@ function MarkdownRenderer({ content }: { content: string }) {
 }
 
 /**
- * JSON Renderer
+ * JSON Renderer - 使用可折叠代码块
  */
 function JsonRenderer({ data }: { data: unknown }) {
+  const jsonString = JSON.stringify(data, null, 2);
   return (
-    <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-xs">
-      <code>{JSON.stringify(data, null, 2)}</code>
-    </pre>
+    <CollapsibleCodeBlock
+      language="json"
+      collapseThreshold={15}
+      visibleLines={10}
+    >
+      {jsonString}
+    </CollapsibleCodeBlock>
   );
 }
 

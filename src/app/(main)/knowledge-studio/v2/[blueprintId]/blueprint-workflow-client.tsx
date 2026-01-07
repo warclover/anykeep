@@ -996,16 +996,15 @@ export function BlueprintWorkflowClient({
   }, [blueprintId, router]);
 
   /**
-   * View report
+   * View report - 查看草稿
+   * 注意：不清除缓存，允许用户返回到结果页面
    */
   const handleViewReport = useCallback(() => {
     if (reportId) {
-      // 查看草稿后清理缓存（工作流完成）
-      clearCache(blueprintId);
-      sessionStorage.removeItem(MATERIALS_CACHE_KEY);
+      // 不清除缓存，允许用户通过浏览器返回查看结果页
       router.push(`/synthesis/${reportId}`);
     }
-  }, [blueprintId, reportId, router]);
+  }, [reportId, router]);
 
   /**
    * Determine output type from structured output
