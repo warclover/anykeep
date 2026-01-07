@@ -31,6 +31,8 @@ export { MaterialRecommendations } from "./material-recommendations";
 export { FeedbackDialog } from "./feedback-dialog";
 export { DraftVersionPanel } from "./draft-version-panel";
 export { ContentDiffViewer } from "./content-diff-viewer"; // P1-5: 内容对比查看器
+export { CondenseSlider } from "./condense-slider"; // P2-2: 自定义精简字数滑块
+export { OutlineTemplateManager } from "./outline-template-manager"; // P2-3: 大纲模板保存与复用
 // Phase 6: 历史记录
 export { HistoryPageClient } from "./history-page-client";
 // P0-2: 导出功能

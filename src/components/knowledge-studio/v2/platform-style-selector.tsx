@@ -3,12 +3,13 @@
  * @module knowledge-studio/v2
  *
  * Phase 3.1: 让用户选择生成内容的目标平台风格
+ * P2-5: 风格预览示例
  */
 
 "use client";
 
-import { useMemo } from "react";
-import { Smartphone } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Smartphone, Eye } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -19,6 +20,13 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import {
   PLATFORM_STYLE_CONFIG,
@@ -47,9 +55,17 @@ export function PlatformStyleSelector({
   onChange,
   className,
 }: PlatformStyleSelectorProps) {
+  // P2-5: 预览展开状态
+  const [previewOpen, setPreviewOpen] = useState(false);
+
   const platformOptions = useMemo(() => {
     return Object.values(PLATFORM_STYLE_CONFIG);
   }, []);
+
+  // P2-5: 当前选中风格的预览内容
+  const currentPreview = useMemo(() => {
+    return PLATFORM_STYLE_CONFIG[value].preview;
+  }, [value]);
 
   return (
     <Card className={className}>
@@ -60,7 +76,7 @@ export function PlatformStyleSelector({
         </CardTitle>
         <CardDescription>选择目标平台以优化内容风格</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
         <RadioGroup
           value={value}
           onValueChange={(v) => onChange(v as PlatformStyle)}
@@ -108,6 +124,37 @@ export function PlatformStyleSelector({
             </Label>
           ))}
         </RadioGroup>
+
+        {/* P2-5: 风格预览示例 */}
+        <Collapsible open={previewOpen} onOpenChange={setPreviewOpen}>
+          <CollapsibleTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full justify-center gap-2 text-muted-foreground hover:text-foreground"
+            >
+              <Eye className="h-4 w-4" />
+              {previewOpen ? "收起预览" : "查看风格示例"}
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-3">
+            <div className="rounded-lg border bg-muted/30 p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-lg">
+                  {PLATFORM_STYLE_CONFIG[value].icon}
+                </span>
+                <span className="text-sm font-medium">
+                  {PLATFORM_STYLE_CONFIG[value].label}示例
+                </span>
+              </div>
+              <ScrollArea className="h-[200px]">
+                <div className="text-sm whitespace-pre-wrap leading-relaxed pr-4">
+                  {currentPreview}
+                </div>
+              </ScrollArea>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
       </CardContent>
     </Card>
   );

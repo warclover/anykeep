@@ -48,6 +48,8 @@ import {
   DraftVersionPanel,
   ExportResultDialog,
   MultiPlatformDialog,
+  CondenseSlider,
+  OutlineTemplateManager,
   type BlueprintListItem,
   type OutputType,
 } from "@/components/knowledge-studio/v2";
@@ -1201,6 +1203,14 @@ export function BlueprintWorkflowClient({
         <>
           {outline ? (
             <div className="space-y-6">
+              {/* P2-3: 大纲模板管理器 */}
+              <div className="flex justify-end">
+                <OutlineTemplateManager
+                  blueprintId={blueprintId}
+                  currentOutline={outline}
+                  onLoadTemplate={setOutline}
+                />
+              </div>
               <OutlineEditorV2
                 outline={outline}
                 onChange={setOutline}
@@ -1331,33 +1341,13 @@ export function BlueprintWorkflowClient({
                     当前内容约 {generatedContent.length.toLocaleString()} 字
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleCondense(800)}
+                    {/* P2-2: 自定义精简字数滑块 */}
+                    <CondenseSlider
+                      currentWords={generatedContent.length}
+                      onCondense={handleCondense}
+                      isCondensing={isCondensing}
                       disabled={isCondensing}
-                    >
-                      <Scissors className="mr-1.5 h-4 w-4" />
-                      精简到 800 字
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleCondense(1500)}
-                      disabled={isCondensing}
-                    >
-                      <Scissors className="mr-1.5 h-4 w-4" />
-                      精简到 1500 字
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleCondense(2000)}
-                      disabled={isCondensing}
-                    >
-                      <Scissors className="mr-1.5 h-4 w-4" />
-                      精简到 2000 字
-                    </Button>
+                    />
                     {/* Phase 4: 反馈优化按钮 */}
                     <Button
                       variant="outline"

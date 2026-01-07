@@ -3,6 +3,7 @@
  * @module knowledge-studio/v2
  *
  * Phase 4: 草稿迭代与反馈驱动优化
+ * P2-1: 版本对比 Diff 功能
  */
 
 "use client";
@@ -18,6 +19,7 @@ import {
   Scissors,
   RefreshCw,
   Sparkles,
+  ArrowLeftRight,
 } from "lucide-react";
 import {
   Collapsible,
@@ -32,6 +34,13 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import {
   type DraftVersion,
@@ -39,6 +48,7 @@ import {
   getDraftSourceLabel,
   FEEDBACK_TYPES,
 } from "@/lib/knowledge-studio/iteration";
+import { ContentDiffViewer } from "./content-diff-viewer";
 
 // ============================================================
 // Types
@@ -57,6 +67,14 @@ interface DraftVersionPanelProps {
   collapsible?: boolean;
   /** 默认展开状态 */
   defaultOpen?: boolean;
+  /** P2-1: 当前版本内容（用于 Diff 对比） */
+  currentContent?: string;
+}
+
+/** P2-1: 对比对话框状态 */
+interface DiffDialogState {
+  open: boolean;
+  compareVersion: DraftVersion | null;
 }
 
 // ============================================================
@@ -68,6 +86,10 @@ interface VersionItemProps {
   isCurrent: boolean;
   onRestore: () => void;
   isRestoring: boolean;
+  /** P2-1: 对比回调 */
+  onCompare?: () => void;
+  /** P2-1: 是否显示对比按钮 */
+  showCompareButton?: boolean;
 }
 
 function VersionItem({
@@ -75,6 +97,8 @@ function VersionItem({
   isCurrent,
   onRestore,
   isRestoring,
+  onCompare,
+  showCompareButton = false,
 }: VersionItemProps) {
   // Get source icon
   const getSourceIcon = () => {
@@ -150,25 +174,46 @@ function VersionItem({
         )}
       </div>
 
-      {/* Restore button */}
-      {!isCurrent && (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onRestore}
-                disabled={isRestoring}
-                className="shrink-0"
-              >
-                <RotateCcw className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>恢复到此版本</TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      )}
+      {/* P2-1: Compare button + Restore button */}
+      <div className="flex items-center gap-1 shrink-0">
+        {/* Compare with current button */}
+        {showCompareButton && !isCurrent && onCompare && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onCompare}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <ArrowLeftRight className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>与当前版本对比</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+
+        {/* Restore button */}
+        {!isCurrent && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onRestore}
+                  disabled={isRestoring}
+                >
+                  <RotateCcw className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>恢复到此版本</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+      </div>
     </div>
   );
 }
@@ -184,8 +229,14 @@ export function DraftVersionPanel({
   isRestoring = false,
   collapsible = true,
   defaultOpen = false,
+  currentContent,
 }: DraftVersionPanelProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
+  // P2-1: Diff 对话框状态
+  const [diffDialog, setDiffDialog] = useState<DiffDialogState>({
+    open: false,
+    compareVersion: null,
+  });
 
   const handleRestore = useCallback(
     (versionId: string) => {
@@ -194,10 +245,23 @@ export function DraftVersionPanel({
     [onRestore],
   );
 
+  // P2-1: 打开对比对话框
+  const handleCompare = useCallback((version: DraftVersion) => {
+    setDiffDialog({ open: true, compareVersion: version });
+  }, []);
+
+  // P2-1: 关闭对比对话框
+  const handleCloseDiffDialog = useCallback(() => {
+    setDiffDialog({ open: false, compareVersion: null });
+  }, []);
+
   // No versions
   if (versions.length === 0) {
     return null;
   }
+
+  // P2-1: 是否显示对比按钮（需要有当前内容且版本数 > 1）
+  const showCompareButton = !!currentContent && versions.length > 1;
 
   const content = (
     <div className="space-y-2">
@@ -208,49 +272,80 @@ export function DraftVersionPanel({
           isCurrent={index === currentIndex}
           onRestore={() => handleRestore(version.id)}
           isRestoring={isRestoring}
+          showCompareButton={showCompareButton}
+          onCompare={() => handleCompare(version)}
         />
       ))}
     </div>
   );
 
+  // P2-1: Diff 对话框组件
+  const diffDialogComponent = diffDialog.compareVersion && currentContent && (
+    <Dialog open={diffDialog.open} onOpenChange={handleCloseDiffDialog}>
+      <DialogContent className="sm:max-w-3xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <ArrowLeftRight className="h-5 w-5" />
+            版本对比
+          </DialogTitle>
+          <DialogDescription>
+            对比 v{diffDialog.compareVersion.version} 与当前版本的差异
+          </DialogDescription>
+        </DialogHeader>
+        <ContentDiffViewer
+          before={diffDialog.compareVersion.content}
+          after={currentContent}
+          defaultExpanded={true}
+          maxHeight="400px"
+        />
+      </DialogContent>
+    </Dialog>
+  );
+
   if (!collapsible) {
     return (
-      <div className="space-y-3">
-        <div className="flex items-center gap-2">
-          <History className="h-4 w-4 text-muted-foreground" />
-          <h3 className="text-sm font-medium">版本历史</h3>
-          <Badge variant="secondary" className="text-xs">
-            {versions.length}
-          </Badge>
-        </div>
-        {content}
-      </div>
-    );
-  }
-
-  return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <CollapsibleTrigger asChild>
-        <Button
-          variant="ghost"
-          className="w-full justify-between px-3 py-2 h-auto"
-        >
+      <>
+        <div className="space-y-3">
           <div className="flex items-center gap-2">
             <History className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-medium">版本历史</span>
+            <h3 className="text-sm font-medium">版本历史</h3>
             <Badge variant="secondary" className="text-xs">
               {versions.length}
             </Badge>
           </div>
-          {isOpen ? (
-            <ChevronUp className="h-4 w-4 text-muted-foreground" />
-          ) : (
-            <ChevronDown className="h-4 w-4 text-muted-foreground" />
-          )}
-        </Button>
-      </CollapsibleTrigger>
-      <CollapsibleContent className="pt-2">{content}</CollapsibleContent>
-    </Collapsible>
+          {content}
+        </div>
+        {diffDialogComponent}
+      </>
+    );
+  }
+
+  return (
+    <>
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <CollapsibleTrigger asChild>
+          <Button
+            variant="ghost"
+            className="w-full justify-between px-3 py-2 h-auto"
+          >
+            <div className="flex items-center gap-2">
+              <History className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">版本历史</span>
+              <Badge variant="secondary" className="text-xs">
+                {versions.length}
+              </Badge>
+            </div>
+            {isOpen ? (
+              <ChevronUp className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            )}
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="pt-2">{content}</CollapsibleContent>
+      </Collapsible>
+      {diffDialogComponent}
+    </>
   );
 }
 
