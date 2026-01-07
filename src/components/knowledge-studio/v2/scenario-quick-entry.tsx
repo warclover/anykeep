@@ -37,42 +37,43 @@ interface ScenarioQuickEntryProps {
 
 /**
  * 预定义场景列表
+ * 映射到已注册的蓝图 ID
  */
 const SCENARIOS: Scenario[] = [
   {
-    id: "wechat",
-    icon: "💬",
-    label: "写公众号",
-    description: "生成公众号爆款文章",
-    blueprintId: "wechat_article",
+    id: "newsletter",
+    icon: "📰",
+    label: "周刊策展",
+    description: "生成专业周刊内容",
+    blueprintId: "creator-newsletter",
   },
   {
-    id: "xiaohongshu",
-    icon: "📕",
-    label: "发小红书",
-    description: "生成种草笔记",
-    blueprintId: "xiaohongshu_note",
+    id: "scriptwriter",
+    icon: "🎬",
+    label: "视频脚本",
+    description: "生成视频脚本和分镜",
+    blueprintId: "creator-scriptwriter",
   },
   {
     id: "analysis",
     icon: "📊",
     label: "竞品分析",
     description: "生成竞品分析报告",
-    blueprintId: "competitive_analysis",
+    blueprintId: "business-competitor_scout",
   },
   {
-    id: "notes",
+    id: "tutorial",
     icon: "📝",
-    label: "学习笔记",
-    description: "整理学习笔记",
-    blueprintId: "learning_notes",
+    label: "技术教程",
+    description: "生成技术教程文章",
+    blueprintId: "geek-tutorial_architect",
   },
   {
-    id: "summary",
-    icon: "📋",
-    label: "内容摘要",
-    description: "生成内容摘要",
-    blueprintId: "content_summary",
+    id: "paper",
+    icon: "📄",
+    label: "论文解读",
+    description: "解读学术论文",
+    blueprintId: "geek-arxiv_decoder",
   },
 ];
 

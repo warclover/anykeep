@@ -106,6 +106,8 @@ export const CACHE_KEYS = {
     `ks:v2:${blueprintId}:briefingContext`,
   OUTLINE: (blueprintId: string) => `ks:v2:${blueprintId}:outline`,
   CONTENT: (blueprintId: string) => `ks:v2:${blueprintId}:content`,
+  STRUCTURED_OUTPUT: (blueprintId: string) =>
+    `ks:v2:${blueprintId}:structuredOutput`,
   REPORT_ID: (blueprintId: string) => `ks:v2:${blueprintId}:reportId`,
   CURRENT_STEP: (blueprintId: string) => `ks:v2:${blueprintId}:currentStep`,
   PLATFORM_STYLE: (blueprintId: string) => `ks:v2:${blueprintId}:platformStyle`,

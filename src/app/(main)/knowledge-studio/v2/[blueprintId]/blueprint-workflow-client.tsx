@@ -63,33 +63,17 @@ import {
   type WorkflowStep,
   type GenerationProgress,
   StoredMaterialsSchema,
+  CACHE_KEYS,
   saveToCache,
   loadFromCache,
+  clearCache,
 } from "./hooks";
 
 // ============================================================
-// Session Storage Keys for Caching
+// Global Session Storage Key (shared with main page)
 // ============================================================
 
-const CACHE_KEYS = {
-  MATERIALS: "ks-v2-materials",
-  OUTLINE: "ks-v2-outline",
-  CONTENT: "ks-v2-content",
-  STRUCTURED_OUTPUT: "ks-v2-structured-output",
-  REPORT_ID: "ks-v2-report-id",
-  CURRENT_STEP: "ks-v2-current-step",
-  BRIEFING_CONTEXT: "ks-v2-briefing-context",
-  PLATFORM_STYLE: "ks-v2-platform-style",
-} as const;
-
-/**
- * 清理所有缓存数据
- */
-function clearAllCache() {
-  Object.values(CACHE_KEYS).forEach((key) => {
-    sessionStorage.removeItem(key);
-  });
-}
+const MATERIALS_CACHE_KEY = "ks-v2-materials";
 
 // ============================================================
 // Phase 2.3: Elapsed Time Display Component
@@ -164,7 +148,9 @@ export function BlueprintWorkflowClient({
   );
   /** Phase 3.1: 平台风格（支持缓存恢复） */
   const [platformStyle, setPlatformStyle] = useState<PlatformStyle>(() => {
-    const cached = loadFromCache<PlatformStyle>(CACHE_KEYS.PLATFORM_STYLE);
+    const cached = loadFromCache<PlatformStyle>(
+      CACHE_KEYS.PLATFORM_STYLE(blueprintId),
+    );
     return cached ?? "general";
   });
 
@@ -210,7 +196,7 @@ export function BlueprintWorkflowClient({
     async function loadData() {
       try {
         // Load and validate materials from sessionStorage (P1 #5)
-        const storedMaterials = sessionStorage.getItem("ks-v2-materials");
+        const storedMaterials = sessionStorage.getItem(MATERIALS_CACHE_KEY);
         if (!storedMaterials) {
           router.push("/knowledge-studio/v2");
           return;
@@ -222,8 +208,8 @@ export function BlueprintWorkflowClient({
           parsedMaterials = JSON.parse(storedMaterials);
         } catch {
           // Invalid JSON - redirect to material selection
-          sessionStorage.removeItem("ks-v2-materials");
-          router.push("/knowledge-studio/v2");
+          sessionStorage.removeItem(MATERIALS_CACHE_KEY);
+          router.push("/knowledge-studio/v2?error=invalid-materials");
           return;
         }
 
@@ -231,8 +217,8 @@ export function BlueprintWorkflowClient({
           StoredMaterialsSchema.safeParse(parsedMaterials);
         if (!validationResult.success) {
           // Invalid data structure - clear and redirect
-          sessionStorage.removeItem("ks-v2-materials");
-          router.push("/knowledge-studio/v2");
+          sessionStorage.removeItem(MATERIALS_CACHE_KEY);
+          router.push("/knowledge-studio/v2?error=invalid-materials");
           return;
         }
 
@@ -254,18 +240,24 @@ export function BlueprintWorkflowClient({
         setBlueprint(foundBlueprint);
 
         // 尝试恢复缓存的工作流状态
-        const cachedStep = loadFromCache<WorkflowStep>(CACHE_KEYS.CURRENT_STEP);
+        const cachedStep = loadFromCache<WorkflowStep>(
+          CACHE_KEYS.CURRENT_STEP(blueprintId),
+        );
         const cachedOutline = loadFromCache<BlueprintOutline>(
-          CACHE_KEYS.OUTLINE,
+          CACHE_KEYS.OUTLINE(blueprintId),
         );
-        const cachedContent = loadFromCache<string>(CACHE_KEYS.CONTENT);
+        const cachedContent = loadFromCache<string>(
+          CACHE_KEYS.CONTENT(blueprintId),
+        );
         const cachedStructuredOutput = loadFromCache<unknown>(
-          CACHE_KEYS.STRUCTURED_OUTPUT,
+          CACHE_KEYS.STRUCTURED_OUTPUT(blueprintId),
         );
-        const cachedReportId = loadFromCache<string>(CACHE_KEYS.REPORT_ID);
+        const cachedReportId = loadFromCache<string>(
+          CACHE_KEYS.REPORT_ID(blueprintId),
+        );
         const cachedBriefingContext = loadFromCache<
           BriefingContext & { answeredAt: string }
-        >(CACHE_KEYS.BRIEFING_CONTEXT);
+        >(CACHE_KEYS.BRIEFING_CONTEXT(blueprintId));
 
         // 如果有缓存的结果，恢复到结果页面
         if (cachedStep === "result" && cachedReportId) {
@@ -405,8 +397,8 @@ export function BlueprintWorkflowClient({
               if (data.type === "outline" && data.data.outline) {
                 setOutline(data.data.outline);
                 // 缓存大纲数据
-                saveToCache(CACHE_KEYS.OUTLINE, data.data.outline);
-                saveToCache(CACHE_KEYS.CURRENT_STEP, "outline");
+                saveToCache(CACHE_KEYS.OUTLINE(blueprintId), data.data.outline);
+                saveToCache(CACHE_KEYS.CURRENT_STEP(blueprintId), "outline");
                 receivedOutline = true;
               } else if (data.type === "progress") {
                 setProgress({
@@ -558,7 +550,7 @@ export function BlueprintWorkflowClient({
                   setStructuredOutput(data.data.structuredOutput);
                   // 缓存结构化输出
                   saveToCache(
-                    CACHE_KEYS.STRUCTURED_OUTPUT,
+                    CACHE_KEYS.STRUCTURED_OUTPUT(blueprintId),
                     data.data.structuredOutput,
                   );
                   break;
@@ -568,9 +560,12 @@ export function BlueprintWorkflowClient({
                   setCurrentStep("result");
                   generationCompleted = true;
                   // 缓存生成结果
-                  saveToCache(CACHE_KEYS.CONTENT, contentBuffer);
-                  saveToCache(CACHE_KEYS.REPORT_ID, data.data.reportId);
-                  saveToCache(CACHE_KEYS.CURRENT_STEP, "result");
+                  saveToCache(CACHE_KEYS.CONTENT(blueprintId), contentBuffer);
+                  saveToCache(
+                    CACHE_KEYS.REPORT_ID(blueprintId),
+                    data.data.reportId,
+                  );
+                  saveToCache(CACHE_KEYS.CURRENT_STEP(blueprintId), "result");
 
                   // Phase 2: 记录成功使用统计
                   recordUsage({
@@ -638,7 +633,7 @@ export function BlueprintWorkflowClient({
     (context: BriefingContext) => {
       setBriefingContext(context);
       // 缓存 briefing 上下文
-      saveToCache(CACHE_KEYS.BRIEFING_CONTEXT, {
+      saveToCache(CACHE_KEYS.BRIEFING_CONTEXT(blueprintId), {
         ...context,
         answeredAt: context.answeredAt.toISOString(),
       });
@@ -651,7 +646,7 @@ export function BlueprintWorkflowClient({
         startGeneration(context);
       }
     },
-    [blueprint, generateOutline, startGeneration],
+    [blueprint, blueprintId, generateOutline, startGeneration],
   );
 
   /**
@@ -682,10 +677,13 @@ export function BlueprintWorkflowClient({
   /**
    * Handle platform style change with cache persistence
    */
-  const handlePlatformStyleChange = useCallback((style: PlatformStyle) => {
-    setPlatformStyle(style);
-    saveToCache(CACHE_KEYS.PLATFORM_STYLE, style);
-  }, []);
+  const handlePlatformStyleChange = useCallback(
+    (style: PlatformStyle) => {
+      setPlatformStyle(style);
+      saveToCache(CACHE_KEYS.PLATFORM_STYLE(blueprintId), style);
+    },
+    [blueprintId],
+  );
 
   /**
    * Handle cancel generation
@@ -992,9 +990,10 @@ export function BlueprintWorkflowClient({
       abortControllerRef.current.abort();
     }
     // 返回时清理缓存（用户主动放弃）
-    clearAllCache();
+    clearCache(blueprintId);
+    sessionStorage.removeItem(MATERIALS_CACHE_KEY);
     router.push("/knowledge-studio/v2");
-  }, [router]);
+  }, [blueprintId, router]);
 
   /**
    * View report
@@ -1002,10 +1001,11 @@ export function BlueprintWorkflowClient({
   const handleViewReport = useCallback(() => {
     if (reportId) {
       // 查看草稿后清理缓存（工作流完成）
-      clearAllCache();
+      clearCache(blueprintId);
+      sessionStorage.removeItem(MATERIALS_CACHE_KEY);
       router.push(`/synthesis/${reportId}`);
     }
-  }, [reportId, router]);
+  }, [blueprintId, reportId, router]);
 
   /**
    * Determine output type from structured output

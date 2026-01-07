@@ -6,7 +6,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, BookOpen, Sparkles, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -82,7 +82,11 @@ function useBlueprintList() {
 
 export function KnowledgeStudioV2PageClient() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { blueprints, userTier, isLoading, error } = useBlueprintList();
+
+  // 检查 URL 错误参数
+  const errorType = searchParams?.get("error") ?? null;
 
   // 获取书签数据
   const { data: bookmarksData, isLoading: isLoadingBookmarks } = useBookmarks({
@@ -110,13 +114,37 @@ export function KnowledgeStudioV2PageClient() {
   const [step, setStep] = useState<Step>("blueprint");
   const [selectedBlueprintId, setSelectedBlueprintId] = useState<
     string | undefined
-  >();
+  >(() => {
+    // 读取历史页面传递的预选蓝图（初始化时读取）
+    if (typeof window !== "undefined") {
+      const preselectBlueprint = sessionStorage.getItem(
+        "ks-v2-preselect-blueprint",
+      );
+      if (preselectBlueprint) {
+        // 一次性使用后清除
+        sessionStorage.removeItem("ks-v2-preselect-blueprint");
+        return preselectBlueprint;
+      }
+    }
+    return undefined;
+  });
   const [selectedMaterialIds, setSelectedMaterialIds] = useState<string[]>([]);
 
   // 获取选中的蓝图信息
   const selectedBlueprint = blueprints.find(
     (bp) => bp.blueprintId === selectedBlueprintId,
   );
+
+  // 清除 URL 错误参数
+  useEffect(() => {
+    if (errorType) {
+      // 3秒后清除 URL 参数
+      const timer = setTimeout(() => {
+        router.replace("/knowledge-studio/v2", { scroll: false });
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [errorType, router]);
 
   /**
    * 处理蓝图选择
@@ -211,6 +239,17 @@ export function KnowledgeStudioV2PageClient() {
 
   return (
     <div className="container max-w-6xl py-8 space-y-8">
+      {/* 错误提示 */}
+      {errorType === "invalid-materials" && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>素材数据异常</AlertTitle>
+          <AlertDescription>
+            会话数据已过期或损坏，请重新选择素材后继续
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* 页面标题 */}
       <div className="space-y-2">
         <div className="flex items-center gap-2">
@@ -281,9 +320,9 @@ export function KnowledgeStudioV2PageClient() {
           <ScenarioQuickEntry onSelect={handleBlueprintSelect} />
 
           {/* 蓝图选择区域（左侧推荐 + 右侧网格） */}
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
             {/* 左侧推荐栏 */}
-            <div className="lg:col-span-1">
+            <div className="lg:col-span-2 order-2 lg:order-1">
               <BlueprintRecommendations
                 onSelect={handleBlueprintSelect}
                 selectedBlueprintId={selectedBlueprintId}
@@ -291,7 +330,7 @@ export function KnowledgeStudioV2PageClient() {
             </div>
 
             {/* 右侧蓝图网格 */}
-            <div className="lg:col-span-3">
+            <div className="lg:col-span-3 order-1 lg:order-2">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -319,9 +358,9 @@ export function KnowledgeStudioV2PageClient() {
       )}
 
       {step === "materials" && (
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           {/* 左侧推荐栏 */}
-          <div className="lg:col-span-1 order-2 lg:order-1">
+          <div className="lg:col-span-2 order-2 lg:order-1">
             <MaterialRecommendations
               selectedMaterialIds={selectedMaterialIds}
               onAddMaterial={handleAddMaterial}
