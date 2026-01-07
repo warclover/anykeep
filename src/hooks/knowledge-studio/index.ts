@@ -35,3 +35,7 @@ export type {
   KSTTSPlayerState,
   KSTTSPlayerStateValue,
 } from "./use-ks-tts-player";
+
+// P1-1: 一稿多发风格适配
+export { useAdaptStyle } from "./use-adapt-style";
+export type { AdaptStyleStatus, AdaptStyleState } from "./use-adapt-style";

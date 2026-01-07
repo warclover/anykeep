@@ -1,15 +1,20 @@
 /**
  * Knowledge Studio v2 - Blueprint Recommendations API
  * @route GET /api/knowledge-studio/v2/recommendations/blueprints
- * @description 获取蓝图推荐（最近使用 + 热门）
+ * @route POST /api/knowledge-studio/v2/recommendations/blueprints
+ * @description 获取蓝图推荐（最近使用 + 热门 + 基于素材智能推荐）
  */
 
 import type { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createLogger } from "@/lib/logger";
 import { getBlueprintRegistry } from "@/lib/knowledge-studio/blueprint/blueprint-registry";
-import type { BlueprintTier } from "@/lib/knowledge-studio/blueprint/types";
+import type {
+  BlueprintTier,
+  MaterialInput,
+} from "@/lib/knowledge-studio/blueprint/types";
 import type { Database } from "@/types/supabase";
+import { recommendBlueprints } from "@/lib/knowledge-studio/recommendation";
 
 const logger = createLogger(
   "api:knowledge-studio:v2:recommendations:blueprints",
@@ -187,6 +192,109 @@ export async function GET(request: NextRequest) {
         error: error instanceof Error ? error.message : String(error),
       },
       "Blueprint recommendations request failed",
+    );
+
+    return new Response(
+      JSON.stringify({
+        error: {
+          code: "INTERNAL_ERROR",
+          message: "服务器内部错误",
+        },
+      }),
+      { status: 500, headers: { "Content-Type": "application/json" } },
+    );
+  }
+}
+
+/**
+ * POST /api/knowledge-studio/v2/recommendations/blueprints
+ * 基于素材内容的智能蓝图推荐 (P1-3)
+ */
+export async function POST(request: NextRequest) {
+  const requestId = crypto.randomUUID();
+  logger.info(
+    { requestId },
+    "Material-based blueprint recommendations request",
+  );
+
+  try {
+    // 1. Auth check
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({
+          error: { code: "UNAUTHORIZED", message: "请先登录" },
+        }),
+        { status: 401, headers: { "Content-Type": "application/json" } },
+      );
+    }
+
+    // 2. Parse request body
+    const body = await request.json();
+    const materials: MaterialInput[] = body.materials ?? [];
+
+    if (materials.length === 0) {
+      return new Response(
+        JSON.stringify({
+          error: { code: "BAD_REQUEST", message: "请提供素材" },
+        }),
+        { status: 400, headers: { "Content-Type": "application/json" } },
+      );
+    }
+
+    // 3. Get user tier
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("membership_type")
+      .eq("id", user.id)
+      .single<Database["public"]["Tables"]["profiles"]["Row"]>();
+
+    const membershipType = profile?.membership_type?.toLowerCase() || "free";
+    const userTier: BlueprintTier =
+      membershipType === "enterprise"
+        ? "enterprise"
+        : membershipType === "pro"
+          ? "pro"
+          : "free";
+
+    // 4. Get material-based recommendations
+    const limit = Math.min(body.limit ?? 5, 10);
+    const result = await recommendBlueprints(materials, userTier, limit);
+
+    logger.info(
+      {
+        requestId,
+        userId: user.id,
+        materialCount: materials.length,
+        recommendationCount: result.recommendations.length,
+        topMatch: result.recommendations[0]?.blueprintId,
+        contentType: result.analysis.contentType,
+      },
+      "Material-based recommendations generated",
+    );
+
+    return new Response(
+      JSON.stringify({
+        analysis: result.analysis,
+        recommendations: result.recommendations,
+      }),
+      {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
+  } catch (error) {
+    logger.error(
+      {
+        requestId,
+        error: error instanceof Error ? error.message : String(error),
+      },
+      "Material-based recommendations request failed",
     );
 
     return new Response(

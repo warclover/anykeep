@@ -3,6 +3,7 @@
  * @module knowledge-studio/v2
  *
  * Phase 4: 草稿迭代与反馈驱动优化
+ * P1-5: 反馈优化时展示修改前后对比
  */
 
 "use client";
@@ -27,6 +28,7 @@ import {
   type FeedbackType,
   type DraftFeedback,
 } from "@/lib/knowledge-studio/iteration";
+import { ContentDiffViewer } from "./content-diff-viewer";
 
 // ============================================================
 // Types
@@ -43,6 +45,10 @@ interface FeedbackDialogProps {
   isSubmitting?: boolean;
   /** 当前内容字数 */
   wordCount?: number;
+  /** P1-5: 原始内容（用于 Diff 对比） */
+  beforeContent?: string;
+  /** P1-5: 修改后内容（用于 Diff 对比） */
+  afterContent?: string;
 }
 
 // ============================================================
@@ -144,11 +150,17 @@ export function FeedbackDialog({
   onSubmit,
   isSubmitting = false,
   wordCount,
+  beforeContent,
+  afterContent,
 }: FeedbackDialogProps) {
   const [rating, setRating] = useState(0);
   const [feedbackType, setFeedbackType] = useState<FeedbackType | null>(null);
   const [comment, setComment] = useState("");
   const [errors, setErrors] = useState<string[]>([]);
+
+  // P1-5: 是否显示 Diff 对比
+  const showDiff =
+    beforeContent && afterContent && beforeContent !== afterContent;
 
   // Reset form when dialog opens
   const handleOpenChange = useCallback(
@@ -191,7 +203,7 @@ export function FeedbackDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className={cn("sm:max-w-md", showDiff && "sm:max-w-2xl")}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <MessageSquare className="h-5 w-5" />
@@ -206,6 +218,17 @@ export function FeedbackDialog({
             )}
           </DialogDescription>
         </DialogHeader>
+
+        {/* P1-5: Diff 对比展示 */}
+        {showDiff && (
+          <ContentDiffViewer
+            before={beforeContent}
+            after={afterContent}
+            defaultExpanded={false}
+            maxHeight="200px"
+            className="my-2"
+          />
+        )}
 
         <div className="space-y-6 py-4">
           {/* Rating */}

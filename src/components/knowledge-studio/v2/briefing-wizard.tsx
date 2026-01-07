@@ -5,6 +5,7 @@
  * 功能:
  * - 步骤指示器（1/3 → 2/3 → 3/3）
  * - 问题类型渲染：single_choice, multi_choice, text, scale
+ * - P1-2: 快速模式/详细模式切换
  * - 跳过按钮（快速模式）
  * - 答案验证
  * - 上下文预览
@@ -19,6 +20,8 @@ import {
   SkipForward,
   Check,
   Sparkles,
+  Zap,
+  ListChecks,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +39,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import type {
   BriefingQuestion,
@@ -45,6 +49,9 @@ import type {
 // ============================================================
 // Types
 // ============================================================
+
+/** P1-2: Briefing 模式 */
+export type BriefingMode = "quick" | "detailed";
 
 export interface BriefingWizardProps {
   /** 蓝图名称 */
@@ -63,6 +70,8 @@ export interface BriefingWizardProps {
   isLoading?: boolean;
   /** 是否允许跳过 */
   skipAllowed?: boolean;
+  /** P1-2: 默认模式 */
+  defaultMode?: BriefingMode;
   /** 类名 */
   className?: string;
 }
@@ -258,8 +267,11 @@ export function BriefingWizard({
   onBack,
   isLoading = false,
   skipAllowed = true,
+  defaultMode = "quick",
   className,
 }: BriefingWizardProps) {
+  // P1-2: 快速/详细模式
+  const [briefingMode, setBriefingMode] = useState<BriefingMode>(defaultMode);
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, AnswerValue>>(() => {
     // 初始化默认值
@@ -272,13 +284,40 @@ export function BriefingWizard({
     return defaults;
   });
 
-  const totalSteps = questions.length;
-  const currentQuestion = questions[currentStep];
-  const progress = ((currentStep + 1) / totalSteps) * 100;
+  // P1-2: 根据模式筛选问题
+  const filteredQuestions = useMemo(() => {
+    if (briefingMode === "quick") {
+      // 快速模式：只显示 priority="quick" 的问题，或者前 2-3 个必填问题
+      const quickQuestions = questions.filter((q) => q.priority === "quick");
+      if (quickQuestions.length > 0) {
+        return quickQuestions;
+      }
+      // 回退：取前 2 个必填问题
+      const requiredQuestions = questions.filter((q) => q.required);
+      return requiredQuestions.slice(0, 2);
+    }
+    // 详细模式：显示所有问题
+    return questions;
+  }, [questions, briefingMode]);
+
+  // P1-2: 快速问题数量（用于显示）
+  const quickQuestionsCount = useMemo(() => {
+    const quickQuestions = questions.filter((q) => q.priority === "quick");
+    if (quickQuestions.length > 0) {
+      return quickQuestions.length;
+    }
+    const requiredQuestions = questions.filter((q) => q.required);
+    return Math.min(requiredQuestions.length, 2);
+  }, [questions]);
+
+  const totalSteps = filteredQuestions.length;
+  const currentQuestion = filteredQuestions[currentStep];
+  const progress = totalSteps > 0 ? ((currentStep + 1) / totalSteps) * 100 : 0;
 
   // 当前问题是否已回答
   const isCurrentAnswered = useMemo(() => {
-    const answer = answers[currentQuestion?.id];
+    if (!currentQuestion) return false;
+    const answer = answers[currentQuestion.id];
     if (answer === undefined || answer === "") return false;
     if (Array.isArray(answer) && answer.length === 0) return false;
     return true;
@@ -294,6 +333,7 @@ export function BriefingWizard({
   // 更新答案
   const handleAnswerChange = useCallback(
     (value: AnswerValue) => {
+      if (!currentQuestion) return;
       setAnswers((prev) => ({
         ...prev,
         [currentQuestion.id]: value,
@@ -330,6 +370,12 @@ export function BriefingWizard({
     onSkip();
   }, [onSkip]);
 
+  // P1-2: 模式切换（同时重置步骤，保留已填答案）
+  const handleModeChange = useCallback((mode: string) => {
+    setBriefingMode(mode as BriefingMode);
+    setCurrentStep(0);
+  }, []);
+
   if (!currentQuestion) {
     return null;
   }
@@ -348,6 +394,26 @@ export function BriefingWizard({
               </CardDescription>
             </div>
           </div>
+
+          {/* P1-2: 模式切换器 */}
+          <Tabs value={briefingMode} onValueChange={handleModeChange}>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="quick" className="gap-2">
+                <Zap className="h-4 w-4" />
+                快速模式
+                <Badge variant="secondary" className="ml-1 text-xs">
+                  {quickQuestionsCount} 题
+                </Badge>
+              </TabsTrigger>
+              <TabsTrigger value="detailed" className="gap-2">
+                <ListChecks className="h-4 w-4" />
+                详细模式
+                <Badge variant="outline" className="ml-1 text-xs">
+                  {questions.length} 题
+                </Badge>
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
 
           {/* 进度条 */}
           <div className="space-y-2">
@@ -442,7 +508,7 @@ export function BriefingWizard({
 
       {/* 步骤指示器 */}
       <div className="flex justify-center gap-2 mt-6">
-        {questions.map((_, index) => (
+        {filteredQuestions.map((_, index) => (
           <button
             key={index}
             onClick={() => setCurrentStep(index)}

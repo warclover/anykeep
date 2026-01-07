@@ -106,6 +106,8 @@ export interface BriefingQuestion {
   };
   /** 是否必填 */
   required: boolean;
+  /** P1-2: 问题优先级（quick = 快速模式显示） */
+  priority?: "quick" | "detailed";
   /** 默认值 */
   defaultValue?: string | string[] | number;
   /** 问题帮助提示 */

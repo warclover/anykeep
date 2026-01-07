@@ -21,6 +21,7 @@ import {
   Download,
   Volume2,
   Pause,
+  Share2,
 } from "lucide-react";
 import {
   SSE_REQUEST_TIMEOUT_MS,
@@ -46,6 +47,7 @@ import {
   FeedbackDialog,
   DraftVersionPanel,
   ExportResultDialog,
+  MultiPlatformDialog,
   type BlueprintListItem,
   type OutputType,
 } from "@/components/knowledge-studio/v2";
@@ -216,6 +218,9 @@ export function BlueprintWorkflowClient({
   const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false);
   /** P0-2: 导出对话框状态 */
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+  /** P1-1: 一稿多发对话框状态 */
+  const [isMultiPlatformDialogOpen, setIsMultiPlatformDialogOpen] =
+    useState(false);
   const [isIterating, setIsIterating] = useState(false);
   const [iterationProgress, setIterationProgress] = useState(0);
   const [draftVersions, setDraftVersions] = useState<DraftVersion[]>([]);
@@ -1373,6 +1378,16 @@ export function BlueprintWorkflowClient({
                       <Download className="mr-1.5 h-4 w-4" />
                       导出
                     </Button>
+                    {/* P1-1: 一稿多发按钮 */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsMultiPlatformDialogOpen(true)}
+                      disabled={isCondensing || isIterating}
+                    >
+                      <Share2 className="mr-1.5 h-4 w-4" />
+                      一稿多发
+                    </Button>
                     {/* P0-3: TTS 朗读按钮 */}
                     <Button
                       variant="outline"
@@ -1524,6 +1539,14 @@ export function BlueprintWorkflowClient({
         onOpenChange={setIsExportDialogOpen}
         content={condensedContent || generatedContent}
         blueprintName={blueprint?.displayName || "内容"}
+      />
+
+      {/* P1-1: 一稿多发对话框 */}
+      <MultiPlatformDialog
+        open={isMultiPlatformDialogOpen}
+        onOpenChange={setIsMultiPlatformDialogOpen}
+        content={condensedContent || generatedContent}
+        currentStyle={platformStyle}
       />
     </div>
   );

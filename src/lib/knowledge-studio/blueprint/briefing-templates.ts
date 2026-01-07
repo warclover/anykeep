@@ -30,6 +30,7 @@ export const AUDIENCE_QUESTIONS: Record<string, BriefingQuestion> = {
       { value: "expert", label: "专家", description: "领域专家" },
     ],
     required: true,
+    priority: "quick", // P1-2: 快速模式核心问题
     defaultValue: "intermediate",
   },
 
@@ -84,6 +85,7 @@ export const OBJECTIVE_QUESTIONS: Record<string, BriefingQuestion> = {
       { value: "guide", label: "指导/实操", description: "提供操作步骤" },
     ],
     required: true,
+    priority: "quick", // P1-2: 快速模式核心问题
   },
 
   /**
@@ -131,6 +133,7 @@ export const TONE_QUESTIONS: Record<string, BriefingQuestion> = {
       { value: "storytelling", label: "叙事/故事", description: "引人入胜" },
     ],
     required: true,
+    priority: "quick", // P1-2: 快速模式核心问题
     defaultValue: "professional",
   },
 

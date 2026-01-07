@@ -30,7 +30,10 @@ export { MaterialRecommendations } from "./material-recommendations";
 // Phase 4: 草稿迭代与反馈驱动优化
 export { FeedbackDialog } from "./feedback-dialog";
 export { DraftVersionPanel } from "./draft-version-panel";
+export { ContentDiffViewer } from "./content-diff-viewer"; // P1-5: 内容对比查看器
 // Phase 6: 历史记录
 export { HistoryPageClient } from "./history-page-client";
 // P0-2: 导出功能
 export { ExportResultDialog } from "./export-result-dialog";
+// P1-1: 一稿多发
+export { MultiPlatformDialog } from "./multi-platform-dialog";

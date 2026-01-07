@@ -13,3 +13,12 @@ export {
   type CondenseStreamCallbacks,
   type CondensePreset,
 } from "./condense-service";
+
+// P1-1: 一稿多发风格适配
+export {
+  adaptStyleStream,
+  countWords as countWordsForStyle,
+  type AdaptStyleOptions,
+  type AdaptStyleResult,
+  type AdaptStyleStreamCallbacks,
+} from "./adapt-style-service";
