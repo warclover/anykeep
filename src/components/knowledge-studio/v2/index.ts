@@ -32,3 +32,5 @@ export { FeedbackDialog } from "./feedback-dialog";
 export { DraftVersionPanel } from "./draft-version-panel";
 // Phase 6: 历史记录
 export { HistoryPageClient } from "./history-page-client";
+// P0-2: 导出功能
+export { ExportResultDialog } from "./export-result-dialog";

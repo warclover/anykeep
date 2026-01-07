@@ -17,6 +17,7 @@ import {
   Clock,
   Scissors,
   MessageSquare,
+  Download,
 } from "lucide-react";
 import {
   SSE_REQUEST_TIMEOUT_MS,
@@ -41,6 +42,7 @@ import {
   PlatformStyleSelector,
   FeedbackDialog,
   DraftVersionPanel,
+  ExportResultDialog,
   type BlueprintListItem,
   type OutputType,
 } from "@/components/knowledge-studio/v2";
@@ -162,6 +164,8 @@ export function BlueprintWorkflowClient({
 
   /** Phase 4: 草稿迭代与反馈驱动优化 */
   const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false);
+  /** P0-2: 导出对话框状态 */
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [isIterating, setIsIterating] = useState(false);
   const [iterationProgress, setIterationProgress] = useState(0);
   const [draftVersions, setDraftVersions] = useState<DraftVersion[]>([]);
@@ -1263,6 +1267,16 @@ export function BlueprintWorkflowClient({
                       <MessageSquare className="mr-1.5 h-4 w-4" />
                       反馈优化
                     </Button>
+                    {/* P0-2: 导出按钮 */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsExportDialogOpen(true)}
+                      disabled={isCondensing || isIterating}
+                    >
+                      <Download className="mr-1.5 h-4 w-4" />
+                      导出
+                    </Button>
                   </div>
                 </div>
                 {isCondensing && (
@@ -1373,6 +1387,14 @@ export function BlueprintWorkflowClient({
         onSubmit={handleFeedbackSubmit}
         isSubmitting={isIterating}
         wordCount={generatedContent?.length}
+      />
+
+      {/* P0-2: 导出对话框 */}
+      <ExportResultDialog
+        open={isExportDialogOpen}
+        onOpenChange={setIsExportDialogOpen}
+        content={condensedContent || generatedContent}
+        blueprintName={blueprint?.displayName || "内容"}
       />
     </div>
   );
