@@ -38,6 +38,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { TTSPlayerButton } from "@/components/tts";
 import type { AgentStreamChunk } from "@/lib/ai-agent";
 
 // ============================================
@@ -200,6 +201,26 @@ export function AISmartSummary({
 
           {/* 操作按钮 */}
           <div className="flex items-center gap-1">
+            {/* TTS 朗读按钮 */}
+            {hasSummary && !isEditing && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div>
+                      <TTSPlayerButton
+                        bookmarkId={bookmarkId}
+                        variant="icon"
+                        size="sm"
+                        disabled={isGenerating}
+                        defaultContentType="summary"
+                      />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>🔊 听一下</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+
             {hasSummary && !isEditing && (
               <TooltipProvider>
                 <Tooltip>

@@ -100,6 +100,7 @@ const contentCenterItems: NavItem[] = [
  */
 const organizeToolsItems: NavItem[] = [
   { name: "等待分类", href: "/inbox", icon: Inbox },
+  { name: "分类管理", href: "/classification-manager", icon: BrainCircuit },
   { name: "批量操作", href: "/batch", icon: CheckSquare, pageId: "batch" },
   { name: "内容导出", href: "/export", icon: Download, pageId: "export" },
   { name: "分发中心", href: "/distribution", icon: Share2 },

@@ -122,3 +122,6 @@ export {
   convertDigestToMindmap,
   type MindmapNode,
 } from "./deliverables/mindmap-viewer";
+
+// 命令提示组件
+export { AICommandHints, type AICommandHintsProps } from "./ai-command-hints";

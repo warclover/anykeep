@@ -30,6 +30,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AIMessage } from "./ai-message";
 import { AIInput } from "./ai-input";
+import { AICommandHints } from "./ai-command-hints";
 import { ActionConfirmInline } from "./action-confirm-dialog";
 import type { DisplayMessage, SuggestionItem } from "./types";
 import { adaptBackendChunk, processUnifiedChunk } from "./types";
@@ -708,6 +709,15 @@ export function AIPanelContent({
                     统计分析
                   </button>
                 </div>
+              </div>
+
+              {/* AI 特殊命令提示 */}
+              <div className="w-full max-w-sm bg-white rounded-2xl border border-gray-100 shadow-sm">
+                <AICommandHints
+                  inputValue={input}
+                  onCommandClick={(command) => setInput(command)}
+                  defaultExpanded={false}
+                />
               </div>
             </div>
           ) : (
