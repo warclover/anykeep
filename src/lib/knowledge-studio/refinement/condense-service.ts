@@ -97,36 +97,45 @@ const CONDENSE_SYSTEM_PROMPT = `你是一位专业的内容编辑，擅长在保
 - 保持原有的标题层级结构
 - 段落清晰、重点突出
 
-## ⚠️ 字数限制（最重要）
+## ⚠️ 字数限制（最高优先级 - 必须严格遵守）
 
-你必须严格遵守用户指定的目标字数。这是硬性要求，不可超出。
-- 如果内容过长，必须删减更多内容
-- 如果原文信息密度高，优先保留核心观点，删除次要细节
-- 宁可略少于目标字数，也不可大幅超出`;
+【硬性约束】目标字数是不可违反的硬性限制：
+- 输出字数必须控制在目标字数的 85%-100% 范围内
+- 绝对不允许超过目标字数
+- 如果原文信息密度高，必须大胆删减次要内容
+- 宁可损失部分信息，也不可超出字数限制
+
+【删减优先级】当需要压缩时，优先删除：
+1. 详细案例和举例（改为一句话概括）
+2. 重复论述和同义表达
+3. 过渡性语句和修饰词
+4. 背景介绍和铺垫内容
+5. 次要观点和补充说明`;
 
 function buildCondenseUserPrompt(options: CondenseOptions): string {
   const { content, targetWords, preserveKeyPoints, contentType } = options;
 
-  // 计算允许的字数范围
+  // 计算允许的字数范围（严格限制：85%-100%，不允许超过目标）
   const minWords = Math.floor(targetWords * 0.85);
-  const maxWords = Math.floor(targetWords * 1.1);
+  const maxWords = targetWords; // 硬上限：不允许超过目标字数
 
   const parts: string[] = [];
 
   parts.push(`## 任务
 
-请将以下内容精简到 **${targetWords} 字左右**。
+请将以下内容精简到 **${targetWords} 字以内**。
 
-⚠️ **硬性字数限制**：
-- 最少 ${minWords} 字
-- 最多 ${maxWords} 字
-- 超出上限将被视为任务失败
+🚨 **硬性字数限制（不可违反）**：
+- 目标字数：${targetWords} 字
+- 允许范围：${minWords} - ${maxWords} 字
+- ⚠️ 超过 ${maxWords} 字将被视为任务失败
 
-如果无法在字数限制内保留所有信息，请优先删减：
-1. 重复的论述
-2. 过渡性语句
-3. 详细的例子（可简化为一句话）
-4. 次要观点`);
+【强制要求】如果无法在字数限制内保留所有信息，必须删减：
+1. 详细案例 → 改为一句话总结
+2. 重复论述 → 只保留一次
+3. 过渡语句 → 直接删除
+4. 背景铺垫 → 大幅缩减
+5. 次要观点 → 必要时完全删除`);
 
   if (contentType) {
     const typeHint = {
@@ -149,7 +158,9 @@ ${content}`);
 
   parts.push(`\n## 开始精简
 
-请输出精简后的内容。记住：目标 ${targetWords} 字，最多不超过 ${maxWords} 字。直接输出 Markdown 内容，无需说明。`);
+🚨 最后提醒：目标 ${targetWords} 字，绝对不可超过。如果当前输出接近字数上限，必须立即停止并删减内容。
+
+直接输出精简后的 Markdown 内容，无需说明。`);
 
   return parts.join("\n");
 }
@@ -210,7 +221,9 @@ export async function condenseContentStream(
       model,
       system: CONDENSE_SYSTEM_PROMPT,
       prompt: buildCondenseUserPrompt(options),
-      maxOutputTokens: Math.ceil(targetWords * 2), // 预留足够的 token
+      // 严格限制输出 token：目标字数 * 1.2（中文 1 字约等于 1-1.5 tokens）
+      // 这确保模型无法生成超过目标字数太多的内容
+      maxOutputTokens: Math.ceil(targetWords * 1.2),
       temperature: 0.3, // 较低温度确保稳定输出
     });
 

@@ -22,6 +22,8 @@ import {
   Volume2,
   Pause,
   Share2,
+  Copy,
+  BookmarkPlus,
 } from "lucide-react";
 import {
   SSE_REQUEST_TIMEOUT_MS,
@@ -215,6 +217,8 @@ export function BlueprintWorkflowClient({
   const [condensedContent, setCondensedContent] = useState<string>("");
   const [condenseProgress, setCondenseProgress] = useState(0);
   const condenseAbortRef = useRef<AbortController | null>(null);
+  /** 精简内容保存状态 */
+  const [isSavingCondensed, setIsSavingCondensed] = useState(false);
 
   /** Phase 4: 草稿迭代与反馈驱动优化 */
   const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false);
@@ -922,6 +926,81 @@ export function BlueprintWorkflowClient({
   );
 
   /**
+   * 复制精简内容到剪贴板
+   */
+  const handleCopyCondensed = useCallback(async () => {
+    if (!condensedContent) return;
+
+    try {
+      await navigator.clipboard.writeText(condensedContent);
+      toast.success("已复制到剪贴板");
+    } catch {
+      // Fallback for older browsers
+      const textarea = document.createElement("textarea");
+      textarea.value = condensedContent;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+      toast.success("已复制到剪贴板");
+    }
+  }, [condensedContent]);
+
+  /**
+   * 保存精简内容为新的报告
+   */
+  const handleSaveCondensed = useCallback(async () => {
+    if (!condensedContent || !reportId) return;
+
+    setIsSavingCondensed(true);
+    try {
+      const response = await fetch("/api/knowledge-studio/reports", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          blueprintType: blueprintId,
+          title: `${blueprint?.displayName || "内容"} (精简版)`,
+          content: condensedContent,
+          sourceType: "condensed",
+          generationMetadata: {
+            blueprint_version: "v2",
+            blueprint_id: blueprintId,
+            source_report_id: reportId,
+            condensed_at: new Date().toISOString(),
+            original_words: generatedContent?.length || 0,
+            condensed_words: condensedContent.length,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error?.message || "保存失败");
+      }
+
+      const data = await response.json();
+      toast.success("已保存精简版本", {
+        description: "可在「我的创作」中查看",
+        action: {
+          label: "查看",
+          onClick: () => router.push(`/synthesis/${data.id}`),
+        },
+      });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "保存失败，请重试");
+    } finally {
+      setIsSavingCondensed(false);
+    }
+  }, [
+    condensedContent,
+    reportId,
+    blueprintId,
+    blueprint?.displayName,
+    generatedContent?.length,
+    router,
+  ]);
+
+  /**
    * Phase 4: Initialize draft version manager when content is generated
    */
   useEffect(() => {
@@ -1455,6 +1534,29 @@ export function BlueprintWorkflowClient({
                     <Badge variant="secondary">
                       {condensedContent.length.toLocaleString()} 字
                     </Badge>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={handleCopyCondensed}
+                      title="复制精简内容"
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={handleSaveCondensed}
+                      disabled={isSavingCondensed}
+                      title="保存为新报告"
+                    >
+                      {isSavingCondensed ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <BookmarkPlus className="h-4 w-4" />
+                      )}
+                    </Button>
                     <Button
                       variant="ghost"
                       size="sm"

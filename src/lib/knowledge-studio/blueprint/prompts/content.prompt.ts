@@ -66,12 +66,21 @@ const LENGTH_CONFIG = {
 };
 
 /**
- * 字数限制指令（Phase 1.2）
+ * 字数限制指令（Phase 1.2 增强版 - 严格限制）
  */
 const WORD_LIMIT_INSTRUCTIONS = {
-  short: `请控制总字数在 ${LENGTH_MODE_CONFIG.short.minWords}-${LENGTH_MODE_CONFIG.short.maxWords} 字之间，语言简洁有力。`,
-  medium: `请控制总字数在 ${LENGTH_MODE_CONFIG.medium.minWords}-${LENGTH_MODE_CONFIG.medium.maxWords} 字之间，内容充实但不冗长。`,
-  long: `请控制总字数在 ${LENGTH_MODE_CONFIG.long.minWords}-${LENGTH_MODE_CONFIG.long.maxWords} 字之间，可以深入展开论述。`,
+  short: `🚨 **硬性字数限制**：${LENGTH_MODE_CONFIG.short.minWords}-${LENGTH_MODE_CONFIG.short.maxWords} 字
+- 绝对不可超过 ${LENGTH_MODE_CONFIG.short.maxWords} 字
+- 超出上限将被视为失败
+- 语言简洁有力，删减一切冗余`,
+  medium: `🚨 **硬性字数限制**：${LENGTH_MODE_CONFIG.medium.minWords}-${LENGTH_MODE_CONFIG.medium.maxWords} 字
+- 绝对不可超过 ${LENGTH_MODE_CONFIG.medium.maxWords} 字
+- 超出上限将被视为失败
+- 内容充实但不冗长`,
+  long: `🚨 **硬性字数限制**：${LENGTH_MODE_CONFIG.long.minWords}-${LENGTH_MODE_CONFIG.long.maxWords} 字
+- 绝对不可超过 ${LENGTH_MODE_CONFIG.long.maxWords} 字
+- 超出上限将被视为失败
+- 可深入展开但必须在限制内`,
 } as const;
 
 /**
@@ -154,10 +163,17 @@ const STYLE_CONFIG = {
 
 export const CONTENT_SYSTEM_PROMPT = `你是一位专业的内容创作者，擅长根据大纲结构生成高质量的长文内容。
 
+## 🚨 最高优先级：字数限制
+
+【硬性约束】你必须严格遵守用户指定的字数限制，这是不可违反的硬性要求：
+- 超出字数上限 = 任务失败
+- 如果内容过长，必须删减或精简表述
+- 宁可略少于上限，也绝不可超出
+
 ## 核心原则
 
 1. **严格遵循大纲**: 必须按照提供的大纲结构生成内容，标题层级完全一致
-2. **内容完整性**: 每个章节都要有实质性内容，不能敷衍或省略
+2. **内容完整性**: 每个章节都要有实质性内容，但要控制篇幅
 3. **逻辑连贯**: 章节之间需要有自然的过渡和衔接
 4. **素材融合**: 充分利用提供的素材内容，但要重新组织表达
 
@@ -168,12 +184,13 @@ export const CONTENT_SYSTEM_PROMPT = `你是一位专业的内容创作者，擅
 - H2 (二级标题): ## 标题
 - H3 (三级标题): ### 标题
 
-## 注意事项
+## 字数控制技巧
 
-- 每个章节的内容长度应与大纲中的 estimatedWords 预估相近
-- 保持内容的专业性和可读性
-- 适当使用列表、引用等 Markdown 格式增强可读性
-- 不要在内容中重复大纲信息`;
+当接近字数上限时：
+- 立即结束当前段落
+- 跳过次要内容
+- 用一句话总结代替详细论述
+- 删除过渡性语句和修饰词`;
 
 // ============================================================
 // Prompt Builders
@@ -288,10 +305,14 @@ ${Object.entries(briefingContext.answers)
 ${config.blueprintInstructions}`);
   }
 
-  // 最终提示
+  // 最终提示（包含字数限制提醒）
+  const maxWords = LENGTH_MODE_CONFIG[config.targetLength].maxWords;
   parts.push(`\n## 开始生成
 
-请现在按照大纲结构生成完整内容。使用 Markdown 格式，确保每个章节都有实质内容。`);
+🚨 **最后提醒**：总字数上限 ${maxWords} 字，绝对不可超过。
+
+请现在按照大纲结构生成完整内容。使用 Markdown 格式，确保每个章节都有实质内容。
+如果内容即将超出字数限制，必须立即精简或跳过次要部分。`);
 
   return parts.join("\n");
 }

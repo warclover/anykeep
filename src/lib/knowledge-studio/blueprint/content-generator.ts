@@ -264,9 +264,10 @@ export async function* generateContentStream(
       );
 
       // 调用模型（流式）
-      // 使用 LENGTH_MODE_CONFIG 中的 maxOutputTokens（Phase 1.2）
-      const maxTokens =
-        LENGTH_MODE_CONFIG[options.targetLength].maxOutputTokens;
+      // 严格限制 maxOutputTokens：使用字数上限 * 1.3（中文 1 字约等于 1-1.5 tokens）
+      // 这确保模型物理上无法生成超过字数限制太多的内容
+      const lengthConfig = LENGTH_MODE_CONFIG[options.targetLength];
+      const maxTokens = Math.ceil(lengthConfig.maxWords * 1.3);
       const stream = await streamText({
         model,
         system: prompt.system,
