@@ -91,6 +91,7 @@ import { cn } from "@/lib/utils";
 import { ReportEditor } from "@/components/knowledge-studio/report-editor";
 import type { SynthesisReport as KSSynthesisReport } from "@/lib/knowledge-studio/client";
 import { downloadKSReport } from "@/lib/knowledge-studio/export";
+import { SaveToNoteButton } from "@/components/shared/save-to-note";
 
 interface SynthesisDetailPageClientProps {
   reportId: string;
@@ -857,6 +858,17 @@ export function SynthesisDetailPageClient({
               </Tooltip>
             </TooltipProvider>
           )}
+          {/* 保存到笔记按钮 */}
+          {report.status === "completed" &&
+            (report.fullMarkdown || report.overview) && (
+              <SaveToNoteButton
+                content={report.fullMarkdown || report.overview || ""}
+                sourceType="synthesis"
+                sourceId={reportId}
+                suggestedTitle={report.title}
+                className="border border-input bg-background hover:bg-accent hover:text-accent-foreground"
+              />
+            )}
           <Button
             variant="outline"
             size="sm"
