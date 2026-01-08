@@ -109,7 +109,6 @@ export function SaveToNoteButton({
       toast.custom(
         (t) => (
           <SaveSuccessToast
-            noteId={noteId}
             noteTitle={noteTitle}
             folderName="AI 生成"
             onViewNote={() => {
@@ -129,10 +128,11 @@ export function SaveToNoteButton({
     },
   });
 
-  const handleClick = async () => {
+  const handleClick = () => {
     if (state !== "idle" || disabled) return;
 
-    await save({
+    // 使用 void 明确表示不等待结果，错误由 hook 内部处理
+    void save({
       content,
       sourceType,
       sourceId,
@@ -141,8 +141,9 @@ export function SaveToNoteButton({
     });
   };
 
-  const handleSaveAnyway = async () => {
-    await saveAnyway({
+  const handleSaveAnyway = () => {
+    // 使用 void 明确表示不等待结果，错误由 hook 内部处理
+    void saveAnyway({
       content,
       sourceType,
       sourceId,

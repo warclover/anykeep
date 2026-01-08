@@ -7,8 +7,6 @@ import { Check, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface SaveSuccessToastProps {
-  /** 笔记 ID */
-  noteId: number;
   /** 笔记标题 */
   noteTitle: string;
   /** 文件夹名称 */

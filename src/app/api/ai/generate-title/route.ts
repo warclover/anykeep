@@ -14,6 +14,7 @@ import { createClient } from "@/lib/supabase/server";
 import { generateText } from "ai";
 import { getModelByTask } from "@/lib/ai-providers/get-model-by-task";
 import { logger } from "@/lib/logger";
+import { extractFallbackTitle } from "@/features/md-collections/lib";
 
 // =============================================================================
 // Schema 定义
@@ -136,32 +137,4 @@ export async function POST(request: NextRequest) {
 
     return Response.json({ error: "生成标题失败" }, { status: 500 });
   }
-}
-
-// =============================================================================
-// 辅助函数
-// =============================================================================
-
-/**
- * 从内容提取回退标题
- */
-function extractFallbackTitle(content: string): string {
-  // 尝试提取第一个标题
-  const headingMatch = content.match(/^#+\s+(.+)$/m);
-  if (headingMatch) {
-    return headingMatch[1].slice(0, 30);
-  }
-
-  // 尝试提取第一句话
-  const firstLine = content.split("\n").find((line) => line.trim().length > 0);
-  if (firstLine) {
-    const cleanLine = firstLine
-      .replace(/^[#*\->\s]+/, "")
-      .trim()
-      .slice(0, 30);
-    return cleanLine + (firstLine.length > 30 ? "..." : "");
-  }
-
-  // 最终回退
-  return "AI 生成内容";
 }

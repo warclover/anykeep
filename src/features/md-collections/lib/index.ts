@@ -18,6 +18,7 @@ export {
   countWords,
   computeContentHash,
   extractTitle,
+  extractFallbackTitle,
   truncateContent,
   validateMarkdownContent,
   sanitizeMarkdownContent,

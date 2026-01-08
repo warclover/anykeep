@@ -13,6 +13,7 @@ import type {
   SaveButtonState,
   SaveResult,
 } from "@/components/shared/save-to-note/types";
+import { extractFallbackTitle } from "@/features/md-collections/lib";
 
 interface UseSaveToNoteOptions {
   /** 保存成功回调 */
@@ -193,7 +194,13 @@ export function useSaveToNote(
     async (payload: SaveToNotePayload) => {
       setDuplicateInfo(null);
       const result = await save({ ...payload, skipDuplicateCheck: true });
-      return { noteId: result.noteId!, title: result.title! };
+
+      // 安全检查：确保返回值有效
+      if (!result.noteId || !result.title) {
+        throw new Error("保存返回数据异常");
+      }
+
+      return { noteId: result.noteId, title: result.title };
     },
     [save],
   );
@@ -217,34 +224,4 @@ export function useSaveToNote(
     saveAnyway,
     reset,
   };
-}
-
-/**
- * 从内容提取回退标题
- */
-function extractFallbackTitle(content: string): string {
-  // 尝试提取第一个 Markdown 标题
-  const headingMatch = content.match(/^#+\s+(.+)$/m);
-  if (headingMatch) {
-    return headingMatch[1].slice(0, 25);
-  }
-
-  // 尝试提取第一句有意义的文本
-  const firstLine = content.split("\n").find((line) => {
-    const trimmed = line.trim();
-    return (
-      trimmed.length > 5 && !trimmed.startsWith("#") && !trimmed.startsWith("-")
-    );
-  });
-
-  if (firstLine) {
-    const cleanLine = firstLine
-      .replace(/^[*\->\s]+/, "")
-      .trim()
-      .slice(0, 25);
-    return cleanLine + (firstLine.length > 25 ? "..." : "");
-  }
-
-  // 最终回退
-  return "AI 生成内容";
 }

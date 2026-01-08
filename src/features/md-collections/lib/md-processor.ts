@@ -182,3 +182,45 @@ export function generateSnippet(
 
   return snippet;
 }
+
+/**
+ * 从内容提取回退标题（用于 AI 标题生成失败时）
+ *
+ * 提取策略：
+ * 1. 尝试提取第一个 Markdown 标题
+ * 2. 尝试提取第一句有意义的文本
+ * 3. 返回默认标题
+ *
+ * @param content - Markdown 内容
+ * @param maxLength - 最大标题长度，默认 30
+ * @returns 回退标题
+ */
+export function extractFallbackTitle(
+  content: string,
+  maxLength: number = 30,
+): string {
+  // 1. 尝试提取第一个 Markdown 标题
+  const headingMatch = content.match(/^#+\s+(.+)$/m);
+  if (headingMatch) {
+    const title = headingMatch[1].trim();
+    return title.length > maxLength ? title.slice(0, maxLength) + "..." : title;
+  }
+
+  // 2. 尝试提取第一句有意义的文本
+  const firstLine = content.split("\n").find((line) => {
+    const trimmed = line.trim();
+    return (
+      trimmed.length > 5 && !trimmed.startsWith("#") && !trimmed.startsWith("-")
+    );
+  });
+
+  if (firstLine) {
+    const cleanLine = firstLine.replace(/^[*\->\s]+/, "").trim();
+    return cleanLine.length > maxLength
+      ? cleanLine.slice(0, maxLength) + "..."
+      : cleanLine;
+  }
+
+  // 3. 最终回退
+  return "AI 生成内容";
+}
