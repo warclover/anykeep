@@ -10,8 +10,23 @@
 import type { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getWorkflowOrchestrator } from "@/lib/workflow/orchestrator";
+import { logger } from "@/lib/logger";
 
 export const runtime = "edge"; // Edge Runtime 支持 SSE
+
+/** 最大同时监听的执行 ID 数量 */
+const MAX_EXECUTION_IDS = 10;
+
+/** UUID v4 格式正则表达式 */
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/**
+ * 验证字符串是否为有效的 UUID v4 格式
+ */
+function isValidUUID(id: string): boolean {
+  return UUID_REGEX.test(id);
+}
 
 export async function GET(request: NextRequest) {
   const supabase = await createClient();
@@ -30,11 +45,35 @@ export async function GET(request: NextRequest) {
     return new Response("No execution IDs provided", { status: 400 });
   }
 
-  // 复制一份可变数组
-  const executionIds = executionIdsParam.split(",").filter(Boolean);
+  // 解析并验证执行 ID
+  const rawIds = executionIdsParam.split(",").filter(Boolean);
+  const validIds = rawIds.filter(isValidUUID);
+  const invalidIds = rawIds.filter((id) => !isValidUUID(id));
 
-  if (executionIds.length === 0) {
+  // 记录无效 ID（可能是注入攻击）
+  if (invalidIds.length > 0) {
+    logger.warn(
+      { userId: user.id, invalidIds, invalidCount: invalidIds.length },
+      "SSE request with invalid execution IDs",
+    );
+  }
+
+  if (validIds.length === 0) {
     return new Response("No valid execution IDs provided", { status: 400 });
+  }
+
+  // 限制最大数量，防止资源滥用
+  const executionIds = validIds.slice(0, MAX_EXECUTION_IDS);
+
+  if (validIds.length > MAX_EXECUTION_IDS) {
+    logger.info(
+      {
+        userId: user.id,
+        requested: validIds.length,
+        truncatedTo: MAX_EXECUTION_IDS,
+      },
+      "SSE request truncated to max IDs",
+    );
   }
 
   const encoder = new TextEncoder();

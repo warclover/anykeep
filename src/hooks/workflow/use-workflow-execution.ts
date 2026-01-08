@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import useSWR from "swr";
 import { useWorkflowSSE } from "./use-workflow-sse";
+import { logger } from "@/lib/logger";
 
 export interface ExecutionStep {
   stepId: string;
@@ -191,7 +192,13 @@ export function useWorkflowExecution(
 
       return result.cancelled;
     } catch (error) {
-      console.error("Failed to cancel execution:", error);
+      logger.error(
+        {
+          executionId,
+          error: error instanceof Error ? error.message : String(error),
+        },
+        "Failed to cancel execution",
+      );
       return false;
     }
   }, [executionId, mutate]);
