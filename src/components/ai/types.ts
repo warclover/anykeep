@@ -357,6 +357,10 @@ export interface AIAssistantPanelProps {
   title?: string;
   /** 面板描述 */
   description?: string;
+  /** 初始消息（用于预填输入框） */
+  initialMessage?: string;
+  /** 是否自动发送初始消息 */
+  autoSendInitialMessage?: boolean;
 }
 
 /**

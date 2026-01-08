@@ -23,7 +23,6 @@ import {
   Plus,
   Upload,
   Download,
-  Globe,
   CheckSquare,
   Settings,
   Check,
@@ -260,13 +259,9 @@ export function HeaderMenu() {
               <Plus className="size-4 mr-2" />
               新建收藏
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => triggerDialog("batchImport")}>
+            <DropdownMenuItem onClick={() => router.push("/import")}>
               <Upload className="size-4 mr-2" />
-              批量导入
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => triggerDialog("browserImport")}>
-              <Globe className="size-4 mr-2" />
-              导入浏览器书签
+              数据导入
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => triggerDialog("export")}>
               <Download className="size-4 mr-2" />

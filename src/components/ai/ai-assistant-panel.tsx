@@ -34,6 +34,8 @@ export function AIAssistantPanel({
   title = "AI 知识助手",
   // description 用于未来扩展，暂不使用
   description: _description = "我可以帮你搜索、分类和整理你的收藏内容",
+  initialMessage,
+  autoSendInitialMessage,
 }: AIAssistantPanelProps) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -53,6 +55,8 @@ export function AIAssistantPanel({
           bookmarkIds={bookmarkIds}
           title={title}
           showCloseButton={false}
+          initialMessage={initialMessage}
+          autoSendInitialMessage={autoSendInitialMessage}
         />
       </SheetContent>
     </Sheet>

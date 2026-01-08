@@ -25,6 +25,7 @@ import {
   ListFilter,
   CheckSquare,
   Download,
+  Upload,
   Wand2,
   LinkIcon,
   GraduationCap,
@@ -48,6 +49,8 @@ import {
   Sparkles,
   Share2,
   Gauge,
+  Zap,
+  Volume2,
 } from "lucide-react";
 import { useUnreadCount } from "@/hooks/data";
 import { useBrainSyncStats } from "@/hooks/domain/brain-sync";
@@ -93,6 +96,7 @@ const contentCenterItems: NavItem[] = [
   { name: "我的分类", href: "/folders", icon: FolderOpen, pageId: "folders" },
   { name: "我的标签", href: "/tags", icon: Tags },
   { name: "我的笔记", href: "/md-collections", icon: FileText, isPro: true },
+  { name: "我的语音", href: "/audio-library", icon: Volume2 },
 ];
 
 /**
@@ -100,6 +104,7 @@ const contentCenterItems: NavItem[] = [
  */
 const organizeToolsItems: NavItem[] = [
   { name: "等待分类", href: "/inbox", icon: Inbox },
+  { name: "数据导入", href: "/import", icon: Upload },
   { name: "分类管理", href: "/classification-manager", icon: BrainCircuit },
   { name: "批量操作", href: "/batch", icon: CheckSquare, pageId: "batch" },
   { name: "内容导出", href: "/export", icon: Download, pageId: "export" },
@@ -123,6 +128,7 @@ const smartListItems: NavItem[] = [
  * 学习中心导航项
  */
 const learningCenterItems: NavItem[] = [
+  { name: "学习助手", href: "/learning-hub", icon: BookMarked },
   {
     name: "知识回顾",
     href: "/brain-sync",
@@ -142,6 +148,7 @@ const learningCenterItems: NavItem[] = [
  * 洞察中心导航项
  */
 const insightCenterItems: NavItem[] = [
+  { name: "AI 能力中心", href: "/ai-hub", icon: Zap },
   {
     name: "数据分析",
     href: "/analytics",
@@ -162,7 +169,6 @@ const insightCenterItems: NavItem[] = [
  * 开发者工具导航项
  */
 const devToolsItems: NavItem[] = [
-  { name: "Skills 浏览器", href: "/skills-browser", icon: Sparkles },
   { name: "RAG 监控", href: "/settings/rag-dashboard", icon: Gauge },
   { name: "智能分类", href: "/classification-debugger", icon: BrainCircuit },
   {

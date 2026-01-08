@@ -63,6 +63,10 @@ interface AIPanelContentEnhancedProps {
   className?: string;
   /** 是否使用统一引擎（默认 true） */
   useUnifiedEngine?: boolean;
+  /** 初始消息（用于预填输入框） */
+  initialMessage?: string;
+  /** 是否自动发送初始消息 */
+  autoSendInitialMessage?: boolean;
 }
 
 // =============================================================================
@@ -84,14 +88,19 @@ export function AIPanelContentEnhanced({
   onClose,
   className,
   useUnifiedEngine = true,
+  initialMessage,
+  autoSendInitialMessage = false,
 }: AIPanelContentEnhancedProps) {
   // 核心状态
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState(initialMessage ?? "");
   const [isLoading, setIsLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string | undefined>(
     initialConversationId,
   );
+
+  // 跟踪是否已处理初始消息
+  const initialMessageProcessedRef = useRef(false);
 
   // Phase 4 状态
   const [selectedTool, setSelectedTool] = useState<ToolType>("auto");
@@ -393,6 +402,23 @@ export function AIPanelContentEnhanced({
       attachments,
     ],
   );
+
+  // 自动发送初始消息（如果配置了 autoSendInitialMessage）
+  useEffect(() => {
+    if (
+      autoSendInitialMessage &&
+      initialMessage &&
+      !initialMessageProcessedRef.current &&
+      !isLoading
+    ) {
+      initialMessageProcessedRef.current = true;
+      // 使用 setTimeout 确保组件完全挂载后再发送
+      const timer = setTimeout(() => {
+        sendMessage(initialMessage);
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [autoSendInitialMessage, initialMessage, isLoading, sendMessage]);
 
   // 处理提交
   const handleSubmit = useCallback(
