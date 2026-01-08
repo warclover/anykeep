@@ -196,9 +196,23 @@ export class KnowledgeExtractSkill extends OrchestrationSkill<
     message: string,
     context: OrchestrationContext,
   ): Promise<KnowledgeExtractInput> {
-    // 默认参数
+    // ============================================
+    // 优先使用附件书签（用户显式选择的内容）
+    // 附件书签具有最高优先级
+    // ============================================
+    let bookmarkIds: number[] = [];
+    if (
+      context.attachmentBookmarkIds &&
+      context.attachmentBookmarkIds.length > 0
+    ) {
+      bookmarkIds = context.attachmentBookmarkIds;
+    } else {
+      // 回退：使用页面上下文书签
+      bookmarkIds = context.bookmarkIds || [];
+    }
+
     const input: KnowledgeExtractInput = {
-      bookmarkIds: context.bookmarkIds || [],
+      bookmarkIds,
       format: "memo",
     };
 

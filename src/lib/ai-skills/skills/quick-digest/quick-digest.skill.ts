@@ -186,6 +186,39 @@ export class QuickDigestSkill extends OrchestrationSkill<
       ...(DEFAULT_DIGEST_INPUT as QuickDigestInput),
     };
 
+    // ============================================
+    // 优先处理附件书签（用户显式选择的内容）
+    // 附件书签具有最高优先级，覆盖所有其他范围设置
+    // ============================================
+    if (
+      context.attachmentBookmarkIds &&
+      context.attachmentBookmarkIds.length > 0
+    ) {
+      input.scope = "selected";
+      input.bookmarkIds = context.attachmentBookmarkIds;
+
+      logger.debug(
+        {
+          attachmentBookmarkIds: context.attachmentBookmarkIds,
+          count: context.attachmentBookmarkIds.length,
+        },
+        "QuickDigestSkill: Using attachment bookmarks as primary scope",
+      );
+
+      // 附件模式下，不分组更合适（因为用户明确选择了这些书签）
+      if (context.attachmentBookmarkIds.length <= 3) {
+        input.groupBy = "none";
+      }
+
+      // 继续解析其他选项（格式、长度等），但 scope 已锁定
+      this.parseFormatOptions(userMessage, input);
+      return input;
+    }
+
+    // ============================================
+    // 无附件时，解析用户消息确定范围
+    // ============================================
+
     // 解析范围
     if (/今[天日]|today/i.test(userMessage)) {
       input.scope = "today";
@@ -197,6 +230,31 @@ export class QuickDigestSkill extends OrchestrationSkill<
       input.scope = "all";
     }
 
+    // 解析其他格式选项
+    this.parseFormatOptions(userMessage, input);
+
+    // 使用上下文中的参数覆盖（兼容旧逻辑）
+    const params = context.params as Record<string, unknown> | undefined;
+    if (params?.folderId) {
+      input.scope = "folder";
+      input.folderId = Number(params.folderId);
+    }
+
+    if (params?.bookmarkIds) {
+      input.scope = "selected";
+      input.bookmarkIds = params.bookmarkIds as number[];
+    }
+
+    return input;
+  }
+
+  /**
+   * 解析格式相关选项（输出格式、分组方式、摘要长度等）
+   */
+  private parseFormatOptions(
+    userMessage: string,
+    input: QuickDigestInput,
+  ): void {
     // 解析输出格式
     if (/思维导图|mindmap|脑图/i.test(userMessage)) {
       input.outputFormat = "mindmap";
@@ -226,20 +284,6 @@ export class QuickDigestSkill extends OrchestrationSkill<
     if (/不要洞察|无洞察|no.*insight/i.test(userMessage)) {
       input.includeInsights = false;
     }
-
-    // 使用上下文中的参数覆盖
-    const params = context.params as Record<string, unknown> | undefined;
-    if (params?.folderId) {
-      input.scope = "folder";
-      input.folderId = Number(params.folderId);
-    }
-
-    if (params?.bookmarkIds) {
-      input.scope = "selected";
-      input.bookmarkIds = params.bookmarkIds as number[];
-    }
-
-    return input;
   }
 
   // ============================================

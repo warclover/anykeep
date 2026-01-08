@@ -91,13 +91,24 @@ export class TTSSynthesisSkill extends OrchestrationSkill<
    */
   async parseInput(
     message: string,
-    _context: OrchestrationContext,
+    context: OrchestrationContext,
   ): Promise<TTSSynthesisInput> {
-    // 解析书签 ID
+    // ============================================
+    // 优先使用附件书签（用户显式选择的内容）
+    // TTS 只能处理单个书签，使用第一个附件
+    // ============================================
     let bookmarkId = 0;
-    const idMatch = message.match(/(?:书签|收藏)?(?:ID|id)?[：:\s]*(\d+)/);
-    if (idMatch) {
-      bookmarkId = parseInt(idMatch[1], 10);
+    if (
+      context.attachmentBookmarkIds &&
+      context.attachmentBookmarkIds.length > 0
+    ) {
+      bookmarkId = context.attachmentBookmarkIds[0];
+    } else {
+      // 回退：从消息中解析书签 ID
+      const idMatch = message.match(/(?:书签|收藏)?(?:ID|id)?[：:\s]*(\d+)/);
+      if (idMatch) {
+        bookmarkId = parseInt(idMatch[1], 10);
+      }
     }
 
     // 解析内容类型

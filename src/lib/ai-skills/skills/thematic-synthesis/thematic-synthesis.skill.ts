@@ -130,7 +130,7 @@ export class ThematicSynthesisSkill extends OrchestrationSkill<
    */
   async parseInput(
     message: string,
-    _context: OrchestrationContext,
+    context: OrchestrationContext,
   ): Promise<ThematicSynthesisInput> {
     // 解析深度模式
     let depthMode: "quick" | "standard" | "academic" = "standard";
@@ -140,7 +140,30 @@ export class ThematicSynthesisSkill extends OrchestrationSkill<
       depthMode = "academic";
     }
 
-    // 默认返回标准模式的选择类型
+    // ============================================
+    // 优先使用附件书签（用户显式选择的内容）
+    // ============================================
+    if (
+      context.attachmentBookmarkIds &&
+      context.attachmentBookmarkIds.length > 0
+    ) {
+      return {
+        sourceType: "selection",
+        bookmarkIds: context.attachmentBookmarkIds.map((id) => String(id)),
+        depthMode,
+      };
+    }
+
+    // 回退：使用页面上下文书签
+    if (context.bookmarkIds && context.bookmarkIds.length > 0) {
+      return {
+        sourceType: "selection",
+        bookmarkIds: context.bookmarkIds.map((id) => String(id)),
+        depthMode,
+      };
+    }
+
+    // 默认返回标准模式的选择类型（无书签）
     return {
       sourceType: "selection",
       depthMode,

@@ -182,11 +182,31 @@ export class SmartTaggingSkill extends OrchestrationSkill<
       ...(DEFAULT_TAGGING_INPUT as SmartTaggingInput),
     };
 
-    // 解析范围
-    if (/无标签|未标签|untagged/i.test(userMessage)) {
-      input.scope = "untagged";
-    } else if (/全部|所有|all/i.test(userMessage)) {
-      input.scope = "all";
+    // ============================================
+    // 优先处理附件书签（用户显式选择的内容）
+    // 附件书签具有最高优先级，覆盖所有其他范围设置
+    // ============================================
+    if (
+      context.attachmentBookmarkIds &&
+      context.attachmentBookmarkIds.length > 0
+    ) {
+      input.scope = "selected";
+      input.bookmarkIds = context.attachmentBookmarkIds;
+      // 继续解析其他选项，但 scope 已锁定
+    } else {
+      // 解析范围
+      if (/无标签|未标签|untagged/i.test(userMessage)) {
+        input.scope = "untagged";
+      } else if (/全部|所有|all/i.test(userMessage)) {
+        input.scope = "all";
+      }
+
+      // 使用上下文中的参数覆盖（兼容旧逻辑）
+      const params = context.params as Record<string, unknown> | undefined;
+      if (params?.bookmarkIds) {
+        input.scope = "selected";
+        input.bookmarkIds = params.bookmarkIds as number[];
+      }
     }
 
     // 解析模式
@@ -207,13 +227,6 @@ export class SmartTaggingSkill extends OrchestrationSkill<
         mergeSimilar: true,
         removeRare: /移除.*稀有|remove.*rare/i.test(userMessage),
       };
-    }
-
-    // 使用上下文中的参数覆盖
-    const params = context.params as Record<string, unknown> | undefined;
-    if (params?.bookmarkIds) {
-      input.scope = "selected";
-      input.bookmarkIds = params.bookmarkIds as number[];
     }
 
     return input;
