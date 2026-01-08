@@ -98,70 +98,74 @@ export function ImportPageClient() {
   };
 
   return (
-    <div className="container mx-auto py-6 px-4 max-w-6xl">
-      {/* 页面标题 */}
-      <div className="mb-8">
-        <div className="flex items-center gap-2 mb-2">
-          <Link href="/home">
-            <Button variant="ghost" size="sm" className="gap-1">
-              <ArrowLeft className="h-4 w-4" />
-              返回首页
-            </Button>
-          </Link>
-        </div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-          数据导入
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          将外部数据导入到 AnyKeep，支持多种格式和来源
-        </p>
-      </div>
+    <div className="flex flex-col h-full min-h-0">
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="container mx-auto py-6 px-4 max-w-6xl">
+          {/* 页面标题 */}
+          <div className="mb-8">
+            <div className="flex items-center gap-2 mb-2">
+              <Link href="/home">
+                <Button variant="ghost" size="sm" className="gap-1">
+                  <ArrowLeft className="h-4 w-4" />
+                  返回首页
+                </Button>
+              </Link>
+            </div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+              数据导入
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              将外部数据导入到 AnyKeep，支持多种格式和来源
+            </p>
+          </div>
 
-      {/* 导入选项卡片 */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        {IMPORT_OPTIONS.map((option) => (
-          <ImportCard
-            key={option.id}
-            title={option.title}
-            description={option.description}
-            icon={option.icon}
-            color={option.color}
-            bgColor={option.bgColor}
-            borderColor={option.borderColor}
-            features={option.features}
-            comingSoon={option.comingSoon}
-            onClick={() => handleImportClick(option.id)}
+          {/* 导入选项卡片 */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            {IMPORT_OPTIONS.map((option) => (
+              <ImportCard
+                key={option.id}
+                title={option.title}
+                description={option.description}
+                icon={option.icon}
+                color={option.color}
+                bgColor={option.bgColor}
+                borderColor={option.borderColor}
+                features={option.features}
+                comingSoon={option.comingSoon}
+                onClick={() => handleImportClick(option.id)}
+              />
+            ))}
+          </div>
+
+          {/* 导入历史 */}
+          <div className="mt-8">
+            <div className="flex items-center gap-2 mb-4">
+              <History className="h-5 w-5 text-muted-foreground" />
+              <h2 className="text-lg font-semibold">导入历史</h2>
+            </div>
+            <ImportHistoryList
+              key={historyKey}
+              maxItems={10}
+              showHeader={false}
+              onDelete={handleImportSuccess}
+              className="border rounded-lg"
+            />
+          </div>
+
+          {/* 浏览器书签导入对话框 */}
+          <BrowserBookmarkImportDialog
+            open={showBrowserImport}
+            onOpenChange={setShowBrowserImport}
+            onSuccess={handleImportSuccess}
           />
-        ))}
-      </div>
 
-      {/* 导入历史 */}
-      <div className="mt-8">
-        <div className="flex items-center gap-2 mb-4">
-          <History className="h-5 w-5 text-muted-foreground" />
-          <h2 className="text-lg font-semibold">导入历史</h2>
+          {/* 批量导入对话框 */}
+          <BatchImportDialog
+            open={showBatchImport}
+            onOpenChange={setShowBatchImport}
+          />
         </div>
-        <ImportHistoryList
-          key={historyKey}
-          maxItems={10}
-          showHeader={false}
-          onDelete={handleImportSuccess}
-          className="border rounded-lg"
-        />
       </div>
-
-      {/* 浏览器书签导入对话框 */}
-      <BrowserBookmarkImportDialog
-        open={showBrowserImport}
-        onOpenChange={setShowBrowserImport}
-        onSuccess={handleImportSuccess}
-      />
-
-      {/* 批量导入对话框 */}
-      <BatchImportDialog
-        open={showBatchImport}
-        onOpenChange={setShowBatchImport}
-      />
     </div>
   );
 }

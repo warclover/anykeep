@@ -600,160 +600,168 @@ export function AIHubClient() {
   };
 
   return (
-    <div className="container mx-auto p-4 lg:p-8 max-w-7xl space-y-8">
-      {/* 标题区域 */}
-      <div>
-        <div className="flex items-center gap-2 mb-2">
-          <Link href="/home">
-            <Button variant="ghost" size="sm" className="gap-1">
-              <ArrowLeft className="h-4 w-4" />
-              返回首页
-            </Button>
-          </Link>
-        </div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-          <Zap className="size-8 text-yellow-500" />
-          {AI_HUB.TITLE}
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-2">
-          {AI_HUB.DESCRIPTION}
-        </p>
-      </div>
+    <div className="flex flex-col h-full min-h-0">
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="container mx-auto p-4 lg:p-8 max-w-7xl space-y-8">
+          {/* 标题区域 */}
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <Link href="/home">
+                <Button variant="ghost" size="sm" className="gap-1">
+                  <ArrowLeft className="h-4 w-4" />
+                  返回首页
+                </Button>
+              </Link>
+            </div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+              <Zap className="size-8 text-yellow-500" />
+              {AI_HUB.TITLE}
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-2">
+              {AI_HUB.DESCRIPTION}
+            </p>
+          </div>
 
-      {/* 统计卡片 */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatsCard
-          label={AI_HUB.STATS.TOTAL}
-          value={stats.total}
-          icon={<Sparkles className="size-5 text-blue-600" />}
-          color="bg-blue-100 dark:bg-blue-900/30"
-        />
-        <StatsCard
-          label={AI_HUB.STATS.ORCHESTRATION}
-          value={stats.orchestration}
-          icon={<Sparkles className="size-5 text-purple-600" />}
-          color="bg-purple-100 dark:bg-purple-900/30"
-        />
-        <StatsCard
-          label={AI_HUB.STATS.ATOMIC}
-          value={stats.atomic}
-          icon={<Zap className="size-5 text-green-600" />}
-          color="bg-green-100 dark:bg-green-900/30"
-        />
-        <StatsCard
-          label={AI_HUB.STATS.FEATURE_FLAG}
-          value={stats.withFeatureFlag}
-          icon={<CheckCircle2 className="size-5 text-amber-600" />}
-          color="bg-amber-100 dark:bg-amber-900/30"
-        />
-      </div>
+          {/* 统计卡片 */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <StatsCard
+              label={AI_HUB.STATS.TOTAL}
+              value={stats.total}
+              icon={<Sparkles className="size-5 text-blue-600" />}
+              color="bg-blue-100 dark:bg-blue-900/30"
+            />
+            <StatsCard
+              label={AI_HUB.STATS.ORCHESTRATION}
+              value={stats.orchestration}
+              icon={<Sparkles className="size-5 text-purple-600" />}
+              color="bg-purple-100 dark:bg-purple-900/30"
+            />
+            <StatsCard
+              label={AI_HUB.STATS.ATOMIC}
+              value={stats.atomic}
+              icon={<Zap className="size-5 text-green-600" />}
+              color="bg-green-100 dark:bg-green-900/30"
+            />
+            <StatsCard
+              label={AI_HUB.STATS.FEATURE_FLAG}
+              value={stats.withFeatureFlag}
+              icon={<CheckCircle2 className="size-5 text-amber-600" />}
+              color="bg-amber-100 dark:bg-amber-900/30"
+            />
+          </div>
 
-      {/* 搜索和筛选 */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
-          <Input
-            placeholder={AI_HUB.SEARCH_PLACEHOLDER}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
+          {/* 搜索和筛选 */}
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
+              <Input
+                placeholder={AI_HUB.SEARCH_PLACEHOLDER}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Tabs
+              value={filterCategory}
+              onValueChange={(v) => setFilterCategory(v as FilterCategory)}
+            >
+              <TabsList>
+                <TabsTrigger value="all">{AI_HUB.FILTER.ALL}</TabsTrigger>
+                <TabsTrigger value="understanding">
+                  {AI_HUB.FILTER.UNDERSTANDING}
+                </TabsTrigger>
+                <TabsTrigger value="organizing">
+                  {AI_HUB.FILTER.ORGANIZING}
+                </TabsTrigger>
+                <TabsTrigger value="learning">
+                  {AI_HUB.FILTER.LEARNING}
+                </TabsTrigger>
+                <TabsTrigger value="utility">
+                  {AI_HUB.FILTER.UTILITY}
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+
+          {/* Skills 列表 */}
+          {filteredSkills.length === 0 ? (
+            <div className="text-center py-12">
+              <Sparkles className="size-12 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300">
+                {AI_HUB.EMPTY.TITLE}
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                {AI_HUB.EMPTY.DESCRIPTION}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-8">
+              {(
+                Object.entries(groupedSkills) as [
+                  SkillCategory,
+                  ExtendedSkillMetadata[],
+                ][]
+              )
+                .filter(([, skills]) => skills.length > 0)
+                .map(([category, skills]) => (
+                  <div key={category}>
+                    <div className="flex items-center gap-2 mb-4">
+                      <span className="text-xl">
+                        {CATEGORY_INFO[category].icon}
+                      </span>
+                      <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                        {CATEGORY_INFO[category].name}
+                      </h2>
+                      <Badge variant="secondary" className="text-xs">
+                        {skills.length}
+                      </Badge>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {skills.map((skill) => (
+                        <SkillCard
+                          key={skill.id}
+                          skill={skill}
+                          onClick={() => setSelectedSkill(skill)}
+                          onUseNow={() => handleUseNow(skill)}
+                          onGoToPage={
+                            SKILL_PAGE_MAP[skill.id]
+                              ? () => handleGoToPage(skill)
+                              : undefined
+                          }
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+            </div>
+          )}
+
+          {/* 详情面板 */}
+          <SkillDetailSheet
+            skill={selectedSkill}
+            open={!!selectedSkill}
+            onClose={() => setSelectedSkill(null)}
+            onUseNow={() => {
+              if (selectedSkill) {
+                handleUseNow(selectedSkill);
+              }
+            }}
+            onGoToPage={
+              selectedSkill && SKILL_PAGE_MAP[selectedSkill.id]
+                ? () => handleGoToPage(selectedSkill)
+                : undefined
+            }
+          />
+
+          {/* AI 对话面板 */}
+          <AIAssistantPanel
+            open={aiPanelOpen}
+            onOpenChange={setAiPanelOpen}
+            initialMessage={aiInitialMessage}
+            autoSendInitialMessage={false}
           />
         </div>
-        <Tabs
-          value={filterCategory}
-          onValueChange={(v) => setFilterCategory(v as FilterCategory)}
-        >
-          <TabsList>
-            <TabsTrigger value="all">{AI_HUB.FILTER.ALL}</TabsTrigger>
-            <TabsTrigger value="understanding">
-              {AI_HUB.FILTER.UNDERSTANDING}
-            </TabsTrigger>
-            <TabsTrigger value="organizing">
-              {AI_HUB.FILTER.ORGANIZING}
-            </TabsTrigger>
-            <TabsTrigger value="learning">{AI_HUB.FILTER.LEARNING}</TabsTrigger>
-            <TabsTrigger value="utility">{AI_HUB.FILTER.UTILITY}</TabsTrigger>
-          </TabsList>
-        </Tabs>
       </div>
-
-      {/* Skills 列表 */}
-      {filteredSkills.length === 0 ? (
-        <div className="text-center py-12">
-          <Sparkles className="size-12 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300">
-            {AI_HUB.EMPTY.TITLE}
-          </h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            {AI_HUB.EMPTY.DESCRIPTION}
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-8">
-          {(
-            Object.entries(groupedSkills) as [
-              SkillCategory,
-              ExtendedSkillMetadata[],
-            ][]
-          )
-            .filter(([, skills]) => skills.length > 0)
-            .map(([category, skills]) => (
-              <div key={category}>
-                <div className="flex items-center gap-2 mb-4">
-                  <span className="text-xl">
-                    {CATEGORY_INFO[category].icon}
-                  </span>
-                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    {CATEGORY_INFO[category].name}
-                  </h2>
-                  <Badge variant="secondary" className="text-xs">
-                    {skills.length}
-                  </Badge>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {skills.map((skill) => (
-                    <SkillCard
-                      key={skill.id}
-                      skill={skill}
-                      onClick={() => setSelectedSkill(skill)}
-                      onUseNow={() => handleUseNow(skill)}
-                      onGoToPage={
-                        SKILL_PAGE_MAP[skill.id]
-                          ? () => handleGoToPage(skill)
-                          : undefined
-                      }
-                    />
-                  ))}
-                </div>
-              </div>
-            ))}
-        </div>
-      )}
-
-      {/* 详情面板 */}
-      <SkillDetailSheet
-        skill={selectedSkill}
-        open={!!selectedSkill}
-        onClose={() => setSelectedSkill(null)}
-        onUseNow={() => {
-          if (selectedSkill) {
-            handleUseNow(selectedSkill);
-          }
-        }}
-        onGoToPage={
-          selectedSkill && SKILL_PAGE_MAP[selectedSkill.id]
-            ? () => handleGoToPage(selectedSkill)
-            : undefined
-        }
-      />
-
-      {/* AI 对话面板 */}
-      <AIAssistantPanel
-        open={aiPanelOpen}
-        onOpenChange={setAiPanelOpen}
-        initialMessage={aiInitialMessage}
-        autoSendInitialMessage={false}
-      />
     </div>
   );
 }

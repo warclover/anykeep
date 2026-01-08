@@ -311,113 +311,117 @@ export function LearningHubClient() {
   };
 
   return (
-    <div className="container mx-auto p-4 lg:p-8 max-w-6xl space-y-8">
-      {/* 标题区域 */}
-      <div>
-        <div className="flex items-center gap-2 mb-2">
-          <Link href="/home">
-            <Button variant="ghost" size="sm" className="gap-1">
-              <ArrowLeft className="h-4 w-4" />
-              返回首页
-            </Button>
-          </Link>
-        </div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-          <BookMarked className="size-8 text-amber-500" />
-          {LEARNING_HUB.TITLE}
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-2">
-          {LEARNING_HUB.DESCRIPTION}
-        </p>
-      </div>
-
-      {/* 统计概览 */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatsCard
-          label={LEARNING_HUB.STATS.READING_PROGRESS}
-          value="80"
-          unit="%"
-          icon={Target}
-          color="bg-blue-500"
-          trend={{ value: 12, isUp: true }}
-        />
-        <StatsCard
-          label={LEARNING_HUB.STATS.REVIEW_TASKS}
-          value="12"
-          unit="项"
-          icon={Brain}
-          color="bg-purple-500"
-        />
-        <StatsCard
-          label={LEARNING_HUB.STATS.THIS_WEEK}
-          value="23"
-          unit="条"
-          icon={TrendingUp}
-          color="bg-green-500"
-          trend={{ value: 8, isUp: true }}
-        />
-        <StatsCard
-          label={LEARNING_HUB.STATS.LEARNING_TIME}
-          value="4.5"
-          unit="小时"
-          icon={Clock}
-          color="bg-amber-500"
-        />
-      </div>
-
-      {/* 快捷入口 - Brain-Sync */}
-      <Card className="border-2 border-purple-200 dark:border-purple-800 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="p-3 rounded-xl bg-purple-100 dark:bg-purple-900/50">
-                <Brain className="size-8 text-purple-600" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  Brain-Sync 知识同步
-                </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-300">
-                  基于 SM-2 算法的间隔复习，帮助你真正内化收藏的知识
-                </p>
-              </div>
+    <div className="flex flex-col h-full min-h-0">
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="container mx-auto p-4 lg:p-8 max-w-6xl space-y-8">
+          {/* 标题区域 */}
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <Link href="/home">
+                <Button variant="ghost" size="sm" className="gap-1">
+                  <ArrowLeft className="h-4 w-4" />
+                  返回首页
+                </Button>
+              </Link>
             </div>
-            <Link href="/brain-sync">
-              <Button className="gap-2">
-                <Brain className="size-4" />
-                开始复习
-              </Button>
-            </Link>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+              <BookMarked className="size-8 text-amber-500" />
+              {LEARNING_HUB.TITLE}
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-2">
+              {LEARNING_HUB.DESCRIPTION}
+            </p>
           </div>
-        </CardContent>
-      </Card>
 
-      {/* 快捷操作 */}
-      <div>
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          快捷操作
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {LEARNING_SKILLS.map((skill) => (
-            <SkillActionCard
-              key={skill.id}
-              skill={skill}
-              onAction={() => handleSkillAction(skill)}
+          {/* 统计概览 */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <StatsCard
+              label={LEARNING_HUB.STATS.READING_PROGRESS}
+              value="80"
+              unit="%"
+              icon={Target}
+              color="bg-blue-500"
+              trend={{ value: 12, isUp: true }}
             />
-          ))}
+            <StatsCard
+              label={LEARNING_HUB.STATS.REVIEW_TASKS}
+              value="12"
+              unit="项"
+              icon={Brain}
+              color="bg-purple-500"
+            />
+            <StatsCard
+              label={LEARNING_HUB.STATS.THIS_WEEK}
+              value="23"
+              unit="条"
+              icon={TrendingUp}
+              color="bg-green-500"
+              trend={{ value: 8, isUp: true }}
+            />
+            <StatsCard
+              label={LEARNING_HUB.STATS.LEARNING_TIME}
+              value="4.5"
+              unit="小时"
+              icon={Clock}
+              color="bg-amber-500"
+            />
+          </div>
+
+          {/* 快捷入口 - Brain-Sync */}
+          <Card className="border-2 border-purple-200 dark:border-purple-800 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-xl bg-purple-100 dark:bg-purple-900/50">
+                    <Brain className="size-8 text-purple-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                      Brain-Sync 知识同步
+                    </h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-300">
+                      基于 SM-2 算法的间隔复习，帮助你真正内化收藏的知识
+                    </p>
+                  </div>
+                </div>
+                <Link href="/brain-sync">
+                  <Button className="gap-2">
+                    <Brain className="size-4" />
+                    开始复习
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 快捷操作 */}
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              快捷操作
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {LEARNING_SKILLS.map((skill) => (
+                <SkillActionCard
+                  key={skill.id}
+                  skill={skill}
+                  onAction={() => handleSkillAction(skill)}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* 学习历程 */}
+          <LearningHistory />
+
+          {/* AI 对话面板 */}
+          <AIAssistantPanel
+            open={aiPanelOpen}
+            onOpenChange={setAiPanelOpen}
+            initialMessage={aiInitialMessage}
+            autoSendInitialMessage={false}
+          />
         </div>
       </div>
-
-      {/* 学习历程 */}
-      <LearningHistory />
-
-      {/* AI 对话面板 */}
-      <AIAssistantPanel
-        open={aiPanelOpen}
-        onOpenChange={setAiPanelOpen}
-        initialMessage={aiInitialMessage}
-        autoSendInitialMessage={false}
-      />
     </div>
   );
 }

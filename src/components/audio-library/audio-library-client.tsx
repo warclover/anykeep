@@ -271,72 +271,76 @@ export function AudioLibraryClient() {
   };
 
   return (
-    <div className="container mx-auto p-4 lg:p-8 max-w-4xl space-y-6">
-      {/* 标题区域 */}
-      <div>
-        <div className="flex items-center gap-2 mb-2">
-          <Link href="/home">
-            <Button variant="ghost" size="sm" className="gap-1">
-              <ArrowLeft className="h-4 w-4" />
-              返回首页
-            </Button>
-          </Link>
-        </div>
-        <div className="flex items-center justify-between">
+    <div className="flex flex-col h-full min-h-0">
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="container mx-auto p-4 lg:p-8 max-w-4xl space-y-6">
+          {/* 标题区域 */}
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-              <Volume2 className="size-7 text-blue-500" />
-              {AUDIO_LIBRARY.TITLE}
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">
-              {AUDIO_LIBRARY.DESCRIPTION}
-            </p>
-          </div>
-          <Badge variant="secondary" className="text-sm">
-            共 {totalCount} 条语音
-          </Badge>
-        </div>
-      </div>
-
-      {/* 搜索框 */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
-        <Input
-          placeholder={AUDIO_LIBRARY.SEARCH_PLACEHOLDER}
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10"
-        />
-      </div>
-
-      {/* 语音列表 */}
-      {!hasItems ? (
-        <EmptyState />
-      ) : (
-        <div className="space-y-6">
-          {groupedItems.map((group) => (
-            <div key={group.label}>
-              <div className="flex items-center gap-2 mb-3">
-                <Calendar className="size-4 text-gray-400" />
-                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                  {group.label}
-                </h3>
-              </div>
-              <div className="space-y-2">
-                {group.items.map((item) => (
-                  <AudioItemCard
-                    key={item.id}
-                    item={item}
-                    isPlaying={playingId === item.id}
-                    onPlay={() => handlePlay(item.id)}
-                    onDelete={() => handleDelete(item.id)}
-                  />
-                ))}
-              </div>
+            <div className="flex items-center gap-2 mb-2">
+              <Link href="/home">
+                <Button variant="ghost" size="sm" className="gap-1">
+                  <ArrowLeft className="h-4 w-4" />
+                  返回首页
+                </Button>
+              </Link>
             </div>
-          ))}
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+                  <Volume2 className="size-7 text-blue-500" />
+                  {AUDIO_LIBRARY.TITLE}
+                </h1>
+                <p className="text-gray-600 dark:text-gray-400 mt-1">
+                  {AUDIO_LIBRARY.DESCRIPTION}
+                </p>
+              </div>
+              <Badge variant="secondary" className="text-sm">
+                共 {totalCount} 条语音
+              </Badge>
+            </div>
+          </div>
+
+          {/* 搜索框 */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
+            <Input
+              placeholder={AUDIO_LIBRARY.SEARCH_PLACEHOLDER}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+
+          {/* 语音列表 */}
+          {!hasItems ? (
+            <EmptyState />
+          ) : (
+            <div className="space-y-6">
+              {groupedItems.map((group) => (
+                <div key={group.label}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Calendar className="size-4 text-gray-400" />
+                    <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                      {group.label}
+                    </h3>
+                  </div>
+                  <div className="space-y-2">
+                    {group.items.map((item) => (
+                      <AudioItemCard
+                        key={item.id}
+                        item={item}
+                        isPlaying={playingId === item.id}
+                        onPlay={() => handlePlay(item.id)}
+                        onDelete={() => handleDelete(item.id)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
