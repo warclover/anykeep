@@ -31,6 +31,12 @@ export {
 //   type OwnershipResult,
 // } from "./permission-utils";
 
+// AI 生成文件夹管理
+export {
+  ensureAIGeneratedFolder,
+  getAIGeneratedFolder,
+} from "./ensure-ai-folder";
+
 // Server-only exports - 请直接从 './ai-processor' 导入
 // export {
 //   processMdCollectionAI,

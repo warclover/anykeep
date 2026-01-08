@@ -3,6 +3,10 @@
  * P2-007: Markdown 内容收藏
  *
  * POST /api/md-collections/check-duplicate - 检查内容是否已存在
+ *
+ * 支持两种方式：
+ * 1. 直接传入 content（API 内部计算 hash）
+ * 2. 传入预计算的 contentHash
  */
 
 import type { NextRequest } from "next/server";
@@ -17,6 +21,7 @@ import {
 } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
 import { MD_COLLECTION } from "@/lib/constants/messages";
+import { computeContentHash } from "@/features/md-collections/lib";
 
 /**
  * POST /api/md-collections/check-duplicate
@@ -43,38 +48,51 @@ export async function POST(request: NextRequest) {
       return handleValidationError(validation.error);
     }
 
-    const { contentHash } = validation.data;
+    // 3. 获取或计算 contentHash
+    const { content, contentHash: providedHash } = validation.data;
+    const contentHash =
+      providedHash || (content ? computeContentHash(content) : "");
 
-    // 3. 检查是否存在相同哈希的记录
-    // 类型断言: 手动维护类型文件时需要此断言
+    if (!contentHash) {
+      return handleValidationError({
+        issues: [{ message: "无法计算内容哈希", path: ["content"] }],
+      } as Parameters<typeof handleValidationError>[0]);
+    }
+
+    // 4. 检查是否存在相同哈希的记录
     type DuplicateCheckRow = { id: number; title: string; created_at: string };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: existingCollection, error: queryError } = await (supabase.from("md_collections") as any)
+    const { data: existingCollection, error: queryError } = (await (
+      supabase.from("md_collections") as any
+    )
       .select("id, title, created_at")
       .eq("user_id", user.id)
       .eq("content_hash", contentHash)
       .is("deleted_at", null)
-      .maybeSingle() as { data: DuplicateCheckRow | null; error: { message: string } | null };
+      .maybeSingle()) as {
+      data: DuplicateCheckRow | null;
+      error: { message: string } | null;
+    };
 
     if (queryError) {
       return databaseError(MD_COLLECTION.LOAD_ERROR, queryError);
     }
 
-    // 4. 返回检查结果
+    // 5. 返回检查结果
     if (existingCollection) {
       return successResponse({
         isDuplicate: true,
-        existingCollection: {
+        existingNote: {
           id: existingCollection.id,
           title: existingCollection.title,
-          createdAt: existingCollection.created_at,
+          created_at: existingCollection.created_at,
         },
       });
     }
 
     return successResponse({
       isDuplicate: false,
-      existingCollection: null,
+      existingNote: null,
     });
   } catch (error) {
     logger.error(

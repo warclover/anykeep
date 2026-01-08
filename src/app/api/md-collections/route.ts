@@ -29,6 +29,7 @@ import {
   sanitizeMarkdownContent,
   extractTitle,
   canCreateMdCollection,
+  ensureAIGeneratedFolder,
 } from "@/features/md-collections/lib";
 import { triggerMdAIProcessing } from "@/features/md-collections/lib/ai";
 
@@ -137,10 +138,14 @@ export async function GET(request: NextRequest) {
     query = query.limit(limit + 1); // 多取一条用于判断是否还有更多
 
     // 类型断言: 手动维护类型文件时需要此断言
-    type MdCollectionRow = { id: string; title: string; [key: string]: unknown };
+    type MdCollectionRow = {
+      id: string;
+      title: string;
+      [key: string]: unknown;
+    };
 
     // 4. 执行查询
-    const { data: items, error: queryError } = await query as {
+    const { data: items, error: queryError } = (await query) as {
       data: MdCollectionRow[] | null;
       error: { message: string } | null;
     };
@@ -195,10 +200,15 @@ export async function POST(request: NextRequest) {
     // 类型断言: 手动维护类型文件时需要此断言
     type ProfileRow = { membership_type: string | null };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: profile, error: profileError } = await (supabase.from("profiles") as any)
+    const { data: profile, error: profileError } = (await (
+      supabase.from("profiles") as any
+    )
       .select("membership_type")
       .eq("id", user.id)
-      .single() as { data: ProfileRow | null; error: { message: string } | null };
+      .single()) as {
+      data: ProfileRow | null;
+      error: { message: string } | null;
+    };
 
     if (profileError) {
       logger.warn({ error: profileError }, "Failed to get user profile");
@@ -209,10 +219,15 @@ export async function POST(request: NextRequest) {
 
     // 3. 获取当前 MD 收藏数量并检查权限
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { count: currentCount, error: countError } = await (supabase.from("md_collections") as any)
+    const { count: currentCount, error: countError } = (await (
+      supabase.from("md_collections") as any
+    )
       .select("*", { count: "exact", head: true })
       .eq("user_id", user.id)
-      .is("deleted_at", null) as { count: number | null; error: { message: string } | null };
+      .is("deleted_at", null)) as {
+      count: number | null;
+      error: { message: string } | null;
+    };
 
     if (countError) {
       return databaseError(MD_COLLECTION.LOAD_ERROR, countError);
@@ -233,8 +248,15 @@ export async function POST(request: NextRequest) {
       return handleValidationError(validation.error);
     }
 
-    const { title, rawContent, contentType, userTags, folderId } =
-      validation.data;
+    const {
+      title,
+      rawContent,
+      contentType,
+      userTags,
+      folderId,
+      sourceType,
+      sourceMetadata,
+    } = validation.data;
 
     // 5. 验证内容
     const contentValidation = validateMarkdownContent(rawContent);
@@ -254,12 +276,17 @@ export async function POST(request: NextRequest) {
     // 类型断言: 手动维护类型文件时需要此断言
     type ExistingCollectionRow = { id: string; title: string };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: existingCollection, error: dupError } = await (supabase.from("md_collections") as any)
+    const { data: existingCollection, error: dupError } = (await (
+      supabase.from("md_collections") as any
+    )
       .select("id, title")
       .eq("user_id", user.id)
       .eq("content_hash", contentHash)
       .is("deleted_at", null)
-      .maybeSingle() as { data: ExistingCollectionRow | null; error: { message: string } | null };
+      .maybeSingle()) as {
+      data: ExistingCollectionRow | null;
+      error: { message: string } | null;
+    };
 
     if (dupError) {
       logger.warn({ error: dupError }, "Failed to check duplicate");
@@ -277,11 +304,32 @@ export async function POST(request: NextRequest) {
     // 10. 处理标题（如果未提供，尝试从内容提取）
     const finalTitle = title || extractTitle(sanitizedContent) || "无标题";
 
+    // 10.5 处理文件夹：如果是 AI 来源且未指定文件夹，自动使用 AI 生成文件夹
+    let finalFolderId = folderId || null;
+    const aiSourceTypes = ["ai_response", "deliverable", "synthesis", "report"];
+    if (!finalFolderId && sourceType && aiSourceTypes.includes(sourceType)) {
+      try {
+        finalFolderId = await ensureAIGeneratedFolder(supabase, user.id);
+        logger.info(
+          { userId: user.id, folderId: finalFolderId, sourceType },
+          "Auto-assigned AI generated folder",
+        );
+      } catch (folderError) {
+        logger.warn(
+          { error: folderError },
+          "Failed to create AI folder, proceeding without folder",
+        );
+        // 不阻断保存流程，继续使用 null
+      }
+    }
+
     // 11. 创建记录
     // 类型断言: 手动维护类型文件时需要此断言
     type NewCollectionRow = { id: number; [key: string]: unknown };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: newCollection, error: createError } = await (supabase.from("md_collections") as any)
+    const { data: newCollection, error: createError } = (await (
+      supabase.from("md_collections") as any
+    )
       .insert({
         user_id: user.id,
         title: finalTitle,
@@ -292,11 +340,16 @@ export async function POST(request: NextRequest) {
         code_block_count: preprocessResult.metadata.codeBlockCount,
         reading_time_minutes: preprocessResult.metadata.readingTimeMinutes,
         user_tags: userTags || [],
-        folder_id: folderId || null,
+        folder_id: finalFolderId,
+        source_type: sourceType || "paste",
+        source_metadata: sourceMetadata || null,
         processing_status: "pending",
       })
       .select()
-      .single() as { data: NewCollectionRow | null; error: { message: string } | null };
+      .single()) as {
+      data: NewCollectionRow | null;
+      error: { message: string } | null;
+    };
 
     if (createError || !newCollection) {
       return databaseError(MD_COLLECTION.CREATE_ERROR, createError);

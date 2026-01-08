@@ -2,8 +2,10 @@
 
 /**
  * Phase 4: QuickActions - 消息快速操作栏组件
- * @version 1.0.0
+ * @version 1.1.0
  * @description AI 消息的快速操作栏，支持复制、重新生成、保存、导出和反馈
+ * @changelog
+ * - 1.1.0: 集成新版 SaveToNoteButton，支持 AI 标题生成和重复检测
  */
 
 import * as React from "react";
@@ -11,7 +13,6 @@ import { clientLogger } from "@/lib/client-logger";
 import {
   Copy,
   RefreshCw,
-  Bookmark,
   Download,
   ThumbsUp,
   ThumbsDown,
@@ -19,7 +20,7 @@ import {
   Loader2,
   AlertTriangle,
 } from "lucide-react";
-import { toast } from "sonner";
+import { SaveToNoteButton } from "@/components/shared/save-to-note";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -80,7 +81,6 @@ export function MessageActionsBar({
   // 状态管理
   const [copied, setCopied] = React.useState(false);
   const [showFeedbackDialog, setShowFeedbackDialog] = React.useState(false);
-  const [showSaveDialog, setShowSaveDialog] = React.useState(false);
 
   // 复制到剪贴板
   const handleCopy = React.useCallback(async () => {
@@ -121,17 +121,6 @@ export function MessageActionsBar({
     [onFeedback],
   );
 
-  // 保存到笔记
-  const handleSave = React.useCallback(
-    (noteId: string) => {
-      if (onSave) {
-        onSave(noteId);
-      }
-      setShowSaveDialog(false);
-    },
-    [onSave],
-  );
-
   return (
     <>
       <TooltipProvider delayDuration={300}>
@@ -160,11 +149,14 @@ export function MessageActionsBar({
           />
 
           {/* 保存到笔记按钮 */}
-          <ActionButton
-            icon={Bookmark}
-            label="保存到笔记"
-            onClick={() => setShowSaveDialog(true)}
+          <SaveToNoteButton
+            content={content}
+            sourceType="ai_response"
+            variant="icon"
             disabled={isLoading}
+            onSaveSuccess={
+              onSave ? (noteId) => onSave(String(noteId)) : undefined
+            }
           />
 
           {/* 导出按钮 */}
@@ -215,14 +207,6 @@ export function MessageActionsBar({
         open={showFeedbackDialog}
         onOpenChange={setShowFeedbackDialog}
         onSubmit={handleSubmitNegativeFeedback}
-      />
-
-      {/* 保存到笔记对话框 */}
-      <SaveToNoteDialog
-        open={showSaveDialog}
-        onOpenChange={setShowSaveDialog}
-        content={content}
-        onSave={handleSave}
       />
     </>
   );
@@ -376,141 +360,6 @@ function FeedbackDialog({ open, onOpenChange, onSubmit }: FeedbackDialogProps) {
             disabled={selectedReasons.length === 0}
           >
             提交反馈
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// =============================================================================
-// 保存到笔记对话框组件
-// =============================================================================
-
-interface SaveToNoteDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  content: string;
-  onSave: (noteId: string) => void;
-}
-
-function SaveToNoteDialog({
-  open,
-  onOpenChange,
-  content,
-  onSave,
-}: SaveToNoteDialogProps) {
-  const [title, setTitle] = React.useState("");
-  const [isCreating, setIsCreating] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
-
-  // 重置表单
-  React.useEffect(() => {
-    if (!open) {
-      setTitle("");
-      setIsCreating(false);
-      setError(null);
-    } else {
-      // 自动生成标题（取前30个字符）
-      const autoTitle = content.slice(0, 30).replace(/\n/g, " ").trim();
-      setTitle(autoTitle + (content.length > 30 ? "..." : ""));
-    }
-  }, [open, content]);
-
-  // 保存笔记
-  const handleSave = async () => {
-    if (!title.trim()) return;
-
-    setIsCreating(true);
-    setError(null);
-    try {
-      const response = await fetch("/api/ai/notes", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          content,
-          title: title.trim(),
-          sourceType: "ai_response",
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        throw new Error(data.error || "保存失败");
-      }
-
-      toast.success("笔记保存成功", { icon: "📝" });
-      onSave(data.data.id);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "保存失败";
-      setError(message);
-      toast.error(message);
-    } finally {
-      setIsCreating(false);
-    }
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>保存到笔记</DialogTitle>
-          <DialogDescription>
-            将 AI 回答保存为笔记，方便日后查阅
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4 py-4">
-          {/* 笔记标题 */}
-          <div className="space-y-2">
-            <Label htmlFor="note-title" className="text-xs font-medium">
-              笔记标题
-            </Label>
-            <input
-              id="note-title"
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className={cn(
-                "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1",
-                "text-xs shadow-sm transition-colors",
-                "placeholder:text-muted-foreground",
-                "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-              )}
-              placeholder="输入笔记标题..."
-            />
-          </div>
-
-          {/* 内容预览 */}
-          <div className="space-y-2">
-            <Label className="text-xs font-medium">内容预览</Label>
-            <div className="max-h-32 overflow-y-auto rounded-md border bg-muted/50 p-3 text-xs">
-              {content.slice(0, 200)}
-              {content.length > 200 && "..."}
-            </div>
-          </div>
-
-          {/* 错误提示 */}
-          {error && <div className="text-xs text-destructive">{error}</div>}
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            取消
-          </Button>
-          <Button onClick={handleSave} disabled={!title.trim() || isCreating}>
-            {isCreating ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                保存中...
-              </>
-            ) : (
-              <>
-                <Bookmark className="mr-2 h-4 w-4" />
-                保存笔记
-              </>
-            )}
           </Button>
         </DialogFooter>
       </DialogContent>

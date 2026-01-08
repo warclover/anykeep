@@ -537,6 +537,25 @@ export const createMdCollectionSchema = z.object({
     .default("article"),
   userTags: tagsArraySchema.optional(),
   folderId: z.coerce.number().int().positive().nullable().optional(),
+  /** 来源类型（Save to Note 功能使用） */
+  sourceType: z
+    .enum([
+      "upload",
+      "paste",
+      "api",
+      "ai_response",
+      "deliverable",
+      "synthesis",
+      "report",
+    ])
+    .optional(),
+  /** 来源元数据（sourceId, conversationId 等） */
+  sourceMetadata: z
+    .object({
+      sourceId: z.string().optional(),
+      conversationId: z.string().optional(),
+    })
+    .optional(),
 });
 
 export type CreateMdCollection = z.infer<typeof createMdCollectionSchema>;
@@ -621,9 +640,19 @@ export type GetMdCollectionsQuery = z.infer<typeof getMdCollectionsQuerySchema>;
 
 /**
  * MD 内容去重检查验证 Schema
+ * 支持两种方式：
+ * 1. 直接传入 content（API 内部计算 hash）
+ * 2. 传入预计算的 contentHash
  */
-export const checkMdDuplicateSchema = z.object({
-  contentHash: z.string().length(64, "无效的内容哈希"),
-});
+export const checkMdDuplicateSchema = z
+  .object({
+    /** 内容（二选一） */
+    content: z.string().min(1).optional(),
+    /** 内容哈希（二选一） */
+    contentHash: z.string().length(64, "无效的内容哈希").optional(),
+  })
+  .refine((data) => data.content || data.contentHash, {
+    message: "必须提供 content 或 contentHash",
+  });
 
 export type CheckMdDuplicate = z.infer<typeof checkMdDuplicateSchema>;

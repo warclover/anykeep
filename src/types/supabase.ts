@@ -4191,6 +4191,7 @@ export type Database = {
           read_at: string | null;
           reading_time_minutes: number | null;
           source_filename: string | null;
+          source_metadata: Json | null;
           source_type: string | null;
           starred_at: string | null;
           title: string;
@@ -4274,6 +4275,53 @@ export type Database = {
             columns: ["folder_id"];
             isOneToOne: false;
             referencedRelation: "folders";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      note_save_history: {
+        Row: {
+          content_hash: string | null;
+          created_at: string | null;
+          generated_title: string | null;
+          id: number;
+          is_duplicate_save: boolean | null;
+          note_id: number;
+          source_conversation_id: string | null;
+          source_id: string | null;
+          source_type: string;
+          user_id: string;
+        };
+        Insert: {
+          content_hash?: string | null;
+          created_at?: string | null;
+          generated_title?: string | null;
+          id?: number;
+          is_duplicate_save?: boolean | null;
+          note_id: number;
+          source_conversation_id?: string | null;
+          source_id?: string | null;
+          source_type: string;
+          user_id: string;
+        };
+        Update: {
+          content_hash?: string | null;
+          created_at?: string | null;
+          generated_title?: string | null;
+          id?: number;
+          is_duplicate_save?: boolean | null;
+          note_id?: number;
+          source_conversation_id?: string | null;
+          source_id?: string | null;
+          source_type?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "note_save_history_note_id_fkey";
+            columns: ["note_id"];
+            isOneToOne: false;
+            referencedRelation: "md_collections";
             referencedColumns: ["id"];
           },
         ];
@@ -7834,6 +7882,10 @@ export type Database = {
           top_tags: Json;
           untagged_count: number;
         }[];
+      };
+      get_or_create_ai_generated_folder: {
+        Args: { p_user_id: string };
+        Returns: number;
       };
       get_or_create_inbox_folder: {
         Args: { p_user_id?: string };

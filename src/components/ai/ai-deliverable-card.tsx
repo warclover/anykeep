@@ -34,6 +34,7 @@ import { AIReportContent } from "./ai-report-content";
 import { AIPeriodicReportContent } from "./ai-periodic-report-content";
 import { AIGenericReportContent } from "./ai-generic-report-content";
 import { Button } from "@/components/ui/button";
+import { SaveToNoteButton } from "@/components/shared/save-to-note";
 import type { DeliverableData, DeliverableType } from "./types";
 import { clientLogger } from "@/lib/client-logger";
 import { SearchResultsList } from "./search-results-list";
@@ -131,13 +132,18 @@ export const AIDeliverableCard = memo(function AIDeliverableCard({
     [deliverable.type],
   );
 
+  // 获取内容字符串（用于复制和保存）
+  const contentString = useMemo(
+    () =>
+      typeof deliverable.content === "string"
+        ? deliverable.content
+        : JSON.stringify(deliverable.content, null, 2),
+    [deliverable.content],
+  );
+
   const handleCopy = async () => {
     try {
-      const textContent =
-        typeof deliverable.content === "string"
-          ? deliverable.content
-          : JSON.stringify(deliverable.content, null, 2);
-      await navigator.clipboard.writeText(textContent);
+      await navigator.clipboard.writeText(contentString);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (error) {
@@ -173,6 +179,7 @@ export const AIDeliverableCard = memo(function AIDeliverableCard({
         </div>
 
         <div className="flex items-center gap-1">
+          {/* 复制按钮 */}
           <Button
             variant="ghost"
             size="sm"
@@ -188,6 +195,18 @@ export const AIDeliverableCard = memo(function AIDeliverableCard({
               <Copy className="size-3.5 text-gray-500" />
             )}
           </Button>
+
+          {/* 保存到笔记按钮 */}
+          <div onClick={(e) => e.stopPropagation()}>
+            <SaveToNoteButton
+              content={contentString}
+              sourceType="deliverable"
+              suggestedTitle={deliverable.title}
+              variant="icon"
+              className="size-7 p-0 hover:bg-purple-100"
+            />
+          </div>
+
           {isExpanded ? (
             <ChevronUp className="size-4 text-gray-500" />
           ) : (
