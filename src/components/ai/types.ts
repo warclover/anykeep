@@ -335,6 +335,22 @@ export interface DisplayMessage {
   citation?: CitationInfo;
   /** 是否已取消 */
   isCancelled?: boolean;
+
+  // ============================================
+  // 附件追踪扩展字段
+  // ============================================
+
+  /** AI 回复使用的附件列表 */
+  usedAttachments?: Array<{
+    /** 附件唯一 ID */
+    id: string;
+    /** 附件类型 */
+    type: "bookmark" | "file";
+    /** 附件标题 */
+    title: string;
+    /** 书签 ID（仅书签类型） */
+    bookmarkId?: number;
+  }>;
 }
 
 /**

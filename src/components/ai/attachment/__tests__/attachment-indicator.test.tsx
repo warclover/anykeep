@@ -26,6 +26,9 @@ const createMockAttachments = (): AttachmentItem[] => [
     title: "测试书签",
     url: "https://example.com",
     content: "书签内容",
+    contentStatus: "ready",
+    contentSource: "ai_summary",
+    addedAt: new Date(),
   },
   {
     id: "file-1",
@@ -34,6 +37,9 @@ const createMockAttachments = (): AttachmentItem[] => [
     mimeType: "text/plain",
     size: 1024,
     content: "文件内容",
+    contentStatus: "ready",
+    contentSource: "file_extracted",
+    addedAt: new Date(),
   },
 ];
 
@@ -117,6 +123,9 @@ describe("AttachmentIndicator", () => {
           type: "bookmark",
           title: "测试书签",
           url: "https://example.com",
+          contentStatus: "ready",
+          contentSource: "ai_summary",
+          addedAt: new Date(),
         },
       ];
 
@@ -134,6 +143,9 @@ describe("AttachmentIndicator", () => {
           title: "测试文件.txt",
           mimeType: "text/plain",
           size: 1024,
+          contentStatus: "ready",
+          contentSource: "file_extracted",
+          addedAt: new Date(),
         },
       ];
 
@@ -434,6 +446,9 @@ describe("AttachmentIndicator", () => {
           type: "bookmark",
           title: "单个书签",
           url: "https://example.com",
+          contentStatus: "ready",
+          contentSource: "ai_summary",
+          addedAt: new Date(),
         },
       ];
 
@@ -452,6 +467,9 @@ describe("AttachmentIndicator", () => {
           type: "bookmark",
           title: "这是一个非常非常非常非常非常非常长的标题需要被截断显示",
           url: "https://example.com",
+          contentStatus: "ready",
+          contentSource: "ai_summary",
+          addedAt: new Date(),
         },
       ];
 

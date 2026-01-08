@@ -11,7 +11,15 @@
  */
 
 import { memo, useCallback } from "react";
-import { Sparkles, User, AlertCircle, Wrench, Zap, Layers } from "lucide-react";
+import {
+  Sparkles,
+  User,
+  AlertCircle,
+  Wrench,
+  Zap,
+  Layers,
+  Paperclip,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { DisplayMessage, SuggestionItem } from "./types";
 import { AIProgressIndicatorInline } from "./ai-progress-indicator";
@@ -306,6 +314,25 @@ export const AIMessageEnhanced = memo(function AIMessageEnhanced({
             onCitationClick={onCitationClick}
           />
         )}
+
+        {/* 使用的附件标注 */}
+        {!isUser &&
+          message.usedAttachments &&
+          message.usedAttachments.length > 0 && (
+            <div className="mt-2 pt-2 border-t border-purple-100 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+              <Paperclip className="size-3 text-purple-400" />
+              <span>参考了 {message.usedAttachments.length} 个附件：</span>
+              {message.usedAttachments.map((att) => (
+                <span
+                  key={att.id}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-50 text-purple-600 border border-purple-100"
+                >
+                  {att.type === "bookmark" ? "📄" : "📎"}
+                  <span className="max-w-[120px] truncate">{att.title}</span>
+                </span>
+              ))}
+            </div>
+          )}
 
         {/* 时间戳 */}
         <span className="text-xs text-gray-400 mt-0.5">

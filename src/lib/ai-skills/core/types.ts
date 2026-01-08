@@ -88,6 +88,24 @@ export interface SkillContext {
   traceId?: string;
   /** 额外的元数据 */
   metadata?: Record<string, unknown>;
+
+  // ============================================
+  // 附件上下文（v2.0 新增）
+  // ============================================
+
+  /** 附件书签 ID 数组（用于 Skill 直接操作附件） */
+  attachmentBookmarkIds?: number[];
+  /** 附件元数据 */
+  attachmentMetadata?: {
+    /** 书签附件数量 */
+    bookmarkCount: number;
+    /** 文件附件数量 */
+    fileCount: number;
+    /** 总内容长度 */
+    totalContentLength: number;
+    /** 是否所有附件内容都就绪 */
+    allReady: boolean;
+  };
 }
 
 // ============================================

@@ -116,6 +116,15 @@ export function AttachmentPanelContent({
           url: bookmark.url,
           content: bookmark.ai_summary || bookmark.description || undefined,
           platform: bookmark.platform ?? undefined,
+          bookmarkId: bookmark.id,
+          contentStatus:
+            bookmark.ai_summary || bookmark.description ? "ready" : "pending",
+          contentSource: bookmark.ai_summary
+            ? "ai_summary"
+            : bookmark.description
+              ? "description"
+              : "none",
+          addedAt: new Date(),
         };
         onSelectionChange([...selectedItems, newItem]);
       }

@@ -40,6 +40,8 @@ export const RATE_LIMIT_CONFIGS: Record<string, RateLimitConfig> = {
   batch: { windowMs: 60_000, maxRequests: 10 },
   // 书签操作：每分钟 300 次（核心用户操作，需要宽松限制）
   bookmarks: { windowMs: 60_000, maxRequests: 300 },
+  // 附件内容抓取：每分钟 10 次（防滥用，最多 3 个附件）
+  attachment_fetch: { windowMs: 60_000, maxRequests: 10 },
   // 快照操作：每分钟 60 次
   snapshots: { windowMs: 60_000, maxRequests: 60 },
   // 内容监控：每分钟 20 次
@@ -161,6 +163,11 @@ export function getRateLimitConfig(pathname: string): RateLimitConfig {
     return RATE_LIMIT_CONFIGS.auth;
   }
 
+  // 附件内容抓取（严格限制：每分钟 10 次）
+  if (pathname.includes("/fetch-content")) {
+    return RATE_LIMIT_CONFIGS.attachment_fetch;
+  }
+
   // 书签/MD收藏操作（核心用户功能，宽松限制）
   // 注意：必须在 /batch 检查之前，避免 batch-status 端点被错误匹配到严格的 batch 限制
   if (
@@ -260,6 +267,8 @@ function getConfigKey(pathname: string): string {
   )
     return "dangerous";
   if (pathname.includes("/auth") || pathname.includes("/login")) return "auth";
+  // 附件内容抓取（严格限制）
+  if (pathname.includes("/fetch-content")) return "attachment_fetch";
   // 注意：必须在 /batch 检查之前，避免 batch-status 端点被错误匹配
   if (
     pathname.includes("/bookmarks") ||

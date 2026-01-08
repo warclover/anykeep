@@ -101,6 +101,21 @@ const unifiedChatRequestSchema = z.object({
   contextReferences: contextReferencesSchema.optional(),
   /** 附件上下文（用户提供的收藏/文件内容） */
   attachmentContext: z.string().max(20000).optional(),
+  /** 附件书签 ID 数组（用于 Tool 查询和 Skill 操作） */
+  attachmentBookmarkIds: z.array(z.number().int().positive()).max(3).optional(),
+  /** 附件元数据（用于追踪和展示） */
+  attachmentMetadata: z
+    .object({
+      /** 书签附件数量 */
+      bookmarkCount: z.number().int().min(0).max(3),
+      /** 文件附件数量 */
+      fileCount: z.number().int().min(0).max(3),
+      /** 总内容长度 */
+      totalContentLength: z.number().int().min(0),
+      /** 是否所有附件内容都就绪 */
+      allReady: z.boolean(),
+    })
+    .optional(),
   /** 执行选项 */
   options: z
     .object({
@@ -199,6 +214,8 @@ export async function POST(request: NextRequest) {
       explicitTool,
       contextReferences,
       attachmentContext,
+      attachmentBookmarkIds,
+      attachmentMetadata,
       options,
     } = validation.data;
 
@@ -317,6 +334,8 @@ export async function POST(request: NextRequest) {
           totalFolders: quickStats.folderCount,
           debug: options?.includeRoutingInfo,
           attachmentContext,
+          attachmentBookmarkIds,
+          attachmentMetadata,
           episodicMemory, // 传递情景记忆
         },
         {

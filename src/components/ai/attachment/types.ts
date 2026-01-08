@@ -3,8 +3,9 @@
  *
  * 支持用户关联收藏和上传文件作为 AI 参考上下文
  *
- * @version 1.0.0
+ * @version 2.0.0
  * @since 2025-12-26
+ * @updated 2026-01-08 - 增强内容状态追踪和来源标识
  */
 
 // =============================================================================
@@ -14,9 +15,34 @@
 /** 附件来源类型 */
 export type AttachmentType = "bookmark" | "file";
 
+/**
+ * 附件内容状态
+ *
+ * 追踪附件内容的加载状态，支持用户反馈
+ */
+export type AttachmentContentStatus =
+  | "pending" // 等待验证
+  | "loading" // 正在抓取内容
+  | "ready" // 内容就绪
+  | "empty" // 无内容（仅有标题/URL）
+  | "error"; // 抓取失败
+
+/**
+ * 附件内容来源
+ *
+ * 标识内容的获取方式，便于调试和优化
+ */
+export type AttachmentContentSource =
+  | "ai_summary" // 来自 AI 摘要
+  | "description" // 来自描述
+  | "raw_content" // 来自原始内容
+  | "fetched" // 实时抓取
+  | "file_extracted" // 文件提取
+  | "none"; // 无内容
+
 /** 附件项 */
 export interface AttachmentItem {
-  /** 唯一标识 */
+  /** 唯一标识（字符串化的 ID 或生成的 UUID） */
   id: string;
   /** 附件类型 */
   type: AttachmentType;
@@ -36,6 +62,26 @@ export interface AttachmentItem {
   truncated?: boolean;
   /** 平台来源（bookmark 类型，如 wechat/bilibili） */
   platform?: string;
+
+  // ========== v2.0 新增字段 ==========
+
+  /** 原始书签 ID（数字类型，用于 API 调用） */
+  bookmarkId?: number;
+
+  /** 内容状态 */
+  contentStatus: AttachmentContentStatus;
+
+  /** 内容来源 */
+  contentSource: AttachmentContentSource;
+
+  /** 错误信息（当 contentStatus 为 error 时） */
+  errorMessage?: string;
+
+  /** 内容字符数 */
+  contentLength?: number;
+
+  /** 添加时间 */
+  addedAt: Date;
 }
 
 /** 从书签创建的附件 */
@@ -90,11 +136,19 @@ export const ATTACHMENT_LIMITS = {
     "image/jpeg",
   ] as const,
   /** 单个附件最大内容长度（字符） */
-  MAX_CONTENT_LENGTH: 10000,
-  /** AI 上下文中单个附件最大长度（字符） */
-  MAX_CONTEXT_CONTENT_LENGTH: 2000,
+  MAX_CONTENT_LENGTH: 8000,
+  /** AI 上下文总最大长度（字符） */
+  MAX_CONTEXT_CONTENT_LENGTH: 20000,
   /** 最近收藏默认数量 */
   RECENT_BOOKMARKS_LIMIT: 10,
+  /** 支持的文件类型 */
+  SUPPORTED_FILE_TYPES: [
+    "text/plain",
+    "text/markdown",
+    "application/pdf",
+    "image/png",
+    "image/jpeg",
+  ] as const,
 } as const;
 
 /** 文件类型显示名称映射 */

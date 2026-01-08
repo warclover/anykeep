@@ -68,3 +68,11 @@ export {
   CrossSessionMemoryService,
   createCrossSessionMemoryService,
 } from "./cross-session-memory-service";
+
+// ConversationAttachmentTracker 导出（v1.4 新增 - 附件追踪）
+export {
+  conversationAttachmentTracker,
+  type ConversationAttachment,
+  type ConversationAttachmentStore,
+  type AttachmentInput,
+} from "./conversation-attachments";

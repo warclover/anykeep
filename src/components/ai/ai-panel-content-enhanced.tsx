@@ -39,7 +39,7 @@ import type { AgentStreamChunk } from "@/lib/ai-agent";
 import type { PendingConfirmation } from "@/lib/ai-agent/tools/types";
 import { useUnifiedConfirmation } from "@/hooks/domain/ai/use-unified-confirmation";
 import { useAttachmentManager } from "@/hooks/ai/use-attachment-manager";
-import { buildAttachmentContext } from "@/lib/ai-agent/context/attachment-context-builder";
+import { buildAttachmentContextFull } from "@/lib/ai-agent/context/attachment-context-builder";
 import { clientLogger } from "@/lib/client-logger";
 
 // =============================================================================
@@ -218,8 +218,18 @@ export function AIPanelContentEnhanced({
         // 获取上下文引用
         const contextReferences = getContextReferences();
 
-        // 构建附件上下文
-        const attachmentContext = buildAttachmentContext(attachments);
+        // 构建附件上下文（完整版）
+        const attachmentResult = buildAttachmentContextFull(attachments);
+        const attachmentContext = attachmentResult.context || undefined;
+        const attachmentBookmarkIds =
+          attachmentResult.bookmarkIds.length > 0
+            ? attachmentResult.bookmarkIds
+            : undefined;
+        const attachmentMetadata =
+          attachmentResult.metadata.bookmarkCount > 0 ||
+          attachmentResult.metadata.fileCount > 0
+            ? attachmentResult.metadata
+            : undefined;
 
         // 构建请求体
         const requestBody: Record<string, unknown> = {
@@ -234,9 +244,15 @@ export function AIPanelContentEnhanced({
           },
         };
 
-        // 添加附件上下文
+        // 添加附件上下文和元数据
         if (attachmentContext) {
           requestBody.attachmentContext = attachmentContext;
+        }
+        if (attachmentBookmarkIds) {
+          requestBody.attachmentBookmarkIds = attachmentBookmarkIds;
+        }
+        if (attachmentMetadata) {
+          requestBody.attachmentMetadata = attachmentMetadata;
         }
 
         // Phase 4: 显式工具选择

@@ -73,6 +73,19 @@ export interface EngineContext {
   requestId?: string;
   /** 附件上下文（用户提供的收藏/文件内容） */
   attachmentContext?: string;
+  /** 附件书签 ID 数组（用于 Tool 查询和 Skill 操作） */
+  attachmentBookmarkIds?: number[];
+  /** 附件元数据（用于追踪和展示） */
+  attachmentMetadata?: {
+    /** 书签附件数量 */
+    bookmarkCount: number;
+    /** 文件附件数量 */
+    fileCount: number;
+    /** 总内容长度 */
+    totalContentLength: number;
+    /** 是否所有附件内容都就绪 */
+    allReady: boolean;
+  };
   /** 文件夹列表（用于任务理解） */
   folders?: Array<{ id: number; name: string }>;
   /** 标签列表（用于任务理解） */

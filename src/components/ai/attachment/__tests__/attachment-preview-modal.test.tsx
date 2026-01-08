@@ -41,6 +41,9 @@ const createBookmarkAttachment = (
   url: "https://example.com/article",
   content: "这是书签摘要内容，包含一些有用的信息。",
   platform: "web",
+  contentStatus: "ready",
+  contentSource: "ai_summary",
+  addedAt: new Date(),
   ...overrides,
 });
 
@@ -53,6 +56,9 @@ const createFileAttachment = (
   content: "这是文件的文本内容。",
   mimeType: "text/plain",
   size: 1024,
+  contentStatus: "ready",
+  contentSource: "file_extracted",
+  addedAt: new Date(),
   ...overrides,
 });
 
@@ -65,6 +71,9 @@ const createImageAttachment = (
   content: "[图片: 测试图片.png]\ndata:image/png;base64,iVBORw0KGgo=",
   mimeType: "image/png",
   size: 2048,
+  contentStatus: "ready",
+  contentSource: "file_extracted",
+  addedAt: new Date(),
   ...overrides,
 });
 

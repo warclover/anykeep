@@ -153,6 +153,9 @@ export class OrchestrationEngine {
         folderId: context.folderId,
         traceId: context.traceId,
         debug: context.debug,
+        // 传递附件信息（v2.0 新增）
+        attachmentBookmarkIds: context.attachmentBookmarkIds,
+        attachmentMetadata: context.attachmentMetadata,
       };
 
       // 解析输入参数
