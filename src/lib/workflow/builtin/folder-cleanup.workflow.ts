@@ -1,0 +1,164 @@
+/**
+ * 文件夹清理工作流
+ *
+ * 检测空文件夹、合并相似文件夹、优化结构
+ *
+ * @version 1.0.0
+ * @since 2026-01-08
+ */
+
+import type { WorkflowDefinition } from "../types";
+
+/**
+ * 文件夹清理工作流
+ *
+ * 步骤：
+ * 1. 分析文件夹结构
+ * 2. 检测重复结构
+ * 3. 呈现分析结果
+ * 4. 删除空文件夹（需确认）
+ * 5. 合并相似文件夹（需确认）
+ * 6. 生成清理报告
+ */
+export const folderCleanupWorkflow: WorkflowDefinition = {
+  id: "folder_cleanup",
+  name: "文件夹清理",
+  description: "检测空文件夹、合并相似文件夹、优化结构",
+  version: "1.0.0",
+  category: "builtin",
+
+  triggers: [
+    {
+      type: "manual",
+    },
+    {
+      type: "conversation",
+      patterns: [
+        "清理文件夹",
+        "整理文件夹",
+        "文件夹优化",
+        "合并文件夹",
+        "删除空文件夹",
+      ],
+    },
+  ],
+
+  steps: [
+    {
+      id: "analyze_folders",
+      name: "分析文件夹结构",
+      type: "skill",
+      config: {
+        skillId: "folder_health_check",
+        inputMapping: {
+          includeEmpty: true,
+          includeSimilarity: true,
+          includeStats: true,
+        },
+        outputMapping: {
+          emptyFolders: "emptyFolders",
+          similarPairs: "similarFolders",
+          healthReport: "folderHealthReport",
+        },
+      },
+    },
+    {
+      id: "detect_duplicates",
+      name: "检测重复结构",
+      type: "skill",
+      config: {
+        skillId: "analyze_folder_overlap",
+        inputMapping: {
+          similarityThreshold: 0.7,
+        },
+        outputMapping: {
+          overlappingFolders: "overlappingFolders",
+          mergeSuggestions: "mergeSuggestions",
+        },
+      },
+      onError: "continue",
+    },
+    {
+      id: "present_findings",
+      name: "呈现分析结果",
+      type: "aggregate",
+      requiresConfirmation: true,
+      confirmationMessage: "文件夹分析完成，请确认要执行的操作：",
+      config: {
+        toolName: "present_folder_analysis",
+        args: {
+          template: "folder_cleanup_report",
+          sections: [
+            {
+              title: "空文件夹",
+              variable: "emptyFolders",
+              action: "delete_empty",
+              actionLabel: "删除空文件夹",
+            },
+            {
+              title: "相似文件夹",
+              variable: "similarFolders",
+              action: "merge_similar",
+              actionLabel: "查看合并建议",
+            },
+            {
+              title: "结构优化建议",
+              variable: "folderHealthReport",
+              action: "view_suggestions",
+            },
+          ],
+        },
+      },
+    },
+    {
+      id: "delete_empty",
+      name: "删除空文件夹",
+      type: "skill",
+      condition: "confirmationResult.actions.delete_empty == true",
+      config: {
+        skillId: "delete_folders",
+        inputMapping: {
+          folderIds: "${emptyFolders}",
+          confirmRequired: false, // 已在上一步确认
+        },
+        outputMapping: {
+          deletedCount: "deletedEmptyCount",
+        },
+      },
+    },
+    {
+      id: "merge_similar",
+      name: "合并相似文件夹",
+      type: "skill",
+      condition: "confirmationResult.actions.merge_similar == true",
+      config: {
+        skillId: "merge_folders",
+        inputMapping: {
+          mergePairs: "${mergeSuggestions}",
+          strategy: "keep_larger",
+        },
+        outputMapping: {
+          mergedCount: "mergedFolderCount",
+        },
+      },
+    },
+    {
+      id: "final_report",
+      name: "生成清理报告",
+      type: "aggregate",
+      config: {
+        toolName: "generate_cleanup_report",
+        args: {
+          template: "cleanup_complete",
+          variables: ["deletedEmptyCount", "mergedFolderCount"],
+        },
+      },
+    },
+  ],
+
+  config: {
+    timeout: 120000,
+    notifyOnComplete: true,
+    notifyOnFailure: true,
+  },
+};
