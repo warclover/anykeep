@@ -353,6 +353,72 @@ const DEFAULT_RULES: IntentRule[] = [
   },
 
   // ============================================
+  // Skills v1.1.0（2025-01-08 新增）
+  // ============================================
+  // InboxTriageSkill - 收件箱智能分拣
+  {
+    pattern:
+      /整理.*(收件箱|inbox)|收件箱.*整理|(帮我|自动).*(分类|分拣|归档).*(未读|未整理|新)|inbox.*(organize|triage|sort)/i,
+    type: "action",
+    subType: "inbox_triage",
+    complexity: "complex",
+    weight: 85,
+  },
+  {
+    pattern:
+      /(有多少|几条).*(未整理|未分类|待处理)|收件箱.*状态|inbox.*(status|overview)/i,
+    type: "query",
+    subType: "inbox_status",
+    complexity: "simple",
+    weight: 80,
+  },
+  // FolderRecommendSkill - 文件夹智能推荐
+  {
+    pattern:
+      /推荐.*(文件夹|目录|分类)|(建议|应该).*创建.*(文件夹|目录)|(文件夹|目录).*建议|folder.*(recommend|suggest)/i,
+    type: "query",
+    subType: "folder_recommend",
+    complexity: "simple",
+    weight: 85,
+  },
+  // SearchOptimizeSkill - 搜索优化助手
+  {
+    pattern:
+      /优化.*搜索|搜索.*优化|(改进|提高).*搜索|搜索.*建议|search.*(optimize|improve)/i,
+    type: "query",
+    subType: "search_optimize",
+    complexity: "simple",
+    weight: 82,
+  },
+  // KnowledgeGraphExploreSkill - 知识图谱探索
+  {
+    pattern:
+      /探索.*图谱|图谱.*探索|知识.*关联|关联.*分析|explore.*(graph|knowledge)/i,
+    type: "analyze",
+    subType: "knowledge_graph_explore",
+    complexity: "complex",
+    weight: 83,
+  },
+  // FolderHealthCheckSkill - 文件夹健康检查
+  {
+    pattern:
+      /文件夹.*(健康|检查|诊断)|(健康|检查|诊断).*文件夹|folder.*(health|check|diagnose)/i,
+    type: "analyze",
+    subType: "folder_health_check",
+    complexity: "complex",
+    weight: 84,
+  },
+  // SnapshotCompareSkill - 快照对比分析
+  {
+    pattern:
+      /(快照|版本|页面).*(对比|比较|变化)|对比.*(快照|版本)|snapshot.*(compare|diff)/i,
+    type: "analyze",
+    subType: "snapshot_compare",
+    complexity: "simple",
+    weight: 81,
+  },
+
+  // ============================================
   // 微信文章类（v2.4.0 新增）
   // ============================================
   {

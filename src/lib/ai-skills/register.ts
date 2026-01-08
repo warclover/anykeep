@@ -40,6 +40,13 @@ import { inboxDigestSkill } from "./skills/inbox-digest";
 import { contentChangeMonitorSkill } from "./skills/content-change-monitor";
 import { activeRecallSkill } from "./skills/active-recall";
 import { ThematicSynthesisSkill } from "./skills/thematic-synthesis";
+// Skills v1.1.0 新增（2025-01-08）
+import { inboxTriageSkill } from "./skills/inbox-triage";
+import { folderRecommendSkill } from "./skills/folder-recommend";
+import { searchOptimizeSkill } from "./skills/search-optimize";
+import { knowledgeGraphExploreSkill } from "./skills/knowledge-graph-explore";
+import { folderHealthCheckSkill } from "./skills/folder-health-check";
+import { snapshotCompareSkill } from "./skills/snapshot-compare";
 import { unifiedEngine } from "./engine/unified-engine";
 import { knowledgeAgent } from "../ai-agent/core/knowledge-agent";
 import { logger } from "@/lib/logger";
@@ -214,6 +221,46 @@ export function initializeUnifiedEngine(): void {
   if (process.env.ENABLE_THEMATIC_SYNTHESIS !== "false") {
     unifiedEngine.registerOrchestrationSkill(thematicSynthesisSkill);
     logger.debug("ThematicSynthesisSkill registered");
+  }
+
+  // ============================================
+  // Skills v1.1.0 新增（2025-01-08）
+  // ============================================
+
+  // P0: InboxTriageSkill - 收件箱智能分拣（编排类型）
+  if (process.env.ENABLE_INBOX_TRIAGE !== "false") {
+    unifiedEngine.registerOrchestrationSkill(inboxTriageSkill);
+    logger.debug("InboxTriageSkill registered");
+  }
+
+  // P0: FolderRecommendSkill - 文件夹智能推荐（原子类型）
+  if (process.env.ENABLE_FOLDER_RECOMMEND !== "false") {
+    skillRegistry.register(folderRecommendSkill, { enabled: true });
+    logger.debug("FolderRecommendSkill registered");
+  }
+
+  // P0: SearchOptimizeSkill - 搜索优化助手（原子类型）
+  if (process.env.ENABLE_SEARCH_OPTIMIZE !== "false") {
+    skillRegistry.register(searchOptimizeSkill, { enabled: true });
+    logger.debug("SearchOptimizeSkill registered");
+  }
+
+  // P1: KnowledgeGraphExploreSkill - 知识图谱探索（编排类型）
+  if (process.env.ENABLE_KNOWLEDGE_GRAPH_EXPLORE !== "false") {
+    unifiedEngine.registerOrchestrationSkill(knowledgeGraphExploreSkill);
+    logger.debug("KnowledgeGraphExploreSkill registered");
+  }
+
+  // P1: FolderHealthCheckSkill - 文件夹健康检查（编排类型）
+  if (process.env.ENABLE_FOLDER_HEALTH_CHECK !== "false") {
+    unifiedEngine.registerOrchestrationSkill(folderHealthCheckSkill);
+    logger.debug("FolderHealthCheckSkill registered");
+  }
+
+  // P1: SnapshotCompareSkill - 快照对比分析（原子类型）
+  if (process.env.ENABLE_SNAPSHOT_COMPARE !== "false") {
+    skillRegistry.register(snapshotCompareSkill, { enabled: true });
+    logger.debug("SnapshotCompareSkill registered");
   }
 
   unifiedEngineInitialized = true;
