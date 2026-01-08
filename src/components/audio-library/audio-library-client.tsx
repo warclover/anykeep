@@ -31,6 +31,11 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { TIME_CONSTANTS } from "@/lib/ui/common-styles";
+import {
+  MOCK_AUDIO_HISTORY,
+  type AudioItem,
+} from "@/lib/mocks/audio-library.mock";
 
 // ============================================
 // 常量定义
@@ -53,70 +58,9 @@ const AUDIO_LIBRARY = {
   },
 };
 
-// 模拟语音历史数据
-const MOCK_AUDIO_HISTORY = [
-  {
-    id: "1",
-    title: "React 18 新特性详解",
-    bookmarkId: 101,
-    duration: "3:42",
-    createdAt: new Date(),
-    audioUrl: "#",
-  },
-  {
-    id: "2",
-    title: "TypeScript 5.0 装饰器语法",
-    bookmarkId: 102,
-    duration: "2:18",
-    createdAt: new Date(),
-    audioUrl: "#",
-  },
-  {
-    id: "3",
-    title: "Next.js 14 App Router 完全指南",
-    bookmarkId: 103,
-    duration: "5:21",
-    createdAt: new Date(Date.now() - 86400000), // 昨天
-    audioUrl: "#",
-  },
-  {
-    id: "4",
-    title: "Tailwind CSS 4.0 新功能一览",
-    bookmarkId: 104,
-    duration: "1:58",
-    createdAt: new Date(Date.now() - 86400000),
-    audioUrl: "#",
-  },
-  {
-    id: "5",
-    title: "Supabase Edge Functions 实战",
-    bookmarkId: 105,
-    duration: "4:12",
-    createdAt: new Date(Date.now() - 86400000),
-    audioUrl: "#",
-  },
-  {
-    id: "6",
-    title: "Vue 3.4 性能优化技巧",
-    bookmarkId: 106,
-    duration: "3:05",
-    createdAt: new Date(Date.now() - 3 * 86400000), // 3天前
-    audioUrl: "#",
-  },
-];
-
 // ============================================
 // 类型定义
 // ============================================
-
-interface AudioItem {
-  id: string;
-  title: string;
-  bookmarkId: number;
-  duration: string;
-  createdAt: Date;
-  audioUrl: string;
-}
 
 interface GroupedAudio {
   label: string;
@@ -130,8 +74,8 @@ interface GroupedAudio {
 function groupByDate(items: AudioItem[]): GroupedAudio[] {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const yesterday = new Date(today.getTime() - 86400000);
-  const weekAgo = new Date(today.getTime() - 7 * 86400000);
+  const yesterday = new Date(today.getTime() - TIME_CONSTANTS.ONE_DAY_MS);
+  const weekAgo = new Date(today.getTime() - TIME_CONSTANTS.ONE_WEEK_MS);
 
   const groups: Record<string, AudioItem[]> = {
     today: [],
@@ -225,11 +169,12 @@ function AudioItemCard({
             variant={isPlaying ? "default" : "outline"}
             className="shrink-0"
             onClick={onPlay}
+            aria-label={isPlaying ? "暂停播放" : "开始播放"}
           >
             {isPlaying ? (
-              <Pause className="size-4" />
+              <Pause className="size-4" aria-hidden="true" />
             ) : (
-              <Play className="size-4 ml-0.5" />
+              <Play className="size-4 ml-0.5" aria-hidden="true" />
             )}
           </Button>
 
@@ -253,8 +198,9 @@ function AudioItemCard({
             variant="ghost"
             className="shrink-0 text-gray-400 hover:text-red-500"
             onClick={onDelete}
+            aria-label="删除语音"
           >
-            <Trash2 className="size-4" />
+            <Trash2 className="size-4" aria-hidden="true" />
           </Button>
         </div>
       </CardContent>

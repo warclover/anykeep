@@ -26,6 +26,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { logger } from "@/lib/logger";
 import { toast } from "sonner";
 
 // ============================================
@@ -128,7 +129,13 @@ export function FloatingQuickAdd() {
       setOpen(false);
       setUrl("");
     } catch (error) {
-      console.error("Quick add error:", error);
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : "Unknown error",
+          url: url.trim(),
+        },
+        "Failed to add bookmark via quick add",
+      );
       toast.error(QUICK_ADD.DIALOG.ERROR);
     } finally {
       setIsSubmitting(false);
@@ -153,8 +160,9 @@ export function FloatingQuickAdd() {
           )}
           onClick={handleOpen}
           title={QUICK_ADD.BUTTON_TITLE}
+          aria-label={QUICK_ADD.BUTTON_TITLE}
         >
-          <Plus className="size-6" />
+          <Plus className="size-6" aria-hidden="true" />
         </Button>
       </div>
 
