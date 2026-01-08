@@ -99,6 +99,23 @@ export type MasteryLevel =
 
 export type ImpactLevel = "none" | "minor" | "moderate" | "major";
 
+// Workflow 类型
+export type WorkflowExecutionStatus =
+  | "pending"
+  | "running"
+  | "completed"
+  | "failed"
+  | "cancelled"
+  | "waiting_confirmation";
+
+export type WorkflowTriggerType =
+  | "manual"
+  | "event"
+  | "schedule"
+  | "conversation";
+
+export type WorkflowCategory = "builtin" | "user_defined";
+
 export type UpdateTaskStatus =
   | "pending"
   | "processing"
@@ -6411,6 +6428,95 @@ export type Database = {
           updated_at?: string | null;
           user_id?: string;
           week_start?: string;
+        };
+        Relationships: [];
+      };
+      workflow_executions: {
+        Row: {
+          id: string;
+          workflow_id: string;
+          user_id: string;
+          status: string;
+          trigger_type: string;
+          trigger_context: Json;
+          current_step_index: number;
+          step_results: Json;
+          error_message: string | null;
+          started_at: string;
+          completed_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          workflow_id: string;
+          user_id: string;
+          status?: string;
+          trigger_type?: string;
+          trigger_context?: Json;
+          current_step_index?: number;
+          step_results?: Json;
+          error_message?: string | null;
+          started_at?: string;
+          completed_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          workflow_id?: string;
+          user_id?: string;
+          status?: string;
+          trigger_type?: string;
+          trigger_context?: Json;
+          current_step_index?: number;
+          step_results?: Json;
+          error_message?: string | null;
+          started_at?: string;
+          completed_at?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "workflow_executions_workflow_id_fkey";
+            columns: ["workflow_id"];
+            isOneToOne: false;
+            referencedRelation: "workflows";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      workflows: {
+        Row: {
+          id: string;
+          user_id: string | null;
+          name: string;
+          description: string | null;
+          definition: Json;
+          category: string;
+          enabled: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id?: string | null;
+          name: string;
+          description?: string | null;
+          definition: Json;
+          category?: string;
+          enabled?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string | null;
+          name?: string;
+          description?: string | null;
+          definition?: Json;
+          category?: string;
+          enabled?: boolean;
+          created_at?: string;
+          updated_at?: string;
         };
         Relationships: [];
       };
