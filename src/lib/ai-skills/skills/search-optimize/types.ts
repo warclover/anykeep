@@ -14,7 +14,6 @@ import { z } from "zod";
 export const SearchOptimizeInputSchema = z.object({
   originalQuery: z.string().optional().describe("原始搜索词"),
   feedback: z.string().optional().describe("用户反馈（太多/太少/不相关）"),
-  autoApply: z.boolean().default(false).describe("是否自动应用优化"),
 });
 
 export type SearchOptimizeInput = z.infer<typeof SearchOptimizeInputSchema>;

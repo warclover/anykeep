@@ -22,9 +22,7 @@ export const FOLDER_HEALTH_STEPS: StepDefinition[] = [
 // Input Schema
 // ============================================
 
-export const FolderHealthCheckInputSchema = z.object({
-  detailed: z.boolean().default(false).describe("是否输出详细报告"),
-});
+export const FolderHealthCheckInputSchema = z.object({});
 
 export type FolderHealthCheckInput = z.infer<
   typeof FolderHealthCheckInputSchema

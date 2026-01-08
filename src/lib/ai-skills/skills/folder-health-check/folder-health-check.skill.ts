@@ -57,10 +57,10 @@ export class FolderHealthCheckSkill extends OrchestrationSkill<
    * 解析用户输入
    */
   async parseInput(
-    message: string,
+    _message: string,
     _context: OrchestrationContext,
   ): Promise<FolderHealthCheckInput> {
-    return { detailed: /详细|完整/.test(message) };
+    return {};
   }
 
   /**

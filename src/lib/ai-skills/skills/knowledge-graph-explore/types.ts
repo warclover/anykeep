@@ -38,7 +38,6 @@ export const KNOWLEDGE_GRAPH_STEPS: StepDefinition[] = [
 // ============================================
 
 export const KnowledgeGraphExploreInputSchema = z.object({
-  topic: z.string().optional().describe("聚焦的主题"),
   depth: z.number().min(1).max(3).default(2).describe("探索深度"),
   maxNodes: z.number().min(10).max(200).default(100).describe("最大节点数"),
 });

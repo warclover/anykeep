@@ -52,17 +52,10 @@ export class KnowledgeGraphExploreSkill extends OrchestrationSkill<
    * 解析用户输入
    */
   async parseInput(
-    message: string,
+    _message: string,
     _context: OrchestrationContext,
   ): Promise<KnowledgeGraphExploreInput> {
-    // 提取主题关键词
-    const topicMatch = message.match(
-      /(?:关于|探索|查看)\s*[「"']?([^「"']+)[」"']?\s*(?:的)?(?:图谱|关联|知识)/,
-    );
-    const topic = topicMatch?.[1];
-
     return {
-      topic,
       depth: 2,
       maxNodes: 100,
     };

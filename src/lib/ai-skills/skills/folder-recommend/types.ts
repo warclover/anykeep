@@ -18,8 +18,6 @@ export const FolderRecommendInputSchema = z.object({
     .max(10)
     .default(5)
     .describe("最大推荐数量"),
-  considerHierarchy: z.boolean().default(true).describe("是否考虑层级结构"),
-  focusOnUnclassified: z.boolean().default(true).describe("是否聚焦未分类书签"),
 });
 
 export type FolderRecommendInput = z.infer<typeof FolderRecommendInputSchema>;

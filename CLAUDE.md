@@ -2,25 +2,26 @@
 
 ## 变更记录 (Changelog)
 
-| 日期       | 版本  | 变更内容                                                                                          |
-| ---------- | ----- | ------------------------------------------------------------------------------------------------- |
-| 2025-12-29 | 2.8.1 | 文档校正：修正项目统计（2004文件/159迁移），补全21个Skills列表，添加TTS/Brain-Sync/主题合成器描述 |
-| 2025-12-28 | 2.8.0 | RAG 能力补全 Phase 1-3：查询改写、Rerank、向量缓存、Parent-Child 切片、RRF 融合、监控评估         |
-| 2025-12-28 | 2.7.5 | ReAct 循环和引用追踪：Think→Act→Observe 循环、搜索结果自动引用[^N]、78 个测试用例                 |
-| 2025-12-27 | 2.7.4 | 信任模式智能化：get-trust-mode、recommend-trust-mode Tools，意图分类规则集成                      |
-| 2025-12-27 | 2.7.3 | 代码质量清理：空 catch 修复、console → logger 迁移、高风险 API 速率限制（5 个端点）               |
-| 2025-12-27 | 2.7.2 | AI 上下文增强 v2.0：序数引用解析、refine 意图类型、搜索结果持久化、负向后行断言修复               |
-| 2025-12-27 | 2.7.1 | 对话上下文压缩：三级降级策略、摘要持久化、记忆增强系统、测试修复                                  |
-| 2025-12-27 | 2.7.0 | 任务理解层 v2.0：零接管模式、置信度分层、隐含意图推理、System-Reminder、请求取消功能              |
-| 2025-12-26 | 2.6.1 | v4.3 修复：Token 持久化、LRU 缓存、跨平台兼容性、RPC 安全增强                                     |
-| 2025-12-26 | 2.6.0 | AI 能力升级 v4.3：动态上下文、模型分层、偏好学习、成本控制、Feature Flags                         |
-| 2025-12-25 | 2.5.1 | Tools & Skills 优化：Query Tools 日志完善、废弃工具清理、Skills 测试覆盖、统一注册适配层          |
-| 2025-12-25 | 2.5.0 | 架构修复：日志系统统一、Classification 扁平化、测试稳定性增强                                     |
-| 2025-12-24 | 2.4.0 | 完成 AI Skills 统一智能架构（编排引擎 + 4 个 Skills）                                             |
-| 2025-12-20 | 2.2.0 | 完成批量操作功能（批量标签管理 + Shift 范围选择）                                                 |
-| 2025-12-01 | 2.1.0 | 完成浏览器书签隔离与列表视图优化功能                                                              |
-| 2025-12-01 | 2.0.0 | 项目进入开发阶段，完成浏览器书签导入功能 (Phase 1-3)                                              |
-| 2025-11-21 | 1.0.0 | 初始化 AI 上下文文档，项目处于规划阶段                                                            |
+| 日期       | 版本  | 变更内容                                                                                                                                                      |
+| ---------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-01-08 | 2.8.2 | Skills v1.1.0：新增 6 个 Skills（inbox_triage/folder_recommend/search_optimize/knowledge_graph_explore/folder_health_check/snapshot_compare），108 个单元测试 |
+| 2025-12-29 | 2.8.1 | 文档校正：修正项目统计（2004文件/159迁移），补全21个Skills列表，添加TTS/Brain-Sync/主题合成器描述                                                             |
+| 2025-12-28 | 2.8.0 | RAG 能力补全 Phase 1-3：查询改写、Rerank、向量缓存、Parent-Child 切片、RRF 融合、监控评估                                                                     |
+| 2025-12-28 | 2.7.5 | ReAct 循环和引用追踪：Think→Act→Observe 循环、搜索结果自动引用[^N]、78 个测试用例                                                                             |
+| 2025-12-27 | 2.7.4 | 信任模式智能化：get-trust-mode、recommend-trust-mode Tools，意图分类规则集成                                                                                  |
+| 2025-12-27 | 2.7.3 | 代码质量清理：空 catch 修复、console → logger 迁移、高风险 API 速率限制（5 个端点）                                                                           |
+| 2025-12-27 | 2.7.2 | AI 上下文增强 v2.0：序数引用解析、refine 意图类型、搜索结果持久化、负向后行断言修复                                                                           |
+| 2025-12-27 | 2.7.1 | 对话上下文压缩：三级降级策略、摘要持久化、记忆增强系统、测试修复                                                                                              |
+| 2025-12-27 | 2.7.0 | 任务理解层 v2.0：零接管模式、置信度分层、隐含意图推理、System-Reminder、请求取消功能                                                                          |
+| 2025-12-26 | 2.6.1 | v4.3 修复：Token 持久化、LRU 缓存、跨平台兼容性、RPC 安全增强                                                                                                 |
+| 2025-12-26 | 2.6.0 | AI 能力升级 v4.3：动态上下文、模型分层、偏好学习、成本控制、Feature Flags                                                                                     |
+| 2025-12-25 | 2.5.1 | Tools & Skills 优化：Query Tools 日志完善、废弃工具清理、Skills 测试覆盖、统一注册适配层                                                                      |
+| 2025-12-25 | 2.5.0 | 架构修复：日志系统统一、Classification 扁平化、测试稳定性增强                                                                                                 |
+| 2025-12-24 | 2.4.0 | 完成 AI Skills 统一智能架构（编排引擎 + 4 个 Skills）                                                                                                         |
+| 2025-12-20 | 2.2.0 | 完成批量操作功能（批量标签管理 + Shift 范围选择）                                                                                                             |
+| 2025-12-01 | 2.1.0 | 完成浏览器书签隔离与列表视图优化功能                                                                                                                          |
+| 2025-12-01 | 2.0.0 | 项目进入开发阶段，完成浏览器书签导入功能 (Phase 1-3)                                                                                                          |
+| 2025-11-21 | 1.0.0 | 初始化 AI 上下文文档，项目处于规划阶段                                                                                                                        |
 
 ---
 
@@ -111,7 +112,7 @@ anykeep/                    # 项目根目录
 │   ├── hooks/            # React Hooks (30+ 文件)
 │   ├── lib/              # 工具函数与核心逻辑
 │   │   ├── ai-agent/     # AI Agent 核心
-│   │   ├── ai-skills/    # AI Skills 系统 (24 Skills)
+│   │   ├── ai-skills/    # AI Skills 系统 (30 Skills)
 │   │   ├── classification/ # 智能分类系统
 │   │   ├── embedding/    # 向量嵌入服务
 │   │   ├── tts/          # TTS 语音服务
@@ -531,29 +532,35 @@ src/components/export/
 
 **已实现的编排 Skills**:
 
-| Skill ID                 | 名称            | 功能                                    | 步骤数 | Feature Flag                    |
-| ------------------------ | --------------- | --------------------------------------- | ------ | ------------------------------- |
-| `knowledge_review`       | 知识回顾助手    | 复习收藏内容、生成记忆卡片              | 5      | -                               |
-| `data_export`            | 数据导出助手    | 多格式导出（CSV/MD/JSON/HTML/Obsidian） | 4      | -                               |
-| `insight_report`         | 洞察报告助手    | 活跃度分析、内容趋势、洞察建议          | 5      | -                               |
-| `batch_organize`         | 智能整理助手    | 自动分类、标签、去重、归档              | 6      | -                               |
-| `duplicate_cleanup`      | 重复清理助手    | 检测重复书签、智能合并                  | 4      | -                               |
-| `quick_digest`           | 快速摘要助手    | 生成书签内容摘要                        | 3      | -                               |
-| `smart_tagging`          | 智能标签助手    | 自动生成和推荐标签                      | 4      | -                               |
-| `reading_planner`        | 阅读规划助手    | 制定阅读计划和时间安排                  | 5      | -                               |
-| `related_discovery`      | 相关发现助手    | 发现相关内容和推荐                      | 4      | -                               |
-| `periodic_report`        | 周期报告助手    | 生成周报/月报                           | 5      | -                               |
-| `share_bundle`           | 分享包助手      | 生成可分享的内容包                      | 4      | -                               |
-| `learning_path`          | 学习路径助手    | 规划学习路径和进度                      | 5      | -                               |
-| `knowledge_extract`      | 知识提取助手    | 提取关键知识点和概念                    | 4      | -                               |
-| `link_health_check`      | 链接健康检测    | 检测失效链接、更新状态                  | 4      | `ENABLE_LINK_HEALTH_CHECK`      |
-| `tts_synthesis`          | 语音朗读助手    | 将书签摘要转换为语音                    | 5      | `ENABLE_TTS_SYNTHESIS`          |
-| `wechat_digest`          | 微信阅读摘要    | 生成微信文章摘要报告                    | 4      | `ENABLE_WECHAT_DIGEST`          |
-| `bilibili_transcript`    | B站字幕提取     | 提取视频字幕和文字稿                    | 4      | `ENABLE_BILIBILI_TRANSCRIPT`    |
-| `inbox_digest`           | 收件箱摘要      | 生成未读/通知摘要                       | 4      | `ENABLE_INBOX_DIGEST`           |
-| `content_change_monitor` | 内容变更监控    | 监控页面变化、通知更新                  | 5      | `ENABLE_CONTENT_CHANGE_MONITOR` |
-| `active_recall`          | Brain-Sync 复习 | SM-2 算法主动复习、记忆曲线优化         | 5      | `ENABLE_ACTIVE_RECALL`          |
-| `thematic_synthesis`     | 主题合成器      | 多书签主题合成、生成综合报告            | 6      | `ENABLE_THEMATIC_SYNTHESIS`     |
+| Skill ID                  | 名称            | 功能                                    | 步骤数 | Feature Flag                    |
+| ------------------------- | --------------- | --------------------------------------- | ------ | ------------------------------- |
+| `knowledge_review`        | 知识回顾助手    | 复习收藏内容、生成记忆卡片              | 5      | -                               |
+| `data_export`             | 数据导出助手    | 多格式导出（CSV/MD/JSON/HTML/Obsidian） | 4      | -                               |
+| `insight_report`          | 洞察报告助手    | 活跃度分析、内容趋势、洞察建议          | 5      | -                               |
+| `batch_organize`          | 智能整理助手    | 自动分类、标签、去重、归档              | 6      | -                               |
+| `duplicate_cleanup`       | 重复清理助手    | 检测重复书签、智能合并                  | 4      | -                               |
+| `quick_digest`            | 快速摘要助手    | 生成书签内容摘要                        | 3      | -                               |
+| `smart_tagging`           | 智能标签助手    | 自动生成和推荐标签                      | 4      | -                               |
+| `reading_planner`         | 阅读规划助手    | 制定阅读计划和时间安排                  | 5      | -                               |
+| `related_discovery`       | 相关发现助手    | 发现相关内容和推荐                      | 4      | -                               |
+| `periodic_report`         | 周期报告助手    | 生成周报/月报                           | 5      | -                               |
+| `share_bundle`            | 分享包助手      | 生成可分享的内容包                      | 4      | -                               |
+| `learning_path`           | 学习路径助手    | 规划学习路径和进度                      | 5      | -                               |
+| `knowledge_extract`       | 知识提取助手    | 提取关键知识点和概念                    | 4      | -                               |
+| `link_health_check`       | 链接健康检测    | 检测失效链接、更新状态                  | 4      | `ENABLE_LINK_HEALTH_CHECK`      |
+| `tts_synthesis`           | 语音朗读助手    | 将书签摘要转换为语音                    | 5      | `ENABLE_TTS_SYNTHESIS`          |
+| `wechat_digest`           | 微信阅读摘要    | 生成微信文章摘要报告                    | 4      | `ENABLE_WECHAT_DIGEST`          |
+| `bilibili_transcript`     | B站字幕提取     | 提取视频字幕和文字稿                    | 4      | `ENABLE_BILIBILI_TRANSCRIPT`    |
+| `inbox_digest`            | 收件箱摘要      | 生成未读/通知摘要                       | 4      | `ENABLE_INBOX_DIGEST`           |
+| `content_change_monitor`  | 内容变更监控    | 监控页面变化、通知更新                  | 5      | `ENABLE_CONTENT_CHANGE_MONITOR` |
+| `active_recall`           | Brain-Sync 复习 | SM-2 算法主动复习、记忆曲线优化         | 5      | `ENABLE_ACTIVE_RECALL`          |
+| `thematic_synthesis`      | 主题合成器      | 多书签主题合成、生成综合报告            | 6      | `ENABLE_THEMATIC_SYNTHESIS`     |
+| `inbox_triage`            | 收件箱智能分拣  | 分析未分类书签，智能整理建议和一键执行  | 4      | -                               |
+| `folder_recommend`        | 文件夹智能推荐  | 基于内容和使用习惯推荐最佳文件夹结构    | -      | -                               |
+| `search_optimize`         | 搜索优化助手    | 分析搜索词，提供优化建议和技巧          | -      | -                               |
+| `knowledge_graph_explore` | 知识图谱探索    | 可视化知识关联，发现学习盲区            | 3      | -                               |
+| `folder_health_check`     | 文件夹健康检查  | 分析文件夹结构，发现问题并优化建议      | 3      | -                               |
+| `snapshot_compare`        | 快照对比分析    | 对比页面快照，检测内容变化              | -      | -                               |
 
 **API 端点**:
 
