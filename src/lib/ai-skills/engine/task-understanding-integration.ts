@@ -316,8 +316,8 @@ export class TaskUnderstandingIntegration {
 
     // 学习撤销行为
     if (result.success && this.preferenceLearningService) {
-      // TODO: 获取原始的 understanding 和 result 来学习
-      // 这里需要从撤销记录中获取
+      // P2: 从撤销记录学习用户偏好 (配合 ENABLE_PREFERENCE_LEARNING_V2 Feature Flag)
+      // 需要从撤销记录中获取原始 understanding 和 result
     }
 
     return result;
@@ -331,7 +331,7 @@ export class TaskUnderstandingIntegration {
     understandingId: string,
     adjustmentContent: string,
   ): Promise<void> {
-    // TODO: 实现调整记录和学习
+    // P2: 记录用户调整并学习 (配合 ENABLE_PREFERENCE_LEARNING_V2 Feature Flag)
     logger.info({ userId, understandingId, adjustmentContent }, "记录用户调整");
   }
 
@@ -348,7 +348,7 @@ export class TaskUnderstandingIntegration {
       input,
       stats: {
         total: context.totalBookmarks || 0,
-        inbox: 0, // TODO: 从上下文获取
+        inbox: 0, // P3: 从 DynamicContext 获取待处理数量
         platformDistribution: {},
         weeklyAdded: 0,
       },

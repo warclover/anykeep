@@ -168,8 +168,8 @@ export class AnalyticsService {
     const processed = accepted + rejected;
 
     return {
-      summaryCount: 0, // TODO: 从其他表获取
-      tagCount: 0, // TODO: 从其他表获取
+      summaryCount: 0, // P3: 集成摘要统计表
+      tagCount: 0, // P3: 集成标签统计表
       classificationCount: total,
       classificationAcceptRate:
         processed > 0 ? Math.round((accepted / processed) * 100) : 0,

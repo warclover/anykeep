@@ -124,7 +124,7 @@ export class ProviderFactory implements IProviderFactory {
         return new AliyunBailianProvider();
 
       case "ollama":
-        // TODO: P3 - 实现 Ollama Provider
+        // P3: 见 @/lib/ai-providers/provider-router.ts Ollama 实现计划
         logger.warn(
           { provider: name },
           "ProviderFactory: Ollama provider not implemented yet",

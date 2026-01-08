@@ -116,7 +116,7 @@ export class AgentMemory {
       return this.toConversation(cached);
     }
 
-    // TODO: 如果启用持久化，从数据库加载
+    // P2: 持久化扩展 - 从数据库加载历史会话
     return null;
   }
 
@@ -200,7 +200,7 @@ export class AgentMemory {
    */
   clearConversation(conversationId: string): void {
     this.cache.delete(conversationId);
-    // TODO: 如果启用持久化，也从数据库删除
+    // P2: 持久化扩展 - 同步删除数据库记录
     logger.debug({ conversationId }, "AgentMemory: Cleared conversation");
   }
 

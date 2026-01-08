@@ -16,8 +16,8 @@ import type {
  * 集成项目现有的埋点系统
  */
 function trackEvent(eventName: string, params?: Record<string, unknown>): void {
-  // TODO: 集成项目的埋点系统
-  // 目前使用 clientLogger 作为占位
+  // P3: 可选 - 集成外部埋点系统 (Google Analytics/自定义)
+  // 当前使用 clientLogger 作为开发环境占位
   if (process.env.NODE_ENV === "development") {
     clientLogger.debug({ eventName, params }, "[Export Analytics]");
   }

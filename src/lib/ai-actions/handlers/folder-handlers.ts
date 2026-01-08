@@ -16,14 +16,14 @@ import type { AIActionResult, BookmarkBrief, FolderBrief } from "../types";
 
 type SupabaseClientType = SupabaseClient<Database>;
 
-// 本地类型定义
-interface FolderRow {
+// 本地类型定义（保留以便类型检查引用）
+interface _FolderRow {
   id: number;
   name: string;
   parent_id: number | null;
 }
 
-interface BookmarkRow {
+interface _BookmarkRow {
   id: number;
   title: string | null;
   url: string;

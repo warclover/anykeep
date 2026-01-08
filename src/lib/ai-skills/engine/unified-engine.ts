@@ -433,8 +433,8 @@ export class UnifiedEngine {
         );
       }
 
-      // TODO: 如果 monologue.suggestRouteChange 为 true，可以在这里修改路由决策
-      // 目前暂时只记录日志，未来可以根据 monologue.suggestedStrategy 调整执行
+      // P2: 慢思考路由调整 - 根据 monologue.suggestedStrategy 动态修改执行策略
+      // 当前仅记录日志，配合 ENABLE_SLOW_THINKING Feature Flag
       if (monologue?.suggestRouteChange) {
         logger.info(
           {

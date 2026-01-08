@@ -63,7 +63,7 @@ export class TopicClusteringAnalyzer extends BaseAnalyzer {
   /**
    * 获取用户书签
    *
-   * TODO: 实际实现需要调用 Supabase
+   * P2: 异步分析任务 - 集成 Supabase 数据查询 (配合 ENABLE_ASYNC_ANALYSIS Feature Flag)
    */
   private async fetchUserBookmarks(
     userId: string,

@@ -2,7 +2,12 @@
  * 分发模块数据库类型
  *
  * @description 定义 distribution_targets 和 distribution_records 表的类型
- * TODO: 运行 supabase gen types 后可删除此文件
+ * @deprecated P3 - 迁移至 @/types/supabase 后删除
+ *   类型已存在于 Supabase 生成类型中 (src/types/supabase.ts:2028)
+ *   需更新 3 个 API 路由的 import：
+ *   - api/distribution/targets/route.ts
+ *   - api/distribution/targets/[id]/route.ts
+ *   - api/distribution/sync/route.ts
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";

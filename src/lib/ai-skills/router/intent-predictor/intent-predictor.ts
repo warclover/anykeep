@@ -173,7 +173,7 @@ export class IntentPredictor implements IIntentPredictor {
     const filtered = history.filter((e) => e.timestamp > cutoff);
     this.historyCache.set(userId, filtered);
 
-    // TODO: 持久化到数据库
+    // P2: 意图历史持久化 (配合 ENABLE_INTENT_PREDICTION Feature Flag)
     logger.debug(
       {
         module: LOG_MODULE,
@@ -218,7 +218,7 @@ export class IntentPredictor implements IIntentPredictor {
     // 使转移矩阵缓存失效
     this.transitionMatrixCache.delete(userId);
 
-    // TODO: 持久化到数据库
+    // P2: 纠正记录持久化 (配合 ENABLE_RULE_LEARNING Feature Flag)
     logger.info(
       {
         module: LOG_MODULE,
@@ -463,7 +463,7 @@ export class IntentPredictor implements IIntentPredictor {
   private async getIntentHistory(
     userId: string,
   ): Promise<IntentHistoryEntry[]> {
-    // TODO: 从数据库加载
+    // P2: 从数据库加载历史 (配合 ENABLE_INTENT_PREDICTION Feature Flag)
     return this.historyCache.get(userId) || [];
   }
 

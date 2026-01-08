@@ -213,7 +213,7 @@ export function getProviderConfig(provider: ProviderName): ProviderConfig {
     case "aliyun-bailian":
       return { ...ALIYUN_BAILIAN_DEFAULT_CONFIG };
     case "ollama":
-      // TODO: 实现 Ollama 配置
+      // P3: 见 @/lib/ai-providers/provider-router.ts Ollama 实现计划
       throw new Error("Ollama provider not implemented yet");
     default:
       throw new Error(`Unknown provider: ${provider}`);
@@ -231,7 +231,7 @@ export function isProviderConfigured(provider: ProviderName): boolean {
       return !!process.env.DASHSCOPE_API_KEY;
     case "ollama":
       // Ollama 是本地服务，不需要 API Key
-      return false; // TODO: 检查 Ollama 服务是否运行
+      return false; // P3: 检查 Ollama 服务是否运行 (见 provider-router.ts)
     default:
       return false;
   }
@@ -249,7 +249,7 @@ export function getConfiguredProviders(): ProviderName[] {
   if (isProviderConfigured("aliyun-bailian")) {
     providers.push("aliyun-bailian");
   }
-  // TODO: 添加 Ollama 检测
+  // P3: Ollama 检测 (见 provider-router.ts Ollama 实现计划)
 
   return providers;
 }

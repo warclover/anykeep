@@ -71,7 +71,10 @@ const MODEL_CREATORS: Partial<Record<ProviderName, ModelCreatorFn | null>> = {
   "aliyun-bailian": createAliyunBailian,
   openai: createOpenAIChat,
   anthropic: (apiKey) => createAnthropic({ apiKey }),
-  // TODO: 添加 Ollama 支持（本地模型）
+  // P3: Ollama 本地模型支持
+  //   - 需实现: provider-router, summary.config, provider.factory
+  //   - 依赖: ollama 服务运行检测
+  //   - 关联文件: @/lib/summary/summary.config.ts, @/lib/summary/providers/provider.factory.ts
   // ollama: () => createOllama({}),
   local: null, // 本地模型暂不支持
 };

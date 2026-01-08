@@ -163,6 +163,7 @@ jest.mock("@/lib/ai-providers", () => ({
       provider: "mock",
     })),
   },
+  getModelByTask: jest.fn(() => "mock-model"),
 }));
 
 // Mock generateText

@@ -33,7 +33,6 @@ export * from "./use-briefing";
 // 用户画像（Phase 4 新增）
 export * from "./use-persona";
 
-// AI 分类相关（历史遗留，与 AI Chat 无关）
-// TODO: 未来版本考虑迁移到 domain/folder/ 或 domain/analytics/
+// AI 分类相关（历史遗留，见文件头部注释关于未来迁移计划）
 export * from "./use-evolution-reports";
 export * from "./use-inbox-organization";

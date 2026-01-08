@@ -66,7 +66,7 @@ const DEFAULT_SKILL_MAPPINGS: Record<string, OrchestrationSkillMapping> = {
     skillId: "interview_prep",
     name: "面试准备助手",
     minComplexity: "complex",
-    enabled: false, // TODO: 待实现
+    enabled: false, // P3: 面试准备 Skill 待实现
   },
   "learn:path": {
     skillId: "learning_path",

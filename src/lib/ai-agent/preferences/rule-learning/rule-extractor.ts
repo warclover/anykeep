@@ -445,7 +445,7 @@ export class RuleExtractor implements IRuleExtractor {
    * 获取纠正记录
    */
   private async getCorrections(userId: string): Promise<CorrectionRecord[]> {
-    // TODO: 从数据库加载
+    // P2: 从数据库加载纠正记录 (配合 ENABLE_RULE_LEARNING Feature Flag)
     return this.correctionsCache.get(userId) || [];
   }
 

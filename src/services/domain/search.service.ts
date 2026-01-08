@@ -207,8 +207,8 @@ export class SearchService extends BaseService {
   /**
    * 语义搜索（向量搜索）
    *
-   * TODO: 当前实现回退到关键词搜索
-   * 完整实现需要：
+   * P1: 完整语义搜索实现（当前回退到关键词搜索）
+   * 需要：
    * 1. 调用 embedding 服务将 searchQuery 转换为向量
    * 2. 使用 search_bookmarks_by_embedding RPC 进行向量搜索
    */
@@ -223,7 +223,7 @@ export class SearchService extends BaseService {
       minScore: number;
     },
   ): Promise<SearchResultItem[]> {
-    // TODO: 实现真正的语义搜索
+    // P1: 待实现真正的语义搜索
     // 需要调用 embedding 服务获取查询向量，然后调用 RPC
     // const embedding = await this.embeddingService.embed(searchQuery);
     // const { data, error } = await this.supabase.rpc("search_bookmarks_by_embedding", {

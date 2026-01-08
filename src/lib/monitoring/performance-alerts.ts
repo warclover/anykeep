@@ -277,7 +277,7 @@ export function handlePerformanceAlert(alert: PerformanceAlert): void {
     clientLogger.info(`${emoji} ${message}`);
   }
 
-  // TODO: 可扩展为发送到外部监控服务
+  // P3: 可选 - 发送到外部监控服务
   // - Sentry
   // - DataDog
   // - New Relic

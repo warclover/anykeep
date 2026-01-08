@@ -9,13 +9,17 @@
 export { MdRenderer } from "./md-renderer";
 export { MdReaderView } from "./md-reader-view";
 
-// TODO: P2-007-6 MD 列表页面
+// ============================================
+// 待实现组件 (P2-007 后续阶段)
+// ============================================
+
+// P2-007-6: MD 列表页面 - 待实现
 // export { MdCollectionPage } from './md-collection-page';
 
-// TODO: P2-007-7 拖拽上传区
+// P2-007-7: 拖拽上传区 - 待实现
 // export { MdUploadZone } from './md-upload-zone';
 
-// TODO: P2-007-8 粘贴对话框
+// P2-007-8: 粘贴对话框 - 待实现
 // export { MdPasteDialog } from './md-paste-dialog';
 
 // ============================================
@@ -34,7 +38,7 @@ export { MdCardItem } from "./md-card-item";
 // ============================================
 export { MdViewToggle } from "./md-view-toggle";
 
-// TODO: 空状态
+// 空状态组件 - 待实现
 // export { MdEmptyState } from './md-empty-state';
 
 // ============================================

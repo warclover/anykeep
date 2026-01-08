@@ -539,7 +539,7 @@ class ClassificationMetricsCollector {
         // 可以在这里添加更详细的日志
       }
 
-      // TODO: 发送到指标收集服务（如 Prometheus, DataDog, 或自定义后端）
+      // P3: 可选 - 发送到外部指标服务 (Prometheus/DataDog/自定义)
       // await this.sendToMetricsService(events);
     } catch (error) {
       logger.error({ error, count: events.length }, "Failed to flush metrics");
