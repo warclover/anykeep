@@ -114,6 +114,9 @@ const SKILL_TRIGGER_PROMPTS: Record<string, string> = {
   search: "帮我搜索书签",
   classify: "帮我分类这些书签",
   summary: "帮我生成书签摘要",
+  folder_recommend: "推荐文件夹结构",
+  search_optimize: "优化我的搜索词",
+  snapshot_compare: "对比书签内容变化",
 
   // 编排 Skills - 理解增强
   knowledge_review: "帮我复习最近的收藏内容",
@@ -126,6 +129,8 @@ const SKILL_TRIGGER_PROMPTS: Record<string, string> = {
   smart_tagging: "自动为书签添加标签",
   link_health_check: "检查书签链接是否有效",
   data_export: "导出我的书签数据",
+  inbox_triage: "整理收件箱里的未分类书签",
+  folder_health_check: "检查文件夹健康状态",
 
   // 编排 Skills - 学习助手
   learning_path: "为我规划一个学习路径",
@@ -134,6 +139,7 @@ const SKILL_TRIGGER_PROMPTS: Record<string, string> = {
   active_recall: "开始今日复习",
   related_discovery: "发现与我收藏相关的内容",
   share_bundle: "创建一个分享包",
+  knowledge_graph_explore: "探索我的知识图谱",
 
   // 编排 Skills - 实用工具
   insight_report: "生成我的收藏洞察报告",
