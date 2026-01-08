@@ -208,6 +208,55 @@ const DEFAULT_SKILL_MAPPINGS: Record<string, OrchestrationSkillMapping> = {
     minComplexity: "medium",
     enabled: true,
   },
+
+  // ============================================
+  // Skills v1.1.0 新增（2025-01-08）
+  // ============================================
+
+  // P0: 收件箱智能分拣（编排类型）
+  "action:inbox_triage": {
+    skillId: "inbox_triage",
+    name: "收件箱智能分拣",
+    minComplexity: "medium",
+    enabled: true,
+  },
+
+  // P0: 文件夹智能推荐（原子类型 - 但需要路由支持）
+  "query:folder_recommend": {
+    skillId: "folder_recommend",
+    name: "文件夹智能推荐",
+    enabled: true,
+  },
+
+  // P0: 搜索优化助手（原子类型 - 但需要路由支持）
+  "query:search_optimize": {
+    skillId: "search_optimize",
+    name: "搜索优化助手",
+    enabled: true,
+  },
+
+  // P1: 知识图谱探索（编排类型）
+  "analyze:knowledge_graph_explore": {
+    skillId: "knowledge_graph_explore",
+    name: "知识图谱探索",
+    minComplexity: "medium",
+    enabled: true,
+  },
+
+  // P1: 文件夹健康检查（编排类型）
+  "analyze:folder_health_check": {
+    skillId: "folder_health_check",
+    name: "文件夹健康检查",
+    minComplexity: "medium",
+    enabled: true,
+  },
+
+  // P1: 快照对比分析（原子类型 - 但需要路由支持）
+  "analyze:snapshot_compare": {
+    skillId: "snapshot_compare",
+    name: "快照对比分析",
+    enabled: true,
+  },
 };
 
 /**
