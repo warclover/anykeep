@@ -33,10 +33,17 @@ export interface FolderStats {
 }
 
 /**
+ * 带匹配计数的文件夹推荐
+ */
+export interface FolderRecommendationWithCount extends FolderRecommendation {
+  matchingBookmarkCount: number;
+}
+
+/**
  * 批量推荐结果
  */
 export interface BatchRecommendationResult {
-  recommendations: FolderRecommendation[];
+  recommendations: FolderRecommendationWithCount[];
   analyzedBookmarkCount: number;
   currentFolderCount: number;
   unclassifiedCount: number;
@@ -227,12 +234,13 @@ export class FolderServiceAdapter {
       }
 
       const existingFolders = await this.getUserFolders(userId);
-      const recommendations: FolderRecommendation[] = [];
-      const seenFolders = new Set<string>();
+      // 使用 Map 跟踪每个推荐的匹配书签数
+      const recommendationMap = new Map<
+        string,
+        FolderRecommendationWithCount
+      >();
 
       for (const bookmark of unclassified) {
-        if (recommendations.length >= maxRecommendations) break;
-
         const rec = await recommendFolder(
           bookmark.title || "",
           bookmark.ai_summary || "",
@@ -240,20 +248,45 @@ export class FolderServiceAdapter {
           existingFolders,
         );
 
-        // 去重：避免重复推荐同一个文件夹
+        // 只考虑置信度 >= 60 的推荐
+        if (rec.confidence < 60) continue;
+
+        // 生成唯一 key
         const key = rec.suggestNew
           ? `new:${rec.folderName}`
           : `existing:${rec.folderId}`;
-        if (!seenFolders.has(key) && rec.confidence >= 60) {
-          seenFolders.add(key);
-          recommendations.push(rec);
+
+        // 累计匹配计数
+        if (recommendationMap.has(key)) {
+          const existing = recommendationMap.get(key)!;
+          existing.matchingBookmarkCount += 1;
+          // 保留最高置信度
+          if (rec.confidence > existing.confidence) {
+            existing.confidence = rec.confidence;
+            existing.reason = rec.reason;
+          }
+        } else {
+          recommendationMap.set(key, {
+            ...rec,
+            matchingBookmarkCount: 1,
+          });
         }
       }
 
+      // 转换为数组，按匹配数量和置信度排序，限制数量
+      const recommendations = Array.from(recommendationMap.values())
+        .sort((a, b) => {
+          // 优先按匹配数量排序
+          if (b.matchingBookmarkCount !== a.matchingBookmarkCount) {
+            return b.matchingBookmarkCount - a.matchingBookmarkCount;
+          }
+          // 其次按置信度排序
+          return b.confidence - a.confidence;
+        })
+        .slice(0, maxRecommendations);
+
       return {
-        recommendations: recommendations.sort(
-          (a, b) => b.confidence - a.confidence,
-        ),
+        recommendations,
         analyzedBookmarkCount: unclassified.length,
         currentFolderCount: existingFolders.length,
         unclassifiedCount: unclassifiedCount || 0,

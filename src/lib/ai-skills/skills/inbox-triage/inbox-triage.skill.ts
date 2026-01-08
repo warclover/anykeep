@@ -172,6 +172,14 @@ export class InboxTriageSkill extends OrchestrationSkill<
 
   /**
    * 按平台和标签聚类书签
+   *
+   * TODO: 优化聚类算法 (P3 #6)
+   * 当前实现：简单按平台分组，MVP 可接受
+   * 后续优化方向：
+   * 1. 引入 TF-IDF 或 embedding 相似度计算
+   * 2. 支持多维度聚类（平台 + 标签 + 标题语义）
+   * 3. 动态调整聚类阈值
+   * 4. 考虑用户历史整理行为
    */
   private clusterBookmarks(
     bookmarks: Array<{

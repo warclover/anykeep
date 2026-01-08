@@ -211,6 +211,14 @@ export interface ProgressState {
 
 /**
  * 编排 Skill 元数据（扩展基础 SkillMetadata）
+ *
+ * 设计说明 (P3 #8):
+ * 编排 Skill 的 outputSchema 定义的是最终结果的结构化类型，
+ * 用于类型校验和文档生成。而 executeStream 返回的是流式 chunks
+ * （progress、text、deliverable、done），这是编排模式的特性。
+ * 两者并不冲突：
+ * - outputSchema: 描述"最终结果是什么样的"
+ * - executeStream chunks: 描述"执行过程中发生了什么"
  */
 export interface OrchestrationSkillMetadata extends SkillMetadata {
   /** 支持的交付物类型 */

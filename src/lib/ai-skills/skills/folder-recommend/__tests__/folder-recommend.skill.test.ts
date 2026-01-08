@@ -46,6 +46,7 @@ describe("FolderRecommendSkill", () => {
           suggestNew: false,
           reason: "内容匹配度高",
           confidence: 85,
+          matchingBookmarkCount: 5,
         },
       ],
       currentFolderCount: 5,
@@ -140,8 +141,44 @@ describe("FolderRecommendSkill", () => {
       if (!result.success) return;
 
       expect(result.data.recommendations).toHaveLength(1);
+      expect(result.data.recommendations[0].matchingBookmarkCount).toBe(5);
       expect(result.data.currentFolderCount).toBe(5);
       expect(result.data.unclassifiedCount).toBe(10);
+    });
+
+    it("should correctly pass matchingBookmarkCount from adapter", async () => {
+      mockAnalyzeAndRecommend.mockResolvedValue({
+        recommendations: [
+          {
+            folderId: 1,
+            folderName: "技术文章",
+            suggestNew: false,
+            reason: "匹配度高",
+            confidence: 90,
+            matchingBookmarkCount: 12,
+          },
+          {
+            folderId: null,
+            folderName: "新建文件夹",
+            suggestNew: true,
+            reason: "建议新建",
+            confidence: 75,
+            matchingBookmarkCount: 3,
+          },
+        ],
+        currentFolderCount: 5,
+        unclassifiedCount: 15,
+      });
+
+      const input = { maxRecommendations: 5 };
+      const result = await skill.execute(input, mockContext);
+
+      expect(result.success).toBe(true);
+      if (!result.success) return;
+
+      expect(result.data.recommendations).toHaveLength(2);
+      expect(result.data.recommendations[0].matchingBookmarkCount).toBe(12);
+      expect(result.data.recommendations[1].matchingBookmarkCount).toBe(3);
     });
 
     it("should call adapter with correct parameters", async () => {

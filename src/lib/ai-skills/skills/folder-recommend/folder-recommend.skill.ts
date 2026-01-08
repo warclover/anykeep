@@ -61,7 +61,7 @@ export class FolderRecommendSkill extends BaseSkill<
         isNew: rec.suggestNew,
         folderId: rec.folderId,
         reason: rec.reason,
-        matchingBookmarkCount: 0, // TODO: 统计匹配数量
+        matchingBookmarkCount: rec.matchingBookmarkCount,
         confidence: rec.confidence,
       })),
       currentFolderCount: result.currentFolderCount,
