@@ -2,25 +2,27 @@
  * 附件指示器组件
  *
  * 显示已选附件摘要，支持清除和预览操作
- * 增强版：显示附件内容状态（加载中/就绪/错误/空）
+ * v1.4.0: 折叠设计，默认收起状态，点击可展开查看详情
  *
- * @version 1.2.0
+ * @version 1.4.0
  * @since 2025-12-26
- * @updated 2026-01-08 - 添加内容状态显示
+ * @updated 2026-01-08 - 折叠设计，默认收起状态
  */
 
 "use client";
 
+import { useState } from "react";
 import {
   Paperclip,
-  Eye,
   X,
   Loader2,
   CheckCircle,
   AlertCircle,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ATTACHMENT_TEXT, type AttachmentItem } from "./types";
+import { type AttachmentItem } from "./types";
 
 // =============================================================================
 // 类型定义
@@ -31,7 +33,7 @@ export interface AttachmentIndicatorProps {
   items: AttachmentItem[];
   /** 清除回调 */
   onClear: () => void;
-  /** 点击展开回调（可选） */
+  /** 点击展开回调（可选，用于打开附件选择面板） */
   onExpand?: () => void;
   /** 预览单个附件回调（可选） */
   onPreview?: (item: AttachmentItem) => void;
@@ -39,147 +41,90 @@ export interface AttachmentIndicatorProps {
   onRemove?: (id: string) => void;
   /** 自定义类名 */
   className?: string;
+  /** 默认是否展开（可选，默认 false） */
+  defaultExpanded?: boolean;
 }
 
 // =============================================================================
-// 子组件：单个附件标签
+// 子组件：紧凑附件标签
 // =============================================================================
 
-interface AttachmentTagProps {
+interface CompactTagProps {
   item: AttachmentItem;
   onPreview?: (item: AttachmentItem) => void;
   onRemove?: (id: string) => void;
 }
 
 /**
- * 获取状态图标
+ * 获取状态图标（紧凑版）
  */
 function getStatusIcon(item: AttachmentItem) {
   switch (item.contentStatus) {
     case "loading":
-      return (
-        <Loader2
-          className="size-3 animate-spin text-blue-500"
-          aria-hidden="true"
-        />
-      );
+      return <Loader2 className="size-2.5 animate-spin text-blue-500" />;
     case "ready":
-      return (
-        <CheckCircle className="size-3 text-green-500" aria-hidden="true" />
-      );
+      return <CheckCircle className="size-2.5 text-green-500" />;
     case "error":
-      return <AlertCircle className="size-3 text-red-500" aria-hidden="true" />;
+      return <AlertCircle className="size-2.5 text-red-500" />;
     case "empty":
-      return (
-        <AlertCircle className="size-3 text-amber-500" aria-hidden="true" />
-      );
+      return <AlertCircle className="size-2.5 text-amber-500" />;
     default:
       return null;
   }
 }
 
 /**
- * 获取状态提示文本
+ * 紧凑附件标签
  */
-function getStatusTooltip(item: AttachmentItem): string {
-  switch (item.contentStatus) {
-    case "loading":
-      return "正在加载内容...";
-    case "ready":
-      return "内容已就绪";
-    case "error":
-      return item.errorMessage || "内容加载失败";
-    case "empty":
-      return "无内容摘要（仅有标题）";
-    default:
-      return "";
-  }
-}
-
-function AttachmentTag({ item, onPreview, onRemove }: AttachmentTagProps) {
+function CompactTag({ item, onPreview, onRemove }: CompactTagProps) {
   const isBookmark = item.type === "bookmark";
-  const typeLabel = isBookmark ? "书签" : "文件";
   const statusIcon = getStatusIcon(item);
-  const statusTooltip = getStatusTooltip(item);
 
   // 根据状态调整样式
-  const getBackgroundStyle = () => {
-    if (item.contentStatus === "error") {
-      return isBookmark ? "bg-red-100 text-red-700" : "bg-red-100 text-red-700";
-    }
-    if (item.contentStatus === "loading") {
-      return isBookmark
-        ? "bg-blue-100 text-blue-700"
-        : "bg-blue-100 text-blue-700";
-    }
-    if (item.contentStatus === "empty") {
-      return isBookmark
-        ? "bg-amber-100 text-amber-700"
-        : "bg-amber-100 text-amber-700";
-    }
-    // ready or default
+  const getBgStyle = () => {
+    if (item.contentStatus === "error") return "bg-red-100 text-red-700";
+    if (item.contentStatus === "loading") return "bg-blue-100 text-blue-700";
+    if (item.contentStatus === "empty") return "bg-amber-100 text-amber-700";
     return isBookmark
       ? "bg-pink-100 text-pink-700"
       : "bg-blue-100 text-blue-700";
   };
 
+  // 截断标题（更短）
+  const shortTitle =
+    item.title.length > 15 ? item.title.slice(0, 15) + "..." : item.title;
+
   return (
     <div
       className={cn(
-        "inline-flex items-center gap-1 px-2 py-1 rounded-full",
-        "text-xs",
-        getBackgroundStyle(),
+        "inline-flex items-center gap-1 px-2 py-1 rounded-md",
+        "text-xs flex-shrink-0",
+        getBgStyle(),
       )}
-      role="listitem"
-      title={statusTooltip}
+      title={item.title}
     >
-      {/* 状态图标 */}
       {statusIcon}
-
-      {/* 标题 - 可点击预览 */}
       <button
         type="button"
         onClick={() => onPreview?.(item)}
         className={cn(
-          "max-w-[120px] truncate",
+          "truncate",
           onPreview && "hover:underline cursor-pointer",
-          !onPreview && "cursor-default",
         )}
-        title={`点击预览: ${item.title}`}
-        aria-label={`预览${typeLabel}：${item.title}`}
       >
-        {item.title}
+        {shortTitle}
       </button>
-
-      {/* 预览按钮 */}
-      {onPreview && (
-        <button
-          type="button"
-          onClick={() => onPreview(item)}
-          className={cn(
-            "p-0.5 rounded-full",
-            isBookmark ? "hover:bg-pink-200" : "hover:bg-blue-200",
-          )}
-          title="预览"
-          aria-label={`预览${typeLabel}：${item.title}`}
-        >
-          <Eye className="size-3" aria-hidden="true" />
-        </button>
-      )}
-
-      {/* 移除按钮 */}
       {onRemove && (
         <button
           type="button"
-          onClick={() => onRemove(item.id)}
-          className={cn(
-            "p-0.5 rounded-full",
-            isBookmark ? "hover:bg-pink-200" : "hover:bg-blue-200",
-          )}
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove(item.id);
+          }}
+          className="p-0.5 rounded-full hover:bg-black/10"
           title="移除"
-          aria-label={`移除${typeLabel}：${item.title}`}
         >
-          <X className="size-3" aria-hidden="true" />
+          <X className="size-3" />
         </button>
       )}
     </div>
@@ -197,12 +142,15 @@ export function AttachmentIndicator({
   onPreview,
   onRemove,
   className,
+  defaultExpanded = false,
 }: AttachmentIndicatorProps) {
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+
   if (items.length === 0) {
     return null;
   }
 
-  // 计算状态统计
+  // 计算状态
   const loadingCount = items.filter(
     (i) => i.contentStatus === "loading",
   ).length;
@@ -211,98 +159,108 @@ export function AttachmentIndicator({
   const emptyCount = items.filter((i) => i.contentStatus === "empty").length;
   const allReady = readyCount + emptyCount === items.length;
 
-  // 状态摘要文本
-  const getStatusSummary = () => {
-    if (loadingCount > 0) {
-      return `加载中 ${loadingCount}/${items.length}`;
-    }
-    if (errorCount > 0) {
-      return `${errorCount} 个失败`;
-    }
-    if (emptyCount > 0 && readyCount === 0) {
-      return "无内容";
-    }
-    if (allReady) {
-      return "就绪";
-    }
+  // 状态标签样式
+  const getStatusStyle = () => {
+    if (loadingCount > 0) return "bg-blue-100 text-blue-600";
+    if (errorCount > 0) return "bg-red-100 text-red-600";
+    if (allReady) return "bg-green-100 text-green-600";
+    return "bg-gray-100 text-gray-600";
+  };
+
+  // 状态文本
+  const getStatusText = () => {
+    if (loadingCount > 0) return "加载中";
+    if (errorCount > 0) return `${errorCount}失败`;
+    if (allReady) return "就绪";
     return "";
   };
 
-  const statusSummary = getStatusSummary();
+  // 切换展开/收起
+  const toggleExpand = () => {
+    setIsExpanded((prev) => !prev);
+  };
 
   return (
-    <div
-      className={cn(
-        "flex items-center gap-2 px-4 py-2",
-        "bg-pink-50/50 border-b border-pink-100",
-        className,
-      )}
-      role="region"
-      aria-label={`已选附件：${items.length} 个`}
-    >
-      {/* 图标和状态 */}
-      <button
-        type="button"
-        onClick={onExpand}
-        className={cn(
-          "flex items-center gap-1 text-xs text-pink-700",
-          onExpand && "hover:text-pink-800 cursor-pointer",
-          !onExpand && "cursor-default",
-        )}
-        aria-label="展开附件面板"
-      >
-        <Paperclip className="size-4 flex-shrink-0" aria-hidden="true" />
-        <span className="flex-shrink-0">
-          {ATTACHMENT_TEXT.INDICATOR_PREFIX}
-        </span>
-        {/* 状态摘要 */}
-        {statusSummary && (
-          <span
-            className={cn(
-              "px-1.5 py-0.5 rounded-full text-[10px] font-medium",
-              loadingCount > 0 && "bg-blue-100 text-blue-600",
-              errorCount > 0 && !loadingCount && "bg-red-100 text-red-600",
-              allReady && !errorCount && "bg-green-100 text-green-600",
-            )}
-          >
-            {loadingCount > 0 && (
-              <Loader2 className="inline size-2.5 mr-0.5 animate-spin" />
-            )}
-            {statusSummary}
-          </span>
-        )}
-      </button>
+    <div className={cn("bg-pink-50/50 border-b border-pink-100", className)}>
+      {/* 收起状态：单行摘要 */}
+      <div className="flex items-center gap-2 px-3 py-1.5">
+        {/* 左侧：图标 + 数量 + 状态 */}
+        <button
+          type="button"
+          onClick={onExpand}
+          className={cn(
+            "flex items-center gap-1.5 text-xs text-pink-700 flex-shrink-0",
+            onExpand && "hover:text-pink-800 cursor-pointer",
+          )}
+        >
+          <Paperclip className="size-3.5" />
+          <span className="font-medium">{items.length}个附件</span>
+        </button>
 
-      {/* 附件标签列表 */}
-      <div
-        className="flex-1 flex items-center gap-1.5 overflow-x-auto scrollbar-hide"
-        role="list"
-        aria-label="附件列表"
-      >
-        {items.map((item) => (
-          <AttachmentTag
-            key={item.id}
-            item={item}
-            onPreview={onPreview}
-            onRemove={onRemove}
-          />
-        ))}
+        {/* 状态指示 */}
+        <span
+          className={cn(
+            "px-1.5 py-0.5 rounded text-[10px] font-medium flex items-center gap-0.5",
+            getStatusStyle(),
+          )}
+        >
+          {loadingCount > 0 && <Loader2 className="size-2.5 animate-spin" />}
+          {getStatusText()}
+        </span>
+
+        {/* 展开/收起按钮 */}
+        <button
+          type="button"
+          onClick={toggleExpand}
+          className={cn(
+            "flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px]",
+            "text-pink-600 hover:bg-pink-100 hover:text-pink-700",
+          )}
+        >
+          {isExpanded ? (
+            <>
+              收起
+              <ChevronUp className="size-3" />
+            </>
+          ) : (
+            <>
+              详情
+              <ChevronDown className="size-3" />
+            </>
+          )}
+        </button>
+
+        {/* 占位，推右侧按钮到最右 */}
+        <div className="flex-1" />
+
+        {/* 右侧：清除按钮 */}
+        <button
+          type="button"
+          onClick={onClear}
+          className={cn(
+            "flex-shrink-0 px-1.5 py-0.5 rounded text-[10px]",
+            "text-pink-600 hover:bg-pink-100 hover:text-pink-700",
+          )}
+        >
+          清除全部
+        </button>
       </div>
 
-      {/* 全部清除按钮 */}
-      <button
-        type="button"
-        onClick={onClear}
-        className={cn(
-          "flex-shrink-0 px-2 py-1 rounded-md",
-          "text-xs text-pink-600",
-          "hover:bg-pink-100 hover:text-pink-700",
-          "transition-colors",
-        )}
-        aria-label={ATTACHMENT_TEXT.CLEAR_BUTTON}
-      >
-        {ATTACHMENT_TEXT.CLEAR_BUTTON}
-      </button>
+      {/* 展开状态：显示所有附件标签 */}
+      {isExpanded && (
+        <div className="px-3 pb-2">
+          <div className="flex flex-wrap items-center gap-1.5">
+            {items.map((item) => (
+              <CompactTag
+                key={item.id}
+                item={item}
+                onPreview={onPreview}
+                onRemove={onRemove}
+              />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -20,6 +20,7 @@ import {
   type AttachmentItem,
   type AttachmentContentStatus,
   type AttachmentContentSource,
+  type AttachmentSelectionUpdater,
 } from "@/components/ai/attachment/types";
 import { extractFileContent } from "@/lib/ai/attachment/file-extractor";
 import type { Bookmark } from "@/types/supabase";
@@ -155,8 +156,8 @@ export interface UseAttachmentManagerReturn {
   removeFile: (id: string) => void;
   /** 重试抓取内容 */
   retryFetchContent: (id: string) => Promise<void>;
-  /** 更新附件列表 */
-  setAttachments: (items: AttachmentItem[]) => void;
+  /** 更新附件列表（支持函数式更新，避免闭包陷阱） */
+  setAttachments: (updater: AttachmentSelectionUpdater) => void;
   /** 清空所有附件 */
   clearAll: () => void;
   /** 是否还能添加更多 */
@@ -188,10 +189,20 @@ export function useAttachmentManager({
   initialItems = [],
 }: UseAttachmentManagerOptions = {}): UseAttachmentManagerReturn {
   // 状态
-  const [attachments, setAttachments] =
+  const [attachments, setAttachmentsInternal] =
     useState<AttachmentItem[]>(initialItems);
   const [isPopoverOpen, setPopoverOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // 包装 setAttachments 以支持 AttachmentSelectionUpdater 类型
+  // 这样可以接受直接数组或函数式更新
+  const setAttachments = useCallback((updater: AttachmentSelectionUpdater) => {
+    if (typeof updater === "function") {
+      setAttachmentsInternal(updater);
+    } else {
+      setAttachmentsInternal(updater);
+    }
+  }, []);
 
   // 计算派生状态
   const canAddMore = attachments.length < maxCount;
@@ -237,7 +248,7 @@ export function useAttachmentManager({
   // 更新单个附件
   const updateAttachment = useCallback(
     (id: string, updates: Partial<AttachmentItem>) => {
-      setAttachments((prev) =>
+      setAttachmentsInternal((prev) =>
         prev.map((item) => (item.id === id ? { ...item, ...updates } : item)),
       );
     },
@@ -271,7 +282,7 @@ export function useAttachmentManager({
         addedAt: new Date(),
       };
 
-      setAttachments((prev) => [...prev, newItem]);
+      setAttachmentsInternal((prev) => [...prev, newItem]);
 
       // 2. 异步抓取内容
       try {
@@ -320,7 +331,7 @@ export function useAttachmentManager({
 
   // 移除书签
   const removeBookmark = useCallback((id: string) => {
-    setAttachments((prev) => prev.filter((item) => item.id !== id));
+    setAttachmentsInternal((prev) => prev.filter((item) => item.id !== id));
   }, []);
 
   // 切换书签选中状态
@@ -434,7 +445,7 @@ export function useAttachmentManager({
           newItems.push(fileItem);
         }
 
-        setAttachments((prev) => [...prev, ...newItems]);
+        setAttachmentsInternal((prev) => [...prev, ...newItems]);
 
         clientLogger.info(
           { fileCount: newItems.length },
@@ -451,7 +462,7 @@ export function useAttachmentManager({
 
   // 移除文件
   const removeFile = useCallback((id: string) => {
-    setAttachments((prev) => prev.filter((item) => item.id !== id));
+    setAttachmentsInternal((prev) => prev.filter((item) => item.id !== id));
   }, []);
 
   // 清空所有

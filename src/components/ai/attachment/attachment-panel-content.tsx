@@ -21,6 +21,7 @@ import {
   ATTACHMENT_LIMITS,
   ATTACHMENT_TEXT,
   type AttachmentItem,
+  type OnSelectionChange,
 } from "./types";
 import type { Bookmark } from "@/types/supabase";
 
@@ -31,8 +32,8 @@ import type { Bookmark } from "@/types/supabase";
 export interface AttachmentPanelContentProps {
   /** 已选附件列表 */
   selectedItems: AttachmentItem[];
-  /** 选择变化回调 */
-  onSelectionChange: (items: AttachmentItem[]) => void;
+  /** 选择变化回调（支持函数式更新，避免闭包陷阱） */
+  onSelectionChange: OnSelectionChange;
   /** 最大数量 */
   maxCount?: number;
   /** 关闭回调 */
@@ -97,18 +98,20 @@ export function AttachmentPanelContent({
   const canAddMore = remainingSlots > 0;
 
   // 处理书签切换
+  // 关键修复：使用函数式更新避免闭包陷阱
+  // 当用户快速点击多个书签时，直接使用 selectedItems 会捕获陈旧值
   const handleBookmarkToggle = useCallback(
     (bookmark: Bookmark) => {
       const bookmarkId = String(bookmark.id);
       const isSelected = selectedBookmarkIds.has(bookmarkId);
 
       if (isSelected) {
-        // 取消选中
-        onSelectionChange(
-          selectedItems.filter((item) => item.id !== bookmarkId),
+        // 取消选中 - 使用函数式更新
+        onSelectionChange((prev) =>
+          prev.filter((item) => item.id !== bookmarkId),
         );
       } else if (canAddMore) {
-        // 添加选中
+        // 添加选中 - 使用函数式更新避免闭包陷阱
         const newItem: AttachmentItem = {
           id: bookmarkId,
           type: "bookmark",
@@ -126,18 +129,19 @@ export function AttachmentPanelContent({
               : "none",
           addedAt: new Date(),
         };
-        onSelectionChange([...selectedItems, newItem]);
+        // 函数式更新：使用回调获取最新状态
+        onSelectionChange((prev) => [...prev, newItem]);
       }
     },
-    [selectedBookmarkIds, selectedItems, canAddMore, onSelectionChange],
+    [selectedBookmarkIds, canAddMore, onSelectionChange],
   );
 
-  // 处理文件移除
+  // 处理文件移除 - 使用函数式更新
   const handleFileRemove = useCallback(
     (fileId: string) => {
-      onSelectionChange(selectedItems.filter((item) => item.id !== fileId));
+      onSelectionChange((prev) => prev.filter((item) => item.id !== fileId));
     },
-    [selectedItems, onSelectionChange],
+    [onSelectionChange],
   );
 
   return (

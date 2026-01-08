@@ -204,6 +204,26 @@ export const ATTACHMENT_TEXT = {
 } as const;
 
 // =============================================================================
+// 函数式更新类型（修复闭包陷阱）
+// =============================================================================
+
+/**
+ * 附件选择变化回调类型
+ *
+ * 支持两种调用方式：
+ * 1. 直接传递新数组：onSelectionChange([item1, item2])
+ * 2. 函数式更新（避免闭包陷阱）：onSelectionChange(prev => [...prev, newItem])
+ */
+export type AttachmentSelectionUpdater =
+  | AttachmentItem[]
+  | ((prev: AttachmentItem[]) => AttachmentItem[]);
+
+/**
+ * 附件选择变化回调函数
+ */
+export type OnSelectionChange = (updater: AttachmentSelectionUpdater) => void;
+
+// =============================================================================
 // 工具函数类型
 // =============================================================================
 

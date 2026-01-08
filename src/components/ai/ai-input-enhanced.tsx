@@ -31,6 +31,7 @@ import {
   AttachmentPreviewModal,
   AttachmentErrorBoundary,
   type AttachmentItem,
+  type OnSelectionChange,
   ATTACHMENT_LIMITS,
 } from "./attachment";
 import { useAttachmentBookmarks } from "@/hooks/ai/use-attachment-bookmarks";
@@ -65,8 +66,8 @@ export interface AIInputEnhancedProps {
   enableShortcuts?: boolean;
   /** 附件列表 */
   attachments: AttachmentItem[];
-  /** 附件变化回调 */
-  onAttachmentsChange: (items: AttachmentItem[]) => void;
+  /** 附件变化回调（支持函数式更新，避免闭包陷阱） */
+  onAttachmentsChange: OnSelectionChange;
   /** 清除附件回调 */
   onClearAttachments: () => void;
   /** 添加文件附件回调 */
@@ -145,13 +146,12 @@ export function AIInputEnhanced({
     setIsPreviewOpen(true);
   }, []);
 
-  // 处理移除单个附件
+  // 处理移除单个附件 - 使用函数式更新避免闭包陷阱
   const handleRemoveAttachment = useCallback(
     (id: string) => {
-      const newItems = attachments.filter((item) => item.id !== id);
-      onAttachmentsChange(newItems);
+      onAttachmentsChange((prev) => prev.filter((item) => item.id !== id));
     },
-    [attachments, onAttachmentsChange],
+    [onAttachmentsChange],
   );
 
   const hasContext = contextItems.length > 0;

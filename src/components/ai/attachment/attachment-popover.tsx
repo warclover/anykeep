@@ -20,7 +20,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/ai/use-is-mobile";
 import { cn } from "@/lib/utils";
 import { AttachmentPanelContent } from "./attachment-panel-content";
-import { type AttachmentItem } from "./types";
+import { type AttachmentItem, type OnSelectionChange } from "./types";
 import type { Bookmark } from "@/types/supabase";
 
 // =============================================================================
@@ -36,8 +36,8 @@ export interface AttachmentPopoverProps {
   trigger: ReactNode;
   /** 已选附件列表 */
   selectedItems: AttachmentItem[];
-  /** 选择变化回调 */
-  onSelectionChange: (items: AttachmentItem[]) => void;
+  /** 选择变化回调（支持函数式更新，避免闭包陷阱） */
+  onSelectionChange: OnSelectionChange;
   /** 最大数量 */
   maxCount?: number;
   /** 书签列表 */
