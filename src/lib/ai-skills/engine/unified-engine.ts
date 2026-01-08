@@ -66,6 +66,11 @@ import {
   type RuleExtractor,
   createRuleExtractor,
 } from "../../ai-agent/preferences/rule-learning";
+import {
+  getWorkflowModeExecutor,
+  type WorkflowExecuteResult,
+} from "@/lib/workflow/integration";
+import { isWorkflowConversationTriggerEnabled } from "../../ai-agent/config/feature-flags";
 
 /**
  * 统一执行引擎
@@ -292,6 +297,24 @@ export class UnifiedEngine {
         contextWithCallback,
       );
       return;
+    }
+
+    // 2.5 工作流模式检测（Feature Flag 控制）
+    if (isWorkflowConversationTriggerEnabled()) {
+      const workflowExecutor = getWorkflowModeExecutor();
+      const workflowResult = await workflowExecutor.tryExecuteWorkflow(
+        processedInput,
+        {
+          userId: context.userId,
+          conversationId: context.conversationId,
+        },
+      );
+
+      if (workflowResult) {
+        // 路由到工作流模式，返回工作流启动信息
+        yield* this.streamWorkflowResponse(workflowResult);
+        return;
+      }
     }
 
     // 3. 处理强制模式
@@ -618,6 +641,43 @@ export class UnifiedEngine {
       intentType as IntentType,
       subType,
     );
+  }
+
+  /**
+   * 流式返回工作流响应
+   *
+   * @param result - 工作流执行结果
+   * @yields 统一流式输出块
+   */
+  private async *streamWorkflowResponse(
+    result: WorkflowExecuteResult,
+  ): AsyncGenerator<UnifiedStreamChunk> {
+    yield {
+      type: "routing",
+      data: {
+        mode: "workflow",
+        workflowId: result.workflowId,
+        workflowName: result.workflowName,
+      },
+    };
+
+    yield {
+      type: "text",
+      data: { text: result.message },
+    };
+
+    if (result.status === "started") {
+      yield {
+        type: "workflow_started",
+        data: {
+          executionId: result.executionId,
+          workflowId: result.workflowId,
+          workflowName: result.workflowName,
+        },
+      };
+    }
+
+    yield { type: "done", data: {} };
   }
 
   // ============================================================

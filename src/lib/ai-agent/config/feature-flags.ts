@@ -496,6 +496,46 @@ export const FeatureFlags = {
   get ENABLE_ASYNC_ANALYSIS(): boolean {
     return process.env.ENABLE_ASYNC_ANALYSIS === "true";
   },
+
+  // ===========================================================================
+  // 工作流系统 [Phase 3 新增]
+  // ===========================================================================
+
+  /**
+   * 是否启用工作流系统
+   * @default true
+   * @description 工作流系统总开关
+   */
+  get ENABLE_WORKFLOW_SYSTEM(): boolean {
+    return process.env.ENABLE_WORKFLOW_SYSTEM !== "false";
+  },
+
+  /**
+   * 是否启用工作流对话触发
+   * @default true
+   * @description 允许用户通过对话触发工作流
+   */
+  get ENABLE_WORKFLOW_CONVERSATION_TRIGGER(): boolean {
+    return process.env.ENABLE_WORKFLOW_CONVERSATION_TRIGGER !== "false";
+  },
+
+  /**
+   * 是否启用工作流推荐
+   * @default true
+   * @description 基于用户状态主动推荐工作流
+   */
+  get ENABLE_WORKFLOW_RECOMMENDATIONS(): boolean {
+    return process.env.ENABLE_WORKFLOW_RECOMMENDATIONS !== "false";
+  },
+
+  /**
+   * 是否启用工作流通知
+   * @default true
+   * @description 工作流完成后发送通知
+   */
+  get ENABLE_WORKFLOW_NOTIFICATIONS(): boolean {
+    return process.env.ENABLE_WORKFLOW_NOTIFICATIONS !== "false";
+  },
 } as const;
 
 // =============================================================================
@@ -586,5 +626,53 @@ export function getAllFeatureFlags(): Record<BooleanFeatureFlagKey, boolean> & {
     ENABLE_INTENT_PREDICTION: FeatureFlags.ENABLE_INTENT_PREDICTION,
     ENABLE_RULE_LEARNING: FeatureFlags.ENABLE_RULE_LEARNING,
     ENABLE_ASYNC_ANALYSIS: FeatureFlags.ENABLE_ASYNC_ANALYSIS,
+    // 工作流系统 [Phase 3 新增]
+    ENABLE_WORKFLOW_SYSTEM: FeatureFlags.ENABLE_WORKFLOW_SYSTEM,
+    ENABLE_WORKFLOW_CONVERSATION_TRIGGER:
+      FeatureFlags.ENABLE_WORKFLOW_CONVERSATION_TRIGGER,
+    ENABLE_WORKFLOW_RECOMMENDATIONS:
+      FeatureFlags.ENABLE_WORKFLOW_RECOMMENDATIONS,
+    ENABLE_WORKFLOW_NOTIFICATIONS: FeatureFlags.ENABLE_WORKFLOW_NOTIFICATIONS,
   };
+}
+
+// =============================================================================
+// 工作流便捷函数
+// =============================================================================
+
+/**
+ * 检查工作流系统是否启用
+ */
+export function isWorkflowEnabled(): boolean {
+  return FeatureFlags.ENABLE_WORKFLOW_SYSTEM;
+}
+
+/**
+ * 检查工作流对话触发是否启用
+ */
+export function isWorkflowConversationTriggerEnabled(): boolean {
+  return (
+    FeatureFlags.ENABLE_WORKFLOW_SYSTEM &&
+    FeatureFlags.ENABLE_WORKFLOW_CONVERSATION_TRIGGER
+  );
+}
+
+/**
+ * 检查工作流推荐是否启用
+ */
+export function isWorkflowRecommendationsEnabled(): boolean {
+  return (
+    FeatureFlags.ENABLE_WORKFLOW_SYSTEM &&
+    FeatureFlags.ENABLE_WORKFLOW_RECOMMENDATIONS
+  );
+}
+
+/**
+ * 检查工作流通知是否启用
+ */
+export function isWorkflowNotificationsEnabled(): boolean {
+  return (
+    FeatureFlags.ENABLE_WORKFLOW_SYSTEM &&
+    FeatureFlags.ENABLE_WORKFLOW_NOTIFICATIONS
+  );
 }
