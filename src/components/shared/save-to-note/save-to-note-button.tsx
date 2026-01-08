@@ -128,28 +128,28 @@ export function SaveToNoteButton({
     },
   });
 
+  // 构造保存参数（复用于 save 和 saveAnyway）
+  const buildSavePayload = React.useCallback(
+    () => ({
+      content,
+      sourceType,
+      sourceId,
+      sourceConversationId,
+      customTitle: suggestedTitle,
+    }),
+    [content, sourceType, sourceId, sourceConversationId, suggestedTitle],
+  );
+
   const handleClick = () => {
     if (state !== "idle" || disabled) return;
 
     // 使用 void 明确表示不等待结果，错误由 hook 内部处理
-    void save({
-      content,
-      sourceType,
-      sourceId,
-      sourceConversationId,
-      customTitle: suggestedTitle,
-    });
+    void save(buildSavePayload());
   };
 
   const handleSaveAnyway = () => {
     // 使用 void 明确表示不等待结果，错误由 hook 内部处理
-    void saveAnyway({
-      content,
-      sourceType,
-      sourceId,
-      sourceConversationId,
-      customTitle: suggestedTitle,
-    });
+    void saveAnyway(buildSavePayload());
   };
 
   const handleViewExisting = () => {
