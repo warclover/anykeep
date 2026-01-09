@@ -82,7 +82,8 @@ const DEFAULT_RULES: IntentRule[] = [
     weight: 90,
   },
   {
-    pattern: /学习路径|学习计划|学习规划/,
+    pattern:
+      /学习路径|学习计划|学习规划|阅读.{0,2}(计划|安排|规划)|读书.{0,2}计划/,
     type: "learn",
     subType: "path",
     complexity: "complex",
@@ -126,6 +127,15 @@ const DEFAULT_RULES: IntentRule[] = [
     subType: "monitor",
     complexity: "simple",
     weight: 80,
+  },
+  {
+    // Phase 1 新增：合并/组合操作
+    pattern:
+      /放(到)?一起|合并.{0,3}(书签|收藏|这[几个些])|组合|打包.{0,3}(书签|收藏)/,
+    type: "organize",
+    subType: "merge",
+    complexity: "medium",
+    weight: 78,
   },
 
   // ============================================
@@ -174,8 +184,8 @@ const DEFAULT_RULES: IntentRule[] = [
   // 创建类
   // ============================================
   {
-    // 使用负向后行断言排除「阅读」中的「读」
-    pattern: /(?<!阅)读|朗读|播放.{0,3}摘要|听|语音|念|tts/i,
+    // 使用负向后行断言排除「阅读」和「已读」中的「读」
+    pattern: /(?<!阅|已)读|朗读|播放.{0,3}摘要|听|语音|念|tts/i,
     type: "create",
     subType: "tts",
     complexity: "simple",
@@ -442,6 +452,15 @@ const DEFAULT_RULES: IntentRule[] = [
   // 查询类（简单任务）
   // ============================================
   {
+    // Phase 1 新增：链接状态检查（需高优先级避免被 expire 规则匹配）
+    pattern:
+      /(这个|那个|它)?.{0,3}链接.{0,3}(还|能)?.{0,3}(用|有效|打开|访问)|能.{0,3}访问.{0,3}(吗|不|么)/,
+    type: "query",
+    subType: "link_status",
+    complexity: "simple",
+    weight: 82,
+  },
+  {
     pattern: /搜索|搜|找|查找|查询/,
     type: "query",
     subType: "search",
@@ -466,6 +485,38 @@ const DEFAULT_RULES: IntentRule[] = [
   // ============================================
   // 操作类
   // ============================================
+  {
+    // Phase 1 新增：稍后阅读/待阅
+    pattern: /稍后.{0,3}(看|读|阅读)|待阅|read.?later|一会儿?再看/i,
+    type: "action",
+    subType: "read_later",
+    complexity: "simple",
+    weight: 72,
+  },
+  {
+    // Phase 1 新增：设置提醒
+    pattern: /提醒.{0,3}(我|看|读)|设置?.{0,3}提醒|加入?.{0,3}待办/,
+    type: "action",
+    subType: "reminder",
+    complexity: "simple",
+    weight: 70,
+  },
+  {
+    // Phase 1 新增：标记已读（权重需高于 tag 规则的 75）
+    pattern: /标记?.{0,3}已读|设为.{0,3}已读|已经.{0,3}看过|读过了/,
+    type: "action",
+    subType: "mark_read",
+    complexity: "simple",
+    weight: 76,
+  },
+  {
+    // Phase 1 新增：取消收藏（与删除区分）
+    pattern: /取消.{0,3}收藏|移出.{0,3}收藏|不再.{0,3}收藏|从收藏.{0,3}移除/,
+    type: "action",
+    subType: "unsave",
+    complexity: "simple",
+    weight: 62,
+  },
   {
     // 修复 NLU-01: 添加收藏/保存操作规则
     // 使用更精确的模式，避免匹配到"删除收藏"、"找收藏"等场景
