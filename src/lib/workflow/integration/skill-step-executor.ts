@@ -79,7 +79,9 @@ export class SkillStepExecutor {
         stepName: step.name,
         status: skillResult.success ? "completed" : "failed",
         output: {
-          ...skillResult.data,
+          ...(skillResult.data && typeof skillResult.data === "object"
+            ? (skillResult.data as Record<string, unknown>)
+            : {}),
           ...outputVariables,
         },
         error: skillResult.error,
@@ -197,7 +199,15 @@ export class SkillStepExecutor {
       if (typeof value === "string" && value.startsWith("$")) {
         // 变量引用，从上下文解析
         const varPath = value.slice(1); // 移除 $ 前缀
-        resolved[key] = this.getNestedValue(context, varPath);
+        // 将 WorkflowContext 转换为 Record 以支持嵌套查找
+        const contextRecord: Record<string, unknown> = {
+          userId: context.userId,
+          workflowId: context.workflowId,
+          executionId: context.executionId,
+          variables: context.variables,
+          stepResults: context.stepResults,
+        };
+        resolved[key] = this.getNestedValue(contextRecord, varPath);
       } else {
         // 直接值
         resolved[key] = value;

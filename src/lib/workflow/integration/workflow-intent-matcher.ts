@@ -9,11 +9,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
-import type {
-  WorkflowMatch,
-  WorkflowTriggerPattern,
-  WorkflowTriggerConfig,
-} from "./types";
+import type { WorkflowMatch, WorkflowTriggerPattern } from "./types";
 import type { WorkflowDefinition } from "../types";
 
 /**
@@ -96,25 +92,16 @@ export class WorkflowIntentMatcher {
       return null;
     }
 
-    // 尝试从 trigger config 获取详细配置
-    const config = conversationTrigger.config as
-      | WorkflowTriggerConfig
-      | undefined;
-    const patterns = config?.patterns || [];
-    const minConfidence = config?.minConfidence ?? this.DEFAULT_MIN_CONFIDENCE;
-
-    // 如果没有 patterns，使用 trigger 的 patterns 字段（简化格式）
+    // 使用 trigger 的 patterns 字段
     const simplePatterns = conversationTrigger.patterns || [];
+    const minConfidence = this.DEFAULT_MIN_CONFIDENCE;
 
-    // 合并两种模式配置
-    const allPatterns: WorkflowTriggerPattern[] = [
-      ...patterns,
-      ...simplePatterns.map((p) => ({
-        type: "keyword" as const,
-        pattern: p,
-        weight: 1,
-      })),
-    ];
+    // 转换为 WorkflowTriggerPattern 格式
+    const allPatterns: WorkflowTriggerPattern[] = simplePatterns.map((p) => ({
+      type: "keyword" as const,
+      pattern: p,
+      weight: 1,
+    }));
 
     if (allPatterns.length === 0) {
       return null;
@@ -259,7 +246,7 @@ export class WorkflowIntentMatcher {
     const now = Date.now();
 
     if (this.patternCache.has(cacheKey) && this.cacheExpiry > now) {
-      return this.patternCache.get(cacheKey)!;
+      return this.patternCache.get(cacheKey) ?? [];
     }
 
     const supabase = await createClient();
@@ -283,7 +270,10 @@ export class WorkflowIntentMatcher {
       .map((row) => ({
         id: row.id as string,
         name: row.name as string,
-        ...(row.definition as Omit<WorkflowDefinition, "id" | "name">),
+        ...(row.definition as unknown as Omit<
+          WorkflowDefinition,
+          "id" | "name"
+        >),
       }))
       .filter((w) => w.triggers?.some((t) => t.type === "conversation"));
 

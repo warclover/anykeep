@@ -364,7 +364,7 @@ describe("WorkflowIntentMatcher", () => {
         }
       ).matchPatterns.bind(matcher);
 
-      // 使用类型断言创建带 config.patterns 的测试工作流
+      // 使用类型断言创建带 patterns 的测试工作流（简化格式）
       const workflow = {
         id: "weekly-organize",
         name: "周度整理",
@@ -372,13 +372,7 @@ describe("WorkflowIntentMatcher", () => {
         triggers: [
           {
             type: "conversation",
-            config: {
-              patterns: [
-                { type: "keyword", pattern: "周度整理", weight: 1 },
-                { type: "regex", pattern: "每周.*整理", weight: 0.9 },
-              ],
-              minConfidence: 0.7,
-            },
+            patterns: ["周度整理", "每周整理"],
           },
         ],
         steps: [],
@@ -400,7 +394,7 @@ describe("WorkflowIntentMatcher", () => {
         }
       ).matchPatterns.bind(matcher);
 
-      // 使用类型断言创建测试工作流
+      // 使用类型断言创建测试工作流（使用不匹配的模式）
       const workflow = {
         id: "test",
         name: "测试",
@@ -408,12 +402,7 @@ describe("WorkflowIntentMatcher", () => {
         triggers: [
           {
             type: "conversation",
-            config: {
-              patterns: [
-                { type: "keyword", pattern: "非常特殊的关键词", weight: 1 },
-              ],
-              minConfidence: 0.99,
-            },
+            patterns: ["非常特殊的关键词"],
           },
         ],
         steps: [],

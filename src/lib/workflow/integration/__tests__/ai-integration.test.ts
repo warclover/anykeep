@@ -289,7 +289,7 @@ describe("Workflow AI Integration", () => {
         }
       ).matchPatterns.bind(matcher);
 
-      // 使用类型断言创建测试工作流
+      // 使用类型断言创建测试工作流（简化格式，使用关键词匹配）
       const workflow = {
         id: "schedule-workflow",
         name: "定时任务",
@@ -297,12 +297,7 @@ describe("Workflow AI Integration", () => {
         triggers: [
           {
             type: "conversation",
-            config: {
-              patterns: [
-                { type: "regex", pattern: "每(天|周|月).*执行", weight: 1 },
-              ],
-              minConfidence: 0.7,
-            },
+            patterns: ["每周执行", "每天执行", "每月执行", "定时执行"],
           },
         ],
         steps: [],

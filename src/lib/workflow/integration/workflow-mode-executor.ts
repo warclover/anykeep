@@ -68,11 +68,13 @@ export class WorkflowModeExecutor {
       const execution = await this.orchestrator.startWorkflow(
         match.workflowId,
         context.userId,
-        "conversation",
         {
-          conversationId: context.conversationId,
-          matchedPattern: match.matchedPattern,
-          extractedParams: match.extractedParams,
+          triggerType: "conversation",
+          triggerContext: {
+            conversationId: context.conversationId,
+            matchedPattern: match.matchedPattern,
+            extractedParams: match.extractedParams,
+          },
         },
       );
 

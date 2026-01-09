@@ -216,7 +216,7 @@ export interface RoutingChunk {
   type: "routing";
   data: {
     /** 执行模式 */
-    mode: "atomic" | "orchestration";
+    mode: "atomic" | "orchestration" | "workflow";
     /** 路由理由 */
     reason: string;
     /** 建议的 Skill */
@@ -225,6 +225,10 @@ export interface RoutingChunk {
     intentType?: string;
     /** 复杂度级别 */
     complexityLevel?: string;
+    /** 工作流 ID（仅 workflow 模式） */
+    workflowId?: string;
+    /** 工作流名称（仅 workflow 模式） */
+    workflowName?: string;
   };
 }
 
@@ -499,6 +503,29 @@ export interface CitationChunk {
 }
 
 // ============================================
+// 工作流相关类型
+// ============================================
+
+/**
+ * 工作流启动块
+ *
+ * 当工作流模式触发工作流执行时发送
+ */
+export interface WorkflowStartedChunk {
+  type: "workflow_started";
+  data: {
+    /** 执行 ID */
+    executionId: string;
+    /** 工作流 ID */
+    workflowId: string;
+    /** 工作流名称 */
+    workflowName: string;
+    /** 时间戳 */
+    timestamp?: number;
+  };
+}
+
+// ============================================
 // 统一流式输出类型
 // ============================================
 
@@ -527,7 +554,9 @@ export type UnifiedStreamChunk =
   | ZeroTakeoverConfirmChunk
   | SmartDefaultsAppliedChunk
   // 引用追踪类型
-  | CitationChunk;
+  | CitationChunk
+  // 工作流模式类型
+  | WorkflowStartedChunk;
 
 /**
  * 编排模式流式输出块（用于编排 Skill 内部）
@@ -570,6 +599,8 @@ export type ChunkTypeMap = {
   smart_defaults_applied: SmartDefaultsAppliedChunk;
   // 引用追踪类型
   citation: CitationChunk;
+  // 工作流模式类型
+  workflow_started: WorkflowStartedChunk;
 };
 
 /**

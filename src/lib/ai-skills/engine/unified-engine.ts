@@ -656,6 +656,8 @@ export class UnifiedEngine {
       type: "routing",
       data: {
         mode: "workflow",
+        reason: "用户意图匹配工作流触发条件",
+        skill: null,
         workflowId: result.workflowId,
         workflowName: result.workflowName,
       },
@@ -677,7 +679,7 @@ export class UnifiedEngine {
       };
     }
 
-    yield { type: "done", data: {} };
+    yield { type: "done", data: { success: true } };
   }
 
   // ============================================================

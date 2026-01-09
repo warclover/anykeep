@@ -54,8 +54,9 @@ export class WorkflowNotifier {
     try {
       const supabase = await createClient();
 
-      // 检查 notifications 表是否存在，如果不存在则跳过
-      const { error } = await supabase.from("notifications").insert({
+      // 存储通知（notifications 表可能尚未创建，使用类型断言跳过检查）
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any).from("notifications").insert({
         user_id: context.userId,
         type: "workflow_completion",
         title: this.generateTitle(context),
