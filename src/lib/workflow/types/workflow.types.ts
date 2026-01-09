@@ -224,6 +224,8 @@ export interface StartWorkflowOptions {
  * 列出执行记录选项
  */
 export interface ListExecutionsOptions {
+  /** 工作流 ID 过滤 */
+  workflowId?: string;
   /** 限制数量 */
   limit?: number;
   /** 状态过滤 */

@@ -220,7 +220,7 @@ export class StateManager {
     options: ListExecutionsOptions = {},
   ): Promise<WorkflowExecution[]> {
     const supabase = await createClient();
-    const { limit = 20, status } = options;
+    const { workflowId, limit = 20, status } = options;
 
     let query = supabase
       .from("workflow_executions")
@@ -228,6 +228,10 @@ export class StateManager {
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(limit);
+
+    if (workflowId) {
+      query = query.eq("workflow_id", workflowId);
+    }
 
     if (status) {
       query = query.eq("status", status);

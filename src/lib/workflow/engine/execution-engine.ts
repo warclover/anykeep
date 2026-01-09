@@ -10,6 +10,7 @@
 import { getUnifiedEngine } from "@/lib/ai-skills/register";
 import { logger } from "@/lib/logger";
 import { getStateManager } from "../state/state-manager";
+import { notifyWorkflowCompletion } from "../integration/workflow-notifier";
 import {
   collectStreamResult,
   extractPrimaryDeliverable,
@@ -99,6 +100,17 @@ export class ExecutionEngine {
               "failed",
               result.error,
             );
+
+            // 发送失败通知
+            await this.sendNotification(
+              userId,
+              workflow,
+              executionId,
+              "failed",
+              `步骤「${step.name}」执行失败`,
+              result.error,
+            );
+
             logger.error(
               { executionId, stepId: step.id, error: result.error },
               "ExecutionEngine: Step failed, stopping workflow",
@@ -121,6 +133,16 @@ export class ExecutionEngine {
 
       // 全部完成
       await this.stateManager.updateStatus(executionId, "completed");
+
+      // 发送完成通知
+      await this.sendNotification(
+        userId,
+        workflow,
+        executionId,
+        "completed",
+        this.generateCompletionSummary(workflow, context),
+      );
+
       logger.info(
         { executionId },
         "ExecutionEngine: Workflow completed successfully",
@@ -129,6 +151,17 @@ export class ExecutionEngine {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       await this.stateManager.updateStatus(executionId, "failed", errorMessage);
+
+      // 发送失败通知
+      await this.sendNotification(
+        userId,
+        workflow,
+        executionId,
+        "failed",
+        "工作流执行失败",
+        errorMessage,
+      );
+
       logger.error(
         { executionId, error: errorMessage },
         "ExecutionEngine: Workflow execution failed",
@@ -328,6 +361,51 @@ export class ExecutionEngine {
    */
   isRunning(executionId: string): boolean {
     return this.activeExecutions.has(executionId);
+  }
+
+  /**
+   * 发送工作流通知
+   */
+  private async sendNotification(
+    userId: string,
+    workflow: WorkflowDefinition,
+    executionId: string,
+    status: "completed" | "failed",
+    summary: string,
+    error?: string,
+  ): Promise<void> {
+    try {
+      await notifyWorkflowCompletion({
+        userId,
+        workflowId: workflow.id,
+        workflowName: workflow.name,
+        executionId,
+        status,
+        summary,
+        error,
+      });
+    } catch (notifyError) {
+      // 通知失败不影响主流程
+      logger.warn(
+        { executionId, error: notifyError },
+        "ExecutionEngine: Failed to send notification",
+      );
+    }
+  }
+
+  /**
+   * 生成完成摘要
+   */
+  private generateCompletionSummary(
+    workflow: WorkflowDefinition,
+    context: WorkflowContext,
+  ): string {
+    const completedSteps = Object.values(context.stepResults).filter(
+      (r) => r.status === "completed",
+    ).length;
+    const totalSteps = workflow.steps.length;
+
+    return `已完成 ${completedSteps}/${totalSteps} 个步骤`;
   }
 }
 
