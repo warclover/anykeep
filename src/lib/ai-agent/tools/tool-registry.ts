@@ -3,10 +3,11 @@
  *
  * 管理所有 AI Tools 的注册、查询和导出
  *
- * @version 2.0.0 - MCP 标准化升级
+ * @version 2.1.0 - 高风险操作确认拦截
  * @since 2025-12-23
  * @updated 2025-12-29 添加 riskLevel 统计和扩展分类支持
  * @updated 2026-01-06 添加工具调用事件发射 (P2-3)
+ * @updated 2026-01-09 添加 ConfirmationInterceptor 集成 (Phase 1)
  */
 
 import { z } from "zod";
@@ -23,6 +24,8 @@ import type {
 import { extractReasoning, inferRiskLevel } from "./types";
 import { logger } from "@/lib/logger";
 import { toolEventEmitter } from "./events/tool-event-emitter";
+import { confirmationInterceptor } from "../safety/confirmation-interceptor";
+import { FeatureFlags } from "../config/feature-flags";
 
 /**
  * Tool 注册表类
@@ -196,6 +199,47 @@ export class ToolRegistry {
           },
           "ToolRegistry: Tool reasoning captured",
         );
+      }
+
+      // 高风险操作确认拦截（Phase 1 Feature Flag 控制）
+      if (FeatureFlags.ENABLE_CONFIRMATION_INTERCEPTOR) {
+        const interceptResult = await confirmationInterceptor.intercept(
+          tool,
+          validatedParams as Record<string, unknown>,
+          context,
+        );
+
+        if (interceptResult.intercepted && interceptResult.confirmation) {
+          const executionTimeMs = Math.round(performance.now() - startTime);
+
+          // 发射工具调用拦截事件
+          toolEventEmitter.emitCallCompleted({
+            userId: context.userId,
+            toolName: name,
+            toolCategory,
+            success: true,
+            durationMs: executionTimeMs,
+            resultSummary: `操作需要确认: ${interceptResult.reason || "高风险操作"}`,
+            errorMessage: undefined,
+            errorCode: undefined,
+            retryable: false,
+          });
+
+          logger.info(
+            {
+              toolName: name,
+              userId: context.userId,
+              confirmationId: interceptResult.confirmation.confirmationId,
+              riskLevel: interceptResult.confirmation.riskLevel,
+            },
+            "ToolRegistry: Tool execution intercepted for confirmation",
+          );
+
+          // 返回确认等待结果
+          return confirmationInterceptor.createConfirmationResult(
+            interceptResult.confirmation,
+          ) as ToolResult<TResult>;
+        }
       }
 
       // 执行 Tool

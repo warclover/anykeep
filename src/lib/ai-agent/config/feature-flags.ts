@@ -536,6 +536,19 @@ export const FeatureFlags = {
   get ENABLE_WORKFLOW_NOTIFICATIONS(): boolean {
     return process.env.ENABLE_WORKFLOW_NOTIFICATIONS !== "false";
   },
+
+  // ===========================================================================
+  // 高风险操作确认 [Phase 1 新增]
+  // ===========================================================================
+
+  /**
+   * 是否启用确认拦截器
+   * @default true
+   * @description 高风险操作（删除、批量操作等）执行前需要用户确认
+   */
+  get ENABLE_CONFIRMATION_INTERCEPTOR(): boolean {
+    return process.env.ENABLE_CONFIRMATION_INTERCEPTOR !== "false";
+  },
 } as const;
 
 // =============================================================================
@@ -633,6 +646,9 @@ export function getAllFeatureFlags(): Record<BooleanFeatureFlagKey, boolean> & {
     ENABLE_WORKFLOW_RECOMMENDATIONS:
       FeatureFlags.ENABLE_WORKFLOW_RECOMMENDATIONS,
     ENABLE_WORKFLOW_NOTIFICATIONS: FeatureFlags.ENABLE_WORKFLOW_NOTIFICATIONS,
+    // 高风险操作确认 [Phase 1 新增]
+    ENABLE_CONFIRMATION_INTERCEPTOR:
+      FeatureFlags.ENABLE_CONFIRMATION_INTERCEPTOR,
   };
 }
 
