@@ -3,8 +3,9 @@
  *
  * 自动导出全量数据到指定格式（JSON/Markdown）
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2026-01-08
+ * @updated 2026-01-09 - 添加语义匹配支持
  */
 
 import type { WorkflowDefinition } from "../types";
@@ -24,7 +25,7 @@ export const periodicBackupWorkflow: WorkflowDefinition = {
   id: "periodic_backup",
   name: "定期备份",
   description: "自动导出全量数据到指定格式（JSON/Markdown）",
-  version: "1.0.0",
+  version: "1.1.0",
   category: "builtin",
 
   triggers: [
@@ -54,6 +55,18 @@ export const periodicBackupWorkflow: WorkflowDefinition = {
         "导出全部",
         "创建备份",
       ],
+      // 语义匹配：覆盖更多自然语言表达
+      semanticPatterns: {
+        referenceTexts: [
+          "把我的收藏保存到本地",
+          "帮我做个数据备份以防万一",
+          "我想把书签导出来存档",
+          "定期保存我的收藏数据",
+          "生成一份完整的数据拷贝",
+          "我要把所有内容下载下来",
+        ],
+        threshold: 0.76,
+      },
     },
   ],
 

@@ -3,16 +3,18 @@
  *
  * 检测用户输入是否匹配已注册的工作流触发模式
  *
- * @version 1.0.2
+ * @version 1.1.0
  * @since 2026-01-08
  * @updated 2026-01-09 - 安全修复：添加 ReDoS 防护
  * @updated 2026-01-09 - 修复缓存独立过期时间问题
+ * @updated 2026-01-09 - 新增语义匹配支持
  */
 
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 import type { WorkflowMatch, WorkflowTriggerPattern } from "./types";
 import type { WorkflowDefinition } from "../types";
+import { getSemanticMatcher } from "./semantic-matcher";
 
 /**
  * 缓存条目接口
@@ -79,7 +81,7 @@ export class WorkflowIntentMatcher {
       const matches: WorkflowMatch[] = [];
 
       for (const workflow of workflows) {
-        const match = this.matchPatterns(userMessage, workflow);
+        const match = await this.matchPatterns(userMessage, workflow);
         if (match) {
           matches.push(match);
         }
@@ -111,10 +113,10 @@ export class WorkflowIntentMatcher {
   /**
    * 匹配工作流触发模式
    */
-  private matchPatterns(
+  private async matchPatterns(
     message: string,
     workflow: WorkflowDefinition,
-  ): WorkflowMatch | null {
+  ): Promise<WorkflowMatch | null> {
     const conversationTrigger = workflow.triggers?.find(
       (t) => t.type === "conversation",
     );
@@ -123,7 +125,7 @@ export class WorkflowIntentMatcher {
       return null;
     }
 
-    // 使用 trigger 的 patterns 字段
+    // 使用 trigger 的 patterns 字段（关键词模式）
     const simplePatterns = conversationTrigger.patterns || [];
     const minConfidence = this.DEFAULT_MIN_CONFIDENCE;
 
@@ -133,6 +135,19 @@ export class WorkflowIntentMatcher {
       pattern: p,
       weight: 1,
     }));
+
+    // 添加语义模式（如果配置了）
+    if (conversationTrigger.semanticPatterns?.referenceTexts?.length) {
+      allPatterns.push({
+        type: "semantic" as const,
+        pattern: "[semantic]", // 占位符，实际使用 semanticConfig
+        weight: 1,
+        semanticConfig: {
+          referenceTexts: conversationTrigger.semanticPatterns.referenceTexts,
+          threshold: conversationTrigger.semanticPatterns.threshold,
+        },
+      });
+    }
 
     if (allPatterns.length === 0) {
       return null;
@@ -146,7 +161,7 @@ export class WorkflowIntentMatcher {
     } | null = null;
 
     for (const patternDef of allPatterns) {
-      const result = this.evaluatePattern(normalizedMessage, patternDef);
+      const result = await this.evaluatePattern(normalizedMessage, patternDef);
 
       if (result && result.confidence >= minConfidence) {
         if (!bestMatch || result.confidence > bestMatch.confidence) {
@@ -175,10 +190,10 @@ export class WorkflowIntentMatcher {
   /**
    * 评估单个模式
    */
-  private evaluatePattern(
+  private async evaluatePattern(
     message: string,
     patternDef: WorkflowTriggerPattern,
-  ): { confidence: number; params?: Record<string, string> } | null {
+  ): Promise<{ confidence: number; params?: Record<string, string> } | null> {
     const weight = patternDef.weight ?? 1;
 
     switch (patternDef.type) {
@@ -189,8 +204,7 @@ export class WorkflowIntentMatcher {
         return this.evaluateRegexPattern(message, patternDef.pattern, weight);
 
       case "semantic":
-        // 语义匹配需要调用 embedding 服务，暂不实现
-        return null;
+        return this.evaluateSemanticPattern(message, patternDef, weight);
 
       default:
         return null;
@@ -296,6 +310,57 @@ export class WorkflowIntentMatcher {
       logger.warn(
         { pattern, error },
         "WorkflowIntentMatcher: Invalid regex pattern",
+      );
+    }
+
+    return null;
+  }
+
+  /**
+   * 语义模式匹配
+   *
+   * 使用向量相似度进行语义级别的意图匹配
+   */
+  private async evaluateSemanticPattern(
+    message: string,
+    patternDef: WorkflowTriggerPattern,
+    weight: number,
+  ): Promise<{ confidence: number; params?: Record<string, string> } | null> {
+    // 检查语义配置
+    if (!patternDef.semanticConfig?.referenceTexts?.length) {
+      logger.warn(
+        { pattern: patternDef.pattern },
+        "WorkflowIntentMatcher: Semantic pattern missing referenceTexts",
+      );
+      return null;
+    }
+
+    try {
+      const semanticMatcher = getSemanticMatcher();
+      const result = await semanticMatcher.match(message, {
+        referenceTexts: patternDef.semanticConfig.referenceTexts,
+        threshold: patternDef.semanticConfig.threshold,
+        precomputedEmbeddings: patternDef.semanticConfig.precomputedEmbeddings,
+      });
+
+      if (result.matched) {
+        logger.debug(
+          {
+            message: message.substring(0, 50),
+            confidence: result.confidence.toFixed(4),
+            bestMatchText: result.bestMatchText?.substring(0, 30),
+          },
+          "WorkflowIntentMatcher: Semantic match found",
+        );
+
+        return {
+          confidence: result.confidence * weight,
+        };
+      }
+    } catch (error) {
+      logger.error(
+        { error, pattern: patternDef.pattern },
+        "WorkflowIntentMatcher: Semantic evaluation failed",
       );
     }
 

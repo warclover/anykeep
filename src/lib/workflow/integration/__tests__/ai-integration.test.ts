@@ -249,13 +249,13 @@ describe("Workflow AI Integration", () => {
       matcher.clearCache();
     });
 
-    it("should match workflow with keyword patterns", () => {
+    it("should match workflow with keyword patterns", async () => {
       const matchPatterns = (
         matcher as unknown as {
           matchPatterns: (
             message: string,
             workflow: WorkflowDefinition,
-          ) => { workflowId: string; confidence: number } | null;
+          ) => Promise<{ workflowId: string; confidence: number } | null>;
         }
       ).matchPatterns.bind(matcher);
 
@@ -273,19 +273,19 @@ describe("Workflow AI Integration", () => {
         steps: [],
       } as unknown as WorkflowDefinition;
 
-      const result = matchPatterns("帮我测试一下", workflow);
+      const result = await matchPatterns("帮我测试一下", workflow);
 
       expect(result).not.toBeNull();
       expect(result!.workflowId).toBe("test-workflow");
     });
 
-    it("should match workflow with regex patterns", () => {
+    it("should match workflow with regex patterns", async () => {
       const matchPatterns = (
         matcher as unknown as {
           matchPatterns: (
             message: string,
             workflow: WorkflowDefinition,
-          ) => { workflowId: string; confidence: number } | null;
+          ) => Promise<{ workflowId: string; confidence: number } | null>;
         }
       ).matchPatterns.bind(matcher);
 
@@ -303,7 +303,7 @@ describe("Workflow AI Integration", () => {
         steps: [],
       } as unknown as WorkflowDefinition;
 
-      const result = matchPatterns("每周执行一次整理", workflow);
+      const result = await matchPatterns("每周执行一次整理", workflow);
 
       expect(result).not.toBeNull();
     });

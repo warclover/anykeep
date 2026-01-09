@@ -3,8 +3,9 @@
  *
  * 从未读列表推荐 3-5 条今日阅读内容
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2026-01-08
+ * @updated 2026-01-09 - 添加语义匹配支持
  *
  * @note 此工作流默认关闭，需要用户在设置中手动开启
  */
@@ -26,7 +27,7 @@ export const dailyDigestWorkflow: WorkflowDefinition = {
   id: "daily_digest",
   name: "每日精选推送",
   description: "从未读列表推荐 3-5 条今日阅读内容",
-  version: "1.0.0",
+  version: "1.1.0",
   category: "builtin",
 
   triggers: [
@@ -55,6 +56,18 @@ export const dailyDigestWorkflow: WorkflowDefinition = {
         "每日推送",
         "今日阅读",
       ],
+      // 语义匹配：覆盖更多自然语言表达
+      semanticPatterns: {
+        referenceTexts: [
+          "帮我从收藏里挑几篇好看的文章",
+          "今天有什么值得阅读的内容",
+          "我的收藏夹里有什么好东西",
+          "推荐一些我应该看看的书签",
+          "找几篇我可能感兴趣的文章",
+          "有没有什么我还没看过的好内容",
+        ],
+        threshold: 0.76,
+      },
     },
   ],
 

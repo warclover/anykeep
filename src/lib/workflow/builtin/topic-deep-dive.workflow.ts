@@ -3,8 +3,9 @@
  *
  * 聚合某主题所有书签，生成知识图谱和学习计划
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2026-01-08
+ * @updated 2026-01-09 - 添加语义匹配支持
  */
 
 import type { WorkflowDefinition } from "../types";
@@ -23,7 +24,7 @@ export const topicDeepDiveWorkflow: WorkflowDefinition = {
   id: "topic_deep_dive",
   name: "主题深挖",
   description: "聚合某主题所有书签，生成知识图谱和学习计划",
-  version: "1.0.0",
+  version: "1.1.0",
   category: "builtin",
 
   triggers: [
@@ -49,6 +50,18 @@ export const topicDeepDiveWorkflow: WorkflowDefinition = {
         "知识图谱",
         "主题分析",
       ],
+      // 语义匹配：覆盖更多自然语言表达
+      semanticPatterns: {
+        referenceTexts: [
+          "我想系统学习这个领域的知识",
+          "帮我把相关的内容都整理成学习路径",
+          "想深入了解某个主题，有什么资料",
+          "把我收藏的相关文章串起来形成知识体系",
+          "给我规划一下这个话题的学习顺序",
+          "我想看看关于这个主题我都收藏了什么",
+        ],
+        threshold: 0.75,
+      },
     },
   ],
 

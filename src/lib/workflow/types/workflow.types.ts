@@ -46,8 +46,15 @@ export interface WorkflowTrigger {
     type: "cron" | "interval";
     value: string;
   };
-  /** 匹配模式（conversation 触发） */
+  /** 匹配模式（conversation 触发，关键词模式） */
   patterns?: string[];
+  /** 语义匹配配置（conversation 触发，语义模式） */
+  semanticPatterns?: {
+    /** 参考文本列表 */
+    referenceTexts: string[];
+    /** 相似度阈值 (0-1)，默认 0.75 */
+    threshold?: number;
+  };
 }
 
 /**

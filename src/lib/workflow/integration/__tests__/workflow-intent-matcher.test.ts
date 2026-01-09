@@ -1,12 +1,12 @@
 /**
  * WorkflowIntentMatcher 单元测试
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2026-01-08
+ * @updated 2026-01-09 - 添加语义匹配测试
  */
 
 import { describe, it, expect, beforeEach, jest } from "@jest/globals";
-import { WorkflowIntentMatcher } from "../workflow-intent-matcher";
 import type { WorkflowDefinition } from "../../types";
 
 // Mock Supabase
@@ -16,6 +16,13 @@ jest.mock("@/lib/supabase/server", () => ({
       from: () => ({
         select: () => ({
           or: () => ({
+            eq: () =>
+              Promise.resolve({
+                data: [],
+                error: null,
+              }),
+          }),
+          eq: () => ({
             eq: () =>
               Promise.resolve({
                 data: [],
@@ -38,12 +45,27 @@ jest.mock("@/lib/logger", () => ({
   },
 }));
 
+// semantic-matcher is mocked globally in jest.setup.ts
+// Use require() to access mock configuration functions
+const {
+  __mockMatchFn: semanticMatchMockFn,
+  __setMockMatchResponse,
+  __resetMocks: resetSemanticMocks,
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+} = require("@/lib/workflow/integration/semantic-matcher");
+
+// Import after mocking
+import { WorkflowIntentMatcher } from "../workflow-intent-matcher";
+
 describe("WorkflowIntentMatcher", () => {
   let matcher: WorkflowIntentMatcher;
 
   beforeEach(() => {
     matcher = new WorkflowIntentMatcher();
     matcher.clearCache();
+    jest.clearAllMocks();
+    // Reset semantic mock to default state
+    resetSemanticMocks();
   });
 
   describe("matchWorkflow", () => {
@@ -199,7 +221,7 @@ describe("WorkflowIntentMatcher", () => {
   });
 
   describe("pattern evaluation", () => {
-    it("should evaluate keyword pattern", () => {
+    it("should evaluate keyword pattern", async () => {
       const evaluatePattern = (
         matcher as unknown as {
           evaluatePattern: (
@@ -209,11 +231,14 @@ describe("WorkflowIntentMatcher", () => {
               pattern: string;
               weight?: number;
             },
-          ) => { confidence: number; params?: Record<string, string> } | null;
+          ) => Promise<{
+            confidence: number;
+            params?: Record<string, string>;
+          } | null>;
         }
       ).evaluatePattern.bind(matcher);
 
-      const result = evaluatePattern("书签健康检查", {
+      const result = await evaluatePattern("书签健康检查", {
         type: "keyword",
         pattern: "书签健康",
       });
@@ -222,7 +247,7 @@ describe("WorkflowIntentMatcher", () => {
       expect(result!.confidence).toBeGreaterThan(0);
     });
 
-    it("should evaluate regex pattern", () => {
+    it("should evaluate regex pattern", async () => {
       const evaluatePattern = (
         matcher as unknown as {
           evaluatePattern: (
@@ -232,11 +257,14 @@ describe("WorkflowIntentMatcher", () => {
               pattern: string;
               weight?: number;
             },
-          ) => { confidence: number; params?: Record<string, string> } | null;
+          ) => Promise<{
+            confidence: number;
+            params?: Record<string, string>;
+          } | null>;
         }
       ).evaluatePattern.bind(matcher);
 
-      const result = evaluatePattern("检查书签链接", {
+      const result = await evaluatePattern("检查书签链接", {
         type: "regex",
         pattern: "检查.*链接",
       });
@@ -244,7 +272,49 @@ describe("WorkflowIntentMatcher", () => {
       expect(result).not.toBeNull();
     });
 
-    it("should return null for semantic pattern (not implemented)", () => {
+    it("should evaluate semantic pattern when properly configured", async () => {
+      // Mock semantic matcher to return a match
+      semanticMatchMockFn.mockResolvedValue({
+        matched: true,
+        confidence: 0.85,
+        bestMatchIndex: 0,
+        bestMatchText: "帮我看看有没有打不开的链接",
+      });
+
+      const evaluatePattern = (
+        matcher as unknown as {
+          evaluatePattern: (
+            message: string,
+            patternDef: {
+              type: string;
+              pattern: string;
+              weight?: number;
+              semanticConfig?: {
+                referenceTexts: string[];
+                threshold?: number;
+              };
+            },
+          ) => Promise<{
+            confidence: number;
+            params?: Record<string, string>;
+          } | null>;
+        }
+      ).evaluatePattern.bind(matcher);
+
+      const result = await evaluatePattern("检查书签", {
+        type: "semantic",
+        pattern: "[semantic]",
+        semanticConfig: {
+          referenceTexts: ["帮我看看有没有打不开的链接"],
+          threshold: 0.75,
+        },
+      });
+
+      expect(result).not.toBeNull();
+      expect(result!.confidence).toBe(0.85);
+    });
+
+    it("should return null for semantic pattern without config", async () => {
       const evaluatePattern = (
         matcher as unknown as {
           evaluatePattern: (
@@ -254,19 +324,23 @@ describe("WorkflowIntentMatcher", () => {
               pattern: string;
               weight?: number;
             },
-          ) => { confidence: number; params?: Record<string, string> } | null;
+          ) => Promise<{
+            confidence: number;
+            params?: Record<string, string>;
+          } | null>;
         }
       ).evaluatePattern.bind(matcher);
 
-      const result = evaluatePattern("检查书签", {
+      const result = await evaluatePattern("检查书签", {
         type: "semantic",
         pattern: "书签健康检测",
+        // No semanticConfig
       });
 
       expect(result).toBeNull();
     });
 
-    it("should return null for unknown pattern type", () => {
+    it("should return null for unknown pattern type", async () => {
       const evaluatePattern = (
         matcher as unknown as {
           evaluatePattern: (
@@ -276,11 +350,14 @@ describe("WorkflowIntentMatcher", () => {
               pattern: string;
               weight?: number;
             },
-          ) => { confidence: number; params?: Record<string, string> } | null;
+          ) => Promise<{
+            confidence: number;
+            params?: Record<string, string>;
+          } | null>;
         }
       ).evaluatePattern.bind(matcher);
 
-      const result = evaluatePattern("检查书签", {
+      const result = await evaluatePattern("检查书签", {
         type: "unknown",
         pattern: "test",
       });
@@ -290,13 +367,13 @@ describe("WorkflowIntentMatcher", () => {
   });
 
   describe("matchPatterns", () => {
-    it("should return null for workflow without conversation trigger", () => {
+    it("should return null for workflow without conversation trigger", async () => {
       const matchPatterns = (
         matcher as unknown as {
           matchPatterns: (
             message: string,
             workflow: WorkflowDefinition,
-          ) => { workflowId: string; confidence: number } | null;
+          ) => Promise<{ workflowId: string; confidence: number } | null>;
         }
       ).matchPatterns.bind(matcher);
 
@@ -309,23 +386,23 @@ describe("WorkflowIntentMatcher", () => {
         steps: [],
       } as unknown as WorkflowDefinition;
 
-      const result = matchPatterns("检查书签", workflow);
+      const result = await matchPatterns("检查书签", workflow);
 
       expect(result).toBeNull();
     });
 
-    it("should match workflow with simple patterns", () => {
+    it("should match workflow with simple patterns", async () => {
       const matchPatterns = (
         matcher as unknown as {
           matchPatterns: (
             message: string,
             workflow: WorkflowDefinition,
-          ) => {
+          ) => Promise<{
             workflowId: string;
             workflowName: string;
             confidence: number;
             matchedPattern: string;
-          } | null;
+          } | null>;
         }
       ).matchPatterns.bind(matcher);
 
@@ -343,24 +420,24 @@ describe("WorkflowIntentMatcher", () => {
         steps: [],
       } as unknown as WorkflowDefinition;
 
-      const result = matchPatterns("检查书签健康状况", workflow);
+      const result = await matchPatterns("检查书签健康状况", workflow);
 
       expect(result).not.toBeNull();
       expect(result!.workflowId).toBe("bookmark-health");
       expect(result!.confidence).toBeGreaterThanOrEqual(0.7);
     });
 
-    it("should match workflow with detailed patterns config", () => {
+    it("should match workflow with detailed patterns config", async () => {
       const matchPatterns = (
         matcher as unknown as {
           matchPatterns: (
             message: string,
             workflow: WorkflowDefinition,
-          ) => {
+          ) => Promise<{
             workflowId: string;
             workflowName: string;
             confidence: number;
-          } | null;
+          } | null>;
         }
       ).matchPatterns.bind(matcher);
 
@@ -378,19 +455,19 @@ describe("WorkflowIntentMatcher", () => {
         steps: [],
       } as unknown as WorkflowDefinition;
 
-      const result = matchPatterns("帮我做每周整理", workflow);
+      const result = await matchPatterns("帮我做每周整理", workflow);
 
       expect(result).not.toBeNull();
       expect(result!.workflowId).toBe("weekly-organize");
     });
 
-    it("should return null when confidence below threshold", () => {
+    it("should return null when confidence below threshold", async () => {
       const matchPatterns = (
         matcher as unknown as {
           matchPatterns: (
             message: string,
             workflow: WorkflowDefinition,
-          ) => { workflowId: string } | null;
+          ) => Promise<{ workflowId: string } | null>;
         }
       ).matchPatterns.bind(matcher);
 
@@ -408,9 +485,63 @@ describe("WorkflowIntentMatcher", () => {
         steps: [],
       } as unknown as WorkflowDefinition;
 
-      const result = matchPatterns("普通消息", workflow);
+      const result = await matchPatterns("普通消息", workflow);
 
       expect(result).toBeNull();
+    });
+
+    it("should match workflow with semantic patterns", async () => {
+      // Mock semantic matcher to return a match
+      semanticMatchMockFn.mockResolvedValue({
+        matched: true,
+        confidence: 0.88,
+        bestMatchIndex: 0,
+        bestMatchText: "帮我看看有没有打不开的链接",
+      });
+
+      const matchPatterns = (
+        matcher as unknown as {
+          matchPatterns: (
+            message: string,
+            workflow: WorkflowDefinition,
+          ) => Promise<{
+            workflowId: string;
+            workflowName: string;
+            confidence: number;
+            matchedPattern: string;
+          } | null>;
+        }
+      ).matchPatterns.bind(matcher);
+
+      // 使用带语义模式的测试工作流
+      const workflow = {
+        id: "bookmark-health",
+        name: "书签健康检查",
+        version: "1.1.0",
+        triggers: [
+          {
+            type: "conversation",
+            patterns: ["书签健康", "链接检查"],
+            semanticPatterns: {
+              referenceTexts: [
+                "帮我看看有没有打不开的链接",
+                "检查我的书签是否还能正常访问",
+              ],
+              threshold: 0.78,
+            },
+          },
+        ],
+        steps: [],
+      } as unknown as WorkflowDefinition;
+
+      const result = await matchPatterns(
+        "我想确认一下这些网页链接还能不能打开",
+        workflow,
+      );
+
+      expect(result).not.toBeNull();
+      expect(result!.workflowId).toBe("bookmark-health");
+      expect(result!.confidence).toBe(0.88);
     });
   });
 

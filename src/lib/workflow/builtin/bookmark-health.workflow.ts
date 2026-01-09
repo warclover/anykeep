@@ -3,8 +3,9 @@
  *
  * 检测失效链接、内容变更、重复书签，生成健康报告
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2026-01-08
+ * @updated 2026-01-09 - 添加语义匹配支持
  */
 
 import type { WorkflowDefinition } from "../types";
@@ -21,7 +22,7 @@ export const bookmarkHealthWorkflow: WorkflowDefinition = {
   id: "bookmark_health",
   name: "书签健康巡检",
   description: "检测失效链接、内容变更、重复书签，生成健康报告",
-  version: "1.0.0",
+  version: "1.1.0",
   category: "builtin",
 
   triggers: [
@@ -46,6 +47,18 @@ export const bookmarkHealthWorkflow: WorkflowDefinition = {
         "链接是否有效",
         "书签健康检查",
       ],
+      // 语义匹配：覆盖更多自然语言表达
+      semanticPatterns: {
+        referenceTexts: [
+          "帮我看看有没有打不开的链接",
+          "哪些收藏的网页已经失效了",
+          "检查我的书签是否还能正常访问",
+          "有些网站可能已经关闭了，帮我找出来",
+          "我的收藏夹里有没有坏掉的链接",
+          "扫描一下看看哪些书签已经过期了",
+        ],
+        threshold: 0.78,
+      },
     },
   ],
 

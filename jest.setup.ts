@@ -271,3 +271,50 @@ jest.mock("@/lib/workflow/engine/execution-engine", () => {
     },
   };
 });
+
+// =============================================================================
+// Global SemanticMatcher Mock
+// =============================================================================
+// Mock semantic matcher to avoid embedding API calls in tests
+
+jest.mock("@/lib/workflow/integration/semantic-matcher", () => {
+  // Create mock match function
+  const mockMatchFn = jest.fn().mockResolvedValue({
+    matched: false,
+    confidence: 0,
+  });
+
+  // Create mock instance
+  const mockSemanticMatcher = {
+    match: mockMatchFn,
+    precomputeEmbeddings: jest.fn().mockResolvedValue([]),
+    clearCache: jest.fn(),
+    getCacheStats: jest
+      .fn()
+      .mockReturnValue({ messageCount: 0, referenceCount: 0 }),
+  };
+
+  return {
+    SemanticMatcher: jest.fn(() => mockSemanticMatcher),
+    getSemanticMatcher: jest.fn(() => mockSemanticMatcher),
+    resetSemanticMatcher: jest.fn(),
+    // Expose internals for test configuration
+    __mockSemanticMatcher: mockSemanticMatcher,
+    __mockMatchFn: mockMatchFn,
+    __setMockMatchResponse: (response: unknown) => {
+      mockMatchFn.mockResolvedValue(response);
+    },
+    __resetMocks: () => {
+      mockMatchFn
+        .mockClear()
+        .mockResolvedValue({ matched: false, confidence: 0 });
+      mockSemanticMatcher.precomputeEmbeddings
+        .mockClear()
+        .mockResolvedValue([]);
+      mockSemanticMatcher.clearCache.mockClear();
+      mockSemanticMatcher.getCacheStats
+        .mockClear()
+        .mockReturnValue({ messageCount: 0, referenceCount: 0 });
+    },
+  };
+});

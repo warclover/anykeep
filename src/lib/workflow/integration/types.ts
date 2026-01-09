@@ -1,8 +1,9 @@
 /**
  * 工作流 AI 集成类型定义
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2026-01-08
+ * @updated 2026-01-09 - 添加语义匹配配置类型
  */
 
 // ============================================================
@@ -15,15 +16,29 @@
 export type TriggerPatternType = "keyword" | "regex" | "semantic";
 
 /**
+ * 语义模式配置
+ */
+export interface SemanticPatternConfig {
+  /** 参考文本列表 */
+  referenceTexts: string[];
+  /** 相似度阈值 (0-1)，默认 0.75 */
+  threshold?: number;
+  /** 预计算的向量（运行时缓存，不存储在数据库） */
+  precomputedEmbeddings?: number[][];
+}
+
+/**
  * 工作流触发模式
  */
 export interface WorkflowTriggerPattern {
   /** 触发模式类型 */
   type: TriggerPatternType;
-  /** 模式内容 */
+  /** 模式内容（keyword/regex 类型使用） */
   pattern: string;
   /** 匹配权重 (0-1) */
   weight?: number;
+  /** 语义匹配配置（semantic 类型使用） */
+  semanticConfig?: SemanticPatternConfig;
 }
 
 /**

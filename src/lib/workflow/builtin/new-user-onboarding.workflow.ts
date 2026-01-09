@@ -3,8 +3,9 @@
  *
  * 导入浏览器书签后自动去重、分类、打标签，快速完成首次整理
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2026-01-08
+ * @updated 2026-01-09 - 添加语义匹配支持
  */
 
 import type { WorkflowDefinition } from "../types";
@@ -25,7 +26,7 @@ export const newUserOnboardingWorkflow: WorkflowDefinition = {
   id: "new_user_onboarding",
   name: "新用户导入整理",
   description: "导入浏览器书签后自动去重、分类、打标签，快速完成首次整理",
-  version: "1.0.0",
+  version: "1.1.0",
   category: "builtin",
 
   triggers: [
@@ -53,6 +54,18 @@ export const newUserOnboardingWorkflow: WorkflowDefinition = {
         "快速整理书签",
         "自动整理",
       ],
+      // 语义匹配：覆盖更多自然语言表达
+      semanticPatterns: {
+        referenceTexts: [
+          "刚从浏览器导入了书签，帮我分类一下",
+          "导入的书签太多了，帮我去去重",
+          "新导入的东西需要打标签和分类",
+          "这些刚导入的书签怎么快速整理",
+          "帮我把刚导入的内容自动分好类",
+          "导入完成了，接下来怎么整理比较好",
+        ],
+        threshold: 0.76,
+      },
     },
   ],
 

@@ -3,8 +3,9 @@
  *
  * 检测空文件夹、合并相似文件夹、优化结构
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2026-01-08
+ * @updated 2026-01-09 - 添加语义匹配支持
  */
 
 import type { WorkflowDefinition } from "../types";
@@ -24,7 +25,7 @@ export const folderCleanupWorkflow: WorkflowDefinition = {
   id: "folder_cleanup",
   name: "文件夹清理",
   description: "检测空文件夹、合并相似文件夹、优化结构",
-  version: "1.0.0",
+  version: "1.1.0",
   category: "builtin",
 
   triggers: [
@@ -49,6 +50,18 @@ export const folderCleanupWorkflow: WorkflowDefinition = {
         "分类优化",
         "整理目录结构",
       ],
+      // 语义匹配：覆盖更多自然语言表达
+      semanticPatterns: {
+        referenceTexts: [
+          "我的文件夹有点乱，帮我整理一下",
+          "有些分类好像重复了，能合并吗",
+          "看看有没有空的文件夹可以删掉",
+          "帮我优化一下目录结构",
+          "分类太多太杂了，需要精简",
+          "有些文件夹名字很像，应该合并",
+        ],
+        threshold: 0.77,
+      },
     },
   ],
 
