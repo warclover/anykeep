@@ -113,17 +113,8 @@ export type {
   ImportBatchStatus,
 } from "./import-cache";
 
-// 会话管理器导出
-export {
-  ImportSessionManager,
-  createImportSessionManager,
-} from "./import-session-manager";
-export type {
-  ImportDataItem,
-  SessionManagerConfig,
-  BatchResult,
-  SessionResult,
-} from "./import-session-manager";
+// 注意：ImportSessionManager 和相关类型包含服务端依赖
+// 如需使用，请直接从 "@/lib/browser-bookmark/import-session-manager" 导入
 
 // 链接验证导出
 export {

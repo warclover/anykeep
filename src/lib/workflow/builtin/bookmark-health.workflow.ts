@@ -31,11 +31,20 @@ export const bookmarkHealthWorkflow: WorkflowDefinition = {
     {
       type: "conversation",
       patterns: [
+        // 直接表达
         "检查书签健康",
         "书签巡检",
         "链接检查",
         "检测失效链接",
         "检查死链",
+        // 自然语言变体
+        "检查失效",
+        "哪些链接坏了",
+        "清理无效",
+        "失效链接",
+        "死链检测",
+        "链接是否有效",
+        "书签健康检查",
       ],
     },
   ],

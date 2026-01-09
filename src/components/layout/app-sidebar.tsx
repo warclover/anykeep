@@ -56,7 +56,6 @@ import {
 import { useUnreadCount } from "@/hooks/data";
 import { useBrainSyncStats } from "@/hooks/domain/brain-sync";
 import { MessageBadge } from "@/components/messages";
-import { WorkflowQuickActions } from "@/components/workflow/quick-actions";
 import { cn } from "@/lib/utils";
 import { useSafeNavigation, type PageId } from "@/contexts/navigation-context";
 import { useSafeSidebar, SIDEBAR_WIDTH } from "@/contexts/sidebar-context";
@@ -684,16 +683,6 @@ export function AppSidebar() {
                 groupCandyColors.system,
               )}
             </div>
-
-            {/* 快捷工作流 */}
-            {isVisuallyExpanded && (
-              <div className="border-t dark:border-gray-800 px-2 py-2">
-                <p className="text-xs font-medium text-muted-foreground mb-2 px-3">
-                  快捷工作流
-                </p>
-                <WorkflowQuickActions variant="sidebar" />
-              </div>
-            )}
 
             {/* 版本信息 */}
             <div

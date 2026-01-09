@@ -3,8 +3,10 @@
  *
  * 检测用户输入是否匹配已注册的工作流触发模式
  *
- * @version 1.0.0
+ * @version 1.0.2
  * @since 2026-01-08
+ * @updated 2026-01-09 - 安全修复：添加 ReDoS 防护
+ * @updated 2026-01-09 - 修复缓存独立过期时间问题
  */
 
 import { createClient } from "@/lib/supabase/server";
@@ -13,13 +15,42 @@ import type { WorkflowMatch, WorkflowTriggerPattern } from "./types";
 import type { WorkflowDefinition } from "../types";
 
 /**
+ * 缓存条目接口
+ */
+interface CacheEntry {
+  data: WorkflowDefinition[];
+  expiresAt: number;
+}
+
+/**
+ * 正则表达式安全配置
+ */
+const REGEX_SECURITY = {
+  /** 最大正则表达式长度 */
+  MAX_PATTERN_LENGTH: 200,
+  /** 正则执行超时警告阈值（毫秒） */
+  EXECUTION_WARNING_MS: 50,
+  /** 危险的回溯模式（ReDoS 风险） */
+  DANGEROUS_PATTERNS: [
+    // 嵌套量词: (a+)+, (a*)*
+    /\([^)]*[+*][^)]*\)[+*]/,
+    // 重叠的可选组: (a|a)+
+    /\([^|)]+\|[^|)]+\)\+/,
+    // 过多的量词组合: .*.*.*
+    /(\.\*){3,}/,
+    // 嵌套的捕获组带量词: ((a)+)+
+    /\(\([^)]+\)\+\)\+/,
+  ],
+} as const;
+
+/**
  * 工作流意图匹配器
  *
  * 检测用户输入是否匹配已注册的工作流触发模式
  */
 export class WorkflowIntentMatcher {
-  private patternCache: Map<string, WorkflowDefinition[]> = new Map();
-  private cacheExpiry: number = 0;
+  // 修复：使用带独立过期时间的缓存条目
+  private patternCache: Map<string, CacheEntry> = new Map();
   private readonly CACHE_TTL_MS = 5 * 60 * 1000; // 5 分钟
   private readonly DEFAULT_MIN_CONFIDENCE = 0.7;
 
@@ -206,15 +237,48 @@ export class WorkflowIntentMatcher {
 
   /**
    * 正则模式匹配
+   *
+   * 安全修复：添加 ReDoS 防护
    */
   private evaluateRegexPattern(
     message: string,
     pattern: string,
     weight: number,
   ): { confidence: number; params?: Record<string, string> } | null {
+    // 安全检查 1: 长度限制
+    if (pattern.length > REGEX_SECURITY.MAX_PATTERN_LENGTH) {
+      logger.warn(
+        {
+          patternLength: pattern.length,
+          maxLength: REGEX_SECURITY.MAX_PATTERN_LENGTH,
+        },
+        "WorkflowIntentMatcher: Regex pattern too long, rejected",
+      );
+      return null;
+    }
+
+    // 安全检查 2: 危险模式检测
+    if (this.hasReDoSRisk(pattern)) {
+      logger.warn(
+        { pattern },
+        "WorkflowIntentMatcher: Potentially dangerous regex pattern (ReDoS risk), rejected",
+      );
+      return null;
+    }
+
     try {
+      const startTime = performance.now();
       const regex = new RegExp(pattern, "i");
       const match = message.match(regex);
+      const elapsed = performance.now() - startTime;
+
+      // 安全检查 3: 执行时间监控
+      if (elapsed > REGEX_SECURITY.EXECUTION_WARNING_MS) {
+        logger.warn(
+          { pattern, elapsedMs: Math.round(elapsed) },
+          "WorkflowIntentMatcher: Regex execution slow",
+        );
+      }
 
       if (match) {
         // 提取命名捕获组作为参数
@@ -239,34 +303,69 @@ export class WorkflowIntentMatcher {
   }
 
   /**
+   * 检测正则表达式是否存在 ReDoS 风险
+   *
+   * 检测已知的危险模式，如嵌套量词、重叠可选组等
+   */
+  private hasReDoSRisk(pattern: string): boolean {
+    for (const dangerousPattern of REGEX_SECURITY.DANGEROUS_PATTERNS) {
+      if (dangerousPattern.test(pattern)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
    * 加载工作流定义（带缓存）
+   *
+   * 安全修复：使用分离查询避免 SQL 注入风险
+   * 修复：每个用户独立的过期时间
    */
   private async loadWorkflows(userId: string): Promise<WorkflowDefinition[]> {
     const cacheKey = userId;
     const now = Date.now();
 
-    if (this.patternCache.has(cacheKey) && this.cacheExpiry > now) {
-      return this.patternCache.get(cacheKey) ?? [];
+    // 修复：检查该用户缓存条目的独立过期时间
+    const cached = this.patternCache.get(cacheKey);
+    if (cached && cached.expiresAt > now) {
+      return cached.data;
     }
 
     const supabase = await createClient();
 
-    // 查询用户可用的工作流（内置 + 自定义）
-    const { data, error } = await supabase
-      .from("workflows")
-      .select("id, name, definition")
-      .or(`category.eq.builtin,user_id.eq.${userId}`)
-      .eq("enabled", true);
+    // 安全修复：分离查询内置工作流和用户工作流，避免字符串拼接
+    const [builtinResult, userResult] = await Promise.all([
+      supabase
+        .from("workflows")
+        .select("id, name, definition")
+        .eq("category", "builtin")
+        .eq("enabled", true),
+      supabase
+        .from("workflows")
+        .select("id, name, definition")
+        .eq("user_id", userId)
+        .eq("enabled", true),
+    ]);
 
-    if (error) {
+    if (builtinResult.error) {
       logger.error(
-        { error },
-        "WorkflowIntentMatcher: Failed to load workflows",
+        { error: builtinResult.error },
+        "WorkflowIntentMatcher: Failed to load builtin workflows",
       );
-      return [];
     }
 
-    const workflows = (data || [])
+    if (userResult.error) {
+      logger.error(
+        { error: userResult.error },
+        "WorkflowIntentMatcher: Failed to load user workflows",
+      );
+    }
+
+    // 合并结果
+    const data = [...(builtinResult.data || []), ...(userResult.data || [])];
+
+    const workflows = data
       .map((row) => ({
         id: row.id as string,
         name: row.name as string,
@@ -277,8 +376,11 @@ export class WorkflowIntentMatcher {
       }))
       .filter((w) => w.triggers?.some((t) => t.type === "conversation"));
 
-    this.patternCache.set(cacheKey, workflows);
-    this.cacheExpiry = now + this.CACHE_TTL_MS;
+    // 修复：存储独立过期时间的缓存条目
+    this.patternCache.set(cacheKey, {
+      data: workflows,
+      expiresAt: now + this.CACHE_TTL_MS,
+    });
 
     return workflows;
   }
@@ -288,7 +390,6 @@ export class WorkflowIntentMatcher {
    */
   clearCache(): void {
     this.patternCache.clear();
-    this.cacheExpiry = 0;
   }
 }
 

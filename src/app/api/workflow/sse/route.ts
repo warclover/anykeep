@@ -3,8 +3,9 @@
  *
  * GET /api/workflow/sse?ids=id1,id2
  *
- * @version 1.0.0
+ * @version 1.0.2
  * @since 2026-01-08
+ * @updated 2026-01-09 - 切换到 Node.js Runtime（依赖链需要 crypto 模块）
  */
 
 import type { NextRequest } from "next/server";
@@ -12,10 +13,15 @@ import { createClient } from "@/lib/supabase/server";
 import { getWorkflowOrchestrator } from "@/lib/workflow/orchestrator";
 import { logger } from "@/lib/logger";
 
-export const runtime = "edge"; // Edge Runtime 支持 SSE
+// 使用 Node.js Runtime（依赖链中有 crypto 模块）
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 /** 最大同时监听的执行 ID 数量 */
 const MAX_EXECUTION_IDS = 10;
+
+/** SSE 连接最大超时时间（毫秒）：5分钟 */
+const MAX_SSE_TIMEOUT_MS = 5 * 60 * 1000;
 
 /** UUID v4 格式正则表达式 */
 const UUID_REGEX =
@@ -85,9 +91,26 @@ export async function GET(request: NextRequest) {
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
       };
 
+      const connectionStartTime = Date.now();
+
       // 定期检查执行状态并推送
       const checkInterval = setInterval(async () => {
         try {
+          // 检查是否超过最大 SSE 连接时间
+          if (Date.now() - connectionStartTime > MAX_SSE_TIMEOUT_MS) {
+            logger.info(
+              { userId: user.id, executionIds, duration: MAX_SSE_TIMEOUT_MS },
+              "SSE connection timeout, closing",
+            );
+            sendEvent({
+              type: "timeout",
+              message: "SSE connection timeout, please reconnect if needed",
+            });
+            clearInterval(checkInterval);
+            controller.close();
+            return;
+          }
+
           const idsToRemove: string[] = [];
 
           for (const executionId of executionIds) {

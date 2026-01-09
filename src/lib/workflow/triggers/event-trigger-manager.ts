@@ -3,8 +3,9 @@
  *
  * 监听和处理工作流事件触发
  *
- * @version 1.0.0
+ * @version 1.0.1
  * @since 2026-01-08
+ * @updated 2026-01-09 - 修复缓存独立过期时间问题
  */
 
 import { createClient } from "@/lib/supabase/server";
@@ -15,6 +16,14 @@ import type { EventTriggerConfig, WorkflowEvent } from "./types";
 import type { WorkflowDefinition } from "../types";
 
 /**
+ * 缓存条目接口
+ */
+interface CacheEntry {
+  data: WorkflowDefinition[];
+  expiresAt: number;
+}
+
+/**
  * 事件触发管理器
  *
  * 监听和处理工作流事件触发
@@ -22,8 +31,8 @@ import type { WorkflowDefinition } from "../types";
 export class EventTriggerManager {
   private orchestrator = getWorkflowOrchestrator();
   private expressionEvaluator = getSafeExpressionEvaluator();
-  private eventWorkflowCache: Map<string, WorkflowDefinition[]> = new Map();
-  private cacheExpiry: number = 0;
+  // 修复：使用带独立过期时间的缓存条目
+  private eventWorkflowCache: Map<string, CacheEntry> = new Map();
   private readonly CACHE_TTL_MS = 5 * 60 * 1000;
 
   // 去重：记录最近处理的事件
@@ -179,6 +188,9 @@ export class EventTriggerManager {
 
   /**
    * 加载事件触发的工作流
+   *
+   * 安全修复：使用分离查询避免 SQL 注入风险
+   * 修复：每个用户独立的过期时间
    */
   private async loadEventTriggeredWorkflows(
     userId: string,
@@ -186,32 +198,57 @@ export class EventTriggerManager {
     const cacheKey = `event:${userId}`;
     const now = Date.now();
 
-    if (this.eventWorkflowCache.has(cacheKey) && this.cacheExpiry > now) {
-      return this.eventWorkflowCache.get(cacheKey) ?? [];
+    // 修复：检查该用户缓存条目的独立过期时间
+    const cached = this.eventWorkflowCache.get(cacheKey);
+    if (cached && cached.expiresAt > now) {
+      return cached.data;
     }
 
     const supabase = await createClient();
 
-    const { data, error } = await supabase
-      .from("workflows")
-      .select("id, definition")
-      .or(`category.eq.builtin,user_id.eq.${userId}`)
-      .eq("enabled", true);
+    // 安全修复：分离查询内置工作流和用户工作流，避免字符串拼接
+    const [builtinResult, userResult] = await Promise.all([
+      supabase
+        .from("workflows")
+        .select("id, definition")
+        .eq("category", "builtin")
+        .eq("enabled", true),
+      supabase
+        .from("workflows")
+        .select("id, definition")
+        .eq("user_id", userId)
+        .eq("enabled", true),
+    ]);
 
-    if (error) {
-      logger.error({ error }, "EventTriggerManager: Failed to load workflows");
-      return [];
+    if (builtinResult.error) {
+      logger.error(
+        { error: builtinResult.error },
+        "EventTriggerManager: Failed to load builtin workflows",
+      );
     }
 
-    const workflows = (data || [])
+    if (userResult.error) {
+      logger.error(
+        { error: userResult.error },
+        "EventTriggerManager: Failed to load user workflows",
+      );
+    }
+
+    // 合并结果
+    const data = [...(builtinResult.data || []), ...(userResult.data || [])];
+
+    const workflows = data
       .map((row) => ({
         id: row.id,
         ...(row.definition as unknown as Omit<WorkflowDefinition, "id">),
       }))
       .filter((w) => w.triggers?.some((t) => t.type === "event"));
 
-    this.eventWorkflowCache.set(cacheKey, workflows);
-    this.cacheExpiry = now + this.CACHE_TTL_MS;
+    // 修复：存储独立过期时间的缓存条目
+    this.eventWorkflowCache.set(cacheKey, {
+      data: workflows,
+      expiresAt: now + this.CACHE_TTL_MS,
+    });
 
     return workflows;
   }
@@ -275,7 +312,6 @@ export class EventTriggerManager {
    */
   clearCache(): void {
     this.eventWorkflowCache.clear();
-    this.cacheExpiry = 0;
   }
 }
 

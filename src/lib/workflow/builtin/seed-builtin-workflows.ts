@@ -7,13 +7,15 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
-import { bookmarkHealthSimpleWorkflow } from "./bookmark-health-simple.workflow";
+import { builtinWorkflows } from "./index";
 import type { WorkflowDefinition } from "../types";
 
 /**
  * 内置工作流列表
+ *
+ * 使用 index.ts 导出的完整列表，确保所有工作流都被注册
  */
-const BUILTIN_WORKFLOWS: WorkflowDefinition[] = [bookmarkHealthSimpleWorkflow];
+const BUILTIN_WORKFLOWS: WorkflowDefinition[] = builtinWorkflows;
 
 /**
  * 初始化内置工作流到数据库

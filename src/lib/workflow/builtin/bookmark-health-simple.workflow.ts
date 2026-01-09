@@ -23,7 +23,15 @@ export const bookmarkHealthSimpleWorkflow: WorkflowDefinition = {
   version: "1.0.0",
   category: "builtin",
 
-  triggers: [{ type: "manual" }],
+  triggers: [
+    {
+      type: "manual",
+    },
+    {
+      type: "conversation",
+      patterns: ["快速健康检查", "简单巡检", "快速检测"],
+    },
+  ],
 
   steps: [
     {

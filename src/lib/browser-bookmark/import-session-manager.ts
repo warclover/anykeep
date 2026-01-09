@@ -24,7 +24,6 @@ import type {
   Platform,
 } from "./types";
 import { BATCH_SIZE } from "./constants";
-import { emitBrowserBookmarkImportCompleted } from "@/lib/workflow/triggers/event-emitter";
 import { logger } from "@/lib/logger";
 
 // ============================================
@@ -365,17 +364,26 @@ export class ImportSessionManager {
       });
       this.onStatusChange?.("completed");
 
-      // 触发工作流事件
+      // 触发工作流事件（使用动态导入避免客户端导入服务端代码）
       const isFirstImport =
         !wasResumed && Object.keys(platformBreakdown).length > 0;
-      await emitBrowserBookmarkImportCompleted(this.userId, {
-        totalImported: finalStats.totalSuccess,
-        foldersCreated: 0, // 可从 session 中获取
-        isFirstImport,
-      }).catch((err) => {
-        // 事件触发失败不影响主流程
-        logger.warn({ error: err }, "Failed to emit workflow event");
-      });
+
+      // 仅在服务端环境中触发事件
+      if (typeof window === "undefined") {
+        try {
+          const { emitBrowserBookmarkImportCompleted } = await import(
+            "@/lib/workflow/triggers/event-emitter"
+          );
+          await emitBrowserBookmarkImportCompleted(this.userId, {
+            totalImported: finalStats.totalSuccess,
+            foldersCreated: 0, // 可从 session 中获取
+            isFirstImport,
+          });
+        } catch (err) {
+          // 事件触发失败不影响主流程
+          logger.warn({ error: err }, "Failed to emit workflow event");
+        }
+      }
 
       // 通知完成
       this.notifyProgress({

@@ -3,13 +3,15 @@
  *
  * PATCH: 切换工作流的启用/禁用状态
  *
- * @version 1.0.0
+ * @version 1.0.1
  * @since 2026-01-08
+ * @updated 2026-01-09 - 禁用时自动取消执行中的实例
  */
 
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getWorkflowOrchestrator } from "@/lib/workflow/orchestrator";
 import { logger } from "@/lib/logger";
 
 interface ToggleRequestBody {
@@ -94,8 +96,52 @@ export async function PATCH(
       );
     }
 
+    // 当禁用工作流时，取消所有正在执行的实例
+    let cancelledCount = 0;
+    if (!enabled) {
+      const orchestrator = getWorkflowOrchestrator();
+
+      // 查询该工作流的所有运行中执行记录
+      const { data: runningExecutions } = await supabase
+        .from("workflow_executions")
+        .select("id")
+        .eq("workflow_id", workflowId)
+        .eq("status", "running");
+
+      if (runningExecutions && runningExecutions.length > 0) {
+        for (const execution of runningExecutions) {
+          try {
+            const cancelled = await orchestrator.cancelWorkflow(execution.id);
+            if (cancelled) {
+              cancelledCount++;
+            }
+          } catch (cancelError) {
+            logger.warn(
+              { executionId: execution.id, error: cancelError },
+              "Failed to cancel workflow execution",
+            );
+          }
+        }
+
+        logger.info(
+          {
+            workflowId,
+            totalRunning: runningExecutions.length,
+            cancelled: cancelledCount,
+          },
+          "Cancelled running executions after workflow disabled",
+        );
+      }
+    }
+
     logger.info(
-      { workflowId, workflowName: workflow.name, enabled, userId: user.id },
+      {
+        workflowId,
+        workflowName: workflow.name,
+        enabled,
+        userId: user.id,
+        cancelledCount,
+      },
       "Workflow toggled",
     );
 
@@ -106,6 +152,7 @@ export async function PATCH(
         name: workflow.name,
         enabled,
       },
+      cancelledExecutions: cancelledCount,
     });
   } catch (error) {
     logger.error(

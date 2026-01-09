@@ -34,11 +34,20 @@ export const folderCleanupWorkflow: WorkflowDefinition = {
     {
       type: "conversation",
       patterns: [
+        // 直接表达
         "清理文件夹",
         "整理文件夹",
         "文件夹优化",
         "合并文件夹",
         "删除空文件夹",
+        // 自然语言变体
+        "优化目录",
+        "合并分类",
+        "清理重复分类",
+        "文件夹整理",
+        "目录清理",
+        "分类优化",
+        "整理目录结构",
       ],
     },
   ],

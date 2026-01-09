@@ -39,7 +39,20 @@ export const newUserOnboardingWorkflow: WorkflowDefinition = {
     },
     {
       type: "conversation",
-      patterns: ["整理导入的书签", "导入书签整理", "帮我整理刚导入的"],
+      patterns: [
+        // 直接表达
+        "整理导入的书签",
+        "导入书签整理",
+        "帮我整理刚导入的",
+        // 自然语言变体
+        "帮我整理",
+        "刚导入怎么整理",
+        "整理新导入",
+        "处理导入数据",
+        "导入后整理",
+        "快速整理书签",
+        "自动整理",
+      ],
     },
   ],
 

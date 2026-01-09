@@ -101,6 +101,32 @@ export interface ToolStepConfig {
 }
 
 /**
+ * Aggregate 步骤配置
+ */
+export interface AggregateStepConfig {
+  /** 要聚合的步骤 ID 列表（可选，默认聚合所有已完成步骤） */
+  sourceSteps?: string[];
+  /** 聚合模式 */
+  mode?: "collect" | "merge" | "report";
+  /** 报告模板（mode 为 report 时使用） */
+  template?: string;
+}
+
+/**
+ * Notification 步骤配置
+ */
+export interface NotificationStepConfig {
+  /** 通知类型 */
+  notificationType: "in_app" | "email" | "push";
+  /** 通知标题 */
+  title: string;
+  /** 通知内容模板（支持 {{变量}} 替换） */
+  bodyTemplate: string;
+  /** 通知优先级 */
+  priority?: "low" | "normal" | "high";
+}
+
+/**
  * 工作流配置
  */
 export interface WorkflowConfig {

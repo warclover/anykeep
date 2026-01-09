@@ -40,7 +40,20 @@ export const periodicBackupWorkflow: WorkflowDefinition = {
     },
     {
       type: "conversation",
-      patterns: ["备份数据", "导出备份", "数据备份", "全量导出"],
+      patterns: [
+        // 直接表达
+        "备份数据",
+        "导出备份",
+        "数据备份",
+        "全量导出",
+        // 自然语言变体
+        "备份书签",
+        "导出所有数据",
+        "生成备份",
+        "备份收藏",
+        "导出全部",
+        "创建备份",
+      ],
     },
   ],
 

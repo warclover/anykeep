@@ -1,10 +1,12 @@
 /**
  * DistributedLockManager 单元测试
  *
- * @version 1.0.0
+ * @version 1.0.1
  * @since 2026-01-08
+ * @updated 2026-01-09 - 适配 LockHandle 接口安全修复
  */
 
+import type { LockHandle } from "../distributed-lock";
 import { DistributedLockManager } from "../distributed-lock";
 
 // Mock Supabase
@@ -41,12 +43,16 @@ describe("DistributedLockManager", () => {
   });
 
   describe("tryAcquire", () => {
-    it("should acquire lock successfully", async () => {
-      mockRpc.mockResolvedValue({ data: true, error: null });
+    it("should acquire lock successfully and return LockHandle", async () => {
+      const mockInstanceId = "test-instance-123";
+      mockRpc.mockResolvedValue({ data: mockInstanceId, error: null });
 
       const result = await lockManager.tryAcquire("test-lock");
 
-      expect(result).toBe(true);
+      expect(result).not.toBeNull();
+      expect(result?.lockKey).toBe("test-lock");
+      expect(result?.instanceId).toBe(mockInstanceId);
+      expect(typeof result?.lockId).toBe("number");
       expect(mockRpc).toHaveBeenCalledWith(
         "try_acquire_workflow_lock",
         expect.objectContaining({
@@ -55,33 +61,35 @@ describe("DistributedLockManager", () => {
       );
     });
 
-    it("should fail to acquire when lock is held", async () => {
-      mockRpc.mockResolvedValue({ data: false, error: null });
+    it("should return null when lock is held", async () => {
+      mockRpc.mockResolvedValue({ data: null, error: null });
 
       const result = await lockManager.tryAcquire("test-lock", {
         maxRetries: 1,
         retryIntervalMs: 10,
       });
 
-      expect(result).toBe(false);
+      expect(result).toBeNull();
     });
 
-    it("should retry on error", async () => {
+    it("should retry on error and return LockHandle on success", async () => {
+      const mockInstanceId = "test-instance-456";
       mockRpc
         .mockRejectedValueOnce(new Error("Network error"))
-        .mockResolvedValue({ data: true, error: null });
+        .mockResolvedValue({ data: mockInstanceId, error: null });
 
       const result = await lockManager.tryAcquire("test-lock", {
         maxRetries: 2,
         retryIntervalMs: 10,
       });
 
-      expect(result).toBe(true);
+      expect(result).not.toBeNull();
+      expect(result?.instanceId).toBe(mockInstanceId);
       expect(mockRpc).toHaveBeenCalledTimes(2);
     });
 
     it("should respect custom TTL", async () => {
-      mockRpc.mockResolvedValue({ data: true, error: null });
+      mockRpc.mockResolvedValue({ data: "instance-id", error: null });
 
       await lockManager.tryAcquire("test-lock", { ttlMs: 30000 });
 
@@ -95,32 +103,62 @@ describe("DistributedLockManager", () => {
   });
 
   describe("release", () => {
-    it("should release lock successfully", async () => {
-      mockRpc.mockResolvedValue({ data: null, error: null });
+    it("should release lock successfully with LockHandle", async () => {
+      mockRpc.mockResolvedValue({ data: true, error: null });
 
-      await lockManager.release("test-lock");
+      const handle: LockHandle = {
+        lockKey: "test-lock",
+        lockId: 123456,
+        instanceId: "test-instance-789",
+      };
 
+      const result = await lockManager.release(handle);
+
+      expect(result).toBe(true);
       expect(mockRpc).toHaveBeenCalledWith(
         "release_workflow_lock",
         expect.objectContaining({
           p_lock_key: "test-lock",
+          p_lock_id: 123456,
+          p_instance_id: "test-instance-789",
         }),
       );
+    });
+
+    it("should return false when lock not found or owned by another instance", async () => {
+      mockRpc.mockResolvedValue({ data: false, error: null });
+
+      const handle: LockHandle = {
+        lockKey: "test-lock",
+        lockId: 123456,
+        instanceId: "wrong-instance",
+      };
+
+      const result = await lockManager.release(handle);
+
+      expect(result).toBe(false);
     });
 
     it("should handle release errors gracefully", async () => {
       mockRpc.mockRejectedValue(new Error("Release failed"));
 
-      // 不应抛出异常
-      await expect(lockManager.release("test-lock")).resolves.not.toThrow();
+      const handle: LockHandle = {
+        lockKey: "test-lock",
+        lockId: 123456,
+        instanceId: "test-instance",
+      };
+
+      // 不应抛出异常，返回 false
+      const result = await lockManager.release(handle);
+      expect(result).toBe(false);
     });
   });
 
   describe("withLock", () => {
     it("should execute operation when lock acquired", async () => {
       mockRpc
-        .mockResolvedValueOnce({ data: true, error: null }) // acquire
-        .mockResolvedValueOnce({ data: null, error: null }); // release
+        .mockResolvedValueOnce({ data: "instance-id", error: null }) // acquire
+        .mockResolvedValueOnce({ data: true, error: null }); // release
 
       const operation = jest.fn(() => Promise.resolve("result"));
 
@@ -131,7 +169,7 @@ describe("DistributedLockManager", () => {
     });
 
     it("should return null when lock not acquired", async () => {
-      mockRpc.mockResolvedValue({ data: false, error: null });
+      mockRpc.mockResolvedValue({ data: null, error: null });
 
       const operation = jest.fn(() => Promise.resolve("result"));
 
@@ -146,8 +184,8 @@ describe("DistributedLockManager", () => {
 
     it("should release lock even if operation fails", async () => {
       mockRpc
-        .mockResolvedValueOnce({ data: true, error: null }) // acquire
-        .mockResolvedValueOnce({ data: null, error: null }); // release
+        .mockResolvedValueOnce({ data: "instance-id", error: null }) // acquire
+        .mockResolvedValueOnce({ data: true, error: null }); // release
 
       const operation = jest.fn(() =>
         Promise.reject(new Error("Operation failed")),

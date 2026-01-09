@@ -101,29 +101,46 @@ export class WorkflowOrchestrator {
 
   /**
    * 获取可用的工作流列表
+   *
+   * 安全修复：使用分离查询避免 SQL 注入风险
    */
   async listWorkflows(userId: string): Promise<WorkflowDefinition[]> {
     const supabase = await createClient();
 
-    const { data, error } = await supabase
-      .from("workflows")
-      .select("*")
-      .or(`category.eq.builtin,user_id.eq.${userId}`)
-      .eq("enabled", true)
-      .order("category", { ascending: true })
-      .order("name", { ascending: true });
+    // 安全修复：分离查询内置工作流和用户工作流，避免字符串拼接
+    const [builtinResult, userResult] = await Promise.all([
+      supabase
+        .from("workflows")
+        .select("*")
+        .eq("category", "builtin")
+        .eq("enabled", true)
+        .order("name", { ascending: true }),
+      supabase
+        .from("workflows")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("enabled", true)
+        .order("name", { ascending: true }),
+    ]);
 
-    if (error) {
+    if (builtinResult.error) {
       logger.error(
-        { error, userId },
-        "WorkflowOrchestrator: Failed to list workflows",
+        { error: builtinResult.error, userId },
+        "WorkflowOrchestrator: Failed to list builtin workflows",
       );
-      return [];
     }
 
-    return (data || []).map(
-      (row) => row.definition as unknown as WorkflowDefinition,
-    );
+    if (userResult.error) {
+      logger.error(
+        { error: userResult.error, userId },
+        "WorkflowOrchestrator: Failed to list user workflows",
+      );
+    }
+
+    // 合并结果：内置工作流优先
+    const data = [...(builtinResult.data || []), ...(userResult.data || [])];
+
+    return data.map((row) => row.definition as unknown as WorkflowDefinition);
   }
 
   /**
