@@ -65,3 +65,15 @@ export {
   type EnhancedSearchInput,
   type EnhancedSearchOutput,
 } from "./enhanced-search.service";
+
+// ChineseNumberParser 导出 (v2.9.0 新增)
+export {
+  parseChineseNumber,
+  extractQuantity,
+  hasQuantityExpression,
+  removeQuantityExpression,
+  CHINESE_NUMBER_UTILS,
+  CHINESE_NUMBER_CHARS,
+  CHINESE_FUZZY_WORDS,
+  type QuantityExtractionResult,
+} from "./chinese-number-parser";

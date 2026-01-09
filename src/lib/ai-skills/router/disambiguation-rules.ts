@@ -62,6 +62,54 @@ export interface DisambiguationRulesConfig {
  */
 export const DISAMBIGUATION_RULES: DisambiguationRule[] = [
   // ============================================
+  // Phase 1: digest vs synthesis 消歧规则 (2026-01-09)
+  // ============================================
+
+  // 规则: 融合信号 → synthesis
+  // "结合...写..."、"融合...生成..." → 综合性输出
+  {
+    id: "digest-vs-synthesis-fusion",
+    conflicts: ["create"],
+    pattern: /(结合|融合|整合|汇总|合成|归纳).{0,10}(写|生成|做|成)/,
+    winner: "create",
+    priority: 105,
+    reason: "融合动词 + 创作动词 → 综合性输出 (synthesis)",
+  },
+
+  // 规则: "一篇/一份" 结构 → synthesis
+  // "写一篇..."、"整理成一份..." → 单一综合输出
+  {
+    id: "digest-vs-synthesis-single-output",
+    conflicts: ["create"],
+    pattern: /(写|生成|做|形成|整理成).{0,5}(一篇|一份|一个)/,
+    winner: "create",
+    priority: 100,
+    reason: "单一输出期望 → 综合性文章 (synthesis)",
+  },
+
+  // 规则: 列表信号 → digest
+  // "逐条..."、"分别..."、"每篇..." → 独立摘要
+  {
+    id: "digest-vs-synthesis-list",
+    conflicts: ["create"],
+    pattern: /(逐条|分别|每篇|每个|列出|要点)/,
+    winner: "create",
+    priority: 100,
+    reason: "列表信号 → 独立摘要 (digest)",
+  },
+
+  // 规则: organize vs synthesis (整理成文章)
+  // "整理成文章"、"梳理成报告" → 内容合成
+  {
+    id: "organize-vs-synthesis-article",
+    conflicts: ["organize", "create"],
+    pattern: /(整理|梳理).{0,5}(成|为).{0,5}(文章|报告|笔记|文档)/,
+    winner: "create",
+    priority: 95,
+    reason: "整理成文章 → 内容合成 (synthesis) 而非书签整理",
+  },
+
+  // ============================================
   // 语法结构规则（高优先级 100+）
   // ============================================
 
