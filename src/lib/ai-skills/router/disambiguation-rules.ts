@@ -62,6 +62,21 @@ export interface DisambiguationRulesConfig {
  */
 export const DISAMBIGUATION_RULES: DisambiguationRule[] = [
   // ============================================
+  // Phase 2: query vs synthesis 消歧规则 (2026-01-09)
+  // ============================================
+
+  // 规则: 时间词 + 整合动词 → synthesis 优先
+  // "把最近五篇整合一下" → 内容合成而非时间查询
+  {
+    id: "query-vs-synthesis-time-fusion",
+    conflicts: ["query", "create"],
+    pattern: /(最近|前).{0,10}(整合|合并|综合|融合)/,
+    winner: "create",
+    priority: 110,
+    reason: "时间词+整合动词 → 内容合成 (synthesis) 而非时间查询",
+  },
+
+  // ============================================
   // Phase 1: digest vs synthesis 消歧规则 (2026-01-09)
   // ============================================
 
