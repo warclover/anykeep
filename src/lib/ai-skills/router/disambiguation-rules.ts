@@ -62,6 +62,21 @@ export interface DisambiguationRulesConfig {
  */
 export const DISAMBIGUATION_RULES: DisambiguationRule[] = [
   // ============================================
+  // Phase 3: organize vs action 消歧规则 (2026-01-09)
+  // ============================================
+
+  // 规则 P3-D1: 整理 vs 删除
+  // "清理重复的书签" → 组织操作（去重）而非删除操作
+  {
+    id: "organize-vs-delete-cleanup",
+    conflicts: ["organize", "action"],
+    pattern: /(清理|整理).{0,5}(重复|混乱|杂乱|凌乱)/,
+    winner: "organize",
+    priority: 105,
+    reason: "清理/整理 + 混乱状态描述 → 组织操作（dedupe/cleanup）而非删除操作",
+  },
+
+  // ============================================
   // Phase 2: query vs synthesis 消歧规则 (2026-01-09)
   // ============================================
 
