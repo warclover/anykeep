@@ -88,6 +88,13 @@ const DEFAULT_SKILL_MAPPINGS: Record<string, OrchestrationSkillMapping> = {
     minComplexity: "medium",
     enabled: true, // 已实现
   },
+  "organize:merge": {
+    // Phase 1 新增：合并/组合操作
+    skillId: "batch_organize",
+    name: "合并整理助手",
+    minComplexity: "medium",
+    enabled: true,
+  },
   "organize:dedupe": {
     skillId: "duplicate_cleanup",
     name: "重复清理助手",
@@ -225,6 +232,13 @@ const DEFAULT_SKILL_MAPPINGS: Record<string, OrchestrationSkillMapping> = {
   "query:folder_recommend": {
     skillId: "folder_recommend",
     name: "文件夹智能推荐",
+    enabled: true,
+  },
+
+  // Phase 1 新增：链接状态检查（query 类型）
+  "query:link_status": {
+    skillId: "link_health_check",
+    name: "链接状态检查",
     enabled: true,
   },
 

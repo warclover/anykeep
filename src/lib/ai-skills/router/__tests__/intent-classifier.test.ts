@@ -213,6 +213,159 @@ describe("IntentClassifier", () => {
         expect(result.subType).toBe("filter");
       });
     });
+
+    // ============================================
+    // Phase 1 新增规则测试 (2026-01-09)
+    // ============================================
+
+    describe("Phase 1 新增规则", () => {
+      describe("organize:merge - 合并/组合操作", () => {
+        it("should classify '放一起' as organize:merge", async () => {
+          const result = await classifier.classify("把这几个放一起");
+
+          expect(result.type).toBe("organize");
+          expect(result.subType).toBe("merge");
+        });
+
+        it("should classify '合并书签' as organize:merge", async () => {
+          const result = await classifier.classify("合并这些书签");
+
+          expect(result.type).toBe("organize");
+          expect(result.subType).toBe("merge");
+        });
+
+        it("should classify '打包收藏' as organize:merge", async () => {
+          const result = await classifier.classify("打包这些收藏");
+
+          expect(result.type).toBe("organize");
+          expect(result.subType).toBe("merge");
+        });
+      });
+
+      describe("learn:path - 阅读计划", () => {
+        it("should classify '阅读计划' as learn:path", async () => {
+          const result = await classifier.classify("帮我制定阅读计划");
+
+          expect(result.type).toBe("learn");
+          expect(result.subType).toBe("path");
+        });
+
+        it("should classify '读书计划' as learn:path", async () => {
+          const result = await classifier.classify("我的读书计划");
+
+          expect(result.type).toBe("learn");
+          expect(result.subType).toBe("path");
+        });
+      });
+
+      describe("query:link_status - 链接状态检查", () => {
+        it("should classify '链接还能用吗' as query:link_status", async () => {
+          const result = await classifier.classify("这个链接还能用吗");
+
+          expect(result.type).toBe("query");
+          expect(result.subType).toBe("link_status");
+        });
+
+        it("should classify '链接有效' as query:link_status", async () => {
+          const result = await classifier.classify("链接还有效吗");
+
+          expect(result.type).toBe("query");
+          expect(result.subType).toBe("link_status");
+        });
+
+        it("should classify '能访问吗' as query:link_status", async () => {
+          const result = await classifier.classify("能访问吗");
+
+          expect(result.type).toBe("query");
+          expect(result.subType).toBe("link_status");
+        });
+      });
+
+      describe("action:read_later - 稍后阅读", () => {
+        it("should classify '稍后阅读' as action:read_later", async () => {
+          const result = await classifier.classify("稍后阅读");
+
+          expect(result.type).toBe("action");
+          expect(result.subType).toBe("read_later");
+        });
+
+        it("should classify '待阅' as action:read_later", async () => {
+          const result = await classifier.classify("添加到待阅");
+
+          expect(result.type).toBe("action");
+          expect(result.subType).toBe("read_later");
+        });
+
+        it("should classify 'read later' as action:read_later", async () => {
+          const result = await classifier.classify("read later");
+
+          expect(result.type).toBe("action");
+          expect(result.subType).toBe("read_later");
+        });
+      });
+
+      describe("action:reminder - 设置提醒", () => {
+        it("should classify '提醒我看' as action:reminder", async () => {
+          const result = await classifier.classify("提醒我看这个");
+
+          expect(result.type).toBe("action");
+          expect(result.subType).toBe("reminder");
+        });
+
+        it("should classify '设置提醒' as action:reminder", async () => {
+          const result = await classifier.classify("设置提醒");
+
+          expect(result.type).toBe("action");
+          expect(result.subType).toBe("reminder");
+        });
+
+        it("should classify '加入待办' as action:reminder", async () => {
+          const result = await classifier.classify("加入待办");
+
+          expect(result.type).toBe("action");
+          expect(result.subType).toBe("reminder");
+        });
+      });
+
+      describe("action:mark_read - 标记已读", () => {
+        it("should classify '标记已读' as action:mark_read", async () => {
+          const result = await classifier.classify("标记已读");
+
+          expect(result.type).toBe("action");
+          expect(result.subType).toBe("mark_read");
+        });
+
+        it("should classify '已经看过' as action:mark_read", async () => {
+          const result = await classifier.classify("这个已经看过了");
+
+          expect(result.type).toBe("action");
+          expect(result.subType).toBe("mark_read");
+        });
+      });
+
+      describe("action:unsave - 取消收藏", () => {
+        it("should classify '取消收藏' as action:unsave", async () => {
+          const result = await classifier.classify("取消收藏");
+
+          expect(result.type).toBe("action");
+          expect(result.subType).toBe("unsave");
+        });
+
+        it("should classify '移出收藏' as action:unsave", async () => {
+          const result = await classifier.classify("移出收藏");
+
+          expect(result.type).toBe("action");
+          expect(result.subType).toBe("unsave");
+        });
+
+        it("should classify '从收藏移除' as action:unsave", async () => {
+          const result = await classifier.classify("从收藏中移除");
+
+          expect(result.type).toBe("action");
+          expect(result.subType).toBe("unsave");
+        });
+      });
+    });
   });
 
   describe("entity extraction", () => {
