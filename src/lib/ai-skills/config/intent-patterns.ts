@@ -253,6 +253,92 @@ export const INTENT_PATTERNS: IntentPattern[] = [
   },
 
   // ============================================
+  // 智能列表类（权重 55-65）
+  // ============================================
+  {
+    type: "create",
+    subType: "smart_list",
+    pattern: "创建智能列表|新建智能列表|添加智能列表|建个智能列表",
+    weight: 65,
+    complexity: "medium",
+    description: "创建智能列表",
+  },
+  {
+    type: "query",
+    subType: "smart_list",
+    pattern: "我的智能列表|有哪些智能列表|智能列表有什么|查看智能列表",
+    weight: 55,
+    complexity: "simple",
+    description: "查看智能列表",
+  },
+  {
+    type: "action",
+    subType: "smart_list",
+    pattern: "编辑智能列表|修改智能列表|更新智能列表|删除智能列表",
+    weight: 58,
+    complexity: "simple",
+    description: "管理智能列表",
+  },
+
+  // ============================================
+  // MD 收藏类（权重 60-72）
+  // ============================================
+  {
+    type: "create",
+    subType: "md_collection",
+    pattern:
+      "保存.{0,5}收藏|存.{0,5}笔记|保存.{0,5}MD|创建.{0,5}笔记|存到收藏|存一个笔记|记一下|记录一下",
+    weight: 72,
+    complexity: "medium",
+    description: "创建 MD 收藏",
+  },
+  {
+    type: "query",
+    subType: "md_collection",
+    pattern: "我的笔记|MD收藏|笔记收藏|查看笔记|有哪些笔记",
+    weight: 55,
+    complexity: "simple",
+    description: "查看 MD 收藏",
+  },
+  {
+    type: "action",
+    subType: "md_collection",
+    pattern: "编辑笔记|修改笔记|更新笔记|删除笔记",
+    weight: 58,
+    complexity: "simple",
+    description: "管理 MD 收藏",
+  },
+
+  // ============================================
+  // 导入类（权重 60-68）
+  // ============================================
+  {
+    type: "create",
+    subType: "import",
+    pattern: "导入书签|导入收藏|从.{0,10}导入|import",
+    weight: 68,
+    complexity: "medium",
+    description: "导入书签/收藏",
+  },
+  {
+    type: "create",
+    subType: "import_browser",
+    pattern:
+      "导入浏览器书签|导入Chrome|导入Edge|导入Firefox|导入Safari|从浏览器导入",
+    weight: 70,
+    complexity: "medium",
+    description: "导入浏览器书签",
+  },
+  {
+    type: "create",
+    subType: "import_wechat",
+    pattern: "导入微信|从微信导入|导入公众号",
+    weight: 65,
+    complexity: "medium",
+    description: "导入微信文章",
+  },
+
+  // ============================================
   // 闲聊类（权重 30-40）
   // ============================================
   {

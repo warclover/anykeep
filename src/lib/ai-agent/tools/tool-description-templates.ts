@@ -894,6 +894,21 @@ export const SMART_LIST_TOOL_DESCRIPTIONS = {
  * MDCollection 类工具增强描述
  */
 export const MD_COLLECTION_TOOL_DESCRIPTIONS = {
+  create_md_collection: buildToolDescription({
+    core: "创建新的 MD 收藏，将 Markdown 内容保存到用户的收藏库。",
+    scenarios: [
+      '"把这个总结保存到收藏"',
+      '"存一个笔记"',
+      '"保存为MD收藏"',
+      '"创建一个笔记/文档"',
+    ],
+    notes: [
+      "内容类型支持：article(文章)、note(笔记)、reference(参考资料)、other(其他)",
+      "可指定文件夹和标签",
+      "标题和内容为必填项",
+    ],
+  }),
+
   list_md_collections: buildToolDescription({
     core: "获取所有 Markdown 收藏。",
     scenarios: ['"我的MD收藏有哪些"', '"查看笔记收藏"'],

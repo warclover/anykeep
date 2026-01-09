@@ -231,6 +231,90 @@ export const SKILL_MAPPINGS: SkillMapping[] = [
   },
 
   // ============================================
+  // 智能列表类 → 原子模式（直接调用 Tools）
+  // ============================================
+  {
+    key: "create:smart_list",
+    skillId: "search",
+    name: "创建智能列表",
+    mode: "atomic",
+    enabled: true,
+    priority: 65,
+  },
+  {
+    key: "query:smart_list",
+    skillId: "search",
+    name: "查看智能列表",
+    mode: "atomic",
+    enabled: true,
+    priority: 55,
+  },
+  {
+    key: "action:smart_list",
+    skillId: "search",
+    name: "管理智能列表",
+    mode: "atomic",
+    enabled: true,
+    priority: 58,
+  },
+
+  // ============================================
+  // MD 收藏类 → 原子模式（直接调用 Tools）
+  // ============================================
+  {
+    key: "create:md_collection",
+    skillId: "search",
+    name: "创建 MD 收藏",
+    mode: "atomic",
+    enabled: true,
+    priority: 72,
+  },
+  {
+    key: "query:md_collection",
+    skillId: "search",
+    name: "查看 MD 收藏",
+    mode: "atomic",
+    enabled: true,
+    priority: 55,
+  },
+  {
+    key: "action:md_collection",
+    skillId: "search",
+    name: "管理 MD 收藏",
+    mode: "atomic",
+    enabled: true,
+    priority: 58,
+  },
+
+  // ============================================
+  // 导入类 → 原子模式（直接调用 Tools）
+  // ============================================
+  {
+    key: "create:import",
+    skillId: "search",
+    name: "导入书签",
+    mode: "atomic",
+    enabled: true,
+    priority: 68,
+  },
+  {
+    key: "create:import_browser",
+    skillId: "search",
+    name: "导入浏览器书签",
+    mode: "atomic",
+    enabled: true,
+    priority: 70,
+  },
+  {
+    key: "create:import_wechat",
+    skillId: "search",
+    name: "导入微信文章",
+    mode: "atomic",
+    enabled: true,
+    priority: 65,
+  },
+
+  // ============================================
   // 查询类 → 原子模式
   // ============================================
   {
@@ -311,13 +395,28 @@ export const SKILL_MAPPINGS: SkillMapping[] = [
     priority: 70,
   },
   // 操作类通配符兜底
+  // 注意：对于未被其他规则匹配的 action 意图，交由 AI Agent 直接处理
   {
     key: "action:*",
-    skillId: "search",
+    skillId: "chat",
     name: "操作",
     mode: "atomic",
     enabled: true,
     priority: 30,
+  },
+
+  // ============================================
+  // 过滤/筛选类 → 原子模式
+  // 注意：refine 意图用于对搜索结果的二次筛选，
+  // 需要上下文中有 lastSearchResults，UnifiedEngine 会自动注入上下文
+  // ============================================
+  {
+    key: "refine:*",
+    skillId: "search",
+    name: "筛选结果",
+    mode: "atomic",
+    enabled: true,
+    priority: 25,
   },
 
   // ============================================
