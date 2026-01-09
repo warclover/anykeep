@@ -1,50 +1,59 @@
 /**
  * EventTriggerManager 单元测试
  *
- * @version 1.0.0
+ * @version 1.0.1
  * @since 2026-01-08
+ * @updated 2026-01-09 - 更新 mock 适配分离查询模式
  */
 
 import { EventTriggerManager } from "../event-trigger-manager";
 import type { WorkflowEvent } from "../types";
 
-// Mock Supabase
+// Mock workflow data
+const mockWorkflowData = [
+  {
+    id: "workflow-1",
+    definition: {
+      id: "test-workflow",
+      name: "Test Workflow",
+      triggers: [
+        {
+          type: "event",
+          eventType: "browser_bookmark_import_completed",
+          condition: "event.isFirstImport == true",
+          enabled: true,
+        },
+      ],
+      steps: [],
+      config: {
+        timeout: 60000,
+        notifyOnComplete: true,
+        notifyOnFailure: true,
+      },
+    },
+  },
+];
+
+// Mock Supabase - 适配分离查询模式（builtin + user workflows）
 jest.mock("@/lib/supabase/server", () => ({
   createClient: jest.fn(() =>
     Promise.resolve({
       from: jest.fn(() => ({
-        select: jest.fn(() => ({
-          or: jest.fn(() => ({
-            eq: jest.fn(() =>
-              Promise.resolve({
-                data: [
-                  {
-                    id: "workflow-1",
-                    definition: {
-                      id: "test-workflow",
-                      name: "Test Workflow",
-                      triggers: [
-                        {
-                          type: "event",
-                          eventType: "browser_bookmark_import_completed",
-                          condition: "event.isFirstImport == true",
-                          enabled: true,
-                        },
-                      ],
-                      steps: [],
-                      config: {
-                        timeout: 60000,
-                        notifyOnComplete: true,
-                        notifyOnFailure: true,
-                      },
-                    },
-                  },
-                ],
-                error: null,
-              }),
-            ),
-          })),
-        })),
+        select: jest.fn(() => {
+          // 创建可链式调用的 mock
+          const createChainableEq = (data: unknown[]) => {
+            const eqFn = jest.fn(() => ({
+              eq: eqFn,
+              then: (resolve: (value: unknown) => unknown) =>
+                resolve({ data, error: null }),
+            }));
+            return eqFn;
+          };
+
+          return {
+            eq: createChainableEq(mockWorkflowData),
+          };
+        }),
       })),
     }),
   ),

@@ -418,10 +418,11 @@ describe("WorkflowIntentMatcher", () => {
     it("should clear cache", () => {
       matcher.clearCache();
 
-      // Verify cache is cleared by checking internal state
-      expect((matcher as unknown as { cacheExpiry: number }).cacheExpiry).toBe(
-        0,
-      );
+      // Verify cache is cleared by checking internal state (patternCache Map should be empty)
+      expect(
+        (matcher as unknown as { patternCache: Map<string, unknown> })
+          .patternCache.size,
+      ).toBe(0);
     });
   });
 });
