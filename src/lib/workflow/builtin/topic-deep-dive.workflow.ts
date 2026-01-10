@@ -49,6 +49,15 @@ export const topicDeepDiveWorkflow: WorkflowDefinition = {
         "生成学习计划",
         "知识图谱",
         "主题分析",
+        // Phase 1: 口语化表达扩展
+        "深入学习",
+        "系统研究",
+        "学习路径",
+        "知识体系",
+        "规划学习",
+        "怎么学",
+        "学习计划",
+        "入门路线",
       ],
       // 语义匹配：覆盖更多自然语言表达
       semanticPatterns: {
@@ -59,8 +68,13 @@ export const topicDeepDiveWorkflow: WorkflowDefinition = {
           "把我收藏的相关文章串起来形成知识体系",
           "给我规划一下这个话题的学习顺序",
           "我想看看关于这个主题我都收藏了什么",
+          // Phase 1: 新增语义匹配
+          "这方面的内容怎么学比较好",
+          "帮我规划一下学习顺序",
+          "从哪里开始学起",
+          "给我做个学习大纲",
         ],
-        threshold: 0.75,
+        threshold: 0.72, // 略微降低以覆盖更多口语
       },
     },
   ],

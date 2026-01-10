@@ -15,7 +15,15 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import type { AgentStreamChunk } from "@/lib/ai-agent/core/types";
 import type { PendingConfirmation } from "@/lib/ai-agent/tools/types";
-import type { UnifiedStreamChunk } from "@/lib/ai-skills/output/types";
+import type {
+  UnifiedStreamChunk,
+  DeliverableHeaderChunk,
+  DeliverableChunkData,
+} from "@/lib/ai-skills/output/types";
+import {
+  reassembleChunks,
+  type ChunkBuffer,
+} from "@/lib/ai-skills/output/deliverable-chunker";
 import { confirmationService } from "@/lib/ai-skills/effects";
 
 // ============================================
@@ -314,6 +322,8 @@ export function useAIChat(config: UseAIChatConfig = {}): UseAIChatReturn {
   const lastMessageRef = useRef<string | null>(null);
   const lastOptionsRef = useRef<ChatRequestOptions | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  // Phase 1: 分块接收缓冲区
+  const chunkBuffersRef = useRef<Map<string, ChunkBuffer>>(new Map());
 
   // 消息变化时通知
   useEffect(() => {
@@ -403,6 +413,76 @@ export function useAIChat(config: UseAIChatConfig = {}): UseAIChatReturn {
           }
           break;
 
+        // Phase 1: 大交付物分块接收
+        case "deliverable_header":
+          if (chunk.data) {
+            const headerData = (chunk as DeliverableHeaderChunk).data;
+            // 初始化分块缓冲区
+            chunkBuffersRef.current.set(headerData.id, {
+              header: headerData,
+              chunks: [],
+              receivedSize: 0,
+            });
+            // 可选：通知进度
+            onProgress?.(
+              `接收交付物: ${headerData.title}`,
+              0,
+              `总大小: ${Math.round(headerData.contentSize / 1024)}KB`,
+            );
+          }
+          break;
+
+        case "deliverable_chunk":
+          if (chunk.data) {
+            const chunkData = (chunk as DeliverableChunkData).data;
+            const buffer = chunkBuffersRef.current.get(chunkData.id);
+            if (buffer) {
+              // 累积分块
+              buffer.chunks.push(chunkData.chunkData);
+              buffer.receivedSize += chunkData.chunkSize;
+
+              // 更新接收进度
+              const percent = Math.round(
+                ((chunkData.chunkIndex + 1) / chunkData.totalChunks) * 100,
+              );
+              onProgress?.(
+                `接收交付物: ${buffer.header.title}`,
+                percent,
+                `${chunkData.chunkIndex + 1}/${chunkData.totalChunks} 块`,
+              );
+
+              if (chunkData.isLast) {
+                // 重组完整 deliverable
+                const content = reassembleChunks(
+                  buffer.chunks,
+                  buffer.header.format,
+                );
+                const deliverable = {
+                  id: buffer.header.id,
+                  type: buffer.header.type || "document",
+                  title: buffer.header.title || "交付物",
+                  format: buffer.header.format || "markdown",
+                  content,
+                  downloadable: buffer.header.downloadable,
+                  shareable: buffer.header.shareable,
+                  metadata: buffer.header.metadata,
+                };
+                deliverables.push(deliverable);
+                const updated = {
+                  ...currentMessage,
+                  deliverables: [...deliverables],
+                };
+                updateMessage(updated);
+                setMessages((prev) =>
+                  prev.map((m) => (m.id === messageId ? updated : m)),
+                );
+                // 清理缓冲区
+                chunkBuffersRef.current.delete(chunkData.id);
+              }
+            }
+          }
+          break;
+
         case "suggestions":
           if (chunk.data?.suggestions) {
             // 将 Suggestion 类型映射到 ChatMessage.suggestions 格式
@@ -457,6 +537,30 @@ export function useAIChat(config: UseAIChatConfig = {}): UseAIChatReturn {
         case "error":
           setError(chunk.data?.message || "发生错误");
           setStatus("error");
+          break;
+
+        // Phase 1: 心跳处理
+        case "heartbeat":
+          if (chunk.data) {
+            // 心跳主要用于保持连接活跃，可选更新进度
+            const heartbeatData = chunk.data as {
+              currentStep: string;
+              percent: number;
+              elapsedMs: number;
+            };
+            // 更新进度显示（仅当心跳进度大于当前进度时）
+            if (
+              !currentMessage.progress ||
+              heartbeatData.percent > currentMessage.progress.percent
+            ) {
+              const progressData = {
+                step: heartbeatData.currentStep,
+                percent: heartbeatData.percent,
+                message: `执行中... (${Math.round(heartbeatData.elapsedMs / 1000)}s)`,
+              };
+              setProgress(progressData);
+            }
+          }
           break;
 
         case "thinking":

@@ -35,6 +35,17 @@ import {
   type UnifiedStreamChunk,
   explicitToolRouter,
 } from "@/lib/ai-skills";
+import {
+  DeliverableChunker,
+  CHUNKING_THRESHOLD,
+} from "@/lib/ai-skills/output/deliverable-chunker";
+import type {
+  DeliverableChunk,
+  HeartbeatChunk,
+} from "@/lib/ai-skills/output/types";
+
+/** Heartbeat interval in milliseconds */
+const HEARTBEAT_INTERVAL = 500;
 import { getRequestRegistry } from "@/lib/ai-skills/engine/request-registry";
 import { logger } from "@/lib/logger";
 import { checkRateLimit } from "@/lib/utils/rate-limiter";
@@ -422,6 +433,32 @@ async function handleUnifiedEngine(
 
     const stream = new ReadableStream({
       async start(controller) {
+        // Phase 1: 心跳状态
+        let lastHeartbeatTime = Date.now();
+        let currentStep = "初始化";
+        let currentPercent = 0;
+        const startTime = Date.now();
+
+        // 心跳发送函数
+        const sendHeartbeat = () => {
+          const now = Date.now();
+          if (now - lastHeartbeatTime >= HEARTBEAT_INTERVAL) {
+            const heartbeat: HeartbeatChunk = {
+              type: "heartbeat",
+              data: {
+                currentStep,
+                percent: currentPercent,
+                timestamp: now,
+                elapsedMs: now - startTime,
+              },
+            };
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify(heartbeat)}\n\n`),
+            );
+            lastHeartbeatTime = now;
+          }
+        };
+
         try {
           // 首先发送请求 ID（用于取消）
           const initChunk: UnifiedStreamChunk = {
@@ -440,6 +477,9 @@ async function handleUnifiedEngine(
             contextWithCancellation,
             options,
           )) {
+            // Phase 1: 在处理每个 chunk 前检查是否需要发送心跳
+            sendHeartbeat();
+
             // 检查是否已取消
             if (requestInfo.isCancelled) {
               const cancelledChunk: UnifiedStreamChunk = {
@@ -456,17 +496,49 @@ async function handleUnifiedEngine(
               break;
             }
 
+            // Phase 1: 更新心跳状态（从 progress 块获取）
+            if (chunk.type === "progress" && chunk.data) {
+              currentStep = chunk.data.step || currentStep;
+              currentPercent = chunk.data.percent || currentPercent;
+            }
+
             const data = JSON.stringify(chunk);
 
-            // Debug: 记录 deliverable 块的大小
+            // Phase 1: 大交付物分块传输
             if (chunk.type === "deliverable") {
+              const chunker = new DeliverableChunker();
+              const deliverableChunk = chunk as DeliverableChunk;
+
+              if (chunker.shouldChunk(deliverableChunk.data.content)) {
+                // 需要分块传输
+                const stats = chunker.getStats(deliverableChunk.data.content);
+                logger.info(
+                  {
+                    chunkType: chunk.type,
+                    originalSize: stats.originalSize,
+                    totalChunks: stats.totalChunks,
+                    threshold: CHUNKING_THRESHOLD,
+                  },
+                  "Unified API: Chunking large deliverable",
+                );
+
+                // 逐块发送
+                for await (const chunkPart of chunker.chunk(deliverableChunk)) {
+                  controller.enqueue(
+                    encoder.encode(`data: ${JSON.stringify(chunkPart)}\n\n`),
+                  );
+                }
+                continue; // 跳过下面的普通发送
+              }
+
+              // Debug: 记录 deliverable 块的大小（无需分块）
               logger.info(
                 {
                   chunkType: chunk.type,
                   dataLength: data.length,
                   contentPreview: data.slice(0, 300),
                 },
-                "Unified API: Sending deliverable chunk",
+                "Unified API: Sending deliverable chunk (no chunking needed)",
               );
             }
             controller.enqueue(encoder.encode(`data: ${data}\n\n`));

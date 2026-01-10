@@ -46,6 +46,15 @@ export const bookmarkHealthWorkflow: WorkflowDefinition = {
         "死链检测",
         "链接是否有效",
         "书签健康检查",
+        // Phase 1: 口语化表达扩展
+        "检查链接",
+        "扫描链接",
+        "找死链",
+        "链接还能用吗",
+        "验证一下链接",
+        "看看链接",
+        "测试链接",
+        "链接能打开吗",
       ],
       // 语义匹配：覆盖更多自然语言表达
       semanticPatterns: {
@@ -56,8 +65,13 @@ export const bookmarkHealthWorkflow: WorkflowDefinition = {
           "有些网站可能已经关闭了，帮我找出来",
           "我的收藏夹里有没有坏掉的链接",
           "扫描一下看看哪些书签已经过期了",
+          // Phase 1: 新增语义匹配
+          "这些链接都还能用吗",
+          "帮我测试下书签能不能打开",
+          "网址有没有挂掉的",
+          "清理一下访问不了的收藏",
         ],
-        threshold: 0.78,
+        threshold: 0.75, // 略微降低以覆盖更多口语
       },
     },
   ],

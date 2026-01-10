@@ -53,6 +53,15 @@ export const newUserOnboardingWorkflow: WorkflowDefinition = {
         "导入后整理",
         "快速整理书签",
         "自动整理",
+        // Phase 1: 口语化表达扩展
+        "帮我弄一下",
+        "整理整理",
+        "收拾一下",
+        "分类一下",
+        "处理下这些",
+        "理一理",
+        "归类一下",
+        "整一整",
       ],
       // 语义匹配：覆盖更多自然语言表达
       semanticPatterns: {
@@ -63,8 +72,13 @@ export const newUserOnboardingWorkflow: WorkflowDefinition = {
           "这些刚导入的书签怎么快速整理",
           "帮我把刚导入的内容自动分好类",
           "导入完成了，接下来怎么整理比较好",
+          // Phase 1: 新增语义匹配
+          "这些东西太乱了帮我整理一下",
+          "刚导入的书签不知道怎么处理",
+          "书签导进来了，接下来咋办",
+          "帮忙把这些书签弄好看点",
         ],
-        threshold: 0.76,
+        threshold: 0.74, // 略微降低以覆盖更多口语
       },
     },
   ],

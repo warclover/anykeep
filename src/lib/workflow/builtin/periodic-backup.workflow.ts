@@ -54,6 +54,15 @@ export const periodicBackupWorkflow: WorkflowDefinition = {
         "备份收藏",
         "导出全部",
         "创建备份",
+        // Phase 1: 口语化表达扩展
+        "本地备份",
+        "下载数据",
+        "存档",
+        "保存到本地",
+        "下载书签",
+        "存到本地",
+        "导出来",
+        "备一份",
       ],
       // 语义匹配：覆盖更多自然语言表达
       semanticPatterns: {
@@ -64,8 +73,13 @@ export const periodicBackupWorkflow: WorkflowDefinition = {
           "定期保存我的收藏数据",
           "生成一份完整的数据拷贝",
           "我要把所有内容下载下来",
+          // Phase 1: 新增语义匹配
+          "下载全部书签到电脑",
+          "导一份数据存着",
+          "怕丢了帮我备个份",
+          "把收藏都导出来保存",
         ],
-        threshold: 0.76,
+        threshold: 0.74, // 略微降低以覆盖更多口语
       },
     },
   ],

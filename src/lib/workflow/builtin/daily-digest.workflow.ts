@@ -55,6 +55,15 @@ export const dailyDigestWorkflow: WorkflowDefinition = {
         "给我推荐",
         "每日推送",
         "今日阅读",
+        // Phase 1: 口语化表达扩展
+        "今天看啥",
+        "有什么好的",
+        "推荐什么",
+        "该读什么",
+        "给我挑几篇",
+        "看点什么",
+        "推荐点东西",
+        "有啥好看的",
       ],
       // 语义匹配：覆盖更多自然语言表达
       semanticPatterns: {
@@ -65,8 +74,13 @@ export const dailyDigestWorkflow: WorkflowDefinition = {
           "推荐一些我应该看看的书签",
           "找几篇我可能感兴趣的文章",
           "有没有什么我还没看过的好内容",
+          // Phase 1: 新增语义匹配
+          "无聊了，看点什么好",
+          "帮我挑点好文章",
+          "有什么值得看的没",
+          "收藏的东西太多了，帮我选几篇",
         ],
-        threshold: 0.76,
+        threshold: 0.73, // 略微降低以覆盖更多口语
       },
     },
   ],

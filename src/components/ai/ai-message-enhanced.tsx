@@ -30,6 +30,7 @@ import { AIMarkdown } from "./ai-markdown";
 import { MessageActionsBar } from "./phase4/quick-actions";
 import { ReactThinkingDisplay } from "./react-thinking-display";
 import { CitationList } from "./citation-reference";
+import { ZeroTakeoverConfirmCard } from "./zero-takeover-confirm-card";
 import type { FeedbackDetails } from "./phase4/types";
 import type { IntentType } from "@/lib/ai-skills/router/types";
 import type { ThinkingRecord } from "@/hooks/domain/ai/use-ai-chat";
@@ -65,6 +66,13 @@ export interface AIMessageEnhancedProps {
   onCitationClick?: (bookmarkId: number) => void;
   /** 当前反馈状态 */
   feedbackGiven?: "like" | "dislike" | null;
+  // Phase 1: 零接管确认回调
+  /** 零接管确认回调 */
+  onZeroTakeoverConfirm?: (confirmId: string) => void;
+  /** 零接管取消回调 */
+  onZeroTakeoverCancel?: (confirmId: string) => void;
+  /** 零接管确认是否正在执行 */
+  isZeroTakeoverLoading?: boolean;
 }
 
 // =============================================================================
@@ -83,6 +91,10 @@ export const AIMessageEnhanced = memo(function AIMessageEnhanced({
   onWrongIntent,
   onCitationClick,
   feedbackGiven,
+  // Phase 1: 零接管确认
+  onZeroTakeoverConfirm,
+  onZeroTakeoverCancel,
+  isZeroTakeoverLoading = false,
 }: AIMessageEnhancedProps) {
   const isUser = message.role === "user";
   const isStreaming = message.status === "streaming";
@@ -101,6 +113,8 @@ export const AIMessageEnhanced = memo(function AIMessageEnhanced({
     message.citation &&
     message.citation.citationSummary &&
     message.citation.citationSummary.length > 0;
+  // Phase 1: 零接管确认
+  const hasZeroTakeoverConfirm = !!message.zeroTakeoverConfirm;
   const isOrchestration = message.executionMode === "orchestration";
   const isCompleted = message.status === "completed";
 
@@ -282,6 +296,18 @@ export const AIMessageEnhanced = memo(function AIMessageEnhanced({
         {hasProgress && message.progress && (
           <div className="mt-2">
             <AIProgressIndicatorInline progress={message.progress} />
+          </div>
+        )}
+
+        {/* Phase 1: 零接管确认卡片 */}
+        {!isUser && hasZeroTakeoverConfirm && message.zeroTakeoverConfirm && (
+          <div className="mt-3 w-full max-w-sm">
+            <ZeroTakeoverConfirmCard
+              confirmation={message.zeroTakeoverConfirm}
+              onConfirm={onZeroTakeoverConfirm ?? (() => {})}
+              onCancel={onZeroTakeoverCancel ?? (() => {})}
+              isLoading={isZeroTakeoverLoading}
+            />
           </div>
         )}
 

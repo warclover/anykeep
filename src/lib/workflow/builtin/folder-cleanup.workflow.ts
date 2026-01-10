@@ -49,6 +49,15 @@ export const folderCleanupWorkflow: WorkflowDefinition = {
         "目录清理",
         "分类优化",
         "整理目录结构",
+        // Phase 1: 口语化表达扩展
+        "清理目录",
+        "整理目录",
+        "清一清",
+        "整一整",
+        "优化分类",
+        "精简目录",
+        "目录太多了",
+        "合并一下分类",
       ],
       // 语义匹配：覆盖更多自然语言表达
       semanticPatterns: {
@@ -59,8 +68,13 @@ export const folderCleanupWorkflow: WorkflowDefinition = {
           "帮我优化一下目录结构",
           "分类太多太杂了，需要精简",
           "有些文件夹名字很像，应该合并",
+          // Phase 1: 新增语义匹配
+          "目录层级太深了，帮我简化一下",
+          "文件夹太多找不到东西了",
+          "有些空分类可以删掉吧",
+          "帮我把相似的分类合在一起",
         ],
-        threshold: 0.77,
+        threshold: 0.74, // 略微降低以覆盖更多口语
       },
     },
   ],

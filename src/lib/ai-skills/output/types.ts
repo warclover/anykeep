@@ -198,6 +198,94 @@ export interface DeliverableChunk {
   };
 }
 
+// ============================================
+// Phase 1: 大交付物分块传输类型
+// ============================================
+
+/**
+ * 交付物头信息块
+ *
+ * 当交付物超过 256KB 时，先发送头信息块
+ */
+export interface DeliverableHeaderChunk {
+  type: "deliverable_header";
+  data: {
+    /** 交付物 ID */
+    id: string;
+    /** 交付物类型 */
+    type: DeliverableType;
+    /** 交付物标题 */
+    title: string;
+    /** 输出格式 */
+    format: OutputFormat;
+    /** 内容总大小（字节） */
+    contentSize: number;
+    /** 是否分块传输 */
+    isChunked: boolean;
+    /** 总块数 */
+    totalChunks?: number;
+    /** 每块大小（字节） */
+    chunkSize?: number;
+    /** 是否可下载 */
+    downloadable?: boolean;
+    /** 是否可分享 */
+    shareable?: boolean;
+    /** 可用操作 */
+    actions?: DeliverableAction[];
+    /** 元数据 */
+    metadata?: Record<string, unknown>;
+  };
+}
+
+/**
+ * 交付物分块数据块
+ *
+ * 大交付物拆分后的每个数据块
+ */
+export interface DeliverableChunkData {
+  type: "deliverable_chunk";
+  data: {
+    /** 交付物 ID（与 DeliverableHeaderChunk 对应） */
+    id: string;
+    /** 当前块索引（0-based） */
+    chunkIndex: number;
+    /** 总块数 */
+    totalChunks: number;
+    /** 块数据（Base64 编码） */
+    chunkData: string;
+    /** 当前块大小（字节） */
+    chunkSize: number;
+    /** 是否为最后一块 */
+    isLast: boolean;
+    /** 校验和（可选，用于验证完整性） */
+    checksum?: string;
+  };
+}
+
+// ============================================
+// Phase 1: 进度心跳类型
+// ============================================
+
+/**
+ * 心跳块
+ *
+ * 长时间任务执行时，每 500ms 发送一次心跳
+ * 表明系统仍在运行，防止前端超时
+ */
+export interface HeartbeatChunk {
+  type: "heartbeat";
+  data: {
+    /** 当前步骤名称 */
+    currentStep: string;
+    /** 进度百分比 (0-100) */
+    percent: number;
+    /** 时间戳（毫秒） */
+    timestamp: number;
+    /** 已执行时间（毫秒） */
+    elapsedMs: number;
+  };
+}
+
 /**
  * 后续建议块
  */
@@ -549,6 +637,19 @@ export interface ZeroTakeoverConfirmChunk {
     timeout?: number;
     /** 默认选项 */
     defaultAction?: "confirm" | "cancel";
+
+    // Phase 1: 风险确认预览
+    /** 预览数据（前 3 个受影响项） */
+    preview?: Array<{
+      /** 书签 ID */
+      id: number;
+      /** 书签标题 */
+      title: string;
+      /** 平台 */
+      platform?: string;
+    }>;
+    /** 总受影响数量 */
+    totalAffectedCount?: number;
   };
 }
 
@@ -656,6 +757,11 @@ export type UnifiedStreamChunk =
   | FallbackChunk
   | MemoryChunk
   | DoneChunk
+  // Phase 1: 大交付物分块传输类型
+  | DeliverableHeaderChunk
+  | DeliverableChunkData
+  // Phase 1: 进度心跳类型
+  | HeartbeatChunk
   // 零接管模式专用类型
   | ThinkingChunk
   | UndoAvailableChunk
@@ -704,6 +810,11 @@ export type ChunkTypeMap = {
   fallback: FallbackChunk;
   memory: MemoryChunk;
   done: DoneChunk;
+  // Phase 1: 大交付物分块传输类型
+  deliverable_header: DeliverableHeaderChunk;
+  deliverable_chunk: DeliverableChunkData;
+  // Phase 1: 进度心跳类型
+  heartbeat: HeartbeatChunk;
   // 零接管模式类型
   thinking: ThinkingChunk;
   undo_available: UndoAvailableChunk;

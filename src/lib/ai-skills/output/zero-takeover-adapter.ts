@@ -171,6 +171,14 @@ export class ZeroTakeoverAdapter {
    * 创建零接管确认请求块
    *
    * 仅用于删除等高风险操作
+   *
+   * @param id - 确认 ID
+   * @param operationType - 操作类型
+   * @param title - 确认标题
+   * @param message - 确认消息
+   * @param affectedBookmarkIds - 受影响的书签 ID 列表
+   * @param timeout - 超时时间（毫秒）
+   * @param preview - 预览数据（前 3 个受影响项）
    */
   createZeroTakeoverConfirmChunk(
     id: string,
@@ -179,6 +187,7 @@ export class ZeroTakeoverAdapter {
     message: string,
     affectedBookmarkIds: number[],
     timeout?: number,
+    preview?: Array<{ id: number; title: string; platform?: string }>,
   ): ZeroTakeoverConfirmChunk {
     return {
       type: "zero_takeover_confirm",
@@ -190,6 +199,9 @@ export class ZeroTakeoverAdapter {
         affectedBookmarkIds,
         timeout,
         defaultAction: "cancel", // 默认取消，避免误删
+        // Phase 1: 风险确认预览
+        preview,
+        totalAffectedCount: affectedBookmarkIds.length,
       },
     };
   }
@@ -247,7 +259,8 @@ export class ZeroTakeoverAdapter {
    *
    * @param understanding - 任务理解结果
    * @param executionStream - 原始执行流
-   * @param undoInfo - 撤销信息（执行完成后传入）
+   * @param onExecutionComplete - 执行完成回调
+   * @param getBookmarkPreviews - 获取书签预览数据的回调（Phase 1 新增）
    */
   async *wrapExecutionStream(
     understanding: TaskUnderstanding,
@@ -255,6 +268,9 @@ export class ZeroTakeoverAdapter {
     onExecutionComplete?: (
       result: TaskExecutionResult,
     ) => { undoId: string; expiresAt: Date; affectedCount: number } | null,
+    getBookmarkPreviews?: (
+      bookmarkIds: number[],
+    ) => Promise<Array<{ id: number; title: string; platform?: string }>>,
   ): AsyncGenerator<UnifiedStreamChunk> {
     // 1. 输出思考过程
     for (const thinkingChunk of this.generateThinkingChunks(understanding)) {
@@ -276,13 +292,28 @@ export class ZeroTakeoverAdapter {
     // 3. 检查是否需要确认（仅删除操作）
     if (understanding.requiresConfirmation) {
       const confirmId = `confirm_${Date.now()}`;
+      const affectedIds: number[] = []; // 从执行计划中提取 bookmark IDs
+
+      // Phase 1: 获取预览数据
+      let preview:
+        | Array<{ id: number; title: string; platform?: string }>
+        | undefined;
+      if (getBookmarkPreviews && affectedIds.length > 0) {
+        try {
+          preview = await getBookmarkPreviews(affectedIds.slice(0, 3));
+        } catch {
+          // 预览获取失败不阻塞确认流程
+        }
+      }
+
       yield this.createZeroTakeoverConfirmChunk(
         confirmId,
         "delete",
         "确认删除",
         understanding.confirmationReason || "此操作不可撤销，确定要继续吗？",
-        [], // 从执行计划中提取 bookmark IDs
+        affectedIds,
         30000, // 30 秒超时
+        preview,
       );
       // 等待确认的逻辑应该在调用方处理
       return;

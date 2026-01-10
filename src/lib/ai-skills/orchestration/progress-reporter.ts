@@ -12,7 +12,10 @@
  */
 
 import type { StepDefinition, ProgressState } from "./types";
-import type { ProgressChunk } from "../output/types";
+import type { ProgressChunk, HeartbeatChunk } from "../output/types";
+
+/** Default heartbeat interval in milliseconds */
+const DEFAULT_HEARTBEAT_INTERVAL = 500;
 
 /**
  * 进度报告器配置
@@ -24,6 +27,8 @@ interface ProgressReporterConfig {
   minUpdateInterval?: number;
   /** 是否启用平滑过渡 */
   smoothTransition?: boolean;
+  /** 心跳间隔（毫秒），默认 500ms */
+  heartbeatInterval?: number;
 }
 
 /**
@@ -51,12 +56,16 @@ export class ProgressReporter {
   private startTime: number;
   private lastUpdateTime = 0;
   private config: Required<ProgressReporterConfig>;
+  // Phase 1: 心跳定时器
+  private heartbeatInterval: ReturnType<typeof setInterval> | null = null;
+  private heartbeatStartTime: number = 0;
 
   constructor(steps: StepDefinition[], config: ProgressReporterConfig = {}) {
     this.config = {
       autoCalculatePercent: true,
       minUpdateInterval: 100,
       smoothTransition: true,
+      heartbeatInterval: DEFAULT_HEARTBEAT_INTERVAL,
       ...config,
     };
 
@@ -287,6 +296,7 @@ export class ProgressReporter {
    * 重置进度
    */
   reset(): void {
+    this.stopHeartbeat(); // 停止心跳
     this.currentStepIndex = -1;
     this.startTime = Date.now();
     this.lastUpdateTime = 0;
@@ -297,6 +307,54 @@ export class ProgressReporter {
       step.startTime = undefined;
       step.endTime = undefined;
     }
+  }
+
+  // ============================================
+  // Phase 1: 心跳功能
+  // ============================================
+
+  /**
+   * 启动心跳
+   *
+   * 每隔配置的时间间隔（默认 500ms）调用回调函数
+   * 用于长时间任务时保持前端连接活跃
+   *
+   * @param callback - 心跳回调函数
+   */
+  startHeartbeat(callback: (chunk: HeartbeatChunk) => void): void {
+    this.stopHeartbeat(); // 确保没有重复的心跳
+    this.heartbeatStartTime = Date.now();
+
+    this.heartbeatInterval = setInterval(() => {
+      const now = Date.now();
+      const chunk: HeartbeatChunk = {
+        type: "heartbeat",
+        data: {
+          currentStep: this.getCurrentStepName(),
+          percent: this.getOverallPercent(),
+          timestamp: now,
+          elapsedMs: now - this.heartbeatStartTime,
+        },
+      };
+      callback(chunk);
+    }, this.config.heartbeatInterval);
+  }
+
+  /**
+   * 停止心跳
+   */
+  stopHeartbeat(): void {
+    if (this.heartbeatInterval !== null) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
+    }
+  }
+
+  /**
+   * 心跳是否正在运行
+   */
+  isHeartbeatRunning(): boolean {
+    return this.heartbeatInterval !== null;
   }
 }
 

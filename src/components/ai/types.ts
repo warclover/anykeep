@@ -183,6 +183,18 @@ export interface UndoAvailableInfo {
 }
 
 /**
+ * 零接管确认请求预览项
+ */
+export interface ZeroTakeoverPreviewItem {
+  /** 书签 ID */
+  id: number;
+  /** 书签标题 */
+  title: string;
+  /** 平台 */
+  platform?: string;
+}
+
+/**
  * 零接管确认请求信息
  */
 export interface ZeroTakeoverConfirmInfo {
@@ -200,6 +212,11 @@ export interface ZeroTakeoverConfirmInfo {
   timeout?: number;
   /** 默认选项 */
   defaultAction?: "confirm" | "cancel";
+  // Phase 1: 风险确认预览
+  /** 预览数据（前 3 个受影响项） */
+  preview?: ZeroTakeoverPreviewItem[];
+  /** 总受影响数量 */
+  totalAffectedCount?: number;
 }
 
 /**
@@ -827,6 +844,9 @@ export function adaptBackendChunk(
             | "confirm"
             | "cancel"
             | undefined,
+          // Phase 1: 风险确认预览
+          preview: data?.preview as ZeroTakeoverPreviewItem[] | undefined,
+          totalAffectedCount: data?.totalAffectedCount as number | undefined,
         },
       };
 
