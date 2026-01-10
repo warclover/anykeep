@@ -4,7 +4,7 @@
  * 获取用户的收藏统计信息
  * 包括总览、趋势、标签分布等
  *
- * @version 1.2.0 - 增强描述，提升 LLM 工具选择准确性
+ * @version 1.3.0 - 添加 timeRange 参数支持
  * @since 2025-12-23
  */
 
@@ -13,6 +13,12 @@ import type { Tool, ToolContext, ToolResult } from "../types";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 import { QUERY_TOOL_DESCRIPTIONS } from "../tool-description-templates";
+import {
+  timeRangeSchema,
+  applyTimeRangeFilter,
+  getTimeRangeLabel,
+  type TimeRangeValue,
+} from "../shared/time-range.utils";
 
 // ============================================
 // 常量
@@ -54,6 +60,7 @@ const paramsSchema = z.object({
     .optional()
     .default(20)
     .describe("返回的热门标签数量"),
+  timeRange: timeRangeSchema,
 });
 
 type StatsParams = z.infer<typeof paramsSchema>;
@@ -109,6 +116,10 @@ interface StatsResult {
   topTags?: TagStats[];
   /** 平台分布 */
   platforms?: PlatformStats[];
+  /** 统计时间范围 */
+  timeRange: TimeRangeValue;
+  /** 时间范围标签 */
+  timeRangeLabel: string;
 }
 
 // ============================================
@@ -137,31 +148,39 @@ export const getStatsTool: Tool<StatsParams, StatsResult> = {
       include_platforms = true,
       tags_limit = 20,
     } = params;
+    const timeRange = params.timeRange ?? "all";
 
     // 并行查询基础数据（排除浏览器书签）
     const browserFilter = `(${BROWSER_PLATFORMS.map((p) => `"${p}"`).join(",")})`;
 
+    // 构建基础查询并应用时间范围过滤
+    let bookmarksQuery = supabase
+      .from("bookmarks")
+      .select("id, platform, user_tags, rating, created_at")
+      .eq("user_id", context.userId)
+      .is("deleted_at", null)
+      .not("platform", "in", browserFilter);
+    bookmarksQuery = applyTimeRangeFilter(bookmarksQuery, timeRange);
+
+    let ratedQuery = supabase
+      .from("bookmarks")
+      .select("rating")
+      .eq("user_id", context.userId)
+      .is("deleted_at", null)
+      .not("platform", "in", browserFilter)
+      .not("rating", "is", null);
+    ratedQuery = applyTimeRangeFilter(ratedQuery, timeRange);
+
     const [bookmarksResult, foldersResult, ratedResult] = await Promise.all([
       // 获取所有内容书签（排除浏览器书签）
-      supabase
-        .from("bookmarks")
-        .select("id, platform, user_tags, rating, created_at")
-        .eq("user_id", context.userId)
-        .is("deleted_at", null)
-        .not("platform", "in", browserFilter),
+      bookmarksQuery,
       // 获取文件夹数量
       supabase
         .from("folders")
         .select("id", { count: "exact", head: true })
         .eq("user_id", context.userId),
       // 获取有评分的书签（排除浏览器书签）
-      supabase
-        .from("bookmarks")
-        .select("rating")
-        .eq("user_id", context.userId)
-        .is("deleted_at", null)
-        .not("platform", "in", browserFilter)
-        .not("rating", "is", null),
+      ratedQuery,
     ]);
 
     if (bookmarksResult.error) {
@@ -216,7 +235,11 @@ export const getStatsTool: Tool<StatsParams, StatsResult> = {
       averageRating,
     };
 
-    const result: StatsResult = { overview };
+    const result: StatsResult = {
+      overview,
+      timeRange,
+      timeRangeLabel: getTimeRangeLabel(timeRange),
+    };
 
     // 收藏趋势
     if (include_trends) {
@@ -297,6 +320,7 @@ export const getStatsTool: Tool<StatsParams, StatsResult> = {
         totalBookmarks,
         totalFolders,
         totalTags,
+        timeRange,
         includeTrends: include_trends,
         includeTags: include_tags,
         includePlatforms: include_platforms,

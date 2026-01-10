@@ -281,94 +281,134 @@ export function buildToolDescription(config: {
 
 /**
  * Query 类工具增强描述
+ *
+ * @version 1.2.0 - 添加 timeRange 参数说明 (2026-01-10)
  */
 export const QUERY_TOOL_DESCRIPTIONS = {
   list_recent: buildToolDescription({
-    core: "获取最近收藏的书签（按创建时间倒序）。",
+    core: "获取最近收藏的书签（按创建时间倒序），支持时间范围过滤。",
     toolName: "list_recent",
     scenarios: [
       '"最近收藏了什么"',
       '"看看我的收藏"',
       '"最近添加的书签"',
       '"显示最新10条收藏"',
+      '"今天收藏了什么"',
+      '"本周添加的书签"',
+      '"这个月收藏的内容"',
     ],
     notes: [
-      "默认返回 10 条，最多 20 条",
+      "默认返回 10 条，最多 50 条",
       "不包含已删除的书签",
       "不包含浏览器导入的书签",
+      "timeRange 参数：today/yesterday/week/last_week/month/last_month/quarter/year/all（默认 all）",
     ],
     boundaries: ["emptyResult", "maxLimit"],
   }),
 
   count_total: buildToolDescription({
-    core: "统计用户的书签总数（最轻量的统计方式）。",
+    core: "统计用户的书签总数（最轻量的统计方式），支持时间范围过滤。",
     toolName: "count_total",
-    scenarios: ['"我一共收藏了多少"', '"我的收藏数量"', '"总共有多少书签"'],
-    notes: ["不包含已删除和浏览器书签", "仅返回数字，响应最快"],
+    scenarios: [
+      '"我一共收藏了多少"',
+      '"我的收藏数量"',
+      '"总共有多少书签"',
+      '"今天有多少收藏"',
+      '"本周收藏了几条"',
+      '"这个月新增多少"',
+    ],
+    notes: [
+      "不包含已删除和浏览器书签",
+      "仅返回数字，响应最快",
+      "timeRange 参数：today/yesterday/week/last_week/month/last_month/quarter/year/all（默认 all）",
+    ],
     boundaries: ["emptyResult"],
   }),
 
   list_by_folder: buildToolDescription({
-    core: "获取指定文件夹内的所有书签。",
+    core: "获取指定文件夹内的所有书签，支持时间范围过滤。",
     scenarios: [
       '"工作文件夹里有什么"',
       '"显示学习文件夹的内容"',
       '"查看XX文件夹的书签"',
+      '"今天添加到工作文件夹的"',
+      '"本周学习文件夹的收藏"',
     ],
     notes: [
       "需要提供 folder_id 参数",
       "支持分页（limit + offset）",
       "可按创建时间/标题排序",
+      "timeRange 参数：today/yesterday/week/last_week/month/last_month/quarter/year/all（默认 all）",
     ],
     boundaries: ["emptyResult", "notFound"],
   }),
 
   list_by_platform: buildToolDescription({
-    core: "按来源平台筛选书签（微信/B站/知乎/小红书等）。",
+    core: "按来源平台筛选书签（微信/B站/知乎/小红书等），支持时间范围过滤。",
     scenarios: [
       '"我的微信收藏"',
       '"B站收藏的视频"',
       '"知乎文章有哪些"',
       '"看看从小红书收藏的"',
+      '"今天微信收藏了什么"',
+      '"本周B站收藏的视频"',
     ],
     notes: [
-      "支持平台：wechat/bilibili/zhihu/xiaohongshu/douyin/weibo/web/other",
+      "支持平台：WECHAT/BILIBILI/ZHIHU/XIAOHONGSHU/DOUYIN/WEIBO/BROWSER_*/OTHER",
       "默认返回 20 条，最多 50 条",
+      "timeRange 参数：today/yesterday/week/last_week/month/last_month/quarter/year/all（默认 all）",
     ],
     boundaries: ["emptyResult", "maxLimit"],
   }),
 
   count_by_folder: buildToolDescription({
-    core: "按文件夹分组统计书签数量。",
+    core: "统计指定文件夹的书签数量，支持时间范围过滤。",
     scenarios: [
-      '"每个文件夹有多少书签"',
-      '"文件夹书签分布"',
-      '"哪个文件夹收藏最多"',
+      '"工作文件夹有多少书签"',
+      '"学习文件夹书签数量"',
+      '"今天工作文件夹新增多少"',
+      '"本周学习文件夹收藏了几条"',
     ],
-    notes: ["返回所有非空文件夹的统计", "包含文件夹名称和书签数"],
-    boundaries: ["emptyResult"],
+    notes: [
+      "需要提供 folder_id 参数",
+      "返回该文件夹的书签数量",
+      "timeRange 参数：today/yesterday/week/last_week/month/last_month/quarter/year/all（默认 all）",
+    ],
+    boundaries: ["emptyResult", "notFound"],
   }),
 
   count_by_platform: buildToolDescription({
-    core: "按来源平台统计书签数量。",
-    scenarios: ['"各平台收藏数量"', '"微信收藏了多少"', '"平台分布统计"'],
-    notes: ["返回各平台的书签数量和占比", "自动按数量降序排列"],
+    core: "按来源平台统计书签数量，支持时间范围过滤。",
+    scenarios: [
+      '"微信收藏了多少"',
+      '"B站有多少收藏"',
+      '"今天微信收藏了几条"',
+      '"本周B站新增多少"',
+    ],
+    notes: [
+      "需要指定 platform 参数",
+      "返回该平台的书签数量和时间范围标签",
+      "timeRange 参数：today/yesterday/week/last_week/month/last_month/quarter/year/all（默认 all）",
+    ],
     boundaries: ["emptyResult"],
   }),
 
   get_stats: buildToolDescription({
-    core: "获取完整的收藏统计报告（总览、趋势、标签云、平台分布）。",
+    core: "获取完整的收藏统计报告（总览、趋势、标签云、平台分布），支持时间范围过滤。",
     toolName: "get_stats",
     scenarios: [
       '"我的收藏情况"',
       '"最近收藏趋势如何"',
       '"收藏统计分析"',
       '"给我一份收藏报告"',
+      '"本周收藏统计"',
+      '"这个月的收藏趋势"',
     ],
     notes: [
       "可通过参数选择包含哪些统计（节省 token）",
       "趋势数据包含最近 30 天每日统计",
       "标签云默认返回 Top 20",
+      "timeRange 参数：today/yesterday/week/last_week/month/last_month/quarter/year/all（默认 all）",
     ],
     boundaries: ["emptyResult"],
   }),

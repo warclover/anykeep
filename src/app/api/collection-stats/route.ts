@@ -65,13 +65,14 @@ export async function GET() {
     // TODO: 实现 count_duplicate_urls RPC 函数用于准确检测重复
     const duplicates = 0;
 
-    // 5. 获取无标签数量
+    // 5. 获取无标签数量（user_tags 和 ai_tags 都为空）
+    // 注意：Supabase 的空数组检查使用 {} 语法
     const { count: untagged, error: untaggedError } = await supabase
       .from("bookmarks")
       .select("*", { count: "exact", head: true })
       .eq("user_id", user.id)
       .is("deleted_at", null)
-      .or("tags.is.null,tags.eq.{}");
+      .or("user_tags.is.null,user_tags.eq.{}");
 
     if (untaggedError) {
       logger.error(
@@ -82,6 +83,7 @@ export async function GET() {
     }
 
     // 6. 获取长期未读数量（超过 90 天未访问）
+    // 暂时基于创建时间判断，后续可添加访问追踪
     const staleDate = new Date();
     staleDate.setDate(staleDate.getDate() - 90);
 
@@ -90,10 +92,7 @@ export async function GET() {
       .select("*", { count: "exact", head: true })
       .eq("user_id", user.id)
       .is("deleted_at", null)
-      .lt("created_at", staleDate.toISOString())
-      .or(
-        "last_visited_at.is.null,last_visited_at.lt." + staleDate.toISOString(),
-      );
+      .lt("created_at", staleDate.toISOString());
 
     if (staleError) {
       logger.error({ error: staleError }, "Failed to count stale bookmarks");

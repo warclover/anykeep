@@ -1,10 +1,9 @@
 /**
  * list_recent Tool
  *
- * 获取最近的书签（简化版，最常用）
- * 只有 1 个参数，LLM 容易正确调用
+ * 获取书签列表，支持时间范围过滤
  *
- * @version 1.1.0 - 增强描述，提升 LLM 工具选择准确性
+ * @version 1.2.0 - 添加 timeRange 参数支持
  * @since 2025-12-23
  */
 
@@ -13,9 +12,15 @@ import type { Tool, ToolContext, ToolResult } from "../types";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 import { QUERY_TOOL_DESCRIPTIONS } from "../tool-description-templates";
+import {
+  timeRangeSchema,
+  applyTimeRangeFilter,
+  getTimeRangeLabel,
+  type TimeRangeValue,
+} from "../shared/time-range.utils";
 
 // ============================================
-// 参数定义（极简）
+// 参数定义
 // ============================================
 
 const paramsSchema = z.object({
@@ -23,10 +28,11 @@ const paramsSchema = z.object({
     .number()
     .int()
     .min(1)
-    .max(20)
+    .max(50)
     .optional()
     .default(10)
-    .describe("返回数量，默认 10，最大 20"),
+    .describe("返回数量，默认 10，最大 50"),
+  timeRange: timeRangeSchema,
 });
 
 type ListRecentParams = z.infer<typeof paramsSchema>;
@@ -47,6 +53,8 @@ interface BookmarkItem {
 interface ListRecentResult {
   bookmarks: BookmarkItem[];
   total: number;
+  timeRange: TimeRangeValue;
+  timeRangeLabel: string;
 }
 
 // ============================================
@@ -70,8 +78,9 @@ export const listRecentTool: Tool<ListRecentParams, ListRecentResult> = {
     const startTime = performance.now();
     const supabase = await createClient();
     const limit = params.limit ?? 10;
+    const timeRange = params.timeRange ?? "all";
 
-    const { data, count, error } = await supabase
+    let query = supabase
       .from("bookmarks")
       .select("id, title, url, platform, user_tags, created_at", {
         count: "exact",
@@ -81,12 +90,18 @@ export const listRecentTool: Tool<ListRecentParams, ListRecentResult> = {
       .order("created_at", { ascending: false })
       .limit(limit);
 
+    // 应用时间范围过滤
+    query = applyTimeRangeFilter(query, timeRange);
+
+    const { data, count, error } = await query;
+
     if (error) {
       logger.error(
         {
           toolName: "list_recent",
           userId: context.userId,
           limit,
+          timeRange,
           error: error.message,
         },
         "list_recent: DB Error",
@@ -114,6 +129,7 @@ export const listRecentTool: Tool<ListRecentParams, ListRecentResult> = {
         toolName: "list_recent",
         userId: context.userId,
         limit,
+        timeRange,
         resultCount: bookmarks.length,
         total: count ?? 0,
         executionTimeMs: Math.round(performance.now() - startTime),
@@ -126,6 +142,8 @@ export const listRecentTool: Tool<ListRecentParams, ListRecentResult> = {
       data: {
         bookmarks,
         total: count ?? 0,
+        timeRange,
+        timeRangeLabel: getTimeRangeLabel(timeRange),
       },
       metadata: {
         executionTimeMs: Math.round(performance.now() - startTime),

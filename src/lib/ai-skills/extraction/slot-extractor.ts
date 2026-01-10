@@ -29,12 +29,15 @@ export type SlotValueType =
   | "enum";
 
 /**
- * 时间范围枚举
+ * 时间范围枚举（与 time-range.utils.ts 保持一致）
  */
 export type TimeRangeValue =
   | "today"
+  | "yesterday"
   | "week"
+  | "last_week"
   | "month"
+  | "last_month"
   | "quarter"
   | "year"
   | "all";
@@ -124,28 +127,34 @@ export const COUNT_SLOT: SlotDefinition<number> = {
 };
 
 /**
- * 时间范围槽位
+ * 时间范围槽位（与 time-range.utils.ts 保持一致）
  */
 export const TIME_RANGE_SLOT: SlotDefinition<TimeRangeValue> = {
   name: "timeRange",
   type: "timeRange",
   patterns: [
     /今天|今日/,
-    /本周|这周|一周/,
-    /本月|这个月|一个月/,
+    /昨天|昨日/,
+    /本周|这周|一周|过去一周/,
+    /上周|上一周/,
+    /本月|这个月|一个月|过去一个月/,
+    /上个月|上月|上一个月/,
     /本季度|这季度/,
     /今年|本年/,
     /全部|所有|全量/,
   ],
-  defaultValue: "week",
+  defaultValue: "all",
   transform: (matched) => {
     if (/今天|今日/.test(matched)) return "today";
+    if (/昨天|昨日/.test(matched)) return "yesterday";
+    if (/上周|上一周/.test(matched)) return "last_week";
     if (/周/.test(matched)) return "week";
+    if (/上个月|上月|上一个月/.test(matched)) return "last_month";
     if (/月/.test(matched)) return "month";
     if (/季度/.test(matched)) return "quarter";
     if (/年/.test(matched)) return "year";
     if (/全部|所有|全量/.test(matched)) return "all";
-    return "week";
+    return "all";
   },
 };
 

@@ -104,7 +104,10 @@ describe("Query Tools", () => {
           error: null,
         });
 
-        const result = await listRecentTool.execute({ limit: 10 }, mockContext);
+        const result = await listRecentTool.execute(
+          { limit: 10, timeRange: "all" },
+          mockContext,
+        );
 
         expect(result.success).toBe(true);
         const successResult = result as ToolSuccessResult<{
@@ -125,7 +128,10 @@ describe("Query Tools", () => {
       it("使用默认 limit 值", async () => {
         const chain = createMockChain({ data: [], count: 0, error: null });
 
-        await listRecentTool.execute({ limit: 10 }, mockContext);
+        await listRecentTool.execute(
+          { limit: 10, timeRange: "all" },
+          mockContext,
+        );
 
         expect(chain.limit).toHaveBeenCalledWith(10);
       });
@@ -133,7 +139,10 @@ describe("Query Tools", () => {
       it("处理空结果", async () => {
         createMockChain({ data: [], count: 0, error: null });
 
-        const result = await listRecentTool.execute({ limit: 5 }, mockContext);
+        const result = await listRecentTool.execute(
+          { limit: 5, timeRange: "all" },
+          mockContext,
+        );
 
         expect(result.success).toBe(true);
         const successResult = result as ToolSuccessResult<{
@@ -147,7 +156,10 @@ describe("Query Tools", () => {
       it("处理 null 数据", async () => {
         createMockChain({ data: null, count: null, error: null });
 
-        const result = await listRecentTool.execute({ limit: 5 }, mockContext);
+        const result = await listRecentTool.execute(
+          { limit: 5, timeRange: "all" },
+          mockContext,
+        );
 
         expect(result.success).toBe(true);
         const successResult = result as ToolSuccessResult<{
@@ -164,7 +176,10 @@ describe("Query Tools", () => {
           error: { message: "Connection refused" },
         });
 
-        const result = await listRecentTool.execute({ limit: 5 }, mockContext);
+        const result = await listRecentTool.execute(
+          { limit: 5, timeRange: "all" },
+          mockContext,
+        );
 
         expect(result.success).toBe(false);
         const errorResult = result as ToolErrorResult;
@@ -186,7 +201,10 @@ describe("Query Tools", () => {
 
         createMockChain({ data: mockBookmarks, count: 1, error: null });
 
-        const result = await listRecentTool.execute({ limit: 5 }, mockContext);
+        const result = await listRecentTool.execute(
+          { limit: 5, timeRange: "all" },
+          mockContext,
+        );
 
         expect(result.success).toBe(true);
         const successResult = result as ToolSuccessResult<{
@@ -201,7 +219,10 @@ describe("Query Tools", () => {
       it("记录执行日志", async () => {
         createMockChain({ data: [], count: 0, error: null });
 
-        await listRecentTool.execute({ limit: 5 }, mockContext);
+        await listRecentTool.execute(
+          { limit: 5, timeRange: "all" },
+          mockContext,
+        );
 
         // eslint-disable-next-line @typescript-eslint/no-require-imports
         const { logger } = require("@/lib/logger");
@@ -241,7 +262,10 @@ describe("Query Tools", () => {
       it("成功返回收藏总数", async () => {
         createMockChain({ count: 150, error: null });
 
-        const result = await countTotalTool.execute({}, mockContext);
+        const result = await countTotalTool.execute(
+          { timeRange: "all" },
+          mockContext,
+        );
 
         expect(result.success).toBe(true);
         const successResult = result as ToolSuccessResult<{ total: number }>;
@@ -252,7 +276,10 @@ describe("Query Tools", () => {
       it("处理零收藏", async () => {
         createMockChain({ count: 0, error: null });
 
-        const result = await countTotalTool.execute({}, mockContext);
+        const result = await countTotalTool.execute(
+          { timeRange: "all" },
+          mockContext,
+        );
 
         expect(result.success).toBe(true);
         const successResult = result as ToolSuccessResult<{ total: number }>;
@@ -262,7 +289,10 @@ describe("Query Tools", () => {
       it("处理 null count", async () => {
         createMockChain({ count: null, error: null });
 
-        const result = await countTotalTool.execute({}, mockContext);
+        const result = await countTotalTool.execute(
+          { timeRange: "all" },
+          mockContext,
+        );
 
         expect(result.success).toBe(true);
         const successResult = result as ToolSuccessResult<{ total: number }>;
@@ -272,7 +302,10 @@ describe("Query Tools", () => {
       it("处理数据库错误", async () => {
         createMockChain({ error: { message: "Permission denied" } });
 
-        const result = await countTotalTool.execute({}, mockContext);
+        const result = await countTotalTool.execute(
+          { timeRange: "all" },
+          mockContext,
+        );
 
         expect(result.success).toBe(false);
         const errorResult = result as ToolErrorResult;
@@ -395,6 +428,7 @@ describe("Query Tools", () => {
             include_tags: true,
             include_platforms: true,
             tags_limit: 10,
+            timeRange: "all",
           },
           mockContext,
         );
@@ -423,6 +457,7 @@ describe("Query Tools", () => {
             include_tags: false,
             include_platforms: false,
             tags_limit: 10,
+            timeRange: "all",
           },
           mockContext,
         );
@@ -448,6 +483,7 @@ describe("Query Tools", () => {
             include_tags: true,
             include_platforms: true,
             tags_limit: 10,
+            timeRange: "all",
           },
           mockContext,
         );
@@ -470,6 +506,7 @@ describe("Query Tools", () => {
             include_tags: true,
             include_platforms: true,
             tags_limit: 10,
+            timeRange: "all",
           },
           mockContext,
         );
@@ -508,6 +545,7 @@ describe("Query Tools", () => {
             include_tags: false,
             include_platforms: false,
             tags_limit: 10,
+            timeRange: "all",
           },
           mockContext,
         );
@@ -560,6 +598,7 @@ describe("Query Tools", () => {
             include_tags: true,
             include_platforms: false,
             tags_limit: 10,
+            timeRange: "all",
           },
           mockContext,
         );
@@ -615,6 +654,7 @@ describe("Query Tools", () => {
             include_tags: false,
             include_platforms: true,
             tags_limit: 10,
+            timeRange: "all",
           },
           mockContext,
         );

@@ -3,9 +3,10 @@
  *
  * 定义每个意图类型所需的槽位（参数）结构
  *
- * @version 1.1.0
+ * @version 1.2.0
  * @since 2026-01-09
  * @updated 2026-01-10 - 添加 refine 意图槽位定义 (Code Review P2-3)
+ * @updated 2026-01-10 - 为多个意图添加 timeRange 槽位（时间范围修复）
  */
 
 import { z } from "zod";
@@ -73,47 +74,47 @@ export const INTENT_SLOT_DEFINITIONS: Record<
   // ============================================
   "organize:move": {
     required: ["targetFolder"],
-    optional: ["sourceFolder", "bookmarkIds", "filter"],
-    description: "批量移动书签到指定文件夹（支持筛选条件）",
+    optional: ["sourceFolder", "bookmarkIds", "filter", "timeRange"],
+    description: "批量移动书签到指定文件夹（支持筛选条件和时间范围）",
   },
   "organize:cleanup": {
     required: [],
-    optional: ["scope", "strategy", "dryRun"],
-    description: "清理书签（去重、过期检测等）",
+    optional: ["scope", "strategy", "dryRun", "timeRange"],
+    description: "清理书签（去重、过期检测等，支持时间范围）",
   },
   "organize:dedupe": {
     required: [],
-    optional: ["scope", "strategy"],
-    description: "去除重复书签",
+    optional: ["scope", "strategy", "timeRange"],
+    description: "去除重复书签（支持时间范围）",
   },
   "organize:classify": {
     required: [],
-    optional: ["scope", "autoTag"],
-    description: "自动分类书签",
+    optional: ["scope", "autoTag", "timeRange"],
+    description: "自动分类书签（支持时间范围）",
   },
   "organize:tag": {
     required: ["tags"],
-    optional: ["bookmarkIds", "scope"],
-    description: "为书签添加标签",
+    optional: ["bookmarkIds", "scope", "timeRange"],
+    description: "为书签添加标签（支持时间范围）",
   },
 
   // ============================================
-  // 查询类
+  // 查询类 - 支持 timeRange 时间范围过滤
   // ============================================
   "query:search": {
     required: ["query"],
-    optional: ["filters", "limit", "sortBy"],
-    description: "搜索书签",
+    optional: ["filters", "limit", "sortBy", "timeRange"],
+    description: "搜索书签（支持时间范围过滤）",
   },
   "query:list": {
     required: [],
-    optional: ["folder", "tags", "platform", "limit"],
-    description: "列出书签",
+    optional: ["folder", "tags", "platform", "limit", "timeRange"],
+    description: "列出书签（支持时间范围过滤）",
   },
   "query:count": {
     required: [],
-    optional: ["folder", "tags", "platform"],
-    description: "统计书签数量",
+    optional: ["folder", "tags", "platform", "timeRange"],
+    description: "统计书签数量（支持时间范围过滤）",
   },
 
   // ============================================
@@ -141,17 +142,17 @@ export const INTENT_SLOT_DEFINITIONS: Record<
   },
 
   // ============================================
-  // 创建类
+  // 创建类 - 支持 timeRange 时间范围过滤
   // ============================================
   "create:export": {
     required: ["format"],
-    optional: ["bookmarkIds", "fields", "outputPath"],
-    description: "导出书签",
+    optional: ["bookmarkIds", "fields", "outputPath", "timeRange"],
+    description: "导出书签（支持时间范围过滤）",
   },
   "create:digest": {
     required: [],
-    optional: ["bookmarkIds", "scope", "format"],
-    description: "生成摘要",
+    optional: ["bookmarkIds", "scope", "format", "timeRange"],
+    description: "生成摘要（支持时间范围过滤）",
   },
   "create:note": {
     required: ["content"],
@@ -160,31 +161,31 @@ export const INTENT_SLOT_DEFINITIONS: Record<
   },
   "create:synthesis": {
     required: [],
-    optional: ["bookmarkIds", "topic", "format"],
-    description: "主题合成",
+    optional: ["bookmarkIds", "topic", "format", "timeRange"],
+    description: "主题合成（支持时间范围过滤）",
   },
 
   // ============================================
-  // 分析类
+  // 分析类 - 支持 timeRange 时间范围过滤
   // ============================================
   "analyze:report": {
     required: [],
-    optional: ["scope", "period", "format"],
-    description: "生成分析报告",
+    optional: ["scope", "period", "format", "timeRange"],
+    description: "生成分析报告（支持时间范围过滤）",
   },
   "analyze:insight": {
     required: [],
-    optional: ["scope", "dimension"],
-    description: "生成洞察分析",
+    optional: ["scope", "dimension", "timeRange"],
+    description: "生成洞察分析（支持时间范围过滤）",
   },
 
   // ============================================
-  // 学习类
+  // 学习类 - 支持 timeRange 时间范围过滤
   // ============================================
   "learn:review": {
     required: [],
-    optional: ["scope", "mode"],
-    description: "知识回顾",
+    optional: ["scope", "mode", "timeRange"],
+    description: "知识回顾（支持时间范围过滤）",
   },
   "learn:path": {
     required: [],

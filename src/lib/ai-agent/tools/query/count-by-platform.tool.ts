@@ -1,9 +1,9 @@
 /**
  * count_by_platform Tool
  *
- * 统计某个平台的收藏数量
+ * 统计某个平台的收藏数量，支持时间范围过滤
  *
- * @version 1.1.0 - 增强描述，提升 LLM 工具选择准确性
+ * @version 1.2.0 - 添加 timeRange 参数支持
  * @since 2025-12-23
  */
 
@@ -12,9 +12,15 @@ import type { Tool, ToolContext, ToolResult } from "../types";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 import { QUERY_TOOL_DESCRIPTIONS } from "../tool-description-templates";
+import {
+  timeRangeSchema,
+  applyTimeRangeFilter,
+  getTimeRangeLabel,
+  type TimeRangeValue,
+} from "../shared/time-range.utils";
 
 // ============================================
-// 参数定义（简化）
+// 参数定义
 // ============================================
 
 const paramsSchema = z.object({
@@ -33,6 +39,7 @@ const paramsSchema = z.object({
       "OTHER",
     ])
     .describe("平台类型"),
+  timeRange: timeRangeSchema,
 });
 
 type CountByPlatformParams = z.infer<typeof paramsSchema>;
@@ -44,6 +51,8 @@ type CountByPlatformParams = z.infer<typeof paramsSchema>;
 interface CountByPlatformResult {
   platform: string;
   count: number;
+  timeRange: TimeRangeValue;
+  timeRangeLabel: string;
 }
 
 // ============================================
@@ -70,13 +79,19 @@ export const countByPlatformTool: Tool<
     const startTime = performance.now();
     const supabase = await createClient();
     const { platform } = params;
+    const timeRange = params.timeRange ?? "all";
 
-    const { count, error } = await supabase
+    let query = supabase
       .from("bookmarks")
       .select("id", { count: "exact", head: true })
       .eq("user_id", context.userId)
       .eq("platform", platform)
       .is("deleted_at", null);
+
+    // 应用时间范围过滤
+    query = applyTimeRangeFilter(query, timeRange);
+
+    const { count, error } = await query;
 
     if (error) {
       logger.error(
@@ -84,6 +99,7 @@ export const countByPlatformTool: Tool<
           toolName: "count_by_platform",
           userId: context.userId,
           platform,
+          timeRange,
           error: error.message,
         },
         "count_by_platform: DB Error",
@@ -101,6 +117,7 @@ export const countByPlatformTool: Tool<
         toolName: "count_by_platform",
         userId: context.userId,
         platform,
+        timeRange,
         count: count ?? 0,
         executionTimeMs: Math.round(performance.now() - startTime),
       },
@@ -112,6 +129,8 @@ export const countByPlatformTool: Tool<
       data: {
         platform,
         count: count ?? 0,
+        timeRange,
+        timeRangeLabel: getTimeRangeLabel(timeRange),
       },
       metadata: {
         executionTimeMs: Math.round(performance.now() - startTime),

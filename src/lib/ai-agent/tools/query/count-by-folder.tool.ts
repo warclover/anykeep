@@ -1,9 +1,9 @@
 /**
  * count_by_folder Tool
  *
- * 统计某个文件夹的收藏数量
+ * 统计某个文件夹的收藏数量，支持时间范围过滤
  *
- * @version 1.1.0 - 增强描述，提升 LLM 工具选择准确性
+ * @version 1.2.0 - 添加 timeRange 参数支持
  * @since 2025-12-23
  */
 
@@ -12,13 +12,20 @@ import type { Tool, ToolContext, ToolResult } from "../types";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 import { QUERY_TOOL_DESCRIPTIONS } from "../tool-description-templates";
+import {
+  timeRangeSchema,
+  applyTimeRangeFilter,
+  getTimeRangeLabel,
+  type TimeRangeValue,
+} from "../shared/time-range.utils";
 
 // ============================================
-// 参数定义（简化）
+// 参数定义
 // ============================================
 
 const paramsSchema = z.object({
   folder_id: z.number().int().positive().describe("文件夹 ID"),
+  timeRange: timeRangeSchema,
 });
 
 type CountByFolderParams = z.infer<typeof paramsSchema>;
@@ -30,6 +37,8 @@ type CountByFolderParams = z.infer<typeof paramsSchema>;
 interface CountByFolderResult {
   folderName: string | null;
   count: number;
+  timeRange: TimeRangeValue;
+  timeRangeLabel: string;
 }
 
 // ============================================
@@ -54,6 +63,7 @@ export const countByFolderTool: Tool<CountByFolderParams, CountByFolderResult> =
       const startTime = performance.now();
       const supabase = await createClient();
       const { folder_id } = params;
+      const timeRange = params.timeRange ?? "all";
 
       // 获取文件夹名称
       const { data: folder } = await supabase
@@ -64,12 +74,17 @@ export const countByFolderTool: Tool<CountByFolderParams, CountByFolderResult> =
         .single();
 
       // 统计数量
-      const { count, error } = await supabase
+      let query = supabase
         .from("bookmarks")
         .select("id", { count: "exact", head: true })
         .eq("user_id", context.userId)
         .eq("folder_id", folder_id)
         .is("deleted_at", null);
+
+      // 应用时间范围过滤
+      query = applyTimeRangeFilter(query, timeRange);
+
+      const { count, error } = await query;
 
       if (error) {
         logger.error(
@@ -77,6 +92,7 @@ export const countByFolderTool: Tool<CountByFolderParams, CountByFolderResult> =
             toolName: "count_by_folder",
             userId: context.userId,
             folderId: folder_id,
+            timeRange,
             error: error.message,
           },
           "count_by_folder: DB Error",
@@ -95,6 +111,7 @@ export const countByFolderTool: Tool<CountByFolderParams, CountByFolderResult> =
           userId: context.userId,
           folderId: folder_id,
           folderName: folder?.name ?? null,
+          timeRange,
           count: count ?? 0,
           executionTimeMs: Math.round(performance.now() - startTime),
         },
@@ -106,6 +123,8 @@ export const countByFolderTool: Tool<CountByFolderParams, CountByFolderResult> =
         data: {
           folderName: folder?.name ?? null,
           count: count ?? 0,
+          timeRange,
+          timeRangeLabel: getTimeRangeLabel(timeRange),
         },
         metadata: {
           executionTimeMs: Math.round(performance.now() - startTime),
