@@ -1207,8 +1207,90 @@ export const DEFAULT_RULES: IntentRule[] = [
   },
 
   // --------------------------------------------
+  // Phase 2A: 隐含意图识别 (2026-01-10)
+  // 修复测试失败 B1: 口语化抱怨/模糊请求被误判为 chitchat
+  // --------------------------------------------
+  {
+    // 隐含整理意图："收藏太乱了" → 整理意图
+    // 示例："收藏太乱了"、"书签好乱"
+    pattern: /(收藏|书签|东西|内容).{0,3}(太|好|很)(乱|杂)/,
+    type: "organize",
+    subType: "cleanup",
+    complexity: "complex",
+    weight: 68,
+  },
+  {
+    // 隐含统计意图："东西太多了" → 统计意图
+    // 示例："东西太多了"、"收藏好多啊"
+    pattern: /(收藏|书签|东西|内容).{0,3}(太|好|很)多/,
+    type: "query",
+    subType: "stats",
+    complexity: "simple",
+    weight: 66,
+  },
+  {
+    // 模糊查看请求："帮我看看" → 列表意图
+    // 示例："帮我看看"、"看看吧"
+    pattern: /(帮我|给我)?看看(吧|呗)?/,
+    type: "query",
+    subType: "list",
+    complexity: "simple",
+    weight: 55,
+  },
+  {
+    // 口语化统计："有点多啊" → 统计意图
+    // 示例："有点多啊"、"有点儿多"
+    pattern: /有点(儿)?多/,
+    type: "query",
+    subType: "stats",
+    complexity: "simple",
+    weight: 56,
+  },
+  {
+    // 单字标签指令："标签" → 标签操作帮助
+    // 示例："标签"（单独一个词，询问如何打标签）
+    pattern: /^标签$/,
+    type: "chitchat",
+    subType: "help",
+    complexity: "simple",
+    weight: 52,
+  },
+  {
+    // 批量删除变体："这些都删了" → 删除意图
+    // 示例："这些都删了"、"全部删掉"、"都删了吧"
+    pattern: /(这些|那些|全部|都).{0,3}删/,
+    type: "action",
+    subType: "delete",
+    complexity: "simple",
+    weight: 72,
+  },
+  {
+    // 问题报告类："那个收藏有问题" → 诊断意图
+    // 示例："那个收藏有问题"、"这个链接不对"
+    pattern: /(有问题|出错|不对|坏了|失效)/,
+    type: "query",
+    subType: "diagnose",
+    complexity: "simple",
+    weight: 58,
+  },
+
+  // --------------------------------------------
+  // Phase 2B: 英文规则扩展 (2026-01-10)
+  // 修复测试失败 B2: 英文规则过于严格
+  // --------------------------------------------
+  {
+    // 扩展英文删除："delete bookmark" → 删除意图
+    // 示例："delete bookmark"、"delete item"、"delete selected"
+    pattern: /^delete\s+(bookmark|item|selected|all)s?$/i,
+    type: "action",
+    subType: "delete",
+    complexity: "simple",
+    weight: 70,
+  },
+
+  // --------------------------------------------
   // 功能询问类（如何使用/功能查询）
-  // 权重设置较高 (86-90)，确保询问类优先于操作类规则
+  // 权重设置较高 (86-92)，确保询问类优先于操作类规则
   // --------------------------------------------
   {
     // 功能询问："怎么导出书签" → 帮助意图
@@ -1237,6 +1319,55 @@ export const DEFAULT_RULES: IntentRule[] = [
     complexity: "simple",
     weight: 88,
   },
+  // --------------------------------------------
+  // Phase 2C: 权重调整 - 询问模式优先 (2026-01-10)
+  // 修复测试失败 B3: 询问被误判为操作
+  // --------------------------------------------
+  {
+    // 询问模式："可以批量删除吗" → 帮助意图
+    // 权重 92：高于 delete (63)，"可以...吗" = 询问能力
+    pattern: /可以.{0,8}(删除|整理|导出|搜索|分类|标签)吗/,
+    type: "chitchat",
+    subType: "help",
+    complexity: "simple",
+    weight: 92,
+  },
+  {
+    // 询问模式："支持搜索吗" → 帮助意图
+    // 权重 92：高于 search (70)，"支持...吗" = 询问能力
+    pattern: /支持.{0,8}(搜索|删除|导出|分类|标签)吗/,
+    type: "chitchat",
+    subType: "help",
+    complexity: "simple",
+    weight: 92,
+  },
+  {
+    // 询问模式："该怎么组织" → 帮助意图
+    // 示例："文件夹该怎么组织"
+    pattern: /该怎么.{0,8}(组织|整理|分类|管理)/,
+    type: "chitchat",
+    subType: "help",
+    complexity: "simple",
+    weight: 91,
+  },
+  {
+    // 数量询问模式："有多少没整理的" → 统计意图
+    // 权重 88：高于 cleanup (80)，"有多少" = 询问数量
+    pattern: /有多少.{0,5}(没|未|不|还)/,
+    type: "query",
+    subType: "count",
+    complexity: "simple",
+    weight: 88,
+  },
+  {
+    // 多步骤请求识别："整理一下然后导出" → 整理+导出
+    // 识别主意图（整理），subType 标记为复合操作
+    pattern: /整理.{0,5}(然后|再|接着|完了).{0,5}导出/,
+    type: "organize",
+    subType: "cleanup_then_export",
+    complexity: "complex",
+    weight: 88,
+  },
 
   // ============================================
   // 闲聊类（最低优先级）
@@ -1252,6 +1383,15 @@ export const DEFAULT_RULES: IntentRule[] = [
     subType: "help",
     complexity: "simple",
     weight: 25,
+  },
+  {
+    // Phase 2D: 纯符号表达式 → 闲聊
+    // 示例: "???"、"??"、"！！！"
+    pattern: /^[?？!！.。…]+$/,
+    type: "chitchat",
+    subType: "general",
+    complexity: "simple",
+    weight: 45,
   },
   // --------------------------------------------
   {
