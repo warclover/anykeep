@@ -507,40 +507,54 @@ export class DynamicContextBuilder {
   /**
    * 获取用户偏好
    *
-   * 注意：ai_preferences 字段是 P2 任务，数据库迁移尚未执行
-   * 当前返回默认偏好，后续迁移完成后启用完整逻辑
+   * Code Review P2-1: 启用数据库偏好获取
+   * 通过 ENABLE_PREFERENCE_LEARNING Feature Flag 控制
+   *
+   * @version 1.2.0
+   * @updated 2026-01-10 - 启用动态偏好获取 (Code Review P2-1)
    */
-  private async getPreferences(_userId: string): Promise<PreferencesContext> {
-    // TODO: P2 任务完成后，启用以下逻辑
-    // try {
-    //   const supabase = await createClient();
-    //   const { data, error } = await supabase
-    //     .from("profiles")
-    //     .select("ai_preferences")
-    //     .eq("id", userId)
-    //     .single();
-    //
-    //   if (error || !data) {
-    //     return DEFAULT_PREFERENCES;
-    //   }
-    //
-    //   const prefs = (data.ai_preferences as Record<string, unknown>) ?? {};
-    //
-    //   return {
-    //     responseStyle:
-    //       (prefs.responseStyle as PreferencesContext["responseStyle"]) ??
-    //       "auto",
-    //     frequentTags: Array.isArray(prefs.frequentTags)
-    //       ? prefs.frequentTags.slice(0, 5)
-    //       : [],
-    //   };
-    // } catch (error) {
-    //   logger.warn({ userId, error }, "DynamicContext: getPreferences failed");
-    //   return DEFAULT_PREFERENCES;
-    // }
+  private async getPreferences(userId: string): Promise<PreferencesContext> {
+    // P2-1: 检查 Feature Flag
+    if (!isFeatureEnabled("ENABLE_PREFERENCE_LEARNING")) {
+      return DEFAULT_PREFERENCES;
+    }
 
-    // 当前返回默认偏好
-    return DEFAULT_PREFERENCES;
+    try {
+      const supabase = await createClient();
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("ai_preferences")
+        .eq("id", userId)
+        .single();
+
+      if (error || !data) {
+        // 查询失败或无数据，返回默认偏好
+        if (error) {
+          logger.debug(
+            { userId, error: error.message },
+            "DynamicContext: No ai_preferences found, using defaults",
+          );
+        }
+        return DEFAULT_PREFERENCES;
+      }
+
+      const prefs = (data.ai_preferences as Record<string, unknown>) ?? {};
+
+      return {
+        responseStyle:
+          (prefs.responseStyle as PreferencesContext["responseStyle"]) ??
+          "auto",
+        frequentTags: Array.isArray(prefs.frequentTags)
+          ? prefs.frequentTags.slice(0, 5)
+          : [],
+      };
+    } catch (error) {
+      logger.warn(
+        { userId, error: error instanceof Error ? error.message : error },
+        "DynamicContext: getPreferences failed",
+      );
+      return DEFAULT_PREFERENCES;
+    }
   }
 
   /**

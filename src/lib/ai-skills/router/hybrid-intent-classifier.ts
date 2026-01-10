@@ -11,7 +11,11 @@
  * 2. Slow Track: 语义匹配 + LLM 验证（≤1500ms）
  * 3. 超时回退：Slow Track 超时自动回退到 Fast Track 结果
  *
- * @version 1.1.0
+ * Code Review P1-1: 添加 Slow Track 超时取消机制
+ * - 使用 AbortController 取消超时的操作
+ * - 避免资源浪费（LLM 调用、Embedding 计算）
+ *
+ * @version 1.2.0
  * @since 2026-01-09
  */
 
@@ -293,15 +297,47 @@ export class HybridIntentClassifier {
     // ========== Slow Track: 语义匹配 + LLM ==========
     const slowTrackStart = performance.now();
 
-    // 设置 Slow Track 超时
-    const slowTrackPromise = this.runSlowTrack(input, ruleMatch, context);
-    const timeoutPromise = new Promise<null>((resolve) =>
-      setTimeout(() => resolve(null), SLOW_TRACK_CONFIG.maxLatency),
-    );
+    // P1-1: 使用 AbortController 实现真正的超时取消
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, SLOW_TRACK_CONFIG.maxLatency);
 
-    const slowResult = await Promise.race([slowTrackPromise, timeoutPromise]);
+    let slowResult: HybridIntentMatch | null = null;
+    let slowTrackTimeout = false;
+
+    try {
+      slowResult = await this.runSlowTrack(
+        input,
+        ruleMatch,
+        context,
+        controller.signal,
+      );
+    } catch (error) {
+      // 检查是否为取消错误
+      if (error instanceof Error && error.name === "AbortError") {
+        slowTrackTimeout = true;
+        if (this.config.debug) {
+          logger.debug(
+            { input: input.substring(0, 50) },
+            "HybridIntentClassifier: Slow Track aborted due to timeout",
+          );
+        }
+      } else {
+        // 其他错误，记录日志
+        logger.warn(
+          {
+            error: error instanceof Error ? error.message : String(error),
+            input: input.substring(0, 50),
+          },
+          "HybridIntentClassifier: Slow Track error",
+        );
+      }
+    } finally {
+      clearTimeout(timeoutId);
+    }
+
     const slowTrackDurationMs = Math.round(performance.now() - slowTrackStart);
-    const slowTrackTimeout = slowResult === null;
 
     // 超时回退到 Fast Track 结果
     if (slowTrackTimeout && SLOW_TRACK_CONFIG.fallbackToFast) {
@@ -372,19 +408,38 @@ export class HybridIntentClassifier {
    * Slow Track: 语义匹配 + LLM 分类
    *
    * 优化: 缓存语义匹配结果，避免重复调用 (Code Review #3)
+   * P1-1: 添加 AbortSignal 支持，实现真正的超时取消
+   *
+   * @param input - 用户输入
+   * @param ruleMatch - 规则匹配结果
+   * @param context - 分类上下文
+   * @param signal - 取消信号
    */
   private async runSlowTrack(
     input: string,
     ruleMatch: IntentClassification,
     context: ClassificationContext,
+    signal?: AbortSignal,
   ): Promise<HybridIntentMatch | null> {
     try {
+      // 检查是否已取消
+      if (signal?.aborted) {
+        throw new DOMException("Slow Track aborted", "AbortError");
+      }
+
       // 1. 语义匹配（如果启用）- 缓存结果避免重复调用
       let semanticMatches: SemanticMatch[] = [];
       let fusedResult: HybridIntentMatch | null = null;
 
       if (this.semanticMatcher) {
-        semanticMatches = await this.semanticMatcher.match(input);
+        // P1-1: 传递 signal 给语义匹配器
+        semanticMatches = await this.semanticMatcher.match(input, { signal });
+
+        // 再次检查是否已取消
+        if (signal?.aborted) {
+          throw new DOMException("Slow Track aborted", "AbortError");
+        }
+
         fusedResult = this.fuseResults(ruleMatch, semanticMatches, input);
 
         // 如果融合结果置信度足够高，直接返回
@@ -399,12 +454,22 @@ export class HybridIntentClassifier {
         this.config.enableLLMFallback &&
         ruleMatch.confidence < this.config.llmFallbackThreshold
       ) {
-        return await this.runLLMClassification(input, ruleMatch, context);
+        // P1-1: 传递 signal 给 LLM 分类器
+        return await this.runLLMClassification(
+          input,
+          ruleMatch,
+          context,
+          signal,
+        );
       }
 
       // 3. 返回已缓存的融合结果（避免重复调用语义匹配）
       return fusedResult;
     } catch (error) {
+      // 重新抛出取消错误
+      if (error instanceof Error && error.name === "AbortError") {
+        throw error;
+      }
       logger.warn(
         { error, input: input.substring(0, 50) },
         "HybridIntentClassifier: Slow Track failed",
@@ -415,12 +480,25 @@ export class HybridIntentClassifier {
 
   /**
    * LLM 分类（带槽位提取）
+   *
+   * P1-1: 添加 AbortSignal 支持
+   *
+   * @param input - 用户输入
+   * @param ruleMatch - 规则匹配结果
+   * @param context - 分类上下文
+   * @param signal - 取消信号
    */
   private async runLLMClassification(
     input: string,
     ruleMatch: IntentClassification,
     context: ClassificationContext,
+    signal?: AbortSignal,
   ): Promise<HybridIntentMatch | null> {
+    // 检查是否已取消
+    if (signal?.aborted) {
+      throw new DOMException("LLM classification aborted", "AbortError");
+    }
+
     // 初始化 LLM 分类器
     if (!this.llmClassifier) {
       this.llmClassifier = new LLMIntentClassifier({
@@ -432,9 +510,11 @@ export class HybridIntentClassifier {
     }
 
     try {
+      // P1-1: 传递 signal 给 LLM 分类器
       const llmResult = await this.llmClassifier.classifyWithSlots(
         input,
         context,
+        { signal },
       );
 
       if (!llmResult || llmResult.confidence <= ruleMatch.confidence) {

@@ -5,10 +5,13 @@
  * - 指代消解（如"这些"、"那个"）
  * - 上下文推断（从已选中的书签、当前文件夹等推断参数）
  * - 槽位补全（从上下文填充缺失的必需参数）
+ * - 对话历史引用（"刚才提到的"、"上面的"）
+ * - 序数引用（"第一个"、"最后一个"）
  *
- * @version 1.1.0
+ * @version 1.2.0
  * @since 2026-01-09
  * @updated 2026-01-10 - 支持规则配置化 (Code Review #6)
+ * @updated 2026-01-10 - 添加对话历史引用和序数引用规则 (P1 Phase 1.3)
  */
 
 import { logger } from "@/lib/logger";
@@ -22,7 +25,7 @@ import type { IntentType } from "./types";
  */
 export interface CoreferenceRule {
   pattern: RegExp;
-  resolve: (context: ClassificationContext) => unknown;
+  resolve: (context: ClassificationContext, matchedValue?: string) => unknown;
   description: string;
 }
 
@@ -39,8 +42,14 @@ export interface ContextEnhancerConfig {
 /**
  * 默认指代消解规则
  * 可被配置覆盖或扩展
+ *
+ * Code Review P2-2: 添加英文指代消解规则
+ *
+ * @version 1.2.0
+ * @updated 2026-01-10 - 添加英文规则支持 (Code Review P2-2)
  */
 export const DEFAULT_COREFERENCE_RULES: CoreferenceRule[] = [
+  // ========== 中文规则 ==========
   {
     pattern: /^(这些|这些书签|这些收藏|这些内容)$/i,
     resolve: (context) => {
@@ -89,6 +98,182 @@ export const DEFAULT_COREFERENCE_RULES: CoreferenceRule[] = [
       return { timeRange: "this_month" };
     },
     description: "本月 → 本月时间范围",
+  },
+
+  // ========== 英文规则 (Code Review P2-2) ==========
+  {
+    pattern:
+      /^(these|these bookmarks?|these items?|these contents?|the selected)$/i,
+    resolve: (context) => {
+      if (context.selectedBookmarks && context.selectedBookmarks.length > 0) {
+        return context.selectedBookmarks;
+      }
+      return null;
+    },
+    description: "these → selected bookmarks",
+  },
+  {
+    pattern: /^(that|that bookmark|that item|that one|the one)$/i,
+    resolve: (context) => {
+      if (context.selectedBookmarks && context.selectedBookmarks.length === 1) {
+        return context.selectedBookmarks[0];
+      }
+      return null;
+    },
+    description: "that → single selected bookmark",
+  },
+  {
+    pattern: /^(current|current folder|here|this folder)$/i,
+    resolve: (context) => {
+      return context.currentFolder || null;
+    },
+    description: "current/here → current folder",
+  },
+  {
+    pattern: /^(recent|recently|recently added|latest)$/i,
+    resolve: () => {
+      // 返回时间范围标识，由执行层处理
+      return { timeRange: "recent", days: 7 };
+    },
+    description: "recent → last 7 days",
+  },
+  {
+    pattern: /^(this week|weekly|this week's)$/i,
+    resolve: () => {
+      return { timeRange: "this_week" };
+    },
+    description: "this week → this week time range",
+  },
+  {
+    pattern: /^(this month|monthly|this month's)$/i,
+    resolve: () => {
+      return { timeRange: "this_month" };
+    },
+    description: "this month → this month time range",
+  },
+
+  // ========== 对话历史引用规则 (P1 Phase 1.3) ==========
+  {
+    pattern:
+      /^(刚才|刚刚|上面|前面|之前).{0,5}(提到的?|说的?|搜的?|找的?|看的?)$/i,
+    resolve: (context) => {
+      // 从对话历史中提取最近提到的实体
+      if (context.messageHistory && context.messageHistory.length > 0) {
+        // 返回标记，让执行层从对话历史中提取
+        return { reference: "last_mentioned", source: "conversation" };
+      }
+      return null;
+    },
+    description: "刚才提到的 → 对话历史中最近提及的实体",
+  },
+  {
+    pattern:
+      /^(mentioned|above|previous|earlier|that one we (talked|discussed) about)$/i,
+    resolve: (context) => {
+      if (context.messageHistory && context.messageHistory.length > 0) {
+        return { reference: "last_mentioned", source: "conversation" };
+      }
+      return null;
+    },
+    description: "mentioned/above → last mentioned entity in conversation",
+  },
+
+  // ========== 序数引用规则 (P1 Phase 1.3) ==========
+  {
+    pattern: /^(第一个?|首个|第1个?)$/i,
+    resolve: (context) => {
+      if (context.selectedBookmarks && context.selectedBookmarks.length > 0) {
+        return context.selectedBookmarks[0];
+      }
+      // 返回序数标记，让执行层处理
+      return { ordinal: 1, position: "first" };
+    },
+    description: "第一个 → 第一项",
+  },
+  {
+    pattern: /^(最后一?个?|末尾|倒数第一)$/i,
+    resolve: (context) => {
+      if (context.selectedBookmarks && context.selectedBookmarks.length > 0) {
+        return context.selectedBookmarks[context.selectedBookmarks.length - 1];
+      }
+      return { ordinal: -1, position: "last" };
+    },
+    description: "最后一个 → 最后一项",
+  },
+  {
+    pattern: /^第([二三四五六七八九十]|\d+)个?$/i,
+    resolve: (context) => {
+      // 提取数字
+      const match = /^第([二三四五六七八九十]|\d+)个?$/i.exec(context.input);
+      if (!match) return null;
+
+      const numMap: Record<string, number> = {
+        二: 2,
+        三: 3,
+        四: 4,
+        五: 5,
+        六: 6,
+        七: 7,
+        八: 8,
+        九: 9,
+        十: 10,
+      };
+      const ordinal = numMap[match[1]] || parseInt(match[1], 10);
+
+      if (
+        context.selectedBookmarks &&
+        context.selectedBookmarks.length >= ordinal
+      ) {
+        return context.selectedBookmarks[ordinal - 1];
+      }
+      return { ordinal, position: `nth_${ordinal}` };
+    },
+    description: "第N个 → 第N项",
+  },
+  {
+    pattern: /^(first|1st)$/i,
+    resolve: (context) => {
+      if (context.selectedBookmarks && context.selectedBookmarks.length > 0) {
+        return context.selectedBookmarks[0];
+      }
+      return { ordinal: 1, position: "first" };
+    },
+    description: "first → first item",
+  },
+  {
+    pattern: /^(last|final)$/i,
+    resolve: (context) => {
+      if (context.selectedBookmarks && context.selectedBookmarks.length > 0) {
+        return context.selectedBookmarks[context.selectedBookmarks.length - 1];
+      }
+      return { ordinal: -1, position: "last" };
+    },
+    description: "last → last item",
+  },
+  {
+    pattern: /^(second|2nd|third|3rd|fourth|4th|fifth|5th)$/i,
+    resolve: (context, matchedValue) => {
+      const ordinalMap: Record<string, number> = {
+        second: 2,
+        "2nd": 2,
+        third: 3,
+        "3rd": 3,
+        fourth: 4,
+        "4th": 4,
+        fifth: 5,
+        "5th": 5,
+      };
+      const ordinal = ordinalMap[matchedValue?.toLowerCase() ?? ""] || 0;
+
+      if (
+        context.selectedBookmarks &&
+        context.selectedBookmarks.length >= ordinal
+      ) {
+        return context.selectedBookmarks[ordinal - 1];
+      }
+      return { ordinal, position: `nth_${ordinal}` };
+    },
+    description: "second/third/etc → nth item",
   },
 ];
 
@@ -211,9 +396,10 @@ export class ContextEnhancer {
     value: string,
     context: ClassificationContext,
   ): unknown {
+    const trimmedValue = value.trim();
     for (const rule of this.coreferenceRules) {
-      if (rule.pattern.test(value.trim())) {
-        const resolved = rule.resolve(context);
+      if (rule.pattern.test(trimmedValue)) {
+        const resolved = rule.resolve(context, trimmedValue);
         if (resolved !== null) {
           if (logger.isLevelEnabled("debug")) {
             logger.debug(

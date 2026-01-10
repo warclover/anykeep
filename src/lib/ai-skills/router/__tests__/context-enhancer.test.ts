@@ -1,8 +1,9 @@
 /**
  * ContextEnhancer 测试
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2026-01-09
+ * @updated 2026-01-10 - 添加 P1 Phase 1.3 测试用例
  */
 
 import { describe, it, expect, beforeEach } from "@jest/globals";
@@ -245,6 +246,264 @@ describe("ContextEnhancer", () => {
       expect(result.enhancedCount).toBeGreaterThanOrEqual(2);
       expect(result.slots.bookmarkIds.value).toEqual([1, 2, 3]);
       expect(result.slots.targetFolder.value).toBe(10);
+    });
+  });
+
+  // ========== P1 Phase 1.3: 对话历史引用和序数引用测试 ==========
+
+  describe("对话历史引用 (P1 Phase 1.3)", () => {
+    it("应该将'刚才提到的'解析为对话历史引用标记", () => {
+      const context: ClassificationContext = {
+        input: "移动刚才提到的",
+        messageHistory: [
+          { role: "user", content: "搜索 React 相关的书签" },
+          { role: "assistant", content: "找到 5 条相关书签" },
+        ],
+      };
+
+      const slots: Record<string, IntentSlot> = {
+        target: {
+          name: "target",
+          value: "刚才提到的",
+          type: "string",
+          confidence: 0.8,
+          required: false,
+          source: "extracted",
+        },
+      };
+
+      const result = enhancer.enhanceSlots(slots, "organize", "move", context);
+
+      expect(result.enhancedCount).toBeGreaterThan(0);
+      expect(result.slots.target.value).toEqual({
+        reference: "last_mentioned",
+        source: "conversation",
+      });
+    });
+
+    it("应该将'上面说的'解析为对话历史引用标记", () => {
+      const context: ClassificationContext = {
+        input: "删除上面说的",
+        messageHistory: [
+          { role: "user", content: "找出重复的书签" },
+          { role: "assistant", content: "发现 3 条重复" },
+        ],
+      };
+
+      const slots: Record<string, IntentSlot> = {
+        target: {
+          name: "target",
+          value: "上面说的",
+          type: "string",
+          confidence: 0.8,
+          required: false,
+          source: "extracted",
+        },
+      };
+
+      const result = enhancer.enhanceSlots(slots, "action", "delete", context);
+
+      expect(result.enhancedCount).toBeGreaterThan(0);
+      expect(result.slots.target.value).toEqual({
+        reference: "last_mentioned",
+        source: "conversation",
+      });
+    });
+
+    it("英文: 应该将'mentioned'解析为对话历史引用标记", () => {
+      const context: ClassificationContext = {
+        input: "move mentioned",
+        messageHistory: [
+          { role: "user", content: "search for AI articles" },
+          { role: "assistant", content: "Found 10 results" },
+        ],
+      };
+
+      const slots: Record<string, IntentSlot> = {
+        target: {
+          name: "target",
+          value: "mentioned",
+          type: "string",
+          confidence: 0.8,
+          required: false,
+          source: "extracted",
+        },
+      };
+
+      const result = enhancer.enhanceSlots(slots, "organize", "move", context);
+
+      expect(result.enhancedCount).toBeGreaterThan(0);
+      expect(result.slots.target.value).toEqual({
+        reference: "last_mentioned",
+        source: "conversation",
+      });
+    });
+
+    it("没有对话历史时应该不消解", () => {
+      const context: ClassificationContext = {
+        input: "移动刚才提到的",
+        // 没有 messageHistory
+      };
+
+      const slots: Record<string, IntentSlot> = {
+        target: {
+          name: "target",
+          value: "刚才提到的",
+          type: "string",
+          confidence: 0.8,
+          required: false,
+          source: "extracted",
+        },
+      };
+
+      const result = enhancer.enhanceSlots(slots, "organize", "move", context);
+
+      // 没有增强（无法消解）
+      expect(result.enhancedCount).toBe(0);
+      expect(result.slots.target.value).toBe("刚才提到的");
+    });
+  });
+
+  describe("序数引用 (P1 Phase 1.3)", () => {
+    it("应该将'第一个'解析为选中书签的第一项", () => {
+      const context: ClassificationContext = {
+        input: "删除第一个",
+        selectedBookmarks: [10, 20, 30],
+      };
+
+      const slots: Record<string, IntentSlot> = {
+        bookmarkId: {
+          name: "bookmarkId",
+          value: "第一个",
+          type: "string",
+          confidence: 0.8,
+          required: false,
+          source: "extracted",
+        },
+      };
+
+      const result = enhancer.enhanceSlots(slots, "action", "delete", context);
+
+      expect(result.enhancedCount).toBeGreaterThan(0);
+      expect(result.slots.bookmarkId.value).toBe(10);
+    });
+
+    it("应该将'最后一个'解析为选中书签的最后一项", () => {
+      const context: ClassificationContext = {
+        input: "删除最后一个",
+        selectedBookmarks: [10, 20, 30],
+      };
+
+      const slots: Record<string, IntentSlot> = {
+        bookmarkId: {
+          name: "bookmarkId",
+          value: "最后一个",
+          type: "string",
+          confidence: 0.8,
+          required: false,
+          source: "extracted",
+        },
+      };
+
+      const result = enhancer.enhanceSlots(slots, "action", "delete", context);
+
+      expect(result.enhancedCount).toBeGreaterThan(0);
+      expect(result.slots.bookmarkId.value).toBe(30);
+    });
+
+    it("没有选中书签时应该返回序数标记", () => {
+      const context: ClassificationContext = {
+        input: "删除第一个",
+        // 没有 selectedBookmarks
+      };
+
+      const slots: Record<string, IntentSlot> = {
+        bookmarkId: {
+          name: "bookmarkId",
+          value: "第一个",
+          type: "string",
+          confidence: 0.8,
+          required: false,
+          source: "extracted",
+        },
+      };
+
+      const result = enhancer.enhanceSlots(slots, "action", "delete", context);
+
+      expect(result.enhancedCount).toBeGreaterThan(0);
+      expect(result.slots.bookmarkId.value).toEqual({
+        ordinal: 1,
+        position: "first",
+      });
+    });
+
+    it("英文: 应该将'first'解析为第一项", () => {
+      const context: ClassificationContext = {
+        input: "delete first",
+        selectedBookmarks: [100, 200, 300],
+      };
+
+      const slots: Record<string, IntentSlot> = {
+        bookmarkId: {
+          name: "bookmarkId",
+          value: "first",
+          type: "string",
+          confidence: 0.8,
+          required: false,
+          source: "extracted",
+        },
+      };
+
+      const result = enhancer.enhanceSlots(slots, "action", "delete", context);
+
+      expect(result.enhancedCount).toBeGreaterThan(0);
+      expect(result.slots.bookmarkId.value).toBe(100);
+    });
+
+    it("英文: 应该将'last'解析为最后一项", () => {
+      const context: ClassificationContext = {
+        input: "delete last",
+        selectedBookmarks: [100, 200, 300],
+      };
+
+      const slots: Record<string, IntentSlot> = {
+        bookmarkId: {
+          name: "bookmarkId",
+          value: "last",
+          type: "string",
+          confidence: 0.8,
+          required: false,
+          source: "extracted",
+        },
+      };
+
+      const result = enhancer.enhanceSlots(slots, "action", "delete", context);
+
+      expect(result.enhancedCount).toBeGreaterThan(0);
+      expect(result.slots.bookmarkId.value).toBe(300);
+    });
+
+    it("英文: 应该将'second'解析为第二项", () => {
+      const context: ClassificationContext = {
+        input: "delete second",
+        selectedBookmarks: [100, 200, 300],
+      };
+
+      const slots: Record<string, IntentSlot> = {
+        bookmarkId: {
+          name: "bookmarkId",
+          value: "second",
+          type: "string",
+          confidence: 0.8,
+          required: false,
+          source: "extracted",
+        },
+      };
+
+      const result = enhancer.enhanceSlots(slots, "action", "delete", context);
+
+      expect(result.enhancedCount).toBeGreaterThan(0);
+      expect(result.slots.bookmarkId.value).toBe(200);
     });
   });
 });

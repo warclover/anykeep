@@ -8,7 +8,9 @@
  *
  * 策略：Embedding 相似度匹配
  *
- * @version 1.0.0
+ * Code Review P1-1: 添加 AbortSignal 支持
+ *
+ * @version 1.1.0
  * @since 2026-01-09
  */
 
@@ -25,6 +27,16 @@ interface IntentEmbedding {
   embedding: number[];
   examples: string[];
   weight: number;
+}
+
+/**
+ * 语义匹配选项
+ *
+ * P1-1: 添加 AbortSignal 支持
+ */
+export interface SemanticMatchOptions {
+  /** 取消信号 */
+  signal?: AbortSignal;
 }
 
 /**
@@ -133,10 +145,23 @@ export class SemanticIntentMatcher {
   /**
    * 语义匹配
    *
+   * P1-1: 添加 AbortSignal 支持，实现真正的超时取消
+   *
    * @param input - 用户输入
+   * @param options - 匹配选项（包含取消信号）
    * @returns 匹配结果列表（按相似度降序）
    */
-  async match(input: string): Promise<SemanticMatch[]> {
+  async match(
+    input: string,
+    options: SemanticMatchOptions = {},
+  ): Promise<SemanticMatch[]> {
+    const { signal } = options;
+
+    // P1-1: 检查是否已取消
+    if (signal?.aborted) {
+      throw new DOMException("Semantic matching aborted", "AbortError");
+    }
+
     if (!this.isInitialized || this.embeddings.size === 0) {
       if (this.config.debug) {
         logger.warn(
@@ -151,6 +176,11 @@ export class SemanticIntentMatcher {
     try {
       // 1. 生成用户输入的 Embedding（使用向量缓存）
       const inputEmbedding = await generateEmbedding(input);
+
+      // P1-1: 再次检查是否已取消（Embedding 生成后）
+      if (signal?.aborted) {
+        throw new DOMException("Semantic matching aborted", "AbortError");
+      }
 
       if (!inputEmbedding || inputEmbedding.length === 0) {
         logger.warn(

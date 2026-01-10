@@ -1101,6 +1101,92 @@ export class UnifiedEngine {
   }
 
   /**
+   * 检查混合意图分类器是否已就绪
+   *
+   * Code Review P0-1: 添加混合分类器就绪状态检查
+   */
+  isHybridClassifierReady(): boolean {
+    const status = this.router.getClassifier();
+    // 检查是否是混合分类器并且语义匹配器已初始化
+    if ("getSemanticMatcherStatus" in status) {
+      const semanticStatus = (
+        status as { getSemanticMatcherStatus: () => { initialized: boolean } }
+      ).getSemanticMatcherStatus();
+      return semanticStatus.initialized;
+    }
+    return false;
+  }
+
+  /**
+   * 获取语义匹配器状态
+   *
+   * Code Review P1-2: 添加语义匹配器健康检查支持
+   */
+  getSemanticMatcherStatus(): { initialized: boolean; intentCount: number } {
+    const classifier = this.router.getClassifier();
+    if ("getSemanticMatcherStatus" in classifier) {
+      return (
+        classifier as {
+          getSemanticMatcherStatus: () => {
+            initialized: boolean;
+            intentCount: number;
+          };
+        }
+      ).getSemanticMatcherStatus();
+    }
+    return { initialized: false, intentCount: 0 };
+  }
+
+  /**
+   * 测试语义匹配器功能
+   *
+   * Code Review P1-2: 添加语义匹配器健康检查
+   *
+   * @param testInput - 测试输入
+   * @returns 测试结果
+   */
+  async testSemanticMatcher(
+    testInput: string,
+  ): Promise<{ success: boolean; matchCount?: number; error?: string }> {
+    try {
+      const classifier = this.router.getClassifier();
+
+      // 检查是否是混合分类器
+      if (!("classify" in classifier)) {
+        return {
+          success: false,
+          error: "Classifier does not support classification",
+        };
+      }
+
+      // 执行测试分类
+      const result = await (
+        classifier as {
+          classify: (input: string) => Promise<{
+            type: string;
+            confidence: number;
+            debugInfo?: { semanticSimilarity?: number };
+          }>;
+        }
+      ).classify(testInput);
+
+      // 检查是否获得了语义匹配结果
+      const hasSemanticMatch =
+        result.debugInfo?.semanticSimilarity !== undefined;
+
+      return {
+        success: true,
+        matchCount: hasSemanticMatch ? 1 : 0,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
+
+  /**
    * 获取已注册的编排 Skills
    */
   getRegisteredOrchestrationSkills() {

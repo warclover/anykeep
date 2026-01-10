@@ -106,6 +106,11 @@ export {
   IntentRouter,
   createIntentRouter,
   intentRouter,
+  // Code Review P1-3: 懒加载单例模式
+  getIntentRouter,
+  configureIntentRouter,
+  resetIntentRouter,
+  isIntentRouterInitialized,
 } from "./intent-router";
 
 // 消歧规则 (Phase 1.2 + Phase 2.3)

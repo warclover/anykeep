@@ -357,6 +357,114 @@ export interface DoneChunk {
         reason?: string;
       }>;
     };
+
+    // ============================================
+    // Phase 2: 推测执行与消歧状态
+    // ============================================
+
+    /** 是否需要用户消歧选择（暂停执行等待用户选择意图） */
+    needsDisambiguation?: boolean;
+    /** 消歧 ID（用于后续请求传回用户选择） */
+    disambiguationId?: string;
+
+    /** 是否需要用户确认高风险操作 */
+    needsConfirmation?: boolean;
+    /** 确认 ID（用于后续请求传回用户确认） */
+    confirmationId?: string;
+
+    /** 是否需要用户澄清意图（低置信度） */
+    needsClarification?: boolean;
+    /** 澄清 ID（用于后续请求传回用户选择） */
+    clarificationId?: string;
+  };
+}
+
+// ============================================
+// Phase 2: 推测执行与消歧类型
+// ============================================
+
+/**
+ * 意图消歧请求块
+ *
+ * 当置信度在模糊区间 (0.5-0.75) 且有强备选意图时发送
+ */
+export interface DisambiguationChunk {
+  type: "disambiguation";
+  data: {
+    /** 消歧 ID */
+    id: string;
+    /** 消歧问题 */
+    question: string;
+    /** 消歧选项 */
+    options: Array<{
+      /** 选项标签 */
+      label: string;
+      /** 选项值（格式: type:subType） */
+      value: string;
+      /** 选项描述 */
+      description: string;
+    }>;
+    /** 是否允许自定义输入 */
+    allowCustomInput: boolean;
+    /** 超时时间（毫秒） */
+    timeout: number;
+    /** 原始意图置信度 */
+    originalConfidence: number;
+  };
+}
+
+/**
+ * 澄清请求块
+ *
+ * 当置信度低于阈值时，请求用户澄清意图
+ */
+export interface ClarificationChunk {
+  type: "clarification";
+  data: {
+    /** 澄清 ID */
+    id: string;
+    /** 澄清问题 */
+    question: string;
+    /** 澄清选项 */
+    options: Array<{
+      /** 选项标签 */
+      label: string;
+      /** 选项值 */
+      value: string;
+      /** 选项描述 */
+      description?: string;
+    }>;
+    /** 超时时间（毫秒） */
+    timeout: number;
+    /** 原始意图置信度 */
+    confidence: number;
+  };
+}
+
+/**
+ * 高风险操作确认请求块
+ *
+ * 当检测到删除等高风险操作时发送
+ */
+export interface RiskConfirmationChunk {
+  type: "risk_confirmation";
+  data: {
+    /** 确认 ID */
+    id: string;
+    /** 操作类型 */
+    operationType: string;
+    /** 操作子类型 */
+    operationSubType?: string;
+    /** 风险等级 */
+    riskLevel: "medium" | "high";
+    /** 影响描述 */
+    impactDescription: string;
+    /** 受影响的数量 */
+    affectedCount?: number;
+    /** 确认问题 */
+    question: string;
+    /** 超时时间（毫秒） */
+    timeout?: number;
   };
 }
 
@@ -556,7 +664,11 @@ export type UnifiedStreamChunk =
   // 引用追踪类型
   | CitationChunk
   // 工作流模式类型
-  | WorkflowStartedChunk;
+  | WorkflowStartedChunk
+  // Phase 2: 推测执行与消歧类型
+  | DisambiguationChunk
+  | ClarificationChunk
+  | RiskConfirmationChunk;
 
 /**
  * 编排模式流式输出块（用于编排 Skill 内部）
@@ -601,6 +713,10 @@ export type ChunkTypeMap = {
   citation: CitationChunk;
   // 工作流模式类型
   workflow_started: WorkflowStartedChunk;
+  // Phase 2: 推测执行与消歧类型
+  disambiguation: DisambiguationChunk;
+  clarification: ClarificationChunk;
+  risk_confirmation: RiskConfirmationChunk;
 };
 
 /**

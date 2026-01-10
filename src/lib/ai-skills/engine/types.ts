@@ -116,6 +116,42 @@ export interface EngineExecuteOptions {
   forceMode?: "atomic" | "orchestration";
   /** 强制使用指定 Skill */
   forceSkill?: string;
+
+  // ============================================
+  // Phase 2: 推测执行与消歧选项
+  // ============================================
+
+  /**
+   * 是否等待用户消歧选择
+   * - true: 暂停执行，等待用户从选项中选择真实意图
+   * - false (默认): 使用最高置信度意图继续执行
+   */
+  waitForDisambiguation?: boolean;
+
+  /**
+   * 跳过高风险操作确认
+   * - true: 即使是删除等高风险操作也直接执行（慎用）
+   * - false (默认): 高风险操作需用户确认
+   */
+  skipConfirmation?: boolean;
+
+  /**
+   * 跳过低置信度澄清
+   * - true: 置信度低于阈值也直接执行最高置信度意图
+   * - false (默认): 低置信度时请求用户澄清
+   */
+  skipClarification?: boolean;
+
+  /**
+   * 用户已确认的意图（来自消歧选择）
+   * 格式: "type:subType"
+   */
+  confirmedIntent?: string;
+
+  /**
+   * 用户已确认执行高风险操作
+   */
+  userConfirmedRisk?: boolean;
 }
 
 /**

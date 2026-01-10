@@ -6,9 +6,12 @@
  * - 缓存分类结果减少 API 调用
  * - 超时控制保障响应速度
  *
- * @version 1.1.0
+ * Code Review P1-1: 添加外部 AbortSignal 支持
+ *
+ * @version 1.2.0
  * @since 2025-12-26
  * @updated 2026-01-10 - 改进缓存键生成策略 (Code Review #5)
+ * @updated 2026-01-10 - 添加外部 AbortSignal 支持 (Code Review P1-1)
  */
 
 import { generateObject } from "ai";
@@ -128,6 +131,16 @@ interface CacheEntry {
   result: LLMClassificationResult | LLMClassificationWithSlotsResult;
   expiry: number;
   hasSlots: boolean;
+}
+
+/**
+ * LLM 分类选项
+ *
+ * P1-1: 添加外部 AbortSignal 支持
+ */
+export interface LLMClassificationOptions {
+  /** 外部取消信号（优先于内部超时） */
+  signal?: AbortSignal;
 }
 
 // ============================================
@@ -377,15 +390,25 @@ export class LLMIntentClassifier {
   /**
    * 使用 LLM 分类意图并提取槽位（Phase 2 新增）
    *
+   * P1-1: 添加外部 AbortSignal 支持
+   *
    * @param message - 用户输入
    * @param context - 分类上下文（可选）
+   * @param options - 分类选项（可选，包含取消信号）
    * @returns 分类结果（含槽位），失败时返回 null
    */
   async classifyWithSlots(
     message: string,
     context?: ClassificationContext,
+    options?: LLMClassificationOptions,
   ): Promise<LLMClassificationWithSlotsResult | null> {
     const startTime = performance.now();
+    const { signal } = options || {};
+
+    // P1-1: 检查是否已取消
+    if (signal?.aborted) {
+      throw new DOMException("LLM classification aborted", "AbortError");
+    }
 
     // 1. 检查缓存
     if (this.config.cacheEnabled) {
@@ -416,7 +439,12 @@ export class LLMIntentClassifier {
 
     // 3. 使用 executeWithFallback 进行分类（带槽位）
     try {
-      const result = await this.classifyWithSlotsModel(message, context);
+      // P1-1: 传递外部 signal
+      const result = await this.classifyWithSlotsModel(
+        message,
+        context,
+        signal,
+      );
 
       // 4. 验证槽位完整性
       if (result && result.slots) {
@@ -476,18 +504,36 @@ export class LLMIntentClassifier {
 
   /**
    * 使用模型进行分类（带槽位提取）
+   *
+   * P1-1: 添加外部 AbortSignal 支持
+   *
+   * @param message - 用户输入
+   * @param context - 分类上下文
+   * @param externalSignal - 外部取消信号
    */
   private async classifyWithSlotsModel(
     message: string,
     context?: ClassificationContext,
+    externalSignal?: AbortSignal,
   ): Promise<LLMClassificationWithSlotsResult | null> {
     return aiProviderRouter.executeWithFallback("classify", async (model) => {
-      // 创建带超时的 AbortController
+      // P1-1: 检查外部信号是否已取消
+      if (externalSignal?.aborted) {
+        throw new DOMException("LLM classification aborted", "AbortError");
+      }
+
+      // 创建内部 AbortController（用于超时控制）
       const controller = new AbortController();
       const timeoutId = setTimeout(
         () => controller.abort(),
         this.config.timeoutMs,
       );
+
+      // P1-1: 监听外部取消信号，联动取消内部操作
+      const externalAbortHandler = () => {
+        controller.abort();
+      };
+      externalSignal?.addEventListener("abort", externalAbortHandler);
 
       try {
         const { object } = await generateObject({
@@ -511,6 +557,7 @@ export class LLMIntentClassifier {
         return object;
       } finally {
         clearTimeout(timeoutId);
+        externalSignal?.removeEventListener("abort", externalAbortHandler);
       }
     });
   }

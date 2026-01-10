@@ -3,8 +3,9 @@
  *
  * 定义每个意图类型所需的槽位（参数）结构
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2026-01-09
+ * @updated 2026-01-10 - 添加 refine 意图槽位定义 (Code Review P2-3)
  */
 
 import { z } from "zod";
@@ -189,6 +190,20 @@ export const INTENT_SLOT_DEFINITIONS: Record<
     required: [],
     optional: ["topic", "level"],
     description: "学习路径规划",
+  },
+
+  // ============================================
+  // 过滤/筛选类 (Code Review P2-3)
+  // ============================================
+  "refine:filter": {
+    required: [],
+    optional: ["criteria", "topic", "platform", "timeRange", "tags", "limit"],
+    description: "在当前结果中筛选（基于上下文的搜索结果）",
+  },
+  "refine:check": {
+    required: ["criteria"],
+    optional: ["scope"],
+    description: "检查是否存在特定类型的内容",
   },
 };
 

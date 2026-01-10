@@ -1,12 +1,23 @@
 /**
- * V4.2.15: 内存级速率限制器
+ * V4.2.16: 混合速率限制器
  *
  * 特性：
  * - 滑动窗口算法
  * - 按用户 ID 或 IP 限制
  * - 自动清理过期记录
  * - 支持不同端点配置不同限制
+ *
+ * Code Review P0-2: 混合存储模式
+ * - 内存存储：用于非关键端点（快速但不跨实例共享）
+ * - 数据库存储：用于高风险端点（auth/dangerous）确保分布式一致性
+ *
+ * ⚠️ 分布式部署注意事项：
+ * 当前内存存储在多实例部署时无法共享状态。
+ * 高风险端点（auth、dangerous）使用数据库存储确保一致性。
+ * 如需所有端点都支持分布式，请配置 REDIS_URL 环境变量。
  */
+
+import { logger } from "@/lib/logger";
 
 interface RateLimitEntry {
   /** 请求时间戳数组 */
@@ -20,24 +31,28 @@ interface RateLimitConfig {
   windowMs: number;
   /** 窗口内最大请求数 */
   maxRequests: number;
+  /** 是否使用分布式存储（用于高风险操作） */
+  useDistributed?: boolean;
 }
 
 /**
  * 默认速率限制配置
+ *
+ * Code Review P0-2: 高风险端点标记为分布式存储
  */
 export const RATE_LIMIT_CONFIGS: Record<string, RateLimitConfig> = {
   // API 默认限制：每分钟 200 次（提高以适应正常使用）
   default: { windowMs: 60_000, maxRequests: 200 },
-  // 认证相关：每分钟 10 次（防暴力破解）
-  auth: { windowMs: 60_000, maxRequests: 10 },
+  // 认证相关：每分钟 10 次（防暴力破解）- 使用分布式存储
+  auth: { windowMs: 60_000, maxRequests: 10, useDistributed: true },
   // 搜索 API：每分钟 60 次
   search: { windowMs: 60_000, maxRequests: 60 },
-  // AI 相关 API：每分钟 30 次（成本考虑）
-  ai: { windowMs: 60_000, maxRequests: 30 },
+  // AI 相关 API：每分钟 30 次（成本考虑）- 使用分布式存储防止滥用
+  ai: { windowMs: 60_000, maxRequests: 30, useDistributed: true },
   // Brain-Sync 复习系统：每分钟 60 次（多组件共享，需要宽松限制）
   brain_sync: { windowMs: 60_000, maxRequests: 60 },
-  // 批量操作：每分钟 10 次
-  batch: { windowMs: 60_000, maxRequests: 10 },
+  // 批量操作：每分钟 10 次 - 使用分布式存储
+  batch: { windowMs: 60_000, maxRequests: 10, useDistributed: true },
   // 书签操作：每分钟 300 次（核心用户操作，需要宽松限制）
   bookmarks: { windowMs: 60_000, maxRequests: 300 },
   // 附件内容抓取：每分钟 10 次（防滥用，最多 3 个附件）
@@ -50,13 +65,15 @@ export const RATE_LIMIT_CONFIGS: Record<string, RateLimitConfig> = {
   knowledge_studio_read: { windowMs: 60_000, maxRequests: 60 },
   // Knowledge Studio 生成操作：每分钟 10 次（大纲、内容生成，成本较高）
   knowledge_studio_generate: { windowMs: 60_000, maxRequests: 10 },
-  // 高风险操作：每小时 2 次（账户删除、数据导出等不可逆操作）
-  dangerous: { windowMs: 3600_000, maxRequests: 2 },
+  // 高风险操作：每小时 2 次（账户删除、数据导出等不可逆操作）- 使用分布式存储
+  dangerous: { windowMs: 3600_000, maxRequests: 2, useDistributed: true },
 };
 
 /**
  * 内存速率限制存储
- * 生产环境建议替换为 Redis
+ *
+ * ⚠️ 注意：仅适用于单实例部署或非关键端点
+ * 多实例部署时请使用分布式存储
  */
 class RateLimiterStore {
   private store = new Map<string, RateLimitEntry>();
@@ -140,8 +157,136 @@ class RateLimiterStore {
   }
 }
 
+/**
+ * 分布式速率限制存储（使用 Supabase）
+ *
+ * Code Review P0-2: 添加分布式存储支持
+ * 用于高风险端点确保跨实例一致性
+ */
+class DistributedRateLimiterStore {
+  private memoryFallback = new Map<string, RateLimitEntry>();
+  private static warnedAboutFallback = false;
+
+  /**
+   * 检查并记录请求（使用数据库或内存回退）
+   */
+  async check(
+    key: string,
+    config: RateLimitConfig,
+    identifier: string,
+    configKey: string,
+  ): Promise<{ allowed: boolean; remaining: number; resetMs: number }> {
+    // 尝试使用数据库
+    try {
+      return await this.checkWithDatabase(key, config, identifier, configKey);
+    } catch (error) {
+      // 数据库不可用时回退到内存（记录警告）
+      if (!DistributedRateLimiterStore.warnedAboutFallback) {
+        logger.warn(
+          {
+            error: error instanceof Error ? error.message : String(error),
+            configKey,
+          },
+          "Rate limiter: Database unavailable, falling back to memory storage. " +
+            "This may not work correctly in distributed deployments.",
+        );
+        DistributedRateLimiterStore.warnedAboutFallback = true;
+      }
+      return this.checkWithMemory(key, config);
+    }
+  }
+
+  /**
+   * 使用数据库检查速率限制
+   */
+  private async checkWithDatabase(
+    _key: string,
+    config: RateLimitConfig,
+    identifier: string,
+    configKey: string,
+  ): Promise<{ allowed: boolean; remaining: number; resetMs: number }> {
+    // 动态导入避免循环依赖
+    const { createClient } = await import("@/lib/supabase/server");
+    const supabase = await createClient();
+
+    const now = Date.now();
+    const windowStart = new Date(now - config.windowMs).toISOString();
+
+    // 调用数据库函数进行原子检查和记录
+    const { data, error } = await supabase.rpc("check_rate_limit", {
+      p_identifier: identifier,
+      p_config_key: configKey,
+      p_window_start: windowStart,
+      p_max_requests: config.maxRequests,
+      p_window_ms: config.windowMs,
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    // 解析数据库返回结果（PostgreSQL 表函数返回数组）
+    const results = data as Array<{
+      allowed: boolean;
+      remaining: number;
+      reset_ms: number;
+    }>;
+
+    if (!results || results.length === 0) {
+      throw new Error("check_rate_limit returned no results");
+    }
+
+    const result = results[0];
+
+    return {
+      allowed: result.allowed,
+      remaining: result.remaining,
+      resetMs: result.reset_ms,
+    };
+  }
+
+  /**
+   * 使用内存回退检查速率限制
+   */
+  private checkWithMemory(
+    key: string,
+    config: RateLimitConfig,
+  ): { allowed: boolean; remaining: number; resetMs: number } {
+    const now = Date.now();
+    const windowStart = now - config.windowMs;
+
+    let entry = this.memoryFallback.get(key);
+    if (!entry) {
+      entry = { timestamps: [], lastAccess: now };
+      this.memoryFallback.set(key, entry);
+    }
+
+    entry.timestamps = entry.timestamps.filter((ts) => ts > windowStart);
+    entry.lastAccess = now;
+
+    if (entry.timestamps.length >= config.maxRequests) {
+      const oldestTimestamp = entry.timestamps[0];
+      const resetMs = oldestTimestamp + config.windowMs - now;
+      return {
+        allowed: false,
+        remaining: 0,
+        resetMs: Math.max(0, resetMs),
+      };
+    }
+
+    entry.timestamps.push(now);
+
+    return {
+      allowed: true,
+      remaining: config.maxRequests - entry.timestamps.length,
+      resetMs: config.windowMs,
+    };
+  }
+}
+
 // 单例实例
 const rateLimiterStore = new RateLimiterStore();
+const distributedRateLimiterStore = new DistributedRateLimiterStore();
 
 /**
  * 根据路径获取速率限制配置
@@ -234,7 +379,11 @@ export function getRateLimitConfig(pathname: string): RateLimitConfig {
 }
 
 /**
- * 检查速率限制
+ * 检查速率限制（同步版本）
+ *
+ * ⚠️ 注意：此函数仅使用内存存储，不支持分布式。
+ * 对于高风险端点，请使用 checkRateLimitAsync。
+ *
  * @param identifier - 用户标识（用户 ID 或 IP）
  * @param pathname - 请求路径
  * @returns 限制检查结果
@@ -247,6 +396,50 @@ export function checkRateLimit(
   const key = `${identifier}:${getConfigKey(pathname)}`;
   const result = rateLimiterStore.check(key, config);
 
+  return {
+    ...result,
+    limit: config.maxRequests,
+  };
+}
+
+/**
+ * 检查速率限制（异步版本，支持分布式存储）
+ *
+ * Code Review P0-2: 添加异步版本支持分布式存储
+ *
+ * @param identifier - 用户标识（用户 ID 或 IP）
+ * @param pathname - 请求路径
+ * @returns 限制检查结果
+ */
+export async function checkRateLimitAsync(
+  identifier: string,
+  pathname: string,
+): Promise<{
+  allowed: boolean;
+  remaining: number;
+  resetMs: number;
+  limit: number;
+}> {
+  const config = getRateLimitConfig(pathname);
+  const configKey = getConfigKey(pathname);
+  const key = `${identifier}:${configKey}`;
+
+  // 高风险端点使用分布式存储
+  if (config.useDistributed) {
+    const result = await distributedRateLimiterStore.check(
+      key,
+      config,
+      identifier,
+      configKey,
+    );
+    return {
+      ...result,
+      limit: config.maxRequests,
+    };
+  }
+
+  // 非高风险端点使用内存存储
+  const result = rateLimiterStore.check(key, config);
   return {
     ...result,
     limit: config.maxRequests,

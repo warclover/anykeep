@@ -7362,6 +7362,20 @@ export type Database = {
           zone: string;
         }[];
       };
+      check_rate_limit: {
+        Args: {
+          p_identifier: string;
+          p_config_key: string;
+          p_window_start: string;
+          p_max_requests: number;
+          p_window_ms: number;
+        };
+        Returns: {
+          allowed: boolean;
+          remaining: number;
+          reset_ms: number;
+        }[];
+      };
       claim_jobs_batch: {
         Args: {
           p_job_types?: Database["public"]["Enums"]["job_type"][];

@@ -440,6 +440,134 @@ const TEST_CASES: TestCase[] = [
   },
 
   // ============================================
+  // Phase 1.2: 边界场景增强 (2026-01-10)
+  // ============================================
+  // 情感表达类
+  {
+    input: "好烦啊找不到那个网页了",
+    expectedType: "query",
+    expectedSubType: "search",
+    category: "edge",
+    description: "情感表达 + 搜索意图",
+  },
+  {
+    input: "终于想起来要整理书签了",
+    expectedType: "organize",
+    expectedSubType: "cleanup",
+    category: "edge",
+    description: "情感表达 + 整理意图",
+  },
+  {
+    input: "头疼，收藏太乱了",
+    expectedType: "organize",
+    expectedSubType: "cleanup",
+    category: "edge",
+    description: "情感表达 + 整理意图",
+  },
+  {
+    input: "好久没看收藏了",
+    expectedType: "query",
+    expectedSubType: "list",
+    category: "edge",
+    description: "情感表达 + 列表意图",
+  },
+  // 省略主语类
+  {
+    input: "整理下",
+    expectedType: "organize",
+    expectedSubType: "cleanup",
+    category: "edge",
+    description: "省略主语：整理",
+  },
+  {
+    input: "备份",
+    expectedType: "create",
+    expectedSubType: "share",
+    category: "edge",
+    description: "省略主语：备份",
+  },
+  // 动词变形类
+  {
+    input: "找一找 AI 相关",
+    expectedType: "query",
+    expectedSubType: "search",
+    category: "edge",
+    description: "动词变形：找一找",
+  },
+  {
+    input: "看一眼收藏",
+    expectedType: "query",
+    expectedSubType: "list",
+    category: "edge",
+    description: "动词变形：看一眼",
+  },
+  {
+    input: "理一理",
+    expectedType: "organize",
+    expectedSubType: "cleanup",
+    category: "edge",
+    description: "动词变形：理一理",
+  },
+  {
+    input: "翻一翻",
+    expectedType: "query",
+    expectedSubType: "list",
+    category: "edge",
+    description: "动词变形：翻一翻",
+  },
+  // 英文混合类
+  {
+    input: "export to markdown",
+    expectedType: "create",
+    expectedSubType: "export",
+    category: "edge",
+    description: "英文指令：export",
+  },
+  {
+    input: "find React",
+    expectedType: "query",
+    expectedSubType: "search",
+    category: "edge",
+    description: "英文指令：find",
+  },
+  {
+    input: "delete this",
+    expectedType: "action",
+    expectedSubType: "delete",
+    category: "edge",
+    description: "英文指令：delete",
+  },
+  {
+    input: "tag as important",
+    expectedType: "action",
+    expectedSubType: "tag",
+    category: "edge",
+    description: "英文指令：tag",
+  },
+  // 功能询问类
+  {
+    input: "怎么导出书签",
+    expectedType: "chitchat",
+    expectedSubType: "help",
+    category: "edge",
+    description: "功能询问：怎么",
+  },
+  {
+    input: "有没有自动分类功能",
+    expectedType: "chitchat",
+    expectedSubType: "help",
+    category: "edge",
+    description: "功能询问：有没有功能",
+  },
+  {
+    input: "能自动整理吗",
+    expectedType: "chitchat",
+    expectedSubType: "help",
+    category: "edge",
+    description: "功能询问：能...吗",
+  },
+
+  // ============================================
   // 复杂/组合意图（当前系统识别后半部分意图）
   // ============================================
   {
@@ -518,7 +646,7 @@ async function runTests(options: {
 
   for (const testCase of testCases) {
     try {
-      const classification = await classifier.classify(testCase.input, {});
+      const classification = await classifier.classify(testCase.input);
 
       const typeMatch = classification.type === testCase.expectedType;
       const subTypeMatch =

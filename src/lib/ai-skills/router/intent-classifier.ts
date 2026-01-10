@@ -9,9 +9,25 @@
  *
  * 策略：规则优先 + LLM 兜底
  *
- * @version 2.0.0
+ * Code Review P1-4: 权重校准策略说明
+ *
+ * 权重分层设计：
+ * - 95-100: 高置信度精准意图（synthesis, active_recall_start, digest）
+ * - 85-94:  明确专业意图（learn, analyze, create 的专项功能）
+ * - 75-84:  标准操作意图（organize, action 的常规操作）
+ * - 60-74:  通用查询意图（query:search, query:list 的变体）
+ * - 40-59:  低置信度通用意图（基础 list、explain）
+ * - 10-39:  闲聊兜底意图（chitchat）
+ *
+ * 冲突解决原则：
+ * 1. 更具体的意图权重更高（如 organize:move > action:move）
+ * 2. 有明确动词的意图权重更高（如 "整理" > "看看"）
+ * 3. 多词匹配的意图权重更高（如 "帮我整理收藏" > "整理"）
+ *
+ * @version 2.1.0
  * @since 2025-12-24
  * @updated 2025-12-26 - 添加 LLM 分类兜底支持
+ * @updated 2026-01-10 - 添加权重校准策略说明 (Code Review P1-4)
  */
 
 import { logger } from "@/lib/logger";
@@ -972,18 +988,20 @@ export const DEFAULT_RULES: IntentRule[] = [
     weight: 55,
   },
   {
+    // P1-4: action:move 权重从 50 调整到 62，区分于 list (45-60)
     pattern: /移动|转移|放到/,
     type: "action",
     subType: "move",
     complexity: "simple",
-    weight: 50,
+    weight: 62,
   },
   {
+    // P1-4: action:delete 权重从 50 调整到 63，区分于 list (45-60)
     pattern: /删除|移除|清除|删掉/,
     type: "action",
     subType: "delete",
     complexity: "simple",
-    weight: 50,
+    weight: 63,
   },
   {
     // Phase 1.1 新增：口语化删除（删了吧、删了）
@@ -1039,6 +1057,185 @@ export const DEFAULT_RULES: IntentRule[] = [
     subType: "rename",
     complexity: "simple",
     weight: 45,
+  },
+
+  // ============================================
+  // Phase 1.2: 边界场景增强规则 (2026-01-10)
+  // 覆盖情感表达、省略主语、动词变形、英文混合等边界场景
+  // ============================================
+
+  // --------------------------------------------
+  // 情感表达类（带情绪的隐含意图）
+  // --------------------------------------------
+  {
+    // 情感表达：烦躁 + 找不到 → 搜索意图
+    // 示例："好烦啊找不到那个网页了"
+    pattern: /好?烦.{0,5}找不到/,
+    type: "query",
+    subType: "search",
+    complexity: "simple",
+    weight: 70,
+  },
+  {
+    // 情感表达：终于 + 整理 → 整理意图
+    // 示例："终于想起来要整理书签了"
+    pattern: /终于.{0,5}(整理|清理)/,
+    type: "organize",
+    subType: "cleanup",
+    complexity: "complex",
+    weight: 66,
+  },
+  {
+    // 情感表达：头疼/崩溃 + 乱/多 → 整理意图
+    // 示例："头疼，收藏太乱了"
+    pattern: /(头疼|头痛|崩溃).{0,5}(乱|多|杂)/,
+    type: "organize",
+    subType: "cleanup",
+    complexity: "complex",
+    weight: 64,
+  },
+  {
+    // 情感表达：好久没 + 看/整理 → 列表意图
+    // 示例："好久没看收藏了"
+    // 权重 89：高于 S1 收藏动作信号 (88)，确保情感表达优先
+    pattern: /好久没.{0,5}(看|整理|管|打开)/,
+    type: "query",
+    subType: "list",
+    complexity: "simple",
+    weight: 89,
+  },
+
+  // --------------------------------------------
+  // 省略主语类（单词/极简指令）
+  // --------------------------------------------
+  {
+    // 省略主语："整理下" → 整理意图
+    pattern: /^整理(下|一下)?$/,
+    type: "organize",
+    subType: "cleanup",
+    complexity: "complex",
+    weight: 62,
+  },
+  {
+    // 省略主语："分类" → 分类意图
+    pattern: /^分类$/,
+    type: "organize",
+    subType: "classify",
+    complexity: "medium",
+    weight: 58,
+  },
+  {
+    // 省略主语："备份" → 分享/备份意图
+    pattern: /^备份$/,
+    type: "create",
+    subType: "share",
+    complexity: "medium",
+    weight: 68,
+  },
+
+  // --------------------------------------------
+  // 动词变形类（叠词/变体动词）
+  // --------------------------------------------
+  {
+    // 动词变形："找一找" → 搜索意图
+    // 示例："找一找 AI 相关"
+    pattern: /找一找.{1,20}/,
+    type: "query",
+    subType: "search",
+    complexity: "simple",
+    weight: 68,
+  },
+  {
+    // 动词变形："看一眼" → 列表意图
+    pattern: /看一眼/,
+    type: "query",
+    subType: "list",
+    complexity: "simple",
+    weight: 50,
+  },
+  {
+    // 动词变形："理一理" → 整理意图
+    pattern: /理一理/,
+    type: "organize",
+    subType: "cleanup",
+    complexity: "complex",
+    weight: 60,
+  },
+  {
+    // 动词变形："翻一翻" → 列表意图
+    pattern: /翻一翻/,
+    type: "query",
+    subType: "list",
+    complexity: "simple",
+    weight: 48,
+  },
+
+  // --------------------------------------------
+  // 英文混合类（中英文混合表达）
+  // --------------------------------------------
+  {
+    // 英文指令："export to markdown" → 导出意图
+    pattern: /^export\s+(to\s+)?(markdown|json|csv|html)?$/i,
+    type: "create",
+    subType: "export",
+    complexity: "medium",
+    weight: 82,
+  },
+  {
+    // 英文指令："find React" → 搜索意图
+    pattern: /^find\s+.+$/i,
+    type: "query",
+    subType: "search",
+    complexity: "simple",
+    weight: 80,
+  },
+  {
+    // 英文指令："delete this" → 删除意图
+    pattern: /^delete\s+(this|it|them)?$/i,
+    type: "action",
+    subType: "delete",
+    complexity: "simple",
+    weight: 68,
+  },
+  {
+    // 英文指令："tag as important" → 标签意图
+    pattern: /^tag\s+(as\s+)?/i,
+    type: "action",
+    subType: "tag",
+    complexity: "simple",
+    weight: 70,
+  },
+
+  // --------------------------------------------
+  // 功能询问类（如何使用/功能查询）
+  // 权重设置较高 (86-90)，确保询问类优先于操作类规则
+  // --------------------------------------------
+  {
+    // 功能询问："怎么导出书签" → 帮助意图
+    // 权重 90：高于 export (85)，怎么 + 动词 = 询问用法
+    pattern: /怎么.{0,5}(导出|整理|搜索|分类|标签|备份)/,
+    type: "chitchat",
+    subType: "help",
+    complexity: "simple",
+    weight: 90,
+  },
+  {
+    // 功能询问："有没有自动分类功能" → 帮助意图
+    // 权重 88：高于 classify (70)，有没有...功能 = 询问能力
+    pattern: /有没有.{0,5}(自动|智能).{0,5}功能/,
+    type: "chitchat",
+    subType: "help",
+    complexity: "simple",
+    weight: 88,
+  },
+  {
+    // 功能询问："能自动整理吗" → 帮助意图
+    // 权重 88：高于 cleanup (80)，能...吗 = 询问能力
+    pattern: /能.{0,3}(自动|智能).{0,5}(整理|分类|标签)吗?/,
+    type: "chitchat",
+    subType: "help",
+    complexity: "simple",
+    weight: 88,
   },
 
   // ============================================

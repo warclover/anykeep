@@ -125,6 +125,43 @@ let initialized = false;
 let unifiedEngineInitialized = false;
 
 /**
+ * 初始化 Promise（用于避免竞态条件）
+ * Code Review P0-1: 修复初始化竞态条件
+ */
+let initializationPromise: Promise<void> | null = null;
+
+/**
+ * 初始化状态
+ */
+export interface UnifiedEngineInitStatus {
+  initialized: boolean;
+  initializing: boolean;
+  hybridClassifierReady: boolean;
+  orchestrationSkillCount: number;
+  error?: string;
+}
+
+/**
+ * 语义匹配器健康状态
+ *
+ * Code Review P1-2: 添加详细的健康检查状态
+ */
+export interface SemanticMatcherHealthStatus {
+  /** 是否已初始化 */
+  initialized: boolean;
+  /** 预计算的意图数量 */
+  intentCount: number;
+  /** 健康检查是否通过 */
+  healthy: boolean;
+  /** 最近一次检查时间 */
+  lastCheckTime?: number;
+  /** 检查延迟（毫秒） */
+  checkLatencyMs?: number;
+  /** 错误信息（如果有） */
+  error?: string;
+}
+
+/**
  * 初始化 AI Skills 系统
  *
  * 在应用启动时调用一次
@@ -146,10 +183,39 @@ export function initializeAISkills(): void {
  *
  * 将 KnowledgeAgent 连接为原子执行器
  * 注册编排 Skills
+ *
+ * Code Review P0-1: 使用 Promise 避免并发初始化竞态条件
  */
 export async function initializeUnifiedEngine(): Promise<void> {
+  // 已初始化，直接返回
   if (unifiedEngineInitialized) {
     logger.debug("Unified Engine already initialized");
+    return;
+  }
+
+  // 正在初始化中，等待现有 Promise 完成（避免并发初始化）
+  if (initializationPromise) {
+    logger.debug("Unified Engine initialization in progress, waiting...");
+    return initializationPromise;
+  }
+
+  // 创建初始化 Promise
+  initializationPromise = doInitializeUnifiedEngine();
+
+  try {
+    await initializationPromise;
+  } finally {
+    // 初始化完成后清除 Promise（允许重试）
+    initializationPromise = null;
+  }
+}
+
+/**
+ * 实际执行初始化逻辑
+ * @internal
+ */
+async function doInitializeUnifiedEngine(): Promise<void> {
+  if (unifiedEngineInitialized) {
     return;
   }
 
@@ -298,22 +364,31 @@ export async function initializeUnifiedEngine(): Promise<void> {
 /**
  * 获取已初始化的统一引擎
  *
- * 如果未初始化，会自动初始化
+ * Code Review P0-1: 改进初始化处理
+ * - 如果正在初始化，返回引擎实例但记录警告
+ * - 如果未初始化，触发异步初始化
  *
- * 注意：如果引擎未初始化，此函数会同步初始化（不等待异步操作完成）
+ * 注意：如果引擎未初始化，此函数会触发异步初始化（不等待完成）
  * 对于需要确保混合分类器已初始化的场景，请使用 getUnifiedEngineAsync
  */
 export function getUnifiedEngine() {
   if (!unifiedEngineInitialized) {
-    // 异步初始化，但不等待完成（避免阻塞）
-    initializeUnifiedEngine().catch((error) => {
-      logger.error(
-        {
-          error: error instanceof Error ? error.message : String(error),
-        },
-        "Failed to initialize Unified Engine",
+    if (initializationPromise) {
+      // 正在初始化中，返回引擎但记录警告
+      logger.warn(
+        "getUnifiedEngine called while initialization in progress, hybrid classifier may not be ready",
       );
-    });
+    } else {
+      // 触发异步初始化
+      initializeUnifiedEngine().catch((error) => {
+        logger.error(
+          {
+            error: error instanceof Error ? error.message : String(error),
+          },
+          "Failed to initialize Unified Engine",
+        );
+      });
+    }
   }
   return unifiedEngine;
 }
@@ -342,4 +417,199 @@ export function isUnifiedEngineInitialized(): boolean {
  */
 export function isSkillsInitialized(): boolean {
   return initialized;
+}
+
+/**
+ * 获取统一引擎初始化状态
+ *
+ * Code Review P0-1: 添加状态检查函数
+ */
+export function getUnifiedEngineInitStatus(): UnifiedEngineInitStatus {
+  return {
+    initialized: unifiedEngineInitialized,
+    initializing: initializationPromise !== null,
+    hybridClassifierReady:
+      unifiedEngineInitialized &&
+      FeatureFlags.ENABLE_HYBRID_INTENT_CLASSIFIER &&
+      unifiedEngine.isHybridClassifierReady(),
+    orchestrationSkillCount: unifiedEngineInitialized
+      ? unifiedEngine.getRegisteredOrchestrationSkills().length
+      : 0,
+  };
+}
+
+/**
+ * 预热统一引擎（用于应用启动时调用）
+ *
+ * Code Review P0-1: 添加预热函数，确保首次请求前引擎已就绪
+ *
+ * @param timeoutMs - 超时时间（毫秒），默认 10000
+ * @returns 预热结果
+ */
+export async function warmupUnifiedEngine(timeoutMs: number = 10000): Promise<{
+  success: boolean;
+  durationMs: number;
+  status: UnifiedEngineInitStatus;
+}> {
+  const startTime = performance.now();
+
+  try {
+    // 带超时的初始化
+    const initPromise = initializeUnifiedEngine();
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(
+        () => reject(new Error(`Warmup timeout after ${timeoutMs}ms`)),
+        timeoutMs,
+      ),
+    );
+
+    await Promise.race([initPromise, timeoutPromise]);
+
+    const durationMs = Math.round(performance.now() - startTime);
+    const status = getUnifiedEngineInitStatus();
+
+    logger.info(
+      {
+        durationMs,
+        ...status,
+      },
+      "Unified Engine warmup completed",
+    );
+
+    return {
+      success: true,
+      durationMs,
+      status,
+    };
+  } catch (error) {
+    const durationMs = Math.round(performance.now() - startTime);
+    const status = getUnifiedEngineInitStatus();
+
+    logger.error(
+      {
+        error: error instanceof Error ? error.message : String(error),
+        durationMs,
+        ...status,
+      },
+      "Unified Engine warmup failed",
+    );
+
+    return {
+      success: false,
+      durationMs,
+      status: {
+        ...status,
+        error: error instanceof Error ? error.message : String(error),
+      },
+    };
+  }
+}
+
+/**
+ * 检查语义匹配器健康状态
+ *
+ * Code Review P1-2: 添加语义匹配器健康检查
+ *
+ * @param testInput - 测试输入（用于验证匹配功能）
+ * @returns 健康状态
+ */
+export async function checkSemanticMatcherHealth(
+  testInput: string = "搜索书签",
+): Promise<SemanticMatcherHealthStatus> {
+  const startTime = performance.now();
+
+  try {
+    // 检查统一引擎是否已初始化
+    if (!unifiedEngineInitialized) {
+      return {
+        initialized: false,
+        intentCount: 0,
+        healthy: false,
+        lastCheckTime: Date.now(),
+        error: "Unified engine not initialized",
+      };
+    }
+
+    // 获取语义匹配器状态
+    const semanticStatus = unifiedEngine.getSemanticMatcherStatus();
+
+    if (!semanticStatus.initialized) {
+      return {
+        initialized: false,
+        intentCount: 0,
+        healthy: false,
+        lastCheckTime: Date.now(),
+        error: "Semantic matcher not initialized",
+      };
+    }
+
+    // 执行测试匹配验证功能正常
+    const testResult = await unifiedEngine.testSemanticMatcher(testInput);
+
+    const checkLatencyMs = Math.round(performance.now() - startTime);
+
+    return {
+      initialized: true,
+      intentCount: semanticStatus.intentCount,
+      healthy: testResult.success,
+      lastCheckTime: Date.now(),
+      checkLatencyMs,
+      error: testResult.error,
+    };
+  } catch (error) {
+    const checkLatencyMs = Math.round(performance.now() - startTime);
+
+    return {
+      initialized: false,
+      intentCount: 0,
+      healthy: false,
+      lastCheckTime: Date.now(),
+      checkLatencyMs,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+/**
+ * 获取完整的 AI 系统健康状态
+ *
+ * Code Review P1-2: 综合健康检查
+ */
+export async function getAISystemHealthStatus(): Promise<{
+  engine: UnifiedEngineInitStatus;
+  semanticMatcher: SemanticMatcherHealthStatus;
+  overall: {
+    healthy: boolean;
+    issues: string[];
+  };
+}> {
+  const engineStatus = getUnifiedEngineInitStatus();
+  const semanticStatus = await checkSemanticMatcherHealth();
+
+  const issues: string[] = [];
+
+  if (!engineStatus.initialized) {
+    issues.push("Unified engine not initialized");
+  }
+
+  if (engineStatus.initializing) {
+    issues.push("Unified engine initialization in progress");
+  }
+
+  if (!semanticStatus.healthy) {
+    issues.push(semanticStatus.error || "Semantic matcher unhealthy");
+  }
+
+  if (semanticStatus.intentCount === 0 && semanticStatus.initialized) {
+    issues.push("Semantic matcher has no precomputed intents");
+  }
+
+  return {
+    engine: engineStatus,
+    semanticMatcher: semanticStatus,
+    overall: {
+      healthy: issues.length === 0,
+      issues,
+    },
+  };
 }

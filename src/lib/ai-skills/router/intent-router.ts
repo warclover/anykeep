@@ -7,9 +7,15 @@
  * - 返回完整的路由决策结果
  * - 收集路由性能指标
  *
- * @version 2.0.0
+ * Code Review P1-3: 使用工厂 + 懒加载单例模式
+ * - 避免模块加载时立即创建实例
+ * - 支持测试时重置单例
+ * - 支持配置延迟初始化
+ *
+ * @version 2.1.0
  * @since 2025-12-24
  * @updated 2025-12-26 - 添加性能指标收集
+ * @updated 2026-01-10 - 重构为懒加载单例模式 (Code Review P1-3)
  */
 
 import { logger } from "@/lib/logger";
@@ -376,7 +382,96 @@ export function createIntentRouter(config?: IntentRouterConfig): IntentRouter {
   return new IntentRouter(config);
 }
 
+// ============================================
+// 懒加载单例模式 (Code Review P1-3)
+// ============================================
+
+/**
+ * 单例实例（懒加载）
+ */
+let intentRouterInstance: IntentRouter | null = null;
+
+/**
+ * 单例配置（用于延迟初始化）
+ */
+let singletonConfig: IntentRouterConfig | undefined = undefined;
+
+/**
+ * 获取意图路由器单例
+ *
+ * Code Review P1-3: 懒加载单例，首次访问时创建
+ *
+ * @param config - 可选配置（仅首次调用生效）
+ * @returns IntentRouter 实例
+ */
+export function getIntentRouter(config?: IntentRouterConfig): IntentRouter {
+  if (!intentRouterInstance) {
+    const finalConfig = config || singletonConfig;
+    intentRouterInstance = new IntentRouter(finalConfig);
+    logger.debug(
+      { config: !!finalConfig },
+      "IntentRouter: Lazy singleton created",
+    );
+  }
+  return intentRouterInstance;
+}
+
+/**
+ * 配置单例（在首次获取前调用）
+ *
+ * Code Review P1-3: 支持延迟配置
+ *
+ * @param config - 单例配置
+ */
+export function configureIntentRouter(config: IntentRouterConfig): void {
+  if (intentRouterInstance) {
+    logger.warn(
+      "IntentRouter: configureIntentRouter called after instance created, updating existing instance",
+    );
+    intentRouterInstance.updateConfig(config);
+  } else {
+    singletonConfig = config;
+  }
+}
+
+/**
+ * 重置意图路由器单例
+ *
+ * Code Review P1-3: 支持测试时重置
+ *
+ * @internal 仅用于测试
+ */
+export function resetIntentRouter(): void {
+  intentRouterInstance = null;
+  singletonConfig = undefined;
+  logger.debug("IntentRouter: Singleton reset");
+}
+
+/**
+ * 检查单例是否已创建
+ *
+ * @internal 仅用于调试
+ */
+export function isIntentRouterInitialized(): boolean {
+  return intentRouterInstance !== null;
+}
+
 /**
  * 默认意图路由器实例
+ *
+ * @deprecated 请使用 getIntentRouter() 替代，以支持懒加载和测试隔离
+ *
+ * 保留此导出以保持向后兼容，但底层使用懒加载实现
  */
-export const intentRouter = new IntentRouter();
+export const intentRouter = new Proxy({} as IntentRouter, {
+  get(_, prop) {
+    const instance = getIntentRouter();
+    const value = (instance as unknown as Record<string | symbol, unknown>)[
+      prop
+    ];
+    if (typeof value === "function") {
+      return value.bind(instance);
+    }
+    return value;
+  },
+});
