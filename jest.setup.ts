@@ -67,53 +67,121 @@ if (!process.env.NODE_ENV) {
 jest.mock("@/lib/supabase/server", () => {
   // Default mock responses storage
   const mockResponses: Record<string, unknown> = {};
+  // Default thenable response storage (for awaitable chains)
+  let defaultThenableResponse: { data: unknown; error: unknown } = {
+    data: null,
+    error: null,
+  };
 
   const getMockResponse = (key: string) =>
     mockResponses[key] ?? { data: null, error: null };
 
-  const createChainMock = (tableName: string) => ({
-    select: jest.fn(() => ({
-      eq: jest.fn(() => ({
-        single: jest.fn(() =>
-          Promise.resolve(getMockResponse(`${tableName}.select.single`)),
-        ),
-        order: jest.fn(() => ({
-          limit: jest.fn(() =>
-            Promise.resolve(getMockResponse(`${tableName}.select.list`)),
-          ),
-        })),
-      })),
-      or: jest.fn(() => ({
-        eq: jest.fn(() => ({
-          order: jest.fn(() => ({
-            order: jest.fn(() =>
-              Promise.resolve(getMockResponse(`${tableName}.select.list`)),
-            ),
-          })),
-        })),
-      })),
-    })),
-    insert: jest.fn(() => ({
-      select: jest.fn(() => ({
-        single: jest.fn(() =>
-          Promise.resolve(getMockResponse(`${tableName}.insert.single`)),
-        ),
-      })),
-    })),
-    update: jest.fn(() => ({
-      eq: jest.fn(() =>
-        Promise.resolve(getMockResponse(`${tableName}.update`)),
-      ),
-    })),
-    delete: jest.fn(() => ({
-      eq: jest.fn(() =>
-        Promise.resolve(getMockResponse(`${tableName}.delete`)),
-      ),
-    })),
-  });
+  // Create a fully chainable mock that supports any chain pattern
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const createFlexibleChainMock = (tableName: string): any => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const chainMock: any = {};
+    // Track operation type per chain instance
+    let operationType: string = "select";
+
+    // Operation methods - track which operation is being performed
+    // Note: select() after insert/update/delete is for returning data, not a new operation
+    const mutationMethods = ["insert", "update", "delete"];
+    for (const method of mutationMethods) {
+      chainMock[method] = jest.fn(() => {
+        operationType = method;
+        return chainMock;
+      });
+    }
+    // select() only sets operation type if no mutation has been done
+    chainMock.select = jest.fn(() => {
+      if (operationType === "select") {
+        operationType = "select";
+      }
+      // If operationType is already insert/update/delete, keep it
+      return chainMock;
+    });
+
+    // Filter methods - just return chainMock
+    const filterMethods = [
+      "eq",
+      "neq",
+      "gt",
+      "gte",
+      "lt",
+      "lte",
+      "like",
+      "ilike",
+      "is",
+      "in",
+      "contains",
+      "containedBy",
+      "range",
+      "textSearch",
+      "match",
+      "not",
+      "or",
+      "and",
+      "filter",
+      "order",
+      "limit",
+      "offset",
+      "maybeSingle",
+    ];
+    for (const method of filterMethods) {
+      chainMock[method] = jest.fn(() => chainMock);
+    }
+
+    // Terminal method: single - returns resolved response
+    // Supports both new format (tableName.single) and legacy format (tableName.operation.single)
+    chainMock.single = jest.fn(() => {
+      // Check for legacy format first (e.g., "workflows.select.single")
+      const legacyKey = `${tableName}.${operationType}.single`;
+      if (mockResponses[legacyKey] !== undefined) {
+        return Promise.resolve(mockResponses[legacyKey]);
+      }
+      // Check for new format (e.g., "workflows.single")
+      const newKey = `${tableName}.single`;
+      if (mockResponses[newKey] !== undefined) {
+        return Promise.resolve(mockResponses[newKey]);
+      }
+      // Fallback to default
+      return Promise.resolve({ data: null, error: null });
+    });
+
+    // Make chainMock thenable (awaitable) for direct await on chain
+    chainMock.then = (
+      resolve: (value: unknown) => unknown,
+      reject?: (reason: unknown) => unknown,
+    ) => {
+      // Check for legacy format (e.g., "workflows.select.list")
+      const legacyKey = `${tableName}.${operationType}.list`;
+      if (mockResponses[legacyKey] !== undefined) {
+        return Promise.resolve(mockResponses[legacyKey]).then(resolve, reject);
+      }
+      // Check for new format (e.g., "workflows.list")
+      const newKey = `${tableName}.list`;
+      if (mockResponses[newKey] !== undefined) {
+        return Promise.resolve(mockResponses[newKey]).then(resolve, reject);
+      }
+      // Check operation-specific thenable (e.g., "workflows.update")
+      const operationKey = `${tableName}.${operationType}`;
+      if (mockResponses[operationKey] !== undefined) {
+        return Promise.resolve(mockResponses[operationKey]).then(
+          resolve,
+          reject,
+        );
+      }
+      return Promise.resolve(defaultThenableResponse).then(resolve, reject);
+    };
+
+    return chainMock;
+  };
 
   const mockClient = {
-    from: jest.fn((tableName: string) => createChainMock(tableName)),
+    from: jest.fn((tableName: string) => {
+      return createFlexibleChainMock(tableName);
+    }),
     rpc: jest.fn((funcName: string) =>
       Promise.resolve(getMockResponse(`rpc.${funcName}`)),
     ),
@@ -136,8 +204,15 @@ jest.mock("@/lib/supabase/server", () => {
     __setMockResponse: (key: string, response: unknown) => {
       mockResponses[key] = response;
     },
+    __setDefaultThenableResponse: (response: {
+      data: unknown;
+      error: unknown;
+    }) => {
+      defaultThenableResponse = response;
+    },
     __resetMockResponses: () => {
       Object.keys(mockResponses).forEach((key) => delete mockResponses[key]);
+      defaultThenableResponse = { data: null, error: null };
     },
     __getMockResponses: () => mockResponses,
   };

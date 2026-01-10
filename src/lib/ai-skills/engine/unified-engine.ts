@@ -16,6 +16,15 @@
 import { logger } from "@/lib/logger";
 import type { IntentRouter, IntentType } from "../router";
 import { createIntentRouter } from "../router";
+import {
+  type IntentDisambiguator,
+  createIntentDisambiguator,
+  type IntentMatch,
+} from "../router/intent-disambiguator";
+import {
+  type SpeculativeExecutor,
+  createSpeculativeExecutor,
+} from "../execution";
 import type { OrchestrationEngine } from "./orchestration-engine";
 import { createOrchestrationEngine } from "./orchestration-engine";
 import type { UnifiedOutputAdapter } from "../output/adapter";
@@ -71,6 +80,11 @@ import {
   type WorkflowExecuteResult,
 } from "@/lib/workflow/integration";
 import { isWorkflowConversationTriggerEnabled } from "../../ai-agent/config/feature-flags";
+import {
+  type PersonalizedLearningIntegration,
+  createPersonalizedLearningIntegration,
+  type ShortcutMatchResult,
+} from "../learning";
 
 /**
  * 统一执行引擎
@@ -94,6 +108,13 @@ export class UnifiedEngine {
   // Phase 3: 智能预测模块
   private intentPredictor: IntentPredictor;
   private ruleExtractor: RuleExtractor;
+
+  // Phase 2: 推测执行与消歧模块
+  private speculativeExecutor: SpeculativeExecutor;
+  private intentDisambiguator: IntentDisambiguator;
+
+  // Phase 3: 个性化学习模块
+  private personalizedLearning: PersonalizedLearningIntegration;
 
   private config: Required<UnifiedEngineConfig>;
   private effectListenerIds: string[] = [];
@@ -147,6 +168,20 @@ export class UnifiedEngine {
     // 初始化智能预测模块（Phase 3）
     this.intentPredictor = createIntentPredictor();
     this.ruleExtractor = createRuleExtractor();
+
+    // 初始化推测执行与消歧模块（Phase 2）
+    this.speculativeExecutor = createSpeculativeExecutor({
+      debug: config.debug,
+    });
+    this.intentDisambiguator = createIntentDisambiguator();
+
+    // 初始化个性化学习模块（Phase 3）
+    this.personalizedLearning = createPersonalizedLearningIntegration({
+      debug: config.debug,
+      enableShortcutMatching: true,
+      enableFeedbackCollection: true,
+      enablePatternDiscovery: true,
+    });
 
     // 初始化 Effect 处理器
     this.initEffectHandlers();
@@ -372,7 +407,35 @@ export class UnifiedEngine {
     context: EngineContext,
     options: EngineExecuteOptions,
   ): AsyncGenerator<UnifiedStreamChunk> {
+    // 生成轮次 ID（用于反馈跟踪）
+    const turnId = `turn-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
     try {
+      // ========== Phase 3: 快捷指令匹配 ==========
+      // 在路由前检查用户是否有匹配的快捷指令
+      const shortcutResult = await this.personalizedLearning.matchShortcut(
+        context.userId,
+        input,
+      );
+
+      if (shortcutResult.matched && shortcutResult.shortcut) {
+        logger.info(
+          {
+            userId: context.userId,
+            input: input.substring(0, 50),
+            matchedPhrase: shortcutResult.shortcut.shortcutPhrase,
+            similarity: shortcutResult.similarity,
+            intentType: shortcutResult.intentType,
+          },
+          "UnifiedEngine: Shortcut matched, using shortcut intent",
+        );
+
+        // 使用快捷指令的意图直接执行（跳过路由）
+        yield* this.executeWithShortcut(input, context, shortcutResult, turnId);
+        return;
+      }
+      // ========== 快捷指令匹配结束 ==========
+
       // 路由决策
       const routeResult = await this.router.route({
         message: input,
@@ -397,6 +460,151 @@ export class UnifiedEngine {
           routeResult.complexity.level,
         );
       }
+
+      // ========== Phase 2: 意图消歧检测 ==========
+      // 构建意图匹配对象，用于消歧判断
+      const intentMatch: IntentMatch = {
+        type: routeResult.intent.type,
+        subType: routeResult.intent.subType,
+        confidence: routeResult.intent.confidence ?? 0.7,
+        alternatives: routeResult.intent.alternatives?.map((alt) => ({
+          type: alt.type,
+          subType: alt.subType,
+          confidence: alt.confidence,
+        })),
+      };
+
+      // 检查是否需要消歧
+      if (this.intentDisambiguator.needsDisambiguation(intentMatch)) {
+        const disambiguationQuestion =
+          this.intentDisambiguator.generateDisambiguationQuestion(intentMatch);
+
+        logger.info(
+          {
+            confidence: intentMatch.confidence,
+            primaryIntent: `${intentMatch.type}:${intentMatch.subType}`,
+            alternativesCount: intentMatch.alternatives?.length ?? 0,
+          },
+          "UnifiedEngine: Intent disambiguation needed",
+        );
+
+        // 发送消歧问题给用户
+        yield {
+          type: "disambiguation",
+          data: {
+            id: `disambiguation-${Date.now()}`,
+            question: disambiguationQuestion.question,
+            options: disambiguationQuestion.options,
+            allowCustomInput: disambiguationQuestion.allowCustomInput,
+            timeout: disambiguationQuestion.timeout,
+            originalConfidence: intentMatch.confidence,
+          },
+        } as UnifiedStreamChunk;
+
+        // 消歧时暂停执行，等待用户选择
+        // 用户的选择将通过新的请求传入，携带 disambiguationChoice 参数
+        if (options.waitForDisambiguation !== false) {
+          yield {
+            type: "done",
+            data: {
+              success: false,
+              needsDisambiguation: true,
+              disambiguationId: `disambiguation-${Date.now()}`,
+            },
+          } as UnifiedStreamChunk;
+          return;
+        }
+      }
+      // ========== 意图消歧检测结束 ==========
+
+      // ========== Phase 2: 推测执行策略判断 ==========
+      // 获取意图风险等级
+      const riskLevel = this.speculativeExecutor.getRiskLevel(
+        routeResult.intent.type,
+        routeResult.intent.subType,
+      );
+
+      // 确定执行策略
+      const executionStrategy = this.speculativeExecutor.determineStrategy(
+        routeResult.intent.confidence ?? 0.7,
+        riskLevel,
+      );
+
+      logger.debug(
+        {
+          confidence: routeResult.intent.confidence,
+          riskLevel,
+          strategy: executionStrategy,
+          intent: `${routeResult.intent.type}:${routeResult.intent.subType}`,
+        },
+        "UnifiedEngine: Speculative execution strategy determined",
+      );
+
+      // 如果策略是需要确认的高风险操作
+      if (
+        executionStrategy === "confirm_required" &&
+        !options.skipConfirmation
+      ) {
+        const affectedCount = context.bookmarkIds?.length ?? 0;
+        const confirmationId = `confirm-${Date.now()}`;
+
+        yield {
+          type: "risk_confirmation",
+          data: {
+            id: confirmationId,
+            operationType: routeResult.intent.type,
+            operationSubType: routeResult.intent.subType,
+            riskLevel,
+            impactDescription: `此操作将影响 ${affectedCount} 个书签`,
+            affectedCount,
+            question: `确定要执行此${riskLevel === "high" ? "高风险" : ""}操作吗？`,
+            timeout: 30000,
+          },
+        } as UnifiedStreamChunk;
+
+        yield {
+          type: "done",
+          data: {
+            success: false,
+            needsConfirmation: true,
+            confirmationId,
+          },
+        } as UnifiedStreamChunk;
+        return;
+      }
+
+      // 如果策略是需要澄清的低置信度
+      if (executionStrategy === "clarify" && !options.skipClarification) {
+        const clarificationResult =
+          this.speculativeExecutor.generateClarificationQuestion(intentMatch);
+        const clarificationId = `clarify-${Date.now()}`;
+
+        yield {
+          type: "clarification",
+          data: {
+            id: clarificationId,
+            question: clarificationResult.question,
+            options: clarificationResult.options.map((opt) => ({
+              label: opt.label,
+              value: opt.value,
+              description: opt.description,
+            })),
+            timeout: clarificationResult.timeout,
+            confidence: routeResult.intent.confidence ?? 0,
+          },
+        } as UnifiedStreamChunk;
+
+        yield {
+          type: "done",
+          data: {
+            success: false,
+            needsClarification: true,
+            clarificationId,
+          },
+        } as UnifiedStreamChunk;
+        return;
+      }
+      // ========== 推测执行策略判断结束 ==========
 
       // ========== 慢思考层集成 ==========
       // 转换路由结果为慢思考接口格式
@@ -524,6 +732,21 @@ export class UnifiedEngine {
       // 执行成功标志（用于意图记录）
       const executionSuccess = true;
 
+      // ========== Phase 3: 开始反馈跟踪 ==========
+      this.personalizedLearning.startTracking({
+        userId: context.userId,
+        sessionId: context.conversationId ?? `session-${Date.now()}`,
+        turnId,
+        originalInput: input,
+        predictedIntent: {
+          type: effectiveIntent.type,
+          subType: effectiveIntent.subType,
+          confidence: effectiveIntent.confidence ?? 0.7,
+        },
+        executionStartTime: Date.now(),
+      });
+      // ========== 反馈跟踪开始结束 ==========
+
       // 根据模式执行（带增强）
       if (
         routeResult.mode === "orchestration" &&
@@ -560,7 +783,25 @@ export class UnifiedEngine {
         });
       }
       // ========== 意图历史记录结束 ==========
+
+      // ========== Phase 3: 记录执行成功反馈 ==========
+      await this.personalizedLearning.recordExecutionComplete(
+        context.userId,
+        context.conversationId ?? `session-${Date.now()}`,
+        turnId,
+        true, // 执行成功
+      );
+      // ========== 执行成功反馈记录结束 ==========
     } catch (error) {
+      // ========== Phase 3: 记录执行失败反馈 ==========
+      await this.personalizedLearning.recordExecutionComplete(
+        context.userId,
+        context.conversationId ?? `session-${Date.now()}`,
+        turnId,
+        false, // 执行失败
+      );
+      // ========== 执行失败反馈记录结束 ==========
+
       // 错误处理与回退
       const errorDetails = {
         message: error instanceof Error ? error.message : String(error),
@@ -682,6 +923,110 @@ export class UnifiedEngine {
     yield { type: "done", data: { success: true } };
   }
 
+  /**
+   * 使用快捷指令执行
+   *
+   * 当用户输入匹配已保存的快捷指令时，直接使用快捷指令的意图执行
+   *
+   * @param input - 用户输入
+   * @param context - 引擎上下文
+   * @param shortcutResult - 快捷指令匹配结果
+   * @param turnId - 轮次 ID（用于反馈跟踪）
+   */
+  private async *executeWithShortcut(
+    input: string,
+    context: EngineContext,
+    shortcutResult: ShortcutMatchResult,
+    turnId: string,
+  ): AsyncGenerator<UnifiedStreamChunk> {
+    const { shortcut, intentType, intentSubType, defaultSlots } =
+      shortcutResult;
+
+    if (!shortcut || !intentType) {
+      // 快捷指令匹配数据不完整，回退到正常路由
+      logger.warn(
+        { shortcutResult },
+        "UnifiedEngine: Shortcut match incomplete, falling back to normal routing",
+      );
+      return;
+    }
+
+    // 开始反馈跟踪
+    this.personalizedLearning.startTracking({
+      userId: context.userId,
+      sessionId: context.conversationId ?? `session-${Date.now()}`,
+      turnId,
+      originalInput: input,
+      predictedIntent: {
+        type: intentType,
+        subType: intentSubType,
+        confidence: shortcutResult.similarity,
+      },
+      executionStartTime: Date.now(),
+    });
+
+    try {
+      // 发送路由信息（标记为快捷指令）
+      yield {
+        type: "routing",
+        data: {
+          mode: "atomic",
+          reason: `使用快捷指令: "${shortcut.shortcutPhrase}"`,
+          skill: null,
+          isShortcut: true,
+          shortcutPhrase: shortcut.shortcutPhrase,
+          similarity: shortcutResult.similarity,
+        },
+      } as UnifiedStreamChunk;
+
+      // 使用快捷指令的意图执行原子模式
+      // 如果有默认槽位，注入到上下文中
+      const contextWithSlots: EngineContext = defaultSlots
+        ? {
+            ...context,
+            attachmentContext: context.attachmentContext
+              ? `${context.attachmentContext}\n\n【快捷指令默认参数】\n${JSON.stringify(defaultSlots, null, 2)}`
+              : `【快捷指令默认参数】\n${JSON.stringify(defaultSlots, null, 2)}`,
+          }
+        : context;
+
+      // 执行（带增强）
+      yield* this.executeWithEnhancements(
+        this.executionCoordinator.executeAtomic(input, contextWithSlots),
+        contextWithSlots,
+        intentType,
+        intentSubType,
+      );
+
+      // 记录执行成功
+      await this.personalizedLearning.recordExecutionComplete(
+        context.userId,
+        context.conversationId ?? `session-${Date.now()}`,
+        turnId,
+        true,
+      );
+    } catch (error) {
+      // 记录执行失败
+      await this.personalizedLearning.recordExecutionComplete(
+        context.userId,
+        context.conversationId ?? `session-${Date.now()}`,
+        turnId,
+        false,
+      );
+
+      logger.error(
+        { error, shortcutPhrase: shortcut.shortcutPhrase },
+        "UnifiedEngine: Shortcut execution failed",
+      );
+
+      // 回退到原子模式
+      yield this.outputAdapter.createFallbackChunk(
+        error instanceof Error ? error.message : "快捷指令执行失败",
+      );
+      yield* this.executionCoordinator.executeAtomic(input, context);
+    }
+  }
+
   // ============================================================
   // 公共 API（保持向后兼容）
   // ============================================================
@@ -691,6 +1036,19 @@ export class UnifiedEngine {
    */
   getRouter(): IntentRouter {
     return this.router;
+  }
+
+  /**
+   * 初始化混合意图分类器（如果启用）
+   * 应在应用启动时调用一次
+   */
+  async initializeHybridIntentClassifier(): Promise<void> {
+    const routerWithHybrid = this.router as {
+      initializeHybridClassifier?: () => Promise<void>;
+    };
+    if (routerWithHybrid.initializeHybridClassifier) {
+      await routerWithHybrid.initializeHybridClassifier();
+    }
   }
 
   /**
