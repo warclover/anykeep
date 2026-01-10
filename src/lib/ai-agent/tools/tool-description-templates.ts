@@ -39,7 +39,6 @@ export const TOOL_CATEGORIES = {
     "get_folder_detail",
     "get_folder_bookmarks",
     "move_bookmark",
-    "move_bookmarks_batch",
     "move_folder_to_group",
     "merge_folders",
     "split_folder",
@@ -59,7 +58,7 @@ export const TOOL_CATEGORIES = {
     "create_snapshot",
     "read_bookmark",
   ],
-  search: ["search", "semantic_search"],
+  search: ["search"],
   action: ["batch_tags", "move_bookmarks"],
   export: ["export_bookmarks", "list_export_formats", "preview_export"],
   settings: [
@@ -148,34 +147,24 @@ export const TOOL_COMPARISONS: Record<
 • get_folder_bookmarks: 获取文件夹内的书签列表`,
   },
   move_bookmark: {
-    similar: ["move_bookmarks_batch", "move_bookmarks"],
+    similar: ["move_bookmarks"],
     differences: `
 • move_bookmark: 移动单个书签到新文件夹
-• move_bookmarks_batch: 批量移动多个书签（同文件夹内）
 • move_bookmarks: 批量移动书签（action 类，需确认）`,
   },
   merge_folders: {
-    similar: ["split_folder", "move_bookmarks_batch"],
+    similar: ["split_folder"],
     differences: `
 • merge_folders: 将多个文件夹合并为一个
-• split_folder: 将一个文件夹拆分为多个
-• move_bookmarks_batch: 仅移动书签，不操作文件夹`,
+• split_folder: 将一个文件夹拆分为多个`,
   },
 
   // Search 类工具对比
   search: {
-    similar: ["semantic_search", "list_recent"],
+    similar: ["list_recent"],
     differences: `
-• search: 关键词搜索，精确匹配标题/描述/标签
-• semantic_search: 语义搜索，支持自然语言查询
+• search: 关键词 + 语义搜索，支持自然语言查询
 • list_recent: 无需搜索词，按时间排序`,
-  },
-  semantic_search: {
-    similar: ["search"],
-    differences: `
-• semantic_search: 理解用户意图，支持模糊查询
-• search: 精确关键词匹配，速度更快
-用户不确定关键词时优先使用 semantic_search`,
   },
 
   // Bookmark 类工具对比
@@ -478,18 +467,6 @@ export const FOLDER_TOOL_DESCRIPTIONS = {
     boundaries: ["notFound"],
   }),
 
-  move_bookmarks_batch: buildToolDescription({
-    core: "批量移动多个书签到指定文件夹。",
-    toolName: "move_bookmark",
-    scenarios: [
-      '"把这些书签都移到XX文件夹"',
-      '"批量移动书签"',
-      '"将选中的书签归类"',
-    ],
-    notes: ["单次最多移动 100 个书签", "所有书签必须属于当前用户"],
-    boundaries: ["notFound", "maxLimit"],
-  }),
-
   move_folder_to_group: buildToolDescription({
     core: "将文件夹移动到指定分组。",
     scenarios: [
@@ -677,23 +654,6 @@ export const SEARCH_TOOL_DESCRIPTIONS = {
       "精确匹配，需要关键词出现在标题/描述/标签中",
       "支持多关键词（空格分隔，AND 逻辑）",
       "默认返回 10 条结果",
-    ],
-    boundaries: ["emptyResult"],
-  }),
-
-  semantic_search: buildToolDescription({
-    core: "语义搜索书签（理解用户意图，支持自然语言查询）。",
-    toolName: "semantic_search",
-    scenarios: [
-      '"帮我找关于前端性能优化的文章"',
-      '"有没有讲解设计模式的内容"',
-      '"找一些学习编程的资源"',
-    ],
-    notes: [
-      "基于向量相似度，无需精确关键词",
-      "支持自然语言描述",
-      "可设置相似度阈值（0-1）",
-      "速度比关键词搜索稍慢",
     ],
     boundaries: ["emptyResult"],
   }),

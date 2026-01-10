@@ -20,7 +20,6 @@ export type IntentType =
   // 搜索类
   | "search"
   | "fuzzy_search"
-  | "semantic_search"
   // 整理类
   | "organize"
   | "theme_organize"
@@ -146,14 +145,14 @@ export const LEGACY_INTENT_BOOSTS: Partial<
 
   master: {
     paper_tracking: 1.5,
-    semantic_search: 1.4,
+    search: 1.4, // 搜索（已包含语义搜索）
     batch_summarize: 1.3,
     knowledge_map: 1.2,
   },
 
   phd: {
     paper_tracking: 1.7,
-    semantic_search: 1.5,
+    search: 1.5, // 搜索（已包含语义搜索）
     find_related: 1.4,
     knowledge_map: 1.3,
   },
@@ -185,7 +184,7 @@ export const LEGACY_INTENT_BOOSTS: Partial<
   ai_enthusiast: {
     paper_tracking: 1.5,
     trend_tracking: 1.5,
-    semantic_search: 1.4,
+    search: 1.4, // 搜索（已包含语义搜索）
   },
 
   creator: {

@@ -6,11 +6,8 @@
  * @description 简化版搜索 Tool，只需关键词即可搜索
  */
 
-// 简化版（推荐）
+// 简化版搜索 Tool（已包含语义搜索能力）
 export { searchTool } from "./search.tool";
-
-// 保留原版用于兼容（后续可移除）
-export { semanticSearchTool } from "./semantic-search.tool";
 
 // 导出所有搜索 Tools 数组
 import { searchTool } from "./search.tool";

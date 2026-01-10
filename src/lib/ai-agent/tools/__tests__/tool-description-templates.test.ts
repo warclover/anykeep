@@ -122,7 +122,6 @@ describe("Tool Description Templates", () => {
         "get_folder_detail",
         "get_folder_bookmarks",
         "move_bookmark",
-        "move_bookmarks_batch",
         "move_folder_to_group",
         "merge_folders",
         "split_folder",
@@ -170,13 +169,6 @@ describe("Tool Description Templates", () => {
   describe("SEARCH_TOOL_DESCRIPTIONS", () => {
     it("包含所有 search 工具描述", () => {
       expect(SEARCH_TOOL_DESCRIPTIONS).toHaveProperty("search");
-      expect(SEARCH_TOOL_DESCRIPTIONS).toHaveProperty("semantic_search");
-    });
-
-    it("search 和 semantic_search 描述不同", () => {
-      expect(SEARCH_TOOL_DESCRIPTIONS.search).not.toBe(
-        SEARCH_TOOL_DESCRIPTIONS.semantic_search,
-      );
     });
   });
 

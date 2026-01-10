@@ -357,6 +357,8 @@ export interface DisambiguationRule {
   pattern: RegExp;
   /** 胜出的意图类型 */
   winner: IntentType;
+  /** 胜出的意图子类型（可选，用于更精确的路由，如 tts、tag） */
+  winnerSubType?: string;
   /** 优先级（越高越先匹配） */
   priority: number;
   /** 解释说明 */

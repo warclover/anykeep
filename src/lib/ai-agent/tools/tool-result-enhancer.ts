@@ -398,20 +398,6 @@ function generateToolSummary(toolName: string, data: unknown): string | null {
       return `找到 ${results.length} 条与「${query}」相关的结果`;
     }
 
-    case "semantic_search": {
-      const results = safeGetArray(data, "results");
-      const query = safeGet(data, "query", "");
-      if (results.length === 0) {
-        return `未找到与「${query}」语义相关的内容`;
-      }
-      const avgSimilarity =
-        results.reduce(
-          (sum: number, r: unknown) => sum + safeGet(r, "similarity", 0),
-          0,
-        ) / results.length || 0;
-      return `找到 ${results.length} 条相关结果（平均相似度 ${Math.round(avgSimilarity * 100)}%）`;
-    }
-
     default:
       return null;
   }
@@ -512,7 +498,7 @@ function generateToolActions(
       return [
         {
           description: "搜索特定内容",
-          relatedTool: "semantic_search",
+          relatedTool: "search",
           priority: "medium",
         },
         {
@@ -586,29 +572,9 @@ function generateToolActions(
       if (results.length === 0) {
         return [
           {
-            description: "尝试语义搜索",
-            relatedTool: "semantic_search",
-            priority: "high",
-          },
-          {
             description: "浏览最近收藏",
             relatedTool: "list_recent",
             priority: "medium",
-          },
-        ];
-      }
-      return [];
-    }
-
-    case "semantic_search": {
-      const results = safeGetArray(data, "results");
-
-      if (results.length === 0) {
-        return [
-          {
-            description: "尝试关键词搜索",
-            relatedTool: "search",
-            priority: "high",
           },
         ];
       }

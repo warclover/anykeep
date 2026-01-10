@@ -453,7 +453,7 @@ describe("ToolResultEnhancer", () => {
       ).toBe(true);
     });
 
-    it("search 无结果建议语义搜索", () => {
+    it("search 无结果建议浏览最近收藏", () => {
       const result: ToolResult<{ results: never[]; query: string }> = {
         success: true,
         data: { results: [], query: "test" },
@@ -462,9 +462,7 @@ describe("ToolResultEnhancer", () => {
       const enhanced = enhancer.enhance("search", result);
 
       expect(
-        enhanced.suggestedActions.some(
-          (a) => a.relatedTool === "semantic_search",
-        ),
+        enhanced.suggestedActions.some((a) => a.relatedTool === "list_recent"),
       ).toBe(true);
     });
 

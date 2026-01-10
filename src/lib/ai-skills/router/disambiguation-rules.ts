@@ -62,6 +62,62 @@ export interface DisambiguationRulesConfig {
  */
 export const DISAMBIGUATION_RULES: DisambiguationRule[] = [
   // ============================================
+  // Phase 3: TTS vs digest 消歧规则 (2026-01-10)
+  // ============================================
+
+  // 规则 P3-TTS1: 朗读/读 + 摘要 → TTS
+  // "读一下摘要"、"朗读这篇文章"、"念给我听" → 语音朗读而非摘要生成
+  {
+    id: "read-summary-tts",
+    conflicts: ["create"],
+    pattern: /(读|念|朗读|播放|听).{0,5}(摘要|内容|文章|这篇|这个|给我)/,
+    winner: "create",
+    winnerSubType: "tts",
+    priority: 115,
+    reason: "朗读/读 + 内容 → 语音朗读 (TTS) 而非摘要生成",
+  },
+
+  // 规则 P3-TTS2: 语音/播报信号 → TTS
+  // "语音播报"、"用声音读" → TTS
+  {
+    id: "voice-signal-tts",
+    conflicts: ["create"],
+    pattern: /(语音|声音|音频).{0,5}(播|读|念|听)/,
+    winner: "create",
+    winnerSubType: "tts",
+    priority: 120,
+    reason: "语音/声音信号 → 语音朗读 (TTS)",
+  },
+
+  // ============================================
+  // Phase 3: single vs batch 操作消歧规则 (2026-01-10)
+  // ============================================
+
+  // 规则 P3-TAG1: 单条标签操作 → action
+  // "给这个加标签"、"这篇打个标签" → 原子操作
+  {
+    id: "single-tag-action",
+    conflicts: ["action", "organize"],
+    pattern:
+      /(给|把|将).{0,5}(这个|这篇|那个|那篇).{0,10}(加|打|添加).{0,3}标签/,
+    winner: "action",
+    priority: 90,
+    reason: "单条书签标签操作 → 原子模式直接调用 Tool",
+  },
+
+  // 规则 P3-TAG2: 批量标签操作 → organize
+  // "给所有书签加标签"、"批量打标签" → 编排模式
+  {
+    id: "batch-tag-organize",
+    conflicts: ["action", "organize"],
+    pattern: /(批量|所有|全部|这些|那些).{0,5}(加|打|添加|删除|移除).{0,3}标签/,
+    winner: "organize",
+    winnerSubType: "tag",
+    priority: 95,
+    reason: "批量标签操作 → 编排模式 (smart_tagging)",
+  },
+
+  // ============================================
   // Phase 3: organize vs action 消歧规则 (2026-01-09)
   // ============================================
 

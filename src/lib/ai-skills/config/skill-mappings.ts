@@ -22,6 +22,8 @@ import type { SkillMapping, ExplicitToolMapping, MappingIndex } from "./types";
 export const SKILL_MAPPINGS: SkillMapping[] = [
   // ============================================
   // Active Recall 主动复习类（v2.5.0 新增）
+  // 注意：get_mastery_stats/update_review_preferences 已移除，
+  // 这些功能由 active_recall Skill 内部处理，或通过 query/action 通配符交由 AI Agent
   // ============================================
   {
     key: "learn:active_recall_start",
@@ -31,22 +33,6 @@ export const SKILL_MAPPINGS: SkillMapping[] = [
     minComplexity: "medium",
     enabled: true,
     priority: 105,
-  },
-  {
-    key: "query:mastery_stats",
-    skillId: "get_mastery_stats",
-    name: "复习掌握度统计",
-    mode: "atomic",
-    enabled: true,
-    priority: 85,
-  },
-  {
-    key: "action:review_preferences",
-    skillId: "update_review_preferences",
-    name: "复习偏好设置",
-    mode: "atomic",
-    enabled: true,
-    priority: 82,
   },
 
   // ============================================
@@ -434,39 +420,9 @@ export const SKILL_MAPPINGS: SkillMapping[] = [
 
   // ============================================
   // 操作类 → 原子模式
+  // 注意：delete/move/tag/archive 等基础操作不再单独映射，
+  // 统一由 action:* 通配符处理，AI Agent 直接调用对应 Tools
   // ============================================
-  {
-    key: "action:delete",
-    skillId: "delete",
-    name: "删除",
-    mode: "atomic",
-    enabled: true,
-    priority: 80,
-  },
-  {
-    key: "action:move",
-    skillId: "move",
-    name: "移动",
-    mode: "atomic",
-    enabled: true,
-    priority: 75,
-  },
-  {
-    key: "action:tag",
-    skillId: "add_tag",
-    name: "打标签",
-    mode: "atomic",
-    enabled: true,
-    priority: 75,
-  },
-  {
-    key: "action:archive",
-    skillId: "archive",
-    name: "归档",
-    mode: "atomic",
-    enabled: true,
-    priority: 70,
-  },
   // 操作类通配符兜底
   // 注意：对于未被其他规则匹配的 action 意图，交由 AI Agent 直接处理
   {

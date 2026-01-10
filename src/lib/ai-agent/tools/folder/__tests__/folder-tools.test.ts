@@ -200,14 +200,14 @@ const mockBookmarks = [
 
 describe("Folder Tools Definitions", () => {
   describe("folderTools array", () => {
-    it("should contain 16 tools", () => {
-      expect(folderTools).toHaveLength(16);
+    it("should contain 15 tools", () => {
+      expect(folderTools).toHaveLength(15);
     });
 
     it("should have unique tool names", () => {
       const names = folderTools.map((t) => t.definition.name);
       const uniqueNames = new Set(names);
-      expect(uniqueNames.size).toBe(16);
+      expect(uniqueNames.size).toBe(15);
     });
   });
 
@@ -277,11 +277,11 @@ describe("Folder Tools Definitions", () => {
       expect(queryTools).toHaveLength(3);
     });
 
-    it("should have 13 action tools", () => {
+    it("should have 12 action tools", () => {
       const actionTools = folderTools.filter(
         (t) => t.definition.category === "action",
       );
-      expect(actionTools).toHaveLength(13);
+      expect(actionTools).toHaveLength(12);
     });
 
     it("should have all action tools require confirmation", () => {

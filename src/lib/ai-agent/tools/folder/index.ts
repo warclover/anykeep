@@ -3,7 +3,7 @@
  *
  * Phase 1: 查询类 Tools（无需确认）- 3 个
  * Phase 2: 基础操作 Tools（低风险，需确认）- 6 个
- * Phase 3: 高级操作 Tools（中/高风险，需确认）- 7 个
+ * Phase 3: 高级操作 Tools（无批量移动，使用 action/move_bookmarks）- 6 个
  *
  * @version 1.2.0
  * @since 2025-12-23
@@ -33,7 +33,6 @@ export { toggleFolderArchiveTool } from "./toggle-folder-archive.tool";
 // Phase 3: 高级操作 Tools
 // ============================================
 export { toggleFolderLockTool } from "./toggle-folder-lock.tool";
-export { moveBookmarksBatchTool } from "./move-bookmarks-batch.tool";
 export { mergeFoldersTool } from "./merge-folders.tool";
 export { splitFolderTool } from "./split-folder.tool";
 export { deleteFolderTool } from "./delete-folder.tool";
@@ -60,7 +59,6 @@ import { toggleFolderArchiveTool } from "./toggle-folder-archive.tool";
 
 // Phase 3
 import { toggleFolderLockTool } from "./toggle-folder-lock.tool";
-import { moveBookmarksBatchTool } from "./move-bookmarks-batch.tool";
 import { mergeFoldersTool } from "./merge-folders.tool";
 import { splitFolderTool } from "./split-folder.tool";
 import { deleteFolderTool } from "./delete-folder.tool";
@@ -83,16 +81,15 @@ import { autoClassifyInboxTool } from "./auto-classify-inbox.tool";
  * - move_folder_to_group: 移动文件夹到分组
  * - toggle_folder_archive: 归档/取消归档文件夹
  *
- * Phase 3: 高级操作类（7 个）
+ * Phase 3: 高级操作类（6 个）
  * - toggle_folder_lock: AI 锁定/解锁
- * - move_bookmarks_batch: 批量移动书签
  * - merge_folders: 合并文件夹
  * - split_folder: 拆分文件夹
  * - delete_folder: 删除文件夹
  * - delete_folder_bookmarks: 删除文件夹内书签
  * - auto_classify_inbox: 一键分类待整理
  *
- * 共计: 16 个 Tools
+ * 共计: 15 个 Tools
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const folderTools: Tool<any, any>[] = [
@@ -109,7 +106,6 @@ export const folderTools: Tool<any, any>[] = [
   toggleFolderArchiveTool,
   // Phase 3: 高级操作类
   toggleFolderLockTool,
-  moveBookmarksBatchTool,
   mergeFoldersTool,
   splitFolderTool,
   deleteFolderTool,

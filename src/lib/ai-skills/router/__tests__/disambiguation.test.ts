@@ -306,4 +306,88 @@ describe("IntentClassifier.classifyWithCandidates with disambiguation", () => {
       // 如果只有一个高置信度候选，不需要消歧
     });
   });
+
+  // ============================================
+  // Phase 3: 新增消歧规则测试 (2026-01-10)
+  // ============================================
+  describe("TTS vs digest disambiguation (Phase 3)", () => {
+    it("should match read-summary-tts rule for '读一下摘要'", () => {
+      const rule = findMatchingRule("读一下摘要", ["create"]);
+
+      expect(rule).not.toBeNull();
+      expect(rule?.id).toBe("read-summary-tts");
+      expect(rule?.winner).toBe("create");
+      expect(rule?.winnerSubType).toBe("tts");
+    });
+
+    it("should match read-summary-tts rule for '朗读这篇文章'", () => {
+      const rule = findMatchingRule("朗读这篇文章", ["create"]);
+
+      expect(rule).not.toBeNull();
+      expect(rule?.id).toBe("read-summary-tts");
+      expect(rule?.winnerSubType).toBe("tts");
+    });
+
+    it("should match voice-signal-tts rule for '语音播报一下'", () => {
+      const rule = findMatchingRule("语音播报一下", ["create"]);
+
+      expect(rule).not.toBeNull();
+      expect(rule?.id).toBe("voice-signal-tts");
+      expect(rule?.winnerSubType).toBe("tts");
+    });
+
+    it("should match voice-signal-tts rule for '用声音读给我听'", () => {
+      const rule = findMatchingRule("用声音读给我听", ["create"]);
+
+      expect(rule).not.toBeNull();
+      expect(rule?.id).toBe("voice-signal-tts");
+      expect(rule?.winnerSubType).toBe("tts");
+    });
+  });
+
+  describe("single vs batch tag disambiguation (Phase 3)", () => {
+    it("should match single-tag-action rule for '给这个加标签'", () => {
+      const rule = findMatchingRule("给这个加标签", ["action", "organize"]);
+
+      expect(rule).not.toBeNull();
+      expect(rule?.id).toBe("single-tag-action");
+      expect(rule?.winner).toBe("action");
+    });
+
+    it("should match single-tag-action rule for '把这篇打个标签'", () => {
+      const rule = findMatchingRule("把这篇打个标签", ["action", "organize"]);
+
+      expect(rule).not.toBeNull();
+      expect(rule?.id).toBe("single-tag-action");
+      expect(rule?.winner).toBe("action");
+    });
+
+    it("should match batch-tag-organize rule for '批量打标签'", () => {
+      const rule = findMatchingRule("批量打标签", ["action", "organize"]);
+
+      expect(rule).not.toBeNull();
+      expect(rule?.id).toBe("batch-tag-organize");
+      expect(rule?.winner).toBe("organize");
+      expect(rule?.winnerSubType).toBe("tag");
+    });
+
+    it("should match batch-tag-organize rule for '给所有书签添加标签'", () => {
+      const rule = findMatchingRule("给所有书签添加标签", [
+        "action",
+        "organize",
+      ]);
+
+      expect(rule).not.toBeNull();
+      expect(rule?.id).toBe("batch-tag-organize");
+      expect(rule?.winner).toBe("organize");
+    });
+
+    it("should match batch-tag-organize rule for '这些书签删除标签'", () => {
+      const rule = findMatchingRule("这些书签删除标签", ["action", "organize"]);
+
+      expect(rule).not.toBeNull();
+      expect(rule?.id).toBe("batch-tag-organize");
+      expect(rule?.winner).toBe("organize");
+    });
+  });
 });

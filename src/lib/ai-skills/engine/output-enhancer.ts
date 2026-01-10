@@ -46,7 +46,7 @@ export interface OutputEnhancerConfig {
 }
 
 /** 搜索相关的工具名称 */
-const SEARCH_TOOL_NAMES = ["search", "semantic_search"] as const;
+const SEARCH_TOOL_NAMES = ["search"] as const;
 
 // ============================================
 // OutputEnhancer 类
