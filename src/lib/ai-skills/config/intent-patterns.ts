@@ -122,7 +122,8 @@ export const INTENT_PATTERNS: IntentPattern[] = [
   {
     type: "analyze",
     subType: "report",
-    pattern: "周报|月报|报告|总结报告",
+    pattern:
+      "周报|月报|报告|总结报告|这周.{0,5}(收藏|添加)|本周.{0,5}(收藏|添加)|最近.{0,5}收藏了",
     weight: 85,
     complexity: "complex",
     description: "生成周期报告",
@@ -130,7 +131,7 @@ export const INTENT_PATTERNS: IntentPattern[] = [
   {
     type: "analyze",
     subType: "insight",
-    pattern: "分析|洞察|趋势|数据分析",
+    pattern: "分析|洞察|趋势|数据分析|规律|特点",
     weight: 80,
     complexity: "complex",
     description: "收藏洞察分析",
@@ -145,8 +146,78 @@ export const INTENT_PATTERNS: IntentPattern[] = [
   },
 
   // ============================================
+  // Skills v1.1.0 新增（2025-01-08）
+  // ============================================
+  {
+    // InboxTriageSkill - 收件箱智能分拣
+    type: "action",
+    subType: "inbox_triage",
+    pattern:
+      "整理.*(收件箱|inbox)|收件箱.*整理|(帮我|自动).*(分类|分拣|归档).*(未读|未整理|新)|清理.*未分类",
+    weight: 85,
+    complexity: "complex",
+    description: "收件箱智能分拣",
+  },
+  {
+    // FolderRecommendSkill - 文件夹智能推荐
+    type: "query",
+    subType: "folder_recommend",
+    pattern:
+      "推荐.*(文件夹|目录|分类)|(建议|应该).*创建.*(文件夹|目录)|(文件夹|目录).*建议",
+    weight: 85,
+    complexity: "simple",
+    description: "文件夹智能推荐",
+  },
+  {
+    // SearchOptimizeSkill - 搜索优化助手
+    type: "query",
+    subType: "search_optimize",
+    pattern: "优化.*搜索|搜索.*优化|(改进|提高).*搜索|搜索.*建议",
+    weight: 82,
+    complexity: "simple",
+    description: "搜索优化助手",
+  },
+  {
+    // KnowledgeGraphExploreSkill - 知识图谱探索
+    type: "analyze",
+    subType: "knowledge_graph_explore",
+    pattern: "探索.*图谱|图谱.*探索|知识.*关联|关联.*分析",
+    weight: 83,
+    complexity: "complex",
+    description: "知识图谱探索",
+  },
+  {
+    // FolderHealthCheckSkill - 文件夹健康检查
+    type: "analyze",
+    subType: "folder_health_check",
+    pattern: "文件夹.*(健康|检查|诊断)|(健康|检查|诊断).*文件夹",
+    weight: 84,
+    complexity: "complex",
+    description: "文件夹健康检查",
+  },
+  {
+    // SnapshotCompareSkill - 快照对比分析
+    type: "analyze",
+    subType: "snapshot_compare",
+    pattern: "(快照|版本|页面).*(对比|比较|变化)|对比.*(快照|版本)",
+    weight: 81,
+    complexity: "simple",
+    description: "快照对比分析",
+  },
+
+  // ============================================
   // 创建类（权重 60-75）
   // ============================================
+  {
+    // TTS 语音朗读 - Phase 1 新增
+    // 使用负向后行断言排除"阅读"中的"读"
+    type: "create",
+    subType: "tts",
+    pattern: "(?<!阅|已)读|朗读|播放|听|语音|念|tts",
+    weight: 75,
+    complexity: "simple",
+    description: "语音朗读内容",
+  },
   {
     type: "create",
     subType: "digest",
@@ -181,13 +252,15 @@ export const INTENT_PATTERNS: IntentPattern[] = [
   },
 
   // ============================================
-  // 查询类（权重 45-55）
+  // 查询类（权重 45-78）
   // ============================================
   {
+    // 搜索 + P2 口语化增强
+    // "搜索 React"、"有没有什么编程相关的"、"有什么 Python 的"
     type: "query",
     subType: "search",
-    pattern: "搜索|搜|找|查|检索",
-    weight: 55,
+    pattern: "搜索|搜|找|查|检索|有没有.{0,15}(的|相关)|有什么.{0,15}(的|相关)",
+    weight: 78,
     complexity: "simple",
     description: "关键词搜索",
   },
@@ -222,7 +295,7 @@ export const INTENT_PATTERNS: IntentPattern[] = [
   {
     type: "action",
     subType: "delete",
-    pattern: "删除|移除|清除|删掉",
+    pattern: "删除|移除|清除|删掉|不要了|不想要",
     weight: 55,
     complexity: "simple",
     description: "删除收藏",
@@ -236,10 +309,12 @@ export const INTENT_PATTERNS: IntentPattern[] = [
     description: "移动收藏",
   },
   {
+    // Phase 1 增强：口语化标签操作
+    // 示例："给这个加个标签"、"加标签"、"打个标签"
     type: "action",
     subType: "tag",
-    pattern: "标记|加标签|打上",
-    weight: 50,
+    pattern: "加.{0,3}标签|打.{0,3}标签|给.{0,10}标签|标记|贴标签",
+    weight: 60,
     complexity: "simple",
     description: "添加标签",
   },

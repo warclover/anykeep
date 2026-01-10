@@ -170,6 +170,60 @@ export const SKILL_MAPPINGS: SkillMapping[] = [
     enabled: true,
     priority: 85,
   },
+  // ============================================
+  // Skills v1.1.0 新增（2025-01-08）
+  // ============================================
+  {
+    key: "action:inbox_triage",
+    skillId: "inbox_triage",
+    name: "收件箱智能分拣",
+    mode: "orchestration",
+    minComplexity: "complex",
+    enabled: true,
+    priority: 88,
+  },
+  {
+    key: "query:folder_recommend",
+    skillId: "folder_recommend",
+    name: "文件夹智能推荐",
+    mode: "atomic",
+    enabled: true,
+    priority: 85,
+  },
+  {
+    key: "query:search_optimize",
+    skillId: "search_optimize",
+    name: "搜索优化助手",
+    mode: "atomic",
+    enabled: true,
+    priority: 82,
+  },
+  {
+    key: "analyze:knowledge_graph_explore",
+    skillId: "knowledge_graph_explore",
+    name: "知识图谱探索",
+    mode: "orchestration",
+    minComplexity: "complex",
+    enabled: true,
+    priority: 83,
+  },
+  {
+    key: "analyze:folder_health_check",
+    skillId: "folder_health_check",
+    name: "文件夹健康检查",
+    mode: "orchestration",
+    minComplexity: "complex",
+    enabled: true,
+    priority: 84,
+  },
+  {
+    key: "analyze:snapshot_compare",
+    skillId: "snapshot_compare",
+    name: "快照对比分析",
+    mode: "atomic",
+    enabled: true,
+    priority: 81,
+  },
   // 分析类通配符兜底
   {
     key: "analyze:*",
@@ -228,6 +282,25 @@ export const SKILL_MAPPINGS: SkillMapping[] = [
     minComplexity: "medium",
     enabled: true,
     priority: 85,
+  },
+  {
+    key: "create:note",
+    skillId: "knowledge_extract",
+    name: "笔记创建",
+    mode: "orchestration",
+    minComplexity: "medium",
+    enabled: true,
+    priority: 80,
+  },
+  // 创建类通配符兜底
+  {
+    key: "create:*",
+    skillId: "quick_digest",
+    name: "创建内容",
+    mode: "orchestration",
+    minComplexity: "simple",
+    enabled: true,
+    priority: 40,
   },
 
   // ============================================

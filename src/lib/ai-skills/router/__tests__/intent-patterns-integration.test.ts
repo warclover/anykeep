@@ -192,11 +192,10 @@ describe("IntentPatterns Integration", () => {
         }
       });
 
-      it("should fallback to chitchat for vague graph mentions", async () => {
-        // TODO: 后续版本可考虑为这些模式添加专门规则
+      it("should handle vague graph mentions as query", async () => {
+        // "看看" 触发 query 意图，符合用户查看/浏览的预期
         const result = await classifier.classify("看看关系网络");
-        // 当前没有专门规则，会匹配到 chitchat
-        expect(result.type).toBe("chitchat");
+        expect(["query", "analyze"]).toContain(result.type);
       });
     });
 

@@ -971,11 +971,12 @@ export const DEFAULT_RULES: IntentRule[] = [
   },
   {
     // Phase 1 新增：取消收藏（与删除区分）
+    // 权重 65：高于 delete (63)，因为更具体
     pattern: /取消.{0,3}收藏|移出.{0,3}收藏|不再.{0,3}收藏|从收藏.{0,3}移除/,
     type: "action",
     subType: "unsave",
     complexity: "simple",
-    weight: 62,
+    weight: 65,
   },
   {
     // 修复 NLU-01: 添加收藏/保存操作规则
