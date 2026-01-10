@@ -177,3 +177,17 @@ export type {
   DisambiguationQuestion,
   IntentDisambiguatorConfig,
 } from "./intent-disambiguator";
+
+// 路由日志 (Phase 2.4 - 意图映射日志)
+export {
+  RouteLogger,
+  getRouteLogger,
+  createRouteLogger,
+  resetRouteLogger,
+  createRouteDecisionLog,
+} from "./route-logger";
+export type {
+  RouteDecisionLog,
+  RouteLogLevel,
+  RouteLoggerConfig,
+} from "./route-logger";

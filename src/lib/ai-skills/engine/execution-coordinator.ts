@@ -20,6 +20,12 @@ import { buildMemoryPrompt, isEmptyMemoryContext } from "../../ai-agent/memory";
 import { FeatureFlags } from "../../ai-agent/config/feature-flags";
 import { ReactLoopExecutor, type ReactLoopConfig } from "../../ai-agent/react";
 import { CancellationError } from "../orchestration/types";
+import type { AtomicFallbackHandler } from "./atomic-fallback";
+import {
+  createAtomicFallbackHandler,
+  classifyError,
+  type AtomicFallbackConfig,
+} from "./atomic-fallback";
 
 // ============================================
 // 类型定义
@@ -47,6 +53,8 @@ export interface ExecutionCoordinatorConfig {
   includeRoutingInfo?: boolean;
   debug?: boolean;
   reactConfig?: ReactLoopConfig;
+  /** 原子执行器降级配置 */
+  atomicFallbackConfig?: Partial<AtomicFallbackConfig>;
 }
 
 /** @deprecated 使用 ExecuteOptions 替代 */
@@ -59,6 +67,7 @@ export type ForceExecutionOptions = ExecuteOptions;
 export class ExecutionCoordinator {
   private atomicExecutor: AtomicExecutor | null = null;
   private reactExecutor: ReactLoopExecutor | null = null;
+  private atomicFallbackHandler: AtomicFallbackHandler;
   private includeRoutingInfo: boolean;
 
   constructor(
@@ -67,11 +76,19 @@ export class ExecutionCoordinator {
     config: ExecutionCoordinatorConfig = {},
   ) {
     this.includeRoutingInfo = config.includeRoutingInfo ?? false;
+    this.atomicFallbackHandler = createAtomicFallbackHandler(
+      config.atomicFallbackConfig,
+    );
 
     if (FeatureFlags.ENABLE_REACT_LOOP) {
       this.reactExecutor = new ReactLoopExecutor(config.reactConfig);
       logger.info("ExecutionCoordinator: ReAct loop executor initialized");
     }
+
+    logger.debug(
+      { fallbackConfig: this.atomicFallbackHandler.getConfig() },
+      "ExecutionCoordinator: Atomic fallback handler initialized",
+    );
   }
 
   /** 设置原子模式执行器 */
@@ -287,7 +304,7 @@ export class ExecutionCoordinator {
   // 私有方法
   // ============================================
 
-  /** 执行原子模式 */
+  /** 执行原子模式（带降级） */
   private async *executeAtomicMode(
     input: string,
     context: EngineContext,
@@ -303,65 +320,95 @@ export class ExecutionCoordinator {
 
     const agentContext = this.buildAgentContext(context);
 
-    try {
-      // ReAct 循环模式
-      if (FeatureFlags.ENABLE_REACT_LOOP && this.reactExecutor) {
-        for await (const chunk of this.reactExecutor.executeWithReact(
-          input,
-          agentContext,
-          this.atomicExecutor,
-        )) {
-          // 检查取消
-          if (this.isCancelled(context)) {
-            yield this.outputAdapter.createErrorChunk(
-              this.getCancelReason(context),
+    // 创建带取消检查的执行器包装
+    const wrappedExecutor = async (
+      execInput: string,
+      execContext: AgentContext,
+    ): Promise<UnifiedStreamChunk[]> => {
+      const chunks: UnifiedStreamChunk[] = [];
+
+      try {
+        // ReAct 循环模式
+        if (FeatureFlags.ENABLE_REACT_LOOP && this.reactExecutor) {
+          for await (const chunk of this.reactExecutor.executeWithReact(
+            execInput,
+            execContext,
+            this.atomicExecutor!,
+          )) {
+            // 检查取消
+            if (this.isCancelled(context)) {
+              throw new CancellationError(this.getCancelReason(context));
+            }
+            chunks.push(chunk);
+          }
+        } else {
+          // 标准原子模式
+          for await (const chunk of this.atomicExecutor!(
+            execInput,
+            execContext,
+          )) {
+            // 检查取消
+            if (this.isCancelled(context)) {
+              throw new CancellationError(this.getCancelReason(context));
+            }
+            chunks.push(this.outputAdapter.adaptAtomicChunk(chunk));
+          }
+        }
+      } catch (error) {
+        // 处理取消错误
+        if (error instanceof CancellationError) {
+          chunks.push(
+            this.outputAdapter.createErrorChunk(
+              error.message,
               "REQUEST_CANCELLED",
               false,
-            );
-            return;
-          }
+            ),
+          );
+          return chunks;
+        }
+
+        // 分类错误并决定是否重试
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        const classification = classifyError(errorMessage);
+
+        logger.warn(
+          {
+            error: errorMessage,
+            category: classification.category,
+            isRetryable: classification.isRetryable,
+            traceId: context.traceId,
+          },
+          "ExecutionCoordinator: Atomic execution error",
+        );
+
+        // 返回错误块（让 fallback handler 决定是否重试）
+        chunks.push(
+          this.outputAdapter.createErrorChunk(
+            errorMessage,
+            "ATOMIC_EXECUTION_ERROR",
+            classification.isRetryable,
+          ),
+        );
+      }
+
+      return chunks;
+    };
+
+    // 使用 fallback handler 执行（带重试和降级）
+    yield* this.atomicFallbackHandler.executeWithRetry(
+      async function* (
+        execInput: string,
+        execContext: AgentContext,
+      ): AsyncGenerator<UnifiedStreamChunk> {
+        const chunks = await wrappedExecutor(execInput, execContext);
+        for (const chunk of chunks) {
           yield chunk;
         }
-      } else {
-        // 标准原子模式
-        for await (const chunk of this.atomicExecutor(input, agentContext)) {
-          // 检查取消
-          if (this.isCancelled(context)) {
-            yield this.outputAdapter.createErrorChunk(
-              this.getCancelReason(context),
-              "REQUEST_CANCELLED",
-              false,
-            );
-            return;
-          }
-          yield this.outputAdapter.adaptAtomicChunk(chunk);
-        }
-      }
-    } catch (error) {
-      // 处理取消错误
-      if (error instanceof CancellationError) {
-        yield this.outputAdapter.createErrorChunk(
-          error.message,
-          "REQUEST_CANCELLED",
-          false,
-        );
-        return;
-      }
-
-      logger.error(
-        {
-          message: error instanceof Error ? error.message : String(error),
-          traceId: context.traceId,
-        },
-        "ExecutionCoordinator: Atomic execution failed",
-      );
-
-      yield this.outputAdapter.createErrorChunk(
-        error instanceof Error ? error.message : "Atomic execution failed",
-        "ATOMIC_EXECUTION_ERROR",
-        true,
-      );
-    }
+      },
+      input,
+      agentContext,
+    );
   }
 
   /** 执行编排模式（带可选回退） */

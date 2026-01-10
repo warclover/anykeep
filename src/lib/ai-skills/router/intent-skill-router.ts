@@ -11,13 +11,15 @@
  * @since 2025-12-27
  */
 
-import { logger } from "@/lib/logger";
 import {
   SORTED_PATTERNS,
   getCompiledPattern,
   getMappingIndex,
   findMapping,
   findExplicitTool,
+  isIntentKeyAvailable,
+  isSkillEnabledByFeatureFlag,
+  getSkillFeatureFlagSync,
   type IntentType,
   type ComplexityLevel,
   type ExecutionMode,
@@ -26,6 +28,11 @@ import {
   type MappingIndex,
   type UserMappingPreference,
 } from "../config";
+import {
+  getRouteLogger,
+  createRouteDecisionLog,
+  type RouteLogger,
+} from "./route-logger";
 
 // ============================================
 // 类型定义
@@ -110,10 +117,12 @@ const DEFAULT_CONFIG: Required<IntentSkillRouterConfig> = {
 export class IntentSkillRouter {
   private config: Required<IntentSkillRouterConfig>;
   private mappingIndex: MappingIndex;
+  private routeLogger: RouteLogger;
 
   constructor(config?: IntentSkillRouterConfig) {
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.mappingIndex = this.buildIndex();
+    this.routeLogger = getRouteLogger();
   }
 
   // ============================================
@@ -129,24 +138,51 @@ export class IntentSkillRouter {
    */
   route(input: string, context?: RouteContext): RouteResult {
     const startTime = Date.now();
+    const routeId = this.routeLogger.generateRouteId();
+
+    // 0. 初始化 Feature Flag 同步器（仅首次）
+    getSkillFeatureFlagSync().initialize();
 
     // 1. 意图分类
+    const classificationStartTime = Date.now();
     const intentMatch = this.classifyIntent(input);
+    const classificationMs = Date.now() - classificationStartTime;
 
-    // 2. 合并用户偏好（config 优先，context 覆盖）
+    // 2. 检查意图键是否因 Feature Flag 被禁用
+    const intentKey = `${intentMatch.type}:${intentMatch.subType}`;
+    const intentAvailable = isIntentKeyAvailable(intentKey);
+
+    // 3. 合并用户偏好（config 优先，context 覆盖）
     const mergedPrefs: UserMappingPreference = {
       ...this.config.userPreferences,
       ...context?.userPreferences,
     };
 
-    // 3. 查找映射
-    const mapping = this.findSkillMapping(
+    // 4. 查找映射（考虑 Feature Flag 状态）
+    const mappingStartTime = Date.now();
+    let mapping = this.findSkillMapping(
       intentMatch.type,
       intentMatch.subType,
       mergedPrefs,
     );
+    const mappingMs = Date.now() - mappingStartTime;
 
-    // 4. 构建结果
+    // 5. 如果意图被禁用或 Skill 被禁用，回退到通用原子模式
+    let skillDisabledReason: string | undefined;
+    let intentDisabled = false;
+    let skillDisabled = false;
+
+    if (!intentAvailable) {
+      skillDisabledReason = `意图 ${intentKey} 已被 Feature Flag 禁用`;
+      intentDisabled = true;
+      mapping = null;
+    } else if (mapping && !isSkillEnabledByFeatureFlag(mapping.skillId)) {
+      skillDisabledReason = `Skill ${mapping.skillId} 已被 Feature Flag 禁用`;
+      skillDisabled = true;
+      mapping = null;
+    }
+
+    // 6. 构建结果
     const result: RouteResult = {
       intentType: intentMatch.type,
       subType: intentMatch.subType,
@@ -154,12 +190,61 @@ export class IntentSkillRouter {
       mode: mapping?.mode ?? "atomic",
       confidence: intentMatch.confidence,
       complexity: intentMatch.complexity,
-      reason: this.buildReason(intentMatch, mapping),
+      reason: skillDisabledReason || this.buildReason(intentMatch, mapping),
     };
 
-    // 5. 日志
-    if (this.config.debug || context?.debug) {
-      this.logRoute(input, result, Date.now() - startTime);
+    // 7. 记录路由决策日志
+    const totalMs = Date.now() - startTime;
+    const logEntry = createRouteDecisionLog({
+      routeId,
+      input,
+      intentType: result.intentType,
+      subType: result.subType,
+      confidence: result.confidence,
+      complexity: result.complexity,
+      skillId: result.skillId,
+      mode: result.mode,
+      isExplicit: false,
+      reason: result.reason,
+      matchedPattern: intentMatch.matchedPattern,
+      matchScore: intentMatch.matchScore,
+      intentDisabled,
+      skillDisabled,
+      disabledReason: skillDisabledReason,
+      classificationMs,
+      mappingMs,
+      totalMs,
+      userId: context?.userId,
+      hasPreferences: Object.keys(mergedPrefs).length > 0,
+    });
+
+    this.routeLogger.logRouteDecision(logEntry);
+
+    // 8. 低置信度警告
+    if (result.confidence < this.config.minConfidenceThreshold) {
+      this.routeLogger.logLowConfidence(
+        routeId,
+        input,
+        result.confidence,
+        this.config.minConfidenceThreshold,
+      );
+    }
+
+    // 9. Feature Flag 影响日志
+    if (intentDisabled) {
+      this.routeLogger.logFeatureFlagImpact(
+        routeId,
+        intentKey,
+        null,
+        "intent_disabled",
+      );
+    } else if (skillDisabled) {
+      this.routeLogger.logFeatureFlagImpact(
+        routeId,
+        intentKey,
+        mapping?.skillId ?? null,
+        "skill_disabled",
+      );
     }
 
     return result;
@@ -169,16 +254,37 @@ export class IntentSkillRouter {
    * 显式工具路由（跳过意图分类）
    *
    * @param toolId 工具 ID
-   * @returns 路由结果，未找到时返回 null
+   * @returns 路由结果，未找到或被禁用时返回 null
    */
   routeExplicit(toolId: string): RouteResult | null {
+    const startTime = Date.now();
+    const routeId = this.routeLogger.generateRouteId();
+
     const tool = findExplicitTool(toolId);
     if (!tool) {
-      logger.warn({ toolId }, "Explicit tool not found");
+      this.routeLogger.logExplicitRoute(
+        routeId,
+        toolId,
+        null,
+        "Tool not found",
+        Date.now() - startTime,
+      );
       return null;
     }
 
-    return {
+    // 检查 Skill 是否被 Feature Flag 禁用
+    if (!isSkillEnabledByFeatureFlag(tool.skillId)) {
+      this.routeLogger.logExplicitRoute(
+        routeId,
+        toolId,
+        tool.skillId,
+        "Skill disabled by Feature Flag",
+        Date.now() - startTime,
+      );
+      return null;
+    }
+
+    const result: RouteResult = {
       intentType: "action",
       subType: toolId,
       skillId: tool.skillId,
@@ -188,6 +294,17 @@ export class IntentSkillRouter {
       reason: "显式工具选择",
       explicit: true,
     };
+
+    // 记录成功的显式路由
+    this.routeLogger.logExplicitRoute(
+      routeId,
+      toolId,
+      tool.skillId,
+      "Success",
+      Date.now() - startTime,
+    );
+
+    return result;
   }
 
   /**
@@ -221,6 +338,7 @@ export class IntentSkillRouter {
     confidence: number;
     complexity: ComplexityLevel;
     matchedPattern?: string;
+    matchScore?: number;
   } {
     let bestMatch: IntentPattern | null = null;
     let bestScore = 0;
@@ -245,6 +363,7 @@ export class IntentSkillRouter {
         subType: "unknown",
         confidence: 0.3,
         complexity: "simple",
+        matchScore: 0,
       };
     }
 
@@ -257,6 +376,7 @@ export class IntentSkillRouter {
       confidence,
       complexity: bestMatch.complexity,
       matchedPattern: bestMatch.pattern,
+      matchScore: bestScore,
     };
   }
 
@@ -362,28 +482,6 @@ export class IntentSkillRouter {
       : "";
 
     return `${intent.type}:${intent.subType} → ${mapping.name} (${mapping.mode}) ${matchInfo}`.trim();
-  }
-
-  /**
-   * 记录路由日志
-   */
-  private logRoute(
-    input: string,
-    result: RouteResult,
-    durationMs: number,
-  ): void {
-    logger.debug(
-      {
-        input: input.slice(0, 50),
-        intentType: result.intentType,
-        subType: result.subType,
-        skillId: result.skillId,
-        mode: result.mode,
-        confidence: result.confidence,
-        durationMs,
-      },
-      "Intent routed",
-    );
   }
 }
 

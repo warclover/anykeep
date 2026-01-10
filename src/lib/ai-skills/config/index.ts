@@ -60,3 +60,22 @@ export {
   getMappingIndex,
   resetMappingIndex,
 } from "./skill-mappings";
+
+// ============================================
+// Feature Flag 同步导出
+// ============================================
+
+export {
+  SKILL_FEATURE_FLAG_MAPPINGS,
+  isSkillEnabledByFeatureFlag,
+  isIntentKeyAvailable,
+  getDisabledIntentKeys,
+  getSkillAvailability,
+  getAllSkillAvailability,
+  getFeatureFlagSummary,
+  SkillFeatureFlagSync,
+  getSkillFeatureFlagSync,
+  resetSkillFeatureFlagSync,
+  type SkillFeatureFlagMapping,
+  type SkillAvailability,
+} from "./skill-feature-flag-sync";

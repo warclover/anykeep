@@ -76,3 +76,17 @@ export {
   type RequestInfo,
   type RequestRegistryConfig,
 } from "./request-registry";
+
+// 原子执行器降级模块
+export {
+  AtomicFallbackHandler,
+  createAtomicFallbackHandler,
+  classifyError,
+  generateFallbackResponse,
+  generateFallbackChunks,
+  DEFAULT_ATOMIC_FALLBACK_CONFIG,
+  type AtomicFallbackConfig,
+  type ErrorCategory,
+  type ErrorClassification,
+  type FallbackResult,
+} from "./atomic-fallback";

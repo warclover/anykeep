@@ -375,6 +375,10 @@ export interface InitChunk {
 
 /**
  * 回退通知块
+ *
+ * 支持两种回退场景：
+ * 1. orchestration → atomic: 编排模式失败回退到原子模式
+ * 2. atomic → static: 原子模式失败回退到静态响应
  */
 export interface FallbackChunk {
   type: "fallback";
@@ -382,9 +386,9 @@ export interface FallbackChunk {
     /** 回退原因 */
     reason: string;
     /** 原始模式 */
-    originalMode: "orchestration";
+    originalMode: "orchestration" | "atomic";
     /** 回退模式 */
-    fallbackMode: "atomic";
+    fallbackMode: "atomic" | "static";
   };
 }
 
