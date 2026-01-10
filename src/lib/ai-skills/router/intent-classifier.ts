@@ -103,6 +103,15 @@ export const DEFAULT_RULES: IntentRule[] = [
     weight: 65,
   },
   {
+    // Phase 1.1 新增：隐含整理意图（增长式表达）
+    // 示例："收藏越来越多了"、"书签太多了"、"感觉乱糟糟的"
+    pattern: /(收藏|书签).{0,5}(越来越多|太多)|感觉.{0,3}(乱|糟)/,
+    type: "organize",
+    subType: "cleanup",
+    complexity: "complex",
+    weight: 68,
+  },
+  {
     pattern: /整理|清理|规整|梳理/,
     type: "organize",
     subType: "cleanup",
@@ -810,6 +819,42 @@ export const DEFAULT_RULES: IntentRule[] = [
     complexity: "simple",
     weight: 78,
   },
+  {
+    // Phase 1.1 新增：忘了放哪/忘记存哪（隐含搜索）
+    // 示例："有个关于 Docker 的教程我忘了放哪了"
+    pattern: /忘了(放|存)(哪|在哪)/,
+    type: "query",
+    subType: "search",
+    complexity: "simple",
+    weight: 80,
+  },
+  {
+    // Phase 1.1 新增：XX相关的（简短搜索）
+    // 示例："AI相关的"、"Python相关的"
+    pattern: /^.{1,15}相关的?$/,
+    type: "query",
+    subType: "search",
+    complexity: "simple",
+    weight: 60,
+  },
+  {
+    // Phase 1.1 新增：那个+媒体类型（指代搜索）
+    // 示例："那个视频"、"那篇文章"
+    pattern: /^(那个|那篇|那条).{0,5}(视频|文章|链接|图片|笔记)$/,
+    type: "query",
+    subType: "search",
+    complexity: "simple",
+    weight: 65,
+  },
+  {
+    // Phase 1.1 新增：英文 search 指令
+    // 示例："search React hooks"、"Search typescript"
+    pattern: /^search\s+.+$/i,
+    type: "query",
+    subType: "search",
+    complexity: "simple",
+    weight: 85,
+  },
   // --------------------------------------------
 
   {
@@ -853,6 +898,15 @@ export const DEFAULT_RULES: IntentRule[] = [
     subType: "list",
     complexity: "simple",
     weight: 58,
+  },
+  {
+    // Phase 1.1 新增：单独"看看"（简短列表查询）
+    // 示例："看看"
+    pattern: /^看看$/,
+    type: "query",
+    subType: "list",
+    complexity: "simple",
+    weight: 55,
   },
   {
     // Phase 1 新增：有没有+主题（口语化搜索）
@@ -932,6 +986,15 @@ export const DEFAULT_RULES: IntentRule[] = [
     weight: 50,
   },
   {
+    // Phase 1.1 新增：口语化删除（删了吧、删了）
+    // 示例："删了吧"、"删了"、"删它"
+    pattern: /^删了(吧|它)?$/,
+    type: "action",
+    subType: "delete",
+    complexity: "simple",
+    weight: 65,
+  },
+  {
     // 修复 NLU-02: 提高标签规则权重，优先于摘要（weight 70）
     // Golden Dataset 增强：覆盖"加个标签"、"加标签"等口语化表达
     // Phase 1 增强：覆盖"给...加上...标签"、"打个标签叫"等结构
@@ -941,6 +1004,15 @@ export const DEFAULT_RULES: IntentRule[] = [
     subType: "tag",
     complexity: "simple",
     weight: 75,
+  },
+  {
+    // Phase 1.1 新增：口语化/英文 tag 操作
+    // 示例："帮我 tag 一下这个"、"tag it"
+    pattern: /tag.{0,5}(一下|下|它|这|这个)|帮我.{0,3}tag/i,
+    type: "action",
+    subType: "tag",
+    complexity: "simple",
+    weight: 72,
   },
   {
     // Phase 1 新增：创建文件夹/收藏夹
