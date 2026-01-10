@@ -50,6 +50,9 @@ import { snapshotCompareSkill } from "./skills/snapshot-compare";
 import { unifiedEngine } from "./engine/unified-engine";
 import { knowledgeAgent } from "../ai-agent/core/knowledge-agent";
 import { logger } from "@/lib/logger";
+import { FeatureFlags } from "@/lib/ai-agent/config/feature-flags";
+// createIntentRouter 暂时保留导入供后续使用
+import type { IntentRouter as _IntentRouter } from "./router/intent-router";
 
 // Skill 实例
 const thematicSynthesisSkill = new ThematicSynthesisSkill();
@@ -144,7 +147,7 @@ export function initializeAISkills(): void {
  * 将 KnowledgeAgent 连接为原子执行器
  * 注册编排 Skills
  */
-export function initializeUnifiedEngine(): void {
+export async function initializeUnifiedEngine(): Promise<void> {
   if (unifiedEngineInitialized) {
     logger.debug("Unified Engine already initialized");
     return;
@@ -263,6 +266,22 @@ export function initializeUnifiedEngine(): void {
     logger.debug("SnapshotCompareSkill registered");
   }
 
+  // 初始化混合意图分类器（如果启用）
+  if (FeatureFlags.ENABLE_HYBRID_INTENT_CLASSIFIER) {
+    try {
+      await unifiedEngine.initializeHybridIntentClassifier();
+      logger.info("Hybrid Intent Classifier initialized successfully");
+    } catch (error) {
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+        },
+        "Failed to initialize Hybrid Intent Classifier",
+      );
+      // 不阻止初始化，继续使用传统分类器
+    }
+  }
+
   unifiedEngineInitialized = true;
 
   logger.info(
@@ -270,6 +289,7 @@ export function initializeUnifiedEngine(): void {
       orchestrationSkills:
         unifiedEngine.getRegisteredOrchestrationSkills().length,
       isReady: unifiedEngine.isReady(),
+      hybridClassifierEnabled: FeatureFlags.ENABLE_HYBRID_INTENT_CLASSIFIER,
     },
     "Unified Engine initialized",
   );
@@ -279,10 +299,33 @@ export function initializeUnifiedEngine(): void {
  * 获取已初始化的统一引擎
  *
  * 如果未初始化，会自动初始化
+ *
+ * 注意：如果引擎未初始化，此函数会同步初始化（不等待异步操作完成）
+ * 对于需要确保混合分类器已初始化的场景，请使用 getUnifiedEngineAsync
  */
 export function getUnifiedEngine() {
   if (!unifiedEngineInitialized) {
-    initializeUnifiedEngine();
+    // 异步初始化，但不等待完成（避免阻塞）
+    initializeUnifiedEngine().catch((error) => {
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+        },
+        "Failed to initialize Unified Engine",
+      );
+    });
+  }
+  return unifiedEngine;
+}
+
+/**
+ * 异步获取已初始化的统一引擎
+ *
+ * 如果未初始化，会等待初始化完成
+ */
+export async function getUnifiedEngineAsync() {
+  if (!unifiedEngineInitialized) {
+    await initializeUnifiedEngine();
   }
   return unifiedEngine;
 }

@@ -159,3 +159,16 @@ export {
   intentAnalyzer,
 } from "./intent-analyzer";
 export type { AnalysisResult, IntentAnalyzerConfig } from "./intent-analyzer";
+
+// 意图消歧器 (Phase 2 - 意图映射增强)
+export {
+  IntentDisambiguator,
+  createIntentDisambiguator,
+} from "./intent-disambiguator";
+export type {
+  IntentMatch,
+  IntentAlternative,
+  DisambiguationOption,
+  DisambiguationQuestion,
+  IntentDisambiguatorConfig,
+} from "./intent-disambiguator";

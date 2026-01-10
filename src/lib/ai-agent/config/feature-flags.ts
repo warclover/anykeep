@@ -480,6 +480,15 @@ export const FeatureFlags = {
   },
 
   /**
+   * 是否启用混合意图分类器（规则 + 语义匹配）
+   * @default false
+   * @description Phase 1: 混合意图识别，提升准确率到 ~85%
+   */
+  get ENABLE_HYBRID_INTENT_CLASSIFIER(): boolean {
+    return process.env.ENABLE_HYBRID_INTENT_CLASSIFIER === "true";
+  },
+
+  /**
    * 是否启用规则学习
    * @default false
    * @description 从用户纠正行为中自动学习规则
@@ -627,6 +636,9 @@ export function getAllFeatureFlags(): Record<BooleanFeatureFlagKey, boolean> & {
     // RAG 能力增强 [Phase 2 新增]
     ENABLE_PARENT_CHILD_CHUNKING: FeatureFlags.ENABLE_PARENT_CHILD_CHUNKING,
     ENABLE_RRF_FUSION: FeatureFlags.ENABLE_RRF_FUSION,
+    // 意图映射优化 [Phase 1 新增]
+    ENABLE_HYBRID_INTENT_CLASSIFIER:
+      FeatureFlags.ENABLE_HYBRID_INTENT_CLASSIFIER,
     // RAG 能力增强 [Phase 3 新增]
     ENABLE_RAG_MONITORING: FeatureFlags.ENABLE_RAG_MONITORING,
     ENABLE_RAG_EVALUATION: FeatureFlags.ENABLE_RAG_EVALUATION,

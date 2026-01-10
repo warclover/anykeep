@@ -181,7 +181,7 @@ export interface AnalysisResult {
   subType?: string;
   confidence: number;
   entities: ExtractedEntity[];
-  source: "rule" | "llm" | "default";
+  source: "rule" | "llm" | "semantic" | "hybrid" | "default";
 
   // 复杂度信息
   complexity: {

@@ -71,7 +71,7 @@ describe("LLMIntentClassifier", () => {
       expect(instance).toBeInstanceOf(LLMIntentClassifier);
       const config = instance.getConfig();
       expect(config.modelId).toBe("deepseek-chat");
-      expect(config.timeoutMs).toBe(5000);
+      expect(config.timeoutMs).toBe(1500); // Slow Track 规范：≤1500ms
       expect(config.cacheEnabled).toBe(true);
       expect(config.temperature).toBe(0.3);
     });

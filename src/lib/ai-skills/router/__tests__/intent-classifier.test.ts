@@ -57,9 +57,10 @@ describe("IntentClassifier", () => {
 
     describe("action intent", () => {
       it("should classify move action correctly", async () => {
+        // 根据 Golden Dataset 规范，移动操作归类为 organize:move
         const result = await classifier.classify("把这些移动到学习文件夹");
 
-        expect(result.type).toBe("action");
+        expect(result.type).toBe("organize");
         expect(result.subType).toBe("move");
       });
 

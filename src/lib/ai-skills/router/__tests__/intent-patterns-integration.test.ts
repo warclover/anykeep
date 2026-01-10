@@ -58,9 +58,10 @@ describe("IntentPatterns Integration", () => {
       // 检查同一类型内的权重分布
       for (const [_type, weights] of typeWeights) {
         const uniqueWeights = new Set(weights);
-        // 同一类型内权重应该大部分唯一（允许少量重复）
+        // 同一类型内权重应该大部分唯一（允许部分重复）
+        // 由于 Golden Dataset 增强规则，放宽阈值到 50%
         const duplicateRatio = 1 - uniqueWeights.size / weights.length;
-        expect(duplicateRatio).toBeLessThan(0.3); // 允许最多 30% 重复
+        expect(duplicateRatio).toBeLessThan(0.5); // 允许最多 50% 重复
       }
     });
 

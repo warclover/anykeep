@@ -39,6 +39,36 @@ export interface ExtractedEntity {
 }
 
 /**
+ * 槽位定义（结构化参数）
+ */
+export interface IntentSlot {
+  /** 槽位名称 */
+  name: string;
+  /** 槽位值 */
+  value: unknown;
+  /** 槽位类型 */
+  type: "string" | "number" | "boolean" | "array" | "object";
+  /** 置信度 0-1 */
+  confidence: number;
+  /** 是否必需 */
+  required: boolean;
+  /** 来源（extracted: 从输入提取, inferred: 从上下文推断, default: 默认值） */
+  source: "extracted" | "inferred" | "default" | "context";
+}
+
+/**
+ * 意图槽位映射（按意图类型定义）
+ */
+export interface IntentSlotSchema {
+  /** 意图类型 */
+  intentType: `${IntentType}:${string}`;
+  /** 槽位定义 */
+  slots: Record<string, IntentSlot>;
+  /** 槽位完整性评分 0-1 */
+  completeness: number;
+}
+
+/**
  * 意图分类结果
  */
 export interface IntentClassification {
@@ -55,7 +85,15 @@ export interface IntentClassification {
   /** 是否期望获得交付物 */
   hasDeliverableExpectation: boolean;
   /** 分类来源 */
-  source: "rule" | "llm";
+  source: "rule" | "llm" | "semantic" | "hybrid";
+  /** 结构化槽位（Phase 2 新增） */
+  slots?: IntentSlotSchema;
+  /** 备选意图列表（Phase 2 新增，用于消歧） */
+  alternatives?: Array<{
+    type: IntentType;
+    subType?: string;
+    confidence: number;
+  }>;
 }
 
 /**
@@ -202,7 +240,7 @@ export interface RouteResult {
     /** 是否使用了 LLM 兜底 */
     llmFallbackUsed: boolean;
     /** 分类来源 */
-    classificationSource: "rule" | "llm" | "default";
+    classificationSource: "rule" | "llm" | "semantic" | "hybrid" | "default";
     /** LLM 缓存是否命中 */
     llmCacheHit: boolean;
   };
