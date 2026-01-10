@@ -34,7 +34,7 @@ import { createLLMClassifier } from "./llm-classifier";
  *
  * 规则按优先级排序，匹配后立即返回
  */
-const DEFAULT_RULES: IntentRule[] = [
+export const DEFAULT_RULES: IntentRule[] = [
   // ============================================
   // Active Recall 主动复习类（v2.5.0 新增）
   // ============================================
@@ -93,6 +93,15 @@ const DEFAULT_RULES: IntentRule[] = [
   // ============================================
   // 整理类（通常需要编排）
   // ============================================
+  {
+    // Phase 1 新增：隐含整理意图（抱怨式表达）
+    // 示例："太多了"、"有点乱"、"乱七八糟"
+    pattern: /^(太多了|有点乱|乱七八糟|好乱|很乱|太乱了)$/,
+    type: "organize",
+    subType: "cleanup",
+    complexity: "complex",
+    weight: 65,
+  },
   {
     pattern: /整理|清理|规整|梳理/,
     type: "organize",
@@ -161,6 +170,15 @@ const DEFAULT_RULES: IntentRule[] = [
     complexity: "simple",
     weight: 86,
   },
+  {
+    // Golden Dataset 增强：宽松移动规则（权重高于 classify:70）
+    // 示例: "移动到学习"、"移动书签到归档"、"移动这个书签"
+    pattern: /移动.{0,5}(到|书签)|转移.{0,5}到/,
+    type: "organize",
+    subType: "move",
+    complexity: "simple",
+    weight: 75,
+  },
   // --------------------------------------------
 
   // ============================================
@@ -191,6 +209,15 @@ const DEFAULT_RULES: IntentRule[] = [
     weight: 80,
   },
   {
+    // Phase 1 新增：看看+习惯/行为（分析意图）
+    // 示例："看看我的阅读习惯"、"了解我的收藏习惯"
+    pattern: /(看看|了解|分析).{0,5}(我的)?.{0,5}(阅读|收藏|使用).{0,3}习惯/,
+    type: "analyze",
+    subType: "insight",
+    complexity: "medium",
+    weight: 75,
+  },
+  {
     pattern: /分析|洞察|趋势/,
     type: "analyze",
     subType: "insight",
@@ -198,11 +225,13 @@ const DEFAULT_RULES: IntentRule[] = [
     weight: 70,
   },
   {
-    pattern: /统计|有多少|数量|总共/,
+    // 统计意图增强：覆盖更多口语化表达
+    // 示例: "有多少书签"、"书签总数是多少"、"收藏了多少条"
+    pattern: /统计|有多少|数量|总共|总数|多少条|是多少|几条|几个/,
     type: "query",
     subType: "count",
     complexity: "simple",
-    weight: 60,
+    weight: 65,
   },
 
   // ============================================
@@ -299,7 +328,19 @@ const DEFAULT_RULES: IntentRule[] = [
   },
   // --------------------------------------------
   {
-    pattern: /分享|导出|生成.{0,3}文档/,
+    // 规则 P3-E2: 导出意图（Code Review #8 修复）
+    // 示例: "导出为Markdown"、"导出所有收藏"、"把书签导出来"
+    pattern: /导出|export/i,
+    type: "create",
+    subType: "export",
+    complexity: "medium",
+    weight: 85, // 高于分享规则
+  },
+  // --------------------------------------------
+  {
+    // 规则 P3-E3: 分享/文档生成意图
+    // 示例: "分享给朋友"、"生成文档"
+    pattern: /分享|生成.{0,3}文档/,
     type: "create",
     subType: "share",
     complexity: "medium",
@@ -671,7 +712,9 @@ const DEFAULT_RULES: IntentRule[] = [
   {
     // 规则 S1: 收藏动作信号
     // 示例: "我收藏过一篇讲 TypeScript 的"、"之前保存过"
-    pattern: /(收藏|保存|存)(过|了).{0,20}(的|一篇|那个)?/,
+    // Golden Dataset 修复：排除统计词（多少、几个）
+    pattern:
+      /^(?!.*(多少|几个|几条)).*(收藏|保存|存)(过|了).{0,20}(的|一篇|那个)?/,
     type: "query",
     subType: "search",
     complexity: "simple",
@@ -707,13 +750,13 @@ const DEFAULT_RULES: IntentRule[] = [
     weight: 84,
   },
   {
-    // 规则 S5: 时间范围查询
-    // 示例: "上周收藏了什么"、"本月保存的"
-    // 注意：排除 "列出" 开头的情况，避免与 list 意图冲突
+    // 规则 S5: 时间范围查询 → 改为 list 意图
+    // 示例: "上周收藏了什么"、"本月保存的"、"最近收藏"
+    // Golden Dataset 修复：时间范围查询应返回列表，而非搜索
     pattern:
-      /^(?!.*(列出|列表|显示)).*(上周|本周|上月|本月|昨天|今天|最近).{0,5}(收藏|保存|添加)(了|的|什么)?/,
+      /^(?!.*(列出|列表|显示)).*(上周|本周|上月|本月|昨天|今天|最近|近期|这周|一周).{0,5}(收藏|保存|添加)(了|的|什么)?/,
     type: "query",
-    subType: "search",
+    subType: "list",
     complexity: "simple",
     weight: 87,
   },
@@ -749,6 +792,24 @@ const DEFAULT_RULES: IntentRule[] = [
     complexity: "simple",
     weight: 89,
   },
+  {
+    // Phase 1 新增：隐含搜索意图（找不到表达）
+    // 示例："找不到那个了"、"找不到"
+    pattern: /找不到/,
+    type: "query",
+    subType: "search",
+    complexity: "simple",
+    weight: 75,
+  },
+  {
+    // Phase 1 新增：那个...在哪（指代+搜索）
+    // 示例："那个AI的文章在哪"、"那篇文章在哪"
+    pattern: /(那个|那篇).{1,15}(在哪|去哪)/,
+    type: "query",
+    subType: "search",
+    complexity: "simple",
+    weight: 78,
+  },
   // --------------------------------------------
 
   {
@@ -764,6 +825,44 @@ const DEFAULT_RULES: IntentRule[] = [
     subType: "list",
     complexity: "simple",
     weight: 45,
+  },
+  {
+    // Golden Dataset 增强：时间范围列表查询
+    // 示例: "最近收藏"、"今天的收藏"、"本周收藏"、"近期添加的"
+    pattern:
+      /(最近|今天|昨天|本周|上周|近期|这周).{0,5}(的)?.{0,3}(收藏|书签|添加)/,
+    type: "query",
+    subType: "list",
+    complexity: "simple",
+    weight: 55,
+  },
+  {
+    // Golden Dataset 增强：查看+时间范围列表查询
+    // 示例: "查看最近收藏"、"查看今天添加的"
+    pattern: /查看.{0,3}(最近|今天|昨天|本周|上周|近期).{0,5}(收藏|书签|添加)/,
+    type: "query",
+    subType: "list",
+    complexity: "simple",
+    weight: 60,
+  },
+  {
+    // Phase 1 新增：看看+书签/收藏（口语化列表查询）
+    // 示例："看看我的书签"、"看看收藏"
+    pattern: /看看.{0,5}(我的)?.{0,3}(书签|收藏)/,
+    type: "query",
+    subType: "list",
+    complexity: "simple",
+    weight: 58,
+  },
+  {
+    // Phase 1 新增：有没有+主题（口语化搜索）
+    // 示例："有没有 Python 相关的"、"有没有 AI 的"
+    // 注意：优先于 refine:check 规则（weight 70）
+    pattern: /有没有.{1,20}(相关|的)$/,
+    type: "query",
+    subType: "search",
+    complexity: "simple",
+    weight: 72,
   },
   {
     pattern: /什么是|介绍|解释/,
@@ -826,7 +925,7 @@ const DEFAULT_RULES: IntentRule[] = [
     weight: 50,
   },
   {
-    pattern: /删除|移除|清除/,
+    pattern: /删除|移除|清除|删掉/,
     type: "action",
     subType: "delete",
     complexity: "simple",
@@ -834,11 +933,33 @@ const DEFAULT_RULES: IntentRule[] = [
   },
   {
     // 修复 NLU-02: 提高标签规则权重，优先于摘要（weight 70）
-    pattern: /添加.{0,3}标签|打标签|标记|标为|设为.{0,3}标签/,
+    // Golden Dataset 增强：覆盖"加个标签"、"加标签"等口语化表达
+    // Phase 1 增强：覆盖"给...加上...标签"、"打个标签叫"等结构
+    pattern:
+      /添加.{0,3}标签|打标签|标记|标为|设为.{0,3}标签|加.{0,2}标签|给.{0,5}加上.{0,5}标签|打.{0,2}标签.{0,2}叫/,
     type: "action",
     subType: "tag",
     complexity: "simple",
     weight: 75,
+  },
+  {
+    // Phase 1 新增：创建文件夹/收藏夹
+    // 示例："新建一个文件夹叫技术"、"创建学习收藏夹"
+    pattern:
+      /新建.{0,5}文件夹|创建.{0,5}(文件夹|收藏夹)|建.{0,3}(文件夹|收藏夹)/,
+    type: "action",
+    subType: "create_folder",
+    complexity: "simple",
+    weight: 70,
+  },
+  {
+    // Phase 1 新增：短移动指令
+    // 示例："移到工作收藏"
+    pattern: /移到.{1,10}(收藏|文件夹)?$/,
+    type: "action",
+    subType: "move",
+    complexity: "simple",
+    weight: 55,
   },
   {
     pattern: /重命名|改名/,

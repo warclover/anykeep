@@ -199,9 +199,9 @@ describe("IntentClassifier - P0 高频场景", () => {
   // 导出分享类 (3 个 P0)
   // ============================================
   describe("导出分享 (P0)", () => {
-    // 核心用例
+    // 核心用例（Code Review #8: 导出应映射到 export，分享应映射到 share）
     const coreCases = [
-      { input: "导出成 Markdown", subType: "share" },
+      { input: "导出成 Markdown", subType: "export" },
       { input: "分享这几篇给朋友", subType: "share" },
     ];
 
