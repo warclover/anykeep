@@ -104,6 +104,7 @@ const contentCenterItems: NavItem[] = [
  * 整理工具导航项
  */
 const organizeToolsItems: NavItem[] = [
+  { name: "整理中心", href: "/organize", icon: Sparkles },
   { name: "等待分类", href: "/inbox", icon: Inbox },
   { name: "数据导入", href: "/import", icon: Upload },
   { name: "分类管理", href: "/classification-manager", icon: BrainCircuit },

@@ -39,6 +39,12 @@ export {
   generateSummary,
   generateOrganizeSuggestions,
   buildConfirmationMessage,
+  // v1.1.0 专家模板渲染
+  renderExpertDiagnosisReport,
+  renderExpertConfirmation,
+  renderExpertComplete,
+  renderExpertEmpty,
+  toCollectionStats,
 } from "./report.step";
 
 // 自动执行（基础版本）
