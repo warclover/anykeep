@@ -7,19 +7,21 @@
  * - 显示整理进度
  * - 展示整理前后对比
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2026-01-10
  */
 
 "use client";
 
 import { useState, useCallback } from "react";
-import { Sparkles } from "lucide-react";
+import { Sparkles, CheckCircle } from "lucide-react";
 import { QuickActionGrid } from "./quick-action-grid";
 import { OrganizeProgress } from "./organize-progress";
 import { OrganizeComparison } from "./organize-comparison";
 import { useOrganizeComparison } from "@/hooks/domain/organize/use-organize-comparison";
 import { useAIChat } from "@/hooks/domain/ai";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import type { OrganizePageState, QuickActionType } from "@/lib/organize/types";
 
 /**
@@ -44,11 +46,24 @@ const _ACTION_SKILLS: Record<QuickActionType, string> = {
   "archive-stale": "batch_organize",
 };
 
+/**
+ * 根据进度百分比计算当前步骤
+ */
+function calculateStep(percent: number): number {
+  if (percent < 15) return 0; // 收集数据
+  if (percent < 30) return 1; // 分析内容
+  if (percent < 50) return 2; // 智能分类
+  if (percent < 70) return 3; // 智能打标
+  if (percent < 90) return 4; // 整理清理
+  return 4; // 生成报告
+}
+
 export function OrganizePageClient() {
   const [state, setState] = useState<OrganizePageState>("idle");
   const [progressMessage, setProgressMessage] = useState<string>("");
   const [progressPercent, setProgressPercent] = useState<number>(0);
   const [currentStep, setCurrentStep] = useState<number>(0);
+  const [organizeError, setOrganizeError] = useState<string | null>(null);
 
   const {
     beforeSnapshot,
@@ -57,6 +72,7 @@ export function OrganizePageClient() {
     captureAfterSnapshot,
     reset: resetSnapshots,
     hasComparison,
+    error: snapshotError,
   } = useOrganizeComparison();
 
   const { sendMessage, cancel } = useAIChat({
@@ -69,15 +85,28 @@ export function OrganizePageClient() {
           message?: string;
         };
         if (data.step) setProgressMessage(data.step);
-        if (typeof data.percent === "number") setProgressPercent(data.percent);
+        if (typeof data.percent === "number") {
+          setProgressPercent(data.percent);
+          // 根据百分比计算步骤
+          setCurrentStep(calculateStep(data.percent));
+        }
       }
     },
     onComplete: async () => {
-      // 整理完成，获取后快照
-      await captureAfterSnapshot();
-      setState("complete");
+      try {
+        // 整理完成，获取后快照
+        await captureAfterSnapshot();
+        setState("complete");
+      } catch (error) {
+        console.error("Failed to capture after snapshot:", error);
+        // 即使快照失败也显示完成状态
+        setState("complete");
+        setOrganizeError("获取整理后统计数据失败，但整理已完成");
+      }
     },
-    onError: () => {
+    onError: (error) => {
+      console.error("Organize error:", error);
+      setOrganizeError(error.message || "整理过程中发生错误");
       setState("idle");
     },
   });
@@ -91,6 +120,7 @@ export function OrganizePageClient() {
       setProgressMessage("正在分析您的收藏...");
       setProgressPercent(0);
       setCurrentStep(0);
+      setOrganizeError(null);
 
       try {
         // 获取整理前快照
@@ -106,6 +136,9 @@ export function OrganizePageClient() {
         // 完成状态在 onComplete 回调中设置
       } catch (error) {
         console.error("Organize action failed:", error);
+        setOrganizeError(
+          error instanceof Error ? error.message : "整理操作失败",
+        );
         setState("idle");
       }
     },
@@ -120,6 +153,7 @@ export function OrganizePageClient() {
     setProgressMessage("");
     setProgressPercent(0);
     setCurrentStep(0);
+    setOrganizeError(null);
     resetSnapshots();
   }, [resetSnapshots]);
 
@@ -131,6 +165,7 @@ export function OrganizePageClient() {
     setState("idle");
     setProgressMessage("");
     setProgressPercent(0);
+    setOrganizeError(null);
   }, [cancel]);
 
   return (
@@ -145,6 +180,17 @@ export function OrganizePageClient() {
           AI 帮你智能整理收藏，保持知识库整洁有序
         </p>
       </div>
+
+      {/* 错误提示 */}
+      {organizeError && state === "idle" && (
+        <Card className="border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/30">
+          <CardContent className="p-4">
+            <p className="text-sm text-red-600 dark:text-red-400">
+              ⚠️ {organizeError}
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* 主内容区 */}
       {state === "idle" && <QuickActionGrid onAction={handleOrganizeAction} />}
@@ -169,6 +215,22 @@ export function OrganizePageClient() {
             onReset={handleReset}
           />
         )}
+
+      {/* 完成但没有对比数据时显示简单完成状态 */}
+      {state === "complete" && !hasComparison && (
+        <Card>
+          <CardContent className="p-6 text-center space-y-4">
+            <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
+            <div>
+              <h3 className="text-lg font-semibold">整理完成！</h3>
+              <p className="text-muted-foreground text-sm mt-1">
+                {snapshotError || organizeError || "整理操作已完成"}
+              </p>
+            </div>
+            <Button onClick={handleReset}>继续整理</Button>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

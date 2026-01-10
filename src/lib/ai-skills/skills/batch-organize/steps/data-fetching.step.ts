@@ -28,6 +28,19 @@ export async function fetchBookmarks(
   userId: string,
   input: BatchOrganizeInput,
 ): Promise<BookmarkRow[]> {
+  // 详细日志记录查询参数
+  logger.info(
+    {
+      userId: userId.slice(0, 8) + "...",
+      scope: input.scope,
+      hasFilter: !!input.filter,
+      filterBookmarkCount: input.filter?.bookmarkIds?.length,
+      folderId: input.filter?.folderId,
+      platforms: input.filter?.platforms,
+    },
+    "BatchOrganizeSkill: Fetching bookmarks with params",
+  );
+
   // 安全检查：验证书签 ID 数量
   if (
     input.filter?.bookmarkIds &&
@@ -74,6 +87,7 @@ export async function fetchBookmarks(
         query = query.in("id", input.filter.bookmarkIds);
       }
       break;
+    // case "all": 不添加额外筛选，获取全部书签
   }
 
   // 应用筛选条件
@@ -89,9 +103,22 @@ export async function fetchBookmarks(
   );
 
   if (error) {
-    logger.error({ error }, "BatchOrganizeSkill: Failed to fetch bookmarks");
+    logger.error(
+      { error, userId: userId.slice(0, 8) + "...", scope: input.scope },
+      "BatchOrganizeSkill: Failed to fetch bookmarks",
+    );
     throw new Error(`获取书签失败: ${error.message}`);
   }
+
+  // 记录查询结果
+  logger.info(
+    {
+      userId: userId.slice(0, 8) + "...",
+      scope: input.scope,
+      resultCount: data?.length || 0,
+    },
+    "BatchOrganizeSkill: Bookmarks fetched successfully",
+  );
 
   return (data || []) as BookmarkRow[];
 }
@@ -110,7 +137,8 @@ export async function fetchFolders(userId: string): Promise<FolderRow[]> {
     .from("folders")
     .select("id, name")
     .eq("user_id", userId)
-    .is("is_archived", false);
+    .is("deleted_at", null)
+    .or("is_archived.is.null,is_archived.eq.false");
 
   if (error) {
     logger.error({ error }, "BatchOrganizeSkill: Failed to fetch folders");

@@ -50,31 +50,37 @@ export function OrganizeComparison({
   onShare,
   className,
 }: OrganizeComparisonProps) {
-  // 计算改进指标
+  // 安全获取数值，防止 NaN
+  const safeNum = (val: number | undefined | null): number =>
+    typeof val === "number" && !isNaN(val) ? val : 0;
+
+  // 计算改进指标（使用安全数值）
   const improvements = {
-    categorized: before.uncategorized - after.uncategorized,
-    cleaned: before.duplicates - after.duplicates,
-    tagged: before.untagged - after.untagged,
-    archived: before.stale - after.stale,
+    categorized: safeNum(before.uncategorized) - safeNum(after.uncategorized),
+    cleaned: safeNum(before.duplicates) - safeNum(after.duplicates),
+    tagged: safeNum(before.untagged) - safeNum(after.untagged),
+    archived: safeNum(before.stale) - safeNum(after.stale),
   };
 
   const totalImproved = Object.values(improvements).reduce(
     (a, b) => Math.max(0, a) + Math.max(0, b),
     0,
   );
+  const beforeTotal = safeNum(before.total);
+  const afterTotal = safeNum(after.total);
   const improvementPercent =
-    before.total > 0 ? Math.round((totalImproved / before.total) * 100) : 0;
+    beforeTotal > 0 ? Math.round((totalImproved / beforeTotal) * 100) : 0;
 
-  // 准备饼图数据
+  // 准备饼图数据（使用安全数值）
   const beforeChartData = [
     {
       name: "已分类",
-      value: before.total - before.uncategorized,
+      value: beforeTotal - safeNum(before.uncategorized),
       color: CHART_COLORS.categorized,
     },
     {
       name: "未分类",
-      value: before.uncategorized,
+      value: safeNum(before.uncategorized),
       color: CHART_COLORS.uncategorized,
     },
   ].filter((d) => d.value > 0);
@@ -82,12 +88,12 @@ export function OrganizeComparison({
   const afterChartData = [
     {
       name: "已分类",
-      value: after.total - after.uncategorized,
+      value: afterTotal - safeNum(after.uncategorized),
       color: CHART_COLORS.categorized,
     },
     {
       name: "未分类",
-      value: after.uncategorized,
+      value: safeNum(after.uncategorized),
       color: CHART_COLORS.uncategorized,
     },
   ].filter((d) => d.value > 0);
@@ -125,26 +131,26 @@ export function OrganizeComparison({
         <div className="grid grid-cols-2 gap-4">
           <MetricCard
             label="未分类"
-            before={before.uncategorized}
-            after={after.uncategorized}
+            before={safeNum(before.uncategorized)}
+            after={safeNum(after.uncategorized)}
             isLowerBetter
           />
           <MetricCard
             label="重复项"
-            before={before.duplicates}
-            after={after.duplicates}
+            before={safeNum(before.duplicates)}
+            after={safeNum(after.duplicates)}
             isLowerBetter
           />
           <MetricCard
             label="无标签"
-            before={before.untagged}
-            after={after.untagged}
+            before={safeNum(before.untagged)}
+            after={safeNum(after.untagged)}
             isLowerBetter
           />
           <MetricCard
             label="长期未读"
-            before={before.stale}
-            after={after.stale}
+            before={safeNum(before.stale)}
+            after={safeNum(after.stale)}
             isLowerBetter
           />
         </div>

@@ -39,7 +39,12 @@ async function fetchCollectionStats(): Promise<OrganizeSnapshot> {
   if (!response.ok) {
     throw new Error("Failed to fetch collection stats");
   }
-  return response.json();
+  const result = await response.json();
+  // API 返回格式：{ success: true, data: OrganizeSnapshot }
+  if (!result.success || !result.data) {
+    throw new Error(result.error?.message || "Invalid response format");
+  }
+  return result.data;
 }
 
 /**

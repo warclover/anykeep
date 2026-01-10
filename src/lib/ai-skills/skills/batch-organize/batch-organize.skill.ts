@@ -125,13 +125,31 @@ export class BatchOrganizeSkill extends OrchestrationSkill<
       actions.push("validate-urls");
     }
 
-    // 默认操作
+    // 检测是否为一键整理模式（自动执行）
+    // 注意：一键整理模式需要先检测，因为它会影响默认操作和 scope
+    const isOneClickMode = /一键|自动|直接/.test(message);
+
+    // 一键整理模式：强制包含分类和打标两个核心操作
+    if (isOneClickMode) {
+      if (!actions.includes("auto-categorize")) {
+        actions.push("auto-categorize");
+      }
+      if (!actions.includes("auto-tag")) {
+        actions.push("auto-tag");
+      }
+    }
+
+    // 默认操作（仅当没有匹配任何模式时）
     if (actions.length === 0) {
       actions.push("auto-categorize", "auto-tag");
     }
 
     // 解析范围
-    let scope: BatchOrganizeInput["scope"] = "uncategorized";
+    // 一键整理模式默认为 "all"（全部书签），其他模式默认为 "uncategorized"
+    let scope: BatchOrganizeInput["scope"] = isOneClickMode
+      ? "all"
+      : "uncategorized";
+
     if (/全部|所有/.test(message)) {
       scope = "all";
     } else if (/未分类/.test(message)) {
@@ -206,11 +224,25 @@ export class BatchOrganizeSkill extends OrchestrationSkill<
       }
     }
 
+    // 日志记录一键整理模式
+    if (isOneClickMode) {
+      logger.info(
+        {
+          message: message.substring(0, 50),
+          actions,
+          scope,
+        },
+        "BatchOrganizeSkill: One-click mode detected, autoExecute enabled",
+      );
+    }
+
     return {
       actions,
       scope,
-      requireConfirmation: DEFAULT_ORGANIZE_CONFIG.requireConfirmation,
-      autoExecute: DEFAULT_ORGANIZE_CONFIG.autoExecute,
+      requireConfirmation: isOneClickMode
+        ? false
+        : DEFAULT_ORGANIZE_CONFIG.requireConfirmation,
+      autoExecute: isOneClickMode ? true : DEFAULT_ORGANIZE_CONFIG.autoExecute,
       // 如果有指代词解析出的书签 ID，添加到筛选条件
       filter: bookmarkIds ? { bookmarkIds } : undefined,
     };
@@ -225,12 +257,31 @@ export class BatchOrganizeSkill extends OrchestrationSkill<
     const startTime = Date.now();
     const input = context.params as BatchOrganizeInput;
 
+    // 详细日志记录输入参数（调试用）
+    logger.info(
+      {
+        skillId: this.metadata.id,
+        userId: context.userId,
+        actions: input.actions,
+        scope: input.scope,
+        autoExecute: input.autoExecute,
+        hasFilter: !!input.filter,
+        filterBookmarkCount: input.filter?.bookmarkIds?.length,
+      },
+      "BatchOrganizeSkill: Starting execution with params",
+    );
+
     // 初始化进度
     this.initProgress(ORGANIZE_STEPS);
+
+    // 最小延迟函数，确保进度更新可见
+    const minDelay = (ms: number) =>
+      new Promise((resolve) => setTimeout(resolve, ms));
 
     try {
       // Step 1: 收集数据
       yield* this.collectData(context.userId, input);
+      await minDelay(300); // 确保进度可见
 
       // 检查取消信号
       if (this.isCancelled(context)) {
@@ -261,6 +312,7 @@ export class BatchOrganizeSkill extends OrchestrationSkill<
         `收集到 ${bookmarks.length} 条书签`,
       );
       yield* this.emitText(`📚 共收集到 **${bookmarks.length}** 条书签。\n\n`);
+      await minDelay(500); // 确保进度可见
 
       if (bookmarks.length === 0) {
         yield* this.emitText("没有找到需要整理的书签。");
@@ -277,6 +329,7 @@ export class BatchOrganizeSkill extends OrchestrationSkill<
 
       // Step 2: 分析内容
       yield* this.reportProgress("分析内容", 20, "正在分析书签内容...");
+      await minDelay(400); // 确保进度可见
 
       // 检查取消信号
       if (this.isCancelled(context)) {
@@ -295,6 +348,7 @@ export class BatchOrganizeSkill extends OrchestrationSkill<
           folders,
           categorizeSuggestions,
         );
+        await minDelay(400); // 确保进度可见
 
         // 检查取消信号
         if (this.isCancelled(context)) {
@@ -310,6 +364,7 @@ export class BatchOrganizeSkill extends OrchestrationSkill<
       // Step 4: 智能打标
       if (input.actions.includes("auto-tag")) {
         yield* this.processTag(bookmarks, tagSuggestions);
+        await minDelay(400); // 确保进度可见
 
         // 检查取消信号
         if (this.isCancelled(context)) {
@@ -324,6 +379,7 @@ export class BatchOrganizeSkill extends OrchestrationSkill<
 
       // Step 5: 清理和归档
       yield* this.reportProgress("整理清理", 70, "正在检查重复和归档...");
+      await minDelay(300); // 确保进度可见
 
       if (input.actions.includes("clean-duplicates")) {
         yield* this.processDuplicates(bookmarks, duplicateGroups);
@@ -427,6 +483,10 @@ export class BatchOrganizeSkill extends OrchestrationSkill<
     yield* this.reportProgress("智能分类", 30, "正在生成分类建议...");
     yield* this.emitText(`### 📁 智能分类建议\n\n`);
 
+    // 统计未分类书签数量
+    const uncategorizedCount = bookmarks.filter((b) => !b.folder_id).length;
+    const categorizedCount = bookmarks.length - uncategorizedCount;
+
     const generated = generateCategorizeSuggestions(bookmarks, folders);
     suggestions.push(...generated);
 
@@ -440,7 +500,20 @@ export class BatchOrganizeSkill extends OrchestrationSkill<
         yield* this.emitText(`- *...还有 ${generated.length - 5} 条建议*\n`);
       }
     } else {
-      yield* this.emitText(`*暂无分类建议*\n`);
+      // 提供更详细的反馈
+      if (uncategorizedCount === 0) {
+        yield* this.emitText(
+          `✅ 太棒了！您的 **${categorizedCount}** 条书签都已分类，无需整理。\n`,
+        );
+      } else if (folders.length === 0) {
+        yield* this.emitText(
+          `⚠️ 您还没有创建文件夹，建议先创建几个分类文件夹。\n`,
+        );
+      } else {
+        yield* this.emitText(
+          `*${uncategorizedCount} 条未分类书签暂无匹配的文件夹建议*\n`,
+        );
+      }
     }
     yield* this.emitText(`\n`);
 
@@ -458,6 +531,14 @@ export class BatchOrganizeSkill extends OrchestrationSkill<
     yield* this.reportProgress("智能打标", 50, "正在生成标签建议...");
     yield* this.emitText(`### 🏷️ 智能标签建议\n\n`);
 
+    // 统计标签情况
+    const wellTaggedCount = bookmarks.filter(
+      (b) => (b.user_tags?.length || 0) >= 2,
+    ).length;
+    const hasAiTagsCount = bookmarks.filter(
+      (b) => (b.ai_tags?.length || 0) > 0,
+    ).length;
+
     const generated = generateTagSuggestions(bookmarks);
     suggestions.push(...generated);
 
@@ -471,7 +552,18 @@ export class BatchOrganizeSkill extends OrchestrationSkill<
         yield* this.emitText(`- *...还有 ${generated.length - 5} 条建议*\n`);
       }
     } else {
-      yield* this.emitText(`*暂无标签建议*\n`);
+      // 提供更详细的反馈
+      if (wellTaggedCount === bookmarks.length) {
+        yield* this.emitText(
+          `✅ 太棒了！您的 **${wellTaggedCount}** 条书签都已有足够的标签。\n`,
+        );
+      } else if (hasAiTagsCount === 0) {
+        yield* this.emitText(
+          `⚠️ 您的书签尚未生成 AI 标签，建议先运行 AI 分析功能。\n`,
+        );
+      } else {
+        yield* this.emitText(`*暂无新的标签建议*\n`);
+      }
     }
     yield* this.emitText(`\n`);
 
@@ -628,41 +720,70 @@ export class BatchOrganizeSkill extends OrchestrationSkill<
   ): AsyncGenerator<OrchestrationStreamChunk> {
     yield* this.reportProgress("生成报告", 90, "正在生成整理报告...");
 
+    // 检查是否有建议需要执行
+    const hasPendingActions =
+      output.stats.categorizeSuggestions > 0 ||
+      output.stats.tagSuggestions > 0 ||
+      output.stats.duplicatesFound > 0 ||
+      output.stats.archiveCandidates > 0;
+
     // 输出摘要
     yield* this.emitText(`## 📊 整理报告摘要\n\n`);
-    yield* this.emitText(`${output.summary}\n\n`);
+
+    // autoExecute 模式下显示执行结果
+    if (input.autoExecute) {
+      if (output.stats.actionsExecuted > 0) {
+        yield* this.emitText(
+          `✅ **整理完成！** 已自动执行 **${output.stats.actionsExecuted}** 项整理操作。\n\n`,
+        );
+      } else if (!hasPendingActions) {
+        yield* this.emitText(
+          `✅ **整理分析完成！** 您的书签状态良好，无需额外整理。\n\n`,
+        );
+      } else {
+        yield* this.emitText(`${output.summary}\n\n`);
+      }
+    } else {
+      yield* this.emitText(`${output.summary}\n\n`);
+    }
 
     // 输出统计
     yield* this.emitText(`### 统计数据\n\n`);
     yield* this.emitText(`- 处理书签数: **${output.stats.totalProcessed}**\n`);
     if (output.stats.categorizeSuggestions > 0) {
       yield* this.emitText(
-        `- 分类建议数: **${output.stats.categorizeSuggestions}**\n`,
+        `- 分类建议数: **${output.stats.categorizeSuggestions}**${input.autoExecute ? " ✓" : ""}\n`,
       );
     }
     if (output.stats.tagSuggestions > 0) {
       yield* this.emitText(
-        `- 标签建议数: **${output.stats.tagSuggestions}**\n`,
+        `- 标签建议数: **${output.stats.tagSuggestions}**${input.autoExecute ? " ✓" : ""}\n`,
       );
     }
     if (output.stats.duplicatesFound > 0) {
       yield* this.emitText(
-        `- 重复书签组: **${output.stats.duplicatesFound}**\n`,
+        `- 重复书签组: **${output.stats.duplicatesFound}**${input.autoExecute ? " ✓" : ""}\n`,
       );
     }
     if (output.stats.archiveCandidates > 0) {
       yield* this.emitText(
-        `- 归档候选数: **${output.stats.archiveCandidates}**\n`,
+        `- 归档候选数: **${output.stats.archiveCandidates}**${input.autoExecute ? " ✓" : ""}\n`,
+      );
+    }
+    // 如果没有任何建议，显示说明
+    if (!hasPendingActions) {
+      yield* this.emitText(`\n📋 **状态检查结果**：\n`);
+      yield* this.emitText(`- 所有书签已分类 ✅\n`);
+      yield* this.emitText(`- 标签覆盖良好 ✅\n`);
+      yield* this.emitText(`- 未发现重复项 ✅\n`);
+    }
+    // 如果 autoExecute 且有执行操作，显示执行统计
+    if (input.autoExecute && output.stats.actionsExecuted > 0) {
+      yield* this.emitText(
+        `\n**已执行操作数**: **${output.stats.actionsExecuted}** ✓\n`,
       );
     }
     yield* this.emitText(`\n`);
-
-    // 检查是否有需要确认的操作
-    const hasPendingActions =
-      output.stats.categorizeSuggestions > 0 ||
-      output.stats.tagSuggestions > 0 ||
-      output.stats.duplicatesFound > 0 ||
-      output.stats.archiveCandidates > 0;
 
     if (hasPendingActions && input.requireConfirmation && !input.autoExecute) {
       yield* this.reportProgress("确认操作", 85, "等待用户确认...");
