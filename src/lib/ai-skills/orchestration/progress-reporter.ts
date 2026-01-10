@@ -266,6 +266,87 @@ export class ProgressReporter {
     return this.steps.some((s) => s.status === "failed");
   }
 
+  // ============================================
+  // Phase 3.2: ETA 估算
+  // ============================================
+
+  /**
+   * 计算预计剩余时间（毫秒）
+   *
+   * 基于已完成的进度和消耗时间进行线性估算
+   * 当进度较低时（<5%），返回 undefined 避免不准确的估算
+   */
+  calculateEtaMs(): number | undefined {
+    const percent = this.getOverallPercent();
+
+    // 进度过低时不进行估算
+    if (percent < 5) {
+      return undefined;
+    }
+
+    const elapsedMs = this.getDuration();
+
+    // 避免除零
+    if (percent <= 0) {
+      return undefined;
+    }
+
+    // 线性估算：已用时间 / 已完成比例 * 剩余比例
+    const remainingPercent = 100 - percent;
+    const estimatedTotalMs = (elapsedMs / percent) * 100;
+    const etaMs = Math.round((estimatedTotalMs * remainingPercent) / 100);
+
+    // 限制最大 ETA 为 30 分钟
+    return Math.min(etaMs, 30 * 60 * 1000);
+  }
+
+  /**
+   * 格式化剩余时间为人类可读的字符串
+   *
+   * @param etaMs - 剩余时间（毫秒）
+   * @returns 格式化的字符串，如 "约 30 秒"
+   */
+  formatEta(etaMs: number | undefined): string | undefined {
+    if (etaMs === undefined || etaMs < 0) {
+      return undefined;
+    }
+
+    const seconds = Math.ceil(etaMs / 1000);
+
+    if (seconds < 5) {
+      return "即将完成";
+    }
+
+    if (seconds < 60) {
+      // 四舍五入到 5 秒
+      const rounded = Math.ceil(seconds / 5) * 5;
+      return `约 ${rounded} 秒`;
+    }
+
+    const minutes = Math.ceil(seconds / 60);
+    if (minutes < 60) {
+      return `约 ${minutes} 分钟`;
+    }
+
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    if (remainingMinutes > 0) {
+      return `约 ${hours} 小时 ${remainingMinutes} 分钟`;
+    }
+    return `约 ${hours} 小时`;
+  }
+
+  /**
+   * 获取 ETA 信息
+   *
+   * @returns ETA 毫秒数和格式化字符串
+   */
+  getEta(): { etaMs: number | undefined; etaFormatted: string | undefined } {
+    const etaMs = this.calculateEtaMs();
+    const etaFormatted = this.formatEta(etaMs);
+    return { etaMs, etaFormatted };
+  }
+
   /**
    * 创建进度块
    */
@@ -274,6 +355,9 @@ export class ProgressReporter {
       this.currentStepIndex >= 0 && this.currentStepIndex < this.steps.length
         ? this.steps[this.currentStepIndex]
         : null;
+
+    // Phase 3.2: 获取 ETA 信息
+    const { etaMs, etaFormatted } = this.getEta();
 
     return {
       type: "progress",
@@ -288,6 +372,9 @@ export class ProgressReporter {
         timestamp: Date.now(),
         stepIndex: Math.max(0, this.currentStepIndex),
         totalSteps: this.steps.length,
+        // Phase 3.2: ETA 估算
+        etaMs,
+        etaFormatted,
       },
     };
   }
@@ -327,6 +414,8 @@ export class ProgressReporter {
 
     this.heartbeatInterval = setInterval(() => {
       const now = Date.now();
+      // Phase 3.2: 获取 ETA 信息
+      const { etaMs, etaFormatted } = this.getEta();
       const chunk: HeartbeatChunk = {
         type: "heartbeat",
         data: {
@@ -334,6 +423,9 @@ export class ProgressReporter {
           percent: this.getOverallPercent(),
           timestamp: now,
           elapsedMs: now - this.heartbeatStartTime,
+          // Phase 3.2: ETA 估算
+          etaMs,
+          etaFormatted,
         },
       };
       callback(chunk);

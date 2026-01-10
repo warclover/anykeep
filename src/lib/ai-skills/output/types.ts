@@ -116,6 +116,11 @@ export interface ProgressChunk {
     stepIndex?: number;
     /** 总步骤数 */
     totalSteps?: number;
+    // Phase 3.2: ETA 估算
+    /** 预计剩余时间（毫秒） */
+    etaMs?: number;
+    /** 格式化的剩余时间（如 "约 30 秒"） */
+    etaFormatted?: string;
   };
 }
 
@@ -283,6 +288,11 @@ export interface HeartbeatChunk {
     timestamp: number;
     /** 已执行时间（毫秒） */
     elapsedMs: number;
+    // Phase 3.2: ETA 估算
+    /** 预计剩余时间（毫秒） */
+    etaMs?: number;
+    /** 格式化的剩余时间（如 "约 30 秒"） */
+    etaFormatted?: string;
   };
 }
 

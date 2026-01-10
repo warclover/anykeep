@@ -22,6 +22,7 @@ import type {
   DeliverableType,
   OutputFormat,
   ConfirmOption,
+  HeartbeatChunk,
 } from "../output/types";
 import type {
   OrchestrationContext,
@@ -80,6 +81,100 @@ export abstract class OrchestrationSkill<TInput = unknown, TOutput = unknown>
 
   /** 当前执行上下文的用户 ID（用于事件发射） */
   private currentUserId: string | null = null;
+
+  // ============================================
+  // Phase 3.1: 心跳机制
+  // ============================================
+
+  /** 心跳定时器 */
+  private heartbeatInterval: ReturnType<typeof setInterval> | null = null;
+
+  /** 心跳开始时间 */
+  private heartbeatStartTime: number = 0;
+
+  /** 心跳回调函数 */
+  private heartbeatCallback:
+    | ((chunk: HeartbeatChunk) => void | Promise<void>)
+    | null = null;
+
+  /** 默认心跳间隔（毫秒） */
+  protected static readonly DEFAULT_HEARTBEAT_INTERVAL_MS = 500;
+
+  // ============================================
+  // Phase 3.2: ETA 估算辅助方法
+  // ============================================
+
+  /**
+   * 计算 ETA（估计剩余时间）
+   *
+   * 基于已完成进度和已用时间进行线性估算
+   *
+   * @param startTime - 开始时间戳
+   * @returns ETA 毫秒数和格式化字符串
+   */
+  private calculateEta(startTime: number): {
+    etaMs: number | undefined;
+    etaFormatted: string | undefined;
+  } {
+    const percent = this.progressState?.percent || 0;
+
+    // 进度过低时不进行估算（避免不准确）
+    if (percent < 5) {
+      return { etaMs: undefined, etaFormatted: undefined };
+    }
+
+    const elapsedMs = Date.now() - startTime;
+
+    // 避免除零
+    if (percent <= 0 || elapsedMs <= 0) {
+      return { etaMs: undefined, etaFormatted: undefined };
+    }
+
+    // 线性估算：已用时间 / 已完成比例 * 剩余比例
+    const remainingPercent = 100 - percent;
+    const estimatedTotalMs = (elapsedMs / percent) * 100;
+    const etaMs = Math.round((estimatedTotalMs * remainingPercent) / 100);
+
+    // 限制最大 ETA 为 30 分钟
+    const cappedEtaMs = Math.min(etaMs, 30 * 60 * 1000);
+
+    return {
+      etaMs: cappedEtaMs,
+      etaFormatted: this.formatEta(cappedEtaMs),
+    };
+  }
+
+  /**
+   * 格式化剩余时间为人类可读的字符串
+   *
+   * @param etaMs - 剩余时间（毫秒）
+   * @returns 格式化的字符串
+   */
+  private formatEta(etaMs: number): string {
+    const seconds = Math.ceil(etaMs / 1000);
+
+    if (seconds < 5) {
+      return "即将完成";
+    }
+
+    if (seconds < 60) {
+      // 四舍五入到 5 秒
+      const rounded = Math.ceil(seconds / 5) * 5;
+      return `约 ${rounded} 秒`;
+    }
+
+    const minutes = Math.ceil(seconds / 60);
+    if (minutes < 60) {
+      return `约 ${minutes} 分钟`;
+    }
+
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    if (remainingMinutes > 0) {
+      return `约 ${hours} 小时 ${remainingMinutes} 分钟`;
+    }
+    return `约 ${hours} 小时`;
+  }
 
   /**
    * 初始化事件发射器
@@ -141,6 +236,142 @@ export abstract class OrchestrationSkill<TInput = unknown, TOutput = unknown>
         mode: "orchestration",
         estimatedSteps: steps.length,
       });
+    }
+  }
+
+  // ============================================
+  // Phase 3.1: 心跳方法
+  // ============================================
+
+  /**
+   * 启动心跳
+   *
+   * 在长时间运行的操作前调用，每隔指定间隔发送心跳
+   * 表明系统仍在运行，防止前端超时或误以为系统崩溃
+   *
+   * @param callback - 心跳回调函数，接收 HeartbeatChunk
+   * @param intervalMs - 心跳间隔（毫秒），默认 500ms
+   */
+  protected startHeartbeat(
+    callback: (chunk: HeartbeatChunk) => void | Promise<void>,
+    intervalMs: number = OrchestrationSkill.DEFAULT_HEARTBEAT_INTERVAL_MS,
+  ): void {
+    // 确保没有重复的心跳
+    this.stopHeartbeat();
+
+    this.heartbeatCallback = callback;
+    this.heartbeatStartTime = Date.now();
+
+    this.heartbeatInterval = setInterval(() => {
+      const now = Date.now();
+      // Phase 3.2: 计算 ETA
+      const { etaMs, etaFormatted } = this.calculateEta(
+        this.heartbeatStartTime,
+      );
+      const chunk: HeartbeatChunk = {
+        type: "heartbeat",
+        data: {
+          currentStep: this.progressState?.currentStep || "处理中",
+          percent: this.progressState?.percent || 0,
+          timestamp: now,
+          elapsedMs: now - this.heartbeatStartTime,
+          // Phase 3.2: ETA 估算
+          etaMs,
+          etaFormatted,
+        },
+      };
+
+      // 调用回调（支持异步）
+      if (this.heartbeatCallback) {
+        const result = this.heartbeatCallback(chunk);
+        // 如果是 Promise，不等待（fire-and-forget）
+        if (result instanceof Promise) {
+          result.catch((error) => {
+            logger.warn(
+              { error: error instanceof Error ? error.message : String(error) },
+              "OrchestrationSkill: Heartbeat callback error",
+            );
+          });
+        }
+      }
+    }, intervalMs);
+
+    logger.debug(
+      {
+        skillId: this.metadata.id,
+        intervalMs,
+      },
+      "OrchestrationSkill: Heartbeat started",
+    );
+  }
+
+  /**
+   * 停止心跳
+   *
+   * 在操作完成、出错或取消时调用
+   */
+  protected stopHeartbeat(): void {
+    if (this.heartbeatInterval !== null) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
+
+      logger.debug(
+        {
+          skillId: this.metadata.id,
+          elapsedMs: Date.now() - this.heartbeatStartTime,
+        },
+        "OrchestrationSkill: Heartbeat stopped",
+      );
+    }
+
+    this.heartbeatCallback = null;
+  }
+
+  /**
+   * 检查心跳是否正在运行
+   */
+  protected isHeartbeatRunning(): boolean {
+    return this.heartbeatInterval !== null;
+  }
+
+  /**
+   * 创建心跳生成器包装器
+   *
+   * 用于将异步生成器包装，在迭代过程中自动发送心跳
+   *
+   * @param generator - 原始异步生成器
+   * @param heartbeatIntervalMs - 心跳间隔
+   * @yields 原始块 + 心跳块
+   */
+  protected async *withHeartbeat<T>(
+    generator: AsyncGenerator<T>,
+    heartbeatIntervalMs: number = OrchestrationSkill.DEFAULT_HEARTBEAT_INTERVAL_MS,
+  ): AsyncGenerator<T | HeartbeatChunk> {
+    let lastHeartbeat = Date.now();
+    const startTime = Date.now();
+
+    for await (const chunk of generator) {
+      yield chunk;
+
+      // 检查是否需要发送心跳
+      const now = Date.now();
+      if (now - lastHeartbeat >= heartbeatIntervalMs) {
+        // Phase 3.2: 计算 ETA
+        const { etaMs, etaFormatted } = this.calculateEta(startTime);
+        yield {
+          type: "heartbeat",
+          data: {
+            currentStep: this.progressState?.currentStep || "处理中",
+            percent: this.progressState?.percent || 0,
+            timestamp: now,
+            elapsedMs: now - startTime,
+            // Phase 3.2: ETA 估算
+            etaMs,
+            etaFormatted,
+          },
+        } as HeartbeatChunk;
+        lastHeartbeat = now;
+      }
     }
   }
 
@@ -411,6 +642,9 @@ export abstract class OrchestrationSkill<TInput = unknown, TOutput = unknown>
     code?: string,
     retryable = false,
   ): Generator<OrchestrationStreamChunk> {
+    // Phase 3.1: 停止心跳
+    this.stopHeartbeat();
+
     yield {
       type: "error",
       data: {
@@ -434,6 +668,9 @@ export abstract class OrchestrationSkill<TInput = unknown, TOutput = unknown>
     message: string,
     reason?: string,
   ): Generator<OrchestrationStreamChunk> {
+    // Phase 3.1: 停止心跳
+    this.stopHeartbeat();
+
     const completedSteps = this.progressState?.currentStepIndex ?? 0;
     const totalSteps = this.progressState?.steps.length ?? 0;
 
@@ -482,6 +719,9 @@ export abstract class OrchestrationSkill<TInput = unknown, TOutput = unknown>
     summary?: string,
     hasDeliverable = false,
   ): Generator<OrchestrationStreamChunk> {
+    // Phase 3.1: 停止心跳
+    this.stopHeartbeat();
+
     const durationMs = this.progressState
       ? Date.now() - this.progressState.startTime
       : 0;

@@ -21,6 +21,7 @@
     "test:e2e:debug": "playwright test --debug",
     "analyze:type-errors": "node scripts/analyze-type-errors.mjs",
     "verify:fix": "node scripts/verify-fix.mjs",
+    "validate:mappings": "ts-node scripts/validate-intent-mappings-simple.ts",
     "supabase:start": "npx supabase start",
     "supabase:stop": "npx supabase stop",
     "supabase:status": "npx supabase status",
