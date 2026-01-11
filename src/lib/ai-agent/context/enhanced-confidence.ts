@@ -4,23 +4,23 @@
  * 综合多个因素评估意图理解的置信度
  * 借鉴：Claude Code Agent 的多阶段验证机制
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-27
+ * @updated 2026-01-11 迁移核心类型到 shared/types
  */
 
 import type { DynamicContext } from "./types";
 
-/**
- * 意图类型（简化版，用于置信度计算）
- */
-export type IntentType =
-  | "query"
-  | "action"
-  | "organize"
-  | "analyze"
-  | "learn"
-  | "create"
-  | "chitchat";
+// 从共享类型导入
+import type { IntentType } from "@/lib/shared/types";
+import {
+  CONFIDENCE_THRESHOLDS,
+  type ConfidenceLevel,
+  type ExecutionStrategy,
+} from "@/lib/shared/types";
+
+// 重新导出以保持向后兼容
+export type { IntentType };
 
 /**
  * 实体类型
@@ -79,9 +79,9 @@ export interface EnhancedConfidenceResult {
   /** 各因素详情 */
   factors: ConfidenceFactor[];
   /** 置信度级别 */
-  level: "high" | "medium" | "low";
+  level: ConfidenceLevel;
   /** 建议的执行策略 */
-  suggestedStrategy: "silent" | "explain" | "clarify";
+  suggestedStrategy: ExecutionStrategy;
 }
 
 /**
@@ -102,6 +102,7 @@ function getRequiredEntities(intentType: IntentType): EntityType[] {
     analyze: ["time"],
     learn: ["topic"],
     create: ["topic"],
+    refine: [], // 过滤类，需上下文支持
     chitchat: [],
   };
   return requirements[intentType] ?? [];
@@ -293,13 +294,14 @@ export function calculateEnhancedConfidence(
   );
 
   // 确定置信度级别
-  let level: "high" | "medium" | "low";
-  let suggestedStrategy: "silent" | "explain" | "clarify";
+  let level: ConfidenceLevel;
+  let suggestedStrategy: ExecutionStrategy;
 
-  if (enhancedConfidence >= 0.85) {
+  // 使用统一的置信度阈值
+  if (enhancedConfidence >= CONFIDENCE_THRESHOLDS.HIGH) {
     level = "high";
     suggestedStrategy = "silent";
-  } else if (enhancedConfidence >= 0.6) {
+  } else if (enhancedConfidence >= CONFIDENCE_THRESHOLDS.MEDIUM) {
     level = "medium";
     suggestedStrategy = "explain";
   } else {

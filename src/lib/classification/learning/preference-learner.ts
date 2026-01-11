@@ -70,9 +70,13 @@ export interface LearningEvent {
 }
 
 /**
- * 用户偏好
+ * 分类学习偏好
+ *
+ * 注意：此类型专用于分类学习系统
+ * @see TaskUserPreferences in task-understanding/types - 任务理解层偏好
+ * @see SkillExecutionPreferences in ai-skills/core/types - Skill 执行偏好
  */
-export interface UserPreferences {
+export interface ClassificationPreferences {
   /** 用户 ID */
   userId: string;
   /** 文件夹偏好（按使用频率排序） */
@@ -86,6 +90,9 @@ export interface UserPreferences {
   /** 学习更新时间 */
   lastUpdated: Date;
 }
+
+/** @deprecated 使用 ClassificationPreferences 替代 */
+export type UserPreferences = ClassificationPreferences;
 
 /**
  * 文件夹偏好
@@ -188,7 +195,7 @@ export class PreferenceLearner {
   /**
    * 获取用户偏好
    */
-  async getUserPreferences(userId: string): Promise<UserPreferences> {
+  async getUserPreferences(userId: string): Promise<ClassificationPreferences> {
     const supabase = await createClient();
 
     // 并行加载数据

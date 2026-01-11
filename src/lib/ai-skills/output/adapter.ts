@@ -126,7 +126,8 @@ export class UnifiedOutputAdapter {
           type: "error",
           data: {
             message: chunk.error || "Unknown error",
-            retryable: true,
+            code: "ATOMIC_ERROR",
+            retryable: this.isRetryableError(chunk.error),
           },
         };
 
@@ -488,6 +489,67 @@ export class UnifiedOutputAdapter {
    */
   getResponseStyler(): ResponseStyler {
     return this.responseStyler;
+  }
+
+  /**
+   * 判断错误是否可重试
+   *
+   * 可重试错误：网络超时、限流、服务暂时不可用
+   * 不可重试错误：认证失败、参数验证失败、权限不足
+   *
+   * @param errorMessage - 错误信息
+   * @returns 是否可重试
+   */
+  private isRetryableError(errorMessage?: string): boolean {
+    if (!errorMessage) return false;
+
+    const lowerMessage = errorMessage.toLowerCase();
+
+    // 可重试的错误模式
+    const retryablePatterns = [
+      "timeout",
+      "timed out",
+      "rate limit",
+      "429",
+      "502",
+      "503",
+      "504",
+      "network",
+      "connection",
+      "temporarily",
+      "overloaded",
+      "retry",
+    ];
+
+    // 不可重试的错误模式
+    const nonRetryablePatterns = [
+      "unauthorized",
+      "401",
+      "403",
+      "forbidden",
+      "invalid",
+      "not found",
+      "404",
+      "validation",
+      "permission",
+    ];
+
+    // 检查不可重试模式
+    for (const pattern of nonRetryablePatterns) {
+      if (lowerMessage.includes(pattern)) {
+        return false;
+      }
+    }
+
+    // 检查可重试模式
+    for (const pattern of retryablePatterns) {
+      if (lowerMessage.includes(pattern)) {
+        return true;
+      }
+    }
+
+    // 默认不可重试（保守策略）
+    return false;
   }
 }
 

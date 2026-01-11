@@ -5,9 +5,9 @@
  * - 协调原子模式和编排模式的执行
  * - 管理执行模式切换与自动回退
  *
- * @version 2.0.0
+ * @version 2.1.0
  * @since 2025-12-26
- * @updated 2026-01-05 - 精简重构，合并执行入口
+ * @updated 2026-01-11 - 迁移核心类型到 shared/types
  */
 
 import { logger } from "@/lib/logger";
@@ -27,18 +27,34 @@ import {
   type AtomicFallbackConfig,
 } from "./atomic-fallback";
 
+// 从共享类型导入
+import type { ExecutionMode } from "@/lib/shared/types";
+
+// 重新导出以保持向后兼容
+export type { ExecutionMode };
+
 // ============================================
 // 类型定义
 // ============================================
+
+/** Agent 执行选项（透传到原子执行器） */
+export interface AgentExecutionOptions {
+  /** 最大工具调用轮数 */
+  maxToolRounds?: number;
+  /** 温度参数 */
+  temperature?: number;
+  /** 最大 Token 数 */
+  maxTokens?: number;
+}
 
 /** 原子引擎执行函数类型 */
 export type AtomicExecutor = (
   input: string,
   context: AgentContext,
+  options?: AgentExecutionOptions,
 ) => AsyncGenerator<AgentStreamChunk>;
 
-/** 执行模式 */
-export type ExecutionMode = "atomic" | "orchestration";
+// 注意: ExecutionMode 已从 @/lib/shared/types 导入
 
 /** 执行选项 */
 export interface ExecuteOptions {
@@ -46,6 +62,8 @@ export interface ExecuteOptions {
   skillId?: string;
   reason?: string;
   enableFallback?: boolean;
+  /** 原子执行器选项（maxToolRounds, temperature 等） */
+  agentOptions?: AgentExecutionOptions;
 }
 
 /** ExecutionCoordinator 配置 */
@@ -203,7 +221,13 @@ export class ExecutionCoordinator {
     context: EngineContext,
     options: ExecuteOptions,
   ): AsyncGenerator<UnifiedStreamChunk> {
-    const { mode, skillId, reason, enableFallback = true } = options;
+    const {
+      mode,
+      skillId,
+      reason,
+      enableFallback = true,
+      agentOptions,
+    } = options;
 
     // 检查是否已取消
     if (this.isCancelled(context)) {
@@ -226,7 +250,7 @@ export class ExecutionCoordinator {
 
     // 分发到对应模式
     if (mode === "atomic") {
-      yield* this.executeAtomicMode(input, context);
+      yield* this.executeAtomicMode(input, context, agentOptions);
     } else if (skillId) {
       yield* this.executeOrchestrationMode(
         input,
@@ -240,7 +264,7 @@ export class ExecutionCoordinator {
         { mode, skillId },
         "ExecutionCoordinator: Missing skillId, falling back to atomic",
       );
-      yield* this.executeAtomicMode(input, context);
+      yield* this.executeAtomicMode(input, context, agentOptions);
     }
   }
 
@@ -308,6 +332,7 @@ export class ExecutionCoordinator {
   private async *executeAtomicMode(
     input: string,
     context: EngineContext,
+    agentOptions?: AgentExecutionOptions,
   ): AsyncGenerator<UnifiedStreamChunk> {
     if (!this.atomicExecutor) {
       yield this.outputAdapter.createErrorChunk(
@@ -346,6 +371,7 @@ export class ExecutionCoordinator {
           for await (const chunk of this.atomicExecutor!(
             execInput,
             execContext,
+            agentOptions,
           )) {
             // 检查取消
             if (this.isCancelled(context)) {

@@ -3,11 +3,12 @@
  *
  * 将动态上下文转换为可注入 System Prompt 的文本片段
  *
- * @version 2.2.0
+ * @version 2.3.0
  * @since 2025-12-26
  * @updated 2025-12-27 - 集成 System-Reminder 动态注入
  * @updated 2025-12-27 - 添加情景记忆注入支持
  * @updated 2025-12-28 - 添加画像推断集成 [v3.1]
+ * @updated 2026-01-11 - 添加隐含意图规则注入 [v2.0]
  */
 
 import type { DynamicContext, EpisodicMemoryContext } from "./types";
@@ -20,6 +21,7 @@ import { personaInferrer, adaptQuickStatsToInference } from "../inference";
 import { getPersonaPrompt } from "../personas";
 import { getQuickStats } from "../services/quick-stats.service";
 import { logger } from "@/lib/logger";
+import { IMPLICIT_INTENT_RULES_PROMPT } from "../core/prompts/implicit-intent-rules";
 
 // =============================================================================
 // 时间段描述
@@ -242,6 +244,8 @@ export interface MergePromptOptions {
 export interface MergePromptOptionsAsync extends MergePromptOptions {
   /** 启用画像推断注入 */
   enablePersonaInference?: boolean;
+  /** 启用隐含意图规则注入 [v2.0 新增] */
+  enableImplicitIntentRules?: boolean;
   /** 用户 ID（画像推断必需） */
   userId?: string;
 }
@@ -405,6 +409,7 @@ export async function mergeSystemPromptAsync(
     enableEpisodicMemory = FeatureFlags.ENABLE_EPISODIC_MEMORY &&
       FeatureFlags.ENABLE_MEMORY_PROMPT,
     enablePersonaInference = FeatureFlags.ENABLE_PERSONA_INFERENCE,
+    enableImplicitIntentRules = FeatureFlags.ENABLE_IMPLICIT_INTENT,
     userId,
   } = options;
 
@@ -413,6 +418,12 @@ export async function mergeSystemPromptAsync(
     : buildContextPrompt(ctx);
 
   let result = `${basePrompt}\n\n${contextPrompt}`;
+
+  // 注入隐含意图规则 [v2.0 新增]
+  if (enableImplicitIntentRules) {
+    result = `${result}\n\n${IMPLICIT_INTENT_RULES_PROMPT}`;
+    logger.debug("PromptInjector: Implicit intent rules injected");
+  }
 
   // 注入画像 Prompt（如果启用且有 userId）
   if (enablePersonaInference && userId) {

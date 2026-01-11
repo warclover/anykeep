@@ -292,6 +292,7 @@ export class TaskUnderstandingIntegration {
         type: "error",
         data: {
           message: error instanceof Error ? error.message : "任务执行失败",
+          code: "TASK_UNDERSTANDING_ERROR",
           retryable: true,
         },
       } as UnifiedStreamChunk;

@@ -1,8 +1,9 @@
 /**
  * AI Agent 类型定义
  *
- * @version 1.1.0
+ * @version 1.2.0
  * @since 2025-12-22
+ * @updated 2026-01-11 迁移核心类型到 shared/types
  */
 
 import type { CoreMessage, ToolResultPart } from "ai";
@@ -10,25 +11,11 @@ import type { PendingConfirmation } from "../tools/types";
 import type { DynamicContext, SessionContext } from "../context/types";
 import type { IntentSlotSchema } from "../../ai-skills/router/types";
 
-/**
- * Agent 类型枚举
- */
-export type AgentType = "knowledge" | "research" | "learning";
+// 从共享类型导入核心类型
+import type { AgentType, AgentStatus, MessageRole } from "@/lib/shared/types";
 
-/**
- * Agent 状态
- */
-export type AgentStatus =
-  | "idle" // 空闲
-  | "thinking" // 思考中
-  | "executing" // 执行工具
-  | "responding" // 生成响应
-  | "error"; // 错误
-
-/**
- * 消息角色
- */
-export type MessageRole = "user" | "assistant" | "system" | "tool";
+// 重新导出以保持向后兼容
+export type { AgentType, AgentStatus, MessageRole };
 
 /**
  * Agent 消息

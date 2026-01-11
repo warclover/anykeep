@@ -437,9 +437,13 @@ export interface TaskContextBookmark {
 // =============================================================================
 
 /**
- * 用户偏好（用于智能默认值）
+ * 任务理解层用户偏好（用于智能默认值）
+ *
+ * 注意：此类型专用于任务理解层的偏好学习
+ * @see ClassificationPreferences in classification/learning - 分类学习偏好
+ * @see SkillExecutionPreferences in ai-skills/core/types - Skill 执行偏好
  */
-export interface UserPreferences {
+export interface TaskUserPreferences {
   /** 用户 ID */
   userId: string;
 
@@ -458,6 +462,9 @@ export interface UserPreferences {
   /** 更新时间 */
   updatedAt: Date;
 }
+
+/** @deprecated 使用 TaskUserPreferences 替代 */
+export type UserPreferences = TaskUserPreferences;
 
 /**
  * 整理方式

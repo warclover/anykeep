@@ -1,6 +1,23 @@
 /**
  * HybridIntentClassifier - 混合意图分类器
  *
+ * @deprecated 自 v2.8.3 起废弃
+ * 请使用 `IntentAnalyzer` 作为统一的意图分析入口。
+ * IntentAnalyzer 已整合语义匹配和 LLM 分类能力。
+ *
+ * @see IntentAnalyzer - 推荐使用的统一意图分析器
+ *
+ * 迁移指南:
+ * ```typescript
+ * // 旧代码
+ * const classifier = new HybridIntentClassifier();
+ * const result = await classifier.classify(message, context);
+ *
+ * // 新代码
+ * const analyzer = new IntentAnalyzer();
+ * const result = await analyzer.analyze(message, context);
+ * ```
+ *
  * 职责：
  * - 结合规则匹配（快速）和语义匹配（精准）
  * - 融合两种匹配结果，提升准确率
@@ -15,8 +32,9 @@
  * - 使用 AbortController 取消超时的操作
  * - 避免资源浪费（LLM 调用、Embedding 计算）
  *
- * @version 1.2.0
+ * @version 1.3.0
  * @since 2026-01-09
+ * @updated 2026-01-11 - 标记为废弃，推荐使用 IntentAnalyzer
  */
 
 import { logger } from "@/lib/logger";

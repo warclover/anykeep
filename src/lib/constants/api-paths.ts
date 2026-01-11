@@ -23,12 +23,30 @@
 export const API_AGENT = {
   /** 统一 AI 入口（推荐） */
   unified: "/api/agent/unified",
+  /** 意图分析 */
+  analysis: "/api/agent/analysis",
+  /** 每日简报 */
+  briefing: "/api/agent/briefing",
   /** 取消请求 */
   cancel: "/api/agent/cancel",
+  /** 上下文信息 */
+  context: "/api/agent/context",
+  /** 纠正记录 */
+  corrections: "/api/agent/corrections",
+  /** 用户反馈 */
+  feedback: "/api/agent/feedback",
+  /** 意图纠正 */
+  intentCorrection: "/api/agent/intent-correction",
   /** 重新生成 */
   regenerate: "/api/agent/regenerate",
+  /** 规则列表 */
+  rules: "/api/agent/rules",
+  /** 会话管理 */
+  session: "/api/agent/session",
   /** 使用统计 */
   stats: "/api/agent/stats",
+  /** 撤销操作 */
+  undo: "/api/agent/undo",
 } as const;
 
 export const API_AI = {
@@ -38,6 +56,38 @@ export const API_AI = {
   quickActions: "/api/ai/quick-actions",
   /** 图像分析 */
   visionAnalyze: "/api/ai/vision-analyze",
+  /** AI 反馈 */
+  feedback: "/api/ai/feedback",
+  /** AI 笔记 */
+  notes: "/api/ai/notes",
+  /** 学习纠正 */
+  learningCorrection: "/api/ai/learning/correction",
+} as const;
+
+// ============================================
+// Brain Sync (主动复习)
+// ============================================
+
+export const API_BRAIN_SYNC = {
+  /** 复习队列 */
+  queue: "/api/brain-sync/queue",
+  /** 闪卡 */
+  flashcards: "/api/brain-sync/flashcards",
+  /** 复习进度 */
+  progress: "/api/brain-sync/progress",
+  /** 复习计划 */
+  schedule: "/api/brain-sync/schedule",
+  /** 复习设置 */
+  settings: "/api/brain-sync/settings",
+} as const;
+
+// ============================================
+// TTS 语音服务
+// ============================================
+
+export const API_TTS = {
+  /** 语音合成 */
+  synthesize: "/api/tts",
 } as const;
 
 // ============================================
@@ -585,6 +635,7 @@ export const API_PATHS = {
   ai: API_AI,
   admin: API_ADMIN,
   bookmarks: API_BOOKMARKS,
+  brainSync: API_BRAIN_SYNC,
   browserBookmark: API_BROWSER_BOOKMARK,
   classification: API_CLASSIFICATION,
   confirmations: API_CONFIRMATIONS,
@@ -602,6 +653,7 @@ export const API_PATHS = {
   snapshots: API_SNAPSHOTS,
   summary: API_SUMMARY,
   tags: API_TAGS,
+  tts: API_TTS,
   user: API_USER,
   wechatArticle: API_WECHAT_ARTICLE,
 } as const;

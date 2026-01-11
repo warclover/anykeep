@@ -87,7 +87,7 @@ describe("enhanced-confidence", () => {
       expect(result.originalConfidence).toBe(0.75);
     });
 
-    it("should return high level for confidence >= 0.85", () => {
+    it("should return high level for confidence >= 0.80", () => {
       const intent = createMockIntent({ confidence: 0.95 });
       const context = createMockContext();
       const result = calculateEnhancedConfidence(

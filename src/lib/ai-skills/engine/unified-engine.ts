@@ -85,6 +85,13 @@ import {
   createPersonalizedLearningIntegration,
   type ShortcutMatchResult,
 } from "../learning";
+import { FeatureFlags } from "../../ai-agent/config/feature-flags";
+import {
+  calculateEnhancedConfidence,
+  type EnhancedConfidenceResult,
+  type IntentClassificationLite,
+} from "../../ai-agent/context/enhanced-confidence";
+import type { DynamicContext } from "../../ai-agent/context/types";
 
 /**
  * 统一执行引擎
@@ -185,6 +192,74 @@ export class UnifiedEngine {
 
     // 初始化 Effect 处理器
     this.initEffectHandlers();
+  }
+
+  // ============================================================
+  // 增强置信度计算辅助方法 [v2.0 新增]
+  // ============================================================
+
+  /**
+   * 创建用于增强置信度计算的最小化 DynamicContext
+   *
+   * 从 EngineContext 提取可用数据，填充必要的默认值
+   *
+   * @param context - 引擎上下文
+   * @returns 最小化的 DynamicContext
+   */
+  private createMinimalDynamicContext(context: EngineContext): DynamicContext {
+    const now = new Date();
+    const hour = now.getHours();
+    let period: "morning" | "afternoon" | "evening" | "night";
+    if (hour >= 5 && hour < 12) period = "morning";
+    else if (hour >= 12 && hour < 18) period = "afternoon";
+    else if (hour >= 18 && hour < 22) period = "evening";
+    else period = "night";
+
+    return {
+      time: {
+        current: now.toLocaleString("zh-CN"),
+        period,
+        isWeekend: now.getDay() === 0 || now.getDay() === 6,
+      },
+      stats: {
+        totalBookmarks: context.totalBookmarks ?? 0,
+        recentWeekCount: 0, // 默认值，无法从 EngineContext 获取
+        topPlatform: {
+          name: "未知",
+          code: "unknown",
+          count: 0,
+        },
+        topFolders: [],
+      },
+      preferences: {
+        responseStyle: "auto",
+        frequentTags: [],
+      },
+      recentActivity: {},
+      session: {
+        selectedBookmarkIds: context.bookmarkIds,
+        currentFolder: context.folderId
+          ? { id: context.folderId, name: "" }
+          : undefined,
+      },
+    };
+  }
+
+  /**
+   * 将路由结果转换为 IntentClassificationLite
+   *
+   * @param routeResult - 路由结果
+   * @returns 简化的意图分类结果
+   */
+  private toIntentClassificationLite(routeResult: {
+    intent: { type: IntentType; subType?: string; confidence?: number };
+  }): IntentClassificationLite {
+    return {
+      type: routeResult.intent.type as IntentClassificationLite["type"],
+      subType: routeResult.intent.subType,
+      confidence: routeResult.intent.confidence ?? 0.7,
+      entities: [], // 实体信息在路由结果中不可用，使用空数组
+    };
   }
 
   /**
@@ -327,9 +402,17 @@ export class UnifiedEngine {
 
     // 2. 如果引擎未启用，直接使用原子模式
     if (!this.config.enabled) {
-      yield* this.executionCoordinator.executeAtomic(
+      yield* this.executionCoordinator.execute(
         processedInput,
         contextWithCallback,
+        {
+          mode: "atomic",
+          agentOptions: {
+            maxToolRounds: mergedOptions.maxToolRounds,
+            temperature: mergedOptions.temperature,
+            maxTokens: mergedOptions.maxTokens,
+          },
+        },
       );
       return;
     }
@@ -355,14 +438,16 @@ export class UnifiedEngine {
     // 3. 处理强制模式
     if (mergedOptions.forceMode === "atomic") {
       yield* this.executeWithEnhancements(
-        this.executionCoordinator.executeForced(
-          processedInput,
-          contextWithCallback,
-          {
-            mode: "atomic",
-            reason: "强制使用原子模式",
+        this.executionCoordinator.execute(processedInput, contextWithCallback, {
+          mode: "atomic",
+          reason: "强制使用原子模式",
+          enableFallback: false,
+          agentOptions: {
+            maxToolRounds: mergedOptions.maxToolRounds,
+            temperature: mergedOptions.temperature,
+            maxTokens: mergedOptions.maxTokens,
           },
-        ),
+        }),
         contextWithCallback,
         "query", // 默认意图类型
       );
@@ -374,15 +459,17 @@ export class UnifiedEngine {
       mergedOptions.forceSkill
     ) {
       yield* this.executeWithEnhancements(
-        this.executionCoordinator.executeForced(
-          processedInput,
-          contextWithCallback,
-          {
-            mode: "orchestration",
-            skillId: mergedOptions.forceSkill,
-            reason: "强制使用编排模式",
+        this.executionCoordinator.execute(processedInput, contextWithCallback, {
+          mode: "orchestration",
+          skillId: mergedOptions.forceSkill,
+          reason: "强制使用编排模式",
+          enableFallback: false,
+          agentOptions: {
+            maxToolRounds: mergedOptions.maxToolRounds,
+            temperature: mergedOptions.temperature,
+            maxTokens: mergedOptions.maxTokens,
           },
-        ),
+        }),
         contextWithCallback,
         "action", // 编排模式默认意图类型
       );
@@ -517,6 +604,43 @@ export class UnifiedEngine {
       }
       // ========== 意图消歧检测结束 ==========
 
+      // ========== 增强置信度计算 [v2.0 新增] ==========
+      let effectiveConfidence = routeResult.intent.confidence ?? 0.7;
+      let enhancedConfidenceResult: EnhancedConfidenceResult | undefined;
+
+      if (FeatureFlags.ENABLE_ENHANCED_CONFIDENCE) {
+        const minimalContext = this.createMinimalDynamicContext(context);
+        const intentLite = this.toIntentClassificationLite(routeResult);
+
+        enhancedConfidenceResult = calculateEnhancedConfidence(
+          intentLite,
+          minimalContext,
+          input,
+        );
+
+        // 使用增强置信度替代原始置信度
+        effectiveConfidence = enhancedConfidenceResult.enhancedConfidence;
+
+        if (this.config.debug) {
+          logger.debug(
+            {
+              originalConfidence: enhancedConfidenceResult.originalConfidence,
+              enhancedConfidence: enhancedConfidenceResult.enhancedConfidence,
+              level: enhancedConfidenceResult.level,
+              suggestedStrategy: enhancedConfidenceResult.suggestedStrategy,
+              factors: enhancedConfidenceResult.factors.map((f) => ({
+                name: f.name,
+                weight: f.weight,
+                score: f.score,
+                reason: f.reason,
+              })),
+            },
+            "UnifiedEngine: Enhanced confidence calculated",
+          );
+        }
+      }
+      // ========== 增强置信度计算结束 ==========
+
       // ========== Phase 2: 推测执行策略判断 ==========
       // 获取意图风险等级
       const riskLevel = this.speculativeExecutor.getRiskLevel(
@@ -524,18 +648,20 @@ export class UnifiedEngine {
         routeResult.intent.subType,
       );
 
-      // 确定执行策略
+      // 确定执行策略（使用增强置信度）
       const executionStrategy = this.speculativeExecutor.determineStrategy(
-        routeResult.intent.confidence ?? 0.7,
+        effectiveConfidence,
         riskLevel,
       );
 
       logger.debug(
         {
-          confidence: routeResult.intent.confidence,
+          originalConfidence: routeResult.intent.confidence,
+          effectiveConfidence,
           riskLevel,
           strategy: executionStrategy,
           intent: `${routeResult.intent.type}:${routeResult.intent.subType}`,
+          enhancedConfidenceUsed: FeatureFlags.ENABLE_ENHANCED_CONFIDENCE,
         },
         "UnifiedEngine: Speculative execution strategy determined",
       );
@@ -739,6 +865,40 @@ export class UnifiedEngine {
         slots: effectiveIntent.slots,
       };
 
+      // ========== 置信度分层执行策略注入 [v2.0 新增] ==========
+      // 将策略信息注入上下文，让 AI 知道应该使用哪种响应模板
+      if (FeatureFlags.ENABLE_CONFIDENCE_TIERING && enhancedConfidenceResult) {
+        effectiveContext = {
+          ...effectiveContext,
+          responseStrategy: enhancedConfidenceResult.suggestedStrategy,
+          confidenceLevel: enhancedConfidenceResult.level,
+          enhancedConfidence: enhancedConfidenceResult.enhancedConfidence,
+        };
+
+        // 发送策略提示 chunk（供前端显示或调试）
+        yield {
+          type: "confidence_strategy",
+          data: {
+            strategy: enhancedConfidenceResult.suggestedStrategy,
+            level: enhancedConfidenceResult.level,
+            confidence: enhancedConfidenceResult.enhancedConfidence,
+            originalConfidence: enhancedConfidenceResult.originalConfidence,
+          },
+        } as UnifiedStreamChunk;
+
+        if (this.config.debug) {
+          logger.debug(
+            {
+              strategy: enhancedConfidenceResult.suggestedStrategy,
+              level: enhancedConfidenceResult.level,
+              enhancedConfidence: enhancedConfidenceResult.enhancedConfidence,
+            },
+            "UnifiedEngine: Confidence strategy injected to context",
+          );
+        }
+      }
+      // ========== 置信度分层执行策略注入结束 ==========
+
       if (this.config.debug) {
         logger.debug(
           {
@@ -770,6 +930,13 @@ export class UnifiedEngine {
       });
       // ========== 反馈跟踪开始结束 ==========
 
+      // 构建 agentOptions（从 options 提取）
+      const agentOptions = {
+        maxToolRounds: options.maxToolRounds,
+        temperature: options.temperature,
+        maxTokens: options.maxTokens,
+      };
+
       // 根据模式执行（带增强）
       if (
         routeResult.mode === "orchestration" &&
@@ -778,11 +945,12 @@ export class UnifiedEngine {
       ) {
         // 编排模式
         yield* this.executeWithEnhancements(
-          this.executionCoordinator.executeOrchestrationWithFallback(
-            routeResult.suggestedSkill,
-            input,
-            effectiveContext,
-          ),
+          this.executionCoordinator.execute(input, effectiveContext, {
+            mode: "orchestration",
+            skillId: routeResult.suggestedSkill,
+            enableFallback: true,
+            agentOptions,
+          }),
           effectiveContext,
           effectiveIntent.type,
           effectiveIntent.subType,
@@ -790,7 +958,10 @@ export class UnifiedEngine {
       } else {
         // 原子模式
         yield* this.executeWithEnhancements(
-          this.executionCoordinator.executeAtomic(input, effectiveContext),
+          this.executionCoordinator.execute(input, effectiveContext, {
+            mode: "atomic",
+            agentOptions,
+          }),
           effectiveContext,
           effectiveIntent.type,
           effectiveIntent.subType,
@@ -839,7 +1010,10 @@ export class UnifiedEngine {
         error instanceof Error ? error.message : "Unknown error",
       );
 
-      yield* this.executionCoordinator.executeAtomic(input, context);
+      // 回退执行（不传递 agentOptions，使用默认值）
+      yield* this.executionCoordinator.execute(input, context, {
+        mode: "atomic",
+      });
     }
   }
 
@@ -972,7 +1146,9 @@ export class UnifiedEngine {
         "UnifiedEngine: Shortcut match incomplete, falling back to normal routing",
       );
       // 修复：回退到原子模式执行，而不是直接 return 导致空响应
-      yield* this.executionCoordinator.executeAtomic(input, context);
+      yield* this.executionCoordinator.execute(input, context, {
+        mode: "atomic",
+      });
       return;
     }
 
@@ -1017,7 +1193,9 @@ export class UnifiedEngine {
 
       // 执行（带增强）
       yield* this.executeWithEnhancements(
-        this.executionCoordinator.executeAtomic(input, contextWithSlots),
+        this.executionCoordinator.execute(input, contextWithSlots, {
+          mode: "atomic",
+        }),
         contextWithSlots,
         intentType,
         intentSubType,
@@ -1048,7 +1226,9 @@ export class UnifiedEngine {
       yield this.outputAdapter.createFallbackChunk(
         error instanceof Error ? error.message : "快捷指令执行失败",
       );
-      yield* this.executionCoordinator.executeAtomic(input, context);
+      yield* this.executionCoordinator.execute(input, context, {
+        mode: "atomic",
+      });
     }
   }
 

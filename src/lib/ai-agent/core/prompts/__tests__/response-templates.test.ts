@@ -17,7 +17,8 @@ import {
 describe("response-templates", () => {
   describe("CONFIDENCE_THRESHOLDS", () => {
     it("should have correct threshold values", () => {
-      expect(CONFIDENCE_THRESHOLDS.HIGH).toBe(0.85);
+      // 用户决策：置信度阈值统一为 0.80
+      expect(CONFIDENCE_THRESHOLDS.HIGH).toBe(0.8);
       expect(CONFIDENCE_THRESHOLDS.MEDIUM).toBe(0.6);
     });
   });
@@ -40,16 +41,18 @@ describe("response-templates", () => {
   });
 
   describe("getConfidenceLevel", () => {
-    it("should return 'high' for confidence >= 0.85", () => {
+    it("should return 'high' for confidence >= 0.80", () => {
+      // 用户决策：高置信度阈值统一为 0.80
+      expect(getConfidenceLevel(0.8)).toBe("high");
       expect(getConfidenceLevel(0.85)).toBe("high");
       expect(getConfidenceLevel(0.9)).toBe("high");
       expect(getConfidenceLevel(1.0)).toBe("high");
     });
 
-    it("should return 'medium' for confidence >= 0.6 and < 0.85", () => {
+    it("should return 'medium' for confidence >= 0.6 and < 0.80", () => {
       expect(getConfidenceLevel(0.6)).toBe("medium");
       expect(getConfidenceLevel(0.7)).toBe("medium");
-      expect(getConfidenceLevel(0.84)).toBe("medium");
+      expect(getConfidenceLevel(0.79)).toBe("medium");
     });
 
     it("should return 'low' for confidence < 0.6", () => {

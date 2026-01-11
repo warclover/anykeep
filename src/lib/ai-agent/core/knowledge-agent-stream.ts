@@ -38,6 +38,7 @@ import {
 import { buildDynamicContext, type DynamicContext } from "../context";
 import type { KnowledgeAgentContextBuilder } from "./knowledge-agent-context";
 import { DEFAULT_EXECUTE_OPTIONS } from "./knowledge-agent-executor";
+import { recordToolUsage } from "../preferences";
 
 const log = logger.child({ namespace: "agent-stream" });
 
@@ -231,6 +232,12 @@ export class KnowledgeAgentStreamExecutor {
           type: "tool-call",
           toolCall: tc,
         };
+      }
+
+      // 记录工具使用（偏好学习）
+      for (const tc of toolCalls) {
+        const success = tc.status === "completed";
+        recordToolUsage(context.userId, tc.toolName, tc.args, success);
       }
 
       // 检测并输出待确认操作

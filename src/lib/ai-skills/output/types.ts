@@ -726,6 +726,29 @@ export interface CitationChunk {
 }
 
 // ============================================
+// 置信度分层执行策略类型 [v2.0 新增]
+// ============================================
+
+/**
+ * 置信度策略块
+ *
+ * 告知前端当前响应使用的置信度策略
+ */
+export interface ConfidenceStrategyChunk {
+  type: "confidence_strategy";
+  data: {
+    /** 响应策略 */
+    strategy: "silent" | "explain" | "clarify";
+    /** 置信度级别 */
+    level: "high" | "medium" | "low";
+    /** 增强置信度值（0-1） */
+    confidence: number;
+    /** 原始置信度值（0-1） */
+    originalConfidence: number;
+  };
+}
+
+// ============================================
 // 工作流相关类型
 // ============================================
 
@@ -788,7 +811,9 @@ export type UnifiedStreamChunk =
   // Phase 2: 推测执行与消歧类型
   | DisambiguationChunk
   | ClarificationChunk
-  | RiskConfirmationChunk;
+  | RiskConfirmationChunk
+  // 置信度分层执行策略类型 [v2.0 新增]
+  | ConfidenceStrategyChunk;
 
 /**
  * 编排模式流式输出块（用于编排 Skill 内部）
@@ -842,6 +867,8 @@ export type ChunkTypeMap = {
   disambiguation: DisambiguationChunk;
   clarification: ClarificationChunk;
   risk_confirmation: RiskConfirmationChunk;
+  // 置信度分层执行策略类型 [v2.0 新增]
+  confidence_strategy: ConfidenceStrategyChunk;
 };
 
 /**

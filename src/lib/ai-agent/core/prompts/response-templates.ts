@@ -3,51 +3,32 @@
  *
  * 用于约束 AI 输出格式，保持一致性
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-27
+ * @updated 2026-01-11 迁移类型到 shared/types
  */
 
-/**
- * 置信度级别
- */
-export type ConfidenceLevel = "high" | "medium" | "low";
+// 从共享类型导入
+import type { ConfidenceLevel, RiskLevel } from "@/lib/shared/types";
+import {
+  CONFIDENCE_THRESHOLDS,
+  RISK_OPERATIONS,
+  BATCH_CONFIRMATION_THRESHOLD,
+  getConfidenceLevel,
+  getOperationRiskLevel,
+  requiresConfirmation,
+} from "@/lib/shared/types";
 
-/**
- * 风险级别
- */
-export type RiskLevel = "low" | "medium" | "high";
-
-/**
- * 置信度阈值配置
- */
-export const CONFIDENCE_THRESHOLDS = {
-  /** 高置信度阈值 - 静默执行 */
-  HIGH: 0.85,
-  /** 中置信度阈值 - 执行+说明 */
-  MEDIUM: 0.6,
-} as const;
-
-/**
- * 风险操作定义
- */
-export const RISK_OPERATIONS = {
-  /** 低风险：查询类操作 */
-  LOW: ["list", "search", "count", "get", "read", "preview"],
-
-  /** 中风险：修改类操作 */
-  MEDIUM: ["add_tag", "move", "classify", "export"],
-
-  /** 高风险：破坏性操作 */
-  HIGH: ["delete", "remove", "batch_delete", "clear"],
-} as const;
-
-/**
- * 批量操作确认阈值
- *
- * 超过此数量的批量操作需要用户确认
- * 设置为 50 以减少对用户的干扰
- */
-export const BATCH_CONFIRMATION_THRESHOLD = 50;
+// 重新导出以保持向后兼容
+export type { ConfidenceLevel, RiskLevel };
+export {
+  CONFIDENCE_THRESHOLDS,
+  RISK_OPERATIONS,
+  BATCH_CONFIRMATION_THRESHOLD,
+  getConfidenceLevel,
+  getOperationRiskLevel,
+  requiresConfirmation,
+};
 
 /**
  * 响应模板 - Prompt 注入部分
@@ -83,41 +64,3 @@ export const RESPONSE_TEMPLATES_PROMPT = `
 确认执行？回复"确认"继续，或告诉我调整。
 \`\`\`
 `;
-
-/**
- * 获取置信度级别
- */
-export function getConfidenceLevel(confidence: number): ConfidenceLevel {
-  if (confidence >= CONFIDENCE_THRESHOLDS.HIGH) return "high";
-  if (confidence >= CONFIDENCE_THRESHOLDS.MEDIUM) return "medium";
-  return "low";
-}
-
-/**
- * 判断操作风险级别
- */
-export function getOperationRiskLevel(operation: string): RiskLevel {
-  const op = operation.toLowerCase();
-
-  if (RISK_OPERATIONS.HIGH.some((r) => op.includes(r))) return "high";
-  if (RISK_OPERATIONS.MEDIUM.some((r) => op.includes(r))) return "medium";
-  return "low";
-}
-
-/**
- * 判断是否需要确认
- */
-export function requiresConfirmation(
-  operation: string,
-  affectedCount: number = 1,
-): boolean {
-  const riskLevel = getOperationRiskLevel(operation);
-
-  // 高风险操作始终需要确认
-  if (riskLevel === "high") return true;
-
-  // 批量操作超过阈值需要确认
-  if (affectedCount > BATCH_CONFIRMATION_THRESHOLD) return true;
-
-  return false;
-}

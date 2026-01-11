@@ -3,11 +3,15 @@
  *
  * Phase 0: 基础设施层
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-22
+ * @updated 2026-01-11 迁移核心类型到 shared/types
  */
 
 import type { z } from "zod";
+
+// 从共享类型导入核心类型
+import type { MessageRole as SharedMessageRole } from "@/lib/shared/types";
 
 // ============================================
 // Skill 元数据类型
@@ -53,9 +57,13 @@ export interface SkillMetadata {
 // ============================================
 
 /**
- * 用户偏好设置
+ * Skill 执行偏好设置
+ *
+ * 注意：此类型专用于 Skill 执行，与 task-understanding 的 UserPreferences 不同
+ * @see TaskUserContext in task-understanding/types.ts - 任务上下文
+ * @see ClassificationPreferences in classification/learning - 分类学习偏好
  */
-export interface UserPreferences {
+export interface SkillExecutionPreferences {
   /** 语言偏好 */
   language: "zh-CN" | "en-US";
   /** 摘要风格 */
@@ -65,6 +73,11 @@ export interface UserPreferences {
   /** 分类置信度阈值 */
   classifyThreshold?: number;
 }
+
+/**
+ * @deprecated 使用 SkillExecutionPreferences 代替
+ */
+export type UserPreferences = SkillExecutionPreferences;
 
 /**
  * Skill 执行上下文
@@ -79,7 +92,7 @@ export interface SkillContext {
   /** 关联的文件夹 ID */
   folderId?: number;
   /** 用户偏好 */
-  userPreferences?: UserPreferences;
+  userPreferences?: SkillExecutionPreferences;
   /** 最大执行时间（毫秒） */
   maxExecutionTime?: number;
   /** 是否为调试模式 */
@@ -240,6 +253,9 @@ export interface ToolCallResult {
 
 /**
  * Agent 类型
+ *
+ * 注意：此处定义了 Skills 模块使用的 AgentType 变体
+ * 与 SharedAgentType 略有不同（organize vs organizing）
  */
 export type AgentType =
   | "knowledge" // 知识助手
@@ -248,8 +264,10 @@ export type AgentType =
 
 /**
  * 消息角色
+ *
+ * 重新导出共享类型以保持向后兼容
  */
-export type MessageRole = "user" | "assistant" | "system" | "tool";
+export type MessageRole = SharedMessageRole;
 
 /**
  * AI 会话（对应数据库 ai_conversations 表）

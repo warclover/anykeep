@@ -1,6 +1,23 @@
 /**
  * IntentClassifier - 意图分类器
  *
+ * @deprecated 自 v2.8.3 起废弃
+ * 请使用 `IntentAnalyzer` 作为统一的意图分析入口。
+ * IntentAnalyzer 合并了 IntentClassifier、ComplexityEvaluator、ModeSelector 的功能。
+ *
+ * @see IntentAnalyzer - 推荐使用的统一意图分析器
+ *
+ * 迁移指南:
+ * ```typescript
+ * // 旧代码
+ * const classifier = new IntentClassifier();
+ * const result = await classifier.classify(message);
+ *
+ * // 新代码
+ * const analyzer = new IntentAnalyzer();
+ * const result = await analyzer.analyze(message, context);
+ * ```
+ *
  * 职责：
  * - 分析用户输入，识别意图类型
  * - 提取实体（主题、时间、数量等）
@@ -24,10 +41,11 @@
  * 2. 有明确动词的意图权重更高（如 "整理" > "看看"）
  * 3. 多词匹配的意图权重更高（如 "帮我整理收藏" > "整理"）
  *
- * @version 2.1.0
+ * @version 2.2.0
  * @since 2025-12-24
  * @updated 2025-12-26 - 添加 LLM 分类兜底支持
  * @updated 2026-01-10 - 添加权重校准策略说明 (Code Review P1-4)
+ * @updated 2026-01-11 - 标记为废弃，推荐使用 IntentAnalyzer
  */
 
 import { logger } from "@/lib/logger";

@@ -3,35 +3,20 @@
  *
  * 统一的配置结构，支持意图模式和 Skill 映射的声明式配置
  *
- * @version 2.0.0
+ * @version 2.1.0
  * @since 2025-12-27
+ * @updated 2026-01-11 迁移核心类型到 shared/types
  */
 
-// ============================================
-// 基础类型
-// ============================================
+// 从共享类型导入核心类型
+import type {
+  IntentType,
+  ComplexityLevel,
+  ExecutionMode,
+} from "@/lib/shared/types";
 
-/**
- * 意图类型
- */
-export type IntentType =
-  | "query" // 查询类：搜索、列表、统计
-  | "action" // 操作类：删除、移动、标签
-  | "organize" // 整理类：清理、去重、分类
-  | "analyze" // 分析类：报告、洞察、发现
-  | "learn" // 学习类：复习、路径、计划
-  | "create" // 创建类：摘要、导出、分享
-  | "chitchat"; // 闲聊类：问候、帮助
-
-/**
- * 复杂度级别
- */
-export type ComplexityLevel = "simple" | "medium" | "complex";
-
-/**
- * 执行模式
- */
-export type ExecutionMode = "atomic" | "orchestration";
+// 重新导出以保持向后兼容
+export type { IntentType, ComplexityLevel, ExecutionMode };
 
 // ============================================
 // 意图模式配置

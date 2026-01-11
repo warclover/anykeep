@@ -48,9 +48,9 @@ describe("RouteLogger", () => {
         input: "搜索书签",
         inputLength: 4,
         classification: {
-          intentType: "search",
-          subType: "semantic",
-          intentKey: "search:semantic",
+          intentType: "query",
+          subType: "search",
+          intentKey: "query:search",
           confidence: 0.85,
           complexity: "simple",
         },
@@ -309,7 +309,7 @@ describe("createRouteDecisionLog", () => {
     const log = createRouteDecisionLog({
       routeId: "route_test001",
       input: "搜索 AI 相关的书签",
-      intentType: "search",
+      intentType: "query",
       subType: "semantic",
       confidence: 0.85,
       complexity: "simple",
@@ -360,7 +360,7 @@ describe("createRouteDecisionLog", () => {
     const log = createRouteDecisionLog({
       routeId: "route_test003",
       input: longInput,
-      intentType: "search",
+      intentType: "query",
       subType: "keyword",
       confidence: 0.7,
       complexity: "simple",
@@ -380,7 +380,7 @@ describe("createRouteDecisionLog", () => {
     const log = createRouteDecisionLog({
       routeId: "route_test004",
       input: "搜索",
-      intentType: "search",
+      intentType: "query",
       subType: "keyword",
       confidence: 0.75,
       complexity: "simple",

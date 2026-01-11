@@ -29,6 +29,12 @@ import type {
 import type { LLMIntentClassifier } from "./llm-classifier";
 import { createLLMClassifier } from "./llm-classifier";
 import { extractTimeRangeFromText } from "@/lib/ai-agent/tools/shared/time-range.utils";
+import { FeatureFlags } from "@/lib/ai-agent/config/feature-flags";
+import {
+  matchImplicitIntent,
+  type ImplicitIntentRule,
+} from "@/lib/ai-agent/core/prompts/implicit-intent-rules";
+import { getMappingIndex, findMapping } from "../config";
 
 // ============================================
 // 配置常量（提取自魔法数字）
@@ -193,6 +199,10 @@ export interface AnalysisResult {
     | "cache_l2";
   /** 结构化槽位（自动提取的 timeRange 等参数） */
   slots?: IntentSlotSchema;
+
+  // 隐含意图推断 [v2.0 新增]
+  /** 匹配到的隐含意图规则 */
+  implicitIntent?: ImplicitIntentRule;
 
   // 复杂度信息
   complexity: {
@@ -608,150 +618,9 @@ const UNIFIED_RULES: IntentRule[] = [
 ];
 
 // ============================================
-// Skill 映射（从 ModeSelector 合并）
+// Skill 映射：已移至 ../config/skill-mappings.ts 统一管理
+// 使用 getMappingIndex() 和 findMapping() 获取映射
 // ============================================
-
-interface SkillMapping {
-  skillId: string;
-  name: string;
-  minComplexity?: ComplexityLevel;
-  enabled: boolean;
-}
-
-const SKILL_MAPPINGS: Record<string, SkillMapping> = {
-  // Active Recall
-  "learn:active_recall_start": {
-    skillId: "active_recall",
-    name: "Brain-Sync 主动复习",
-    minComplexity: "medium",
-    enabled: true,
-  },
-  // 学习类
-  "learn:review": {
-    skillId: "knowledge_review",
-    name: "知识回顾助手",
-    minComplexity: "medium",
-    enabled: true,
-  },
-  "learn:path": {
-    skillId: "learning_path",
-    name: "学习路径规划",
-    minComplexity: "complex",
-    enabled: true,
-  },
-  // 整理类
-  "organize:cleanup": {
-    skillId: "batch_organize",
-    name: "智能整理助手",
-    minComplexity: "medium",
-    enabled: true,
-  },
-  "organize:dedupe": {
-    skillId: "duplicate_cleanup",
-    name: "重复清理助手",
-    minComplexity: "medium",
-    enabled: true,
-  },
-  "organize:classify": {
-    skillId: "smart_tagging",
-    name: "智能标签助手",
-    minComplexity: "medium",
-    enabled: true,
-  },
-  "organize:expire": {
-    skillId: "link_health_check",
-    name: "链接健康检测",
-    minComplexity: "medium",
-    enabled: true,
-  },
-  "organize:monitor": {
-    skillId: "content_change_monitor",
-    name: "内容变更监控",
-    minComplexity: "simple",
-    enabled: true,
-  },
-  // 分析类
-  "analyze:report": {
-    skillId: "periodic_report",
-    name: "周期报告生成",
-    minComplexity: "complex",
-    enabled: true,
-  },
-  "analyze:insight": {
-    skillId: "insight_report",
-    name: "收藏洞察分析",
-    minComplexity: "medium",
-    enabled: true,
-  },
-  "analyze:wechat": {
-    skillId: "wechat_digest",
-    name: "微信阅读摘要",
-    minComplexity: "medium",
-    enabled: true,
-  },
-  "analyze:inbox_digest": {
-    skillId: "inbox_digest",
-    name: "收件箱摘要",
-    minComplexity: "medium",
-    enabled: true,
-  },
-  // 创建类
-  "create:digest": {
-    skillId: "quick_digest",
-    name: "快速摘要生成",
-    minComplexity: "simple",
-    enabled: true,
-  },
-  "create:share": {
-    skillId: "share_bundle",
-    name: "分享包生成",
-    minComplexity: "medium",
-    enabled: true,
-  },
-  "create:tts": {
-    skillId: "tts_synthesis",
-    name: "语音朗读助手",
-    minComplexity: "simple",
-    enabled: true,
-  },
-  "create:bilibili_transcript": {
-    skillId: "bilibili_transcript",
-    name: "B站字幕提取",
-    minComplexity: "medium",
-    enabled: true,
-  },
-  // 综述类
-  "create:synthesis": {
-    skillId: "thematic_synthesis",
-    name: "主题合成器",
-    minComplexity: "medium",
-    enabled: true,
-  },
-  "create:synthesis_folder": {
-    skillId: "thematic_synthesis",
-    name: "主题合成器",
-    minComplexity: "medium",
-    enabled: true,
-  },
-  "create:synthesis_tag": {
-    skillId: "thematic_synthesis",
-    name: "主题合成器",
-    minComplexity: "medium",
-    enabled: true,
-  },
-  "create:synthesis_recent": {
-    skillId: "thematic_synthesis",
-    name: "主题合成器",
-    minComplexity: "medium",
-    enabled: true,
-  },
-  "create:synthesis_topic": {
-    skillId: "thematic_synthesis",
-    name: "主题合成器",
-    minComplexity: "medium",
-    enabled: true,
-  },
-};
 
 // ============================================
 // 实体提取模式
@@ -927,12 +796,30 @@ export class IntentAnalyzer {
     // 3. 模式选择
     const execution = this.selectMode(classification, complexity);
 
+    // 4. 隐含意图推断 [v2.0 新增]
+    let implicitIntent: ImplicitIntentRule | undefined;
+    if (FeatureFlags.ENABLE_IMPLICIT_INTENT) {
+      implicitIntent = matchImplicitIntent(message) ?? undefined;
+      if (implicitIntent && this.config.debug) {
+        logger.debug(
+          {
+            ruleId: implicitIntent.id,
+            implicitGoal: implicitIntent.implicitGoal,
+            hiddenExpectation: implicitIntent.hiddenExpectation,
+          },
+          "IntentAnalyzer: Implicit intent matched",
+        );
+      }
+    }
+
     const result: AnalysisResult = {
       intent: classification.type,
       subType: classification.subType,
       confidence: classification.confidence,
       entities: classification.entities,
       source: classification.source,
+      slots: classification.slots,
+      implicitIntent,
       complexity,
       execution,
       requiresMultiStep: classification.requiresMultiStep,
@@ -949,6 +836,7 @@ export class IntentAnalyzer {
           complexity: result.complexity.level,
           mode: result.execution.mode,
           skill: result.execution.suggestedSkill,
+          implicitIntentId: result.implicitIntent?.id,
           durationMs: result.durationMs,
         },
         "IntentAnalyzer: Analysis completed",
@@ -1307,18 +1195,29 @@ export class IntentAnalyzer {
       };
     }
 
-    // 查找匹配的 Skill
-    const skillKey = intent.subType
-      ? `${intent.type}:${intent.subType}`
-      : `${intent.type}:general`;
-    const mapping = SKILL_MAPPINGS[skillKey];
+    // 使用中央配置查找匹配的 Skill
+    const mappingIndex = getMappingIndex();
+    const mapping = findMapping(
+      mappingIndex,
+      intent.type,
+      intent.subType ?? "general",
+    );
 
     if (mapping?.enabled) {
+      // 检查复杂度要求
       if (this.meetsMinComplexity(complexity.level, mapping.minComplexity)) {
+        // 只有编排模式才返回 suggestedSkill
+        if (mapping.mode === "orchestration") {
+          return {
+            mode: "orchestration",
+            suggestedSkill: mapping.skillId,
+            reason: `使用 ${mapping.name}`,
+          };
+        }
+        // 原子模式
         return {
-          mode: "orchestration",
-          suggestedSkill: mapping.skillId,
-          reason: `使用 ${mapping.name}`,
+          mode: "atomic",
+          reason: `${mapping.name}（原子模式）`,
         };
       }
     }
@@ -1331,14 +1230,17 @@ export class IntentAnalyzer {
       };
     }
 
-    // 期望交付物 → 尝试部分匹配
+    // 期望交付物 → 尝试通配符匹配
     if (intent.hasDeliverableExpectation) {
-      const partialMapping = this.findPartialSkill(intent.type);
-      if (partialMapping) {
+      const wildcardMapping = findMapping(mappingIndex, intent.type, "*");
+      if (
+        wildcardMapping?.enabled &&
+        wildcardMapping.mode === "orchestration"
+      ) {
         return {
           mode: "orchestration",
-          suggestedSkill: partialMapping.skillId,
-          reason: `期望交付物，使用 ${partialMapping.name}`,
+          suggestedSkill: wildcardMapping.skillId,
+          reason: `期望交付物，使用 ${wildcardMapping.name}`,
         };
       }
     }
@@ -1356,16 +1258,6 @@ export class IntentAnalyzer {
     if (!required || required === "simple") return true;
     const levels = { simple: 1, medium: 2, complex: 3 };
     return levels[current] >= levels[required];
-  }
-
-  private findPartialSkill(type: IntentType): SkillMapping | null {
-    const prefix = `${type}:`;
-    for (const [key, mapping] of Object.entries(SKILL_MAPPINGS)) {
-      if (key.startsWith(prefix) && mapping.enabled) {
-        return mapping;
-      }
-    }
-    return null;
   }
 
   // ============================================

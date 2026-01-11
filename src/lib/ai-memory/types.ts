@@ -3,18 +3,17 @@
  *
  * 定义会话状态、指代解析等核心类型
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-25
+ * @updated 2026-01-11 迁移核心类型到 shared/types
  */
 
-// ============================================
-// 基础类型
-// ============================================
+// 从共享类型导入
+import type { BasicMessageRole } from "@/lib/shared/types";
 
-/**
- * 消息角色
- */
-export type MessageRole = "user" | "assistant" | "system";
+// 重新导出以保持向后兼容
+// 注意: ai-memory 使用不含 tool 的 MessageRole
+export type MessageRole = BasicMessageRole;
 
 /**
  * 会话消息

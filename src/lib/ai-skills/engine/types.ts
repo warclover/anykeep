@@ -113,6 +113,28 @@ export interface EngineContext {
   intentConfidence?: number;
   /** 意图槽位（时间范围等结构化参数） */
   slots?: IntentSlotSchema;
+
+  // ============================================
+  // 置信度分层执行策略 [v2.0 新增]
+  // ============================================
+
+  /**
+   * 响应策略（基于增强置信度）
+   * - silent: 高置信度（≥80%），静默执行，简短结果
+   * - explain: 中置信度（60-79%），执行 + 解释为什么这样做
+   * - clarify: 低置信度（<60%），生成澄清选项
+   */
+  responseStrategy?: "silent" | "explain" | "clarify";
+
+  /**
+   * 置信度级别
+   */
+  confidenceLevel?: "high" | "medium" | "low";
+
+  /**
+   * 增强置信度值（0-1）
+   */
+  enhancedConfidence?: number;
 }
 
 /**

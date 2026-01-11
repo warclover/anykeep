@@ -3,26 +3,28 @@
  *
  * 定义意图分类、复杂度评估、模式选择相关的类型
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-24
+ * @updated 2026-01-11 迁移核心类型到 shared/types
  */
 
-// ============================================
-// 意图相关类型
-// ============================================
+// 从共享类型导入核心类型（需要同时导入和导出）
+import type {
+  IntentType as SharedIntentType,
+  ComplexityLevel as SharedComplexityLevel,
+  ExecutionMode as SharedExecutionMode,
+  ClassificationSource as SharedClassificationSource,
+} from "@/lib/shared/types";
 
-/**
- * 意图类型枚举
- */
-export type IntentType =
-  | "query" // 查询类：数量、列表、搜索
-  | "action" // 操作类：移动、删除、标签
-  | "organize" // 整理类：清理、分类、去重
-  | "analyze" // 分析类：统计、报告、洞察
-  | "learn" // 学习类：复习、路径、面试准备
-  | "create" // 创建类：摘要、笔记、文档
-  | "refine" // 过滤类：筛选、过滤搜索结果（需要上下文有搜索结果）
-  | "chitchat"; // 闲聊类：问候、帮助
+// 导出类型别名以保持向后兼容和文件内部使用
+export type IntentType = SharedIntentType;
+export type ComplexityLevel = SharedComplexityLevel;
+export type ExecutionMode = SharedExecutionMode;
+export type ClassificationSource = SharedClassificationSource;
+
+// ============================================
+// 实体相关类型
+// ============================================
 
 /**
  * 提取的实体
@@ -118,10 +120,7 @@ export interface IntentRule {
 // 复杂度相关类型
 // ============================================
 
-/**
- * 复杂度级别
- */
-export type ComplexityLevel = "simple" | "medium" | "complex";
+// 注意: ComplexityLevel 已从 @/lib/shared/types 导入
 
 /**
  * 复杂度因素
@@ -157,10 +156,7 @@ export interface ComplexityEvaluation {
 // 模式选择相关类型
 // ============================================
 
-/**
- * 执行模式
- */
-export type ExecutionMode = "atomic" | "orchestration";
+// 注意: ExecutionMode 已从 @/lib/shared/types 导入
 
 /**
  * 模式选择结果
