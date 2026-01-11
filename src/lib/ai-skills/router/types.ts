@@ -85,7 +85,7 @@ export interface IntentClassification {
   /** 是否期望获得交付物 */
   hasDeliverableExpectation: boolean;
   /** 分类来源 */
-  source: "rule" | "llm" | "semantic" | "hybrid";
+  source: "rule" | "llm" | "semantic" | "hybrid" | "cache_l1" | "cache_l2";
   /** 结构化槽位（Phase 2 新增） */
   slots?: IntentSlotSchema;
   /** 备选意图列表（Phase 2 新增，用于消歧） */
@@ -240,7 +240,14 @@ export interface RouteResult {
     /** 是否使用了 LLM 兜底 */
     llmFallbackUsed: boolean;
     /** 分类来源 */
-    classificationSource: "rule" | "llm" | "semantic" | "hybrid" | "default";
+    classificationSource:
+      | "rule"
+      | "llm"
+      | "semantic"
+      | "hybrid"
+      | "default"
+      | "cache_l1"
+      | "cache_l2";
     /** LLM 缓存是否命中 */
     llmCacheHit: boolean;
   };

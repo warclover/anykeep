@@ -42,6 +42,16 @@ import type {
 } from "./types";
 import { FeatureFlags } from "@/lib/ai-agent/config/feature-flags";
 import { DEFAULT_RULES } from "./intent-classifier";
+import {
+  getIntentCache,
+  type IntentCache,
+  type IntentCacheStats,
+} from "./intent-cache";
+import {
+  getSemanticCache,
+  type SemanticCache,
+  type SemanticCacheStats,
+} from "./semantic-cache";
 
 /**
  * 完整路由器配置
@@ -86,6 +96,8 @@ export class IntentRouter {
   private config: IntentRouterConfig;
   private metricsAggregator: RouteMetricsAggregator | null = null;
   private isHybridMode: boolean;
+  private intentCache: IntentCache;
+  private semanticCache: SemanticCache;
 
   constructor(config: IntentRouterConfig = {}) {
     this.config = {
@@ -96,6 +108,10 @@ export class IntentRouter {
       enableMetricsAggregation: false,
       ...config,
     };
+
+    // 初始化意图缓存
+    this.intentCache = getIntentCache();
+    this.semanticCache = getSemanticCache();
 
     // 根据 Feature Flag 选择分类器
     this.isHybridMode = FeatureFlags.ENABLE_HYBRID_INTENT_CLASSIFIER;
@@ -143,6 +159,149 @@ export class IntentRouter {
     collector.start();
 
     try {
+      // ========================================
+      // Gate 1: L1 缓存检查（精确匹配）
+      // ========================================
+      if (FeatureFlags.ENABLE_INTENT_CACHE_L1) {
+        const cachedIntent = this.intentCache.get(request.message);
+        if (cachedIntent) {
+          // 缓存命中，快速评估复杂度和模式
+          collector.startStage("complexity");
+          const complexity = await this.evaluator.evaluate(
+            cachedIntent,
+            request.context,
+          );
+          collector.endStage("complexity");
+
+          collector.startStage("modeSelector");
+          const modeSelection = this.selector.select(cachedIntent, complexity);
+          collector.endStage("modeSelector");
+
+          const suggestedSkill =
+            modeSelection.mode === "orchestration"
+              ? this.selector.getSuggestedSkill(cachedIntent, complexity)
+              : null;
+
+          const metrics = collector.finalize();
+
+          logger.info(
+            {
+              intentType: cachedIntent.type,
+              mode: modeSelection.mode,
+              skill: suggestedSkill,
+              durationMs: metrics.totalDurationMs,
+              cacheHit: true,
+            },
+            "IntentRouter: L1 cache hit",
+          );
+
+          const result: RouteResult = {
+            intent: cachedIntent,
+            complexity,
+            mode: modeSelection.mode,
+            suggestedSkill,
+            reason: `${modeSelection.reason} (cached)`,
+            routingDurationMs: metrics.totalDurationMs,
+          };
+
+          if (this.config.debug || this.config.includeMetrics) {
+            result.metrics = {
+              classificationDurationMs: 0,
+              complexityDurationMs: metrics.complexityDurationMs,
+              modeSelectorDurationMs: metrics.modeSelectorDurationMs,
+              ruleMatchCount: 0,
+              disambiguationUsed: false,
+              llmFallbackUsed: false,
+              classificationSource: "cache_l1",
+              llmCacheHit: false,
+            };
+          }
+
+          return result;
+        }
+      }
+
+      // ========================================
+      // Gate 2: L2 语义缓存检查（Phase 2）
+      // ========================================
+      if (FeatureFlags.ENABLE_SEMANTIC_CACHE) {
+        try {
+          const semanticCached = await this.semanticCache.get(request.message);
+          if (semanticCached) {
+            // 回填 L1 缓存（加速后续精确匹配）
+            if (FeatureFlags.ENABLE_INTENT_CACHE_L1) {
+              this.intentCache.set(request.message, semanticCached);
+            }
+
+            // 语义缓存命中，快速评估复杂度和模式
+            collector.startStage("complexity");
+            const complexity = await this.evaluator.evaluate(
+              semanticCached,
+              request.context,
+            );
+            collector.endStage("complexity");
+
+            collector.startStage("modeSelector");
+            const modeSelection = this.selector.select(
+              semanticCached,
+              complexity,
+            );
+            collector.endStage("modeSelector");
+
+            const suggestedSkill =
+              modeSelection.mode === "orchestration"
+                ? this.selector.getSuggestedSkill(semanticCached, complexity)
+                : null;
+
+            const metrics = collector.finalize();
+
+            logger.info(
+              {
+                intentType: semanticCached.type,
+                mode: modeSelection.mode,
+                skill: suggestedSkill,
+                durationMs: metrics.totalDurationMs,
+                cacheHit: "l2_semantic",
+              },
+              "IntentRouter: L2 semantic cache hit",
+            );
+
+            const result: RouteResult = {
+              intent: semanticCached,
+              complexity,
+              mode: modeSelection.mode,
+              suggestedSkill,
+              reason: `${modeSelection.reason} (semantic cached)`,
+              routingDurationMs: metrics.totalDurationMs,
+            };
+
+            if (this.config.debug || this.config.includeMetrics) {
+              result.metrics = {
+                classificationDurationMs: 0,
+                complexityDurationMs: metrics.complexityDurationMs,
+                modeSelectorDurationMs: metrics.modeSelectorDurationMs,
+                ruleMatchCount: 0,
+                disambiguationUsed: false,
+                llmFallbackUsed: false,
+                classificationSource: "cache_l2",
+                llmCacheHit: false,
+              };
+            }
+
+            return result;
+          }
+        } catch (err) {
+          // 语义缓存失败，继续走规则引擎
+          logger.warn(
+            { error: err instanceof Error ? err.message : String(err) },
+            "IntentRouter: Semantic cache query failed, falling back to classification",
+          );
+        }
+      }
+
+      // ========================================
+      // Gate 3: 意图分类
+      // ========================================
       // Step 1: 意图分类
       collector.startStage("classification");
       let intent;
@@ -163,6 +322,25 @@ export class IntentRouter {
       // 记录分类相关指标
       collector.recordClassificationSource(intent.source);
       collector.recordLLMFallback(intent.source === "llm");
+
+      // ========================================
+      // 写入 L1 缓存
+      // ========================================
+      if (FeatureFlags.ENABLE_INTENT_CACHE_L1) {
+        this.intentCache.set(request.message, intent);
+      }
+
+      // ========================================
+      // 写入 L2 语义缓存（异步，不阻塞主流程）
+      // ========================================
+      if (FeatureFlags.ENABLE_SEMANTIC_CACHE) {
+        this.semanticCache.set(request.message, intent).catch((err) => {
+          logger.warn(
+            { error: err instanceof Error ? err.message : String(err) },
+            "IntentRouter: Failed to write semantic cache",
+          );
+        });
+      }
 
       // Step 2: 复杂度评估
       collector.startStage("complexity");
@@ -339,6 +517,60 @@ export class IntentRouter {
    */
   getMetricsAggregation(): RouteMetricsAggregation | null {
     return this.metricsAggregator?.getAggregation() ?? null;
+  }
+
+  /**
+   * 获取意图缓存统计
+   */
+  getCacheStats(): IntentCacheStats {
+    return this.intentCache.getStats();
+  }
+
+  /**
+   * 获取语义缓存统计
+   */
+  getSemanticCacheStats(): SemanticCacheStats {
+    return this.semanticCache.getStats();
+  }
+
+  /**
+   * 获取所有缓存统计（L1 + L2）
+   */
+  getAllCacheStats(): {
+    l1: IntentCacheStats;
+    l2: SemanticCacheStats;
+  } {
+    return {
+      l1: this.intentCache.getStats(),
+      l2: this.semanticCache.getStats(),
+    };
+  }
+
+  /**
+   * 预热语义缓存
+   * @param count 预热条目数量
+   */
+  async warmupSemanticCache(count?: number): Promise<number> {
+    if (!FeatureFlags.ENABLE_SEMANTIC_CACHE) {
+      logger.debug("IntentRouter: Semantic cache disabled, skipping warmup");
+      return 0;
+    }
+    return this.semanticCache.warmup(count);
+  }
+
+  /**
+   * 清空意图缓存
+   */
+  clearCache(): void {
+    this.intentCache.clear();
+  }
+
+  /**
+   * 清空所有缓存（L1 + L2 统计，不清空数据库）
+   */
+  clearAllCacheStats(): void {
+    this.intentCache.resetStats();
+    this.semanticCache.resetStats();
   }
 
   /**

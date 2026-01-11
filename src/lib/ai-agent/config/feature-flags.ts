@@ -558,6 +558,64 @@ export const FeatureFlags = {
   get ENABLE_CONFIRMATION_INTERCEPTOR(): boolean {
     return process.env.ENABLE_CONFIRMATION_INTERCEPTOR !== "false";
   },
+
+  // ===========================================================================
+  // 意图理解优化 [Phase 1 新增 - 2026-01-11]
+  // ===========================================================================
+
+  /**
+   * 是否启用意图缓存 L1 层（精确匹配）
+   * @default true
+   * @description LRU 缓存，精确匹配用户消息
+   */
+  get ENABLE_INTENT_CACHE_L1(): boolean {
+    return process.env.ENABLE_INTENT_CACHE_L1 !== "false";
+  },
+
+  /**
+   * 是否启用高权重规则提前返回
+   * @default true
+   * @description 权重 ≥95 且置信度 ≥0.9 时跳过剩余规则遍历
+   */
+  get ENABLE_EARLY_RETURN(): boolean {
+    return process.env.ENABLE_EARLY_RETURN !== "false";
+  },
+
+  /**
+   * 是否启用客户端快捷命令
+   * @default true
+   * @description /search, /delete 等快捷命令直接执行，不经过 AI
+   */
+  get ENABLE_CLIENT_FAST_COMMANDS(): boolean {
+    return process.env.ENABLE_CLIENT_FAST_COMMANDS !== "false";
+  },
+
+  /**
+   * 是否启用客户端上下文预处理
+   * @default true
+   * @description 发送前压缩书签上下文，减少 Token 消耗
+   */
+  get ENABLE_CLIENT_PREPROCESSING(): boolean {
+    return process.env.ENABLE_CLIENT_PREPROCESSING !== "false";
+  },
+
+  /**
+   * 是否启用意图缓存 L2 层（语义匹配）
+   * @default false
+   * @description pgvector 语义缓存，相似度 > 阈值时命中（Phase 2）
+   */
+  get ENABLE_SEMANTIC_CACHE(): boolean {
+    return process.env.ENABLE_SEMANTIC_CACHE === "true";
+  },
+
+  /**
+   * 语义缓存相似度阈值
+   * @default 0.95
+   * @description 相似度高于此值时认为是相同意图
+   */
+  get SEMANTIC_CACHE_SIMILARITY(): number {
+    return parseFloat(process.env.SEMANTIC_CACHE_SIMILARITY || "0.95");
+  },
 } as const;
 
 // =============================================================================
@@ -569,7 +627,7 @@ export type FeatureFlagKey = keyof typeof FeatureFlags;
 /** 布尔类型的功能开关键（排除数值型配置） */
 export type BooleanFeatureFlagKey = Exclude<
   FeatureFlagKey,
-  "PERSONA_ROLLOUT_PERCENTAGE"
+  "PERSONA_ROLLOUT_PERCENTAGE" | "SEMANTIC_CACHE_SIMILARITY"
 >;
 
 /**
@@ -585,6 +643,7 @@ export function isFeatureEnabled(flag: BooleanFeatureFlagKey): boolean {
  */
 export function getAllFeatureFlags(): Record<BooleanFeatureFlagKey, boolean> & {
   PERSONA_ROLLOUT_PERCENTAGE: number;
+  SEMANTIC_CACHE_SIMILARITY: number;
 } {
   return {
     ENABLE_DYNAMIC_CONTEXT: FeatureFlags.ENABLE_DYNAMIC_CONTEXT,
@@ -661,6 +720,13 @@ export function getAllFeatureFlags(): Record<BooleanFeatureFlagKey, boolean> & {
     // 高风险操作确认 [Phase 1 新增]
     ENABLE_CONFIRMATION_INTERCEPTOR:
       FeatureFlags.ENABLE_CONFIRMATION_INTERCEPTOR,
+    // 意图理解优化 [Phase 1 新增 - 2026-01-11]
+    ENABLE_INTENT_CACHE_L1: FeatureFlags.ENABLE_INTENT_CACHE_L1,
+    ENABLE_EARLY_RETURN: FeatureFlags.ENABLE_EARLY_RETURN,
+    ENABLE_CLIENT_FAST_COMMANDS: FeatureFlags.ENABLE_CLIENT_FAST_COMMANDS,
+    ENABLE_CLIENT_PREPROCESSING: FeatureFlags.ENABLE_CLIENT_PREPROCESSING,
+    ENABLE_SEMANTIC_CACHE: FeatureFlags.ENABLE_SEMANTIC_CACHE,
+    SEMANTIC_CACHE_SIMILARITY: FeatureFlags.SEMANTIC_CACHE_SIMILARITY,
   };
 }
 

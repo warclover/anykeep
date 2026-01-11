@@ -210,6 +210,16 @@ export const CLASSIFICATION_SOURCES = {
   RULE: "rule",
   /** LLM 分类 */
   LLM: "llm",
+  /** 语义匹配 */
+  SEMANTIC: "semantic",
+  /** 混合匹配 */
+  HYBRID: "hybrid",
+  /** 默认 */
+  DEFAULT: "default",
+  /** L1 缓存命中 */
+  CACHE_L1: "cache_l1",
+  /** L2 语义缓存命中 */
+  CACHE_L2: "cache_l2",
 } as const;
 
 /**

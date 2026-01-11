@@ -42,7 +42,14 @@ export interface RouteMetrics {
   /** 是否使用了 LLM 兜底 */
   llmFallbackUsed: boolean;
   /** 分类来源 */
-  classificationSource: "rule" | "llm" | "semantic" | "hybrid" | "default";
+  classificationSource:
+    | "rule"
+    | "llm"
+    | "semantic"
+    | "hybrid"
+    | "default"
+    | "cache_l1"
+    | "cache_l2";
 
   // ============================================
   // 缓存指标
@@ -164,7 +171,14 @@ export class RouteMetricsCollector {
    * 记录分类来源
    */
   recordClassificationSource(
-    source: "rule" | "llm" | "semantic" | "hybrid" | "default",
+    source:
+      | "rule"
+      | "llm"
+      | "semantic"
+      | "hybrid"
+      | "default"
+      | "cache_l1"
+      | "cache_l2",
   ): void {
     this.metrics.classificationSource = source;
   }
