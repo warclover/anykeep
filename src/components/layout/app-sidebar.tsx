@@ -181,6 +181,7 @@ const devToolsItems: NavItem[] = [
   },
   { name: "文件夹健康", href: "/folder-health", icon: HeartPulse },
   { name: "摘要调试", href: "/debug/ai-summary", icon: Sparkles },
+  { name: "AI 助手调试", href: "/dev/ai-debug", icon: Zap },
 ];
 
 // ==================== 糖果色配色 ====================
