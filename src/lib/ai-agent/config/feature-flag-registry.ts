@@ -1239,27 +1239,31 @@ export function validateFeatureFlags(): ValidationResult {
 
   // 输出日志
   if (warnings.length > 0 || errors.length > 0) {
-    logger.warn("Feature Flags 验证发现问题", {
-      warnings: warnings.length,
-      errors: errors.length,
-    });
+    logger.warn(
+      { warnings: warnings.length, errors: errors.length },
+      "Feature Flags 验证发现问题",
+    );
 
     for (const warning of warnings) {
-      logger.warn(`[${warning.flag}] ${warning.message}`, {
-        suggestion: warning.suggestion,
-      });
+      logger.warn(
+        { suggestion: warning.suggestion },
+        `[${warning.flag}] ${warning.message}`,
+      );
     }
 
     for (const error of errors) {
       logger.error(`[${error.flag}] ${error.message}`);
     }
   } else {
-    logger.info("Feature Flags 验证通过", {
-      total: totalFlags,
-      enabled: enabledCount,
-      integrated: integratedCount,
-      rate: `${integrationRate.toFixed(1)}%`,
-    });
+    logger.info(
+      {
+        total: totalFlags,
+        enabled: enabledCount,
+        integrated: integratedCount,
+        rate: `${integrationRate.toFixed(1)}%`,
+      },
+      "Feature Flags 验证通过",
+    );
   }
 
   return {

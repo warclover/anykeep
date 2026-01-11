@@ -630,3 +630,63 @@ export function getMappingIndex(): MappingIndex {
 export function resetMappingIndex(): void {
   _mappingIndex = null;
 }
+
+// ============================================
+// 按 Key 索引（Phase 1.4 统一优化）
+// ============================================
+
+/**
+ * 按 Key 索引的 Skill 映射
+ *
+ * 提供 O(1) 查找，用于直接按 key 获取映射
+ *
+ * @since 2026-01-11
+ */
+export const SKILL_MAPPINGS_BY_KEY: Map<string, SkillMapping> = new Map(
+  SKILL_MAPPINGS.filter((m) => m.enabled).map((m) => [m.key, m]),
+);
+
+/**
+ * 按 Key 获取 Skill 映射
+ *
+ * 用于直接通过 key 查找映射，不走通配符逻辑
+ *
+ * @param key - 映射键（如 "learn:review", "query:search"）
+ * @returns 映射配置，未找到返回 undefined
+ *
+ * @example
+ * ```ts
+ * const mapping = getSkillMappingByKey("learn:review");
+ * if (mapping) {
+ *   console.log(mapping.skillId); // "knowledge_review"
+ * }
+ * ```
+ *
+ * @since 2026-01-11
+ */
+export function getSkillMappingByKey(key: string): SkillMapping | undefined {
+  return SKILL_MAPPINGS_BY_KEY.get(key);
+}
+
+/**
+ * 获取所有启用的 Skill 映射 Key 列表
+ *
+ * @returns 所有启用的映射 key 数组
+ *
+ * @since 2026-01-11
+ */
+export function getAllSkillMappingKeys(): string[] {
+  return Array.from(SKILL_MAPPINGS_BY_KEY.keys());
+}
+
+/**
+ * 按 Skill ID 获取所有映射
+ *
+ * @param skillId - Skill ID（如 "knowledge_review"）
+ * @returns 映射到该 Skill 的所有配置
+ *
+ * @since 2026-01-11
+ */
+export function getSkillMappingsBySkillId(skillId: string): SkillMapping[] {
+  return SKILL_MAPPINGS.filter((m) => m.enabled && m.skillId === skillId);
+}

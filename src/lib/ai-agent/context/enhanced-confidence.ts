@@ -85,6 +85,24 @@ export interface EnhancedConfidenceResult {
 }
 
 /**
+ * 简化的增强置信度输入（用于测试和简化场景）
+ *
+ * @since 2026-01-12
+ */
+export interface EnhancedConfidenceInput {
+  /** 规则匹配置信度 */
+  ruleConfidence: number;
+  /** 上下文相关度 */
+  contextRelevance: number;
+  /** 实体完整度 */
+  entityCompleteness: number;
+  /** 消息清晰度 */
+  messageClarity: number;
+  /** 历史行为匹配度 */
+  historyMatch: number;
+}
+
+/**
  * 扩展偏好类型
  */
 interface ExtendedPreferences {
@@ -328,4 +346,82 @@ export function getEnhancedConfidence(
 ): number {
   return calculateEnhancedConfidence(intent, context, message)
     .enhancedConfidence;
+}
+
+/**
+ * 从简化输入计算增强置信度（用于测试和简化场景）
+ *
+ * 直接使用 5 因素权重计算，无需完整上下文
+ *
+ * @param input - 简化的置信度输入
+ * @returns 增强置信度结果
+ *
+ * @since 2026-01-12
+ */
+export function calculateEnhancedConfidenceFromInput(
+  input: EnhancedConfidenceInput,
+): EnhancedConfidenceResult {
+  const factors: ConfidenceFactor[] = [
+    {
+      name: "rule_confidence",
+      weight: 0.4,
+      score: input.ruleConfidence,
+      reason: `规则匹配置信度: ${(input.ruleConfidence * 100).toFixed(0)}%`,
+    },
+    {
+      name: "entity_completeness",
+      weight: 0.15,
+      score: input.entityCompleteness,
+      reason: `实体完整度: ${(input.entityCompleteness * 100).toFixed(0)}%`,
+    },
+    {
+      name: "context_relevance",
+      weight: 0.2,
+      score: input.contextRelevance,
+      reason: `上下文相关度: ${(input.contextRelevance * 100).toFixed(0)}%`,
+    },
+    {
+      name: "history_match",
+      weight: 0.1,
+      score: input.historyMatch,
+      reason: `历史行为匹配: ${(input.historyMatch * 100).toFixed(0)}%`,
+    },
+    {
+      name: "message_clarity",
+      weight: 0.15,
+      score: input.messageClarity,
+      reason: `消息清晰度: ${(input.messageClarity * 100).toFixed(0)}%`,
+    },
+  ];
+
+  // 计算加权平均
+  const totalWeight = factors.reduce((sum, f) => sum + f.weight, 0);
+  const weightedSum = factors.reduce((sum, f) => sum + f.weight * f.score, 0);
+  const enhancedConfidence = Math.min(
+    1,
+    Math.max(0, weightedSum / totalWeight),
+  );
+
+  // 确定置信度级别和策略
+  let level: ConfidenceLevel;
+  let suggestedStrategy: ExecutionStrategy;
+
+  if (enhancedConfidence >= CONFIDENCE_THRESHOLDS.HIGH) {
+    level = "high";
+    suggestedStrategy = "silent";
+  } else if (enhancedConfidence >= CONFIDENCE_THRESHOLDS.MEDIUM) {
+    level = "medium";
+    suggestedStrategy = "explain";
+  } else {
+    level = "low";
+    suggestedStrategy = "clarify";
+  }
+
+  return {
+    originalConfidence: input.ruleConfidence,
+    enhancedConfidence,
+    factors,
+    level,
+    suggestedStrategy,
+  };
 }

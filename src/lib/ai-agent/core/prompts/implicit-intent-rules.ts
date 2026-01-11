@@ -3,8 +3,9 @@
  *
  * 用于从用户模糊表达中推断真正目标
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-27
+ * @updated 2026-01-12 添加 suggestedActions/avoidActions/suggestedParams
  */
 
 /**
@@ -15,6 +16,8 @@ export interface ImplicitIntentRule {
   id: string;
   /** 触发模式 */
   pattern: RegExp;
+  /** 触发模式数组（兼容性字段） */
+  patterns: RegExp[];
   /** 隐含目标 */
   implicitGoal: string;
   /** 隐含期望（不要做的事） */
@@ -23,6 +26,14 @@ export interface ImplicitIntentRule {
   defaultBehavior: string;
   /** 优先级 */
   priority: number;
+  /** 建议的操作（v1.1 新增） */
+  suggestedActions: string[];
+  /** 应避免的操作（v1.1 新增） */
+  avoidActions?: string[];
+  /** 建议的参数（v1.1 新增） */
+  suggestedParams?: Record<string, unknown>;
+  /** 是否需要确认（v1.1 新增） */
+  requiresConfirmation?: boolean;
 }
 
 /**
@@ -32,66 +43,86 @@ export const IMPLICIT_INTENT_RULES: ImplicitIntentRule[] = [
   {
     id: "organize-not-delete",
     pattern: /整理|清理|规整|梳理/,
+    patterns: [/整理|清理|规整|梳理/],
     implicitGoal: "让收藏更有序、更易管理",
     hiddenExpectation: "不要删除任何内容（除非明确要求）",
     defaultBehavior: "建议标签或文件夹分组",
     priority: 90,
+    suggestedActions: ["classify", "group", "tag"],
+    avoidActions: ["delete", "remove"],
   },
   {
     id: "too-many-not-delete",
     pattern: /太多|好多|很多|一堆/,
+    patterns: [/太多|好多|很多|一堆/],
     implicitGoal: "减少认知负担，更好地管理",
     hiddenExpectation: "不是要删除，是想分组/筛选",
     defaultBehavior: "提供分类方案或筛选建议",
     priority: 85,
+    suggestedActions: ["archive", "classify", "group"],
+    avoidActions: ["delete", "remove"],
   },
   {
     id: "cant-find-search",
     pattern: /找不到|在哪|哪里|怎么找/,
+    patterns: [/找不到|在哪|哪里|怎么找/],
     implicitGoal: "快速定位目标内容",
     hiddenExpectation: "不需要列出所有，只要最相关的",
     defaultBehavior: "搜索 + 展示最相关结果",
     priority: 80,
+    suggestedActions: ["semantic_search", "search"],
   },
   {
     id: "recent-7days",
     pattern: /最近|近期|这几天/,
+    patterns: [/最近|近期|这几天/],
     implicitGoal: "查看近期活动",
     hiddenExpectation: "通常指7天内，不是全部历史",
     defaultBehavior: "按最近7天筛选",
     priority: 75,
+    suggestedActions: ["list", "filter"],
+    suggestedParams: { timeRange: "7d" },
   },
   {
     id: "look-at-overview",
     pattern: /看看|瞅瞅|看下|帮我看/,
+    patterns: [/看看|瞅瞅|看下|帮我看/],
     implicitGoal: "了解概况",
     hiddenExpectation: "不是要执行操作，是想看统计/概览",
     defaultBehavior: "展示概况统计",
     priority: 70,
+    suggestedActions: ["show_stats", "overview"],
   },
   {
     id: "that-one-context",
     pattern: /那个|那条|刚才那个/,
+    patterns: [/那个|那条|刚才那个/],
     implicitGoal: "引用最近交互的内容",
     hiddenExpectation: "需要从上下文推断具体指代",
     defaultBehavior: "检查上下文最近收藏/操作",
     priority: 95,
+    suggestedActions: ["context_resolve"],
   },
   {
     id: "these-selected",
     pattern: /这些|这几个|选中的/,
+    patterns: [/这些|这几个|选中的/],
     implicitGoal: "操作当前选中或最近列表",
     hiddenExpectation: "指代会话中的选中项",
     defaultBehavior: "使用会话中的选中项",
     priority: 90,
+    suggestedActions: ["batch_operate"],
   },
   {
     id: "all-batch-confirm",
     pattern: /都|全部|所有/,
+    patterns: [/都|全部|所有/],
     implicitGoal: "批量操作",
     hiddenExpectation: "可能范围很大，需要确认",
     defaultBehavior: "先说明范围再执行",
     priority: 85,
+    suggestedActions: ["batch_operate"],
+    requiresConfirmation: true,
   },
 ];
 

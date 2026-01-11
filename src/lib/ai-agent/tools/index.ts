@@ -198,7 +198,7 @@ export function registerDefaultTools(): void {
   toolRegistry.registerAll(activeRecallTools);
 
   logger.info(
-    { toolCount: toolRegistry.getStats().total },
+    { toolCount: toolRegistry.getStats().totalTools },
     "Default tools registered successfully",
   );
 }

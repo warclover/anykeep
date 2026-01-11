@@ -7,30 +7,29 @@
  * @since 2026-01-09
  */
 
-import { describe, it, expect, beforeEach, vi } from "vitest";
 import {
   ConfirmationInterceptor,
   createConfirmationInterceptor,
 } from "../confirmation-interceptor";
-import type { Tool, ToolContext } from "../../tools/types";
+import type { Tool, ToolContext, ToolSuccessResult } from "../../tools/types";
 
 // Mock logger
-vi.mock("@/lib/logger", () => ({
+jest.mock("@/lib/logger", () => ({
   logger: {
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
+    debug: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
   },
 }));
 
 // Mock confirmationHandler
-vi.mock("../../core/confirmation-handler", () => ({
+jest.mock("../../core/confirmation-handler", () => ({
   confirmationHandler: {
-    store: vi.fn(),
-    get: vi.fn(),
-    confirm: vi.fn(),
-    cancel: vi.fn(),
+    store: jest.fn(),
+    get: jest.fn(),
+    confirm: jest.fn(),
+    cancel: jest.fn(),
   },
 }));
 
@@ -64,11 +63,11 @@ function createMockTool(
       description: `Test tool: ${name}`,
       category: options.category || "action",
       parameters: {
-        parse: vi.fn((params) => params),
+        parse: jest.fn((params: unknown) => params),
       } as unknown as Tool["definition"]["parameters"],
       requiresConfirmation: options.requiresConfirmation,
     },
-    execute: vi.fn().mockResolvedValue({ success: true, data: {} }),
+    execute: jest.fn().mockResolvedValue({ success: true, data: {} }),
   };
 }
 
@@ -90,7 +89,7 @@ describe("ConfirmationInterceptor", () => {
   let interceptor: ConfirmationInterceptor;
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    jest.clearAllMocks();
     interceptor = new ConfirmationInterceptor();
   });
 
@@ -241,8 +240,12 @@ describe("ConfirmationInterceptor", () => {
       const result = interceptor.createConfirmationResult(confirmation);
 
       expect(result.success).toBe(true);
-      expect(result.data).toHaveProperty("__pendingConfirmation");
-      expect(result.data).toHaveProperty("status", "pending_confirmation");
+      const successResult = result as ToolSuccessResult;
+      expect(successResult.data).toHaveProperty("__pendingConfirmation");
+      expect(successResult.data).toHaveProperty(
+        "status",
+        "pending_confirmation",
+      );
     });
   });
 
@@ -252,7 +255,7 @@ describe("ConfirmationInterceptor", () => {
 
   describe("checkConfirmationStatus", () => {
     it("should return not_found when confirmation does not exist", async () => {
-      vi.mocked(confirmationHandler.get).mockReturnValue(null);
+      jest.mocked(confirmationHandler.get).mockReturnValue(null);
 
       const result = await interceptor.checkConfirmationStatus(
         "non-existent",
@@ -278,8 +281,10 @@ describe("ConfirmationInterceptor", () => {
         createdAt: new Date(),
         updatedAt: new Date(),
       };
-      vi.mocked(confirmationHandler.get).mockReturnValue(expiredConfirmation);
-      vi.mocked(confirmationHandler.cancel).mockReturnValue({ success: true });
+      jest.mocked(confirmationHandler.get).mockReturnValue(expiredConfirmation);
+      jest
+        .mocked(confirmationHandler.cancel)
+        .mockReturnValue({ success: true });
 
       const result = await interceptor.checkConfirmationStatus(
         "test-id",
@@ -306,7 +311,7 @@ describe("ConfirmationInterceptor", () => {
         createdAt: new Date(),
         updatedAt: new Date(),
       };
-      vi.mocked(confirmationHandler.get).mockReturnValue(validConfirmation);
+      jest.mocked(confirmationHandler.get).mockReturnValue(validConfirmation);
 
       const result = await interceptor.checkConfirmationStatus(
         "test-id",
@@ -339,8 +344,8 @@ describe("ConfirmationInterceptor", () => {
         createdAt: new Date(),
         updatedAt: new Date(),
       };
-      vi.mocked(confirmationHandler.get).mockReturnValue(storedConfirmation);
-      vi.mocked(confirmationHandler.confirm).mockReturnValue({
+      jest.mocked(confirmationHandler.get).mockReturnValue(storedConfirmation);
+      jest.mocked(confirmationHandler.confirm).mockReturnValue({
         success: true,
         confirmation: storedConfirmation,
       });
@@ -352,7 +357,7 @@ describe("ConfirmationInterceptor", () => {
     });
 
     it("should reject non-existent confirmation", async () => {
-      vi.mocked(confirmationHandler.get).mockReturnValue(null);
+      jest.mocked(confirmationHandler.get).mockReturnValue(null);
 
       const result = await interceptor.confirm("non-existent", "user-1");
 
@@ -376,8 +381,10 @@ describe("ConfirmationInterceptor", () => {
         createdAt: new Date(),
         updatedAt: new Date(),
       };
-      vi.mocked(confirmationHandler.get).mockReturnValue(expiredConfirmation);
-      vi.mocked(confirmationHandler.cancel).mockReturnValue({ success: true });
+      jest.mocked(confirmationHandler.get).mockReturnValue(expiredConfirmation);
+      jest
+        .mocked(confirmationHandler.cancel)
+        .mockReturnValue({ success: true });
 
       const result = await interceptor.confirm("test-id", "user-1");
 
@@ -392,7 +399,9 @@ describe("ConfirmationInterceptor", () => {
 
   describe("cancel", () => {
     it("should cancel valid confirmation", async () => {
-      vi.mocked(confirmationHandler.cancel).mockReturnValue({ success: true });
+      jest
+        .mocked(confirmationHandler.cancel)
+        .mockReturnValue({ success: true });
 
       const result = await interceptor.cancel("test-id", "user-1");
 
@@ -400,7 +409,7 @@ describe("ConfirmationInterceptor", () => {
     });
 
     it("should return error for non-existent confirmation", async () => {
-      vi.mocked(confirmationHandler.cancel).mockReturnValue({
+      jest.mocked(confirmationHandler.cancel).mockReturnValue({
         success: false,
         error: "Not found",
       });

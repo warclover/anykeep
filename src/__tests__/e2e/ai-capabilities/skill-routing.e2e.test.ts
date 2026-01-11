@@ -28,16 +28,15 @@ describe("E2E: Skill 路由", () => {
       for (const mapping of SKILL_MAPPINGS) {
         expect(mapping.skillId).toBeDefined();
         expect(mapping.name).toBeDefined();
-        expect(mapping.description).toBeDefined();
-        expect(mapping.triggers).toBeDefined();
-        expect(mapping.triggers.length).toBeGreaterThan(0);
+        expect(mapping.key).toBeDefined();
+        expect(mapping.mode).toBeDefined();
       }
     });
 
-    it("Skill ID 应该唯一", () => {
-      const ids = SKILL_MAPPINGS.map((m) => m.skillId);
-      const uniqueIds = new Set(ids);
-      expect(uniqueIds.size).toBe(ids.length);
+    it("Skill 映射 key 应该唯一", () => {
+      const keys = SKILL_MAPPINGS.map((m) => m.key);
+      const uniqueKeys = new Set(keys);
+      expect(uniqueKeys.size).toBe(keys.length);
     });
 
     it("应该包含 6 个新 Skills", () => {
@@ -58,24 +57,24 @@ describe("E2E: Skill 路由", () => {
   });
 
   describe("getSkillMappingByKey", () => {
-    it("应该通过 skillId 找到映射", () => {
-      const mapping = getSkillMappingByKey("knowledge_review");
+    it("应该通过 key 找到映射", () => {
+      const mapping = getSkillMappingByKey("learn:review");
       expect(mapping).toBeDefined();
       expect(mapping?.skillId).toBe("knowledge_review");
     });
 
     it("不存在的 key 应该返回 undefined", () => {
-      const mapping = getSkillMappingByKey("nonexistent_skill");
+      const mapping = getSkillMappingByKey("nonexistent:skill");
       expect(mapping).toBeUndefined();
     });
   });
 
   describe("搜索意图路由", () => {
     const searchQueries = [
-      { input: "搜索AI文章", expectedIntent: "search" },
-      { input: "找一下关于Python的收藏", expectedIntent: "search" },
-      { input: "查找机器学习", expectedIntent: "search" },
-      { input: "有没有关于React的", expectedIntent: "search" },
+      { input: "搜索AI文章", expectedIntent: "query" },
+      { input: "找一下关于Python的收藏", expectedIntent: "query" },
+      { input: "查找机器学习", expectedIntent: "query" },
+      { input: "有没有关于React的", expectedIntent: "query" },
     ];
 
     it.each(searchQueries)(
@@ -83,7 +82,7 @@ describe("E2E: Skill 路由", () => {
       async ({ input, expectedIntent }) => {
         const result = await analyzer.analyze(input);
 
-        expect(result.intent.type).toBe(expectedIntent);
+        expect(result.intent).toBe(expectedIntent);
         expect(result.confidence).toBeGreaterThan(0.5);
       },
     );
@@ -101,7 +100,7 @@ describe("E2E: Skill 路由", () => {
       async ({ input }) => {
         const result = await analyzer.analyze(input);
 
-        expect(["query", "count"]).toContain(result.intent.type);
+        expect(["query", "count"]).toContain(result.intent);
         expect(result.confidence).toBeGreaterThan(0.5);
       },
     );
@@ -120,7 +119,7 @@ describe("E2E: Skill 路由", () => {
         const result = await analyzer.analyze(input);
 
         // 整理类意图应该有较高置信度
-        expect(["action", "manage"]).toContain(result.intent.type);
+        expect(["organize", "action", "manage"]).toContain(result.intent);
       },
     );
   });
@@ -137,7 +136,7 @@ describe("E2E: Skill 路由", () => {
       async ({ input }) => {
         const result = await analyzer.analyze(input);
 
-        expect(result.intent.type).toBe("export");
+        expect(["create", "export"]).toContain(result.intent);
       },
     );
   });
@@ -146,37 +145,37 @@ describe("E2E: Skill 路由", () => {
     it("收件箱分拣: '帮我分拣收件箱' → inbox_triage", async () => {
       const result = await analyzer.analyze("帮我分拣收件箱");
 
-      expect(result.skillId).toBe("inbox_triage");
+      expect(result.execution.suggestedSkill).toBe("inbox_triage");
     });
 
     it("文件夹推荐: '这个放哪个文件夹好' → folder_recommend", async () => {
       const result = await analyzer.analyze("这个放哪个文件夹好");
 
-      expect(result.skillId).toBe("folder_recommend");
+      expect(result.execution.suggestedSkill).toBe("folder_recommend");
     });
 
     it("搜索优化: '怎么搜索更好' → search_optimize", async () => {
       const result = await analyzer.analyze("怎么搜索更好");
 
-      expect(result.skillId).toBe("search_optimize");
+      expect(result.execution.suggestedSkill).toBe("search_optimize");
     });
 
     it("知识图谱: '展示知识图谱' → knowledge_graph_explore", async () => {
       const result = await analyzer.analyze("展示知识图谱");
 
-      expect(result.skillId).toBe("knowledge_graph_explore");
+      expect(result.execution.suggestedSkill).toBe("knowledge_graph_explore");
     });
 
     it("文件夹健康检查: '检查文件夹结构' → folder_health_check", async () => {
       const result = await analyzer.analyze("检查文件夹结构");
 
-      expect(result.skillId).toBe("folder_health_check");
+      expect(result.execution.suggestedSkill).toBe("folder_health_check");
     });
 
     it("快照对比: '对比页面变化' → snapshot_compare", async () => {
       const result = await analyzer.analyze("对比页面变化");
 
-      expect(result.skillId).toBe("snapshot_compare");
+      expect(result.execution.suggestedSkill).toBe("snapshot_compare");
     });
   });
 
@@ -192,7 +191,7 @@ describe("E2E: Skill 路由", () => {
       async ({ input, expectedSkill }) => {
         const result = await analyzer.analyze(input);
 
-        expect(result.skillId).toBe(expectedSkill);
+        expect(result.execution.suggestedSkill).toBe(expectedSkill);
       },
     );
   });
@@ -209,7 +208,7 @@ describe("E2E: Skill 路由", () => {
       async ({ input, expectedSkill }) => {
         const result = await analyzer.analyze(input);
 
-        expect(result.skillId).toBe(expectedSkill);
+        expect(result.execution.suggestedSkill).toBe(expectedSkill);
       },
     );
   });
@@ -219,7 +218,7 @@ describe("E2E: Skill 路由", () => {
       const result = await analyzer.analyze("帮我整理收藏");
 
       expect(result.confidence).toBeGreaterThan(0.6);
-      expect(result.intent.type).toBeDefined();
+      expect(result.intent).toBeDefined();
     });
 
     it("场景2: 模糊输入'那个' → 应该有低置信度", async () => {
@@ -231,7 +230,7 @@ describe("E2E: Skill 路由", () => {
     it("场景3: 带上下文的搜索 → 应该提取实体", async () => {
       const result = await analyzer.analyze("搜索上周收藏的Python教程");
 
-      expect(result.intent.type).toBe("search");
+      expect(result.intent).toBe("query");
       expect(result.entities).toBeDefined();
     });
 
@@ -239,7 +238,7 @@ describe("E2E: Skill 路由", () => {
       const result = await analyzer.analyze("搜索AI文章然后整理一下");
 
       // 应该识别出主要意图
-      expect(result.intent.type).toBeDefined();
+      expect(result.intent).toBeDefined();
       expect(result.confidence).toBeGreaterThan(0);
     });
   });

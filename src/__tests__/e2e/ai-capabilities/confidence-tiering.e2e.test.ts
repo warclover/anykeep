@@ -14,7 +14,7 @@ import {
   getOperationRiskLevel,
 } from "@/lib/shared/types/confidence";
 import {
-  calculateEnhancedConfidence,
+  calculateEnhancedConfidenceFromInput,
   type EnhancedConfidenceInput,
 } from "@/lib/ai-agent/context/enhanced-confidence";
 
@@ -59,26 +59,26 @@ describe("E2E: 置信度分层执行", () => {
   });
 
   describe("getSuggestedStrategy", () => {
-    it("高置信度应该返回 silent_execute 策略", () => {
+    it("高置信度应该返回 silent 策略", () => {
       const strategy = getSuggestedStrategy(0.85);
-      expect(strategy).toBe("silent_execute");
+      expect(strategy).toBe("silent");
     });
 
-    it("中置信度应该返回 execute_with_explanation 策略", () => {
+    it("中置信度应该返回 explain 策略", () => {
       const strategy = getSuggestedStrategy(0.7);
-      expect(strategy).toBe("execute_with_explanation");
+      expect(strategy).toBe("explain");
     });
 
-    it("低置信度应该返回 ask_clarification 策略", () => {
+    it("低置信度应该返回 clarify 策略", () => {
       const strategy = getSuggestedStrategy(0.5);
-      expect(strategy).toBe("ask_clarification");
+      expect(strategy).toBe("clarify");
     });
 
     it("边界值测试", () => {
-      expect(getSuggestedStrategy(0.8)).toBe("silent_execute");
-      expect(getSuggestedStrategy(0.799)).toBe("execute_with_explanation");
-      expect(getSuggestedStrategy(0.6)).toBe("execute_with_explanation");
-      expect(getSuggestedStrategy(0.599)).toBe("ask_clarification");
+      expect(getSuggestedStrategy(0.8)).toBe("silent");
+      expect(getSuggestedStrategy(0.799)).toBe("explain");
+      expect(getSuggestedStrategy(0.6)).toBe("explain");
+      expect(getSuggestedStrategy(0.599)).toBe("clarify");
     });
   });
 
@@ -162,17 +162,17 @@ describe("E2E: 置信度分层执行", () => {
         historyMatch: 0.7,
       };
 
-      const result = calculateEnhancedConfidence(input);
+      const result = calculateEnhancedConfidenceFromInput(input);
 
       expect(result.enhancedConfidence).toBeDefined();
       expect(result.enhancedConfidence).toBeGreaterThan(0);
       expect(result.enhancedConfidence).toBeLessThanOrEqual(1);
       expect(result.factors).toBeDefined();
       expect(result.level).toBeDefined();
-      expect(result.strategy).toBeDefined();
+      expect(result.suggestedStrategy).toBeDefined();
     });
 
-    it("高置信度输入应该产生 silent_execute 策略", () => {
+    it("高置信度输入应该产生 silent 策略", () => {
       const input: EnhancedConfidenceInput = {
         ruleConfidence: 0.9,
         contextRelevance: 0.95,
@@ -181,13 +181,13 @@ describe("E2E: 置信度分层执行", () => {
         historyMatch: 0.9,
       };
 
-      const result = calculateEnhancedConfidence(input);
+      const result = calculateEnhancedConfidenceFromInput(input);
 
       expect(result.level).toBe("high");
-      expect(result.strategy).toBe("silent_execute");
+      expect(result.suggestedStrategy).toBe("silent");
     });
 
-    it("低置信度输入应该产生 ask_clarification 策略", () => {
+    it("低置信度输入应该产生 clarify 策略", () => {
       const input: EnhancedConfidenceInput = {
         ruleConfidence: 0.3,
         contextRelevance: 0.4,
@@ -196,10 +196,10 @@ describe("E2E: 置信度分层执行", () => {
         historyMatch: 0.2,
       };
 
-      const result = calculateEnhancedConfidence(input);
+      const result = calculateEnhancedConfidenceFromInput(input);
 
       expect(result.level).toBe("low");
-      expect(result.strategy).toBe("ask_clarification");
+      expect(result.suggestedStrategy).toBe("clarify");
     });
 
     it("因素权重应该正确应用", () => {
@@ -211,7 +211,7 @@ describe("E2E: 置信度分层执行", () => {
         historyMatch: 0.0, // 10%
       };
 
-      const result = calculateEnhancedConfidence(input);
+      const result = calculateEnhancedConfidenceFromInput(input);
 
       // 只有 ruleConfidence 为 1.0，权重 40%
       expect(result.enhancedConfidence).toBeCloseTo(0.4, 1);
@@ -228,10 +228,10 @@ describe("E2E: 置信度分层执行", () => {
         historyMatch: 0.8,
       };
 
-      const result = calculateEnhancedConfidence(input);
+      const result = calculateEnhancedConfidenceFromInput(input);
 
       expect(result.level).toBe("high");
-      expect(result.strategy).toBe("silent_execute");
+      expect(result.suggestedStrategy).toBe("silent");
       expect(requiresConfirmation("search", result.enhancedConfidence)).toBe(
         false,
       );
@@ -246,10 +246,10 @@ describe("E2E: 置信度分层执行", () => {
         historyMatch: 0.5,
       };
 
-      const result = calculateEnhancedConfidence(input);
+      const result = calculateEnhancedConfidenceFromInput(input);
 
       expect(result.level).toBe("medium");
-      expect(result.strategy).toBe("execute_with_explanation");
+      expect(result.suggestedStrategy).toBe("explain");
     });
 
     it("场景3: 含糊请求 → 低置信度 → 请求澄清", () => {
@@ -261,10 +261,10 @@ describe("E2E: 置信度分层执行", () => {
         historyMatch: 0.3,
       };
 
-      const result = calculateEnhancedConfidence(input);
+      const result = calculateEnhancedConfidenceFromInput(input);
 
       expect(result.level).toBe("low");
-      expect(result.strategy).toBe("ask_clarification");
+      expect(result.suggestedStrategy).toBe("clarify");
     });
 
     it("场景4: 高风险操作即使高置信度也需要确认", () => {
@@ -276,7 +276,7 @@ describe("E2E: 置信度分层执行", () => {
         historyMatch: 0.9,
       };
 
-      const result = calculateEnhancedConfidence(input);
+      const result = calculateEnhancedConfidenceFromInput(input);
 
       expect(result.level).toBe("high");
       // 删除操作始终需要确认
