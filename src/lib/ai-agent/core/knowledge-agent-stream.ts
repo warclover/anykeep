@@ -308,6 +308,7 @@ export class KnowledgeAgentStreamExecutor {
    * 构建工具集
    *
    * 性能优化：根据意图类型智能加载工具
+   * - 高置信度精确意图：单工具模式（最优）
    * - 简单意图 + 高置信度：仅加载 Data Tools（跳过 Skills）
    * - 复杂意图或低置信度：加载 Skills + Data Tools
    * - 无意图信息：全量加载（兼容旧逻辑）
@@ -315,9 +316,10 @@ export class KnowledgeAgentStreamExecutor {
   private buildTools(context: AgentContext, input: string) {
     // 1. 首先加载 Data Tools（意图驱动）
     let dataTools;
+    let isPreciseMode = false;
     if (context.intentType) {
       // 有意图信息：按需加载工具
-      dataTools = getToolsForIntentAsVercel(
+      const result = getToolsForIntentAsVercel(
         context.intentType,
         context.intentSubType,
         context.intentConfidence ?? 0.7,
@@ -330,12 +332,16 @@ export class KnowledgeAgentStreamExecutor {
             : undefined,
         },
       );
+      dataTools = result.tools;
+      isPreciseMode = result.selectionResult.isPreciseMode;
 
       log.info(
         {
           intentType: context.intentType,
           intentSubType: context.intentSubType,
           intentConfidence: context.intentConfidence,
+          isPreciseMode,
+          preciseTool: result.selectionResult.preciseTool,
           dataToolCount: Object.keys(dataTools).length,
           dataToolNames: Object.keys(dataTools).slice(0, 10),
         },
@@ -363,16 +369,19 @@ export class KnowledgeAgentStreamExecutor {
       context.intentType && SIMPLE_INTENT_TYPES.has(context.intentType);
     const isHighConfidence = confidence >= SKILLS_CONFIDENCE_THRESHOLD;
 
-    // 简单意图 + 高置信度 = 跳过 Skills
-    if (isSimpleIntent && isHighConfidence) {
+    // 精确模式或（简单意图 + 高置信度）= 跳过 Skills
+    if (isPreciseMode || (isSimpleIntent && isHighConfidence)) {
       log.info(
         {
           intentType: context.intentType,
           confidence,
+          isPreciseMode,
           finalToolCount: Object.keys(dataTools).length,
           skippedSkills: true,
         },
-        "Skipping Skills for simple intent with high confidence",
+        isPreciseMode
+          ? "Using precise single-tool mode, skipping Skills"
+          : "Skipping Skills for simple intent with high confidence",
       );
       return dataTools;
     }

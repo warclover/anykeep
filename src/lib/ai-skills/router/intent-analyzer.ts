@@ -24,9 +24,11 @@ import type {
   ComplexityLevel,
   ComplexityFactor,
   RequestContext,
+  IntentSlotSchema,
 } from "./types";
 import type { LLMIntentClassifier } from "./llm-classifier";
 import { createLLMClassifier } from "./llm-classifier";
+import { extractTimeRangeFromText } from "@/lib/ai-agent/tools/shared/time-range.utils";
 
 // ============================================
 // 配置常量（提取自魔法数字）
@@ -181,7 +183,16 @@ export interface AnalysisResult {
   subType?: string;
   confidence: number;
   entities: ExtractedEntity[];
-  source: "rule" | "llm" | "semantic" | "hybrid" | "default";
+  source:
+    | "rule"
+    | "llm"
+    | "semantic"
+    | "hybrid"
+    | "default"
+    | "cache_l1"
+    | "cache_l2";
+  /** 结构化槽位（自动提取的 timeRange 等参数） */
+  slots?: IntentSlotSchema;
 
   // 复杂度信息
   complexity: {
@@ -974,6 +985,13 @@ export class IntentAnalyzer {
           ? this.extractEntities(message)
           : [];
 
+        // 提取时间范围槽位
+        const slots = this.extractTimeRangeSlot(
+          message,
+          llmResult.type as IntentType,
+          llmResult.subType,
+        );
+
         return {
           type: llmResult.type as IntentType,
           subType: llmResult.subType,
@@ -985,6 +1003,7 @@ export class IntentAnalyzer {
             llmResult.subType,
           ),
           source: "llm",
+          slots,
         };
       }
     }
@@ -1000,6 +1019,13 @@ export class IntentAnalyzer {
           ? this.extractEntities(message)
           : [];
 
+        // 提取时间范围槽位
+        const slots = this.extractTimeRangeSlot(
+          message,
+          rule.type,
+          rule.subType,
+        );
+
         return {
           type: rule.type,
           subType: rule.subType,
@@ -1011,6 +1037,7 @@ export class IntentAnalyzer {
             rule.subType,
           ),
           source: "rule",
+          slots,
         };
       }
     }
@@ -1037,6 +1064,45 @@ export class IntentAnalyzer {
     }
 
     return entities;
+  }
+
+  /**
+   * 从用户输入提取时间范围槽位
+   *
+   * @param message - 用户输入
+   * @param intentType - 意图类型
+   * @param subType - 意图子类型
+   * @returns IntentSlotSchema 或 undefined
+   */
+  private extractTimeRangeSlot(
+    message: string,
+    intentType: IntentType,
+    subType?: string,
+  ): IntentSlotSchema | undefined {
+    const timeRange = extractTimeRangeFromText(message);
+
+    if (!timeRange) {
+      return undefined;
+    }
+
+    const intentKey = subType
+      ? `${intentType}:${subType}`
+      : `${intentType}:general`;
+
+    return {
+      intentType: intentKey as `${IntentType}:${string}`,
+      slots: {
+        timeRange: {
+          name: "timeRange",
+          value: timeRange,
+          type: "string",
+          confidence: CONFIDENCE_THRESHOLDS.ENTITY_CONFIDENCE,
+          required: false,
+          source: "extracted",
+        },
+      },
+      completeness: 1.0,
+    };
   }
 
   private calculateConfidence(message: string, rule: IntentRule): number {

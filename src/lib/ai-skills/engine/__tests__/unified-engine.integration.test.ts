@@ -414,9 +414,14 @@ describe("UnifiedEngine Integration Tests", () => {
         chunks.push(chunk);
       }
 
-      // Should have error chunk
-      const errorChunk = chunks.find((c) => c.type === "error");
-      expect(errorChunk).toBeDefined();
+      // AtomicFallbackHandler 会生成降级响应而非错误块
+      // 应该有 fallback 块（表示降级）和 done 块（表示完成但失败）
+      const fallbackChunk = chunks.find((c) => c.type === "fallback");
+      expect(fallbackChunk).toBeDefined();
+
+      const doneChunk = chunks.find((c) => c.type === "done");
+      expect(doneChunk).toBeDefined();
+      expect(doneChunk?.data).toHaveProperty("success", false);
     });
 
     it("should handle orchestration skill errors with fallback to atomic", async () => {

@@ -67,7 +67,10 @@ export * from "./events";
 // 工具分层（v2.7.0 性能优化）
 export * from "./tool-layers";
 export * from "./intent-tool-mapping";
-import { getToolsForIntent } from "./intent-tool-mapping";
+import {
+  getToolsForIntentWithDetails,
+  type ToolSelectionResult,
+} from "./intent-tool-mapping";
 
 // Tool 注册表
 export { ToolRegistry, toolRegistry } from "./tool-registry";
@@ -220,8 +223,9 @@ export function getToolsAsVercelTools(context: {
  * 根据意图获取 Tools 作为 Vercel AI SDK 格式（性能优化）
  *
  * 意图驱动的智能工具加载：
- * - 简单查询只加载 8 个核心工具
- * - 复杂操作按意图类型加载相关工具集
+ * - 高置信度精确意图：单工具模式（1个工具）
+ * - 简单查询：仅加载 8 个核心工具
+ * - 复杂操作：按意图类型加载相关工具集
  * - Token 消耗减少 60-90%
  *
  * @param intentType - 意图类型
@@ -229,6 +233,7 @@ export function getToolsAsVercelTools(context: {
  * @param confidence - 意图置信度
  * @param userInput - 用户输入（用于检测 Extended Tools）
  * @param context - 工具执行上下文
+ * @returns 工具集和选择结果信息
  */
 export function getToolsForIntentAsVercel(
   intentType: string,
@@ -240,15 +245,39 @@ export function getToolsForIntentAsVercel(
     conversationId?: string;
     onSearchResults?: (info: { query: string; resultIds: number[] }) => void;
   },
-) {
-  // 获取需要加载的工具名称列表
-  const toolNames = getToolsForIntent(
-    intentType,
+): {
+  tools: ReturnType<typeof toolRegistry.getToolsByNames>;
+  selectionResult: ToolSelectionResult;
+} {
+  // 获取需要加载的工具名称列表（带详细信息）
+  const selectionResult = getToolsForIntentWithDetails(
+    intentType as Parameters<typeof getToolsForIntentWithDetails>[0],
     subType,
     confidence,
     userInput,
   );
 
+  // 日志：工具加载决策
+  logger.info(
+    {
+      intentType,
+      subType,
+      confidence: confidence.toFixed(2),
+      isPreciseMode: selectionResult.isPreciseMode,
+      preciseTool: selectionResult.preciseTool,
+      toolCount: selectionResult.tools.length,
+      tools:
+        selectionResult.tools.slice(0, 5).join(", ") +
+        (selectionResult.tools.length > 5
+          ? ` (+${selectionResult.tools.length - 5} more)`
+          : ""),
+      reason: selectionResult.debug?.reason,
+    },
+    "Tool Selection: Intent-driven tool loading",
+  );
+
   // 从注册表获取对应的工具
-  return toolRegistry.getToolsByNames(toolNames, context);
+  const tools = toolRegistry.getToolsByNames(selectionResult.tools, context);
+
+  return { tools, selectionResult };
 }

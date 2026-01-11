@@ -50,6 +50,10 @@ import { getRequestRegistry } from "@/lib/ai-skills/engine/request-registry";
 import { logger } from "@/lib/logger";
 import { checkRateLimit } from "@/lib/utils/rate-limiter";
 import type { ToolType } from "@/components/ai/phase4/types";
+import {
+  parseDebugOverrides,
+  getOverridesSummary,
+} from "@/lib/ai-agent/config/feature-flag-overrides";
 
 /**
  * 请求体 Schema
@@ -201,7 +205,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 2. 解析并验证请求体
+    // 2. 解析调试覆盖配置（从 Cookie）
+    const debugOverrides = parseDebugOverrides(request);
+    if (debugOverrides?.enabled) {
+      logger.debug(
+        {
+          userId: user.id.slice(0, 8) + "...",
+          overrides: getOverridesSummary(debugOverrides),
+        },
+        "Unified API: Debug overrides detected",
+      );
+    }
+
+    // 3. 解析并验证请求体
     const body = await request.json();
     const validation = unifiedChatRequestSchema.safeParse(body);
 
@@ -348,6 +364,7 @@ export async function POST(request: NextRequest) {
           attachmentBookmarkIds,
           attachmentMetadata,
           episodicMemory, // 传递情景记忆
+          debugOverrides, // 传递调试覆盖配置
         },
         {
           includeRoutingInfo: options?.includeRoutingInfo,

@@ -114,7 +114,7 @@ export interface LLMClassifierConfig {
   maxRetries?: number;
   /** 是否启用缓存，默认 true */
   cacheEnabled?: boolean;
-  /** 缓存 TTL（毫秒），默认 60000（1 分钟） */
+  /** 缓存 TTL（毫秒），默认 300000（5 分钟） */
   cacheTTLMs?: number;
   /** 是否启用调试模式 */
   debug?: boolean;
@@ -270,7 +270,7 @@ export class LLMIntentClassifier {
       timeoutMs: config.timeoutMs ?? 1500, // Slow Track: ≤1500ms
       maxRetries: config.maxRetries ?? 1,
       cacheEnabled: config.cacheEnabled ?? true,
-      cacheTTLMs: config.cacheTTLMs ?? 60000,
+      cacheTTLMs: config.cacheTTLMs ?? 300000, // Phase 1: 5 分钟 (原 60s)
       debug: config.debug ?? false,
       temperature: config.temperature ?? 0.3,
       enableSlotExtraction: config.enableSlotExtraction ?? false,

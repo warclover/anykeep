@@ -3,11 +3,12 @@
  *
  * 管理所有 AI Tools 的注册、查询和导出
  *
- * @version 2.1.0 - 高风险操作确认拦截
+ * @version 2.2.0 - 意图驱动的智能工具加载
  * @since 2025-12-23
  * @updated 2025-12-29 添加 riskLevel 统计和扩展分类支持
  * @updated 2026-01-06 添加工具调用事件发射 (P2-3)
  * @updated 2026-01-09 添加 ConfirmationInterceptor 集成 (Phase 1)
+ * @updated 2026-01-11 添加 getToolsForIntent 意图驱动工具选择 (性能优化)
  */
 
 import { z } from "zod";
@@ -471,6 +472,88 @@ export class ToolRegistry {
   clear(): void {
     this.tools.clear();
     logger.info({}, "ToolRegistry: Cleared all tools");
+  }
+
+  /**
+   * 根据意图获取工具（意图驱动的智能加载）
+   *
+   * 性能优化：根据意图类型只加载相关工具，减少 LLM Token 消耗
+   *
+   * @param toolNames - 需要加载的工具名称列表
+   * @param context - 工具执行上下文
+   */
+  getToolsByNames(toolNames: string[], context: ToolContext): ToolSet {
+    const vercelTools: ToolSet = {};
+    let loadedCount = 0;
+    let skippedCount = 0;
+
+    for (const name of toolNames) {
+      const tool = this.tools.get(name);
+      if (!tool) {
+        skippedCount++;
+        continue;
+      }
+
+      loadedCount++;
+      vercelTools[name] = createAITool({
+        description: tool.definition.description,
+        inputSchema: zodSchema(tool.definition.parameters),
+        execute: async (args) => {
+          const reasoning = extractReasoning(args);
+          if (reasoning) {
+            logger.debug(
+              {
+                toolName: name,
+                userId: context.userId,
+                reasoning,
+              },
+              "ToolRegistry (Intent): Tool reasoning captured",
+            );
+          }
+
+          const result = await this.execute(name, args, context);
+          if (result.success) {
+            // 检测搜索工具执行成功，记录搜索结果到会话
+            if (
+              tool.definition.category === "search" &&
+              context.onSearchResults
+            ) {
+              const searchData = result.data as {
+                query?: string;
+                results?: Array<{ id: number }>;
+              };
+              if (searchData.query && Array.isArray(searchData.results)) {
+                const resultIds = searchData.results.map((r) => r.id);
+                context.onSearchResults({
+                  query: searchData.query,
+                  resultIds,
+                });
+              }
+            }
+            return result.data;
+          }
+          throw new Error(result.error);
+        },
+      });
+    }
+
+    logger.info(
+      {
+        requested: toolNames.length,
+        loaded: loadedCount,
+        skipped: skippedCount,
+      },
+      "ToolRegistry: Tools loaded by intent",
+    );
+
+    return vercelTools;
+  }
+
+  /**
+   * 获取工具数量
+   */
+  get size(): number {
+    return this.tools.size;
   }
 }
 
