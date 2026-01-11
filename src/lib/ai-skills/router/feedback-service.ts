@@ -477,9 +477,27 @@ export class FeedbackService {
   // ============================================
 
   /**
+   * 验证 UUID 格式
+   */
+  private isValidUUID(value: string): boolean {
+    const uuidRegex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(value);
+  }
+
+  /**
    * 写入单条反馈
    */
   private async writeFeedback(record: FeedbackRecord): Promise<boolean> {
+    // 验证 sessionId 是否为有效 UUID（数据库要求）
+    if (!this.isValidUUID(record.sessionId)) {
+      logger.debug(
+        { sessionId: record.sessionId, userId: record.userId },
+        "FeedbackService: Skipped - invalid sessionId (not a valid UUID)",
+      );
+      return false;
+    }
+
     try {
       const supabase = this.isServer
         ? await createServiceClient()

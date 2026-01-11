@@ -76,6 +76,9 @@ jest.mock("@/lib/supabase/server", () => ({
   ),
 }));
 
+// 测试用的有效 UUID
+const TEST_SESSION_ID = "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d";
+
 describe("FeedbackService", () => {
   let service: FeedbackService;
 
@@ -113,7 +116,7 @@ describe("FeedbackService", () => {
     it("should record feedback successfully", async () => {
       const record: FeedbackRecord = {
         userId: "user-123",
-        sessionId: "session-456",
+        sessionId: TEST_SESSION_ID,
         turnId: "turn-789",
         originalInput: "搜索 React 教程",
         predictedType: "query",
@@ -132,7 +135,7 @@ describe("FeedbackService", () => {
 
       const record: FeedbackRecord = {
         userId: "user-123",
-        sessionId: "session-456",
+        sessionId: TEST_SESSION_ID,
         turnId: "turn-789",
         originalInput: "搜索 React 教程",
         predictedType: "query",
@@ -151,7 +154,7 @@ describe("FeedbackService", () => {
     it("should record accepted feedback", async () => {
       const result = await service.recordAccepted({
         userId: "user-123",
-        sessionId: "session-456",
+        sessionId: TEST_SESSION_ID,
         turnId: "turn-789",
         originalInput: "搜索 React",
         predictedType: "query",
@@ -167,7 +170,7 @@ describe("FeedbackService", () => {
     it("should record corrected feedback with correction info", async () => {
       const result = await service.recordCorrected({
         userId: "user-123",
-        sessionId: "session-456",
+        sessionId: TEST_SESSION_ID,
         turnId: "turn-789",
         originalInput: "整理一下",
         predictedType: "organize",
@@ -185,7 +188,7 @@ describe("FeedbackService", () => {
     it("should record abandoned feedback", async () => {
       const result = await service.recordAbandoned({
         userId: "user-123",
-        sessionId: "session-456",
+        sessionId: TEST_SESSION_ID,
         turnId: "turn-789",
         originalInput: "不清楚的请求",
         predictedType: "unknown",
@@ -285,7 +288,7 @@ describe("FeedbackService", () => {
       for (const behavior of behaviors) {
         const record: FeedbackRecord = {
           userId: "user-123",
-          sessionId: "session-456",
+          sessionId: TEST_SESSION_ID,
           turnId: `turn-${behavior}`,
           originalInput: "测试消息",
           predictedType: "query",
@@ -305,7 +308,7 @@ describe("FeedbackService", () => {
     it("should include metadata in feedback", async () => {
       const record: FeedbackRecord = {
         userId: "user-123",
-        sessionId: "session-456",
+        sessionId: TEST_SESSION_ID,
         turnId: "turn-789",
         originalInput: "搜索 React",
         predictedType: "query",
