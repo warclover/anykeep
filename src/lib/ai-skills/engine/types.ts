@@ -8,6 +8,8 @@
 
 import type { CancellationToken } from "../orchestration/types";
 import type { EpisodicMemoryContext } from "../../ai-agent/memory/types";
+import type { DebugOverrideConfig } from "../../ai-agent/config/feature-flag-overrides";
+import type { IntentSlotSchema } from "../router/types";
 
 // 注意：以下类型暂时标记为保留导入，供未来扩展使用
 // import type { AgentContext, AgentExecuteOptions } from "../../ai-agent/core/types";
@@ -96,6 +98,21 @@ export interface EngineContext {
   lastSearchResults?: LastSearchResults;
   /** 情景记忆上下文（跨会话记忆） */
   episodicMemory?: EpisodicMemoryContext;
+  /** 调试覆盖配置（来自 Cookie） */
+  debugOverrides?: DebugOverrideConfig | null;
+
+  // ============================================
+  // 意图驱动工具加载（性能优化）
+  // ============================================
+
+  /** 意图类型（用于智能工具加载） */
+  intentType?: string;
+  /** 意图子类型 */
+  intentSubType?: string;
+  /** 意图置信度 */
+  intentConfidence?: number;
+  /** 意图槽位（时间范围等结构化参数） */
+  slots?: IntentSlotSchema;
 }
 
 /**

@@ -14,8 +14,64 @@ import type { CoreMessage } from "ai";
 import type { AgentContext, AgentMessage, AgentConfig } from "./types";
 import { mergeSystemPromptAsync, type DynamicContext } from "../context";
 import { logger } from "@/lib/logger";
+import type { IntentSlotSchema } from "@/lib/ai-skills/router/types";
 
 const log = logger.child({ namespace: "agent-context" });
+
+/**
+ * 构建槽位提示信息
+ *
+ * 将预提取的参数信息注入到提示中，指导 LLM 使用这些参数
+ *
+ * @param slots - 意图槽位
+ * @returns 槽位提示字符串，无槽位时返回空字符串
+ */
+function buildSlotHintPrompt(slots: IntentSlotSchema | undefined): string {
+  if (!slots?.slots || Object.keys(slots.slots).length === 0) {
+    return "";
+  }
+
+  const parts: string[] = [];
+
+  // 处理 timeRange 槽位
+  const timeRangeSlot = slots.slots.timeRange;
+  if (timeRangeSlot?.value && typeof timeRangeSlot.value === "string") {
+    const timeRange = timeRangeSlot.value;
+    const timeRangeLabels: Record<string, string> = {
+      today: "今天",
+      yesterday: "昨天",
+      week: "本周",
+      last_week: "上周",
+      month: "本月",
+      last_month: "上月",
+      quarter: "本季度",
+      year: "今年",
+      all: "全部时间",
+    };
+    const label = timeRangeLabels[timeRange] || timeRange;
+    parts.push(`- 时间范围: ${label} (timeRange: "${timeRange}")`);
+  }
+
+  // 处理其他槽位（未来扩展）
+  for (const [key, slot] of Object.entries(slots.slots)) {
+    if (key === "timeRange") continue; // 已处理
+    if (slot.value !== undefined && slot.value !== null) {
+      parts.push(`- ${slot.name || key}: ${String(slot.value)}`);
+    }
+  }
+
+  if (parts.length === 0) {
+    return "";
+  }
+
+  return `
+【预提取参数】
+用户意图已分析，以下参数已从用户输入中提取：
+${parts.join("\n")}
+
+重要：调用工具时请使用上述预提取的参数值。例如，如果用户问"今天有多少收藏"，应使用 timeRange="today" 调用 count_total 工具。
+`;
+}
 
 /**
  * 会话消息容器接口
@@ -72,6 +128,21 @@ export class KnowledgeAgentContextBuilder {
           enablePersonaInference,
           userId,
         },
+      );
+    }
+
+    // 注入预提取的槽位参数（timeRange 等）
+    const slotHint = buildSlotHintPrompt(context.slots);
+    if (slotHint) {
+      systemPrompt = `${systemPrompt}\n${slotHint}`;
+      log.debug(
+        {
+          intentType: context.slots?.intentType,
+          slotKeys: context.slots?.slots
+            ? Object.keys(context.slots.slots)
+            : [],
+        },
+        "Slot hint injected into system prompt",
       );
     }
 

@@ -31,6 +31,7 @@
  */
 
 import { logger } from "@/lib/logger";
+import { FeatureFlags } from "@/lib/ai-agent/config/feature-flags";
 import type {
   IntentType,
   IntentClassification,
@@ -40,10 +41,12 @@ import type {
   IntentCandidate,
   MultiCandidateResult,
   DisambiguationRule,
+  IntentSlotSchema,
 } from "./types";
 import { DISAMBIGUATION_RULES, findMatchingRule } from "./disambiguation-rules";
 import type { LLMIntentClassifier } from "./llm-classifier";
 import { createLLMClassifier } from "./llm-classifier";
+import { extractTimeRangeFromText } from "@/lib/ai-agent/tools/shared/time-range.utils";
 
 /**
  * 默认意图分类规则
@@ -819,6 +822,47 @@ export const DEFAULT_RULES: IntentRule[] = [
     complexity: "simple",
     weight: 83,
   },
+  // --------------------------------------------
+  // 文件夹列表查询规则 (2026-01-11 修复空响应问题)
+  // --------------------------------------------
+  {
+    // 规则 FL1: "我有哪些文件夹" 模式
+    // 示例: "我有哪些文件夹"、"有哪些文件夹"、"我的文件夹有哪些"
+    pattern: /(我|用户)?(有哪些|有什么|都有什么).{0,3}(文件夹|目录|收藏夹)/,
+    type: "query",
+    subType: "list_folders",
+    complexity: "simple",
+    weight: 85,
+  },
+  {
+    // 规则 FL2: "文件夹有哪些" 模式
+    // 示例: "文件夹有哪些"、"我的文件夹有哪些"、"收藏夹都有哪些"
+    // 注意：排除 "X文件夹里有什么"（这是搜索文件夹内容，不是列出文件夹）
+    pattern:
+      /^(我的|用户的)?(文件夹|目录|收藏夹)(有哪些|有什么|都有什么|是什么|一共有几个)/,
+    type: "query",
+    subType: "list_folders",
+    complexity: "simple",
+    weight: 85,
+  },
+  {
+    // 规则 FL3: "列出/显示文件夹" 模式
+    // 示例: "列出文件夹"、"显示所有文件夹"、"查看文件夹列表"
+    pattern: /(列出|显示|查看).{0,5}(所有|全部)?.{0,3}(文件夹|目录|收藏夹)/,
+    type: "query",
+    subType: "list_folders",
+    complexity: "simple",
+    weight: 86,
+  },
+  {
+    // 规则 FL4: "文件夹列表" 模式
+    // 示例: "文件夹列表"、"目录结构"、"收藏夹结构"
+    pattern: /(文件夹|目录|收藏夹).{0,3}(列表|结构|清单)/,
+    type: "query",
+    subType: "list_folders",
+    complexity: "simple",
+    weight: 84,
+  },
   {
     // 规则 S7: 分类筛选查询
     // 示例: "找出所有技术类的"、"全部学习相关的"
@@ -1589,6 +1633,13 @@ export class IntentClassifier {
           ? this.extractEntities(message)
           : [];
 
+        // 提取时间范围槽位
+        const slots = this.extractTimeRangeSlot(
+          message,
+          llmResult.type as IntentType,
+          llmResult.subType,
+        );
+
         const classification: IntentClassification = {
           type: llmResult.type as IntentType,
           subType: llmResult.subType,
@@ -1602,6 +1653,7 @@ export class IntentClassifier {
             llmResult.subType,
           ),
           source: "llm",
+          slots,
         };
 
         return classification;
@@ -1674,6 +1726,13 @@ export class IntentClassifier {
           ? this.extractEntities(message)
           : [];
 
+        // 提取时间范围槽位
+        const slots = this.extractTimeRangeSlot(
+          message,
+          rule.type,
+          rule.subType,
+        );
+
         return {
           type: rule.type,
           subType: rule.subType,
@@ -1682,6 +1741,7 @@ export class IntentClassifier {
           requiresMultiStep: this.isMultiStepTask(rule),
           hasDeliverableExpectation: this.expectsDeliverable(rule),
           source: "rule",
+          slots,
         };
       }
     }
@@ -1710,6 +1770,45 @@ export class IntentClassifier {
     }
 
     return entities;
+  }
+
+  /**
+   * 从用户输入提取时间范围槽位
+   *
+   * @param message - 用户输入
+   * @param intentType - 意图类型
+   * @param subType - 意图子类型
+   * @returns IntentSlotSchema 或 undefined
+   */
+  private extractTimeRangeSlot(
+    message: string,
+    intentType: IntentType,
+    subType?: string,
+  ): IntentSlotSchema | undefined {
+    const timeRange = extractTimeRangeFromText(message);
+
+    if (!timeRange) {
+      return undefined;
+    }
+
+    const intentKey = subType
+      ? `${intentType}:${subType}`
+      : `${intentType}:general`;
+
+    return {
+      intentType: intentKey as `${IntentType}:${string}`,
+      slots: {
+        timeRange: {
+          name: "timeRange",
+          value: timeRange,
+          type: "string",
+          confidence: 0.9,
+          required: false,
+          source: "extracted",
+        },
+      },
+      completeness: 1.0,
+    };
   }
 
   /**
@@ -1830,15 +1929,38 @@ export class IntentClassifier {
     for (const rule of this.rules) {
       const match = rule.pattern.exec(message);
       if (match) {
-        candidates.push({
+        const confidence = this.calculateConfidence(message, rule);
+        const candidate: IntentCandidate = {
           pattern: rule.pattern.source,
           type: rule.type,
           subType: rule.subType,
           weight: rule.weight || 0,
           matchIndex: match.index,
-          confidence: this.calculateConfidence(message, rule),
+          confidence,
           complexity: rule.complexity,
-        });
+        };
+        candidates.push(candidate);
+
+        // ========================================
+        // 高权重规则短路优化
+        // 权重 ≥95 且置信度 ≥0.9 时，跳过剩余规则遍历
+        // ========================================
+        if (
+          FeatureFlags.ENABLE_EARLY_RETURN &&
+          (rule.weight || 0) >= 95 &&
+          confidence >= 0.9
+        ) {
+          logger.debug(
+            {
+              pattern: rule.pattern.source.slice(0, 50),
+              weight: rule.weight,
+              confidence,
+              skippedRules: this.rules.length - this.rules.indexOf(rule) - 1,
+            },
+            "IntentClassifier: Early return (high weight rule)",
+          );
+          break; // 跳过剩余规则
+        }
       }
     }
 

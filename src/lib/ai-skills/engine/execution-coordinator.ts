@@ -516,6 +516,12 @@ export class ExecutionCoordinator {
       traceId: context.traceId,
       systemPrompt: systemPrompt || undefined,
       onSearchResults: context.onSearchResults,
+      // 意图驱动工具加载（性能优化）
+      intentType: context.intentType,
+      intentSubType: context.intentSubType,
+      intentConfidence: context.intentConfidence,
+      // 意图槽位（包含 timeRange 等预提取参数）
+      slots: context.slots,
     };
   }
 }

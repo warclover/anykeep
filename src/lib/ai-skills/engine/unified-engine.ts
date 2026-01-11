@@ -79,7 +79,7 @@ import {
   getWorkflowModeExecutor,
   type WorkflowExecuteResult,
 } from "@/lib/workflow/integration";
-import { isWorkflowConversationTriggerEnabled } from "../../ai-agent/config/feature-flags";
+import { isWorkflowTriggerEnabled } from "../../ai-agent/config/feature-flag-overrides";
 import {
   type PersonalizedLearningIntegration,
   createPersonalizedLearningIntegration,
@@ -334,8 +334,8 @@ export class UnifiedEngine {
       return;
     }
 
-    // 2.5 工作流模式检测（Feature Flag 控制）
-    if (isWorkflowConversationTriggerEnabled()) {
+    // 2.5 工作流模式检测（Feature Flag 控制，支持调试覆盖）
+    if (isWorkflowTriggerEnabled(context.debugOverrides ?? null)) {
       const workflowExecutor = getWorkflowModeExecutor();
       const workflowResult = await workflowExecutor.tryExecuteWorkflow(
         processedInput,
@@ -729,6 +729,29 @@ export class UnifiedEngine {
         }
       }
 
+      // ========== 意图驱动工具加载（性能优化）==========
+      // 将意图信息注入上下文，供 KnowledgeAgentStreamExecutor 使用
+      effectiveContext = {
+        ...effectiveContext,
+        intentType: effectiveIntent.type,
+        intentSubType: effectiveIntent.subType,
+        intentConfidence: effectiveIntent.confidence ?? 0.7,
+        slots: effectiveIntent.slots,
+      };
+
+      if (this.config.debug) {
+        logger.debug(
+          {
+            intentType: effectiveIntent.type,
+            intentSubType: effectiveIntent.subType,
+            intentConfidence: effectiveIntent.confidence,
+            slots: effectiveIntent.slots,
+          },
+          "UnifiedEngine: Intent injected for tool loading optimization",
+        );
+      }
+      // ========== 意图驱动工具加载结束 ==========
+
       // 执行成功标志（用于意图记录）
       const executionSuccess = true;
 
@@ -943,11 +966,13 @@ export class UnifiedEngine {
       shortcutResult;
 
     if (!shortcut || !intentType) {
-      // 快捷指令匹配数据不完整，回退到正常路由
+      // 快捷指令匹配数据不完整，回退到正常路由执行
       logger.warn(
         { shortcutResult },
         "UnifiedEngine: Shortcut match incomplete, falling back to normal routing",
       );
+      // 修复：回退到原子模式执行，而不是直接 return 导致空响应
+      yield* this.executionCoordinator.executeAtomic(input, context);
       return;
     }
 

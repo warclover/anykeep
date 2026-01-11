@@ -8,6 +8,7 @@
 import type { CoreMessage, ToolResultPart } from "ai";
 import type { PendingConfirmation } from "../tools/types";
 import type { DynamicContext, SessionContext } from "../context/types";
+import type { IntentSlotSchema } from "../../ai-skills/router/types";
 
 /**
  * Agent 类型枚举
@@ -122,6 +123,19 @@ export interface AgentContext {
   sessionContext?: SessionContext;
   /** 搜索结果记录回调（用于上下文保持） */
   onSearchResults?: (query: string, resultIds: number[]) => void;
+
+  // ============================================
+  // 意图驱动工具加载（性能优化）
+  // ============================================
+
+  /** 意图类型（用于智能工具加载） */
+  intentType?: string;
+  /** 意图子类型 */
+  intentSubType?: string;
+  /** 意图置信度 */
+  intentConfidence?: number;
+  /** 意图槽位（包含 timeRange 等预提取参数） */
+  slots?: IntentSlotSchema;
 }
 
 /**
