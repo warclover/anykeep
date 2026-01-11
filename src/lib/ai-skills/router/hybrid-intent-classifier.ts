@@ -48,8 +48,8 @@ import { ContextEnhancer } from "./context-enhancer";
 export const FAST_TRACK_CONFIG = {
   /** 最大延迟（毫秒） */
   maxLatency: 200,
-  /** 最小置信度（高于此值直接返回） */
-  minConfidence: 0.85,
+  /** 最小置信度（高于此值直接返回，跳过 Slow Track） */
+  minConfidence: 0.7,
   /** 延迟告警阈值（毫秒） */
   warnThreshold: 50,
 } as const;
@@ -128,7 +128,7 @@ export interface HybridIntentClassifierConfig extends IntentClassifierConfig {
   enableSemanticMatching?: boolean;
   /** 语义匹配相似度阈值（默认 0.7） */
   semanticThreshold?: number;
-  /** 规则匹配高置信度阈值（默认 0.85） */
+  /** 规则匹配高置信度阈值（默认 0.7） */
   ruleHighConfidenceThreshold?: number;
   /** 语义覆盖规则的最小相似度差值（默认 0.15） */
   semanticOverrideThreshold?: number;
@@ -169,7 +169,7 @@ export class HybridIntentClassifier {
       debug: config.debug ?? false,
       enableSemanticMatching: config.enableSemanticMatching ?? true,
       semanticThreshold: config.semanticThreshold ?? 0.7,
-      ruleHighConfidenceThreshold: config.ruleHighConfidenceThreshold ?? 0.85,
+      ruleHighConfidenceThreshold: config.ruleHighConfidenceThreshold ?? 0.7,
       semanticOverrideThreshold: config.semanticOverrideThreshold ?? 0.15,
       customRules: config.customRules ?? [],
       disambiguationThreshold: config.disambiguationThreshold ?? 0.15,
