@@ -240,7 +240,7 @@ export class RuleMiner {
       .from("ai_intent_feedback")
       .select("*")
       .gte("created_at", lookbackDate.toISOString())
-      .in("metadata->>source", ["llm", "hybrid"])
+      .or("metadata->>source.eq.llm,metadata->>source.eq.hybrid")
       .order("created_at", { ascending: false })
       .limit(this.config.maxCases);
 

@@ -20,6 +20,7 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { generateEmbedding } from "@/lib/embedding";
 import { logger } from "@/lib/logger";
 import type { IntentClassification } from "./types";
+import type { Json } from "@/types/supabase";
 
 // ============================================
 // 类型定义
@@ -159,14 +160,15 @@ export class SemanticCache {
     try {
       // 计算消息向量
       const embedding = await generateEmbedding(message);
+      // pgvector 需要字符串格式 "[1,2,3,...]"
+      const embeddingStr = `[${embedding.join(",")}]`;
 
       // 向量相似度搜索
       const supabase = await createServiceClient();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase.rpc as any)(
+      const { data, error } = await supabase.rpc(
         "match_intent_cache_semantic",
         {
-          query_embedding: embedding,
+          query_embedding: embeddingStr,
           similarity_threshold: this.config.similarityThreshold,
           match_count: this.config.maxResults,
         },
@@ -275,28 +277,26 @@ export class SemanticCache {
 
       // 计算消息向量
       const embedding = await generateEmbedding(message);
+      // pgvector 需要字符串格式 "[1,2,3,...]"
+      const embeddingStr = `[${embedding.join(",")}]`;
       const inputHash = this.hashMessage(message);
       const normalizedInput = this.normalizeMessage(message);
       const ttlDays = options?.ttlDays ?? this.config.ttlDays;
 
       // 写入数据库
       const supabase = await createServiceClient();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase.rpc as any)(
-        "upsert_intent_cache_semantic",
-        {
-          p_input_hash: inputHash,
-          p_normalized_input: normalizedInput,
-          p_original_message: this.config.storeOriginalMessage ? message : null,
-          p_intent_type: classification.type,
-          p_intent_subtype: classification.subType || null,
-          p_confidence: classification.confidence,
-          p_method: classification.source || "rule",
-          p_slots: classification.slots || {},
-          p_message_embedding: embedding,
-          p_ttl_days: ttlDays,
-        },
-      );
+      const { error } = await supabase.rpc("upsert_intent_cache_semantic", {
+        p_input_hash: inputHash,
+        p_normalized_input: normalizedInput,
+        p_original_message: this.config.storeOriginalMessage ? message : null,
+        p_intent_type: classification.type,
+        p_intent_subtype: classification.subType || null,
+        p_confidence: classification.confidence,
+        p_method: classification.source || "rule",
+        p_slots: (classification.slots || {}) as Json,
+        p_message_embedding: embeddingStr,
+        p_ttl_days: ttlDays,
+      });
 
       if (error) {
         this.stats.writeErrors++;
@@ -343,8 +343,7 @@ export class SemanticCache {
 
     try {
       const supabase = await createServiceClient();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase.rpc as any)(
+      const { data, error } = await supabase.rpc(
         "get_top_intent_cache_entries",
         {
           top_k: topK,
@@ -394,10 +393,7 @@ export class SemanticCache {
   } | null> {
     try {
       const supabase = await createServiceClient();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase.rpc as any)(
-        "get_intent_cache_stats",
-      );
+      const { data, error } = await supabase.rpc("get_intent_cache_stats");
 
       if (error) {
         logger.error(
@@ -418,7 +414,7 @@ export class SemanticCache {
         expiredCount: stats.expired_count,
         totalHits: stats.total_hits,
         avgConfidence: stats.avg_confidence,
-        cacheTypes: stats.cache_types || {},
+        cacheTypes: (stats.cache_types || {}) as Record<string, number>,
       };
     } catch (err) {
       logger.error(
@@ -473,8 +469,7 @@ export class SemanticCache {
    */
   private async incrementHitCount(cacheId: number): Promise<void> {
     const supabase = await createServiceClient();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase.rpc as any)("increment_intent_cache_hit", {
+    await supabase.rpc("increment_intent_cache_hit", {
       p_cache_id: cacheId,
     });
   }

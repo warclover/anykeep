@@ -8154,6 +8154,17 @@ export type Database = {
           user_id: string;
         }[];
       };
+      get_intent_cache_stats: {
+        Args: Record<string, never>;
+        Returns: {
+          total_count: number;
+          with_embedding_count: number;
+          expired_count: number;
+          total_hits: number;
+          avg_confidence: number;
+          cache_types: Json;
+        }[];
+      };
       get_intent_stats: {
         Args: { p_days?: number; p_user_id: string };
         Returns: {
@@ -8649,6 +8660,19 @@ export type Database = {
           is_reverted: boolean;
         }[];
       };
+      get_top_intent_cache_entries: {
+        Args: { top_k?: number };
+        Returns: {
+          id: number;
+          input_hash: string;
+          normalized_input: string;
+          intent_type: string;
+          intent_subtype: string | null;
+          confidence: number;
+          hit_count: number;
+          message_embedding: string | null;
+        }[];
+      };
       get_user_usage_stats: {
         Args: {
           p_end_date?: string;
@@ -8685,6 +8709,10 @@ export type Database = {
       };
       increment_correction_applied_count: {
         Args: { correction_id: string };
+        Returns: undefined;
+      };
+      increment_intent_cache_hit: {
+        Args: { p_cache_id: number };
         Returns: undefined;
       };
       increment_monitor_change_count: {
@@ -8741,6 +8769,25 @@ export type Database = {
       mark_operation_undone: {
         Args: { p_operation_id: string; p_user_id: string };
         Returns: boolean;
+      };
+      match_intent_cache_semantic: {
+        Args: {
+          query_embedding: string;
+          similarity_threshold?: number;
+          match_count?: number;
+        };
+        Returns: {
+          id: number;
+          input_hash: string;
+          normalized_input: string;
+          original_message: string | null;
+          intent_type: string;
+          intent_subtype: string | null;
+          confidence: number;
+          method: string;
+          slots: Json | null;
+          similarity: number;
+        }[];
       };
       merge_folders_atomic: {
         Args: {
@@ -9211,6 +9258,21 @@ export type Database = {
       update_user_trust_mode: {
         Args: { p_reason?: string; p_trust_mode: string; p_user_id: string };
         Returns: Json;
+      };
+      upsert_intent_cache_semantic: {
+        Args: {
+          p_input_hash: string;
+          p_normalized_input: string;
+          p_original_message: string | null;
+          p_intent_type: string;
+          p_intent_subtype: string | null;
+          p_confidence: number;
+          p_method: string;
+          p_slots: Json;
+          p_message_embedding: string;
+          p_ttl_days?: number;
+        };
+        Returns: number;
       };
       upsert_knowledge_link: {
         Args: {
