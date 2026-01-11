@@ -191,3 +191,80 @@ export type {
   RouteLogLevel,
   RouteLoggerConfig,
 } from "./route-logger";
+
+// ============================================
+// Phase 3: 智能进化 - 意图理解优化
+// ============================================
+
+// 意图缓存 (L1 精确匹配)
+export {
+  IntentCache,
+  getIntentCache,
+  resetIntentCache,
+  isIntentCacheInitialized,
+} from "./intent-cache";
+export type {
+  CachedIntentEntry,
+  IntentCacheConfig,
+  IntentCacheStats,
+} from "./intent-cache";
+
+// 语义缓存 (L2 向量匹配)
+export {
+  SemanticCache,
+  getSemanticCache,
+  resetSemanticCache,
+  isSemanticCacheInitialized,
+} from "./semantic-cache";
+export type { SemanticCacheConfig, SemanticCacheStats } from "./semantic-cache";
+
+// 置信度校准器
+export {
+  ConfidenceCalibrator,
+  getConfidenceCalibrator,
+  resetConfidenceCalibrator,
+  calibrateConfidence,
+} from "./confidence-calibrator";
+export type {
+  CalibrationFeatures,
+  CalibrationParams,
+  CalibratorConfig,
+  CalibrationStats,
+} from "./confidence-calibrator";
+
+// 规则挖掘器
+export { RuleMiner, getRuleMiner, resetRuleMiner } from "./rule-miner";
+export type {
+  MiningCase,
+  MessageCluster,
+  CandidateRule,
+  RuleMinerConfig,
+  MiningStats,
+} from "./rule-miner";
+
+// 权重调优器
+export {
+  WeightOptimizer,
+  getWeightOptimizer,
+  resetWeightOptimizer,
+} from "./weight-optimizer";
+export type {
+  RuleStats,
+  WeightUpdate,
+  WeightOptimizerConfig,
+  OptimizerStats,
+} from "./weight-optimizer";
+
+// 反馈服务
+export {
+  FeedbackService,
+  getFeedbackService,
+  resetFeedbackService,
+} from "./feedback-service";
+export type {
+  FeedbackBehavior,
+  FeedbackSource,
+  FeedbackRecord,
+  FeedbackStats,
+  FeedbackServiceConfig,
+} from "./feedback-service";

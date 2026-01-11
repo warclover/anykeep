@@ -39,7 +39,9 @@ import {
   XCircle,
   AlertCircle,
   Copy,
+  Pickaxe,
 } from "lucide-react";
+import { RuleCandidateReview } from "@/components/dev/rule-candidate-review";
 import {
   getAIDebugConfig,
   updateFeatureFlag,
@@ -394,6 +396,10 @@ export default function AIDebugPage() {
             <Zap className="h-4 w-4" />
             性能优化
           </TabsTrigger>
+          <TabsTrigger value="rule-mining" className="gap-2">
+            <Pickaxe className="h-4 w-4" />
+            规则挖掘
+          </TabsTrigger>
           <TabsTrigger value="debug" className="gap-2">
             <Activity className="h-4 w-4" />
             调试信息
@@ -423,6 +429,11 @@ export default function AIDebugPage() {
             config={config}
             onFlagChange={handleFlagChange}
           />
+        </TabsContent>
+
+        {/* 规则挖掘标签页 */}
+        <TabsContent value="rule-mining" className="space-y-4">
+          <RuleCandidateReview />
         </TabsContent>
 
         {/* 调试信息标签页 */}

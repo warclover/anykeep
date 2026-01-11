@@ -377,6 +377,276 @@ export type Database = {
         };
         Relationships: [];
       };
+      ai_intent_cache: {
+        Row: {
+          id: number;
+          input_hash: string;
+          normalized_input: string;
+          original_message: string | null;
+          intent_type: string;
+          intent_subtype: string | null;
+          confidence: number;
+          method: string;
+          slots: Json;
+          message_embedding: string | null;
+          hit_count: number;
+          last_hit_at: string;
+          created_at: string;
+          updated_at: string | null;
+          expires_at: string;
+        };
+        Insert: {
+          id?: number;
+          input_hash: string;
+          normalized_input: string;
+          original_message?: string | null;
+          intent_type: string;
+          intent_subtype?: string | null;
+          confidence: number;
+          method: string;
+          slots?: Json;
+          message_embedding?: string | null;
+          hit_count?: number;
+          last_hit_at?: string;
+          created_at?: string;
+          updated_at?: string | null;
+          expires_at: string;
+        };
+        Update: {
+          id?: number;
+          input_hash?: string;
+          normalized_input?: string;
+          original_message?: string | null;
+          intent_type?: string;
+          intent_subtype?: string | null;
+          confidence?: number;
+          method?: string;
+          slots?: Json;
+          message_embedding?: string | null;
+          hit_count?: number;
+          last_hit_at?: string;
+          created_at?: string;
+          updated_at?: string | null;
+          expires_at?: string;
+        };
+        Relationships: [];
+      };
+      ai_intent_feedback: {
+        Row: {
+          id: number;
+          user_id: string;
+          session_id: string;
+          turn_id: string;
+          original_input: string;
+          predicted_type: string;
+          predicted_subtype: string | null;
+          predicted_confidence: number;
+          actual_behavior: string;
+          corrected_type: string | null;
+          corrected_subtype: string | null;
+          metadata: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: number;
+          user_id: string;
+          session_id: string;
+          turn_id: string;
+          original_input: string;
+          predicted_type: string;
+          predicted_subtype?: string | null;
+          predicted_confidence: number;
+          actual_behavior: string;
+          corrected_type?: string | null;
+          corrected_subtype?: string | null;
+          metadata?: Json;
+          created_at?: string;
+        };
+        Update: {
+          id?: number;
+          user_id?: string;
+          session_id?: string;
+          turn_id?: string;
+          original_input?: string;
+          predicted_type?: string;
+          predicted_subtype?: string | null;
+          predicted_confidence?: number;
+          actual_behavior?: string;
+          corrected_type?: string | null;
+          corrected_subtype?: string | null;
+          metadata?: Json;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      ai_intent_pattern_suggestions: {
+        Row: {
+          id: number;
+          type: string;
+          subtype: string;
+          pattern: string;
+          weight: number;
+          sample_inputs: string[];
+          discovery_confidence: number;
+          discovery_method: string;
+          occurrence_count: number;
+          status: string;
+          approved_by: string | null;
+          approved_at: string | null;
+          rejection_reason: string | null;
+          merged_into_id: number | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: number;
+          type: string;
+          subtype: string;
+          pattern: string;
+          weight?: number;
+          sample_inputs?: string[];
+          discovery_confidence: number;
+          discovery_method?: string;
+          occurrence_count?: number;
+          status?: string;
+          approved_by?: string | null;
+          approved_at?: string | null;
+          rejection_reason?: string | null;
+          merged_into_id?: number | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: number;
+          type?: string;
+          subtype?: string;
+          pattern?: string;
+          weight?: number;
+          sample_inputs?: string[];
+          discovery_confidence?: number;
+          discovery_method?: string;
+          occurrence_count?: number;
+          status?: string;
+          approved_by?: string | null;
+          approved_at?: string | null;
+          rejection_reason?: string | null;
+          merged_into_id?: number | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      ai_system_config: {
+        Row: {
+          id: number;
+          key: string;
+          value: Json;
+          description: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: number;
+          key: string;
+          value: Json;
+          description?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: number;
+          key?: string;
+          value?: Json;
+          description?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      ai_user_shortcuts: {
+        Row: {
+          id: number;
+          user_id: string;
+          shortcut_phrase: string;
+          intent_type: string;
+          intent_subtype: string | null;
+          default_slots: Json;
+          usage_count: number;
+          last_used_at: string | null;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: number;
+          user_id: string;
+          shortcut_phrase: string;
+          intent_type: string;
+          intent_subtype?: string | null;
+          default_slots?: Json;
+          usage_count?: number;
+          last_used_at?: string | null;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: number;
+          user_id?: string;
+          shortcut_phrase?: string;
+          intent_type?: string;
+          intent_subtype?: string | null;
+          default_slots?: Json;
+          usage_count?: number;
+          last_used_at?: string | null;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      ai_weight_history: {
+        Row: {
+          id: number;
+          intent_type: string;
+          intent_subtype: string | null;
+          old_weight: number;
+          new_weight: number;
+          delta: number;
+          reason: string;
+          confidence: number;
+          trigger_count: number;
+          accuracy: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: number;
+          intent_type: string;
+          intent_subtype?: string | null;
+          old_weight: number;
+          new_weight: number;
+          delta: number;
+          reason: string;
+          confidence: number;
+          trigger_count: number;
+          accuracy: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: number;
+          intent_type?: string;
+          intent_subtype?: string | null;
+          old_weight?: number;
+          new_weight?: number;
+          delta?: number;
+          reason?: string;
+          confidence?: number;
+          trigger_count?: number;
+          accuracy?: number;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       ai_intent_history: {
         Row: {
           confidence: number | null;

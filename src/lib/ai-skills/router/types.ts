@@ -78,6 +78,8 @@ export interface IntentClassification {
   subType?: string;
   /** 分类置信度 0-1 */
   confidence: number;
+  /** 原始置信度（校准前，Phase 3 新增） */
+  originalConfidence?: number;
   /** 提取的实体列表 */
   entities: ExtractedEntity[];
   /** 是否需要多步骤处理 */
@@ -194,6 +196,10 @@ export interface RequestContext {
   userId: string;
   /** 会话 ID */
   conversationId?: string;
+  /** 会话 ID（别名，Phase 3 反馈收集使用） */
+  sessionId?: string;
+  /** 轮次 ID（Phase 3 反馈收集使用） */
+  turnId?: string;
   /** 关联的书签 ID 列表 */
   bookmarkIds?: number[];
   /** 关联的文件夹 ID */

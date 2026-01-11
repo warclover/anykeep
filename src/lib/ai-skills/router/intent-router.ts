@@ -52,6 +52,12 @@ import {
   type SemanticCache,
   type SemanticCacheStats,
 } from "./semantic-cache";
+import {
+  getConfidenceCalibrator,
+  type ConfidenceCalibrator,
+  type CalibrationFeatures,
+} from "./confidence-calibrator";
+import { getFeedbackService, type FeedbackService } from "./feedback-service";
 
 /**
  * 完整路由器配置
@@ -98,6 +104,9 @@ export class IntentRouter {
   private isHybridMode: boolean;
   private intentCache: IntentCache;
   private semanticCache: SemanticCache;
+  // Phase 3: 置信度校准与反馈收集
+  private confidenceCalibrator: ConfidenceCalibrator;
+  private feedbackService: FeedbackService;
 
   constructor(config: IntentRouterConfig = {}) {
     this.config = {
@@ -131,6 +140,10 @@ export class IntentRouter {
 
     this.evaluator = createComplexityEvaluator(config.evaluator);
     this.selector = createModeSelector(config.selector);
+
+    // Phase 3: 初始化置信度校准器和反馈服务
+    this.confidenceCalibrator = getConfidenceCalibrator();
+    this.feedbackService = getFeedbackService();
 
     // 初始化指标聚合器（如果启用）
     if (this.config.enableMetricsAggregation) {
@@ -324,6 +337,30 @@ export class IntentRouter {
       collector.recordLLMFallback(intent.source === "llm");
 
       // ========================================
+      // Phase 3: 置信度校准
+      // ========================================
+      if (FeatureFlags.ENABLE_CONFIDENCE_CALIBRATION) {
+        const calibrationFeatures: CalibrationFeatures = {
+          messageLength: request.message.length,
+          ruleWeight: 80, // 默认权重，可从匹配规则获取
+          matchCount: 1, // 简化：假设匹配到 1 条规则
+          hasEntities: intent.entities.length > 0,
+          disambiguationUsed: false, // 可从分类器获取
+          source: intent.source as CalibrationFeatures["source"],
+        };
+        const calibratedConfidence = this.confidenceCalibrator.calibrate(
+          intent.confidence,
+          calibrationFeatures,
+        );
+        // 更新置信度（保留原始值用于调试）
+        intent = {
+          ...intent,
+          confidence: calibratedConfidence,
+          originalConfidence: intent.confidence,
+        };
+      }
+
+      // ========================================
       // 写入 L1 缓存
       // ========================================
       if (FeatureFlags.ENABLE_INTENT_CACHE_L1) {
@@ -422,6 +459,28 @@ export class IntentRouter {
           },
           "IntentRouter: Route completed",
         );
+      }
+
+      // ========================================
+      // Phase 3: 记录隐式反馈（异步，不阻塞）
+      // ========================================
+      if (FeatureFlags.ENABLE_FEEDBACK_COLLECTION && request.context.userId) {
+        this.feedbackService
+          .recordAccepted({
+            userId: request.context.userId,
+            sessionId: request.context.sessionId || "unknown",
+            turnId: request.context.turnId || `turn-${Date.now()}`,
+            originalInput: request.message,
+            predictedType: intent.type,
+            predictedSubtype: intent.subType,
+            predictedConfidence: intent.confidence,
+          })
+          .catch((err) => {
+            logger.warn(
+              { error: err instanceof Error ? err.message : String(err) },
+              "IntentRouter: Failed to record feedback",
+            );
+          });
       }
 
       return result;
@@ -531,6 +590,43 @@ export class IntentRouter {
    */
   getSemanticCacheStats(): SemanticCacheStats {
     return this.semanticCache.getStats();
+  }
+
+  /**
+   * 获取置信度校准器统计
+   * @since Phase 3
+   */
+  getCalibrationStats(): ReturnType<ConfidenceCalibrator["getStats"]> {
+    return this.confidenceCalibrator.getStats();
+  }
+
+  /**
+   * 获取反馈服务
+   * @since Phase 3
+   */
+  getFeedbackService(): FeedbackService {
+    return this.feedbackService;
+  }
+
+  /**
+   * 记录用户纠正反馈
+   * @since Phase 3
+   */
+  async recordCorrection(params: {
+    userId: string;
+    sessionId: string;
+    turnId: string;
+    originalInput: string;
+    predictedType: string;
+    predictedSubtype?: string;
+    predictedConfidence: number;
+    correctedType: string;
+    correctedSubtype?: string;
+  }): Promise<boolean> {
+    if (!FeatureFlags.ENABLE_FEEDBACK_COLLECTION) {
+      return false;
+    }
+    return this.feedbackService.recordCorrected(params);
   }
 
   /**

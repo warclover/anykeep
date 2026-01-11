@@ -616,6 +616,46 @@ export const FeatureFlags = {
   get SEMANTIC_CACHE_SIMILARITY(): number {
     return parseFloat(process.env.SEMANTIC_CACHE_SIMILARITY || "0.95");
   },
+
+  // ===========================================================================
+  // 意图理解优化 [Phase 3 新增 - 2026-01-11]
+  // ===========================================================================
+
+  /**
+   * 是否启用置信度校准
+   * @default false
+   * @description 使用 Platt Scaling 校准原始置信度
+   */
+  get ENABLE_CONFIDENCE_CALIBRATION(): boolean {
+    return process.env.ENABLE_CONFIDENCE_CALIBRATION === "true";
+  },
+
+  /**
+   * 是否启用规则挖掘
+   * @default false
+   * @description 从 LLM 兜底案例中自动生成候选规则
+   */
+  get ENABLE_RULE_MINING(): boolean {
+    return process.env.ENABLE_RULE_MINING === "true";
+  },
+
+  /**
+   * 是否启用权重调优
+   * @default false
+   * @description 基于用户反馈自动调整规则权重
+   */
+  get ENABLE_WEIGHT_OPTIMIZATION(): boolean {
+    return process.env.ENABLE_WEIGHT_OPTIMIZATION === "true";
+  },
+
+  /**
+   * 是否启用反馈收集
+   * @default true
+   * @description 收集用户对意图分类的反馈（隐式 + 显式）
+   */
+  get ENABLE_FEEDBACK_COLLECTION(): boolean {
+    return process.env.ENABLE_FEEDBACK_COLLECTION !== "false";
+  },
 } as const;
 
 // =============================================================================
@@ -727,6 +767,11 @@ export function getAllFeatureFlags(): Record<BooleanFeatureFlagKey, boolean> & {
     ENABLE_CLIENT_PREPROCESSING: FeatureFlags.ENABLE_CLIENT_PREPROCESSING,
     ENABLE_SEMANTIC_CACHE: FeatureFlags.ENABLE_SEMANTIC_CACHE,
     SEMANTIC_CACHE_SIMILARITY: FeatureFlags.SEMANTIC_CACHE_SIMILARITY,
+    // 意图理解优化 [Phase 3 新增 - 2026-01-11]
+    ENABLE_CONFIDENCE_CALIBRATION: FeatureFlags.ENABLE_CONFIDENCE_CALIBRATION,
+    ENABLE_RULE_MINING: FeatureFlags.ENABLE_RULE_MINING,
+    ENABLE_WEIGHT_OPTIMIZATION: FeatureFlags.ENABLE_WEIGHT_OPTIMIZATION,
+    ENABLE_FEEDBACK_COLLECTION: FeatureFlags.ENABLE_FEEDBACK_COLLECTION,
   };
 }
 
