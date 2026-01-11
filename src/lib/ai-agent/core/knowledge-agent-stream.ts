@@ -13,7 +13,11 @@
 import { streamText, stepCountIs } from "ai";
 import { aiProviderRouter } from "@/lib/ai-providers";
 import { getSkillsAsTools } from "@/lib/ai-skills";
-import { registerDefaultTools, getToolsAsVercelTools } from "../tools";
+import {
+  registerDefaultTools,
+  getToolsAsVercelTools,
+  getToolsForIntentAsVercel,
+} from "../tools";
 import { mergeToolSets } from "./ai-sdk-types";
 import { getUserFriendlyError } from "./error-messages";
 import { logger } from "@/lib/logger";
@@ -39,6 +43,18 @@ const log = logger.child({ namespace: "agent-stream" });
 
 // 注册默认 Tools（模块加载时执行一次）
 registerDefaultTools();
+
+/**
+ * 简单意图类型集合
+ * 这些意图类型不需要加载复杂的 Skills，仅使用 Core/Intent Tools
+ */
+const SIMPLE_INTENT_TYPES = new Set(["query", "chitchat"]);
+
+/**
+ * Skills 加载的置信度阈值
+ * 仅当置信度低于此阈值时，才为简单意图加载 Skills（作为回退）
+ */
+const SKILLS_CONFIDENCE_THRESHOLD = 0.7;
 
 /**
  * 流式执行器依赖
@@ -107,8 +123,8 @@ export class KnowledgeAgentStreamExecutor {
         return;
       }
 
-      // 获取 Skills 和 Tools
-      const tools = this.buildTools(context);
+      // 获取 Skills 和 Tools（意图驱动加载）
+      const tools = this.buildTools(context, input);
 
       // 构建动态上下文
       const dynamicContext = await this.buildDynamicContext(context);
@@ -290,20 +306,98 @@ export class KnowledgeAgentStreamExecutor {
 
   /**
    * 构建工具集
+   *
+   * 性能优化：根据意图类型智能加载工具
+   * - 简单意图 + 高置信度：仅加载 Data Tools（跳过 Skills）
+   * - 复杂意图或低置信度：加载 Skills + Data Tools
+   * - 无意图信息：全量加载（兼容旧逻辑）
    */
-  private buildTools(context: AgentContext) {
+  private buildTools(context: AgentContext, input: string) {
+    // 1. 首先加载 Data Tools（意图驱动）
+    let dataTools;
+    if (context.intentType) {
+      // 有意图信息：按需加载工具
+      dataTools = getToolsForIntentAsVercel(
+        context.intentType,
+        context.intentSubType,
+        context.intentConfidence ?? 0.7,
+        input,
+        {
+          userId: context.userId,
+          conversationId: context.conversationId,
+          onSearchResults: context.onSearchResults
+            ? (info) => context.onSearchResults?.(info.query, info.resultIds)
+            : undefined,
+        },
+      );
+
+      log.info(
+        {
+          intentType: context.intentType,
+          intentSubType: context.intentSubType,
+          intentConfidence: context.intentConfidence,
+          dataToolCount: Object.keys(dataTools).length,
+          dataToolNames: Object.keys(dataTools).slice(0, 10),
+        },
+        "Intent-driven data tool loading",
+      );
+    } else {
+      // 无意图信息：全量加载（兼容旧逻辑）
+      dataTools = getToolsAsVercelTools({
+        userId: context.userId,
+        conversationId: context.conversationId,
+        onSearchResults: context.onSearchResults
+          ? (info) => context.onSearchResults?.(info.query, info.resultIds)
+          : undefined,
+      });
+
+      log.debug(
+        { toolCount: Object.keys(dataTools).length },
+        "Full data tool loading (no intent info)",
+      );
+    }
+
+    // 2. 判断是否需要加载 Skills
+    const confidence = context.intentConfidence ?? 0;
+    const isSimpleIntent =
+      context.intentType && SIMPLE_INTENT_TYPES.has(context.intentType);
+    const isHighConfidence = confidence >= SKILLS_CONFIDENCE_THRESHOLD;
+
+    // 简单意图 + 高置信度 = 跳过 Skills
+    if (isSimpleIntent && isHighConfidence) {
+      log.info(
+        {
+          intentType: context.intentType,
+          confidence,
+          finalToolCount: Object.keys(dataTools).length,
+          skippedSkills: true,
+        },
+        "Skipping Skills for simple intent with high confidence",
+      );
+      return dataTools;
+    }
+
+    // 3. 复杂意图或低置信度：加载 Skills
     const skillTools = getSkillsAsTools(() => ({
       userId: context.userId,
       conversationId: context.conversationId,
     }));
-    const dataTools = getToolsAsVercelTools({
-      userId: context.userId,
-      conversationId: context.conversationId,
-      onSearchResults: context.onSearchResults
-        ? (info) => context.onSearchResults?.(info.query, info.resultIds)
-        : undefined,
-    });
-    return mergeToolSets(skillTools, dataTools);
+
+    const mergedTools = mergeToolSets(skillTools, dataTools);
+
+    log.info(
+      {
+        intentType: context.intentType,
+        confidence,
+        skillCount: Object.keys(skillTools).length,
+        dataToolCount: Object.keys(dataTools).length,
+        finalToolCount: Object.keys(mergedTools).length,
+        skippedSkills: false,
+      },
+      "Loading Skills + Data Tools",
+    );
+
+    return mergedTools;
   }
 
   /**

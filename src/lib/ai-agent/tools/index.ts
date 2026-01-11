@@ -1,8 +1,16 @@
 /**
  * AI Agent Tools 模块导出
  *
- * @version 2.6.0
+ * @version 2.7.1
  * @since 2025-12-23
+ *
+ * v2.7.1 新增:
+ * - 修复 registerDefaultTools 重复注册问题（添加标志位）
+ *
+ * v2.7.0 新增:
+ * - 工具分层: tool-layers.ts（Core/Intent/Extended 三层架构）
+ * - 意图映射: intent-tool-mapping.ts（意图驱动的智能工具加载）
+ * - getToolsForIntentAsVercel: 按意图获取 Vercel AI SDK 格式工具
  *
  * v2.6.0 新增:
  * - 工具调用事件: tool-event-emitter（工具执行事件发射，P2-3）
@@ -55,6 +63,11 @@ export * from "./tool-result-enhancer";
 
 // 工具调用事件（v2.6.0 P2-3）
 export * from "./events";
+
+// 工具分层（v2.7.0 性能优化）
+export * from "./tool-layers";
+export * from "./intent-tool-mapping";
+import { getToolsForIntent } from "./intent-tool-mapping";
 
 // Tool 注册表
 export { ToolRegistry, toolRegistry } from "./tool-registry";
@@ -133,11 +146,27 @@ import { pluginAuthTools } from "./plugin-auth";
 import { knowledgeLinkTools } from "./knowledge-link";
 import { wechatArticleTools } from "./wechat-article";
 import { activeRecallTools } from "./active-recall";
+import { logger } from "@/lib/logger";
+
+/**
+ * 标志位：防止重复注册
+ * @internal
+ */
+let defaultToolsRegistered = false;
 
 /**
  * 注册所有默认 Tools
+ *
+ * 使用标志位防止重复注册（多个模块可能同时调用此函数）
  */
 export function registerDefaultTools(): void {
+  // 防止重复注册
+  if (defaultToolsRegistered) {
+    logger.debug("Default tools already registered, skipping");
+    return;
+  }
+  defaultToolsRegistered = true;
+
   toolRegistry.registerAll(queryTools);
   toolRegistry.registerAll(readTools);
   toolRegistry.registerAll(searchTools);
@@ -164,6 +193,11 @@ export function registerDefaultTools(): void {
   toolRegistry.registerAll(wechatArticleTools);
   // 新增 Tools (v2.5.0)
   toolRegistry.registerAll(activeRecallTools);
+
+  logger.info(
+    { toolCount: toolRegistry.getStats().total },
+    "Default tools registered successfully",
+  );
 }
 
 /**
@@ -180,4 +214,41 @@ export function getToolsAsVercelTools(context: {
   onSearchResults?: (info: { query: string; resultIds: number[] }) => void;
 }) {
   return toolRegistry.getAsVercelTools(context);
+}
+
+/**
+ * 根据意图获取 Tools 作为 Vercel AI SDK 格式（性能优化）
+ *
+ * 意图驱动的智能工具加载：
+ * - 简单查询只加载 8 个核心工具
+ * - 复杂操作按意图类型加载相关工具集
+ * - Token 消耗减少 60-90%
+ *
+ * @param intentType - 意图类型
+ * @param subType - 意图子类型
+ * @param confidence - 意图置信度
+ * @param userInput - 用户输入（用于检测 Extended Tools）
+ * @param context - 工具执行上下文
+ */
+export function getToolsForIntentAsVercel(
+  intentType: string,
+  subType: string | undefined,
+  confidence: number,
+  userInput: string,
+  context: {
+    userId: string;
+    conversationId?: string;
+    onSearchResults?: (info: { query: string; resultIds: number[] }) => void;
+  },
+) {
+  // 获取需要加载的工具名称列表
+  const toolNames = getToolsForIntent(
+    intentType,
+    subType,
+    confidence,
+    userInput,
+  );
+
+  // 从注册表获取对应的工具
+  return toolRegistry.getToolsByNames(toolNames, context);
 }
