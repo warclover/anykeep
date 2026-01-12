@@ -10,13 +10,17 @@
 import type { PersonaType } from "./types";
 
 // =============================================================================
-// 意图类型
+// 画像意图子类型
 // =============================================================================
 
 /**
- * 意图类型
+ * 画像意图子类型
+ *
+ * 用于画像系统的细粒度意图分类，与 @/lib/shared/types 中的 IntentType 区分：
+ * - IntentType: 顶层意图分类 (query, action, organize, analyze, learn, create, refine, chitchat)
+ * - PersonaIntentSubType: 画像系统专用的细粒度意图 (search, competitive_analysis, etc.)
  */
-export type IntentType =
+export type PersonaIntentSubType =
   // 搜索类
   | "search"
   | "fuzzy_search"
@@ -62,7 +66,7 @@ export type IntentType =
  * Phase 1 新增画像的意图权重配置
  */
 export const PHASE1_NEW_INTENT_BOOSTS: Partial<
-  Record<PersonaType, Partial<Record<IntentType, number>>>
+  Record<PersonaType, Partial<Record<PersonaIntentSubType, number>>>
 > = {
   pm: {
     competitive_analysis: 1.7, // 竞品分析
@@ -100,7 +104,7 @@ export const PHASE1_NEW_INTENT_BOOSTS: Partial<
  * Phase 2 新增画像的意图权重配置
  */
 export const PHASE2_NEW_INTENT_BOOSTS: Partial<
-  Record<PersonaType, Partial<Record<IntentType, number>>>
+  Record<PersonaType, Partial<Record<PersonaIntentSubType, number>>>
 > = {
   analyst: {
     data_tracking: 1.7, // 数据追踪
@@ -135,7 +139,7 @@ export const PHASE2_NEW_INTENT_BOOSTS: Partial<
  * 原有画像的意图权重配置
  */
 export const LEGACY_INTENT_BOOSTS: Partial<
-  Record<PersonaType, Partial<Record<IntentType, number>>>
+  Record<PersonaType, Partial<Record<PersonaIntentSubType, number>>>
 > = {
   student: {
     search: 1.3,
@@ -202,7 +206,7 @@ export const LEGACY_INTENT_BOOSTS: Partial<
  * 所有画像的意图权重配置
  */
 export const PERSONA_INTENT_BOOSTS: Partial<
-  Record<PersonaType, Partial<Record<IntentType, number>>>
+  Record<PersonaType, Partial<Record<PersonaIntentSubType, number>>>
 > = {
   ...LEGACY_INTENT_BOOSTS,
   ...PHASE1_NEW_INTENT_BOOSTS,
@@ -222,7 +226,7 @@ export const PERSONA_INTENT_BOOSTS: Partial<
  */
 export function getIntentBoost(
   persona: PersonaType,
-  intent: IntentType,
+  intent: PersonaIntentSubType,
 ): number {
   const boosts = PERSONA_INTENT_BOOSTS[persona];
   if (!boosts) return 1.0;
@@ -237,7 +241,7 @@ export function getIntentBoost(
  */
 export function getPersonaIntentBoosts(
   persona: PersonaType,
-): Partial<Record<IntentType, number>> {
+): Partial<Record<PersonaIntentSubType, number>> {
   return PERSONA_INTENT_BOOSTS[persona] || {};
 }
 
@@ -247,7 +251,7 @@ export function getPersonaIntentBoosts(
  * @param intent 意图类型
  * @returns 最高权重因子
  */
-export function getMaxIntentBoost(intent: IntentType): number {
+export function getMaxIntentBoost(intent: PersonaIntentSubType): number {
   let max = 1.0;
   for (const boosts of Object.values(PERSONA_INTENT_BOOSTS)) {
     const boost = boosts?.[intent];
@@ -261,6 +265,6 @@ export function getMaxIntentBoost(intent: IntentType): number {
 /**
  * 检查意图是否被任何画像增强
  */
-export function isIntentBoosted(intent: IntentType): boolean {
+export function isIntentBoosted(intent: PersonaIntentSubType): boolean {
   return getMaxIntentBoost(intent) > 1.0;
 }

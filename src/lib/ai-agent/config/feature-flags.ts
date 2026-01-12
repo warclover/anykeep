@@ -630,6 +630,28 @@ export const FeatureFlags = {
     return process.env.ENABLE_CONFIDENCE_CALIBRATION === "true";
   },
 
+  // ===========================================================================
+  // 架构优化 V4.0 [Phase 1 新增 - 2026-01-12]
+  // ===========================================================================
+
+  /**
+   * 是否启用意图驱动工具加载
+   * @default true
+   * @description 根据意图类型动态加载相关工具，减少 Token 消耗
+   */
+  get ENABLE_INTENT_DRIVEN_TOOLS(): boolean {
+    return process.env.ENABLE_INTENT_DRIVEN_TOOLS !== "false";
+  },
+
+  /**
+   * 是否启用胶囊系统
+   * @default true
+   * @description 使用静态胶囊映射作为工具选择策略，基于意图类型动态加载相关工具集
+   */
+  get ENABLE_CAPSULE_SYSTEM(): boolean {
+    return process.env.ENABLE_CAPSULE_SYSTEM !== "false";
+  },
+
   /**
    * 是否启用规则挖掘
    * @default false
@@ -772,6 +794,9 @@ export function getAllFeatureFlags(): Record<BooleanFeatureFlagKey, boolean> & {
     ENABLE_RULE_MINING: FeatureFlags.ENABLE_RULE_MINING,
     ENABLE_WEIGHT_OPTIMIZATION: FeatureFlags.ENABLE_WEIGHT_OPTIMIZATION,
     ENABLE_FEEDBACK_COLLECTION: FeatureFlags.ENABLE_FEEDBACK_COLLECTION,
+    // 架构优化 V4.0 [Phase 1 新增 - 2026-01-12]
+    ENABLE_INTENT_DRIVEN_TOOLS: FeatureFlags.ENABLE_INTENT_DRIVEN_TOOLS,
+    ENABLE_CAPSULE_SYSTEM: FeatureFlags.ENABLE_CAPSULE_SYSTEM,
   };
 }
 

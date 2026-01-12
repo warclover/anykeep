@@ -30,7 +30,10 @@ export {
 } from "./persona-prompts";
 
 // 意图权重
-export type { IntentType } from "./persona-intent-boosts";
+export type { PersonaIntentSubType } from "./persona-intent-boosts";
+
+/** @deprecated 使用 PersonaIntentSubType 替代 */
+export type { PersonaIntentSubType as IntentType } from "./persona-intent-boosts";
 
 export {
   PERSONA_INTENT_BOOSTS,

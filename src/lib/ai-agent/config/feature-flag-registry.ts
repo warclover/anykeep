@@ -1141,6 +1141,51 @@ export const FEATURE_FLAG_REGISTRY: FeatureFlagDefinition[] = [
       },
     ],
   },
+
+  // ===========================================================================
+  // 架构优化 V4.0 [2026-01-12 新增]
+  // ===========================================================================
+  {
+    name: "ENABLE_INTENT_DRIVEN_TOOLS",
+    description: "意图驱动工具加载（L0 规则直通）",
+    defaultValue: true,
+    module: "intent",
+    phase: "stable",
+    addedVersion: "2.9.1",
+    integrationPoints: [
+      {
+        file: "lib/ai-skills/router/intent-router.ts",
+        location: "route() - Gate 0",
+        type: "check",
+      },
+      {
+        file: "lib/ai-agent/l0-rules/l0-router.ts",
+        location: "tryMatch()",
+        type: "execute",
+      },
+    ],
+  },
+  {
+    name: "ENABLE_CAPSULE_SYSTEM",
+    description: "胶囊系统（意图驱动工具集加载）",
+    defaultValue: true,
+    module: "intent",
+    phase: "stable",
+    addedVersion: "2.9.1",
+    dependencies: ["ENABLE_INTENT_DRIVEN_TOOLS"],
+    integrationPoints: [
+      {
+        file: "lib/ai-agent/core/knowledge-agent.ts",
+        location: "buildToolSet()",
+        type: "execute",
+      },
+      {
+        file: "lib/ai-agent/tools/capsules/capsule-registry.ts",
+        location: "getToolsForIntent()",
+        type: "execute",
+      },
+    ],
+  },
 ];
 
 // =============================================================================
