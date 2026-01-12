@@ -534,7 +534,24 @@ export class ExecutionCoordinator {
       );
     }
 
+    // 🆕 注入置信度分层信息到 SystemPrompt
+    if (context.confidenceLevel && context.responseStrategy) {
+      const confidencePrompt = this.buildConfidencePrompt(context);
+      systemPrompt = systemPrompt
+        ? `${systemPrompt}\n\n${confidencePrompt}`
+        : confidencePrompt;
+    }
+
+    // 🆕 注入数据上下文到 SystemPrompt
+    const dataContextPrompt = this.buildDataContextPrompt(context);
+    if (dataContextPrompt) {
+      systemPrompt = systemPrompt
+        ? `${systemPrompt}\n\n${dataContextPrompt}`
+        : dataContextPrompt;
+    }
+
     return {
+      // === 现有映射（保持不变） ===
       userId: context.userId,
       conversationId: context.conversationId,
       bookmarkIds: context.bookmarkIds,
@@ -548,7 +565,74 @@ export class ExecutionCoordinator {
       intentConfidence: context.intentConfidence,
       // 意图槽位（包含 timeRange 等预提取参数）
       slots: context.slots,
+
+      // === 🆕 新增映射：上下文参数 ===
+      folderId: context.folderId,
+      totalBookmarks: context.totalBookmarks,
+      totalFolders: context.totalFolders,
+      folders: context.folders,
+      tags: context.tags,
+
+      // === 🆕 新增映射：置信度分层 ===
+      responseStrategy: context.responseStrategy,
+      confidenceLevel: context.confidenceLevel,
+      enhancedConfidence: context.enhancedConfidence,
     };
+  }
+
+  /**
+   * 🆕 构建置信度 Prompt
+   * @param context - 引擎上下文
+   * @returns 置信度提示语
+   */
+  private buildConfidencePrompt(context: EngineContext): string {
+    const levelDesc: Record<string, string> = {
+      high: "高（≥80%）- 用户意图明确，可直接执行",
+      medium: "中（60-79%）- 意图基本明确，执行后简要解释",
+      low: "低（<60%）- 意图不明确，需要澄清",
+    };
+
+    const strategyDesc: Record<string, string> = {
+      silent: "静默执行，完成后简短汇报结果",
+      explain: "执行 + 简要解释为什么这样做",
+      clarify: "轻量级澄清（选项式，非开放问）",
+    };
+
+    const level = context.confidenceLevel || "medium";
+    const strategy = context.responseStrategy || "explain";
+
+    return `【AI 执行策略】
+- 意图置信度: ${levelDesc[level] || level}
+- 建议响应方式: ${strategyDesc[strategy] || strategy}
+- 置信度分数: ${(context.enhancedConfidence ?? 0.7).toFixed(2)}`;
+  }
+
+  /**
+   * 🆕 构建数据上下文 Prompt
+   * @param context - 引擎上下文
+   * @returns 数据上下文提示语，无内容时返回 null
+   */
+  private buildDataContextPrompt(context: EngineContext): string | null {
+    const parts: string[] = [];
+
+    if (context.folderId !== undefined) {
+      const folderName = context.folders?.find(
+        (f) => f.id === context.folderId,
+      )?.name;
+      parts.push(`当前文件夹: ${folderName || `ID:${context.folderId}`}`);
+    }
+
+    if (context.totalBookmarks !== undefined) {
+      parts.push(`书签总数: ${context.totalBookmarks}`);
+    }
+
+    if (context.totalFolders !== undefined) {
+      parts.push(`文件夹数: ${context.totalFolders}`);
+    }
+
+    if (parts.length === 0) return null;
+
+    return `【用户数据上下文】\n${parts.join(" | ")}`;
   }
 }
 

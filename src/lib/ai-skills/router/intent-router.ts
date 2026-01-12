@@ -58,6 +58,7 @@ import {
   type CalibrationFeatures,
 } from "./confidence-calibrator";
 import { getFeedbackService, type FeedbackService } from "./feedback-service";
+import { l0Router, toL0RouteResult } from "@/lib/ai-agent/l0-rules";
 
 /**
  * 完整路由器配置
@@ -172,6 +173,83 @@ export class IntentRouter {
     collector.start();
 
     try {
+      // ========================================
+      // Gate 0: L0 规则直通车（最快路径）
+      // ========================================
+      if (FeatureFlags.ENABLE_INTENT_DRIVEN_TOOLS) {
+        const l0Result = l0Router.tryMatch(request.message);
+
+        if (l0Result.matched && l0Result.rule) {
+          const l0Route = toL0RouteResult(l0Result);
+
+          if (l0Route) {
+            const metrics = collector.finalize();
+
+            logger.info(
+              {
+                ruleId: l0Route.ruleId,
+                intentType: l0Route.intentType,
+                toolId: l0Route.toolId,
+                confidence: l0Route.confidence,
+                durationMs: metrics.totalDurationMs,
+              },
+              "IntentRouter: L0 rule hit",
+            );
+
+            // 构建简化的意图对象
+            const intent = {
+              type: l0Route.intentType,
+              subType: undefined,
+              confidence: l0Route.confidence,
+              entities: [],
+              requiresMultiStep: false,
+              hasDeliverableExpectation: false,
+              source: "l0_rule" as const,
+              matchedRules: [l0Route.ruleId],
+            };
+
+            // L0 路由直接使用 atomic 模式
+            const result: RouteResult = {
+              intent,
+              complexity: {
+                level: "simple" as const,
+                score: 0.1,
+                factors: [
+                  {
+                    name: "l0_rule_match",
+                    weight: 1.0,
+                    value: 0,
+                    reason: "L0 规则直接匹配，无需复杂度评估",
+                  },
+                ],
+                estimatedSteps: 1,
+                estimatedDurationMs: 100,
+              },
+              mode: "atomic",
+              suggestedSkill: null,
+              reason: `L0 rule matched: ${l0Route.ruleId}`,
+              routingDurationMs: metrics.totalDurationMs,
+              l0Route, // 包含直接调用的工具信息
+            };
+
+            if (this.config.debug || this.config.includeMetrics) {
+              result.metrics = {
+                classificationDurationMs: 0,
+                complexityDurationMs: 0,
+                modeSelectorDurationMs: 0,
+                ruleMatchCount: 1,
+                disambiguationUsed: false,
+                llmFallbackUsed: false,
+                classificationSource: "l0_rule",
+                llmCacheHit: false,
+              };
+            }
+
+            return result;
+          }
+        }
+      }
+
       // ========================================
       // Gate 1: L1 缓存检查（精确匹配）
       // ========================================

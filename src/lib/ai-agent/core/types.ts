@@ -123,6 +123,37 @@ export interface AgentContext {
   intentConfidence?: number;
   /** 意图槽位（包含 timeRange 等预提取参数） */
   slots?: IntentSlotSchema;
+
+  // ============================================
+  // 上下文参数 [v4.0 新增 - 参数透传修复]
+  // ============================================
+
+  /** 当前文件夹 ID */
+  folderId?: number;
+  /** 用户书签总数 */
+  totalBookmarks?: number;
+  /** 用户文件夹数量 */
+  totalFolders?: number;
+  /** 用户文件夹列表（用于 Tool 提示） */
+  folders?: Array<{ id: number; name: string }>;
+  /** 用户标签列表（用于 Tool 提示） */
+  tags?: string[];
+
+  // ============================================
+  // 置信度分层执行策略 [v4.0 新增]
+  // ============================================
+
+  /**
+   * 响应策略（基于增强置信度）
+   * - silent: 高置信度（≥80%），静默执行，简短结果
+   * - explain: 中置信度（60-79%），执行 + 解释为什么这样做
+   * - clarify: 低置信度（<60%），生成澄清选项
+   */
+  responseStrategy?: "silent" | "explain" | "clarify";
+  /** 置信度级别 */
+  confidenceLevel?: "high" | "medium" | "low";
+  /** 增强置信度值（0-1） */
+  enhancedConfidence?: number;
 }
 
 /**
