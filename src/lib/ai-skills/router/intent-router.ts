@@ -59,6 +59,8 @@ import {
 } from "./confidence-calibrator";
 import { getFeedbackService, type FeedbackService } from "./feedback-service";
 import { l0Router, toL0RouteResult } from "@/lib/ai-agent/l0-rules";
+import { recordL0RouteResult } from "../observability/metrics";
+import { aiMetrics } from "@/lib/ai-agent/metrics";
 
 /**
  * 完整路由器配置
@@ -185,6 +187,13 @@ export class IntentRouter {
           if (l0Route) {
             const metrics = collector.finalize();
 
+            // 记录 L0 命中指标
+            recordL0RouteResult(true, metrics.totalDurationMs, {
+              ruleId: l0Route.ruleId,
+              intentType: l0Route.intentType,
+            });
+            aiMetrics.recordL0Hit();
+
             logger.info(
               {
                 ruleId: l0Route.ruleId,
@@ -248,6 +257,9 @@ export class IntentRouter {
             return result;
           }
         }
+
+        // L0 未命中：Feature Flag 启用但规则未匹配
+        aiMetrics.recordL0Miss();
       }
 
       // ========================================
@@ -256,6 +268,9 @@ export class IntentRouter {
       if (FeatureFlags.ENABLE_INTENT_CACHE_L1) {
         const cachedIntent = this.intentCache.get(request.message);
         if (cachedIntent) {
+          // 记录意图缓存命中
+          aiMetrics.recordIntentCacheHit();
+
           // 缓存命中，快速评估复杂度和模式
           collector.startStage("complexity");
           const complexity = await this.evaluator.evaluate(
@@ -319,6 +334,9 @@ export class IntentRouter {
         try {
           const semanticCached = await this.semanticCache.get(request.message);
           if (semanticCached) {
+            // 记录查询缓存命中（语义缓存视为查询缓存的一种）
+            aiMetrics.recordQueryCacheHit();
+
             // 回填 L1 缓存（加速后续精确匹配）
             if (FeatureFlags.ENABLE_INTENT_CACHE_L1) {
               this.intentCache.set(request.message, semanticCached);
@@ -393,6 +411,10 @@ export class IntentRouter {
       // ========================================
       // Gate 3: 意图分类
       // ========================================
+      // 走到这里说明缓存都未命中，记录未命中指标
+      aiMetrics.recordIntentCacheMiss();
+      aiMetrics.recordQueryCacheMiss();
+
       // Step 1: 意图分类
       collector.startStage("classification");
       let intent;

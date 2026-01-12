@@ -26,6 +26,7 @@ import {
   classifyError,
   type AtomicFallbackConfig,
 } from "./atomic-fallback";
+import { aiMetrics } from "@/lib/ai-agent/metrics";
 
 // 从共享类型导入
 import type { ExecutionMode } from "@/lib/shared/types";
@@ -248,10 +249,12 @@ export class ExecutionCoordinator {
       );
     }
 
-    // 分发到对应模式
+    // 分发到对应模式并记录指标
     if (mode === "atomic") {
+      aiMetrics.recordAtomicMode();
       yield* this.executeAtomicMode(input, context, agentOptions);
     } else if (skillId) {
+      aiMetrics.recordOrchestrationMode();
       yield* this.executeOrchestrationMode(
         input,
         context,
@@ -260,6 +263,8 @@ export class ExecutionCoordinator {
       );
     } else {
       // 编排模式缺少 skillId，回退到原子模式
+      aiMetrics.recordAtomicMode();
+      aiMetrics.recordFallback();
       logger.warn(
         { mode, skillId },
         "ExecutionCoordinator: Missing skillId, falling back to atomic",
@@ -495,6 +500,9 @@ export class ExecutionCoordinator {
 
     // 回退到原子模式
     if (hasError && enableFallback) {
+      // 记录回退指标
+      aiMetrics.recordFallback();
+
       logger.warn(
         { skillId, error: errorMessage, traceId: context.traceId },
         "ExecutionCoordinator: Orchestration failed, falling back to atomic",
