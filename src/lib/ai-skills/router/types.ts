@@ -15,6 +15,7 @@ import type {
   ExecutionMode as SharedExecutionMode,
   ClassificationSource as SharedClassificationSource,
 } from "@/lib/shared/types";
+import type { L0RouteResult } from "@/lib/ai-agent/l0-rules";
 
 // 导出类型别名以保持向后兼容和文件内部使用
 export type IntentType = SharedIntentType;
@@ -89,7 +90,14 @@ export interface IntentClassification {
   /** 是否期望获得交付物 */
   hasDeliverableExpectation: boolean;
   /** 分类来源 */
-  source: "rule" | "llm" | "semantic" | "hybrid" | "cache_l1" | "cache_l2";
+  source:
+    | "rule"
+    | "llm"
+    | "semantic"
+    | "hybrid"
+    | "cache_l1"
+    | "cache_l2"
+    | "l0_rule";
   /** 结构化槽位（Phase 2 新增） */
   slots?: IntentSlotSchema;
   /** 备选意图列表（Phase 2 新增，用于消歧） */
@@ -168,6 +176,10 @@ export interface ModeSelection {
   reason: string;
   /** 失败时的回退模式 */
   fallbackMode?: ExecutionMode;
+  /** 是否使用 ReAct 循环执行 [P2-9 新增] */
+  useReact?: boolean;
+  /** ReAct 决策理由 [P2-9 新增] */
+  reactReason?: string;
 }
 
 // ============================================
@@ -227,6 +239,16 @@ export interface RouteResult {
   reason: string;
   /** 路由耗时（毫秒） */
   routingDurationMs: number;
+  /** L0 直通结果（仅 L0 规则匹配时存在） */
+  l0Route?: L0RouteResult;
+  /** 工作流 ID（仅 workflow 模式时存在）[P1-8 新增] */
+  workflowId?: string;
+  /** 工作流名称（仅 workflow 模式时存在）[P1-8 新增] */
+  workflowName?: string;
+  /** 是否使用 ReAct 循环执行（仅 atomic 模式时有效）[P2-9 新增] */
+  useReact?: boolean;
+  /** ReAct 决策理由 [P2-9 新增] */
+  reactReason?: string;
   /** 详细性能指标（可选，debug 模式下返回） */
   metrics?: {
     /** 意图分类耗时（毫秒） */
@@ -249,7 +271,8 @@ export interface RouteResult {
       | "hybrid"
       | "default"
       | "cache_l1"
-      | "cache_l2";
+      | "cache_l2"
+      | "l0_rule";
     /** LLM 缓存是否命中 */
     llmCacheHit: boolean;
   };

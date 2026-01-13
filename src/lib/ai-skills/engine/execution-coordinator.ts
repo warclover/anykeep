@@ -20,6 +20,7 @@ import { buildMemoryPrompt, isEmptyMemoryContext } from "../../ai-agent/memory";
 import { FeatureFlags } from "../../ai-agent/config/feature-flags";
 import { ReactLoopExecutor, type ReactLoopConfig } from "../../ai-agent/react";
 import { CancellationError } from "../orchestration/types";
+import type { OrchestrationStreamChunk } from "../orchestration/types";
 import type { AtomicFallbackHandler } from "./atomic-fallback";
 import {
   createAtomicFallbackHandler,
@@ -65,6 +66,10 @@ export interface ExecuteOptions {
   enableFallback?: boolean;
   /** 原子执行器选项（maxToolRounds, temperature 等） */
   agentOptions?: AgentExecutionOptions;
+  /** 是否使用 ReAct 循环（由 ModeSelector 决定）[P2-9 新增] */
+  useReact?: boolean;
+  /** ReAct 决策理由 [P2-9 新增] */
+  reactReason?: string;
 }
 
 /** ExecutionCoordinator 配置 */
@@ -228,6 +233,8 @@ export class ExecutionCoordinator {
       reason,
       enableFallback = true,
       agentOptions,
+      useReact,
+      reactReason,
     } = options;
 
     // 检查是否已取消
@@ -252,7 +259,14 @@ export class ExecutionCoordinator {
     // 分发到对应模式并记录指标
     if (mode === "atomic") {
       aiMetrics.recordAtomicMode();
-      yield* this.executeAtomicMode(input, context, agentOptions);
+      // P2-9: 传递 ReAct 决策到原子模式执行器
+      yield* this.executeAtomicMode(
+        input,
+        context,
+        agentOptions,
+        useReact,
+        reactReason,
+      );
     } else if (skillId) {
       aiMetrics.recordOrchestrationMode();
       yield* this.executeOrchestrationMode(
@@ -269,7 +283,13 @@ export class ExecutionCoordinator {
         { mode, skillId },
         "ExecutionCoordinator: Missing skillId, falling back to atomic",
       );
-      yield* this.executeAtomicMode(input, context, agentOptions);
+      yield* this.executeAtomicMode(
+        input,
+        context,
+        agentOptions,
+        useReact,
+        reactReason,
+      );
     }
   }
 
@@ -333,11 +353,23 @@ export class ExecutionCoordinator {
   // 私有方法
   // ============================================
 
-  /** 执行原子模式（带降级） */
+  /**
+   * 执行原子模式（带降级）
+   *
+   * [P2-9 更新]: 使用路由决策的 useReact 标志，而非直接检查 Feature Flag
+   *
+   * @param input - 用户输入
+   * @param context - 执行上下文
+   * @param agentOptions - Agent 执行选项
+   * @param useReact - 是否使用 ReAct 循环（由 ModeSelector 决定）
+   * @param reactReason - ReAct 决策理由
+   */
   private async *executeAtomicMode(
     input: string,
     context: EngineContext,
     agentOptions?: AgentExecutionOptions,
+    useReact?: boolean,
+    reactReason?: string,
   ): AsyncGenerator<UnifiedStreamChunk> {
     if (!this.atomicExecutor) {
       yield this.outputAdapter.createErrorChunk(
@@ -350,6 +382,26 @@ export class ExecutionCoordinator {
 
     const agentContext = this.buildAgentContext(context);
 
+    // P2-9: 判断是否使用 ReAct 循环
+    // 优先使用路由决策的 useReact，若未提供则回退到 Feature Flag 检查
+    const shouldUseReact =
+      useReact !== undefined
+        ? useReact &&
+          FeatureFlags.ENABLE_REACT_LOOP &&
+          this.reactExecutor !== null
+        : FeatureFlags.ENABLE_REACT_LOOP && this.reactExecutor !== null;
+
+    if (shouldUseReact) {
+      logger.debug(
+        {
+          useReact,
+          reactReason,
+          traceId: context.traceId,
+        },
+        "ExecutionCoordinator: Using ReAct loop for atomic execution",
+      );
+    }
+
     // 创建带取消检查的执行器包装
     const wrappedExecutor = async (
       execInput: string,
@@ -358,8 +410,8 @@ export class ExecutionCoordinator {
       const chunks: UnifiedStreamChunk[] = [];
 
       try {
-        // ReAct 循环模式
-        if (FeatureFlags.ENABLE_REACT_LOOP && this.reactExecutor) {
+        // P2-9: 根据路由决策使用 ReAct 循环模式
+        if (shouldUseReact && this.reactExecutor) {
           for await (const chunk of this.reactExecutor.executeWithReact(
             execInput,
             execContext,
@@ -442,7 +494,11 @@ export class ExecutionCoordinator {
     );
   }
 
-  /** 执行编排模式（带可选回退） */
+  /**
+   * 执行编排模式（带可选回退）
+   *
+   * [P2-10 更新]: 添加生成器资源清理，防止资源泄漏
+   */
   private async *executeOrchestrationMode(
     input: string,
     context: EngineContext,
@@ -451,15 +507,17 @@ export class ExecutionCoordinator {
   ): AsyncGenerator<UnifiedStreamChunk> {
     let hasError = false;
     let errorMessage = "";
+    // P2-10: 存储生成器引用以便正确清理
+    let generator: AsyncGenerator<OrchestrationStreamChunk> | null = null;
 
     try {
-      for await (const chunk of this.orchestrationEngine.execute(
-        skillId,
-        input,
-        context,
-      )) {
+      generator = this.orchestrationEngine.execute(skillId, input, context);
+
+      for await (const chunk of generator) {
         // 检查取消
         if (this.isCancelled(context)) {
+          // P2-10: 在返回前清理生成器
+          await this.cleanupGenerator(generator);
           yield this.outputAdapter.createErrorChunk(
             this.getCancelReason(context),
             "REQUEST_CANCELLED",
@@ -474,6 +532,8 @@ export class ExecutionCoordinator {
         if (adaptedChunk.type === "error" && adaptedChunk.data.retryable) {
           hasError = true;
           errorMessage = adaptedChunk.data.message;
+          // P2-10: 在 break 前清理生成器
+          await this.cleanupGenerator(generator);
           break;
         }
 
@@ -484,6 +544,9 @@ export class ExecutionCoordinator {
         }
       }
     } catch (error) {
+      // P2-10: 错误情况下也要清理生成器
+      await this.cleanupGenerator(generator);
+
       // 处理取消错误
       if (error instanceof CancellationError) {
         yield this.outputAdapter.createErrorChunk(
@@ -641,6 +704,28 @@ export class ExecutionCoordinator {
     if (parts.length === 0) return null;
 
     return `【用户数据上下文】\n${parts.join(" | ")}`;
+  }
+
+  /**
+   * 安全清理异步生成器 [P2-10 新增]
+   *
+   * 确保生成器资源被正确释放，防止资源泄漏
+   *
+   * @param generator - 需要清理的异步生成器
+   */
+  private async cleanupGenerator<T>(
+    generator: AsyncGenerator<T> | null,
+  ): Promise<void> {
+    if (generator && typeof generator.return === "function") {
+      try {
+        await generator.return(undefined as T);
+      } catch (err) {
+        logger.warn(
+          { error: err },
+          "ExecutionCoordinator: Generator cleanup failed",
+        );
+      }
+    }
   }
 }
 

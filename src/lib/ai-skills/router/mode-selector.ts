@@ -283,7 +283,35 @@ interface ModeSelectorConfig {
   forceAtomicMode?: boolean;
   /** 是否启用调试日志 */
   debug?: boolean;
+  /** 是否强制禁用 ReAct（调试用）[P2-9 新增] */
+  forceDisableReact?: boolean;
 }
+
+/**
+ * ReAct 触发阈值配置 [P2-9 新增]
+ *
+ * ReAct 循环适用于需要多步推理的场景：
+ * - 复杂度较高的任务
+ * - 意图置信度较低需要更多思考的场景
+ * - 预计需要多个工具调用的任务
+ */
+const REACT_THRESHOLDS = {
+  /** 复杂度评分阈值 - 高于此值建议 ReAct */
+  complexityScore: 50,
+  /** 预计步骤阈值 - 高于此值建议 ReAct */
+  estimatedSteps: 3,
+  /** 意图置信度阈值 - 低于此值建议 ReAct（需要更多思考） */
+  confidenceThreshold: 0.7,
+} as const;
+
+/**
+ * 适合使用 ReAct 的意图类型 [P2-9 新增]
+ */
+const REACT_PREFERRED_INTENTS: Set<string> = new Set([
+  "analyze", // 分析类任务通常需要多步推理
+  "organize", // 整理类任务可能需要多轮操作
+  "learn", // 学习类任务需要深度理解
+]);
 
 /**
  * 模式选择器
@@ -305,7 +333,7 @@ export class ModeSelector {
    *
    * @param intent - 意图分类结果
    * @param complexity - 复杂度评估结果
-   * @returns 模式选择结果
+   * @returns 模式选择结果（包含 ReAct 决策）
    */
   select(
     intent: IntentClassification,
@@ -316,6 +344,8 @@ export class ModeSelector {
       return {
         mode: "atomic",
         reason: "调试模式：强制使用原子模式",
+        useReact: false,
+        reactReason: "调试模式禁用 ReAct",
       };
     }
 
@@ -324,6 +354,8 @@ export class ModeSelector {
       return {
         mode: "atomic",
         reason: "简单任务，使用原子模式快速响应",
+        useReact: false,
+        reactReason: "简单任务无需 ReAct 循环",
       };
     }
 
@@ -347,15 +379,20 @@ export class ModeSelector {
           mode: "orchestration",
           reason: `复杂任务，使用 ${mapping.name} 端到端完成`,
           fallbackMode: "atomic",
+          useReact: false,
+          reactReason: "编排模式有独立的执行流程",
         };
       }
     }
 
-    // 规则 3: 复杂但无对应编排 Skill → 原子模式（LLM 多轮）
+    // 规则 3: 复杂但无对应编排 Skill → 原子模式（考虑 ReAct）
     if (complexity.level === "complex") {
+      const reactDecision = this.shouldUseReact(intent, complexity);
       return {
         mode: "atomic",
         reason: "复杂任务但暂无专用 Skill，使用原子模式多轮处理",
+        useReact: reactDecision.useReact,
+        reactReason: reactDecision.reason,
       };
     }
 
@@ -367,14 +404,105 @@ export class ModeSelector {
           mode: "orchestration",
           reason: `用户期望交付物，使用 ${partialMapping.name} 处理`,
           fallbackMode: "atomic",
+          useReact: false,
+          reactReason: "编排模式有独立的执行流程",
         };
       }
     }
 
-    // 默认: 原子模式
+    // 默认: 原子模式（考虑 ReAct）
+    const reactDecision = this.shouldUseReact(intent, complexity);
     return {
       mode: "atomic",
       reason: "默认使用原子模式",
+      useReact: reactDecision.useReact,
+      reactReason: reactDecision.reason,
+    };
+  }
+
+  /**
+   * 决定是否使用 ReAct 循环 [P2-9 新增]
+   *
+   * ReAct (Reason + Act) 适用于需要多步推理的场景
+   *
+   * @param intent - 意图分类结果
+   * @param complexity - 复杂度评估结果
+   * @returns ReAct 决策结果
+   */
+  shouldUseReact(
+    intent: IntentClassification,
+    complexity: ComplexityEvaluation,
+  ): { useReact: boolean; reason: string } {
+    // 配置强制禁用
+    if (this.config.forceDisableReact) {
+      return {
+        useReact: false,
+        reason: "配置禁用 ReAct",
+      };
+    }
+
+    const reasons: string[] = [];
+    let score = 0;
+
+    // 因素 1: 复杂度评分
+    if (complexity.score >= REACT_THRESHOLDS.complexityScore) {
+      score += 30;
+      reasons.push(
+        `复杂度评分 ${complexity.score} >= ${REACT_THRESHOLDS.complexityScore}`,
+      );
+    }
+
+    // 因素 2: 预计步骤数
+    if (complexity.estimatedSteps >= REACT_THRESHOLDS.estimatedSteps) {
+      score += 30;
+      reasons.push(
+        `预计步骤 ${complexity.estimatedSteps} >= ${REACT_THRESHOLDS.estimatedSteps}`,
+      );
+    }
+
+    // 因素 3: 意图置信度（低置信度需要更多思考）
+    if (intent.confidence < REACT_THRESHOLDS.confidenceThreshold) {
+      score += 20;
+      reasons.push(
+        `意图置信度 ${intent.confidence.toFixed(2)} < ${REACT_THRESHOLDS.confidenceThreshold}`,
+      );
+    }
+
+    // 因素 4: 意图类型偏好
+    if (REACT_PREFERRED_INTENTS.has(intent.type)) {
+      score += 20;
+      reasons.push(`意图类型 "${intent.type}" 适合 ReAct`);
+    }
+
+    // 决策：评分 >= 50 时使用 ReAct
+    const useReact = score >= 50;
+
+    logger.debug(
+      {
+        intentType: intent.type,
+        complexityScore: complexity.score,
+        estimatedSteps: complexity.estimatedSteps,
+        intentConfidence: intent.confidence,
+        reactScore: score,
+        useReact,
+        factors: reasons,
+      },
+      "ModeSelector: ReAct decision",
+    );
+
+    if (useReact) {
+      return {
+        useReact: true,
+        reason: `建议使用 ReAct (评分=${score}): ${reasons.join("; ")}`,
+      };
+    }
+
+    return {
+      useReact: false,
+      reason:
+        reasons.length > 0
+          ? `ReAct 评分不足 (${score}<50): ${reasons.join("; ")}`
+          : "不满足 ReAct 触发条件",
     };
   }
 

@@ -223,17 +223,19 @@ export class UnifiedEngine {
       },
       stats: {
         totalBookmarks: context.totalBookmarks ?? 0,
-        recentWeekCount: 0, // 默认值，无法从 EngineContext 获取
-        topPlatform: {
+        // P0-4 修复：使用 context 中的实际用户数据
+        recentWeekCount: context.recentWeekCount ?? 0,
+        topPlatform: context.topPlatform ?? {
           name: "未知",
           code: "unknown",
           count: 0,
         },
-        topFolders: [],
+        topFolders: context.topFolders ?? [],
       },
       preferences: {
         responseStyle: "auto",
-        frequentTags: [],
+        // P0-4 修复：使用 context 中的实际常用标签
+        frequentTags: context.frequentTags ?? [],
       },
       recentActivity: {},
       session: {
@@ -429,8 +431,11 @@ export class UnifiedEngine {
       );
 
       if (workflowResult) {
-        // 路由到工作流模式，返回工作流启动信息
-        yield* this.streamWorkflowResponse(workflowResult);
+        // 路由到工作流模式，返回工作流启动信息（P0-2 修复：添加输出增强）
+        yield* this.streamWorkflowResponseWithEnhancements(
+          workflowResult,
+          contextWithCallback,
+        );
         return;
       }
     }
@@ -956,11 +961,13 @@ export class UnifiedEngine {
           effectiveIntent.subType,
         );
       } else {
-        // 原子模式
+        // 原子模式 - P2-9: 传递 ReAct 决策
         yield* this.executeWithEnhancements(
           this.executionCoordinator.execute(input, effectiveContext, {
             mode: "atomic",
             agentOptions,
+            useReact: routeResult.useReact,
+            reactReason: routeResult.reactReason,
           }),
           effectiveContext,
           effectiveIntent.type,
@@ -1118,6 +1125,82 @@ export class UnifiedEngine {
     }
 
     yield { type: "done", data: { success: true } };
+  }
+
+  /**
+   * 流式返回工作流响应（带输出增强）
+   *
+   * P0-2 修复：在工作流响应中添加记忆记录、引用追踪等增强功能
+   *
+   * @param result - 工作流执行结果
+   * @param context - 引擎上下文
+   * @yields 统一流式输出块
+   */
+  private async *streamWorkflowResponseWithEnhancements(
+    result: WorkflowExecuteResult,
+    context: EngineContext,
+  ): AsyncGenerator<UnifiedStreamChunk> {
+    // 1. 发送路由信息
+    yield {
+      type: "routing",
+      data: {
+        mode: "workflow",
+        reason: "用户意图匹配工作流触发条件",
+        skill: null,
+        workflowId: result.workflowId,
+        workflowName: result.workflowName,
+      },
+    };
+
+    // 2. 发送工作流响应文本
+    yield {
+      type: "text",
+      data: { text: result.message },
+    };
+
+    // 3. 发送工作流启动信息
+    if (result.status === "started") {
+      yield {
+        type: "workflow_started",
+        data: {
+          executionId: result.executionId,
+          workflowId: result.workflowId,
+          workflowName: result.workflowName,
+        },
+      };
+    }
+
+    // 4. 记录到情景记忆（OutputEnhancer 的核心功能）
+    if (this.config.enableMemory && context.conversationId) {
+      try {
+        // 记录助手响应到记忆管理器
+        this.memoryManager.recordAssistantMessage(
+          context.conversationId,
+          result.message,
+        );
+
+        logger.debug(
+          {
+            workflowId: result.workflowId,
+            conversationId: context.conversationId,
+          },
+          "UnifiedEngine: Workflow response recorded to memory",
+        );
+      } catch (error) {
+        logger.warn(
+          { error: error instanceof Error ? error.message : String(error) },
+          "UnifiedEngine: Failed to record workflow memory",
+        );
+      }
+    }
+
+    // 5. 发送完成信号
+    yield {
+      type: "done",
+      data: {
+        success: true,
+      },
+    };
   }
 
   /**

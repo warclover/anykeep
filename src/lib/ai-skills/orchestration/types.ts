@@ -17,6 +17,9 @@ import type {
   OrchestrationStreamChunk,
 } from "../output/types";
 
+// 重新导出 OrchestrationStreamChunk 以便外部模块使用 [P2-10]
+export type { OrchestrationStreamChunk };
+
 // ============================================
 // 取消令牌相关类型
 // ============================================
