@@ -41,6 +41,8 @@ import { useUnifiedConfirmation } from "@/hooks/domain/ai/use-unified-confirmati
 import { useAttachmentManager } from "@/hooks/ai/use-attachment-manager";
 import { buildAttachmentContextFull } from "@/lib/ai-agent/context/attachment-context-builder";
 import { clientLogger } from "@/lib/client-logger";
+import { conversationStorage } from "@/lib/storage/conversation-storage";
+import { FeatureFlags } from "@/lib/ai-agent/config/feature-flags";
 
 // =============================================================================
 // 类型定义
@@ -67,6 +69,8 @@ interface AIPanelContentEnhancedProps {
   initialMessage?: string;
   /** 是否自动发送初始消息 */
   autoSendInitialMessage?: boolean;
+  /** 初始消息列表（用于从历史恢复） */
+  initialMessages?: DisplayMessage[];
 }
 
 // =============================================================================
@@ -90,9 +94,12 @@ export function AIPanelContentEnhanced({
   useUnifiedEngine = true,
   initialMessage,
   autoSendInitialMessage = false,
+  initialMessages,
 }: AIPanelContentEnhancedProps) {
   // 核心状态
-  const [messages, setMessages] = useState<DisplayMessage[]>([]);
+  const [messages, setMessages] = useState<DisplayMessage[]>(
+    initialMessages ?? [],
+  );
   const [input, setInput] = useState(initialMessage ?? "");
   const [isLoading, setIsLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string | undefined>(
@@ -168,6 +175,77 @@ export function AIPanelContentEnhanced({
   useEffect(() => {
     scrollToBottom();
   }, [messages, pendingConfirmations, scrollToBottom]);
+
+  // P0: 消息持久化 - 保存到 localStorage
+  useEffect(() => {
+    if (!FeatureFlags.ENABLE_CONVERSATION_PERSISTENCE) return;
+    if (messages.length === 0) return;
+    if (!conversationId) return;
+
+    // 将 DisplayMessage 转换为 ChatMessage 格式（只保存 user 和 assistant 消息）
+    const chatMessages = messages
+      .filter((m) => m.role === "user" || m.role === "assistant")
+      .map((m) => ({
+        id: m.id,
+        role: m.role as "user" | "assistant",
+        content: m.content,
+        createdAt: m.createdAt,
+      }));
+
+    if (chatMessages.length === 0) return;
+
+    // 防抖保存
+    const timer = setTimeout(() => {
+      conversationStorage.save(conversationId, chatMessages);
+      clientLogger.debug(
+        { conversationId, messageCount: chatMessages.length },
+        "Messages saved to localStorage",
+      );
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [messages, conversationId]);
+
+  // P1: 消息持久化 - 保存到数据库
+  useEffect(() => {
+    if (!FeatureFlags.ENABLE_CONVERSATION_PERSISTENCE) return;
+    if (messages.length === 0) return;
+    if (!conversationId) return;
+    // 只有已完成的消息才保存到数据库
+    const completedMessages = messages.filter(
+      (m) => m.status === "completed" || m.status === "sent",
+    );
+    if (completedMessages.length === 0) return;
+
+    // 防抖保存到数据库
+    const timer = setTimeout(async () => {
+      try {
+        await fetch(`/api/conversations/${conversationId}/messages`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messages: completedMessages.map((m) => ({
+              id: m.id,
+              role: m.role,
+              content: m.content,
+              createdAt: m.createdAt.toISOString(),
+            })),
+          }),
+        });
+        clientLogger.debug(
+          { conversationId, messageCount: completedMessages.length },
+          "Messages saved to database",
+        );
+      } catch (error) {
+        clientLogger.error(
+          { conversationId, error },
+          "Failed to save messages to database",
+        );
+      }
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [messages, conversationId]);
 
   /**
    * 核心发送消息逻辑
