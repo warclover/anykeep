@@ -485,6 +485,30 @@ export const FEATURE_FLAG_REGISTRY: FeatureFlagDefinition[] = [
   },
 
   // ===========================================================================
+  // 对话持久化 [Phase 0 新增 - 2026-01-13]
+  // ===========================================================================
+  {
+    name: "ENABLE_CONVERSATION_PERSISTENCE",
+    description: "对话持久化（localStorage）",
+    defaultValue: true,
+    module: "memory",
+    phase: "stable",
+    addedVersion: "2.9.2",
+    integrationPoints: [
+      {
+        file: "hooks/domain/ai/use-ai-chat.ts",
+        location: "useState initialization",
+        type: "execute",
+      },
+      {
+        file: "lib/storage/conversation-storage.ts",
+        location: "save/restore functions",
+        type: "execute",
+      },
+    ],
+  },
+
+  // ===========================================================================
   // ReAct 循环
   // ===========================================================================
   {
@@ -827,6 +851,26 @@ export const FEATURE_FLAG_REGISTRY: FeatureFlagDefinition[] = [
       {
         file: "lib/ai-agent/memory/cross-session-memory.ts",
         location: "persistMemory()",
+        type: "execute",
+      },
+    ],
+  },
+  {
+    name: "ENABLE_LLM_SESSION_SUMMARY",
+    description: "LLM 会话摘要",
+    defaultValue: true,
+    module: "memory",
+    phase: "beta",
+    addedVersion: "2.10.0",
+    integrationPoints: [
+      {
+        file: "lib/ai-memory/cross-session-memory-service.ts",
+        location: "saveSessionSummary()",
+        type: "execute",
+      },
+      {
+        file: "lib/ai-memory/session-summarizer.ts",
+        location: "generateSessionSummary()",
         type: "execute",
       },
     ],
@@ -1182,6 +1226,85 @@ export const FEATURE_FLAG_REGISTRY: FeatureFlagDefinition[] = [
       {
         file: "lib/ai-agent/tools/capsules/capsule-registry.ts",
         location: "getToolsForIntent()",
+        type: "execute",
+      },
+    ],
+  },
+
+  // ===========================================================================
+  // Skills v1.1.0 新增 [P1-7 修复 - 2026-01-13]
+  // ===========================================================================
+  {
+    name: "ENABLE_FOLDER_RECOMMEND",
+    description: "文件夹智能推荐 Skill",
+    defaultValue: true,
+    module: "core",
+    phase: "stable",
+    addedVersion: "2.10.0",
+    integrationPoints: [
+      {
+        file: "lib/ai-skills/skills/folder-recommend/folder-recommend.skill.ts",
+        location: "execute()",
+        type: "execute",
+      },
+    ],
+  },
+  {
+    name: "ENABLE_SEARCH_OPTIMIZE",
+    description: "搜索优化助手 Skill",
+    defaultValue: true,
+    module: "core",
+    phase: "stable",
+    addedVersion: "2.10.0",
+    integrationPoints: [
+      {
+        file: "lib/ai-skills/skills/search-optimize/search-optimize.skill.ts",
+        location: "execute()",
+        type: "execute",
+      },
+    ],
+  },
+  {
+    name: "ENABLE_KNOWLEDGE_GRAPH_EXPLORE",
+    description: "知识图谱探索 Skill",
+    defaultValue: true,
+    module: "core",
+    phase: "stable",
+    addedVersion: "2.10.0",
+    integrationPoints: [
+      {
+        file: "lib/ai-skills/skills/knowledge-graph-explore/knowledge-graph-explore.skill.ts",
+        location: "execute()",
+        type: "execute",
+      },
+    ],
+  },
+  {
+    name: "ENABLE_FOLDER_HEALTH_CHECK",
+    description: "文件夹健康检查 Skill",
+    defaultValue: true,
+    module: "core",
+    phase: "stable",
+    addedVersion: "2.10.0",
+    integrationPoints: [
+      {
+        file: "lib/ai-skills/skills/folder-health-check/folder-health-check.skill.ts",
+        location: "execute()",
+        type: "execute",
+      },
+    ],
+  },
+  {
+    name: "ENABLE_SNAPSHOT_COMPARE",
+    description: "快照对比分析 Skill",
+    defaultValue: true,
+    module: "core",
+    phase: "stable",
+    addedVersion: "2.10.0",
+    integrationPoints: [
+      {
+        file: "lib/ai-skills/skills/snapshot-compare/snapshot-compare.skill.ts",
+        location: "execute()",
         type: "execute",
       },
     ],
