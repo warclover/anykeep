@@ -199,9 +199,10 @@ export class UnifiedOutputAdapter {
 
   /**
    * 创建路由信息块
+   * [P1-8 扩展支持 workflow 模式]
    */
   createRoutingChunk(
-    mode: "atomic" | "orchestration",
+    mode: "atomic" | "orchestration" | "workflow",
     reason: string,
     skill: string | null,
     intentType?: string,

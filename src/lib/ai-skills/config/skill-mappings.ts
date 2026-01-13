@@ -242,6 +242,36 @@ export const SKILL_MAPPINGS: SkillMapping[] = [
     enabled: true,
     priority: 90,
   },
+  // P1-5 新增：summary 与 digest 同义映射
+  {
+    key: "create:summary",
+    skillId: "quick_digest",
+    name: "内容摘要生成",
+    mode: "orchestration",
+    minComplexity: "simple",
+    enabled: true,
+    priority: 88,
+  },
+  // P1-5 新增：B站字幕提取
+  {
+    key: "create:bilibili",
+    skillId: "bilibili_transcript",
+    name: "B站字幕提取",
+    mode: "orchestration",
+    minComplexity: "medium",
+    enabled: true,
+    priority: 85,
+  },
+  // P1-5 新增：微信阅读摘要
+  {
+    key: "create:wechat",
+    skillId: "wechat_digest",
+    name: "微信阅读摘要",
+    mode: "orchestration",
+    minComplexity: "medium",
+    enabled: true,
+    priority: 85,
+  },
   {
     key: "create:export",
     skillId: "data_export",
@@ -384,6 +414,16 @@ export const SKILL_MAPPINGS: SkillMapping[] = [
     enabled: true,
     priority: 80,
   },
+  // P1-5 新增：收件箱摘要查询
+  {
+    key: "query:inbox",
+    skillId: "inbox_digest",
+    name: "收件箱摘要",
+    mode: "orchestration",
+    minComplexity: "simple",
+    enabled: true,
+    priority: 78,
+  },
   {
     key: "query:list",
     skillId: "search",
@@ -423,11 +463,42 @@ export const SKILL_MAPPINGS: SkillMapping[] = [
   // 注意：delete/move/tag/archive 等基础操作不再单独映射，
   // 统一由 action:* 通配符处理，AI Agent 直接调用对应 Tools
   // ============================================
+  // P1-5 新增：链接健康检测
+  {
+    key: "action:link_health",
+    skillId: "link_health_check",
+    name: "链接健康检测",
+    mode: "orchestration",
+    minComplexity: "medium",
+    enabled: true,
+    priority: 75,
+  },
+  // P1-5 新增：内容变更监控
+  {
+    key: "action:content_monitor",
+    skillId: "content_change_monitor",
+    name: "内容变更监控",
+    mode: "orchestration",
+    minComplexity: "medium",
+    enabled: true,
+    priority: 72,
+  },
+  // P1-5 新增：分类操作（单独映射，与 organize:classify 区分）
+  {
+    key: "action:classify",
+    skillId: "smart_tagging",
+    name: "智能分类",
+    mode: "orchestration",
+    minComplexity: "simple",
+    enabled: true,
+    priority: 70,
+  },
   // 操作类通配符兜底
   // 注意：对于未被其他规则匹配的 action 意图，交由 AI Agent 直接处理
+  // P0-1 修复：skillId 设为 null，让 KnowledgeAgent 直接处理（原 "chat" Skill 未实现）
   {
     key: "action:*",
-    skillId: "chat",
+    skillId: null,
     name: "操作",
     mode: "atomic",
     enabled: true,
@@ -450,10 +521,11 @@ export const SKILL_MAPPINGS: SkillMapping[] = [
 
   // ============================================
   // 闲聊类 → 原子模式
+  // P0-1 修复：skillId 设为 null，让 KnowledgeAgent 直接处理（原 "chat" Skill 未实现）
   // ============================================
   {
     key: "chitchat:*",
-    skillId: "chat",
+    skillId: null,
     name: "闲聊",
     mode: "atomic",
     enabled: true,

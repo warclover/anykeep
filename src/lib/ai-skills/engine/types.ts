@@ -102,6 +102,26 @@ export interface EngineContext {
   debugOverrides?: DebugOverrideConfig | null;
 
   // ============================================
+  // P0-4 新增：增强置信度计算所需的用户数据
+  // ============================================
+
+  /** 最近 7 天新增书签数 */
+  recentWeekCount?: number;
+
+  /** 常用文件夹（前 5 个，按书签数排序） */
+  topFolders?: Array<{ id: number; name: string; count: number }>;
+
+  /** 主要平台（占比最高的平台） */
+  topPlatform?: {
+    name: string;
+    code: string;
+    count: number;
+  };
+
+  /** 常用标签（按频率排序） */
+  frequentTags?: string[];
+
+  // ============================================
   // 意图驱动工具加载（性能优化）
   // ============================================
 
@@ -151,8 +171,8 @@ export interface EngineExecuteOptions {
   timeout?: number;
   /** 是否包含路由信息 */
   includeRoutingInfo?: boolean;
-  /** 强制使用指定模式 */
-  forceMode?: "atomic" | "orchestration";
+  /** 强制使用指定模式 [P1-8 扩展支持 workflow] */
+  forceMode?: "atomic" | "orchestration" | "workflow";
   /** 强制使用指定 Skill */
   forceSkill?: string;
 
@@ -199,8 +219,8 @@ export interface EngineExecuteOptions {
 export interface EngineExecutionSummary {
   /** 是否成功 */
   success: boolean;
-  /** 使用的模式 */
-  mode: "atomic" | "orchestration";
+  /** 使用的模式 [P1-8 扩展支持 workflow] */
+  mode: "atomic" | "orchestration" | "workflow";
   /** 使用的 Skill（编排模式） */
   skillId?: string;
   /** 响应摘要 */

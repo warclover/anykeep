@@ -49,7 +49,8 @@ export interface RouteMetrics {
     | "hybrid"
     | "default"
     | "cache_l1"
-    | "cache_l2";
+    | "cache_l2"
+    | "l0_rule";
 
   // ============================================
   // 缓存指标
@@ -178,7 +179,8 @@ export class RouteMetricsCollector {
       | "hybrid"
       | "default"
       | "cache_l1"
-      | "cache_l2",
+      | "cache_l2"
+      | "l0_rule",
   ): void {
     this.metrics.classificationSource = source;
   }

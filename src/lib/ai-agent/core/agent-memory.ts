@@ -42,7 +42,7 @@ export interface AgentMemoryConfig {
 const DEFAULT_CONFIG: AgentMemoryConfig = {
   maxMessages: 50,
   maxTokensEstimate: 8000,
-  enablePersistence: false, // 暂不启用数据库持久化
+  enablePersistence: true, // P1: 启用数据库持久化
 };
 
 /**

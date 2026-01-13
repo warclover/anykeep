@@ -84,8 +84,9 @@ export const COMPLEXITY_LEVELS = {
  * @description
  * - atomic: 原子模式 - 单次工具调用，适合简单任务
  * - orchestration: 编排模式 - 多步骤 Skill 编排，适合复杂任务
+ * - workflow: 工作流模式 - 异步工作流执行，适合自动化任务 [P1-8 新增]
  */
-export type ExecutionMode = "atomic" | "orchestration";
+export type ExecutionMode = "atomic" | "orchestration" | "workflow";
 
 /**
  * 执行模式常量对象
@@ -93,6 +94,7 @@ export type ExecutionMode = "atomic" | "orchestration";
 export const EXECUTION_MODES = {
   ATOMIC: "atomic",
   ORCHESTRATION: "orchestration",
+  WORKFLOW: "workflow",
 } as const;
 
 // ============================================
@@ -109,6 +111,7 @@ export const EXECUTION_MODES = {
  * - hybrid: 混合模式
  * - cache_l1: L1 缓存（内存）
  * - cache_l2: L2 缓存（持久化）
+ * - l0_rule: L0 规则直通
  * - default: 默认值
  */
 export type ClassificationSource =
@@ -118,4 +121,5 @@ export type ClassificationSource =
   | "hybrid"
   | "cache_l1"
   | "cache_l2"
+  | "l0_rule"
   | "default";

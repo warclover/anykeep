@@ -54,8 +54,8 @@ export interface IntentPattern {
 export interface SkillMapping {
   /** 映射键：intentType:subType 或 intentType:* */
   key: string;
-  /** 目标 Skill ID */
-  skillId: string;
+  /** 目标 Skill ID (null 表示直接使用 KnowledgeAgent 原子模式处理) */
+  skillId: string | null;
   /** 显示名称 */
   name: string;
   /** 执行模式 */

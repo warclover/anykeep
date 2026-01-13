@@ -42,6 +42,8 @@ export type ToolSetName =
  * 核心工具列表
  *
  * 这些工具覆盖最常见的场景，始终可用
+ *
+ * P0-3b 修复：移除不存在的 "get_bookmark"，实际工具名为 "read_bookmark"
  */
 export const CORE_TOOLS: readonly string[] = [
   // 搜索 - 最常用功能
@@ -54,9 +56,7 @@ export const CORE_TOOLS: readonly string[] = [
   "list_folders",
   // 标签列表
   "list_tags",
-  // 书签详情
-  "get_bookmark",
-  // 内容阅读
+  // 内容阅读/书签详情
   "read_bookmark",
 ] as const;
 
@@ -244,7 +244,8 @@ export const PLUGIN_AUTH_TOOLS: readonly string[] = [
  */
 export const MESSAGES_TOOLS: readonly string[] = [
   "list_messages",
-  "summarize_unread",
+  // P1-6 修复：命名统一为 summarize_unread_messages
+  "summarize_unread_messages",
   "batch_mark_read",
 ] as const;
 

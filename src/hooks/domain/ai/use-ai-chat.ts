@@ -14,6 +14,8 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import type { AgentStreamChunk } from "@/lib/ai-agent/core/types";
+import { conversationStorage } from "@/lib/storage/conversation-storage";
+import { FeatureFlags } from "@/lib/ai-agent/config/feature-flags";
 import type { PendingConfirmation } from "@/lib/ai-agent/tools/types";
 import type {
   UnifiedStreamChunk,
@@ -304,7 +306,34 @@ export function useAIChat(config: UseAIChatConfig = {}): UseAIChatReturn {
   } = config;
 
   // 状态
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  // P0: 对话持久化 - 从 localStorage 恢复会话
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    // Feature Flag 控制
+    if (!FeatureFlags.ENABLE_CONVERSATION_PERSISTENCE) {
+      return [];
+    }
+
+    // SSR 环境下跳过
+    if (typeof window === "undefined") {
+      return [];
+    }
+
+    // 从 localStorage 恢复
+    const restored = conversationStorage.restore();
+    if (restored && restored.messages.length > 0) {
+      console.info(
+        "[useAIChat] Restored session:",
+        restored.conversationId,
+        `(${restored.messages.length} messages)`,
+      );
+      // 需要将日期字符串转回 Date 对象
+      return restored.messages.map((m) => ({
+        ...m,
+        createdAt: new Date(m.createdAt),
+      }));
+    }
+    return [];
+  });
   const [status, setStatus] = useState<ChatStatus>("idle");
   const [currentResponse, setCurrentResponse] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -324,6 +353,24 @@ export function useAIChat(config: UseAIChatConfig = {}): UseAIChatReturn {
   const scrollRef = useRef<HTMLDivElement>(null);
   // Phase 1: 分块接收缓冲区
   const chunkBuffersRef = useRef<Map<string, ChunkBuffer>>(new Map());
+
+  // 生成稳定的 conversationId（用于持久化）
+  const conversationIdRef = useRef<string>(
+    `conv_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+  );
+
+  // P0: 对话持久化 - 防抖保存到 localStorage
+  useEffect(() => {
+    if (!FeatureFlags.ENABLE_CONVERSATION_PERSISTENCE) return;
+    if (messages.length === 0) return;
+
+    // 防抖保存
+    const timer = setTimeout(() => {
+      conversationStorage.save(conversationIdRef.current, messages);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [messages]);
 
   // 消息变化时通知
   useEffect(() => {
@@ -980,6 +1027,13 @@ export function useAIChat(config: UseAIChatConfig = {}): UseAIChatReturn {
     setStatus("idle");
     setPendingConfirmations([]);
     setProgress(null);
+
+    // P0: 同时清除 localStorage 中的会话
+    if (FeatureFlags.ENABLE_CONVERSATION_PERSISTENCE) {
+      conversationStorage.clear();
+      // 重置 conversationId
+      conversationIdRef.current = `conv_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    }
   }, []);
 
   /**

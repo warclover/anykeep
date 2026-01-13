@@ -4,9 +4,10 @@
  * 提供与 AI 助手对话的完整界面（Sheet 覆盖模式）
  * 通过 API 路由与后端 Agent 交互
  *
- * @version 2.0.0
+ * @version 2.1.0
  * @since 2025-12-22
  * @updated 2025-12-23 - 重构为使用 AIPanelContent 组件
+ * @updated 2026-01-13 - P1: 集成会话历史功能
  */
 
 "use client";
@@ -18,7 +19,7 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet";
-import { AIPanelContentEnhanced } from "./ai-panel-content-enhanced";
+import { AIPanelWithHistory } from "./ai-panel-with-history";
 import type { AIAssistantPanelProps } from "./types";
 
 /**
@@ -49,8 +50,8 @@ export function AIAssistantPanel({
           <SheetDescription>AI 助手对话面板</SheetDescription>
         </SheetHeader>
 
-        {/* 面板内容 */}
-        <AIPanelContentEnhanced
+        {/* 面板内容（带会话历史） */}
+        <AIPanelWithHistory
           conversationId={conversationId}
           bookmarkIds={bookmarkIds}
           title={title}

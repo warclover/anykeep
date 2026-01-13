@@ -196,7 +196,8 @@ export interface AnalysisResult {
     | "hybrid"
     | "default"
     | "cache_l1"
-    | "cache_l2";
+    | "cache_l2"
+    | "l0_rule";
   /** 结构化槽位（自动提取的 timeRange 等参数） */
   slots?: IntentSlotSchema;
 
@@ -1206,8 +1207,8 @@ export class IntentAnalyzer {
     if (mapping?.enabled) {
       // 检查复杂度要求
       if (this.meetsMinComplexity(complexity.level, mapping.minComplexity)) {
-        // 只有编排模式才返回 suggestedSkill
-        if (mapping.mode === "orchestration") {
+        // 只有编排模式且有 skillId 才返回 suggestedSkill
+        if (mapping.mode === "orchestration" && mapping.skillId) {
           return {
             mode: "orchestration",
             suggestedSkill: mapping.skillId,
@@ -1235,7 +1236,8 @@ export class IntentAnalyzer {
       const wildcardMapping = findMapping(mappingIndex, intent.type, "*");
       if (
         wildcardMapping?.enabled &&
-        wildcardMapping.mode === "orchestration"
+        wildcardMapping.mode === "orchestration" &&
+        wildcardMapping.skillId
       ) {
         return {
           mode: "orchestration",

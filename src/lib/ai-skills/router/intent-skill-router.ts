@@ -176,7 +176,11 @@ export class IntentSkillRouter {
       skillDisabledReason = `意图 ${intentKey} 已被 Feature Flag 禁用`;
       intentDisabled = true;
       mapping = null;
-    } else if (mapping && !isSkillEnabledByFeatureFlag(mapping.skillId)) {
+    } else if (
+      mapping &&
+      mapping.skillId &&
+      !isSkillEnabledByFeatureFlag(mapping.skillId)
+    ) {
       skillDisabledReason = `Skill ${mapping.skillId} 已被 Feature Flag 禁用`;
       skillDisabled = true;
       mapping = null;
@@ -447,7 +451,11 @@ export class IntentSkillRouter {
 
     // 2. 检查 Skill 是否被禁用
     const mapping = findMapping(this.mappingIndex, intentType, subType);
-    if (mapping && userPrefs?.disabledSkills?.includes(mapping.skillId)) {
+    if (
+      mapping &&
+      mapping.skillId &&
+      userPrefs?.disabledSkills?.includes(mapping.skillId)
+    ) {
       // Skill 被禁用，尝试查找通配符映射
       return findMapping(this.mappingIndex, intentType, "*");
     }

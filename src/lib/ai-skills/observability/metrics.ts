@@ -45,6 +45,10 @@ export const AI_METRIC_NAMES = {
   // 路由指标
   ROUTING_DURATION: "ai.router.duration",
   ROUTING_REQUESTS: "ai.router.requests",
+  // L0 路由指标 [V4.0 新增]
+  L0_HITS: "ai.router.l0.hits",
+  L0_MISSES: "ai.router.l0.misses",
+  L0_DURATION: "ai.router.l0.duration",
   // 编排指标
   ORCHESTRATION_DURATION: "ai.orchestration.duration",
   ORCHESTRATION_STEPS: "ai.orchestration.steps",
@@ -56,6 +60,9 @@ export const AI_METRIC_NAMES = {
   // 缓存
   CACHE_HITS: "ai.cache.hits",
   CACHE_MISSES: "ai.cache.misses",
+  // 胶囊指标 [V4.0 新增]
+  CAPSULE_HITS: "ai.capsule.hits",
+  CAPSULE_TOOL_COUNT: "ai.capsule.tool_count",
 } as const;
 
 // ============================================
@@ -88,6 +95,10 @@ export interface AIMetrics {
   // 路由
   routingDuration: Histogram;
   routingRequests: Counter;
+  // L0 路由 [V4.0 新增]
+  l0Hits: Counter;
+  l0Misses: Counter;
+  l0Duration: Histogram;
   // 编排
   orchestrationDuration: Histogram;
   orchestrationSteps: Histogram;
@@ -99,6 +110,9 @@ export interface AIMetrics {
   // 缓存
   cacheHits: Counter;
   cacheMisses: Counter;
+  // 胶囊 [V4.0 新增]
+  capsuleHits: Counter;
+  capsuleToolCount: Histogram;
 }
 
 /**
@@ -132,6 +146,22 @@ function createAIMetrics(): AIMetrics {
     routingRequests: metricsCollector.createCounter(
       AI_METRIC_NAMES.ROUTING_REQUESTS,
       "意图路由请求次数",
+    ),
+    // L0 路由命中 [V4.0 新增]
+    l0Hits: metricsCollector.createCounter(
+      AI_METRIC_NAMES.L0_HITS,
+      "L0 规则命中次数",
+    ),
+    // L0 路由未命中 [V4.0 新增]
+    l0Misses: metricsCollector.createCounter(
+      AI_METRIC_NAMES.L0_MISSES,
+      "L0 规则未命中次数",
+    ),
+    // L0 路由时长 [V4.0 新增]
+    l0Duration: metricsCollector.createHistogram(
+      AI_METRIC_NAMES.L0_DURATION,
+      "L0 规则匹配时长",
+      { unit: "ms", buckets: [0.1, 0.5, 1, 2, 5, 10] },
     ),
     // 编排执行时长
     orchestrationDuration: metricsCollector.createHistogram(
@@ -169,6 +199,17 @@ function createAIMetrics(): AIMetrics {
     cacheMisses: metricsCollector.createCounter(
       AI_METRIC_NAMES.CACHE_MISSES,
       "缓存未命中次数",
+    ),
+    // 胶囊命中 [V4.0 新增]
+    capsuleHits: metricsCollector.createCounter(
+      AI_METRIC_NAMES.CAPSULE_HITS,
+      "胶囊工具加载命中次数",
+    ),
+    // 胶囊工具数量 [V4.0 新增]
+    capsuleToolCount: metricsCollector.createHistogram(
+      AI_METRIC_NAMES.CAPSULE_TOOL_COUNT,
+      "胶囊加载的工具数量",
+      { unit: "tools", buckets: [1, 3, 5, 10, 15, 20, 30] },
     ),
   };
 }
@@ -339,4 +380,71 @@ export function recordCacheAccess(hit: boolean, cacheType?: string): void {
   } else {
     metrics.cacheMisses.inc(labels);
   }
+}
+
+// ============================================
+// L0 路由指标 [V4.0 新增]
+// ============================================
+
+/**
+ * 记录 L0 路由结果
+ *
+ * @param hit - 是否命中 L0 规则
+ * @param durationMs - 匹配耗时（毫秒）
+ * @param options - 额外选项
+ */
+export function recordL0RouteResult(
+  hit: boolean,
+  durationMs: number,
+  options?: {
+    ruleId?: string;
+    intentType?: string;
+  },
+): void {
+  const metrics = getAIMetrics();
+  const labels: Record<string, string> = {};
+
+  if (options?.ruleId) {
+    labels["rule_id"] = options.ruleId;
+  }
+  if (options?.intentType) {
+    labels[AI_METRIC_LABELS.INTENT_TYPE] = options.intentType;
+  }
+
+  if (hit) {
+    metrics.l0Hits.inc(labels);
+  } else {
+    metrics.l0Misses.inc(labels);
+  }
+
+  metrics.l0Duration.record(durationMs, labels);
+}
+
+// ============================================
+// 胶囊指标 [V4.0 新增]
+// ============================================
+
+/**
+ * 记录胶囊工具加载
+ *
+ * @param capsuleId - 胶囊 ID
+ * @param toolCount - 加载的工具数量
+ * @param intentType - 意图类型
+ */
+export function recordCapsuleLoad(
+  capsuleId: string,
+  toolCount: number,
+  intentType?: string,
+): void {
+  const metrics = getAIMetrics();
+  const labels: Record<string, string> = {
+    capsule_id: capsuleId,
+  };
+
+  if (intentType) {
+    labels[AI_METRIC_LABELS.INTENT_TYPE] = intentType;
+  }
+
+  metrics.capsuleHits.inc(labels);
+  metrics.capsuleToolCount.record(toolCount, labels);
 }

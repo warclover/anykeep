@@ -254,7 +254,9 @@ export async function POST(request: NextRequest) {
       UNIFIED_ENGINE_ENABLED && (options?.enableUnified ?? true);
 
     // Phase 4: 处理显式工具选择
-    let forceMode = options?.forceMode;
+    // P1-8 修复：显式类型声明以支持 workflow 模式
+    let forceMode: "atomic" | "orchestration" | "workflow" | undefined =
+      options?.forceMode;
     let forceSkill = options?.forceSkill;
 
     if (explicitTool?.skipIntentClassification) {
@@ -365,6 +367,21 @@ export async function POST(request: NextRequest) {
           attachmentMetadata,
           episodicMemory, // 传递情景记忆
           debugOverrides, // 传递调试覆盖配置
+
+          // P0-4 新增：增强置信度计算所需的用户数据
+          recentWeekCount: quickStats.recentAdded,
+          topFolders: quickStats.topFolders,
+          topPlatform: quickStats.platformDistribution[0]
+            ? {
+                name: quickStats.platformDistribution[0].name,
+                code: quickStats.platformDistribution[0].platform,
+                count: quickStats.platformDistribution[0].count,
+              }
+            : undefined,
+          frequentTags: Object.entries(quickStats.tagFrequency)
+            .sort(([, a], [, b]) => b - a)
+            .slice(0, 20)
+            .map(([tag]) => tag),
         },
         {
           includeRoutingInfo: options?.includeRoutingInfo,
