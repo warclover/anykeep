@@ -11,8 +11,9 @@
  */
 
 import { logger } from "@/lib/logger";
-import type { SessionMemory } from "./session-memory";
-import { createSessionMemory } from "./session-memory";
+import type { PersistentSessionMemory } from "./persistent-session-memory";
+import { createPersistentSessionMemory } from "./persistent-session-memory";
+import type { PersistentSessionMemoryConfig } from "./persistent-session-memory";
 import type { ReferenceResolver } from "./reference-resolver";
 import { createReferenceResolver } from "./reference-resolver";
 import type {
@@ -22,7 +23,6 @@ import type {
   SearchResultSummary,
   LastOutputSummary,
   ReferenceResolutionResult,
-  SessionMemoryConfig,
   ReferenceResolverConfig,
 } from "./types";
 
@@ -34,14 +34,16 @@ import type {
  * MemoryManager 配置
  */
 export interface MemoryManagerConfig {
-  /** SessionMemory 配置 */
-  sessionMemory?: SessionMemoryConfig;
+  /** PersistentSessionMemory 配置 */
+  sessionMemory?: PersistentSessionMemoryConfig;
   /** ReferenceResolver 配置 */
   referenceResolver?: ReferenceResolverConfig;
   /** 是否启用指代解析 */
   enableReferenceResolution?: boolean;
   /** 是否启用自动记录 */
   enableAutoRecording?: boolean;
+  /** 是否启用持久化 */
+  enablePersistence?: boolean;
 }
 
 /**
@@ -52,6 +54,7 @@ const DEFAULT_CONFIG: Required<MemoryManagerConfig> = {
   referenceResolver: {},
   enableReferenceResolution: true,
   enableAutoRecording: true,
+  enablePersistence: true,
 };
 
 // ============================================
@@ -61,10 +64,10 @@ const DEFAULT_CONFIG: Required<MemoryManagerConfig> = {
 /**
  * 记忆管理器
  *
- * 统一管理会话状态和指代解析
+ * 统一管理会话状态和指代解析，支持数据库持久化
  */
 export class MemoryManager {
-  private sessionMemory: SessionMemory;
+  private sessionMemory: PersistentSessionMemory;
   private referenceResolver: ReferenceResolver;
   private config: Required<MemoryManagerConfig>;
 
@@ -74,7 +77,10 @@ export class MemoryManager {
       ...config,
     };
 
-    this.sessionMemory = createSessionMemory(this.config.sessionMemory);
+    this.sessionMemory = createPersistentSessionMemory({
+      ...this.config.sessionMemory,
+      enablePersistence: this.config.enablePersistence,
+    });
     this.referenceResolver = createReferenceResolver(
       this.config.referenceResolver,
     );
@@ -85,13 +91,23 @@ export class MemoryManager {
   // ============================================
 
   /**
-   * 获取或创建会话
+   * 获取或创建会话（同步版本，仅从内存获取）
    */
   getOrCreateSession(
     conversationId: string,
     userId: string,
   ): ConversationState {
     return this.sessionMemory.getOrCreateState(conversationId, userId);
+  }
+
+  /**
+   * 获取或创建会话（异步版本，支持从数据库恢复）
+   */
+  async getOrCreateSessionAsync(
+    conversationId: string,
+    userId: string,
+  ): Promise<ConversationState> {
+    return this.sessionMemory.getOrCreateStateAsync(conversationId, userId);
   }
 
   /**
@@ -106,6 +122,16 @@ export class MemoryManager {
    */
   deleteSession(conversationId: string): boolean {
     return this.sessionMemory.deleteState(conversationId);
+  }
+
+  /**
+   * 删除会话（异步版本，同时删除数据库记录）
+   */
+  async deleteSessionAsync(
+    conversationId: string,
+    userId: string,
+  ): Promise<boolean> {
+    return this.sessionMemory.deleteStateAndPersist(conversationId, userId);
   }
 
   // ============================================
@@ -184,7 +210,7 @@ export class MemoryManager {
   // ============================================
 
   /**
-   * 记录用户消息
+   * 记录用户消息（自动持久化到数据库）
    */
   recordUserMessage(
     conversationId: string,
@@ -207,11 +233,12 @@ export class MemoryManager {
       subType,
     };
 
-    this.sessionMemory.addMessage(conversationId, message);
+    // 使用持久化方法，消息会自动写入数据库
+    this.sessionMemory.addMessageAndPersist(conversationId, message);
   }
 
   /**
-   * 记录助手消息
+   * 记录助手消息（自动持久化到数据库）
    */
   recordAssistantMessage(
     conversationId: string,
@@ -230,7 +257,8 @@ export class MemoryManager {
       subType,
     };
 
-    this.sessionMemory.addMessage(conversationId, message);
+    // 使用持久化方法，消息会自动写入数据库
+    this.sessionMemory.addMessageAndPersist(conversationId, message);
   }
 
   // ============================================
@@ -238,16 +266,16 @@ export class MemoryManager {
   // ============================================
 
   /**
-   * 记录 AI 输出
+   * 记录 AI 输出（自动持久化到数据库）
    */
   recordOutput(conversationId: string, output: LastOutputSummary): void {
     if (!this.config.enableAutoRecording) return;
 
-    this.sessionMemory.recordOutput(conversationId, output);
+    this.sessionMemory.recordOutputAndPersist(conversationId, output);
   }
 
   /**
-   * 记录搜索结果
+   * 记录搜索结果（自动持久化到数据库）
    */
   recordSearchResults(
     conversationId: string,
@@ -263,7 +291,7 @@ export class MemoryManager {
       searchedAt: Date.now(),
     };
 
-    this.sessionMemory.recordSearchResults(conversationId, results);
+    this.sessionMemory.recordSearchResultsAndPersist(conversationId, results);
   }
 
   // ============================================
@@ -271,7 +299,7 @@ export class MemoryManager {
   // ============================================
 
   /**
-   * 记录提及的书签
+   * 记录提及的书签（自动持久化到数据库）
    */
   recordMentionedBookmarks(
     conversationId: string,
@@ -286,11 +314,14 @@ export class MemoryManager {
       mentionedAt: Date.now(),
     }));
 
-    this.sessionMemory.recordMentionedBookmarks(conversationId, entities);
+    this.sessionMemory.recordMentionedBookmarksAndPersist(
+      conversationId,
+      entities,
+    );
   }
 
   /**
-   * 记录提及的文件夹
+   * 记录提及的文件夹（自动持久化到数据库）
    */
   recordMentionedFolders(
     conversationId: string,
@@ -305,7 +336,10 @@ export class MemoryManager {
       mentionedAt: Date.now(),
     }));
 
-    this.sessionMemory.recordMentionedFolders(conversationId, entities);
+    this.sessionMemory.recordMentionedFoldersAndPersist(
+      conversationId,
+      entities,
+    );
   }
 
   // ============================================
@@ -427,6 +461,30 @@ export class MemoryManager {
    */
   cleanup(): number {
     return this.sessionMemory.cleanup();
+  }
+
+  /**
+   * 清理过期会话（异步版本，同时清理数据库）
+   */
+  async cleanupAsync(): Promise<{
+    memoryCleared: number;
+    dbCleared: number;
+  }> {
+    return this.sessionMemory.cleanupWithPersistence();
+  }
+
+  /**
+   * 强制同步所有内存中的会话到数据库
+   */
+  async flushAll(): Promise<{ successCount: number; failCount: number }> {
+    return this.sessionMemory.flushAll();
+  }
+
+  /**
+   * 获取用户的活跃会话列表
+   */
+  async getActiveSessionsForUser(userId: string) {
+    return this.sessionMemory.getActiveSessionsForUser(userId);
   }
 
   /**
