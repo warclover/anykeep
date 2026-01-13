@@ -14,6 +14,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json } from "@/types/supabase";
 import { logger } from "@/lib/logger";
+import { FeatureFlags } from "@/lib/ai-agent/config/feature-flags";
 import type {
   PreviousSessionSummary,
   CurrentFocus,
@@ -23,6 +24,11 @@ import type {
   ConversationState,
 } from "./types";
 import { DEFAULT_CROSS_SESSION_CONFIG } from "./types";
+import {
+  generateSessionSummaryWithFallback,
+  type SessionMessage,
+  type SessionSummary,
+} from "./session-summarizer";
 
 // ============================================
 // 服务类
@@ -104,6 +110,10 @@ export class CrossSessionMemoryService {
   /**
    * 保存会话摘要（用于下次会话的跨会话记忆）
    *
+   * 支持两种模式：
+   * - LLM 模式：使用 AI 智能提取摘要、意图、待办事项和偏好
+   * - 简单模式：使用规则提取基本信息
+   *
    * @param userId - 用户 ID
    * @param conversationId - 会话 ID
    * @param state - 会话状态
@@ -115,7 +125,19 @@ export class CrossSessionMemoryService {
     state: ConversationState,
   ): Promise<boolean> {
     try {
-      const summary = this.generateSessionSummary(state);
+      let summary: PreviousSessionSummary;
+
+      // 使用 Feature Flag 和配置共同决定是否启用 LLM 摘要
+      const useLLM =
+        this.config.enableLLMSummary && FeatureFlags.ENABLE_LLM_SESSION_SUMMARY;
+
+      if (useLLM) {
+        // 使用 LLM 生成摘要
+        summary = await this.generateLLMSessionSummary(state);
+      } else {
+        // 使用简单规则生成摘要
+        summary = this.generateSessionSummary(state);
+      }
 
       const { error } = await this.supabase.rpc("update_session_cross_memory", {
         p_user_id: userId,
@@ -133,7 +155,14 @@ export class CrossSessionMemoryService {
       }
 
       logger.info(
-        { userId, conversationId, messageCount: state.messages.length },
+        {
+          userId,
+          conversationId,
+          messageCount: state.messages.length,
+          useLLM: this.config.enableLLMSummary,
+          hasPendingTasks:
+            summary.pendingTasks && summary.pendingTasks.length > 0,
+        },
         "Session summary saved",
       );
 
@@ -149,6 +178,72 @@ export class CrossSessionMemoryService {
       );
       return false;
     }
+  }
+
+  /**
+   * 使用 LLM 生成会话摘要
+   *
+   * @param state - 会话状态
+   * @returns 结构化摘要
+   */
+  private async generateLLMSessionSummary(
+    state: ConversationState,
+  ): Promise<PreviousSessionSummary> {
+    // 转换消息格式
+    const messages: SessionMessage[] = state.messages
+      .filter((m) => m.role === "user" || m.role === "assistant")
+      .map((m) => ({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+      }));
+
+    // 调用 LLM 摘要生成器（带降级）
+    const llmSummary: SessionSummary =
+      await generateSessionSummaryWithFallback(messages);
+
+    // 提取关键实体
+    const bookmarkIds = state.mentionedBookmarks
+      .map((b) =>
+        typeof b.id === "number" ? b.id : parseInt(b.id as string, 10),
+      )
+      .filter((id) => !isNaN(id))
+      .slice(0, this.config.maxEntities);
+
+    const tagNames = state.mentionedTags
+      .map((t) => t.name)
+      .slice(0, this.config.maxEntities);
+
+    const folderIds = state.mentionedFolders
+      .map((f) =>
+        typeof f.id === "number" ? f.id : parseInt(f.id as string, 10),
+      )
+      .filter((id) => !isNaN(id))
+      .slice(0, this.config.maxEntities);
+
+    // 合并主题（LLM 意图 + 实体提及）
+    const mainTopics = [
+      ...llmSummary.key_intents,
+      ...state.mentionedTags.map((t) => t.name),
+    ].slice(0, this.config.maxTopics);
+
+    return {
+      conversationId: state.conversationId,
+      summary: llmSummary.summary,
+      mainTopics,
+      keyEntities: {
+        bookmarkIds,
+        tagNames,
+        folderIds,
+      },
+      pendingTasks: llmSummary.pending_tasks,
+      userPreferenceInsights: llmSummary.learned_preferences
+        ? Object.entries(llmSummary.learned_preferences).map(
+            ([k, v]) => `${k}: ${v}`,
+          )
+        : undefined,
+      endedAt: new Date().toISOString(),
+      messageCount: state.messages.length,
+    };
   }
 
   /**

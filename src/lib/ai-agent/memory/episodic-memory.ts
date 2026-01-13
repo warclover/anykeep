@@ -79,6 +79,8 @@ export class EpisodicMemoryService {
           addSuffix: true,
           locale: zhCN,
         }),
+        // P2 新增：传递学习偏好
+        learnedPreferences: s.learnedPreferences,
       }));
 
       const context: EpisodicMemoryContext = {
@@ -231,6 +233,7 @@ export class EpisodicMemoryService {
       intents: string[];
       actions: ConversationAction[];
       pendingIntents?: string[];
+      learnedPreferences?: Record<string, string>;
       messageCount: number;
       sentiment?: ConversationSentiment;
     },
@@ -248,6 +251,7 @@ export class EpisodicMemoryService {
         intents: data.intents,
         actions: data.actions,
         pending_intents: data.pendingIntents || [],
+        learned_preferences: data.learnedPreferences || {},
         message_count: data.messageCount,
         sentiment: data.sentiment || "neutral",
       })
@@ -262,7 +266,14 @@ export class EpisodicMemoryService {
     const summaryId = (result as { id: string }).id;
 
     this.log.info(
-      { userId, sessionId, summaryId },
+      {
+        userId,
+        sessionId,
+        summaryId,
+        hasLearnedPreferences:
+          !!data.learnedPreferences &&
+          Object.keys(data.learnedPreferences).length > 0,
+      },
       "Conversation summary saved",
     );
 
@@ -296,6 +307,7 @@ export class EpisodicMemoryService {
       intents: db.intents || [],
       actions: (db.actions as ConversationAction[]) || [],
       pendingIntents: db.pending_intents || [],
+      learnedPreferences: db.learned_preferences || undefined,
       messageCount: db.message_count,
       sentiment: db.sentiment,
       createdAt: new Date(db.created_at),

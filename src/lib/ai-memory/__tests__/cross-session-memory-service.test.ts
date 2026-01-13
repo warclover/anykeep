@@ -23,11 +23,25 @@ jest.mock("@/lib/supabase/client", () => ({
   }),
 }));
 
+jest.mock("@/lib/ai-agent/config/feature-flags", () => ({
+  FeatureFlags: {
+    ENABLE_CROSS_SESSION_MEMORY: true,
+    ENABLE_LLM_SESSION_SUMMARY: false,
+  },
+}));
+
 jest.mock("@/lib/logger", () => ({
   logger: {
     info: jest.fn(),
     warn: jest.fn(),
     error: jest.fn(),
+    debug: jest.fn(),
+    child: () => ({
+      info: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+      debug: jest.fn(),
+    }),
   },
 }));
 
@@ -404,10 +418,10 @@ describe("CrossSessionMemoryService", () => {
       expect(mockRpc).toHaveBeenCalledWith(
         "record_intent_history",
         expect.objectContaining({
-          p_intent_sub_type: null,
-          p_confidence: null,
+          p_intent_sub_type: undefined,
+          p_confidence: undefined,
           p_success: true,
-          p_message_preview: null,
+          p_message_preview: undefined,
           p_context: {},
         }),
       );

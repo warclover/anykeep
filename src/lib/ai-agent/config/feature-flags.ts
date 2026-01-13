@@ -226,6 +226,19 @@ export const FeatureFlags = {
   },
 
   // ===========================================================================
+  // 对话持久化相关开关 [Phase 0 新增 - 2026-01-13]
+  // ===========================================================================
+
+  /**
+   * 是否启用对话持久化
+   * @default true
+   * @description 将当前会话保存到 localStorage，页面刷新不丢失对话
+   */
+  get ENABLE_CONVERSATION_PERSISTENCE(): boolean {
+    return process.env.ENABLE_CONVERSATION_PERSISTENCE !== "false";
+  },
+
+  // ===========================================================================
   // ReAct 循环相关开关
   // ===========================================================================
 
@@ -450,6 +463,16 @@ export const FeatureFlags = {
    */
   get ENABLE_CROSS_SESSION_MEMORY(): boolean {
     return process.env.ENABLE_CROSS_SESSION_MEMORY === "true";
+  },
+
+  /**
+   * 是否启用 LLM 会话摘要
+   * @default true
+   * @description 使用 LLM 生成智能会话摘要（含待办、偏好提取）
+   * @since 2026-01-13 P2
+   */
+  get ENABLE_LLM_SESSION_SUMMARY(): boolean {
+    return process.env.ENABLE_LLM_SESSION_SUMMARY !== "false";
   },
 
   /**
@@ -678,6 +701,55 @@ export const FeatureFlags = {
   get ENABLE_FEEDBACK_COLLECTION(): boolean {
     return process.env.ENABLE_FEEDBACK_COLLECTION !== "false";
   },
+
+  // ===========================================================================
+  // Skills v1.1.0 新增 Feature Flags [P1-7 修复 - 2026-01-13]
+  // ===========================================================================
+
+  /**
+   * 是否启用文件夹智能推荐 Skill
+   * @default true
+   * @description 基于内容和使用习惯推荐最佳文件夹结构
+   */
+  get ENABLE_FOLDER_RECOMMEND(): boolean {
+    return process.env.ENABLE_FOLDER_RECOMMEND !== "false";
+  },
+
+  /**
+   * 是否启用搜索优化助手 Skill
+   * @default true
+   * @description 分析搜索词，提供优化建议和技巧
+   */
+  get ENABLE_SEARCH_OPTIMIZE(): boolean {
+    return process.env.ENABLE_SEARCH_OPTIMIZE !== "false";
+  },
+
+  /**
+   * 是否启用知识图谱探索 Skill
+   * @default true
+   * @description 可视化知识关联，发现学习盲区
+   */
+  get ENABLE_KNOWLEDGE_GRAPH_EXPLORE(): boolean {
+    return process.env.ENABLE_KNOWLEDGE_GRAPH_EXPLORE !== "false";
+  },
+
+  /**
+   * 是否启用文件夹健康检查 Skill
+   * @default true
+   * @description 分析文件夹结构，发现问题并优化建议
+   */
+  get ENABLE_FOLDER_HEALTH_CHECK(): boolean {
+    return process.env.ENABLE_FOLDER_HEALTH_CHECK !== "false";
+  },
+
+  /**
+   * 是否启用快照对比分析 Skill
+   * @default true
+   * @description 对比页面快照，检测内容变化
+   */
+  get ENABLE_SNAPSHOT_COMPARE(): boolean {
+    return process.env.ENABLE_SNAPSHOT_COMPARE !== "false";
+  },
 } as const;
 
 // =============================================================================
@@ -735,6 +807,9 @@ export function getAllFeatureFlags(): Record<BooleanFeatureFlagKey, boolean> & {
     // 上下文压缩
     ENABLE_CONVERSATION_COMPRESSION:
       FeatureFlags.ENABLE_CONVERSATION_COMPRESSION,
+    // 对话持久化 [Phase 0 新增 - 2026-01-13]
+    ENABLE_CONVERSATION_PERSISTENCE:
+      FeatureFlags.ENABLE_CONVERSATION_PERSISTENCE,
     // ReAct 循环与引用追踪
     ENABLE_REACT_LOOP: FeatureFlags.ENABLE_REACT_LOOP,
     ENABLE_CITATION_TRACKING: FeatureFlags.ENABLE_CITATION_TRACKING,
@@ -767,6 +842,7 @@ export function getAllFeatureFlags(): Record<BooleanFeatureFlagKey, boolean> & {
     ENABLE_PROACTIVE_BRIEFING: FeatureFlags.ENABLE_PROACTIVE_BRIEFING,
     ENABLE_GLOBAL_INSIGHT: FeatureFlags.ENABLE_GLOBAL_INSIGHT,
     ENABLE_CROSS_SESSION_MEMORY: FeatureFlags.ENABLE_CROSS_SESSION_MEMORY,
+    ENABLE_LLM_SESSION_SUMMARY: FeatureFlags.ENABLE_LLM_SESSION_SUMMARY,
     ENABLE_SLOW_THINKING: FeatureFlags.ENABLE_SLOW_THINKING,
     ENABLE_SLOW_THINKING_VISIBLE: FeatureFlags.ENABLE_SLOW_THINKING_VISIBLE,
     ENABLE_INTENT_PREDICTION: FeatureFlags.ENABLE_INTENT_PREDICTION,
@@ -797,6 +873,12 @@ export function getAllFeatureFlags(): Record<BooleanFeatureFlagKey, boolean> & {
     // 架构优化 V4.0 [Phase 1 新增 - 2026-01-12]
     ENABLE_INTENT_DRIVEN_TOOLS: FeatureFlags.ENABLE_INTENT_DRIVEN_TOOLS,
     ENABLE_CAPSULE_SYSTEM: FeatureFlags.ENABLE_CAPSULE_SYSTEM,
+    // Skills v1.1.0 新增 [P1-7 修复 - 2026-01-13]
+    ENABLE_FOLDER_RECOMMEND: FeatureFlags.ENABLE_FOLDER_RECOMMEND,
+    ENABLE_SEARCH_OPTIMIZE: FeatureFlags.ENABLE_SEARCH_OPTIMIZE,
+    ENABLE_KNOWLEDGE_GRAPH_EXPLORE: FeatureFlags.ENABLE_KNOWLEDGE_GRAPH_EXPLORE,
+    ENABLE_FOLDER_HEALTH_CHECK: FeatureFlags.ENABLE_FOLDER_HEALTH_CHECK,
+    ENABLE_SNAPSHOT_COMPARE: FeatureFlags.ENABLE_SNAPSHOT_COMPARE,
   };
 }
 

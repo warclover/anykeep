@@ -18,6 +18,9 @@
 // 核心 AI 对话
 export * from "./use-ai-chat";
 
+// 会话历史管理 (P1: 历史会话管理)
+export * from "./use-conversation-history";
+
 // AI 图像分析
 export * from "./use-vision-analysis";
 

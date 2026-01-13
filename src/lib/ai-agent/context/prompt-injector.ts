@@ -148,6 +148,23 @@ export function buildEpisodicMemoryPrompt(
     lines.push("");
   }
 
+  // P2 新增：聚合学习偏好（从最近会话摘要中提取）
+  const aggregatedPreferences = aggregateLearnedPreferences(
+    memory.recentSummaries,
+  );
+  if (Object.keys(aggregatedPreferences).length > 0) {
+    lines.push("### 已学习偏好");
+    lines.push("从历史对话中学习到的用户偏好：");
+    for (const [key, value] of Object.entries(aggregatedPreferences)) {
+      lines.push(`- ${key}：${value}`);
+    }
+    lines.push("");
+    lines.push(
+      "_提示：基于这些偏好调整响应，但用户明确要求不同时应优先遵从用户指令。_",
+    );
+    lines.push("");
+  }
+
   // 用户偏好（来自交互日志）
   if (memory.preferences) {
     lines.push("### 用户偏好");
@@ -167,6 +184,30 @@ export function buildEpisodicMemoryPrompt(
   }
 
   return lines.join("\n");
+}
+
+/**
+ * 聚合最近会话中的学习偏好
+ *
+ * 合并多个会话的偏好，较新的会话优先
+ *
+ * @param summaries 最近会话摘要列表
+ * @returns 聚合后的偏好记录
+ */
+function aggregateLearnedPreferences(
+  summaries: EpisodicMemoryContext["recentSummaries"],
+): Record<string, string> {
+  const aggregated: Record<string, string> = {};
+
+  // 从最旧到最新遍历，新值覆盖旧值
+  for (let i = summaries.length - 1; i >= 0; i--) {
+    const prefs = summaries[i].learnedPreferences;
+    if (prefs) {
+      Object.assign(aggregated, prefs);
+    }
+  }
+
+  return aggregated;
 }
 
 /**

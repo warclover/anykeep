@@ -168,6 +168,8 @@ export interface RecentSummaryContext {
   intents: string[];
   /** 时间描述（如 "2小时前"） */
   timeAgo: string;
+  /** 学习到的用户偏好 [P2 新增] */
+  learnedPreferences?: Record<string, string>;
 }
 
 /**

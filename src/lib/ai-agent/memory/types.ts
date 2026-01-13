@@ -28,6 +28,8 @@ export interface ConversationSummary {
   actions: ConversationAction[];
   /** 未完成的意图（用于下次提醒） */
   pendingIntents: string[];
+  /** 学习到的用户偏好 [P2 新增] */
+  learnedPreferences?: Record<string, string>;
   /** 消息数量 */
   messageCount: number;
   /** 会话情感基调 */
@@ -212,6 +214,8 @@ export interface RecentSummary {
   intents: string[];
   /** 时间描述（如 "2小时前"） */
   timeAgo: string;
+  /** 学习到的用户偏好 [P2 新增] */
+  learnedPreferences?: Record<string, string>;
 }
 
 // =============================================================================
@@ -256,6 +260,7 @@ export interface DbConversationSummary {
   intents: string[];
   actions: ConversationAction[];
   pending_intents: string[];
+  learned_preferences?: Record<string, string>;
   message_count: number;
   sentiment: ConversationSentiment;
   created_at: string;

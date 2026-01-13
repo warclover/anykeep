@@ -1,8 +1,11 @@
 /**
  * AI Agent Tools 模块导出
  *
- * @version 2.7.1
+ * @version 2.8.0
  * @since 2025-12-23
+ *
+ * v2.8.0 新增:
+ * - 待办事项 Tools: list-pending-tasks, complete-pending-task（P2-3 跨会话待办追踪）
  *
  * v2.7.1 新增:
  * - 修复 registerDefaultTools 重复注册问题（添加标志位）
@@ -129,6 +132,9 @@ export * from "./wechat-article";
 // Active Recall Tools (新增 v2.5.0)
 export * from "./active-recall";
 
+// 待办事项 Tools (新增 v2.8.0 P2-3)
+export * from "./pending-tasks";
+
 // 注册默认 Tools
 import { toolRegistry } from "./tool-registry";
 import { queryTools } from "./query";
@@ -149,6 +155,7 @@ import { pluginAuthTools } from "./plugin-auth";
 import { knowledgeLinkTools } from "./knowledge-link";
 import { wechatArticleTools } from "./wechat-article";
 import { activeRecallTools } from "./active-recall";
+import { pendingTasksTools } from "./pending-tasks";
 import { logger } from "@/lib/logger";
 
 /**
@@ -196,6 +203,8 @@ export function registerDefaultTools(): void {
   toolRegistry.registerAll(wechatArticleTools);
   // 新增 Tools (v2.5.0)
   toolRegistry.registerAll(activeRecallTools);
+  // 新增 Tools (v2.8.0 P2-3)
+  toolRegistry.registerAll(pendingTasksTools);
 
   logger.info(
     { toolCount: toolRegistry.getStats().totalTools },

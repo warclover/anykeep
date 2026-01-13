@@ -69,7 +69,30 @@ export {
   createCrossSessionMemoryService,
 } from "./cross-session-memory-service";
 
-// ConversationAttachmentTracker 导出（v1.4 新增 - 附件追踪）
+// SessionSummarizer 导出（v1.4 新增 - P2 LLM 摘要）
+export {
+  generateSessionSummary,
+  generateSimpleSummary,
+  generateSessionSummaryWithFallback,
+  SessionSummarySchema,
+  type SessionSummary,
+  type SessionMessage,
+  type SessionSummarizerConfig,
+} from "./session-summarizer";
+
+// PendingTasks 导出（v1.5 新增 - P2-3 待办追踪）
+export {
+  PendingTasksService,
+  getPendingTasksService,
+  resetPendingTasksService,
+  getPendingTasks,
+  completePendingTask,
+  hasPendingTasks,
+  type PendingTask,
+  type PendingTasksConfig,
+} from "./pending-tasks";
+
+// ConversationAttachmentTracker 导出（v1.5 新增 - 附件追踪）
 export {
   conversationAttachmentTracker,
   type ConversationAttachment,
