@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+html { background: #ffffff; }
+body {
+  width: 720pt; height: 405pt; margin: 0; padding: 0;
+  background: #F1F5F9; font-family: Arial, sans-serif;
+  display: flex; flex-direction: column;
+}
+/* 顶部装饰条 */
+.top-bar {
+  height: 4pt; background: #1E40AF;
+}
+/* 头部区域 */
+.header {
+  padding: 16pt 40pt 12pt 40pt;
+  background: #FFFFFF;
+  border-bottom: 1pt solid #E2E8F0;
+}
+.header-label {
+  color: #3B82F6; font-size: 9pt; font-weight: bold;
+  margin: 0 0 3pt 0; letter-spacing: 1pt;
+}
+.header-title {
+  color: #0F172A; font-size: 22pt; font-weight: bold; margin: 0;
+}
+/* 主内容区域 */
+.main-content {
+  display: flex; flex: 1; padding: 16pt 35pt 18pt 35pt; gap: 16pt;
+}
+/* 价值卡片 - 增强版 */
+.value-card {
+  flex: 1; background: #FFFFFF; border-radius: 10pt;
+  display: flex; flex-direction: column;
+  box-shadow: 0 4pt 16pt rgba(0,0,0,0.08);
+  border: 1pt solid #E2E8F0;
+  position: relative;
+  overflow: hidden;
+}
+/* 卡片顶部彩色区域 */
+.card-header {
+  background: #2563EB; padding: 14pt 14pt 12pt 14pt;
+  display: flex; align-items: center; gap: 10pt;
+}
+.card-header-green { background: #059669; }
+.card-header-orange { background: #D97706; }
+/* 序号徽章 */
+.number-badge {
+  width: 28pt; height: 28pt; background: #FFFFFF;
+  border-radius: 6pt; display: flex; align-items: center;
+  justify-content: center;
+}
+.number-text {
+  color: #2563EB; font-size: 12pt; font-weight: bold; margin: 0;
+}
+.number-text-green { color: #059669; }
+.number-text-orange { color: #D97706; }
+/* 卡片头部标题 */
+.card-header-content { flex: 1; }
+.card-title {
+  color: #FFFFFF; font-size: 12pt; font-weight: bold; margin: 0 0 2pt 0;
+}
+.card-subtitle-header {
+  color: rgba(255,255,255,0.85); font-size: 7pt; margin: 0;
+}
+/* 卡片内容区域 */
+.card-body {
+  padding: 12pt 14pt 14pt 14pt; flex: 1;
+  display: flex; flex-direction: column;
+}
+/* 描述文字容器 */
+.card-desc-wrapper {
+  margin-bottom: 10pt; padding-bottom: 8pt;
+  border-bottom: 1pt solid #F1F5F9;
+}
+.card-desc {
+  color: #64748B; font-size: 8pt; margin: 0;
+  line-height: 1.4;
+}
+/* 要点列表 - 增强版 */
+.points-list {
+  display: flex; flex-direction: column; gap: 6pt;
+}
+.point-item {
+  display: flex; align-items: center; gap: 8pt;
+  background: #F8FAFC; padding: 6pt 8pt; border-radius: 4pt;
+}
+.point-item-green { background: #F0FDF4; }
+.point-item-orange { background: #FFFBEB; }
+/* 勾选图标 */
+.check-icon {
+  width: 14pt; height: 14pt; background: #DBEAFE;
+  border-radius: 50%; display: flex; align-items: center;
+  justify-content: center; flex-shrink: 0;
+}
+.check-icon-green { background: #D1FAE5; }
+.check-icon-orange { background: #FEF3C7; }
+.check-text {
+  color: #2563EB; font-size: 8pt; font-weight: bold; margin: 0;
+}
+.check-text-green { color: #059669; }
+.check-text-orange { color: #D97706; }
+.point-text {
+  color: #334155; font-size: 8pt; margin: 0; flex: 1;
+}
+/* 底部装饰 */
+.footer {
+  padding: 0 40pt 12pt 40pt;
+  display: flex; justify-content: center;
+}
+.footer-text {
+  color: #94A3B8; font-size: 8pt; margin: 0;
+}
+</style>
+</head>
+<body>
+<div class="top-bar"></div>
+
+<div class="header">
+  <p class="header-label">WHY CHOOSE US</p>
+  <h1 class="header-title">选择终端服务软件的三大理由</h1>
+</div>
+
+<div class="main-content">
+  <div class="value-card">
+    <div class="card-header">
+      <div class="number-badge"><p class="number-text">01</p></div>
+      <div class="card-header-content">
+        <h2 class="card-title">面向未来扩展</h2>
+        <p class="card-subtitle-header">Future Expansion</p>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="card-desc-wrapper"><p class="card-desc">为实验室未来扩展其他测试专业提供现成模板</p></div>
+      <div class="points-list">
+        <div class="point-item">
+          <div class="check-icon"><p class="check-text">✓</p></div>
+          <p class="point-text">新增测试专业快速上线</p>
+        </div>
+        <div class="point-item">
+          <div class="check-icon"><p class="check-text">✓</p></div>
+          <p class="point-text">数据模型可复用</p>
+        </div>
+        <div class="point-item">
+          <div class="check-icon"><p class="check-text">✓</p></div>
+          <p class="point-text">降低二次开发成本</p>
+        </div>
+        <div class="point-item">
+          <div class="check-icon"><p class="check-text">✓</p></div>
+          <p class="point-text">保护前期投资价值</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="value-card">
+    <div class="card-header card-header-green">
+      <div class="number-badge"><p class="number-text number-text-green">02</p></div>
+      <div class="card-header-content">
+        <h2 class="card-title">支持科研分析</h2>
+        <p class="card-subtitle-header">Research Support</p>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="card-desc-wrapper"><p class="card-desc">结构化多维数据助力深度科研与创新</p></div>
+      <div class="points-list">
+        <div class="point-item point-item-green">
+          <div class="check-icon check-icon-green"><p class="check-text check-text-green">✓</p></div>
+          <p class="point-text">数据可直接用于机器学习</p>
+        </div>
+        <div class="point-item point-item-green">
+          <div class="check-icon check-icon-green"><p class="check-text check-text-green">✓</p></div>
+          <p class="point-text">支持第三方分析工具</p>
+        </div>
+        <div class="point-item point-item-green">
+          <div class="check-icon check-icon-green"><p class="check-text check-text-green">✓</p></div>
+          <p class="point-text">无缝对接数据平台</p>
+        </div>
+        <div class="point-item point-item-green">
+          <div class="check-icon check-icon-green"><p class="check-text check-text-green">✓</p></div>
+          <p class="point-text">为科研论文提供数据支撑</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="value-card">
+    <div class="card-header card-header-orange">
+      <div class="number-badge"><p class="number-text number-text-orange">03</p></div>
+      <div class="card-header-content">
+        <h2 class="card-title">简化工作流程</h2>
+        <p class="card-subtitle-header">Workflow Optimization</p>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="card-desc-wrapper"><p class="card-desc">自动化流程释放专业人员生产力</p></div>
+      <div class="points-list">
+        <div class="point-item point-item-orange">
+          <div class="check-icon check-icon-orange"><p class="check-text check-text-orange">✓</p></div>
+          <p class="point-text">减少80%报告编制时间</p>
+        </div>
+        <div class="point-item point-item-orange">
+          <div class="check-icon check-icon-orange"><p class="check-text check-text-orange">✓</p></div>
+          <p class="point-text">消除人工抄录错误</p>
+        </div>
+        <div class="point-item point-item-orange">
+          <div class="check-icon check-icon-orange"><p class="check-text check-text-orange">✓</p></div>
+          <p class="point-text">提升检测通量</p>
+        </div>
+        <div class="point-item point-item-orange">
+          <div class="check-icon check-icon-orange"><p class="check-text check-text-orange">✓</p></div>
+          <p class="point-text">标准化操作流程</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  <p class="footer-text">Terminal Service Platform - Empowering Your Testing Future</p>
+</div>
+</body>
+</html>

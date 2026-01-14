@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+html { background: #ffffff; }
+body {
+  width: 720pt; height: 405pt; margin: 0; padding: 0;
+  background: #F8F9FA; font-family: Arial, sans-serif;
+  display: flex; flex-direction: column;
+}
+.header {
+  background: #1C2833; padding: 20pt 40pt; margin: 0;
+}
+.header-title {
+  color: #FFFFFF; font-size: 26pt; font-weight: bold; margin: 0;
+}
+.content {
+  display: flex; flex: 1; padding: 18pt 40pt 45pt 40pt; gap: 25pt;
+}
+.timeline {
+  flex: 1.2; display: flex; flex-direction: column; gap: 8pt;
+}
+.timeline-item {
+  display: flex; align-items: flex-start; gap: 12pt;
+}
+.timeline-dot {
+  width: 32pt; height: 32pt; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.dot-1 { background: #3498DB; }
+.dot-2 { background: #1ABC9C; }
+.dot-3 { background: #F39C12; }
+.dot-4 { background: #9B59B6; }
+.dot-text {
+  color: #FFFFFF; font-size: 12pt; font-weight: bold; margin: 0;
+}
+.timeline-content {
+  background: #FFFFFF; padding: 10pt 14pt; border-radius: 6pt;
+  box-shadow: 0 2pt 6pt rgba(0,0,0,0.06); flex: 1;
+}
+.timeline-title {
+  color: #1C2833; font-size: 12pt; font-weight: bold; margin: 0 0 4pt 0;
+}
+.timeline-desc {
+  color: #5D6D7E; font-size: 10pt; margin: 0;
+}
+.support-panel {
+  flex: 0.8; display: flex; flex-direction: column; gap: 12pt;
+}
+.support-card {
+  background: #1C2833; padding: 16pt; border-radius: 6pt;
+}
+.support-title {
+  color: #F39C12; font-size: 12pt; font-weight: bold; margin: 0 0 10pt 0;
+}
+.support-list {
+  margin: 0; padding: 0 0 0 16pt;
+}
+.support-list li {
+  color: #FFFFFF; font-size: 10pt; margin: 0 0 6pt 0;
+}
+.cta-card {
+  background: #3498DB; padding: 16pt; border-radius: 6pt; text-align: center;
+}
+.cta-text {
+  color: #FFFFFF; font-size: 13pt; font-weight: bold; margin: 0 0 6pt 0;
+}
+.cta-sub {
+  color: #E8F6F3; font-size: 10pt; margin: 0;
+}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1 class="header-title">合作方案与实施路径</h1>
+</div>
+<div class="content">
+  <div class="timeline">
+    <div class="timeline-item">
+      <div class="timeline-dot dot-1"><p class="dot-text">1</p></div>
+      <div class="timeline-content">
+        <h4 class="timeline-title">需求调研 (1-2周)</h4>
+        <p class="timeline-desc">深入了解检测中心业务流程、设备清单、数据需求</p>
+      </div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-dot dot-2"><p class="dot-text">2</p></div>
+      <div class="timeline-content">
+        <h4 class="timeline-title">POC 试用验证 (2-4周)</h4>
+        <p class="timeline-desc">选取1-2个典型测试场景进行试点部署，验证效果</p>
+      </div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-dot dot-3"><p class="dot-text">3</p></div>
+      <div class="timeline-content">
+        <h4 class="timeline-title">正式部署 (4-8周)</h4>
+        <p class="timeline-desc">全面接入测试设备，完成数据迁移，培训操作人员</p>
+      </div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-dot dot-4"><p class="dot-text">4</p></div>
+      <div class="timeline-content">
+        <h4 class="timeline-title">持续优化</h4>
+        <p class="timeline-desc">根据反馈持续优化，扩展新的测试专业</p>
+      </div>
+    </div>
+  </div>
+  <div class="support-panel">
+    <div class="support-card">
+      <h4 class="support-title">技术支持保障</h4>
+      <ul class="support-list">
+        <li>专属项目经理全程跟进</li>
+        <li>7x24 小时技术响应</li>
+        <li>定期巡检与优化建议</li>
+        <li>年度版本升级服务</li>
+      </ul>
+    </div>
+    <div class="cta-card">
+      <p class="cta-text">免费 POC 试用</p>
+      <p class="cta-sub">零风险体验终端服务软件价值</p>
+    </div>
+  </div>
+</div>
+</body>
+</html>

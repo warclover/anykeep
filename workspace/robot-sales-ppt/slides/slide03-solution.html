@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+html { background: #ffffff; }
+body {
+  width: 720pt; height: 405pt; margin: 0; padding: 0;
+  background: #F8F9FA; font-family: Arial, sans-serif;
+  display: flex; flex-direction: column;
+}
+.header {
+  background: #1C2833; padding: 20pt 40pt; margin: 0;
+}
+.header-title {
+  color: #FFFFFF; font-size: 26pt; font-weight: bold; margin: 0;
+}
+.content {
+  display: flex; flex: 1; padding: 18pt 40pt 45pt 40pt; gap: 25pt;
+}
+.left-panel {
+  flex: 1; display: flex; flex-direction: column; justify-content: flex-start;
+}
+.tagline {
+  color: #3498DB; font-size: 12pt; margin: 0 0 8pt 0; font-weight: bold;
+}
+.main-text {
+  color: #1C2833; font-size: 18pt; font-weight: bold; margin: 0 0 15pt 0;
+  line-height: 1.3;
+}
+.desc-text {
+  color: #5D6D7E; font-size: 11pt; margin: 0 0 15pt 0; line-height: 1.5;
+}
+.highlight-box {
+  background: #1C2833; padding: 12pt 16pt; border-radius: 6pt;
+  border-left: 4pt solid #F39C12;
+}
+.highlight-text {
+  color: #FFFFFF; font-size: 11pt; margin: 0; line-height: 1.4;
+}
+.right-panel {
+  flex: 1; display: flex; flex-direction: column; gap: 8pt;
+}
+.feature-item {
+  background: #FFFFFF; padding: 12pt 16pt; border-radius: 6pt;
+  box-shadow: 0 2pt 6pt rgba(0,0,0,0.06);
+  display: flex; align-items: center; gap: 12pt;
+}
+.feature-num {
+  background: #3498DB; color: #FFFFFF; width: 28pt; height: 28pt;
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-size: 12pt; font-weight: bold; flex-shrink: 0;
+}
+.feature-num p { margin: 0; color: #FFFFFF; }
+.feature-content { flex: 1; }
+.feature-title {
+  color: #1C2833; font-size: 13pt; font-weight: bold; margin: 0 0 3pt 0;
+}
+.feature-desc {
+  color: #5D6D7E; font-size: 10pt; margin: 0;
+}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1 class="header-title">终端服务软件 — 不仅是报告工具</h1>
+</div>
+<div class="content">
+  <div class="left-panel">
+    <p class="tagline">核心定位</p>
+    <h2 class="main-text">构建可复用的数据源平台，为科研与研发赋能</h2>
+    <p class="desc-text">我们将检测数据视为实验室最核心的资产。终端服务软件的目标是成为连接测试设备与上层应用的数据中枢。</p>
+    <div class="highlight-box">
+      <p class="highlight-text">一次接入，长期受益 — 数据投资将持续产生价值</p>
+    </div>
+  </div>
+  <div class="right-panel">
+    <div class="feature-item">
+      <div class="feature-num"><p>1</p></div>
+      <div class="feature-content">
+        <h4 class="feature-title">统一数据采集</h4>
+        <p class="feature-desc">多源异构数据统一接入解析</p>
+      </div>
+    </div>
+    <div class="feature-item">
+      <div class="feature-num"><p>2</p></div>
+      <div class="feature-content">
+        <h4 class="feature-title">结构化存储</h4>
+        <p class="feature-desc">向量化处理，支持多维关联</p>
+      </div>
+    </div>
+    <div class="feature-item">
+      <div class="feature-num"><p>3</p></div>
+      <div class="feature-content">
+        <h4 class="feature-title">自动化输出</h4>
+        <p class="feature-desc">原始记录与报告一键生成</p>
+      </div>
+    </div>
+    <div class="feature-item">
+      <div class="feature-num"><p>4</p></div>
+      <div class="feature-content">
+        <h4 class="feature-title">开放接口</h4>
+        <p class="feature-desc">无缝对接上层数据平台</p>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

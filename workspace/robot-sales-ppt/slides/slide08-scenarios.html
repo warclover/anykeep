@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+html { background: #ffffff; }
+body {
+  width: 720pt; height: 405pt; margin: 0; padding: 0;
+  background: #F8F9FA; font-family: Arial, sans-serif;
+  display: flex; flex-direction: column;
+}
+.header {
+  background: #1C2833; padding: 20pt 40pt; margin: 0;
+}
+.header-title {
+  color: #FFFFFF; font-size: 26pt; font-weight: bold; margin: 0;
+}
+.header-subtitle {
+  color: #3498DB; font-size: 12pt; margin: 6pt 0 0 0;
+}
+.content {
+  display: flex; flex: 1; padding: 18pt 40pt 45pt 40pt; gap: 18pt;
+}
+.scenario-card {
+  flex: 1; background: #FFFFFF; border-radius: 8pt;
+  box-shadow: 0 2pt 8pt rgba(0,0,0,0.08);
+  padding: 18pt 16pt;
+  display: flex; flex-direction: column;
+}
+.scenario-num {
+  color: #3498DB; font-size: 28pt; font-weight: bold; margin: 0 0 8pt 0;
+}
+.scenario-title {
+  color: #1C2833; font-size: 13pt; font-weight: bold; margin: 0 0 10pt 0;
+}
+.scenario-desc {
+  color: #5D6D7E; font-size: 10pt; margin: 0 0 12pt 0; line-height: 1.5;
+  flex: 1;
+}
+.scenario-tags {
+  display: flex; flex-wrap: wrap; gap: 5pt;
+}
+.tag {
+  background: #EBF5FB; padding: 3pt 8pt; border-radius: 10pt;
+}
+.tag-text {
+  color: #2980B9; font-size: 8pt; margin: 0;
+}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1 class="header-title">典型应用场景</h1>
+  <p class="header-subtitle">杭州机器人检测中心实际业务需求</p>
+</div>
+<div class="content">
+  <div class="scenario-card">
+    <p class="scenario-num">01</p>
+    <h3 class="scenario-title">电波暗室数据同步展示</h3>
+    <p class="scenario-desc">在电磁兼容测试过程中，同步展示来自不同自动化测试环节的数据，包括机器人运动状态、电磁场强度、通信质量等多维信息。</p>
+    <div class="scenario-tags">
+      <div class="tag"><p class="tag-text">实时数据流</p></div>
+      <div class="tag"><p class="tag-text">多屏展示</p></div>
+      <div class="tag"><p class="tag-text">EMC测试</p></div>
+    </div>
+  </div>
+  <div class="scenario-card">
+    <p class="scenario-num">02</p>
+    <h3 class="scenario-title">机器人运动数据分析</h3>
+    <p class="scenario-desc">采集机器人在运动过程中产生的路面压力数据、关节力矩、轨迹偏差等信息，通过向量化存储支撑步态优化和可靠性研究。</p>
+    <div class="scenario-tags">
+      <div class="tag"><p class="tag-text">压力传感</p></div>
+      <div class="tag"><p class="tag-text">轨迹分析</p></div>
+      <div class="tag"><p class="tag-text">步态优化</p></div>
+    </div>
+  </div>
+  <div class="scenario-card">
+    <p class="scenario-num">03</p>
+    <h3 class="scenario-title">通信信号全程监测</h3>
+    <p class="scenario-desc">对机器人与控制端之间的通信信号进行全程采集和分析，包括信号强度、时延、丢包率等指标，为可靠性评估提供数据支撑。</p>
+    <div class="scenario-tags">
+      <div class="tag"><p class="tag-text">5G/WiFi</p></div>
+      <div class="tag"><p class="tag-text">信号质量</p></div>
+      <div class="tag"><p class="tag-text">可靠性评估</p></div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+html { background: #ffffff; }
+body {
+  width: 720pt; height: 405pt; margin: 0; padding: 0;
+  background: #FFFFFF; font-family: Arial, sans-serif;
+  display: flex; flex-direction: column;
+}
+.header {
+  background: #F9FAFB; padding: 16pt 30pt; display: flex; align-items: center;
+  border-bottom: 1pt solid #E5E7EB;
+}
+.dimension-num {
+  background: #3B82F6; padding: 5pt 10pt; border-radius: 3pt; margin-right: 12pt;
+}
+.num-text { color: #FFFFFF; font-size: 12pt; font-weight: bold; margin: 0; }
+h1 { color: #1F2937; font-size: 22pt; font-weight: bold; margin: 0; }
+.content { flex: 1; display: flex; padding: 18pt 30pt; gap: 20pt; }
+.column {
+  flex: 1; border-radius: 8pt; padding: 14pt; display: flex; flex-direction: column;
+  border: 1pt solid #E5E7EB;
+}
+.hardware-col { background: #F0F9FF; border-top: 4pt solid #3B82F6; }
+.software-col { background: #F0FDF4; border-top: 4pt solid #10B981; }
+.col-header { display: flex; align-items: center; margin-bottom: 10pt; }
+.col-icon {
+  width: 26pt; height: 26pt; border-radius: 50%; display: flex;
+  align-items: center; justify-content: center; margin-right: 8pt;
+}
+.hardware-icon { background: #3B82F6; }
+.software-icon { background: #10B981; }
+.icon-text { color: #FFFFFF; font-size: 11pt; font-weight: bold; margin: 0; }
+.hardware-title { color: #1E40AF; font-size: 14pt; font-weight: bold; margin: 0; }
+.software-title { color: #047857; font-size: 14pt; font-weight: bold; margin: 0; }
+.hardware-keyword { color: #3B82F6; font-size: 15pt; font-weight: bold; margin: 6pt 0 5pt 0; }
+.software-keyword { color: #10B981; font-size: 15pt; font-weight: bold; margin: 6pt 0 5pt 0; }
+.description { font-size: 10pt; color: #4B5563; line-height: 1.4; margin: 0 0 6pt 0; }
+.service-list {
+  font-size: 9pt; margin: 4pt 0; padding: 0 0 0 14pt; color: #374151; line-height: 1.5;
+}
+.focus-box { margin-top: auto; padding: 6pt 8pt; border-radius: 4pt; border-left: 3pt solid; }
+.hardware-focus { background: #EFF6FF; border-left-color: #3B82F6; }
+.software-focus { background: #ECFDF5; border-left-color: #10B981; }
+.focus { font-size: 9pt; color: #374151; margin: 0; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="dimension-num"><p class="num-text">05</p></div>
+  <h1>服务要求</h1>
+</div>
+<div class="content">
+  <div class="column hardware-col">
+    <div class="col-header">
+      <div class="col-icon hardware-icon"><p class="icon-text">H</p></div>
+      <p class="hardware-title">硬件设备</p>
+    </div>
+    <p class="hardware-keyword">安装校准</p>
+    <p class="description">核心服务内容：</p>
+    <ul class="service-list">
+      <li>上门安装调试</li>
+      <li>定期校准</li>
+      <li>24小时快速维修响应</li>
+    </ul>
+    <div class="focus-box hardware-focus">
+      <p class="focus">关注：设备稳定性、故障解决速度</p>
+    </div>
+  </div>
+  <div class="column software-col">
+    <div class="col-header">
+      <div class="col-icon software-icon"><p class="icon-text">S</p></div>
+      <p class="software-title">LIMS软件</p>
+    </div>
+    <p class="software-keyword">实施培训</p>
+    <p class="description">核心服务内容：</p>
+    <ul class="service-list">
+      <li>定制化功能开发</li>
+      <li>多岗位人员操作培训</li>
+      <li>年度升级与数据维护</li>
+    </ul>
+    <div class="focus-box software-focus">
+      <p class="focus">关注：系统适配性、使用门槛</p>
+    </div>
+  </div>
+</div>
+</body>
+</html>

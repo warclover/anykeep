@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+html { background: #ffffff; }
+body {
+  width: 720pt; height: 405pt; margin: 0; padding: 0;
+  background: #F7FAFC; font-family: Arial, sans-serif;
+  display: flex; flex-direction: column;
+}
+
+/* 顶部标题栏 */
+.header {
+  background: #1A365D;
+  padding: 18pt 30pt;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.title-area {
+  display: flex;
+  flex-direction: column;
+}
+
+.badge {
+  background: #D69E2E;
+  padding: 4pt 12pt;
+  border-radius: 3pt;
+  margin-bottom: 6pt;
+  display: inline-block;
+  width: fit-content;
+}
+
+/* 主内容区 */
+.content {
+  display: flex;
+  flex: 1;
+  padding: 20pt 30pt;
+  gap: 25pt;
+}
+
+/* 左侧指标区 */
+.metrics-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12pt;
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12pt;
+  flex: 1;
+}
+
+.metric-card {
+  background: #FFFFFF;
+  border-radius: 6pt;
+  padding: 14pt 16pt;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border-left: 4pt solid #2B6CB0;
+}
+
+.metric-card.highlight {
+  border-left-color: #D69E2E;
+  background: #FFFBEB;
+}
+
+/* 右侧图表区 */
+.chart-section {
+  width: 260pt;
+  display: flex;
+  flex-direction: column;
+  gap: 12pt;
+}
+
+.chart-container {
+  background: #FFFFFF;
+  border-radius: 6pt;
+  padding: 12pt;
+  flex: 1;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+/* 底部来源 */
+.footer {
+  background: #1A365D;
+  padding: 8pt 30pt;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+</style>
+</head>
+<body>
+
+<!-- 顶部标题栏 -->
+<div class="header">
+  <div class="title-area">
+    <div class="badge">
+      <p style="margin: 0; font-size: 9pt; color: #1A365D; font-weight: bold;">2024年度报告</p>
+    </div>
+    <h1 style="margin: 0; font-size: 22pt; color: #FFFFFF; font-weight: bold;">中国检验检测行业市场概况</h1>
+  </div>
+  <p style="margin: 0; font-size: 11pt; color: #A0AEC0;">截至2024年底</p>
+</div>
+
+<!-- 主内容区 -->
+<div class="content">
+
+  <!-- 左侧指标区 -->
+  <div class="metrics-section">
+    <div class="metrics-grid">
+
+      <!-- 机构数量 -->
+      <div class="metric-card">
+        <p style="margin: 0 0 4pt 0; font-size: 9pt; color: #718096;">检验检测机构</p>
+        <p style="margin: 0; font-size: 26pt; color: #1A365D; font-weight: bold;">53,057<span style="font-size: 12pt; font-weight: normal; color: #718096;"> 家</span></p>
+      </div>
+
+      <!-- 从业人员 -->
+      <div class="metric-card">
+        <p style="margin: 0 0 4pt 0; font-size: 9pt; color: #718096;">从业人员</p>
+        <p style="margin: 0; font-size: 26pt; color: #1A365D; font-weight: bold;">155<span style="font-size: 12pt; font-weight: normal; color: #718096;"> 万人</span></p>
+      </div>
+
+      <!-- 仪器设备 -->
+      <div class="metric-card">
+        <p style="margin: 0 0 4pt 0; font-size: 9pt; color: #718096;">仪器设备</p>
+        <p style="margin: 0; font-size: 26pt; color: #1A365D; font-weight: bold;">1,067<span style="font-size: 12pt; font-weight: normal; color: #718096;"> 万台套</span></p>
+      </div>
+
+      <!-- 设备资产 -->
+      <div class="metric-card">
+        <p style="margin: 0 0 4pt 0; font-size: 9pt; color: #718096;">设备资产原值</p>
+        <p style="margin: 0; font-size: 26pt; color: #1A365D; font-weight: bold;">5,702<span style="font-size: 12pt; font-weight: normal; color: #718096;"> 亿元</span></p>
+      </div>
+
+      <!-- 营业收入 - 高亮 -->
+      <div class="metric-card highlight">
+        <p style="margin: 0 0 4pt 0; font-size: 9pt; color: #744210;">年度营业收入</p>
+        <p style="margin: 0; font-size: 26pt; color: #744210; font-weight: bold;">4,876<span style="font-size: 12pt; font-weight: normal; color: #744210;"> 亿元</span></p>
+      </div>
+
+      <!-- 实验室面积 -->
+      <div class="metric-card">
+        <p style="margin: 0 0 4pt 0; font-size: 9pt; color: #718096;">实验室面积</p>
+        <p style="margin: 0; font-size: 26pt; color: #1A365D; font-weight: bold;">1.15<span style="font-size: 12pt; font-weight: normal; color: #718096;"> 亿m²</span></p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 右侧图表区 -->
+  <div class="chart-section">
+    <div class="chart-container">
+      <p style="margin: 0 0 8pt 0; font-size: 10pt; color: #1A365D; font-weight: bold;">核心产出指标</p>
+      <div id="chart" class="placeholder" style="width: 236pt; height: 200pt; background: #EDF2F7; border-radius: 4pt;"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- 底部来源 -->
+<div class="footer">
+  <p style="margin: 0; font-size: 8pt; color: #A0AEC0;">数据来源：国家市场监督管理总局</p>
+  <p style="margin: 0; font-size: 8pt; color: #A0AEC0;">检验检测行业年度统计报告</p>
+</div>
+
+</body>
+</html>

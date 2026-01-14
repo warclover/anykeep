@@ -9,20 +9,13 @@
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 import type { LearningPathInput } from "../types";
+import type { BookmarkRow } from "@/types/domain";
 
 // ============================================
 // 类型定义
 // ============================================
 
-export interface BookmarkRow {
-  id: number;
-  title: string;
-  url: string;
-  platform: string;
-  ai_tags: string[] | null;
-  ai_summary: string | null;
-  created_at: string;
-}
+export type { BookmarkRow };
 
 // ============================================
 // 书签获取函数

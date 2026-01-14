@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+html { background: #ffffff; }
+body {
+  width: 720pt; height: 405pt; margin: 0; padding: 0;
+  font-family: Arial, sans-serif;
+  display: flex; flex-direction: column;
+  background: #FFFFFF;
+}
+.header {
+  background: #1A2B47;
+  padding: 18pt 40pt;
+  display: flex; align-items: center;
+}
+.header-accent {
+  width: 5pt; height: 24pt;
+  background: #E76F51;
+  margin-right: 12pt;
+}
+.header-title {
+  color: #FFFFFF;
+  font-size: 22pt;
+  font-weight: bold;
+}
+.content {
+  padding: 20pt 45pt 45pt 45pt;
+  display: flex;
+  flex-direction: column;
+}
+.arch-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12pt;
+}
+.arch-box {
+  background: #2E86AB;
+  padding: 10pt 18pt;
+  text-align: center;
+  min-width: 95pt;
+}
+.arch-box.input {
+  background: #5D6D7E;
+}
+.arch-box.output {
+  background: #1A2B47;
+}
+.arch-text {
+  color: #FFFFFF;
+  font-size: 11pt;
+  font-weight: bold;
+}
+.arch-sub {
+  color: #D6EAF8;
+  font-size: 8pt;
+  margin-top: 3pt;
+}
+.arrow {
+  color: #E76F51;
+  font-size: 18pt;
+  margin: 0 10pt;
+}
+.sources {
+  display: flex;
+  justify-content: center;
+  gap: 12pt;
+  margin-top: 12pt;
+  margin-bottom: 12pt;
+}
+.source-tag {
+  background: #EBF5FB;
+  border: 1pt solid #2E86AB;
+  padding: 6pt 12pt;
+}
+.source-text {
+  color: #2E86AB;
+  font-size: 9pt;
+}
+.bottom-bar {
+  background: #F8F9FA;
+  padding: 10pt 20pt;
+  display: flex;
+  justify-content: space-around;
+}
+.bottom-item {
+  text-align: center;
+}
+.bottom-label {
+  color: #1A2B47;
+  font-size: 9pt;
+  font-weight: bold;
+}
+.bottom-desc {
+  color: #5D6D7E;
+  font-size: 8pt;
+  margin-top: 2pt;
+}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="header-accent"></div>
+  <h1 class="header-title">技术架构</h1>
+</div>
+<div class="content">
+  <div class="arch-row">
+    <div class="arch-box input">
+      <p class="arch-text">数据采集层</p>
+      <p class="arch-sub">多源接入</p>
+    </div>
+    <p class="arrow">→</p>
+    <div class="arch-box">
+      <p class="arch-text">解析处理层</p>
+      <p class="arch-sub">结构化转换</p>
+    </div>
+    <p class="arrow">→</p>
+    <div class="arch-box">
+      <p class="arch-text">向量化存储</p>
+      <p class="arch-sub">多维关联</p>
+    </div>
+    <p class="arrow">→</p>
+    <div class="arch-box output">
+      <p class="arch-text">上层应用</p>
+      <p class="arch-sub">分析对接</p>
+    </div>
+  </div>
+  <div class="sources">
+    <div class="source-tag"><p class="source-text">自动化测试</p></div>
+    <div class="source-tag"><p class="source-text">性能测试</p></div>
+    <div class="source-tag"><p class="source-text">环境可靠性</p></div>
+    <div class="source-tag"><p class="source-text">通信信号</p></div>
+    <div class="source-tag"><p class="source-text">路面压力</p></div>
+  </div>
+  <div class="bottom-bar">
+    <div class="bottom-item">
+      <p class="bottom-label">统一接入标准</p>
+      <p class="bottom-desc">标准化数据采集接口</p>
+    </div>
+    <div class="bottom-item">
+      <p class="bottom-label">多维度向量</p>
+      <p class="bottom-desc">结构化可关联存储</p>
+    </div>
+    <div class="bottom-item">
+      <p class="bottom-label">灵活扩展</p>
+      <p class="bottom-desc">支持新增测试专业</p>
+    </div>
+  </div>
+</div>
+</body>
+</html>

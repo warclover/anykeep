@@ -6,22 +6,26 @@
  * @since 2025-12-25
  */
 
+import type { BookmarkRow as BookmarkRowBase } from "@/types/domain";
+
 /**
- * 书签行数据（数据库查询结果）
+ * 书签行数据（数据库查询结果）- 扩展统一类型
  */
-export interface BookmarkRow {
-  id: number;
-  title: string;
-  url: string;
-  platform: string;
-  ai_tags: string[] | null;
-  ai_summary: string | null;
-  user_tags: string[] | null;
-  rating: number | null;
-  folder_id: number | null;
-  created_at: string;
+export type BookmarkRow = Pick<
+  BookmarkRowBase,
+  | "id"
+  | "title"
+  | "url"
+  | "platform"
+  | "ai_tags"
+  | "ai_summary"
+  | "user_tags"
+  | "rating"
+  | "folder_id"
+  | "created_at"
+> & {
   folders?: Array<{ name: string }> | { name: string } | null;
-}
+};
 
 /**
  * 日期范围

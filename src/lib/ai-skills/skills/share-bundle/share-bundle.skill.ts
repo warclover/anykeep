@@ -446,7 +446,7 @@ export class ShareBundleSkill extends OrchestrationSkill<
         : [],
       rating: options?.includeRating ? b.rating || undefined : undefined,
       note: undefined, // note column no longer exists
-      createdAt: b.created_at,
+      createdAt: b.created_at || new Date().toISOString(),
     }));
   }
 
@@ -715,17 +715,15 @@ export class ShareBundleSkill extends OrchestrationSkill<
 // 辅助类型
 // ============================================
 
-interface BookmarkRow {
-  id: number;
-  title: string;
-  url: string;
-  platform: string;
-  ai_tags: string[] | null;
-  ai_summary: string | null;
-  user_tags: string[] | null;
-  rating: number | null;
-  created_at: string;
-}
+import type { BookmarkRow as BookmarkRowBase } from "@/types/domain";
+
+/**
+ * BookmarkRow 扩展（用于分享包查询）
+ */
+interface BookmarkRow extends Pick<
+  BookmarkRowBase,
+  "id" | "title" | "url" | "platform" | "ai_tags" | "ai_summary" | "user_tags" | "rating" | "created_at"
+> {}
 
 // ============================================
 // 导出

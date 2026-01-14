@@ -463,7 +463,7 @@ export class KnowledgeReviewSkill extends OrchestrationSkill<
         tags: [...(bookmark.ai_tags || []), ...(bookmark.user_tags || [])],
         platform: bookmark.platform,
         folderName: folder?.name || null,
-        createdAt: bookmark.created_at,
+        createdAt: bookmark.created_at || new Date().toISOString(),
         daysSinceCreated,
         priority,
         reviewReason,
@@ -723,16 +723,15 @@ export class KnowledgeReviewSkill extends OrchestrationSkill<
 // 辅助类型
 // ============================================
 
-interface BookmarkRow {
-  id: number;
-  title: string;
-  url: string;
-  ai_summary: string | null;
-  ai_tags: string[] | null;
-  user_tags: string[] | null;
-  platform: string;
-  folder_id: number | null;
-  created_at: string;
+import type { BookmarkRow as BookmarkRowBase } from "@/types/domain";
+
+/**
+ * BookmarkRow 扩展（包含 folders 关联）
+ */
+interface BookmarkRow extends Pick<
+  BookmarkRowBase,
+  "id" | "title" | "url" | "ai_summary" | "ai_tags" | "user_tags" | "platform" | "folder_id" | "created_at"
+> {
   folders?: Array<{ name: string }> | { name: string } | null;
 }
 

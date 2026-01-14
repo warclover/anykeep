@@ -15,24 +15,19 @@ import type {
 } from "../types";
 import { DUPLICATE_CLEANUP_CONFIG } from "../types";
 import { calculateCombinedSimilarity } from "../utils/similarity";
+import type { BookmarkRow as BookmarkRowBase } from "@/types/domain";
 
 // ============================================
 // 类型定义
 // ============================================
 
 /**
- * 数据库书签行
+ * BookmarkRow 扩展（包含 folders 关联）
  */
-export interface BookmarkRow {
-  id: number;
-  title: string;
-  url: string;
-  platform: string;
-  ai_summary: string | null;
-  ai_tags: string[] | null;
-  user_tags: string[] | null;
-  folder_id: number | null;
-  created_at: string;
+export interface BookmarkRow extends Pick<
+  BookmarkRowBase,
+  "id" | "title" | "url" | "platform" | "ai_summary" | "ai_tags" | "user_tags" | "folder_id" | "created_at"
+> {
   folders?: Array<{ name: string }> | { name: string } | null;
 }
 
@@ -55,7 +50,7 @@ export function toDisplayBookmark(row: BookmarkRow): DuplicateBookmark {
     id: row.id,
     title: row.title,
     url: row.url,
-    createdAt: row.created_at,
+    createdAt: row.created_at || new Date().toISOString(),
     folderName: folder?.name,
     folderId: row.folder_id || undefined,
     completeness: 0, // 后续计算

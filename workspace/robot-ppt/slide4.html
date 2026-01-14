@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+html { background: #ffffff; }
+body {
+  width: 720pt; height: 405pt; margin: 0; padding: 0;
+  font-family: Arial, sans-serif;
+  display: flex; flex-direction: column;
+  background: #FFFFFF;
+}
+.header {
+  background: #1A2B47;
+  padding: 18pt 40pt;
+  display: flex; align-items: center;
+}
+.header-accent {
+  width: 5pt; height: 24pt;
+  background: #E76F51;
+  margin-right: 12pt;
+}
+.header-title {
+  color: #FFFFFF;
+  font-size: 22pt;
+  font-weight: bold;
+}
+.content {
+  padding: 15pt 35pt 40pt 35pt;
+  display: flex;
+  gap: 15pt;
+}
+.value-card {
+  flex: 1;
+  background: #F8F9FA;
+  padding: 12pt;
+}
+.value-card.highlight {
+  background: #1A2B47;
+}
+.value-icon {
+  width: 32pt; height: 32pt;
+  background: #2E86AB;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 8pt;
+}
+.value-card.highlight .value-icon {
+  background: #E76F51;
+}
+.icon-text {
+  color: #FFFFFF;
+  font-size: 16pt;
+  font-weight: bold;
+}
+.value-title {
+  color: #1A2B47;
+  font-size: 13pt;
+  font-weight: bold;
+  margin-bottom: 6pt;
+}
+.value-card.highlight .value-title {
+  color: #FFFFFF;
+}
+.value-desc {
+  color: #5D6D7E;
+  font-size: 9pt;
+  margin-bottom: 6pt;
+  font-weight: bold;
+}
+.value-card.highlight .value-desc {
+  color: #7FB3D5;
+}
+.value-bullet {
+  color: #2C3E50;
+  font-size: 9pt;
+  margin-top: 3pt;
+  line-height: 1.2;
+}
+.value-card.highlight .value-bullet {
+  color: #D5DBDB;
+}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="header-accent"></div>
+  <h1 class="header-title">核心价值</h1>
+</div>
+<div class="content">
+  <div class="value-card">
+    <div class="value-icon"><p class="icon-text">1</p></div>
+    <h3 class="value-title">面向未来</h3>
+    <p class="value-desc">可复用数据模板</p>
+    <p class="value-bullet">支持扩展至性能测试专业</p>
+    <p class="value-bullet">支持扩展至环境可靠性测试</p>
+    <p class="value-bullet">支持扩展至通信信号测试</p>
+    <p class="value-bullet">一次建设，多专业复用</p>
+  </div>
+  <div class="value-card highlight">
+    <div class="value-icon"><p class="icon-text">2</p></div>
+    <h3 class="value-title">支持科研</h3>
+    <p class="value-desc">结构化多维度数据</p>
+    <p class="value-bullet">便于数据深度挖掘分析</p>
+    <p class="value-bullet">对接上层数据管理平台</p>
+    <p class="value-bullet">支撑科学研究和研发决策</p>
+    <p class="value-bullet">数据资产长期积累</p>
+  </div>
+  <div class="value-card">
+    <div class="value-icon"><p class="icon-text">3</p></div>
+    <h3 class="value-title">简化流程</h3>
+    <p class="value-desc">自动化处理能力</p>
+    <p class="value-bullet">原始记录自动填写</p>
+    <p class="value-bullet">测试报告自动生成</p>
+    <p class="value-bullet">减少人工干预和错误</p>
+    <p class="value-bullet">提升检测效率</p>
+  </div>
+</div>
+</body>
+</html>

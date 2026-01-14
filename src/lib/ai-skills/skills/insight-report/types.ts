@@ -223,18 +223,26 @@ export const DEFAULT_REPORT_CONFIG = {
   includeDetails: true,
 };
 
+// ============================================
+// 数据库类型扩展
+// ============================================
+
+import type { BookmarkRow as BookmarkRowBase } from "@/types/domain";
+
 /**
- * 数据库书签行类型
+ * 数据库书签行类型（扩展 folders 关联）
  */
-export interface BookmarkRow {
-  id: number;
-  title: string;
-  url: string;
-  platform: string;
-  ai_tags: string[] | null;
-  user_tags: string[] | null;
-  rating: number | null;
-  folder_id: number | null;
-  created_at: string;
+export type BookmarkRow = Pick<
+  BookmarkRowBase,
+  | "id"
+  | "title"
+  | "url"
+  | "platform"
+  | "ai_tags"
+  | "user_tags"
+  | "rating"
+  | "folder_id"
+  | "created_at"
+> & {
   folders?: Array<{ name: string }> | { name: string } | null;
-}
+};

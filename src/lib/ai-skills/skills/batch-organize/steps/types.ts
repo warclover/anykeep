@@ -8,6 +8,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
+import type { BookmarkRow, FolderRow } from "@/types/domain";
 
 // ============================================
 // Supabase 客户端类型
@@ -16,30 +17,10 @@ import type { Database } from "@/types/supabase";
 export type SupabaseClientType = SupabaseClient<Database>;
 
 // ============================================
-// 书签行数据类型
+// 导出统一类型
 // ============================================
 
-export interface BookmarkRow {
-  id: number;
-  title: string;
-  url: string;
-  platform: string;
-  ai_tags: string[] | null;
-  user_tags: string[] | null;
-  ai_summary: string | null;
-  folder_id: number | null;
-  created_at: string;
-  folders?: Array<{ name: string }> | { name: string } | null;
-}
-
-// ============================================
-// 文件夹类型
-// ============================================
-
-export interface FolderRow {
-  id: number;
-  name: string;
-}
+export type { BookmarkRow, FolderRow };
 
 // ============================================
 // 执行结果类型

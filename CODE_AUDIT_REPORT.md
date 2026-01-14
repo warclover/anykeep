@@ -1,0 +1,709 @@
+# AnyKeep 代码审查报告
+
+生成时间: 2026/1/14 08:47:49
+
+## 摘要
+
+- 总计发现问题: 4581
+- 空函数: 626
+- TODO/FIXME 标记: 37
+- 重复类型定义: 3560
+- 未使用的 API 路由: 266
+- 新旧版本共存: 92
+
+## 空函数
+
+共发现 626 个问题
+
+### 警告 (626)
+
+- **app\(auth)\forgot-password\page.tsx**:38
+  - 发现空函数
+  - 代码: `const handleSubmit = async (e: React.FormEvent) => {`
+- **app\(auth)\login\page.tsx**:48
+  - 发现空函数
+  - 代码: `const handleEmailLogin = async (e: React.FormEvent) => {`
+- **app\(auth)\login\page.tsx**:112
+  - 发现空函数
+  - 代码: `const handleDemoLogin = async () => {`
+- **app\(auth)\register\page.tsx**:35
+  - 发现空函数
+  - 代码: `const handleRegister = async (e: React.FormEvent) => {`
+- **app\(auth)\reset-password\page.tsx**:73
+  - 发现空函数
+  - 代码: `const checkSession = async () => {`
+- **app\(auth)\reset-password\page.tsx**:107
+  - 发现空函数
+  - 代码: `const handleSubmit = async (e: React.FormEvent) => {`
+- **app\(auth)\verify-email\page.tsx**:42
+  - 发现空函数
+  - 代码: `const checkVerification = async () => {`
+- **app\(main)\classification-debugger\page.tsx**:91
+  - 发现空函数
+  - 代码: `const handleRun = async () => {`
+- **app\(main)\classification-debugger\page.tsx**:137
+  - 发现空函数
+  - 代码: `const fillExample = () => {`
+- **app\(main)\dev\ai-debug\page.tsx**:86
+  - 发现空函数
+  - 代码: `const handleToggle = () => {`
+- **app\(main)\dev\ai-debug\page.tsx**:229
+  - 发现空函数
+  - 代码: `const handleChange = () => {`
+- **app\(main)\dev\api-docs\api-docs-client.tsx**:40
+  - 发现空函数
+  - 代码: `const initSwagger = () => {`
+- **app\(main)\dev\api-docs\api-docs-client.tsx**:74
+  - 发现空函数
+  - 代码: `const handleScriptLoad = () => {`
+- **app\(main)\dev\api-docs\api-docs-client.tsx**:78
+  - 发现空函数
+  - 代码: `const handleRefresh = () => {`
+- **app\(main)\dev\classification-compare\page.tsx**:151
+  - 发现空函数
+  - 代码: `const runComparison = async () => {`
+- **app\(main)\dev\classification-trace\page.tsx**:47
+  - 发现空函数
+  - 代码: `const loadRecentTraces = async () => {`
+- **app\(main)\dev\classification-trace\page.tsx**:66
+  - 发现空函数
+  - 代码: `const loadTrace = async (id: string) => {`
+- **app\(main)\dev\classification-trace\page.tsx**:93
+  - 发现空函数
+  - 代码: `const TierBadge = ({ tier }: { tier: 0 | 1 | 2 | 3 }) => {`
+- **app\(main)\dev\classification-trace\page.tsx**:111
+  - 发现空函数
+  - 代码: `const MatcherScoreBar = ({ score }: { score: MatcherScoreDetail }) => {`
+- **app\(main)\knowledge-studio\v2\[blueprintId]\blueprint-workflow-client.tsx**:116
+  - 发现空函数
+  - 代码: `const handler = (event: MediaQueryListEvent) => {`
+- **app\(main)\messages\pending\page.tsx**:84
+  - 发现空函数
+  - 代码: `const handleRefresh = () => {`
+- **app\(main)\messages\pending\page.tsx**:120
+  - 发现空函数
+  - 代码: `const handleReject = async (id: number) => {`
+- **app\(main)\messages\pending\page.tsx**:144
+  - 发现空函数
+  - 代码: `const handleToggleSelect = (id: number) => {`
+- **app\(main)\messages\pending\page.tsx**:157
+  - 发现空函数
+  - 代码: `const handleSelectAll = () => {`
+- **app\(main)\messages\pending\page.tsx**:169
+  - 发现空函数
+  - 代码: `const handleBatchConfirm = async () => {`
+- **app\(main)\messages\pending\page.tsx**:208
+  - 发现空函数
+  - 代码: `const handleBatchReject = async () => {`
+- **app\api\agent\regenerate\route.ts**:256
+  - 发现空函数
+  - 代码: `const sendChunk = (chunk: UnifiedStreamChunk) => {`
+- **app\api\agent\unified\route.ts**:477
+  - 发现空函数
+  - 代码: `const sendHeartbeat = () => {`
+- **app\api\internal\cron\process-job-queue\route.ts**:21
+  - 发现空函数
+  - 代码: `const initSupabaseAdmin = () => {`
+- **app\api\internal\cron\process-job-queue\route.ts**:33
+  - 发现空函数
+  - 代码: `const getAdmin = () => {`
+- **app\api\internal\cron\smart-sorting\route.ts**:18
+  - 发现空函数
+  - 代码: `const initSupabaseAdmin = () => {`
+- **app\api\internal\cron\smart-sorting\route.ts**:31
+  - 发现空函数
+  - 代码: `const getAdmin = () => {`
+- **app\api\internal\dev\process-snapshots\route.ts**:20
+  - 发现空函数
+  - 代码: `const initSupabaseAdmin = () => {`
+- **app\api\internal\dev\process-snapshots\route.ts**:32
+  - 发现空函数
+  - 代码: `const getAdmin = () => {`
+- **app\api\knowledge-studio\generate\route.ts**:158
+  - 发现空函数
+  - 代码: `const sendEvent = (chunk: StreamChunk) => {`
+- **app\api\knowledge-studio\reports\[id]\edit\route.ts**:163
+  - 发现空函数
+  - 代码: `const sendEvent = (chunk: StreamChunk) => {`
+- **app\api\knowledge-studio\v2\generate\route.ts**:238
+  - 发现空函数
+  - 代码: `const sendEvent = (chunk: GenerateV2SSEChunk) => {`
+- **app\api\knowledge-studio\v2\iterate\route.ts**:252
+  - 发现空函数
+  - 代码: `const sendEvent = (chunk: IterateSSEChunk) => {`
+- **app\api\knowledge-studio\v2\outline\route.ts**:167
+  - 发现空函数
+  - 代码: `const sendEvent = (chunk: OutlineSSEChunk) => {`
+- **app\api\snapshots\process\route.ts**:21
+  - 发现空函数
+  - 代码: `const initSupabaseAdmin = () => {`
+- **app\api\snapshots\process\route.ts**:33
+  - 发现空函数
+  - 代码: `const getAdmin = () => {`
+- **app\api\workflow\sse\route.ts**:90
+  - 发现空函数
+  - 代码: `const sendEvent = (data: unknown) => {`
+- **components\activity\activity-page-client.tsx**:202
+  - 发现空函数
+  - 代码: `const handleRefresh = () => {`
+- **components\ai\action-confirm-dialog.tsx**:169
+  - 发现空函数
+  - 代码: `const handleConfirm = () => {`
+- **components\ai\action-confirm-dialog.tsx**:173
+  - 发现空函数
+  - 代码: `const handleCancel = () => {`
+- **components\ai\ai-command-hints.tsx**:213
+  - 发现空函数
+  - 代码: `const handleCommandClick = (cmd: SpecialCommand) => {`
+- **components\ai\ai-deliverable-card.tsx**:144
+  - 发现空函数
+  - 代码: `const handleCopy = async () => {`
+- **components\ai\ai-deliverable-card.tsx**:447
+  - 发现空函数
+  - 代码: `const handleOpenSource = (sourceId: number, url: string) => {`
+- **components\ai\ai-deliverable-card.tsx**:451
+  - 发现空函数
+  - 代码: `const handleCopyContent = async (text: string) => {`
+- **components\ai\ai-deliverable-card.tsx**:459
+  - 发现空函数
+  - 代码: `const handleDownload = (text: string, filename: string) => {`
+
+... 还有 576 个警告
+
+## TODO/FIXME 标记
+
+共发现 37 个问题
+
+### 信息 (37)
+
+- **app\(main)\ai-test\ai-test-client.tsx**:26
+  - // TODO: 从认证上下文获取真实用户 ID
+- **app\(main)\settings\ai\ai-settings-page-client.tsx**:79
+  - // TODO: 替换为实际 API 调用
+- **app\(main)\settings\ai\ai-settings-page-client.tsx**:212
+  - // TODO: 替换为实际 API 调用
+- **app\api\collection-stats\route.ts**:65
+  - // TODO: 实现 count_duplicate_urls RPC 函数用于准确检测重复
+- **components\ai\ai-deliverable-card.tsx**:709
+  - // TODO: 触发新的搜索
+- **components\ai\ai-search-enhanced.tsx**:159
+  - // TODO: 发送反馈到后端
+- **components\ai\phase4\context-panel.tsx**:331
+  - * TODO: Phase 4 实现
+- **components\ai\__tests__\ai-quick-actions.test.tsx**:111
+  - // TODO: Fix this test - callback timing issue
+- **components\audio-library\audio-library-client.tsx**:269
+  - // TODO: 实际实现中这里会调用 API 删除
+- **components\batch\batch-page-client.tsx**:177
+  - // TODO: 显示错误提示
+- **components\classification-manager\classification-manager-client.tsx**:394
+  - // TODO: 实现保存到后端 API
+- **components\distribution\obsidian-config-form.tsx**:581
+  - * TODO: 需要根据 Electron/Capacitor API 实现
+- **components\distribution\obsidian-config-form.tsx**:595
+  - // TODO: 实现 Capacitor 文件选择
+- **components\synthesis\blind-spot-supplement-dialog.tsx**:78
+  - // TODO: [P2] reportId 可用于将补充的书签关联到综述报告，便于追踪来源
+- **features\md-collections\lib\ai\md-ai-processor.ts**:588
+  - // TODO: 集成 EventBus
+- **hooks\domain\knowledge-studio\use-generation.ts**:209
+  - customPrompt: undefined, // TODO: 支持自定义指令
+- **lib\ai-agent\tools\__tests__\tool-description-templates.test.ts**:221
+  - expect(description).not.toContain("TODO");
+- **lib\ai-agent\tools\__tests__\tool-description-templates.test.ts**:222
+  - expect(description).not.toContain("FIXME");
+- **lib\ai-skills\engine\__tests__\task-understanding-integration.test.ts**:438
+  - // 当前是 TODO 实现，只验证不报错
+- **lib\ai-skills\router\__tests__\intent-classifier-synthesis.test.ts**:104
+  - // TODO: Phase 2 优化 - 添加"成文章"后缀规则
+- **lib\ai-skills\router\__tests__\intent-classifier-synthesis.test.ts**:229
+  - // TODO: Phase 2 优化 - 添加"整合一下"模式识别
+- **lib\ai-skills\router\__tests__\intent-patterns-integration.test.ts**:149
+  - // TODO: 后续版本可考虑为这些模式添加专门规则
+- **lib\ai-skills\skills\inbox-triage\inbox-triage.skill.ts**:176
+  - * TODO: 优化聚类算法 (P3 #6)
+- **lib\confirmation\confirmation-expiry.cron.ts**:163
+  - // TODO: 实现按用户分组发送通知
+- **lib\confirmation\confirmation.service.ts**:650
+  - // TODO: 加载关联的书签/文件夹信息
+- **lib\knowledge-studio\billing\types.ts**:8
+  - * TODO Phase 3: 完整实现
+- **lib\knowledge-studio\blueprint\blueprint-engine.ts**:225
+  - keyPoints: [], // TODO: 提取关键点
+- **lib\knowledge-studio\chat-edit\chat-edit-engine.ts**:184
+  - // TODO: 使用 AI 生成摘要
+- **lib\knowledge-studio\conversion\types.ts**:8
+  - * TODO Phase 3: 完整实现
+- **lib\knowledge-studio\incremental\types.ts**:8
+  - * TODO Phase 3: 完整实现
+- **lib\knowledge-studio\mastery\types.ts**:8
+  - * TODO Phase 3: 完整实现
+- **lib\knowledge-studio\material\material-scorer.ts**:187
+  - // TODO: 使用向量相似度计算与其他素材的相关性
+- **lib\knowledge-studio\templates\types.ts**:8
+  - * TODO Phase 3: 完整实现
+- **lib\monitoring\rag\metrics-collector.ts**:219
+  - const queryCacheHitRate = 0; // TODO: 从 QueryRewriter 缓存获取
+- **lib\summary\prompts\index.ts**:87
+  - // TODO: P1 - 实现本模块专用的 Prompt 构建器
+- **lib\wechat-article\wechat-article.service.ts**:312
+  - // TODO: 集成 browserless 或其他抓取服务
+- **repositories\folder.repository.ts**:90
+  - // TODO: 执行迁移后，改用 RPC: this.supabase.rpc("get_folders_with_counts", { p_user_id: this.userId })
+
+## 重复类型定义
+
+共发现 3560 个问题
+
+### 警告 (3560)
+
+- **app\(main)\dev\ai-debug\page.tsx**:57
+  - 类型 AIDebugConfig 在多个文件中定义
+  - 代码: `AIDebugConfig`
+- **components\debug\ai-summary-debug-page.tsx**:50
+  - 类型 AIDebugConfig 在多个文件中定义
+  - 代码: `AIDebugConfig`
+- **hooks\core\use-debug-config.ts**:16
+  - 类型 AIDebugConfig 在多个文件中定义
+  - 代码: `AIDebugConfig`
+- **lib\ai-debug\types.ts**:61
+  - 类型 AIDebugConfig 在多个文件中定义
+  - 代码: `AIDebugConfig`
+- **lib\classification\config\debug-config-store.ts**:29
+  - 类型 AIDebugConfig 在多个文件中定义
+  - 代码: `AIDebugConfig`
+- **app\(main)\dev\ai-debug\page.tsx**:58
+  - 类型 AIDebugFeatureFlags 在多个文件中定义
+  - 代码: `AIDebugFeatureFlags`
+- **lib\ai-debug\types.ts**:14
+  - 类型 AIDebugFeatureFlags 在多个文件中定义
+  - 代码: `AIDebugFeatureFlags`
+- **app\(main)\dev\ai-debug\page.tsx**:59
+  - 类型 FeatureFlagMeta 在多个文件中定义
+  - 代码: `FeatureFlagMeta`
+- **lib\ai-debug\types.ts**:78
+  - 类型 FeatureFlagMeta 在多个文件中定义
+  - 代码: `FeatureFlagMeta`
+- **app\(main)\dev\ai-debug\page.tsx**:171
+  - 类型 CategoryCardProps 在多个文件中定义
+  - 代码: `CategoryCardProps`
+- **components\classification-manager\classification-manager-client.tsx**:187
+  - 类型 CategoryCardProps 在多个文件中定义
+  - 代码: `CategoryCardProps`
+- **app\(main)\dev\classification-compare\page.tsx**:57
+  - 类型 Bookmark 在多个文件中定义
+  - 代码: `Bookmark`
+- **types\supabase.ts**:9516
+  - 类型 Bookmark 在多个文件中定义
+  - 代码: `Bookmark`
+- **app\(main)\dev\classification-compare\page.tsx**:66
+  - 类型 ClassificationResult 在多个文件中定义
+  - 代码: `ClassificationResult`
+- **app\api\classification\[bookmarkId]\reason\route.ts**:24
+  - 类型 ClassificationResult 在多个文件中定义
+  - 代码: `ClassificationResult`
+- **jobs\consumers\classification-consumer.ts**:373
+  - 类型 ClassificationResult 在多个文件中定义
+  - 代码: `ClassificationResult`
+- **lib\classification\types\classification.ts**:151
+  - 类型 ClassificationResult 在多个文件中定义
+  - 代码: `ClassificationResult`
+- **app\(main)\home\page.tsx**:27
+  - 类型 BookmarkWithFolder 在多个文件中定义
+  - 代码: `BookmarkWithFolder`
+- **app\(main)\inbox\page.tsx**:14
+  - 类型 BookmarkWithFolder 在多个文件中定义
+  - 代码: `BookmarkWithFolder`
+- **components\batch\batch-bookmark-item.tsx**:14
+  - 类型 BookmarkWithFolder 在多个文件中定义
+  - 代码: `BookmarkWithFolder`
+- **components\batch\batch-bookmark-list.tsx**:15
+  - 类型 BookmarkWithFolder 在多个文件中定义
+  - 代码: `BookmarkWithFolder`
+- **components\batch\batch-tag-dialog.tsx**:33
+  - 类型 BookmarkWithFolder 在多个文件中定义
+  - 代码: `BookmarkWithFolder`
+- **components\bookmark\virtual-bookmark-grid.tsx**:23
+  - 类型 BookmarkWithFolder 在多个文件中定义
+  - 代码: `BookmarkWithFolder`
+- **components\bookmark\virtual-bookmark-list.tsx**:26
+  - 类型 BookmarkWithFolder 在多个文件中定义
+  - 代码: `BookmarkWithFolder`
+- **components\bookmark\virtual-trash-bookmark-grid.tsx**:21
+  - 类型 BookmarkWithFolder 在多个文件中定义
+  - 代码: `BookmarkWithFolder`
+- **components\folders\types.ts**:33
+  - 类型 BookmarkWithFolder 在多个文件中定义
+  - 代码: `BookmarkWithFolder`
+- **components\home\home-dialogs.tsx**:53
+  - 类型 BookmarkWithFolder 在多个文件中定义
+  - 代码: `BookmarkWithFolder`
+- **components\home\home-page-client.tsx**:99
+  - 类型 BookmarkWithFolder 在多个文件中定义
+  - 代码: `BookmarkWithFolder`
+- **components\home\hooks\use-home-batch.ts**:19
+  - 类型 BookmarkWithFolder 在多个文件中定义
+  - 代码: `BookmarkWithFolder`
+- **components\home\hooks\use-home-mutations.ts**:19
+  - 类型 BookmarkWithFolder 在多个文件中定义
+  - 代码: `BookmarkWithFolder`
+- **components\home\types.ts**:35
+  - 类型 BookmarkWithFolder 在多个文件中定义
+  - 代码: `BookmarkWithFolder`
+- **components\inbox\inbox-page-client.tsx**:55
+  - 类型 BookmarkWithFolder 在多个文件中定义
+  - 代码: `BookmarkWithFolder`
+- **hooks\core\use-platform-cache.ts**:11
+  - 类型 BookmarkWithFolder 在多个文件中定义
+  - 代码: `BookmarkWithFolder`
+- **hooks\data\use-smart-list-bookmarks.ts**:18
+  - 类型 BookmarkWithFolder 在多个文件中定义
+  - 代码: `BookmarkWithFolder`
+- **hooks\ui\use-processing-poller.ts**:24
+  - 类型 BookmarkWithFolder 在多个文件中定义
+  - 代码: `BookmarkWithFolder`
+- **lib\cache\hooks\use-bookmarks-swr.ts**:26
+  - 类型 BookmarkWithFolder 在多个文件中定义
+  - 代码: `BookmarkWithFolder`
+- **lib\export\types.ts**:205
+  - 类型 BookmarkWithFolder 在多个文件中定义
+  - 代码: `BookmarkWithFolder`
+- **app\(main)\inbox\page.tsx**:18
+  - 类型 FolderOption 在多个文件中定义
+  - 代码: `FolderOption`
+- **components\classification\confirmation-message-card.tsx**:78
+  - 类型 FolderOption 在多个文件中定义
+  - 代码: `FolderOption`
+- **components\classification\folder-quick-select.tsx**:26
+  - 类型 FolderOption 在多个文件中定义
+  - 代码: `FolderOption`
+- **components\classification\pending-confirmations\types.ts**:62
+  - 类型 FolderOption 在多个文件中定义
+  - 代码: `FolderOption`
+- **components\classification\pending-confirmations-section.tsx**:31
+  - 类型 FolderOption 在多个文件中定义
+  - 代码: `FolderOption`
+- **components\feedback\classification-feedback-dialog.tsx**:73
+  - 类型 FolderOption 在多个文件中定义
+  - 代码: `FolderOption`
+- **components\inbox\inbox-page-client.tsx**:59
+  - 类型 FolderOption 在多个文件中定义
+  - 代码: `FolderOption`
+- **components\quick-add\hooks\useFolderList.ts**:19
+  - 类型 FolderOption 在多个文件中定义
+  - 代码: `FolderOption`
+- **app\(main)\knowledge-studio\billing\billing-page-client.tsx**:45
+  - 类型 UsageStats 在多个文件中定义
+  - 代码: `UsageStats`
+- **app\(main)\settings\ai\ai-settings-page-client.tsx**:60
+  - 类型 UsageStats 在多个文件中定义
+  - 代码: `UsageStats`
+- **lib\ai-agent\config\cost-controller.ts**:81
+  - 类型 UsageStats 在多个文件中定义
+  - 代码: `UsageStats`
+- **lib\ai-agent\config\index.ts**:28
+  - 类型 UsageStats 在多个文件中定义
+  - 代码: `UsageStats`
+- **app\(main)\knowledge-studio\billing\billing-page-client.tsx**:69
+  - 类型 Bill 在多个文件中定义
+  - 代码: `Bill`
+
+... 还有 3510 个警告
+
+## 未使用的 API 路由
+
+共发现 266 个问题
+
+### 警告 (266)
+
+- **app\api\admin\audit-logs\route.ts**
+  - API 路由 /app/api/admin/audit-logs/route.ts 可能未被使用
+- **app\api\admin\classification-config\route.ts**
+  - API 路由 /app/api/admin/classification-config/route.ts 可能未被使用
+- **app\api\admin\embedding-ab-test\route.ts**
+  - API 路由 /app/api/admin/embedding-ab-test/route.ts 可能未被使用
+- **app\api\admin\rag-metrics\route.ts**
+  - API 路由 /app/api/admin/rag-metrics/route.ts 可能未被使用
+- **app\api\agent\analysis\route.ts**
+  - API 路由 /app/api/agent/analysis/route.ts 可能未被使用
+- **app\api\agent\briefing\route.ts**
+  - API 路由 /app/api/agent/briefing/route.ts 可能未被使用
+- **app\api\agent\cancel\route.ts**
+  - API 路由 /app/api/agent/cancel/route.ts 可能未被使用
+- **app\api\agent\confirmations\route.ts**
+  - API 路由 /app/api/agent/confirmations/route.ts 可能未被使用
+- **app\api\agent\context\route.ts**
+  - API 路由 /app/api/agent/context/route.ts 可能未被使用
+- **app\api\agent\corrections\route.ts**
+  - API 路由 /app/api/agent/corrections/route.ts 可能未被使用
+- **app\api\agent\feedback\route.ts**
+  - API 路由 /app/api/agent/feedback/route.ts 可能未被使用
+- **app\api\agent\intent-correction\route.ts**
+  - API 路由 /app/api/agent/intent-correction/route.ts 可能未被使用
+- **app\api\agent\regenerate\route.ts**
+  - API 路由 /app/api/agent/regenerate/route.ts 可能未被使用
+- **app\api\agent\rules\route.ts**
+  - API 路由 /app/api/agent/rules/route.ts 可能未被使用
+- **app\api\agent\session\route.ts**
+  - API 路由 /app/api/agent/session/route.ts 可能未被使用
+- **app\api\agent\stats\route.ts**
+  - API 路由 /app/api/agent/stats/route.ts 可能未被使用
+- **app\api\agent\undo\route.ts**
+  - API 路由 /app/api/agent/undo/route.ts 可能未被使用
+- **app\api\agent\unified\route.ts**
+  - API 路由 /app/api/agent/unified/route.ts 可能未被使用
+- **app\api\ai\feedback\route.ts**
+  - API 路由 /app/api/ai/feedback/route.ts 可能未被使用
+- **app\api\ai\generate-title\route.ts**
+  - API 路由 /app/api/ai/generate-title/route.ts 可能未被使用
+- **app\api\ai\learning\correction\route.ts**
+  - API 路由 /app/api/ai/learning/correction/route.ts 可能未被使用
+- **app\api\ai\notes\route.ts**
+  - API 路由 /app/api/ai/notes/route.ts 可能未被使用
+- **app\api\ai\providers\route.ts**
+  - API 路由 /app/api/ai/providers/route.ts 可能未被使用
+- **app\api\ai\quick-actions\route.ts**
+  - API 路由 /app/api/ai/quick-actions/route.ts 可能未被使用
+- **app\api\ai\vision-analyze\route.ts**
+  - API 路由 /app/api/ai/vision-analyze/route.ts 可能未被使用
+- **app\api\ai-memory\pending\route.ts**
+  - API 路由 /app/api/ai-memory/pending/route.ts 可能未被使用
+- **app\api\ai-memory\route.ts**
+  - API 路由 /app/api/ai-memory/route.ts 可能未被使用
+- **app\api\auth\login\route.ts**
+  - API 路由 /app/api/auth/login/route.ts 可能未被使用
+- **app\api\auth\plugin\authorize\route.ts**
+  - API 路由 /app/api/auth/plugin/authorize/route.ts 可能未被使用
+- **app\api\auth\plugin\revoke\route.ts**
+  - API 路由 /app/api/auth/plugin/revoke/route.ts 可能未被使用
+- **app\api\auth\plugin\token\route.ts**
+  - API 路由 /app/api/auth/plugin/token/route.ts 可能未被使用
+- **app\api\bookmarks\batch-delete\route.ts**
+  - API 路由 /app/api/bookmarks/batch-delete/route.ts 可能未被使用
+- **app\api\bookmarks\batch-import\route.ts**
+  - API 路由 /app/api/bookmarks/batch-import/route.ts 可能未被使用
+- **app\api\bookmarks\batch-move\route.ts**
+  - API 路由 /app/api/bookmarks/batch-move/route.ts 可能未被使用
+- **app\api\bookmarks\batch-restore\route.ts**
+  - API 路由 /app/api/bookmarks/batch-restore/route.ts 可能未被使用
+- **app\api\bookmarks\batch-status\route.ts**
+  - API 路由 /app/api/bookmarks/batch-status/route.ts 可能未被使用
+- **app\api\bookmarks\batch-tags\route.ts**
+  - API 路由 /app/api/bookmarks/batch-tags/route.ts 可能未被使用
+- **app\api\bookmarks\embeddings\route.ts**
+  - API 路由 /app/api/bookmarks/embeddings/route.ts 可能未被使用
+- **app\api\bookmarks\fetch-content\route.ts**
+  - API 路由 /app/api/bookmarks/fetch-content/route.ts 可能未被使用
+- **app\api\bookmarks\generate-tags\route.ts**
+  - API 路由 /app/api/bookmarks/generate-tags/route.ts 可能未被使用
+- **app\api\bookmarks\metadata\route.ts**
+  - API 路由 /app/api/bookmarks/metadata/route.ts 可能未被使用
+- **app\api\bookmarks\route.ts**
+  - API 路由 /app/api/bookmarks/route.ts 可能未被使用
+- **app\api\bookmarks\suggestions\route.ts**
+  - API 路由 /app/api/bookmarks/suggestions/route.ts 可能未被使用
+- **app\api\bookmarks\validate\route.ts**
+  - API 路由 /app/api/bookmarks/validate/route.ts 可能未被使用
+- **app\api\brain-sync\flashcards\batch\route.ts**
+  - API 路由 /app/api/brain-sync/flashcards/batch/route.ts 可能未被使用
+- **app\api\brain-sync\flashcards\route.ts**
+  - API 路由 /app/api/brain-sync/flashcards/route.ts 可能未被使用
+- **app\api\brain-sync\generate\route.ts**
+  - API 路由 /app/api/brain-sync/generate/route.ts 可能未被使用
+- **app\api\brain-sync\generate-from-report\route.ts**
+  - API 路由 /app/api/brain-sync/generate-from-report/route.ts 可能未被使用
+- **app\api\brain-sync\preferences\route.ts**
+  - API 路由 /app/api/brain-sync/preferences/route.ts 可能未被使用
+- **app\api\brain-sync\queue\route.ts**
+  - API 路由 /app/api/brain-sync/queue/route.ts 可能未被使用
+
+... 还有 216 个警告
+
+## 新旧版本共存
+
+共发现 92 个问题
+
+### 警告 (54)
+
+- **app\api\classification\cluster-confirm\route.ts**
+  - 发现废弃标记，可能需要清理
+- **components\bookmark\folder-recommendation-toast.tsx**
+  - 发现废弃标记，可能需要清理
+- **components\bookmark\virtual-bookmark-grid.tsx**
+  - 发现废弃标记，可能需要清理
+- **components\bookmark\virtual-bookmark-list.tsx**
+  - 发现废弃标记，可能需要清理
+- **components\folder-evolution\report-suggestions-list.tsx**
+  - 发现废弃标记，可能需要清理
+- **components\folders\folders-page-client.tsx**
+  - 发现废弃标记，可能需要清理
+- **components\folders\types.ts**
+  - 发现废弃标记，可能需要清理
+- **components\home\home-page-client.tsx**
+  - 发现废弃标记，可能需要清理
+- **hooks\ai\use-attachment-manager.ts**
+  - 发现废弃标记，可能需要清理
+- **hooks\domain\ai\use-ai-chat.ts**
+  - 发现废弃标记，可能需要清理
+- **lib\ai-agent\config\feature-flag-registry.ts**
+  - 发现废弃标记，可能需要清理
+- **lib\ai-agent\core\prompts\knowledge-agent.prompt.ts**
+  - 发现废弃标记，可能需要清理
+- **lib\ai-agent\inference\stats-adapter.ts**
+  - 发现废弃标记，可能需要清理
+- **lib\ai-agent\personas\index.ts**
+  - 发现废弃标记，可能需要清理
+- **lib\ai-agent\personas\types.ts**
+  - 发现废弃标记，可能需要清理
+- **lib\ai-agent\task-understanding\index.ts**
+  - 发现废弃标记，可能需要清理
+- **lib\ai-agent\task-understanding\types.ts**
+  - 发现废弃标记，可能需要清理
+- **lib\ai-agent\task-understanding\undo\undo-service.ts**
+  - 发现废弃标记，可能需要清理
+- **lib\ai-skills\core\types.ts**
+  - 发现废弃标记，可能需要清理
+- **lib\ai-skills\engine\execution-coordinator.ts**
+  - 发现废弃标记，可能需要清理
+- **lib\ai-skills\engine\task-understanding-integration.ts**
+  - 发现废弃标记，可能需要清理
+- **lib\ai-skills\router\disambiguation-rules.ts**
+  - 发现废弃标记，可能需要清理
+- **lib\ai-skills\router\hybrid-intent-classifier-init.ts**
+  - 发现废弃标记，可能需要清理
+- **lib\ai-skills\router\hybrid-intent-classifier.ts**
+  - 发现废弃标记，可能需要清理
+- **lib\ai-skills\router\intent-analyzer.ts**
+  - 发现废弃标记，可能需要清理
+- **lib\ai-skills\router\intent-classifier.ts**
+  - 发现废弃标记，可能需要清理
+- **lib\ai-skills\router\intent-router.ts**
+  - 发现废弃标记，可能需要清理
+- **lib\api\response.ts**
+  - 发现废弃标记，可能需要清理
+- **lib\api-versioning\rpc-registry.ts**
+  - 发现废弃标记，可能需要清理
+- **lib\api-versioning\types.ts**
+  - 发现废弃标记，可能需要清理
+- **lib\classification\client\interest-profile.ts**
+  - 发现废弃标记，可能需要清理
+- **lib\classification\config\defaults.ts**
+  - 发现废弃标记，可能需要清理
+- **lib\classification\config\feature-flags.ts**
+  - 发现废弃标记，可能需要清理
+- **lib\classification\config\index.ts**
+  - 发现废弃标记，可能需要清理
+- **lib\classification\container.ts**
+  - 发现废弃标记，可能需要清理
+- **lib\classification\learning\preference-learner.ts**
+  - 发现废弃标记，可能需要清理
+- **lib\classification\router\tag-matcher.ts**
+  - 发现废弃标记，可能需要清理
+- **lib\classification\services\advanced\correction-cache.service.ts**
+  - 发现废弃标记，可能需要清理
+- **lib\classification\services\advanced\reranker.service.ts**
+  - 发现废弃标记，可能需要清理
+- **lib\classification\services\advanced\tiered-classification.service.ts**
+  - 发现废弃标记，可能需要清理
+- **lib\classification\services\advanced\trace.service.ts**
+  - 发现废弃标记，可能需要清理
+- **lib\classification\services\embedding-ab-test.service.ts**
+  - 发现废弃标记，可能需要清理
+- **lib\classification\services\inbox-organizer.service.ts**
+  - 发现废弃标记，可能需要清理
+- **lib\classification\services\index.ts**
+  - 发现废弃标记，可能需要清理
+- **lib\classification\types\interest.ts**
+  - 发现废弃标记，可能需要清理
+- **lib\constants\api-paths.ts**
+  - 发现废弃标记，可能需要清理
+- **lib\distribution\db-types.ts**
+  - 发现废弃标记，可能需要清理
+- **lib\folder-operations\index.ts**
+  - 发现废弃标记，可能需要清理
+- **lib\folder-organization\index.ts**
+  - 发现废弃标记，可能需要清理
+- **lib\messages\index.ts**
+  - 发现废弃标记，可能需要清理
+
+... 还有 4 个警告
+
+### 信息 (38)
+
+- **app\api\v1\bookmarks\batch\delete\route.ts**
+  - 发现旧版本文件，可能与新版本共存
+- **app\api\v1\bookmarks\batch\move\route.ts**
+  - 发现旧版本文件，可能与新版本共存
+- **app\api\v1\bookmarks\batch\restore\route.ts**
+  - 发现旧版本文件，可能与新版本共存
+- **app\api\v1\bookmarks\batch\tags\route.ts**
+  - 发现旧版本文件，可能与新版本共存
+- **app\api\v1\bookmarks\route.ts**
+  - 发现旧版本文件，可能与新版本共存
+- **app\api\v1\bookmarks\stats\route.ts**
+  - 发现旧版本文件，可能与新版本共存
+- **app\api\v1\bookmarks\tags\route.ts**
+  - 发现旧版本文件，可能与新版本共存
+- **app\api\v1\bookmarks\[id]\route.ts**
+  - 发现旧版本文件，可能与新版本共存
+- **app\api\v1\browser-bookmark\export\route.ts**
+  - 发现旧版本文件，可能与新版本共存
+- **app\api\v1\browser-bookmark\history\route.ts**
+  - 发现旧版本文件，可能与新版本共存
+- **app\api\v1\browser-bookmark\metadata\route.ts**
+  - 发现旧版本文件，可能与新版本共存
+- **app\api\v1\browser-bookmark\validate\route.ts**
+  - 发现旧版本文件，可能与新版本共存
+- **app\api\v1\classification\analytics\route.ts**
+  - 发现旧版本文件，可能与新版本共存
+- **app\api\v1\classification\confirmations\batch\route.ts**
+  - 发现旧版本文件，可能与新版本共存
+- **app\api\v1\classification\confirmations\route.ts**
+  - 发现旧版本文件，可能与新版本共存
+- **app\api\v1\classification\confirmations\[id]\route.ts**
+  - 发现旧版本文件，可能与新版本共存
+- **app\api\v1\classification\feedback\route.ts**
+  - 发现旧版本文件，可能与新版本共存
+- **app\api\v1\classification\reclassify\route.ts**
+  - 发现旧版本文件，可能与新版本共存
+- **app\api\v1\classification\route.ts**
+  - 发现旧版本文件，可能与新版本共存
+- **app\api\v1\folders\batch-sort\route.ts**
+  - 发现旧版本文件，可能与新版本共存
+- **app\api\v1\folders\evolution\history\route.ts**
+  - 发现旧版本文件，可能与新版本共存
+- **app\api\v1\folders\evolution\merge\route.ts**
+  - 发现旧版本文件，可能与新版本共存
+- **app\api\v1\folders\evolution\split\route.ts**
+  - 发现旧版本文件，可能与新版本共存
+- **app\api\v1\folders\evolution\suggestions\route.ts**
+  - 发现旧版本文件，可能与新版本共存
+- **app\api\v1\folders\evolution\undo\[id]\route.ts**
+  - 发现旧版本文件，可能与新版本共存
+- **app\api\v1\folders\route.ts**
+  - 发现旧版本文件，可能与新版本共存
+- **app\api\v1\folders\[id]\move\route.ts**
+  - 发现旧版本文件，可能与新版本共存
+- **app\api\v1\folders\[id]\path\route.ts**
+  - 发现旧版本文件，可能与新版本共存
+- **app\api\v1\folders\[id]\route.ts**
+  - 发现旧版本文件，可能与新版本共存
+- **app\api\v1\ingest\batch\route.ts**
+  - 发现旧版本文件，可能与新版本共存
+- **app\api\v1\ingest\route.ts**
+  - 发现旧版本文件，可能与新版本共存
+- **app\api\v1\jobs\route.ts**
+  - 发现旧版本文件，可能与新版本共存
+- **app\api\v1\jobs\[id]\route.ts**
+  - 发现旧版本文件，可能与新版本共存
+- **app\api\v1\messages\count\route.ts**
+  - 发现旧版本文件，可能与新版本共存
+- **app\api\v1\messages\read\route.ts**
+  - 发现旧版本文件，可能与新版本共存
+- **app\api\v1\messages\route.ts**
+  - 发现旧版本文件，可能与新版本共存
+- **app\api\v1\search\route.ts**
+  - 发现旧版本文件，可能与新版本共存
+- **app\api\v1\tags\route.ts**
+  - 发现旧版本文件，可能与新版本共存
+

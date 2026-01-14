@@ -1,0 +1,295 @@
+{
+  "timestamp": "2026-01-10T10:58:47.573Z",
+  "totalTests": 15,
+  "passed": 15,
+  "failed": 0,
+  "passRate": 100,
+  "averageDuration": 6,
+  "results": [
+    {
+      "name": "搜索→搜索结果",
+      "input": "搜索 React 教程",
+      "passed": true,
+      "duration": 79,
+      "expected": {
+        "intentType": "query",
+        "intentSubType": "search",
+        "mode": "atomic",
+        "skillId": "search"
+      },
+      "actual": {
+        "intentType": "query",
+        "intentSubType": "search",
+        "mode": "atomic",
+        "skillId": "search"
+      },
+      "errors": []
+    },
+    {
+      "name": "统计→计数结果",
+      "input": "我有多少书签",
+      "passed": true,
+      "duration": 3,
+      "expected": {
+        "intentType": "query",
+        "intentSubType": "count",
+        "mode": "atomic",
+        "skillId": "search"
+      },
+      "actual": {
+        "intentType": "query",
+        "intentSubType": "count",
+        "mode": "atomic",
+        "skillId": "search"
+      },
+      "errors": []
+    },
+    {
+      "name": "列表→列表展示",
+      "input": "看看最近的收藏",
+      "passed": true,
+      "duration": 2,
+      "expected": {
+        "intentType": "query",
+        "intentSubType": "list",
+        "mode": "atomic",
+        "skillId": "search"
+      },
+      "actual": {
+        "intentType": "query",
+        "intentSubType": "list",
+        "mode": "atomic",
+        "skillId": "search"
+      },
+      "errors": []
+    },
+    {
+      "name": "整理→批量操作",
+      "input": "帮我整理一下收藏",
+      "passed": true,
+      "duration": 1,
+      "expected": {
+        "intentType": "organize",
+        "intentSubType": "cleanup",
+        "mode": "orchestration",
+        "skillId": "batch_organize"
+      },
+      "actual": {
+        "intentType": "organize",
+        "intentSubType": "cleanup",
+        "mode": "orchestration",
+        "skillId": "batch_organize"
+      },
+      "errors": []
+    },
+    {
+      "name": "去重→重复清理",
+      "input": "找出重复的书签",
+      "passed": true,
+      "duration": 1,
+      "expected": {
+        "intentType": "organize",
+        "intentSubType": "dedupe",
+        "mode": "orchestration",
+        "skillId": "duplicate_cleanup"
+      },
+      "actual": {
+        "intentType": "organize",
+        "intentSubType": "dedupe",
+        "mode": "orchestration",
+        "skillId": "duplicate_cleanup"
+      },
+      "errors": []
+    },
+    {
+      "name": "分类→智能标签",
+      "input": "给书签自动分类",
+      "passed": true,
+      "duration": 1,
+      "expected": {
+        "intentType": "organize",
+        "intentSubType": "classify",
+        "mode": "orchestration",
+        "skillId": "smart_tagging"
+      },
+      "actual": {
+        "intentType": "organize",
+        "intentSubType": "classify",
+        "mode": "orchestration",
+        "skillId": "smart_tagging"
+      },
+      "errors": []
+    },
+    {
+      "name": "复习→知识回顾",
+      "input": "复习一下收藏的内容",
+      "passed": true,
+      "duration": 1,
+      "expected": {
+        "intentType": "learn",
+        "intentSubType": "review",
+        "mode": "orchestration",
+        "skillId": "knowledge_review"
+      },
+      "actual": {
+        "intentType": "learn",
+        "intentSubType": "review",
+        "mode": "orchestration",
+        "skillId": "knowledge_review"
+      },
+      "errors": []
+    },
+    {
+      "name": "主动复习→Brain-Sync",
+      "input": "开始今日复习",
+      "passed": true,
+      "duration": 1,
+      "expected": {
+        "intentType": "learn",
+        "intentSubType": "active_recall_start",
+        "mode": "orchestration",
+        "skillId": "active_recall"
+      },
+      "actual": {
+        "intentType": "learn",
+        "intentSubType": "active_recall_start",
+        "mode": "orchestration",
+        "skillId": "active_recall"
+      },
+      "errors": []
+    },
+    {
+      "name": "导出→JSON文件",
+      "input": "把收藏导出为JSON",
+      "passed": true,
+      "duration": 2,
+      "expected": {
+        "intentType": "create",
+        "intentSubType": "export",
+        "mode": "orchestration",
+        "skillId": "data_export"
+      },
+      "actual": {
+        "intentType": "create",
+        "intentSubType": "export",
+        "mode": "orchestration",
+        "skillId": "data_export"
+      },
+      "errors": []
+    },
+    {
+      "name": "摘要→快速摘要",
+      "input": "给这篇文章生成摘要",
+      "passed": true,
+      "duration": 1,
+      "expected": {
+        "intentType": "create",
+        "intentSubType": "digest",
+        "mode": "orchestration",
+        "skillId": "quick_digest"
+      },
+      "actual": {
+        "intentType": "create",
+        "intentSubType": "digest",
+        "mode": "orchestration",
+        "skillId": "quick_digest"
+      },
+      "errors": []
+    },
+    {
+      "name": "语音→TTS合成",
+      "input": "朗读这个书签",
+      "passed": true,
+      "duration": 1,
+      "expected": {
+        "intentType": "create",
+        "intentSubType": "tts",
+        "mode": "orchestration",
+        "skillId": "tts_synthesis"
+      },
+      "actual": {
+        "intentType": "create",
+        "intentSubType": "tts",
+        "mode": "orchestration",
+        "skillId": "tts_synthesis"
+      },
+      "errors": []
+    },
+    {
+      "name": "报告→周期报告",
+      "input": "生成本月收藏报告",
+      "passed": true,
+      "duration": 1,
+      "expected": {
+        "intentType": "analyze",
+        "intentSubType": "report",
+        "mode": "orchestration",
+        "skillId": "periodic_report"
+      },
+      "actual": {
+        "intentType": "analyze",
+        "intentSubType": "report",
+        "mode": "orchestration",
+        "skillId": "periodic_report"
+      },
+      "errors": []
+    },
+    {
+      "name": "洞察→洞察分析",
+      "input": "分析一下我的收藏趋势",
+      "passed": true,
+      "duration": 0,
+      "expected": {
+        "intentType": "analyze",
+        "intentSubType": "insight",
+        "mode": "orchestration",
+        "skillId": "insight_report"
+      },
+      "actual": {
+        "intentType": "analyze",
+        "intentSubType": "insight",
+        "mode": "orchestration",
+        "skillId": "insight_report"
+      },
+      "errors": []
+    },
+    {
+      "name": "删除→删除书签",
+      "input": "删除这个书签",
+      "passed": true,
+      "duration": 1,
+      "expected": {
+        "intentType": "action",
+        "intentSubType": "delete",
+        "mode": "atomic",
+        "skillId": "delete"
+      },
+      "actual": {
+        "intentType": "action",
+        "intentSubType": "delete",
+        "mode": "atomic",
+        "skillId": "delete"
+      },
+      "errors": []
+    },
+    {
+      "name": "标签→添加标签",
+      "input": "给这个加个标签",
+      "passed": true,
+      "duration": 1,
+      "expected": {
+        "intentType": "action",
+        "intentSubType": "tag",
+        "mode": "atomic",
+        "skillId": "add_tag"
+      },
+      "actual": {
+        "intentType": "action",
+        "intentSubType": "tag",
+        "mode": "atomic",
+        "skillId": "add_tag"
+      },
+      "errors": []
+    }
+  ]
+}

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+html { background: #ffffff; }
+body {
+  width: 720pt; height: 405pt; margin: 0; padding: 0;
+  background: #F8F9FA; font-family: Arial, sans-serif;
+  display: flex; flex-direction: column;
+}
+.header {
+  background: #1C2833; padding: 18pt 40pt; margin: 0;
+  display: flex; align-items: center; gap: 15pt;
+}
+.header-badge {
+  background: #3498DB; color: #FFFFFF; padding: 4pt 10pt;
+  border-radius: 4pt; font-size: 11pt; font-weight: bold;
+}
+.header-title {
+  color: #FFFFFF; font-size: 24pt; font-weight: bold; margin: 0;
+}
+.content {
+  display: flex; flex: 1; padding: 18pt 40pt 50pt 40pt; gap: 20pt;
+}
+.left-section {
+  flex: 1; display: flex; flex-direction: column;
+}
+.section-title {
+  color: #1C2833; font-size: 14pt; font-weight: bold; margin: 0 0 12pt 0;
+}
+.flow-container {
+  display: flex; flex-direction: column; gap: 4pt;
+}
+.flow-step {
+  background: #FFFFFF; padding: 8pt 12pt; border-radius: 6pt;
+  box-shadow: 0 2pt 6pt rgba(0,0,0,0.06);
+  display: flex; align-items: center; gap: 10pt;
+}
+.step-num {
+  background: #3498DB; color: #FFFFFF; width: 22pt; height: 22pt;
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-size: 10pt; font-weight: bold; flex-shrink: 0;
+}
+.step-num p { margin: 0; color: #FFFFFF; }
+.step-text {
+  color: #1C2833; font-size: 11pt; margin: 0;
+}
+.arrow {
+  text-align: center; color: #3498DB; font-size: 14pt; margin: 0;
+}
+.right-section {
+  flex: 1; display: flex; flex-direction: column; gap: 10pt;
+}
+.feature-card {
+  background: #FFFFFF; padding: 14pt; border-radius: 6pt;
+  box-shadow: 0 2pt 6pt rgba(0,0,0,0.06);
+  border-left: 4pt solid #F39C12;
+}
+.feature-title {
+  color: #1C2833; font-size: 12pt; font-weight: bold; margin: 0 0 6pt 0;
+}
+.feature-desc {
+  color: #5D6D7E; font-size: 10pt; margin: 0; line-height: 1.4;
+}
+.highlight-stat {
+  background: #1C2833; padding: 15pt; border-radius: 6pt;
+  text-align: center;
+}
+.stat-number {
+  color: #F39C12; font-size: 32pt; font-weight: bold; margin: 0;
+}
+.stat-label {
+  color: #AAB7B8; font-size: 11pt; margin: 6pt 0 0 0;
+}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="header-badge"><p style="margin:0;color:#FFFFFF;">核心能力 2</p></div>
+  <h1 class="header-title">向量化数据处理</h1>
+</div>
+<div class="content">
+  <div class="left-section">
+    <h3 class="section-title">数据处理流程</h3>
+    <div class="flow-container">
+      <div class="flow-step">
+        <div class="step-num"><p>1</p></div>
+        <p class="step-text">原始数据接入与清洗</p>
+      </div>
+      <p class="arrow">↓</p>
+      <div class="flow-step">
+        <div class="step-num"><p>2</p></div>
+        <p class="step-text">结构化解析与标准化</p>
+      </div>
+      <p class="arrow">↓</p>
+      <div class="flow-step">
+        <div class="step-num"><p>3</p></div>
+        <p class="step-text">多维向量化存储</p>
+      </div>
+      <p class="arrow">↓</p>
+      <div class="flow-step">
+        <div class="step-num"><p>4</p></div>
+        <p class="step-text">关联索引与智能检索</p>
+      </div>
+    </div>
+  </div>
+  <div class="right-section">
+    <div class="feature-card">
+      <h4 class="feature-title">多维关联分析</h4>
+      <p class="feature-desc">将路面压力、运动轨迹、通信信号等不同维度数据通过时间戳和测试批次自动关联</p>
+    </div>
+    <div class="feature-card">
+      <h4 class="feature-title">支持科研挖掘</h4>
+      <p class="feature-desc">结构化数据可直接导出至 Python/MATLAB，为机器学习提供高质量数据集</p>
+    </div>
+    <div class="highlight-stat">
+      <p class="stat-number">10x</p>
+      <p class="stat-label">数据分析效率提升</p>
+    </div>
+  </div>
+</div>
+</body>
+</html>

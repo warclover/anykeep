@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+html { background: #ffffff; }
+body {
+  width: 720pt; height: 405pt; margin: 0; padding: 0;
+  background: #0A1628; font-family: Arial, sans-serif;
+  display: flex; flex-direction: column;
+  position: relative;
+}
+/* 科技感装饰线条 */
+.tech-line-top {
+  position: absolute; top: 0; left: 0; right: 0; height: 3pt;
+  background: #00D4FF;
+}
+.tech-line-accent {
+  position: absolute; top: 3pt; left: 0; width: 200pt; height: 2pt;
+  background: #7C3AED;
+}
+/* 头部区域 */
+.header {
+  padding: 20pt 35pt 15pt 35pt;
+  display: flex; align-items: center; gap: 12pt;
+}
+.header-icon {
+  width: 36pt; height: 36pt; background: #1E3A5F;
+  border: 2pt solid #00D4FF; border-radius: 6pt;
+  display: flex; align-items: center; justify-content: center;
+}
+.header-icon-text {
+  color: #00D4FF; font-size: 18pt; font-weight: bold; margin: 0;
+}
+.header-content { flex: 1; }
+.header-title {
+  color: #FFFFFF; font-size: 26pt; font-weight: bold; margin: 0 0 4pt 0;
+}
+.header-subtitle {
+  color: #64748B; font-size: 11pt; margin: 0;
+}
+/* 架构流程区域 */
+.architecture-flow {
+  display: flex; padding: 0 35pt; gap: 8pt; align-items: center;
+}
+.arch-card {
+  flex: 1; background: #1E3A5F; border-radius: 8pt;
+  padding: 14pt; text-align: center;
+  border: 1pt solid #2563EB;
+  box-shadow: 0 4pt 12pt rgba(0,212,255,0.1);
+}
+.arch-card-accent { border-color: #00D4FF; }
+.arch-card-purple { border-color: #7C3AED; background: #1E1B4B; }
+.arch-num {
+  color: #00D4FF; font-size: 10pt; margin: 0 0 6pt 0;
+}
+.arch-title {
+  color: #FFFFFF; font-size: 13pt; font-weight: bold; margin: 0 0 4pt 0;
+}
+.arch-desc {
+  color: #94A3B8; font-size: 9pt; margin: 0;
+}
+.flow-arrow {
+  color: #00D4FF; font-size: 18pt; margin: 0;
+}
+/* 数据源标签区域 */
+.sources-section {
+  padding: 15pt 35pt 10pt 35pt;
+}
+.section-label {
+  color: #64748B; font-size: 9pt; margin: 0 0 10pt 0;
+  text-transform: uppercase;
+  letter-spacing: 1pt;
+}
+.sources-grid {
+  display: flex; gap: 8pt; flex-wrap: wrap;
+}
+.source-tag {
+  background: #1E3A5F; border: 1pt solid #334155;
+  border-radius: 4pt; padding: 8pt 12pt;
+}
+.source-tag-text {
+  color: #E2E8F0; font-size: 10pt; margin: 0;
+}
+/* 底部价值主张 */
+.value-section {
+  display: flex; padding: 12pt 35pt 20pt 35pt; gap: 15pt;
+  margin-top: auto;
+}
+.value-card {
+  flex: 1; background: #0F172A; border-radius: 6pt;
+  padding: 12pt 15pt; border-left: 3pt solid #00D4FF;
+}
+.value-card-2 { border-left-color: #7C3AED; }
+.value-card-3 { border-left-color: #10B981; }
+.value-title {
+  color: #FFFFFF; font-size: 11pt; font-weight: bold; margin: 0 0 4pt 0;
+}
+.value-desc {
+  color: #94A3B8; font-size: 9pt; margin: 0; line-height: 1.4;
+}
+/* 装饰元素 */
+.corner-decor {
+  position: absolute; bottom: 15pt; right: 35pt;
+}
+.corner-text {
+  color: #334155; font-size: 8pt; margin: 0;
+}
+</style>
+</head>
+<body>
+<div class="tech-line-top"></div>
+<div class="tech-line-accent"></div>
+
+<div class="header">
+  <div class="header-icon"><p class="header-icon-text">T</p></div>
+  <div class="header-content">
+    <h1 class="header-title">技术架构</h1>
+    <p class="header-subtitle">Technology Architecture · 四层分布式数据处理体系</p>
+  </div>
+</div>
+
+<div class="architecture-flow">
+  <div class="arch-card">
+    <p class="arch-num">01</p>
+    <h3 class="arch-title">数据采集层</h3>
+    <p class="arch-desc">多源接入</p>
+  </div>
+  <p class="flow-arrow">→</p>
+  <div class="arch-card arch-card-accent">
+    <p class="arch-num">02</p>
+    <h3 class="arch-title">解析处理层</h3>
+    <p class="arch-desc">结构化转换</p>
+  </div>
+  <p class="flow-arrow">→</p>
+  <div class="arch-card arch-card-accent">
+    <p class="arch-num">03</p>
+    <h3 class="arch-title">向量化存储</h3>
+    <p class="arch-desc">多维关联</p>
+  </div>
+  <p class="flow-arrow">→</p>
+  <div class="arch-card arch-card-purple">
+    <p class="arch-num">04</p>
+    <h3 class="arch-title">上层应用</h3>
+    <p class="arch-desc">分析对接</p>
+  </div>
+</div>
+
+<div class="sources-section">
+  <p class="section-label">Supported Data Sources</p>
+  <div class="sources-grid">
+    <div class="source-tag"><p class="source-tag-text">EMC试验</p></div>
+    <div class="source-tag"><p class="source-tag-text">自动化测试</p></div>
+    <div class="source-tag"><p class="source-tag-text">性能测试</p></div>
+    <div class="source-tag"><p class="source-tag-text">环境可靠性</p></div>
+    <div class="source-tag"><p class="source-tag-text">通信信号</p></div>
+    <div class="source-tag"><p class="source-tag-text">运动工况</p></div>
+    <div class="source-tag"><p class="source-tag-text">电气安全</p></div>
+    <div class="source-tag"><p class="source-tag-text">运动性能</p></div>
+    <div class="source-tag"><p class="source-tag-text">功耗性能</p></div>
+  </div>
+</div>
+
+<div class="value-section">
+  <div class="value-card">
+    <h4 class="value-title">统一接入标准</h4>
+    <p class="value-desc">标准化数据采集接口</p>
+  </div>
+  <div class="value-card value-card-2">
+    <h4 class="value-title">多维度向量</h4>
+    <p class="value-desc">根据数据唯一特性建立逻辑映射关系，完成结构化可关联存储</p>
+  </div>
+  <div class="value-card value-card-3">
+    <h4 class="value-title">灵活扩展</h4>
+    <p class="value-desc">支持新增测试专业</p>
+  </div>
+</div>
+
+<div class="corner-decor">
+  <p class="corner-text">Terminal Service Platform</p>
+</div>
+</body>
+</html>
