@@ -324,7 +324,7 @@ describe("createRouteDecisionLog", () => {
     });
 
     expect(log.routeId).toBe("route_test001");
-    expect(log.classification.intentKey).toBe("search:semantic");
+    expect(log.classification.intentKey).toBe("query:semantic");
     expect(log.classification.matchedPattern).toBe("搜索");
     expect(log.routing.skillId).toBe("search");
     expect(log.performance.totalMs).toBe(10);

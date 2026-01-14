@@ -5,6 +5,14 @@
  * @since 2025-12-25
  */
 
+// Mock Feature Flags - 禁用早返回优化以测试消歧逻辑
+jest.mock("@/lib/ai-agent/config/feature-flags", () => ({
+  FeatureFlags: {
+    ENABLE_EARLY_RETURN: false, // 禁用高权重规则短路优化，确保收集所有候选
+    ENABLE_LLM_FALLBACK: false, // 禁用 LLM 兜底，确保测试确定性
+  },
+}));
+
 import type { IntentClassifier } from "../intent-classifier";
 import { createIntentClassifier } from "../intent-classifier";
 import {

@@ -91,6 +91,15 @@ const createMockChain = (
   error: { message: string } | null = null,
 ) => ({
   gte: jest.fn(() => ({
+    or: jest.fn(() => ({
+      order: jest.fn(() => ({
+        limit: jest.fn(() => ({
+          data,
+          error,
+        })),
+      })),
+    })),
+    // 保留 in 方法以兼容其他可能的调用
     in: jest.fn(() => ({
       order: jest.fn(() => ({
         limit: jest.fn(() => ({

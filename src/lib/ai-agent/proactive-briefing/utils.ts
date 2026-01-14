@@ -56,38 +56,31 @@ export function formatOfflineDuration(durationMs: number): string {
 // =============================================================================
 
 /**
- * 生成 UUID v4
- * @returns UUID 字符串
+ * 生成随机后缀
+ * @returns 随机字符串（13位时间戳 + 4位随机数）
  */
-function generateUUID(): string {
-  // 使用 crypto.randomUUID() 如果可用，否则使用 polyfill
-  if (typeof crypto !== "undefined" && crypto.randomUUID) {
-    return crypto.randomUUID();
-  }
-  // Fallback: 生成符合 UUID v4 格式的字符串
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === "x" ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
+function generateRandomSuffix(): string {
+  const timestamp = Date.now().toString(36); // 时间戳转36进制
+  const random = Math.random().toString(36).substring(2, 6); // 4位随机数
+  return `${timestamp}_${random}`;
 }
 
 /**
  * 生成洞察 ID
- * @param _type - 洞察类型（保留参数用于未来扩展）
- * @returns UUID 格式的唯一 ID
+ * @param type - 洞察类型
+ * @returns 格式为 `insight_{type}_{timestamp}_{random}` 的唯一 ID
  */
-export function generateInsightId(_type: string): string {
-  return generateUUID();
+export function generateInsightId(type: string): string {
+  return `insight_${type}_${generateRandomSuffix()}`;
 }
 
 /**
  * 生成操作 ID
- * @param _type - 操作类型（保留参数用于未来扩展）
- * @returns UUID 格式的唯一 ID
+ * @param type - 操作类型
+ * @returns 格式为 `action_{type}_{timestamp}_{random}` 的唯一 ID
  */
-export function generateActionId(_type: string): string {
-  return generateUUID();
+export function generateActionId(type: string): string {
+  return `action_${type}_${generateRandomSuffix()}`;
 }
 
 // =============================================================================
