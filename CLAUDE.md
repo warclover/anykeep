@@ -4,6 +4,8 @@
 
 | 日期       | 版本  | 变更内容                                                                                                                                                      |
 | ---------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-01-12 | 2.9.1 | 文档更新：AI 架构图补充 Workflow 模式（三模态执行架构）、新增 workflow-system.md 架构文档                                                                     |
+| 2026-01-11 | 2.9.0 | AI 架构优化 Phase 3：Feature Flags 治理机制、E2E 验收测试、类型冲突检测、能力成熟度仪表盘                                                                     |
 | 2026-01-08 | 2.8.2 | Skills v1.1.0：新增 6 个 Skills（inbox_triage/folder_recommend/search_optimize/knowledge_graph_explore/folder_health_check/snapshot_compare），108 个单元测试 |
 | 2025-12-29 | 2.8.1 | 文档校正：修正项目统计（2004文件/159迁移），补全21个Skills列表，添加TTS/Brain-Sync/主题合成器描述                                                             |
 | 2025-12-28 | 2.8.0 | RAG 能力补全 Phase 1-3：查询改写、Rerank、向量缓存、Parent-Child 切片、RRF 融合、监控评估                                                                     |
@@ -488,47 +490,78 @@ src/components/export/
 
 **版本**: v2.4.0 (2025-12-24)
 
-全新的 AI 能力统一架构，支持原子模式（简单查询）和编排模式（复杂任务）的智能路由。
+全新的 AI 能力统一架构，支持**原子模式**（简单查询）、**编排模式**（复杂任务）和**工作流模式**（自动化流程）的智能路由。
 
 **架构概览**:
 
 ```
-┌────────────────────────────────────────────────────────────┐
-│                     /api/agent/unified                      │
-│                     (统一 API 入口)                          │
-└──────────────────────────┬─────────────────────────────────┘
-                           │
-┌──────────────────────────▼─────────────────────────────────┐
-│                    UnifiedEngine                            │
-│  - IntentRouter（意图路由）                                  │
-│  - 模式切换（atomic ↔ orchestration）                        │
-│  - 自动回退机制                                              │
-└──────────────────────────┬─────────────────────────────────┘
-           ┌───────────────┴───────────────┐
-           ▼                               ▼
-┌──────────────────────┐    ┌──────────────────────────────────┐
-│   Atomic Mode        │    │     Orchestration Mode           │
-│   (KnowledgeAgent)   │    │     (OrchestrationEngine)        │
-│                      │    │                                  │
-│   - 简单查询         │    │   - KnowledgeReviewSkill 📚      │
-│   - 工具调用         │    │   - DataExportSkill 📤           │
-│   - 即时响应         │    │   - InsightReportSkill 📊        │
-│                      │    │   - BatchOrganizeSkill 🗂️         │
-└──────────────────────┘    └──────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                      /api/agent/unified                              │
+│                      (统一 API 入口)                                  │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │
+┌──────────────────────────────▼──────────────────────────────────────┐
+│                         UnifiedEngine                                │
+│                                                                      │
+│  ┌────────────────────────────────────────────────────────────────┐ │
+│  │                      IntentRouter                               │ │
+│  │  ┌──────────────────────────────────────────────────────────┐  │ │
+│  │  │               IntentAnalyzer (统一意图分析器)              │  │ │
+│  │  │                                                          │  │ │
+│  │  │  ① 意图分类 (规则匹配 + LLM 兜底)                        │  │ │
+│  │  │  ② 实体提取 (时间/数量/主题/平台/文件夹)                  │  │ │
+│  │  │  ③ 复杂度评估 (5 因素加权)                               │  │ │
+│  │  │  ④ 模式选择 (atomic vs orchestration)                   │  │ │
+│  │  │  ⑤ 隐含意图推断                                         │  │ │
+│  │  └──────────────────────────────────────────────────────────┘  │ │
+│  │                              │                                  │ │
+│  │  ┌───────────────────────────▼───────────────────────────────┐ │ │
+│  │  │            WorkflowIntentMatcher (工作流意图匹配)          │ │ │
+│  │  │  - 关键词/正则/语义匹配 → 触发 Workflow 模式              │ │ │
+│  │  └───────────────────────────────────────────────────────────┘ │ │
+│  └────────────────────────────────────────────────────────────────┘ │
+│                              │                                       │
+│  ┌───────────────────────────▼───────────────────────────────────┐  │
+│  │                   ExecutionCoordinator                         │  │
+│  └───────────────────────────┬───────────────────────────────────┘  │
+└──────────────────────────────┼───────────────────────────────────────┘
+                               │
+         ┌─────────────────────┼─────────────────────┐
+         │                     │                     │
+         ▼                     ▼                     ▼
+┌────────────────┐  ┌──────────────────┐  ┌─────────────────────┐
+│  Atomic Mode   │  │ Orchestration    │  │   Workflow Mode     │
+│ (KnowledgeAg.) │  │     Mode         │  │ (WorkflowOrchest.)  │
+│                │  │                  │  │                     │
+│ - 简单查询     │  │ - 30+ Skills     │  │ - 6+ 预置工作流     │
+│ - 122+ Tools   │  │ - 多步骤管道     │  │ - 4种触发方式       │
+│ - 即时响应     │  │ - 进度报告       │  │ - 状态持久化        │
+└────────────────┘  └──────────────────┘  └─────────────────────┘
 ```
+
+### 三种执行模式
+
+| 模式              | 适用场景             | 特点                               |
+| ----------------- | -------------------- | ---------------------------------- |
+| **Atomic**        | 简单查询、即时操作   | 同步执行、122+ Tools、即时响应     |
+| **Orchestration** | 复杂多步任务         | 同步流式、30+ Skills、进度报告     |
+| **Workflow**      | 自动化流程、定时任务 | 异步执行、状态持久化、多种触发方式 |
+
+> **详细架构文档**: [Workflow 系统架构](docs/architecture/workflow-system.md)
 
 **核心组件**:
 
-| 组件                 | 路径                                 | 职责                                            |
-| -------------------- | ------------------------------------ | ----------------------------------------------- |
-| IntentClassifier     | `router/intent-classifier.ts`        | 意图分类（search/manage/analyze/export/review） |
-| ComplexityEvaluator  | `router/complexity-evaluator.ts`     | 复杂度评估（simple/medium/complex）             |
-| ModeSelector         | `router/mode-selector.ts`            | 模式选择决策                                    |
-| IntentRouter         | `router/intent-router.ts`            | 意图路由整合                                    |
-| OrchestrationEngine  | `engine/orchestration-engine.ts`     | 编排执行引擎                                    |
-| UnifiedEngine        | `engine/unified-engine.ts`           | 统一入口引擎                                    |
-| UnifiedOutputAdapter | `output/adapter.ts`                  | 输出格式适配                                    |
-| ProgressReporter     | `orchestration/progress-reporter.ts` | 进度报告                                        |
+| 组件                  | 路径                                 | 职责                                                |
+| --------------------- | ------------------------------------ | --------------------------------------------------- |
+| **IntentAnalyzer**    | `router/intent-analyzer.ts`          | 统一意图分析器（分类+复杂度+模式选择+隐含意图推断） |
+| IntentRouter          | `router/intent-router.ts`            | 意图路由整合（缓存、校准、反馈）                    |
+| WorkflowIntentMatcher | `workflow/integration/`              | 工作流意图匹配（关键词/正则/语义）                  |
+| ExecutionCoordinator  | `engine/execution-coordinator.ts`    | 执行协调器（委托三种模式）                          |
+| OrchestrationEngine   | `engine/orchestration-engine.ts`     | 编排执行引擎                                        |
+| WorkflowOrchestrator  | `workflow/orchestrator/`             | 工作流编排器                                        |
+| UnifiedEngine         | `engine/unified-engine.ts`           | 统一入口引擎                                        |
+| UnifiedOutputAdapter  | `output/adapter.ts`                  | 输出格式适配                                        |
+| ProgressReporter      | `orchestration/progress-reporter.ts` | 进度报告                                            |
 
 **已实现的编排 Skills**:
 
@@ -637,6 +670,30 @@ src/lib/ai-skills/
 │   ├── active-recall/        # Brain-Sync 主动复习
 │   └── thematic-synthesis/   # 主题合成器
 └── register.ts                # Skill 注册
+
+src/lib/workflow/                # 🆕 工作流系统
+├── orchestrator/              # 工作流编排器
+│   └── workflow-orchestrator.ts
+├── engine/                    # 执行引擎
+│   └── execution-engine.ts
+├── state/                     # 状态管理
+│   └── state-manager.ts
+├── triggers/                  # 触发器系统
+│   ├── trigger-scheduler.ts   # 定时触发
+│   ├── event-trigger-manager.ts # 事件触发
+│   └── distributed-lock.ts    # 分布式锁
+├── integration/               # AI Agent 集成
+│   ├── workflow-mode-executor.ts  # 执行器
+│   ├── workflow-intent-matcher.ts # 意图匹配
+│   └── semantic-matcher.ts    # 语义匹配
+├── builtin/                   # 预置工作流 (6 个)
+│   ├── bookmark-health.workflow.ts
+│   ├── daily-digest.workflow.ts
+│   ├── periodic-backup.workflow.ts
+│   ├── folder-cleanup.workflow.ts
+│   ├── new-user-onboarding.workflow.ts
+│   └── topic-deep-dive.workflow.ts
+└── types/                     # 类型定义
 ```
 
 **测试覆盖**:
@@ -1372,3 +1429,228 @@ When multiple valid approaches exist, choose based on:
 - Always use Context7 when code generation, setup/configuration steps, or
   library/API documentation is needed. This means automatically using the Context7 MCP
   tools to resolve library IDs and get library docs without requiring explicit requests.
+
+---
+
+## Feature Flags 使用指南
+
+### 概述
+
+Feature Flags 是 AnyKeep AI 能力的灰度发布和开关控制机制。所有 AI 相关功能都通过 Feature Flags 控制，支持：
+
+- 功能灰度发布
+- A/B 测试
+- 故障快速回滚
+- 成本控制
+
+### 配置文件
+
+```bash
+# .env.local
+ENABLE_FEATURE_NAME=true   # 启用功能
+ENABLE_FEATURE_NAME=false  # 禁用功能
+```
+
+### Feature Flags 注册表
+
+**版本**: v2.9.0 (2026-01-11)
+
+所有 Feature Flags 必须在注册表中定义：
+
+```
+src/lib/ai-agent/config/feature-flag-registry.ts
+```
+
+**定义结构**:
+
+```typescript
+interface FeatureFlagDefinition {
+  name: FeatureFlagKey; // Flag 名称
+  description: string; // 功能描述
+  defaultValue: boolean; // 默认值
+  module: string; // 所属模块
+  phase: "stable" | "beta" | "alpha" | "deprecated";
+  integrationPoints: IntegrationPoint[]; // 集成点
+  dependencies?: FeatureFlagKey[]; // 依赖的其他 Flags
+}
+```
+
+### 验证机制
+
+```bash
+# 运行 Feature Flags 验证
+npm run check:feature-flags
+
+# 验证内容：
+# 1. 启用的 Flag 是否有集成点
+# 2. 依赖的 Flag 是否已启用
+# 3. 废弃的 Flag 是否仍在使用
+```
+
+### 添加新 Feature Flag
+
+1. **在 `feature-flags.ts` 添加 getter**:
+
+```typescript
+get ENABLE_NEW_FEATURE(): boolean {
+  return process.env.ENABLE_NEW_FEATURE !== "false";
+}
+```
+
+2. **在 `feature-flag-registry.ts` 注册**:
+
+```typescript
+{
+  name: "ENABLE_NEW_FEATURE",
+  description: "新功能描述",
+  defaultValue: true,
+  module: "core",
+  phase: "beta",
+  integrationPoints: [
+    {
+      file: "lib/ai-agent/new-feature.ts",
+      location: "newFunction()",
+      type: "execute",
+    },
+  ],
+}
+```
+
+3. **在代码中使用**:
+
+```typescript
+import { FeatureFlags } from "@/lib/ai-agent/config/feature-flags";
+
+if (FeatureFlags.ENABLE_NEW_FEATURE) {
+  // 执行新功能逻辑
+}
+```
+
+### 模块分类
+
+| 模块               | 说明         |
+| ------------------ | ------------ |
+| core               | 核心功能     |
+| task-understanding | 任务理解层   |
+| context            | 上下文处理   |
+| memory             | 记忆系统     |
+| react              | ReAct 循环   |
+| persona            | 用户画像     |
+| rag                | RAG 能力增强 |
+| workflow           | 工作流系统   |
+| safety             | 安全与确认   |
+| intent             | 意图分类     |
+| proactive          | 主动式服务   |
+
+### 发布阶段
+
+| 阶段       | 说明               | 默认状态 |
+| ---------- | ------------------ | -------- |
+| stable     | 稳定功能，生产可用 | 启用     |
+| beta       | 测试中，可能有问题 | 禁用     |
+| alpha      | 实验性功能         | 禁用     |
+| deprecated | 已废弃，计划移除   | 禁用     |
+
+---
+
+## 类型定义规范
+
+### 概述
+
+为避免类型定义冲突和重复，项目采用统一的类型管理策略。
+
+### 统一类型位置
+
+```
+src/lib/shared/types/
+├── core.ts          # AgentType, MessageRole
+├── intent.ts        # IntentType, ComplexityLevel, ExecutionMode
+├── confidence.ts    # 置信度阈值常量
+├── stream.ts        # UnifiedStreamChunk, ErrorChunk
+├── confirmation.ts  # 确认相关类型
+├── context.ts       # 执行上下文类型
+├── common.ts        # 通用工具类型
+└── index.ts         # 统一导出
+```
+
+### 使用规范
+
+**正确做法** ✅:
+
+```typescript
+// 从统一位置导入
+import type { IntentType, ComplexityLevel } from "@/lib/shared/types";
+import { CONFIDENCE_THRESHOLDS } from "@/lib/shared/types";
+```
+
+**错误做法** ❌:
+
+```typescript
+// 不要在各模块重复定义
+// BAD: src/lib/ai-skills/router/types.ts
+export type IntentType = "search" | "manage" | ...;
+
+// BAD: src/lib/ai-agent/core/types.ts
+export type IntentType = "search" | "manage" | ...;
+```
+
+### 类型冲突检测
+
+```bash
+# 运行类型冲突检测
+npx ts-node scripts/check-type-duplicates.ts
+
+# CI 模式（发现冲突时失败）
+npx ts-node scripts/check-type-duplicates.ts --ci
+```
+
+### 添加新类型
+
+1. **确定类型类别**（core/intent/confidence/stream 等）
+2. **在对应文件中定义类型**
+3. **在 `index.ts` 中导出**
+4. **更新所有引用位置**
+
+### 类型命名约定
+
+| 类型种类 | 命名约定    | 示例                    |
+| -------- | ----------- | ----------------------- |
+| 接口     | PascalCase  | `IntentResult`          |
+| 类型别名 | PascalCase  | `IntentType`            |
+| 枚举     | PascalCase  | `ComplexityLevel`       |
+| 常量     | UPPER_SNAKE | `CONFIDENCE_THRESHOLDS` |
+| 泛型参数 | 单字母大写  | `T`, `K`, `V`           |
+
+---
+
+## 质量保障工具
+
+### 脚本列表
+
+| 脚本                               | 用途                |
+| ---------------------------------- | ------------------- |
+| `scripts/check-type-duplicates.ts` | 检测类型定义冲突    |
+| `scripts/ai-capability-metrics.ts` | AI 能力成熟度仪表盘 |
+
+### 端到端测试
+
+```
+src/__tests__/e2e/ai-capabilities/
+├── implicit-intent.e2e.test.ts     # 隐含意图测试
+├── confidence-tiering.e2e.test.ts  # 置信度分层测试
+├── skill-routing.e2e.test.ts       # Skill 路由测试
+└── preference-learning.e2e.test.ts # 偏好学习测试
+```
+
+### 运行测试
+
+```bash
+# 运行所有 AI 能力 E2E 测试
+npm test -- --testPathPattern="e2e/ai-capabilities"
+
+# 运行 Feature Flags 相关测试
+npm test -- --testPathPattern="feature-flag"
+
+# 生成 AI 能力成熟度报告
+npx ts-node scripts/ai-capability-metrics.ts --output reports/ai-metrics.md
+```

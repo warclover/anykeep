@@ -6,36 +6,16 @@
  */
 
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import { logger } from "@/lib/logger";
-import type { Database } from "@/types/supabase";
 import type { SnapshotJobPayload } from "@/lib/snapshot";
 import { reportService } from "@/lib/classification/services/report.service";
+import {
+  initSupabaseAdmin,
+  getSupabaseAdmin,
+} from "@/lib/supabase/admin-client";
 
 // Cron secret for authentication
 const CRON_SECRET = process.env.CRON_SECRET;
-
-// Use Service Role Key to bypass RLS
-let supabaseAdmin: ReturnType<typeof createClient<Database>> | null = null;
-
-const initSupabaseAdmin = () => {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!url || !serviceKey) {
-    throw new Error("Missing Supabase credentials");
-  }
-
-  supabaseAdmin = createClient<Database>(url, serviceKey);
-  return supabaseAdmin;
-};
-
-const getAdmin = () => {
-  if (!supabaseAdmin) {
-    throw new Error("Supabase admin not initialized");
-  }
-  return supabaseAdmin;
-};
 
 // Worker ID for this cron instance
 const WORKER_ID = `cron-worker-${Date.now()}`;
@@ -97,14 +77,16 @@ export async function GET(request: Request) {
     for (let i = 0; i < MAX_JOBS_PER_RUN; i++) {
       // Claim next job
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: claimedJobs, error: claimError } = await (getAdmin().rpc as any)(
-        "claim_next_job",
-        {
-          p_worker_id: WORKER_ID,
-          p_job_types: undefined, // Process all types
-          p_lock_duration: "5 minutes",
-        },
-      ) as { data: ClaimedJobType[] | null; error: { message: string } | null };
+      const { data: claimedJobs, error: claimError } = (await (
+        getSupabaseAdmin().rpc as any
+      )("claim_next_job", {
+        p_worker_id: WORKER_ID,
+        p_job_types: undefined, // Process all types
+        p_lock_duration: "5 minutes",
+      })) as {
+        data: ClaimedJobType[] | null;
+        error: { message: string } | null;
+      };
 
       if (claimError) {
         logger.error({ error: claimError }, "Failed to claim job");
@@ -125,7 +107,7 @@ export async function GET(request: Request) {
 
         // Mark as completed
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (getAdmin().rpc as any)("complete_job", {
+        await (getSupabaseAdmin().rpc as any)("complete_job", {
           p_job_id: job.job_id,
           p_result: { processedAt: new Date().toISOString() },
         });
@@ -141,7 +123,7 @@ export async function GET(request: Request) {
 
         // Mark as failed
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (getAdmin().rpc as any)("fail_job", {
+        await (getSupabaseAdmin().rpc as any)("fail_job", {
           p_job_id: job.job_id,
           p_error: error instanceof Error ? error.message : String(error),
           p_retry: true,
@@ -155,17 +137,18 @@ export async function GET(request: Request) {
     }
 
     // Also reset stuck jobs
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: resetJobs } = await (getAdmin()
-      .from("job_queue") as any)
-      .update({
-        status: "pending",
-        lock_until: null,
-        claimed_by: null,
-      })
-      .eq("status", "claimed")
-      .lt("lock_until", new Date().toISOString())
-      .select("id") as { data: { id: string }[] | null };
+
+    const { data: resetJobs } =
+      (await // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (getSupabaseAdmin().from("job_queue") as any)
+        .update({
+          status: "pending",
+          lock_until: null,
+          claimed_by: null,
+        })
+        .eq("status", "claimed")
+        .lt("lock_until", new Date().toISOString())
+        .select("id")) as { data: { id: string }[] | null };
 
     const resetCount = resetJobs?.length ?? 0;
     if (resetCount > 0) {
@@ -337,7 +320,7 @@ async function cleanupExpiredData(userId: string): Promise<void> {
 
   // Cleanup expired suggestions
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (getAdmin().from("classification_suggestions") as any)
+  await (getSupabaseAdmin().from("classification_suggestions") as any)
     .update({ status: "expired" })
     .eq("user_id", userId)
     .eq("status", "pending")
@@ -345,7 +328,7 @@ async function cleanupExpiredData(userId: string): Promise<void> {
 
   // Cleanup expired operation snapshots
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (getAdmin().from("operation_snapshots") as any)
+  await (getSupabaseAdmin().from("operation_snapshots") as any)
     .delete()
     .eq("user_id", userId)
     .lt("expires_at", new Date().toISOString());

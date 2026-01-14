@@ -6,35 +6,15 @@
  */
 
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import { logger } from "@/lib/logger";
-import type { Database } from "@/types/supabase";
 import type { SnapshotJobPayload } from "@/lib/snapshot";
+import {
+  initSupabaseAdmin,
+  getSupabaseAdmin,
+} from "@/lib/supabase/admin-client";
 
 // Only available in development
 const isDev = process.env.NODE_ENV === "development";
-
-// Supabase Admin client
-let supabaseAdmin: ReturnType<typeof createClient<Database>> | null = null;
-
-const initSupabaseAdmin = () => {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!url || !serviceKey) {
-    throw new Error("Missing Supabase credentials");
-  }
-
-  supabaseAdmin = createClient<Database>(url, serviceKey);
-  return supabaseAdmin;
-};
-
-const getAdmin = () => {
-  if (!supabaseAdmin) {
-    throw new Error("Supabase admin not initialized");
-  }
-  return supabaseAdmin;
-};
 
 const WORKER_ID = `dev-worker-${Date.now()}`;
 
@@ -74,19 +54,21 @@ export async function GET() {
     for (let i = 0; i < 10; i++) {
       // Claim next snapshot job
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: claimedJobs, error: claimError } = await (getAdmin().rpc as any)(
-        "claim_next_job",
-        {
-          p_worker_id: WORKER_ID,
-          p_job_types: [
-            "create_snapshot_basic",
-            "create_snapshot_standard",
-            "create_snapshot_full",
-            "retry_failed_snapshot",
-          ],
-          p_lock_duration: "5 minutes",
-        },
-      ) as { data: ClaimedJobType[] | null; error: { message: string } | null };
+      const { data: claimedJobs, error: claimError } = (await (
+        getSupabaseAdmin().rpc as any
+      )("claim_next_job", {
+        p_worker_id: WORKER_ID,
+        p_job_types: [
+          "create_snapshot_basic",
+          "create_snapshot_standard",
+          "create_snapshot_full",
+          "retry_failed_snapshot",
+        ],
+        p_lock_duration: "5 minutes",
+      })) as {
+        data: ClaimedJobType[] | null;
+        error: { message: string } | null;
+      };
 
       if (claimError) {
         logger.error({ error: claimError }, "[DEV] Failed to claim job");
@@ -142,7 +124,7 @@ export async function GET() {
 
         // Mark as completed
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (getAdmin().rpc as any)("complete_job", {
+        await (getSupabaseAdmin().rpc as any)("complete_job", {
           p_job_id: job.job_id,
           p_result: { processedAt: new Date().toISOString() },
         });
@@ -158,7 +140,7 @@ export async function GET() {
 
         // Mark as failed
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (getAdmin().rpc as any)("fail_job", {
+        await (getSupabaseAdmin().rpc as any)("fail_job", {
           p_job_id: job.job_id,
           p_error: error instanceof Error ? error.message : String(error),
           p_retry: true,
@@ -215,7 +197,7 @@ export async function POST(request: Request) {
     initSupabaseAdmin();
 
     // Get snapshot info
-    const { data: snapshot, error: snapshotError } = await getAdmin()
+    const { data: snapshot, error: snapshotError } = await getSupabaseAdmin()
       .from("bookmark_snapshots" as never)
       .select("*")
       .eq("id", snapshotId)

@@ -8,6 +8,7 @@ import type { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createLogger } from "@/lib/logger";
 import { z } from "zod";
+import { createSSESender } from "@/lib/utils/sse-helper";
 import { blueprintEngine, quotaManager } from "@/lib/knowledge-studio";
 import type {
   BlueprintType,
@@ -155,10 +156,7 @@ export async function POST(request: NextRequest) {
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
       async start(controller) {
-        const sendEvent = (chunk: StreamChunk) => {
-          const data = JSON.stringify(chunk);
-          controller.enqueue(encoder.encode(`data: ${data}\n\n`));
-        };
+        const sendEvent = createSSESender<StreamChunk>(controller, encoder);
 
         try {
           // 5.1 配额检查和扣除

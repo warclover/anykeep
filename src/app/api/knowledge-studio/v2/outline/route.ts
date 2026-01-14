@@ -7,6 +7,7 @@
 import type { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createLogger } from "@/lib/logger";
+import { createSSESender } from "@/lib/utils/sse-helper";
 import { z } from "zod";
 import { getBlueprintRegistry } from "@/lib/knowledge-studio/blueprint/blueprint-registry";
 import type {
@@ -164,10 +165,7 @@ export async function POST(request: NextRequest) {
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
       async start(controller) {
-        const sendEvent = (chunk: OutlineSSEChunk) => {
-          const data = JSON.stringify(chunk);
-          controller.enqueue(encoder.encode(`data: ${data}\n\n`));
-        };
+        const sendEvent = createSSESender<OutlineSSEChunk>(controller, encoder);
 
         // Heartbeat to prevent connection timeout
         let heartbeatPercent = 40;

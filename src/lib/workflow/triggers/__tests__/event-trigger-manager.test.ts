@@ -42,7 +42,10 @@ jest.mock("@/lib/supabase/server", () => ({
         select: jest.fn(() => {
           // 创建可链式调用的 mock
           const createChainableEq = (data: unknown[]) => {
-            const eqFn = jest.fn(() => ({
+            const eqFn: jest.Mock<{
+              eq: jest.Mock;
+              then: (resolve: (value: unknown) => unknown) => unknown;
+            }> = jest.fn(() => ({
               eq: eqFn,
               then: (resolve: (value: unknown) => unknown) =>
                 resolve({ data, error: null }),

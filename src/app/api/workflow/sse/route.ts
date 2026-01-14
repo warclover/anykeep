@@ -12,6 +12,7 @@ import type { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getWorkflowOrchestrator } from "@/lib/workflow/orchestrator";
 import { logger } from "@/lib/logger";
+import { createSSESender } from "@/lib/utils/sse-helper";
 
 // 使用 Node.js Runtime（依赖链中有 crypto 模块）
 export const runtime = "nodejs";
@@ -87,9 +88,7 @@ export async function GET(request: NextRequest) {
 
   const stream = new ReadableStream({
     async start(controller) {
-      const sendEvent = (data: unknown) => {
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
-      };
+      const sendEvent = createSSESender<unknown>(controller, encoder);
 
       const connectionStartTime = Date.now();
 

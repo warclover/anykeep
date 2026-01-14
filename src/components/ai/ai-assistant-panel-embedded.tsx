@@ -4,14 +4,15 @@
  * 用于挤压式布局，与内容区并排显示
  * 不使用 Sheet 覆盖，而是作为布局的一部分
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-23
+ * @updated 2026-01-13 - P0: 集成会话历史功能，修复持久化问题
  */
 
 "use client";
 
 import { cn } from "@/lib/utils";
-import { AIPanelContentEnhanced } from "./ai-panel-content-enhanced";
+import { AIPanelWithHistory } from "./ai-panel-with-history";
 
 interface AIAssistantPanelEmbeddedProps {
   /** 是否展开 */
@@ -36,6 +37,7 @@ interface AIAssistantPanelEmbeddedProps {
  * - 与卡片区并排显示
  * - 支持平滑过渡动画
  * - 有关闭按钮
+ * - 支持会话历史功能（v1.1.0+）
  */
 export function AIAssistantPanelEmbedded({
   open,
@@ -65,8 +67,8 @@ export function AIAssistantPanelEmbedded({
     >
       {/* 只在展开时渲染内容，避免性能浪费 */}
       {open && (
-        <div className="w-[360px] h-full">
-          <AIPanelContentEnhanced
+        <div className="w-[360px] h-full relative">
+          <AIPanelWithHistory
             conversationId={conversationId}
             bookmarkIds={bookmarkIds}
             title={title}

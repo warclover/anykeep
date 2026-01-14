@@ -10,32 +10,12 @@
 
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { logger } from "@/lib/logger";
-import type { Database } from "@/types/supabase";
 import type { SnapshotJobPayload } from "@/lib/snapshot";
-
-// Supabase Admin client for background processing
-let supabaseAdmin: ReturnType<typeof createAdminClient<Database>> | null = null;
-
-const initSupabaseAdmin = () => {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!url || !serviceKey) {
-    throw new Error("Missing Supabase credentials");
-  }
-
-  supabaseAdmin = createAdminClient<Database>(url, serviceKey);
-  return supabaseAdmin;
-};
-
-const getAdmin = () => {
-  if (!supabaseAdmin) {
-    throw new Error("Supabase admin not initialized");
-  }
-  return supabaseAdmin;
-};
+import {
+  initSupabaseAdmin,
+  getSupabaseAdmin,
+} from "@/lib/supabase/admin-client";
 
 const WORKER_ID = `manual-worker-${Date.now()}`;
 
@@ -96,7 +76,7 @@ export async function POST(request: Request) {
       created_at: string;
     };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const jobsQuery = (getAdmin().from("job_queue") as any)
+    const jobsQuery = (getSupabaseAdmin().from("job_queue") as any)
       .select("*")
       .eq("user_id", user.id)
       .eq("status", "pending")
@@ -115,7 +95,10 @@ export async function POST(request: Request) {
       // 由于 JSONB 过滤较复杂，先获取所有然后在内存中过滤
     }
 
-    const { data: pendingJobs, error: jobsError } = await jobsQuery as { data: JobQueueRow[] | null; error: { message: string } | null };
+    const { data: pendingJobs, error: jobsError } = (await jobsQuery) as {
+      data: JobQueueRow[] | null;
+      error: { message: string } | null;
+    };
 
     if (jobsError) {
       logger.error(
@@ -168,14 +151,16 @@ export async function POST(request: Request) {
         // 尝试认领任务
         // 注意：job 对象中的字段是 "type"，不是 "job_type"
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: claimedJobs, error: claimError } = await (getAdmin().rpc as any)(
-          "claim_next_job",
-          {
-            p_worker_id: WORKER_ID,
-            p_job_types: [job.type],
-            p_lock_duration: "2 minutes",
-          },
-        ) as { data: ClaimedJobRow[] | null; error: { message: string } | null };
+        const { data: claimedJobs, error: claimError } = (await (
+          getSupabaseAdmin().rpc as any
+        )("claim_next_job", {
+          p_worker_id: WORKER_ID,
+          p_job_types: [job.type],
+          p_lock_duration: "2 minutes",
+        })) as {
+          data: ClaimedJobRow[] | null;
+          error: { message: string } | null;
+        };
 
         if (claimError || !claimedJobs || claimedJobs.length === 0) {
           // 任务可能已被其他 worker 处理
@@ -226,7 +211,7 @@ export async function POST(request: Request) {
 
         // 标记完成
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (getAdmin().rpc as any)("complete_job", {
+        await (getSupabaseAdmin().rpc as any)("complete_job", {
           p_job_id: claimedJob.job_id,
           p_result: {
             processedAt: new Date().toISOString(),
@@ -250,7 +235,7 @@ export async function POST(request: Request) {
 
         // 标记失败
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (getAdmin().rpc as any)("fail_job", {
+        await (getSupabaseAdmin().rpc as any)("fail_job", {
           p_job_id: job.id,
           p_error: error instanceof Error ? error.message : String(error),
           p_retry: true,

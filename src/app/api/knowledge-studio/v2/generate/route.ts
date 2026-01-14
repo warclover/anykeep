@@ -21,6 +21,7 @@ import {
   MAX_MATERIALS_ALLOWED,
   SSE_CHUNK_DELAY_MS,
 } from "@/lib/knowledge-studio/v2/constants";
+import { createSSESender } from "@/lib/utils/sse-helper";
 
 const logger = createLogger("api:knowledge-studio:v2:generate");
 
@@ -235,10 +236,10 @@ export async function POST(request: NextRequest) {
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
       async start(controller) {
-        const sendEvent = (chunk: GenerateV2SSEChunk) => {
-          const data = JSON.stringify(chunk);
-          controller.enqueue(encoder.encode(`data: ${data}\n\n`));
-        };
+        const sendEvent = createSSESender<GenerateV2SSEChunk>(
+          controller,
+          encoder,
+        );
 
         // Heartbeat to prevent connection timeout during long generation
         let heartbeatPercent = 10;

@@ -9,6 +9,7 @@
 import type { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createLogger } from "@/lib/logger";
+import { createSSESender } from "@/lib/utils/sse-helper";
 import { z } from "zod";
 import { streamText } from "ai";
 import { AIProviderRouter } from "@/lib/ai-providers/provider-router";
@@ -249,10 +250,7 @@ export async function POST(request: NextRequest) {
 
     const stream = new ReadableStream({
       async start(controller) {
-        const sendEvent = (chunk: IterateSSEChunk) => {
-          const data = JSON.stringify(chunk);
-          controller.enqueue(encoder.encode(`data: ${data}\n\n`));
-        };
+        const sendEvent = createSSESender<IterateSSEChunk>(controller, encoder);
 
         try {
           // Send initial progress
