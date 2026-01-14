@@ -49,6 +49,7 @@ const HEARTBEAT_INTERVAL = 500;
 import { getRequestRegistry } from "@/lib/ai-skills/engine/request-registry";
 import { logger } from "@/lib/logger";
 import { checkRateLimit } from "@/lib/utils/rate-limiter";
+import { createSSESender } from "@/lib/utils/sse-helper";
 import type { ToolType } from "@/components/ai/phase4/types";
 import {
   parseDebugOverrides,
@@ -467,6 +468,12 @@ async function handleUnifiedEngine(
 
     const stream = new ReadableStream({
       async start(controller) {
+        // 创建统一的 SSE 发送函数
+        const sendEvent = createSSESender<UnifiedStreamChunk | HeartbeatChunk>(
+          controller,
+          encoder,
+        );
+
         // Phase 1: 心跳状态
         let lastHeartbeatTime = Date.now();
         let currentStep = "初始化";
@@ -486,9 +493,7 @@ async function handleUnifiedEngine(
                 elapsedMs: now - startTime,
               },
             };
-            controller.enqueue(
-              encoder.encode(`data: ${JSON.stringify(heartbeat)}\n\n`),
-            );
+            sendEvent(heartbeat);
             lastHeartbeatTime = now;
           }
         };
@@ -502,9 +507,7 @@ async function handleUnifiedEngine(
               timestamp: Date.now(),
             },
           };
-          controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify(initChunk)}\n\n`),
-          );
+          sendEvent(initChunk);
 
           for await (const chunk of unifiedEngine.execute(
             message,
@@ -524,9 +527,7 @@ async function handleUnifiedEngine(
                   timestamp: new Date().toISOString(),
                 },
               };
-              controller.enqueue(
-                encoder.encode(`data: ${JSON.stringify(cancelledChunk)}\n\n`),
-              );
+              sendEvent(cancelledChunk);
               break;
             }
 
@@ -558,9 +559,7 @@ async function handleUnifiedEngine(
 
                 // 逐块发送
                 for await (const chunkPart of chunker.chunk(deliverableChunk)) {
-                  controller.enqueue(
-                    encoder.encode(`data: ${JSON.stringify(chunkPart)}\n\n`),
-                  );
+                  sendEvent(chunkPart);
                 }
                 continue; // 跳过下面的普通发送
               }
@@ -575,7 +574,7 @@ async function handleUnifiedEngine(
                 "Unified API: Sending deliverable chunk (no chunking needed)",
               );
             }
-            controller.enqueue(encoder.encode(`data: ${data}\n\n`));
+            sendEvent(chunk);
           }
           controller.close();
         } catch (error) {
@@ -598,9 +597,7 @@ async function handleUnifiedEngine(
               retryable: true,
             },
           };
-          controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify(errorChunk)}\n\n`),
-          );
+          sendEvent(errorChunk);
           controller.close();
         } finally {
           // 清理请求注册
@@ -708,6 +705,9 @@ async function handleKnowledgeAgent(
 
     const stream = new ReadableStream({
       async start(controller) {
+        // 创建统一的 SSE 发送函数
+        const sendEvent = createSSESender<unknown>(controller, encoder);
+
         try {
           const streamGenerator = agent.executeStream(
             message,
@@ -716,8 +716,7 @@ async function handleKnowledgeAgent(
           );
 
           for await (const chunk of streamGenerator) {
-            const data = JSON.stringify(chunk);
-            controller.enqueue(encoder.encode(`data: ${data}\n\n`));
+            sendEvent(chunk);
           }
 
           controller.close();
@@ -737,9 +736,7 @@ async function handleKnowledgeAgent(
             type: "error",
             error: errorMessage,
           };
-          controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify(errorChunk)}\n\n`),
-          );
+          sendEvent(errorChunk);
           controller.close();
         }
       },
