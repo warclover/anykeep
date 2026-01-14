@@ -12,6 +12,7 @@ import {
   hasScope,
 } from "@/lib/auth/plugin-middleware";
 import { logger } from "@/lib/logger";
+import type { BookmarkRow } from "@/types/domain";
 
 interface CreateBookmarkRequest {
   url: string;
@@ -69,11 +70,11 @@ export async function POST(request: NextRequest) {
 
     // 检查是否已存在
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: existing } = await (serviceClient.from("bookmarks") as any)
+    const { data: existing } = (await (serviceClient.from("bookmarks") as any)
       .select("id")
       .eq("user_id", authResult.userId)
       .eq("url", url)
-      .single() as { data: BookmarkIdRow | null };
+      .single()) as { data: BookmarkIdRow | null };
 
     if (existing) {
       return NextResponse.json(
@@ -98,10 +99,10 @@ export async function POST(request: NextRequest) {
       parsedFolderId && !isNaN(parsedFolderId) ? parsedFolderId : null;
 
     // 类型断言: 手动维护类型文件时需要此断言
-    type BookmarkRow = { id: number; [key: string]: unknown };
-
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: bookmark, error: insertError } = await (serviceClient.from("bookmarks") as any)
+    const { data: bookmark, error: insertError } = (await (
+      serviceClient.from("bookmarks") as any
+    )
       .insert({
         user_id: authResult.userId,
         url,
@@ -111,7 +112,10 @@ export async function POST(request: NextRequest) {
         folder_id: validFolderId,
       })
       .select()
-      .single() as { data: BookmarkRow | null; error: { message: string } | null };
+      .single()) as {
+      data: BookmarkRow | null;
+      error: { message: string } | null;
+    };
 
     if (insertError || !bookmark) {
       logger.error(
@@ -139,19 +143,19 @@ export async function POST(request: NextRequest) {
         for (const tagName of validTags) {
           // 查找现有标签
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          let { data: tag } = await (serviceClient.from("tags") as any)
+          let { data: tag } = (await (serviceClient.from("tags") as any)
             .select("id")
             .eq("user_id", authResult.userId)
             .eq("name", tagName)
-            .single() as { data: TagIdRow | null };
+            .single()) as { data: TagIdRow | null };
 
           // 如果不存在，创建新标签
           if (!tag) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const { data: newTag } = await (serviceClient.from("tags") as any)
+            const { data: newTag } = (await (serviceClient.from("tags") as any)
               .insert({ user_id: authResult.userId, name: tagName })
               .select("id")
-              .single() as { data: TagIdRow | null };
+              .single()) as { data: TagIdRow | null };
             tag = newTag;
           }
 

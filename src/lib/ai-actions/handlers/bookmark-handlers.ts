@@ -13,22 +13,25 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
 import type { AIActionResult, BookmarkBrief } from "../types";
+import type { BookmarkRow as BaseBookmarkRow } from "@/types/domain";
 
 type SupabaseClientType = SupabaseClient<Database>;
 
-// 本地类型定义
-interface BookmarkRow {
-  id: number;
-  title: string | null;
-  url: string;
-  description: string | null;
-  user_tags: string[] | null;
-  platform: string | null;
-  rating: number | null;
-  created_at: string | null;
+// 本地类型定义 - 包含关联查询的 folders 字段
+type BookmarkRowWithFolder = Pick<
+  BaseBookmarkRow,
+  | "id"
+  | "title"
+  | "url"
+  | "description"
+  | "user_tags"
+  | "platform"
+  | "rating"
+  | "created_at"
+  | "folder_id"
+> & {
   folders?: { name: string } | null;
-  folder_id?: number | null;
-}
+};
 
 // ============================================================================
 // 书签读取操作
@@ -112,7 +115,7 @@ export async function bookmarkGet(
     )
     .eq("id", id)
     .eq("user_id", userId)
-    .single()) as { data: BookmarkRow | null; error: Error | null };
+    .single()) as { data: BookmarkRowWithFolder | null; error: Error | null };
 
   if (error) {
     return { success: false, error: error.message, errorCode: "DB_ERROR" };
@@ -183,7 +186,10 @@ export async function bookmarkList(
     queryBuilder = queryBuilder.overlaps("user_tags", tags);
   }
 
-  const { data, error } = await queryBuilder as { data: BookmarkRow[] | null; error: Error | null };
+  const { data, error } = (await queryBuilder) as {
+    data: BookmarkRowWithFolder[] | null;
+    error: Error | null;
+  };
 
   if (error) {
     return { success: false, error: error.message, errorCode: "DB_ERROR" };
@@ -255,7 +261,10 @@ export async function bookmarkRelated(
     queryBuilder = queryBuilder.eq("folder_id", currentBookmark.folder_id);
   }
 
-  const { data, error } = await queryBuilder as { data: BookmarkRow[] | null; error: Error | null };
+  const { data, error } = (await queryBuilder) as {
+    data: BookmarkRowWithFolder[] | null;
+    error: Error | null;
+  };
 
   if (error) {
     return { success: false, error: error.message, errorCode: "DB_ERROR" };
@@ -310,7 +319,7 @@ export async function bookmarkCreate(
     .select(
       "id, title, url, description, user_tags, platform, rating, created_at",
     )
-    .single()) as { data: BookmarkRow | null; error: Error | null };
+    .single()) as { data: BookmarkRowWithFolder | null; error: Error | null };
 
   if (error) {
     return { success: false, error: error.message, errorCode: "DB_ERROR" };
@@ -370,7 +379,7 @@ export async function bookmarkUpdate(
     .select(
       "id, title, url, description, user_tags, platform, rating, created_at",
     )
-    .single()) as { data: BookmarkRow | null; error: Error | null };
+    .single()) as { data: BookmarkRowWithFolder | null; error: Error | null };
 
   if (error) {
     return { success: false, error: error.message, errorCode: "DB_ERROR" };

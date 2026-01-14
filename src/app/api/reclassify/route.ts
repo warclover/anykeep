@@ -22,6 +22,7 @@ import { logger } from "@/lib/logger";
 import { recommendFolder, type FolderRecommendation } from "@/lib/ai-generator";
 import { TrustModeService } from "@/lib/trust-mode/trust-mode.service";
 import { MessageService } from "@/lib/messages/message-service";
+import type { BookmarkRow } from "@/types/domain";
 
 // 请求体验证
 const reclassifySchema = z.object({
@@ -60,12 +61,12 @@ export async function POST(request: NextRequest) {
 
     // 3. 检查是否有待处理的建议
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: pendingCount } = await (supabase.rpc as any)(
+    const { data: pendingCount } = (await (supabase.rpc as any)(
       "get_pending_suggestions_count",
       {
         p_user_id: user.id,
       },
-    ) as { data: number | null };
+    )) as { data: number | null };
 
     if ((pendingCount ?? 0) > 0 && !forceRun) {
       return badRequestError(
@@ -77,13 +78,18 @@ export async function POST(request: NextRequest) {
     // 类型断言: 手动维护类型文件时需要此断言
     type FolderIdRow = { id: number };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: inboxFolder, error: folderError } = await (supabase.from("folders") as any)
+    const { data: inboxFolder, error: folderError } = (await (
+      supabase.from("folders") as any
+    )
       .select("id")
       .eq("user_id", user.id)
       .eq("is_system", true)
       .eq("system_type", "INBOX")
       .is("deleted_at", null)
-      .single() as { data: FolderIdRow | null; error: { message: string } | null };
+      .single()) as {
+      data: FolderIdRow | null;
+      error: { message: string } | null;
+    };
 
     if (folderError || !inboxFolder) {
       return successResponse({
@@ -95,20 +101,23 @@ export async function POST(request: NextRequest) {
 
     // 5. 获取待整理文件夹中的书签
     // 类型断言: 手动维护类型文件时需要此断言
-    type BookmarkRow = {
-      id: number;
-      title: string;
-      ai_summary: string | null;
-      ai_tags: string[] | null;
-    };
+    type ReclassifyBookmarkRow = Pick<
+      BookmarkRow,
+      "id" | "title" | "ai_summary" | "ai_tags"
+    >;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: bookmarks, error: bookmarksError } = await (supabase.from("bookmarks") as any)
+    const { data: bookmarks, error: bookmarksError } = (await (
+      supabase.from("bookmarks") as any
+    )
       .select("id, title, ai_summary, ai_tags")
       .eq("user_id", user.id)
       .eq("folder_id", inboxFolder.id)
       .is("deleted_at", null)
       .order("created_at", { ascending: true })
-      .limit(limit) as { data: BookmarkRow[] | null; error: { message: string } | null };
+      .limit(limit)) as {
+      data: ReclassifyBookmarkRow[] | null;
+      error: { message: string } | null;
+    };
 
     if (bookmarksError) {
       logger.error(
@@ -130,12 +139,12 @@ export async function POST(request: NextRequest) {
     // 类型断言: 手动维护类型文件时需要此断言
     type FolderRow = { id: number; name: string; is_system: boolean | null };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: folders } = await (supabase.from("folders") as any)
+    const { data: folders } = (await (supabase.from("folders") as any)
       .select("id, name, is_system")
       .eq("user_id", user.id)
       .is("deleted_at", null)
       .eq("is_system", false)
-      .order("name") as { data: FolderRow[] | null };
+      .order("name")) as { data: FolderRow[] | null };
 
     // 7. 获取用户的托管模式
     const trustModeService = new TrustModeService();
@@ -232,10 +241,10 @@ export async function POST(request: NextRequest) {
     if (directMoves.length > 0) {
       for (const move of directMoves) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { error: moveError } = await (supabase.from("bookmarks") as any)
+        const { error: moveError } = (await (supabase.from("bookmarks") as any)
           .update({ folder_id: move.folderId })
           .eq("id", move.bookmarkId)
-          .eq("user_id", user.id) as { error: { message: string } | null };
+          .eq("user_id", user.id)) as { error: { message: string } | null };
 
         if (!moveError) {
           movedCount++;
@@ -251,8 +260,9 @@ export async function POST(request: NextRequest) {
     // 11. 批量插入建议（仅非完全托管模式，或需要创建新文件夹的情况）
     if (suggestions.length > 0) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: insertError } = await (supabase.from("classification_suggestions") as any)
-        .insert(suggestions) as { error: { message: string } | null };
+      const { error: insertError } = (await (
+        supabase.from("classification_suggestions") as any
+      ).insert(suggestions)) as { error: { message: string } | null };
 
       if (insertError) {
         logger.error(
@@ -265,10 +275,12 @@ export async function POST(request: NextRequest) {
 
     // 12. 更新用户的重分类设置（记录本次执行时间）
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: profile } = await (supabase.from("profiles") as any)
+    const { data: profile } = (await (supabase.from("profiles") as any)
       .select("settings")
       .eq("id", user.id)
-      .single() as { data: { settings: Record<string, unknown> | null } | null };
+      .single()) as {
+      data: { settings: Record<string, unknown> | null } | null;
+    };
 
     const currentSettings =
       (profile?.settings as Record<string, unknown>) || {};

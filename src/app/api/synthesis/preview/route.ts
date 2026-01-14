@@ -19,6 +19,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 import type { SynthesisSourceType } from "@/lib/synthesis";
+import type { BookmarkRow as BaseBookmarkRow } from "@/types/domain";
 
 interface PreviewBookmark {
   id: number;
@@ -32,18 +33,20 @@ interface PreviewBookmark {
 }
 
 /**
- * 数据库返回的书签行类型
+ * 数据库返回的书签行类型（包含关联查询的 folders）
  */
-interface BookmarkRow {
-  id: number;
-  title: string;
-  url: string;
-  platform: string | null;
-  ai_summary: string | null;
-  created_at: string;
-  folder_id: number | null;
+type BookmarkRowWithFolder = Pick<
+  BaseBookmarkRow,
+  | "id"
+  | "title"
+  | "url"
+  | "platform"
+  | "ai_summary"
+  | "created_at"
+  | "folder_id"
+> & {
   folders: { name: string } | null;
-}
+};
 
 interface PreviewResponse {
   bookmarks: PreviewBookmark[];
@@ -126,10 +129,12 @@ export async function GET(request: NextRequest) {
       // 类型断言: 手动维护类型文件时需要此断言
       type TaggedBookmarkRow = { bookmark_id: number };
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: taggedBookmarkIds } = await (supabase.from("bookmark_tags") as any)
+      const { data: taggedBookmarkIds } = (await (
+        supabase.from("bookmark_tags") as any
+      )
         .select("bookmark_id")
         .eq("user_id", user.id)
-        .eq("tag_name", sourceId) as { data: TaggedBookmarkRow[] | null };
+        .eq("tag_name", sourceId)) as { data: TaggedBookmarkRow[] | null };
 
       if (!taggedBookmarkIds || taggedBookmarkIds.length === 0) {
         return NextResponse.json({
@@ -171,18 +176,18 @@ export async function GET(request: NextRequest) {
     }
 
     // 转换数据格式
-    const bookmarks: PreviewBookmark[] = ((data || []) as BookmarkRow[]).map(
-      (row) => ({
-        id: row.id,
-        title: row.title,
-        url: row.url,
-        platform: row.platform,
-        ai_summary: row.ai_summary,
-        created_at: row.created_at,
-        folder_id: row.folder_id,
-        folder_name: row.folders?.name || null,
-      }),
-    );
+    const bookmarks: PreviewBookmark[] = (
+      (data || []) as BookmarkRowWithFolder[]
+    ).map((row) => ({
+      id: row.id,
+      title: row.title,
+      url: row.url,
+      platform: row.platform,
+      ai_summary: row.ai_summary,
+      created_at: row.created_at || new Date().toISOString(),
+      folder_id: row.folder_id,
+      folder_name: row.folders?.name || null,
+    }));
 
     // 计算内容统计
     const withSummary = bookmarks.filter(

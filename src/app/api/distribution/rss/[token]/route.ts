@@ -12,6 +12,7 @@ import type {
   RssTargetConfig,
   DistributionTarget,
 } from "@/lib/distribution/types";
+import type { BookmarkRow } from "@/types/domain";
 
 /**
  * 分发目标数据库行类型
@@ -37,20 +38,21 @@ interface DistributionTargetRow {
 }
 
 /**
- * 书签数据库行类型（简化版，仅 RSS 需要的字段）
+ * RSS Feed 需要的书签字段
  */
-interface BookmarkRow {
-  id: number;
-  title: string | null;
-  url: string;
-  platform: string | null;
-  description: string | null;
-  ai_summary: string | null;
-  ai_tags: string[] | null;
-  user_tags: string[] | null;
-  created_at: string;
-  updated_at: string;
-}
+type RssBookmarkRow = Pick<
+  BookmarkRow,
+  | "id"
+  | "title"
+  | "url"
+  | "platform"
+  | "description"
+  | "ai_summary"
+  | "ai_tags"
+  | "user_tags"
+  | "created_at"
+  | "updated_at"
+>;
 
 export async function GET(
   request: NextRequest,
@@ -125,7 +127,7 @@ export async function GET(
   }
 
   // 转换为分发适配器格式
-  const distributionBookmarks = ((bookmarks || []) as BookmarkRow[]).map(
+  const distributionBookmarks = ((bookmarks || []) as RssBookmarkRow[]).map(
     (b) => {
       // 合并 ai_tags 和 user_tags
       const allTags = [...(b.ai_tags || []), ...(b.user_tags || [])];
@@ -139,8 +141,8 @@ export async function GET(
         description: b.description || undefined,
         aiSummary: b.ai_summary || undefined,
         tags: uniqueTags,
-        createdAt: new Date(b.created_at),
-        updatedAt: new Date(b.updated_at),
+        createdAt: new Date(b.created_at || Date.now()),
+        updatedAt: new Date(b.updated_at || Date.now()),
       };
     },
   );

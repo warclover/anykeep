@@ -13,17 +13,14 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
 import type { AIActionResult, UserStatsBrief } from "../types";
+import type { BookmarkRow } from "@/types/domain";
 
 type SupabaseClientType = SupabaseClient<Database>;
 
 // 本地类型定义
-interface BookmarkTagsRow {
-  user_tags: string[] | null;
-}
+type BookmarkTagsRow = Pick<BookmarkRow, "user_tags">;
 
-interface BookmarkCreatedAtRow {
-  created_at: string | null;
-}
+type BookmarkCreatedAtRow = Pick<BookmarkRow, "created_at">;
 
 // ============================================================================
 // 用户操作
@@ -69,7 +66,10 @@ export async function userStats(
       (supabase.from("bookmarks") as any)
         .select("user_tags")
         .eq("user_id", userId)
-        .is("deleted_at", null) as Promise<{ data: BookmarkTagsRow[] | null; error: Error | null }>,
+        .is("deleted_at", null) as Promise<{
+        data: BookmarkTagsRow[] | null;
+        error: Error | null;
+      }>,
       (supabase.from("bookmarks") as any)
         .select("created_at")
         .eq("user_id", userId)
@@ -77,7 +77,10 @@ export async function userStats(
         .gte(
           "created_at",
           new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString(),
-        ) as Promise<{ data: BookmarkCreatedAtRow[] | null; error: Error | null }>,
+        ) as Promise<{
+        data: BookmarkCreatedAtRow[] | null;
+        error: Error | null;
+      }>,
     ]);
 
   // 统计唯一标签数

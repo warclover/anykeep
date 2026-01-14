@@ -25,6 +25,7 @@ import {
 import { logger } from "@/lib/logger";
 import { MONITOR_QUOTA, CHECK_INTERVAL_HOURS } from "@/lib/monitor/constants";
 import { isUrlMonitorable } from "@/lib/monitor/page-fetcher";
+import type { BookmarkRow } from "@/types/domain";
 
 /**
  * GET /api/monitors
@@ -61,10 +62,10 @@ export async function GET(request: NextRequest) {
     // 类型断言: 手动维护类型文件时需要此断言
     type ProfileRow = { membership_type: string | null };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: profile } = await (supabase.from("profiles") as any)
+    const { data: profile } = (await (supabase.from("profiles") as any)
       .select("membership_type")
       .eq("id", user.id)
-      .single() as { data: ProfileRow | null };
+      .single()) as { data: ProfileRow | null };
 
     const membershipType =
       (profile?.membership_type as "FREE" | "PRO") || "FREE";
@@ -219,10 +220,10 @@ export async function POST(request: NextRequest) {
     // 类型断言: 手动维护类型文件时需要此断言
     type ProfileRowPost = { membership_type: string | null };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: profile } = await (supabase.from("profiles") as any)
+    const { data: profile } = (await (supabase.from("profiles") as any)
       .select("membership_type")
       .eq("id", user.id)
-      .single() as { data: ProfileRowPost | null };
+      .single()) as { data: ProfileRowPost | null };
 
     const membershipType =
       (profile?.membership_type as "FREE" | "PRO") || "FREE";
@@ -252,14 +253,19 @@ export async function POST(request: NextRequest) {
 
     // 4. 验证书签所有权
     // 类型断言: 手动维护类型文件时需要此断言
-    type BookmarkRow = { id: number; url: string; title: string };
+    type MonitorBookmarkRow = Pick<BookmarkRow, "id" | "url" | "title">;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: bookmark, error: bookmarkError } = await (supabase.from("bookmarks") as any)
+    const { data: bookmark, error: bookmarkError } = (await (
+      supabase.from("bookmarks") as any
+    )
       .select("id, url, title")
       .eq("id", bookmarkId)
       .eq("user_id", user.id)
       .is("deleted_at", null)
-      .single() as { data: BookmarkRow | null; error: { message: string } | null };
+      .single()) as {
+      data: MonitorBookmarkRow | null;
+      error: { message: string } | null;
+    };
 
     if (bookmarkError || !bookmark) {
       return badRequestError("书签不存在或无权操作");
