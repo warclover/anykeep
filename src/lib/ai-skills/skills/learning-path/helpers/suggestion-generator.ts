@@ -76,7 +76,7 @@ function countOldBookmarks(
   const now = Date.now();
 
   return bookmarks.filter((b) => {
-    const age = now - new Date(b.created_at).getTime();
+    const age = now - new Date(b.created_at || Date.now()).getTime();
     return age > thresholdMs;
   }).length;
 }

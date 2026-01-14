@@ -41,7 +41,8 @@ export function findDuplicates(bookmarks: BookmarkRow[]): DuplicateGroup[] {
       // 按创建时间排序，推荐保留最早的
       items.sort(
         (a, b) =>
-          new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+          new Date(a.created_at || 0).getTime() -
+          new Date(b.created_at || 0).getTime(),
       );
 
       duplicateGroups.push({
@@ -49,7 +50,7 @@ export function findDuplicates(bookmarks: BookmarkRow[]): DuplicateGroup[] {
         bookmarks: items.map((b) => ({
           id: b.id,
           title: b.title,
-          createdAt: b.created_at,
+          createdAt: b.created_at || new Date().toISOString(),
           folderId: b.folder_id,
         })),
         keepBookmarkId: items[0].id,

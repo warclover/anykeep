@@ -27,6 +27,7 @@ export function calculateStats(
   const hourCounts = new Map<number, number>();
 
   for (const bookmark of bookmarks) {
+    if (!bookmark.created_at) continue;
     const date = new Date(bookmark.created_at);
     const dateKey = date.toISOString().split("T")[0];
     const hour = date.getHours();

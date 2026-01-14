@@ -12,7 +12,7 @@ import type { BookmarkRow } from "../steps/types";
 describe("generateTagSuggestions", () => {
   describe("基于 AI 标签推荐", () => {
     it("should suggest AI tags when available", () => {
-      const bookmarks: BookmarkRow[] = [
+      const bookmarks = [
         {
           id: 1,
           title: "React教程",
@@ -26,7 +26,9 @@ describe("generateTagSuggestions", () => {
         },
       ];
 
-      const suggestions = generateTagSuggestions(bookmarks);
+      const suggestions = generateTagSuggestions(
+        bookmarks as unknown as BookmarkRow[],
+      );
 
       expect(suggestions).toHaveLength(1);
       expect(suggestions[0].suggestedTags).toContain("React");
@@ -34,7 +36,7 @@ describe("generateTagSuggestions", () => {
     });
 
     it("should filter out existing user tags", () => {
-      const bookmarks: BookmarkRow[] = [
+      const bookmarks = [
         {
           id: 1,
           title: "React教程",
@@ -48,7 +50,9 @@ describe("generateTagSuggestions", () => {
         },
       ];
 
-      const suggestions = generateTagSuggestions(bookmarks);
+      const suggestions = generateTagSuggestions(
+        bookmarks as unknown as BookmarkRow[],
+      );
 
       expect(suggestions).toHaveLength(1);
       expect(suggestions[0].suggestedTags).not.toContain("React");
@@ -56,7 +60,7 @@ describe("generateTagSuggestions", () => {
     });
 
     it("should skip bookmarks with enough user tags", () => {
-      const bookmarks: BookmarkRow[] = [
+      const bookmarks = [
         {
           id: 1,
           title: "React教程",
@@ -70,7 +74,9 @@ describe("generateTagSuggestions", () => {
         },
       ];
 
-      const suggestions = generateTagSuggestions(bookmarks);
+      const suggestions = generateTagSuggestions(
+        bookmarks as unknown as BookmarkRow[],
+      );
 
       expect(suggestions).toHaveLength(0);
     });
@@ -78,7 +84,7 @@ describe("generateTagSuggestions", () => {
 
   describe("基于内容特征生成标签", () => {
     it("should generate platform-based tags when no AI tags", () => {
-      const bookmarks: BookmarkRow[] = [
+      const bookmarks = [
         {
           id: 1,
           title: "有趣的文章",
@@ -92,7 +98,9 @@ describe("generateTagSuggestions", () => {
         },
       ];
 
-      const suggestions = generateTagSuggestions(bookmarks);
+      const suggestions = generateTagSuggestions(
+        bookmarks as unknown as BookmarkRow[],
+      );
 
       expect(suggestions).toHaveLength(1);
       expect(suggestions[0].suggestedTags).toContain("公众号");
@@ -100,7 +108,7 @@ describe("generateTagSuggestions", () => {
     });
 
     it("should generate keyword-based tags from title", () => {
-      const bookmarks: BookmarkRow[] = [
+      const bookmarks = [
         {
           id: 1,
           title: "JavaScript ES6 新特性详解",
@@ -114,14 +122,16 @@ describe("generateTagSuggestions", () => {
         },
       ];
 
-      const suggestions = generateTagSuggestions(bookmarks);
+      const suggestions = generateTagSuggestions(
+        bookmarks as unknown as BookmarkRow[],
+      );
 
       expect(suggestions).toHaveLength(1);
       expect(suggestions[0].suggestedTags).toContain("JavaScript");
     });
 
     it("should generate tags for bilibili platform", () => {
-      const bookmarks: BookmarkRow[] = [
+      const bookmarks = [
         {
           id: 1,
           title: "好看的视频",
@@ -135,14 +145,16 @@ describe("generateTagSuggestions", () => {
         },
       ];
 
-      const suggestions = generateTagSuggestions(bookmarks);
+      const suggestions = generateTagSuggestions(
+        bookmarks as unknown as BookmarkRow[],
+      );
 
       expect(suggestions).toHaveLength(1);
       expect(suggestions[0].suggestedTags).toContain("视频");
     });
 
     it("should generate tags for github platform with code content", () => {
-      const bookmarks: BookmarkRow[] = [
+      const bookmarks = [
         {
           id: 1,
           title: "awesome-react",
@@ -156,14 +168,16 @@ describe("generateTagSuggestions", () => {
         },
       ];
 
-      const suggestions = generateTagSuggestions(bookmarks);
+      const suggestions = generateTagSuggestions(
+        bookmarks as unknown as BookmarkRow[],
+      );
 
       expect(suggestions).toHaveLength(1);
       expect(suggestions[0].suggestedTags).toContain("代码");
     });
 
     it("should use default tag when no platform or keyword match", () => {
-      const bookmarks: BookmarkRow[] = [
+      const bookmarks = [
         {
           id: 1,
           title: "普通网页",
@@ -177,7 +191,9 @@ describe("generateTagSuggestions", () => {
         },
       ];
 
-      const suggestions = generateTagSuggestions(bookmarks);
+      const suggestions = generateTagSuggestions(
+        bookmarks as unknown as BookmarkRow[],
+      );
 
       expect(suggestions).toHaveLength(1);
       expect(suggestions[0].suggestedTags).toContain("收藏");
@@ -186,7 +202,7 @@ describe("generateTagSuggestions", () => {
 
   describe("混合场景", () => {
     it("should handle bookmarks with and without AI tags", () => {
-      const bookmarks: BookmarkRow[] = [
+      const bookmarks = [
         {
           id: 1,
           title: "React教程",
@@ -211,7 +227,9 @@ describe("generateTagSuggestions", () => {
         },
       ];
 
-      const suggestions = generateTagSuggestions(bookmarks);
+      const suggestions = generateTagSuggestions(
+        bookmarks as unknown as BookmarkRow[],
+      );
 
       expect(suggestions).toHaveLength(2);
       // 第一个使用 AI 标签
@@ -225,7 +243,7 @@ describe("generateTagSuggestions", () => {
     });
 
     it("should not suggest tags already in user_tags", () => {
-      const bookmarks: BookmarkRow[] = [
+      const bookmarks = [
         {
           id: 1,
           title: "JavaScript文章",
@@ -239,7 +257,9 @@ describe("generateTagSuggestions", () => {
         },
       ];
 
-      const suggestions = generateTagSuggestions(bookmarks);
+      const suggestions = generateTagSuggestions(
+        bookmarks as unknown as BookmarkRow[],
+      );
 
       // 只有一个 user_tag，还需要建议
       expect(suggestions).toHaveLength(1);

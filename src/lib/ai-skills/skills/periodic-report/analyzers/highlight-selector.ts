@@ -34,7 +34,7 @@ export function selectHighlights(
       platform: b.platform,
       summary: b.ai_summary || undefined,
       reason: `⭐ 高评分收藏 (${b.rating} 分)`,
-      createdAt: b.created_at,
+      createdAt: b.created_at || new Date().toISOString(),
     });
   }
 
@@ -51,7 +51,7 @@ export function selectHighlights(
       platform: b.platform,
       summary: b.ai_summary || undefined,
       reason: "📝 AI 已生成摘要，值得回顾",
-      createdAt: b.created_at,
+      createdAt: b.created_at || new Date().toISOString(),
     });
   }
 
@@ -68,7 +68,7 @@ export function selectHighlights(
         platform: latest.platform,
         summary: latest.ai_summary || undefined,
         reason: "🆕 最新收藏",
-        createdAt: latest.created_at,
+        createdAt: latest.created_at || new Date().toISOString(),
       });
     }
   }

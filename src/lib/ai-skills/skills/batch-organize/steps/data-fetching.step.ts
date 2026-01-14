@@ -120,7 +120,7 @@ export async function fetchBookmarks(
     "BatchOrganizeSkill: Bookmarks fetched successfully",
   );
 
-  return (data || []) as BookmarkRow[];
+  return (data || []) as unknown as BookmarkRow[];
 }
 
 // ============================================
@@ -145,5 +145,5 @@ export async function fetchFolders(userId: string): Promise<FolderRow[]> {
     return [];
   }
 
-  return data || [];
+  return (data || []) as unknown as FolderRow[];
 }

@@ -30,6 +30,7 @@ export function findArchiveCandidates(
   const candidates: ArchiveCandidate[] = [];
 
   for (const bookmark of bookmarks) {
+    if (!bookmark.created_at) continue;
     const createdAt = new Date(bookmark.created_at).getTime();
     const daysSinceCreated = Math.floor((now - createdAt) / dayMs);
 

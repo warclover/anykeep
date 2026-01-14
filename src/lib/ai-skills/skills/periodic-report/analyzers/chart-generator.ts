@@ -20,7 +20,9 @@ export function generateChartData(bookmarks: BookmarkRow[]): ChartData {
   // 收藏趋势
   const trendData = new Map<string, number>();
   for (const b of bookmarks) {
-    const date = new Date(b.created_at).toISOString().split("T")[0];
+    const date = new Date(b.created_at || Date.now())
+      .toISOString()
+      .split("T")[0];
     trendData.set(date, (trendData.get(date) || 0) + 1);
   }
 
@@ -58,7 +60,7 @@ export function generateChartData(bookmarks: BookmarkRow[]): ChartData {
   // 时段分布
   const hourData = new Map<number, number>();
   for (const b of bookmarks) {
-    const hour = new Date(b.created_at).getHours();
+    const hour = new Date(b.created_at || Date.now()).getHours();
     hourData.set(hour, (hourData.get(hour) || 0) + 1);
   }
 

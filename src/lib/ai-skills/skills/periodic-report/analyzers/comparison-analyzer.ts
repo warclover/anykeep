@@ -63,10 +63,14 @@ export function calculateComparison(
 
   // 活跃度对比（基于不同日期的收藏数）
   const currentActiveDays = new Set(
-    current.map((b) => new Date(b.created_at).toISOString().split("T")[0]),
+    current.map(
+      (b) => new Date(b.created_at || Date.now()).toISOString().split("T")[0],
+    ),
   ).size;
   const previousActiveDays = new Set(
-    previous.map((b) => new Date(b.created_at).toISOString().split("T")[0]),
+    previous.map(
+      (b) => new Date(b.created_at || Date.now()).toISOString().split("T")[0],
+    ),
   ).size;
 
   const activityChangeRate =

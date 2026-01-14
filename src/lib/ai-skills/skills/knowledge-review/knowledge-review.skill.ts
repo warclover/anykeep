@@ -430,7 +430,7 @@ export class KnowledgeReviewSkill extends OrchestrationSkill<
     const now = Date.now();
 
     return bookmarks.map((bookmark) => {
-      const createdAt = new Date(bookmark.created_at).getTime();
+      const createdAt = new Date(bookmark.created_at || Date.now()).getTime();
       const daysSinceCreated = Math.floor(
         (now - createdAt) / (24 * 60 * 60 * 1000),
       );
@@ -728,10 +728,19 @@ import type { BookmarkRow as BookmarkRowBase } from "@/types/domain";
 /**
  * BookmarkRow 扩展（包含 folders 关联）
  */
-interface BookmarkRow extends Pick<
-  BookmarkRowBase,
-  "id" | "title" | "url" | "ai_summary" | "ai_tags" | "user_tags" | "platform" | "folder_id" | "created_at"
-> {
+interface BookmarkRow
+  extends Pick<
+    BookmarkRowBase,
+    | "id"
+    | "title"
+    | "url"
+    | "ai_summary"
+    | "ai_tags"
+    | "user_tags"
+    | "platform"
+    | "folder_id"
+    | "created_at"
+  > {
   folders?: Array<{ name: string }> | { name: string } | null;
 }
 

@@ -74,7 +74,7 @@ export function analyzeActivity(
           ? Math.ceil(
               (now -
                 new Date(
-                  bookmarks[bookmarks.length - 1].created_at,
+                  bookmarks[bookmarks.length - 1].created_at || Date.now(),
                 ).getTime()) /
                 dayMs,
             )
@@ -88,7 +88,8 @@ export function analyzeActivity(
   const hourCounts = new Map<number, number>();
 
   for (const bookmark of bookmarks) {
-    const date = new Date(bookmark.created_at);
+    if (!bookmark.created_at) continue;
+    const date = new Date(bookmark.created_at || Date.now());
     const dateKey = date.toISOString().split("T")[0];
     const hour = date.getHours();
 
@@ -141,6 +142,7 @@ export function analyzeContent(bookmarks: BookmarkRow[]): ContentAnalysis {
   // 平台分布
   const platformCounts = new Map<string, number>();
   for (const b of bookmarks) {
+    if (!b.created_at) continue;
     platformCounts.set(b.platform, (platformCounts.get(b.platform) || 0) + 1);
   }
 
@@ -155,6 +157,7 @@ export function analyzeContent(bookmarks: BookmarkRow[]): ContentAnalysis {
   // 文件夹分布
   const folderCounts = new Map<string, number>();
   for (const b of bookmarks) {
+    if (!b.created_at) continue;
     const folderName = getFolderName(b) || "未分类";
     folderCounts.set(folderName, (folderCounts.get(folderName) || 0) + 1);
   }
@@ -170,6 +173,7 @@ export function analyzeContent(bookmarks: BookmarkRow[]): ContentAnalysis {
   // 热门标签
   const tagCounts = new Map<string, number>();
   for (const b of bookmarks) {
+    if (!b.created_at) continue;
     const tags = [...(b.user_tags || [])];
     for (const tag of tags) {
       tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
@@ -189,6 +193,7 @@ export function analyzeContent(bookmarks: BookmarkRow[]): ContentAnalysis {
   // AI 标签分布
   const aiTagCounts = new Map<string, number>();
   for (const b of bookmarks) {
+    if (!b.created_at) continue;
     const aiTags = b.ai_tags || [];
     for (const tag of aiTags) {
       aiTagCounts.set(tag, (aiTagCounts.get(tag) || 0) + 1);
@@ -251,7 +256,8 @@ export function analyzeTrends(
   const trendData = new Map<string, number>();
 
   for (const b of bookmarks) {
-    const date = new Date(b.created_at);
+    if (!b.created_at) continue;
+    const date = new Date(b.created_at || Date.now());
     let key: string;
 
     if (granularity === "day") {
