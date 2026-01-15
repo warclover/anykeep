@@ -25,6 +25,7 @@ import { toast } from "sonner";
 import { useAbortableFetch } from "@/hooks/core";
 import { useInitData } from "@/hooks/data";
 import { useBookmarksSWR, cachePerformanceTracker } from "@/lib/cache";
+import { clientLogger } from "@/lib/client-logger";
 import { Button } from "@/components/ui/button";
 import { BrowserBookmarkVirtualList } from "@/components/bookmark/browser-bookmark-virtual-list";
 import { VirtualBookmarkList } from "@/components/bookmark/virtual-bookmark-list";
@@ -278,7 +279,7 @@ export function HomePageClient({
     error: _swrError,
     mutate: mutateBookmarks,
     setHasMore,
-    refetch: _refetch,
+    refetch, // v2026-01-15: 移除下划线，用于批量移动后刷新缓存
     loadMore: _loadMore,
     updateCacheItem,
     removeCacheItem,
@@ -443,6 +444,23 @@ export function HomePageClient({
     setIsBatchDeleting: _setIsBatchDeleting,
     exitSelectionMode,
   } = useSelectionMode();
+
+  /**
+   * v2026-01-15: 批量移动成功回调
+   * 修复 UI 不刷新问题：移动书签后刷新缓存数据
+   * Issue: 书签移动后数据库已更新，但 SWR 缓存未失效，导致 UI 显示旧数据
+   * Solution: 调用 refetch() 清除缓存并重新获取数据
+   */
+  const handleMoveSuccess = useCallback(() => {
+    // 1. 退出选择模式
+    exitSelectionMode();
+
+    // 2. 刷新当前页面数据（清除缓存并重新获取）
+    // 这会触发 useBookmarksSWR 重新从 API 获取最新数据
+    refetch().catch((error) => {
+      clientLogger.error({ error }, "Failed to refetch after batch move");
+    });
+  }, [exitSelectionMode, refetch]);
 
   // Phase 3.4: 使用 Context 状态响应对话框请求（替代 Event 监听）
   useEffect(() => {
@@ -941,7 +959,7 @@ export function HomePageClient({
         bookmarks={bookmarks}
         selectedIds={selectedIds}
         onBookmarkCreated={handleBookmarkCreated}
-        onMoveSuccess={exitSelectionMode}
+        onMoveSuccess={handleMoveSuccess}
       />
 
       {/* 批量标签对话框 */}
