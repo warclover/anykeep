@@ -91,42 +91,93 @@ export const API_TTS = {
 } as const;
 
 // ============================================
-// 书签管理
+// 书签管理 (v1 API 优先，旧版 API 保留用于独有功能)
 // ============================================
 
 export const API_BOOKMARKS = {
-  /** 书签列表/创建 */
-  list: "/api/bookmarks",
-  /** 书签详情 */
-  detail: (id: number) => `/api/bookmarks/${id}`,
-  /** 永久删除 */
+  // =====================================================
+  // v1 API 路径（推荐使用，已被 hooks 调用）
+  // =====================================================
+
+  /** 书签列表/创建 (v1) */
+  list: "/api/v1/bookmarks",
+  /** 书签详情/更新/删除 (v1) */
+  detail: (id: number) => `/api/v1/bookmarks/${id}`,
+  /** 书签统计 (v1) */
+  stats: "/api/v1/bookmarks/stats",
+  /** 书签标签列表 (v1) */
+  tags: "/api/v1/bookmarks/tags",
+  /** 批量删除 (v1) */
+  batchDelete: "/api/v1/bookmarks/batch/delete",
+  /** 批量移动 (v1) */
+  batchMove: "/api/v1/bookmarks/batch/move",
+  /** 批量恢复 (v1) */
+  batchRestore: "/api/v1/bookmarks/batch/restore",
+  /** 批量标签 (v1) */
+  batchTags: "/api/v1/bookmarks/batch/tags",
+
+  // =====================================================
+  // 旧版 API 路径（v1 尚未实现的独有功能）
+  // =====================================================
+
+  /** 永久删除（旧版独有） */
   permanent: (id: number) => `/api/bookmarks/${id}/permanent`,
-  /** 相关书签 */
+  /** 相关书签（旧版独有） */
   related: (id: number) => `/api/bookmarks/${id}/related`,
-  /** 恢复 */
-  restore: (id: number) => `/api/bookmarks/${id}/restore`,
-  /** 批量删除 */
-  batchDelete: "/api/bookmarks/batch-delete",
-  /** 批量导入 */
+  /** 单个书签恢复（旧版独有，批量恢复使用 v1） */
+  restoreSingle: (id: number) => `/api/bookmarks/${id}/restore`,
+  /** 批量导入（旧版独有） */
   batchImport: "/api/bookmarks/batch-import",
-  /** 批量移动 */
-  batchMove: "/api/bookmarks/batch-move",
-  /** 批量恢复 */
-  batchRestore: "/api/bookmarks/batch-restore",
-  /** 批量状态 */
+  /** 批量状态查询（旧版独有） */
   batchStatus: "/api/bookmarks/batch-status",
-  /** 批量标签 */
-  batchTags: "/api/bookmarks/batch-tags",
-  /** 向量嵌入 */
+  /** 向量嵌入（旧版独有） */
   embeddings: "/api/bookmarks/embeddings",
-  /** 生成标签 */
+  /** 抓取内容（旧版独有） */
+  fetchContent: "/api/bookmarks/fetch-content",
+  /** 生成标签（旧版独有） */
   generateTags: "/api/bookmarks/generate-tags",
-  /** 元数据 */
+  /** 元数据（旧版独有） */
   metadata: "/api/bookmarks/metadata",
-  /** 建议 */
+  /** 建议（旧版独有） */
   suggestions: "/api/bookmarks/suggestions",
-  /** 验证 */
+  /** 验证（旧版独有） */
   validate: "/api/bookmarks/validate",
+
+  // =====================================================
+  // 废弃路径（保留用于向后兼容，不应在新代码中使用）
+  // @deprecated
+  // =====================================================
+
+  /**
+   * @deprecated 使用 list 代替
+   * 旧版书签列表路径
+   */
+  legacyList: "/api/bookmarks",
+  /**
+   * @deprecated 使用 detail 代替
+   * 旧版书签详情路径
+   */
+  legacyDetail: (id: number) => `/api/bookmarks/${id}`,
+  /**
+   * @deprecated 使用 batchDelete 代替
+   * 旧版批量删除路径
+   */
+  legacyBatchDelete: "/api/bookmarks/batch-delete",
+  /**
+   * @deprecated 使用 batchMove 代替
+   * 旧版批量移动路径
+   */
+  legacyBatchMove: "/api/bookmarks/batch-move",
+  /**
+   * @deprecated 使用 batchRestore 代替
+   * 旧版批量恢复路径
+   */
+  legacyBatchRestore: "/api/bookmarks/batch-restore",
+  /**
+   * @deprecated 使用 batchTags 代替
+   * 旧版批量标签路径
+   */
+  legacyBatchTags: "/api/bookmarks/batch-tags",
 } as const;
 
 // ============================================

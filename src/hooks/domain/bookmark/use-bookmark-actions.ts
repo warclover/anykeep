@@ -12,6 +12,7 @@
 
 import { useCallback } from "react";
 import { toast } from "sonner";
+import { API_PATHS } from "@/lib/constants/api-paths";
 import { useAbortableFetch } from "@/hooks/core";
 
 // ==================== 类型定义 ====================
@@ -58,7 +59,7 @@ export function useBookmarkActions() {
   const deleteBookmark = useCallback(
     async (id: number): Promise<BookmarkActionResult> => {
       try {
-        const res = await fetchWithAbort(`/api/bookmarks/${id}`, {
+        const res = await fetchWithAbort(API_PATHS.bookmarks.detail(id), {
           method: "DELETE",
         });
 
@@ -88,9 +89,12 @@ export function useBookmarkActions() {
   const restoreBookmark = useCallback(
     async (id: number): Promise<BookmarkActionResult> => {
       try {
-        const res = await fetchWithAbort(`/api/bookmarks/${id}/restore`, {
-          method: "POST",
-        });
+        const res = await fetchWithAbort(
+          API_PATHS.bookmarks.restoreSingle(id),
+          {
+            method: "POST",
+          },
+        );
 
         if (!res.ok) {
           const data = await res.json();
@@ -118,7 +122,7 @@ export function useBookmarkActions() {
   const permanentDeleteBookmark = useCallback(
     async (id: number): Promise<BookmarkActionResult> => {
       try {
-        const res = await fetchWithAbort(`/api/bookmarks/${id}/permanent`, {
+        const res = await fetchWithAbort(API_PATHS.bookmarks.permanent(id), {
           method: "DELETE",
         });
 
@@ -153,7 +157,7 @@ export function useBookmarkActions() {
 
       try {
         // 使用 v1 API
-        const res = await fetchWithAbort("/api/v1/bookmarks/batch/restore", {
+        const res = await fetchWithAbort(API_PATHS.bookmarks.batchRestore, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ids }),
@@ -212,7 +216,7 @@ export function useBookmarkActions() {
   const toggleReadStatus = useCallback(
     async (id: number, isRead: boolean): Promise<BookmarkActionResult> => {
       try {
-        const res = await fetchWithAbort(`/api/bookmarks/${id}`, {
+        const res = await fetchWithAbort(API_PATHS.bookmarks.detail(id), {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ isRead }),
@@ -244,7 +248,7 @@ export function useBookmarkActions() {
   const toggleStarredStatus = useCallback(
     async (id: number, isStarred: boolean): Promise<BookmarkActionResult> => {
       try {
-        const res = await fetchWithAbort(`/api/bookmarks/${id}`, {
+        const res = await fetchWithAbort(API_PATHS.bookmarks.detail(id), {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ isStarred }),

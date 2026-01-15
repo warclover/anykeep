@@ -8,6 +8,7 @@
 import { useState, useCallback } from "react";
 import { toast } from "sonner";
 import { mutate } from "swr";
+import { API_PATHS } from "@/lib/constants/api-paths";
 
 interface MoveBookmarkOptions {
   /** 移动完成后的回调 */
@@ -49,7 +50,7 @@ export function useBookmarkMove(
       setIsMoving(true);
 
       try {
-        const response = await fetch("/api/bookmarks/batch-move", {
+        const response = await fetch(API_PATHS.bookmarks.batchMove, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ids: bookmarkIds, folderId }),

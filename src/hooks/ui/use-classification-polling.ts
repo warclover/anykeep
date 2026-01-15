@@ -29,6 +29,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { API_PATHS } from "@/lib/constants/api-paths";
 import { clientLogger } from "@/lib/client-logger";
 import type { ClassificationResultData } from "@/types/supabase";
 
@@ -166,7 +167,9 @@ export function useClassificationPolling(): UseClassificationPollingReturn {
 
     try {
       const ids = pendingBookmarks.map((b) => b.id).join(",");
-      const response = await fetch(`/api/bookmarks/batch-status?ids=${ids}`);
+      const response = await fetch(
+        `${API_PATHS.bookmarks.batchStatus}?ids=${ids}`,
+      );
 
       if (!response.ok) {
         clientLogger.error(

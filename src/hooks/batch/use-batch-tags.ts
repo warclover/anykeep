@@ -7,6 +7,7 @@
 
 import { useState, useCallback } from "react";
 import { toast } from "sonner";
+import { API_PATHS } from "@/lib/constants/api-paths";
 import type { BatchTagsResult } from "@/lib/batch/validation";
 
 interface UseBatchTagsOptions {
@@ -68,7 +69,7 @@ export function useBatchTags(
 
       try {
         // 使用 v1 API
-        const response = await fetch("/api/v1/bookmarks/batch/tags", {
+        const response = await fetch(API_PATHS.bookmarks.batchTags, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

@@ -18,6 +18,7 @@
  */
 
 import { useEffect, useRef, useCallback } from "react";
+import { API_PATHS } from "@/lib/constants/api-paths";
 import type { Bookmark } from "@/types/supabase";
 
 // 扩展的书签类型（包含文件夹信息）
@@ -76,7 +77,7 @@ export function useProcessingPoller({
 
       try {
         const response = await fetch(
-          `/api/bookmarks/batch-status?ids=${ids.join(",")}`,
+          `${API_PATHS.bookmarks.batchStatus}?ids=${ids.join(",")}`,
           {
             credentials: "include",
           },

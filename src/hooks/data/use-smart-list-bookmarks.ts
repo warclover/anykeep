@@ -10,6 +10,7 @@ import useSWR from "swr";
 import { useCallback, useMemo } from "react";
 import type { SmartListClient, SmartListFilters } from "@/types/smart-list";
 import type { Bookmark } from "@/types/supabase";
+import { API_PATHS } from "@/lib/constants/api-paths";
 
 // ============================================
 // 类型定义
@@ -186,7 +187,9 @@ async function fetcher(smartListId: number): Promise<SmartListBookmarksData> {
   }
 
   // 3. 获取书签列表
-  const bookmarksRes = await fetch(`/api/bookmarks?${params.toString()}`);
+  const bookmarksRes = await fetch(
+    `${API_PATHS.bookmarks.list}?${params.toString()}`,
+  );
   if (!bookmarksRes.ok) {
     throw new Error("获取书签列表失败");
   }
@@ -253,7 +256,7 @@ export function useSmartListBookmarks(
       params.set("sort", data.smartList.sortBy);
     }
 
-    const res = await fetch(`/api/bookmarks?${params.toString()}`);
+    const res = await fetch(`${API_PATHS.bookmarks.list}?${params.toString()}`);
     if (!res.ok) {
       throw new Error("加载更多失败");
     }

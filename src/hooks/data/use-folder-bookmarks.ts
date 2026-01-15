@@ -8,6 +8,7 @@
 
 import useSWRInfinite from "swr/infinite";
 import { useCallback, useMemo } from "react";
+import { API_PATHS } from "@/lib/constants/api-paths";
 import type {
   FolderSelection,
   FolderWithStats,
@@ -87,7 +88,7 @@ async function fetchBookmarksPage(
   }
 
   const response = await fetch(
-    `/api/bookmarks?folderIds=${folderIds.join(",")}&limit=${PAGE_SIZE}&offset=${offset}`,
+    `${API_PATHS.bookmarks.list}?folderIds=${folderIds.join(",")}&limit=${PAGE_SIZE}&offset=${offset}`,
   );
 
   if (!response.ok) {
@@ -134,7 +135,7 @@ export function useFolderBookmarks({
       if (previousPageData && previousPageData.length < PAGE_SIZE) return null;
 
       // 返回缓存 key（包含 offset）
-      return `/api/bookmarks?folderIds=${folderIdsKey}&page=${pageIndex}`;
+      return `${API_PATHS.bookmarks.list}?folderIds=${folderIdsKey}&page=${pageIndex}`;
     },
     [enabled, selection, folderIds.length, folderIdsKey],
   );

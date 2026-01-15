@@ -11,6 +11,7 @@
 "use client";
 
 import { useInfiniteQuery } from "@tanstack/react-query";
+import { API_PATHS } from "@/lib/constants/api-paths";
 import { bookmarkKeys, type BookmarkFilters } from "./keys";
 import type { BookmarkListResponse } from "@/contracts";
 
@@ -74,7 +75,7 @@ async function fetchBookmarksPage(
 ): Promise<BookmarkListResponse> {
   const params = buildQueryParams(filters, pageParam);
   // 使用 v1 API
-  const response = await fetch(`/api/v1/bookmarks?${params}`);
+  const response = await fetch(`${API_PATHS.bookmarks.list}?${params}`);
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));

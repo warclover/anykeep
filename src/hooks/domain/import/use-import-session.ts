@@ -26,6 +26,7 @@ import type {
 } from "@/lib/browser-bookmark";
 import type { Platform } from "@/types/supabase";
 import { BATCH_SIZE, BATCH_DELAY_MS } from "@/lib/browser-bookmark";
+import { API_PATHS } from "@/lib/constants/api-paths";
 
 // ============================================
 // 类型定义
@@ -243,7 +244,7 @@ export function useImportSession(
 
           try {
             // 调用 API
-            const response = await fetch("/api/bookmarks/batch-import", {
+            const response = await fetch(API_PATHS.bookmarks.batchImport, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({

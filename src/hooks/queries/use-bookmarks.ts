@@ -17,6 +17,7 @@ import {
   keepPreviousData,
 } from "@tanstack/react-query";
 import { bookmarkKeys, type BookmarkFilters } from "./keys";
+import { API_PATHS } from "@/lib/constants/api-paths";
 import type {
   BookmarkListResponse,
   BookmarkDetailResponse,
@@ -82,7 +83,7 @@ async function fetchBookmarks(
 ): Promise<BookmarkListResponse> {
   const params = buildQueryParams(filters);
   // 使用 v1 API
-  const response = await fetch(`/api/v1/bookmarks?${params}`);
+  const response = await fetch(`${API_PATHS.bookmarks.list}?${params}`);
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
@@ -115,7 +116,7 @@ async function fetchBookmarks(
  */
 async function fetchBookmark(id: number): Promise<BookmarkDetailResponse> {
   // 使用 v1 API
-  const response = await fetch(`/api/v1/bookmarks/${id}`);
+  const response = await fetch(API_PATHS.bookmarks.detail(id));
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
@@ -131,7 +132,7 @@ async function fetchBookmark(id: number): Promise<BookmarkDetailResponse> {
  */
 async function fetchBookmarkStats(): Promise<BookmarkStatsResponse> {
   // 使用 v1 API
-  const response = await fetch("/api/v1/bookmarks/stats");
+  const response = await fetch(API_PATHS.bookmarks.stats);
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
@@ -147,7 +148,7 @@ async function fetchBookmarkStats(): Promise<BookmarkStatsResponse> {
  */
 async function fetchUserTags(): Promise<UserTagsResponse> {
   // 使用 v1 API
-  const response = await fetch("/api/v1/bookmarks/tags");
+  const response = await fetch(API_PATHS.bookmarks.tags);
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
@@ -235,7 +236,7 @@ export function useCreateBookmark() {
   return useMutation({
     mutationFn: async (data: CreateBookmarkInput) => {
       // 使用 v1 API
-      const response = await fetch("/api/v1/bookmarks", {
+      const response = await fetch(API_PATHS.bookmarks.list, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -271,7 +272,7 @@ export function useUpdateBookmark() {
       data: UpdateBookmarkInput;
     }) => {
       // 使用 v1 API
-      const response = await fetch(`/api/v1/bookmarks/${id}`, {
+      const response = await fetch(API_PATHS.bookmarks.detail(id), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -304,7 +305,7 @@ export function useDeleteBookmark() {
   return useMutation({
     mutationFn: async (id: number) => {
       // 使用 v1 API
-      const response = await fetch(`/api/v1/bookmarks/${id}`, {
+      const response = await fetch(API_PATHS.bookmarks.detail(id), {
         method: "DELETE",
       });
 
@@ -364,7 +365,7 @@ export function useBatchDeleteBookmarks() {
   return useMutation({
     mutationFn: async (ids: number[]): Promise<BatchOperationResponse> => {
       // 使用 v1 API
-      const response = await fetch("/api/v1/bookmarks/batch/delete", {
+      const response = await fetch(API_PATHS.bookmarks.batchDelete, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids }),
@@ -424,7 +425,7 @@ export function useBatchMoveBookmarks() {
       data: BatchMoveInput,
     ): Promise<BatchOperationResponse> => {
       // 使用 v1 API
-      const response = await fetch("/api/v1/bookmarks/batch/move", {
+      const response = await fetch(API_PATHS.bookmarks.batchMove, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -485,7 +486,7 @@ export function useBatchAddTags() {
       data: BatchAddTagsInput,
     ): Promise<BatchOperationResponse> => {
       // 使用 v1 API
-      const response = await fetch("/api/v1/bookmarks/batch/tags", {
+      const response = await fetch(API_PATHS.bookmarks.batchTags, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids: data.ids, tags: data.tags, action: "add" }),
@@ -517,7 +518,7 @@ export function useBatchRemoveTags() {
       data: BatchRemoveTagsInput,
     ): Promise<BatchOperationResponse> => {
       // 使用 v1 API
-      const response = await fetch("/api/v1/bookmarks/batch/tags", {
+      const response = await fetch(API_PATHS.bookmarks.batchTags, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

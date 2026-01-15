@@ -15,6 +15,7 @@
 "use client";
 
 import { useState, useCallback, useMemo } from "react";
+import { API_PATHS } from "@/lib/constants/api-paths";
 import {
   ATTACHMENT_LIMITS,
   type AttachmentItem,
@@ -79,7 +80,7 @@ async function fetchBookmarkContent(
   // 4. 实时抓取（如果有 URL）
   if (bookmark.url) {
     try {
-      const response = await fetch("/api/bookmarks/fetch-content", {
+      const response = await fetch(API_PATHS.bookmarks.fetchContent, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -368,7 +369,9 @@ export function useAttachmentManager({
 
       try {
         // 重新获取书签信息并抓取内容
-        const response = await fetch(`/api/bookmarks/${attachment.bookmarkId}`);
+        const response = await fetch(
+          API_PATHS.bookmarks.detail(attachment.bookmarkId),
+        );
         if (!response.ok) throw new Error("Failed to fetch bookmark");
 
         const { data: bookmark } = await response.json();
