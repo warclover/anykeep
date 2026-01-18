@@ -5,12 +5,13 @@
  * 获取当前发布状态和监控指标
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { getFeatureFlag } from '@/lib/classification/v5/rollout/feature-flag';
-import { MonitoringService } from '@/lib/classification/v5/rollout/monitoring';
-import { createClient } from '@/lib/supabase/server';
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
+import { getFeatureFlag } from "@/lib/classification/v5/rollout/feature-flag";
+import { MonitoringService } from "@/lib/classification/v5/rollout/monitoring";
+import { createClient } from "@/lib/supabase/server";
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     // 1. 验证用户身份（仅管理员可访问）
     const supabase = await createClient();
@@ -20,7 +21,7 @@ export async function GET(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return NextResponse.json({ error: '未授权' }, { status: 401 });
+      return NextResponse.json({ error: "未授权" }, { status: 401 });
     }
 
     // TODO: 检查用户是否为管理员
@@ -34,7 +35,7 @@ export async function GET(request: NextRequest) {
     const flagStats = featureFlag.getStats();
 
     // 3. 生成监控报告（最近 1 小时）
-    const logger = console as any; // TODO: 使用实际 logger
+    const logger = console; // TODO: 使用实际 logger
     const monitoringService = new MonitoringService(logger);
 
     const endTime = new Date();
@@ -51,13 +52,13 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('获取发布状态失败:', error);
+    console.error("获取发布状态失败:", error);
     return NextResponse.json(
       {
-        error: '获取发布状态失败',
+        error: "获取发布状态失败",
         message: error instanceof Error ? error.message : String(error),
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

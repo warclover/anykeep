@@ -9,9 +9,23 @@
  * - 支持时间范围筛选
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { LoggerService } from '@/lib/classification/v5/shared/logger';
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import { LoggerService } from "@/lib/classification/v5/shared/logger";
+
+/**
+ * 指标记录类型
+ */
+interface MetricRecord {
+  stage?: string;
+  is_correct?: boolean | null;
+  latency_ms?: number;
+  confidence?: number;
+  embedding_tokens?: number;
+  llm_tokens?: number;
+  degradation_level?: number;
+}
 
 /**
  * 分类指标摘要
@@ -59,7 +73,7 @@ interface MetricsSummary {
  * 查询分类指标
  */
 export async function GET(request: NextRequest) {
-  const logger = new LoggerService({}, { module: 'MetricsAPI' });
+  const logger = new LoggerService({}, { module: "MetricsAPI" });
 
   try {
     // 1. 验证用户身份
@@ -70,19 +84,19 @@ export async function GET(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // 2. 获取查询参数
-    const days = parseInt(request.nextUrl.searchParams.get('days') || '7');
+    const days = parseInt(request.nextUrl.searchParams.get("days") || "7");
     if (days < 1 || days > 90) {
       return NextResponse.json(
-        { error: 'Invalid days parameter (must be 1-90)' },
-        { status: 400 }
+        { error: "Invalid days parameter (must be 1-90)" },
+        { status: 400 },
       );
     }
 
-    logger.info('Fetching metrics', { userId: user.id, days });
+    logger.info("Fetching metrics", { userId: user.id, days });
 
     // 3. 计算时间范围
     const startDate = new Date();
@@ -90,16 +104,16 @@ export async function GET(request: NextRequest) {
 
     // 4. 查询指标数据
     const { data: metrics, error: metricsError } = await supabase
-      .from('classification_metrics_v5')
-      .select('*')
-      .eq('user_id', user.id)
-      .gte('created_at', startDate.toISOString());
+      .from("classification_metrics_v5")
+      .select("*")
+      .eq("user_id", user.id)
+      .gte("created_at", startDate.toISOString());
 
     if (metricsError) {
-      logger.error('Failed to fetch metrics', metricsError);
+      logger.error("Failed to fetch metrics", metricsError);
       return NextResponse.json(
-        { error: 'Failed to fetch metrics' },
-        { status: 500 }
+        { error: "Failed to fetch metrics" },
+        { status: 500 },
       );
     }
 
@@ -142,19 +156,22 @@ export async function GET(request: NextRequest) {
     // 5. 计算指标
     const summary = calculateMetricsSummary(metrics, days);
 
-    logger.info('Metrics calculated', {
+    logger.info("Metrics calculated", {
       userId: user.id,
       totalClassifications: summary.totalClassifications,
     });
 
     return NextResponse.json(summary);
   } catch (error) {
-    logger.error('Metrics API error', error instanceof Error ? error : undefined);
+    logger.error(
+      "Metrics API error",
+      error instanceof Error ? error : undefined,
+    );
     return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : 'Internal server error',
+        error: error instanceof Error ? error.message : "Internal server error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -163,14 +180,14 @@ export async function GET(request: NextRequest) {
  * 计算指标摘要
  */
 function calculateMetricsSummary(
-  metrics: any[],
-  days: number
+  metrics: MetricRecord[],
+  days: number,
 ): MetricsSummary {
   const totalClassifications = metrics.length;
 
   // 分离 T0 和 T1 指标
-  const t0Metrics = metrics.filter((m) => m.stage === 'T0');
-  const t1Metrics = metrics.filter((m) => m.stage === 'T1');
+  const t0Metrics = metrics.filter((m) => m.stage === "T0");
+  const t1Metrics = metrics.filter((m) => m.stage === "T1");
 
   // 计算 T0 指标
   const t0Summary = {
@@ -214,7 +231,7 @@ function calculateMetricsSummary(
 /**
  * 计算准确率
  */
-function calculateAccuracy(metrics: any[]): number | null {
+function calculateAccuracy(metrics: MetricRecord[]): number | null {
   const withFeedback = metrics.filter((m) => m.is_correct !== null);
   if (withFeedback.length === 0) return null;
 
@@ -225,7 +242,7 @@ function calculateAccuracy(metrics: any[]): number | null {
 /**
  * 计算平均延迟
  */
-function calculateAvgLatency(metrics: any[]): number {
+function calculateAvgLatency(metrics: MetricRecord[]): number {
   if (metrics.length === 0) return 0;
 
   const totalLatency = metrics.reduce((sum, m) => sum + (m.latency_ms || 0), 0);
@@ -235,12 +252,10 @@ function calculateAvgLatency(metrics: any[]): number {
 /**
  * 计算 P95 延迟
  */
-function calculateP95Latency(metrics: any[]): number {
+function calculateP95Latency(metrics: MetricRecord[]): number {
   if (metrics.length === 0) return 0;
 
-  const latencies = metrics
-    .map((m) => m.latency_ms || 0)
-    .sort((a, b) => a - b);
+  const latencies = metrics.map((m) => m.latency_ms || 0).sort((a, b) => a - b);
   const p95Index = Math.floor(latencies.length * 0.95);
   return latencies[p95Index] || 0;
 }
@@ -248,12 +263,12 @@ function calculateP95Latency(metrics: any[]): number {
 /**
  * 计算平均置信度
  */
-function calculateAvgConfidence(metrics: any[]): number {
+function calculateAvgConfidence(metrics: MetricRecord[]): number {
   if (metrics.length === 0) return 0;
 
   const totalConfidence = metrics.reduce(
     (sum, m) => sum + (m.confidence || 0),
-    0
+    0,
   );
   return totalConfidence / metrics.length;
 }
@@ -261,14 +276,14 @@ function calculateAvgConfidence(metrics: any[]): number {
 /**
  * 计算成本
  */
-function calculateCost(metrics: any[]): {
+function calculateCost(metrics: MetricRecord[]): {
   embeddingCost: number;
   llmCost: number;
   totalCost: number;
 } {
   const embeddingTokens = metrics.reduce(
     (sum, m) => sum + (m.embedding_tokens || 0),
-    0
+    0,
   );
   const llmTokens = metrics.reduce((sum, m) => sum + (m.llm_tokens || 0), 0);
 
@@ -288,7 +303,7 @@ function calculateCost(metrics: any[]): {
 /**
  * 计算降级统计
  */
-function calculateDegradation(metrics: any[]): {
+function calculateDegradation(metrics: MetricRecord[]): {
   v5Count: number;
   v4Count: number;
   ruleCount: number;

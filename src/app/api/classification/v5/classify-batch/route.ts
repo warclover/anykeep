@@ -4,14 +4,14 @@
  * POST /api/classification/v5/classify-batch
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { ClassificationPipelineService } from '@/lib/classification/v5/classification-pipeline';
-import { LoggerService } from '@/lib/classification/v5/shared/logger';
-import { EmbeddingService } from '@/lib/classification/v5/shared/embedding';
-import { VectorSearchService } from '@/lib/classification/v5/shared/vector-search';
-import { LLMService } from '@/lib/classification/v5/shared/llm';
-import type { ClassificationRequest } from '@/lib/classification/v5/classification-pipeline/types';
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import { ClassificationPipelineService } from "@/lib/classification/v5/classification-pipeline";
+import { EmbeddingService } from "@/lib/classification/v5/shared/embedding";
+import { VectorSearchService } from "@/lib/classification/v5/shared/vector-search";
+import { LLMService } from "@/lib/classification/v5/shared/llm";
+import type { ClassificationRequest } from "@/lib/classification/v5/classification-pipeline/types";
 
 /**
  * 批量分类请求体
@@ -32,7 +32,7 @@ interface ClassifyBatchRequestBody {
  * 批量对书签进行智能分类
  */
 export async function POST(request: NextRequest) {
-  const logger = console as any; // TODO: 使用实际 LoggerService
+  const logger = console; // TODO: 使用实际 LoggerService
 
   try {
     // 1. 验证用户身份
@@ -43,8 +43,8 @@ export async function POST(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      logger.warn('未授权访问', { error: authError?.message });
-      return NextResponse.json({ error: '未授权' }, { status: 401 });
+      logger.warn("未授权访问", { error: authError?.message });
+      return NextResponse.json({ error: "未授权" }, { status: 401 });
     }
 
     // 2. 解析请求体
@@ -52,26 +52,23 @@ export async function POST(request: NextRequest) {
 
     // 3. 验证请求
     if (!body.bookmarks || !Array.isArray(body.bookmarks)) {
-      logger.warn('无效的请求体', { body });
+      logger.warn("无效的请求体", { body });
       return NextResponse.json(
-        { error: 'bookmarks 必须是数组' },
-        { status: 400 }
+        { error: "bookmarks 必须是数组" },
+        { status: 400 },
       );
     }
 
     if (body.bookmarks.length === 0) {
-      logger.warn('空的书签列表');
-      return NextResponse.json(
-        { error: '书签列表不能为空' },
-        { status: 400 }
-      );
+      logger.warn("空的书签列表");
+      return NextResponse.json({ error: "书签列表不能为空" }, { status: 400 });
     }
 
     if (body.bookmarks.length > 100) {
-      logger.warn('书签数量超过限制', { count: body.bookmarks.length });
+      logger.warn("书签数量超过限制", { count: body.bookmarks.length });
       return NextResponse.json(
-        { error: '单次最多处理 100 个书签' },
-        { status: 400 }
+        { error: "单次最多处理 100 个书签" },
+        { status: 400 },
       );
     }
 
@@ -79,17 +76,17 @@ export async function POST(request: NextRequest) {
     for (let i = 0; i < body.bookmarks.length; i++) {
       const bookmark = body.bookmarks[i];
       if (!bookmark.bookmarkId || !bookmark.title || !bookmark.url) {
-        logger.warn('书签缺少必需字段', { index: i, bookmark });
+        logger.warn("书签缺少必需字段", { index: i, bookmark });
         return NextResponse.json(
           {
             error: `书签 ${i} 缺少必需字段: bookmarkId, title, url`,
           },
-          { status: 400 }
+          { status: 400 },
         );
       }
     }
 
-    logger.info('开始批量分类', {
+    logger.info("开始批量分类", {
       userId: user.id,
       count: body.bookmarks.length,
     });
@@ -104,7 +101,7 @@ export async function POST(request: NextRequest) {
         summary: bookmark.summary,
         tags: bookmark.tags,
         url: bookmark.url,
-      })
+      }),
     );
 
     // 6. 初始化服务
@@ -116,7 +113,7 @@ export async function POST(request: NextRequest) {
       logger,
       embeddingService,
       vectorSearch,
-      llmService
+      llmService,
     );
 
     // 7. 执行批量分类
@@ -124,7 +121,7 @@ export async function POST(request: NextRequest) {
     const results = await pipeline.classifyBatch(classificationRequests);
     const totalTime = Date.now() - startTime;
 
-    logger.info('批量分类完成', {
+    logger.info("批量分类完成", {
       userId: user.id,
       count: results.length,
       totalTimeMs: totalTime,
@@ -137,7 +134,7 @@ export async function POST(request: NextRequest) {
       data: {
         results: results.map((result) => ({
           bookmarkId: classificationRequests.find(
-            (req) => req.bookmarkId === result.folderId
+            (req) => req.bookmarkId === result.folderId,
           )?.bookmarkId,
           folderId: result.folderId,
           confidence: result.confidence,
@@ -158,17 +155,17 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    logger.error('批量分类失败', {
+    logger.error("批量分类失败", {
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
     });
 
     return NextResponse.json(
       {
-        error: '批量分类失败',
+        error: "批量分类失败",
         message: error instanceof Error ? error.message : String(error),
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

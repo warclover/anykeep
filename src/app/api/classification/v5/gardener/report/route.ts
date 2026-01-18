@@ -4,20 +4,20 @@
  * GET /api/classification/v5/gardener/report
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { GardenerService } from '@/lib/classification/v5/gardener';
-import { LoggerService } from '@/lib/classification/v5/shared/logger';
-import { EmbeddingService } from '@/lib/classification/v5/shared/embedding';
-import type { ClassificationStats } from '@/lib/classification/v5/gardener';
-import type { FolderStats, UserStats } from '@/lib/classification/v5/gardener';
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import { GardenerService } from "@/lib/classification/v5/gardener";
+import { EmbeddingService } from "@/lib/classification/v5/shared/embedding";
+import type { ClassificationStats } from "@/lib/classification/v5/gardener";
+import type { FolderStats, UserStats } from "@/lib/classification/v5/gardener";
 
 /**
  * GET /api/classification/v5/gardener/report
  * 生成 Gardener 分析报告
  */
-export async function GET(request: NextRequest) {
-  const logger = console as any; // TODO: 使用实际 LoggerService
+export async function GET(_request: NextRequest) {
+  const logger = console; // TODO: 使用实际 LoggerService
 
   try {
     // 1. 验证用户身份
@@ -28,11 +28,11 @@ export async function GET(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      logger.warn('未授权访问', { error: authError?.message });
-      return NextResponse.json({ error: '未授权' }, { status: 401 });
+      logger.warn("未授权访问", { error: authError?.message });
+      return NextResponse.json({ error: "未授权" }, { status: 401 });
     }
 
-    logger.info('生成 Gardener 报告', { userId: user.id });
+    logger.info("生成 Gardener 报告", { userId: user.id });
 
     // 2. 获取分类统计数据（简化版，实际应该从统计表获取）
     const classificationStats: ClassificationStats = {
@@ -45,20 +45,20 @@ export async function GET(request: NextRequest) {
 
     // 3. 获取用户的所有文件夹
     const { data: folders, error: foldersError } = await supabase
-      .from('folders')
-      .select('id, name, created_at')
-      .eq('user_id', user.id);
+      .from("folders")
+      .select("id, name, created_at")
+      .eq("user_id", user.id);
 
     if (foldersError) {
-      logger.error('获取文件夹列表失败', { error: foldersError.message });
+      logger.error("获取文件夹列表失败", { error: foldersError.message });
       return NextResponse.json(
-        { error: '获取文件夹列表失败' },
-        { status: 500 }
+        { error: "获取文件夹列表失败" },
+        { status: 500 },
       );
     }
 
     if (!folders || folders.length === 0) {
-      logger.info('用户没有文件夹', { userId: user.id });
+      logger.info("用户没有文件夹", { userId: user.id });
       return NextResponse.json({
         success: true,
         data: {
@@ -77,10 +77,10 @@ export async function GET(request: NextRequest) {
     for (const folder of folders) {
       // 获取文件夹内的书签数量
       const { count: bookmarkCount } = await supabase
-        .from('bookmarks')
-        .select('*', { count: 'exact', head: true })
-        .eq('folder_id', folder.id)
-        .eq('user_id', user.id);
+        .from("bookmarks")
+        .select("*", { count: "exact", head: true })
+        .eq("folder_id", folder.id)
+        .eq("user_id", user.id);
 
       // TODO: 获取文件夹画像（表尚未创建）
       // const { data: profile } = await supabase
@@ -102,9 +102,9 @@ export async function GET(request: NextRequest) {
 
     // 5. 获取用户整体统计
     const { count: totalBookmarks } = await supabase
-      .from('bookmarks')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', user.id);
+      .from("bookmarks")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", user.id);
 
     const userStats: UserStats = {
       totalFolders: folders.length,
@@ -121,10 +121,10 @@ export async function GET(request: NextRequest) {
     const report = await gardenerService.generateReport(
       classificationStats,
       folderStatsList,
-      userStats
+      userStats,
     );
 
-    logger.info('Gardener 报告生成成功', {
+    logger.info("Gardener 报告生成成功", {
       userId: user.id,
       folderSuggestionsCount: report.folderSuggestions.length,
       synonymGroupsCount: report.synonymGroups.length,
@@ -137,17 +137,17 @@ export async function GET(request: NextRequest) {
       data: report,
     });
   } catch (error) {
-    logger.error('生成 Gardener 报告失败', {
+    logger.error("生成 Gardener 报告失败", {
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
     });
 
     return NextResponse.json(
       {
-        error: '生成 Gardener 报告失败',
+        error: "生成 Gardener 报告失败",
         message: error instanceof Error ? error.message : String(error),
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

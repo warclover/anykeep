@@ -4,22 +4,20 @@
  * 整合 L0 规则匹配、T0 快速生成、T1 异步纠正
  */
 
-import type { LoggerService } from '../shared/logger';
-import type { EmbeddingService } from '../shared/embedding';
-import type { VectorSearchService } from '../shared/vector-search';
-import type { LLMService } from '../shared/llm';
-import { L0RuleMatcher } from './l0-rule-matcher';
-import { T0Generator } from './t0-generator';
-import { T1Corrector } from './t1-corrector';
-import { HybridRetriever } from './hybrid-retriever';
-import { LLMCaller } from './llm-caller';
+import type { LoggerService } from "../shared/logger";
+import type { EmbeddingService } from "../shared/embedding";
+import type { VectorSearchService } from "../shared/vector-search";
+import type { LLMService } from "../shared/llm";
+import { L0RuleMatcher } from "./l0-rule-matcher";
+import { T0Generator } from "./t0-generator";
+import { T1Corrector } from "./t1-corrector";
+import { HybridRetriever } from "./hybrid-retriever";
+import { LLMCaller } from "./llm-caller";
 import type {
   ClassificationRequest,
   ClassificationPipelineConfig,
-  T0Result,
-  T1Result,
-} from './types';
-import { ClassificationPipelineError } from './types';
+} from "./types";
+import { ClassificationPipelineError } from "./types";
 
 /**
  * 分类结果
@@ -56,9 +54,9 @@ export class ClassificationPipelineService {
     embeddingService: EmbeddingService,
     vectorSearch: VectorSearchService,
     llmService: LLMService,
-    config?: Partial<ClassificationPipelineConfig>
+    config?: Partial<ClassificationPipelineConfig>,
   ) {
-    this.logger = logger.child({ service: 'ClassificationPipeline' });
+    this.logger = logger.child({ service: "ClassificationPipeline" });
 
     // 默认配置
     this.config = {
@@ -90,7 +88,7 @@ export class ClassificationPipelineService {
       embeddingService,
       this.l0Matcher,
       hybridRetriever,
-      llmCaller
+      llmCaller,
     );
     this.t1Corrector = new T1Corrector(logger, llmCaller);
   }
@@ -98,10 +96,12 @@ export class ClassificationPipelineService {
   /**
    * 执行分类
    */
-  async classify(request: ClassificationRequest): Promise<ClassificationResult> {
+  async classify(
+    request: ClassificationRequest,
+  ): Promise<ClassificationResult> {
     const startTime = Date.now();
 
-    this.logger.info('开始分类', {
+    this.logger.info("开始分类", {
       bookmarkId: request.bookmarkId,
       userId: request.userId,
       title: request.title,
@@ -111,7 +111,7 @@ export class ClassificationPipelineService {
       // Step 1: L0 规则匹配
       const l0Result = await this.l0Matcher.match(request);
       if (l0Result.matched && l0Result.folderId) {
-        this.logger.info('L0 规则匹配成功', {
+        this.logger.info("L0 规则匹配成功", {
           bookmarkId: request.bookmarkId,
           folderId: l0Result.folderId,
           ruleName: l0Result.ruleName,
@@ -131,7 +131,7 @@ export class ClassificationPipelineService {
       // Step 2: T0 快速生成
       const t0Result = await this.t0Generator.generate(request);
 
-      this.logger.info('T0 生成完成', {
+      this.logger.info("T0 生成完成", {
         bookmarkId: request.bookmarkId,
         folderId: t0Result.folderId,
         confidence: t0Result.confidence,
@@ -155,7 +155,7 @@ export class ClassificationPipelineService {
       // Step 4: T1 异步纠正
       const t1Result = await this.t1Corrector.correct(request, t0Result);
 
-      this.logger.info('T1 纠正完成', {
+      this.logger.info("T1 纠正完成", {
         bookmarkId: request.bookmarkId,
         t0FolderId: t0Result.folderId,
         t1FolderId: t1Result.folderId,
@@ -176,16 +176,16 @@ export class ClassificationPipelineService {
       };
     } catch (error) {
       this.logger.error(
-        '分类失败',
+        "分类失败",
         error instanceof Error ? error : undefined,
         {
           bookmarkId: request.bookmarkId,
-        }
+        },
       );
 
       throw new ClassificationPipelineError(
         `分类失败: ${error instanceof Error ? error.message : String(error)}`,
-        error
+        error,
       );
     }
   }
@@ -194,42 +194,42 @@ export class ClassificationPipelineService {
    * 批量分类
    */
   async classifyBatch(
-    requests: ClassificationRequest[]
+    requests: ClassificationRequest[],
   ): Promise<ClassificationResult[]> {
-    this.logger.info('开始批量分类', {
+    this.logger.info("开始批量分类", {
       count: requests.length,
     });
 
     const results = await Promise.allSettled(
-      requests.map((request) => this.classify(request))
+      requests.map((request) => this.classify(request)),
     );
 
-    const successCount = results.filter((r) => r.status === 'fulfilled').length;
-    const failureCount = results.filter((r) => r.status === 'rejected').length;
+    const successCount = results.filter((r) => r.status === "fulfilled").length;
+    const failureCount = results.filter((r) => r.status === "rejected").length;
 
-    this.logger.info('批量分类完成', {
+    this.logger.info("批量分类完成", {
       total: requests.length,
       success: successCount,
       failure: failureCount,
     });
 
     return results.map((result, index) => {
-      if (result.status === 'fulfilled') {
+      if (result.status === "fulfilled") {
         return result.value;
       } else {
         this.logger.error(
-          '批量分类中的单个请求失败',
+          "批量分类中的单个请求失败",
           result.reason instanceof Error ? result.reason : undefined,
           {
             index,
             bookmarkId: requests[index].bookmarkId,
-          }
+          },
         );
 
         // 返回默认结果（可以根据业务需求调整)
         throw new ClassificationPipelineError(
           `批量分类中的请求 ${index} 失败`,
-          result.reason
+          result.reason,
         );
       }
     });

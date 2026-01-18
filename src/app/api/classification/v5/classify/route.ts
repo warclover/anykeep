@@ -4,14 +4,14 @@
  * POST /api/classification/v5/classify
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { ClassificationPipelineService } from '@/lib/classification/v5/classification-pipeline';
-import { LoggerService } from '@/lib/classification/v5/shared/logger';
-import { EmbeddingService } from '@/lib/classification/v5/shared/embedding';
-import { VectorSearchService } from '@/lib/classification/v5/shared/vector-search';
-import { LLMService } from '@/lib/classification/v5/shared/llm';
-import type { ClassificationRequest } from '@/lib/classification/v5/classification-pipeline/types';
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import { ClassificationPipelineService } from "@/lib/classification/v5/classification-pipeline";
+import { EmbeddingService } from "@/lib/classification/v5/shared/embedding";
+import { VectorSearchService } from "@/lib/classification/v5/shared/vector-search";
+import { LLMService } from "@/lib/classification/v5/shared/llm";
+import type { ClassificationRequest } from "@/lib/classification/v5/classification-pipeline/types";
 
 /**
  * 分类请求体
@@ -30,7 +30,7 @@ interface ClassifyRequestBody {
  * 对单个书签进行智能分类
  */
 export async function POST(request: NextRequest) {
-  const logger = console as any; // TODO: 使用实际 LoggerService
+  const logger = console; // TODO: 使用实际 LoggerService
 
   try {
     // 1. 验证用户身份
@@ -41,8 +41,8 @@ export async function POST(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      logger.warn('未授权访问', { error: authError?.message });
-      return NextResponse.json({ error: '未授权' }, { status: 401 });
+      logger.warn("未授权访问", { error: authError?.message });
+      return NextResponse.json({ error: "未授权" }, { status: 401 });
     }
 
     // 2. 解析请求体
@@ -50,10 +50,10 @@ export async function POST(request: NextRequest) {
 
     // 3. 验证必需字段
     if (!body.bookmarkId || !body.title || !body.url) {
-      logger.warn('缺少必需字段', { body });
+      logger.warn("缺少必需字段", { body });
       return NextResponse.json(
-        { error: '缺少必需字段: bookmarkId, title, url' },
-        { status: 400 }
+        { error: "缺少必需字段: bookmarkId, title, url" },
+        { status: 400 },
       );
     }
 
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
       url: body.url,
     };
 
-    logger.info('开始分类', {
+    logger.info("开始分类", {
       userId: user.id,
       bookmarkId: body.bookmarkId,
       title: body.title,
@@ -83,13 +83,13 @@ export async function POST(request: NextRequest) {
       logger,
       embeddingService,
       vectorSearch,
-      llmService
+      llmService,
     );
 
     // 6. 执行分类
     const result = await pipeline.classify(classificationRequest);
 
-    logger.info('分类完成', {
+    logger.info("分类完成", {
       userId: user.id,
       bookmarkId: body.bookmarkId,
       folderId: result.folderId,
@@ -114,17 +114,17 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    logger.error('分类失败', {
+    logger.error("分类失败", {
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
     });
 
     return NextResponse.json(
       {
-        error: '分类失败',
+        error: "分类失败",
         message: error instanceof Error ? error.message : String(error),
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -8,8 +8,8 @@
  * @since 2026-01-18
  */
 
-import { NextRequest } from 'next/server';
-import { GET } from '../route';
+import { NextRequest } from "next/server";
+import { GET } from "../route";
 
 // =============================================================================
 // Mock Supabase
@@ -22,7 +22,7 @@ const mockSupabaseClient = {
   from: jest.fn(),
 };
 
-jest.mock('@/lib/supabase/server', () => ({
+jest.mock("@/lib/supabase/server", () => ({
   createClient: jest.fn(() => mockSupabaseClient),
 }));
 
@@ -36,7 +36,7 @@ jest.mock('@/lib/supabase/server', () => ({
 function createTestRequest(bookmarkId?: string): NextRequest {
   const url = bookmarkId
     ? `http://localhost:3000/api/classification/v5/t1-stream?bookmarkId=${bookmarkId}`
-    : 'http://localhost:3000/api/classification/v5/t1-stream';
+    : "http://localhost:3000/api/classification/v5/t1-stream";
 
   return new NextRequest(url);
 }
@@ -44,9 +44,9 @@ function createTestRequest(bookmarkId?: string): NextRequest {
 /**
  * 读取 SSE 流数据
  */
-async function readSSEStream(response: Response): Promise<string[]> {
+async function _readSSEStream(response: Response): Promise<string[]> {
   const reader = response.body?.getReader();
-  if (!reader) throw new Error('No reader available');
+  if (!reader) throw new Error("No reader available");
 
   const decoder = new TextDecoder();
   const chunks: string[] = [];
@@ -67,13 +67,15 @@ async function readSSEStream(response: Response): Promise<string[]> {
 /**
  * 解析 SSE 事件
  */
-function parseSSEEvents(chunks: string[]): Array<{ type: string; data: unknown }> {
+function _parseSSEEvents(
+  chunks: string[],
+): Array<{ type: string; data: unknown }> {
   const events: Array<{ type: string; data: unknown }> = [];
 
   for (const chunk of chunks) {
-    const lines = chunk.split('\n');
+    const lines = chunk.split("\n");
     for (const line of lines) {
-      if (line.startsWith('data: ')) {
+      if (line.startsWith("data: ")) {
         const jsonStr = line.substring(6);
         try {
           const event = JSON.parse(jsonStr);
@@ -92,45 +94,45 @@ function parseSSEEvents(chunks: string[]): Array<{ type: string; data: unknown }
 // 参数验证测试
 // =============================================================================
 
-describe('T1 Stream API - Parameter Validation', () => {
+describe("T1 Stream API - Parameter Validation", () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('should return 400 if bookmarkId is missing', async () => {
+  it("should return 400 if bookmarkId is missing", async () => {
     const request = createTestRequest();
     const response = await GET(request);
 
     expect(response.status).toBe(400);
     const text = await response.text();
-    expect(text).toBe('Missing bookmarkId parameter');
+    expect(text).toBe("Missing bookmarkId parameter");
   });
 
-  it('should return 400 if bookmarkId is not a number', async () => {
-    const request = createTestRequest('invalid');
+  it("should return 400 if bookmarkId is not a number", async () => {
+    const request = createTestRequest("invalid");
     const response = await GET(request);
 
     expect(response.status).toBe(400);
     const text = await response.text();
-    expect(text).toBe('Invalid bookmarkId parameter');
+    expect(text).toBe("Invalid bookmarkId parameter");
   });
 
-  it('should return 400 if bookmarkId is negative', async () => {
-    const request = createTestRequest('-1');
+  it("should return 400 if bookmarkId is negative", async () => {
+    const request = createTestRequest("-1");
     const response = await GET(request);
 
     expect(response.status).toBe(400);
     const text = await response.text();
-    expect(text).toBe('Invalid bookmarkId parameter');
+    expect(text).toBe("Invalid bookmarkId parameter");
   });
 
-  it('should return 400 if bookmarkId is zero', async () => {
-    const request = createTestRequest('0');
+  it("should return 400 if bookmarkId is zero", async () => {
+    const request = createTestRequest("0");
     const response = await GET(request);
 
     expect(response.status).toBe(400);
     const text = await response.text();
-    expect(text).toBe('Invalid bookmarkId parameter');
+    expect(text).toBe("Invalid bookmarkId parameter");
   });
 });
 
@@ -138,32 +140,32 @@ describe('T1 Stream API - Parameter Validation', () => {
 // 认证测试
 // =============================================================================
 
-describe('T1 Stream API - Authentication', () => {
+describe("T1 Stream API - Authentication", () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('should return 401 if user is not authenticated', async () => {
+  it("should return 401 if user is not authenticated", async () => {
     mockSupabaseClient.auth.getUser.mockResolvedValue({
       data: { user: null },
-      error: new Error('Not authenticated'),
+      error: new Error("Not authenticated"),
     });
 
-    const request = createTestRequest('123');
+    const request = createTestRequest("123");
     const response = await GET(request);
 
     expect(response.status).toBe(401);
     const text = await response.text();
-    expect(text).toBe('Unauthorized');
+    expect(text).toBe("Unauthorized");
   });
 
-  it('should return 401 if auth error occurs', async () => {
+  it("should return 401 if auth error occurs", async () => {
     mockSupabaseClient.auth.getUser.mockResolvedValue({
       data: { user: null },
       error: null,
     });
 
-    const request = createTestRequest('123');
+    const request = createTestRequest("123");
     const response = await GET(request);
 
     expect(response.status).toBe(401);
@@ -174,14 +176,14 @@ describe('T1 Stream API - Authentication', () => {
 // SSE 流测试
 // =============================================================================
 
-describe('T1 Stream API - SSE Stream', () => {
+describe("T1 Stream API - SSE Stream", () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('should return SSE response with correct headers', async () => {
+  it("should return SSE response with correct headers", async () => {
     mockSupabaseClient.auth.getUser.mockResolvedValue({
-      data: { user: { id: 'test-user-id' } },
+      data: { user: { id: "test-user-id" } },
       error: null,
     });
 
@@ -204,19 +206,21 @@ describe('T1 Stream API - SSE Stream', () => {
 
     mockSupabaseClient.from = mockFrom;
 
-    const request = createTestRequest('123');
+    const request = createTestRequest("123");
     const response = await GET(request);
 
     expect(response.status).toBe(200);
-    expect(response.headers.get('Content-Type')).toBe('text/event-stream');
-    expect(response.headers.get('Cache-Control')).toBe('no-cache, no-transform');
-    expect(response.headers.get('Connection')).toBe('keep-alive');
-    expect(response.headers.get('X-Accel-Buffering')).toBe('no');
+    expect(response.headers.get("Content-Type")).toBe("text/event-stream");
+    expect(response.headers.get("Cache-Control")).toBe(
+      "no-cache, no-transform",
+    );
+    expect(response.headers.get("Connection")).toBe("keep-alive");
+    expect(response.headers.get("X-Accel-Buffering")).toBe("no");
   });
 
-  it('should send initial connection event', async () => {
+  it("should send initial connection event", async () => {
     mockSupabaseClient.auth.getUser.mockResolvedValue({
-      data: { user: { id: 'test-user-id' } },
+      data: { user: { id: "test-user-id" } },
       error: null,
     });
 
@@ -239,7 +243,7 @@ describe('T1 Stream API - SSE Stream', () => {
 
     mockSupabaseClient.from = mockFrom;
 
-    const request = createTestRequest('123');
+    const request = createTestRequest("123");
     const response = await GET(request);
 
     // 读取流的第一个事件
@@ -251,7 +255,7 @@ describe('T1 Stream API - SSE Stream', () => {
       const decoder = new TextDecoder();
       const chunk = decoder.decode(value);
 
-      expect(chunk).toContain('data:');
+      expect(chunk).toContain("data:");
       expect(chunk).toContain('"type":"status"');
       expect(chunk).toContain('"status":"connected"');
 
@@ -264,20 +268,20 @@ describe('T1 Stream API - SSE Stream', () => {
 // T1 队列状态测试
 // =============================================================================
 
-describe('T1 Stream API - Queue Status', () => {
+describe("T1 Stream API - Queue Status", () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('should handle processing status', async () => {
+  it("should handle processing status", async () => {
     mockSupabaseClient.auth.getUser.mockResolvedValue({
-      data: { user: { id: 'test-user-id' } },
+      data: { user: { id: "test-user-id" } },
       error: null,
     });
 
     const mockT1Record = {
       bookmark_id: 123,
-      status: 'processing',
+      status: "processing",
       t1_folder_id: null,
       t1_confidence: null,
       t1_reasoning: null,
@@ -303,24 +307,24 @@ describe('T1 Stream API - Queue Status', () => {
 
     mockSupabaseClient.from = mockFrom;
 
-    const request = createTestRequest('123');
+    const request = createTestRequest("123");
     const response = await GET(request);
 
     expect(response.status).toBe(200);
   });
 
-  it('should handle completed status with results', async () => {
+  it("should handle completed status with results", async () => {
     mockSupabaseClient.auth.getUser.mockResolvedValue({
-      data: { user: { id: 'test-user-id' } },
+      data: { user: { id: "test-user-id" } },
       error: null,
     });
 
     const mockT1Record = {
       bookmark_id: 123,
-      status: 'completed',
+      status: "completed",
       t1_folder_id: 456,
       t1_confidence: 0.92,
-      t1_reasoning: 'Test reasoning',
+      t1_reasoning: "Test reasoning",
       error_message: null,
     };
 
@@ -343,25 +347,25 @@ describe('T1 Stream API - Queue Status', () => {
 
     mockSupabaseClient.from = mockFrom;
 
-    const request = createTestRequest('123');
+    const request = createTestRequest("123");
     const response = await GET(request);
 
     expect(response.status).toBe(200);
   });
 
-  it('should handle failed status with error message', async () => {
+  it("should handle failed status with error message", async () => {
     mockSupabaseClient.auth.getUser.mockResolvedValue({
-      data: { user: { id: 'test-user-id' } },
+      data: { user: { id: "test-user-id" } },
       error: null,
     });
 
     const mockT1Record = {
       bookmark_id: 123,
-      status: 'failed',
+      status: "failed",
       t1_folder_id: null,
       t1_confidence: null,
       t1_reasoning: null,
-      error_message: 'Test error message',
+      error_message: "Test error message",
     };
 
     const mockFrom = jest.fn().mockReturnValue({
@@ -383,7 +387,7 @@ describe('T1 Stream API - Queue Status', () => {
 
     mockSupabaseClient.from = mockFrom;
 
-    const request = createTestRequest('123');
+    const request = createTestRequest("123");
     const response = await GET(request);
 
     expect(response.status).toBe(200);
@@ -394,14 +398,14 @@ describe('T1 Stream API - Queue Status', () => {
 // 错误处理测试
 // =============================================================================
 
-describe('T1 Stream API - Error Handling', () => {
+describe("T1 Stream API - Error Handling", () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('should handle database query errors gracefully', async () => {
+  it("should handle database query errors gracefully", async () => {
     mockSupabaseClient.auth.getUser.mockResolvedValue({
-      data: { user: { id: 'test-user-id' } },
+      data: { user: { id: "test-user-id" } },
       error: null,
     });
 
@@ -413,7 +417,7 @@ describe('T1 Stream API - Error Handling', () => {
               limit: jest.fn().mockReturnValue({
                 single: jest.fn().mockResolvedValue({
                   data: null,
-                  error: new Error('Database error'),
+                  error: new Error("Database error"),
                 }),
               }),
             }),
@@ -424,23 +428,23 @@ describe('T1 Stream API - Error Handling', () => {
 
     mockSupabaseClient.from = mockFrom;
 
-    const request = createTestRequest('123');
+    const request = createTestRequest("123");
     const response = await GET(request);
 
     // 应该返回 SSE 流,但不会发送错误事件
     expect(response.status).toBe(200);
   });
 
-  it('should handle unexpected errors', async () => {
+  it("should handle unexpected errors", async () => {
     mockSupabaseClient.auth.getUser.mockRejectedValue(
-      new Error('Unexpected error')
+      new Error("Unexpected error"),
     );
 
-    const request = createTestRequest('123');
+    const request = createTestRequest("123");
     const response = await GET(request);
 
     expect(response.status).toBe(500);
     const json = await response.json();
-    expect(json).toHaveProperty('error');
+    expect(json).toHaveProperty("error");
   });
 });

@@ -4,12 +4,16 @@
  * POST /api/classification/v5/folder-profile/[folderId]/update
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { FolderProfilerService } from '@/lib/classification/v5/folder-profiler';
-import { LoggerService } from '@/lib/classification/v5/shared/logger';
-import { EmbeddingService } from '@/lib/classification/v5/shared/embedding';
-import type { BookmarkData, BehaviorData, FolderStats } from '@/lib/classification/v5/folder-profiler';
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import { FolderProfilerService } from "@/lib/classification/v5/folder-profiler";
+import { EmbeddingService } from "@/lib/classification/v5/shared/embedding";
+import type {
+  BookmarkData,
+  BehaviorData,
+  FolderStats,
+} from "@/lib/classification/v5/folder-profiler";
 
 /**
  * POST /api/classification/v5/folder-profile/:folderId/update
@@ -17,9 +21,9 @@ import type { BookmarkData, BehaviorData, FolderStats } from '@/lib/classificati
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { folderId: string } }
+  { params }: { params: { folderId: string } },
 ) {
-  const logger = console as any; // TODO: 使用实际 LoggerService
+  const logger = console; // TODO: 使用实际 LoggerService
 
   try {
     // 1. 验证用户身份
@@ -30,77 +34,76 @@ export async function POST(
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      logger.warn('未授权访问', { error: authError?.message });
-      return NextResponse.json({ error: '未授权' }, { status: 401 });
+      logger.warn("未授权访问", { error: authError?.message });
+      return NextResponse.json({ error: "未授权" }, { status: 401 });
     }
 
     // 2. 获取并验证 folderId
     const { folderId: folderIdStr } = params;
 
     if (!folderIdStr) {
-      logger.warn('缺少 folderId');
-      return NextResponse.json({ error: '缺少 folderId' }, { status: 400 });
+      logger.warn("缺少 folderId");
+      return NextResponse.json({ error: "缺少 folderId" }, { status: 400 });
     }
 
     const folderId = parseInt(folderIdStr, 10);
     if (isNaN(folderId)) {
-      logger.warn('无效的 folderId', { folderIdStr });
-      return NextResponse.json({ error: '无效的 folderId' }, { status: 400 });
+      logger.warn("无效的 folderId", { folderIdStr });
+      return NextResponse.json({ error: "无效的 folderId" }, { status: 400 });
     }
 
-    logger.info('更新文件夹画像', {
+    logger.info("更新文件夹画像", {
       userId: user.id,
       folderId,
     });
 
     // 3. 验证文件夹所有权
     const { data: folder, error: folderError } = await supabase
-      .from('folders')
-      .select('id, name, user_id')
-      .eq('id', folderId)
-      .eq('user_id', user.id)
+      .from("folders")
+      .select("id, name, user_id")
+      .eq("id", folderId)
+      .eq("user_id", user.id)
       .single();
 
     if (folderError || !folder) {
-      logger.warn('文件夹不存在或无权访问', {
+      logger.warn("文件夹不存在或无权访问", {
         folderId,
         error: folderError?.message,
       });
       return NextResponse.json(
-        { error: '文件夹不存在或无权访问' },
-        { status: 404 }
+        { error: "文件夹不存在或无权访问" },
+        { status: 404 },
       );
     }
 
     // 4. 获取文件夹内的书签数据
     const { data: bookmarks, error: bookmarksError } = await supabase
-      .from('bookmarks')
-      .select('id, title, description')
-      .eq('folder_id', folderId)
-      .eq('user_id', user.id);
+      .from("bookmarks")
+      .select("id, title, description")
+      .eq("folder_id", folderId)
+      .eq("user_id", user.id);
 
     if (bookmarksError) {
-      logger.error('获取书签数据失败', { error: bookmarksError.message });
-      return NextResponse.json(
-        { error: '获取书签数据失败' },
-        { status: 500 }
-      );
+      logger.error("获取书签数据失败", { error: bookmarksError.message });
+      return NextResponse.json({ error: "获取书签数据失败" }, { status: 500 });
     }
 
     // 5. 获取行为数据（简化版，实际应该从行为表获取）
-    const behaviors: BehaviorData[] = bookmarks?.map((bookmark) => ({
-      bookmarkId: bookmark.id.toString(),
-      actionType: 'view',
-      timestamp: new Date(),
-      weight: 1,
-    })) || [];
+    const behaviors: BehaviorData[] =
+      bookmarks?.map((bookmark) => ({
+        bookmarkId: bookmark.id.toString(),
+        actionType: "view",
+        timestamp: new Date(),
+        weight: 1,
+      })) || [];
 
     // 6. 构建书签数据
-    const bookmarkData: BookmarkData[] = bookmarks?.map((bookmark) => ({
-      id: bookmark.id.toString(),
-      title: bookmark.title,
-      description: bookmark.description || undefined,
-    })) || [];
+    const bookmarkData: BookmarkData[] =
+      bookmarks?.map((bookmark) => ({
+        id: bookmark.id.toString(),
+        title: bookmark.title,
+        description: bookmark.description || undefined,
+      })) || [];
 
     // 7. 构建文件夹统计
     const stats: FolderStats = {
@@ -117,7 +120,7 @@ export async function POST(
     const profilerService = new FolderProfilerService(
       logger,
       supabase,
-      embeddingService
+      embeddingService,
     );
 
     // 9. 更新文件夹画像
@@ -126,10 +129,10 @@ export async function POST(
       folderId.toString(),
       bookmarkData,
       behaviors,
-      stats
+      stats,
     );
 
-    logger.info('文件夹画像更新成功', {
+    logger.info("文件夹画像更新成功", {
       userId: user.id,
       folderId,
       alphaCoefficient: profile.alphaCoefficient,
@@ -149,17 +152,17 @@ export async function POST(
       },
     });
   } catch (error) {
-    logger.error('更新文件夹画像失败', {
+    logger.error("更新文件夹画像失败", {
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
     });
 
     return NextResponse.json(
       {
-        error: '更新文件夹画像失败',
+        error: "更新文件夹画像失败",
         message: error instanceof Error ? error.message : String(error),
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
