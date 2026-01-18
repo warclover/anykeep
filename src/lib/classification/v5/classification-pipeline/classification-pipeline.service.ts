@@ -8,7 +8,7 @@ import type { LoggerService } from "../shared/logger";
 import type { EmbeddingService } from "../shared/embedding";
 import type { VectorSearchService } from "../shared/vector-search";
 import type { LLMService } from "../shared/llm";
-import { L0RuleMatcher } from "./l0-rule-matcher";
+import { L0RuleMatcher, type Rule } from "./l0-rule-matcher";
 import { T0Generator } from "./t0-generator";
 import { T1Corrector } from "./t1-corrector";
 import { HybridRetriever } from "./hybrid-retriever";
@@ -232,6 +232,22 @@ export class ClassificationPipelineService {
           result.reason,
         );
       }
+    });
+  }
+
+  /**
+   * 加载用户自定义规则到 L0RuleMatcher
+   */
+  loadUserRules(rules: Rule[]): void {
+    // 清空现有规则
+    const currentRules = this.l0Matcher.getRules();
+    this.logger.debug("清空现有L0规则", { count: currentRules.length });
+
+    // 重新初始化 L0RuleMatcher
+    this.l0Matcher = new L0RuleMatcher(this.logger, rules);
+
+    this.logger.info("用户规则已加载到L0RuleMatcher", {
+      ruleCount: rules.length,
     });
   }
 }

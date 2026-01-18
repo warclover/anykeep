@@ -8,9 +8,13 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { ClassificationPipelineService } from "@/lib/classification/v5/classification-pipeline";
+import { ContextAnchorService } from "@/lib/classification/v5/context-anchor";
+import { ChatToRuleService } from "@/lib/classification/v5/chat-to-rule";
+import { convertUserRulesToL0Rules } from "@/lib/classification/v5/classification-pipeline/rule-converter";
 import { EmbeddingService } from "@/lib/classification/v5/shared/embedding";
 import { VectorSearchService } from "@/lib/classification/v5/shared/vector-search";
 import { LLMService } from "@/lib/classification/v5/shared/llm";
+import { createLogger } from "@/lib/classification/v5/shared/logger";
 import type { ClassificationRequest } from "@/lib/classification/v5/classification-pipeline/types";
 
 /**
@@ -23,6 +27,7 @@ interface ClassifyRequestBody {
   summary?: string;
   tags?: string[];
   url: string;
+  content?: string; // 用于提取上下文锚点
 }
 
 /**
@@ -30,7 +35,7 @@ interface ClassifyRequestBody {
  * 对单个书签进行智能分类
  */
 export async function POST(request: NextRequest) {
-  const logger = console; // TODO: 使用实际 LoggerService
+  const logger = createLogger("ClassifyAPI");
 
   try {
     // 1. 验证用户身份
@@ -86,6 +91,21 @@ export async function POST(request: NextRequest) {
       llmService,
     );
 
+    // 5.5. 加载用户自定义规则
+    try {
+      const chatToRuleService = new ChatToRuleService(supabase, logger);
+      const userRules = await chatToRuleService.getRules(true); // 只获取启用的规则
+      const l0Rules = convertUserRulesToL0Rules(userRules);
+
+      if (l0Rules.length > 0) {
+        pipeline.loadUserRules(l0Rules);
+        logger.debug("用户规则已加载", { count: l0Rules.length });
+      }
+    } catch (error) {
+      // 规则加载失败不影响分类流程
+      logger.warn("加载用户规则失败", { error });
+    }
+
     // 6. 执行分类
     const result = await pipeline.classify(classificationRequest);
 
@@ -96,6 +116,44 @@ export async function POST(request: NextRequest) {
       confidence: result.confidence,
       usedT1: result.usedT1,
       totalLatencyMs: result.totalLatencyMs,
+    });
+
+    // 6.5. 记录分类日志到数据库
+    try {
+      const { error: logError } = await supabase
+        .from("classification_logs")
+        .insert({
+          user_id: user.id,
+          bookmark_id: parseInt(body.bookmarkId, 10),
+          input_title: body.title,
+          input_tags: body.tags || [],
+          suggested_folder_id: parseInt(result.folderId, 10),
+          suggested_confidence: result.confidence,
+          execution_time_ms: result.totalLatencyMs,
+          llm_called: result.usedT1,
+          classification_source: result.usedT1 ? "llm" : "vector",
+        });
+
+      if (logError) {
+        logger.warn("Failed to log classification", { error: logError });
+      }
+    } catch (error) {
+      // 日志记录失败不影响分类结果
+      logger.warn("Failed to log classification", { error });
+    }
+
+    // 6.6. 异步提取和关联上下文锚点（非阻塞）
+    extractAndLinkContextAnchor(supabase, logger, embeddingService, {
+      bookmarkId: parseInt(body.bookmarkId, 10),
+      title: body.title,
+      url: body.url,
+      content: body.content,
+    }).catch((error) => {
+      // 锚点提取失败不影响分类结果
+      logger.error("Context anchor extraction failed", {
+        error,
+        bookmarkId: body.bookmarkId,
+      });
     });
 
     // 7. 返回结果
@@ -126,5 +184,77 @@ export async function POST(request: NextRequest) {
       },
       { status: 500 },
     );
+  }
+}
+
+/**
+ * 异步提取和关联上下文锚点
+ * 这个函数在后台执行，不阻塞分类结果的返回
+ */
+async function extractAndLinkContextAnchor(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  logger: ReturnType<typeof createLogger>,
+  embeddingService: EmbeddingService,
+  params: {
+    bookmarkId: number;
+    title: string;
+    url: string;
+    content?: string;
+  },
+): Promise<void> {
+  try {
+    logger.debug("Starting context anchor extraction", {
+      bookmarkId: params.bookmarkId,
+    });
+
+    // 1. 生成 embedding
+    const text = [params.title, params.content].filter(Boolean).join(" ");
+    const embedding = await embeddingService.generateEmbedding(text);
+
+    // 2. 创建 ContextAnchorService
+    const contextAnchorService = new ContextAnchorService(supabase, logger);
+
+    // 3. 提取上下文锚点
+    const extractedAnchor = await contextAnchorService.extractContextAnchor({
+      bookmarkId: params.bookmarkId,
+      title: params.title,
+      url: params.url,
+      content: params.content,
+      embedding,
+    });
+
+    if (!extractedAnchor) {
+      logger.debug("No context anchor extracted", {
+        bookmarkId: params.bookmarkId,
+      });
+      return;
+    }
+
+    // 4. 关联书签到锚点
+    const linkResult = await contextAnchorService.linkBookmarkToAnchor(
+      params.bookmarkId,
+      extractedAnchor,
+      embedding,
+    );
+
+    if (linkResult.success) {
+      logger.info("Context anchor linked successfully", {
+        bookmarkId: params.bookmarkId,
+        anchorId: linkResult.anchorId,
+        anchorName: linkResult.anchorName,
+        isNewAnchor: linkResult.isNewAnchor,
+      });
+    } else {
+      logger.warn("Failed to link context anchor", {
+        bookmarkId: params.bookmarkId,
+        error: linkResult.error,
+      });
+    }
+  } catch (error) {
+    logger.error("Context anchor extraction failed", {
+      error,
+      bookmarkId: params.bookmarkId,
+    });
+    // 不抛出错误，因为这是后台操作
   }
 }

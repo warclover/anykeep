@@ -25,3 +25,9 @@ export { PerformanceMonitor } from "./performance-monitor";
 
 // Folder Quick Select
 export { FolderQuickSelect } from "./folder-quick-select";
+
+// V5.0 Rule Management Components
+export { RuleCard } from "./rule-card";
+export { RuleEditDialog } from "./rule-edit-dialog";
+export { RuleList } from "./rule-list";
+export type { RuleUpdateData } from "./rule-edit-dialog";
