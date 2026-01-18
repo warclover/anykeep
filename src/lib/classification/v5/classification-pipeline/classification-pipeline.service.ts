@@ -236,6 +236,81 @@ export class ClassificationPipelineService {
   }
 
   /**
+   * 仅执行L0+T0阶段（用于Optimistic UI）
+   * 返回T0结果和是否需要T1纠正的标志
+   */
+  async classifyT0Only(
+    request: ClassificationRequest,
+  ): Promise<ClassificationResult & { needsT1: boolean; t1Reason?: string }> {
+    const startTime = Date.now();
+
+    this.logger.info("开始T0分类（Optimistic模式）", {
+      bookmarkId: request.bookmarkId,
+      userId: request.userId,
+      title: request.title,
+    });
+
+    try {
+      // Step 1: L0 规则匹配
+      const l0Result = await this.l0Matcher.match(request);
+      if (l0Result.matched && l0Result.folderId) {
+        this.logger.info("L0 规则匹配成功", {
+          bookmarkId: request.bookmarkId,
+          folderId: l0Result.folderId,
+          ruleName: l0Result.ruleName,
+          confidence: l0Result.confidence,
+        });
+
+        const totalLatency = Date.now() - startTime;
+        return {
+          folderId: l0Result.folderId,
+          confidence: l0Result.confidence ?? 1.0,
+          usedT1: false,
+          totalLatencyMs: totalLatency,
+          t0LatencyMs: totalLatency,
+          needsT1: false,
+        };
+      }
+
+      // Step 2: T0 快速生成
+      const t0Result = await this.t0Generator.generate(request);
+
+      this.logger.info("T0 生成完成（Optimistic模式）", {
+        bookmarkId: request.bookmarkId,
+        folderId: t0Result.folderId,
+        confidence: t0Result.confidence,
+        needsT1: t0Result.needsT1,
+        t1Reason: t0Result.t1Reason,
+        latencyMs: t0Result.latencyMs,
+      });
+
+      const totalLatency = Date.now() - startTime;
+      return {
+        folderId: t0Result.folderId,
+        confidence: t0Result.confidence,
+        usedT1: false,
+        totalLatencyMs: totalLatency,
+        t0LatencyMs: t0Result.latencyMs,
+        needsT1: t0Result.needsT1,
+        t1Reason: t0Result.t1Reason,
+      };
+    } catch (error) {
+      this.logger.error(
+        "T0分类失败",
+        error instanceof Error ? error : undefined,
+        {
+          bookmarkId: request.bookmarkId,
+        },
+      );
+
+      throw new ClassificationPipelineError(
+        `T0分类失败: ${error instanceof Error ? error.message : String(error)}`,
+        error,
+      );
+    }
+  }
+
+  /**
    * 加载用户自定义规则到 L0RuleMatcher
    */
   loadUserRules(rules: Rule[]): void {

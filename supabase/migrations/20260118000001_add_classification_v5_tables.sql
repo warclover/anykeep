@@ -121,16 +121,17 @@ COMMENT ON COLUMN classification_metrics_v5.degradation_level IS '降级级别�
 -- 索引
 -- ============================================
 
--- IVFFlat 向量索引（决策 2: lists=10，适用 <100 文件夹）
+-- HNSW 向量索引（支持高并发写入和召回）
+-- 参数: m=16 (图连接数), ef_construction=64 (构建精度)
 CREATE INDEX IF NOT EXISTS classification_folder_profiles_v5_content_embedding_idx
   ON classification_folder_profiles_v5
-  USING ivfflat (content_embedding vector_cosine_ops)
-  WITH (lists = 10);
+  USING hnsw (content_embedding vector_cosine_ops)
+  WITH (m = 16, ef_construction = 64);
 
 CREATE INDEX IF NOT EXISTS classification_folder_profiles_v5_behavior_embedding_idx
   ON classification_folder_profiles_v5
-  USING ivfflat (behavior_embedding vector_cosine_ops)
-  WITH (lists = 10);
+  USING hnsw (behavior_embedding vector_cosine_ops)
+  WITH (m = 16, ef_construction = 64);
 
 -- 常规索引
 CREATE INDEX IF NOT EXISTS classification_folder_profiles_v5_user_id_idx

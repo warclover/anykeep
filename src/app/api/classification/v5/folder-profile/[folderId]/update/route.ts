@@ -60,7 +60,7 @@ export async function POST(
     // 3. 验证文件夹所有权
     const { data: folder, error: folderError } = await supabase
       .from("folders")
-      .select("id, name, user_id")
+      .select("id, name, description, user_id")
       .eq("id", folderId)
       .eq("user_id", user.id)
       .single();
@@ -127,6 +127,8 @@ export async function POST(
     const profile = await profilerService.upsertProfile(
       user.id,
       folderId.toString(),
+      folder.name,
+      folder.description || undefined,
       bookmarkData,
       behaviors,
       stats,

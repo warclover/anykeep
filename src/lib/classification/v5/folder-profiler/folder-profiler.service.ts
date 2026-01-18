@@ -4,14 +4,35 @@
  * 文件夹画像管理服务（整合所有组件）
  */
 
-import { SupabaseClient } from '@supabase/supabase-js';
-import type { LoggerService } from '../shared/logger';
-import type { EmbeddingService } from '../shared/embedding';
-import { AlphaCalculator } from './alpha-calculator';
-import { LazyUpdater } from './lazy-updater';
-import { DualSourceBuilder, type BookmarkData, type BehaviorData } from './dual-source-builder';
-import type { FolderProfile, FolderStats, FolderProfilerConfig } from './types';
-import { FolderProfilerError } from './types';
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { LoggerService } from "../shared/logger";
+import type { EmbeddingService } from "../shared/embedding";
+import { AlphaCalculator } from "./alpha-calculator";
+import { LazyUpdater } from "./lazy-updater";
+import {
+  DualSourceBuilder,
+  type BookmarkData,
+  type BehaviorData,
+} from "./dual-source-builder";
+import type { FolderProfile, FolderStats, FolderProfilerConfig } from "./types";
+import { FolderProfilerError } from "./types";
+
+/**
+ * 数据库记录类型
+ */
+interface FolderProfileDbRecord {
+  id: number;
+  user_id: string;
+  folder_id: number;
+  content_embedding: number[];
+  behavior_embedding: number[];
+  alpha_coefficient: number;
+  last_updated_at: string;
+  bookmark_count: number;
+  needs_update: boolean;
+  avg_classification_score: number | null;
+  total_classifications: number;
+}
 
 /**
  * FolderProfiler Service 类
@@ -29,9 +50,9 @@ export class FolderProfilerService {
     logger: LoggerService,
     supabase: SupabaseClient,
     embeddingService: EmbeddingService,
-    config?: Partial<FolderProfilerConfig>
+    config?: Partial<FolderProfilerConfig>,
   ) {
-    this.logger = logger.child({ service: 'FolderProfilerService' });
+    this.logger = logger.child({ service: "FolderProfilerService" });
     this.supabase = supabase;
     this.embeddingService = embeddingService;
 
@@ -55,20 +76,26 @@ export class FolderProfilerService {
   /**
    * 获取文件夹画像
    */
-  async getProfile(userId: string, folderId: string): Promise<FolderProfile | null> {
+  async getProfile(
+    userId: string,
+    folderId: string,
+  ): Promise<FolderProfile | null> {
     const { data, error } = await this.supabase
-      .from('classification_folder_profiles_v5')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('folder_id', folderId)
+      .from("classification_folder_profiles_v5")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("folder_id", folderId)
       .single();
 
     if (error) {
-      if (error.code === 'PGRST116') {
+      if (error.code === "PGRST116") {
         // 未找到记录
         return null;
       }
-      throw new FolderProfilerError(`Failed to get profile: ${error.message}`, error);
+      throw new FolderProfilerError(
+        `Failed to get profile: ${error.message}`,
+        error,
+      );
     }
 
     return this.mapToProfile(data);
@@ -80,26 +107,35 @@ export class FolderProfilerService {
   async upsertProfile(
     userId: string,
     folderId: string,
+    folderName: string,
+    folderDescription: string | undefined,
     bookmarks: BookmarkData[],
     behaviors: BehaviorData[],
-    stats: FolderStats
+    stats: FolderStats,
   ): Promise<FolderProfile> {
-    this.logger.info('创建/更新文件夹画像', {
+    this.logger.info("创建/更新文件夹画像", {
       userId,
       folderId,
+      folderName,
       bookmarkCount: bookmarks.length,
       behaviorCount: behaviors.length,
     });
 
-    // 1. 构建双源向量
-    const vectors = await this.dualSourceBuilder.build(folderId, bookmarks, behaviors);
+    // 1. 构建双源向量(基于生命周期阶段)
+    const vectors = await this.dualSourceBuilder.build(
+      folderId,
+      folderName,
+      folderDescription,
+      bookmarks,
+      behaviors,
+    );
 
     // 2. 计算 α 系数
     const alpha = this.alphaCalculator.calculate(stats);
 
     // 3. 插入或更新数据库
     const { data, error } = await this.supabase
-      .from('classification_folder_profiles_v5')
+      .from("classification_folder_profiles_v5")
       .upsert({
         user_id: userId,
         folder_id: folderId,
@@ -114,7 +150,10 @@ export class FolderProfilerService {
       .single();
 
     if (error) {
-      throw new FolderProfilerError(`Failed to upsert profile: ${error.message}`, error);
+      throw new FolderProfilerError(
+        `Failed to upsert profile: ${error.message}`,
+        error,
+      );
     }
 
     return this.mapToProfile(data);
@@ -126,21 +165,24 @@ export class FolderProfilerService {
   async checkNeedsUpdate(
     userId: string,
     folderId: string,
-    currentBookmarkCount: number
+    currentBookmarkCount: number,
   ): Promise<boolean> {
     const profile = await this.getProfile(userId, folderId);
     if (!profile) {
       return true; // 画像不存在，需要创建
     }
 
-    const trigger = this.lazyUpdater.shouldUpdate(profile, currentBookmarkCount);
+    const trigger = this.lazyUpdater.shouldUpdate(
+      profile,
+      currentBookmarkCount,
+    );
     return trigger.shouldUpdate;
   }
 
   /**
    * 映射数据库记录到 FolderProfile
    */
-  private mapToProfile(data: any): FolderProfile {
+  private mapToProfile(data: FolderProfileDbRecord): FolderProfile {
     return {
       id: data.id,
       userId: data.user_id,

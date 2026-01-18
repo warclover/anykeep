@@ -16,6 +16,7 @@ import { VectorSearchService } from "@/lib/classification/v5/shared/vector-searc
 import { LLMService } from "@/lib/classification/v5/shared/llm";
 import { createLogger } from "@/lib/classification/v5/shared/logger";
 import type { ClassificationRequest } from "@/lib/classification/v5/classification-pipeline/types";
+import { executeT1InBackground } from "@/lib/classification/v5/t1-queue";
 
 /**
  * 分类请求体
@@ -28,6 +29,7 @@ interface ClassifyRequestBody {
   tags?: string[];
   url: string;
   content?: string; // 用于提取上下文锚点
+  optimistic?: boolean; // 是否启用Optimistic UI模式(默认false)
 }
 
 /**
@@ -107,16 +109,58 @@ export async function POST(request: NextRequest) {
     }
 
     // 6. 执行分类
-    const result = await pipeline.classify(classificationRequest);
+    let result;
+    let t1EventId: string | undefined;
 
-    logger.info("分类完成", {
-      userId: user.id,
-      bookmarkId: body.bookmarkId,
-      folderId: result.folderId,
-      confidence: result.confidence,
-      usedT1: result.usedT1,
-      totalLatencyMs: result.totalLatencyMs,
-    });
+    if (body.optimistic === true) {
+      // Optimistic UI模式：只执行L0+T0，立即返回
+      const t0Result = await pipeline.classifyT0Only(classificationRequest);
+
+      logger.info("T0分类完成（Optimistic模式）", {
+        userId: user.id,
+        bookmarkId: body.bookmarkId,
+        folderId: t0Result.folderId,
+        confidence: t0Result.confidence,
+        needsT1: t0Result.needsT1,
+        totalLatencyMs: t0Result.totalLatencyMs,
+      });
+
+      result = t0Result;
+
+      // 如果需要T1纠正，生成事件ID并启动后台任务
+      if (t0Result.needsT1) {
+        t1EventId = `t1_${user.id}_${body.bookmarkId}_${Date.now()}`;
+        logger.info("启动T1后台任务", {
+          t1EventId,
+          bookmarkId: body.bookmarkId,
+          t1Reason: t0Result.t1Reason,
+        });
+
+        // 启动后台T1任务（非阻塞）
+        executeT1InBackground(
+          { supabase, logger },
+          t1EventId,
+          user.id,
+          classificationRequest,
+          t0Result.folderId,
+          t0Result.confidence,
+        ).catch((error) => {
+          logger.error("T1后台任务启动失败", { error, t1EventId });
+        });
+      }
+    } else {
+      // 标准模式：执行完整的L0+T0+T1流程
+      result = await pipeline.classify(classificationRequest);
+
+      logger.info("分类完成", {
+        userId: user.id,
+        bookmarkId: body.bookmarkId,
+        folderId: result.folderId,
+        confidence: result.confidence,
+        usedT1: result.usedT1,
+        totalLatencyMs: result.totalLatencyMs,
+      });
+    }
 
     // 6.5. 记录分类日志到数据库
     try {
@@ -169,6 +213,9 @@ export async function POST(request: NextRequest) {
           t0: result.t0LatencyMs,
           t1: result.t1LatencyMs,
         },
+        // Optimistic UI相关字段
+        t1EventId, // 如果启用了optimistic且需要T1，则返回事件ID
+        needsT1: "needsT1" in result ? result.needsT1 : undefined,
       },
     });
   } catch (error) {
