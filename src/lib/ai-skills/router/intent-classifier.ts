@@ -961,20 +961,6 @@ export const DEFAULT_RULES: IntentRule[] = [
   // --------------------------------------------
 
   {
-    pattern: /搜索|搜|找|查找|查询/,
-    type: "query",
-    subType: "search",
-    complexity: "simple",
-    weight: 50,
-  },
-  {
-    pattern: /最近|列表|列出|显示/,
-    type: "query",
-    subType: "list",
-    complexity: "simple",
-    weight: 45,
-  },
-  {
     // Golden Dataset 增强：时间范围列表查询
     // 示例: "最近收藏"、"今天的收藏"、"本周收藏"、"近期添加的"
     pattern:

@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>研发岗位考核标准</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 40px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1600px;
+            aspect-ratio: 16 / 9;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 24px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+            padding: 30px 45px 25px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            font-size: 2.2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 4px;
+            letter-spacing: -1px;
+        }
+
+        .header .year {
+            font-size: 0.95rem;
+            color: #6b7280;
+            font-weight: 400;
+        }
+
+        .roles-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            grid-template-rows: repeat(2, 1fr);
+            gap: 16px;
+            flex: 1;
+        }
+
+        .role-card {
+            background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+            border-radius: 14px;
+            padding: 16px 18px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+            transition: all 0.3s ease;
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .role-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .role-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .role-header::before {
+            content: '';
+            width: 3px;
+            height: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 2px;
+        }
+
+        .role-title {
+            font-size: 1.15rem;
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .evaluation-section {
+            margin-bottom: 10px;
+        }
+
+        .section-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .section-title .weight {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .evaluation-items {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .evaluation-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px 8px;
+            background: rgba(102, 126, 234, 0.05);
+            border-radius: 6px;
+            font-size: 0.75rem;
+        }
+
+        .item-name {
+            color: #4b5563;
+            font-weight: 500;
+            flex: 1;
+        }
+
+        .item-weight {
+            color: #667eea;
+            font-weight: 600;
+            margin-left: 8px;
+            min-width: 35px;
+            text-align: right;
+        }
+
+        .item-source {
+            color: #9ca3af;
+            font-size: 0.7rem;
+            margin-left: 8px;
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #e5e7eb;
+            color: #9ca3af;
+            font-size: 0.8rem;
+        }
+
+        .compact-list {
+            font-size: 0.7rem;
+            color: #6b7280;
+            line-height: 1.4;
+            margin-top: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>研发岗位考核标准</h1>
+            <div class="year">2026 Performance Evaluation</div>
+        </div>
+
+        <div class="roles-grid">
+            <!-- 产品经理 -->
+            <div class="role-card">
+                <div class="role-header">
+                    <div class="role-title">产品经理</div>
+                </div>
+
+                <div class="evaluation-section">
+                    <div class="section-title">
+                        <span>项目考核</span>
+                        <span class="weight">30%</span>
+                    </div>
+                    <div class="evaluation-items">
+                        <div class="evaluation-item">
+                            <span class="item-name">项目完成情况</span>
+                            <span class="item-source">产品负责人</span>
+                        </div>
+                    </div>
+                    <div class="compact-list">
+                        • 项目整体完成情况 • 需求覆盖完整性 • 需求变更次数 • 客户反馈满意度
+                    </div>
+                </div>
+
+                <div class="evaluation-section">
+                    <div class="section-title">
+                        <span>工作内容考核</span>
+                        <span class="weight">60%</span>
+                    </div>
+                    <div class="evaluation-items">
+                        <div class="evaluation-item">
+                            <span class="item-name">PRD文档输出</span>
+                            <span class="item-weight">20%</span>
+                            <span class="item-source">慕客及云平台</span>
+                        </div>
+                        <div class="evaluation-item">
+                            <span class="item-name">需求澄清</span>
+                            <span class="item-weight">20%</span>
+                            <span class="item-source">产品负责人</span>
+                        </div>
+                        <div class="evaluation-item">
+                            <span class="item-name">协作能力</span>
+                            <span class="item-weight">20%</span>
+                            <span class="item-source">产品负责人</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="evaluation-section">
+                    <div class="section-title">
+                        <span>公司制度</span>
+                        <span class="weight">10%</span>
+                    </div>
+                    <div class="evaluation-items">
+                        <div class="evaluation-item">
+                            <span class="item-name">周报 / 上班时间 / 工作积极性</span>
+                            <span class="item-source">半月报 & 考勤</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 测试工程师 -->
+            <div class="role-card">
+                <div class="role-header">
+                    <div class="role-title">测试工程师</div>
+                </div>
+
+                <div class="evaluation-section">
+                    <div class="section-title">
+                        <span>项目考核</span>
+                        <span class="weight">30%</span>
+                    </div>
+                    <div class="evaluation-items">
+                        <div class="evaluation-item">
+                            <span class="item-name">项目完成情况</span>
+                            <span class="item-source">产品负责人</span>
+                        </div>
+                    </div>
+                    <div class="compact-list">
+                        • 测试任务按时完成 • 测试效率 • 现场问题对接及时性与解决效果
+                    </div>
+                </div>
+
+                <div class="evaluation-section">
+                    <div class="section-title">
+                        <span>工作内容考核</span>
+                        <span class="weight">60%</span>
+                    </div>
+                    <div class="evaluation-items">
+                        <div class="evaluation-item">
+                            <span class="item-name">测试文档输出</span>
+                            <span class="item-weight">20%</span>
+                            <span class="item-source">慕客及云平台</span>
+                        </div>
+                        <div class="evaluation-item">
+                            <span class="item-name">缺陷排除</span>
+                            <span class="item-weight">20%</span>
+                            <span class="item-source">半月报</span>
+                        </div>
+                        <div class="evaluation-item">
+                            <span class="item-name">协作能力</span>
+                            <span class="item-weight">20%</span>
+                            <span class="item-source">产品负责人</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="evaluation-section">
+                    <div class="section-title">
+                        <span>公司制度</span>
+                        <span class="weight">10%</span>
+                    </div>
+                    <div class="evaluation-items">
+                        <div class="evaluation-item">
+                            <span class="item-name">周报 / 上班时间 / 工作积极性</span>
+                            <span class="item-source">半月报 & 考勤</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 后端开发 -->
+            <div class="role-card">
+                <div class="role-header">
+                    <div class="role-title">后端开发</div>
+                </div>
+
+                <div class="evaluation-section">
+                    <div class="section-title">
+                        <span>核心任务</span>
+                        <span class="weight">70%</span>
+                    </div>
+                    <div class="evaluation-items">
+                        <div class="evaluation-item">
+                            <span class="item-name">业务逻辑接口开发</span>
+                            <span class="item-source">功能清单</span>
+                        </div>
+                        <div class="evaluation-item">
+                            <span class="item-name">架构/数据库优化</span>
+                            <span class="item-source">功能清单</span>
+                        </div>
+                        <div class="evaluation-item">
+                            <span class="item-name">与前端对接</span>
+                            <span class="item-source">功能清单</span>
+                        </div>
+                        <div class="evaluation-item">
+                            <span class="item-name">方案输出</span>
+                            <span class="item-source">半月报</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="evaluation-section">
+                    <div class="section-title">
+                        <span>常规任务</span>
+                        <span class="weight">20%</span>
+                    </div>
+                    <div class="evaluation-items">
+                        <div class="evaluation-item">
+                            <span class="item-name">临时开发任务 / 运维任务</span>
+                            <span class="item-source">半月报</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="evaluation-section">
+                    <div class="section-title">
+                        <span>公司制度</span>
+                        <span class="weight">10%</span>
+                    </div>
+                    <div class="evaluation-items">
+                        <div class="evaluation-item">
+                            <span class="item-name">周报 / 上班时间 / 工作积极性</span>
+                            <span class="item-source">半月报 & 考勤</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 前端开发 -->
+            <div class="role-card">
+                <div class="role-header">
+                    <div class="role-title">前端开发</div>
+                </div>
+
+                <div class="evaluation-section">
+                    <div class="section-title">
+                        <span>核心任务</span>
+                        <span class="weight">70%</span>
+                    </div>
+                    <div class="evaluation-items">
+                        <div class="evaluation-item">
+                            <span class="item-name">页面开发</span>
+                            <span class="item-source">功能清单</span>
+                        </div>
+                        <div class="evaluation-item">
+                            <span class="item-name">前端架构优化</span>
+                            <span class="item-source">功能清单</span>
+                        </div>
+                        <div class="evaluation-item">
+                            <span class="item-name">与后端对接</span>
+                            <span class="item-source">功能清单</span>
+                        </div>
+                        <div class="evaluation-item">
+                            <span class="item-name">方案输出</span>
+                            <span class="item-source">半月报</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="evaluation-section">
+                    <div class="section-title">
+                        <span>常规任务</span>
+                        <span class="weight">20%</span>
+                    </div>
+                    <div class="evaluation-items">
+                        <div class="evaluation-item">
+                            <span class="item-name">临时开发任务 / 运维任务</span>
+                            <span class="item-source">半月报</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="evaluation-section">
+                    <div class="section-title">
+                        <span>公司制度</span>
+                        <span class="weight">10%</span>
+                    </div>
+                    <div class="evaluation-items">
+                        <div class="evaluation-item">
+                            <span class="item-name">周报 / 上班时间 / 工作积极性</span>
+                            <span class="item-source">半月报 & 考勤</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            © 2026 绩效考核标准 | 公平公正，激励成长
+        </div>
+    </div>
+</body>
+</html>

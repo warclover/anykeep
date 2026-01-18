@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2026年度关键里程碑</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 40px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1600px;
+            aspect-ratio: 16 / 9;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 24px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+            padding: 30px 45px 25px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .header h1 {
+            font-size: 2.2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 4px;
+            letter-spacing: -1px;
+        }
+
+        .header .year {
+            font-size: 0.95rem;
+            color: #6b7280;
+            font-weight: 400;
+        }
+
+        .milestones-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            grid-template-rows: repeat(2, 1fr);
+            gap: 20px;
+            flex: 1;
+        }
+
+        .milestone-card {
+            background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+            transition: all 0.3s ease;
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .milestone-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .milestone-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+        }
+
+        .milestone-number {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 45px;
+            height: 45px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.2rem;
+            font-weight: 700;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .milestone-date {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 12px;
+            padding-right: 55px;
+        }
+
+        .milestone-event {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 15px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        .milestone-event .label {
+            font-size: 0.8rem;
+            color: #9ca3af;
+            font-weight: 500;
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        .milestone-decision {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .decision-label {
+            font-size: 0.8rem;
+            color: #9ca3af;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .decision-content {
+            background: linear-gradient(135deg, #f0f4ff 0%, #f9fafb 100%);
+            border-radius: 10px;
+            padding: 14px 16px;
+            color: #4b5563;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            flex: 1;
+            border-left: 3px solid #667eea;
+        }
+
+        .decision-highlight {
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #e5e7eb;
+            color: #9ca3af;
+            font-size: 0.8rem;
+        }
+
+        /* 特殊样式 - 最终里程碑 */
+        .milestone-card.final {
+            background: linear-gradient(135deg, #fff5f5 0%, #fef5f5 100%);
+            border: 2px solid #fecaca;
+        }
+
+        .milestone-card.final::before {
+            background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%);
+        }
+
+        .milestone-card.final .milestone-number {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        }
+
+        .milestone-card.final .milestone-date {
+            color: #dc2626;
+        }
+
+        .milestone-card.final .decision-content {
+            background: linear-gradient(135deg, #fef2f2 0%, #fff5f5 100%);
+            border-left-color: #ef4444;
+        }
+
+        .milestone-card.final .decision-highlight {
+            color: #dc2626;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>关键里程碑</h1>
+            <div class="year">2026 Key Milestones</div>
+        </div>
+
+        <div class="milestones-grid">
+            <!-- 第一季度 -->
+            <div class="milestone-card">
+                <div class="milestone-number">Q2</div>
+                <div class="milestone-date">2026年4月30日</div>
+                <div class="milestone-event">
+                    <span class="label">里程碑事件</span>
+                    终端服务
+                </div>
+                <div class="milestone-decision">
+                    <div class="decision-label">经营决策事项</div>
+                    <div class="decision-content">
+                        实现<span class="decision-highlight">巴伦或仕益跑通</span>（原始记录到报告模板）
+                    </div>
+                </div>
+            </div>
+
+            <!-- 第二季度 -->
+            <div class="milestone-card">
+                <div class="milestone-number">Q2</div>
+                <div class="milestone-date">2026年6月30日</div>
+                <div class="milestone-event">
+                    <span class="label">里程碑事件</span>
+                    是否开始裁员
+                </div>
+                <div class="milestone-decision">
+                    <div class="decision-label">经营决策事项</div>
+                    <div class="decision-content">
+                        根据<span class="decision-highlight">半年完成业绩、团队产出、综合交付效率</span>等评估综合决策
+                    </div>
+                </div>
+            </div>
+
+            <!-- 第三季度 -->
+            <div class="milestone-card">
+                <div class="milestone-number">Q3</div>
+                <div class="milestone-date">2026年9月30日</div>
+                <div class="milestone-event">
+                    <span class="label">里程碑事项</span>
+                    是否规模裁员
+                </div>
+                <div class="milestone-decision">
+                    <div class="decision-label">经营决策事项</div>
+                    <div class="decision-content">
+                        根据<span class="decision-highlight">半年完成业绩、团队产出、综合交付效率</span>等评估综合决策
+                    </div>
+                </div>
+            </div>
+
+            <!-- 第四季度 - 最终里程碑 -->
+            <div class="milestone-card final">
+                <div class="milestone-number">Q4</div>
+                <div class="milestone-date">2026年12月30日</div>
+                <div class="milestone-event">
+                    <span class="label">里程碑事件</span>
+                    年度目标达成
+                </div>
+                <div class="milestone-decision">
+                    <div class="decision-label">经营决策事项</div>
+                    <div class="decision-content">
+                        <span class="decision-highlight">营收≥500万，最低实现盈亏平衡，项目≥6个</span><br>
+                        根据当前完成业绩、团队产出、综合交付效率等评估；<br>
+                        决策是否应该<span class="decision-highlight">降级为部门或关闭公司</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            © 2026 战略里程碑 | 关键节点，审慎决策
+        </div>
+    </div>
+</body>
+</html>

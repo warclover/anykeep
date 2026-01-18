@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2026年度预算分配</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 40px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1600px;
+            aspect-ratio: 16 / 9;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 24px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+            padding: 30px 45px 25px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            font-size: 2.2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 4px;
+            letter-spacing: -1px;
+        }
+
+        .header .year {
+            font-size: 0.95rem;
+            color: #6b7280;
+            font-weight: 400;
+        }
+
+        .total-budget {
+            text-align: center;
+            margin-bottom: 25px;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 16px;
+            box-shadow: 0 8px 30px rgba(102, 126, 234, 0.3);
+        }
+
+        .total-budget .label {
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 8px;
+        }
+
+        .total-budget .amount {
+            font-size: 3rem;
+            font-weight: 700;
+            color: white;
+            letter-spacing: -1px;
+        }
+
+        .budget-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            flex: 1;
+        }
+
+        .budget-card {
+            background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+            transition: all 0.3s ease;
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .budget-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+        }
+
+        .budget-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+        }
+
+        .budget-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #1f2937;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .budget-title::before {
+            content: '';
+            width: 4px;
+            height: 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 2px;
+        }
+
+        .percentage-badge {
+            padding: 6px 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 20px;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .budget-amount {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 15px;
+            letter-spacing: -1px;
+        }
+
+        .budget-bar {
+            width: 100%;
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+
+        .budget-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            border-radius: 4px;
+            transition: width 1s ease-out;
+        }
+
+        .budget-description {
+            color: #6b7280;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            flex: 1;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #e5e7eb;
+            color: #9ca3af;
+            font-size: 0.8rem;
+        }
+
+        @keyframes fillBar {
+            from {
+                width: 0;
+            }
+        }
+
+        .budget-bar-fill {
+            animation: fillBar 1.5s ease-out;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>预算分配</h1>
+            <div class="year">2026 Budget Allocation</div>
+        </div>
+
+        <div class="total-budget">
+            <div class="label">年度总预算</div>
+            <div class="amount">¥400万元</div>
+        </div>
+
+        <div class="budget-grid">
+            <!-- 人力成本 -->
+            <div class="budget-card">
+                <div class="budget-card-header">
+                    <div class="budget-title">人力成本</div>
+                    <div class="percentage-badge">85%</div>
+                </div>
+                <div class="budget-amount">¥340万</div>
+                <div class="budget-bar">
+                    <div class="budget-bar-fill" style="width: 85%"></div>
+                </div>
+                <div class="budget-description">
+                    20人薪资、社保、福利（含销售提成预估）
+                </div>
+            </div>
+
+            <!-- 第三方服务成本 -->
+            <div class="budget-card">
+                <div class="budget-card-header">
+                    <div class="budget-title">第三方服务成本</div>
+                    <div class="percentage-badge">3%</div>
+                </div>
+                <div class="budget-amount">¥12万</div>
+                <div class="budget-bar">
+                    <div class="budget-bar-fill" style="width: 3%"></div>
+                </div>
+                <div class="budget-description">
+                    研发工具、AI订阅、第三方接口
+                </div>
+            </div>
+
+            <!-- 运营成本 -->
+            <div class="budget-card">
+                <div class="budget-card-header">
+                    <div class="budget-title">运营成本</div>
+                    <div class="percentage-badge">6.25%</div>
+                </div>
+                <div class="budget-amount">¥25万</div>
+                <div class="budget-bar">
+                    <div class="budget-bar-fill" style="width: 6.25%"></div>
+                </div>
+                <div class="budget-description">
+                    房租水电、差旅、资质申报、行政耗材、培训
+                </div>
+            </div>
+
+            <!-- 其他成本 -->
+            <div class="budget-card">
+                <div class="budget-card-header">
+                    <div class="budget-title">其他成本</div>
+                    <div class="percentage-badge">5.75%</div>
+                </div>
+                <div class="budget-amount">¥23万</div>
+                <div class="budget-bar">
+                    <div class="budget-bar-fill" style="width: 5.75%"></div>
+                </div>
+                <div class="budget-description">
+                    其他费用
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            © 2026 年度预算规划 | 精准控制，高效配置
+        </div>
+    </div>
+</body>
+</html>

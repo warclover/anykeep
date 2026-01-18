@@ -2122,6 +2122,83 @@ export type Database = {
           },
         ];
       };
+      classification_metrics_v5: {
+        Row: {
+          id: string;
+          user_id: string;
+          bookmark_id: number;
+          folder_id: number | null;
+          stage: string;
+          latency_ms: number;
+          confidence: number;
+          embedding_tokens: number | null;
+          llm_tokens: number | null;
+          is_correct: boolean | null;
+          user_corrected_to_folder_id: number | null;
+          degradation_level: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          bookmark_id: number;
+          folder_id?: number | null;
+          stage: string;
+          latency_ms: number;
+          confidence: number;
+          embedding_tokens?: number | null;
+          llm_tokens?: number | null;
+          is_correct?: boolean | null;
+          user_corrected_to_folder_id?: number | null;
+          degradation_level?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          bookmark_id?: number;
+          folder_id?: number | null;
+          stage?: string;
+          latency_ms?: number;
+          confidence?: number;
+          embedding_tokens?: number | null;
+          llm_tokens?: number | null;
+          is_correct?: boolean | null;
+          user_corrected_to_folder_id?: number | null;
+          degradation_level?: number;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "classification_metrics_v5_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "classification_metrics_v5_bookmark_id_fkey";
+            columns: ["bookmark_id"];
+            isOneToOne: false;
+            referencedRelation: "bookmarks";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "classification_metrics_v5_folder_id_fkey";
+            columns: ["folder_id"];
+            isOneToOne: false;
+            referencedRelation: "folders";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "classification_metrics_v5_user_corrected_to_folder_id_fkey";
+            columns: ["user_corrected_to_folder_id"];
+            isOneToOne: false;
+            referencedRelation: "folders";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       classification_strategy_config: {
         Row: {
           ai_config: Json;
@@ -2261,6 +2338,92 @@ export type Database = {
           {
             foreignKeyName: "classification_suggestions_suggested_folder_id_fkey";
             columns: ["suggested_folder_id"];
+            isOneToOne: false;
+            referencedRelation: "folders";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      classification_t1_queue_v5: {
+        Row: {
+          id: string;
+          user_id: string;
+          bookmark_id: number;
+          t0_folder_id: number | null;
+          t0_confidence: number;
+          t0_timestamp: string;
+          trigger_reason: string;
+          status: string;
+          t1_folder_id: number | null;
+          t1_confidence: number | null;
+          t1_reasoning: string | null;
+          t1_timestamp: string | null;
+          error_message: string | null;
+          retry_count: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          bookmark_id: number;
+          t0_folder_id?: number | null;
+          t0_confidence: number;
+          t0_timestamp?: string;
+          trigger_reason: string;
+          status?: string;
+          t1_folder_id?: number | null;
+          t1_confidence?: number | null;
+          t1_reasoning?: string | null;
+          t1_timestamp?: string | null;
+          error_message?: string | null;
+          retry_count?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          bookmark_id?: number;
+          t0_folder_id?: number | null;
+          t0_confidence?: number;
+          t0_timestamp?: string;
+          trigger_reason?: string;
+          status?: string;
+          t1_folder_id?: number | null;
+          t1_confidence?: number | null;
+          t1_reasoning?: string | null;
+          t1_timestamp?: string | null;
+          error_message?: string | null;
+          retry_count?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "classification_t1_queue_v5_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "classification_t1_queue_v5_bookmark_id_fkey";
+            columns: ["bookmark_id"];
+            isOneToOne: false;
+            referencedRelation: "bookmarks";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "classification_t1_queue_v5_t0_folder_id_fkey";
+            columns: ["t0_folder_id"];
+            isOneToOne: false;
+            referencedRelation: "folders";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "classification_t1_queue_v5_t1_folder_id_fkey";
+            columns: ["t1_folder_id"];
             isOneToOne: false;
             referencedRelation: "folders";
             referencedColumns: ["id"];

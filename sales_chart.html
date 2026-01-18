@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>年度销售额趋势 (2021-2025)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .container {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 900px;
+            width: 90%;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .summary {
+            text-align: center;
+            color: #666;
+            margin-bottom: 20px;
+        }
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        .stat-card {
+            background: #f8f9fa;
+            padding: 15px 25px;
+            border-radius: 8px;
+            text-align: center;
+            margin: 5px;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2196F3;
+        }
+        .stat-label {
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📈 年度销售额趋势</h1>
+        <p class="summary">2021-2025 销售数据可视化</p>
+        <canvas id="salesChart"></canvas>
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-value">¥3,883,007</div>
+                <div class="stat-label">2025年销售额</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">+54.9%</div>
+                <div class="stat-label">同比增长(2024→2025)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">¥8,202,405</div>
+                <div class="stat-label">累计销售总额</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const ctx = document.getElementById('salesChart').getContext('2d');
+
+        // 销售数据
+        const salesData = [0, 717628.31, 1095061.95, 2506707.96, 3883006.67];
+
+        // 计算增长率
+        function getGrowthRate(index) {
+            if (index === 0) return null;
+            const prev = salesData[index - 1];
+            const curr = salesData[index];
+            if (prev === 0) return null; // 无法计算
+            return ((curr - prev) / prev * 100).toFixed(1);
+        }
+
+        const data = {
+            labels: ['2021', '2022', '2023', '2024', '2025'],
+            datasets: [{
+                label: '销售额 (元)',
+                data: salesData,
+                backgroundColor: [
+                    'rgba(224, 224, 224, 0.8)',
+                    'rgba(76, 175, 80, 0.8)',
+                    'rgba(33, 150, 243, 0.8)',
+                    'rgba(255, 152, 0, 0.8)',
+                    'rgba(244, 67, 54, 0.8)'
+                ],
+                borderColor: [
+                    'rgb(189, 189, 189)',
+                    'rgb(76, 175, 80)',
+                    'rgb(33, 150, 243)',
+                    'rgb(255, 152, 0)',
+                    'rgb(244, 67, 54)'
+                ],
+                borderWidth: 2,
+                borderRadius: 8,
+            }]
+        };
+
+        const config = {
+            type: 'bar',
+            data: data,
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return '销售额: ¥' + context.raw.toLocaleString('zh-CN', {minimumFractionDigits: 2});
+                            }
+                        }
+                    },
+                    datalabels: {
+                        anchor: 'end',
+                        align: 'top',
+                        offset: 4,
+                        color: '#333',
+                        font: {
+                            weight: 'bold',
+                            size: 11
+                        },
+                        formatter: function(value, context) {
+                            const index = context.dataIndex;
+                            let label = '';
+
+                            // 金额
+                            if (value === 0) {
+                                label = '¥0';
+                            } else {
+                                label = '¥' + (value / 10000).toFixed(1) + '万';
+                            }
+
+                            // 增长率
+                            const growth = getGrowthRate(index);
+                            if (growth !== null) {
+                                label += '\n↑' + growth + '%';
+                            }
+
+                            return label;
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        suggestedMax: 5000000,
+                        ticks: {
+                            callback: function(value) {
+                                return '¥' + (value / 10000).toFixed(0) + '万';
+                            }
+                        },
+                        grid: {
+                            color: 'rgba(0,0,0,0.1)'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        };
+
+        Chart.register(ChartDataLabels);
+        new Chart(ctx, config);
+    </script>
+</body>
+</html>

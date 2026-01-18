@@ -173,6 +173,17 @@ export async function initializeFolderNameProfile(
   userId: string,
 ): Promise<void> {
   try {
+    // V1.1: Generate smart tags for better cold-start matching
+    const { generateFolderTags } = await import(
+      "@/lib/classification/utils/folder-tag-generator"
+    );
+    const smartTags = generateFolderTags(folderName);
+
+    logger.info(
+      { folderId, folderName, tags: smartTags.slice(0, 5), totalTags: smartTags.length },
+      "FolderProfileManager: Generated smart tags",
+    );
+
     // Generate embedding for folder name
     const { generateEmbedding } = await import(
       "@/lib/utils/embedding-generator"
@@ -193,23 +204,53 @@ export async function initializeFolderNameProfile(
     // Format embedding as PostgreSQL vector string
     const embeddingString = `[${nameEmbedding.join(",")}]`;
 
+    // V1.1: Try to call enhanced version with smart tags
     const { error } = await (supabase.rpc as CallableFunction)(
-      "update_folder_name_embedding",
+      "update_folder_name_embedding_v2",
       {
         p_folder_id: folderId,
         p_name_embedding: embeddingString,
+        p_smart_tags: smartTags,
       },
     );
 
     if (error) {
-      logger.error(
-        { error, folderId, folderName },
-        "FolderProfileManager: Failed to update name embedding",
-      );
+      // Fallback to v1 if v2 doesn't exist
+      if (error.message?.includes("function") && error.message?.includes("does not exist")) {
+        logger.warn(
+          { folderId },
+          "FolderProfileManager: v2 function not found, falling back to v1",
+        );
+
+        const { error: fallbackError } = await (supabase.rpc as CallableFunction)(
+          "update_folder_name_embedding",
+          {
+            p_folder_id: folderId,
+            p_name_embedding: embeddingString,
+          },
+        );
+
+        if (fallbackError) {
+          logger.error(
+            { error: fallbackError, folderId, folderName },
+            "FolderProfileManager: Failed to update name embedding (fallback)",
+          );
+        } else {
+          logger.info(
+            { folderId, folderName },
+            "FolderProfileManager: Profile initialized (v1 fallback)",
+          );
+        }
+      } else {
+        logger.error(
+          { error, folderId, folderName },
+          "FolderProfileManager: Failed to update name embedding",
+        );
+      }
     } else {
       logger.info(
-        { folderId, folderName },
-        "FolderProfileManager: Profile initialized/updated successfully",
+        { folderId, folderName, tagsCount: smartTags.length },
+        "FolderProfileManager: Profile initialized with smart tags (v1.1)",
       );
     }
   } catch (error) {

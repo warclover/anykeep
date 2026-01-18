@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2026年度经营目标</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 40px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1600px;
+            aspect-ratio: 16 / 9;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 24px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+            padding: 30px 45px 25px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            font-size: 2.2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 4px;
+            letter-spacing: -1px;
+        }
+
+        .header .year {
+            font-size: 0.95rem;
+            color: #6b7280;
+            font-weight: 400;
+        }
+
+        .goals-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 16px;
+            flex: 1;
+        }
+
+        .goal-card {
+            background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+            border-radius: 14px;
+            padding: 18px 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+            transition: all 0.3s ease;
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .goal-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .goal-card.wide {
+            grid-column: span 2;
+        }
+
+        .goal-card.compact {
+            padding: 14px 20px;
+        }
+
+        .goal-card.compact .metric-item {
+            padding: 6px 0;
+        }
+
+        .goal-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .goal-title::before {
+            content: '';
+            width: 3px;
+            height: 18px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 2px;
+        }
+
+        .metric-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .metric-item:last-child {
+            border-bottom: none;
+        }
+
+        .metric-label {
+            font-size: 0.85rem;
+            color: #4b5563;
+            font-weight: 500;
+        }
+
+        .metric-value {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .metric-value.highlight {
+            color: #667eea;
+        }
+
+        .metric-time {
+            font-size: 0.75rem;
+            color: #9ca3af;
+            margin-left: 8px;
+        }
+
+        .detail-section {
+            background: linear-gradient(135deg, #f0f4ff 0%, #f9fafb 100%);
+            border-radius: 10px;
+            padding: 12px 14px;
+            margin-top: 10px;
+            flex: 1;
+        }
+
+        .detail-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            font-size: 0.8rem;
+        }
+
+        .detail-item:first-child {
+            padding-top: 0;
+        }
+
+        .detail-label {
+            color: #6b7280;
+        }
+
+        .detail-value {
+            font-weight: 600;
+            color: #374151;
+            font-size: 0.8rem;
+        }
+
+        .tag {
+            display: inline-block;
+            padding: 3px 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
+            font-size: 0.7rem;
+            font-weight: 500;
+            margin-left: 6px;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #e5e7eb;
+            color: #9ca3af;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 1200px) {
+            .goals-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>年度经营目标</h1>
+            <div class="year">2026 Business Goals</div>
+        </div>
+
+        <div class="goals-grid">
+            <!-- 营收目标 -->
+            <div class="goal-card compact">
+                <div class="goal-title">营收目标</div>
+                <div class="metric-item">
+                    <span class="metric-label">年度营收</span>
+                    <span>
+                        <span class="metric-value highlight">¥500万元</span>
+                        <span class="metric-time">12月</span>
+                    </span>
+                </div>
+            </div>
+
+            <!-- 利润目标 -->
+            <div class="goal-card compact">
+                <div class="goal-title">利润目标</div>
+                <div class="metric-item">
+                    <span class="metric-label">年度利润</span>
+                    <span>
+                        <span class="metric-value highlight">¥10万元</span>
+                        <span class="metric-time">12月</span>
+                    </span>
+                </div>
+            </div>
+
+            <!-- 回款目标 -->
+            <div class="goal-card compact">
+                <div class="goal-title">回款目标</div>
+                <div class="metric-item">
+                    <span class="metric-label">年度回款</span>
+                    <span>
+                        <span class="metric-value highlight">300万元</span>
+                        <span class="tag">60%</span>
+                        <span class="metric-time">12月</span>
+                    </span>
+                </div>
+            </div>
+
+            <!-- 现金流目标 -->
+            <div class="goal-card compact">
+                <div class="goal-title">现金流目标</div>
+                <div class="metric-item">
+                    <span class="metric-label">总开支</span>
+                    <span class="metric-value">< ¥450万</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">现金流</span>
+                    <span>
+                        <span class="metric-value">-¥150万</span>
+                        <span class="metric-time">12月</span>
+                    </span>
+                </div>
+            </div>
+
+            <!-- 客户目标 -->
+            <div class="goal-card wide">
+                <div class="goal-title">客户目标</div>
+                <div class="metric-item">
+                    <span class="metric-label">项目数量</span>
+                    <span>
+                        <span class="metric-value highlight">8-10个</span>
+                        <span class="metric-time">12月</span>
+                    </span>
+                </div>
+
+                <div class="detail-section">
+                    <div class="detail-item">
+                        <span class="detail-label">续约 - 浦镇三期</span>
+                        <span class="detail-value">¥50万 <span class="metric-time">持续</span></span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">潜在 - 储能</span>
+                        <span class="detail-value">¥100万 <span class="metric-time">12月</span></span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">潜在 - 物联网服务</span>
+                        <span class="detail-value">¥50万 <span class="metric-time">12月</span></span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">潜在 - 佛山质监局</span>
+                        <span class="detail-value">¥50万 <span class="metric-time">12月</span></span>
+                    </div>
+                    <div class="detail-item" style="border-top: 2px solid #667eea; margin-top: 6px; padding-top: 8px;">
+                        <span class="detail-label" style="font-weight: 600; color: #374151;">待发掘客户合计</span>
+                        <span class="detail-value" style="color: #667eea; font-size: 0.9rem;">¥250万 <span class="metric-time">12月</span></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 交付效率 -->
+            <div class="goal-card">
+                <div class="goal-title">交付效率</div>
+                <div class="metric-item">
+                    <span class="metric-label">中小型项目</span>
+                    <span class="metric-value">≤60天 <span class="tag">-30%</span></span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">大型项目</span>
+                    <span class="metric-value">≤120天 <span class="tag">-100%</span></span>
+                </div>
+            </div>
+
+            <!-- 并发能力 -->
+            <div class="goal-card compact">
+                <div class="goal-title">并发能力</div>
+                <div class="metric-item">
+                    <span class="metric-label">并发项目数</span>
+                    <span class="metric-value highlight">4个 <span class="tag">+100%</span></span>
+                </div>
+            </div>
+
+            <!-- 产品目标 -->
+            <div class="goal-card">
+                <div class="goal-title">产品目标</div>
+                <div class="metric-item">
+                    <span class="metric-label">终端服务</span>
+                    <span>
+                        <span class="metric-value">仕益/巴伦</span>
+                        <span class="metric-time">5月</span>
+                    </span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">交付优化</span>
+                    <span>
+                        <span class="metric-value">≤35天 <span class="tag">-20%</span></span>
+                        <span class="metric-time">Q3</span>
+                    </span>
+                </div>
+            </div>
+
+            <!-- 团队目标 -->
+            <div class="goal-card">
+                <div class="goal-title">团队目标</div>
+                <div class="metric-item">
+                    <span class="metric-label">团队规模</span>
+                    <span class="metric-value">18人 <span class="tag">当前17</span></span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">留存率</span>
+                    <span>
+                        <span class="metric-value highlight">100%</span>
+                        <span class="metric-time">持续</span>
+                    </span>
+                </div>
+                <div class="detail-section">
+                    <div class="detail-item">
+                        <span class="detail-label">需补充</span>
+                        <span class="detail-value">专家 1人</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            © 2026 年度经营规划 | 奋力拼搏，共创辉煌
+        </div>
+    </div>
+</body>
+</html>

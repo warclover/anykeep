@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>项目合同数据可视化仪表盘</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Microsoft YaHei', 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ed 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .dashboard {
+            width: 100%;
+            max-width: 1600px;
+            aspect-ratio: 16 / 9;
+            display: flex;
+            flex-direction: column;
+            background: #fff;
+            border-radius: 20px;
+            padding: 24px;
+            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+        }
+        .header { text-align: center; margin-bottom: 20px; flex-shrink: 0; }
+        .header h1 {
+            font-size: 26px;
+            margin-bottom: 6px;
+            background: linear-gradient(90deg, #2563eb, #7c3aed);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .header p { color: #6b7280; font-size: 13px; }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 20px;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .left-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .stat-card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 16px 20px;
+            border: 1px solid #e5e7eb;
+            transition: transform 0.3s, box-shadow 0.3s;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+        .stat-card:hover {
+            transform: translateX(5px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+        }
+        .stat-card .top { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+        .stat-card .icon { font-size: 28px; }
+        .stat-card .label { font-size: 13px; color: #6b7280; }
+        .stat-card .value { font-size: 22px; font-weight: bold; }
+        .stat-card .sub { font-size: 11px; color: #9ca3af; margin-top: 4px; }
+        .stat-card.blue .value { color: #2563eb; }
+        .stat-card.green .value { color: #059669; }
+        .stat-card.yellow .value { color: #d97706; }
+        .stat-card.red .value { color: #dc2626; }
+
+        .right-panel {
+            display: grid;
+            grid-template-rows: auto 1fr;
+            gap: 16px;
+            min-height: 0;
+        }
+
+        .charts-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+        }
+        .chart-card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 16px;
+            border: 1px solid #e5e7eb;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+        .chart-card h3 {
+            font-size: 14px;
+            margin-bottom: 12px;
+            color: #374151;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+        .chart-container { flex: 1; position: relative; min-height: 0; }
+
+        .table-card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 16px;
+            border: 1px solid #e5e7eb;
+            overflow: auto;
+            min-height: 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+        .table-card h3 { font-size: 14px; margin-bottom: 12px; color: #374151; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        th {
+            background: #f8fafc;
+            color: #475569;
+            padding: 10px 8px;
+            text-align: left;
+            font-weight: 600;
+            white-space: nowrap;
+            position: sticky;
+            top: 0;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        td {
+            padding: 10px 8px;
+            border-bottom: 1px solid #f1f5f9;
+            color: #334155;
+            white-space: nowrap;
+        }
+        tr:hover td { background: #f8fafc; }
+        .status { padding: 3px 8px; border-radius: 20px; font-size: 11px; font-weight: 500; }
+        .status.closed { background: #dcfce7; color: #166534; }
+        .status.accepted { background: #dbeafe; color: #1e40af; }
+        .status.preparing { background: #fef3c7; color: #92400e; }
+        .amount { font-family: Consolas, monospace; }
+        .amount.positive { color: #059669; }
+        .amount.negative { color: #dc2626; }
+
+        @media (max-width: 1200px) {
+            .dashboard { aspect-ratio: auto; min-height: 100vh; }
+            .main-content { grid-template-columns: 1fr; }
+            .left-panel { flex-direction: row; flex-wrap: wrap; }
+            .stat-card { flex: 1; min-width: 200px; }
+            .charts-row { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <div class="header">
+            <h1>📊 2025年项目合同数据仪表盘</h1>
+            <p>数据更新时间：2025年12月 | 共 8 个项目</p>
+        </div>
+
+        <div class="main-content">
+            <div class="left-panel">
+                <div class="stat-card blue">
+                    <div class="top">
+                        <div class="icon">💰</div>
+                        <div class="label">合同总金额</div>
+                    </div>
+                    <div class="value">¥3,776,590</div>
+                    <div class="sub">8 个项目</div>
+                </div>
+                <div class="stat-card green">
+                    <div class="top">
+                        <div class="icon">✅</div>
+                        <div class="label">已收款金额</div>
+                    </div>
+                    <div class="value">¥2,171,590</div>
+                    <div class="sub">回款率 57.5%</div>
+                </div>
+                <div class="stat-card yellow">
+                    <div class="top">
+                        <div class="icon">⏳</div>
+                        <div class="label">应收账款</div>
+                    </div>
+                    <div class="value">¥1,605,000</div>
+                    <div class="sub">待回款 2 笔</div>
+                </div>
+                <div class="stat-card red">
+                    <div class="top">
+                        <div class="icon">🛒</div>
+                        <div class="label">采购成本</div>
+                    </div>
+                    <div class="value">¥137,355</div>
+                    <div class="sub">成本率 3.6%</div>
+                </div>
+            </div>
+
+            <div class="right-panel">
+                <div class="charts-row">
+                    <div class="chart-card">
+                        <h3>📊 项目合同金额</h3>
+                        <div class="chart-container"><canvas id="amountChart"></canvas></div>
+                    </div>
+                    <div class="chart-card">
+                        <h3>🥧 收款状态分布</h3>
+                        <div class="chart-container"><canvas id="paymentChart"></canvas></div>
+                    </div>
+                    <div class="chart-card">
+                        <h3>👥 客户金额分布</h3>
+                        <div class="chart-container"><canvas id="customerChart"></canvas></div>
+                    </div>
+                </div>
+
+                <div class="table-card">
+                    <h3>📋 项目明细列表</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>合同时间</th>
+                                <th>客户名称</th>
+                                <th>项目代码</th>
+                                <th>合同金额</th>
+                                <th>已开发票</th>
+                                <th>已收款</th>
+                                <th>应收账款</th>
+                                <th>采购成本</th>
+                                <th>采购未付</th>
+                                <th>状态</th>
+                            </tr>
+                        </thead>
+                        <tbody id="projectTable"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const projects = [
+            { date: '2025/5/9', customer: '湖北一顺信息技术有限公司', code: 'HNYS01', amount: 200000, invoiced: 200000, received: 200000, receivable: 0, status: 'CLOSED', cost: 0, costPaid: 0, costUnpaid: 0 },
+            { date: '2025/7/10', customer: '源网数据(广东)有限公司', code: 'CSGST334', amount: 850000, invoiced: 850000, received: 850000, receivable: 0, status: '备货中', cost: 122775.85, costPaid: 121275.85, costUnpaid: 1500 },
+            { date: '2025/7/9', customer: '中国电力科学研究院有限公司武汉分院', code: 'WO+EPRI-WH101', amount: 15790, invoiced: 15790, received: 15790, receivable: 0, status: 'CLOSED', cost: 0, costPaid: 0, costUnpaid: 0 },
+            { date: '2025/10/30', customer: '深圳市电联通科技有限公司', code: 'CRRCNJ04', amount: 770000, invoiced: 770000, received: 770000, receivable: 0, status: '已验收', cost: 14579.20, costPaid: 7329.20, costUnpaid: 7250 },
+            { date: '2025/11/27', customer: '深圳市电联通科技有限公司', code: '杭州西电', amount: 250000, invoiced: 250000, received: 250000, receivable: 0, status: '备货中', cost: 0, costPaid: 0, costUnpaid: 0 },
+            { date: '2025/11/1', customer: '中国电力科学研究院有限公司武汉分院', code: 'WO-EPRI-WH-2025040', amount: 40800, invoiced: 40800, received: 40800, receivable: 0, status: 'CLOSED', cost: 0, costPaid: 0, costUnpaid: 0 },
+            { date: '2025/12/29', customer: '甘特云科技（武汉）有限公司', code: '中特农机', amount: 300000, invoiced: 300000, received: 0, receivable: 300000, status: '备货中', cost: 0, costPaid: 0, costUnpaid: 0 },
+            { date: '2025/12/29', customer: '源网数据(广东)有限公司', code: '广东信息新能源', amount: 1350000, invoiced: 1350000, received: 45000, receivable: 1305000, status: '备货中', cost: 0, costPaid: 0, costUnpaid: 0 }
+        ];
+
+        function formatMoney(value) {
+            return '¥' + value.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function shortName(name) {
+            return name.length > 12 ? name.substring(0, 10) + '...' : name;
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('projectTable');
+            tbody.innerHTML = projects.map(p => {
+                let statusClass = 'preparing';
+                if (p.status === 'CLOSED') statusClass = 'closed';
+                if (p.status === '已验收') statusClass = 'accepted';
+                return '<tr>' +
+                    '<td>' + p.date + '</td>' +
+                    '<td title="' + p.customer + '">' + shortName(p.customer) + '</td>' +
+                    '<td>' + p.code + '</td>' +
+                    '<td class="amount">' + formatMoney(p.amount) + '</td>' +
+                    '<td class="amount">' + formatMoney(p.invoiced) + '</td>' +
+                    '<td class="amount positive">' + formatMoney(p.received) + '</td>' +
+                    '<td class="amount ' + (p.receivable > 0 ? 'negative' : '') + '">' + formatMoney(p.receivable) + '</td>' +
+                    '<td class="amount">' + formatMoney(p.cost) + '</td>' +
+                    '<td class="amount ' + (p.costUnpaid > 0 ? 'negative' : '') + '">' + formatMoney(p.costUnpaid) + '</td>' +
+                    '<td><span class="status ' + statusClass + '">' + p.status + '</span></td>' +
+                '</tr>';
+            }).join('');
+        }
+
+        Chart.register(ChartDataLabels);
+
+        // 图表1: 项目合同金额
+        new Chart(document.getElementById('amountChart'), {
+            type: 'bar',
+            data: {
+                labels: projects.map(p => p.code.length > 6 ? p.code.substring(0,6) + '..' : p.code),
+                datasets: [
+                    { label: '合同金额', data: projects.map(p => p.amount), backgroundColor: 'rgba(37, 99, 235, 0.8)', borderRadius: 4 }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    datalabels: {
+                        anchor: 'end',
+                        align: 'top',
+                        color: '#475569',
+                        font: { size: 10, weight: 'bold' },
+                        formatter: v => (v/10000).toFixed(0) + '万'
+                    }
+                },
+                scales: {
+                    x: { ticks: { color: '#64748b', maxRotation: 45, font: { size: 10 } }, grid: { display: false } },
+                    y: { ticks: { color: '#64748b', callback: v => (v/10000).toFixed(0) + '万', font: { size: 10 } }, grid: { color: 'rgba(0,0,0,0.06)' }, suggestedMax: 1600000 }
+                }
+            }
+        });
+
+        // 图表2: 收款状态分布
+        const totalReceived = projects.reduce((s, p) => s + p.received, 0);
+        const totalReceivable = projects.reduce((s, p) => s + p.receivable, 0);
+        new Chart(document.getElementById('paymentChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['已收款', '应收账款'],
+                datasets: [{ data: [totalReceived, totalReceivable], backgroundColor: ['rgba(5, 150, 105, 0.85)', 'rgba(217, 119, 6, 0.85)'], borderWidth: 0 }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '55%',
+                plugins: {
+                    legend: { position: 'bottom', labels: { color: '#475569', padding: 12, font: { size: 11 } } },
+                    datalabels: {
+                        color: '#fff',
+                        font: { weight: 'bold', size: 13 },
+                        formatter: (v, ctx) => {
+                            const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                            return ((v / total) * 100).toFixed(1) + '%';
+                        }
+                    }
+                }
+            }
+        });
+
+        // 图表3: 客户合同金额分布
+        const customerData = {};
+        projects.forEach(p => {
+            const name = shortName(p.customer);
+            customerData[name] = (customerData[name] || 0) + p.amount;
+        });
+        new Chart(document.getElementById('customerChart'), {
+            type: 'pie',
+            data: {
+                labels: Object.keys(customerData),
+                datasets: [{
+                    data: Object.values(customerData),
+                    backgroundColor: ['rgba(37, 99, 235, 0.85)', 'rgba(5, 150, 105, 0.85)', 'rgba(217, 119, 6, 0.85)', 'rgba(124, 58, 237, 0.85)', 'rgba(220, 38, 38, 0.85)'],
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom', labels: { color: '#475569', padding: 8, font: { size: 10 } } },
+                    datalabels: { color: '#fff', font: { weight: 'bold', size: 11 }, formatter: v => (v/10000).toFixed(0) + '万' }
+                }
+            }
+        });
+
+        renderTable();
+    </script>
+</body>
+</html>

@@ -1,0 +1,380 @@
+PASS src/lib/ai-agent/tools/messages/__tests__/message-tools.test.ts
+{"level":"warn","time":"2026-01-14T10:20:41.018Z","namespace":"feature-flag-registry","warnings":0,"errors":7,"msg":"Feature Flags 验证发现问题"}
+PASS src/lib/ai-agent/tools/wechat-article/__tests__/get-wechat-article-stats.tool.test.ts
+PASS src/lib/ai-agent/config/__tests__/feature-flag-registry.test.ts
+PASS src/lib/ai-agent/tools/snapshot/__tests__/compare-snapshots.tool.test.ts
+{"level":"error","time":"2026-01-14T10:20:41.020Z","namespace":"feature-flag-registry","msg":"[ENABLE_PERSONA_INFERENCE] Flag \"ENABLE_PERSONA_INFERENCE\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.020Z","namespace":"feature-flag-registry","msg":"[ENABLE_PERSONA_PROMPTS] Flag \"ENABLE_PERSONA_PROMPTS\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.020Z","namespace":"feature-flag-registry","msg":"[ENABLE_PERSONA_INTENT_BOOST] Flag \"ENABLE_PERSONA_INTENT_BOOST\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.020Z","namespace":"feature-flag-registry","msg":"[ENABLE_PM_PERSONA] Flag \"ENABLE_PM_PERSONA\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.020Z","namespace":"feature-flag-registry","msg":"[ENABLE_CONSULTANT_PERSONA] Flag \"ENABLE_CONSULTANT_PERSONA\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.020Z","namespace":"feature-flag-registry","msg":"[ENABLE_TEACHER_PERSONA] Flag \"ENABLE_TEACHER_PERSONA\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.020Z","namespace":"feature-flag-registry","msg":"[ENABLE_SLOW_THINKING_VISIBLE] Flag \"ENABLE_SLOW_THINKING_VISIBLE\" 依赖 \"ENABLE_SLOW_THINKING\"，但后者未启用"}
+{"level":"warn","time":"2026-01-14T10:20:41.022Z","namespace":"feature-flag-registry","warnings":0,"errors":7,"msg":"Feature Flags 验证发现问题"}
+{"level":"error","time":"2026-01-14T10:20:41.022Z","namespace":"feature-flag-registry","msg":"[ENABLE_PERSONA_INFERENCE] Flag \"ENABLE_PERSONA_INFERENCE\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.022Z","namespace":"feature-flag-registry","msg":"[ENABLE_PERSONA_PROMPTS] Flag \"ENABLE_PERSONA_PROMPTS\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.022Z","namespace":"feature-flag-registry","msg":"[ENABLE_PERSONA_INTENT_BOOST] Flag \"ENABLE_PERSONA_INTENT_BOOST\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.022Z","namespace":"feature-flag-registry","msg":"[ENABLE_PM_PERSONA] Flag \"ENABLE_PM_PERSONA\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.022Z","namespace":"feature-flag-registry","msg":"[ENABLE_CONSULTANT_PERSONA] Flag \"ENABLE_CONSULTANT_PERSONA\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.022Z","namespace":"feature-flag-registry","msg":"[ENABLE_TEACHER_PERSONA] Flag \"ENABLE_TEACHER_PERSONA\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.022Z","namespace":"feature-flag-registry","msg":"[ENABLE_SLOW_THINKING_VISIBLE] Flag \"ENABLE_SLOW_THINKING_VISIBLE\" 依赖 \"ENABLE_SLOW_THINKING\"，但后者未启用"}
+{"level":"warn","time":"2026-01-14T10:20:41.023Z","namespace":"feature-flag-registry","warnings":0,"errors":7,"msg":"Feature Flags 验证发现问题"}
+{"level":"error","time":"2026-01-14T10:20:41.023Z","namespace":"feature-flag-registry","msg":"[ENABLE_PERSONA_INFERENCE] Flag \"ENABLE_PERSONA_INFERENCE\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.023Z","namespace":"feature-flag-registry","msg":"[ENABLE_PERSONA_PROMPTS] Flag \"ENABLE_PERSONA_PROMPTS\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.023Z","namespace":"feature-flag-registry","msg":"[ENABLE_PERSONA_INTENT_BOOST] Flag \"ENABLE_PERSONA_INTENT_BOOST\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.023Z","namespace":"feature-flag-registry","msg":"[ENABLE_PM_PERSONA] Flag \"ENABLE_PM_PERSONA\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.023Z","namespace":"feature-flag-registry","msg":"[ENABLE_CONSULTANT_PERSONA] Flag \"ENABLE_CONSULTANT_PERSONA\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.023Z","namespace":"feature-flag-registry","msg":"[ENABLE_TEACHER_PERSONA] Flag \"ENABLE_TEACHER_PERSONA\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.023Z","namespace":"feature-flag-registry","msg":"[ENABLE_SLOW_THINKING_VISIBLE] Flag \"ENABLE_SLOW_THINKING_VISIBLE\" 依赖 \"ENABLE_SLOW_THINKING\"，但后者未启用"}
+{"level":"warn","time":"2026-01-14T10:20:41.024Z","namespace":"feature-flag-registry","warnings":0,"errors":7,"msg":"Feature Flags 验证发现问题"}
+{"level":"error","time":"2026-01-14T10:20:41.024Z","namespace":"feature-flag-registry","msg":"[ENABLE_PERSONA_INFERENCE] Flag \"ENABLE_PERSONA_INFERENCE\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.024Z","namespace":"feature-flag-registry","msg":"[ENABLE_PERSONA_PROMPTS] Flag \"ENABLE_PERSONA_PROMPTS\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.024Z","namespace":"feature-flag-registry","msg":"[ENABLE_PERSONA_INTENT_BOOST] Flag \"ENABLE_PERSONA_INTENT_BOOST\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.024Z","namespace":"feature-flag-registry","msg":"[ENABLE_PM_PERSONA] Flag \"ENABLE_PM_PERSONA\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.024Z","namespace":"feature-flag-registry","msg":"[ENABLE_CONSULTANT_PERSONA] Flag \"ENABLE_CONSULTANT_PERSONA\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.024Z","namespace":"feature-flag-registry","msg":"[ENABLE_TEACHER_PERSONA] Flag \"ENABLE_TEACHER_PERSONA\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.024Z","namespace":"feature-flag-registry","msg":"[ENABLE_SLOW_THINKING_VISIBLE] Flag \"ENABLE_SLOW_THINKING_VISIBLE\" 依赖 \"ENABLE_SLOW_THINKING\"，但后者未启用"}
+{"level":"warn","time":"2026-01-14T10:20:41.024Z","namespace":"feature-flag-registry","warnings":0,"errors":7,"msg":"Feature Flags 验证发现问题"}
+{"level":"error","time":"2026-01-14T10:20:41.024Z","namespace":"feature-flag-registry","msg":"[ENABLE_PERSONA_INFERENCE] Flag \"ENABLE_PERSONA_INFERENCE\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.024Z","namespace":"feature-flag-registry","msg":"[ENABLE_PERSONA_PROMPTS] Flag \"ENABLE_PERSONA_PROMPTS\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.024Z","namespace":"feature-flag-registry","msg":"[ENABLE_PERSONA_INTENT_BOOST] Flag \"ENABLE_PERSONA_INTENT_BOOST\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.024Z","namespace":"feature-flag-registry","msg":"[ENABLE_PM_PERSONA] Flag \"ENABLE_PM_PERSONA\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.024Z","namespace":"feature-flag-registry","msg":"[ENABLE_CONSULTANT_PERSONA] Flag \"ENABLE_CONSULTANT_PERSONA\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.024Z","namespace":"feature-flag-registry","msg":"[ENABLE_TEACHER_PERSONA] Flag \"ENABLE_TEACHER_PERSONA\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.024Z","namespace":"feature-flag-registry","msg":"[ENABLE_SLOW_THINKING_VISIBLE] Flag \"ENABLE_SLOW_THINKING_VISIBLE\" 依赖 \"ENABLE_SLOW_THINKING\"，但后者未启用"}
+{"level":"warn","time":"2026-01-14T10:20:41.024Z","namespace":"feature-flag-registry","warnings":0,"errors":7,"msg":"Feature Flags 验证发现问题"}
+{"level":"error","time":"2026-01-14T10:20:41.024Z","namespace":"feature-flag-registry","msg":"[ENABLE_PERSONA_INFERENCE] Flag \"ENABLE_PERSONA_INFERENCE\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.024Z","namespace":"feature-flag-registry","msg":"[ENABLE_PERSONA_PROMPTS] Flag \"ENABLE_PERSONA_PROMPTS\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.024Z","namespace":"feature-flag-registry","msg":"[ENABLE_PERSONA_INTENT_BOOST] Flag \"ENABLE_PERSONA_INTENT_BOOST\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.024Z","namespace":"feature-flag-registry","msg":"[ENABLE_PM_PERSONA] Flag \"ENABLE_PM_PERSONA\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.025Z","namespace":"feature-flag-registry","msg":"[ENABLE_CONSULTANT_PERSONA] Flag \"ENABLE_CONSULTANT_PERSONA\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.025Z","namespace":"feature-flag-registry","msg":"[ENABLE_TEACHER_PERSONA] Flag \"ENABLE_TEACHER_PERSONA\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.025Z","namespace":"feature-flag-registry","msg":"[ENABLE_SLOW_THINKING_VISIBLE] Flag \"ENABLE_SLOW_THINKING_VISIBLE\" 依赖 \"ENABLE_SLOW_THINKING\"，但后者未启用"}
+{"level":"warn","time":"2026-01-14T10:20:41.025Z","namespace":"feature-flag-registry","warnings":0,"errors":7,"msg":"Feature Flags 验证发现问题"}
+{"level":"error","time":"2026-01-14T10:20:41.025Z","namespace":"feature-flag-registry","msg":"[ENABLE_PERSONA_INFERENCE] Flag \"ENABLE_PERSONA_INFERENCE\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.025Z","namespace":"feature-flag-registry","msg":"[ENABLE_PERSONA_PROMPTS] Flag \"ENABLE_PERSONA_PROMPTS\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.025Z","namespace":"feature-flag-registry","msg":"[ENABLE_PERSONA_INTENT_BOOST] Flag \"ENABLE_PERSONA_INTENT_BOOST\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.025Z","namespace":"feature-flag-registry","msg":"[ENABLE_PM_PERSONA] Flag \"ENABLE_PM_PERSONA\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.025Z","namespace":"feature-flag-registry","msg":"[ENABLE_CONSULTANT_PERSONA] Flag \"ENABLE_CONSULTANT_PERSONA\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.025Z","namespace":"feature-flag-registry","msg":"[ENABLE_TEACHER_PERSONA] Flag \"ENABLE_TEACHER_PERSONA\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.025Z","namespace":"feature-flag-registry","msg":"[ENABLE_SLOW_THINKING_VISIBLE] Flag \"ENABLE_SLOW_THINKING_VISIBLE\" 依赖 \"ENABLE_SLOW_THINKING\"，但后者未启用"}
+{"level":"warn","time":"2026-01-14T10:20:41.034Z","namespace":"feature-flag-registry","warnings":0,"errors":7,"msg":"Feature Flags 验证发现问题"}
+{"level":"error","time":"2026-01-14T10:20:41.034Z","namespace":"feature-flag-registry","msg":"[ENABLE_PERSONA_INFERENCE] Flag \"ENABLE_PERSONA_INFERENCE\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.034Z","namespace":"feature-flag-registry","msg":"[ENABLE_PERSONA_PROMPTS] Flag \"ENABLE_PERSONA_PROMPTS\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.034Z","namespace":"feature-flag-registry","msg":"[ENABLE_PERSONA_INTENT_BOOST] Flag \"ENABLE_PERSONA_INTENT_BOOST\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.034Z","namespace":"feature-flag-registry","msg":"[ENABLE_PM_PERSONA] Flag \"ENABLE_PM_PERSONA\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.034Z","namespace":"feature-flag-registry","msg":"[ENABLE_CONSULTANT_PERSONA] Flag \"ENABLE_CONSULTANT_PERSONA\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.034Z","namespace":"feature-flag-registry","msg":"[ENABLE_TEACHER_PERSONA] Flag \"ENABLE_TEACHER_PERSONA\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.034Z","namespace":"feature-flag-registry","msg":"[ENABLE_SLOW_THINKING_VISIBLE] Flag \"ENABLE_SLOW_THINKING_VISIBLE\" 依赖 \"ENABLE_SLOW_THINKING\"，但后者未启用"}
+{"level":"warn","time":"2026-01-14T10:20:41.035Z","namespace":"feature-flag-registry","warnings":0,"errors":7,"msg":"Feature Flags 验证发现问题"}
+{"level":"error","time":"2026-01-14T10:20:41.035Z","namespace":"feature-flag-registry","msg":"[ENABLE_PERSONA_INFERENCE] Flag \"ENABLE_PERSONA_INFERENCE\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.035Z","namespace":"feature-flag-registry","msg":"[ENABLE_PERSONA_PROMPTS] Flag \"ENABLE_PERSONA_PROMPTS\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.035Z","namespace":"feature-flag-registry","msg":"[ENABLE_PERSONA_INTENT_BOOST] Flag \"ENABLE_PERSONA_INTENT_BOOST\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.035Z","namespace":"feature-flag-registry","msg":"[ENABLE_PM_PERSONA] Flag \"ENABLE_PM_PERSONA\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.035Z","namespace":"feature-flag-registry","msg":"[ENABLE_CONSULTANT_PERSONA] Flag \"ENABLE_CONSULTANT_PERSONA\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.035Z","namespace":"feature-flag-registry","msg":"[ENABLE_TEACHER_PERSONA] Flag \"ENABLE_TEACHER_PERSONA\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.035Z","namespace":"feature-flag-registry","msg":"[ENABLE_SLOW_THINKING_VISIBLE] Flag \"ENABLE_SLOW_THINKING_VISIBLE\" 依赖 \"ENABLE_SLOW_THINKING\"，但后者未启用"}
+{"level":"warn","time":"2026-01-14T10:20:41.037Z","namespace":"feature-flag-registry","warnings":0,"errors":7,"msg":"Feature Flags 验证发现问题"}
+{"level":"error","time":"2026-01-14T10:20:41.037Z","namespace":"feature-flag-registry","msg":"[ENABLE_PERSONA_INFERENCE] Flag \"ENABLE_PERSONA_INFERENCE\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.037Z","namespace":"feature-flag-registry","msg":"[ENABLE_PERSONA_PROMPTS] Flag \"ENABLE_PERSONA_PROMPTS\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.037Z","namespace":"feature-flag-registry","msg":"[ENABLE_PERSONA_INTENT_BOOST] Flag \"ENABLE_PERSONA_INTENT_BOOST\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.037Z","namespace":"feature-flag-registry","msg":"[ENABLE_PM_PERSONA] Flag \"ENABLE_PM_PERSONA\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.037Z","namespace":"feature-flag-registry","msg":"[ENABLE_CONSULTANT_PERSONA] Flag \"ENABLE_CONSULTANT_PERSONA\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.037Z","namespace":"feature-flag-registry","msg":"[ENABLE_TEACHER_PERSONA] Flag \"ENABLE_TEACHER_PERSONA\" 依赖 \"ENABLE_MULTI_PERSONA\"，但后者未启用"}
+{"level":"error","time":"2026-01-14T10:20:41.037Z","namespace":"feature-flag-registry","msg":"[ENABLE_SLOW_THINKING_VISIBLE] Flag \"ENABLE_SLOW_THINKING_VISIBLE\" 依赖 \"ENABLE_SLOW_THINKING\"，但后者未启用"}
+PASS src/lib/ai-agent/tools/folder/__tests__/folder-tools.test.ts
+PASS src/lib/ai-agent/tools/md-collection/__tests__/md-collection-tools.test.ts
+PASS src/lib/ai-agent/tools/bookmark/__tests__/bookmark-tools.test.ts
+FAIL src/lib/ai-agent/proactive-briefing/__tests__/utils.test.ts
+  ● generateInsightId › should include type in the ID
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected substring: "insight_pattern_detected_"
+    Received string:    "05615274-69e7-416f-8e05-510217a17016"
+
+    [0m [90m 119 |[39m   it([32m"should include type in the ID"[39m[33m,[39m () [33m=>[39m {
+     [90m 120 |[39m     [36mconst[39m id [33m=[39m generateInsightId([32m"pattern_detected"[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 121 |[39m     expect(id)[33m.[39mtoContain([32m"insight_pattern_detected_"[39m)[33m;[39m
+     [90m     |[39m                [31m[1m^[22m[39m
+     [90m 122 |[39m   })[33m;[39m
+     [90m 123 |[39m
+     [90m 124 |[39m   it([32m"should have proper format with timestamp"[39m[33m,[39m () [33m=>[39m {[0m
+
+      at Object.toContain (src/lib/ai-agent/proactive-briefing/__tests__/utils.test.ts:121:16)
+
+  ● generateInsightId › should have proper format with timestamp
+
+    expect(received).toBeGreaterThanOrEqual(expected)
+
+    Expected: >= 3
+    Received:    1
+
+    [0m [90m 125 |[39m     [36mconst[39m id [33m=[39m generateInsightId([32m"recommendation"[39m)[33m;[39m
+     [90m 126 |[39m     [36mconst[39m parts [33m=[39m id[33m.[39msplit([32m"_"[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 127 |[39m     expect(parts[33m.[39mlength)[33m.[39mtoBeGreaterThanOrEqual([35m3[39m)[33m;[39m
+     [90m     |[39m                          [31m[1m^[22m[39m
+     [90m 128 |[39m     expect(parts[[35m0[39m])[33m.[39mtoBe([32m"insight"[39m)[33m;[39m
+     [90m 129 |[39m     expect(parts[[35m1[39m])[33m.[39mtoBe([32m"recommendation"[39m)[33m;[39m
+     [90m 130 |[39m   })[33m;[39m[0m
+
+      at Object.toBeGreaterThanOrEqual (src/lib/ai-agent/proactive-briefing/__tests__/utils.test.ts:127:26)
+
+  ● generateActionId › should include type in the ID
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected substring: "action_tag_untagged_"
+    Received string:    "6db30ac7-ed4e-4334-a710-2429a901c9e8"
+
+    [0m [90m 140 |[39m   it([32m"should include type in the ID"[39m[33m,[39m () [33m=>[39m {
+     [90m 141 |[39m     [36mconst[39m id [33m=[39m generateActionId([32m"tag_untagged"[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 142 |[39m     expect(id)[33m.[39mtoContain([32m"action_tag_untagged_"[39m)[33m;[39m
+     [90m     |[39m                [31m[1m^[22m[39m
+     [90m 143 |[39m   })[33m;[39m
+     [90m 144 |[39m
+     [90m 145 |[39m   it([32m"should have proper format with timestamp"[39m[33m,[39m () [33m=>[39m {[0m
+
+      at Object.toContain (src/lib/ai-agent/proactive-briefing/__tests__/utils.test.ts:142:16)
+
+  ● generateActionId › should have proper format with timestamp
+
+    expect(received).toBeGreaterThanOrEqual(expected)
+
+    Expected: >= 3
+    Received:    1
+
+    [0m [90m 146 |[39m     [36mconst[39m id [33m=[39m generateActionId([32m"review_unread"[39m)[33m;[39m
+     [90m 147 |[39m     [36mconst[39m parts [33m=[39m id[33m.[39msplit([32m"_"[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 148 |[39m     expect(parts[33m.[39mlength)[33m.[39mtoBeGreaterThanOrEqual([35m3[39m)[33m;[39m
+     [90m     |[39m                          [31m[1m^[22m[39m
+     [90m 149 |[39m     expect(parts[[35m0[39m])[33m.[39mtoBe([32m"action"[39m)[33m;[39m
+     [90m 150 |[39m   })[33m;[39m
+     [90m 151 |[39m })[33m;[39m[0m
+
+      at Object.toBeGreaterThanOrEqual (src/lib/ai-agent/proactive-briefing/__tests__/utils.test.ts:148:26)
+
+PASS src/lib/ai-agent/tools/trust-mode/__tests__/recommend-trust-mode.tool.test.ts
+PASS src/lib/ai-agent/tools/__tests__/tool-description-templates.test.ts
+PASS src/lib/ai-agent/tools/plugin-auth/__tests__/get-plugin-auth-stats.tool.test.ts
+PASS src/lib/ai-agent/tools/active-recall/__tests__/active-recall-tools.test.ts
+PASS src/lib/ai-agent/tools/query/__tests__/list-wechat-articles.tool.test.ts
+PASS src/lib/ai-agent/tools/plugin-auth/__tests__/revoke-plugin-authorization.tool.test.ts
+PASS src/lib/ai-agent/tools/knowledge-link/__tests__/get-knowledge-graph.tool.test.ts
+PASS src/lib/ai-agent/tools/__tests__/tool-result-enhancer.test.ts
+PASS src/lib/ai-agent/tools/query/__tests__/query-tools.test.ts
+PASS src/lib/ai-agent/tools/knowledge-link/__tests__/find-related-by-topic.tool.test.ts
+PASS src/lib/ai-agent/core/prompts/__tests__/response-templates.test.ts
+PASS src/lib/ai-agent/context/__tests__/enhanced-confidence.test.ts
+PASS src/lib/ai-agent/tools/__tests__/intent-tool-mapping.test.ts
+  ● Console
+
+    console.log
+      Precise mode tool reduction: 88 -> 1 (99% reduction)
+
+      at Object.log (src/lib/ai-agent/tools/__tests__/intent-tool-mapping.test.ts:234:15)
+
+    console.log
+      Standard mode tool reduction: 88 -> 7 (92% reduction)
+
+      at Object.log (src/lib/ai-agent/tools/__tests__/intent-tool-mapping.test.ts:247:15)
+
+PASS src/lib/ai-agent/core/prompts/__tests__/implicit-intent-rules.test.ts
+PASS src/lib/ai-agent/task-understanding/templates/__tests__/task-template-engine.test.ts
+PASS src/lib/ai-agent/task-understanding/undo/__tests__/undo-service.test.ts
+(node:6216) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 beforeExit listeners added to [process]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+(Use `node --trace-warnings ...` to show where the warning was created)
+PASS src/lib/ai-agent/core/__tests__/confirmation-handler.test.ts
+  ● Console
+
+    console.warn
+      A function to advance timers was called but the timers APIs are not replaced with fake timers. Call `jest.useFakeTimers()` in this test file or enable fake timers for all tests by setting 'fakeTimers': {'enableGlobally': true} in Jest configuration file.
+      Stack Trace:
+      
+          [0m [90m 231 |[39m       handler[33m.[39mstore(createTestConfirmation([32m"cf_oldest"[39m)[33m,[39m { userId[33m:[39m [32m"user-1"[39m })[33m;[39m
+           [90m 232 |[39m       [90m// 模拟时间差[39m
+          [31m[1m>[22m[39m[90m 233 |[39m       jest[33m.[39madvanceTimersByTime([35m100[39m)[33m;[39m
+           [90m     |[39m            [31m[1m^[22m[39m
+           [90m 234 |[39m       handler[33m.[39mstore(createTestConfirmation([32m"cf_newest"[39m)[33m,[39m { userId[33m:[39m [32m"user-1"[39m })[33m;[39m
+           [90m 235 |[39m
+           [90m 236 |[39m       [36mconst[39m result [33m=[39m handler[33m.[39mgetUserPendingConfirmations([32m"user-1"[39m)[33m;[39m[0m
+      
+            Error: 
+            at FakeTimers._checkFakeTimers (node_modules/@jest/fake-timers/build/modernFakeTimers.js:158:13)
+            at FakeTimers.advanceTimersByTime (node_modules/@jest/fake-timers/build/modernFakeTimers.js:93:14)
+            at Object.advanceTimersByTime (src/lib/ai-agent/core/__tests__/confirmation-handler.test.ts:233:12)
+
+    [0m [90m 231 |[39m       handler[33m.[39mstore(createTestConfirmation([32m"cf_oldest"[39m)[33m,[39m { userId[33m:[39m [32m"user-1"[39m })[33m;[39m
+     [90m 232 |[39m       [90m// 模拟时间差[39m
+    [31m[1m>[22m[39m[90m 233 |[39m       jest[33m.[39madvanceTimersByTime([35m100[39m)[33m;[39m
+     [90m     |[39m            [31m[1m^[22m[39m
+     [90m 234 |[39m       handler[33m.[39mstore(createTestConfirmation([32m"cf_newest"[39m)[33m,[39m { userId[33m:[39m [32m"user-1"[39m })[33m;[39m
+     [90m 235 |[39m
+     [90m 236 |[39m       [36mconst[39m result [33m=[39m handler[33m.[39mgetUserPendingConfirmations([32m"user-1"[39m)[33m;[39m[0m
+
+      at FakeTimers._checkFakeTimers (node_modules/@jest/fake-timers/build/modernFakeTimers.js:152:28)
+      at FakeTimers.advanceTimersByTime (node_modules/@jest/fake-timers/build/modernFakeTimers.js:93:14)
+      at Object.advanceTimersByTime (src/lib/ai-agent/core/__tests__/confirmation-handler.test.ts:233:12)
+
+PASS src/lib/ai-agent/client/__tests__/context-preprocessor.test.ts
+PASS src/lib/ai-agent/client/__tests__/fast-commands.test.ts
+PASS src/lib/ai-agent/__tests__/integration/ai-capability-upgrade.test.ts
+PASS src/lib/ai-agent/citation/__tests__/citation-indexer.test.ts
+PASS src/lib/ai-agent/tools/pending-tasks/__tests__/pending-tasks-tools.test.ts
+PASS src/lib/ai-agent/inference/__tests__/persona-inference-integration.test.ts
+{"level":"warn","time":"2026-01-14T10:20:41.742Z","provider":"deepseek","apiKeyEnv":"DEEPSEEK_API_KEY","msg":"Provider deepseek skipped: API key not found"}
+{"level":"warn","time":"2026-01-14T10:20:41.732Z","provider":"deepseek","apiKeyEnv":"DEEPSEEK_API_KEY","msg":"Provider deepseek skipped: API key not found"}
+{"level":"info","time":"2026-01-14T10:20:41.746Z","recordCount":20,"msg":"CostController: Records persisted to DB"}
+{"level":"info","time":"2026-01-14T10:20:41.758Z","recordCount":20,"msg":"CostController: Records persisted to DB"}
+{"level":"info","time":"2026-01-14T10:20:41.758Z","recordCount":20,"msg":"CostController: Records persisted to DB"}
+{"level":"info","time":"2026-01-14T10:20:41.759Z","recordCount":20,"msg":"CostController: Records persisted to DB"}
+{"level":"info","time":"2026-01-14T10:20:41.759Z","recordCount":20,"msg":"CostController: Records persisted to DB"}
+{"level":"info","time":"2026-01-14T10:20:41.751Z","userId":"e2e-pm-u...","persona":"pm","confidence":81,"signalCount":6,"msg":"[Persona] Inferred successfully"}
+{"level":"info","time":"2026-01-14T10:20:41.774Z","userId":"e2e-cons...","persona":"consultant","confidence":91,"signalCount":4,"msg":"[Persona] Inferred successfully"}
+{"level":"info","time":"2026-01-14T10:20:41.776Z","userId":"e2e-teac...","persona":"teacher","confidence":79,"signalCount":3,"msg":"[Persona] Inferred successfully"}
+{"level":"info","time":"2026-01-14T10:20:41.780Z","userId":"cache-in...","persona":"indie_dev","confidence":75,"signalCount":1,"msg":"[Persona] Inferred successfully"}
+{"level":"info","time":"2026-01-14T10:20:41.780Z","userId":"cache-in...","persona":"indie_dev","confidence":75,"signalCount":1,"msg":"[Persona] Inferred successfully"}
+{"level":"info","time":"2026-01-14T10:20:41.781Z","userId":"mixed-si...","persona":"phd","confidence":70,"signalCount":5,"msg":"[Persona] Inferred successfully"}
+{"level":"info","time":"2026-01-14T10:20:41.795Z","userId":"dominant...","persona":"phd","confidence":71,"signalCount":1,"msg":"[Persona] Inferred successfully"}
+PASS src/lib/ai-agent/__tests__/five-dimension-agent.test.ts
+PASS src/lib/ai-agent/core/__tests__/slot-injection.test.ts
+PASS src/lib/ai-agent/context/__tests__/compression-prompt.test.ts
+{"level":"warn","time":"2026-01-14T10:20:41.744Z","provider":"aliyun-bailian","apiKeyEnv":"DASHSCOPE_API_KEY","msg":"Provider aliyun-bailian skipped: API key not found"}
+{"level":"warn","time":"2026-01-14T10:20:41.745Z","provider":"openai","apiKeyEnv":"OPENAI_API_KEY","msg":"Provider openai skipped: API key not found"}
+{"level":"info","time":"2026-01-14T10:20:41.745Z","provider":"anthropic","model":"claude-3-5-sonnet-20241022","msg":"Provider initialized: anthropic"}
+{"level":"warn","time":"2026-01-14T10:20:41.753Z","provider":"aliyun-bailian","apiKeyEnv":"DASHSCOPE_API_KEY","msg":"Provider aliyun-bailian skipped: API key not found"}
+{"level":"warn","time":"2026-01-14T10:20:41.753Z","provider":"openai","apiKeyEnv":"OPENAI_API_KEY","msg":"Provider openai skipped: API key not found"}
+{"level":"info","time":"2026-01-14T10:20:41.753Z","provider":"anthropic","model":"claude-3-5-sonnet-20241022","msg":"Provider initialized: anthropic"}
+PASS src/lib/ai-agent/global-insight/__tests__/global-insight-service.test.ts
+PASS src/lib/ai-agent/tools/trust-mode/__tests__/integration.test.ts
+PASS src/lib/ai-agent/memory/__tests__/memory-prompt-builder.test.ts
+PASS src/lib/ai-agent/inference/__tests__/signal-fusion.test.ts
+PASS src/lib/ai-agent/slow-thinking/__tests__/slow-thinking-service.test.ts
+PASS src/lib/ai-agent/citation/__tests__/citation-annotator.test.ts
+PASS src/lib/ai-agent/tools/plugin-auth/__tests__/list-plugin-authorizations.tool.test.ts
+PASS src/lib/ai-agent/__tests__/knowledge-agent.test.ts
+PASS src/lib/ai-agent/proactive-briefing/__tests__/proactive-briefing-service.test.ts
+PASS src/lib/ai-agent/context/__tests__/compression-fallback.test.ts
+PASS src/lib/ai-agent/config/__tests__/persona-rollout.test.ts
+PASS src/lib/ai-agent/rerank/__tests__/dashscope-reranker.test.ts
+PASS src/lib/ai-agent/__tests__/integration/ai-secretary-e2e.test.ts
+PASS src/lib/ai-agent/preferences/rule-learning/__tests__/rule-extractor.test.ts
+PASS src/lib/ai-agent/__tests__/integration/react-citation-integration.test.ts
+PASS src/lib/ai-agent/async-analysis/__tests__/lazy-trigger.test.ts
+PASS src/lib/ai-agent/personas/inference/__tests__/integration.test.ts
+PASS src/lib/ai-agent/inference/__tests__/tag-matcher.test.ts
+PASS src/lib/ai-agent/personas/inference/__tests__/inference-engine.test.ts
+PASS src/lib/ai-agent/tools/import/__tests__/import-wechat-article.tool.test.ts
+PASS src/lib/ai-agent/async-analysis/__tests__/analyzers.test.ts
+PASS src/lib/ai-agent/tools/smart-list/__tests__/smart-list-tools.test.ts
+PASS src/lib/ai-agent/async-analysis/__tests__/async-analysis-service.test.ts
+PASS src/lib/ai-agent/tools/trust-mode/__tests__/get-trust-mode.tool.test.ts
+PASS src/lib/ai-agent/react/__tests__/react-loop-executor.test.ts
+PASS src/lib/ai-agent/rerank/__tests__/rrf-fusion.test.ts
+PASS src/lib/ai-agent/tools/plugin-auth/__tests__/revoke-all-plugin-authorizations.tool.test.ts
+PASS src/lib/ai-agent/__tests__/agent-memory.test.ts
+PASS src/lib/ai-agent/task-understanding/analyzer/__tests__/task-analyzer.test.ts
+PASS src/lib/ai-agent/slow-thinking/__tests__/prompt-builder.test.ts
+PASS src/lib/ai-agent/inference/__tests__/platform-matcher.test.ts
+PASS src/lib/ai-agent/inference/__tests__/persona-inferrer.test.ts
+PASS src/lib/ai-agent/context/__tests__/system-reminder-injector.test.ts
+{"level":"warn","time":"2026-01-14T10:20:42.414Z","conversationId":"non-existent-id","msg":"AgentMemory: Conversation not found for addMessage"}
+{"level":"info","time":"2026-01-14T10:20:42.447Z","cleanedCount":1,"remaining":0,"msg":"AgentMemory: Cleaned up expired conversations"}
+{"level":"info","time":"2026-01-14T10:20:42.458Z","userId":"pm-user-...","persona":"pm","confidence":79,"signalCount":5,"msg":"[Persona] Inferred successfully"}
+{"level":"info","time":"2026-01-14T10:20:42.502Z","userId":"consulta...","persona":"consultant","confidence":91,"signalCount":3,"msg":"[Persona] Inferred successfully"}
+{"level":"info","time":"2026-01-14T10:20:42.502Z","userId":"teacher-...","persona":"teacher","confidence":78,"signalCount":3,"msg":"[Persona] Inferred successfully"}
+{"level":"info","time":"2026-01-14T10:20:42.504Z","userId":"cache-te...","persona":"indie_dev","confidence":75,"signalCount":1,"msg":"[Persona] Inferred successfully"}
+{"level":"info","time":"2026-01-14T10:20:42.505Z","userId":"multi-pe...","persona":"phd","confidence":70,"signalCount":4,"msg":"[Persona] Inferred successfully"}
+{"level":"info","time":"2026-01-14T10:20:42.506Z","userId":"signal-t...","persona":"knowledge_blogger","confidence":83,"signalCount":1,"msg":"[Persona] Inferred successfully"}
+{"level":"info","time":"2026-01-14T10:20:42.507Z","userId":"invalida...","persona":"pm","confidence":75,"signalCount":1,"msg":"[Persona] Inferred successfully"}
+PASS src/lib/ai-agent/context/__tests__/compression-validator.test.ts
+PASS src/lib/ai-agent/citation/__tests__/citation-enricher.test.ts
+PASS src/lib/ai-agent/query/__tests__/query-rewriter.test.ts
+PASS src/lib/ai-agent/personas/__tests__/persona-prompts.test.ts
+PASS src/lib/ai-agent/citation/__tests__/citation-renderer.test.ts
+PASS src/lib/ai-agent/context/__tests__/conversation-compressor.test.ts
+PASS src/lib/ai-agent/personas/inference/__tests__/condition-matcher.test.ts
+PASS src/lib/ai-agent/tools/settings/__tests__/settings-tools.test.ts
+PASS src/lib/ai-agent/citation/__tests__/ks-citation-adapter.test.ts
+PASS src/lib/ai-agent/task-understanding/defaults/__tests__/smart-defaults-service.test.ts
+PASS src/lib/ai-agent/task-understanding/defaults/__tests__/preference-learning-service-v2.test.ts
+PASS src/lib/ai-agent/slow-thinking/__tests__/output-parser.test.ts
+PASS src/lib/ai-agent/safety/__tests__/confirmation-interceptor.test.ts
+
+Summary of all failing tests
+FAIL src/lib/ai-agent/proactive-briefing/__tests__/utils.test.ts
+  ● generateInsightId › should include type in the ID
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected substring: "insight_pattern_detected_"
+    Received string:    "05615274-69e7-416f-8e05-510217a17016"
+
+    [0m [90m 119 |[39m   it([32m"should include type in the ID"[39m[33m,[39m () [33m=>[39m {
+     [90m 120 |[39m     [36mconst[39m id [33m=[39m generateInsightId([32m"pattern_detected"[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 121 |[39m     expect(id)[33m.[39mtoContain([32m"insight_pattern_detected_"[39m)[33m;[39m
+     [90m     |[39m                [31m[1m^[22m[39m
+     [90m 122 |[39m   })[33m;[39m
+     [90m 123 |[39m
+     [90m 124 |[39m   it([32m"should have proper format with timestamp"[39m[33m,[39m () [33m=>[39m {[0m
+
+      at Object.toContain (src/lib/ai-agent/proactive-briefing/__tests__/utils.test.ts:121:16)
+
+  ● generateInsightId › should have proper format with timestamp
+
+    expect(received).toBeGreaterThanOrEqual(expected)
+
+    Expected: >= 3
+    Received:    1
+
+    [0m [90m 125 |[39m     [36mconst[39m id [33m=[39m generateInsightId([32m"recommendation"[39m)[33m;[39m
+     [90m 126 |[39m     [36mconst[39m parts [33m=[39m id[33m.[39msplit([32m"_"[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 127 |[39m     expect(parts[33m.[39mlength)[33m.[39mtoBeGreaterThanOrEqual([35m3[39m)[33m;[39m
+     [90m     |[39m                          [31m[1m^[22m[39m
+     [90m 128 |[39m     expect(parts[[35m0[39m])[33m.[39mtoBe([32m"insight"[39m)[33m;[39m
+     [90m 129 |[39m     expect(parts[[35m1[39m])[33m.[39mtoBe([32m"recommendation"[39m)[33m;[39m
+     [90m 130 |[39m   })[33m;[39m[0m
+
+      at Object.toBeGreaterThanOrEqual (src/lib/ai-agent/proactive-briefing/__tests__/utils.test.ts:127:26)
+
+  ● generateActionId › should include type in the ID
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected substring: "action_tag_untagged_"
+    Received string:    "6db30ac7-ed4e-4334-a710-2429a901c9e8"
+
+    [0m [90m 140 |[39m   it([32m"should include type in the ID"[39m[33m,[39m () [33m=>[39m {
+     [90m 141 |[39m     [36mconst[39m id [33m=[39m generateActionId([32m"tag_untagged"[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 142 |[39m     expect(id)[33m.[39mtoContain([32m"action_tag_untagged_"[39m)[33m;[39m
+     [90m     |[39m                [31m[1m^[22m[39m
+     [90m 143 |[39m   })[33m;[39m
+     [90m 144 |[39m
+     [90m 145 |[39m   it([32m"should have proper format with timestamp"[39m[33m,[39m () [33m=>[39m {[0m
+
+      at Object.toContain (src/lib/ai-agent/proactive-briefing/__tests__/utils.test.ts:142:16)
+
+  ● generateActionId › should have proper format with timestamp
+
+    expect(received).toBeGreaterThanOrEqual(expected)
+
+    Expected: >= 3
+    Received:    1
+
+    [0m [90m 146 |[39m     [36mconst[39m id [33m=[39m generateActionId([32m"review_unread"[39m)[33m;[39m
+     [90m 147 |[39m     [36mconst[39m parts [33m=[39m id[33m.[39msplit([32m"_"[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 148 |[39m     expect(parts[33m.[39mlength)[33m.[39mtoBeGreaterThanOrEqual([35m3[39m)[33m;[39m
+     [90m     |[39m                          [31m[1m^[22m[39m
+     [90m 149 |[39m     expect(parts[[35m0[39m])[33m.[39mtoBe([32m"action"[39m)[33m;[39m
+     [90m 150 |[39m   })[33m;[39m
+     [90m 151 |[39m })[33m;[39m[0m
+
+      at Object.toBeGreaterThanOrEqual (src/lib/ai-agent/proactive-briefing/__tests__/utils.test.ts:148:26)
+
+
+Test Suites: 1 failed, 79 passed, 80 total
+Tests:       4 failed, 61 skipped, 1729 passed, 1794 total
+Snapshots:   0 total
+Time:        5.163 s
+Ran all test suites matching /ai-agent/i.
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?
