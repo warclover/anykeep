@@ -205,13 +205,13 @@ export async function classifyBookmarkV2(
         "@/lib/classification/v5/rollout/feature-flag"
       );
       const { ClassificationPipelineService } = await import(
-        "@/lib/classification/v5/classification-pipeline"
+        "@/lib/classification/v5/classification-pipeline/classification-pipeline.service"
       );
       const { LoggerService } = await import(
         "@/lib/classification/v5/shared/logger"
       );
-      const { EmbeddingService } = await import(
-        "@/lib/classification/v5/shared/embedding"
+      const { DashScopeEmbeddingAdapter } = await import(
+        "@/lib/classification/v5/shared/embedding/dashscope-embedding-adapter"
       );
       const { VectorSearchService } = await import(
         "@/lib/classification/v5/shared/vector-search"
@@ -307,7 +307,7 @@ export async function classifyBookmarkV2(
       } else {
         // 使用 V5.0 ClassificationPipeline
         const loggerService = new LoggerService();
-        const embeddingService = new EmbeddingService(loggerService);
+        const embeddingService = new DashScopeEmbeddingAdapter(loggerService);
         const vectorSearchService = new VectorSearchService(loggerService, {
           supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
           supabaseServiceKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
@@ -361,23 +361,26 @@ export async function classifyBookmarkV2(
           );
         }
 
+        // V5.0 返回的置信度是 0-1 范围，需要转换为 0-100 百分比与阈值比较
+        const confidencePercent = v5Result.confidence * 100;
+
         result = {
           folderId,
           folderName: folderName ?? "",
-          confidence: v5Result.confidence,
+          confidence: confidencePercent, // 存储为百分比格式，与系统其他部分保持一致
           reason: v5Result.usedT1
             ? `T1 纠正: ${v5Result.reasoning || "LLM 推理"}`
             : "T0 快速生成",
           action:
-            v5Result.confidence >= AUTO_CLASSIFY_THRESHOLD
+            confidencePercent >= AUTO_CLASSIFY_THRESHOLD
               ? "classify"
-              : v5Result.confidence >= SUGGEST_THRESHOLD
+              : confidencePercent >= SUGGEST_THRESHOLD
                 ? "suggest"
                 : "inbox",
           scores: {
-            vectorScore: v5Result.confidence,
+            vectorScore: confidencePercent,
             historyScore: 0,
-            aiScore: v5Result.usedT1 ? v5Result.confidence : 0,
+            aiScore: v5Result.usedT1 ? confidencePercent : 0,
           },
         };
 
