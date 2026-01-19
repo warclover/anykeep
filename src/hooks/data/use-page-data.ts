@@ -216,7 +216,7 @@ export function useFoldersData() {
       const { data: recentBookmarks, error: bookmarksError } =
         (await // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (supabase.from("bookmarks") as any)
-          .select("*, folders(name)")
+          .select("*, folders!bookmarks_folder_id_fkey(name)")
           .eq("user_id", user.id)
           .is("deleted_at", null)
           .order("created_at", { ascending: false })

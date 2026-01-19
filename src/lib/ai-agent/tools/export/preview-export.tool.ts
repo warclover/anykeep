@@ -70,7 +70,7 @@ export const previewExportTool: Tool<PreviewExportParams, PreviewExportResult> =
         // 获取预览数据
         let query = supabase
           .from("bookmarks")
-          .select("*, folders(name)")
+          .select("*, folders!bookmarks_folder_id_fkey(name)")
           .eq("user_id", context.userId)
           .is("deleted_at", null)
           .not("platform", "in", '("CHROME","EDGE","FIREFOX","SAFARI")')
@@ -80,7 +80,7 @@ export const previewExportTool: Tool<PreviewExportParams, PreviewExportResult> =
         if (params.bookmarkIds?.length) {
           query = supabase
             .from("bookmarks")
-            .select("*, folders(name)")
+            .select("*, folders!bookmarks_folder_id_fkey(name)")
             .eq("user_id", context.userId)
             .is("deleted_at", null)
             .in("id", params.bookmarkIds)

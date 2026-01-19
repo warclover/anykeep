@@ -76,7 +76,9 @@ export const moveBookmarkToFolderTool: Tool<
       // 1. 获取书签信息并验证所有权
       const { data: bookmark, error: bookmarkError } = await supabase
         .from("bookmarks")
-        .select("id, title, folder_id, folders(id, name)")
+        .select(
+          "id, title, folder_id, folders!bookmarks_folder_id_fkey(id, name)",
+        )
         .eq("id", params.bookmarkId)
         .eq("user_id", context.userId)
         .is("deleted_at", null)

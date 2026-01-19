@@ -220,7 +220,7 @@ export const exportBookmarksTool: Tool<
       // 1. 构建查询获取书签
       let query = supabase
         .from("bookmarks")
-        .select("*, folders(name)")
+        .select("*, folders!bookmarks_folder_id_fkey(name)")
         .eq("user_id", context.userId)
         .is("deleted_at", null);
 
