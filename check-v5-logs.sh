@@ -1,0 +1,15 @@
+#!/bin/bash
+echo "🔍 检查 v5.0 分类日志..."
+echo ""
+echo "📋 环境变量配置:"
+grep -E "CLASSIFICATION_V(ERSION|5)" .env.local
+echo ""
+echo "📊 服务器日志中的 v5.0 相关记录:"
+echo "----------------------------------------"
+grep -i "classification v5" dev-server.log 2>/dev/null | tail -20 || echo "暂无 v5.0 日志"
+echo ""
+echo "💡 提示："
+echo "1. 服务器已启动: http://localhost:3001"
+echo "2. 请在浏览器中登录并创建一个新书签"
+echo "3. 创建书签后，v5.0 分类日志会自动出现在服务器日志中"
+echo "4. 运行此脚本查看最新日志: bash check-v5-logs.sh"

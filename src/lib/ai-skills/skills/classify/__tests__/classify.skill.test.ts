@@ -1,8 +1,9 @@
 /**
  * ClassifySkill 单元测试
  *
- * @version 1.0.0
+ * @version 1.1.0 - 支持 v5.0 分类系统
  * @since 2025-12-25
+ * @updated 2026-01-19
  */
 
 import { ClassifySkill, classifySkill } from "../classify.skill";
@@ -50,6 +51,11 @@ jest.mock(
   }),
 );
 
+// Mock classification integration (for version detection)
+jest.mock("@/lib/classification/integration", () => ({
+  getClassificationVersion: jest.fn(() => "v4.1"), // 默认使用 v4.1 进行测试
+}));
+
 // Mock logger
 jest.mock("@/lib/logger", () => ({
   logger: {
@@ -76,7 +82,7 @@ describe("ClassifySkill", () => {
     });
 
     it("should have correct version", () => {
-      expect(skill.metadata.version).toBe("1.0.0");
+      expect(skill.metadata.version).toBe("1.1.0");
     });
 
     it("should have capabilities", () => {
@@ -265,6 +271,69 @@ describe("ClassifySkill", () => {
     it("should export a singleton instance", () => {
       expect(classifySkill).toBeInstanceOf(ClassifySkill);
       expect(classifySkill.metadata.id).toBe("classify");
+    });
+  });
+
+  describe("v5.0 confidence conversion", () => {
+    const mockContext: SkillContext = {
+      userId: "test-user-id",
+      traceId: "test-trace-id",
+    };
+
+    it("should convert v5.0 confidence (0-1) to percentage (0-100)", async () => {
+      // Mock v5.0 返回 0.85 (85%)
+      const input = { title: "React 入门教程" };
+      const result = await skill.execute(input, mockContext);
+
+      expect(result.success).toBe(true);
+      if (!result.success) return;
+
+      // 验证转换后的值在合理范围
+      expect(result.data.confidence).toBeGreaterThanOrEqual(60);
+      expect(result.data.confidence).toBeLessThanOrEqual(100);
+
+      // 验证不会溢出（如果错误地二次转换）
+      expect(result.data.confidence).toBeLessThan(101);
+    });
+
+    it("should handle low confidence (< 60%) correctly", async () => {
+      // 测试低置信度场景
+      const input = { title: "未知内容" };
+      const result = await skill.execute(input, mockContext);
+
+      expect(result.success).toBe(true);
+      if (!result.success) return;
+
+      // 低置信度应该在 0-60 范围
+      expect(result.data.confidence).toBeGreaterThanOrEqual(0);
+      expect(result.data.confidence).toBeLessThanOrEqual(100);
+    });
+
+    it("should handle high confidence (>= 80%) correctly", async () => {
+      // 测试高置信度场景
+      const input = { title: "React 入门教程" };
+      const result = await skill.execute(input, mockContext);
+
+      expect(result.success).toBe(true);
+      if (!result.success) return;
+
+      // 高置信度应该触发自动分类
+      if (result.data.confidence >= 80) {
+        expect(result.data.action).toBe("classify");
+      }
+    });
+
+    it("should never return confidence > 100 (overflow detection)", async () => {
+      // 回归测试：检测置信度溢出问题（提交 af01e072 修复的问题）
+      const input = { title: "React 入门教程" };
+      const result = await skill.execute(input, mockContext);
+
+      expect(result.success).toBe(true);
+      if (!result.success) return;
+
+      // 关键断言：置信度不应该超过 100
+      expect(result.data.confidence).toBeLessThanOrEqual(100);
+      expect(result.data.confidence).not.toBeGreaterThan(100);
     });
   });
 });

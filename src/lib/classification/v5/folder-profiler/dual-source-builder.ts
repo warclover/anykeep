@@ -1,7 +1,8 @@
 /**
- * 智能分类 v5.0 - 双源向量构建器
+ * 智能分类 v5.1 - 双源向量构建器
  *
  * 从内容数据和行为数据构建双源向量
+ * v5.1 新增：离群值检测、时间衰减质心
  */
 
 import type { LoggerService } from "../shared/logger";
@@ -17,6 +18,10 @@ export interface BookmarkData {
   description?: string;
   summary?: string;
   tags?: string[];
+  /** v5.1: 创建时间（用于时间衰减质心） */
+  createdAt?: Date;
+  /** v5.1: 向量嵌入（用于离群值检测） */
+  embedding?: number[];
 }
 
 /**
@@ -35,10 +40,19 @@ export interface BehaviorData {
 export class DualSourceBuilder {
   private logger: LoggerService;
   private embeddingService: EmbeddingService;
+  /** v5.1: 是否启用去噪和时间权重 */
+  private enableV51Features: boolean;
 
-  constructor(logger: LoggerService, embeddingService: EmbeddingService) {
+  constructor(
+    logger: LoggerService,
+    embeddingService: EmbeddingService,
+    options?: { enableV51Features?: boolean },
+  ) {
     this.logger = logger.child({ service: "DualSourceBuilder" });
     this.embeddingService = embeddingService;
+    this.enableV51Features =
+      options?.enableV51Features ??
+      process.env.CLASSIFICATION_V5_1_ENABLED !== "false";
   }
 
   /**
@@ -177,18 +191,41 @@ export class DualSourceBuilder {
 
   /**
    * Stage C: 成熟期 - 滑动窗口平均(最近20个书签)
+   * v5.1: 支持去噪和时间衰减质心
    */
   private async buildStageCEmbedding(
     bookmarks: BookmarkData[],
   ): Promise<number[]> {
     this.logger.debug("使用 Stage C (成熟期) 策略", {
       bookmarkCount: bookmarks.length,
+      enableV51Features: this.enableV51Features,
     });
 
-    // 取最近20个书签(假设bookmarks已按时间排序)
-    const recentBookmarks = bookmarks.slice(-20);
+    // v5.1: 如果启用新特性，应用去噪和时间权重
+    let processedBookmarks = bookmarks;
+    if (this.enableV51Features && bookmarks.length >= 10) {
+      // 1. 去噪：剔除离群值
+      processedBookmarks = this.removeOutliers(bookmarks);
+      this.logger.debug("离群值检测完成", {
+        originalCount: bookmarks.length,
+        cleanedCount: processedBookmarks.length,
+        removedCount: bookmarks.length - processedBookmarks.length,
+      });
+    }
 
-    // 合并最近书签的文本内容
+    // 取最近20个书签(假设bookmarks已按时间排序)
+    const recentBookmarks = processedBookmarks.slice(-20);
+
+    // v5.1: 如果启用时间权重，使用加权平均
+    if (
+      this.enableV51Features &&
+      recentBookmarks.length > 0 &&
+      recentBookmarks.some((b) => b.createdAt)
+    ) {
+      return this.buildTemporalWeightedEmbedding(recentBookmarks);
+    }
+
+    // v5.0 原有逻辑：合并最近书签的文本内容
     const combinedText = recentBookmarks
       .map((b) => {
         const parts = [
@@ -204,6 +241,141 @@ export class DualSourceBuilder {
 
     const result = await this.embeddingService.generateEmbedding(combinedText);
     return result.embedding;
+  }
+
+  /**
+   * v5.1: 剔除离群值（5% 偏离质心最远的书签）
+   *
+   * 算法：
+   * 1. 计算所有书签与质心的距离
+   * 2. 排序，取后 5% 作为离群值
+   * 3. 从计算中排除离群值
+   */
+  private removeOutliers(bookmarks: BookmarkData[]): BookmarkData[] {
+    // 需要向量数据才能计算离群值
+    const bookmarksWithEmbedding = bookmarks.filter(
+      (b) => b.embedding && b.embedding.length > 0,
+    );
+
+    if (bookmarksWithEmbedding.length < 10) {
+      // 书签太少，不进行去噪
+      return bookmarks;
+    }
+
+    // 计算质心（所有书签向量的平均值）
+    const dimension = bookmarksWithEmbedding[0].embedding!.length;
+    const centroid = new Array(dimension).fill(0);
+
+    for (const bookmark of bookmarksWithEmbedding) {
+      for (let i = 0; i < dimension; i++) {
+        centroid[i] += bookmark.embedding![i];
+      }
+    }
+
+    for (let i = 0; i < dimension; i++) {
+      centroid[i] /= bookmarksWithEmbedding.length;
+    }
+
+    // 计算每个书签与质心的距离
+    const distances = bookmarksWithEmbedding.map((b) => ({
+      bookmark: b,
+      distance: this.cosineDistance(b.embedding!, centroid),
+    }));
+
+    // 排序，取后 5% 作为离群值
+    const outlierCount = Math.max(
+      1,
+      Math.floor(bookmarksWithEmbedding.length * 0.05),
+    );
+    const outliers = distances
+      .sort((a, b) => b.distance - a.distance)
+      .slice(0, outlierCount)
+      .map((d) => d.bookmark.id);
+
+    // 从计算中排除离群值
+    return bookmarks.filter((b) => !outliers.includes(b.id));
+  }
+
+  /**
+   * v5.1: 构建时间衰减质心
+   *
+   * 使用时间权重 w_i = e^(-λ * t_i)，其中 λ = 0.1（半衰期约 7 天）
+   */
+  private async buildTemporalWeightedEmbedding(
+    bookmarks: BookmarkData[],
+  ): Promise<number[]> {
+    const now = Date.now();
+    const lambda = 0.1; // 半衰期约 7 天
+
+    // 计算时间权重
+    const weights: number[] = [];
+    for (const bookmark of bookmarks) {
+      if (bookmark.createdAt) {
+        const daysAgo =
+          (now - bookmark.createdAt.getTime()) / (1000 * 60 * 60 * 24);
+        weights.push(Math.exp(-lambda * daysAgo));
+      } else {
+        // 如果没有创建时间，使用默认权重 0.5
+        weights.push(0.5);
+      }
+    }
+
+    // 归一化权重
+    const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+    const normalizedWeights = weights.map((w) => w / totalWeight);
+
+    // 为每个书签生成向量（如果需要）
+    const bookmarkVectors: number[][] = [];
+    for (const bookmark of bookmarks) {
+      if (bookmark.embedding && bookmark.embedding.length > 0) {
+        bookmarkVectors.push(bookmark.embedding);
+      } else {
+        // 如果没有向量，生成一个
+        const text = [
+          bookmark.title,
+          bookmark.description || "",
+          bookmark.summary || "",
+          ...(bookmark.tags || []),
+        ].join(" ");
+        const result = await this.embeddingService.generateEmbedding(text);
+        bookmarkVectors.push(result.embedding);
+      }
+    }
+
+    // 加权平均向量
+    const dimension = bookmarkVectors[0].length;
+    const weightedCentroid = new Array(dimension).fill(0);
+
+    for (let i = 0; i < bookmarkVectors.length; i++) {
+      const weight = normalizedWeights[i];
+      for (let j = 0; j < dimension; j++) {
+        weightedCentroid[j] += bookmarkVectors[i][j] * weight;
+      }
+    }
+
+    return weightedCentroid;
+  }
+
+  /**
+   * 计算余弦距离（1 - 余弦相似度）
+   */
+  private cosineDistance(vec1: number[], vec2: number[]): number {
+    if (vec1.length !== vec2.length) {
+      throw new Error("Vectors must have the same dimension");
+    }
+
+    let dotProduct = 0;
+    let norm1 = 0;
+    let norm2 = 0;
+
+    for (let i = 0; i < vec1.length; i++) {
+      dotProduct += vec1[i] * vec2[i];
+      norm1 += vec1[i] * vec1[i];
+      norm2 += vec2[i] * vec2[i];
+    }
+
+    const similarity = dotProduct / (Math.sqrt(norm1) * Math.sqrt(norm2));
+    return 1 - similarity; // 转换为距离
   }
 
   /**

@@ -39,7 +39,9 @@ export class EntropyReductionService {
     folderId: number,
   ): Promise<EntropyCalculationResult | null> {
     try {
-      this.logger.debug("Calculating folder entropy", { folderId: String(folderId) });
+      this.logger.debug("Calculating folder entropy", {
+        folderId: String(folderId),
+      });
 
       const { data, error } = await this.supabase.rpc(
         "calculate_folder_entropy",
@@ -83,7 +85,7 @@ export class EntropyReductionService {
       this.logger.error(
         "Failed to calculate folder entropy",
         error instanceof Error ? error : new Error(String(error)),
-        { folderId: String(folderId) }
+        { folderId: String(folderId) },
       );
       return null;
     }
@@ -140,7 +142,9 @@ export class EntropyReductionService {
       // 查询高熵文件夹
       const { data, error } = await this.supabase
         .from("folder_entropy_scores")
-        .select("folder_id, entropy_score, bookmark_count, folders(name)")
+        .select(
+          "folder_id, entropy_score, bookmark_count, folders!folder_entropy_scores_folder_id_fkey(name)",
+        )
         .eq("user_id", user.id)
         .gte("bookmark_count", minBookmarkCount)
         .gte("entropy_score", this.MEDIUM_ENTROPY_THRESHOLD)

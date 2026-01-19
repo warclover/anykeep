@@ -65,14 +65,20 @@ export class FolderProfilerService {
       alphaRange: config?.alphaRange ?? { min: 0.2, max: 0.8 },
     };
 
-    // 初始化组件
-    this.alphaCalculator = new AlphaCalculator(logger);
+    // 初始化组件（v5.1: 传递 enableV51Features 选项）
+    const enableV51Features =
+      process.env.CLASSIFICATION_V5_1_ENABLED !== "false";
+    this.alphaCalculator = new AlphaCalculator(logger, {
+      enableElasticWeighting: enableV51Features,
+    });
     this.lazyUpdater = new LazyUpdater(logger, {
       timeThresholdDays: this.config.timeThresholdDays,
       newBookmarksThreshold: this.config.newBookmarksThreshold,
       accuracyThreshold: this.config.accuracyThreshold,
     });
-    this.dualSourceBuilder = new DualSourceBuilder(logger, embeddingService);
+    this.dualSourceBuilder = new DualSourceBuilder(logger, embeddingService, {
+      enableV51Features,
+    });
   }
 
   /**
@@ -90,10 +96,18 @@ export class FolderProfilerService {
       .single();
 
     if (error) {
+      // PGRST116: 未找到记录
       if (error.code === "PGRST116") {
-        // 未找到记录
         return null;
       }
+      // PGRST301: RLS 策略拒绝访问
+      if (error.code === "PGRST301") {
+        throw new FolderProfilerError(
+          `Access denied for folder profile: ${error.message}`,
+          error,
+        );
+      }
+      // 其他错误（网络超时、权限问题等）
       throw new FolderProfilerError(
         `Failed to get profile: ${error.message}`,
         error,

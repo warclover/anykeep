@@ -69,13 +69,18 @@ export class ClassificationPipelineService {
       rrfK: config?.rrfK ?? 60,
     };
 
-    // 初始化组件
-    const hybridRetriever = new HybridRetriever(logger, vectorSearch, {
-      contentWeight: this.config.hybridWeights.content,
-      behaviorWeight: this.config.hybridWeights.behavior,
-      rrfK: this.config.rrfK,
-      topK: 5,
-    });
+    // 初始化组件（v5.1: 传递 embeddingService 用于名称护栏）
+    const hybridRetriever = new HybridRetriever(
+      logger,
+      vectorSearch,
+      {
+        contentWeight: this.config.hybridWeights.content,
+        behaviorWeight: this.config.hybridWeights.behavior,
+        rrfK: this.config.rrfK,
+        topK: 5,
+      },
+      embeddingService, // v5.1: 传递用于名称相似度计算
+    );
 
     const llmCaller = new LLMCaller(logger, llmService, {
       lowConfidenceThreshold: this.config.t0ConfidenceThreshold,
