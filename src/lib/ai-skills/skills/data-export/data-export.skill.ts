@@ -397,7 +397,7 @@ export class DataExportSkill extends OrchestrationSkill<
         created_at,
         updated_at,
         folder_id,
-        folders(name)
+        folders!bookmarks_folder_id_fkey(name)
       `,
       )
       .eq("user_id", userId)

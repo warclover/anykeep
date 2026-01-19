@@ -293,7 +293,7 @@ export class QuickActionsService {
     const { data, error } = await this.supabase
       .from("bookmarks")
       .select(
-        "id, title, url, description, user_tags, folder_id, platform, rating, folders(name)",
+        "id, title, url, description, user_tags, folder_id, platform, rating, folders!bookmarks_folder_id_fkey(name)",
       )
       .eq("id", bookmarkId)
       .eq("user_id", this.userId)

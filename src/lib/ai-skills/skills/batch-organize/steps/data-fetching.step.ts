@@ -67,7 +67,7 @@ export async function fetchBookmarks(
       ai_summary,
       folder_id,
       created_at,
-      folders(name)
+      folders!bookmarks_folder_id_fkey(name)
     `,
     )
     .eq("user_id", userId)

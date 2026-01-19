@@ -87,7 +87,7 @@ export async function tagBookmarks(
 
   const { data, error } = (await (supabase.from("bookmarks") as any)
     .select(
-      "id, title, url, description, user_tags, platform, rating, created_at, folders(name)",
+      "id, title, url, description, user_tags, platform, rating, created_at, folders!bookmarks_folder_id_fkey(name)",
     )
     .eq("user_id", userId)
     .is("deleted_at", null)

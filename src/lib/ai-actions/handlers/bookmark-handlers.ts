@@ -58,7 +58,7 @@ export async function bookmarkSearch(
 
   let queryBuilder = (supabase.from("bookmarks") as any)
     .select(
-      "id, title, url, description, user_tags, platform, rating, created_at, folders(name)",
+      "id, title, url, description, user_tags, platform, rating, created_at, folders!bookmarks_folder_id_fkey(name)",
     )
     .eq("user_id", userId)
     .is("deleted_at", null)
@@ -111,7 +111,7 @@ export async function bookmarkGet(
 
   const { data, error } = (await (supabase.from("bookmarks") as any)
     .select(
-      "id, title, url, description, user_tags, platform, rating, created_at, folders(name)",
+      "id, title, url, description, user_tags, platform, rating, created_at, folders!bookmarks_folder_id_fkey(name)",
     )
     .eq("id", id)
     .eq("user_id", userId)
@@ -169,7 +169,7 @@ export async function bookmarkList(
 
   let queryBuilder = (supabase.from("bookmarks") as any)
     .select(
-      "id, title, url, description, user_tags, platform, rating, created_at, folders(name)",
+      "id, title, url, description, user_tags, platform, rating, created_at, folders!bookmarks_folder_id_fkey(name)",
     )
     .eq("user_id", userId)
     .is("deleted_at", null)
@@ -248,7 +248,7 @@ export async function bookmarkRelated(
   const tags = currentBookmark?.user_tags || [];
   let queryBuilder = (supabase.from("bookmarks") as any)
     .select(
-      "id, title, url, description, user_tags, platform, rating, created_at, folders(name)",
+      "id, title, url, description, user_tags, platform, rating, created_at, folders!bookmarks_folder_id_fkey(name)",
     )
     .eq("user_id", userId)
     .is("deleted_at", null)

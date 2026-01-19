@@ -83,7 +83,7 @@ export async function searchBookmarksFulltext(
         content_type, user_tags, notes, created_at, updated_at,
         is_read, is_starred, is_locked, rating, status,
         ai_content_type, source_name, word_count, image_count,
-        folders(name)
+        folders!bookmarks_folder_id_fkey(name)
       `,
       )
       .eq("user_id", userId)
