@@ -248,8 +248,10 @@ export const API_CLASSIFICATION = {
   // 其他端点
   // =====================================================
 
-  /** 执行分类 */
-  classify: "/api/classification/classify",
+  /** 执行分类 - v5.0 */
+  classify: "/api/classification/v5/classify",
+  /** 执行分类 - 旧版（备用） */
+  classifyLegacy: "/api/classification/classify",
   /** 聚类确认 */
   clusterConfirm: "/api/classification/cluster-confirm",
   /** 确认列表 */
