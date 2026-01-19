@@ -44,19 +44,19 @@ async function getInboxData(): Promise<{
 
     // 获取待整理文件夹
     // 类型断言: 手动维护类型文件时需要此断言
-    const { data: inboxFolder } = await supabase
+    const { data: inboxFolder } = (await supabase
       .from("folders")
       .select("id")
       .eq("user_id", user.id)
       .eq("system_type", "INBOX")
-      .single() as unknown as { data: { id: number } | null };
+      .single()) as unknown as { data: { id: number } | null };
 
     const inboxFolderId = inboxFolder?.id || null;
 
     // 获取待整理书签（folder_id 为 null 或在待整理文件夹中）
     let bookmarksQuery = supabase
       .from("bookmarks")
-      .select("*, folders(name)")
+      .select("*, folders!bookmarks_folder_id_fkey(name)")
       .eq("user_id", user.id)
       .is("deleted_at", null)
       .eq("is_in_trash", false);

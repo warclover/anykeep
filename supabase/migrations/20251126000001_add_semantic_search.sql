@@ -5,12 +5,15 @@
 -- 日期: 2025-11-26
 -- 说明: 添加向量搜索函数和 HNSW 索引
 
+-- 确保 vector 扩展已启用
+CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA extensions;
+
 -- -------------------------------------------
 -- 1. 创建语义搜索函数
 -- -------------------------------------------
 
 CREATE OR REPLACE FUNCTION search_bookmarks_semantic(
-  query_embedding vector(1536),
+  query_embedding extensions.vector(1024),
   p_user_id uuid,
   match_threshold float DEFAULT 0.7,
   match_count int DEFAULT 20
@@ -86,7 +89,7 @@ DROP INDEX IF EXISTS idx_bookmarks_embedding_hnsw;
 -- ef_construction = 64: 构建索引时的搜索深度（值越大精度越高但构建越慢）
 CREATE INDEX idx_bookmarks_embedding_hnsw
 ON public.bookmarks
-USING hnsw (embedding vector_cosine_ops)
+USING hnsw (embedding extensions.vector_cosine_ops)
 WITH (m = 16, ef_construction = 64);
 
 -- 添加索引注释

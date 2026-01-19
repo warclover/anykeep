@@ -51,7 +51,7 @@ export const BOOKMARK_LIST_FIELDS = `
   snapshot_status,
   created_at,
   updated_at,
-  folders(name)
+  folders!bookmarks_folder_id_fkey(name)
 `.replace(/\s+/g, "");
 
 /**
@@ -60,7 +60,7 @@ export const BOOKMARK_LIST_FIELDS = `
  *
  * 包含所有字段（含 embedding），用于详情页和编辑
  */
-export const BOOKMARK_DETAIL_FIELDS = `*, folders(name)`;
+export const BOOKMARK_DETAIL_FIELDS = `*, folders!bookmarks_folder_id_fkey(name)`;
 
 /**
  * 文件夹列表查询字段

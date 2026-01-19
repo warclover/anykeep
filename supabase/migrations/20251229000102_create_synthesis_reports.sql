@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS synthesis_reports (
   full_markdown TEXT,                -- 完整 Markdown 文本
 
   -- 向量与搜索
-  embedding vector(1536),            -- 综述内容向量 (for semantic search)
+  embedding extensions.vector(1024),            -- 综述内容向量 (for semantic search)
 
   -- 状态与元数据
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'generating', 'completed', 'failed')),

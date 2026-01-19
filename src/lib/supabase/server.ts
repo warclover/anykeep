@@ -10,36 +10,14 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import type { Database } from "@/types/supabase";
 import { supabaseEnv } from "@/lib/env";
+import { createFetchWithAgent } from "./http-agent";
 
 // ============================================
 // 连接配置常量
 // ============================================
 
-/** 请求超时时间（毫秒） */
-const REQUEST_TIMEOUT = 10_000;
-
-/**
- * 创建带超时的 fetch 函数
- * @param timeout 超时时间（毫秒）
- */
-function createFetchWithTimeout(timeout: number) {
-  return async (url: RequestInfo | URL, options?: RequestInit) => {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
-
-    try {
-      const response = await fetch(url, {
-        ...options,
-        signal: controller.signal,
-        // keepalive 保持连接复用
-        keepalive: true,
-      });
-      return response;
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  };
-}
+/** 请求超时时间（毫秒）- 增加到 30 秒以应对网络波动 */
+const REQUEST_TIMEOUT = 30_000;
 
 /**
  * 创建服务端 Supabase 客户端
@@ -69,9 +47,9 @@ export async function createClient() {
         }
       },
     },
-    // V4.2.24: 性能优化配置
+    // V4.2.24: 性能优化配置（使用优化的 HTTP Agent）
     global: {
-      fetch: createFetchWithTimeout(REQUEST_TIMEOUT),
+      fetch: createFetchWithAgent(REQUEST_TIMEOUT),
     },
     auth: {
       // 服务端不需要自动刷新 token
@@ -104,9 +82,9 @@ export async function createServiceClient() {
         autoRefreshToken: false,
         persistSession: false,
       },
-      // V4.2.24: 性能优化配置
+      // V4.2.24: 性能优化配置（使用优化的 HTTP Agent）
       global: {
-        fetch: createFetchWithTimeout(REQUEST_TIMEOUT),
+        fetch: createFetchWithAgent(REQUEST_TIMEOUT),
       },
     },
   );

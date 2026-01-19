@@ -120,7 +120,7 @@ CREATE TABLE IF NOT EXISTS public.bookmarks (
     content_type VARCHAR(50) CHECK (content_type IN ('ARTICLE', 'VIDEO', 'IMAGE', 'UNKNOWN')),
 
     -- 向量搜索（pgvector）
-    embedding vector(1536),
+    embedding extensions.vector(1024),
 
     -- 状态
     status VARCHAR(20) DEFAULT 'PROCESSING' CHECK (status IN ('PROCESSING', 'COMPLETED', 'FAILED')),
@@ -204,7 +204,7 @@ CREATE INDEX IF NOT EXISTS idx_platform_auth_status ON public.platform_authoriza
 
 -- 向量语义搜索函数
 CREATE OR REPLACE FUNCTION search_bookmarks_semantic(
-    query_embedding vector(1536),
+    query_embedding extensions.vector(1024),
     search_user_id uuid,
     match_threshold float DEFAULT 0.7,
     match_count int DEFAULT 20

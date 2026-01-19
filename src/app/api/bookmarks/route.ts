@@ -889,7 +889,7 @@ export async function POST(request: NextRequest) {
       supabase.from("bookmarks") as any
     )
       .insert(bookmarkData)
-      .select("*, folders(name)")
+      .select("*, folders!bookmarks_folder_id_fkey(name)")
       .single()) as {
       data: { id: number; [key: string]: unknown } | null;
       error: { message: string } | null;
@@ -1251,24 +1251,91 @@ export async function GET(request: NextRequest) {
       durationMs: Math.round(performance.now() - queryStart),
     });
 
+    // V4.2.24: 安全的错误处理（避免序列化失败）
     if (queryError) {
-      return databaseError(BOOKMARK.LOAD_ERROR, queryError);
+      try {
+        logger.error(
+          {
+            errorMessage: queryError.message,
+            errorCode: queryError.code,
+            errorDetails: queryError.details,
+            errorHint: queryError.hint,
+          },
+          "Database query error detected",
+        );
+        return databaseError(BOOKMARK.LOAD_ERROR, queryError);
+      } catch (serializationError) {
+        logger.error(
+          {
+            error:
+              serializationError instanceof Error
+                ? serializationError.message
+                : String(serializationError),
+          },
+          "Failed to handle database error",
+        );
+        return internalError(BOOKMARK.LOAD_ERROR);
+      }
     }
 
     // 5. 返回结果（包含分页元数据）
-    // V4.2.1: 类型断言处理动态字段选择的类型推断问题
-    const bookmarkList = bookmarks as unknown as Array<{
-      id: number;
-      [key: string]: unknown;
-    }> | null;
-    const hasMore = bookmarkList && bookmarkList.length === limit;
-    const nextCursor =
-      hasMore && bookmarkList.length > 0
-        ? bookmarkList[bookmarkList.length - 1].id
-        : null;
+    // V4.2.24: 安全的数据验证（避免类型断言失败）
+    let bookmarkList: Array<{ id: number; [key: string]: unknown }> | null =
+      null;
+    let hasMore = false;
+    let nextCursor: number | null = null;
 
-    // 输出性能报告
-    const perfReport = monitor.getReport();
+    try {
+      // 验证数据结构
+      if (Array.isArray(bookmarks)) {
+        bookmarkList = bookmarks as Array<{
+          id: number;
+          [key: string]: unknown;
+        }>;
+        hasMore = bookmarkList.length === limit;
+
+        // 安全获取最后一条记录的 id
+        if (hasMore && bookmarkList.length > 0) {
+          const lastItem = bookmarkList[bookmarkList.length - 1];
+          if (lastItem && typeof lastItem.id === "number") {
+            nextCursor = lastItem.id;
+          } else {
+            logger.warn(
+              { lastItem },
+              "Last bookmark item missing valid id field",
+            );
+          }
+        }
+      } else if (bookmarks !== null) {
+        logger.warn(
+          { bookmarksType: typeof bookmarks },
+          "Unexpected bookmarks data type",
+        );
+      }
+    } catch (validationError) {
+      logger.error(
+        {
+          error:
+            validationError instanceof Error
+              ? validationError.message
+              : String(validationError),
+        },
+        "Failed to process pagination metadata",
+      );
+      // 继续执行，但分页信息为空
+    }
+
+    // 输出性能报告（添加安全保护）
+    let perfReport;
+    try {
+      perfReport = monitor.getReport();
+    } catch (error) {
+      logger.warn(
+        { error: error instanceof Error ? error.message : String(error) },
+        "Failed to get performance report",
+      );
+      perfReport = { totalDuration: 0, entries: [], slowEntries: [] };
+    }
 
     // V4.2.1: 安全计算响应大小，处理 BigInt 等不可序列化的类型
     let responseSize = 0;
@@ -1340,7 +1407,14 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    const perfReport = monitor.getReport();
+    // 安全获取性能报告
+    let perfReport;
+    try {
+      perfReport = monitor.getReport();
+    } catch {
+      perfReport = { totalDuration: 0, entries: [] };
+    }
+
     logger.error(
       {
         error: error instanceof Error ? error.message : String(error),

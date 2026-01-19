@@ -11,7 +11,11 @@ export const dynamic = "force-dynamic";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { BookmarkDetailClient } from "@/components/bookmark/bookmark-detail-client";
-import type { CustomUsageTag, ProfileSettings, Bookmark } from "@/types/supabase";
+import type {
+  CustomUsageTag,
+  ProfileSettings,
+  Bookmark,
+} from "@/types/supabase";
 
 interface BookmarkDetailPageProps {
   params: Promise<{
@@ -47,16 +51,28 @@ export default async function BookmarkDetailPage({
     // 类型断言: 手动维护类型文件时需要此断言
     supabase
       .from("bookmarks")
-      .select("*, folders(id, name, parent_id)")
+      .select("*, folders!bookmarks_folder_id_fkey(id, name, parent_id)")
       .eq("id", bookmarkId)
       .eq("user_id", user.id)
       .is("deleted_at", null)
       .single() as unknown as Promise<{
-        data: (Bookmark & { folders?: { id: number; name: string; parent_id: number | null } | null }) | null;
-        error: unknown;
-      }>,
+      data:
+        | (Bookmark & {
+            folders?: {
+              id: number;
+              name: string;
+              parent_id: number | null;
+            } | null;
+          })
+        | null;
+      error: unknown;
+    }>,
     // 类型断言: 手动维护类型文件时需要此断言
-    supabase.from("profiles").select("settings").eq("id", user.id).single() as unknown as Promise<{
+    supabase
+      .from("profiles")
+      .select("settings")
+      .eq("id", user.id)
+      .single() as unknown as Promise<{
       data: { settings: unknown } | null;
       error: unknown;
     }>,

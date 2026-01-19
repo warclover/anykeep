@@ -9,6 +9,12 @@
 -- Drop the combined policy that causes the issue
 DROP POLICY IF EXISTS "Users can manage own folders" ON public.folders;
 
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Users can view own folders" ON public.folders;
+DROP POLICY IF EXISTS "Users can create own folders" ON public.folders;
+DROP POLICY IF EXISTS "Users can update own folders" ON public.folders;
+DROP POLICY IF EXISTS "Users can delete own folders" ON public.folders;
+
 -- Create separate policies for each operation type:
 
 -- SELECT: Only show non-deleted folders owned by the user

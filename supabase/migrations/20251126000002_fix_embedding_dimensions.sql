@@ -8,17 +8,35 @@
 -- 1. 修改 embedding 字段类型
 -- -------------------------------------------
 
--- 先删除依赖的索引
+-- 先删除所有可能依赖 embedding 列的视图
+-- 使用 CASCADE 确保删除所有依赖
+DO $$
+DECLARE
+    view_name text;
+BEGIN
+    FOR view_name IN
+        SELECT table_name
+        FROM information_schema.views
+        WHERE table_schema = 'public'
+    LOOP
+        EXECUTE format('DROP VIEW IF EXISTS %I CASCADE', view_name);
+    END LOOP;
+END $$;
+
+-- 删除依赖的索引
 DROP INDEX IF EXISTS idx_bookmarks_embedding_hnsw;
 
--- 修改字段类型 (从 vector(1536) 改为 vector(1024))
+-- 修改字段类型
 ALTER TABLE bookmarks
-ALTER COLUMN embedding TYPE vector(1024);
+ALTER COLUMN embedding TYPE extensions.vector(1024);
+
+-- 重建视图 (如果需要)
+-- 注意：视图会在后续的迁移中重新创建
 
 -- 重建 HNSW 索引
 CREATE INDEX idx_bookmarks_embedding_hnsw
 ON public.bookmarks
-USING hnsw (embedding vector_cosine_ops)
+USING hnsw (embedding extensions.vector_cosine_ops)
 WITH (m = 16, ef_construction = 64);
 
 COMMENT ON INDEX idx_bookmarks_embedding_hnsw IS
@@ -34,7 +52,7 @@ DROP FUNCTION IF EXISTS search_bookmarks_semantic(vector, uuid, double precision
 
 -- 创建新函数 (1024维)
 CREATE OR REPLACE FUNCTION search_bookmarks_semantic(
-  query_embedding vector(1024),
+  query_embedding extensions.vector(1024),
   p_user_id uuid,
   match_threshold float DEFAULT 0.7,
   match_count int DEFAULT 20

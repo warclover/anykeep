@@ -156,12 +156,12 @@ export async function PUT(
 
     // 3. 检查收藏是否存在且属于当前用户（包含 folder_id 用于 profile 更新）
     // 类型断言: 手动维护类型文件时需要此断言
-    const { data: existingBookmark, error: checkError } = await supabase
+    const { data: existingBookmark, error: checkError } = (await supabase
       .from("bookmarks")
       .select("id, user_id, folder_id")
       .eq("id", bookmarkId)
       .is("deleted_at", null)
-      .single() as unknown as {
+      .single()) as unknown as {
       data: { id: number; user_id: string; folder_id: number | null } | null;
       error: { code?: string; message: string } | null;
     };
@@ -199,13 +199,13 @@ export async function PUT(
       updateData.is_marked_for_deletion = isMarkedForDeletion;
 
     // 5. 更新收藏
-     
-    const { data: updatedBookmark, error: updateError } = await (supabase
-      .from("bookmarks") as any)
+    const { data: updatedBookmark, error: updateError } = (await (
+      supabase.from("bookmarks") as any
+    ) // eslint-disable-line @typescript-eslint/no-explicit-any
       .update(updateData)
       .eq("id", bookmarkId)
-      .select("*, folders(name)")
-      .single() as { data: unknown; error: { message: string } | null };
+      .select("*, folders!bookmarks_folder_id_fkey(name)")
+      .single()) as { data: unknown; error: { message: string } | null };
 
     if (updateError) {
       return databaseError(BOOKMARK.UPDATE_ERROR, updateError);
@@ -280,12 +280,12 @@ export async function PATCH(
 
     // 3. 检查收藏是否存在且属于当前用户
     // 类型断言: 手动维护类型文件时需要此断言
-    const { data: existingBookmark, error: checkError } = await supabase
+    const { data: existingBookmark, error: checkError } = (await supabase
       .from("bookmarks")
       .select("id, user_id")
       .eq("id", bookmarkId)
       .is("deleted_at", null)
-      .single() as unknown as {
+      .single()) as unknown as {
       data: { id: number; user_id: string } | null;
       error: { code?: string; message: string } | null;
     };
@@ -321,13 +321,13 @@ export async function PATCH(
       updateData.starred_at = isStarred ? now : null;
     }
 
-     
-    const { data: updatedBookmark, error: updateError } = await (supabase
-      .from("bookmarks") as any)
+    const { data: updatedBookmark, error: updateError } = (await (
+      supabase.from("bookmarks") as any
+    ) // eslint-disable-line @typescript-eslint/no-explicit-any
       .update(updateData)
       .eq("id", bookmarkId)
-      .select("*, folders(name)")
-      .single() as { data: unknown; error: { message: string } | null };
+      .select("*, folders!bookmarks_folder_id_fkey(name)")
+      .single()) as { data: unknown; error: { message: string } | null };
 
     if (updateError) {
       return databaseError(BOOKMARK.UPDATE_ERROR, updateError);
@@ -407,13 +407,19 @@ export async function DELETE(
 
     // 2. 检查收藏是否存在且属于当前用户（包含 folder_id 用于 profile 更新）
     // 类型断言: 手动维护类型文件时需要此断言
-    const { data: existingBookmark, error: checkError } = await supabase
+    const { data: existingBookmark, error: checkError } = (await supabase
       .from("bookmarks")
       .select("id, user_id, is_locked, is_in_trash, folder_id")
       .eq("id", bookmarkId)
       .is("deleted_at", null)
-      .single() as unknown as {
-      data: { id: number; user_id: string; is_locked: boolean; is_in_trash: boolean; folder_id: number | null } | null;
+      .single()) as unknown as {
+      data: {
+        id: number;
+        user_id: string;
+        is_locked: boolean;
+        is_in_trash: boolean;
+        folder_id: number | null;
+      } | null;
       error: { code?: string; message: string } | null;
     };
 
@@ -448,14 +454,14 @@ export async function DELETE(
 
     // 3. 移入垃圾箱（而非永久删除）
     const serviceClient = await createServiceClient();
-     
-    const { error: moveToTrashError } = await (serviceClient
-      .from("bookmarks") as any)
+    const { error: moveToTrashError } = (await (
+      serviceClient.from("bookmarks") as any
+    ) // eslint-disable-line @typescript-eslint/no-explicit-any
       .update({
         is_in_trash: true,
         trashed_at: new Date().toISOString(),
       })
-      .eq("id", bookmarkId) as { error: { message: string } | null };
+      .eq("id", bookmarkId)) as { error: { message: string } | null };
 
     logger.debug(
       {

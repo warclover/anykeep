@@ -60,7 +60,7 @@ const getInitialBookmarks = cache(
 
       let query = supabase
         .from("bookmarks")
-        .select("*, folders(name)")
+        .select("*, folders!bookmarks_folder_id_fkey(name)")
         .eq("user_id", userId)
         .is("deleted_at", null);
 

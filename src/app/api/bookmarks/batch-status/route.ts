@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
         folder_id,
         classification_status,
         classification_result,
-        folders(name)
+        folders!bookmarks_folder_id_fkey(name)
       `,
       )
       .eq("user_id", user.id)

@@ -24,11 +24,11 @@ DROP INDEX IF EXISTS idx_synthesis_reports_embedding;
 -- 2. 修改字段类型
 -- ============================================================================
 
--- 修改 embedding 字段从 vector(1536) 改为 vector(1024)
+-- 修改 embedding 字段从 extensions.vector(1024) 改为 vector(1024)
 -- 注意: 由于表是新创建的，数据量应该很少或为空
 -- 如果已有数据，需要重新生成 embedding (旧的 1536 维向量将被截断或需要重新计算)
 ALTER TABLE synthesis_reports
-ALTER COLUMN embedding TYPE vector(1024);
+ALTER COLUMN embedding TYPE extensions.vector(1024);
 
 -- ============================================================================
 -- 3. 重建索引
