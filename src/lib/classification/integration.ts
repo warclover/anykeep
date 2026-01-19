@@ -64,11 +64,15 @@ const SUGGEST_THRESHOLD = CONFIDENCE_THRESHOLDS.SUGGEST;
  * 通过环境变量 CLASSIFICATION_VERSION 控制
  * - "v3": 使用 V3 ClassificationService（5层匹配器）
  * - "v4.1": 使用 V4.1 SimpleClassificationService（默认）
+ * - "v5.0": 使用 V5.0 ClassificationPipeline（L0+T0+T1 三层架构）
  */
-export function getClassificationVersion(): "v3" | "v4.1" {
+export function getClassificationVersion(): "v3" | "v4.1" | "v5.0" {
   const version = process.env.CLASSIFICATION_VERSION;
   if (version === "v3") {
     return "v3";
+  }
+  if (version === "v5.0") {
+    return "v5.0";
   }
   return "v4.1"; // 默认使用 V4.1
 }
@@ -195,6 +199,203 @@ export async function classifyBookmarkV2(
         },
         "Classification V4.1: Result received",
       );
+    } else if (classificationVersion === "v5.0") {
+      // V5.0: 使用 ClassificationPipeline（L0+T0+T1 三层架构）
+      const { FeatureFlagService } = await import(
+        "@/lib/classification/v5/rollout/feature-flag"
+      );
+      const { ClassificationPipelineService } = await import(
+        "@/lib/classification/v5/classification-pipeline"
+      );
+      const { LoggerService } = await import(
+        "@/lib/classification/v5/shared/logger"
+      );
+      const { EmbeddingService } = await import(
+        "@/lib/classification/v5/shared/embedding"
+      );
+      const { VectorSearchService } = await import(
+        "@/lib/classification/v5/shared/vector-search"
+      );
+      const { LLMService } = await import("@/lib/classification/v5/shared/llm");
+
+      // 检查 Feature Flag
+      const { RolloutStage } = await import(
+        "@/lib/classification/v5/rollout/feature-flag"
+      );
+
+      // 将环境变量字符串映射到 RolloutStage 枚举
+      const stageStr = (process.env.CLASSIFICATION_V5_STAGE ||
+        "disabled") as string;
+      let stage: (typeof RolloutStage)[keyof typeof RolloutStage];
+      switch (stageStr.toLowerCase()) {
+        case "canary":
+          stage = RolloutStage.CANARY;
+          break;
+        case "early":
+          stage = RolloutStage.EARLY;
+          break;
+        case "majority":
+          stage = RolloutStage.MAJORITY;
+          break;
+        case "full":
+          stage = RolloutStage.FULL;
+          break;
+        default:
+          stage = RolloutStage.DISABLED;
+      }
+
+      const featureFlagConfig = {
+        enabled: process.env.CLASSIFICATION_V5_ENABLED === "true",
+        stage,
+        percentage: 0,
+        whitelist: [],
+        blacklist: [],
+      };
+
+      // 根据 stage 设置 percentage
+      const stagePercentages: Record<string, number> = {
+        disabled: 0,
+        canary: 5,
+        early: 20,
+        majority: 50,
+        full: 100,
+      };
+      featureFlagConfig.percentage =
+        stagePercentages[featureFlagConfig.stage] || 0;
+
+      const featureFlagService = new FeatureFlagService(featureFlagConfig);
+      const isV5Enabled = featureFlagService.isEnabledForUser(userId);
+
+      if (!isV5Enabled) {
+        // 降级到 V4.1
+        logger.info(
+          {
+            userId,
+            bookmarkId,
+            stage: featureFlagConfig.stage,
+            reason: "feature_flag_disabled",
+          },
+          "Classification V5.0: Feature flag disabled, fallback to V4.1",
+        );
+
+        // 使用 V4.1 逻辑（复用上面的代码）
+        const simpleService = createSimpleClassificationService(
+          supabase as SupabaseClient<Database>,
+        );
+        const simpleResult = await simpleService.classify(userId, {
+          title,
+          summary: summary || undefined,
+          tags,
+          url: undefined,
+        });
+
+        result = {
+          folderId: simpleResult.folderId,
+          folderName: simpleResult.folderName,
+          confidence: simpleResult.confidence,
+          reason: simpleResult.reason,
+          action: simpleResult.action as ClassificationResult["action"],
+          scores: {
+            vectorScore: simpleResult.confidence,
+            historyScore: 0,
+            aiScore:
+              simpleResult.matchType === "ai_select"
+                ? simpleResult.confidence
+                : 0,
+          },
+        };
+      } else {
+        // 使用 V5.0 ClassificationPipeline
+        const loggerService = new LoggerService();
+        const embeddingService = new EmbeddingService(loggerService);
+        const vectorSearchService = new VectorSearchService(loggerService, {
+          supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+          supabaseServiceKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+        });
+        const llmService = new LLMService(loggerService);
+
+        const pipeline = new ClassificationPipelineService(
+          loggerService,
+          embeddingService,
+          vectorSearchService,
+          llmService,
+          {
+            t0ConfidenceThreshold: 0.85,
+            vectorConflictThreshold: 0.15,
+            hybridWeights: {
+              content: 0.7,
+              behavior: 0.3,
+            },
+            rrfK: 60,
+          },
+        );
+
+        const v5Request = {
+          userId,
+          bookmarkId: bookmarkId.toString(),
+          title,
+          description: summary || undefined,
+          summary: summary || undefined,
+          tags: tags || [],
+          url: "", // URL 在此上下文不可用
+        };
+
+        const v5Result = await pipeline.classify(v5Request);
+
+        // 转换 V5.0 结果到统一的 ClassificationResult 格式
+        const folderId = parseInt(v5Result.folderId, 10);
+
+        // 查询文件夹名称
+        let folderName: string | null = null;
+        try {
+          const { data: folderData } = await supabase
+            .from("folders")
+            .select("name")
+            .eq("id", folderId)
+            .single();
+          folderName = folderData?.name || null;
+        } catch (error) {
+          logger.warn(
+            { folderId, error },
+            "Failed to fetch folder name for V5.0 result",
+          );
+        }
+
+        result = {
+          folderId,
+          folderName: folderName ?? "",
+          confidence: v5Result.confidence,
+          reason: v5Result.usedT1
+            ? `T1 纠正: ${v5Result.reasoning || "LLM 推理"}`
+            : "T0 快速生成",
+          action:
+            v5Result.confidence >= AUTO_CLASSIFY_THRESHOLD
+              ? "classify"
+              : v5Result.confidence >= SUGGEST_THRESHOLD
+                ? "suggest"
+                : "inbox",
+          scores: {
+            vectorScore: v5Result.confidence,
+            historyScore: 0,
+            aiScore: v5Result.usedT1 ? v5Result.confidence : 0,
+          },
+        };
+
+        logger.info(
+          {
+            version: "v5.0",
+            bookmarkId,
+            title: title.substring(0, 30),
+            action: result.action,
+            confidence: result.confidence,
+            usedT1: v5Result.usedT1,
+            totalLatencyMs: v5Result.totalLatencyMs,
+            t0LatencyMs: v5Result.t0LatencyMs,
+            t1LatencyMs: v5Result.t1LatencyMs,
+          },
+          "Classification V5.0: Result received",
+        );
+      }
     } else {
       // V3: 使用 ClassificationContainer（5层匹配器）
       const container = ClassificationContainer.initialize(supabase);
