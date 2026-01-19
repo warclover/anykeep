@@ -24,9 +24,9 @@ describe('LazyUpdater', () => {
   });
 
   const createMockProfile = (overrides?: Partial<FolderProfile>): FolderProfile => ({
-    id: 'profile-1',
+    id: 1,
     userId: 'user-1',
-    folderId: 'folder-1',
+    folderId: 1,
     contentEmbedding: [],
     behaviorEmbedding: [],
     alphaCoefficient: 0.5,

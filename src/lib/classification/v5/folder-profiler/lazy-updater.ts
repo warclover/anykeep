@@ -71,6 +71,7 @@ export class LazyUpdater {
     // 条件 3: 分类准确率下降（<85%）
     if (
       profile.avgClassificationScore !== undefined &&
+      profile.avgClassificationScore !== null &&
       profile.avgClassificationScore < this.config.accuracyThreshold
     ) {
       return {

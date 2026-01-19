@@ -9,6 +9,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createLogger } from "@/lib/classification/v5/shared/logger";
 import { ChatToRuleService } from "@/lib/classification/v5/chat-to-rule";
+import { LLMService } from "@/lib/classification/v5/shared/llm";
 
 /**
  * 测试请求体
@@ -51,7 +52,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const chatToRuleService = new ChatToRuleService(supabase, logger);
+    const llmService = new LLMService(logger);
+    const chatToRuleService = new ChatToRuleService(supabase, logger, llmService);
 
     // 4. 如果提供了 ruleId，测试特定规则
     if (body.ruleId) {
@@ -81,11 +83,10 @@ export async function POST(request: NextRequest) {
           matched,
           rule: {
             id: rule.id,
-            ruleType: rule.rule_type,
+            ruleType: rule.type,
             patternType: rule.pattern_type,
             pattern: rule.pattern,
             targetFolderName: rule.target_folder_name,
-            confidence: rule.confidence,
           },
         },
       });
@@ -109,19 +110,18 @@ export async function POST(request: NextRequest) {
         totalRules: rules.length,
         matchedRules: matchedRules.map((rule) => ({
           id: rule.id,
-          ruleType: rule.ruleType,
+          type: rule.type,
           patternType: rule.patternType,
           pattern: rule.pattern,
           targetFolderName: rule.targetFolderName,
-          confidence: rule.confidence,
         })),
       },
     });
   } catch (error) {
-    logger.error("规则测试失败", {
-      error: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
-    });
+    logger.error(
+      "规则测试失败",
+      error instanceof Error ? error : new Error(String(error))
+    );
 
     return NextResponse.json(
       {
@@ -138,7 +138,7 @@ export async function POST(request: NextRequest) {
  */
 function matchRule(
   rule: {
-    rule_type: string;
+    type: string;
     pattern_type: string;
     pattern: string;
   },
@@ -148,7 +148,7 @@ function matchRule(
   const lowerTitle = title.toLowerCase();
   const lowerPattern = rule.pattern.toLowerCase();
 
-  switch (rule.rule_type) {
+  switch (rule.type) {
     case "title":
       if (rule.pattern_type === "keyword") {
         return lowerTitle.includes(lowerPattern);
@@ -194,7 +194,7 @@ function matchRule(
  */
 function matchRuleFromService(
   rule: {
-    ruleType: string;
+    type: string;
     patternType: string;
     pattern: string;
   },
@@ -203,7 +203,7 @@ function matchRuleFromService(
 ): boolean {
   return matchRule(
     {
-      rule_type: rule.ruleType,
+      type: rule.type,
       pattern_type: rule.patternType,
       pattern: rule.pattern,
     },

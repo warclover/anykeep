@@ -4,7 +4,8 @@
  * 使用 Supabase pgvector 进行文件夹相似度搜索
  */
 
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 import type { LoggerService } from '../logger';
 import type {
   VectorSearchConfig,

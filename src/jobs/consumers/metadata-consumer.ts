@@ -52,7 +52,7 @@ export class MetadataConsumer extends BaseConsumer {
 
     try {
       // 检查书签是否存在
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const { data: bookmark, error: fetchError } = (await (
         context.supabase.from("bookmarks") as any
       )
@@ -80,7 +80,7 @@ export class MetadataConsumer extends BaseConsumer {
       const metadata = await this.fetchMetadata(url, context.abortSignal);
 
       // 更新书签（不包含 metadata 字段，因为表中没有该列）
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const { error: updateError } = await (
         context.supabase.from("bookmarks") as any
       )

@@ -224,7 +224,7 @@ export async function POST(request: NextRequest) {
       title: string;
       ai_summary: string | null;
     };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const { data: bookmark, error: bookmarkError } = (await (
       supabase.from("bookmarks") as any
     )

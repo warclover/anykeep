@@ -10,8 +10,9 @@
  * @since 2026-01-10
  */
 
+import type {
+  SpeculativeExecutor} from "../speculative-executor";
 import {
-  SpeculativeExecutor,
   createSpeculativeExecutor,
 } from "../speculative-executor";
 import type { IntentWithSlots, ExecutionContext } from "../types";

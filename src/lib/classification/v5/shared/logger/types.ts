@@ -19,11 +19,13 @@ export interface LogContext {
   /** 用户ID */
   userId?: string;
   /** 书签ID */
-  bookmarkId?: string;
+  bookmarkId?: string | number;
   /** 文件夹ID */
-  folderId?: string;
+  folderId?: string | number;
   /** 请求ID（用于追踪） */
   requestId?: string;
+  /** 错误信息 */
+  error?: string | Error;
   /** 额外的上下文数据 */
   [key: string]: unknown;
 }

@@ -45,6 +45,43 @@ export class LLMService {
   }
 
   /**
+   * 通用文本生成（用于规则提取等非分类任务）
+   */
+  async complete(
+    prompt: string,
+    options?: {
+      temperature?: number;
+      maxTokens?: number;
+    }
+  ): Promise<string> {
+    this.logger.debug('开始 LLM 文本生成', {
+      promptLength: prompt.length,
+      temperature: options?.temperature,
+      maxTokens: options?.maxTokens,
+    });
+
+    return await this.executeWithRetry(async () => {
+      const response = await this.client.chat.completions.create({
+        model: this.config.model,
+        messages: [{ role: 'user', content: prompt }],
+        temperature: options?.temperature ?? this.config.temperature,
+        max_tokens: options?.maxTokens,
+      });
+
+      const content = response.choices[0]?.message?.content;
+      if (!content) {
+        throw new LLMError('Empty response from LLM');
+      }
+
+      this.logger.debug('LLM 文本生成完成', {
+        responseLength: content.length,
+      });
+
+      return content;
+    });
+  }
+
+  /**
    * 执行智能分类
    */
   async classify(

@@ -105,7 +105,7 @@ export async function PATCH(
     }
 
     // 6. 更新停用状态
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const { error: updateError } = await (supabase
       .from("folders") as any)
       .update({ is_archived: archived })

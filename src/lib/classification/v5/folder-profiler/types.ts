@@ -7,11 +7,11 @@
  */
 export interface FolderProfile {
   /** 画像 ID */
-  id: string;
+  id: number;
   /** 用户 ID */
   userId: string;
   /** 文件夹 ID */
-  folderId: string;
+  folderId: number;
   /** 内容向量 (1024 维) */
   contentEmbedding: number[];
   /** 行为向量 (1024 维) */
@@ -25,7 +25,7 @@ export interface FolderProfile {
   /** 是否需要更新 */
   needsUpdate: boolean;
   /** 平均分类分数 */
-  avgClassificationScore?: number;
+  avgClassificationScore?: number | null;
   /** 总分类次数 */
   totalClassifications: number;
   /** 创建时间 */

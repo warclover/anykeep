@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
 
     // 3. 获取要检测的收藏
     // 类型断言: 手动维护类型文件时需要此断言
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     let query = (supabase
       .from("bookmarks") as any)
       .select("id, url, platform")
@@ -244,7 +244,7 @@ export async function POST(request: NextRequest) {
     if (invalidBookmarks.length > 0) {
       const invalidIds = invalidBookmarks.map((b) => b.bookmarkId);
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const { error: updateError } = await (serviceClient
         .from("bookmarks") as any)
         .update({
@@ -272,7 +272,7 @@ export async function POST(request: NextRequest) {
     if (validBookmarks.length > 0) {
       const validIds = validBookmarks.map((b) => b.bookmarkId);
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const { error: updateError } = await (serviceClient
         .from("bookmarks") as any)
         .update({
@@ -296,7 +296,7 @@ export async function POST(request: NextRequest) {
 
     // 9. 记录验证历史
     const endTime = new Date();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const { error: historyError } = await (serviceClient
       .from("validation_history") as any)
       .insert({

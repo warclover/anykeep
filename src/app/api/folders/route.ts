@@ -174,7 +174,7 @@ export async function POST(request: NextRequest) {
       name: string;
       parent_id: number | null;
     };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const { data: folder, error: createError } = await (supabase
       .from("folders") as any)
       .insert({

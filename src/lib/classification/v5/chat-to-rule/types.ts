@@ -21,14 +21,13 @@ export interface UserClassificationRule {
   type: RuleType;
   pattern: string;
   patternType: PatternType;
-  targetFolderId: number | null;
+  targetFolderId: number;
   targetFolderName: string;
   priority: number;
   isActive: boolean;
   sourceText: string | null;
   description: string | null;
   matchCount: number;
-  lastMatchedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -72,7 +71,7 @@ export interface CreateRuleParams {
   type: RuleType;
   pattern: string;
   patternType: PatternType;
-  targetFolderId: number | null;
+  targetFolderId: number;
   targetFolderName: string;
   priority?: number;
   sourceText?: string;

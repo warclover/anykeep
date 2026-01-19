@@ -200,7 +200,7 @@ export async function POST(request: NextRequest) {
 
     // 5. 批量插入数据库
     if (bookmarkInserts.length > 0) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const { data: inserted, error: insertError } = await (supabase
         .from("bookmarks") as any)
         .insert(bookmarkInserts)

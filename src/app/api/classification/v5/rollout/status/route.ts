@@ -10,6 +10,7 @@ import { NextResponse } from "next/server";
 import { getFeatureFlag } from "@/lib/classification/v5/rollout/feature-flag";
 import { MonitoringService } from "@/lib/classification/v5/rollout/monitoring";
 import { createClient } from "@/lib/supabase/server";
+import { createLogger } from "@/lib/classification/v5/shared/logger";
 
 export async function GET(_request: NextRequest) {
   try {
@@ -35,7 +36,7 @@ export async function GET(_request: NextRequest) {
     const flagStats = featureFlag.getStats();
 
     // 3. 生成监控报告（最近 1 小时）
-    const logger = console; // TODO: 使用实际 logger
+    const logger = createLogger("RolloutStatusAPI");
     const monitoringService = new MonitoringService(logger);
 
     const endTime = new Date();

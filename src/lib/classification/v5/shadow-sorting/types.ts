@@ -32,5 +32,5 @@ export interface ShadowSortingStats {
 export interface BatchOperationResult {
   bookmarkId: number;
   success: boolean;
-  errorMessage?: string;
+  errorMessage?: string | null;
 }

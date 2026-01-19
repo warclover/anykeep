@@ -8,9 +8,11 @@
  * 4. 回滚后验证
  */
 
-import { LoggerService } from '../shared/logger';
-import { MonitoringService, type MonitoringReport } from './monitoring';
-import { FeatureFlagService, RolloutStage } from './feature-flag';
+import type { LoggerService } from '../shared/logger';
+import type { MonitoringService} from './monitoring';
+import { type MonitoringReport } from './monitoring';
+import type { FeatureFlagService} from './feature-flag';
+import { RolloutStage } from './feature-flag';
 
 /**
  * 回滚原因

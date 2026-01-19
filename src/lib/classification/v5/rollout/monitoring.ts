@@ -8,7 +8,7 @@
  * 4. 对比指标（v4 vs v5）
  */
 
-import { LoggerService } from '../shared/logger';
+import type { LoggerService } from '../shared/logger';
 
 /**
  * 分类指标

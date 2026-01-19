@@ -53,7 +53,7 @@ export async function GET() {
     };
     for (let i = 0; i < 10; i++) {
       // Claim next snapshot job
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const { data: claimedJobs, error: claimError } = (await (
         getSupabaseAdmin().rpc as any
       )("claim_next_job", {

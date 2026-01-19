@@ -4,6 +4,9 @@
 -- 说明: 用于Optimistic UI模式下的T1结果存储和轮询
 -- ============================================
 
+-- 删除可能存在的旧表定义（来自第一个迁移文件）
+DROP TABLE IF EXISTS classification_t1_queue_v5 CASCADE;
+
 -- 创建T1任务队列表
 CREATE TABLE IF NOT EXISTS classification_t1_queue_v5 (
   -- 主键

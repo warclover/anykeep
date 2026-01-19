@@ -91,7 +91,7 @@ export async function DELETE(
     // 安全说明：已验证用户身份、文件夹所有权
     if (bookmarkCount && bookmarkCount > 0) {
       const serviceClient = await createServiceClient();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const { error: deleteError } = await (serviceClient
         .from("bookmarks") as any)
         .update({ deleted_at: new Date().toISOString() })

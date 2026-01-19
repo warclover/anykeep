@@ -23,7 +23,7 @@ export async function GET(_request: NextRequest) {
 
   try {
     // 1. 创建 Supabase 客户端
-    const supabase = createClient();
+    const supabase = await createClient();
 
     // 2. 验证用户认证
     const {
@@ -88,7 +88,10 @@ export async function GET(_request: NextRequest) {
       },
     });
   } catch (error) {
-    logger.error("Entropy analysis API error", { error });
+    logger.error(
+      "Entropy analysis API error",
+      error instanceof Error ? error : new Error(String(error))
+    );
 
     return NextResponse.json(
       {

@@ -61,7 +61,11 @@ export class T1QueueService {
       });
 
     if (error) {
-      this.logger.error("创建T1任务失败", { error, eventId });
+      this.logger.error(
+        "创建T1任务失败",
+        error instanceof Error ? error : new Error(String(error)),
+        { eventId }
+      );
       throw error;
     }
 
@@ -114,7 +118,11 @@ export class T1QueueService {
       .eq("event_id", eventId);
 
     if (error) {
-      this.logger.error("更新T1任务状态失败", { error, eventId });
+      this.logger.error(
+        "更新T1任务状态失败",
+        error instanceof Error ? error : new Error(String(error)),
+        { eventId }
+      );
       throw error;
     }
   }
@@ -142,7 +150,11 @@ export class T1QueueService {
       .eq("event_id", eventId);
 
     if (error) {
-      this.logger.error("更新T1任务结果失败", { error, eventId });
+      this.logger.error(
+        "更新T1任务结果失败",
+        error instanceof Error ? error : new Error(String(error)),
+        { eventId }
+      );
       throw error;
     }
 
@@ -163,7 +175,11 @@ export class T1QueueService {
       .eq("event_id", eventId);
 
     if (error) {
-      this.logger.error("更新T1任务失败状态失败", { error, eventId });
+      this.logger.error(
+        "更新T1任务失败状态失败",
+        error instanceof Error ? error : new Error(String(error)),
+        { eventId }
+      );
       throw error;
     }
 

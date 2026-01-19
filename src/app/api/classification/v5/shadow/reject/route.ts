@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. 创建 Supabase 客户端
-    const supabase = createClient();
+    const supabase = await createClient();
 
     // 5. 验证用户认证
     const {
@@ -98,7 +98,10 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    logger.error("Shadow reject API error", { error });
+    logger.error(
+      "Shadow reject API error",
+      error instanceof Error ? error : new Error(String(error))
+    );
 
     return NextResponse.json(
       {

@@ -10,6 +10,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createLogger } from "@/lib/classification/v5/shared/logger";
 import { ChatToRuleService } from "@/lib/classification/v5/chat-to-rule";
+import { LLMService } from "@/lib/classification/v5/shared/llm";
 
 /**
  * GET /api/classification/v5/rules
@@ -36,7 +37,8 @@ export async function GET(request: NextRequest) {
     const activeOnly = searchParams.get("activeOnly") === "true";
 
     // 3. 获取规则列表
-    const chatToRuleService = new ChatToRuleService(supabase, logger);
+    const llmService = new LLMService(logger);
+    const chatToRuleService = new ChatToRuleService(supabase, logger, llmService);
     const rules = await chatToRuleService.getRules(activeOnly);
 
     logger.info("规则列表获取成功", {
@@ -54,10 +56,10 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    logger.error("获取规则列表失败", {
-      error: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
-    });
+    logger.error(
+      "获取规则列表失败",
+      error instanceof Error ? error : new Error(String(error))
+    );
 
     return NextResponse.json(
       {
@@ -94,7 +96,7 @@ export async function POST(request: NextRequest) {
 
     // 3. 验证必需字段
     if (
-      !body.ruleType ||
+      !body.type ||
       !body.patternType ||
       !body.pattern ||
       !body.targetFolderId
@@ -102,28 +104,28 @@ export async function POST(request: NextRequest) {
       logger.warn("缺少必需字段", { body });
       return NextResponse.json(
         {
-          error: "缺少必需字段: ruleType, patternType, pattern, targetFolderId",
+          error: "缺少必需字段: type, patternType, pattern, targetFolderId",
         },
         { status: 400 },
       );
     }
 
     // 4. 创建规则
-    const chatToRuleService = new ChatToRuleService(supabase, logger);
+    const llmService = new LLMService(logger);
+    const chatToRuleService = new ChatToRuleService(supabase, logger, llmService);
     const ruleId = await chatToRuleService.createRule({
-      ruleType: body.ruleType,
+      type: body.type,
       patternType: body.patternType,
       pattern: body.pattern,
       targetFolderId: body.targetFolderId,
       targetFolderName: body.targetFolderName,
       description: body.description,
-      confidence: body.confidence || 0.8,
     });
 
     logger.info("规则创建成功", {
       userId: user.id,
       ruleId,
-      ruleType: body.ruleType,
+      type: body.type,
     });
 
     // 5. 返回结果
@@ -134,10 +136,10 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    logger.error("创建规则失败", {
-      error: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
-    });
+    logger.error(
+      "创建规则失败",
+      error instanceof Error ? error : new Error(String(error))
+    );
 
     return NextResponse.json(
       {

@@ -51,7 +51,7 @@ export async function verifyCollectionOwnership(
   try {
     const supabase = await createClient();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const { data: collection, error } = (await (
       supabase.from("md_collections") as any
     )

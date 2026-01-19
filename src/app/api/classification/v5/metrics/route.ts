@@ -22,8 +22,8 @@ interface MetricRecord {
   is_correct?: boolean | null;
   latency_ms?: number;
   confidence?: number;
-  embedding_tokens?: number;
-  llm_tokens?: number;
+  embedding_tokens?: number | null;
+  llm_tokens?: number | null;
   degradation_level?: number;
 }
 

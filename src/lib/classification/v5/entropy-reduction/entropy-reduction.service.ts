@@ -39,7 +39,7 @@ export class EntropyReductionService {
     folderId: number,
   ): Promise<EntropyCalculationResult | null> {
     try {
-      this.logger.debug("Calculating folder entropy", { folderId });
+      this.logger.debug("Calculating folder entropy", { folderId: String(folderId) });
 
       const { data, error } = await this.supabase.rpc(
         "calculate_folder_entropy",
@@ -80,10 +80,11 @@ export class EntropyReductionService {
           : null,
       };
     } catch (error) {
-      this.logger.error("Failed to calculate folder entropy", {
-        error,
-        folderId,
-      });
+      this.logger.error(
+        "Failed to calculate folder entropy",
+        error instanceof Error ? error : new Error(String(error)),
+        { folderId: String(folderId) }
+      );
       return null;
     }
   }

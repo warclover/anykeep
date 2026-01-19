@@ -121,7 +121,7 @@ export async function GET(request: NextRequest) {
   const encryptedToken = await encryptToken(tokenData.access_token);
 
   // 存储/更新 Token
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const { error: upsertError } = await (supabase
     .from("distribution_oauth_tokens") as any)
     .upsert(

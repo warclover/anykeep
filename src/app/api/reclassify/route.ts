@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
     // 4. 获取待整理文件夹
     // 类型断言: 手动维护类型文件时需要此断言
     type FolderIdRow = { id: number };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const { data: inboxFolder, error: folderError } = (await (
       supabase.from("folders") as any
     )
@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
       BookmarkRow,
       "id" | "title" | "ai_summary" | "ai_tags"
     >;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const { data: bookmarks, error: bookmarksError } = (await (
       supabase.from("bookmarks") as any
     )
@@ -259,7 +259,7 @@ export async function POST(request: NextRequest) {
 
     // 11. 批量插入建议（仅非完全托管模式，或需要创建新文件夹的情况）
     if (suggestions.length > 0) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const { error: insertError } = (await (
         supabase.from("classification_suggestions") as any
       ).insert(suggestions)) as { error: { message: string } | null };

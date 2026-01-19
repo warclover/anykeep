@@ -15,6 +15,7 @@ import {
 } from "@/lib/classification/v5/rollout/rollback";
 import { MonitoringService } from "@/lib/classification/v5/rollout/monitoring";
 import { createClient } from "@/lib/supabase/server";
+import { createLogger } from "@/lib/classification/v5/shared/logger";
 
 /**
  * 请求验证 Schema
@@ -59,7 +60,7 @@ export async function POST(request: NextRequest) {
     const { reason } = validation.data;
 
     // 3. 初始化服务
-    const logger = console; // TODO: 使用实际 logger
+    const logger = createLogger("RollbackAPI");
     const featureFlag = getFeatureFlag();
     const monitoringService = new MonitoringService(logger);
     const rollbackService = new RollbackService(

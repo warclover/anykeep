@@ -254,7 +254,7 @@ export async function POST(request: NextRequest) {
     // 4. 验证书签所有权
     // 类型断言: 手动维护类型文件时需要此断言
     type MonitorBookmarkRow = Pick<BookmarkRow, "id" | "url" | "title">;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const { data: bookmark, error: bookmarkError } = (await (
       supabase.from("bookmarks") as any
     )

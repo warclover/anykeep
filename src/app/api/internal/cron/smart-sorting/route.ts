@@ -493,7 +493,7 @@ async function autoCreateFolder(
     // 5. 移动书签到新文件夹
     // Note: pending_cluster, pending_since, cluster_id 是 V4.2 新增字段
     const bookmarkIds = cluster.bookmarks.map((b) => b.id);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const { error: moveError } = (await (
       getSupabaseAdmin().from("bookmarks") as any
     )

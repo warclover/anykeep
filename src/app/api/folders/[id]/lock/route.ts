@@ -92,7 +92,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     // Note: folder_profiles 是 V4.2 新增表
     // P1-2 修复：使用 upsert 避免并发请求导致的竞态条件
     // 替代原来的 update + insert 两步操作
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const { error: upsertError } = await (supabase
       .from("folder_profiles") as any)
       .upsert(

@@ -10,6 +10,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
 import type { LoggerService } from "../shared/logger";
+import type { LLMService } from "../shared/llm";
 import type {
   ClassificationFeedback,
   FeedbackResult,
@@ -22,10 +23,14 @@ export class FeedbackService {
   private logger: LoggerService;
   private chatToRuleService: ChatToRuleService;
 
-  constructor(supabase: SupabaseClient<Database>, logger: LoggerService) {
+  constructor(
+    supabase: SupabaseClient<Database>,
+    logger: LoggerService,
+    llmService: LLMService,
+  ) {
     this.supabase = supabase;
     this.logger = logger.child({ service: "FeedbackService" });
-    this.chatToRuleService = new ChatToRuleService(supabase, logger);
+    this.chatToRuleService = new ChatToRuleService(supabase, logger, llmService);
   }
 
   /**
@@ -124,7 +129,7 @@ export class FeedbackService {
       };
     } catch (error) {
       this.logger.error("Failed to process feedback", {
-        error,
+        error: error instanceof Error ? error.message : String(error),
         feedback,
       });
 
@@ -186,7 +191,7 @@ export class FeedbackService {
       });
     } catch (error) {
       this.logger.error("Failed to update profile", {
-        error,
+        error: error instanceof Error ? error.message : String(error),
         params,
       });
       throw error;
@@ -229,7 +234,7 @@ export class FeedbackService {
       return true;
     } catch (error) {
       this.logger.error("Failed to log classification feedback", {
-        error,
+        error: error instanceof Error ? error.message : String(error),
         feedback,
       });
       return false;
@@ -293,19 +298,18 @@ export class FeedbackService {
 
       // 5. 创建规则
       const ruleId = await this.chatToRuleService.createRule({
-        ruleType: extractedRule.ruleType,
+        type: extractedRule.type,
         patternType: extractedRule.patternType,
         pattern: extractedRule.pattern,
         targetFolderId: feedback.actualFolderId,
         targetFolderName: feedback.actualFolderName,
         description: extractedRule.description,
-        confidence: extractedRule.confidence,
       });
 
       this.logger.info("Rule created from feedback", {
         bookmarkId: feedback.bookmarkId,
         ruleId,
-        ruleType: extractedRule.ruleType,
+        type: extractedRule.type,
         patternType: extractedRule.patternType,
         confidence: extractedRule.confidence,
       });
@@ -313,7 +317,7 @@ export class FeedbackService {
       return true;
     } catch (error) {
       this.logger.error("Failed to extract and create rule", {
-        error,
+        error: error instanceof Error ? error.message : String(error),
         feedback,
       });
       throw error;

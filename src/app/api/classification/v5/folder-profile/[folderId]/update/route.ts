@@ -9,6 +9,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { FolderProfilerService } from "@/lib/classification/v5/folder-profiler";
 import { EmbeddingService } from "@/lib/classification/v5/shared/embedding";
+import { createLogger } from "@/lib/classification/v5/shared/logger";
 import type {
   BookmarkData,
   BehaviorData,
@@ -23,7 +24,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: { folderId: string } },
 ) {
-  const logger = console; // TODO: 使用实际 LoggerService
+  const logger = createLogger("FolderProfileUpdateAPI");
 
   try {
     // 1. 验证用户身份
@@ -54,20 +55,20 @@ export async function POST(
 
     logger.info("更新文件夹画像", {
       userId: user.id,
-      folderId,
+      folderId: folderId.toString(),
     });
 
     // 3. 验证文件夹所有权
     const { data: folder, error: folderError } = await supabase
       .from("folders")
-      .select("id, name, description, user_id")
+      .select("id, name, user_id")
       .eq("id", folderId)
       .eq("user_id", user.id)
       .single();
 
     if (folderError || !folder) {
       logger.warn("文件夹不存在或无权访问", {
-        folderId,
+        folderId: folderId.toString(),
         error: folderError?.message,
       });
       return NextResponse.json(
@@ -84,7 +85,7 @@ export async function POST(
       .eq("user_id", user.id);
 
     if (bookmarksError) {
-      logger.error("获取书签数据失败", { error: bookmarksError.message });
+      logger.error("获取书签数据失败", new Error(bookmarksError.message));
       return NextResponse.json({ error: "获取书签数据失败" }, { status: 500 });
     }
 
@@ -128,7 +129,7 @@ export async function POST(
       user.id,
       folderId.toString(),
       folder.name,
-      folder.description || undefined,
+      undefined, // folders 表暂无 description 字段
       bookmarkData,
       behaviors,
       stats,
@@ -136,7 +137,7 @@ export async function POST(
 
     logger.info("文件夹画像更新成功", {
       userId: user.id,
-      folderId,
+      folderId: folderId.toString(),
       alphaCoefficient: profile.alphaCoefficient,
       bookmarkCount: profile.bookmarkCount,
     });
@@ -154,10 +155,10 @@ export async function POST(
       },
     });
   } catch (error) {
-    logger.error("更新文件夹画像失败", {
-      error: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
-    });
+    logger.error(
+      "更新文件夹画像失败",
+      error instanceof Error ? error : new Error(String(error))
+    );
 
     return NextResponse.json(
       {

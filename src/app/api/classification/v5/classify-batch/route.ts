@@ -11,6 +11,7 @@ import { ClassificationPipelineService } from "@/lib/classification/v5/classific
 import { EmbeddingService } from "@/lib/classification/v5/shared/embedding";
 import { VectorSearchService } from "@/lib/classification/v5/shared/vector-search";
 import { LLMService } from "@/lib/classification/v5/shared/llm";
+import { createLogger } from "@/lib/classification/v5/shared/logger";
 import type { ClassificationRequest } from "@/lib/classification/v5/classification-pipeline/types";
 
 /**
@@ -32,7 +33,7 @@ interface ClassifyBatchRequestBody {
  * 批量对书签进行智能分类
  */
 export async function POST(request: NextRequest) {
-  const logger = console; // TODO: 使用实际 LoggerService
+  const logger = createLogger("ClassifyBatchAPI");
 
   try {
     // 1. 验证用户身份
@@ -155,10 +156,10 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    logger.error("批量分类失败", {
-      error: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
-    });
+    logger.error(
+      "批量分类失败",
+      error instanceof Error ? error : new Error(String(error))
+    );
 
     return NextResponse.json(
       {

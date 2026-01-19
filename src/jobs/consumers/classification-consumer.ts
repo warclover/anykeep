@@ -66,7 +66,7 @@ export class ClassificationConsumer extends BaseConsumer {
 
     try {
       // 获取书签和用户文件夹
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const [bookmarkResult, foldersResult] = await Promise.all([
         (context.supabase.from("bookmarks") as any)
           .select(
@@ -109,7 +109,7 @@ export class ClassificationConsumer extends BaseConsumer {
       const batchId = `auto-classify-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
       // 保存分类建议（使用 insert 而非 upsert）
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const { error: suggestionError } = await (
         context.supabase.from("classification_suggestions") as any
       ).insert({
@@ -141,7 +141,7 @@ export class ClassificationConsumer extends BaseConsumer {
       }
 
       // 更新书签状态
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const { error: updateError } = await (
         context.supabase.from("bookmarks") as any
       )

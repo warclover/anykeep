@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
 
     // 3. 批量恢复（仅恢复属于当前用户且在垃圾箱中的收藏）
     const serviceClient = await createServiceClient();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const { data: restoredBookmarks, error: restoreError } = await (serviceClient
       .from("bookmarks") as any)
       .update({

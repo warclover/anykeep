@@ -155,7 +155,7 @@ export async function POST(request: NextRequest) {
           case "confirm": {
             // 更新书签的文件夹
             if (suggestedFolderId) {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+               
               await (supabase
                 .from("bookmarks") as any)
                 .update({
@@ -230,7 +230,7 @@ export async function POST(request: NextRequest) {
             }
 
             // 更新书签的文件夹
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+             
             await (supabase
               .from("bookmarks") as any)
               .update({

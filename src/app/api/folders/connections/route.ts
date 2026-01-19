@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
       );
 
       // V4.2 RPC
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       type MatrixRow = {
         folder1_id: number;
         folder1_name: string;
@@ -168,7 +168,7 @@ export async function GET(request: NextRequest) {
       });
     } else {
       // 3b. 获取跨文件夹连接 - V4.2 RPC
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       type ConnectionRow = {
         source_bookmark_id: number;
         source_title: string;

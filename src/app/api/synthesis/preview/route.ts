@@ -128,7 +128,7 @@ export async function GET(request: NextRequest) {
       // 标签查询需要关联 bookmark_tags 表
       // 类型断言: 手动维护类型文件时需要此断言
       type TaggedBookmarkRow = { bookmark_id: number };
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const { data: taggedBookmarkIds } = (await (
         supabase.from("bookmark_tags") as any
       )

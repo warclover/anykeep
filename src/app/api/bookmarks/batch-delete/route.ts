@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
     const { ids } = validation.data;
 
     // 3. 批量软删除收藏（单次事务）
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const { data: deletedBookmarks, error: deleteError } = await (supabase
       .from("bookmarks") as any)
       .update({ deleted_at: new Date().toISOString() })

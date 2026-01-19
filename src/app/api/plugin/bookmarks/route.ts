@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
       parsedFolderId && !isNaN(parsedFolderId) ? parsedFolderId : null;
 
     // 类型断言: 手动维护类型文件时需要此断言
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const { data: bookmark, error: insertError } = (await (
       serviceClient.from("bookmarks") as any
     )

@@ -430,7 +430,7 @@ async function handleStats() {
     }
 
     // 使用 RPC 获取聚类统计
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     type ClusterStats = {
       total_pending: number;
       clustered_count: number;

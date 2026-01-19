@@ -199,7 +199,7 @@ export async function POST(request: NextRequest) {
     // 2. 检查用户会员类型和功能权限
     // 类型断言: 手动维护类型文件时需要此断言
     type ProfileRow = { membership_type: string | null };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const { data: profile, error: profileError } = (await (
       supabase.from("profiles") as any
     )
@@ -218,7 +218,7 @@ export async function POST(request: NextRequest) {
     const membershipType = profile?.membership_type || "FREE";
 
     // 3. 获取当前 MD 收藏数量并检查权限
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const { count: currentCount, error: countError } = (await (
       supabase.from("md_collections") as any
     )
@@ -275,7 +275,7 @@ export async function POST(request: NextRequest) {
     // 8. 检查重复
     // 类型断言: 手动维护类型文件时需要此断言
     type ExistingCollectionRow = { id: string; title: string };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const { data: existingCollection, error: dupError } = (await (
       supabase.from("md_collections") as any
     )
@@ -326,7 +326,7 @@ export async function POST(request: NextRequest) {
     // 11. 创建记录
     // 类型断言: 手动维护类型文件时需要此断言
     type NewCollectionRow = { id: number; [key: string]: unknown };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const { data: newCollection, error: createError } = (await (
       supabase.from("md_collections") as any
     )

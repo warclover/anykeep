@@ -9,6 +9,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { GardenerService } from "@/lib/classification/v5/gardener";
 import { EmbeddingService } from "@/lib/classification/v5/shared/embedding";
+import { createLogger } from "@/lib/classification/v5/shared/logger";
 import type { ClassificationStats } from "@/lib/classification/v5/gardener";
 import type { FolderStats, UserStats } from "@/lib/classification/v5/gardener";
 
@@ -17,7 +18,7 @@ import type { FolderStats, UserStats } from "@/lib/classification/v5/gardener";
  * 生成 Gardener 分析报告
  */
 export async function GET(_request: NextRequest) {
-  const logger = console; // TODO: 使用实际 LoggerService
+  const logger = createLogger("GardenerReportAPI");
 
   try {
     // 1. 验证用户身份
@@ -50,7 +51,7 @@ export async function GET(_request: NextRequest) {
       .eq("user_id", user.id);
 
     if (foldersError) {
-      logger.error("获取文件夹列表失败", { error: foldersError.message });
+      logger.error("获取文件夹列表失败", new Error(foldersError.message));
       return NextResponse.json(
         { error: "获取文件夹列表失败" },
         { status: 500 },
@@ -137,10 +138,10 @@ export async function GET(_request: NextRequest) {
       data: report,
     });
   } catch (error) {
-    logger.error("生成 Gardener 报告失败", {
-      error: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
-    });
+    logger.error(
+      "生成 Gardener 报告失败",
+      error instanceof Error ? error : new Error(String(error))
+    );
 
     return NextResponse.json(
       {

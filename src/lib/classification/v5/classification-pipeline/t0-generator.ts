@@ -6,9 +6,9 @@
 
 import type { LoggerService } from '../shared/logger';
 import type { EmbeddingService } from '../shared/embedding';
-import { L0RuleMatcher } from './l0-rule-matcher';
-import { HybridRetriever } from './hybrid-retriever';
-import { LLMCaller } from './llm-caller';
+import type { L0RuleMatcher } from './l0-rule-matcher';
+import type { HybridRetriever } from './hybrid-retriever';
+import type { LLMCaller } from './llm-caller';
 import type { ClassificationRequest, T0Result } from './types';
 
 /**

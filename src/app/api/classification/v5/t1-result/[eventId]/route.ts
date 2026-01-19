@@ -86,10 +86,10 @@ export async function GET(
       },
     });
   } catch (error) {
-    logger.error("查询T1结果失败", {
-      error: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
-    });
+    logger.error(
+      "查询T1结果失败",
+      error instanceof Error ? error : new Error(String(error))
+    );
 
     return NextResponse.json(
       {

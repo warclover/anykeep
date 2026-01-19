@@ -87,11 +87,14 @@ export async function executeT1InBackground(
       executionTimeMs: executionTime,
     });
   } catch (error) {
-    logger.error("T1后台任务失败", {
-      error: error instanceof Error ? error.message : String(error),
-      eventId,
-      bookmarkId: request.bookmarkId,
-    });
+    logger.error(
+      "T1后台任务失败",
+      error instanceof Error ? error : new Error(String(error)),
+      {
+        eventId,
+        bookmarkId: request.bookmarkId,
+      }
+    );
 
     // 更新任务状态为失败
     await queueService.failTask(

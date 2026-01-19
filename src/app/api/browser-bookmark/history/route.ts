@@ -158,7 +158,7 @@ export async function POST(request: NextRequest) {
     };
 
     // 5. 插入数据库
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const { data: created, error: insertError } = await (supabase
       .from("import_history") as any)
       .insert(insertData)

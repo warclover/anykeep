@@ -104,7 +104,7 @@ export async function PATCH(
     // 4. 更新文件夹分组
     // 注意：移动到新类别后，sort_order 设为 0（移到新类别的顶部）
     // 已在上方验证所有权和系统文件夹状态，这里仅需基本条件
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const { error: updateError } = await (supabase
       .from("folders") as any)
       .update({

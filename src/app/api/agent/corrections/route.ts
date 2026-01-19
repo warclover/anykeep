@@ -145,7 +145,7 @@ export async function POST(request: NextRequest) {
 
     // 4. 插入纠正记录到数据库
     // 类型断言: 手动维护类型文件时需要此断言
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const { data: correction, error: insertError } = await (supabase
       .from("user_corrections") as any)
       .insert({
@@ -168,7 +168,7 @@ export async function POST(request: NextRequest) {
 
     // 5. 检查是否需要触发规则提取
     // 获取未处理的纠正记录数量
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const { count: unprocessedCount } = await (supabase
       .from("user_corrections") as any)
       .select("*", { count: "exact", head: true })

@@ -97,7 +97,7 @@ export async function POST(
 
     // 4. 从垃圾箱恢复
     const serviceClient = await createServiceClient();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const { data: restoredBookmark, error: restoreError } = await (serviceClient
       .from("bookmarks") as any)
       .update({

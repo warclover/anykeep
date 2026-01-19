@@ -86,10 +86,10 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       },
     });
   } catch (error) {
-    logger.error("更新规则失败", {
-      error: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
-    });
+    logger.error(
+      "更新规则失败",
+      error instanceof Error ? error : new Error(String(error))
+    );
 
     return NextResponse.json(
       {
@@ -153,10 +153,10 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       },
     });
   } catch (error) {
-    logger.error("删除规则失败", {
-      error: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
-    });
+    logger.error(
+      "删除规则失败",
+      error instanceof Error ? error : new Error(String(error))
+    );
 
     return NextResponse.json(
       {

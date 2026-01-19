@@ -32,6 +32,8 @@ interface FolderProfileDbRecord {
   needs_update: boolean;
   avg_classification_score: number | null;
   total_classifications: number;
+  created_at: string;
+  updated_at: string;
 }
 
 /**

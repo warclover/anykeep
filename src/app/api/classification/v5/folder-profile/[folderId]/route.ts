@@ -9,6 +9,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { FolderProfilerService } from "@/lib/classification/v5/folder-profiler";
 import { EmbeddingService } from "@/lib/classification/v5/shared/embedding";
+import { createLogger } from "@/lib/classification/v5/shared/logger";
 
 /**
  * GET /api/classification/v5/folder-profile/:folderId
@@ -18,7 +19,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { folderId: string } },
 ) {
-  const logger = console; // TODO: 使用实际 LoggerService
+  const logger = createLogger("FolderProfileAPI");
 
   try {
     // 1. 验证用户身份
@@ -49,7 +50,7 @@ export async function GET(
 
     logger.info("获取文件夹画像", {
       userId: user.id,
-      folderId,
+      folderId: folderId.toString(),
     });
 
     // 3. 验证文件夹所有权
@@ -62,7 +63,7 @@ export async function GET(
 
     if (folderError || !folder) {
       logger.warn("文件夹不存在或无权访问", {
-        folderId,
+        folderId: folderId.toString(),
         error: folderError?.message,
       });
       return NextResponse.json(
@@ -86,7 +87,7 @@ export async function GET(
     );
 
     if (!profile) {
-      logger.info("文件夹画像不存在", { folderId });
+      logger.info("文件夹画像不存在", { folderId: folderId.toString() });
       return NextResponse.json(
         {
           success: true,
@@ -99,7 +100,7 @@ export async function GET(
 
     logger.info("文件夹画像获取成功", {
       userId: user.id,
-      folderId,
+      folderId: folderId.toString(),
       alphaCoefficient: profile.alphaCoefficient,
       bookmarkCount: profile.bookmarkCount,
     });
@@ -119,10 +120,10 @@ export async function GET(
       },
     });
   } catch (error) {
-    logger.error("获取文件夹画像失败", {
-      error: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
-    });
+    logger.error(
+      "获取文件夹画像失败",
+      error instanceof Error ? error : new Error(String(error))
+    );
 
     return NextResponse.json(
       {

@@ -56,7 +56,7 @@ export class ShadowSortingService {
       });
     } catch (error) {
       this.logger.error("Failed to set shadow suggestion", {
-        error,
+        error: error instanceof Error ? error.message : String(error),
         bookmarkId,
       });
       throw error;
@@ -109,7 +109,10 @@ export class ShadowSortingService {
           (item.folders as { name: string } | null)?.name || null,
       }));
     } catch (error) {
-      this.logger.error("Failed to get pending list", { error, userId });
+      this.logger.error("Failed to get pending list", {
+        error: error instanceof Error ? error.message : String(error),
+        userId,
+      });
       throw error;
     }
   }
@@ -155,7 +158,10 @@ export class ShadowSortingService {
         oldestSuggestion,
       };
     } catch (error) {
-      this.logger.error("Failed to get stats", { error, userId });
+      this.logger.error("Failed to get stats", {
+        error: error instanceof Error ? error.message : String(error),
+        userId,
+      });
       throw error;
     }
   }
@@ -196,7 +202,10 @@ export class ShadowSortingService {
         }),
       );
     } catch (error) {
-      this.logger.error("Failed to batch confirm", { error, userId });
+      this.logger.error("Failed to batch confirm", {
+        error: error instanceof Error ? error.message : String(error),
+        userId,
+      });
       throw error;
     }
   }
@@ -237,7 +246,10 @@ export class ShadowSortingService {
         }),
       );
     } catch (error) {
-      this.logger.error("Failed to batch reject", { error, userId });
+      this.logger.error("Failed to batch reject", {
+        error: error instanceof Error ? error.message : String(error),
+        userId,
+      });
       throw error;
     }
   }

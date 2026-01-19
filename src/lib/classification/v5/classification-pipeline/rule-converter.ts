@@ -21,27 +21,23 @@ export function convertUserRuleToL0Rule(
   const l0Rule: Rule = {
     name: `user_rule_${userRule.id}`,
     folderId: String(userRule.targetFolderId),
-    confidence: userRule.confidence,
+    confidence: 0.95, // 用户自定义规则使用固定高置信度
   };
 
-  // 根据规则类型和模式类型转换
-  switch (userRule.ruleType) {
-    case "url":
-      if (userRule.patternType === "domain") {
-        l0Rule.urlDomains = [userRule.pattern];
-      }
-      // regex 和 keyword 类型的 URL 规则暂不支持
+  // 根据模式类型转换
+  switch (userRule.patternType) {
+    case "domain":
+      // domain 类型匹配 URL
+      l0Rule.urlDomains = [userRule.pattern];
       break;
 
-    case "title":
-      if (userRule.patternType === "keyword") {
-        l0Rule.titleKeywords = [userRule.pattern];
-      }
-      // regex 类型的标题规则暂不支持
+    case "keyword":
+      // keyword 类型匹配标题
+      l0Rule.titleKeywords = [userRule.pattern];
       break;
 
-    case "content":
-      // content 规则暂不支持（L0 不处理内容）
+    case "regex":
+      // regex 类型暂不支持
       return null;
 
     default:

@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
 
     // 5.5. 加载用户自定义规则
     try {
-      const chatToRuleService = new ChatToRuleService(supabase, logger);
+      const chatToRuleService = new ChatToRuleService(supabase, logger, llmService);
       const userRules = await chatToRuleService.getRules(true); // 只获取启用的规则
       const l0Rules = convertUserRulesToL0Rules(userRules);
 
@@ -145,7 +145,11 @@ export async function POST(request: NextRequest) {
           t0Result.folderId,
           t0Result.confidence,
         ).catch((error) => {
-          logger.error("T1后台任务启动失败", { error, t1EventId });
+          logger.error(
+            "T1后台任务启动失败",
+            error instanceof Error ? error : new Error(String(error)),
+            { t1EventId }
+          );
         });
       }
     } else {
@@ -194,10 +198,11 @@ export async function POST(request: NextRequest) {
       content: body.content,
     }).catch((error) => {
       // 锚点提取失败不影响分类结果
-      logger.error("Context anchor extraction failed", {
-        error,
-        bookmarkId: body.bookmarkId,
-      });
+      logger.error(
+        "Context anchor extraction failed",
+        error instanceof Error ? error : new Error(String(error)),
+        { bookmarkId: body.bookmarkId }
+      );
     });
 
     // 7. 返回结果
@@ -219,10 +224,10 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    logger.error("分类失败", {
-      error: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
-    });
+    logger.error(
+      "分类失败",
+      error instanceof Error ? error : new Error(String(error))
+    );
 
     return NextResponse.json(
       {
@@ -251,12 +256,12 @@ async function extractAndLinkContextAnchor(
 ): Promise<void> {
   try {
     logger.debug("Starting context anchor extraction", {
-      bookmarkId: params.bookmarkId,
+      bookmarkId: params.bookmarkId.toString(),
     });
 
     // 1. 生成 embedding
     const text = [params.title, params.content].filter(Boolean).join(" ");
-    const embedding = await embeddingService.generateEmbedding(text);
+    const { embedding } = await embeddingService.generateEmbedding(text);
 
     // 2. 创建 ContextAnchorService
     const contextAnchorService = new ContextAnchorService(supabase, logger);
@@ -272,7 +277,7 @@ async function extractAndLinkContextAnchor(
 
     if (!extractedAnchor) {
       logger.debug("No context anchor extracted", {
-        bookmarkId: params.bookmarkId,
+        bookmarkId: params.bookmarkId.toString(),
       });
       return;
     }
@@ -286,22 +291,23 @@ async function extractAndLinkContextAnchor(
 
     if (linkResult.success) {
       logger.info("Context anchor linked successfully", {
-        bookmarkId: params.bookmarkId,
+        bookmarkId: params.bookmarkId.toString(),
         anchorId: linkResult.anchorId,
         anchorName: linkResult.anchorName,
         isNewAnchor: linkResult.isNewAnchor,
       });
     } else {
       logger.warn("Failed to link context anchor", {
-        bookmarkId: params.bookmarkId,
+        bookmarkId: params.bookmarkId.toString(),
         error: linkResult.error,
       });
     }
   } catch (error) {
-    logger.error("Context anchor extraction failed", {
-      error,
-      bookmarkId: params.bookmarkId,
-    });
+    logger.error(
+      "Context anchor extraction failed",
+      error instanceof Error ? error : new Error(String(error)),
+      { bookmarkId: params.bookmarkId.toString() }
+    );
     // 不抛出错误，因为这是后台操作
   }
 }

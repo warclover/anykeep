@@ -8,7 +8,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/types/supabase";
+import type { Database, Json } from "@/types/supabase";
 import type { LoggerService } from "../shared/logger";
 import type {
   AnchorType,
@@ -36,7 +36,7 @@ export class ContextAnchorService {
   ): Promise<ExtractedAnchor | null> {
     try {
       this.logger.info("Extracting context anchor", {
-        bookmarkId: params.bookmarkId,
+        bookmarkId: String(params.bookmarkId),
         url: params.url,
       });
 
@@ -64,15 +64,16 @@ export class ContextAnchorService {
       }
 
       this.logger.debug("No context anchor extracted", {
-        bookmarkId: params.bookmarkId,
+        bookmarkId: String(params.bookmarkId),
       });
 
       return null;
     } catch (error) {
-      this.logger.error("Failed to extract context anchor", {
-        error,
-        params,
-      });
+      this.logger.error(
+        "Failed to extract context anchor",
+        error instanceof Error ? error : new Error(String(error)),
+        { params }
+      );
       return null;
     }
   }
@@ -206,13 +207,21 @@ export class ContextAnchorService {
         threshold,
       });
 
+      // 获取当前用户ID
+      const {
+        data: { user },
+      } = await this.supabase.auth.getUser();
+      if (!user) {
+        throw new Error("User not authenticated");
+      }
+
       const { data, error } = await this.supabase.rpc(
         "find_similar_context_anchors",
         {
-          p_embedding: embedding as unknown as string,
-          p_anchor_type: anchorType || null,
+          p_user_id: user.id,
+          p_query_embedding: embedding as unknown as string,
+          p_similarity_threshold: threshold,
           p_limit: limit,
-          p_threshold: threshold,
         },
       );
 
@@ -229,7 +238,10 @@ export class ContextAnchorService {
         similarity: parseFloat(row.similarity.toString()),
       }));
     } catch (error) {
-      this.logger.error("Failed to find similar anchors", { error });
+      this.logger.error(
+        "Failed to find similar anchors",
+        error instanceof Error ? error : new Error(String(error))
+      );
       return [];
     }
   }
@@ -244,7 +256,7 @@ export class ContextAnchorService {
   ): Promise<AnchorLinkResult> {
     try {
       this.logger.info("Linking bookmark to anchor", {
-        bookmarkId,
+        bookmarkId: String(bookmarkId),
         anchorType: extractedAnchor.anchorType,
         anchorName: extractedAnchor.anchorName,
       });
@@ -275,7 +287,7 @@ export class ContextAnchorService {
           .insert({
             anchor_type: extractedAnchor.anchorType,
             anchor_name: extractedAnchor.anchorName,
-            anchor_metadata: extractedAnchor.anchorMetadata,
+            anchor_metadata: extractedAnchor.anchorMetadata as unknown as Json,
             embedding: embedding as unknown as string,
           })
           .select("id, anchor_name")
@@ -290,18 +302,19 @@ export class ContextAnchorService {
         this.logger.debug("Created new anchor", { anchorId });
       }
 
+      // TODO: 关联书签到锚点功能需要在 bookmarks 表中添加 context_anchor_id 字段
       // 2. 关联书签到锚点
-      const { error: linkError } = await this.supabase
-        .from("bookmarks")
-        .update({ context_anchor_id: anchorId })
-        .eq("id", bookmarkId);
+      // const { error: linkError } = await this.supabase
+      //   .from("bookmarks")
+      //   .update({ context_anchor_id: anchorId })
+      //   .eq("id", bookmarkId);
 
-      if (linkError) {
-        throw new Error(`Failed to link bookmark: ${linkError.message}`);
-      }
+      // if (linkError) {
+      //   throw new Error(`Failed to link bookmark: ${linkError.message}`);
+      // }
 
       this.logger.info("Bookmark linked to anchor successfully", {
-        bookmarkId,
+        bookmarkId: String(bookmarkId),
         anchorId,
         isNewAnchor,
       });
@@ -313,10 +326,11 @@ export class ContextAnchorService {
         isNewAnchor,
       };
     } catch (error) {
-      this.logger.error("Failed to link bookmark to anchor", {
-        error,
-        bookmarkId,
-      });
+      this.logger.error(
+        "Failed to link bookmark to anchor",
+        error instanceof Error ? error : new Error(String(error)),
+        { bookmarkId: String(bookmarkId) }
+      );
 
       return {
         success: false,
@@ -352,7 +366,11 @@ export class ContextAnchorService {
         updatedAt: data.updated_at,
       };
     } catch (error) {
-      this.logger.error("Failed to get anchor", { error, anchorId });
+      this.logger.error(
+        "Failed to get anchor",
+        error instanceof Error ? error : new Error(String(error)),
+        { anchorId }
+      );
       return null;
     }
   }

@@ -5,7 +5,7 @@
  */
 
 import type { LoggerService } from '../shared/logger';
-import { LLMCaller } from './llm-caller';
+import type { LLMCaller } from './llm-caller';
 import type { ClassificationRequest, T0Result, T1Result } from './types';
 
 /**

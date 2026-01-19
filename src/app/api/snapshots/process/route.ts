@@ -150,7 +150,7 @@ export async function POST(request: Request) {
       try {
         // 尝试认领任务
         // 注意：job 对象中的字段是 "type"，不是 "job_type"
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         const { data: claimedJobs, error: claimError } = (await (
           getSupabaseAdmin().rpc as any
         )("claim_next_job", {

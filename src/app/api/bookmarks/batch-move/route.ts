@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. 批量更新收藏的 folder_id
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const { data: movedBookmarks, error: moveError } = await (supabase
       .from("bookmarks") as any)
       .update({

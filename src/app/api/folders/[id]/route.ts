@@ -231,7 +231,7 @@ export async function PUT(
     // Note: color and icon are not in the database schema yet, removing for now
 
     // 6. 更新文件夹
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const { data: updatedFolder, error: updateError } = await (supabase
       .from("folders") as any)
       .update(updateData)

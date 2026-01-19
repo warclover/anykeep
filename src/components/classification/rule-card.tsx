@@ -91,13 +91,10 @@ export const RuleCard = memo(function RuleCard({
           {/* 规则类型和模式类型 */}
           <div className="flex items-center gap-2">
             <Badge variant="secondary">
-              {RULE_TYPE_LABELS[rule.ruleType] || rule.ruleType}
+              {RULE_TYPE_LABELS[rule.type] || rule.type}
             </Badge>
             <Badge variant="outline">
               {PATTERN_TYPE_LABELS[rule.patternType] || rule.patternType}
-            </Badge>
-            <Badge variant="default" className="ml-auto">
-              置信度: {Math.round(rule.confidence * 100)}%
             </Badge>
           </div>
 

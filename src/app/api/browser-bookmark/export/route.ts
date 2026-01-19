@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
 
     // 3. 构建查询
     // 类型断言: 手动维护类型文件时需要此断言
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     let query = (supabase
       .from("bookmarks") as any)
       .select(

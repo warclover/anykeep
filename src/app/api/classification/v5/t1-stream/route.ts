@@ -6,7 +6,7 @@
  * 功能：通过 Server-Sent Events (SSE) 实时推送 T1 纠正结果
  */
 
-import { NextRequest } from 'next/server';
+import type { NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { LoggerService } from '@/lib/classification/v5/shared/logger';
 

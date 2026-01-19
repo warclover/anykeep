@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
 
     // 3. 查询需要生成向量的书签
     // 类型断言: 手动维护类型文件时需要此断言
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     let query = (supabase
       .from("bookmarks") as any)
       .select("id, title, ai_summary, ai_tags")
@@ -142,7 +142,7 @@ export async function POST(request: NextRequest) {
 
           // 更新数据库（pgvector 接受 number[] 格式，TypeScript 类型为 string）
           // V4.2.7: 同时保存 embedding_version 用于版本追踪
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+           
           const { error: updateError } = await (supabase
             .from("bookmarks") as any)
             .update({

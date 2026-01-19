@@ -30,7 +30,6 @@ interface RuleEditDialogProps {
 export interface RuleUpdateData {
   pattern: string;
   description: string;
-  confidence: number;
 }
 
 /**
@@ -52,7 +51,6 @@ export const RuleEditDialog = memo(function RuleEditDialog({
     if (rule) {
       setPattern(rule.pattern);
       setDescription(rule.description || "");
-      setConfidence(rule.confidence);
     }
   }, [rule]);
 
@@ -64,7 +62,6 @@ export const RuleEditDialog = memo(function RuleEditDialog({
       await onSave(rule.id, {
         pattern,
         description,
-        confidence,
       });
       onOpenChange(false);
     } catch (error) {
@@ -72,7 +69,7 @@ export const RuleEditDialog = memo(function RuleEditDialog({
     } finally {
       setIsSaving(false);
     }
-  }, [rule, pattern, description, confidence, onSave, onOpenChange]);
+  }, [rule, pattern, description, onSave, onOpenChange]);
 
   if (!rule) return null;
 

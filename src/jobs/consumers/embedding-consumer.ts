@@ -54,7 +54,7 @@ export class EmbeddingConsumer extends BaseConsumer {
 
     try {
       // 获取书签内容（不含 content 列，因为表中没有该字段）
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const { data: bookmark, error: fetchError } = (await (
         context.supabase.from("bookmarks") as any
       )
@@ -98,7 +98,7 @@ export class EmbeddingConsumer extends BaseConsumer {
       const embeddingStr = `[${embedding.join(",")}]`;
 
       // 更新书签
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const { error: updateError } = await (
         context.supabase.from("bookmarks") as any
       )

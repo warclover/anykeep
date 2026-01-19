@@ -101,7 +101,7 @@ function tokenizeFolderName(folderName: string): string[] {
   }
 
   // 1. 预处理：拆分驼峰命名
-  let processed = folderName.replace(CAMEL_CASE_REGEX, "$1 $2");
+  const processed = folderName.replace(CAMEL_CASE_REGEX, "$1 $2");
 
   // 2. 按分隔符拆分
   const tokens = processed

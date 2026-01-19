@@ -110,12 +110,14 @@ export class LoggerService {
 
     switch (level) {
       case 'debug':
+        // eslint-disable-next-line no-console
         console.debug(logMessage);
         break;
       case 'info':
         console.info(logMessage);
         break;
       case 'warn':
+        // eslint-disable-next-line no-console
         console.warn(logMessage);
         break;
       case 'error':
@@ -130,8 +132,14 @@ export class LoggerService {
 
 /**
  * 创建默认 Logger 实例
+ * @param contextOrModule - LogContext 对象或模块名字符串
  */
-export function createLogger(context?: LogContext): LoggerService {
+export function createLogger(contextOrModule?: LogContext | string): LoggerService {
+  // 如果传入的是字符串，转换为 LogContext 对象
+  const context = typeof contextOrModule === 'string'
+    ? { module: contextOrModule }
+    : contextOrModule;
+
   return new LoggerService(
     {
       minLevel: (process.env.LOG_LEVEL as LogLevel) ?? 'info',

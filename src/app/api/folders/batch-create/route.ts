@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
         }
 
         // 创建新文件夹
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         const { data: created, error: createError } = await (supabase
           .from("folders") as any)
           .insert({

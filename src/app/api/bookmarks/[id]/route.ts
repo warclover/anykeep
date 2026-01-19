@@ -199,7 +199,7 @@ export async function PUT(
       updateData.is_marked_for_deletion = isMarkedForDeletion;
 
     // 5. 更新收藏
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const { data: updatedBookmark, error: updateError } = await (supabase
       .from("bookmarks") as any)
       .update(updateData)
@@ -321,7 +321,7 @@ export async function PATCH(
       updateData.starred_at = isStarred ? now : null;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const { data: updatedBookmark, error: updateError } = await (supabase
       .from("bookmarks") as any)
       .update(updateData)
@@ -448,7 +448,7 @@ export async function DELETE(
 
     // 3. 移入垃圾箱（而非永久删除）
     const serviceClient = await createServiceClient();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const { error: moveToTrashError } = await (serviceClient
       .from("bookmarks") as any)
       .update({

@@ -75,10 +75,11 @@ export class ChatToRuleService {
 
       return extractedRule;
     } catch (error) {
-      this.logger.error("Failed to extract rule from feedback", {
-        error,
-        params,
-      });
+      this.logger.error(
+        "Failed to extract rule from feedback",
+        error instanceof Error ? error : new Error(String(error)),
+        { params }
+      );
       return null;
     }
   }
@@ -144,10 +145,11 @@ ${params.bookmarkUrl ? `书签URL：${params.bookmarkUrl}` : ""}
         confidence: parsed.confidence,
       };
     } catch (error) {
-      this.logger.error("Failed to parse LLM response", {
-        error,
-        llmResponse,
-      });
+      this.logger.error(
+        "Failed to parse LLM response",
+        error instanceof Error ? error : new Error(String(error)),
+        { llmResponse }
+      );
       return null;
     }
   }
@@ -252,10 +254,11 @@ ${params.bookmarkUrl ? `书签URL：${params.bookmarkUrl}` : ""}
 
       return this.mapDatabaseRuleToModel(data);
     } catch (error) {
-      this.logger.error("Failed to create rule", {
-        error,
-        params,
-      });
+      this.logger.error(
+        "Failed to create rule",
+        error instanceof Error ? error : new Error(String(error)),
+        { params }
+      );
       return null;
     }
   }
@@ -302,11 +305,11 @@ ${params.bookmarkUrl ? `书签URL：${params.bookmarkUrl}` : ""}
       // 4. 没有匹配的规则
       return { matched: false };
     } catch (error) {
-      this.logger.error("Failed to apply rules", {
-        error,
-        bookmarkTitle,
-        bookmarkUrl,
-      });
+      this.logger.error(
+        "Failed to apply rules",
+        error instanceof Error ? error : new Error(String(error)),
+        { bookmarkTitle, bookmarkUrl }
+      );
       return { matched: false };
     }
   }
@@ -370,7 +373,10 @@ ${params.bookmarkUrl ? `书签URL：${params.bookmarkUrl}` : ""}
 
       return (data || []).map(this.mapDatabaseRuleToModel);
     } catch (error) {
-      this.logger.error("Failed to get rules", { error });
+      this.logger.error(
+        "Failed to get rules",
+        error instanceof Error ? error : new Error(String(error))
+      );
       return [];
     }
   }
@@ -388,10 +394,11 @@ ${params.bookmarkUrl ? `书签URL：${params.bookmarkUrl}` : ""}
         throw new Error(`Failed to increment match count: ${error.message}`);
       }
     } catch (error) {
-      this.logger.error("Failed to increment match count", {
-        error,
-        ruleId,
-      });
+      this.logger.error(
+        "Failed to increment match count",
+        error instanceof Error ? error : new Error(String(error)),
+        { ruleId }
+      );
     }
   }
 
@@ -404,9 +411,9 @@ ${params.bookmarkUrl ? `书签URL：${params.bookmarkUrl}` : ""}
     return {
       id: data.id,
       userId: data.user_id,
-      type: data.type,
+      type: data.type as RuleType,
       pattern: data.pattern,
-      patternType: data.pattern_type,
+      patternType: data.pattern_type as PatternType,
       targetFolderId: data.target_folder_id,
       targetFolderName: data.target_folder_name,
       priority: data.priority,
@@ -414,7 +421,6 @@ ${params.bookmarkUrl ? `书签URL：${params.bookmarkUrl}` : ""}
       sourceText: data.source_text,
       description: data.description,
       matchCount: data.match_count,
-      lastMatchedAt: data.last_matched_at,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
     };

@@ -216,7 +216,7 @@ export async function PUT(
 
       if (targetFolderId) {
         // 更新书签的文件夹
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         const { error: moveError } = await (supabase
           .from("bookmarks") as any)
           .update({

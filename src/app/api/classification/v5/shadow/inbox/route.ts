@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
 
   try {
     // 1. 创建 Supabase 客户端
-    const supabase = createClient();
+    const supabase = await createClient();
 
     // 2. 验证用户认证
     const {
@@ -72,7 +72,10 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    logger.error("Shadow inbox API error", { error });
+    logger.error(
+      "Shadow inbox API error",
+      error instanceof Error ? error : new Error(String(error))
+    );
 
     return NextResponse.json(
       {

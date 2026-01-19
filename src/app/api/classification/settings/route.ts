@@ -174,7 +174,7 @@ export async function PUT(request: NextRequest) {
       classification_updated_at: new Date().toISOString(),
     };
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const { error: updateError } = await (supabase
       .from("profiles") as any)
       .update({ settings: updatedSettings })

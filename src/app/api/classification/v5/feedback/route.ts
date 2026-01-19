@@ -7,6 +7,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { FeedbackService } from "@/lib/classification/v5/feedback";
+import { LLMService } from "@/lib/classification/v5/shared/llm";
 import { createLogger } from "@/lib/classification/v5/shared/logger";
 import type { ClassificationFeedback } from "@/lib/classification/v5/feedback";
 
@@ -59,7 +60,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. 创建 Supabase 客户端
-    const supabase = createClient();
+    const supabase = await createClient();
 
     // 5. 验证用户认证
     const {
@@ -107,7 +108,8 @@ export async function POST(request: NextRequest) {
     };
 
     // 8. 处理反馈
-    const feedbackService = new FeedbackService(supabase, logger);
+    const llmService = new LLMService(supabase, logger);
+    const feedbackService = new FeedbackService(supabase, logger, llmService);
     const result = await feedbackService.processFeedback(feedback);
 
     // 9. 返回结果
@@ -130,7 +132,10 @@ export async function POST(request: NextRequest) {
       );
     }
   } catch (error) {
-    logger.error("Feedback API error", { error });
+    logger.error(
+      "Feedback API error",
+      error instanceof Error ? error : new Error(String(error))
+    );
 
     return NextResponse.json(
       {

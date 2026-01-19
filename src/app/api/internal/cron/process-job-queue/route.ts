@@ -76,7 +76,7 @@ export async function GET(request: Request) {
     };
     for (let i = 0; i < MAX_JOBS_PER_RUN; i++) {
       // Claim next job
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const { data: claimedJobs, error: claimError } = (await (
         getSupabaseAdmin().rpc as any
       )("claim_next_job", {
