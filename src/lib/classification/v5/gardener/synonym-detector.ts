@@ -4,9 +4,9 @@
  * 检测相似的文件夹名称，发现可能的同义词组
  */
 
-import type { LoggerService } from '../shared/logger';
-import type { EmbeddingService } from '../shared/embedding';
-import type { SynonymGroup, GardenerConfig } from './types';
+import type { LoggerService } from "../shared/logger";
+import type { IEmbeddingService } from "../shared/embedding";
+import type { SynonymGroup, GardenerConfig } from "./types";
 
 /**
  * 文件夹信息
@@ -25,15 +25,15 @@ export interface FolderInfo {
  */
 export class SynonymDetector {
   private logger: LoggerService;
-  private embeddingService: EmbeddingService;
+  private embeddingService: IEmbeddingService;
   private config: GardenerConfig;
 
   constructor(
     logger: LoggerService,
-    embeddingService: EmbeddingService,
-    config: GardenerConfig
+    embeddingService: IEmbeddingService,
+    config: GardenerConfig,
   ) {
-    this.logger = logger.child({ service: 'SynonymDetector' });
+    this.logger = logger.child({ service: "SynonymDetector" });
     this.embeddingService = embeddingService;
     this.config = config;
   }
@@ -42,12 +42,12 @@ export class SynonymDetector {
    * 检测同义词组
    */
   async detect(folders: FolderInfo[]): Promise<SynonymGroup[]> {
-    this.logger.info('开始检测同义词', {
+    this.logger.info("开始检测同义词", {
       folderCount: folders.length,
     });
 
     if (folders.length < 2) {
-      this.logger.debug('文件夹数量不足，跳过同义词检测');
+      this.logger.debug("文件夹数量不足，跳过同义词检测");
       return [];
     }
 
@@ -58,12 +58,9 @@ export class SynonymDetector {
     const similarityMatrix = this.calculateSimilarityMatrix(folderEmbeddings);
 
     // 3. 识别同义词组
-    const synonymGroups = this.identifySynonymGroups(
-      folders,
-      similarityMatrix
-    );
+    const synonymGroups = this.identifySynonymGroups(folders, similarityMatrix);
 
-    this.logger.info('同义词检测完成', {
+    this.logger.info("同义词检测完成", {
       groupCount: synonymGroups.length,
     });
 
@@ -74,9 +71,9 @@ export class SynonymDetector {
    * 生成文件夹名称的向量
    */
   private async generateEmbeddings(
-    folders: FolderInfo[]
+    folders: FolderInfo[],
   ): Promise<Map<string, number[]>> {
-    this.logger.debug('生成文件夹名称向量', {
+    this.logger.debug("生成文件夹名称向量", {
       count: folders.length,
     });
 
@@ -85,17 +82,17 @@ export class SynonymDetector {
     for (const folder of folders) {
       try {
         const embedding = await this.embeddingService.generateEmbedding(
-          folder.folderName
+          folder.folderName,
         );
         embeddings.set(folder.folderId, embedding.embedding);
       } catch (error) {
         this.logger.error(
-          '生成向量失败',
+          "生成向量失败",
           error instanceof Error ? error : undefined,
           {
             folderId: folder.folderId,
             folderName: folder.folderName,
-          }
+          },
         );
       }
     }
@@ -107,9 +104,9 @@ export class SynonymDetector {
    * 计算相似度矩阵
    */
   private calculateSimilarityMatrix(
-    embeddings: Map<string, number[]>
+    embeddings: Map<string, number[]>,
   ): Map<string, Map<string, number>> {
-    this.logger.debug('计算相似度矩阵');
+    this.logger.debug("计算相似度矩阵");
 
     const matrix = new Map<string, Map<string, number>>();
     const folderIds = Array.from(embeddings.keys());
@@ -145,7 +142,7 @@ export class SynonymDetector {
    */
   private cosineSimilarity(vec1: number[], vec2: number[]): number {
     if (vec1.length !== vec2.length) {
-      throw new Error('向量维度不匹配');
+      throw new Error("向量维度不匹配");
     }
 
     let dotProduct = 0;
@@ -170,16 +167,16 @@ export class SynonymDetector {
    */
   private identifySynonymGroups(
     folders: FolderInfo[],
-    similarityMatrix: Map<string, Map<string, number>>
+    similarityMatrix: Map<string, Map<string, number>>,
   ): SynonymGroup[] {
-    this.logger.debug('识别同义词组');
+    this.logger.debug("识别同义词组");
 
     const groups: SynonymGroup[] = [];
     const processed = new Set<string>();
 
     // 按书签数量排序，书签多的作为主文件夹
     const sortedFolders = [...folders].sort(
-      (a, b) => b.bookmarkCount - a.bookmarkCount
+      (a, b) => b.bookmarkCount - a.bookmarkCount,
     );
 
     for (const primaryFolder of sortedFolders) {
@@ -228,7 +225,7 @@ export class SynonymDetector {
           suggestedAction: this.determineSuggestedAction(
             primaryFolder,
             synonyms,
-            avgSimilarity
+            avgSimilarity,
           ),
         });
 
@@ -244,20 +241,24 @@ export class SynonymDetector {
    */
   private determineSuggestedAction(
     primaryFolder: FolderInfo,
-    synonyms: Array<{ folderId: string; folderName: string; similarity: number }>,
-    avgSimilarity: number
-  ): 'merge' | 'rename' | 'keep_separate' {
+    synonyms: Array<{
+      folderId: string;
+      folderName: string;
+      similarity: number;
+    }>,
+    avgSimilarity: number,
+  ): "merge" | "rename" | "keep_separate" {
     // 高相似度（>0.95）且同义词少 → 建议合并
     if (avgSimilarity > 0.95 && synonyms.length <= 2) {
-      return 'merge';
+      return "merge";
     }
 
     // 中等相似度（0.85-0.95）→ 建议重命名以区分
     if (avgSimilarity >= 0.85 && avgSimilarity <= 0.95) {
-      return 'rename';
+      return "rename";
     }
 
     // 其他情况 → 保持独立
-    return 'keep_separate';
+    return "keep_separate";
   }
 }

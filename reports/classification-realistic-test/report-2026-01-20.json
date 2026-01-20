@@ -1,0 +1,475 @@
+{
+  "summary": {
+    "totalUsers": 3,
+    "totalBookmarks": 60,
+    "overallAccuracy": 0.4166666666666667,
+    "avgConfidence": 0.5736666666666667,
+    "avgLatency": 303.3833333333333
+  },
+  "byUserType": [
+    {
+      "userType": "student_cs",
+      "userCount": 1,
+      "bookmarkCount": 20,
+      "accuracy": 0.6,
+      "avgConfidence": 0.5474999999999999
+    },
+    {
+      "userType": "dev_frontend",
+      "userCount": 1,
+      "bookmarkCount": 20,
+      "accuracy": 0.2,
+      "avgConfidence": 0.5665
+    },
+    {
+      "userType": "power_user",
+      "userCount": 1,
+      "bookmarkCount": 20,
+      "accuracy": 0.45,
+      "avgConfidence": 0.6070000000000001
+    }
+  ],
+  "byDomain": [
+    {
+      "domain": "backend",
+      "bookmarkCount": 10,
+      "accuracy": 0.3,
+      "topErrors": [
+        {
+          "expectedFolder": "70",
+          "actualFolder": "64",
+          "count": 3
+        },
+        {
+          "expectedFolder": "64",
+          "actualFolder": "70",
+          "count": 2
+        },
+        {
+          "expectedFolder": "64",
+          "actualFolder": "60",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "domain": "education",
+      "bookmarkCount": 8,
+      "accuracy": 1,
+      "topErrors": []
+    },
+    {
+      "domain": "frontend",
+      "bookmarkCount": 26,
+      "accuracy": 0.23076923076923078,
+      "topErrors": [
+        {
+          "expectedFolder": "66",
+          "actualFolder": "62",
+          "count": 4
+        },
+        {
+          "expectedFolder": "62",
+          "actualFolder": "64",
+          "count": 3
+        },
+        {
+          "expectedFolder": "66",
+          "actualFolder": "64",
+          "count": 3
+        },
+        {
+          "expectedFolder": "66",
+          "actualFolder": "69",
+          "count": 3
+        },
+        {
+          "expectedFolder": "66",
+          "actualFolder": "70",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "domain": "design",
+      "bookmarkCount": 6,
+      "accuracy": 0.3333333333333333,
+      "topErrors": [
+        {
+          "expectedFolder": "68",
+          "actualFolder": "66",
+          "count": 1
+        },
+        {
+          "expectedFolder": "68",
+          "actualFolder": "72",
+          "count": 1
+        },
+        {
+          "expectedFolder": "68",
+          "actualFolder": "60",
+          "count": 1
+        },
+        {
+          "expectedFolder": "71",
+          "actualFolder": "66",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "domain": "devops",
+      "bookmarkCount": 1,
+      "accuracy": 0,
+      "topErrors": [
+        {
+          "expectedFolder": "66",
+          "actualFolder": "60",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "domain": "product",
+      "bookmarkCount": 3,
+      "accuracy": 1,
+      "topErrors": []
+    },
+    {
+      "domain": "other",
+      "bookmarkCount": 4,
+      "accuracy": 0.75,
+      "topErrors": [
+        {
+          "expectedFolder": "73",
+          "actualFolder": "60",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "domain": "data_science",
+      "bookmarkCount": 2,
+      "accuracy": 0,
+      "topErrors": [
+        {
+          "expectedFolder": "69",
+          "actualFolder": "72",
+          "count": 1
+        },
+        {
+          "expectedFolder": "69",
+          "actualFolder": "60",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "byStrategy": [
+    {
+      "strategy": "L3_LLM",
+      "usageCount": 12,
+      "usageRate": 0.2,
+      "accuracy": 0.5,
+      "avgLatency": 349.4166666666667
+    },
+    {
+      "strategy": "L2_VECTOR",
+      "usageCount": 48,
+      "usageRate": 0.8,
+      "accuracy": 0.3958333333333333,
+      "avgLatency": 291.875
+    }
+  ],
+  "errorAnalysis": {
+    "totalErrors": 35,
+    "errorTypes": {
+      "falsePositive": 35,
+      "falseNegative": 0,
+      "wrongFolder": 35
+    },
+    "topErrorPatterns": [
+      {
+        "pattern": "66 -> 62",
+        "count": 4,
+        "examples": [
+          {
+            "id": "1636",
+            "title": "vue 组件 入门",
+            "expectedFolder": "66",
+            "expectedFolderName": "React学习",
+            "actualFolder": "62",
+            "actualFolderName": "React学习",
+            "domain": "frontend"
+          },
+          {
+            "id": "1637",
+            "title": "入门 javascript Hooks",
+            "expectedFolder": "66",
+            "expectedFolderName": "React学习",
+            "actualFolder": "62",
+            "actualFolderName": "React学习",
+            "domain": "frontend"
+          },
+          {
+            "id": "1639",
+            "title": "html 性能优化 入门",
+            "expectedFolder": "66",
+            "expectedFolderName": "React学习",
+            "actualFolder": "62",
+            "actualFolderName": "React学习",
+            "domain": "frontend"
+          }
+        ]
+      },
+      {
+        "pattern": "62 -> 64",
+        "count": 3,
+        "examples": [
+          {
+            "id": "1608",
+            "title": "状态管理 javascript 专家",
+            "expectedFolder": "62",
+            "expectedFolderName": "React学习",
+            "actualFolder": "64",
+            "actualFolderName": "Node.js开发",
+            "domain": "frontend"
+          },
+          {
+            "id": "1609",
+            "title": "Hooks typescript 高级",
+            "expectedFolder": "62",
+            "expectedFolderName": "React学习",
+            "actualFolder": "64",
+            "actualFolderName": "Node.js开发",
+            "domain": "frontend"
+          },
+          {
+            "id": "1625",
+            "title": "路由 vue 入门",
+            "expectedFolder": "62",
+            "expectedFolderName": "React学习",
+            "actualFolder": "64",
+            "actualFolderName": "Node.js开发",
+            "domain": "frontend"
+          }
+        ]
+      },
+      {
+        "pattern": "66 -> 64",
+        "count": 3,
+        "examples": [
+          {
+            "id": "1628",
+            "title": "组件 typescript 进阶",
+            "expectedFolder": "66",
+            "expectedFolderName": "React学习",
+            "actualFolder": "64",
+            "actualFolderName": "Node.js开发",
+            "domain": "frontend"
+          },
+          {
+            "id": "1635",
+            "title": "入门 javascript 生命周期",
+            "expectedFolder": "66",
+            "expectedFolderName": "React学习",
+            "actualFolder": "64",
+            "actualFolderName": "Node.js开发",
+            "domain": "frontend"
+          },
+          {
+            "id": "1645",
+            "title": "angular 路由 入门",
+            "expectedFolder": "66",
+            "expectedFolderName": "React学习",
+            "actualFolder": "64",
+            "actualFolderName": "Node.js开发",
+            "domain": "frontend"
+          }
+        ]
+      },
+      {
+        "pattern": "66 -> 69",
+        "count": 3,
+        "examples": [
+          {
+            "id": "1630",
+            "title": "react 高级 组件",
+            "expectedFolder": "66",
+            "expectedFolderName": "React学习",
+            "actualFolder": "69",
+            "actualFolderName": "React学习",
+            "domain": "frontend"
+          },
+          {
+            "id": "1638",
+            "title": "angular 入门 生命周期",
+            "expectedFolder": "66",
+            "expectedFolderName": "React学习",
+            "actualFolder": "69",
+            "actualFolderName": "React学习",
+            "domain": "frontend"
+          },
+          {
+            "id": "1640",
+            "title": "Hooks html 高级",
+            "expectedFolder": "66",
+            "expectedFolderName": "React学习",
+            "actualFolder": "69",
+            "actualFolderName": "React学习",
+            "domain": "frontend"
+          }
+        ]
+      },
+      {
+        "pattern": "70 -> 64",
+        "count": 3,
+        "examples": [
+          {
+            "id": "1649",
+            "title": "安全 database 进阶",
+            "expectedFolder": "70",
+            "expectedFolderName": "Node.js开发",
+            "actualFolder": "64",
+            "actualFolderName": "Node.js开发",
+            "domain": "backend"
+          },
+          {
+            "id": "1654",
+            "title": "缓存 nodejs 专家",
+            "expectedFolder": "70",
+            "expectedFolderName": "Node.js开发",
+            "actualFolder": "64",
+            "actualFolderName": "Node.js开发",
+            "domain": "backend"
+          },
+          {
+            "id": "1657",
+            "title": "指南 Java 微服务",
+            "expectedFolder": "70",
+            "expectedFolderName": "Node.js开发",
+            "actualFolder": "64",
+            "actualFolderName": "Node.js开发",
+            "domain": "backend"
+          }
+        ]
+      },
+      {
+        "pattern": "64 -> 70",
+        "count": 2,
+        "examples": [
+          {
+            "id": "1606",
+            "title": "java 数据库 教程",
+            "expectedFolder": "64",
+            "expectedFolderName": "Node.js开发",
+            "actualFolder": "70",
+            "actualFolderName": "Node.js开发",
+            "domain": "backend"
+          },
+          {
+            "id": "1622",
+            "title": "深入 JavaScript 缓存",
+            "expectedFolder": "64",
+            "expectedFolderName": "Node.js开发",
+            "actualFolder": "70",
+            "actualFolderName": "Node.js开发",
+            "domain": "backend"
+          }
+        ]
+      },
+      {
+        "pattern": "64 -> 60",
+        "count": 2,
+        "examples": [
+          {
+            "id": "1611",
+            "title": "database 认证 指南",
+            "expectedFolder": "64",
+            "expectedFolderName": "Node.js开发",
+            "actualFolder": "60",
+            "actualFolderName": "学习资料",
+            "domain": "backend"
+          },
+          {
+            "id": "1615",
+            "title": "go 认证 指南",
+            "expectedFolder": "64",
+            "expectedFolderName": "Node.js开发",
+            "actualFolder": "60",
+            "actualFolderName": "学习资料",
+            "domain": "backend"
+          }
+        ]
+      },
+      {
+        "pattern": "66 -> 70",
+        "count": 2,
+        "examples": [
+          {
+            "id": "1629",
+            "title": "路由 css 高级",
+            "expectedFolder": "66",
+            "expectedFolderName": "React学习",
+            "actualFolder": "70",
+            "actualFolderName": "Node.js开发",
+            "domain": "frontend"
+          },
+          {
+            "id": "1634",
+            "title": "生命周期 css 高级",
+            "expectedFolder": "66",
+            "expectedFolderName": "React学习",
+            "actualFolder": "70",
+            "actualFolderName": "Node.js开发",
+            "domain": "frontend"
+          }
+        ]
+      },
+      {
+        "pattern": "69 -> 64",
+        "count": 2,
+        "examples": [
+          {
+            "id": "1651",
+            "title": "生命周期 javascript 高级",
+            "expectedFolder": "69",
+            "expectedFolderName": "React学习",
+            "actualFolder": "64",
+            "actualFolderName": "Node.js开发",
+            "domain": "frontend"
+          },
+          {
+            "id": "1653",
+            "title": "vue 性能优化 指南",
+            "expectedFolder": "69",
+            "expectedFolderName": "React学习",
+            "actualFolder": "64",
+            "actualFolderName": "Node.js开发",
+            "domain": "frontend"
+          }
+        ]
+      },
+      {
+        "pattern": "62 -> 70",
+        "count": 1,
+        "examples": [
+          {
+            "id": "1623",
+            "title": "指南 html 性能优化",
+            "expectedFolder": "62",
+            "expectedFolderName": "React学习",
+            "actualFolder": "70",
+            "actualFolderName": "Node.js开发",
+            "domain": "frontend"
+          }
+        ]
+      }
+    ]
+  },
+  "recommendations": [
+    "整体准确率 41.7% 低于目标 80%，建议优化分类算法",
+    "平均置信度 0.57 较低，建议提升分类确定性"
+  ],
+  "testDuration": "1分钟11秒"
+}

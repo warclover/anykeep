@@ -1,6 +1,9 @@
 /**
  * T1后台执行器
  * 在后台异步执行T1纠正任务
+ *
+ * v5.2: 使用 DashScopeEmbeddingAdapter 替代 OpenAI EmbeddingService
+ *       以使用项目统一的百炼/DashScope embedding 服务
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -8,7 +11,7 @@ import type { LoggerService } from "../shared/logger";
 import type { ClassificationRequest } from "../classification-pipeline/types";
 import { ClassificationPipelineService } from "../classification-pipeline";
 import { T1QueueService } from "./t1-queue.service";
-import { EmbeddingService } from "../shared/embedding";
+import { DashScopeEmbeddingAdapter } from "../shared/embedding";
 import { VectorSearchService } from "../shared/vector-search";
 import { LLMService } from "../shared/llm";
 
@@ -54,8 +57,8 @@ export async function executeT1InBackground(
 
     const startTime = Date.now();
 
-    // 3. 初始化服务
-    const embeddingService = new EmbeddingService(logger, {});
+    // 3. 初始化服务（使用百炼/DashScope embedding）
+    const embeddingService = new DashScopeEmbeddingAdapter(logger);
     const vectorSearch = new VectorSearchService(logger, {});
     const llmService = new LLMService(logger);
 
@@ -93,7 +96,7 @@ export async function executeT1InBackground(
       {
         eventId,
         bookmarkId: request.bookmarkId,
-      }
+      },
     );
 
     // 更新任务状态为失败

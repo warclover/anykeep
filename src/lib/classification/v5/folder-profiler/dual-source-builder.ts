@@ -6,7 +6,7 @@
  */
 
 import type { LoggerService } from "../shared/logger";
-import type { EmbeddingService } from "../shared/embedding";
+import type { IEmbeddingService } from "../shared/embedding";
 import type { LLMService } from "../shared/llm";
 import type { DualSourceVectors } from "./types";
 import { ColdStartEnricher } from "./cold-start-enricher";
@@ -95,7 +95,7 @@ export interface DualSourceBuilderOptions {
  */
 export class DualSourceBuilder {
   private logger: LoggerService;
-  private embeddingService: EmbeddingService;
+  private embeddingService: IEmbeddingService;
   /** v5.1: 安全封装器 */
   private safeEmbeddingWrapper: SafeEmbeddingWrapper;
   /** v5.1: 冷启动增强器 */
@@ -109,7 +109,7 @@ export class DualSourceBuilder {
 
   constructor(
     logger: LoggerService,
-    embeddingService: EmbeddingService,
+    embeddingService: IEmbeddingService,
     llmService?: LLMService,
     options?: DualSourceBuilderOptions,
   ) {

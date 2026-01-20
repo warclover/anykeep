@@ -8,7 +8,7 @@
  * @since 2026-01-20
  */
 
-import type { EmbeddingService } from "../shared/embedding";
+import type { IEmbeddingService } from "../shared/embedding";
 import type { LoggerService } from "../shared/logger";
 
 /**
@@ -55,12 +55,12 @@ type ErrorType = "transient" | "validation" | "timeout" | "unknown";
  */
 export class SafeEmbeddingWrapper {
   private logger: LoggerService;
-  private embeddingService: EmbeddingService;
+  private embeddingService: IEmbeddingService;
   private config: SafeEmbeddingConfig;
 
   constructor(
     logger: LoggerService,
-    embeddingService: EmbeddingService,
+    embeddingService: IEmbeddingService,
     config?: Partial<SafeEmbeddingConfig>,
   ) {
     this.logger = logger.child({ service: "SafeEmbeddingWrapper" });

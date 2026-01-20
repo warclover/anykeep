@@ -31,15 +31,33 @@ export interface EmbeddingResult {
 }
 
 /**
+ * Embedding 服务接口
+ *
+ * 定义 EmbeddingService 和 DashScopeEmbeddingAdapter 的公共接口
+ * 用于依赖注入和类型兼容
+ */
+export interface IEmbeddingService {
+  /**
+   * 生成单个文本的 Embedding 向量
+   */
+  generateEmbedding(text: string): Promise<EmbeddingResult>;
+
+  /**
+   * 批量生成 Embedding（可选）
+   */
+  generateBatchEmbeddings?(texts: string[]): Promise<EmbeddingResult[]>;
+}
+
+/**
  * Embedding 错误类型
  */
 export class EmbeddingError extends Error {
   constructor(
     message: string,
     public readonly cause?: Error,
-    public readonly retryable: boolean = false
+    public readonly retryable: boolean = false,
   ) {
     super(message);
-    this.name = 'EmbeddingError';
+    this.name = "EmbeddingError";
   }
 }

@@ -5,7 +5,7 @@
  */
 
 import type { LoggerService } from "../shared/logger";
-import type { EmbeddingService } from "../shared/embedding";
+import type { IEmbeddingService } from "../shared/embedding";
 import type { L0RuleMatcher } from "./l0-rule-matcher";
 import type { HybridRetriever } from "./hybrid-retriever";
 import type { LLMCaller } from "./llm-caller";
@@ -16,14 +16,14 @@ import type { ClassificationRequest, T0Result } from "./types";
  */
 export class T0Generator {
   private logger: LoggerService;
-  private embeddingService: EmbeddingService;
+  private embeddingService: IEmbeddingService;
   private l0Matcher: L0RuleMatcher;
   private hybridRetriever: HybridRetriever;
   private llmCaller: LLMCaller;
 
   constructor(
     logger: LoggerService,
-    embeddingService: EmbeddingService,
+    embeddingService: IEmbeddingService,
     l0Matcher: L0RuleMatcher,
     hybridRetriever: HybridRetriever,
     llmCaller: LLMCaller,

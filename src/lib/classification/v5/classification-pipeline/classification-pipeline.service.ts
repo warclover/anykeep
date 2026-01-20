@@ -5,7 +5,7 @@
  */
 
 import type { LoggerService } from "../shared/logger";
-import type { EmbeddingService } from "../shared/embedding";
+import type { IEmbeddingService } from "../shared/embedding";
 import type { VectorSearchService } from "../shared/vector-search";
 import type { LLMService } from "../shared/llm";
 import { L0RuleMatcher, type Rule } from "./l0-rule-matcher";
@@ -51,7 +51,7 @@ export class ClassificationPipelineService {
 
   constructor(
     logger: LoggerService,
-    embeddingService: EmbeddingService,
+    embeddingService: IEmbeddingService,
     vectorSearch: VectorSearchService,
     llmService: LLMService,
     config?: Partial<ClassificationPipelineConfig>,

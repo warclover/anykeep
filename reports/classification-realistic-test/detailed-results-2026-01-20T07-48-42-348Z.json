@@ -1,0 +1,773 @@
+{
+  "testResults": [
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:designer_ui",
+      "bookmarkId": "1547",
+      "expectedFolder": "49",
+      "actualFolder": "51",
+      "confidence": 0.61,
+      "isCorrect": false,
+      "latencyMs": 652,
+      "strategy": "L3_LLM"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:designer_ui",
+      "bookmarkId": "1548",
+      "expectedFolder": "49",
+      "actualFolder": "53",
+      "confidence": 0.76,
+      "isCorrect": false,
+      "latencyMs": 278,
+      "strategy": "L2_VECTOR"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:designer_ui",
+      "bookmarkId": "1549",
+      "expectedFolder": "49",
+      "actualFolder": "51",
+      "confidence": 0.53,
+      "isCorrect": false,
+      "latencyMs": 279,
+      "strategy": "L2_VECTOR"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:designer_ui",
+      "bookmarkId": "1550",
+      "expectedFolder": "49",
+      "actualFolder": "51",
+      "confidence": 0.6,
+      "isCorrect": false,
+      "latencyMs": 291,
+      "strategy": "L2_VECTOR"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:designer_ui",
+      "bookmarkId": "1551",
+      "expectedFolder": "49",
+      "actualFolder": "51",
+      "confidence": 0.58,
+      "isCorrect": false,
+      "latencyMs": 279,
+      "strategy": "L2_VECTOR"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:designer_ui",
+      "bookmarkId": "1552",
+      "expectedFolder": "49",
+      "actualFolder": "49",
+      "confidence": 0.73,
+      "isCorrect": true,
+      "latencyMs": 290,
+      "strategy": "L2_VECTOR"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:designer_ui",
+      "bookmarkId": "1553",
+      "expectedFolder": "49",
+      "actualFolder": "51",
+      "confidence": 0.53,
+      "isCorrect": false,
+      "latencyMs": 274,
+      "strategy": "L2_VECTOR"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:designer_ui",
+      "bookmarkId": "1554",
+      "expectedFolder": "49",
+      "actualFolder": "49",
+      "confidence": 0.74,
+      "isCorrect": true,
+      "latencyMs": 284,
+      "strategy": "L2_VECTOR"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:designer_ui",
+      "bookmarkId": "1555",
+      "expectedFolder": "49",
+      "actualFolder": "49",
+      "confidence": 0.78,
+      "isCorrect": true,
+      "latencyMs": 279,
+      "strategy": "L2_VECTOR"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:designer_ui",
+      "bookmarkId": "1556",
+      "expectedFolder": "49",
+      "actualFolder": "49",
+      "confidence": 0.7,
+      "isCorrect": true,
+      "latencyMs": 285,
+      "strategy": "L2_VECTOR"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:designer_ui",
+      "bookmarkId": "1557",
+      "expectedFolder": "49",
+      "actualFolder": "49",
+      "confidence": 0.78,
+      "isCorrect": true,
+      "latencyMs": 283,
+      "strategy": "L2_VECTOR"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:designer_ui",
+      "bookmarkId": "1558",
+      "expectedFolder": "49",
+      "actualFolder": "49",
+      "confidence": 0.75,
+      "isCorrect": true,
+      "latencyMs": 276,
+      "strategy": "L2_VECTOR"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:designer_ui",
+      "bookmarkId": "1559",
+      "expectedFolder": "49",
+      "actualFolder": "49",
+      "confidence": 0.77,
+      "isCorrect": true,
+      "latencyMs": 283,
+      "strategy": "L2_VECTOR"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:designer_ui",
+      "bookmarkId": "1560",
+      "expectedFolder": "49",
+      "actualFolder": "51",
+      "confidence": 0.54,
+      "isCorrect": false,
+      "latencyMs": 274,
+      "strategy": "L2_VECTOR"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:designer_ui",
+      "bookmarkId": "1561",
+      "expectedFolder": "49",
+      "actualFolder": "49",
+      "confidence": 0.77,
+      "isCorrect": true,
+      "latencyMs": 287,
+      "strategy": "L2_VECTOR"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:designer_ui",
+      "bookmarkId": "1562",
+      "expectedFolder": "49",
+      "actualFolder": "51",
+      "confidence": 0.59,
+      "isCorrect": false,
+      "latencyMs": 280,
+      "strategy": "L2_VECTOR"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:designer_ui",
+      "bookmarkId": "1563",
+      "expectedFolder": "49",
+      "actualFolder": "51",
+      "confidence": 0.54,
+      "isCorrect": false,
+      "latencyMs": 284,
+      "strategy": "L2_VECTOR"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:designer_ui",
+      "bookmarkId": "1564",
+      "expectedFolder": "49",
+      "actualFolder": "51",
+      "confidence": 0.56,
+      "isCorrect": false,
+      "latencyMs": 276,
+      "strategy": "L2_VECTOR"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:designer_ui",
+      "bookmarkId": "1565",
+      "expectedFolder": "49",
+      "actualFolder": "49",
+      "confidence": 0.71,
+      "isCorrect": true,
+      "latencyMs": 285,
+      "strategy": "L2_VECTOR"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:designer_ui",
+      "bookmarkId": "1566",
+      "expectedFolder": "49",
+      "actualFolder": "51",
+      "confidence": 0.53,
+      "isCorrect": false,
+      "latencyMs": 279,
+      "strategy": "L2_VECTOR"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:dev_frontend",
+      "bookmarkId": "1567",
+      "expectedFolder": "51",
+      "actualFolder": "51",
+      "confidence": 0.58,
+      "isCorrect": true,
+      "latencyMs": 290,
+      "strategy": "L2_VECTOR"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:dev_frontend",
+      "bookmarkId": "1568",
+      "expectedFolder": "51",
+      "actualFolder": "51",
+      "confidence": 0.53,
+      "isCorrect": true,
+      "latencyMs": 281,
+      "strategy": "L2_VECTOR"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:dev_frontend",
+      "bookmarkId": "1569",
+      "expectedFolder": "53",
+      "actualFolder": "51",
+      "confidence": 0.52,
+      "isCorrect": false,
+      "latencyMs": 279,
+      "strategy": "L2_VECTOR"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:dev_frontend",
+      "bookmarkId": "1570",
+      "expectedFolder": "53",
+      "actualFolder": "51",
+      "confidence": 0.52,
+      "isCorrect": false,
+      "latencyMs": 281,
+      "strategy": "L2_VECTOR"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:dev_frontend",
+      "bookmarkId": "1571",
+      "expectedFolder": "51",
+      "actualFolder": "51",
+      "confidence": 0.49,
+      "isCorrect": true,
+      "latencyMs": 279,
+      "strategy": "L2_VECTOR"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:dev_frontend",
+      "bookmarkId": "1572",
+      "expectedFolder": "51",
+      "actualFolder": "51",
+      "confidence": 0.5,
+      "isCorrect": true,
+      "latencyMs": 281,
+      "strategy": "L2_VECTOR"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:dev_frontend",
+      "bookmarkId": "1573",
+      "expectedFolder": "51",
+      "actualFolder": "51",
+      "confidence": 0.56,
+      "isCorrect": true,
+      "latencyMs": 433,
+      "strategy": "L3_LLM"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:dev_frontend",
+      "bookmarkId": "1574",
+      "expectedFolder": "51",
+      "actualFolder": "51",
+      "confidence": 0.47,
+      "isCorrect": true,
+      "latencyMs": 400,
+      "strategy": "L3_LLM"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:dev_frontend",
+      "bookmarkId": "1575",
+      "expectedFolder": "51",
+      "actualFolder": "51",
+      "confidence": 0.68,
+      "isCorrect": true,
+      "latencyMs": 286,
+      "strategy": "L2_VECTOR"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:dev_frontend",
+      "bookmarkId": "1576",
+      "expectedFolder": "51",
+      "actualFolder": "51",
+      "confidence": 0.7,
+      "isCorrect": true,
+      "latencyMs": 288,
+      "strategy": "L2_VECTOR"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:dev_frontend",
+      "bookmarkId": "1577",
+      "expectedFolder": "51",
+      "actualFolder": "51",
+      "confidence": 0.53,
+      "isCorrect": true,
+      "latencyMs": 290,
+      "strategy": "L2_VECTOR"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:dev_frontend",
+      "bookmarkId": "1578",
+      "expectedFolder": "51",
+      "actualFolder": "51",
+      "confidence": 0.56,
+      "isCorrect": true,
+      "latencyMs": 293,
+      "strategy": "L2_VECTOR"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:dev_frontend",
+      "bookmarkId": "1579",
+      "expectedFolder": "51",
+      "actualFolder": "51",
+      "confidence": 0.65,
+      "isCorrect": true,
+      "latencyMs": 284,
+      "strategy": "L2_VECTOR"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:dev_frontend",
+      "bookmarkId": "1580",
+      "expectedFolder": "51",
+      "actualFolder": "51",
+      "confidence": 0.57,
+      "isCorrect": true,
+      "latencyMs": 280,
+      "strategy": "L2_VECTOR"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:dev_frontend",
+      "bookmarkId": "1581",
+      "expectedFolder": "51",
+      "actualFolder": "51",
+      "confidence": 0.52,
+      "isCorrect": true,
+      "latencyMs": 282,
+      "strategy": "L2_VECTOR"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:dev_frontend",
+      "bookmarkId": "1582",
+      "expectedFolder": "51",
+      "actualFolder": "51",
+      "confidence": 0.52,
+      "isCorrect": true,
+      "latencyMs": 279,
+      "strategy": "L2_VECTOR"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:dev_frontend",
+      "bookmarkId": "1583",
+      "expectedFolder": "51",
+      "actualFolder": "51",
+      "confidence": 0.6,
+      "isCorrect": true,
+      "latencyMs": 278,
+      "strategy": "L2_VECTOR"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:dev_frontend",
+      "bookmarkId": "1584",
+      "expectedFolder": "53",
+      "actualFolder": "51",
+      "confidence": 0.55,
+      "isCorrect": false,
+      "latencyMs": 323,
+      "strategy": "L3_LLM"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:dev_frontend",
+      "bookmarkId": "1585",
+      "expectedFolder": "51",
+      "actualFolder": "51",
+      "confidence": 0.6,
+      "isCorrect": true,
+      "latencyMs": 327,
+      "strategy": "L3_LLM"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:dev_frontend",
+      "bookmarkId": "1586",
+      "expectedFolder": "51",
+      "actualFolder": "51",
+      "confidence": 0.64,
+      "isCorrect": true,
+      "latencyMs": 284,
+      "strategy": "L2_VECTOR"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:life_organizer",
+      "bookmarkId": "1587",
+      "expectedFolder": "55",
+      "actualFolder": "55",
+      "confidence": 0.78,
+      "isCorrect": true,
+      "latencyMs": 283,
+      "strategy": "L2_VECTOR"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:life_organizer",
+      "bookmarkId": "1588",
+      "expectedFolder": "56",
+      "actualFolder": "56",
+      "confidence": 0.69,
+      "isCorrect": true,
+      "latencyMs": 280,
+      "strategy": "L2_VECTOR"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:life_organizer",
+      "bookmarkId": "1589",
+      "expectedFolder": "54",
+      "actualFolder": "54",
+      "confidence": 0.59,
+      "isCorrect": true,
+      "latencyMs": 282,
+      "strategy": "L2_VECTOR"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:life_organizer",
+      "bookmarkId": "1590",
+      "expectedFolder": "58",
+      "actualFolder": "57",
+      "confidence": 0.58,
+      "isCorrect": false,
+      "latencyMs": 288,
+      "strategy": "L2_VECTOR"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:life_organizer",
+      "bookmarkId": "1591",
+      "expectedFolder": "57",
+      "actualFolder": "57",
+      "confidence": 0.69,
+      "isCorrect": true,
+      "latencyMs": 282,
+      "strategy": "L2_VECTOR"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:life_organizer",
+      "bookmarkId": "1592",
+      "expectedFolder": "56",
+      "actualFolder": "56",
+      "confidence": 0.83,
+      "isCorrect": true,
+      "latencyMs": 284,
+      "strategy": "L2_VECTOR"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:life_organizer",
+      "bookmarkId": "1593",
+      "expectedFolder": "55",
+      "actualFolder": "55",
+      "confidence": 0.67,
+      "isCorrect": true,
+      "latencyMs": 280,
+      "strategy": "L2_VECTOR"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:life_organizer",
+      "bookmarkId": "1594",
+      "expectedFolder": "56",
+      "actualFolder": "56",
+      "confidence": 0.71,
+      "isCorrect": true,
+      "latencyMs": 278,
+      "strategy": "L2_VECTOR"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:life_organizer",
+      "bookmarkId": "1595",
+      "expectedFolder": "54",
+      "actualFolder": "54",
+      "confidence": 0.58,
+      "isCorrect": true,
+      "latencyMs": 358,
+      "strategy": "L3_LLM"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:life_organizer",
+      "bookmarkId": "1596",
+      "expectedFolder": "57",
+      "actualFolder": "57",
+      "confidence": 0.68,
+      "isCorrect": true,
+      "latencyMs": 283,
+      "strategy": "L2_VECTOR"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:life_organizer",
+      "bookmarkId": "1597",
+      "expectedFolder": "56",
+      "actualFolder": "56",
+      "confidence": 0.72,
+      "isCorrect": true,
+      "latencyMs": 291,
+      "strategy": "L2_VECTOR"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:life_organizer",
+      "bookmarkId": "1598",
+      "expectedFolder": "54",
+      "actualFolder": "54",
+      "confidence": 0.6,
+      "isCorrect": true,
+      "latencyMs": 280,
+      "strategy": "L2_VECTOR"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:life_organizer",
+      "bookmarkId": "1599",
+      "expectedFolder": "54",
+      "actualFolder": "54",
+      "confidence": 0.59,
+      "isCorrect": true,
+      "latencyMs": 273,
+      "strategy": "L2_VECTOR"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:life_organizer",
+      "bookmarkId": "1600",
+      "expectedFolder": "55",
+      "actualFolder": "55",
+      "confidence": 0.72,
+      "isCorrect": true,
+      "latencyMs": 286,
+      "strategy": "L2_VECTOR"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:life_organizer",
+      "bookmarkId": "1601",
+      "expectedFolder": "58",
+      "actualFolder": "58",
+      "confidence": 0.77,
+      "isCorrect": true,
+      "latencyMs": 281,
+      "strategy": "L2_VECTOR"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:life_organizer",
+      "bookmarkId": "1602",
+      "expectedFolder": "54",
+      "actualFolder": "54",
+      "confidence": 0.6,
+      "isCorrect": true,
+      "latencyMs": 296,
+      "strategy": "L2_VECTOR"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:life_organizer",
+      "bookmarkId": "1603",
+      "expectedFolder": "58",
+      "actualFolder": "58",
+      "confidence": 0.75,
+      "isCorrect": true,
+      "latencyMs": 281,
+      "strategy": "L2_VECTOR"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:life_organizer",
+      "bookmarkId": "1604",
+      "expectedFolder": "57",
+      "actualFolder": "57",
+      "confidence": 0.69,
+      "isCorrect": true,
+      "latencyMs": 279,
+      "strategy": "L2_VECTOR"
+    },
+    {
+      "userId": "d016938c-50c1-4fea-bf17-183e82417b87:life_organizer",
+      "bookmarkId": "1605",
+      "expectedFolder": "57",
+      "actualFolder": "57",
+      "confidence": 0.71,
+      "isCorrect": true,
+      "latencyMs": 276,
+      "strategy": "L2_VECTOR"
+    }
+  ],
+  "userProfiles": [
+    {
+      "id": "d016938c-50c1-4fea-bf17-183e82417b87:designer_ui",
+      "name": "UI 设计师",
+      "type": "designer_ui",
+      "domainWeights": {
+        "design": 0.9,
+        "frontend": 0.1,
+        "backend": 0,
+        "mobile": 0,
+        "devops": 0,
+        "ai_ml": 0,
+        "product": 0,
+        "data_science": 0,
+        "research": 0,
+        "writing": 0,
+        "photography": 0,
+        "cooking": 0,
+        "travel": 0,
+        "finance": 0,
+        "health": 0,
+        "education": 0,
+        "business": 0,
+        "entertainment": 0,
+        "sports": 0,
+        "other": 0
+      },
+      "folderStructure": {
+        "folders": [
+          {
+            "id": "49",
+            "name": "Figma设计",
+            "domain": "design"
+          },
+          {
+            "id": "50",
+            "name": "UI设计",
+            "domain": "design"
+          }
+        ]
+      },
+      "behavior": {
+        "bookmarkFrequency": "medium",
+        "folderNamingStyle": "descriptive",
+        "organizationLevel": "organized"
+      },
+      "contentFeatures": {
+        "avgTitleLength": 28,
+        "useTags": true,
+        "tagStyle": "detailed",
+        "summaryStyle": "manual"
+      }
+    },
+    {
+      "id": "d016938c-50c1-4fea-bf17-183e82417b87:dev_frontend",
+      "name": "前端开发工程师",
+      "type": "dev_frontend",
+      "domainWeights": {
+        "frontend": 0.8,
+        "design": 0.15,
+        "devops": 0.05,
+        "backend": 0,
+        "mobile": 0,
+        "ai_ml": 0,
+        "product": 0,
+        "data_science": 0,
+        "research": 0,
+        "writing": 0,
+        "photography": 0,
+        "cooking": 0,
+        "travel": 0,
+        "finance": 0,
+        "health": 0,
+        "education": 0,
+        "business": 0,
+        "entertainment": 0,
+        "sports": 0,
+        "other": 0
+      },
+      "folderStructure": {
+        "folders": [
+          {
+            "id": "51",
+            "name": "React学习",
+            "domain": "frontend"
+          },
+          {
+            "id": "52",
+            "name": "Vue开发",
+            "domain": "frontend"
+          },
+          {
+            "id": "53",
+            "name": "Figma设计",
+            "domain": "design"
+          }
+        ]
+      },
+      "behavior": {
+        "bookmarkFrequency": "high",
+        "folderNamingStyle": "descriptive",
+        "organizationLevel": "organized"
+      },
+      "contentFeatures": {
+        "avgTitleLength": 35,
+        "useTags": true,
+        "tagStyle": "detailed",
+        "summaryStyle": "ai"
+      }
+    },
+    {
+      "id": "d016938c-50c1-4fea-bf17-183e82417b87:life_organizer",
+      "name": "生活整理者",
+      "type": "life_organizer",
+      "domainWeights": {
+        "cooking": 0.25,
+        "travel": 0.2,
+        "finance": 0.2,
+        "health": 0.2,
+        "entertainment": 0.15,
+        "frontend": 0,
+        "backend": 0,
+        "mobile": 0,
+        "devops": 0,
+        "ai_ml": 0,
+        "design": 0,
+        "product": 0,
+        "data_science": 0,
+        "research": 0,
+        "writing": 0,
+        "photography": 0,
+        "education": 0,
+        "business": 0,
+        "sports": 0,
+        "other": 0
+      },
+      "folderStructure": {
+        "folders": [
+          {
+            "id": "54",
+            "name": "家常菜",
+            "domain": "cooking"
+          },
+          {
+            "id": "55",
+            "name": "旅行攻略",
+            "domain": "travel"
+          },
+          {
+            "id": "56",
+            "name": "理财规划",
+            "domain": "finance"
+          },
+          {
+            "id": "57",
+            "name": "健康生活",
+            "domain": "health"
+          },
+          {
+            "id": "58",
+            "name": "电影",
+            "domain": "entertainment"
+          }
+        ]
+      },
+      "behavior": {
+        "bookmarkFrequency": "high",
+        "folderNamingStyle": "mixed",
+        "organizationLevel": "organized"
+      },
+      "contentFeatures": {
+        "avgTitleLength": 20,
+        "useTags": true,
+        "tagStyle": "simple",
+        "summaryStyle": "none"
+      }
+    }
+  ],
+  "testDuration": "1分钟10秒"
+}

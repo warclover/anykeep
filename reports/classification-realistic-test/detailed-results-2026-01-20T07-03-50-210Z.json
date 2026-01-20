@@ -1,0 +1,928 @@
+{
+  "testResults": [
+    {
+      "userId": "test_user_1768892614509_8chodo22o",
+      "bookmarkId": "bookmark_1768892614510_ib9zf8onl",
+      "expectedFolder": "folder_test_user_1768892614509_8chodo22o_cooking_0",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 1350,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_8chodo22o",
+      "bookmarkId": "bookmark_1768892614510_hguqnb6nu",
+      "expectedFolder": "folder_test_user_1768892614509_8chodo22o_cooking_3",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 267,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_8chodo22o",
+      "bookmarkId": "bookmark_1768892614510_ar68rg4uo",
+      "expectedFolder": "folder_test_user_1768892614509_8chodo22o_travel_0",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 250,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_8chodo22o",
+      "bookmarkId": "bookmark_1768892614510_9zw30fdgz",
+      "expectedFolder": "folder_test_user_1768892614509_8chodo22o_entertainment_2",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 241,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_8chodo22o",
+      "bookmarkId": "bookmark_1768892614510_j71k6uks6",
+      "expectedFolder": "folder_test_user_1768892614509_8chodo22o_travel_3",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 237,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_8chodo22o",
+      "bookmarkId": "bookmark_1768892614510_q359uxev4",
+      "expectedFolder": "folder_test_user_1768892614509_8chodo22o_entertainment_0",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 248,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_8chodo22o",
+      "bookmarkId": "bookmark_1768892614510_ktuu1c295",
+      "expectedFolder": "folder_test_user_1768892614509_8chodo22o_finance_1",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 241,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_8chodo22o",
+      "bookmarkId": "bookmark_1768892614510_7dcrt0kc5",
+      "expectedFolder": "folder_test_user_1768892614509_8chodo22o_cooking_1",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 244,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_8chodo22o",
+      "bookmarkId": "bookmark_1768892614510_mxnkt336k",
+      "expectedFolder": "folder_test_user_1768892614509_8chodo22o_travel_1",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 257,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_8chodo22o",
+      "bookmarkId": "bookmark_1768892614510_5xlyag1ut",
+      "expectedFolder": "folder_test_user_1768892614509_8chodo22o_cooking_3",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 240,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_8chodo22o",
+      "bookmarkId": "bookmark_1768892614510_wviy2wvx3",
+      "expectedFolder": "folder_test_user_1768892614509_8chodo22o_finance_1",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 238,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_8chodo22o",
+      "bookmarkId": "bookmark_1768892614510_oz9z3u5ep",
+      "expectedFolder": "folder_test_user_1768892614509_8chodo22o_finance_3",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 243,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_8chodo22o",
+      "bookmarkId": "bookmark_1768892614510_bvorn38iy",
+      "expectedFolder": "folder_test_user_1768892614509_8chodo22o_health_3",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 243,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_8chodo22o",
+      "bookmarkId": "bookmark_1768892614510_rub420n5t",
+      "expectedFolder": "folder_test_user_1768892614509_8chodo22o_travel_2",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 239,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_8chodo22o",
+      "bookmarkId": "bookmark_1768892614510_ooddc6po8",
+      "expectedFolder": "folder_test_user_1768892614509_8chodo22o_cooking_1",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 241,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_8chodo22o",
+      "bookmarkId": "bookmark_1768892614510_imgknmx1q",
+      "expectedFolder": "folder_test_user_1768892614509_8chodo22o_finance_2",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 243,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_8chodo22o",
+      "bookmarkId": "bookmark_1768892614510_w3lhxj5uu",
+      "expectedFolder": "folder_test_user_1768892614509_8chodo22o_health_1",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 240,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_8chodo22o",
+      "bookmarkId": "bookmark_1768892614510_24jlyeg96",
+      "expectedFolder": "folder_test_user_1768892614509_8chodo22o_health_1",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 236,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_8chodo22o",
+      "bookmarkId": "bookmark_1768892614510_qgl3xzj0e",
+      "expectedFolder": "folder_test_user_1768892614509_8chodo22o_entertainment_2",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 239,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_8chodo22o",
+      "bookmarkId": "bookmark_1768892614510_hxe7mc5tm",
+      "expectedFolder": "folder_test_user_1768892614509_8chodo22o_health_2",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 257,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_5xvyrk93m",
+      "bookmarkId": "bookmark_1768892614511_n68g4qgge",
+      "expectedFolder": "folder_test_user_1768892614509_5xvyrk93m_design_1",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 237,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_5xvyrk93m",
+      "bookmarkId": "bookmark_1768892614511_zvocb2ai3",
+      "expectedFolder": "folder_test_user_1768892614509_5xvyrk93m_frontend_5",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 238,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_5xvyrk93m",
+      "bookmarkId": "bookmark_1768892614511_d5idd2k7j",
+      "expectedFolder": "folder_test_user_1768892614509_5xvyrk93m_frontend_4",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 250,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_5xvyrk93m",
+      "bookmarkId": "bookmark_1768892614511_6oovg11it",
+      "expectedFolder": "folder_test_user_1768892614509_5xvyrk93m_frontend_1",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 240,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_5xvyrk93m",
+      "bookmarkId": "bookmark_1768892614511_i1memh7d9",
+      "expectedFolder": "folder_test_user_1768892614509_5xvyrk93m_frontend_1",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 235,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_5xvyrk93m",
+      "bookmarkId": "bookmark_1768892614511_5l1rgewom",
+      "expectedFolder": "folder_test_user_1768892614509_5xvyrk93m_frontend_7",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 235,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_5xvyrk93m",
+      "bookmarkId": "bookmark_1768892614511_dsg4ffkyf",
+      "expectedFolder": "folder_test_user_1768892614509_5xvyrk93m_frontend_6",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 243,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_5xvyrk93m",
+      "bookmarkId": "bookmark_1768892614511_palqqh20z",
+      "expectedFolder": "folder_test_user_1768892614509_5xvyrk93m_frontend_1",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 256,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_5xvyrk93m",
+      "bookmarkId": "bookmark_1768892614511_g0xjlqvu9",
+      "expectedFolder": "folder_test_user_1768892614509_5xvyrk93m_design_0",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 245,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_5xvyrk93m",
+      "bookmarkId": "bookmark_1768892614511_7v1vsculp",
+      "expectedFolder": "expected_folder_devops_test_user_1768892614509_5xvyrk93m",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 236,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_5xvyrk93m",
+      "bookmarkId": "bookmark_1768892614511_6sfjjk1n4",
+      "expectedFolder": "folder_test_user_1768892614509_5xvyrk93m_frontend_2",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 239,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_5xvyrk93m",
+      "bookmarkId": "bookmark_1768892614511_qyqd2lcwc",
+      "expectedFolder": "folder_test_user_1768892614509_5xvyrk93m_frontend_2",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 235,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_5xvyrk93m",
+      "bookmarkId": "bookmark_1768892614511_v0elk9l6r",
+      "expectedFolder": "folder_test_user_1768892614509_5xvyrk93m_frontend_0",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 245,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_5xvyrk93m",
+      "bookmarkId": "bookmark_1768892614511_2zqt1b5jl",
+      "expectedFolder": "folder_test_user_1768892614509_5xvyrk93m_frontend_1",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 236,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_5xvyrk93m",
+      "bookmarkId": "bookmark_1768892614511_qhpxq1iy0",
+      "expectedFolder": "folder_test_user_1768892614509_5xvyrk93m_frontend_7",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 234,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_5xvyrk93m",
+      "bookmarkId": "bookmark_1768892614511_44qhelkaz",
+      "expectedFolder": "folder_test_user_1768892614509_5xvyrk93m_frontend_4",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 245,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_5xvyrk93m",
+      "bookmarkId": "bookmark_1768892614511_0vmz1dmh6",
+      "expectedFolder": "folder_test_user_1768892614509_5xvyrk93m_design_1",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 246,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_5xvyrk93m",
+      "bookmarkId": "bookmark_1768892614511_zsorv5p4o",
+      "expectedFolder": "folder_test_user_1768892614509_5xvyrk93m_frontend_1",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 240,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_5xvyrk93m",
+      "bookmarkId": "bookmark_1768892614511_zldqnahih",
+      "expectedFolder": "folder_test_user_1768892614509_5xvyrk93m_frontend_6",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 252,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_5xvyrk93m",
+      "bookmarkId": "bookmark_1768892614511_pypuunjl6",
+      "expectedFolder": "folder_test_user_1768892614509_5xvyrk93m_frontend_7",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 242,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_6rhucmgay",
+      "bookmarkId": "bookmark_1768892614511_wu7duw472",
+      "expectedFolder": "folder_test_user_1768892614509_6rhucmgay_other_4",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 245,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_6rhucmgay",
+      "bookmarkId": "bookmark_1768892614511_24f6fxpv7",
+      "expectedFolder": "folder_test_user_1768892614509_6rhucmgay_other_2",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 242,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_6rhucmgay",
+      "bookmarkId": "bookmark_1768892614511_yl4r82n95",
+      "expectedFolder": "folder_test_user_1768892614509_6rhucmgay_other_2",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 242,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_6rhucmgay",
+      "bookmarkId": "bookmark_1768892614511_mgfylm0q4",
+      "expectedFolder": "folder_test_user_1768892614509_6rhucmgay_frontend_0",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 240,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_6rhucmgay",
+      "bookmarkId": "bookmark_1768892614511_1c89hz7ut",
+      "expectedFolder": "folder_test_user_1768892614509_6rhucmgay_other_3",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 249,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_6rhucmgay",
+      "bookmarkId": "bookmark_1768892614511_oq1nuz8uq",
+      "expectedFolder": "folder_test_user_1768892614509_6rhucmgay_other_4",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 238,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_6rhucmgay",
+      "bookmarkId": "bookmark_1768892614511_tqaqnfefp",
+      "expectedFolder": "folder_test_user_1768892614509_6rhucmgay_frontend_3",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 241,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_6rhucmgay",
+      "bookmarkId": "bookmark_1768892614511_3wxdukioi",
+      "expectedFolder": "folder_test_user_1768892614509_6rhucmgay_frontend_3",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 237,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_6rhucmgay",
+      "bookmarkId": "bookmark_1768892614511_ummdp71xb",
+      "expectedFolder": "folder_test_user_1768892614509_6rhucmgay_other_4",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 241,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_6rhucmgay",
+      "bookmarkId": "bookmark_1768892614511_nmef30vb2",
+      "expectedFolder": "folder_test_user_1768892614509_6rhucmgay_frontend_3",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 241,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_6rhucmgay",
+      "bookmarkId": "bookmark_1768892614511_0zjp16ccy",
+      "expectedFolder": "folder_test_user_1768892614509_6rhucmgay_frontend_3",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 242,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_6rhucmgay",
+      "bookmarkId": "bookmark_1768892614511_al3ce2yf4",
+      "expectedFolder": "folder_test_user_1768892614509_6rhucmgay_frontend_1",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 248,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_6rhucmgay",
+      "bookmarkId": "bookmark_1768892614511_3wmwn2io6",
+      "expectedFolder": "folder_test_user_1768892614509_6rhucmgay_other_1",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 237,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_6rhucmgay",
+      "bookmarkId": "bookmark_1768892614511_sl0zslkjy",
+      "expectedFolder": "folder_test_user_1768892614509_6rhucmgay_frontend_1",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 235,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_6rhucmgay",
+      "bookmarkId": "bookmark_1768892614511_hmlkapubq",
+      "expectedFolder": "folder_test_user_1768892614509_6rhucmgay_other_1",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 243,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_6rhucmgay",
+      "bookmarkId": "bookmark_1768892614511_f4t74vdp1",
+      "expectedFolder": "folder_test_user_1768892614509_6rhucmgay_frontend_0",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 233,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_6rhucmgay",
+      "bookmarkId": "bookmark_1768892614511_j3mkku9f4",
+      "expectedFolder": "folder_test_user_1768892614509_6rhucmgay_other_0",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 242,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_6rhucmgay",
+      "bookmarkId": "bookmark_1768892614511_dwdbzlwdz",
+      "expectedFolder": "folder_test_user_1768892614509_6rhucmgay_frontend_0",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 295,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_6rhucmgay",
+      "bookmarkId": "bookmark_1768892614511_z9uowgtq2",
+      "expectedFolder": "folder_test_user_1768892614509_6rhucmgay_frontend_3",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 237,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768892614509_6rhucmgay",
+      "bookmarkId": "bookmark_1768892614511_55pcpmgff",
+      "expectedFolder": "folder_test_user_1768892614509_6rhucmgay_other_2",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 241,
+      "strategy": "ERROR"
+    }
+  ],
+  "userProfiles": [
+    {
+      "id": "test_user_1768892614509_8chodo22o",
+      "name": "生活整理者",
+      "type": "life_organizer",
+      "domainWeights": {
+        "cooking": 0.25,
+        "travel": 0.2,
+        "finance": 0.2,
+        "health": 0.2,
+        "entertainment": 0.15,
+        "frontend": 0,
+        "backend": 0,
+        "mobile": 0,
+        "devops": 0,
+        "ai_ml": 0,
+        "design": 0,
+        "product": 0,
+        "data_science": 0,
+        "research": 0,
+        "writing": 0,
+        "photography": 0,
+        "education": 0,
+        "business": 0,
+        "sports": 0,
+        "other": 0
+      },
+      "folderStructure": {
+        "folders": [
+          {
+            "id": "folder_test_user_1768892614509_8chodo22o_cooking_0",
+            "name": "cooking_folder_0",
+            "domain": "cooking"
+          },
+          {
+            "id": "folder_test_user_1768892614509_8chodo22o_cooking_1",
+            "name": "cooking_folder_1",
+            "domain": "cooking"
+          },
+          {
+            "id": "folder_test_user_1768892614509_8chodo22o_cooking_2",
+            "name": "cooking_folder_2",
+            "domain": "cooking"
+          },
+          {
+            "id": "folder_test_user_1768892614509_8chodo22o_cooking_3",
+            "name": "cooking_folder_3",
+            "domain": "cooking"
+          },
+          {
+            "id": "folder_test_user_1768892614509_8chodo22o_travel_0",
+            "name": "travel_folder_0",
+            "domain": "travel"
+          },
+          {
+            "id": "folder_test_user_1768892614509_8chodo22o_travel_1",
+            "name": "travel_folder_1",
+            "domain": "travel"
+          },
+          {
+            "id": "folder_test_user_1768892614509_8chodo22o_travel_2",
+            "name": "travel_folder_2",
+            "domain": "travel"
+          },
+          {
+            "id": "folder_test_user_1768892614509_8chodo22o_travel_3",
+            "name": "travel_folder_3",
+            "domain": "travel"
+          },
+          {
+            "id": "folder_test_user_1768892614509_8chodo22o_finance_0",
+            "name": "finance_folder_0",
+            "domain": "finance"
+          },
+          {
+            "id": "folder_test_user_1768892614509_8chodo22o_finance_1",
+            "name": "finance_folder_1",
+            "domain": "finance"
+          },
+          {
+            "id": "folder_test_user_1768892614509_8chodo22o_finance_2",
+            "name": "finance_folder_2",
+            "domain": "finance"
+          },
+          {
+            "id": "folder_test_user_1768892614509_8chodo22o_finance_3",
+            "name": "finance_folder_3",
+            "domain": "finance"
+          },
+          {
+            "id": "folder_test_user_1768892614509_8chodo22o_health_0",
+            "name": "health_folder_0",
+            "domain": "health"
+          },
+          {
+            "id": "folder_test_user_1768892614509_8chodo22o_health_1",
+            "name": "health_folder_1",
+            "domain": "health"
+          },
+          {
+            "id": "folder_test_user_1768892614509_8chodo22o_health_2",
+            "name": "health_folder_2",
+            "domain": "health"
+          },
+          {
+            "id": "folder_test_user_1768892614509_8chodo22o_health_3",
+            "name": "health_folder_3",
+            "domain": "health"
+          },
+          {
+            "id": "folder_test_user_1768892614509_8chodo22o_entertainment_0",
+            "name": "entertainment_folder_0",
+            "domain": "entertainment"
+          },
+          {
+            "id": "folder_test_user_1768892614509_8chodo22o_entertainment_1",
+            "name": "entertainment_folder_1",
+            "domain": "entertainment"
+          },
+          {
+            "id": "folder_test_user_1768892614509_8chodo22o_entertainment_2",
+            "name": "entertainment_folder_2",
+            "domain": "entertainment"
+          }
+        ]
+      },
+      "behavior": {
+        "bookmarkFrequency": "high",
+        "folderNamingStyle": "mixed",
+        "organizationLevel": "organized"
+      },
+      "contentFeatures": {
+        "avgTitleLength": 20,
+        "useTags": true,
+        "tagStyle": "simple",
+        "summaryStyle": "none"
+      }
+    },
+    {
+      "id": "test_user_1768892614509_5xvyrk93m",
+      "name": "前端开发工程师",
+      "type": "dev_frontend",
+      "domainWeights": {
+        "frontend": 0.8,
+        "design": 0.15,
+        "devops": 0.05,
+        "backend": 0,
+        "mobile": 0,
+        "ai_ml": 0,
+        "product": 0,
+        "data_science": 0,
+        "research": 0,
+        "writing": 0,
+        "photography": 0,
+        "cooking": 0,
+        "travel": 0,
+        "finance": 0,
+        "health": 0,
+        "education": 0,
+        "business": 0,
+        "entertainment": 0,
+        "sports": 0,
+        "other": 0
+      },
+      "folderStructure": {
+        "folders": [
+          {
+            "id": "folder_test_user_1768892614509_5xvyrk93m_frontend_0",
+            "name": "frontend_folder_0",
+            "domain": "frontend"
+          },
+          {
+            "id": "folder_test_user_1768892614509_5xvyrk93m_frontend_1",
+            "name": "frontend_folder_1",
+            "domain": "frontend"
+          },
+          {
+            "id": "folder_test_user_1768892614509_5xvyrk93m_frontend_2",
+            "name": "frontend_folder_2",
+            "domain": "frontend"
+          },
+          {
+            "id": "folder_test_user_1768892614509_5xvyrk93m_frontend_3",
+            "name": "frontend_folder_3",
+            "domain": "frontend"
+          },
+          {
+            "id": "folder_test_user_1768892614509_5xvyrk93m_frontend_4",
+            "name": "frontend_folder_4",
+            "domain": "frontend"
+          },
+          {
+            "id": "folder_test_user_1768892614509_5xvyrk93m_frontend_5",
+            "name": "frontend_folder_5",
+            "domain": "frontend"
+          },
+          {
+            "id": "folder_test_user_1768892614509_5xvyrk93m_frontend_6",
+            "name": "frontend_folder_6",
+            "domain": "frontend"
+          },
+          {
+            "id": "folder_test_user_1768892614509_5xvyrk93m_frontend_7",
+            "name": "frontend_folder_7",
+            "domain": "frontend"
+          },
+          {
+            "id": "folder_test_user_1768892614509_5xvyrk93m_design_0",
+            "name": "design_folder_0",
+            "domain": "design"
+          },
+          {
+            "id": "folder_test_user_1768892614509_5xvyrk93m_design_1",
+            "name": "design_folder_1",
+            "domain": "design"
+          }
+        ]
+      },
+      "behavior": {
+        "bookmarkFrequency": "high",
+        "folderNamingStyle": "descriptive",
+        "organizationLevel": "organized"
+      },
+      "contentFeatures": {
+        "avgTitleLength": 35,
+        "useTags": true,
+        "tagStyle": "detailed",
+        "summaryStyle": "ai"
+      }
+    },
+    {
+      "id": "test_user_1768892614509_6rhucmgay",
+      "name": "新用户",
+      "type": "new_user",
+      "domainWeights": {
+        "frontend": 0.5,
+        "other": 0.5,
+        "backend": 0,
+        "mobile": 0,
+        "devops": 0,
+        "ai_ml": 0,
+        "design": 0,
+        "product": 0,
+        "data_science": 0,
+        "research": 0,
+        "writing": 0,
+        "photography": 0,
+        "cooking": 0,
+        "travel": 0,
+        "finance": 0,
+        "health": 0,
+        "education": 0,
+        "business": 0,
+        "entertainment": 0,
+        "sports": 0
+      },
+      "folderStructure": {
+        "folders": [
+          {
+            "id": "folder_test_user_1768892614509_6rhucmgay_frontend_0",
+            "name": "frontend_folder_0",
+            "domain": "frontend"
+          },
+          {
+            "id": "folder_test_user_1768892614509_6rhucmgay_frontend_1",
+            "name": "frontend_folder_1",
+            "domain": "frontend"
+          },
+          {
+            "id": "folder_test_user_1768892614509_6rhucmgay_frontend_2",
+            "name": "frontend_folder_2",
+            "domain": "frontend"
+          },
+          {
+            "id": "folder_test_user_1768892614509_6rhucmgay_frontend_3",
+            "name": "frontend_folder_3",
+            "domain": "frontend"
+          },
+          {
+            "id": "folder_test_user_1768892614509_6rhucmgay_frontend_4",
+            "name": "frontend_folder_4",
+            "domain": "frontend"
+          },
+          {
+            "id": "folder_test_user_1768892614509_6rhucmgay_other_0",
+            "name": "other_folder_0",
+            "domain": "other"
+          },
+          {
+            "id": "folder_test_user_1768892614509_6rhucmgay_other_1",
+            "name": "other_folder_1",
+            "domain": "other"
+          },
+          {
+            "id": "folder_test_user_1768892614509_6rhucmgay_other_2",
+            "name": "other_folder_2",
+            "domain": "other"
+          },
+          {
+            "id": "folder_test_user_1768892614509_6rhucmgay_other_3",
+            "name": "other_folder_3",
+            "domain": "other"
+          },
+          {
+            "id": "folder_test_user_1768892614509_6rhucmgay_other_4",
+            "name": "other_folder_4",
+            "domain": "other"
+          }
+        ]
+      },
+      "behavior": {
+        "bookmarkFrequency": "low",
+        "folderNamingStyle": "generic",
+        "organizationLevel": "chaotic"
+      },
+      "contentFeatures": {
+        "avgTitleLength": 20,
+        "useTags": false,
+        "tagStyle": "none",
+        "summaryStyle": "none"
+      }
+    }
+  ],
+  "testDuration": "15秒"
+}

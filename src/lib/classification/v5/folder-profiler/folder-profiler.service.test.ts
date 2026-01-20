@@ -4,7 +4,7 @@
 
 import { FolderProfilerService } from "./folder-profiler.service";
 import type { LoggerService } from "../shared/logger";
-import type { EmbeddingService } from "../shared/embedding";
+import type { IEmbeddingService } from "../shared/embedding";
 import type { FolderStats } from "./types";
 import type { BookmarkData, BehaviorData } from "./dual-source-builder";
 
@@ -30,7 +30,7 @@ const mockSupabase = {
 } as any;
 
 // Mock Embedding Service - 返回 { embedding: [...] } 格式
-const mockEmbeddingService: EmbeddingService = {
+const mockEmbeddingService: IEmbeddingService = {
   generateEmbedding: jest.fn().mockResolvedValue({
     embedding: new Array(1024).fill(0.1),
   }),

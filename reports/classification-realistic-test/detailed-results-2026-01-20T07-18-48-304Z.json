@@ -1,0 +1,938 @@
+{
+  "testResults": [
+    {
+      "userId": "test_user_1768893280142_38r0v1k43",
+      "bookmarkId": "bookmark_1768893280143_aykrnfzw4",
+      "expectedFolder": "folder_test_user_1768893280142_38r0v1k43_backend_6",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 6346,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_38r0v1k43",
+      "bookmarkId": "bookmark_1768893280143_66oss3tet",
+      "expectedFolder": "folder_test_user_1768893280142_38r0v1k43_backend_8",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 4452,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_38r0v1k43",
+      "bookmarkId": "bookmark_1768893280143_e4agzcr11",
+      "expectedFolder": "folder_test_user_1768893280142_38r0v1k43_backend_0",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 4347,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_38r0v1k43",
+      "bookmarkId": "bookmark_1768893280143_k7p3hzzew",
+      "expectedFolder": "folder_test_user_1768893280142_38r0v1k43_backend_6",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 4016,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_38r0v1k43",
+      "bookmarkId": "bookmark_1768893280143_fgnwyobvv",
+      "expectedFolder": "expected_folder_devops_test_user_1768893280142_38r0v1k43",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 4011,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_38r0v1k43",
+      "bookmarkId": "bookmark_1768893280143_9lngyjpb0",
+      "expectedFolder": "folder_test_user_1768893280142_38r0v1k43_backend_15",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 4000,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_38r0v1k43",
+      "bookmarkId": "bookmark_1768893280143_cxipx8y1d",
+      "expectedFolder": "folder_test_user_1768893280142_38r0v1k43_backend_5",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 4218,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_38r0v1k43",
+      "bookmarkId": "bookmark_1768893280143_mniu3njrl",
+      "expectedFolder": "folder_test_user_1768893280142_38r0v1k43_backend_6",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 4172,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_38r0v1k43",
+      "bookmarkId": "bookmark_1768893280143_pymsftpd0",
+      "expectedFolder": "folder_test_user_1768893280142_38r0v1k43_backend_13",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 4153,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_38r0v1k43",
+      "bookmarkId": "bookmark_1768893280143_nhkrtw60o",
+      "expectedFolder": "expected_folder_data_science_test_user_1768893280142_38r0v1k43",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 4115,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_38r0v1k43",
+      "bookmarkId": "bookmark_1768893280143_m482fig19",
+      "expectedFolder": "folder_test_user_1768893280142_38r0v1k43_backend_1",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 4060,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_38r0v1k43",
+      "bookmarkId": "bookmark_1768893280143_6d0ubth4w",
+      "expectedFolder": "folder_test_user_1768893280142_38r0v1k43_backend_15",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 4086,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_38r0v1k43",
+      "bookmarkId": "bookmark_1768893280143_92d3n092w",
+      "expectedFolder": "folder_test_user_1768893280142_38r0v1k43_backend_9",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 4181,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_38r0v1k43",
+      "bookmarkId": "bookmark_1768893280143_vt4npwbyi",
+      "expectedFolder": "folder_test_user_1768893280142_38r0v1k43_backend_1",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 4134,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_38r0v1k43",
+      "bookmarkId": "bookmark_1768893280143_aef1zgem1",
+      "expectedFolder": "folder_test_user_1768893280142_38r0v1k43_backend_5",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 4155,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_38r0v1k43",
+      "bookmarkId": "bookmark_1768893280143_awhcmstxx",
+      "expectedFolder": "expected_folder_devops_test_user_1768893280142_38r0v1k43",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 4021,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_38r0v1k43",
+      "bookmarkId": "bookmark_1768893280143_etdz25kca",
+      "expectedFolder": "folder_test_user_1768893280142_38r0v1k43_backend_9",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 4137,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_38r0v1k43",
+      "bookmarkId": "bookmark_1768893280142_qgeju5590",
+      "expectedFolder": "folder_test_user_1768893280142_38r0v1k43_backend_14",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 4069,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_38r0v1k43",
+      "bookmarkId": "bookmark_1768893280143_f2t5n0cz0",
+      "expectedFolder": "folder_test_user_1768893280142_38r0v1k43_backend_2",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 4138,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_38r0v1k43",
+      "bookmarkId": "bookmark_1768893280143_ngew6lx1g",
+      "expectedFolder": "folder_test_user_1768893280142_38r0v1k43_backend_11",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 3982,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_ingd8dr48",
+      "bookmarkId": "bookmark_1768893280143_j3tvcbu53",
+      "expectedFolder": "folder_test_user_1768893280142_ingd8dr48_education_5",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 4115,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_ingd8dr48",
+      "bookmarkId": "bookmark_1768893280143_xbkspph0z",
+      "expectedFolder": "folder_test_user_1768893280142_ingd8dr48_frontend_1",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 3987,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_ingd8dr48",
+      "bookmarkId": "bookmark_1768893280143_ifii1mkln",
+      "expectedFolder": "folder_test_user_1768893280142_ingd8dr48_frontend_2",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 4129,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_ingd8dr48",
+      "bookmarkId": "bookmark_1768893280143_bp2uqrfqb",
+      "expectedFolder": "folder_test_user_1768893280142_ingd8dr48_backend_1",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 4170,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_ingd8dr48",
+      "bookmarkId": "bookmark_1768893280143_lpeb3oqzs",
+      "expectedFolder": "folder_test_user_1768893280142_ingd8dr48_backend_1",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 4283,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_ingd8dr48",
+      "bookmarkId": "bookmark_1768893280143_5svkrv02q",
+      "expectedFolder": "folder_test_user_1768893280142_ingd8dr48_backend_3",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 4084,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_ingd8dr48",
+      "bookmarkId": "bookmark_1768893280144_xkwyy5rby",
+      "expectedFolder": "folder_test_user_1768893280142_ingd8dr48_backend_0",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 4013,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_ingd8dr48",
+      "bookmarkId": "bookmark_1768893280143_4c8a5xk70",
+      "expectedFolder": "folder_test_user_1768893280142_ingd8dr48_education_0",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 4030,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_ingd8dr48",
+      "bookmarkId": "bookmark_1768893280143_wds8ql3gk",
+      "expectedFolder": "folder_test_user_1768893280142_ingd8dr48_frontend_1",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 3987,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_ingd8dr48",
+      "bookmarkId": "bookmark_1768893280143_wgpbck3jr",
+      "expectedFolder": "folder_test_user_1768893280142_ingd8dr48_education_0",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 4142,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_ingd8dr48",
+      "bookmarkId": "bookmark_1768893280143_118uhkejz",
+      "expectedFolder": "folder_test_user_1768893280142_ingd8dr48_education_1",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 4019,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_ingd8dr48",
+      "bookmarkId": "bookmark_1768893280143_ycp6kpq8q",
+      "expectedFolder": "folder_test_user_1768893280142_ingd8dr48_backend_1",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 4101,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_ingd8dr48",
+      "bookmarkId": "bookmark_1768893280143_x58739gki",
+      "expectedFolder": "folder_test_user_1768893280142_ingd8dr48_education_5",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 4183,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_ingd8dr48",
+      "bookmarkId": "bookmark_1768893280143_zu0gqk1ot",
+      "expectedFolder": "folder_test_user_1768893280142_ingd8dr48_frontend_2",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 4019,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_ingd8dr48",
+      "bookmarkId": "bookmark_1768893280143_xv0n85nuk",
+      "expectedFolder": "folder_test_user_1768893280142_ingd8dr48_frontend_3",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 4134,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_ingd8dr48",
+      "bookmarkId": "bookmark_1768893280143_4yo2zme5w",
+      "expectedFolder": "folder_test_user_1768893280142_ingd8dr48_backend_2",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 4089,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_ingd8dr48",
+      "bookmarkId": "bookmark_1768893280143_mhvhx1r8g",
+      "expectedFolder": "folder_test_user_1768893280142_ingd8dr48_education_2",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 4044,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_ingd8dr48",
+      "bookmarkId": "bookmark_1768893280143_ysxwt80np",
+      "expectedFolder": "folder_test_user_1768893280142_ingd8dr48_education_1",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 4074,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_ingd8dr48",
+      "bookmarkId": "bookmark_1768893280143_lw9bhi1co",
+      "expectedFolder": "folder_test_user_1768893280142_ingd8dr48_education_0",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 4156,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_ingd8dr48",
+      "bookmarkId": "bookmark_1768893280143_rdrhtfre4",
+      "expectedFolder": "folder_test_user_1768893280142_ingd8dr48_frontend_4",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 4008,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_xfv27w3bs",
+      "bookmarkId": "bookmark_1768893280144_6a9ta27hd",
+      "expectedFolder": "folder_test_user_1768893280142_xfv27w3bs_design_8",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 4027,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_xfv27w3bs",
+      "bookmarkId": "bookmark_1768893280144_buuo5vcia",
+      "expectedFolder": "folder_test_user_1768893280142_xfv27w3bs_design_0",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 4000,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_xfv27w3bs",
+      "bookmarkId": "bookmark_1768893280144_looy3m45f",
+      "expectedFolder": "folder_test_user_1768893280142_xfv27w3bs_design_3",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 4136,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_xfv27w3bs",
+      "bookmarkId": "bookmark_1768893280144_5y0dxjmny",
+      "expectedFolder": "folder_test_user_1768893280142_xfv27w3bs_design_7",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 3987,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_xfv27w3bs",
+      "bookmarkId": "bookmark_1768893280144_cnecrisxe",
+      "expectedFolder": "folder_test_user_1768893280142_xfv27w3bs_design_3",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 4053,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_xfv27w3bs",
+      "bookmarkId": "bookmark_1768893280144_govxomjzj",
+      "expectedFolder": "folder_test_user_1768893280142_xfv27w3bs_design_4",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 4195,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_xfv27w3bs",
+      "bookmarkId": "bookmark_1768893280144_r32vwzf41",
+      "expectedFolder": "folder_test_user_1768893280142_xfv27w3bs_design_3",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 4127,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_xfv27w3bs",
+      "bookmarkId": "bookmark_1768893280144_syt3473v8",
+      "expectedFolder": "folder_test_user_1768893280142_xfv27w3bs_design_8",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 4022,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_xfv27w3bs",
+      "bookmarkId": "bookmark_1768893280144_jo2ic5pj1",
+      "expectedFolder": "folder_test_user_1768893280142_xfv27w3bs_design_5",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 4056,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_xfv27w3bs",
+      "bookmarkId": "bookmark_1768893280144_jder8xtrk",
+      "expectedFolder": "folder_test_user_1768893280142_xfv27w3bs_design_1",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 4025,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_xfv27w3bs",
+      "bookmarkId": "bookmark_1768893280144_jinc3pa5r",
+      "expectedFolder": "folder_test_user_1768893280142_xfv27w3bs_design_4",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 4489,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_xfv27w3bs",
+      "bookmarkId": "bookmark_1768893280144_gcs5if2wm",
+      "expectedFolder": "folder_test_user_1768893280142_xfv27w3bs_design_0",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 4218,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_xfv27w3bs",
+      "bookmarkId": "bookmark_1768893280144_0fobgd40g",
+      "expectedFolder": "folder_test_user_1768893280142_xfv27w3bs_design_3",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 4006,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_xfv27w3bs",
+      "bookmarkId": "bookmark_1768893280144_5mbsvvhqy",
+      "expectedFolder": "folder_test_user_1768893280142_xfv27w3bs_design_6",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 4032,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_xfv27w3bs",
+      "bookmarkId": "bookmark_1768893280144_g91vjd4ab",
+      "expectedFolder": "folder_test_user_1768893280142_xfv27w3bs_design_4",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 4113,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_xfv27w3bs",
+      "bookmarkId": "bookmark_1768893280144_l2uultqnn",
+      "expectedFolder": "folder_test_user_1768893280142_xfv27w3bs_design_3",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 4139,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_xfv27w3bs",
+      "bookmarkId": "bookmark_1768893280144_1dn91g92o",
+      "expectedFolder": "expected_folder_frontend_test_user_1768893280142_xfv27w3bs",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 3981,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_xfv27w3bs",
+      "bookmarkId": "bookmark_1768893280144_9yc2dqwmh",
+      "expectedFolder": "expected_folder_frontend_test_user_1768893280142_xfv27w3bs",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 3955,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_xfv27w3bs",
+      "bookmarkId": "bookmark_1768893280144_qzzjc3f16",
+      "expectedFolder": "folder_test_user_1768893280142_xfv27w3bs_design_1",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 4016,
+      "strategy": "ERROR"
+    },
+    {
+      "userId": "test_user_1768893280142_xfv27w3bs",
+      "bookmarkId": "bookmark_1768893280144_pf5rfskjd",
+      "expectedFolder": "folder_test_user_1768893280142_xfv27w3bs_design_5",
+      "actualFolder": null,
+      "confidence": 0,
+      "isCorrect": false,
+      "latencyMs": 4019,
+      "strategy": "ERROR"
+    }
+  ],
+  "userProfiles": [
+    {
+      "id": "test_user_1768893280142_38r0v1k43",
+      "name": "后端开发工程师",
+      "type": "dev_backend",
+      "domainWeights": {
+        "backend": 0.85,
+        "devops": 0.1,
+        "data_science": 0.05,
+        "frontend": 0,
+        "mobile": 0,
+        "ai_ml": 0,
+        "design": 0,
+        "product": 0,
+        "research": 0,
+        "writing": 0,
+        "photography": 0,
+        "cooking": 0,
+        "travel": 0,
+        "finance": 0,
+        "health": 0,
+        "education": 0,
+        "business": 0,
+        "entertainment": 0,
+        "sports": 0,
+        "other": 0
+      },
+      "folderStructure": {
+        "folders": [
+          {
+            "id": "folder_test_user_1768893280142_38r0v1k43_backend_0",
+            "name": "backend_folder_0",
+            "domain": "backend"
+          },
+          {
+            "id": "folder_test_user_1768893280142_38r0v1k43_backend_1",
+            "name": "backend_folder_1",
+            "domain": "backend"
+          },
+          {
+            "id": "folder_test_user_1768893280142_38r0v1k43_backend_2",
+            "name": "backend_folder_2",
+            "domain": "backend"
+          },
+          {
+            "id": "folder_test_user_1768893280142_38r0v1k43_backend_3",
+            "name": "backend_folder_3",
+            "domain": "backend"
+          },
+          {
+            "id": "folder_test_user_1768893280142_38r0v1k43_backend_4",
+            "name": "backend_folder_4",
+            "domain": "backend"
+          },
+          {
+            "id": "folder_test_user_1768893280142_38r0v1k43_backend_5",
+            "name": "backend_folder_5",
+            "domain": "backend"
+          },
+          {
+            "id": "folder_test_user_1768893280142_38r0v1k43_backend_6",
+            "name": "backend_folder_6",
+            "domain": "backend"
+          },
+          {
+            "id": "folder_test_user_1768893280142_38r0v1k43_backend_7",
+            "name": "backend_folder_7",
+            "domain": "backend"
+          },
+          {
+            "id": "folder_test_user_1768893280142_38r0v1k43_backend_8",
+            "name": "backend_folder_8",
+            "domain": "backend"
+          },
+          {
+            "id": "folder_test_user_1768893280142_38r0v1k43_backend_9",
+            "name": "backend_folder_9",
+            "domain": "backend"
+          },
+          {
+            "id": "folder_test_user_1768893280142_38r0v1k43_backend_10",
+            "name": "backend_folder_10",
+            "domain": "backend"
+          },
+          {
+            "id": "folder_test_user_1768893280142_38r0v1k43_backend_11",
+            "name": "backend_folder_11",
+            "domain": "backend"
+          },
+          {
+            "id": "folder_test_user_1768893280142_38r0v1k43_backend_12",
+            "name": "backend_folder_12",
+            "domain": "backend"
+          },
+          {
+            "id": "folder_test_user_1768893280142_38r0v1k43_backend_13",
+            "name": "backend_folder_13",
+            "domain": "backend"
+          },
+          {
+            "id": "folder_test_user_1768893280142_38r0v1k43_backend_14",
+            "name": "backend_folder_14",
+            "domain": "backend"
+          },
+          {
+            "id": "folder_test_user_1768893280142_38r0v1k43_backend_15",
+            "name": "backend_folder_15",
+            "domain": "backend"
+          }
+        ]
+      },
+      "behavior": {
+        "bookmarkFrequency": "high",
+        "folderNamingStyle": "descriptive",
+        "organizationLevel": "organized"
+      },
+      "contentFeatures": {
+        "avgTitleLength": 32,
+        "useTags": true,
+        "tagStyle": "detailed",
+        "summaryStyle": "ai"
+      }
+    },
+    {
+      "id": "test_user_1768893280142_ingd8dr48",
+      "name": "CS 学生",
+      "type": "student_cs",
+      "domainWeights": {
+        "education": 0.4,
+        "frontend": 0.3,
+        "backend": 0.3,
+        "mobile": 0,
+        "devops": 0,
+        "ai_ml": 0,
+        "design": 0,
+        "product": 0,
+        "data_science": 0,
+        "research": 0,
+        "writing": 0,
+        "photography": 0,
+        "cooking": 0,
+        "travel": 0,
+        "finance": 0,
+        "health": 0,
+        "business": 0,
+        "entertainment": 0,
+        "sports": 0,
+        "other": 0
+      },
+      "folderStructure": {
+        "folders": [
+          {
+            "id": "folder_test_user_1768893280142_ingd8dr48_education_0",
+            "name": "education_folder_0",
+            "domain": "education"
+          },
+          {
+            "id": "folder_test_user_1768893280142_ingd8dr48_education_1",
+            "name": "education_folder_1",
+            "domain": "education"
+          },
+          {
+            "id": "folder_test_user_1768893280142_ingd8dr48_education_2",
+            "name": "education_folder_2",
+            "domain": "education"
+          },
+          {
+            "id": "folder_test_user_1768893280142_ingd8dr48_education_3",
+            "name": "education_folder_3",
+            "domain": "education"
+          },
+          {
+            "id": "folder_test_user_1768893280142_ingd8dr48_education_4",
+            "name": "education_folder_4",
+            "domain": "education"
+          },
+          {
+            "id": "folder_test_user_1768893280142_ingd8dr48_education_5",
+            "name": "education_folder_5",
+            "domain": "education"
+          },
+          {
+            "id": "folder_test_user_1768893280142_ingd8dr48_frontend_0",
+            "name": "frontend_folder_0",
+            "domain": "frontend"
+          },
+          {
+            "id": "folder_test_user_1768893280142_ingd8dr48_frontend_1",
+            "name": "frontend_folder_1",
+            "domain": "frontend"
+          },
+          {
+            "id": "folder_test_user_1768893280142_ingd8dr48_frontend_2",
+            "name": "frontend_folder_2",
+            "domain": "frontend"
+          },
+          {
+            "id": "folder_test_user_1768893280142_ingd8dr48_frontend_3",
+            "name": "frontend_folder_3",
+            "domain": "frontend"
+          },
+          {
+            "id": "folder_test_user_1768893280142_ingd8dr48_frontend_4",
+            "name": "frontend_folder_4",
+            "domain": "frontend"
+          },
+          {
+            "id": "folder_test_user_1768893280142_ingd8dr48_backend_0",
+            "name": "backend_folder_0",
+            "domain": "backend"
+          },
+          {
+            "id": "folder_test_user_1768893280142_ingd8dr48_backend_1",
+            "name": "backend_folder_1",
+            "domain": "backend"
+          },
+          {
+            "id": "folder_test_user_1768893280142_ingd8dr48_backend_2",
+            "name": "backend_folder_2",
+            "domain": "backend"
+          },
+          {
+            "id": "folder_test_user_1768893280142_ingd8dr48_backend_3",
+            "name": "backend_folder_3",
+            "domain": "backend"
+          },
+          {
+            "id": "folder_test_user_1768893280142_ingd8dr48_backend_4",
+            "name": "backend_folder_4",
+            "domain": "backend"
+          }
+        ]
+      },
+      "behavior": {
+        "bookmarkFrequency": "medium",
+        "folderNamingStyle": "mixed",
+        "organizationLevel": "casual"
+      },
+      "contentFeatures": {
+        "avgTitleLength": 22,
+        "useTags": false,
+        "tagStyle": "none",
+        "summaryStyle": "none"
+      }
+    },
+    {
+      "id": "test_user_1768893280142_xfv27w3bs",
+      "name": "UI 设计师",
+      "type": "designer_ui",
+      "domainWeights": {
+        "design": 0.9,
+        "frontend": 0.1,
+        "backend": 0,
+        "mobile": 0,
+        "devops": 0,
+        "ai_ml": 0,
+        "product": 0,
+        "data_science": 0,
+        "research": 0,
+        "writing": 0,
+        "photography": 0,
+        "cooking": 0,
+        "travel": 0,
+        "finance": 0,
+        "health": 0,
+        "education": 0,
+        "business": 0,
+        "entertainment": 0,
+        "sports": 0,
+        "other": 0
+      },
+      "folderStructure": {
+        "folders": [
+          {
+            "id": "folder_test_user_1768893280142_xfv27w3bs_design_0",
+            "name": "design_folder_0",
+            "domain": "design"
+          },
+          {
+            "id": "folder_test_user_1768893280142_xfv27w3bs_design_1",
+            "name": "design_folder_1",
+            "domain": "design"
+          },
+          {
+            "id": "folder_test_user_1768893280142_xfv27w3bs_design_2",
+            "name": "design_folder_2",
+            "domain": "design"
+          },
+          {
+            "id": "folder_test_user_1768893280142_xfv27w3bs_design_3",
+            "name": "design_folder_3",
+            "domain": "design"
+          },
+          {
+            "id": "folder_test_user_1768893280142_xfv27w3bs_design_4",
+            "name": "design_folder_4",
+            "domain": "design"
+          },
+          {
+            "id": "folder_test_user_1768893280142_xfv27w3bs_design_5",
+            "name": "design_folder_5",
+            "domain": "design"
+          },
+          {
+            "id": "folder_test_user_1768893280142_xfv27w3bs_design_6",
+            "name": "design_folder_6",
+            "domain": "design"
+          },
+          {
+            "id": "folder_test_user_1768893280142_xfv27w3bs_design_7",
+            "name": "design_folder_7",
+            "domain": "design"
+          },
+          {
+            "id": "folder_test_user_1768893280142_xfv27w3bs_design_8",
+            "name": "design_folder_8",
+            "domain": "design"
+          }
+        ]
+      },
+      "behavior": {
+        "bookmarkFrequency": "medium",
+        "folderNamingStyle": "descriptive",
+        "organizationLevel": "organized"
+      },
+      "contentFeatures": {
+        "avgTitleLength": 28,
+        "useTags": true,
+        "tagStyle": "detailed",
+        "summaryStyle": "manual"
+      }
+    }
+  ],
+  "testDuration": "4分钟8秒"
+}

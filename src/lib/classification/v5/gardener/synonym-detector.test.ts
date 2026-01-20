@@ -2,11 +2,11 @@
  * 智能分类 v5.0 - 同义词检测器测试
  */
 
-import { SynonymDetector } from './synonym-detector';
-import type { FolderInfo } from './synonym-detector';
-import type { LoggerService } from '../shared/logger';
-import type { EmbeddingService } from '../shared/embedding';
-import type { GardenerConfig } from './types';
+import { SynonymDetector } from "./synonym-detector";
+import type { FolderInfo } from "./synonym-detector";
+import type { LoggerService } from "../shared/logger";
+import type { IEmbeddingService } from "../shared/embedding";
+import type { GardenerConfig } from "./types";
 
 // Mock Logger
 const mockLogger: LoggerService = {
@@ -18,11 +18,11 @@ const mockLogger: LoggerService = {
 } as any;
 
 // Mock Embedding Service
-const mockEmbeddingService: EmbeddingService = {
+const mockEmbeddingService: IEmbeddingService = {
   generateEmbedding: jest.fn(),
 } as any;
 
-describe('SynonymDetector', () => {
+describe("SynonymDetector", () => {
   let detector: SynonymDetector;
   let config: GardenerConfig;
 
@@ -44,23 +44,23 @@ describe('SynonymDetector', () => {
   });
 
   const createFolderInfo = (overrides?: Partial<FolderInfo>): FolderInfo => ({
-    folderId: 'folder-1',
-    folderName: 'Test Folder',
+    folderId: "folder-1",
+    folderName: "Test Folder",
     bookmarkCount: 10,
     ...overrides,
   });
 
-  describe('构造函数', () => {
-    it('应该正确初始化', () => {
+  describe("构造函数", () => {
+    it("应该正确初始化", () => {
       expect(detector).toBeDefined();
       expect(mockLogger.child).toHaveBeenCalledWith({
-        service: 'SynonymDetector',
+        service: "SynonymDetector",
       });
     });
   });
 
-  describe('detect', () => {
-    it('文件夹数量不足时应该返回空数组', async () => {
+  describe("detect", () => {
+    it("文件夹数量不足时应该返回空数组", async () => {
       const folders = [createFolderInfo()];
 
       const result = await detector.detect(folders);
@@ -68,16 +68,16 @@ describe('SynonymDetector', () => {
       expect(result).toEqual([]);
     });
 
-    it('应该检测高相似度的同义词组', async () => {
+    it("应该检测高相似度的同义词组", async () => {
       const folders = [
         createFolderInfo({
-          folderId: 'folder-1',
-          folderName: 'JavaScript',
+          folderId: "folder-1",
+          folderName: "JavaScript",
           bookmarkCount: 20,
         }),
         createFolderInfo({
-          folderId: 'folder-2',
-          folderName: 'JS',
+          folderId: "folder-2",
+          folderName: "JS",
           bookmarkCount: 10,
         }),
       ];
@@ -90,21 +90,21 @@ describe('SynonymDetector', () => {
       const result = await detector.detect(folders);
 
       expect(result.length).toBeGreaterThan(0);
-      expect(result[0].primaryFolderId).toBe('folder-1'); // 书签多的作为主文件夹
+      expect(result[0].primaryFolderId).toBe("folder-1"); // 书签多的作为主文件夹
       expect(result[0].synonyms).toHaveLength(1);
-      expect(result[0].synonyms[0].folderId).toBe('folder-2');
+      expect(result[0].synonyms[0].folderId).toBe("folder-2");
     });
 
-    it('应该忽略低相似度的文件夹', async () => {
+    it("应该忽略低相似度的文件夹", async () => {
       const folders = [
         createFolderInfo({
-          folderId: 'folder-1',
-          folderName: 'JavaScript',
+          folderId: "folder-1",
+          folderName: "JavaScript",
           bookmarkCount: 20,
         }),
         createFolderInfo({
-          folderId: 'folder-2',
-          folderName: 'Python',
+          folderId: "folder-2",
+          folderName: "Python",
           bookmarkCount: 10,
         }),
       ];
@@ -119,15 +119,15 @@ describe('SynonymDetector', () => {
       expect(result).toEqual([]);
     });
 
-    it('应该处理向量生成失败', async () => {
+    it("应该处理向量生成失败", async () => {
       const folders = [
-        createFolderInfo({ folderId: 'folder-1' }),
-        createFolderInfo({ folderId: 'folder-2' }),
+        createFolderInfo({ folderId: "folder-1" }),
+        createFolderInfo({ folderId: "folder-2" }),
       ];
 
       (mockEmbeddingService.generateEmbedding as jest.Mock)
         .mockResolvedValueOnce([1, 0, 0])
-        .mockRejectedValueOnce(new Error('Embedding failed'));
+        .mockRejectedValueOnce(new Error("Embedding failed"));
 
       const result = await detector.detect(folders);
 
@@ -135,16 +135,16 @@ describe('SynonymDetector', () => {
       expect(result).toEqual([]);
     });
 
-    it('应该按书签数量选择主文件夹', async () => {
+    it("应该按书签数量选择主文件夹", async () => {
       const folders = [
         createFolderInfo({
-          folderId: 'folder-1',
-          folderName: 'JS',
+          folderId: "folder-1",
+          folderName: "JS",
           bookmarkCount: 5,
         }),
         createFolderInfo({
-          folderId: 'folder-2',
-          folderName: 'JavaScript',
+          folderId: "folder-2",
+          folderName: "JavaScript",
           bookmarkCount: 20,
         }),
       ];
@@ -155,19 +155,19 @@ describe('SynonymDetector', () => {
 
       const result = await detector.detect(folders);
 
-      expect(result[0].primaryFolderId).toBe('folder-2'); // 书签多的
+      expect(result[0].primaryFolderId).toBe("folder-2"); // 书签多的
     });
 
-    it('应该建议合并高相似度的文件夹', async () => {
+    it("应该建议合并高相似度的文件夹", async () => {
       const folders = [
         createFolderInfo({
-          folderId: 'folder-1',
-          folderName: 'JavaScript',
+          folderId: "folder-1",
+          folderName: "JavaScript",
           bookmarkCount: 20,
         }),
         createFolderInfo({
-          folderId: 'folder-2',
-          folderName: 'JS',
+          folderId: "folder-2",
+          folderName: "JS",
           bookmarkCount: 10,
         }),
       ];
@@ -179,19 +179,19 @@ describe('SynonymDetector', () => {
 
       const result = await detector.detect(folders);
 
-      expect(result[0].suggestedAction).toBe('merge');
+      expect(result[0].suggestedAction).toBe("merge");
     });
 
-    it('应该建议重命名中等相似度的文件夹', async () => {
+    it("应该建议重命名中等相似度的文件夹", async () => {
       const folders = [
         createFolderInfo({
-          folderId: 'folder-1',
-          folderName: 'JavaScript',
+          folderId: "folder-1",
+          folderName: "JavaScript",
           bookmarkCount: 20,
         }),
         createFolderInfo({
-          folderId: 'folder-2',
-          folderName: 'JS Development',
+          folderId: "folder-2",
+          folderName: "JS Development",
           bookmarkCount: 10,
         }),
       ];
@@ -203,7 +203,7 @@ describe('SynonymDetector', () => {
 
       const result = await detector.detect(folders);
 
-      expect(result[0].suggestedAction).toBe('rename');
+      expect(result[0].suggestedAction).toBe("rename");
     });
   });
 });

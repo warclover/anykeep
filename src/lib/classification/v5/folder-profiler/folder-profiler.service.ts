@@ -6,7 +6,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { LoggerService } from "../shared/logger";
-import type { EmbeddingService } from "../shared/embedding";
+import type { IEmbeddingService } from "../shared/embedding";
 import type { LLMService } from "../shared/llm";
 import { AlphaCalculator } from "./alpha-calculator";
 import { LazyUpdater } from "./lazy-updater";
@@ -44,7 +44,7 @@ interface FolderProfileDbRecord {
 export class FolderProfilerService {
   private logger: LoggerService;
   private supabase: SupabaseClient;
-  private embeddingService: EmbeddingService;
+  private embeddingService: IEmbeddingService;
   private llmService?: LLMService;
   private alphaCalculator: AlphaCalculator;
   private lazyUpdater: LazyUpdater;
@@ -54,7 +54,7 @@ export class FolderProfilerService {
   constructor(
     logger: LoggerService,
     supabase: SupabaseClient,
-    embeddingService: EmbeddingService,
+    embeddingService: IEmbeddingService,
     llmService?: LLMService,
     config?: Partial<FolderProfilerConfig>,
   ) {

@@ -7,7 +7,7 @@
 
 import type { LoggerService } from "../shared/logger";
 import type { VectorSearchService } from "../shared/vector-search";
-import type { EmbeddingService } from "../shared/embedding";
+import type { IEmbeddingService } from "../shared/embedding";
 import type { HybridRetrievalResult } from "./types";
 
 /**
@@ -30,7 +30,7 @@ export interface HybridRetrieverConfig {
 export class HybridRetriever {
   private logger: LoggerService;
   private vectorSearch: VectorSearchService;
-  private embeddingService?: EmbeddingService;
+  private embeddingService?: IEmbeddingService;
   private config: HybridRetrieverConfig;
   /** v5.1: 是否启用名称相似度护栏 */
   private enableNameGuardrail: boolean;
@@ -39,7 +39,7 @@ export class HybridRetriever {
     logger: LoggerService,
     vectorSearch: VectorSearchService,
     config?: Partial<HybridRetrieverConfig>,
-    embeddingService?: EmbeddingService,
+    embeddingService?: IEmbeddingService,
   ) {
     this.logger = logger.child({ service: "HybridRetriever" });
     this.vectorSearch = vectorSearch;

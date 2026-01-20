@@ -1,0 +1,172 @@
+{
+  "testResults": [],
+  "userProfiles": [
+    {
+      "id": "e287b8ea-754f-4552-88b3-4e22468238b1",
+      "name": "后端开发工程师",
+      "type": "dev_backend",
+      "domainWeights": {
+        "backend": 0.85,
+        "devops": 0.1,
+        "data_science": 0.05,
+        "frontend": 0,
+        "mobile": 0,
+        "ai_ml": 0,
+        "design": 0,
+        "product": 0,
+        "research": 0,
+        "writing": 0,
+        "photography": 0,
+        "cooking": 0,
+        "travel": 0,
+        "finance": 0,
+        "health": 0,
+        "education": 0,
+        "business": 0,
+        "entertainment": 0,
+        "sports": 0,
+        "other": 0
+      },
+      "folderStructure": {
+        "folders": [
+          {
+            "id": "35",
+            "name": "Node.js开发",
+            "domain": "backend"
+          },
+          {
+            "id": "36",
+            "name": "Python后端",
+            "domain": "backend"
+          }
+        ]
+      },
+      "behavior": {
+        "bookmarkFrequency": "high",
+        "folderNamingStyle": "descriptive",
+        "organizationLevel": "organized"
+      },
+      "contentFeatures": {
+        "avgTitleLength": 32,
+        "useTags": true,
+        "tagStyle": "detailed",
+        "summaryStyle": "ai"
+      }
+    },
+    {
+      "id": "cd4e1e13-b6a2-47d5-88ae-694187cd52db",
+      "name": "科研人员",
+      "type": "researcher",
+      "domainWeights": {
+        "research": 0.85,
+        "data_science": 0.1,
+        "education": 0.05,
+        "frontend": 0,
+        "backend": 0,
+        "mobile": 0,
+        "devops": 0,
+        "ai_ml": 0,
+        "design": 0,
+        "product": 0,
+        "writing": 0,
+        "photography": 0,
+        "cooking": 0,
+        "travel": 0,
+        "finance": 0,
+        "health": 0,
+        "business": 0,
+        "entertainment": 0,
+        "sports": 0,
+        "other": 0
+      },
+      "folderStructure": {
+        "folders": [
+          {
+            "id": "38",
+            "name": "论文资料",
+            "domain": "research"
+          },
+          {
+            "id": "39",
+            "name": "实验方法",
+            "domain": "research"
+          }
+        ]
+      },
+      "behavior": {
+        "bookmarkFrequency": "high",
+        "folderNamingStyle": "descriptive",
+        "organizationLevel": "organized"
+      },
+      "contentFeatures": {
+        "avgTitleLength": 40,
+        "useTags": true,
+        "tagStyle": "detailed",
+        "summaryStyle": "ai"
+      }
+    },
+    {
+      "id": "1184ade6-efbf-4cb2-912d-20e687208ac7",
+      "name": "产品经理",
+      "type": "pm_product",
+      "domainWeights": {
+        "product": 0.6,
+        "design": 0.2,
+        "business": 0.2,
+        "frontend": 0,
+        "backend": 0,
+        "mobile": 0,
+        "devops": 0,
+        "ai_ml": 0,
+        "data_science": 0,
+        "research": 0,
+        "writing": 0,
+        "photography": 0,
+        "cooking": 0,
+        "travel": 0,
+        "finance": 0,
+        "health": 0,
+        "education": 0,
+        "entertainment": 0,
+        "sports": 0,
+        "other": 0
+      },
+      "folderStructure": {
+        "folders": [
+          {
+            "id": "41",
+            "name": "产品分析",
+            "domain": "product"
+          },
+          {
+            "id": "42",
+            "name": "用户研究",
+            "domain": "product"
+          },
+          {
+            "id": "43",
+            "name": "Figma设计",
+            "domain": "design"
+          },
+          {
+            "id": "44",
+            "name": "商业分析",
+            "domain": "business"
+          }
+        ]
+      },
+      "behavior": {
+        "bookmarkFrequency": "high",
+        "folderNamingStyle": "mixed",
+        "organizationLevel": "organized"
+      },
+      "contentFeatures": {
+        "avgTitleLength": 25,
+        "useTags": true,
+        "tagStyle": "simple",
+        "summaryStyle": "manual"
+      }
+    }
+  ],
+  "testDuration": "43秒"
+}

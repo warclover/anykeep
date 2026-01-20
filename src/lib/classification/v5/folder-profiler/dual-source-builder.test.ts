@@ -8,7 +8,7 @@ import {
   type BehaviorData,
 } from "./dual-source-builder";
 import type { LoggerService } from "../shared/logger";
-import type { EmbeddingService } from "../shared/embedding";
+import type { IEmbeddingService } from "../shared/embedding";
 
 // Mock Logger
 const mockLogger: LoggerService = {
@@ -20,7 +20,7 @@ const mockLogger: LoggerService = {
 } as any;
 
 // Mock Embedding Service
-const mockEmbeddingService: EmbeddingService = {
+const mockEmbeddingService: IEmbeddingService = {
   generateEmbedding: jest.fn(),
 } as any;
 

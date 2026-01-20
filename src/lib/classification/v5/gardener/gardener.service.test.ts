@@ -2,11 +2,11 @@
  * 智能分类 v5.0 - Gardener 主服务测试
  */
 
-import { GardenerService } from './gardener.service';
-import type { ClassificationStats } from './threshold-adapter';
-import type { FolderStats, UserStats } from './folder-suggester';
-import type { LoggerService } from '../shared/logger';
-import type { EmbeddingService } from '../shared/embedding';
+import { GardenerService } from "./gardener.service";
+import type { ClassificationStats } from "./threshold-adapter";
+import type { FolderStats, UserStats } from "./folder-suggester";
+import type { LoggerService } from "../shared/logger";
+import type { IEmbeddingService } from "../shared/embedding";
 
 // Mock Logger
 const mockLogger: LoggerService = {
@@ -18,11 +18,11 @@ const mockLogger: LoggerService = {
 } as any;
 
 // Mock Embedding Service
-const mockEmbeddingService: EmbeddingService = {
+const mockEmbeddingService: IEmbeddingService = {
   generateEmbedding: jest.fn().mockResolvedValue(new Array(1024).fill(0.1)),
 } as any;
 
-describe('GardenerService', () => {
+describe("GardenerService", () => {
   let service: GardenerService;
 
   beforeEach(() => {
@@ -40,16 +40,16 @@ describe('GardenerService', () => {
 
   const mockFolderStats: FolderStats[] = [
     {
-      folderId: 'folder-1',
-      folderName: 'JavaScript',
+      folderId: "folder-1",
+      folderName: "JavaScript",
       bookmarkCount: 20,
       lastUsedAt: new Date(),
       averageConfidence: 0.85,
       userCorrectionCount: 2,
     },
     {
-      folderId: 'folder-2',
-      folderName: '  Python!!  ',
+      folderId: "folder-2",
+      folderName: "  Python!!  ",
       bookmarkCount: 15,
       lastUsedAt: new Date(),
       averageConfidence: 0.82,
@@ -63,15 +63,15 @@ describe('GardenerService', () => {
     averageBookmarksPerFolder: 10,
   };
 
-  describe('构造函数', () => {
-    it('应该正确初始化', () => {
+  describe("构造函数", () => {
+    it("应该正确初始化", () => {
       expect(service).toBeDefined();
       expect(mockLogger.child).toHaveBeenCalledWith({
-        service: 'Gardener',
+        service: "Gardener",
       });
     });
 
-    it('应该使用默认配置', () => {
+    it("应该使用默认配置", () => {
       const config = service.getConfig();
 
       expect(config.thresholds.t0ConfidenceThreshold).toBe(0.85);
@@ -81,7 +81,7 @@ describe('GardenerService', () => {
       expect(config.lowUsageDays).toBe(90);
     });
 
-    it('应该支持自定义配置', () => {
+    it("应该支持自定义配置", () => {
       const customService = new GardenerService(
         mockLogger,
         mockEmbeddingService,
@@ -96,7 +96,7 @@ describe('GardenerService', () => {
           overDispersedThreshold: 0.6,
           overConcentratedThreshold: 0.5,
           lowUsageDays: 60,
-        }
+        },
       );
 
       const config = customService.getConfig();
@@ -105,12 +105,12 @@ describe('GardenerService', () => {
     });
   });
 
-  describe('generateReport', () => {
-    it('应该生成完整的 Gardener 报告', async () => {
+  describe("generateReport", () => {
+    it("应该生成完整的 Gardener 报告", async () => {
       const report = await service.generateReport(
         mockClassificationStats,
         mockFolderStats,
-        mockUserStats
+        mockUserStats,
       );
 
       expect(report).toBeDefined();
@@ -120,57 +120,57 @@ describe('GardenerService', () => {
       expect(report.generatedAt).toBeInstanceOf(Date);
     });
 
-    it('应该包含文件夹建议', async () => {
+    it("应该包含文件夹建议", async () => {
       const report = await service.generateReport(
         mockClassificationStats,
         mockFolderStats,
-        mockUserStats
+        mockUserStats,
       );
 
       expect(report.folderSuggestions).toHaveLength(2);
       expect(report.folderSuggestions[0].folderId).toBeDefined();
     });
 
-    it('应该包含命名建议', async () => {
+    it("应该包含命名建议", async () => {
       const report = await service.generateReport(
         mockClassificationStats,
         mockFolderStats,
-        mockUserStats
+        mockUserStats,
       );
 
       // folder-2 的名称需要修复
       expect(report.namingSuggestions.length).toBeGreaterThan(0);
       const pythonSuggestion = report.namingSuggestions.find(
-        (s) => s.folderId === 'folder-2'
+        (s) => s.folderId === "folder-2",
       );
       expect(pythonSuggestion).toBeDefined();
-      expect(pythonSuggestion!.suggestedName).toBe('Python');
+      expect(pythonSuggestion!.suggestedName).toBe("Python");
     });
 
-    it('应该记录日志', async () => {
+    it("应该记录日志", async () => {
       await service.generateReport(
         mockClassificationStats,
         mockFolderStats,
-        mockUserStats
+        mockUserStats,
       );
 
       expect(mockLogger.info).toHaveBeenCalledWith(
-        '开始生成 Gardener 报告',
-        expect.any(Object)
+        "开始生成 Gardener 报告",
+        expect.any(Object),
       );
       expect(mockLogger.info).toHaveBeenCalledWith(
-        'Gardener 报告生成完成',
-        expect.any(Object)
+        "Gardener 报告生成完成",
+        expect.any(Object),
       );
     });
   });
 
-  describe('applyThresholdAdjustment', () => {
-    it('应该应用阈值调整', () => {
+  describe("applyThresholdAdjustment", () => {
+    it("应该应用阈值调整", () => {
       const adjustment = {
         currentThreshold: 0.85,
         suggestedThreshold: 0.8,
-        reason: 'Test adjustment',
+        reason: "Test adjustment",
         confidence: 0.9,
         supportingData: {
           totalClassifications: 100,
@@ -187,8 +187,8 @@ describe('GardenerService', () => {
     });
   });
 
-  describe('getConfig', () => {
-    it('应该返回当前配置', () => {
+  describe("getConfig", () => {
+    it("应该返回当前配置", () => {
       const config = service.getConfig();
 
       expect(config).toBeDefined();

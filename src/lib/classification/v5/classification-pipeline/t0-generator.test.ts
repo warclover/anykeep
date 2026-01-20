@@ -4,7 +4,7 @@
 
 import { T0Generator } from "./t0-generator";
 import type { LoggerService } from "../shared/logger";
-import type { EmbeddingService } from "../shared/embedding";
+import type { IEmbeddingService } from "../shared/embedding";
 import type { ClassificationRequest } from "./types";
 
 // Mock Logger
@@ -17,9 +17,11 @@ const mockLogger: LoggerService = {
 } as any;
 
 // Mock Embedding Service
-const mockEmbeddingService: EmbeddingService = {
-  generateEmbedding: jest.fn().mockResolvedValue(new Array(1024).fill(0.1)),
-} as any;
+const mockEmbeddingService = {
+  generateEmbedding: jest
+    .fn()
+    .mockResolvedValue({ embedding: new Array(1024).fill(0.1) }),
+} as unknown as IEmbeddingService & { generateEmbedding: jest.Mock };
 
 // Mock L0 Matcher
 const mockL0Matcher = {
