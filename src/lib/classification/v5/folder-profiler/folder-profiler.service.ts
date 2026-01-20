@@ -7,12 +7,14 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { LoggerService } from "../shared/logger";
 import type { EmbeddingService } from "../shared/embedding";
+import type { LLMService } from "../shared/llm";
 import { AlphaCalculator } from "./alpha-calculator";
 import { LazyUpdater } from "./lazy-updater";
 import {
   DualSourceBuilder,
   type BookmarkData,
   type BehaviorData,
+  type ParentContext,
 } from "./dual-source-builder";
 import type { FolderProfile, FolderStats, FolderProfilerConfig } from "./types";
 import { FolderProfilerError } from "./types";
@@ -43,6 +45,7 @@ export class FolderProfilerService {
   private logger: LoggerService;
   private supabase: SupabaseClient;
   private embeddingService: EmbeddingService;
+  private llmService?: LLMService;
   private alphaCalculator: AlphaCalculator;
   private lazyUpdater: LazyUpdater;
   private dualSourceBuilder: DualSourceBuilder;
@@ -52,11 +55,13 @@ export class FolderProfilerService {
     logger: LoggerService,
     supabase: SupabaseClient,
     embeddingService: EmbeddingService,
+    llmService?: LLMService,
     config?: Partial<FolderProfilerConfig>,
   ) {
     this.logger = logger.child({ service: "FolderProfilerService" });
     this.supabase = supabase;
     this.embeddingService = embeddingService;
+    this.llmService = llmService;
 
     this.config = {
       timeThresholdDays: config?.timeThresholdDays ?? 7,
@@ -65,7 +70,7 @@ export class FolderProfilerService {
       alphaRange: config?.alphaRange ?? { min: 0.2, max: 0.8 },
     };
 
-    // 初始化组件（v5.1: 传递 enableV51Features 选项）
+    // 初始化组件（v5.1: 传递 enableV51Features 和 LLMService）
     const enableV51Features =
       process.env.CLASSIFICATION_V5_1_ENABLED !== "false";
     this.alphaCalculator = new AlphaCalculator(logger, {
@@ -76,9 +81,13 @@ export class FolderProfilerService {
       newBookmarksThreshold: this.config.newBookmarksThreshold,
       accuracyThreshold: this.config.accuracyThreshold,
     });
-    this.dualSourceBuilder = new DualSourceBuilder(logger, embeddingService, {
-      enableV51Features,
-    });
+    // v5.1: 传递 LLMService 以启用冷启动语义膨胀
+    this.dualSourceBuilder = new DualSourceBuilder(
+      logger,
+      embeddingService,
+      llmService,
+      { enableV51Features },
+    );
   }
 
   /**
@@ -119,6 +128,8 @@ export class FolderProfilerService {
 
   /**
    * 创建或更新文件夹画像
+   *
+   * @param parentId - v5.1: 父文件夹 ID（用于层级意图继承）
    */
   async upsertProfile(
     userId: string,
@@ -128,6 +139,7 @@ export class FolderProfilerService {
     bookmarks: BookmarkData[],
     behaviors: BehaviorData[],
     stats: FolderStats,
+    parentId?: number,
   ): Promise<FolderProfile> {
     this.logger.info("创建/更新文件夹画像", {
       userId,
@@ -135,7 +147,21 @@ export class FolderProfilerService {
       folderName,
       bookmarkCount: bookmarks.length,
       behaviorCount: behaviors.length,
+      parentId,
     });
+
+    // v5.1: 获取父文件夹上下文（用于冷启动增强）
+    let parentContext: ParentContext | undefined;
+    if (parentId) {
+      parentContext = await this.getParentContext(userId, parentId);
+      if (parentContext) {
+        this.logger.debug("获取父文件夹上下文成功", {
+          parentId,
+          parentName: parentContext.name,
+          hasParentEmbedding: !!parentContext.embedding,
+        });
+      }
+    }
 
     // 1. 构建双源向量(基于生命周期阶段)
     const vectors = await this.dualSourceBuilder.build(
@@ -144,6 +170,7 @@ export class FolderProfilerService {
       folderDescription,
       bookmarks,
       behaviors,
+      { parentContext },
     );
 
     // 2. 计算 α 系数
@@ -173,6 +200,77 @@ export class FolderProfilerService {
     }
 
     return this.mapToProfile(data);
+  }
+
+  /**
+   * v5.1: 获取父文件夹上下文
+   */
+  private async getParentContext(
+    userId: string,
+    parentId: number,
+  ): Promise<ParentContext | undefined> {
+    try {
+      // 1. 查询父文件夹名称
+      const { data: parentFolder, error: folderError } = await this.supabase
+        .from("folders")
+        .select("name")
+        .eq("id", parentId)
+        .eq("user_id", userId)
+        .single();
+
+      if (folderError || !parentFolder) {
+        this.logger.debug("父文件夹不存在或无权访问", {
+          parentId,
+          error: folderError?.message,
+        });
+        return undefined;
+      }
+
+      // 2. 查询父文件夹画像（如果存在）
+      const parentProfile = await this.getProfile(userId, String(parentId));
+
+      if (parentProfile) {
+        // 父文件夹有画像，返回名称和融合后的向量
+        return {
+          name: parentFolder.name,
+          embedding: this.combineVectors(
+            parentProfile.contentEmbedding,
+            parentProfile.behaviorEmbedding,
+            parentProfile.alphaCoefficient,
+          ),
+        };
+      }
+
+      // 父文件夹没有画像，只返回名称（用于 LLM 上下文）
+      return { name: parentFolder.name };
+    } catch (error) {
+      this.logger.warn("获取父文件夹上下文失败", {
+        parentId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return undefined;
+    }
+  }
+
+  /**
+   * v5.1: 融合内容向量和行为向量
+   *
+   * 公式: combined = α * content + (1-α) * behavior
+   */
+  private combineVectors(
+    contentEmbedding: number[],
+    behaviorEmbedding: number[],
+    alpha: number,
+  ): number[] {
+    const dimension = contentEmbedding.length;
+    const result = new Array(dimension);
+
+    for (let i = 0; i < dimension; i++) {
+      result[i] =
+        alpha * contentEmbedding[i] + (1 - alpha) * behaviorEmbedding[i];
+    }
+
+    return result;
   }
 
   /**

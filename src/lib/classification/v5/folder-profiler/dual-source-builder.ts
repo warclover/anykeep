@@ -2,12 +2,14 @@
  * 智能分类 v5.1 - 双源向量构建器
  *
  * 从内容数据和行为数据构建双源向量
- * v5.1 新增：离群值检测、时间衰减质心
+ * v5.1 新增：离群值检测、时间衰减质心、冷启动语义膨胀
  */
 
 import type { LoggerService } from "../shared/logger";
 import type { EmbeddingService } from "../shared/embedding";
+import type { LLMService } from "../shared/llm";
 import type { DualSourceVectors } from "./types";
+import { ColdStartEnricher } from "./cold-start-enricher";
 
 /**
  * 双源向量构建常量
@@ -49,28 +51,89 @@ export interface BehaviorData {
 }
 
 /**
+ * 父文件夹上下文（v5.1 新增：用于层级意图继承）
+ */
+export interface ParentContext {
+  /** 父文件夹名称 */
+  name: string;
+  /** 父文件夹向量（可选，用于加权融合） */
+  embedding?: number[];
+}
+
+/**
+ * 构建选项（v5.1 新增）
+ */
+export interface BuildOptions {
+  /** 父文件夹上下文（用于冷启动增强） */
+  parentContext?: ParentContext;
+}
+
+/**
+ * 层级权重配置（v5.1 新增）
+ */
+export interface HierarchicalWeightConfig {
+  /** 子文件夹权重，默认 0.7 */
+  child: number;
+  /** 父文件夹权重，默认 0.3 */
+  parent: number;
+}
+
+/**
+ * 双源向量构建器配置选项
+ */
+export interface DualSourceBuilderOptions {
+  /** v5.1: 是否启用新特性（去噪、时间权重、冷启动增强） */
+  enableV51Features?: boolean;
+  /** v5.1: 层级权重配置 */
+  hierarchicalWeights?: HierarchicalWeightConfig;
+}
+
+/**
  * 双源向量构建器类
  */
 export class DualSourceBuilder {
   private logger: LoggerService;
   private embeddingService: EmbeddingService;
+  /** v5.1: 冷启动增强器 */
+  private coldStartEnricher?: ColdStartEnricher;
+  /** v5.1: 层级权重配置 */
+  private hierarchicalWeights: HierarchicalWeightConfig;
   /** v5.1: 是否启用去噪和时间权重 */
   private enableV51Features: boolean;
 
   constructor(
     logger: LoggerService,
     embeddingService: EmbeddingService,
-    options?: { enableV51Features?: boolean },
+    llmService?: LLMService,
+    options?: DualSourceBuilderOptions,
   ) {
     this.logger = logger.child({ service: "DualSourceBuilder" });
     this.embeddingService = embeddingService;
     this.enableV51Features =
       options?.enableV51Features ??
       process.env.CLASSIFICATION_V5_1_ENABLED !== "false";
+
+    // v5.1: 初始化层级权重
+    this.hierarchicalWeights = options?.hierarchicalWeights ?? {
+      child: 0.7,
+      parent: 0.3,
+    };
+
+    // v5.1: 如果提供了 LLMService 且启用新特性，创建冷启动增强器
+    if (llmService && this.enableV51Features) {
+      this.coldStartEnricher = new ColdStartEnricher(logger, llmService);
+    }
   }
 
   /**
    * 构建双源向量
+   *
+   * @param folderId - 文件夹 ID
+   * @param folderName - 文件夹名称
+   * @param folderDescription - 文件夹描述
+   * @param bookmarks - 书签数据列表
+   * @param behaviors - 行为数据列表
+   * @param options - v5.1 构建选项（包含父文件夹上下文）
    */
   async build(
     folderId: string,
@@ -78,12 +141,14 @@ export class DualSourceBuilder {
     folderDescription: string | undefined,
     bookmarks: BookmarkData[],
     behaviors: BehaviorData[],
+    options?: BuildOptions,
   ): Promise<DualSourceVectors> {
     this.logger.debug("开始构建双源向量", {
       folderId,
       folderName,
       bookmarkCount: bookmarks.length,
       behaviorCount: behaviors.length,
+      hasParentContext: !!options?.parentContext,
     });
 
     // 1. 构建内容向量(基于生命周期阶段)
@@ -91,6 +156,7 @@ export class DualSourceBuilder {
       folderName,
       folderDescription,
       bookmarks,
+      options?.parentContext,
     );
 
     // 2. 构建行为向量
@@ -110,20 +176,27 @@ export class DualSourceBuilder {
   /**
    * 构建内容向量（基于生命周期阶段）
    *
-   * Stage A (冷启动): 0个书签 → 100%依赖名称
+   * Stage A (冷启动): 0个书签 → 100%依赖名称 + LLM语义膨胀 + 层级继承
    * Stage B (成长期): 1-4个书签 → 70%名称 + 30%内容
    * Stage C (成熟期): ≥5个书签 → 滑动窗口平均(最近20个)
+   *
+   * @param parentContext - v5.1: 父文件夹上下文（用于层级意图继承）
    */
   private async buildContentEmbedding(
     folderName: string,
     folderDescription: string | undefined,
     bookmarks: BookmarkData[],
+    parentContext?: ParentContext,
   ): Promise<number[]> {
     const bookmarkCount = bookmarks.length;
 
     // Stage A: 冷启动阶段 (0个书签)
     if (bookmarkCount === 0) {
-      return this.buildStageAEmbedding(folderName, folderDescription);
+      return this.buildStageAEmbedding(
+        folderName,
+        folderDescription,
+        parentContext,
+      );
     }
 
     // Stage B: 成长期 (1-4个书签)
@@ -140,24 +213,83 @@ export class DualSourceBuilder {
   }
 
   /**
-   * Stage A: 冷启动阶段 - 100%依赖文件夹名称
+   * Stage A: 冷启动阶段 - v5.1 增强版
+   *
+   * 1. 使用 LLM 语义膨胀扩展文件夹名称
+   * 2. 如果有父文件夹向量，进行加权融合 (70% child + 30% parent)
+   * 3. LLM 失败时自动降级到规则扩展
    */
   private async buildStageAEmbedding(
     folderName: string,
     folderDescription: string | undefined,
+    parentContext?: ParentContext,
   ): Promise<number[]> {
-    this.logger.debug("使用 Stage A (冷启动) 策略", { folderName });
+    this.logger.debug("使用 Stage A (冷启动增强) 策略", {
+      folderName,
+      hasParent: !!parentContext,
+      hasParentEmbedding: !!parentContext?.embedding,
+      hasColdStartEnricher: !!this.coldStartEnricher,
+    });
 
-    // 合并文件夹名称和描述
-    const text = [folderName, folderDescription || ""].join(" ").trim();
+    // 1. 构建文本内容（v5.1: 使用 LLM 语义膨胀）
+    let textForEmbedding: string;
 
-    if (!text) {
-      // 如果连名称都没有,返回零向量
+    if (this.coldStartEnricher && this.enableV51Features) {
+      // v5.1: 使用冷启动增强器进行语义膨胀
+      const enrichmentResult = await this.coldStartEnricher.expandFolderName(
+        folderName,
+        parentContext?.name,
+      );
+
+      this.logger.debug("冷启动语义膨胀完成", {
+        folderName,
+        strategy: enrichmentResult.strategy,
+        keywordCount: enrichmentResult.keywordCount,
+        cacheHit: enrichmentResult.cacheHit,
+        latencyMs: enrichmentResult.latencyMs,
+      });
+
+      // 合并扩展文本和描述
+      textForEmbedding = [
+        enrichmentResult.expandedText,
+        folderDescription || "",
+      ]
+        .join(" ")
+        .trim();
+    } else {
+      // v5.0 原有逻辑：仅使用文件夹名称和描述
+      textForEmbedding = [folderName, folderDescription || ""].join(" ").trim();
+    }
+
+    // 2. 边缘情况处理：空文本
+    if (!textForEmbedding) {
       return new Array(1024).fill(0);
     }
 
-    const result = await this.embeddingService.generateEmbedding(text);
-    return result.embedding;
+    // 3. 生成文件夹向量
+    const folderResult =
+      await this.embeddingService.generateEmbedding(textForEmbedding);
+    const folderEmbedding = folderResult.embedding;
+
+    // 4. v5.1: 层级意图继承（如果有父文件夹向量）
+    if (this.enableV51Features && parentContext?.embedding) {
+      this.logger.debug("应用层级权重融合", {
+        folderName,
+        parentName: parentContext.name,
+        childWeight: this.hierarchicalWeights.child,
+        parentWeight: this.hierarchicalWeights.parent,
+      });
+
+      return this.weightedAverage([
+        { embedding: folderEmbedding, weight: this.hierarchicalWeights.child },
+        {
+          embedding: parentContext.embedding,
+          weight: this.hierarchicalWeights.parent,
+        },
+      ]);
+    }
+
+    return folderEmbedding;
   }
 
   /**

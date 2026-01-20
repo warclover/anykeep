@@ -17,19 +17,23 @@ const mockLogger: LoggerService = {
   child: jest.fn(() => mockLogger),
 } as any;
 
-// Mock Supabase
+// Mock Supabase - 使用持久化的链式对象以支持正确的 mock 设置
+const mockQueryBuilder = {
+  select: jest.fn().mockReturnThis(),
+  eq: jest.fn().mockReturnThis(),
+  single: jest.fn(),
+  upsert: jest.fn().mockReturnThis(),
+};
+
 const mockSupabase = {
-  from: jest.fn(() => ({
-    select: jest.fn().mockReturnThis(),
-    eq: jest.fn().mockReturnThis(),
-    single: jest.fn(),
-    upsert: jest.fn().mockReturnThis(),
-  })),
+  from: jest.fn(() => mockQueryBuilder),
 } as any;
 
-// Mock Embedding Service
+// Mock Embedding Service - 返回 { embedding: [...] } 格式
 const mockEmbeddingService: EmbeddingService = {
-  generateEmbedding: jest.fn().mockResolvedValue(new Array(1024).fill(0.1)),
+  generateEmbedding: jest.fn().mockResolvedValue({
+    embedding: new Array(1024).fill(0.1),
+  }),
 } as any;
 
 describe("FolderProfilerService", () => {
@@ -90,7 +94,7 @@ describe("FolderProfilerService", () => {
         updated_at: new Date().toISOString(),
       };
 
-      mockSupabase.from().single.mockResolvedValueOnce({
+      mockQueryBuilder.single.mockResolvedValueOnce({
         data: mockData,
         error: null,
       });
@@ -105,7 +109,7 @@ describe("FolderProfilerService", () => {
     });
 
     it("画像不存在时应该返回 null", async () => {
-      mockSupabase.from().single.mockResolvedValueOnce({
+      mockQueryBuilder.single.mockResolvedValueOnce({
         data: null,
         error: { code: "PGRST116" },
       });
@@ -133,7 +137,7 @@ describe("FolderProfilerService", () => {
         updated_at: new Date().toISOString(),
       };
 
-      mockSupabase.from().single.mockResolvedValueOnce({
+      mockQueryBuilder.single.mockResolvedValueOnce({
         data: mockData,
         error: null,
       });
@@ -156,7 +160,7 @@ describe("FolderProfilerService", () => {
 
   describe("checkNeedsUpdate", () => {
     it("画像不存在时应该返回 true", async () => {
-      mockSupabase.from().single.mockResolvedValueOnce({
+      mockQueryBuilder.single.mockResolvedValueOnce({
         data: null,
         error: { code: "PGRST116" },
       });

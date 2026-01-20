@@ -24,15 +24,30 @@ const mockEmbeddingService: EmbeddingService = {
   generateEmbedding: jest.fn(),
 } as any;
 
+/**
+ * 比较两个向量是否在容差范围内相等
+ * 用于处理 JavaScript 浮点数精度问题（如 0.7 * 0.1 + 0.3 * 0.1 = 0.09999999999999999）
+ */
+function expectVectorsToBeClose(
+  received: number[],
+  expected: number[],
+  _tolerance: number = 1e-10,
+): void {
+  expect(received.length).toBe(expected.length);
+  for (let i = 0; i < expected.length; i++) {
+    expect(received[i]).toBeCloseTo(expected[i], 10);
+  }
+}
+
 describe("DualSourceBuilder", () => {
   let builder: DualSourceBuilder;
   const testEmbedding = new Array(1024).fill(0.1);
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (mockEmbeddingService.generateEmbedding as jest.Mock).mockResolvedValue(
-      testEmbedding,
-    );
+    (mockEmbeddingService.generateEmbedding as jest.Mock).mockResolvedValue({
+      embedding: testEmbedding,
+    });
     builder = new DualSourceBuilder(mockLogger, mockEmbeddingService);
   });
 
@@ -67,8 +82,9 @@ describe("DualSourceBuilder", () => {
         behaviors,
       );
 
-      expect(result.contentEmbedding).toEqual(testEmbedding);
-      expect(result.behaviorEmbedding).toEqual(testEmbedding);
+      // Stage B (成长期: 1-4 个书签) 使用加权平均，可能产生浮点数精度误差
+      expectVectorsToBeClose(result.contentEmbedding, testEmbedding);
+      expectVectorsToBeClose(result.behaviorEmbedding, testEmbedding);
       expect(result.contentSourceCount).toBe(2);
       expect(result.behaviorSourceCount).toBe(2);
       expect(mockEmbeddingService.generateEmbedding).toHaveBeenCalled();
@@ -103,7 +119,8 @@ describe("DualSourceBuilder", () => {
         [],
       );
 
-      expect(result.contentEmbedding).toEqual(testEmbedding);
+      // Stage B (成长期: 1-4 个书签) 使用加权平均，可能产生浮点数精度误差
+      expectVectorsToBeClose(result.contentEmbedding, testEmbedding);
       expect(result.behaviorEmbedding).toEqual(new Array(1024).fill(0));
       expect(mockEmbeddingService.generateEmbedding).toHaveBeenCalled();
     });

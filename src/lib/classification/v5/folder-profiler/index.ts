@@ -1,11 +1,14 @@
 /**
- * 智能分类 v5.0 - FolderProfiler 模块导出
+ * 智能分类 v5.1 - FolderProfiler 模块导出
  */
 
-export { FolderProfilerService } from './folder-profiler.service';
-export { AlphaCalculator } from './alpha-calculator';
-export { LazyUpdater } from './lazy-updater';
-export { DualSourceBuilder } from './dual-source-builder';
+export { FolderProfilerService } from "./folder-profiler.service";
+export { AlphaCalculator } from "./alpha-calculator";
+export { LazyUpdater } from "./lazy-updater";
+export { DualSourceBuilder } from "./dual-source-builder";
+
+// v5.1: 冷启动增强器
+export { ColdStartEnricher } from "./cold-start-enricher";
 
 export type {
   FolderProfile,
@@ -13,11 +16,23 @@ export type {
   DualSourceVectors,
   LazyUpdateTrigger,
   FolderProfilerConfig,
-} from './types';
+} from "./types";
 
 export type {
   BookmarkData,
   BehaviorData,
-} from './dual-source-builder';
+  // v5.1: 新增类型
+  ParentContext,
+  BuildOptions,
+  HierarchicalWeightConfig,
+  DualSourceBuilderOptions,
+} from "./dual-source-builder";
 
-export { FolderProfilerError } from './types';
+// v5.1: 冷启动增强器类型
+export type {
+  EnrichmentResult,
+  ColdStartEnricherConfig,
+  CacheConfig,
+} from "./cold-start-enricher";
+
+export { FolderProfilerError } from "./types";
