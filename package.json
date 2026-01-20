@@ -30,6 +30,9 @@
     "verify:fix": "node scripts/verify-fix.mjs",
     "validate:mappings": "ts-node scripts/validate-intent-mappings-simple.ts",
     "test:classification": "npx ts-node scripts/test-classification-simple.ts",
+    "test:classification:realistic": "tsx scripts/classification-realistic-test/index.ts",
+    "test:classification:realistic:quick": "tsx scripts/classification-realistic-test/index.ts --quick",
+    "test:classification:realistic:verbose": "tsx scripts/classification-realistic-test/index.ts --verbose",
     "supabase:start": "npx supabase start",
     "supabase:stop": "npx supabase stop",
     "supabase:status": "npx supabase status",
@@ -167,6 +170,7 @@
     "tailwindcss-animate": "^1.0.7",
     "ts-morph": "^27.0.2",
     "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
     "typescript": "^5"
   },
   "overrides": {

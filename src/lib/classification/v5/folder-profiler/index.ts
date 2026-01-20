@@ -10,6 +10,9 @@ export { DualSourceBuilder } from "./dual-source-builder";
 // v5.1: 冷启动增强器
 export { ColdStartEnricher } from "./cold-start-enricher";
 
+// v5.1: 安全封装器
+export { SafeEmbeddingWrapper } from "./safe-embedding-wrapper";
+
 export type {
   FolderProfile,
   FolderStats,
@@ -34,5 +37,11 @@ export type {
   ColdStartEnricherConfig,
   CacheConfig,
 } from "./cold-start-enricher";
+
+// v5.1: 安全封装器类型
+export type {
+  SafeEmbeddingConfig,
+  SafeEmbeddingResult,
+} from "./safe-embedding-wrapper";
 
 export { FolderProfilerError } from "./types";

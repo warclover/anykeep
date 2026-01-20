@@ -204,16 +204,39 @@ export class FolderProfilerService {
 
   /**
    * v5.1: 获取父文件夹上下文
+   *
+   * 安全增强：参数验证 + user_id 二次验证
    */
   private async getParentContext(
     userId: string,
     parentId: number,
   ): Promise<ParentContext | undefined> {
+    // 1. 参数验证
+    if (!userId || typeof userId !== "string" || userId.trim().length === 0) {
+      this.logger.warn("getParentContext 参数无效: userId 为空", {
+        userId,
+        parentId,
+      });
+      return undefined;
+    }
+
+    if (
+      typeof parentId !== "number" ||
+      parentId <= 0 ||
+      !Number.isInteger(parentId)
+    ) {
+      this.logger.warn("getParentContext 参数无效: parentId 不合法", {
+        userId,
+        parentId,
+      });
+      return undefined;
+    }
+
     try {
-      // 1. 查询父文件夹名称
+      // 2. 查询父文件夹名称（同时获取 user_id 用于二次验证）
       const { data: parentFolder, error: folderError } = await this.supabase
         .from("folders")
-        .select("name")
+        .select("name, user_id")
         .eq("id", parentId)
         .eq("user_id", userId)
         .single();
@@ -226,7 +249,17 @@ export class FolderProfilerService {
         return undefined;
       }
 
-      // 2. 查询父文件夹画像（如果存在）
+      // 3. 二次验证 user_id（应用层安全检查，防止 RLS 绕过）
+      if (parentFolder.user_id !== userId) {
+        this.logger.error("用户ID不匹配，可能存在越权访问", {
+          requestedUserId: userId,
+          actualUserId: parentFolder.user_id,
+          parentId,
+        });
+        return undefined;
+      }
+
+      // 4. 查询父文件夹画像（如果存在）
       const parentProfile = await this.getProfile(userId, String(parentId));
 
       if (parentProfile) {
@@ -244,9 +277,14 @@ export class FolderProfilerService {
       // 父文件夹没有画像，只返回名称（用于 LLM 上下文）
       return { name: parentFolder.name };
     } catch (error) {
-      this.logger.warn("获取父文件夹上下文失败", {
+      this.logger.error("getParentContext 异常", {
+        userId,
         parentId,
-        error: error instanceof Error ? error.message : String(error),
+        error: {
+          name: error instanceof Error ? error.name : "UnknownError",
+          message: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+        },
       });
       return undefined;
     }

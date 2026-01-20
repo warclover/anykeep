@@ -10,6 +10,8 @@ import type { EmbeddingService } from "../shared/embedding";
 import type { LLMService } from "../shared/llm";
 import type { DualSourceVectors } from "./types";
 import { ColdStartEnricher } from "./cold-start-enricher";
+import { SafeEmbeddingWrapper } from "./safe-embedding-wrapper";
+import pLimit from "p-limit";
 
 /**
  * 双源向量构建常量
@@ -94,12 +96,16 @@ export interface DualSourceBuilderOptions {
 export class DualSourceBuilder {
   private logger: LoggerService;
   private embeddingService: EmbeddingService;
+  /** v5.1: 安全封装器 */
+  private safeEmbeddingWrapper: SafeEmbeddingWrapper;
   /** v5.1: 冷启动增强器 */
   private coldStartEnricher?: ColdStartEnricher;
   /** v5.1: 层级权重配置 */
   private hierarchicalWeights: HierarchicalWeightConfig;
   /** v5.1: 是否启用去噪和时间权重 */
   private enableV51Features: boolean;
+  /** H4: 并发控制限制器（最多 3 个并发 embedding 生成） */
+  private embeddingLimit = pLimit(3);
 
   constructor(
     logger: LoggerService,
@@ -112,6 +118,13 @@ export class DualSourceBuilder {
     this.enableV51Features =
       options?.enableV51Features ??
       process.env.CLASSIFICATION_V5_1_ENABLED !== "false";
+
+    // v5.1: 初始化安全封装器
+    this.safeEmbeddingWrapper = new SafeEmbeddingWrapper(
+      logger,
+      embeddingService,
+      { timeoutMs: 5000, dimension: 1024 },
+    );
 
     // v5.1: 初始化层级权重
     this.hierarchicalWeights = options?.hierarchicalWeights ?? {
@@ -266,9 +279,11 @@ export class DualSourceBuilder {
       return new Array(1024).fill(0);
     }
 
-    // 3. 生成文件夹向量
-    const folderResult =
-      await this.embeddingService.generateEmbedding(textForEmbedding);
+    // 3. 生成文件夹向量（使用安全封装器）
+    const folderResult = await this.safeEmbeddingWrapper.generate(
+      textForEmbedding,
+      { stage: "StageA", folderName },
+    );
     const folderEmbedding = folderResult.embedding;
 
     // 4. v5.1: 层级意图继承（如果有父文件夹向量）
@@ -305,9 +320,13 @@ export class DualSourceBuilder {
       bookmarkCount: bookmarks.length,
     });
 
-    // 1. 生成名称向量
+    // 1. 生成名称向量（使用安全封装器）
     const nameText = [folderName, folderDescription || ""].join(" ").trim();
-    const nameResult = await this.embeddingService.generateEmbedding(nameText);
+    const nameResult = await this.safeEmbeddingWrapper.generate(nameText, {
+      stage: "StageB",
+      type: "name",
+      folderName,
+    });
     const nameEmbedding = nameResult.embedding;
 
     // 2. 生成内容向量
@@ -324,8 +343,10 @@ export class DualSourceBuilder {
       .join(" ")
       .slice(0, 8000);
 
-    const contentResult =
-      await this.embeddingService.generateEmbedding(contentText);
+    const contentResult = await this.safeEmbeddingWrapper.generate(
+      contentText,
+      { stage: "StageB", type: "content", bookmarkCount: bookmarks.length },
+    );
     const contentEmbedding = contentResult.embedding;
 
     // 3. 加权融合: 70%名称 + 30%内容
@@ -385,7 +406,10 @@ export class DualSourceBuilder {
       .join(" ")
       .slice(0, 8000);
 
-    const result = await this.embeddingService.generateEmbedding(combinedText);
+    const result = await this.safeEmbeddingWrapper.generate(combinedText, {
+      stage: "StageC",
+      bookmarkCount: recentBookmarks.length,
+    });
     return result.embedding;
   }
 
@@ -487,23 +511,29 @@ export class DualSourceBuilder {
     const totalWeight = weights.reduce((sum, w) => sum + w, 0);
     const normalizedWeights = weights.map((w) => w / totalWeight);
 
-    // 为每个书签生成向量（如果需要）
-    const bookmarkVectors: number[][] = [];
-    for (const bookmark of bookmarks) {
-      if (bookmark.embedding && bookmark.embedding.length > 0) {
-        bookmarkVectors.push(bookmark.embedding);
-      } else {
-        // 如果没有向量，生成一个
-        const text = [
-          bookmark.title,
-          bookmark.description || "",
-          bookmark.summary || "",
-          ...(bookmark.tags || []),
-        ].join(" ");
-        const result = await this.embeddingService.generateEmbedding(text);
-        bookmarkVectors.push(result.embedding);
-      }
-    }
+    // H4: 并发生成向量（使用 p-limit 控制最大并发数为 3）
+    const bookmarkVectors = await Promise.all(
+      bookmarks.map((bookmark) =>
+        this.embeddingLimit(async () => {
+          if (bookmark.embedding && bookmark.embedding.length > 0) {
+            return bookmark.embedding;
+          }
+          // 如果没有向量，使用安全封装器生成
+          const text = [
+            bookmark.title,
+            bookmark.description || "",
+            bookmark.summary || "",
+            ...(bookmark.tags || []),
+          ].join(" ");
+          const result = await this.safeEmbeddingWrapper.generate(text, {
+            stage: "StageC",
+            type: "temporal_weighted",
+            bookmarkId: bookmark.id,
+          });
+          return result.embedding;
+        }),
+      ),
+    );
 
     // 加权平均向量
     const dimension = bookmarkVectors[0].length;
