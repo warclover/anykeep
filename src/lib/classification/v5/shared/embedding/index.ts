@@ -9,4 +9,8 @@ export type {
   EmbeddingResult,
   IEmbeddingService,
 } from "./types";
+export type {
+  IEmbeddingResult,
+  IEmbeddingServiceConfig,
+} from "./embedding.interface";
 export { EmbeddingError } from "./types";

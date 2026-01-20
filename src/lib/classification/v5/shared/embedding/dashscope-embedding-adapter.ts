@@ -1,9 +1,9 @@
 /**
  * DashScope Embedding 适配器
  *
- * 将项目现有的 DashScope embedding 服务适配到 v5.0 的 EmbeddingService 接口
+ * 将项目现有的 DashScope embedding 服务适配到 v5.0 的 IEmbeddingService 接口
  *
- * @version 2.0.0
+ * @version 2.2.0 - 集成速率限制器
  * @since 2026-01-20
  */
 
@@ -12,20 +12,27 @@ import {
   generateEmbeddingsBatch,
   getActiveModelConfig,
 } from "@/lib/utils/embedding-generator";
+import { RateLimiter } from "@/lib/embedding/helpers/rate-limiter";
 import type { LoggerService } from "../logger";
 import type { EmbeddingResult } from "./types";
 import { EmbeddingError } from "./types";
+import type { IEmbeddingService } from "./embedding.interface";
 
 /**
  * DashScope Embedding 适配器类
  *
- * 实现与 EmbeddingService 相同的接口，但使用项目现有的百炼/DashScope 服务
+ * 实现 IEmbeddingService 接口，使用项目现有的百炼/DashScope 服务
  */
-export class DashScopeEmbeddingAdapter {
+export class DashScopeEmbeddingAdapter implements IEmbeddingService {
   private logger: LoggerService;
+  private rateLimiter: RateLimiter;
 
-  constructor(logger: LoggerService) {
+  constructor(
+    logger: LoggerService,
+    maxRequestsPerMinute = 60, // 阿里云默认限制
+  ) {
     this.logger = logger.child({ service: "DashScopeEmbeddingAdapter" });
+    this.rateLimiter = new RateLimiter(maxRequestsPerMinute);
   }
 
   /**
@@ -40,6 +47,9 @@ export class DashScopeEmbeddingAdapter {
     }
 
     try {
+      // V4.2.6: 等待速率限制器许可
+      await this.rateLimiter.acquire();
+
       const modelConfig = getActiveModelConfig();
 
       this.logger.debug("生成 Embedding (DashScope)", {
@@ -89,6 +99,9 @@ export class DashScopeEmbeddingAdapter {
     }
 
     try {
+      // V4.2.6: 批量请求也需要速率限制
+      await this.rateLimiter.acquire();
+
       const modelConfig = getActiveModelConfig();
 
       this.logger.debug("批量生成 Embedding (DashScope)", {

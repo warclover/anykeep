@@ -8,7 +8,7 @@
  * - content_embedding: 内容向量（现有 embedding 字段）
  * - tag_embedding: 标签向量（标签语义聚合）
  *
- * @version 1.0.0
+ * @version 1.1.0 - V4.2.6: 集成速率限制器
  * @since 2025-12-11
  */
 
@@ -16,7 +16,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
 import { generateEmbedding } from "@/lib/utils/embedding-generator";
 import { logger } from "@/lib/logger";
-import { classifyEmbeddingError, runWithConcurrency } from "./helpers";
+import {
+  classifyEmbeddingError,
+  runWithConcurrency,
+  RateLimiter,
+} from "./helpers";
 import {
   type MultiVectorResult,
   type BookmarkMultiVector,
@@ -43,6 +47,7 @@ export type {
 export class MultiVectorEmbeddingService {
   private supabase: SupabaseClient<Database>;
   private config: MultiVectorConfig;
+  private rateLimiter: RateLimiter;
 
   constructor(
     supabase: SupabaseClient<Database>,
@@ -50,6 +55,7 @@ export class MultiVectorEmbeddingService {
   ) {
     this.supabase = supabase;
     this.config = { ...DEFAULT_MULTI_VECTOR_CONFIG, ...config };
+    this.rateLimiter = new RateLimiter(this.config.maxRequestsPerMinute);
   }
 
   // ==========================================================================
@@ -228,28 +234,35 @@ export class MultiVectorEmbeddingService {
     try {
       const vectors = await this.generateAllVectors(bookmark);
 
-      const updateData: Record<string, unknown> = {
+      // 构建类型安全的更新数据（pgvector 需要字符串格式）
+      const updateData: {
+        embedding_version: number;
+        title_embedding?: string;
+        title_embedding_at?: string;
+        embedding?: string;
+        tag_embedding?: string | null;
+        tag_embedding_at?: string | null;
+      } = {
         embedding_version: 2,
       };
 
       if (vectors.titleEmbedding) {
-        updateData.title_embedding = vectors.titleEmbedding;
+        updateData.title_embedding = `[${vectors.titleEmbedding.join(",")}]`;
         updateData.title_embedding_at = new Date().toISOString();
       }
 
       if (vectors.contentEmbedding) {
-        updateData.embedding = vectors.contentEmbedding;
+        updateData.embedding = `[${vectors.contentEmbedding.join(",")}]`;
       }
 
       if (vectors.tagEmbedding) {
-        updateData.tag_embedding = vectors.tagEmbedding;
+        updateData.tag_embedding = `[${vectors.tagEmbedding.join(",")}]`;
         updateData.tag_embedding_at = new Date().toISOString();
       }
 
       const { error } = await this.supabase
         .from("bookmarks")
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .update(updateData as any)
+        .update(updateData)
         .eq("id", bookmarkId);
 
       if (error) {
@@ -280,6 +293,7 @@ export class MultiVectorEmbeddingService {
   /**
    * 批量更新书签的多向量
    * V4.2.5: 添加并发控制，防止 API 过载
+   * V4.2.6: 集成速率限制器，防止超过 API QPM 限制
    */
   async batchUpdateBookmarkVectors(
     bookmarks: BookmarkMultiVector[],
@@ -295,9 +309,9 @@ export class MultiVectorEmbeddingService {
     for (let i = 0; i < bookmarks.length; i += this.config.batchSize) {
       const batch = bookmarks.slice(i, i + this.config.batchSize);
 
-      // V4.2.5: 使用并发控制替代 Promise.all
-      // 防止大量并发 API 调用导致速率限制或内存溢出
+      // V4.2.6: 在每个任务执行前获取速率限制许可
       const tasks = batch.map((bookmark) => async () => {
+        await this.rateLimiter.acquire(); // 等待速率限制器许可
         const success = await this.updateBookmarkVectors(
           bookmark.bookmarkId,
           bookmark,
@@ -456,13 +470,10 @@ export class MultiVectorEmbeddingService {
 
       const { error } = await this.supabase
         .from("bookmarks")
-
         .update({
-          title_embedding: embedding,
-
+          title_embedding: `[${embedding.join(",")}]`,
           title_embedding_at: new Date().toISOString(),
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } as any)
+        })
         .eq("id", bookmarkId);
 
       if (error) {
@@ -499,13 +510,10 @@ export class MultiVectorEmbeddingService {
 
       const { error } = await this.supabase
         .from("bookmarks")
-
         .update({
-          tag_embedding: embedding,
-
+          tag_embedding: embedding ? `[${embedding.join(",")}]` : null,
           tag_embedding_at: embedding ? new Date().toISOString() : null,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } as any)
+        })
         .eq("id", bookmarkId);
 
       if (error) {
@@ -550,12 +558,11 @@ export class MultiVectorEmbeddingService {
       similarity: number;
     }>
   > {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (this.supabase.rpc as any)(
+    const { data, error } = await this.supabase.rpc(
       "search_bookmarks_by_title_vector",
       {
         p_user_id: userId,
-        // V4.2.5: 修复向量格式，pgvector 需要 [1,2,3,...] 格式
+        // pgvector 需要 [1,2,3,...] 格式的字符串
         p_query_embedding: `[${queryEmbedding.join(",")}]`,
         p_limit: limit,
         p_min_similarity: minSimilarity,
@@ -611,12 +618,11 @@ export class MultiVectorEmbeddingService {
     const contentWeight = weights?.content ?? 0.5;
     const tagWeight = weights?.tag ?? 0.2;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (this.supabase.rpc as any)(
+    const { data, error } = await this.supabase.rpc(
       "search_bookmarks_multi_vector",
       {
         p_user_id: userId,
-        // V4.2.5: 修复向量格式，pgvector 需要 [1,2,3,...] 格式
+        // pgvector 需要 [1,2,3,...] 格式的字符串
         p_query_embedding: `[${queryEmbedding.join(",")}]`,
         p_title_weight: titleWeight,
         p_content_weight: contentWeight,

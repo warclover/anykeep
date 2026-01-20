@@ -383,19 +383,20 @@ export class ClassifySkill extends BaseSkill<
 
       // 使用 V5.0 ClassificationPipeline
       const loggerService = new LoggerService();
-      const embeddingService = new DashScopeEmbeddingAdapter(loggerService);
+      const embeddingService = new DashScopeEmbeddingAdapter(
+        loggerService,
+        60, // 阿里云 QPM 限制
+      );
       const vectorSearchService = new VectorSearchService(loggerService, {
         supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
         supabaseServiceKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
       });
       const llmService = new LLMService(loggerService);
 
-      // DashScopeEmbeddingAdapter 实现了与 EmbeddingService 相同的接口（duck typing）
-      // 但由于类型定义不同，需要使用类型断言来绕过 TypeScript 检查
+      // V2.1.0: 类型安全 - DashScopeEmbeddingAdapter 现在实现了 IEmbeddingService 接口
       const pipeline = new ClassificationPipelineService(
         loggerService,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        embeddingService as any,
+        embeddingService, // 不再需要类型断言
         vectorSearchService,
         llmService,
         {

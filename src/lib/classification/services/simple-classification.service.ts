@@ -79,14 +79,18 @@ const PROMPT_INPUT_MAX_LENGTH = 200;
 const PROMPT_TAGS_MAX_COUNT = 10;
 
 /**
- * V4.2.4: 增强 Prompt 注入防护
+ * V4.2.5: 增强 Prompt 注入防护
  * 消毒用户输入（防止 Prompt 注入）
  * - 替换控制字符为空格
+ * - 移除 Unicode 控制字符（零宽字符等）
  * - 合并空白符
  * - 转义引号（单引号和双引号）
- * - 移除模板注入模式（Handlebars、Jinja）
+ * - 移除模板注入模式（Handlebars、Jinja、EJS）
  * - 移除 SQL 关键词
  * - 移除角色前缀
+ * - 检测并移除 Base64 编码模式
+ * - 移除 XML/HTML 标签
+ * - 防止多行注入
  * - 截断长度
  */
 function sanitizePromptInput(
@@ -99,6 +103,10 @@ function sanitizePromptInput(
     input
       // 替换控制字符为空格（保持文本可读性）
       .replace(/[\x00-\x1F\x7F]/g, " ")
+      // 移除 Unicode 控制字符（零宽字符、方向控制等）
+      .replace(/[\u200B-\u200F\uFEFF]/g, "")
+      // 移除其他不可见字符
+      .replace(/[\u2028\u2029]/g, " ")
       // 合并连续的空白符
       .replace(/[\n\r\t]+/g, " ")
       .replace(/\s{2,}/g, " ")
@@ -121,6 +129,10 @@ function sanitizePromptInput(
       )
       // 移除 XML/HTML 标签（防止标签注入）
       .replace(/<\/?[a-z][^>]*>/gi, "")
+      // 检测并移除 Base64 编码的 data URI（防止编码绕过）
+      .replace(/(?:data:text\/[a-z]+;base64,)[A-Za-z0-9+/=]+/g, "")
+      // 移除可疑的多行注入模式（连续换行 + 特殊字符）
+      .replace(/(\r?\n){2,}[^\w\s]/g, " ")
       // 截断长度
       .slice(0, maxLength)
       .trim()

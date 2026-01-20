@@ -307,7 +307,10 @@ export async function classifyBookmarkV2(
       } else {
         // 使用 V5.0 ClassificationPipeline
         const loggerService = new LoggerService();
-        const embeddingService = new DashScopeEmbeddingAdapter(loggerService);
+        const embeddingService = new DashScopeEmbeddingAdapter(
+          loggerService,
+          60, // 阿里云 QPM 限制
+        );
         const vectorSearchService = new VectorSearchService(loggerService, {
           supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
           supabaseServiceKey: process.env.SUPABASE_SERVICE_ROLE_KEY,

@@ -67,6 +67,8 @@ export interface MultiVectorConfig {
   batchSize: number;
   /** V4.2.5: 最大并发数（防止 API 过载） */
   maxConcurrency: number;
+  /** V4.2.6: 每分钟最大请求数（速率限制） */
+  maxRequestsPerMinute: number;
 }
 
 /** 默认配置 */
@@ -80,6 +82,7 @@ export const DEFAULT_MULTI_VECTOR_CONFIG: MultiVectorConfig = {
   minTagsForEmbedding: 1,
   batchSize: 10,
   maxConcurrency: 3, // V4.2.5: 限制并发，避免 API 速率限制
+  maxRequestsPerMinute: 60, // V4.2.6: 阿里云默认 QPM 限制
 };
 
 // ============================================

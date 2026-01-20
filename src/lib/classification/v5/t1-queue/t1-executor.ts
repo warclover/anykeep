@@ -58,7 +58,10 @@ export async function executeT1InBackground(
     const startTime = Date.now();
 
     // 3. 初始化服务（使用百炼/DashScope embedding）
-    const embeddingService = new DashScopeEmbeddingAdapter(logger);
+    const embeddingService = new DashScopeEmbeddingAdapter(
+      logger,
+      60, // 阿里云 QPM 限制
+    );
     const vectorSearch = new VectorSearchService(logger, {});
     const llmService = new LLMService(logger);
 
