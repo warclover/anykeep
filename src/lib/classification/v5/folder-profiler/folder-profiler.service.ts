@@ -69,7 +69,7 @@ export class FolderProfilerService {
     const enableV51Features =
       process.env.CLASSIFICATION_V5_1_ENABLED !== "false";
     this.alphaCalculator = new AlphaCalculator(logger, {
-      enableElasticWeighting: enableV51Features,
+      enableV51Features,
     });
     this.lazyUpdater = new LazyUpdater(logger, {
       timeThresholdDays: this.config.timeThresholdDays,

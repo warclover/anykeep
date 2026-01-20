@@ -10,6 +10,20 @@ import type { EmbeddingService } from "../shared/embedding";
 import type { DualSourceVectors } from "./types";
 
 /**
+ * 双源向量构建常量
+ */
+export const DUAL_SOURCE_CONSTANTS = {
+  /** 离群值检测阈值（百分比） */
+  OUTLIER_THRESHOLD: 0.05,
+  /** 离群值检测最小数量 */
+  OUTLIER_MIN_COUNT: 1,
+  /** 时间衰减 Lambda 系数（半衰期约 7 天） */
+  TEMPORAL_DECAY_LAMBDA: 0.1,
+  /** 离群值检测最小书签数 */
+  OUTLIER_MIN_BOOKMARKS: 10,
+} as const;
+
+/**
  * 书签数据（用于构建内容向量）
  */
 export interface BookmarkData {
@@ -257,18 +271,27 @@ export class DualSourceBuilder {
       (b) => b.embedding && b.embedding.length > 0,
     );
 
-    if (bookmarksWithEmbedding.length < 10) {
+    if (
+      bookmarksWithEmbedding.length <
+      DUAL_SOURCE_CONSTANTS.OUTLIER_MIN_BOOKMARKS
+    ) {
       // 书签太少，不进行去噪
       return bookmarks;
     }
 
     // 计算质心（所有书签向量的平均值）
-    const dimension = bookmarksWithEmbedding[0].embedding!.length;
+    const firstEmbedding = bookmarksWithEmbedding[0].embedding;
+    if (!firstEmbedding) {
+      return bookmarks;
+    }
+    const dimension = firstEmbedding.length;
     const centroid = new Array(dimension).fill(0);
 
     for (const bookmark of bookmarksWithEmbedding) {
+      const embedding = bookmark.embedding;
+      if (!embedding) continue;
       for (let i = 0; i < dimension; i++) {
-        centroid[i] += bookmark.embedding![i];
+        centroid[i] += embedding[i];
       }
     }
 
@@ -277,15 +300,23 @@ export class DualSourceBuilder {
     }
 
     // 计算每个书签与质心的距离
-    const distances = bookmarksWithEmbedding.map((b) => ({
-      bookmark: b,
-      distance: this.cosineDistance(b.embedding!, centroid),
-    }));
+    const distances = bookmarksWithEmbedding.map((b) => {
+      const embedding = b.embedding;
+      if (!embedding) {
+        return { bookmark: b, distance: Infinity };
+      }
+      return {
+        bookmark: b,
+        distance: this.cosineDistance(embedding, centroid),
+      };
+    });
 
-    // 排序，取后 5% 作为离群值
+    // 排序，取后 OUTLIER_THRESHOLD 作为离群值
     const outlierCount = Math.max(
-      1,
-      Math.floor(bookmarksWithEmbedding.length * 0.05),
+      DUAL_SOURCE_CONSTANTS.OUTLIER_MIN_COUNT,
+      Math.floor(
+        bookmarksWithEmbedding.length * DUAL_SOURCE_CONSTANTS.OUTLIER_THRESHOLD,
+      ),
     );
     const outliers = distances
       .sort((a, b) => b.distance - a.distance)
@@ -299,13 +330,13 @@ export class DualSourceBuilder {
   /**
    * v5.1: 构建时间衰减质心
    *
-   * 使用时间权重 w_i = e^(-λ * t_i)，其中 λ = 0.1（半衰期约 7 天）
+   * 使用时间权重 w_i = e^(-λ * t_i)，其中 λ = TEMPORAL_DECAY_LAMBDA（半衰期约 7 天）
    */
   private async buildTemporalWeightedEmbedding(
     bookmarks: BookmarkData[],
   ): Promise<number[]> {
     const now = Date.now();
-    const lambda = 0.1; // 半衰期约 7 天
+    const lambda = DUAL_SOURCE_CONSTANTS.TEMPORAL_DECAY_LAMBDA;
 
     // 计算时间权重
     const weights: number[] = [];

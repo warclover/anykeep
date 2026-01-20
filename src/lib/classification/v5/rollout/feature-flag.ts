@@ -8,17 +8,17 @@
  * 4. 实时开关切换
  */
 
-import { createHash } from 'crypto';
+import { createHash } from "crypto";
 
 /**
  * 发布阶段
  */
 export enum RolloutStage {
-  DISABLED = 'disabled', // 0% - 完全禁用
-  CANARY = 'canary', // 5% - 金丝雀测试
-  EARLY = 'early', // 20% - 早期采用者
-  MAJORITY = 'majority', // 50% - 大多数用户
-  FULL = 'full', // 100% - 全量发布
+  DISABLED = "disabled", // 0% - 完全禁用
+  CANARY = "canary", // 5% - 金丝雀测试
+  EARLY = "early", // 20% - 早期采用者
+  MAJORITY = "majority", // 50% - 大多数用户
+  FULL = "full", // 100% - 全量发布
 }
 
 /**
@@ -69,6 +69,9 @@ export class FeatureFlagService {
     this.config = {
       ...DEFAULT_CONFIG,
       ...config,
+      // 深拷贝数组，避免共享引用导致的状态污染
+      whitelist: [...(config?.whitelist ?? DEFAULT_CONFIG.whitelist)],
+      blacklist: [...(config?.blacklist ?? DEFAULT_CONFIG.blacklist)],
     };
   }
 
@@ -104,7 +107,7 @@ export class FeatureFlagService {
    * - 用户均匀分布在 100 个桶中
    */
   private getUserBucket(userId: string): number {
-    const hash = createHash('md5').update(userId).digest('hex');
+    const hash = createHash("md5").update(userId).digest("hex");
     const hashInt = parseInt(hash.substring(0, 8), 16);
     return hashInt % 100;
   }
@@ -140,9 +143,7 @@ export class FeatureFlagService {
    * 移除白名单用户
    */
   removeFromWhitelist(userId: string): void {
-    this.config.whitelist = this.config.whitelist.filter(
-      (id) => id !== userId
-    );
+    this.config.whitelist = this.config.whitelist.filter((id) => id !== userId);
   }
 
   /**
@@ -158,16 +159,18 @@ export class FeatureFlagService {
    * 移除黑名单用户
    */
   removeFromBlacklist(userId: string): void {
-    this.config.blacklist = this.config.blacklist.filter(
-      (id) => id !== userId
-    );
+    this.config.blacklist = this.config.blacklist.filter((id) => id !== userId);
   }
 
   /**
    * 获取当前配置
    */
   getConfig(): FeatureFlagConfig {
-    return { ...this.config };
+    return {
+      ...this.config,
+      whitelist: [...this.config.whitelist],
+      blacklist: [...this.config.blacklist],
+    };
   }
 
   /**
@@ -204,7 +207,7 @@ export function getFeatureFlag(): FeatureFlagService {
     const stage =
       (process.env.CLASSIFICATION_V5_STAGE as RolloutStage) ||
       RolloutStage.DISABLED;
-    const enabled = process.env.CLASSIFICATION_V5_ENABLED === 'true';
+    const enabled = process.env.CLASSIFICATION_V5_ENABLED === "true";
 
     globalFeatureFlag = new FeatureFlagService({
       stage,
