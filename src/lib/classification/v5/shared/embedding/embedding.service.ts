@@ -1,13 +1,17 @@
 /**
  * 智能分类 v5.0 - Embedding Service
  *
- * 使用 OpenAI text-embedding-3-small 模型生成 1024 维向量
+ * 使用阿里百炼 text-embedding-v4 模型生成向量
+ * - 支持 64-2048 维度自定义
+ * - 支持 100+ 语言
+ * - 最大 128K 输入长度
+ * - 兼容 OpenAI API 规范
  */
 
-import OpenAI from 'openai';
-import type { LoggerService } from '../logger';
-import type { EmbeddingConfig, EmbeddingResult } from './types';
-import { EmbeddingError } from './types';
+import OpenAI from "openai";
+import type { LoggerService } from "../logger";
+import type { EmbeddingConfig, EmbeddingResult } from "./types";
+import { EmbeddingError } from "./types";
 
 /**
  * Embedding Service 类
@@ -18,22 +22,24 @@ export class EmbeddingService {
   private logger: LoggerService;
 
   constructor(logger: LoggerService, config?: Partial<EmbeddingConfig>) {
-    this.logger = logger.child({ service: 'EmbeddingService' });
+    this.logger = logger.child({ service: "EmbeddingService" });
 
     this.config = {
-      apiKey: config?.apiKey ?? process.env.OPENAI_API_KEY ?? '',
-      model: config?.model ?? 'text-embedding-3-small',
+      apiKey: config?.apiKey ?? process.env.DASHSCOPE_API_KEY ?? "",
+      model: config?.model ?? "text-embedding-v4",
       dimensions: config?.dimensions ?? 1024,
       maxRetries: config?.maxRetries ?? 3,
       retryDelays: config?.retryDelays ?? [1000, 2000, 4000],
     };
 
     if (!this.config.apiKey) {
-      throw new EmbeddingError('OpenAI API Key is required');
+      throw new EmbeddingError("DashScope API Key is required");
     }
 
+    // 使用阿里百炼 DashScope API (兼容 OpenAI 格式)
     this.client = new OpenAI({
       apiKey: this.config.apiKey,
+      baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1",
     });
   }
 
@@ -42,13 +48,14 @@ export class EmbeddingService {
    */
   async generateEmbedding(text: string): Promise<EmbeddingResult> {
     if (!text || text.trim().length === 0) {
-      throw new EmbeddingError('Text cannot be empty');
+      throw new EmbeddingError("Text cannot be empty");
     }
 
-    // 截断过长的文本（OpenAI 限制约 8191 tokens）
-    const truncatedText = text.slice(0, 8000);
+    // 截断过长的文本（阿里百炼 text-embedding-v4 支持最大 128K 输入长度）
+    // 保守估计 1 token ≈ 2 字符，限制在 100K 字符以内
+    const truncatedText = text.slice(0, 100000);
 
-    this.logger.debug('生成 Embedding', {
+    this.logger.debug("生成 Embedding", {
       textLength: truncatedText.length,
       model: this.config.model,
     });
@@ -63,7 +70,7 @@ export class EmbeddingService {
       const embedding = response.data[0].embedding;
       const tokens = response.usage.total_tokens;
 
-      this.logger.debug('Embedding 生成成功', {
+      this.logger.debug("Embedding 生成成功", {
         dimensions: embedding.length,
         tokens,
       });
@@ -85,16 +92,16 @@ export class EmbeddingService {
     }
 
     if (texts.length > 2048) {
-      throw new EmbeddingError('Batch size cannot exceed 2048');
+      throw new EmbeddingError("Batch size cannot exceed 2048");
     }
 
-    this.logger.debug('批量生成 Embedding', {
+    this.logger.debug("批量生成 Embedding", {
       count: texts.length,
       model: this.config.model,
     });
 
     return await this.executeWithRetry(async () => {
-      const truncatedTexts = texts.map(text => text.slice(0, 8000));
+      const truncatedTexts = texts.map((text) => text.slice(0, 100000));
 
       const response = await this.client.embeddings.create({
         model: this.config.model,
@@ -108,7 +115,7 @@ export class EmbeddingService {
         model: this.config.model,
       }));
 
-      this.logger.debug('批量 Embedding 生成成功', {
+      this.logger.debug("批量 Embedding 生成成功", {
         count: results.length,
         totalTokens: response.usage.total_tokens,
       });
@@ -122,7 +129,7 @@ export class EmbeddingService {
    */
   private async executeWithRetry<T>(
     operation: () => Promise<T>,
-    attempt: number = 0
+    attempt: number = 0,
   ): Promise<T> {
     try {
       return await operation();
@@ -131,19 +138,19 @@ export class EmbeddingService {
       const canRetry = attempt < this.config.maxRetries && isRetryable;
 
       if (!canRetry) {
-        this.logger.error('Embedding 生成失败', error as Error, {
+        this.logger.error("Embedding 生成失败", error as Error, {
           attempt,
           retryable: isRetryable,
         });
         throw new EmbeddingError(
           `Failed to generate embedding: ${(error as Error).message}`,
           error as Error,
-          isRetryable
+          isRetryable,
         );
       }
 
       const delay = this.config.retryDelays[attempt] ?? 4000;
-      this.logger.warn('Embedding 生成失败，准备重试', {
+      this.logger.warn("Embedding 生成失败，准备重试", {
         attempt: attempt + 1,
         maxRetries: this.config.maxRetries,
         delay,
@@ -166,12 +173,12 @@ export class EmbeddingService {
 
     // 网络错误、超时、速率限制等可重试
     return (
-      message.includes('timeout') ||
-      message.includes('network') ||
-      message.includes('rate limit') ||
-      message.includes('429') ||
-      message.includes('502') ||
-      message.includes('503')
+      message.includes("timeout") ||
+      message.includes("network") ||
+      message.includes("rate limit") ||
+      message.includes("429") ||
+      message.includes("502") ||
+      message.includes("503")
     );
   }
 
@@ -179,6 +186,6 @@ export class EmbeddingService {
    * 延迟函数
    */
   private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }

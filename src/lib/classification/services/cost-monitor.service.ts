@@ -45,9 +45,10 @@ const MODEL_PRICING: Record<string, { input: number; output: number }> = {
   "qwen-plus": { input: 50, output: 150 },
   "qwen-turbo": { input: 20, output: 60 },
 
-  // Embedding models
-  "text-embedding-v3": { input: 7, output: 0 },
-  "text-embedding-3-small": { input: 2, output: 0 },
+  // Embedding models (阿里百炼)
+  "text-embedding-v4": { input: 7, output: 0 }, // 阿里百炼 v4
+  "text-embedding-v3": { input: 7, output: 0 }, // 阿里百炼 v3
+  "text-embedding-3-small": { input: 2, output: 0 }, // OpenAI (备选)
 };
 
 /**

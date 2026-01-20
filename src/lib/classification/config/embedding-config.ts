@@ -24,6 +24,7 @@ import { logger } from "@/lib/logger";
  * 历史：
  * - 初始版本使用 1536 维 (OpenAI text-embedding-ada-002)
  * - 2025-11-26 迁移到 1024 维 (阿里云 DashScope text-embedding-v3)
+ * - 2026-01-20 迁移到 text-embedding-v4 (支持 128K 输入长度)
  *
  * @see supabase/migrations/20251126000002_fix_embedding_dimensions.sql
  */
@@ -81,26 +82,24 @@ export interface EmbeddingConfig {
  */
 export const EMBEDDING_MODELS: Record<EmbeddingModelId, EmbeddingModelConfig> =
   {
-    "dashscope-v3": {
-      id: "dashscope-v3",
-      baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
-      modelName: "text-embedding-v3",
-      dimensions: 1024,
-      description: "阿里云百炼 text-embedding-v3 (当前默认)",
-      maxTokens: 8191,
-      isDefault: true,
-      apiKeyEnvVar: "DASHSCOPE_API_KEY",
-    },
     "dashscope-v4": {
       id: "dashscope-v4",
       baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
       modelName: "text-embedding-v4",
       dimensions: 1024,
-      description: "阿里云百炼 text-embedding-v4 (测试中)",
+      description: "阿里云百炼 text-embedding-v4 (当前默认，支持128K输入长度)",
+      maxTokens: 128000, // text-embedding-v4 支持 128K 输入长度
+      isDefault: true,
+      apiKeyEnvVar: "DASHSCOPE_API_KEY",
+    },
+    "dashscope-v3": {
+      id: "dashscope-v3",
+      baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      modelName: "text-embedding-v3",
+      dimensions: 1024,
+      description: "阿里云百炼 text-embedding-v3 (旧版本)",
       maxTokens: 8191,
       apiKeyEnvVar: "DASHSCOPE_API_KEY",
-      // v4 可能需要额外参数
-      extraParams: {},
     },
     "bge-large-zh": {
       id: "bge-large-zh",
@@ -138,7 +137,7 @@ export const EMBEDDING_RATE_LIMITS = {
  * 默认配置
  */
 const DEFAULT_CONFIG: EmbeddingConfig = {
-  activeModel: "dashscope-v3",
+  activeModel: "dashscope-v4", // 默认使用 v4
   abTestEnabled: false,
   abTestNewModelPercentage: 20, // 默认 20% 流量使用新模型
   abTestNewModel: "dashscope-v4",
