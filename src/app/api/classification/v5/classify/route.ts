@@ -91,11 +91,17 @@ export async function POST(request: NextRequest) {
       embeddingService,
       vectorSearch,
       llmService,
+      undefined, // config
+      supabase, // v6: 传递 supabase 以启用 FolderContextProvider
     );
 
     // 5.5. 加载用户自定义规则
     try {
-      const chatToRuleService = new ChatToRuleService(supabase, logger, llmService);
+      const chatToRuleService = new ChatToRuleService(
+        supabase,
+        logger,
+        llmService,
+      );
       const userRules = await chatToRuleService.getRules(true); // 只获取启用的规则
       const l0Rules = convertUserRulesToL0Rules(userRules);
 
@@ -148,7 +154,7 @@ export async function POST(request: NextRequest) {
           logger.error(
             "T1后台任务启动失败",
             error instanceof Error ? error : new Error(String(error)),
-            { t1EventId }
+            { t1EventId },
           );
         });
       }
@@ -201,7 +207,7 @@ export async function POST(request: NextRequest) {
       logger.error(
         "Context anchor extraction failed",
         error instanceof Error ? error : new Error(String(error)),
-        { bookmarkId: body.bookmarkId }
+        { bookmarkId: body.bookmarkId },
       );
     });
 
@@ -226,7 +232,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     logger.error(
       "分类失败",
-      error instanceof Error ? error : new Error(String(error))
+      error instanceof Error ? error : new Error(String(error)),
     );
 
     return NextResponse.json(
@@ -306,7 +312,7 @@ async function extractAndLinkContextAnchor(
     logger.error(
       "Context anchor extraction failed",
       error instanceof Error ? error : new Error(String(error)),
-      { bookmarkId: params.bookmarkId.toString() }
+      { bookmarkId: params.bookmarkId.toString() },
     );
     // 不抛出错误，因为这是后台操作
   }

@@ -115,6 +115,8 @@ export async function POST(request: NextRequest) {
       embeddingService,
       vectorSearch,
       llmService,
+      undefined, // config
+      supabase, // v6: 传递 supabase 以启用 FolderContextProvider
     );
 
     // 7. 执行批量分类
@@ -158,7 +160,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     logger.error(
       "批量分类失败",
-      error instanceof Error ? error : new Error(String(error))
+      error instanceof Error ? error : new Error(String(error)),
     );
 
     return NextResponse.json(

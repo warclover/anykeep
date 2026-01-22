@@ -2,8 +2,10 @@
  * 智能分类 v5.0 - ClassificationPipeline 主服务
  *
  * 整合 L0 规则匹配、T0 快速生成、T1 异步纠正
+ * v6: 添加 FolderContextProvider 为 T1 提供示例书签
  */
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { LoggerService } from "../shared/logger";
 import type { IEmbeddingService } from "../shared/embedding";
 import type { VectorSearchService } from "../shared/vector-search";
@@ -13,6 +15,7 @@ import { T0Generator } from "./t0-generator";
 import { T1Corrector } from "./t1-corrector";
 import { HybridRetriever } from "./hybrid-retriever";
 import { LLMCaller } from "./llm-caller";
+import { FolderContextProvider } from "./folder-context-provider";
 import type {
   ClassificationRequest,
   ClassificationPipelineConfig,
@@ -48,6 +51,7 @@ export class ClassificationPipelineService {
   private l0Matcher: L0RuleMatcher;
   private t0Generator: T0Generator;
   private t1Corrector: T1Corrector;
+  private folderContextProvider?: FolderContextProvider;
 
   constructor(
     logger: LoggerService,
@@ -55,6 +59,7 @@ export class ClassificationPipelineService {
     vectorSearch: VectorSearchService,
     llmService: LLMService,
     config?: Partial<ClassificationPipelineConfig>,
+    supabase?: SupabaseClient,
   ) {
     this.logger = logger.child({ service: "ClassificationPipeline" });
 
@@ -66,7 +71,7 @@ export class ClassificationPipelineService {
         content: config?.hybridWeights?.content ?? 0.7,
         behavior: config?.hybridWeights?.behavior ?? 0.3,
       },
-      rrfK: config?.rrfK ?? 60,
+      rrfK: config?.rrfK ?? 3, // v6: 从60调整为3
     };
 
     // 初始化组件（v5.1: 传递 embeddingService 用于名称护栏）
@@ -77,7 +82,8 @@ export class ClassificationPipelineService {
         contentWeight: this.config.hybridWeights.content,
         behaviorWeight: this.config.hybridWeights.behavior,
         rrfK: this.config.rrfK,
-        topK: 5,
+        topK: 8, // v6.1: 扩展候选集从 5 到 8，提高正确答案入围概率
+        useRawSimilarity: true, // v6: 使用原始相似度
       },
       embeddingService, // v5.1: 传递用于名称相似度计算
     );
@@ -87,6 +93,12 @@ export class ClassificationPipelineService {
       vectorConflictThreshold: this.config.vectorConflictThreshold,
     });
 
+    // v6: 初始化 FolderContextProvider（如果提供了 supabase 客户端）
+    if (supabase) {
+      this.folderContextProvider = new FolderContextProvider(logger, supabase);
+      this.logger.info("FolderContextProvider 已初始化，T1 将使用示例书签增强");
+    }
+
     this.l0Matcher = new L0RuleMatcher(logger);
     this.t0Generator = new T0Generator(
       logger,
@@ -95,7 +107,12 @@ export class ClassificationPipelineService {
       hybridRetriever,
       llmCaller,
     );
-    this.t1Corrector = new T1Corrector(logger, llmCaller);
+    // v6: 传递 FolderContextProvider 给 T1Corrector
+    this.t1Corrector = new T1Corrector(
+      logger,
+      llmCaller,
+      this.folderContextProvider,
+    );
   }
 
   /**
@@ -148,8 +165,15 @@ export class ClassificationPipelineService {
       // Step 3: 判断是否需要 T1 纠正
       if (!t0Result.needsT1) {
         const totalLatency = Date.now() - startTime;
+
+        // v6: null 分类兜底处理
+        const finalFolderId = this.ensureValidFolderId(
+          t0Result.folderId,
+          request.defaultFolderId,
+        );
+
         return {
-          folderId: t0Result.folderId,
+          folderId: finalFolderId,
           confidence: t0Result.confidence,
           usedT1: false,
           totalLatencyMs: totalLatency,
@@ -170,8 +194,15 @@ export class ClassificationPipelineService {
       });
 
       const totalLatency = Date.now() - startTime;
+
+      // v6: null 分类兜底处理
+      const finalFolderId = this.ensureValidFolderId(
+        t1Result.folderId,
+        request.defaultFolderId,
+      );
+
       return {
-        folderId: t1Result.folderId,
+        folderId: finalFolderId,
         confidence: t1Result.confidence,
         usedT1: true,
         reasoning: t1Result.reasoning,
@@ -329,5 +360,24 @@ export class ClassificationPipelineService {
     this.logger.info("用户规则已加载到L0RuleMatcher", {
       ruleCount: rules.length,
     });
+  }
+
+  /**
+   * v6: 确保返回有效的 folderId，处理 null/undefined 情况
+   */
+  private ensureValidFolderId(
+    folderId: string | null | undefined,
+    defaultFolderId?: string,
+  ): string {
+    // 检查是否为无效值
+    if (!folderId || folderId === "null" || folderId === "undefined") {
+      const fallbackId = defaultFolderId || "inbox";
+      this.logger.warn("检测到无效 folderId，使用兜底值", {
+        originalFolderId: folderId,
+        fallbackFolderId: fallbackId,
+      });
+      return fallbackId;
+    }
+    return folderId;
   }
 }

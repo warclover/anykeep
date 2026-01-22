@@ -20,6 +20,8 @@ export interface ClassificationRequest {
   tags?: string[];
   /** 书签 URL */
   url: string;
+  /** v6: 默认文件夹 ID（用于兜底） */
+  defaultFolderId?: string;
 }
 
 /**
@@ -39,7 +41,7 @@ export interface T0Result {
   /** 是否需要 T1 纠正 */
   needsT1: boolean;
   /** T1 触发原因 */
-  t1Reason?: 'low_confidence' | 'vector_conflict' | 'manual_request';
+  t1Reason?: "low_confidence" | "vector_conflict" | "manual_request";
   /** 延迟（毫秒） */
   latencyMs: number;
 }
@@ -100,6 +102,10 @@ export interface LLMCallRequest {
     folderName: string;
     description?: string;
     score: number;
+    /** v6: 示例书签标题（用于 LLM 理解文件夹内容） */
+    sampleBookmarks?: string[];
+    /** v6: 关键词标签 */
+    keywordTags?: string[];
   }>;
 }
 
@@ -124,8 +130,11 @@ export interface ClassificationPipelineConfig {
  * ClassificationPipeline 错误
  */
 export class ClassificationPipelineError extends Error {
-  constructor(message: string, public readonly cause?: unknown) {
+  constructor(
+    message: string,
+    public readonly cause?: unknown,
+  ) {
     super(message);
-    this.name = 'ClassificationPipelineError';
+    this.name = "ClassificationPipelineError";
   }
 }

@@ -32,11 +32,19 @@ export interface LLMClassificationRequest {
   url: string;
   /** 书签摘要 */
   summary?: string;
+  /** 书签标签 */
+  tags?: string[];
   /** 候选文件夹列表 */
   candidates: Array<{
     id: string;
     name: string;
     description?: string;
+    /** v6: 示例书签标题（用于帮助 LLM 理解文件夹内容） */
+    sampleBookmarks?: string[];
+    /** v6: 关键词标签 */
+    keywordTags?: string[];
+    /** v6: 匹配分数 */
+    score?: number;
   }>;
 }
 
@@ -65,9 +73,9 @@ export class LLMError extends Error {
   constructor(
     message: string,
     public readonly cause?: Error,
-    public readonly retryable: boolean = false
+    public readonly retryable: boolean = false,
   ) {
     super(message);
-    this.name = 'LLMError';
+    this.name = "LLMError";
   }
 }

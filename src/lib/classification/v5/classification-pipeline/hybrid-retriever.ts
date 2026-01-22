@@ -18,10 +18,12 @@ export interface HybridRetrieverConfig {
   contentWeight: number;
   /** 行为向量权重 */
   behaviorWeight: number;
-  /** RRF 常数 */
+  /** RRF 常数（v6 调整为较小值以提高区分度） */
   rrfK: number;
   /** 返回结果数量 */
   topK: number;
+  /** v6: 是否使用原始相似度作为置信度基础 */
+  useRawSimilarity: boolean;
 }
 
 /**
@@ -48,8 +50,9 @@ export class HybridRetriever {
     this.config = {
       contentWeight: config?.contentWeight ?? 0.7,
       behaviorWeight: config?.behaviorWeight ?? 0.3,
-      rrfK: config?.rrfK ?? 60,
+      rrfK: config?.rrfK ?? 3, // v6: 从60调整为3，提高分数区分度
       topK: config?.topK ?? 5,
+      useRawSimilarity: config?.useRawSimilarity ?? true, // v6: 默认使用原始相似度
     };
 
     this.enableNameGuardrail =
@@ -91,14 +94,120 @@ export class HybridRetriever {
     // 3. RRF 融合
     const fusedResults = this.fuseWithRRF(contentResults, behaviorResults);
 
-    // 4. v5.1: 如果启用名称护栏，应用名称相似度分数
+    // 4. v6: 应用关键词匹配增强
     let finalResults = fusedResults;
-    if (this.enableNameGuardrail && bookmarkTitle) {
-      finalResults = await this.applyNameGuardrail(fusedResults, bookmarkTitle);
+    if (bookmarkTitle) {
+      finalResults = this.applyKeywordBoost(finalResults, bookmarkTitle);
     }
 
-    // 5. 返回 Top K
+    // 5. v5.1: 如果启用名称护栏，应用名称相似度分数
+    if (this.enableNameGuardrail && bookmarkTitle) {
+      finalResults = await this.applyNameGuardrail(finalResults, bookmarkTitle);
+    }
+
+    // 6. 返回 Top K
     return finalResults.slice(0, this.config.topK);
+  }
+
+  /**
+   * v6: 应用关键词匹配增强
+   *
+   * 如果书签标题包含文件夹名称的关键词，给予分数加成
+   * v6.1: 增加强匹配规则（Claude → claude 学习）
+   */
+  private applyKeywordBoost(
+    results: HybridRetrievalResult[],
+    title: string,
+  ): HybridRetrievalResult[] {
+    const titleLower = title.toLowerCase();
+
+    // v6.1: 强匹配规则表 - 标题关键词 → 目标文件夹
+    const STRONG_MATCH_RULES: Array<{
+      titlePattern: RegExp;
+      targetFolderPattern: RegExp;
+      boost: number;
+    }> = [
+      // Claude 相关内容强制加入 "claude 学习"
+      {
+        titlePattern: /claude|anthropic|mcp|claude\s*code/i,
+        targetFolderPattern: /claude/i,
+        boost: 0.5,
+      },
+      // LIMS/实验室内容强制加入相关文件夹
+      {
+        titlePattern: /lims|实验室/i,
+        targetFolderPattern: /lims|实验室/i,
+        boost: 0.5,
+      },
+      // BMAD 相关内容
+      {
+        titlePattern: /bmad/i,
+        targetFolderPattern: /bmad/i,
+        boost: 0.5,
+      },
+    ];
+
+    const boostedResults = results.map((result) => {
+      const folderNameLower = result.folderName.toLowerCase();
+      let boost = 0;
+
+      // v6.1: 优先检查强匹配规则
+      for (const rule of STRONG_MATCH_RULES) {
+        if (
+          rule.titlePattern.test(title) &&
+          rule.targetFolderPattern.test(result.folderName)
+        ) {
+          boost = Math.max(boost, rule.boost);
+          this.logger.debug("强匹配规则命中", {
+            folderId: result.folderId,
+            folderName: result.folderName,
+            titlePattern: rule.titlePattern.source,
+            boost,
+          });
+          break;
+        }
+      }
+
+      // 如果没有强匹配，应用原有规则
+      if (boost === 0) {
+        // 规则 1：标题包含完整文件夹名 → 加成 0.3
+        if (
+          titleLower.includes(folderNameLower) &&
+          folderNameLower.length > 1
+        ) {
+          boost = 0.3;
+          this.logger.debug("关键词匹配：标题包含文件夹名", {
+            folderId: result.folderId,
+            folderName: result.folderName,
+            boost,
+          });
+        } else {
+          // 规则 2：文件夹名包含的关键词出现在标题中 → 每个加成 0.15
+          const keywords = folderNameLower.split(/[+\s_\-/]+/);
+          const matchedKeywords = keywords.filter(
+            (kw) => kw.length > 1 && titleLower.includes(kw),
+          );
+
+          if (matchedKeywords.length > 0) {
+            boost = 0.15 * matchedKeywords.length;
+            this.logger.debug("关键词匹配：部分关键词匹配", {
+              folderId: result.folderId,
+              folderName: result.folderName,
+              matchedKeywords,
+              boost,
+            });
+          }
+        }
+      }
+
+      return {
+        ...result,
+        fusedScore: result.fusedScore + boost,
+      };
+    });
+
+    // 按调整后的分数重新排序
+    return boostedResults.sort((a, b) => b.fusedScore - a.fusedScore);
   }
 
   /**
@@ -179,6 +288,7 @@ export class HybridRetriever {
 
   /**
    * RRF（Reciprocal Rank Fusion）融合
+   * v6: 支持使用原始相似度作为置信度基础
    */
   private fuseWithRRF(
     contentResults: Array<{
@@ -202,37 +312,65 @@ export class HybridRetriever {
       }
     >();
 
-    // 内容向量贡献
-    contentResults.forEach((result, index) => {
-      const rrf = 1 / (this.config.rrfK + index + 1);
-      const score = this.config.contentWeight * rrf;
-
-      scoreMap.set(result.folderId, {
-        folderName: result.folderName,
-        contentSimilarity: result.similarity,
-        behaviorSimilarity: 0,
-        fusedScore: score,
-      });
-    });
-
-    // 行为向量贡献
-    behaviorResults.forEach((result, index) => {
-      const rrf = 1 / (this.config.rrfK + index + 1);
-      const score = this.config.behaviorWeight * rrf;
-
-      const existing = scoreMap.get(result.folderId);
-      if (existing) {
-        existing.behaviorSimilarity = result.similarity;
-        existing.fusedScore += score;
-      } else {
+    // v6: 根据配置选择评分策略
+    if (this.config.useRawSimilarity) {
+      // 方案 B：使用原始向量相似度作为置信度基础
+      // 融合分数 = contentWeight * contentSimilarity + behaviorWeight * behaviorSimilarity
+      contentResults.forEach((result) => {
         scoreMap.set(result.folderId, {
           folderName: result.folderName,
-          contentSimilarity: 0,
-          behaviorSimilarity: result.similarity,
+          contentSimilarity: result.similarity,
+          behaviorSimilarity: 0,
+          fusedScore: this.config.contentWeight * result.similarity,
+        });
+      });
+
+      behaviorResults.forEach((result) => {
+        const existing = scoreMap.get(result.folderId);
+        if (existing) {
+          existing.behaviorSimilarity = result.similarity;
+          existing.fusedScore += this.config.behaviorWeight * result.similarity;
+        } else {
+          scoreMap.set(result.folderId, {
+            folderName: result.folderName,
+            contentSimilarity: 0,
+            behaviorSimilarity: result.similarity,
+            fusedScore: this.config.behaviorWeight * result.similarity,
+          });
+        }
+      });
+    } else {
+      // 原有 RRF 方案（使用调整后的 rrfK=3）
+      contentResults.forEach((result, index) => {
+        const rrf = 1 / (this.config.rrfK + index + 1);
+        const score = this.config.contentWeight * rrf;
+
+        scoreMap.set(result.folderId, {
+          folderName: result.folderName,
+          contentSimilarity: result.similarity,
+          behaviorSimilarity: 0,
           fusedScore: score,
         });
-      }
-    });
+      });
+
+      behaviorResults.forEach((result, index) => {
+        const rrf = 1 / (this.config.rrfK + index + 1);
+        const score = this.config.behaviorWeight * rrf;
+
+        const existing = scoreMap.get(result.folderId);
+        if (existing) {
+          existing.behaviorSimilarity = result.similarity;
+          existing.fusedScore += score;
+        } else {
+          scoreMap.set(result.folderId, {
+            folderName: result.folderName,
+            contentSimilarity: 0,
+            behaviorSimilarity: result.similarity,
+            fusedScore: score,
+          });
+        }
+      });
+    }
 
     // 排序并返回
     return Array.from(scoreMap.entries())
