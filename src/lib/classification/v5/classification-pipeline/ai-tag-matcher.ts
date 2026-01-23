@@ -2,16 +2,19 @@
  * AI 标签匹配器
  *
  * 在 L0 规则匹配的最前端执行，将书签的 AI 标签与文件夹进行匹配
- * 支持三种匹配策略：
- * 1. 精确匹配：标签 ↔ 文件夹名
- * 2. 核心标签匹配：标签 ↔ 文件夹核心标签
- * 3. 相关标签匹配：标签 ↔ 文件夹相关标签
+ * 支持多种匹配策略：
+ * 1. 精确匹配：标签 ↔ 文件夹名（标准化后）
+ * 2. 别名匹配：标签 ↔ 文件夹别名
+ * 3. 部分匹配：标签 ⊃ 文件夹名（需 T0 校验）
+ * 4. 核心标签匹配：标签 ↔ 文件夹核心标签
+ * 5. 相关标签匹配：标签 ↔ 文件夹相关标签
  *
  * v1.1.0: 集成同义词映射器和监控指标
  * v1.2.0: 添加缓存过期策略（TTL 5分钟）
+ * v1.3.0: 集成标签可信度过滤、激进标准化、别名管理、安全部分匹配
  *
  * @module @/lib/classification/v5/classification-pipeline/ai-tag-matcher
- * @version 1.2.0
+ * @version 1.3.0
  * @since 2026-01-23
  */
 
@@ -22,9 +25,13 @@ import type {
   FolderTagProfile,
   TagMatchResult,
   TagMatcherConfig,
+  EnhancedTagMatchResult,
 } from "./types";
 import { tagSynonymMapper } from "./tag-synonym-mapper";
 import { tagMatchMetrics } from "./tag-match-metrics";
+import { tagNormalizer } from "./tag-normalizer";
+import { tagTrustFilter, TagSourceLevel } from "./tag-trust-filter";
+import { FolderAliasManager } from "./folder-alias-manager";
 
 const logger = createLogger("ai-tag-matcher");
 
@@ -59,6 +66,7 @@ export class AiTagMatcher {
   private config: TagMatcherConfig;
   private profileCache: Map<string, CachedProfileEntry>;
   private cacheTtlMs: number;
+  private folderAliasManager: FolderAliasManager;
 
   constructor(
     private supabase: SupabaseClient,
@@ -68,6 +76,357 @@ export class AiTagMatcher {
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.profileCache = new Map();
     this.cacheTtlMs = cacheTtlMs ?? DEFAULT_CACHE_TTL_MS;
+    this.folderAliasManager = new FolderAliasManager(supabase);
+  }
+
+  /**
+   * 增强型主匹配方法 - v1.3.0 新增
+   *
+   * 支持：
+   * 1. 标签可信度过滤（SEO 垃圾词过滤）
+   * 2. 激进标准化（Vue.js → vuejs）
+   * 3. 别名匹配
+   * 4. 安全部分匹配（需 T0 校验）
+   */
+  async matchEnhanced(
+    request: ClassificationRequest,
+    tagSourceLevel: TagSourceLevel = TagSourceLevel.S,
+  ): Promise<EnhancedTagMatchResult | null> {
+    const startTime = Date.now();
+
+    if (!request.tags || request.tags.length === 0) {
+      logger.debug(
+        { bookmarkId: request.bookmarkId },
+        "无标签，跳过增强型 AI 标签匹配",
+      );
+      return null;
+    }
+
+    // Phase 0.1: 标签可信度过滤
+    const weightedTags = tagTrustFilter.filterAndWeight(
+      request.tags,
+      tagSourceLevel,
+      request.userId,
+    );
+
+    const usableTags = tagTrustFilter.getUsableTags(weightedTags);
+    if (usableTags.length === 0) {
+      logger.debug(
+        { bookmarkId: request.bookmarkId, filtered: weightedTags.length },
+        "所有标签被过滤",
+      );
+      return null;
+    }
+
+    const profiles = await this.getFolderProfiles(request.userId);
+    if (profiles.length === 0) {
+      logger.debug(
+        { userId: request.userId },
+        "无文件夹画像，跳过增强型 AI 标签匹配",
+      );
+      return null;
+    }
+
+    // Phase 0.2: 标准化处理 + 同义词扩展
+    const expandedTags = tagNormalizer.expandWithVariants(
+      usableTags.map((wt) => wt.tag),
+    );
+
+    // 策略 1: 精确匹配（标准化后完全相等）
+    const exactMatch = this.matchExactNormalized(expandedTags, profiles);
+    if (exactMatch) {
+      const duration = Date.now() - startTime;
+      logger.info(
+        {
+          bookmarkId: request.bookmarkId,
+          matchMode: "exact",
+          folderId: exactMatch.folderId,
+          confidence: exactMatch.confidence,
+          duration,
+        },
+        "AI标签精确匹配成功（标准化）",
+      );
+      tagMatchMetrics.recordMatch(
+        request.bookmarkId,
+        request.userId,
+        "exact_name",
+        exactMatch.confidence,
+        exactMatch.matchedTags,
+        exactMatch.folderId,
+        duration,
+      );
+      return {
+        ...exactMatch,
+        matchMode: "exact",
+        needsT0Validation: false,
+        tagScore: 1.0,
+      };
+    }
+
+    // 策略 2: 别名匹配
+    const aliasMatch = await this.matchAliases(
+      expandedTags,
+      profiles,
+      request.userId,
+    );
+    if (aliasMatch) {
+      const duration = Date.now() - startTime;
+      logger.info(
+        {
+          bookmarkId: request.bookmarkId,
+          matchMode: "normalized",
+          folderId: aliasMatch.folderId,
+          confidence: aliasMatch.confidence,
+          duration,
+        },
+        "AI标签别名匹配成功",
+      );
+      tagMatchMetrics.recordMatch(
+        request.bookmarkId,
+        request.userId,
+        "exact_name",
+        aliasMatch.confidence,
+        aliasMatch.matchedTags,
+        aliasMatch.folderId,
+        duration,
+      );
+      return {
+        ...aliasMatch,
+        matchMode: "normalized",
+        needsT0Validation: false,
+        tagScore: 0.95,
+      };
+    }
+
+    // 策略 3: 安全部分匹配（需要 T0 校验）
+    const partialMatch = this.matchPartialSafe(expandedTags, profiles);
+    if (partialMatch) {
+      const duration = Date.now() - startTime;
+      logger.info(
+        {
+          bookmarkId: request.bookmarkId,
+          matchMode: "partial",
+          folderId: partialMatch.folderId,
+          confidence: partialMatch.confidence,
+          needsT0Validation: true,
+          duration,
+        },
+        "AI标签部分匹配，需 T0 校验",
+      );
+      // 部分匹配不直接记录为成功，等待 T0 校验
+      return {
+        ...partialMatch,
+        matchMode: "partial",
+        needsT0Validation: true,
+        tagScore: 0.6,
+      };
+    }
+
+    // 策略 4: 核心标签匹配（仅高信标签）
+    if (tagSourceLevel !== TagSourceLevel.C) {
+      const coreMatch = this.matchCoreTags(expandedTags, profiles);
+      if (coreMatch) {
+        const duration = Date.now() - startTime;
+        const needsValidation = coreMatch.confidence < 0.9;
+        logger.info(
+          {
+            bookmarkId: request.bookmarkId,
+            matchMode: "core_tag",
+            folderId: coreMatch.folderId,
+            confidence: coreMatch.confidence,
+            needsT0Validation: needsValidation,
+            duration,
+          },
+          "AI标签核心标签匹配成功",
+        );
+        tagMatchMetrics.recordMatch(
+          request.bookmarkId,
+          request.userId,
+          "core_tag",
+          coreMatch.confidence,
+          coreMatch.matchedTags,
+          coreMatch.folderId,
+          duration,
+        );
+        return {
+          ...coreMatch,
+          matchMode: "core_tag",
+          needsT0Validation: needsValidation,
+          tagScore: coreMatch.confidence,
+        };
+      }
+
+      // 策略 5: 相关标签匹配
+      const relatedMatch = this.matchRelatedTags(expandedTags, profiles);
+      if (relatedMatch) {
+        const duration = Date.now() - startTime;
+        logger.info(
+          {
+            bookmarkId: request.bookmarkId,
+            matchMode: "related_tag",
+            folderId: relatedMatch.folderId,
+            confidence: relatedMatch.confidence,
+            needsT0Validation: true,
+            duration,
+          },
+          "AI标签相关标签匹配成功",
+        );
+        tagMatchMetrics.recordMatch(
+          request.bookmarkId,
+          request.userId,
+          "related_tag",
+          relatedMatch.confidence,
+          relatedMatch.matchedTags,
+          relatedMatch.folderId,
+          duration,
+        );
+        return {
+          ...relatedMatch,
+          matchMode: "related_tag",
+          needsT0Validation: true,
+          tagScore: relatedMatch.confidence,
+        };
+      }
+    }
+
+    const duration = Date.now() - startTime;
+    logger.debug(
+      { bookmarkId: request.bookmarkId, duration },
+      "增强型 AI 标签无匹配，继续后续流程",
+    );
+    tagMatchMetrics.recordNoMatch(request.bookmarkId, request.userId, duration);
+    return null;
+  }
+
+  /**
+   * 策略 1: 标准化后精确匹配
+   * v1.3.0 新增
+   */
+  private matchExactNormalized(
+    tags: string[],
+    profiles: FolderTagProfile[],
+  ): TagMatchResult | null {
+    for (const profile of profiles) {
+      const normalizedFolderName = tagNormalizer.normalize(profile.folderName);
+      if (!normalizedFolderName) continue;
+
+      for (const tag of tags) {
+        if (tag === normalizedFolderName) {
+          return {
+            matched: true,
+            folderId: profile.folderId.toString(),
+            folderName: profile.folderName,
+            confidence: this.config.exactMatchConfidence,
+            matchType: "exact_name",
+            matchedTags: [tag],
+            reason: `标签 "${tag}" 与文件夹名完全匹配（标准化）`,
+          };
+        }
+      }
+    }
+    return null;
+  }
+
+  /**
+   * 策略 2: 别名匹配
+   * v1.3.0 新增
+   */
+  private async matchAliases(
+    tags: string[],
+    profiles: FolderTagProfile[],
+    userId: string,
+  ): Promise<TagMatchResult | null> {
+    for (const profile of profiles) {
+      const matchedTags = await this.folderAliasManager.findMatchingTags(
+        userId,
+        profile.folderId.toString(),
+        profile.folderName,
+        tags,
+      );
+
+      if (matchedTags.length > 0) {
+        return {
+          matched: true,
+          folderId: profile.folderId.toString(),
+          folderName: profile.folderName,
+          confidence: this.config.exactMatchConfidence - 0.03,
+          matchType: "exact_name",
+          matchedTags,
+          reason: `标签 "${matchedTags[0]}" 匹配文件夹别名`,
+        };
+      }
+    }
+    return null;
+  }
+
+  /**
+   * 策略 3: 安全的部分匹配
+   * v1.3.0 新增
+   *
+   * 防止 "Java" 误匹配 "JavaScript" 的情况
+   * 要求长度比例 >= 70%
+   */
+  private matchPartialSafe(
+    tags: string[],
+    profiles: FolderTagProfile[],
+  ): TagMatchResult | null {
+    for (const profile of profiles) {
+      const normalizedFolderName = tagNormalizer.normalize(profile.folderName);
+      if (!normalizedFolderName || normalizedFolderName.length < 3) continue;
+
+      for (const tag of tags) {
+        if (tag.length < 3) continue;
+
+        // 检查包含关系
+        const isContained =
+          normalizedFolderName.includes(tag) || tag.includes(normalizedFolderName);
+
+        if (!isContained) continue;
+
+        // 长度比例检查：避免 "java" 匹配 "javascript"
+        const shorter = Math.min(tag.length, normalizedFolderName.length);
+        const longer = Math.max(tag.length, normalizedFolderName.length);
+        const ratio = shorter / longer;
+
+        // 至少 70% 的重叠才算安全
+        if (ratio < 0.7) {
+          logger.debug(
+            { tag, folderName: profile.folderName, ratio },
+            "部分匹配被拒绝：长度比例不足",
+          );
+          continue;
+        }
+
+        return {
+          matched: true,
+          folderId: profile.folderId.toString(),
+          folderName: profile.folderName,
+          confidence: 0.6, // 低置信度，需要 T0 校验
+          matchType: "exact_name",
+          matchedTags: [tag],
+          reason: `标签 "${tag}" 与文件夹名 "${profile.folderName}" 部分匹配（需校验）`,
+        };
+      }
+    }
+    return null;
+  }
+
+  /**
+   * 记录别名学习事件
+   * v1.3.0 新增
+   *
+   * 当用户确认分类���调用，用于自动学习别名
+   */
+  recordAliasLearning(userId: string, folderId: string, tag: string): void {
+    this.folderAliasManager.recordLearningEvent(userId, folderId, tag);
+  }
+
+  /**
+   * 获取别名管理器（用于外部访问）
+   * v1.3.0 新增
+   */
+  getAliasManager(): FolderAliasManager {
+    return this.folderAliasManager;
   }
 
   /**

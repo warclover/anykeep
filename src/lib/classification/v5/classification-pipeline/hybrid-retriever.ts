@@ -3,12 +3,13 @@
  *
  * 实现混合检索（内容向量 70% + 行为向量 30%）和 RRF 融合
  * v5.1 新增：语义护栏（名称相似度分数），解决大文件夹马太效应
+ * v5.1.1 新增：AI 标签加成和 Rerank 机制
  */
 
 import type { LoggerService } from "../shared/logger";
 import type { VectorSearchService } from "../shared/vector-search";
 import type { IEmbeddingService } from "../shared/embedding";
-import type { HybridRetrievalResult } from "./types";
+import type { HybridRetrievalResult, EnhancedTagMatchResult, RerankResult } from "./types";
 
 /**
  * 混合检索器配置
@@ -480,5 +481,123 @@ export class HybridRetriever {
         fusedScore: data.fusedScore,
       }))
       .sort((a, b) => b.fusedScore - a.fusedScore);
+  }
+
+  /**
+   * v5.1.1: 应用标签加成的 Rerank
+   *
+   * 当 AI 标签匹配器返回部分匹配结果时（needsT0Validation = true），
+   * 使用此方法将标签分数与向量分数融合
+   *
+   * 公式: FinalScore = VectorScore × 0.7 + TagScore × 0.3
+   */
+  applyTagBoostRerank(
+    results: HybridRetrievalResult[],
+    tagMatchResult: EnhancedTagMatchResult | null,
+  ): RerankResult[] {
+    // 如果没有标签匹配结果或不需要 T0 校验，直接转换返回
+    if (!tagMatchResult) {
+      return results.map((result) => ({
+        folderId: result.folderId,
+        folderName: result.folderName,
+        vectorScore: result.fusedScore,
+        tagScore: 0,
+        finalScore: result.fusedScore,
+        tagBoostApplied: false,
+      }));
+    }
+
+    const targetFolderId = tagMatchResult.folderId;
+    const tagScore = tagMatchResult.tagScore;
+
+    const rerankedResults = results.map((result) => {
+      const vectorScore = result.fusedScore;
+
+      if (result.folderId === targetFolderId) {
+        // Rerank 公式: FinalScore = VectorScore × 0.7 + TagScore × 0.3
+        const finalScore = vectorScore * 0.7 + tagScore * 0.3;
+
+        this.logger.debug("Rerank 应用标签加成", {
+          folderId: result.folderId,
+          folderName: result.folderName,
+          vectorScore,
+          tagScore,
+          finalScore,
+          matchMode: tagMatchResult.matchMode,
+        });
+
+        return {
+          folderId: result.folderId,
+          folderName: result.folderName,
+          vectorScore,
+          tagScore,
+          finalScore,
+          tagBoostApplied: true,
+        };
+      }
+
+      return {
+        folderId: result.folderId,
+        folderName: result.folderName,
+        vectorScore,
+        tagScore: 0,
+        finalScore: vectorScore,
+        tagBoostApplied: false,
+      };
+    });
+
+    // 按最终分数重新排序
+    return rerankedResults.sort((a, b) => b.finalScore - a.finalScore);
+  }
+
+  /**
+   * v5.1.1: 检查 Rerank 后的结果是否验证了标签匹配
+   *
+   * 如果标签匹配的文件夹在 Rerank 后仍然排名第一，则验证通过
+   */
+  validateTagMatchWithRerank(
+    rerankResults: RerankResult[],
+    tagMatchResult: EnhancedTagMatchResult,
+  ): boolean {
+    if (rerankResults.length === 0) {
+      return false;
+    }
+
+    const topResult = rerankResults[0];
+
+    // 验证条件：
+    // 1. 排名第一的文件夹是标签匹配的文件夹
+    // 2. 或者：即使不是第一，但标签匹配的文件夹分数 >= 0.6
+    if (topResult.folderId === tagMatchResult.folderId) {
+      this.logger.info("Rerank 验证通过：标签匹配文件夹排名第一", {
+        folderId: topResult.folderId,
+        finalScore: topResult.finalScore,
+      });
+      return true;
+    }
+
+    // 查找标签匹配的文件夹
+    const tagMatchFolder = rerankResults.find(
+      (r) => r.folderId === tagMatchResult.folderId,
+    );
+
+    if (tagMatchFolder && tagMatchFolder.finalScore >= 0.6) {
+      this.logger.info("Rerank 验证通过：标签匹配文件夹分数足够高", {
+        folderId: tagMatchFolder.folderId,
+        finalScore: tagMatchFolder.finalScore,
+        topFolderId: topResult.folderId,
+        topScore: topResult.finalScore,
+      });
+      return true;
+    }
+
+    this.logger.warn("Rerank 验证失败：向量检索结果与标签匹配不一致", {
+      tagMatchFolderId: tagMatchResult.folderId,
+      tagMatchScore: tagMatchFolder?.finalScore ?? 0,
+      topFolderId: topResult.folderId,
+      topScore: topResult.finalScore,
+    });
+
+    return false;
   }
 }

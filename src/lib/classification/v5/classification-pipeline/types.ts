@@ -205,3 +205,73 @@ export interface TagMatcherConfig {
   /** 核心标签最小命中数（用于高置信度，默认 2） */
   minCoreTagHits: number;
 }
+
+// =============================================================================
+// AI 标签匹配器增强类型定义 (v5.1.1)
+// =============================================================================
+
+/**
+ * 匹配模式
+ *
+ * @since v5.1.1
+ */
+export type MatchMode =
+  | "exact"        // 精确匹配（标准化后完全相等） - 直接返回
+  | "normalized"   // 标准化匹配（别名匹配） - 直接返回
+  | "partial"      // 部分匹配 - 传递给 T0 Rerank
+  | "core_tag"     // 核心标签匹配
+  | "related_tag"; // 相关标签匹配
+
+/**
+ * 增强型标签匹配结果
+ *
+ * 扩展 TagMatchResult，添加 Rerank 相关信息
+ *
+ * @since v5.1.1
+ */
+export interface EnhancedTagMatchResult extends TagMatchResult {
+  /** 匹配模式 */
+  matchMode: MatchMode;
+  /** 是否需要 T0 校验（部分匹配必须校验） */
+  needsT0Validation: boolean;
+  /** 标签分数（用于 Rerank，0-1） */
+  tagScore: number;
+}
+
+/**
+ * Rerank 结果
+ *
+ * @since v5.1.1
+ */
+export interface RerankResult {
+  /** 文件夹 ID */
+  folderId: string;
+  /** 文件夹名称 */
+  folderName: string;
+  /** 向量分数 */
+  vectorScore: number;
+  /** 标签分数 */
+  tagScore: number;
+  /** 最终分数 (vectorScore * 0.7 + tagScore * 0.3) */
+  finalScore: number;
+  /** 是否应用了标签加成 */
+  tagBoostApplied: boolean;
+}
+
+/**
+ * 扩展的文件夹标签画像（包含别名和黑名单）
+ *
+ * @since v5.1.1
+ */
+export interface ExtendedFolderTagProfile extends FolderTagProfile {
+  /** 文件夹别名（用于匹配） */
+  aliases?: string[];
+  /** 黑名单标签（排除匹配） */
+  blacklistTags?: string[];
+  /** 标签来源统计 */
+  tagSourceStats?: {
+    S: number; // Level S 标签数
+    B: number; // Level B 标签数
+    C: number; // Level C 标签数
+  };
+}
