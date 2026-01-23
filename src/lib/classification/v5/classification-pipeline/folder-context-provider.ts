@@ -6,9 +6,10 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { LoggerService } from "../shared/logger";
+import type { FolderId } from "@/lib/shared/types";
 
 export interface FolderContext {
-  folderId: string;
+  folderId: FolderId;
   folderName: string;
   description?: string;
   sampleBookmarks: string[];
@@ -30,7 +31,7 @@ export class FolderContextProvider {
    */
   async getFolderContext(
     userId: string,
-    folderId: string,
+    folderId: FolderId,
     folderName: string,
   ): Promise<FolderContext> {
     // 检查缓存
@@ -95,7 +96,7 @@ export class FolderContextProvider {
    */
   async getFolderContextBatch(
     userId: string,
-    folders: Array<{ folderId: string; folderName: string }>,
+    folders: Array<{ folderId: FolderId; folderName: string }>,
   ): Promise<FolderContext[]> {
     return Promise.all(
       folders.map((f) =>

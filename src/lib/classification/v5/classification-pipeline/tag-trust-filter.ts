@@ -10,6 +10,7 @@
 
 import { createLogger } from "@/lib/logger";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { FolderId } from "@/lib/shared/types";
 
 const logger = createLogger("tag-trust-filter");
 
@@ -351,7 +352,7 @@ export class TagTrustFilter {
    */
   async addToBlacklist(
     userId: string,
-    folderId: string,
+    folderId: FolderId,
     tag: string,
   ): Promise<void> {
     const normalizedTag = this.normalizeForFilter(tag);
@@ -406,7 +407,7 @@ export class TagTrustFilter {
    */
   async removeFromBlacklist(
     userId: string,
-    folderId: string,
+    folderId: FolderId,
     tag: string,
   ): Promise<void> {
     const normalizedTag = this.normalizeForFilter(tag);
@@ -504,7 +505,7 @@ export class TagTrustFilter {
   /**
    * 获取用户的黑名单
    */
-  getBlacklist(userId: string, folderId: string): string[] {
+  getBlacklist(userId: string, folderId: FolderId): string[] {
     return Array.from(this.userBlacklist.get(userId)?.get(folderId) || []);
   }
 
@@ -559,7 +560,7 @@ export class TagTrustFilter {
    */
   private isBlacklisted(
     userId: string,
-    folderId: string,
+    folderId: FolderId,
     normalizedTag: string,
   ): boolean {
     return (

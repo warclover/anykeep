@@ -16,6 +16,7 @@ import type {
   EnhancedTagMatchResult,
   RerankResult,
 } from "./types";
+import type { FolderId } from "@/lib/shared/types";
 
 /**
  * v5.1.3: 强匹配规则 Schema 定义
@@ -438,12 +439,12 @@ export class HybridRetriever {
    */
   private fuseWithRRF(
     contentResults: Array<{
-      folderId: string;
+      folderId: FolderId;
       folderName: string;
       similarity: number;
     }>,
     behaviorResults: Array<{
-      folderId: string;
+      folderId: FolderId;
       folderName: string;
       similarity: number;
     }>,

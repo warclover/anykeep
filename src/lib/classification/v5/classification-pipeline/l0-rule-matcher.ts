@@ -7,6 +7,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { LoggerService } from "../shared/logger";
+import type { FolderId } from "@/lib/shared/types";
 import type { ClassificationRequest, L0MatchResult } from "./types";
 import { AiTagMatcher } from "./ai-tag-matcher";
 import { FeatureFlags } from "@/lib/ai-agent/config/feature-flags";
@@ -18,7 +19,7 @@ export interface Rule {
   /** 规则名称 */
   name: string;
   /** 目标文件夹ID */
-  folderId: string;
+  folderId: FolderId;
   /** URL域名匹配 */
   urlDomains?: string[];
   /** 标题关键词匹配 */

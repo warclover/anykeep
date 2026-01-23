@@ -2,6 +2,8 @@
  * 智能分类 v5.0 - LLM Service 类型定义
  */
 
+import type { FolderId } from "@/lib/shared/types";
+
 /**
  * LLM 配置
  */
@@ -53,7 +55,7 @@ export interface LLMClassificationRequest {
  */
 export interface LLMClassificationResponse {
   /** 选择的文件夹ID */
-  folderId: string;
+  folderId: FolderId;
   /** 置信度 (0.0-1.0) */
   confidence: number;
   /** 选择理由 */

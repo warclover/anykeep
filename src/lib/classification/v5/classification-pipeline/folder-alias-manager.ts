@@ -11,6 +11,7 @@
 
 import { createLogger } from "@/lib/logger";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { FolderId } from "@/lib/shared/types";
 import { tagNormalizer } from "./tag-normalizer";
 
 const logger = createLogger("folder-alias-manager");
@@ -22,7 +23,7 @@ interface AliasLearningRecord {
   /** 标签（已标准化） */
   tag: string;
   /** 文件夹 ID */
-  folderId: string;
+  folderId: FolderId;
   /** 命中次数 */
   hitCount: number;
   /** 最后命中时间 */
@@ -154,7 +155,7 @@ export class FolderAliasManager {
    */
   async getAliases(
     userId: string,
-    folderId: string,
+    folderId: FolderId,
     folderName: string,
   ): Promise<string[]> {
     // 定期清理，防止内存泄漏
@@ -209,7 +210,7 @@ export class FolderAliasManager {
    */
   async matchesAlias(
     userId: string,
-    folderId: string,
+    folderId: FolderId,
     folderName: string,
     tag: string,
   ): Promise<boolean> {
@@ -230,7 +231,7 @@ export class FolderAliasManager {
    */
   async findMatchingTags(
     userId: string,
-    folderId: string,
+    folderId: FolderId,
     folderName: string,
     tags: string[],
   ): Promise<string[]> {
@@ -252,7 +253,7 @@ export class FolderAliasManager {
    *
    * 当同一标签-文件夹组合达到阈值时，自动添加为别名
    */
-  recordLearningEvent(userId: string, folderId: string, tag: string): void {
+  recordLearningEvent(userId: string, folderId: FolderId, tag: string): void {
     const normalizedTag = tagNormalizer.normalize(tag);
 
     if (!normalizedTag) {
@@ -305,7 +306,7 @@ export class FolderAliasManager {
    */
   async addAlias(
     userId: string,
-    folderId: string,
+    folderId: FolderId,
     alias: string,
   ): Promise<void> {
     const normalizedAlias = tagNormalizer.normalize(alias);
@@ -357,7 +358,7 @@ export class FolderAliasManager {
    */
   async removeAlias(
     userId: string,
-    folderId: string,
+    folderId: FolderId,
     alias: string,
   ): Promise<void> {
     const normalizedAlias = tagNormalizer.normalize(alias);
@@ -467,7 +468,10 @@ export class FolderAliasManager {
   /**
    * 获取缓存的别名
    */
-  private getCachedAliases(userId: string, folderId: string): string[] | null {
+  private getCachedAliases(
+    userId: string,
+    folderId: FolderId,
+  ): string[] | null {
     const userCache = this.aliasCache.get(userId);
     if (!userCache) {
       return null;
@@ -493,7 +497,7 @@ export class FolderAliasManager {
    */
   private setCachedAliases(
     userId: string,
-    folderId: string,
+    folderId: FolderId,
     aliases: string[],
   ): void {
     if (!this.aliasCache.has(userId)) {

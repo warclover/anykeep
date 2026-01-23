@@ -2,6 +2,8 @@
  * 智能分类 v5.0 - Gardener 类型定义
  */
 
+import type { FolderId } from "@/lib/shared/types";
+
 /**
  * 阈值配置
  */
@@ -44,18 +46,18 @@ export interface ThresholdAdjustment {
 /**
  * 文件夹健康状态
  */
-export type FolderHealthStatus = 'healthy' | 'warning' | 'critical';
+export type FolderHealthStatus = "healthy" | "warning" | "critical";
 
 /**
  * 文件夹问题类型
  */
 export type FolderIssueType =
-  | 'over_dispersed' // 过度分散
-  | 'over_concentrated' // 过度集中
-  | 'synonym_detected' // 检测到同义词
-  | 'naming_inconsistent' // 命名不一致
-  | 'low_usage' // 使用率低
-  | 'duplicate_content'; // 内容重复
+  | "over_dispersed" // 过度分散
+  | "over_concentrated" // 过度集中
+  | "synonym_detected" // 检测到同义词
+  | "naming_inconsistent" // 命名不一致
+  | "low_usage" // 使用率低
+  | "duplicate_content"; // 内容重复
 
 /**
  * 文件夹问题
@@ -70,7 +72,7 @@ export interface FolderIssue {
   /** 建议操作 */
   suggestedAction: string;
   /** 相关文件夹 ID */
-  relatedFolderIds?: string[];
+  relatedFolderIds?: FolderId[];
 }
 
 /**
@@ -78,7 +80,7 @@ export interface FolderIssue {
  */
 export interface FolderSuggestion {
   /** 文件夹 ID */
-  folderId: string;
+  folderId: FolderId;
   /** 文件夹名称 */
   folderName: string;
   /** 健康状态 */
@@ -94,19 +96,19 @@ export interface FolderSuggestion {
  */
 export interface SynonymGroup {
   /** 主文件夹 ID */
-  primaryFolderId: string;
+  primaryFolderId: FolderId;
   /** 主文件夹名称 */
   primaryFolderName: string;
   /** 同义文件夹列表 */
   synonyms: Array<{
-    folderId: string;
+    folderId: FolderId;
     folderName: string;
     similarity: number;
   }>;
   /** 置信度 (0-1) */
   confidence: number;
   /** 建议操作 */
-  suggestedAction: 'merge' | 'rename' | 'keep_separate';
+  suggestedAction: "merge" | "rename" | "keep_separate";
 }
 
 /**
@@ -114,7 +116,7 @@ export interface SynonymGroup {
  */
 export interface NamingSuggestion {
   /** 文件夹 ID */
-  folderId: string;
+  folderId: FolderId;
   /** 当前名称 */
   currentName: string;
   /** 建议名称 */
@@ -145,8 +147,11 @@ export interface GardenerConfig {
  * Gardener 错误
  */
 export class GardenerError extends Error {
-  constructor(message: string, public readonly cause?: unknown) {
+  constructor(
+    message: string,
+    public readonly cause?: unknown,
+  ) {
     super(message);
-    this.name = 'GardenerError';
+    this.name = "GardenerError";
   }
 }

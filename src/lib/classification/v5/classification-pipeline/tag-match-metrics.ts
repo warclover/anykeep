@@ -10,6 +10,7 @@
  */
 
 import { createLogger } from "@/lib/logger";
+import type { FolderId } from "@/lib/shared/types";
 
 const logger = createLogger("tag-match-metrics");
 
@@ -116,7 +117,7 @@ export class TagMatchMetrics {
     matchType: Exclude<MatchType, "none">,
     confidence: number,
     matchedTags: string[],
-    folderId: string,
+    folderId: FolderId,
     duration: number,
   ): void {
     this.record({

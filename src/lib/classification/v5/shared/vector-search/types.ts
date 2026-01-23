@@ -2,6 +2,8 @@
  * 智能分类 v5.0 - VectorSearch Service 类型定义
  */
 
+import type { FolderId } from "@/lib/shared/types";
+
 /**
  * 向量搜索配置
  */
@@ -27,13 +29,13 @@ export interface SearchResult {
   /** 文件夹 Profile ID */
   profileId: string;
   /** 文件夹 ID */
-  folderId: string;
+  folderId: FolderId;
   /** 文件夹名称 */
   folderName: string;
   /** 相似度分数 (0-1) */
   similarity: number;
   /** 匹配类型 */
-  matchType: 'content' | 'behavior' | 'hybrid';
+  matchType: "content" | "behavior" | "hybrid";
 }
 
 /**
@@ -55,15 +57,25 @@ export interface VectorSearchRequest {
 }
 
 /**
+ * 数据库返回的文件夹 Profile 行结构
+ */
+export interface FolderProfileRow {
+  profile_id: string;
+  folder_id: number | string;
+  folder_name: string;
+  similarity: number;
+}
+
+/**
  * 向量搜索错误类型
  */
 export class VectorSearchError extends Error {
   constructor(
     message: string,
     public readonly cause?: Error,
-    public readonly retryable: boolean = false
+    public readonly retryable: boolean = false,
   ) {
     super(message);
-    this.name = 'VectorSearchError';
+    this.name = "VectorSearchError";
   }
 }

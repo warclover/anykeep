@@ -6,6 +6,7 @@
 
 import type { LoggerService } from "../shared/logger";
 import type { IEmbeddingService } from "../shared/embedding";
+import type { FolderId } from "@/lib/shared/types";
 import type { SynonymGroup, GardenerConfig } from "./types";
 
 /**
@@ -13,7 +14,7 @@ import type { SynonymGroup, GardenerConfig } from "./types";
  */
 export interface FolderInfo {
   /** 文件夹 ID */
-  folderId: string;
+  folderId: FolderId;
   /** 文件夹名称 */
   folderName: string;
   /** 书签数量 */
@@ -185,7 +186,7 @@ export class SynonymDetector {
       }
 
       const synonyms: Array<{
-        folderId: string;
+        folderId: FolderId;
         folderName: string;
         similarity: number;
       }> = [];
@@ -242,7 +243,7 @@ export class SynonymDetector {
   private determineSuggestedAction(
     primaryFolder: FolderInfo,
     synonyms: Array<{
-      folderId: string;
+      folderId: FolderId;
       folderName: string;
       similarity: number;
     }>,

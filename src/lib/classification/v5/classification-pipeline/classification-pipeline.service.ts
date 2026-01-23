@@ -20,6 +20,7 @@ import type {
   ClassificationRequest,
   ClassificationPipelineConfig,
 } from "./types";
+import type { FolderId } from "@/lib/shared/types";
 import { ClassificationPipelineError } from "./types";
 
 /**
@@ -27,7 +28,7 @@ import { ClassificationPipelineError } from "./types";
  */
 export interface ClassificationResult {
   /** 推荐的文件夹 ID */
-  folderId: string;
+  folderId: FolderId;
   /** 置信度 (0-1) */
   confidence: number;
   /** 是否使用了 T1 纠正 */
@@ -366,9 +367,9 @@ export class ClassificationPipelineService {
    * v6: 确保返回有效的 folderId，处理 null/undefined 情况
    */
   private ensureValidFolderId(
-    folderId: string | null | undefined,
-    defaultFolderId?: string,
-  ): string {
+    folderId: FolderId | null | undefined,
+    defaultFolderId?: FolderId,
+  ): FolderId {
     // 检查是否为无效值
     if (!folderId || folderId === "null" || folderId === "undefined") {
       const fallbackId = defaultFolderId || "inbox";

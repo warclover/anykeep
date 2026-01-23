@@ -21,6 +21,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createLogger } from "@/lib/logger";
+import type { FolderId } from "@/lib/shared/types";
 import type {
   ClassificationRequest,
   FolderTagProfile,
@@ -424,7 +425,7 @@ export class AiTagMatcher {
    *
    * 当用户确认分类���调用，用于自动学习别名
    */
-  recordAliasLearning(userId: string, folderId: string, tag: string): void {
+  recordAliasLearning(userId: string, folderId: FolderId, tag: string): void {
     this.folderAliasManager.recordLearningEvent(userId, folderId, tag);
   }
 

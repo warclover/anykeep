@@ -2,6 +2,8 @@
  * 智能分类 v5.0 - FolderProfiler 类型定义
  */
 
+import type { FolderId } from "@/lib/shared/types";
+
 /**
  * 文件夹画像
  */
@@ -39,7 +41,7 @@ export interface FolderProfile {
  */
 export interface FolderStats {
   /** 文件夹 ID */
-  folderId: string;
+  folderId: FolderId;
   /** 最后使用时间 */
   lastUsed: Date;
   /** 行为数据数量 */
@@ -73,7 +75,12 @@ export interface LazyUpdateTrigger {
   /** 是否需要更新 */
   shouldUpdate: boolean;
   /** 触发原因 */
-  reason: 'time_threshold' | 'bookmark_threshold' | 'accuracy_drop' | 'manual_trigger' | 'none';
+  reason:
+    | "time_threshold"
+    | "bookmark_threshold"
+    | "accuracy_drop"
+    | "manual_trigger"
+    | "none";
   /** 详细信息 */
   details?: {
     daysSinceUpdate?: number;
@@ -103,8 +110,11 @@ export interface FolderProfilerConfig {
  * FolderProfiler 错误
  */
 export class FolderProfilerError extends Error {
-  constructor(message: string, public readonly cause?: unknown) {
+  constructor(
+    message: string,
+    public readonly cause?: unknown,
+  ) {
     super(message);
-    this.name = 'FolderProfilerError';
+    this.name = "FolderProfilerError";
   }
 }

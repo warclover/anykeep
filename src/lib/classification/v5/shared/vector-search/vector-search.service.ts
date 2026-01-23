@@ -4,15 +4,16 @@
  * 使用 Supabase pgvector 进行文件夹相似度搜索
  */
 
-import type { SupabaseClient } from '@supabase/supabase-js';
-import { createClient } from '@supabase/supabase-js';
-import type { LoggerService } from '../logger';
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "@supabase/supabase-js";
+import type { LoggerService } from "../logger";
 import type {
   VectorSearchConfig,
   VectorSearchRequest,
-  SearchResult
-} from './types';
-import { VectorSearchError } from './types';
+  SearchResult,
+  FolderProfileRow,
+} from "./types";
+import { VectorSearchError } from "./types";
 
 /**
  * VectorSearch Service 类
@@ -23,11 +24,15 @@ export class VectorSearchService {
   private logger: LoggerService;
 
   constructor(logger: LoggerService, config?: Partial<VectorSearchConfig>) {
-    this.logger = logger.child({ service: 'VectorSearchService' });
+    this.logger = logger.child({ service: "VectorSearchService" });
 
     this.config = {
-      supabaseUrl: config?.supabaseUrl ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
-      supabaseServiceKey: config?.supabaseServiceKey ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
+      supabaseUrl:
+        config?.supabaseUrl ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
+      supabaseServiceKey:
+        config?.supabaseServiceKey ??
+        process.env.SUPABASE_SERVICE_ROLE_KEY ??
+        "",
       defaultLimit: config?.defaultLimit ?? 5,
       minSimilarity: config?.minSimilarity ?? 0.5,
       maxRetries: config?.maxRetries ?? 3,
@@ -35,12 +40,14 @@ export class VectorSearchService {
     };
 
     if (!this.config.supabaseUrl || !this.config.supabaseServiceKey) {
-      throw new VectorSearchError('Supabase URL and Service Role Key are required');
+      throw new VectorSearchError(
+        "Supabase URL and Service Role Key are required",
+      );
     }
 
     this.client = createClient(
       this.config.supabaseUrl,
-      this.config.supabaseServiceKey
+      this.config.supabaseServiceKey,
     );
   }
 
@@ -53,7 +60,7 @@ export class VectorSearchService {
     const limit = request.limit ?? this.config.defaultLimit;
     const minSimilarity = request.minSimilarity ?? this.config.minSimilarity;
 
-    this.logger.debug('执行向量搜索', {
+    this.logger.debug("执行向量搜索", {
       userId: request.userId,
       hasContentEmbedding: !!request.contentEmbedding,
       hasBehaviorEmbedding: !!request.behaviorEmbedding,
@@ -70,7 +77,9 @@ export class VectorSearchService {
     } else if (request.behaviorEmbedding) {
       return this.behaviorSearch(request, limit, minSimilarity);
     } else {
-      throw new VectorSearchError('At least one embedding (content or behavior) is required');
+      throw new VectorSearchError(
+        "At least one embedding (content or behavior) is required",
+      );
     }
   }
 
@@ -80,31 +89,39 @@ export class VectorSearchService {
   private async contentSearch(
     request: VectorSearchRequest,
     limit: number,
-    minSimilarity: number
+    minSimilarity: number,
   ): Promise<SearchResult[]> {
     return await this.executeWithRetry(async () => {
-      const { data, error } = await this.client.rpc('match_folder_profiles_v5', {
-        p_user_id: request.userId,
-        p_content_embedding: request.contentEmbedding!,
-        p_behavior_embedding: null,
-        p_alpha: 0, // 纯内容搜索
-        p_match_threshold: minSimilarity,
-        p_match_count: limit,
-      });
+      const { data, error } = await this.client.rpc(
+        "match_folder_profiles_v5",
+        {
+          p_user_id: request.userId,
+          p_content_embedding: request.contentEmbedding!,
+          p_behavior_embedding: null,
+          p_alpha: 0, // 纯内容搜索
+          p_match_threshold: minSimilarity,
+          p_match_count: limit,
+        },
+      );
 
       if (error) {
-        throw new VectorSearchError(`Content search failed: ${error.message}`, error);
+        throw new VectorSearchError(
+          `Content search failed: ${error.message}`,
+          error,
+        );
       }
 
-      const results: SearchResult[] = (data || []).map((row: any) => ({
-        profileId: row.profile_id,
-        folderId: row.folder_id,
-        folderName: row.folder_name,
-        similarity: row.similarity,
-        matchType: 'content' as const,
-      }));
+      const results: SearchResult[] = (data || []).map(
+        (row: FolderProfileRow) => ({
+          profileId: row.profile_id,
+          folderId: row.folder_id,
+          folderName: row.folder_name,
+          similarity: row.similarity,
+          matchType: "content" as const,
+        }),
+      );
 
-      this.logger.debug('内容搜索完成', {
+      this.logger.debug("内容搜索完成", {
         resultCount: results.length,
         topSimilarity: results[0]?.similarity,
       });
@@ -119,31 +136,39 @@ export class VectorSearchService {
   private async behaviorSearch(
     request: VectorSearchRequest,
     limit: number,
-    minSimilarity: number
+    minSimilarity: number,
   ): Promise<SearchResult[]> {
     return await this.executeWithRetry(async () => {
-      const { data, error } = await this.client.rpc('match_folder_profiles_v5', {
-        p_user_id: request.userId,
-        p_content_embedding: null,
-        p_behavior_embedding: request.behaviorEmbedding!,
-        p_alpha: 1, // 纯行为搜索
-        p_match_threshold: minSimilarity,
-        p_match_count: limit,
-      });
+      const { data, error } = await this.client.rpc(
+        "match_folder_profiles_v5",
+        {
+          p_user_id: request.userId,
+          p_content_embedding: null,
+          p_behavior_embedding: request.behaviorEmbedding!,
+          p_alpha: 1, // 纯行为搜索
+          p_match_threshold: minSimilarity,
+          p_match_count: limit,
+        },
+      );
 
       if (error) {
-        throw new VectorSearchError(`Behavior search failed: ${error.message}`, error);
+        throw new VectorSearchError(
+          `Behavior search failed: ${error.message}`,
+          error,
+        );
       }
 
-      const results: SearchResult[] = (data || []).map((row: any) => ({
-        profileId: row.profile_id,
-        folderId: row.folder_id,
-        folderName: row.folder_name,
-        similarity: row.similarity,
-        matchType: 'behavior' as const,
-      }));
+      const results: SearchResult[] = (data || []).map(
+        (row: FolderProfileRow) => ({
+          profileId: row.profile_id,
+          folderId: row.folder_id,
+          folderName: row.folder_name,
+          similarity: row.similarity,
+          matchType: "behavior" as const,
+        }),
+      );
 
-      this.logger.debug('行为搜索完成', {
+      this.logger.debug("行为搜索完成", {
         resultCount: results.length,
         topSimilarity: results[0]?.similarity,
       });
@@ -158,33 +183,41 @@ export class VectorSearchService {
   private async hybridSearch(
     request: VectorSearchRequest,
     limit: number,
-    minSimilarity: number
+    minSimilarity: number,
   ): Promise<SearchResult[]> {
     const alpha = request.alpha ?? 0.5; // 默认 50/50 混合
 
     return await this.executeWithRetry(async () => {
-      const { data, error } = await this.client.rpc('match_folder_profiles_v5', {
-        p_user_id: request.userId,
-        p_content_embedding: request.contentEmbedding!,
-        p_behavior_embedding: request.behaviorEmbedding!,
-        p_alpha: alpha,
-        p_match_threshold: minSimilarity,
-        p_match_count: limit,
-      });
+      const { data, error } = await this.client.rpc(
+        "match_folder_profiles_v5",
+        {
+          p_user_id: request.userId,
+          p_content_embedding: request.contentEmbedding!,
+          p_behavior_embedding: request.behaviorEmbedding!,
+          p_alpha: alpha,
+          p_match_threshold: minSimilarity,
+          p_match_count: limit,
+        },
+      );
 
       if (error) {
-        throw new VectorSearchError(`Hybrid search failed: ${error.message}`, error);
+        throw new VectorSearchError(
+          `Hybrid search failed: ${error.message}`,
+          error,
+        );
       }
 
-      const results: SearchResult[] = (data || []).map((row: any) => ({
-        profileId: row.profile_id,
-        folderId: row.folder_id,
-        folderName: row.folder_name,
-        similarity: row.similarity,
-        matchType: 'hybrid' as const,
-      }));
+      const results: SearchResult[] = (data || []).map(
+        (row: FolderProfileRow) => ({
+          profileId: row.profile_id,
+          folderId: row.folder_id,
+          folderName: row.folder_name,
+          similarity: row.similarity,
+          matchType: "hybrid" as const,
+        }),
+      );
 
-      this.logger.debug('混合搜索完成', {
+      this.logger.debug("混合搜索完成", {
         alpha,
         resultCount: results.length,
         topSimilarity: results[0]?.similarity,
@@ -199,27 +232,36 @@ export class VectorSearchService {
    */
   private validateRequest(request: VectorSearchRequest): void {
     if (!request.userId) {
-      throw new VectorSearchError('User ID is required');
+      throw new VectorSearchError("User ID is required");
     }
 
     if (request.contentEmbedding && request.contentEmbedding.length !== 1024) {
-      throw new VectorSearchError('Content embedding must be 1024 dimensions');
+      throw new VectorSearchError("Content embedding must be 1024 dimensions");
     }
 
-    if (request.behaviorEmbedding && request.behaviorEmbedding.length !== 1024) {
-      throw new VectorSearchError('Behavior embedding must be 1024 dimensions');
+    if (
+      request.behaviorEmbedding &&
+      request.behaviorEmbedding.length !== 1024
+    ) {
+      throw new VectorSearchError("Behavior embedding must be 1024 dimensions");
     }
 
-    if (request.alpha !== undefined && (request.alpha < 0 || request.alpha > 1)) {
-      throw new VectorSearchError('Alpha coefficient must be between 0 and 1');
+    if (
+      request.alpha !== undefined &&
+      (request.alpha < 0 || request.alpha > 1)
+    ) {
+      throw new VectorSearchError("Alpha coefficient must be between 0 and 1");
     }
 
     if (request.limit !== undefined && request.limit <= 0) {
-      throw new VectorSearchError('Limit must be greater than 0');
+      throw new VectorSearchError("Limit must be greater than 0");
     }
 
-    if (request.minSimilarity !== undefined && (request.minSimilarity < 0 || request.minSimilarity > 1)) {
-      throw new VectorSearchError('Min similarity must be between 0 and 1');
+    if (
+      request.minSimilarity !== undefined &&
+      (request.minSimilarity < 0 || request.minSimilarity > 1)
+    ) {
+      throw new VectorSearchError("Min similarity must be between 0 and 1");
     }
   }
 
@@ -229,7 +271,7 @@ export class VectorSearchService {
    */
   private async executeWithRetry<T>(
     operation: () => Promise<T>,
-    retryCount: number = 0
+    retryCount: number = 0,
   ): Promise<T> {
     try {
       return await operation();
@@ -238,17 +280,17 @@ export class VectorSearchService {
 
       if (isLastRetry) {
         this.logger.error(
-          '操作失败，已达到最大重试次数',
+          "操作失败，已达到最大重试次数",
           error instanceof Error ? error : undefined,
           {
             retryCount,
-          }
+          },
         );
         throw error;
       }
 
       const delay = this.config.retryDelays[retryCount];
-      this.logger.warn('操作失败，准备重试', {
+      this.logger.warn("操作失败，准备重试", {
         retryCount: retryCount + 1,
         maxRetries: this.config.maxRetries,
         delayMs: delay,
@@ -264,6 +306,6 @@ export class VectorSearchService {
    * 延迟执行
    */
   private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }

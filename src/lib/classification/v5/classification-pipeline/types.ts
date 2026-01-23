@@ -2,6 +2,8 @@
  * 智能分类 v5.0 - ClassificationPipeline 类型定义
  */
 
+import type { FolderId } from "@/lib/shared/types";
+
 /**
  * 分类请求
  */
@@ -21,7 +23,7 @@ export interface ClassificationRequest {
   /** 书签 URL */
   url: string;
   /** v6: 默认文件夹 ID（用于兜底） */
-  defaultFolderId?: string;
+  defaultFolderId?: FolderId;
 }
 
 /**
@@ -29,12 +31,12 @@ export interface ClassificationRequest {
  */
 export interface T0Result {
   /** 推荐的文件夹 ID */
-  folderId: string;
+  folderId: FolderId;
   /** 置信度 (0-1) */
   confidence: number;
   /** 候选文件夹列表 */
   candidates: Array<{
-    folderId: string;
+    folderId: FolderId;
     folderName: string;
     similarity: number;
   }>;
@@ -51,7 +53,7 @@ export interface T0Result {
  */
 export interface T1Result {
   /** 推荐的文件夹 ID */
-  folderId: string;
+  folderId: FolderId;
   /** 置信度 (0-1) */
   confidence: number;
   /** LLM 推理过程 */
@@ -67,7 +69,7 @@ export interface L0MatchResult {
   /** 是否匹配到规则 */
   matched: boolean;
   /** 匹配的文件夹 ID */
-  folderId?: string;
+  folderId?: FolderId;
   /** 匹配的规则名称 */
   ruleName?: string;
   /** 置信度 (0-1) */
@@ -79,7 +81,7 @@ export interface L0MatchResult {
  */
 export interface HybridRetrievalResult {
   /** 文件夹 ID */
-  folderId: string;
+  folderId: FolderId;
   /** 文件夹名称 */
   folderName: string;
   /** 内容相似度 */
@@ -98,7 +100,7 @@ export interface LLMCallRequest {
   bookmark: ClassificationRequest;
   /** 候选文件夹列表 */
   candidates: Array<{
-    folderId: string;
+    folderId: FolderId;
     folderName: string;
     description?: string;
     score: number;
@@ -177,7 +179,7 @@ export interface TagMatchResult {
   /** 是否匹配成功 */
   matched: boolean;
   /** 匹配的文件夹 ID */
-  folderId: string;
+  folderId: FolderId;
   /** 匹配的文件夹名称 */
   folderName: string;
   /** 匹配置信度 (0-1) */
@@ -245,7 +247,7 @@ export interface EnhancedTagMatchResult extends TagMatchResult {
  */
 export interface RerankResult {
   /** 文件夹 ID */
-  folderId: string;
+  folderId: FolderId;
   /** 文件夹名称 */
   folderName: string;
   /** 向量分数 */
