@@ -19,7 +19,7 @@ export interface PreMatchResult {
   /** 是否匹配成功 */
   matched: boolean;
   /** 匹配的文件夹 ID */
-  folderId: string | null;
+  folderId: number | null;
   /** 匹配的文件夹名称 */
   folderName: string | null;
   /** 匹配模式 */

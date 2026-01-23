@@ -182,8 +182,8 @@ class UnifiedCacheFacade {
   /**
    * 失效文件夹相关缓存
    */
-  invalidateFolderRelated(folderId: string): void {
-    invalidateFolderCache(folderId);
+  invalidateFolderRelated(folderId: number): void {
+    invalidateFolderCache(String(folderId));
   }
 
   /**

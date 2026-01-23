@@ -2,18 +2,18 @@
  * 智能分类 v5.0 - 文件夹画像查看器
  */
 
-'use client';
+"use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { FolderIcon, RefreshCwIcon, AlertCircleIcon } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
-import { zhCN } from 'date-fns/locale';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { FolderIcon, RefreshCwIcon, AlertCircleIcon } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+import { zhCN } from "date-fns/locale";
 
 interface FolderProfileViewerProps {
   /** 文件夹 ID */
-  folderId: string;
+  folderId: number;
   /** 文件夹名称 */
   folderName: string;
   /** α 系数 (0-1) */
@@ -48,16 +48,16 @@ export function FolderProfileViewer({
 }: FolderProfileViewerProps) {
   // α 系数描述
   const getAlphaDescription = (alpha: number) => {
-    if (alpha >= 0.6) return '行为主导';
-    if (alpha >= 0.4) return '均衡';
-    return '内容主导';
+    if (alpha >= 0.6) return "行为主导";
+    if (alpha >= 0.4) return "均衡";
+    return "内容主导";
   };
 
   // α 系数颜色
   const getAlphaColor = (alpha: number) => {
-    if (alpha >= 0.6) return 'text-purple-600';
-    if (alpha >= 0.4) return 'text-blue-600';
-    return 'text-green-600';
+    if (alpha >= 0.6) return "text-purple-600";
+    if (alpha >= 0.4) return "text-blue-600";
+    return "text-green-600";
   };
 
   return (
@@ -81,8 +81,11 @@ export function FolderProfileViewer({
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">α 系数</span>
-            <span className={`font-semibold ${getAlphaColor(alphaCoefficient)}`}>
-              {alphaCoefficient.toFixed(2)} ({getAlphaDescription(alphaCoefficient)})
+            <span
+              className={`font-semibold ${getAlphaColor(alphaCoefficient)}`}
+            >
+              {alphaCoefficient.toFixed(2)} (
+              {getAlphaDescription(alphaCoefficient)})
             </span>
           </div>
           <div className="w-full bg-muted rounded-full h-2">
@@ -138,13 +141,13 @@ export function FolderProfileViewer({
           <Button
             onClick={onUpdate}
             disabled={isUpdating}
-            variant={needsUpdate ? 'default' : 'outline'}
+            variant={needsUpdate ? "default" : "outline"}
             className="w-full"
           >
             <RefreshCwIcon
-              className={`h-4 w-4 mr-2 ${isUpdating ? 'animate-spin' : ''}`}
+              className={`h-4 w-4 mr-2 ${isUpdating ? "animate-spin" : ""}`}
             />
-            {isUpdating ? '更新中...' : needsUpdate ? '立即更新' : '刷新画像'}
+            {isUpdating ? "更新中..." : needsUpdate ? "立即更新" : "刷新画像"}
           </Button>
         )}
       </CardContent>

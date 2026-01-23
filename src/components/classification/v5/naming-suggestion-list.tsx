@@ -2,21 +2,21 @@
  * 智能分类 v5.0 - 命名建议列表
  */
 
-'use client';
+"use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { CheckIcon, XIcon } from 'lucide-react';
-import type { NamingSuggestion } from '@/lib/classification/v5/gardener/types';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { CheckIcon, XIcon } from "lucide-react";
+import type { NamingSuggestion } from "@/lib/classification/v5/gardener/types";
 
 interface NamingSuggestionListProps {
   /** 命名建议列表 */
   suggestions: NamingSuggestion[];
   /** 应用建议回调 */
-  onApply?: (folderId: string, newName: string) => void;
+  onApply?: (folderId: number, newName: string) => void;
   /** 忽略建议回调 */
-  onIgnore?: (folderId: string) => void;
+  onIgnore?: (folderId: number) => void;
 }
 
 export function NamingSuggestionList({

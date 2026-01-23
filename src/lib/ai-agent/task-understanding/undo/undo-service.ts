@@ -425,7 +425,7 @@ export class UndoService {
     const { bookmarkIds, data } = beforeState;
     const originalStates = data.originalStates as Array<{
       id: string;
-      folderId: string | null;
+      folderId: number | null;
       tags: string[];
     }>;
 

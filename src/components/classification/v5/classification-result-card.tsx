@@ -2,15 +2,15 @@
  * 智能分类 v5.0 - 分类结果卡片
  */
 
-'use client';
+"use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { FolderIcon, ClockIcon, CheckCircleIcon } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { FolderIcon, ClockIcon, CheckCircleIcon } from "lucide-react";
 
 interface ClassificationResultCardProps {
   /** 推荐的文件夹 ID */
-  folderId: string;
+  folderId: number;
   /** 文件夹名称 */
   folderName: string;
   /** 置信度 (0-1) */
@@ -38,10 +38,10 @@ export function ClassificationResultCard({
   // 置信度颜色
   const confidenceColor =
     confidence >= 0.85
-      ? 'text-green-600'
+      ? "text-green-600"
       : confidence >= 0.7
-        ? 'text-yellow-600'
-        : 'text-red-600';
+        ? "text-yellow-600"
+        : "text-red-600";
 
   // 置信度百分比
   const confidencePercent = Math.round(confidence * 100);
@@ -83,10 +83,10 @@ export function ClassificationResultCard({
             <div
               className={`h-2 rounded-full transition-all ${
                 confidence >= 0.85
-                  ? 'bg-green-600'
+                  ? "bg-green-600"
                   : confidence >= 0.7
-                    ? 'bg-yellow-600'
-                    : 'bg-red-600'
+                    ? "bg-yellow-600"
+                    : "bg-red-600"
               }`}
               style={{ width: `${confidencePercent}%` }}
             />
@@ -110,7 +110,9 @@ export function ClassificationResultCard({
           <ClockIcon className="h-3 w-3" />
           <span>
             总耗时: {latency.total}ms
-            {usedT1 && latency.t1 && ` (T0: ${latency.t0}ms + T1: ${latency.t1}ms)`}
+            {usedT1 &&
+              latency.t1 &&
+              ` (T0: ${latency.t0}ms + T1: ${latency.t1}ms)`}
           </span>
         </div>
       </CardContent>

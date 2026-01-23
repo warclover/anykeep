@@ -100,7 +100,7 @@ export const CACHE_KEYS = {
   folders: (userId: string) => `folders:${userId}`,
 
   // 单个文件夹
-  folder: (folderId: string) => `folder:${folderId}`,
+  folder: (folderId: number) => `folder:${folderId}`,
 
   // 用户资料
   profile: (userId: string) => `profile:${userId}`,

@@ -281,11 +281,11 @@ export class FolderCacheSyncService {
   /**
    * 从缓存移除文件夹
    */
-  removeFolder(userId: string, folderId: string): void {
+  removeFolder(userId: string, folderId: number): void {
     const folders = this.memoryCache.get(userId);
     if (!folders) return;
 
-    const filtered = folders.filter((f) => f.id !== folderId);
+    const filtered = folders.filter((f) => f.id !== String(folderId));
     this.memoryCache.set(userId, filtered);
     this.updateMetadata(userId, filtered.length);
   }
@@ -295,13 +295,13 @@ export class FolderCacheSyncService {
    */
   updateFolderAliases(
     userId: string,
-    folderId: string,
+    folderId: number,
     aliases: string[],
   ): void {
     const folders = this.memoryCache.get(userId);
     if (!folders) return;
 
-    const folder = folders.find((f) => f.id === folderId);
+    const folder = folders.find((f) => f.id === String(folderId));
     if (folder) {
       folder.aliases = aliases;
     }

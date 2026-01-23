@@ -110,9 +110,9 @@ export async function emitBookmarkCreated(
 export async function emitFolderCreated(
   userId: string,
   data: {
-    folderId: string;
+    folderId: number;
     name: string;
-    parentId?: string;
+    parentId?: number;
   },
 ): Promise<void> {
   await emitWorkflowEvent("folder_created", userId, data);
