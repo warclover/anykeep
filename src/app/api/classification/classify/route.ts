@@ -25,6 +25,12 @@ import {
 import { logger } from "@/lib/logger";
 
 /**
+ * 预分类场景使用的临时书签 ID
+ * 当用户未提供 bookmarkId 时使用此值
+ */
+const PREVIEW_BOOKMARK_ID = -1;
+
+/**
  * 请求体验证 Schema
  */
 const classifySchema = z.object({
@@ -70,7 +76,7 @@ export async function POST(request: NextRequest) {
     const classificationVersion = getClassificationVersion();
 
     // 如果没有 bookmarkId，创建临时 ID（用于预分类场景）
-    const effectiveBookmarkId = bookmarkId ?? -1;
+    const effectiveBookmarkId = bookmarkId ?? PREVIEW_BOOKMARK_ID;
 
     const result = await classifyBookmarkV2(
       effectiveBookmarkId,

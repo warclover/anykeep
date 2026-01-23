@@ -2,6 +2,8 @@
  * 智能分类 v5.0 - T0 生成器
  *
  * T0快速生成（<500ms）：L0规则 → 混合检索
+ *
+ * v5.1.2: 添加常量定义，明确行为向量临时方案
  */
 
 import type { LoggerService } from "../shared/logger";
@@ -10,6 +12,21 @@ import type { L0RuleMatcher } from "./l0-rule-matcher";
 import type { HybridRetriever } from "./hybrid-retriever";
 import type { LLMCaller } from "./llm-caller";
 import type { ClassificationRequest, T0Result } from "./types";
+
+/**
+ * 书签文本最大长度（用于 embedding 生成）
+ */
+const MAX_BOOKMARK_TEXT_LENGTH = 8000;
+
+/**
+ * T1 触发阈值配置
+ */
+const T1_THRESHOLDS = {
+  /** 低置信度阈值 */
+  LOW_CONFIDENCE: 0.75,
+  /** 向量冲突分数差阈值 */
+  VECTOR_CONFLICT_DIFF: 0.1,
+} as const;
 
 /**
  * T0 生成器类
@@ -76,10 +93,12 @@ export class T0Generator {
       await this.embeddingService.generateEmbedding(bookmarkText);
 
     // 3. 混合检索（v5.1: 传递标题用于名称护栏）
+    // NOTE: 行为向量暂未实现，当前使用内容向量作为占位符
+    // TODO: 实现用户行为向量（基于历史点击、收藏时间等）以提升分类准确率
     const retrievalResults = await this.hybridRetriever.retrieve(
       request.userId,
       bookmarkEmbedding.embedding,
-      bookmarkEmbedding.embedding, // 暂时使用相同的向量作为行为向量
+      bookmarkEmbedding.embedding, // FIXME: 行为向量未实现，暂用内容向量
       request.title, // v5.1: 传递标题用于名称相似度计算
     );
 
@@ -151,7 +170,7 @@ export class T0Generator {
       request.summary || "",
       ...(request.tags || []),
     ];
-    return parts.join(" ").slice(0, 8000);
+    return parts.join(" ").slice(0, MAX_BOOKMARK_TEXT_LENGTH);
   }
 
   /**
@@ -161,13 +180,13 @@ export class T0Generator {
     confidence: number,
     candidates: Array<{ similarity: number }>,
   ): "low_confidence" | "vector_conflict" {
-    if (confidence < 0.75) {
+    if (confidence < T1_THRESHOLDS.LOW_CONFIDENCE) {
       return "low_confidence";
     }
 
     if (candidates.length >= 2) {
       const scoreDiff = candidates[0].similarity - candidates[1].similarity;
-      if (scoreDiff < 0.1) {
+      if (scoreDiff < T1_THRESHOLDS.VECTOR_CONFLICT_DIFF) {
         return "vector_conflict";
       }
     }

@@ -61,12 +61,16 @@ interface CachedProfileEntry {
 
 /**
  * AI 标签匹配器类
+ *
+ * v1.5.0: 修复缓存并发竞争条件，使用 Promise 缓存模式
  */
 export class AiTagMatcher {
   private config: TagMatcherConfig;
   private profileCache: Map<string, CachedProfileEntry>;
   private cacheTtlMs: number;
   private folderAliasManager: FolderAliasManager;
+  /** v1.5.0: 正在加载的 Promise 缓存，防止并发重复请求 */
+  private loadingPromises: Map<string, Promise<FolderTagProfile[]>>;
 
   constructor(
     private supabase: SupabaseClient,
@@ -77,6 +81,7 @@ export class AiTagMatcher {
     this.profileCache = new Map();
     this.cacheTtlMs = cacheTtlMs ?? DEFAULT_CACHE_TTL_MS;
     this.folderAliasManager = new FolderAliasManager(supabase);
+    this.loadingPromises = new Map();
   }
 
   /**
@@ -602,9 +607,10 @@ export class AiTagMatcher {
   /**
    * 获取用户的文件夹标签画像（带缓存和 TTL）
    * v1.2.0: 添加缓存过期策略
+   * v1.5.0: 修复并发竞争条件，使用 Promise 缓存模式
    */
   async getFolderProfiles(userId: string): Promise<FolderTagProfile[]> {
-    // 缓存检查（包含过期判断）
+    // 1. 检查有效缓存
     const cached = this.profileCache.get(userId);
     if (cached) {
       const age = Date.now() - cached.cachedAt;
@@ -615,7 +621,7 @@ export class AiTagMatcher {
         );
         return cached.profiles;
       }
-      // 缓存过期，清除并重新加载
+      // 缓存过期，清除
       logger.debug(
         { userId, cacheAge: age, ttl: this.cacheTtlMs },
         "缓存已过期，重新加载文件夹画像",
@@ -623,7 +629,33 @@ export class AiTagMatcher {
       this.profileCache.delete(userId);
     }
 
-    // 从数据库加载
+    // 2. v1.5.0: 检查是否已有正在进行的加载请求（防止并发重复请��）
+    const existingPromise = this.loadingPromises.get(userId);
+    if (existingPromise) {
+      logger.debug({ userId }, "复用正在进行的加载请求");
+      return existingPromise;
+    }
+
+    // 3. 创建新的加载 Promise 并缓存
+    const loadPromise = this.loadFolderProfilesFromDb(userId);
+    this.loadingPromises.set(userId, loadPromise);
+
+    try {
+      const profiles = await loadPromise;
+      return profiles;
+    } finally {
+      // 4. 无论成功失败，都清除 loading Promise
+      this.loadingPromises.delete(userId);
+    }
+  }
+
+  /**
+   * 从数据库加载文件夹画像（内部方法）
+   * v1.5.0: 从 getFolderProfiles 拆分出来
+   */
+  private async loadFolderProfilesFromDb(
+    userId: string,
+  ): Promise<FolderTagProfile[]> {
     const { data, error } = await this.supabase
       .from("folder_tag_profiles")
       .select(
@@ -663,10 +695,12 @@ export class AiTagMatcher {
       };
     });
 
+    // 存入缓存
     this.profileCache.set(userId, {
       profiles,
       cachedAt: Date.now(),
     });
+
     return profiles;
   }
 

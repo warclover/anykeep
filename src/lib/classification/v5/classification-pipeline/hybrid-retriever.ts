@@ -4,8 +4,10 @@
  * 实现混合检索（内容向量 70% + 行为向量 30%）和 RRF 融合
  * v5.1 新增：语义护栏（名称相似度分数），解决大文件夹马太效应
  * v5.1.1 新增：AI 标签加成和 Rerank 机制
+ * v5.1.3 新增：强匹配规则 Zod Schema 验证
  */
 
+import { z } from "zod";
 import type { LoggerService } from "../shared/logger";
 import type { VectorSearchService } from "../shared/vector-search";
 import type { IEmbeddingService } from "../shared/embedding";
@@ -14,6 +16,17 @@ import type {
   EnhancedTagMatchResult,
   RerankResult,
 } from "./types";
+
+/**
+ * v5.1.3: 强匹配规则 Schema 定义
+ */
+const StrongMatchRuleSchema = z.object({
+  titlePattern: z.string().min(1, "titlePattern 不能为空"),
+  targetFolderPattern: z.string().min(1, "targetFolderPattern 不能为空"),
+  boost: z.number().min(0).max(1, "boost 必须在 0-1 之间"),
+});
+
+const StrongMatchRulesSchema = z.array(StrongMatchRuleSchema);
 
 /**
  * 混合检索器配置
@@ -202,6 +215,7 @@ export class HybridRetriever {
 
   /**
    * v5.1: 从配置加载强匹配规则
+   * v5.1.3: 添加 Zod Schema 验证，防止无效配置
    * 支持环境变量 CLASSIFICATION_STRONG_MATCH_RULES 配置 JSON 格式规则
    */
   private loadStrongMatchRules(): Array<{
@@ -215,17 +229,39 @@ export class HybridRetriever {
     }
 
     try {
-      const parsed = JSON.parse(rulesJson) as Array<{
-        titlePattern: string;
-        targetFolderPattern: string;
-        boost: number;
-      }>;
+      // v5.1.3: 先解析 JSON
+      const parsed = JSON.parse(rulesJson);
 
-      return parsed.map((rule) => ({
-        titlePattern: new RegExp(rule.titlePattern, "i"),
-        targetFolderPattern: new RegExp(rule.targetFolderPattern, "i"),
-        boost: rule.boost,
-      }));
+      // v5.1.3: 使用 Zod 验证结构
+      const validationResult = StrongMatchRulesSchema.safeParse(parsed);
+      if (!validationResult.success) {
+        this.logger.warn("强匹配规则 Schema 验证失败", {
+          errors: validationResult.error.flatten().fieldErrors,
+        });
+        return [];
+      }
+
+      // v5.1.3: 验证正则表达式是否有效
+      return validationResult.data
+        .map((rule) => {
+          try {
+            return {
+              titlePattern: new RegExp(rule.titlePattern, "i"),
+              targetFolderPattern: new RegExp(rule.targetFolderPattern, "i"),
+              boost: rule.boost,
+            };
+          } catch (regexError) {
+            this.logger.warn("无效的正则表达式，跳过该规则", {
+              rule,
+              error:
+                regexError instanceof Error
+                  ? regexError.message
+                  : String(regexError),
+            });
+            return null;
+          }
+        })
+        .filter((rule): rule is NonNullable<typeof rule> => rule !== null);
     } catch (error) {
       this.logger.warn("解析强匹配规则失败，使用空规则", {
         error: error instanceof Error ? error.message : String(error),
@@ -370,6 +406,7 @@ export class HybridRetriever {
 
   /**
    * 计算余弦相似度
+   * v5.1.2: 修复零向量除以零的问题
    */
   private cosineSimilarity(vec1: number[], vec2: number[]): number {
     if (vec1.length !== vec2.length) {
@@ -386,7 +423,13 @@ export class HybridRetriever {
       norm2 += vec2[i] * vec2[i];
     }
 
-    return dotProduct / (Math.sqrt(norm1) * Math.sqrt(norm2));
+    // v5.1.2: 防止零向量导致的除以零错误
+    const magnitude = Math.sqrt(norm1) * Math.sqrt(norm2);
+    if (magnitude === 0) {
+      return 0; // 零向量与任何向量的相似度定义为 0
+    }
+
+    return dotProduct / magnitude;
   }
 
   /**
