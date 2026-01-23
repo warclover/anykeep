@@ -8,9 +8,10 @@
  * 3. 相关标签匹配：标签 ↔ 文件夹相关标签
  *
  * v1.1.0: 集成同义词映射器和监控指标
+ * v1.2.0: 添加缓存过期策略（TTL 5分钟）
  *
  * @module @/lib/classification/v5/classification-pipeline/ai-tag-matcher
- * @version 1.1.0
+ * @version 1.2.0
  * @since 2026-01-23
  */
 
@@ -39,18 +40,34 @@ const DEFAULT_CONFIG: TagMatcherConfig = {
 };
 
 /**
+ * 默认缓存 TTL：5 分钟
+ */
+const DEFAULT_CACHE_TTL_MS = 5 * 60 * 1000;
+
+/**
+ * 缓存条目（带过期时间）
+ */
+interface CachedProfileEntry {
+  profiles: FolderTagProfile[];
+  cachedAt: number;
+}
+
+/**
  * AI 标签匹配器类
  */
 export class AiTagMatcher {
   private config: TagMatcherConfig;
-  private folderProfiles: Map<string, FolderTagProfile[]>;
+  private profileCache: Map<string, CachedProfileEntry>;
+  private cacheTtlMs: number;
 
   constructor(
     private supabase: SupabaseClient,
     config?: Partial<TagMatcherConfig>,
+    cacheTtlMs?: number,
   ) {
     this.config = { ...DEFAULT_CONFIG, ...config };
-    this.folderProfiles = new Map();
+    this.profileCache = new Map();
+    this.cacheTtlMs = cacheTtlMs ?? DEFAULT_CACHE_TTL_MS;
   }
 
   /**
@@ -310,12 +327,27 @@ export class AiTagMatcher {
   }
 
   /**
-   * 获取用户的文件夹标签画像（带缓存）
+   * 获取用户的文件夹标签画像（带缓存和 TTL）
+   * v1.2.0: 添加缓存过期策略
    */
   async getFolderProfiles(userId: string): Promise<FolderTagProfile[]> {
-    // 缓存检查
-    if (this.folderProfiles.has(userId)) {
-      return this.folderProfiles.get(userId)!;
+    // 缓存检查（包含过期判断）
+    const cached = this.profileCache.get(userId);
+    if (cached) {
+      const age = Date.now() - cached.cachedAt;
+      if (age < this.cacheTtlMs) {
+        logger.debug(
+          { userId, cacheAge: age, ttl: this.cacheTtlMs },
+          "使用缓存的文件夹画像",
+        );
+        return cached.profiles;
+      }
+      // 缓存过期，清除并重新加载
+      logger.debug(
+        { userId, cacheAge: age, ttl: this.cacheTtlMs },
+        "缓存已过期，重新加载文件夹画像",
+      );
+      this.profileCache.delete(userId);
     }
 
     // 从数据库加载
@@ -358,7 +390,10 @@ export class AiTagMatcher {
       };
     });
 
-    this.folderProfiles.set(userId, profiles);
+    this.profileCache.set(userId, {
+      profiles,
+      cachedAt: Date.now(),
+    });
     return profiles;
   }
 
@@ -366,7 +401,7 @@ export class AiTagMatcher {
    * 清除用户缓存（文件夹变更时调用）
    */
   clearCache(userId: string): void {
-    this.folderProfiles.delete(userId);
+    this.profileCache.delete(userId);
     logger.debug({ userId }, "已清除用户文件夹画像缓存");
   }
 
@@ -374,7 +409,18 @@ export class AiTagMatcher {
    * 清除所有缓存
    */
   clearAllCache(): void {
-    this.folderProfiles.clear();
+    this.profileCache.clear();
     logger.debug("已清除所有文件夹画像缓存");
+  }
+
+  /**
+   * 获取缓存统计信息（用于监控）
+   * v1.2.0 新增
+   */
+  getCacheStats(): { size: number; ttlMs: number } {
+    return {
+      size: this.profileCache.size,
+      ttlMs: this.cacheTtlMs,
+    };
   }
 }
