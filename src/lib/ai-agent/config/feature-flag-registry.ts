@@ -1309,6 +1309,35 @@ export const FEATURE_FLAG_REGISTRY: FeatureFlagDefinition[] = [
       },
     ],
   },
+  // ===========================================================================
+  // 智能分类系统 v5.1
+  // ===========================================================================
+  {
+    name: "ENABLE_AI_TAG_MATCHER",
+    description:
+      "AI 标签优先匹配系统 - 在 L0 规则匹配最前端使用 AI 标签进行文件夹匹配",
+    defaultValue: true,
+    module: "core",
+    phase: "stable",
+    addedVersion: "2.11.0",
+    integrationPoints: [
+      {
+        file: "lib/classification/v5/classification-pipeline/l0-rule-matcher.ts",
+        location: "constructor() - 初始化 AiTagMatcher",
+        type: "check",
+      },
+      {
+        file: "lib/classification/v5/classification-pipeline/l0-rule-matcher.ts",
+        location: "match() - Phase 0 AI 标签匹配",
+        type: "execute",
+      },
+      {
+        file: "lib/classification/v5/classification-pipeline/ai-tag-matcher.ts",
+        location: "match() - 执行三种匹配策略",
+        type: "execute",
+      },
+    ],
+  },
 ];
 
 // =============================================================================
