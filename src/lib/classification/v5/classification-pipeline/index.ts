@@ -21,6 +21,14 @@ export { T1Corrector } from "./t1-corrector";
 // v5.1 新增：AI 标签匹配系统
 export { AiTagMatcher } from "./ai-tag-matcher";
 export { FolderTagProfilerService } from "./folder-tag-profiler.service";
+export { TagSynonymMapper, tagSynonymMapper } from "./tag-synonym-mapper";
+export {
+  TagMatchMetrics,
+  tagMatchMetrics,
+  type MatchType,
+  type MatchRecord,
+  type MatchStats,
+} from "./tag-match-metrics";
 
 export type {
   ClassificationRequest,

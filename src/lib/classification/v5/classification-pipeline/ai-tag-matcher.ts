@@ -7,8 +7,10 @@
  * 2. 核心标签匹配：标签 ↔ 文件夹核心标签
  * 3. 相关标签匹配：标签 ↔ 文件夹相关标签
  *
+ * v1.1.0: 集成同义词映射器和监控指标
+ *
  * @module @/lib/classification/v5/classification-pipeline/ai-tag-matcher
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2026-01-23
  */
 
@@ -20,6 +22,8 @@ import type {
   TagMatchResult,
   TagMatcherConfig,
 } from "./types";
+import { tagSynonymMapper } from "./tag-synonym-mapper";
+import { tagMatchMetrics } from "./tag-match-metrics";
 
 const logger = createLogger("ai-tag-matcher");
 
@@ -51,8 +55,11 @@ export class AiTagMatcher {
 
   /**
    * 主匹配方法 - 在 L0 最前端调用
+   * v1.1.0: 集成监控指标和同义词扩展
    */
   async match(request: ClassificationRequest): Promise<TagMatchResult | null> {
+    const startTime = Date.now();
+
     if (!request.tags || request.tags.length === 0) {
       logger.debug(
         { bookmarkId: request.bookmarkId },
@@ -71,56 +78,97 @@ export class AiTagMatcher {
     }
 
     const normalizedTags = request.tags.map((t) => t.toLowerCase().trim());
+    // v1.1.0: 使用同义词映射器扩展标签
+    const expandedTags = tagSynonymMapper.expandTags(normalizedTags);
 
-    // 策略 1：标签 ↔ 文件夹名精确匹配（最高优先级）
-    const exactMatch = this.matchExactFolderName(normalizedTags, profiles);
+    // 策略 1：标签 ↔ 文件夹名精确���配（最高优先级）
+    const exactMatch = this.matchExactFolderName(expandedTags, profiles);
     if (exactMatch) {
+      const duration = Date.now() - startTime;
       logger.info(
         {
           bookmarkId: request.bookmarkId,
           matchType: "exact_name",
           folderId: exactMatch.folderId,
           confidence: exactMatch.confidence,
+          duration,
         },
         "AI标签精确匹配成功",
+      );
+      // v1.1.0: 记录监控指标
+      tagMatchMetrics.recordMatch(
+        request.bookmarkId,
+        request.userId,
+        "exact_name",
+        exactMatch.confidence,
+        exactMatch.matchedTags,
+        exactMatch.folderId,
+        duration,
       );
       return exactMatch;
     }
 
     // 策略 2：标签 ↔ 文件夹核心标签匹配
-    const coreMatch = this.matchCoreTags(normalizedTags, profiles);
+    const coreMatch = this.matchCoreTags(expandedTags, profiles);
     if (coreMatch) {
+      const duration = Date.now() - startTime;
       logger.info(
         {
           bookmarkId: request.bookmarkId,
           matchType: "core_tag",
           folderId: coreMatch.folderId,
           confidence: coreMatch.confidence,
+          duration,
         },
         "AI标签核心标签匹配成功",
+      );
+      // v1.1.0: 记录监控指标
+      tagMatchMetrics.recordMatch(
+        request.bookmarkId,
+        request.userId,
+        "core_tag",
+        coreMatch.confidence,
+        coreMatch.matchedTags,
+        coreMatch.folderId,
+        duration,
       );
       return coreMatch;
     }
 
     // 策略 3：标签 ↔ 文件夹相关标签匹配
-    const relatedMatch = this.matchRelatedTags(normalizedTags, profiles);
+    const relatedMatch = this.matchRelatedTags(expandedTags, profiles);
     if (relatedMatch) {
+      const duration = Date.now() - startTime;
       logger.info(
         {
           bookmarkId: request.bookmarkId,
           matchType: "related_tag",
           folderId: relatedMatch.folderId,
           confidence: relatedMatch.confidence,
+          duration,
         },
         "AI标签相关标签匹配成功",
+      );
+      // v1.1.0: 记录监控指标
+      tagMatchMetrics.recordMatch(
+        request.bookmarkId,
+        request.userId,
+        "related_tag",
+        relatedMatch.confidence,
+        relatedMatch.matchedTags,
+        relatedMatch.folderId,
+        duration,
       );
       return relatedMatch;
     }
 
+    const duration = Date.now() - startTime;
     logger.debug(
-      { bookmarkId: request.bookmarkId },
+      { bookmarkId: request.bookmarkId, duration },
       "AI 标签无匹配，继续后续流程",
     );
+    // v1.1.0: 记录无匹配
+    tagMatchMetrics.recordNoMatch(request.bookmarkId, request.userId, duration);
     return null;
   }
 
