@@ -33,6 +33,9 @@ import type {
 import { relatedDiscoveryInputSchema } from "./types";
 import { SimilarityFinder } from "./similarity-finder";
 
+// Supabase 客户端类型
+type SupabaseClientType = Awaited<ReturnType<typeof createClient>>;
+
 // ============================================
 // Output Schema 定义
 // ============================================
@@ -475,8 +478,7 @@ export class RelatedDiscoverySkill extends OrchestrationSkill<
   private async getSourceInfo(
     input: RelatedDiscoveryInput,
     userId: string,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    supabase: any,
+    supabase: SupabaseClientType,
   ): Promise<SourceInfo> {
     const sourceInfo: SourceInfo = {
       type: input.source,
@@ -512,8 +514,7 @@ export class RelatedDiscoverySkill extends OrchestrationSkill<
   private async getSourceBookmark(
     input: RelatedDiscoveryInput,
     userId: string,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    supabase: any,
+    supabase: SupabaseClientType,
   ): Promise<BookmarkForDiscovery | null> {
     if (input.source === "bookmark" && input.bookmarkId) {
       const { data } = await supabase
@@ -535,8 +536,7 @@ export class RelatedDiscoverySkill extends OrchestrationSkill<
   private async fetchCandidates(
     userId: string,
     input: RelatedDiscoveryInput,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    supabase: any,
+    supabase: SupabaseClientType,
   ): Promise<BookmarkForDiscovery[]> {
     let query = supabase
       .from("bookmarks")

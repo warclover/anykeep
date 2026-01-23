@@ -102,17 +102,19 @@ export async function tagBookmarks(
     return { success: false, error: error.message, errorCode: "DB_ERROR" };
   }
 
-  const bookmarks: BookmarkBrief[] = (data || []).map((b: any) => ({
-    id: b.id,
-    title: b.title || "",
-    url: b.url,
-    description: b.description ?? undefined,
-    tags: b.user_tags || [],
-    folderName: b.folders?.name ?? undefined,
-    platform: b.platform || "OTHER",
-    rating: b.rating ?? undefined,
-    createdAt: b.created_at ?? new Date().toISOString(),
-  }));
+  const bookmarks: BookmarkBrief[] = (data || []).map(
+    (b: BookmarkRowWithFolder) => ({
+      id: b.id,
+      title: b.title || "",
+      url: b.url,
+      description: b.description ?? undefined,
+      tags: b.user_tags || [],
+      folderName: b.folders?.name ?? undefined,
+      platform: b.platform || "OTHER",
+      rating: b.rating ?? undefined,
+      createdAt: b.created_at ?? new Date().toISOString(),
+    }),
+  );
 
   return {
     success: true,
@@ -232,7 +234,7 @@ export async function tagBatchAdd(
   };
 
   // 使用 RPC 函数批量添加
-  const { error } = await (supabase.rpc as any)("batch_add_tags", {
+  const { error } = await supabase.rpc("batch_add_tags", {
     p_bookmark_ids: bookmarkIds,
     p_tags: tags,
   });
@@ -260,7 +262,7 @@ export async function tagBatchRemove(
   };
 
   // 使用 RPC 函数批量移除
-  const { error } = await (supabase.rpc as any)("batch_remove_tags", {
+  const { error } = await supabase.rpc("batch_remove_tags", {
     p_bookmark_ids: bookmarkIds,
     p_tags: tags,
   });

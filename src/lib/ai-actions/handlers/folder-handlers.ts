@@ -4,11 +4,9 @@
  * 文件夹相关操作的处理器
  *
  * @module ai-actions/handlers/folder-handlers
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-25
  */
-
-/* eslint-disable @typescript-eslint/no-explicit-any -- Supabase query result types require any for nested joins */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
@@ -16,14 +14,14 @@ import type { AIActionResult, BookmarkBrief, FolderBrief } from "../types";
 
 type SupabaseClientType = SupabaseClient<Database>;
 
-// 本地类型定义（保留以便类型检查引用）
-interface _FolderRow {
+// 本地类型定义
+interface FolderRow {
   id: number;
   name: string;
   parent_id: number | null;
 }
 
-interface _BookmarkRow {
+interface BookmarkRow {
   id: number;
   title: string | null;
   url: string;
@@ -32,6 +30,40 @@ interface _BookmarkRow {
   platform: string | null;
   rating: number | null;
   created_at: string | null;
+}
+
+// 文件夹选择字段常量
+const FOLDER_SELECT = "id, name, parent_id" as const;
+const BOOKMARK_SELECT =
+  "id, title, url, description, user_tags, platform, rating, created_at" as const;
+
+/**
+ * 转换文件夹行为简要信息
+ */
+function toFolderBrief(f: FolderRow): FolderBrief {
+  return {
+    id: f.id,
+    name: f.name,
+    parentId: f.parent_id ?? undefined,
+    bookmarkCount: 0,
+    path: f.name,
+  };
+}
+
+/**
+ * 转换书签行为简要信息
+ */
+function toBookmarkBrief(b: BookmarkRow): BookmarkBrief {
+  return {
+    id: b.id,
+    title: b.title || "",
+    url: b.url,
+    description: b.description ?? undefined,
+    tags: b.user_tags || [],
+    platform: b.platform || "OTHER",
+    rating: b.rating ?? undefined,
+    createdAt: b.created_at ?? new Date().toISOString(),
+  };
 }
 
 // ============================================================================
@@ -45,8 +77,9 @@ export async function folderList(
 ): Promise<AIActionResult<FolderBrief[]>> {
   const { parentId } = params as { parentId?: number };
 
-  let queryBuilder = (supabase.from("folders") as any)
-    .select("id, name, parent_id")
+  let queryBuilder = supabase
+    .from("folders")
+    .select(FOLDER_SELECT)
     .eq("user_id", userId)
     .order("order", { ascending: true });
 
@@ -60,13 +93,7 @@ export async function folderList(
     return { success: false, error: error.message, errorCode: "DB_ERROR" };
   }
 
-  const folders: FolderBrief[] = (data || []).map((f: any) => ({
-    id: f.id,
-    name: f.name,
-    parentId: f.parent_id ?? undefined,
-    bookmarkCount: 0,
-    path: f.name, // 简化路径
-  }));
+  const folders: FolderBrief[] = (data || []).map(toFolderBrief);
 
   return {
     success: true,
@@ -82,8 +109,9 @@ export async function folderGet(
 ): Promise<AIActionResult<FolderBrief>> {
   const { id } = params as { id: number };
 
-  const { data, error } = await (supabase.from("folders") as any)
-    .select("id, name, parent_id")
+  const { data, error } = await supabase
+    .from("folders")
+    .select(FOLDER_SELECT)
     .eq("id", id)
     .eq("user_id", userId)
     .single();
@@ -92,13 +120,7 @@ export async function folderGet(
     return { success: false, error: error.message, errorCode: "DB_ERROR" };
   }
 
-  const folder: FolderBrief = {
-    id: data.id,
-    name: data.name,
-    parentId: data.parent_id ?? undefined,
-    bookmarkCount: 0,
-    path: data.name,
-  };
+  const folder = toFolderBrief(data);
 
   return {
     success: true,
@@ -117,10 +139,9 @@ export async function folderBookmarks(
     limit?: number;
   };
 
-  const { data, error } = await (supabase.from("bookmarks") as any)
-    .select(
-      "id, title, url, description, user_tags, platform, rating, created_at",
-    )
+  const { data, error } = await supabase
+    .from("bookmarks")
+    .select(BOOKMARK_SELECT)
     .eq("folder_id", folderId)
     .eq("user_id", userId)
     .is("deleted_at", null)
@@ -131,16 +152,7 @@ export async function folderBookmarks(
     return { success: false, error: error.message, errorCode: "DB_ERROR" };
   }
 
-  const bookmarks: BookmarkBrief[] = (data || []).map((b: any) => ({
-    id: b.id,
-    title: b.title || "",
-    url: b.url,
-    description: b.description ?? undefined,
-    tags: b.user_tags || [],
-    platform: b.platform || "OTHER",
-    rating: b.rating ?? undefined,
-    createdAt: b.created_at ?? new Date().toISOString(),
-  }));
+  const bookmarks: BookmarkBrief[] = (data || []).map(toBookmarkBrief);
 
   return {
     success: true,
@@ -168,26 +180,21 @@ export async function folderCreate(
     description?: string;
   };
 
-  const { data, error } = await (supabase.from("folders") as any)
+  const { data, error } = await supabase
+    .from("folders")
     .insert({
       user_id: userId,
       name,
       parent_id: parentId,
     })
-    .select("id, name, parent_id")
+    .select(FOLDER_SELECT)
     .single();
 
   if (error) {
     return { success: false, error: error.message, errorCode: "DB_ERROR" };
   }
 
-  const folder: FolderBrief = {
-    id: data.id,
-    name: data.name,
-    parentId: data.parent_id ?? undefined,
-    bookmarkCount: 0,
-    path: data.name,
-  };
+  const folder = toFolderBrief(data);
 
   return {
     success: true,
@@ -212,24 +219,19 @@ export async function folderUpdate(
   if (name !== undefined) updateData.name = name;
   if (parentId !== undefined) updateData.parent_id = parentId;
 
-  const { data, error } = await (supabase.from("folders") as any)
+  const { data, error } = await supabase
+    .from("folders")
     .update(updateData)
     .eq("id", id)
     .eq("user_id", userId)
-    .select("id, name, parent_id")
+    .select(FOLDER_SELECT)
     .single();
 
   if (error) {
     return { success: false, error: error.message, errorCode: "DB_ERROR" };
   }
 
-  const folder: FolderBrief = {
-    id: data.id,
-    name: data.name,
-    parentId: data.parent_id ?? undefined,
-    bookmarkCount: 0,
-    path: data.name,
-  };
+  const folder = toFolderBrief(data);
 
   return {
     success: true,
@@ -246,7 +248,8 @@ export async function folderDelete(
 ): Promise<AIActionResult<{ deletedId: number }>> {
   const { id } = params as { id: number };
 
-  const { error } = await (supabase.from("folders") as any)
+  const { error } = await supabase
+    .from("folders")
     .delete()
     .eq("id", id)
     .eq("user_id", userId);

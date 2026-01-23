@@ -4,13 +4,14 @@
  * 书签相关操作的处理器
  *
  * @module ai-actions/handlers/bookmark-handlers
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-25
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any -- Supabase query result types require any for nested joins */
-
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type {
+  SupabaseClient,
+  PostgrestFilterBuilder,
+} from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
 import type { AIActionResult, BookmarkBrief } from "../types";
 import type { BookmarkRow as BaseBookmarkRow } from "@/types/domain";
@@ -32,6 +33,49 @@ type BookmarkRowWithFolder = Pick<
 > & {
   folders?: { name: string } | null;
 };
+
+// 书签查询构建器类型
+type BookmarkQueryBuilder = PostgrestFilterBuilder<
+  Database["public"],
+  Database["public"]["Tables"]["bookmarks"]["Row"],
+  BookmarkRowWithFolder[],
+  "bookmarks",
+  Database["public"]["Tables"]["bookmarks"]["Relationships"]
+>;
+
+// 书签表选择字段常量
+const BOOKMARK_SELECT_WITH_FOLDER =
+  "id, title, url, description, user_tags, platform, rating, created_at, folder_id, folders!bookmarks_folder_id_fkey(name)" as const;
+
+const BOOKMARK_SELECT_SIMPLE =
+  "id, title, url, description, user_tags, platform, rating, created_at" as const;
+
+/**
+ * 创建书签查询构建器（带 folders 关联）
+ * 封装类型断言，避免在业务代码中重复 as any
+ */
+function createBookmarkQuery(supabase: SupabaseClientType) {
+  return supabase
+    .from("bookmarks")
+    .select(BOOKMARK_SELECT_WITH_FOLDER) as unknown as BookmarkQueryBuilder;
+}
+
+/**
+ * 转换书签行为简要信息
+ */
+function toBookmarkBrief(b: BookmarkRowWithFolder): BookmarkBrief {
+  return {
+    id: b.id,
+    title: b.title || "",
+    url: b.url,
+    description: b.description ?? undefined,
+    tags: b.user_tags || [],
+    folderName: b.folders?.name ?? undefined,
+    platform: b.platform || "OTHER",
+    rating: b.rating ?? undefined,
+    createdAt: b.created_at ?? new Date().toISOString(),
+  };
+}
 
 // ============================================================================
 // 书签读取操作
@@ -56,10 +100,7 @@ export async function bookmarkSearch(
     platform?: string;
   };
 
-  let queryBuilder = (supabase.from("bookmarks") as any)
-    .select(
-      "id, title, url, description, user_tags, platform, rating, created_at, folders!bookmarks_folder_id_fkey(name)",
-    )
+  let queryBuilder = createBookmarkQuery(supabase)
     .eq("user_id", userId)
     .is("deleted_at", null)
     .or(
@@ -83,17 +124,7 @@ export async function bookmarkSearch(
     return { success: false, error: error.message, errorCode: "DB_ERROR" };
   }
 
-  const bookmarks: BookmarkBrief[] = (data || []).map((b: any) => ({
-    id: b.id,
-    title: b.title || "",
-    url: b.url,
-    description: b.description ?? undefined,
-    tags: b.user_tags || [],
-    folderName: b.folders?.name ?? undefined,
-    platform: b.platform || "OTHER",
-    rating: b.rating ?? undefined,
-    createdAt: b.created_at ?? new Date().toISOString(),
-  }));
+  const bookmarks: BookmarkBrief[] = (data || []).map(toBookmarkBrief);
 
   return {
     success: true,
@@ -109,13 +140,10 @@ export async function bookmarkGet(
 ): Promise<AIActionResult<BookmarkBrief>> {
   const { id } = params as { id: number };
 
-  const { data, error } = (await (supabase.from("bookmarks") as any)
-    .select(
-      "id, title, url, description, user_tags, platform, rating, created_at, folders!bookmarks_folder_id_fkey(name)",
-    )
+  const { data, error } = await createBookmarkQuery(supabase)
     .eq("id", id)
     .eq("user_id", userId)
-    .single()) as { data: BookmarkRowWithFolder | null; error: Error | null };
+    .single();
 
   if (error) {
     return { success: false, error: error.message, errorCode: "DB_ERROR" };
@@ -125,17 +153,7 @@ export async function bookmarkGet(
     return { success: false, error: "书签不存在", errorCode: "NOT_FOUND" };
   }
 
-  const bookmark: BookmarkBrief = {
-    id: data.id,
-    title: data.title || "",
-    url: data.url,
-    description: data.description ?? undefined,
-    tags: data.user_tags || [],
-    folderName: data.folders?.name ?? undefined,
-    platform: data.platform || "OTHER",
-    rating: data.rating ?? undefined,
-    createdAt: data.created_at ?? new Date().toISOString(),
-  };
+  const bookmark = toBookmarkBrief(data);
 
   return {
     success: true,
@@ -167,10 +185,7 @@ export async function bookmarkList(
     sortOrder?: "asc" | "desc";
   };
 
-  let queryBuilder = (supabase.from("bookmarks") as any)
-    .select(
-      "id, title, url, description, user_tags, platform, rating, created_at, folders!bookmarks_folder_id_fkey(name)",
-    )
+  let queryBuilder = createBookmarkQuery(supabase)
     .eq("user_id", userId)
     .is("deleted_at", null)
     .order(sortBy, { ascending: sortOrder === "asc" })
@@ -186,26 +201,13 @@ export async function bookmarkList(
     queryBuilder = queryBuilder.overlaps("user_tags", tags);
   }
 
-  const { data, error } = (await queryBuilder) as {
-    data: BookmarkRowWithFolder[] | null;
-    error: Error | null;
-  };
+  const { data, error } = await queryBuilder;
 
   if (error) {
     return { success: false, error: error.message, errorCode: "DB_ERROR" };
   }
 
-  const bookmarks: BookmarkBrief[] = (data || []).map((b: any) => ({
-    id: b.id,
-    title: b.title || "",
-    url: b.url,
-    description: b.description ?? undefined,
-    tags: b.user_tags || [],
-    folderName: b.folders?.name ?? undefined,
-    platform: b.platform || "OTHER",
-    rating: b.rating ?? undefined,
-    createdAt: b.created_at ?? new Date().toISOString(),
-  }));
+  const bookmarks: BookmarkBrief[] = (data || []).map(toBookmarkBrief);
 
   return {
     success: true,
@@ -225,16 +227,12 @@ export async function bookmarkRelated(
   };
 
   // 先获取当前书签的标签
-  const { data: currentBookmark, error: fetchError } = (await (
-    supabase.from("bookmarks") as any
-  )
+  const { data: currentBookmark, error: fetchError } = await supabase
+    .from("bookmarks")
     .select("user_tags, folder_id")
     .eq("id", bookmarkId)
     .eq("user_id", userId)
-    .single()) as {
-    data: { user_tags: string[] | null; folder_id: number | null } | null;
-    error: Error | null;
-  };
+    .single();
 
   if (fetchError) {
     return {
@@ -246,10 +244,7 @@ export async function bookmarkRelated(
 
   // 根据标签查找相关书签
   const tags = currentBookmark?.user_tags || [];
-  let queryBuilder = (supabase.from("bookmarks") as any)
-    .select(
-      "id, title, url, description, user_tags, platform, rating, created_at, folders!bookmarks_folder_id_fkey(name)",
-    )
+  let queryBuilder = createBookmarkQuery(supabase)
     .eq("user_id", userId)
     .is("deleted_at", null)
     .neq("id", bookmarkId)
@@ -261,26 +256,13 @@ export async function bookmarkRelated(
     queryBuilder = queryBuilder.eq("folder_id", currentBookmark.folder_id);
   }
 
-  const { data, error } = (await queryBuilder) as {
-    data: BookmarkRowWithFolder[] | null;
-    error: Error | null;
-  };
+  const { data, error } = await queryBuilder;
 
   if (error) {
     return { success: false, error: error.message, errorCode: "DB_ERROR" };
   }
 
-  const bookmarks: BookmarkBrief[] = (data || []).map((b: any) => ({
-    id: b.id,
-    title: b.title || "",
-    url: b.url,
-    description: b.description ?? undefined,
-    tags: b.user_tags || [],
-    folderName: b.folders?.name ?? undefined,
-    platform: b.platform || "OTHER",
-    rating: b.rating ?? undefined,
-    createdAt: b.created_at ?? new Date().toISOString(),
-  }));
+  const bookmarks: BookmarkBrief[] = (data || []).map(toBookmarkBrief);
 
   return {
     success: true,
@@ -306,7 +288,8 @@ export async function bookmarkCreate(
     tags?: string[];
   };
 
-  const { data, error } = (await (supabase.from("bookmarks") as any)
+  const { data, error } = await supabase
+    .from("bookmarks")
     .insert({
       user_id: userId,
       url,
@@ -316,10 +299,8 @@ export async function bookmarkCreate(
       user_tags: tags || [],
       platform: "OTHER",
     })
-    .select(
-      "id, title, url, description, user_tags, platform, rating, created_at",
-    )
-    .single()) as { data: BookmarkRowWithFolder | null; error: Error | null };
+    .select(BOOKMARK_SELECT_SIMPLE)
+    .single();
 
   if (error) {
     return { success: false, error: error.message, errorCode: "DB_ERROR" };
@@ -372,14 +353,13 @@ export async function bookmarkUpdate(
   if (rating !== undefined) updateData.rating = rating;
   if (isStarred !== undefined) updateData.is_starred = isStarred;
 
-  const { data, error } = (await (supabase.from("bookmarks") as any)
+  const { data, error } = await supabase
+    .from("bookmarks")
     .update(updateData)
     .eq("id", id)
     .eq("user_id", userId)
-    .select(
-      "id, title, url, description, user_tags, platform, rating, created_at",
-    )
-    .single()) as { data: BookmarkRowWithFolder | null; error: Error | null };
+    .select(BOOKMARK_SELECT_SIMPLE)
+    .single();
 
   if (error) {
     return { success: false, error: error.message, errorCode: "DB_ERROR" };
@@ -418,7 +398,8 @@ export async function bookmarkMove(
     targetFolderId: number;
   };
 
-  const { error } = await (supabase.from("bookmarks") as any)
+  const { error } = await supabase
+    .from("bookmarks")
     .update({ folder_id: targetFolderId })
     .in("id", bookmarkIds)
     .eq("user_id", userId);
@@ -443,7 +424,8 @@ export async function bookmarkDelete(
   const { bookmarkIds } = params as { bookmarkIds: number[] };
 
   // 软删除
-  const { error } = await (supabase.from("bookmarks") as any)
+  const { error } = await supabase
+    .from("bookmarks")
     .update({ deleted_at: new Date().toISOString() })
     .in("id", bookmarkIds)
     .eq("user_id", userId);
@@ -470,7 +452,8 @@ export async function bookmarkRate(
     rating: number;
   };
 
-  const { error } = await (supabase.from("bookmarks") as any)
+  const { error } = await supabase
+    .from("bookmarks")
     .update({ rating })
     .eq("id", bookmarkId)
     .eq("user_id", userId);

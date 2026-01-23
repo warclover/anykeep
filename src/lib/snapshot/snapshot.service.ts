@@ -34,6 +34,22 @@ const getSnapshotsTable = (supabase: SupabaseClient) =>
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (supabase as any).from("bookmark_snapshots");
 
+// 本地查询结果类型定义
+interface SnapshotListRow {
+  id: number;
+  bookmark_id: number;
+  snapshot_type: string;
+  status: string;
+  readable_title: string | null;
+  readable_excerpt: string | null;
+  captured_at: string | null;
+  screenshot_storage_path: string | null;
+}
+
+interface SnapshotIdRow {
+  id: number;
+}
+
 // ============================================================================
 // 类型定义
 // ============================================================================
@@ -470,8 +486,7 @@ export class SnapshotService {
       throw new Error(`获取快照列表失败: ${error.message}`);
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (data || []).map((row: any) => ({
+    return (data || []).map((row: SnapshotListRow) => ({
       id: row.id,
       bookmarkId: row.bookmark_id,
       snapshotType: row.snapshot_type as SnapshotType,
@@ -734,8 +749,7 @@ export class SnapshotService {
       return [];
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (data || []).map((row: any) => row.id);
+    return (data || []).map((row: SnapshotIdRow) => row.id);
   }
 
   /**

@@ -22,6 +22,10 @@ import type {
   VectorSearchResult,
 } from "./types";
 import { logger } from "@/lib/logger";
+import type { createClient } from "@/lib/supabase/server";
+
+// Supabase 客户端类型
+type SupabaseClientType = Awaited<ReturnType<typeof createClient>>;
 
 /**
  * 相似度搜索选项
@@ -49,8 +53,7 @@ export class SimilarityFinder {
     embedding: number[],
     userId: string,
     options: SearchOptions,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    supabase: any,
+    supabase: SupabaseClientType,
   ): Promise<VectorSearchResult[]> {
     try {
       const { data, error } = await supabase.rpc("match_bookmarks", {

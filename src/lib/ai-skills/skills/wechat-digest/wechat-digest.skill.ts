@@ -41,6 +41,21 @@ import {
   WECHAT_DIGEST_STEPS,
 } from "./types";
 
+// 本地类型定义 - Supabase 查询结果
+interface WechatArticleRow {
+  id: number;
+  title: string;
+  url: string;
+  user_tags: string[] | null;
+  created_at: string;
+  bookmark_snapshots?: Array<{
+    readable_word_count: number | null;
+    readable_excerpt: string | null;
+    readable_text_content: string | null;
+    readable_byline: string | null;
+  }>;
+}
+
 // ============================================
 // WechatDigestSkill 实现
 // ============================================
@@ -413,27 +428,28 @@ export class WechatDigestSkill extends OrchestrationSkill<
     }
 
     // 转换数据
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let articles: WechatArticleData[] = (data || []).map((item: any) => {
-      const snapshot = item.bookmark_snapshots?.[0];
-      const accountInfo = this.extractAccountInfo(
-        item.url,
-        snapshot?.readable_byline,
-      );
+    let articles: WechatArticleData[] = (data || []).map(
+      (item: WechatArticleRow) => {
+        const snapshot = item.bookmark_snapshots?.[0];
+        const accountInfo = this.extractAccountInfo(
+          item.url,
+          snapshot?.readable_byline,
+        );
 
-      return {
-        bookmarkId: item.id,
-        title: item.title,
-        url: item.url,
-        wordCount: snapshot?.readable_word_count || 0,
-        excerpt: snapshot?.readable_excerpt || "",
-        fullContent: snapshot?.readable_text_content || undefined,
-        tags: item.user_tags || [],
-        createdAt: item.created_at,
-        accountName: accountInfo.name,
-        accountId: accountInfo.id,
-      };
-    });
+        return {
+          bookmarkId: item.id,
+          title: item.title,
+          url: item.url,
+          wordCount: snapshot?.readable_word_count || 0,
+          excerpt: snapshot?.readable_excerpt || "",
+          fullContent: snapshot?.readable_text_content || undefined,
+          tags: item.user_tags || [],
+          createdAt: item.created_at,
+          accountName: accountInfo.name,
+          accountId: accountInfo.id,
+        };
+      },
+    );
 
     // 公众号筛选
     if (input.filter?.accountName) {

@@ -16,6 +16,35 @@ import { supabaseEnv } from "@/lib/env";
 import type { ChunkType } from "./types";
 
 /**
+ * 数据库返回的切片搜索结果行结构
+ */
+interface ChunkSearchRow {
+  chunk_id: string;
+  bookmark_id: number;
+  chunk_content: string;
+  chunk_type: string;
+  chunk_index: number;
+  parent_content: string | null;
+  similarity: number;
+}
+
+/**
+ * 数据库返回的切片记录行结构
+ */
+interface ChunkRow {
+  id: string;
+  bookmark_id: number;
+  content: string;
+  chunk_type: string;
+  chunk_index: number;
+  content_hash?: string;
+  token_count?: number;
+  start_offset?: number;
+  end_offset?: number;
+  parent_index?: number | null;
+}
+
+/**
  * 切片搜索选项
  */
 export interface ChunkSearchOptions {
@@ -121,15 +150,7 @@ export class ChunkSearchService {
 
       // 转换结果格式
       const results: ChunkSearchResultWithContext[] = data.map(
-        (row: {
-          chunk_id: string;
-          bookmark_id: number;
-          chunk_content: string;
-          chunk_type: string;
-          chunk_index: number;
-          parent_content: string | null;
-          similarity: number;
-        }) => ({
+        (row: ChunkSearchRow) => ({
           chunkId: row.chunk_id,
           bookmarkId: row.bookmark_id,
           content: row.chunk_content,
@@ -187,8 +208,7 @@ export class ChunkSearchService {
         throw error;
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return (data || []).map((row: any) => ({
+      return (data || []).map((row: ChunkRow) => ({
         chunkId: row.id,
         bookmarkId: row.bookmark_id,
         content: row.content,

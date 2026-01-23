@@ -57,6 +57,16 @@ interface ListRecentResult {
   timeRangeLabel: string;
 }
 
+// 本地类型定义 - Supabase 查询结果
+interface BookmarkQueryRow {
+  id: number;
+  title: string | null;
+  url: string;
+  platform: string | null;
+  user_tags: string[] | null;
+  created_at: string;
+}
+
 // ============================================
 // Tool 实现
 // ============================================
@@ -114,15 +124,16 @@ export const listRecentTool: Tool<ListRecentParams, ListRecentResult> = {
       };
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const bookmarks: BookmarkItem[] = (data || []).map((item: any) => ({
-      id: item.id,
-      title: item.title || "",
-      url: item.url,
-      platform: item.platform || "OTHER",
-      tags: item.user_tags || [],
-      createdAt: item.created_at,
-    }));
+    const bookmarks: BookmarkItem[] = (data || []).map(
+      (item: BookmarkQueryRow) => ({
+        id: item.id,
+        title: item.title || "",
+        url: item.url,
+        platform: item.platform || "OTHER",
+        tags: item.user_tags || [],
+        createdAt: item.created_at,
+      }),
+    );
 
     logger.info(
       {

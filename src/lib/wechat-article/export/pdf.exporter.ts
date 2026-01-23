@@ -310,15 +310,12 @@ export async function exportToPdf(
   } = options;
 
   // 动态导入 puppeteer（避免在不支持的环境中报错）
-  // 使用 Function 构造器绕过 webpack 静态分析
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let puppeteer: any;
   try {
-    const dynamicImport = new Function(
-      "modulePath",
-      "return import(modulePath)",
-    );
-    puppeteer = await dynamicImport("puppeteer");
+    // 使用标准动态 import() 语法，避免 new Function() 的代码注入风险
+    // @ts-expect-error - 动态导入 puppeteer
+    puppeteer = await import("puppeteer");
   } catch {
     throw new Error("Puppeteer is not installed. Run: npm install puppeteer");
   }
@@ -399,11 +396,9 @@ export async function exportToPdf(
  */
 export async function isPuppeteerAvailable(): Promise<boolean> {
   try {
-    const dynamicImport = new Function(
-      "modulePath",
-      "return import(modulePath)",
-    );
-    await dynamicImport("puppeteer");
+    // 使用标准动态 import() 语法，避免 new Function() 的代码注入风险
+    // @ts-expect-error - 动态导入 puppeteer
+    await import("puppeteer");
     return true;
   } catch {
     return false;
