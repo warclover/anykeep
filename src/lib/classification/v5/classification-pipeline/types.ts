@@ -216,10 +216,10 @@ export interface TagMatcherConfig {
  * @since v5.1.1
  */
 export type MatchMode =
-  | "exact"        // 精确匹配（标准化后完全相等） - 直接返回
-  | "normalized"   // 标准化匹配（别名匹配） - 直接返回
-  | "partial"      // 部分匹配 - 传递给 T0 Rerank
-  | "core_tag"     // 核心标签匹配
+  | "exact" // 精确匹配（标准化后完全相等） - 直接返回
+  | "normalized" // 标准化匹配（别名匹配） - 直接返回
+  | "partial" // 部分匹配 - 传递给 T0 Rerank
+  | "core_tag" // 核心标签匹配
   | "related_tag"; // 相关标签匹配
 
 /**

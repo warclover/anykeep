@@ -25,6 +25,12 @@ const SYNONYM_GROUPS: string[][] = [
   ["golang", "go"],
   ["csharp", "c#", "c sharp"],
   ["cpp", "c++", "cplusplus"],
+  ["java", "jdk", "jvm"],
+  ["rust", "rustlang"],
+  ["swift", "swiftlang"],
+  ["kotlin", "kt"],
+  ["ruby", "rb"],
+  ["php", "php8"],
 
   // 前端框架
   ["react", "reactjs", "react.js"],
@@ -32,6 +38,10 @@ const SYNONYM_GROUPS: string[][] = [
   ["angular", "angularjs", "angular.js"],
   ["nextjs", "next.js", "next"],
   ["nuxtjs", "nuxt.js", "nuxt"],
+  ["svelte", "sveltejs", "sveltekit"],
+  ["solidjs", "solid.js", "solid"],
+  ["tailwind", "tailwindcss", "tailwind css"],
+  ["shadcn", "shadcn-ui", "shadcn/ui"],
 
   // 后端框架
   ["nodejs", "node.js", "node"],

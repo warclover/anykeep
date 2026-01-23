@@ -61,6 +61,20 @@ const DEFAULT_CONFIG: FolderAliasManagerConfig = {
 };
 
 /**
+ * 缓存限制配置
+ */
+const CACHE_LIMITS = {
+  /** 每个用户最多缓存的文件夹数 */
+  maxFoldersPerUser: 100,
+  /** 最多缓存的用户数 */
+  maxUsers: 1000,
+  /** 每个用户最多保留的学习记录数 */
+  maxLearningRecordsPerUser: 500,
+  /** 清理检查间隔（毫秒） */
+  cleanupIntervalMs: 10 * 60 * 1000, // 10 分钟
+};
+
+/**
  * 文件夹别名管理器
  *
  * 功能：
@@ -78,6 +92,9 @@ export class FolderAliasManager {
   /** 配置 */
   private config: FolderAliasManagerConfig;
 
+  /** 上次清理时间 */
+  private lastCleanupTime: number = 0;
+
   constructor(
     private supabase: SupabaseClient,
     config?: Partial<FolderAliasManagerConfig>,
@@ -85,6 +102,51 @@ export class FolderAliasManager {
     this.aliasCache = new Map();
     this.learningRecords = new Map();
     this.config = { ...DEFAULT_CONFIG, ...config };
+    this.lastCleanupTime = Date.now();
+  }
+
+  /**
+   * 执行定期清理（限制缓存大小 + 清理过期记录）
+   * 每次访问时检查，避免无界增长
+   */
+  private performPeriodicCleanup(): void {
+    const now = Date.now();
+    if (now - this.lastCleanupTime < CACHE_LIMITS.cleanupIntervalMs) {
+      return;
+    }
+    this.lastCleanupTime = now;
+
+    // 1. 清理过期学习记录
+    this.cleanupExpiredLearningRecords();
+
+    // 2. 限制用户数（LRU 策略：删除最早的用户）
+    if (this.aliasCache.size > CACHE_LIMITS.maxUsers) {
+      const usersToRemove = this.aliasCache.size - CACHE_LIMITS.maxUsers;
+      const keys = Array.from(this.aliasCache.keys()).slice(0, usersToRemove);
+      for (const key of keys) {
+        this.aliasCache.delete(key);
+      }
+      logger.debug({ removed: usersToRemove }, "缓存用户数超限，已清理");
+    }
+
+    // 3. 限制每个用户的学习记录数
+    for (const [userId, records] of this.learningRecords.entries()) {
+      if (records.length > CACHE_LIMITS.maxLearningRecordsPerUser) {
+        // 保留最近的记录
+        records.sort((a, b) => b.lastHitAt.getTime() - a.lastHitAt.getTime());
+        this.learningRecords.set(
+          userId,
+          records.slice(0, CACHE_LIMITS.maxLearningRecordsPerUser),
+        );
+        logger.debug(
+          {
+            userId,
+            removed: records.length - CACHE_LIMITS.maxLearningRecordsPerUser,
+          },
+          "学习记录超限，已清理",
+        );
+      }
+    }
   }
 
   /**
@@ -95,6 +157,9 @@ export class FolderAliasManager {
     folderId: string,
     folderName: string,
   ): Promise<string[]> {
+    // 定期清理，防止内存泄漏
+    this.performPeriodicCleanup();
+
     // 缓存检查
     const cached = this.getCachedAliases(userId, folderId);
     if (cached) {
@@ -215,7 +280,10 @@ export class FolderAliasManager {
         );
 
         this.addAlias(userId, folderId, normalizedTag).catch((err) => {
-          logger.error({ err, userId, folderId, tag: normalizedTag }, "自动添加别名失败");
+          logger.error(
+            { err, userId, folderId, tag: normalizedTag },
+            "自动添加别名失败",
+          );
         });
 
         // 从学习列表移除
@@ -267,7 +335,10 @@ export class FolderAliasManager {
         .eq("folder_id", parseInt(folderId));
 
       if (error) {
-        logger.error({ error, userId, folderId, alias: normalizedAlias }, "更新别名失败");
+        logger.error(
+          { error, userId, folderId, alias: normalizedAlias },
+          "更新别名失败",
+        );
         throw error;
       }
     }
@@ -275,7 +346,10 @@ export class FolderAliasManager {
     // 清除缓存
     this.clearCache(userId, folderId);
 
-    logger.info({ userId, folderId, alias: normalizedAlias }, "已添加文件夹别名");
+    logger.info(
+      { userId, folderId, alias: normalizedAlias },
+      "已添加文件夹别名",
+    );
   }
 
   /**
@@ -313,7 +387,10 @@ export class FolderAliasManager {
         .eq("folder_id", parseInt(folderId));
 
       if (error) {
-        logger.error({ error, userId, folderId, alias: normalizedAlias }, "移除别名失败");
+        logger.error(
+          { error, userId, folderId, alias: normalizedAlias },
+          "移除别名失败",
+        );
         throw error;
       }
     }
@@ -321,7 +398,10 @@ export class FolderAliasManager {
     // 清除缓存
     this.clearCache(userId, folderId);
 
-    logger.info({ userId, folderId, alias: normalizedAlias }, "已移除文件夹别名");
+    logger.info(
+      { userId, folderId, alias: normalizedAlias },
+      "已移除文件夹别名",
+    );
   }
 
   /**

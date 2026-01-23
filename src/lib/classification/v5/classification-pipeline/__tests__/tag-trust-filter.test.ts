@@ -65,8 +65,14 @@ describe("TagTrustFilter", () => {
       const shortTag = "AI"; // 2 chars, should have 0.5 penalty
       const normalTag = "React"; // 5 chars, no penalty
 
-      const shortResult = filter.filterAndWeight([shortTag], TagSourceLevel.S)[0];
-      const normalResult = filter.filterAndWeight([normalTag], TagSourceLevel.S)[0];
+      const shortResult = filter.filterAndWeight(
+        [shortTag],
+        TagSourceLevel.S,
+      )[0];
+      const normalResult = filter.filterAndWeight(
+        [normalTag],
+        TagSourceLevel.S,
+      )[0];
 
       // Short tag: 1.0 * 0.5 = 0.5
       expect(shortResult.weight).toBe(0.5);

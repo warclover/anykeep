@@ -9,15 +9,12 @@
 import type {
   TestBookmark,
   ClassificationResult,
-  _BatchClassificationResult,
   AccuracyMetrics,
   ColdStartMetrics,
-  _SemanticDriftMetrics,
   ConfidenceCalibrationMetrics,
-  _EvaluationReport,
   FailureCase,
   UserPersona,
-} from './types';
+} from "./types";
 
 /**
  * 评估指标计算器
@@ -28,7 +25,7 @@ export class MetricsCalculator {
    */
   calculateAccuracy(
     testBookmarks: TestBookmark[],
-    results: ClassificationResult[]
+    results: ClassificationResult[],
   ): AccuracyMetrics {
     let correctTop1 = 0;
     let correctTop3 = 0;
@@ -67,7 +64,7 @@ export class MetricsCalculator {
    */
   calculateAccuracyDelta(
     v4Accuracy: AccuracyMetrics,
-    v5Accuracy: AccuracyMetrics
+    v5Accuracy: AccuracyMetrics,
   ): number {
     if (v4Accuracy.top1Accuracy === 0) return 0;
     return (
@@ -84,7 +81,7 @@ export class MetricsCalculator {
   calculateColdStart(
     persona: UserPersona,
     testBookmarks: TestBookmark[],
-    results: ClassificationResult[]
+    results: ClassificationResult[],
   ): ColdStartMetrics {
     const folderMetrics = new Map<string, { correct: number; total: number }>();
 
@@ -99,7 +96,10 @@ export class MetricsCalculator {
       let correct = 0;
       for (const bookmark of folderBookmarks) {
         const result = results.find((r) => r.bookmarkId === bookmark.id);
-        if (result && result.predictedFolderId === bookmark.groundTruthFolderId) {
+        if (
+          result &&
+          result.predictedFolderId === bookmark.groundTruthFolderId
+        ) {
           correct++;
         }
       }
@@ -113,7 +113,7 @@ export class MetricsCalculator {
     // 计算总体指标
     let totalCorrect = 0;
     let totalSamples = 0;
-    const details: ColdStartMetrics['details'] = [];
+    const details: ColdStartMetrics["details"] = [];
 
     for (const folder of persona.folders) {
       const metrics = folderMetrics.get(folder.id);
@@ -130,7 +130,9 @@ export class MetricsCalculator {
       });
     }
 
-    const successfulFolders = details.filter((d) => d.first5Accuracy >= 0.8).length;
+    const successfulFolders = details.filter(
+      (d) => d.first5Accuracy >= 0.8,
+    ).length;
 
     return {
       successRate: details.length > 0 ? successfulFolders / details.length : 0,
@@ -147,23 +149,26 @@ export class MetricsCalculator {
    */
   calculateConfidenceCalibration(
     testBookmarks: TestBookmark[],
-    results: ClassificationResult[]
+    results: ClassificationResult[],
   ): ConfidenceCalibrationMetrics {
     const ranges = [
-      { name: 'high', min: 0.9, max: 1.0 },
-      { name: 'medium', min: 0.7, max: 0.9 },
-      { name: 'low', min: 0.0, max: 0.7 },
+      { name: "high", min: 0.9, max: 1.0 },
+      { name: "medium", min: 0.7, max: 0.9 },
+      { name: "low", min: 0.0, max: 0.7 },
     ];
 
     const rangeStats = ranges.map((range) => {
       const resultsInRange = results.filter(
-        (r) => r.confidence >= range.min && r.confidence < range.max
+        (r) => r.confidence >= range.min && r.confidence < range.max,
       );
 
       let errorCount = 0;
       for (const result of resultsInRange) {
         const bookmark = testBookmarks.find((b) => b.id === result.bookmarkId);
-        if (bookmark && result.predictedFolderId !== bookmark.groundTruthFolderId) {
+        if (
+          bookmark &&
+          result.predictedFolderId !== bookmark.groundTruthFolderId
+        ) {
           errorCount++;
         }
       }
@@ -172,7 +177,8 @@ export class MetricsCalculator {
         confidenceRange: `${range.name} (${range.min}-${range.max})`,
         totalSamples: resultsInRange.length,
         errorCount,
-        errorRate: resultsInRange.length > 0 ? errorCount / resultsInRange.length : 0,
+        errorRate:
+          resultsInRange.length > 0 ? errorCount / resultsInRange.length : 0,
       };
     });
 
@@ -195,7 +201,7 @@ export class MetricsCalculator {
   extractFailureCases(
     testBookmarks: TestBookmark[],
     results: ClassificationResult[],
-    maxCases: number = 20
+    maxCases: number = 20,
   ): FailureCase[] {
     const failures: FailureCase[] = [];
 
@@ -227,15 +233,15 @@ export class MetricsCalculator {
    */
   private analyzeFailureReason(
     bookmark: TestBookmark,
-    result: ClassificationResult
+    result: ClassificationResult,
   ): string {
     if (result.confidence < 0.7) {
-      return '置信度过低，系统不确定';
+      return "置信度过低，系统不确定";
     }
     if (result.usedT1) {
-      return 'T1 摘要可能抓取不准确';
+      return "T1 摘要可能抓取不准确";
     }
-    return '语义混淆或文件夹边界模糊';
+    return "语义混淆或文件夹边界模糊";
   }
 
   /**
@@ -243,17 +249,17 @@ export class MetricsCalculator {
    */
   private classifyFailureType(
     bookmark: TestBookmark,
-    result: ClassificationResult
-  ): FailureCase['failureType'] {
+    result: ClassificationResult,
+  ): FailureCase["failureType"] {
     if (result.confidence < 0.7) {
-      return 'low-confidence';
+      return "low-confidence";
     }
-    if (bookmark.source === 'edge-case') {
-      return 'edge-case';
+    if (bookmark.source === "edge-case") {
+      return "edge-case";
     }
-    if (bookmark.source === 'similar-content') {
-      return 'semantic-confusion';
+    if (bookmark.source === "similar-content") {
+      return "semantic-confusion";
     }
-    return 'cold-start';
+    return "cold-start";
   }
 }

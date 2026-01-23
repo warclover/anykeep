@@ -4,11 +4,12 @@
  * 处理 SEO 垃圾标签过滤、标签来源分级、黑名单排除
  *
  * @module @/lib/classification/v5/classification-pipeline/tag-trust-filter
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2026-01-23
  */
 
 import { createLogger } from "@/lib/logger";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 const logger = createLogger("tag-trust-filter");
 
@@ -165,7 +166,11 @@ export interface WeightedTag {
   /** 是否被过滤 */
   isFiltered: boolean;
   /** 过滤原因 */
-  filterReason?: "global_stop_tag" | "user_blacklist" | "too_short" | "too_long";
+  filterReason?:
+    | "global_stop_tag"
+    | "user_blacklist"
+    | "too_short"
+    | "too_long";
 }
 
 /**
@@ -188,8 +193,10 @@ export interface FilterStats {
  * 功能：
  * 1. SEO 垃圾词过滤（全局停用词表）
  * 2. 标签来源分级权重
- * 3. 用户自定义黑名单
+ * 3. 用户自定义黑名单（支持数据库持久化）
  * 4. 长度过滤（过短/过长）
+ *
+ * v1.1.0: 支持 Supabase 持久化黑名单
  */
 export class TagTrustFilter {
   /** 用户黑名单缓存: userId -> folderId -> Set<tag> */
@@ -198,9 +205,27 @@ export class TagTrustFilter {
   /** 自定义停用词（可扩展） */
   private customStopTags: Set<string>;
 
-  constructor() {
+  /** Supabase 客户端（可选，用于持久化） */
+  private supabase?: SupabaseClient;
+
+  /** 黑名单缓存 TTL（毫秒） */
+  private readonly blacklistCacheTtlMs = 5 * 60 * 1000; // 5 分钟
+
+  /** 黑名单加载时间记录: userId -> lastLoadTime */
+  private blacklistLoadTimes: Map<string, number>;
+
+  constructor(supabase?: SupabaseClient) {
     this.userBlacklist = new Map();
     this.customStopTags = new Set();
+    this.supabase = supabase;
+    this.blacklistLoadTimes = new Map();
+  }
+
+  /**
+   * 设置 Supabase 客户端（用于延迟初始化）
+   */
+  setSupabaseClient(supabase: SupabaseClient): void {
+    this.supabase = supabase;
   }
 
   /**
@@ -322,11 +347,16 @@ export class TagTrustFilter {
   }
 
   /**
-   * 添加标签到用户黑名单
+   * 添加标签到用户黑名单（支持持久化）
    */
-  addToBlacklist(userId: string, folderId: string, tag: string): void {
+  async addToBlacklist(
+    userId: string,
+    folderId: string,
+    tag: string,
+  ): Promise<void> {
     const normalizedTag = this.normalizeForFilter(tag);
 
+    // 1. 更新内存缓存
     if (!this.userBlacklist.has(userId)) {
       this.userBlacklist.set(userId, new Map());
     }
@@ -337,32 +367,145 @@ export class TagTrustFilter {
     }
     userMap.get(folderId)!.add(normalizedTag);
 
-    logger.info(
-      { userId, folderId, tag: normalizedTag },
-      "标签已添加到黑名单",
-    );
+    // 2. 持久化到数据库
+    if (this.supabase) {
+      try {
+        const { error } = await this.supabase.rpc("add_folder_blacklist_tag", {
+          p_user_id: userId,
+          p_folder_id: parseInt(folderId),
+          p_tag: normalizedTag,
+        });
+
+        if (error) {
+          logger.warn(
+            { error, userId, folderId, tag: normalizedTag },
+            "持久化黑名单失败",
+          );
+        } else {
+          logger.debug(
+            { userId, folderId, tag: normalizedTag },
+            "标签已添加到黑名单（已持久化）",
+          );
+        }
+      } catch (err) {
+        logger.warn(
+          { err, userId, folderId, tag: normalizedTag },
+          "持久化黑名单异常",
+        );
+      }
+    } else {
+      logger.debug(
+        { userId, folderId, tag: normalizedTag },
+        "标签已添加到黑名单（仅内存）",
+      );
+    }
   }
 
   /**
-   * 从用户黑名单移除标签
+   * 从用户黑名单移除标签（支持持久化）
    */
-  removeFromBlacklist(userId: string, folderId: string, tag: string): void {
+  async removeFromBlacklist(
+    userId: string,
+    folderId: string,
+    tag: string,
+  ): Promise<void> {
     const normalizedTag = this.normalizeForFilter(tag);
+
+    // 1. 更新内存缓存
     this.userBlacklist.get(userId)?.get(folderId)?.delete(normalizedTag);
 
-    logger.info(
-      { userId, folderId, tag: normalizedTag },
-      "标签已从黑名单移除",
-    );
+    // 2. 持久化到数据库
+    if (this.supabase) {
+      try {
+        const { error } = await this.supabase.rpc(
+          "remove_folder_blacklist_tag",
+          {
+            p_user_id: userId,
+            p_folder_id: parseInt(folderId),
+            p_tag: normalizedTag,
+          },
+        );
+
+        if (error) {
+          logger.warn(
+            { error, userId, folderId, tag: normalizedTag },
+            "从数据库移除黑名单失败",
+          );
+        } else {
+          logger.debug(
+            { userId, folderId, tag: normalizedTag },
+            "标签已从黑名单移除（已持久化）",
+          );
+        }
+      } catch (err) {
+        logger.warn(
+          { err, userId, folderId, tag: normalizedTag },
+          "从数据库移除黑名单异常",
+        );
+      }
+    } else {
+      logger.debug(
+        { userId, folderId, tag: normalizedTag },
+        "标签已从黑名单移除（仅内存）",
+      );
+    }
+  }
+
+  /**
+   * 从数据库加载用户黑名单
+   */
+  async loadBlacklistFromDb(userId: string): Promise<void> {
+    if (!this.supabase) {
+      return;
+    }
+
+    // 检查缓存是否过期
+    const lastLoadTime = this.blacklistLoadTimes.get(userId) || 0;
+    if (Date.now() - lastLoadTime < this.blacklistCacheTtlMs) {
+      return; // 缓存未过期
+    }
+
+    try {
+      const { data, error } = await this.supabase
+        .from("folder_tag_profiles")
+        .select("folder_id, blacklist_tags")
+        .eq("user_id", userId);
+
+      if (error) {
+        logger.warn({ error, userId }, "从数据库加载黑名单失败");
+        return;
+      }
+
+      // 更新内存缓存
+      const userMap = new Map<string, Set<string>>();
+      for (const row of data || []) {
+        const folderId = row.folder_id.toString();
+        const tags = (row.blacklist_tags as string[]) || [];
+        if (tags.length > 0) {
+          userMap.set(
+            folderId,
+            new Set(tags.map((t) => this.normalizeForFilter(t))),
+          );
+        }
+      }
+
+      this.userBlacklist.set(userId, userMap);
+      this.blacklistLoadTimes.set(userId, Date.now());
+
+      logger.debug(
+        { userId, folderCount: userMap.size },
+        "从数据库加载黑名单成功",
+      );
+    } catch (err) {
+      logger.warn({ err, userId }, "从数据库加载黑名单异常");
+    }
   }
 
   /**
    * 获取用户的黑名单
    */
   getBlacklist(userId: string, folderId: string): string[] {
-    return Array.from(
-      this.userBlacklist.get(userId)?.get(folderId) || [],
-    );
+    return Array.from(this.userBlacklist.get(userId)?.get(folderId) || []);
   }
 
   /**

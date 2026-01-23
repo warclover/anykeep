@@ -111,7 +111,9 @@ export async function POST(request: NextRequest) {
       }
     } catch (error) {
       // 规则加载失败不影响分类流程
-      logger.warn("加载用户规则失败", { error });
+      logger.warn("加载用户规则失败", {
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
 
     // 6. 执行分类
@@ -193,7 +195,9 @@ export async function POST(request: NextRequest) {
       }
     } catch (error) {
       // 日志记录失败不影响分类结果
-      logger.warn("Failed to log classification", { error });
+      logger.warn("Failed to log classification", {
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
 
     // 6.6. 异步提取和关联上下文锚点（非阻塞）

@@ -43,6 +43,11 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 BEGIN
+  -- 安全检查：验证调用者身份
+  IF p_user_id != auth.uid() THEN
+    RAISE EXCEPTION 'Unauthorized: Cannot modify other user data';
+  END IF;
+
   UPDATE folder_tag_profiles
   SET aliases = array_append(
     COALESCE(aliases, '{}'),
@@ -65,6 +70,11 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 BEGIN
+  -- 安全检查：验证调用者身份
+  IF p_user_id != auth.uid() THEN
+    RAISE EXCEPTION 'Unauthorized: Cannot modify other user data';
+  END IF;
+
   UPDATE folder_tag_profiles
   SET aliases = array_remove(
     COALESCE(aliases, '{}'),
@@ -86,6 +96,11 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 BEGIN
+  -- 安全检查：验证调用者身份
+  IF p_user_id != auth.uid() THEN
+    RAISE EXCEPTION 'Unauthorized: Cannot modify other user data';
+  END IF;
+
   UPDATE folder_tag_profiles
   SET blacklist_tags = array_append(
     COALESCE(blacklist_tags, '{}'),
@@ -108,6 +123,11 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 BEGIN
+  -- 安全检查：验证调用者身份
+  IF p_user_id != auth.uid() THEN
+    RAISE EXCEPTION 'Unauthorized: Cannot modify other user data';
+  END IF;
+
   UPDATE folder_tag_profiles
   SET blacklist_tags = array_remove(
     COALESCE(blacklist_tags, '{}'),

@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
     };
 
     // 8. 处理反馈
-    const llmService = new LLMService(supabase, logger);
+    const llmService = new LLMService(logger);
     const feedbackService = new FeedbackService(supabase, logger, llmService);
     const result = await feedbackService.processFeedback(feedback);
 
@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     logger.error(
       "Feedback API error",
-      error instanceof Error ? error : new Error(String(error))
+      error instanceof Error ? error : new Error(String(error)),
     );
 
     return NextResponse.json(

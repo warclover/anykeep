@@ -360,41 +360,59 @@ export async function classifyBookmarkV2(
 
         const v5Result = await pipeline.classify(v5Request);
 
-        // 转换 V5.0 结果到统一的 ClassificationResult 格式
-        const folderId = parseInt(v5Result.folderId, 10);
+        // v5.2 修复: 转换 V5.0 结果到统一的 ClassificationResult 格式
+        // 处理 "inbox" 字符串返回值，避免 parseInt 返回 NaN
+        const folderId =
+          v5Result.folderId === "inbox"
+            ? null
+            : parseInt(v5Result.folderId, 10);
 
-        // 查询文件夹名称
+        // 如果 folderId 解析失败（NaN），也视为 inbox
+        const validFolderId =
+          folderId !== null && !isNaN(folderId) ? folderId : null;
+
+        // 查询文件夹名称（只有 validFolderId 有效时才查询）
         let folderName: string | null = null;
-        try {
-          const { data: folderData } = await supabase
-            .from("folders")
-            .select("name")
-            .eq("id", folderId)
-            .single();
-          folderName = folderData?.name || null;
-        } catch (error) {
-          logger.warn(
-            { folderId, error },
-            "Failed to fetch folder name for V5.0 result",
-          );
+        if (validFolderId !== null) {
+          try {
+            const { data: folderData } = await supabase
+              .from("folders")
+              .select("name")
+              .eq("id", validFolderId)
+              .single();
+            folderName = folderData?.name || null;
+          } catch (error) {
+            logger.warn(
+              { folderId: validFolderId, error },
+              "Failed to fetch folder name for V5.0 result",
+            );
+          }
         }
 
         // V5.0 返回的置信度是 0-1 范围，需要转换为 0-100 百分比与阈值比较
         const confidencePercent = v5Result.confidence * 100;
 
-        result = {
-          folderId,
-          folderName: folderName ?? "",
-          confidence: confidencePercent, // 存储为百分比格式，与系统其他部分保持一致
-          reason: v5Result.usedT1
-            ? `T1 纠正: ${v5Result.reasoning || "LLM 推理"}`
-            : "T0 快速生成",
-          action:
-            confidencePercent >= AUTO_CLASSIFY_THRESHOLD
+        // v5.2 修复: 如果 validFolderId 为 null，强制 action 为 inbox
+        const action =
+          validFolderId === null
+            ? "inbox"
+            : confidencePercent >= AUTO_CLASSIFY_THRESHOLD
               ? "classify"
               : confidencePercent >= SUGGEST_THRESHOLD
                 ? "suggest"
-                : "inbox",
+                : "inbox";
+
+        result = {
+          folderId: validFolderId,
+          folderName: folderName ?? "",
+          confidence: confidencePercent, // 存储为百分比格式，与系统其他部分保持一致
+          reason:
+            validFolderId === null
+              ? "无匹配文件夹，保留在待整理"
+              : v5Result.usedT1
+                ? `T1 纠正: ${v5Result.reasoning || "LLM 推理"}`
+                : "T0 快速生成",
+          action,
           scores: {
             vectorScore: confidencePercent,
             historyScore: 0,

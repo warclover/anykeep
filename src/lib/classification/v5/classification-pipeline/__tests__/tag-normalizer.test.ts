@@ -44,7 +44,9 @@ describe("TagNormalizer", () => {
 
     it("should handle Chinese characters", () => {
       expect(tagNormalizer.normalize("前端开发")).toBe("前端开发");
-      expect(tagNormalizer.normalize("独立开发与产品策略")).toBe("独立开发与产品策略");
+      expect(tagNormalizer.normalize("独立开发与产品策略")).toBe(
+        "独立开发与产品策略",
+      );
     });
 
     it("should remove special characters", () => {

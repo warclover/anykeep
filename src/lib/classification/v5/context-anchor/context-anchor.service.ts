@@ -72,7 +72,7 @@ export class ContextAnchorService {
       this.logger.error(
         "Failed to extract context anchor",
         error instanceof Error ? error : new Error(String(error)),
-        { params }
+        { params },
       );
       return null;
     }
@@ -240,7 +240,7 @@ export class ContextAnchorService {
     } catch (error) {
       this.logger.error(
         "Failed to find similar anchors",
-        error instanceof Error ? error : new Error(String(error))
+        error instanceof Error ? error : new Error(String(error)),
       );
       return [];
     }
@@ -281,10 +281,19 @@ export class ContextAnchorService {
         anchorId = existingAnchor.id;
         this.logger.debug("Using existing anchor", { anchorId });
       } else {
+        // 获取当前用户ID
+        const {
+          data: { user },
+        } = await this.supabase.auth.getUser();
+        if (!user) {
+          throw new Error("User not authenticated");
+        }
+
         // 创建新锚点
         const { data: newAnchor, error: createError } = await this.supabase
           .from("context_anchors")
           .insert({
+            user_id: user.id,
             anchor_type: extractedAnchor.anchorType,
             anchor_name: extractedAnchor.anchorName,
             anchor_metadata: extractedAnchor.anchorMetadata as unknown as Json,
@@ -329,7 +338,7 @@ export class ContextAnchorService {
       this.logger.error(
         "Failed to link bookmark to anchor",
         error instanceof Error ? error : new Error(String(error)),
-        { bookmarkId: String(bookmarkId) }
+        { bookmarkId: String(bookmarkId) },
       );
 
       return {
@@ -369,7 +378,7 @@ export class ContextAnchorService {
       this.logger.error(
         "Failed to get anchor",
         error instanceof Error ? error : new Error(String(error)),
-        { anchorId }
+        { anchorId },
       );
       return null;
     }

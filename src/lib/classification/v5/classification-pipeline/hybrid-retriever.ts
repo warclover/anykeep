@@ -9,7 +9,11 @@
 import type { LoggerService } from "../shared/logger";
 import type { VectorSearchService } from "../shared/vector-search";
 import type { IEmbeddingService } from "../shared/embedding";
-import type { HybridRetrievalResult, EnhancedTagMatchResult, RerankResult } from "./types";
+import type {
+  HybridRetrievalResult,
+  EnhancedTagMatchResult,
+  RerankResult,
+} from "./types";
 
 /**
  * 混合检索器配置

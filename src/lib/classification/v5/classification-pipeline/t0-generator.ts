@@ -45,9 +45,9 @@ export class T0Generator {
       bookmarkId: request.bookmarkId,
     });
 
-    // 1. L0规则匹配
-    const l0Result = this.l0Matcher.match(request);
-    if (l0Result.matched) {
+    // 1. L0规则匹配 (v5.1: L0RuleMatcher.match 现在是异步的，支持 AI 标签匹配)
+    const l0Result = await this.l0Matcher.match(request);
+    if (l0Result.matched && l0Result.folderId) {
       const latencyMs = Date.now() - startTime;
 
       this.logger.info("L0规则匹配成功", {
@@ -83,8 +83,22 @@ export class T0Generator {
       request.title, // v5.1: 传递标题用于名称相似度计算
     );
 
+    // v5.1 修复: 无文件夹时优雅降级到 inbox，而非抛出异常
     if (retrievalResults.length === 0) {
-      throw new Error("No folders found for classification");
+      this.logger.warn("无可用文件夹，降级到 inbox", {
+        bookmarkId: request.bookmarkId,
+        userId: request.userId,
+      });
+
+      const latencyMs = Date.now() - startTime;
+      return {
+        folderId: request.defaultFolderId || "inbox",
+        confidence: 0,
+        candidates: [],
+        needsT1: false,
+        t1Reason: undefined,
+        latencyMs,
+      };
     }
 
     // 4. 构建T0结果

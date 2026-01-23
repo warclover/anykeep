@@ -12,16 +12,15 @@ import type {
   ClassificationResult,
   EvaluationReport,
   ComparisonReport,
-  _UserPersona,
-} from './types';
-import { MetricsCalculator } from './metrics-calculator';
+} from "./types";
+import { MetricsCalculator } from "./metrics-calculator";
 
 /**
  * 分类引擎接口
  */
 export interface ClassificationEngine {
   /** 引擎版本 */
-  version: 'v4.1' | 'v5.0';
+  version: "v4.1" | "v5.0";
   /** 分类方法 */
   classify(request: {
     userId: string;
@@ -73,36 +72,36 @@ export class ComparisonRunner {
   async runComparison(
     dataset: GoldenDataset,
     v4Engine: ClassificationEngine,
-    v5Engine: ClassificationEngine
+    v5Engine: ClassificationEngine,
   ): Promise<ComparisonReport> {
     this.log(`开始对比测试: ${dataset.name}`);
     this.log(`测试书签数量: ${dataset.bookmarks.length}`);
 
     // 运行 V4.1 测试
-    this.log('\n=== 运行 V4.1 测试 ===');
+    this.log("\n=== 运行 V4.1 测试 ===");
     const v4Result = await this.runBatchClassification(
       dataset,
       v4Engine,
-      'v4.1'
+      "v4.1",
     );
 
     // 运行 V5.0 测试
-    this.log('\n=== 运行 V5.0 测试 ===');
+    this.log("\n=== 运行 V5.0 测试 ===");
     const v5Result = await this.runBatchClassification(
       dataset,
       v5Engine,
-      'v5.0'
+      "v5.0",
     );
 
     // 生成评估报告
-    this.log('\n=== 生成评估报告 ===');
+    this.log("\n=== 生成评估报告 ===");
     const v4Report = this.generateEvaluationReport(dataset, v4Result);
     const v5Report = this.generateEvaluationReport(dataset, v5Result);
 
     // 计算提升指标
     const improvements = this.calculateImprovements(v4Report, v5Report);
 
-    this.log('\n=== 对比测试完成 ===');
+    this.log("\n=== 对比测试完成 ===");
     this.logImprovements(improvements);
 
     return {
@@ -122,7 +121,7 @@ export class ComparisonRunner {
   private async runBatchClassification(
     dataset: GoldenDataset,
     engine: ClassificationEngine,
-    version: 'v4.1' | 'v5.0'
+    version: "v4.1" | "v5.0",
   ): Promise<BatchClassificationResult> {
     const startTime = Date.now();
     const results: ClassificationResult[] = [];
@@ -133,7 +132,7 @@ export class ComparisonRunner {
 
       try {
         const result = await engine.classify({
-          userId: 'test-user',
+          userId: "test-user",
           bookmarkId: bookmark.id,
           title: bookmark.title,
           url: bookmark.url,
@@ -147,8 +146,8 @@ export class ComparisonRunner {
         // 添加失败结果
         results.push({
           bookmarkId: bookmark.id,
-          predictedFolderId: 'error',
-          predictedFolderName: 'Error',
+          predictedFolderId: "error",
+          predictedFolderName: "Error",
           confidence: 0,
           topCandidates: [],
           usedT1: false,
@@ -175,29 +174,29 @@ export class ComparisonRunner {
    */
   private generateEvaluationReport(
     dataset: GoldenDataset,
-    batchResult: BatchClassificationResult
+    batchResult: BatchClassificationResult,
   ): EvaluationReport {
     const accuracy = this.metricsCalculator.calculateAccuracy(
       dataset.bookmarks,
-      batchResult.results
+      batchResult.results,
     );
 
     const coldStart = this.metricsCalculator.calculateColdStart(
       dataset.persona,
       dataset.bookmarks,
-      batchResult.results
+      batchResult.results,
     );
 
     const confidenceCalibration =
       this.metricsCalculator.calculateConfidenceCalibration(
         dataset.bookmarks,
-        batchResult.results
+        batchResult.results,
       );
 
     const failureCases = this.metricsCalculator.extractFailureCases(
       dataset.bookmarks,
       batchResult.results,
-      20
+      20,
     );
 
     // 语义漂移指标（简化版，实际需要向量数据）
@@ -227,11 +226,11 @@ export class ComparisonRunner {
    */
   private calculateImprovements(
     v4Report: EvaluationReport,
-    v5Report: EvaluationReport
+    v5Report: EvaluationReport,
   ) {
     const accuracyDelta = this.metricsCalculator.calculateAccuracyDelta(
       v4Report.accuracy,
-      v5Report.accuracy
+      v5Report.accuracy,
     );
 
     const coldStartDelta =
@@ -271,15 +270,15 @@ export class ComparisonRunner {
   /**
    * 输出提升指标
    */
-  private logImprovements(improvements: ComparisonReport['improvements']) {
-    console.log('\n📊 提升指标汇总:');
+  private logImprovements(improvements: ComparisonReport["improvements"]) {
+    console.log("\n📊 提升指标汇总:");
     console.log(`  准确率提升: ${improvements.accuracyDelta.toFixed(2)}%`);
     console.log(`  冷启动提升: ${improvements.coldStartDelta.toFixed(2)}%`);
     console.log(
-      `  漂移稳定性提升: ${improvements.driftStabilityDelta.toFixed(2)}%`
+      `  漂移稳定性提升: ${improvements.driftStabilityDelta.toFixed(2)}%`,
     );
     console.log(
-      `  置信度校准提升: ${improvements.calibrationDelta.toFixed(2)}%`
+      `  置信度校准提升: ${improvements.calibrationDelta.toFixed(2)}%`,
     );
   }
 }

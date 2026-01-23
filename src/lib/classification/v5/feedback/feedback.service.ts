@@ -30,7 +30,11 @@ export class FeedbackService {
   ) {
     this.supabase = supabase;
     this.logger = logger.child({ service: "FeedbackService" });
-    this.chatToRuleService = new ChatToRuleService(supabase, logger, llmService);
+    this.chatToRuleService = new ChatToRuleService(
+      supabase,
+      logger,
+      llmService,
+    );
   }
 
   /**
@@ -102,7 +106,7 @@ export class FeedbackService {
           ruleExtracted = await this.extractAndCreateRule(feedback);
         } catch (error) {
           this.logger.warn("Failed to extract rule from feedback", {
-            error,
+            error: error instanceof Error ? error.message : String(error),
             bookmarkId: feedback.bookmarkId,
           });
           // 规则提取失败不影响整体反馈处理
@@ -128,10 +132,11 @@ export class FeedbackService {
         logRecorded,
       };
     } catch (error) {
-      this.logger.error("Failed to process feedback", {
-        error: error instanceof Error ? error.message : String(error),
-        feedback,
-      });
+      this.logger.error(
+        "Failed to process feedback",
+        error instanceof Error ? error : new Error(String(error)),
+        { feedback },
+      );
 
       return {
         success: false,
@@ -190,10 +195,11 @@ export class FeedbackService {
         learningRate: adjustedLearningRate,
       });
     } catch (error) {
-      this.logger.error("Failed to update profile", {
-        error: error instanceof Error ? error.message : String(error),
-        params,
-      });
+      this.logger.error(
+        "Failed to update profile",
+        error instanceof Error ? error : new Error(String(error)),
+        { params },
+      );
       throw error;
     }
   }
@@ -233,10 +239,11 @@ export class FeedbackService {
 
       return true;
     } catch (error) {
-      this.logger.error("Failed to log classification feedback", {
-        error: error instanceof Error ? error.message : String(error),
-        feedback,
-      });
+      this.logger.error(
+        "Failed to log classification feedback",
+        error instanceof Error ? error : new Error(String(error)),
+        { feedback },
+      );
       return false;
     }
   }
@@ -276,9 +283,18 @@ export class FeedbackService {
         return false;
       }
 
+      // 构建规则参数（用于验证和创建）
+      const ruleParams = {
+        type: extractedRule.type,
+        patternType: extractedRule.patternType,
+        pattern: extractedRule.pattern,
+        targetFolderId: feedback.actualFolderId,
+        targetFolderName: feedback.actualFolderName,
+        description: extractedRule.description,
+      };
+
       // 3. 验证规则
-      const validation =
-        await this.chatToRuleService.validateRule(extractedRule);
+      const validation = await this.chatToRuleService.validateRule(ruleParams);
       if (!validation.isValid) {
         this.logger.warn("Extracted rule is invalid", {
           bookmarkId: feedback.bookmarkId,
@@ -297,14 +313,7 @@ export class FeedbackService {
       }
 
       // 5. 创建规则
-      const ruleId = await this.chatToRuleService.createRule({
-        type: extractedRule.type,
-        patternType: extractedRule.patternType,
-        pattern: extractedRule.pattern,
-        targetFolderId: feedback.actualFolderId,
-        targetFolderName: feedback.actualFolderName,
-        description: extractedRule.description,
-      });
+      const ruleId = await this.chatToRuleService.createRule(ruleParams);
 
       this.logger.info("Rule created from feedback", {
         bookmarkId: feedback.bookmarkId,
@@ -316,10 +325,11 @@ export class FeedbackService {
 
       return true;
     } catch (error) {
-      this.logger.error("Failed to extract and create rule", {
-        error: error instanceof Error ? error.message : String(error),
-        feedback,
-      });
+      this.logger.error(
+        "Failed to extract and create rule",
+        error instanceof Error ? error : new Error(String(error)),
+        { feedback },
+      );
       throw error;
     }
   }

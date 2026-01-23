@@ -115,7 +115,10 @@ export class EntropyReductionService {
         similarityStddev: null,
       }));
     } catch (error) {
-      this.logger.error("Failed to calculate all folder entropy", { error });
+      this.logger.error(
+        "Failed to calculate all folder entropy",
+        error instanceof Error ? error : new Error(String(error)),
+      );
       return [];
     }
   }
@@ -166,7 +169,10 @@ export class EntropyReductionService {
         ),
       }));
     } catch (error) {
-      this.logger.error("Failed to identify high entropy folders", { error });
+      this.logger.error(
+        "Failed to identify high entropy folders",
+        error instanceof Error ? error : new Error(String(error)),
+      );
       return [];
     }
   }
@@ -250,10 +256,13 @@ export class EntropyReductionService {
 
       return suggestions;
     } catch (error) {
-      this.logger.error("Failed to suggest entropy reduction", {
-        error,
-        folderId,
-      });
+      this.logger.error(
+        "Failed to suggest entropy reduction",
+        error instanceof Error ? error : new Error(String(error)),
+        {
+          folderId,
+        },
+      );
       return [];
     }
   }
@@ -329,11 +338,14 @@ export class EntropyReductionService {
         affectedBookmarkCount,
       };
     } catch (error) {
-      this.logger.error("Failed to execute entropy reduction", {
-        error,
-        folderId,
-        actionType,
-      });
+      this.logger.error(
+        "Failed to execute entropy reduction",
+        error instanceof Error ? error : new Error(String(error)),
+        {
+          folderId,
+          actionType,
+        },
+      );
 
       return {
         success: false,
@@ -359,15 +371,25 @@ export class EntropyReductionService {
     actionDetails: Record<string, unknown>,
   ): Promise<void> {
     try {
+      // 获取当前用户ID
+      const {
+        data: { user },
+      } = await this.supabase.auth.getUser();
+      if (!user) {
+        throw new Error("User not authenticated");
+      }
+
       const { error } = await this.supabase
         .from("entropy_reduction_logs")
         .insert({
+          user_id: user.id,
           folder_id: folderId,
           action_type: actionType,
           before_entropy: beforeEntropy,
           after_entropy: afterEntropy,
           affected_bookmark_count: affectedBookmarkCount,
-          action_details: actionDetails,
+          action_details:
+            actionDetails as unknown as Database["public"]["Tables"]["entropy_reduction_logs"]["Insert"]["action_details"],
         });
 
       if (error) {
@@ -379,10 +401,13 @@ export class EntropyReductionService {
         actionType,
       });
     } catch (error) {
-      this.logger.error("Failed to log entropy reduction", {
-        error,
-        folderId,
-      });
+      this.logger.error(
+        "Failed to log entropy reduction",
+        error instanceof Error ? error : new Error(String(error)),
+        {
+          folderId,
+        },
+      );
     }
   }
 }

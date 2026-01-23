@@ -6,7 +6,10 @@
  * @date 2026-01-18
  */
 
-import type { ComparisonReport, _EvaluationReport } from './types';
+import type { ComparisonReport, EvaluationReport } from "./types";
+
+// 标记 EvaluationReport 为已使用（用于类型推断）
+type _EvaluationReport = EvaluationReport;
 
 /**
  * 报告生成器
@@ -26,7 +29,7 @@ export class ReportGenerator {
       this.generateConclusion(report),
     ];
 
-    return sections.join('\n\n---\n\n');
+    return sections.join("\n\n---\n\n");
   }
 
   /**
@@ -37,7 +40,7 @@ export class ReportGenerator {
 
 **用户画像**: ${report.persona.name}
 **报告ID**: ${report.id}
-**生成时间**: ${report.generatedAt.toLocaleString('zh-CN')}
+**生成时间**: ${report.generatedAt.toLocaleString("zh-CN")}
 **测试版本**: V4.1 vs V5.0`;
   }
 
@@ -53,9 +56,9 @@ export class ReportGenerator {
 
 | 指标 | V4.1 | V5.0 | 提升 |
 |------|------|------|------|
-| **Top-1 准确率** | ${(report.v4Report.accuracy.top1Accuracy * 100).toFixed(2)}% | ${(report.v5Report.accuracy.top1Accuracy * 100).toFixed(2)}% | **${improvements.accuracyDelta > 0 ? '+' : ''}${improvements.accuracyDelta.toFixed(2)}%** |
-| **冷启动成功率** | ${(report.v4Report.coldStart.successRate * 100).toFixed(2)}% | ${(report.v5Report.coldStart.successRate * 100).toFixed(2)}% | **${improvements.coldStartDelta > 0 ? '+' : ''}${improvements.coldStartDelta.toFixed(2)}%** |
-| **置信度校准得分** | ${(report.v4Report.confidenceCalibration.calibrationScore * 100).toFixed(2)}% | ${(report.v5Report.confidenceCalibration.calibrationScore * 100).toFixed(2)}% | **${improvements.calibrationDelta > 0 ? '+' : ''}${improvements.calibrationDelta.toFixed(2)}%** |
+| **Top-1 准确率** | ${(report.v4Report.accuracy.top1Accuracy * 100).toFixed(2)}% | ${(report.v5Report.accuracy.top1Accuracy * 100).toFixed(2)}% | **${improvements.accuracyDelta > 0 ? "+" : ""}${improvements.accuracyDelta.toFixed(2)}%** |
+| **冷启动成功率** | ${(report.v4Report.coldStart.successRate * 100).toFixed(2)}% | ${(report.v5Report.coldStart.successRate * 100).toFixed(2)}% | **${improvements.coldStartDelta > 0 ? "+" : ""}${improvements.coldStartDelta.toFixed(2)}%** |
+| **置信度校准得分** | ${(report.v4Report.confidenceCalibration.calibrationScore * 100).toFixed(2)}% | ${(report.v5Report.confidenceCalibration.calibrationScore * 100).toFixed(2)}% | **${improvements.calibrationDelta > 0 ? "+" : ""}${improvements.calibrationDelta.toFixed(2)}%** |
 
 ### 关键发现
 
@@ -70,11 +73,17 @@ ${this.generateKeyFindings(report)}`;
     const { improvements } = report;
 
     if (improvements.accuracyDelta > 5) {
-      findings.push(`✅ **准确率显著提升**: V5.0 相比 V4.1 提升了 ${improvements.accuracyDelta.toFixed(2)}%，达到了设计目标`);
+      findings.push(
+        `✅ **准确率显著提升**: V5.0 相比 V4.1 提升了 ${improvements.accuracyDelta.toFixed(2)}%，达到了设计目标`,
+      );
     } else if (improvements.accuracyDelta > 0) {
-      findings.push(`⚠️ **准确率小幅提升**: V5.0 相比 V4.1 仅提升了 ${improvements.accuracyDelta.toFixed(2)}%，未达到预期`);
+      findings.push(
+        `⚠️ **准确率小幅提升**: V5.0 相比 V4.1 仅提升了 ${improvements.accuracyDelta.toFixed(2)}%，未达到预期`,
+      );
     } else {
-      findings.push(`❌ **准确率下降**: V5.0 相比 V4.1 下降了 ${Math.abs(improvements.accuracyDelta).toFixed(2)}%，需要调查原因`);
+      findings.push(
+        `❌ **准确率下降**: V5.0 相比 V4.1 下降了 ${Math.abs(improvements.accuracyDelta).toFixed(2)}%，需要调查原因`,
+      );
     }
 
     if (improvements.coldStartDelta > 20) {
@@ -82,10 +91,12 @@ ${this.generateKeyFindings(report)}`;
     }
 
     if (report.v5Report.confidenceCalibration.highConfidenceErrorRate < 0.1) {
-      findings.push(`✅ **高置信度预测可靠**: 当 V5.0 给出 >0.9 的置信度时，误判率低于 10%`);
+      findings.push(
+        `✅ **高置信度预测可靠**: 当 V5.0 给出 >0.9 的置信度时，误判率低于 10%`,
+      );
     }
 
-    return findings.map((f) => `- ${f}`).join('\n');
+    return findings.map((f) => `- ${f}`).join("\n");
   }
 
   /**
@@ -132,7 +143,9 @@ ${this.generateKeyFindings(report)}`;
   /**
    * 生成置信度校准对比
    */
-  private generateConfidenceCalibrationComparison(report: ComparisonReport): string {
+  private generateConfidenceCalibrationComparison(
+    report: ComparisonReport,
+  ): string {
     const v4 = report.v4Report.confidenceCalibration;
     const v5 = report.v5Report.confidenceCalibration;
 
@@ -164,14 +177,18 @@ ${this.generateKeyFindings(report)}`;
 
     return `## ❌ V5.0 失败案例分析（Top 10）
 
-${v5Failures.map((f, i) => `### ${i + 1}. ${f.bookmarkTitle}
+${v5Failures
+  .map(
+    (f, i) => `### ${i + 1}. ${f.bookmarkTitle}
 
 - **标准答案**: ${f.groundTruthFolder}
 - **预测结果**: ${f.predictedFolder}
 - **置信度**: ${(f.confidence * 100).toFixed(2)}%
 - **失败类型**: ${this.translateFailureType(f.failureType)}
 - **失败原因**: ${f.failureReason}
-`).join('\n')}`;
+`,
+  )
+  .join("\n")}`;
   }
 
   /**
@@ -179,10 +196,10 @@ ${v5Failures.map((f, i) => `### ${i + 1}. ${f.bookmarkTitle}
    */
   private translateFailureType(type: string): string {
     const map: Record<string, string> = {
-      'semantic-confusion': '语义混淆',
-      'cold-start': '冷启动',
-      'low-confidence': '低置信度',
-      'edge-case': '边缘案例',
+      "semantic-confusion": "语义混淆",
+      "cold-start": "冷启动",
+      "low-confidence": "低置信度",
+      "edge-case": "边缘案例",
     };
     return map[type] || type;
   }
@@ -198,9 +215,10 @@ ${v5Failures.map((f, i) => `### ${i + 1}. ${f.bookmarkTitle}
 
 ### 总体评价
 
-${overallSuccess
-  ? '✅ **V5.0 达到设计目标**: 在准确率、冷启动、置信度校准等多个维度都有显著提升，建议推向生产环境。'
-  : '⚠️ **V5.0 需要进一步优化**: 虽然在某些指标上有提升，但整体改进不够显著，建议继续优化后再推向生产环境。'
+${
+  overallSuccess
+    ? "✅ **V5.0 达到设计目标**: 在准确率、冷启动、置信度校准等多个维度都有显著提升，建议推向生产环境。"
+    : "⚠️ **V5.0 需要进一步优化**: 虽然在某些指标上有提升，但整体改进不够显著，建议继续优化后再推向生产环境。"
 }
 
 ### 下一步行动

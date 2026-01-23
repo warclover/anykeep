@@ -55,10 +55,11 @@ export class ShadowSortingService {
         confidence,
       });
     } catch (error) {
-      this.logger.error("Failed to set shadow suggestion", {
-        error: error instanceof Error ? error.message : String(error),
-        bookmarkId,
-      });
+      this.logger.error(
+        "Failed to set shadow suggestion",
+        error instanceof Error ? error : new Error(String(error)),
+        { bookmarkId },
+      );
       throw error;
     }
   }
@@ -109,10 +110,11 @@ export class ShadowSortingService {
           (item.folders as { name: string } | null)?.name || null,
       }));
     } catch (error) {
-      this.logger.error("Failed to get pending list", {
-        error: error instanceof Error ? error.message : String(error),
-        userId,
-      });
+      this.logger.error(
+        "Failed to get pending list",
+        error instanceof Error ? error : new Error(String(error)),
+        { userId },
+      );
       throw error;
     }
   }
@@ -158,10 +160,11 @@ export class ShadowSortingService {
         oldestSuggestion,
       };
     } catch (error) {
-      this.logger.error("Failed to get stats", {
-        error: error instanceof Error ? error.message : String(error),
-        userId,
-      });
+      this.logger.error(
+        "Failed to get stats",
+        error instanceof Error ? error : new Error(String(error)),
+        { userId },
+      );
       throw error;
     }
   }
@@ -202,10 +205,11 @@ export class ShadowSortingService {
         }),
       );
     } catch (error) {
-      this.logger.error("Failed to batch confirm", {
-        error: error instanceof Error ? error.message : String(error),
-        userId,
-      });
+      this.logger.error(
+        "Failed to batch confirm",
+        error instanceof Error ? error : new Error(String(error)),
+        { userId },
+      );
       throw error;
     }
   }
@@ -246,10 +250,11 @@ export class ShadowSortingService {
         }),
       );
     } catch (error) {
-      this.logger.error("Failed to batch reject", {
-        error: error instanceof Error ? error.message : String(error),
-        userId,
-      });
+      this.logger.error(
+        "Failed to batch reject",
+        error instanceof Error ? error : new Error(String(error)),
+        { userId },
+      );
       throw error;
     }
   }

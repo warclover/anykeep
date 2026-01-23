@@ -251,11 +251,15 @@ export class FolderProfilerService {
 
       // 3. 二次验证 user_id（应用层安全检查，防止 RLS 绕过）
       if (parentFolder.user_id !== userId) {
-        this.logger.error("用户ID不匹配，可能存在越权访问", {
-          requestedUserId: userId,
-          actualUserId: parentFolder.user_id,
-          parentId,
-        });
+        this.logger.error(
+          "用户ID不匹配，可能存在越权访问",
+          new Error("User ID mismatch - potential unauthorized access"),
+          {
+            requestedUserId: userId,
+            actualUserId: parentFolder.user_id,
+            parentId,
+          },
+        );
         return undefined;
       }
 
@@ -277,15 +281,11 @@ export class FolderProfilerService {
       // 父文件夹没有画像，只返回名称（用于 LLM 上下文）
       return { name: parentFolder.name };
     } catch (error) {
-      this.logger.error("getParentContext 异常", {
-        userId,
-        parentId,
-        error: {
-          name: error instanceof Error ? error.name : "UnknownError",
-          message: error instanceof Error ? error.message : String(error),
-          stack: error instanceof Error ? error.stack : undefined,
-        },
-      });
+      this.logger.error(
+        "getParentContext 异常",
+        error instanceof Error ? error : new Error(String(error)),
+        { userId, parentId },
+      );
       return undefined;
     }
   }
