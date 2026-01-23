@@ -12,9 +12,10 @@
  * v1.1.0: 集成同义词映射器和监控指标
  * v1.2.0: 添加缓存过期策略（TTL 5分钟）
  * v1.3.0: 集成标签可信度过滤、激进标准化、别名管理、安全部分匹配
+ * v1.4.0: 统一 match 方法，消除重复逻辑（Issue #4）
  *
  * @module @/lib/classification/v5/classification-pipeline/ai-tag-matcher
- * @version 1.3.0
+ * @version 1.4.0
  * @since 2026-01-23
  */
 
@@ -27,7 +28,6 @@ import type {
   TagMatcherConfig,
   EnhancedTagMatchResult,
 } from "./types";
-import { tagSynonymMapper } from "./tag-synonym-mapper";
 import { tagMatchMetrics } from "./tag-match-metrics";
 import { tagNormalizer } from "./tag-normalizer";
 import { tagTrustFilter, TagSourceLevel } from "./tag-trust-filter";
@@ -379,7 +379,8 @@ export class AiTagMatcher {
 
         // 检查包含关系
         const isContained =
-          normalizedFolderName.includes(tag) || tag.includes(normalizedFolderName);
+          normalizedFolderName.includes(tag) ||
+          tag.includes(normalizedFolderName);
 
         if (!isContained) continue;
 
@@ -388,8 +389,9 @@ export class AiTagMatcher {
         const longer = Math.max(tag.length, normalizedFolderName.length);
         const ratio = shorter / longer;
 
-        // 至少 70% 的重叠才算安全
-        if (ratio < 0.7) {
+        // v1.3.1: 降低阈值到 50%，配合同义词表处理短标签
+        // 同时要求较短的一方至少 3 个字符
+        if (ratio < 0.5 || shorter < 3) {
           logger.debug(
             { tag, folderName: profile.folderName, ratio },
             "部分匹配被拒绝：长度比例不足",
@@ -431,124 +433,36 @@ export class AiTagMatcher {
 
   /**
    * 主匹配方法 - 在 L0 最前端调用
+   *
    * v1.1.0: 集成监控指标和同义词扩展
+   * v1.4.0: 委托给 matchEnhanced，统一匹配逻辑，消除重复代码
+   *
+   * @deprecated 推荐直接使用 matchEnhanced() 获取更丰富的匹配信息
    */
   async match(request: ClassificationRequest): Promise<TagMatchResult | null> {
-    const startTime = Date.now();
+    // v1.4.0: 统一委托给 matchEnhanced，避免重复逻辑
+    const enhancedResult = await this.matchEnhanced(request);
 
-    if (!request.tags || request.tags.length === 0) {
-      logger.debug(
-        { bookmarkId: request.bookmarkId },
-        "无标签，跳过 AI 标签匹配",
-      );
+    if (!enhancedResult) {
       return null;
     }
 
-    const profiles = await this.getFolderProfiles(request.userId);
-    if (profiles.length === 0) {
-      logger.debug(
-        { userId: request.userId },
-        "无文件夹画像，跳过 AI 标签匹配",
-      );
-      return null;
-    }
-
-    const normalizedTags = request.tags.map((t) => t.toLowerCase().trim());
-    // v1.1.0: 使用同义词映射器扩展标签
-    const expandedTags = tagSynonymMapper.expandTags(normalizedTags);
-
-    // 策略 1：标签 ↔ 文件夹名精确���配（最高优先级）
-    const exactMatch = this.matchExactFolderName(expandedTags, profiles);
-    if (exactMatch) {
-      const duration = Date.now() - startTime;
-      logger.info(
-        {
-          bookmarkId: request.bookmarkId,
-          matchType: "exact_name",
-          folderId: exactMatch.folderId,
-          confidence: exactMatch.confidence,
-          duration,
-        },
-        "AI标签精确匹配成功",
-      );
-      // v1.1.0: 记录监控指标
-      tagMatchMetrics.recordMatch(
-        request.bookmarkId,
-        request.userId,
-        "exact_name",
-        exactMatch.confidence,
-        exactMatch.matchedTags,
-        exactMatch.folderId,
-        duration,
-      );
-      return exactMatch;
-    }
-
-    // 策略 2：标签 ↔ 文件夹核心标签匹配
-    const coreMatch = this.matchCoreTags(expandedTags, profiles);
-    if (coreMatch) {
-      const duration = Date.now() - startTime;
-      logger.info(
-        {
-          bookmarkId: request.bookmarkId,
-          matchType: "core_tag",
-          folderId: coreMatch.folderId,
-          confidence: coreMatch.confidence,
-          duration,
-        },
-        "AI标签核心标签匹配成功",
-      );
-      // v1.1.0: 记录监控指标
-      tagMatchMetrics.recordMatch(
-        request.bookmarkId,
-        request.userId,
-        "core_tag",
-        coreMatch.confidence,
-        coreMatch.matchedTags,
-        coreMatch.folderId,
-        duration,
-      );
-      return coreMatch;
-    }
-
-    // 策略 3：标签 ↔ 文件夹相关标签匹配
-    const relatedMatch = this.matchRelatedTags(expandedTags, profiles);
-    if (relatedMatch) {
-      const duration = Date.now() - startTime;
-      logger.info(
-        {
-          bookmarkId: request.bookmarkId,
-          matchType: "related_tag",
-          folderId: relatedMatch.folderId,
-          confidence: relatedMatch.confidence,
-          duration,
-        },
-        "AI标签相关标签匹配成功",
-      );
-      // v1.1.0: 记录监控指标
-      tagMatchMetrics.recordMatch(
-        request.bookmarkId,
-        request.userId,
-        "related_tag",
-        relatedMatch.confidence,
-        relatedMatch.matchedTags,
-        relatedMatch.folderId,
-        duration,
-      );
-      return relatedMatch;
-    }
-
-    const duration = Date.now() - startTime;
-    logger.debug(
-      { bookmarkId: request.bookmarkId, duration },
-      "AI 标签无匹配，继续后续流程",
-    );
-    // v1.1.0: 记录无匹配
-    tagMatchMetrics.recordNoMatch(request.bookmarkId, request.userId, duration);
-    return null;
+    // 转换 EnhancedTagMatchResult 为 TagMatchResult（保持向后兼容）
+    return {
+      matched: enhancedResult.matched,
+      folderId: enhancedResult.folderId,
+      folderName: enhancedResult.folderName,
+      confidence: enhancedResult.confidence,
+      matchType: enhancedResult.matchType,
+      matchedTags: enhancedResult.matchedTags,
+      reason: enhancedResult.reason,
+    };
   }
 
   /**
+   * @deprecated 旧版精确匹配方法，已被 matchExactNormalized 替代
+   * 保留用于向后兼容测试
+   *
    * 策略 1：标签与文件夹名精确匹配
    * - AI 标签 "独立开发与产品策略" 匹配文件夹 "独立开发与产品策略"
    * - AI 标签 "前端开发" 匹配文件夹 "前端开发"
