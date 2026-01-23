@@ -63,18 +63,21 @@ const SUGGEST_THRESHOLD = CONFIDENCE_THRESHOLDS.SUGGEST;
  * 获取当前分类系统版本
  * 通过环境变量 CLASSIFICATION_VERSION 控制
  * - "v3": 使用 V3 ClassificationService（5层匹配器）
- * - "v4.1": 使用 V4.1 SimpleClassificationService（默认）
- * - "v5.0": 使用 V5.0 ClassificationPipeline（L0+T0+T1 三层架构）
+ * - "v4.1": 使用 V4.1 SimpleClassificationService
+ * - "v5.0": 使用 V5.0 ClassificationPipeline（L0+T0+T1 三层架构）【默认】
+ *
+ * v5.1 修复: 默认使用 V5.0，除非显式设置其他版本
  */
 export function getClassificationVersion(): "v3" | "v4.1" | "v5.0" {
   const version = process.env.CLASSIFICATION_VERSION;
   if (version === "v3") {
     return "v3";
   }
-  if (version === "v5.0") {
-    return "v5.0";
+  if (version === "v4.1") {
+    return "v4.1";
   }
-  return "v4.1"; // 默认使用 V4.1
+  // v5.1 修复: 默认使用 V5.0
+  return "v5.0";
 }
 
 /**
@@ -223,9 +226,10 @@ export async function classifyBookmarkV2(
         "@/lib/classification/v5/rollout/feature-flag"
       );
 
-      // 将环境变量字符串映射到 RolloutStage 枚举
+      // v5.2 修复: 将环境变量字符串映射到 RolloutStage 枚举
+      // 默认值改为 "full"，确保 V5.0 分类系统默认全量启用
       const stageStr = (process.env.CLASSIFICATION_V5_STAGE ||
-        "disabled") as string;
+        "full") as string;
       let stage: (typeof RolloutStage)[keyof typeof RolloutStage];
       switch (stageStr.toLowerCase()) {
         case "canary":
@@ -240,28 +244,39 @@ export async function classifyBookmarkV2(
         case "full":
           stage = RolloutStage.FULL;
           break;
-        default:
+        case "disabled":
           stage = RolloutStage.DISABLED;
+          break;
+        default:
+          // v5.2: 未知值默认使用 FULL，而非 DISABLED
+          stage = RolloutStage.FULL;
       }
 
+      // v5.1 修复: 简化 Feature Flag 配置，默认启用 V5.0
+      // 只有显式设置 CLASSIFICATION_V5_ENABLED=false 才会禁用
+      const isExplicitlyDisabled =
+        process.env.CLASSIFICATION_V5_ENABLED === "false";
+
       const featureFlagConfig = {
-        enabled: process.env.CLASSIFICATION_V5_ENABLED === "true",
+        enabled: !isExplicitlyDisabled, // v5.1: 默认启用
         stage,
-        percentage: 0,
+        percentage: 100, // v5.1: 默认全量发布
         whitelist: [],
         blacklist: [],
       };
 
-      // 根据 stage 设置 percentage
-      const stagePercentages: Record<string, number> = {
-        disabled: 0,
-        canary: 5,
-        early: 20,
-        majority: 50,
-        full: 100,
-      };
-      featureFlagConfig.percentage =
-        stagePercentages[featureFlagConfig.stage] || 0;
+      // 只有在非全量模式下才根据 stage 设置 percentage
+      if (stage !== RolloutStage.FULL && stage !== RolloutStage.DISABLED) {
+        const stagePercentages: Record<string, number> = {
+          disabled: 0,
+          canary: 5,
+          early: 20,
+          majority: 50,
+          full: 100,
+        };
+        featureFlagConfig.percentage =
+          stagePercentages[featureFlagConfig.stage] || 100;
+      }
 
       const featureFlagService = new FeatureFlagService(featureFlagConfig);
       const isV5Enabled = featureFlagService.isEnabledForUser(userId);
@@ -555,7 +570,14 @@ export async function classifyBookmarkV2(
           // Full Auto 模式：中等置信度也直接自动分类，不创建确认消息
           const { error: moveError } = await supabase
             .from("bookmarks")
-            .update({ folder_id: result.folderId })
+            .update({
+              folder_id: result.folderId,
+              // V4.2.28: 清除待聚类状态（修复"AI整理中"始终显示的问题）
+              pending_cluster: false,
+              pending_since: null,
+              cluster_id: null,
+              cluster_confidence: null,
+            })
             .eq("id", bookmarkId)
             .eq("user_id", userId); // V4.2.20: 添加 user_id 条件，确保 RLS 正确工作
 
@@ -705,6 +727,16 @@ export async function classifyBookmarkV2(
             },
           );
 
+          // V4.2.28: 创建建议后清除 pending_cluster（有建议就不需要继续"整理中"）
+          await supabase
+            .from("bookmarks")
+            .update({
+              pending_cluster: false,
+              pending_since: null,
+            })
+            .eq("id", bookmarkId)
+            .eq("user_id", userId);
+
           return {
             classified: false,
             folderId: result.folderId,
@@ -767,6 +799,16 @@ export async function classifyBookmarkV2(
               reason: "每日文件夹创建数量已达上限",
             },
           );
+
+          // V4.2.28: 清除 pending_cluster 状态
+          await supabase
+            .from("bookmarks")
+            .update({
+              pending_cluster: false,
+              pending_since: null,
+            })
+            .eq("id", bookmarkId)
+            .eq("user_id", userId);
 
           return {
             classified: false,
@@ -891,6 +933,16 @@ export async function classifyBookmarkV2(
               reason: result.reason || "建议创建新文件夹",
             },
           );
+
+          // V4.2.28: 清除 pending_cluster 状态
+          await supabase
+            .from("bookmarks")
+            .update({
+              pending_cluster: false,
+              pending_since: null,
+            })
+            .eq("id", bookmarkId)
+            .eq("user_id", userId);
 
           return {
             classified: false,
