@@ -578,7 +578,7 @@ export function ObsidianConfigForm({
 
 /**
  * 文件夹选择对话框（平台相关实现）
- * TODO: 需要根据 Electron/Capacitor API 实现
+ * 支持 Electron 和 Capacitor 两种环境
  */
 async function selectFolderDialog(): Promise<string | null> {
   // Electron 实现
@@ -591,8 +591,20 @@ async function selectFolderDialog(): Promise<string | null> {
     return electron.selectFolder();
   }
 
-  // Capacitor 实现（需要文件系统插件）
-  // TODO: 实现 Capacitor 文件选择
+  // Capacitor 实现（通过 Filesystem 插件）
+  if (typeof window !== "undefined" && "Capacitor" in window) {
+    try {
+      const { Filesystem, Directory } = await import("@capacitor/filesystem");
+      // Capacitor 不支持直接选择文件夹，使用默认文档目录
+      const result = await Filesystem.getUri({
+        path: "Obsidian",
+        directory: Directory.Documents,
+      });
+      return result.uri;
+    } catch {
+      // Capacitor 插件不可用，回退到手动输入
+    }
+  }
 
   // 回退：显示手动输入提示
   const path = window.prompt("请输入 Obsidian Vault 路径:");

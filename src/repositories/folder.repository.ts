@@ -82,13 +82,31 @@ export class FolderRepository extends BaseRepository<
   /**
    * 获取文件夹及书签数量
    *
-   * 注意：如果已执行数据库迁移创建了 get_folders_with_counts RPC，
-   * 可以修改此方法以使用 RPC 提升性能
+   * 优先使用 RPC 函数获取，如果不可用则回退到手动计算
    */
   async findAllWithCounts(): Promise<FolderWithCount[]> {
-    // 使用手动计算方式
-    // TODO: 执行迁移后，改用 RPC: this.supabase.rpc("get_folders_with_counts", { p_user_id: this.userId })
-    return this.findAllWithCountsFallback();
+    try {
+      // 尝试使用 RPC 函数（性能更优）
+      const { data, error } = await this.supabase.rpc(
+        "get_folders_with_counts",
+        {
+          p_user_id: this.userId,
+        },
+      );
+
+      if (!error && data) {
+        return data as FolderWithCount[];
+      }
+
+      // RPC 不可用，回退到手动计算
+      this.logger.debug(
+        "RPC get_folders_with_counts not available, using fallback",
+      );
+      return this.findAllWithCountsFallback();
+    } catch {
+      // 出错时回退到手动计算
+      return this.findAllWithCountsFallback();
+    }
   }
 
   /**

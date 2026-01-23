@@ -577,7 +577,7 @@ export class MdAIProcessor {
   }
 
   /**
-   * 发布事件（占位，后续集成 EventBus）
+   * 发布事件到 UI 事件总线
    */
   private emitEvent(
     event:
@@ -585,7 +585,10 @@ export class MdAIProcessor {
       | MdProcessingCompletedEvent
       | MdProcessingFailedEvent,
   ): void {
-    // TODO: 集成 EventBus
+    // 通过全局事件总线发布事件，供 UI 组件订阅
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("md:processing", { detail: event }));
+    }
     logger.debug(
       { eventType: event.type, collectionId: event.collectionId },
       "MdAIProcessor: Event emitted",

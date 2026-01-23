@@ -704,10 +704,15 @@ const SearchResultsContent = memo(function SearchResultsContent({
     window.open(result.url, "_blank", "noopener,noreferrer");
   };
 
-  // 处理建议点击
+  // 处理建议点击 - 通过事件总线触发新搜索
   const handleSuggestionClick = (suggestion: string) => {
-    // TODO: 触发新的搜索
     clientLogger.info({ suggestion }, "Search suggestion clicked");
+    // 触发全局搜索事件，由 AI 聊天组件监听处理
+    window.dispatchEvent(
+      new CustomEvent("ai:search-suggestion", {
+        detail: { query: suggestion },
+      }),
+    );
   };
 
   return (

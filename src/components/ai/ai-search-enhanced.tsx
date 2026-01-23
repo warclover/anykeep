@@ -154,10 +154,26 @@ export function AISearchEnhanced({
   /**
    * 处理反馈
    */
-  const handleFeedback = useCallback((type: "helpful" | "not-helpful") => {
-    setFeedback(type);
-    // TODO: 发送反馈到后端
-  }, []);
+  const handleFeedback = useCallback(
+    async (type: "helpful" | "not-helpful") => {
+      setFeedback(type);
+      // 发送反馈到后端（异步，不阻塞 UI）
+      try {
+        await fetch("/api/feedback/search-insight", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            query,
+            feedbackType: type,
+            timestamp: new Date().toISOString(),
+          }),
+        });
+      } catch {
+        // 反馈发送失败不影响用户体验，静默处理
+      }
+    },
+    [query],
+  );
 
   // 不显示条件
   if (!query.trim()) {

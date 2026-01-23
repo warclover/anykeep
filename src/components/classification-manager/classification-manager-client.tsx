@@ -391,7 +391,12 @@ export function ClassificationManagerClient() {
     }
 
     try {
-      // TODO: 实现保存到后端 API
+      // 保存权重配置到后端
+      await fetch("/api/classification/weights", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ weights }),
+      });
       toast.success("权重配置已保存");
     } catch {
       toast.error("保存失败");

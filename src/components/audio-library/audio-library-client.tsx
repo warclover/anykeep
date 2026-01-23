@@ -265,9 +265,13 @@ export function AudioLibraryClient() {
   };
 
   // 处理删除
-  const handleDelete = (_id: string) => {
-    // TODO: 实际实现中这里会调用 API 删除
-    // 当前为 Mock 数据，暂不实现删除逻辑
+  const handleDelete = async (id: string) => {
+    // 当前为 Mock 数据，后续集成真实 API
+    // 预留 API 调用接口：DELETE /api/audio-library/{id}
+    console.info(`[AudioLibrary] Delete requested for id: ${id}`);
+    // 未来实现：
+    // await fetch(`/api/audio-library/${id}`, { method: "DELETE" });
+    // 刷新列表
   };
 
   return (

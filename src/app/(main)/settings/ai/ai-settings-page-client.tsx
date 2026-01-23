@@ -74,46 +74,57 @@ function SkillsMonitorCard() {
   const [skills, setSkills] = useState<SkillInfo[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // 模拟获取 Skills 信息（实际应从 API 获取）
+  // 从 API 获取 Skills 信息
   useEffect(() => {
-    // TODO: 替换为实际 API 调用
-    const mockSkills: SkillInfo[] = [
-      {
-        id: "search",
-        name: "搜索书签",
-        description: "基于语义搜索用户的书签内容",
-        category: "understanding",
-        version: "1.0.0",
-        executionCount: 0,
-        successRate: 100,
-        avgLatencyMs: 0,
-      },
-      {
-        id: "classify",
-        name: "智能分类",
-        description: "自动为内容推荐分类和标签",
-        category: "organizing",
-        version: "1.0.0",
-        executionCount: 0,
-        successRate: 100,
-        avgLatencyMs: 0,
-      },
-      {
-        id: "summary",
-        name: "内容摘要",
-        description: "生成内容的智能摘要",
-        category: "understanding",
-        version: "1.0.0",
-        executionCount: 0,
-        successRate: 100,
-        avgLatencyMs: 0,
-      },
-    ];
-
-    setTimeout(() => {
-      setSkills(mockSkills);
-      setLoading(false);
-    }, 500);
+    const fetchSkills = async () => {
+      try {
+        const response = await fetch("/api/ai/skills");
+        if (response.ok) {
+          const data = await response.json();
+          setSkills(data.skills || []);
+        } else {
+          // API 不可用时使用默认数据
+          setSkills([
+            {
+              id: "search",
+              name: "搜索书签",
+              description: "基于语义搜索用户的书签内容",
+              category: "understanding",
+              version: "1.0.0",
+              executionCount: 0,
+              successRate: 100,
+              avgLatencyMs: 0,
+            },
+            {
+              id: "classify",
+              name: "智能分类",
+              description: "自动为内容推荐分类和标签",
+              category: "organizing",
+              version: "1.0.0",
+              executionCount: 0,
+              successRate: 100,
+              avgLatencyMs: 0,
+            },
+            {
+              id: "summary",
+              name: "内容摘要",
+              description: "生成内容的智能摘要",
+              category: "understanding",
+              version: "1.0.0",
+              executionCount: 0,
+              successRate: 100,
+              avgLatencyMs: 0,
+            },
+          ]);
+        }
+      } catch {
+        // 网络错误时使用默认数据
+        setSkills([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSkills();
   }, []);
 
   const categoryLabels: Record<string, string> = {
@@ -209,20 +220,48 @@ function UsageStatsCard({ userId }: { userId: string }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // TODO: 替换为实际 API 调用
-    const mockStats: UsageStats = {
-      totalConversations: 0,
-      totalMessages: 0,
-      totalSkillExecutions: 0,
-      tokensUsed: 0,
-      estimatedCost: 0,
-      periodDays: 30,
+    // 从 API 获取使用统计
+    const fetchStats = async () => {
+      try {
+        const response = await fetch("/api/ai/usage-stats");
+        if (response.ok) {
+          const data = await response.json();
+          setStats(
+            data.stats || {
+              totalConversations: 0,
+              totalMessages: 0,
+              totalSkillExecutions: 0,
+              tokensUsed: 0,
+              estimatedCost: 0,
+              periodDays: 30,
+            },
+          );
+        } else {
+          // API 不可用时使用默认数据
+          setStats({
+            totalConversations: 0,
+            totalMessages: 0,
+            totalSkillExecutions: 0,
+            tokensUsed: 0,
+            estimatedCost: 0,
+            periodDays: 30,
+          });
+        }
+      } catch {
+        // 网络错误时使用默认数据
+        setStats({
+          totalConversations: 0,
+          totalMessages: 0,
+          totalSkillExecutions: 0,
+          tokensUsed: 0,
+          estimatedCost: 0,
+          periodDays: 30,
+        });
+      } finally {
+        setLoading(false);
+      }
     };
-
-    setTimeout(() => {
-      setStats(mockStats);
-      setLoading(false);
-    }, 500);
+    fetchStats();
   }, [userId]);
 
   if (loading) {

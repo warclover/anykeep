@@ -206,7 +206,7 @@ export function useGeneration(
             bookmarkIds: materials.map((m) => m.bookmarkId),
             targetLength: config.targetLength || "medium",
             tone: config.tone,
-            customPrompt: undefined, // TODO: 支持自定义指令
+            customPrompt: config.customPrompt, // 支持自定义指令
           }),
           signal: abortControllerRef.current.signal,
         });

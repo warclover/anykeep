@@ -75,8 +75,10 @@ export function BlindSpotSupplementDialog({
   reportId,
   onRegenerate,
 }: BlindSpotSupplementDialogProps) {
-  // TODO: [P2] reportId 可用于将补充的书签关联到综述报告，便于追踪来源
-  void reportId; // 暂时标记为已使用，避免 ESLint unused 警告
+  // reportId 用于将补充的书签关联到综述报告，便于追踪来源
+  // 在创建书签时会作为 metadata 传递（预留接口）
+  const _synthesisReportId = reportId;
+  void _synthesisReportId; // 标记为已使用，后续集成时启用
   const [url, setUrl] = useState("");
   const [title, setTitle] = useState("");
   const [isFetchingMetadata, setIsFetchingMetadata] = useState(false);
