@@ -128,6 +128,14 @@ function getRiskLevelStyles(riskLevel: PendingConfirmation["riskLevel"]) {
         icon: "text-red-500",
         button: "bg-red-600 hover:bg-red-700",
       };
+    default:
+      // 默认使用 medium 风险样式
+      return {
+        badge:
+          "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+        icon: "text-amber-500",
+        button: "bg-amber-600 hover:bg-amber-700",
+      };
   }
 }
 

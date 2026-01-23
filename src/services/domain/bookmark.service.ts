@@ -47,6 +47,7 @@ export class BookmarkService extends BaseService {
       async () => {
         const params: BookmarkQueryParams = {
           folderId: query.folderId,
+          folderIds: query.folderIds, // V2.0: 批量文件夹查询
           platform: query.platform,
           isRead: query.isRead,
           isStarred: query.isStarred,
@@ -426,6 +427,8 @@ export class BookmarkService extends BaseService {
    * 转换为列表项响应
    */
   private toListItemResponse(bookmark: BookmarkRow): BookmarkListItemResponse {
+    // 注意：为兼容前端组件，同时返回 camelCase 和 snake_case 字段
+    // 前端组件期望 snake_case，API 契约定义 camelCase
     return {
       id: bookmark.id,
       url: bookmark.url,
@@ -444,7 +447,19 @@ export class BookmarkService extends BaseService {
       createdAt: bookmark.created_at ?? new Date().toISOString(),
       updatedAt: bookmark.updated_at,
       starredAt: bookmark.starred_at,
-    };
+      // 兼容 snake_case（前端组件期望的格式）
+      cover_url: bookmark.cover_url,
+      folder_id: bookmark.folder_id,
+      ai_summary: bookmark.ai_summary,
+      ai_tags: bookmark.ai_tags,
+      user_tags: bookmark.user_tags,
+      is_read: bookmark.is_read ?? false,
+      is_starred: bookmark.is_starred,
+      is_in_trash: bookmark.is_in_trash ?? false,
+      created_at: bookmark.created_at ?? new Date().toISOString(),
+      updated_at: bookmark.updated_at,
+      starred_at: bookmark.starred_at,
+    } as BookmarkListItemResponse;
   }
 
   /**

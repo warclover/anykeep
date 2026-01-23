@@ -51,6 +51,17 @@ export type UpdateBookmarkInput = z.infer<typeof UpdateBookmarkSchema>;
  */
 export const BookmarkQuerySchema = z.object({
   folderId: z.coerce.number().int().positive().optional(),
+  /** V2.0: 批量文件夹查询（逗号分隔的 ID 列表） */
+  folderIds: z
+    .string()
+    .optional()
+    .transform((v) => {
+      if (!v) return undefined;
+      return v
+        .split(",")
+        .map((id) => parseInt(id.trim(), 10))
+        .filter((id) => !isNaN(id) && id > 0);
+    }),
   platform: z.string().optional(),
   isRead: z
     .enum(["true", "false"])

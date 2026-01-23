@@ -96,7 +96,8 @@ async function fetchBookmarksPage(
   }
 
   const result = await response.json();
-  return result.data?.bookmarks || result.data || [];
+  // v1 API 返回 { data: { items: [...] } }，旧版返回 { data: { bookmarks: [...] } } 或 { data: [...] }
+  return result.data?.items || result.data?.bookmarks || result.data || [];
 }
 
 /**

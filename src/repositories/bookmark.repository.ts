@@ -21,6 +21,8 @@ type BookmarkUpdate = Database["public"]["Tables"]["bookmarks"]["Update"];
  */
 export interface BookmarkQueryParams {
   folderId?: number;
+  /** V2.0: 批量文件夹查询 */
+  folderIds?: number[];
   platform?: string;
   isRead?: boolean;
   isStarred?: boolean;
@@ -114,6 +116,7 @@ export class BookmarkRepository extends BaseRepository<
   ): Promise<PaginatedResult<BookmarkRow>> {
     const {
       folderId,
+      folderIds,
       platform,
       isRead,
       isStarred,
@@ -134,7 +137,10 @@ export class BookmarkRepository extends BaseRepository<
       .is("deleted_at", null);
 
     // 应用过滤条件
-    if (folderId !== undefined) {
+    // V2.0: 优先使用 folderIds 批量查询，否则使用 folderId 单查询
+    if (folderIds && folderIds.length > 0) {
+      query = query.in("folder_id", folderIds);
+    } else if (folderId !== undefined) {
       query = query.eq("folder_id", folderId);
     }
 
