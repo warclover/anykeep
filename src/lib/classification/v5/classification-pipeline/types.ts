@@ -138,3 +138,70 @@ export class ClassificationPipelineError extends Error {
     this.name = "ClassificationPipelineError";
   }
 }
+
+// =============================================================================
+// AI 标签匹配器类型定义 (v5.1)
+// =============================================================================
+
+/**
+ * 文件夹标签画像
+ */
+export interface FolderTagProfile {
+  /** 文件夹 ID */
+  folderId: number;
+  /** 文件夹名称 */
+  folderName: string;
+  /** 核心标签（出现频率 > 30% 的标签） */
+  coreTags: string[];
+  /** 相关标签（出现频率 10%-30%） */
+  relatedTags: string[];
+  /** 文件夹名分词 */
+  folderNameTokens: string[];
+  /** 书签数量 */
+  bookmarkCount: number;
+}
+
+/**
+ * 标签匹配类型
+ */
+export type TagMatchType =
+  | "exact_name"
+  | "core_tag"
+  | "related_tag"
+  | "semantic";
+
+/**
+ * 标签匹配结果
+ */
+export interface TagMatchResult {
+  /** 是否匹配成功 */
+  matched: boolean;
+  /** 匹配的文件夹 ID */
+  folderId: string;
+  /** 匹配的文件夹名称 */
+  folderName: string;
+  /** 匹配置信度 (0-1) */
+  confidence: number;
+  /** 匹配类型 */
+  matchType: TagMatchType;
+  /** 命中的标签列表 */
+  matchedTags: string[];
+  /** 匹配原因说明 */
+  reason: string;
+}
+
+/**
+ * 标签匹配器配置
+ */
+export interface TagMatcherConfig {
+  /** 精确匹配置信度 (默认 0.98) */
+  exactMatchConfidence: number;
+  /** 核心标签匹配置信度 (默认 0.92) */
+  coreTagConfidence: number;
+  /** 相关标签匹配置信度 (默认 0.85) */
+  relatedTagConfidence: number;
+  /** 最小匹配标签数 (默认 1) */
+  minMatchingTags: number;
+  /** 核心标签最小命中数（用于高置信度，默认 2） */
+  minCoreTagHits: number;
+}

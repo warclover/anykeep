@@ -63,12 +63,14 @@ export class HybridRetriever {
   /**
    * 执行混合检索
    * v5.1: 支持名称相似度护栏
+   * v5.1.1: 支持 AI 标签加成
    */
   async retrieve(
     userId: string,
     contentEmbedding: number[],
     behaviorEmbedding: number[],
     bookmarkTitle?: string,
+    aiTags?: string[],
   ): Promise<HybridRetrievalResult[]> {
     this.logger.debug("开始混合检索", {
       userId,
@@ -100,6 +102,11 @@ export class HybridRetriever {
       finalResults = this.applyKeywordBoost(finalResults, bookmarkTitle);
     }
 
+    // 4.1. v5.1.1: 应用 AI 标签加成
+    if (aiTags && aiTags.length > 0) {
+      finalResults = this.applyAiTagBoost(finalResults, aiTags);
+    }
+
     // 5. v5.1: 如果启用名称护栏，应用名称相似度分数
     if (this.enableNameGuardrail && bookmarkTitle) {
       finalResults = await this.applyNameGuardrail(finalResults, bookmarkTitle);
@@ -113,7 +120,7 @@ export class HybridRetriever {
    * v6: 应用关键词匹配增强
    *
    * 如果书签标题包含文件夹名称的关键词，给予分数加成
-   * v6.1: 增加强匹配规则（Claude → claude 学习）
+   * v5.1 修复: 将硬编码规则移至配置，支持动态加载
    */
   private applyKeywordBoost(
     results: HybridRetrievalResult[],
@@ -121,44 +128,22 @@ export class HybridRetriever {
   ): HybridRetrievalResult[] {
     const titleLower = title.toLowerCase();
 
-    // v6.1: 强匹配规则表 - 标题关键词 → 目标文件夹
-    const STRONG_MATCH_RULES: Array<{
-      titlePattern: RegExp;
-      targetFolderPattern: RegExp;
-      boost: number;
-    }> = [
-      // Claude 相关内容强制加入 "claude 学习"
-      {
-        titlePattern: /claude|anthropic|mcp|claude\s*code/i,
-        targetFolderPattern: /claude/i,
-        boost: 0.5,
-      },
-      // LIMS/实验室内容强制加入相关文件夹
-      {
-        titlePattern: /lims|实验室/i,
-        targetFolderPattern: /lims|实验室/i,
-        boost: 0.5,
-      },
-      // BMAD 相关内容
-      {
-        titlePattern: /bmad/i,
-        targetFolderPattern: /bmad/i,
-        boost: 0.5,
-      },
-    ];
+    // v5.1 修复: 从环境变量或配置加载强匹配规则
+    // 默认规则为空，避免硬编码特定用户的调试规则
+    const STRONG_MATCH_RULES = this.loadStrongMatchRules();
 
     const boostedResults = results.map((result) => {
       const folderNameLower = result.folderName.toLowerCase();
       let boost = 0;
 
-      // v6.1: 优先检查强匹配规则
+      // v5.1: 优先检查动态强匹配规则
       for (const rule of STRONG_MATCH_RULES) {
         if (
           rule.titlePattern.test(title) &&
           rule.targetFolderPattern.test(result.folderName)
         ) {
           boost = Math.max(boost, rule.boost);
-          this.logger.debug("强匹配规则命中", {
+          this.logger.debug("强���配规则命中", {
             folderId: result.folderId,
             folderName: result.folderName,
             titlePattern: rule.titlePattern.source,
@@ -193,6 +178,119 @@ export class HybridRetriever {
             this.logger.debug("关键词匹配：部分关键词匹配", {
               folderId: result.folderId,
               folderName: result.folderName,
+              matchedKeywords,
+              boost,
+            });
+          }
+        }
+      }
+
+      return {
+        ...result,
+        fusedScore: result.fusedScore + boost,
+      };
+    });
+
+    // 按调整后的分数重新排序
+    return boostedResults.sort((a, b) => b.fusedScore - a.fusedScore);
+  }
+
+  /**
+   * v5.1: 从配置加载强匹配规则
+   * 支持环境变量 CLASSIFICATION_STRONG_MATCH_RULES 配置 JSON 格式规则
+   */
+  private loadStrongMatchRules(): Array<{
+    titlePattern: RegExp;
+    targetFolderPattern: RegExp;
+    boost: number;
+  }> {
+    const rulesJson = process.env.CLASSIFICATION_STRONG_MATCH_RULES;
+    if (!rulesJson) {
+      return []; // 默认返回空规则，不硬编码
+    }
+
+    try {
+      const parsed = JSON.parse(rulesJson) as Array<{
+        titlePattern: string;
+        targetFolderPattern: string;
+        boost: number;
+      }>;
+
+      return parsed.map((rule) => ({
+        titlePattern: new RegExp(rule.titlePattern, "i"),
+        targetFolderPattern: new RegExp(rule.targetFolderPattern, "i"),
+        boost: rule.boost,
+      }));
+    } catch (error) {
+      this.logger.warn("解析强匹配规则失败，使用空规则", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return [];
+    }
+  }
+
+  /**
+   * v5.1.1: 应用 AI 标签加成
+   *
+   * 如果 AI 标签与文件夹名匹配，给予分数加成
+   * 这是 L0 AI 标签匹配未命中后的兜底增强
+   */
+  private applyAiTagBoost(
+    results: HybridRetrievalResult[],
+    aiTags: string[],
+  ): HybridRetrievalResult[] {
+    const normalizedTags = aiTags.map((t) => t.toLowerCase().trim());
+
+    const boostedResults = results.map((result) => {
+      const folderNameLower = result.folderName.toLowerCase();
+      let boost = 0;
+
+      for (const tag of normalizedTags) {
+        // 规则 0：AI 标签与文件夹名精确匹配 → 加成 0.4
+        if (tag === folderNameLower) {
+          boost = Math.max(boost, 0.4);
+          this.logger.debug("AI 标签精确匹配文件夹名", {
+            folderId: result.folderId,
+            folderName: result.folderName,
+            tag,
+            boost,
+          });
+          break;
+        }
+
+        // 规则 1：AI 标签包含文件夹名，或文件夹名包含 AI 标签 → 加成 0.35
+        if (
+          tag.length >= 4 &&
+          folderNameLower.length >= 4 &&
+          (tag.includes(folderNameLower) || folderNameLower.includes(tag))
+        ) {
+          boost = Math.max(boost, 0.35);
+          this.logger.debug("AI 标签与文件夹名高度相关", {
+            folderId: result.folderId,
+            folderName: result.folderName,
+            tag,
+            boost,
+          });
+        }
+
+        // 规则 2：AI 标签关键词出现在文件夹名中 → 加成 0.2
+        if (boost === 0) {
+          const tagKeywords = tag
+            .split(/[与和/|\-_·&、\s]+/)
+            .filter((k) => k.length >= 2);
+          const matchedKeywords = tagKeywords.filter((kw) =>
+            folderNameLower.includes(kw),
+          );
+
+          if (matchedKeywords.length > 0) {
+            boost = Math.max(
+              boost,
+              0.2 * (matchedKeywords.length / tagKeywords.length),
+            );
+            this.logger.debug("AI 标签关键词匹配", {
+              folderId: result.folderId,
+              folderName: result.folderName,
+              tag,
               matchedKeywords,
               boost,
             });

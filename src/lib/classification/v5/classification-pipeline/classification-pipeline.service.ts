@@ -71,7 +71,7 @@ export class ClassificationPipelineService {
         content: config?.hybridWeights?.content ?? 0.7,
         behavior: config?.hybridWeights?.behavior ?? 0.3,
       },
-      rrfK: config?.rrfK ?? 3, // v6: 从60调整为3
+      rrfK: config?.rrfK ?? 60, // v6.2: 回退到60，修复分类回归问题
     };
 
     // 初始化组件（v5.1: 传递 embeddingService 用于名称护栏）

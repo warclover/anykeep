@@ -750,6 +750,19 @@ export const FeatureFlags = {
   get ENABLE_SNAPSHOT_COMPARE(): boolean {
     return process.env.ENABLE_SNAPSHOT_COMPARE !== "false";
   },
+
+  // ===========================================================================
+  // 智能分类系统 [v5.1 新增 - 2026-01-23]
+  // ===========================================================================
+
+  /**
+   * 是否启用 AI 标签优先匹配
+   * @default true
+   * @description 在 L0 规则匹配最前端，使用 AI 标签与文件夹进行匹配
+   */
+  get ENABLE_AI_TAG_MATCHER(): boolean {
+    return process.env.ENABLE_AI_TAG_MATCHER !== "false";
+  },
 } as const;
 
 // =============================================================================
@@ -879,6 +892,8 @@ export function getAllFeatureFlags(): Record<BooleanFeatureFlagKey, boolean> & {
     ENABLE_KNOWLEDGE_GRAPH_EXPLORE: FeatureFlags.ENABLE_KNOWLEDGE_GRAPH_EXPLORE,
     ENABLE_FOLDER_HEALTH_CHECK: FeatureFlags.ENABLE_FOLDER_HEALTH_CHECK,
     ENABLE_SNAPSHOT_COMPARE: FeatureFlags.ENABLE_SNAPSHOT_COMPARE,
+    // 智能分类系统 [v5.1 新增 - 2026-01-23]
+    ENABLE_AI_TAG_MATCHER: FeatureFlags.ENABLE_AI_TAG_MATCHER,
   };
 }
 
