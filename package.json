@@ -24,6 +24,7 @@
     "check:types:ci": "npx ts-node scripts/check-type-duplicates.ts --ci",
     "check:feature-flags": "npx ts-node scripts/check-feature-flags.ts",
     "check:feature-flags:ci": "npx ts-node scripts/check-feature-flags.ts --ci",
+    "check:folder-id-types": "npx ts-node scripts/check-folder-id-types.ts",
     "ai:metrics": "npx ts-node scripts/ai-capability-metrics.ts",
     "ai:metrics:json": "npx ts-node scripts/ai-capability-metrics.ts --json",
     "analyze:type-errors": "node scripts/analyze-type-errors.mjs",

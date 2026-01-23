@@ -4,8 +4,9 @@
  * 生成规范化的文件夹名称建议
  */
 
-import type { LoggerService } from '../shared/logger';
-import type { NamingSuggestion } from './types';
+import type { LoggerService } from "../shared/logger";
+import type { FolderId } from "@/lib/shared/types";
+import type { NamingSuggestion } from "./types";
 
 /**
  * 命名规则
@@ -29,7 +30,7 @@ export class NamingEngine {
   private rules: NamingRule[];
 
   constructor(logger: LoggerService) {
-    this.logger = logger.child({ service: 'NamingEngine' });
+    this.logger = logger.child({ service: "NamingEngine" });
     this.rules = this.initializeRules();
   }
 
@@ -40,28 +41,28 @@ export class NamingEngine {
     return [
       // 规则 1: 移除前后空格
       {
-        name: 'trim_spaces',
+        name: "trim_spaces",
         detect: (name) => name !== name.trim(),
         fix: (name) => name.trim(),
         confidence: 1.0,
       },
       // 规则 2: 合并多个空格
       {
-        name: 'merge_spaces',
+        name: "merge_spaces",
         detect: (name) => /\s{2,}/.test(name),
-        fix: (name) => name.replace(/\s{2,}/g, ' '),
+        fix: (name) => name.replace(/\s{2,}/g, " "),
         confidence: 1.0,
       },
       // 规则 3: 移除特殊字符（保留中文、英文、数字、空格、连字符）
       {
-        name: 'remove_special_chars',
+        name: "remove_special_chars",
         detect: (name) => /[^\w\s\u4e00-\u9fa5-]/.test(name),
-        fix: (name) => name.replace(/[^\w\s\u4e00-\u9fa5-]/g, ''),
+        fix: (name) => name.replace(/[^\w\s\u4e00-\u9fa5-]/g, ""),
         confidence: 0.8,
       },
       // 规则 4: 首字母大写（仅英文）
       {
-        name: 'capitalize_first_letter',
+        name: "capitalize_first_letter",
         detect: (name) => {
           const firstChar = name.charAt(0);
           return /[a-z]/.test(firstChar);
@@ -71,41 +72,40 @@ export class NamingEngine {
       },
       // 规则 5: 统一连字符（将下划线替换为连字符）
       {
-        name: 'normalize_separators',
-        detect: (name) => name.includes('_'),
-        fix: (name) => name.replace(/_/g, '-'),
+        name: "normalize_separators",
+        detect: (name) => name.includes("_"),
+        fix: (name) => name.replace(/_/g, "-"),
         confidence: 0.6,
       },
       // 规则 6: 移除冗余词汇（如 "文件夹"、"Folder"）
       {
-        name: 'remove_redundant_words',
-        detect: (name) =>
-          /文件夹|folder|目录|directory/i.test(name),
+        name: "remove_redundant_words",
+        detect: (name) => /文件夹|folder|目录|directory/i.test(name),
         fix: (name) =>
           name
-            .replace(/文件夹/g, '')
-            .replace(/folder/gi, '')
-            .replace(/目录/g, '')
-            .replace(/directory/gi, '')
+            .replace(/文件夹/g, "")
+            .replace(/folder/gi, "")
+            .replace(/目录/g, "")
+            .replace(/directory/gi, "")
             .trim(),
         confidence: 0.9,
       },
       // 规则 7: 统一缩写（常见技术术语）
       {
-        name: 'normalize_abbreviations',
+        name: "normalize_abbreviations",
         detect: (name) => {
           const lowerName = name.toLowerCase();
           return (
-            lowerName.includes('javascript') ||
-            lowerName.includes('typescript') ||
-            lowerName.includes('python')
+            lowerName.includes("javascript") ||
+            lowerName.includes("typescript") ||
+            lowerName.includes("python")
           );
         },
         fix: (name) => {
           let fixed = name;
-          fixed = fixed.replace(/javascript/gi, 'JavaScript');
-          fixed = fixed.replace(/typescript/gi, 'TypeScript');
-          fixed = fixed.replace(/python/gi, 'Python');
+          fixed = fixed.replace(/javascript/gi, "JavaScript");
+          fixed = fixed.replace(/typescript/gi, "TypeScript");
+          fixed = fixed.replace(/python/gi, "Python");
           return fixed;
         },
         confidence: 0.8,
@@ -116,8 +116,8 @@ export class NamingEngine {
   /**
    * 生成命名建议
    */
-  suggest(folderId: string, currentName: string): NamingSuggestion | null {
-    this.logger.debug('生成命名建议', {
+  suggest(folderId: FolderId, currentName: string): NamingSuggestion | null {
+    this.logger.debug("生成命名建议", {
       folderId,
       currentName,
     });
@@ -130,7 +130,7 @@ export class NamingEngine {
       if (rule.detect(suggestedName)) {
         suggestedName = rule.fix(suggestedName);
         appliedRules.push(rule);
-        this.logger.debug('应用命名规则', {
+        this.logger.debug("应用命名规则", {
           ruleName: rule.name,
           before: currentName,
           after: suggestedName,
@@ -151,7 +151,7 @@ export class NamingEngine {
     // 生成原因说明
     const reason = this.generateReason(appliedRules);
 
-    this.logger.info('生成命名建议', {
+    this.logger.info("生成命名建议", {
       folderId,
       currentName,
       suggestedName,
@@ -172,9 +172,9 @@ export class NamingEngine {
    * 批量生成命名建议
    */
   suggestBatch(
-    folders: Array<{ folderId: string; folderName: string }>
+    folders: Array<{ folderId: number; folderName: string }>,
   ): NamingSuggestion[] {
-    this.logger.info('批量生成命名建议', {
+    this.logger.info("批量生成命名建议", {
       count: folders.length,
     });
 
@@ -187,7 +187,7 @@ export class NamingEngine {
       }
     }
 
-    this.logger.info('批量命名建议完成', {
+    this.logger.info("批量命名建议完成", {
       total: folders.length,
       suggestions: suggestions.length,
     });
@@ -203,31 +203,31 @@ export class NamingEngine {
 
     for (const rule of appliedRules) {
       switch (rule.name) {
-        case 'trim_spaces':
-          reasons.push('移除前后空格');
+        case "trim_spaces":
+          reasons.push("移除前后空格");
           break;
-        case 'merge_spaces':
-          reasons.push('合并多余空格');
+        case "merge_spaces":
+          reasons.push("合并多余空格");
           break;
-        case 'remove_special_chars':
-          reasons.push('移除特殊字符');
+        case "remove_special_chars":
+          reasons.push("移除特殊字符");
           break;
-        case 'capitalize_first_letter':
-          reasons.push('首字母大写');
+        case "capitalize_first_letter":
+          reasons.push("首字母大写");
           break;
-        case 'normalize_separators':
-          reasons.push('统一分隔符');
+        case "normalize_separators":
+          reasons.push("统一分隔符");
           break;
-        case 'remove_redundant_words':
-          reasons.push('移除冗余词汇');
+        case "remove_redundant_words":
+          reasons.push("移除冗余词汇");
           break;
-        case 'normalize_abbreviations':
-          reasons.push('统一技术术语');
+        case "normalize_abbreviations":
+          reasons.push("统一技术术语");
           break;
       }
     }
 
-    return reasons.join('、');
+    return reasons.join("、");
   }
 
   /**
@@ -238,25 +238,25 @@ export class NamingEngine {
 
     // 检查长度
     if (name.length === 0) {
-      issues.push('名称不能为空');
+      issues.push("名称不能为空");
     }
     if (name.length > 100) {
-      issues.push('名称过长（超过100字符）');
+      issues.push("名称过长（超过100字符）");
     }
 
     // 检查前后空格
     if (name !== name.trim()) {
-      issues.push('名称包含前后空格');
+      issues.push("名称包含前后空格");
     }
 
     // 检查多余空格
     if (/\s{2,}/.test(name)) {
-      issues.push('名称包含多余空格');
+      issues.push("名称包含多余空格");
     }
 
     // 检查特殊字符
     if (/[^\w\s\u4e00-\u9fa5-]/.test(name)) {
-      issues.push('名称包含特殊字符');
+      issues.push("名称包含特殊字符");
     }
 
     return {

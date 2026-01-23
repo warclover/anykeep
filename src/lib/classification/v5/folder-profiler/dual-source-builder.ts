@@ -149,7 +149,7 @@ export class DualSourceBuilder {
    * @param options - v5.1 构建选项（包含父文件夹上下文）
    */
   async build(
-    folderId: string,
+    folderId: number,
     folderName: string,
     folderDescription: string | undefined,
     bookmarks: BookmarkData[],

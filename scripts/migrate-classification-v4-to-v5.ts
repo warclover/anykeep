@@ -8,9 +8,9 @@
  * 4. 数据验证和错误恢复
  */
 
-import { createClient } from '@supabase/supabase-js';
-import { EmbeddingService } from '@/lib/classification/v5/shared/embedding';
-import { LoggerService } from '@/lib/classification/v5/shared/logger';
+import { createClient } from "@supabase/supabase-js";
+import { EmbeddingService } from "@/lib/classification/v5/shared/embedding";
+import { LoggerService } from "@/lib/classification/v5/shared/logger";
 
 // 配置
 const BATCH_SIZE = 50; // 每批处理的文件夹数量
@@ -23,7 +23,7 @@ interface MigrationStats {
   failedFolders: number;
   skippedFolders: number;
   errors: Array<{
-    folderId: string;
+    folderId: number;
     userId: string;
     error: string;
   }>;
@@ -59,11 +59,11 @@ export class ClassificationMigrator {
     supabaseUrl: string,
     supabaseKey: string,
     embeddingService: EmbeddingService,
-    logger: LoggerService
+    logger: LoggerService,
   ) {
     this.supabase = createClient(supabaseUrl, supabaseKey);
     this.embeddingService = embeddingService;
-    this.logger = logger.child({ service: 'ClassificationMigrator' });
+    this.logger = logger.child({ service: "ClassificationMigrator" });
     this.stats = {
       totalFolders: 0,
       migratedFolders: 0,
@@ -77,7 +77,7 @@ export class ClassificationMigrator {
    * 执行完整迁移流程
    */
   async migrate(): Promise<MigrationStats> {
-    this.logger.info('开始迁移 v4 → v5');
+    this.logger.info("开始迁移 v4 → v5");
 
     try {
       // 1. 获取所有 v4 文件夹画像
@@ -91,10 +91,10 @@ export class ClassificationMigrator {
       // 3. 验证迁移结果
       await this.validateMigration();
 
-      this.logger.info('迁移完成', this.stats);
+      this.logger.info("迁移完成", this.stats);
       return this.stats;
     } catch (error) {
-      this.logger.error('迁移失败', { error });
+      this.logger.error("迁移失败", { error });
       throw error;
     }
   }
@@ -104,9 +104,9 @@ export class ClassificationMigrator {
    */
   private async fetchV4Profiles(): Promise<V4FolderProfile[]> {
     const { data, error } = await this.supabase
-      .from('classification_folder_profiles')
-      .select('user_id, folder_id, embedding, bookmark_count, last_updated')
-      .order('user_id', { ascending: true });
+      .from("classification_folder_profiles")
+      .select("user_id, folder_id, embedding, bookmark_count, last_updated")
+      .order("user_id", { ascending: true });
 
     if (error) {
       throw new Error(`获取 v4 画像失败: ${error.message}`);
@@ -127,9 +127,7 @@ export class ClassificationMigrator {
         batchSize: batch.length,
       });
 
-      await Promise.all(
-        batch.map((profile) => this.migrateProfile(profile))
-      );
+      await Promise.all(batch.map((profile) => this.migrateProfile(profile)));
 
       // 批次间延迟，避免过载
       if (i < batches.length - 1) {
@@ -148,7 +146,7 @@ export class ClassificationMigrator {
       // 1. 检查是否已迁移
       const existing = await this.checkV5ProfileExists(user_id, folder_id);
       if (existing) {
-        this.logger.debug('文件夹已迁移，跳过', { user_id, folder_id });
+        this.logger.debug("文件夹已迁移，跳过", { user_id, folder_id });
         this.stats.skippedFolders++;
         return;
       }
@@ -156,7 +154,7 @@ export class ClassificationMigrator {
       // 2. 获取文件夹书签数据
       const bookmarks = await this.fetchFolderBookmarks(user_id, folder_id);
       if (bookmarks.length === 0) {
-        this.logger.warn('文件夹无书签，跳过', { user_id, folder_id });
+        this.logger.warn("文件夹无书签，跳过", { user_id, folder_id });
         this.stats.skippedFolders++;
         return;
       }
@@ -185,7 +183,7 @@ export class ClassificationMigrator {
       await this.insertV5Profile(v5Profile);
 
       this.stats.migratedFolders++;
-      this.logger.debug('文件夹迁移成功', { user_id, folder_id });
+      this.logger.debug("文件夹迁移成功", { user_id, folder_id });
     } catch (error) {
       this.stats.failedFolders++;
       this.stats.errors.push({
@@ -193,7 +191,7 @@ export class ClassificationMigrator {
         userId: user_id,
         error: error instanceof Error ? error.message : String(error),
       });
-      this.logger.error('文件夹迁移失败', {
+      this.logger.error("文件夹迁移失败", {
         user_id,
         folder_id,
         error,
@@ -206,16 +204,16 @@ export class ClassificationMigrator {
    */
   private async checkV5ProfileExists(
     userId: string,
-    folderId: string
+    folderId: number,
   ): Promise<boolean> {
     const { data, error } = await this.supabase
-      .from('classification_folder_profiles_v5')
-      .select('folder_id')
-      .eq('user_id', userId)
-      .eq('folder_id', folderId)
+      .from("classification_folder_profiles_v5")
+      .select("folder_id")
+      .eq("user_id", userId)
+      .eq("folder_id", folderId)
       .single();
 
-    if (error && error.code !== 'PGRST116') {
+    if (error && error.code !== "PGRST116") {
       // PGRST116 = no rows returned
       throw error;
     }
@@ -228,7 +226,7 @@ export class ClassificationMigrator {
    */
   private async fetchFolderBookmarks(
     userId: string,
-    folderId: string
+    folderId: number,
   ): Promise<
     Array<{
       id: string;
@@ -240,10 +238,10 @@ export class ClassificationMigrator {
     }>
   > {
     const { data, error } = await this.supabase
-      .from('bookmarks')
-      .select('id, title, description, summary, tags, created_at')
-      .eq('user_id', userId)
-      .eq('folder_id', folderId)
+      .from("bookmarks")
+      .select("id, title, description, summary, tags, created_at")
+      .eq("user_id", userId)
+      .eq("folder_id", folderId)
       .limit(100); // 最多取 100 条用于生成画像
 
     if (error) {
@@ -263,7 +261,7 @@ export class ClassificationMigrator {
       summary: string | null;
       tags: string[];
       created_at: string;
-    }>
+    }>,
   ): Promise<{
     contentEmbedding: number[];
     behaviorEmbedding: number[];
@@ -272,13 +270,13 @@ export class ClassificationMigrator {
     const contentTexts = bookmarks.map((b) => {
       const parts = [
         b.title,
-        b.description || '',
-        b.summary || '',
-        b.tags.join(' '),
+        b.description || "",
+        b.summary || "",
+        b.tags.join(" "),
       ];
-      return parts.filter(Boolean).join(' ');
+      return parts.filter(Boolean).join(" ");
     });
-    const contentText = contentTexts.join(' ');
+    const contentText = contentTexts.join(" ");
     const contentEmbedding =
       await this.embeddingService.generateEmbedding(contentText);
 
@@ -297,7 +295,7 @@ export class ClassificationMigrator {
     bookmarks: Array<{
       tags: string[];
       created_at: string;
-    }>
+    }>,
   ): string {
     // 标签频率
     const tagFreq = new Map<string, number>();
@@ -324,7 +322,7 @@ export class ClassificationMigrator {
       .slice(0, 3)
       .map(([hour]) => `${hour}时`);
 
-    return `常用标签: ${topTags.join(', ')}. 活跃时段: ${peakHours.join(', ')}.`;
+    return `常用标签: ${topTags.join(", ")}. 活跃时段: ${peakHours.join(", ")}.`;
   }
 
   /**
@@ -333,7 +331,7 @@ export class ClassificationMigrator {
   private calculateAlphaCoefficient(
     bookmarks: Array<{
       tags: string[];
-    }>
+    }>,
   ): number {
     // 基于标签多样性计算 α
     const uniqueTags = new Set<string>();
@@ -359,7 +357,7 @@ export class ClassificationMigrator {
     for (let attempt = 1; attempt <= RETRY_ATTEMPTS; attempt++) {
       try {
         const { error } = await this.supabase
-          .from('classification_folder_profiles_v5')
+          .from("classification_folder_profiles_v5")
           .insert(profile);
 
         if (error) {
@@ -386,24 +384,24 @@ export class ClassificationMigrator {
    * 验证迁移结果
    */
   private async validateMigration(): Promise<void> {
-    this.logger.info('验证迁移结果...');
+    this.logger.info("验证迁移结果...");
 
     // 检查 v5 表记录数
     const { count: v5Count, error: v5Error } = await this.supabase
-      .from('classification_folder_profiles_v5')
-      .select('*', { count: 'exact', head: true });
+      .from("classification_folder_profiles_v5")
+      .select("*", { count: "exact", head: true });
 
     if (v5Error) {
       throw new Error(`验证失败: ${v5Error.message}`);
     }
 
-    this.logger.info('验证完成', {
+    this.logger.info("验证完成", {
       v5ProfileCount: v5Count,
       expectedCount: this.stats.migratedFolders,
     });
 
     if (v5Count !== this.stats.migratedFolders) {
-      this.logger.warn('记录数不匹配', {
+      this.logger.warn("记录数不匹配", {
         v5Count,
         migratedCount: this.stats.migratedFolders,
       });
@@ -437,13 +435,13 @@ async function main() {
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !supabaseKey) {
-    throw new Error('缺少 Supabase 环境变量');
+    throw new Error("缺少 Supabase 环境变量");
   }
 
   // 初始化服务
   const embeddingService = new EmbeddingService(
     /* logger */ console as any,
-    /* config */ {}
+    /* config */ {},
   );
   const logger = console as any;
 
@@ -452,20 +450,20 @@ async function main() {
     supabaseUrl,
     supabaseKey,
     embeddingService,
-    logger
+    logger,
   );
 
   const stats = await migrator.migrate();
 
   // 输出结果
-  console.log('\n=== 迁移完成 ===');
+  console.log("\n=== 迁移完成 ===");
   console.log(`总文件夹数: ${stats.totalFolders}`);
   console.log(`成功迁移: ${stats.migratedFolders}`);
   console.log(`跳过: ${stats.skippedFolders}`);
   console.log(`失败: ${stats.failedFolders}`);
 
   if (stats.errors.length > 0) {
-    console.log('\n失败详情:');
+    console.log("\n失败详情:");
     stats.errors.forEach((err) => {
       console.log(`- ${err.userId}/${err.folderId}: ${err.error}`);
     });
@@ -477,7 +475,7 @@ async function main() {
 // 运行
 if (require.main === module) {
   main().catch((error) => {
-    console.error('迁移脚本执行失败:', error);
+    console.error("迁移脚本执行失败:", error);
     process.exit(1);
   });
 }

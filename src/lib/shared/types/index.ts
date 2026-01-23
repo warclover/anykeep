@@ -163,3 +163,26 @@ export type {
 } from "./stream";
 
 export { createErrorChunk } from "./stream";
+
+// ============================================
+// 文件夹 ID 类型
+// ============================================
+
+export type {
+  // 基础类型
+  FolderId,
+  NullableFolderId,
+  FolderIdList,
+  // 接口
+  WithFolderId,
+  WithNullableFolderId,
+} from "./folder";
+
+export {
+  // 类型守卫
+  isValidFolderId,
+  isValidNullableFolderId,
+  // 转换工具
+  parseFolderId,
+  parseNullableFolderId,
+} from "./folder";

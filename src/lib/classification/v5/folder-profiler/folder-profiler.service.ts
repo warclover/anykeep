@@ -95,7 +95,7 @@ export class FolderProfilerService {
    */
   async getProfile(
     userId: string,
-    folderId: string,
+    folderId: number,
   ): Promise<FolderProfile | null> {
     const { data, error } = await this.supabase
       .from("classification_folder_profiles_v5")
@@ -133,7 +133,7 @@ export class FolderProfilerService {
    */
   async upsertProfile(
     userId: string,
-    folderId: string,
+    folderId: number,
     folderName: string,
     folderDescription: string | undefined,
     bookmarks: BookmarkData[],
@@ -316,7 +316,7 @@ export class FolderProfilerService {
    */
   async checkNeedsUpdate(
     userId: string,
-    folderId: string,
+    folderId: number,
     currentBookmarkCount: number,
   ): Promise<boolean> {
     const profile = await this.getProfile(userId, folderId);

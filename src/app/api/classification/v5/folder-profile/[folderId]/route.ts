@@ -81,10 +81,7 @@ export async function GET(
     );
 
     // 5. 获取文件夹画像
-    const profile = await profilerService.getProfile(
-      user.id,
-      folderId.toString(),
-    );
+    const profile = await profilerService.getProfile(user.id, Number(folderId));
 
     if (!profile) {
       logger.info("文件夹画像不存在", { folderId: folderId.toString() });
@@ -122,7 +119,7 @@ export async function GET(
   } catch (error) {
     logger.error(
       "获取文件夹画像失败",
-      error instanceof Error ? error : new Error(String(error))
+      error instanceof Error ? error : new Error(String(error)),
     );
 
     return NextResponse.json(

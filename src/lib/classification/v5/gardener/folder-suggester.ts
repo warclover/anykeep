@@ -4,20 +4,20 @@
  * 检测文件夹健康状态，发现过度分散、过度集中等问题
  */
 
-import type { LoggerService } from '../shared/logger';
+import type { LoggerService } from "../shared/logger";
 import type {
   FolderSuggestion,
   FolderIssue,
   FolderHealthStatus,
   GardenerConfig,
-} from './types';
+} from "./types";
 
 /**
  * 文件夹统计数据
  */
 export interface FolderStats {
   /** 文件夹 ID */
-  folderId: string;
+  folderId: number;
   /** 文件夹名称 */
   folderName: string;
   /** 书签数量 */
@@ -50,18 +50,15 @@ export class FolderSuggester {
   private config: GardenerConfig;
 
   constructor(logger: LoggerService, config: GardenerConfig) {
-    this.logger = logger.child({ service: 'FolderSuggester' });
+    this.logger = logger.child({ service: "FolderSuggester" });
     this.config = config;
   }
 
   /**
    * 分析文件夹并生成建议
    */
-  analyze(
-    folderStats: FolderStats,
-    userStats: UserStats
-  ): FolderSuggestion {
-    this.logger.debug('分析文件夹', {
+  analyze(folderStats: FolderStats, userStats: UserStats): FolderSuggestion {
+    this.logger.debug("分析文件夹", {
       folderId: folderStats.folderId,
       folderName: folderStats.folderName,
       bookmarkCount: folderStats.bookmarkCount,
@@ -70,7 +67,10 @@ export class FolderSuggester {
     const issues: FolderIssue[] = [];
 
     // 检测过度集中
-    const concentrationIssue = this.checkOverConcentration(folderStats, userStats);
+    const concentrationIssue = this.checkOverConcentration(
+      folderStats,
+      userStats,
+    );
     if (concentrationIssue) {
       issues.push(concentrationIssue);
     }
@@ -117,14 +117,14 @@ export class FolderSuggester {
    */
   analyzeBatch(
     folderStatsList: FolderStats[],
-    userStats: UserStats
+    userStats: UserStats,
   ): FolderSuggestion[] {
-    this.logger.info('批量分析文件夹', {
+    this.logger.info("批量分析文件夹", {
       count: folderStatsList.length,
     });
 
     const suggestions = folderStatsList.map((stats) =>
-      this.analyze(stats, userStats)
+      this.analyze(stats, userStats),
     );
 
     // 检测过度分散（需要全局视角）
@@ -134,7 +134,7 @@ export class FolderSuggester {
       suggestions.forEach((suggestion) => {
         if (suggestion.issues.length === 0) {
           suggestion.issues.push(dispersedIssue);
-          suggestion.healthStatus = 'warning';
+          suggestion.healthStatus = "warning";
           suggestion.priority = Math.max(suggestion.priority, 0.5);
         }
       });
@@ -149,7 +149,7 @@ export class FolderSuggester {
    */
   private checkOverConcentration(
     folderStats: FolderStats,
-    userStats: UserStats
+    userStats: UserStats,
   ): FolderIssue | null {
     if (userStats.totalBookmarks === 0) return null;
 
@@ -157,10 +157,13 @@ export class FolderSuggester {
 
     if (concentration > this.config.overConcentratedThreshold) {
       return {
-        type: 'over_concentrated',
-        severity: Math.min(1, concentration / this.config.overConcentratedThreshold),
+        type: "over_concentrated",
+        severity: Math.min(
+          1,
+          concentration / this.config.overConcentratedThreshold,
+        ),
         description: `该文件夹包含 ${(concentration * 100).toFixed(1)}% 的书签，可能过度集中`,
-        suggestedAction: '考虑将书签细分到子文件夹，或创建更具体的分类',
+        suggestedAction: "考虑将书签细分到子文件夹，或创建更具体的分类",
       };
     }
 
@@ -171,16 +174,17 @@ export class FolderSuggester {
    * 检测过度分散
    */
   private checkOverDispersion(userStats: UserStats): FolderIssue | null {
-    if (userStats.totalBookmarks === 0 || userStats.totalFolders === 0) return null;
+    if (userStats.totalBookmarks === 0 || userStats.totalFolders === 0)
+      return null;
 
     const dispersion = userStats.totalFolders / userStats.totalBookmarks;
 
     if (dispersion > this.config.overDispersedThreshold) {
       return {
-        type: 'over_dispersed',
+        type: "over_dispersed",
         severity: Math.min(1, dispersion / this.config.overDispersedThreshold),
         description: `文件夹数量过多（${userStats.totalFolders} 个文件夹 / ${userStats.totalBookmarks} 个书签），可能过度分散`,
-        suggestedAction: '考虑合并相似的文件夹，或删除空文件夹',
+        suggestedAction: "考虑合并相似的文件夹，或删除空文件夹",
       };
     }
 
@@ -192,15 +196,18 @@ export class FolderSuggester {
    */
   private checkLowUsage(folderStats: FolderStats): FolderIssue | null {
     const daysSinceLastUse = Math.floor(
-      (Date.now() - folderStats.lastUsedAt.getTime()) / (1000 * 60 * 60 * 24)
+      (Date.now() - folderStats.lastUsedAt.getTime()) / (1000 * 60 * 60 * 24),
     );
 
     if (daysSinceLastUse > this.config.lowUsageDays) {
       return {
-        type: 'low_usage',
-        severity: Math.min(1, daysSinceLastUse / (this.config.lowUsageDays * 2)),
+        type: "low_usage",
+        severity: Math.min(
+          1,
+          daysSinceLastUse / (this.config.lowUsageDays * 2),
+        ),
         description: `该文件夹已 ${daysSinceLastUse} 天未使用`,
-        suggestedAction: '考虑归档或删除该文件夹',
+        suggestedAction: "考虑归档或删除该文件夹",
       };
     }
 
@@ -210,7 +217,9 @@ export class FolderSuggester {
   /**
    * 检测命名不一致
    */
-  private checkNamingInconsistency(folderStats: FolderStats): FolderIssue | null {
+  private checkNamingInconsistency(
+    folderStats: FolderStats,
+  ): FolderIssue | null {
     const name = folderStats.folderName;
 
     // 检测常见命名问题
@@ -219,12 +228,17 @@ export class FolderSuggester {
     const startsWithSpace = /^\s/.test(name);
     const endsWithSpace = /\s$/.test(name);
 
-    if (hasSpecialChars || hasMultipleSpaces || startsWithSpace || endsWithSpace) {
+    if (
+      hasSpecialChars ||
+      hasMultipleSpaces ||
+      startsWithSpace ||
+      endsWithSpace
+    ) {
       return {
-        type: 'naming_inconsistent',
+        type: "naming_inconsistent",
         severity: 0.3,
-        description: '文件夹名称包含特殊字符或格式不规范',
-        suggestedAction: '建议使用规范的命名格式',
+        description: "文件夹名称包含特殊字符或格式不规范",
+        suggestedAction: "建议使用规范的命名格式",
       };
     }
 
@@ -237,10 +251,10 @@ export class FolderSuggester {
   private checkLowConfidence(folderStats: FolderStats): FolderIssue | null {
     if (folderStats.averageConfidence < 0.7) {
       return {
-        type: 'duplicate_content',
+        type: "duplicate_content",
         severity: 1 - folderStats.averageConfidence,
         description: `平均分类置信度较低（${(folderStats.averageConfidence * 100).toFixed(1)}%）`,
-        suggestedAction: '该文件夹的定位可能不够清晰，考虑重新定义或合并',
+        suggestedAction: "该文件夹的定位可能不够清晰，考虑重新定义或合并",
       };
     }
 
@@ -250,17 +264,20 @@ export class FolderSuggester {
   /**
    * 检测高纠正率
    */
-  private checkHighCorrectionRate(folderStats: FolderStats): FolderIssue | null {
+  private checkHighCorrectionRate(
+    folderStats: FolderStats,
+  ): FolderIssue | null {
     if (folderStats.bookmarkCount === 0) return null;
 
-    const correctionRate = folderStats.userCorrectionCount / folderStats.bookmarkCount;
+    const correctionRate =
+      folderStats.userCorrectionCount / folderStats.bookmarkCount;
 
     if (correctionRate > 0.2) {
       return {
-        type: 'duplicate_content',
+        type: "duplicate_content",
         severity: Math.min(1, correctionRate / 0.3),
         description: `用户纠正率较高（${(correctionRate * 100).toFixed(1)}%）`,
-        suggestedAction: '该文件夹的分类规则可能需要调整',
+        suggestedAction: "该文件夹的分类规则可能需要调整",
       };
     }
 
@@ -271,13 +288,13 @@ export class FolderSuggester {
    * 计算健康状态
    */
   private calculateHealthStatus(issues: FolderIssue[]): FolderHealthStatus {
-    if (issues.length === 0) return 'healthy';
+    if (issues.length === 0) return "healthy";
 
     const maxSeverity = Math.max(...issues.map((issue) => issue.severity));
 
-    if (maxSeverity >= 0.7) return 'critical';
-    if (maxSeverity >= 0.4) return 'warning';
-    return 'healthy';
+    if (maxSeverity >= 0.7) return "critical";
+    if (maxSeverity >= 0.4) return "warning";
+    return "healthy";
   }
 
   /**

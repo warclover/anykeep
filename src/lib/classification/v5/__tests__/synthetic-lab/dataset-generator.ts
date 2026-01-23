@@ -100,7 +100,7 @@ export class DatasetGenerator {
    * 为文件夹生成测试书签
    */
   private async generateBookmarksForFolder(
-    folderId: string,
+    folderId: number,
     folderName: string,
     topics: string[],
     count: number,
@@ -125,7 +125,7 @@ export class DatasetGenerator {
    * 生成单个测试书签
    */
   private async generateBookmark(
-    folderId: string,
+    folderId: number,
     folderName: string,
     topic: string,
     index: number,

@@ -108,7 +108,7 @@ export async function POST(
 
     // 7. 构建文件夹统计
     const stats: FolderStats = {
-      folderId: folderId.toString(),
+      folderId: Number(folderId),
       lastUsed: new Date(),
       behaviorCount: behaviors.length,
       contentCount: bookmarkData.length,
@@ -127,7 +127,7 @@ export async function POST(
     // 9. 更新文件夹画像
     const profile = await profilerService.upsertProfile(
       user.id,
-      folderId.toString(),
+      Number(folderId),
       folder.name,
       undefined, // folders 表暂无 description 字段
       bookmarkData,
@@ -157,7 +157,7 @@ export async function POST(
   } catch (error) {
     logger.error(
       "更新文件夹画像失败",
-      error instanceof Error ? error : new Error(String(error))
+      error instanceof Error ? error : new Error(String(error)),
     );
 
     return NextResponse.json(

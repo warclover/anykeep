@@ -60,7 +60,7 @@ export interface PlatformFilterState {
  */
 export interface FolderFilterState {
   /** 当前文件夹 ID 或特殊标识 */
-  folderId: string;
+  folderId: number | null;
   /** 是否为回收站 */
   isTrashFolder: boolean;
   /** 是否为无效书签文件夹 */
@@ -257,7 +257,7 @@ export interface HomePageState {
 export interface HomePageActions {
   // 筛选操作
   setPlatform: (platform: string) => void;
-  setFolder: (folderId: string) => void;
+  setFolder: (folderId: number | null) => void;
   setSort: (sort: string) => void;
   setUsageTags: (tags: string[]) => void;
 
@@ -277,7 +277,7 @@ export interface HomePageActions {
   refreshBookmarks: () => Promise<void>;
   deleteBookmark: (id: string) => Promise<void>;
   batchDeleteBookmarks: (ids: string[]) => Promise<void>;
-  moveBookmarks: (ids: string[], folderId: string) => Promise<void>;
+  moveBookmarks: (ids: string[], folderId: number) => Promise<void>;
 }
 
 /**

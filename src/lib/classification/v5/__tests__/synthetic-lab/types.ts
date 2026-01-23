@@ -13,7 +13,11 @@
 /**
  * 用户画像类型
  */
-export type UserPersonaType = 'hardcore-dev' | 'knowledge-omnivore' | 'minimalist' | 'chaotic-hoarder';
+export type UserPersonaType =
+  | "hardcore-dev"
+  | "knowledge-omnivore"
+  | "minimalist"
+  | "chaotic-hoarder";
 
 /**
  * 用户画像定义
@@ -123,7 +127,7 @@ export interface ClassificationResult {
   confidence: number;
   /** Top-3 候选 */
   topCandidates: Array<{
-    folderId: string;
+    folderId: number;
     folderName: string;
     confidence: number;
   }>;
@@ -140,7 +144,7 @@ export interface ClassificationResult {
  */
 export interface BatchClassificationResult {
   /** 版本标识 */
-  version: 'v4.1' | 'v5.0';
+  version: "v4.1" | "v5.0";
   /** 用户画像 */
   persona: UserPersona;
   /** 分类结果列表 */
@@ -187,7 +191,7 @@ export interface ColdStartMetrics {
   avgFirst5Accuracy: number;
   /** 详细结果 */
   details: Array<{
-    folderId: string;
+    folderId: number;
     folderName: string;
     first5Accuracy: number;
   }>;
@@ -205,7 +209,7 @@ export interface SemanticDriftMetrics {
   avgCentroidDrift: number;
   /** 详细结果 */
   details: Array<{
-    folderId: string;
+    folderId: number;
     folderName: string;
     initialCentroid: number[];
     finalCentroid: number[];
@@ -243,7 +247,7 @@ export interface EvaluationReport {
   /** 报告名称 */
   name: string;
   /** 测试版本 */
-  version: 'v4.1' | 'v5.0';
+  version: "v4.1" | "v5.0";
   /** 用户画像 */
   persona: UserPersona;
   /** 准确率指标 */
@@ -277,7 +281,11 @@ export interface FailureCase {
   /** 失败原因分析 */
   failureReason: string;
   /** 失败类型 */
-  failureType: 'semantic-confusion' | 'cold-start' | 'low-confidence' | 'edge-case';
+  failureType:
+    | "semantic-confusion"
+    | "cold-start"
+    | "low-confidence"
+    | "edge-case";
 }
 
 /**

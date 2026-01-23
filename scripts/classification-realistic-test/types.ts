@@ -78,7 +78,7 @@ export interface Bookmark {
 }
 
 export interface ClassificationResult {
-  folderId: string | null;
+  folderId: number | null;
   confidence: number;
   usedT1: boolean;
   reasoning?: string;

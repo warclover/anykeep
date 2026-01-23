@@ -47,7 +47,7 @@ class ClassificationServiceClient {
     tags?: string[];
     url: string;
   }): Promise<{
-    folderId: string | null;
+    folderId: number | null;
     confidence: number;
     usedT1: boolean;
     totalLatencyMs: number;
@@ -579,7 +579,7 @@ class RealisticClassificationTest {
    * 判断分类是否正确
    */
   private async isCorrect(
-    result: { folderId: string | null },
+    result: { folderId: number | null },
     bookmark: Bookmark,
   ): Promise<boolean> {
     if (result.folderId === null) {
@@ -620,19 +620,20 @@ class RealisticClassificationTest {
     return false;
   }
 
-  private async getFolderName(folderId: string): Promise<string> {
-    if (this.folderNameCache.has(folderId)) {
-      return this.folderNameCache.get(folderId)!;
+  private async getFolderName(folderId: number): Promise<string> {
+    const cacheKey = String(folderId);
+    if (this.folderNameCache.has(cacheKey)) {
+      return this.folderNameCache.get(cacheKey)!;
     }
     const { data, error } = await supabase
       .from("folders")
       .select("name")
-      .eq("id", Number(folderId))
+      .eq("id", folderId)
       .single();
     if (error || !data?.name) {
-      return folderId;
+      return String(folderId);
     }
-    this.folderNameCache.set(folderId, data.name);
+    this.folderNameCache.set(cacheKey, data.name);
     return data.name;
   }
 
