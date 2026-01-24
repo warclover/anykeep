@@ -400,22 +400,38 @@ export async function classifyBookmarkV2(
           }
         }
 
-        // V5.2: 透传模式 - 直接使用 V5 原始置信度，减少干扰
-        // 旧版 remapV5Confidence 会将 0.25-0.45 非线性映射到 65-100%，导致决策偏差
+        // V5.2: 透传模式 - 基于 V5 的 needsT1/usedT1 决策，而非向量相似度
+        // V5 的 confidence 是向量相似度（范围 0.25-0.45），不是置信度
+        // V5 的决策逻辑：needsT1=false 表示 T0 结果可信，应直接分类
         let confidencePercent: number;
+        let action: "classify" | "suggest" | "inbox";
 
         if (isV5PassthroughEnabled()) {
-          // 透传模式：直接将 0-1 置信度转换为 0-100 百分比
-          // V5 的 T0 阈值是 0.85，对应 85%，与系统阈值 80% 对齐
-          confidencePercent = Math.round(v5Result.confidence * 100);
+          // 透传模式：直接使用 V5 的决策逻辑
+          if (validFolderId === null) {
+            // 无有效文件夹 → inbox
+            action = "inbox";
+            confidencePercent = Math.round(v5Result.confidence * 100);
+          } else if (v5Result.usedT1) {
+            // T1 纠正后的结果 → 高置信度分类
+            action = "classify";
+            confidencePercent = 90;
+          } else {
+            // T0 直接通过（needsT1=false），V5 认为结果可信 → 分类
+            action = "classify";
+            confidencePercent = 85;
+          }
 
           logger.debug(
             {
               mode: "passthrough",
-              originalConfidence: v5Result.confidence,
+              originalSimilarity: v5Result.confidence,
               confidencePercent,
+              usedT1: v5Result.usedT1,
+              v5Decision: action,
+              folderId: validFolderId,
             },
-            "V5 Passthrough: Using original confidence without remapping",
+            "V5 Passthrough: Using V5 decision (needsT1/usedT1)",
           );
         } else {
           // 兼容模式：保留旧的非线性映射（逐步废弃）
@@ -436,6 +452,16 @@ export async function classifyBookmarkV2(
           };
           confidencePercent = remapV5Confidence(v5Result.confidence);
 
+          // 旧逻辑：基于映射后的置信度计算 action
+          action =
+            validFolderId === null
+              ? "inbox"
+              : confidencePercent >= AUTO_CLASSIFY_THRESHOLD
+                ? "classify"
+                : confidencePercent >= SUGGEST_THRESHOLD
+                  ? "suggest"
+                  : "inbox";
+
           logger.debug(
             {
               mode: "legacy-remap",
@@ -445,16 +471,6 @@ export async function classifyBookmarkV2(
             "V5 Legacy: Using non-linear remapping (deprecated)",
           );
         }
-
-        // v5.2 修复: 如果 validFolderId 为 null，强制 action 为 inbox
-        const action =
-          validFolderId === null
-            ? "inbox"
-            : confidencePercent >= AUTO_CLASSIFY_THRESHOLD
-              ? "classify"
-              : confidencePercent >= SUGGEST_THRESHOLD
-                ? "suggest"
-                : "inbox";
 
         result = {
           folderId: validFolderId,
