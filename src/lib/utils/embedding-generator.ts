@@ -693,12 +693,17 @@ export {
  * - v3: text-embedding-v3 (1024 维) - 当前默认
  * - v4: text-embedding-v4 (待支持)
  */
-export const CURRENT_EMBEDDING_VERSION = "v3" as const;
+export const CURRENT_EMBEDDING_VERSION = 3 as const;
 
 /**
  * V4.2.7: 获取当前 embedding 版本
  * 用于存储时附带版本信息
+ *
+ * 版本历史:
+ * - 1: 初始单向量版本
+ * - 2: 多向量版本 (title+content+tag)
+ * - 3: 1024维向量迁移 (2026-01-24)
  */
-export function getCurrentEmbeddingVersion(): string {
+export function getCurrentEmbeddingVersion(): number {
   return CURRENT_EMBEDDING_VERSION;
 }

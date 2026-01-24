@@ -389,8 +389,24 @@ export async function classifyBookmarkV2(
           }
         }
 
+        // V5.1.4: 向量相似度重新映射
+        // V5 向量相似度范围通常是 0.3-0.7，需要映射到合理的置信度范围
+        // 映射公式: 0.3 → 60%, 0.5 → 80%, 0.7 → 100%
+        const remapV5Confidence = (similarity: number): number => {
+          const MIN_SIM = 0.3;  // 最小有效相似度
+          const MAX_SIM = 0.7;  // 最大预期相似度
+          const MIN_CONF = 60;  // 映射后最小置信度
+          const MAX_CONF = 100; // 映射后最大置信度
+
+          if (similarity < MIN_SIM) return similarity * 100; // 低于阈值保持原样
+          if (similarity > MAX_SIM) return MAX_CONF;
+
+          return ((similarity - MIN_SIM) / (MAX_SIM - MIN_SIM)) * (MAX_CONF - MIN_CONF) + MIN_CONF;
+        };
+
         // V5.0 返回的置信度是 0-1 范围，需要转换为 0-100 百分比与阈值比较
-        const confidencePercent = v5Result.confidence * 100;
+        // V5.1.4: 使用重新映射后的置信度
+        const confidencePercent = remapV5Confidence(v5Result.confidence);
 
         // v5.2 修复: 如果 validFolderId 为 null，强制 action 为 inbox
         const action =

@@ -34,7 +34,7 @@ export class VectorSearchService {
         process.env.SUPABASE_SERVICE_ROLE_KEY ??
         "",
       defaultLimit: config?.defaultLimit ?? 5,
-      minSimilarity: config?.minSimilarity ?? 0.5,
+      minSimilarity: config?.minSimilarity ?? 0.3, // v5.1.4: 从 0.5 降至 0.3，适配实际相似度分布
       maxRetries: config?.maxRetries ?? 3,
       retryDelays: config?.retryDelays ?? [1000, 2000, 4000],
     };

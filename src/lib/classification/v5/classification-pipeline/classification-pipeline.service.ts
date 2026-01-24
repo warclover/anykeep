@@ -100,7 +100,8 @@ export class ClassificationPipelineService {
       this.logger.info("FolderContextProvider 已初始化，T1 将使用示例书签增强");
     }
 
-    this.l0Matcher = new L0RuleMatcher(logger);
+    // v5.1 修复：传递 supabase 以启用 AI 标签匹配器
+    this.l0Matcher = new L0RuleMatcher(logger, [], supabase);
     this.t0Generator = new T0Generator(
       logger,
       embeddingService,
