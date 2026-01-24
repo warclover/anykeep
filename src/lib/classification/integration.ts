@@ -60,6 +60,17 @@ const AUTO_CLASSIFY_THRESHOLD = CONFIDENCE_THRESHOLDS.AUTO_CLASSIFY;
 const SUGGEST_THRESHOLD = CONFIDENCE_THRESHOLDS.SUGGEST;
 
 /**
+ * V5 透传模式开关
+ * 启用后，V5 的置信度不再进行非线性重映射，直接使用原始值
+ * 减少 V2 集成层对 V5 结果的干扰
+ *
+ * @default true (默认启用透传模式)
+ */
+function isV5PassthroughEnabled(): boolean {
+  return process.env.V5_PASSTHROUGH_MODE !== "false";
+}
+
+/**
  * 获取当前分类系统版本
  * 通过环境变量 CLASSIFICATION_VERSION 控制
  * - "v3": 使用 V3 ClassificationService（5层匹配器）
@@ -389,24 +400,51 @@ export async function classifyBookmarkV2(
           }
         }
 
-        // V5.1.4: 向量相似度重新映射
-        // V5 向量相似度范围通常是 0.3-0.7，需要映射到合理的置信度范围
-        // 映射公式: 0.3 → 60%, 0.5 → 80%, 0.7 → 100%
-        const remapV5Confidence = (similarity: number): number => {
-          const MIN_SIM = 0.3;  // 最小有效相似度
-          const MAX_SIM = 0.7;  // 最大预期相似度
-          const MIN_CONF = 60;  // 映射后最小置信度
-          const MAX_CONF = 100; // 映射后最大置信度
+        // V5.2: 透传模式 - 直接使用 V5 原始置信度，减少干扰
+        // 旧版 remapV5Confidence 会将 0.25-0.45 非线性映射到 65-100%，导致决策偏差
+        let confidencePercent: number;
 
-          if (similarity < MIN_SIM) return similarity * 100; // 低于阈值保持原样
-          if (similarity > MAX_SIM) return MAX_CONF;
+        if (isV5PassthroughEnabled()) {
+          // 透传模式：直接将 0-1 置信度转换为 0-100 百分比
+          // V5 的 T0 阈值是 0.85，对应 85%，与系统阈值 80% 对齐
+          confidencePercent = Math.round(v5Result.confidence * 100);
 
-          return ((similarity - MIN_SIM) / (MAX_SIM - MIN_SIM)) * (MAX_CONF - MIN_CONF) + MIN_CONF;
-        };
+          logger.debug(
+            {
+              mode: "passthrough",
+              originalConfidence: v5Result.confidence,
+              confidencePercent,
+            },
+            "V5 Passthrough: Using original confidence without remapping",
+          );
+        } else {
+          // 兼容模式：保留旧的非线性映射（逐步废弃）
+          const remapV5Confidence = (similarity: number): number => {
+            const MIN_SIM = 0.25;
+            const MAX_SIM = 0.45;
+            const MIN_CONF = 65;
+            const MAX_CONF = 100;
 
-        // V5.0 返回的置信度是 0-1 范围，需要转换为 0-100 百分比与阈值比较
-        // V5.1.4: 使用重新映射后的置信度
-        const confidencePercent = remapV5Confidence(v5Result.confidence);
+            if (similarity < MIN_SIM) return similarity * 100;
+            if (similarity > MAX_SIM) return MAX_CONF;
+
+            return (
+              ((similarity - MIN_SIM) / (MAX_SIM - MIN_SIM)) *
+                (MAX_CONF - MIN_CONF) +
+              MIN_CONF
+            );
+          };
+          confidencePercent = remapV5Confidence(v5Result.confidence);
+
+          logger.debug(
+            {
+              mode: "legacy-remap",
+              originalConfidence: v5Result.confidence,
+              confidencePercent,
+            },
+            "V5 Legacy: Using non-linear remapping (deprecated)",
+          );
+        }
 
         // v5.2 修复: 如果 validFolderId 为 null，强制 action 为 inbox
         const action =
