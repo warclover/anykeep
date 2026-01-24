@@ -2,7 +2,7 @@
  * Classification Module Dependency Container
  * Manages service instances and dependencies
  *
- * V3.0 更新：集成 5 层匹配策略
+ * @updated 2026-01-24 Phase 1: V3 废弃移除
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -11,7 +11,7 @@ import type {
   IInboxOrganizerService,
   IInterestService,
 } from "./services/interfaces";
-import type { IMatcher, IScoreAggregator } from "./strategies/interfaces";
+import type { IMatcher } from "./strategies/interfaces";
 
 // Repositories
 import {
@@ -21,33 +21,18 @@ import {
   SuggestionRepository,
 } from "./repositories";
 
-// V2 Strategies
-import {
-  VectorMatcher,
-  HistoryMatcher,
-  AIRecommender,
-  WeightedScoreAggregator,
-} from "./strategies";
-
-// V3 Strategies (moved to strategies/advanced)
-import {
-  UniversalCategoryMatcher,
-  KnnDirectMatcher,
-  FingerprintMatcher,
-  TagMatcher,
-} from "./strategies/advanced";
-import { FEATURE_FLAGS } from "./config/feature-flags";
+// V3 Strategies 导入已移除 (Phase 1, 2026-01-24)
+// 原导入: VectorMatcher, HistoryMatcher, AIRecommender, WeightedScoreAggregator
+// 原导入: UniversalCategoryMatcher, KnnDirectMatcher, FingerprintMatcher, TagMatcher
+// 原导入: FEATURE_FLAGS, CLASSIFICATION_WEIGHTS
 
 // Services
 import {
-  ClassificationService,
   UserStageService,
   InterestService,
   InboxOrganizerService,
 } from "./services";
 
-// Constants
-import { CLASSIFICATION_WEIGHTS } from "./constants";
 import { logger } from "@/lib/logger";
 
 /**
@@ -169,139 +154,27 @@ export class ClassificationContainer {
 
   /**
    * Get V3 Matchers (Public for debugging)
+   * @deprecated V3 已废弃移除 (Phase 1, 2026-01-24)
    */
   public getV3Matchers(): IMatcher[] {
-    const folderProfileRepo = this.getFolderProfileRepository();
-    const bookmarkRepo = this.getBookmarkRepository();
-
-    // 构建匹配器列表（V3.0 5 层策略）
-    const matchers: IMatcher[] = [];
-
-    // ═══════════════════════════════════════════════════════════════
-    // 第 1 层：k-NN 直接锁定（最高优先级，可跳过后续层）
-    // ═══════════════════════════════════════════════════════════════
-    if (FEATURE_FLAGS.enableKnnDirect) {
-      matchers.push(
-        new KnnDirectMatcher(bookmarkRepo, {
-          weight: 1.0, // 最高权重
-          thresholds: { similarity: FEATURE_FLAGS.knnDirectThreshold },
-        }),
-      );
-      logger.debug(
-        { matcher: "knn-direct", enabled: true },
-        "V3 Matcher enabled",
-      );
-    }
-
-    // ═══════════════════════════════════════════════════════════════
-    // 第 2 层：标签指纹匹配
-    // ═══════════════════════════════════════════════════════════════
-    if (FEATURE_FLAGS.enableFolderFingerprint) {
-      matchers.push(
-        new FingerprintMatcher(this.supabase, {
-          weight: 0.25,
-        }),
-      );
-      logger.debug(
-        { matcher: "fingerprint", enabled: true },
-        "V3 Matcher enabled",
-      );
-    }
-
-    // ═══════════════════════════════════════════════════════════════
-    // 第 3 层：Tag-to-Tag 精准匹配
-    // ═══════════════════════════════════════════════════════════════
-    if (FEATURE_FLAGS.enableTagMatcher) {
-      matchers.push(
-        new TagMatcher(this.supabase, {
-          weight: 0.3,
-        }),
-      );
-      logger.debug({ matcher: "tag", enabled: true }, "V3 Matcher enabled");
-    }
-
-    // ═══════════════════════════════════════════════════════════════
-    // 第 4 层：向量相似度匹配 (V2 核心)
-    // ═══════════════════════════════════════════════════════════════
-    matchers.push(
-      new VectorMatcher(folderProfileRepo, {
-        weight: CLASSIFICATION_WEIGHTS.VECTOR,
-      }),
+    logger.warn(
+      "getV3Matchers() is deprecated and V3 matchers have been removed. Returning empty array.",
     );
-
-    // ═══════════════════════════════════════════════════════════════
-    // 第 5 层：通用分类匹配（冷启动兜底）
-    // ═══════════════════════════════════════════════════════════════
-    if (FEATURE_FLAGS.enableUniversalCategories) {
-      matchers.push(
-        new UniversalCategoryMatcher(folderProfileRepo, {
-          weight: 0.2,
-        }),
-      );
-      logger.debug(
-        { matcher: "universal", enabled: true },
-        "V3 Matcher enabled",
-      );
-    }
-
-    // ═══════════════════════════════════════════════════════════════
-    // 历史匹配 + AI 推荐（辅助层）
-    // ═══════════════════════════════════════════════════════════════
-    matchers.push(
-      new HistoryMatcher(bookmarkRepo, {
-        weight: CLASSIFICATION_WEIGHTS.HISTORY,
-      }),
-    );
-
-    matchers.push(
-      new AIRecommender(folderProfileRepo, {
-        weight: CLASSIFICATION_WEIGHTS.AI,
-      }),
-    );
-
-    return matchers;
+    return [];
   }
 
   /**
    * Get Classification Service
-   * V3.0: 集成 5 层匹配策略
-   *
-   * @deprecated 自 V4.1 起，生产环境推荐使用 createSimpleClassificationService()
-   * @see src/lib/classification/services/simple-classification.service.ts
-   *
-   * 此方法仍保留用于：
-   * - 环境变量 CLASSIFICATION_VERSION=v3 时的回滚
-   * - 调试工具中的 V3 对比测试
+   * @deprecated V3 已废弃移除 (Phase 1, 2026-01-24)
+   * @throws Error 调用此方法将抛出废弃错误
    */
   getClassificationService(): IClassificationService {
-    if (!this._classificationService) {
-      const matchers = this.getV3Matchers();
-
-      logger.info(
-        {
-          totalMatchers: matchers.length,
-          v3Features: {
-            knnDirect: FEATURE_FLAGS.enableKnnDirect,
-            fingerprint: FEATURE_FLAGS.enableFolderFingerprint,
-            tagMatcher: FEATURE_FLAGS.enableTagMatcher,
-            universal: FEATURE_FLAGS.enableUniversalCategories,
-          },
-        },
-        "V3 Classification Service initialized",
-      );
-
-      // Create aggregator
-      const aggregator: IScoreAggregator = new WeightedScoreAggregator();
-
-      // Create service
-      this._classificationService = new ClassificationService(
-        matchers,
-        aggregator,
-        this.getUserStageService(),
-        this.supabase,
-      );
-    }
-    return this._classificationService;
+    logger.error(
+      "getClassificationService() is deprecated. V3 has been removed. Use V4.1 or V5.0 instead.",
+    );
+    throw new Error(
+      "V3 ClassificationService has been removed. Set CLASSIFICATION_VERSION=v4.1 or v5.0",
+    );
   }
 
   /**

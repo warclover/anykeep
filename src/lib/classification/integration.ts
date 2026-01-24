@@ -7,7 +7,7 @@
  */
 
 import { z } from "zod";
-import { ClassificationContainer } from "./container";
+// ClassificationContainer 导入已移除 (Phase 1, 2026-01-24) - V3 废弃
 import { createSimpleClassificationService } from "./services/simple-classification.service";
 import { FOLDER_LIMITS } from "./constants";
 import { CONFIDENCE_THRESHOLDS } from "./types/classification-status";
@@ -73,21 +73,23 @@ function isV5PassthroughEnabled(): boolean {
 /**
  * 获取当前分类系统版本
  * 通过环境变量 CLASSIFICATION_VERSION 控制
- * - "v3": 使用 V3 ClassificationService（5层匹配器）
  * - "v4.1": 使用 V4.1 SimpleClassificationService
  * - "v5.0": 使用 V5.0 ClassificationPipeline（L0+T0+T1 三层架构）【默认】
  *
- * v5.1 修复: 默认使用 V5.0，除非显式设置其他版本
+ * @deprecated V3 已废弃移除 (Phase 1, 2026-01-24)
  */
-export function getClassificationVersion(): "v3" | "v4.1" | "v5.0" {
+export function getClassificationVersion(): "v4.1" | "v5.0" {
   const version = process.env.CLASSIFICATION_VERSION;
-  if (version === "v3") {
-    return "v3";
-  }
   if (version === "v4.1") {
     return "v4.1";
   }
-  // v5.1 修复: 默认使用 V5.0
+  // V3 已废弃，设置 v3 时降级到 v5.0 并记录警告
+  if (version === "v3") {
+    logger.warn(
+      { requestedVersion: "v3" },
+      "Classification V3 is deprecated and removed. Falling back to V5.0",
+    );
+  }
   return "v5.0";
 }
 
@@ -161,8 +163,8 @@ export async function classifyBookmarkV2(
     // 获取分类版本
     const classificationVersion = getClassificationVersion();
 
-    // Prepare bookmark input
-    const bookmarkInput: BookmarkInput = {
+    // Prepare bookmark input (used by V4.1 path)
+    const _bookmarkInput: BookmarkInput = {
       id: bookmarkId, // 传入 ID 用于排除自匹配
       title,
       summary: summary || undefined,
@@ -485,24 +487,9 @@ export async function classifyBookmarkV2(
           "Classification V5.0: Result received",
         );
       }
-    } else {
-      // V3: 使用 ClassificationContainer（5层匹配器）
-      const container = ClassificationContainer.initialize(supabase);
-      const classificationService = container.getClassificationService();
-      result = await classificationService.classify(userId, bookmarkInput);
-
-      logger.info(
-        {
-          version: "v3",
-          bookmarkId,
-          title: title.substring(0, 30),
-          action: result.action,
-          confidence: result.confidence,
-          scores: result.scores,
-        },
-        "Classification V3: Result received",
-      );
     }
+    // V3 分支已废弃移除 (Phase 1, 2026-01-24)
+    // 原代码: else { ClassificationContainer.initialize(supabase).getClassificationService().classify() }
 
     // Handle result based on action and confidence
     if (result.action === "classify" && result.folderId) {
