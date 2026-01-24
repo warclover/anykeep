@@ -2,8 +2,9 @@
  * Classification Facade
  * 统一分类门面 - 单一公开 API 入口
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2026-01-24 Phase 2
+ * @updated 2026-01-24 Phase 4.5: 集成增强容器
  */
 
 import { logger } from "@/lib/logger";
@@ -16,6 +17,10 @@ import type {
 } from "./core";
 import { CONFIDENCE_THRESHOLDS } from "./core";
 import { StrategyResolver } from "./strategy-resolver";
+import {
+  getContainer,
+  isContainerInitialized,
+} from "./infrastructure/container";
 
 /**
  * 分类门面
@@ -25,6 +30,7 @@ import { StrategyResolver } from "./strategy-resolver";
  * 2. 路由到正确的策略
  * 3. 处理批量分类
  * 4. 向后兼容旧 API
+ * 5. 自动注入增强容器到策略解析器（Phase 4.5）
  */
 export class ClassificationFacade implements IClassificationFacade {
   private resolver: StrategyResolver;
@@ -32,7 +38,23 @@ export class ClassificationFacade implements IClassificationFacade {
   constructor(config?: ClassificationFacadeConfig) {
     this.resolver = new StrategyResolver({
       featureFlags: config?.featureFlags,
+      container: config?.container,
     });
+
+    // Phase 4.5: 如果容器已初始化但未传入，自动注入
+    if (!config?.container && isContainerInitialized()) {
+      this.resolver.setContainer(getContainer());
+    }
+  }
+
+  /**
+   * 设置增强容器
+   * Phase 4.5: 允许延迟注入容器
+   */
+  setContainer(
+    container: Parameters<StrategyResolver["setContainer"]>[0],
+  ): void {
+    this.resolver.setContainer(container);
   }
 
   /**

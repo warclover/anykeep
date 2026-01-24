@@ -3,6 +3,8 @@
  * Manages service instances and dependencies
  *
  * @updated 2026-01-24 Phase 1: V3 废弃移除
+ * @updated 2026-01-24 Phase 4: 增强容器集成
+ * @updated 2026-01-24 Phase 4.4: 迁移到增强容器委托模式
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -13,51 +15,52 @@ import type {
 } from "./services/interfaces";
 import type { IMatcher } from "./strategies/interfaces";
 
-// Repositories
-import {
+// Repositories - 仅用于类型
+import type {
   FolderProfileRepository,
   BookmarkRepository,
   InterestRepository,
   SuggestionRepository,
 } from "./repositories";
 
-// V3 Strategies 导入已移除 (Phase 1, 2026-01-24)
-// 原导入: VectorMatcher, HistoryMatcher, AIRecommender, WeightedScoreAggregator
-// 原导入: UniversalCategoryMatcher, KnnDirectMatcher, FingerprintMatcher, TagMatcher
-// 原导入: FEATURE_FLAGS, CLASSIFICATION_WEIGHTS
-
-// Services
-import {
-  UserStageService,
-  InterestService,
-  InboxOrganizerService,
-} from "./services";
+// Services - 仅用于类型
+import type { UserStageService } from "./services";
 
 import { logger } from "@/lib/logger";
 
+// Phase 4: 增强容器
+import type { EnhancedContainer } from "./infrastructure/container";
+import {
+  initializeContainer as initEnhanced,
+  getContainer as getEnhanced,
+  isContainerInitialized as isEnhancedInitialized,
+  resetContainer as resetEnhanced,
+  registerAllServices,
+  SERVICE_TYPES,
+} from "./infrastructure/container";
+
 /**
  * Dependency injection container for classification module
+ *
+ * Phase 4.4: 现在委托给 EnhancedContainer 管理所有服务实例
+ * 保留此类以保持向后兼容，新代码建议直接使用 getEnhancedContainer()
+ *
+ * @deprecated 建议迁移到 EnhancedContainer
+ * 使用 getEnhancedContainer() 获取新容器
  */
 export class ClassificationContainer {
   private supabase: SupabaseClient;
+  private enhancedContainer: EnhancedContainer;
 
   // Singleton instance
   private static instance: ClassificationContainer | null = null;
 
-  // Cached repositories
-  private _folderProfileRepo: FolderProfileRepository | null = null;
-  private _bookmarkRepo: BookmarkRepository | null = null;
-  private _interestRepo: InterestRepository | null = null;
-  private _suggestionRepo: SuggestionRepository | null = null;
-
-  // Cached services
-  private _classificationService: IClassificationService | null = null;
-  private _inboxOrganizerService: IInboxOrganizerService | null = null;
-  private _interestService: IInterestService | null = null;
-  private _userStageService: UserStageService | null = null;
-
   private constructor(supabase: SupabaseClient) {
     this.supabase = supabase;
+
+    // Phase 4: 初始化增强容器并注册所有服务
+    this.enhancedContainer = initEnhanced({ supabase });
+    registerAllServices(this.enhancedContainer);
   }
 
   /**
@@ -69,6 +72,12 @@ export class ClassificationContainer {
     } else {
       // Update supabase client if already initialized
       ClassificationContainer.instance.supabase = supabase;
+      // 重新初始化增强容器
+      resetEnhanced();
+      ClassificationContainer.instance.enhancedContainer = initEnhanced({
+        supabase,
+      });
+      registerAllServices(ClassificationContainer.instance.enhancedContainer);
     }
     return ClassificationContainer.instance;
   }
@@ -97,59 +106,58 @@ export class ClassificationContainer {
    * Reset container (for testing)
    */
   static reset(): void {
-    if (ClassificationContainer.instance) {
-      ClassificationContainer.instance._folderProfileRepo = null;
-      ClassificationContainer.instance._bookmarkRepo = null;
-      ClassificationContainer.instance._interestRepo = null;
-      ClassificationContainer.instance._suggestionRepo = null;
-      ClassificationContainer.instance._classificationService = null;
-      ClassificationContainer.instance._inboxOrganizerService = null;
-      ClassificationContainer.instance._interestService = null;
-      ClassificationContainer.instance._userStageService = null;
-    }
     ClassificationContainer.instance = null;
+    // 重置增强容器（清除所有缓存实例）
+    resetEnhanced();
   }
 
-  // Repository getters
+  /**
+   * 获取增强容器
+   * Phase 4: 推荐使用此方法获取服务
+   */
+  getEnhanced(): EnhancedContainer {
+    return this.enhancedContainer;
+  }
+
+  // ============================================================================
+  // Repository getters - 委托给 EnhancedContainer
+  // ============================================================================
 
   private getFolderProfileRepository(): FolderProfileRepository {
-    if (!this._folderProfileRepo) {
-      this._folderProfileRepo = new FolderProfileRepository(this.supabase);
-    }
-    return this._folderProfileRepo;
+    return this.enhancedContainer.get<FolderProfileRepository>(
+      SERVICE_TYPES.FolderProfileRepository,
+    );
   }
 
   private getBookmarkRepository(): BookmarkRepository {
-    if (!this._bookmarkRepo) {
-      this._bookmarkRepo = new BookmarkRepository(this.supabase);
-    }
-    return this._bookmarkRepo;
+    return this.enhancedContainer.get<BookmarkRepository>(
+      SERVICE_TYPES.BookmarkRepository,
+    );
   }
 
   private getInterestRepository(): InterestRepository {
-    if (!this._interestRepo) {
-      this._interestRepo = new InterestRepository(this.supabase);
-    }
-    return this._interestRepo;
+    return this.enhancedContainer.get<InterestRepository>(
+      SERVICE_TYPES.InterestRepository,
+    );
   }
 
   private getSuggestionRepository(): SuggestionRepository {
-    if (!this._suggestionRepo) {
-      this._suggestionRepo = new SuggestionRepository(this.supabase);
-    }
-    return this._suggestionRepo;
+    return this.enhancedContainer.get<SuggestionRepository>(
+      SERVICE_TYPES.SuggestionRepository,
+    );
   }
 
-  // Service getters
+  // ============================================================================
+  // Service getters - 委托给 EnhancedContainer
+  // ============================================================================
 
   /**
    * Get User Stage Service
    */
   getUserStageService(): UserStageService {
-    if (!this._userStageService) {
-      this._userStageService = new UserStageService(this.supabase);
-    }
-    return this._userStageService;
+    return this.enhancedContainer.get<UserStageService>(
+      SERVICE_TYPES.UserStageService,
+    );
   }
 
   /**
@@ -181,33 +189,23 @@ export class ClassificationContainer {
    * Get Interest Service
    */
   getInterestService(): IInterestService {
-    if (!this._interestService) {
-      this._interestService = new InterestService(
-        this.getInterestRepository(),
-        this.supabase,
-      );
-    }
-    return this._interestService;
+    return this.enhancedContainer.get<IInterestService>(
+      SERVICE_TYPES.InterestService,
+    );
   }
 
   /**
    * Get Inbox Organizer Service
    */
   getInboxOrganizerService(): IInboxOrganizerService {
-    if (!this._inboxOrganizerService) {
-      this._inboxOrganizerService = new InboxOrganizerService(
-        this.getBookmarkRepository(),
-        this.getFolderProfileRepository(),
-        this.getSuggestionRepository(),
-        this.getInterestRepository(),
-        this.supabase,
-      );
-    }
-    return this._inboxOrganizerService;
+    return this.enhancedContainer.get<IInboxOrganizerService>(
+      SERVICE_TYPES.InboxOrganizerService,
+    );
   }
 
   /**
    * Get all services (convenience method)
+   * @deprecated 由于 classification 已废弃，此方法将抛出错误
    */
   getAllServices(): {
     classification: IClassificationService;
@@ -231,3 +229,31 @@ export class ClassificationContainer {
 export function getClassificationContainer(): ClassificationContainer {
   return ClassificationContainer.getInstance();
 }
+
+/**
+ * 获取增强容器
+ * Phase 4: 推荐使用此函数
+ *
+ * @example
+ * ```typescript
+ * const container = getEnhancedContainer();
+ * const pipeline = container.get<ClassificationPipelineService>(SERVICE_TYPES.PipelineService);
+ * ```
+ */
+export function getEnhancedContainer(): EnhancedContainer {
+  if (!isEnhancedInitialized()) {
+    throw new Error(
+      "Enhanced container not initialized. Call ClassificationContainer.initialize() first.",
+    );
+  }
+  return getEnhanced();
+}
+
+// 导出增强容器相关
+export {
+  EnhancedContainer,
+  SERVICE_TYPES,
+  initializeContainer as initEnhancedContainer,
+  resetContainer as resetEnhancedContainer,
+  isContainerInitialized as isEnhancedContainerInitialized,
+} from "./infrastructure/container";

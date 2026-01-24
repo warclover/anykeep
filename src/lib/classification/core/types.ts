@@ -2,9 +2,12 @@
  * Classification Core Types
  * 统一类型定义
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2026-01-24 Phase 2
+ * @updated 2026-01-24 Phase 4.5: 添加容器配置
  */
+
+import type { EnhancedContainer } from "../infrastructure/container";
 
 /**
  * 分类请求
@@ -81,6 +84,8 @@ export type ClassificationVersion = "v4.1" | "v5.0";
 export interface ClassificationFacadeConfig {
   defaultStrategy?: StrategyType;
   featureFlags?: Partial<ClassificationFeatureFlags>;
+  /** 增强容器实例（Phase 4.5） */
+  container?: EnhancedContainer;
 }
 
 /**
