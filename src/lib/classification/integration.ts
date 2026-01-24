@@ -218,19 +218,6 @@ export async function classifyBookmarkV2(
       const { FeatureFlagService } = await import(
         "@/lib/classification/v5/rollout/feature-flag"
       );
-      const { ClassificationPipelineService } = await import(
-        "@/lib/classification/v5/classification-pipeline/classification-pipeline.service"
-      );
-      const { LoggerService } = await import(
-        "@/lib/classification/v5/shared/logger"
-      );
-      const { DashScopeEmbeddingAdapter } = await import(
-        "@/lib/classification/v5/shared/embedding/dashscope-embedding-adapter"
-      );
-      const { VectorSearchService } = await import(
-        "@/lib/classification/v5/shared/vector-search"
-      );
-      const { LLMService } = await import("@/lib/classification/v5/shared/llm");
 
       // 检查 Feature Flag
       const { RolloutStage } = await import(
@@ -331,32 +318,13 @@ export async function classifyBookmarkV2(
           },
         };
       } else {
-        // 使用 V5.0 ClassificationPipeline
-        const loggerService = new LoggerService();
-        const embeddingService = new DashScopeEmbeddingAdapter(
-          loggerService,
-          60, // 阿里云 QPM 限制
+        // 使用 V5.0 ClassificationPipeline（通过工厂复用服务实例）
+        const { getClassificationPipeline } = await import(
+          "@/lib/classification/v5/classification-pipeline/pipeline-factory"
         );
-        const vectorSearchService = new VectorSearchService(loggerService, {
-          supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
-          supabaseServiceKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
-        });
-        const llmService = new LLMService(loggerService);
 
-        const pipeline = new ClassificationPipelineService(
-          loggerService,
-          embeddingService,
-          vectorSearchService,
-          llmService,
-          {
-            t0ConfidenceThreshold: 0.85,
-            vectorConflictThreshold: 0.15,
-            hybridWeights: {
-              content: 0.7,
-              behavior: 0.3,
-            },
-            rrfK: 60,
-          },
+        const pipeline = getClassificationPipeline(
+          supabase as SupabaseClient<Database>,
         );
 
         const v5Request = {
@@ -379,24 +347,36 @@ export async function classifyBookmarkV2(
             : parseInt(v5Result.folderId, 10);
 
         // 如果 folderId 解析失败（NaN），也视为 inbox
-        const validFolderId =
+        let validFolderId: number | null =
           folderId !== null && !isNaN(folderId) ? folderId : null;
 
-        // 查询文件夹名称（只有 validFolderId 有效时才查询）
+        // 查询并验证文件夹存在性（只有 validFolderId 有效时才查询）
         let folderName: string | null = null;
         if (validFolderId !== null) {
           try {
-            const { data: folderData } = await supabase
+            const { data: folderData, error: folderError } = await supabase
               .from("folders")
               .select("name")
               .eq("id", validFolderId)
+              .eq("user_id", userId) // 确保是用户自己的文件夹
               .single();
-            folderName = folderData?.name || null;
+
+            if (folderError || !folderData) {
+              logger.warn(
+                { folderId: validFolderId, error: folderError },
+                "Classification V5.0: Folder not found or deleted, falling back to inbox",
+              );
+              // 文件夹不存在，重置为 inbox
+              validFolderId = null;
+            } else {
+              folderName = folderData.name;
+            }
           } catch (error) {
             logger.warn(
               { folderId: validFolderId, error },
-              "Failed to fetch folder name for V5.0 result",
+              "Classification V5.0: Failed to verify folder existence",
             );
+            validFolderId = null;
           }
         }
 

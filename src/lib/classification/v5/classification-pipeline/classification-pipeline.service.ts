@@ -53,6 +53,8 @@ export class ClassificationPipelineService {
   private t0Generator: T0Generator;
   private t1Corrector: T1Corrector;
   private folderContextProvider?: FolderContextProvider;
+  /** v6.3: 保存 supabase 引用，用于 loadUserRules 重建 L0RuleMatcher */
+  private supabase?: SupabaseClient;
 
   constructor(
     logger: LoggerService,
@@ -99,6 +101,9 @@ export class ClassificationPipelineService {
       this.folderContextProvider = new FolderContextProvider(logger, supabase);
       this.logger.info("FolderContextProvider 已初始化，T1 将使用示例书签增强");
     }
+
+    // v6.3: 保存 supabase 引用
+    this.supabase = supabase;
 
     // v5.1 修复：传递 supabase 以启用 AI 标签匹配器
     this.l0Matcher = new L0RuleMatcher(logger, [], supabase);
@@ -230,10 +235,11 @@ export class ClassificationPipelineService {
 
   /**
    * 批量分类
+   * v6.3 修复: 使用 allSettled 容忍部分失败，返回成功结果和错误信息
    */
   async classifyBatch(
     requests: ClassificationRequest[],
-  ): Promise<ClassificationResult[]> {
+  ): Promise<(ClassificationResult | { error: string; bookmarkId: string })[]> {
     this.logger.info("开始批量分类", {
       count: requests.length,
     });
@@ -264,11 +270,14 @@ export class ClassificationPipelineService {
           },
         );
 
-        // 返回默认结果（可以根据业务需求调整)
-        throw new ClassificationPipelineError(
-          `批量分类中的请求 ${index} 失败`,
-          result.reason,
-        );
+        // v6.3 修复: 返回错误对象而非抛出异常，保持 allSettled 语义
+        return {
+          error:
+            result.reason instanceof Error
+              ? result.reason.message
+              : String(result.reason),
+          bookmarkId: requests[index].bookmarkId,
+        };
       }
     });
   }
@@ -350,14 +359,14 @@ export class ClassificationPipelineService {
 
   /**
    * 加载用户自定义规则到 L0RuleMatcher
+   * v6.3 修复: 传递 supabase 参数，保持 AI 标签匹配功能
    */
   loadUserRules(rules: Rule[]): void {
-    // 清空现有规则
-    const currentRules = this.l0Matcher.getRules();
-    this.logger.debug("清空现有L0规则", { count: currentRules.length });
+    const currentRuleCount = this.l0Matcher.getRules().length;
+    this.logger.debug("清空现有L0规则", { count: currentRuleCount });
 
-    // 重新初始化 L0RuleMatcher
-    this.l0Matcher = new L0RuleMatcher(this.logger, rules);
+    // v6.3 修复: 传递 supabase 以保持 AI 标签匹配功能
+    this.l0Matcher = new L0RuleMatcher(this.logger, rules, this.supabase);
 
     this.logger.info("用户规则已加载到L0RuleMatcher", {
       ruleCount: rules.length,
