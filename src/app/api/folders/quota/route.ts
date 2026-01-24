@@ -6,14 +6,13 @@
  */
 
 import { NextResponse } from "next/server";
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
-import { cookies } from "next/headers";
+import { createClient } from "@/lib/supabase/server";
 import { UnifiedQuotaService } from "@/lib/classification/strategies/modern/crystal/quota";
 import { logger } from "@/lib/logger";
 
 export async function GET() {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
+    const supabase = await createClient();
 
     const {
       data: { user },
@@ -23,14 +22,27 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // 使用 UnifiedQuotaService 实例方法
     const quotaService = new UnifiedQuotaService(supabase);
-    const result = await quotaService.checkQuota(user.id);
+    const quota = await quotaService.checkQuota(user.id);
 
     return NextResponse.json({
-      allowed: result.allowed,
-      daily: result.daily,
-      total: result.total,
-      health: result.health,
+      allowed: quota.allowed,
+      daily: {
+        used: quota.daily.used,
+        limit: quota.daily.limit,
+        remaining: quota.daily.remaining,
+      },
+      total: {
+        used: quota.total.aiCreated,
+        limit: quota.total.limit,
+        remaining: quota.total.remaining,
+      },
+      health: {
+        passed: quota.health.passed,
+        emptyFolders: quota.health.emptyFolders,
+        reason: quota.health.reason,
+      },
     });
   } catch (error) {
     logger.error({ error }, "V5.5: Quota API error");

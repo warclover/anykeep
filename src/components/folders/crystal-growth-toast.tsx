@@ -9,7 +9,7 @@
 
 import { toast } from "sonner";
 import { FolderPlus, Sparkles, AlertCircle } from "lucide-react";
-import type { SilentNotification } from "@/lib/classification/v5.5/notification";
+import type { SilentNotification } from "@/lib/classification/strategies/modern/crystal/notification";
 
 /**
  * 显示晶体生长相关的静默通知

@@ -1,6 +1,7 @@
 /**
  * 智能分类 v5.0 - ClassificationPipeline 模块导出
  * v5.1: 新增 AI 标签匹配系统
+ * v5.5: 新增晶体生长系统
  */
 
 export { ClassificationPipelineService } from "./classification-pipeline.service";
@@ -29,6 +30,9 @@ export {
   type MatchRecord,
   type MatchStats,
 } from "./tag-match-metrics";
+
+// v5.5 新增：晶体生长系统
+export * from "./crystal";
 
 export type {
   ClassificationRequest,
