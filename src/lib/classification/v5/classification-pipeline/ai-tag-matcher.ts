@@ -653,18 +653,19 @@ export class AiTagMatcher {
   /**
    * 从数据库加载文件夹画像（内部方法）
    * v1.5.0: 从 getFolderProfiles 拆分出来
+   * v1.6.0: 修复表名问题，使用 classification_folder_profiles_v5 表的 top_tags 字段
    */
   private async loadFolderProfilesFromDb(
     userId: string,
   ): Promise<FolderTagProfile[]> {
+    // v1.6.0: 使用 classification_folder_profiles_v5 表（V5 分类系统的画像表）
+    // 该表有 top_tags 字段，与向量画像数据同步
     const { data, error } = await this.supabase
-      .from("folder_tag_profiles")
+      .from("classification_folder_profiles_v5")
       .select(
         `
         folder_id,
-        core_tags,
-        related_tags,
-        folder_name_tokens,
+        top_tags,
         bookmark_count,
         folders!inner(name)
       `,
@@ -686,13 +687,15 @@ export class AiTagMatcher {
       const folderData = Array.isArray(row.folders)
         ? row.folders[0]
         : row.folders;
+      // v1.6.0: top_tags 作为 coreTags，前 5 个为核心标签，其余为相关标签
+      const allTags = row.top_tags || [];
       return {
         folderId: row.folder_id,
         folderName: (folderData as { name: string })?.name || "",
-        coreTags: row.core_tags || [],
-        relatedTags: row.related_tags || [],
-        folderNameTokens: row.folder_name_tokens || [],
-        bookmarkCount: row.bookmark_count,
+        coreTags: allTags.slice(0, 5), // 前 5 个为核心标签
+        relatedTags: allTags.slice(5), // 其余为相关标签
+        folderNameTokens: [], // v1.6.0: 从文件夹名动态生成
+        bookmarkCount: row.bookmark_count || 0,
       };
     });
 
