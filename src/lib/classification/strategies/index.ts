@@ -1,21 +1,15 @@
 /**
  * Strategy layer exports (Client-safe)
  *
- * 注意：NegativeSampleMatcher 依赖服务端代码
- * 请从 "./negative-sample-matcher" 直接导入
+ * @deprecated 请使用 './classic' 或 './modern' 子目录导入
+ * 此文件仅为向后兼容保留，将在 Phase 6 删除
  */
 
-export * from "./interfaces";
-export { VectorMatcher } from "./vector-matcher";
-export { HistoryMatcher } from "./history-matcher";
-export { AIRecommender } from "./ai-recommender";
-export { WeightedScoreAggregator } from "./score-aggregator";
+// Re-export from classic strategy for backward compatibility
+export * from "./classic";
 
-// V4.2: Negative Sample Matcher - 类型导出（安全）
-export type {
-  NegativeSampleMatcherConfig,
-  NegativeSampleMatcherContext,
-} from "./negative-sample-matcher";
+// Modern strategy exports
+export * from "./modern";
 
 // 注意：NegativeSampleMatcher 和 negativeSampleMatcher 实例
 // 依赖服务端代码，需从 "./negative-sample-matcher" 直接导入

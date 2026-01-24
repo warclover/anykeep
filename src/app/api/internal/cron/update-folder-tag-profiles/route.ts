@@ -15,7 +15,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { logger } from "@/lib/logger";
 import { supabaseEnv, appEnv } from "@/lib/env";
-import { FolderTagProfilerService } from "@/lib/classification/v5/classification-pipeline/folder-tag-profiler.service";
+import { FolderTagProfilerService } from "@/lib/classification/strategies/modern/folder-tag-profiler.service";
 import { FeatureFlags } from "@/lib/ai-agent/config/feature-flags";
 
 // 使用 Service Role Key 以绕过 RLS

@@ -5,7 +5,7 @@
  */
 
 import { useQuery } from "@tanstack/react-query";
-import type { UnifiedQuotaResult } from "@/lib/classification/v5.5/quota";
+import type { UnifiedQuotaResult } from "@/lib/classification/strategies/modern/crystal/quota";
 
 async function fetchFolderQuota(): Promise<UnifiedQuotaResult> {
   const response = await fetch("/api/folders/quota");

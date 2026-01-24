@@ -8,7 +8,7 @@
 import { NextResponse } from "next/server";
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
-import { UnifiedQuotaService } from "@/lib/classification/v5.5/quota";
+import { UnifiedQuotaService } from "@/lib/classification/strategies/modern/crystal/quota";
 import { logger } from "@/lib/logger";
 
 export async function GET() {
