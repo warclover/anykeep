@@ -7,16 +7,16 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { ClassificationPipelineService } from "@/lib/classification/v5/classification-pipeline";
-import { ContextAnchorService } from "@/lib/classification/v5/context-anchor";
-import { ChatToRuleService } from "@/lib/classification/v5/chat-to-rule";
-import { convertUserRulesToL0Rules } from "@/lib/classification/v5/classification-pipeline/rule-converter";
-import { EmbeddingService } from "@/lib/classification/v5/shared/embedding";
-import { VectorSearchService } from "@/lib/classification/v5/shared/vector-search";
-import { LLMService } from "@/lib/classification/v5/shared/llm";
-import { createLogger } from "@/lib/classification/v5/shared/logger";
-import type { ClassificationRequest } from "@/lib/classification/v5/classification-pipeline/types";
-import { executeT1InBackground } from "@/lib/classification/v5/t1-queue";
+import { ClassificationPipelineService } from "@/lib/classification/strategies/modern";
+import { ContextAnchorService } from "@/lib/classification/strategies/modern/context-anchor";
+import { ChatToRuleService } from "@/lib/classification/strategies/modern/chat-to-rule";
+import { convertUserRulesToL0Rules } from "@/lib/classification/strategies/modern/rule-converter";
+import { EmbeddingService } from "@/lib/classification/infrastructure/shared-services/embedding";
+import { VectorSearchService } from "@/lib/classification/infrastructure/shared-services/vector-search";
+import { LLMService } from "@/lib/classification/infrastructure/shared-services/llm";
+import { createLogger } from "@/lib/classification/infrastructure/shared-services/logger";
+import type { ClassificationRequest } from "@/lib/classification/strategies/modern/types";
+import { executeT1InBackground } from "@/lib/classification/strategies/modern/t1-queue";
 
 /**
  * 分类请求体

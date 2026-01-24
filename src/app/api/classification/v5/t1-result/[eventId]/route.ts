@@ -7,8 +7,8 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { T1QueueService } from "@/lib/classification/v5/t1-queue";
-import { createLogger } from "@/lib/classification/v5/shared/logger";
+import { T1QueueService } from "@/lib/classification/strategies/modern/t1-queue";
+import { createLogger } from "@/lib/classification/infrastructure/shared-services/logger";
 
 /**
  * GET /api/classification/v5/t1-result/:eventId
@@ -88,7 +88,7 @@ export async function GET(
   } catch (error) {
     logger.error(
       "查询T1结果失败",
-      error instanceof Error ? error : new Error(String(error))
+      error instanceof Error ? error : new Error(String(error)),
     );
 
     return NextResponse.json(

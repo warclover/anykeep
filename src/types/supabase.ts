@@ -198,3 +198,186 @@ export interface CustomUsageTag {
   /** 最后使用时间 */
   lastUsedAt?: string;
 }
+
+// ============================================
+// 表类型别名（从 Database 派生）
+// ============================================
+
+import type { Database } from "./supabase.generated";
+
+/** Bookmark 行类型 */
+export type Bookmark = Database["public"]["Tables"]["bookmarks"]["Row"];
+/** Bookmark 插入类型 */
+export type BookmarkInsert =
+  Database["public"]["Tables"]["bookmarks"]["Insert"];
+/** Bookmark 更新类型 */
+export type BookmarkUpdate =
+  Database["public"]["Tables"]["bookmarks"]["Update"];
+/** Bookmark 带快照类型 */
+export type BookmarkWithSnapshot = Bookmark & {
+  has_snapshot?: boolean;
+  last_snapshot_at?: string | null;
+};
+
+/** Folder 行类型 */
+export type Folder = Database["public"]["Tables"]["folders"]["Row"];
+/** Folder 插入类型 */
+export type FolderInsert = Database["public"]["Tables"]["folders"]["Insert"];
+/** Folder 更新类型 */
+export type FolderUpdate = Database["public"]["Tables"]["folders"]["Update"];
+/** Folder 树节点类型 */
+export type FolderTreeNode = Folder & {
+  children?: FolderTreeNode[];
+  bookmark_count?: number;
+};
+
+/** Profile 行类型 */
+export type Profile = Database["public"]["Tables"]["profiles"]["Row"];
+/** Profile 设置类型 */
+export type ProfileSettings = Profile["settings"];
+
+/** 文件夹画像类型 */
+export type FolderProfile =
+  Database["public"]["Tables"]["folder_profiles"]["Row"];
+
+/** 导入历史类型 */
+export type ImportHistory =
+  Database["public"]["Tables"]["import_history"]["Row"];
+
+/** 平台类型 */
+export type Platform =
+  | "wechat"
+  | "bilibili"
+  | "xiaohongshu"
+  | "zhihu"
+  | "weibo"
+  | "douyin"
+  | "twitter"
+  | "youtube"
+  | "github"
+  | "medium"
+  | "juejin"
+  | "csdn"
+  | "jianshu"
+  | "chrome"
+  | "edge"
+  | "firefox"
+  | "safari"
+  | "other";
+
+/** 导入源类型 */
+export type ImportSource = "chrome" | "edge" | "firefox" | "safari" | "other";
+
+/** 导入错误详情类型 */
+export type ImportErrorDetail = {
+  url: string;
+  title?: string;
+  error: string;
+  code?: string;
+};
+
+/** 文件夹分组类型 */
+export type FolderGroup = "default" | "smart" | "archive" | "system";
+
+/** 操作快照动作类型 */
+export type OperationSnapshotAction =
+  | "create"
+  | "update"
+  | "delete"
+  | "move"
+  | "merge"
+  | "split"
+  | "rename"
+  | "archive";
+
+/** 操作详情类型 */
+export type OperationDetail = {
+  id: string;
+  operation_type: string;
+  summary: string | null;
+  created_at: string;
+  expires_at: string;
+  bookmark_ids: number[] | null;
+  folder_snapshots?: unknown;
+  metadata?: unknown;
+};
+
+/** 分类建议类型 */
+export type ClassificationSuggestion =
+  Database["public"]["Tables"]["classification_suggestions"]["Row"];
+/** 分类建议插入类型 */
+export type ClassificationSuggestionInsert =
+  Database["public"]["Tables"]["classification_suggestions"]["Insert"];
+
+/** 建议状态类型 */
+export type SuggestionStatus = "pending" | "accepted" | "rejected" | "expired";
+
+/** 分类状态类型 */
+export type ClassificationStatus =
+  | "pending"
+  | "processing"
+  | "completed"
+  | "failed";
+
+/** 分类结果数据类型 */
+export type ClassificationResultData = {
+  folder_id: number | null;
+  folder_name: string | null;
+  confidence: number;
+  method: string;
+  suggestions?: Array<{
+    folder_id: number;
+    folder_name: string;
+    confidence: number;
+  }>;
+};
+
+/** 分类候选类型 */
+export type ClassificationCandidate = {
+  folder_id: number;
+  folder_name: string;
+  confidence: number;
+  reason?: string;
+};
+
+/** 报告建议类型 */
+export type ReportSuggestion = {
+  id: string;
+  type: string;
+  title: string;
+  description: string;
+  priority: "high" | "medium" | "low";
+  action_type?: string;
+  action_params?: unknown;
+};
+
+/** 会员类型 */
+export type MembershipType = "free" | "pro" | "premium";
+
+/** 重分类设置类型 */
+export type ReclassifySettings = {
+  enabled: boolean;
+  threshold: number;
+  auto_apply: boolean;
+};
+
+/** AI 文件夹设置类型 */
+export type AIFolderSettings = {
+  auto_create_enabled: boolean;
+  max_folders: number;
+  naming_style: "concise" | "descriptive";
+};
+
+/** 聚类处理状态类型 */
+export type ClusterProcessingStatus =
+  | "pending"
+  | "processing"
+  | "completed"
+  | "failed";
+
+/** 导入历史选项类型 */
+export type ImportHistoryOptions = {
+  limit?: number;
+  offset?: number;
+  source?: ImportSource;
+};

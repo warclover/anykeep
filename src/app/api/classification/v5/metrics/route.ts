@@ -12,7 +12,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { LoggerService } from "@/lib/classification/v5/shared/logger";
+import { LoggerService } from "@/lib/classification/infrastructure/shared-services/logger";
 
 /**
  * 指标记录类型

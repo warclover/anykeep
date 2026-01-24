@@ -6,15 +6,15 @@
  * 功能：通过 Server-Sent Events (SSE) 实时推送 T1 纠正结果
  */
 
-import type { NextRequest } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { LoggerService } from '@/lib/classification/v5/shared/logger';
+import type { NextRequest } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import { LoggerService } from "@/lib/classification/infrastructure/shared-services/logger";
 
 /**
  * SSE 事件类型
  */
 type SSEEvent = {
-  type: 'status' | 'progress' | 'completed' | 'failed' | 'error';
+  type: "status" | "progress" | "completed" | "failed" | "error";
   data: {
     status?: string;
     progress?: number;
@@ -30,17 +30,17 @@ type SSEEvent = {
  * 订阅 T1 纠正队列的实时更新
  */
 export async function GET(request: NextRequest) {
-  const logger = new LoggerService({}, { module: 'T1StreamAPI' });
+  const logger = new LoggerService({}, { module: "T1StreamAPI" });
 
   try {
     // 1. 获取查询参数
-    const bookmarkIdStr = request.nextUrl.searchParams.get('bookmarkId');
+    const bookmarkIdStr = request.nextUrl.searchParams.get("bookmarkId");
     if (!bookmarkIdStr) {
-      return new Response('Missing bookmarkId parameter', { status: 400 });
+      return new Response("Missing bookmarkId parameter", { status: 400 });
     }
     const bookmarkId = parseInt(bookmarkIdStr, 10);
     if (isNaN(bookmarkId)) {
-      return new Response('Invalid bookmarkId parameter', { status: 400 });
+      return new Response("Invalid bookmarkId parameter", { status: 400 });
     }
 
     // 2. 验证用户身份
@@ -51,10 +51,13 @@ export async function GET(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return new Response('Unauthorized', { status: 401 });
+      return new Response("Unauthorized", { status: 401 });
     }
 
-    logger.info('T1 Stream started', { bookmarkId: bookmarkId.toString(), userId: user.id });
+    logger.info("T1 Stream started", {
+      bookmarkId: bookmarkId.toString(),
+      userId: user.id,
+    });
 
     // 3. 创建 SSE 流
     const encoder = new TextEncoder();
@@ -64,26 +67,30 @@ export async function GET(request: NextRequest) {
       async start(controller) {
         // 发送初始连接消息
         const initEvent: SSEEvent = {
-          type: 'status',
-          data: { status: 'connected' },
+          type: "status",
+          data: { status: "connected" },
         };
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(initEvent)}\n\n`));
+        controller.enqueue(
+          encoder.encode(`data: ${JSON.stringify(initEvent)}\n\n`),
+        );
 
         // 轮询 T1 队列状态（每 2 秒检查一次）
         intervalId = setInterval(async () => {
           try {
             // 查询 T1 队列记录
             const { data: t1Record, error } = await supabase
-              .from('classification_t1_queue_v5')
-              .select('*')
-              .eq('bookmark_id', bookmarkId)
-              .eq('user_id', user.id)
-              .order('created_at', { ascending: false })
+              .from("classification_t1_queue_v5")
+              .select("*")
+              .eq("bookmark_id", bookmarkId)
+              .eq("user_id", user.id)
+              .order("created_at", { ascending: false })
               .limit(1)
               .single();
 
             if (error) {
-              logger.error('Failed to query T1 queue', error, { bookmarkId: bookmarkId.toString() });
+              logger.error("Failed to query T1 queue", error, {
+                bookmarkId: bookmarkId.toString(),
+              });
               return;
             }
 
@@ -93,32 +100,32 @@ export async function GET(request: NextRequest) {
             }
 
             // 根据状态发送不同的事件
-            if (t1Record.status === 'processing') {
+            if (t1Record.status === "processing") {
               const progressEvent: SSEEvent = {
-                type: 'progress',
+                type: "progress",
                 data: {
-                  status: 'processing',
+                  status: "processing",
                   progress: 50,
                 },
               };
               controller.enqueue(
-                encoder.encode(`data: ${JSON.stringify(progressEvent)}\n\n`)
+                encoder.encode(`data: ${JSON.stringify(progressEvent)}\n\n`),
               );
-            } else if (t1Record.status === 'completed') {
+            } else if (t1Record.status === "completed") {
               const completedEvent: SSEEvent = {
-                type: 'completed',
+                type: "completed",
                 data: {
-                  status: 'completed',
+                  status: "completed",
                   folderId: t1Record.t1_folder_id?.toString(),
                   confidence: t1Record.t1_confidence ?? undefined,
                   reasoning: t1Record.t1_reasoning ?? undefined,
                 },
               };
               controller.enqueue(
-                encoder.encode(`data: ${JSON.stringify(completedEvent)}\n\n`)
+                encoder.encode(`data: ${JSON.stringify(completedEvent)}\n\n`),
               );
 
-              logger.info('T1 correction completed', {
+              logger.info("T1 correction completed", {
                 bookmarkId: bookmarkId.toString(),
                 folderId: t1Record.t1_folder_id?.toString() ?? undefined,
               });
@@ -126,19 +133,19 @@ export async function GET(request: NextRequest) {
               // 完成后关闭连接
               if (intervalId) clearInterval(intervalId);
               controller.close();
-            } else if (t1Record.status === 'failed') {
+            } else if (t1Record.status === "failed") {
               const failedEvent: SSEEvent = {
-                type: 'failed',
+                type: "failed",
                 data: {
-                  status: 'failed',
-                  error: t1Record.error_message || 'Unknown error',
+                  status: "failed",
+                  error: t1Record.error_message || "Unknown error",
                 },
               };
               controller.enqueue(
-                encoder.encode(`data: ${JSON.stringify(failedEvent)}\n\n`)
+                encoder.encode(`data: ${JSON.stringify(failedEvent)}\n\n`),
               );
 
-              logger.error('T1 correction failed', undefined, {
+              logger.error("T1 correction failed", undefined, {
                 bookmarkId: bookmarkId.toString(),
                 errorMessage: t1Record.error_message,
               });
@@ -149,18 +156,18 @@ export async function GET(request: NextRequest) {
             }
           } catch (err) {
             logger.error(
-              'Error in T1 stream polling',
+              "Error in T1 stream polling",
               err instanceof Error ? err : undefined,
-              { bookmarkId: bookmarkId.toString() }
+              { bookmarkId: bookmarkId.toString() },
             );
             const errorEvent: SSEEvent = {
-              type: 'error',
+              type: "error",
               data: {
-                error: err instanceof Error ? err.message : 'Unknown error',
+                error: err instanceof Error ? err.message : "Unknown error",
               },
             };
             controller.enqueue(
-              encoder.encode(`data: ${JSON.stringify(errorEvent)}\n\n`)
+              encoder.encode(`data: ${JSON.stringify(errorEvent)}\n\n`),
             );
           }
         }, 2000); // 每 2 秒轮询一次
@@ -169,39 +176,43 @@ export async function GET(request: NextRequest) {
         setTimeout(() => {
           if (intervalId) clearInterval(intervalId);
           controller.close();
-          logger.info('T1 Stream timeout', { bookmarkId: bookmarkId.toString() });
+          logger.info("T1 Stream timeout", {
+            bookmarkId: bookmarkId.toString(),
+          });
         }, 30000);
       },
 
       cancel() {
         // 客户端断开连接时清理
         if (intervalId) clearInterval(intervalId);
-        logger.info('T1 Stream cancelled', { bookmarkId: bookmarkId.toString() });
+        logger.info("T1 Stream cancelled", {
+          bookmarkId: bookmarkId.toString(),
+        });
       },
     });
 
     // 4. 返回 SSE 响应
     return new Response(stream, {
       headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache, no-transform',
-        'Connection': 'keep-alive',
-        'X-Accel-Buffering': 'no', // 禁用 Nginx 缓冲
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache, no-transform",
+        Connection: "keep-alive",
+        "X-Accel-Buffering": "no", // 禁用 Nginx 缓冲
       },
     });
   } catch (error) {
     logger.error(
-      'T1 Stream API error',
-      error instanceof Error ? error : undefined
+      "T1 Stream API error",
+      error instanceof Error ? error : undefined,
     );
     return new Response(
       JSON.stringify({
-        error: error instanceof Error ? error.message : 'Internal server error',
+        error: error instanceof Error ? error.message : "Internal server error",
       }),
       {
         status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      }
+        headers: { "Content-Type": "application/json" },
+      },
     );
   }
 }

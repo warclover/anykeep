@@ -6,8 +6,8 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { ShadowSortingService } from "@/lib/classification/v5/shadow-sorting";
-import { createLogger } from "@/lib/classification/v5/shared/logger";
+import { ShadowSortingService } from "@/lib/classification/strategies/modern/shadow-sorting";
+import { createLogger } from "@/lib/classification/infrastructure/shared-services/logger";
 
 /**
  * 批量确认请求体
@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     logger.error(
       "Shadow confirm API error",
-      error instanceof Error ? error : new Error(String(error))
+      error instanceof Error ? error : new Error(String(error)),
     );
 
     return NextResponse.json(

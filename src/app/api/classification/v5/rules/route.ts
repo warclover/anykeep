@@ -8,9 +8,9 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { createLogger } from "@/lib/classification/v5/shared/logger";
-import { ChatToRuleService } from "@/lib/classification/v5/chat-to-rule";
-import { LLMService } from "@/lib/classification/v5/shared/llm";
+import { createLogger } from "@/lib/classification/infrastructure/shared-services/logger";
+import { ChatToRuleService } from "@/lib/classification/strategies/modern/chat-to-rule";
+import { LLMService } from "@/lib/classification/infrastructure/shared-services/llm";
 
 /**
  * GET /api/classification/v5/rules
@@ -38,7 +38,11 @@ export async function GET(request: NextRequest) {
 
     // 3. 获取规则列表
     const llmService = new LLMService(logger);
-    const chatToRuleService = new ChatToRuleService(supabase, logger, llmService);
+    const chatToRuleService = new ChatToRuleService(
+      supabase,
+      logger,
+      llmService,
+    );
     const rules = await chatToRuleService.getRules(activeOnly);
 
     logger.info("规则列表获取成功", {
@@ -58,7 +62,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     logger.error(
       "获取规则列表失败",
-      error instanceof Error ? error : new Error(String(error))
+      error instanceof Error ? error : new Error(String(error)),
     );
 
     return NextResponse.json(
@@ -112,7 +116,11 @@ export async function POST(request: NextRequest) {
 
     // 4. 创建规则
     const llmService = new LLMService(logger);
-    const chatToRuleService = new ChatToRuleService(supabase, logger, llmService);
+    const chatToRuleService = new ChatToRuleService(
+      supabase,
+      logger,
+      llmService,
+    );
     const ruleId = await chatToRuleService.createRule({
       type: body.type,
       patternType: body.patternType,
@@ -138,7 +146,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     logger.error(
       "创建规则失败",
-      error instanceof Error ? error : new Error(String(error))
+      error instanceof Error ? error : new Error(String(error)),
     );
 
     return NextResponse.json(

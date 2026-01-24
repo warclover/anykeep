@@ -6,10 +6,10 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { FeedbackService } from "@/lib/classification/v5/feedback";
-import { LLMService } from "@/lib/classification/v5/shared/llm";
-import { createLogger } from "@/lib/classification/v5/shared/logger";
-import type { ClassificationFeedback } from "@/lib/classification/v5/feedback";
+import { FeedbackService } from "@/lib/classification/strategies/modern/feedback";
+import { LLMService } from "@/lib/classification/infrastructure/shared-services/llm";
+import { createLogger } from "@/lib/classification/infrastructure/shared-services/logger";
+import type { ClassificationFeedback } from "@/lib/classification/strategies/modern/feedback";
 
 /**
  * 反馈请求体

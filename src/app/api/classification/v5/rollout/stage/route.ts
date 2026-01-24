@@ -11,7 +11,7 @@ import { z } from "zod";
 import {
   getFeatureFlag,
   RolloutStage,
-} from "@/lib/classification/v5/rollout/feature-flag";
+} from "@/lib/classification/infrastructure/rollout/feature-flag";
 import { createClient } from "@/lib/supabase/server";
 import { isAdminUser } from "@/lib/auth/admin-check";
 

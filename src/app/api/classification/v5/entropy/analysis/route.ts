@@ -11,8 +11,8 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { EntropyReductionService } from "@/lib/classification/v5/entropy-reduction";
-import { createLogger } from "@/lib/classification/v5/shared/logger";
+import { EntropyReductionService } from "@/lib/classification/strategies/modern/entropy-reduction";
+import { createLogger } from "@/lib/classification/infrastructure/shared-services/logger";
 
 /**
  * GET /api/classification/v5/entropy/analysis
@@ -90,7 +90,7 @@ export async function GET(_request: NextRequest) {
   } catch (error) {
     logger.error(
       "Entropy analysis API error",
-      error instanceof Error ? error : new Error(String(error))
+      error instanceof Error ? error : new Error(String(error)),
     );
 
     return NextResponse.json(

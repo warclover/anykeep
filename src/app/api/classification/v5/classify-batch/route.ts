@@ -7,12 +7,12 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { ClassificationPipelineService } from "@/lib/classification/v5/classification-pipeline";
-import { EmbeddingService } from "@/lib/classification/v5/shared/embedding";
-import { VectorSearchService } from "@/lib/classification/v5/shared/vector-search";
-import { LLMService } from "@/lib/classification/v5/shared/llm";
-import { createLogger } from "@/lib/classification/v5/shared/logger";
-import type { ClassificationRequest } from "@/lib/classification/v5/classification-pipeline/types";
+import { ClassificationPipelineService } from "@/lib/classification/strategies/modern";
+import { EmbeddingService } from "@/lib/classification/infrastructure/shared-services/embedding";
+import { VectorSearchService } from "@/lib/classification/infrastructure/shared-services/vector-search";
+import { LLMService } from "@/lib/classification/infrastructure/shared-services/llm";
+import { createLogger } from "@/lib/classification/infrastructure/shared-services/logger";
+import type { ClassificationRequest } from "@/lib/classification/strategies/modern/types";
 
 /**
  * 批量分类请求体

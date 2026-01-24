@@ -8,7 +8,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { createLogger } from "@/lib/classification/v5/shared/logger";
+import { createLogger } from "@/lib/classification/infrastructure/shared-services/logger";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -88,7 +88,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
   } catch (error) {
     logger.error(
       "更新规则失败",
-      error instanceof Error ? error : new Error(String(error))
+      error instanceof Error ? error : new Error(String(error)),
     );
 
     return NextResponse.json(
@@ -155,7 +155,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
   } catch (error) {
     logger.error(
       "删除规则失败",
-      error instanceof Error ? error : new Error(String(error))
+      error instanceof Error ? error : new Error(String(error)),
     );
 
     return NextResponse.json(

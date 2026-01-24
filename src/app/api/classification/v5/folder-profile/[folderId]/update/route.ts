@@ -7,14 +7,14 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { FolderProfilerService } from "@/lib/classification/v5/folder-profiler";
-import { EmbeddingService } from "@/lib/classification/v5/shared/embedding";
-import { createLogger } from "@/lib/classification/v5/shared/logger";
+import { FolderProfilerService } from "@/lib/classification/strategies/modern/folder-profiler";
+import { EmbeddingService } from "@/lib/classification/infrastructure/shared-services/embedding";
+import { createLogger } from "@/lib/classification/infrastructure/shared-services/logger";
 import type {
   BookmarkData,
   BehaviorData,
   FolderStats,
-} from "@/lib/classification/v5/folder-profiler";
+} from "@/lib/classification/strategies/modern/folder-profiler";
 
 /**
  * POST /api/classification/v5/folder-profile/:folderId/update

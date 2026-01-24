@@ -8,14 +8,14 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getFeatureFlag } from "@/lib/classification/v5/rollout/feature-flag";
+import { getFeatureFlag } from "@/lib/classification/infrastructure/rollout/feature-flag";
 import {
   RollbackService,
   RollbackReason,
-} from "@/lib/classification/v5/rollout/rollback";
-import { MonitoringService } from "@/lib/classification/v5/rollout/monitoring";
+} from "@/lib/classification/infrastructure/rollout/rollback";
+import { MonitoringService } from "@/lib/classification/infrastructure/rollout/monitoring";
 import { createClient } from "@/lib/supabase/server";
-import { createLogger } from "@/lib/classification/v5/shared/logger";
+import { createLogger } from "@/lib/classification/infrastructure/shared-services/logger";
 import { isAdminUser } from "@/lib/auth/admin-check";
 
 /**

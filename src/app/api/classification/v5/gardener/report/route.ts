@@ -7,11 +7,14 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { GardenerService } from "@/lib/classification/v5/gardener";
-import { EmbeddingService } from "@/lib/classification/v5/shared/embedding";
-import { createLogger } from "@/lib/classification/v5/shared/logger";
-import type { ClassificationStats } from "@/lib/classification/v5/gardener";
-import type { FolderStats, UserStats } from "@/lib/classification/v5/gardener";
+import { GardenerService } from "@/lib/classification/strategies/modern/gardener";
+import { EmbeddingService } from "@/lib/classification/infrastructure/shared-services/embedding";
+import { createLogger } from "@/lib/classification/infrastructure/shared-services/logger";
+import type { ClassificationStats } from "@/lib/classification/strategies/modern/gardener";
+import type {
+  FolderStats,
+  UserStats,
+} from "@/lib/classification/strategies/modern/gardener";
 
 /**
  * GET /api/classification/v5/gardener/report
@@ -140,7 +143,7 @@ export async function GET(_request: NextRequest) {
   } catch (error) {
     logger.error(
       "生成 Gardener 报告失败",
-      error instanceof Error ? error : new Error(String(error))
+      error instanceof Error ? error : new Error(String(error)),
     );
 
     return NextResponse.json(

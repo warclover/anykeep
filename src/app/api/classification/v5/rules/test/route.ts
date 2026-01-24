@@ -7,9 +7,9 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { createLogger } from "@/lib/classification/v5/shared/logger";
-import { ChatToRuleService } from "@/lib/classification/v5/chat-to-rule";
-import { LLMService } from "@/lib/classification/v5/shared/llm";
+import { createLogger } from "@/lib/classification/infrastructure/shared-services/logger";
+import { ChatToRuleService } from "@/lib/classification/strategies/modern/chat-to-rule";
+import { LLMService } from "@/lib/classification/infrastructure/shared-services/llm";
 
 /**
  * 测试请求体
@@ -53,7 +53,11 @@ export async function POST(request: NextRequest) {
     }
 
     const llmService = new LLMService(logger);
-    const chatToRuleService = new ChatToRuleService(supabase, logger, llmService);
+    const chatToRuleService = new ChatToRuleService(
+      supabase,
+      logger,
+      llmService,
+    );
 
     // 4. 如果提供了 ruleId，测试特定规则
     if (body.ruleId) {
@@ -120,7 +124,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     logger.error(
       "规则测试失败",
-      error instanceof Error ? error : new Error(String(error))
+      error instanceof Error ? error : new Error(String(error)),
     );
 
     return NextResponse.json(

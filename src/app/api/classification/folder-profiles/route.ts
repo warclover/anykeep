@@ -12,7 +12,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { FolderTagProfilerService } from "@/lib/classification/v5/classification-pipeline/folder-tag-profiler.service";
+import { FolderTagProfilerService } from "@/lib/classification/strategies/modern/folder-tag-profiler.service";
 import { createLogger } from "@/lib/logger";
 
 const logger = createLogger("api:folder-profiles");
