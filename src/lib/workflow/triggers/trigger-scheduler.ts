@@ -7,6 +7,7 @@
  * @since 2026-01-08
  */
 
+import type { Database } from "@/types/supabase";
 import { createClient } from "@/lib/supabase/server";
 import { getWorkflowOrchestrator } from "../orchestrator";
 import { getDistributedLockManager } from "./distributed-lock";
@@ -16,9 +17,51 @@ import type {
   ScheduledExecution,
   ScheduledExecutionStatus,
 } from "./types";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 // 定时执行表名（在数据库迁移后才存在，使用类型断言绕过检查）
 const SCHEDULED_EXECUTIONS_TABLE = "scheduled_workflow_executions" as const;
+
+// 扩展 Supabase 客户端类型
+interface ScheduledExecutionRow {
+  id: string;
+  workflow_id: string;
+  user_id: string;
+  scheduled_at: string;
+  status: ScheduledExecutionStatus;
+  execution_id: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  error: string | null;
+  cancelled_at?: string | null;
+}
+
+interface ExtendedDatabase extends Database {
+  public: {
+    Tables: {
+      scheduled_workflow_executions: {
+        Row: ScheduledExecutionRow;
+        Insert: Omit<
+          ScheduledExecutionRow,
+          | "id"
+          | "execution_id"
+          | "started_at"
+          | "completed_at"
+          | "error"
+          | "cancelled_at"
+        > & {
+          id?: string;
+          execution_id?: string | null;
+          started_at?: string | null;
+          completed_at?: string | null;
+          error?: string | null;
+          cancelled_at?: string | null;
+        };
+        Update: Partial<ScheduledExecutionRow>;
+      };
+    };
+  };
+}
 
 /**
  * 定时触发调度器
@@ -33,11 +76,10 @@ export class TriggerScheduler {
    */
   async getPendingExecutions(): Promise<ScheduledExecution[]> {
     const supabase = await createClient();
+    const typedSupabase = supabase as SupabaseClient<ExtendedDatabase>;
     const now = new Date();
 
-    // 使用类型断言绕过 Supabase 类型检查（表在迁移后才存在）
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase as any)
+    const { data, error } = await typedSupabase
       .from(SCHEDULED_EXECUTIONS_TABLE)
       .select("*")
       .eq("status", "pending")
@@ -67,12 +109,12 @@ export class TriggerScheduler {
 
     const result = await lockManager.withLock(lockKey, async () => {
       const supabase = await createClient();
+      const typedSupabase = supabase as SupabaseClient<ExtendedDatabase>;
       const startTime = performance.now();
 
       try {
         // 双重检查：确认任务仍为 pending 状态
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: currentStatus } = await (supabase as any)
+        const { data: currentStatus } = await typedSupabase
           .from(SCHEDULED_EXECUTIONS_TABLE)
           .select("status")
           .eq("id", scheduled.id)
@@ -90,8 +132,7 @@ export class TriggerScheduler {
         }
 
         // 更新状态为运行中
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (supabase as any)
+        await typedSupabase
           .from(SCHEDULED_EXECUTIONS_TABLE)
           .update({ status: "running", started_at: new Date().toISOString() })
           .eq("id", scheduled.id);
@@ -110,11 +151,10 @@ export class TriggerScheduler {
         );
 
         // 更新执行 ID
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (supabase as any)
+        await typedSupabase
           .from(SCHEDULED_EXECUTIONS_TABLE)
           .update({
-            status: "completed" as ScheduledExecutionStatus,
+            status: "completed",
             execution_id: execution.id,
             completed_at: new Date().toISOString(),
           })
@@ -135,11 +175,10 @@ export class TriggerScheduler {
         const errorMessage =
           error instanceof Error ? error.message : String(error);
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (supabase as any)
+        await typedSupabase
           .from(SCHEDULED_EXECUTIONS_TABLE)
           .update({
-            status: "failed" as ScheduledExecutionStatus,
+            status: "failed",
             error: errorMessage,
             completed_at: new Date().toISOString(),
           })
@@ -182,9 +221,9 @@ export class TriggerScheduler {
     }
 
     const supabase = await createClient();
+    const typedSupabase = supabase as SupabaseClient<ExtendedDatabase>;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase as any)
+    const { data, error } = await typedSupabase
       .from(SCHEDULED_EXECUTIONS_TABLE)
       .insert({
         workflow_id: workflowId,
@@ -264,9 +303,9 @@ export class TriggerScheduler {
    */
   async getUserSchedules(userId: string): Promise<ScheduledExecution[]> {
     const supabase = await createClient();
+    const typedSupabase = supabase as SupabaseClient<ExtendedDatabase>;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase as any)
+    const { data, error } = await typedSupabase
       .from(SCHEDULED_EXECUTIONS_TABLE)
       .select("*")
       .eq("user_id", userId)
@@ -291,12 +330,12 @@ export class TriggerScheduler {
    */
   async cancelSchedule(scheduleId: string, userId: string): Promise<boolean> {
     const supabase = await createClient();
+    const typedSupabase = supabase as SupabaseClient<ExtendedDatabase>;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase as any)
+    const { error } = await typedSupabase
       .from(SCHEDULED_EXECUTIONS_TABLE)
       .update({
-        status: "skipped" as ScheduledExecutionStatus,
+        status: "skipped",
         cancelled_at: new Date().toISOString(),
       })
       .eq("id", scheduleId)

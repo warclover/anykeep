@@ -139,7 +139,7 @@ export function BatchPageClient() {
             return { ...bookmark, user_tags: newTags };
           } else {
             const newTags = (bookmark.user_tags || []).filter(
-              (t) => !result.tags.includes(t),
+              (t: string) => !result.tags.includes(t),
             );
             return { ...bookmark, user_tags: newTags };
           }

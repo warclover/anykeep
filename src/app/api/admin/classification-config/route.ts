@@ -16,6 +16,11 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { getConfigCenter } from "@/lib/classification/services/advanced";
 import { logger } from "@/lib/logger";
+import { z } from "zod";
+
+const configActionSchema = z.object({
+  action: z.enum(["refresh", "clear_cache"]),
+});
 
 /**
  * 检查用户是否为管理员
@@ -167,7 +172,19 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { action } = body;
+    const parseResult = configActionSchema.safeParse(body);
+
+    if (!parseResult.success) {
+      return NextResponse.json(
+        {
+          error: "Invalid request body",
+          details: parseResult.error.format(),
+        },
+        { status: 400 },
+      );
+    }
+
+    const { action } = parseResult.data;
 
     const configCenter = getConfigCenter(supabase);
 

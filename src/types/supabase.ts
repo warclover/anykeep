@@ -4,6 +4,14 @@
  * 从自动生成的类型文件重新导出
  */
 
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[];
+
 export * from "./supabase.generated";
 export type {
   Database,
@@ -284,6 +292,11 @@ export type FolderUpdate = Database["public"]["Tables"]["folders"]["Update"];
 export type FolderTreeNode = Folder & {
   children?: FolderTreeNode[];
   bookmark_count?: number;
+  // Explicitly include common fields to satisfy type requirements
+  id: number;
+  name: string;
+  is_system: boolean;
+  is_archived: boolean;
 };
 
 /** Profile 行类型 */

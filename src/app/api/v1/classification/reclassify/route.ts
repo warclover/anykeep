@@ -56,9 +56,8 @@ export const POST = withAuthMiddleware(
     const { limit, forceRun } = validation.data;
 
     // 检查是否有待处理的建议
-    // 类型断言: 手动维护类型文件时需要此断言
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: pendingCount } = await (supabase.rpc as any)(
+    // 使用 rpc 返回类型泛型
+    const { data: pendingCount } = await supabase.rpc(
       "get_pending_suggestions_count",
       {
         p_user_id: userId,
@@ -79,16 +78,14 @@ export const POST = withAuthMiddleware(
     }
 
     // 获取待整理文件夹
-    // 类型断言: 手动维护类型文件时需要此断言
-    type InboxFolderRow = { id: number };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: inboxFolder, error: folderError } = await (supabase.from("folders") as any)
+    const { data: inboxFolder, error: folderError } = await supabase
+      .from("folders")
       .select("id")
       .eq("user_id", userId)
       .eq("is_system", true)
       .eq("system_type", "INBOX")
       .is("deleted_at", null)
-      .single() as { data: InboxFolderRow | null; error: { message: string } | null };
+      .single();
 
     if (folderError || !inboxFolder) {
       return NextResponse.json({
@@ -103,21 +100,14 @@ export const POST = withAuthMiddleware(
     }
 
     // 获取待整理文件夹中的书签
-    // 类型断言: 手动维护类型文件时需要此断言
-    type BookmarkReclassifyRow = {
-      id: number;
-      title: string | null;
-      ai_summary: string | null;
-      ai_tags: string[] | null;
-    };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: bookmarks, error: bookmarksError } = await (supabase.from("bookmarks") as any)
+    const { data: bookmarks, error: bookmarksError } = await supabase
+      .from("bookmarks")
       .select("id, title, ai_summary, ai_tags")
       .eq("user_id", userId)
       .eq("folder_id", inboxFolder.id)
       .is("deleted_at", null)
       .order("created_at", { ascending: true })
-      .limit(limit) as { data: BookmarkReclassifyRow[] | null; error: { message: string } | null };
+      .limit(limit);
 
     if (bookmarksError) {
       logger.error(
@@ -146,15 +136,13 @@ export const POST = withAuthMiddleware(
     }
 
     // 获取用户的所有文件夹
-    // 类型断言: 手动维护类型文件时需要此断言
-    type FolderReclassifyRow = { id: number; name: string; is_system: boolean | null };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: folders } = await (supabase.from("folders") as any)
+    const { data: folders } = await supabase
+      .from("folders")
       .select("id, name, is_system")
       .eq("user_id", userId)
       .is("deleted_at", null)
       .eq("is_system", false)
-      .order("name") as { data: FolderReclassifyRow[] | null };
+      .order("name");
 
     // 获取用户的托管模式
     const trustModeService = new TrustModeService();
@@ -220,9 +208,8 @@ export const POST = withAuthMiddleware(
     let movedCount = 0;
     if (directMoves.length > 0) {
       for (const move of directMoves) {
-        // 类型断言: 手动维护类型文件时需要此断言
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { error: moveError } = await (supabase.from("bookmarks") as any)
+        const { error: moveError } = await supabase
+          .from("bookmarks")
           .update({ folder_id: move.folderId })
           .eq("id", move.bookmarkId)
           .eq("user_id", userId);
@@ -240,9 +227,8 @@ export const POST = withAuthMiddleware(
 
     // 批量插入建议
     if (suggestions.length > 0) {
-      // 类型断言: 手动维护类型文件时需要此断言
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: insertError } = await (supabase.from("classification_suggestions") as any)
+      const { error: insertError } = await supabase
+        .from("classification_suggestions")
         .insert(suggestions);
 
       if (insertError) {
@@ -261,13 +247,11 @@ export const POST = withAuthMiddleware(
     }
 
     // 更新用户的重分类设置
-    // 类型断言: 手动维护类型文件时需要此断言
-    type ProfileSettingsRow = { settings: Record<string, unknown> | null };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: profile } = await (supabase.from("profiles") as any)
+    const { data: profile } = await supabase
+      .from("profiles")
       .select("settings")
       .eq("id", userId)
-      .single() as { data: ProfileSettingsRow | null };
+      .single();
 
     const currentSettings = profile?.settings || {};
     const updatedSettings = {
@@ -278,8 +262,8 @@ export const POST = withAuthMiddleware(
       },
     };
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase.from("profiles") as any)
+    await supabase
+      .from("profiles")
       .update({ settings: updatedSettings })
       .eq("id", userId);
 

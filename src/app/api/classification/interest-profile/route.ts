@@ -18,6 +18,25 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { InterestProfileService } from "@/lib/classification/services";
 import { logger } from "@/lib/logger";
+import { z } from "zod";
+
+// Validation Schemas
+const initProfileSchema = z.object({
+  manualDescription: z.string().optional(),
+});
+
+const updateProfileSchema = z.object({
+  action: z.enum([
+    "update_manual",
+    "analyze_imported",
+    "full_analyze",
+    "learn_behavior",
+    "update_stage",
+  ]),
+  manualDescription: z.string().optional(),
+  importSource: z.string().optional(),
+  triggerStageUpdate: z.boolean().optional().default(true),
+});
 
 /**
  * GET /api/classification/interest-profile
@@ -78,7 +97,21 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { manualDescription } = body;
+    const parseResult = initProfileSchema.safeParse(body);
+
+    if (!parseResult.success) {
+      return NextResponse.json(
+        {
+          error: {
+            message: "Invalid request body",
+            details: parseResult.error.format(),
+          },
+        },
+        { status: 400 },
+      );
+    }
+
+    const { manualDescription } = parseResult.data;
 
     const service = new InterestProfileService(supabase);
     const profile = await service.initializeProfile(user.id, {
@@ -122,12 +155,22 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json();
-    const {
-      action,
-      manualDescription,
-      importSource,
-      triggerStageUpdate = true,
-    } = body;
+    const parseResult = updateProfileSchema.safeParse(body);
+
+    if (!parseResult.success) {
+      return NextResponse.json(
+        {
+          error: {
+            message: "Invalid request body",
+            details: parseResult.error.format(),
+          },
+        },
+        { status: 400 },
+      );
+    }
+
+    const { action, manualDescription, importSource, triggerStageUpdate } =
+      parseResult.data;
 
     const service = new InterestProfileService(supabase);
     let result: {

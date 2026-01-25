@@ -14,7 +14,7 @@
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
-import type { Json } from "@/types/supabase";
+import type { Database, Json } from "@/types/supabase";
 import type {
   OrganizeSnapshot,
   CreateSnapshotInput,
@@ -26,12 +26,11 @@ import type {
   SnapshotManagerConfig,
 } from "./types";
 import { DEFAULT_SNAPSHOT_CONFIG } from "./types";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 // ============================================
 // 类型辅助
 // ============================================
-
-type SupabaseClient = Awaited<ReturnType<typeof createServerSupabaseClient>>;
 
 // 数据库行类型（匹配 operation_snapshots 表）
 interface SnapshotRow {
@@ -49,6 +48,49 @@ interface SnapshotRow {
   is_undone: boolean;
   undone_at: string | null;
 }
+
+// 扩展 Database 类型
+interface OperationSnapshotTableDef {
+  Row: SnapshotRow;
+  Insert: Omit<SnapshotRow, "id" | "created_at" | "is_undone" | "undone_at"> & {
+    id?: string;
+    created_at?: string;
+    is_undone?: boolean;
+    undone_at?: string | null;
+  };
+  Update: Partial<SnapshotRow>;
+}
+
+type ExtendedDatabase = Database & {
+  public: {
+    Tables: {
+      operation_snapshots: OperationSnapshotTableDef;
+      bookmarks: {
+        Row: {
+          id: number;
+          user_id: string;
+          folder_id: number | null;
+          ai_tags: string[] | null;
+          is_in_trash: boolean | null;
+          title: string;
+          url: string;
+          is_starred: boolean;
+        };
+        Update: {
+          folder_id?: number | null;
+          ai_tags?: string[] | null;
+          is_in_trash?: boolean;
+        };
+      };
+      folders: {
+        Row: { id: number };
+        Delete: { id: number };
+      };
+    };
+  };
+};
+
+type TypedSupabaseClient = SupabaseClient<ExtendedDatabase>;
 
 // ============================================
 // SnapshotManager 类
@@ -76,7 +118,7 @@ interface SnapshotRow {
  */
 export class SnapshotManager {
   private config: SnapshotManagerConfig;
-  private supabase: SupabaseClient | null = null;
+  private supabase: TypedSupabaseClient | null = null;
 
   constructor(config: Partial<SnapshotManagerConfig> = {}) {
     this.config = { ...DEFAULT_SNAPSHOT_CONFIG, ...config };
@@ -85,9 +127,10 @@ export class SnapshotManager {
   /**
    * 获取 Supabase 客户端（延迟初始化）
    */
-  private async getSupabase(): Promise<SupabaseClient> {
+  private async getSupabase(): Promise<TypedSupabaseClient> {
     if (!this.supabase) {
-      this.supabase = await createServerSupabaseClient();
+      const client = await createServerSupabaseClient();
+      this.supabase = client as TypedSupabaseClient;
     }
     return this.supabase;
   }
@@ -114,7 +157,7 @@ export class SnapshotManager {
     const snapshotData = {
       user_id: input.userId,
       action: input.action,
-      before_state: input.beforeState as unknown as Json,
+      before_state: input.beforeState as Json,
       after_state: null,
       bookmark_ids: input.bookmarkIds,
       folder_id: null,
@@ -137,7 +180,7 @@ export class SnapshotManager {
       throw new Error(`创建操作快照失败: ${error.message}`);
     }
 
-    const row = data as unknown as SnapshotRow;
+    const row = data as SnapshotRow;
     logger.info(
       {
         snapshotId: row.id,
@@ -162,10 +205,11 @@ export class SnapshotManager {
   ): Promise<void> {
     const supabase = await this.getSupabase();
 
-    const updateData: Record<string, unknown> = {};
+    const updateData: Partial<SnapshotRow> = {};
 
     if (input.afterState !== undefined) {
-      updateData.after_state = input.afterState as unknown as Json;
+      // Cast to Json for Supabase compatibility
+      updateData.after_state = input.afterState as Json;
     }
 
     if (input.isUndone !== undefined) {
@@ -229,7 +273,7 @@ export class SnapshotManager {
       throw new Error(`获取操作快照失败: ${error.message}`);
     }
 
-    return this.mapRowToSnapshot(data as unknown as SnapshotRow);
+    return this.mapRowToSnapshot(data);
   }
 
   /**
@@ -262,9 +306,7 @@ export class SnapshotManager {
       throw new Error(`获取可撤销操作失败: ${error.message}`);
     }
 
-    return (data || []).map((row) =>
-      this.mapRowToSnapshot(row as unknown as SnapshotRow),
-    );
+    return (data || []).map((row) => this.mapRowToSnapshot(row));
   }
 
   /**
@@ -306,7 +348,7 @@ export class SnapshotManager {
       return null;
     }
 
-    return this.mapRowToSnapshot(data as unknown as SnapshotRow);
+    return this.mapRowToSnapshot(data);
   }
 
   // ==========================================
@@ -422,7 +464,7 @@ export class SnapshotManager {
    * 撤销分类操作
    */
   private async undoCategorize(
-    supabase: SupabaseClient,
+    supabase: TypedSupabaseClient,
     state: OrganizeOperationSnapshot,
   ): Promise<UndoResult> {
     if (state.action !== "batch_categorize") {
@@ -479,7 +521,7 @@ export class SnapshotManager {
    * 撤销打标签操作
    */
   private async undoTag(
-    supabase: SupabaseClient,
+    supabase: TypedSupabaseClient,
     state: OrganizeOperationSnapshot,
   ): Promise<UndoResult> {
     if (state.action !== "batch_tag") {
@@ -514,7 +556,7 @@ export class SnapshotManager {
    * 撤销去重操作（恢复被删除的书签）
    */
   private async undoDedupe(
-    supabase: SupabaseClient,
+    supabase: TypedSupabaseClient,
     state: OrganizeOperationSnapshot,
   ): Promise<UndoResult> {
     if (state.action !== "batch_dedupe") {
@@ -549,7 +591,7 @@ export class SnapshotManager {
    * 撤销归档操作
    */
   private async undoArchive(
-    supabase: SupabaseClient,
+    supabase: TypedSupabaseClient,
     state: OrganizeOperationSnapshot,
   ): Promise<UndoResult> {
     if (state.action !== "batch_archive") {
@@ -584,7 +626,7 @@ export class SnapshotManager {
    * 撤销删除操作（恢复被删除的书签）
    */
   private async undoDelete(
-    supabase: SupabaseClient,
+    supabase: TypedSupabaseClient,
     state: OrganizeOperationSnapshot,
   ): Promise<UndoResult> {
     if (state.action !== "batch_delete") {
@@ -660,13 +702,37 @@ export class SnapshotManager {
     const expiresAt = new Date(row.expires_at);
     const now = new Date();
 
+    if (!isValidSnapshotState(row.before_state)) {
+      logger.warn(
+        { snapshotId: row.id, state: row.before_state },
+        "[SnapshotManager] Invalid before_state in snapshot",
+      );
+      // Fallback or throw? Throwing ensures data integrity.
+      throw new Error(`Invalid before_state in snapshot ${row.id}`);
+    }
+
+    let afterState: OrganizeOperationSnapshot | null = null;
+    if (row.after_state) {
+      if (isValidSnapshotState(row.after_state)) {
+        afterState = row.after_state;
+      } else {
+        logger.warn(
+          { snapshotId: row.id, state: row.after_state },
+          "[SnapshotManager] Invalid after_state in snapshot",
+        );
+        // Treat invalid after_state as null? Or throw?
+        // Let's treat as null to allow viewing the snapshot even if after_state is corrupted,
+        // but canUndo might be affected.
+        afterState = null;
+      }
+    }
+
     return {
       id: row.id,
       userId: row.user_id,
       action: row.action as OrganizeSnapshotAction,
-      beforeState: row.before_state as unknown as OrganizeOperationSnapshot,
-      afterState:
-        row.after_state as unknown as OrganizeOperationSnapshot | null,
+      beforeState: row.before_state,
+      afterState: afterState,
       bookmarkIds: row.bookmark_ids ?? [],
       reason: row.reason,
       createdAt: new Date(row.created_at),
@@ -722,3 +788,19 @@ export class SnapshotManager {
 
 // 导出单例
 export const snapshotManager = new SnapshotManager();
+
+/**
+ * Type guard for OrganizeOperationSnapshot
+ */
+function isValidSnapshotState(json: Json): json is OrganizeOperationSnapshot {
+  if (typeof json !== "object" || json === null || Array.isArray(json)) {
+    return false;
+  }
+  const state = json as Record<string, unknown>;
+  return (
+    typeof state.action === "string" &&
+    (state.beforeStates !== undefined ||
+      state.deletedBookmarks !== undefined ||
+      state.archivedBookmarks !== undefined)
+  );
+}

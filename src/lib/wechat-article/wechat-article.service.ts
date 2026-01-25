@@ -42,6 +42,7 @@ import {
   ERROR_CODES,
   DEFAULT_STYLE_PRESERVE_LEVEL,
 } from "./wechat-article.config";
+import type { WechatStatsParams, WechatStatsReturn } from "@/types/rpc-manual";
 
 // =============================================================================
 // 服务类
@@ -414,7 +415,7 @@ export class WechatArticleService {
       }
 
       // 使用类型安全的转换函数
-      // Note: 使用 unknown 中间转换是因为 Supabase 类型定义尚未包含新列
+      // Note: 使用 unknown 中间转换是因为 Supabase 类型���义尚未包含新列
       let snapshotData: ReturnType<typeof toWechatArticleSnapshot>;
       try {
         snapshotData = toWechatArticleSnapshot(
@@ -517,7 +518,11 @@ export class WechatArticleService {
     const supabase = await createServiceClient();
 
     // RPC 函数类型已在 Database.public.Functions 中定义
-    const { data, error } = await supabase.rpc("get_wechat_article_stats", {
+    const { data, error } = await supabase.rpc<
+      "get_wechat_article_stats",
+      WechatStatsParams,
+      WechatStatsReturn
+    >("get_wechat_article_stats", {
       p_user_id: userId,
     });
 
@@ -531,7 +536,8 @@ export class WechatArticleService {
       };
     }
 
-    const stats = data[0];
+    // Since return type is array of records
+    const stats = (data as unknown as WechatStatsReturn[])[0];
 
     return {
       totalArticles: Number(stats.total_articles) || 0,

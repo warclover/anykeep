@@ -901,7 +901,7 @@ export const BookmarkCard = memo(function BookmarkCard({
               );
             }
             usageTags.forEach((tag) => allTags.push({ tag, type: "usage" }));
-            regularTags.forEach((tag) =>
+            regularTags.forEach((tag: string) =>
               allTags.push({ tag, type: "regular" }),
             );
 

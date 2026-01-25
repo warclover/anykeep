@@ -14,6 +14,7 @@
  * @since 2025-12-11
  */
 
+import type { Database } from "@/types/supabase";
 import { BaseSupabaseService } from "@/lib/classification/services/base-supabase.service";
 import { logger } from "@/lib/logger";
 import type {
@@ -29,6 +30,7 @@ import {
   HIGH_TRUST_THRESHOLD,
 } from "@/types/source-profile";
 import { FAST_PATH_THRESHOLDS } from "@/lib/trust-mode/config";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 // 表名常量（迁移后会在 Supabase 类型中）
 const SOURCE_PROFILES_TABLE = "source_profiles" as const;
@@ -56,6 +58,47 @@ interface SourceProfileRow {
   created_at: string;
   updated_at: string;
 }
+
+// 手动定义表结构（用于扩展 Supabase 客户端类型���
+interface SourceProfilesTableDef {
+  Row: SourceProfileRow;
+  Insert: Omit<SourceProfileRow, "id" | "created_at" | "updated_at"> & {
+    id?: number;
+    created_at?: string;
+    updated_at?: string;
+  };
+  Update: Partial<SourceProfileRow>;
+}
+
+// 扩展的数据库类型
+type ExtendedDatabase = Database & {
+  public: {
+    Tables: {
+      source_profiles: SourceProfilesTableDef;
+    };
+    Functions: {
+      upsert_source_profile: {
+        Args: {
+          p_user_id: string;
+          p_source_id: string;
+          p_source_name: string | null;
+          p_source_type: string;
+          p_folder_id: number | null;
+          p_confidence: number | null;
+        };
+        Returns: void;
+      };
+      adjust_source_trust_score: {
+        Args: {
+          p_user_id: string;
+          p_source_id: string;
+          p_adjustment: number;
+        };
+        Returns: { found: boolean };
+      };
+    };
+  };
+};
 
 // ============================================================================
 // 服务实现
@@ -102,16 +145,24 @@ export class SourceProfileService extends BaseSupabaseService {
   }
 
   /**
+   * 获取类型安全的 Supabase 客户端
+   */
+  private async getTypedSupabase() {
+    const client = await this.getSupabase();
+    // 使用断言扩展客户端类型
+    return client as SupabaseClient<ExtendedDatabase>;
+  }
+
+  /**
    * 根据来源 ID 查找画像
    */
   async findBySourceId(
     userId: string,
     sourceId: string,
   ): Promise<SourceProfile | null> {
-    const supabase = await this.getSupabase();
+    const supabase = await this.getTypedSupabase();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from(SOURCE_PROFILES_TABLE)
       .select("*")
       .eq("user_id", userId)
@@ -125,17 +176,16 @@ export class SourceProfileService extends BaseSupabaseService {
       throw new Error(`Failed to fetch source profile: ${error.message}`);
     }
 
-    return this.mapToProfile(data as SourceProfileRow);
+    return this.mapToProfile(data);
   }
 
   /**
    * 获取用户所有来源画像
    */
   async findAllByUserId(userId: string): Promise<SourceProfile[]> {
-    const supabase = await this.getSupabase();
+    const supabase = await this.getTypedSupabase();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from(SOURCE_PROFILES_TABLE)
       .select("*")
       .eq("user_id", userId)
@@ -145,17 +195,16 @@ export class SourceProfileService extends BaseSupabaseService {
       throw new Error(`Failed to fetch source profiles: ${error.message}`);
     }
 
-    return (data || []).map((row: SourceProfileRow) => this.mapToProfile(row));
+    return (data || []).map((row) => this.mapToProfile(row));
   }
 
   /**
    * 创建来源画像
    */
   async create(input: CreateSourceProfileInput): Promise<SourceProfile> {
-    const supabase = await this.getSupabase();
+    const supabase = await this.getTypedSupabase();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from(SOURCE_PROFILES_TABLE)
       .insert({
         user_id: input.userId,
@@ -175,7 +224,7 @@ export class SourceProfileService extends BaseSupabaseService {
       throw new Error(`Failed to create source profile: ${error.message}`);
     }
 
-    return this.mapToProfile(data as SourceProfileRow);
+    return this.mapToProfile(data);
   }
 
   /**
@@ -184,11 +233,10 @@ export class SourceProfileService extends BaseSupabaseService {
   async updateOnClassification(input: UpdateSourceProfileInput): Promise<void> {
     const { userId, sourceId, newFolderId, confidence, newDomains } = input;
 
-    const supabase = await this.getSupabase();
+    const supabase = await this.getTypedSupabase();
 
     // 使用 RPC 函数原子更新
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase as any).rpc("upsert_source_profile", {
+    const { error } = await supabase.rpc("upsert_source_profile", {
       p_user_id: userId,
       p_source_id: sourceId,
       p_source_name: null,
@@ -219,7 +267,7 @@ export class SourceProfileService extends BaseSupabaseService {
       return;
     }
 
-    const supabase = await this.getSupabase();
+    const supabase = await this.getTypedSupabase();
 
     // 更新高频文件夹
     let frequentFolders = existing.frequentFolders;
@@ -234,8 +282,7 @@ export class SourceProfileService extends BaseSupabaseService {
         newSampleCount
       : existing.avgConfidence;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from(SOURCE_PROFILES_TABLE)
       .update({
         frequent_folders: frequentFolders,
@@ -265,13 +312,12 @@ export class SourceProfileService extends BaseSupabaseService {
       return;
     }
 
-    const supabase = await this.getSupabase();
+    const supabase = await this.getTypedSupabase();
 
     // 合并去重
     const mergedDomains = [...new Set([...existing.domains, ...domains])];
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from(SOURCE_PROFILES_TABLE)
       .update({
         domains: mergedDomains,
@@ -298,15 +344,14 @@ export class SourceProfileService extends BaseSupabaseService {
       return;
     }
 
-    const supabase = await this.getSupabase();
+    const supabase = await this.getTypedSupabase();
 
     // 过滤掉要移除的标签
     const filteredDomains = existing.domains.filter(
       (d) => !domainsToRemove.includes(d),
     );
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from(SOURCE_PROFILES_TABLE)
       .update({
         domains: filteredDomains,
@@ -401,9 +446,8 @@ export class SourceProfileService extends BaseSupabaseService {
     }
 
     // 批量查询
-    const supabase = await this.getSupabase();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase as any)
+    const supabase = await this.getTypedSupabase();
+    const { data, error } = await supabase
       .from(SOURCE_PROFILES_TABLE)
       .select("*")
       .eq("user_id", userId)
@@ -417,7 +461,7 @@ export class SourceProfileService extends BaseSupabaseService {
     // 构建 sourceId -> profile 映射
     const profileMap = new Map<string, SourceProfile>();
     for (const row of data || []) {
-      const profile = this.mapToProfile(row as SourceProfileRow);
+      const profile = this.mapToProfile(row);
       profileMap.set(profile.sourceId, profile);
     }
 
@@ -449,18 +493,14 @@ export class SourceProfileService extends BaseSupabaseService {
     sourceId: string,
     adjustment: number,
   ): Promise<void> {
-    const supabase = await this.getSupabase();
+    const supabase = await this.getTypedSupabase();
 
     // V4.2.6: 使用原子 RPC 函数更新信任分数
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase as any).rpc(
-      "adjust_source_trust_score",
-      {
-        p_user_id: userId,
-        p_source_id: sourceId,
-        p_adjustment: adjustment,
-      },
-    );
+    const { data, error } = await supabase.rpc("adjust_source_trust_score", {
+      p_user_id: userId,
+      p_source_id: sourceId,
+      p_adjustment: adjustment,
+    });
 
     if (error) {
       // 如果 RPC 函数不存在（迁移未运行），回退到原来的实现
@@ -492,14 +532,13 @@ export class SourceProfileService extends BaseSupabaseService {
       return;
     }
 
-    const supabase = await this.getSupabase();
+    const supabase = await this.getTypedSupabase();
     const newScore = Math.max(
       0,
       Math.min(100, existing.trustScore + adjustment),
     );
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from(SOURCE_PROFILES_TABLE)
       .update({
         trust_score: newScore,
@@ -517,10 +556,9 @@ export class SourceProfileService extends BaseSupabaseService {
    * 删除来源画像
    */
   async delete(userId: string, sourceId: string): Promise<void> {
-    const supabase = await this.getSupabase();
+    const supabase = await this.getTypedSupabase();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from(SOURCE_PROFILES_TABLE)
       .delete()
       .eq("user_id", userId)

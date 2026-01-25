@@ -85,6 +85,34 @@ interface ClassificationReason {
   }>;
 }
 
+// 数据库查询结果类型定义
+interface DBFolder {
+  id: number;
+  name: string;
+  is_system: boolean;
+}
+
+interface DBBookmark {
+  id: number;
+  title: string | null;
+  folder_id: number | null;
+  classification_result: ClassificationResult | null;
+  classification_status: string | null;
+  cluster_confidence: number | null;
+  pending_cluster: string | null;
+  created_at: string;
+  updated_at: string;
+  folders: DBFolder | null;
+}
+
+interface DBSuggestion {
+  confidence: number | null;
+  suggested_folder_name: string | null;
+  reason: string | null;
+  status: string | null;
+  created_at: string;
+}
+
 // ============================================================================
 // 匹配来源配置
 // ============================================================================
@@ -155,20 +183,7 @@ export async function GET(
     }
 
     // 获取书签信息（使用存在的字段）
-    // 类型断言: 手动维护类型文件时需要此断言
-    type ClassificationBookmark = {
-      id: number;
-      title: string | null;
-      folder_id: number | null;
-      classification_result: unknown;
-      classification_status: string | null;
-      cluster_confidence: number | null;
-      pending_cluster: string | null;
-      created_at: string;
-      updated_at: string;
-      folders: { id: number; name: string; is_system: boolean } | null;
-    };
-    const { data: bookmark, error: bookmarkError } = await supabase
+    const { data: bookmark, error: bookmarkError } = (await supabase
       .from("bookmarks")
       .select(
         `
@@ -191,8 +206,8 @@ export async function GET(
       .eq("id", id)
       .eq("user_id", user.id)
       .is("deleted_at", null)
-      .single() as unknown as {
-      data: ClassificationBookmark | null;
+      .single()) as unknown as {
+      data: DBBookmark | null;
       error: { message: string } | null;
     };
 
@@ -204,22 +219,14 @@ export async function GET(
     }
 
     // 获取分类历史（最近的建议记录）
-    // 类型断言: 手动维护类型文件时需要此断言
-    type SuggestionType = {
-      confidence: number | null;
-      suggested_folder_name: string | null;
-      reason: string | null;
-      status: string | null;
-      created_at: string;
-    };
-    const { data: recentSuggestion } = await supabase
+    const { data: recentSuggestion } = (await supabase
       .from("classification_suggestions")
       .select("confidence, suggested_folder_name, reason, status, created_at")
       .eq("bookmark_id", id)
       .order("created_at", { ascending: false })
       .limit(1)
-      .single() as unknown as {
-      data: SuggestionType | null;
+      .single()) as unknown as {
+      data: DBSuggestion | null;
       error: unknown;
     };
 

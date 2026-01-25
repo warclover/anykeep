@@ -268,7 +268,13 @@ export function DistributionPageClient() {
   /**
    * 添加/编辑目标提交
    */
-  const handleSubmit = async (config: Record<string, unknown>) => {
+  const handleSubmit = async (
+    config:
+      | NotionTargetConfig
+      | WebhookTargetConfig
+      | RssTargetConfig
+      | Record<string, unknown>,
+  ) => {
     const isEdit = !!editTarget;
     const targetType = editTarget?.targetType || addTargetType;
 
@@ -546,18 +552,14 @@ export function DistributionPageClient() {
           ) : addTargetType === "notion" ? (
             <NotionConfigForm
               onSave={async (config) => {
-                await handleSubmit(
-                  config as unknown as Record<string, unknown>,
-                );
+                await handleSubmit(config);
               }}
               onCancel={() => setAddTargetType(null)}
             />
           ) : addTargetType === "webhook" ? (
             <WebhookConfigForm
               onSave={async (config) => {
-                await handleSubmit(
-                  config as unknown as Record<string, unknown>,
-                );
+                await handleSubmit(config);
               }}
               onCancel={() => setAddTargetType(null)}
               showCard={false}
@@ -565,9 +567,7 @@ export function DistributionPageClient() {
           ) : addTargetType === "rss" ? (
             <RssConfigForm
               onSave={async (config) => {
-                await handleSubmit(
-                  config as unknown as Record<string, unknown>,
-                );
+                await handleSubmit(config);
               }}
               onCancel={() => setAddTargetType(null)}
               showCard={false}
@@ -624,13 +624,9 @@ export function DistributionPageClient() {
 
           {editTarget?.targetType === "notion" && (
             <NotionConfigForm
-              initialConfig={
-                editTarget.targetConfig as unknown as NotionTargetConfig
-              }
+              initialConfig={editTarget.targetConfig as NotionTargetConfig}
               onSave={async (config) => {
-                await handleSubmit(
-                  config as unknown as Record<string, unknown>,
-                );
+                await handleSubmit(config);
               }}
               onCancel={() => setEditTarget(null)}
             />
@@ -638,13 +634,9 @@ export function DistributionPageClient() {
 
           {editTarget?.targetType === "webhook" && (
             <WebhookConfigForm
-              initialConfig={
-                editTarget.targetConfig as unknown as WebhookTargetConfig
-              }
+              initialConfig={editTarget.targetConfig as WebhookTargetConfig}
               onSave={async (config) => {
-                await handleSubmit(
-                  config as unknown as Record<string, unknown>,
-                );
+                await handleSubmit(config);
               }}
               onCancel={() => setEditTarget(null)}
               showCard={false}
@@ -653,13 +645,9 @@ export function DistributionPageClient() {
 
           {editTarget?.targetType === "rss" && (
             <RssConfigForm
-              initialConfig={
-                editTarget.targetConfig as unknown as RssTargetConfig
-              }
+              initialConfig={editTarget.targetConfig as RssTargetConfig}
               onSave={async (config) => {
-                await handleSubmit(
-                  config as unknown as Record<string, unknown>,
-                );
+                await handleSubmit(config);
               }}
               onCancel={() => setEditTarget(null)}
               showCard={false}

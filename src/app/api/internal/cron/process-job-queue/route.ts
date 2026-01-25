@@ -8,11 +8,14 @@
 import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 import type { SnapshotJobPayload } from "@/lib/snapshot";
+import type { Json } from "@/types/supabase";
 import { reportService } from "@/lib/classification/services/report.service";
 import {
   initSupabaseAdmin,
   getSupabaseAdmin,
 } from "@/lib/supabase/admin-client";
+import type { Database } from "@/types/supabase";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 // Cron secret for authentication
 const CRON_SECRET = process.env.CRON_SECRET;
@@ -65,28 +68,85 @@ export async function GET(request: Request) {
       skipped: 0,
     };
 
+    // Extended database type for RPC calls
+    type ExtendedDatabase = Database & {
+      public: {
+        Functions: {
+          claim_next_job: {
+            Args: {
+              p_worker_id: string;
+              p_job_types?: string[];
+              p_lock_duration: string;
+            };
+            Returns: ClaimedJobType[];
+          };
+          complete_job: {
+            Args: {
+              p_job_id: string;
+              p_result: Record<string, unknown>;
+            };
+            Returns: void;
+          };
+          fail_job: {
+            Args: {
+              p_job_id: string;
+              p_error: string;
+              p_retry: boolean;
+            };
+            Returns: void;
+          };
+        };
+        Tables: {
+          job_queue: {
+            Row: {
+              id: string;
+              status: string;
+              lock_until: string | null;
+              claimed_by: string | null;
+            };
+            Update: {
+              status?: string;
+              lock_until?: string | null;
+              claimed_by?: string | null;
+            };
+          };
+          classification_suggestions: {
+            Row: {
+              id: number;
+              status: string;
+              user_id: string;
+              created_at: string;
+            };
+            Update: { status?: string };
+          };
+          operation_snapshots: {
+            Row: { id: string; user_id: string; expires_at: string };
+            Delete: never;
+          };
+        };
+      };
+    };
+
+    const getTypedAdmin = () =>
+      getSupabaseAdmin() as SupabaseClient<ExtendedDatabase>;
+
     // Process jobs up to the limit
-    // 类型断言: 手动维护类型文件时需要此断言
     type ClaimedJobType = {
       job_id: string;
       job_type: string;
-      job_payload: unknown;
+      job_payload: Json;
       job_user_id: string;
       job_attempts: number;
     };
     for (let i = 0; i < MAX_JOBS_PER_RUN; i++) {
       // Claim next job
-       
-      const { data: claimedJobs, error: claimError } = (await (
-        getSupabaseAdmin().rpc as any
-      )("claim_next_job", {
-        p_worker_id: WORKER_ID,
-        p_job_types: undefined, // Process all types
-        p_lock_duration: "5 minutes",
-      })) as {
-        data: ClaimedJobType[] | null;
-        error: { message: string } | null;
-      };
+
+      const { data: claimedJobs, error: claimError } =
+        await getTypedAdmin().rpc("claim_next_job", {
+          p_worker_id: WORKER_ID,
+          p_job_types: undefined, // Process all types
+          p_lock_duration: "5 minutes",
+        });
 
       if (claimError) {
         logger.error({ error: claimError }, "Failed to claim job");
@@ -106,8 +166,7 @@ export async function GET(request: Request) {
         await processJob(job);
 
         // Mark as completed
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (getSupabaseAdmin().rpc as any)("complete_job", {
+        await getTypedAdmin().rpc("complete_job", {
           p_job_id: job.job_id,
           p_result: { processedAt: new Date().toISOString() },
         });
@@ -122,8 +181,7 @@ export async function GET(request: Request) {
         stats.failed++;
 
         // Mark as failed
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (getSupabaseAdmin().rpc as any)("fail_job", {
+        await getTypedAdmin().rpc("fail_job", {
           p_job_id: job.job_id,
           p_error: error instanceof Error ? error.message : String(error),
           p_retry: true,
@@ -138,17 +196,16 @@ export async function GET(request: Request) {
 
     // Also reset stuck jobs
 
-    const { data: resetJobs } =
-      (await // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (getSupabaseAdmin().from("job_queue") as any)
-        .update({
-          status: "pending",
-          lock_until: null,
-          claimed_by: null,
-        })
-        .eq("status", "claimed")
-        .lt("lock_until", new Date().toISOString())
-        .select("id")) as { data: { id: string }[] | null };
+    const { data: resetJobs } = await getTypedAdmin()
+      .from("job_queue")
+      .update({
+        status: "pending",
+        lock_until: null,
+        claimed_by: null,
+      })
+      .eq("status", "claimed")
+      .lt("lock_until", new Date().toISOString())
+      .select("id");
 
     const resetCount = resetJobs?.length ?? 0;
     if (resetCount > 0) {
@@ -189,7 +246,7 @@ export async function GET(request: Request) {
 async function processJob(job: {
   job_id: string;
   job_type: string;
-  job_payload: unknown;
+  job_payload: Json;
   job_user_id: string;
 }): Promise<void> {
   const payload = job.job_payload as Record<string, unknown>;
@@ -233,10 +290,19 @@ async function processJob(job: {
     case "create_snapshot_basic": {
       // Basic 快照：仅 Readability 正文
       const { processSnapshotJob } = await import("@/lib/snapshot/processors");
+
+      if (!isValidSnapshotJobPayload(payload)) {
+        logger.error(
+          { jobId: job.job_id, payload },
+          "Invalid snapshot payload",
+        );
+        throw new Error("Invalid snapshot payload");
+      }
+
       await processSnapshotJob({
         id: job.job_id,
         type: job.job_type,
-        payload: payload as unknown as SnapshotJobPayload,
+        payload: payload,
         userId: job.job_user_id,
         attempts: (payload.retry_count as number) || 0,
       });
@@ -248,10 +314,19 @@ async function processJob(job: {
       const { processStandardSnapshot } = await import(
         "@/lib/snapshot/processors"
       );
+
+      if (!isValidSnapshotJobPayload(payload)) {
+        logger.error(
+          { jobId: job.job_id, payload },
+          "Invalid snapshot payload",
+        );
+        throw new Error("Invalid snapshot payload");
+      }
+
       await processStandardSnapshot({
         id: job.job_id,
         type: job.job_type,
-        payload: payload as unknown as SnapshotJobPayload,
+        payload: payload,
         userId: job.job_user_id,
         attempts: (payload.retry_count as number) || 0,
       });
@@ -268,10 +343,19 @@ async function processJob(job: {
       const { processStandardSnapshot: processFull } = await import(
         "@/lib/snapshot/processors"
       );
+
+      if (!isValidSnapshotJobPayload(payload)) {
+        logger.error(
+          { jobId: job.job_id, payload },
+          "Invalid snapshot payload",
+        );
+        throw new Error("Invalid snapshot payload");
+      }
+
       await processFull({
         id: job.job_id,
         type: job.job_type,
-        payload: payload as unknown as SnapshotJobPayload,
+        payload: payload,
         userId: job.job_user_id,
         attempts: (payload.retry_count as number) || 0,
       });
@@ -282,10 +366,19 @@ async function processJob(job: {
       const { processRetrySnapshot } = await import(
         "@/lib/snapshot/processors"
       );
+
+      if (!isValidSnapshotJobPayload(payload)) {
+        logger.error(
+          { jobId: job.job_id, payload },
+          "Invalid snapshot payload",
+        );
+        throw new Error("Invalid snapshot payload");
+      }
+
       await processRetrySnapshot({
         id: job.job_id,
         type: job.job_type,
-        payload: payload as unknown as SnapshotJobPayload,
+        payload: payload,
         userId: job.job_user_id,
         attempts: (payload.retry_count as number) || 0,
       });
@@ -296,10 +389,16 @@ async function processJob(job: {
       const { processCleanupSnapshots } = await import(
         "@/lib/snapshot/processors"
       );
+
+      const cleanupPayload = payload as {
+        days_old?: number;
+        batch_size?: number;
+      };
+
       await processCleanupSnapshots({
         id: job.job_id,
         type: job.job_type,
-        payload: payload as { days_old?: number; batch_size?: number },
+        payload: cleanupPayload,
         userId: job.job_user_id,
         attempts: 0,
       });
@@ -312,6 +411,26 @@ async function processJob(job: {
 }
 
 /**
+ * Type guard for SnapshotJobPayload
+ */
+function isValidSnapshotJobPayload(
+  payload: unknown,
+): payload is SnapshotJobPayload {
+  if (typeof payload !== "object" || payload === null) return false;
+
+  const p = payload as Record<string, unknown>;
+
+  // Required fields
+  return (
+    typeof p.bookmark_id === "number" &&
+    typeof p.snapshot_id === "number" &&
+    typeof p.url === "string" &&
+    typeof p.snapshot_type === "string" &&
+    typeof p.user_id === "string"
+  );
+}
+
+/**
  * Cleanup expired data for a user
  */
 async function cleanupExpiredData(userId: string): Promise<void> {
@@ -319,16 +438,36 @@ async function cleanupExpiredData(userId: string): Promise<void> {
   cutoffDate.setDate(cutoffDate.getDate() - 30); // 30 days
 
   // Cleanup expired suggestions
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (getSupabaseAdmin().from("classification_suggestions") as any)
+  const typedAdmin = getSupabaseAdmin() as SupabaseClient<{
+    public: {
+      Tables: {
+        classification_suggestions: {
+          Row: {
+            id: number;
+            status: string;
+            user_id: string;
+            created_at: string;
+          };
+          Update: { status?: string };
+        };
+        operation_snapshots: {
+          Row: { id: string; user_id: string; expires_at: string };
+          Delete: never;
+        };
+      };
+    };
+  }>;
+
+  await typedAdmin
+    .from("classification_suggestions")
     .update({ status: "expired" })
     .eq("user_id", userId)
     .eq("status", "pending")
     .lt("created_at", cutoffDate.toISOString());
 
   // Cleanup expired operation snapshots
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (getSupabaseAdmin().from("operation_snapshots") as any)
+  await typedAdmin
+    .from("operation_snapshots")
     .delete()
     .eq("user_id", userId)
     .lt("expires_at", new Date().toISOString());

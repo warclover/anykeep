@@ -35,10 +35,37 @@ import {
   getEmbeddingConfigInfo,
 } from "@/lib/classification/config/embedding-config";
 import type { NextRequest } from "next/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/types/supabase";
 
 // ============================================================================
 // 类型定义
 // ============================================================================
+
+// 扩展 Database 类型以支持 source_profiles
+interface SourceProfileRow {
+  id: number;
+  user_id: string;
+  source_id: string;
+  source_name: string | null;
+  source_type: string;
+  sample_count: number;
+  trust_score: number;
+  avg_confidence: number | null;
+  // 其他字段省略
+}
+
+type ExtendedDatabase = Database & {
+  public: {
+    Tables: {
+      source_profiles: {
+        Row: SourceProfileRow;
+        Insert: unknown;
+        Update: unknown;
+      };
+    };
+  };
+};
 
 type AnalyticsType =
   | "overview"
@@ -205,9 +232,10 @@ async function handlePreferences(userId: string) {
  */
 async function handleSources(userId: string) {
   const supabase = await createClient();
+  // Safe cast since we know the table structure in this context
+  const typedSupabase = supabase as SupabaseClient<ExtendedDatabase>;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: sources } = await (supabase as any)
+  const { data: sources } = await typedSupabase
     .from("source_profiles")
     .select("*")
     .eq("user_id", userId)
@@ -326,17 +354,13 @@ async function handleTrends(userId: string, searchParams: URLSearchParams) {
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - days);
 
-  // 类型断言: 手动维护类型文件时需要此断言
   const { data: bookmarks } = await supabase
     .from("bookmarks")
     .select("created_at, folder_id")
     .eq("user_id", userId)
     .is("deleted_at", null)
     .gte("created_at", startDate.toISOString())
-    .order("created_at", { ascending: true }) as unknown as {
-    data: { created_at: string | null; folder_id: number | null }[] | null;
-    error: unknown;
-  };
+    .order("created_at", { ascending: true });
 
   const dailyStats = new Map<
     string,
@@ -451,8 +475,11 @@ async function handleStatistics(userId: string, searchParams: URLSearchParams) {
   };
 
   // 获取待确认统计
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let confirmationQuery = (supabase as any)
+  interface ConfirmationStatusRow {
+    status: string;
+  }
+
+  let confirmationQuery = supabase
     .from(PENDING_CONFIRMATIONS_TABLE)
     .select("status", { count: "exact" })
     .eq("user_id", userId);
@@ -465,7 +492,7 @@ async function handleStatistics(userId: string, searchParams: URLSearchParams) {
   }
 
   const { data: confirmationData, error: confirmationError } =
-    await confirmationQuery;
+    await confirmationQuery.returns<ConfirmationStatusRow[]>();
 
   const confirmationStats = {
     pending: 0,
@@ -485,8 +512,8 @@ async function handleStatistics(userId: string, searchParams: URLSearchParams) {
   }
 
   // 获取来源画像统计
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: sourceData, error: sourceError } = await (supabase as any)
+  const typedSupabase = supabase as SupabaseClient<ExtendedDatabase>;
+  const { data: sourceData, error: sourceError } = await typedSupabase
     .from(SOURCE_PROFILES_TABLE)
     .select("source_type, sample_count, trust_score")
     .eq("user_id", userId);
@@ -645,14 +672,12 @@ async function handleHistory(userId: string, searchParams: URLSearchParams) {
     return internalError("获取分类历史失败");
   }
 
-  // 类型断言: 手动维护类型文件时需要此断言
+  // 显式指定返回类型以避免类型断言
   const { data: stats } = await supabase
     .from("classification_suggestions")
     .select("status")
-    .eq("user_id", userId) as unknown as {
-    data: { status: string | null }[] | null;
-    error: unknown;
-  };
+    .eq("user_id", userId)
+    .returns<{ status: string }[]>();
 
   const historyStats = {
     total: stats?.length || 0,
@@ -830,17 +855,21 @@ async function getBookmarkStats(
   userId: string,
   startDate: Date,
 ) {
-  // 类型断言: 手动维护类型文件时需要此断言
-  const { data: bookmarks, count } = await supabase
+  // 使用 returns 指定返回类型
+  const { data: bookmarks } = await supabase
     .from("bookmarks")
     .select("folder_id, created_at", { count: "exact" })
     .eq("user_id", userId)
     .is("deleted_at", null)
-    .gte("created_at", startDate.toISOString()) as unknown as {
-    data: { folder_id: number | null; created_at: string }[] | null;
-    count: number | null;
-    error: unknown;
-  };
+    .gte("created_at", startDate.toISOString())
+    .returns<{ folder_id: number | null; created_at: string }[]>();
+
+  const { count } = await supabase
+    .from("bookmarks")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .is("deleted_at", null)
+    .gte("created_at", startDate.toISOString());
 
   const classified = bookmarks?.filter((b) => b.folder_id).length || 0;
   const unclassified = (bookmarks?.length || 0) - classified;
@@ -864,16 +893,19 @@ async function getFolderStats(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
 ) {
-  // 类型断言: 手动维护类型文件时需要此断言
-  const { data: folders, count } = await supabase
+  // 使用 returns 指定返回类型
+  const { data: folders } = await supabase
     .from("folders")
-    .select("id, name", { count: "exact" })
+    .select("id, name")
     .eq("user_id", userId)
-    .eq("is_archived", false) as unknown as {
-    data: { id: number; name: string }[] | null;
-    count: number | null;
-    error: unknown;
-  };
+    .eq("is_archived", false)
+    .returns<{ id: number; name: string }[]>();
+
+  const { count } = await supabase
+    .from("folders")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("is_archived", false);
 
   const folderBookmarkCounts: Array<{
     folderId: number;
@@ -929,16 +961,14 @@ async function getFolderDistribution(
   userId: string,
   startDate: Date,
 ): Promise<FolderDistribution[]> {
-  // 类型断言: 手动维护类型文件时需要此断言
+  // 使用 returns 指定返回类型
   const { data: bookmarks } = await supabase
     .from("bookmarks")
     .select("folder_id")
     .eq("user_id", userId)
     .is("deleted_at", null)
-    .gte("created_at", startDate.toISOString()) as unknown as {
-    data: { folder_id: number | null }[] | null;
-    error: unknown;
-  };
+    .gte("created_at", startDate.toISOString())
+    .returns<{ folder_id: number | null }[]>();
 
   if (!bookmarks || bookmarks.length === 0) {
     return [];
@@ -955,14 +985,12 @@ async function getFolderDistribution(
   }
 
   const folderIds = [...folderCounts.keys()];
-  // 类型断言: 手动维护类型文件时需要此断言
+  // 使用 returns 指定返回类型
   const { data: folders } = await supabase
     .from("folders")
     .select("id, name")
-    .in("id", folderIds) as unknown as {
-    data: { id: number; name: string }[] | null;
-    error: unknown;
-  };
+    .in("id", folderIds)
+    .returns<{ id: number; name: string }[]>();
 
   const folderNameMap = new Map<number, string>();
   for (const folder of folders || []) {

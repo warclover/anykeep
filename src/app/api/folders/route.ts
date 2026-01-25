@@ -174,16 +174,19 @@ export async function POST(request: NextRequest) {
       name: string;
       parent_id: number | null;
     };
-     
-    const { data: folder, error: createError } = await (supabase
-      .from("folders") as any)
+
+    const { data: folder, error: createError } = (await supabase
+      .from("folders")
       .insert({
         user_id: user.id,
         name,
         parent_id: parentId || null,
       })
       .select()
-      .single() as { data: CreatedFolderType | null; error: { message: string } | null };
+      .single()) as {
+      data: CreatedFolderType | null;
+      error: { message: string } | null;
+    };
 
     if (createError) {
       return databaseError(FOLDER.CREATE_ERROR, createError);

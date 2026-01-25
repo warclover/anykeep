@@ -12,6 +12,7 @@
  */
 
 import { BaseSupabaseService } from "@/lib/classification/services/base-supabase.service";
+import type { Database } from "@/types/supabase";
 import type {
   ConfirmationType,
   ConfirmationStatus,
@@ -21,6 +22,7 @@ import type {
   CreatePendingConfirmationInput,
 } from "@/types/confirmation";
 import { DEFAULT_EXPIRATION_DAYS } from "@/types/confirmation";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 // ============================================================================
 // 常量
@@ -49,6 +51,25 @@ interface ConfirmationRow {
   resolved_at: string | null;
 }
 
+// 扩展 Supabase 客户端类型
+interface ConfirmationTableDef {
+  Row: ConfirmationRow;
+  Insert: Omit<ConfirmationRow, "id" | "created_at" | "resolved_at"> & {
+    id?: number;
+    created_at?: string;
+    resolved_at?: string | null;
+  };
+  Update: Partial<ConfirmationRow>;
+}
+
+type ExtendedDatabase = Database & {
+  public: {
+    Tables: {
+      pending_confirmations: ConfirmationTableDef;
+    };
+  };
+};
+
 /**
  * 查询过滤条件
  */
@@ -71,6 +92,14 @@ export interface ConfirmationQueryFilters {
  * 待确认消息仓库
  */
 export class ConfirmationRepository extends BaseSupabaseService {
+  /**
+   * 获取类型安全的 Supabase 客户端
+   */
+  private async getTypedSupabase() {
+    const client = await this.getSupabase();
+    return client as SupabaseClient<ExtendedDatabase>;
+  }
+
   // ============================================================================
   // 创建操作
   // ============================================================================
@@ -81,14 +110,13 @@ export class ConfirmationRepository extends BaseSupabaseService {
   async create(
     input: CreatePendingConfirmationInput,
   ): Promise<PendingConfirmationRecord> {
-    const supabase = await this.getSupabase();
+    const supabase = await this.getTypedSupabase();
 
     const expirationDays = input.expiresInDays ?? DEFAULT_EXPIRATION_DAYS;
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + expirationDays);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from(PENDING_CONFIRMATIONS_TABLE)
       .insert({
         user_id: input.userId,
@@ -117,7 +145,7 @@ export class ConfirmationRepository extends BaseSupabaseService {
   ): Promise<PendingConfirmationRecord[]> {
     if (inputs.length === 0) return [];
 
-    const supabase = await this.getSupabase();
+    const supabase = await this.getTypedSupabase();
 
     const rows = inputs.map((input) => {
       const expirationDays = input.expiresInDays ?? DEFAULT_EXPIRATION_DAYS;
@@ -135,8 +163,7 @@ export class ConfirmationRepository extends BaseSupabaseService {
       };
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from(PENDING_CONFIRMATIONS_TABLE)
       .insert(rows)
       .select();
@@ -145,7 +172,7 @@ export class ConfirmationRepository extends BaseSupabaseService {
       throw new Error(`Failed to create confirmations: ${error.message}`);
     }
 
-    return (data || []).map((row: ConfirmationRow) => this.mapToRecord(row));
+    return (data || []).map((row) => this.mapToRecord(row));
   }
 
   // ============================================================================
@@ -156,10 +183,9 @@ export class ConfirmationRepository extends BaseSupabaseService {
    * 根据 ID 查找
    */
   async findById(id: number): Promise<PendingConfirmationRecord | null> {
-    const supabase = await this.getSupabase();
+    const supabase = await this.getTypedSupabase();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from(PENDING_CONFIRMATIONS_TABLE)
       .select("*")
       .eq("id", id)
@@ -180,10 +206,9 @@ export class ConfirmationRepository extends BaseSupabaseService {
     userId: string,
     filters?: ConfirmationQueryFilters,
   ): Promise<PendingConfirmationRecord[]> {
-    const supabase = await this.getSupabase();
+    const supabase = await this.getTypedSupabase();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let query = (supabase as any)
+    let query = supabase
       .from(PENDING_CONFIRMATIONS_TABLE)
       .select("*")
       .eq("user_id", userId);
@@ -242,7 +267,7 @@ export class ConfirmationRepository extends BaseSupabaseService {
       throw new Error(`Failed to query confirmations: ${error.message}`);
     }
 
-    return (data || []).map((row: ConfirmationRow) => this.mapToRecord(row));
+    return (data || []).map((row) => this.mapToRecord(row));
   }
 
   /**
@@ -264,10 +289,9 @@ export class ConfirmationRepository extends BaseSupabaseService {
    * 获取待确认数量
    */
   async countPending(userId: string): Promise<number> {
-    const supabase = await this.getSupabase();
+    const supabase = await this.getTypedSupabase();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { count, error } = await (supabase as any)
+    const { count, error } = await supabase
       .from(PENDING_CONFIRMATIONS_TABLE)
       .select("*", { count: "exact", head: true })
       .eq("user_id", userId)
@@ -284,10 +308,9 @@ export class ConfirmationRepository extends BaseSupabaseService {
    * 获取已过期的记录
    */
   async findExpired(limit: number = 100): Promise<PendingConfirmationRecord[]> {
-    const supabase = await this.getSupabase();
+    const supabase = await this.getTypedSupabase();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from(PENDING_CONFIRMATIONS_TABLE)
       .select("*")
       .eq("status", "pending")
@@ -298,7 +321,7 @@ export class ConfirmationRepository extends BaseSupabaseService {
       throw new Error(`Failed to find expired: ${error.message}`);
     }
 
-    return (data || []).map((row: ConfirmationRow) => this.mapToRecord(row));
+    return (data || []).map((row) => this.mapToRecord(row));
   }
 
   // ============================================================================
@@ -313,9 +336,9 @@ export class ConfirmationRepository extends BaseSupabaseService {
     status: ConfirmationStatus,
     userChoice?: UserChoice,
   ): Promise<PendingConfirmationRecord> {
-    const supabase = await this.getSupabase();
+    const supabase = await this.getTypedSupabase();
 
-    const updateData: Record<string, unknown> = {
+    const updateData: Partial<ConfirmationRow> = {
       status,
     };
 
@@ -327,8 +350,7 @@ export class ConfirmationRepository extends BaseSupabaseService {
       updateData.resolved_at = new Date().toISOString();
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from(PENDING_CONFIRMATIONS_TABLE)
       .update(updateData)
       .eq("id", id)
@@ -351,10 +373,9 @@ export class ConfirmationRepository extends BaseSupabaseService {
   ): Promise<number> {
     if (ids.length === 0) return 0;
 
-    const supabase = await this.getSupabase();
+    const supabase = await this.getTypedSupabase();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error, count } = await (supabase as any)
+    const { error, count } = await supabase
       .from(PENDING_CONFIRMATIONS_TABLE)
       .update({
         status,
@@ -377,10 +398,9 @@ export class ConfirmationRepository extends BaseSupabaseService {
    * 删除记录
    */
   async delete(id: number): Promise<void> {
-    const supabase = await this.getSupabase();
+    const supabase = await this.getTypedSupabase();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from(PENDING_CONFIRMATIONS_TABLE)
       .delete()
       .eq("id", id);
@@ -394,10 +414,9 @@ export class ConfirmationRepository extends BaseSupabaseService {
    * 删除用户的所有待确认记录
    */
   async deleteAllByUser(userId: string): Promise<number> {
-    const supabase = await this.getSupabase();
+    const supabase = await this.getTypedSupabase();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error, count } = await (supabase as any)
+    const { error, count } = await supabase
       .from(PENDING_CONFIRMATIONS_TABLE)
       .delete()
       .eq("user_id", userId);

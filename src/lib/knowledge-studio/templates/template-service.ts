@@ -133,8 +133,8 @@ export class TemplateService implements ITemplateService {
       description: template.description,
       icon: template.icon ?? null,
       base_blueprint: template.baseBlueprint ?? null,
-      variables: template.variables as unknown as Json,
-      prompt_sections: template.promptSections as unknown as Json,
+      variables: template.variables as Json,
+      prompt_sections: template.promptSections as Json,
       output_format: template.outputFormat ?? null,
       visibility: template.visibility,
       status: template.status,
@@ -159,8 +159,8 @@ export class TemplateService implements ITemplateService {
       template_id: data.id,
       version: 1,
       changelog: "初始版本",
-      variables: template.variables as unknown as Json,
-      prompt_sections: template.promptSections as unknown as Json,
+      variables: template.variables as Json,
+      prompt_sections: template.promptSections as Json,
       created_by: template.userId,
     };
 
@@ -217,9 +217,9 @@ export class TemplateService implements ITemplateService {
     if (updates.baseBlueprint !== undefined)
       updateData.base_blueprint = updates.baseBlueprint;
     if (updates.variables !== undefined)
-      updateData.variables = updates.variables as unknown as Json;
+      updateData.variables = updates.variables as Json;
     if (updates.promptSections !== undefined)
-      updateData.prompt_sections = updates.promptSections as unknown as Json;
+      updateData.prompt_sections = updates.promptSections as Json;
     if (updates.outputFormat !== undefined)
       updateData.output_format = updates.outputFormat;
     if (updates.visibility !== undefined)
@@ -247,9 +247,9 @@ export class TemplateService implements ITemplateService {
         template_id: templateId,
         version: newVersion,
         changelog: updates.name ? `更新: ${updates.name}` : "内容更新",
-        variables: (updates.variables ?? current.variables) as unknown as Json,
+        variables: (updates.variables ?? current.variables) as Json,
         prompt_sections: (updates.promptSections ??
-          current.prompt_sections) as unknown as Json,
+          current.prompt_sections) as Json,
         created_by: current.user_id,
       };
 
@@ -569,7 +569,7 @@ export class TemplateService implements ITemplateService {
     const usageInsertData: TemplateUsageInsert = {
       template_id: usage.templateId,
       user_id: usage.userId,
-      variable_values: usage.variableValues as unknown as Json,
+      variable_values: usage.variableValues as Json,
       report_id: usage.reportId ?? null,
       rating: usage.rating ?? null,
       feedback: usage.feedback ?? null,

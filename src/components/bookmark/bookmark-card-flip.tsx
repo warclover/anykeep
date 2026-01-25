@@ -64,7 +64,10 @@ export const FlipBookmarkCard = memo(function FlipBookmarkCard({
   // 生成封面图
   const coverImage =
     getProxiedImageUrl(bookmark.cover_url) ||
-    generatePlaceholderImage(bookmark.title ?? "", bookmark.platform as Platform);
+    generatePlaceholderImage(
+      bookmark.title ?? "",
+      bookmark.platform as Platform,
+    );
 
   // 平台色彩映射
   const getPlatformColor = (platform: string): string => {
@@ -172,7 +175,11 @@ export const FlipBookmarkCard = memo(function FlipBookmarkCard({
               decoding="async"
             />
             <div className="absolute top-2 left-2">
-              <PlatformBadge platform={bookmark.platform ?? "UNKNOWN"} size="md" showName />
+              <PlatformBadge
+                platform={bookmark.platform ?? "UNKNOWN"}
+                size="md"
+                showName
+              />
             </div>
           </div>
           <div className="p-4 flex-1">
@@ -218,7 +225,11 @@ export const FlipBookmarkCard = memo(function FlipBookmarkCard({
             {/* 平台色条 */}
             <div
               className="h-1 w-full"
-              style={{ backgroundColor: getPlatformColor(bookmark.platform ?? "UNKNOWN") }}
+              style={{
+                backgroundColor: getPlatformColor(
+                  bookmark.platform ?? "UNKNOWN",
+                ),
+              }}
             />
 
             {/* 封面图 - P0.1: 16:9 + 顶部对齐 */}
@@ -279,15 +290,17 @@ export const FlipBookmarkCard = memo(function FlipBookmarkCard({
               <div className="flex items-center gap-1.5 mb-3 h-6 overflow-hidden">
                 {bookmark.ai_tags && bookmark.ai_tags.length > 0 ? (
                   <>
-                    {bookmark.ai_tags.slice(0, 2).map((tag, i) => (
-                      <Badge
-                        key={i}
-                        variant="secondary"
-                        className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 flex-shrink-0"
-                      >
-                        #{tag}
-                      </Badge>
-                    ))}
+                    {bookmark.ai_tags
+                      .slice(0, 2)
+                      .map((tag: string, i: number) => (
+                        <Badge
+                          key={i}
+                          variant="secondary"
+                          className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 flex-shrink-0"
+                        >
+                          #{tag}
+                        </Badge>
+                      ))}
                     {bookmark.ai_tags.length > 2 && (
                       <Badge
                         variant="secondary"

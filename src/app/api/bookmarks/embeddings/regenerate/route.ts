@@ -78,8 +78,8 @@ export async function POST(request: NextRequest) {
       created_at: string;
     };
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let query = (supabase.from("bookmarks") as any)
+    let query = supabase
+      .from("bookmarks")
       .select("id, title, ai_summary, ai_tags, embedding_version, created_at")
       .eq("user_id", user.id)
       .is("deleted_at", null)
@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
     if (dryRun) {
       const currentVersion = getCurrentEmbeddingVersion();
       const needsRegenerate = bookmarks.filter(
-        (b) => b.embedding_version !== currentVersion
+        (b) => b.embedding_version !== String(currentVersion),
       ).length;
 
       return successResponse({
@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
         count: bookmarks.length,
         action: "embedding_regenerate_start",
       },
-      "Embedding Regenerate: Starting batch regeneration"
+      "Embedding Regenerate: Starting batch regeneration",
     );
 
     // 5. 批量重新生成向量
@@ -165,7 +165,7 @@ export async function POST(request: NextRequest) {
           const text = buildEmbeddingText(
             bookmark.title ?? "",
             bookmark.ai_summary ?? "",
-            bookmark.ai_tags ?? []
+            bookmark.ai_tags ?? [],
           );
 
           if (!text || text.trim().length < 5) {
@@ -181,13 +181,11 @@ export async function POST(request: NextRequest) {
           }
 
           // 更新数据库
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const { error: updateError } = await (
-            supabase.from("bookmarks") as any
-          )
+          const { error: updateError } = await supabase
+            .from("bookmarks")
             .update({
               embedding: embedding as unknown as string,
-              embedding_version: currentVersion,
+              embedding_version: String(currentVersion),
             })
             .eq("id", bookmark.id)
             .eq("user_id", user.id);
@@ -209,7 +207,7 @@ export async function POST(request: NextRequest) {
               error: error instanceof Error ? error.message : String(error),
               action: "embedding_regenerate_single_failed",
             },
-            "Embedding Regenerate: Single bookmark failed"
+            "Embedding Regenerate: Single bookmark failed",
           );
         }
         results.processed++;
@@ -220,7 +218,7 @@ export async function POST(request: NextRequest) {
       // 批次间延迟，避免 API 限流
       if (i + BATCH_SIZE < bookmarks.length) {
         await new Promise((resolve) =>
-          setTimeout(resolve, DELAY_BETWEEN_BATCHES)
+          setTimeout(resolve, DELAY_BETWEEN_BATCHES),
         );
       }
 
@@ -234,7 +232,7 @@ export async function POST(request: NextRequest) {
             success: results.success,
             failed: results.failed,
           },
-          "Embedding Regenerate: Progress"
+          "Embedding Regenerate: Progress",
         );
       }
     }
@@ -248,7 +246,7 @@ export async function POST(request: NextRequest) {
         skipped: results.skipped,
         action: "embedding_regenerate_complete",
       },
-      "Embedding Regenerate: Batch regeneration complete"
+      "Embedding Regenerate: Batch regeneration complete",
     );
 
     return successResponse({
@@ -257,7 +255,8 @@ export async function POST(request: NextRequest) {
       failed: results.failed,
       skipped: results.skipped,
       newVersion: currentVersion,
-      errors: results.errors.length > 0 ? results.errors.slice(0, 10) : undefined,
+      errors:
+        results.errors.length > 0 ? results.errors.slice(0, 10) : undefined,
       message:
         results.failed === 0
           ? `成功为 ${results.success} 条书签重新生成向量`
@@ -270,7 +269,7 @@ export async function POST(request: NextRequest) {
         stack: error instanceof Error ? error.stack : undefined,
         operation: "embedding_regenerate",
       },
-      "POST /api/bookmarks/embeddings/regenerate error"
+      "POST /api/bookmarks/embeddings/regenerate error",
     );
     return internalError("批量重新生成向量失败");
   }
@@ -293,10 +292,8 @@ export async function GET(_request: NextRequest) {
     }
 
     // 查询所有有向量的书签的版本分布
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: bookmarks, error: queryError } = await (
-      supabase.from("bookmarks") as any
-    )
+    const { data: bookmarks, error: queryError } = await supabase
+      .from("bookmarks")
       .select("id, embedding_version")
       .eq("user_id", user.id)
       .is("deleted_at", null)
@@ -317,7 +314,7 @@ export async function GET(_request: NextRequest) {
       const version = bookmark.embedding_version || "unknown";
       versionCounts[version] = (versionCounts[version] || 0) + 1;
 
-      if (version !== currentVersion) {
+      if (version !== String(currentVersion)) {
         needsRegenerate++;
       }
     }
@@ -339,7 +336,7 @@ export async function GET(_request: NextRequest) {
         error: error instanceof Error ? error.message : String(error),
         operation: "get_regenerate_stats",
       },
-      "GET /api/bookmarks/embeddings/regenerate error"
+      "GET /api/bookmarks/embeddings/regenerate error",
     );
     return internalError("获取统计失败");
   }

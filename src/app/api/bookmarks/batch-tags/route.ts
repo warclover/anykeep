@@ -17,6 +17,7 @@ import {
   databaseError,
 } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
+import type { BatchTagsReturn } from "@/types/rpc-manual";
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
@@ -75,24 +76,24 @@ export async function POST(request: NextRequest) {
     }
 
     // 5. 执行批量操作（数据库函数使用 auth.uid() 进行二次验证）
-    let result: { affected_ids: number[]; affected_count: number };
+    let resultData: BatchTagsReturn;
 
     if (action === "add") {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase.rpc as any)("batch_add_tags", {
+      const { data, error } = await supabase.rpc("batch_add_tags", {
         p_bookmark_ids: bookmarkIds,
         p_tags: uniqueTags,
-      }) as { data: { affected_ids: number[]; affected_count: number }; error: { message: string } | null };
+      });
+
       if (error) throw error;
-      result = data;
+      resultData = data;
     } else {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase.rpc as any)("batch_remove_tags", {
+      const { data, error } = await supabase.rpc("batch_remove_tags", {
         p_bookmark_ids: bookmarkIds,
         p_tags: uniqueTags,
-      }) as { data: { affected_ids: number[]; affected_count: number }; error: { message: string } | null };
+      });
+
       if (error) throw error;
-      result = data;
+      resultData = data;
     }
 
     // 6. 记录日志
@@ -101,20 +102,20 @@ export async function POST(request: NextRequest) {
       userId: user.id,
       bookmarkCount: bookmarkIds.length,
       tagCount: uniqueTags.length,
-      affectedCount: result.affected_count,
+      affectedCount: resultData.affected_count,
       duration: Date.now() - startTime,
     });
 
     // 7. 返回响应
     const response: BatchTagsResult = {
       action,
-      affectedCount: result.affected_count,
-      affectedIds: result.affected_ids || [],
+      affectedCount: resultData.affected_count,
+      affectedIds: resultData.affected_ids || [],
       tags: uniqueTags,
       message:
         action === "add"
-          ? `已为 ${result.affected_count} 个书签添加 ${uniqueTags.length} 个标签`
-          : `已从 ${result.affected_count} 个书签移除 ${uniqueTags.length} 个标签`,
+          ? `已为 ${resultData.affected_count} 个书签添加 ${uniqueTags.length} 个标签`
+          : `已从 ${resultData.affected_count} 个书签移除 ${uniqueTags.length} 个标签`,
     };
 
     return successResponse(response);
