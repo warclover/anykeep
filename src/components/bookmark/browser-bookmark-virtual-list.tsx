@@ -7,7 +7,7 @@
 
 import { Virtuoso } from "react-virtuoso";
 import { BookmarkListItem } from "./bookmark-list-item";
-import type { Bookmark } from "@/types/supabase";
+import type { Bookmark, BookmarkWithSnapshot } from "@/types/supabase";
 
 interface BrowserBookmarkVirtualListProps {
   bookmarks: (Bookmark & {
@@ -20,6 +20,21 @@ interface BrowserBookmarkVirtualListProps {
   onToggleSelect?: (id: number) => void;
   // 自定义高度（可选）
   height?: string;
+}
+
+/**
+ * 将 Bookmark 转换为 BookmarkWithSnapshot
+ * 处理 null vs undefined 的差异
+ */
+function toBookmarkWithSnapshot(
+  bookmark: Bookmark & { folders?: { name: string } | null },
+): BookmarkWithSnapshot & { folders?: { name: string } | null } {
+  return {
+    ...bookmark,
+    // 将 null 转换为 false，保持 boolean 类型一致性
+    has_snapshot: bookmark.has_snapshot ?? false,
+    last_snapshot_at: bookmark.last_snapshot_at,
+  };
 }
 
 /**
@@ -56,7 +71,7 @@ export function BrowserBookmarkVirtualList({
         itemContent={(index, bookmark) => (
           <BookmarkListItem
             key={bookmark.id}
-            bookmark={bookmark}
+            bookmark={toBookmarkWithSnapshot(bookmark)}
             onEdit={onEdit}
             onDelete={onDelete}
             isSelectionMode={isSelectionMode}

@@ -215,7 +215,7 @@ export type BookmarkUpdate =
   Database["public"]["Tables"]["bookmarks"]["Update"];
 /** Bookmark 带快照类型 */
 export type BookmarkWithSnapshot = Bookmark & {
-  has_snapshot?: boolean;
+  has_snapshot: boolean;
   last_snapshot_at?: string | null;
 };
 
@@ -247,8 +247,11 @@ export type ImportHistory =
 /** 平台类型 */
 export type Platform =
   | "wechat"
+  | "WECHAT_OFFICIAL_ACCOUNT"
   | "bilibili"
+  | "BILIBILI"
   | "xiaohongshu"
+  | "XIAOHONGSHU"
   | "zhihu"
   | "weibo"
   | "douyin"
@@ -263,10 +266,27 @@ export type Platform =
   | "edge"
   | "firefox"
   | "safari"
+  | "BROWSER_CHROME"
+  | "BROWSER_EDGE"
+  | "BROWSER_FIREFOX"
+  | "BROWSER_SAFARI"
+  | "UNKNOWN"
   | "other";
 
 /** 导入源类型 */
-export type ImportSource = "chrome" | "edge" | "firefox" | "safari" | "other";
+export type ImportSource =
+  | "chrome"
+  | "edge"
+  | "firefox"
+  | "safari"
+  | "browser_chrome"
+  | "browser_edge"
+  | "browser_firefox"
+  | "browser_safari"
+  | "api"
+  | "share_sheet"
+  | "manual"
+  | "other";
 
 /** 导入错误详情类型 */
 export type ImportErrorDetail = {
@@ -277,7 +297,16 @@ export type ImportErrorDetail = {
 };
 
 /** 文件夹分组类型 */
-export type FolderGroup = "default" | "smart" | "archive" | "system";
+export type FolderGroup =
+  | "default"
+  | "smart"
+  | "archive"
+  | "system"
+  | "work"
+  | "study"
+  | "life"
+  | "entertainment"
+  | "other";
 
 /** 操作快照动作类型 */
 export type OperationSnapshotAction =
@@ -288,7 +317,15 @@ export type OperationSnapshotAction =
   | "merge"
   | "split"
   | "rename"
-  | "archive";
+  | "archive"
+  | "batch_move"
+  | "batch_tag"
+  | "batch_delete"
+  | "merge_folder"
+  | "create_folder"
+  | "rename_folder"
+  | "delete_folder"
+  | "undo";
 
 /** 操作详情类型 */
 export type OperationDetail = {
@@ -300,6 +337,11 @@ export type OperationDetail = {
   bookmark_ids: number[] | null;
   folder_snapshots?: unknown;
   metadata?: unknown;
+  action?: OperationSnapshotAction;
+  before_state?: unknown;
+  after_state?: unknown;
+  can_undo?: boolean;
+  reason?: string;
 };
 
 /** 分类建议类型 */
@@ -319,12 +361,18 @@ export type ClassificationStatus =
   | "completed"
   | "failed";
 
-/** 分类结果数据类型 */
+/** 分类结果数据���型 */
 export type ClassificationResultData = {
   folder_id: number | null;
   folder_name: string | null;
   confidence: number;
   method: string;
+  /** 分类动作：select_existing（选择现有）, suggest_new（建议新建）, inbox（放入待整理） */
+  action?: "select_existing" | "suggest_new" | "inbox";
+  /** 文件夹名称（驼峰命名别名，兼容前端代码） */
+  folderName?: string | null;
+  /** 分类原因 */
+  reason?: string | null;
   suggestions?: Array<{
     folder_id: number;
     folder_name: string;
@@ -359,6 +407,12 @@ export type ReclassifySettings = {
   enabled: boolean;
   threshold: number;
   auto_apply: boolean;
+  /** 待整理文件夹阈值 */
+  inbox_threshold?: number;
+  /** 上次运行时间 */
+  last_run_at?: string | null;
+  /** 是否每周自动运行 */
+  auto_run_weekly?: boolean;
 };
 
 /** AI 文件夹设置类型 */

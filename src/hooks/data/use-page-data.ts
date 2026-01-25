@@ -206,6 +206,13 @@ export function useFoldersData() {
             system_type: folder.system_type,
             is_system: folder.is_system ?? false,
             is_archived: folder.is_archived ?? false,
+            // Crystal Growth 字段
+            ai_generation_source: null,
+            crystal_birth_time: null,
+            is_ai_generated: null,
+            is_naming_pending: null,
+            origin_bookmark_ids: null,
+            // 统计字段
             bookmark_count: countMap.get(folder.id) || 0,
             today_count: todayCountMap.get(folder.id) || 0,
           }),

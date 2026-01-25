@@ -39,10 +39,9 @@ interface OperationDetailDialogProps {
 /**
  * 操作类型对应的图标映射（静态定义，避免在渲染期间创建组件）
  */
-const ACTION_ICONS: Partial<Record<
-  OperationSnapshotAction,
-  React.ComponentType<{ className?: string }>
->> = {
+const ACTION_ICONS: Partial<
+  Record<OperationSnapshotAction, React.ComponentType<{ className?: string }>>
+> = {
   create: FolderPlus,
   split: Scissors,
   merge: Merge,
@@ -239,10 +238,16 @@ export function OperationDetailDialog({
 
   // 使用静态映射获取图标组件，避免在渲染期间动态创建
   const action = operation.action ?? operation.operation_type;
-  const IconComponent = (action ? ACTION_ICONS[action] : undefined) || FolderPlus;
-  const actionLabel = action ? getActionLabel(action) : "操作";
+  const IconComponent =
+    (action ? ACTION_ICONS[action as OperationSnapshotAction] : undefined) ||
+    FolderPlus;
+  const actionLabel = action
+    ? getActionLabel(action as OperationSnapshotAction)
+    : "操作";
   const createdAt = new Date(operation.created_at);
-  const expiresAt = operation.expires_at ? new Date(operation.expires_at) : null;
+  const expiresAt = operation.expires_at
+    ? new Date(operation.expires_at)
+    : null;
   const now = new Date();
   const isExpired = expiresAt ? expiresAt < now : false;
 
@@ -251,9 +256,10 @@ export function OperationDetailDialog({
     locale: zhCN,
   });
 
-  const remainingTime = !isExpired && expiresAt
-    ? formatDistanceToNow(expiresAt, { locale: zhCN })
-    : null;
+  const remainingTime =
+    !isExpired && expiresAt
+      ? formatDistanceToNow(expiresAt, { locale: zhCN })
+      : null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

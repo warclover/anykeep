@@ -64,7 +64,7 @@ interface BookmarkQueryRow {
   url: string;
   platform: string | null;
   user_tags: string[] | null;
-  created_at: string;
+  created_at: string | null;
 }
 
 // ============================================
@@ -131,7 +131,7 @@ export const listRecentTool: Tool<ListRecentParams, ListRecentResult> = {
         url: item.url,
         platform: item.platform || "OTHER",
         tags: item.user_tags || [],
-        createdAt: item.created_at,
+        createdAt: item.created_at || new Date().toISOString(),
       }),
     );
 

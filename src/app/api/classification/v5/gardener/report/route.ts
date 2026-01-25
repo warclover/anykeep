@@ -95,7 +95,7 @@ export async function GET(_request: NextRequest) {
       //   .single();
 
       folderStatsList.push({
-        folderId: folder.id.toString(),
+        folderId: folder.id,
         folderName: folder.name,
         bookmarkCount: bookmarkCount || 0,
         lastUsedAt: new Date(folder.created_at || new Date()),

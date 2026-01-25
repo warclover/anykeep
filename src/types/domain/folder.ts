@@ -53,6 +53,13 @@ export interface FolderWithStats {
   is_system: boolean;
   is_archived: boolean;
 
+  // Crystal Growth 相关字段（与数据库保持一致，使用 null 而非 undefined）
+  ai_generation_source: string | null;
+  crystal_birth_time: string | null;
+  is_ai_generated: boolean | null;
+  is_naming_pending: boolean | null;
+  origin_bookmark_ids: number[] | null;
+
   // 统计信息（必填）
   bookmark_count: number;
   today_count: number;
@@ -98,6 +105,12 @@ export function toFolderWithStats(row: FolderWithStatsDbRow): FolderWithStats {
     // null → false
     is_system: row.is_system ?? false,
     is_archived: row.is_archived ?? false,
+    // Crystal Growth 字段（默认 null）
+    ai_generation_source: row.ai_generation_source ?? null,
+    crystal_birth_time: row.crystal_birth_time ?? null,
+    is_ai_generated: row.is_ai_generated ?? null,
+    is_naming_pending: row.is_naming_pending ?? null,
+    origin_bookmark_ids: row.origin_bookmark_ids ?? null,
     // 统计字段默认 0
     bookmark_count: row.bookmark_count ?? 0,
     today_count: row.today_count ?? 0,

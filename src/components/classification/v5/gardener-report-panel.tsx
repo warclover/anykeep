@@ -2,18 +2,26 @@
  * 智能分类 v5.0 - Gardener 报告面板
  */
 
-'use client';
+"use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { CheckCircleIcon, InfoIcon } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { CheckCircleIcon, InfoIcon } from "lucide-react";
 import type {
   FolderSuggestion,
   SynonymGroup,
+  SynonymItem,
   NamingSuggestion,
   ThresholdAdjustment,
-} from '@/lib/classification/v5/gardener/types';
+} from "@/lib/classification/v5/gardener/types";
+
+/**
+ * 类型守卫：判断是否为 SynonymItem 对象
+ */
+function isSynonymItem(syn: string | SynonymItem): syn is SynonymItem {
+  return typeof syn === "object" && syn !== null && "folderId" in syn;
+}
 
 interface GardenerReportPanelProps {
   /** 阈值调整建议 */
@@ -37,10 +45,10 @@ export function GardenerReportPanel({
 }: GardenerReportPanelProps) {
   // 统计问题数量
   const criticalCount = folderSuggestions.filter(
-    (s) => s.healthStatus === 'critical'
+    (s) => s.healthStatus === "critical",
   ).length;
   const warningCount = folderSuggestions.filter(
-    (s) => s.healthStatus === 'warning'
+    (s) => s.healthStatus === "warning",
   ).length;
 
   return (
@@ -49,7 +57,7 @@ export function GardenerReportPanel({
         <CardTitle className="flex items-center justify-between">
           <span>Gardener 分析报告</span>
           <span className="text-sm font-normal text-muted-foreground">
-            {new Date(generatedAt).toLocaleString('zh-CN')}
+            {new Date(generatedAt).toLocaleString("zh-CN")}
           </span>
         </CardTitle>
       </CardHeader>
@@ -57,19 +65,25 @@ export function GardenerReportPanel({
         {/* 概览统计 */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
           <div className="p-3 bg-red-50 dark:bg-red-950 rounded-lg border border-red-200 dark:border-red-800">
-            <p className="text-xs text-red-600 dark:text-red-400 mb-1">严重问题</p>
+            <p className="text-xs text-red-600 dark:text-red-400 mb-1">
+              严重问题
+            </p>
             <p className="text-2xl font-bold text-red-700 dark:text-red-300">
               {criticalCount}
             </p>
           </div>
           <div className="p-3 bg-yellow-50 dark:bg-yellow-950 rounded-lg border border-yellow-200 dark:border-yellow-800">
-            <p className="text-xs text-yellow-600 dark:text-yellow-400 mb-1">警告</p>
+            <p className="text-xs text-yellow-600 dark:text-yellow-400 mb-1">
+              警告
+            </p>
             <p className="text-2xl font-bold text-yellow-700 dark:text-yellow-300">
               {warningCount}
             </p>
           </div>
           <div className="p-3 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
-            <p className="text-xs text-blue-600 dark:text-blue-400 mb-1">同义词组</p>
+            <p className="text-xs text-blue-600 dark:text-blue-400 mb-1">
+              同义词组
+            </p>
             <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">
               {synonymGroups.length}
             </p>
@@ -143,18 +157,18 @@ export function GardenerReportPanel({
                     <span className="font-medium">{suggestion.folderName}</span>
                     <Badge
                       variant={
-                        suggestion.healthStatus === 'critical'
-                          ? 'destructive'
-                          : suggestion.healthStatus === 'warning'
-                            ? 'secondary'
-                            : 'default'
+                        suggestion.healthStatus === "critical"
+                          ? "destructive"
+                          : suggestion.healthStatus === "warning"
+                            ? "secondary"
+                            : "default"
                       }
                     >
-                      {suggestion.healthStatus === 'critical'
-                        ? '严重'
-                        : suggestion.healthStatus === 'warning'
-                          ? '警告'
-                          : '健康'}
+                      {suggestion.healthStatus === "critical"
+                        ? "严重"
+                        : suggestion.healthStatus === "warning"
+                          ? "警告"
+                          : "健康"}
                     </Badge>
                   </div>
                   {suggestion.issues.map((issue, index) => (
@@ -163,7 +177,9 @@ export function GardenerReportPanel({
                       className="text-sm text-muted-foreground pl-3 border-l-2"
                     >
                       <p className="font-medium">{issue.description}</p>
-                      <p className="text-xs mt-1">建议: {issue.suggestedAction}</p>
+                      <p className="text-xs mt-1">
+                        建议: {issue.suggestedAction}
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -181,7 +197,9 @@ export function GardenerReportPanel({
               synonymGroups.map((group, index) => (
                 <div key={index} className="p-3 border rounded-lg space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="font-medium">{group.primaryFolderName}</span>
+                    <span className="font-medium">
+                      {group.primaryFolderName}
+                    </span>
                     <Badge variant="secondary">
                       {Math.round(group.confidence * 100)}% 相似
                     </Badge>
@@ -189,15 +207,26 @@ export function GardenerReportPanel({
                   <div className="text-sm text-muted-foreground">
                     <p className="mb-1">相似文件夹:</p>
                     <ul className="list-disc list-inside pl-3">
-                      {group.synonyms.map((syn) => (
-                        <li key={syn.folderId}>
-                          {syn.folderName} ({Math.round(syn.similarity * 100)}%)
-                        </li>
-                      ))}
+                      {group.synonyms.map((syn, synIndex) => {
+                        if (isSynonymItem(syn)) {
+                          return (
+                            <li key={syn.folderId}>
+                              {syn.folderName} (
+                              {Math.round(syn.similarity * 100)}%)
+                            </li>
+                          );
+                        }
+                        return <li key={synIndex}>{syn}</li>;
+                      })}
                     </ul>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    建议: {group.suggestedAction === 'merge' ? '合并' : group.suggestedAction === 'rename' ? '重命名' : '保持独立'}
+                    建议:{" "}
+                    {group.suggestedAction === "merge"
+                      ? "合并"
+                      : group.suggestedAction === "rename"
+                        ? "重命名"
+                        : "保持独立"}
                   </p>
                 </div>
               ))

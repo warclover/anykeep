@@ -37,6 +37,8 @@
     "extension",
     "supabase/functions",
     "scripts",
-    "_backup"
+    "_backup",
+    "src/lib/classification/_deprecated_v3/**",
+    "src/lib/classification/strategies/classic/**"
   ]
 }

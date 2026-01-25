@@ -128,13 +128,6 @@ export type Database = {
             foreignKeyName: "ai_conversations_context_folder_id_fkey";
             columns: ["context_folder_id"];
             isOneToOne: false;
-            referencedRelation: "folder_stats";
-            referencedColumns: ["folder_id"];
-          },
-          {
-            foreignKeyName: "ai_conversations_context_folder_id_fkey";
-            columns: ["context_folder_id"];
-            isOneToOne: false;
             referencedRelation: "folders";
             referencedColumns: ["id"];
           },
@@ -934,27 +927,6 @@ export type Database = {
             referencedColumns: ["id"];
           },
           {
-            foreignKeyName: "bookmark_chunks_bookmark_id_fkey";
-            columns: ["bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_active_bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "bookmark_chunks_bookmark_id_fkey";
-            columns: ["bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_browser_bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "bookmark_chunks_bookmark_id_fkey";
-            columns: ["bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_content_bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
             foreignKeyName: "bookmark_chunks_parent_chunk_id_fkey";
             columns: ["parent_chunk_id"];
             isOneToOne: false;
@@ -1003,27 +975,6 @@ export type Database = {
             columns: ["bookmark_id"];
             isOneToOne: false;
             referencedRelation: "bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "bookmark_embedding_queue_bookmark_id_fkey";
-            columns: ["bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_active_bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "bookmark_embedding_queue_bookmark_id_fkey";
-            columns: ["bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_browser_bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "bookmark_embedding_queue_bookmark_id_fkey";
-            columns: ["bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_content_bookmarks";
             referencedColumns: ["id"];
           },
         ];
@@ -1164,31 +1115,46 @@ export type Database = {
             referencedColumns: ["id"];
           },
           {
-            foreignKeyName: "bookmark_snapshots_bookmark_id_fkey";
-            columns: ["bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_active_bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "bookmark_snapshots_bookmark_id_fkey";
-            columns: ["bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_browser_bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "bookmark_snapshots_bookmark_id_fkey";
-            columns: ["bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_content_bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
             foreignKeyName: "bookmark_snapshots_job_id_fkey";
             columns: ["job_id"];
             isOneToOne: false;
             referencedRelation: "job_queue";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      bookmark_tags: {
+        Row: {
+          bookmark_id: number;
+          created_at: string;
+          id: number;
+          tag_id: number;
+        };
+        Insert: {
+          bookmark_id: number;
+          created_at?: string;
+          id?: number;
+          tag_id: number;
+        };
+        Update: {
+          bookmark_id?: number;
+          created_at?: string;
+          id?: number;
+          tag_id?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "bookmark_tags_bookmark_id_fkey";
+            columns: ["bookmark_id"];
+            isOneToOne: false;
+            referencedRelation: "bookmarks";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "bookmark_tags_tag_id_fkey";
+            columns: ["tag_id"];
+            isOneToOne: false;
+            referencedRelation: "tags";
             referencedColumns: ["id"];
           },
         ];
@@ -1427,13 +1393,6 @@ export type Database = {
             foreignKeyName: "bookmarks_folder_id_fkey";
             columns: ["folder_id"];
             isOneToOne: false;
-            referencedRelation: "folder_stats";
-            referencedColumns: ["folder_id"];
-          },
-          {
-            foreignKeyName: "bookmarks_folder_id_fkey";
-            columns: ["folder_id"];
-            isOneToOne: false;
             referencedRelation: "folders";
             referencedColumns: ["id"];
           },
@@ -1441,12 +1400,53 @@ export type Database = {
             foreignKeyName: "bookmarks_shadow_folder_id_fkey";
             columns: ["shadow_folder_id"];
             isOneToOne: false;
-            referencedRelation: "folder_stats";
-            referencedColumns: ["folder_id"];
+            referencedRelation: "folders";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      chaos_pool: {
+        Row: {
+          bookmark_id: number;
+          created_at: string | null;
+          crystal_processed: boolean | null;
+          expires_at: string | null;
+          id: number;
+          processed_at: string | null;
+          result_folder_id: number | null;
+          user_id: string;
+        };
+        Insert: {
+          bookmark_id: number;
+          created_at?: string | null;
+          crystal_processed?: boolean | null;
+          expires_at?: string | null;
+          id?: number;
+          processed_at?: string | null;
+          result_folder_id?: number | null;
+          user_id: string;
+        };
+        Update: {
+          bookmark_id?: number;
+          created_at?: string | null;
+          crystal_processed?: boolean | null;
+          expires_at?: string | null;
+          id?: number;
+          processed_at?: string | null;
+          result_folder_id?: number | null;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "chaos_pool_bookmark_id_fkey";
+            columns: ["bookmark_id"];
+            isOneToOne: false;
+            referencedRelation: "bookmarks";
+            referencedColumns: ["id"];
           },
           {
-            foreignKeyName: "bookmarks_shadow_folder_id_fkey";
-            columns: ["shadow_folder_id"];
+            foreignKeyName: "chaos_pool_result_folder_id_fkey";
+            columns: ["result_folder_id"];
             isOneToOne: false;
             referencedRelation: "folders";
             referencedColumns: ["id"];
@@ -1613,46 +1613,11 @@ export type Database = {
             referencedColumns: ["id"];
           },
           {
-            foreignKeyName: "classification_decisions_bookmark_id_fkey";
-            columns: ["bookmark_id"];
-            isOneToOne: true;
-            referencedRelation: "v_active_bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "classification_decisions_bookmark_id_fkey";
-            columns: ["bookmark_id"];
-            isOneToOne: true;
-            referencedRelation: "v_browser_bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "classification_decisions_bookmark_id_fkey";
-            columns: ["bookmark_id"];
-            isOneToOne: true;
-            referencedRelation: "v_content_bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "classification_decisions_final_folder_id_fkey";
-            columns: ["final_folder_id"];
-            isOneToOne: false;
-            referencedRelation: "folder_stats";
-            referencedColumns: ["folder_id"];
-          },
-          {
             foreignKeyName: "classification_decisions_final_folder_id_fkey";
             columns: ["final_folder_id"];
             isOneToOne: false;
             referencedRelation: "folders";
             referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "classification_decisions_user_chosen_folder_id_fkey";
-            columns: ["user_chosen_folder_id"];
-            isOneToOne: false;
-            referencedRelation: "folder_stats";
-            referencedColumns: ["folder_id"];
           },
           {
             foreignKeyName: "classification_decisions_user_chosen_folder_id_fkey";
@@ -1720,13 +1685,6 @@ export type Database = {
             foreignKeyName: "classification_feedback_folder_id_fkey";
             columns: ["folder_id"];
             isOneToOne: false;
-            referencedRelation: "folder_stats";
-            referencedColumns: ["folder_id"];
-          },
-          {
-            foreignKeyName: "classification_feedback_folder_id_fkey";
-            columns: ["folder_id"];
-            isOneToOne: false;
             referencedRelation: "folders";
             referencedColumns: ["id"];
           },
@@ -1736,13 +1694,6 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "organization_suggestions";
             referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "classification_feedback_suggested_correct_folder_id_fkey";
-            columns: ["suggested_correct_folder_id"];
-            isOneToOne: false;
-            referencedRelation: "folder_stats";
-            referencedColumns: ["folder_id"];
           },
           {
             foreignKeyName: "classification_feedback_suggested_correct_folder_id_fkey";
@@ -1838,13 +1789,6 @@ export type Database = {
             foreignKeyName: "classification_folder_profiles_v5_folder_id_fkey";
             columns: ["folder_id"];
             isOneToOne: false;
-            referencedRelation: "folder_stats";
-            referencedColumns: ["folder_id"];
-          },
-          {
-            foreignKeyName: "classification_folder_profiles_v5_folder_id_fkey";
-            columns: ["folder_id"];
-            isOneToOne: false;
             referencedRelation: "folders";
             referencedColumns: ["id"];
           },
@@ -1916,13 +1860,6 @@ export type Database = {
             foreignKeyName: "classification_logs_actual_folder_id_fkey";
             columns: ["actual_folder_id"];
             isOneToOne: false;
-            referencedRelation: "folder_stats";
-            referencedColumns: ["folder_id"];
-          },
-          {
-            foreignKeyName: "classification_logs_actual_folder_id_fkey";
-            columns: ["actual_folder_id"];
-            isOneToOne: false;
             referencedRelation: "folders";
             referencedColumns: ["id"];
           },
@@ -1932,34 +1869,6 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "bookmarks";
             referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "classification_logs_bookmark_id_fkey";
-            columns: ["bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_active_bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "classification_logs_bookmark_id_fkey";
-            columns: ["bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_browser_bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "classification_logs_bookmark_id_fkey";
-            columns: ["bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_content_bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "classification_logs_suggested_folder_id_fkey";
-            columns: ["suggested_folder_id"];
-            isOneToOne: false;
-            referencedRelation: "folder_stats";
-            referencedColumns: ["folder_id"];
           },
           {
             foreignKeyName: "classification_logs_suggested_folder_id_fkey";
@@ -2064,46 +1973,11 @@ export type Database = {
             referencedColumns: ["id"];
           },
           {
-            foreignKeyName: "classification_metrics_bookmark_id_fkey";
-            columns: ["bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_active_bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "classification_metrics_bookmark_id_fkey";
-            columns: ["bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_browser_bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "classification_metrics_bookmark_id_fkey";
-            columns: ["bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_content_bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "classification_metrics_feedback_folder_id_fkey";
-            columns: ["feedback_folder_id"];
-            isOneToOne: false;
-            referencedRelation: "folder_stats";
-            referencedColumns: ["folder_id"];
-          },
-          {
             foreignKeyName: "classification_metrics_feedback_folder_id_fkey";
             columns: ["feedback_folder_id"];
             isOneToOne: false;
             referencedRelation: "folders";
             referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "classification_metrics_folder_id_fkey";
-            columns: ["folder_id"];
-            isOneToOne: false;
-            referencedRelation: "folder_stats";
-            referencedColumns: ["folder_id"];
           },
           {
             foreignKeyName: "classification_metrics_folder_id_fkey";
@@ -2169,46 +2043,11 @@ export type Database = {
             referencedColumns: ["id"];
           },
           {
-            foreignKeyName: "classification_metrics_v5_bookmark_id_fkey";
-            columns: ["bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_active_bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "classification_metrics_v5_bookmark_id_fkey";
-            columns: ["bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_browser_bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "classification_metrics_v5_bookmark_id_fkey";
-            columns: ["bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_content_bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "classification_metrics_v5_folder_id_fkey";
-            columns: ["folder_id"];
-            isOneToOne: false;
-            referencedRelation: "folder_stats";
-            referencedColumns: ["folder_id"];
-          },
-          {
             foreignKeyName: "classification_metrics_v5_folder_id_fkey";
             columns: ["folder_id"];
             isOneToOne: false;
             referencedRelation: "folders";
             referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "classification_metrics_v5_user_corrected_to_folder_id_fkey";
-            columns: ["user_corrected_to_folder_id"];
-            isOneToOne: false;
-            referencedRelation: "folder_stats";
-            referencedColumns: ["folder_id"];
           },
           {
             foreignKeyName: "classification_metrics_v5_user_corrected_to_folder_id_fkey";
@@ -2328,34 +2167,6 @@ export type Database = {
             referencedColumns: ["id"];
           },
           {
-            foreignKeyName: "classification_suggestions_bookmark_id_fkey";
-            columns: ["bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_active_bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "classification_suggestions_bookmark_id_fkey";
-            columns: ["bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_browser_bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "classification_suggestions_bookmark_id_fkey";
-            columns: ["bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_content_bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "classification_suggestions_suggested_folder_id_fkey";
-            columns: ["suggested_folder_id"];
-            isOneToOne: false;
-            referencedRelation: "folder_stats";
-            referencedColumns: ["folder_id"];
-          },
-          {
             foreignKeyName: "classification_suggestions_suggested_folder_id_fkey";
             columns: ["suggested_folder_id"];
             isOneToOne: false;
@@ -2367,116 +2178,89 @@ export type Database = {
       classification_t1_queue_v5: {
         Row: {
           bookmark_id: number;
+          completed_at: string | null;
           created_at: string;
           error_message: string | null;
-          id: string;
-          retry_count: number | null;
+          event_id: string;
+          execution_time_ms: number | null;
+          id: number;
           status: string;
           t0_confidence: number;
-          t0_folder_id: number | null;
-          t0_timestamp: string;
+          t0_folder_id: number;
           t1_confidence: number | null;
           t1_folder_id: number | null;
           t1_reasoning: string | null;
-          t1_timestamp: string | null;
-          trigger_reason: string;
-          updated_at: string;
           user_id: string;
         };
         Insert: {
           bookmark_id: number;
+          completed_at?: string | null;
           created_at?: string;
           error_message?: string | null;
-          id?: string;
-          retry_count?: number | null;
+          event_id: string;
+          execution_time_ms?: number | null;
+          id?: number;
           status?: string;
           t0_confidence: number;
-          t0_folder_id?: number | null;
-          t0_timestamp?: string;
+          t0_folder_id: number;
           t1_confidence?: number | null;
           t1_folder_id?: number | null;
           t1_reasoning?: string | null;
-          t1_timestamp?: string | null;
-          trigger_reason: string;
-          updated_at?: string;
           user_id: string;
         };
         Update: {
           bookmark_id?: number;
+          completed_at?: string | null;
           created_at?: string;
           error_message?: string | null;
-          id?: string;
-          retry_count?: number | null;
+          event_id?: string;
+          execution_time_ms?: number | null;
+          id?: number;
           status?: string;
           t0_confidence?: number;
-          t0_folder_id?: number | null;
-          t0_timestamp?: string;
+          t0_folder_id?: number;
           t1_confidence?: number | null;
           t1_folder_id?: number | null;
           t1_reasoning?: string | null;
-          t1_timestamp?: string | null;
-          trigger_reason?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
+      context_anchors: {
+        Row: {
+          anchor_metadata: Json | null;
+          anchor_name: string;
+          anchor_type: string;
+          bookmark_count: number;
+          created_at: string;
+          embedding: string | null;
+          id: number;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          anchor_metadata?: Json | null;
+          anchor_name: string;
+          anchor_type: string;
+          bookmark_count?: number;
+          created_at?: string;
+          embedding?: string | null;
+          id?: number;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          anchor_metadata?: Json | null;
+          anchor_name?: string;
+          anchor_type?: string;
+          bookmark_count?: number;
+          created_at?: string;
+          embedding?: string | null;
+          id?: number;
           updated_at?: string;
           user_id?: string;
         };
-        Relationships: [
-          {
-            foreignKeyName: "classification_t1_queue_v5_bookmark_id_fkey";
-            columns: ["bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "classification_t1_queue_v5_bookmark_id_fkey";
-            columns: ["bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_active_bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "classification_t1_queue_v5_bookmark_id_fkey";
-            columns: ["bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_browser_bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "classification_t1_queue_v5_bookmark_id_fkey";
-            columns: ["bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_content_bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "classification_t1_queue_v5_t0_folder_id_fkey";
-            columns: ["t0_folder_id"];
-            isOneToOne: false;
-            referencedRelation: "folder_stats";
-            referencedColumns: ["folder_id"];
-          },
-          {
-            foreignKeyName: "classification_t1_queue_v5_t0_folder_id_fkey";
-            columns: ["t0_folder_id"];
-            isOneToOne: false;
-            referencedRelation: "folders";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "classification_t1_queue_v5_t1_folder_id_fkey";
-            columns: ["t1_folder_id"];
-            isOneToOne: false;
-            referencedRelation: "folder_stats";
-            referencedColumns: ["folder_id"];
-          },
-          {
-            foreignKeyName: "classification_t1_queue_v5_t1_folder_id_fkey";
-            columns: ["t1_folder_id"];
-            isOneToOne: false;
-            referencedRelation: "folders";
-            referencedColumns: ["id"];
-          },
-        ];
+        Relationships: [];
       };
       distribution_oauth_tokens: {
         Row: {
@@ -2671,46 +2455,11 @@ export type Database = {
             referencedColumns: ["id"];
           },
           {
-            foreignKeyName: "embedding_ab_test_metrics_bookmark_id_fkey";
-            columns: ["bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_active_bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "embedding_ab_test_metrics_bookmark_id_fkey";
-            columns: ["bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_browser_bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "embedding_ab_test_metrics_bookmark_id_fkey";
-            columns: ["bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_content_bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "embedding_ab_test_metrics_feedback_folder_id_fkey";
-            columns: ["feedback_folder_id"];
-            isOneToOne: false;
-            referencedRelation: "folder_stats";
-            referencedColumns: ["folder_id"];
-          },
-          {
             foreignKeyName: "embedding_ab_test_metrics_feedback_folder_id_fkey";
             columns: ["feedback_folder_id"];
             isOneToOne: false;
             referencedRelation: "folders";
             referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "embedding_ab_test_metrics_folder_id_fkey";
-            columns: ["folder_id"];
-            isOneToOne: false;
-            referencedRelation: "folder_stats";
-            referencedColumns: ["folder_id"];
           },
           {
             foreignKeyName: "embedding_ab_test_metrics_folder_id_fkey";
@@ -2850,27 +2599,6 @@ export type Database = {
             referencedRelation: "bookmarks";
             referencedColumns: ["id"];
           },
-          {
-            foreignKeyName: "flashcards_bookmark_id_fkey";
-            columns: ["bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_active_bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "flashcards_bookmark_id_fkey";
-            columns: ["bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_browser_bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "flashcards_bookmark_id_fkey";
-            columns: ["bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_content_bookmarks";
-            referencedColumns: ["id"];
-          },
         ];
       };
       folder_profiles: {
@@ -2987,13 +2715,6 @@ export type Database = {
             foreignKeyName: "folder_profiles_folder_id_fkey";
             columns: ["folder_id"];
             isOneToOne: true;
-            referencedRelation: "folder_stats";
-            referencedColumns: ["folder_id"];
-          },
-          {
-            foreignKeyName: "folder_profiles_folder_id_fkey";
-            columns: ["folder_id"];
-            isOneToOne: true;
             referencedRelation: "folders";
             referencedColumns: ["id"];
           },
@@ -3001,37 +2722,46 @@ export type Database = {
       };
       folder_tag_profiles: {
         Row: {
-          id: number;
-          user_id: string;
-          folder_id: number;
+          aliases: string[] | null;
+          blacklist_tags: string[] | null;
+          bookmark_count: number | null;
           core_tags: string[] | null;
+          folder_id: number;
+          folder_name_tokens: string[] | null;
+          id: number;
+          last_updated_at: string | null;
           related_tags: string[] | null;
           tag_frequency: Json | null;
-          folder_name_tokens: string[] | null;
-          bookmark_count: number | null;
-          last_updated_at: string | null;
+          tag_source_stats: Json | null;
+          user_id: string;
         };
         Insert: {
-          id?: number;
-          user_id: string;
-          folder_id: number;
+          aliases?: string[] | null;
+          blacklist_tags?: string[] | null;
+          bookmark_count?: number | null;
           core_tags?: string[] | null;
+          folder_id: number;
+          folder_name_tokens?: string[] | null;
+          id?: number;
+          last_updated_at?: string | null;
           related_tags?: string[] | null;
           tag_frequency?: Json | null;
-          folder_name_tokens?: string[] | null;
-          bookmark_count?: number | null;
-          last_updated_at?: string | null;
+          tag_source_stats?: Json | null;
+          user_id: string;
         };
         Update: {
-          id?: number;
-          user_id?: string;
-          folder_id?: number;
+          aliases?: string[] | null;
+          blacklist_tags?: string[] | null;
+          bookmark_count?: number | null;
           core_tags?: string[] | null;
+          folder_id?: number;
+          folder_name_tokens?: string[] | null;
+          id?: number;
+          last_updated_at?: string | null;
           related_tags?: string[] | null;
           tag_frequency?: Json | null;
-          folder_name_tokens?: string[] | null;
-          bookmark_count?: number | null;
-          last_updated_at?: string | null;
+          tag_source_stats?: Json | null;
+          user_id?: string;
         };
         Relationships: [
           {
@@ -3041,24 +2771,22 @@ export type Database = {
             referencedRelation: "folders";
             referencedColumns: ["id"];
           },
-          {
-            foreignKeyName: "folder_tag_profiles_folder_id_fkey";
-            columns: ["folder_id"];
-            isOneToOne: false;
-            referencedRelation: "folder_stats";
-            referencedColumns: ["folder_id"];
-          },
         ];
       };
       folders: {
         Row: {
+          ai_generation_source: string | null;
           created_at: string | null;
+          crystal_birth_time: string | null;
           deleted_at: string | null;
           folder_group: string | null;
           id: number;
+          is_ai_generated: boolean | null;
           is_archived: boolean;
+          is_naming_pending: boolean | null;
           is_system: boolean | null;
           name: string;
+          origin_bookmark_ids: number[] | null;
           parent_id: number | null;
           sort_order: number | null;
           source: string | null;
@@ -3067,13 +2795,18 @@ export type Database = {
           user_id: string;
         };
         Insert: {
+          ai_generation_source?: string | null;
           created_at?: string | null;
+          crystal_birth_time?: string | null;
           deleted_at?: string | null;
           folder_group?: string | null;
           id?: number;
+          is_ai_generated?: boolean | null;
           is_archived?: boolean;
+          is_naming_pending?: boolean | null;
           is_system?: boolean | null;
           name: string;
+          origin_bookmark_ids?: number[] | null;
           parent_id?: number | null;
           sort_order?: number | null;
           source?: string | null;
@@ -3082,13 +2815,18 @@ export type Database = {
           user_id: string;
         };
         Update: {
+          ai_generation_source?: string | null;
           created_at?: string | null;
+          crystal_birth_time?: string | null;
           deleted_at?: string | null;
           folder_group?: string | null;
           id?: number;
+          is_ai_generated?: boolean | null;
           is_archived?: boolean;
+          is_naming_pending?: boolean | null;
           is_system?: boolean | null;
           name?: string;
+          origin_bookmark_ids?: number[] | null;
           parent_id?: number | null;
           sort_order?: number | null;
           source?: string | null;
@@ -3097,13 +2835,6 @@ export type Database = {
           user_id?: string;
         };
         Relationships: [
-          {
-            foreignKeyName: "folders_parent_id_fkey";
-            columns: ["parent_id"];
-            isOneToOne: false;
-            referencedRelation: "folder_stats";
-            referencedColumns: ["folder_id"];
-          },
           {
             foreignKeyName: "folders_parent_id_fkey";
             columns: ["parent_id"];
@@ -3306,52 +3037,10 @@ export type Database = {
             referencedColumns: ["id"];
           },
           {
-            foreignKeyName: "knowledge_links_source_bookmark_id_fkey";
-            columns: ["source_bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_active_bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "knowledge_links_source_bookmark_id_fkey";
-            columns: ["source_bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_browser_bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "knowledge_links_source_bookmark_id_fkey";
-            columns: ["source_bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_content_bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
             foreignKeyName: "knowledge_links_target_bookmark_id_fkey";
             columns: ["target_bookmark_id"];
             isOneToOne: false;
             referencedRelation: "bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "knowledge_links_target_bookmark_id_fkey";
-            columns: ["target_bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_active_bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "knowledge_links_target_bookmark_id_fkey";
-            columns: ["target_bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_browser_bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "knowledge_links_target_bookmark_id_fkey";
-            columns: ["target_bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_content_bookmarks";
             referencedColumns: ["id"];
           },
         ];
@@ -4475,27 +4164,6 @@ export type Database = {
             referencedColumns: ["id"];
           },
           {
-            foreignKeyName: "learning_nodes_bookmark_id_fkey";
-            columns: ["bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_active_bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "learning_nodes_bookmark_id_fkey";
-            columns: ["bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_browser_bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "learning_nodes_bookmark_id_fkey";
-            columns: ["bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_content_bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
             foreignKeyName: "learning_nodes_path_id_fkey";
             columns: ["path_id"];
             isOneToOne: false;
@@ -4696,13 +4364,6 @@ export type Database = {
             foreignKeyName: "link_health_checks_folder_id_fkey";
             columns: ["folder_id"];
             isOneToOne: false;
-            referencedRelation: "folder_stats";
-            referencedColumns: ["folder_id"];
-          },
-          {
-            foreignKeyName: "link_health_checks_folder_id_fkey";
-            columns: ["folder_id"];
-            isOneToOne: false;
             referencedRelation: "folders";
             referencedColumns: ["id"];
           },
@@ -4899,13 +4560,6 @@ export type Database = {
             foreignKeyName: "md_collections_folder_id_fkey";
             columns: ["folder_id"];
             isOneToOne: false;
-            referencedRelation: "folder_stats";
-            referencedColumns: ["folder_id"];
-          },
-          {
-            foreignKeyName: "md_collections_folder_id_fkey";
-            columns: ["folder_id"];
-            isOneToOne: false;
             referencedRelation: "folders";
             referencedColumns: ["id"];
           },
@@ -4976,34 +4630,6 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "bookmarks";
             referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "messages_related_bookmark_id_fkey";
-            columns: ["related_bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_active_bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "messages_related_bookmark_id_fkey";
-            columns: ["related_bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_browser_bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "messages_related_bookmark_id_fkey";
-            columns: ["related_bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_content_bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "messages_related_folder_id_fkey";
-            columns: ["related_folder_id"];
-            isOneToOne: false;
-            referencedRelation: "folder_stats";
-            referencedColumns: ["folder_id"];
           },
           {
             foreignKeyName: "messages_related_folder_id_fkey";
@@ -5230,13 +4856,6 @@ export type Database = {
             foreignKeyName: "operation_snapshots_folder_id_fkey";
             columns: ["folder_id"];
             isOneToOne: false;
-            referencedRelation: "folder_stats";
-            referencedColumns: ["folder_id"];
-          },
-          {
-            foreignKeyName: "operation_snapshots_folder_id_fkey";
-            columns: ["folder_id"];
-            isOneToOne: false;
             referencedRelation: "folders";
             referencedColumns: ["id"];
           },
@@ -5286,13 +4905,6 @@ export type Database = {
           user_id?: string;
         };
         Relationships: [
-          {
-            foreignKeyName: "organization_suggestions_target_folder_id_fkey";
-            columns: ["target_folder_id"];
-            isOneToOne: false;
-            referencedRelation: "folder_stats";
-            referencedColumns: ["folder_id"];
-          },
           {
             foreignKeyName: "organization_suggestions_target_folder_id_fkey";
             columns: ["target_folder_id"];
@@ -5388,34 +5000,6 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "bookmarks";
             referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "pending_confirmations_bookmark_id_fkey";
-            columns: ["bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_active_bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "pending_confirmations_bookmark_id_fkey";
-            columns: ["bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_browser_bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "pending_confirmations_bookmark_id_fkey";
-            columns: ["bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_content_bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "pending_confirmations_folder_id_fkey";
-            columns: ["folder_id"];
-            isOneToOne: false;
-            referencedRelation: "folder_stats";
-            referencedColumns: ["folder_id"];
           },
           {
             foreignKeyName: "pending_confirmations_folder_id_fkey";
@@ -5739,27 +5323,6 @@ export type Database = {
             referencedColumns: ["id"];
           },
           {
-            foreignKeyName: "reading_plan_items_bookmark_id_fkey";
-            columns: ["bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_active_bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "reading_plan_items_bookmark_id_fkey";
-            columns: ["bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_browser_bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "reading_plan_items_bookmark_id_fkey";
-            columns: ["bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_content_bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
             foreignKeyName: "reading_plan_items_plan_id_fkey";
             columns: ["plan_id"];
             isOneToOne: false;
@@ -5839,13 +5402,6 @@ export type Database = {
           user_id?: string;
         };
         Relationships: [
-          {
-            foreignKeyName: "reading_plans_scope_folder_id_fkey";
-            columns: ["scope_folder_id"];
-            isOneToOne: false;
-            referencedRelation: "folder_stats";
-            referencedColumns: ["folder_id"];
-          },
           {
             foreignKeyName: "reading_plans_scope_folder_id_fkey";
             columns: ["scope_folder_id"];
@@ -5950,27 +5506,6 @@ export type Database = {
             columns: ["bookmark_id"];
             isOneToOne: false;
             referencedRelation: "bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "review_records_bookmark_id_fkey";
-            columns: ["bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_active_bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "review_records_bookmark_id_fkey";
-            columns: ["bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_browser_bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "review_records_bookmark_id_fkey";
-            columns: ["bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_content_bookmarks";
             referencedColumns: ["id"];
           },
           {
@@ -6552,27 +6087,6 @@ export type Database = {
             referencedColumns: ["id"];
           },
           {
-            foreignKeyName: "system_jobs_bookmark_id_fkey";
-            columns: ["bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_active_bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "system_jobs_bookmark_id_fkey";
-            columns: ["bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_browser_bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "system_jobs_bookmark_id_fkey";
-            columns: ["bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "v_content_bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
             foreignKeyName: "system_jobs_depends_on_fkey";
             columns: ["depends_on"];
             isOneToOne: false;
@@ -6617,6 +6131,33 @@ export type Database = {
           updated_at?: string;
           user_id?: string;
           weight?: number;
+        };
+        Relationships: [];
+      };
+      tags: {
+        Row: {
+          color: string | null;
+          created_at: string;
+          id: number;
+          name: string;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          color?: string | null;
+          created_at?: string;
+          id?: number;
+          name: string;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          color?: string | null;
+          created_at?: string;
+          id?: number;
+          name?: string;
+          updated_at?: string;
+          user_id?: string;
         };
         Relationships: [];
       };
@@ -6755,12 +6296,63 @@ export type Database = {
             foreignKeyName: "user_classification_rules_target_folder_id_fkey";
             columns: ["target_folder_id"];
             isOneToOne: false;
-            referencedRelation: "folder_stats";
-            referencedColumns: ["folder_id"];
+            referencedRelation: "folders";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      user_corrections: {
+        Row: {
+          bookmark_id: number;
+          confidence_before: number | null;
+          corrected_folder_id: number;
+          correction_type: string;
+          created_at: string;
+          id: string;
+          metadata: Json | null;
+          original_folder_id: number | null;
+          user_id: string;
+        };
+        Insert: {
+          bookmark_id: number;
+          confidence_before?: number | null;
+          corrected_folder_id: number;
+          correction_type?: string;
+          created_at?: string;
+          id?: string;
+          metadata?: Json | null;
+          original_folder_id?: number | null;
+          user_id: string;
+        };
+        Update: {
+          bookmark_id?: number;
+          confidence_before?: number | null;
+          corrected_folder_id?: number;
+          correction_type?: string;
+          created_at?: string;
+          id?: string;
+          metadata?: Json | null;
+          original_folder_id?: number | null;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "user_corrections_bookmark_id_fkey";
+            columns: ["bookmark_id"];
+            isOneToOne: false;
+            referencedRelation: "bookmarks";
+            referencedColumns: ["id"];
           },
           {
-            foreignKeyName: "user_classification_rules_target_folder_id_fkey";
-            columns: ["target_folder_id"];
+            foreignKeyName: "user_corrections_corrected_folder_id_fkey";
+            columns: ["corrected_folder_id"];
+            isOneToOne: false;
+            referencedRelation: "folders";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "user_corrections_original_folder_id_fkey";
+            columns: ["original_folder_id"];
             isOneToOne: false;
             referencedRelation: "folders";
             referencedColumns: ["id"];
@@ -7044,757 +6636,7 @@ export type Database = {
       };
     };
     Views: {
-      classification_accuracy_stats: {
-        Row: {
-          acceptance_rate: number | null;
-          accepted_count: number | null;
-          avg_execution_time_ms: number | null;
-          date: string | null;
-          llm_call_count: number | null;
-          modified_count: number | null;
-          rejected_count: number | null;
-          total_classifications: number | null;
-          user_id: string | null;
-        };
-        Relationships: [];
-      };
-      classification_metrics_daily: {
-        Row: {
-          acceptance_rate: number | null;
-          ai_call_rate: number | null;
-          avg_confidence: number | null;
-          avg_execution_time_ms: number | null;
-          cache_hit_rate: number | null;
-          date: string | null;
-          feedback_count: number | null;
-          inbox_count: number | null;
-          median_confidence: number | null;
-          p95_execution_time_ms: number | null;
-          tier1_count: number | null;
-          tier2_count: number | null;
-          tier3_count: number | null;
-          total_count: number | null;
-          user_id: string | null;
-        };
-        Relationships: [];
-      };
-      classification_metrics_summary: {
-        Row: {
-          acceptance_rate: number | null;
-          ai_call_rate: number | null;
-          ai_skip_rate: number | null;
-          avg_confidence: number | null;
-          avg_execution_time_ms: number | null;
-          cache_hit_rate: number | null;
-          date: string | null;
-          feedback_count: number | null;
-          inbox_count: number | null;
-          p95_execution_time_ms: number | null;
-          tier1_count: number | null;
-          tier2_count: number | null;
-          tier3_count: number | null;
-          total_count: number | null;
-          unique_users: number | null;
-        };
-        Relationships: [];
-      };
-      classification_stats: {
-        Row: {
-          custom_interests: number | null;
-          pending_suggestions: number | null;
-          profiled_folders: number | null;
-          stage: string | null;
-          total_bookmarks: number | null;
-          total_folders: number | null;
-          user_id: string | null;
-        };
-        Insert: {
-          custom_interests?: never;
-          pending_suggestions?: never;
-          profiled_folders?: never;
-          stage?: never;
-          total_bookmarks?: never;
-          total_folders?: never;
-          user_id?: string | null;
-        };
-        Update: {
-          custom_interests?: never;
-          pending_suggestions?: never;
-          profiled_folders?: never;
-          stage?: never;
-          total_bookmarks?: never;
-          total_folders?: never;
-          user_id?: string | null;
-        };
-        Relationships: [];
-      };
-      embedding_ab_test_summary: {
-        Row: {
-          ab_test_group: string | null;
-          acceptance_rate: number | null;
-          avg_execution_time_ms: number | null;
-          avg_token_count: number | null;
-          date: string | null;
-          feedback_count: number | null;
-          median_execution_time_ms: number | null;
-          model_id: string | null;
-          operation_type: string | null;
-          p95_execution_time_ms: number | null;
-          total_count: number | null;
-        };
-        Relationships: [];
-      };
-      embedding_queue_stats: {
-        Row: {
-          avg_processing_time_seconds: number | null;
-          failed_count: number | null;
-          oldest_pending: string | null;
-          pending_content: number | null;
-          pending_count: number | null;
-          pending_full: number | null;
-          pending_tags: number | null;
-          pending_title: number | null;
-          processed_24h: number | null;
-        };
-        Relationships: [];
-      };
-      embedding_stats: {
-        Row: {
-          bookmarks_with_embedding: number | null;
-          bookmarks_without_embedding: number | null;
-          embedding_coverage_percent: number | null;
-          total_bookmarks: number | null;
-        };
-        Relationships: [];
-      };
-      folder_stats: {
-        Row: {
-          bookmark_count: number | null;
-          folder_id: number | null;
-          today_count: number | null;
-          user_id: string | null;
-        };
-        Relationships: [];
-      };
-      llm_usage_daily: {
-        Row: {
-          avg_execution_time_ms: number | null;
-          call_count: number | null;
-          date: string | null;
-          model: string | null;
-          operation: string | null;
-          total_cost_cents: number | null;
-          total_input_tokens: number | null;
-          total_output_tokens: number | null;
-          total_tokens: number | null;
-          user_id: string | null;
-        };
-        Relationships: [];
-      };
-      llm_usage_monthly: {
-        Row: {
-          analysis_calls: number | null;
-          call_count: number | null;
-          chat_calls: number | null;
-          classification_calls: number | null;
-          month: string | null;
-          naming_calls: number | null;
-          total_cost_cents: number | null;
-          total_input_tokens: number | null;
-          total_output_tokens: number | null;
-          total_tokens: number | null;
-          user_id: string | null;
-        };
-        Relationships: [];
-      };
-      v_active_bookmarks: {
-        Row: {
-          ai_content_type: string | null;
-          ai_content_type_confidence: number | null;
-          ai_summary: string | null;
-          ai_tags: string[] | null;
-          ai_vision_data: Json | null;
-          author: string | null;
-          classification_result: Json | null;
-          classification_status: string | null;
-          cluster_confidence: number | null;
-          cluster_id: string | null;
-          content_type: string | null;
-          cover_url: string | null;
-          created_at: string | null;
-          deleted_at: string | null;
-          description: string | null;
-          embedding: string | null;
-          embedding_version: number | null;
-          folder_id: number | null;
-          has_snapshot: boolean | null;
-          id: number | null;
-          image_count: number | null;
-          import_batch_id: string | null;
-          import_source: string | null;
-          invalidated_at: string | null;
-          is_in_trash: boolean | null;
-          is_invalid: boolean | null;
-          is_locked: boolean | null;
-          is_marked_for_deletion: boolean | null;
-          is_read: boolean | null;
-          is_starred: boolean | null;
-          last_snapshot_at: string | null;
-          last_validation_at: string | null;
-          notes: string | null;
-          pending_cluster: boolean | null;
-          pending_since: string | null;
-          platform: string | null;
-          platform_content_id: string | null;
-          publish_time: string | null;
-          rating: number | null;
-          read_at: string | null;
-          search_vector: unknown;
-          snapshot_status: string | null;
-          source_name: string | null;
-          starred_at: string | null;
-          status: string | null;
-          tag_embedding: string | null;
-          tag_embedding_at: string | null;
-          title: string | null;
-          title_embedding: string | null;
-          title_embedding_at: string | null;
-          trashed_at: string | null;
-          updated_at: string | null;
-          url: string | null;
-          user_id: string | null;
-          user_tags: string[] | null;
-          word_count: number | null;
-        };
-        Insert: {
-          ai_content_type?: string | null;
-          ai_content_type_confidence?: number | null;
-          ai_summary?: string | null;
-          ai_tags?: string[] | null;
-          ai_vision_data?: Json | null;
-          author?: string | null;
-          classification_result?: Json | null;
-          classification_status?: string | null;
-          cluster_confidence?: number | null;
-          cluster_id?: string | null;
-          content_type?: string | null;
-          cover_url?: string | null;
-          created_at?: string | null;
-          deleted_at?: string | null;
-          description?: string | null;
-          embedding?: string | null;
-          embedding_version?: number | null;
-          folder_id?: number | null;
-          has_snapshot?: boolean | null;
-          id?: number | null;
-          image_count?: number | null;
-          import_batch_id?: string | null;
-          import_source?: string | null;
-          invalidated_at?: string | null;
-          is_in_trash?: boolean | null;
-          is_invalid?: boolean | null;
-          is_locked?: boolean | null;
-          is_marked_for_deletion?: boolean | null;
-          is_read?: boolean | null;
-          is_starred?: boolean | null;
-          last_snapshot_at?: string | null;
-          last_validation_at?: string | null;
-          notes?: string | null;
-          pending_cluster?: boolean | null;
-          pending_since?: string | null;
-          platform?: string | null;
-          platform_content_id?: string | null;
-          publish_time?: string | null;
-          rating?: number | null;
-          read_at?: string | null;
-          search_vector?: unknown;
-          snapshot_status?: string | null;
-          source_name?: string | null;
-          starred_at?: string | null;
-          status?: string | null;
-          tag_embedding?: string | null;
-          tag_embedding_at?: string | null;
-          title?: string | null;
-          title_embedding?: string | null;
-          title_embedding_at?: string | null;
-          trashed_at?: string | null;
-          updated_at?: string | null;
-          url?: string | null;
-          user_id?: string | null;
-          user_tags?: string[] | null;
-          word_count?: number | null;
-        };
-        Update: {
-          ai_content_type?: string | null;
-          ai_content_type_confidence?: number | null;
-          ai_summary?: string | null;
-          ai_tags?: string[] | null;
-          ai_vision_data?: Json | null;
-          author?: string | null;
-          classification_result?: Json | null;
-          classification_status?: string | null;
-          cluster_confidence?: number | null;
-          cluster_id?: string | null;
-          content_type?: string | null;
-          cover_url?: string | null;
-          created_at?: string | null;
-          deleted_at?: string | null;
-          description?: string | null;
-          embedding?: string | null;
-          embedding_version?: number | null;
-          folder_id?: number | null;
-          has_snapshot?: boolean | null;
-          id?: number | null;
-          image_count?: number | null;
-          import_batch_id?: string | null;
-          import_source?: string | null;
-          invalidated_at?: string | null;
-          is_in_trash?: boolean | null;
-          is_invalid?: boolean | null;
-          is_locked?: boolean | null;
-          is_marked_for_deletion?: boolean | null;
-          is_read?: boolean | null;
-          is_starred?: boolean | null;
-          last_snapshot_at?: string | null;
-          last_validation_at?: string | null;
-          notes?: string | null;
-          pending_cluster?: boolean | null;
-          pending_since?: string | null;
-          platform?: string | null;
-          platform_content_id?: string | null;
-          publish_time?: string | null;
-          rating?: number | null;
-          read_at?: string | null;
-          search_vector?: unknown;
-          snapshot_status?: string | null;
-          source_name?: string | null;
-          starred_at?: string | null;
-          status?: string | null;
-          tag_embedding?: string | null;
-          tag_embedding_at?: string | null;
-          title?: string | null;
-          title_embedding?: string | null;
-          title_embedding_at?: string | null;
-          trashed_at?: string | null;
-          updated_at?: string | null;
-          url?: string | null;
-          user_id?: string | null;
-          user_tags?: string[] | null;
-          word_count?: number | null;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "bookmarks_folder_id_fkey";
-            columns: ["folder_id"];
-            isOneToOne: false;
-            referencedRelation: "folder_stats";
-            referencedColumns: ["folder_id"];
-          },
-          {
-            foreignKeyName: "bookmarks_folder_id_fkey";
-            columns: ["folder_id"];
-            isOneToOne: false;
-            referencedRelation: "folders";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      v_browser_bookmarks: {
-        Row: {
-          ai_content_type: string | null;
-          ai_content_type_confidence: number | null;
-          ai_summary: string | null;
-          ai_tags: string[] | null;
-          ai_vision_data: Json | null;
-          author: string | null;
-          classification_result: Json | null;
-          classification_status: string | null;
-          cluster_confidence: number | null;
-          cluster_id: string | null;
-          content_type: string | null;
-          cover_url: string | null;
-          created_at: string | null;
-          deleted_at: string | null;
-          description: string | null;
-          embedding: string | null;
-          embedding_version: number | null;
-          folder_id: number | null;
-          has_snapshot: boolean | null;
-          id: number | null;
-          image_count: number | null;
-          import_batch_id: string | null;
-          import_source: string | null;
-          invalidated_at: string | null;
-          is_in_trash: boolean | null;
-          is_invalid: boolean | null;
-          is_locked: boolean | null;
-          is_marked_for_deletion: boolean | null;
-          is_read: boolean | null;
-          is_starred: boolean | null;
-          last_snapshot_at: string | null;
-          last_validation_at: string | null;
-          notes: string | null;
-          pending_cluster: boolean | null;
-          pending_since: string | null;
-          platform: string | null;
-          platform_content_id: string | null;
-          publish_time: string | null;
-          rating: number | null;
-          read_at: string | null;
-          search_vector: unknown;
-          snapshot_status: string | null;
-          source_name: string | null;
-          starred_at: string | null;
-          status: string | null;
-          tag_embedding: string | null;
-          tag_embedding_at: string | null;
-          title: string | null;
-          title_embedding: string | null;
-          title_embedding_at: string | null;
-          trashed_at: string | null;
-          updated_at: string | null;
-          url: string | null;
-          user_id: string | null;
-          user_tags: string[] | null;
-          word_count: number | null;
-        };
-        Insert: {
-          ai_content_type?: string | null;
-          ai_content_type_confidence?: number | null;
-          ai_summary?: string | null;
-          ai_tags?: string[] | null;
-          ai_vision_data?: Json | null;
-          author?: string | null;
-          classification_result?: Json | null;
-          classification_status?: string | null;
-          cluster_confidence?: number | null;
-          cluster_id?: string | null;
-          content_type?: string | null;
-          cover_url?: string | null;
-          created_at?: string | null;
-          deleted_at?: string | null;
-          description?: string | null;
-          embedding?: string | null;
-          embedding_version?: number | null;
-          folder_id?: number | null;
-          has_snapshot?: boolean | null;
-          id?: number | null;
-          image_count?: number | null;
-          import_batch_id?: string | null;
-          import_source?: string | null;
-          invalidated_at?: string | null;
-          is_in_trash?: boolean | null;
-          is_invalid?: boolean | null;
-          is_locked?: boolean | null;
-          is_marked_for_deletion?: boolean | null;
-          is_read?: boolean | null;
-          is_starred?: boolean | null;
-          last_snapshot_at?: string | null;
-          last_validation_at?: string | null;
-          notes?: string | null;
-          pending_cluster?: boolean | null;
-          pending_since?: string | null;
-          platform?: string | null;
-          platform_content_id?: string | null;
-          publish_time?: string | null;
-          rating?: number | null;
-          read_at?: string | null;
-          search_vector?: unknown;
-          snapshot_status?: string | null;
-          source_name?: string | null;
-          starred_at?: string | null;
-          status?: string | null;
-          tag_embedding?: string | null;
-          tag_embedding_at?: string | null;
-          title?: string | null;
-          title_embedding?: string | null;
-          title_embedding_at?: string | null;
-          trashed_at?: string | null;
-          updated_at?: string | null;
-          url?: string | null;
-          user_id?: string | null;
-          user_tags?: string[] | null;
-          word_count?: number | null;
-        };
-        Update: {
-          ai_content_type?: string | null;
-          ai_content_type_confidence?: number | null;
-          ai_summary?: string | null;
-          ai_tags?: string[] | null;
-          ai_vision_data?: Json | null;
-          author?: string | null;
-          classification_result?: Json | null;
-          classification_status?: string | null;
-          cluster_confidence?: number | null;
-          cluster_id?: string | null;
-          content_type?: string | null;
-          cover_url?: string | null;
-          created_at?: string | null;
-          deleted_at?: string | null;
-          description?: string | null;
-          embedding?: string | null;
-          embedding_version?: number | null;
-          folder_id?: number | null;
-          has_snapshot?: boolean | null;
-          id?: number | null;
-          image_count?: number | null;
-          import_batch_id?: string | null;
-          import_source?: string | null;
-          invalidated_at?: string | null;
-          is_in_trash?: boolean | null;
-          is_invalid?: boolean | null;
-          is_locked?: boolean | null;
-          is_marked_for_deletion?: boolean | null;
-          is_read?: boolean | null;
-          is_starred?: boolean | null;
-          last_snapshot_at?: string | null;
-          last_validation_at?: string | null;
-          notes?: string | null;
-          pending_cluster?: boolean | null;
-          pending_since?: string | null;
-          platform?: string | null;
-          platform_content_id?: string | null;
-          publish_time?: string | null;
-          rating?: number | null;
-          read_at?: string | null;
-          search_vector?: unknown;
-          snapshot_status?: string | null;
-          source_name?: string | null;
-          starred_at?: string | null;
-          status?: string | null;
-          tag_embedding?: string | null;
-          tag_embedding_at?: string | null;
-          title?: string | null;
-          title_embedding?: string | null;
-          title_embedding_at?: string | null;
-          trashed_at?: string | null;
-          updated_at?: string | null;
-          url?: string | null;
-          user_id?: string | null;
-          user_tags?: string[] | null;
-          word_count?: number | null;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "bookmarks_folder_id_fkey";
-            columns: ["folder_id"];
-            isOneToOne: false;
-            referencedRelation: "folder_stats";
-            referencedColumns: ["folder_id"];
-          },
-          {
-            foreignKeyName: "bookmarks_folder_id_fkey";
-            columns: ["folder_id"];
-            isOneToOne: false;
-            referencedRelation: "folders";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      v_content_bookmarks: {
-        Row: {
-          ai_content_type: string | null;
-          ai_content_type_confidence: number | null;
-          ai_summary: string | null;
-          ai_tags: string[] | null;
-          ai_vision_data: Json | null;
-          author: string | null;
-          classification_result: Json | null;
-          classification_status: string | null;
-          cluster_confidence: number | null;
-          cluster_id: string | null;
-          content_type: string | null;
-          cover_url: string | null;
-          created_at: string | null;
-          deleted_at: string | null;
-          description: string | null;
-          embedding: string | null;
-          embedding_version: number | null;
-          folder_id: number | null;
-          has_snapshot: boolean | null;
-          id: number | null;
-          image_count: number | null;
-          import_batch_id: string | null;
-          import_source: string | null;
-          invalidated_at: string | null;
-          is_in_trash: boolean | null;
-          is_invalid: boolean | null;
-          is_locked: boolean | null;
-          is_marked_for_deletion: boolean | null;
-          is_read: boolean | null;
-          is_starred: boolean | null;
-          last_snapshot_at: string | null;
-          last_validation_at: string | null;
-          notes: string | null;
-          pending_cluster: boolean | null;
-          pending_since: string | null;
-          platform: string | null;
-          platform_content_id: string | null;
-          publish_time: string | null;
-          rating: number | null;
-          read_at: string | null;
-          search_vector: unknown;
-          snapshot_status: string | null;
-          source_name: string | null;
-          starred_at: string | null;
-          status: string | null;
-          tag_embedding: string | null;
-          tag_embedding_at: string | null;
-          title: string | null;
-          title_embedding: string | null;
-          title_embedding_at: string | null;
-          trashed_at: string | null;
-          updated_at: string | null;
-          url: string | null;
-          user_id: string | null;
-          user_tags: string[] | null;
-          word_count: number | null;
-        };
-        Insert: {
-          ai_content_type?: string | null;
-          ai_content_type_confidence?: number | null;
-          ai_summary?: string | null;
-          ai_tags?: string[] | null;
-          ai_vision_data?: Json | null;
-          author?: string | null;
-          classification_result?: Json | null;
-          classification_status?: string | null;
-          cluster_confidence?: number | null;
-          cluster_id?: string | null;
-          content_type?: string | null;
-          cover_url?: string | null;
-          created_at?: string | null;
-          deleted_at?: string | null;
-          description?: string | null;
-          embedding?: string | null;
-          embedding_version?: number | null;
-          folder_id?: number | null;
-          has_snapshot?: boolean | null;
-          id?: number | null;
-          image_count?: number | null;
-          import_batch_id?: string | null;
-          import_source?: string | null;
-          invalidated_at?: string | null;
-          is_in_trash?: boolean | null;
-          is_invalid?: boolean | null;
-          is_locked?: boolean | null;
-          is_marked_for_deletion?: boolean | null;
-          is_read?: boolean | null;
-          is_starred?: boolean | null;
-          last_snapshot_at?: string | null;
-          last_validation_at?: string | null;
-          notes?: string | null;
-          pending_cluster?: boolean | null;
-          pending_since?: string | null;
-          platform?: string | null;
-          platform_content_id?: string | null;
-          publish_time?: string | null;
-          rating?: number | null;
-          read_at?: string | null;
-          search_vector?: unknown;
-          snapshot_status?: string | null;
-          source_name?: string | null;
-          starred_at?: string | null;
-          status?: string | null;
-          tag_embedding?: string | null;
-          tag_embedding_at?: string | null;
-          title?: string | null;
-          title_embedding?: string | null;
-          title_embedding_at?: string | null;
-          trashed_at?: string | null;
-          updated_at?: string | null;
-          url?: string | null;
-          user_id?: string | null;
-          user_tags?: string[] | null;
-          word_count?: number | null;
-        };
-        Update: {
-          ai_content_type?: string | null;
-          ai_content_type_confidence?: number | null;
-          ai_summary?: string | null;
-          ai_tags?: string[] | null;
-          ai_vision_data?: Json | null;
-          author?: string | null;
-          classification_result?: Json | null;
-          classification_status?: string | null;
-          cluster_confidence?: number | null;
-          cluster_id?: string | null;
-          content_type?: string | null;
-          cover_url?: string | null;
-          created_at?: string | null;
-          deleted_at?: string | null;
-          description?: string | null;
-          embedding?: string | null;
-          embedding_version?: number | null;
-          folder_id?: number | null;
-          has_snapshot?: boolean | null;
-          id?: number | null;
-          image_count?: number | null;
-          import_batch_id?: string | null;
-          import_source?: string | null;
-          invalidated_at?: string | null;
-          is_in_trash?: boolean | null;
-          is_invalid?: boolean | null;
-          is_locked?: boolean | null;
-          is_marked_for_deletion?: boolean | null;
-          is_read?: boolean | null;
-          is_starred?: boolean | null;
-          last_snapshot_at?: string | null;
-          last_validation_at?: string | null;
-          notes?: string | null;
-          pending_cluster?: boolean | null;
-          pending_since?: string | null;
-          platform?: string | null;
-          platform_content_id?: string | null;
-          publish_time?: string | null;
-          rating?: number | null;
-          read_at?: string | null;
-          search_vector?: unknown;
-          snapshot_status?: string | null;
-          source_name?: string | null;
-          starred_at?: string | null;
-          status?: string | null;
-          tag_embedding?: string | null;
-          tag_embedding_at?: string | null;
-          title?: string | null;
-          title_embedding?: string | null;
-          title_embedding_at?: string | null;
-          trashed_at?: string | null;
-          updated_at?: string | null;
-          url?: string | null;
-          user_id?: string | null;
-          user_tags?: string[] | null;
-          word_count?: number | null;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "bookmarks_folder_id_fkey";
-            columns: ["folder_id"];
-            isOneToOne: false;
-            referencedRelation: "folder_stats";
-            referencedColumns: ["folder_id"];
-          },
-          {
-            foreignKeyName: "bookmarks_folder_id_fkey";
-            columns: ["folder_id"];
-            isOneToOne: false;
-            referencedRelation: "folders";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      v_user_classification_stats: {
-        Row: {
-          accepted_count: number | null;
-          avg_confidence: number | null;
-          count: number | null;
-          decision_type: string | null;
-          rejected_count: number | null;
-          user_action: string | null;
-          user_id: string | null;
-        };
-        Relationships: [];
-      };
+      [_ in never]: never;
     };
     Functions: {
       accept_classification_suggestions: {
@@ -7821,6 +6663,18 @@ export type Database = {
           updated_at: string;
           user_id: string;
         }[];
+      };
+      add_folder_alias: {
+        Args: { p_alias: string; p_folder_id: number; p_user_id: string };
+        Returns: undefined;
+      };
+      add_folder_blacklist_tag: {
+        Args: { p_folder_id: number; p_tag: string; p_user_id: string };
+        Returns: undefined;
+      };
+      add_to_chaos_pool: {
+        Args: { p_bookmark_id: number; p_user_id: string };
+        Returns: boolean;
       };
       analyze_user_preferences: { Args: { p_user_id: string }; Returns: Json };
       assign_cluster_id: {
@@ -7862,6 +6716,15 @@ export type Database = {
       batch_upsert_knowledge_links: {
         Args: { p_links: Json; p_user_id: string };
         Returns: number;
+      };
+      calculate_folder_entropy: {
+        Args: { p_folder_id: number };
+        Returns: {
+          avg_similarity: number;
+          bookmark_count: number;
+          entropy_score: number;
+          similarity_stddev: number;
+        }[];
       };
       calculate_matcher_weight_adjustments: {
         Args: { p_user_id: string };
@@ -7986,6 +6849,7 @@ export type Database = {
           };
       cleanup_edge_function_rate_limits: { Args: never; Returns: number };
       cleanup_expired_ai_snapshots: { Args: never; Returns: number };
+      cleanup_expired_chaos_pool: { Args: never; Returns: number };
       cleanup_expired_folder_exclusions: { Args: never; Returns: number };
       cleanup_expired_insights: { Args: never; Returns: number };
       cleanup_expired_intent_cache: { Args: never; Returns: number };
@@ -8042,8 +6906,8 @@ export type Database = {
           };
       compute_folder_heat: { Args: { p_folder_id: number }; Returns: number };
       compute_folder_profile:
-        | { Args: { p_folder_id: number; p_user_id: string }; Returns: Json }
-        | { Args: { p_folder_id: number }; Returns: undefined };
+        | { Args: { p_folder_id: number }; Returns: undefined }
+        | { Args: { p_folder_id: number; p_user_id: string }; Returns: Json };
       compute_user_folder_profiles: {
         Args: { p_user_id: string };
         Returns: number;
@@ -8078,6 +6942,19 @@ export type Database = {
           p_valid_days?: number;
         };
         Returns: Json;
+      };
+      crystallize_folder: {
+        Args: {
+          p_ai_source?: string;
+          p_bookmark_ids: number[];
+          p_folder_name: string;
+          p_user_id: string;
+        };
+        Returns: {
+          bookmarks_moved: number;
+          folder_id: number;
+          folder_name: string;
+        }[];
       };
       decrement_storage_used:
         | { Args: { target_user_id: string }; Returns: undefined }
@@ -8146,6 +7023,19 @@ export type Database = {
           title: string;
         }[];
       };
+      find_chaos_pool_neighbors: {
+        Args: {
+          p_bookmark_id: number;
+          p_limit?: number;
+          p_radius?: number;
+          p_user_id: string;
+        };
+        Returns: {
+          bookmark_id: number;
+          similarity: number;
+          title: string;
+        }[];
+      };
       find_cross_folder_connections: {
         Args: {
           p_folder_id?: number;
@@ -8209,6 +7099,22 @@ export type Database = {
           bookmark_title: string;
           folder_id: number;
           folder_name: string;
+          similarity: number;
+        }[];
+      };
+      find_similar_context_anchors: {
+        Args: {
+          p_limit: number;
+          p_query_embedding: string;
+          p_similarity_threshold: number;
+          p_user_id: string;
+        };
+        Returns: {
+          anchor_id: number;
+          anchor_metadata: Json;
+          anchor_name: string;
+          anchor_type: string;
+          bookmark_count: number;
           similarity: number;
         }[];
       };
@@ -8306,6 +7212,10 @@ export type Database = {
           title: string;
           user_tags: string[];
         }[];
+      };
+      get_chaos_pool_bookmark_ids: {
+        Args: { p_user_id: string };
+        Returns: number[];
       };
       get_chunk_stats: {
         Args: { p_user_id?: string };
@@ -8761,6 +7671,16 @@ export type Database = {
           url: string;
         }[];
       };
+      get_unified_quota_stats: {
+        Args: { p_user_id: string };
+        Returns: {
+          ai_folder_count: number;
+          empty_folder_count: number;
+          today_created_count: number;
+          total_bookmark_count: number;
+          total_folder_count: number;
+        }[];
+      };
       get_unread_message_counts: {
         Args: { p_user_id: string };
         Returns: {
@@ -8977,9 +7897,24 @@ export type Database = {
         Returns: undefined;
       };
       init_smart_list_presets: { Args: { p_user_id: string }; Returns: number };
+      initialize_folder_profiles_v5: {
+        Args: never;
+        Returns: {
+          initialized_count: number;
+          skipped_count: number;
+        }[];
+      };
       mark_bookmark_pending_cluster: {
         Args: { p_bookmark_id: number; p_user_id: string };
         Returns: boolean;
+      };
+      mark_chaos_pool_processed: {
+        Args: {
+          p_bookmark_ids: number[];
+          p_result_folder_id: number;
+          p_user_id: string;
+        };
+        Returns: number;
       };
       mark_embedding_task_completed: {
         Args: { p_task_ids: number[] };
@@ -9003,13 +7938,18 @@ export type Database = {
       };
       match_folder_profiles_v5: {
         Args: {
-          match_count: number;
-          match_threshold: number;
-          query_embedding: string;
-          query_user_id: string;
+          p_alpha: number;
+          p_behavior_embedding: string;
+          p_content_embedding: string;
+          p_match_count: number;
+          p_match_threshold: number;
+          p_user_id: string;
         };
         Returns: {
           folder_id: number;
+          folder_name: string;
+          match_type: string;
+          profile_id: string;
           similarity: number;
         }[];
       };
@@ -9144,6 +8084,14 @@ export type Database = {
             };
             Returns: boolean;
           };
+      remove_folder_alias: {
+        Args: { p_alias: string; p_folder_id: number; p_user_id: string };
+        Returns: undefined;
+      };
+      remove_folder_blacklist_tag: {
+        Args: { p_folder_id: number; p_tag: string; p_user_id: string };
+        Returns: undefined;
+      };
       remove_pending_intent: {
         Args: { p_intent: string; p_user_id: string };
         Returns: undefined;
@@ -9484,7 +8432,7 @@ export type Database = {
       update_folder_profile_incremental: {
         Args: {
           p_folder_id: number;
-          p_learning_rate?: number;
+          p_learning_rate: number;
           p_new_embedding: string;
         };
         Returns: undefined;
@@ -9571,6 +8519,9 @@ export type Database = {
           valid: boolean;
         }[];
       };
+      vector_add: { Args: { v1: string; v2: string }; Returns: string };
+      vector_scale: { Args: { s: number; v: string }; Returns: string };
+      vector_to_array: { Args: { v: string }; Returns: number[] };
       verify_bookmark_views_consistency: {
         Args: { p_user_id: string };
         Returns: {

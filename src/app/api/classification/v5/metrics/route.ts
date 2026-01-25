@@ -24,7 +24,7 @@ interface MetricRecord {
   confidence?: number;
   embedding_tokens?: number | null;
   llm_tokens?: number | null;
-  degradation_level?: number;
+  degradation_level?: number | null;
 }
 
 /**

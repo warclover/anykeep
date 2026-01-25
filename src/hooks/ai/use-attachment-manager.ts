@@ -64,20 +64,7 @@ async function fetchBookmarkContent(
     };
   }
 
-  // 3. 使用完整内容（截断）
-  if (bookmark.full_content && bookmark.full_content.trim()) {
-    const truncated =
-      bookmark.full_content.length > ATTACHMENT_LIMITS.MAX_CONTENT_LENGTH;
-    return {
-      content: truncated
-        ? bookmark.full_content.slice(0, ATTACHMENT_LIMITS.MAX_CONTENT_LENGTH) +
-          "..."
-        : bookmark.full_content,
-      source: "raw_content",
-    };
-  }
-
-  // 4. 实时抓取（如果有 URL）
+  // 3. 实时抓取（如果有 URL）
   if (bookmark.url) {
     try {
       const response = await fetch(API_PATHS.bookmarks.fetchContent, {
@@ -471,7 +458,7 @@ export function useAttachmentManager({
   // 清空所有
   const clearAll = useCallback(() => {
     setAttachments([]);
-  }, []);
+  }, [setAttachments]);
 
   return {
     attachments,

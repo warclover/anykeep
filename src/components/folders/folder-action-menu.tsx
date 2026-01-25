@@ -52,10 +52,7 @@ import { DeleteFolderDialog } from "./delete-folder-dialog";
 import { useAbortableFetch } from "@/hooks/core";
 import { useUser } from "@/contexts/user-context";
 import { folderCacheInvalidation } from "@/lib/cache";
-import type {
-  Folder as FolderType,
-  FolderGroup,
-} from "@/types/supabase";
+import type { Folder as FolderType, FolderGroup } from "@/types/supabase";
 
 /** UI 显示用的文件夹分组键类型 */
 type UIFolderDisplayGroup =
@@ -75,6 +72,12 @@ type FolderWithCount = FolderType & {
   is_archived?: boolean | null;
   folder_group?: string | null;
   sort_order?: number | null;
+  // Crystal Growth 相关字段（支持 undefined）
+  ai_generation_source?: string | null | undefined;
+  crystal_birth_time?: string | null | undefined;
+  is_ai_generated?: boolean | null | undefined;
+  is_naming_pending?: boolean | null | undefined;
+  origin_bookmark_ids?: number[] | null | undefined;
 };
 
 /**
@@ -221,7 +224,9 @@ export function FolderActionMenu({
         throw new Error(data.error?.message || "移动失败");
       }
 
-      toast.success(`已移至「${FOLDER_GROUPS[newGroup as UIFolderDisplayGroup]?.label ?? newGroup}」`);
+      toast.success(
+        `已移至「${FOLDER_GROUPS[newGroup as UIFolderDisplayGroup]?.label ?? newGroup}」`,
+      );
       // 清除文件夹缓存
       if (user?.id) {
         folderCacheInvalidation.onFolderGroupChange(user.id);
@@ -652,7 +657,8 @@ export function FolderActionMenu({
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent>
               {VALID_FOLDER_GROUPS.map((groupKey) => {
-                const groupConfig = FOLDER_GROUPS[groupKey as UIFolderDisplayGroup];
+                const groupConfig =
+                  FOLDER_GROUPS[groupKey as UIFolderDisplayGroup];
                 if (!groupConfig) return null;
                 const GroupIcon = groupConfig.icon;
                 const isCurrent = folder.folder_group === groupKey;

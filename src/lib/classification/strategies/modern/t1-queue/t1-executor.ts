@@ -8,8 +8,8 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { LoggerService } from "../shared/logger";
-import type { ClassificationRequest } from "../classification-pipeline/types";
-import { ClassificationPipelineService } from "../classification-pipeline";
+import type { ClassificationRequest } from "@/lib/classification/strategies/classification-pipeline/types";
+import { ClassificationPipelineService } from "@/lib/classification/strategies/classification-pipeline";
 import { T1QueueService } from "./t1-queue.service";
 import { DashScopeEmbeddingAdapter } from "../shared/embedding";
 import { VectorSearchService } from "../shared/vector-search";

@@ -95,7 +95,7 @@ export function BatchTagDialog({
   // 推荐标签（预设 + 自定义）
   const recommendedTags = useMemo(() => {
     const presetTagNames = USAGE_TAG_PRESETS.map((t) => t.label);
-    const customTagNames = customTags.map((t) => t.label || t.name || t.value);
+    const customTagNames = customTags.map((t) => t.label || t.value);
     return [...new Set([...presetTagNames, ...customTagNames])];
   }, [customTags]);
 

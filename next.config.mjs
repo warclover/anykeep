@@ -11,7 +11,7 @@ const nextConfig = {
   // 注意：Next.js 不允许修改 devtool，会自动恢复为 eval-source-map
 
   // V4.2.28: 将 ws 包排除在 webpack 打包外，解决 bufferUtil.mask 兼容性问题
-  serverExternalPackages: ['ws', 'bufferutil', 'utf-8-validate'],
+  serverExternalPackages: ['ws', 'bufferutil', 'utf-8-validate', 'puppeteer'],
 
   // V4.2.28: Webpack 配置 - 确保 ws 相关包在服务端不被打包
   webpack: (config, { isServer }) => {

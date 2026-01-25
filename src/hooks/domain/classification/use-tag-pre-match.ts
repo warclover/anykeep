@@ -11,7 +11,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useUser } from "@/hooks/use-user";
+import { useUser } from "@/hooks/data/use-user";
 import { createClient } from "@/lib/supabase/client";
 import {
   TagPreMatcher,
@@ -120,7 +120,6 @@ export function useTagPreMatch(
         `
         folder_id,
         core_tags,
-        aliases,
         folders!inner(id, name)
       `,
       )
@@ -135,22 +134,22 @@ export function useTagPreMatch(
     if (!matcher) return [];
 
     return (data || []).map((row) => {
-      const folderData = Array.isArray(row.folders)
-        ? row.folders[0]
-        : row.folders;
+      const folderData = Array.isArray((row as Record<string, unknown>).folders)
+        ? (
+            (row as Record<string, unknown>).folders as Array<{ name: string }>
+          )[0]
+        : (row as Record<string, unknown>).folders;
       const name = (folderData as { name: string })?.name || "";
       const normalizedName = matcher.normalize(name);
 
       return {
-        id: row.folder_id.toString(),
+        id: ((row as Record<string, unknown>).folder_id as number).toString(),
         name,
         normalizedName,
-        aliases: ((row.aliases as string[]) || []).map((a) =>
-          matcher.normalize(a),
-        ),
-        coreTags: ((row.core_tags as string[]) || []).map((t) =>
-          matcher.normalize(t),
-        ),
+        aliases: [] as string[],
+        coreTags: (
+          ((row as Record<string, unknown>).core_tags as string[]) || []
+        ).map((t) => matcher.normalize(t)),
       };
     });
   }, [userId]);

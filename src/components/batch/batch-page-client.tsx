@@ -174,14 +174,14 @@ export function BatchPageClient() {
       router.push(`/synthesis/${data.id}?generate=true`);
     } catch (error) {
       console.error("Create synthesis error:", error);
-      // 使用 toast 显示错误提示
-      const { toast } = await import("@/hooks/use-toast");
-      toast({
-        title: "创建失败",
-        description:
-          error instanceof Error ? error.message : "创建综述时发生错误",
-        variant: "destructive",
-      });
+      // 使用 toastService 显示错误提示
+      const { toastService } = await import(
+        "@/lib/notifications/toast/toast.service"
+      );
+      toastService.error(
+        "创建失败",
+        error instanceof Error ? error.message : "创建综述时发生错误",
+      );
     } finally {
       setIsCreatingSynthesis(false);
       setIsSynthesisDialogOpen(false);
