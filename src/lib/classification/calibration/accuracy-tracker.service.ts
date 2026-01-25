@@ -159,7 +159,8 @@ export class AccuracyTrackerService {
     }> = [];
 
     const { data: metrics } = await supabase
-      .from("classification_metrics")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .from("classification_metrics" as any)
       .select("folder_id, confidence, user_feedback, created_at")
       .eq("user_id", userId)
       .not("user_feedback", "is", null)
@@ -206,7 +207,8 @@ export class AccuracyTrackerService {
       calibrationCurve,
       reliability,
       timeRange: {
-        start: outcomes[outcomes.length - 1]?.created_at || new Date().toISOString(),
+        start:
+          outcomes[outcomes.length - 1]?.created_at || new Date().toISOString(),
         end: outcomes[0]?.created_at || new Date().toISOString(),
       },
     };
@@ -228,7 +230,8 @@ export class AccuracyTrackerService {
       // 使用 classification_metrics 表记录
       // 首先查找该书签的最近一条记录
       const { data: existingRecord } = await supabase
-        .from("classification_metrics")
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .from("classification_metrics" as any)
         .select("id")
         .eq("user_id", outcome.userId)
         .eq("bookmark_id", outcome.bookmarkId)
@@ -240,7 +243,8 @@ export class AccuracyTrackerService {
       if (existingRecord) {
         // 更新现有记录
         await supabase
-          .from("classification_metrics")
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .from("classification_metrics" as any)
           .update({
             user_feedback: outcome.isCorrect ? "accept" : "reject",
             feedback_at: outcome.timestamp,
@@ -275,7 +279,8 @@ export class AccuracyTrackerService {
 
       // 更新 classification_metrics 表
       await supabase
-        .from("classification_metrics")
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .from("classification_metrics" as any)
         .update({
           user_feedback: isCorrect ? "accept" : "reject",
           feedback_at: new Date().toISOString(),
@@ -397,9 +402,11 @@ export class AccuracyTrackerService {
   /**
    * 计算全局准确率
    */
-  private calculateGlobalAccuracy(
-    outcomes: Array<{ is_correct: boolean }>,
-  ): { accuracy: number; total: number; correct: number } {
+  private calculateGlobalAccuracy(outcomes: Array<{ is_correct: boolean }>): {
+    accuracy: number;
+    total: number;
+    correct: number;
+  } {
     const total = outcomes.length;
     const correct = outcomes.filter((o) => o.is_correct).length;
     return {
@@ -503,7 +510,9 @@ export class AccuracyTrackerService {
       });
     }
 
-    return folderAccuracies.sort((a, b) => b.totalPredictions - a.totalPredictions);
+    return folderAccuracies.sort(
+      (a, b) => b.totalPredictions - a.totalPredictions,
+    );
   }
 
   /**

@@ -33,7 +33,7 @@ import type {
 import { preferenceLearner } from "@/lib/classification/learning/preference-learner";
 import { logger } from "@/lib/logger";
 import { folderExecutorService, type ExecutionResult } from "@/lib/folder";
-import { BookmarkRepository } from "@/lib/classification/repositories/bookmark.repository";
+import { BookmarkRepository } from "@/repositories/bookmark.repository";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 // ============================================================================
@@ -476,8 +476,11 @@ class ConfirmationService {
               // 执行分类操作：将书签移动到建议的文件夹
               try {
                 const supabase = await createServerSupabaseClient();
-                const bookmarkRepository = new BookmarkRepository(supabase);
-                await bookmarkRepository.moveToFolder(
+                const bookmarkRepository = new BookmarkRepository(
+                  supabase,
+                  confirmation.user_id,
+                );
+                await bookmarkRepository.batchMoveToFolder(
                   [confirmation.bookmark_id],
                   suggestion.folderId,
                 );

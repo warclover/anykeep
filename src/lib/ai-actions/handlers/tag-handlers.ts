@@ -8,9 +8,10 @@
  * @since 2025-12-25
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any -- Supabase query result types require any for nested joins */
-
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type {
+  SupabaseClient,
+  PostgrestFilterBuilder,
+} from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
 import type { AIActionResult, BookmarkBrief, TagBrief } from "../types";
 import type { BookmarkRow as BaseBookmarkRow } from "@/types/domain";
@@ -34,6 +35,38 @@ type BookmarkRowWithFolder = Pick<
   folders?: { name: string } | null;
 };
 
+// Query Builder Types
+type BookmarkTagsQueryBuilder = PostgrestFilterBuilder<
+  Database["public"],
+  Database["public"]["Tables"]["bookmarks"]["Row"],
+  BookmarkTagsRow[],
+  "bookmarks",
+  Database["public"]["Tables"]["bookmarks"]["Relationships"]
+>;
+
+type BookmarkWithFolderQueryBuilder = PostgrestFilterBuilder<
+  Database["public"],
+  Database["public"]["Tables"]["bookmarks"]["Row"],
+  BookmarkRowWithFolder[],
+  "bookmarks",
+  Database["public"]["Tables"]["bookmarks"]["Relationships"]
+>;
+
+// Helpers
+function createBookmarkTagsQuery(supabase: SupabaseClientType) {
+  return supabase
+    .from("bookmarks")
+    .select("user_tags") as unknown as BookmarkTagsQueryBuilder;
+}
+
+function createBookmarkWithFolderQuery(supabase: SupabaseClientType) {
+  return supabase
+    .from("bookmarks")
+    .select(
+      "id, title, url, description, user_tags, platform, rating, created_at, folders!bookmarks_folder_id_fkey(name)",
+    ) as unknown as BookmarkWithFolderQueryBuilder;
+}
+
 // ============================================================================
 // 标签读取操作
 // ============================================================================
@@ -46,13 +79,9 @@ export async function tagList(
   const { limit = 50 } = params as { limit?: number };
 
   // 使用聚合查询获取标签和计数
-  const { data, error } = (await (supabase.from("bookmarks") as any)
-    .select("user_tags")
+  const { data, error } = await createBookmarkTagsQuery(supabase)
     .eq("user_id", userId)
-    .is("deleted_at", null)) as {
-    data: BookmarkTagsRow[] | null;
-    error: Error | null;
-  };
+    .is("deleted_at", null);
 
   if (error) {
     return { success: false, error: error.message, errorCode: "DB_ERROR" };
@@ -85,18 +114,12 @@ export async function tagBookmarks(
 ): Promise<AIActionResult<BookmarkBrief[]>> {
   const { tag, limit = 20 } = params as { tag: string; limit?: number };
 
-  const { data, error } = (await (supabase.from("bookmarks") as any)
-    .select(
-      "id, title, url, description, user_tags, platform, rating, created_at, folders!bookmarks_folder_id_fkey(name)",
-    )
+  const { data, error } = await createBookmarkWithFolderQuery(supabase)
     .eq("user_id", userId)
     .is("deleted_at", null)
     .contains("user_tags", [tag])
     .order("created_at", { ascending: false })
-    .limit(limit)) as {
-    data: BookmarkRowWithFolder[] | null;
-    error: Error | null;
-  };
+    .limit(limit);
 
   if (error) {
     return { success: false, error: error.message, errorCode: "DB_ERROR" };
@@ -138,13 +161,12 @@ export async function tagAdd(
   };
 
   // 先获取现有标签
-  const { data: existing, error: fetchError } = (await (
-    supabase.from("bookmarks") as any
+  const { data: existing, error: fetchError } = await createBookmarkTagsQuery(
+    supabase,
   )
-    .select("user_tags")
     .eq("id", bookmarkId)
     .eq("user_id", userId)
-    .single()) as { data: BookmarkTagsRow | null; error: Error | null };
+    .single();
 
   if (fetchError) {
     return {
@@ -158,7 +180,8 @@ export async function tagAdd(
   const existingTags = existing?.user_tags || [];
   const newTags = [...new Set([...existingTags, ...tags])];
 
-  const { error } = await (supabase.from("bookmarks") as any)
+  const { error } = await supabase
+    .from("bookmarks")
     .update({ user_tags: newTags })
     .eq("id", bookmarkId)
     .eq("user_id", userId);
@@ -186,13 +209,12 @@ export async function tagRemove(
   };
 
   // 先获取现有标签
-  const { data: existing, error: fetchError } = (await (
-    supabase.from("bookmarks") as any
+  const { data: existing, error: fetchError } = await createBookmarkTagsQuery(
+    supabase,
   )
-    .select("user_tags")
     .eq("id", bookmarkId)
     .eq("user_id", userId)
-    .single()) as { data: BookmarkTagsRow | null; error: Error | null };
+    .single();
 
   if (fetchError) {
     return {
@@ -206,7 +228,8 @@ export async function tagRemove(
   const existingTags = existing?.user_tags || [];
   const newTags = existingTags.filter((t: string) => !tags.includes(t));
 
-  const { error } = await (supabase.from("bookmarks") as any)
+  const { error } = await supabase
+    .from("bookmarks")
     .update({ user_tags: newTags })
     .eq("id", bookmarkId)
     .eq("user_id", userId);

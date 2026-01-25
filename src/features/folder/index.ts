@@ -88,11 +88,7 @@ export {
 // Repository - 数据仓库
 // ============================================================================
 
-export {
-  folderRepository,
-  useFolderTree,
-} from "@/lib/repositories/folder.repository";
-export type { FolderRepository } from "@/lib/repositories/folder.repository";
+export { useFolderTree } from "@/hooks/queries/use-folders-query";
 
 // ============================================================================
 // Types - 公共类型

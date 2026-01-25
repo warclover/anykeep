@@ -28,7 +28,7 @@ const mockSupabaseClient = {
   single: jest.fn(),
   gte: jest.fn().mockReturnThis(),
   lt: jest.fn().mockReturnThis(),
-};
+} as any;
 
 // Mock modules before imports
 jest.mock("@/lib/supabase/server", () => ({

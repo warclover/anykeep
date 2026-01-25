@@ -12,7 +12,7 @@
  * @module classification/repositories
  */
 
-export * from "./bookmark.repository";
+export { BookmarkRepository } from "@/repositories/bookmark.repository";
 export * from "./decision.repository";
 export * from "./folder-profile.repository";
 export * from "./interest.repository";

@@ -922,15 +922,6 @@ export const FEATURE_FLAG_REGISTRY: FeatureFlagDefinition[] = [
     ],
   },
   {
-    name: "ENABLE_HYBRID_INTENT_CLASSIFIER",
-    description: "混合意图分类器（已废弃，使用 IntentAnalyzer）",
-    defaultValue: false,
-    module: "intent",
-    phase: "deprecated",
-    addedVersion: "2.6.0",
-    integrationPoints: [],
-  },
-  {
     name: "ENABLE_RULE_LEARNING",
     description: "规则学习",
     defaultValue: false,

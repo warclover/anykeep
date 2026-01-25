@@ -158,6 +158,42 @@ export interface Database {
         };
         Relationships: [];
       };
+      classification_metrics: {
+        Row: {
+          id: number;
+          user_id: string;
+          bookmark_id: number;
+          folder_id: number | null;
+          confidence: number;
+          user_feedback: string | null;
+          feedback_at: string | null;
+          created_at: string;
+          [key: string]: any;
+        };
+        Insert: {
+          id?: number;
+          user_id: string;
+          bookmark_id: number;
+          folder_id?: number | null;
+          confidence: number;
+          user_feedback?: string | null;
+          feedback_at?: string | null;
+          created_at?: string;
+          [key: string]: any;
+        };
+        Update: {
+          id?: number;
+          user_id?: string;
+          bookmark_id?: number;
+          folder_id?: number | null;
+          confidence?: number;
+          user_feedback?: string | null;
+          feedback_at?: string | null;
+          created_at?: string;
+          [key: string]: any;
+        };
+        Relationships: [];
+      };
       browser_bookmarks: {
         Row: {
           id: string;

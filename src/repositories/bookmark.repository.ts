@@ -10,6 +10,35 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
 import type { PaginatedResult } from "./base.repository";
 import { BaseRepository } from "./base.repository";
+import { z } from "zod";
+
+// Schema definitions moved/adapted from classification module
+export const SimilarBookmarkRowSchema = z.object({
+  bookmark_id: z.number(),
+  bookmark_title: z.string(),
+  folder_id: z.number().nullable(),
+  folder_name: z.string().nullable(),
+  similarity: z.number(),
+});
+
+export interface SimilarBookmarkWithFolder {
+  bookmarkId: number;
+  bookmarkTitle: string;
+  folderId: number | null;
+  folderName: string | null;
+  similarity: number;
+}
+
+export interface BookmarkForClassification {
+  id: number;
+  title: string;
+  url: string;
+  aiSummary: string | null;
+  aiTags: string[];
+  embedding: number[] | null;
+  folderId: number | null;
+  createdAt: Date;
+}
 
 // Type aliases for convenience
 type BookmarkRow = Database["public"]["Tables"]["bookmarks"]["Row"];
@@ -596,5 +625,183 @@ export class BookmarkRepository extends BaseRepository<
     }
 
     return { total, unread, starred, inTrash, byPlatform };
+  }
+
+  // ============================================================================
+  // Classification specific methods
+  // ============================================================================
+
+  /**
+   * Find similar bookmarks with their folder info
+   * @param excludeBookmarkId - 可选，排除指定书签（避免自匹配）
+   */
+  async findSimilarWithFolders(
+    embedding: number[],
+    limit: number = 10,
+    excludeBookmarkId?: number,
+  ): Promise<SimilarBookmarkWithFolder[]> {
+    // 多请求一个结果，以便在过滤后仍有足够数量
+    const fetchCount = excludeBookmarkId ? limit + 1 : limit;
+
+    const { data, error } = await this.supabase.rpc(
+      "find_similar_bookmarks_with_folders",
+      {
+        query_embedding: embedding,
+        p_user_id: this.userId,
+        match_count: fetchCount,
+      },
+    );
+
+    if (error) {
+      this.logger.error({ error }, "Failed to find similar bookmarks");
+      throw error;
+    }
+
+    // 运行时验证数据库返回结果
+    try {
+      const rows = data || [];
+      const validatedRows = rows.map((row: unknown, index: number) => {
+        const result = SimilarBookmarkRowSchema.safeParse(row);
+        if (!result.success) {
+          throw new Error(
+            `Invalid row at index ${index}: ${result.error.message}`,
+          );
+        }
+        return result.data;
+      });
+
+      let results: SimilarBookmarkWithFolder[] = validatedRows.map((row) => ({
+        bookmarkId: row.bookmark_id,
+        bookmarkTitle: row.bookmark_title,
+        folderId: row.folder_id,
+        folderName: row.folder_name,
+        similarity: row.similarity,
+      }));
+
+      // 排除当前书签（避免自匹配）
+      if (excludeBookmarkId) {
+        results = results.filter((r) => r.bookmarkId !== excludeBookmarkId);
+      }
+
+      return results.slice(0, limit);
+    } catch (error) {
+      this.logger.error({ error }, "Failed to parse similar bookmarks");
+      throw error;
+    }
+  }
+
+  /**
+   * Get bookmarks in inbox (no folder or in inbox system folder)
+   */
+  async findInboxBookmarks(): Promise<BookmarkForClassification[]> {
+    // First get inbox folder ID
+    const { data: inboxFolder } = await this.supabase
+      .from("folders")
+      .select("id")
+      .eq("user_id", this.userId)
+      .eq("is_system", true)
+      .eq("system_type", "INBOX")
+      .is("deleted_at", null)
+      .single();
+
+    // Query bookmarks without folder OR in inbox folder
+    let query = this.supabase
+      .from(this.tableName)
+      .select(
+        "id, title, url, ai_summary, ai_tags, embedding, folder_id, created_at",
+      )
+      .eq("user_id", this.userId)
+      .is("deleted_at", null);
+
+    if (inboxFolder) {
+      query = query.or(`folder_id.is.null,folder_id.eq.${inboxFolder.id}`);
+    } else {
+      query = query.is("folder_id", null);
+    }
+
+    // V4.2.15: 添加 LIMIT 限制，防止大量数据导致性能问题
+    const { data, error } = await query
+      .order("created_at", { ascending: false })
+      .limit(200);
+
+    if (error) {
+      this.logger.error({ error }, "Failed to fetch inbox bookmarks");
+      throw error;
+    }
+
+    return (data || []).map(this.mapToBookmarkForClassification);
+  }
+
+  /**
+   * Get bookmarks by folder ID (Classification version)
+   */
+  async findByFolderIdForClassification(
+    folderId: number,
+  ): Promise<BookmarkForClassification[]> {
+    const { data, error } = await this.supabase
+      .from(this.tableName)
+      .select(
+        "id, title, url, ai_summary, ai_tags, embedding, folder_id, created_at",
+      )
+      .eq("folder_id", folderId)
+      .eq("user_id", this.userId)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      this.logger.error(
+        { error, folderId },
+        "Failed to fetch folder bookmarks for classification",
+      );
+      throw error;
+    }
+
+    return (data || []).map(this.mapToBookmarkForClassification);
+  }
+
+  /**
+   * Get bookmark embeddings by IDs
+   */
+  async getEmbeddings(bookmarkIds: number[]): Promise<Map<number, number[]>> {
+    const { data, error } = await this.supabase
+      .from(this.tableName)
+      .select("id, embedding")
+      .in("id", bookmarkIds)
+      .eq("user_id", this.userId)
+      .is("deleted_at", null)
+      .not("embedding", "is", null);
+
+    if (error) {
+      this.logger.error({ error, bookmarkIds }, "Failed to fetch embeddings");
+      throw error;
+    }
+
+    const embeddings = new Map<number, number[]>();
+    for (const row of data || []) {
+      if (row.embedding) {
+        // Explicitly cast the JSONB/array to number[]
+        const emb = row.embedding as unknown as number[];
+        embeddings.set(row.id, emb);
+      }
+    }
+    return embeddings;
+  }
+
+  /**
+   * Map database row to BookmarkForClassification
+   */
+  private mapToBookmarkForClassification(
+    row: BookmarkRow,
+  ): BookmarkForClassification {
+    return {
+      id: row.id,
+      title: row.title,
+      url: row.url,
+      aiSummary: row.ai_summary,
+      aiTags: row.ai_tags || [],
+      embedding: row.embedding,
+      folderId: row.folder_id,
+      createdAt: new Date(row.created_at),
+    };
   }
 }

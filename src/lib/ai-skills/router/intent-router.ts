@@ -21,7 +21,6 @@
 import { logger } from "@/lib/logger";
 import type { IntentClassifier } from "./intent-classifier";
 import { createIntentClassifier } from "./intent-classifier";
-import { HybridIntentClassifier } from "./hybrid-intent-classifier";
 import type { ComplexityEvaluator } from "./complexity-evaluator";
 import { createComplexityEvaluator } from "./complexity-evaluator";
 import type { ModeSelector } from "./mode-selector";
@@ -41,7 +40,6 @@ import type {
   ComplexityEvaluatorConfig,
 } from "./types";
 import { FeatureFlags } from "@/lib/ai-agent/config/feature-flags";
-import { DEFAULT_RULES } from "./intent-classifier";
 import {
   getIntentCache,
   type IntentCache,
@@ -100,13 +98,11 @@ export interface IntentRouterConfig extends RouterConfig {
  * ```
  */
 export class IntentRouter {
-  private classifier: IntentClassifier | HybridIntentClassifier;
-  private hybridClassifier: HybridIntentClassifier | null = null;
+  private classifier: IntentClassifier;
   private evaluator: ComplexityEvaluator;
   private selector: ModeSelector;
   private config: IntentRouterConfig;
   private metricsAggregator: RouteMetricsAggregator | null = null;
-  private isHybridMode: boolean;
   private intentCache: IntentCache;
   private semanticCache: SemanticCache;
   // Phase 3: 置信度校准与反馈收集
@@ -127,21 +123,8 @@ export class IntentRouter {
     this.intentCache = getIntentCache();
     this.semanticCache = getSemanticCache();
 
-    // 根据 Feature Flag 选择分类器
-    this.isHybridMode = FeatureFlags.ENABLE_HYBRID_INTENT_CLASSIFIER;
-
-    if (this.isHybridMode) {
-      // 使用混合分类器
-      this.hybridClassifier = new HybridIntentClassifier({
-        ...config.classifier,
-        enableSemanticMatching: true,
-        debug: this.config.debug,
-      });
-      this.classifier = this.hybridClassifier;
-    } else {
-      // 使用传统分类器
-      this.classifier = createIntentClassifier(config.classifier);
-    }
+    // 使用标准分类器
+    this.classifier = createIntentClassifier(config.classifier);
 
     this.evaluator = createComplexityEvaluator(config.evaluator);
     this.selector = createModeSelector(config.selector);
@@ -157,13 +140,11 @@ export class IntentRouter {
   }
 
   /**
-   * 初始化混合分类器（如果启用）
-   * 应在应用启动时调用一次
+   * 初始化混合分类器（已废弃）
+   * @deprecated 混合分类器已被移除
    */
   async initializeHybridClassifier(): Promise<void> {
-    if (this.isHybridMode && this.hybridClassifier) {
-      await this.hybridClassifier.initialize(DEFAULT_RULES);
-    }
+    // No-op
   }
 
   /**
@@ -502,19 +483,7 @@ export class IntentRouter {
 
       // Step 1: 意图分类
       collector.startStage("classification");
-      let intent;
-      if (this.isHybridMode && this.hybridClassifier) {
-        // 混合分类器需要上下文
-        intent = await this.hybridClassifier.classify(request.message, {
-          input: request.message,
-          messageHistory: request.context.messageHistory,
-          selectedBookmarks: request.context.bookmarkIds,
-          currentFolder: request.context.folderId,
-        });
-      } else {
-        // 传统分类器
-        intent = await this.classifier.classify(request.message);
-      }
+      let intent = await this.classifier.classify(request.message);
       collector.endStage("classification");
 
       // 记录分类相关指标
@@ -744,7 +713,7 @@ export class IntentRouter {
   /**
    * 获取意图分类器（用于高级定制）
    */
-  getClassifier(): IntentClassifier | HybridIntentClassifier {
+  getClassifier(): IntentClassifier {
     return this.classifier;
   }
 

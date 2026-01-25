@@ -503,15 +503,6 @@ export const FeatureFlags = {
   },
 
   /**
-   * 是否启用混合意图分类器（规则 + 语义匹配）
-   * @default false
-   * @description Phase 1: 混合意图识别，提升准确率到 ~85%
-   */
-  get ENABLE_HYBRID_INTENT_CLASSIFIER(): boolean {
-    return process.env.ENABLE_HYBRID_INTENT_CLASSIFIER === "true";
-  },
-
-  /**
    * 是否启用规则学习
    * @default false
    * @description 从用户纠正行为中自动学习规则
