@@ -8,7 +8,7 @@ import type { MatchResult, MatcherContext, HistoryMatchDetail } from "../types";
 import {
   CLASSIFICATION_WEIGHTS,
   CLASSIFICATION_THRESHOLDS,
-} from "../constants";
+} from "../../constants/limits";
 import type { BookmarkRepository } from "../repositories";
 
 /**

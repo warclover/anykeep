@@ -114,7 +114,8 @@ export class SynonymDetector {
 
     for (let i = 0; i < folderIds.length; i++) {
       const folderId1 = folderIds[i];
-      const embedding1 = embeddings.get(folderId1)!;
+      const embedding1 = embeddings.get(folderId1);
+      if (!embedding1) continue;
 
       if (!matrix.has(folderId1)) {
         matrix.set(folderId1, new Map());
@@ -122,16 +123,17 @@ export class SynonymDetector {
 
       for (let j = i + 1; j < folderIds.length; j++) {
         const folderId2 = folderIds[j];
-        const embedding2 = embeddings.get(folderId2)!;
+        const embedding2 = embeddings.get(folderId2);
+        if (!embedding2) continue;
 
         const similarity = this.cosineSimilarity(embedding1, embedding2);
 
-        matrix.get(folderId1)!.set(folderId2, similarity);
+        matrix.get(folderId1)?.set(folderId2, similarity);
 
         if (!matrix.has(folderId2)) {
           matrix.set(folderId2, new Map());
         }
-        matrix.get(folderId2)!.set(folderId1, similarity);
+        matrix.get(folderId2)?.set(folderId1, similarity);
       }
     }
 
@@ -142,6 +144,11 @@ export class SynonymDetector {
    * 余弦相似度计算
    */
   private cosineSimilarity(vec1: number[], vec2: number[]): number {
+    if (!vec1 || !vec2) {
+      this.logger.warn("向量为空，��法计算相似度");
+      return 0;
+    }
+
     if (vec1.length !== vec2.length) {
       throw new Error("向量维度不匹配");
     }

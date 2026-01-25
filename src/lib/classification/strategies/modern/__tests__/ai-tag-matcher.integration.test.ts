@@ -13,6 +13,18 @@ import { FolderTagProfilerService } from "../folder-tag-profiler.service";
 import type { ClassificationRequest } from "../types";
 
 // Mock Supabase client
+const createMockBuilder = (data: any) => {
+  const mockBuilder: any = {
+    select: jest.fn().mockReturnThis(),
+    eq: jest.fn().mockReturnThis(),
+    single: jest.fn().mockResolvedValue({ data, error: null }),
+    then: (resolve: any) => {
+      resolve({ data, error: null });
+    },
+  };
+  return mockBuilder;
+};
+
 const mockSupabase = {
   from: jest.fn(),
 };
@@ -47,13 +59,17 @@ describe("AiTagMatcher Integration Tests", () => {
         },
       ];
 
-      mockSupabase.from.mockReturnValue({
-        select: jest.fn().mockReturnValue({
-          eq: jest.fn().mockResolvedValue({
-            data: mockProfiles,
-            error: null,
-          }),
-        }),
+      // 模拟简单的 alias 响应
+      const mockAliasResponse = { aliases: [] };
+
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === "folder_tag_profiles") {
+          return createMockBuilder(mockProfiles);
+        }
+        if (table === "folder_aliases") {
+          return createMockBuilder(mockAliasResponse);
+        }
+        return createMockBuilder([]);
       });
 
       // 测试请求
@@ -88,13 +104,11 @@ describe("AiTagMatcher Integration Tests", () => {
         },
       ];
 
-      mockSupabase.from.mockReturnValue({
-        select: jest.fn().mockReturnValue({
-          eq: jest.fn().mockResolvedValue({
-            data: mockProfiles,
-            error: null,
-          }),
-        }),
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === "folder_tag_profiles") {
+          return createMockBuilder(mockProfiles);
+        }
+        return createMockBuilder({ aliases: [] }); // default
       });
 
       const request: ClassificationRequest = {
@@ -126,13 +140,11 @@ describe("AiTagMatcher Integration Tests", () => {
         },
       ];
 
-      mockSupabase.from.mockReturnValue({
-        select: jest.fn().mockReturnValue({
-          eq: jest.fn().mockResolvedValue({
-            data: mockProfiles,
-            error: null,
-          }),
-        }),
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === "folder_tag_profiles") {
+          return createMockBuilder(mockProfiles);
+        }
+        return createMockBuilder({ aliases: [] });
       });
 
       const request: ClassificationRequest = {
@@ -163,13 +175,11 @@ describe("AiTagMatcher Integration Tests", () => {
         },
       ];
 
-      mockSupabase.from.mockReturnValue({
-        select: jest.fn().mockReturnValue({
-          eq: jest.fn().mockResolvedValue({
-            data: mockProfiles,
-            error: null,
-          }),
-        }),
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === "folder_tag_profiles") {
+          return createMockBuilder(mockProfiles);
+        }
+        return createMockBuilder({ aliases: [] });
       });
 
       const request: ClassificationRequest = {
@@ -213,13 +223,11 @@ describe("AiTagMatcher Integration Tests", () => {
         },
       ];
 
-      mockSupabase.from.mockReturnValue({
-        select: jest.fn().mockReturnValue({
-          eq: jest.fn().mockResolvedValue({
-            data: mockProfiles,
-            error: null,
-          }),
-        }),
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === "folder_tag_profiles") {
+          return createMockBuilder(mockProfiles);
+        }
+        return createMockBuilder({ aliases: [] });
       });
 
       // 第一次调用
@@ -243,13 +251,11 @@ describe("AiTagMatcher Integration Tests", () => {
         },
       ];
 
-      mockSupabase.from.mockReturnValue({
-        select: jest.fn().mockReturnValue({
-          eq: jest.fn().mockResolvedValue({
-            data: mockProfiles,
-            error: null,
-          }),
-        }),
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === "folder_tag_profiles") {
+          return createMockBuilder(mockProfiles);
+        }
+        return createMockBuilder({ aliases: [] });
       });
 
       // 第一次调用

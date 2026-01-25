@@ -190,9 +190,21 @@ describe("FolderSuggester", () => {
 
     it("应该检测过度分散", () => {
       const folderStatsList = [
-        createFolderStats({ folderId: "folder-1", bookmarkCount: 1 }),
-        createFolderStats({ folderId: "folder-2", bookmarkCount: 1 }),
-        createFolderStats({ folderId: "folder-3", bookmarkCount: 1 }),
+        createFolderStats({
+          folderId: "folder-1",
+          bookmarkCount: 1,
+          userCorrectionCount: 0,
+        }),
+        createFolderStats({
+          folderId: "folder-2",
+          bookmarkCount: 1,
+          userCorrectionCount: 0,
+        }),
+        createFolderStats({
+          folderId: "folder-3",
+          bookmarkCount: 1,
+          userCorrectionCount: 0,
+        }),
       ];
       const userStats = createUserStats({
         totalFolders: 60, // 60 文件夹 / 100 书签 = 0.6 > 0.5

@@ -145,15 +145,16 @@ describe("T0Generator", () => {
       expect(result.candidates[2].similarity).toBe(0.8);
     });
 
-    it("应该在检索结果为空时抛出错误", async () => {
+    it("应该在检索结果为空时降级到收件箱", async () => {
       mockL0Matcher.match.mockReturnValueOnce({ matched: false });
       mockHybridRetriever.retrieve.mockResolvedValueOnce([]);
 
       const request = createMockRequest();
 
-      await expect(generator.generate(request)).rejects.toThrow(
-        "No folders found for classification",
-      );
+      const result = await generator.generate(request);
+
+      expect(result.folderId).toBe("inbox");
+      expect(result.confidence).toBe(0);
     });
 
     it("应该正确计算延迟时间", async () => {

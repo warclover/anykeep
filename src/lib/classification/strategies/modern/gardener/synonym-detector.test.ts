@@ -84,8 +84,8 @@ describe("SynonymDetector", () => {
 
       // Mock 高相似度向量
       (mockEmbeddingService.generateEmbedding as jest.Mock)
-        .mockResolvedValueOnce([1, 0, 0])
-        .mockResolvedValueOnce([0.95, 0.1, 0.05]);
+        .mockResolvedValueOnce({ embedding: [1, 0, 0] })
+        .mockResolvedValueOnce({ embedding: [0.95, 0.1, 0.05] });
 
       const result = await detector.detect(folders);
 
@@ -111,8 +111,8 @@ describe("SynonymDetector", () => {
 
       // Mock 低相似度向量
       (mockEmbeddingService.generateEmbedding as jest.Mock)
-        .mockResolvedValueOnce([1, 0, 0])
-        .mockResolvedValueOnce([0, 1, 0]);
+        .mockResolvedValueOnce({ embedding: [1, 0, 0] })
+        .mockResolvedValueOnce({ embedding: [0, 1, 0] });
 
       const result = await detector.detect(folders);
 
@@ -126,7 +126,7 @@ describe("SynonymDetector", () => {
       ];
 
       (mockEmbeddingService.generateEmbedding as jest.Mock)
-        .mockResolvedValueOnce([1, 0, 0])
+        .mockResolvedValueOnce({ embedding: [1, 0, 0] })
         .mockRejectedValueOnce(new Error("Embedding failed"));
 
       const result = await detector.detect(folders);
@@ -150,8 +150,8 @@ describe("SynonymDetector", () => {
       ];
 
       (mockEmbeddingService.generateEmbedding as jest.Mock)
-        .mockResolvedValueOnce([1, 0, 0])
-        .mockResolvedValueOnce([0.95, 0.1, 0.05]);
+        .mockResolvedValueOnce({ embedding: [1, 0, 0] })
+        .mockResolvedValueOnce({ embedding: [0.95, 0.1, 0.05] });
 
       const result = await detector.detect(folders);
 
@@ -174,8 +174,8 @@ describe("SynonymDetector", () => {
 
       // Mock 非常高的相似度（>0.95）
       (mockEmbeddingService.generateEmbedding as jest.Mock)
-        .mockResolvedValueOnce([1, 0, 0])
-        .mockResolvedValueOnce([0.98, 0.01, 0.01]);
+        .mockResolvedValueOnce({ embedding: [1, 0, 0] })
+        .mockResolvedValueOnce({ embedding: [0.98, 0.01, 0.01] });
 
       const result = await detector.detect(folders);
 
@@ -198,8 +198,8 @@ describe("SynonymDetector", () => {
 
       // Mock 中等相似度（0.85-0.95）
       (mockEmbeddingService.generateEmbedding as jest.Mock)
-        .mockResolvedValueOnce([1, 0, 0])
-        .mockResolvedValueOnce([0.9, 0.05, 0.05]);
+        .mockResolvedValueOnce({ embedding: [1, 0, 0] })
+        .mockResolvedValueOnce({ embedding: [0.9, 0.4, 0] });
 
       const result = await detector.detect(folders);
 

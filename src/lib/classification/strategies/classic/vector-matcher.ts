@@ -14,7 +14,7 @@ import type { MatchResult, MatcherContext, VectorMatchDetail } from "../types";
 import {
   CLASSIFICATION_WEIGHTS,
   CLASSIFICATION_THRESHOLDS,
-} from "../constants";
+} from "../../constants/limits";
 import type { FolderProfileRepository } from "../repositories";
 import type {
   CoreEdgeProfileService,

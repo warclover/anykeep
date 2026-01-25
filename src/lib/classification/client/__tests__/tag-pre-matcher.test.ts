@@ -177,7 +177,11 @@ describe("TagPreMatcher", () => {
     ];
 
     it("should match folder by alias", () => {
-      const result = matcher.match(["js"], folders);
+      // 禁用同义词扩展以测试纯别名匹配
+      const strictMatcher = new TagPreMatcher({
+        enableSynonymExpansion: false,
+      });
+      const result = strictMatcher.match(["js"], folders);
 
       expect(result.matched).toBe(true);
       expect(result.folderId).toBe("1");
@@ -213,7 +217,11 @@ describe("TagPreMatcher", () => {
     ];
 
     it("should partial match React to ReactJS (ratio > 0.7)", () => {
-      const result = matcher.match(["react"], folders);
+      // 使用 disable synonym expansion 确保只测试 partial match
+      const strictMatcher = new TagPreMatcher({
+        enableSynonymExpansion: false,
+      });
+      const result = strictMatcher.match(["react"], folders);
 
       expect(result.matched).toBe(true);
       expect(result.folderId).toBe("1");

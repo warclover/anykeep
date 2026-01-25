@@ -39,42 +39,42 @@ describe("NamingEngine", () => {
     });
 
     it("应该移除前后空格", () => {
-      const result = engine.suggest("folder-1", "  Test Folder  ");
+      const result = engine.suggest("folder-1", "  Test Name  ");
 
       expect(result).not.toBeNull();
-      expect(result!.suggestedName).toBe("Test Folder");
+      expect(result!.suggestedName).toBe("Test Name");
       expect(result!.reason).toContain("移除前后空格");
     });
 
     it("应该合并多余空格", () => {
-      const result = engine.suggest("folder-1", "Test    Folder");
+      const result = engine.suggest("folder-1", "Test    Name");
 
       expect(result).not.toBeNull();
-      expect(result!.suggestedName).toBe("Test Folder");
+      expect(result!.suggestedName).toBe("Test Name");
       expect(result!.reason).toContain("合并多余空格");
     });
 
     it("应该移除特殊字符", () => {
-      const result = engine.suggest("folder-1", "Test!! Folder##");
+      const result = engine.suggest("folder-1", "Test!! Name##");
 
       expect(result).not.toBeNull();
-      expect(result!.suggestedName).toBe("Test Folder");
+      expect(result!.suggestedName).toBe("Test Name");
       expect(result!.reason).toContain("移除特殊字符");
     });
 
     it("应该首字母大写", () => {
-      const result = engine.suggest("folder-1", "test folder");
+      const result = engine.suggest("folder-1", "test name");
 
       expect(result).not.toBeNull();
-      expect(result!.suggestedName).toBe("Test folder");
+      expect(result!.suggestedName).toBe("Test name");
       expect(result!.reason).toContain("首字母大写");
     });
 
     it("应该统一分隔符", () => {
-      const result = engine.suggest("folder-1", "test_folder");
+      const result = engine.suggest("folder-1", "test_name");
 
       expect(result).not.toBeNull();
-      expect(result!.suggestedName).toBe("Test-folder");
+      expect(result!.suggestedName).toBe("Test-name");
     });
 
     it("应该移除冗余词汇", () => {

@@ -10,22 +10,32 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 // Mock Supabase 客户端
 const createMockSupabase = (profiles: FolderTagProfile[] = []) => {
+  // 修正：eq 必须返回一个既可以 await 也可以继续链式调用的对象
+  // 实际上 Supabase 的 .eq() 返回的是 PostgrestFilterBuilder，它本身是 PromiseLike
+  const mockBuilder: any = {
+    select: jest.fn().mockReturnThis(),
+    eq: jest.fn().mockReturnThis(),
+    in: jest.fn().mockReturnThis(),
+    order: jest.fn().mockReturnThis(),
+    limit: jest.fn().mockReturnThis(),
+    then: (resolve: any) => {
+      // 使其成为 Thenable
+      resolve({
+        data: profiles.map((p) => ({
+          folder_id: p.folderId,
+          core_tags: p.coreTags,
+          related_tags: p.relatedTags,
+          folder_name_tokens: p.folderNameTokens,
+          bookmark_count: p.bookmarkCount,
+          folders: { name: p.folderName },
+        })),
+        error: null,
+      });
+    },
+  };
+
   return {
-    from: jest.fn().mockReturnValue({
-      select: jest.fn().mockReturnValue({
-        eq: jest.fn().mockResolvedValue({
-          data: profiles.map((p) => ({
-            folder_id: p.folderId,
-            core_tags: p.coreTags,
-            related_tags: p.relatedTags,
-            folder_name_tokens: p.folderNameTokens,
-            bookmark_count: p.bookmarkCount,
-            folders: { name: p.folderName },
-          })),
-          error: null,
-        }),
-      }),
-    }),
+    from: jest.fn().mockReturnValue(mockBuilder),
   } as unknown as SupabaseClient;
 };
 
