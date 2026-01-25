@@ -86,7 +86,7 @@ export async function getUserSettings(
   }
 
   const settings = (profile?.settings as ProfileSettings) || {};
-  const customUsageTags = settings.customUsageTags || [];
+  const customUsageTags = (settings.customUsageTags as CustomUsageTag[]) || [];
 
   return { success: true, settings, customUsageTags };
 }
