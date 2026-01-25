@@ -14,33 +14,9 @@ import { logger } from "@/lib/logger";
 import { createMultiVectorEmbeddingService } from "./multi-vector-embedding.service";
 import { generateEmbedding } from "@/lib/utils/embedding-generator";
 
-/**
- * 队列任务类型
- */
-interface EmbeddingTask {
-  id: number;
-  bookmark_id: number;
-  user_id: string;
-  update_type: "title" | "tags" | "content" | "full";
-  priority: number;
-  created_at: string;
-  retry_count: number;
-}
-
-/**
- * 队列统计信息
- */
-interface QueueStats {
-  pending_count: number;
-  processed_24h: number;
-  failed_count: number;
-  pending_title: number;
-  pending_tags: number;
-  pending_content: number;
-  pending_full: number;
-  oldest_pending: string | null;
-  avg_processing_time_seconds: number | null;
-}
+type EmbeddingTask =
+  Database["public"]["Tables"]["bookmark_embedding_queue"]["Row"];
+type QueueStats = Database["public"]["Tables"]["embedding_queue_stats"]["Row"];
 
 /**
  * 处理结果
@@ -69,8 +45,7 @@ export class IncrementalIndexService {
    * 获取队列统计信息
    */
   async getQueueStats(): Promise<QueueStats | null> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (this.supabase as any)
+    const { data, error } = await this.supabase
       .from("embedding_queue_stats")
       .select("*")
       .single();
@@ -83,15 +58,14 @@ export class IncrementalIndexService {
       return null;
     }
 
-    return data as QueueStats;
+    return data;
   }
 
   /**
    * 获取待处理任务
    */
   async getPendingTasks(limit?: number): Promise<EmbeddingTask[]> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (this.supabase.rpc as any)(
+    const { data, error } = await this.supabase.rpc(
       "get_pending_embedding_tasks",
       {
         p_limit: limit ?? this.batchSize,
@@ -107,7 +81,7 @@ export class IncrementalIndexService {
       return [];
     }
 
-    return (data ?? []) as EmbeddingTask[];
+    return data ?? [];
   }
 
   /**
@@ -291,17 +265,21 @@ export class IncrementalIndexService {
     });
 
     // 更新数据库
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (this.supabase.from("bookmarks").update as any)({
-      title_embedding: vectors.titleEmbedding,
-      embedding: vectors.contentEmbedding,
-      tag_embedding: vectors.tagEmbedding,
-      embedding_version: "v3",
-      title_embedding_at: vectors.titleEmbedding
-        ? new Date().toISOString()
-        : null,
-      tag_embedding_at: vectors.tagEmbedding ? new Date().toISOString() : null,
-    }).eq("id", bookmarkId);
+    await this.supabase
+      .from("bookmarks")
+      .update({
+        title_embedding: vectors.titleEmbedding,
+        embedding: vectors.contentEmbedding,
+        tag_embedding: vectors.tagEmbedding,
+        embedding_version: "v3",
+        title_embedding_at: vectors.titleEmbedding
+          ? new Date().toISOString()
+          : null,
+        tag_embedding_at: vectors.tagEmbedding
+          ? new Date().toISOString()
+          : null,
+      })
+      .eq("id", bookmarkId);
   }
 
   /**
@@ -331,11 +309,13 @@ export class IncrementalIndexService {
     if (contentText.trim()) {
       const embedding = await generateEmbedding(contentText);
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (this.supabase.from("bookmarks").update as any)({
-        embedding,
-        embedding_version: "v3",
-      }).eq("id", bookmarkId);
+      await this.supabase
+        .from("bookmarks")
+        .update({
+          embedding,
+          embedding_version: "v3",
+        })
+        .eq("id", bookmarkId);
     }
   }
 
@@ -343,13 +323,9 @@ export class IncrementalIndexService {
    * 标记任务完成
    */
   private async markTasksCompleted(taskIds: number[]): Promise<void> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (this.supabase.rpc as any)(
-      "mark_embedding_task_completed",
-      {
-        p_task_ids: taskIds,
-      },
-    );
+    const { error } = await this.supabase.rpc("mark_embedding_task_completed", {
+      p_task_ids: taskIds,
+    });
 
     if (error) {
       logger.error(
@@ -366,14 +342,10 @@ export class IncrementalIndexService {
     taskId: number,
     errorMessage: string,
   ): Promise<void> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (this.supabase.rpc as any)(
-      "mark_embedding_task_failed",
-      {
-        p_task_id: taskId,
-        p_error_message: errorMessage.substring(0, 1000), // 限制长度
-      },
-    );
+    const { error } = await this.supabase.rpc("mark_embedding_task_failed", {
+      p_task_id: taskId,
+      p_error_message: errorMessage.substring(0, 1000), // 限制长度
+    });
 
     if (error) {
       logger.error(
@@ -392,16 +364,12 @@ export class IncrementalIndexService {
     updateType: "title" | "tags" | "content" | "full" = "full",
     priority = 5,
   ): Promise<void> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (this.supabase.rpc as any)(
-      "queue_embedding_update",
-      {
-        p_bookmark_id: bookmarkId,
-        p_user_id: userId,
-        p_update_type: updateType,
-        p_priority: priority,
-      },
-    );
+    const { error } = await this.supabase.rpc("queue_embedding_update", {
+      p_bookmark_id: bookmarkId,
+      p_user_id: userId,
+      p_update_type: updateType,
+      p_priority: priority,
+    });
 
     if (error) {
       logger.error(
@@ -416,8 +384,7 @@ export class IncrementalIndexService {
    * 清理已处理的旧任务（保留最近 7 天）
    */
   async cleanupOldTasks(): Promise<number> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (this.supabase as any)
+    const { data, error } = await this.supabase
       .from("bookmark_embedding_queue")
       .delete()
       .lt(

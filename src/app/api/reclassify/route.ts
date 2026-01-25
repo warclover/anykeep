@@ -22,7 +22,7 @@ import { logger } from "@/lib/logger";
 import { recommendFolder, type FolderRecommendation } from "@/lib/ai-generator";
 import { TrustModeService } from "@/lib/trust-mode/trust-mode.service";
 import { MessageService } from "@/lib/messages/message-service";
-import type { BookmarkRow } from "@/types/domain";
+import type { ProfileSettings } from "@/types/supabase";
 
 // 请求体验证
 const reclassifySchema = z.object({
@@ -60,13 +60,12 @@ export async function POST(request: NextRequest) {
     const { limit, forceRun } = validation.data;
 
     // 3. 检查是否有待处理的建议
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: pendingCount } = (await (supabase.rpc as any)(
+    const { data: pendingCount } = await supabase.rpc(
       "get_pending_suggestions_count",
       {
         p_user_id: user.id,
       },
-    )) as { data: number | null };
+    );
 
     if ((pendingCount ?? 0) > 0 && !forceRun) {
       return badRequestError(
@@ -75,21 +74,14 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. 获取待整理文件夹
-    // 类型断言: 手动维护类型文件时需要此断言
-    type FolderIdRow = { id: number };
-     
-    const { data: inboxFolder, error: folderError } = (await (
-      supabase.from("folders") as any
-    )
+    const { data: inboxFolder, error: folderError } = await supabase
+      .from("folders")
       .select("id")
       .eq("user_id", user.id)
       .eq("is_system", true)
       .eq("system_type", "INBOX")
       .is("deleted_at", null)
-      .single()) as {
-      data: FolderIdRow | null;
-      error: { message: string } | null;
-    };
+      .single();
 
     if (folderError || !inboxFolder) {
       return successResponse({
@@ -100,24 +92,14 @@ export async function POST(request: NextRequest) {
     }
 
     // 5. 获取待整理文件夹中的书签
-    // 类型断言: 手动维护类型文件时需要此断言
-    type ReclassifyBookmarkRow = Pick<
-      BookmarkRow,
-      "id" | "title" | "ai_summary" | "ai_tags"
-    >;
-     
-    const { data: bookmarks, error: bookmarksError } = (await (
-      supabase.from("bookmarks") as any
-    )
+    const { data: bookmarks, error: bookmarksError } = await supabase
+      .from("bookmarks")
       .select("id, title, ai_summary, ai_tags")
       .eq("user_id", user.id)
       .eq("folder_id", inboxFolder.id)
       .is("deleted_at", null)
       .order("created_at", { ascending: true })
-      .limit(limit)) as {
-      data: ReclassifyBookmarkRow[] | null;
-      error: { message: string } | null;
-    };
+      .limit(limit);
 
     if (bookmarksError) {
       logger.error(
@@ -136,15 +118,13 @@ export async function POST(request: NextRequest) {
     }
 
     // 6. 获取用户的所有文件夹（供 AI 推荐使用）
-    // 类型断言: 手动维护类型文件时需要此断言
-    type FolderRow = { id: number; name: string; is_system: boolean | null };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: folders } = (await (supabase.from("folders") as any)
+    const { data: folders } = await supabase
+      .from("folders")
       .select("id, name, is_system")
       .eq("user_id", user.id)
       .is("deleted_at", null)
       .eq("is_system", false)
-      .order("name")) as { data: FolderRow[] | null };
+      .order("name");
 
     // 7. 获取用户的托管模式
     const trustModeService = new TrustModeService();
@@ -155,18 +135,9 @@ export async function POST(request: NextRequest) {
     const batchId = uuidv4();
 
     // 9. 为每个书签获取 AI 推荐
-    // 类型断言: 手动维护类型文件时需要此断言
-    type SuggestionInsert = {
-      user_id: string;
-      bookmark_id: number;
-      suggested_folder_id: number | null;
-      suggested_folder_name: string | null;
-      suggest_new_folder: boolean;
-      confidence: number;
-      reason: string | null;
-      status: string;
-      batch_id: string;
-    };
+    // 使用 Database 类型定义的 Insert 类型
+    type SuggestionInsert =
+      Database["public"]["Tables"]["classification_suggestions"]["Insert"];
     const suggestions: SuggestionInsert[] = [];
     const directMoves: Array<{ bookmarkId: number; folderId: number }> = [];
     const results: Array<{
@@ -240,11 +211,11 @@ export async function POST(request: NextRequest) {
     let movedCount = 0;
     if (directMoves.length > 0) {
       for (const move of directMoves) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { error: moveError } = (await (supabase.from("bookmarks") as any)
+        const { error: moveError } = await supabase
+          .from("bookmarks")
           .update({ folder_id: move.folderId })
           .eq("id", move.bookmarkId)
-          .eq("user_id", user.id)) as { error: { message: string } | null };
+          .eq("user_id", user.id);
 
         if (!moveError) {
           movedCount++;
@@ -257,12 +228,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 11. 批量插入建议（仅非完全托管模式，或需要创建新文件夹的情况）
+    // 11. 批量插入建议（仅非完全��管模式，或需要创建新文件夹的情况）
     if (suggestions.length > 0) {
-       
-      const { error: insertError } = (await (
-        supabase.from("classification_suggestions") as any
-      ).insert(suggestions)) as { error: { message: string } | null };
+      const { error: insertError } = await supabase
+        .from("classification_suggestions")
+        .insert(suggestions);
 
       if (insertError) {
         logger.error(
@@ -274,26 +244,23 @@ export async function POST(request: NextRequest) {
     }
 
     // 12. 更新用户的重分类设置（记录本次执行时间）
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: profile } = (await (supabase.from("profiles") as any)
+    const { data: profile } = await supabase
+      .from("profiles")
       .select("settings")
       .eq("id", user.id)
-      .single()) as {
-      data: { settings: Record<string, unknown> | null } | null;
-    };
+      .single();
 
-    const currentSettings =
-      (profile?.settings as Record<string, unknown>) || {};
-    const updatedSettings = {
+    const currentSettings = (profile?.settings as ProfileSettings) || {};
+    const updatedSettings: ProfileSettings = {
       ...currentSettings,
       reclassify: {
-        ...((currentSettings.reclassify as Record<string, unknown>) || {}),
+        ...(currentSettings?.reclassify || {}),
         last_run_at: new Date().toISOString(),
       },
     };
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase.from("profiles") as any)
+    await supabase
+      .from("profiles")
       .update({ settings: updatedSettings })
       .eq("id", user.id);
 

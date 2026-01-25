@@ -13,6 +13,8 @@
 
 import { BaseSupabaseService } from "./base-supabase.service";
 import { logger } from "@/lib/logger";
+import type { Database } from "@/types/supabase";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 // ============================================================================
 // 类型定义
@@ -75,19 +77,6 @@ export interface TagGraphData {
 // V4.2.4: RPC 响应类型定义（避免 any）
 // ============================================================================
 
-/** RPC: get_tag_synonyms 返回类型 */
-interface SynonymRpcRow {
-  synonym: string;
-}
-
-/** RPC: get_related_tags 返回类型 */
-interface RelatedTagRpcRow {
-  related_tag: string;
-  relationship_type: string;
-  weight: number;
-  co_occurrence_count: number;
-}
-
 /** RPC: tag_relationships 表行类型 */
 interface TagRelationshipRow {
   id: number;
@@ -115,11 +104,9 @@ class TagGraphService extends BaseSupabaseService {
    */
   async getSynonyms(userId: string, tag: string): Promise<string[]> {
     try {
-      const supabase = await this.getSupabase();
+      const supabase = (await this.getSupabase()) as SupabaseClient<Database>;
 
-      // Note: RPC function may not exist yet - using type assertion
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase as any).rpc("get_tag_synonyms", {
+      const { data, error } = await supabase.rpc("get_tag_synonyms", {
         p_user_id: userId,
         p_tag: tag.toLowerCase(),
       });
@@ -129,8 +116,7 @@ class TagGraphService extends BaseSupabaseService {
         return [];
       }
 
-      // V4.2.4: 使用明确类型替代 any
-      return (data || []).map((row: SynonymRpcRow) => row.synonym);
+      return (data || []).map((row) => row.synonym);
     } catch (error) {
       logger.error({ error, tag }, "Error getting tag synonyms");
       return [];
@@ -146,11 +132,9 @@ class TagGraphService extends BaseSupabaseService {
     limit = 10,
   ): Promise<RelatedTag[]> {
     try {
-      const supabase = await this.getSupabase();
+      const supabase = (await this.getSupabase()) as SupabaseClient<Database>;
 
-      // Note: RPC function may not exist yet - using type assertion
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase as any).rpc("get_related_tags", {
+      const { data, error } = await supabase.rpc("get_related_tags", {
         p_user_id: userId,
         p_tag: tag.toLowerCase(),
         p_limit: limit,
@@ -161,8 +145,7 @@ class TagGraphService extends BaseSupabaseService {
         return [];
       }
 
-      // V4.2.4: 使用明确类型替代 any
-      return (data || []).map((row: RelatedTagRpcRow) => ({
+      return (data || []).map((row) => ({
         tag: row.related_tag,
         relationshipType: row.relationship_type as TagRelationshipType,
         weight: Number(row.weight),
@@ -188,7 +171,7 @@ class TagGraphService extends BaseSupabaseService {
     }
 
     try {
-      const supabase = await this.getSupabase();
+      const supabase = (await this.getSupabase()) as SupabaseClient<Database>;
 
       // 为每对书签标签-文件夹标签增加共现计数
       for (const bookmarkTag of bookmarkTags) {
@@ -199,17 +182,12 @@ class TagGraphService extends BaseSupabaseService {
           }
 
           // 使用 RPC 函数增加共现计数
-          // Note: RPC function may not exist yet - using type assertion
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const { error } = await (supabase as any).rpc(
-            "increment_tag_cooccurrence",
-            {
-              p_user_id: userId,
-              p_source_tag: bookmarkTag.toLowerCase(),
-              p_target_tag: folderTag.toLowerCase(),
-              p_relationship_type: "related",
-            },
-          );
+          const { error } = await supabase.rpc("increment_tag_cooccurrence", {
+            p_user_id: userId,
+            p_source_tag: bookmarkTag.toLowerCase(),
+            p_target_tag: folderTag.toLowerCase(),
+            p_relationship_type: "related",
+          });
 
           if (error) {
             logger.warn(
@@ -242,26 +220,22 @@ class TagGraphService extends BaseSupabaseService {
     targetTag: string,
   ): Promise<boolean> {
     try {
-      const supabase = await this.getSupabase();
+      const supabase = (await this.getSupabase()) as SupabaseClient<Database>;
 
-      // Note: Table may not exist yet - using type assertion
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase as any)
-        .from("tag_relationships")
-        .upsert(
-          {
-            user_id: userId,
-            relationship_type: "synonym",
-            source_tag: sourceTag.toLowerCase(),
-            target_tag: targetTag.toLowerCase(),
-            weight: 1.0, // 用户定义的同义词权重最高
-            source: "user",
-            co_occurrence_count: 0,
-          },
-          {
-            onConflict: "user_id,source_tag,target_tag,relationship_type",
-          },
-        );
+      const { error } = await supabase.from("tag_relationships").upsert(
+        {
+          user_id: userId,
+          relationship_type: "synonym",
+          source_tag: sourceTag.toLowerCase(),
+          target_tag: targetTag.toLowerCase(),
+          weight: 1.0, // 用户定义的同义词权重最高
+          source: "user",
+          co_occurrence_count: 0,
+        },
+        {
+          onConflict: "user_id,source_tag,target_tag,relationship_type",
+        },
+      );
 
       if (error) {
         logger.error(
@@ -291,11 +265,9 @@ class TagGraphService extends BaseSupabaseService {
     targetTag: string,
   ): Promise<boolean> {
     try {
-      const supabase = await this.getSupabase();
+      const supabase = (await this.getSupabase()) as SupabaseClient<Database>;
 
-      // Note: Table may not exist yet - using type assertion
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from("tag_relationships")
         .delete()
         .eq("user_id", userId)
@@ -329,11 +301,9 @@ class TagGraphService extends BaseSupabaseService {
    */
   async getUserSynonyms(userId: string): Promise<Map<string, string[]>> {
     try {
-      const supabase = await this.getSupabase();
+      const supabase = (await this.getSupabase()) as SupabaseClient<Database>;
 
-      // Note: Table may not exist yet - using type assertion
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from("tag_relationships")
         .select("source_tag, target_tag")
         .eq("user_id", userId)
@@ -379,11 +349,9 @@ class TagGraphService extends BaseSupabaseService {
    */
   async getGraphVisualization(userId: string): Promise<TagGraphData> {
     try {
-      const supabase = await this.getSupabase();
+      const supabase = (await this.getSupabase()) as SupabaseClient<Database>;
 
-      // Note: Table may not exist yet - using type assertion
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from("tag_relationships")
         .select("source_tag, target_tag, relationship_type, weight")
         .eq("user_id", userId)

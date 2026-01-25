@@ -14,6 +14,8 @@
 
 import { BaseSupabaseService } from "@/lib/classification/services/base-supabase.service";
 import { logger } from "@/lib/logger";
+import type { Database } from "@/types/supabase";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 // ============================================================================
 // 类型定义
@@ -27,7 +29,11 @@ export type ExclusionType = "tag" | "source" | "embedding" | "keyword";
 /**
  * 创建来源
  */
-export type CreatedFrom = "user_move" | "user_reject" | "bulk_move" | "auto_learn";
+export type CreatedFrom =
+  | "user_move"
+  | "user_reject"
+  | "bulk_move"
+  | "auto_learn";
 
 /**
  * 文件夹排除规则记录
@@ -131,22 +137,27 @@ class NegativeSampleService extends BaseSupabaseService {
   /**
    * 创建单条排除规则
    */
-  async createExclusion(input: CreateExclusionInput): Promise<FolderExclusionRecord | null> {
-    const supabase = await this.getSupabase();
+  async createExclusion(
+    input: CreateExclusionInput,
+  ): Promise<FolderExclusionRecord | null> {
+    const supabase = (await this.getSupabase()) as SupabaseClient<Database>;
 
     const expiresAt = input.expiresInDays
-      ? new Date(Date.now() + input.expiresInDays * 24 * 60 * 60 * 1000).toISOString()
+      ? new Date(
+          Date.now() + input.expiresInDays * 24 * 60 * 60 * 1000,
+        ).toISOString()
       : null;
 
-    const insertData: Record<string, unknown> = {
-      user_id: input.userId,
-      folder_id: input.folderId,
-      exclusion_type: input.exclusionType,
-      weight: input.weight ?? this.DEFAULT_WEIGHT,
-      created_from: input.createdFrom,
-      original_bookmark_id: input.originalBookmarkId || null,
-      expires_at: expiresAt,
-    };
+    const insertData: Database["public"]["Tables"]["folder_exclusions"]["Insert"] =
+      {
+        user_id: input.userId,
+        folder_id: input.folderId,
+        exclusion_type: input.exclusionType,
+        weight: input.weight ?? this.DEFAULT_WEIGHT,
+        created_from: input.createdFrom,
+        original_bookmark_id: input.originalBookmarkId || null,
+        expires_at: expiresAt,
+      };
 
     // 根据类型设置排除值
     switch (input.exclusionType) {
@@ -160,12 +171,15 @@ class NegativeSampleService extends BaseSupabaseService {
         insertData.excluded_keyword = input.excludedValue as string;
         break;
       case "embedding":
+        // Database type expects string | number[] | null for excluded_embedding
+        // But pgvector usually works with string or number[] in insert, though generated types might say string
+        // We'll cast to any if needed or stick to the type.
+        // generated type says: excluded_embedding: string | number[] | null;
         insertData.excluded_embedding = input.excludedValue as number[];
         break;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from(this.TABLE_NAME)
       .upsert(insertData, {
         onConflict: this.getUniqueConstraintName(input.exclusionType),
@@ -233,10 +247,9 @@ class NegativeSampleService extends BaseSupabaseService {
     userId: string,
     filters?: ExclusionQueryFilters,
   ): Promise<FolderExclusionRecord[]> {
-    const supabase = await this.getSupabase();
+    const supabase = (await this.getSupabase()) as SupabaseClient<Database>;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let query = (supabase as any)
+    let query = supabase
       .from(this.TABLE_NAME)
       .select("*")
       .eq("user_id", userId);
@@ -250,7 +263,9 @@ class NegativeSampleService extends BaseSupabaseService {
     }
 
     if (!filters?.includeExpired) {
-      query = query.or("expires_at.is.null,expires_at.gt." + new Date().toISOString());
+      query = query.or(
+        "expires_at.is.null,expires_at.gt." + new Date().toISOString(),
+      );
     }
 
     if (filters?.limit) {
@@ -258,7 +273,10 @@ class NegativeSampleService extends BaseSupabaseService {
     }
 
     if (filters?.offset) {
-      query = query.range(filters.offset, filters.offset + (filters.limit || 50) - 1);
+      query = query.range(
+        filters.offset,
+        filters.offset + (filters.limit || 50) - 1,
+      );
     }
 
     query = query.order("created_at", { ascending: false });
@@ -290,10 +308,9 @@ class NegativeSampleService extends BaseSupabaseService {
     userId: string,
     tags: string[],
   ): Promise<Map<number, NegativeSampleMatch[]>> {
-    const supabase = await this.getSupabase();
+    const supabase = (await this.getSupabase()) as SupabaseClient<Database>;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from(this.TABLE_NAME)
       .select("folder_id, excluded_tag, weight")
       .eq("user_id", userId)
@@ -330,10 +347,9 @@ class NegativeSampleService extends BaseSupabaseService {
     userId: string,
     sourceId: string,
   ): Promise<Map<number, NegativeSampleMatch[]>> {
-    const supabase = await this.getSupabase();
+    const supabase = (await this.getSupabase()) as SupabaseClient<Database>;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from(this.TABLE_NAME)
       .select("folder_id, excluded_source_id, weight")
       .eq("user_id", userId)
@@ -342,7 +358,10 @@ class NegativeSampleService extends BaseSupabaseService {
       .or("expires_at.is.null,expires_at.gt." + new Date().toISOString());
 
     if (error) {
-      logger.error({ error, userId, sourceId }, "Failed to query source exclusions");
+      logger.error(
+        { error, userId, sourceId },
+        "Failed to query source exclusions",
+      );
       throw new Error(`Failed to query source exclusions: ${error.message}`);
     }
 
@@ -507,10 +526,9 @@ class NegativeSampleService extends BaseSupabaseService {
    * 更新排除规则权重
    */
   async updateWeight(id: number, weight: number): Promise<void> {
-    const supabase = await this.getSupabase();
+    const supabase = (await this.getSupabase()) as SupabaseClient<Database>;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from(this.TABLE_NAME)
       .update({ weight })
       .eq("id", id);
@@ -524,10 +542,9 @@ class NegativeSampleService extends BaseSupabaseService {
    * 删除排除规则
    */
   async deleteExclusion(id: number): Promise<void> {
-    const supabase = await this.getSupabase();
+    const supabase = (await this.getSupabase()) as SupabaseClient<Database>;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from(this.TABLE_NAME)
       .delete()
       .eq("id", id);
@@ -541,10 +558,11 @@ class NegativeSampleService extends BaseSupabaseService {
    * 清理过期规则
    */
   async cleanupExpired(): Promise<number> {
-    const supabase = await this.getSupabase();
+    const supabase = (await this.getSupabase()) as SupabaseClient<Database>;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase as any).rpc("cleanup_expired_folder_exclusions");
+    const { data, error } = await supabase.rpc(
+      "cleanup_expired_folder_exclusions",
+    );
 
     if (error) {
       logger.error({ error }, "Failed to cleanup expired exclusions");

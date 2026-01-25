@@ -9,6 +9,7 @@
 
 import { createClient } from "@/lib/supabase/client";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/types/supabase";
 import { logger } from "@/lib/logger";
 import type {
   KnowledgeLink,
@@ -90,31 +91,27 @@ export interface ILinkRepository {
  * 知识关联 Repository
  */
 export class LinkRepository implements ILinkRepository {
-  constructor(private supabase: SupabaseClient = createClient()) {}
+  constructor(private supabase: SupabaseClient<Database> = createClient()) {}
 
   /**
    * 保存或更新单条关联
    */
   async upsertLink(input: SaveLinkInput): Promise<string> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (this.supabase.rpc as any)(
-      "upsert_knowledge_link",
-      {
-        p_user_id: input.userId,
-        p_bookmark_id_1: input.bookmarkId1,
-        p_bookmark_id_2: input.bookmarkId2,
-        p_link_type: input.linkType,
-        p_strength: input.strength,
-        p_evidence: input.evidence,
-        p_algorithm: input.algorithm || null,
-      },
-    );
+    const { data, error } = await this.supabase.rpc("upsert_knowledge_link", {
+      p_user_id: input.userId,
+      p_bookmark_id_1: input.bookmarkId1,
+      p_bookmark_id_2: input.bookmarkId2,
+      p_link_type: input.linkType,
+      p_strength: input.strength,
+      p_evidence: input.evidence,
+      p_algorithm: input.algorithm || null,
+    });
 
     if (error) {
       throw new Error(`Failed to upsert link: ${error.message}`);
     }
 
-    return data as string;
+    return data;
   }
 
   /**
@@ -130,8 +127,7 @@ export class LinkRepository implements ILinkRepository {
       algorithm: link.algorithm || null,
     }));
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (this.supabase.rpc as any)(
+    const { data, error } = await this.supabase.rpc(
       "batch_upsert_knowledge_links",
       {
         p_user_id: input.userId,
@@ -143,7 +139,7 @@ export class LinkRepository implements ILinkRepository {
       throw new Error(`Failed to batch upsert links: ${error.message}`);
     }
 
-    return data as number;
+    return data;
   }
 
   /**
@@ -153,42 +149,29 @@ export class LinkRepository implements ILinkRepository {
     bookmarkId: number,
     filter?: LinkQueryFilter,
   ): Promise<KnowledgeLink[]> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (this.supabase.rpc as any)(
-      "get_bookmark_links",
-      {
-        p_bookmark_id: bookmarkId,
-        p_user_id: filter?.userId || null,
-        p_min_strength: filter?.minStrength || 0.3,
-        p_link_types: filter?.linkTypes || null,
-        p_limit: filter?.limit || 20,
-      },
-    );
+    const { data, error } = await this.supabase.rpc("get_bookmark_links", {
+      p_bookmark_id: bookmarkId,
+      p_user_id: filter?.userId || null,
+      p_min_strength: filter?.minStrength || 0.3,
+      p_link_types: filter?.linkTypes || null,
+      p_limit: filter?.limit || 20,
+    });
 
     if (error) {
       throw new Error(`Failed to get bookmark links: ${error.message}`);
     }
 
     // 映射数据库结果到 TypeScript 类型
-    return (data || []).map(
-      (row: {
-        link_id: string;
-        related_bookmark_id: number;
-        link_type: string;
-        strength: number;
-        evidence: Record<string, unknown>;
-        created_at: string;
-      }) => ({
-        id: row.link_id,
-        userId: filter?.userId || "",
-        sourceBookmarkId: Math.min(bookmarkId, row.related_bookmark_id),
-        targetBookmarkId: Math.max(bookmarkId, row.related_bookmark_id),
-        linkType: row.link_type as LinkType,
-        strength: row.strength,
-        evidence: row.evidence,
-        createdAt: row.created_at,
-      }),
-    );
+    return (data || []).map((row) => ({
+      id: row.link_id,
+      userId: filter?.userId || "",
+      sourceBookmarkId: Math.min(bookmarkId, row.related_bookmark_id),
+      targetBookmarkId: Math.max(bookmarkId, row.related_bookmark_id),
+      linkType: row.link_type as LinkType,
+      strength: row.strength,
+      evidence: row.evidence as Record<string, unknown>,
+      createdAt: row.created_at,
+    }));
   }
 
   /**
@@ -203,8 +186,7 @@ export class LinkRepository implements ILinkRepository {
       types?: LinkType[];
     },
   ): Promise<RelatedBookmark[]> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (this.supabase.rpc as any)(
+    const { data, error } = await this.supabase.rpc(
       "get_related_bookmarks_with_details",
       {
         p_bookmark_id: bookmarkId,
@@ -220,58 +202,42 @@ export class LinkRepository implements ILinkRepository {
     }
 
     // 映射数据库结果
-    return (data || []).map(
-      (row: {
-        bookmark_id: number;
-        title: string;
-        url: string;
-        favicon: string | null;
-        platform: string | null;
-        link_type: string;
-        strength: number;
-        shared_items: string[] | null;
-      }) => ({
-        bookmark: {
-          id: row.bookmark_id,
-          title: row.title,
-          url: row.url,
-          favicon: row.favicon || undefined,
-          platform: row.platform || undefined,
-        },
-        link: {
-          type: row.link_type as LinkType,
-          strength: row.strength,
-          sharedItems: row.shared_items || [],
-        },
-      }),
-    );
+    return (data || []).map((row) => ({
+      bookmark: {
+        id: row.bookmark_id,
+        title: row.title,
+        url: row.url,
+        favicon: row.favicon || undefined,
+        platform: row.platform || undefined,
+      },
+      link: {
+        type: row.link_type as LinkType,
+        strength: row.strength,
+        sharedItems: row.shared_items || [],
+      },
+    }));
   }
 
   /**
    * 删除书签的所有关联
    */
   async deleteBookmarkLinks(bookmarkId: number): Promise<number> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (this.supabase.rpc as any)(
-      "delete_bookmark_links",
-      {
-        p_bookmark_id: bookmarkId,
-      },
-    );
+    const { data, error } = await this.supabase.rpc("delete_bookmark_links", {
+      p_bookmark_id: bookmarkId,
+    });
 
     if (error) {
       throw new Error(`Failed to delete bookmark links: ${error.message}`);
     }
 
-    return data as number;
+    return data;
   }
 
   /**
    * 获取用户知识图谱统计
    */
   async getGraphStats(userId: string): Promise<KnowledgeGraphStats> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (this.supabase.rpc as any)(
+    const { data, error } = await this.supabase.rpc(
       "get_knowledge_graph_stats",
       {
         p_user_id: userId,
@@ -321,34 +287,23 @@ export class LinkRepository implements ILinkRepository {
     bookmarkId: number,
     options?: Record<string, unknown>,
   ): Promise<DiscoveredLink[]> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (this.supabase.rpc as any)(
-      "discover_bookmark_links",
-      {
-        p_user_id: userId,
-        p_bookmark_id: bookmarkId,
-        p_options: options || {},
-      },
-    );
+    const { data, error } = await this.supabase.rpc("discover_bookmark_links", {
+      p_user_id: userId,
+      p_bookmark_id: bookmarkId,
+      p_options: options || {},
+    });
 
     if (error) {
       throw new Error(`Failed to discover links: ${error.message}`);
     }
 
-    return (data || []).map(
-      (row: {
-        related_bookmark_id: number;
-        link_type: string;
-        strength: number;
-        evidence: Record<string, unknown>;
-      }) => ({
-        targetBookmarkId: row.related_bookmark_id,
-        linkType: row.link_type as LinkType,
-        strength: row.strength,
-        evidence: row.evidence,
-        algorithm: `discover-${row.link_type}`,
-      }),
-    );
+    return (data || []).map((row) => ({
+      targetBookmarkId: row.related_bookmark_id,
+      linkType: row.link_type as LinkType,
+      strength: row.strength,
+      evidence: row.evidence as Record<string, unknown>,
+      algorithm: `discover-${row.link_type}`,
+    }));
   }
 
   /**
@@ -386,8 +341,7 @@ export class LinkRepository implements ILinkRepository {
    * 获取书签的实体列表
    */
   async getBookmarkEntities(bookmarkId: number): Promise<string[]> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (this.supabase as any)
+    const { data, error } = await this.supabase
       .from("bookmark_entities")
       .select("name")
       .eq("bookmark_id", bookmarkId);
