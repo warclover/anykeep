@@ -192,9 +192,12 @@ export type Database = {
           intent_subtype: string | null;
           intent_type: string;
           last_hit_at: string | null;
+          message_embedding: string | null;
           method: string;
           normalized_input: string;
+          original_message: string | null;
           slots: Json | null;
+          updated_at: string | null;
         };
         Insert: {
           confidence: number;
@@ -206,9 +209,12 @@ export type Database = {
           intent_subtype?: string | null;
           intent_type: string;
           last_hit_at?: string | null;
+          message_embedding?: string | null;
           method: string;
           normalized_input: string;
+          original_message?: string | null;
           slots?: Json | null;
+          updated_at?: string | null;
         };
         Update: {
           confidence?: number;
@@ -220,9 +226,12 @@ export type Database = {
           intent_subtype?: string | null;
           intent_type?: string;
           last_hit_at?: string | null;
+          message_embedding?: string | null;
           method?: string;
           normalized_input?: string;
+          original_message?: string | null;
           slots?: Json | null;
+          updated_at?: string | null;
         };
         Relationships: [];
       };
@@ -4647,6 +4656,76 @@ export type Database = {
           },
         ];
       };
+      monitor_check_logs: {
+        Row: {
+          archived_version_id: number | null;
+          change_summary: string | null;
+          check_result: string;
+          checked_at: string;
+          current_hash: string | null;
+          duration_ms: number | null;
+          error_message: string | null;
+          id: number;
+          monitor_id: number;
+          new_snapshot_id: number | null;
+          previous_hash: string | null;
+          similarity_score: number | null;
+          user_id: string;
+        };
+        Insert: {
+          archived_version_id?: number | null;
+          change_summary?: string | null;
+          check_result: string;
+          checked_at?: string;
+          current_hash?: string | null;
+          duration_ms?: number | null;
+          error_message?: string | null;
+          id?: number;
+          monitor_id: number;
+          new_snapshot_id?: number | null;
+          previous_hash?: string | null;
+          similarity_score?: number | null;
+          user_id: string;
+        };
+        Update: {
+          archived_version_id?: number | null;
+          change_summary?: string | null;
+          check_result?: string;
+          checked_at?: string;
+          current_hash?: string | null;
+          duration_ms?: number | null;
+          error_message?: string | null;
+          id?: number;
+          monitor_id?: number;
+          new_snapshot_id?: number | null;
+          previous_hash?: string | null;
+          similarity_score?: number | null;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "monitor_check_logs_archived_version_id_fkey";
+            columns: ["archived_version_id"];
+            isOneToOne: false;
+            referencedRelation: "snapshot_versions";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "monitor_check_logs_monitor_id_fkey";
+            columns: ["monitor_id"];
+            isOneToOne: false;
+            referencedRelation: "page_monitors";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "monitor_check_logs_new_snapshot_id_fkey";
+            columns: ["new_snapshot_id"];
+            isOneToOne: false;
+            referencedRelation: "bookmark_snapshots";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       note_save_history: {
         Row: {
           content_hash: string | null;
@@ -4910,6 +4989,84 @@ export type Database = {
             columns: ["target_folder_id"];
             isOneToOne: false;
             referencedRelation: "folders";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      page_monitors: {
+        Row: {
+          baseline_captured_at: string | null;
+          baseline_content_hash: string | null;
+          baseline_snapshot_id: number | null;
+          bookmark_id: number;
+          change_count: number;
+          check_interval: string;
+          consecutive_failures: number;
+          created_at: string;
+          custom_interval_hours: number | null;
+          id: number;
+          last_change_at: string | null;
+          last_checked_at: string | null;
+          last_error_message: string | null;
+          next_check_at: string | null;
+          notification_enabled: boolean;
+          status: string;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          baseline_captured_at?: string | null;
+          baseline_content_hash?: string | null;
+          baseline_snapshot_id?: number | null;
+          bookmark_id: number;
+          change_count?: number;
+          check_interval?: string;
+          consecutive_failures?: number;
+          created_at?: string;
+          custom_interval_hours?: number | null;
+          id?: number;
+          last_change_at?: string | null;
+          last_checked_at?: string | null;
+          last_error_message?: string | null;
+          next_check_at?: string | null;
+          notification_enabled?: boolean;
+          status?: string;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          baseline_captured_at?: string | null;
+          baseline_content_hash?: string | null;
+          baseline_snapshot_id?: number | null;
+          bookmark_id?: number;
+          change_count?: number;
+          check_interval?: string;
+          consecutive_failures?: number;
+          created_at?: string;
+          custom_interval_hours?: number | null;
+          id?: number;
+          last_change_at?: string | null;
+          last_checked_at?: string | null;
+          last_error_message?: string | null;
+          next_check_at?: string | null;
+          notification_enabled?: boolean;
+          status?: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "page_monitors_baseline_snapshot_id_fkey";
+            columns: ["baseline_snapshot_id"];
+            isOneToOne: false;
+            referencedRelation: "bookmark_snapshots";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "page_monitors_bookmark_id_fkey";
+            columns: ["bookmark_id"];
+            isOneToOne: false;
+            referencedRelation: "bookmarks";
             referencedColumns: ["id"];
           },
         ];
@@ -5265,6 +5422,30 @@ export type Database = {
           status?: string;
           synthesis_report_id?: string | null;
           user_id?: string;
+        };
+        Relationships: [];
+      };
+      rate_limit_records: {
+        Row: {
+          config_key: string;
+          created_at: string;
+          id: number;
+          identifier: string;
+          request_time: string;
+        };
+        Insert: {
+          config_key: string;
+          created_at?: string;
+          id?: number;
+          identifier: string;
+          request_time?: string;
+        };
+        Update: {
+          config_key?: string;
+          created_at?: string;
+          id?: number;
+          identifier?: string;
+          request_time?: string;
         };
         Relationships: [];
       };
@@ -5818,6 +5999,69 @@ export type Database = {
           view_mode?: string | null;
         };
         Relationships: [];
+      };
+      snapshot_versions: {
+        Row: {
+          archived_at: string;
+          bookmark_id: number;
+          content_hash: string;
+          html_storage_path: string | null;
+          id: number;
+          original_captured_at: string;
+          readable_content: string | null;
+          readable_excerpt: string | null;
+          readable_text_content: string | null;
+          snapshot_id: number;
+          user_id: string;
+          version_number: number;
+          word_count: number | null;
+        };
+        Insert: {
+          archived_at?: string;
+          bookmark_id: number;
+          content_hash: string;
+          html_storage_path?: string | null;
+          id?: number;
+          original_captured_at: string;
+          readable_content?: string | null;
+          readable_excerpt?: string | null;
+          readable_text_content?: string | null;
+          snapshot_id: number;
+          user_id: string;
+          version_number?: number;
+          word_count?: number | null;
+        };
+        Update: {
+          archived_at?: string;
+          bookmark_id?: number;
+          content_hash?: string;
+          html_storage_path?: string | null;
+          id?: number;
+          original_captured_at?: string;
+          readable_content?: string | null;
+          readable_excerpt?: string | null;
+          readable_text_content?: string | null;
+          snapshot_id?: number;
+          user_id?: string;
+          version_number?: number;
+          word_count?: number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "snapshot_versions_bookmark_id_fkey";
+            columns: ["bookmark_id"];
+            isOneToOne: false;
+            referencedRelation: "bookmarks";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "snapshot_versions_snapshot_id_fkey";
+            columns: ["snapshot_id"];
+            isOneToOne: false;
+            referencedRelation: "bookmark_snapshots";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       source_profiles: {
         Row: {
@@ -6765,6 +7009,16 @@ export type Database = {
           zone: string;
         }[];
       };
+      check_rate_limit: {
+        Args: {
+          p_config_key: string;
+          p_identifier: string;
+          p_max_requests: number;
+          p_window_ms: number;
+          p_window_start: string;
+        };
+        Returns: Json;
+      };
       claim_jobs_batch: {
         Args: {
           p_job_types?: Database["public"]["Enums"]["job_type"][];
@@ -6850,6 +7104,7 @@ export type Database = {
       cleanup_edge_function_rate_limits: { Args: never; Returns: number };
       cleanup_expired_ai_snapshots: { Args: never; Returns: number };
       cleanup_expired_chaos_pool: { Args: never; Returns: number };
+      cleanup_expired_check_logs: { Args: never; Returns: number };
       cleanup_expired_folder_exclusions: { Args: never; Returns: number };
       cleanup_expired_insights: { Args: never; Returns: number };
       cleanup_expired_intent_cache: { Args: never; Returns: number };
@@ -6876,6 +7131,7 @@ export type Database = {
       cleanup_old_token_usage_logs: { Args: never; Returns: number };
       cleanup_old_trash: { Args: { days_to_keep?: number }; Returns: number };
       cleanup_orphaned_step_results: { Args: never; Returns: number };
+      cleanup_rate_limit_records: { Args: never; Returns: undefined };
       cleanup_workflow_execution_history: {
         Args: never;
         Returns: {
@@ -7325,6 +7581,17 @@ export type Database = {
           user_id: string;
         }[];
       };
+      get_intent_cache_stats: {
+        Args: never;
+        Returns: {
+          avg_confidence: number;
+          cache_types: Json;
+          expired_count: number;
+          total_count: number;
+          total_hits: number;
+          with_embedding_count: number;
+        }[];
+      };
       get_intent_stats: {
         Args: { p_days?: number; p_user_id: string };
         Returns: {
@@ -7671,6 +7938,31 @@ export type Database = {
           url: string;
         }[];
       };
+      get_top_intent_cache_entries: {
+        Args: { top_k?: number };
+        Returns: {
+          confidence: number;
+          hit_count: number;
+          id: number;
+          input_hash: string;
+          intent_subtype: string;
+          intent_type: string;
+          message_embedding: string;
+          normalized_input: string;
+        }[];
+      };
+      get_undoable_ai_operations: {
+        Args: { p_limit?: number; p_user_id: string };
+        Returns: {
+          bookmark_count: number;
+          created_at: string;
+          expires_at: string;
+          id: string;
+          operation_type: string;
+          summary: string;
+          time_remaining: unknown;
+        }[];
+      };
       get_unified_quota_stats: {
         Args: { p_user_id: string };
         Returns: {
@@ -7866,6 +8158,14 @@ export type Database = {
         Args: { p_folder_id: number };
         Returns: undefined;
       };
+      increment_intent_cache_hit: {
+        Args: { p_cache_id: number };
+        Returns: undefined;
+      };
+      increment_monitor_change_count: {
+        Args: { monitor_id: number };
+        Returns: undefined;
+      };
       increment_rule_match_count: {
         Args: { p_rule_id: number };
         Returns: undefined;
@@ -7951,6 +8251,25 @@ export type Database = {
           match_type: string;
           profile_id: string;
           similarity: number;
+        }[];
+      };
+      match_intent_cache_semantic: {
+        Args: {
+          match_count?: number;
+          query_embedding: string;
+          similarity_threshold?: number;
+        };
+        Returns: {
+          confidence: number;
+          id: number;
+          input_hash: string;
+          intent_subtype: string;
+          intent_type: string;
+          method: string;
+          normalized_input: string;
+          original_message: string;
+          similarity: number;
+          slots: Json;
         }[];
       };
       merge_folders_atomic: {
@@ -8374,6 +8693,14 @@ export type Database = {
         Args: { p_lock_id: number; p_lock_key: string; p_ttl_ms: number };
         Returns: string;
       };
+      undo_ai_operation: {
+        Args: { p_snapshot_id: string; p_user_id: string };
+        Returns: {
+          message: string;
+          restored_count: number;
+          success: boolean;
+        }[];
+      };
       update_ai_folder_settings: {
         Args: { p_settings: Json; p_user_id: string };
         Returns: Json;
@@ -8486,6 +8813,21 @@ export type Database = {
       update_user_trust_mode: {
         Args: { p_reason?: string; p_trust_mode: string; p_user_id: string };
         Returns: Json;
+      };
+      upsert_intent_cache_semantic: {
+        Args: {
+          p_confidence: number;
+          p_input_hash: string;
+          p_intent_subtype: string;
+          p_intent_type: string;
+          p_message_embedding: string;
+          p_method: string;
+          p_normalized_input: string;
+          p_original_message: string;
+          p_slots: Json;
+          p_ttl_days?: number;
+        };
+        Returns: number;
       };
       upsert_knowledge_link: {
         Args: {

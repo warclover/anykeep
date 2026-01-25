@@ -181,7 +181,7 @@ export async function POST(request: NextRequest) {
     // 4. 验证书签所有权
     const { data: bookmark, error: bookmarkError } = await supabase
       .from("bookmarks")
-      .select("id, user_id, title, ai_summary, description, full_content")
+      .select("id, user_id, title, ai_summary, description")
       .eq("id", bookmarkId)
       .single();
 
@@ -228,20 +228,6 @@ export async function POST(request: NextRequest) {
         success: true,
         content: bookmark.description,
         source: "description",
-        cached: true,
-      });
-    }
-
-    if (bookmark.full_content && bookmark.full_content.trim()) {
-      // 提取关键内容
-      const keyContent = extractKeyContent(
-        bookmark.full_content,
-        MAX_CONTENT_LENGTH,
-      );
-      return Response.json({
-        success: true,
-        content: keyContent,
-        source: "raw_content",
         cached: true,
       });
     }

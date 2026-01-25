@@ -169,7 +169,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await supabase
       .from("ai_operation_snapshots")
       .select(
-        "id, operation_type, summary, created_at, expires_at, bookmark_ids",
+        "id, operation_type, operation_description, created_at, expires_at, affected_bookmark_ids",
       )
       .eq("user_id", user.id)
       .eq("is_reverted", false)
@@ -189,17 +189,18 @@ export async function GET(request: NextRequest) {
       (item: {
         id: string;
         operation_type: string;
-        summary: string | null;
+        operation_description: string | null;
         created_at: string;
         expires_at: string;
-        bookmark_ids: number[] | null;
+        affected_bookmark_ids: number[] | null;
       }) => ({
         snapshotId: item.id,
         operationType: item.operation_type,
-        description: item.summary || `${item.operation_type} 操作`,
+        description:
+          item.operation_description || `${item.operation_type} 操作`,
         createdAt: item.created_at,
         expiresAt: item.expires_at,
-        affectedCount: item.bookmark_ids?.length || 0,
+        affectedCount: item.affected_bookmark_ids?.length || 0,
         timeRemaining: formatTimeRemaining(new Date(item.expires_at)),
       }),
     );

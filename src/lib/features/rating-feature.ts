@@ -9,8 +9,8 @@ import type { MembershipType } from "@/types/supabase";
  * 评级功能权限配置
  */
 export const RATING_FEATURE_CONFIG = {
-  // 允许使用评级功能的会员等级（PRO = 付费会员）
-  allowedTiers: ["PRO"] as const satisfies readonly MembershipType[],
+  // 允许使用评级功能的会员等级（pro = 付费会员）
+  allowedTiers: ["pro"] as const satisfies readonly MembershipType[],
 
   // 功能标识
   featureKey: "bookmark_rating" as const,

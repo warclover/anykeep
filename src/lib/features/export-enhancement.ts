@@ -71,7 +71,7 @@ export function hasExportEnhancement(
  * 检查是否是付费用户
  */
 export function isPremiumUser(membershipType?: MembershipType | null): boolean {
-  return membershipType === "PRO";
+  return membershipType === "pro";
 }
 
 /**

@@ -38,7 +38,7 @@ import {
 import { EmbeddingService } from "../shared-services/embedding";
 import { VectorSearchService } from "../shared-services/vector-search";
 import { LLMService } from "../shared-services/llm";
-import { createLogger } from "../shared-services/logger";
+import { createLogger, type LoggerService } from "../shared-services/logger";
 
 // ============================================================================
 // Modern Strategy Services
@@ -100,7 +100,7 @@ export function registerInfrastructureServices(
   container.register(
     SERVICE_TYPES.EmbeddingService,
     (c) => {
-      const logger = c.get(SERVICE_TYPES.Logger);
+      const logger = c.get<LoggerService>(SERVICE_TYPES.Logger);
       return new EmbeddingService(logger, {});
     },
     "singleton",
@@ -110,7 +110,7 @@ export function registerInfrastructureServices(
   container.register(
     SERVICE_TYPES.VectorSearchService,
     (c) => {
-      const logger = c.get(SERVICE_TYPES.Logger);
+      const logger = c.get<LoggerService>(SERVICE_TYPES.Logger);
       return new VectorSearchService(logger, {});
     },
     "singleton",
@@ -120,7 +120,7 @@ export function registerInfrastructureServices(
   container.register(
     SERVICE_TYPES.LLMService,
     (c) => {
-      const logger = c.get(SERVICE_TYPES.Logger);
+      const logger = c.get<LoggerService>(SERVICE_TYPES.Logger);
       return new LLMService(logger);
     },
     "singleton",
@@ -190,7 +190,7 @@ export function registerModernServices(container: EnhancedContainer): void {
   container.register(
     SERVICE_TYPES.PipelineService,
     (c) => {
-      const logger = c.get(SERVICE_TYPES.Logger);
+      const logger = c.get<LoggerService>(SERVICE_TYPES.Logger);
       const embeddingService = c.get<EmbeddingService>(
         SERVICE_TYPES.EmbeddingService,
       );
@@ -215,7 +215,7 @@ export function registerModernServices(container: EnhancedContainer): void {
   container.register(
     SERVICE_TYPES.FeedbackService,
     (c) => {
-      const logger = c.get(SERVICE_TYPES.Logger);
+      const logger = c.get<LoggerService>(SERVICE_TYPES.Logger);
       const llmService = c.get<LLMService>(SERVICE_TYPES.LLMService);
       return new FeedbackService(supabase, logger, llmService);
     },
@@ -226,7 +226,7 @@ export function registerModernServices(container: EnhancedContainer): void {
   container.register(
     SERVICE_TYPES.ChatToRuleService,
     (c) => {
-      const logger = c.get(SERVICE_TYPES.Logger);
+      const logger = c.get<LoggerService>(SERVICE_TYPES.Logger);
       const llmService = c.get<LLMService>(SERVICE_TYPES.LLMService);
       return new ChatToRuleService(supabase, logger, llmService);
     },

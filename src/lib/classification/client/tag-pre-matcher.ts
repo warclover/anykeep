@@ -39,7 +39,7 @@ export interface PreMatchResult {
  */
 export interface CachedFolder {
   /** 文件夹 ID */
-  id: string;
+  id: number;
   /** 文件夹名称 */
   name: string;
   /** 标准化后的名称 */

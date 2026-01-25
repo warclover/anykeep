@@ -89,6 +89,61 @@ export const CUSTOM_TAG_COLORS: Record<CustomTagColor, true> = {
 // ============================================
 
 /**
+ * 页面监控配置行类型
+ * @see supabase/migrations/20251228000201_add_page_monitors.sql
+ */
+export interface PageMonitorRow {
+  id: number;
+  user_id: string;
+  bookmark_id: number;
+  check_interval: "every_6h" | "twice_daily" | "daily" | "weekly" | "custom";
+  custom_interval_hours: number | null;
+  last_checked_at: string | null;
+  next_check_at: string | null;
+  baseline_snapshot_id: number | null;
+  baseline_content_hash: string | null;
+  baseline_captured_at: string | null;
+  status: "active" | "paused" | "failed" | "deleted";
+  consecutive_failures: number;
+  last_error_message: string | null;
+  change_count: number;
+  last_change_at: string | null;
+  notification_enabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * 页面监控配置插入类型
+ */
+export interface PageMonitorInsert {
+  user_id: string;
+  bookmark_id: number;
+  check_interval?: "every_6h" | "twice_daily" | "daily" | "weekly" | "custom";
+  custom_interval_hours?: number | null;
+  notification_enabled?: boolean;
+}
+
+/**
+ * 页面监控配置更新类型
+ */
+export interface PageMonitorUpdate {
+  check_interval?: "every_6h" | "twice_daily" | "daily" | "weekly" | "custom";
+  custom_interval_hours?: number | null;
+  status?: "active" | "paused" | "failed" | "deleted";
+  notification_enabled?: boolean;
+  last_checked_at?: string | null;
+  next_check_at?: string | null;
+  baseline_snapshot_id?: number | null;
+  baseline_content_hash?: string | null;
+  baseline_captured_at?: string | null;
+  consecutive_failures?: number;
+  last_error_message?: string | null;
+  change_count?: number;
+  last_change_at?: string | null;
+}
+
+/**
  * 监控检查日志行类型
  * @see supabase/migrations/20251228000003_add_monitor_check_logs.sql
  */

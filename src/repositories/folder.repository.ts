@@ -352,7 +352,10 @@ export class FolderRepository extends BaseRepository<
         return { deletedFolders: 0, movedBookmarks: 0 };
       }
 
-      const result = Array.isArray(data) ? data[0] : data;
+      const result = (Array.isArray(data) ? data[0] : data) as {
+        deleted_folder_count?: number;
+        moved_bookmark_count?: number;
+      };
       return {
         deletedFolders: result.deleted_folder_count || 0,
         movedBookmarks: result.moved_bookmark_count || 0,

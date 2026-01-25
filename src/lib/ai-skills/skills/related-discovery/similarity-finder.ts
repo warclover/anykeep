@@ -56,7 +56,8 @@ export class SimilarityFinder {
     supabase: SupabaseClientType,
   ): Promise<VectorSearchResult[]> {
     try {
-      const { data, error } = await supabase.rpc("match_bookmarks", {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await supabase.rpc("match_bookmarks" as any, {
         query_embedding: embedding,
         match_threshold: options.minSimilarity,
         match_count: options.limit,
