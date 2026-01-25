@@ -8,8 +8,8 @@
  * @since 2026-01-20
  */
 
-import type { LoggerService } from "../shared/logger";
-import type { LLMService } from "../shared/llm";
+import type { LoggerService } from "@/lib/classification/infrastructure/shared-services/logger";
+import type { LLMService } from "@/lib/classification/infrastructure/shared-services/llm";
 import { generateFolderTags } from "../../utils/folder-tag-generator";
 
 /**

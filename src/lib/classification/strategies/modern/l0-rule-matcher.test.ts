@@ -3,7 +3,7 @@
  */
 
 import { L0RuleMatcher, type Rule } from "./l0-rule-matcher";
-import type { LoggerService } from "../shared/logger";
+import type { LoggerService } from "@/lib/classification/infrastructure/shared-services/logger";
 import type { ClassificationRequest } from "./types";
 
 // Mock Logger

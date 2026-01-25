@@ -3,8 +3,8 @@
  */
 
 import { T0Generator } from "./t0-generator";
-import type { LoggerService } from "../shared/logger";
-import type { IEmbeddingService } from "../shared/embedding";
+import type { LoggerService } from "@/lib/classification/infrastructure/shared-services/logger";
+import type { IEmbeddingService } from "@/lib/classification/infrastructure/shared-services/embedding";
 import type { ClassificationRequest } from "./types";
 
 // Mock Logger

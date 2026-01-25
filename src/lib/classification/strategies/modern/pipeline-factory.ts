@@ -9,10 +9,10 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { LoggerService } from "../shared/logger";
-import { DashScopeEmbeddingAdapter } from "../shared/embedding/dashscope-embedding-adapter";
-import { VectorSearchService } from "../shared/vector-search";
-import { LLMService } from "../shared/llm";
+import { LoggerService } from "@/lib/classification/infrastructure/shared-services/logger/index";
+import { DashScopeEmbeddingAdapter } from "@/lib/classification/infrastructure/shared-services/embedding/dashscope-embedding-adapter";
+import { VectorSearchService } from "@/lib/classification/infrastructure/shared-services/vector-search/index";
+import { LLMService } from "@/lib/classification/infrastructure/shared-services/llm/index";
 import { ClassificationPipelineService } from "./classification-pipeline.service";
 import type { ClassificationPipelineConfig } from "./types";
 

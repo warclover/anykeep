@@ -12,7 +12,7 @@ interface TestBookmark {
   id: string;
   title: string;
   url: string;
-  groundTruthFolderId: string;
+  groundTruthFolderId: number;
   groundTruthConfidence: number;
   source: string;
   topics: string[];
@@ -20,7 +20,7 @@ interface TestBookmark {
 
 interface ClassificationResult {
   bookmarkId: string;
-  predictedFolderId: string;
+  predictedFolderId: number;
   predictedFolderName: string;
   confidence: number;
   topCandidates: Array<{
@@ -50,18 +50,18 @@ async function mockV4Classify(
 
   return {
     bookmarkId,
-    predictedFolderId: shouldBeCorrect ? "folder-correct" : "folder-wrong",
+    predictedFolderId: shouldBeCorrect ? 1 : 0,
     predictedFolderName: shouldBeCorrect ? "Correct Folder" : "Wrong Folder",
     confidence,
     topCandidates: [
-      { folderId: "folder-correct", folderName: "Correct Folder", confidence },
+      { folderId: 1, folderName: "Correct Folder", confidence },
       {
-        folderId: "folder-2",
+        folderId: 2,
         folderName: "Folder 2",
         confidence: confidence - 0.1,
       },
       {
-        folderId: "folder-3",
+        folderId: 3,
         folderName: "Folder 3",
         confidence: confidence - 0.2,
       },
@@ -84,18 +84,18 @@ async function mockV5Classify(
 
   return {
     bookmarkId,
-    predictedFolderId: shouldBeCorrect ? "folder-correct" : "folder-wrong",
+    predictedFolderId: shouldBeCorrect ? 1 : 0,
     predictedFolderName: shouldBeCorrect ? "Correct Folder" : "Wrong Folder",
     confidence,
     topCandidates: [
-      { folderId: "folder-correct", folderName: "Correct Folder", confidence },
+      { folderId: 1, folderName: "Correct Folder", confidence },
       {
-        folderId: "folder-2",
+        folderId: 2,
         folderName: "Folder 2",
         confidence: confidence - 0.12,
       },
       {
-        folderId: "folder-3",
+        folderId: 3,
         folderName: "Folder 3",
         confidence: confidence - 0.25,
       },
@@ -117,7 +117,7 @@ function generateTestBookmarks(count: number): TestBookmark[] {
       id: `bookmark-${i}`,
       title: `Test Bookmark ${i}`,
       url: `https://example.com/${i}`,
-      groundTruthFolderId: "folder-correct",
+      groundTruthFolderId: 1,
       groundTruthConfidence: 0.95,
       source: "synthetic",
       topics: ["test"],

@@ -5,7 +5,7 @@
  * v6: 添加文件夹上下文（示例书签）提升 LLM 理解能力
  */
 
-import type { LoggerService } from "../shared/logger";
+import type { LoggerService } from "@/lib/classification/infrastructure/shared-services/logger";
 import type { LLMCaller } from "./llm-caller";
 import type { FolderContextProvider } from "./folder-context-provider";
 import type { ClassificationRequest, T0Result, T1Result } from "./types";

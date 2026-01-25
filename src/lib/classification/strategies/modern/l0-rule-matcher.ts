@@ -6,7 +6,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { LoggerService } from "../shared/logger";
+import type { LoggerService } from "@/lib/classification/infrastructure/shared-services/logger";
 import type { FolderId } from "@/lib/shared/types";
 import type { ClassificationRequest, L0MatchResult } from "./types";
 import { AiTagMatcher } from "./ai-tag-matcher";

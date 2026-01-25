@@ -4,7 +4,7 @@
  * 判断文件夹画像是否需要更新（4 个触发条件）
  */
 
-import type { LoggerService } from "../shared/logger";
+import type { LoggerService } from "@/lib/classification/infrastructure/shared-services/logger";
 import type { FolderProfile, LazyUpdateTrigger } from "./types";
 
 /**

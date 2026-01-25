@@ -11,9 +11,11 @@ import type { LLMClassificationRequest } from "./types";
 // Mock OpenAI
 jest.mock("openai");
 
+import OpenAI from "openai";
+
 describe("LLMService", () => {
   let logger: LoggerService;
-  let mockOpenAI: jest.Mocked<any>;
+  let mockCreate: jest.Mock;
 
   beforeEach(() => {
     logger = createLogger();
@@ -21,17 +23,18 @@ describe("LLMService", () => {
     jest.spyOn(logger, "warn").mockImplementation();
     jest.spyOn(logger, "error").mockImplementation();
 
-    // Mock OpenAI client
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const OpenAI = require("openai");
-    mockOpenAI = {
+    // Reset mocks
+    jest.clearAllMocks();
+
+    // Setup OpenAI mock
+    mockCreate = jest.fn();
+    (OpenAI as unknown as jest.Mock).mockImplementation(() => ({
       chat: {
         completions: {
-          create: jest.fn(),
+          create: mockCreate,
         },
       },
-    };
-    OpenAI.mockImplementation(() => mockOpenAI);
+    }));
   });
 
   afterEach(() => {
@@ -70,7 +73,7 @@ describe("LLMService", () => {
         apiKey: "test-key",
       });
 
-      mockOpenAI.chat.completions.create.mockResolvedValue({
+      mockCreate.mockResolvedValue({
         choices: [
           {
             message: {
@@ -96,7 +99,7 @@ describe("LLMService", () => {
         apiKey: "test-key",
       });
 
-      mockOpenAI.chat.completions.create.mockResolvedValue({
+      mockCreate.mockResolvedValue({
         choices: [
           {
             message: {
@@ -117,7 +120,7 @@ describe("LLMService", () => {
         apiKey: "test-key",
       });
 
-      mockOpenAI.chat.completions.create.mockResolvedValue({
+      mockCreate.mockResolvedValue({
         choices: [
           {
             message: {
@@ -141,7 +144,7 @@ describe("LLMService", () => {
         apiKey: "test-key",
       });
 
-      mockOpenAI.chat.completions.create.mockResolvedValue({
+      mockCreate.mockResolvedValue({
         choices: [
           {
             message: {
@@ -172,7 +175,7 @@ describe("LLMService", () => {
         maxRetries: 2,
       });
 
-      mockOpenAI.chat.completions.create
+      mockCreate
         .mockRejectedValueOnce(new Error("Rate limit exceeded"))
         .mockResolvedValueOnce({
           choices: [
@@ -191,7 +194,7 @@ describe("LLMService", () => {
       const result = await service.classify(mockRequest);
 
       expect(result.folderId).toBe(1);
-      expect(mockOpenAI.chat.completions.create).toHaveBeenCalledTimes(2);
+      expect(mockCreate).toHaveBeenCalledTimes(2);
     });
   });
 });

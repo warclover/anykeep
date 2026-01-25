@@ -4,8 +4,8 @@
  * 检测相似的文件夹名称，发现可能的同义词组
  */
 
-import type { LoggerService } from "../shared/logger";
-import type { IEmbeddingService } from "../shared/embedding";
+import type { LoggerService } from "@/lib/classification/infrastructure/shared-services/logger";
+import type { IEmbeddingService } from "@/lib/classification/infrastructure/shared-services/embedding";
 import type { FolderId } from "@/lib/shared/types";
 import type { SynonymGroup, GardenerConfig } from "./types";
 

@@ -189,6 +189,11 @@ let facadeInstance: ClassificationFacade | null = null;
 export function getClassificationFacade(
   config?: ClassificationFacadeConfig,
 ): ClassificationFacade {
+  // Support creating a new instance if config is provided (e.g. for testing or specific context)
+  if (config) {
+    return new ClassificationFacade(config);
+  }
+
   if (!facadeInstance) {
     facadeInstance = new ClassificationFacade(config);
   }
@@ -200,6 +205,27 @@ export function getClassificationFacade(
  */
 export function resetClassificationFacade(): void {
   facadeInstance = null;
+}
+
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { EnhancedContainer } from "./infrastructure/container";
+import { registerAllServices } from "./infrastructure/container/registrations";
+
+/**
+ * 创建包含完整依赖注入的分类门面
+ * (Request-scoped factory)
+ */
+export function createClassificationFacade(
+  supabase: SupabaseClient,
+  config?: ClassificationFacadeConfig,
+): ClassificationFacade {
+  const container = new EnhancedContainer({ supabase });
+  registerAllServices(container);
+
+  return new ClassificationFacade({
+    ...config,
+    container,
+  });
 }
 
 // ============================================================================

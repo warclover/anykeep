@@ -3,7 +3,7 @@
  */
 
 import { NamingEngine } from "./naming-engine";
-import type { LoggerService } from "../shared/logger";
+import type { LoggerService } from "@/lib/classification/infrastructure/shared-services/logger";
 
 // Mock Logger
 const mockLogger: LoggerService = {

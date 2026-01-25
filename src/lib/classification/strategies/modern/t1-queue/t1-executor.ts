@@ -7,13 +7,13 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { LoggerService } from "../shared/logger";
+import type { LoggerService } from "@/lib/classification/infrastructure/shared-services/logger";
 import type { ClassificationRequest } from "@/lib/classification/strategies/classification-pipeline/types";
 import { ClassificationPipelineService } from "@/lib/classification/strategies/classification-pipeline";
 import { T1QueueService } from "./t1-queue.service";
-import { DashScopeEmbeddingAdapter } from "../shared/embedding";
-import { VectorSearchService } from "../shared/vector-search";
-import { LLMService } from "../shared/llm";
+import { DashScopeEmbeddingAdapter } from "@/lib/classification/infrastructure/shared-services/embedding";
+import { VectorSearchService } from "@/lib/classification/infrastructure/shared-services/vector-search";
+import { LLMService } from "@/lib/classification/infrastructure/shared-services/llm";
 
 /**
  * T1执行器配置

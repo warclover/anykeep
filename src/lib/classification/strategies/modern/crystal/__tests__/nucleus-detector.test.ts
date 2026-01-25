@@ -2,7 +2,7 @@
  * NucleusDetector 单元测试
  */
 
-import { NucleusDetector } from "../crystal-growth/nucleus-detector";
+import { NucleusDetector } from "../growth/nucleus-detector";
 
 // Mock Supabase client
 const mockSupabase = {

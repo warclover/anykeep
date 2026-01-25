@@ -8,9 +8,9 @@
  */
 
 import { z } from "zod";
-import type { LoggerService } from "../shared/logger";
-import type { VectorSearchService } from "../shared/vector-search";
-import type { IEmbeddingService } from "../shared/embedding";
+import type { LoggerService } from "@/lib/classification/infrastructure/shared-services/logger";
+import type { VectorSearchService } from "@/lib/classification/infrastructure/shared-services/vector-search";
+import type { IEmbeddingService } from "@/lib/classification/infrastructure/shared-services/embedding";
 import type {
   HybridRetrievalResult,
   EnhancedTagMatchResult,

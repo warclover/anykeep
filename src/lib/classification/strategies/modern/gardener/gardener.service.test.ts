@@ -5,8 +5,8 @@
 import { GardenerService } from "./gardener.service";
 import type { ClassificationStats } from "./threshold-adapter";
 import type { FolderStats, UserStats } from "./folder-suggester";
-import type { LoggerService } from "../shared/logger";
-import type { IEmbeddingService } from "../shared/embedding";
+import type { LoggerService } from "@/lib/classification/infrastructure/shared-services/logger";
+import type { IEmbeddingService } from "@/lib/classification/infrastructure/shared-services/embedding";
 
 // Mock Logger
 const mockLogger: LoggerService = {

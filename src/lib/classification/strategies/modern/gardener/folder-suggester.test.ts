@@ -4,7 +4,7 @@
 
 import { FolderSuggester } from "./folder-suggester";
 import type { FolderStats, UserStats } from "./folder-suggester";
-import type { LoggerService } from "../shared/logger";
+import type { LoggerService } from "@/lib/classification/infrastructure/shared-services/logger";
 import type { GardenerConfig } from "./types";
 
 // Mock Logger

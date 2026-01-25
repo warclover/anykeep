@@ -6,10 +6,10 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { CrystalGrowthService } from "../crystal-growth/crystal-growth.service";
+import { CrystalGrowthService } from "../growth/crystal-growth.service";
 import { V55FeatureFlags } from "./v55-feature-flag";
 import { logger } from "@/lib/logger";
-import type { CrystalGrowthResult } from "../crystal-growth/types";
+import type { CrystalGrowthResult } from "../growth/types";
 
 /**
  * V5.5 分类器

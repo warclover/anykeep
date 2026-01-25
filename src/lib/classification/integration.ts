@@ -8,7 +8,6 @@
 
 import { z } from "zod";
 // ClassificationContainer 导入已移除 (Phase 1, 2026-01-24) - V3 废弃
-import { createSimpleClassificationService } from "./services/simple-classification.service";
 import { FOLDER_LIMITS } from "./constants";
 import { CONFIDENCE_THRESHOLDS } from "./types/classification-status";
 import { logger } from "@/lib/logger";
@@ -60,17 +59,6 @@ const AUTO_CLASSIFY_THRESHOLD = CONFIDENCE_THRESHOLDS.AUTO_CLASSIFY;
 const SUGGEST_THRESHOLD = CONFIDENCE_THRESHOLDS.SUGGEST;
 
 /**
- * V5 透传模式开关
- * 启用后，V5 的置信度不再进行非线性重映射，直接使用原始值
- * 减少 V2 集成层对 V5 结果的干扰
- *
- * @default true (默认启用透传模式)
- */
-function isV5PassthroughEnabled(): boolean {
-  return process.env.V5_PASSTHROUGH_MODE !== "false";
-}
-
-/**
  * 获取当前分类系统版本
  * 通过环境变量 CLASSIFICATION_VERSION 控制
  * - "v4.1": 使用 V4.1 SimpleClassificationService
@@ -91,6 +79,18 @@ export function getClassificationVersion(): "v4.1" | "v5.0" {
     );
   }
   return "v5.0";
+}
+
+/**
+ * V5 透传模式开关
+ * 启用后，V5 的置信度不再进行非线性重映射，直接使用原始值
+ * 减少 V2 集成层对 V5 结果的干扰
+ *
+ * @default true (默认启用透传模式)
+ * @deprecated 随着 Facade 的引入，此逻辑已下沉到 Strategy 实现中
+ */
+function isV5PassthroughEnabled(): boolean {
+  return process.env.V5_PASSTHROUGH_MODE !== "false";
 }
 
 /**
@@ -218,12 +218,12 @@ export async function classifyBookmarkV2(
     } else if (classificationVersion === "v5.0") {
       // V5.0: 使用 ClassificationPipeline（L0+T0+T1 三层架构）
       const { FeatureFlagService } = await import(
-        "@/lib/classification/v5/rollout/feature-flag"
+        "@/lib/classification/infrastructure/feature-flags/feature-flag.service"
       );
 
       // 检查 Feature Flag
       const { RolloutStage } = await import(
-        "@/lib/classification/v5/rollout/feature-flag"
+        "@/lib/classification/infrastructure/feature-flags/feature-flag.service"
       );
 
       // v5.2 修复: 将环境变量字符串映射到 RolloutStage 枚举
@@ -322,7 +322,7 @@ export async function classifyBookmarkV2(
       } else {
         // 使用 V5.0 ClassificationPipeline（通过工厂复用服务实例）
         const { getClassificationPipeline } = await import(
-          "@/lib/classification/v5/classification-pipeline/pipeline-factory"
+          "@/lib/classification/strategies/modern/pipeline-factory"
         );
 
         const pipeline = getClassificationPipeline(

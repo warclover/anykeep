@@ -8,7 +8,7 @@
  */
 
 import { AlphaCalculator, ALPHA_CONSTANTS } from "./alpha-calculator";
-import type { LoggerService } from "../shared/logger";
+import type { LoggerService } from "@/lib/classification/infrastructure/shared-services/logger";
 import type { FolderStats } from "./types";
 
 // Mock Logger

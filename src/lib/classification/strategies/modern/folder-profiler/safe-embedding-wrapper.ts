@@ -8,8 +8,8 @@
  * @since 2026-01-20
  */
 
-import type { IEmbeddingService } from "../shared/embedding";
-import type { LoggerService } from "../shared/logger";
+import type { IEmbeddingService } from "@/lib/classification/infrastructure/shared-services/embedding";
+import type { LoggerService } from "@/lib/classification/infrastructure/shared-services/logger";
 
 /**
  * SafeEmbeddingWrapper 配置

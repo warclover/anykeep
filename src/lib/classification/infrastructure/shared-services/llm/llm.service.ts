@@ -209,7 +209,9 @@ ${candidatesText}
       }
 
       // 验证 folderId 是否在候选列表中
-      const validFolder = candidates.find((c) => c.id === parsed.folderId);
+      const validFolder = candidates.find(
+        (c) => String(c.id) === String(parsed.folderId),
+      );
       if (!validFolder) {
         throw new Error(`Invalid folderId: ${parsed.folderId}`);
       }

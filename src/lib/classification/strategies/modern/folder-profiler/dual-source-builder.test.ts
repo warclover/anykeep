@@ -7,8 +7,8 @@ import {
   type BookmarkData,
   type BehaviorData,
 } from "./dual-source-builder";
-import type { LoggerService } from "../shared/logger";
-import type { IEmbeddingService } from "../shared/embedding";
+import type { LoggerService } from "@/lib/classification/infrastructure/shared-services/logger";
+import type { IEmbeddingService } from "@/lib/classification/infrastructure/shared-services/embedding";
 
 // Mock Logger
 const mockLogger: LoggerService = {

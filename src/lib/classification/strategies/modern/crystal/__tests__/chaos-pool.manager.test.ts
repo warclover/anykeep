@@ -2,7 +2,7 @@
  * ChaosPoolManager 单元测试
  */
 
-import { ChaosPoolManager } from "../crystal-growth/chaos-pool.manager";
+import { ChaosPoolManager } from "../growth/chaos-pool.manager";
 
 // Mock Supabase client
 const mockSupabase = {

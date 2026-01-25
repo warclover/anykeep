@@ -4,4 +4,4 @@
 
 export { FeatureFlagService } from "./feature-flag.service";
 export type { FeatureFlagConfig, FeatureFlagResult } from "./types";
-export { FeatureFlagError } from "./types";
+export { FeatureFlagError, RolloutStage } from "./types";

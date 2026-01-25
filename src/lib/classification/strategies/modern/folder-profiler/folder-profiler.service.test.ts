@@ -3,8 +3,8 @@
  */
 
 import { FolderProfilerService } from "./folder-profiler.service";
-import type { LoggerService } from "../shared/logger";
-import type { IEmbeddingService } from "../shared/embedding";
+import type { LoggerService } from "@/lib/classification/infrastructure/shared-services/logger";
+import type { IEmbeddingService } from "@/lib/classification/infrastructure/shared-services/embedding";
 import type { FolderStats } from "./types";
 import type { BookmarkData, BehaviorData } from "./dual-source-builder";
 

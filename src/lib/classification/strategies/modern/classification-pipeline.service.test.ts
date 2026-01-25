@@ -3,10 +3,10 @@
  */
 
 import { ClassificationPipelineService } from "./classification-pipeline.service";
-import type { LoggerService } from "../shared/logger";
-import type { IEmbeddingService } from "../shared/embedding";
-import type { VectorSearchService } from "../shared/vector-search";
-import type { LLMService } from "../shared/llm";
+import type { LoggerService } from "@/lib/classification/infrastructure/shared-services/logger";
+import type { IEmbeddingService } from "@/lib/classification/infrastructure/shared-services/embedding";
+import type { VectorSearchService } from "@/lib/classification/infrastructure/shared-services/vector-search";
+import type { LLMService } from "@/lib/classification/infrastructure/shared-services/llm";
 import type { ClassificationRequest } from "./types";
 
 // Mock Logger
@@ -20,7 +20,9 @@ const mockLogger: LoggerService = {
 
 // Mock Embedding Service
 const mockEmbeddingService: IEmbeddingService = {
-  generateEmbedding: jest.fn().mockResolvedValue(new Array(1024).fill(0.1)),
+  generateEmbedding: jest
+    .fn()
+    .mockResolvedValue({ embedding: new Array(1024).fill(0.1) }),
 } as any;
 
 // Mock Vector Search Service

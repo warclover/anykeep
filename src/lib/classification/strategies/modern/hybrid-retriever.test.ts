@@ -3,8 +3,8 @@
  */
 
 import { HybridRetriever } from "./hybrid-retriever";
-import type { LoggerService } from "../shared/logger";
-import type { VectorSearchService } from "../shared/vector-search";
+import type { LoggerService } from "@/lib/classification/infrastructure/shared-services/logger";
+import type { VectorSearchService } from "@/lib/classification/infrastructure/shared-services/vector-search";
 
 // Mock Logger
 const mockLogger: LoggerService = {

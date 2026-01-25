@@ -2,7 +2,7 @@
  * CrystalGrowthService 单元测试
  */
 
-import { CrystalGrowthService } from "../crystal-growth/crystal-growth.service";
+import { CrystalGrowthService } from "../growth/crystal-growth.service";
 import { V55FeatureFlags } from "../integration/v55-feature-flag";
 
 // Mock feature flags

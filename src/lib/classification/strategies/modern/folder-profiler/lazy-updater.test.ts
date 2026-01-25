@@ -3,7 +3,7 @@
  */
 
 import { LazyUpdater } from "./lazy-updater";
-import type { LoggerService } from "../shared/logger";
+import type { LoggerService } from "@/lib/classification/infrastructure/shared-services/logger";
 import type { FolderProfile } from "./types";
 
 // Mock Logger

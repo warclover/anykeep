@@ -4,7 +4,7 @@
  * 检测文件夹健康状态，发现过度分散、过度集中等问题
  */
 
-import type { LoggerService } from "../shared/logger";
+import type { LoggerService } from "@/lib/classification/infrastructure/shared-services/logger";
 import type {
   FolderSuggestion,
   FolderIssue,

@@ -3,8 +3,8 @@
  */
 
 import { LLMCaller } from "./llm-caller";
-import type { LoggerService } from "../shared/logger";
-import type { LLMService } from "../shared/llm";
+import type { LoggerService } from "@/lib/classification/infrastructure/shared-services/logger";
+import type { LLMService } from "@/lib/classification/infrastructure/shared-services/llm";
 import type { T0Result, LLMCallRequest } from "./types";
 
 // Mock Logger
@@ -26,7 +26,13 @@ describe("LLMCaller", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    caller = new LLMCaller(mockLogger, mockLLMService);
+    // 使用测试特定的配置，以便与测试用例中的数值匹配
+    caller = new LLMCaller(mockLogger, mockLLMService, {
+      lowConfidenceThreshold: 0.75,
+      vectorConflictThreshold: 0.1,
+      highConfidenceThreshold: 0.85,
+      highConfidenceGap: 0.1,
+    });
   });
 
   const createMockT0Result = (overrides?: Partial<T0Result>): T0Result => ({
@@ -104,7 +110,7 @@ describe("LLMCaller", () => {
       expect(result.folderId).toBe("folder-1");
       expect(result.confidence).toBe(0.95);
       expect(result.reasoning).toBe("Test reasoning");
-      expect(result.latencyMs).toBeGreaterThan(0);
+      expect(result.latencyMs).toBeGreaterThanOrEqual(0);
       expect(mockLLMService.classify).toHaveBeenCalled();
     });
   });

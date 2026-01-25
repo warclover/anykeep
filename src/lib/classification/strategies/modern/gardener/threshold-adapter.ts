@@ -4,7 +4,7 @@
  * 根据用户分类历史动态调整置信度阈值
  */
 
-import type { LoggerService } from "../shared/logger";
+import type { LoggerService } from "@/lib/classification/infrastructure/shared-services/logger";
 import type { ThresholdConfig, ThresholdAdjustment } from "./types";
 
 /**

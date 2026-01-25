@@ -5,9 +5,9 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { LoggerService } from "../shared/logger";
-import type { IEmbeddingService } from "../shared/embedding";
-import type { LLMService } from "../shared/llm";
+import type { LoggerService } from "@/lib/classification/infrastructure/shared-services/logger";
+import type { IEmbeddingService } from "@/lib/classification/infrastructure/shared-services/embedding";
+import type { LLMService } from "@/lib/classification/infrastructure/shared-services/llm";
 import { AlphaCalculator } from "./alpha-calculator";
 import { LazyUpdater } from "./lazy-updater";
 import {
@@ -18,6 +18,7 @@ import {
 } from "./dual-source-builder";
 import type { FolderProfile, FolderStats, FolderProfilerConfig } from "./types";
 import { FolderProfilerError } from "./types";
+import { TABLE_NAMES } from "../../../core/constants";
 
 /**
  * 数据库记录类型
@@ -98,7 +99,7 @@ export class FolderProfilerService {
     folderId: number,
   ): Promise<FolderProfile | null> {
     const { data, error } = await this.supabase
-      .from("classification_folder_profiles_v5")
+      .from(TABLE_NAMES.FOLDER_PROFILES)
       .select("*")
       .eq("user_id", userId)
       .eq("folder_id", folderId)
@@ -178,7 +179,7 @@ export class FolderProfilerService {
 
     // 3. 插入或更新数据库
     const { data, error } = await this.supabase
-      .from("classification_folder_profiles_v5")
+      .from(TABLE_NAMES.FOLDER_PROFILES)
       .upsert({
         user_id: userId,
         folder_id: folderId,

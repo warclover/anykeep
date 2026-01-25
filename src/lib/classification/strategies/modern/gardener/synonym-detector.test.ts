@@ -4,8 +4,8 @@
 
 import { SynonymDetector } from "./synonym-detector";
 import type { FolderInfo } from "./synonym-detector";
-import type { LoggerService } from "../shared/logger";
-import type { IEmbeddingService } from "../shared/embedding";
+import type { LoggerService } from "@/lib/classification/infrastructure/shared-services/logger";
+import type { IEmbeddingService } from "@/lib/classification/infrastructure/shared-services/embedding";
 import type { GardenerConfig } from "./types";
 
 // Mock Logger

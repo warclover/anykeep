@@ -106,3 +106,11 @@ export const DEFAULT_FEATURE_FLAGS = {
   enablePipelineCache: true,
   pipelineCacheTtlMs: CACHE_CONFIG.PIPELINE_TTL_MS,
 } as const;
+
+/**
+ * 数据库表名常量
+ */
+export const TABLE_NAMES = {
+  /** 文件夹画像表 (V5) */
+  FOLDER_PROFILES: "classification_folder_profiles_v5",
+} as const;

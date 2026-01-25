@@ -4,8 +4,8 @@
  * 整合阈值自适应、文件夹建议、同义词检测、命名引擎
  */
 
-import type { LoggerService } from "../shared/logger";
-import type { IEmbeddingService } from "../shared/embedding";
+import type { LoggerService } from "@/lib/classification/infrastructure/shared-services/logger";
+import type { IEmbeddingService } from "@/lib/classification/infrastructure/shared-services/embedding";
 import { ThresholdAdapter } from "./threshold-adapter";
 import type { ClassificationStats } from "./threshold-adapter";
 import { FolderSuggester } from "./folder-suggester";

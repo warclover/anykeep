@@ -4,8 +4,11 @@
  * 条件LLM调用（3个触发条件）
  */
 
-import type { LoggerService } from "../shared/logger";
-import type { LLMService, LLMClassificationRequest } from "../shared/llm";
+import type { LoggerService } from "@/lib/classification/infrastructure/shared-services/logger";
+import type {
+  LLMService,
+  LLMClassificationRequest,
+} from "@/lib/classification/infrastructure/shared-services/llm";
 import type { T0Result, LLMCallRequest, T1Result } from "./types";
 
 /**

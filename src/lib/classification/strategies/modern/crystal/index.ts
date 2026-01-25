@@ -6,7 +6,7 @@
 export * from "./quota";
 
 // 晶体生长核心
-export * from "./crystal-growth";
+export * from "./growth";
 
 // 通知系统
 export * from "./notification";

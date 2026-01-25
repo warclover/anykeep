@@ -6,8 +6,8 @@
  * v5.1.2: 添加常量定义，明确行为向量临时方案
  */
 
-import type { LoggerService } from "../shared/logger";
-import type { IEmbeddingService } from "../shared/embedding";
+import type { LoggerService } from "@/lib/classification/infrastructure/shared-services/logger";
+import type { IEmbeddingService } from "@/lib/classification/infrastructure/shared-services/embedding";
 import type { L0RuleMatcher } from "./l0-rule-matcher";
 import type { HybridRetriever } from "./hybrid-retriever";
 import type { LLMCaller } from "./llm-caller";

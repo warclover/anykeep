@@ -4,7 +4,7 @@
 
 import { ThresholdAdapter } from "./threshold-adapter";
 import type { ClassificationStats } from "./threshold-adapter";
-import type { LoggerService } from "../shared/logger";
+import type { LoggerService } from "@/lib/classification/infrastructure/shared-services/logger";
 import type { ThresholdConfig } from "./types";
 
 // Mock Logger

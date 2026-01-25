@@ -3,6 +3,17 @@
  */
 
 /**
+ * 灰度发布阶段枚举
+ */
+export enum RolloutStage {
+  DISABLED = "disabled",
+  CANARY = "canary",
+  EARLY = "early",
+  MAJORITY = "majority",
+  FULL = "full",
+}
+
+/**
  * Feature Flag 配置
  */
 export interface FeatureFlagConfig {

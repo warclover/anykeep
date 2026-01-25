@@ -36,9 +36,12 @@ import {
 // ============================================================================
 
 import { EmbeddingService } from "../shared-services/embedding";
-import { VectorSearchService } from "../shared-services/vector-search";
-import { LLMService } from "../shared-services/llm";
-import { createLogger, type LoggerService } from "../shared-services/logger";
+import { VectorSearchService } from "../shared-services/vector-search/index";
+import { LLMService } from "../shared-services/llm/index";
+import {
+  createLogger,
+  type LoggerService,
+} from "../shared-services/logger/index";
 
 // ============================================================================
 // Modern Strategy Services
@@ -47,6 +50,14 @@ import { createLogger, type LoggerService } from "../shared-services/logger";
 import { ClassificationPipelineService } from "../../strategies/modern";
 import { FeedbackService } from "../../strategies/modern/feedback";
 import { ChatToRuleService } from "../../strategies/modern/chat-to-rule";
+
+// ============================================================================
+// Strategy Adapters
+// ============================================================================
+
+import { ClassicStrategyAdapter } from "../../strategies/adapters/classic-adapter";
+import { ModernStrategyAdapter } from "../../strategies/adapters/modern-adapter";
+import { createSimpleClassificationService } from "../../services/simple-classification.service";
 
 /**
  * 注册所有仓储服务
@@ -229,6 +240,28 @@ export function registerModernServices(container: EnhancedContainer): void {
       const logger = c.get<LoggerService>(SERVICE_TYPES.Logger);
       const llmService = c.get<LLMService>(SERVICE_TYPES.LLMService);
       return new ChatToRuleService(supabase, logger, llmService);
+    },
+    "singleton",
+  );
+
+  // Classic Strategy (V4 Adapter)
+  container.register(
+    SERVICE_TYPES.ClassicStrategy,
+    (_c) => {
+      const service = createSimpleClassificationService(supabase);
+      return new ClassicStrategyAdapter(service);
+    },
+    "singleton",
+  );
+
+  // Modern Strategy (V5 Adapter)
+  container.register(
+    SERVICE_TYPES.ModernStrategy,
+    (c) => {
+      const pipelineService = c.get<ClassificationPipelineService>(
+        SERVICE_TYPES.PipelineService,
+      );
+      return new ModernStrategyAdapter(pipelineService);
     },
     "singleton",
   );

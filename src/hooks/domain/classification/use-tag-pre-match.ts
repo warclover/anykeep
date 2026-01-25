@@ -143,7 +143,7 @@ export function useTagPreMatch(
       const normalizedName = matcher.normalize(name);
 
       return {
-        id: ((row as Record<string, unknown>).folder_id as number).toString(),
+        id: (row as Record<string, unknown>).folder_id as number,
         name,
         normalizedName,
         aliases: [] as string[],

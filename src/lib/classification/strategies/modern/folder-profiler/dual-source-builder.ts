@@ -5,9 +5,9 @@
  * v5.1 新增：离群值检测、时间衰减质心、冷启动语义膨胀
  */
 
-import type { LoggerService } from "../shared/logger";
-import type { IEmbeddingService } from "../shared/embedding";
-import type { LLMService } from "../shared/llm";
+import type { LoggerService } from "@/lib/classification/infrastructure/shared-services/logger";
+import type { IEmbeddingService } from "@/lib/classification/infrastructure/shared-services/embedding";
+import type { LLMService } from "@/lib/classification/infrastructure/shared-services/llm";
 import type { DualSourceVectors } from "./types";
 import { ColdStartEnricher } from "./cold-start-enricher";
 import { SafeEmbeddingWrapper } from "./safe-embedding-wrapper";

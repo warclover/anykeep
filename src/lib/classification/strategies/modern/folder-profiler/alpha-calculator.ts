@@ -5,7 +5,7 @@
  * v5.1 新增：动态弹性权重，解决大文件夹马太效应
  */
 
-import type { LoggerService } from "../shared/logger";
+import type { LoggerService } from "@/lib/classification/infrastructure/shared-services/logger";
 import type { FolderStats } from "./types";
 
 /**

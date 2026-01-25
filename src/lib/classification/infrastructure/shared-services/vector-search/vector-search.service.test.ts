@@ -120,14 +120,14 @@ describe("VectorSearchService", () => {
           p_content_embedding: testEmbedding,
           p_behavior_embedding: null,
           p_alpha: 0,
-          p_match_threshold: 0.5,
+          p_match_threshold: 0.3,
           p_match_count: 5,
         },
       );
     });
 
     it("搜索失败时应该抛出错误", async () => {
-      mockSupabaseClient.rpc.mockResolvedValueOnce({
+      mockSupabaseClient.rpc.mockResolvedValue({
         data: null,
         error: { message: "Database error" },
       });
@@ -173,7 +173,7 @@ describe("VectorSearchService", () => {
           p_content_embedding: null,
           p_behavior_embedding: testEmbedding,
           p_alpha: 1,
-          p_match_threshold: 0.5,
+          p_match_threshold: 0.3,
           p_match_count: 5,
         },
       );
@@ -213,7 +213,7 @@ describe("VectorSearchService", () => {
           p_content_embedding: testEmbedding,
           p_behavior_embedding: testEmbedding,
           p_alpha: 0.5,
-          p_match_threshold: 0.5,
+          p_match_threshold: 0.3,
           p_match_count: 5,
         },
       );

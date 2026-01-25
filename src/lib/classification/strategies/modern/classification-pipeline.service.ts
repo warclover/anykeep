@@ -6,16 +6,17 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { LoggerService } from "../shared/logger";
-import type { IEmbeddingService } from "../shared/embedding";
-import type { VectorSearchService } from "../shared/vector-search";
-import type { LLMService } from "../shared/llm";
+import type { LoggerService } from "@/lib/classification/infrastructure/shared-services/logger";
+import type { IEmbeddingService } from "@/lib/classification/infrastructure/shared-services/embedding";
+import type { VectorSearchService } from "@/lib/classification/infrastructure/shared-services/vector-search";
+import type { LLMService } from "@/lib/classification/infrastructure/shared-services/llm";
 import { L0RuleMatcher, type Rule } from "./l0-rule-matcher";
 import { T0Generator } from "./t0-generator";
 import { T1Corrector } from "./t1-corrector";
 import { HybridRetriever } from "./hybrid-retriever";
 import { LLMCaller } from "./llm-caller";
 import { FolderContextProvider } from "./folder-context-provider";
+import { CrystalGrowthService } from "./crystal/growth/crystal-growth.service";
 import type {
   ClassificationRequest,
   ClassificationPipelineConfig,
@@ -53,6 +54,7 @@ export class ClassificationPipelineService {
   private t0Generator: T0Generator;
   private t1Corrector: T1Corrector;
   private folderContextProvider?: FolderContextProvider;
+  private crystalGrowth?: CrystalGrowthService;
   /** v6.3: 保存 supabase 引用，用于 loadUserRules 重建 L0RuleMatcher */
   private supabase?: SupabaseClient;
 
@@ -100,6 +102,10 @@ export class ClassificationPipelineService {
     if (supabase) {
       this.folderContextProvider = new FolderContextProvider(logger, supabase);
       this.logger.info("FolderContextProvider 已初始化，T1 将使用示例书签增强");
+
+      // Phase 5: 初始化晶体生长服务
+      this.crystalGrowth = new CrystalGrowthService(supabase);
+      this.logger.info("CrystalGrowthService 已初始化，启用晶体生长能力");
     }
 
     // v6.3: 保存 supabase 引用
@@ -171,18 +177,28 @@ export class ClassificationPipelineService {
 
       // Step 3: 判断是否需要 T1 纠正
       if (!t0Result.needsT1) {
-        const totalLatency = Date.now() - startTime;
-
         // v6: null 分类兜底处理
         const finalFolderId = this.ensureValidFolderId(
           t0Result.folderId,
           request.defaultFolderId,
         );
 
+        // Phase 5: 晶体生长检查
+        const crystalResult = await this.processCrystalGrowth(
+          request,
+          finalFolderId,
+          t0Result.confidence,
+        );
+
+        const totalLatency = Date.now() - startTime;
+
         return {
-          folderId: finalFolderId,
-          confidence: t0Result.confidence,
+          folderId: crystalResult.folderId,
+          confidence: crystalResult.confidence,
           usedT1: false,
+          reasoning: crystalResult.crystallized
+            ? `Crystal Growth: Created folder '${crystalResult.folderName}'`
+            : undefined,
           totalLatencyMs: totalLatency,
           t0LatencyMs: t0Result.latencyMs,
         };
@@ -200,19 +216,28 @@ export class ClassificationPipelineService {
         latencyMs: t1Result.latencyMs,
       });
 
-      const totalLatency = Date.now() - startTime;
-
       // v6: null 分类兜底处理
       const finalFolderId = this.ensureValidFolderId(
         t1Result.folderId,
         request.defaultFolderId,
       );
 
+      // Phase 5: 晶体生长检查
+      const crystalResult = await this.processCrystalGrowth(
+        request,
+        finalFolderId,
+        t1Result.confidence,
+      );
+
+      const totalLatency = Date.now() - startTime;
+
       return {
-        folderId: finalFolderId,
-        confidence: t1Result.confidence,
+        folderId: crystalResult.folderId,
+        confidence: crystalResult.confidence,
         usedT1: true,
-        reasoning: t1Result.reasoning,
+        reasoning: crystalResult.crystallized
+          ? `${t1Result.reasoning} -> Crystal Growth: Created folder '${crystalResult.folderName}'`
+          : t1Result.reasoning,
         totalLatencyMs: totalLatency,
         t0LatencyMs: t0Result.latencyMs,
         t1LatencyMs: t1Result.latencyMs,
@@ -371,6 +396,75 @@ export class ClassificationPipelineService {
     this.logger.info("用户规则已加载到L0RuleMatcher", {
       ruleCount: rules.length,
     });
+  }
+
+  /**
+   * Phase 5: 晶体生长处理
+   * 如果分类结果为 inbox 或置信度低，尝试触发晶体生长
+   */
+  private async processCrystalGrowth(
+    request: ClassificationRequest,
+    currentFolderId: FolderId,
+    currentConfidence: number,
+  ): Promise<{
+    folderId: FolderId;
+    confidence: number;
+    crystallized: boolean;
+    folderName?: string;
+  }> {
+    if (!this.crystalGrowth) {
+      return {
+        folderId: currentFolderId,
+        confidence: currentConfidence,
+        crystallized: false,
+      };
+    }
+
+    // 触发条件：归类到 Inbox 或 置信度 < 0.6
+    // 注意：Inbox ID 可能是 "inbox" 字符串或特定 ID，这里假设为 "inbox" 或 "0" 或 null/undefined 已被 ensureValidFolderId 处理为 "inbox"
+    const isInbox = currentFolderId === "inbox" || currentConfidence < 0.6;
+
+    if (isInbox) {
+      try {
+        const bookmarkIdNum = parseInt(request.bookmarkId);
+        if (!isNaN(bookmarkIdNum)) {
+          const result = await this.crystalGrowth.processInboxBookmark(
+            request.userId,
+            {
+              id: bookmarkIdNum,
+              title: request.title,
+              url: request.url,
+            },
+          );
+
+          if (result.action === "CRYSTALLIZED" && result.folderId) {
+            this.logger.info("晶体生长成功，创建新文件夹", {
+              bookmarkId: request.bookmarkId,
+              newFolderId: result.folderId,
+              newFolderName: result.folderName,
+            });
+
+            return {
+              folderId: result.folderId, // 确保与 FolderId 类型兼容（通常是 number | string）
+              confidence: 1.0,
+              crystallized: true,
+              folderName: result.folderName,
+            };
+          }
+        }
+      } catch (error) {
+        this.logger.warn("晶体生长处理异常", {
+          bookmarkId: request.bookmarkId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+
+    return {
+      folderId: currentFolderId,
+      confidence: currentConfidence,
+      crystallized: false,
+    };
   }
 
   /**

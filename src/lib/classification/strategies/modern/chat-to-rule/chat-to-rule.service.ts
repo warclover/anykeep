@@ -10,8 +10,8 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
-import type { LoggerService } from "../shared/logger";
-import type { LLMService } from "../shared/llm";
+import type { LoggerService } from "@/lib/classification/infrastructure/shared-services/logger";
+import type { LLMService } from "@/lib/classification/infrastructure/shared-services/llm";
 import type {
   UserClassificationRule,
   ExtractedRule,

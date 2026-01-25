@@ -4,7 +4,7 @@
  * 生成规范化的文件夹名称建议
  */
 
-import type { LoggerService } from "../shared/logger";
+import type { LoggerService } from "@/lib/classification/infrastructure/shared-services/logger";
 import type { FolderId } from "@/lib/shared/types";
 import type { NamingSuggestion } from "./types";
 

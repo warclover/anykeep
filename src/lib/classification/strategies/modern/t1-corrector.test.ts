@@ -3,7 +3,7 @@
  */
 
 import { T1Corrector } from "./t1-corrector";
-import type { LoggerService } from "../shared/logger";
+import type { LoggerService } from "@/lib/classification/infrastructure/shared-services/logger";
 import type { ClassificationRequest, T0Result, T1Result } from "./types";
 
 // Mock Logger
@@ -86,11 +86,15 @@ describe("T1Corrector", () => {
             folderId: "folder-1",
             folderName: "Folder 1",
             score: 0.85,
+            keywordTags: [],
+            sampleBookmarks: [],
           },
           {
             folderId: "folder-2",
             folderName: "Folder 2",
             score: 0.75,
+            keywordTags: [],
+            sampleBookmarks: [],
           },
         ],
       });
@@ -133,11 +137,15 @@ describe("T1Corrector", () => {
           folderId: "folder-1",
           folderName: "Folder 1",
           score: 0.85,
+          keywordTags: [],
+          sampleBookmarks: [],
         },
         {
           folderId: "folder-2",
           folderName: "Folder 2",
           score: 0.75,
+          keywordTags: [],
+          sampleBookmarks: [],
         },
       ]);
     });
