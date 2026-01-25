@@ -220,6 +220,10 @@ export async function classifyBookmarkV2(
       const { FeatureFlagService } = await import(
         "@/lib/classification/infrastructure/feature-flags/feature-flag.service"
       );
+      // 导入 LoggerService
+      const { LoggerService } = await import(
+        "@/lib/classification/infrastructure/shared-services/logger"
+      );
 
       // 检查 Feature Flag
       const { RolloutStage } = await import(
@@ -259,8 +263,7 @@ export async function classifyBookmarkV2(
 
       const featureFlagConfig = {
         enabled: !isExplicitlyDisabled, // v5.1: 默认启用
-        stage,
-        percentage: 100, // v5.1: 默认全量发布
+        rolloutPercentage: 100, // v5.1: 默认全量发布
         whitelist: [],
         blacklist: [],
       };
@@ -274,12 +277,15 @@ export async function classifyBookmarkV2(
           majority: 50,
           full: 100,
         };
-        featureFlagConfig.percentage =
-          stagePercentages[featureFlagConfig.stage] || 100;
+        featureFlagConfig.rolloutPercentage = stagePercentages[stage] || 100;
       }
 
-      const featureFlagService = new FeatureFlagService(featureFlagConfig);
-      const isV5Enabled = featureFlagService.isEnabledForUser(userId);
+      const loggerService = new LoggerService();
+      const featureFlagService = new FeatureFlagService(
+        loggerService,
+        featureFlagConfig,
+      );
+      const isV5Enabled = featureFlagService.isV5Enabled(userId);
 
       if (!isV5Enabled) {
         // 降级到 V4.1

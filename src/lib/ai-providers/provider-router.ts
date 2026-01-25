@@ -154,44 +154,6 @@ const DEFAULT_PROVIDER_CONFIGS: ProviderConfig[] = [
     supportsToolCalling: true,
     supportsStreaming: true,
   },
-  {
-    name: "openai",
-    apiKeyEnv: "OPENAI_API_KEY",
-    defaultModel: "gpt-4o-mini",
-    supportedTasks: [
-      "chat",
-      "summary",
-      "classify",
-      "reasoning",
-      "vision",
-      "tool_calling",
-    ],
-    priority: 3, // 第三备选
-    enabled: true,
-    costFactor: 5, // OpenAI 成本约为 DeepSeek 的 5 倍
-    maxTokens: 128000,
-    supportsToolCalling: true,
-    supportsStreaming: true,
-  },
-  {
-    name: "anthropic",
-    apiKeyEnv: "ANTHROPIC_API_KEY",
-    defaultModel: "claude-3-5-sonnet-20241022",
-    supportedTasks: [
-      "chat",
-      "summary",
-      "classify",
-      "reasoning",
-      "vision",
-      "tool_calling",
-    ],
-    priority: 4, // 最后备选
-    enabled: true,
-    costFactor: 8, // Claude 成本较高
-    maxTokens: 200000,
-    supportsToolCalling: true,
-    supportsStreaming: true,
-  },
 ];
 
 /**
