@@ -98,21 +98,21 @@ describe("TagPreMatcher", () => {
   describe("match - exact matching", () => {
     const folders: CachedFolder[] = [
       {
-        id: "1",
+        id: 1,
         name: "Vue.js",
         normalizedName: "vuejs",
         aliases: [],
         coreTags: [],
       },
       {
-        id: "2",
+        id: 2,
         name: "React",
         normalizedName: "react",
         aliases: [],
         coreTags: [],
       },
       {
-        id: "3",
+        id: 3,
         name: "前端开发",
         normalizedName: "前端开发",
         aliases: [],
@@ -124,7 +124,7 @@ describe("TagPreMatcher", () => {
       const result = matcher.match(["vuejs"], folders);
 
       expect(result.matched).toBe(true);
-      expect(result.folderId).toBe("1");
+      expect(result.folderId).toBe(1);
       expect(result.folderName).toBe("Vue.js");
       expect(result.matchMode).toBe("exact");
       expect(result.confidence).toBe(0.98);
@@ -134,18 +134,18 @@ describe("TagPreMatcher", () => {
     it("should match Vue.js variations", () => {
       const result1 = matcher.match(["Vue.js"], folders);
       expect(result1.matched).toBe(true);
-      expect(result1.folderId).toBe("1");
+      expect(result1.folderId).toBe(1);
 
       const result2 = matcher.match(["VueJS"], folders);
       expect(result2.matched).toBe(true);
-      expect(result2.folderId).toBe("1");
+      expect(result2.folderId).toBe(1);
     });
 
     it("should match Chinese folder names", () => {
       const result = matcher.match(["前端开发"], folders);
 
       expect(result.matched).toBe(true);
-      expect(result.folderId).toBe("3");
+      expect(result.folderId).toBe(3);
       expect(result.folderName).toBe("前端开发");
     });
 
@@ -161,14 +161,14 @@ describe("TagPreMatcher", () => {
   describe("match - alias matching", () => {
     const folders: CachedFolder[] = [
       {
-        id: "1",
+        id: 1,
         name: "JavaScript",
         normalizedName: "javascript",
         aliases: ["js", "ecmascript"],
         coreTags: [],
       },
       {
-        id: "2",
+        id: 2,
         name: "TypeScript",
         normalizedName: "typescript",
         aliases: ["ts"],
@@ -184,7 +184,7 @@ describe("TagPreMatcher", () => {
       const result = strictMatcher.match(["js"], folders);
 
       expect(result.matched).toBe(true);
-      expect(result.folderId).toBe("1");
+      expect(result.folderId).toBe(1);
       expect(result.matchMode).toBe("normalized");
       expect(result.confidence).toBe(0.95);
     });
@@ -193,7 +193,7 @@ describe("TagPreMatcher", () => {
       const result = matcher.match(["ts"], folders);
 
       expect(result.matched).toBe(true);
-      expect(result.folderId).toBe("2");
+      expect(result.folderId).toBe(2);
       expect(result.folderName).toBe("TypeScript");
     });
   });
@@ -201,14 +201,14 @@ describe("TagPreMatcher", () => {
   describe("match - partial matching", () => {
     const folders: CachedFolder[] = [
       {
-        id: "1",
+        id: 1,
         name: "ReactJS",
         normalizedName: "reactjs",
         aliases: [],
         coreTags: [],
       },
       {
-        id: "2",
+        id: 2,
         name: "JavaScript",
         normalizedName: "javascript",
         aliases: [],
@@ -224,7 +224,7 @@ describe("TagPreMatcher", () => {
       const result = strictMatcher.match(["react"], folders);
 
       expect(result.matched).toBe(true);
-      expect(result.folderId).toBe("1");
+      expect(result.folderId).toBe(1);
       expect(result.matchMode).toBe("partial");
       expect(result.confidence).toBe(0.6);
       expect(result.needsServerValidation).toBe(true);
@@ -236,7 +236,7 @@ describe("TagPreMatcher", () => {
 
       // 由于同义词扩展，可能会有其他匹配
       // 但 Java 不应该匹配到 JavaScript
-      if (result.matched && result.folderId === "2") {
+      if (result.matched && result.folderId === 2) {
         fail("Java should not match JavaScript");
       }
     });
@@ -245,14 +245,14 @@ describe("TagPreMatcher", () => {
   describe("match - synonym expansion", () => {
     const folders: CachedFolder[] = [
       {
-        id: "1",
+        id: 1,
         name: "JavaScript",
         normalizedName: "javascript",
         aliases: [],
         coreTags: [],
       },
       {
-        id: "2",
+        id: 2,
         name: "Golang",
         normalizedName: "golang",
         aliases: ["go"],
@@ -264,28 +264,28 @@ describe("TagPreMatcher", () => {
       const result = matcher.match(["js"], folders);
 
       expect(result.matched).toBe(true);
-      expect(result.folderId).toBe("1");
+      expect(result.folderId).toBe(1);
     });
 
     it("should match go to Golang via synonym expansion", () => {
       const result = matcher.match(["go"], folders);
 
       expect(result.matched).toBe(true);
-      expect(result.folderId).toBe("2");
+      expect(result.folderId).toBe(2);
     });
   });
 
   describe("matchBatch", () => {
     const folders: CachedFolder[] = [
       {
-        id: "1",
+        id: 1,
         name: "Vue.js",
         normalizedName: "vuejs",
         aliases: ["vue"],
         coreTags: [],
       },
       {
-        id: "2",
+        id: 2,
         name: "React",
         normalizedName: "react",
         aliases: [],
@@ -304,9 +304,9 @@ describe("TagPreMatcher", () => {
 
       expect(results.size).toBe(3);
       expect(results.get("item1")?.matched).toBe(true);
-      expect(results.get("item1")?.folderId).toBe("1");
+      expect(results.get("item1")?.folderId).toBe(1);
       expect(results.get("item2")?.matched).toBe(true);
-      expect(results.get("item2")?.folderId).toBe("2");
+      expect(results.get("item2")?.folderId).toBe(2);
       expect(results.get("item3")?.matched).toBe(false);
     });
   });
@@ -315,7 +315,7 @@ describe("TagPreMatcher", () => {
     it("should calculate correct stats", () => {
       const folders: CachedFolder[] = [
         {
-          id: "1",
+          id: 1,
           name: "Vue.js",
           normalizedName: "vuejs",
           aliases: [],
@@ -342,14 +342,14 @@ describe("TagPreMatcher", () => {
   describe("matchCoreTags", () => {
     const folders: CachedFolder[] = [
       {
-        id: "1",
+        id: 1,
         name: "前端框架",
         normalizedName: "前端框架",
         aliases: [],
         coreTags: ["vuejs", "react", "angular"],
       },
       {
-        id: "2",
+        id: 2,
         name: "后端技术",
         normalizedName: "后端技术",
         aliases: [],
@@ -361,7 +361,7 @@ describe("TagPreMatcher", () => {
       const result = matcher.matchCoreTags(["vuejs", "react"], folders);
 
       expect(result).not.toBeNull();
-      expect(result?.folder.id).toBe("1");
+      expect(result?.folder.id).toBe(1);
       expect(result?.matchedTags).toContain("vuejs");
       expect(result?.matchedTags).toContain("react");
     });
@@ -370,7 +370,7 @@ describe("TagPreMatcher", () => {
       const result = matcher.matchCoreTags(["nodejs"], folders);
 
       expect(result).not.toBeNull();
-      expect(result?.folder.id).toBe("2");
+      expect(result?.folder.id).toBe(2);
     });
 
     it("should return null when no core tags match", () => {
@@ -383,7 +383,7 @@ describe("TagPreMatcher", () => {
   describe("performance", () => {
     it("should match within 5ms for normal workload", () => {
       const folders: CachedFolder[] = Array.from({ length: 50 }, (_, i) => ({
-        id: `${i}`,
+        id: i,
         name: `Folder ${i}`,
         normalizedName: `folder${i}`,
         aliases: [`alias${i}`],
@@ -397,7 +397,7 @@ describe("TagPreMatcher", () => {
 
     it("should batch match 100 items within 50ms", () => {
       const folders: CachedFolder[] = Array.from({ length: 20 }, (_, i) => ({
-        id: `${i}`,
+        id: i,
         name: `Folder ${i}`,
         normalizedName: `folder${i}`,
         aliases: [],
@@ -428,7 +428,7 @@ describe("TagPreMatcher", () => {
     it("should handle empty tags list", () => {
       const folders: CachedFolder[] = [
         {
-          id: "1",
+          id: 1,
           name: "Test",
           normalizedName: "test",
           aliases: [],
@@ -451,7 +451,7 @@ describe("TagPreMatcher", () => {
     it("should handle special characters in tags", () => {
       const folders: CachedFolder[] = [
         {
-          id: "1",
+          id: 1,
           name: "C++",
           normalizedName: "cpp",
           aliases: [],
@@ -462,7 +462,7 @@ describe("TagPreMatcher", () => {
       const result = matcher.match(["C++"], folders);
 
       expect(result.matched).toBe(true);
-      expect(result.folderId).toBe("1");
+      expect(result.folderId).toBe(1);
     });
   });
 
@@ -472,7 +472,7 @@ describe("TagPreMatcher", () => {
 
       const folders: CachedFolder[] = [
         {
-          id: "1",
+          id: 1,
           name: "ReactJS",
           normalizedName: "reactjs",
           aliases: [],

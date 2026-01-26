@@ -212,7 +212,7 @@ export class SmartSortingService {
       enable_auto_merge: aiSettings?.enable_auto_merge ?? false,
       enable_auto_rename: aiSettings?.enable_auto_rename ?? false,
       create_notification: aiSettings?.create_notification ?? true,
-      report_interval: aiSettings?.report_interval ?? "monthly",
+      report_interval: aiSettings?.report_interval ?? 30,
       daily_create_limit: aiSettings?.daily_create_limit ?? DAILY_LIMIT,
     };
   }

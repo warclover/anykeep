@@ -9,8 +9,9 @@
 
 import { createClient } from "@/lib/supabase/client";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/types/supabase";
+import type { Database, Json } from "@/types/supabase";
 import { logger } from "@/lib/logger";
+import { LinkEvidenceSchema } from "../types/link.schemas";
 import type {
   KnowledgeLink,
   LinkType,
@@ -20,6 +21,7 @@ import type {
   LinkQueryFilter,
   KnowledgeGraphStats,
   DiscoveredLink,
+  LinkEvidence,
 } from "../types/link.types";
 
 // ============================================================================
@@ -103,8 +105,8 @@ export class LinkRepository implements ILinkRepository {
       p_bookmark_id_2: input.bookmarkId2,
       p_link_type: input.linkType,
       p_strength: input.strength,
-      p_evidence: input.evidence,
-      p_algorithm: input.algorithm || null,
+      p_evidence: input.evidence as unknown as Json,
+      p_algorithm: input.algorithm,
     });
 
     if (error) {
@@ -123,7 +125,7 @@ export class LinkRepository implements ILinkRepository {
       bookmarkId2: link.bookmarkId2,
       linkType: link.linkType,
       strength: link.strength,
-      evidence: link.evidence,
+      evidence: link.evidence as unknown as Json,
       algorithm: link.algorithm || null,
     }));
 
@@ -131,7 +133,7 @@ export class LinkRepository implements ILinkRepository {
       "batch_upsert_knowledge_links",
       {
         p_user_id: input.userId,
-        p_links: linksJson,
+        p_links: linksJson as unknown as Json,
       },
     );
 
@@ -151,9 +153,9 @@ export class LinkRepository implements ILinkRepository {
   ): Promise<KnowledgeLink[]> {
     const { data, error } = await this.supabase.rpc("get_bookmark_links", {
       p_bookmark_id: bookmarkId,
-      p_user_id: filter?.userId || null,
+      p_user_id: filter?.userId,
       p_min_strength: filter?.minStrength || 0.3,
-      p_link_types: filter?.linkTypes || null,
+      p_link_types: (filter?.linkTypes as unknown as string[]) || undefined,
       p_limit: filter?.limit || 20,
     });
 
@@ -169,9 +171,29 @@ export class LinkRepository implements ILinkRepository {
       targetBookmarkId: Math.max(bookmarkId, row.related_bookmark_id),
       linkType: row.link_type as LinkType,
       strength: row.strength,
-      evidence: row.evidence as Record<string, unknown>,
+      evidence: this.parseEvidence(row.evidence),
       createdAt: row.created_at,
     }));
+  }
+
+  /**
+   * 解析并验证 Evidence 数据
+   */
+  private parseEvidence(evidence: unknown): LinkEvidence {
+    try {
+      return LinkEvidenceSchema.parse(evidence);
+    } catch (error) {
+      logger.warn(
+        { error, evidence },
+        "Invalid link evidence format, using fallback",
+      );
+      // Fallback for invalid data to prevent crash
+      return {
+        type: "semantic",
+        score: 0,
+        details: {},
+      } as LinkEvidence;
+    }
   }
 
   /**
@@ -193,7 +215,7 @@ export class LinkRepository implements ILinkRepository {
         p_user_id: userId,
         p_limit: options?.limit || 10,
         p_min_strength: options?.minStrength || 0.3,
-        p_link_types: options?.types || null,
+        p_link_types: (options?.types as unknown as string[]) || null,
       },
     );
 
@@ -207,8 +229,8 @@ export class LinkRepository implements ILinkRepository {
         id: row.bookmark_id,
         title: row.title,
         url: row.url,
-        favicon: row.favicon || undefined,
-        platform: row.platform || undefined,
+        favicon: row.favicon ?? undefined,
+        platform: row.platform ?? undefined,
       },
       link: {
         type: row.link_type as LinkType,
@@ -290,7 +312,7 @@ export class LinkRepository implements ILinkRepository {
     const { data, error } = await this.supabase.rpc("discover_bookmark_links", {
       p_user_id: userId,
       p_bookmark_id: bookmarkId,
-      p_options: options || {},
+      p_options: (options as unknown as Json) || {},
     });
 
     if (error) {
@@ -301,7 +323,7 @@ export class LinkRepository implements ILinkRepository {
       targetBookmarkId: row.related_bookmark_id,
       linkType: row.link_type as LinkType,
       strength: row.strength,
-      evidence: row.evidence as Record<string, unknown>,
+      evidence: this.parseEvidence(row.evidence),
       algorithm: `discover-${row.link_type}`,
     }));
   }
@@ -333,7 +355,7 @@ export class LinkRepository implements ILinkRepository {
       title: data.title,
       url: data.url,
       aiTags: data.ai_tags || [],
-      embedding: data.embedding,
+      embedding: (data.embedding as unknown as number[]) || null,
     };
   }
 
@@ -341,17 +363,20 @@ export class LinkRepository implements ILinkRepository {
    * 获取书签的实体列表
    */
   async getBookmarkEntities(bookmarkId: number): Promise<string[]> {
+    /* eslint-disable @typescript-eslint/no-explicit-any */
     const { data, error } = await this.supabase
-      .from("bookmark_entities")
+      .from("bookmark_entities" as any)
       .select("name")
       .eq("bookmark_id", bookmarkId);
+    /* eslint-enable @typescript-eslint/no-explicit-any */
 
     if (error) {
       logger.error({ error }, "Failed to get bookmark entities");
       return [];
     }
 
-    return (data || []).map((row: { name: string }) => row.name);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (data || []).map((row: any) => row.name);
   }
 }
 

@@ -9,7 +9,10 @@
 import { z } from "zod";
 // ClassificationContainer 导入已移除 (Phase 1, 2026-01-24) - V3 废弃
 import { FOLDER_LIMITS } from "./constants";
-import { CONFIDENCE_THRESHOLDS } from "./types/classification-status";
+import {
+  CONFIDENCE_THRESHOLDS,
+  CLASSIFICATION_STATUS,
+} from "./types/classification-status";
 import { logger } from "@/lib/logger";
 import { MessageService } from "@/lib/messages/server";
 import { confirmationService } from "@/lib/confirmation";
@@ -26,6 +29,7 @@ import type { Database } from "@/types/supabase";
 // 导入提取的模块
 import { updateFolderProfileAfterClassification as updateFolderProfile } from "./folder-profile-manager";
 import { updateBookmarkClassificationStatus } from "./classification-status";
+import { createSimpleClassificationService } from "./services/simple-classification.service";
 
 // 重新导出提取的函数（保持 API 兼容性）
 export {
@@ -149,7 +153,7 @@ export async function classifyBookmarkV2(
       folderId: null,
       folderName: null,
       confidence: 0,
-      action: "inbox",
+      action: CLASSIFICATION_STATUS.INBOX,
     };
   }
 
@@ -172,7 +176,14 @@ export async function classifyBookmarkV2(
     };
 
     // Run classification based on version
-    let result: ClassificationResult;
+    let result: ClassificationResult = {
+      folderId: null,
+      folderName: "",
+      confidence: 0,
+      reason: "未分类",
+      action: CLASSIFICATION_STATUS.INBOX,
+      scores: { vectorScore: 0, historyScore: 0, aiScore: 0 },
+    };
 
     if (classificationVersion === "v4.1") {
       // V4.1: 使用 SimpleClassificationService（统一向量搜索，支持冷启动）
@@ -293,7 +304,7 @@ export async function classifyBookmarkV2(
           {
             userId,
             bookmarkId,
-            stage: featureFlagConfig.stage,
+            rolloutPercentage: featureFlagConfig.rolloutPercentage,
             reason: "feature_flag_disabled",
           },
           "Classification V5.0: Feature flag disabled, fallback to V4.1",
@@ -348,15 +359,11 @@ export async function classifyBookmarkV2(
         const v5Result = await pipeline.classify(v5Request);
 
         // v5.2 修复: 转换 V5.0 结果到统一的 ClassificationResult 格式
-        // 处理 "inbox" 字符串返回值，避免 parseInt 返回 NaN
-        const folderId =
-          v5Result.folderId === "inbox"
-            ? null
-            : parseInt(v5Result.folderId, 10);
-
-        // 如果 folderId 解析失败（NaN），也视为 inbox
+        // FolderId 是 number 类型，0 或负数视为 inbox
         let validFolderId: number | null =
-          folderId !== null && !isNaN(folderId) ? folderId : null;
+          typeof v5Result.folderId === "number" && v5Result.folderId > 0
+            ? v5Result.folderId
+            : null;
 
         // 查询并验证文件夹存在性（只有 validFolderId 有效时才查询）
         let folderName: string | null = null;
@@ -546,7 +553,7 @@ export async function classifyBookmarkV2(
             folderId: null,
             folderName: null,
             confidence: result.confidence,
-            action: "inbox",
+            action: CLASSIFICATION_STATUS.INBOX,
           };
         }
 
@@ -579,13 +586,13 @@ export async function classifyBookmarkV2(
           supabase,
           bookmarkId,
           userId,
-          "classified",
+          CLASSIFICATION_STATUS.CLASSIFIED,
           {
-            folderId: result.folderId,
-            folderName: result.folderName,
+            folder_id: result.folderId,
+            folder_name: result.folderName,
             confidence: result.confidence,
-            action: "classify",
-            timestamp: new Date().toISOString(),
+            method: "auto-classify",
+            action: "select_existing",
             reason: result.reason,
           },
         );
@@ -653,7 +660,7 @@ export async function classifyBookmarkV2(
               folderId: null,
               folderName: null,
               confidence: result.confidence,
-              action: "inbox",
+              action: CLASSIFICATION_STATUS.INBOX,
             };
           }
 
@@ -688,13 +695,13 @@ export async function classifyBookmarkV2(
             supabase,
             bookmarkId,
             userId,
-            "classified",
+            CLASSIFICATION_STATUS.CLASSIFIED,
             {
-              folderId: result.folderId,
-              folderName: result.folderName,
+              folder_id: result.folderId,
+              folder_name: result.folderName,
               confidence: result.confidence,
-              action: "classify",
-              timestamp: new Date().toISOString(),
+              method: "full-auto",
+              action: "select_existing",
               reason: `${result.reason || ""} (full_auto mode)`,
             },
           );
@@ -776,14 +783,13 @@ export async function classifyBookmarkV2(
             supabase,
             bookmarkId,
             userId,
-            "suggested",
+            CLASSIFICATION_STATUS.SUGGESTED,
             {
-              folderId: result.folderId,
-              folderName: result.folderName,
+              folder_id: result.folderId,
+              folder_name: result.folderName,
               confidence: result.confidence,
-              action: "classify",
-              suggestionId: suggestion.id,
-              timestamp: new Date().toISOString(),
+              method: "suggestion",
+              action: "select_existing",
               reason: result.reason,
             },
           );
@@ -849,14 +855,13 @@ export async function classifyBookmarkV2(
             supabase,
             bookmarkId,
             userId,
-            "suggested",
+            CLASSIFICATION_STATUS.SUGGESTED,
             {
-              folderId: null,
-              folderName: result.folderName,
+              folder_id: null,
+              folder_name: result.folderName,
               confidence: result.confidence,
+              method: "limit-reached",
               action: "suggest_new",
-              suggestionId: suggestion.id,
-              timestamp: new Date().toISOString(),
               reason: "每日文件夹创建数量已达上限",
             },
           );
@@ -927,13 +932,13 @@ export async function classifyBookmarkV2(
               supabase,
               bookmarkId,
               userId,
-              "classified",
+              CLASSIFICATION_STATUS.CLASSIFIED,
               {
-                folderId: newFolder.id,
-                folderName: result.folderName,
+                folder_id: newFolder.id,
+                folder_name: result.folderName,
                 confidence: result.confidence,
+                method: "auto-create",
                 action: "suggest_new",
-                timestamp: new Date().toISOString(),
                 reason: "创建新文件夹并归类",
               },
             );
@@ -983,14 +988,13 @@ export async function classifyBookmarkV2(
             supabase,
             bookmarkId,
             userId,
-            "suggested",
+            CLASSIFICATION_STATUS.SUGGESTED,
             {
-              folderId: null,
-              folderName: result.folderName,
+              folder_id: null,
+              folder_name: result.folderName,
               confidence: result.confidence,
+              method: "suggestion-new",
               action: "suggest_new",
-              suggestionId: suggestion.id,
-              timestamp: new Date().toISOString(),
               reason: result.reason || "建议创建新文件夹",
             },
           );
@@ -1048,13 +1052,13 @@ export async function classifyBookmarkV2(
       supabase,
       bookmarkId,
       userId,
-      "inbox",
+      CLASSIFICATION_STATUS.INBOX,
       {
-        folderId: null,
-        folderName: "待整理",
+        folder_id: null,
+        folder_name: "待整理",
         confidence: result.confidence,
+        method: "inbox-fallback",
         action: "inbox",
-        timestamp: new Date().toISOString(),
         reason: `置信度 ${result.confidence}% 低于阈值`,
       },
     );
@@ -1064,7 +1068,7 @@ export async function classifyBookmarkV2(
       folderId: null,
       folderName: null,
       confidence: result.confidence,
-      action: "inbox",
+      action: CLASSIFICATION_STATUS.INBOX,
     };
   } catch (error) {
     logger.error(
@@ -1080,7 +1084,7 @@ export async function classifyBookmarkV2(
       folderId: null,
       folderName: null,
       confidence: 0,
-      action: "inbox",
+      action: CLASSIFICATION_STATUS.INBOX,
     };
   }
 }

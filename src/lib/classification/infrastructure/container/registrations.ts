@@ -75,7 +75,10 @@ export function registerRepositories(container: EnhancedContainer): void {
   // 书签仓储
   container.register(
     SERVICE_TYPES.BookmarkRepository,
-    () => new BookmarkRepository(supabase),
+    // Fix: BookmarkRepository requires userId, but in singleton container context we don't have it.
+    // Passing empty string as placeholder. Services using this MUST provide userId in method calls if required,
+    // or we need to refactor BookmarkRepository to be stateless/scoped.
+    () => new BookmarkRepository(supabase, ""),
     "singleton",
   );
 

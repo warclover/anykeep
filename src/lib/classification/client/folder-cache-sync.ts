@@ -285,7 +285,7 @@ export class FolderCacheSyncService {
     const folders = this.memoryCache.get(userId);
     if (!folders) return;
 
-    const filtered = folders.filter((f) => f.id !== String(folderId));
+    const filtered = folders.filter((f) => f.id !== folderId);
     this.memoryCache.set(userId, filtered);
     this.updateMetadata(userId, filtered.length);
   }
@@ -301,7 +301,7 @@ export class FolderCacheSyncService {
     const folders = this.memoryCache.get(userId);
     if (!folders) return;
 
-    const folder = folders.find((f) => f.id === String(folderId));
+    const folder = folders.find((f) => f.id === folderId);
     if (folder) {
       folder.aliases = aliases;
     }

@@ -43,54 +43,14 @@ interface SnapshotRow {
   folder_id: number | null;
   folder_ids: number[] | null;
   reason: string | null;
-  created_at: string;
-  expires_at: string;
-  is_undone: boolean;
+  created_at: string | null;
+  expires_at: string | null;
+  is_undone: boolean | null;
   undone_at: string | null;
 }
 
-// 扩展 Database 类型
-interface OperationSnapshotTableDef {
-  Row: SnapshotRow;
-  Insert: Omit<SnapshotRow, "id" | "created_at" | "is_undone" | "undone_at"> & {
-    id?: string;
-    created_at?: string;
-    is_undone?: boolean;
-    undone_at?: string | null;
-  };
-  Update: Partial<SnapshotRow>;
-}
-
-type ExtendedDatabase = Database & {
-  public: {
-    Tables: {
-      operation_snapshots: OperationSnapshotTableDef;
-      bookmarks: {
-        Row: {
-          id: number;
-          user_id: string;
-          folder_id: number | null;
-          ai_tags: string[] | null;
-          is_in_trash: boolean | null;
-          title: string;
-          url: string;
-          is_starred: boolean;
-        };
-        Update: {
-          folder_id?: number | null;
-          ai_tags?: string[] | null;
-          is_in_trash?: boolean;
-        };
-      };
-      folders: {
-        Row: { id: number };
-        Delete: { id: number };
-      };
-    };
-  };
-};
-
-type TypedSupabaseClient = SupabaseClient<ExtendedDatabase>;
+// 使用标准 Database 类型
+type TypedSupabaseClient = SupabaseClient<Database>;
 
 // ============================================
 // SnapshotManager 类
@@ -157,7 +117,7 @@ export class SnapshotManager {
     const snapshotData = {
       user_id: input.userId,
       action: input.action,
-      before_state: input.beforeState as Json,
+      before_state: input.beforeState as unknown as Json,
       after_state: null,
       bookmark_ids: input.bookmarkIds,
       folder_id: null,
@@ -209,7 +169,7 @@ export class SnapshotManager {
 
     if (input.afterState !== undefined) {
       // Cast to Json for Supabase compatibility
-      updateData.after_state = input.afterState as Json;
+      updateData.after_state = input.afterState as unknown as Json;
     }
 
     if (input.isUndone !== undefined) {
@@ -699,7 +659,9 @@ export class SnapshotManager {
    * 将数据库行映射为快照对象
    */
   private mapRowToSnapshot(row: SnapshotRow): OrganizeSnapshot {
-    const expiresAt = new Date(row.expires_at);
+    const expiresAt = row.expires_at
+      ? new Date(row.expires_at)
+      : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
     const now = new Date();
 
     if (!isValidSnapshotState(row.before_state)) {
@@ -735,11 +697,11 @@ export class SnapshotManager {
       afterState: afterState,
       bookmarkIds: row.bookmark_ids ?? [],
       reason: row.reason,
-      createdAt: new Date(row.created_at),
+      createdAt: row.created_at ? new Date(row.created_at) : new Date(),
       expiresAt,
-      isUndone: row.is_undone,
+      isUndone: row.is_undone || false,
       undoneAt: row.undone_at ? new Date(row.undone_at) : null,
-      canUndo: !row.is_undone && expiresAt > now,
+      canUndo: !(row.is_undone || false) && expiresAt > now,
     };
   }
 
@@ -792,7 +754,8 @@ export const snapshotManager = new SnapshotManager();
 /**
  * Type guard for OrganizeOperationSnapshot
  */
-function isValidSnapshotState(json: Json): json is OrganizeOperationSnapshot {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function isValidSnapshotState(json: any): json is OrganizeOperationSnapshot {
   if (typeof json !== "object" || json === null || Array.isArray(json)) {
     return false;
   }

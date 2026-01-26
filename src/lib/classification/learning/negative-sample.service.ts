@@ -42,13 +42,13 @@ export interface FolderExclusionRecord {
   id: number;
   user_id: string;
   folder_id: number;
-  exclusion_type: ExclusionType;
+  exclusion_type: string; // 数据库返回 string，运行时验证为 ExclusionType
   excluded_tag: string | null;
   excluded_source_id: string | null;
   excluded_keyword: string | null;
-  excluded_embedding: number[] | null;
-  weight: number;
-  created_from: CreatedFrom;
+  excluded_embedding: string | null; // pgvector 在数据库中存储为字符串格式
+  weight: number | null;
+  created_from: string; // 数据库返回 string，运行时验证为 CreatedFrom
   original_bookmark_id: number | null;
   expires_at: string | null;
   created_at: string;
@@ -171,11 +171,9 @@ class NegativeSampleService extends BaseSupabaseService {
         insertData.excluded_keyword = input.excludedValue as string;
         break;
       case "embedding":
-        // Database type expects string | number[] | null for excluded_embedding
-        // But pgvector usually works with string or number[] in insert, though generated types might say string
-        // We'll cast to any if needed or stick to the type.
-        // generated type says: excluded_embedding: string | number[] | null;
-        insertData.excluded_embedding = input.excludedValue as number[];
+        // pgvector 需要字符串格式 [1,2,3,...] 插入
+        const embeddingArray = input.excludedValue as number[];
+        insertData.excluded_embedding = `[${embeddingArray.join(",")}]`;
         break;
     }
 
@@ -330,9 +328,9 @@ class NegativeSampleService extends BaseSupabaseService {
       matches.push({
         folderId: row.folder_id,
         matchType: "tag",
-        matchedValue: row.excluded_tag,
-        weight: row.weight,
-        penalty: row.weight * 0.3, // 标签排除惩罚 30%
+        matchedValue: row.excluded_tag ?? "",
+        weight: row.weight ?? 0.5,
+        penalty: (row.weight ?? 0.5) * 0.3, // 标签排除惩罚 30%
       });
       result.set(row.folder_id, matches);
     }
@@ -372,9 +370,9 @@ class NegativeSampleService extends BaseSupabaseService {
       matches.push({
         folderId: row.folder_id,
         matchType: "source",
-        matchedValue: row.excluded_source_id,
-        weight: row.weight,
-        penalty: row.weight * 0.4, // 来源排除惩罚 40%
+        matchedValue: row.excluded_source_id ?? "",
+        weight: row.weight ?? 0.5,
+        penalty: (row.weight ?? 0.5) * 0.4, // 来源排除惩罚 40%
       });
       result.set(row.folder_id, matches);
     }
@@ -596,7 +594,10 @@ class NegativeSampleService extends BaseSupabaseService {
     const byFolder: Record<number, number> = {};
 
     for (const exclusion of exclusions) {
-      byType[exclusion.exclusion_type]++;
+      const type = exclusion.exclusion_type as ExclusionType;
+      if (type in byType) {
+        byType[type]++;
+      }
       byFolder[exclusion.folder_id] = (byFolder[exclusion.folder_id] || 0) + 1;
     }
 
