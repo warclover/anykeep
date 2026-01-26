@@ -36,8 +36,9 @@ export class FolderContextProvider {
   ): Promise<FolderContext> {
     // 检查缓存
     const cacheKey = `${userId}:${folderId}`;
-    if (this.cache.has(cacheKey)) {
-      return this.cache.get(cacheKey)!;
+    const cached = this.cache.get(cacheKey);
+    if (cached) {
+      return cached;
     }
 
     try {

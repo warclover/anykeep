@@ -264,7 +264,8 @@ export class FolderAliasManager {
       this.learningRecords.set(userId, []);
     }
 
-    const records = this.learningRecords.get(userId)!;
+    // 安全获取：上面已确保 userId 存在
+    const records = this.learningRecords.get(userId) ?? [];
     const existing = records.find(
       (r) => r.folderId === folderId && r.tag === normalizedTag,
     );
@@ -504,9 +505,13 @@ export class FolderAliasManager {
       this.aliasCache.set(userId, new Map());
     }
 
-    this.aliasCache.get(userId)!.set(folderId, {
-      aliases,
-      cachedAt: Date.now(),
-    });
+    // 安全获取：上面已确保 userId 存在
+    const userCache = this.aliasCache.get(userId);
+    if (userCache) {
+      userCache.set(folderId, {
+        aliases,
+        cachedAt: Date.now(),
+      });
+    }
   }
 }

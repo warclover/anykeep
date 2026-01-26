@@ -122,7 +122,8 @@ function expandCluster(
     queue.length > 0 &&
     cluster.length < CLUSTERING_CONFIG.MAX_CLUSTER_SIZE
   ) {
-    const current = queue.shift()!;
+    const current = queue.shift();
+    if (current === undefined) break;
 
     if (!visited.has(current)) {
       visited.add(current);

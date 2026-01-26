@@ -106,7 +106,10 @@ class ServiceFactory {
     this.ensureInitialized();
 
     if (!this.services.configCenter) {
-      this.services.configCenter = new ConfigCenterService(this.supabase!);
+      if (!this.supabase) {
+        throw new Error("ServiceFactory: Supabase client not initialized");
+      }
+      this.services.configCenter = new ConfigCenterService(this.supabase);
       logger.debug("ServiceFactory: ConfigCenterService created");
     }
 
@@ -135,8 +138,11 @@ class ServiceFactory {
     this.ensureInitialized();
 
     if (!this.services.reranker) {
+      if (!this.supabase) {
+        throw new Error("ServiceFactory: Supabase client not initialized");
+      }
       this.services.reranker = new RerankerService(
-        this.supabase!,
+        this.supabase,
         this.config.reranker,
       );
       logger.debug("ServiceFactory: RerankerService created");
@@ -152,7 +158,10 @@ class ServiceFactory {
     this.ensureInitialized();
 
     if (!this.services.traceStorage) {
-      this.services.traceStorage = new TraceStorageService(this.supabase!);
+      if (!this.supabase) {
+        throw new Error("ServiceFactory: Supabase client not initialized");
+      }
+      this.services.traceStorage = new TraceStorageService(this.supabase);
       logger.debug("ServiceFactory: TraceStorageService created");
     }
 

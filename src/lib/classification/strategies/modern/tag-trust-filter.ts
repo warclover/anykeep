@@ -361,12 +361,17 @@ export class TagTrustFilter {
     if (!this.userBlacklist.has(userId)) {
       this.userBlacklist.set(userId, new Map());
     }
-    const userMap = this.userBlacklist.get(userId)!;
+    // 安全获取：上面已确保 userId 存在
+    const userMap = this.userBlacklist.get(userId) ?? new Map();
 
     if (!userMap.has(folderId)) {
       userMap.set(folderId, new Set());
     }
-    userMap.get(folderId)!.add(normalizedTag);
+    // 安全获取：上面已确保 folderId 存在
+    const folderSet = userMap.get(folderId);
+    if (folderSet) {
+      folderSet.add(normalizedTag);
+    }
 
     // 2. 持久化到数据库
     if (this.supabase) {

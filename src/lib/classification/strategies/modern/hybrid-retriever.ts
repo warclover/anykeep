@@ -370,9 +370,9 @@ export class HybridRetriever {
     // 为每个结果计算名称相似度
     const resultsWithNameScore = await Promise.all(
       results.map(async (result) => {
-        // 生成文件夹名称向量
+        // 生成文件夹名称向量（此处 embeddingService 已在方法开头检查过）
         const folderNameEmbedding =
-          await this.embeddingService!.generateEmbedding(result.folderName);
+          await this.embeddingService.generateEmbedding(result.folderName);
 
         // 计算名称相似度
         const nameSimilarity = this.cosineSimilarity(

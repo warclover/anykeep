@@ -214,12 +214,13 @@ export class AutoCreateEvaluatorService {
       for (const keyword of keywords) {
         const matches = matchCategoriesByKeyword(keyword);
         if (matches.length > 0) {
-          matchedCategory = matches[0].category;
+          const category = matches[0].category;
+          matchedCategory = category;
           // 检查用户是否已有此分类的文件夹
           const existingCategoryFolder = existingFolders.find(
             (f) =>
-              f.name === matchedCategory!.suggestedFolderName ||
-              this.calculateSimilarity(f.name, matchedCategory!.name) >= 0.7,
+              f.name === category.suggestedFolderName ||
+              this.calculateSimilarity(f.name, category.name) >= 0.7,
           );
 
           if (existingCategoryFolder) {
@@ -229,7 +230,7 @@ export class AutoCreateEvaluatorService {
               shouldSuggest: false,
               recommendedName: existingCategoryFolder.name,
               rejectReason: `已有「${existingCategoryFolder.name}」文件夹`,
-              matchedCategory,
+              matchedCategory: category,
               similarFolder: {
                 id: existingCategoryFolder.id,
                 name: existingCategoryFolder.name,
@@ -239,13 +240,13 @@ export class AutoCreateEvaluatorService {
                 originalName: proposedName,
                 totalFolders: existingFolders.length,
                 todayCreated,
-                categoryMatch: matchedCategory!.id,
+                categoryMatch: category.id,
               },
             });
           }
 
           // 使用通用分类的建议名称
-          recommendedName = matchedCategory!.suggestedFolderName;
+          recommendedName = category.suggestedFolderName;
           break;
         }
       }

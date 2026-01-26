@@ -371,8 +371,11 @@ export class FeedbackLoopService {
       for (const f of window.filter(
         (f) => f.signal === "modify" && f.sourceId,
       )) {
-        const count = sourceModifies.get(f.sourceId!) || 0;
-        sourceModifies.set(f.sourceId!, count + 1);
+        const sourceId = f.sourceId;
+        if (sourceId) {
+          const count = sourceModifies.get(sourceId) || 0;
+          sourceModifies.set(sourceId, count + 1);
+        }
       }
 
       for (const [sourceId, count] of sourceModifies.entries()) {

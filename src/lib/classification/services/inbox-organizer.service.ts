@@ -19,11 +19,11 @@ import type {
 } from "../types";
 import type {
   BookmarkRepository,
-  BookmarkForClassification,
   FolderProfileRepository,
   SuggestionRepository,
   InterestRepository,
 } from "../repositories";
+import { type BookmarkForClassification } from "@/repositories/bookmark.repository";
 import { INBOX_ORGANIZE_TRIGGERS } from "../constants";
 import { clusterBookmarks } from "../utils/clustering";
 import { cosineSimilarity, calculateCentroid } from "../utils/similarity";
@@ -85,8 +85,9 @@ export class InboxOrganizerService implements IInboxOrganizerService {
     const monitor = new PerformanceMonitor("InboxOrganizerAnalyze");
 
     // Get inbox bookmarks
+    // Note: bookmarkRepo uses internal userId from constructor
     const inboxBookmarks = await monitor.measure("FetchInboxBookmarks", () =>
-      this.bookmarkRepo.findInboxBookmarks(userId),
+      this.bookmarkRepo.findInboxBookmarks(),
     );
 
     if (inboxBookmarks.length < INBOX_ORGANIZE_TRIGGERS.COUNT_THRESHOLD) {
@@ -435,8 +436,8 @@ export class InboxOrganizerService implements IInboxOrganizerService {
         // 更新聚类中心（加入新书签的 embeddings）
         const newEmbeddings = newBookmarksWithEmbedding
           .filter((b) => updates.newBookmarkIds.includes(b.id))
-          .map((b) => b.embedding!)
-          .filter((e) => e.length > 0);
+          .filter((b) => b.embedding && b.embedding.length > 0)
+          .map((b) => b.embedding as number[]);
 
         if (newEmbeddings.length > 0) {
           const oldCentroid = lastState.suggestionCentroids.get(suggestion.id);

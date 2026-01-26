@@ -448,10 +448,13 @@ export class TraceStorageService {
       const data = dataRaw as RecentRow[];
 
       return data
-        .filter((d) => d.matcher_scores?.traceId)
+        .filter(
+          (d): d is RecentRow & { matcher_scores: { traceId: string } } =>
+            !!d.matcher_scores?.traceId,
+        )
         .map((d) => {
           return {
-            traceId: d.matcher_scores!.traceId!,
+            traceId: d.matcher_scores.traceId,
             timestamp: d.created_at,
             folderName: d.final_folder_name || "未知",
             confidence: d.confidence || 0,
