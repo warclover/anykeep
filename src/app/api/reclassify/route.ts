@@ -22,7 +22,7 @@ import { logger } from "@/lib/logger";
 import { recommendFolder, type FolderRecommendation } from "@/lib/ai-generator";
 import { TrustModeService } from "@/lib/trust-mode/trust-mode.service";
 import { MessageService } from "@/lib/messages/message-service";
-import type { ProfileSettings } from "@/types/supabase";
+import type { Database, ProfileSettings } from "@/types/supabase";
 
 // 请求体验证
 const reclassifySchema = z.object({
@@ -250,11 +250,12 @@ export async function POST(request: NextRequest) {
       .eq("id", user.id)
       .single();
 
-    const currentSettings = (profile?.settings as ProfileSettings) || {};
+    const currentSettings =
+      (profile?.settings as Record<string, unknown>) || {};
     const updatedSettings: ProfileSettings = {
       ...currentSettings,
       reclassify: {
-        ...(currentSettings?.reclassify || {}),
+        ...((currentSettings?.reclassify as Record<string, unknown>) || {}),
         last_run_at: new Date().toISOString(),
       },
     };

@@ -71,6 +71,18 @@ export interface AIFolderSettings {
   autonomy_level: 1 | 2 | 3;
   /** 每日创建限制 */
   daily_create_limit: number;
+  /** 是否启用自动创建文件夹 */
+  enable_auto_create?: boolean;
+  /** 是否启用自动拆分文件夹 */
+  enable_auto_split?: boolean;
+  /** 是否启用自动合并文件夹 */
+  enable_auto_merge?: boolean;
+  /** 是否启用自动重命名文件夹 */
+  enable_auto_rename?: boolean;
+  /** 是否启用创建通知 */
+  create_notification?: boolean;
+  /** 报告生成间隔（天） */
+  report_interval?: number;
 }
 
 /**

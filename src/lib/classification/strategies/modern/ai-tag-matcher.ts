@@ -320,7 +320,7 @@ export class AiTagMatcher {
         if (tag === normalizedFolderName) {
           return {
             matched: true,
-            folderId: profile.folderId.toString(),
+            folderId: Number(profile.folderId),
             folderName: profile.folderName,
             confidence: this.config.exactMatchConfidence,
             matchType: "exact_name",
@@ -485,7 +485,7 @@ export class AiTagMatcher {
         if (tag === folderNameLower) {
           return {
             matched: true,
-            folderId: profile.folderId.toString(),
+            folderId: Number(profile.folderId),
             folderName: profile.folderName,
             confidence: this.config.exactMatchConfidence,
             matchType: "exact_name",
@@ -499,7 +499,7 @@ export class AiTagMatcher {
           if (tag.includes(folderNameLower) || folderNameLower.includes(tag)) {
             return {
               matched: true,
-              folderId: profile.folderId.toString(),
+              folderId: Number(profile.folderId),
               folderName: profile.folderName,
               confidence: this.config.exactMatchConfidence - 0.03,
               matchType: "exact_name",
@@ -548,7 +548,7 @@ export class AiTagMatcher {
 
           bestMatch = {
             matched: true,
-            folderId: profile.folderId.toString(),
+            folderId: Number(profile.folderId),
             folderName: profile.folderName,
             confidence,
             matchType: "core_tag",
@@ -592,7 +592,7 @@ export class AiTagMatcher {
           bestScore = score;
           bestMatch = {
             matched: true,
-            folderId: profile.folderId.toString(),
+            folderId: Number(profile.folderId),
             folderName: profile.folderName,
             confidence: this.config.relatedTagConfidence,
             matchType: "related_tag",

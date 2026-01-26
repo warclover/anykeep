@@ -173,10 +173,11 @@ export class ClassificationContainer {
 
   /**
    * Get Classification Service
-   * @deprecated V3 已废弃移除 (Phase 1, 2026-01-24)
-   * @throws Error 调用此方法将抛出废弃错误
+   * @deprecated V3 已废弃移除 (Phase 1, 2026-01-24)。使用 SimpleClassificationService 或 TieredClassificationService 替代。
+   * @throws {Error} 调用此方法将抛出废弃错误
+   * @see {@link SimpleClassificationService} 推荐替代方案
    */
-  getClassificationService(): IClassificationService {
+  getClassificationService(): never {
     logger.error(
       "getClassificationService() is deprecated. V3 has been removed. Use V4.1 or V5.0 instead.",
     );

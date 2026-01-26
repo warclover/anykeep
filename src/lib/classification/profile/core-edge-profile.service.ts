@@ -21,7 +21,7 @@ import { getCurrentEmbeddingVersion } from "@/lib/utils/embedding-generator";
 // ============================================================================
 
 /** check_bookmark_zone RPC 返回类型 */
-interface CheckBookmarkZoneResult {
+interface _CheckBookmarkZoneResult {
   zone: string;
   core_distance: number | null;
   edge_distance: number | null;
@@ -31,7 +31,7 @@ interface CheckBookmarkZoneResult {
 }
 
 /** search_folders_by_core_similarity RPC 返回类型 */
-interface SearchFoldersByCoreResult {
+interface _SearchFoldersByCoreResult {
   folder_id: number;
   folder_name: string;
   core_similarity: number;
@@ -336,16 +336,13 @@ export class CoreEdgeProfileService {
   ): Promise<ZoneMatchResult> {
     // 使用数据库函数检查
     // V4.2.4: 修复向量参数格式，pgvector 需要 [1,2,3,...] 格式而非 JSON 字符串
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (this.supabase.rpc as any)(
+    const { data: results, error } = await this.supabase.rpc(
       "check_bookmark_zone",
       {
         p_folder_id: folderId,
         p_bookmark_embedding: `[${bookmarkEmbedding.join(",")}]`,
       },
     );
-
-    const results = data as CheckBookmarkZoneResult[] | null;
 
     if (error || !results || results.length === 0) {
       // 回退到内存计算
@@ -391,8 +388,7 @@ export class CoreEdgeProfileService {
     minSimilarity = 0.5,
   ): Promise<FolderZoneMatch[]> {
     // V4.2.4: 修复向量参数格式，pgvector 需要 [1,2,3,...] 格式而非 JSON 字符串
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (this.supabase.rpc as any)(
+    const { data: results, error } = await this.supabase.rpc(
       "search_folders_by_core_similarity",
       {
         p_user_id: userId,
@@ -401,8 +397,6 @@ export class CoreEdgeProfileService {
         p_min_similarity: minSimilarity,
       },
     );
-
-    const results = data as SearchFoldersByCoreResult[] | null;
 
     if (error || !results) {
       logger.warn(
@@ -703,10 +697,13 @@ export class CoreEdgeProfileService {
    * V4.2.7: 添加 embedding 版本追踪字段
    */
   private async saveZoneProfile(profile: CoreEdgeProfile): Promise<void> {
-    // 使用动态更新绕过类型检查（迁移应用后字段将存在）
+    // 使用 Partial<FolderProfile> 而不是 any
     // V4.2.7: 添加 embedding 版本字段
     const embeddingVersion = getCurrentEmbeddingVersion();
-    const updateData: Record<string, unknown> = {
+
+    // 注意: 这里使用 unknown 转换是因为 Supabase 生成的类型可能还未包含新字段
+    // 在下次 gen types 后可以移除 unknown 断言
+    const updateData = {
       core_embedding: profile.coreEmbedding,
       edge_embedding: profile.edgeEmbedding,
       core_radius: profile.coreRadius,
@@ -723,10 +720,13 @@ export class CoreEdgeProfileService {
       edge_embedding_version: profile.edgeEmbedding ? embeddingVersion : null,
     };
 
+    // 使用类型断言绕过当前类型定义限制，但在运行时是安全的
+    // 并且比 any 更安全，因为 updateData 结构是明确的
     const { error } = await this.supabase
       .from("folder_profiles")
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .update(updateData as any)
+      .update(
+        updateData as unknown as Database["public"]["Tables"]["folder_profiles"]["Update"],
+      )
       .eq("folder_id", profile.folderId);
 
     if (error) {

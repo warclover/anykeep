@@ -21,6 +21,7 @@ import type {
   FolderZoneMatch,
   ZoneType,
 } from "../profile";
+import { logger } from "@/lib/logger";
 
 /**
  * 扩展的向量匹配详情（包含区域信息）
@@ -113,8 +114,16 @@ export class VectorMatcher implements IMatcher {
       );
 
       return enrichedMatches;
-    } catch {
-      // 核心区匹配失败，返回空数组让其回退到传统匹配
+    } catch (error) {
+      // 核心区匹配失败，记录错误并回退到传统匹配
+      logger.warn(
+        {
+          userId: context.userId,
+          error: error instanceof Error ? error.message : String(error),
+          action: "core_zone_match_failed",
+        },
+        "VectorMatcher: Core zone matching failed, falling back to profile matching",
+      );
       return [];
     }
   }

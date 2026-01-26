@@ -449,8 +449,7 @@ class LearningEventHandler {
       const supabase = await createClient();
 
       // source_id 字段可能不在生成的类型中，使用类型断言
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from("bookmarks")
         .select("ai_tags, source_id")
         .eq("id", bookmarkId)

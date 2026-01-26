@@ -242,9 +242,10 @@ export function createTestContainer(
   const overridesMap = new Map<ServiceTypeSymbol, unknown>();
 
   if (overrides) {
-    for (const [_key, _value] of Object.entries(overrides)) {
-      // 注意：这里需要使用 Symbol，但 Object.entries 无法处理 Symbol 键
-      // 使用者需要使用 Map 或直接调用 override 方法
+    // 使用 Object.getOwnPropertySymbols 正确处理 Symbol 键
+    const symbolKeys = Object.getOwnPropertySymbols(overrides);
+    for (const key of symbolKeys) {
+      overridesMap.set(key as ServiceTypeSymbol, overrides[key]);
     }
   }
 

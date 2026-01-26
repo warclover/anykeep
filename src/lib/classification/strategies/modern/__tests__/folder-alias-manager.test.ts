@@ -30,7 +30,7 @@ describe("FolderAliasManager", () => {
         error: null,
       });
 
-      const aliases = await manager.getAliases("user1", "1", "Vue.js");
+      const aliases = await manager.getAliases("user1", 1, "Vue.js");
 
       expect(aliases).toContain("vuejs");
       expect(aliases).toContain("vue");
@@ -43,7 +43,7 @@ describe("FolderAliasManager", () => {
         error: { code: "PGRST116" }, // no rows returned
       });
 
-      const aliases = await manager.getAliases("user1", "1", "Next.js");
+      const aliases = await manager.getAliases("user1", 1, "Next.js");
 
       expect(aliases).toContain("nextjs");
     });
@@ -55,9 +55,9 @@ describe("FolderAliasManager", () => {
       });
 
       // First call - hits database
-      await manager.getAliases("user1", "1", "React");
+      await manager.getAliases("user1", 1, "React");
       // Second call - should use cache
-      await manager.getAliases("user1", "1", "React");
+      await manager.getAliases("user1", 1, "React");
 
       // Should only call database once
       expect(mockSupabase.single).toHaveBeenCalledTimes(1);
@@ -69,7 +69,7 @@ describe("FolderAliasManager", () => {
         error: null,
       });
 
-      const aliases = await manager.getAliases("user1", "1", "Vue.js");
+      const aliases = await manager.getAliases("user1", 1, "Vue.js");
 
       // All normalize to "vuejs", should be deduplicated
       const uniqueAliases = new Set(aliases);
@@ -84,7 +84,7 @@ describe("FolderAliasManager", () => {
         error: null,
       });
 
-      const matches = await manager.matchesAlias("user1", "1", "Vue.js", "vue");
+      const matches = await manager.matchesAlias("user1", 1, "Vue.js", "vue");
 
       expect(matches).toBe(true);
     });
@@ -97,7 +97,7 @@ describe("FolderAliasManager", () => {
 
       const matches = await manager.matchesAlias(
         "user1",
-        "1",
+        1,
         "Next.js",
         "nextjs",
       );
@@ -111,12 +111,7 @@ describe("FolderAliasManager", () => {
         error: null,
       });
 
-      const matches = await manager.matchesAlias(
-        "user1",
-        "1",
-        "Vue.js",
-        "react",
-      );
+      const matches = await manager.matchesAlias("user1", 1, "Vue.js", "react");
 
       expect(matches).toBe(false);
     });

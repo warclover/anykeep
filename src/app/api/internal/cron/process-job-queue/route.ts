@@ -69,6 +69,7 @@ export async function GET(request: Request) {
     };
 
     // Extended database type for RPC calls
+    // We only need to define functions that are not in the generated types or need overrides
     type ExtendedDatabase = Database & {
       public: {
         Functions: {
@@ -83,7 +84,8 @@ export async function GET(request: Request) {
           complete_job: {
             Args: {
               p_job_id: string;
-              p_result: Record<string, unknown>;
+              p_result: Json;
+              p_success: boolean;
             };
             Returns: void;
           };
@@ -94,34 +96,6 @@ export async function GET(request: Request) {
               p_retry: boolean;
             };
             Returns: void;
-          };
-        };
-        Tables: {
-          job_queue: {
-            Row: {
-              id: string;
-              status: string;
-              lock_until: string | null;
-              claimed_by: string | null;
-            };
-            Update: {
-              status?: string;
-              lock_until?: string | null;
-              claimed_by?: string | null;
-            };
-          };
-          classification_suggestions: {
-            Row: {
-              id: number;
-              status: string;
-              user_id: string;
-              created_at: string;
-            };
-            Update: { status?: string };
-          };
-          operation_snapshots: {
-            Row: { id: string; user_id: string; expires_at: string };
-            Delete: never;
           };
         };
       };
@@ -166,9 +140,11 @@ export async function GET(request: Request) {
         await processJob(job);
 
         // Mark as completed
-        await getTypedAdmin().rpc("complete_job", {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (getTypedAdmin().rpc as any)("complete_job", {
           p_job_id: job.job_id,
           p_result: { processedAt: new Date().toISOString() },
+          p_success: true,
         });
 
         stats.completed++;
@@ -181,7 +157,8 @@ export async function GET(request: Request) {
         stats.failed++;
 
         // Mark as failed
-        await getTypedAdmin().rpc("fail_job", {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (getTypedAdmin().rpc as any)("fail_job", {
           p_job_id: job.job_id,
           p_error: error instanceof Error ? error.message : String(error),
           p_retry: true,

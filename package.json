@@ -40,6 +40,7 @@
     "supabase:db:push": "npx supabase db push",
     "supabase:db:reset": "npx supabase db reset",
     "supabase:gen:types": "npx supabase gen types typescript --local > src/types/supabase.generated.ts",
+    "supabase:gen:types:remote": "npx supabase gen types typescript --project-id guwtnzcumkqsdcwrmdta > src/types/supabase.generated.ts",
     "prepare": "husky",
     "cap:add:android": "npx cap add android",
     "cap:sync": "npx cap sync",

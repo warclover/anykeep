@@ -253,11 +253,12 @@ export const POST = withAuthMiddleware(
       .eq("id", userId)
       .single();
 
-    const currentSettings = profile?.settings || {};
+    const currentSettings =
+      (profile?.settings as Record<string, unknown>) || {};
     const updatedSettings = {
       ...currentSettings,
       reclassify: {
-        ...((currentSettings.reclassify as Record<string, unknown>) || {}),
+        ...((currentSettings?.reclassify as Record<string, unknown>) || {}),
         last_run_at: new Date().toISOString(),
       },
     };

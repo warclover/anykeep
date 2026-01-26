@@ -253,12 +253,14 @@ async function handleSources(userId: string) {
 
   const typeCount = new Map<string, number>();
   const trustDistribution = { high: 0, medium: 0, low: 0 };
-  const totalSamples = sources.reduce(
-    (sum: number, s: { sample_count: number }) => sum + s.sample_count,
+  // 显式类型断言以避免 never 类型推断问题
+  const typedSources = sources as SourceProfileRow[];
+  const totalSamples = typedSources.reduce(
+    (sum: number, s) => sum + s.sample_count,
     0,
   );
 
-  for (const source of sources) {
+  for (const source of typedSources) {
     typeCount.set(
       source.source_type,
       (typeCount.get(source.source_type) || 0) + 1,
@@ -281,25 +283,14 @@ async function handleSources(userId: string) {
     }),
   );
 
-  const topSources = sources
-    .slice(0, 20)
-    .map(
-      (s: {
-        source_id: string;
-        source_name: string;
-        source_type: string;
-        sample_count: number;
-        trust_score: number;
-        avg_confidence: number | null;
-      }) => ({
-        sourceId: s.source_id,
-        sourceName: s.source_name,
-        sourceType: s.source_type,
-        sampleCount: s.sample_count,
-        trustScore: s.trust_score,
-        avgConfidence: s.avg_confidence,
-      }),
-    );
+  const topSources = typedSources.slice(0, 20).map((s) => ({
+    sourceId: s.source_id,
+    sourceName: s.source_name,
+    sourceType: s.source_type,
+    sampleCount: s.sample_count,
+    trustScore: s.trust_score,
+    avgConfidence: s.avg_confidence,
+  }));
 
   return successResponse({
     type: "sources",
@@ -527,10 +518,15 @@ async function handleStatistics(userId: string, searchParams: URLSearchParams) {
   };
 
   if (!sourceError && sourceData) {
-    sourceStats.totalSources = sourceData.length;
+    // 显式类型断言以避免 never 类型推断问题
+    const typedSourceData = sourceData as Pick<
+      SourceProfileRow,
+      "source_type" | "sample_count" | "trust_score"
+    >[];
+    sourceStats.totalSources = typedSourceData.length;
     let totalTrustScore = 0;
 
-    for (const item of sourceData) {
+    for (const item of typedSourceData) {
       const sourceType = item.source_type as keyof typeof sourceStats.byType;
       if (sourceType in sourceStats.byType) {
         sourceStats.byType[sourceType]++;

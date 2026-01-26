@@ -168,8 +168,7 @@ export class ProfileUpdater {
               .map(([folderId]) => folderId);
 
             // 更新画像
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            await (supabase as any)
+            await supabase
               .from("source_profiles")
               .update({
                 frequent_folders: sortedFolders,
@@ -223,8 +222,7 @@ export class ProfileUpdater {
       decayDate.setDate(decayDate.getDate() - this.config.decayPeriodDays);
 
       // 获取需要衰减的画像
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: profiles } = await (supabase as any)
+      const { data: profiles } = await supabase
         .from("source_profiles")
         .select("*")
         .eq("user_id", userId)
@@ -253,8 +251,7 @@ export class ProfileUpdater {
             ? Math.floor(profile.avg_confidence * this.config.decayFactor)
             : null;
 
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (supabase as any)
+          await supabase
             .from("source_profiles")
             .update({
               trust_score: newTrustScore,
@@ -348,8 +345,7 @@ export class ProfileUpdater {
 
             // 更新主画像
             const supabase = await createClient();
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            await (supabase as any)
+            await supabase
               .from("source_profiles")
               .update({
                 domains: mergedDomains,
@@ -407,8 +403,7 @@ export class ProfileUpdater {
       staleDate.setDate(staleDate.getDate() - this.config.staleDays);
 
       // 获取过期画像
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: staleProfiles } = await (supabase as any)
+      const { data: staleProfiles } = await supabase
         .from("source_profiles")
         .select("source_id, sample_count, last_seen_at")
         .eq("user_id", userId)

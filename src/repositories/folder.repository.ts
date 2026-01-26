@@ -87,7 +87,8 @@ export class FolderRepository extends BaseRepository<
   async findAllWithCounts(): Promise<FolderWithCount[]> {
     try {
       // 尝试使用 RPC 函数（性能更优）
-      const { data, error } = await this.supabase.rpc(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (this.supabase.rpc as any)(
         "get_folders_with_counts",
         {
           p_user_id: this.userId,
@@ -284,7 +285,8 @@ export class FolderRepository extends BaseRepository<
    */
   async getAllDescendantIds(folderId: number): Promise<number[]> {
     try {
-      const { data, error } = await this.supabase.rpc(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (this.supabase.rpc as any)(
         "get_folder_descendant_ids",
         {
           p_folder_id: folderId,
@@ -338,10 +340,14 @@ export class FolderRepository extends BaseRepository<
     id: number,
   ): Promise<{ deletedFolders: number; movedBookmarks: number }> {
     try {
-      const { data, error } = await this.supabase.rpc("cascade_delete_folder", {
-        p_folder_id: id,
-        p_user_id: this.userId,
-      });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (this.supabase.rpc as any)(
+        "cascade_delete_folder",
+        {
+          p_folder_id: id,
+          p_user_id: this.userId,
+        },
+      );
 
       if (error) {
         this.logger.error({ error, id }, "RPC cascade_delete_folder failed");

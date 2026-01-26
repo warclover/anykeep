@@ -329,13 +329,9 @@ export async function getUserSummaryMode(userId: string): Promise<SummaryMode> {
 
   try {
     const supabase = createClient();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase.rpc as any)(
-      "get_user_summary_mode",
-      {
-        p_user_id: userId,
-      },
-    );
+    const { data, error } = await supabase.rpc("get_user_summary_mode", {
+      p_user_id: userId,
+    });
 
     if (error) {
       logger.warn(
@@ -346,9 +342,8 @@ export async function getUserSummaryMode(userId: string): Promise<SummaryMode> {
     }
 
     // 验证返回值是有效的模式
-    const mode = data as string;
-    if (mode === "standard" || mode === "enhanced") {
-      return mode;
+    if (data === "standard" || data === "enhanced") {
+      return data;
     }
 
     return config.defaultSummaryMode;
@@ -382,14 +377,10 @@ export async function setUserSummaryMode(
 
   try {
     const supabase = createClient();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase.rpc as any)(
-      "set_user_summary_mode",
-      {
-        p_user_id: userId,
-        p_mode: mode,
-      },
-    );
+    const { data, error } = await supabase.rpc("set_user_summary_mode", {
+      p_user_id: userId,
+      p_mode: mode,
+    });
 
     if (error) {
       logger.error(

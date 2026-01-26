@@ -332,7 +332,7 @@ export class BookmarkRepository extends BaseRepository<
     // 尝试使用 RPC 原子操作
     try {
       const { data, error } = await this.supabase.rpc(
-        "toggle_bookmark_starred",
+        "toggle_bookmark_starred" as unknown as keyof Database["public"]["Functions"],
         {
           p_bookmark_id: id,
           p_user_id: this.userId,
@@ -353,7 +353,7 @@ export class BookmarkRepository extends BaseRepository<
 
       // RPC 返回数组，取第一个元素；如果返回布尔值则使用回退方法
       if (Array.isArray(data)) {
-        return data[0] as BookmarkRow;
+        return data[0] as unknown as BookmarkRow;
       } else if (typeof data === "object" && data !== null) {
         return data as BookmarkRow;
       } else {
@@ -729,7 +729,9 @@ export class BookmarkRepository extends BaseRepository<
       throw error;
     }
 
-    return (data || []).map(this.mapToBookmarkForClassification);
+    return (data || []).map((row) =>
+      this.mapToBookmarkForClassification(row as unknown as BookmarkRow),
+    );
   }
 
   /**
@@ -756,7 +758,9 @@ export class BookmarkRepository extends BaseRepository<
       throw error;
     }
 
-    return (data || []).map(this.mapToBookmarkForClassification);
+    return (data || []).map((row) =>
+      this.mapToBookmarkForClassification(row as unknown as BookmarkRow),
+    );
   }
 
   /**
@@ -780,7 +784,16 @@ export class BookmarkRepository extends BaseRepository<
     for (const row of data || []) {
       if (row.embedding) {
         // Explicitly cast the JSONB/array to number[]
-        const emb = row.embedding as unknown as number[];
+        let emb: number[];
+        if (typeof row.embedding === "string") {
+          try {
+            emb = JSON.parse(row.embedding);
+          } catch {
+            emb = [];
+          }
+        } else {
+          emb = row.embedding as unknown as number[];
+        }
         embeddings.set(row.id, emb);
       }
     }

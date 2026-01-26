@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircleIcon, InfoIcon } from "lucide-react";
 import type {
+  FolderIssue,
   FolderSuggestion,
   SynonymGroup,
   SynonymItem,
@@ -171,17 +172,19 @@ export function GardenerReportPanel({
                           : "健康"}
                     </Badge>
                   </div>
-                  {suggestion.issues.map((issue, index) => (
-                    <div
-                      key={index}
-                      className="text-sm text-muted-foreground pl-3 border-l-2"
-                    >
-                      <p className="font-medium">{issue.description}</p>
-                      <p className="text-xs mt-1">
-                        建议: {issue.suggestedAction}
-                      </p>
-                    </div>
-                  ))}
+                  {suggestion.issues.map(
+                    (issue: FolderIssue, index: number) => (
+                      <div
+                        key={index}
+                        className="text-sm text-muted-foreground pl-3 border-l-2"
+                      >
+                        <p className="font-medium">{issue.description}</p>
+                        <p className="text-xs mt-1">
+                          建议: {issue.suggestedAction}
+                        </p>
+                      </div>
+                    ),
+                  )}
                 </div>
               ))
             )}
@@ -207,17 +210,19 @@ export function GardenerReportPanel({
                   <div className="text-sm text-muted-foreground">
                     <p className="mb-1">相似文件夹:</p>
                     <ul className="list-disc list-inside pl-3">
-                      {group.synonyms.map((syn, synIndex) => {
-                        if (isSynonymItem(syn)) {
-                          return (
-                            <li key={syn.folderId}>
-                              {syn.folderName} (
-                              {Math.round(syn.similarity * 100)}%)
-                            </li>
-                          );
-                        }
-                        return <li key={synIndex}>{syn}</li>;
-                      })}
+                      {group.synonyms.map(
+                        (syn: string | SynonymItem, synIndex: number) => {
+                          if (isSynonymItem(syn)) {
+                            return (
+                              <li key={syn.folderId}>
+                                {syn.folderName} (
+                                {Math.round(syn.similarity * 100)}%)
+                              </li>
+                            );
+                          }
+                          return <li key={synIndex}>{syn}</li>;
+                        },
+                      )}
                     </ul>
                   </div>
                   <p className="text-xs text-muted-foreground">

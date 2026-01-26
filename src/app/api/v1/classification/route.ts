@@ -9,7 +9,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { ClassificationContainer } from "@/lib/classification";
+import {
+  initEnhancedContainer,
+  SERVICE_TYPES,
+} from "@/lib/classification/container";
 import {
   createTrustModeClassificationService,
   type EnhancedClassificationResult,
@@ -20,6 +23,7 @@ import {
   type MatchType,
 } from "@/lib/classification/services/classification-metrics.service";
 import { withAuthMiddleware } from "@/lib/api/middleware";
+import type { IClassificationService } from "@/lib/classification/services/interfaces";
 
 /**
  * 请求体验证 Schema
@@ -50,7 +54,7 @@ export const POST = withAuthMiddleware(
           success: false,
           error: {
             code: "VALIDATION_ERROR",
-            message: "请求参数验证失败",
+            message: "请求���数验证失败",
             details: validation.error.flatten().fieldErrors,
           },
         },
@@ -60,9 +64,14 @@ export const POST = withAuthMiddleware(
 
     const { title, summary, tags, embedding, url } = validation.data;
 
-    // 初始化分类容器并获取服务
-    const container = ClassificationContainer.initialize(supabase);
-    const baseClassificationService = container.getClassificationService();
+    // Phase 4: 使用增强容器获取分类服务
+    // 初始化容器
+    const container = initEnhancedContainer({ supabase });
+
+    // 使用泛型获取服务 (使用 ClassicStrategy 作为默认实现，对应 V4.1)
+    const baseClassificationService = container.get<IClassificationService>(
+      SERVICE_TYPES.ClassicStrategy,
+    );
 
     // 创建托管模式感知的分类服务（包装器模式）
     const trustModeClassificationService = createTrustModeClassificationService(

@@ -172,7 +172,7 @@ export class FolderAliasManager {
       .from("folder_tag_profiles")
       .select("aliases")
       .eq("user_id", userId)
-      .eq("folder_id", parseInt(folderId))
+      .eq("folder_id", Number(folderId))
       .single();
 
     if (error && error.code !== "PGRST116") {
@@ -321,7 +321,7 @@ export class FolderAliasManager {
       .from("folder_tag_profiles")
       .select("aliases")
       .eq("user_id", userId)
-      .eq("folder_id", parseInt(folderId))
+      .eq("folder_id", Number(folderId))
       .single();
 
     const currentAliases: string[] = (existing?.aliases as string[]) || [];
@@ -333,7 +333,7 @@ export class FolderAliasManager {
         .from("folder_tag_profiles")
         .update({ aliases: currentAliases })
         .eq("user_id", userId)
-        .eq("folder_id", parseInt(folderId));
+        .eq("folder_id", Number(folderId));
 
       if (error) {
         logger.error(
@@ -372,7 +372,7 @@ export class FolderAliasManager {
       .from("folder_tag_profiles")
       .select("aliases")
       .eq("user_id", userId)
-      .eq("folder_id", parseInt(folderId))
+      .eq("folder_id", Number(folderId))
       .single();
 
     const currentAliases: string[] = (existing?.aliases as string[]) || [];
@@ -385,7 +385,7 @@ export class FolderAliasManager {
         .from("folder_tag_profiles")
         .update({ aliases: currentAliases })
         .eq("user_id", userId)
-        .eq("folder_id", parseInt(folderId));
+        .eq("folder_id", Number(folderId));
 
       if (error) {
         logger.error(

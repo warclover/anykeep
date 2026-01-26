@@ -412,6 +412,16 @@ export const FeatureFlags = {
     return process.env.ENABLE_RRF_FUSION !== "false";
   },
 
+  /**
+   * 是否启用混合意图分类器
+   * @default false
+   * @deprecated 已废弃，将在 v5.0 移除
+   * @description 结合规则和 ML 的混合意图分类
+   */
+  get ENABLE_HYBRID_INTENT_CLASSIFIER(): boolean {
+    return process.env.ENABLE_HYBRID_INTENT_CLASSIFIER === "true";
+  },
+
   // ===========================================================================
   // RAG 能力增强 [Phase 3 新增]
   // ===========================================================================

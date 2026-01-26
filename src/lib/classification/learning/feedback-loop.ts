@@ -523,8 +523,7 @@ export class FeedbackLoopService {
     expiryDate.setDate(expiryDate.getDate() - 30); // 30 天前
 
     // 清理已处理的确认消息
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any)
+    await supabase
       .from("pending_confirmations")
       .delete()
       .eq("user_id", userId)

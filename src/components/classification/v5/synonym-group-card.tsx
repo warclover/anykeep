@@ -81,29 +81,31 @@ export function SynonymGroupCard({
             检测到 {group.synonyms.length} 个相似文件夹
           </p>
           <div className="space-y-2">
-            {group.synonyms.map((synonym, index) => {
-              if (isSynonymItem(synonym)) {
+            {group.synonyms.map(
+              (synonym: string | SynonymItem, index: number) => {
+                if (isSynonymItem(synonym)) {
+                  return (
+                    <div
+                      key={synonym.folderId}
+                      className="flex items-center justify-between p-2 bg-muted rounded-lg"
+                    >
+                      <span className="text-sm">{synonym.folderName}</span>
+                      <Badge variant="outline" className="text-xs">
+                        {Math.round(synonym.similarity * 100)}%
+                      </Badge>
+                    </div>
+                  );
+                }
                 return (
                   <div
-                    key={synonym.folderId}
+                    key={index}
                     className="flex items-center justify-between p-2 bg-muted rounded-lg"
                   >
-                    <span className="text-sm">{synonym.folderName}</span>
-                    <Badge variant="outline" className="text-xs">
-                      {Math.round(synonym.similarity * 100)}%
-                    </Badge>
+                    <span className="text-sm">{synonym}</span>
                   </div>
                 );
-              }
-              return (
-                <div
-                  key={index}
-                  className="flex items-center justify-between p-2 bg-muted rounded-lg"
-                >
-                  <span className="text-sm">{synonym}</span>
-                </div>
-              );
-            })}
+              },
+            )}
           </div>
         </div>
 

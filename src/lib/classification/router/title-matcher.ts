@@ -255,8 +255,7 @@ export class TitleMatcher {
 
       // 调用数据库函数搜索相似标题
       const supabase = await createClient();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase.rpc as any)(
+      const { data, error } = await supabase.rpc(
         "search_bookmarks_by_title_vector",
         {
           p_user_id: userId,

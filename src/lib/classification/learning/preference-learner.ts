@@ -16,6 +16,7 @@ import { createClient } from "@/lib/supabase/server";
 import { sourceProfileService } from "@/lib/source-profile/source-profile.service";
 import { fastPathCacheManager } from "@/lib/classification/router/cache-manager";
 import { LEARNING_LIMITS } from "@/lib/trust-mode/config";
+// Json 类型保留用于未来扩展
 
 /**
  * 内部负样本记录（简化版，用于内存缓存）
@@ -257,8 +258,7 @@ export class PreferenceLearner {
     const supabase = await createClient();
 
     // 获取待确认记录统计
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: confirmations } = await (supabase as any)
+    const { data: confirmations } = await supabase
       .from("pending_confirmations")
       .select("status, updated_at")
       .eq("user_id", userId);
