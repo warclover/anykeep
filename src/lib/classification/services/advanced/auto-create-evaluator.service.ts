@@ -9,7 +9,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/types/supabase";
+import type { Database, TypedSupabaseClient } from "@/types/supabase";
 import {
   matchCategoriesByKeyword,
   type UniversalCategory,
@@ -64,12 +64,10 @@ interface ExistingFolder {
  * 自动创建评估器
  */
 export class AutoCreateEvaluatorService {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private supabase: SupabaseClient<any>;
+  private supabase: TypedSupabaseClient;
 
   constructor(supabase: SupabaseClient<Database>) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    this.supabase = supabase as SupabaseClient<any>;
+    this.supabase = supabase;
   }
 
   /**

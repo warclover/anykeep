@@ -18,7 +18,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/types/supabase";
+import type { Database, TypedSupabaseClient } from "@/types/supabase";
 import { logger } from "@/lib/logger";
 
 // ============================================================================
@@ -139,16 +139,14 @@ const scenarioCache = new Map<string, CacheEntry>();
  * 用户场景检测服务
  */
 export class UserScenarioDetectorService {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private supabase: SupabaseClient<any>;
+  private supabase: TypedSupabaseClient;
   private config: UserScenarioDetectorConfig;
 
   constructor(
     supabase: SupabaseClient<Database>,
     config?: Partial<UserScenarioDetectorConfig>,
   ) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    this.supabase = supabase as SupabaseClient<any>;
+    this.supabase = supabase;
     this.config = {
       ...DEFAULT_CONFIG,
       ...config,

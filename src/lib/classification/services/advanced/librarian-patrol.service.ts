@@ -14,7 +14,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/types/supabase";
+import type { Database, Json, TypedSupabaseClient } from "@/types/supabase";
 import { logger } from "@/lib/logger";
 import {
   AILibrarianService,
@@ -155,8 +155,7 @@ const DEFAULT_CONFIG: PatrolConfig = {
  * 整理大师主动巡检服务
  */
 export class LibrarianPatrolService {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private supabase: SupabaseClient<any>;
+  private supabase: TypedSupabaseClient;
   private config: PatrolConfig;
   private librarianService: AILibrarianService;
 
@@ -164,8 +163,7 @@ export class LibrarianPatrolService {
     supabase: SupabaseClient<Database>,
     config?: Partial<PatrolConfig>,
   ) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    this.supabase = supabase as SupabaseClient<any>;
+    this.supabase = supabase;
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.librarianService = new AILibrarianService(supabase);
   }
@@ -484,6 +482,7 @@ export class LibrarianPatrolService {
     ).toISOString();
 
     // 查询长期未访问的书签
+    // 注意：bookmarks 表使用 last_read_at 而非 last_accessed_at
     const { data, error } = await this.supabase
       .from("bookmarks")
       .select(
@@ -492,13 +491,13 @@ export class LibrarianPatrolService {
         title,
         url,
         created_at,
-        last_accessed_at,
+        last_read_at,
         folders (name)
       `,
       )
       .eq("user_id", userId)
       .is("deleted_at", null)
-      .or(`last_accessed_at.is.null,last_accessed_at.lt.${cutoffDate}`)
+      .or(`last_read_at.is.null,last_read_at.lt.${cutoffDate}`)
       .lt("created_at", cutoffDate) // 只检查老书签
       .limit(20);
 
@@ -509,10 +508,10 @@ export class LibrarianPatrolService {
     const now = new Date();
 
     return data.map((bookmark) => {
-      const lastAccessed = bookmark.last_accessed_at
-        ? new Date(bookmark.last_accessed_at)
+      const lastAccessed = bookmark.last_read_at
+        ? new Date(bookmark.last_read_at)
         : null;
-      const created = new Date(bookmark.created_at);
+      const created = new Date(bookmark.created_at || new Date().toISOString());
 
       const daysSinceAccess = lastAccessed
         ? Math.floor(
@@ -523,7 +522,7 @@ export class LibrarianPatrolService {
           );
 
       // 处理 folders 可能是对象或数组的情况
-      const folders = bookmark.folders as
+      const folders = bookmark.folders as unknown as
         | { name: string }
         | { name: string }[]
         | null;
@@ -657,7 +656,7 @@ export class LibrarianPatrolService {
           staleBookmarks: report.staleBookmarks,
           topRecommendations: report.topRecommendations,
           comparison: report.comparison,
-        },
+        } as unknown as Json,
         report_period: report.reportPeriod,
         generated_at: report.generatedAt.toISOString(),
       });
@@ -691,7 +690,7 @@ export class LibrarianPatrolService {
       overallScore: data.overall_score,
       totalIssues: data.total_issues,
       generatedAt: new Date(data.generated_at),
-      reportPeriod: data.report_period,
+      reportPeriod: data.report_period as "weekly" | "biweekly" | "monthly",
       baseAnalysis: {
         healthScore: (data.report_data as Record<string, unknown>)?.baseAnalysis
           ? (

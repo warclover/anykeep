@@ -16,7 +16,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/types/supabase";
+import type { Database, TypedSupabaseClient } from "@/types/supabase";
 import { logger } from "@/lib/logger";
 import { getCurrentEmbeddingVersion } from "@/lib/utils/embedding-generator";
 
@@ -87,8 +87,7 @@ const DEFAULT_CONFIG: IncrementalProfileConfig = {
  * 增量画像更新服务
  */
 export class IncrementalProfileService {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private supabase: SupabaseClient<any>;
+  private supabase: TypedSupabaseClient;
   private config: IncrementalProfileConfig;
 
   // 待处理的更新队列（按 folderId 分组）
@@ -99,8 +98,7 @@ export class IncrementalProfileService {
     supabase: SupabaseClient<Database>,
     config?: Partial<IncrementalProfileConfig>,
   ) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    this.supabase = supabase as SupabaseClient<any>;
+    this.supabase = supabase;
     this.config = { ...DEFAULT_CONFIG, ...config };
   }
 
@@ -317,7 +315,9 @@ export class IncrementalProfileService {
       .update({
         bookmark_count: newBookmarkCount,
         top_tags: newTopTags,
-        profile_embedding: newEmbedding,
+        profile_embedding: newEmbedding
+          ? (JSON.stringify(newEmbedding) as unknown as string)
+          : null,
         // V4.2.7: 更新 embedding 版本（如果 embedding 有变化）
         profile_embedding_version:
           embeddingsToAdd.length > 0 && newEmbedding
@@ -542,7 +542,9 @@ export class IncrementalProfileService {
         folder_name: folder?.name || `文件夹 ${folderId}`,
         bookmark_count: initialBookmark ? 1 : 0,
         top_tags: initialBookmark?.tags || [],
-        profile_embedding: initialBookmark?.embedding || null,
+        profile_embedding: initialBookmark?.embedding
+          ? (JSON.stringify(initialBookmark.embedding) as unknown as string)
+          : null,
         // V4.2.7: 保存 embedding 版本
         profile_embedding_version: initialBookmark?.embedding
           ? getCurrentEmbeddingVersion()

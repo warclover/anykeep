@@ -8,8 +8,9 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/types/supabase";
+import type { Database, TypedSupabaseClient } from "@/types/supabase";
 import { logger } from "@/lib/logger";
+import { toJson, fromJson } from "@/lib/supabase/json-serializer";
 
 // ============================================================================
 // 类型定义
@@ -170,13 +171,10 @@ interface WeightAdjustmentsRow {
  * 需要先执行迁移才能生成正确的 TypeScript 类型。
  */
 export class DecisionRepository {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private supabase: SupabaseClient<any>;
+  private supabase: TypedSupabaseClient;
 
   constructor(supabase: SupabaseClient<Database>) {
-    // 使用 any 绕过类型检查，表还未在类型定义中
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    this.supabase = supabase as SupabaseClient<any>;
+    this.supabase = supabase;
   }
 
   /**
@@ -193,8 +191,8 @@ export class DecisionRepository {
           final_folder_id: input.finalFolderId ?? null,
           final_folder_name: input.finalFolderName ?? null,
           confidence: input.confidence,
-          matcher_scores: input.matcherScores ?? {},
-          candidates: input.candidates ?? [],
+          matcher_scores: toJson(input.matcherScores ?? {}),
+          candidates: toJson(input.candidates ?? []),
           ai_skipped: input.aiSkipped ?? false,
           ai_model: input.aiModel ?? null,
           ai_prompt_version: input.aiPromptVersion ?? null,
@@ -290,7 +288,7 @@ export class DecisionRepository {
       };
     }
 
-    const row = data as WeightAdjustmentsRow;
+    const row = fromJson<WeightAdjustmentsRow>(data);
     return {
       vector: row.vector,
       history: row.history,

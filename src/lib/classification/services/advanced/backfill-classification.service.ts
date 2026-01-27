@@ -11,7 +11,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/types/supabase";
+import type { Database, TypedSupabaseClient } from "@/types/supabase";
 import { FEATURE_FLAGS } from "../../config/feature-flags";
 import { matchCategoriesByKeyword } from "../../constants/universal-categories";
 import { logger } from "@/lib/logger";
@@ -81,16 +81,14 @@ const DEFAULT_CONFIG: BackfillConfig = {
  * 回溯分类服务
  */
 export class BackfillClassificationService {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private supabase: SupabaseClient<any>;
+  private supabase: TypedSupabaseClient;
   private config: BackfillConfig;
 
   constructor(
     supabase: SupabaseClient<Database>,
     config?: Partial<BackfillConfig>,
   ) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    this.supabase = supabase as SupabaseClient<any>;
+    this.supabase = supabase;
     this.config = { ...DEFAULT_CONFIG, ...config };
   }
 

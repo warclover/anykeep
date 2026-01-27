@@ -14,7 +14,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/types/supabase";
+import type { Database, TypedSupabaseClient } from "@/types/supabase";
 import { logger } from "@/lib/logger";
 import {
   NAMING_SYSTEM_PROMPT,
@@ -119,16 +119,14 @@ const styleCache = new Map<string, StyleCacheEntry>();
  * 命名优化引擎服务
  */
 export class NamingEngineService {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private supabase: SupabaseClient<any>;
+  private supabase: TypedSupabaseClient;
   private config: NamingEngineConfig;
 
   constructor(
     supabase: SupabaseClient<Database>,
     config?: Partial<NamingEngineConfig>,
   ) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    this.supabase = supabase as SupabaseClient<any>;
+    this.supabase = supabase;
     this.config = { ...DEFAULT_CONFIG, ...config };
   }
 

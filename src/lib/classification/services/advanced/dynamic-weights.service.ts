@@ -16,9 +16,10 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/types/supabase";
+import type { Database, TypedSupabaseClient } from "@/types/supabase";
 import { CLASSIFICATION_WEIGHTS } from "@/lib/classification/constants/limits";
 import { logger } from "@/lib/logger";
+import { fromJson } from "@/lib/supabase/json-serializer";
 import {
   UserScenarioDetectorService,
   type UserScenario,
@@ -200,8 +201,7 @@ let scenarioConfigCache: ScenarioConfigCache | null = null;
  * 动态权重调整服务
  */
 export class DynamicWeightsService {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private supabase: SupabaseClient<any>;
+  private supabase: TypedSupabaseClient;
   private config: DynamicWeightsConfig;
   private scenarioDetector: UserScenarioDetectorService;
 
@@ -209,8 +209,7 @@ export class DynamicWeightsService {
     supabase: SupabaseClient<Database>,
     config?: Partial<DynamicWeightsConfig>,
   ) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    this.supabase = supabase as SupabaseClient<any>;
+    this.supabase = supabase;
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.scenarioDetector = new UserScenarioDetectorService(supabase);
   }
@@ -344,8 +343,14 @@ export class DynamicWeightsService {
 
       // 缓存配置
       const configs = new Map<UserScenario, ScenarioWeightConfig>();
-      for (const config of data || []) {
-        configs.set(config.scenario as UserScenario, config);
+      for (const row of data || []) {
+        configs.set(row.scenario as UserScenario, {
+          scenario: row.scenario,
+          weights: fromJson<Record<string, number>>(row.weights),
+          thresholds: fromJson<Record<string, number>>(row.thresholds),
+          ab_test_variant: row.ab_test_variant,
+          is_active: row.is_active ?? true,
+        });
       }
 
       scenarioConfigCache = {

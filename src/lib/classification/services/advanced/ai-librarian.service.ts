@@ -11,87 +11,24 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/types/supabase";
+import type { Database, TypedSupabaseClient } from "@/types/supabase";
+import type {
+  LibrarianFolder as Folder,
+  DuplicateFolderGroup,
+  OversizedFolder,
+  PoorlyNamedFolder,
+  MissingCategory,
+  LibrarianAnalysis,
+} from "@/types/librarian.types";
 import { logger } from "@/lib/logger";
+import { toJson } from "@/lib/supabase/json-serializer";
 
 // ============================================================================
-// 类型定义
+// 类型定义（从统一类型文件导入，仅保留服务特有类型）
 // ============================================================================
 
-/**
- * 文件夹基础信息
- */
-interface Folder {
-  id: number;
-  name: string;
-  bookmarkCount?: number;
-}
-
-/**
- * 重复文件夹检测结果
- */
-interface DuplicateFolderGroup {
-  folders: Folder[];
-  similarity: number;
-  suggestedMerge: string;
-}
-
-/**
- * 过大文件夹检测结果
- */
-interface OversizedFolder {
-  folder: Folder;
-  bookmarkCount: number;
-  suggestedSplits: string[];
-}
-
-/**
- * 命名问题文件夹
- */
-interface PoorlyNamedFolder {
-  folder: Folder;
-  issue: "too_short" | "too_vague" | "contains_special" | "duplicate_style";
-  suggestedName: string;
-}
-
-/**
- * 缺失分类建议
- */
-interface MissingCategory {
-  category: string;
-  bookmarkCount: number;
-  reason: string;
-  sampleTitles: string[];
-}
-
-/**
- * 整理分析结果
- */
-export interface LibrarianAnalysis {
-  /** 重复文件夹 */
-  duplicateFolders: DuplicateFolderGroup[];
-
-  /** 空文件夹 */
-  emptyFolders: Folder[];
-
-  /** 过大文件夹（建议拆分） */
-  oversizedFolders: OversizedFolder[];
-
-  /** 命名不规范文件夹 */
-  poorlyNamedFolders: PoorlyNamedFolder[];
-
-  /** 缺失的关键分类 */
-  missingCategories: MissingCategory[];
-
-  /** 整体健康评分 (0-100) */
-  healthScore: number;
-
-  /** 分析时间 */
-  analyzedAt: Date;
-
-  /** 建议数量 */
-  totalSuggestions: number;
-}
+// 重新导出供其他模块使用
+export type { LibrarianAnalysis } from "@/types/librarian.types";
 
 /**
  * 整理大师配置
@@ -125,16 +62,14 @@ const DEFAULT_CONFIG: LibrarianConfig = {
  * 整理大师服务
  */
 export class AILibrarianService {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private supabase: SupabaseClient<any>;
+  private supabase: TypedSupabaseClient;
   private config: LibrarianConfig;
 
   constructor(
     supabase: SupabaseClient<Database>,
     config?: Partial<LibrarianConfig>,
   ) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    this.supabase = supabase as SupabaseClient<any>;
+    this.supabase = supabase;
     this.config = { ...DEFAULT_CONFIG, ...config };
   }
 
@@ -279,7 +214,12 @@ export class AILibrarianService {
       throw new Error(`Failed to fetch inbox bookmarks: ${error.message}`);
     }
 
-    return data || [];
+    return (data || [])
+      .filter((b) => b.ai_tags !== null)
+      .map((b) => ({
+        ...b,
+        ai_tags: b.ai_tags as string[], // 安全断言，因为已过滤 null
+      }));
   }
 
   /**
@@ -528,13 +468,13 @@ export class AILibrarianService {
         duplicate_count: analysis.duplicateFolders.length,
         empty_count: analysis.emptyFolders.length,
         missing_count: analysis.missingCategories.length,
-        analysis_data: {
+        analysis_data: toJson({
           duplicateFolders: analysis.duplicateFolders,
           emptyFolders: analysis.emptyFolders,
           oversizedFolders: analysis.oversizedFolders,
           poorlyNamedFolders: analysis.poorlyNamedFolders,
           missingCategories: analysis.missingCategories,
-        },
+        }),
       });
     } catch (error) {
       // 保存历史失败不应阻断主流程

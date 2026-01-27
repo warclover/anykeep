@@ -267,6 +267,17 @@ export interface CustomUsageTag {
 // ============================================
 
 import type { Database } from "./supabase.generated";
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+// ============================================
+// 类型安全的 Supabase 客户端别名
+// ============================================
+
+/**
+ * 类型安全的 Supabase 客户端
+ * 用于替代 SupabaseClient<any>，提供完整的类型推断
+ */
+export type TypedSupabaseClient = SupabaseClient<Database>;
 
 /** Bookmark 行类型 */
 export type Bookmark = Database["public"]["Tables"]["bookmarks"]["Row"];

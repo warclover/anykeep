@@ -9,68 +9,19 @@
 import { useState, useCallback, useEffect } from "react";
 
 // ============================================================================
-// 类型定义
+// 类型定义（从统一类型文件重新导出）
 // ============================================================================
 
-/**
- * 文件夹基础信息
- */
-export interface Folder {
-  id: number;
-  name: string;
-  bookmarkCount?: number;
-}
+export type {
+  LibrarianFolder as Folder,
+  DuplicateFolderGroup,
+  OversizedFolder,
+  PoorlyNamedFolder,
+  MissingCategory,
+  LibrarianAnalysis,
+} from "@/types/librarian.types";
 
-/**
- * 重复文件夹组
- */
-export interface DuplicateFolderGroup {
-  folders: Folder[];
-  similarity: number;
-  suggestedMerge: string;
-}
-
-/**
- * 过大文件夹
- */
-export interface OversizedFolder {
-  folder: Folder;
-  bookmarkCount: number;
-  suggestedSplits: string[];
-}
-
-/**
- * 命名问题文件夹
- */
-export interface PoorlyNamedFolder {
-  folder: Folder;
-  issue: "too_short" | "too_vague" | "contains_special" | "duplicate_style";
-  suggestedName: string;
-}
-
-/**
- * 缺失分类建议
- */
-export interface MissingCategory {
-  category: string;
-  bookmarkCount: number;
-  reason: string;
-  sampleTitles: string[];
-}
-
-/**
- * 整理大师分析结果
- */
-export interface LibrarianAnalysis {
-  duplicateFolders: DuplicateFolderGroup[];
-  emptyFolders: Folder[];
-  oversizedFolders: OversizedFolder[];
-  poorlyNamedFolders: PoorlyNamedFolder[];
-  missingCategories: MissingCategory[];
-  healthScore: number;
-  analyzedAt: Date;
-  totalSuggestions: number;
-}
+import type { LibrarianAnalysis } from "@/types/librarian.types";
 
 /**
  * Hook 返回类型

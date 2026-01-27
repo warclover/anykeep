@@ -159,8 +159,7 @@ export class AccuracyTrackerService {
     }> = [];
 
     const { data: metrics } = await supabase
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .from("classification_metrics" as any)
+      .from("classification_metrics")
       .select("folder_id, confidence, user_feedback, created_at")
       .eq("user_id", userId)
       .not("user_feedback", "is", null)
@@ -230,8 +229,7 @@ export class AccuracyTrackerService {
       // 使用 classification_metrics 表记录
       // 首先查找该书签的最近一条记录
       const { data: existingRecord } = await supabase
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .from("classification_metrics" as any)
+        .from("classification_metrics")
         .select("id")
         .eq("user_id", outcome.userId)
         .eq("bookmark_id", outcome.bookmarkId)
@@ -241,16 +239,14 @@ export class AccuracyTrackerService {
         .single();
 
       if (existingRecord) {
-        // 更新现有记录 - 使用类型断言处理动态表
-        const record = existingRecord as unknown as Record<string, unknown>;
+        // 更新现有记录
         await supabase
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          .from("classification_metrics" as any)
+          .from("classification_metrics")
           .update({
             user_feedback: outcome.isCorrect ? "accept" : "reject",
             feedback_at: outcome.timestamp,
           })
-          .eq("id", record.id);
+          .eq("id", existingRecord.id);
       }
 
       // 清除缓存
@@ -280,8 +276,7 @@ export class AccuracyTrackerService {
 
       // 更新 classification_metrics 表
       await supabase
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .from("classification_metrics" as any)
+        .from("classification_metrics")
         .update({
           user_feedback: isCorrect ? "accept" : "reject",
           feedback_at: new Date().toISOString(),
