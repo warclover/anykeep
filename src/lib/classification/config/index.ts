@@ -2,11 +2,22 @@
  * Classification 配置模块统一导出
  *
  * @since 2025-12-24 (Phase 3.1 - 配置解耦)
+ * @updated 2026-01-27 (新增集中配置服务)
  */
 
 // ============================================================================
 // 核心配置
 // ============================================================================
+
+// 集中配置服务（推荐使用）
+export {
+  classificationConfig,
+  getClassificationVersion,
+  shouldUseV2Classification,
+  type ClassificationConfig,
+  type ClassificationVersion,
+  type RolloutStage,
+} from "./classification-config.service";
 
 // 功能开关配置
 export * from "./feature-flags";

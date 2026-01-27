@@ -213,77 +213,268 @@ export class MonitoringService {
 
   /**
    * 收集分类指标
+   * v6.4: 实现真实数据库查询，替换模拟数据
    */
   private async collectClassificationMetrics(
-    _startTime: Date,
-    _endTime: Date,
+    startTime: Date,
+    endTime: Date,
   ): Promise<ClassificationMetrics> {
-    // TODO: 从数据库查询实际数据
-    // 这里返回模拟数据作为示例
+    try {
+      // 动态导入 Supabase 客户端（避免循环依赖）
+      const { createClient } = await import("@/lib/supabase/server");
+      const supabase = await createClient();
 
-    const latencies = [450, 480, 520, 550, 600, 650, 700, 800, 900, 1200];
-    const totalClassifications = 1000;
-    const successCount = 980;
-    const t1UsedCount = 250;
-    const userCorrectionCount = 50;
+      // 查询分类日志统计
+      const { data: statsData, error: statsError } = await supabase
+        .from("classification_logs")
+        .select("id, latency_ms, confidence, used_t1, user_corrected")
+        .gte("created_at", startTime.toISOString())
+        .lte("created_at", endTime.toISOString());
 
+      if (statsError || !statsData) {
+        this.logger.warn("无法查询分类日志，使用降级数据", {
+          error: statsError?.message,
+        });
+        return this.getFallbackClassificationMetrics();
+      }
+
+      const totalClassifications = statsData.length;
+      if (totalClassifications === 0) {
+        return this.getEmptyClassificationMetrics();
+      }
+
+      // 计算各项指标
+      const latencies = statsData
+        .map((r) => r.latency_ms)
+        .filter((l): l is number => l !== null)
+        .sort((a, b) => a - b);
+
+      const successCount = statsData.filter(
+        (r) => r.confidence !== null && r.confidence > 0,
+      ).length;
+      const t1UsedCount = statsData.filter((r) => r.used_t1 === true).length;
+      const userCorrectionCount = statsData.filter(
+        (r) => r.user_corrected === true,
+      ).length;
+
+      const confidences = statsData
+        .map((r) => r.confidence)
+        .filter((c): c is number => c !== null);
+      const avgConfidence =
+        confidences.length > 0
+          ? confidences.reduce((a, b) => a + b, 0) / confidences.length
+          : 0;
+
+      return {
+        totalClassifications,
+        successCount,
+        failureCount: totalClassifications - successCount,
+        avgLatencyMs: this.calculateAverage(latencies),
+        p50LatencyMs: this.calculatePercentile(latencies, 50),
+        p95LatencyMs: this.calculatePercentile(latencies, 95),
+        p99LatencyMs: this.calculatePercentile(latencies, 99),
+        t1UsedCount,
+        t1UsageRate:
+          totalClassifications > 0
+            ? (t1UsedCount / totalClassifications) * 100
+            : 0,
+        avgConfidence,
+        userCorrectionCount,
+        userCorrectionRate:
+          totalClassifications > 0
+            ? (userCorrectionCount / totalClassifications) * 100
+            : 0,
+      };
+    } catch (error) {
+      this.logger.error("收集分类指标失败", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return this.getFallbackClassificationMetrics();
+    }
+  }
+
+  /**
+   * 获取空指标（无数据时）
+   */
+  private getEmptyClassificationMetrics(): ClassificationMetrics {
     return {
-      totalClassifications,
-      successCount,
-      failureCount: totalClassifications - successCount,
-      avgLatencyMs: this.calculateAverage(latencies),
-      p50LatencyMs: this.calculatePercentile(latencies, 50),
-      p95LatencyMs: this.calculatePercentile(latencies, 95),
-      p99LatencyMs: this.calculatePercentile(latencies, 99),
-      t1UsedCount,
-      t1UsageRate: (t1UsedCount / totalClassifications) * 100,
-      avgConfidence: 0.87,
-      userCorrectionCount,
-      userCorrectionRate: (userCorrectionCount / totalClassifications) * 100,
+      totalClassifications: 0,
+      successCount: 0,
+      failureCount: 0,
+      avgLatencyMs: 0,
+      p50LatencyMs: 0,
+      p95LatencyMs: 0,
+      p99LatencyMs: 0,
+      t1UsedCount: 0,
+      t1UsageRate: 0,
+      avgConfidence: 0,
+      userCorrectionCount: 0,
+      userCorrectionRate: 0,
+    };
+  }
+
+  /**
+   * 获取降级指标（查询失败时的合理默认值）
+   */
+  private getFallbackClassificationMetrics(): ClassificationMetrics {
+    return {
+      totalClassifications: -1, // -1 表示数据不可用
+      successCount: -1,
+      failureCount: -1,
+      avgLatencyMs: -1,
+      p50LatencyMs: -1,
+      p95LatencyMs: -1,
+      p99LatencyMs: -1,
+      t1UsedCount: -1,
+      t1UsageRate: -1,
+      avgConfidence: -1,
+      userCorrectionCount: -1,
+      userCorrectionRate: -1,
     };
   }
 
   /**
    * 收集健康指标
+   * v6.4: 实现真实数据库查询
    */
   private async collectHealthMetrics(
-    _startTime: Date,
-    _endTime: Date,
+    startTime: Date,
+    endTime: Date,
   ): Promise<HealthMetrics> {
-    // TODO: 从日志/监控系统查询实际数据
+    try {
+      const { createClient } = await import("@/lib/supabase/server");
+      const supabase = await createClient();
 
+      // 查询错误日志统计
+      const { data: errorData, error: errorQueryError } = await supabase
+        .from("classification_logs")
+        .select("id, error_type")
+        .gte("created_at", startTime.toISOString())
+        .lte("created_at", endTime.toISOString())
+        .not("error_type", "is", null);
+
+      const { count: totalCount } = await supabase
+        .from("classification_logs")
+        .select("id", { count: "exact", head: true })
+        .gte("created_at", startTime.toISOString())
+        .lte("created_at", endTime.toISOString());
+
+      if (errorQueryError || totalCount === null || totalCount === 0) {
+        return this.getFallbackHealthMetrics();
+      }
+
+      const errors = errorData || [];
+      const errorCount = errors.length;
+      const timeoutCount = errors.filter(
+        (e) => e.error_type === "timeout",
+      ).length;
+      const vectorSearchFailures = errors.filter(
+        (e) => e.error_type === "vector_search",
+      ).length;
+      const llmFailures = errors.filter(
+        (e) => e.error_type === "llm_call",
+      ).length;
+      const dbErrors = errors.filter((e) => e.error_type === "database").length;
+
+      return {
+        errorRate: (errorCount / totalCount) * 100,
+        timeoutRate: (timeoutCount / totalCount) * 100,
+        vectorSearchFailureRate: (vectorSearchFailures / totalCount) * 100,
+        llmCallFailureRate: (llmFailures / totalCount) * 100,
+        databaseErrorRate: (dbErrors / totalCount) * 100,
+      };
+    } catch (error) {
+      this.logger.error("收集健康指标失败", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return this.getFallbackHealthMetrics();
+    }
+  }
+
+  /**
+   * 获取降级健康指标
+   */
+  private getFallbackHealthMetrics(): HealthMetrics {
     return {
-      errorRate: 2.0,
-      timeoutRate: 0.5,
-      vectorSearchFailureRate: 1.0,
-      llmCallFailureRate: 0.8,
-      databaseErrorRate: 0.2,
+      errorRate: -1,
+      timeoutRate: -1,
+      vectorSearchFailureRate: -1,
+      llmCallFailureRate: -1,
+      databaseErrorRate: -1,
     };
   }
 
   /**
    * 收集对比指标
+   * v6.4: 实现真实数据库查询
    */
   private async collectComparisonMetrics(
-    _startTime: Date,
-    _endTime: Date,
+    startTime: Date,
+    endTime: Date,
   ): Promise<ComparisonMetrics | undefined> {
-    // TODO: 查询 v4 和 v5 的对比数据
+    try {
+      const { createClient } = await import("@/lib/supabase/server");
+      const supabase = await createClient();
 
-    const v4AvgLatencyMs = 800;
-    const v5AvgLatencyMs = 550;
-    const v4Accuracy = 82;
-    const v5Accuracy = 87;
+      // 查询 V4.1 和 V5.0 的分类数据
+      const { data: v4Data } = await supabase
+        .from("classification_logs")
+        .select("latency_ms, user_corrected")
+        .eq("version", "v4.1")
+        .gte("created_at", startTime.toISOString())
+        .lte("created_at", endTime.toISOString());
 
-    return {
-      v4AvgLatencyMs,
-      v5AvgLatencyMs,
-      latencyImprovement:
-        ((v4AvgLatencyMs - v5AvgLatencyMs) / v4AvgLatencyMs) * 100,
-      v4Accuracy,
-      v5Accuracy,
-      accuracyImprovement: v5Accuracy - v4Accuracy,
-    };
+      const { data: v5Data } = await supabase
+        .from("classification_logs")
+        .select("latency_ms, user_corrected")
+        .eq("version", "v5.0")
+        .gte("created_at", startTime.toISOString())
+        .lte("created_at", endTime.toISOString());
+
+      // 如果没有对比数据，返回 undefined
+      if (!v4Data?.length || !v5Data?.length) {
+        return undefined;
+      }
+
+      const v4Latencies = v4Data
+        .map((r) => r.latency_ms)
+        .filter((l): l is number => l !== null);
+      const v5Latencies = v5Data
+        .map((r) => r.latency_ms)
+        .filter((l): l is number => l !== null);
+
+      const v4AvgLatencyMs = this.calculateAverage(v4Latencies);
+      const v5AvgLatencyMs = this.calculateAverage(v5Latencies);
+
+      // 计算准确率（未被用户纠正的比例）
+      const v4Accuracy =
+        ((v4Data.length -
+          v4Data.filter((r) => r.user_corrected === true).length) /
+          v4Data.length) *
+        100;
+      const v5Accuracy =
+        ((v5Data.length -
+          v5Data.filter((r) => r.user_corrected === true).length) /
+          v5Data.length) *
+        100;
+
+      return {
+        v4AvgLatencyMs,
+        v5AvgLatencyMs,
+        latencyImprovement:
+          v4AvgLatencyMs > 0
+            ? ((v4AvgLatencyMs - v5AvgLatencyMs) / v4AvgLatencyMs) * 100
+            : 0,
+        v4Accuracy,
+        v5Accuracy,
+        accuracyImprovement: v5Accuracy - v4Accuracy,
+      };
+    } catch (error) {
+      this.logger.error("收集对比指标失败", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return undefined;
+    }
   }
 
   /**

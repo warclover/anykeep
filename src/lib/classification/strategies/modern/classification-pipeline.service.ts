@@ -1,8 +1,9 @@
 /**
  * 智能分类 v5.0 - ClassificationPipeline 主服务
  *
- * 整合 L0 规则匹配、T0 快速生成、T1 异步纠正
+ * 整合 L0 ��则匹配、T0 快速生成、T1 异步纠正
  * v6: 添加 FolderContextProvider 为 T1 提供示例书签
+ * v6.4: 使用统一类型定义，避免重复
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -23,26 +24,14 @@ import type {
 } from "./types";
 import type { FolderId } from "@/lib/shared/types";
 import { ClassificationPipelineError } from "./types";
+// v6.4: 使用统一类型定义
+import type { V5ClassificationResult } from "@/lib/classification/types/classification";
 
 /**
- * 分类结果
+ * 分类结果 - 重新导出统一类型，保持向后兼容
+ * @deprecated 请直接从 @/lib/classification/types 导入 V5ClassificationResult
  */
-export interface ClassificationResult {
-  /** 推荐的文件夹 ID */
-  folderId: FolderId;
-  /** 置信度 (0-1) */
-  confidence: number;
-  /** 是否使用了 T1 纠正 */
-  usedT1: boolean;
-  /** T1 推理过程（如果使用了 T1） */
-  reasoning?: string;
-  /** 总延迟（毫秒） */
-  totalLatencyMs: number;
-  /** T0 延迟（毫秒） */
-  t0LatencyMs: number;
-  /** T1 延迟（毫秒，如果使用了 T1） */
-  t1LatencyMs?: number;
-}
+export type ClassificationResult = V5ClassificationResult;
 
 /**
  * ClassificationPipeline 主服务

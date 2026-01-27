@@ -286,3 +286,44 @@ export interface AIRecommendation {
   reason: string;
   suggestNew?: boolean;
 }
+
+// ============================================================================
+// V5.0 Pipeline 扩展类型（统一类型定义，避免重复）
+// ============================================================================
+
+/**
+ * V5 分类管道结果扩展字段
+ * 用于 ClassificationPipelineService 返回的额外信息
+ */
+export interface V5PipelineResultExtension {
+  /** 是否使用了 T1 纠正 */
+  usedT1: boolean;
+  /** T1 推理过程（如果使用了 T1） */
+  reasoning?: string;
+  /** 总延迟（毫秒） */
+  totalLatencyMs: number;
+  /** T0 延迟（毫秒） */
+  t0LatencyMs: number;
+  /** T1 延迟（毫秒，如果使用了 T1） */
+  t1LatencyMs?: number;
+  /** 是否需要 T1 纠正（仅 T0Only 模式） */
+  needsT1?: boolean;
+  /** T1 触发原因（仅 T0Only 模式） */
+  t1Reason?: string;
+}
+
+/**
+ * V5 分类管道完整结果
+ * 继承基础 ClassificationResult 并扩展 V5 特有字段
+ */
+export interface V5ClassificationResult
+  extends Pick<ClassificationResult, "folderId" | "confidence">,
+    V5PipelineResultExtension {}
+
+/**
+ * V5 批量分类错误结果
+ */
+export interface V5BatchClassificationError {
+  error: string;
+  bookmarkId: string;
+}
